@@ -34,7 +34,7 @@ Restart a previous run from a state point or a particle restart file named
 Use \fIN\fP OpenMP threads.
 .TP
 .B "\-t\fR, \fP\-\-track"
-Write tracks for all particles.
+Write tracks for all particles (up to max_tracks).
 .TP
 .B "\-v\fR, \fP\-\-version"
 Show version information.
@@ -57,8 +57,8 @@ Indicates the default path to an HDF5 file that contains multi-group cross
 section libraries if the user has not specified the <cross_sections> tag in
 .I materials.xml\fP.
 .SH LICENSE
-Copyright \(co 2011-2021 Massachusetts Institute of Technology and OpenMC
-contributors.
+Copyright \(co 2011-2023 Massachusetts Institute of Technology, UChicago
+Argonne LLC, and OpenMC contributors.
 .PP
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
@@ -80,7 +80,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 The OpenMC source code is hosted on GitHub at
 https://github.com/openmc-dev/openmc. With a github account, you can submit issues
 directly on the github repository that will then be reviewed by OpenMC
-developers. Alternatively, you can send a bug report to
-.I openmc-users@googlegroups.com\fP.
+developers. Alternatively, you can post a message on the discussion forum at
+https://openmc.discourse.group.
 .SH AUTHOR
 Paul K. Romano (\fIpaul.k.romano@gmail.com\fP)

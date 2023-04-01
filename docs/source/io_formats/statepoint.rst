@@ -52,11 +52,11 @@ The current version of the statepoint file format is 17.0.
              sum-of-squares for each global tally.
            - **source_bank** (Compound type) -- Source bank information for each
              particle. The compound type has fields ``r``, ``u``, ``E``,
-             ``wgt``, ``delayed_group``, ``surf_id``, and ``particle``, which
-             represent the position, direction, energy, weight, delayed group,
-             surface ID, and particle type (0=neutron, 1=photon, 2=electron,
-             3=positron), respectively.
-             Only present when `run_mode` is 'eigenvalue'.
+             ``time``, ``wgt``, ``delayed_group``, ``surf_id``, and
+             ``particle``, which represent the position, direction, energy,
+             time, weight, delayed group, surface ID, and particle type
+             (0=neutron, 1=photon, 2=electron, 3=positron), respectively. Only
+             present when `run_mode` is 'eigenvalue'.
 
 **/tallies/**
 
@@ -72,16 +72,33 @@ The current version of the statepoint file format is 17.0.
 
 :Datasets: - **type** (*char[]*) -- Type of mesh.
            - **dimension** (*int*) -- Number of mesh cells in each dimension.
-           - **lower_left** (*double[]*) -- Coordinates of lower-left corner of
-             mesh.
-           - **upper_right** (*double[]*) -- Coordinates of upper-right corner
-             of mesh.
-           - **width** (*double[]*) -- Width of each mesh cell in each
-             dimension.
+           - **Regular Mesh Only:**
+              - **lower_left** (*double[]*) -- Coordinates of lower-left corner of
+                mesh.
+              - **upper_right** (*double[]*) -- Coordinates of upper-right corner
+                of mesh.
+              - **width** (*double[]*) -- Width of each mesh cell in each
+                dimension.
+           - **Rectilinear Mesh Only:**
+              - **x_grid** (*double[]*) -- Mesh divisions along the x-axis.
+              - **y_grid** (*double[]*) -- Mesh divisions along the y-axis.
+              - **z_grid** (*double[]*) -- Mesh divisions along the z-axis.
+           - **Cylindrical & Spherical Mesh Only:**
+              - **r_grid** (*double[]*) -- The mesh divisions along the r-axis.
+              - **phi_grid** (*double[]*) -- The mesh divisions along the phi-axis.
+              - **origin** (*double[]*) -- The origin in cartesian coordinates.
+           - **Spherical Mesh Only:**
+              - **theta_grid** (*double[]*) -- The mesh divisions along the theta-axis.
            - **Unstructured Mesh Only:**
+              - **filename** (*char[]*) -- Name of the mesh file.
+              - **library** (*char[]*) -- Mesh library used to represent the
+                                          mesh ("moab" or "libmesh").
+              - **length_multiplier** (*double*) Scaling factor applied to the mesh.
               - **volumes** (*double[]*) -- Volume of each mesh cell.
-              - **centroids** (*double[]*) -- Location of the mesh cell
-                centroids.
+              - **vertices** (*double[]*) -- x, y, z values of the mesh vertices.
+              - **connectivity** (*int[]*) -- Connectivity array for the mesh
+                cells.
+              - **element_types** (*int[]*) -- Mesh element types.
 
 **/tallies/filters/**
 
@@ -102,6 +119,10 @@ The current version of the statepoint file format is 17.0.
              interpolation. Only used for 'energyfunction' filters.
            - **y** (*double[]*) -- Interpolant values for energyfunction
              interpolation. Only used for 'energyfunction' filters.
+
+             :Attributes:
+                          - **interpolation** (*int*) -- Interpolation type. Only used for
+                            'energyfunction' filters.
 
 **/tallies/derivatives/derivative <id>/**
 
@@ -149,7 +170,7 @@ All values are given in seconds and are measured on the master process.
              finalization.
            - **transport** (*double*) -- Time spent transporting particles.
            - **inactive batches** (*double*) -- Time spent in the inactive
-             batches (including non-transport activities like communcating
+             batches (including non-transport activities like communicating
              sites).
            - **active batches** (*double*) -- Time spent in the active batches
              (including non-transport activities like communicating sites).

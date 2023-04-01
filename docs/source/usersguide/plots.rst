@@ -80,26 +80,13 @@ assign them to a :class:`openmc.Plots` collection and export it to XML::
   plots += [plot2, plot3]
   plots.export_to_xml()
 
-To actually generate the plots, run the :func:`openmc.plot_geometry`
-function. Alternatively, run the :ref:`scripts_openmc` executable with the
-``--plot`` command-line flag. When that has finished, you will have one or more
-``.ppm`` files, i.e., `portable pixmap
-<http://netpbm.sourceforge.net/doc/ppm.html>`_ files. On some Linux
-distributions, these ``.ppm`` files are natively viewable. If you find that
-you're unable to open them on your system (or you don't like the fact that they
-are not compressed), you may want to consider converting them to another format.
-This is easily accomplished with the ``convert`` command available on most Linux
-distributions as part of the `ImageMagick
-<http://www.imagemagick.org/script/convert.php>`_ package. (On Debian
-derivatives: ``sudo apt install imagemagick``).  Images are then converted like:
-
-.. code-block:: sh
-
-    convert myplot.ppm myplot.png
-
-Alternatively, if you're working within a `Jupyter <https://jupyter.org/>`_
-Notebook or QtConsole, you can use the :func:`openmc.plot_inline` to run OpenMC
-in plotting mode and display the resulting plot within the notebook.
+To actually generate the plots, run the :func:`openmc.plot_geometry` function.
+Alternatively, run the :ref:`scripts_openmc` executable with the ``--plot``
+command-line flag. When that has finished, you will have one or more ``.png``
+files. Alternatively, if you're working within a `Jupyter
+<https://jupyter.org/>`_ Notebook or QtConsole, you can use the
+:func:`openmc.plot_inline` to run OpenMC in plotting mode and display the
+resulting plot within the notebook.
 
 .. _usersguide_voxel:
 

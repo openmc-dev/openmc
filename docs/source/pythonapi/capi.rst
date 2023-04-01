@@ -13,10 +13,12 @@ Functions
    :template: myfunction.rst
 
    calculate_volumes
+   export_properties
    finalize
    find_cell
    find_material
    hard_reset
+   import_properties
    init
    iter_batches
    keff
@@ -27,6 +29,7 @@ Functions
    reset
    run
    run_in_memory
+   sample_external_source
    simulation_init
    simulation_finalize
    source_bank

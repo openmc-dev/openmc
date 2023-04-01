@@ -7,6 +7,7 @@ loaded from an .xml file and all the nuclides are linked together.
 from io import StringIO
 from itertools import chain
 import math
+import os
 import re
 from collections import OrderedDict, defaultdict, namedtuple
 from collections.abc import Mapping, Iterable
@@ -14,7 +15,8 @@ from numbers import Real, Integral
 from warnings import warn
 
 from openmc.checkvalue import check_type, check_greater_than
-from openmc.data import gnd_name, zam
+from openmc.data import gnds_name, zam, DataLibrary
+from openmc.exceptions import DataError
 from .nuclide import FissionYieldDistribution
 
 # Try to use lxml if it is available. It preserves the order of attributes and
@@ -133,14 +135,14 @@ def replace_missing(product, decay_data):
     Parameters
     ----------
     product : str
-        Name of product in GND format, e.g. 'Y86_m1'.
+        Name of product in GNDS format, e.g. 'Y86_m1'.
     decay_data : dict
         Dictionary of decay data
 
     Returns
     -------
     product : str
-        Replacement for missing product in GND format.
+        Replacement for missing product in GNDS format.
 
     """
     # Determine atomic number, mass number, and metastable state
@@ -211,7 +213,7 @@ def replace_missing_fpy(actinide, fpy_data, decay_data):
     # Check if metastable state has data (e.g., Am242m)
     Z, A, m = zam(actinide)
     if m == 0:
-        metastable = gnd_name(Z, A, 1)
+        metastable = gnds_name(Z, A, 1)
         if metastable in fpy_data:
             return metastable
 
@@ -220,7 +222,7 @@ def replace_missing_fpy(actinide, fpy_data, decay_data):
     while isotone in decay_data:
         Z += 1
         A += 1
-        isotone = gnd_name(Z, A, 0)
+        isotone = gnds_name(Z, A, 0)
         if isotone in fpy_data:
             return isotone
 
@@ -229,7 +231,7 @@ def replace_missing_fpy(actinide, fpy_data, decay_data):
     while isotone in decay_data:
         Z -= 1
         A -= 1
-        isotone = gnd_name(Z, A, 0)
+        isotone = gnds_name(Z, A, 0)
         if isotone in fpy_data:
             return isotone
 
@@ -244,9 +246,9 @@ class Chain:
     requires a list of ENDF incident neutron, decay, and neutron fission product
     yield sublibrary files. The depletion chain used during a depletion
     simulation is indicated by either an argument to
-    :class:`openmc.deplete.Operator` or through the
-    ``depletion_chain`` item in the :envvar:`OPENMC_CROSS_SECTIONS`
-    environment variable.
+    :class:`openmc.deplete.CoupledOperator` or
+    :class:`openmc.deplete.IndependentOperator`, or through
+    openmc.config['chain_file'].
 
     Attributes
     ----------
@@ -355,7 +357,7 @@ class Chain:
         reactions = {}
         for f in neutron_files:
             evaluation = openmc.data.endf.Evaluation(f)
-            name = evaluation.gnd_name
+            name = evaluation.gnds_name
             reactions[name] = {}
             for mf, mt, nc, mod in evaluation.reaction_list:
                 if mf == 3:
@@ -417,6 +419,8 @@ class Chain:
 
                     # Append decay mode
                     nuclide.add_decay_mode(type_, target, br)
+
+                nuclide.sources = data.sources
 
             fissionable = False
             if parent in reactions:
@@ -626,14 +630,26 @@ class Chain:
 
             # Gain from radioactive decay
             if nuc.n_decay_modes != 0:
-                for _, target, branching_ratio in nuc.decay_modes:
-                    # Allow for total annihilation for debug purposes
-                    if target is not None:
-                        branch_val = branching_ratio * decay_constant
+                for decay_type, target, branching_ratio in nuc.decay_modes:
+                    branch_val = branching_ratio * decay_constant
 
-                        if branch_val != 0.0:
+                    # Allow for total annihilation for debug purposes
+                    if branch_val != 0.0:
+                        if target is not None:
                             k = self.nuclide_dict[target]
                             matrix[k, i] += branch_val
+
+                        # Produce alphas and protons from decay
+                        if 'alpha' in decay_type:
+                            k = self.nuclide_dict.get('He4')
+                            if k is not None:
+                                count = decay_type.count('alpha')
+                                matrix[k, i] += count * branch_val
+                        elif 'p' in decay_type:
+                            k = self.nuclide_dict.get('H1')
+                            if k is not None:
+                                count = decay_type.count('p')
+                                matrix[k, i] += count * branch_val
 
             if nuc.name in rates.index_nuc:
                 # Extract all reactions for this nuclide in this cell
@@ -888,7 +904,7 @@ class Chain:
                 ground_target = grounds.get(parent_name)
                 if ground_target is None:
                     pz, pa, pm = zam(parent_name)
-                    ground_target = gnd_name(pz, pa + 1, 0)
+                    ground_target = gnds_name(pz, pa + 1, 0)
                 new_ratios[ground_target] = ground_br
                 parent.add_reaction(reaction, ground_target, rxn_Q, ground_br)
 
@@ -1021,6 +1037,7 @@ class Chain:
             new_nuclide = Nuclide(previous.name)
             new_nuclide.half_life = previous.half_life
             new_nuclide.decay_energy = previous.decay_energy
+            new_nuclide.sources = previous.sources.copy()
             if hasattr(previous, '_fpy'):
                 new_nuclide._fpy = previous._fpy
 

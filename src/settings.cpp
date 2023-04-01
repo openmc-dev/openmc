@@ -18,6 +18,7 @@
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/mcpl_interface.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
 #include "openmc/output.h"
@@ -27,6 +28,7 @@
 #include "openmc/string_utils.h"
 #include "openmc/tallies/trigger.h"
 #include "openmc/volume_calc.h"
+#include "openmc/weight_windows.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -42,8 +44,8 @@ bool assume_separate {false};
 bool check_overlaps {false};
 bool cmfd_run {false};
 bool confidence_intervals {false};
+bool create_delayed_neutrons {true};
 bool create_fission_neutrons {true};
-bool dagmc {false};
 bool delayed_photon_scaling {true};
 bool entropy_on {false};
 bool event_based {false};
@@ -60,7 +62,9 @@ bool run_CE {true};
 bool source_latest {false};
 bool source_separate {false};
 bool source_write {true};
+bool source_mcpl_write {false};
 bool surf_source_write {false};
+bool surf_mcpl_write {false};
 bool surf_source_read {false};
 bool survival_biasing {false};
 bool temperature_multipole {false};
@@ -68,6 +72,7 @@ bool trigger_on {false};
 bool trigger_predict {false};
 bool ufs_on {false};
 bool urr_ptables_on {true};
+bool weight_windows_on {false};
 bool write_all_tracks {false};
 bool write_initial_source {false};
 
@@ -93,6 +98,8 @@ int max_order {0};
 int n_log_bins {8000};
 int n_batches;
 int n_max_batches;
+int max_splits {1000};
+int max_tracks {1000};
 ResScatMethod res_scat_method {ResScatMethod::rvs};
 double res_scat_energy_min {0.01};
 double res_scat_energy_max {1000.0};
@@ -212,16 +219,16 @@ void read_settings_xml()
 {
   using namespace settings;
   using namespace pugi;
-
   // Check if settings.xml exists
-  std::string filename = path_input + "settings.xml";
+  std::string filename = settings::path_input + "settings.xml";
   if (!file_exists(filename)) {
     if (run_mode != RunMode::PLOTTING) {
       fatal_error(
         fmt::format("Settings XML file '{}' does not exist! In order "
                     "to run OpenMC, you first need a set of input files; at a "
                     "minimum, this "
-                    "includes settings.xml, geometry.xml, and materials.xml. "
+                    "includes settings.xml, geometry.xml, and materials.xml "
+                    "or a single XML file containing all of these files. "
                     "Please consult "
                     "the user's guide at https://docs.openmc.org for further "
                     "information.",
@@ -247,24 +254,22 @@ void read_settings_xml()
     verbosity = std::stoi(get_node_value(root, "verbosity"));
   }
 
-  // DAGMC geometry check
-  if (check_for_node(root, "dagmc")) {
-    dagmc = get_node_value_bool(root, "dagmc");
-  }
-
-#ifndef DAGMC
-  if (dagmc) {
-    fatal_error("DAGMC mode unsupported for this build of OpenMC");
-  }
-#endif
-
   // To this point, we haven't displayed any output since we didn't know what
   // the verbosity is. Now that we checked for it, show the title if necessary
   if (mpi::master) {
     if (verbosity >= 2)
       title();
   }
+
   write_message("Reading settings XML file...", 5);
+
+  read_settings_xml(root);
+}
+
+void read_settings_xml(pugi::xml_node root)
+{
+  using namespace settings;
+  using namespace pugi;
 
   // Find if a multi-group or continuous-energy simulation is desired
   if (check_for_node(root, "energy_mode")) {
@@ -275,6 +280,9 @@ void read_settings_xml()
       run_CE = true;
     }
   }
+
+  // Check for user meshes and allocate
+  read_meshes(root);
 
   // Look for deprecated cross_sections.xml file in settings.xml
   if (check_for_node(root, "cross_sections")) {
@@ -437,7 +445,12 @@ void read_settings_xml()
   for (pugi::xml_node node : root.children("source")) {
     if (check_for_node(node, "file")) {
       auto path = get_node_value(node, "file", false, true);
-      model::external_sources.push_back(make_unique<FileSource>(path));
+      if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
+        auto sites = mcpl_source_sites(path);
+        model::external_sources.push_back(make_unique<FileSource>(sites));
+      } else {
+        model::external_sources.push_back(make_unique<FileSource>(path));
+      }
     } else if (check_for_node(node, "library")) {
       // Get shared library path and parameters
       auto path = get_node_value(node, "library", false, true);
@@ -471,9 +484,12 @@ void read_settings_xml()
   // If no source specified, default to isotropic point source at origin with
   // Watt spectrum
   if (model::external_sources.empty()) {
+    double T[] {0.0};
+    double p[] {1.0};
     model::external_sources.push_back(make_unique<IndependentSource>(
       UPtrSpace {new SpatialPoint({0.0, 0.0, 0.0})},
-      UPtrAngle {new Isotropic()}, UPtrDist {new Watt(0.988e6, 2.249e-6)}));
+      UPtrAngle {new Isotropic()}, UPtrDist {new Watt(0.988e6, 2.249e-6)},
+      UPtrDist {new Discrete(T, p, 1)}));
   }
 
   // Check if we want to write out source
@@ -552,9 +568,6 @@ void read_settings_xml()
         {temp[3 * i], temp[3 * i + 1], temp[3 * i + 2]});
     }
   }
-
-  // Read meshes
-  read_meshes(root);
 
   // Shannon Entropy mesh
   if (check_for_node(root, "entropy_mesh")) {
@@ -652,6 +665,15 @@ void read_settings_xml()
     if (check_for_node(node_sp, "write")) {
       source_write = get_node_value_bool(node_sp, "write");
     }
+    if (check_for_node(node_sp, "mcpl")) {
+      source_mcpl_write = get_node_value_bool(node_sp, "mcpl");
+
+      // Make sure MCPL support is enabled
+      if (source_mcpl_write && !MCPL_ENABLED) {
+        fatal_error(
+          "Your build of OpenMC does not support writing MCPL source files.");
+      }
+    }
     if (check_for_node(node_sp, "overwrite_latest")) {
       source_latest = get_node_value_bool(node_sp, "overwrite_latest");
       source_separate = source_latest;
@@ -682,9 +704,18 @@ void read_settings_xml()
       max_surface_particles =
         std::stoll(get_node_value(node_ssw, "max_particles"));
     }
+    if (check_for_node(node_ssw, "mcpl")) {
+      surf_mcpl_write = get_node_value_bool(node_ssw, "mcpl");
+
+      // Make sure MCPL support is enabled
+      if (surf_mcpl_write && !MCPL_ENABLED) {
+        fatal_error("Your build of OpenMC does not support writing MCPL "
+                    "surface source files.");
+      }
+    }
   }
 
-  // If source is not seperate and is to be written out in the statepoint file,
+  // If source is not separate and is to be written out in the statepoint file,
   // make sure that the sourcepoint batch numbers are contained in the
   // statepoint list
   if (!source_separate) {
@@ -808,6 +839,12 @@ void read_settings_xml()
   }
   if (check_for_node(root, "temperature_multipole")) {
     temperature_multipole = get_node_value_bool(root, "temperature_multipole");
+
+    // Multipole currently doesn't work with photon transport
+    if (temperature_multipole && photon_transport) {
+      fatal_error("Multipole data cannot currently be used in conjunction with "
+                  "photon transport.");
+    }
   }
   if (check_for_node(root, "temperature_range")) {
     auto range = get_node_array<double>(root, "temperature_range");
@@ -837,6 +874,12 @@ void read_settings_xml()
     }
   }
 
+  // Check whether create delayed neutrons in fission
+  if (check_for_node(root, "create_delayed_neutrons")) {
+    create_delayed_neutrons =
+      get_node_value_bool(root, "create_delayed_neutrons");
+  }
+
   // Check whether create fission sites
   if (run_mode == RunMode::FIXED_SOURCE) {
     if (check_for_node(root, "create_fission_neutrons")) {
@@ -859,6 +902,27 @@ void read_settings_xml()
   // Check whether material cell offsets should be generated
   if (check_for_node(root, "material_cell_offsets")) {
     material_cell_offsets = get_node_value_bool(root, "material_cell_offsets");
+  }
+
+  // Weight window information
+  for (pugi::xml_node node_ww : root.children("weight_windows")) {
+    variance_reduction::weight_windows.emplace_back(
+      std::make_unique<WeightWindows>(node_ww));
+
+    // Enable weight windows by default if one or more are present
+    settings::weight_windows_on = true;
+  }
+
+  if (check_for_node(root, "weight_windows_on")) {
+    weight_windows_on = get_node_value_bool(root, "weight_windows_on");
+  }
+
+  if (check_for_node(root, "max_splits")) {
+    settings::max_splits = std::stoi(get_node_value(root, "max_splits"));
+  }
+
+  if (check_for_node(root, "max_tracks")) {
+    settings::max_tracks = std::stoi(get_node_value(root, "max_tracks"));
   }
 }
 

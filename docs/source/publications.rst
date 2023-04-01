@@ -497,7 +497,7 @@ Parallelism
   Int. Conf. M&C+SNA+MC*, Nashville, Tennessee, Apr. 19--23 (2015).
 
 - Hajime Fujita, Nan Dun, Aiman Fang, Zachary A. Rubinstein, Ziming Zheng, Kamil
-  Iskra, Jeff Hammonds, Anshu Dubey, Pavan Balaji, and Andrew A. Chien, "Using
+  Iskra, Jeff Hammond, Anshu Dubey, Pavan Balaji, and Andrew A. Chien, "Using
   Global View Resilience (GVR) to add Resilience to Exascale Applications,"
   *Proc. Supercomputing*, New Orleans, Louisiana, Nov. 16--21, 2014.
 

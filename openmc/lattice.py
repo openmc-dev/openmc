@@ -106,7 +106,7 @@ class Lattice(IDManagerMixin, ABC):
         elif lattice_type == 'hexagonal':
             return openmc.HexLattice.from_hdf5(group, universes)
         else:
-            raise ValueError(f'Unkown lattice type: {lattice_type}')
+            raise ValueError(f'Unknown lattice type: {lattice_type}')
 
     def get_unique_universes(self):
         """Determine all unique universes in the lattice
@@ -852,6 +852,10 @@ class RectLattice(Lattice):
         if memo is not None:
             memo.add(self)
 
+        # Make sure universes have been assigned
+        if self.universes is None:
+            raise ValueError(f"Lattice {self.id} does not have universes assigned.")
+
         lattice_subelement = ET.Element("lattice")
         lattice_subelement.set("id", str(self._id))
 
@@ -876,7 +880,7 @@ class RectLattice(Lattice):
         lower_left = ET.SubElement(lattice_subelement, "lower_left")
         lower_left.text = ' '.join(map(str, self._lower_left))
 
-        # Export the Lattice nested Universe IDs - column major for Fortran
+        # Export the Lattice nested Universe IDs
         universe_ids = '\n'
 
         # 3D Lattices
@@ -1215,7 +1219,7 @@ class HexLattice(Lattice):
             for rings in self._universes:
                 if len(rings) != self._num_rings:
                     msg = 'HexLattice ID={0:d} has an inconsistent number of ' \
-                          'rings per axial positon'.format(self._id)
+                          'rings per axial position'.format(self._id)
                     raise ValueError(msg)
 
         else:
@@ -1448,6 +1452,8 @@ class HexLattice(Lattice):
         center.text = ' '.join(map(str, self._center))
 
         # Export the Lattice nested Universe IDs.
+        if self.universes is None:
+            raise ValueError(f"Lattice {self.id} does not have universes assigned.")
 
         # 3D Lattices
         if self._num_axial is not None:
@@ -2050,8 +2056,8 @@ class HexLattice(Lattice):
 
         Returns
         -------
-        openmc.RectLattice
-            Rectangular lattice
+        openmc.HexLattice
+            Hexagonal lattice
 
         """
         n_rings = group['n_rings'][()]

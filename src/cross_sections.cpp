@@ -76,8 +76,10 @@ Library::Library(pugi::xml_node node, const std::string& directory)
     path_ = path;
   } else if (ends_with(directory, "/")) {
     path_ = directory + path;
-  } else {
+  } else if (!directory.empty()) {
     path_ = directory + "/" + path;
+  } else {
+    path_ = path;
   }
 
   if (!file_exists(path_)) {
@@ -102,6 +104,11 @@ void read_cross_sections_xml()
 
   auto root = doc.document_element();
 
+  read_cross_sections_xml(root);
+}
+
+void read_cross_sections_xml(pugi::xml_node root)
+{
   // Find cross_sections.xml file -- the first place to look is the
   // materials.xml file. If no file is found there, then we check the
   // OPENMC_CROSS_SECTIONS environment variable
@@ -135,6 +142,13 @@ void read_cross_sections_xml()
     }
   } else {
     settings::path_cross_sections = get_node_value(root, "cross_sections");
+
+    // If no '/' found, the file is probably in the input directory
+    auto pos = settings::path_cross_sections.rfind("/");
+    if (pos == std::string::npos && !settings::path_input.empty()) {
+      settings::path_cross_sections =
+        settings::path_input + "/" + settings::path_cross_sections;
+    }
   }
 
   // Now that the cross_sections.xml or mgxs.h5 has been located, read it in
@@ -295,10 +309,12 @@ void read_ce_cross_sections_xml()
     // TODO: Use std::filesystem functionality when C++17 is adopted
     auto pos = filename.rfind("/");
     if (pos == std::string::npos) {
-      // no '/' found, probably a Windows directory
-      pos = filename.rfind("\\");
+      // No '\\' found, so the file must be in the same directory as
+      // materials.xml
+      directory = settings::path_input;
+    } else {
+      directory = filename.substr(0, pos);
     }
-    directory = filename.substr(0, pos);
   }
 
   for (const auto& node_library : root.children("library")) {

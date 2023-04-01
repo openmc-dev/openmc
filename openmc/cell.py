@@ -1,6 +1,5 @@
 from collections import OrderedDict
 from collections.abc import Iterable
-from copy import deepcopy
 from math import cos, sin, pi
 from numbers import Real
 from xml.etree import ElementTree as ET
@@ -193,7 +192,7 @@ class Cell(IDManagerMixin):
     def atoms(self):
         if self._atoms is None:
             if self._volume is None:
-                msg = ('Cannot calculate atom content becouse no volume '
+                msg = ('Cannot calculate atom content because no volume '
                        'is set. Use Cell.volume to provide it or perform '
                        'a stochastic volume calculation.')
                 raise ValueError(msg)
@@ -214,8 +213,8 @@ class Cell(IDManagerMixin):
                 self._atoms = self._fill.get_nuclide_atom_densities()
 
                 # Convert to total number of atoms
-                for key, nuclide in self._atoms.items():
-                    atom = nuclide[1] * self._volume * 1.0e+24
+                for key, atom_per_bcm in self._atoms.items():
+                    atom = atom_per_bcm * self._volume * 1.0e+24
                     self._atoms[key] = atom
 
             elif self.fill_type == 'distribmat':
@@ -224,12 +223,12 @@ class Cell(IDManagerMixin):
                 partial_volume = self.volume / len(self.fill)
                 self._atoms = OrderedDict()
                 for mat in self.fill:
-                    for key, nuclide in mat.get_nuclide_atom_densities().items():
+                    for key, atom_per_bcm in mat.get_nuclide_atom_densities().items():
                         # To account for overlap of nuclides between distribmat
                         # we need to append new atoms to any existing value
                         # hence it is necessary to ask for default.
                         atom = self._atoms.setdefault(key, 0)
-                        atom += nuclide[1] * partial_volume * 1.0e+24
+                        atom += atom_per_bcm * partial_volume * 1.0e+24
                         self._atoms[key] = atom
 
             else:
@@ -318,12 +317,12 @@ class Cell(IDManagerMixin):
     @temperature.setter
     def temperature(self, temperature):
         # Make sure temperatures are positive
-        cv.check_type('cell temperature', temperature, (Iterable, Real))
+        cv.check_type('cell temperature', temperature, (Iterable, Real), none_ok=True)
         if isinstance(temperature, Iterable):
             cv.check_type('cell temperature', temperature, Iterable, Real)
             for T in temperature:
                 cv.check_greater_than('cell temperature', T, 0.0, True)
-        else:
+        elif isinstance(temperature, Real):
             cv.check_greater_than('cell temperature', temperature, 0.0, True)
 
         # If this cell is filled with a universe or lattice, propagate
@@ -350,7 +349,7 @@ class Cell(IDManagerMixin):
         self._volume = volume
 
         # Info about atom content can now be invalid
-        # (sice volume has just changed)
+        # (since volume has just changed)
         self._atoms = None
 
     def add_volume_information(self, volume_calc):
@@ -519,8 +518,14 @@ class Cell(IDManagerMixin):
             paths = self._paths
             self._paths = None
 
-            clone = deepcopy(self)
-            clone.id = None
+            clone = openmc.Cell(name=self.name)
+            clone.volume = self.volume
+            if self.temperature is not None:
+                clone.temperature = self.temperature
+            if self.translation is not None:
+                clone.translation = self.translation
+            if self.rotation is not None:
+                clone.rotation = self.rotation
             clone._num_instances = None
 
             # Restore paths on original instance
@@ -634,6 +639,9 @@ class Cell(IDManagerMixin):
         if self.rotation is not None:
             element.set("rotation", ' '.join(map(str, self.rotation.ravel())))
 
+        if self.volume is not None:
+            element.set("volume", str(self.volume))
+
         return element
 
     @classmethod
@@ -647,7 +655,7 @@ class Cell(IDManagerMixin):
         surfaces : dict
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
         materials : dict
-            Dictionary mapping material IDs to :class:`openmc.Material`
+            Dictionary mapping material ID strings to :class:`openmc.Material`
             instances (defined in :math:`openmc.Geometry.from_xml`)
         get_universe : function
             Function returning universe (defined in
@@ -687,10 +695,16 @@ class Cell(IDManagerMixin):
                 c.temperature = [float(t_i) for t_i in t.split()]
             else:
                 c.temperature = float(t)
+        v = get_text(elem, 'volume')
+        if v is not None:
+            c.volume = float(v)
         for key in ('temperature', 'rotation', 'translation'):
             value = get_text(elem, key)
             if value is not None:
-                setattr(c, key, [float(x) for x in value.split()])
+                values = [float(x) for x in value.split()]
+                if key == 'rotation' and len(values) == 9:
+                    values = np.array(values).reshape(3, 3)
+                setattr(c, key, values)
 
         # Add this cell to appropriate universe
         univ_id = int(get_text(elem, 'universe', 0))

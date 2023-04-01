@@ -81,7 +81,7 @@ extern "C" int openmc_cell_filter_get_bins(
     return err;
 
   const auto& filt = model::tally_filters[index].get();
-  if (filt->type() != "cell") {
+  if (filt->type() != FilterType::CELL) {
     set_errmsg("Tried to get cells from a non-cell filter.");
     return OPENMC_E_INVALID_TYPE;
   }

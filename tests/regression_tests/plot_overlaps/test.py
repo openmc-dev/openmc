@@ -19,7 +19,7 @@ class PlotTestHarness(TestHarness):
         openmc.plot_geometry(openmc_exec=config['exe'])
 
     def _test_output_created(self):
-        """Make sure *.ppm has been created."""
+        """Make sure *.png has been created."""
         for fname in self._plot_names:
             assert os.path.exists(fname), 'Plot output file does not exist.'
 
@@ -34,8 +34,8 @@ class PlotTestHarness(TestHarness):
         outstr = bytes()
 
         for fname in self._plot_names:
-            if fname.endswith('.ppm'):
-                # Add PPM output to results
+            if fname.endswith('.png'):
+                # Add PNG output to results
                 with open(fname, 'rb') as fh:
                     outstr += fh.read()
             elif fname.endswith('.h5'):
@@ -56,6 +56,6 @@ class PlotTestHarness(TestHarness):
 
 
 def test_plot_overlap():
-    harness = PlotTestHarness(('plot_1.ppm', 'plot_2.ppm', 'plot_3.ppm',
+    harness = PlotTestHarness(('plot_1.png', 'plot_2.png', 'plot_3.png',
                                'plot_4.h5'))
     harness.main()

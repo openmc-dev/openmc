@@ -84,9 +84,11 @@ settings.entropy_mesh = entropy_mesh
 #                   Initialize and run depletion calculation
 ###############################################################################
 
+model = openmc.Model(geometry=geometry, settings=settings)
+
 # Create depletion "operator"
-chain_file = './chain_simple.xml'
-op = openmc.deplete.Operator(geometry, settings, chain_file)
+chain_file = 'chain_simple.xml'
+op = openmc.deplete.CoupledOperator(model, chain_file)
 
 # Perform simulation using the predictor algorithm
 time_steps = [1.0, 1.0, 1.0, 1.0, 1.0]  # days
@@ -99,37 +101,35 @@ integrator.integrate()
 ###############################################################################
 
 # Open results file
-results = openmc.deplete.ResultsList.from_hdf5("depletion_results.h5")
+results = openmc.deplete.Results("depletion_results.h5")
 
 # Obtain K_eff as a function of time
-time, keff = results.get_eigenvalue()
+time, keff = results.get_keff(time_units='d')
 
 # Obtain U235 concentration as a function of time
-time, n_U235 = results.get_atoms('1', 'U235')
+_, n_U235 = results.get_atoms(uo2, 'U235')
 
 # Obtain Xe135 capture reaction rate as a function of time
-time, Xe_capture = results.get_reaction_rate('1', 'Xe135', '(n,gamma)')
+_, Xe_capture = results.get_reaction_rate(uo2, 'Xe135', '(n,gamma)')
 
 ###############################################################################
 #                            Generate plots
 ###############################################################################
 
-days = 24*60*60
-plt.figure()
-plt.plot(time/days, keff, label="K-effective")
-plt.xlabel("Time (days)")
-plt.ylabel("Keff")
+fig, ax = plt.subplots()
+ax.errorbar(time, keff[:, 0], keff[:, 1], label="K-effective")
+ax.set_xlabel("Time [d]")
+ax.set_ylabel("Keff")
 plt.show()
 
-plt.figure()
-plt.plot(time/days, n_U235, label="U235")
-plt.xlabel("Time (days)")
-plt.ylabel("n U5 (-)")
+fig, ax = plt.subplots()
+ax.plot(time, n_U235, label="U235")
+ax.set_xlabel("Time [d]")
+ax.set_ylabel("U235 atoms")
 plt.show()
 
-plt.figure()
-plt.plot(time/days, Xe_capture, label="Xe135 capture")
-plt.xlabel("Time (days)")
-plt.ylabel("RR (-)")
+fig, ax = plt.subplots()
+ax.plot(time, Xe_capture, label="Xe135 capture")
+ax.set_xlabel("Time [d]")
+ax.set_ylabel("Xe135 capture rate")
 plt.show()
-plt.close('all')

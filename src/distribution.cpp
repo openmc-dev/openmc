@@ -1,11 +1,14 @@
 #include "openmc/distribution.h"
 
 #include <algorithm> // for copy
+#include <array>
 #include <cmath>     // for sqrt, floor, max
 #include <iterator>  // for back_inserter
 #include <numeric>   // for accumulate
 #include <stdexcept> // for runtime_error
 #include <string>    // for string, stod
+
+#include <gsl/gsl-lite.hpp>
 
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
@@ -16,50 +19,120 @@
 namespace openmc {
 
 //==============================================================================
+// DiscreteIndex implementation
+//==============================================================================
+
+DiscreteIndex::DiscreteIndex(pugi::xml_node node)
+{
+  auto params = get_node_array<double>(node, "parameters");
+  std::size_t n = params.size() / 2;
+
+  assign(params.data() + n, n);
+}
+
+DiscreteIndex::DiscreteIndex(const double* p, int n)
+{
+  assign(p, n);
+}
+
+void DiscreteIndex::assign(const double* p, int n)
+{
+  prob_.assign(p, p + n);
+
+  this->init_alias();
+}
+
+void DiscreteIndex::init_alias()
+{
+  normalize();
+
+  // The initialization and sampling method is based on Vose
+  // (DOI: 10.1109/32.92917)
+  // Vectors for large and small probabilities based on 1/n
+  vector<size_t> large;
+  vector<size_t> small;
+
+  size_t n = prob_.size();
+
+  // Set and allocate memory
+  alias_.assign(n, 0);
+
+  // Fill large and small vectors based on 1/n
+  for (size_t i = 0; i < n; i++) {
+    prob_[i] *= n;
+    if (prob_[i] > 1.0) {
+      large.push_back(i);
+    } else {
+      small.push_back(i);
+    }
+  }
+
+  while (!large.empty() && !small.empty()) {
+    int j = small.back();
+    int k = large.back();
+
+    // Remove last element of small
+    small.pop_back();
+
+    // Update probability and alias based on Vose's algorithm
+    prob_[k] += prob_[j] - 1.0;
+    alias_[j] = k;
+
+    // Move large index to small vector, if it is no longer large
+    if (prob_[k] < 1.0) {
+      small.push_back(k);
+      large.pop_back();
+    }
+  }
+}
+
+size_t DiscreteIndex::sample(uint64_t* seed) const
+{
+  // Alias sampling of discrete distribution
+  size_t n = prob_.size();
+  if (n > 1) {
+    size_t u = prn(seed) * n;
+    if (prn(seed) < prob_[u]) {
+      return u;
+    } else {
+      return alias_[u];
+    }
+  } else {
+    return 0;
+  }
+}
+
+void DiscreteIndex::normalize()
+{
+  // Renormalize density function so that it sums to unity
+  double norm = std::accumulate(prob_.begin(), prob_.end(), 0.0);
+  for (auto& p_i : prob_) {
+    p_i /= norm;
+  }
+}
+
+//==============================================================================
 // Discrete implementation
 //==============================================================================
 
-Discrete::Discrete(pugi::xml_node node)
+Discrete::Discrete(pugi::xml_node node) : di_(node)
 {
   auto params = get_node_array<double>(node, "parameters");
 
-  std::size_t n = params.size();
-  std::copy(params.begin(), params.begin() + n / 2, std::back_inserter(x_));
-  std::copy(params.begin() + n / 2, params.end(), std::back_inserter(p_));
+  std::size_t n = params.size() / 2;
 
-  normalize();
+  x_.assign(params.begin(), params.begin() + n);
 }
 
-Discrete::Discrete(const double* x, const double* p, int n)
-  : x_ {x, x + n}, p_ {p, p + n}
+Discrete::Discrete(const double* x, const double* p, int n) : di_(p, n)
 {
-  normalize();
+
+  x_.assign(x, x + n);
 }
 
 double Discrete::sample(uint64_t* seed) const
 {
-  int n = x_.size();
-  if (n > 1) {
-    double xi = prn(seed);
-    double c = 0.0;
-    for (int i = 0; i < n; ++i) {
-      c += p_[i];
-      if (xi < c)
-        return x_[i];
-    }
-    throw std::runtime_error {"Error when sampling probability mass function."};
-  } else {
-    return x_[0];
-  }
-}
-
-void Discrete::normalize()
-{
-  // Renormalize density function so that it sums to unity
-  double norm = std::accumulate(p_.begin(), p_.end(), 0.0);
-  for (auto& p_i : p_) {
-    p_i /= norm;
-  }
+  return x_[di_.sample(seed)];
 }
 
 //==============================================================================
@@ -70,8 +143,8 @@ Uniform::Uniform(pugi::xml_node node)
 {
   auto params = get_node_array<double>(node, "parameters");
   if (params.size() != 2) {
-    openmc::fatal_error("Uniform distribution must have two "
-                        "parameters specified.");
+    fatal_error("Uniform distribution must have two "
+                "parameters specified.");
   }
 
   a_ = params.at(0);
@@ -81,6 +154,32 @@ Uniform::Uniform(pugi::xml_node node)
 double Uniform::sample(uint64_t* seed) const
 {
   return a_ + prn(seed) * (b_ - a_);
+}
+
+//==============================================================================
+// PowerLaw implementation
+//==============================================================================
+
+PowerLaw::PowerLaw(pugi::xml_node node)
+{
+  auto params = get_node_array<double>(node, "parameters");
+  if (params.size() != 3) {
+    fatal_error("PowerLaw distribution must have three "
+                "parameters specified.");
+  }
+
+  const double a = params.at(0);
+  const double b = params.at(1);
+  const double n = params.at(2);
+
+  offset_ = std::pow(a, n + 1);
+  span_ = std::pow(b, n + 1) - offset_;
+  ninv_ = 1 / (n + 1);
+}
+
+double PowerLaw::sample(uint64_t* seed) const
+{
+  return std::pow(offset_ + prn(seed) * span_, ninv_);
 }
 
 //==============================================================================
@@ -138,27 +237,6 @@ double Normal::sample(uint64_t* seed) const
 }
 
 //==============================================================================
-// Muir implementation
-//==============================================================================
-Muir::Muir(pugi::xml_node node)
-{
-  auto params = get_node_array<double>(node, "parameters");
-  if (params.size() != 3) {
-    openmc::fatal_error("Muir energy distribution must have three "
-                        "parameters specified.");
-  }
-
-  e0_ = params.at(0);
-  m_rat_ = params.at(1);
-  kt_ = params.at(2);
-}
-
-double Muir::sample(uint64_t* seed) const
-{
-  return muir_spectrum(e0_, m_rat_, kt_, seed);
-}
-
-//==============================================================================
 // Tabular implementation
 //==============================================================================
 
@@ -172,7 +250,7 @@ Tabular::Tabular(pugi::xml_node node)
       interp_ = Interpolation::lin_lin;
     } else {
       openmc::fatal_error(
-        "Unknown interpolation type for distribution: " + temp);
+        "Unsupported interpolation type for distribution: " + temp);
     }
   } else {
     interp_ = Interpolation::histogram;
@@ -288,6 +366,50 @@ double Equiprobable::sample(uint64_t* seed) const
 }
 
 //==============================================================================
+// Mixture implementation
+//==============================================================================
+
+Mixture::Mixture(pugi::xml_node node)
+{
+  double cumsum = 0.0;
+  for (pugi::xml_node pair : node.children("pair")) {
+    // Check that required data exists
+    if (!pair.attribute("probability"))
+      fatal_error("Mixture pair element does not have probability.");
+    if (!pair.child("dist"))
+      fatal_error("Mixture pair element does not have a distribution.");
+
+    // cummulative sum of probybilities
+    cumsum += std::stod(pair.attribute("probability").value());
+
+    // Save cummulative probybility and distrubution
+    distribution_.push_back(
+      std::make_pair(cumsum, distribution_from_xml(pair.child("dist"))));
+  }
+
+  // Normalize cummulative probabilities to 1
+  for (auto& pair : distribution_) {
+    pair.first /= cumsum;
+  }
+}
+
+double Mixture::sample(uint64_t* seed) const
+{
+  // Sample value of CDF
+  const double p = prn(seed);
+
+  // find matching distribution
+  const auto it = std::lower_bound(distribution_.cbegin(), distribution_.cend(),
+    p, [](const DistPair& pair, double p) { return pair.first < p; });
+
+  // This should not happen. Catch it
+  Ensures(it != distribution_.cend());
+
+  // Sample the chosen distribution
+  return it->second->sample(seed);
+}
+
+//==============================================================================
 // Helper function
 //==============================================================================
 
@@ -303,18 +425,24 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
   UPtrDist dist;
   if (type == "uniform") {
     dist = UPtrDist {new Uniform(node)};
+  } else if (type == "powerlaw") {
+    dist = UPtrDist {new PowerLaw(node)};
   } else if (type == "maxwell") {
     dist = UPtrDist {new Maxwell(node)};
   } else if (type == "watt") {
     dist = UPtrDist {new Watt(node)};
   } else if (type == "normal") {
     dist = UPtrDist {new Normal(node)};
-  } else if (type == "muir") {
-    dist = UPtrDist {new Muir(node)};
   } else if (type == "discrete") {
     dist = UPtrDist {new Discrete(node)};
   } else if (type == "tabular") {
     dist = UPtrDist {new Tabular(node)};
+  } else if (type == "mixture") {
+    dist = UPtrDist {new Mixture(node)};
+  } else if (type == "muir") {
+    openmc::fatal_error(
+      "'muir' distributions are now specified using the openmc.stats.muir() "
+      "function in Python. Please regenerate your XML files.");
   } else {
     openmc::fatal_error("Invalid distribution type: " + type);
   }

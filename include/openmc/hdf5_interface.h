@@ -61,6 +61,8 @@ void ensure_exists(hid_t obj_id, const char* name, bool attribute = false);
 vector<std::string> group_names(hid_t group_id);
 vector<hsize_t> object_shape(hid_t obj_id);
 std::string object_name(hid_t obj_id);
+hid_t open_object(hid_t group_id, const std::string& name);
+void close_object(hid_t obj_id);
 
 //==============================================================================
 // Fortran compatibility functions
@@ -76,7 +78,7 @@ int dataset_ndims(hid_t dset);
 size_t dataset_typesize(hid_t obj_id, const char* name);
 hid_t file_open(const char* filename, char mode, bool parallel);
 void file_close(hid_t file_id);
-void get_name(hid_t obj_id, char* name);
+void get_name(hid_t obj_id, std::string& name);
 int get_num_datasets(hid_t group_id);
 int get_num_groups(hid_t group_id);
 void get_datasets(hid_t group_id, char* name[]);
@@ -247,11 +249,11 @@ inline void read_dataset(
 {
   // Create buffer to read data into
   auto n = dataset_typesize(obj_id, name);
-  char* buffer = new char[n];
+  std::vector<std::string::value_type> buffer(n, '\0');
 
   // Read attribute and set string
-  read_string(obj_id, name, n, buffer, indep);
-  str = std::string {buffer, n};
+  read_string(obj_id, name, n, buffer.data(), indep);
+  str = std::string {buffer.begin(), buffer.end()};
 }
 
 // array version

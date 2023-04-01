@@ -146,9 +146,6 @@ class CSGSurface : public Surface {
 public:
   explicit CSGSurface(pugi::xml_node surf_node);
   CSGSurface();
-
-protected:
-  virtual void to_hdf5_inner(hid_t group_id) const = 0;
 };
 
 //==============================================================================
@@ -160,11 +157,11 @@ protected:
 class SurfaceXPlane : public CSGSurface {
 public:
   explicit SurfaceXPlane(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
-  BoundingBox bounding_box(bool pos_side) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
+  BoundingBox bounding_box(bool pos_side) const override;
 
   double x0_;
 };
@@ -178,11 +175,11 @@ public:
 class SurfaceYPlane : public CSGSurface {
 public:
   explicit SurfaceYPlane(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
-  BoundingBox bounding_box(bool pos_side) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
+  BoundingBox bounding_box(bool pos_side) const override;
 
   double y0_;
 };
@@ -196,11 +193,11 @@ public:
 class SurfaceZPlane : public CSGSurface {
 public:
   explicit SurfaceZPlane(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
-  BoundingBox bounding_box(bool pos_side) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
+  BoundingBox bounding_box(bool pos_side) const override;
 
   double z0_;
 };
@@ -214,10 +211,10 @@ public:
 class SurfacePlane : public CSGSurface {
 public:
   explicit SurfacePlane(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
 
   double A_, B_, C_, D_;
 };
@@ -232,11 +229,11 @@ public:
 class SurfaceXCylinder : public CSGSurface {
 public:
   explicit SurfaceXCylinder(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
-  BoundingBox bounding_box(bool pos_side) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
+  BoundingBox bounding_box(bool pos_side) const override;
 
   double y0_, z0_, radius_;
 };
@@ -251,11 +248,11 @@ public:
 class SurfaceYCylinder : public CSGSurface {
 public:
   explicit SurfaceYCylinder(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
-  BoundingBox bounding_box(bool pos_side) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
+  BoundingBox bounding_box(bool pos_side) const override;
 
   double x0_, z0_, radius_;
 };
@@ -270,11 +267,11 @@ public:
 class SurfaceZCylinder : public CSGSurface {
 public:
   explicit SurfaceZCylinder(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
-  BoundingBox bounding_box(bool pos_side) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
+  BoundingBox bounding_box(bool pos_side) const override;
 
   double x0_, y0_, radius_;
 };
@@ -289,11 +286,11 @@ public:
 class SurfaceSphere : public CSGSurface {
 public:
   explicit SurfaceSphere(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
-  BoundingBox bounding_box(bool pos_side) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
+  BoundingBox bounding_box(bool pos_side) const override;
 
   double x0_, y0_, z0_, radius_;
 };
@@ -308,10 +305,10 @@ public:
 class SurfaceXCone : public CSGSurface {
 public:
   explicit SurfaceXCone(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
 
   double x0_, y0_, z0_, radius_sq_;
 };
@@ -326,10 +323,10 @@ public:
 class SurfaceYCone : public CSGSurface {
 public:
   explicit SurfaceYCone(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
 
   double x0_, y0_, z0_, radius_sq_;
 };
@@ -344,10 +341,10 @@ public:
 class SurfaceZCone : public CSGSurface {
 public:
   explicit SurfaceZCone(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
 
   double x0_, y0_, z0_, radius_sq_;
 };
@@ -362,13 +359,64 @@ public:
 class SurfaceQuadric : public CSGSurface {
 public:
   explicit SurfaceQuadric(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
 
   // Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0
   double A_, B_, C_, D_, E_, F_, G_, H_, J_, K_;
+};
+
+//==============================================================================
+//! A toroidal surface described by the quartic torus lies in the x direction
+//
+//! \f$(x-x_0)^2/B^2 + (\sqrt{(y-y_0)^2 + (z-z_0)^2} - A)^2/C^2 -1 \f$
+//==============================================================================
+
+class SurfaceXTorus : public CSGSurface {
+public:
+  explicit SurfaceXTorus(pugi::xml_node surf_node);
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
+
+  double x0_, y0_, z0_, A_, B_, C_;
+};
+
+//==============================================================================
+//! A toroidal surface described by the quartic torus lies in the y direction
+//
+//! \f$(y-y_0)^2/B^2 + (\sqrt{(x-x_0)^2 + (z-z_0)^2} - A)^2/C^2 -1 \f$
+//==============================================================================
+
+class SurfaceYTorus : public CSGSurface {
+public:
+  explicit SurfaceYTorus(pugi::xml_node surf_node);
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
+
+  double x0_, y0_, z0_, A_, B_, C_;
+};
+
+//==============================================================================
+//! A toroidal surface described by the quartic torus lies in the z direction
+//
+//! \f$(z-z_0)^2/B^2 + (\sqrt{(x-x_0)^2 + (y-y_0)^2} - A)^2/C^2 -1 \f$
+//==============================================================================
+
+class SurfaceZTorus : public CSGSurface {
+public:
+  explicit SurfaceZTorus(pugi::xml_node surf_node);
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
+
+  double x0_, y0_, z0_, A_, B_, C_;
 };
 
 //==============================================================================

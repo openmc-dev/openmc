@@ -1,3 +1,5 @@
+sphinx==5.0.2
+sphinx_rtd_theme==1.0.0
 sphinx-numfig
 jupyter
 sphinxcontrib-katex

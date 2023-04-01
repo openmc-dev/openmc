@@ -355,7 +355,7 @@ Functions
    Get density of a material.
 
    :param int32_t index: Index in the materials array
-   :param double* denity: Pointer to a density
+   :param double* density: Pointer to a density
    :return: Return status (negative if an error occurs)
    :rtype: int
 
@@ -457,6 +457,13 @@ Functions
 
    Resets all tally scores
 
+   :return: Return status (negative if an error occurs)
+   :rtype: int
+
+.. c:function:: int openmc_remove_tally(int32_t index);
+
+   Given an index of a tally, remove it from the tallies array
+   :param int index: Index in tallies array
    :return: Return status (negative if an error occurs)
    :rtype: int
 

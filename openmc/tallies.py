@@ -16,6 +16,7 @@ import openmc
 import openmc.checkvalue as cv
 from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
+from .mesh import MeshBase
 
 
 # The tally arithmetic product types. The tensor product performs the full
@@ -844,13 +845,8 @@ class Tally(IDManagerMixin):
                   'not contain any scores'
             raise ValueError(msg)
 
-        else:
-            scores = ''
-            for score in self.scores:
-                scores += f'{score} '
-
-            subelement = ET.SubElement(element, "scores")
-            subelement.text = scores.rstrip(' ')
+        subelement = ET.SubElement(element, "scores")
+        subelement.text = ' '.join(str(x) for x in self.scores)
 
         # Tally estimator type
         if self.estimator is not None:
@@ -859,7 +855,7 @@ class Tally(IDManagerMixin):
 
         # Optional Triggers
         for trigger in self.triggers:
-            trigger.get_trigger_xml(element)
+            element.append(trigger.to_xml_element())
 
         # Optional derivatives
         if self.derivative is not None:
@@ -867,6 +863,62 @@ class Tally(IDManagerMixin):
             subelement.text = str(self.derivative.id)
 
         return element
+
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        """Generate tally object from an XML element
+
+        .. versionadded:: 0.13.0
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.Tally
+            Tally object
+
+        """
+        tally_id = int(elem.get('id'))
+        name = elem.get('name', '')
+        tally = cls(tally_id=tally_id, name=name)
+
+        # Read filters
+        filters_elem = elem.find('filters')
+        if filters_elem is not None:
+            filter_ids = [int(x) for x in filters_elem.text.split()]
+            tally.filters = [kwargs['filters'][uid] for uid in filter_ids]
+
+        # Read nuclides
+        nuclides_elem = elem.find('nuclides')
+        if nuclides_elem is not None:
+            tally.nuclides = nuclides_elem.text.split()
+
+        # Read scores
+        scores_elem = elem.find('scores')
+        if scores_elem is not None:
+            tally.scores = scores_elem.text.split()
+
+        # Set estimator
+        estimator_elem = elem.find('estimator')
+        if estimator_elem is not None:
+            tally.estimator = estimator_elem.text
+
+        # Read triggers
+        tally.triggers = [
+            openmc.Trigger.from_xml_element(trigger_elem)
+            for trigger_elem in elem.findall('trigger')
+        ]
+
+        # Read tally derivative
+        deriv_elem = elem.find('derivative')
+        if deriv_elem is not None:
+            deriv_id = int(deriv_elem.text)
+            tally.derivative = kwargs['derivatives'][deriv_id]
+
+        return tally
 
     def contains_filter(self, filter_type):
         """Looks for a filter in the tally that matches a specified type
@@ -1041,23 +1093,11 @@ class Tally(IDManagerMixin):
             for j, test_filter in enumerate(filters):
                 if type(self_filter) is test_filter:
                     bins = filter_bins[j]
+                    indices = np.array([self_filter.get_bin_index(b) for b in bins])
                     break
             else:
-                # If not a user-requested Filter, get all bins
-                if isinstance(self_filter, openmc.DistribcellFilter):
-                    # Create list of cell instance IDs for distribcell Filters
-                    bins = list(range(self_filter.num_bins))
+                indices = np.arange(self_filter.num_bins)
 
-                elif isinstance(self_filter, openmc.EnergyFunctionFilter):
-                    # EnergyFunctionFilters don't have bins so just add a None
-                    bins = [None]
-
-                else:
-                    # Create list of IDs for bins for all other filter types
-                    bins = self_filter.bins
-
-            # Add indices for each bin in this Filter to the list
-            indices = np.array([self_filter.get_bin_index(b) for b in bins])
             filter_indices.append(indices)
 
             # Account for stride in each of the previous filters
@@ -1365,7 +1405,7 @@ class Tally(IDManagerMixin):
 
         return df
 
-    def get_reshaped_data(self, value='mean'):
+    def get_reshaped_data(self, value='mean', expand_dims=False):
         """Returns an array of tally data with one dimension per filter.
 
         The tally data in OpenMC is stored as a 3D array with the dimensions
@@ -1377,17 +1417,26 @@ class Tally(IDManagerMixin):
 
         This builds and returns a reshaped version of the tally data array with
         unique dimensions corresponding to each tally filter. For example,
-        suppose this tally has arrays of data with shape (8,5,5) corresponding
-        to two filters (2 and 4 bins, respectively), five nuclides and five
+        suppose this tally has arrays of data with shape (30,5,5) corresponding
+        to two filters (2 and 15 bins, respectively), five nuclides and five
         scores. This method will return a version of the data array with the
-        with a new shape of (2,4,5,5) such that the first two dimensions
-        correspond directly to the two filters with two and four bins.
+        with a new shape of (2,15,5,5) such that the first two dimensions
+        correspond directly to the two filters with two and fifteen bins. If
+        expand_dims is True and our filter above with 15 bins is an instance of
+        :class:`openmc.MeshFilter` with a shape of (3,5,1). The resulting tally
+        data array will have a new shape of (2,3,5,1,5,5).
 
         Parameters
         ----------
         value : str
             A string for the type of value to return  - 'mean' (default),
             'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
+        expand_dims : bool, optional
+            Whether or not to expand the dimensions of filters with multiple
+            dimensions. This will result in more than one dimension per filter
+            for the returned data array.
+
+            .. versionadded:: 0.13.3
 
         Returns
         -------
@@ -1399,12 +1448,32 @@ class Tally(IDManagerMixin):
         # Get the 3D array of data in filters, nuclides and scores
         data = self.get_values(value=value)
 
-        # Build a new array shape with one dimension per filter
-        new_shape = tuple(f.num_bins for f in self.filters)
+        # Build a new array shape with one dimension per filter or expand
+        # multidimensional filters if desired
+        new_shape = tuple()
+        idx0 = None
+        for i, f in enumerate(self.filters):
+            if expand_dims:
+                # Mesh filter indices are backwards so we need to flip them
+                if isinstance(f, openmc.MeshFilter):
+                    fshape = f.shape[::-1]
+                    new_shape += fshape
+                    idx0, idx1 = i, i + len(fshape) - 1
+                else:
+                    new_shape += f.shape
+            else:
+                new_shape += (np.prod(f.shape),)
+
         new_shape += (self.num_nuclides, self.num_scores)
 
         # Reshape the data with one dimension for each filter
         data = np.reshape(data, new_shape)
+
+        # If we had a MeshFilter we should swap the axes to have the same shape
+        # for the data and the filter
+        if idx0 is not None:
+            data = np.swapaxes(data, idx0, idx1)
+
         return data
 
     def hybrid_product(self, other, binary_op, filter_product=None,
@@ -2926,7 +2995,7 @@ class Tally(IDManagerMixin):
         Returns
         -------
         openmc.Tally
-            A new derived Tally with data diagaonalized along the new filter.
+            A new derived Tally with data diagonalized along the new filter.
 
         """
 
@@ -3079,17 +3148,17 @@ class Tallies(cv.CheckedList):
         for tally in self:
             root_element.append(tally.to_xml_element())
 
-    def _create_mesh_subelements(self, root_element):
-        already_written = set()
+    def _create_mesh_subelements(self, root_element, memo=None):
+        already_written = memo if memo else set()
         for tally in self:
             for f in tally.filters:
                 if isinstance(f, openmc.MeshFilter):
-                    if f.mesh.id not in already_written:
-                        if len(f.mesh.name) > 0:
-                            root_element.append(ET.Comment(f.mesh.name))
-
-                        root_element.append(f.mesh.to_xml_element())
-                        already_written.add(f.mesh.id)
+                    if f.mesh.id in already_written:
+                        continue
+                    if len(f.mesh.name) > 0:
+                        root_element.append(ET.Comment(f.mesh.name))
+                    root_element.append(f.mesh.to_xml_element())
+                    already_written.add(f.mesh.id)
 
     def _create_filter_subelements(self, root_element):
         already_written = dict()
@@ -3115,6 +3184,22 @@ class Tallies(cv.CheckedList):
         for d in derivs:
             root_element.append(d.to_xml_element())
 
+    def to_xml_element(self, memo=None):
+        """Creates a 'tallies' element to be written to an XML file.
+        """
+        element = ET.Element("tallies")
+        self._create_mesh_subelements(element, memo)
+        self._create_filter_subelements(element)
+        self._create_tally_subelements(element)
+        self._create_derivative_subelements(element)
+
+        # Clean the indentation in the file to be user-readable
+        clean_indentation(element)
+        reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
+
+        return element
+
+
     def export_to_xml(self, path='tallies.xml'):
         """Create a tallies.xml file that can be used for a simulation.
 
@@ -3124,15 +3209,7 @@ class Tallies(cv.CheckedList):
             Path to file to write. Defaults to 'tallies.xml'.
 
         """
-
-        root_element = ET.Element("tallies")
-        self._create_mesh_subelements(root_element)
-        self._create_filter_subelements(root_element)
-        self._create_tally_subelements(root_element)
-        self._create_derivative_subelements(root_element)
-
-        # Clean the indentation in the file to be user-readable
-        clean_indentation(root_element)
+        root_element = self.to_xml_element()
 
         # Check if path is a directory
         p = Path(path)
@@ -3140,6 +3217,71 @@ class Tallies(cv.CheckedList):
             p /= 'tallies.xml'
 
         # Write the XML Tree to the tallies.xml file
-        reorder_attributes(root_element)  # TODO: Remove when support is Python 3.8+
         tree = ET.ElementTree(root_element)
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
+
+    @classmethod
+    def from_xml_element(cls, elem, meshes=None):
+        """Generate tallies from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+        meshes : dict or None
+            A dictionary with mesh IDs as keys and mesh instances as values that
+            have already been read from XML. Pre-existing meshes are used
+            and new meshes are added to when creating tally objects.
+
+        Returns
+        -------
+        openmc.Tallies
+            Tallies object
+
+        """
+        # Read mesh elements
+        meshes = {} if meshes is None else meshes
+        for e in elem.findall('mesh'):
+            mesh = MeshBase.from_xml_element(e)
+            meshes[mesh.id] = mesh
+
+        # Read filter elements
+        filters = {}
+        for e in elem.findall('filter'):
+            filter = openmc.Filter.from_xml_element(e, meshes=meshes)
+            filters[filter.id] = filter
+
+        # Read derivative elements
+        derivatives = {}
+        for e in elem.findall('derivative'):
+            deriv = openmc.TallyDerivative.from_xml_element(e)
+            derivatives[deriv.id] = deriv
+
+        # Read tally elements
+        tallies = []
+        for e in elem.findall('tally'):
+            tally = openmc.Tally.from_xml_element(
+                e, filters=filters, derivatives=derivatives
+            )
+            tallies.append(tally)
+
+        return cls(tallies)
+
+    @classmethod
+    def from_xml(cls, path='tallies.xml'):
+        """Generate tallies from XML file
+
+        Parameters
+        ----------
+        path : str, optional
+            Path to tallies XML file
+
+        Returns
+        -------
+        openmc.Tallies
+            Tallies object
+
+        """
+        tree = ET.parse(path)
+        root = tree.getroot()
+        return cls.from_xml_element(root)

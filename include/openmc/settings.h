@@ -28,11 +28,13 @@ extern bool check_overlaps;       //!< check overlaps in geometry?
 extern bool confidence_intervals; //!< use confidence intervals for results?
 extern bool
   create_fission_neutrons; //!< create fission neutrons (fixed source)?
+extern bool create_delayed_neutrons; //!< create delayed fission neutrons?
 extern "C" bool cmfd_run;  //!< is a CMFD run?
 extern bool
   delayed_photon_scaling;   //!< Scale fission photon yield to include delayed
 extern "C" bool entropy_on; //!< calculate Shannon entropy?
-extern bool event_based;    //!< use event-based mode (instead of history-based)
+extern "C" bool
+  event_based; //!< use event-based mode (instead of history-based)
 extern bool legendre_to_tabular; //!< convert Legendre distributions to tabular?
 extern bool material_cell_offsets; //!< create material cells offsets?
 extern "C" bool output_summary;    //!< write summary.h5?
@@ -46,7 +48,9 @@ extern "C" bool run_CE;            //!< run with continuous-energy data?
 extern bool source_latest;         //!< write latest source at each batch?
 extern bool source_separate;       //!< write source to separate file?
 extern bool source_write;          //!< write source in HDF5 files?
+extern bool source_mcpl_write;     //!< write source in mcpl files?
 extern bool surf_source_write;     //!< write surface source file?
+extern bool surf_mcpl_write;       //!< write surface mcpl file?
 extern bool surf_source_read;      //!< read surface source file?
 extern bool survival_biasing;      //!< use survival biasing?
 extern bool temperature_multipole; //!< use multipole data?
@@ -54,6 +58,7 @@ extern "C" bool trigger_on;        //!< tally triggers enabled?
 extern bool trigger_predict;       //!< predict batches for triggers?
 extern bool ufs_on;                //!< uniform fission site method on?
 extern bool urr_ptables_on;        //!< use unresolved resonance prob. tables?
+extern bool weight_windows_on;     //!< are weight windows are enabled?
 extern bool write_all_tracks;      //!< write track files for every particle?
 extern bool write_initial_source;  //!< write out initial source file?
 
@@ -86,6 +91,7 @@ extern int max_order;         //!< Maximum Legendre order for multigroup data
 extern int n_log_bins;        //!< number of bins for logarithmic energy grid
 extern int n_batches;         //!< number of (inactive+active) batches
 extern int n_max_batches;     //!< Maximum number of batches
+extern int max_tracks; //!< Maximum number of particle tracks written to file
 extern ResScatMethod res_scat_method; //!< resonance upscattering method
 extern double res_scat_energy_min; //!< Min energy in [eV] for res. upscattering
 extern double res_scat_energy_max; //!< Max energy in [eV] for res. upscattering
@@ -98,6 +104,7 @@ extern std::unordered_set<int>
   statepoint_batch; //!< Batches when state should be written
 extern std::unordered_set<int>
   source_write_surf_id; //!< Surface ids where sources will be written
+extern int max_splits; //!< maximum number of particle splits for weight windows
 extern int64_t max_surface_particles; //!< maximum number of particles to be
                                       //!< banked on surfaces per process
 extern TemperatureMethod
@@ -125,8 +132,11 @@ extern int cell_pht;                 //! Used for the pulse-height tally
 //==============================================================================
 
 //! Read settings from XML file
-//! \param[in] root XML node for <settings>
 void read_settings_xml();
+
+//! Read settings from XML node
+//! \param[in] root XML node for <settings>
+void read_settings_xml(pugi::xml_node root);
 
 void free_memory_settings();
 

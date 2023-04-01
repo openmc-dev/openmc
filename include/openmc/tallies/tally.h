@@ -47,8 +47,10 @@ public:
 
   void set_nuclides(const vector<std::string>& nuclides);
 
+  //! returns vector of indices corresponding to the tally this is called on
   const vector<int32_t>& filters() const { return filters_; }
 
+  //! \brief Returns the tally filter at index i
   int32_t filters(int i) const { return filters_[i]; }
 
   void set_filters(gsl::span<Filter*> filters);
@@ -103,9 +105,6 @@ public:
 
   //! Index of each nuclide to be tallied.  -1 indicates total material.
   vector<int> nuclides_ {-1};
-
-  //! True if this tally has a bin for every nuclide in the problem
-  bool all_nuclides_ {false};
 
   //! Results for each bin -- the first dimension of the array is for the
   //! combination of filters (e.g. specific cell, specific energy group, etc.)
@@ -178,6 +177,10 @@ extern double global_tally_leakage;
 
 //! Read tally specification from tallies.xml
 void read_tallies_xml();
+
+//! Read tally specification from an XML node
+//! \param[in] root node of tallies XML element
+void read_tallies_xml(pugi::xml_node root);
 
 //! \brief Accumulate the sum of the contributions from each history within the
 //! batch to a new random variable

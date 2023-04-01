@@ -87,6 +87,9 @@ _dll.openmc_tally_set_type.errcheck = _error_handler
 _dll.openmc_tally_set_writable.argtypes = [c_int32, c_bool]
 _dll.openmc_tally_set_writable.restype = c_int
 _dll.openmc_tally_set_writable.errcheck = _error_handler
+_dll.openmc_remove_tally.argtypes = [c_int32]
+_dll.openmc_remove_tally.restype = c_int
+_dll.openmc_remove_tally.errcheck = _error_handler
 _dll.tallies_size.restype = c_size_t
 
 
@@ -404,5 +407,9 @@ class _TallyMapping(Mapping):
 
     def __repr__(self):
         return repr(dict(self))
+
+    def __delitem__(self, key):
+        """Delete a tally from tally vector and remove the ID,index pair from tally"""
+        _dll.openmc_remove_tally(self[key]._index)
 
 tallies = _TallyMapping()

@@ -33,7 +33,7 @@ def model():
     )
     model.settings.run_mode = 'fixed source'
 
-    rx_tally = openmc.Tally()
+    rx_tally = openmc.Tally(name='activation tally')
     rx_tally.scores = ['(n,gamma)']
     model.tallies.append(rx_tally)
 
@@ -47,13 +47,13 @@ ENERGIES = np.logspace(log10(1e-5), log10(2e7), 100)
     ("direct", {}, 1e-5),
     ("flux", {'energies': ENERGIES}, 0.01),
     ("flux", {'energies': ENERGIES, 'reactions': ['(n,gamma)']}, 1e-5),
-    ("flux", {'energies': ENERGIES, 'reactions': ['(n,gamma)'], 'nuclides': ['W186']}, 1e-5),
+    ("flux", {'energies': ENERGIES, 'reactions': ['(n,gamma)'], 'nuclides': ['W186', 'H3']}, 1e-2),
 ])
 def test_activation(run_in_tmpdir, model, reaction_rate_mode, reaction_rate_opts, tolerance):
     # Determine (n.gamma) reaction rate using initial run
     sp = model.run()
     with openmc.StatePoint(sp) as sp:
-        tally = sp.tallies[1]
+        tally = sp.get_tally(name='activation tally')
         capture_rate = tally.mean.flat[0]
 
     # Create one-nuclide depletion chain
@@ -64,8 +64,8 @@ def test_activation(run_in_tmpdir, model, reaction_rate_mode, reaction_rate_opts
     chain.export_to_xml('test_chain.xml')
 
     # Create transport operator
-    op = openmc.deplete.Operator(
-        model.geometry, model.settings, 'test_chain.xml',
+    op = openmc.deplete.CoupledOperator(
+        model, 'test_chain.xml',
         normalization_mode="source-rate",
         reaction_rate_mode=reaction_rate_mode,
         reaction_rate_opts=reaction_rate_opts,
@@ -92,7 +92,7 @@ def test_activation(run_in_tmpdir, model, reaction_rate_mode, reaction_rate_opts
 
     w = model.geometry.get_materials_by_name('tungsten')[0]
     atom_densities = w.get_nuclide_atom_densities()
-    atom_per_cc = 1e24 * atom_densities['W186'][1]  # Density in atom/cm^3
+    atom_per_cc = 1e24 * atom_densities['W186']  # Density in atom/cm^3
     n0 = atom_per_cc * w.volume  # Absolute number of atoms
 
     # Pick a random irradiation time and then determine necessary source rate to
@@ -107,8 +107,8 @@ def test_activation(run_in_tmpdir, model, reaction_rate_mode, reaction_rate_opts
     integrator.integrate()
 
     # Get resulting number of atoms
-    results = openmc.deplete.ResultsList.from_hdf5('depletion_results.h5')
-    _, atoms = results.get_atoms(str(w.id), "W186")
+    results = openmc.deplete.Results('depletion_results.h5')
+    _, atoms = results.get_atoms(w, "W186")
 
     assert atoms[0] == pytest.approx(n0)
     assert atoms[1] / atoms[0] == pytest.approx(0.5, rel=tolerance)
@@ -142,9 +142,10 @@ def test_decay(run_in_tmpdir):
     chain.add_nuclide(sr89)
     chain.export_to_xml('test_chain.xml')
 
+    model = openmc.Model(geometry=geometry, settings=settings)
     # Create transport operator
-    op = openmc.deplete.Operator(
-        geometry, settings, 'test_chain.xml', normalization_mode="source-rate"
+    op = openmc.deplete.CoupledOperator(
+        model, 'test_chain.xml', normalization_mode="source-rate"
     )
 
     # Deplete with two decay steps
@@ -154,8 +155,8 @@ def test_decay(run_in_tmpdir):
     integrator.integrate()
 
     # Get resulting number of atoms
-    results = openmc.deplete.ResultsList.from_hdf5('depletion_results.h5')
-    _, atoms = results.get_atoms(str(mat.id), "Sr89")
+    results = openmc.deplete.Results('depletion_results.h5')
+    _, atoms = results.get_atoms(mat, "Sr89")
 
     # Ensure density goes down by a factor of 2 after each half-life
     assert atoms[1] / atoms[0] == pytest.approx(0.5)

@@ -1,10 +1,10 @@
-cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
 project(openmc C CXX)
 
 # Set version numbers
 set(OPENMC_VERSION_MAJOR 0)
 set(OPENMC_VERSION_MINOR 13)
-set(OPENMC_VERSION_RELEASE 0)
+set(OPENMC_VERSION_RELEASE 4)
 set(OPENMC_VERSION ${OPENMC_VERSION_MAJOR}.${OPENMC_VERSION_MINOR}.${OPENMC_VERSION_RELEASE})
 configure_file(include/openmc/version.h.in "${CMAKE_BINARY_DIR}/include/openmc/version.h" @ONLY)
 
@@ -17,36 +17,104 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
 
 # Allow user to specify <project>_ROOT variables
-if (NOT (CMAKE_VERSION VERSION_LESS 3.12))
+if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.12)
   cmake_policy(SET CMP0074 NEW)
+endif()
+
+# Enable correct usage of CXX_EXTENSIONS
+if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.22)
+  cmake_policy(SET CMP0128 NEW)
 endif()
 
 #===============================================================================
 # Command line options
 #===============================================================================
 
-option(openmp   "Enable shared-memory parallelism with OpenMP"         ON)
-option(profile  "Compile with profiling flags"                         OFF)
-option(debug    "Compile with debug flags"                             OFF)
-option(optimize "Turn on all compiler optimization flags"              OFF)
-option(coverage "Compile with coverage analysis flags"                 OFF)
-option(dagmc    "Enable support for DAGMC (CAD) geometry"              OFF)
-option(libmesh  "Enable support for libMesh unstructured mesh tallies" OFF)
+option(OPENMC_USE_OPENMP      "Enable shared-memory parallelism with OpenMP"         ON)
+option(OPENMC_BUILD_TESTS     "Build tests"                                          ON)
+option(OPENMC_ENABLE_PROFILE  "Compile with profiling flags"                         OFF)
+option(OPENMC_ENABLE_COVERAGE "Compile with coverage analysis flags"                 OFF)
+option(OPENMC_USE_DAGMC       "Enable support for DAGMC (CAD) geometry"              OFF)
+option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tallies" OFF)
+option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
+option(OPENMC_USE_MCPL        "Enable MCPL"                                          OFF)
+option(OPENMC_USE_NCRYSTAL    "Enable support for NCrystal scattering"               OFF)
+
+# Warnings for deprecated options
+foreach(OLD_OPT IN ITEMS "openmp" "profile" "coverage" "dagmc" "libmesh")
+  if(DEFINED ${OLD_OPT})
+    string(TOUPPER ${OLD_OPT} OPT_UPPER)
+    if ("${OLD_OPT}" STREQUAL "profile" OR "${OLD_OPT}" STREQUAL "coverage")
+      set(NEW_OPT_PREFIX "OPENMC_ENABLE")
+    else()
+      set(NEW_OPT_PREFIX "OPENMC_USE")
+    endif()
+    message(WARNING "The OpenMC CMake option '${OLD_OPT}' has been deprecated. "
+      "Its value will be ignored. "
+      "Please use '-D${NEW_OPT_PREFIX}_${OPT_UPPER}=${${OLD_OPT}}' instead.")
+    unset(${OLD_OPT} CACHE)
+  endif()
+endforeach()
+
+foreach(OLD_BLD in ITEMS "debug" "optimize")
+  if(DEFINED ${OLD_BLD})
+    if("${OLD_BLD}" STREQUAL "debug")
+      set(BLD_VAR "Debug")
+    else()
+      set(BLD_VAR "Release")
+    endif()
+    message(WARNING "The OpenMC CMake option '${OLD_BLD}' has been deprecated. "
+      "Its value will be ignored. "
+      "OpenMC now uses the CMAKE_BUILD_TYPE variable to set the build mode. "
+      "Please use '-DCMAKE_BUILD_TYPE=${BLD_VAR}' instead.")
+    unset(${OLD_BLD} CACHE)
+  endif()
+endforeach()
+
+#===============================================================================
+# Set a default build configuration if not explicitly specified
+#===============================================================================
+
+if(NOT CMAKE_BUILD_TYPE)
+    message(STATUS "No build type selected, defaulting to RelWithDebInfo")
+    set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Choose the type of build" FORCE)
+endif()
 
 #===============================================================================
 # MPI for distributed-memory parallelism
 #===============================================================================
 
-set(MPI_ENABLED FALSE)
-if(${CMAKE_CXX_COMPILER} MATCHES "(mpi[^/]*|CC)$")
-  message(STATUS "Detected MPI wrapper: ${CMAKE_CXX_COMPILER}")
-  set(MPI_ENABLED TRUE)
+if(OPENMC_USE_MPI)
+  find_package(MPI REQUIRED)
+endif()
+
+#===============================================================================
+# Helper macro for finding a dependency
+#===============================================================================
+
+macro(find_package_write_status pkg)
+  find_package(${pkg} QUIET NO_SYSTEM_ENVIRONMENT_PATH)
+  if(${pkg}_FOUND)
+    message(STATUS "Found ${pkg}: ${${pkg}_DIR} (version ${${pkg}_VERSION})")
+  else()
+    message(STATUS "Did not find ${pkg}, will use submodule instead")
+  endif()
+endmacro()
+
+#===============================================================================
+# NCrystal Scattering Support
+#===============================================================================
+
+if(OPENMC_USE_NCRYSTAL)
+  find_package(NCrystal REQUIRED)
+  message(STATUS "Found NCrystal: ${NCrystal_DIR} (version ${NCrystal_VERSION})")
 endif()
 
 #===============================================================================
 # DAGMC Geometry Support - need DAGMC/MOAB
 #===============================================================================
-if(dagmc)
+
+if(OPENMC_USE_DAGMC)
   find_package(DAGMC REQUIRED PATH_SUFFIXES lib/cmake)
   if (${DAGMC_VERSION} VERSION_LESS 3.2.0)
     message(FATAL_ERROR "Discovered DAGMC Version: ${DAGMC_VERSION}. \
@@ -55,29 +123,18 @@ if(dagmc)
 endif()
 
 #===============================================================================
-# Check for submodules perhaps already on system
-#===============================================================================
-
-# If not found, we just pull appropriate versions from github and build them.
-find_package(fmt QUIET NO_SYSTEM_ENVIRONMENT_PATH)
-if(fmt_FOUND)
-  message(STATUS "Found fmt: ${fmt_DIR} (version ${fmt_VERSION})")
-else()
-  message(STATUS "Did not find fmt, will use submodule instead")
-endif()
-find_package(pugixml QUIET NO_SYSTEM_ENVIRONMENT_PATH)
-if(pugixml_FOUND)
-  message(STATUS "Found pugixml: ${pugixml_DIR}")
-else()
-  message(STATUS "Did not find pugixml, will use submodule instead")
-endif()
-
-#===============================================================================
 # libMesh Unstructured Mesh Support
 #===============================================================================
-if(libmesh)
+
+if(OPENMC_USE_LIBMESH)
   find_package(LIBMESH REQUIRED)
 endif()
+
+#===============================================================================
+# libpng
+#===============================================================================
+
+find_package(PNG)
 
 #===============================================================================
 # HDF5 for binary output
@@ -98,10 +155,10 @@ endif()
 
 find_package(HDF5 REQUIRED COMPONENTS C HL)
 if(HDF5_IS_PARALLEL)
-  if(NOT MPI_ENABLED)
-    message(FATAL_ERROR "Parallel HDF5 was detected, but the detected compiler,\
-     ${CMAKE_CXX_COMPILER}, does not support MPI. An MPI-capable compiler must \
-     be used with parallel HDF5.")
+  if(NOT OPENMC_USE_MPI)
+    message(FATAL_ERROR "Parallel HDF5 was detected, but MPI was not enabled.\
+      To use parallel HDF5, OpenMC needs to be built with MPI support by passing\
+      -DOPENMC_USE_MPI=ON when calling cmake.")
   endif()
   message(STATUS "Using parallel HDF5")
 endif()
@@ -109,8 +166,17 @@ endif()
 # Version 1.12 of HDF5 deprecates the H5Oget_info_by_idx() interface.
 # Thus, we give these flags to allow usage of the old interface in newer
 # versions of HDF5.
-if(NOT (${HDF5_VERSION} VERSION_LESS 1.12.0))
+if(${HDF5_VERSION} VERSION_GREATER_EQUAL 1.12.0)
   list(APPEND cxxflags -DH5Oget_info_by_idx_vers=1 -DH5O_info_t_vers=1)
+endif()
+
+#===============================================================================
+# MCPL
+#===============================================================================
+
+if (OPENMC_USE_MCPL)
+  find_package(MCPL REQUIRED)
+  message(STATUS "Found MCPL: ${MCPL_DIR} (found version \"${MCPL_VERSION}\")")
 endif()
 
 #===============================================================================
@@ -120,10 +186,10 @@ endif()
 # Skip for Visual Studio which has its own configurations through GUI
 if(NOT MSVC)
 
-if(openmp)
-  # Requires CMake 3.1+
+if(OPENMC_USE_OPENMP)
   find_package(OpenMP)
   if(OPENMP_FOUND)
+    # In CMake 3.9+, can use the OpenMP::OpenMP_CXX imported target
     list(APPEND cxxflags ${OpenMP_CXX_FLAGS})
     list(APPEND ldflags ${OpenMP_CXX_FLAGS})
   endif()
@@ -131,19 +197,11 @@ endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-list(APPEND cxxflags -O2)
-if(debug)
-  list(REMOVE_ITEM cxxflags -O2)
-  list(APPEND cxxflags -g -O0)
-endif()
-if(profile)
+if(OPENMC_ENABLE_PROFILE)
   list(APPEND cxxflags -g -fno-omit-frame-pointer)
 endif()
-if(optimize)
-  list(REMOVE_ITEM cxxflags -O2)
-  list(APPEND cxxflags -O3)
-endif()
-if(coverage)
+
+if(OPENMC_ENABLE_COVERAGE)
   list(APPEND cxxflags --coverage)
   list(APPEND ldflags --coverage)
 endif()
@@ -183,6 +241,7 @@ endif()
 # pugixml library
 #===============================================================================
 
+find_package_write_status(pugixml)
 if (NOT pugixml_FOUND)
   add_subdirectory(vendor/pugixml)
   set_target_properties(pugixml PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS OFF)
@@ -192,6 +251,7 @@ endif()
 # {fmt} library
 #===============================================================================
 
+find_package_write_status(fmt)
 if (NOT fmt_FOUND)
   set(FMT_INSTALL ON CACHE BOOL "Generate the install target.")
   add_subdirectory(vendor/fmt)
@@ -202,23 +262,40 @@ endif()
 #===============================================================================
 
 # CMake 3.13+ will complain about policy CMP0079 unless it is set explicitly
-if (NOT (CMAKE_VERSION VERSION_LESS 3.13))
+if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.13)
   cmake_policy(SET CMP0079 NEW)
 endif()
 
-add_subdirectory(vendor/xtl)
-set(xtl_DIR ${CMAKE_CURRENT_BINARY_DIR}/vendor/xtl)
-add_subdirectory(vendor/xtensor)
+find_package_write_status(xtensor)
+if (NOT xtensor_FOUND)
+  add_subdirectory(vendor/xtl)
+  set(xtl_DIR ${CMAKE_CURRENT_BINARY_DIR}/vendor/xtl)
+  add_subdirectory(vendor/xtensor)
+endif()
 
 #===============================================================================
 # GSL header-only library
 #===============================================================================
 
-add_subdirectory(vendor/gsl-lite)
+find_package_write_status(gsl-lite)
+if (NOT gsl-lite_FOUND)
+  add_subdirectory(vendor/gsl-lite)
 
-# Make sure contract violations throw exceptions
-target_compile_definitions(gsl-lite-v1 INTERFACE GSL_THROW_ON_CONTRACT_VIOLATION)
-target_compile_definitions(gsl-lite-v1 INTERFACE gsl_CONFIG_ALLOWS_NONSTRICT_SPAN_COMPARISON=1)
+  # Make sure contract violations throw exceptions
+  target_compile_definitions(gsl-lite-v1 INTERFACE GSL_THROW_ON_CONTRACT_VIOLATION)
+  target_compile_definitions(gsl-lite-v1 INTERFACE gsl_CONFIG_ALLOWS_NONSTRICT_SPAN_COMPARISON=1)
+endif()
+
+#===============================================================================
+# Catch2 library
+#===============================================================================
+
+if(OPENMC_BUILD_TESTS)
+  find_package_write_status(Catch2)
+  if (NOT Catch2)
+    add_subdirectory(vendor/Catch2)
+  endif()
+endif()
 
 #===============================================================================
 # RPATH information
@@ -250,18 +327,6 @@ if("${isSystemDir}" STREQUAL "-1")
 endif()
 
 #===============================================================================
-# faddeeva library
-#===============================================================================
-
-add_library(faddeeva STATIC vendor/faddeeva/Faddeeva.cc)
-target_include_directories(faddeeva
-  PUBLIC
-    $<INSTALL_INTERFACE:include/faddeeva>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/faddeeva>
-)
-target_compile_options(faddeeva PRIVATE ${cxxflags})
-
-#===============================================================================
 # libopenmc
 #===============================================================================
 
@@ -290,10 +355,12 @@ list(APPEND libopenmc_SOURCES
   src/lattice.cpp
   src/material.cpp
   src/math_functions.cpp
+  src/mcpl_interface.cpp
   src/mesh.cpp
   src/message_passing.cpp
   src/mgxs.cpp
   src/mgxs_interface.cpp
+  src/ncrystal_interface.cpp
   src/nuclide.cpp
   src/output.cpp
   src/particle.cpp
@@ -345,6 +412,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_sph_harm.cpp
   src/tallies/filter_sptl_legendre.cpp
   src/tallies/filter_surface.cpp
+  src/tallies/filter_time.cpp
   src/tallies/filter_universe.cpp
   src/tallies/filter_zernike.cpp
   src/tallies/tally.cpp
@@ -353,11 +421,18 @@ list(APPEND libopenmc_SOURCES
   src/timer.cpp
   src/thermal.cpp
   src/track_output.cpp
+  src/universe.cpp
   src/urr.cpp
   src/volume_calc.cpp
+  src/weight_windows.cpp
   src/wmp.cpp
   src/xml_interface.cpp
   src/xsdata.cpp)
+
+# Add bundled external dependencies
+list(APPEND libopenmc_SOURCES
+  src/external/quartic_solver.cpp
+  src/external/Faddeeva.cc)
 
 # For Visual Studio compilers
 if(MSVC)
@@ -370,6 +445,8 @@ if(MSVC)
 else()
   add_library(libopenmc SHARED ${libopenmc_SOURCES})
 endif()
+
+add_library(OpenMC::libopenmc ALIAS libopenmc)
 
 # Avoid vs error lnk1149 :output filename matches input filename
 if(NOT MSVC)
@@ -387,12 +464,13 @@ target_include_directories(libopenmc
 target_compile_options(libopenmc PRIVATE ${cxxflags})
 
 # Add include directory for configured version file
-target_include_directories(libopenmc PRIVATE ${CMAKE_BINARY_DIR}/include)
+target_include_directories(libopenmc
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
 
 if (HDF5_IS_PARALLEL)
   target_compile_definitions(libopenmc PRIVATE -DPHDF5)
 endif()
-if (MPI_ENABLED)
+if (OPENMC_USE_MPI)
   target_compile_definitions(libopenmc PUBLIC -DOPENMC_MPI)
 endif()
 
@@ -411,31 +489,75 @@ endif()
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
-                      pugixml faddeeva xtensor gsl-lite-v1 fmt::fmt)
+                      xtensor gsl::gsl-lite-v1 fmt::fmt)
 
-if(dagmc)
+if(TARGET pugixml::pugixml)
+  target_link_libraries(libopenmc pugixml::pugixml)
+else()
+  target_link_libraries(libopenmc pugixml)
+endif()
+
+if(OPENMC_USE_DAGMC)
   target_compile_definitions(libopenmc PRIVATE DAGMC)
   target_link_libraries(libopenmc dagmc-shared uwuw-shared)
 endif()
 
-if(libmesh)
+if(OPENMC_USE_LIBMESH)
   target_compile_definitions(libopenmc PRIVATE LIBMESH)
   target_link_libraries(libopenmc PkgConfig::LIBMESH)
+endif()
+
+if (PNG_FOUND)
+  target_compile_definitions(libopenmc PRIVATE USE_LIBPNG)
+  target_link_libraries(libopenmc PNG::PNG)
+endif()
+
+if (OPENMC_USE_MPI)
+  target_link_libraries(libopenmc MPI::MPI_CXX)
+endif()
+
+if (OPENMC_BUILD_TESTS)
+  # Add cpp tests directory
+  include(CTest)
+  add_subdirectory(tests/cpp_unit_tests)
+endif()
+
+if (OPENMC_USE_MCPL)
+  target_compile_definitions(libopenmc PUBLIC OPENMC_MCPL)
+  target_link_libraries(libopenmc MCPL::mcpl)
+endif()
+
+if(OPENMC_USE_NCRYSTAL)
+  target_compile_definitions(libopenmc PRIVATE NCRYSTAL)
+  target_link_libraries(libopenmc NCrystal::NCrystal)
+endif()
+
+#===============================================================================
+# Log build info that this executable can report later
+#===============================================================================
+target_compile_definitions(libopenmc PRIVATE BUILD_TYPE=${CMAKE_BUILD_TYPE})
+target_compile_definitions(libopenmc PRIVATE COMPILER_ID=${CMAKE_CXX_COMPILER_ID})
+target_compile_definitions(libopenmc PRIVATE COMPILER_VERSION=${CMAKE_CXX_COMPILER_VERSION})
+if (OPENMC_ENABLE_PROFILE)
+  target_compile_definitions(libopenmc PRIVATE PROFILINGBUILD)
+endif()
+if (OPENMC_ENABLE_COVERAGE)
+  target_compile_definitions(libopenmc PRIVATE COVERAGEBUILD)
 endif()
 
 #===============================================================================
 # openmc executable
 #===============================================================================
 add_executable(openmc src/main.cpp)
+add_executable(OpenMC::openmc ALIAS openmc)
 target_compile_options(openmc PRIVATE ${cxxflags})
 target_include_directories(openmc PRIVATE ${CMAKE_BINARY_DIR}/include)
 target_link_libraries(openmc libopenmc)
 
-# Ensure C++14 standard is used. Starting with CMake 3.8, another way this could
-# be done is using the cxx_std_14 compiler feature.
-set_target_properties(
-    openmc libopenmc faddeeva
-    PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS OFF)
+# Ensure C++14 standard is used and turn off GNU extensions
+target_compile_features(openmc PUBLIC cxx_std_14)
+target_compile_features(libopenmc PUBLIC cxx_std_14)
+set_target_properties(openmc libopenmc PROPERTIES CXX_EXTENSIONS OFF)
 
 #===============================================================================
 # Python package
@@ -455,7 +577,7 @@ configure_file(cmake/OpenMCConfig.cmake.in "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIR
 configure_file(cmake/OpenMCConfigVersion.cmake.in "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake" @ONLY)
 
 set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
-install(TARGETS openmc libopenmc faddeeva
+install(TARGETS openmc libopenmc
   EXPORT openmc-targets
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -466,7 +588,6 @@ install(EXPORT openmc-targets
   NAMESPACE OpenMC::
   DESTINATION ${INSTALL_CONFIGDIR})
 
-install(DIRECTORY src/relaxng DESTINATION ${CMAKE_INSTALL_DATADIR}/openmc)
 install(FILES
   "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake"
   "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake"
@@ -475,7 +596,3 @@ install(FILES man/man1/openmc.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 install(FILES LICENSE DESTINATION "${CMAKE_INSTALL_DOCDIR}" RENAME copyright)
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(FILES "${CMAKE_BINARY_DIR}/include/openmc/version.h" DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openmc)
-
-# Copy headers for vendored dependencies (note that all except faddeeva are handled
-# separately since they are managed by CMake)
-install(DIRECTORY vendor/faddeeva DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})

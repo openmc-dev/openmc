@@ -5,6 +5,7 @@
 #define OPENMC_CONSTANTS_H
 
 #include <cmath>
+#include <cstdint>
 #include <limits>
 
 #include "openmc/array.h"
@@ -24,9 +25,9 @@ using double_4dvec = vector<vector<vector<vector<double>>>>;
 constexpr int HDF5_VERSION[] {3, 0};
 
 // Version numbers for binary files
-constexpr array<int, 2> VERSION_STATEPOINT {17, 0};
+constexpr array<int, 2> VERSION_STATEPOINT {18, 1};
 constexpr array<int, 2> VERSION_PARTICLE_RESTART {2, 0};
-constexpr array<int, 2> VERSION_TRACK {2, 0};
+constexpr array<int, 2> VERSION_TRACK {3, 0};
 constexpr array<int, 2> VERSION_SUMMARY {6, 0};
 constexpr array<int, 2> VERSION_VOLUME {1, 0};
 constexpr array<int, 2> VERSION_VOXEL {2, 0};
@@ -39,9 +40,6 @@ constexpr array<int, 2> VERSION_PROPERTIES {1, 0};
 // NOTE: This is the only section of the constants module that should ever be
 // adjusted. Modifying constants in other sections may cause the code to fail.
 
-// Monoatomic ideal-gas scattering treatment threshold
-constexpr double FREE_GAS_THRESHOLD {400.0};
-
 // Significance level for confidence intervals
 constexpr double CONFIDENCE_LEVEL {0.95};
 
@@ -53,19 +51,12 @@ constexpr double FP_PRECISION {1e-14};
 constexpr double FP_REL_PRECISION {1e-5};
 constexpr double FP_COINCIDENT {1e-12};
 
-// Maximum number of collisions/crossings
-constexpr int MAX_EVENTS {1000000};
+// Coincidence tolerances
+constexpr double TORUS_TOL {1e-10};
+constexpr double RADIAL_MESH_TOL {1e-10};
+
+// Maximum number of random samples per history
 constexpr int MAX_SAMPLE {100000};
-
-// Maximum number of words in a single line, length of line, and length of
-// single word
-constexpr int MAX_LINE_LEN {250};
-constexpr int MAX_WORD_LEN {150};
-
-// Maximum number of external source spatial resamples to encounter before an
-// error is thrown.
-constexpr int EXTSRC_REJECT_THRESHOLD {10000};
-constexpr double EXTSRC_REJECT_FRACTION {0.05};
 
 // ============================================================================
 // MATH AND PHYSICAL CONSTANTS
@@ -90,7 +81,7 @@ constexpr double FINE_STRUCTURE {
 constexpr double PLANCK_C {
   1.2398419839593942e4}; // Planck's constant times c in eV-Angstroms
 constexpr double AMU {1.66053906660e-27};      // 1 amu in kg
-constexpr double C_LIGHT {2.99792458e8};       // speed of light in m/s
+constexpr double C_LIGHT {2.99792458e10};      // speed of light in cm/s
 constexpr double N_AVOGADRO {0.602214076};     // Avogadro's number in 10^24/mol
 constexpr double K_BOLTZMANN {8.617333262e-5}; // Boltzmann constant in eV/K
 
@@ -242,18 +233,6 @@ enum ReactionType {
 
 constexpr array<int, 6> DEPLETION_RX {N_GAMMA, N_P, N_A, N_2N, N_3N, N_4N};
 
-enum class URRTableParam {
-  CUM_PROB,
-  TOTAL,
-  ELASTIC,
-  FISSION,
-  N_GAMMA,
-  HEATING
-};
-
-// Maximum number of partial fission reactions
-constexpr int PARTIAL_FISSION_MAX {4};
-
 // Resonance elastic scattering methods
 enum class ResScatMethod {
   rvs,  // Relative velocity sampling
@@ -345,7 +324,11 @@ enum class Interpolation {
   lin_lin = 2,
   lin_log = 3,
   log_lin = 4,
-  log_log = 5
+  log_log = 5,
+  // skip 6 b/c ENDF-6 reserves this value for
+  // "special one-dimensional interpolation law"
+  quadratic = 7,
+  cubic = 8
 };
 
 enum class RunMode {
@@ -356,12 +339,6 @@ enum class RunMode {
   PARTICLE,
   VOLUME
 };
-
-// ============================================================================
-// CMFD CONSTANTS
-
-// For non-accelerated regions on coarse mesh overlay
-constexpr int CMFD_NOACCEL {-1};
 
 //==============================================================================
 // Geometry Constants

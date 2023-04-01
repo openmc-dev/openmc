@@ -246,7 +246,7 @@ class CMFDMesh:
                        Real)
             check_greater_than('CMFD mesh {}-grid length'.format(dims[i]),
                                len(grid[i]), 1)
-        self._grid = np.array(grid)
+        self._grid = [np.array(g) for g in grid]
         self._display_mesh_warning('rectilinear', 'CMFD mesh grid')
 
     def _display_mesh_warning(self, mesh_type, variable_label):
@@ -262,7 +262,7 @@ class CMFDRun:
     Attributes
     ----------
     tally_begin : int
-        Batch number at which CMFD tallies should begin accummulating
+        Batch number at which CMFD tallies should begin accumulating
     solver_begin: int
         Batch number at which CMFD solver should start executing
     ref_d : list of floats
@@ -271,13 +271,13 @@ class CMFDRun:
         Dictionary indicating which CMFD results to output. Note that CMFD
         k-effective will always be outputted. Acceptable keys are:
 
-        * "balance" - Whether to output RMS [%] of the resdiual from the
+        * "balance" - Whether to output RMS [%] of the residual from the
           neutron balance equation on CMFD tallies (bool)
         * "dominance" - Whether to output the estimated dominance ratio from
           the CMFD iterations (bool)
         * "entropy" - Whether to output the *entropy* of the CMFD predicted
           fission source (bool)
-        * "source" - Whether to ouput the RMS [%] between the OpenMC fission
+        * "source" - Whether to output the RMS [%] between the OpenMC fission
           source and CMFD fission source (bool)
 
     downscatter : bool
@@ -315,7 +315,7 @@ class CMFDRun:
     adjoint_type : {'physical', 'math'}
         Stores type of adjoint calculation that should be performed.
         ``run_adjoint`` must be true for an adjoint calculation to be
-        perfomed. Options are:
+        performed. Options are:
 
         * "physical" - Create adjoint matrices from physical parameters of
           CMFD problem
@@ -887,7 +887,7 @@ class CMFDRun:
         information.
 
         """
-        # Finalize simuation
+        # Finalize simulation
         openmc.lib.simulation_finalize()
 
         if openmc.lib.master():
@@ -1382,9 +1382,7 @@ class CMFDRun:
 
         """
         # Write each element in vector to file
-        with open(base_filename+'.dat', 'w') as fh:
-            for val in vector:
-                fh.write('{:0.8f}\n'.format(val))
+        np.savetxt(f'{base_filename}.dat', vector, fmt='%.8f')
 
         # Save as numpy format
         np.save(base_filename, vector)
@@ -1431,7 +1429,7 @@ class CMFDRun:
         nx, ny, nz, ng = self._indices
         n = self._mat_dim
 
-        # Compute cmfd_src in a vecotorized manner by phi to the spatial
+        # Compute cmfd_src in a vectorized manner by phi to the spatial
         # indices of the actual problem so that cmfd_flux can be multiplied by
         # nfissxs
 

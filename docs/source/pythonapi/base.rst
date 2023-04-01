@@ -24,9 +24,8 @@ Simulation Settings
    openmc.Source
    openmc.SourceParticle
    openmc.VolumeCalculation
+   openmc.WeightWindows
    openmc.Settings
-
-The following function can be used for generating a source file:
 
 .. autosummary::
    :toctree: generated
@@ -34,6 +33,7 @@ The following function can be used for generating a source file:
    :template: myfunction.rst
 
    openmc.write_source_file
+   openmc.wwinp_to_wws
 
 Material Specification
 ----------------------
@@ -80,12 +80,16 @@ Building geometry
    openmc.YCone
    openmc.ZCone
    openmc.Quadric
+   openmc.XTorus
+   openmc.YTorus
+   openmc.ZTorus
    openmc.Halfspace
    openmc.Intersection
    openmc.Union
    openmc.Complement
    openmc.Cell
    openmc.Universe
+   openmc.DAGMCUniverse
    openmc.RectLattice
    openmc.HexLattice
    openmc.Geometry
@@ -116,7 +120,7 @@ Constructing Tallies
    openmc.MaterialFilter
    openmc.CellFilter
    openmc.CellFromFilter
-   openmc.CellbornFilter
+   openmc.CellBornFilter
    openmc.CellInstanceFilter
    openmc.CollisionFilter
    openmc.SurfaceFilter
@@ -133,11 +137,14 @@ Constructing Tallies
    openmc.LegendreFilter
    openmc.SpatialLegendreFilter
    openmc.SphericalHarmonicsFilter
+   openmc.TimeFilter
    openmc.ZernikeFilter
    openmc.ZernikeRadialFilter
    openmc.ParticleFilter
    openmc.RegularMesh
    openmc.RectilinearMesh
+   openmc.CylindricalMesh
+   openmc.SphericalMesh
    openmc.UnstructuredMesh
    openmc.Trigger
    openmc.TallyDerivative
@@ -178,8 +185,11 @@ Post-processing
    :template: myclass.rst
 
    openmc.Particle
+   openmc.ParticleTrack
    openmc.StatePoint
    openmc.Summary
+   openmc.Track
+   openmc.Tracks
 
 The following classes and functions are used for functional expansion reconstruction.
 

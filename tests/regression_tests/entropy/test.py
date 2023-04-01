@@ -14,7 +14,7 @@ class EntropyTestHarness(TestHarness):
         with StatePoint(statepoint) as sp:
             # Write out k-combined.
             outstr = 'k-combined:\n'
-            outstr += '{:12.6E} {:12.6E}\n'.format(sp.k_combined.n, sp.k_combined.s)
+            outstr += '{:12.6E} {:12.6E}\n'.format(sp.keff.n, sp.keff.s)
 
             # Write out entropy data.
             outstr += 'entropy:\n'

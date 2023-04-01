@@ -21,11 +21,8 @@ class PredictorIntegrator(Integrator):
     mathematically defined as:
 
     .. math::
-        \begin{aligned}
-        y' &= A(y, t) y(t) \\
-        A_p &= A(y_n, t_n) \\
-        y_{n+1} &= \text{expm}(A_p h) y_n
-        \end{aligned}
+        \mathbf{n}_{i+1} = \exp\left(h\mathbf{A}(\mathbf{n}_i) \right) \mathbf{n}_i
+
     """
     _num_stages = 1
 
@@ -72,11 +69,10 @@ class CECMIntegrator(Integrator):
 
     .. math::
         \begin{aligned}
-        y' &= A(y, t) y(t) \\
-        A_p &= A(y_n, t_n) \\
-        y_m &= \text{expm}(A_p h/2) y_n \\
-        A_c &= A(y_m, t_n + h/2) \\
-        y_{n+1} &= \text{expm}(A_c h) y_n
+        \mathbf{n}_{i+1/2} &= \exp \left (\frac{h}{2}\mathbf{A}(\mathbf{n}_i)
+            \right) \mathbf{n}_i \\
+        \mathbf{n}_{i+1} &= \exp \left(h \mathbf{A}(\mathbf{n}_{i+1/2}) \right)
+            \mathbf{n}_i.
         \end{aligned}
     """
     _num_stages = 2
@@ -107,7 +103,7 @@ class CECMIntegrator(Integrator):
         op_results : list of openmc.deplete.OperatorResult
             Eigenvalue and reaction rates from transport simulations
         """
-        # deplete across first half of inteval
+        # deplete across first half of interval
         time0, x_middle = self._timed_deplete(conc, rates, dt / 2)
         res_middle = self.operator(x_middle, source_rate)
 
@@ -128,15 +124,18 @@ class CF4Integrator(Integrator):
 
     .. math::
         \begin{aligned}
-        F_1 &= h A(y_0) \\
-        y_1 &= \text{expm}(1/2 F_1) y_0 \\
-        F_2 &= h A(y_1) \\
-        y_2 &= \text{expm}(1/2 F_2) y_0 \\
-        F_3 &= h A(y_2) \\
-        y_3 &= \text{expm}(-1/2 F_1 + F_3) y_1 \\
-        F_4 &= h A(y_3) \\
-        y_4 &= \text{expm}( 1/4  F_1 + 1/6 F_2 + 1/6 F_3 - 1/12 F_4)
-               \text{expm}(-1/12 F_1 + 1/6 F_2 + 1/6 F_3 + 1/4  F_4) y_0
+        \mathbf{A}_1 &= h\mathbf{A}(\mathbf{n}_i) \\
+        \hat{\mathbf{n}}_1 &= \exp \left ( \frac{\mathbf{A}_1}{2} \right ) \mathbf{n}_i \\
+        \mathbf{A}_2 &= h\mathbf{A}(\hat{\mathbf{n}}_1) \\
+        \hat{\mathbf{n}}_2 &= \exp \left ( \frac{\mathbf{A}_2}{2} \right ) \mathbf{n}_i \\
+        \mathbf{A}_3 &= h \mathbf{A}(\hat{\mathbf{n}}_2) \\
+        \hat{\mathbf{n}}_3 &= \exp \left ( -\frac{\mathbf{A}_1}{2} + \mathbf{A}_3
+            \right ) \hat{\mathbf{n}}_1 \\
+        \mathbf{A}_4 &= h\mathbf{A}(\hat{\mathbf{n}}_3) \\
+        \mathbf{n}_{i+1} &= \exp \left ( \frac{\mathbf{A}_1}{4} + \frac{\mathbf{A}_2}{6}
+            + \frac{\mathbf{A}_3}{6} - \frac{\mathbf{A}_4}{12} \right )
+        \exp \left ( -\frac{\mathbf{A}_1}{12} + \frac{\mathbf{A}_2}{6} +
+            \frac{\mathbf{A}_3}{6} - \frac{\mathbf{A}_4}{4} \right ) \mathbf{n}_i.
         \end{aligned}
     """
     _num_stages = 4
@@ -208,12 +207,12 @@ class CELIIntegrator(Integrator):
 
     .. math::
         \begin{aligned}
-        y' &= A(y, t) y(t) \\
-        A_0 &= A(y_n, t_n) \\
-        y_p &= \text{expm}(h A_0) y_n \\
-        A_1 &= A(y_p, t_n + h) \\
-        y_{n+1} &= \text{expm}(\frac{h}{12} A_0 + \frac{5h}{12} A1)
-                   \text{expm}(\frac{5h}{12} A_0 + \frac{h}{12} A1) y_n
+        \mathbf{n}_{i+1}^p &= \exp \left ( h \mathbf{A}(\mathbf{n}_i ) \right )
+        \mathbf{n}_i \\
+        \mathbf{n}_{i+1} &= \exp \left( \frac{h}{12} \mathbf{A}(\mathbf{n}_i) +
+            \frac{5h}{12} \mathbf{A}(\mathbf{n}_{i+1}^p) \right)
+        \exp \left( \frac{5h}{12} \mathbf{A}(\mathbf{n}_i) +
+        \frac{h}{12} \mathbf{A}(\mathbf{n}_{i+1}^p) \right) \mathbf{n}_i.
         \end{aligned}
     """
     _num_stages = 2
@@ -270,14 +269,15 @@ class EPCRK4Integrator(Integrator):
 
     .. math::
         \begin{aligned}
-        F_1 &= h A(y_0) \\
-        y_1 &= \text{expm}(1/2 F_1) y_0 \\
-        F_2 &= h A(y_1) \\
-        y_2 &= \text{expm}(1/2 F_2) y_0 \\
-        F_3 &= h A(y_2) \\
-        y_3 &= \text{expm}(F_3) y_0 \\
-        F_4 &= h A(y_3) \\
-        y_4 &= \text{expm}(1/6 F_1 + 1/3 F_2 + 1/3 F_3 + 1/6 F_4) y_0
+        \mathbf{A}_1 &= h\mathbf{A}(\mathbf{n}_i) \\
+        \hat{\mathbf{n}}_1 &= \exp \left ( \frac{\mathbf{A}_1}{2} \right ) \mathbf{n}_i \\
+        \mathbf{A}_2 &= h\mathbf{A}(\hat{\mathbf{n}}_1) \\
+        \hat{\mathbf{n}}_2 &= \exp \left ( \frac{\mathbf{A}_2}{2} \right ) \mathbf{n}_i \\
+        \mathbf{A}_3 &= h \mathbf{A}(\hat{\mathbf{n}}_2) \\
+        \hat{\mathbf{n}}_3 &= \exp \left ( \mathbf{A}_3 \right ) \mathbf{n}_i \\
+        \mathbf{A}_4 &= h\mathbf{A}(\hat{\mathbf{n}}_3) \\
+        \mathbf{n}_{i+1} &= \exp \left ( \frac{\mathbf{A}_1}{6} + \frac{\mathbf{A}_2}{3}
+        + \frac{\mathbf{A}_3}{3} + \frac{\mathbf{A}_4}{6} \right ) \mathbf{n}_i.
         \end{aligned}
     """
     _num_stages = 4
@@ -345,20 +345,23 @@ class LEQIIntegrator(Integrator):
 
     .. math::
         \begin{aligned}
-        y' &= A(y, t) y(t) \\
-        A_{last} &= A(y_{n-1}, t_n - h_1) \\
-        A_0 &= A(y_n, t_n) \\
-        F_1 &= \frac{-h_2^2}{12h_1} A_{last} + \frac{h_2(6h_1+h_2)}{12h_1} A_0 \\
-        F_2 &= \frac{-5h_2^2}{12h_1} A_{last} + \frac{h_2(6h_1+5h_2)}{12h_1} A_0 \\
-        y_p &= \text{expm}(F_2) \text{expm}(F_1) y_n \\
-        A_1 &= A(y_p, t_n + h_2) \\
-        F_3 &= \frac{-h_2^3}{12 h_1 (h_1 + h_2)} A_{last} +
-              \frac{h_2 (5 h_1^2 + 6 h_2 h_1 + h_2^2)}{12 h_1 (h_1 + h_2)} A_0 +
-              \frac{h_2 h_1)}{12 (h_1 + h_2)} A_1 \\
-        F_4 &= \frac{-h_2^3}{12 h_1 (h_1 + h_2)} A_{last} +
-              \frac{h_2 (h_1^2 + 2 h_2 h_1 + h_2^2)}{12 h_1 (h_1 + h_2)} A_0 +
-              \frac{h_2 (5 h_1^2 + 4 h_2 h_1)}{12 h_1 (h_1 + h_2)} A_1 \\
-        y_{n+1} &= \text{expm}(F_4) \text{expm}(F_3) y_n
+        \mathbf{A}_{-1} &= \mathbf{A}(\mathbf{n}_{i-1}) \\
+        \mathbf{A}_0 &= \mathbf{A}(\mathbf{n}_i) \\
+        \mathbf{F}_1 &= \frac{-h_i}{12h_{i-1}} \mathbf{A}_{-1} + \frac{6h_{i-1}
+            + h_i}{12h_{i-1}} \mathbf{A}_0 \\
+        \mathbf{F}_2 &= \frac{-5h_i}{12h_{i-1}} \mathbf{A}_{-1} + \frac{6h_{i-1}
+            + 5h_i}{12h_{i-1}} \mathbf{A}_0 \\
+        \mathbf{n}_{i+1}^p &= \exp (h_i \mathbf{F}_1) \exp(h_i \mathbf{F}_2)
+            \mathbf{n}_i \\
+        \mathbf{A}_1 &= \mathbf{A}(\mathbf{n}_{i+1}^p) \\
+        \mathbf{F}_3 &= \frac{-h_i^2}{12 h_{i-1} (h_{i-1} + h_i)} \mathbf{A}_{-1} +
+              \frac{5 h_{i-1}^2 + 6 h_i h_{i-1} + h_i^2}{12 h_{i-1} (h_{i-1} +
+              h_i)} \mathbf{A}_0 + \frac{h_{i-1}}{12 (h_{i-1} + h_i)} \mathbf{A}_1 \\
+        \mathbf{F}_4 &= \frac{-h_i^2}{12 h_{i-1} (h_{i-1} + h_i)} \mathbf{A}_{-1} +
+              \frac{h_{i-1}^2 + 2 h_i h_{i-1} + h_i^2}{12 h_{i-1} (h_{i-1} + h_i)}
+              \mathbf{A}_0 + \frac{5 h_{i-1}^2 + 4 h_i h_{i-1}}{12 h_{i-1}
+              (h_{i-1} + h_i)} \mathbf{A}_1 \\
+        \mathbf{n}_{i+1} &= \exp(h_i \mathbf{F}_4) \exp(h_i \mathbf{F}_3) \mathbf{n}_i
         \end{aligned}
 
     It is initialized using the CE/LI algorithm.
@@ -581,3 +584,15 @@ class SILEQIIntegrator(SIIntegrator):
             proc_time += time1 + time2
 
         return proc_time, [eos_conc, inter_conc], [res_bar]
+
+
+integrator_by_name = {
+    'cecm': CECMIntegrator,
+    'predictor': PredictorIntegrator,
+    'cf4': CF4Integrator,
+    'epc_rk4': EPCRK4Integrator,
+    'si_celi': SICELIIntegrator,
+    'si_leqi': SILEQIIntegrator,
+    'celi': CELIIntegrator,
+    'leqi': LEQIIntegrator
+}

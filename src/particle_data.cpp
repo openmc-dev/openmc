@@ -2,6 +2,7 @@
 
 #include "openmc/cell.h"
 #include "openmc/geometry.h"
+#include "openmc/material.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
 #include "openmc/settings.h"
@@ -54,6 +55,22 @@ ParticleData::ParticleData()
   photon_xs_.resize(data::elements.size());
 
   pht_storage_.resize(model::cells.size(), 0.0);
+}
+
+TrackState ParticleData::get_track_state() const
+{
+  TrackState state;
+  state.r = this->r();
+  state.u = this->u();
+  state.E = this->E();
+  state.time = this->time();
+  state.wgt = this->wgt();
+  state.cell_id = model::cells[this->lowest_coord().cell]->id_;
+  state.cell_instance = this->cell_instance();
+  if (this->material() != MATERIAL_VOID) {
+    state.material_id = model::materials[material()]->id_;
+  }
+  return state;
 }
 
 } // namespace openmc

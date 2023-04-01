@@ -1,11 +1,11 @@
-import glob
-import os
+from pathlib import Path
 
 import openmc
+import pytest
 
 from tests.testing_harness import TestHarness
 from tests.regression_tests import config
-
+from tests import cdtemp
 
 class StatepointRestartTestHarness(TestHarness):
     def __init__(self, final_sp, restart_sp):
@@ -42,7 +42,7 @@ class StatepointRestartTestHarness(TestHarness):
 
     def _run_openmc_restart(self):
         # Get the name of the statepoint file.
-        statepoint = glob.glob(os.path.join(os.getcwd(), self._restart_sp))
+        statepoint = list(Path.cwd().glob(self._restart_sp))
         assert len(statepoint) == 1
         statepoint = statepoint[0]
 
@@ -59,3 +59,26 @@ def test_statepoint_restart():
     harness = StatepointRestartTestHarness('statepoint.10.h5',
                                            'statepoint.07.h5')
     harness.main()
+
+
+def test_batch_check(request):
+    xmls = list(request.path.parent.glob('*.xml'))
+
+    with cdtemp(xmls):
+        model = openmc.Model.from_xml()
+        model.settings.particles = 100
+        # run the model
+        sp_file = model.run()
+
+        # run a restart with the resulting statepoint
+        # and the settings unchanged
+        with pytest.raises(RuntimeError, match='is smaller than the number of batches'):
+            model.run(restart_file=sp_file)
+
+        # update the number of batches and run again
+        model.settings.batches = 15
+        model.settings.statepoint = {}
+        sp_file = model.run(restart_file=sp_file)
+
+        sp = openmc.StatePoint(sp_file)
+        assert sp.n_batches == 15

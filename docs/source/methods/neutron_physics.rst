@@ -182,7 +182,7 @@ Inelastic Scattering
 --------------------
 
 Note that the multi-group mode makes no distinction between elastic or
-inelastic scattering reactions. The spceific multi-group scattering
+inelastic scattering reactions. The specific multi-group scattering
 implementation is discussed in the :ref:`multi-group-scatter` section.
 
 The major algorithms for inelastic scattering were described in previous
@@ -359,7 +359,7 @@ secondary energy and angle sampling.
 For a reaction with secondary products, it is necessary to determine the
 outgoing angle and energy of the products. For any reaction other than elastic
 and level inelastic scattering, the outgoing energy must be determined based on
-tabulated or parameterized data. The `ENDF-6 Format <endf102>`_ specifies a
+tabulated or parameterized data. The `ENDF-6 Format`_ specifies a
 variety of ways that the secondary energy distribution can be represented. ENDF
 File 5 contains uncorrelated energy distribution whereas ENDF File 6 contains
 correlated energy-angle distributions. The ACE format specifies its own
@@ -1403,7 +1403,7 @@ given analytically by
 .. math::
     :label: coherent-elastic-angle
 
-    \mu = 1 - \frac{E_i}{E}
+    \mu = 1 - \frac{2E_i}{E}
 
 where :math:`E_i` is the energy of the Bragg edge that scattered the neutron.
 
@@ -1416,8 +1416,7 @@ For incoherent elastic scattering, OpenMC has two methods for calculating the
 cosine of the angle of scattering. The first method uses the Debye-Waller
 integral, :math:`W'`, and the characteristic bound cross section as given
 directly in an ENDF-6 formatted file. In this case, the cosine of the angle of
-scattering can be sampled by inverting equation 7.4 from the `ENDF-6 Format
-Manual <endf102>`_:
+scattering can be sampled by inverting equation 7.4 from the `ENDF-6 Format`_:
 
 .. math::
     :label: incoherent-elastic-mu-exact
@@ -1627,6 +1626,8 @@ cross sections.
 Variance Reduction Techniques
 -----------------------------
 
+.. _survival_biasing:
+
 Survival Biasing
 ----------------
 
@@ -1677,6 +1678,47 @@ default, the cutoff weight in OpenMC is :math:`w_c = 0.25` and the survival
 weight is :math:`w_s = 1.0`. These parameters vary from one Monte Carlo code to
 another.
 
+Weight Windows
+--------------
+
+In fixed source problems, it can often be difficult to obtain sufficiently low
+variance on tallies in regions that are far from the source. The `weight window
+method <https://doi.org/10.13182/FST84-A23082>`_ was developed to increase the
+population of particles in important spatial regions and energy ranges by
+controlling particle weights. Each spatial region and particle energy range is
+assigned upper and lower weight bounds, :math:`w_u` and :math:`w_\ell`,
+respectively. When a particle is in a given spatial region / energy range, its
+weight, :math:`w`, is compared to the lower and upper bounds. If the weight of
+the particle is above the upper weight bound, the particle is split into
+:math:`N` particles, where
+
+.. math::
+    :label: ww-split
+
+    N = \min(N_{max}, \lceil w/w_u \rceil)
+
+and :math:`N_{max}` is a user-defined maximum number of splits. To ensure a
+fair game, each of the :math:`N` particles is assigned a weight :math:`w/N`. If
+the weight is below :math:`w_\ell`, it is Russian rouletted as described in
+:ref:`survival_biasing` with a survival weight :math:`w_s` that is set equal to
+
+.. math::
+    :label: ww-survival-weight
+
+    w_s = \min(N_{max} w, f_s w_l)
+
+where :math:`f_s` is a user-defined survival weight ratio greater than one.
+
+On top of the standard weight window method described above, OpenMC implements
+two additional checks intended to mitigate problems with long histories. First,
+particles with a weight that falls below some very small cutoff (defaults to
+:math:`10^{-38}`) are killed with no Russian rouletting. Additionally, the total
+number of splits experienced by a particle is tracked and if it reaches some
+maximum value, it is prohibited from splitting further.
+
+At present, OpenMC allows weight windows to be defined on all supported mesh
+types.
+
 .. only:: html
 
    .. rubric:: References
@@ -1709,7 +1751,7 @@ another.
 
 .. _PREPRO: https://www-nds.iaea.org/ndspub/endf/prepro/
 
-.. _endf102: https://www.oecd-nea.org/dbdata/data/manual-endf/endf102.pdf
+.. _ENDF-6 Format: https://www.oecd-nea.org/dbdata/data/manual-endf/endf102.pdf
 
 .. _Monte Carlo Sampler: https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-09721-MS
 

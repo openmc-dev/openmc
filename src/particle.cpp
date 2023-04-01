@@ -37,9 +37,39 @@
 
 namespace openmc {
 
+double Particle::speed() const
+{
+  // Determine mass in eV/c^2
+  double mass;
+  switch (this->type()) {
+  case ParticleType::neutron:
+    mass = MASS_NEUTRON_EV;
+    break;
+  case ParticleType::photon:
+    mass = 0.0;
+    break;
+  case ParticleType::electron:
+  case ParticleType::positron:
+    mass = MASS_ELECTRON_EV;
+    break;
+  }
+
+  // Calculate inverse of Lorentz factor
+  const double inv_gamma = mass / (this->E() + mass);
+
+  // Calculate speed via v = c * sqrt(1 - γ^-2)
+  return C_LIGHT * std::sqrt(1 - inv_gamma * inv_gamma);
+}
+
 void Particle::create_secondary(
   double wgt, Direction u, double E, ParticleType type)
 {
+  // If energy is below cutoff for this particle, don't create secondary
+  // particle
+  if (E < settings::energy_cutoff[static_cast<int>(type)]) {
+    return;
+  }
+
   secondary_bank().emplace_back();
 
   auto& bank {secondary_bank().back()};
@@ -48,6 +78,7 @@ void Particle::create_secondary(
   bank.r = r();
   bank.u = u;
   bank.E = settings::run_CE ? E : g();
+  bank.time = time();
 
   n_bank_second() += 1;
 }
@@ -57,7 +88,6 @@ void Particle::from_source(const SourceSite* src)
   // Reset some attributes
 
   clear();
-  alive() = true;
   surface() = 0;
   cell_born() = C_NONE;
   material() = C_NONE;
@@ -83,6 +113,8 @@ void Particle::from_source(const SourceSite* src)
     E() = data::mg.energy_bin_avg_[g()];
   }
   E_last() = E();
+  time() = src->time;
+  time_last() = src->time;
 }
 
 void Particle::event_calculate_xs()
@@ -95,6 +127,7 @@ void Particle::event_calculate_xs()
   E_last() = E();
   u_last() = u();
   r_last() = r();
+  time_last() = time();
 
   // Reset event variables
   event() = TallyEvent::KILL;
@@ -166,10 +199,11 @@ void Particle::event_advance()
   // Select smaller of the two distances
   double distance = std::min(boundary().distance, collision_distance());
 
-  // Advance particle
+  // Advance particle in space and time
   for (int j = 0; j < n_coord(); ++j) {
     coord(j).r += distance * coord(j).u;
   }
+  this->time() += distance / this->speed();
 
   // Score track-length tallies
   if (!model::active_tracklength_tallies.empty()) {
@@ -304,11 +338,16 @@ void Particle::event_revive_from_secondary()
   if (n_event() == MAX_EVENTS) {
     warning("Particle " + std::to_string(id()) +
             " underwent maximum number of events.");
-    alive() = false;
+    wgt() = 0.0;
   }
 
   // Check for secondary particles if this particle is dead
   if (!alive()) {
+    // Write final position for this particle
+    if (write_track()) {
+      write_particle_track(*this);
+    }
+
     // If no secondary particles, break out of event loop
     if (secondary_bank().empty())
       return;
@@ -334,7 +373,6 @@ void Particle::event_death()
 
   // Finish particle track output.
   if (write_track()) {
-    write_particle_track(*this);
     finalize_particle_track(*this);
   }
 
@@ -411,6 +449,7 @@ void Particle::cross_surface()
     site.r = r();
     site.u = u();
     site.E = E();
+    site.time = time();
     site.wgt = wgt();
     site.delayed_group = delayed_group();
     site.surf_id = surf->id_;
@@ -463,8 +502,7 @@ void Particle::cross_surface()
   // ==========================================================================
   // COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS
 
-  // Remove lower coordinate levels and assignment of surface
-  surface() = 0;
+  // Remove lower coordinate levels
   n_coord() = 1;
   bool found = exhaustive_find_cell(*this);
 
@@ -474,6 +512,7 @@ void Particle::cross_surface()
     // the particle is really traveling tangent to a surface, if we move it
     // forward a tiny bit it should fix the problem.
 
+    surface() = 0;
     n_coord() = 1;
     r() += TINY_BIT * u();
 
@@ -491,9 +530,6 @@ void Particle::cross_surface()
 
 void Particle::cross_vacuum_bc(const Surface& surf)
 {
-  // Kill the particle
-  alive() = false;
-
   // Score any surface current tallies -- note that the particle is moved
   // forward slightly so that if the mesh boundary is on the surface, it is
   // still processed
@@ -508,6 +544,9 @@ void Particle::cross_vacuum_bc(const Surface& surf)
 
   // Score to global leakage tally
   keff_tally_leakage() += wgt();
+
+  // Kill the particle
+  wgt() = 0.0;
 
   // Display message
   if (settings::verbosity >= 10 || trace()) {
@@ -626,7 +665,7 @@ void Particle::mark_as_lost(const char* message)
   write_restart();
 
   // Increment number of lost particles
-  alive() = false;
+  wgt() = 0.0;
 #pragma omp atomic
   simulation::n_lost_particles += 1;
 
@@ -693,6 +732,7 @@ void Particle::write_restart() const
       write_dataset(file_id, "energy", simulation::source_bank[i - 1].E);
       write_dataset(file_id, "xyz", simulation::source_bank[i - 1].r);
       write_dataset(file_id, "uvw", simulation::source_bank[i - 1].u);
+      write_dataset(file_id, "time", simulation::source_bank[i - 1].time);
     } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
       // re-sample using rng random number seed used to generate source particle
       int64_t id = (simulation::total_gen + overall_generation() - 1) *
@@ -705,6 +745,7 @@ void Particle::write_restart() const
       write_dataset(file_id, "energy", site.E);
       write_dataset(file_id, "xyz", site.r);
       write_dataset(file_id, "uvw", site.u);
+      write_dataset(file_id, "time", site.time);
     }
 
     // Close file

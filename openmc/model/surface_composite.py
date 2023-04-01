@@ -1,8 +1,16 @@
 from abc import ABC, abstractmethod
 from copy import copy
+from math import sqrt, pi, sin, cos, isclose
+import warnings
+import operator
+
+import numpy as np
+from scipy.spatial import ConvexHull, Delaunay
+from matplotlib.path import Path
 
 import openmc
-from openmc.checkvalue import check_greater_than, check_value
+from openmc.checkvalue import (check_greater_than, check_value,
+                               check_iterable_type, check_length)
 
 
 class CompositeSurface(ABC):
@@ -49,6 +57,299 @@ class CompositeSurface(ABC):
     @abstractmethod
     def __neg__(self):
         """Return the negative half-space of the composite surface."""
+
+
+class CylinderSector(CompositeSurface):
+    """Infinite cylindrical sector composite surface.
+
+    A cylinder sector is composed of two cylindrical and two planar surfaces.
+    The cylindrical surfaces are concentric, and the planar surfaces intersect
+    the central axis of the cylindrical surfaces.
+
+    This class acts as a proper surface, meaning that unary `+` and `-`
+    operators applied to it will produce a half-space. The negative
+    side is defined to be the region inside of the cylinder sector.
+
+    .. versionadded:: 0.13.1
+
+    Parameters
+    ----------
+    r1 : float
+        Inner radius of sector. Must be less than r2.
+    r2 : float
+        Outer radius of sector. Must be greater than r1.
+    theta1 : float
+        Clockwise-most bound of sector in degrees. Assumed to be in the
+        counterclockwise direction with respect to the first basis axis
+        (+y, +z, or +x). Must be less than :attr:`theta2`.
+    theta2 : float
+        Counterclockwise-most bound of sector in degrees. Assumed to be in the
+        counterclockwise direction with respect to the first basis axis
+        (+y, +z, or +x). Must be greater than :attr:`theta1`.
+    center : iterable of float
+       Coordinate for central axes of cylinders in the (y, z), (z, x), or (x, y)
+       basis. Defaults to (0,0).
+    axis : {'x', 'y', 'z'}
+        Central axis of the cylinders defining the inner and outer surfaces of
+        the sector. Defaults to 'z'.
+    **kwargs : dict
+        Keyword arguments passed to the :class:`Cylinder` and
+        :class:`Plane` constructors.
+
+    Attributes
+    ----------
+    outer_cyl : openmc.ZCylinder, openmc.YCylinder, or openmc.XCylinder
+        Outer cylinder surface.
+    inner_cyl : openmc.ZCylinder, openmc.YCylinder, or openmc.XCylinder
+        Inner cylinder surface.
+    plane1 : openmc.Plane
+        Plane at angle :math:`\\theta_1` relative to the first basis axis.
+    plane2 : openmc.Plane
+        Plane at angle :math:`\\theta_2` relative to the first basis axis.
+
+    """
+
+    _surface_names = ('outer_cyl', 'inner_cyl', 'plane1', 'plane2')
+
+    def __init__(self,
+                 r1,
+                 r2,
+                 theta1,
+                 theta2,
+                 center=(0.,0.),
+                 axis='z',
+                 **kwargs):
+
+        if r2 <= r1:
+            raise ValueError(f'r2 must be greater than r1.')
+
+        if theta2 <= theta1:
+            raise ValueError(f'theta2 must be greater than theta1.')
+
+        phi1 = pi / 180 * theta1
+        phi2 = pi / 180 * theta2
+
+        # Coords for axis-perpendicular planes
+        p1 = np.array([0., 0., 1.])
+
+        p2_plane1 = np.array([r1 * cos(phi1), r1 * sin(phi1), 0.])
+        p3_plane1 = np.array([r2 * cos(phi1), r2 * sin(phi1), 0.])
+
+        p2_plane2 = np.array([r1 * cos(phi2), r1 * sin(phi2), 0.])
+        p3_plane2 = np.array([r2 * cos(phi2), r2 * sin(phi2), 0.])
+
+        points = [p1, p2_plane1, p3_plane1, p2_plane2, p3_plane2]
+        if axis == 'z':
+            coord_map = [0, 1, 2]
+            self.inner_cyl = openmc.ZCylinder(*center, r1, **kwargs)
+            self.outer_cyl = openmc.ZCylinder(*center, r2, **kwargs)
+        elif axis == 'y':
+            coord_map = [1, 2, 0]
+            self.inner_cyl = openmc.YCylinder(*center, r1, **kwargs)
+            self.outer_cyl = openmc.YCylinder(*center, r2, **kwargs)
+        elif axis == 'x':
+            coord_map = [2, 0, 1]
+            self.inner_cyl = openmc.XCylinder(*center, r1, **kwargs)
+            self.outer_cyl = openmc.XCylinder(*center, r2, **kwargs)
+
+        for p in points:
+            p[:] = p[coord_map]
+
+        self.plane1 = openmc.Plane.from_points(p1, p2_plane1, p3_plane1,
+                                               **kwargs)
+        self.plane2 = openmc.Plane.from_points(p1, p2_plane2, p3_plane2,
+                                               **kwargs)
+
+    @classmethod
+    def from_theta_alpha(cls,
+                         r1,
+                         r2,
+                         theta,
+                         alpha,
+                         center = (0.,0.),
+                         axis='z',
+                         **kwargs):
+        r"""Alternate constructor for :class:`CylinderSector`. Returns a
+        :class:`CylinderSector` object based on a central angle :math:`\theta`
+        and an angular offset :math:`\alpha`. Note that
+        :math:`\theta_1 = \alpha` and :math:`\theta_2 = \alpha + \theta`.
+
+        Parameters
+        ----------
+        r1 : float
+            Inner radius of sector. Must be less than r2.
+        r2 : float
+            Outer radius of sector. Must be greater than r1.
+        theta : float
+            Central angle, :math:`\theta`, of the sector in degrees. Must be
+            greater that 0 and less than 360.
+        alpha : float
+            Angular offset, :math:`\alpha`, of sector in degrees.
+            The offset is in the counter-clockwise direction
+            with respect to the first basis axis (+y, +z, or +x). Note that
+            negative values translate to an offset in the clockwise direction.
+        center : iterable of float
+            Coordinate for central axes of cylinders in the (y, z), (z, x), or (x, y)
+            basis. Defaults to (0,0).
+        axis : {'x', 'y', 'z'}
+            Central axis of the cylinders defining the inner and outer surfaces
+            of the sector. Defaults to 'z'.
+        **kwargs : dict
+            Keyword arguments passed to the :class:`Cylinder` and
+            :class:`Plane` constructors.
+
+        Returns
+        -------
+        CylinderSector
+            CylinderSector with the given central angle at the given
+            offset.
+        """
+        if theta >= 360. or theta <= 0:
+            raise ValueError(f'theta must be less than 360 and greater than 0.')
+
+        theta1 = alpha
+        theta2 = alpha + theta
+
+        return cls(r1, r2, theta1, theta2, center=center, axis=axis, **kwargs)
+
+    def __neg__(self):
+        return -self.outer_cyl & +self.inner_cyl & -self.plane1 & +self.plane2
+
+    def __pos__(self):
+        return +self.outer_cyl | -self.inner_cyl | +self.plane1 | -self.plane2
+
+
+class IsogonalOctagon(CompositeSurface):
+    r"""Infinite isogonal octagon composite surface
+
+    An isogonal octagon is composed of eight planar surfaces. The prism is
+    parallel to the x, y, or z axis. The remaining two axes (y and z, z and x,
+    or x and y) serve as a basis for constructing the surfaces. Two surfaces
+    are parallel to the first basis axis, two surfaces are parallel
+    to the second basis axis, and the remaining four surfaces intersect both
+    basis axes at 45 degree angles.
+
+    This class acts as a proper surface, meaning that unary `+` and `-`
+    operators applied to it will produce a half-space. The negative side is
+    defined to be the region inside of the octogonal prism.
+
+    .. versionadded:: 0.13.1
+
+    Parameters
+    ----------
+    center : iterable of float
+        Coordinate for the central axis of the octagon in the
+        (y, z), (z, x), or (x, y) basis.
+    r1 : float
+        Half-width of octagon across its basis axis-parallel sides in units
+        of cm. Must be less than :math:`r_2\sqrt{2}`.
+    r2 : float
+        Half-width of octagon across its basis axis intersecting sides in
+        units of cm. Must be less than than :math:`r_1\sqrt{2}`.
+    axis : {'x', 'y', 'z'}
+        Central axis of octagon. Defaults to 'z'
+    **kwargs
+        Keyword arguments passed to underlying plane classes
+
+    Attributes
+    ----------
+    top : openmc.ZPlane, openmc.XPlane, or openmc.YPlane
+        Top planar surface of octagon
+    bottom : openmc.ZPlane, openmc.XPlane, or openmc.YPlane
+        Bottom planar surface of octagon
+    right : openmc.YPlane, openmc.ZPlane, or openmc.XPlane
+        Right planar surface of octagon
+    left : openmc.YPlane, openmc.ZPlane, or openmc.XPlane
+        Left planar surface of octagon
+    upper_right : openmc.Plane
+        Upper right planar surface of octagon
+    lower_right : openmc.Plane
+        Lower right planar surface of octagon
+    lower_left : openmc.Plane
+        Lower left planar surface of octagon
+    upper_left : openmc.Plane
+        Upper left planar surface of octagon
+
+    """
+
+    _surface_names = ('top', 'bottom',
+                      'upper_right', 'lower_left',
+                      'right', 'left',
+                      'lower_right', 'upper_left')
+
+    def __init__(self, center, r1, r2, axis='z', **kwargs):
+        c1, c2 = center
+
+        # Coords for axis-perpendicular planes
+        ctop = c1 + r1
+        cbottom = c1 - r1
+
+        cright = c2 + r1
+        cleft = c2 - r1
+
+        # Side lengths
+        if r2 > r1 * sqrt(2):
+            raise ValueError(f'r2 is greater than sqrt(2) * r1. Octagon' +
+                             ' may be erroneous.')
+        if r1 > r2 * sqrt(2):
+            raise ValueError(f'r1 is greater than sqrt(2) * r2. Octagon' +
+                             ' may be erroneous.')
+
+        L_basis_ax = (r2 * sqrt(2) - r1)
+
+        # Coords for quadrant planes
+        p1_ur = np.array([L_basis_ax, r1, 0.])
+        p2_ur = np.array([r1, L_basis_ax, 0.])
+        p3_ur = np.array([r1, L_basis_ax, 1.])
+
+        p1_lr = np.array([r1, -L_basis_ax, 0.])
+        p2_lr = np.array([L_basis_ax, -r1, 0.])
+        p3_lr = np.array([L_basis_ax, -r1, 1.])
+
+        points = [p1_ur, p2_ur, p3_ur, p1_lr, p2_lr, p3_lr]
+
+        # Orientation specific variables
+        if axis == 'z':
+            coord_map = [0, 1, 2]
+            self.top = openmc.YPlane(ctop, **kwargs)
+            self.bottom = openmc.YPlane(cbottom, **kwargs)
+            self.right = openmc.XPlane(cright, **kwargs)
+            self.left = openmc.XPlane(cleft, **kwargs)
+        elif axis == 'y':
+            coord_map = [1, 2, 0]
+            self.top = openmc.XPlane(ctop, **kwargs)
+            self.bottom = openmc.XPlane(cbottom, **kwargs)
+            self.right = openmc.ZPlane(cright, **kwargs)
+            self.left = openmc.ZPlane(cleft, **kwargs)
+        elif axis == 'x':
+            coord_map = [2, 0, 1]
+            self.top = openmc.ZPlane(ctop, **kwargs)
+            self.bottom = openmc.ZPlane(cbottom, **kwargs)
+            self.right = openmc.YPlane(cright, **kwargs)
+            self.left = openmc.YPlane(cleft, **kwargs)
+
+        # Put our coordinates in (x,y,z) order
+        for p in points:
+            p[:] = p[coord_map]
+
+        self.upper_right = openmc.Plane.from_points(p1_ur, p2_ur, p3_ur,
+                                                    **kwargs)
+        self.lower_right = openmc.Plane.from_points(p1_lr, p2_lr, p3_lr,
+                                                    **kwargs)
+        self.lower_left = openmc.Plane.from_points(-p1_ur, -p2_ur, -p3_ur,
+                                                   **kwargs)
+        self.upper_left = openmc.Plane.from_points(-p1_lr, -p2_lr, -p3_lr,
+                                                   **kwargs)
+
+    def __neg__(self):
+        return -self.top & +self.bottom & -self.right & +self.left & \
+            +self.upper_right & +self.lower_right & -self.lower_left & \
+            -self.upper_left
+
+    def __pos__(self):
+        return +self.top | -self.bottom | +self.right | -self.left | \
+            -self.upper_right | -self.lower_right | +self.lower_left | \
+            +self.upper_left
 
 
 class RightCircularCylinder(CompositeSurface):
@@ -160,10 +461,10 @@ class RectangularParallelepiped(CompositeSurface):
         self.zmax = openmc.ZPlane(z0=zmax, **kwargs)
 
     def __neg__(self):
-        return +self.xmin & -self.xmax & +self.ymin & -self.ymax & +self.zmin & -self.zmax
+        return -self.xmax & +self.xmin & -self.ymax & +self.ymin & -self.zmax & +self.zmin
 
     def __pos__(self):
-        return -self.xmin | +self.xmax | -self.ymin | +self.ymax | -self.zmin | +self.zmax
+        return +self.xmax | -self.xmin | +self.ymax | -self.ymin | +self.zmax | -self.zmin
 
 
 class XConeOneSided(CompositeSurface):
@@ -326,3 +627,455 @@ class ZConeOneSided(CompositeSurface):
 
     __neg__ = XConeOneSided.__neg__
     __pos__ = XConeOneSided.__pos__
+
+
+class Polygon(CompositeSurface):
+    """Create a polygon composite surface from a path of closed points.
+
+    .. versionadded:: 0.13.3
+
+    Parameters
+    ----------
+    points : np.ndarray
+        An Nx2 array of points defining the vertices of the polygon.
+    basis : {'rz', 'xy', 'yz', 'xz'}, optional
+        2D basis set for the polygon. The polygon is two dimensional and has
+        infinite extent in the third (unspecified) dimension. For example, the
+        'xy' basis produces a polygon with infinite extent in the +/- z
+        direction. For the 'rz' basis the phi extent is infinite, thus forming
+        an axisymmetric surface.
+
+    Attributes
+    ----------
+    points : np.ndarray
+        An Nx2 array of points defining the vertices of the polygon.
+    basis : {'rz', 'xy', 'yz', 'xz'}
+        2D basis set for the polygon.
+    regions : list of openmc.Region
+        A list of :class:`openmc.Region` objects, one for each of the convex polygons
+        formed during the decomposition of the input polygon.
+    region : openmc.Union
+        The union of all the regions comprising the polygon.
+    """
+
+    def __init__(self, points, basis='rz'):
+        check_value('basis', basis, ('xy', 'yz', 'xz', 'rz'))
+        self._basis = basis
+
+        # Create a constrained triangulation of the validated points.
+        # The constrained triangulation is set to the _tri attribute
+        self._constrain_triangulation(self._validate_points(points))
+
+        # Decompose the polygon into groups of simplices forming convex subsets
+        # and get the sets of (surface, operator) pairs defining the polygon
+        self._surfsets = self._decompose_polygon_into_convex_sets()
+
+        # Set surface names as required by CompositeSurface protocol
+        surfnames = []
+        i = 0
+        for surfset in self._surfsets:
+            for surf, op, on_boundary in surfset:
+                if on_boundary:
+                    setattr(self, f'surface_{i}', surf)
+                    surfnames.append(f'surface_{i}')
+                    i += 1
+        self._surfnames = tuple(surfnames)
+
+        # Generate a list of regions whose union represents the polygon.
+        regions = []
+        for surfs_ops in self._surfsets:
+            regions.append([op(surf) for surf, op, _ in surfs_ops])
+        self._regions = [openmc.Intersection(regs) for regs in regions]
+
+        # Create the union of all the convex subsets
+        self._region = openmc.Union(self._regions)
+
+    def __neg__(self):
+        return self._region
+
+    def __pos__(self):
+        return ~self._region
+
+    @property
+    def _surface_names(self):
+        return self._surfnames
+
+    @CompositeSurface.boundary_type.setter
+    def boundary_type(self, boundary_type):
+        if boundary_type != 'transmission':
+            warnings.warn("Setting boundary_type to a value other than "
+                          "'transmission' on Polygon composite surfaces can "
+                          "result in unintended behavior. Please use the "
+                          "regions property of the Polygon to generate "
+                          "individual openmc.Cell objects to avoid unwanted "
+                          "behavior.")
+        for name in self._surface_names:
+            getattr(self, name).boundary_type = boundary_type
+
+    @property
+    def points(self):
+        return self._tri.points
+
+    @property
+    def basis(self):
+        return self._basis
+
+    @property
+    def _normals(self):
+        """Generate the outward normal unit vectors for the polygon."""
+        # Rotation matrix for 90 degree clockwise rotation (-90 degrees about z
+        # axis for an 'xy' basis).
+        rotation = np.array([[0., 1.], [-1., 0.]])
+        # Get the unit vectors that point from one point in the polygon to the
+        # next given that they are ordered counterclockwise and that the final
+        # point is connected to the first point
+        tangents = np.diff(self.points, axis=0, append=[self.points[0, :]])
+        tangents /= np.linalg.norm(tangents, axis=-1, keepdims=True)
+        # Rotate the tangent vectors clockwise by 90 degrees, which for a
+        # counter-clockwise ordered polygon will produce the outward normal
+        # vectors.
+        return rotation.dot(tangents.T).T
+
+    @property
+    def _equations(self):
+        normals = self._normals
+        equations = np.empty((normals.shape[0], 3))
+        equations[:, :2] = normals
+        equations[:, 2] = -np.sum(normals*self.points, axis=-1)
+        return equations
+
+    @property
+    def regions(self):
+        return self._regions
+
+    @property
+    def region(self):
+        return self._region
+
+    def _validate_points(self, points):
+        """Ensure the closed path defined by points does not intersect and is
+        oriented counter-clockwise.
+
+        Parameters
+        ----------
+        points : np.ndarray (Nx2)
+            An Nx2 array of coordinate pairs describing the vertices.
+
+        Returns
+        -------
+        ordered_points : the input points ordered counter-clockwise
+        """
+        points = np.asarray(points, dtype=float)
+        check_iterable_type('points', points, float, min_depth=2, max_depth=2)
+        check_length('points', points[0, :], 2, 2)
+
+        # If the last point is the same as the first, remove it and make sure
+        # there are still at least 3 points for a valid polygon.
+        if np.allclose(points[0, :], points[-1, :]):
+            points = points[:-1, :]
+        check_length('points', points, 3)
+
+        if len(points) != len(np.unique(points, axis=0)):
+            raise ValueError('Duplicate points were detected in the Polygon input')
+
+        # Order the points counter-clockwise (necessary for offset method)
+        # Calculates twice the signed area of the polygon using the "Shoelace
+        # Formula" https://en.wikipedia.org/wiki/Shoelace_formula
+        # If signed area is positive the curve is oriented counter-clockwise.
+        # If the signed area is negative the curve is oriented clockwise.
+        xpts, ypts = points.T
+        if np.sum(ypts*(np.roll(xpts, 1) - np.roll(xpts, -1))) < 0:
+            points = points[::-1, :]
+
+        # Check if polygon is self-intersecting by comparing edges pairwise
+        n = len(points)
+        for i in range(n):
+            p0 = points[i, :]
+            p1 = points[(i + 1) % n, :]
+            for j in range(i + 1, n):
+                p2 = points[j, :]
+                p3 = points[(j + 1) % n, :]
+                # Compute orientation of p0 wrt p2->p3 line segment
+                cp0 = np.cross(p3-p0, p2-p0)
+                # Compute orientation of p1 wrt p2->p3 line segment
+                cp1 = np.cross(p3-p1, p2-p1)
+                # Compute orientation of p2 wrt p0->p1 line segment
+                cp2 = np.cross(p1-p2, p0-p2)
+                # Compute orientation of p3 wrt p0->p1 line segment
+                cp3 = np.cross(p1-p3, p0-p3)
+
+                # Group cross products in an array and find out how many are 0
+                cross_products = np.array([[cp0, cp1], [cp2, cp3]])
+                cps_near_zero = np.isclose(cross_products, 0).astype(int)
+                num_zeros = np.sum(cps_near_zero)
+
+                # Topologies of 2 finite line segments categorized by the number
+                # of zero-valued cross products:
+                #
+                # 0: No 3 points lie on the same line
+                # 1: 1 point lies on the same line defined by the other line
+                # segment, but is not coincident with either of the points
+                # 2: 2 points are coincident, but the line segments are not
+                # collinear which guarantees no intersection
+                # 3: not possible, except maybe floating point issues?
+                # 4: Both line segments are collinear, simply need to check if
+                # they overlap or not
+                # adapted from algorithm linked below and modified to only
+                # consider intersections on the interior of line segments as
+                # proper intersections: i.e. segments sharing end points do not
+                # count as intersections.
+                # https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
+
+                if num_zeros == 0:
+                    # If the orientations of p0 and p1 have opposite signs
+                    # and the orientations of p2 and p3 have opposite signs
+                    # then there is an intersection.
+                    if all(np.prod(cross_products, axis=-1) < 0):
+                        raise ValueError('Polygon cannot be self-intersecting')
+                    continue
+
+                elif num_zeros == 1:
+                    # determine which line segment has 2 out of the 3 collinear
+                    # points
+                    idx = np.argwhere(np.sum(cps_near_zero, axis=-1) == 0)
+                    if np.prod(cross_products[idx, :]) < 0:
+                        raise ValueError('Polygon cannot be self-intersecting')
+                    continue
+
+                elif num_zeros == 2:
+                    continue
+
+                elif num_zeros == 3:
+                    warnings.warn('Unclear if Polygon is self-intersecting')
+                    continue
+
+                else:
+                    # All 4 cross products are zero
+                    # Determine number of unique points, x span and y span for
+                    # both line segments
+                    xmin1, xmax1 = min(p0[0], p1[0]), max(p0[0], p1[0])
+                    ymin1, ymax1 = min(p0[1], p1[1]), max(p0[1], p1[1])
+                    xmin2, xmax2 = min(p2[0], p3[0]), max(p2[0], p3[0])
+                    ymin2, ymax2 = min(p2[1], p3[1]), max(p2[1], p3[1])
+                    xlap = xmin1 < xmax2 and xmin2 < xmax1
+                    ylap = ymin1 < ymax2 and ymin2 < ymax1
+                    if xlap or ylap:
+                        raise ValueError('Polygon cannot be self-intersecting')
+                    continue
+
+        return points
+
+    def _constrain_triangulation(self, points, depth=0):
+        """Generate a constrained triangulation by ensuring all edges of the
+        Polygon are contained within the simplices.
+
+        Parameters
+        ----------
+        points : np.ndarray (Nx2)
+            An Nx2 array of coordinate pairs describing the vertices. These
+            points represent a planar straight line graph.
+
+        Returns
+        -------
+        None
+        """
+        # Only attempt the triangulation up to 3 times.
+        if depth > 2:
+            raise RuntimeError('Could not create a valid triangulation after 3'
+                               ' attempts')
+
+        tri = Delaunay(points, qhull_options='QJ')
+        # Loop through the boundary edges of the polygon. If an edge is not
+        # included in the triangulation, break it into two line segments.
+        n = len(points)
+        new_pts = []
+        for i, j in zip(range(n), range(1, n +1)):
+            # If both vertices of any edge are not found in any simplex, insert
+            # a new point between them.
+            if not any([i in s and j % n in s for s in tri.simplices]):
+                newpt = (points[i, :] + points[j % n, :]) / 2
+                new_pts.append((j, newpt))
+
+        # If all the edges are included in the triangulation set it, otherwise
+        # try again with additional points inserted on offending edges.
+        if not new_pts:
+            self._tri = tri
+        else:
+            for i, pt in new_pts[::-1]:
+                points = np.insert(points, i, pt, axis=0)
+            self._constrain_triangulation(points, depth=depth + 1)
+
+    def _group_simplices(self, neighbor_map, group=None):
+        """Generate a convex grouping of simplices.
+
+        Parameters
+        ----------
+        neighbor_map : dict
+            A map whose keys are simplex indices for simplices inside the polygon
+            and whose values are a list of simplex indices that neighbor this
+            simplex and are also inside the polygon.
+        group : list
+            A list of simplex indices that comprise the current convex group.
+
+        Returns
+        -------
+        group : list
+            The list of simplex indices that comprise the complete convex group.
+        """
+        # If neighbor_map is empty there's nothing left to do
+        if not neighbor_map:
+            return group
+        # If group is empty, grab the next simplex in the dictionary and recurse
+        if group is None:
+            sidx = next(iter(neighbor_map))
+            return self._group_simplices(neighbor_map, group=[sidx])
+        # Otherwise use the last simplex in the group
+        else:
+            sidx = group[-1]
+            # Remove current simplex from dictionary since it is in a group
+            neighbors = neighbor_map.pop(sidx, [])
+            # For each neighbor check if it is part of the same convex
+            # hull as the rest of the group. If yes, recurse. If no, continue on.
+            for n in neighbors:
+                if n in group or neighbor_map.get(n, None) is None:
+                    continue
+                test_group = group + [n]
+                test_point_idx = np.unique(self._tri.simplices[test_group, :])
+                test_points = self.points[test_point_idx]
+                # If test_points are convex keep adding to this group
+                if len(test_points) == len(ConvexHull(test_points).vertices):
+                    group = self._group_simplices(neighbor_map, group=test_group)
+            return group
+
+    def _get_convex_hull_surfs(self, qhull):
+        """Generate a list of surfaces given by a set of linear equations
+
+        Parameters
+        ----------
+        qhull : scipy.spatial.ConvexHull
+            A ConvexHull object representing the sub-region of the polygon.
+
+        Returns
+        -------
+        surfs_ops : list of (surface, operator) tuples
+
+        """
+        basis = self.basis
+        boundary_eqns = self._equations
+        # Collect surface/operator pairs such that the intersection of the
+        # regions defined by these pairs is the inside of the polygon.
+        surfs_ops = []
+        # hull facet equation: dx*x + dy*y + c = 0
+        for dx, dy, c in qhull.equations:
+            # check if this facet is on the boundary of the polygon
+            facet_eq = np.array([dx, dy, c])
+            on_boundary = any([np.allclose(facet_eq, eq) for eq in boundary_eqns])
+            # Check if the facet is horizontal
+            if isclose(dx, 0, abs_tol=1e-8):
+                if basis in ('xz', 'yz', 'rz'):
+                    surf = openmc.ZPlane(z0=-c/dy)
+                else:
+                    surf = openmc.YPlane(y0=-c/dy)
+                # if (0, 1).(dx, dy) < 0 we want positive halfspace instead
+                op = operator.pos if dy < 0 else operator.neg
+            # Check if the facet is vertical
+            elif isclose(dy, 0, abs_tol=1e-8):
+                if basis in ('xy', 'xz'):
+                    surf = openmc.XPlane(x0=-c/dx)
+                elif basis == 'yz':
+                    surf = openmc.YPlane(y0=-c/dx)
+                else:
+                    surf = openmc.ZCylinder(r=-c/dx)
+                # if (1, 0).(dx, dy) < 0 we want positive halfspace instead
+                op = operator.pos if dx < 0 else operator.neg
+            # Otherwise the facet is at an angle
+            else:
+                op = operator.neg
+                if basis == 'xy':
+                    surf = openmc.Plane(a=dx, b=dy, d=-c)
+                elif basis == 'yz':
+                    surf = openmc.Plane(b=dx, c=dy, d=-c)
+                elif basis == 'xz':
+                    surf = openmc.Plane(a=dx, c=dy, d=-c)
+                else:
+                    y0 = -c/dy
+                    r2 = dy**2 / dx**2
+                    # Check if the *slope* of the facet is positive. If dy/dx < 0
+                    # then we want up to be True for the one-sided cones.
+                    up = dy / dx < 0
+                    surf = openmc.model.ZConeOneSided(z0=y0, r2=r2, up=up)
+                    # if (1, -1).(dx, dy) < 0 for up cones we want positive halfspace
+                    # if (1, 1).(dx, dy) < 0 for down cones we want positive halfspace
+                    # otherwise we keep the negative halfspace operator
+                    if (up and dx - dy < 0) or (not up and dx + dy < 0):
+                        op = operator.pos
+
+            surfs_ops.append((surf, op, on_boundary))
+
+        return surfs_ops
+
+    def _decompose_polygon_into_convex_sets(self):
+        """Decompose the Polygon into a set of convex polygons.
+
+        Returns
+        -------
+        surfsets : a list of lists of surface, operator pairs
+        """
+
+        # Get centroids of all the simplices and determine if they are inside
+        # the polygon defined by input vertices or not.
+        centroids = np.mean(self.points[self._tri.simplices], axis=1)
+        in_polygon = Path(self.points).contains_points(centroids)
+        self._in_polygon = in_polygon
+
+        # Build a map with keys of simplex indices inside the polygon whose
+        # values are lists of that simplex's neighbors also inside the
+        # polygon
+        neighbor_map = {}
+        for i, nlist in enumerate(self._tri.neighbors):
+            if not in_polygon[i]:
+                continue
+            neighbor_map[i] = [n for n in nlist if in_polygon[n] and n >=0]
+
+        # Get the groups of simplices forming convex polygons whose union
+        # comprises the full input polygon. While there are still simplices
+        # left in the neighbor map, group them together into convex sets.
+        groups = []
+        while neighbor_map:
+            groups.append(self._group_simplices(neighbor_map))
+        self._groups = groups
+
+        # Generate lists of (surface, operator) pairs for each convex
+        # sub-region.
+        surfsets = []
+        for group in groups:
+            # Find all the unique points in the convex group of simplices,
+            # generate the convex hull and find the resulting surfaces and
+            # unary operators that represent this convex subset of the polygon.
+            idx = np.unique(self._tri.simplices[group, :])
+            qhull = ConvexHull(self.points[idx, :])
+            surf_ops = self._get_convex_hull_surfs(qhull)
+            surfsets.append(surf_ops)
+        return surfsets
+
+    def offset(self, distance):
+        """Offset this polygon by a set distance
+
+        Parameters
+        ----------
+        distance : float
+            The distance to offset the polygon by. Positive is outward
+            (expanding) and negative is inward (shrinking).
+
+        Returns
+        -------
+        offset_polygon : openmc.model.Polygon
+        """
+        normals = np.insert(self._normals, 0, self._normals[-1, :], axis=0)
+        cos2theta = np.sum(normals[1:, :]*normals[:-1, :], axis=-1, keepdims=True)
+        costheta = np.cos(np.arccos(cos2theta) / 2)
+        nvec = (normals[1:, :] + normals[:-1, :])
+        unit_nvec = nvec / np.linalg.norm(nvec, axis=-1, keepdims=True)
+        disp_vec = distance / costheta * unit_nvec
+
+        return type(self)(self.points + disp_vec, basis=self.basis)

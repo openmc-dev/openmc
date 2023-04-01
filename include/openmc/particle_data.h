@@ -27,6 +27,9 @@ constexpr int MAX_DELAYED_GROUPS {8};
 
 constexpr double CACHE_INVALID {-1.0};
 
+// Maximum number of collisions/crossings
+constexpr int MAX_EVENTS {1000000};
+
 //==========================================================================
 // Aliases and type definitions
 
@@ -44,12 +47,31 @@ struct SourceSite {
   Position r;
   Direction u;
   double E;
-  double wgt;
-  int delayed_group;
-  int surf_id;
+  double time {0.0};
+  double wgt {1.0};
+  int delayed_group {0};
+  int surf_id {0};
   ParticleType particle;
   int64_t parent_id;
   int64_t progeny_id;
+};
+
+//! State of a particle used for particle track files
+struct TrackState {
+  Position r;           //!< Position in [cm]
+  Direction u;          //!< Direction
+  double E;             //!< Energy in [eV]
+  double time {0.0};    //!< Time in [s]
+  double wgt {1.0};     //!< Weight
+  int cell_id;          //!< Cell ID
+  int cell_instance;    //!< Cell instance
+  int material_id {-1}; //!< Material ID (default value indicates void)
+};
+
+//! Full history of a single particle's track states
+struct TrackStateHistory {
+  ParticleType particle;
+  std::vector<TrackState> states;
 };
 
 //! Saved ("banked") state of a particle, for nu-fission tallying
@@ -227,9 +249,10 @@ private:
   int g_last_;    //!< pre-collision energy group (MG only)
 
   // Other physical data
-  double wgt_ {1.0};  //!< particle weight
-  double mu_;         //!< angle of scatter
-  bool alive_ {true}; //!< is particle alive?
+  double wgt_ {1.0};       //!< particle weight
+  double mu_;              //!< angle of scatter
+  double time_ {0.0};      //!< time in [s]
+  double time_last_ {0.0}; //!< previous time in [s]
 
   // Other physical data
   Position r_last_current_; //!< coordinates of the last collision or
@@ -238,7 +261,6 @@ private:
   Position r_last_;         //!< previous coordinates
   Direction u_last_;        //!< previous direction coordinates
   double wgt_last_ {1.0};   //!< pre-collision particle weight
-  double wgt_absorb_ {0.0}; //!< weight absorbed for survival biasing
 
   // What event took place
   bool fission_ {false};  //!< did particle cause implicit fission
@@ -288,7 +310,7 @@ private:
 
   vector<FilterMatch> filter_matches_; // tally filter matches
 
-  vector<vector<Position>> tracks_; // tracks for outputting to file
+  vector<TrackStateHistory> tracks_; // tracks for outputting to file
 
   vector<NuBank> nu_bank_; // bank of most recently fissioned particles
 
@@ -303,6 +325,11 @@ private:
   double collision_distance_; // distance to particle's next closest collision
 
   int n_event_ {0}; // number of events executed in this particle's history
+
+  // Weight window information
+  int n_split_ {0}; // Number of times this particle has been split
+  double ww_factor_ {
+    0.0}; // Particle-specific factor for on-the-fly weight window adjustment
 
 // DagMC state variables
 #ifdef DAGMC
@@ -333,6 +360,10 @@ public:
   const int& cell_instance() const { return cell_instance_; }
   LocalCoord& coord(int i) { return coord_[i]; }
   const LocalCoord& coord(int i) const { return coord_[i]; }
+  const vector<LocalCoord>& coord() const { return coord_; }
+
+  LocalCoord& lowest_coord() { return coord_[n_coord_ - 1]; }
+  const LocalCoord& lowest_coord() const { return coord_[n_coord_ - 1]; }
 
   int& n_coord_last() { return n_coord_last_; }
   const int& n_coord_last() const { return n_coord_last_; }
@@ -349,9 +380,14 @@ public:
   const int& g_last() const { return g_last_; }
 
   double& wgt() { return wgt_; }
+  double wgt() const { return wgt_; }
   double& mu() { return mu_; }
   const double& mu() const { return mu_; }
-  bool& alive() { return alive_; }
+  double& time() { return time_; }
+  const double& time() const { return time_; }
+  double& time_last() { return time_last_; }
+  const double& time_last() const { return time_last_; }
+  bool alive() const { return wgt_ != 0.0; }
 
   Position& r_last_current() { return r_last_current_; }
   const Position& r_last_current() const { return r_last_current_; }
@@ -361,8 +397,6 @@ public:
   const Position& u_last() const { return u_last_; }
   double& wgt_last() { return wgt_last_; }
   const double& wgt_last() const { return wgt_last_; }
-  double& wgt_absorb() { return wgt_absorb_; }
-  const double& wgt_absorb() const { return wgt_absorb_; }
 
   bool& fission() { return fission_; }
   TallyEvent& event() { return event_; }
@@ -422,6 +456,12 @@ public:
   double& collision_distance() { return collision_distance_; }
   int& n_event() { return n_event_; }
 
+  int n_split() const { return n_split_; }
+  int& n_split() { return n_split_; }
+
+  double ww_factor() const { return ww_factor_; }
+  double& ww_factor() { return ww_factor_; }
+
 #ifdef DAGMC
   moab::DagMC::RayHistory& history() { return history_; }
   Direction& last_dir() { return last_dir_; }
@@ -463,6 +503,9 @@ public:
       level.reset();
     n_coord_ = 1;
   }
+
+  //! Get track information based on particle's current state
+  TrackState get_track_state() const;
 
   void zero_delayed_bank()
   {

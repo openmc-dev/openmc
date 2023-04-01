@@ -29,6 +29,7 @@
 #include "openmc/tallies/filter_sph_harm.h"
 #include "openmc/tallies/filter_sptl_legendre.h"
 #include "openmc/tallies/filter_surface.h"
+#include "openmc/tallies/filter_time.h"
 #include "openmc/tallies/filter_universe.h"
 #include "openmc/tallies/filter_zernike.h"
 #include "openmc/xml_interface.h"
@@ -70,21 +71,6 @@ Filter::~Filter()
   model::filter_map.erase(id_);
 }
 
-template<typename T>
-T* Filter::create(int32_t id)
-{
-  static_assert(std::is_base_of<Filter, T>::value,
-    "Type specified is not derived from openmc::Filter");
-  // Create filter and add to filters vector
-  auto filter = make_unique<T>();
-  auto ptr_out = filter.get();
-  model::tally_filters.emplace_back(std::move(filter));
-  // Assign ID
-  model::tally_filters.back()->set_id(id);
-
-  return ptr_out;
-}
-
 Filter* Filter::create(pugi::xml_node node)
 {
   // Copy filter id
@@ -114,7 +100,7 @@ Filter* Filter::create(const std::string& type, int32_t id)
   } else if (type == "cell") {
     return Filter::create<CellFilter>(id);
   } else if (type == "cellborn") {
-    return Filter::create<CellbornFilter>(id);
+    return Filter::create<CellBornFilter>(id);
   } else if (type == "cellfrom") {
     return Filter::create<CellFromFilter>(id);
   } else if (type == "cellinstance") {
@@ -151,6 +137,8 @@ Filter* Filter::create(const std::string& type, int32_t id)
     return Filter::create<SpatialLegendreFilter>(id);
   } else if (type == "sphericalharmonics") {
     return Filter::create<SphericalHarmonicsFilter>(id);
+  } else if (type == "time") {
+    return Filter::create<TimeFilter>(id);
   } else if (type == "universe") {
     return Filter::create<UniverseFilter>(id);
   } else if (type == "zernike") {
@@ -229,7 +217,7 @@ extern "C" int openmc_filter_get_type(int32_t index, char* type)
   if (int err = verify_filter(index))
     return err;
 
-  std::strcpy(type, model::tally_filters[index]->type().c_str());
+  std::strcpy(type, model::tally_filters[index]->type_str().c_str());
   return 0;
 }
 

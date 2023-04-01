@@ -13,9 +13,8 @@ openmc@anl.gov.
 ## Resources
 
 - [GitHub Repository](https://github.com/openmc-dev/openmc)
-- [Documentation](http://openmc.readthedocs.io/en/latest)
-- [User's Mailing List](openmc-users@googlegroups.com)
-- [Developer's Mailing List](openmc-dev@googlegroups.com)
+- [Documentation](http://docs.openmc.org/en/latest)
+- [Discussion Forum](https://openmc.discourse.group)
 - [Slack Community](https://openmc.slack.com/signup) (If you don't see your
   domain listed, contact openmc@anl.gov)
 
@@ -37,10 +36,10 @@ development team will be happy to discuss it.
 
 All changes to OpenMC happen through pull requests. For a full overview of the
 process, see the developer's guide section on [Contributing to
-OpenMC](http://openmc.readthedocs.io/en/latest/devguide/contributing.html).
+OpenMC](https://docs.openmc.org/en/latest/devguide/contributing.html).
 
 ## Code Style
 
 Before you run off to make changes to the code, please have a look at our [style
-guide](http://openmc.readthedocs.io/en/latest/devguide/styleguide.html), which
+guide](https://docs.openmc.org/en/latest/devguide/styleguide.html), which
 is used when reviewing new contributions.

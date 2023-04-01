@@ -1,11 +1,8 @@
-"""Regression tests for openmc.deplete.Results.transfer_volumes method.
-
-
-"""
+"""Regression tests for openmc.deplete.Results.transfer_volumes method."""
 
 from pytest import approx
 import openmc
-from openmc.deplete import PredictorIntegrator, ResultsList
+from openmc.deplete import PredictorIntegrator, Results
 
 from tests import dummy_operator
 
@@ -22,7 +19,7 @@ def test_transfer_volumes(run_in_tmpdir):
     PredictorIntegrator(op, dt, power).integrate()
 
     # Load the files
-    res = openmc.deplete.ResultsList.from_hdf5(op.output_dir / "depletion_results.h5")
+    res = openmc.deplete.Results(op.output_dir / "depletion_results.h5")
 
     # Create a dictionary of volumes to transfer
     res[0].volume['1'] = 1.5
@@ -40,7 +37,7 @@ def test_transfer_volumes(run_in_tmpdir):
     geometry = openmc.Geometry(root)
 
     # Transfer volumes
-    res[0].transfer_volumes(geometry)
+    res[0].transfer_volumes(openmc.Model(geometry))
 
     assert mat1.volume == 1.5
     assert mat2.volume is None

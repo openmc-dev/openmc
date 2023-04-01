@@ -15,6 +15,7 @@
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
+#include "openmc/plot.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
@@ -24,6 +25,7 @@
 #include "openmc/thermal.h"
 #include "openmc/timer.h"
 #include "openmc/volume_calc.h"
+#include "openmc/weight_windows.h"
 
 #include "xtensor/xview.hpp"
 
@@ -45,6 +47,8 @@ void free_memory()
   free_memory_mesh();
   free_memory_tally();
   free_memory_bank();
+  free_memory_plot();
+  free_memory_weight_windows();
   if (mpi::master) {
     free_memory_cmfd();
   }
@@ -70,6 +74,7 @@ int openmc_finalize()
   settings::check_overlaps = false;
   settings::confidence_intervals = false;
   settings::create_fission_neutrons = true;
+  settings::create_delayed_neutrons = true;
   settings::electron_treatment = ElectronTreatment::LED;
   settings::delayed_photon_scaling = true;
   settings::energy_cutoff = {0.0, 1000.0, 0.0, 0.0};
@@ -80,6 +85,8 @@ int openmc_finalize()
   settings::legendre_to_tabular_points = -1;
   settings::material_cell_offsets = true;
   settings::max_particles_in_flight = 100000;
+  settings::max_splits = 1000;
+  settings::max_tracks = 1000;
   settings::n_inactive = 0;
   settings::n_particles = -1;
   settings::output_summary = true;
@@ -111,13 +118,12 @@ int openmc_finalize()
   settings::verbosity = 7;
   settings::weight_cutoff = 0.25;
   settings::weight_survive = 1.0;
+  settings::weight_windows_on = false;
   settings::write_all_tracks = false;
   settings::write_initial_source = false;
 
   simulation::keff = 1.0;
-  simulation::n_lost_particles = 0;
   simulation::need_depletion_rx = false;
-  simulation::satisfy_triggers = false;
   simulation::total_gen = 0;
 
   simulation::entropy_mesh = nullptr;
@@ -128,6 +134,7 @@ int openmc_finalize()
   data::temperature_min = 0.0;
   data::temperature_max = INFTY;
   model::root_universe = -1;
+  model::plotter_seed = 1;
   openmc::openmc_set_seed(DEFAULT_SEED);
 
   // Deallocate arrays
@@ -164,8 +171,11 @@ int openmc_reset()
   simulation::k_col_tra = 0.0;
   simulation::k_abs_tra = 0.0;
   simulation::k_sum = {0.0, 0.0};
+  simulation::satisfy_triggers = false;
 
   settings::cmfd_run = false;
+
+  simulation::n_lost_particles = 0;
 
   return 0;
 }

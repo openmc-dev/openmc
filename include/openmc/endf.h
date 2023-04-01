@@ -126,6 +126,26 @@ private:
     debye_waller_; //!< Debye-Waller integral divided by atomic mass in [eV^-1]
 };
 
+//==============================================================================
+//! Sum of multiple 1D functions
+//==============================================================================
+
+class Sum1D : public Function1D {
+public:
+  // Constructors
+  explicit Sum1D(hid_t group);
+
+  //! Evaluate each function and sum results
+  //! \param[in] x independent variable
+  //! \return Function evaluated at x
+  double operator()(double E) const override;
+
+  const unique_ptr<Function1D>& functions(int i) const { return functions_[i]; }
+
+private:
+  vector<unique_ptr<Function1D>> functions_; //!< individual functions
+};
+
 //! Read 1D function from HDF5 dataset
 //! \param[in] group HDF5 group containing dataset
 //! \param[in] name Name of dataset

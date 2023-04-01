@@ -33,6 +33,17 @@ standard deviation.
   *Default*: false
 
 -------------------------------------
+``<create_delayed_neutrons>`` Element
+-------------------------------------
+
+The ``<create_delayed_neutrons>`` element indicates whether delayed neutrons
+are created in fission. If this element is set to "true", delayed neutrons
+will be created in fission events; otherwise only prompt neutrons will be
+created.
+
+  *Default*: true
+
+-------------------------------------
 ``<create_fission_neutrons>`` Element
 -------------------------------------
 
@@ -490,9 +501,13 @@ attributes/sub-elements:
       independent distributions of r-, phi-, and z-coordinates where phi is the
       azimuthal angle and the origin for the cylindrical coordinate system is
       specified by origin. A "spherical" spatial distribution specifies
-      independent distributions of r-, theta-, and phi-coordinates where theta
-      is the angle with respect to the z-axis, phi is the azimuthal angle, and
-      the sphere is centered on the coordinate (x0,y0,z0).
+      independent distributions of r-, cos_theta-, and phi-coordinates where
+      cos_theta is the cosine of the angle with respect to the z-axis, phi is
+      the azimuthal angle, and the sphere is centered on the coordinate
+      (x0,y0,z0). A "mesh" spatial distribution samples source sites from a mesh element
+      based on the relative strengths provided in the node. Source locations
+      within an element are sampled isotropically. If no strengths are provided,
+      the space within the mesh is uniformly sampled.
 
       *Default*: None
 
@@ -619,16 +634,17 @@ variable and whose sub-elements/attributes are as follows:
 
 :type:
   The type of the distribution. Valid options are "uniform", "discrete",
-  "tabular", "maxwell", and "watt". The "uniform" option produces variates
-  sampled from a uniform distribution over a finite interval. The "discrete"
-  option produces random variates that can assume a finite number of values
-  (i.e., a distribution characterized by a probability mass function). The
-  "tabular" option produces random variates sampled from a tabulated
+  "tabular", "maxwell", "watt", and "mixture". The "uniform" option produces
+  variates sampled from a uniform distribution over a finite interval. The
+  "discrete" option produces random variates that can assume a finite number
+  of values (i.e., a distribution characterized by a probability mass function).
+  The "tabular" option produces random variates sampled from a tabulated
   distribution where the density function is either a histogram or
   linearly-interpolated between tabulated points. The "watt" option produces
   random variates is sampled from a Watt fission spectrum (only used for
   energies). The "maxwell" option produce variates sampled from a Maxwell
-  fission spectrum (only used for energies).
+  fission spectrum (only used for energies). The "mixture" option produces samples
+  from univariate sub-distributions with given probabilities.
 
   *Default*: None
 
@@ -636,6 +652,11 @@ variable and whose sub-elements/attributes are as follows:
   For a "uniform" distribution, ``parameters`` should be given as two real
   numbers :math:`a` and :math:`b` that define the interval :math:`[a,b]` over
   which random variates are sampled.
+
+  For a "powerlaw" distribution, ``parameters`` should be given as three real
+  numbers :math:`a` and :math:`b` that define the interval :math:`[a,b]` over
+  which random variates are sampled and :math:`n` that defines the exponent of
+  the probability distribution :math:`p(x)=c x^n`
 
   For a "discrete" or "tabular" distribution, ``parameters`` provides the
   :math:`(x,p)` pairs defining the discrete/tabular distribution. All :math:`x`
@@ -651,11 +672,21 @@ variable and whose sub-elements/attributes are as follows:
 
   .. note:: The above format should be used even when using the multi-group
             :ref:`energy_mode`.
+
 :interpolation:
   For a "tabular" distribution, ``interpolation`` can be set to "histogram" or
   "linear-linear" thereby specifying how tabular points are to be interpolated.
 
   *Default*: histogram
+
+:pair:
+  For a "mixture" distribution, this element provides a distribution and its corresponding probability.
+
+  :probability:
+    An attribute or ``pair`` that provides the probability of a univariate distribution within a "mixture" distribution.
+
+  :dist:
+    This sub-element of a ``pair`` element provides information on the corresponding univariate distribution.
 
 -------------------------
 ``<state_point>`` Element
@@ -715,27 +746,34 @@ attributes/sub-elements:
 
     *Default*: false
 
----------------------------
-``<surf_src_read>`` Element
----------------------------
+  :mcpl:
+    If this element is set to "true", the source point file containing the
+    source bank will be written as an MCPL_ file name ``source.mcpl`` instead of
+    an HDF5 file. This option is only applicable if the ``<separate>`` element
+    is set to true.
 
-The ``<surf_src_read>`` element specifies a surface source file for OpenMC to
-read source bank for initializing histories.
-This element has the following attributes/sub-elements:
+    *Default*: false
+
+------------------------------
+``<surf_source_read>`` Element
+------------------------------
+
+The ``<surf_source_read>`` element specifies a surface source file for OpenMC to
+read source bank for initializing histories. This element has the following
+attributes/sub-elements:
 
   :path:
     Absolute or relative path to a surface source file to read in source bank.
 
     *Default*: ``surface_source.h5`` in current working directory
 
-----------------------------
-``<surf_src_write>`` Element
-----------------------------
+-------------------------------
+``<surf_source_write>`` Element
+-------------------------------
 
-The ``<surf_src_write>`` element triggers OpenMC to bank particles crossing
+The ``<surf_source_write>`` element triggers OpenMC to bank particles crossing
 certain surfaces and write out the source bank in a separate file called
-``surface_source.h5``.
-This element has the following attributes/sub-elements:
+``surface_source.h5``. This element has the following attributes/sub-elements:
 
   :surface_ids:
     A list of integers separated by spaces indicating the unique IDs of surfaces
@@ -750,6 +788,16 @@ This element has the following attributes/sub-elements:
     processors.
 
     *Default*: None
+
+  :mcpl:
+    An optional boolean which indicates if the banked particles should be
+    written to a file in the MCPL_-format instead of the native HDF5-based
+    format. If activated the output file name is changed to
+    ``surface_source.mcpl``.
+
+    *Default*: false
+
+    .. _MCPL: https://mctools.github.io/mcpl/mcpl.pdf
 
 ------------------------------
 ``<survival_biasing>`` Element
@@ -816,7 +864,9 @@ cell, the nearest temperature at which cross sections are given is to be
 applied, within a given tolerance (see :ref:`temperature_tolerance`). A value of
 "interpolation" indicates that cross sections are to be linear-linear
 interpolated between temperatures at which nuclear data are present (see
-:ref:`temperature_treatment`).
+:ref:`temperature_treatment`). With the "interpolation" method, temperatures
+outside of the bounds of the nuclear data may be accepted, provided they still
+fall within the tolerance (see :ref:`temperature_tolerance`).
 
   *Default*: "nearest"
 
@@ -855,7 +905,12 @@ The ``<temperature_tolerance>`` element specifies a tolerance in Kelvin that is
 to be applied when the "nearest" temperature method is used. For example, if a
 cell temperature is 340 K and the tolerance is 15 K, then the closest
 temperature in the range of 325 K to 355 K will be used to evaluate cross
-sections.
+sections. If the ``<temperature_method>`` is "interpolation", the tolerance
+specified applies to cell temperatures outside of the data bounds. For example,
+if a cell is specified at 695K, a tolerance of 15K and data is only available
+at 700K and 1000K, the cell's cross sections will be evaluated at 700K, since
+the desired temperature of 695K is within the tolerance of the actual data
+despite not being bounded on both sides.
 
   *Default*: 10 K
 
@@ -991,3 +1046,61 @@ sub-elements/attributes:
      sample points within.
 
      *Default*: None
+
+----------------------------
+``<weight_windows>`` Element
+----------------------------
+
+The ``<weight_windows>`` element specifies all necessary parameters for
+mesh-based weight windows. This element has the following
+sub-elements/attributes:
+
+  :id:
+    A unique integer that is used to identify the weight windows
+
+  :mesh:
+    ID of a mesh that is to be used for weight windows
+
+    *Default*: None
+
+  :particle_type:
+    The particle that the weight windows will apply to (e.g., 'neutron')
+
+    *Default*: None
+
+  :energy_bins:
+    Monotonically increasing list of bounding energies in [eV] to be used for
+    weight windows
+
+    *Default*: None
+
+  :lower_ww_bounds:
+    Lower weight window bound for each (energy bin, mesh bin) combination.
+
+    *Default*: None
+
+  :upper_ww_bounds:
+    Upper weight window bound for each (energy bin, mesh bin) combination.
+
+    *Default*: None
+
+  :survival:
+    The ratio of survival weight and lower weight window bound.
+
+    *Default*: 3.0
+
+  :max_lower_bound_ratio:
+    Maximum allowed ratio of a particle's weight to the weight window's lower
+    bound. A factor will be applied to raise the weight window to be lower than
+    the particle's weight by a factor of max_lower_bound_ratio during transport
+    if exceeded.
+
+  :max_split:
+    Maximum allowable number of particles when splitting
+
+    *Default*: 10
+
+  :weight_cutoff:
+    Threshold below which particles will be terminated
+
+    *Default*: :math:`10^{-38}`

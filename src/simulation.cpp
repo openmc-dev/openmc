@@ -8,6 +8,7 @@
 #include "openmc/event.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/material.h"
+#include "openmc/mcpl_interface.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
@@ -83,6 +84,11 @@ int openmc_simulation_init()
   // Allocate source, fission and surface source banks.
   allocate_banks();
 
+  // Create track file if needed
+  if (!settings::track_identifiers.empty() || settings::write_all_tracks) {
+    open_track_file();
+  }
+
   // If doing an event-based simulation, intialize the particle buffer
   // and event queues
   if (settings::event_based) {
@@ -93,6 +99,7 @@ int openmc_simulation_init()
 
   // Allocate tally results arrays if they're not allocated yet
   for (auto& t : model::tallies) {
+    t->set_strides();
     t->init_results();
   }
 
@@ -151,6 +158,11 @@ int openmc_simulation_finalize()
   // Clear material nuclide mapping
   for (auto& mat : model::materials) {
     mat->mat_nuclide_index_.clear();
+  }
+
+  // Close track file if open
+  if (!settings::track_identifiers.empty() || settings::write_all_tracks) {
+    close_track_file();
   }
 
   // Increment total number of generations
@@ -225,7 +237,7 @@ int openmc_next_batch(int* status)
 
   // Check simulation ending criteria
   if (status) {
-    if (simulation::current_batch == settings::n_max_batches) {
+    if (simulation::current_batch >= settings::n_max_batches) {
       *status = STATUS_EXIT_MAX_BATCH;
     } else if (simulation::satisfy_triggers) {
       *status = STATUS_EXIT_ON_TRIGGER;
@@ -384,21 +396,35 @@ void finalize_batch()
     // Write out a separate source point if it's been specified for this batch
     if (contains(settings::sourcepoint_batch, simulation::current_batch) &&
         settings::source_write && settings::source_separate) {
-      write_source_point(nullptr);
+      if (settings::source_mcpl_write) {
+        write_mcpl_source_point(nullptr);
+      } else {
+        write_source_point(nullptr);
+      }
     }
 
     // Write a continously-overwritten source point if requested.
     if (settings::source_latest) {
-      auto filename = settings::path_output + "source.h5";
-      write_source_point(filename.c_str());
+      if (settings::source_mcpl_write) {
+        auto filename = settings::path_output + "source.mcpl";
+        write_mcpl_source_point(filename.c_str());
+      } else {
+        auto filename = settings::path_output + "source.h5";
+        write_source_point(filename.c_str());
+      }
     }
   }
 
   // Write out surface source if requested.
   if (settings::surf_source_write &&
       simulation::current_batch == settings::n_batches) {
-    auto filename = settings::path_output + "surface_source.h5";
-    write_source_point(filename.c_str(), true);
+    if (settings::surf_mcpl_write) {
+      auto filename = settings::path_output + "surface_source.mcpl";
+      write_mcpl_source_point(filename.c_str(), true);
+    } else {
+      auto filename = settings::path_output + "surface_source.h5";
+      write_source_point(filename.c_str(), true);
+    }
   }
 }
 
@@ -491,6 +517,12 @@ void initialize_history(Particle& p, int64_t index_source)
   // Reset particle event counter
   p.n_event() = 0;
 
+  // Reset split counter
+  p.n_split() = 0;
+
+  // Reset weight window ratio
+  p.ww_factor() = 0.0;
+
   // set random number seed
   int64_t particle_seed =
     (simulation::total_gen + overall_generation() - 1) * settings::n_particles +
@@ -505,18 +537,7 @@ void initialize_history(Particle& p, int64_t index_source)
     p.trace() = true;
 
   // Set particle track.
-  p.write_track() = false;
-  if (settings::write_all_tracks) {
-    p.write_track() = true;
-  } else if (settings::track_identifiers.size() > 0) {
-    for (const auto& t : settings::track_identifiers) {
-      if (simulation::current_batch == t[0] &&
-          simulation::current_gen == t[1] && p.id() == t[2]) {
-        p.write_track() = true;
-        break;
-      }
-    }
-  }
+  p.write_track() = check_track_criteria(p);
 
   // Display message if high verbosity or trace is on
   if (settings::verbosity >= 9 || p.trace()) {
@@ -683,6 +704,8 @@ void transport_history_based_single_particle(Particle& p)
 {
   while (true) {
     p.event_calculate_xs();
+    if (!p.alive())
+      break;
     p.event_advance();
     if (p.collision_distance() > p.boundary().distance) {
       p.event_cross_surface();

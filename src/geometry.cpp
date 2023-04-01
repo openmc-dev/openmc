@@ -86,6 +86,7 @@ int cell_instance_at_level(const Particle& p, int level)
     if (c_i.type_ == Fill::UNIVERSE) {
       instance += c_i.offset_[c.distribcell_index_];
     } else if (c_i.type_ == Fill::LATTICE) {
+      instance += c_i.offset_[c.distribcell_index_];
       auto& lat {*model::lattices[p.coord(i + 1).lattice]};
       const auto& i_xyz {p.coord(i + 1).lattice_i};
       if (lat.are_valid_indices(i_xyz)) {
@@ -424,7 +425,7 @@ BoundaryInfo distance_to_boundary(Particle& p)
         // positive half-space were given in the region specification. Thus, we
         // have to explicitly check which half-space the particle would be
         // traveling into if the surface is crossed
-        if (c.simple_) {
+        if (c.is_simple()) {
           info.surface_index = level_surf_cross;
         } else {
           Position r_hit = r + d_surf * u;

@@ -1,5 +1,4 @@
 from collections.abc import Mapping
-from ctypes import ArgumentError
 import os
 
 import numpy as np
@@ -263,6 +262,7 @@ def test_settings(lib_init):
     assert settings.generations_per_batch == 1
     assert settings.particles == 100
     assert settings.seed == 1
+    assert settings.event_based is False
     settings.seed = 11
 
 
@@ -282,6 +282,11 @@ def test_energy_function_filter(lib_init):
     assert (efunc.energy == [0.0, 1.0]).all()
     assert len(efunc.y) == 2
     assert (efunc.y == [0.0, 2.0]).all()
+
+    # Default should be lin-lin
+    assert efunc.interpolation == 'linear-linear'
+    efunc.interpolation = 'histogram'
+    assert efunc.interpolation == 'histogram'
 
 
 def test_tally(lib_init):
@@ -338,6 +343,20 @@ def test_new_tally(lib_init):
     new_tally_with_id = openmc.lib.Tally(10)
     new_tally_with_id.scores = ['flux']
     assert len(openmc.lib.tallies) == 5
+
+
+def test_delete_tally(lib_init):
+    # delete tally 10 which was added in the above test
+    # check length is one less than before
+    del openmc.lib.tallies[10]
+    assert len(openmc.lib.tallies) == 4
+
+
+def test_invalid_tally_id(lib_init):
+    # attempt to access a tally that is guaranteed not to have a valid index
+    max_id = max(openmc.lib.tallies.keys())
+    with pytest.raises(KeyError):
+        openmc.lib.tallies[max_id+1]
 
 
 def test_tally_activate(lib_simulation_init):
@@ -579,6 +598,68 @@ def test_rectilinear_mesh(lib_init):
     msf = openmc.lib.MeshSurfaceFilter(mesh)
     assert msf.mesh == mesh
 
+def test_cylindrical_mesh(lib_init):
+    deg2rad = lambda deg: deg*np.pi/180
+    mesh = openmc.lib.CylindricalMesh()
+    r_grid = [0., 5., 10.]
+    phi_grid = np.radians([0., 10., 20.])
+    z_grid = [10., 20., 30.]
+    mesh.set_grid(r_grid, phi_grid, z_grid)
+    assert np.all(mesh.lower_left == (0., 0., 10.))
+    assert np.all(mesh.upper_right == (10., deg2rad(20.), 30.))
+    assert np.all(mesh.dimension == (2, 2, 2))
+    for i, _ in enumerate(np.diff(r_grid)):
+        for j, _ in enumerate(np.diff(phi_grid)):
+            for k, _ in enumerate(np.diff(z_grid)):
+                assert np.allclose(mesh.width[i, j, k, :], (5, deg2rad(10), 10))
+
+    with pytest.raises(exc.AllocationError):
+        mesh2 = openmc.lib.CylindricalMesh(mesh.id)
+
+    meshes = openmc.lib.meshes
+    assert isinstance(meshes, Mapping)
+    assert len(meshes) == 3
+
+    mesh = meshes[mesh.id]
+    assert isinstance(mesh, openmc.lib.CylindricalMesh)
+
+    mf = openmc.lib.MeshFilter(mesh)
+    assert mf.mesh == mesh
+
+    msf = openmc.lib.MeshSurfaceFilter(mesh)
+    assert msf.mesh == mesh
+
+def test_spherical_mesh(lib_init):
+    deg2rad = lambda deg: deg*np.pi/180
+    mesh = openmc.lib.SphericalMesh()
+    r_grid = [0., 5., 10.]
+    theta_grid = np.radians([0., 10., 20.])
+    phi_grid = np.radians([10., 20., 30.])
+    mesh.set_grid(r_grid, theta_grid, phi_grid)
+    assert np.all(mesh.lower_left == (0., 0., deg2rad(10.)))
+    assert np.all(mesh.upper_right == (10., deg2rad(20.), deg2rad(30.)))
+    assert np.all(mesh.dimension == (2, 2, 2))
+    for i, _ in enumerate(np.diff(r_grid)):
+        for j, _ in enumerate(np.diff(theta_grid)):
+            for k, _ in enumerate(np.diff(phi_grid)):
+                assert np.allclose(mesh.width[i, j, k, :], (5, deg2rad(10), deg2rad(10)))
+
+    with pytest.raises(exc.AllocationError):
+        mesh2 = openmc.lib.SphericalMesh(mesh.id)
+
+    meshes = openmc.lib.meshes
+    assert isinstance(meshes, Mapping)
+    assert len(meshes) == 4
+
+    mesh = meshes[mesh.id]
+    assert isinstance(mesh, openmc.lib.SphericalMesh)
+
+    mf = openmc.lib.MeshFilter(mesh)
+    assert mf.mesh == mesh
+
+    msf = openmc.lib.MeshSurfaceFilter(mesh)
+    assert msf.mesh == mesh
+
 
 def test_restart(lib_init, mpi_intracomm):
     # Finalize and re-init to make internal state consistent with XML.
@@ -713,7 +794,6 @@ def test_trigger_set_n_batches(uo2_trigger_model, mpi_intracomm):
 def test_cell_translation(pincell_model_w_univ, mpi_intracomm):
     openmc.lib.finalize()
     openmc.lib.init(intracomm=mpi_intracomm)
-    openmc.lib.simulation_init()
     # Cell 1 is filled with a material so it has a translation, but we can't
     # set it.
     cell = openmc.lib.cells[1]
@@ -727,9 +807,12 @@ def test_cell_translation(pincell_model_w_univ, mpi_intracomm):
     # This time we *can* set it
     cell.translation = (1., 0., -1.)
     assert cell.translation == pytest.approx([1., 0., -1.])
+    openmc.lib.finalize()
 
 
-def test_cell_rotation(pincell_model_w_univ):
+def test_cell_rotation(pincell_model_w_univ, mpi_intracomm):
+    openmc.lib.finalize()
+    openmc.lib.init(intracomm=mpi_intracomm)
     # Cell 1 is filled with a material so we cannot rotate it, but we can get
     # its rotation matrix (which will be the identity matrix)
     cell = openmc.lib.cells[1]
@@ -742,3 +825,47 @@ def test_cell_rotation(pincell_model_w_univ):
     assert cell.rotation == pytest.approx([0., 0., 0.])
     cell.rotation = (180., 0., 0.)
     assert cell.rotation == pytest.approx([180., 0., 0.])
+    openmc.lib.finalize()
+
+
+def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
+    # Define a simple model and export
+    mat = openmc.Material()
+    mat.add_nuclide('U235', 1.0e-2)
+    sph = openmc.Sphere(r=100.0, boundary_type='vacuum')
+    cell = openmc.Cell(fill=mat, region=-sph)
+    model = openmc.Model()
+    model.geometry = openmc.Geometry([cell])
+    model.settings.source = openmc.Source(
+        space=openmc.stats.Box([-5., -5., -5.], [5., 5., 5.]),
+        angle=openmc.stats.Monodirectional((0., 0., 1.)),
+        energy=openmc.stats.Discrete([1.0e5], [1.0])
+    )
+    model.settings.particles = 1000
+    model.settings.batches = 10
+    model.export_to_xml()
+
+    # Sample some particles and make sure they match specified source
+    openmc.lib.init()
+    particles = openmc.lib.sample_external_source(10, prn_seed=3)
+    assert len(particles) == 10
+    for p in particles:
+        assert -5. < p.r[0] < 5.
+        assert -5. < p.r[1] < 5.
+        assert -5. < p.r[2] < 5.
+        assert p.u[0] == 0.0
+        assert p.u[1] == 0.0
+        assert p.u[2] == 1.0
+        assert p.E == 1.0e5
+
+    # Using the same seed should produce the same particles
+    other_particles = openmc.lib.sample_external_source(10, prn_seed=3)
+    assert len(other_particles) == 10
+    for p1, p2 in zip(particles, other_particles):
+        assert p1.r == p2.r
+        assert p1.u == p2.u
+        assert p1.E == p2.E
+        assert p1.time == p2.time
+        assert p1.wgt == p2.wgt
+
+    openmc.lib.finalize()

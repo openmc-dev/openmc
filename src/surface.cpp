@@ -1,6 +1,7 @@
 #include "openmc/surface.h"
 
 #include <cmath>
+#include <complex>
 #include <set>
 #include <utility>
 
@@ -10,6 +11,7 @@
 #include "openmc/array.h"
 #include "openmc/container_util.h"
 #include "openmc/error.h"
+#include "openmc/external/quartic_solver.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_lcg.h"
@@ -45,7 +47,8 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1)
   // Parse the coefficients.
   int stat = sscanf(coeffs.c_str(), "%lf", &c1);
   if (stat != 1) {
-    fatal_error("Something went wrong reading surface coeffs");
+    fatal_error(fmt::format(
+      "Something went wrong reading coeffs for surface {}", surf_id));
   }
 }
 
@@ -63,7 +66,8 @@ void read_coeffs(
   // Parse the coefficients.
   int stat = sscanf(coeffs.c_str(), "%lf %lf %lf", &c1, &c2, &c3);
   if (stat != 3) {
-    fatal_error("Something went wrong reading surface coeffs");
+    fatal_error(fmt::format(
+      "Something went wrong reading coeffs for surface {}", surf_id));
   }
 }
 
@@ -81,7 +85,28 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1, double& c2,
   // Parse the coefficients.
   int stat = sscanf(coeffs.c_str(), "%lf %lf %lf %lf", &c1, &c2, &c3, &c4);
   if (stat != 4) {
-    fatal_error("Something went wrong reading surface coeffs");
+    fatal_error(fmt::format(
+      "Something went wrong reading coeffs for surface {}", surf_id));
+  }
+}
+
+void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1, double& c2,
+  double& c3, double& c4, double& c5, double& c6)
+{
+  // Check the given number of coefficients.
+  std::string coeffs = get_node_value(surf_node, "coeffs");
+  int n_words = word_count(coeffs);
+  if (n_words != 6) {
+    fatal_error(fmt::format(
+      "Surface {} expects 6 coeffs but was given {}", surf_id, n_words));
+  }
+
+  // Parse the coefficients.
+  int stat = sscanf(
+    coeffs.c_str(), "%lf %lf %lf %lf %lf %lf", &c1, &c2, &c3, &c4, &c5, &c6);
+  if (stat != 6) {
+    fatal_error(fmt::format(
+      "Something went wrong reading coeffs for surface {}", surf_id));
   }
 }
 
@@ -101,7 +126,8 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1, double& c2,
   int stat = sscanf(coeffs.c_str(), "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
     &c1, &c2, &c3, &c4, &c5, &c6, &c7, &c8, &c9, &c10);
   if (stat != 10) {
-    fatal_error("Something went wrong reading surface coeffs");
+    fatal_error(fmt::format(
+      "Something went wrong reading coeffs for surface {}", surf_id));
   }
 }
 
@@ -984,6 +1010,212 @@ void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
 }
 
 //==============================================================================
+// Torus helper functions
+//==============================================================================
+
+double torus_distance(double x1, double x2, double x3, double u1, double u2,
+  double u3, double A, double B, double C, bool coincident)
+{
+  // Coefficients for equation: (c2 t^2 + c1 t + c0)^2 = c2' t^2 + c1' t + c0'
+  double D = (C * C) / (B * B);
+  double c2 = u1 * u1 + u2 * u2 + D * u3 * u3;
+  double c1 = 2 * (u1 * x1 + u2 * x2 + D * u3 * x3);
+  double c0 = x1 * x1 + x2 * x2 + D * x3 * x3 + A * A - C * C;
+  double four_A2 = 4 * A * A;
+  double c2p = four_A2 * (u1 * u1 + u2 * u2);
+  double c1p = 2 * four_A2 * (u1 * x1 + u2 * x2);
+  double c0p = four_A2 * (x1 * x1 + x2 * x2);
+
+  // Coefficient for equation: a t^4 + b t^3 + c t^2 + d t + e = 0. If the point
+  // is coincident, the 'e' coefficient should be zero. Explicitly setting it to
+  // zero helps avoid numerical issues below with root finding.
+  double coeff[5];
+  coeff[0] = coincident ? 0.0 : c0 * c0 - c0p;
+  coeff[1] = 2 * c0 * c1 - c1p;
+  coeff[2] = c1 * c1 + 2 * c0 * c2 - c2p;
+  coeff[3] = 2 * c1 * c2;
+  coeff[4] = c2 * c2;
+
+  std::complex<double> roots[4];
+  oqs::quartic_solver(coeff, roots);
+
+  // Find smallest positive, real root. In the case where the particle is
+  // coincident with the surface, we are sure to have one root very close to
+  // zero but possibly small and positive. A tolerance is set to discard that
+  // zero.
+  double distance = INFTY;
+  double cutoff = coincident ? TORUS_TOL : 0.0;
+  for (int i = 0; i < 4; ++i) {
+    if (roots[i].imag() == 0) {
+      double root = roots[i].real();
+      if (root > cutoff && root < distance) {
+        distance = root;
+      }
+    }
+  }
+  return distance;
+}
+
+//==============================================================================
+// SurfaceXTorus implementation
+//==============================================================================
+
+SurfaceXTorus::SurfaceXTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
+{
+  read_coeffs(surf_node, id_, x0_, y0_, z0_, A_, B_, C_);
+}
+
+void SurfaceXTorus::to_hdf5_inner(hid_t group_id) const
+{
+  write_string(group_id, "type", "x-torus", false);
+  std::array<double, 6> coeffs {{x0_, y0_, z0_, A_, B_, C_}};
+  write_dataset(group_id, "coefficients", coeffs);
+}
+
+double SurfaceXTorus::evaluate(Position r) const
+{
+  double x = r.x - x0_;
+  double y = r.y - y0_;
+  double z = r.z - z0_;
+  return (x * x) / (B_ * B_) +
+         std::pow(std::sqrt(y * y + z * z) - A_, 2) / (C_ * C_) - 1.;
+}
+
+double SurfaceXTorus::distance(Position r, Direction u, bool coincident) const
+{
+  double x = r.x - x0_;
+  double y = r.y - y0_;
+  double z = r.z - z0_;
+  return torus_distance(y, z, x, u.y, u.z, u.x, A_, B_, C_, coincident);
+}
+
+Direction SurfaceXTorus::normal(Position r) const
+{
+  // reduce the expansion of the full form for torus
+  double x = r.x - x0_;
+  double y = r.y - y0_;
+  double z = r.z - z0_;
+
+  // f(x,y,z) = x^2/B^2 + (sqrt(y^2 + z^2) - A)^2/C^2 - 1
+  // ∂f/∂x = 2x/B^2
+  // ∂f/∂y = 2y(g - A)/(g*C^2) where g = sqrt(y^2 + z^2)
+  // ∂f/∂z = 2z(g - A)/(g*C^2)
+  // Multiplying by g*C^2*B^2 / 2 gives:
+  double g = std::sqrt(y * y + z * z);
+  double nx = C_ * C_ * g * x;
+  double ny = y * (g - A_) * B_ * B_;
+  double nz = z * (g - A_) * B_ * B_;
+  Direction n(nx, ny, nz);
+  return n / n.norm();
+}
+
+//==============================================================================
+// SurfaceYTorus implementation
+//==============================================================================
+
+SurfaceYTorus::SurfaceYTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
+{
+  read_coeffs(surf_node, id_, x0_, y0_, z0_, A_, B_, C_);
+}
+
+void SurfaceYTorus::to_hdf5_inner(hid_t group_id) const
+{
+  write_string(group_id, "type", "y-torus", false);
+  std::array<double, 6> coeffs {{x0_, y0_, z0_, A_, B_, C_}};
+  write_dataset(group_id, "coefficients", coeffs);
+}
+
+double SurfaceYTorus::evaluate(Position r) const
+{
+  double x = r.x - x0_;
+  double y = r.y - y0_;
+  double z = r.z - z0_;
+  return (y * y) / (B_ * B_) +
+         std::pow(std::sqrt(x * x + z * z) - A_, 2) / (C_ * C_) - 1.;
+}
+
+double SurfaceYTorus::distance(Position r, Direction u, bool coincident) const
+{
+  double x = r.x - x0_;
+  double y = r.y - y0_;
+  double z = r.z - z0_;
+  return torus_distance(x, z, y, u.x, u.z, u.y, A_, B_, C_, coincident);
+}
+
+Direction SurfaceYTorus::normal(Position r) const
+{
+  // reduce the expansion of the full form for torus
+  double x = r.x - x0_;
+  double y = r.y - y0_;
+  double z = r.z - z0_;
+
+  // f(x,y,z) = y^2/B^2 + (sqrt(x^2 + z^2) - A)^2/C^2 - 1
+  // ∂f/∂x = 2x(g - A)/(g*C^2) where g = sqrt(x^2 + z^2)
+  // ∂f/∂y = 2y/B^2
+  // ∂f/∂z = 2z(g - A)/(g*C^2)
+  // Multiplying by g*C^2*B^2 / 2 gives:
+  double g = std::sqrt(x * x + z * z);
+  double nx = x * (g - A_) * B_ * B_;
+  double ny = C_ * C_ * g * y;
+  double nz = z * (g - A_) * B_ * B_;
+  Direction n(nx, ny, nz);
+  return n / n.norm();
+}
+
+//==============================================================================
+// SurfaceZTorus implementation
+//==============================================================================
+
+SurfaceZTorus::SurfaceZTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
+{
+  read_coeffs(surf_node, id_, x0_, y0_, z0_, A_, B_, C_);
+}
+
+void SurfaceZTorus::to_hdf5_inner(hid_t group_id) const
+{
+  write_string(group_id, "type", "z-torus", false);
+  std::array<double, 6> coeffs {{x0_, y0_, z0_, A_, B_, C_}};
+  write_dataset(group_id, "coefficients", coeffs);
+}
+
+double SurfaceZTorus::evaluate(Position r) const
+{
+  double x = r.x - x0_;
+  double y = r.y - y0_;
+  double z = r.z - z0_;
+  return (z * z) / (B_ * B_) +
+         std::pow(std::sqrt(x * x + y * y) - A_, 2) / (C_ * C_) - 1.;
+}
+
+double SurfaceZTorus::distance(Position r, Direction u, bool coincident) const
+{
+  double x = r.x - x0_;
+  double y = r.y - y0_;
+  double z = r.z - z0_;
+  return torus_distance(x, y, z, u.x, u.y, u.z, A_, B_, C_, coincident);
+}
+
+Direction SurfaceZTorus::normal(Position r) const
+{
+  // reduce the expansion of the full form for torus
+  double x = r.x - x0_;
+  double y = r.y - y0_;
+  double z = r.z - z0_;
+
+  // f(x,y,z) = z^2/B^2 + (sqrt(x^2 + y^2) - A)^2/C^2 - 1
+  // ∂f/∂x = 2x(g - A)/(g*C^2) where g = sqrt(x^2 + y^2)
+  // ∂f/∂y = 2y(g - A)/(g*C^2)
+  // ∂f/∂z = 2z/B^2
+  // Multiplying by g*C^2*B^2 / 2 gives:
+  double g = std::sqrt(x * x + y * y);
+  double nx = x * (g - A_) * B_ * B_;
+  double ny = y * (g - A_) * B_ * B_;
+  double nz = C_ * C_ * g * z;
+  Position n(nx, ny, nz);
+  return n / n.norm();
+}
+
+//==============================================================================
 
 void read_surfaces(pugi::xml_node node)
 {
@@ -1041,6 +1273,15 @@ void read_surfaces(pugi::xml_node node)
 
       } else if (surf_type == "quadric") {
         model::surfaces.push_back(make_unique<SurfaceQuadric>(surf_node));
+
+      } else if (surf_type == "x-torus") {
+        model::surfaces.push_back(std::make_unique<SurfaceXTorus>(surf_node));
+
+      } else if (surf_type == "y-torus") {
+        model::surfaces.push_back(std::make_unique<SurfaceYTorus>(surf_node));
+
+      } else if (surf_type == "z-torus") {
+        model::surfaces.push_back(std::make_unique<SurfaceZTorus>(surf_node));
 
       } else {
         fatal_error(fmt::format("Invalid surface type, \"{}\"", surf_type));

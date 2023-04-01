@@ -299,8 +299,8 @@ def reconstruct_slbw(slbw, double E):
         # Determine shift and penetration at modified energy
         if slbw._competitive[i]:
             Ex = E + slbw.q_value[l]*(A + 1)/A
-            rhoc = slbw.channel_radius[l](Ex)
-            rhochat = slbw.scattering_radius[l](Ex)
+            rhoc = k*slbw.channel_radius[l](Ex)
+            rhochat = k*slbw.scattering_radius[l](Ex)
             P_c, S_c = penetration_shift(l, rhoc)
             if Ex < 0:
                 P_c = 0

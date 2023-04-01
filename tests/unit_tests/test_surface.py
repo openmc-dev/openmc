@@ -605,3 +605,151 @@ def test_cylinder_from_points_axis():
     assert (d, e, f) == pytest.approx((0., 0., 0.))
     assert (g, h, j) == pytest.approx((-4., 0., -10.))
     assert k == pytest.approx(13.)
+
+
+def torus_common(center, R, r1, r2, cls):
+    x, y, z = center
+    s = cls(x0=x, y0=y, z0=z, a=R, b=r1, c=r2)
+    assert s.x0 == x
+    assert s.y0 == y
+    assert s.z0 == z
+    assert s.a == R
+    assert s.b == r1
+    assert s.c == r2
+
+    # evaluate method
+    assert s.evaluate((x, y, z)) > 0.0
+
+    # translate method
+    trans = np.array([1.0, 1.5, -2.0])
+    st = s.translate(trans)
+    assert st.x0 == s.x0 + trans[0]
+    assert st.y0 == s.y0 + trans[1]
+    assert st.z0 == s.z0 + trans[2]
+    assert st.a == s.a
+    assert st.b == s.b
+    assert st.c == s.c
+
+    # trivial rotations
+    for rotation in [(0., 0., 0.), (180., 0., 0.), (0., 180., 0.), (0., 0., 180.)]:
+        sr = s.rotate(rotation)
+        assert type(sr) == type(s)
+        assert (sr.a, sr.b, sr.c) == (s.a, s.b, s.c)
+
+    # can't do generic rotate at present
+    with pytest.raises(NotImplementedError):
+        s.rotate((0., 45., 0.))
+
+    # Check bounding box
+    ll, ur = (+s).bounding_box
+    assert np.all(np.isinf(ll))
+    assert np.all(np.isinf(ur))
+
+    ll, ur = (-s).bounding_box
+    llt, urt = (-st).bounding_box
+    np.testing.assert_allclose(ll + trans, llt)
+    np.testing.assert_allclose(ur + trans, urt)
+
+    # Make sure repr works
+    repr(s)
+
+    return s
+
+
+def test_xtorus():
+    x, y, z = 2, -4, 5
+    R, r1, r2 = 3, 1.5, 1
+    s = torus_common((x, y, z), R, r1, r2, openmc.XTorus)
+
+    # evaluate method (points inside torus)
+    assert s.evaluate((x, y + R, z)) < 0.0
+    assert s.evaluate((x, y - R, z)) < 0.0
+    assert s.evaluate((x, y, z + R)) < 0.0
+    assert s.evaluate((x, y, z - R)) < 0.0
+
+    # evaluate method (points on torus)
+    assert s.evaluate((x, y + R + r2, z)) == pytest.approx(0.0)
+    assert s.evaluate((x, y - R - r2, z)) == pytest.approx(0.0)
+    assert s.evaluate((x, y, z + R - r2)) == pytest.approx(0.0)
+    assert s.evaluate((x, y, z - R + r2)) == pytest.approx(0.0)
+    assert s.evaluate((x + r1, y + R, z)) == pytest.approx(0.0)
+
+    # evaluate method (points outside torus)
+    assert s.evaluate((x, y + R, z + R)) > 0.0
+    assert s.evaluate((x, y - R, z + R)) > 0.0
+    assert s.evaluate((x, y + R + r2 + 0.01, z)) > 0.0
+    assert s.evaluate((x, y, z + R + r2 + 0.01)) > 0.0
+    assert s.evaluate((x + r1 + 0.01, y, z + R)) > 0.0
+    assert s.evaluate((x + r1 + 0.01, y + R, z)) > 0.0
+
+    # rotation
+    sr = s.rotate((0., 0., 90.))
+    assert isinstance(sr, openmc.YTorus)
+    sr = s.rotate((0., 90., 0.))
+    assert isinstance(sr, openmc.ZTorus)
+
+
+def test_ytorus():
+    x, y, z = 2, -4, 5
+    R, r1, r2 = 3, 1.5, 1
+    s = torus_common((x, y, z), R, r1, r2, openmc.YTorus)
+
+    # evaluate method (points inside torus)
+    assert s.evaluate((x + R, y, z)) < 0.0
+    assert s.evaluate((x - R, y, z)) < 0.0
+    assert s.evaluate((x, y, z + R)) < 0.0
+    assert s.evaluate((x, y, z - R)) < 0.0
+
+    # evaluate method (points on torus)
+    assert s.evaluate((x + R + r2, y, z)) == pytest.approx(0.0)
+    assert s.evaluate((x - R - r2, y, z)) == pytest.approx(0.0)
+    assert s.evaluate((x, y, z + R - r2)) == pytest.approx(0.0)
+    assert s.evaluate((x, y, z - R + r2)) == pytest.approx(0.0)
+    assert s.evaluate((x + R, y + r1, z)) == pytest.approx(0.0)
+
+    # evaluate method (points outside torus)
+    assert s.evaluate((x + R, y, z + R)) > 0.0
+    assert s.evaluate((x - R, y, z + R)) > 0.0
+    assert s.evaluate((x + R + r2 + 0.01, y, z)) > 0.0
+    assert s.evaluate((x, y, z + R + r2 + 0.01)) > 0.0
+    assert s.evaluate((x, y + r1 + 0.01, z + R)) > 0.0
+    assert s.evaluate((x + R, y + r1 + 0.01, z)) > 0.0
+
+    # rotation
+    sr = s.rotate((90., 0., 0.))
+    assert isinstance(sr, openmc.ZTorus)
+    sr = s.rotate((0., 0., 90.))
+    assert isinstance(sr, openmc.XTorus)
+
+
+def test_ztorus():
+    x, y, z = 2, -4, 5
+    R, r1, r2 = 3, 1.5, 1
+    s = torus_common((x, y, z), R, r1, r2, openmc.ZTorus)
+
+    # evaluate method (points inside torus)
+    assert s.evaluate((x, y + R, z)) < 0.0
+    assert s.evaluate((x, y - R, z)) < 0.0
+    assert s.evaluate((x + R, y, z)) < 0.0
+    assert s.evaluate((x - R, y, z)) < 0.0
+
+    # evaluate method (points on torus)
+    assert s.evaluate((x, y + R + r2, z)) == pytest.approx(0.0)
+    assert s.evaluate((x, y - R - r2, z)) == pytest.approx(0.0)
+    assert s.evaluate((x + R - r2, y, z)) == pytest.approx(0.0)
+    assert s.evaluate((x - R + r2, y, z)) == pytest.approx(0.0)
+    assert s.evaluate((x, y + R, z + r1)) == pytest.approx(0.0)
+
+    # evaluate method (points outside torus)
+    assert s.evaluate((x + R, y + R, z)) > 0.0
+    assert s.evaluate((x + R, y - R, z)) > 0.0
+    assert s.evaluate((x, y + R + r2 + 0.01, z)) > 0.0
+    assert s.evaluate((x + R + r2 + 0.01, y, z)) > 0.0
+    assert s.evaluate((x + R, y, z + r1 + 0.01)) > 0.0
+    assert s.evaluate((x, y + R, z + r1 + 0.01)) > 0.0
+
+    # rotation
+    sr = s.rotate((90., 0., 0.))
+    assert isinstance(sr, openmc.YTorus)
+    sr = s.rotate((0., 90., 0.))
+    assert isinstance(sr, openmc.XTorus)

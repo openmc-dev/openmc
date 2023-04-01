@@ -1,6 +1,7 @@
 #include "openmc/output.h"
 
 #include <algorithm> // for transform, max
+#include <cstdio>    // for stdout
 #include <cstring>   // for strlen
 #include <ctime>     // for time, localtime
 #include <fstream>
@@ -72,28 +73,29 @@ void title()
 
   // Write version information
   fmt::print(
-    "                   | The OpenMC Monte Carlo Code\n"
-    "         Copyright | 2011-2021 MIT and OpenMC contributors\n"
-    "           License | https://docs.openmc.org/en/latest/license.html\n"
-    "           Version | {}.{}.{}{}\n",
+    "                 | The OpenMC Monte Carlo Code\n"
+    "       Copyright | 2011-2023 MIT, UChicago Argonne LLC, and contributors\n"
+    "         License | https://docs.openmc.org/en/latest/license.html\n"
+    "         Version | {}.{}.{}{}\n",
     VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE, VERSION_DEV ? "-dev" : "");
 #ifdef GIT_SHA1
-  fmt::print("          Git SHA1 | {}\n", GIT_SHA1);
+  fmt::print("        Git SHA1 | {}\n", GIT_SHA1);
 #endif
 
   // Write the date and time
-  fmt::print("         Date/Time | {}\n", time_stamp());
+  fmt::print("       Date/Time | {}\n", time_stamp());
 
 #ifdef OPENMC_MPI
   // Write number of processors
-  fmt::print("     MPI Processes | {}\n", mpi::n_procs);
+  fmt::print("   MPI Processes | {}\n", mpi::n_procs);
 #endif
 
 #ifdef _OPENMP
   // Write number of OpenMP threads
-  fmt::print("    OpenMP Threads | {}\n", omp_get_max_threads());
+  fmt::print("  OpenMP Threads | {}\n", omp_get_max_threads());
 #endif
-  std::cout << std::endl;
+  fmt::print("\n");
+  std::fflush(stdout);
 }
 
 //==============================================================================
@@ -132,8 +134,10 @@ void header(const char* msg, int level)
   auto out = header(msg);
 
   // Print header based on verbosity level.
-  if (settings::verbosity >= level)
-    std::cout << '\n' << out << "\n" << std::endl;
+  if (settings::verbosity >= level) {
+    fmt::print("\n{}\n\n", out);
+    std::fflush(stdout);
+  }
 }
 
 //==============================================================================
@@ -318,7 +322,8 @@ void print_usage()
       "  -r, --restart          Restart a previous run from a state point\n"
       "                         or a particle restart file\n"
       "  -s, --threads          Number of OpenMP threads\n"
-      "  -t, --track            Write tracks for all particles\n"
+      "  -t, --track            Write tracks for all particles (up to "
+      "max_tracks)\n"
       "  -e, --event            Run using event-based parallelism\n"
       "  -v, --version          Show version information\n"
       "  -h, --help             Show this message\n");
@@ -335,9 +340,74 @@ void print_version()
 #ifdef GIT_SHA1
     fmt::print("Git SHA1: {}\n", GIT_SHA1);
 #endif
-    fmt::print("Copyright (c) 2011-2021 Massachusetts Institute of "
-               "Technology and OpenMC contributors\nMIT/X license at "
+    fmt::print("Copyright (c) 2011-2023 MIT, UChicago Argonne LLC, and "
+               "contributors\nMIT/X license at "
                "<https://docs.openmc.org/en/latest/license.html>\n");
+  }
+}
+
+//==============================================================================
+
+void print_build_info()
+{
+  const std::string n("no");
+  const std::string y("yes");
+
+  std::string mpi(n);
+  std::string phdf5(n);
+  std::string dagmc(n);
+  std::string libmesh(n);
+  std::string png(n);
+  std::string profiling(n);
+  std::string coverage(n);
+  std::string mcpl(n);
+  std::string ncrystal(n);
+
+#ifdef PHDF5
+  phdf5 = y;
+#endif
+#ifdef OPENMC_MPI
+  mpi = y;
+#endif
+#ifdef DAGMC
+  dagmc = y;
+#endif
+#ifdef LIBMESH
+  libmesh = y;
+#endif
+#ifdef OPENMC_MCPL
+  mcpl = y;
+#endif
+#ifdef NCRYSTAL
+  ncrystal = y;
+#endif
+#ifdef USE_LIBPNG
+  png = y;
+#endif
+#ifdef PROFILINGBUILD
+  profiling = y;
+#endif
+#ifdef COVERAGEBUILD
+  coverage = y;
+#endif
+
+  // Wraps macro variables in quotes
+#define STRINGIFY(x) STRINGIFY2(x)
+#define STRINGIFY2(x) #x
+
+  if (mpi::master) {
+    fmt::print("Build type:            {}\n", STRINGIFY(BUILD_TYPE));
+    fmt::print("Compiler ID:           {} {}\n", STRINGIFY(COMPILER_ID),
+      STRINGIFY(COMPILER_VERSION));
+    fmt::print("MPI enabled:           {}\n", mpi);
+    fmt::print("Parallel HDF5 enabled: {}\n", phdf5);
+    fmt::print("PNG support:           {}\n", png);
+    fmt::print("DAGMC support:         {}\n", dagmc);
+    fmt::print("libMesh support:       {}\n", libmesh);
+    fmt::print("MCPL support:          {}\n", mcpl);
+    fmt::print("NCrystal support:      {}\n", ncrystal);
+    fmt::print("Coverage testing:      {}\n", coverage);
+    fmt::print("Profiling flags:       {}\n", profiling);
   }
 }
 
@@ -378,7 +448,8 @@ void print_generation()
   if (n > 1) {
     fmt::print("   {:8.5f} +/-{:8.5f}", simulation::keff, simulation::keff_std);
   }
-  std::cout << std::endl;
+  fmt::print("\n");
+  std::fflush(stdout);
 }
 
 //==============================================================================
@@ -546,6 +617,7 @@ void print_results()
       gt(GlobalTally::LEAKAGE, TallyResult::SUM) / n);
   }
   fmt::print("\n");
+  std::fflush(stdout);
 }
 
 //==============================================================================
@@ -577,9 +649,12 @@ void write_tallies()
   if (model::tallies.empty())
     return;
 
+  // Set filename for tallies_out
+  std::string filename = fmt::format("{}tallies.out", settings::path_output);
+
   // Open the tallies.out file.
   std::ofstream tallies_out;
-  tallies_out.open("tallies.out", std::ios::out | std::ios::trunc);
+  tallies_out.open(filename, std::ios::out | std::ios::trunc);
 
   // Loop over each tally.
   for (auto i_tally = 0; i_tally < model::tallies.size(); ++i_tally) {

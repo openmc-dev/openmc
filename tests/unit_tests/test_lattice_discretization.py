@@ -1,8 +1,3 @@
-from math import sqrt
-import xml.etree.ElementTree as ET
-
-import openmc
-import pytest
 
 from tests.unit_tests.test_lattice import zr, pincell1, pincell2, rlat2
 

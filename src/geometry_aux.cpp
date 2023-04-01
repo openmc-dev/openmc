@@ -61,6 +61,11 @@ void read_geometry_xml()
   // Get root element
   pugi::xml_node root = doc.document_element();
 
+  read_geometry_xml(root);
+}
+
+void read_geometry_xml(pugi::xml_node root)
+{
   // Read surfaces, cells, lattice
   read_surfaces(root);
   read_cells(root);
@@ -154,9 +159,8 @@ void partition_universes()
       // Collect the set of surfaces in this universe.
       std::unordered_set<int32_t> surf_inds;
       for (auto i_cell : univ->cells_) {
-        for (auto token : model::cells[i_cell]->rpn_) {
-          if (token < OP_UNION)
-            surf_inds.insert(std::abs(token) - 1);
+        for (auto token : model::cells[i_cell]->surfaces()) {
+          surf_inds.insert(std::abs(token) - 1);
         }
       }
 
@@ -412,8 +416,9 @@ void prepare_distribcell(const std::vector<int32_t>* user_distribcells)
             search_univ, target_univ_id, univ_count_memo);
 
         } else if (c.type_ == Fill::LATTICE) {
+          c.offset_[map] = offset;
           Lattice& lat = *model::lattices[c.fill_];
-          offset =
+          offset +=
             lat.fill_offset_table(offset, target_univ_id, map, univ_count_memo);
         }
       }

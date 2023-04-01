@@ -44,7 +44,7 @@ class IncidentNeutron(EqualityMixin):
     Parameters
     ----------
     name : str
-        Name of the nuclide using the GND naming convention
+        Name of the nuclide using the GNDS naming convention
     atomic_number : int
         Number of protons in the target nucleus
     mass_number : int
@@ -75,7 +75,7 @@ class IncidentNeutron(EqualityMixin):
         Metastable state of the target nucleus. A value of zero indicates ground
         state.
     name : str
-        Name of the nuclide using the GND naming convention
+        Name of the nuclide using the GNDS naming convention
     reactions : collections.OrderedDict
         Contains the cross sections, secondary angle and energy distributions,
         and other associated data for each reaction. The keys are the MT values
@@ -868,16 +868,15 @@ class IncidentNeutron(EqualityMixin):
 
             heatr_evals = get_evaluations(kwargs["heatr"])
             heatr_local_evals = get_evaluations(kwargs["heatr"] + "_local")
-            for ev, ev_local in zip(heatr_evals, heatr_local_evals):
-                temp = "{}K".format(round(ev.target["temperature"]))
 
+            for ev, ev_local, temp in zip(heatr_evals, heatr_local_evals, data.temperatures):
                 # Get total KERMA (originally from ACE file) and energy grid
                 kerma = data.reactions[301].xs[temp]
                 E = kerma.x
 
                 if f is not None:
                     # Replace fission KERMA with (EFR + EB)*sigma_f
-                    fission = data.reactions[18].xs[temp]
+                    fission = data[18].xs[temp]
                     kerma_fission = get_file3_xs(ev, 318, E)
                     kerma.y = kerma.y - kerma_fission + (
                         f.fragments(E) + f.betas(E)) * fission(E)

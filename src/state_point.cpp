@@ -403,9 +403,11 @@ void load_state_point()
   // Read batch number to restart at
   read_dataset(file_id, "current_batch", simulation::restart_batch);
 
-  if (simulation::restart_batch > settings::n_batches) {
-    fatal_error("The number batches specified in settings.xml is fewer "
-                " than the number of batches in the given statepoint file.");
+  if (simulation::restart_batch >= settings::n_max_batches) {
+    fatal_error(fmt::format(
+      "The number of batches specified for simulation ({}) is smaller"
+      " than the number of batches in the restart statepoint file ({})",
+      settings::n_max_batches, simulation::restart_batch));
   }
 
   // Logical flag for source present in statepoint file
@@ -527,6 +529,7 @@ hid_t h5banktype()
   H5Tinsert(banktype, "r", HOFFSET(SourceSite, r), postype);
   H5Tinsert(banktype, "u", HOFFSET(SourceSite, u), postype);
   H5Tinsert(banktype, "E", HOFFSET(SourceSite, E), H5T_NATIVE_DOUBLE);
+  H5Tinsert(banktype, "time", HOFFSET(SourceSite, time), H5T_NATIVE_DOUBLE);
   H5Tinsert(banktype, "wgt", HOFFSET(SourceSite, wgt), H5T_NATIVE_DOUBLE);
   H5Tinsert(banktype, "delayed_group", HOFFSET(SourceSite, delayed_group),
     H5T_NATIVE_INT);
@@ -720,7 +723,9 @@ std::string dtype_member_names(hid_t dtype_id)
   int nmembers = H5Tget_nmembers(dtype_id);
   std::string names;
   for (int i = 0; i < nmembers; i++) {
-    names = names.append(H5Tget_member_name(dtype_id, i));
+    char* name = H5Tget_member_name(dtype_id, i);
+    names = names.append(name);
+    H5free_memory(name);
     if (i < nmembers - 1)
       names += ", ";
   }
@@ -801,7 +806,7 @@ void write_unstructured_mesh_results()
     vector<std::string> tally_scores;
     for (auto filter_idx : tally->filters()) {
       auto& filter = model::tally_filters[filter_idx];
-      if (filter->type() != "mesh")
+      if (filter->type() != FilterType::MESH)
         continue;
 
       // check if the filter uses an unstructured mesh
@@ -815,6 +820,16 @@ void write_unstructured_mesh_results()
 
       if (!umesh->output_)
         continue;
+
+      if (umesh->library() == "moab") {
+        if (mpi::master)
+          warning(fmt::format(
+            "Output for a MOAB mesh (mesh {}) was "
+            "requested but will not be written. Please use the Python "
+            "API to generated the desired VTK tetrahedral mesh.",
+            umesh->id_));
+        continue;
+      }
 
       // if this tally has more than one filter, print
       // warning and skip writing the mesh
@@ -887,12 +902,10 @@ void write_unstructured_mesh_results()
       std::string filename = fmt::format("tally_{0}.{1:0{2}}", tally->id_,
         simulation::current_batch, batch_width);
 
-      if (umesh->library() == "moab" && !mpi::master)
-        continue;
-
       // Write the unstructured mesh and data to file
       umesh->write(filename);
 
+      // remove score data added for this mesh write
       umesh->remove_scores();
     }
   }

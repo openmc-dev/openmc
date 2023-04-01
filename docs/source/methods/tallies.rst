@@ -510,6 +510,6 @@ improve the estimate of the percentile.
 
 .. _Cauchy distribution: https://en.wikipedia.org/wiki/Cauchy_distribution
 
-.. _unpublished rational approximation: https://web.archive.org/web/20150926021742/http://home.online.no/~pjacklam/notes/invnorm/
+.. _unpublished rational approximation: https://stackedboxes.org/2017/05/01/acklams-normal-quantile-function/
 
 .. _MC21: http://www.osti.gov/bridge/servlets/purl/903083-HT5p1o/903083.pdf

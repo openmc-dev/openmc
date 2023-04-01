@@ -47,7 +47,7 @@ flags:
 -r, --restart file     Restart a previous run from a state point or a particle
                        restart file
 -s, --threads N        Run with *N* OpenMP threads
--t, --track            Write tracks for all particles
+-t, --track            Write tracks for all particles (up to max_tracks)
 -v, --version          Show version information
 -h, --help             Show help message
 
@@ -112,6 +112,19 @@ otherwise.
 tallies. The path to the statepoint file can be provided as an optional arugment
 (if omitted, a file dialog will be presented).
 
+.. _scripts_track_combine:
+
+------------------------
+``openmc-track-combine``
+------------------------
+
+This script combines multiple HDF5 :ref:`particle track files
+<usersguide_track>` into a single HDF5 particle track file. The filenames of the
+particle track files should be given as posititional arguments. The output
+filename can also be changed with the ``-o`` flag:
+
+-o OUT, --out OUT    Output HDF5 particle track file
+
 .. _scripts_track:
 
 -----------------------
@@ -144,9 +157,9 @@ geometry.xml
   added. Any 'surfaces' attributes/elements on a cell will be renamed 'region'.
 
 materials.xml
-  Nuclide names will be changed from ACE aliases (e.g., Am-242m) to HDF5/GND
+  Nuclide names will be changed from ACE aliases (e.g., Am-242m) to HDF5/GNDS
   names (e.g., Am242_m1). Thermal scattering table names will be changed from
-  ACE aliases (e.g., HH2O) to HDF5/GND names (e.g., c_H_in_H2O).
+  ACE aliases (e.g., HH2O) to HDF5/GNDS names (e.g., c_H_in_H2O).
 
 ----------------------
 ``openmc-update-mgxs``
@@ -157,34 +170,6 @@ the latest HDF5-based format.
 
 -i IN, --input IN    Input XML file
 -o OUT, --output OUT  Output file in HDF5 format
-
-.. _scripts_validate:
-
------------------------
-``openmc-validate-xml``
------------------------
-
-Input files can be checked before executing OpenMC using the
-``openmc-validate-xml`` script which is installed alongside the Python API. Two
-command line arguments can be set when running ``openmc-validate-xml``:
-
--i, --input-path      Location of OpenMC input files.
--r, --relaxng-path    Location of OpenMC RelaxNG files
-
-If the RelaxNG path is not set, the script will search for these files because
-it expects that the user is either running the script located in the install
-directory ``bin`` folder or in ``src/utils``. Once executed, it will match
-OpenMC XML files with their RelaxNG schema and check if they are valid.  Below
-is a table of the messages that will be printed after each file is checked.
-
-========================  ===================================
-Message                   Description
-========================  ===================================
-[XML ERROR]               Cannot parse XML file.
-[NO RELAXNG FOUND]        No RelaxNG file found for XML file.
-[NOT VALID]               XML file does not match RelaxNG.
-[VALID]                   XML file matches RelaxNG.
-========================  ===================================
 
 .. _scripts_voxel:
 

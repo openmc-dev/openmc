@@ -40,15 +40,15 @@ The ``<tally>`` element accepts the following sub-elements:
 
   :nuclides:
     If specified, the scores listed will be for particular nuclides, not the
-    summation of reactions from all nuclides. The format for nuclides should be
-    [Atomic symbol]-[Mass number], e.g. "U-235". The reaction rate for all
+    summation of reactions from all nuclides. Nuclides are expressed using the
+    GNDS naming convention, e.g. "U235" or "Am242_m1". The reaction rate for all
     nuclides can be obtained with "total". For example, to obtain the reaction
-    rates for U-235, Pu-239, and all nuclides in a material, this element should
+    rates for U235, Pu239, and all nuclides in a material, this element should
     be:
 
     .. code-block:: xml
 
-        <nuclides>U-235 Pu-239 total</nuclides>
+        <nuclides>U235 Pu239 total</nuclides>
 
     *Default*: total
 
@@ -312,11 +312,15 @@ element with the tag name ``<mesh>``. This element has the following
 attributes/sub-elements:
 
   :type:
-    The type of mesh. This can be either "regular", "rectilinear", or
-    "unstructured".
+    The type of mesh. This can be either "regular", "rectilinear",
+    "cylindrical", "spherical", or "unstructured".
 
   :dimension:
     The number of mesh cells in each direction. (For regular mesh only.)
+
+  :length_multiplier:
+    A multiplicative factor to apply to the mesh coordinates in all directions.
+    (For unstructured mesh only.)
 
   :lower_left:
     The lower-left corner of the structured mesh. If only two coordinates are
@@ -336,7 +340,19 @@ attributes/sub-elements:
     The mesh divisions along the y-axis. (For rectilinear mesh only.)
 
   :z_grid:
-    The mesh divisions along the z-axis. (For rectilinear mesh only.)
+    The mesh divisions along the z-axis. (For rectilinear and cylindrical meshes only.)
+
+  :r_grid:
+    The mesh divisions along the r-axis. (For cylindrical and spherical meshes only.)
+
+  :phi_grid:
+    The mesh divisions along the phi-axis. (For cylindrical and spherical meshes only.)
+
+  :theta_grid:
+    The mesh divisions along the theta-axis. (For spherical mesh only.)
+
+  :origin:
+    The origin in cartesian coordinates. (For cylindrical and spherical meshes only.)
 
   :library:
     The mesh library used to represent an unstructured mesh. This can be either

@@ -4,6 +4,8 @@
 #ifndef OPENMC_SOURCE_H
 #define OPENMC_SOURCE_H
 
+#include <unordered_set>
+
 #include "pugixml.hpp"
 
 #include "openmc/distribution_multi.h"
@@ -13,6 +15,15 @@
 #include "openmc/vector.h"
 
 namespace openmc {
+
+//==============================================================================
+// Constants
+//==============================================================================
+
+// Maximum number of external source spatial resamples to encounter before an
+// error is thrown.
+constexpr int EXTSRC_REJECT_THRESHOLD {10000};
+constexpr double EXTSRC_REJECT_FRACTION {0.05};
 
 //==============================================================================
 // Global variables
@@ -42,13 +53,15 @@ public:
 };
 
 //==============================================================================
-//! Source composed of independent spatial, angle, and energy distributions
+//! Source composed of independent spatial, angle, energy, and time
+//! distributions
 //==============================================================================
 
 class IndependentSource : public Source {
 public:
   // Constructors
-  IndependentSource(UPtrSpace space, UPtrAngle angle, UPtrDist energy);
+  IndependentSource(
+    UPtrSpace space, UPtrAngle angle, UPtrDist energy, UPtrDist time);
   explicit IndependentSource(pugi::xml_node node);
 
   //! Sample from the external source distribution
@@ -64,13 +77,21 @@ public:
   SpatialDistribution* space() const { return space_.get(); }
   UnitSphereDistribution* angle() const { return angle_.get(); }
   Distribution* energy() const { return energy_.get(); }
+  Distribution* time() const { return time_.get(); }
 
 private:
+  // Domain types
+  enum class DomainType { UNIVERSE, MATERIAL, CELL };
+
+  // Data members
   ParticleType particle_ {ParticleType::neutron}; //!< Type of particle emitted
   double strength_ {1.0};                         //!< Source strength
   UPtrSpace space_;                               //!< Spatial distribution
   UPtrAngle angle_;                               //!< Angular distribution
   UPtrDist energy_;                               //!< Energy distribution
+  UPtrDist time_;                                 //!< Time distribution
+  DomainType domain_type_;                        //!< Domain type for rejection
+  std::unordered_set<int32_t> domain_ids_;        //!< Domains to reject from
 };
 
 //==============================================================================
@@ -81,6 +102,7 @@ class FileSource : public Source {
 public:
   // Constructors
   explicit FileSource(std::string path);
+  explicit FileSource(const vector<SourceSite>& sites) : sites_ {sites} {}
 
   // Methods
   SourceSite sample(uint64_t* seed) const override;

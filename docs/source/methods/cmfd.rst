@@ -266,11 +266,11 @@ and eq. :eq:`eq_cell_bound` can be written in this generic form,
 
 The parameter :math:`\widetilde{D}_{l,m,n}^{u,g}` represents the linear
 coupling term between current and flux. These current relationships can be
-sustituted into eq. :eq:`eq_neut_bal` to produce a linear system of multigroup
+substituted into eq. :eq:`eq_neut_bal` to produce a linear system of multigroup
 diffusion equations for each spatial cell and energy group. However, a solution
 to these equations is not consistent with a higher order transport solution
 unless equivalence factors are present. This is because both the diffusion
-approximation, governed by Fick's Law, and spatial trunction error will produce
+approximation, governed by Fick's Law, and spatial truncation error will produce
 differences. Therefore, a nonlinear parameter,
 :math:`\widehat{D}_{l,m,n}^{u,g}`, is added to eqs. :eq:`eq_cell_cell` and
 :eq:`eq_cell_bound`. These equations are, respectively,

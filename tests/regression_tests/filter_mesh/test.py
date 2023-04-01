@@ -1,4 +1,5 @@
 import numpy as np
+from math import pi
 
 import openmc
 import pytest
@@ -45,24 +46,59 @@ def model():
     mesh_3d.dimension = [5, 5, 5]
     mesh_3d.lower_left = [-7.5, -7.5, -7.5]
     mesh_3d.upper_right = [7.5, 7.5, 7.5]
+    dx = dy = dz = 15 / 5
+    reg_mesh_exp_vols = np.full(mesh_3d.dimension, dx*dy*dz)
+    np.testing.assert_equal(mesh_3d.volumes, reg_mesh_exp_vols)
 
     recti_mesh = openmc.RectilinearMesh()
     recti_mesh.x_grid = np.linspace(-7.5, 7.5, 18)
     recti_mesh.y_grid = np.linspace(-7.5, 7.5, 18)
     recti_mesh.z_grid = np.logspace(0, np.log10(7.5), 11)
+    dx = dy = 15 / 17
+    dz = np.diff(np.logspace(0, np.log10(7.5), 11))
+    dxdy = np.full(recti_mesh.dimension[:2], dx*dy)
+    recti_mesh_exp_vols = np.multiply.outer(dxdy, dz)
+    np.testing.assert_allclose(recti_mesh.volumes, recti_mesh_exp_vols)
+
+    cyl_mesh = openmc.CylindricalMesh()
+    cyl_mesh.r_grid = np.linspace(0, 7.5, 18)
+    cyl_mesh.phi_grid = np.linspace(0, 2*pi, 19)
+    cyl_mesh.z_grid = np.linspace(-7.5, 7.5, 17)
+
+    dr = 0.5 * np.diff(np.linspace(0, 7.5, 18)**2)
+    dp = np.full(cyl_mesh.dimension[1], 2*pi / 18)
+    dz = np.full(cyl_mesh.dimension[2], 15 / 16)
+    drdp = np.outer(dr, dp)
+    cyl_mesh_exp_vols = np.multiply.outer(drdp, dz)
+    np.testing.assert_allclose(cyl_mesh.volumes, cyl_mesh_exp_vols)
+
+    sph_mesh = openmc.SphericalMesh()
+    sph_mesh.r_grid = np.linspace(0, 7.5, 18)
+    sph_mesh.theta_grid = np.linspace(0, pi, 9)
+    sph_mesh.phi_grid = np.linspace(0, 2*pi, 19)
+    dr = np.diff(np.linspace(0, 7.5, 18)**3) / 3
+    dt = np.diff(-np.cos(np.linspace(0, pi, 9)))
+    dp = np.full(sph_mesh.dimension[2], 2*pi / 18)
+    drdt = np.outer(dr, dt)
+    sph_mesh_exp_vols = np.multiply.outer(drdt, dp)
+    np.testing.assert_allclose(sph_mesh.volumes, sph_mesh_exp_vols)
 
     # Create filters
     reg_filters = [
         openmc.MeshFilter(mesh_1d),
         openmc.MeshFilter(mesh_2d),
         openmc.MeshFilter(mesh_3d),
-        openmc.MeshFilter(recti_mesh)
+        openmc.MeshFilter(recti_mesh),
+        openmc.MeshFilter(cyl_mesh),
+        openmc.MeshFilter(sph_mesh)
     ]
     surf_filters = [
         openmc.MeshSurfaceFilter(mesh_1d),
         openmc.MeshSurfaceFilter(mesh_2d),
         openmc.MeshSurfaceFilter(mesh_3d),
-        openmc.MeshSurfaceFilter(recti_mesh)
+        openmc.MeshSurfaceFilter(recti_mesh),
+        openmc.MeshSurfaceFilter(cyl_mesh),
+        openmc.MeshSurfaceFilter(sph_mesh)
     ]
 
     # Create tallies

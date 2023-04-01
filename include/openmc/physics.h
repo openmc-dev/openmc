@@ -11,6 +11,13 @@
 namespace openmc {
 
 //==============================================================================
+// Constants
+//==============================================================================
+
+// Monoatomic ideal-gas scattering treatment threshold
+constexpr double FREE_GAS_THRESHOLD {400.0};
+
+//==============================================================================
 // Non-member functions
 //==============================================================================
 
@@ -80,14 +87,20 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
 Direction sample_cxs_target_velocity(
   double awr, double E, Direction u, double kT, uint64_t* seed);
 
-void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in,
-  SourceSite* site, uint64_t* seed);
+void sample_fission_neutron(
+  int i_nuclide, const Reaction& rx, SourceSite* site, Particle& p);
 
 //! handles all reactions with a single secondary neutron (other than fission),
 //! i.e. level scattering, (n,np), (n,na), etc.
 void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p);
 
 void sample_secondary_photons(Particle& p, int i_nuclide);
+
+//! Split or Roulette particles based their weight and the lower weight window
+//! bound.
+//
+//! \param[in] p, particle to be split or rouletted with the weight window.
+void split_particle(Particle& p);
 
 } // namespace openmc
 

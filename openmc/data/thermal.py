@@ -19,12 +19,12 @@ from . import HDF5_VERSION, HDF5_VERSION_MAJOR, endf
 from .data import K_BOLTZMANN, ATOMIC_SYMBOL, EV_PER_MEV, isotopes
 from .ace import Table, get_table, Library
 from .angle_energy import AngleEnergy
-from .function import Tabulated1D, Function1D
+from .function import Tabulated1D, Function1D, Sum
 from .njoy import make_ace_thermal
 from .thermal_angle_energy import (CoherentElasticAE, IncoherentElasticAE,
                                    IncoherentElasticAEDiscrete,
                                    IncoherentInelasticAEDiscrete,
-                                   IncoherentInelasticAE)
+                                   IncoherentInelasticAE, MixedElasticAE)
 
 
 _THERMAL_NAMES = {
@@ -104,7 +104,7 @@ def get_thermal_name(name):
     Returns
     -------
     str
-        GND-format thermal scattering name
+        GNDS-format thermal scattering name
 
     """
     if name in _THERMAL_NAMES:
@@ -396,7 +396,7 @@ class ThermalScattering(EqualityMixin):
     Parameters
     ----------
     name : str
-        Name of the material using GND convention, e.g. c_H_in_H2O
+        Name of the material using GNDS convention, e.g. c_H_in_H2O
     atomic_weight_ratio : float
         Atomic mass ratio of the target nuclide.
     kTs : Iterable of float
@@ -415,7 +415,7 @@ class ThermalScattering(EqualityMixin):
         Inelastic scattering cross section derived in the incoherent
         approximation
     name : str
-        Name of the material using GND convention, e.g. c_H_in_H2O
+        Name of the material using GNDS convention, e.g. c_H_in_H2O
     temperatures : Iterable of str
         List of string representations the temperatures of the target nuclide
         in the data set.  The temperatures are strings of the temperature,
@@ -491,7 +491,7 @@ class ThermalScattering(EqualityMixin):
             ACE table to read from. If given as a string, it is assumed to be
             the filename for the ACE file.
         name : str
-            GND-conforming name of the material, e.g. c_H_in_H2O. If none is
+            GNDS-conforming name of the material, e.g. c_H_in_H2O. If none is
             passed, the appropriate name is guessed based on the name of the ACE
             table.
 
@@ -596,7 +596,7 @@ class ThermalScattering(EqualityMixin):
             ACE table to read from. If given as a string, it is assumed to be
             the filename for the ACE file.
         name : str
-            GND-conforming name of the material, e.g. c_H_in_H2O. If none is
+            GNDS-conforming name of the material, e.g. c_H_in_H2O. If none is
             passed, the appropriate name is guessed based on the name of the ACE
             table.
 
@@ -615,7 +615,8 @@ class ThermalScattering(EqualityMixin):
         ace_name, xs = ace.name.split('.')
         if not xs.endswith('t'):
             raise TypeError("{} is not a thermal scattering ACE table.".format(ace))
-        name = get_thermal_name(ace_name)
+        if name is None:
+            name = get_thermal_name(ace_name)
 
         # Assign temperature to the running list
         kTs = [ace.temperature*EV_PER_MEV]
@@ -669,11 +670,40 @@ class ThermalScattering(EqualityMixin):
                 mu_i = []
                 for j in range(n_energy_out[i]):
                     mu = ace.xss[idx + 4:idx + 4 + n_mu]
+                    # The equiprobable angles produced by NJOY are not always
+                    # sorted. This is problematic when the smearing algorithm
+                    # is applied when sampling the angles. We sort the angles
+                    # here, because they are equiprobable, so the order
+                    # doesn't matter.
+                    mu.sort()
                     p_mu = 1. / n_mu * np.ones(n_mu)
                     mu_ij = Discrete(mu, p_mu)
                     mu_ij.c = np.cumsum(p_mu)
                     mu_i.append(mu_ij)
                     idx += 3 + n_mu
+
+                # Check if the CDF for the outgoing energy distribution starts
+                # at 0. For NJOY and FRENDY evaluations, this is never the case,
+                # and can very rarely lead to negative energies when sampling
+                # the outgoing energy. From Eq. 7.6 of the ENDF manual, we can
+                # add an outgoing energy 0 eV that has a PDF of 0 (and of
+                # course, a CDF of 0 as well).
+                if eout_i.c[0] > 0.:
+                    eout_i.x = np.insert(eout_i.x, 0, 0.)
+                    eout_i.p = np.insert(eout_i.p, 0, 0.)
+                    eout_i.c = np.insert(eout_i.c, 0, 0.)
+
+                    # For this added outgoing energy (of 0 eV) we add a set of
+                    # isotropic discrete angles.
+                    dmu = 2. / n_mu
+                    mu = np.linspace(-1. + 0.5*dmu, 1. - 0.5*dmu, n_mu)
+                    p_mu = 1. / n_mu * np.ones(n_mu)
+                    mu_0 = Discrete(mu, p_mu)
+                    mu_0.c = np.cumsum(p_mu)
+                    mu_i.insert(0, mu_0)
+                # We don't worry about renormalizing the outgoing energy PDF/CDF
+                # after this manipulation, because it never seems to be
+                # normalized to begin with (at least with NJOY).
 
                 energy_out.append(eout_i)
                 mu_out.append(mu_i)
@@ -693,29 +723,53 @@ class ThermalScattering(EqualityMixin):
 
         # Incoherent/coherent elastic scattering cross section
         idx = ace.jxs[4]
-        n_mu = ace.nxs[6] + 1
         if idx != 0:
-            n_energy = int(ace.xss[idx])
-            energy = ace.xss[idx + 1: idx + 1 + n_energy]*EV_PER_MEV
-            P = ace.xss[idx + 1 + n_energy: idx + 1 + 2 * n_energy]
-
-            if ace.nxs[5] == 4:
+            if ace.nxs[5] in (4, 5):
                 # Coherent elastic
-                xs = CoherentElastic(energy, P*EV_PER_MEV)
-                distribution = CoherentElasticAE(xs)
+                n_energy = int(ace.xss[idx])
+                energy = ace.xss[idx + 1: idx + 1 + n_energy]*EV_PER_MEV
+                P = ace.xss[idx + 1 + n_energy: idx + 1 + 2 * n_energy]
+                coherent_xs = CoherentElastic(energy, P*EV_PER_MEV)
+                coherent_dist = CoherentElasticAE(coherent_xs)
 
                 # Coherent elastic shouldn't have angular distributions listed
+                n_mu = ace.nxs[6] + 1
                 assert n_mu == 0
-            else:
-                # Incoherent elastic
-                xs = Tabulated1D(energy, P)
+
+            if ace.nxs[5] in (3, 5):
+                # Incoherent elastic scattering -- first determine if both
+                # incoherent and coherent are present (mixed)
+                mixed = (ace.nxs[5] == 5)
+
+                # Get cross section values
+                idx = ace.jxs[7] if mixed else ace.jxs[4]
+                n_energy = int(ace.xss[idx])
+                energy = ace.xss[idx + 1: idx + 1 + n_energy]*EV_PER_MEV
+                values = ace.xss[idx + 1 + n_energy: idx + 1 + 2 * n_energy]
+
+                incoherent_xs = Tabulated1D(energy, values)
 
                 # Angular distribution
+                n_mu = (ace.nxs[8] if mixed else ace.nxs[6]) + 1
                 assert n_mu > 0
-                idx = ace.jxs[6]
+                idx = ace.jxs[9] if mixed else ace.jxs[6]
                 mu_out = ace.xss[idx:idx + n_energy * n_mu]
                 mu_out.shape = (n_energy, n_mu)
-                distribution = IncoherentElasticAEDiscrete(mu_out)
+                incoherent_dist = IncoherentElasticAEDiscrete(mu_out)
+
+            if ace.nxs[5] == 3:
+                xs = incoherent_xs
+                distribution = incoherent_dist
+            elif ace.nxs[5] == 4:
+                xs = coherent_xs
+                distribution = coherent_dist
+            else:
+                # Create mixed cross section -- note that coherent must come
+                # first due to assumption on C++ side
+                xs = Sum([coherent_xs, incoherent_xs])
+
+                # Create mixed distribution
+                distribution = MixedElasticAE(coherent_dist, incoherent_dist)
 
             table.elastic = ThermalScatteringReaction({T: xs}, {T: distribution})
 
@@ -783,9 +837,10 @@ class ThermalScattering(EqualityMixin):
 
             # Create instance from ACE tables within library
             lib = Library(kwargs['ace'])
-            data = cls.from_ace(lib.tables[0])
+            name = kwargs.get('table_name')
+            data = cls.from_ace(lib.tables[0], name=name)
             for table in lib.tables[1:]:
-                data.add_temperature_from_ace(table)
+                data.add_temperature_from_ace(table, name=name)
 
             # Load ENDF data to replace incoherent elastic
             if use_endf_data:
@@ -800,7 +855,7 @@ class ThermalScattering(EqualityMixin):
                     # Replace ACE data with ENDF data
                     rx, rx_endf = data.elastic, data_endf.elastic
                     for t in temperatures:
-                        if isinstance(rx_endf.xs[t], IncoherentElastic):
+                        if isinstance(rx_endf.xs[t], (IncoherentElastic, Sum)):
                             rx.xs[t] = rx_endf.xs[t]
                             rx.distribution[t] = rx_endf.distribution[t]
 
@@ -830,20 +885,14 @@ class ThermalScattering(EqualityMixin):
         # Read coherent/incoherent elastic data
         elastic = None
         if (7, 2) in ev.section:
-            xs = {}
-            distribution = {}
-
-            file_obj = StringIO(ev.section[7, 2])
-            lhtr = endf.get_head_record(file_obj)[2]
-            if lhtr == 1:
-                # coherent elastic
-
+            # Define helper functions to avoid duplication
+            def get_coherent_elastic(file_obj):
                 # Get structure factor at first temperature
                 params, S = endf.get_tab1_record(file_obj)
                 strT = _temperature_str(params[0])
                 n_temps = params[2]
                 bragg_edges = S.x
-                xs[strT] = CoherentElastic(bragg_edges, S.y)
+                xs = {strT: CoherentElastic(bragg_edges, S.y)}
                 distribution = {strT: CoherentElasticAE(xs[strT])}
 
                 # Get structure factor for subsequent temperatures
@@ -852,15 +901,34 @@ class ThermalScattering(EqualityMixin):
                     strT = _temperature_str(params[0])
                     xs[strT] = CoherentElastic(bragg_edges, S)
                     distribution[strT] = CoherentElasticAE(xs[strT])
+                return xs, distribution
 
-            elif lhtr == 2:
-                # incoherent elastic
+            def get_incoherent_elastic(file_obj):
                 params, W = endf.get_tab1_record(file_obj)
                 bound_xs = params[0]
+                xs = {}
+                distribution = {}
                 for T, debye_waller in zip(W.x, W.y):
                     strT = _temperature_str(T)
                     xs[strT] = IncoherentElastic(bound_xs, debye_waller)
                     distribution[strT] = IncoherentElasticAE(debye_waller)
+                return xs, distribution
+
+            file_obj = StringIO(ev.section[7, 2])
+            lhtr = endf.get_head_record(file_obj)[2]
+            if lhtr == 1:
+                # coherent elastic
+                xs, distribution = get_coherent_elastic(file_obj)
+            elif lhtr == 2:
+                # incoherent elastic
+                xs, distribution = get_incoherent_elastic(file_obj)
+            elif lhtr == 3:
+                # mixed coherent / incoherent elastic
+                xs_c, dist_c = get_coherent_elastic(file_obj)
+                xs_i, dist_i = get_incoherent_elastic(file_obj)
+                assert sorted(xs_c) == sorted(xs_i)
+                xs = {T: Sum([xs_c[T], xs_i[T]]) for T in xs_c}
+                distribution = {T: MixedElasticAE(dist_c[T], dist_i[T]) for T in dist_c}
 
             elastic = ThermalScatteringReaction(xs, distribution)
 

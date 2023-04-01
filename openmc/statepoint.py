@@ -11,7 +11,7 @@ from uncertainties import ufloat
 import openmc
 import openmc.checkvalue as cv
 
-_VERSION_STATEPOINT = 17
+_VERSION_STATEPOINT = 18
 
 
 class StatePoint:
@@ -63,6 +63,8 @@ class StatePoint:
         datatype has fields 'name', 'sum', 'sum_sq', 'mean', and 'std_dev'.
     k_combined : uncertainties.UFloat
         Combined estimator for k-effective
+
+        .. deprecated:: 0.13.1
     k_col_abs : float
         Cross-product of collision and absorption estimates of k-effective
     k_col_tra : float
@@ -71,6 +73,10 @@ class StatePoint:
         Cross-product of absorption and tracklength estimates of k-effective
     k_generation : numpy.ndarray
         Estimate of k-effective for each batch/generation
+    keff : uncertainties.UFloat
+        Combined estimator for k-effective
+
+        .. versionadded:: 0.13.1
     meshes : dict
         Dictionary whose keys are mesh IDs and whose values are MeshBase objects
     n_batches : int
@@ -260,11 +266,19 @@ class StatePoint:
             return None
 
     @property
-    def k_combined(self):
+    def keff(self):
         if self.run_mode == 'eigenvalue':
             return ufloat(*self._f['k_combined'][()])
         else:
             return None
+
+    @property
+    def k_combined(self):
+        warnings.warn(
+            "The 'k_combined' property has been renamed to 'keff' and will be "
+            "removed in a future version of OpenMC.", FutureWarning
+        )
+        return self.keff
 
     @property
     def k_col_abs(self):

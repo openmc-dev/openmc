@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from collections.abc import Mapping
+from math import log
 import os
 from pathlib import Path
 
@@ -76,15 +76,17 @@ def test_thin():
 
 
 def test_atomic_mass():
-    assert openmc.data.atomic_mass('H1') == 1.00782503224
-    assert openmc.data.atomic_mass('U235') == 235.04392819
+    assert openmc.data.atomic_mass('H1') == 1.007825031898
+    assert openmc.data.atomic_mass('U235') == 235.043928117
+    assert openmc.data.atomic_mass('Li6') == 6.01512288742
+    assert openmc.data.atomic_mass('Pb220') == 220.025905
     with pytest.raises(KeyError):
         openmc.data.atomic_mass('U100')
 
 
 def test_atomic_weight():
-    assert openmc.data.atomic_weight('C') == 12.011115164864455
-    assert openmc.data.atomic_weight('carbon') == 12.011115164864455
+    assert openmc.data.atomic_weight('C') == 12.011115164865895
+    assert openmc.data.atomic_weight('carbon') == 12.011115164865895
     with pytest.raises(ValueError):
         openmc.data.atomic_weight('Qt')
 
@@ -99,12 +101,12 @@ def test_water_density():
     assert dens(500.0, 3.0) == pytest.approx(1e-3/0.120241800e-2, 1e-6)
 
 
-def test_gnd_name():
-    assert openmc.data.gnd_name(1, 1) == 'H1'
-    assert openmc.data.gnd_name(40, 90) == ('Zr90')
-    assert openmc.data.gnd_name(95, 242, 0) == ('Am242')
-    assert openmc.data.gnd_name(95, 242, 1) == ('Am242_m1')
-    assert openmc.data.gnd_name(95, 242, 10) == ('Am242_m10')
+def test_gnds_name():
+    assert openmc.data.gnds_name(1, 1) == 'H1'
+    assert openmc.data.gnds_name(40, 90) == ('Zr90')
+    assert openmc.data.gnds_name(95, 242, 0) == ('Am242')
+    assert openmc.data.gnds_name(95, 242, 1) == ('Am242_m1')
+    assert openmc.data.gnds_name(95, 242, 10) == ('Am242_m10')
 
 
 def test_isotopes():
@@ -126,3 +128,14 @@ def test_zam():
     assert openmc.data.zam('Am242_m10') == (95, 242, 10)
     with pytest.raises(ValueError):
         openmc.data.zam('garbage')
+
+
+def test_half_life():
+    assert openmc.data.half_life('H2') is None
+    assert openmc.data.half_life('U235') == pytest.approx(2.22102e16)
+    assert openmc.data.half_life('Am242') == pytest.approx(57672.0)
+    assert openmc.data.half_life('Am242_m1') == pytest.approx(4449622000.0)
+    assert openmc.data.decay_constant('H2') == 0.0
+    assert openmc.data.decay_constant('U235') == pytest.approx(log(2.0)/2.22102e16)
+    assert openmc.data.decay_constant('Am242') == pytest.approx(log(2.0)/57672.0)
+    assert openmc.data.decay_constant('Am242_m1') == pytest.approx(log(2.0)/4449622000.0)

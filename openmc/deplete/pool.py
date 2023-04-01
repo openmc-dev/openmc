@@ -10,8 +10,12 @@ from multiprocessing import Pool
 # multiprocessing routines during depletion
 USE_MULTIPROCESSING = True
 
+# Allow user to override the number of worker processes to use for depletion
+# calculations
+NUM_PROCESSES = None
 
-def deplete(func, chain, x, rates, dt, matrix_func=None):
+
+def deplete(func, chain, x, rates, dt, matrix_func=None, *matrix_args):
     """Deplete materials using given reaction rates for a specified time
 
     Parameters
@@ -33,6 +37,8 @@ def deplete(func, chain, x, rates, dt, matrix_func=None):
         ``fission_yields = {parent: {product: yield_frac}}``
         Expected to return the depletion matrix required by
         ``func``
+    matrix_args : Any, optional
+        Additional arguments passed to matrix_func
 
     Returns
     -------
@@ -53,12 +59,13 @@ def deplete(func, chain, x, rates, dt, matrix_func=None):
     if matrix_func is None:
         matrices = map(chain.form_matrix, rates, fission_yields)
     else:
-        matrices = map(matrix_func, repeat(chain), rates, fission_yields)
+        matrices = map(matrix_func, repeat(chain), rates, fission_yields,
+                       *matrix_args)
 
     inputs = zip(matrices, x, repeat(dt))
 
     if USE_MULTIPROCESSING:
-        with Pool() as pool:
+        with Pool(NUM_PROCESSES) as pool:
             x_result = list(pool.starmap(func, inputs))
     else:
         x_result = list(starmap(func, inputs))

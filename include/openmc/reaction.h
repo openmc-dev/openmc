@@ -9,6 +9,7 @@
 #include "hdf5.h"
 #include <gsl/gsl-lite.hpp>
 
+#include "openmc/particle_data.h"
 #include "openmc/reaction_product.h"
 #include "openmc/vector.h"
 
@@ -26,6 +27,18 @@ public:
   //! \param[in] group HDF5 group containing reaction data
   //! \param[in] temperatures Desired temperatures for cross sections
   explicit Reaction(hid_t group, const vector<int>& temperatures);
+
+  //! Calculate cross section given temperautre/grid index, interpolation factor
+  //
+  //! \param[in] i_temp Temperature index
+  //! \param[in] i_grid Energy grid index
+  //! \param[in] interp_factor Interpolation factor between grid points
+  double xs(gsl::index i_temp, gsl::index i_grid, double interp_factor) const;
+
+  //! Calculate cross section
+  //
+  //! \param[in] micro Microscopic cross section cache
+  double xs(const NuclideMicroXS& micro) const;
 
   //! \brief Calculate reaction rate based on group-wise flux distribution
   //

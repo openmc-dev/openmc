@@ -1,18 +1,23 @@
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from collections.abc import Iterable
-from copy import copy, deepcopy
-from numbers import Real
-import random
+from copy import deepcopy
+from numbers import Integral, Real
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from xml.etree import ElementTree as ET
 
+import h5py
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
+
 from ._xml import get_text
+from .checkvalue import check_type, check_value
 from .mixin import IDManagerMixin
 from .plots import _SVG_COLORS
+from .surface import _BOUNDARY_TYPES
 
 
 class UniverseBase(ABC, IDManagerMixin):
@@ -86,6 +91,23 @@ class UniverseBase(ABC, IDManagerMixin):
         else:
             raise ValueError('No volume information found for this universe.')
 
+    def get_all_universes(self):
+        """Return all universes that are contained within this one.
+
+        Returns
+        -------
+        universes : collections.OrderedDict
+            Dictionary whose keys are universe IDs and values are
+            :class:`Universe` instances
+
+        """
+        # Append all Universes within each Cell to the dictionary
+        universes = OrderedDict()
+        for cell in self.get_all_cells().values():
+            universes.update(cell.get_all_universes())
+
+        return universes
+
     @abstractmethod
     def create_xml_subelement(self, xml_element, memo=None):
         """Add the universe xml representation to an incoming xml element
@@ -103,6 +125,13 @@ class UniverseBase(ABC, IDManagerMixin):
         Returns
         -------
         None
+
+        """
+
+    @abstractmethod
+    def _partial_deepcopy(self):
+        """Deepcopy all parameters of an openmc.UniverseBase object except its cells.
+        This should only be used from the openmc.UniverseBase.clone() context.
 
         """
 
@@ -133,8 +162,7 @@ class UniverseBase(ABC, IDManagerMixin):
 
         # If no memoize'd clone exists, instantiate one
         if self not in memo:
-            clone = deepcopy(self)
-            clone.id = None
+            clone = self._partial_deepcopy()
 
             # Clone all cells for the universe clone
             clone._cells = OrderedDict()
@@ -267,12 +295,8 @@ class Universe(UniverseBase):
 
     def plot(self, origin=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
              basis='xy', color_by='cell', colors=None, seed=None,
-             **kwargs):
+             openmc_exec='openmc', axes=None, **kwargs):
         """Display a slice plot of the universe.
-
-        To display or save the plot, call :func:`matplotlib.pyplot.show` or
-        :func:`matplotlib.pyplot.savefig`. In a Jupyter notebook, enabling the
-        matplotlib inline backend will show the plot inline.
 
         Parameters
         ----------
@@ -297,14 +321,16 @@ class Universe(UniverseBase):
                # Make water blue
                water = openmc.Cell(fill=h2o)
                universe.plot(..., colors={water: (0., 0., 1.))
+        seed : int
+            Seed for the random number generator
+        openmc_exec : str
+            Path to OpenMC executable.
+        axes : matplotlib.Axes
+            Axes to draw to
 
-        seed : hashable object or None
-            Hashable object which is used to seed the random number generator
-            used to select colors. If None, the generator is seeded from the
-            current time.
+            .. versionadded:: 0.13.1
         **kwargs
-            All keyword arguments are passed to
-            :func:`matplotlib.pyplot.imshow`.
+            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 
         Returns
         -------
@@ -312,83 +338,66 @@ class Universe(UniverseBase):
             Resulting image
 
         """
+        import matplotlib.image as mpimg
         import matplotlib.pyplot as plt
 
-        # Seed the random number generator
-        if seed is not None:
-            random.seed(seed)
-
-        if colors is None:
-            # Create default dictionary if none supplied
-            colors = {}
-        else:
-            # Convert to RGBA if necessary
-            colors = copy(colors)
-            for obj, color in colors.items():
-                if isinstance(color, str):
-                    if color.lower() not in _SVG_COLORS:
-                        raise ValueError(f"'{color}' is not a valid color.")
-                    colors[obj] = [x/255 for x in
-                                   _SVG_COLORS[color.lower()]] + [1.0]
-                elif len(color) == 3:
-                    colors[obj] = list(color) + [1.0]
-
+        # Determine extents of plot
         if basis == 'xy':
-            x_min = origin[0] - 0.5*width[0]
-            x_max = origin[0] + 0.5*width[0]
-            y_min = origin[1] - 0.5*width[1]
-            y_max = origin[1] + 0.5*width[1]
+            x, y = 0, 1
         elif basis == 'yz':
-            # The x-axis will correspond to physical y and the y-axis will
-            # correspond to physical z
-            x_min = origin[1] - 0.5*width[0]
-            x_max = origin[1] + 0.5*width[0]
-            y_min = origin[2] - 0.5*width[1]
-            y_max = origin[2] + 0.5*width[1]
+            x, y = 1, 2
         elif basis == 'xz':
-            # The y-axis will correspond to physical z
-            x_min = origin[0] - 0.5*width[0]
-            x_max = origin[0] + 0.5*width[0]
-            y_min = origin[2] - 0.5*width[1]
-            y_max = origin[2] + 0.5*width[1]
+            x, y = 0, 2
+        x_min = origin[x] - 0.5*width[0]
+        x_max = origin[x] + 0.5*width[0]
+        y_min = origin[y] - 0.5*width[1]
+        y_max = origin[y] + 0.5*width[1]
 
-        # Determine locations to determine cells at
-        x_coords = np.linspace(x_min, x_max, pixels[0], endpoint=False) + \
-                   0.5*(x_max - x_min)/pixels[0]
-        y_coords = np.linspace(y_max, y_min, pixels[1], endpoint=False) - \
-                   0.5*(y_max - y_min)/pixels[1]
+        with TemporaryDirectory() as tmpdir:
+            model = openmc.Model()
+            model.geometry = openmc.Geometry(self)
+            if seed is not None:
+                model.settings.seed = seed
 
-        # Initialize output image in RGBA format.  Flip the pixels from
-        # traditional (x, y) to (y, x) used in graphics.
-        img = np.zeros((pixels[1], pixels[0], 4))
-        for i, x in enumerate(x_coords):
-            for j, y in enumerate(y_coords):
-                if basis == 'xy':
-                    path = self.find((x, y, origin[2]))
-                elif basis == 'yz':
-                    path = self.find((origin[0], x, y))
-                elif basis == 'xz':
-                    path = self.find((x, origin[1], y))
+            # Determine whether any materials contains macroscopic data and if
+            # so, set energy mode accordingly
+            for mat in self.get_all_materials().values():
+                if mat._macroscopic is not None:
+                    model.settings.energy_mode = 'multi-group'
+                    break
 
-                if len(path) > 0:
-                    try:
-                        if color_by == 'cell':
-                            obj = path[-1]
-                        elif color_by == 'material':
-                            if path[-1].fill_type == 'material':
-                                obj = path[-1].fill
-                            else:
-                                continue
-                    except AttributeError:
-                        continue
-                    if obj not in colors:
-                        colors[obj] = (random.random(), random.random(),
-                                       random.random(), 1.0)
-                    img[j, i, :] = colors[obj]
+            # Create plot object matching passed arguments
+            plot = openmc.Plot()
+            plot.origin = origin
+            plot.width = width
+            plot.pixels = pixels
+            plot.basis = basis
+            plot.color_by = color_by
+            if colors is not None:
+                plot.colors = colors
+            model.plots.append(plot)
 
-        # Display image
-        return plt.imshow(img, extent=(x_min, x_max, y_min, y_max),
-                          interpolation='nearest', **kwargs)
+            # Run OpenMC in geometry plotting mode
+            model.plot_geometry(False, cwd=tmpdir, openmc_exec=openmc_exec)
+
+            # Read image from file
+            img_path = Path(tmpdir) / f'plot_{plot.id}.png'
+            if not img_path.is_file():
+                img_path = img_path.with_suffix('.ppm')
+            img = mpimg.imread(str(img_path))
+
+            # Create a figure sized such that the size of the axes within
+            # exactly matches the number of pixels specified
+            if axes is None:
+                px = 1/plt.rcParams['figure.dpi']
+                fig, axes = plt.subplots()
+                params = fig.subplotpars
+                width = pixels[0]*px/(params.right - params.left)
+                height = pixels[0]*px/(params.top - params.bottom)
+                fig.set_size_inches(width, height)
+
+            # Plot image and return the axes
+            return axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
 
     def add_cell(self, cell):
         """Add a cell to the universe.
@@ -483,7 +492,7 @@ class Universe(UniverseBase):
         """
         nuclides = OrderedDict()
 
-        if self._atoms is not None:
+        if self._atoms:
             volume = self.volume
             for name, atoms in self._atoms.items():
                 nuclide = openmc.Nuclide(name)
@@ -545,23 +554,6 @@ class Universe(UniverseBase):
             materials.update(cell.get_all_materials(memo))
 
         return materials
-
-    def get_all_universes(self):
-        """Return all universes that are contained within this one.
-
-        Returns
-        -------
-        universes : collections.OrderedDict
-            Dictionary whose keys are universe IDs and values are
-            :class:`Universe` instances
-
-        """
-        # Append all Universes within each Cell to the dictionary
-        universes = OrderedDict()
-        for cell in self.get_all_cells().values():
-            universes.update(cell.get_all_universes())
-
-        return universes
 
     def create_xml_subelement(self, xml_element, memo=None):
         # Iterate over all Cells
@@ -625,9 +617,20 @@ class Universe(UniverseBase):
             if not instances_only:
                 cell._paths.append(cell_path)
 
+    def _partial_deepcopy(self):
+        """Clone all of the openmc.Universe object's attributes except for its cells,
+        as they are copied within the clone function. This should only to be
+        used within the openmc.UniverseBase.clone() context.
+        """
+        clone = openmc.Universe(name=self.name)
+        clone.volume = self.volume
+        return clone
+
 
 class DAGMCUniverse(UniverseBase):
     """A reference to a DAGMC file to be used in the model.
+
+    .. versionadded:: 0.13.0
 
     Parameters
     ----------
@@ -639,11 +642,11 @@ class DAGMCUniverse(UniverseBase):
     name : str, optional
         Name of the universe. If not specified, the name is the empty string.
     auto_geom_ids : bool
-        Set IDs automatically on initialization (True) or report overlaps
-        in ID space between CSG and DAGMC (False)
+        Set IDs automatically on initialization (True) or report overlaps in ID
+        space between CSG and DAGMC (False)
     auto_mat_ids : bool
-        Set IDs automatically on initialization (True)  or report overlaps
-        in ID space between OpenMC and UWUW materials (False)
+        Set IDs automatically on initialization (True)  or report overlaps in ID
+        space between OpenMC and UWUW materials (False)
 
     Attributes
     ----------
@@ -654,11 +657,34 @@ class DAGMCUniverse(UniverseBase):
     filename : str
         Path to the DAGMC file used to represent this universe.
     auto_geom_ids : bool
-        Set IDs automatically on initialization (True) or report overlaps
-        in ID space between CSG and DAGMC (False)
+        Set IDs automatically on initialization (True) or report overlaps in ID
+        space between CSG and DAGMC (False)
     auto_mat_ids : bool
-        Set IDs automatically on initialization (True)  or report overlaps
-        in ID space between OpenMC and UWUW materials (False)
+        Set IDs automatically on initialization (True)  or report overlaps in ID
+        space between OpenMC and UWUW materials (False)
+    bounding_box : 2-tuple of numpy.array
+        Lower-left and upper-right coordinates of an axis-aligned bounding box
+        of the universe.
+
+        .. versionadded:: 0.13.1
+    material_names : list of str
+        Return a sorted list of materials names that are contained within the
+        DAGMC h5m file. This is useful when naming openmc.Material() objects
+        as each material name present in the DAGMC h5m file must have a
+        matching openmc.Material() with the same name.
+
+        .. versionadded:: 0.13.2
+    n_cells : int
+        The number of cells in the DAGMC model. This is the number of cells at
+        runtime and accounts for the implicit complement whether or not is it
+        present in the DAGMC file.
+
+        .. versionadded:: 0.13.2
+    n_surfaces : int
+        The number of surfaces in the model.
+
+        .. versionadded:: 0.13.2
+
     """
 
     def __init__(self,
@@ -680,12 +706,20 @@ class DAGMCUniverse(UniverseBase):
         return string
 
     @property
+    def bounding_box(self):
+        with h5py.File(self.filename) as dagmc_file:
+            coords = dagmc_file['tstt']['nodes']['coordinates'][()]
+            lower_left_corner = coords.min(axis=0)
+            upper_right_corner = coords.max(axis=0)
+            return (lower_left_corner, upper_right_corner)
+
+    @property
     def filename(self):
         return self._filename
 
     @filename.setter
     def filename(self, val):
-        cv.check_type('DAGMC filename', val, str)
+        cv.check_type('DAGMC filename', val, (Path, str))
         self._filename = val
 
     @property
@@ -701,6 +735,21 @@ class DAGMCUniverse(UniverseBase):
     def auto_mat_ids(self):
         return self._auto_mat_ids
 
+    @property
+    def material_names(self):
+        dagmc_file_contents = h5py.File(self.filename)
+        material_tags_hex=dagmc_file_contents['/tstt/tags/NAME'].get('values')
+        material_tags_ascii=[]
+        for tag in material_tags_hex:
+            candidate_tag = tag.tobytes().decode().replace('\x00', '')
+            # tags might be for temperature or reflective surfaces
+            if candidate_tag.startswith('mat:'):
+                # removes first 4 characters as openmc.Material name should be
+                # set without the 'mat:' part of the tag
+                material_tags_ascii.append(candidate_tag[4:])
+
+        return sorted(set(material_tags_ascii))
+
     @auto_mat_ids.setter
     def auto_mat_ids(self, val):
         cv.check_type('DAGMC automatic material ids', val, bool)
@@ -711,6 +760,50 @@ class DAGMCUniverse(UniverseBase):
 
     def get_all_materials(self, memo=None):
         return OrderedDict()
+
+    def _n_geom_elements(self, geom_type):
+        """
+        Helper function for retrieving the number geometric entities in a DAGMC
+        file
+
+        Parameters
+        ----------
+        geom_type : str
+            The type of geometric entity to count. One of {'Volume', 'Surface'}. Returns
+            the runtime number of voumes in the DAGMC model (includes implicit complement).
+
+        Returns
+        -------
+        int
+            Number of geometry elements of the specified type
+        """
+        cv.check_value('geometry type', geom_type, ('volume', 'surface'))
+
+        def decode_str_tag(tag_val):
+            return tag_val.tobytes().decode().replace('\x00', '')
+
+        dagmc_filepath = Path(self.filename).resolve()
+        with h5py.File(dagmc_filepath) as dagmc_file:
+            category_data = dagmc_file['tstt/tags/CATEGORY/values']
+            category_strs = map(decode_str_tag, category_data)
+            n = sum([v == geom_type.capitalize() for v in category_strs])
+
+            # check for presence of an implicit complement in the file and
+            # increment the number of cells if it doesn't exist
+            if geom_type == 'volume':
+                name_data = dagmc_file['tstt/tags/NAME/values']
+                name_strs = map(decode_str_tag, name_data)
+                if not sum(['impl_complement' in n for n in name_strs]):
+                    n += 1
+        return n
+
+    @property
+    def n_cells(self):
+        return self._n_geom_elements('volume')
+
+    @property
+    def n_surfaces(self):
+        return self._n_geom_elements('surface')
 
     def create_xml_subelement(self, xml_element, memo=None):
         if memo and self in memo:
@@ -727,8 +820,93 @@ class DAGMCUniverse(UniverseBase):
             dagmc_element.set('auto_geom_ids', 'true')
         if self.auto_mat_ids:
             dagmc_element.set('auto_mat_ids', 'true')
-        dagmc_element.set('filename', self.filename)
+        dagmc_element.set('filename', str(self.filename))
         xml_element.append(dagmc_element)
+
+    def bounding_region(self, bounded_type='box', boundary_type='vacuum', starting_id=10000):
+        """Creates a either a spherical or box shaped bounding region around
+        the DAGMC geometry.
+
+        .. versionadded:: 0.13.1
+
+        Parameters
+        ----------
+        bounded_type : str
+            The type of bounding surface(s) to use when constructing the region.
+            Options include a single spherical surface (sphere) or a rectangle
+            made from six planes (box).
+        boundary_type : str
+            Boundary condition that defines the behavior for particles hitting
+            the surface. Defaults to vacuum boundary condition. Passed into the
+            surface construction.
+        starting_id : int
+            Starting ID of the surface(s) used in the region. For bounded_type
+            'box', the next 5 IDs will also be used. Defaults to 10000 to reduce
+            the chance of an overlap of surface IDs with the DAGMC geometry.
+
+        Returns
+        -------
+        openmc.Region
+            Region instance
+        """
+
+        check_type('boundary type', boundary_type, str)
+        check_value('boundary type', boundary_type, _BOUNDARY_TYPES)
+        check_type('starting surface id', starting_id, Integral)
+        check_type('bounded type', bounded_type, str)
+        check_value('bounded type', bounded_type, ('box', 'sphere'))
+
+        bbox = self.bounding_box
+
+        if bounded_type == 'sphere':
+            bbox_center = (bbox[0] + bbox[1])/2
+            radius = np.linalg.norm(np.asarray(bbox))
+            bounding_surface = openmc.Sphere(
+                surface_id=starting_id,
+                x0=bbox_center[0],
+                y0=bbox_center[1],
+                z0=bbox_center[2],
+                boundary_type=boundary_type,
+                r=radius,
+            )
+
+            return -bounding_surface
+
+        if bounded_type == 'box':
+            # defines plane surfaces for all six faces of the bounding box
+            lower_x = openmc.XPlane(bbox[0][0], surface_id=starting_id)
+            upper_x = openmc.XPlane(bbox[1][0], surface_id=starting_id+1)
+            lower_y = openmc.YPlane(bbox[0][1], surface_id=starting_id+2)
+            upper_y = openmc.YPlane(bbox[1][1], surface_id=starting_id+3)
+            lower_z = openmc.ZPlane(bbox[0][2], surface_id=starting_id+4)
+            upper_z = openmc.ZPlane(bbox[1][2], surface_id=starting_id+5)
+
+            region = +lower_x & -upper_x & +lower_y & -upper_y & +lower_z & -upper_z
+
+            for surface in region.get_surfaces().values():
+                surface.boundary_type = boundary_type
+
+            return region
+
+    def bounded_universe(self, bounding_cell_id=10000, **kwargs):
+        """Returns an openmc.Universe filled with this DAGMCUniverse and bounded
+        with a cell. Defaults to a box cell with a vacuum surface however this
+        can be changed using the kwargs which are passed directly to
+        DAGMCUniverse.bounding_region().
+
+        Parameters
+        ----------
+        bounding_cell_id : int
+            The cell ID number to use for the bounding cell, defaults to 10000 to reduce
+            the chance of overlapping ID numbers with the DAGMC geometry.
+
+        Returns
+        -------
+        openmc.Universe
+            Universe instance
+        """
+        bounding_cell = openmc.Cell(fill=self, cell_id=bounding_cell_id, region=self.bounding_region(**kwargs))
+        return openmc.Universe(cells=[bounding_cell])
 
     @classmethod
     def from_hdf5(cls, group):
@@ -784,3 +962,14 @@ class DAGMCUniverse(UniverseBase):
         out.auto_mat_ids = bool(elem.get('auto_mat_ids'))
 
         return out
+
+    def _partial_deepcopy(self):
+        """Clone all of the openmc.DAGMCUniverse object's attributes except for
+        its cells, as they are copied within the clone function. This should
+        only to be used within the openmc.UniverseBase.clone() context.
+        """
+        clone = openmc.DAGMCUniverse(name=self.name, filename=self.filename)
+        clone.volume = self.volume
+        clone.auto_geom_ids = self.auto_geom_ids
+        clone.auto_mat_ids = self.auto_mat_ids
+        return clone

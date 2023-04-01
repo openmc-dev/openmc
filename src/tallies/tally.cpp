@@ -50,6 +50,7 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
+//! a mapping of tally ID to index in the tallies vector
 std::unordered_map<int, int> tally_map;
 vector<unique_ptr<Tally>> tallies;
 vector<int> active_tallies;
@@ -143,16 +144,18 @@ Tally::Tally(pugi::xml_node node)
       particle_filter_index = i_filter;
 
     // Change the tally estimator if a filter demands it
-    std::string filt_type = f->type();
-    if (filt_type == "energyout" || filt_type == "legendre") {
+    FilterType filt_type = f->type();
+    if (filt_type == FilterType::ENERGY_OUT ||
+        filt_type == FilterType::LEGENDRE) {
       estimator_ = TallyEstimator::ANALOG;
-    } else if (filt_type == "sphericalharmonics") {
+    } else if (filt_type == FilterType::SPHERICAL_HARMONICS) {
       auto sf = dynamic_cast<SphericalHarmonicsFilter*>(f);
       if (sf->cosine() == SphericalHarmonicsCosine::scatter) {
         estimator_ = TallyEstimator::ANALOG;
       }
-    } else if (filt_type == "spatiallegendre" || filt_type == "zernike" ||
-               filt_type == "zernikeradial") {
+    } else if (filt_type == FilterType::SPATIAL_LEGENDRE ||
+               filt_type == FilterType::ZERNIKE ||
+               filt_type == FilterType::ZERNIKE_RADIAL) {
       estimator_ = TallyEstimator::COLLISION;
     }
   }
@@ -388,9 +391,6 @@ void Tally::set_filters(gsl::span<Filter*> filters)
       delayedgroup_filter_ = i;
     }
   }
-
-  // Set the strides.
-  set_strides();
 }
 
 void Tally::set_strides()
@@ -500,6 +500,7 @@ void Tally::set_scores(const vector<std::string>& scores)
           fatal_error("Cannot tally mesh surface currents in the same tally as "
                       "normal surface currents");
         type_ = TallyType::SURFACE;
+        estimator_ = TallyEstimator::ANALOG;
       } else if (meshsurface_present) {
         type_ = TallyType::MESH_SURFACE;
       } else {
@@ -556,22 +557,10 @@ void Tally::set_nuclides(pugi::xml_node node)
     return;
   }
 
-  if (get_node_value(node, "nuclides") == "all") {
-    // This tally should bin every nuclide in the problem.  It should also bin
-    // the total material rates.  To achieve this, set the nuclides_ vector to
-    // 0, 1, 2, ..., -1.
-    nuclides_.reserve(data::nuclides.size() + 1);
-    for (auto i = 0; i < data::nuclides.size(); ++i)
-      nuclides_.push_back(i);
-    nuclides_.push_back(-1);
-    all_nuclides_ = true;
-
-  } else {
-    // The user provided specifics nuclides.  Parse it as an array with either
-    // "total" or a nuclide name like "U-235" in each position.
-    auto words = get_node_array<std::string>(node, "nuclides");
-    this->set_nuclides(words);
-  }
+  // The user provided specifics nuclides.  Parse it as an array with either
+  // "total" or a nuclide name like "U235" in each position.
+  auto words = get_node_array<std::string>(node, "nuclides");
+  this->set_nuclides(words);
 }
 
 void Tally::set_nuclides(const vector<std::string>& nuclides)
@@ -745,6 +734,11 @@ void read_tallies_xml()
   doc.load_file(filename.c_str());
   pugi::xml_node root = doc.document_element();
 
+  read_tallies_xml(root);
+}
+
+void read_tallies_xml(pugi::xml_node root)
+{
   // Check for <assume_separate> setting
   if (check_for_node(root, "assume_separate")) {
     settings::assume_separate = get_node_value_bool(root, "assume_separate");
@@ -1295,6 +1289,22 @@ extern "C" int openmc_global_tallies(double** ptr)
 extern "C" size_t tallies_size()
 {
   return model::tallies.size();
+}
+
+// given a tally ID, remove it from the tallies vector
+extern "C" int openmc_remove_tally(int32_t index)
+{
+  // check that id is in the map
+  if (index < 0 || index > model::tallies.size()) {
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  // grab tally so it's ID can be obtained to remove the (ID,index) pair from tally_map
+  auto& tally = model::tallies[index];
+  // delete the tally via iterator pointing to correct position
+  // this calls the Tally destructor, removing the tally from the map as well
+  model::tallies.erase(model::tallies.begin() + index);
+
+  return 0;
 }
 
 } // namespace openmc

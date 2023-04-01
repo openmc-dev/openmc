@@ -10,9 +10,8 @@ class RingSource : public openmc::Source
   openmc::SourceSite sample(uint64_t* seed) const
   {
     openmc::SourceSite particle;
-    // wgt
+    // particle type
     particle.particle = openmc::ParticleType::neutron;
-    particle.wgt = 1.0;
     // position
     double angle = 2.0 * M_PI * openmc::prn(seed);
     double radius = 3.0;
@@ -22,7 +21,6 @@ class RingSource : public openmc::Source
     // angle
     particle.u = {1.0, 0.0, 0.0};
     particle.E = 14.08e6;
-    particle.delayed_group = 0;
     return particle;
   }
 };

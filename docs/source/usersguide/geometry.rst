@@ -78,10 +78,23 @@ classes are listed in the following table.
     | Cone parallel to the | :math:`(x-x_0)^2 + (y-y_0)^2 | :class:`openmc.ZCone`     |
     | :math:`z`-axis       | - R^2(z-z_0)^2 = 0`          |                           |
     +----------------------+------------------------------+---------------------------+
-    | General quadric      | :math:`Ax^2 + By^2 + Cz^2 +  |  :class:`openmc.Quadric`  |
+    | General quadric      | :math:`Ax^2 + By^2 + Cz^2 +  | :class:`openmc.Quadric`   |
     | surface              | Dxy + Eyz + Fxz + Gx + Hy +  |                           |
     |                      | Jz + K = 0`                  |                           |
     +----------------------+------------------------------+---------------------------+
+    | Torus parallel to the| :math:`(x-x_0)^2/B^2+\frac{( | :class:`openmc.XTorus`    |
+    | :math:`x`-axis       | \sqrt{(y-y_0)^2+(z-z_0)^2} - |                           |
+    |                      | A)^2}{C^2} - 1 = 0`          |                           |
+    +----------------------+------------------------------+---------------------------+
+    | Torus parallel to the| :math:`(y-y_0)^2/B^2+\frac{( | :class:`openmc.YTorus`    |
+    | :math:`y`-axis       | \sqrt{(x-x_0)^2+(z-z_0)^2} - |                           |
+    |                      | A)^2}{C^2} - 1 = 0`          |                           |
+    +----------------------+------------------------------+---------------------------+
+    | Torus parallel to the| :math:`(z-z_0)^2/B^2+\frac{( | :class:`openmc.ZTorus`    |
+    | :math:`z`-axis       | \sqrt{(x-x_0)^2+(y-y_0)^2} - |                           |
+    |                      | A)^2}{C^2} - 1 = 0`          |                           |
+    +----------------------+------------------------------+---------------------------+
+
 
 Each surface is characterized by several parameters. As one example, the
 parameters for a sphere are the :math:`x,y,z` coordinates of the center of the
@@ -465,10 +478,10 @@ OpenMC to verify that the model matches one's expectations.
 
 **Note:** DAGMC geometries used in OpenMC are currently required to be clean,
 meaning that all surfaces have been `imprinted and merged
-<https://svalinn.github.io/DAGMC/usersguide/trelis_workflow.html>`_
-successfully and that the model is `watertight
-<https://svalinn.github.io/DAGMC/usersguide/tools.html#make-watertight>`_. Future
-implementations of DAGMC geometry will support small volume overlaps and
+<https://svalinn.github.io/DAGMC/usersguide/cubit_basics.html>`_ successfully
+and that the model is `watertight
+<https://svalinn.github.io/DAGMC/usersguide/tools.html#make-watertight>`_.
+Future implementations of DAGMC geometry will support small volume overlaps and
 un-merged surfaces.
 
 Cell, Surface, and Material IDs

@@ -49,7 +49,7 @@ void ScattData::base_init(int order, const xt::xtensor<int, 1>& in_gmin,
       // Raise a warning to the user if we did have to do the conversion
       std::string msg =
         std::to_string(num_converted) +
-        "entries in the Multiplicity Matrix were changed from 0 to 1";
+        " entries in the Multiplicity Matrix were changed from 0 to 1";
       warning(msg);
     }
 

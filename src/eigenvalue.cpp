@@ -577,7 +577,7 @@ void ufs_count_sites()
 
 #ifdef OPENMC_MPI
     // Send source fraction to all processors
-    int n_bins = xt::prod(simulation::ufs_mesh->shape_)();
+    int n_bins = simulation::ufs_mesh->n_bins();
     MPI_Bcast(
       simulation::source_frac.data(), n_bins, MPI_DOUBLE, 0, mpi::intracomm);
 #endif

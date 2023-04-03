@@ -603,6 +603,7 @@ std::pair<double, int32_t> DAGCell::distance(
     // indicate that particle is lost
     surf_idx = -1;
     dist = INFINITY;
+    if (settings::run_mode == RunMode::PLOTTING) return {dist, surf_idx};
     if (!dagmc_ptr_->is_implicit_complement(vol) ||
         model::universe_map[dag_univ->id_] == model::root_universe) {
       std::string material_id = p->material() == MATERIAL_VOID

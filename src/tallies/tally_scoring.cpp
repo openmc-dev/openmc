@@ -19,7 +19,6 @@
 #include "openmc/tallies/filter_delayedgroup.h"
 #include "openmc/tallies/filter_energy.h"
 
-
 #include <string>
 
 namespace openmc {

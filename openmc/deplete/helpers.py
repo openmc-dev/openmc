@@ -15,7 +15,7 @@ from openmc.mpi import comm
 from openmc.checkvalue import check_type, check_greater_than
 from openmc.data import JOULE_PER_EV, REACTION_MT
 from openmc.lib import (
-    Tally, MaterialFilter, EnergyFilter, EnergyFunctionFilter)
+    Tally, MaterialFilter, EnergyFilter, EnergyFunctionFilter, load_nuclide)
 import openmc.lib
 from .abc import (
     ReactionRateHelper, NormalizationHelper, FissionYieldHelper)
@@ -189,7 +189,7 @@ class DirectReactionRateHelper(ReactionRateHelper):
     def reset_tally_means(self):
         """Reset the cached mean rate tallies.
         .. note::
-            
+
                 This step must be performed after each transport cycle
         """
         self._rate_tally_means_cache = None
@@ -306,6 +306,12 @@ class FluxCollapseHelper(ReactionRateHelper):
             self._rate_tally.filters = [MaterialFilter(materials)]
             self._rate_tally_means_cache = None
             if self._nuclides_direct is not None:
+                # check if any direct tally nuclides are requested that are not
+                # already loaded with the materials. Load separately if so.
+                mat_nuclides = {n for mat in materials for n in mat.nuclides}
+                extra_nuclides = set(self._nuclides_direct) - mat_nuclides
+                for nuc in extra_nuclides:
+                    load_nuclide(nuc)
                 self._rate_tally.nuclides = self._nuclides_direct
 
     @property
@@ -327,7 +333,7 @@ class FluxCollapseHelper(ReactionRateHelper):
     def reset_tally_means(self):
         """Reset the cached mean rate and flux tallies.
         .. note::
-            
+
                 This step must be performed after each transport cycle
         """
         self._flux_tally_means_cache = None

@@ -246,7 +246,7 @@ class CMFDMesh:
                        Real)
             check_greater_than('CMFD mesh {}-grid length'.format(dims[i]),
                                len(grid[i]), 1)
-        self._grid = np.array(grid)
+        self._grid = [np.array(g) for g in grid]
         self._display_mesh_warning('rectilinear', 'CMFD mesh grid')
 
     def _display_mesh_warning(self, mesh_type, variable_label):
@@ -1382,9 +1382,7 @@ class CMFDRun:
 
         """
         # Write each element in vector to file
-        with open(base_filename+'.dat', 'w') as fh:
-            for val in vector:
-                fh.write('{:0.8f}\n'.format(val))
+        np.savetxt(f'{base_filename}.dat', vector, fmt='%.8f')
 
         # Save as numpy format
         np.save(base_filename, vector)

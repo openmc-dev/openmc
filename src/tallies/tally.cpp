@@ -719,6 +719,11 @@ void read_tallies_xml()
   doc.load_file(filename.c_str());
   pugi::xml_node root = doc.document_element();
 
+  read_tallies_xml(root);
+}
+
+void read_tallies_xml(pugi::xml_node root)
+{
   // Check for <assume_separate> setting
   if (check_for_node(root, "assume_separate")) {
     settings::assume_separate = get_node_value_bool(root, "assume_separate");

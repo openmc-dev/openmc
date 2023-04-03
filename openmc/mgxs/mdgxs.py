@@ -586,7 +586,7 @@ class MDGXS(MGXS):
         if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
-            subdomains = np.arange(self.num_subdomains, dtype=np.int)
+            subdomains = np.arange(self.num_subdomains, dtype=int)
         elif self.domain_type == 'mesh':
             xyz = [range(1, x + 1) for x in self.domain.dimension]
             subdomains = list(itertools.product(*xyz))
@@ -2473,7 +2473,7 @@ class MatrixMDGXS(MDGXS):
         if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
-            subdomains = np.arange(self.num_subdomains, dtype=np.int)
+            subdomains = np.arange(self.num_subdomains, dtype=int)
         elif self.domain_type == 'mesh':
             xyz = [range(1, x + 1) for x in self.domain.dimension]
             subdomains = list(itertools.product(*xyz))

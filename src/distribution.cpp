@@ -1,6 +1,7 @@
 #include "openmc/distribution.h"
 
 #include <algorithm> // for copy
+#include <array>
 #include <cmath>     // for sqrt, floor, max
 #include <iterator>  // for back_inserter
 #include <numeric>   // for accumulate
@@ -18,50 +19,120 @@
 namespace openmc {
 
 //==============================================================================
+// DiscreteIndex implementation
+//==============================================================================
+
+DiscreteIndex::DiscreteIndex(pugi::xml_node node)
+{
+  auto params = get_node_array<double>(node, "parameters");
+  std::size_t n = params.size() / 2;
+
+  assign(params.data() + n, n);
+}
+
+DiscreteIndex::DiscreteIndex(const double* p, int n)
+{
+  assign(p, n);
+}
+
+void DiscreteIndex::assign(const double* p, int n)
+{
+  prob_.assign(p, p + n);
+
+  this->init_alias();
+}
+
+void DiscreteIndex::init_alias()
+{
+  normalize();
+
+  // The initialization and sampling method is based on Vose
+  // (DOI: 10.1109/32.92917)
+  // Vectors for large and small probabilities based on 1/n
+  vector<size_t> large;
+  vector<size_t> small;
+
+  size_t n = prob_.size();
+
+  // Set and allocate memory
+  alias_.assign(n, 0);
+
+  // Fill large and small vectors based on 1/n
+  for (size_t i = 0; i < n; i++) {
+    prob_[i] *= n;
+    if (prob_[i] > 1.0) {
+      large.push_back(i);
+    } else {
+      small.push_back(i);
+    }
+  }
+
+  while (!large.empty() && !small.empty()) {
+    int j = small.back();
+    int k = large.back();
+
+    // Remove last element of small
+    small.pop_back();
+
+    // Update probability and alias based on Vose's algorithm
+    prob_[k] += prob_[j] - 1.0;
+    alias_[j] = k;
+
+    // Move large index to small vector, if it is no longer large
+    if (prob_[k] < 1.0) {
+      small.push_back(k);
+      large.pop_back();
+    }
+  }
+}
+
+size_t DiscreteIndex::sample(uint64_t* seed) const
+{
+  // Alias sampling of discrete distribution
+  size_t n = prob_.size();
+  if (n > 1) {
+    size_t u = prn(seed) * n;
+    if (prn(seed) < prob_[u]) {
+      return u;
+    } else {
+      return alias_[u];
+    }
+  } else {
+    return 0;
+  }
+}
+
+void DiscreteIndex::normalize()
+{
+  // Renormalize density function so that it sums to unity
+  double norm = std::accumulate(prob_.begin(), prob_.end(), 0.0);
+  for (auto& p_i : prob_) {
+    p_i /= norm;
+  }
+}
+
+//==============================================================================
 // Discrete implementation
 //==============================================================================
 
-Discrete::Discrete(pugi::xml_node node)
+Discrete::Discrete(pugi::xml_node node) : di_(node)
 {
   auto params = get_node_array<double>(node, "parameters");
 
-  std::size_t n = params.size();
-  std::copy(params.begin(), params.begin() + n / 2, std::back_inserter(x_));
-  std::copy(params.begin() + n / 2, params.end(), std::back_inserter(p_));
+  std::size_t n = params.size() / 2;
 
-  normalize();
+  x_.assign(params.begin(), params.begin() + n);
 }
 
-Discrete::Discrete(const double* x, const double* p, int n)
-  : x_ {x, x + n}, p_ {p, p + n}
+Discrete::Discrete(const double* x, const double* p, int n) : di_(p, n)
 {
-  normalize();
+
+  x_.assign(x, x + n);
 }
 
 double Discrete::sample(uint64_t* seed) const
 {
-  int n = x_.size();
-  if (n > 1) {
-    double xi = prn(seed);
-    double c = 0.0;
-    for (int i = 0; i < n; ++i) {
-      c += p_[i];
-      if (xi < c)
-        return x_[i];
-    }
-    throw std::runtime_error {"Error when sampling probability mass function."};
-  } else {
-    return x_[0];
-  }
-}
-
-void Discrete::normalize()
-{
-  // Renormalize density function so that it sums to unity
-  double norm = std::accumulate(p_.begin(), p_.end(), 0.0);
-  for (auto& p_i : p_) {
-    p_i /= norm;
-  }
+  return x_[di_.sample(seed)];
 }
 
 //==============================================================================

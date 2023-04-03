@@ -223,8 +223,13 @@ class OpenMCOperator(TransportOperator):
             if mat.depletable:
                 burnable_mats.add(str(mat.id))
                 if mat.volume is None:
-                    raise RuntimeError("Volume not specified for depletable "
-                                       "material with ID={}.".format(mat.id))
+                    if mat.name is None:
+                        msg = ("Volume not specified for depletable material "
+                               f"with ID={mat.id}.")
+                    else:
+                        msg = ("Volume not specified for depletable material "
+                               f"with ID={mat.id} Name={mat.name}.")
+                    raise RuntimeError(msg)
                 volume[str(mat.id)] = mat.volume
                 self.heavy_metal += mat.fissionable_mass
 
@@ -242,7 +247,6 @@ class OpenMCOperator(TransportOperator):
         for nuc in model_nuclides:
             if nuc not in nuclides:
                 nuclides.append(nuc)
-
         return burnable_mats, volume, nuclides
 
     def _load_previous_results(self):

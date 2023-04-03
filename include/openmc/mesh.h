@@ -7,8 +7,8 @@
 #include <unordered_map>
 
 #include "hdf5.h"
-#include "xtensor/xtensor.hpp"
 #include "pugixml.hpp"
+#include "xtensor/xtensor.hpp"
 
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
@@ -41,7 +41,7 @@ namespace openmc {
 // Constants
 //==============================================================================
 
-enum class ElementType { UNSUPPORTED=-1, LINEAR_TET, LINEAR_HEX };
+enum class ElementType { UNSUPPORTED = -1, LINEAR_TET, LINEAR_HEX };
 
 //==============================================================================
 // Global variables
@@ -74,6 +74,25 @@ public:
   virtual ~Mesh() = default;
 
   // Methods
+
+  //! Update a position to the local coordinates of the mesh
+  virtual void local_coords(Position& r) const {};
+
+  //! Return a position in the local coordinates of the mesh
+  virtual Position local_coords(const Position& r) const { return r; };
+
+  //! Sample a mesh volume using a certain seed
+  //
+  //! \param[in] seed Seed to use for random sampling
+  //! \param[in] bin Bin value of the tet sampled
+  //! \return sampled position within tet
+  virtual Position sample(uint64_t* seed, int32_t bin) const = 0;
+
+  //! Get the volume of a mesh bin
+  //
+  //! \param[in] bin Bin to return the volume for
+  //! \return Volume of the bin
+  virtual double volume(int bin) const = 0;
 
   //! Determine which bins were crossed by a particle
   //
@@ -160,6 +179,10 @@ public:
     }
   };
 
+  Position sample(uint64_t* seed, int32_t bin) const override;
+
+  double volume(int bin) const override;
+
   int get_bin(Position r) const override;
 
   int n_bins() const override;
@@ -243,6 +266,23 @@ public:
   std::array<int, 3> shape_; //!< Number of mesh elements in each dimension
 
 protected:
+};
+
+class PeriodicStructuredMesh : public StructuredMesh {
+
+public:
+  PeriodicStructuredMesh() = default;
+  PeriodicStructuredMesh(pugi::xml_node node) : StructuredMesh {node} {};
+
+  void local_coords(Position& r) const override { r -= origin_; };
+
+  Position local_coords(const Position& r) const override
+  {
+    return r - origin_;
+  };
+
+  // Data members
+  Position origin_ {0.0, 0.0, 0.0}; //!< Origin of the mesh
 };
 
 //==============================================================================
@@ -335,7 +375,7 @@ public:
   int set_grid();
 };
 
-class CylindricalMesh : public StructuredMesh {
+class CylindricalMesh : public PeriodicStructuredMesh {
 public:
   // Constructors
   CylindricalMesh() = default;
@@ -389,7 +429,7 @@ private:
   }
 };
 
-class SphericalMesh : public StructuredMesh {
+class SphericalMesh : public PeriodicStructuredMesh {
 public:
   // Constructors
   SphericalMesh() = default;
@@ -461,6 +501,7 @@ public:
   virtual std::string get_mesh_type() const override;
 
   // Overridden Methods
+
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
 
@@ -509,12 +550,6 @@ public:
   //! \return element connectivity as IDs of the vertices
   virtual std::vector<int> connectivity(int id) const = 0;
 
-  //! Get the volume of a mesh bin
-  //
-  //! \param[in] bin Bin to return the volume for
-  //! \return Volume of the bin
-  virtual double volume(int bin) const = 0;
-
   //! Get the library used for this unstructured mesh
   virtual std::string library() const = 0;
 
@@ -522,6 +557,8 @@ public:
   bool output_ {
     true}; //!< Write tallies onto the unstructured mesh at the end of a run
   std::string filename_; //!< Path to unstructured mesh file
+
+  ElementType element_type(int bin) const;
 
 protected:
   //! Set the length multiplier to apply to each point in the mesh
@@ -531,6 +568,14 @@ protected:
   double length_multiplier_ {
     1.0}; //!< Constant multiplication factor to apply to mesh coordinates
   bool specified_length_multiplier_ {false};
+
+  //! Sample barycentric coordinates given a seed and the vertex positions and
+  //! return the sampled position
+  //
+  //! \param[in] coords Coordinates of the tetrahedron
+  //! \param[in] seed Random number generation seed
+  //! \return Sampled position within the tetrahedron
+  Position sample_tet(std::array<Position, 4> coords, uint64_t* seed) const;
 
 private:
   //! Setup method for the mesh. Builds data structures,
@@ -551,6 +596,8 @@ public:
   static const std::string mesh_lib_type;
 
   // Overridden Methods
+
+  Position sample(uint64_t* seed, int32_t bin) const override;
 
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
@@ -687,7 +734,7 @@ private:
   std::pair<moab::Tag, moab::Tag> get_score_tags(std::string score) const;
 
   // Data members
-  moab::Range ehs_; //!< Range of tetrahedra EntityHandle's in the mesh
+  moab::Range ehs_;   //!< Range of tetrahedra EntityHandle's in the mesh
   moab::Range verts_; //!< Range of vertex EntityHandle's in the mesh
   moab::EntityHandle tetset_;      //!< EntitySet containing all tetrahedra
   moab::EntityHandle kdtree_root_; //!< Root of the MOAB KDTree
@@ -705,14 +752,16 @@ class LibMesh : public UnstructuredMesh {
 public:
   // Constructors
   LibMesh(pugi::xml_node node);
-  LibMesh(const std::string & filename, double length_multiplier = 1.0);
-  LibMesh(libMesh::MeshBase & input_mesh, double length_multiplier = 1.0);
+  LibMesh(const std::string& filename, double length_multiplier = 1.0);
+  LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier = 1.0);
 
   static const std::string mesh_lib_type;
 
   // Overridden Methods
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
+
+  Position sample(uint64_t* seed, int32_t bin) const override;
 
   int get_bin(Position r) const override;
 
@@ -759,8 +808,11 @@ private:
   int get_bin_from_element(const libMesh::Elem* elem) const;
 
   // Data members
-  unique_ptr<libMesh::MeshBase> unique_m_ = nullptr; //!< pointer to the libMesh MeshBase instance, only used if mesh is created inside OpenMC
-  libMesh::MeshBase* m_; //!< pointer to libMesh MeshBase instance, always set during intialization
+  unique_ptr<libMesh::MeshBase> unique_m_ =
+    nullptr; //!< pointer to the libMesh MeshBase instance, only used if mesh is
+             //!< created inside OpenMC
+  libMesh::MeshBase* m_; //!< pointer to libMesh MeshBase instance, always set
+                         //!< during intialization
   vector<unique_ptr<libMesh::PointLocatorBase>>
     pl_; //!< per-thread point locators
   unique_ptr<libMesh::EquationSystems>

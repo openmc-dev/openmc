@@ -82,7 +82,7 @@ class Nuclide:
     Parameters
     ----------
     name : str, optional
-        GND name of this nuclide, e.g. ``"He4"``, ``"Am242_m1"``
+        GNDS name of this nuclide, e.g. ``"He4"``, ``"Am242_m1"``
 
     Attributes
     ----------

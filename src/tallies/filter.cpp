@@ -71,21 +71,6 @@ Filter::~Filter()
   model::filter_map.erase(id_);
 }
 
-template<typename T>
-T* Filter::create(int32_t id)
-{
-  static_assert(std::is_base_of<Filter, T>::value,
-    "Type specified is not derived from openmc::Filter");
-  // Create filter and add to filters vector
-  auto filter = make_unique<T>();
-  auto ptr_out = filter.get();
-  model::tally_filters.emplace_back(std::move(filter));
-  // Assign ID
-  model::tally_filters.back()->set_id(id);
-
-  return ptr_out;
-}
-
 Filter* Filter::create(pugi::xml_node node)
 {
   // Copy filter id

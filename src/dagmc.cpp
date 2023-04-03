@@ -182,11 +182,11 @@ void DAGUniverse::init_geometry()
       model::cell_map[c->id_] = model::cells.size();
     } else {
       warning(fmt::format("DAGMC Cell IDs: {}", dagmc_ids_for_dim(3)));
-      fatal_error(fmt::format("Cell ID {} exists in both DAGMC Universe {} "
-                              "and the CSG geometry. Setting auto_geom_ids "
+      fatal_error(fmt::format("DAGMC Universe {} contains a cell with ID {}, which "
+                              "already exists elsewhere in the geometry. Setting auto_geom_ids "
                               "to True when initiating the DAGMC Universe may "
                               "resolve this issue",
-        c->id_, this->id_));
+        this->id_, c->id_));
     }
 
     // --- Materials ---

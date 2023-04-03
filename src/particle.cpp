@@ -405,8 +405,9 @@ void Particle::pht_collision_energy()
   
   // If the energy of the particle is below the cutoff, it will not be sampled
   // so its energy is added to the pulse-height in the cell
-  if (E() < settings::energy_cutoff[static_cast<int>(type)]){
+  if (E() < settings::energy_cutoff[1]){
   pht_storage()[coord(n_coord() - 1).cell] += E();  
+  }
 }
 
 void Particle::pht_secondary_particles()

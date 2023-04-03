@@ -2497,7 +2497,7 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies){
     const auto& cells = cell_filt.cells();
     int cell_counter = 0;
     for (auto cell_id : cells) {
-      p.filter_matches(i_cell_filt).bins_[i_cell_bin] = counter; 
+      p.filter_matches(i_cell_filt).bins_[i_cell_bin] = cell_counter; 
       double score = p.pht_storage()[cell_id];
 
 

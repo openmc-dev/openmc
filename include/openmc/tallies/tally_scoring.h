@@ -97,6 +97,13 @@ void score_tracklength_tally(Particle& p, double distance);
 //! \param tallies A vector of tallies to score to
 void score_surface_tally(Particle& p, const vector<int>& tallies);
 
+//! Score the pulse-height tally
+//! This is triggered at the end of every particle history
+//
+//! \param p The particle being tracked
+//! \param tallies A vector of tallies to score to
+void score_pulse_height_tally(Particle& p, const vector<int>& tallies);
+
 } // namespace openmc
 
 #endif // OPENMC_TALLIES_TALLY_SCORING_H

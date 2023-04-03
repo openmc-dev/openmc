@@ -55,6 +55,7 @@ vector<int> active_tracklength_tallies;
 vector<int> active_collision_tallies;
 vector<int> active_meshsurf_tallies;
 vector<int> active_surface_tallies;
+vector<int> active_pulse_height_tallies;
 } // namespace model
 
 namespace simulation {
@@ -171,6 +172,16 @@ Tally::Tally(pugi::xml_node node)
   }
 
   // Check if tally is compatible with particle type
+ if (!settings::photon_transport) {
+    for (int score : scores_) {
+      switch (score) {
+      case SCORE_PULSE_HEIGHT:
+        fatal_error("Pulse-height tally must be used with photon "
+                      "transport on");
+          break;
+      }
+    }
+  }
   if (settings::photon_transport) {
     if (particle_filter_index == C_NONE) {
       for (int score : scores_) {
@@ -374,7 +385,11 @@ void Tally::set_filters(gsl::span<Filter*> filters)
       energyout_filter_ = i;
     } else if (dynamic_cast<const DelayedGroupFilter*>(f)) {
       delayedgroup_filter_ = i;
-    }
+    } else if (dynamic_cast<const CellFilter*>(f)) {
+      cell_filter_ = i;
+    } else if (dynamic_cast<const EnergyFilter*>(f)) {
+      energy_filter_ = i;
+     }  
   }
 }
 
@@ -412,17 +427,24 @@ void Tally::set_scores(const vector<std::string>& scores)
   bool energyout_present = energyout_filter_ != C_NONE;
   bool legendre_present = false;
   bool cell_present = false;
+  bool energy_present = false;
   bool cellfrom_present = false;
   bool surface_present = false;
   bool meshsurface_present = false;
+  bool non_cell_energy_present = false;
   for (auto i_filt : filters_) {
     const auto* filt {model::tally_filters[i_filt].get()};
+    if (!(dynamic_cast<const CellFilter*>(filt) || dynamic_cast<const EnergyFilter*>(filt))){
+      non_cell_energy_present = true;
+    }
     if (dynamic_cast<const LegendreFilter*>(filt)) {
       legendre_present = true;
     } else if (dynamic_cast<const CellFromFilter*>(filt)) {
       cellfrom_present = true;
     } else if (dynamic_cast<const CellFilter*>(filt)) {
       cell_present = true;
+    } else if (dynamic_cast<const EnergyFilter*>(filt)) {
+      energy_present = true;
     } else if (dynamic_cast<const SurfaceFilter*>(filt)) {
       surface_present = true;
     } else if (dynamic_cast<const MeshSurfaceFilter*>(filt)) {
@@ -496,6 +518,14 @@ void Tally::set_scores(const vector<std::string>& scores)
     case HEATING:
       if (settings::photon_transport)
         estimator_ = TallyEstimator::COLLISION;
+      break;
+    
+    case SCORE_PULSE_HEIGHT:
+      if (non_cell_energy_present) {
+        fatal_error("The pulse-height can only be tallied for cell and energy filters");
+      }
+      type_ = TallyType::PULSE_HEIGHT;
+      estimator_ = TallyEstimator::PULSE_HEIGHT;
       break;
     }
 
@@ -880,6 +910,7 @@ void setup_active_tallies()
   model::active_collision_tallies.clear();
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
+  model::active_pulse_height_tallies.clear();
 
   for (auto i = 0; i < model::tallies.size(); ++i) {
     const auto& tally {*model::tallies[i]};
@@ -907,6 +938,10 @@ void setup_active_tallies()
 
       case TallyType::SURFACE:
         model::active_surface_tallies.push_back(i);
+
+      case TallyType::PULSE_HEIGHT:
+        model::active_pulse_height_tallies.push_back(i);
+        break;      
       }
     }
   }
@@ -928,6 +963,7 @@ void free_memory_tally()
   model::active_collision_tallies.clear();
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
+  model::active_pulse_height_tallies.clear();
 
   model::tally_map.clear();
 }
@@ -1049,6 +1085,8 @@ extern "C" int openmc_tally_set_type(int32_t index, const char* type)
     model::tallies[index]->type_ = TallyType::MESH_SURFACE;
   } else if (strcmp(type, "surface") == 0) {
     model::tallies[index]->type_ = TallyType::SURFACE;
+  } else if (strcmp(type, "pulse-height") == 0) {
+    model::tallies[index]->type_ = TallyType::PULSE_HEIGHT;    
   } else {
     set_errmsg(fmt::format("Unknown tally type: {}", type));
     return OPENMC_E_INVALID_ARGUMENT;

@@ -15,8 +15,10 @@
 #include "openmc/string_utils.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
+#include "openmc/tallies/filter_cell.h"
 #include "openmc/tallies/filter_delayedgroup.h"
 #include "openmc/tallies/filter_energy.h"
+
 
 #include <string>
 
@@ -2466,6 +2468,64 @@ void score_surface_tally(Particle& p, const vector<int>& tallies)
   // Reset all the filter matches for the next tally event.
   for (auto& match : p.filter_matches())
     match.bins_present_ = false;
+}
+
+void score_pulse_height_tally(Particle& p, const vector<int>& tallies){
+
+  for (auto i_tally : tallies) {
+    auto& tally {*model::tallies[i_tally]};
+
+    // Initialize an iterator over valid filter bin combinations.  If there are
+    // no valid combinations, use a continue statement to ensure we skip the
+    // assume_separate break below.
+    auto filter_iter = FilterBinIter(tally, p);
+
+    auto i_energy_filt = tally.filters()[tally.energy_filter_];
+    auto i_energy_bin = p.filter_matches(i_energy_filt).i_bin_;
+    auto bin_energy = p.filter_matches(i_energy_filt).bins_[i_energy_bin];
+
+    const EnergyFilter& energy_filt {
+      *dynamic_cast<EnergyFilter*>(model::tally_filters[i_energy_filt].get())};
+    
+    auto i_cell_filt = tally.filters()[tally.cell_filter_];
+    auto i_cell_bin = p.filter_matches(i_cell_filt).i_bin_;
+    auto bin_cell = p.filter_matches(i_cell_filt).bins_[i_cell_bin];
+
+    const CellFilter& cell_filt {
+      *dynamic_cast<CellFilter*>(model::tally_filters[i_cell_filt].get())};
+
+    const auto& cells = cell_filt.cells();
+    int cell_counter = 0;
+    for (auto cell_id : cells) {
+      p.filter_matches(i_cell_filt).bins_[i_cell_bin] = counter; 
+      double score = p.pht_storage()[cell_id];
+
+
+      if (score < energy_filt.bins().front() || score > energy_filt.bins().back()) {
+        continue;
+      } else {
+        auto i_match = lower_bound_index(
+          energy_filt.bins().begin(), energy_filt.bins().end(), score);
+        p.filter_matches(i_energy_filt).bins_[i_energy_bin] = i_match;
+      }
+     // Find the filter scoring index for this filter combination
+      int filter_index = 0;
+      double filter_weight = 1.0;
+      for (auto j = 0; j < tally.filters().size(); ++j) {
+        auto i_filt = tally.filters(j);
+        auto& match {p.filter_matches(i_filt)};
+        auto i_bin = match.i_bin_;
+        filter_index += match.bins_[i_bin] * tally.strides(j);
+        filter_weight *= match.weights_[i_bin];
+      }
+    #pragma omp atomic
+      tally.results_(filter_index, 0, TallyResult::VALUE) += filter_weight;
+      cell_counter++;
+    }
+  }
+    // Reset all the filter matches for the next tally event.
+    for (auto& match : p.filter_matches())
+      match.bins_present_ = false;
 }
 
 } // namespace openmc

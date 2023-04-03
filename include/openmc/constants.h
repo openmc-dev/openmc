@@ -278,9 +278,9 @@ enum class MgxsType {
 
 enum class TallyResult { VALUE, SUM, SUM_SQ };
 
-enum class TallyType { VOLUME, MESH_SURFACE, SURFACE };
+enum class TallyType { VOLUME, MESH_SURFACE, SURFACE, PULSE_HEIGHT };
 
-enum class TallyEstimator { ANALOG, TRACKLENGTH, COLLISION };
+enum class TallyEstimator { ANALOG, TRACKLENGTH, COLLISION, PULSE_HEIGHT };
 
 enum class TallyEvent { SURFACE, LATTICE, KILL, SCATTER, ABSORB };
 
@@ -306,7 +306,8 @@ enum TallyScore {
   SCORE_INVERSE_VELOCITY = -13,   // flux-weighted inverse velocity
   SCORE_FISS_Q_PROMPT = -14,      // prompt fission Q-value
   SCORE_FISS_Q_RECOV = -15,       // recoverable fission Q-value
-  SCORE_DECAY_RATE = -16          // delayed neutron precursor decay rate
+  SCORE_DECAY_RATE = -16,         // delayed neutron precursor decay rate
+  SCORE_PULSE_HEIGHT = -17        // pulse-height
 };
 
 // Global tally parameters

@@ -46,11 +46,17 @@ void CellFilter::set_cells(gsl::span<int32_t> cells)
 void CellFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
+if (estimator == TallyEstimator::PULSE_HEIGHT) {
+      match.bins_.push_back(p.cell_born());
+      match.weights_.push_back(1.0);
+      }
+  else{
   for (int i = 0; i < p.n_coord(); i++) {
     auto search = map_.find(p.coord(i).cell);
     if (search != map_.end()) {
       match.bins_.push_back(search->second);
       match.weights_.push_back(1.0);
+      }
     }
   }
 }

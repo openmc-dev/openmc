@@ -98,7 +98,7 @@ _SCORES = {
     -5: 'absorption', -6: 'fission', -7: 'nu-fission', -8: 'kappa-fission',
     -9: 'current', -10: 'events', -11: 'delayed-nu-fission',
     -12: 'prompt-nu-fission', -13: 'inverse-velocity', -14: 'fission-q-prompt',
-    -15: 'fission-q-recoverable', -16: 'decay-rate', -17 'pulse-height'
+    -15: 'fission-q-recoverable', -16: 'decay-rate', -17: 'pulse-height'
 }
 _ESTIMATORS = {
     0: 'analog', 1: 'tracklength', 2: 'collision', 3: 'pulse-height'

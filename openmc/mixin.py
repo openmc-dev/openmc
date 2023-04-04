@@ -1,5 +1,6 @@
 from numbers import Integral
 from warnings import warn
+from ._xml import xmlinator, xml_attribute
 
 import numpy as np
 
@@ -29,6 +30,7 @@ class IDWarning(UserWarning):
     pass
 
 
+@xmlinator
 class IDManagerMixin:
     """A Class which automatically manages unique IDs.
 
@@ -40,7 +42,8 @@ class IDManagerMixin:
     """
 
     @property
-    def id(self):
+    @xml_attribute
+    def id(self) -> int:
         return self._id
 
     @id.setter

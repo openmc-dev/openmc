@@ -7,7 +7,7 @@ import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-from ._xml import clean_indentation, reorder_attributes
+from ._xml import xmlinator, xml_attribute, xml_element, optional_xml_attribute, optional_xml_element, clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
 
 
@@ -178,6 +178,7 @@ def _get_plot_image(plot, cwd):
     return Image(str(png_file))
 
 
+@xmlinator
 class Plot(IDManagerMixin):
     """Definition of a finite region of space to be plotted.
 
@@ -264,35 +265,43 @@ class Plot(IDManagerMixin):
         return self._name
 
     @property
-    def width(self):
+    @xml_element
+    def width(self) -> list[float]:
         return self._width
 
     @property
-    def pixels(self):
+    @xml_element
+    def pixels(self) -> list[int]:
         return self._pixels
 
     @property
-    def origin(self):
+    @xml_element
+    def origin(self) -> list[float]:
         return self._origin
 
     @property
-    def filename(self):
+    @optional_xml_attribute
+    def filename(self) -> str:
         return self._filename
 
     @property
-    def color_by(self):
+    @xml_attribute
+    def color_by(self) -> str:
         return self._color_by
 
     @property
-    def type(self):
+    @xml_attribute
+    def type(self) -> str:
         return self._type
 
     @property
-    def basis(self):
+    @optional_xml_attribute
+    def basis(self) -> str:
         return self._basis
 
     @property
-    def background(self):
+    @optional_xml_element
+    def background(self) -> tuple[int, int, int]:
         return self._background
 
     @property
@@ -304,11 +313,13 @@ class Plot(IDManagerMixin):
         return self._mask_background
 
     @property
-    def show_overlaps(self):
+    @xml_element
+    def show_overlaps(self) -> bool:
         return self._show_overlaps
 
     @property
-    def overlap_color(self):
+    @optional_xml_element
+    def overlap_color(self) -> tuple[int, int, int]:
         return self._overlap_color
 
     @property
@@ -316,11 +327,13 @@ class Plot(IDManagerMixin):
         return self._colors
 
     @property
-    def level(self):
+    @optional_xml_element
+    def level(self) -> int:
         return self._level
 
     @property
-    def meshlines(self):
+    @optional_xml_element
+    def meshlines(self) -> dict:
         return self._meshlines
 
     @name.setter
@@ -429,7 +442,8 @@ class Plot(IDManagerMixin):
                                   equality=True)
 
         if 'linewidth' in meshlines:
-            cv.check_type('plot mesh linewidth', meshlines['linewidth'], Integral)
+            cv.check_type('plot mesh linewidth',
+                          meshlines['linewidth'], Integral)
             cv.check_greater_than('plot mesh linewidth', meshlines['linewidth'],
                                   0, equality=True)
 
@@ -603,52 +617,39 @@ class Plot(IDManagerMixin):
                 b = int(((1-alpha) * background[2]) + (alpha * b))
                 self._colors[domain] = (r, g, b)
 
-    def to_xml_element(self):
-        """Return XML representation of the plot
+    def pre_xml_export(self):
 
-        Returns
-        -------
-        element : xml.etree.ElementTree.Element
-            XML element containing plot data
+        # Convert color from text to RGB
+        if isinstance(self._background, str):
+            self.background = _SVG_COLORS[self.background.lower()]
 
-        """
-
-        element = ET.Element("plot")
-        element.set("id", str(self._id))
-        if self._filename is not None:
-            element.set("filename", self._filename)
-        element.set("color_by", self._color_by)
-        element.set("type", self._type)
-
-        if self._type == 'slice':
-            element.set("basis", self._basis)
-
-        subelement = ET.SubElement(element, "origin")
-        subelement.text = ' '.join(map(str, self._origin))
-
-        subelement = ET.SubElement(element, "width")
-        subelement.text = ' '.join(map(str, self._width))
-
-        subelement = ET.SubElement(element, "pixels")
-        subelement.text = ' '.join(map(str, self._pixels))
-
-        if self._background is not None:
-            subelement = ET.SubElement(element, "background")
-            color = self._background
-            if isinstance(color, str):
-                color = _SVG_COLORS[color.lower()]
-            subelement.text = ' '.join(str(x) for x in color)
-
-        # Helper function that returns the domain ID given either a
-        # Cell/Material object or the domain ID itself
-        def get_id(domain):
+        def _get_id(domain):
             return domain if isinstance(domain, Integral) else domain.id
 
+        # convert color domain IDs from object references if necessary
+        new_color_dict = {}
+        for domain, color in self.colors.items():
+            if isinstance(color, str):
+                color = _SVG_COLORS[color.lower()]
+            new_color_dict[_get_id(domain)] = color
+        self.colors = new_color_dict
+
+        if isinstance(self._overlap_color, str):
+            self._overlap_color = _SVG_COLORS[self._overlap_color.lower()]
+
+    def to_xml_element_finalize(self, element):
+        """
+        Handles odd or inconsistent logic that doesn't shoehorn into
+        xmlinator very well. TODO Before merging, this will probably
+        look better!
+        """
+        def _get_id(domain):
+            return domain if isinstance(domain, Integral) else domain.id
         if self._colors:
             for domain, color in sorted(self._colors.items(),
-                                        key=lambda x: get_id(x[0])):
+                                        key=lambda x: _get_id(x[0])):
                 subelement = ET.SubElement(element, "color")
-                subelement.set("id", str(get_id(domain)))
+                subelement.set("id", str(_get_id(domain)))
                 if isinstance(color, str):
                     color = _SVG_COLORS[color.lower()]
                 subelement.set("rgb", ' '.join(str(x) for x in color))
@@ -656,7 +657,7 @@ class Plot(IDManagerMixin):
         if self._mask_components is not None:
             subelement = ET.SubElement(element, "mask")
             subelement.set("components", ' '.join(
-                str(get_id(d)) for d in self._mask_components))
+                str(_get_id(d)) for d in self._mask_components))
             color = self._mask_background
             if color is not None:
                 if isinstance(color, str):
@@ -664,112 +665,34 @@ class Plot(IDManagerMixin):
                 subelement.set("background", ' '.join(
                     str(x) for x in color))
 
-        if self._show_overlaps:
-            subelement = ET.SubElement(element, "show_overlaps")
-            subelement.text = "true"
-
-            if self._overlap_color is not None:
-                color = self._overlap_color
-                if isinstance(color, str):
-                    color = _SVG_COLORS[color.lower()]
-                subelement = ET.SubElement(element, "overlap_color")
-                subelement.text = ' '.join(str(x) for x in color)
-
-
-        if self._level is not None:
-            subelement = ET.SubElement(element, "level")
-            subelement.text = str(self._level)
-
-        if self._meshlines is not None:
-            subelement = ET.SubElement(element, "meshlines")
-            subelement.set("meshtype", self._meshlines['type'])
-            if 'id' in self._meshlines:
-                subelement.set("id", str(self._meshlines['id']))
-            if 'linewidth' in self._meshlines:
-                subelement.set("linewidth", str(self._meshlines['linewidth']))
-            if 'color' in self._meshlines:
-                subelement.set("color", ' '.join(map(
-                    str, self._meshlines['color'])))
-
-        return element
-
-    @classmethod
-    def from_xml_element(cls, elem):
-        """Generate plot object from an XML element
-
-        Parameters
-        ----------
-        elem : xml.etree.ElementTree.Element
-            XML element
-
-        Returns
-        -------
-        openmc.Plot
-            Plot object
-
+    def from_xml_element_finalize(self, elem):
         """
-        plot_id = int(elem.get("id"))
-        plot = cls(plot_id)
-        if "filename" in elem.keys():
-            plot.filename = elem.get("filename")
-        plot.color_by = elem.get("color_by")
-        plot.type = elem.get("type")
-        plot.basis = elem.get("basis")
-
+        Handles odd or inconsistent logic that doesn't shoehorn into
+        xmlinator very well. TODO Before merging, this will probably
+        look better!
+        """
         # Helper function to get a tuple of values
         def get_tuple(elem, name, dtype=int):
             subelem = elem.find(name)
             if subelem is not None:
                 return tuple([dtype(x) for x in subelem.text.split()])
 
-        plot.origin = get_tuple(elem, "origin", float)
-        plot.width = get_tuple(elem, "width", float)
-        plot.pixels = get_tuple(elem, "pixels")
-        plot._background = get_tuple(elem, "background")
-
-        # Set plot colors
         colors = {}
         for color_elem in elem.findall("color"):
             uid = int(color_elem.get("id"))
-            colors[uid] = tuple([int(x) for x in color_elem.get("rgb").split()])
-        plot.colors = colors
+            colors[uid] = tuple([int(x)
+                                for x in color_elem.get("rgb").split()])
+        self.colors = colors
 
         # Set masking information
         mask_elem = elem.find("mask")
         if mask_elem is not None:
-            plot.mask_components = [int(x) for x in mask_elem.get("components").split()]
+            self.mask_components = [
+                int(x) for x in mask_elem.get("components").split()]
             background = mask_elem.get("background")
             if background is not None:
-                plot.mask_background = tuple([int(x) for x in background.split()])
-
-        # show overlaps
-        overlap_elem = elem.find("show_overlaps")
-        if overlap_elem is not None:
-            plot.show_overlaps = (overlap_elem.text in ('true', '1'))
-        overlap_color = get_tuple(elem, "overlap_color")
-        if overlap_color is not None:
-            plot.overlap_color = overlap_color
-
-        # Set universe level
-        level = elem.find("level")
-        if level is not None:
-            plot.level = int(level.text)
-
-        # Set meshlines
-        mesh_elem = elem.find("meshlines")
-        if mesh_elem is not None:
-            meshlines = {'type': mesh_elem.get('meshtype')}
-            if 'id' in mesh_elem.keys():
-                meshlines['id'] = int(mesh_elem.get('id'))
-            if 'linewidth' in mesh_elem.keys():
-                meshlines['linewidth'] = int(mesh_elem.get('linewidth'))
-            if 'color' in mesh_elem.keys():
-                meshlines['color'] = tuple(
-                    [int(x) for x in mesh_elem.get('color').split()]
-                )
-            plot.meshlines = meshlines
-
-        return plot
+                self.mask_background = tuple(
+                    [int(x) for x in background.split()])
 
     def to_ipython_image(self, openmc_exec='openmc', cwd='.'):
         """Render plot as an image
@@ -873,7 +796,6 @@ class Plots(cv.CheckedList):
         for plot in self:
             plot.colorize(geometry, seed)
 
-
     def highlight_domains(self, geometry, domains, seed=1,
                           alpha=0.5, background='gray'):
         """Use alpha compositing to highlight one or more domains in the plot.
@@ -925,7 +847,8 @@ class Plots(cv.CheckedList):
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(self._plots_file)
-        reorder_attributes(self._plots_file)  # TODO: Remove when support is Python 3.8+
+        # TODO: Remove when support is Python 3.8+
+        reorder_attributes(self._plots_file)
 
         return self._plots_file
 
@@ -987,5 +910,3 @@ class Plots(cv.CheckedList):
         tree = ET.parse(path)
         root = tree.getroot()
         return cls.from_xml_element(root)
-
-

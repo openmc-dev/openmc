@@ -14,7 +14,7 @@ import openmc.checkvalue as cv
 from openmc.stats.multivariate import MeshSpatial
 
 from . import RegularMesh, Source, VolumeCalculation, WeightWindows
-from ._xml import clean_indentation, get_text, reorder_attributes
+from ._xml import clean_indentation, get_text, reorder_attributes, xmlinator, xml_attribute, xml_element, optional_xml_attribute, optional_xml_element
 from openmc.checkvalue import PathLike
 from .mesh import _read_meshes
 
@@ -319,194 +319,242 @@ class Settings:
             setattr(self, key, value)
 
     @property
+    @optional_xml_element
     def run_mode(self) -> str:
         return self._run_mode.value
 
     @property
+    @optional_xml_element
     def batches(self) -> int:
         return self._batches
 
     @property
+    @optional_xml_element
     def generations_per_batch(self) -> int:
         return self._generations_per_batch
 
     @property
+    @optional_xml_element
     def inactive(self) -> int:
         return self._inactive
 
     @property
+    @optional_xml_element
     def max_lost_particles(self) -> int:
         return self._max_lost_particles
 
     @property
+    @optional_xml_element
     def rel_max_lost_particles(self) -> float:
         return self._rel_max_lost_particles
 
     @property
+    @optional_xml_element
     def particles(self) -> int:
         return self._particles
 
     @property
+    @optional_xml_element
     def keff_trigger(self) -> dict:
         return self._keff_trigger
 
     @property
+    @optional_xml_element
     def energy_mode(self) -> str:
         return self._energy_mode
 
     @property
+    @optional_xml_element
     def max_order(self) -> int:
         return self._max_order
 
     @property
+    @optional_xml_element
     def source(self) -> typing.List[Source]:
         return self._source
 
     @property
+    @optional_xml_element
     def confidence_intervals(self) -> bool:
         return self._confidence_intervals
 
     @property
+    @optional_xml_element
     def electron_treatment(self) -> str:
         return self._electron_treatment
 
     @property
+    @optional_xml_element
     def ptables(self) -> bool:
         return self._ptables
 
     @property
+    @optional_xml_element
     def photon_transport(self) -> bool:
         return self._photon_transport
 
     @property
+    @optional_xml_element
     def seed(self) -> int:
         return self._seed
 
     @property
+    @optional_xml_element
     def survival_biasing(self) -> bool:
         return self._survival_biasing
 
     @property
+    @optional_xml_element
     def entropy_mesh(self) -> RegularMesh:
         return self._entropy_mesh
 
     @property
+    @optional_xml_element
     def trigger_active(self) -> bool:
         return self._trigger_active
 
     @property
+    @optional_xml_element
     def trigger_max_batches(self) -> int:
         return self._trigger_max_batches
 
     @property
+    @optional_xml_element
     def trigger_batch_interval(self) -> int:
         return self._trigger_batch_interval
 
     @property
+    @optional_xml_element
     def output(self) -> dict:
         return self._output
 
     @property
+    @optional_xml_element
     def sourcepoint(self) -> dict:
         return self._sourcepoint
 
     @property
+    @optional_xml_element
     def statepoint(self) -> dict:
         return self._statepoint
 
     @property
+    @optional_xml_element
     def surf_source_read(self) -> dict:
         return self._surf_source_read
 
     @property
+    @optional_xml_element
     def surf_source_write(self) -> dict:
         return self._surf_source_write
 
     @property
+    @optional_xml_element
     def no_reduce(self) -> bool:
         return self._no_reduce
 
     @property
+    @optional_xml_element
     def verbosity(self) -> int:
         return self._verbosity
 
     @property
+    @optional_xml_element
     def tabular_legendre(self) -> dict:
         return self._tabular_legendre
 
     @property
+    @optional_xml_element
     def temperature(self) -> dict:
         return self._temperature
 
     @property
+    @optional_xml_element
     def trace(self) -> typing.Iterable:
         return self._trace
 
     @property
+    @optional_xml_element
     def track(self) -> typing.Iterable[typing.Iterable[int]]:
         return self._track
 
     @property
+    @optional_xml_element
     def cutoff(self) -> dict:
         return self._cutoff
 
     @property
+    @optional_xml_element
     def ufs_mesh(self) -> RegularMesh:
         return self._ufs_mesh
 
     @property
+    @optional_xml_element
     def resonance_scattering(self) -> dict:
         return self._resonance_scattering
 
     @property
+    @optional_xml_element
     def volume_calculations(self) -> typing.List[VolumeCalculation]:
         return self._volume_calculations
 
     @property
+    @optional_xml_element
     def create_fission_neutrons(self) -> bool:
         return self._create_fission_neutrons
 
     @property
+    @optional_xml_element
     def create_delayed_neutrons(self) -> bool:
         return self._create_delayed_neutrons
 
     @property
+    @optional_xml_element
     def delayed_photon_scaling(self) -> bool:
         return self._delayed_photon_scaling
 
     @property
+    @optional_xml_element
     def material_cell_offsets(self) -> bool:
         return self._material_cell_offsets
 
     @property
+    @optional_xml_element
     def log_grid_bins(self) -> int:
         return self._log_grid_bins
 
     @property
+    @optional_xml_element
     def event_based(self) -> bool:
         return self._event_based
 
     @property
+    @optional_xml_element
     def max_particles_in_flight(self) -> int:
         return self._max_particles_in_flight
 
     @property
+    @optional_xml_element
     def write_initial_source(self) -> bool:
         return self._write_initial_source
 
     @property
+    @optional_xml_element
     def weight_windows(self) -> typing.List[WeightWindows]:
         return self._weight_windows
 
     @property
+    @optional_xml_element
     def weight_windows_on(self) -> bool:
         return self._weight_windows_on
 
     @property
+    @optional_xml_element
     def max_splits(self) -> int:
         return self._max_splits
 
     @property
+    @optional_xml_element
     def max_tracks(self) -> int:
         return self._max_tracks
 
@@ -526,7 +574,8 @@ class Settings:
     @generations_per_batch.setter
     def generations_per_batch(self, generations_per_batch: int):
         cv.check_type('generations per patch', generations_per_batch, Integral)
-        cv.check_greater_than('generations per batch', generations_per_batch, 0)
+        cv.check_greater_than('generations per batch',
+                              generations_per_batch, 0)
         self._generations_per_batch = generations_per_batch
 
     @inactive.setter
@@ -544,7 +593,8 @@ class Settings:
     @rel_max_lost_particles.setter
     def rel_max_lost_particles(self, rel_max_lost_particles: float):
         cv.check_type('rel_max_lost_particles', rel_max_lost_particles, Real)
-        cv.check_greater_than('rel_max_lost_particles', rel_max_lost_particles, 0)
+        cv.check_greater_than('rel_max_lost_particles',
+                              rel_max_lost_particles, 0)
         cv.check_less_than('rel_max_lost_particles', rel_max_lost_particles, 1)
         self._rel_max_lost_particles = rel_max_lost_particles
 
@@ -586,7 +636,7 @@ class Settings:
     @energy_mode.setter
     def energy_mode(self, energy_mode: str):
         cv.check_value('energy mode', energy_mode,
-                    ['continuous-energy', 'multi-group'])
+                       ['continuous-energy', 'multi-group'])
         self._energy_mode = energy_mode
 
     @max_order.setter
@@ -657,7 +707,8 @@ class Settings:
 
     @surf_source_read.setter
     def surf_source_read(self, surf_source_read: dict):
-        cv.check_type('surface source reading options', surf_source_read, Mapping)
+        cv.check_type('surface source reading options',
+                      surf_source_read, Mapping)
         for key, value in surf_source_read.items():
             cv.check_value('surface source reading key', key,
                            ('path'))
@@ -667,7 +718,8 @@ class Settings:
 
     @surf_source_write.setter
     def surf_source_write(self, surf_source_write: dict):
-        cv.check_type('surface source writing options', surf_source_write, Mapping)
+        cv.check_type('surface source writing options',
+                      surf_source_write, Mapping)
         for key, value in surf_source_write.items():
             cv.check_value('surface source writing key', key,
                            ('surface_ids', 'max_particles', 'mcpl'))
@@ -694,7 +746,8 @@ class Settings:
 
     @electron_treatment.setter
     def electron_treatment(self, electron_treatment: str):
-        cv.check_value('electron treatment', electron_treatment, ['led', 'ttb'])
+        cv.check_value('electron treatment',
+                       electron_treatment, ['led', 'ttb'])
         self._electron_treatment = electron_treatment
 
     @photon_transport.setter
@@ -755,13 +808,16 @@ class Settings:
     @trigger_max_batches.setter
     def trigger_max_batches(self, trigger_max_batches: int):
         cv.check_type('trigger maximum batches', trigger_max_batches, Integral)
-        cv.check_greater_than('trigger maximum batches', trigger_max_batches, 0)
+        cv.check_greater_than('trigger maximum batches',
+                              trigger_max_batches, 0)
         self._trigger_max_batches = trigger_max_batches
 
     @trigger_batch_interval.setter
     def trigger_batch_interval(self, trigger_batch_interval: int):
-        cv.check_type('trigger batch interval', trigger_batch_interval, Integral)
-        cv.check_greater_than('trigger batch interval', trigger_batch_interval, 0)
+        cv.check_type('trigger batch interval',
+                      trigger_batch_interval, Integral)
+        cv.check_greater_than('trigger batch interval',
+                              trigger_batch_interval, 0)
         self._trigger_batch_interval = trigger_batch_interval
 
     @no_reduce.setter
@@ -919,7 +975,8 @@ class Settings:
     def weight_windows(self, value: typing.Union[WeightWindows, typing.Iterable[WeightWindows]]):
         if not isinstance(value, MutableSequence):
             value = [value]
-        self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows', value)
+        self._weight_windows = cv.CheckedList(
+            WeightWindows, 'weight windows', value)
 
     @weight_windows_on.setter
     def weight_windows_on(self, value):
@@ -937,748 +994,6 @@ class Settings:
         cv.check_type('maximum particle tracks', value, Integral)
         cv.check_greater_than('maximum particle tracks', value, 0, True)
         self._max_tracks = value
-
-    def _create_run_mode_subelement(self, root):
-        elem = ET.SubElement(root, "run_mode")
-        elem.text = self._run_mode.value
-
-    def _create_batches_subelement(self, root):
-        if self._batches is not None:
-            element = ET.SubElement(root, "batches")
-            element.text = str(self._batches)
-
-    def _create_generations_per_batch_subelement(self, root):
-        if self._generations_per_batch is not None:
-            element = ET.SubElement(root, "generations_per_batch")
-            element.text = str(self._generations_per_batch)
-
-    def _create_inactive_subelement(self, root):
-        if self._inactive is not None:
-            element = ET.SubElement(root, "inactive")
-            element.text = str(self._inactive)
-
-    def _create_max_lost_particles_subelement(self, root):
-        if self._max_lost_particles is not None:
-            element = ET.SubElement(root, "max_lost_particles")
-            element.text = str(self._max_lost_particles)
-
-    def _create_rel_max_lost_particles_subelement(self, root):
-        if self._rel_max_lost_particles is not None:
-            element = ET.SubElement(root, "rel_max_lost_particles")
-            element.text = str(self._rel_max_lost_particles)
-
-    def _create_particles_subelement(self, root):
-        if self._particles is not None:
-            element = ET.SubElement(root, "particles")
-            element.text = str(self._particles)
-
-    def _create_keff_trigger_subelement(self, root):
-        if self._keff_trigger is not None:
-            element = ET.SubElement(root, "keff_trigger")
-            for key, value in sorted(self._keff_trigger.items()):
-                subelement = ET.SubElement(element, key)
-                subelement.text = str(value).lower()
-
-    def _create_energy_mode_subelement(self, root):
-        if self._energy_mode is not None:
-            element = ET.SubElement(root, "energy_mode")
-            element.text = str(self._energy_mode)
-
-    def _create_max_order_subelement(self, root):
-        if self._max_order is not None:
-            element = ET.SubElement(root, "max_order")
-            element.text = str(self._max_order)
-
-    def _create_source_subelement(self, root):
-        for source in self.source:
-            root.append(source.to_xml_element())
-            if isinstance(source.space, MeshSpatial):
-                path = f"./mesh[@id='{source.space.mesh.id}']"
-                if root.find(path) is None:
-                    root.append(source.space.mesh.to_xml_element())
-
-    def _create_volume_calcs_subelement(self, root):
-        for calc in self.volume_calculations:
-            root.append(calc.to_xml_element())
-
-    def _create_output_subelement(self, root):
-        if self._output is not None:
-            element = ET.SubElement(root, "output")
-            for key, value in sorted(self._output.items()):
-                subelement = ET.SubElement(element, key)
-                if key in ('summary', 'tallies'):
-                    subelement.text = str(value).lower()
-                else:
-                    subelement.text = value
-
-    def _create_verbosity_subelement(self, root):
-        if self._verbosity is not None:
-            element = ET.SubElement(root, "verbosity")
-            element.text = str(self._verbosity)
-
-    def _create_statepoint_subelement(self, root):
-        if self._statepoint:
-            element = ET.SubElement(root, "state_point")
-            if 'batches' in self._statepoint:
-                subelement = ET.SubElement(element, "batches")
-                subelement.text = ' '.join(
-                    str(x) for x in self._statepoint['batches'])
-
-    def _create_sourcepoint_subelement(self, root):
-        if self._sourcepoint:
-            element = ET.SubElement(root, "source_point")
-
-            if 'batches' in self._sourcepoint:
-                subelement = ET.SubElement(element, "batches")
-                subelement.text = ' '.join(
-                    str(x) for x in self._sourcepoint['batches'])
-
-            if 'separate' in self._sourcepoint:
-                subelement = ET.SubElement(element, "separate")
-                subelement.text = str(self._sourcepoint['separate']).lower()
-
-            if 'write' in self._sourcepoint:
-                subelement = ET.SubElement(element, "write")
-                subelement.text = str(self._sourcepoint['write']).lower()
-
-            # Overwrite latest subelement
-            if 'overwrite' in self._sourcepoint:
-                subelement = ET.SubElement(element, "overwrite_latest")
-                subelement.text = str(self._sourcepoint['overwrite']).lower()
-
-            if 'mcpl' in self._sourcepoint:
-                subelement = ET.SubElement(element, "mcpl")
-                subelement.text = str(self._sourcepoint['mcpl']).lower()
-
-    def _create_surf_source_read_subelement(self, root):
-        if self._surf_source_read:
-            element = ET.SubElement(root, "surf_source_read")
-            if 'path' in self._surf_source_read:
-                subelement = ET.SubElement(element, "path")
-                subelement.text = self._surf_source_read['path']
-
-    def _create_surf_source_write_subelement(self, root):
-        if self._surf_source_write:
-            element = ET.SubElement(root, "surf_source_write")
-            if 'surface_ids' in self._surf_source_write:
-                subelement = ET.SubElement(element, "surface_ids")
-                subelement.text = ' '.join(
-                    str(x) for x in self._surf_source_write['surface_ids'])
-            if 'max_particles' in self._surf_source_write:
-                subelement = ET.SubElement(element, "max_particles")
-                subelement.text = str(self._surf_source_write['max_particles'])
-            if 'mcpl' in self._surf_source_write:
-                subelement = ET.SubElement(element, "mcpl")
-                subelement.text = str(self._surf_source_write['mcpl']).lower()
-
-    def _create_confidence_intervals(self, root):
-        if self._confidence_intervals is not None:
-            element = ET.SubElement(root, "confidence_intervals")
-            element.text = str(self._confidence_intervals).lower()
-
-    def _create_electron_treatment_subelement(self, root):
-        if self._electron_treatment is not None:
-            element = ET.SubElement(root, "electron_treatment")
-            element.text = str(self._electron_treatment)
-
-    def _create_photon_transport_subelement(self, root):
-        if self._photon_transport is not None:
-            element = ET.SubElement(root, "photon_transport")
-            element.text = str(self._photon_transport).lower()
-
-    def _create_ptables_subelement(self, root):
-        if self._ptables is not None:
-            element = ET.SubElement(root, "ptables")
-            element.text = str(self._ptables).lower()
-
-    def _create_seed_subelement(self, root):
-        if self._seed is not None:
-            element = ET.SubElement(root, "seed")
-            element.text = str(self._seed)
-
-    def _create_survival_biasing_subelement(self, root):
-        if self._survival_biasing is not None:
-            element = ET.SubElement(root, "survival_biasing")
-            element.text = str(self._survival_biasing).lower()
-
-    def _create_cutoff_subelement(self, root):
-        if self._cutoff is not None:
-            element = ET.SubElement(root, "cutoff")
-            for key, value in self._cutoff.items():
-                subelement = ET.SubElement(element, key)
-                subelement.text = str(value)
-
-    def _create_entropy_mesh_subelement(self, root, mesh_memo=None):
-        if self.entropy_mesh is None:
-            return
-
-        # use default heuristic for entropy mesh if not set by user
-        if self.entropy_mesh.dimension is None:
-            if self.particles is None:
-                raise RuntimeError("Number of particles must be set in order to " \
-                    "use entropy mesh dimension heuristic")
-            else:
-                n = ceil((self.particles / 20.0)**(1.0 / 3.0))
-                d = len(self.entropy_mesh.lower_left)
-                self.entropy_mesh.dimension = (n,)*d
-
-        # add mesh ID to this element
-        subelement = ET.SubElement(root, "entropy_mesh")
-        subelement.text = str(self.entropy_mesh.id)
-
-        # If this mesh has already been written outside the
-        # settings element, skip writing it again
-        if mesh_memo and self.entropy_mesh.id in mesh_memo:
-            return
-
-        # See if a <mesh> element already exists -- if not, add it
-        path = f"./mesh[@id='{self.entropy_mesh.id}']"
-        if root.find(path) is None:
-            root.append(self.entropy_mesh.to_xml_element())
-            if mesh_memo is not None:
-                mesh_memo.add(self.entropy_mesh.id)
-
-    def _create_trigger_subelement(self, root):
-        if self._trigger_active is not None:
-            trigger_element = ET.SubElement(root, "trigger")
-            element = ET.SubElement(trigger_element, "active")
-            element.text = str(self._trigger_active).lower()
-
-            if self._trigger_max_batches is not None:
-                element = ET.SubElement(trigger_element, "max_batches")
-                element.text = str(self._trigger_max_batches)
-
-            if self._trigger_batch_interval is not None:
-                element = ET.SubElement(trigger_element, "batch_interval")
-                element.text = str(self._trigger_batch_interval)
-
-    def _create_no_reduce_subelement(self, root):
-        if self._no_reduce is not None:
-            element = ET.SubElement(root, "no_reduce")
-            element.text = str(self._no_reduce).lower()
-
-    def _create_tabular_legendre_subelements(self, root):
-        if self.tabular_legendre:
-            element = ET.SubElement(root, "tabular_legendre")
-            subelement = ET.SubElement(element, "enable")
-            subelement.text = str(self._tabular_legendre['enable']).lower()
-            if 'num_points' in self._tabular_legendre:
-                subelement = ET.SubElement(element, "num_points")
-                subelement.text = str(self._tabular_legendre['num_points'])
-
-    def _create_temperature_subelements(self, root):
-        if self.temperature:
-            for key, value in sorted(self.temperature.items()):
-                element = ET.SubElement(root, f"temperature_{key}")
-                if isinstance(value, bool):
-                    element.text = str(value).lower()
-                elif key == 'range':
-                    element.text = ' '.join(str(T) for T in value)
-                else:
-                    element.text = str(value)
-
-    def _create_trace_subelement(self, root):
-        if self._trace is not None:
-            element = ET.SubElement(root, "trace")
-            element.text = ' '.join(map(str, self._trace))
-
-    def _create_track_subelement(self, root):
-        if self._track is not None:
-            element = ET.SubElement(root, "track")
-            element.text = ' '.join(map(str, itertools.chain(*self._track)))
-
-    def _create_ufs_mesh_subelement(self, root, mesh_memo=None):
-        if self.ufs_mesh is None:
-            return
-
-        subelement = ET.SubElement(root, "ufs_mesh")
-        subelement.text = str(self.ufs_mesh.id)
-
-        if mesh_memo and self.ufs_mesh.id in mesh_memo:
-            return
-
-        # See if a <mesh> element already exists -- if not, add it
-        path = f"./mesh[@id='{self.ufs_mesh.id}']"
-        if root.find(path) is None:
-            root.append(self.ufs_mesh.to_xml_element())
-            if mesh_memo is not None: mesh_memo.add(self.ufs_mesh.id)
-
-    def _create_resonance_scattering_subelement(self, root):
-        res = self.resonance_scattering
-        if res:
-            elem = ET.SubElement(root, 'resonance_scattering')
-            if 'enable' in res:
-                subelem = ET.SubElement(elem, 'enable')
-                subelem.text = str(res['enable']).lower()
-            if 'method' in res:
-                subelem = ET.SubElement(elem, 'method')
-                subelem.text = res['method']
-            if 'energy_min' in res:
-                subelem = ET.SubElement(elem, 'energy_min')
-                subelem.text = str(res['energy_min'])
-            if 'energy_max' in res:
-                subelem = ET.SubElement(elem, 'energy_max')
-                subelem.text = str(res['energy_max'])
-            if 'nuclides' in res:
-                subelem = ET.SubElement(elem, 'nuclides')
-                subelem.text = ' '.join(res['nuclides'])
-
-    def _create_create_fission_neutrons_subelement(self, root):
-        if self._create_fission_neutrons is not None:
-            elem = ET.SubElement(root, "create_fission_neutrons")
-            elem.text = str(self._create_fission_neutrons).lower()
-
-    def _create_create_delayed_neutrons_subelement(self, root):
-       if self._create_delayed_neutrons is not None:
-           elem = ET.SubElement(root, "create_delayed_neutrons")
-           elem.text = str(self._create_delayed_neutrons).lower()
-
-    def _create_delayed_photon_scaling_subelement(self, root):
-        if self._delayed_photon_scaling is not None:
-            elem = ET.SubElement(root, "delayed_photon_scaling")
-            elem.text = str(self._delayed_photon_scaling).lower()
-
-    def _create_event_based_subelement(self, root):
-        if self._event_based is not None:
-            elem = ET.SubElement(root, "event_based")
-            elem.text = str(self._event_based).lower()
-
-    def _create_max_particles_in_flight_subelement(self, root):
-        if self._max_particles_in_flight is not None:
-            elem = ET.SubElement(root, "max_particles_in_flight")
-            elem.text = str(self._max_particles_in_flight).lower()
-
-    def _create_material_cell_offsets_subelement(self, root):
-        if self._material_cell_offsets is not None:
-            elem = ET.SubElement(root, "material_cell_offsets")
-            elem.text = str(self._material_cell_offsets).lower()
-
-    def _create_log_grid_bins_subelement(self, root):
-        if self._log_grid_bins is not None:
-            elem = ET.SubElement(root, "log_grid_bins")
-            elem.text = str(self._log_grid_bins)
-
-    def _create_write_initial_source_subelement(self, root):
-        if self._write_initial_source is not None:
-            elem = ET.SubElement(root, "write_initial_source")
-            elem.text = str(self._write_initial_source).lower()
-
-    def _create_weight_windows_subelement(self, root, mesh_memo=None):
-        for ww in self._weight_windows:
-            # Add weight window information
-            root.append(ww.to_xml_element())
-
-            # if this mesh has already been written,
-            # skip writing the mesh element
-            if mesh_memo and ww.mesh.id in mesh_memo:
-                continue
-
-            # See if a <mesh> element already exists -- if not, add it
-            path = f"./mesh[@id='{ww.mesh.id}']"
-            if root.find(path) is None:
-                root.append(ww.mesh.to_xml_element())
-                if mesh_memo is not None: mesh_memo.add(ww.mesh.id)
-
-        if self._weight_windows_on is not None:
-            elem = ET.SubElement(root, "weight_windows_on")
-            elem.text = str(self._weight_windows_on).lower()
-
-    def _create_max_splits_subelement(self, root):
-        if self._max_splits is not None:
-            elem = ET.SubElement(root, "max_splits")
-            elem.text = str(self._max_splits)
-
-    def _create_max_tracks_subelement(self, root):
-        if self._max_tracks is not None:
-            elem = ET.SubElement(root, "max_tracks")
-            elem.text = str(self._max_tracks)
-
-    def _eigenvalue_from_xml_element(self, root):
-        elem = root.find('eigenvalue')
-        if elem is not None:
-            self._run_mode_from_xml_element(elem)
-            self._particles_from_xml_element(elem)
-            self._batches_from_xml_element(elem)
-            self._inactive_from_xml_element(elem)
-            self._max_lost_particles_from_xml_element(elem)
-            self._rel_max_lost_particles_from_xml_element(elem)
-            self._generations_per_batch_from_xml_element(elem)
-
-    def _run_mode_from_xml_element(self, root):
-        text = get_text(root, 'run_mode')
-        if text is not None:
-            self.run_mode = text
-
-    def _particles_from_xml_element(self, root):
-        text = get_text(root, 'particles')
-        if text is not None:
-            self.particles = int(text)
-
-    def _batches_from_xml_element(self, root):
-        text = get_text(root, 'batches')
-        if text is not None:
-            self.batches = int(text)
-
-    def _inactive_from_xml_element(self, root):
-        text = get_text(root, 'inactive')
-        if text is not None:
-            self.inactive = int(text)
-
-    def _max_lost_particles_from_xml_element(self, root):
-        text = get_text(root, 'max_lost_particles')
-        if text is not None:
-            self.max_lost_particles = int(text)
-
-    def _rel_max_lost_particles_from_xml_element(self, root):
-        text = get_text(root, 'rel_max_lost_particles')
-        if text is not None:
-            self.rel_max_lost_particles = float(text)
-
-    def _generations_per_batch_from_xml_element(self, root):
-        text = get_text(root, 'generations_per_batch')
-        if text is not None:
-            self.generations_per_batch = int(text)
-
-    def _keff_trigger_from_xml_element(self, root):
-        elem = root.find('keff_trigger')
-        if elem is not None:
-            trigger = get_text(elem, 'type')
-            threshold = float(get_text(elem, 'threshold'))
-            self.keff_trigger = {'type': trigger, 'threshold': threshold}
-
-    def _source_from_xml_element(self, root, meshes=None):
-        for elem in root.findall('source'):
-            src = Source.from_xml_element(elem, meshes)
-            # add newly constructed source object to the list
-            self.source.append(src)
-
-    def _volume_calcs_from_xml_element(self, root):
-        volume_elems = root.findall("volume_calc")
-        if volume_elems:
-            self.volume_calculations = [VolumeCalculation.from_xml_element(elem)
-                                        for elem in volume_elems]
-
-    def _output_from_xml_element(self, root):
-        elem = root.find('output')
-        if elem is not None:
-            self.output = {}
-            for key in ('summary', 'tallies', 'path'):
-                value = get_text(elem, key)
-                if value is not None:
-                    if key in ('summary', 'tallies'):
-                        value = value in ('true', '1')
-                    self.output[key] = value
-
-    def _statepoint_from_xml_element(self, root):
-        elem = root.find('state_point')
-        if elem is not None:
-            text = get_text(elem, 'batches')
-            if text is not None:
-                self.statepoint['batches'] = [int(x) for x in text.split()]
-
-    def _sourcepoint_from_xml_element(self, root):
-        elem = root.find('source_point')
-        if elem is not None:
-            for key in ('separate', 'write', 'overwrite_latest', 'batches', 'mcpl'):
-                value = get_text(elem, key)
-                if value is not None:
-                    if key in ('separate', 'write', 'mcpl'):
-                        value = value in ('true', '1')
-                    elif key == 'overwrite_latest':
-                        value = value in ('true', '1')
-                        key = 'overwrite'
-                    else:
-                        value = [int(x) for x in value.split()]
-                    self.sourcepoint[key] = value
-
-    def _surf_source_read_from_xml_element(self, root):
-        elem = root.find('surf_source_read')
-        if elem is not None:
-            value = get_text(elem, 'path')
-            if value is not None:
-                self.surf_source_read['path'] = value
-
-    def _surf_source_write_from_xml_element(self, root):
-        elem = root.find('surf_source_write')
-        if elem is not None:
-            for key in ('surface_ids', 'max_particles','mcpl'):
-                value = get_text(elem, key)
-                if value is not None:
-                    if key == 'surface_ids':
-                        value = [int(x) for x in value.split()]
-                    elif key in ('max_particles'):
-                        value = int(value)
-                    elif key == 'mcpl':
-                        value = value in ('true', '1')
-                    self.surf_source_write[key] = value
-
-    def _confidence_intervals_from_xml_element(self, root):
-        text = get_text(root, 'confidence_intervals')
-        if text is not None:
-            self.confidence_intervals = text in ('true', '1')
-
-    def _electron_treatment_from_xml_element(self, root):
-        text = get_text(root, 'electron_treatment')
-        if text is not None:
-            self.electron_treatment = text
-
-    def _energy_mode_from_xml_element(self, root):
-        text = get_text(root, 'energy_mode')
-        if text is not None:
-            self.energy_mode = text
-
-    def _max_order_from_xml_element(self, root):
-        text = get_text(root, 'max_order')
-        if text is not None:
-            self.max_order = int(text)
-
-    def _photon_transport_from_xml_element(self, root):
-        text = get_text(root, 'photon_transport')
-        if text is not None:
-            self.photon_transport = text in ('true', '1')
-
-    def _ptables_from_xml_element(self, root):
-        text = get_text(root, 'ptables')
-        if text is not None:
-            self.ptables = text in ('true', '1')
-
-    def _seed_from_xml_element(self, root):
-        text = get_text(root, 'seed')
-        if text is not None:
-            self.seed = int(text)
-
-    def _survival_biasing_from_xml_element(self, root):
-        text = get_text(root, 'survival_biasing')
-        if text is not None:
-            self.survival_biasing = text in ('true', '1')
-
-    def _cutoff_from_xml_element(self, root):
-        elem = root.find('cutoff')
-        if elem is not None:
-            self.cutoff = {}
-            for key in ('energy_neutron', 'energy_photon', 'energy_electron',
-                        'energy_positron', 'weight', 'weight_avg'):
-                value = get_text(elem, key)
-                if value is not None:
-                    self.cutoff[key] = float(value)
-
-    def _entropy_mesh_from_xml_element(self, root, meshes=None):
-        text = get_text(root, 'entropy_mesh')
-        if text is not None:
-            path = f"./mesh[@id='{int(text)}']"
-            elem = root.find(path)
-            if elem is not None:
-                self.entropy_mesh = RegularMesh.from_xml_element(elem)
-        if meshes is not None and self.entropy_mesh is not None:
-            meshes[self.entropy_mesh.id] = self.entropy_mesh
-
-    def _trigger_from_xml_element(self, root):
-        elem = root.find('trigger')
-        if elem is not None:
-            self.trigger_active = get_text(elem, 'active') in ('true', '1')
-            text = get_text(elem, 'max_batches')
-            if text is not None:
-                self.trigger_max_batches = int(text)
-            text = get_text(elem, 'batch_interval')
-            if text is not None:
-                self.trigger_batch_interval = int(text)
-
-    def _no_reduce_from_xml_element(self, root):
-        text = get_text(root, 'no_reduce')
-        if text is not None:
-            self.no_reduce = text in ('true', '1')
-
-    def _verbosity_from_xml_element(self, root):
-        text = get_text(root, 'verbosity')
-        if text is not None:
-            self.verbosity = int(text)
-
-    def _tabular_legendre_from_xml_element(self, root):
-        elem = root.find('tabular_legendre')
-        if elem is not None:
-            text = get_text(elem, 'enable')
-            self.tabular_legendre['enable'] = text in ('true', '1')
-            text = get_text(elem, 'num_points')
-            if text is not None:
-                self.tabular_legendre['num_points'] = int(text)
-
-    def _temperature_from_xml_element(self, root):
-        text = get_text(root, 'temperature_default')
-        if text is not None:
-            self.temperature['default'] = float(text)
-        text = get_text(root, 'temperature_tolerance')
-        if text is not None:
-            self.temperature['tolerance'] = float(text)
-        text = get_text(root, 'temperature_method')
-        if text is not None:
-            self.temperature['method'] = text
-        text = get_text(root, 'temperature_range')
-        if text is not None:
-            self.temperature['range'] = [float(x) for x in text.split()]
-        text = get_text(root, 'temperature_multipole')
-        if text is not None:
-            self.temperature['multipole'] = text in ('true', '1')
-
-    def _trace_from_xml_element(self, root):
-        text = get_text(root, 'trace')
-        if text is not None:
-            self.trace = [int(x) for x in text.split()]
-
-    def _track_from_xml_element(self, root):
-        text = get_text(root, 'track')
-        if text is not None:
-            values = [int(x) for x in text.split()]
-            self.track = list(zip(values[::3], values[1::3], values[2::3]))
-
-    def _ufs_mesh_from_xml_element(self, root, meshes=None):
-        text = get_text(root, 'ufs_mesh')
-        if text is not None:
-            path = f"./mesh[@id='{int(text)}']"
-            elem = root.find(path)
-            if elem is not None:
-                self.ufs_mesh = RegularMesh.from_xml_element(elem)
-        if meshes is not None and self.ufs_mesh is not None:
-            meshes[self.ufs_mesh.id] = self.ufs_mesh
-
-    def _resonance_scattering_from_xml_element(self, root):
-        elem = root.find('resonance_scattering')
-        if elem is not None:
-            keys = ('enable', 'method', 'energy_min', 'energy_max', 'nuclides')
-            for key in keys:
-                value = get_text(elem, key)
-                if value is not None:
-                    if key == 'enable':
-                        value = value in ('true', '1')
-                    elif key in ('energy_min', 'energy_max'):
-                        value = float(value)
-                    elif key == 'nuclides':
-                        value = value.split()
-                    self.resonance_scattering[key] = value
-
-    def _create_fission_neutrons_from_xml_element(self, root):
-        text = get_text(root, 'create_fission_neutrons')
-        if text is not None:
-            self.create_fission_neutrons = text in ('true', '1')
-
-    def _create_delayed_neutrons_from_xml_element(self, root):
-        text = get_text(root, 'create_delayed_neutrons')
-        if text is not None:
-            self.create_delayed_neutrons = text in ('true', '1')
-
-    def _delayed_photon_scaling_from_xml_element(self, root):
-        text = get_text(root, 'delayed_photon_scaling')
-        if text is not None:
-            self.delayed_photon_scaling = text in ('true', '1')
-
-    def _event_based_from_xml_element(self, root):
-        text = get_text(root, 'event_based')
-        if text is not None:
-            self.event_based = text in ('true', '1')
-
-    def _max_particles_in_flight_from_xml_element(self, root):
-        text = get_text(root, 'max_particles_in_flight')
-        if text is not None:
-            self.max_particles_in_flight = int(text)
-
-    def _material_cell_offsets_from_xml_element(self, root):
-        text = get_text(root, 'material_cell_offsets')
-        if text is not None:
-            self.material_cell_offsets = text in ('true', '1')
-
-    def _log_grid_bins_from_xml_element(self, root):
-        text = get_text(root, 'log_grid_bins')
-        if text is not None:
-            self.log_grid_bins = int(text)
-
-    def _write_initial_source_from_xml_element(self, root):
-        text = get_text(root, 'write_initial_source')
-        if text is not None:
-            self.write_initial_source = text in ('true', '1')
-
-    def _weight_windows_from_xml_element(self, root, meshes=None):
-        for elem in root.findall('weight_windows'):
-            ww = WeightWindows.from_xml_element(elem, root)
-            self.weight_windows.append(ww)
-
-        text = get_text(root, 'weight_windows_on')
-        if text is not None:
-            self.weight_windows_on = text in ('true', '1')
-
-        if meshes is not None and self.weight_windows:
-            meshes.update({ww.mesh.id: ww.mesh for ww in self.weight_windows})
-
-    def _max_splits_from_xml_element(self, root):
-        text = get_text(root, 'max_splits')
-        if text is not None:
-            self.max_splits = int(text)
-
-    def _max_tracks_from_xml_element(self, root):
-        text = get_text(root, 'max_tracks')
-        if text is not None:
-            self.max_tracks = int(text)
-
-    def to_xml_element(self, mesh_memo=None):
-        """Create a 'settings' element to be written to an XML file.
-
-        Parameters
-        ----------
-        mesh_memo : set of ints
-            A set of mesh IDs to keep track of whether a mesh has already been written.
-        """
-        # Reset xml element tree
-        element = ET.Element("settings")
-
-        self._create_run_mode_subelement(element)
-        self._create_particles_subelement(element)
-        self._create_batches_subelement(element)
-        self._create_inactive_subelement(element)
-        self._create_max_lost_particles_subelement(element)
-        self._create_rel_max_lost_particles_subelement(element)
-        self._create_generations_per_batch_subelement(element)
-        self._create_keff_trigger_subelement(element)
-        self._create_source_subelement(element)
-        self._create_output_subelement(element)
-        self._create_statepoint_subelement(element)
-        self._create_sourcepoint_subelement(element)
-        self._create_surf_source_read_subelement(element)
-        self._create_surf_source_write_subelement(element)
-        self._create_confidence_intervals(element)
-        self._create_electron_treatment_subelement(element)
-        self._create_energy_mode_subelement(element)
-        self._create_max_order_subelement(element)
-        self._create_photon_transport_subelement(element)
-        self._create_ptables_subelement(element)
-        self._create_seed_subelement(element)
-        self._create_survival_biasing_subelement(element)
-        self._create_cutoff_subelement(element)
-        self._create_entropy_mesh_subelement(element, mesh_memo)
-        self._create_trigger_subelement(element)
-        self._create_no_reduce_subelement(element)
-        self._create_verbosity_subelement(element)
-        self._create_tabular_legendre_subelements(element)
-        self._create_temperature_subelements(element)
-        self._create_trace_subelement(element)
-        self._create_track_subelement(element)
-        self._create_ufs_mesh_subelement(element, mesh_memo)
-        self._create_resonance_scattering_subelement(element)
-        self._create_volume_calcs_subelement(element)
-        self._create_create_fission_neutrons_subelement(element)
-        self._create_create_delayed_neutrons_subelement(element)
-        self._create_delayed_photon_scaling_subelement(element)
-        self._create_event_based_subelement(element)
-        self._create_max_particles_in_flight_subelement(element)
-        self._create_material_cell_offsets_subelement(element)
-        self._create_log_grid_bins_subelement(element)
-        self._create_write_initial_source_subelement(element)
-        self._create_weight_windows_subelement(element, mesh_memo)
-        self._create_max_splits_subelement(element)
-        self._create_max_tracks_subelement(element)
-
-        # Clean the indentation in the file to be user-readable
-        clean_indentation(element)
-        reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
-
-        return element
 
     def export_to_xml(self, path: PathLike = 'settings.xml'):
         """Export simulation settings to an XML file.

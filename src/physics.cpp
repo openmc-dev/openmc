@@ -71,7 +71,6 @@ void collision(Particle& p)
     p.wgt() = 0.0;
   }
 
-
   // Display information about collision
   if (settings::verbosity >= 10 || p.trace()) {
     std::string msg;

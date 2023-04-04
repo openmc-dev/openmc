@@ -535,6 +535,22 @@ void read_settings_xml(pugi::xml_node root)
       energy_cutoff[3] =
         std::stod(get_node_value(node_cutoff, "energy_positron"));
     }
+    if (check_for_node(node_cutoff, "time_neutron")) {
+      time_cutoff[0] =
+        std::stod(get_node_value(node_cutoff, "time_neutron"));
+    }
+    if (check_for_node(node_cutoff, "time_photon")) {
+      time_cutoff[1] =
+        std::stod(get_node_value(node_cutoff, "time_photon"));
+    }
+    if (check_for_node(node_cutoff, "time_electron")) {
+      time_cutoff[2] =
+        std::stod(get_node_value(node_cutoff, "time_electron"));
+    }
+    if (check_for_node(node_cutoff, "time_positron")) {
+      time_cutoff[3] =
+        std::stod(get_node_value(node_cutoff, "time_positron"));
+    }
   }
 
   // Particle trace

@@ -203,6 +203,11 @@ void Particle::event_advance()
   }
   this->time() += distance / this->speed();
 
+  // Kill particle if its time exceeds the cutoff
+  if (time() > settings::time_cutoff[static_cast<int>(type())]) {
+    wgt() = 0.0;
+  }
+
   // Score track-length tallies
   if (!model::active_tracklength_tallies.empty()) {
     score_tracklength_tally(*this, distance);

@@ -197,16 +197,16 @@ void Particle::event_advance()
   // Select smaller of the two distances
   double distance = std::min(boundary().distance, collision_distance());
 
+  // Kill particle if its time exceeds the cutoff
+  if (time() + (distance / this->speed()) > settings::time_cutoff[static_cast<int>(type())]) {
+    wgt() = 0.0;
+  }
+
   // Advance particle in space and time
   for (int j = 0; j < n_coord(); ++j) {
     coord(j).r += distance * coord(j).u;
   }
   this->time() += distance / this->speed();
-
-  // Kill particle if its time exceeds the cutoff
-  if (time() > settings::time_cutoff[static_cast<int>(type())]) {
-    wgt() = 0.0;
-  }
 
   // Score track-length tallies
   if (!model::active_tracklength_tallies.empty()) {

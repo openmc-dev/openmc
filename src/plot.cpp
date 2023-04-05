@@ -1273,8 +1273,10 @@ void ProjectionPlot::create_output() const
 
           // Generate the starting position/direction of the ray
           if (orthographic_width_ == 0.0) { // perspective projection
-            double this_phi = -horiz_fov_radians / 2.0 + dphi * horiz;
-            double this_mu = -vert_fov_radians / 2.0 + dmu * vert + M_PI / 2.0;
+            double this_phi =
+              -horiz_fov_radians / 2.0 + dphi * horiz + 0.5 * dphi;
+            double this_mu =
+              -vert_fov_radians / 2.0 + dmu * vert + M_PI / 2.0 + 0.5 * dmu;
             Direction camera_local_vec;
             camera_local_vec.x = std::cos(this_phi) * std::sin(this_mu);
             camera_local_vec.y = std::sin(this_phi) * std::sin(this_mu);
@@ -1436,9 +1438,9 @@ void ProjectionPlot::create_output() const
             if (i * i + j * j < wireframe_thickness_ * wireframe_thickness_) {
 
               // Check if wireframe pixel is out of bounds
-              int w_i = std::max(std::min(horiz + i, pixels_[0]), 0);
-              int w_j = std::max(std::min(vert + j, pixels_[1]), 0);
-              data(i, j) = wireframe_color_;
+              int w_i = std::max(std::min(horiz + i, pixels_[0] - 1), 0);
+              int w_j = std::max(std::min(vert + j, pixels_[1] - 1), 0);
+              data(w_i, w_j) = wireframe_color_;
             }
       }
     }

@@ -168,8 +168,7 @@ private:
 // Non-member functions
 //==============================================================================
 
-int32_t next_cell(
-  DAGUniverse* dag_univ, DAGCell* cur_cell, DAGSurface* surf_xed);
+int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ);
 
 } // namespace openmc
 

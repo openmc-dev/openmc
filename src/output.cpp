@@ -221,56 +221,11 @@ void print_plot()
   if (settings::verbosity < 5)
     return;
 
-  for (auto pl : model::plots) {
-    // Plot id
-    fmt::print("Plot ID: {}\n", pl.id_);
-    // Plot filename
-    fmt::print("Plot file: {}\n", pl.path_plot_);
-    // Plot level
-    fmt::print("Universe depth: {}\n", pl.level_);
-
-    // Plot type
-    if (PlotType::slice == pl.type_) {
-      fmt::print("Plot Type: Slice\n");
-    } else if (PlotType::voxel == pl.type_) {
-      fmt::print("Plot Type: Voxel\n");
-    }
-
-    // Plot parameters
-    fmt::print(
-      "Origin: {} {} {}\n", pl.origin_[0], pl.origin_[1], pl.origin_[2]);
-
-    if (PlotType::slice == pl.type_) {
-      fmt::print("Width: {:4} {:4}\n", pl.width_[0], pl.width_[1]);
-    } else if (PlotType::voxel == pl.type_) {
-      fmt::print(
-        "Width: {:4} {:4} {:4}\n", pl.width_[0], pl.width_[1], pl.width_[2]);
-    }
-
-    if (PlotColorBy::cells == pl.color_by_) {
-      fmt::print("Coloring: Cells\n");
-    } else if (PlotColorBy::mats == pl.color_by_) {
-      fmt::print("Coloring: Materials\n");
-    }
-
-    if (PlotType::slice == pl.type_) {
-      switch (pl.basis_) {
-      case PlotBasis::xy:
-        fmt::print("Basis: XY\n");
-        break;
-      case PlotBasis::xz:
-        fmt::print("Basis: XZ\n");
-        break;
-      case PlotBasis::yz:
-        fmt::print("Basis: YZ\n");
-        break;
-      }
-      fmt::print("Pixels: {} {}\n", pl.pixels_[0], pl.pixels_[1]);
-    } else if (PlotType::voxel == pl.type_) {
-      fmt::print(
-        "Voxels: {} {} {}\n", pl.pixels_[0], pl.pixels_[1], pl.pixels_[2]);
-    }
-
+  for (const auto& pl : model::plots) {
+    fmt::print("Plot ID: {}\n", pl->id());
+    fmt::print("Plot file: {}\n", pl->path_plot());
+    fmt::print("Universe depth: {}\n", pl->level());
+    pl->print_info(); // prints type-specific plot info
     fmt::print("\n");
   }
 }

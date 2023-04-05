@@ -48,14 +48,14 @@
   </settings>
   <plots>
     <plot basis="xy" color_by="cell" filename="cellplot" id="1" type="slice">
+      <pixels>400 400</pixels>
       <origin>0 0 0</origin>
       <width>7 7</width>
-      <pixels>400 400</pixels>
     </plot>
     <plot basis="xy" color_by="material" filename="matplot" id="2" type="slice">
+      <pixels>400 400</pixels>
       <origin>0 0 0</origin>
       <width>7 7</width>
-      <pixels>400 400</pixels>
     </plot>
   </plots>
 </model>

@@ -37,15 +37,47 @@ def myplot():
     }
     return plot
 
+@pytest.fixture(scope='module')
+def myprojectionplot():
+    plot = openmc.ProjectionPlot(name='myprojectionplot')
+    plot.look_at = (0.0, 0.0, 0.0)
+    plot.camera_position = (4.0, 3.0, 0.0)
+    plot.pixels = (500, 500)
+    plot.filename = 'myprojectionplot'
+    plot.background = (0, 0, 0)
+    plot.background = 'black'
+
+    plot.color_by = 'material'
+    m1, m2 = openmc.Material(), openmc.Material()
+    plot.colors = {m1: (0, 255, 0), m2: (0, 0, 255)}
+    plot.colors = {m1: 'green', m2: 'blue'}
+    plot.xs = {m1: 1.0, m2: 0.01}
+
+    plot.mask_components = [openmc.Material()]
+    plot.mask_background = (255, 255, 255)
+    plot.mask_background = 'white'
+
+    plot.overlap_color = (255, 211, 0)
+    plot.overlap_color = 'yellow'
+    
+    plot.wireframe_thickness = 2
+
+    plot.level = 1
+    return plot
 
 def test_attributes(myplot):
     assert myplot.name == 'myplot'
 
+def test_attributes_proj(myprojectionplot):
+    assert myprojectionplot.name == 'myprojectionplot'
 
 def test_repr(myplot):
     r = repr(myplot)
     assert isinstance(r, str)
 
+def test_repr_proj(myprojectionplot):
+    r = repr(myprojectionplot)
+    assert isinstance(r, str)
 
 def test_from_geometry():
     width = 25.
@@ -89,6 +121,18 @@ def test_xml_element(myplot):
         assert getattr(newplot, attr) == getattr(myplot, attr), attr
 
 
+def test_to_xml_element_proj(myprojectionplot):
+    elem = myprojectionplot.to_xml_element()
+    assert 'id' in elem.attrib
+    assert 'color_by' in elem.attrib
+    assert 'type' in elem.attrib
+    assert elem.find('camera_position') is not None
+    assert elem.find('wireframe_thickness') is not None
+    assert elem.find('look_at') is not None
+    assert elem.find('pixels') is not None
+    assert elem.find('background').text == '0 0 0'
+
+
 def test_plots(run_in_tmpdir):
     p1 = openmc.Plot(name='plot1')
     p1.origin = (5., 5., 5.)
@@ -99,9 +143,13 @@ def test_plots(run_in_tmpdir):
     plots = openmc.Plots([p1, p2])
     assert len(plots) == 2
 
-    p3 = openmc.Plot(name='plot3')
-    plots.append(p3)
+    p3 = openmc.ProjectionPlot(name='plot3')
+    plots = openmc.Plots([p1, p2, p3])
     assert len(plots) == 3
+
+    p4 = openmc.Plot(name='plot4')
+    plots.append(p4)
+    assert len(plots) == 4
 
     plots.export_to_xml()
 

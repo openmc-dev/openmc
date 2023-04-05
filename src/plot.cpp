@@ -1436,9 +1436,9 @@ void ProjectionPlot::create_output() const
             if (i * i + j * j < wireframe_thickness_ * wireframe_thickness_) {
 
               // Check if wireframe pixel is out of bounds
-              if (horiz + i >= 0 && horiz + i < pixels_[0] && vert + j >= 0 &&
-                  vert + j < pixels_[1])
-                data(horiz + i, vert + j) = wireframe_color_;
+              int w_i = std::max(std::min(horiz + i, pixels_[0]), 0);
+              int w_j = std::max(std::min(vert + j, pixels_[1]), 0);
+              data(i, j) = wireframe_color_;
             }
       }
     }

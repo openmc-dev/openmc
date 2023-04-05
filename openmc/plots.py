@@ -438,6 +438,7 @@ class PlotBase(IDManagerMixin):
 
         return element
 
+
 class Plot(PlotBase):
     '''Definition of a finite region of space to be plotted.
 
@@ -468,6 +469,7 @@ class Plot(PlotBase):
         plotted on top of a plot
 
     '''
+
     def __init__(self, plot_id=None, name=''):
         super().__init__(plot_id, name)
         self._width = [4.0, 4.0]
@@ -518,7 +520,6 @@ class Plot(PlotBase):
         cv.check_value('plot basis', basis, _BASES)
         self._basis = basis
 
-
     @meshlines.setter
     def meshlines(self, meshlines):
         cv.check_type('plot meshlines', meshlines, dict)
@@ -538,7 +539,8 @@ class Plot(PlotBase):
                                   equality=True)
 
         if 'linewidth' in meshlines:
-            cv.check_type('plot mesh linewidth', meshlines['linewidth'], Integral)
+            cv.check_type('plot mesh linewidth',
+                          meshlines['linewidth'], Integral)
             cv.check_greater_than('plot mesh linewidth', meshlines['linewidth'],
                                   0, equality=True)
 
@@ -569,7 +571,6 @@ class Plot(PlotBase):
         string += '{: <16}=\t{}\n'.format('\tLevel', self._level)
         string += '{: <16}=\t{}\n'.format('\tMeshlines', self._meshlines)
         return string
-
 
     @classmethod
     def from_geometry(cls, geometry, basis='xy', slice_coord=0.):
@@ -711,7 +712,6 @@ class Plot(PlotBase):
                 subelement = ET.SubElement(element, "overlap_color")
                 subelement.text = ' '.join(str(x) for x in color)
 
-
         if self._meshlines is not None:
             subelement = ET.SubElement(element, "meshlines")
             subelement.set("meshtype", self._meshlines['type'])
@@ -757,16 +757,19 @@ class Plot(PlotBase):
         colors = {}
         for color_elem in elem.findall("color"):
             uid = int(color_elem.get("id"))
-            colors[uid] = tuple([int(x) for x in color_elem.get("rgb").split()])
+            colors[uid] = tuple([int(x)
+                                for x in color_elem.get("rgb").split()])
         plot.colors = colors
 
         # Set masking information
         mask_elem = elem.find("mask")
         if mask_elem is not None:
-            plot.mask_components = [int(x) for x in mask_elem.get("components").split()]
+            plot.mask_components = [
+                int(x) for x in mask_elem.get("components").split()]
             background = mask_elem.get("background")
             if background is not None:
-                plot.mask_background = tuple([int(x) for x in background.split()])
+                plot.mask_background = tuple(
+                    [int(x) for x in background.split()])
 
         # show overlaps
         overlap_elem = elem.find("show_overlaps")
@@ -827,6 +830,7 @@ class Plot(PlotBase):
 
         # Return produced image
         return _get_plot_image(self, cwd)
+
 
 class ProjectionPlot(PlotBase):
     """Definition of a camera's view of OpenMC geometry
@@ -936,7 +940,7 @@ class ProjectionPlot(PlotBase):
     @horizontal_field_of_view.setter
     def horizontal_field_of_view(self, horizontal_field_of_view):
         cv.check_type('plot horizontal field of view', horizontal_field_of_view,
-                Real)
+                      Real)
         assert horizontal_field_of_view > 0.0
         assert horizontal_field_of_view < 180.0
         self._horizontal_field_of_view = horizontal_field_of_view
@@ -967,7 +971,8 @@ class ProjectionPlot(PlotBase):
 
     @wireframe_thickness.setter
     def wireframe_thickness(self, wireframe_thickness):
-        cv.check_type('plot wireframe thickness', wireframe_thickness, Integral)
+        cv.check_type('plot wireframe thickness',
+                      wireframe_thickness, Integral)
         assert wireframe_thickness >= 0
         self._wireframe_thickness = wireframe_thickness
 
@@ -1075,6 +1080,33 @@ class ProjectionPlot(PlotBase):
 
         return element
 
+    def __repr__(self):
+        string = 'Projection Plot\n'
+        string += '{: <16}=\t{}\n'.format('\tID', self._id)
+        string += '{: <16}=\t{}\n'.format('\tName', self._name)
+        string += '{: <16}=\t{}\n'.format('\tFilename', self._filename)
+        string += '{: <16}=\t{}\n'.format('\tHorizontal FOV',
+                                          self._horizontal_field_of_view)
+        string += '{: <16}=\t{}\n'.format('\tOrthographic width',
+                                          self._orthographic_width)
+        string += '{: <16}=\t{}\n'.format('\tWireframe thickness',
+                                          self._wireframe_thickness)
+        string += '{: <16}=\t{}\n'.format('\tWireframe color',
+                                          self._wireframe_color)
+        string += '{: <16}=\t{}\n'.format('\tWireframe domains',
+                                          self._wireframe_domains)
+        string += '{: <16}=\t{}\n'.format('\tCamera position',
+                                          self._camera_position)
+        string += '{: <16}=\t{}\n'.format('\tLook at', self._look_at)
+        string += '{: <16}=\t{}\n'.format('\tUp', self._up)
+        string += '{: <16}=\t{}\n'.format('\tPixels', self._pixels)
+        string += '{: <16}=\t{}\n'.format('\tColor by', self._color_by)
+        string += '{: <16}=\t{}\n'.format('\tBackground', self._background)
+        string += '{: <16}=\t{}\n'.format('\tColors', self._colors)
+        string += '{: <16}=\t{}\n'.format('\tTransparencies', self._xs)
+        string += '{: <16}=\t{}\n'.format('\tLevel', self._level)
+        return string
+
     @classmethod
     def from_xml_element(cls, elem):
         """Generate plot object from an XML element
@@ -1128,11 +1160,13 @@ class ProjectionPlot(PlotBase):
         # Set masking information
         mask_elem = elem.find("mask")
         if mask_elem is not None:
-            mask_components = [int(x) for x in mask_elem.get("components").split()]
+            mask_components = [int(x)
+                               for x in mask_elem.get("components").split()]
             # TODO: set mask components (needs geometry information)
             background = mask_elem.get("background")
             if background is not None:
-                plot.mask_background = tuple([int(x) for x in background.split()])
+                plot.mask_background = tuple(
+                    [int(x) for x in background.split()])
 
         # Set universe level
         level = elem.find("level")
@@ -1140,6 +1174,7 @@ class ProjectionPlot(PlotBase):
             plot.level = int(level.text)
 
         return plot
+
 
 class Plots(cv.CheckedList):
     """Collection of Plots used for an OpenMC simulation.
@@ -1212,7 +1247,6 @@ class Plots(cv.CheckedList):
         for plot in self:
             plot.colorize(geometry, seed)
 
-
     def highlight_domains(self, geometry, domains, seed=1,
                           alpha=0.5, background='gray'):
         """Use alpha compositing to highlight one or more domains in the plot.
@@ -1264,7 +1298,8 @@ class Plots(cv.CheckedList):
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(self._plots_file)
-        reorder_attributes(self._plots_file)  # TODO: Remove when support is Python 3.8+
+        # TODO: Remove when support is Python 3.8+
+        reorder_attributes(self._plots_file)
 
         return self._plots_file
 

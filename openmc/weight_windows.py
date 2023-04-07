@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import Iterable
 from numbers import Real, Integral
 
@@ -10,6 +12,8 @@ import openmc.checkvalue as cv
 
 from ._xml import get_text
 from .mixin import IDManagerMixin
+
+from typing import Iterable
 
 
 class WeightWindows(IDManagerMixin):
@@ -146,7 +150,7 @@ class WeightWindows(IDManagerMixin):
         self.max_split = max_split
         self.weight_cutoff = weight_cutoff
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         string = type(self).__name__ + '\n'
         string += '{: <16}=\t{}\n'.format('\tID', self._id)
         string += '{: <16}=\t{}\n'.format('\tMesh:', self.mesh)
@@ -159,7 +163,7 @@ class WeightWindows(IDManagerMixin):
         string += '{: <16}=\t{}\n'.format('\tWeight Cutoff', self._weight_cutoff)
         return string
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         # ensure that `other` is a WeightWindows object
         if not isinstance(other, WeightWindows):
             return False
@@ -189,7 +193,7 @@ class WeightWindows(IDManagerMixin):
         return True
 
     @property
-    def mesh(self):
+    def mesh(self) -> MeshBase:
         return self._mesh
 
     @mesh.setter
@@ -198,7 +202,7 @@ class WeightWindows(IDManagerMixin):
         self._mesh = mesh
 
     @property
-    def particle_type(self):
+    def particle_type(self) -> str:
         return self._particle_type
 
     @particle_type.setter
@@ -207,7 +211,7 @@ class WeightWindows(IDManagerMixin):
         self._particle_type = pt
 
     @property
-    def energy_bounds(self):
+    def energy_bounds(self) -> Iterable[Real]:
         return self._energy_bounds
 
     @energy_bounds.setter
@@ -216,13 +220,13 @@ class WeightWindows(IDManagerMixin):
         self._energy_bounds = np.asarray(bounds)
 
     @property
-    def num_energy_bins(self):
+    def num_energy_bins(self) -> int:
         if self.energy_bounds is None:
             raise ValueError('Energy bounds are not set')
         return self.energy_bounds.size - 1
 
     @property
-    def lower_ww_bounds(self):
+    def lower_ww_bounds(self) -> Iterable[Real]:
         return self._lower_ww_bounds
 
     @lower_ww_bounds.setter
@@ -241,7 +245,7 @@ class WeightWindows(IDManagerMixin):
         self._lower_ww_bounds = bounds
 
     @property
-    def upper_ww_bounds(self):
+    def upper_ww_bounds(self) -> Iterable[Real]:
         return self._upper_ww_bounds
 
     @upper_ww_bounds.setter
@@ -260,7 +264,7 @@ class WeightWindows(IDManagerMixin):
         self._upper_ww_bounds = bounds
 
     @property
-    def survival_ratio(self):
+    def survival_ratio(self) -> float:
         return self._survival_ratio
 
     @survival_ratio.setter
@@ -270,7 +274,7 @@ class WeightWindows(IDManagerMixin):
         self._survival_ratio = val
 
     @property
-    def max_lower_bound_ratio(self):
+    def max_lower_bound_ratio(self) -> float:
         return self._max_lower_bound_ratio
 
     @max_lower_bound_ratio.setter
@@ -280,7 +284,7 @@ class WeightWindows(IDManagerMixin):
         self._max_lower_bound_ratio = val
 
     @property
-    def max_split(self):
+    def max_split(self) -> int:
         return self._max_split
 
     @max_split.setter
@@ -289,7 +293,7 @@ class WeightWindows(IDManagerMixin):
         self._max_split = val
 
     @property
-    def weight_cutoff(self):
+    def weight_cutoff(self) -> float:
         return self._weight_cutoff
 
     @weight_cutoff.setter
@@ -298,7 +302,7 @@ class WeightWindows(IDManagerMixin):
         cv.check_greater_than('Weight cutoff', cutoff, 0.0, True)
         self._weight_cutoff = cutoff
 
-    def to_xml_element(self):
+    def to_xml_element(self) -> ET.Element:
         """Return an XML representation of the weight window settings
 
         Returns
@@ -341,7 +345,7 @@ class WeightWindows(IDManagerMixin):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem, root):
+    def from_xml_element(cls, elem, root) -> WeightWindows:
         """Generate weight window settings from an XML element
 
         Parameters
@@ -396,7 +400,7 @@ class WeightWindows(IDManagerMixin):
         )
 
     @classmethod
-    def from_hdf5(cls, group, meshes):
+    def from_hdf5(cls, group, meshes) -> WeightWindows:
         """Create weight windows from HDF5 group
 
         Parameters
@@ -441,7 +445,7 @@ class WeightWindows(IDManagerMixin):
         )
 
 
-def wwinp_to_wws(path):
+def wwinp_to_wws(path) -> WeightWindows:
     """Create WeightWindows instances from a wwinp file
 
     .. versionadded:: 0.13.1

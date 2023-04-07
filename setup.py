@@ -28,6 +28,7 @@ kwargs = {
 
     # Data files and libraries
     'package_data': {
+        "lib": ["*"],
         'openmc.lib': ['libopenmc.{}'.format(suffix)],
         'openmc.data': ['mass_1.mas20.txt', 'BREMX.DAT', 'half_life.json', '*.h5'],
         'openmc.data.effective_dose': ['*.txt']
@@ -78,7 +79,6 @@ kwargs = {
     # Cython is used to add resonance reconstruction and fast float_endf
     'ext_modules': cythonize('openmc/data/*.pyx'),
     'include_dirs': [np.get_include()],
-    'package_data': {"lib": ["*"]},
     'include_package_data': True,
     # cmake_args=['-DSOME_FEATURE:BOOL=OFF']
 }

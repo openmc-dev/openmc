@@ -6,5 +6,6 @@ requires = [
     "cython",
     "scikit-build>=0.16.7",
     "cmake>=3.10.0",
+    "h5py",
 ]
 build-backend = "setuptools.build_meta"

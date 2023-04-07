@@ -1241,7 +1241,7 @@ class Cylinder(QuadricMixin, Surface):
         Parameters
         ----------
         p1, p2 : 3-tuples
-            Points that pass through the plane, p1 will be used as (x0, y0, z0)
+            Points that pass through the cylinder axis.
         r : float, optional
             Radius of the cylinder in [cm]. Defaults to 1.
         kwargs : dict

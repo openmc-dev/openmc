@@ -1206,7 +1206,7 @@ def _close_random_pack(domain, spheres, contraction_rate):
 
 
 def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
-                 contraction_rate=1.e-3, seed=1):
+                 contraction_rate=1.e-3, seed=None):
     """Generate a random, non-overlapping configuration of spheres within a
     container.
 
@@ -1235,7 +1235,7 @@ def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
         reached using a smaller contraction rate, but the algorithm will take
         longer to converge.
     seed : int, optional
-        RNG seed.
+        Pseudorandom number generator seed passed to :func:`random.seed`
 
     Returns
     ------
@@ -1278,7 +1278,8 @@ def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
 
     """
     # Seed RNG
-    random.seed(seed)
+    if seed is not None:
+        random.seed(seed)
 
     # Create container with the correct shape based on the supplied region
     domain = None
@@ -1310,14 +1311,13 @@ def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
 
     # Check packing fraction for close random packing
     if pf > MAX_PF_CRP:
-        raise ValueError('Packing fraction {0} is greater than the limit for '
-                         'close random packing, {1}'.format(pf, MAX_PF_CRP))
+        raise ValueError(f'Packing fraction {pf} is greater than the limit for '
+                         f'close random packing, {MAX_PF_CRP}')
 
     # Check packing fraction for random sequential packing
     if initial_pf > MAX_PF_RSP:
-        raise ValueError('Initial packing fraction {0} is greater than the '
-                         'limit for random sequential packing, '
-                         '{1}'.format(initial_pf, MAX_PF_RSP))
+        raise ValueError(f'Initial packing fraction {initial_pf} is greater than'
+                         f'the limit for random sequential packing, {MAX_PF_RSP}')
 
     # Calculate the sphere radius used in the initial random sequential
     # packing from the initial packing fraction

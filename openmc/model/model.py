@@ -597,11 +597,13 @@ class Model:
     def run(self, particles=None, threads=None, geometry_debug=False,
             restart_file=None, tracks=False, output=True, cwd='.',
             openmc_exec='openmc', mpi_args=None, event_based=None,
-            export_model_xml=True):
-        """Runs OpenMC. If the C API has been initialized, then the C API is
-        used, otherwise, this method creates the XML files and runs OpenMC via
-        a system call. In both cases this method returns the path to the last
-        statepoint file generated.
+            export_model_xml=True, **export_kwargs):
+        """Run OpenMC
+
+        If the C API has been initialized, then the C API is used, otherwise,
+        this method creates the XML files and runs OpenMC via a system call. In
+        both cases this method returns the path to the last statepoint file
+        generated.
 
         .. versionchanged:: 0.12
             Instead of returning the final k-effective value, this function now
@@ -630,27 +632,30 @@ class Model:
         output : bool, optional
             Capture OpenMC output from standard out
         cwd : str, optional
-            Path to working directory to run in. Defaults to the current
-            working directory.
+            Path to working directory to run in. Defaults to the current working
+            directory.
         openmc_exec : str, optional
             Path to OpenMC executable. Defaults to 'openmc'.
         mpi_args : list of str, optional
-            MPI execute command and any additional MPI arguments to pass,
-            e.g. ['mpiexec', '-n', '8'].
+            MPI execute command and any additional MPI arguments to pass, e.g.
+            ['mpiexec', '-n', '8'].
         event_based : None or bool, optional
-            Turns on event-based parallelism if True. If None, the value in
-            the Settings will be used.
+            Turns on event-based parallelism if True. If None, the value in the
+            Settings will be used.
         export_model_xml : bool, optional
-            Exports a single model.xml file rather than separate files.
-            Defaults to True.
+            Exports a single model.xml file rather than separate files. Defaults
+            to True.
 
             .. versionadded:: 0.13.3
+        **export_kwargs
+            Keyword arguments passed to either :meth:`Model.export_to_model_xml`
+            or :meth:`Model.export_to_xml`.
 
         Returns
         -------
         Path
-            Path to the last statepoint written by this run
-            (None if no statepoint was written)
+            Path to the last statepoint written by this run (None if no
+            statepoint was written)
 
         """
 
@@ -695,9 +700,9 @@ class Model:
             else:
                 # Then run via the command line
                 if export_model_xml:
-                    self.export_to_model_xml()
+                    self.export_to_model_xml(**export_kwargs)
                 else:
-                    self.export_to_xml()
+                    self.export_to_xml(**export_kwargs)
                 openmc.run(particles, threads, geometry_debug, restart_file,
                            tracks, output, Path('.'), openmc_exec, mpi_args,
                            event_based)

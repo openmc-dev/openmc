@@ -268,7 +268,7 @@ void print_usage()
 {
   if (mpi::master) {
     fmt::print(
-      "Usage: openmc [options] [directory]\n\n"
+      "Usage: openmc [options] [path]\n\n"
       "Options:\n"
       "  -c, --volume           Run in stochastic volume calculation mode\n"
       "  -g, --geometry-debug   Run with geometry debugging on\n"

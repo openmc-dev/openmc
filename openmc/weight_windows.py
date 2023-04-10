@@ -1,7 +1,7 @@
 from __future__ import annotations
-
 from collections.abc import Iterable
 from numbers import Real, Integral
+from typing import Iterable, List
 
 from xml.etree import ElementTree as ET
 import numpy as np

@@ -13,8 +13,6 @@ import openmc.checkvalue as cv
 from ._xml import get_text
 from .mixin import IDManagerMixin
 
-from typing import Iterable
-
 
 class WeightWindows(IDManagerMixin):
     """Mesh-based weight windows
@@ -226,7 +224,7 @@ class WeightWindows(IDManagerMixin):
         return self.energy_bounds.size - 1
 
     @property
-    def lower_ww_bounds(self) -> Iterable[Real]:
+    def lower_ww_bounds(self) -> np.ndarray:
         return self._lower_ww_bounds
 
     @lower_ww_bounds.setter
@@ -245,7 +243,7 @@ class WeightWindows(IDManagerMixin):
         self._lower_ww_bounds = bounds
 
     @property
-    def upper_ww_bounds(self) -> Iterable[Real]:
+    def upper_ww_bounds(self) -> np.ndarray:
         return self._upper_ww_bounds
 
     @upper_ww_bounds.setter
@@ -445,7 +443,7 @@ class WeightWindows(IDManagerMixin):
         )
 
 
-def wwinp_to_wws(path) -> WeightWindows:
+def wwinp_to_wws(path) -> List[WeightWindows]:
     """Create WeightWindows instances from a wwinp file
 
     .. versionadded:: 0.13.1

@@ -1,15 +1,16 @@
 from collections.abc import Iterable, Mapping
-from numbers import Real, Integral
+from numbers import Integral, Real
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
+import h5py
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-from ._xml import clean_indentation, reorder_attributes, get_elem_tuple
-from .mixin import IDManagerMixin
 
+from ._xml import clean_indentation, get_elem_tuple, reorder_attributes
+from .mixin import IDManagerMixin
 
 _BASES = ['xy', 'xz', 'yz']
 
@@ -176,6 +177,78 @@ def _get_plot_image(plot, cwd):
             "OpenMC may not be built against libpng.")
 
     return Image(str(png_file))
+
+
+def _voxel_to_vtk(voxel_file: str, output: str = 'plot.vti'):
+    """Converts a voxel HDF5 file to a VTK file')
+
+    Parameters
+    ----------
+    voxel_file : str
+        filename of the input h5 to convert
+    output : str
+        filename of the output vti file produced
+
+    Returns
+    -------
+    str
+        Filename of the vti file produced
+    """
+
+    # imported vkt only if used as vtk is an option dependency
+    import vtk
+
+    _min_version = (2, 0)
+
+    # Read data from voxel file
+    fh = h5py.File(voxel_file, "r")
+
+    # check version
+    version = tuple(fh.attrs["version"])
+    if version < _min_version:
+        old_version = ".".join(map(str, version))
+        min_version = ".".join(map(str, _min_version))
+        err_msg = (
+            f"This voxel file's version is {old_version}. This function only "
+            f" supports voxel files with version {min_version} or higher. "
+            "Please generate a new voxel file using a newer version of OpenMC."
+        )
+        raise ValueError(err_msg)
+
+    dimension = fh.attrs["num_voxels"]
+    width = fh.attrs["voxel_width"]
+    lower_left = fh.attrs["lower_left"]
+
+    nx, ny, nz = dimension
+
+    grid = vtk.vtkImageData()
+    grid.SetDimensions(nx + 1, ny + 1, nz + 1)
+    grid.SetOrigin(*lower_left)
+    grid.SetSpacing(*width)
+
+    # transpose data from OpenMC ordering (zyx) to VTK ordering (xyz)
+    # and flatten to 1-D array
+    print("Reading and translating data...")
+    h5data = fh["data"][...]
+
+    data = vtk.vtkIntArray()
+    data.SetName("id")
+    # set the array using the h5data array
+    data.SetArray(h5data, h5data.size, True)
+    # add data to image grid
+    grid.GetCellData().AddArray(data)
+
+    writer = vtk.vtkXMLImageDataWriter()
+    if vtk.vtkVersion.GetVTKMajorVersion() > 5:
+        writer.SetInputData(grid)
+    else:
+        writer.SetInput(grid)
+    if not output.endswith(".vti"):
+        output += ".vti"
+    writer.SetFileName(output)
+    writer.Write()
+
+    return output
 
 
 class PlotBase(IDManagerMixin):
@@ -830,6 +903,37 @@ class Plot(PlotBase):
 
         # Return produced image
         return _get_plot_image(self, cwd)
+
+    def to_voxel_file(self, output='plot.vti', openmc_exec='openmc', cwd='.'):
+        """Render plot as an voxel image
+
+        This method runs OpenMC in plotting mode to produce a .vti file.
+
+        Parameters
+        ----------
+        output : str
+            filename of the output vti file produced
+        openmc_exec : str
+            Path to OpenMC executable
+        cwd : str, optional
+            Path to working directory to run in
+
+        Returns
+        -------
+        str
+            Filename of the vti file produced
+
+        """
+        # Create plots.xml
+        Plots([self]).export_to_xml(cwd)
+
+        # Run OpenMC in geometry plotting mode and produces a h5 file
+        openmc.plot_geometry(False, openmc_exec, cwd)
+
+        stem = self.filename if self.filename is not None else f'plot_{self.id}'
+        h5_voxel_file = Path(cwd) / f'{stem}.h5'
+
+        return _voxel_to_vtk(h5_voxel_file, output)
 
 
 class ProjectionPlot(PlotBase):

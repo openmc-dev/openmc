@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import openmc
 import openmc.examples
 import pytest
@@ -37,6 +39,7 @@ def myplot():
     }
     return plot
 
+
 @pytest.fixture(scope='module')
 def myprojectionplot():
     plot = openmc.ProjectionPlot(name='myprojectionplot')
@@ -59,25 +62,55 @@ def myprojectionplot():
 
     plot.overlap_color = (255, 211, 0)
     plot.overlap_color = 'yellow'
-    
+
     plot.wireframe_thickness = 2
 
     plot.level = 1
     return plot
 
+
+def test_voxel_plot():
+    surf1 = openmc.Sphere(r=500, boundary_type='vacuum')
+    cell1 = openmc.Cell(region=-surf1)
+    geometry = openmc.Geometry([cell1])
+    geometry.export_to_xml()
+    materials = openmc.Materials()
+    materials.export_to_xml()
+    vox_plot = openmc.Plot()
+    vox_plot.type = 'voxel'
+    vox_plot.id = 12
+    vox_plot.width = (1500., 1500., 1500.)
+    vox_plot.pixels = (200, 200, 200)
+    vox_plot.color_by = 'cell'
+    vox_plot.to_voxel_file(output='test_voxel_plot.vti')
+
+    assert Path('plot_12.h5').is_file()
+    assert Path('test_voxel_plot.vti').is_file()
+
+    vox_plot.filename = 'h5_voxel_plot'
+    vox_plot.to_voxel_file(output='another_test_voxel_plot.vti')
+
+    assert Path('h5_voxel_plot.h5').is_file()
+    assert Path('another_test_voxel_plot.vti').is_file()
+
+
 def test_attributes(myplot):
     assert myplot.name == 'myplot'
 
+
 def test_attributes_proj(myprojectionplot):
     assert myprojectionplot.name == 'myprojectionplot'
+
 
 def test_repr(myplot):
     r = repr(myplot)
     assert isinstance(r, str)
 
+
 def test_repr_proj(myprojectionplot):
     r = repr(myprojectionplot)
     assert isinstance(r, str)
+
 
 def test_from_geometry():
     width = 25.
@@ -154,7 +187,7 @@ def test_plots(run_in_tmpdir):
     plots.export_to_xml()
 
     # from_xml
-    new_plots = openmc.Plots.from_xml()
+    openmc.Plots.from_xml()
     assert len(plots)
     assert plots[0].origin == p1.origin
     assert plots[0].colors == p1.colors

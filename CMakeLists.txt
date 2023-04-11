@@ -292,7 +292,7 @@ endif()
 
 if(OPENMC_BUILD_TESTS)
   find_package_write_status(Catch2)
-  if (NOT Catch2)
+  if (NOT Catch2_FOUND)
     add_subdirectory(vendor/Catch2)
   endif()
 endif()

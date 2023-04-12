@@ -92,6 +92,10 @@ Tally::Tally(pugi::xml_node node)
   if (check_for_node(node, "name"))
     name_ = get_node_value(node, "name");
 
+  if (check_for_node(node, "multiply_density")) {
+    multiply_density_ = get_node_value_bool(node, "multiply_density");
+  }
+
   // =======================================================================
   // READ DATA FOR FILTERS
 
@@ -1105,6 +1109,28 @@ extern "C" int openmc_tally_set_writable(int32_t index, bool writable)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
   model::tallies[index]->set_writable(writable);
+
+  return 0;
+}
+
+extern "C" int openmc_tally_get_multiply_density(int32_t index, bool* value)
+{
+  if (index < 0 || index >= model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  *value = model::tallies[index]->multiply_density();
+
+  return 0;
+}
+
+extern "C" int openmc_tally_set_multiply_density(int32_t index, bool value)
+{
+  if (index < 0 || index >= model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  model::tallies[index]->set_multiply_density(value);
 
   return 0;
 }

@@ -37,6 +37,8 @@ public:
 
   void set_active(bool active) { active_ = active; }
 
+  void set_multiply_density(bool value) { multiply_density_ = value; }
+
   void set_writable(bool writable) { writable_ = writable; }
 
   void set_scores(pugi::xml_node node);
@@ -61,6 +63,8 @@ public:
   int32_t strides(int i) const { return strides_[i]; }
 
   int32_t n_filter_bins() const { return n_filter_bins_; }
+
+  bool multiply_density() const { return multiply_density_; }
 
   bool writable() const { return writable_; }
 
@@ -138,6 +142,9 @@ private:
   vector<int32_t> strides_;
 
   int32_t n_filter_bins_ {0};
+
+  //! Whether to multiply by atom density for reaction rates
+  bool multiply_density_ {true};
 
   gsl::index index_;
 };

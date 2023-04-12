@@ -2341,10 +2341,13 @@ void score_tracklength_tally(Particle& p, double distance)
               }
 
               // Update micro xs cache
-              p.update_neutron_xs(mat->nuclide_[j], i_log_union);
-              atom_density = 0.;
+              if (!tally.multiply_density()) {
+                p.update_neutron_xs(i_nuclide, i_log_union);
+                atom_density = 1.0;
+              }
             } else {
-              atom_density = mat->atom_density_(j);
+              atom_density =
+                tally.multiply_density() ? mat->atom_density_(j) : 1.0;
             }
           }
         }
@@ -2417,10 +2420,13 @@ void score_collision_tally(Particle& p)
             }
 
             // Update micro xs cache
-            p.update_neutron_xs(mat->nuclide_[j], i_log_union);
-            atom_density = 0.;
+            if (!tally.multiply_density()) {
+              p.update_neutron_xs(i_nuclide, i_log_union);
+              atom_density = 1.0;
+            }
           } else {
-            atom_density = mat->atom_density_(j);
+            atom_density =
+              tally.multiply_density() ? mat->atom_density_(j) : 1.0;
           }
         }
 

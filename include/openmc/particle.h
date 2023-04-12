@@ -35,6 +35,9 @@ public:
 
   Particle() = default;
 
+  //==========================================================================
+  // Methods
+
   double speed() const;
 
   //! create a secondary particle
@@ -106,6 +109,16 @@ public:
 
   //! create a particle restart HDF5 file
   void write_restart() const;
+
+  //! Update microscopic cross section cache
+  //
+  //! \param[in] i_nuclide Index in data::nuclides
+  //! \param[in] i_grid Index on log union grid
+  //! \param[in] i_sab Index in data::thermal_scatt
+  //! \param[in] sab_frac  S(a,b) table fraction
+  //! \param[in] ncrystal_xs Thermal scattering xs from NCrystal
+  void update_neutron_xs(int i_nuclide, int i_grid = C_NONE, int i_sab = C_NONE,
+    double sab_frac = 0.0, double ncrystal_xs = -1.0);
 };
 
 //============================================================================

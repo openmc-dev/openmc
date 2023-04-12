@@ -36,6 +36,10 @@
 
 namespace openmc {
 
+//==============================================================================
+// Particle implementation
+//==============================================================================
+
 double Particle::speed() const
 {
   // Determine mass in eV/c^2
@@ -433,7 +437,9 @@ void Particle::cross_surface()
 #ifdef DAGMC
   // in DAGMC, we know what the next cell should be
   if (surf->geom_type_ == GeometryType::DAG) {
-    int32_t i_cell = next_cell(i_surface, cell_last(n_coord() - 1), lowest_coord().universe) - 1;
+    int32_t i_cell =
+      next_cell(i_surface, cell_last(n_coord() - 1), lowest_coord().universe) -
+      1;
     // save material and temp
     material_last() = material();
     sqrtkT_last() = sqrtkT();
@@ -702,6 +708,29 @@ void Particle::write_restart() const
     file_close(file_id);
   } // #pragma omp critical
 }
+
+void Particle::update_neutron_xs(
+  int i_nuclide, int i_grid, int i_sab, double sab_frac, double ncrystal_xs)
+{
+  // Get microscopic cross section cache
+  auto& micro = this->neutron_xs(i_nuclide);
+
+  // If the cache doesn't match, reculcate micro xs
+  if (this->E() != micro.last_E || this->sqrtkT() != micro.last_sqrtkT ||
+      i_sab != micro.index_sab || sab_frac != micro.sab_frac) {
+    data::nuclides[i_nuclide]->calculate_xs(i_sab, i_grid, sab_frac, *this);
+
+    // If NCrystal is being used, update micro cross section cache
+    if (ncrystal_xs >= 0.0) {
+      data::nuclides[i_nuclide]->calculate_elastic_xs(*this);
+      ncrystal_update_micro(ncrystal_xs, micro);
+    }
+  }
+}
+
+//==============================================================================
+// Non-method functions
+//==============================================================================
 
 std::string particle_type_to_str(ParticleType type)
 {

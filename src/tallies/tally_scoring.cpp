@@ -939,21 +939,17 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
 
       if (i_nuclide >= 0) {
         const auto& micro = p.photon_xs(i_nuclide);
-        double xs = (score_bin == COHERENT)
-                      ? micro.coherent
-                      : (score_bin == INCOHERENT) ? micro.incoherent
-                                                  : (score_bin == PHOTOELECTRIC)
-                                                      ? micro.photoelectric
-                                                      : micro.pair_production;
+        double xs = (score_bin == COHERENT)        ? micro.coherent
+                    : (score_bin == INCOHERENT)    ? micro.incoherent
+                    : (score_bin == PHOTOELECTRIC) ? micro.photoelectric
+                                                   : micro.pair_production;
         score = xs * atom_density * flux;
       } else {
-        double xs = (score_bin == COHERENT)
-                      ? p.macro_xs().coherent
-                      : (score_bin == INCOHERENT)
-                          ? p.macro_xs().incoherent
-                          : (score_bin == PHOTOELECTRIC)
-                              ? p.macro_xs().photoelectric
-                              : p.macro_xs().pair_production;
+        double xs = (score_bin == COHERENT)     ? p.macro_xs().coherent
+                    : (score_bin == INCOHERENT) ? p.macro_xs().incoherent
+                    : (score_bin == PHOTOELECTRIC)
+                      ? p.macro_xs().photoelectric
+                      : p.macro_xs().pair_production;
         score = xs * flux;
       }
       break;
@@ -2308,6 +2304,9 @@ void score_tracklength_tally(Particle& p, double distance)
   // Determine the tracklength estimate of the flux
   double flux = p.wgt() * distance;
 
+  // Set 'none' value for log union grid index
+  int i_log_union = C_NONE;
+
   for (auto i_tally : model::active_tracklength_tallies) {
     const Tally& tally {*model::tallies[i_tally]};
 
@@ -2331,11 +2330,22 @@ void score_tracklength_tally(Particle& p, double distance)
         double atom_density = 0.;
         if (i_nuclide >= 0) {
           if (p.material() != MATERIAL_VOID) {
-            auto j =
-              model::materials[p.material()]->mat_nuclide_index_[i_nuclide];
-            if (j == C_NONE)
-              continue;
-            atom_density = model::materials[p.material()]->atom_density_(j);
+            const auto& mat = model::materials[p.material()];
+            auto j = mat->mat_nuclide_index_[i_nuclide];
+            if (j == C_NONE) {
+              // Determine log union grid index
+              if (i_log_union == C_NONE) {
+                int neutron = static_cast<int>(ParticleType::neutron);
+                i_log_union = std::log(p.E() / data::energy_min[neutron]) /
+                              simulation::log_spacing;
+              }
+
+              // Update micro xs cache
+              p.update_neutron_xs(mat->nuclide_[j], i_log_union);
+              atom_density = 0.;
+            } else {
+              atom_density = mat->atom_density_(j);
+            }
           }
         }
 
@@ -2371,6 +2381,9 @@ void score_collision_tally(Particle& p)
     flux = p.wgt_last() / p.macro_xs().total;
   }
 
+  // Set 'none value for log union grid index
+  int i_log_union = C_NONE;
+
   for (auto i_tally : model::active_collision_tallies) {
     const Tally& tally {*model::tallies[i_tally]};
 
@@ -2393,11 +2406,22 @@ void score_collision_tally(Particle& p)
 
         double atom_density = 0.;
         if (i_nuclide >= 0) {
-          auto j =
-            model::materials[p.material()]->mat_nuclide_index_[i_nuclide];
-          if (j == C_NONE)
-            continue;
-          atom_density = model::materials[p.material()]->atom_density_(j);
+          const auto& mat = model::materials[p.material()];
+          auto j = mat->mat_nuclide_index_[i_nuclide];
+          if (j == C_NONE) {
+            // Determine log union grid index
+            if (i_log_union == C_NONE) {
+              int neutron = static_cast<int>(ParticleType::neutron);
+              i_log_union = std::log(p.E() / data::energy_min[neutron]) /
+                            simulation::log_spacing;
+            }
+
+            // Update micro xs cache
+            p.update_neutron_xs(mat->nuclide_[j], i_log_union);
+            atom_density = 0.;
+          } else {
+            atom_density = mat->atom_density_(j);
+          }
         }
 
         // TODO: consider replacing this "if" with pointers or templates

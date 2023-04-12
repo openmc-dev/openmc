@@ -471,7 +471,7 @@ void Nuclide::create_derived(
         xs_cdf_sum +=
           (std::sqrt(E[i]) * xs[i] + std::sqrt(E[i + 1]) * xs[i + 1]) / 2.0 *
           (E[i + 1] - E[i]);
-        xs_cdf_[i+1] = xs_cdf_sum;
+        xs_cdf_[i + 1] = xs_cdf_sum;
       }
     }
   }

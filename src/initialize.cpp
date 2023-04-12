@@ -148,6 +148,12 @@ parse_command_line(int argc, char* argv[])
       } else if (arg == "-e" || arg == "--event") {
         settings::event_based = true;
       
+      } else if (arg == "--no-sort-fissionable-xs") {
+        settings::sort_fissionable_xs_lookups = false;
+
+      } else if (arg == "--no-sort-non-fissionable-xs") {
+        settings::sort_non_fissionable_xs_lookups = false;
+
       } else if (arg == "-m" || arg == "--minimum") {
         i += 1;
         settings::minimum_sort_items = std::stoll(argv[i]);

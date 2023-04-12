@@ -177,7 +177,9 @@ bool depletion_rx_check()
 void process_calculate_xs_events_nonfuel()
 {
   // Sort non fuel lookup queue by material and energy
-  sort_queue(simulation::calculate_nonfuel_xs_queue);
+  if (settings::sort_non_fissionable_xs_lookups) {
+    sort_queue(simulation::calculate_nonfuel_xs_queue);
+  }
 
   simulation::time_event_calculate_xs.start();
   simulation::time_event_calculate_xs_nonfuel.start();
@@ -207,7 +209,9 @@ void process_calculate_xs_events_nonfuel()
 void process_calculate_xs_events_fuel()
 {
   // Sort fuel lookup queue by energy
-  sort_queue(simulation::calculate_fuel_xs_queue);
+  if (settings::sort_fissionable_xs_lookups) {
+    sort_queue(simulation::calculate_fuel_xs_queue);
+  }
 
   // The below line can be used to check if the queue has actually been sorted.
   // May be useful for debugging future on-device sorting strategies.

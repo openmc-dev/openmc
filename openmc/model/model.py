@@ -1,3 +1,4 @@
+from __future__ import annotations
 from collections.abc import Iterable
 from contextlib import contextmanager
 from functools import lru_cache
@@ -17,7 +18,6 @@ from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import check_type, check_value
 from openmc.exceptions import InvalidIDError
-from openmc.model import Model
 
 
 @contextmanager

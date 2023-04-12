@@ -69,7 +69,7 @@ def myprojectionplot():
     return plot
 
 
-def test_voxel_plot():
+def test_voxel_plot(run_in_tmpdir):
     surf1 = openmc.Sphere(r=500, boundary_type='vacuum')
     cell1 = openmc.Cell(region=-surf1)
     geometry = openmc.Geometry([cell1])

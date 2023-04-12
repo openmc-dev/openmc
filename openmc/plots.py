@@ -228,7 +228,6 @@ def _voxel_to_vtk(voxel_file: str, output: str = 'plot.vti'):
 
     # transpose data from OpenMC ordering (zyx) to VTK ordering (xyz)
     # and flatten to 1-D array
-    print("Reading and translating data...")
     h5data = fh["data"][...]
 
     data = vtk.vtkIntArray()

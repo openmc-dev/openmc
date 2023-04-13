@@ -83,23 +83,48 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
     {
     for (int64_t i = 0; i < NEIGHBOR_SIZE ; i++) {
 
-      // Perform an atomic read of the neighbor list
-
-      // TODO: The below is the correct version.
-      // Note: Gives a runtime JIT compiler error (can't find the flush function or something)
-      //#pragma omp atomic read seq_cst
-
-      // TODO: The below is the workaround
-      // Note: gives a link time error
-      /*
-      __sync_synchronize();
-      #pragma omp atomic read
-      i_cell = neighbor_list->list_[i];
-      __sync_synchronize();
-      */
-
-      // TODO: The below is the workaround for the workaround
-      #pragma omp atomic read
+      // Perform a read of the neighbor list element. Note that this
+      // operation may be executed by this thread concurrently with another
+      // thread writing to the same element. The write operation occurs using
+      // an atomic compare-and-swap operation. However, this read operation
+      // is left unprotected. This is not stricly permitted and the results
+      // of the read could be undefined. However, in practice, since this
+      // is a 32-bit read, there are certain practical guarantees that can
+      // be relied on for all known computer architectures. The concerns,
+      // and their solutions, are:
+      //
+      // 1) The element begins as "-1". It gets written concurrently
+      // to "42" at the same time this thread reads it. If this were a
+      // 64-bit operation, a split-write could in theory occur resulting
+      // in decomposition of the store into two 32-bit operations, the
+      // second of which could be preempted by this thread. In that case,
+      // we could theoretically read a value that was neither -1 or 42,
+      // but some other garbage value, which could result in a segmentation
+      // fault when we try to check against that cell ID. However, since
+      // the element is a 32-bit integer, load and store operations will
+      // be implicitly atomic, so a split write is not possible.  
+      //
+      // 2) The elememnt begins a "-1". It gets written concurrently to
+      // "42" at the same time this thread reads it. As some caches on
+      // GPUs are not cache coherent, a read operation that
+      // occurs after the element is set to 42 could result in a -1 being
+      // read. Thankfully, our use case allows for this to happen. In this
+      // event, if 42 is indeed the correct cell neighbor, then the thread
+      // will later attempt to append the correct neighbor onto the list. The
+      // atomic CAS operations there will ensure that a duplicate is not
+      // appended. Thus, while an unnecessary CSG check will be performed
+      // in this case, the program will still behave correctly.
+      //
+      // 3) Atomic read operations can result in stricter memory
+      // fencing operations (e.g., flushing of cache lines) to enforce
+      // cache coherency. This can mean that the below read operation can
+      // become very costly if using OpenMP atomics, even if no write
+      // conflicts ever occur. As it is expected that all neighbors will be
+      // found very rapidly, it is
+      // not likely worth it to pay the cost of the stricter memory policy,
+      // and instead to allow for situation (2) to occur a few times during
+      // the first batch of the simulation.
+      
       i_cell = neighbor_list->list_[i];
 
       // If the neighbor list item is -1, this means the end of the list has been found

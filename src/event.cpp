@@ -186,8 +186,9 @@ void process_calculate_xs_events_nonfuel()
 
   int offset = simulation::advance_particle_queue.size();;
 
+  int n_particles = simulation::calculate_nonfuel_xs_queue.size();
   #pragma omp target teams distribute parallel for
-  for (int i = 0; i < simulation::calculate_nonfuel_xs_queue.size(); i++) {
+  for (int i = 0; i < n_particles; i++) {
     int buffer_idx = simulation::calculate_nonfuel_xs_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_calculate_xs_execute(need_depletion_rx);
@@ -220,8 +221,9 @@ void process_calculate_xs_events_fuel()
 
   int offset = simulation::advance_particle_queue.size();;
 
+  int n_particles = simulation::calculate_fuel_xs_queue.size();
   #pragma omp target teams distribute parallel for
-  for (int i = 0; i < simulation::calculate_fuel_xs_queue.size(); i++) {
+  for (int i = 0; i < n_particles; i++) {
     int buffer_idx = simulation::calculate_fuel_xs_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_calculate_xs_execute(need_depletion_rx);
@@ -238,12 +240,13 @@ void process_calculate_xs_events_fuel()
   simulation::time_event_calculate_xs_fuel.stop();
 }
 
-void process_advance_particle_events(int n_particles)
+void process_advance_particle_events()
 {
   simulation::time_event_advance_particle.start();
 
+  int n_particles = simulation::advance_particle_queue.size();
   #pragma omp target teams distribute parallel for
-  for (int i = 0; i < simulation::advance_particle_queue.size(); i++) {
+  for (int i = 0; i < n_particles; i++) {
     int buffer_idx = simulation::advance_particle_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_advance();
@@ -263,7 +266,7 @@ void process_advance_particle_events(int n_particles)
   if (!model::active_tracklength_tallies.empty()) {
     bool need_depletion_rx = depletion_rx_check();
     #pragma omp target teams distribute parallel for
-    for (int i = 0; i < simulation::advance_particle_queue.size(); i++) {
+    for (int i = 0; i < n_particles; i++) {
       int buffer_idx = simulation::advance_particle_queue[i].idx;
       Particle& p = simulation::device_particles[buffer_idx];
       p.event_tracklength_tally(need_depletion_rx);
@@ -278,8 +281,9 @@ void process_surface_crossing_events()
 {
   simulation::time_event_surface_crossing.start();
 
+  int n_particles = simulation::surface_crossing_queue.size();
   #pragma omp target teams distribute parallel for
-  for (int i = 0; i < simulation::surface_crossing_queue.size(); i++) {
+  for (int i = 0; i < n_particles; i++) {
     int buffer_idx = simulation::surface_crossing_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_cross_surface();
@@ -302,8 +306,9 @@ void process_collision_events()
 {
   simulation::time_event_collision.start();
 
+  int n_particles = simulation::collision_queue.size();
   #pragma omp target teams distribute parallel for
-  for (int i = 0; i < simulation::collision_queue.size(); i++) {
+  for (int i = 0; i < n_particles; i++) {
     int buffer_idx = simulation::collision_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
     p.event_collide();
@@ -360,8 +365,9 @@ void process_revival_events()
   // Accumulator for particle weights from any sourced particles
   double extra_weight = 0;
 
+  int n_particles = simulation::revival_queue.size();
   #pragma omp target teams distribute parallel for reduction(+:extra_weight)
-  for (int i = 0; i < simulation::revival_queue.size(); i++) {
+  for (int i = 0; i < n_particles; i++) {
     int buffer_idx = simulation::revival_queue[i].idx;
     Particle& p = simulation::device_particles[buffer_idx];
 

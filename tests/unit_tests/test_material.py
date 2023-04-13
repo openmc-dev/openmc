@@ -27,8 +27,9 @@ def test_add_nuclide():
     with pytest.raises(ValueError):
         m.add_nuclide('H1', 1.0, 'oa')
 
+
 def test_add_components():
-    """Test adding multipe elements or nuclides at once"""
+    """Test adding multiple elements or nuclides at once"""
     m = openmc.Material()
     components = {'H1': 2.0,
                   'O16': 1.0,
@@ -552,6 +553,23 @@ def test_get_activity():
 
     # Test with volume specified as argument
     assert pytest.approx(m4.get_activity(units='Bq', volume=1.0)) == 355978108155965.94*3/2
+
+
+def test_material_from_library():
+    """Checks that the material is added from the pnnl_v2 library and that it is assigned
+    the correct nuclides and density and error handling"""
+    m1 = openmc.Material.from_library(name='Sodium Oxide', library='pnnl_v2')
+    assert m1.density == 2.27
+    assert m1.nuclides == [
+        ('O16', 0.332523, 'ao'),
+        ('O17', 0.0001266665, 'ao'),
+        ('O18', 0.0006833327, 'ao'),
+        ('Na23', 0.666667, 'ao')
+    ]
+    with pytest.raises(ValueError):
+        openmc.Material.from_library(name='non-existent material')
+    with pytest.raises(ValueError):
+        openmc.Material.from_library(name='Gold', library='non-existent library')
 
 
 def test_get_decay_heat():

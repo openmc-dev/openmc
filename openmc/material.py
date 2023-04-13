@@ -4,6 +4,7 @@ from copy import deepcopy
 from numbers import Real
 from pathlib import Path
 import re
+import os
 import typing  # imported separately as py3.8 requires typing.Iterable
 import warnings
 from typing import Optional
@@ -24,6 +25,29 @@ from openmc.stats import Univariate
 # Units for density supported by OpenMC
 DENSITY_UNITS = ('g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3', 'sum',
                  'macro')
+
+_MAT_LIB_DIRS = [openmc.data.INTERNAL_DATA_PATH / 'material_libraries']
+if os.environ.get('OPENMC_MATERIAL_LIBRARY_PATH') is not None:
+    _MAT_LIB_DIRS += [Path(a) for a in os.environ.get('OPENMC_MATERIAL_LIBRARY_PATH').split(':')]
+
+_MAT_LIB_PATHS = [f.resolve() for p in _MAT_LIB_DIRS
+                  for f in sorted(Path(p).glob('*.xml'))]
+
+# MATERIAL_LIBRARIES maps strings of library names to pathlib.Path objects for 
+# each available material library
+MATERIAL_LIBRARIES = {}
+# _MATERIAL_LIBRARY_CACHE maps strings of library names to the loaded library to
+# prevent loading the same library multiple times or loading unused libraries
+_MATERIAL_LIBRARY_CACHE = {}
+
+for matlib_path in _MAT_LIB_PATHS:
+    if matlib_path.stem not in MATERIAL_LIBRARIES.keys():
+        MATERIAL_LIBRARIES[matlib_path.stem] = matlib_path
+    else:
+        msg = (f"Material library {matlib_path} is superseded by "
+               "{MATERIAL_LIBRARIES[matlib_path.stem]} and will not be "
+               "available.")
+        warnings.warn(msg)
 
 
 NuclideTuple = namedtuple('NuclideTuple', ['name', 'percent', 'percent_type'])
@@ -1434,6 +1458,52 @@ class Material(IDManagerMixin):
         new_mat.depletable = any(mat.depletable for mat in materials)
 
         return new_mat
+
+    @classmethod
+    def from_library(cls, name, library='pnnl_v2'):
+        """Adds a material composition from a predefined library
+
+        Parameters
+        ----------
+        name : str
+            Reference name of the material (case sensitive)
+        library : str
+            The material library to use. Options include: 'pnnl_v2' The Pacific
+            Northwest National Laboratory Compendium of Material Composition
+            Data for Radiation Transport Modeling, available from
+            https://www.pnnl.gov/main/publications/external/technical_reports/PNNL-15870Rev2.pdf
+
+        """
+
+        if library not in MATERIAL_LIBRARIES.keys():
+            msg = (
+                    f'library {library} not found in available libraries. '
+                    f'Supported libraries are {list(MATERIAL_LIBRARIES.keys())}'
+            )
+            raise ValueError(msg)
+            
+        global _MATERIAL_LIBRARY_CACHE
+
+        # loads in the library into the MATERIAL_LIBRARIES if not already loaded
+        try:
+            library_data = _MATERIAL_LIBRARY_CACHE[library]
+        except KeyError:
+            material_objs = openmc.Materials.from_xml(MATERIAL_LIBRARIES[library])
+            library_data = {}
+            for material_obj in material_objs:
+                library_data[material_obj.name] = material_obj
+            _MATERIAL_LIBRARY_CACHE[library] = library_data
+
+        if name not in library_data.keys():
+            msg = (
+                    f'material name {name} not found in the {library} materials '
+                    f'library. Available are {list(library_data.keys())}'
+            )
+            raise ValueError(msg)
+
+        material_to_add = library_data[name]
+
+        return material_to_add
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element):

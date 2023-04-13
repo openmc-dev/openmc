@@ -87,7 +87,8 @@ class UniverseBase(ABC, IDManagerMixin):
                 self._volume = volume_calc.volumes[self.id].n
                 self._atoms = volume_calc.atoms[self.id]
             else:
-                raise ValueError('No volume information found for this universe.')
+                raise ValueError(
+                    'No volume information found for this universe.')
         else:
             raise ValueError('No volume information found for this universe.')
 
@@ -168,7 +169,7 @@ class UniverseBase(ABC, IDManagerMixin):
             clone._cells = OrderedDict()
             for cell in self._cells.values():
                 clone.add_cell(cell.clone(clone_materials, clone_regions,
-                     memo))
+                                          memo))
 
             # Memoize the clone
             memo[self] = clone
@@ -295,7 +296,7 @@ class Universe(UniverseBase):
 
     def plot(self, origin=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
              basis='xy', color_by='cell', colors=None, seed=None,
-             openmc_exec='openmc', axes=None, **kwargs):
+             openmc_exec='openmc', axes=None, legend=False, **kwargs):
         """Display a slice plot of the universe.
 
         Parameters
@@ -329,6 +330,8 @@ class Universe(UniverseBase):
             Axes to draw to
 
             .. versionadded:: 0.13.1
+        legend : bool
+            whether a legend showing material or cell names should be drawn
         **kwargs
             Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 
@@ -339,6 +342,7 @@ class Universe(UniverseBase):
 
         """
         import matplotlib.image as mpimg
+        import matplotlib.patches as mpatches
         import matplotlib.pyplot as plt
 
         # Determine extents of plot
@@ -395,6 +399,36 @@ class Universe(UniverseBase):
                 width = pixels[0]*px/(params.right - params.left)
                 height = pixels[0]*px/(params.top - params.bottom)
                 fig.set_size_inches(width, height)
+
+            # add legend showing which colors represent which material
+            # or cell if that was requested
+            if legend:
+                if plot.colors is None:
+                    raise Exception("Must set plot color dictionary if you would"
+                                    " like to have an automatic legend.")
+
+                if color_by == "cell":
+                    expected_key_type = openmc.Cell
+                elif color_by == "material":
+                    expected_key_type = openmc.Material
+                else:
+                    raise Exception("wtf?")
+
+                patches = []
+                for key, color in plot.colors.items():
+
+                    if isinstance(key, int):
+                        raise Exception(
+                            "Cannot use IDs in colors dict for auto legend.")
+                    elif not isinstance(key, expected_key_type):
+                        raise Exception(
+                            "Color dict key type does not match color_by")
+
+                    # this works whether we're doing cells or materials
+                    key_patch = mpatches.Patch(color=color, label=key.name)
+                    patches.append(key_patch)
+
+                axes.legend(handles=patches)
 
             # Plot image and return the axes
             return axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
@@ -738,8 +772,9 @@ class DAGMCUniverse(UniverseBase):
     @property
     def material_names(self):
         dagmc_file_contents = h5py.File(self.filename)
-        material_tags_hex=dagmc_file_contents['/tstt/tags/NAME'].get('values')
-        material_tags_ascii=[]
+        material_tags_hex = dagmc_file_contents['/tstt/tags/NAME'].get(
+            'values')
+        material_tags_ascii = []
         for tag in material_tags_hex:
             candidate_tag = tag.tobytes().decode().replace('\x00', '')
             # tags might be for temperature or reflective surfaces
@@ -905,7 +940,8 @@ class DAGMCUniverse(UniverseBase):
         openmc.Universe
             Universe instance
         """
-        bounding_cell = openmc.Cell(fill=self, cell_id=bounding_cell_id, region=self.bounding_region(**kwargs))
+        bounding_cell = openmc.Cell(
+            fill=self, cell_id=bounding_cell_id, region=self.bounding_region(**kwargs))
         return openmc.Universe(cells=[bounding_cell])
 
     @classmethod

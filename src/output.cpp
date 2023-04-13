@@ -316,6 +316,8 @@ void print_usage()
       "  -e, --event            Run using event-based parallelism\n"
       "  -m, --minimum          Minimum energy sorting threshold\n"
       "  -i, --inflight         Maximum number of in-flight particles\n"
+      "  --no-sort-fissionable-xs      Do not sort event-based fissionable material xs lookups\n"
+      "  --no-sort-non-fissionable-xs  Do not sort event-based non-fissionable material xs lookups\n"
       "  -v, --version          Show version information\n"
       "  -h, --help             Show this message\n");
   }

@@ -818,7 +818,7 @@ void sab_scatter(int i_nuclide, int i_sab, Particle& p)
 }
 
 Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
-  Direction v_neut, double xs_eff, double kT, uint64_t* seed)
+  Direction v_neut, double /* xs_eff */, double kT, uint64_t* seed)
 {
   // check if nuclide is a resonant scatterer
   ResScatMethod sampling_method;

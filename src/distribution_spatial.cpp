@@ -280,7 +280,7 @@ SpatialPoint::SpatialPoint(pugi::xml_node node)
   r_ = Position {params.data()};
 }
 
-Position SpatialPoint::sample(uint64_t* seed) const
+Position SpatialPoint::sample(uint64_t* /* seed */) const
 {
   return r_;
 }

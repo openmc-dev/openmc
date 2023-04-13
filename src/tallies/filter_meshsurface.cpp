@@ -8,7 +8,7 @@
 namespace openmc {
 
 void MeshSurfaceFilter::get_all_bins(
-  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
+  const Particle& p, TallyEstimator /* estimator */, FilterMatch& match) const
 {
   Position r0 = p.r_last_current();
   Position r1 = p.r();
@@ -19,7 +19,7 @@ void MeshSurfaceFilter::get_all_bins(
 
   Direction u = p.u();
   model::meshes[mesh_]->surface_bins_crossed(r0, r1, u, match.bins_);
-  for (auto b : match.bins_)
+  for (unsigned int b = 0; b < match.bins_.size(); ++b)
     match.weights_.push_back(1.0);
 }
 

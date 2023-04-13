@@ -35,7 +35,6 @@ void apply_weight_windows(Particle& p)
   if (p.E() <= 0 || !p.alive())
     return;
 
-  bool in_domain = false;
   // TODO: this is a linear search - should do something more clever
   WeightWindow weight_window;
   for (const auto& ww : variance_reduction::weight_windows) {

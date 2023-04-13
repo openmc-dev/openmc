@@ -88,7 +88,7 @@ Direction Isotropic::sample(uint64_t* seed) const
 // Monodirectional implementation
 //==============================================================================
 
-Direction Monodirectional::sample(uint64_t* seed) const
+Direction Monodirectional::sample(uint64_t* /* seed */) const
 {
   return u_ref_;
 }

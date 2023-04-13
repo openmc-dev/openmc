@@ -485,10 +485,6 @@ double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin)
 
   auto i_temp = micro.index_temp;
   if (i_temp >= 0) { // Can be false due to multipole
-    // Get index on energy grid and interpolation factor
-    auto i_grid = micro.index_grid;
-    auto f = micro.interp_factor;
-
     // Calculate interpolated cross section
     double xs = rx.xs(micro);
 

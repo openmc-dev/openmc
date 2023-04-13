@@ -96,7 +96,7 @@ std::string EnergyFilter::text_label(int bin) const
 //==============================================================================
 
 void EnergyoutFilter::get_all_bins(
-  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
+  const Particle& p, TallyEstimator /* estimator */, FilterMatch& match) const
 {
   if (p.g() != F90_NONE && matches_transport_groups_) {
     match.bins_.push_back(data::mg.num_energy_groups_ - p.g() - 1);

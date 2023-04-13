@@ -569,7 +569,7 @@ void ScattDataHistogram::sample(
 
 //==============================================================================
 
-xt::xtensor<double, 3> ScattDataHistogram::get_matrix(size_t max_order)
+xt::xtensor<double, 3> ScattDataHistogram::get_matrix(size_t /* max_order */)
 {
   // Get the sizes and initialize the data to 0
   size_t groups = energy.size();
@@ -786,7 +786,7 @@ void ScattDataTabular::sample(
 
 //==============================================================================
 
-xt::xtensor<double, 3> ScattDataTabular::get_matrix(size_t max_order)
+xt::xtensor<double, 3> ScattDataTabular::get_matrix(size_t /* max_order */)
 {
   // Get the sizes and initialize the data to 0
   size_t groups = energy.size();

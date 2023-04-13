@@ -54,10 +54,10 @@ TranslationalPeriodicBC::TranslationalPeriodicBC(int i_surf, int j_surf)
   Surface& surf2 {*model::surfaces[j_surf_]};
 
   // Make sure the first surface has an appropriate type.
-  if (const auto* ptr = dynamic_cast<const SurfaceXPlane*>(&surf1)) {
-  } else if (const auto* ptr = dynamic_cast<const SurfaceYPlane*>(&surf1)) {
-  } else if (const auto* ptr = dynamic_cast<const SurfaceZPlane*>(&surf1)) {
-  } else if (const auto* ptr = dynamic_cast<const SurfacePlane*>(&surf1)) {
+  if (dynamic_cast<const SurfaceXPlane*>(&surf1)) {
+  } else if (dynamic_cast<const SurfaceYPlane*>(&surf1)) {
+  } else if (dynamic_cast<const SurfaceZPlane*>(&surf1)) {
+  } else if (dynamic_cast<const SurfacePlane*>(&surf1)) {
   } else {
     throw std::invalid_argument(fmt::format(
       "Surface {} is an invalid type for "
@@ -66,10 +66,10 @@ TranslationalPeriodicBC::TranslationalPeriodicBC(int i_surf, int j_surf)
   }
 
   // Make sure the second surface has an appropriate type.
-  if (const auto* ptr = dynamic_cast<const SurfaceXPlane*>(&surf2)) {
-  } else if (const auto* ptr = dynamic_cast<const SurfaceYPlane*>(&surf2)) {
-  } else if (const auto* ptr = dynamic_cast<const SurfaceZPlane*>(&surf2)) {
-  } else if (const auto* ptr = dynamic_cast<const SurfacePlane*>(&surf2)) {
+  if (dynamic_cast<const SurfaceXPlane*>(&surf2)) {
+  } else if (dynamic_cast<const SurfaceYPlane*>(&surf2)) {
+  } else if (dynamic_cast<const SurfaceZPlane*>(&surf2)) {
+  } else if (dynamic_cast<const SurfacePlane*>(&surf2)) {
   } else {
     throw std::invalid_argument(fmt::format(
       "Surface {} is an invalid type for "

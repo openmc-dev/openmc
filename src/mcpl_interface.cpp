@@ -69,7 +69,7 @@ SourceSite mcpl_particle_to_site(const mcpl_particle_t* particle)
 
 //==============================================================================
 
-vector<SourceSite> mcpl_source_sites(std::string path)
+vector<SourceSite> mcpl_source_sites(std::string /* path */)
 {
   vector<SourceSite> sites;
 
@@ -207,7 +207,7 @@ void write_mcpl_source_bank(mcpl_outfile_t file_id, bool surf_source_bank)
 
 //==============================================================================
 
-void write_mcpl_source_point(const char* filename, bool surf_source_bank)
+void write_mcpl_source_point(const char* filename, bool /* surf_source_bank */)
 {
   std::string filename_;
   if (filename) {

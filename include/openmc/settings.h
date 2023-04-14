@@ -27,14 +27,14 @@ extern bool assume_separate;      //!< assume tallies are spatially separate?
 extern bool check_overlaps;       //!< check overlaps in geometry?
 extern bool confidence_intervals; //!< use confidence intervals for results?
 extern bool
-  create_fission_neutrons; //!< create fission neutrons (fixed source)?
+  create_fission_neutrons;        //!< create fission neutrons (fixed source)?
 extern bool create_delayed_neutrons; //!< create delayed fission neutrons?
-extern "C" bool cmfd_run;  //!< is a CMFD run?
+extern "C" bool cmfd_run;            //!< is a CMFD run?
 extern bool
   delayed_photon_scaling;   //!< Scale fission photon yield to include delayed
 extern "C" bool entropy_on; //!< calculate Shannon entropy?
 extern "C" bool
-  event_based; //!< use event-based mode (instead of history-based)
+  event_based;              //!< use event-based mode (instead of history-based)
 extern bool legendre_to_tabular; //!< convert Legendre distributions to tabular?
 extern bool material_cell_offsets; //!< create material cells offsets?
 extern "C" bool output_summary;    //!< write summary.h5?
@@ -70,8 +70,8 @@ extern std::string path_particle_restart; //!< path to a particle restart file
 extern std::string path_sourcepoint;      //!< path to a source file
 extern "C" std::string path_statepoint;   //!< path to a statepoint file
 
-extern "C" int32_t n_inactive;         //!< number of inactive batches
-extern "C" int32_t max_lost_particles; //!< maximum number of lost particles
+extern "C" int32_t n_inactive;            //!< number of inactive batches
+extern "C" int32_t max_lost_particles;    //!< maximum number of lost particles
 extern double
   rel_max_lost_particles; //!< maximum number of lost particles, relative to the
                           //!< total number of particles
@@ -82,11 +82,11 @@ extern int64_t
   max_particles_in_flight; //!< Max num. event-based particles in flight
 
 extern ElectronTreatment
-  electron_treatment; //!< how to treat secondary electrons
+  electron_treatment;         //!< how to treat secondary electrons
 extern array<double, 4>
-  energy_cutoff; //!< Energy cutoff in [eV] for each particle type
+  energy_cutoff;              //!< Energy cutoff in [eV] for each particle type
 extern array<double, 4>
-  time_cutoff; //!< Time cutoff in [s] for each particle type
+  time_cutoff;                //!< Time cutoff in [s] for each particle type
 extern int
   legendre_to_tabular_points; //!< number of points to convert Legendres
 extern int max_order;         //!< Maximum Legendre order for multigroup data
@@ -101,24 +101,24 @@ extern vector<std::string>
   res_scat_nuclides;     //!< Nuclides using res. upscattering treatment
 extern RunMode run_mode; //!< Run mode (eigenvalue, fixed src, etc.)
 extern std::unordered_set<int>
-  sourcepoint_batch; //!< Batches when source should be written
+  sourcepoint_batch;     //!< Batches when source should be written
 extern std::unordered_set<int>
-  statepoint_batch; //!< Batches when state should be written
+  statepoint_batch;      //!< Batches when state should be written
 extern std::unordered_set<int>
-  source_write_surf_id; //!< Surface ids where sources will be written
+  source_write_surf_id;  //!< Surface ids where sources will be written
 extern int max_splits; //!< maximum number of particle splits for weight windows
 extern int64_t max_surface_particles; //!< maximum number of particles to be
                                       //!< banked on surfaces per process
 extern TemperatureMethod
-  temperature_method; //!< method for choosing temperatures
+  temperature_method;                 //!< method for choosing temperatures
 extern double
   temperature_tolerance; //!< Tolerance in [K] on choosing temperatures
 extern double temperature_default; //!< Default T in [K]
 extern array<double, 2>
-  temperature_range;           //!< Min/max T in [K] over which to load xs
-extern int trace_batch;        //!< Batch to trace particle on
-extern int trace_gen;          //!< Generation to trace particle on
-extern int64_t trace_particle; //!< Particle ID to enable trace on
+  temperature_range;               //!< Min/max T in [K] over which to load xs
+extern int trace_batch;            //!< Batch to trace particle on
+extern int trace_gen;              //!< Generation to trace particle on
+extern int64_t trace_particle;     //!< Particle ID to enable trace on
 extern vector<array<int, 3>>
   track_identifiers;               //!< Particle numbers for writing tracks
 extern int trigger_batch_interval; //!< Batch interval for triggers

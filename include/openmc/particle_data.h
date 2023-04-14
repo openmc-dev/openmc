@@ -104,10 +104,10 @@ public:
 
 struct NuclideMicroXS {
   // Microscopic cross sections in barns
-  double total;      //!< total cross section
-  double absorption; //!< absorption (disappearance)
-  double fission;    //!< fission
-  double nu_fission; //!< neutron production from fission
+  double total;           //!< total cross section
+  double absorption;      //!< absorption (disappearance)
+  double fission;         //!< fission
+  double nu_fission;      //!< neutron production from fission
 
   double elastic;         //!< If sab_frac is not 1 or 0, then this value is
                           //!<   averaged over bound and non-bound nuclei
@@ -231,7 +231,7 @@ private:
   vector<ElementMicroXS> photon_xs_;  //!< Microscopic photon cross sections
   MacroXS macro_xs_;                  //!< Macroscopic cross sections
 
-  int64_t id_;                                //!< Unique ID
+  int64_t id_;                        //!< Unique ID
   ParticleType type_ {ParticleType::neutron}; //!< Particle type (n, p, e, etc.)
 
   int n_coord_ {1};          //!< number of current coordinate levels
@@ -302,15 +302,15 @@ private:
   // Secondary particle bank
   vector<SourceSite> secondary_bank_;
 
-  int64_t current_work_; // current work index
+  int64_t current_work_;               // current work index
 
-  vector<double> flux_derivs_; // for derivatives for this particle
+  vector<double> flux_derivs_;         // for derivatives for this particle
 
   vector<FilterMatch> filter_matches_; // tally filter matches
 
-  vector<TrackStateHistory> tracks_; // tracks for outputting to file
+  vector<TrackStateHistory> tracks_;   // tracks for outputting to file
 
-  vector<NuBank> nu_bank_; // bank of most recently fissioned particles
+  vector<NuBank> nu_bank_;          // bank of most recently fissioned particles
 
   std::vector<double> pht_storage_; // interim pulse-height results
 
@@ -320,7 +320,7 @@ private:
   double keff_tally_tracklength_ {0.0};
   double keff_tally_leakage_ {0.0};
 
-  bool trace_ {false}; //!< flag to show debug information
+  bool trace_ {false};        //!< flag to show debug information
 
   double collision_distance_; // distance to particle's next closest collision
 
@@ -446,7 +446,7 @@ public:
   decltype(nu_bank_)& nu_bank() { return nu_bank_; }
   NuBank& nu_bank(int i) { return nu_bank_[i]; }
   std::vector<double>& pht_storage() { return pht_storage_; }
-  
+
   double& keff_tally_absorption() { return keff_tally_absorption_; }
   double& keff_tally_collision() { return keff_tally_collision_; }
   double& keff_tally_tracklength() { return keff_tally_tracklength_; }

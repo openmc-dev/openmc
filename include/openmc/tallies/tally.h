@@ -86,9 +86,9 @@ public:
   //----------------------------------------------------------------------------
   // Major public data members.
 
-  int id_ {C_NONE}; //!< User-defined identifier
+  int id_ {C_NONE};                    //!< User-defined identifier
 
-  std::string name_; //!< User-defined name
+  std::string name_;                   //!< User-defined name
 
   TallyType type_ {TallyType::VOLUME}; //!< e.g. volume, surface current
 

@@ -428,7 +428,7 @@ class Universe(UniverseBase):
                     key_patch = mpatches.Patch(color=color, label=key.name)
                     patches.append(key_patch)
 
-                axes.legend(handles=patches)
+                axes.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0)
 
             # Plot image and return the axes
             return axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)

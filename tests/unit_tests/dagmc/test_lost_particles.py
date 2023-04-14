@@ -19,28 +19,17 @@ def broken_dagmc_model(request):
     ### MATERIALS ###
     fuel = openmc.Material(name='no-void fuel')
     fuel.set_density('g/cc', 10.29769)
-    fuel.add_nuclide('U234', 0.93120485)
-    fuel.add_nuclide('U235', 0.00055815)
-    fuel.add_nuclide('U238', 0.022408)
-    fuel.add_nuclide('O16', 0.045829)
+    fuel.add_nuclide('U233', 1.0)
 
     cladding = openmc.Material(name='clad')
     cladding.set_density('g/cc', 6.55)
-    cladding.add_nuclide('Zr90', 0.021827)
-    cladding.add_nuclide('Zr91', 0.00476)
-    cladding.add_nuclide('Zr92', 0.0072758)
-    cladding.add_nuclide('Zr94', 0.0073734)
-    cladding.add_nuclide('Zr96', 0.0011879)
+    cladding.add_nuclide('Zr90', 1.0)
 
-    water = openmc.Material(name='water')
-    water.set_density('g/cc', 0.740582)
-    water.add_nuclide('H1', 0.049457)
-    water.add_nuclide('O16', 0.024672)
-    water.add_nuclide('B10', 8.0042e-06)
-    water.add_nuclide('B11', 3.2218e-05)
-    water.add_s_alpha_beta('c_H_in_H2O')
+    h1 = openmc.Material(name='water')
+    h1.set_density('g/cc', 0.75)
+    h1.add_nuclide('H1', 1.0)
 
-    model.materials = openmc.Materials([fuel, cladding, water])
+    model.materials = openmc.Materials([fuel, cladding, h1])
 
     ### GEOMETRY ###
     # create the DAGMC universe using a model that has many triangles

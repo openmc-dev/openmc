@@ -104,7 +104,7 @@ find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       // the element is a 32-bit integer, load and store operations will
       // be implicitly atomic, so a split write is not possible.  
       //
-      // 2) The elememnt begins a "-1". It gets written concurrently to
+      // 2) The elememnt begins as "-1". It gets written concurrently to
       // "42" at the same time this thread reads it. As some caches on
       // GPUs are not cache coherent, a read operation that
       // occurs after the element is set to 42 could result in a -1 being

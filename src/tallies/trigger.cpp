@@ -211,13 +211,18 @@ void check_triggers()
     auto n_pred_batches = static_cast<int>(n_active * max_ratio * max_ratio) +
                           settings::n_inactive + 1;
 
-    std::string msg =
-      fmt::format("The estimated number of batches is {}", n_pred_batches);
-    if (n_pred_batches > settings::n_max_batches) {
-      msg.append(" --- greater than max batches");
-      warning(msg);
-    } else {
+    if (max_ratio == INFINITY) {
+      std::string msg = fmt::format("One or more tallies with triggers have no scores. Unable to estimate the number of remaining batches.");
       write_message(msg, 7);
+    } else {
+      std::string msg =
+        fmt::format("The estimated number of batches is {}", n_pred_batches);
+      if (n_pred_batches > settings::n_max_batches) {
+        msg.append(" --- greater than max batches");
+        warning(msg);
+      } else {
+        write_message(msg, 7);
+      }
     }
   }
 }

@@ -32,10 +32,6 @@ class BoundingBox(tuple):
     @property
     def center(self):
         """The center x, y, z coordinates of the bounding box"""
-        # x_center = (self.corners[0][0] - self.corners[1][0]) / 2
-        # y_center = (self.corners[0][1] - self.corners[1][1]) / 2
-        # z_center = (self.corners[0][2] - self.corners[1][2]) / 2
-        # return np.array([x_center, y_center, z_center])
         return (self.corners[0] + self.corners[1]) / 2
 
     @property

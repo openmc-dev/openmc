@@ -198,7 +198,8 @@ void Particle::event_advance()
   double distance = std::min(boundary().distance, collision_distance());
 
   // Kill particle if its time exceeds the cutoff
-  if (time() + (distance / this->speed()) > settings::time_cutoff[static_cast<int>(type())]) {
+  if (time() + (distance / this->speed()) >
+      settings::time_cutoff[static_cast<int>(type())]) {
     wgt() = 0.0;
   }
 

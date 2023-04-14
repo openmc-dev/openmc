@@ -53,10 +53,7 @@ inline std::string get_file_extension(const std::string& filename)
   // check that at least one character is present.
   const bool has_alpha = std::any_of(ending.begin(), ending.end(),
     [](char x) { return static_cast<bool>(std::isalpha(x)); });
-  if (has_alpha)
-    return ending;
-  else
-    return "";
+  return has_alpha ? ending : "";
 }
 
 } // namespace openmc

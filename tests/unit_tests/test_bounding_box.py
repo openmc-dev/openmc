@@ -29,6 +29,30 @@ def test_bounding_box_volume(bb, expected):
 @pytest.mark.parametrize(
     "bb, expected",
     [
+        (test_bb_1, np.array([-10.0, -20.0, -30.0])),
+        (test_bb_2, np.array([1.0, 2.0, 3.0])),
+        (test_bb_3, np.array([-10.0, -20.0, -30.0])),
+    ],
+)
+def test_bounding_lower_left(bb, expected):
+    assert np.array_equiv(expected, bb.lower_left)
+
+
+@pytest.mark.parametrize(
+    "bb, expected",
+    [
+        (test_bb_1, np.array([1.0, 2.0, 3.0])),
+        (test_bb_2, np.array([11.0, 22.0, 33.0])),
+        (test_bb_3, np.array([-1.0, -2.0, -3.0])),
+    ],
+)
+def test_bounding_upper_right(bb, expected):
+    assert np.array_equiv(expected, bb.upper_right)
+
+
+@pytest.mark.parametrize(
+    "bb, expected",
+    [
         (test_bb_1, np.array([-4.5, -9.0, -13.5])),
         (test_bb_2, np.array([6.0, 12.0, 18.0])),
         (test_bb_3, np.array([-5.5, -11.0, -16.5])),

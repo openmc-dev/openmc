@@ -42,7 +42,7 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, transfer_rates=None):
     transfer_rates : openmc.deplete.TransferRates, Optional
         Object to perform continuous reprocessing.
 
-        .. versionadded:: 0.13.3
+        .. versionadded:: 0.13.4
     Returns
     -------
     x_result : list of numpy.ndarray

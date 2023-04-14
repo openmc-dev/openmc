@@ -387,7 +387,7 @@ instances, and can be passed directly to one of the Integrator classes::
                 transfer_rates=transfer)
 
 Defining transfer rates
-----------------------
+-----------------------
 
 Transfer rates can be added to a :class:`~openmc.deplete.TransferRates` instance
 with the :meth:`~openmc.deplete.TransferRates.set_transfer_rate()` method.
@@ -400,10 +400,10 @@ material name can specify the depletable material from which nuclides are proces
    A positive transfer rate assumes removal, while a negative one assumes feed.
 
 The transfer rate units can be specified by assigning '1/s', '1/min', '1/h', '1/d'
-or '1/a' to the `transfer_rate_units` argument.
+or '1/a' to the ``transfer_rate_units`` argument.
 
 For example, to define continuous removal of Xenon from one material with a cycle
-time of 10 s (or a removal rate value of 0.1 s^-1), you'd use::
+time of 10 s (or a removal rate value of 0.1 s\ :sup:`-1`), you'd use::
 
     mat1 = openmc.Material(material_id=1, name='fuel')
 

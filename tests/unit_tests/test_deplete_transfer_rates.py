@@ -46,7 +46,6 @@ def model():
     return openmc.Model(geometry, materials, settings)
 
 
-
 def test_get_set(model):
     """Tests the get/set methods"""
 
@@ -69,7 +68,6 @@ def test_get_set(model):
                 assert transfer.get_destination_material(material_input,
                                                     element) == str(dest_material.id)
             assert transfer.get_elements(material_input) == transfer_rates.keys()
-
 
 
 @pytest.mark.parametrize("transfer_rate_units, unit_conv", [
@@ -99,7 +97,6 @@ def test_units(transfer_rate_units, unit_conv, model):
 
 
 def test_transfer(run_in_tmpdir, model):
-
     """Tests transfer depletion class without neither reaction rates nor decay
     but only transfer rates"""
 

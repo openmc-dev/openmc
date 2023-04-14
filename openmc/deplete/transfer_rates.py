@@ -1,4 +1,3 @@
-from collections import OrderedDict
 from numbers import Real
 
 from openmc.deplete.abc import (_SECONDS_PER_MINUTE, _SECONDS_PER_HOUR,
@@ -18,7 +17,7 @@ class TransferRates:
     An instance of this class can be passed directly to an instance of one of
     the :class:`openmc.deplete.Integrator` classes.
 
-    .. versionadded:: 0.13.3
+    .. versionadded:: 0.13.4
 
     Parameters
     ----------
@@ -33,7 +32,7 @@ class TransferRates:
     ----------
     burnable_mats : list of str
         All burnable material IDs.
-    transfer_rates : OrderedDict of str and OrderedDict
+    transfer_rates : dict of str to dict
         Container of transfer rates, elements and destination material
     index_transfer : Set of pair of str
         Pair of strings needed to build final matrix (destination_material, mat)

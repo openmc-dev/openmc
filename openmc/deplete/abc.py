@@ -551,7 +551,7 @@ class Integrator(ABC):
         Instance of TransferRates class to perform continuous transfer based
         on transfer rates definitions.
 
-        .. versionadded:: 0.13.3
+        .. versionadded:: 0.13.4
     Attributes
     ----------
     operator : openmc.deplete.abc.TransportOperator
@@ -582,7 +582,7 @@ class Integrator(ABC):
         Instance of TransferRates class to perform continuous transfer based
         on transfer rates definitions.
 
-        .. versionadded:: 0.13.3
+        .. versionadded:: 0.13.4
 
     """
 

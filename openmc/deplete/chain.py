@@ -689,7 +689,7 @@ class Chain:
     def form_rr_term(self, transfer_rates, materials):
         """Function to form the transfer rate term matrices.
 
-        .. versionadded:: 0.13.3
+        .. versionadded:: 0.13.4
 
         Parameters
         ----------

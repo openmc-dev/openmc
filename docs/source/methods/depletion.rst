@@ -264,8 +264,8 @@ Transfer Rates
 
 OpenMC allows continuous removal or feed of isotopes by adding an
 extra transfer rate term to the depletion matrix. An application of this feature
-is the chemical processing of Molten Salt Reactors (MSRs), and can be used to
-model fission products removal or feed fresh fuel into the system.
+is the chemical processing of Molten Salt Reactors (MSRs), where one can
+model the removal of fission products or feeding fresh fuel into the system.
 
 A transfer rate as defined here is the rate at which nuclides are
 continuously removed/feed from/to a material.
@@ -275,8 +275,8 @@ continuously removed/feed from/to a material.
     A transfer rate can be positive or negative, indicating removal or feed
     respectively.
 
-Mathematically, it can be thought as an additional proportional
-term :math:`\mathbf{T}` to the depletion equation, which can be written as:
+Mathematically, it can be thought as an additional term :math:`\mathbf{T}`
+in the depletion equation that is proportional to the nuclide density, which can be written as:
 
 .. math::
 
@@ -291,15 +291,15 @@ and the new transfer term :math:`\mathbf{T}` have been grouped together so that
 :math:`\mathbf{A} = \mathbf{R}+\mathbf{D}-\mathbf{T}`.
 The transfer efficiency :math:`\epsilon_i` and the transfer rate coefficient
 :math:`t_i` define the continuous transfer of the nuclide :math:`i`, which
-behaviour is similar to radioactive decay.
+behaves similar to radioactive decay.
 :math:`t_i` can also be defined as the reciprocal of a cycle time
 :math:`T_{cyc}`, intended as the time needed to process the whole inventory.
 
 For simplicity, :math:`\epsilon_i` and :math:`t_i`
 can be combined together in one single user-defined parameter that is defined
 again as :math:`t_i`.
-Thus, setting a transfer rate coefficient of 1 s^-1 at 100% efficiency, would be
-the same as setting 10 s^-1 at 10%.
+Thus, setting a transfer rate coefficient of 1 s\ :sup:`-1` at 100% efficiency, would be
+the same as setting 10 s\ :sup:`-1` at 10%.
 
 
 Note that this formulation assumes first order transfer and
@@ -309,8 +309,8 @@ A more rigorous description of removal rate and its implementation can be found
 in the paper by `Hombourger
 <https://doi.org/10.1016/j.anucene.2020.107504>`_.
 
-The resulting burnup matrix can be solved with the same integration algorithms,
-as we've seen before.
+The resulting burnup matrix can be solved with the same integration algorithms
+that are used in the absence of the transfer term.
 
 .. note::
 
@@ -319,6 +319,7 @@ as we've seen before.
 
 Coupling materials
 ------------------
+
 To keep track of removed nuclides or to feed nuclides from one depletable material
 to another, the respective depletion equations have to be coupled. This can be
 achieved by defining one multidimensional square matrix with dimensions equal to

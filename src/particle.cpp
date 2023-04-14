@@ -287,7 +287,10 @@ void Particle::event_collide()
     }
   }
 
-  if (!model::active_pulse_height_tallies.empty() && type() == ParticleType::photon){pht_collision_energy();}
+  if (!model::active_pulse_height_tallies.empty() &&
+      type() == ParticleType::photon) {
+    pht_collision_energy();
+  }
 
   // Reset banked weight during collision
   n_bank() = 0;
@@ -353,7 +356,10 @@ void Particle::event_revive_from_secondary()
     secondary_bank().pop_back();
     n_event() = 0;
 
-    if (!model::active_pulse_height_tallies.empty() && this->type() == ParticleType::photon) { pht_secondary_particles(); }
+    if (!model::active_pulse_height_tallies.empty() &&
+        this->type() == ParticleType::photon) {
+      pht_secondary_particles();
+    }
 
     // Enter new particle in particle track file
     if (write_track())
@@ -388,7 +394,9 @@ void Particle::event_death()
   keff_tally_tracklength() = 0.0;
   keff_tally_leakage() = 0.0;
 
-  if (!model::active_pulse_height_tallies.empty()){score_pulse_height_tally(*this, model::active_pulse_height_tallies);}
+  if (!model::active_pulse_height_tallies.empty()) {
+    score_pulse_height_tally(*this, model::active_pulse_height_tallies);
+  }
 
   // Record the number of progeny created by this particle.
   // This data will be used to efficiently sort the fission bank.
@@ -400,34 +408,36 @@ void Particle::event_death()
 
 void Particle::pht_collision_energy()
 {
-  // Adds the energy particles lose in a collision to the pulse-height at the cell index
+  // Adds the energy particles lose in a collision to the pulse-height at the
+  // cell index
   pht_storage()[coord(n_coord() - 1).cell] += E_last() - E();
-  
+
   // If the energy of the particle is below the cutoff, it will not be sampled
   // so its energy is added to the pulse-height in the cell
-  if (E() < settings::energy_cutoff[1]){
-  pht_storage()[coord(n_coord() - 1).cell] += E();  
+  if (E() < settings::energy_cutoff[1]) {
+    pht_storage()[coord(n_coord() - 1).cell] += E();
   }
 }
 
 void Particle::pht_secondary_particles()
 {
-// Removes the energy of secondary produced particles from the pulse-height
- 
-   // determine the birth cell of the particle
-   if (coord(n_coord() - 1).cell == C_NONE) {
-     if (!exhaustive_find_cell(*this)) {
-       mark_as_lost(
-         "Could not find the cell containing particle " + std::to_string(id()));
-       return;}
-  
-     // Set birth cell attribute
-     if (cell_born() == C_NONE)
-       cell_born() = coord(n_coord() - 1).cell;
-   }
-   pht_storage()[cell_born()] -= E();
+  // Removes the energy of secondary produced particles from the pulse-height
+
+  // determine the birth cell of the particle
+  if (coord(n_coord() - 1).cell == C_NONE) {
+    if (!exhaustive_find_cell(*this)) {
+      mark_as_lost(
+        "Could not find the cell containing particle " + std::to_string(id()));
+      return;
+    }
+
+    // Set birth cell attribute
+    if (cell_born() == C_NONE)
+      cell_born() = coord(n_coord() - 1).cell;
+  }
+  pht_storage()[cell_born()] -= E();
 }
- 
+
 void Particle::cross_surface()
 {
   int i_surface = std::abs(surface());

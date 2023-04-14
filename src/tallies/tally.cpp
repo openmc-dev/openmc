@@ -172,13 +172,13 @@ Tally::Tally(pugi::xml_node node)
   }
 
   // Check if tally is compatible with particle type
- if (!settings::photon_transport) {
+  if (!settings::photon_transport) {
     for (int score : scores_) {
       switch (score) {
       case SCORE_PULSE_HEIGHT:
         fatal_error("Pulse-height tally must be used with photon "
-                      "transport on");
-          break;
+                    "transport on");
+        break;
       }
     }
   }
@@ -389,7 +389,7 @@ void Tally::set_filters(gsl::span<Filter*> filters)
       cell_filter_ = i;
     } else if (dynamic_cast<const EnergyFilter*>(f)) {
       energy_filter_ = i;
-     }  
+    }
   }
 }
 
@@ -434,7 +434,8 @@ void Tally::set_scores(const vector<std::string>& scores)
   bool non_cell_energy_present = false;
   for (auto i_filt : filters_) {
     const auto* filt {model::tally_filters[i_filt].get()};
-    if (!(dynamic_cast<const CellFilter*>(filt) || dynamic_cast<const EnergyFilter*>(filt))){
+    if (!(dynamic_cast<const CellFilter*>(filt) ||
+          dynamic_cast<const EnergyFilter*>(filt))) {
       non_cell_energy_present = true;
     }
     if (dynamic_cast<const LegendreFilter*>(filt)) {
@@ -519,10 +520,11 @@ void Tally::set_scores(const vector<std::string>& scores)
       if (settings::photon_transport)
         estimator_ = TallyEstimator::COLLISION;
       break;
-    
+
     case SCORE_PULSE_HEIGHT:
       if (non_cell_energy_present) {
-        fatal_error("The pulse-height can only be tallied for cell and energy filters");
+        fatal_error(
+          "The pulse-height can only be tallied for cell and energy filters");
       }
       type_ = TallyType::PULSE_HEIGHT;
       estimator_ = TallyEstimator::PULSE_HEIGHT;
@@ -941,7 +943,7 @@ void setup_active_tallies()
 
       case TallyType::PULSE_HEIGHT:
         model::active_pulse_height_tallies.push_back(i);
-        break;      
+        break;
       }
     }
   }
@@ -1086,7 +1088,7 @@ extern "C" int openmc_tally_set_type(int32_t index, const char* type)
   } else if (strcmp(type, "surface") == 0) {
     model::tallies[index]->type_ = TallyType::SURFACE;
   } else if (strcmp(type, "pulse-height") == 0) {
-    model::tallies[index]->type_ = TallyType::PULSE_HEIGHT;    
+    model::tallies[index]->type_ = TallyType::PULSE_HEIGHT;
   } else {
     set_errmsg(fmt::format("Unknown tally type: {}", type));
     return OPENMC_E_INVALID_ARGUMENT;
@@ -1321,7 +1323,8 @@ extern "C" int openmc_remove_tally(int32_t index)
   if (index < 0 || index > model::tallies.size()) {
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-  // grab tally so it's ID can be obtained to remove the (ID,index) pair from tally_map
+  // grab tally so it's ID can be obtained to remove the (ID,index) pair from
+  // tally_map
   auto& tally = model::tallies[index];
   // delete the tally via iterator pointing to correct position
   // this calls the Tally destructor, removing the tally from the map as well

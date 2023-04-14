@@ -55,7 +55,7 @@ ParticleData::ParticleData()
   photon_xs_.resize(data::elements.size());
 
   // Creates the pulse-height storage for the particle
- pht_storage_.resize(model::cells.size(), 0.0);
+  pht_storage_.resize(model::cells.size(), 0.0);
 }
 
 TrackState ParticleData::get_track_state() const

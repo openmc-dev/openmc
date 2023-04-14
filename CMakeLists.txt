@@ -334,10 +334,10 @@ list(APPEND libopenmc_SOURCES
   src/bank.cpp
   src/boundary_condition.cpp
   src/bremsstrahlung.cpp
-  src/dagmc.cpp
   src/cell.cpp
   src/cmfd_solver.cpp
   src/cross_sections.cpp
+  src/dagmc.cpp
   src/distribution.cpp
   src/distribution_angle.cpp
   src/distribution_energy.cpp
@@ -347,11 +347,11 @@ list(APPEND libopenmc_SOURCES
   src/endf.cpp
   src/error.cpp
   src/event.cpp
-  src/initialize.cpp
   src/finalize.cpp
   src/geometry.cpp
   src/geometry_aux.cpp
   src/hdf5_interface.cpp
+  src/initialize.cpp
   src/lattice.cpp
   src/material.cpp
   src/math_functions.cpp
@@ -393,15 +393,15 @@ list(APPEND libopenmc_SOURCES
   src/tallies/derivative.cpp
   src/tallies/filter.cpp
   src/tallies/filter_azimuthal.cpp
-  src/tallies/filter_cellborn.cpp
-  src/tallies/filter_cellfrom.cpp
   src/tallies/filter_cell.cpp
   src/tallies/filter_cell_instance.cpp
+  src/tallies/filter_cellborn.cpp
+  src/tallies/filter_cellfrom.cpp
+  src/tallies/filter_collision.cpp
   src/tallies/filter_delayedgroup.cpp
   src/tallies/filter_distribcell.cpp
-  src/tallies/filter_energyfunc.cpp
   src/tallies/filter_energy.cpp
-  src/tallies/filter_collision.cpp
+  src/tallies/filter_energyfunc.cpp
   src/tallies/filter_legendre.cpp
   src/tallies/filter_material.cpp
   src/tallies/filter_mesh.cpp
@@ -418,8 +418,8 @@ list(APPEND libopenmc_SOURCES
   src/tallies/tally.cpp
   src/tallies/tally_scoring.cpp
   src/tallies/trigger.cpp
-  src/timer.cpp
   src/thermal.cpp
+  src/timer.cpp
   src/track_output.cpp
   src/universe.cpp
   src/urr.cpp

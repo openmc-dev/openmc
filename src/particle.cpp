@@ -287,7 +287,7 @@ void Particle::event_collide()
     }
   }
 
-  if (!model::active_pulse_height_tallies.empty() && type() == ParticleType::photon){pht_collision_energy();}
+  if (!model::active_pulse_height_tallies.empty() && type() == ParticleType::photon){pht_collision_energy(); }
 
   // Reset banked weight during collision
   n_bank() = 0;

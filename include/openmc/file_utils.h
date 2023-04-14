@@ -42,7 +42,7 @@ inline bool file_exists(const std::string& filename)
 inline std::string get_file_extension(const std::string& filename)
 {
   // check that at least one letter is present
-  const std::string::size_type last_period_pos = filename.find_last_of('.');
+  const auto last_period_pos = filename.find_last_of('.');
 
   // no file extension
   if (last_period_pos == std::string::npos)

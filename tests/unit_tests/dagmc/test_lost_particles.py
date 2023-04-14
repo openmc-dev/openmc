@@ -14,7 +14,7 @@ pytestmark = pytest.mark.skipif(
 @pytest.fixture
 def broken_dagmc_model(request):
     openmc.reset_auto_ids()
-    model = openmc.model.Model()
+    model = openmc.Model()
 
     ### MATERIALS ###
     fuel = openmc.Material(name='no-void fuel')
@@ -55,16 +55,10 @@ def broken_dagmc_model(request):
     lattice.universes = [[pincell_univ] * 2] * 2
     lattice.lower_left = -pitch
 
-    left = openmc.XPlane(x0=-pitch[0], name='left', boundary_type='reflective')
-    right = openmc.XPlane(x0=pitch[0], name='right', boundary_type='reflective')
-    front = openmc.YPlane(y0=-pitch[1], name='front', boundary_type='reflective')
-    back = openmc.YPlane(y0=pitch[1], name='back', boundary_type='reflective')
     # clip the DAGMC geometry at +/- 10 cm w/ CSG planes
-    bottom = openmc.ZPlane(z0=-10.0, name='bottom', boundary_type='reflective')
-    top = openmc.ZPlane(z0=10.0, name='top', boundary_type='reflective')
-
-    bounding_region = +left & -right & +front & -back & +bottom & -top
-    bounding_cell = openmc.Cell(fill=lattice, region=bounding_region)
+    rpp = openmc.model.RectangularParallelepiped(
+        -pitch[0], pitch[0], -pitch[1], pitch[1], -10.0, 10.0, boundary_type='reflective')
+    bounding_cell = openmc.Cell(fill=lattice, region=-rpp)
 
     model.geometry = openmc.Geometry(root=[bounding_cell])
 
@@ -72,7 +66,7 @@ def broken_dagmc_model(request):
     model.settings.particles = 100
     model.settings.batches = 10
     model.settings.inactive = 2
-    model.settings.output = {'summary' : False}
+    model.settings.output = {'summary': False}
 
     model.export_to_xml()
 

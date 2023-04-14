@@ -353,7 +353,7 @@ void Particle::event_revive_from_secondary()
     secondary_bank().pop_back();
     n_event() = 0;
 
-    if (!model::active_pulse_height_tallies.empty() && this->type() == ParticleType::photon){pht_secondary_particles();}
+    if (!model::active_pulse_height_tallies.empty() && this->type() == ParticleType::photon) { pht_secondary_particles(); }
 
     // Enter new particle in particle track file
     if (write_track())

@@ -11,6 +11,8 @@ from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler
 from .material import Material
+from ..bounding_box import BoundingBox
+
 
 __all__ = ['Cell', 'cells']
 
@@ -289,7 +291,7 @@ class Cell(_FortranObjectWithID):
         llc[llc == -inf] = -np.inf
         urc[urc == -inf] = -np.inf
 
-        return llc, urc
+        return BoundingBox((llc, urc))
 
 
 class _CellMapping(Mapping):

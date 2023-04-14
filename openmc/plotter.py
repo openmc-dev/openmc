@@ -55,7 +55,7 @@ _MAX_E = 20.e6
 ELEMENT_NAMES = list(openmc.data.ELEMENT_SYMBOL.values())[1:]
 
 
-def _get_label(this, type):
+def _get_legend_label(this, type):
     """Gets a label for the element or nuclide or material and reaction plotted"""
     if isinstance(this, str):
         return f'{this} {type}'
@@ -63,6 +63,38 @@ def _get_label(this, type):
         return f'material name not set {type}'
     else:
         return f'{this.name} {type}'
+
+
+def _get_yaxis_label(this_and_types, divisor_types):
+    """Gets a y axis label for the type of data plotted"""
+
+    if all(isinstance(item, str) for item in this_and_types.keys()):
+        stem = 'Microscopic'
+        if divisor_types:
+            mid, units = 'Data', ''
+        else:
+            mid, units = 'Cross Section', '[b]'
+    elif all(isinstance(item, openmc.Material) for item in this_and_types.keys()):
+        stem = 'Macroscopic'
+        if divisor_types:
+            mid, units = 'Data', ''
+        else:
+            mid, units = 'Cross Section', '[1/cm]'
+    else:
+        msg = "Mixture of openmc.Material and elements/nuclides. Invalid type for plotting"
+        raise TypeError(msg)
+
+    return f'{stem} {mid} {units}'
+
+
+def _get_title(this_and_types):
+    """Gets a title for the type of data plotted"""
+    if len(this_and_types) == 1:
+        this = list(this_and_types.keys())[0]
+        name = this.name if isinstance(this, openmc.Material) else this
+        return f'Cross Section Plot For {name}'
+    else:
+        return 'Cross Section Plot'
 
 
 def plot_xs(this_and_types, divisor_types=None, temperature=294., axis=None,
@@ -162,8 +194,6 @@ def plot_xs(this_and_types, divisor_types=None, temperature=294., axis=None,
                     if divisor_types[line] != 'unity':
                         types[line] = types[line] + ' / ' + divisor_types[line]
                 data = data_new
-
-
         else:
             # Calculate for MG cross sections
             E, data = calculate_mgxs(this, types, orders, temperature,
@@ -187,7 +217,7 @@ def plot_xs(this_and_types, divisor_types=None, temperature=294., axis=None,
         for i in range(len(data)):
             data[i, :] = np.nan_to_num(data[i, :])
             if np.sum(data[i, :]) > 0.:
-                ax.plot(E, data[i, :], label=_get_label(this, types[i]))
+                ax.plot(E, data[i, :], label=_get_legend_label(this, types[i]))
 
     # Set to loglog or semilogx depending on if we are plotting a data
     # type which we expect to vary linearly
@@ -204,33 +234,9 @@ def plot_xs(this_and_types, divisor_types=None, temperature=294., axis=None,
     else:
         ax.set_xlim(E[-1], E[0])
 
-    if divisor_types:
-        if isinstance(this, str):
-            if this in ELEMENT_NAMES:
-                ylabel = 'Elemental Microscopic Data'
-            else:
-                ylabel = 'Nuclide Microscopic Data'
-        elif isinstance(this, openmc.Material):
-            ylabel = 'Macroscopic Data'
-        else:
-            raise TypeError("Invalid type for plotting")
-    else:
-        if isinstance(this, str):
-            if this in ELEMENT_NAMES:
-                ylabel = 'Elemental Cross Section [b]'
-            else:
-                ylabel = 'Microscopic Cross Section [b]'
-        elif isinstance(this, openmc.Material):
-            ylabel = 'Macroscopic Cross Section [1/cm]'
-        else:
-            raise TypeError("Invalid type for plotting")
-    ax.set_ylabel(ylabel)
+    ax.set_ylabel(_get_yaxis_label(this_and_types, divisor_types))
     ax.legend(loc='best')
-    if len(this_and_types) > 1:
-        ax.set_title('Cross Sections plot')
-    else:
-        name = this.name if isinstance(this, openmc.Material) else this
-        ax.set_title('Cross Section for ' + name)
+    ax.set_title(_get_title(this_and_types))
 
     return fig
 

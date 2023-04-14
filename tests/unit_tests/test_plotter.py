@@ -81,3 +81,86 @@ def test_plot_xs(this):
 
 def test_plot_xs_mat(test_mat):
     assert isinstance(openmc.plotter.plot_xs({test_mat: ['total']}), Figure)
+
+
+def test_plot_axes_labels():
+
+    # just nuclides
+    axis_label = openmc.plotter._get_yaxis_label(
+        this_and_types = {
+            'Li6': [205],
+            'Li7': [205],
+        }, divisor_types=False
+    )
+    assert axis_label == 'Microscopic Cross Section [b]'
+
+    # just elements
+    axis_label = openmc.plotter._get_yaxis_label(
+        this_and_types = {
+            'Li': [205],
+            'Be': [16],
+        }, divisor_types=False
+    )
+    assert axis_label == 'Microscopic Cross Section [b]'
+
+    # mixed nuclide and element
+    axis_label = openmc.plotter._get_yaxis_label(
+        this_and_types = {
+            'Li': [205],
+            'Li7': [205],
+        }, divisor_types=False
+    )
+    assert axis_label == 'Microscopic Cross Section [b]'
+
+    # just materials
+    mat1 = openmc.Material()
+    mat1.add_nuclide('Fe56', 1)
+    mat1.set_density('g/cm3', 1)
+    mat2 = openmc.Material()
+    mat2.add_element('Fe', 1)
+    mat2.add_nuclide('Fe55', 1)
+    mat2.set_density('g/cm3', 1)
+    axis_label = openmc.plotter._get_yaxis_label(
+        this_and_types = {
+            mat1: [205],
+            mat2: [16],
+        }, divisor_types=False
+    )
+    assert axis_label == 'Macroscopic Cross Section [1/cm]'
+
+    # mixed materials and nuclides
+    with pytest.raises(TypeError):
+        openmc.plotter._get_yaxis_label(
+                this_and_types = {
+                    'Li6': [205],
+                    mat2: [16],
+                }, divisor_types=False
+            )
+
+    # mixed materials and elements
+    with pytest.raises(TypeError):
+        openmc.plotter._get_yaxis_label(
+                this_and_types = {
+                    'Li': [205],
+                    mat2: [16],
+                }, divisor_types=False
+            )
+
+
+def test_get_title():
+    title = openmc.plotter._get_title(this_and_types = {'Li': [205]})
+    assert title == 'Cross Section Plot For Li'
+    title = openmc.plotter._get_title(this_and_types = {'Li6': [205]})
+    assert title == 'Cross Section Plot For Li6'
+    title = openmc.plotter._get_title(this_and_types = {
+        'Li6': [205],
+        'Li7': [205]
+    })
+    assert title == 'Cross Section Plot'
+
+    mat1 = openmc.Material()
+    mat1.add_nuclide('Fe56', 1)
+    mat1.set_density('g/cm3', 1)
+    mat1.name = 'my_mat'
+    title = openmc.plotter._get_title(this_and_types = {mat1: [205]})
+    assert title == 'Cross Section Plot For my_mat'

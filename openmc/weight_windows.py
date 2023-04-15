@@ -1,7 +1,7 @@
 from __future__ import annotations
 from collections.abc import Iterable
 from numbers import Real, Integral
-from typing import Iterable, List, Optional, Union
+from typing import Iterable, List, Optional, Union, Dict
 import pathlib
 
 from xml.etree import ElementTree as ET
@@ -108,8 +108,8 @@ class WeightWindows(IDManagerMixin):
     def __init__(
         self, 
         mesh: MeshBase, 
-        lower_ww_bounds: np.ndarray,
-        upper_ww_bounds: Optional[np.ndarray] = None,
+        lower_ww_bounds: Iterable[float],
+        upper_ww_bounds: Optional[Iterable[float]] = None,
         upper_bound_ratio: Optional[float] = None,
         energy_bounds: Optional[Iterable[Real]] = None,
         particle_type: str = 'neutron',
@@ -219,7 +219,7 @@ class WeightWindows(IDManagerMixin):
         return self._energy_bounds
 
     @energy_bounds.setter
-    def energy_bounds(self, bounds: Iterable[Real]):
+    def energy_bounds(self, bounds: Iterable[float]):
         cv.check_type('Energy bounds', bounds, Iterable, Real)
         self._energy_bounds = np.asarray(bounds)
 
@@ -234,7 +234,7 @@ class WeightWindows(IDManagerMixin):
         return self._lower_ww_bounds
 
     @lower_ww_bounds.setter
-    def lower_ww_bounds(self, bounds: Iterable[Real]):
+    def lower_ww_bounds(self, bounds: Iterable[float]):
         cv.check_iterable_type('Lower WW bounds',
                                bounds,
                                Real,
@@ -253,7 +253,7 @@ class WeightWindows(IDManagerMixin):
         return self._upper_ww_bounds
 
     @upper_ww_bounds.setter
-    def upper_ww_bounds(self, bounds: Iterable[Real]):
+    def upper_ww_bounds(self, bounds: Iterable[float]):
         cv.check_iterable_type('Upper WW bounds',
                                bounds,
                                Real,
@@ -404,7 +404,7 @@ class WeightWindows(IDManagerMixin):
         )
 
     @classmethod
-    def from_hdf5(cls, group: h5py.Group, meshes: dict) -> WeightWindows:
+    def from_hdf5(cls, group: h5py.Group, meshes: Dict[int, MeshBase]) -> WeightWindows:
         """Create weight windows from HDF5 group
 
         Parameters

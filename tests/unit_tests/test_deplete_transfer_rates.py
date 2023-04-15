@@ -8,7 +8,7 @@ import numpy as np
 
 import openmc
 from openmc.deplete import CoupledOperator
-from openmc.deplete import TransferRates
+from openmc.deplete.transfer_rates import _TransferRates
 from openmc.deplete.abc import (_SECONDS_PER_MINUTE, _SECONDS_PER_HOUR,
                                 _SECONDS_PER_DAY, _SECONDS_PER_JULIAN_YEAR)
 
@@ -52,7 +52,7 @@ def test_get_set(model):
     # create transfer rates for U and Xe
     transfer_rates = {'U': 0.01, 'Xe': 0.1}
     op = CoupledOperator(model, CHAIN_PATH)
-    transfer = TransferRates(op, model)
+    transfer = _TransferRates(op, model)
 
     # Test by Openmc material, material name and material id
     material, dest_material = [m for m in model.materials if m.depletable]
@@ -89,7 +89,7 @@ def test_units(transfer_rate_units, unit_conv, model):
     element = 'Xe'
     transfer_rate = 1e-5
     op = CoupledOperator(model, CHAIN_PATH)
-    transfer = TransferRates(op, model)
+    transfer = _TransferRates(op, model)
 
     transfer.set_transfer_rate('f', [element], transfer_rate * unit_conv,
                          transfer_rate_units=transfer_rate_units)
@@ -104,10 +104,9 @@ def test_transfer(run_in_tmpdir, model):
     element = ['U']
     transfer_rate = 1e-5
     op = CoupledOperator(model, CHAIN_PATH)
-    transfer = TransferRates(op, model)
-    transfer.set_transfer_rate('f', element, transfer_rate)
     integrator = openmc.deplete.PredictorIntegrator(
-        op, [1,1], 0.0, transfer_rates = transfer, timestep_units = 'd')
+        op, [1,1], 0.0, timestep_units = 'd')
+    integrator.set_transfer_rate('f', element, transfer_rate)
     integrator.integrate()
 
     # Get number of U238 atoms from results

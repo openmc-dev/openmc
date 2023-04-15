@@ -7,7 +7,6 @@ import pytest
 import openmc
 import openmc.deplete
 from openmc.deplete import CoupledOperator
-from openmc.deplete import TransferRates
 
 @pytest.fixture
 def model():
@@ -57,11 +56,10 @@ def test_transfer_rates(run_in_tmpdir, model, rate, dest_mat, power, ref_result)
     transfer_elements = ['Xe']
 
     op = CoupledOperator(model, chain_file)
-    transfer = TransferRates(op, model)
-    transfer.set_transfer_rate('f', transfer_elements, rate,
-                                destination_material=dest_mat)
     integrator = openmc.deplete.PredictorIntegrator(
-        op, [1], power, transfer_rates = transfer, timestep_units = 'd')
+        op, [1], power, timestep_units = 'd')
+    integrator.set_transfer_rate('f', transfer_elements, rate,
+                                destination_material=dest_mat)
     integrator.integrate()
 
     # Get path to test and reference results

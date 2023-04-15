@@ -6,8 +6,8 @@ from collections.abc import Iterable
 from copy import deepcopy
 from pathlib import Path
 import warnings
-
 from xml.etree import ElementTree as ET
+
 import numpy as np
 
 import openmc

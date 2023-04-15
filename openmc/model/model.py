@@ -8,7 +8,7 @@ from numbers import Integral
 from tempfile import NamedTemporaryFile
 import warnings
 from xml.etree import ElementTree as ET
-from typing import Optional
+from typing import Optional, Dict
 
 import h5py
 
@@ -141,7 +141,7 @@ class Model:
 
     @property
     @lru_cache(maxsize=None)
-    def _cells_by_name(self) -> dict:
+    def _cells_by_name(self) -> Dict[int, openmc.Cell]:
         # Get the names maps, but since names are not unique, store a set for
         # each name key. In this way when the user requests a change by a name,
         # the change will be applied to all of the same name.
@@ -154,7 +154,7 @@ class Model:
 
     @property
     @lru_cache(maxsize=None)
-    def _materials_by_name(self) -> dict:
+    def _materials_by_name(self) -> Dict[int, openmc.Material]:
         if self.materials is None:
             mats = self.geometry.get_all_materials().values()
         else:

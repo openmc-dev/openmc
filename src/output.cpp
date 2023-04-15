@@ -390,12 +390,6 @@ void print_build_info()
 #ifdef COVERAGEBUILD
   coverage = y;
 #endif
-#ifdef NCRYSTAL
-  ncrystal = y;
-#endif
-#ifdef OPENMC_MCPL
-  mcpl = y;
-#endif
 
   // Wraps macro variables in quotes
 #define STRINGIFY(x) STRINGIFY2(x)

@@ -11,6 +11,7 @@ TEST_CASE("Test get_file_extension")
   REQUIRE(get_file_extension("has_directory/asdf.20.h5") == "h5");
   REQUIRE(get_file_extension("wasssssup_lol") == "");
   REQUIRE(get_file_extension("has_directory/secret_file") == "");
+  REQUIRE(get_file_extension("lovely.dir/extensionless_file") == "");
 }
 
 TEST_CASE("Test dir_exists")

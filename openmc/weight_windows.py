@@ -1,6 +1,7 @@
 from __future__ import annotations
 from collections.abc import Iterable
 from numbers import Real, Integral
+import typing
 from typing import Iterable, List, Optional, Union, Dict
 import pathlib
 
@@ -11,6 +12,7 @@ import h5py
 from openmc.filter import _PARTICLES
 from openmc.mesh import MeshBase, RectilinearMesh, UnstructuredMesh
 import openmc.checkvalue as cv
+from openmc.checkvalue import PathLike
 
 from ._xml import get_text
 from .mixin import IDManagerMixin
@@ -449,7 +451,7 @@ class WeightWindows(IDManagerMixin):
         )
 
 
-def wwinp_to_wws(path: Union[str, pathlib.Path]) -> List[WeightWindows]:
+def wwinp_to_wws(path: PathLike) -> List[WeightWindows]:
     """Create WeightWindows instances from a wwinp file
 
     .. versionadded:: 0.13.1

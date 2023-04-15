@@ -1,13 +1,10 @@
 from numbers import Real
 
-from openmc.deplete.abc import (_SECONDS_PER_MINUTE, _SECONDS_PER_HOUR,
-                                _SECONDS_PER_DAY, _SECONDS_PER_JULIAN_YEAR)
 from openmc.checkvalue import check_type, check_value
 from openmc import Material
 from openmc.data import ELEMENT_SYMBOL
 
-
-class TransferRates:
+class _TransferRates:
     """Class for defining continuous removals and feeds.
 
     Molten Salt Reactors (MSRs) benefit from continuous reprocessing,
@@ -148,7 +145,7 @@ class TransferRates:
             List of strings of elements that share transfer rate
         transfer_rate : float
             Rate at which elements are transferred. A positive or negative values
-            set removal of feed rates, respectively.  
+            set removal of feed rates, respectively.
         destination_material : openmc.Material or str or int, Optional
             Destination material to where nuclides get fed.
         transfer_rate_units : {'1/s', '1/min', '1/h', '1/d', '1/a'}
@@ -173,13 +170,13 @@ class TransferRates:
         if transfer_rate_units in ('1/s', '1/sec'):
             unit_conv = 1
         elif transfer_rate_units in ('1/min', '1/minute'):
-            unit_conv = _SECONDS_PER_MINUTE
+            unit_conv = 60
         elif transfer_rate_units in ('1/h', '1/hr', '1/hour'):
-            unit_conv = _SECONDS_PER_HOUR
+            unit_conv = 60*60
         elif transfer_rate_units in ('1/d', '1/day'):
-            unit_conv = _SECONDS_PER_DAY
+            unit_conv = 24*60*60
         elif transfer_rate_units in ('1/a', '1/year'):
-            unit_conv = _SECONDS_PER_JULIAN_YEAR
+            unit_conv = 365.25*24*60*60
         else:
             raise ValueError("Invalid transfer rate unit '{}'".format(transfer_rate_units))
 

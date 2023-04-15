@@ -24,6 +24,7 @@ from .stepresult import StepResult
 from .chain import Chain
 from .results import Results
 from .pool import deplete
+from .transfer_rates import _TransferRates
 
 
 __all__ = [
@@ -587,8 +588,7 @@ class Integrator(ABC):
     """
 
     def __init__(self, operator, timesteps, power=None, power_density=None,
-                 source_rates=None, timestep_units='s', solver="cram48",
-                 transfer_rates=None):
+                 source_rates=None, timestep_units='s', solver="cram48"):
         # Check number of stages previously used
         if operator.prev_res is not None:
             res = operator.prev_res[-1]
@@ -663,7 +663,7 @@ class Integrator(ABC):
         self.timesteps = asarray(seconds)
         self.source_rates = asarray(source_rates)
 
-        self.transfer_rates = transfer_rates
+        self.transfer_rates = None
 
         if isinstance(solver, str):
             # Delay importing of cram module, which requires this file
@@ -847,6 +847,12 @@ class Integrator(ABC):
 
         self.operator.finalize()
 
+    def set_transfer_rate(self, material, elements, transfer_rate,
+                        transfer_rate_units='1/s', destination_material=None):
+
+        self.transfer_rates = _TransferRates(self.operator, self.operator.model)
+        self.transfer_rates.set_transfer_rate(material, elements, transfer_rate,
+                                      transfer_rate_units, destination_material)
 
 @add_params
 class SIIntegrator(Integrator):

@@ -34,12 +34,12 @@ void load_state_point();
 // can be created by calling calculate_parallel_index_vector on
 // source_bank.size() if such a vector is not already available.
 void write_source_point(const char* filename, gsl::span<SourceSite> source_bank,
-  vector<int64_t> const& bank_index);
+  const vector<int64_t>& bank_index);
 
 // This appends a source bank specification to an HDF5 file
 // that's already open. It is used internally by write_source_point.
 void write_source_bank(hid_t group_id, gsl::span<SourceSite> source_bank,
-  vector<int64_t> const& bank_index);
+  const vector<int64_t>& bank_index);
 
 void read_source_bank(
   hid_t group_id, vector<SourceSite>& sites, bool distribute);

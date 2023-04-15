@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 import typing  # imported separately as py3.8 requires typing.Iterable
 import warnings
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Dict
 from xml.etree import ElementTree as ET
 
 import h5py
@@ -175,7 +175,7 @@ class Material(IDManagerMixin):
         return self._temperature
 
     @property
-    def density(self) -> float:
+    def density(self) -> Optional[float]:
         return self._density
 
     @property
@@ -227,11 +227,11 @@ class Material(IDManagerMixin):
         return mass / moles
 
     @property
-    def volume(self) -> float:
+    def volume(self) -> Optional[float]:
         return self._volume
 
     @property
-    def ncrystal_cfg(self) -> str:
+    def ncrystal_cfg(self) -> Optional[str]:
         return self._ncrystal_cfg
 
     @name.setter
@@ -292,7 +292,7 @@ class Material(IDManagerMixin):
         return openmc.data.combine_distributions(dists, probs) if dists else None
 
     @classmethod
-    def from_hdf5(cls, group: h5py.Group) -> openmc.Material:
+    def from_hdf5(cls, group: h5py.Group) -> Material:
         """Create material from HDF5 group
 
         Parameters
@@ -347,7 +347,7 @@ class Material(IDManagerMixin):
         return material
 
     @classmethod
-    def from_ncrystal(cls, cfg, **kwargs) -> openmc.Material:
+    def from_ncrystal(cls, cfg, **kwargs) -> Material:
         """Create material from NCrystal configuration string.
 
         Density, temperature, and material composition, and (ultimately) thermal
@@ -926,7 +926,7 @@ class Material(IDManagerMixin):
 
         return matching_nuclides
 
-    def get_nuclide_densities(self) -> dict:
+    def get_nuclide_densities(self) -> Dict[str, tuple]:
         """Returns all nuclides in the material and their densities
 
         Returns
@@ -945,7 +945,7 @@ class Material(IDManagerMixin):
 
         return nuclides
 
-    def get_nuclide_atom_densities(self, nuclide: Optional[str] = None) -> dict:
+    def get_nuclide_atom_densities(self, nuclide: Optional[str] = None) -> Dict[str, float]:
         """Returns one or all nuclides in the material and their atomic
         densities in units of atom/b-cm
 
@@ -1031,7 +1031,7 @@ class Material(IDManagerMixin):
         return nuclides
 
     def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False,
-                     volume: Optional[float] = None) -> Union[dict, float]:
+                     volume: Optional[float] = None) -> Union[Dict[str, float], float]:
         """Returns the activity of the material or for each nuclide in the
         material in units of [Bq], [Bq/g] or [Bq/cm3].
 
@@ -1078,7 +1078,7 @@ class Material(IDManagerMixin):
         return activity if by_nuclide else sum(activity.values())
 
     def get_decay_heat(self, units: str = 'W', by_nuclide: bool = False,
-                       volume: Optional[float] = None) -> Union[dict, float]:
+                       volume: Optional[float] = None) -> Union[Dict[str, float], float]:
         """Returns the decay heat of the material or for each nuclide in the
         material in units of [W], [W/g] or [W/cm3].
 
@@ -1126,7 +1126,7 @@ class Material(IDManagerMixin):
 
         return decayheat if by_nuclide else sum(decayheat.values())
 
-    def get_nuclide_atoms(self, volume: Optional[float] = None) -> dict:
+    def get_nuclide_atoms(self, volume: Optional[float] = None) -> Dict[str, float]:
         """Return number of atoms of each nuclide in the material
 
         .. versionadded:: 0.13.1
@@ -1531,7 +1531,7 @@ class Materials(cv.CheckedList):
             self += materials
 
     @property
-    def cross_sections(self) -> Optional[Union[str, Path]]:
+    def cross_sections(self) -> Optional[Path]:
         return self._cross_sections
 
     @cross_sections.setter

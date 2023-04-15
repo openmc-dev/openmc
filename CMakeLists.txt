@@ -347,6 +347,7 @@ list(APPEND libopenmc_SOURCES
   src/endf.cpp
   src/error.cpp
   src/event.cpp
+  src/file_utils.cpp
   src/finalize.cpp
   src/geometry.cpp
   src/geometry_aux.cpp

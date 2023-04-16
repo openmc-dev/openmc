@@ -31,7 +31,7 @@ extern MPI_Comm intracomm;
 // and returns a vector which is the exclusive parallel scan across
 // all of those numbers, having a length of the number of MPI ranks
 // plus one.
-vector<int64_t> calculate_parallel_index_vector(const int64_t size);
+vector<int64_t> calculate_parallel_index_vector(int64_t size);
 
 } // namespace mpi
 } // namespace openmc

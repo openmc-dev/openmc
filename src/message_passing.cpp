@@ -17,7 +17,7 @@ extern "C" bool openmc_master()
   return mpi::master;
 }
 
-vector<int64_t> calculate_parallel_index_vector(const int64_t size)
+vector<int64_t> calculate_parallel_index_vector(int64_t size)
 {
   vector<int64_t> result;
   result.reserve(n_procs + 1);

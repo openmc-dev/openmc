@@ -12,6 +12,8 @@ TEST_CASE("Test get_file_extension")
   REQUIRE(get_file_extension("wasssssup_lol") == "");
   REQUIRE(get_file_extension("has_directory/secret_file") == "");
   REQUIRE(get_file_extension("lovely.dir/extensionless_file") == "");
+  REQUIRE(get_file_extension("lovely.dir/statepoint.20.h5") == "h5");
+  REQUIRE(get_file_extension("lovely.dir/asdf123.cpp") == "cpp");
 }
 
 TEST_CASE("Test dir_exists")
@@ -25,5 +27,6 @@ TEST_CASE("Test dir_exists")
 
 TEST_CASE("Test file_exists")
 {
-  // TODO make a file test it exists, delete it
+  // Note: not clear how to portably test where a file should exist.
+  REQUIRE(!file_exists("./should_not_exist/really_do_not_make_this_please"));
 }

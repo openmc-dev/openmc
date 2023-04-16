@@ -28,11 +28,24 @@ bool file_exists(const std::string& filename)
 
 std::string get_file_extension(const std::string& filename)
 {
+  // try our best to work on windows...
+#if defined(_WIN32) || defined(_WIN64)
+  const char sep_char = '\\';
+#else
+  const char sep_char = '/';
+#endif
+
   // check that at least one letter is present
   const auto last_period_pos = filename.find_last_of('.');
+  const auto last_sep_pos = filename.find_last_of(sep_char);
 
-  // no file extension
-  if (last_period_pos == std::string::npos)
+  // no file extension. In the first case, we are only given
+  // a file name. In the second, we have been given a file path.
+  // If that's the case, periods are allowed in directory names,
+  // but have the interpretation as preceding a file extension
+  // after the last separator.
+  if (last_period_pos == std::string::npos ||
+      (last_sep_pos < std::string::npos && last_period_pos < last_sep_pos))
     return "";
 
   const std::string ending = filename.substr(last_period_pos + 1);

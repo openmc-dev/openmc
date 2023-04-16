@@ -54,8 +54,8 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
   if (extension == "") {
     filename_.append(".h5");
   } else if (extension != "h5") {
-    fatal_error("openmc_statepoint_write was passed an incorrect file "
-                "extension. Must either have no file extension or .h5");
+    warning("openmc_statepoint_write was passed a file extension differing "
+            "from .h5, but an hdf5 file will be written.");
   }
 
   // Determine whether or not to write the source bank
@@ -553,7 +553,7 @@ hid_t h5banktype()
 }
 
 void write_source_point(const char* filename, gsl::span<SourceSite> source_bank,
-  vector<int64_t> const& bank_index)
+  const vector<int64_t>& bank_index)
 {
   // When using parallel HDF5, the file is written to collectively by all
   // processes. With MPI-only, the file is opened and written by the master
@@ -591,7 +591,7 @@ void write_source_point(const char* filename, gsl::span<SourceSite> source_bank,
 }
 
 void write_source_bank(hid_t group_id, gsl::span<SourceSite> source_bank,
-  vector<int64_t> const& bank_index)
+  const vector<int64_t>& bank_index)
 {
   hid_t banktype = h5banktype();
 

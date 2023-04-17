@@ -295,7 +295,7 @@ class Universe(UniverseBase):
 
     def plot(self, origin=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
              basis='xy', color_by='cell', colors=None, seed=None,
-             openmc_exec='openmc', axes=None, **kwargs):
+             openmc_exec='openmc', axes=None, outline=False, **kwargs):
         """Display a slice plot of the universe.
 
         Parameters
@@ -331,6 +331,10 @@ class Universe(UniverseBase):
             .. versionadded:: 0.13.1
         **kwargs
             Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
+
+            .. versionadded:: 0.13.4
+        outline : bool
+            Whether outlines between color boundaries should be drawn
 
         Returns
         -------
@@ -395,6 +399,18 @@ class Universe(UniverseBase):
                 width = pixels[0]*px/(params.right - params.left)
                 height = pixels[0]*px/(params.top - params.bottom)
                 fig.set_size_inches(width, height)
+
+            if outline:
+                combined_rgb = np.sum(img, 2)
+
+                axes.contour(
+                    combined_rgb.reshape(img.shape[0], img.shape[1]),
+                    origin="upper",
+                    colors="k",
+                    linestyles="solid",
+                    linewidths=1,
+                    extent=(x_min, x_max, y_min, y_max),
+                )
 
             # Plot image and return the axes
             return axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)

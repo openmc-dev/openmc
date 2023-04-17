@@ -409,10 +409,8 @@ class Universe(UniverseBase):
 
                 if color_by == "cell":
                     expected_key_type = openmc.Cell
-                elif color_by == "material":
-                    expected_key_type = openmc.Material
                 else:
-                    raise Exception("wtf?")
+                    expected_key_type = openmc.Material
 
                 patches = []
                 for key, color in plot.colors.items():

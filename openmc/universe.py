@@ -404,8 +404,8 @@ class Universe(UniverseBase):
             # or cell if that was requested
             if legend:
                 if plot.colors is None:
-                    raise Exception("Must set plot color dictionary if you would"
-                                    " like to have an automatic legend.")
+                    raise Exception("Must set plot color dictionary if you "
+                                    "would like to have an automatic legend.")
 
                 if color_by == "cell":
                     expected_key_type = openmc.Cell

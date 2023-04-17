@@ -330,11 +330,12 @@ class Universe(UniverseBase):
             Axes to draw to
 
             .. versionadded:: 0.13.1
-        legend : bool
-            whether a legend showing material or cell names should be drawn
         **kwargs
             Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 
+            .. versionadded:: 0.13.4
+        legend : bool
+            Whether a legend showing material or cell names should be drawn
         Returns
         -------
         matplotlib.image.AxesImage

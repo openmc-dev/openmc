@@ -42,4 +42,4 @@ cd xtensor-blas && mkdir build && cd build && cmake .. && sudo make install
 # Install vectfit
 cd $HOME
 git clone https://github.com/liangjg/vectfit.git
-pip install ./vectfit
+pip install --no-build-isolation ./vectfit

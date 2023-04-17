@@ -424,7 +424,8 @@ class Universe(UniverseBase):
                             "Color dict key type does not match color_by")
 
                     # this works whether we're doing cells or materials
-                    key_patch = mpatches.Patch(color=color, label=key.name)
+                    label = key.name if key.name != '' else key.id
+                    key_patch = mpatches.Patch(color=color, label=label)
                     patches.append(key_patch)
 
                 axes.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0)

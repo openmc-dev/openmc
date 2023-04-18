@@ -596,26 +596,6 @@ void write_source_bank(hid_t group_id, gsl::span<SourceSite> source_bank,
   hid_t banktype = h5banktype();
 
   // Set total and individual process dataspace sizes for source bank
-  // TODO: are these correct?
-  // the old code was
-  //
-  // int64_t dims_size = settings::n_particles;
-  // int64_t count_size = simulation::work_per_rank;
-  //
-  // but that doesn't make sense! The count on a rank is not
-  // necessarily equal to work_per_rank. For the case of the
-  // fission source bank, that's true, but for surface source
-  // creation, there may be a different number of particles
-  // on each rank.
-  //
-  // Hence, I have changed count_size to be the number
-  // on this rank rather than work_per_rank. Similarly,
-  // dims_size used to be n_particles, but for surface sources,
-  // we are not guaranteed to create n_particles at the surface.
-  // As a result, I've changed this to be the total size of
-  // the bank across all ranks, which maintains the correct
-  // behavior for fission bank outputs.
-
   int64_t dims_size = bank_index.back();
   int64_t count_size = bank_index[mpi::rank + 1] - bank_index[mpi::rank];
 

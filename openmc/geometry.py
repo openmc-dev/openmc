@@ -3,7 +3,6 @@ import os
 import typing
 from collections import OrderedDict, defaultdict
 from collections.abc import Iterable
-from copy import deepcopy
 from pathlib import Path
 import warnings
 from xml.etree import ElementTree as ET

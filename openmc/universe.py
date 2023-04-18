@@ -1,3 +1,4 @@
+import typing
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from collections.abc import Iterable
@@ -18,6 +19,14 @@ from .checkvalue import check_type, check_value
 from .mixin import IDManagerMixin
 from .plots import _SVG_COLORS
 from .surface import _BOUNDARY_TYPES
+
+
+def get_int_from_rgb(rgb: typing.Tuple[int, int, int]) -> int:
+    """Converts a tuple of ints into a single int"""
+    red = rgb[0]
+    green = rgb[1]
+    blue = rgb[2]
+    return (red << 16) + (green << 8) + blue
 
 
 class UniverseBase(ABC, IDManagerMixin):
@@ -401,10 +410,14 @@ class Universe(UniverseBase):
                 fig.set_size_inches(width, height)
 
             if outline:
-                combined_rgb = np.sum(img, 2)
+
+                image_value = [
+                    [get_int_from_rgb(inner_entry) for inner_entry in outer_entry]
+                    for outer_entry in img
+                ]
 
                 axes.contour(
-                    combined_rgb.reshape(img.shape[0], img.shape[1]),
+                    image_value, #combined_rgb.reshape(img.shape[0], img.shape[1]),
                     origin="upper",
                     colors="k",
                     linestyles="solid",

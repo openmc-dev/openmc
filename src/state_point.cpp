@@ -573,8 +573,8 @@ void write_source_point(const char* filename, gsl::span<SourceSite> source_bank,
   if (extension == "") {
     filename_.append(".h5");
   } else if (extension != "h5") {
-    fatal_error("openmc_source_point was passed an incorrect file "
-                "extension. Must either have no file extension or .h5");
+    warning("write_source_point was passed a file extension differing "
+            "from .h5, but an hdf5 file will be written.");
   }
 
   hid_t file_id;

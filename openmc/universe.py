@@ -417,7 +417,7 @@ class Universe(UniverseBase):
                 ]
 
                 axes.contour(
-                    image_value, #combined_rgb.reshape(img.shape[0], img.shape[1]),
+                    image_value,
                     origin="upper",
                     colors="k",
                     linestyles="solid",

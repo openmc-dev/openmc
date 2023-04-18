@@ -6,6 +6,7 @@ from numbers import Integral, Real
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from xml.etree import ElementTree as ET
+from warnings import warn
 
 import h5py
 import numpy as np
@@ -294,9 +295,15 @@ class Universe(UniverseBase):
                     return [self, cell] + cell.fill.find(p)
         return []
 
+    # default kwargs that are passed to plt.legend in the plot method below.
+    # If you change this, be sure to change it in the docstring for plot below.
+    _default_legend_kwargs = {'bbox_to_anchor': (
+        1.05, 1), 'loc': 2, 'borderaxespad': 0.0}
+
     def plot(self, origin=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
              basis='xy', color_by='cell', colors=None, seed=None,
-             openmc_exec='openmc', axes=None, legend=False, **kwargs):
+             openmc_exec='openmc', axes=None, legend=False,
+             legend_kwargs=_default_legend_kwargs, **kwargs):
         """Display a slice plot of the universe.
 
         Parameters
@@ -330,12 +337,21 @@ class Universe(UniverseBase):
             Axes to draw to
 
             .. versionadded:: 0.13.1
+        legend : bool
+            Whether a legend showing material or cell names should be drawn
+
+            .. versionadded:: 0.13.4
+        legend_kwargs : dict
+            Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
+            The default is:
+
+            {'bbox_to_anchor': (1.05, 1), 'loc':2, 'borderaxespad': 0.0}
+
+            .. versionadded:: 0.13.4
         **kwargs
             Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 
             .. versionadded:: 0.13.4
-        legend : bool
-            Whether a legend showing material or cell names should be drawn
         Returns
         -------
         matplotlib.image.AxesImage
@@ -405,8 +421,8 @@ class Universe(UniverseBase):
             # or cell if that was requested
             if legend:
                 if plot.colors is None:
-                    raise Exception("Must set plot color dictionary if you "
-                                    "would like to have an automatic legend.")
+                    raise ValueError("Must pass 'colors' dictionary if you "
+                                     "are adding a legend via legend=True.")
 
                 if color_by == "cell":
                     expected_key_type = openmc.Cell
@@ -417,10 +433,10 @@ class Universe(UniverseBase):
                 for key, color in plot.colors.items():
 
                     if isinstance(key, int):
-                        raise Exception(
+                        raise TypeError(
                             "Cannot use IDs in colors dict for auto legend.")
                     elif not isinstance(key, expected_key_type):
-                        raise Exception(
+                        raise TypeError(
                             "Color dict key type does not match color_by")
 
                     # this works whether we're doing cells or materials
@@ -428,7 +444,7 @@ class Universe(UniverseBase):
                     key_patch = mpatches.Patch(color=color, label=label)
                     patches.append(key_patch)
 
-                axes.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0)
+                axes.legend(handles=patches, **legend_kwargs)
 
             # Plot image and return the axes
             return axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)

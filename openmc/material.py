@@ -10,8 +10,8 @@ import warnings
 from typing import Optional, List, Union
 from xml.etree import ElementTree as ET
 
-import h5py
 import numpy as np
+import h5py
 
 import openmc
 import openmc.data

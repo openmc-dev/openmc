@@ -1,9 +1,9 @@
 from __future__ import annotations
 from collections.abc import Iterable
 from numbers import Real, Integral
+import pathlib
 import typing
 from typing import Iterable, List, Optional, Union, Dict
-import pathlib
 
 from xml.etree import ElementTree as ET
 import numpy as np

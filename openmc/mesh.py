@@ -330,6 +330,12 @@ class RegularMesh(StructuredMesh):
     def dimension(self):
         return tuple(self._dimension)
 
+    @dimension.setter
+    def dimension(self, dimension):
+        cv.check_type('mesh dimension', dimension, Iterable, Integral)
+        cv.check_length('mesh dimension', dimension, 1, 3)
+        self._dimension = dimension
+
     @property
     def n_dimension(self):
         if self._dimension is not None:
@@ -340,6 +346,15 @@ class RegularMesh(StructuredMesh):
     @property
     def lower_left(self):
         return self._lower_left
+
+    @lower_left.setter
+    def lower_left(self, lower_left):
+        cv.check_type('mesh lower_left', lower_left, Iterable, Real)
+        cv.check_length('mesh lower_left', lower_left, 1, 3)
+        self._lower_left = lower_left
+
+        if self.upper_right is not None and any(np.isclose(self.upper_right, lower_left)):
+            raise ValueError("Mesh cannot have zero thickness in any dimension")
 
     @property
     def upper_right(self):
@@ -352,6 +367,19 @@ class RegularMesh(StructuredMesh):
                 dims = self._dimension
                 return [l + w * d for l, w, d in zip(ls, ws, dims)]
 
+    @upper_right.setter
+    def upper_right(self, upper_right):
+        cv.check_type('mesh upper_right', upper_right, Iterable, Real)
+        cv.check_length('mesh upper_right', upper_right, 1, 3)
+        self._upper_right = upper_right
+
+        if self._width is not None:
+            self._width = None
+            warnings.warn("Unsetting width attribute.")
+
+        if self.lower_left is not None and any(np.isclose(self.lower_left, upper_right)):
+            raise ValueError("Mesh cannot have zero thickness in any dimension")
+
     @property
     def width(self):
         if self._width is not None:
@@ -362,6 +390,16 @@ class RegularMesh(StructuredMesh):
                 ls = self._lower_left
                 dims =  self._dimension
                 return [(u - l) / d for u, l, d in zip(us, ls, dims)]
+
+    @width.setter
+    def width(self, width):
+        cv.check_type('mesh width', width, Iterable, Real)
+        cv.check_length('mesh width', width, 1, 3)
+        self._width = width
+
+        if self._upper_right is not None:
+            self._upper_right = None
+            warnings.warn("Unsetting upper_right attribute.")
 
     @property
     def volumes(self):
@@ -421,44 +459,6 @@ class RegularMesh(StructuredMesh):
             x0, = self.lower_left
             x1, = self.upper_right
             return (np.linspace(x0, x1, nx + 1),)
-
-    @dimension.setter
-    def dimension(self, dimension):
-        cv.check_type('mesh dimension', dimension, Iterable, Integral)
-        cv.check_length('mesh dimension', dimension, 1, 3)
-        self._dimension = dimension
-
-    @lower_left.setter
-    def lower_left(self, lower_left):
-        cv.check_type('mesh lower_left', lower_left, Iterable, Real)
-        cv.check_length('mesh lower_left', lower_left, 1, 3)
-        self._lower_left = lower_left
-
-        if self.upper_right is not None and any(np.isclose(self.upper_right, lower_left)):
-            raise ValueError("Mesh cannot have zero thickness in any dimension")
-
-    @upper_right.setter
-    def upper_right(self, upper_right):
-        cv.check_type('mesh upper_right', upper_right, Iterable, Real)
-        cv.check_length('mesh upper_right', upper_right, 1, 3)
-        self._upper_right = upper_right
-
-        if self._width is not None:
-            self._width = None
-            warnings.warn("Unsetting width attribute.")
-
-        if self.lower_left is not None and any(np.isclose(self.lower_left, upper_right)):
-            raise ValueError("Mesh cannot have zero thickness in any dimension")
-
-    @width.setter
-    def width(self, width):
-        cv.check_type('mesh width', width, Iterable, Real)
-        cv.check_length('mesh width', width, 1, 3)
-        self._width = width
-
-        if self._upper_right is not None:
-            self._upper_right = None
-            warnings.warn("Unsetting upper_right attribute.")
 
     def __repr__(self):
         string = super().__repr__()
@@ -852,13 +852,28 @@ class RectilinearMesh(StructuredMesh):
     def x_grid(self):
         return self._x_grid
 
+    @x_grid.setter
+    def x_grid(self, grid):
+        cv.check_type('mesh x_grid', grid, Iterable, Real)
+        self._x_grid = np.asarray(grid)
+
     @property
     def y_grid(self):
         return self._y_grid
 
+    @y_grid.setter
+    def y_grid(self, grid):
+        cv.check_type('mesh y_grid', grid, Iterable, Real)
+        self._y_grid = np.asarray(grid)
+
     @property
     def z_grid(self):
         return self._z_grid
+
+    @z_grid.setter
+    def z_grid(self, grid):
+        cv.check_type('mesh z_grid', grid, Iterable, Real)
+        self._z_grid = np.asarray(grid)
 
     @property
     def _grids(self):
@@ -894,21 +909,6 @@ class RectilinearMesh(StructuredMesh):
                 for z in range(1, nz + 1)
                 for y in range(1, ny + 1)
                 for x in range(1, nx + 1))
-
-    @x_grid.setter
-    def x_grid(self, grid):
-        cv.check_type('mesh x_grid', grid, Iterable, Real)
-        self._x_grid = np.asarray(grid)
-
-    @y_grid.setter
-    def y_grid(self, grid):
-        cv.check_type('mesh y_grid', grid, Iterable, Real)
-        self._y_grid = np.asarray(grid)
-
-    @z_grid.setter
-    def z_grid(self, grid):
-        cv.check_type('mesh z_grid', grid, Iterable, Real)
-        self._z_grid = np.asarray(grid)
 
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'
@@ -1081,17 +1081,38 @@ class CylindricalMesh(StructuredMesh):
     def origin(self):
         return self._origin
 
+    @origin.setter
+    def origin(self, coords):
+        cv.check_type('mesh origin', coords, Iterable, Real)
+        cv.check_length("mesh origin", coords, 3)
+        self._origin = np.asarray(coords)
+
     @property
     def r_grid(self):
         return self._r_grid
+
+    @r_grid.setter
+    def r_grid(self, grid):
+        cv.check_type('mesh r_grid', grid, Iterable, Real)
+        self._r_grid = np.asarray(grid)
 
     @property
     def phi_grid(self):
         return self._phi_grid
 
+    @phi_grid.setter
+    def phi_grid(self, grid):
+        cv.check_type('mesh phi_grid', grid, Iterable, Real)
+        self._phi_grid = np.asarray(grid)
+
     @property
     def z_grid(self):
         return self._z_grid
+    
+    @z_grid.setter
+    def z_grid(self, grid):
+        cv.check_type('mesh z_grid', grid, Iterable, Real)
+        self._z_grid = np.asarray(grid)
 
     @property
     def _grids(self):
@@ -1106,27 +1127,6 @@ class CylindricalMesh(StructuredMesh):
                 for z in range(1, nz + 1)
                 for p in range(1, np + 1)
                 for r in range(1, nr + 1))
-
-    @origin.setter
-    def origin(self, coords):
-        cv.check_type('mesh origin', coords, Iterable, Real)
-        cv.check_length("mesh origin", coords, 3)
-        self._origin = np.asarray(coords)
-
-    @r_grid.setter
-    def r_grid(self, grid):
-        cv.check_type('mesh r_grid', grid, Iterable, Real)
-        self._r_grid = np.asarray(grid)
-
-    @phi_grid.setter
-    def phi_grid(self, grid):
-        cv.check_type('mesh phi_grid', grid, Iterable, Real)
-        self._phi_grid = np.asarray(grid)
-
-    @z_grid.setter
-    def z_grid(self, grid):
-        cv.check_type('mesh z_grid', grid, Iterable, Real)
-        self._z_grid = np.asarray(grid)
 
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'
@@ -1400,17 +1400,38 @@ class SphericalMesh(StructuredMesh):
     def origin(self):
         return self._origin
 
+    @origin.setter
+    def origin(self, coords):
+        cv.check_type('mesh origin', coords, Iterable, Real)
+        cv.check_length("mesh origin", coords, 3)
+        self._origin = np.asarray(coords)
+
     @property
     def r_grid(self):
         return self._r_grid
+
+    @r_grid.setter
+    def r_grid(self, grid):
+        cv.check_type('mesh r_grid', grid, Iterable, Real)
+        self._r_grid = np.asarray(grid)
 
     @property
     def theta_grid(self):
         return self._theta_grid
 
+    @theta_grid.setter
+    def theta_grid(self, grid):
+        cv.check_type('mesh theta_grid', grid, Iterable, Real)
+        self._theta_grid = np.asarray(grid)
+
     @property
     def phi_grid(self):
         return self._phi_grid
+
+    @phi_grid.setter
+    def phi_grid(self, grid):
+        cv.check_type('mesh phi_grid', grid, Iterable, Real)
+        self._phi_grid = np.asarray(grid)
 
     @property
     def _grids(self):
@@ -1425,27 +1446,6 @@ class SphericalMesh(StructuredMesh):
                 for p in range(1, np + 1)
                 for t in range(1, nt + 1)
                 for r in range(1, nr + 1))
-
-    @origin.setter
-    def origin(self, coords):
-        cv.check_type('mesh origin', coords, Iterable, Real)
-        cv.check_length("mesh origin", coords, 3)
-        self._origin = np.asarray(coords)
-
-    @r_grid.setter
-    def r_grid(self, grid):
-        cv.check_type('mesh r_grid', grid, Iterable, Real)
-        self._r_grid = np.asarray(grid)
-
-    @theta_grid.setter
-    def theta_grid(self, grid):
-        cv.check_type('mesh theta_grid', grid, Iterable, Real)
-        self._theta_grid = np.asarray(grid)
-
-    @phi_grid.setter
-    def phi_grid(self, grid):
-        cv.check_type('mesh phi_grid', grid, Iterable, Real)
-        self._phi_grid = np.asarray(grid)
 
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'

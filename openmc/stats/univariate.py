@@ -130,16 +130,16 @@ class Discrete(Univariate):
     def x(self):
         return self._x
 
-    @property
-    def p(self):
-        return self._p
-
     @x.setter
     def x(self, x):
         if isinstance(x, Real):
             x = [x]
         cv.check_type('discrete values', x, Iterable, Real)
         self._x = np.array(x, dtype=float)
+
+    @property
+    def p(self):
+        return self._p
 
     @p.setter
     def p(self, p):
@@ -282,14 +282,14 @@ class Uniform(Univariate):
     def a(self):
         return self._a
 
-    @property
-    def b(self):
-        return self._b
-
     @a.setter
     def a(self, a):
         cv.check_type('Uniform a', a, Real)
         self._a = a
+
+    @property
+    def b(self):
+        return self._b
 
     @b.setter
     def b(self, b):
@@ -384,23 +384,23 @@ class PowerLaw(Univariate):
     def a(self):
         return self._a
 
-    @property
-    def b(self):
-        return self._b
-
-    @property
-    def n(self):
-        return self._n
-
     @a.setter
     def a(self, a):
         cv.check_type('interval lower bound', a, Real)
         self._a = a
 
+    @property
+    def b(self):
+        return self._b
+
     @b.setter
     def b(self, b):
         cv.check_type('interval upper bound', b, Real)
         self._b = b
+
+    @property
+    def n(self):
+        return self._n
 
     @n.setter
     def n(self, n):
@@ -570,15 +570,15 @@ class Watt(Univariate):
     def a(self):
         return self._a
 
-    @property
-    def b(self):
-        return self._b
-
     @a.setter
     def a(self, a):
         cv.check_type('Watt a', a, Real)
         cv.check_greater_than('Watt a', a, 0.0)
         self._a = a
+
+    @property
+    def b(self):
+        return self._b
 
     @b.setter
     def b(self, b):
@@ -664,14 +664,14 @@ class Normal(Univariate):
     def mean_value(self):
         return self._mean_value
 
-    @property
-    def std_dev(self):
-        return self._std_dev
-
     @mean_value.setter
     def mean_value(self, mean_value):
         cv.check_type('Normal mean_value', mean_value, Real)
         self._mean_value = mean_value
+
+    @property
+    def std_dev(self):
+        return self._std_dev
 
     @std_dev.setter
     def std_dev(self, std_dev):
@@ -807,18 +807,14 @@ class Tabular(Univariate):
     def x(self):
         return self._x
 
-    @property
-    def p(self):
-        return self._p
-
-    @property
-    def interpolation(self):
-        return self._interpolation
-
     @x.setter
     def x(self, x):
         cv.check_type('tabulated values', x, Iterable, Real)
         self._x = np.array(x, dtype=float)
+
+    @property
+    def p(self):
+        return self._p
 
     @p.setter
     def p(self, p):
@@ -827,6 +823,10 @@ class Tabular(Univariate):
             for pk in p:
                 cv.check_greater_than('tabulated probability', pk, 0.0, True)
         self._p = np.array(p, dtype=float)
+
+    @property
+    def interpolation(self):
+        return self._interpolation
 
     @interpolation.setter
     def interpolation(self, interpolation):
@@ -1093,10 +1093,6 @@ class Mixture(Univariate):
     def probability(self):
         return self._probability
 
-    @property
-    def distribution(self):
-        return self._distribution
-
     @probability.setter
     def probability(self, probability):
         cv.check_type('mixture distribution probabilities', probability,
@@ -1105,6 +1101,10 @@ class Mixture(Univariate):
             cv.check_greater_than('mixture distribution probabilities',
                                   p, 0.0, True)
         self._probability = probability
+
+    @property
+    def distribution(self):
+        return self._distribution
 
     @distribution.setter
     def distribution(self, distribution):

@@ -60,14 +60,6 @@ class TallyDerivative(EqualityMixin, IDManagerMixin):
     def variable(self):
         return self._variable
 
-    @property
-    def material(self):
-        return self._material
-
-    @property
-    def nuclide(self):
-        return self._nuclide
-
     @variable.setter
     def variable(self, var):
         if var is not None:
@@ -76,11 +68,19 @@ class TallyDerivative(EqualityMixin, IDManagerMixin):
                            ('density', 'nuclide_density', 'temperature'))
         self._variable = var
 
+    @property
+    def material(self):
+        return self._material
+
     @material.setter
     def material(self, mat):
         if mat is not None:
             cv.check_type('derivative material', mat, Integral)
         self._material = mat
+
+    @property
+    def nuclide(self):
+        return self._nuclide
 
     @nuclide.setter
     def nuclide(self, nuc):

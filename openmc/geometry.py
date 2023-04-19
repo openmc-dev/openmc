@@ -2,6 +2,7 @@ from __future__ import annotations
 import os
 import typing
 from collections import OrderedDict, defaultdict
+from copy import deepcopy
 from collections.abc import Iterable
 from pathlib import Path
 import warnings

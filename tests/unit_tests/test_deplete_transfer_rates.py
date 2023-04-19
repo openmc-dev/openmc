@@ -106,7 +106,7 @@ def test_transfer(run_in_tmpdir, model):
     op = CoupledOperator(model, CHAIN_PATH)
     integrator = openmc.deplete.PredictorIntegrator(
         op, [1,1], 0.0, timestep_units = 'd')
-    integrator.set_transfer_rate('f', element, transfer_rate)
+    integrator.add_transfer_rate('f', element, transfer_rate)
     integrator.integrate()
 
     # Get number of U238 atoms from results

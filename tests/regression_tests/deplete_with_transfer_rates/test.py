@@ -58,7 +58,7 @@ def test_transfer_rates(run_in_tmpdir, model, rate, dest_mat, power, ref_result)
     op = CoupledOperator(model, chain_file)
     integrator = openmc.deplete.PredictorIntegrator(
         op, [1], power, timestep_units = 'd')
-    integrator.set_transfer_rate('f', transfer_elements, rate,
+    integrator.add_transfer_rate('f', transfer_elements, rate,
                                 destination_material=dest_mat)
     integrator.integrate()
 

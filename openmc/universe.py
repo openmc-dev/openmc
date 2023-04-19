@@ -342,9 +342,6 @@ class Universe(UniverseBase):
             .. versionadded:: 0.13.4
         legend_kwargs : dict
             Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
-            The default is:
-
-            {'bbox_to_anchor': (1.05, 1), 'loc':2, 'borderaxespad': 0.0}
 
             .. versionadded:: 0.13.4
         **kwargs

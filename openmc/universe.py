@@ -413,6 +413,7 @@ class Universe(UniverseBase):
                     colors="k",
                     linestyles="solid",
                     linewidths=1,
+                    levels=np.unique(image_value),
                     extent=(x_min, x_max, y_min, y_max),
                 )
 

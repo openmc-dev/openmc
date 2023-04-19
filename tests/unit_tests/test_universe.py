@@ -59,6 +59,7 @@ def test_plot(run_in_tmpdir, sphere_model):
             pixels=(10, 10),
             color_by='material',
             colors=colors,
+            outline=True,
         )
 
 

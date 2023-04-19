@@ -12,7 +12,6 @@ def myplot():
     plot.filename = 'myplot'
     plot.type = 'slice'
     plot.basis = 'yz'
-    plot.outline = True
     plot.background = 'black'
     plot.background = (0, 0, 0)
 

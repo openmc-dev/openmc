@@ -1,54 +1,57 @@
+from typing import Iterable
+
 import numpy as np
-from .checkvalue import check_type, check_length
+
+from .checkvalue import check_length
 
 
 class BoundingBox(tuple):
     """Axis-aligned bounding box.
 
+    .. versionadded:: 0.13.4
+
     Parameters
     ----------
-    corners : 2-tuple of numpy.array
-        Lower-left and upper-right coordinates of an axis-aligned bounding box
-        of the domain.
+    lower_left : iterable of float
+        The x, y, z coordinates of the lower left corner of the bounding box in [cm]
+    upper_right : iterable of float
+        The x, y, z coordinates of the upper right corner of the bounding box in [cm]
 
     Attributes
     ----------
-    center: numpy.array
-        x, y, z coordinates of the center of the bounding box in cm.
-    lower_left: numpy.array
-        The x, y, z coordinates of the lower left corner of the bounding box
-    upper_right
-        The x, y, z coordinates of the upper right corner of the bounding box
-    volume: float
-        The volume of the bounding box in cm3
+    center : numpy.ndarray
+        x, y, z coordinates of the center of the bounding box in [cm].
+    lower_left : numpy.ndarray
+        The x, y, z coordinates of the lower left corner of the bounding box in [cm]
+    upper_right : numpy.ndarray
+        The x, y, z coordinates of the upper right corner of the bounding box in [cm]
+    volume : float
+        The volume of the bounding box in [cm^3]
     """
 
-    def __init__(self, corners):
+    def __new__(cls, lower_left: Iterable[float], upper_right: Iterable[float]):
+        check_length("lower_left", lower_left, 3, 3)
+        check_length("upper_right", upper_right, 3, 3)
+        lower_left = np.array(lower_left, dtype=float)
+        upper_right = np.array(upper_right, dtype=float)
+        return tuple.__new__(cls, (lower_left, upper_right))
 
-        check_type("corners", corners, tuple)
-        check_type("corners", corners[0], np.ndarray)
-        check_type("corners", corners[1], np.ndarray)
-        check_length("corners", corners, 2, 2)
-        check_length("corners", corners[0], 3, 3)
-        check_length("corners", corners[1], 3, 3)
-        self.corners = corners
-
-    @property
-    def center(self):
-        """The center x, y, z coordinates of the bounding box"""
-        return (self.corners[0] + self.corners[1]) / 2
+    def __repr__(self) -> str:
+        return "BoundingBox(lower_left={}, upper_right={})".format(
+            tuple(self.lower_left), tuple(self.upper_right))
 
     @property
-    def lower_left(self):
-        """The x, y, z coordinates of the lower left corner of the bounding box"""
-        return self.corners[0]
+    def center(self) -> np.ndarray:
+        return (self[0] + self[1]) / 2
 
     @property
-    def upper_right(self):
-        """The x, y, z coordinates of the upper right corner of the bounding box"""
-        return self.corners[1]
+    def lower_left(self) -> np.ndarray:
+        return self[0]
 
     @property
-    def volume(self):
-        """The volume of the bounding box"""
-        return np.abs(np.prod(self.corners[1] - self.corners[0]))
+    def upper_right(self) -> np.ndarray:
+        return self[1]
+
+    @property
+    def volume(self) -> float:
+        return np.abs(np.prod(self[1] - self[0]))

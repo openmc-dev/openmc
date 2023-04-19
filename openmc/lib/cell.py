@@ -103,7 +103,7 @@ class Cell(_FortranObjectWithID):
         Name of the cell
     num_instances : int
         Number of unique cell instances
-    bounding_box : 2-tuple of numpy.ndarray
+    bounding_box : openmc.BoundingBox
         Lower-left and upper-right coordinates of bounding box
     translation : Iterable of float
         3-D coordinates of the translation vector
@@ -291,7 +291,7 @@ class Cell(_FortranObjectWithID):
         llc[llc == -inf] = -np.inf
         urc[urc == -inf] = -np.inf
 
-        return BoundingBox((llc, urc))
+        return BoundingBox(llc, urc)
 
 
 class _CellMapping(Mapping):

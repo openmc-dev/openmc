@@ -374,25 +374,26 @@ scenarios.
 Transfer Rates
 ==============
 
-The :class:`~openmc.deplete.TransferRates` class adds the capability to set
-continuous transfer rates of nuclides to a depletable material.
+Transfer rates define removal or feed of nuclides to or from one or more
+depletable materials. This can be useful to model continuous fuel reprocessing,
+online fission products separation, etc.
 
-An instance of this class requires
-:class:`~openmc.deplete.abc.TransportOperator` and :class:`~openmc.Model`
-instances, and can be passed directly to one of the Integrator classes::
+Transfers are defined calling the
+:meth:`~openmc.deplete.abc.Integrator.add_transfer_rate()` method, directly from
+one of the Integrator classes::
 
     ...
-    transfer = openmc.deplete.TransferRates(op, model)
-    integrator = openmc.deplete.PredictorIntegrator(op, time_steps, power,
-                transfer_rates=transfer)
+    integrator = openmc.deplete.PredictorIntegrator(op, time_steps, power)
+    integrator.add_transfer_rate(...)
 
 Defining transfer rates
 -----------------------
 
-Transfer rates can be added to a :class:`~openmc.deplete.TransferRates` instance
-with the :meth:`~openmc.deplete.TransferRates.set_transfer_rate()` method.
-A :class:`~openmc.Material` instance, material id, or
-material name can specify the depletable material from which nuclides are processed.
+The :meth:`~openmc.deplete.abc.Integrator.add_transfer_rate()` method requires an instance
+to a :class:`~openmc.Material` or the material id or
+the material name, as the depletable material from which nuclides are processed,
+a list of elements that share the same transfer rate, and a transfer rate value, as the
+rate at which elements are transferred.
 
 .. important::
 
@@ -400,21 +401,22 @@ material name can specify the depletable material from which nuclides are proces
    A positive transfer rate assumes removal, while a negative one assumes feed.
 
 The transfer rate units can be specified by assigning '1/s', '1/min', '1/h', '1/d'
-or '1/a' to the ``transfer_rate_units`` argument.
+or '1/a' to the ``transfer_rate_units`` argument. Default units are '1/s'.
 
-For example, to define continuous removal of Xenon from one material with a cycle
-time of 10 s (or a removal rate value of 0.1 s\ :sup:`-1`), you'd use::
+For example, to define continuous removal of Xenon from one material with a
+removal rate value of 0.1 s\ :sup:`-1` (or a cycle time of 10 s), you'd use::
 
     mat1 = openmc.Material(material_id=1, name='fuel')
 
     ...
 
+    integrator = openmc.deplete.PredictorIntegrator(op, time_steps, power)
     # by openmc.Material object
-    transfer.set_transfer_rate(mat1, ['Xe'], 0.1)
+    integrator.add_transfer_rate(mat1, ['Xe'], 0.1)
     # or by material id
-    transfer.set_transfer_rate(1, ['Xe'], 0.1)
+    integrator.add_transfer_rate(1, ['Xe'], 0.1)
     # or by material name
-    transfer.set_transfer_rate('fuel', ['Xe'], 0.1)
+    integrator.add_transfer_rate('fuel', ['Xe'], 0.1)
 
 Note that in this case the Xenon nuclides that are removed will not be tracked.
 
@@ -423,7 +425,7 @@ Defining a destination material
 
 To transfer elements from one depletable material to another, the
 ``destination_material`` parameter needs to be passed to the
-:meth:`~openmc.deplete.TransferRates.set_transfer_rate()` method. For example,
+:meth:`~openmc.deplete.abc.Integrator.add_transfer_rate()` method. For example,
 to transfer Xenon from one material to another, you'd use::
 
     ...
@@ -431,4 +433,4 @@ to transfer Xenon from one material to another, you'd use::
 
     ...
 
-    transfer.set_transfer_rate(mat1, ['Xe'], 0.1, destination_material=mat2)
+    integrator.add_transfer_rate(mat1, ['Xe'], 0.1, destination_material=mat2)

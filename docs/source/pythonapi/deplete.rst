@@ -206,7 +206,7 @@ removal or feed of isotopes during a depletion analysis.
    :nosignatures:
    :template: myclass.rst
 
-   TransferRates
+   transfer_rates._TransferRates
 
 Intermediate Classes
 --------------------

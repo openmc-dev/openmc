@@ -344,10 +344,13 @@ class Universe(UniverseBase):
         # Determine extents of plot
         if basis == 'xy':
             x, y = 0, 1
+            xlabel, ylabel = 'x [cm]', 'y [cm]'
         elif basis == 'yz':
             x, y = 1, 2
+            xlabel, ylabel = 'y [cm]', 'z [cm]'
         elif basis == 'xz':
             x, y = 0, 2
+            xlabel, ylabel = 'x [cm]', 'z [cm]'
         x_min = origin[x] - 0.5*width[0]
         x_max = origin[x] + 0.5*width[0]
         y_min = origin[y] - 0.5*width[1]
@@ -391,6 +394,8 @@ class Universe(UniverseBase):
             if axes is None:
                 px = 1/plt.rcParams['figure.dpi']
                 fig, axes = plt.subplots()
+                axes.set_xlabel(xlabel)
+                axes.set_ylabel(ylabel)
                 params = fig.subplotpars
                 width = pixels[0]*px/(params.right - params.left)
                 height = pixels[0]*px/(params.top - params.bottom)

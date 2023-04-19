@@ -403,7 +403,7 @@ class Universe(UniverseBase):
                 fig.set_size_inches(width, height)
 
             if outline:
-
+                # Combine R, G, B values into a single int
                 rgb = (img * 256).astype(int)
                 image_value = (rgb[..., 0] << 16) + (rgb[..., 1] << 8) + (rgb[..., 2])
 

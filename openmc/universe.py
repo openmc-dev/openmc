@@ -296,7 +296,6 @@ class Universe(UniverseBase):
         return []
 
     # default kwargs that are passed to plt.legend in the plot method below.
-    # If you change this, be sure to change it in the docstring for plot below.
     _default_legend_kwargs = {'bbox_to_anchor': (
         1.05, 1), 'loc': 2, 'borderaxespad': 0.0}
 

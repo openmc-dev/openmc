@@ -21,14 +21,6 @@ from .plots import _SVG_COLORS
 from .surface import _BOUNDARY_TYPES
 
 
-def get_int_from_rgb(rgb: typing.Tuple[int, int, int]) -> int:
-    """Converts a tuple of ints into a single int"""
-    red = rgb[0]
-    green = rgb[1]
-    blue = rgb[2]
-    return (red << 16) + (green << 8) + blue
-
-
 class UniverseBase(ABC, IDManagerMixin):
     """A collection of cells that can be repeated.
 
@@ -412,10 +404,8 @@ class Universe(UniverseBase):
 
             if outline:
 
-                image_value = [
-                    [get_int_from_rgb(inner_entry) for inner_entry in outer_entry]
-                    for outer_entry in img
-                ]
+                rgb = (img * 256).astype(int)
+                image_value = (rgb[..., 0] << 16) + (rgb[..., 1] << 8) + (rgb[..., 2])
 
                 axes.contour(
                     image_value,

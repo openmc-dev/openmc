@@ -548,11 +548,6 @@ class Integrator(ABC):
         :attr:`solver`.
 
         .. versionadded:: 0.12
-    transfer_rates : openmc.deplete.TransferRates
-        Instance of TransferRates class to perform continuous transfer based
-        on transfer rates definitions.
-
-        .. versionadded:: 0.13.4
     Attributes
     ----------
     operator : openmc.deplete.abc.TransportOperator
@@ -847,10 +842,29 @@ class Integrator(ABC):
 
         self.operator.finalize()
 
-    def set_transfer_rate(self, material, elements, transfer_rate,
+    def add_transfer_rate(self, material, elements, transfer_rate,
                         transfer_rate_units='1/s', destination_material=None):
+        """Add transfer rates to depletable material.
 
-        self.transfer_rates = _TransferRates(self.operator, self.operator.model)
+        Parameters
+        ----------
+        material : openmc.Material or str or int
+            Depletable material
+        elements : list of str
+            List of strings of elements that share transfer rate
+        transfer_rate : float
+            Rate at which elements are transferred. A positive or negative values
+            set removal of feed rates, respectively.
+        destination_material : openmc.Material or str or int, Optional
+            Destination material to where nuclides get fed.
+        transfer_rate_units : {'1/s', '1/min', '1/h', '1/d', '1/a'}
+            Units for values specified in the transfer_rate argument. 's' means
+            seconds, 'min' means minutes, 'h' means hours, 'a' means Julian years.
+
+        """
+        if self.transfer_rates is None:
+            self.transfer_rates = _TransferRates(self.operator, self.operator.model)
+
         self.transfer_rates.set_transfer_rate(material, elements, transfer_rate,
                                       transfer_rate_units, destination_material)
 

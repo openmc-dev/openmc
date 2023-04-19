@@ -341,9 +341,10 @@ class Universe(UniverseBase):
         **kwargs
             Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 
-            .. versionadded:: 0.13.4
         outline : bool
             Whether outlines between color boundaries should be drawn
+
+            .. versionadded:: 0.13.4
 
         Returns
         -------

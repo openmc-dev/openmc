@@ -1,3 +1,4 @@
+from __future__ import annotations
 from collections.abc import Iterable
 from contextlib import contextmanager
 from functools import lru_cache
@@ -7,6 +8,7 @@ from numbers import Integral
 from tempfile import NamedTemporaryFile
 import warnings
 from xml.etree import ElementTree as ET
+from typing import Optional, Dict
 
 import h5py
 
@@ -93,27 +95,27 @@ class Model:
             self.plots = plots
 
     @property
-    def geometry(self):
+    def geometry(self) -> Optional[openmc.Geometry]:
         return self._geometry
 
     @property
-    def materials(self):
+    def materials(self) -> Optional[openmc.Materials]:
         return self._materials
 
     @property
-    def settings(self):
+    def settings(self) -> Optional[openmc.Settings]:
         return self._settings
 
     @property
-    def tallies(self):
+    def tallies(self) -> Optional[openmc.Tallies]:
         return self._tallies
 
     @property
-    def plots(self):
+    def plots(self) -> Optional[openmc.Plots]:
         return self._plots
 
     @property
-    def is_initialized(self):
+    def is_initialized(self) -> bool:
         try:
             import openmc.lib
             return openmc.lib.is_initialized
@@ -122,7 +124,7 @@ class Model:
 
     @property
     @lru_cache(maxsize=None)
-    def _materials_by_id(self):
+    def _materials_by_id(self) -> dict:
         """Dictionary mapping material ID --> material"""
         if self.materials:
             mats = self.materials
@@ -132,14 +134,14 @@ class Model:
 
     @property
     @lru_cache(maxsize=None)
-    def _cells_by_id(self):
+    def _cells_by_id(self) -> dict:
         """Dictionary mapping cell ID --> cell"""
         cells = self.geometry.get_all_cells()
         return {cell.id: cell for cell in cells.values()}
 
     @property
     @lru_cache(maxsize=None)
-    def _cells_by_name(self):
+    def _cells_by_name(self) -> Dict[int, openmc.Cell]:
         # Get the names maps, but since names are not unique, store a set for
         # each name key. In this way when the user requests a change by a name,
         # the change will be applied to all of the same name.
@@ -152,7 +154,7 @@ class Model:
 
     @property
     @lru_cache(maxsize=None)
-    def _materials_by_name(self):
+    def _materials_by_name(self) -> Dict[int, openmc.Material]:
         if self.materials is None:
             mats = self.geometry.get_all_materials().values()
         else:
@@ -207,7 +209,7 @@ class Model:
     @classmethod
     def from_xml(cls, geometry='geometry.xml', materials='materials.xml',
                  settings='settings.xml', tallies='tallies.xml',
-                 plots='plots.xml'):
+                 plots='plots.xml') -> Model:
         """Create model from existing XML files
 
         Parameters
@@ -597,12 +599,13 @@ class Model:
     def run(self, particles=None, threads=None, geometry_debug=False,
             restart_file=None, tracks=False, output=True, cwd='.',
             openmc_exec='openmc', mpi_args=None, event_based=None,
-            export_model_xml=True):
-        """Runs OpenMC. If the C API has been initialized, then the C API is
-        used, otherwise, this method creates the XML files and runs OpenMC via
-        a system call. In both cases this method returns the path to the last
-        statepoint file generated.
+            export_model_xml=True, **export_kwargs):
+        """Run OpenMC
 
+        If the C API has been initialized, then the C API is used, otherwise,
+        this method creates the XML files and runs OpenMC via a system call. In
+        both cases this method returns the path to the last statepoint file
+        generated.
         .. versionchanged:: 0.12
             Instead of returning the final k-effective value, this function now
             returns the path to the final statepoint written.
@@ -630,27 +633,30 @@ class Model:
         output : bool, optional
             Capture OpenMC output from standard out
         cwd : str, optional
-            Path to working directory to run in. Defaults to the current
-            working directory.
+            Path to working directory to run in. Defaults to the current working
+            directory.
         openmc_exec : str, optional
             Path to OpenMC executable. Defaults to 'openmc'.
         mpi_args : list of str, optional
-            MPI execute command and any additional MPI arguments to pass,
-            e.g. ['mpiexec', '-n', '8'].
+            MPI execute command and any additional MPI arguments to pass, e.g.
+            ['mpiexec', '-n', '8'].
         event_based : None or bool, optional
-            Turns on event-based parallelism if True. If None, the value in
-            the Settings will be used.
+            Turns on event-based parallelism if True. If None, the value in the
+            Settings will be used.
         export_model_xml : bool, optional
-            Exports a single model.xml file rather than separate files.
-            Defaults to True.
+            Exports a single model.xml file rather than separate files. Defaults
+            to True.
 
             .. versionadded:: 0.13.3
+        **export_kwargs
+            Keyword arguments passed to either :meth:`Model.export_to_model_xml`
+            or :meth:`Model.export_to_xml`.
 
         Returns
         -------
         Path
-            Path to the last statepoint written by this run
-            (None if no statepoint was written)
+            Path to the last statepoint written by this run (None if no
+            statepoint was written)
 
         """
 
@@ -695,9 +701,9 @@ class Model:
             else:
                 # Then run via the command line
                 if export_model_xml:
-                    self.export_to_model_xml()
+                    self.export_to_model_xml(**export_kwargs)
                 else:
-                    self.export_to_xml()
+                    self.export_to_xml(**export_kwargs)
                 openmc.run(particles, threads, geometry_debug, restart_file,
                            tracks, output, Path('.'), openmc_exec, mpi_args,
                            event_based)

@@ -187,9 +187,9 @@ def test_plots(run_in_tmpdir):
     plots.export_to_xml()
 
     # from_xml
-    openmc.Plots.from_xml()
-    assert len(plots)
-    assert plots[0].origin == p1.origin
-    assert plots[0].colors == p1.colors
-    assert plots[0].mask_components == p1.mask_components
-    assert plots[1].origin == p2.origin
+    new_plots = openmc.Plots.from_xml()
+    assert len(new_plots)
+    assert new_plots[0].origin == p1.origin
+    assert new_plots[0].colors == p1.colors
+    assert new_plots[0].mask_components == p1.mask_components
+    assert new_plots[1].origin == p2.origin

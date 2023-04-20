@@ -6,6 +6,7 @@ from numbers import Integral, Real
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from xml.etree import ElementTree as ET
+from warnings import warn
 
 import h5py
 import numpy as np
@@ -87,7 +88,8 @@ class UniverseBase(ABC, IDManagerMixin):
                 self._volume = volume_calc.volumes[self.id].n
                 self._atoms = volume_calc.atoms[self.id]
             else:
-                raise ValueError('No volume information found for this universe.')
+                raise ValueError(
+                    'No volume information found for this universe.')
         else:
             raise ValueError('No volume information found for this universe.')
 
@@ -168,7 +170,7 @@ class UniverseBase(ABC, IDManagerMixin):
             clone._cells = OrderedDict()
             for cell in self._cells.values():
                 clone.add_cell(cell.clone(clone_materials, clone_regions,
-                     memo))
+                                          memo))
 
             # Memoize the clone
             memo[self] = clone
@@ -293,9 +295,14 @@ class Universe(UniverseBase):
                     return [self, cell] + cell.fill.find(p)
         return []
 
+    # default kwargs that are passed to plt.legend in the plot method below.
+    _default_legend_kwargs = {'bbox_to_anchor': (
+        1.05, 1), 'loc': 2, 'borderaxespad': 0.0}
+
     def plot(self, origin=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
              basis='xy', color_by='cell', colors=None, seed=None,
-             openmc_exec='openmc', axes=None, **kwargs):
+             openmc_exec='openmc', axes=None, legend=False,
+             legend_kwargs=_default_legend_kwargs, **kwargs):
         """Display a slice plot of the universe.
 
         Parameters
@@ -329,9 +336,18 @@ class Universe(UniverseBase):
             Axes to draw to
 
             .. versionadded:: 0.13.1
+        legend : bool
+            Whether a legend showing material or cell names should be drawn
+
+            .. versionadded:: 0.13.4
+        legend_kwargs : dict
+            Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
+
+            .. versionadded:: 0.13.4
         **kwargs
             Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 
+            .. versionadded:: 0.13.4
         Returns
         -------
         matplotlib.image.AxesImage
@@ -339,6 +355,7 @@ class Universe(UniverseBase):
 
         """
         import matplotlib.image as mpimg
+        import matplotlib.patches as mpatches
         import matplotlib.pyplot as plt
 
         # Determine extents of plot
@@ -400,6 +417,35 @@ class Universe(UniverseBase):
                 width = pixels[0]*px/(params.right - params.left)
                 height = pixels[0]*px/(params.top - params.bottom)
                 fig.set_size_inches(width, height)
+
+            # add legend showing which colors represent which material
+            # or cell if that was requested
+            if legend:
+                if plot.colors is None:
+                    raise ValueError("Must pass 'colors' dictionary if you "
+                                     "are adding a legend via legend=True.")
+
+                if color_by == "cell":
+                    expected_key_type = openmc.Cell
+                else:
+                    expected_key_type = openmc.Material
+
+                patches = []
+                for key, color in plot.colors.items():
+
+                    if isinstance(key, int):
+                        raise TypeError(
+                            "Cannot use IDs in colors dict for auto legend.")
+                    elif not isinstance(key, expected_key_type):
+                        raise TypeError(
+                            "Color dict key type does not match color_by")
+
+                    # this works whether we're doing cells or materials
+                    label = key.name if key.name != '' else key.id
+                    key_patch = mpatches.Patch(color=color, label=label)
+                    patches.append(key_patch)
+
+                axes.legend(handles=patches, **legend_kwargs)
 
             # Plot image and return the axes
             return axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
@@ -743,8 +789,9 @@ class DAGMCUniverse(UniverseBase):
     @property
     def material_names(self):
         dagmc_file_contents = h5py.File(self.filename)
-        material_tags_hex=dagmc_file_contents['/tstt/tags/NAME'].get('values')
-        material_tags_ascii=[]
+        material_tags_hex = dagmc_file_contents['/tstt/tags/NAME'].get(
+            'values')
+        material_tags_ascii = []
         for tag in material_tags_hex:
             candidate_tag = tag.tobytes().decode().replace('\x00', '')
             # tags might be for temperature or reflective surfaces
@@ -910,7 +957,8 @@ class DAGMCUniverse(UniverseBase):
         openmc.Universe
             Universe instance
         """
-        bounding_cell = openmc.Cell(fill=self, cell_id=bounding_cell_id, region=self.bounding_region(**kwargs))
+        bounding_cell = openmc.Cell(
+            fill=self, cell_id=bounding_cell_id, region=self.bounding_region(**kwargs))
         return openmc.Universe(cells=[bounding_cell])
 
     @classmethod

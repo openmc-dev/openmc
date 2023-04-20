@@ -73,7 +73,7 @@ extern std::string path_statepoint;       //!< path to a statepoint file
 // This is required because the c_str() may not be the first thing in
 // std::string. Sometimes it is, but it seems libc++ may not be like that
 // on some computers, like the intel Mac.
-extern "C" char const* path_statepoint_c; //!< C pointer to statepoint file name
+extern "C" const char* path_statepoint_c; //!< C pointer to statepoint file name
 
 extern "C" int32_t n_inactive;         //!< number of inactive batches
 extern "C" int32_t max_lost_particles; //!< maximum number of lost particles

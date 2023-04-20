@@ -82,8 +82,7 @@ std::string path_output;
 std::string path_particle_restart;
 std::string path_sourcepoint;
 std::string path_statepoint;
-std::string empty_string = "";
-char const* path_statepoint_c {empty_string.c_str()};
+const char* path_statepoint_c {path_statepoint.c_str()};
 
 int32_t n_inactive {0};
 int32_t max_lost_particles {10};

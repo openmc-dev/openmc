@@ -1,3 +1,4 @@
+import typing
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from collections.abc import Iterable
@@ -302,7 +303,8 @@ class Universe(UniverseBase):
     def plot(self, origin=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
              basis='xy', color_by='cell', colors=None, seed=None,
              openmc_exec='openmc', axes=None, legend=False,
-             legend_kwargs=_default_legend_kwargs, **kwargs):
+             legend_kwargs=_default_legend_kwargs, outline=False,
+             **kwargs):
         """Display a slice plot of the universe.
 
         Parameters
@@ -344,10 +346,13 @@ class Universe(UniverseBase):
             Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
 
             .. versionadded:: 0.13.4
+        outline : bool
+            Whether outlines between color boundaries should be drawn
+
+            .. versionadded:: 0.13.4
         **kwargs
             Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 
-            .. versionadded:: 0.13.4
         Returns
         -------
         matplotlib.image.AxesImage
@@ -417,6 +422,21 @@ class Universe(UniverseBase):
                 width = pixels[0]*px/(params.right - params.left)
                 height = pixels[0]*px/(params.top - params.bottom)
                 fig.set_size_inches(width, height)
+
+            if outline:
+                # Combine R, G, B values into a single int
+                rgb = (img * 256).astype(int)
+                image_value = (rgb[..., 0] << 16) + (rgb[..., 1] << 8) + (rgb[..., 2])
+
+                axes.contour(
+                    image_value,
+                    origin="upper",
+                    colors="k",
+                    linestyles="solid",
+                    linewidths=1,
+                    levels=np.unique(image_value),
+                    extent=(x_min, x_max, y_min, y_max),
+                )
 
             # add legend showing which colors represent which material
             # or cell if that was requested

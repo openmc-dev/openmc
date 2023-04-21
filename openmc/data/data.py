@@ -208,8 +208,8 @@ _LOG_TWO = log(2.0)
 def atomic_mass(isotope):
     """Return atomic mass of isotope in atomic mass units.
 
-    Atomic mass data comes from the `Atomic Mass Evaluation 2016
-    <https://www-nds.iaea.org/amdc/ame2016/AME2016-a.pdf>`_.
+    Atomic mass data comes from the `Atomic Mass Evaluation 2020
+    <https://doi.org/10.1088/1674-1137/abddaf>`_.
 
     Parameters
     ----------

@@ -82,6 +82,7 @@ std::string path_output;
 std::string path_particle_restart;
 std::string path_sourcepoint;
 std::string path_statepoint;
+const char* path_statepoint_c {path_statepoint.c_str()};
 
 int32_t n_inactive {0};
 int32_t max_lost_particles {10};
@@ -223,16 +224,11 @@ void read_settings_xml()
   std::string filename = settings::path_input + "settings.xml";
   if (!file_exists(filename)) {
     if (run_mode != RunMode::PLOTTING) {
-      fatal_error(
-        fmt::format("Settings XML file '{}' does not exist! In order "
-                    "to run OpenMC, you first need a set of input files; at a "
-                    "minimum, this "
-                    "includes settings.xml, geometry.xml, and materials.xml "
-                    "or a single XML file containing all of these files. "
-                    "Please consult "
-                    "the user's guide at https://docs.openmc.org for further "
-                    "information.",
-          filename));
+      fatal_error("Could not find any XML input files! In order to run OpenMC, "
+                  "you first need a set of input files; at a minimum, this "
+                  "includes settings.xml, geometry.xml, and materials.xml or a "
+                  "single model XML file. Please consult the user's guide at "
+                  "https://docs.openmc.org for further information.");
     } else {
       // The settings.xml file is optional if we just want to make a plot.
       return;

@@ -56,7 +56,7 @@ class _Settings:
 
     @property
     def path_statepoint(self):
-        path = c_char_p.in_dll(_dll, 'path_statepoint').value
+        path = c_char_p.in_dll(_dll, 'path_statepoint_c').value
         return path.decode()
 
     @property

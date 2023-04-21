@@ -300,7 +300,7 @@ class Universe(UniverseBase):
     _default_legend_kwargs = {'bbox_to_anchor': (
         1.05, 1), 'loc': 2, 'borderaxespad': 0.0}
 
-    def plot(self, origin=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
+    def plot(self, origin=None, width=None, pixels=(200, 200),
              basis='xy', color_by='cell', colors=None, seed=None,
              openmc_exec='openmc', axes=None, legend=False,
              legend_kwargs=_default_legend_kwargs, outline=False,
@@ -309,10 +309,13 @@ class Universe(UniverseBase):
 
         Parameters
         ----------
-        origin : Iterable of float
-            Coordinates at the origin of the plot
-        width : Iterable of float
-            Width of the plot in each basis direction
+        origin : Optional Iterable of float
+            Coordinates at the origin of the plot, if left as None then the
+            universe.bounding_box.center will be used to ascertain the origin
+        width : Optional Iterable of float
+            Width of the plot in each basis direction. If left as none then the
+            universe.bounding_box.width() will be used to ascertain the plot
+            axis widths
         pixels : Iterable of int
             Number of pixels to use in each basis direction
         basis : {'xy', 'xz', 'yz'}
@@ -367,12 +370,23 @@ class Universe(UniverseBase):
         if basis == 'xy':
             x, y = 0, 1
             xlabel, ylabel = 'x [cm]', 'y [cm]'
+                
         elif basis == 'yz':
             x, y = 1, 2
             xlabel, ylabel = 'y [cm]', 'z [cm]'
+
         elif basis == 'xz':
             x, y = 0, 2
             xlabel, ylabel = 'x [cm]', 'z [cm]'
+
+        if width is None:
+            x_width = self.bounding_box.width(basis[0])
+            y_width = self.bounding_box.width(basis[1])
+            width = (x_width, y_width)
+
+        if origin is None:
+            origin = self.bounding_box.center
+
         x_min = origin[x] - 0.5*width[0]
         x_max = origin[x] + 0.5*width[0]
         y_min = origin[y] - 0.5*width[1]

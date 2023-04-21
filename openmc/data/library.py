@@ -11,7 +11,7 @@ from openmc._xml import clean_indentation, reorder_attributes
 class DataLibrary(list):
     """Collection of cross section data libraries.
 
-    This clas behaves like a list where each item is a dictionary summarizing
+    This class behaves like a list where each item is a dictionary summarizing
     cross section data from a single file. The dictionary has keys 'path',
     'type', and 'materials'.
 

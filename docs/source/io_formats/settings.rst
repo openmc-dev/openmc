@@ -67,7 +67,9 @@ Russian rouletting are not turned on by default. The second is the energy cutoff
 which is used to kill particles under certain energy. The energy cutoff should
 not be used unless you know particles under the energy are of no importance to
 results you care. The third is the time cutoff used to kill particles whose time
-exceeds a specific cutoff.
+exceeds a specific cutoff. Particles will be killed not exactly at the specified
+time, but rather before the first collision or crossing of a boundary occurring
+beyond this time cutoff.
 
 This element has the following attributes/sub-elements:
 

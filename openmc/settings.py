@@ -58,8 +58,10 @@ class Settings:
         Russian roulette. Value for 'weight_avg' should be a float indicating
         weight assigned to particles that are not killed after Russian roulette.
         Value of energy should be a float indicating energy in eV below which
-        particle type will be killed. Value of time should be a float indicating
-        time in s above which particle type will be killed.
+        particle type will be killed. Value of time should be a float in
+        seconds. Particles will be killed before the first collision or
+        crossing of a boundary beyond this time cutoff, not exactly at the
+        specified time.
     delayed_photon_scaling : bool
         Indicate whether to scale the fission photon yield by (EGP + EGD)/EGP
         where EGP is the energy release of prompt photons and EGD is the energy

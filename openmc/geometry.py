@@ -25,7 +25,7 @@ class Geometry:
     ----------
     root_universe : openmc.UniverseBase
         Root universe which contains all others
-    bounding_box : 2-tuple of numpy.array
+    bounding_box : openmc.BoundingBox
         Lower-left and upper-right coordinates of an axis-aligned bounding box
         of the universe.
     merge_surfaces : bool

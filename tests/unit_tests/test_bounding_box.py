@@ -3,15 +3,9 @@ import openmc
 import pytest
 
 
-test_bb_1 = openmc.BoundingBox(
-    (np.array([-10.0, -20.0, -30.0]), np.array([1.0, 2.0, 3.0]))
-)
-test_bb_2 = openmc.BoundingBox(
-    (np.array([1.0, 2.0, 3.0]), np.array([11.0, 22.0, 33.0]))
-)
-test_bb_3 = openmc.BoundingBox(
-    (np.array([-10.0, -20.0, -30.0]), np.array([-1.0, -2.0, -3.0]))
-)
+test_bb_1 = openmc.BoundingBox((-10.0, -20.0, -30.0), (1.0, 2.0, 3.0))
+test_bb_2 = openmc.BoundingBox((1.0, 2.0, 3.0), (11.0, 22.0, 33.0))
+test_bb_3 = openmc.BoundingBox((-10.0, -20.0, -30.0), (-1.0, -2.0, -3.0))
 
 
 @pytest.mark.parametrize(
@@ -63,29 +57,21 @@ def test_bounding_box_center(bb, expected):
 
 
 def test_bounding_box_input_checking():
-    # checks that a list is not accepted instead of np.array
+    # checks that only passing lower_left is not accepted
     with pytest.raises(TypeError):
-        openmc.BoundingBox(([-10, -20, -30], [1, 2, 3]))
-    # checks that a list is not accepted instead of tuple
-    with pytest.raises(TypeError):
-        openmc.BoundingBox([np.array([-10, -20, -30]), np.array([1, 2, 3])])
-    # checks that a tuple with one entry is not accepted
-    with pytest.raises(TypeError):
-        openmc.BoundingBox((np.array([-10, -20, -30])))
+        openmc.BoundingBox((-10, -20, -3))
     # checks that a tuple with three entry is not accepted
-    with pytest.raises(ValueError):
-        openmc.BoundingBox(
-            (np.array([-1, -2, -3]), np.array([-1, -2, -3]), np.array([-1, -2, -3]))
-        )
+    with pytest.raises(TypeError):
+        openmc.BoundingBox((-1, -2, -3), (-1, -2, -3), (-1, -2, -3))
     # checks that a numpy array with two entries is not accepted
     with pytest.raises(ValueError):
-        openmc.BoundingBox((np.array([-10, -30]), np.array([1, 2, 3])))
+        openmc.BoundingBox(np.array([-10, -30]), np.array([1, 2, 3]))
     # checks that a numpy array with two entries is not accepted
     with pytest.raises(ValueError):
-        openmc.BoundingBox((np.array([-10, -20, -30]), np.array([1, 3])))
+        openmc.BoundingBox(np.array([-10, -20, -30]), np.array([1, 3]))
     # checks that a numpy array with four entries is not accepted
     with pytest.raises(ValueError):
-        openmc.BoundingBox((np.array([-10, -20, -3, -4]), np.array([1, 2, 3])))
+        openmc.BoundingBox(np.array([-10, -20, -3, -4]), np.array([1, 2, 3]))
     # checks that a numpy array with four entries is not accepted
     with pytest.raises(ValueError):
-        openmc.BoundingBox((np.array([-10, -20, -4]), np.array([1, 2, 3, 4])))
+        openmc.BoundingBox(np.array([-10, -20, -4]), np.array([1, 2, 3, 4]))

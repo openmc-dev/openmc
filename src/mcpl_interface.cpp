@@ -112,7 +112,7 @@ vector<SourceSite> mcpl_source_sites(std::string path)
 
 #ifdef OPENMC_MCPL
 void write_mcpl_source_bank(mcpl_outfile_t file_id,
-  gsl::span<SourceSite> source_bank, vector<int64_t> const& bank_index)
+  gsl::span<SourceSite> source_bank, const vector<int64_t>& bank_index)
 {
   int64_t dims_size = settings::n_particles;
   int64_t count_size = simulation::work_per_rank;
@@ -189,15 +189,15 @@ void write_mcpl_source_bank(mcpl_outfile_t file_id,
 //==============================================================================
 
 void write_mcpl_source_point(const char* filename,
-  gsl::span<SourceSite> source_bank, vector<int64_t> const& bank_index)
+  gsl::span<SourceSite> source_bank, const vector<int64_t>& bank_index)
 {
   std::string filename_(filename);
   const auto extension = get_file_extension(filename_);
   if (extension == "") {
     filename_.append(".mcpl");
   } else if (extension != "mcpl") {
-    fatal_error("write_mcpl_source_point was passed an incorrect file "
-                "extension. Must either pass nothing or .mcpl");
+    warning("write_mcpl_source_point was passed a file extension differing "
+            "from .mcpl, but an mcpl file will be written.");
   }
 
 #ifdef OPENMC_MCPL

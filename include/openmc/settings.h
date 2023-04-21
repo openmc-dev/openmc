@@ -87,9 +87,9 @@ extern int64_t
   max_particles_in_flight; //!< Max num. event-based particles in flight
 
 extern ElectronTreatment
-  electron_treatment;         //!< how to treat secondary electrons
+  electron_treatment; //!< how to treat secondary electrons
 extern array<double, 4>
-  energy_cutoff;              //!< Energy cutoff in [eV] for each particle type
+  energy_cutoff;      //!< Energy cutoff in [eV] for each particle type
 extern array<double, 4>
   time_cutoff;   //!< Time cutoff in [s] for each particle type
 extern int

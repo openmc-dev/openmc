@@ -59,25 +59,30 @@ def myprojectionplot():
 
     plot.overlap_color = (255, 211, 0)
     plot.overlap_color = 'yellow'
-    
+
     plot.wireframe_thickness = 2
 
     plot.level = 1
     return plot
 
+
 def test_attributes(myplot):
     assert myplot.name == 'myplot'
 
+
 def test_attributes_proj(myprojectionplot):
     assert myprojectionplot.name == 'myprojectionplot'
+
 
 def test_repr(myplot):
     r = repr(myplot)
     assert isinstance(r, str)
 
+
 def test_repr_proj(myprojectionplot):
     r = repr(myprojectionplot)
     assert isinstance(r, str)
+
 
 def test_from_geometry():
     width = 25.
@@ -155,8 +160,8 @@ def test_plots(run_in_tmpdir):
 
     # from_xml
     new_plots = openmc.Plots.from_xml()
-    assert len(plots)
-    assert plots[0].origin == p1.origin
-    assert plots[0].colors == p1.colors
-    assert plots[0].mask_components == p1.mask_components
-    assert plots[1].origin == p2.origin
+    assert len(new_plots)
+    assert new_plots[0].origin == p1.origin
+    assert new_plots[0].colors == p1.colors
+    assert new_plots[0].mask_components == p1.mask_components
+    assert new_plots[1].origin == p2.origin

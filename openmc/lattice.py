@@ -34,16 +34,16 @@ class Lattice(IDManagerMixin, ABC):
         Name of the lattice
     pitch : Iterable of float
         Pitch of the lattice in each direction in cm
-    outer : openmc.Universe
+    outer : openmc.UniverseBase
         A universe to fill all space outside the lattice
-    universes : Iterable of Iterable of openmc.Universe
+    universes : Iterable of Iterable of openmc.UniverseBase
         A two-or three-dimensional list/array of universes filling each element
         of the lattice
 
     """
 
     next_id = 1
-    used_ids = openmc.Universe.used_ids
+    used_ids = openmc.UniverseBase.used_ids
 
     def __init__(self, lattice_id=None, name=''):
         # Initialize Lattice class attributes
@@ -79,7 +79,7 @@ class Lattice(IDManagerMixin, ABC):
 
     @outer.setter
     def outer(self, outer):
-        cv.check_type('outer universe', outer, openmc.Universe)
+        cv.check_type('outer universe', outer, openmc.UniverseBase)
         self._outer = outer
 
     @staticmethod
@@ -92,7 +92,7 @@ class Lattice(IDManagerMixin, ABC):
             Group in HDF5 file
         universes : dict
             Dictionary mapping universe IDs to instances of
-            :class:`openmc.Universe`.
+            :class:`openmc.UniverseBase`.
 
         Returns
         -------
@@ -115,20 +115,20 @@ class Lattice(IDManagerMixin, ABC):
         -------
         universes : collections.OrderedDict
             Dictionary whose keys are universe IDs and values are
-            :class:`openmc.Universe` instances
+            :class:`openmc.UniverseBase` instances
 
         """
 
         univs = OrderedDict()
         for k in range(len(self._universes)):
             for j in range(len(self._universes[k])):
-                if isinstance(self._universes[k][j], openmc.Universe):
+                if isinstance(self._universes[k][j], openmc.UniverseBase):
                     u = self._universes[k][j]
                     univs[u._id] = u
                 else:
                     for i in range(len(self._universes[k][j])):
                         u = self._universes[k][j][i]
-                        assert isinstance(u, openmc.Universe)
+                        assert isinstance(u, openmc.UniverseBase)
                         univs[u._id] = u
 
         if self.outer is not None:
@@ -246,7 +246,7 @@ class Lattice(IDManagerMixin, ABC):
 
         Returns
         -------
-        openmc.Universe
+        openmc.UniverseBase
             Universe with given indices
 
         """
@@ -370,9 +370,9 @@ class RectLattice(Lattice):
     pitch : Iterable of float
         Pitch of the lattice in the x, y, and (if applicable) z directions in
         cm.
-    outer : openmc.Universe
+    outer : openmc.UniverseBase
         A universe to fill all space outside the lattice
-    universes : Iterable of Iterable of openmc.Universe
+    universes : Iterable of Iterable of openmc.UniverseBase
         A two- or three-dimensional list/array of universes filling each element
         of the lattice. The first dimension corresponds to the z-direction (if
         applicable), the second dimension corresponds to the y-direction, and
@@ -633,11 +633,11 @@ class RectLattice(Lattice):
 
         cv.check_value('strategy', strategy, ('degenerate', 'lns'))
         cv.check_type('universes_to_ignore', universes_to_ignore, Iterable,
-                      openmc.Universe)
+                      openmc.UniverseBase)
         cv.check_type('materials_to_clone', materials_to_clone, Iterable,
                       openmc.Material)
         cv.check_type('lattice_neighbors', lattice_neighbors, Iterable,
-                      openmc.Universe)
+                      openmc.UniverseBase)
         cv.check_value('number of lattice_neighbors', len(lattice_neighbors),
                        (0, 8))
         cv.check_type('key', key, types.FunctionType)
@@ -973,7 +973,7 @@ class RectLattice(Lattice):
             Group in HDF5 file
         universes : dict
             Dictionary mapping universe IDs to instances of
-            :class:`openmc.Universe`.
+            :class:`openmc.UniverseBase`.
 
         Returns
         -------
@@ -999,7 +999,7 @@ class RectLattice(Lattice):
             lattice.outer = universes[outer]
 
         # Build array of Universe pointers for the Lattice
-        uarray = np.empty(universe_ids.shape, dtype=openmc.Universe)
+        uarray = np.empty(universe_ids.shape, dtype=openmc.UniverseBase)
 
         for z in range(universe_ids.shape[0]):
             for y in range(universe_ids.shape[1]):
@@ -1054,9 +1054,9 @@ class HexLattice(Lattice):
         Pitch of the lattice in cm. The first item in the iterable specifies the
         pitch in the radial direction and, if the lattice is 3D, the second item
         in the iterable specifies the pitch in the axial direction.
-    outer : openmc.Universe
+    outer : openmc.UniverseBase
         A universe to fill all space outside the lattice
-    universes : Nested Iterable of openmc.Universe
+    universes : Nested Iterable of openmc.UniverseBase
         A two- or three-dimensional list/array of universes filling each element
         of the lattice. Each sub-list corresponds to one ring of universes and
         should be ordered from outermost ring to innermost ring. The universes
@@ -1173,7 +1173,7 @@ class HexLattice(Lattice):
 
     @property
     def ndim(self):
-        return 2 if isinstance(self.universes[0][0], openmc.Universe) else 3
+        return 2 if isinstance(self.universes[0][0], openmc.UniverseBase) else 3
 
     @center.setter
     def center(self, center):
@@ -1196,7 +1196,7 @@ class HexLattice(Lattice):
 
     @Lattice.universes.setter
     def universes(self, universes):
-        cv.check_iterable_type('lattice universes', universes, openmc.Universe,
+        cv.check_iterable_type('lattice universes', universes, openmc.UniverseBase,
                                min_depth=2, max_depth=3)
         self._universes = universes
 
@@ -2052,7 +2052,7 @@ class HexLattice(Lattice):
             Group in HDF5 file
         universes : dict
             Dictionary mapping universe IDs to instances of
-            :class:`openmc.Universe`.
+            :class:`openmc.UniverseBase`.
 
         Returns
         -------

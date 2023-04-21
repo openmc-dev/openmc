@@ -610,6 +610,11 @@ int maximum_levels(int32_t univ)
   return levels_below;
 }
 
+bool is_root_universe(int32_t univ_id)
+{
+  return model::universe_map[univ_id] == model::root_universe;
+}
+
 //==============================================================================
 
 void free_memory_geometry()

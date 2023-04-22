@@ -17,7 +17,8 @@ USE_MULTIPROCESSING = True
 NUM_PROCESSES = None
 
 
-def deplete(func, chain, x, rates, dt, matrix_func=None, transfer_rates=None):
+def deplete(func, chain, x, rates, dt, matrix_func=None, transfer_rates=None,
+            *matrix_args):
     """Deplete materials using given reaction rates for a specified time
 
     Parameters
@@ -43,6 +44,9 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, transfer_rates=None):
         Object to perform continuous reprocessing.
 
         .. versionadded:: 0.13.4
+    matrix_args: Any, optional
+        Additional arguments passed to matrix_func
+
     Returns
     -------
     x_result : list of numpy.ndarray
@@ -62,7 +66,8 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, transfer_rates=None):
     if matrix_func is None:
         matrices = map(chain.form_matrix, rates, fission_yields)
     else:
-        matrices = map(matrix_func, repeat(chain), rates, fission_yields)
+        matrices = map(matrix_func, repeat(chain), rates, fission_yields,
+                       *matrix_args)
 
     if transfer_rates is not None:
         # Calculate transfer rate terms as diagonal matrices

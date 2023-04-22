@@ -33,6 +33,17 @@ standard deviation.
   *Default*: false
 
 -------------------------------------
+``<create_delayed_neutrons>`` Element
+-------------------------------------
+
+The ``<create_delayed_neutrons>`` element indicates whether delayed neutrons
+are created in fission. If this element is set to "true", delayed neutrons
+will be created in fission events; otherwise only prompt neutrons will be
+created.
+
+  *Default*: true
+
+-------------------------------------
 ``<create_fission_neutrons>`` Element
 -------------------------------------
 
@@ -493,7 +504,10 @@ attributes/sub-elements:
       independent distributions of r-, cos_theta-, and phi-coordinates where
       cos_theta is the cosine of the angle with respect to the z-axis, phi is
       the azimuthal angle, and the sphere is centered on the coordinate
-      (x0,y0,z0).
+      (x0,y0,z0). A "mesh" spatial distribution samples source sites from a mesh element
+      based on the relative strengths provided in the node. Source locations
+      within an element are sampled isotropically. If no strengths are provided,
+      the space within the mesh is uniformly sampled.
 
       *Default*: None
 
@@ -732,6 +746,14 @@ attributes/sub-elements:
 
     *Default*: false
 
+  :mcpl:
+    If this element is set to "true", the source point file containing the
+    source bank will be written as an MCPL_ file name ``source.mcpl`` instead of
+    an HDF5 file. This option is only applicable if the ``<separate>`` element
+    is set to true.
+
+    *Default*: false
+
 ------------------------------
 ``<surf_source_read>`` Element
 ------------------------------
@@ -766,6 +788,16 @@ certain surfaces and write out the source bank in a separate file called
     processors.
 
     *Default*: None
+
+  :mcpl:
+    An optional boolean which indicates if the banked particles should be
+    written to a file in the MCPL_-format instead of the native HDF5-based
+    format. If activated the output file name is changed to
+    ``surface_source.mcpl``.
+
+    *Default*: false
+
+    .. _MCPL: https://mctools.github.io/mcpl/mcpl.pdf
 
 ------------------------------
 ``<survival_biasing>`` Element
@@ -832,7 +864,9 @@ cell, the nearest temperature at which cross sections are given is to be
 applied, within a given tolerance (see :ref:`temperature_tolerance`). A value of
 "interpolation" indicates that cross sections are to be linear-linear
 interpolated between temperatures at which nuclear data are present (see
-:ref:`temperature_treatment`).
+:ref:`temperature_treatment`). With the "interpolation" method, temperatures
+outside of the bounds of the nuclear data may be accepted, provided they still
+fall within the tolerance (see :ref:`temperature_tolerance`).
 
   *Default*: "nearest"
 
@@ -871,7 +905,12 @@ The ``<temperature_tolerance>`` element specifies a tolerance in Kelvin that is
 to be applied when the "nearest" temperature method is used. For example, if a
 cell temperature is 340 K and the tolerance is 15 K, then the closest
 temperature in the range of 325 K to 355 K will be used to evaluate cross
-sections.
+sections. If the ``<temperature_method>`` is "interpolation", the tolerance
+specified applies to cell temperatures outside of the data bounds. For example,
+if a cell is specified at 695K, a tolerance of 15K and data is only available
+at 700K and 1000K, the cell's cross sections will be evaluated at 700K, since
+the desired temperature of 695K is within the tolerance of the actual data
+despite not being bounded on both sides.
 
   *Default*: 10 K
 

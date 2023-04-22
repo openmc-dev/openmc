@@ -102,6 +102,8 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
+    shape : tuple
+        The shape of the filter
 
     """
 
@@ -205,6 +207,10 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
     def num_bins(self):
         return len(self.bins)
 
+    @property
+    def shape(self):
+        return (self.num_bins,)
+
     def check_bins(self, bins):
         """Make sure given bins are valid for this filter.
 
@@ -252,6 +258,8 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
 
         """
         filter_type = elem.get('type')
+        if filter_type is None:
+            filter_type = elem.find('type').text
 
         # If the filter type matches this class's short_name, then
         # there is no overridden from_xml_element method
@@ -533,7 +541,7 @@ class CellFromFilter(WithIDFilter):
     expected_type = Cell
 
 
-class CellbornFilter(WithIDFilter):
+class CellBornFilter(WithIDFilter):
     """Bins tally events based on which cell the particle was born in.
 
     Parameters
@@ -555,6 +563,14 @@ class CellbornFilter(WithIDFilter):
 
     """
     expected_type = Cell
+
+
+# Temporary alias for CellbornFilter
+def CellbornFilter(*args, **kwargs):
+    warnings.warn('The name of "CellbornFilter" has changed to '
+                  '"CellBornFilter". "CellbornFilter" will be '
+                  'removed in the future.', FutureWarning)
+    return CellBornFilter(*args, **kwargs)
 
 
 class CellInstanceFilter(Filter):
@@ -748,7 +764,7 @@ class ParticleFilter(Filter):
 
 
 class MeshFilter(Filter):
-    """Bins tally event locations onto a regular, rectangular mesh.
+    """Bins tally event locations by mesh elements.
 
     Parameters
     ----------
@@ -830,6 +846,12 @@ class MeshFilter(Filter):
                 self.bins = list(range(len(mesh.volumes)))
         else:
             self.bins = list(mesh.indices)
+
+    @property
+    def shape(self):
+        if isinstance(self, MeshSurfaceFilter):
+            return (self.num_bins,)
+        return self.mesh.dimension
 
     @property
     def translation(self):
@@ -939,7 +961,7 @@ class MeshFilter(Filter):
 
 
 class MeshSurfaceFilter(MeshFilter):
-    """Filter events by surface crossings on a regular, rectangular mesh.
+    """Filter events by surface crossings on a mesh.
 
     Parameters
     ----------
@@ -950,8 +972,6 @@ class MeshSurfaceFilter(MeshFilter):
 
     Attributes
     ----------
-    bins : Integral
-        The mesh ID
     mesh : openmc.MeshBase
         The mesh object that events will be tallied onto
     translation : Iterable of float
@@ -960,10 +980,8 @@ class MeshSurfaceFilter(MeshFilter):
     id : int
         Unique identifier for the filter
     bins : list of tuple
-
         A list of mesh indices / surfaces for each filter bin, e.g. [(1, 1,
         'x-min out'), (1, 1, 'x-min in'), ...]
-
     num_bins : Integral
         The number of filter bins
 
@@ -1323,6 +1341,38 @@ class EnergyFilter(RealFilter):
         for v0, v1 in bins:
             cv.check_greater_than('filter value', v0, 0., equality=True)
             cv.check_greater_than('filter value', v1, 0., equality=True)
+
+    def get_tabular(self, values, **kwargs):
+        """Create a tabulated distribution based on tally results with an energy filter
+
+        This method provides an easy way to create a distribution in energy
+        (e.g., a source spectrum) based on tally results that were obtained from
+        using an :class:`~openmc.EnergyFilter`.
+
+        .. versionadded:: 0.13.3
+
+        Parameters
+        ----------
+        values : iterable of float
+            Array of numeric values, typically from a tally result
+        **kwargs
+            Keyword arguments passed to :class:`openmc.stats.Tabular`
+
+        Returns
+        -------
+        openmc.stats.Tabular
+            Tabular distribution with histogram interpolation
+        """
+
+        probabilities = np.array(values, dtype=float)
+        probabilities /= probabilities.sum()
+
+        # Determine probability per eV, adding extra 0 at the end since it is a histogram
+        probability_per_ev = probabilities / np.diff(self.values)
+        probability_per_ev = np.append(probability_per_ev, 0.0)
+
+        kwargs.setdefault('interpolation', 'histogram')
+        return openmc.stats.Tabular(self.values, probability_per_ev, **kwargs)
 
     @property
     def lethargy_bin_width(self):
@@ -1695,7 +1745,7 @@ class DistribcellFilter(Filter):
         # Concatenate with DataFrame of distribcell instance IDs
         if level_df is not None:
             level_df = level_df.dropna(axis=1, how='all')
-            level_df = level_df.astype(np.int)
+            level_df = level_df.astype(int)
             df = pd.concat([level_df, df], axis=1)
 
         return df

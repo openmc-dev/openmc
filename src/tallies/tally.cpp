@@ -140,16 +140,18 @@ Tally::Tally(pugi::xml_node node)
       particle_filter_index = i_filter;
 
     // Change the tally estimator if a filter demands it
-    std::string filt_type = f->type();
-    if (filt_type == "energyout" || filt_type == "legendre") {
+    FilterType filt_type = f->type();
+    if (filt_type == FilterType::ENERGY_OUT ||
+        filt_type == FilterType::LEGENDRE) {
       estimator_ = TallyEstimator::ANALOG;
-    } else if (filt_type == "sphericalharmonics") {
+    } else if (filt_type == FilterType::SPHERICAL_HARMONICS) {
       auto sf = dynamic_cast<SphericalHarmonicsFilter*>(f);
       if (sf->cosine() == SphericalHarmonicsCosine::scatter) {
         estimator_ = TallyEstimator::ANALOG;
       }
-    } else if (filt_type == "spatiallegendre" || filt_type == "zernike" ||
-               filt_type == "zernikeradial") {
+    } else if (filt_type == FilterType::SPATIAL_LEGENDRE ||
+               filt_type == FilterType::ZERNIKE ||
+               filt_type == FilterType::ZERNIKE_RADIAL) {
       estimator_ = TallyEstimator::COLLISION;
     }
   }
@@ -717,6 +719,11 @@ void read_tallies_xml()
   doc.load_file(filename.c_str());
   pugi::xml_node root = doc.document_element();
 
+  read_tallies_xml(root);
+}
+
+void read_tallies_xml(pugi::xml_node root)
+{
   // Check for <assume_separate> setting
   if (check_for_node(root, "assume_separate")) {
     settings::assume_separate = get_node_value_bool(root, "assume_separate");

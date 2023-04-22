@@ -28,6 +28,7 @@ extern bool check_overlaps;       //!< check overlaps in geometry?
 extern bool confidence_intervals; //!< use confidence intervals for results?
 extern bool
   create_fission_neutrons; //!< create fission neutrons (fixed source)?
+extern bool create_delayed_neutrons; //!< create delayed fission neutrons?
 extern "C" bool cmfd_run;  //!< is a CMFD run?
 extern bool
   delayed_photon_scaling;   //!< Scale fission photon yield to include delayed
@@ -47,7 +48,9 @@ extern "C" bool run_CE;            //!< run with continuous-energy data?
 extern bool source_latest;         //!< write latest source at each batch?
 extern bool source_separate;       //!< write source to separate file?
 extern bool source_write;          //!< write source in HDF5 files?
+extern bool source_mcpl_write;     //!< write source in mcpl files?
 extern bool surf_source_write;     //!< write surface source file?
+extern bool surf_mcpl_write;       //!< write surface mcpl file?
 extern bool surf_source_read;      //!< read surface source file?
 extern bool survival_biasing;      //!< use survival biasing?
 extern bool temperature_multipole; //!< use multipole data?
@@ -65,7 +68,12 @@ extern std::string path_input;  //!< directory where main .xml files resides
 extern std::string path_output; //!< directory where output files are written
 extern std::string path_particle_restart; //!< path to a particle restart file
 extern std::string path_sourcepoint;      //!< path to a source file
-extern "C" std::string path_statepoint;   //!< path to a statepoint file
+extern std::string path_statepoint;       //!< path to a statepoint file
+
+// This is required because the c_str() may not be the first thing in
+// std::string. Sometimes it is, but it seems libc++ may not be like that
+// on some computers, like the intel Mac.
+extern "C" const char* path_statepoint_c; //!< C pointer to statepoint file name
 
 extern "C" int32_t n_inactive;         //!< number of inactive batches
 extern "C" int32_t max_lost_particles; //!< maximum number of lost particles
@@ -127,8 +135,11 @@ extern double weight_survive;      //!< Survival weight after Russian roulette
 //==============================================================================
 
 //! Read settings from XML file
-//! \param[in] root XML node for <settings>
 void read_settings_xml();
+
+//! Read settings from XML node
+//! \param[in] root XML node for <settings>
+void read_settings_xml(pugi::xml_node root);
 
 void free_memory_settings();
 

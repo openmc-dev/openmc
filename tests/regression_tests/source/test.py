@@ -7,12 +7,12 @@ from tests.testing_harness import PyAPITestHarness
 
 
 class SourceTestHarness(PyAPITestHarness):
-    def _build_inputs(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         mat1 = openmc.Material(material_id=1, temperature=294)
         mat1.set_density('g/cm3', 4.5)
         mat1.add_nuclide(openmc.Nuclide('U235'), 1.0)
-        materials = openmc.Materials([mat1])
-        materials.export_to_xml()
+        self._model.materials = openmc.Materials([mat1])
 
         sphere = openmc.Sphere(surface_id=1, r=10.0, boundary_type='vacuum')
         inside_sphere = openmc.Cell(cell_id=1)
@@ -21,9 +21,7 @@ class SourceTestHarness(PyAPITestHarness):
 
         root = openmc.Universe(universe_id=0)
         root.add_cell(inside_sphere)
-        geometry = openmc.Geometry()
-        geometry.root_universe = root
-        geometry.export_to_xml()
+        self._model.geometry = openmc.Geometry(root)
 
         # Create an array of different sources
         x_dist = openmc.stats.Uniform(-3., 3.)
@@ -39,15 +37,15 @@ class SourceTestHarness(PyAPITestHarness):
         spatial2 = openmc.stats.Box([-4., -4., -4.], [4., 4., 4.])
         spatial3 = openmc.stats.Point([1.2, -2.3, 0.781])
         spatial4 = openmc.stats.SphericalIndependent(r_dist, cos_theta_dist,
-                                                     phi_dist, 
+                                                     phi_dist,
                                                      origin=(1., 1., 0.))
-        spatial5 = openmc.stats.CylindricalIndependent(r_dist, phi_dist, 
+        spatial5 = openmc.stats.CylindricalIndependent(r_dist, phi_dist,
                                                        z_dist,
                                                        origin=(1., 1., 0.))
         spatial6 = openmc.stats.SphericalIndependent(r_dist2, cos_theta_dist,
-                                                     phi_dist, 
+                                                     phi_dist,
                                                      origin=(1., 1., 0.))
-        spatial7 = openmc.stats.CylindricalIndependent(r_dist1, phi_dist, 
+        spatial7 = openmc.stats.CylindricalIndependent(r_dist1, phi_dist,
                                                        z_dist,
                                                        origin=(1., 1., 0.))
 
@@ -57,7 +55,10 @@ class SourceTestHarness(PyAPITestHarness):
         angle2 = openmc.stats.Monodirectional(reference_uvw=[0., 1., 0.])
         angle3 = openmc.stats.Isotropic()
 
-        E = np.logspace(0, 7)
+        # Note that the definition for E is equivalent to logspace(0, 7) but we
+        # manually take powers because of last-digit differences that may cause
+        # test failures with different versions of numpy
+        E = np.array([10**x for x in np.linspace(0, 7)])
         p = np.sin(np.linspace(0., pi))
         p /= sum(np.diff(E)*p[:-1])
         energy1 = openmc.stats.Maxwell(1.2895e6)
@@ -81,9 +82,9 @@ class SourceTestHarness(PyAPITestHarness):
         settings.inactive = 5
         settings.particles = 1000
         settings.source = [source1, source2, source3, source4, source5, source6, source7, source8]
-        settings.export_to_xml()
+        self._model.settings = settings
 
 
 def test_source():
-    harness = SourceTestHarness('statepoint.10.h5')
+    harness = SourceTestHarness('statepoint.10.h5', model=openmc.Model())
     harness.main()

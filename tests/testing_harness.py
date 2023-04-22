@@ -1,6 +1,8 @@
 from difflib import unified_diff
+from subprocess import check_call
 import filecmp
 import glob
+import h5py
 import hashlib
 import os
 import shutil
@@ -276,6 +278,13 @@ class ParticleRestartTestHarness(TestHarness):
 
         return outstr
 
+    def _cleanup(self):
+        """Delete particle restart files."""
+        super()._cleanup()
+        output = glob.glob('particle*.h5')
+        for f in output:
+            os.remove(f)
+
 
 class PyAPITestHarness(TestHarness):
     def __init__(self, statepoint_name, model=None, inputs_true=None):
@@ -329,12 +338,11 @@ class PyAPITestHarness(TestHarness):
 
     def _build_inputs(self):
         """Write input XML files."""
-        self._model.export_to_xml()
+        self._model.export_to_model_xml()
 
     def _get_inputs(self):
         """Return a hash digest of the input XML files."""
-        xmls = ['geometry.xml', 'materials.xml', 'settings.xml',
-                'tallies.xml', 'plots.xml']
+        xmls = ['model.xml', 'plots.xml']
         return ''.join([open(fname).read() for fname in xmls
                         if os.path.exists(fname)])
 
@@ -364,7 +372,7 @@ class PyAPITestHarness(TestHarness):
         """Delete XMLs, statepoints, tally, and test files."""
         super()._cleanup()
         output = ['materials.xml', 'geometry.xml', 'settings.xml',
-                  'tallies.xml', 'plots.xml', 'inputs_test.dat']
+                  'tallies.xml', 'plots.xml', 'inputs_test.dat', 'model.xml']
         for f in output:
             if os.path.exists(f):
                 os.remove(f)
@@ -374,3 +382,55 @@ class HashedPyAPITestHarness(PyAPITestHarness):
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
         return super()._get_results(True)
+
+
+class PlotTestHarness(TestHarness):
+    """Specialized TestHarness for running OpenMC plotting tests."""
+    def __init__(self, plot_names, voxel_convert_checks=[]):
+        super().__init__(None)
+        self._plot_names = plot_names
+        self._voxel_convert_checks = voxel_convert_checks
+
+    def _run_openmc(self):
+        openmc.plot_geometry(openmc_exec=config['exe'])
+
+        # Check that voxel h5 can be converted to vtk
+        for voxel_h5_filename in self._voxel_convert_checks:
+            check_call(['../../../scripts/openmc-voxel-to-vtk'] +
+                       glob.glob(voxel_h5_filename))
+
+    def _test_output_created(self):
+        """Make sure *.png has been created."""
+        for fname in self._plot_names:
+            assert os.path.exists(fname), 'Plot output file does not exist.'
+
+    def _cleanup(self):
+        super()._cleanup()
+        for fname in self._plot_names:
+            if os.path.exists(fname):
+                os.remove(fname)
+
+    def _get_results(self):
+        """Return a string hash of the plot files."""
+        outstr = bytes()
+
+        for fname in self._plot_names:
+            if fname.endswith('.png'):
+                # Add PNG output to results
+                with open(fname, 'rb') as fh:
+                    outstr += fh.read()
+            elif fname.endswith('.h5'):
+                # Add voxel data to results
+                with h5py.File(fname, 'r') as fh:
+                    outstr += fh.attrs['filetype']
+                    outstr += fh.attrs['num_voxels'].tobytes()
+                    outstr += fh.attrs['lower_left'].tobytes()
+                    outstr += fh.attrs['voxel_width'].tobytes()
+                    outstr += fh['data'][()].tobytes()
+
+        # Hash the information and return.
+        sha512 = hashlib.sha512()
+        sha512.update(outstr)
+        outstr = sha512.hexdigest()
+
+        return outstr

@@ -195,6 +195,36 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
   }
 }
 
+Position UnstructuredMesh::sample_tet(
+  std::array<Position, 4> coords, uint64_t* seed) const
+{
+  // Uniform distribution
+  double s = prn(seed);
+  double t = prn(seed);
+  double u = prn(seed);
+
+  // From PyNE implementation of moab tet sampling C. Rocchini & P. Cignoni
+  // (2000) Generating Random Points in a Tetrahedron, Journal of Graphics
+  // Tools, 5:4, 9-12, DOI: 10.1080/10867651.2000.10487528
+  if (s + t > 1) {
+    s = 1.0 - s;
+    t = 1.0 - t;
+  }
+  if (s + t + u > 1) {
+    if (t + u > 1) {
+      double old_t = t;
+      t = 1.0 - u;
+      u = 1.0 - s - old_t;
+    } else if (t + u <= 1) {
+      double old_s = s;
+      s = 1.0 - t - u;
+      u = old_s + t + u - 1;
+    }
+  }
+  return s * (coords[1] - coords[0]) + t * (coords[2] - coords[0]) +
+         u * (coords[3] - coords[0]) + coords[0];
+}
+
 const std::string UnstructuredMesh::mesh_type = "unstructured";
 
 std::string UnstructuredMesh::get_mesh_type() const
@@ -236,8 +266,8 @@ void UnstructuredMesh::to_hdf5(hid_t group) const
 
   // write element types and connectivity
   vector<double> volumes;
-  xt::xtensor<int, 2> connectivity ({static_cast<size_t>(this->n_bins()), 8});
-  xt::xtensor<int, 2> elem_types ({static_cast<size_t>(this->n_bins()), 1});
+  xt::xtensor<int, 2> connectivity({static_cast<size_t>(this->n_bins()), 8});
+  xt::xtensor<int, 2> elem_types({static_cast<size_t>(this->n_bins()), 1});
   for (int i = 0; i < this->n_bins(); i++) {
     auto conn = this->connectivity(i);
 
@@ -245,17 +275,20 @@ void UnstructuredMesh::to_hdf5(hid_t group) const
 
     // write linear tet element
     if (conn.size() == 4) {
-      xt::view(elem_types, i, xt::all()) = static_cast<int>(ElementType::LINEAR_TET);
-      xt::view(connectivity, i, xt::all()) = xt::xarray<int>({conn[0], conn[1], conn[2], conn[3],
-                                                              -1, -1, -1, -1});
-    // write linear hex element
+      xt::view(elem_types, i, xt::all()) =
+        static_cast<int>(ElementType::LINEAR_TET);
+      xt::view(connectivity, i, xt::all()) =
+        xt::xarray<int>({conn[0], conn[1], conn[2], conn[3], -1, -1, -1, -1});
+      // write linear hex element
     } else if (conn.size() == 8) {
-      xt::view(elem_types, i, xt::all()) = static_cast<int>(ElementType::LINEAR_HEX);
-      xt::view(connectivity, i, xt::all()) = xt::xarray<int>({conn[0], conn[1], conn[2], conn[3],
-                                                              conn[4], conn[5], conn[6], conn[7]});
+      xt::view(elem_types, i, xt::all()) =
+        static_cast<int>(ElementType::LINEAR_HEX);
+      xt::view(connectivity, i, xt::all()) = xt::xarray<int>({conn[0], conn[1],
+        conn[2], conn[3], conn[4], conn[5], conn[6], conn[7]});
     } else {
       num_elem_skipped++;
-      xt::view(elem_types, i, xt::all()) = static_cast<int>(ElementType::UNSUPPORTED);
+      xt::view(elem_types, i, xt::all()) =
+        static_cast<int>(ElementType::UNSUPPORTED);
       xt::view(connectivity, i, xt::all()) = -1;
     }
   }
@@ -281,6 +314,18 @@ void UnstructuredMesh::set_length_multiplier(double length_multiplier)
 
   if (length_multiplier_ != 1.0)
     specified_length_multiplier_ = true;
+}
+
+ElementType UnstructuredMesh::element_type(int bin) const
+{
+  auto conn = connectivity(bin);
+
+  if (conn.size() == 4)
+    return ElementType::LINEAR_TET;
+  else if (conn.size() == 8)
+    return ElementType::LINEAR_HEX;
+  else
+    return ElementType::UNSUPPORTED;
 }
 
 StructuredMesh::MeshIndex StructuredMesh::get_indices(
@@ -325,6 +370,16 @@ StructuredMesh::MeshIndex StructuredMesh::get_indices_from_bin(int bin) const
     ijk[2] = bin / (shape_[0] * shape_[1]) + 1;
   }
   return ijk;
+}
+
+Position StructuredMesh::sample(uint64_t* seed, int32_t bin) const
+{
+  fatal_error("Position sampling on structured meshes is not yet implemented");
+}
+
+double StructuredMesh::volume(int bin) const
+{
+  fatal_error("Unable to get volume of structured mesh, not yet implemented");
 }
 
 int StructuredMesh::get_bin(Position r) const
@@ -412,7 +467,6 @@ template<class T>
 void StructuredMesh::raytrace_mesh(
   Position r0, Position r1, const Direction& u, T tally) const
 {
-
   // TODO: when c++-17 is available, use "if constexpr ()" to compile-time
   // enable/disable tally calls for now, T template type needs to provide both
   // surface and track methods, which might be empty. modern optimizing
@@ -444,6 +498,12 @@ void StructuredMesh::raytrace_mesh(
     }
     return;
   }
+
+  // translate start and end positions,
+  // this needs to come after the get_indices call because it does its own
+  // translation
+  local_coords(r0);
+  local_coords(r1);
 
   // Calculate initial distances to next surfaces in all three dimensions
   std::array<MeshDistance, 3> distances;
@@ -948,13 +1008,15 @@ void RectilinearMesh::to_hdf5(hid_t group) const
 // CylindricalMesh implementation
 //==============================================================================
 
-CylindricalMesh::CylindricalMesh(pugi::xml_node node) : StructuredMesh {node}
+CylindricalMesh::CylindricalMesh(pugi::xml_node node)
+  : PeriodicStructuredMesh {node}
 {
   n_dimension_ = 3;
 
   grid_[0] = get_node_array<double>(node, "r_grid");
   grid_[1] = get_node_array<double>(node, "phi_grid");
   grid_[2] = get_node_array<double>(node, "z_grid");
+  origin_ = get_node_position(node, "origin");
 
   if (int err = set_grid()) {
     fatal_error(openmc_err_msg);
@@ -971,10 +1033,12 @@ std::string CylindricalMesh::get_mesh_type() const
 StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
-  Position mapped_r;
+  local_coords(r);
 
+  Position mapped_r;
   mapped_r[0] = std::hypot(r.x, r.y);
   mapped_r[2] = r[2];
+
   if (mapped_r[0] < FP_PRECISION) {
     mapped_r[1] = 0.0;
   } else {
@@ -1002,6 +1066,9 @@ double CylindricalMesh::find_r_crossing(
   // s^2 * (u^2 + v^2) + 2*s*(u*x+v*y) + x^2+y^2-r0^2 = 0
 
   const double r0 = grid_[0][shell];
+  if (r0 == 0.0)
+    return INFTY;
+
   const double denominator = u.x * u.x + u.y * u.y;
 
   // Direction of flight is in z-direction. Will never intersect r.
@@ -1012,7 +1079,8 @@ double CylindricalMesh::find_r_crossing(
   const double inv_denominator = 1.0 / denominator;
 
   const double p = (u.x * r.x + u.y * r.y) * inv_denominator;
-  double D = p * p + (r0 * r0 - r.x * r.x - r.y * r.y) * inv_denominator;
+  double c = r.x * r.x + r.y * r.y - r0 * r0;
+  double D = p * p - c * inv_denominator;
 
   if (D < 0.0)
     return INFTY;
@@ -1020,6 +1088,9 @@ double CylindricalMesh::find_r_crossing(
   D = std::sqrt(D);
 
   // the solution -p - D is always smaller as -p + D : Check this one first
+  if (std::abs(c) <= RADIAL_MESH_TOL)
+    return INFTY;
+
   if (-p - D > l)
     return -p - D;
   if (-p + D > l)
@@ -1086,22 +1157,23 @@ StructuredMesh::MeshDistance CylindricalMesh::distance_to_grid_boundary(
   const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
   double l) const
 {
+  Position r = r0 - origin_;
 
   if (i == 0) {
 
     return std::min(
-      MeshDistance(ijk[i] + 1, true, find_r_crossing(r0, u, l, ijk[i])),
-      MeshDistance(ijk[i] - 1, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
+      MeshDistance(ijk[i] + 1, true, find_r_crossing(r, u, l, ijk[i])),
+      MeshDistance(ijk[i] - 1, false, find_r_crossing(r, u, l, ijk[i] - 1)));
 
   } else if (i == 1) {
 
     return std::min(MeshDistance(sanitize_phi(ijk[i] + 1), true,
-                      find_phi_crossing(r0, u, l, ijk[i])),
+                      find_phi_crossing(r, u, l, ijk[i])),
       MeshDistance(sanitize_phi(ijk[i] - 1), false,
-        find_phi_crossing(r0, u, l, ijk[i] - 1)));
+        find_phi_crossing(r, u, l, ijk[i] - 1)));
 
   } else {
-    return find_z_crossing(r0, u, l, ijk[i]);
+    return find_z_crossing(r, u, l, ijk[i]);
   }
 }
 
@@ -1172,6 +1244,7 @@ void CylindricalMesh::to_hdf5(hid_t group) const
   write_dataset(mesh_group, "r_grid", grid_[0]);
   write_dataset(mesh_group, "phi_grid", grid_[1]);
   write_dataset(mesh_group, "z_grid", grid_[2]);
+  write_dataset(mesh_group, "origin", origin_);
 
   close_group(mesh_group);
 }
@@ -1180,13 +1253,15 @@ void CylindricalMesh::to_hdf5(hid_t group) const
 // SphericalMesh implementation
 //==============================================================================
 
-SphericalMesh::SphericalMesh(pugi::xml_node node) : StructuredMesh {node}
+SphericalMesh::SphericalMesh(pugi::xml_node node)
+  : PeriodicStructuredMesh {node}
 {
   n_dimension_ = 3;
 
   grid_[0] = get_node_array<double>(node, "r_grid");
   grid_[1] = get_node_array<double>(node, "theta_grid");
   grid_[2] = get_node_array<double>(node, "phi_grid");
+  origin_ = get_node_position(node, "origin");
 
   if (int err = set_grid()) {
     fatal_error(openmc_err_msg);
@@ -1203,9 +1278,11 @@ std::string SphericalMesh::get_mesh_type() const
 StructuredMesh::MeshIndex SphericalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
-  Position mapped_r;
+  local_coords(r);
 
+  Position mapped_r;
   mapped_r[0] = r.norm();
+
   if (mapped_r[0] < FP_PRECISION) {
     mapped_r[1] = 0.0;
     mapped_r[2] = 0.0;
@@ -1233,8 +1310,14 @@ double SphericalMesh::find_r_crossing(
   // solve |r+s*u| = r0
   // |r+s*u| = |r| + 2*s*r*u + s^2 (|u|==1 !)
   const double r0 = grid_[0][shell];
+  if (r0 == 0.0)
+    return INFTY;
   const double p = r.dot(u);
-  double D = p * p - r.dot(r) + r0 * r0;
+  double c = r.dot(r) - r0 * r0;
+  double D = p * p - c;
+
+  if (std::abs(c) <= RADIAL_MESH_TOL)
+    return INFTY;
 
   if (D >= 0.0) {
     D = std::sqrt(D);
@@ -1435,6 +1518,7 @@ void SphericalMesh::to_hdf5(hid_t group) const
   write_dataset(mesh_group, "r_grid", grid_[0]);
   write_dataset(mesh_group, "theta_grid", grid_[1]);
   write_dataset(mesh_group, "phi_grid", grid_[2]);
+  write_dataset(mesh_group, "origin", origin_);
 
   close_group(mesh_group);
 }
@@ -1819,7 +1903,6 @@ void MOABMesh::initialize()
     fatal_error("Failed to get all vertex handles");
   }
 
-
   // make an entity set for all tetrahedra
   // this is used for convenience later in output
   rval = mbi_->create_meshset(moab::MESHSET_SET, tetset_);
@@ -2049,6 +2132,35 @@ std::string MOABMesh::library() const
   return mesh_lib_type;
 }
 
+// Sample position within a tet for MOAB type tets
+Position MOABMesh::sample(uint64_t* seed, int32_t bin) const
+{
+
+  moab::EntityHandle tet_ent = get_ent_handle_from_bin(bin);
+
+  // Get vertex coordinates for MOAB tet
+  const moab::EntityHandle* conn1;
+  int conn1_size;
+  moab::ErrorCode rval = mbi_->get_connectivity(tet_ent, conn1, conn1_size);
+  if (rval != moab::MB_SUCCESS || conn1_size != 4) {
+    fatal_error(fmt::format(
+      "Failed to get tet connectivity or connectivity size ({}) is invalid.",
+      conn1_size));
+  }
+  moab::CartVect p[4];
+  rval = mbi_->get_coords(conn1, conn1_size, p[0].array());
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to get tet coords");
+  }
+
+  std::array<Position, 4> tet_verts;
+  for (int i = 0; i < 4; i++) {
+    tet_verts[i] = {p[i][0], p[i][1], p[i][2]};
+  }
+  // Samples position within tet using Barycentric stuff
+  return this->sample_tet(tet_verts, seed);
+}
+
 double MOABMesh::tet_volume(moab::EntityHandle tet) const
 {
   vector<moab::EntityHandle> conn;
@@ -2169,10 +2281,12 @@ std::pair<vector<double>, vector<double>> MOABMesh::plot(
   return {};
 }
 
-int MOABMesh::get_vert_idx_from_handle(moab::EntityHandle vert) const {
+int MOABMesh::get_vert_idx_from_handle(moab::EntityHandle vert) const
+{
   int idx = vert - verts_[0];
   if (idx >= n_vertices()) {
-    fatal_error(fmt::format("Invalid vertex idx {} (# vertices {})", idx, n_vertices()));
+    fatal_error(
+      fmt::format("Invalid vertex idx {} (# vertices {})", idx, n_vertices()));
   }
   return idx;
 }
@@ -2244,11 +2358,13 @@ Position MOABMesh::centroid(int bin) const
   return {centroid[0], centroid[1], centroid[2]};
 }
 
-int MOABMesh::n_vertices() const {
+int MOABMesh::n_vertices() const
+{
   return verts_.size();
 }
 
-Position MOABMesh::vertex(int id) const {
+Position MOABMesh::vertex(int id) const
+{
 
   moab::ErrorCode rval;
 
@@ -2263,7 +2379,8 @@ Position MOABMesh::vertex(int id) const {
   return {coords[0], coords[1], coords[2]};
 }
 
-std::vector<int> MOABMesh::connectivity(int bin) const {
+std::vector<int> MOABMesh::connectivity(int bin) const
+{
   moab::ErrorCode rval;
 
   auto tet = get_ent_handle_from_bin(bin);
@@ -2417,14 +2534,15 @@ const std::string LibMesh::mesh_lib_type = "libmesh";
 
 LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node)
 {
-  // filename_ and length_multiplier_ will already be set by the UnstructuredMesh constructor
+  // filename_ and length_multiplier_ will already be set by the
+  // UnstructuredMesh constructor
   set_mesh_pointer_from_filename(filename_);
   set_length_multiplier(length_multiplier_);
   initialize();
 }
 
 // create the mesh from a pointer to a libMesh Mesh
-LibMesh::LibMesh(libMesh::MeshBase & input_mesh, double length_multiplier)
+LibMesh::LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier)
 {
   m_ = &input_mesh;
   set_length_multiplier(length_multiplier);
@@ -2499,6 +2617,20 @@ void LibMesh::initialize()
 
   // bounding box for the mesh for quick rejection checks
   bbox_ = libMesh::MeshTools::create_bounding_box(*m_);
+}
+
+// Sample position within a tet for LibMesh type tets
+Position LibMesh::sample(uint64_t* seed, int32_t bin) const
+{
+  const auto& elem = get_element_from_bin(bin);
+  // Get tet vertex coordinates from LibMesh
+  std::array<Position, 4> tet_verts;
+  for (int i = 0; i < elem.n_nodes(); i++) {
+    auto node_ref = elem.node_ref(i);
+    tet_verts[i] = {node_ref(0), node_ref(1), node_ref(2)};
+  }
+  // Samples position within tet using Barycentric coordinates
+  return this->sample_tet(tet_verts, seed);
 }
 
 Position LibMesh::centroid(int bin) const
@@ -2682,7 +2814,7 @@ const libMesh::Elem& LibMesh::get_element_from_bin(int bin) const
 
 double LibMesh::volume(int bin) const
 {
-  return m_->elem_ref(bin).volume();
+  return this->get_element_from_bin(bin).volume();
 }
 
 #endif // LIBMESH

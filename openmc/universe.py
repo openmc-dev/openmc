@@ -1,3 +1,4 @@
+import typing
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from collections.abc import Iterable
@@ -6,6 +7,7 @@ from numbers import Integral, Real
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from xml.etree import ElementTree as ET
+from warnings import warn
 
 import h5py
 import numpy as np
@@ -87,9 +89,27 @@ class UniverseBase(ABC, IDManagerMixin):
                 self._volume = volume_calc.volumes[self.id].n
                 self._atoms = volume_calc.atoms[self.id]
             else:
-                raise ValueError('No volume information found for this universe.')
+                raise ValueError(
+                    'No volume information found for this universe.')
         else:
             raise ValueError('No volume information found for this universe.')
+
+    def get_all_universes(self):
+        """Return all universes that are contained within this one.
+
+        Returns
+        -------
+        universes : collections.OrderedDict
+            Dictionary whose keys are universe IDs and values are
+            :class:`Universe` instances
+
+        """
+        # Append all Universes within each Cell to the dictionary
+        universes = OrderedDict()
+        for cell in self.get_all_cells().values():
+            universes.update(cell.get_all_universes())
+
+        return universes
 
     @abstractmethod
     def create_xml_subelement(self, xml_element, memo=None):
@@ -108,6 +128,13 @@ class UniverseBase(ABC, IDManagerMixin):
         Returns
         -------
         None
+
+        """
+
+    @abstractmethod
+    def _partial_deepcopy(self):
+        """Deepcopy all parameters of an openmc.UniverseBase object except its cells.
+        This should only be used from the openmc.UniverseBase.clone() context.
 
         """
 
@@ -138,14 +165,13 @@ class UniverseBase(ABC, IDManagerMixin):
 
         # If no memoize'd clone exists, instantiate one
         if self not in memo:
-            clone = deepcopy(self)
-            clone.id = None
+            clone = self._partial_deepcopy()
 
             # Clone all cells for the universe clone
             clone._cells = OrderedDict()
             for cell in self._cells.values():
                 clone.add_cell(cell.clone(clone_materials, clone_regions,
-                     memo))
+                                          memo))
 
             # Memoize the clone
             memo[self] = clone
@@ -270,9 +296,15 @@ class Universe(UniverseBase):
                     return [self, cell] + cell.fill.find(p)
         return []
 
+    # default kwargs that are passed to plt.legend in the plot method below.
+    _default_legend_kwargs = {'bbox_to_anchor': (
+        1.05, 1), 'loc': 2, 'borderaxespad': 0.0}
+
     def plot(self, origin=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
              basis='xy', color_by='cell', colors=None, seed=None,
-             openmc_exec='openmc', axes=None, **kwargs):
+             openmc_exec='openmc', axes=None, legend=False,
+             legend_kwargs=_default_legend_kwargs, outline=False,
+             **kwargs):
         """Display a slice plot of the universe.
 
         Parameters
@@ -306,6 +338,18 @@ class Universe(UniverseBase):
             Axes to draw to
 
             .. versionadded:: 0.13.1
+        legend : bool
+            Whether a legend showing material or cell names should be drawn
+
+            .. versionadded:: 0.13.4
+        legend_kwargs : dict
+            Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
+
+            .. versionadded:: 0.13.4
+        outline : bool
+            Whether outlines between color boundaries should be drawn
+
+            .. versionadded:: 0.13.4
         **kwargs
             Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 
@@ -316,15 +360,19 @@ class Universe(UniverseBase):
 
         """
         import matplotlib.image as mpimg
+        import matplotlib.patches as mpatches
         import matplotlib.pyplot as plt
 
         # Determine extents of plot
         if basis == 'xy':
             x, y = 0, 1
+            xlabel, ylabel = 'x [cm]', 'y [cm]'
         elif basis == 'yz':
             x, y = 1, 2
+            xlabel, ylabel = 'y [cm]', 'z [cm]'
         elif basis == 'xz':
             x, y = 0, 2
+            xlabel, ylabel = 'x [cm]', 'z [cm]'
         x_min = origin[x] - 0.5*width[0]
         x_max = origin[x] + 0.5*width[0]
         y_min = origin[y] - 0.5*width[1]
@@ -361,17 +409,63 @@ class Universe(UniverseBase):
             img_path = Path(tmpdir) / f'plot_{plot.id}.png'
             if not img_path.is_file():
                 img_path = img_path.with_suffix('.ppm')
-            img = mpimg.imread(img_path)
+            img = mpimg.imread(str(img_path))
 
             # Create a figure sized such that the size of the axes within
             # exactly matches the number of pixels specified
             if axes is None:
                 px = 1/plt.rcParams['figure.dpi']
                 fig, axes = plt.subplots()
+                axes.set_xlabel(xlabel)
+                axes.set_ylabel(ylabel)
                 params = fig.subplotpars
                 width = pixels[0]*px/(params.right - params.left)
                 height = pixels[0]*px/(params.top - params.bottom)
                 fig.set_size_inches(width, height)
+
+            if outline:
+                # Combine R, G, B values into a single int
+                rgb = (img * 256).astype(int)
+                image_value = (rgb[..., 0] << 16) + (rgb[..., 1] << 8) + (rgb[..., 2])
+
+                axes.contour(
+                    image_value,
+                    origin="upper",
+                    colors="k",
+                    linestyles="solid",
+                    linewidths=1,
+                    levels=np.unique(image_value),
+                    extent=(x_min, x_max, y_min, y_max),
+                )
+
+            # add legend showing which colors represent which material
+            # or cell if that was requested
+            if legend:
+                if plot.colors is None:
+                    raise ValueError("Must pass 'colors' dictionary if you "
+                                     "are adding a legend via legend=True.")
+
+                if color_by == "cell":
+                    expected_key_type = openmc.Cell
+                else:
+                    expected_key_type = openmc.Material
+
+                patches = []
+                for key, color in plot.colors.items():
+
+                    if isinstance(key, int):
+                        raise TypeError(
+                            "Cannot use IDs in colors dict for auto legend.")
+                    elif not isinstance(key, expected_key_type):
+                        raise TypeError(
+                            "Color dict key type does not match color_by")
+
+                    # this works whether we're doing cells or materials
+                    label = key.name if key.name != '' else key.id
+                    key_patch = mpatches.Patch(color=color, label=label)
+                    patches.append(key_patch)
+
+                axes.legend(handles=patches, **legend_kwargs)
 
             # Plot image and return the axes
             return axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
@@ -469,7 +563,7 @@ class Universe(UniverseBase):
         """
         nuclides = OrderedDict()
 
-        if self._atoms is not None:
+        if self._atoms:
             volume = self.volume
             for name, atoms in self._atoms.items():
                 nuclide = openmc.Nuclide(name)
@@ -532,23 +626,6 @@ class Universe(UniverseBase):
 
         return materials
 
-    def get_all_universes(self):
-        """Return all universes that are contained within this one.
-
-        Returns
-        -------
-        universes : collections.OrderedDict
-            Dictionary whose keys are universe IDs and values are
-            :class:`Universe` instances
-
-        """
-        # Append all Universes within each Cell to the dictionary
-        universes = OrderedDict()
-        for cell in self.get_all_cells().values():
-            universes.update(cell.get_all_universes())
-
-        return universes
-
     def create_xml_subelement(self, xml_element, memo=None):
         # Iterate over all Cells
         for cell in self._cells.values():
@@ -610,6 +687,15 @@ class Universe(UniverseBase):
             cell._num_instances += 1
             if not instances_only:
                 cell._paths.append(cell_path)
+
+    def _partial_deepcopy(self):
+        """Clone all of the openmc.Universe object's attributes except for its cells,
+        as they are copied within the clone function. This should only to be
+        used within the openmc.UniverseBase.clone() context.
+        """
+        clone = openmc.Universe(name=self.name)
+        clone.volume = self.volume
+        return clone
 
 
 class DAGMCUniverse(UniverseBase):
@@ -723,8 +809,9 @@ class DAGMCUniverse(UniverseBase):
     @property
     def material_names(self):
         dagmc_file_contents = h5py.File(self.filename)
-        material_tags_hex=dagmc_file_contents['/tstt/tags/NAME'].get('values')
-        material_tags_ascii=[]
+        material_tags_hex = dagmc_file_contents['/tstt/tags/NAME'].get(
+            'values')
+        material_tags_ascii = []
         for tag in material_tags_hex:
             candidate_tag = tag.tobytes().decode().replace('\x00', '')
             # tags might be for temperature or reflective surfaces
@@ -890,7 +977,8 @@ class DAGMCUniverse(UniverseBase):
         openmc.Universe
             Universe instance
         """
-        bounding_cell = openmc.Cell(fill=self, cell_id=bounding_cell_id, region=self.bounding_region(**kwargs))
+        bounding_cell = openmc.Cell(
+            fill=self, cell_id=bounding_cell_id, region=self.bounding_region(**kwargs))
         return openmc.Universe(cells=[bounding_cell])
 
     @classmethod
@@ -947,3 +1035,14 @@ class DAGMCUniverse(UniverseBase):
         out.auto_mat_ids = bool(elem.get('auto_mat_ids'))
 
         return out
+
+    def _partial_deepcopy(self):
+        """Clone all of the openmc.DAGMCUniverse object's attributes except for
+        its cells, as they are copied within the clone function. This should
+        only to be used within the openmc.UniverseBase.clone() context.
+        """
+        clone = openmc.DAGMCUniverse(name=self.name, filename=self.filename)
+        clone.volume = self.volume
+        clone.auto_geom_ids = self.auto_geom_ids
+        clone.auto_mat_ids = self.auto_mat_ids
+        return clone

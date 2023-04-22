@@ -21,7 +21,6 @@ class VolumeTest(PyAPITestHarness):
         if not is_ce:
             self.inputs_true = 'inputs_true_mg.dat'
 
-    def _build_inputs(self):
         # Define materials
         water = openmc.Material(1)
         water.add_nuclide('H1', 2.0)
@@ -39,7 +38,7 @@ class VolumeTest(PyAPITestHarness):
         materials = openmc.Materials((water, fuel))
         if not self.is_ce:
             materials.cross_sections = 'mg_lib.h5'
-        materials.export_to_xml()
+        self._model.materials = materials
 
         cyl = openmc.ZCylinder(surface_id=1, r=1.0, boundary_type='vacuum')
         top_sphere = openmc.Sphere(surface_id=2, z0=5., r=1., boundary_type='vacuum')
@@ -53,8 +52,7 @@ class VolumeTest(PyAPITestHarness):
         bottom_hemisphere = openmc.Cell(3, fill=water, region=-bottom_sphere & -top_plane)
         root = openmc.Universe(0, cells=(inside_cyl, top_hemisphere, bottom_hemisphere))
 
-        geometry = openmc.Geometry(root)
-        geometry.export_to_xml()
+        self._model.geometry = openmc.Geometry(root)
 
         # Set up stochastic volume calculation
         ll, ur = root.bounding_box
@@ -79,7 +77,7 @@ class VolumeTest(PyAPITestHarness):
         if not self.is_ce:
             settings.energy_mode = 'multi-group'
         settings.volume_calculations = vol_calcs
-        settings.export_to_xml()
+        self._model.settings = settings
 
         # Create the MGXS file if necessary
         if not self.is_ce:
@@ -170,5 +168,5 @@ class VolumeTest(PyAPITestHarness):
 
 @pytest.mark.parametrize('is_ce', [True, False])
 def test_volume_calc(is_ce):
-    harness = VolumeTest(is_ce, '')
+    harness = VolumeTest(is_ce, '', model=openmc.Model())
     harness.main()

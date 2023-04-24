@@ -5,7 +5,7 @@ from itertools import product
 from numbers import Integral, Real
 import operator
 from pathlib import Path
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 
 import h5py
 import numpy as np
@@ -815,7 +815,7 @@ class Tally(IDManagerMixin):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing tally data
 
         """
@@ -872,7 +872,7 @@ class Tally(IDManagerMixin):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -3226,7 +3226,7 @@ class Tallies(cv.CheckedList):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
         meshes : dict or None
             A dictionary with mesh IDs as keys and mesh instances as values that

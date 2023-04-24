@@ -4,7 +4,7 @@ from collections.abc import Iterable
 import hashlib
 from itertools import product
 from numbers import Real, Integral
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 
 import numpy as np
 import pandas as pd
@@ -228,7 +228,7 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing filter data
 
         """
@@ -246,7 +246,7 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
         **kwargs
             Keyword arguments (e.g., mesh information)
@@ -661,7 +661,7 @@ class CellInstanceFilter(Filter):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing filter data
 
         """
@@ -937,7 +937,7 @@ class MeshFilter(Filter):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing filter data
 
         """
@@ -1283,7 +1283,7 @@ class RealFilter(Filter):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing filter data
 
         """
@@ -2119,7 +2119,7 @@ class EnergyFunctionFilter(Filter):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing filter data
 
         """

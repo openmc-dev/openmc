@@ -19,15 +19,7 @@ from openmc.data import gnds_name, zam, DataLibrary
 from openmc.exceptions import DataError
 from .nuclide import FissionYieldDistribution
 
-# Try to use lxml if it is available. It preserves the order of attributes and
-# provides a pretty-printer by default. If not available,
-# use OpenMC function to pretty print.
-try:
-    import lxml.etree as ET
-    _have_lxml = True
-except ImportError:
-    import xml.etree.ElementTree as ET
-    _have_lxml = False
+import lxml.etree as ET
 import scipy.sparse as sp
 
 import openmc.data
@@ -565,11 +557,7 @@ class Chain:
             root_elem.append(nuclide.to_xml_element())
 
         tree = ET.ElementTree(root_elem)
-        if _have_lxml:
-            tree.write(str(filename), encoding='utf-8', pretty_print=True)
-        else:
-            clean_indentation(root_elem)
-            tree.write(str(filename), encoding='utf-8')
+        tree.write(str(filename), encoding='utf-8', pretty_print=True)
 
     def get_default_fission_yields(self):
         """Return fission yields at lowest incident neutron energy

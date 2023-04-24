@@ -455,3 +455,9 @@ def test_cruciform_prism(axis):
 
     # Make sure repr works
     repr(s)
+
+    # Check that non-monotonic distances fail
+    with pytest.raises(ValueError):
+        openmc.model.CruciformPrism([1.0, 0.5, 2.0, 3.0])
+    with pytest.raises(ValueError):
+        openmc.model.CruciformPrism([3.0, 2.0, 0.5, 1.0])

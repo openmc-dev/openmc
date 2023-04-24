@@ -1137,6 +1137,19 @@ class CruciformPrism(CompositeSurface):
     def _surface_names(self):
         return self._surfnames
 
+    @property
+    def distances(self):
+        return self._distances
+
+    @distances.setter
+    def distances(self, values):
+        values = np.array(values, dtype=float)
+        # Check for monotonicity
+        if (values[1:] > values[:-1]).all() or (values[1:] < values[:-1]).all():
+            self._distances = values
+        else:
+            raise ValueError("distances must be monotonic")
+
     def __neg__(self):
         n = len(self.distances)
         regions = []

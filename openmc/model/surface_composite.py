@@ -1144,6 +1144,9 @@ class CruciformPrism(CompositeSurface):
     @distances.setter
     def distances(self, values):
         values = np.array(values, dtype=float)
+        # check for positive values
+        if not (values > 0).all():
+            raise ValueError("distances must be positive")
         # Check for monotonicity
         if (values[1:] > values[:-1]).all() or (values[1:] < values[:-1]).all():
             self._distances = values

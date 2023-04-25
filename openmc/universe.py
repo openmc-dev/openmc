@@ -205,7 +205,7 @@ class Universe(UniverseBase):
         Volume of the universe in cm^3. This can either be set manually or
         calculated in a stochastic volume calculation and added via the
         :meth:`Universe.add_volume_information` method.
-    bounding_box : 2-tuple of numpy.array
+    bounding_box : openmc.BoundingBox
         Lower-left and upper-right coordinates of an axis-aligned bounding box
         of the universe.
 
@@ -733,7 +733,7 @@ class DAGMCUniverse(UniverseBase):
     auto_mat_ids : bool
         Set IDs automatically on initialization (True)  or report overlaps in ID
         space between OpenMC and UWUW materials (False)
-    bounding_box : 2-tuple of numpy.array
+    bounding_box : openmc.BoundingBox
         Lower-left and upper-right coordinates of an axis-aligned bounding box
         of the universe.
 

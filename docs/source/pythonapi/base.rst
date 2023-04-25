@@ -25,6 +25,7 @@ Simulation Settings
    openmc.SourceParticle
    openmc.VolumeCalculation
    openmc.WeightWindows
+   openmc.WeightWindowGenerator
    openmc.Settings
 
 .. autosummary::

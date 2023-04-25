@@ -635,10 +635,11 @@ class WeightWindowGenerator():
     ----------
     tally : openmc.Tally
         Tally used to generate weight windows. The filters and scores must meet
-        the requirements for weight window generation outlined below
+        the requirements for weight window generation outlined below:
 
-        Filters: MeshFilter (required), EnergyFilter, ParticleFilter Scores:
-        flux (required)
+          - Filters: :class:`openmc.MeshFilter` (required), :class:`openmc.EnergyFilter`
+            , :class:`openmc.ParticleFilter`
+          - Scores: flux (required)
     max_realizations : int
         The upper limit for number of tally realizations when generating weight
         windows.

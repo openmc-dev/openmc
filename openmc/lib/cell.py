@@ -104,7 +104,7 @@ class Cell(_FortranObjectWithID):
     num_instances : int
         Number of unique cell instances
     bounding_box : openmc.BoundingBox
-        Lower-left and upper-right coordinates of bounding box
+        Axis-aligned bounding box of the cell
     translation : Iterable of float
         3-D coordinates of the translation vector
     rotation : Iterable of float

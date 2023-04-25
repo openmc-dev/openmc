@@ -275,7 +275,7 @@ continuously removed/feed from/to a material.
     A transfer rate can be positive or negative, indicating removal or feed
     respectively.
 
-Mathematically, it can be thought as an additional term :math:`\mathbf{T}`
+Mathematically, it can be thought of as an additional term :math:`\mathbf{T}`
 in the depletion equation that is proportional to the nuclide density, which can be written as:
 
 .. math::
@@ -314,7 +314,7 @@ Coupling materials
 
 To keep track of removed nuclides or to feed nuclides from one depletable material
 to another, the respective depletion equations have to be coupled. This can be
-achieved by defining one blocks matrix, with diagonal blocks corresponding to
+achieved by defining one block matrix, with diagonal blocks corresponding to
 depletion matrices :math:`\mathbf{A_{ii}}`, where the index :math:`i` indicates
 the depletable material id, and off-diagonal blocks corresponding to inter-material
 coupling matrices :math:`\mathbf{T_{ij}}`, positioned so that that the indices :math:`i` and

@@ -418,7 +418,7 @@ removal rate value of 0.1 s\ :sup:`-1` (or a cycle time of 10 s), you'd use::
     # or by material name
     integrator.add_transfer_rate('fuel', ['Xe'], 0.1)
 
-Note that in this case the Xenon nuclides that are removed will not be tracked.
+Note that in this case the xenon nuclides that are removed will not be tracked.
 
 Defining a destination material
 -------------------------------

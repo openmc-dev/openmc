@@ -5,6 +5,7 @@ import hashlib
 from itertools import product
 from numbers import Real, Integral
 import lxml.etree as ET
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -588,7 +589,7 @@ class CellInstanceFilter(Filter):
     bins : iterable of 2-tuples or numpy.ndarray
         The cell instances to tally, given as 2-tuples. For the first value in
         the tuple, either openmc.Cell objects or their integral ID numbers can
-        be used.
+        be used. The second value indicates the cell instance.
     filter_id : int
         Unique identifier for the filter
 

@@ -68,7 +68,12 @@ extern std::string path_input;  //!< directory where main .xml files resides
 extern std::string path_output; //!< directory where output files are written
 extern std::string path_particle_restart; //!< path to a particle restart file
 extern std::string path_sourcepoint;      //!< path to a source file
-extern "C" std::string path_statepoint;   //!< path to a statepoint file
+extern std::string path_statepoint;       //!< path to a statepoint file
+
+// This is required because the c_str() may not be the first thing in
+// std::string. Sometimes it is, but it seems libc++ may not be like that
+// on some computers, like the intel Mac.
+extern "C" const char* path_statepoint_c; //!< C pointer to statepoint file name
 
 extern "C" int32_t n_inactive;         //!< number of inactive batches
 extern "C" int32_t max_lost_particles; //!< maximum number of lost particles

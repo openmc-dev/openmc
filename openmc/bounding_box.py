@@ -20,7 +20,7 @@ class BoundingBox(tuple):
     Attributes
     ----------
     center : numpy.ndarray
-        x, y, z coordinates of the center of the bounding box in [cm].
+        x, y, z coordinates of the center of the bounding box in [cm]
     lower_left : numpy.ndarray
         The x, y, z coordinates of the lower left corner of the bounding box in [cm]
     upper_right : numpy.ndarray

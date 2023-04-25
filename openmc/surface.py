@@ -740,15 +740,24 @@ class Plane(PlaneMixin, Surface):
         Plane
             Plane that passes through the three points
 
+        Raises
+        ------
+        ValueError
+            If all three points lie along a line
+
         """
         # Convert to numpy arrays
-        p1 = np.asarray(p1)
-        p2 = np.asarray(p2)
-        p3 = np.asarray(p3)
+        p1 = np.asarray(p1, dtype=float)
+        p2 = np.asarray(p2, dtype=float)
+        p3 = np.asarray(p3, dtype=float)
 
         # Find normal vector to plane by taking cross product of two vectors
         # connecting p1->p2 and p1->p3
         n = np.cross(p2 - p1, p3 - p1)
+
+        # Check for points along a line
+        if np.allclose(n, 0.):
+            raise ValueError("All three points appear to lie along a line.")
 
         # The equation of the plane will by n·(<x,y,z> - p1) = 0. Determine
         # coefficients a, b, c, and d based on that

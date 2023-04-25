@@ -74,7 +74,7 @@ def test_get_keff(res):
 def test_get_steps(unit):
     # Make a Results full of near-empty Result instances
     # Just fill out a time schedule
-    results = openmc.deplete.Results()
+    results = openmc.deplete.Results(filename=None)
     # Time in units of unit
     times = np.linspace(0, 100, num=5)
     if unit == "a":

@@ -1,7 +1,3 @@
-import random
-from math import sqrt
-
-import numpy as np
 import openmc
 import openmc.model
 
@@ -65,8 +61,8 @@ class TRISOTestHarness(PyAPITestHarness):
         box = openmc.Cell(region=box_region)
 
         outer_radius = 422.5*1e-4
-        centers = openmc.model.pack_spheres(radius=outer_radius,
-            region=box_region, num_spheres=100)
+        centers = openmc.model.pack_spheres(
+            radius=outer_radius, region=box_region, num_spheres=100, seed=1)
         trisos = [openmc.model.TRISO(outer_radius, inner_univ, c)
             for c in centers]
 

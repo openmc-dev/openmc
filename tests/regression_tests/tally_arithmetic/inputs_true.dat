@@ -2,23 +2,23 @@
 <model>
   <materials>
     <material depletable="true" id="1">
-      <density units="g/cm3" value="10.0" />
-      <nuclide ao="1.0" name="U234" />
-      <nuclide ao="4.0" name="U235" />
-      <nuclide ao="95.0" name="U238" />
+      <density units="g/cm3" value="10.0"/>
+      <nuclide ao="1.0" name="U234"/>
+      <nuclide ao="4.0" name="U235"/>
+      <nuclide ao="95.0" name="U238"/>
     </material>
     <material id="2" name="light water">
-      <density units="g/cm3" value="1.0" />
-      <nuclide ao="2.0" name="H1" />
-      <nuclide ao="1.0" name="O16" />
-      <sab name="c_H_in_H2O" />
+      <density units="g/cm3" value="1.0"/>
+      <nuclide ao="2.0" name="H1"/>
+      <nuclide ao="1.0" name="O16"/>
+      <sab name="c_H_in_H2O"/>
     </material>
   </materials>
   <geometry>
-    <cell id="1" material="1" region="-1" universe="1" />
-    <cell id="2" material="2" region="1 -2" universe="1" />
-    <surface coeffs="0.0 0.0 5.0" id="1" type="z-cylinder" />
-    <surface boundary="vacuum" coeffs="0.0 0.0 10.0" id="2" type="z-cylinder" />
+    <cell id="1" material="1" region="-1" universe="1"/>
+    <cell id="2" material="2" region="1 -2" universe="1"/>
+    <surface coeffs="0.0 0.0 5.0" id="1" type="z-cylinder"/>
+    <surface boundary="vacuum" coeffs="0.0 0.0 10.0" id="2" type="z-cylinder"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>

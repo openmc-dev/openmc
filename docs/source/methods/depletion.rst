@@ -284,26 +284,18 @@ in the depletion equation that is proportional to the nuclide density, which can
   \int_0^\infty dE  \; \sigma_j (E,t) \phi(E,t) N_j(t)  - \int_0^\infty dE \; \sigma_i(E,t)
   \phi(E,t) N_i(t)}_\textbf{R} \\
   &+ \underbrace{\sum_j \left [ \lambda_{j\rightarrow i} N_j(t) - \lambda_{i\rightarrow j} N_i(t) \right ]}_\textbf{D} \\
-  &- \underbrace{\epsilon_i t_i N_i(t)}_\textbf{T} \end{aligned}
+  &- \underbrace{t_i N_i(t)}_\textbf{T} \end{aligned}
 
 where the reaction term :math:`\mathbf{R}`, the decay term :math:`\mathbf{D}`
 and the new transfer term :math:`\mathbf{T}` have been grouped together so that
 :math:`\mathbf{A} = \mathbf{R}+\mathbf{D}-\mathbf{T}`.
-The transfer efficiency :math:`\epsilon_i` and the transfer rate coefficient
-:math:`t_i` define the continuous transfer of the nuclide :math:`i`, which
-behaves similar to radioactive decay.
+The transfer rate coefficient :math:`t_i` define the continuous transfer of the
+nuclide :math:`i`, which behaves similar to radioactive decay.
 :math:`t_i` can also be defined as the reciprocal of a cycle time
 :math:`T_{cyc}`, intended as the time needed to process the whole inventory.
 
-For simplicity, :math:`\epsilon_i` and :math:`t_i`
-can be combined together in one single user-defined parameter that is defined
-again as :math:`t_i`.
-Thus, setting a transfer rate coefficient of 1 s\ :sup:`-1` at 100% efficiency, would be
-the same as setting 10 s\ :sup:`-1` at 10%.
-
-
-Note that this formulation assumes first order transfer and
-a homogeneous distribution of nuclide :math:`i` throughout the material.
+Note that this formulation assumes homogeneous distribution of nuclide
+:math:`i` throughout the material.
 
 A more rigorous description of removal rate and its implementation can be found
 in the paper by `Hombourger
@@ -322,12 +314,10 @@ Coupling materials
 
 To keep track of removed nuclides or to feed nuclides from one depletable material
 to another, the respective depletion equations have to be coupled. This can be
-achieved by defining one multidimensional square matrix with dimensions equal to
-the number of depletable materials that transfer nuclides.
-The diagonal positions are filled with the usual depletion matrices
-:math:`\mathbf{A_{ii}}`, where the index :math:`i` indicates the depletable
-material id, and the off-diagonal positions are filled with the transfer matrices
-:math:`\mathbf{T_{ij}}`, positioned so that that the indices :math:`i` and
+achieved by defining one blocks matrix, with diagonal blocks corresponding to
+depletion matrices :math:`\mathbf{A_{ii}}`, where the index :math:`i` indicates
+the depletable material id, and off-diagonal blocks corresponding to inter-material
+coupling matrices :math:`\mathbf{T_{ij}}`, positioned so that that the indices :math:`i` and
 :math:`j` indicate the nuclides receiving and losing materials, respectively.
 The nuclide vectors are assembled together in one single vector and the resulting
 system is solved with the same integration algorithms seen before.

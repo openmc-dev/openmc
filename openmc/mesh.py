@@ -817,11 +817,10 @@ class RegularMesh(StructuredMesh):
 
         if basis == "yz":
             transposed_ds = reshaped_ds.transpose(0, 1, 2)[slice_index]
-            transposed_ds = np.rot90(transposed_ds, 1)
+            transposed_ds = np.rot90(transposed_ds, -1)
 
         elif basis == "xz":
             transposed_ds = reshaped_ds.transpose(1, 2, 0)[slice_index]
-            transposed_ds = np.flipud(transposed_ds)
 
         elif basis == "xy":
             transposed_ds = reshaped_ds.transpose(2, 0, 1)[slice_index]

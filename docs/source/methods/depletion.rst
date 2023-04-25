@@ -328,7 +328,7 @@ The diagonal positions are filled with the usual depletion matrices
 :math:`\mathbf{A_{ii}}`, where the index :math:`i` indicates the depletable
 material id, and the off-diagonal positions are filled with the transfer matrices
 :math:`\mathbf{T_{ij}}`, positioned so that that the indices :math:`i` and
-:math:`j` indicate the nuclides receiving and loosing materials, respectively.
+:math:`j` indicate the nuclides receiving and losing materials, respectively.
 The nuclide vectors are assembled together in one single vector and the resulting
 system is solved with the same integration algorithms seen before.
 

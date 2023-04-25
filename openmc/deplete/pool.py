@@ -85,7 +85,7 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, transfer_rates=None,
             }
 
             # Combine all matrices together in a single matrix of matrices
-            # to be solved in one-go
+            # to be solved in one go
             n_rows = n_cols = len(transfer_rates.burnable_mats)
             rows = []
             for row in range(n_rows):

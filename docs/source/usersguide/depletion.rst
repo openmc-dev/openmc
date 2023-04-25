@@ -403,7 +403,7 @@ rate at which elements are transferred.
 The transfer rate units can be specified by assigning '1/s', '1/min', '1/h', '1/d'
 or '1/a' to the ``transfer_rate_units`` argument. Default units are '1/s'.
 
-For example, to define continuous removal of Xenon from one material with a
+For example, to define continuous removal of xenon from one material with a
 removal rate value of 0.1 s\ :sup:`-1` (or a cycle time of 10 s), you'd use::
 
     mat1 = openmc.Material(material_id=1, name='fuel')

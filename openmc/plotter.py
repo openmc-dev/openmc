@@ -60,7 +60,7 @@ def _get_legend_label(this, type):
     if isinstance(this, str):
         return f'{this} {type}'
     elif this.name is '':
-        return f'material name not set {type}'
+        return f'Material {this.id} {type}'
     else:
         return f'{this.name} {type}'
 
@@ -90,7 +90,7 @@ def _get_yaxis_label(this_and_types, divisor_types):
 def _get_title(this_and_types):
     """Gets a title for the type of data plotted"""
     if len(this_and_types) == 1:
-        this = list(this_and_types.keys())[0]
+        this, = this_and_types
         name = this.name if isinstance(this, openmc.Material) else this
         return f'Cross Section Plot For {name}'
     else:
@@ -106,7 +106,7 @@ def plot_xs(this_and_types, divisor_types=None, temperature=294., axis=None,
     Parameters
     ----------
 
-    this_and_types : dict where keys are str or openmc.Material, values are Iterable of PLOT_TYPES
+    this_and_types : dict
         keys can be either a nuclide or element in string form or an
         openmc.Material object. Values are the type of cross sections to
         include in the plot.

@@ -2,6 +2,7 @@
 
 #include "openmc/bank.h"
 #include "openmc/error.h"
+#include "openmc/file_utils.h"
 #include "openmc/message_passing.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
@@ -110,52 +111,32 @@ vector<SourceSite> mcpl_source_sites(std::string path)
 //==============================================================================
 
 #ifdef OPENMC_MCPL
-void write_mcpl_source_bank(mcpl_outfile_t file_id, bool surf_source_bank)
+void write_mcpl_source_bank(mcpl_outfile_t file_id,
+  gsl::span<SourceSite> source_bank, const vector<int64_t>& bank_index)
 {
   int64_t dims_size = settings::n_particles;
   int64_t count_size = simulation::work_per_rank;
-
-  // Set vectors for source bank and starting bank index of each process
-  vector<int64_t>* bank_index = &simulation::work_index;
-  vector<SourceSite>* source_bank = &simulation::source_bank;
-  vector<int64_t> surf_source_index_vector;
-  vector<SourceSite> surf_source_bank_vector;
-
-  if (surf_source_bank) {
-    surf_source_index_vector = calculate_surf_source_size();
-    dims_size = surf_source_index_vector[mpi::n_procs];
-    count_size = simulation::surf_source_bank.size();
-
-    bank_index = &surf_source_index_vector;
-
-    // Copy data in a SharedArray into a vector.
-    surf_source_bank_vector.resize(count_size);
-    surf_source_bank_vector.assign(simulation::surf_source_bank.data(),
-      simulation::surf_source_bank.data() + count_size);
-    source_bank = &surf_source_bank_vector;
-  }
 
   if (mpi::master) {
     // Particles are writeen to disk from the master node only
 
     // Save source bank sites since the array is overwritten below
 #ifdef OPENMC_MPI
-    vector<SourceSite> temp_source {source_bank->begin(), source_bank->end()};
+    vector<SourceSite> temp_source {source_bank.begin(), source_bank.end()};
 #endif
 
     // loop over the other nodes and receive data - then write those.
     for (int i = 0; i < mpi::n_procs; ++i) {
       // number of particles for node node i
-      size_t count[] {
-        static_cast<size_t>((*bank_index)[i + 1] - (*bank_index)[i])};
+      size_t count[] {static_cast<size_t>(bank_index[i + 1] - bank_index[i])};
 
 #ifdef OPENMC_MPI
       if (i > 0)
-        MPI_Recv(source_bank->data(), count[0], mpi::source_site, i, i,
+        MPI_Recv(source_bank.data(), count[0], mpi::source_site, i, i,
           mpi::intracomm, MPI_STATUS_IGNORE);
 #endif
       // now write the source_bank data again.
-      for (const auto& site : *source_bank) {
+      for (const auto& site : source_bank) {
         // particle is now at the iterator
         // write it to the mcpl-file
         mcpl_particle_t p;
@@ -194,11 +175,11 @@ void write_mcpl_source_bank(mcpl_outfile_t file_id, bool surf_source_bank)
     }
 #ifdef OPENMC_MPI
     // Restore state of source bank
-    std::copy(temp_source.begin(), temp_source.end(), source_bank->begin());
+    std::copy(temp_source.begin(), temp_source.end(), source_bank.begin());
 #endif
   } else {
 #ifdef OPENMC_MPI
-    MPI_Send(source_bank->data(), count_size, mpi::source_site, 0, mpi::rank,
+    MPI_Send(source_bank.data(), count_size, mpi::source_site, 0, mpi::rank,
       mpi::intracomm);
 #endif
   }
@@ -207,17 +188,16 @@ void write_mcpl_source_bank(mcpl_outfile_t file_id, bool surf_source_bank)
 
 //==============================================================================
 
-void write_mcpl_source_point(const char* filename, bool surf_source_bank)
+void write_mcpl_source_point(const char* filename,
+  gsl::span<SourceSite> source_bank, const vector<int64_t>& bank_index)
 {
-  std::string filename_;
-  if (filename) {
-    filename_ = filename;
-  } else {
-    // Determine width for zero padding
-    int w = std::to_string(settings::n_max_batches).size();
-
-    filename_ = fmt::format("{0}source.{1:0{2}}.mcpl", settings::path_output,
-      simulation::current_batch, w);
+  std::string filename_(filename);
+  const auto extension = get_file_extension(filename_);
+  if (extension == "") {
+    filename_.append(".mcpl");
+  } else if (extension != "mcpl") {
+    warning("write_mcpl_source_point was passed a file extension differing "
+            "from .mcpl, but an mcpl file will be written.");
   }
 
 #ifdef OPENMC_MCPL
@@ -236,7 +216,7 @@ void write_mcpl_source_point(const char* filename, bool surf_source_bank)
     mcpl_hdr_set_srcname(file_id, line.c_str());
   }
 
-  write_mcpl_source_bank(file_id, surf_source_bank);
+  write_mcpl_source_bank(file_id, source_bank, bank_index);
 
   if (mpi::master) {
     mcpl_close_outfile(file_id);

@@ -34,7 +34,7 @@ def model():
     geometry = openmc.Geometry([cell_f, cell_w])
 
     settings = openmc.Settings()
-    settings.particles = 1000
+    settings.particles = 100
     settings.inactive = 0
     settings.batches = 10
 

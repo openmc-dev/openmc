@@ -4,7 +4,8 @@ from openmc.checkvalue import check_type, check_value
 from openmc import Material
 from openmc.data import ELEMENT_SYMBOL
 
-class _TransferRates:
+
+class TransferRates:
     """Class for defining continuous removals and feeds.
 
     Molten Salt Reactors (MSRs) benefit from continuous reprocessing,

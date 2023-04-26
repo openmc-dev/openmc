@@ -24,7 +24,7 @@ from .stepresult import StepResult
 from .chain import Chain
 from .results import Results
 from .pool import deplete
-from .transfer_rates import _TransferRates
+from .transfer_rates import TransferRates
 
 
 __all__ = [
@@ -843,7 +843,7 @@ class Integrator(ABC):
         self.operator.finalize()
 
     def add_transfer_rate(self, material, elements, transfer_rate,
-                        transfer_rate_units='1/s', destination_material=None):
+                         transfer_rate_units='1/s', destination_material=None):
         """Add transfer rates to depletable material.
 
         Parameters
@@ -863,7 +863,7 @@ class Integrator(ABC):
 
         """
         if self.transfer_rates is None:
-            self.transfer_rates = _TransferRates(self.operator, self.operator.model)
+            self.transfer_rates = TransferRates(self.operator, self.operator.model)
 
         self.transfer_rates.set_transfer_rate(material, elements, transfer_rate,
                                       transfer_rate_units, destination_material)

@@ -28,7 +28,6 @@
 #include "openmc/weight_windows.h"
 
 #include "xtensor/xview.hpp"
-#include <limits> // for numeric_limits
 
 namespace openmc {
 
@@ -79,9 +78,7 @@ int openmc_finalize()
   settings::electron_treatment = ElectronTreatment::LED;
   settings::delayed_photon_scaling = true;
   settings::energy_cutoff = {0.0, 1000.0, 0.0, 0.0};
-  settings::time_cutoff = {std::numeric_limits<double>::max(),
-    std::numeric_limits<double>::max(), std::numeric_limits<double>::max(),
-    std::numeric_limits<double>::max()};
+  settings::time_cutoff = {INFTY, INFTY, INFTY, INFTY};
   settings::entropy_on = false;
   settings::event_based = false;
   settings::gen_per_batch = 1;

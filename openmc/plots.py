@@ -1,6 +1,7 @@
 from collections.abc import Iterable, Mapping
 from numbers import Integral, Real
 from pathlib import Path
+from typing import Optional
 from xml.etree import ElementTree as ET
 
 import h5py
@@ -8,6 +9,7 @@ import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
+from openmc.checkvalue import PathLike
 
 from ._xml import clean_indentation, get_elem_tuple, reorder_attributes
 from .mixin import IDManagerMixin
@@ -179,56 +181,55 @@ def _get_plot_image(plot, cwd):
     return Image(str(png_file))
 
 
-def _voxel_to_vtk(voxel_file: str, output: str = 'plot.vti'):
-    """Converts a voxel HDF5 file to a VTK file')
+def voxel_to_vtk(voxel_file: PathLike, output: PathLike = 'plot.vti'):
+    """Converts a voxel HDF5 file to a VTK file
 
     Parameters
     ----------
-    voxel_file : str
-        filename of the input h5 to convert
-    output : str
-        filename of the output vti file produced
+    voxel_file : path-like
+        Path of the input h5 to convert
+    output : path-like
+        Path of the output vti file produced
 
     Returns
     -------
-    str
-        Filename of the vti file produced
+    Path
+        Path of the .vti file produced
     """
 
-    # imported vkt only if used as vtk is an option dependency
+    # imported vtk only if used as vtk is an option dependency
     import vtk
 
     _min_version = (2, 0)
 
     # Read data from voxel file
-    fh = h5py.File(voxel_file, "r")
+    with h5py.File(voxel_file, "r") as fh:
+        # check version
+        version = tuple(fh.attrs["version"])
+        if version < _min_version:
+            old_version = ".".join(map(str, version))
+            min_version = ".".join(map(str, _min_version))
+            err_msg = (
+                f"This voxel file's version is {old_version}. This function only "
+                f" supports voxel files with version {min_version} or higher. "
+                "Please generate a new voxel file using a newer version of OpenMC."
+            )
+            raise ValueError(err_msg)
 
-    # check version
-    version = tuple(fh.attrs["version"])
-    if version < _min_version:
-        old_version = ".".join(map(str, version))
-        min_version = ".".join(map(str, _min_version))
-        err_msg = (
-            f"This voxel file's version is {old_version}. This function only "
-            f" supports voxel files with version {min_version} or higher. "
-            "Please generate a new voxel file using a newer version of OpenMC."
-        )
-        raise ValueError(err_msg)
+        dimension = fh.attrs["num_voxels"]
+        width = fh.attrs["voxel_width"]
+        lower_left = fh.attrs["lower_left"]
 
-    dimension = fh.attrs["num_voxels"]
-    width = fh.attrs["voxel_width"]
-    lower_left = fh.attrs["lower_left"]
+        nx, ny, nz = dimension
 
-    nx, ny, nz = dimension
+        grid = vtk.vtkImageData()
+        grid.SetDimensions(nx + 1, ny + 1, nz + 1)
+        grid.SetOrigin(*lower_left)
+        grid.SetSpacing(*width)
 
-    grid = vtk.vtkImageData()
-    grid.SetDimensions(nx + 1, ny + 1, nz + 1)
-    grid.SetOrigin(*lower_left)
-    grid.SetSpacing(*width)
-
-    # transpose data from OpenMC ordering (zyx) to VTK ordering (xyz)
-    # and flatten to 1-D array
-    h5data = fh["data"][...]
+        # transpose data from OpenMC ordering (zyx) to VTK ordering (xyz)
+        # and flatten to 1-D array
+        h5data = fh["data"][...]
 
     data = vtk.vtkIntArray()
     data.SetName("id")
@@ -244,7 +245,7 @@ def _voxel_to_vtk(voxel_file: str, output: str = 'plot.vti'):
         writer.SetInput(grid)
     if not output.endswith(".vti"):
         output += ".vti"
-    writer.SetFileName(output)
+    writer.SetFileName(str(output))
     writer.Write()
 
     return output
@@ -584,7 +585,7 @@ class Plot(PlotBase):
 
     @type.setter
     def type(self, plottype):
-        cv.check_value('plot type', plottype, ['slice', 'voxel', 'projection'])
+        cv.check_value('plot type', plottype, ['slice', 'voxel'])
         self._type = plottype
 
     @basis.setter
@@ -903,15 +904,16 @@ class Plot(PlotBase):
         # Return produced image
         return _get_plot_image(self, cwd)
 
-    def to_voxel_file(self, output='plot.vti', openmc_exec='openmc', cwd='.'):
+    def to_vtk(self, output: Optional[PathLike] = None,
+               openmc_exec: str = 'openmc', cwd: str = '.'):
         """Render plot as an voxel image
 
         This method runs OpenMC in plotting mode to produce a .vti file.
 
         Parameters
         ----------
-        output : str
-            filename of the output vti file produced
+        output : path-like
+            Path of the output .vti file produced
         openmc_exec : str
             Path to OpenMC executable
         cwd : str, optional
@@ -919,10 +921,13 @@ class Plot(PlotBase):
 
         Returns
         -------
-        str
-            Filename of the vti file produced
+        Path
+            Path of the .vti file produced
 
         """
+        if self.type != 'voxel':
+            raise ValueError('Generating a VTK file only works for voxel plots')
+
         # Create plots.xml
         Plots([self]).export_to_xml(cwd)
 
@@ -931,8 +936,10 @@ class Plot(PlotBase):
 
         stem = self.filename if self.filename is not None else f'plot_{self.id}'
         h5_voxel_file = Path(cwd) / f'{stem}.h5'
+        if output is None:
+            output = h5_voxel_file.with_suffix('.vti')
 
-        return _voxel_to_vtk(h5_voxel_file, output)
+        return voxel_to_vtk(h5_voxel_file, output)
 
 
 class ProjectionPlot(PlotBase):
@@ -983,7 +990,7 @@ class ProjectionPlot(PlotBase):
     wireframe_domains : iterable of either Material or Cells
         If provided, the wireframe is only drawn around these.
         If color_by is by material, it must be a list of materials, else cells.
-    xs : dict 
+    xs : dict
         A mapping from cell/material IDs to floats. The floating point values
         are macroscopic cross sections influencing the volume rendering opacity
         of each geometric region. Zero corresponds to perfect transparency, and

@@ -191,6 +191,13 @@ Post-processing
    openmc.Track
    openmc.Tracks
 
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myfunction.rst
+
+   openmc.voxel_to_vtk
+
 The following classes and functions are used for functional expansion reconstruction.
 
 .. autosummary::

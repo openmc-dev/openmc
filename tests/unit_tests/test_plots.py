@@ -82,16 +82,20 @@ def test_voxel_plot(run_in_tmpdir):
     vox_plot.width = (1500., 1500., 1500.)
     vox_plot.pixels = (200, 200, 200)
     vox_plot.color_by = 'cell'
-    vox_plot.to_voxel_file(output='test_voxel_plot.vti')
+    vox_plot.to_vtk('test_voxel_plot.vti')
 
     assert Path('plot_12.h5').is_file()
     assert Path('test_voxel_plot.vti').is_file()
 
     vox_plot.filename = 'h5_voxel_plot'
-    vox_plot.to_voxel_file(output='another_test_voxel_plot.vti')
+    vox_plot.to_vtk('another_test_voxel_plot.vti')
 
     assert Path('h5_voxel_plot.h5').is_file()
     assert Path('another_test_voxel_plot.vti').is_file()
+
+    slice_plot = openmc.Plot()
+    with pytest.raises(ValueError):
+        slice_plot.to_vtk('shimmy.vti')
 
 
 def test_attributes(myplot):

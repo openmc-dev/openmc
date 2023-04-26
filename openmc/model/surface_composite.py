@@ -6,7 +6,6 @@ import operator
 
 import numpy as np
 from scipy.spatial import ConvexHull, Delaunay
-from matplotlib.path import Path
 
 import openmc
 from openmc.checkvalue import (check_greater_than, check_value,
@@ -1021,6 +1020,7 @@ class Polygon(CompositeSurface):
         -------
         surfsets : a list of lists of surface, operator pairs
         """
+        from matplotlib.path import Path
 
         # Get centroids of all the simplices and determine if they are inside
         # the polygon defined by input vertices or not.

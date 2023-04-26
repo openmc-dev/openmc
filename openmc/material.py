@@ -1460,39 +1460,39 @@ class Material(IDManagerMixin):
             mat = cls(mat_id)
             mat.name = elem.get('name')
 
-        if "temperature" in elem.attrib:
-            mat.temperature = float(elem.get("temperature"))
+            if "temperature" in elem.attrib:
+                mat.temperature = float(elem.get("temperature"))
 
-        if 'volume' in elem.attrib:
-            mat.volume = float(elem.get('volume'))
-        mat.depletable = bool(elem.get('depletable'))
+            if 'volume' in elem.attrib:
+                mat.volume = float(elem.get('volume'))
+            mat.depletable = bool(elem.get('depletable'))
 
-        # Get each nuclide
-        for nuclide in elem.findall('nuclide'):
-            name = nuclide.attrib['name']
-            if 'ao' in nuclide.attrib:
-                mat.add_nuclide(name, float(nuclide.attrib['ao']))
-            elif 'wo' in nuclide.attrib:
-                mat.add_nuclide(name, float(nuclide.attrib['wo']), 'wo')
+            # Get each nuclide
+            for nuclide in elem.findall('nuclide'):
+                name = nuclide.attrib['name']
+                if 'ao' in nuclide.attrib:
+                    mat.add_nuclide(name, float(nuclide.attrib['ao']))
+                elif 'wo' in nuclide.attrib:
+                    mat.add_nuclide(name, float(nuclide.attrib['wo']), 'wo')
 
-        # Get each S(a,b) table
-        for sab in elem.findall('sab'):
-            fraction = float(sab.get('fraction', 1.0))
-            mat.add_s_alpha_beta(sab.get('name'), fraction)
+            # Get each S(a,b) table
+            for sab in elem.findall('sab'):
+                fraction = float(sab.get('fraction', 1.0))
+                mat.add_s_alpha_beta(sab.get('name'), fraction)
 
-        # Get total material density
-        density = elem.find('density')
-        units = density.get('units')
-        if units == 'sum':
-            mat.set_density(units)
-        else:
-            value = float(density.get('value'))
-            mat.set_density(units, value)
+            # Get total material density
+            density = elem.find('density')
+            units = density.get('units')
+            if units == 'sum':
+                mat.set_density(units)
+            else:
+                value = float(density.get('value'))
+                mat.set_density(units, value)
 
-        # Check for isotropic scattering nuclides
-        isotropic = elem.find('isotropic')
-        if isotropic is not None:
-            mat.isotropic = isotropic.text.split()
+            # Check for isotropic scattering nuclides
+            isotropic = elem.find('isotropic')
+            if isotropic is not None:
+                mat.isotropic = isotropic.text.split()
 
         return mat
 

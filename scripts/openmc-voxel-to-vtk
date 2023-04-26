@@ -18,5 +18,5 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     print("Reading and translating data...")
-    openmc.plots._voxel_to_vtk(args.voxel_file, args.output)
+    openmc.voxel_to_vtk(args.voxel_file, args.output)
     print(f"Written VTK file {args.output}...")

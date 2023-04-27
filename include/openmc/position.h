@@ -216,14 +216,18 @@ using Direction = Position;
 
 } // namespace openmc
 
+namespace fmt {
+
 template<>
-struct fmt::formatter<openmc::Position> : formatter<std::string> {
+struct formatter<openmc::Position> : formatter<std::string> {
   template<typename FormatContext>
   auto format(const openmc::Position& pos, FormatContext& ctx)
   {
-    return fmt::formatter<std::string>::format(
+    return formatter<std::string>::format(
       fmt::format("({}, {}, {})", pos.x, pos.y, pos.z), ctx);
   }
 };
+
+} // namespace fmt
 
 #endif // OPENMC_POSITION_H

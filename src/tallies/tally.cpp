@@ -191,9 +191,9 @@ Tally::Tally(pugi::xml_node node)
         case SCORE_DELAYED_NU_FISSION:
         case SCORE_PROMPT_NU_FISSION:
         case SCORE_DECAY_RATE:
-          warning("Particle filter is not used with photon transport"
-                  " on and " +
-                  reaction_name(score) + " score.");
+          warning("You are tallying the '" + reaction_name(score) +
+                  "' score and haven't used a particle filter. This score will "
+                  "include contributions from all particles.");
           break;
         }
       }
@@ -1280,11 +1280,11 @@ extern "C" size_t tallies_size()
 extern "C" int openmc_remove_tally(int32_t index)
 {
   // check that id is in the map
-  if (index < 0 || index > model::tallies.size()) {
+  if (index < 0 || index >= model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-  // grab tally so it's ID can be obtained to remove the (ID,index) pair from tally_map
-  auto& tally = model::tallies[index];
+
   // delete the tally via iterator pointing to correct position
   // this calls the Tally destructor, removing the tally from the map as well
   model::tallies.erase(model::tallies.begin() + index);

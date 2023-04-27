@@ -1,14 +1,18 @@
 from __future__ import annotations
 from collections.abc import Iterable
 from numbers import Real, Integral
-from typing import Iterable, List
+import pathlib
+import typing
+from typing import Iterable, List, Optional, Union, Dict
 
 from xml.etree import ElementTree as ET
 import numpy as np
+import h5py
 
 from openmc.filter import _PARTICLES
 from openmc.mesh import MeshBase, RectilinearMesh, UnstructuredMesh
 import openmc.checkvalue as cv
+from openmc.checkvalue import PathLike
 
 from ._xml import get_text
 from .mixin import IDManagerMixin
@@ -103,16 +107,20 @@ class WeightWindows(IDManagerMixin):
     next_id = 1
     used_ids = set()
 
-    def __init__(self, mesh, lower_ww_bounds,
-                 upper_ww_bounds=None,
-                 upper_bound_ratio=None,
-                 energy_bounds=None,
-                 particle_type='neutron',
-                 survival_ratio=3,
-                 max_lower_bound_ratio=None,
-                 max_split=10,
-                 weight_cutoff=1.e-38,
-                 id=None):
+    def __init__(
+        self, 
+        mesh: MeshBase, 
+        lower_ww_bounds: Iterable[float],
+        upper_ww_bounds: Optional[Iterable[float]] = None,
+        upper_bound_ratio: Optional[float] = None,
+        energy_bounds: Optional[Iterable[Real]] = None,
+        particle_type: str = 'neutron',
+        survival_ratio: float = 3,
+        max_lower_bound_ratio: Optional[float] = None,
+        max_split: int = 10,
+        weight_cutoff: float = 1.e-38,
+        id: Optional[int] = None
+    ):
         self.mesh = mesh
         self.id = id
         self.particle_type = particle_type
@@ -161,7 +169,7 @@ class WeightWindows(IDManagerMixin):
         string += '{: <16}=\t{}\n'.format('\tWeight Cutoff', self._weight_cutoff)
         return string
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: WeightWindows) -> bool:
         # ensure that `other` is a WeightWindows object
         if not isinstance(other, WeightWindows):
             return False
@@ -195,7 +203,7 @@ class WeightWindows(IDManagerMixin):
         return self._mesh
 
     @mesh.setter
-    def mesh(self, mesh):
+    def mesh(self, mesh: MeshBase):
         cv.check_type('Weight window mesh', mesh, MeshBase)
         self._mesh = mesh
 
@@ -204,7 +212,7 @@ class WeightWindows(IDManagerMixin):
         return self._particle_type
 
     @particle_type.setter
-    def particle_type(self, pt):
+    def particle_type(self, pt: str):
         cv.check_value('Particle type', pt, _PARTICLES)
         self._particle_type = pt
 
@@ -213,7 +221,7 @@ class WeightWindows(IDManagerMixin):
         return self._energy_bounds
 
     @energy_bounds.setter
-    def energy_bounds(self, bounds):
+    def energy_bounds(self, bounds: Iterable[float]):
         cv.check_type('Energy bounds', bounds, Iterable, Real)
         self._energy_bounds = np.asarray(bounds)
 
@@ -228,7 +236,7 @@ class WeightWindows(IDManagerMixin):
         return self._lower_ww_bounds
 
     @lower_ww_bounds.setter
-    def lower_ww_bounds(self, bounds):
+    def lower_ww_bounds(self, bounds: Iterable[float]):
         cv.check_iterable_type('Lower WW bounds',
                                bounds,
                                Real,
@@ -247,7 +255,7 @@ class WeightWindows(IDManagerMixin):
         return self._upper_ww_bounds
 
     @upper_ww_bounds.setter
-    def upper_ww_bounds(self, bounds):
+    def upper_ww_bounds(self, bounds: Iterable[float]):
         cv.check_iterable_type('Upper WW bounds',
                                bounds,
                                Real,
@@ -266,7 +274,7 @@ class WeightWindows(IDManagerMixin):
         return self._survival_ratio
 
     @survival_ratio.setter
-    def survival_ratio(self, val):
+    def survival_ratio(self, val: float):
         cv.check_type('Survival ratio', val, Real)
         cv.check_greater_than('Survival ratio', val, 1.0, True)
         self._survival_ratio = val
@@ -276,7 +284,7 @@ class WeightWindows(IDManagerMixin):
         return self._max_lower_bound_ratio
 
     @max_lower_bound_ratio.setter
-    def max_lower_bound_ratio(self, val):
+    def max_lower_bound_ratio(self, val: float):
         cv.check_type('Maximum lower bound ratio', val, Real)
         cv.check_greater_than('Maximum lower bound ratio', val, 1.0)
         self._max_lower_bound_ratio = val
@@ -286,7 +294,7 @@ class WeightWindows(IDManagerMixin):
         return self._max_split
 
     @max_split.setter
-    def max_split(self, val):
+    def max_split(self, val: int):
         cv.check_type('Max split', val, Integral)
         self._max_split = val
 
@@ -295,7 +303,7 @@ class WeightWindows(IDManagerMixin):
         return self._weight_cutoff
 
     @weight_cutoff.setter
-    def weight_cutoff(self, cutoff):
+    def weight_cutoff(self, cutoff: float):
         cv.check_type('Weight cutoff', cutoff, Real)
         cv.check_greater_than('Weight cutoff', cutoff, 0.0, True)
         self._weight_cutoff = cutoff
@@ -343,7 +351,7 @@ class WeightWindows(IDManagerMixin):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem, root) -> WeightWindows:
+    def from_xml_element(cls, elem: ET.Element, root: ET.Element) -> WeightWindows:
         """Generate weight window settings from an XML element
 
         Parameters
@@ -398,7 +406,7 @@ class WeightWindows(IDManagerMixin):
         )
 
     @classmethod
-    def from_hdf5(cls, group, meshes) -> WeightWindows:
+    def from_hdf5(cls, group: h5py.Group, meshes: Dict[int, MeshBase]) -> WeightWindows:
         """Create weight windows from HDF5 group
 
         Parameters
@@ -443,7 +451,7 @@ class WeightWindows(IDManagerMixin):
         )
 
 
-def wwinp_to_wws(path) -> List[WeightWindows]:
+def wwinp_to_wws(path: PathLike) -> List[WeightWindows]:
     """Create WeightWindows instances from a wwinp file
 
     .. versionadded:: 0.13.1

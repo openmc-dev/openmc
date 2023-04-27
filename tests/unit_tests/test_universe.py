@@ -48,17 +48,25 @@ def test_bounding_box():
     assert_unbounded(u)
 
 
-def test_plot(run_in_tmpdir, sphere_model):
-    m = sphere_model.materials[0]
-    univ = sphere_model.geometry.root_universe
+def test_plot(run_in_tmpdir):
 
-    colors = {m: 'limegreen'}
+    pincell = openmc.examples.pwr_pin_cell()
+    materials = pincell.materials
+
+    mat_colors = {
+        materials[0]: (200, 1, 1),
+        materials[1]: "gray",
+        materials[2]: "limegreen"
+    }
+
     for basis in ('xy', 'yz', 'xz'):
-        univ.plot(
-            basis=basis,
+        pincell.geometry.root_universe.plot(
+            colors=mat_colors,
+            color_by="material",
+            legend=True,
             pixels=(10, 10),
-            color_by='material',
-            colors=colors,
+            basis=basis,
+            outline=True
         )
 
 

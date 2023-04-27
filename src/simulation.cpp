@@ -392,21 +392,32 @@ void finalize_batch()
     // Write out a separate source point if it's been specified for this batch
     if (contains(settings::sourcepoint_batch, simulation::current_batch) &&
         settings::source_write && settings::source_separate) {
+
+      // Determine width for zero padding
+      int w = std::to_string(settings::n_max_batches).size();
+      std::string source_point_filename = fmt::format("{0}source.{1:0{2}}",
+        settings::path_output, simulation::current_batch, w);
+      gsl::span<SourceSite> bankspan(simulation::source_bank);
       if (settings::source_mcpl_write) {
-        write_mcpl_source_point(nullptr);
+        write_mcpl_source_point(
+          source_point_filename.c_str(), bankspan, simulation::work_index);
       } else {
-        write_source_point(nullptr);
+        write_source_point(
+          source_point_filename.c_str(), bankspan, simulation::work_index);
       }
     }
 
     // Write a continously-overwritten source point if requested.
     if (settings::source_latest) {
+
+      // note: correct file extension appended automatically
+      auto filename = settings::path_output + "source";
+      gsl::span<SourceSite> bankspan(simulation::source_bank);
       if (settings::source_mcpl_write) {
-        auto filename = settings::path_output + "source.mcpl";
-        write_mcpl_source_point(filename.c_str());
+        write_mcpl_source_point(
+          filename.c_str(), bankspan, simulation::work_index);
       } else {
-        auto filename = settings::path_output + "source.h5";
-        write_source_point(filename.c_str());
+        write_source_point(filename.c_str(), bankspan, simulation::work_index);
       }
     }
   }
@@ -414,12 +425,15 @@ void finalize_batch()
   // Write out surface source if requested.
   if (settings::surf_source_write &&
       simulation::current_batch == settings::n_batches) {
+    auto filename = settings::path_output + "surface_source";
+    auto surf_work_index =
+      mpi::calculate_parallel_index_vector(simulation::surf_source_bank.size());
+    gsl::span<SourceSite> surfbankspan(simulation::surf_source_bank.begin(),
+      simulation::surf_source_bank.size());
     if (settings::surf_mcpl_write) {
-      auto filename = settings::path_output + "surface_source.mcpl";
-      write_mcpl_source_point(filename.c_str(), true);
+      write_mcpl_source_point(filename.c_str(), surfbankspan, surf_work_index);
     } else {
-      auto filename = settings::path_output + "surface_source.h5";
-      write_source_point(filename.c_str(), true);
+      write_source_point(filename.c_str(), surfbankspan, surf_work_index);
     }
   }
 }

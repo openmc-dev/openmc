@@ -408,14 +408,18 @@ void Particle::event_death()
 
 void Particle::pht_collision_energy()
 {
+  // determine index of cell in pulse_height_cells
+  auto it = std::find(model::pulse_height_cells.begin(),
+    model::pulse_height_cells.end(), coord(n_coord() - 1).cell);
+  int index = std::distance(model::pulse_height_cells.begin(), it);
   // Adds the energy particles lose in a collision to the pulse-height at the
   // cell index
-  pht_storage()[coord(n_coord() - 1).cell] += E_last() - E();
+  pht_storage()[index] += E_last() - E();
 
   // If the energy of the particle is below the cutoff, it will not be sampled
   // so its energy is added to the pulse-height in the cell
   if (E() < settings::energy_cutoff[1]) {
-    pht_storage()[coord(n_coord() - 1).cell] += E();
+    pht_storage()[index] += E();
   }
 }
 
@@ -435,7 +439,11 @@ void Particle::pht_secondary_particles()
     if (cell_born() == C_NONE)
       cell_born() = coord(n_coord() - 1).cell;
   }
-  pht_storage()[cell_born()] -= E();
+  // determine index of cell in pulse_height_cells
+  auto it = std::find(model::pulse_height_cells.begin(),
+    model::pulse_height_cells.end(), cell_born());
+  int index = std::distance(model::pulse_height_cells.begin(), it);
+  pht_storage()[index] -= E();
 }
 
 void Particle::cross_surface()

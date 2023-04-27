@@ -394,7 +394,7 @@ The :meth:`~openmc.deplete.abc.Integrator.add_transfer_rate()` method requires a
 the name) as the depletable material from which nuclides are processed,
 a list of elements that share the same transfer rate, and a transfer rate itself.
 
-.. important::
+.. caution::
 
    Make sure you set the transfer rate value with the right sign.
    A positive transfer rate assumes removal, while a negative one assumes feed.

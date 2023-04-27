@@ -289,7 +289,7 @@ in the depletion equation that is proportional to the nuclide density, which can
 where the reaction term :math:`\mathbf{R}`, the decay term :math:`\mathbf{D}`
 and the new transfer term :math:`\mathbf{T}` have been grouped together so that
 :math:`\mathbf{A} = \mathbf{R}+\mathbf{D}-\mathbf{T}`.
-The transfer rate coefficient :math:`t_i` define the continuous transfer of the
+The transfer rate coefficient :math:`t_i` defines the continuous transfer of the
 nuclide :math:`i`, which behaves similar to radioactive decay.
 :math:`t_i` can also be defined as the reciprocal of a cycle time
 :math:`T_{cyc}`, intended as the time needed to process the whole inventory.

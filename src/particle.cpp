@@ -236,7 +236,7 @@ void Particle::event_advance()
   }
 
   // Set particle weight to zero if it hit the time boundary
-  if (hit_time_boundary == true) {
+  if (hit_time_boundary) {
     wgt() = 0.0;
   }
 }

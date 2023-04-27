@@ -70,11 +70,6 @@ extern std::string path_particle_restart; //!< path to a particle restart file
 extern std::string path_sourcepoint;      //!< path to a source file
 extern std::string path_statepoint;       //!< path to a statepoint file
 
-// This is required because the c_str() may not be the first thing in
-// std::string. Sometimes it is, but it seems libc++ may not be like that
-// on some computers, like the intel Mac.
-extern "C" const char* path_statepoint_c; //!< C pointer to statepoint file name
-
 extern "C" int32_t n_inactive;            //!< number of inactive batches
 extern "C" int32_t max_lost_particles;    //!< maximum number of lost particles
 extern double
@@ -87,11 +82,11 @@ extern int64_t
   max_particles_in_flight; //!< Max num. event-based particles in flight
 
 extern ElectronTreatment
-  electron_treatment; //!< how to treat secondary electrons
+  electron_treatment;         //!< how to treat secondary electrons
 extern array<double, 4>
-  energy_cutoff;      //!< Energy cutoff in [eV] for each particle type
+  energy_cutoff;              //!< Energy cutoff in [eV] for each particle type
 extern array<double, 4>
-  time_cutoff;   //!< Time cutoff in [s] for each particle type
+  time_cutoff;                //!< Time cutoff in [s] for each particle type
 extern int
   legendre_to_tabular_points; //!< number of points to convert Legendres
 extern int max_order;         //!< Maximum Legendre order for multigroup data

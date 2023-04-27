@@ -199,7 +199,7 @@ The :class:`openmc.deplete.IndependentOperator` uses inner classes subclassed
 from those listed above to perform similar calculations.
 
 The following classes are used to define transfer rates to model continuous
-removal or feed of isotopes during a depletion analysis.
+removal or feed of nuclides during depletion.
 
 .. autosummary::
    :toctree: generated

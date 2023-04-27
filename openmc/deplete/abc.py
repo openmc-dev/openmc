@@ -575,8 +575,7 @@ class Integrator(ABC):
               next time step. Expected to be of the same shape as ``n0``
 
     transfer_rates : openmc.deplete.TransferRates
-        Instance of TransferRates class to perform continuous transfer based
-        on transfer rates definitions.
+        Instance of TransferRates class to perform continuous transfer during depletion
 
         .. versionadded:: 0.13.4
 

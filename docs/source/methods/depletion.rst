@@ -262,13 +262,13 @@ argument to the :class:`openmc.deplete.CoupledOperator` class.
 Transfer Rates
 --------------
 
-OpenMC allows continuous removal or feed of isotopes by adding an
+OpenMC allows continuous removal or feed of nuclides by adding an
 extra transfer rate term to the depletion matrix. An application of this feature
 is the chemical processing of Molten Salt Reactors (MSRs), where one can
 model the removal of fission products or feeding fresh fuel into the system.
 
 A transfer rate as defined here is the rate at which nuclides are
-continuously removed/feed from/to a material.
+continuously removed/fed from/to a material.
 
 .. note::
 

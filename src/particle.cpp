@@ -216,7 +216,7 @@ void Particle::event_advance()
 
     double push_back_distance = speed() * time_dif;
     this->move_distance(-push_back_distance);
-    bool hit_time_boundary = true;
+    hit_time_boundary = true;
   }
 
   // Score track-length tallies

@@ -2496,17 +2496,16 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
 
       p.filter_matches(i_cell_filt).bins_[i_cell_bin] = cell_counter;
 
-            
       // determine index of cell in pulse_height_cells
       auto it = std::find(model::pulse_height_cells.begin(),
-      model::pulse_height_cells.end(), cell_id);
+        model::pulse_height_cells.end(), cell_id);
       int index = std::distance(model::pulse_height_cells.begin(), it);
 
       double score = p.pht_storage()[index];
 
       if (score < energy_filt.bins().front() ||
           score > energy_filt.bins().back()) {
-          cell_counter++;
+        cell_counter++;
         continue;
       } else {
         auto i_match = lower_bound_index(

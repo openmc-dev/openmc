@@ -1,7 +1,6 @@
 import numpy as np
 import openmc
 import pytest
-from matplotlib.figure import Figure
 
 
 @pytest.fixture(scope='module')
@@ -74,8 +73,10 @@ def test_calculate_cexs_with_materials(test_mat):
 
 @pytest.mark.parametrize("this", ["Be", "Be9"])
 def test_plot_xs(this):
-    assert isinstance(openmc.plotter.plot_xs(this, types=['total']), Figure)
+    from matplotlib.figure import Figure
+    assert isinstance(openmc.plot_xs(this, types=['total']), Figure)
 
 
 def test_plot_xs_mat(test_mat):
-    assert isinstance(openmc.plotter.plot_xs(test_mat, types=['total']), Figure)
+    from matplotlib.figure import Figure
+    assert isinstance(openmc.plot_xs(test_mat, types=['total']), Figure)

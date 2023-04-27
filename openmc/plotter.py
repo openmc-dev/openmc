@@ -65,16 +65,16 @@ def _get_legend_label(this, type):
         return f'{this.name} {type}'
 
 
-def _get_yaxis_label(this_and_types, divisor_types):
+def _get_yaxis_label(reactions, divisor_types):
     """Gets a y axis label for the type of data plotted"""
 
-    if all(isinstance(item, str) for item in this_and_types.keys()):
+    if all(isinstance(item, str) for item in reactions.keys()):
         stem = 'Microscopic'
         if divisor_types:
             mid, units = 'Data', ''
         else:
             mid, units = 'Cross Section', '[b]'
-    elif all(isinstance(item, openmc.Material) for item in this_and_types.keys()):
+    elif all(isinstance(item, openmc.Material) for item in reactions.keys()):
         stem = 'Macroscopic'
         if divisor_types:
             mid, units = 'Data', ''
@@ -87,17 +87,17 @@ def _get_yaxis_label(this_and_types, divisor_types):
     return f'{stem} {mid} {units}'
 
 
-def _get_title(this_and_types):
+def _get_title(reactions):
     """Gets a title for the type of data plotted"""
-    if len(this_and_types) == 1:
-        this, = this_and_types
+    if len(reactions) == 1:
+        this, = reactions
         name = this.name if isinstance(this, openmc.Material) else this
         return f'Cross Section Plot For {name}'
     else:
         return 'Cross Section Plot'
 
 
-def plot_xs(this_and_types, divisor_types=None, temperature=294., axis=None,
+def plot_xs(reactions, divisor_types=None, temperature=294., axis=None,
             sab_name=None, ce_cross_sections=None, mg_cross_sections=None,
             enrichment=None, plot_CE=True, orders=None, divisor_orders=None,
             **kwargs):
@@ -106,7 +106,7 @@ def plot_xs(this_and_types, divisor_types=None, temperature=294., axis=None,
     Parameters
     ----------
 
-    this_and_types : dict
+    reactions : dict
         keys can be either a nuclide or element in string form or an
         openmc.Material object. Values are the type of cross sections to
         include in the plot.
@@ -167,7 +167,7 @@ def plot_xs(this_and_types, divisor_types=None, temperature=294., axis=None,
 
     all_types = []
 
-    for this, types in this_and_types.items():
+    for this, types in reactions.items():
         all_types = all_types + types
 
         if plot_CE:
@@ -234,9 +234,9 @@ def plot_xs(this_and_types, divisor_types=None, temperature=294., axis=None,
     else:
         ax.set_xlim(E[-1], E[0])
 
-    ax.set_ylabel(_get_yaxis_label(this_and_types, divisor_types))
+    ax.set_ylabel(_get_yaxis_label(reactions, divisor_types))
     ax.legend(loc='best')
-    ax.set_title(_get_title(this_and_types))
+    ax.set_title(_get_title(reactions))
 
     return fig
 

@@ -105,7 +105,6 @@ def plot_xs(reactions, divisor_types=None, temperature=294., axis=None,
 
     Parameters
     ----------
-
     reactions : dict
         keys can be either a nuclide or element in string form or an
         openmc.Material object. Values are the type of cross sections to

@@ -39,11 +39,13 @@ void free_memory_weight_windows();
 //==============================================================================
 
 class WeightWindows;
+class WeightWindowsGenerator;
 
 namespace variance_reduction {
 
 extern std::unordered_map<int32_t, int32_t> ww_map;
 extern vector<unique_ptr<WeightWindows>> weight_windows;
+extern vector<unique_ptr<WeightWindowsGenerator>> weight_windows_generators;
 
 } // namespace variance_reduction
 
@@ -88,9 +90,6 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 private:
-  //! Ready the weight window class for use
-  void set_defaults();
-
   template<class T>
   void check_bounds(const T& lower, const T& upper) const;
 
@@ -110,6 +109,9 @@ public:
   void set_mesh(const Mesh* mesh);
 
   void set_mesh(int32_t mesh_idx);
+
+  //! Ready the weight window class for use
+  void set_defaults();
 
   //! Update weight window boundaries using tally results
   //! \param[in] tally Pointer to the tally whose results will be used to update
@@ -154,6 +156,8 @@ public:
   int32_t id() const { return id_; }
   int32_t& id() { return id_; }
 
+  int32_t index() const { return index_; }
+
   vector<double>& energy_bounds() { return energy_bounds_; }
 
   const std::unique_ptr<Mesh>& mesh() const { return model::meshes[mesh_idx_]; }
@@ -183,6 +187,24 @@ private:
   double weight_cutoff_ {DEFAULT_WEIGHT_CUTOFF}; //!< Weight cutoff
   int max_split_ {10}; //!< Maximum value for particle splitting
   int32_t mesh_idx_;   //!< Index in meshes vector
+};
+
+class WeightWindowsGenerator {
+  public:
+  // Constructors
+  WeightWindowsGenerator(pugi::xml_node node);
+
+  // Methods
+  void update() const;
+
+  // Data members
+  int32_t tally_idx_; //!< Index of the tally used to update the weight windows
+  int32_t ww_idx_; //!< Index of the weight windows object being generated
+  std::string method_; //!< Method used to update weight window. Only "magic" is valid for now.
+  int32_t max_realizations_; //!< Maximum number of tally realizations
+  int32_t update_interval_; //!< Determines how often updates occur
+  bool on_the_fly_; //!< Whether or not weight windows
+  std::string update_params_; //!< Update parameters
 };
 
 } // namespace openmc

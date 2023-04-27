@@ -23,6 +23,7 @@
 #include "openmc/particle_data.h"
 #include "openmc/physics_common.h"
 #include "openmc/search.h"
+#include "openmc/settings.h"
 #include "openmc/tallies/filter_energy.h"
 #include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/filter_particle.h"
@@ -42,6 +43,7 @@ namespace variance_reduction {
 
 std::unordered_map<int32_t, int32_t> ww_map;
 openmc::vector<unique_ptr<WeightWindows>> weight_windows;
+openmc::vector<unique_ptr<WeightWindowsGenerator>> weight_windows_generators;
 
 } // namespace variance_reduction
 
@@ -994,6 +996,96 @@ extern "C" int openmc_weight_windows_import(const char* filename)
   file_close(ww_file);
 
   return 0;
+}
+
+WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node) {
+  // read information from the XML node
+  int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
+  int32_t mesh_idx = model::mesh_map[mesh_id];
+  method_ = get_node_value(node, "method");
+  max_realizations_ = std::stoi(get_node_value(node, "max_realizations"));
+
+  int active_batches = settings::n_batches - settings::n_inactive;
+  if (max_realizations_ > active_batches) {
+    auto msg = fmt::format("The maximum number of specified tally realizations ({}) is greater than the number of active batches ({}).", max_realizations_, active_batches);
+    warning(msg);
+  }
+  auto tmp_str = get_node_value(node, "particle_type", true, true);
+  auto particle_type = str_to_particle_type(tmp_str);
+
+  update_interval_ = std::stoi(get_node_value(node, "update_interval"));
+  on_the_fly_ = get_node_value_bool(node, "on_the_fly");
+
+  std::vector<double> e_bounds;
+  if (check_for_node(node, "energy_bounds")) {
+    e_bounds = get_node_array<double>(node, "energy_bounds");
+  } else {
+    int p_type = static_cast<int>(particle_type);
+    e_bounds.push_back(data::energy_min[p_type]);
+    e_bounds.push_back(data::energy_max[p_type]);
+  }
+
+  // create a tally based on the WWG information
+  Tally* ww_tally = Tally::create();
+  tally_idx_ = model::tally_map[ww_tally->id()];
+  ww_tally->set_scores({"flux"});
+
+  // TODO: add check for existing mesh filter
+  // see if there's already a mesh filter using this mesh
+  bool found_mesh_filter = false;
+  for (const auto& f : model::tally_filters) {
+    if (f->type() == FilterType::MESH) {
+      const auto* mesh_filter = dynamic_cast<MeshFilter*>(f.get());
+      if (mesh_filter->mesh() == mesh_idx) {
+        ww_tally->add_filter(f.get());
+        found_mesh_filter = true;
+        break;
+      }
+    }
+  }
+
+  if (!found_mesh_filter) {
+    auto mesh_filter = Filter::create("mesh");
+    openmc_mesh_filter_set_mesh(mesh_filter->index(), model::mesh_map[mesh_id]);
+    ww_tally->add_filter(mesh_filter);
+  }
+
+  if (e_bounds.size() > 0) {
+    auto energy_filter = Filter::create("energy");
+    openmc_energy_filter_set_bins(energy_filter->index(), e_bounds.size(), e_bounds.data());
+    ww_tally->add_filter(energy_filter);
+  }
+
+  // add a particle filter
+  auto particle_filter = Filter::create("particle");
+  auto pf = dynamic_cast<ParticleFilter*>(particle_filter);
+  pf->set_particles({&particle_type, 1});
+  ww_tally->add_filter(particle_filter);
+
+  // create a matching weight windows object
+  auto wws = WeightWindows::create();
+  ww_idx_ = wws->index();
+  if (e_bounds.size() > 0) wws->set_energy_bounds(e_bounds);
+  wws->set_mesh(model::mesh_map[mesh_id]);
+  wws->set_particle_type(particle_type);
+  wws->set_defaults();
+}
+
+void WeightWindowsGenerator::update() const {
+  const auto& wws = variance_reduction::weight_windows[ww_idx_];
+
+  Tally* tally = model::tallies[tally_idx_].get();
+
+  // if we're beyond the number of max realizations or not at the corrrect
+  // update interval, skip the update
+  if (max_realizations_ < tally->n_realizations_ || tally->n_realizations_ % update_interval_ != 0) return;
+
+  wws->update_magic(tally);
+
+  // if we're not doing on the fly generation, reset the tally results once we're done with the update
+  if (!on_the_fly_) tally->reset();
+
+  // TODO: deactivate or remove tally once weight window generation is complete
 }
 
 } // namespace openmc

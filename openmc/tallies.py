@@ -3199,7 +3199,6 @@ class Tallies(cv.CheckedList):
 
         return element
 
-
     def export_to_xml(self, path='tallies.xml'):
         """Create a tallies.xml file that can be used for a simulation.
 

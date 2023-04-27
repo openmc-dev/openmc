@@ -633,21 +633,23 @@ class WeightWindowGenerator():
 
     Parameters
     ----------
-    tally : openmc.Tally
-        Tally used to generate weight windows. The filters and scores must meet
-        the requirements for weight window generation outlined below:
-
-          - Filters: :class:`openmc.MeshFilter` (required), :class:`openmc.EnergyFilter`
-            , :class:`openmc.ParticleFilter`
-          - Scores: flux (required)
-    max_realizations : int
-        The upper limit for number of tally realizations when generating weight
-        windows.
+    mesh : :class:`openmc.MeshBase`
+        Mesh used to represent the weight windows spatially
+    energy_bounds : Iterable of Real
+        A list of values for which each successive pair constitutes a range of
+        energies in [eV] for a single bin
+    particle_type : {'neutron', 'photon'} (default is 'neutron')
+        Particle type the weight windows apply to
 
     Attributes
     ----------
-    tally : openmc.Tally
-        Tally used to generate weight windows.
+    mesh : :class:`openmc.MeshBase`
+        Mesh used to represent the weight windows spatially
+    energy_bounds : Iterable of Real
+        A list of values for which each successive pair constitutes a range of
+        energies in [eV] for a single bin
+    particle_type : {'neutron', 'photon'}
+        Particle type the weight windows apply to
     method : str
         The weight window generation methodology applied during an update. Only
         'magic' is currently supported.
@@ -664,11 +666,14 @@ class WeightWindowGenerator():
 
     _MAGIC_PARAMS = {'value': str, 'threshold': Real, 'ratio': Real}
 
-    def __init__(self, tally, max_realizations):
-        self.tally = tally
-        self.max_realizations = max_realizations
+    def __init__(self, mesh, energy_bounds=None, particle_type='neutron'):
+        self.mesh = mesh
+        if energy_bounds is not None:
+            self.energy_bounds = energy_bounds
+        self.particle_type = particle_type
+        self.max_realizations = 1
         self.method = 'magic'
-        self.particle_type = 'neutron'
+        self.particle_type = particle_type
         self.update_interval = 1
         self.on_the_fly = True
 
@@ -676,69 +681,82 @@ class WeightWindowGenerator():
 
     def __repr__(self):
         string = type(self).__name__ + '\n'
-        string += f'\t{"Tally":<20}=\t{self.tally.id}\n'
+        string += f'\t{"Mesh":<20}=\t{self.mesh.id}\n'
+        string += f'\t{"Particle:":<20}=\t{self.particle_type}\n'
+        string += f'\t{"Energy Bounds:":<20}=\t{self.energy_bounds}\n'
         string += f'\t{"Method":<20}=\t{self.method}\n'
-        string += f'\t{"Max Realizations":<20}=\t{self.max_realizations}\n'
-        string += f'\t{"Update Interval":<20}=\t{self.update_interval}\n'
-        string += f'\t{"On The Fly":<20}=\t{self.on_the_fly}\n'
+        string += f'\t{"Max Realizations:":<20}=\t{self.max_realizations}\n'
+        string += f'\t{"Update Interval:":<20}=\t{self.update_interval}\n'
+        string += f'\t{"On The Fly:":<20}=\t{self.on_the_fly}\n'
         if self.update_params is not None:
             string += f'\t{"Update Parameters:":<20}\n\t\t\t{self.update_params}\n'
         string
 
         return string
-    @property
-    def tally(self):
-        return self._tally
-
-    @tally.setter
-    def tally(self, t):
-        cv.check_type('weight window generation tally', t, openmc.Tally)
-        self._tally = t
 
     @property
-    def method(self):
+    def mesh(self) -> openmc.MeshBase:
+        return self._mesh
+
+    @mesh.setter
+    def mesh(self, m: openmc.MeshBase):
+        cv.check_type('mesh', m, openmc.MeshBase)
+        self._mesh = m
+
+    @property
+    def energy_bounds(self) -> Iterable[Real]:
+        return self._energy_bounds
+
+    @energy_bounds.setter
+    def energy_bounds(self, eb: Iterable[float]):
+        cv.check_type('energy bounds', eb, Iterable, Real)
+        self._energy_bounds = eb
+
+
+    @property
+    def particle_type(self) -> str:
+        return self._particle_type
+
+    @particle_type.setter
+    def particle_type(self, pt: str):
+        cv.check_value('particle type', pt, ('neutron', 'photon'))
+        self._particle_type = pt
+
+    @property
+    def method(self) -> str:
         return self._method
 
     @method.setter
-    def method(self, m):
+    def method(self, m: str):
         cv.check_type('generation method', m, str)
         cv.check_value('generation method', m, ('magic'))
         self._method = m
 
     @property
-    def particle_type(self):
-        return self._particle_type
-
-    @particle_type.setter
-    def particle_type(self, pt):
-        cv.check_value('particle type', pt, ('neutron', 'photon'))
-        self._particle_type = pt
-
-    @property
-    def max_realizations(self):
+    def max_realizations(self) -> int:
         return self._max_realizations
 
     @max_realizations.setter
-    def max_realizations(self, m):
+    def max_realizations(self, m: int):
         cv.check_type('max tally realizations', m, Integral)
         cv.check_greater_than('max tally realizations', m, 0)
         self._max_realizations = m
 
     @property
-    def update_interval(self):
+    def update_interval(self) -> int:
         return self._update_interval
 
     @update_interval.setter
-    def update_interval(self, ui):
+    def update_interval(self, ui: int):
         cv.check_type('update interval', ui, Integral)
         cv.check_greater_than('update interval', ui , 0)
         self._update_interval = ui
 
     @property
-    def update_params(self):
+    def update_params(self) -> dict :
         return self._update_params
 
-    def _check_magic_params(self, params):
+    def _check_magic_params(self, params: dict):
         for key, val in params.items():
             if key not in self._MAGIC_PARAMS:
                 raise ValueError(f'Invalid param "{key}" for {self.method} '
@@ -746,18 +764,18 @@ class WeightWindowGenerator():
             cv.check_type(f'generation param: {key}', val, self._MAGIC_PARAMS[key])
 
     @update_params.setter
-    def update_params(self, params):
+    def update_params(self, params: dict):
         if self.method == 'magic':
             self._check_magic_params(params)
 
         self._update_params = params
 
     @property
-    def on_the_fly(self):
+    def on_the_fly(self) -> bool:
         return self._on_the_fly
 
     @on_the_fly.setter
-    def on_the_fly(self, otf):
+    def on_the_fly(self, otf: bool):
         cv.check_type('on the fly generation', otf, bool)
         self._on_the_fly = otf
 
@@ -768,17 +786,20 @@ class WeightWindowGenerator():
         """Creates a 'weight_window_generator' element to be written to an XML file.
         """
 
-        element = ET.Element('weight_window_generator')
+        element = ET.Element('weight_windows_generator')
 
-        tally_elem = ET.SubElement(element, 'tally')
-        tally_elem.text = str(self.tally.id)
+        mesh_elem = ET.SubElement(element, 'mesh')
+        mesh_elem.text = str(self.mesh.id)
+        if self.energy_bounds is not None:
+            subelement = ET.SubElement(element, 'energy_bounds')
+            subelement.text = ' '.join(str(e) for e in self.energy_bounds)
         particle_elem = ET.SubElement(element, 'particle_type')
         particle_elem.text = self.particle_type
         realizations_elem = ET.SubElement(element, 'max_realizations')
         realizations_elem.text = str(self.max_realizations)
         update_interval_elem = ET.SubElement(element, 'update_interval')
         update_interval_elem.text = str(self.update_interval)
-        otf_elem = ET.SubElement(element, 'on_th_fly')
+        otf_elem = ET.SubElement(element, 'on_the_fly')
         otf_elem.text = str(self.on_the_fly).lower()
         method_elem = ET.SubElement(element, 'method')
         method_elem.text = self.method

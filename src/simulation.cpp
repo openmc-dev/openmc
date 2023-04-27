@@ -24,6 +24,7 @@
 #include "openmc/tallies/trigger.h"
 #include "openmc/timer.h"
 #include "openmc/track_output.h"
+#include "openmc/weight_windows.h"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -179,6 +180,13 @@ int openmc_simulation_finalize()
   // Write tally results to tallies.out
   if (settings::output_tallies && mpi::master)
     write_tallies();
+
+  // If weight window generators are present in this simulation,
+  // write a weight windows file
+  if (variance_reduction::weight_windows_generators.size() > 0) {
+    openmc_weight_windows_export();
+  }
+
 
   // Deactivate all tallies
   for (auto& t : model::tallies) {
@@ -360,6 +368,11 @@ void finalize_batch()
   simulation::time_tallies.start();
   accumulate_tallies();
   simulation::time_tallies.stop();
+
+  // update weight windows if needed
+  for (const auto& wwg : variance_reduction::weight_windows_generators) {
+    wwg->update();
+  }
 
   // Reset global tally results
   if (simulation::current_batch <= settings::n_inactive) {

@@ -1315,12 +1315,24 @@ class Settings:
             elem = ET.SubElement(root, "weight_windows_on")
             elem.text = str(self._weight_windows_on).lower()
 
-    def _create_weight_window_generators_subelement(self, root):
+    def _create_weight_window_generators_subelement(self, root, mesh_memo=None):
         if not self.weight_window_generators:
             return
         elem = ET.SubElement(root, 'weight_window_generators')
         for wwg in self.weight_window_generators:
          elem.append(wwg.to_xml_element())
+
+        # ensure that mesh elements are created if needed
+        for wwg in self.weight_window_generators:
+            if mesh_memo and wwg.mesh.id in mesh_memo:
+                continue
+
+            # See if a <mesh> element already exists -- if not, add it
+            path = f"./mesh[@id='{wwg.mesh}']"
+            if root.find(path) is None:
+                root.append(wwg.mesh.to_xml_element())
+                if mesh_memo is not None:
+                    mesh_memo.add(wwg.id)
 
     def _create_weight_windows_file_element(self, root):
         if self.weight_windows_file is not None:
@@ -1716,7 +1728,7 @@ class Settings:
         self._create_log_grid_bins_subelement(element)
         self._create_write_initial_source_subelement(element)
         self._create_weight_windows_subelement(element, mesh_memo)
-        self._create_weight_window_generators_subelement(element)
+        self._create_weight_window_generators_subelement(element, mesh_memo)
         self._create_weight_windows_file_element(element)
         self._create_max_splits_subelement(element)
         self._create_max_tracks_subelement(element)

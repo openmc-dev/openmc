@@ -209,13 +209,14 @@ void Particle::event_advance()
   this->time() += distance / this->speed();
 
   // Kill particle if its time exceeds the cutoff
+  bool hit_time_boundary = false;
   if (time() > settings::time_cutoff[static_cast<int>(type())]) {
     double time_dif = time() - settings::time_cutoff[static_cast<int>(type())];
     time() = settings::time_cutoff[static_cast<int>(type())];
 
     double push_back_distance = speed() * time_dif;
     this->move_distance(-push_back_distance);
-    hit_time_boundary() = true;
+    bool hit_time_boundary = true;
   }
 
   // Score track-length tallies
@@ -235,7 +236,7 @@ void Particle::event_advance()
   }
 
   // Set particle weight to zero if it hit the time boundary
-  if (hit_time_boundary() == true) {
+  if (hit_time_boundary == true) {
     wgt() = 0.0;
   }
 }

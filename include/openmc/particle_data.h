@@ -322,9 +322,6 @@ private:
 
   double collision_distance_; // distance to particle's next closest collision
 
-  bool hit_time_boundary_ {
-    false};         //!< flag to show if particle is killed by time cutoff
-
   int n_event_ {0}; // number of events executed in this particle's history
 
   // Weight window information
@@ -454,7 +451,6 @@ public:
 
   bool& trace() { return trace_; }
   double& collision_distance() { return collision_distance_; }
-  bool& hit_time_boundary() { return hit_time_boundary_; }
   int& n_event() { return n_event_; }
 
   int n_split() const { return n_split_; }

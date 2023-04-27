@@ -1455,7 +1455,7 @@ class Material(IDManagerMixin):
         # Add NCrystal material from cfg string
         if "cfg" in elem.attrib:
             cfg = elem.get("cfg")
-            mat = Material.from_ncrystal(cfg, material_id=mat_id)
+            return Material.from_ncrystal(cfg, material_id=mat_id)
         else:
             mat = cls(mat_id)
             mat.name = elem.get('name')

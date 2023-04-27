@@ -56,6 +56,7 @@ vector<int> active_collision_tallies;
 vector<int> active_meshsurf_tallies;
 vector<int> active_surface_tallies;
 vector<int> active_pulse_height_tallies;
+vector<int> pulse_height_cells;
 } // namespace model
 
 namespace simulation {
@@ -528,6 +529,26 @@ void Tally::set_scores(const vector<std::string>& scores)
       }
       type_ = TallyType::PULSE_HEIGHT;
       estimator_ = TallyEstimator::PULSE_HEIGHT;
+
+      // Collecting indices of all cells covered by the filters in the pulse
+      // height tally in global variable pulse_height_cells
+      for (const auto& i_filt : filters_) {
+        auto cell_filter =
+          dynamic_cast<CellFilter*>(model::tally_filters[i_filt].get());
+        const auto& cells = cell_filter->cells();
+        const auto* filt {model::tally_filters[i_filt].get()};
+        if (dynamic_cast<const CellFilter*>(filt)) {
+          for (int i = 0; i < filt->n_bins(); i++) {
+            int cell_index = cells[i];
+            if (std::find(model::pulse_height_cells.begin(),
+                  model::pulse_height_cells.end(),
+                  cell_index) == model::pulse_height_cells.end()) {
+              model::pulse_height_cells.push_back(cell_index);
+            }
+          }
+        }
+      }
+
       break;
     }
 

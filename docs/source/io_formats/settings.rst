@@ -103,7 +103,7 @@ This element has the following attributes/sub-elements:
 
     *Default*: 0.0
 
-  :time_neutrons 
+  :time_neutrons
     The time above which neutrons will be killed.
 
     *Default*: Infinity
@@ -113,7 +113,7 @@ This element has the following attributes/sub-elements:
 
     *Default*: Infinity
 
-  :time_electrons 
+  :time_electrons
     The time above which electrons will be killed.
 
     *Default*: Infinity

@@ -698,6 +698,64 @@ class Chain:
         dict.update(matrix_dok, matrix)
         return matrix_dok.tocsr()
 
+    def form_rr_term(self, transfer_rates, materials):
+        """Function to form the transfer rate term matrices.
+
+        .. versionadded:: 0.13.4
+
+        Parameters
+        ----------
+        transfer_rates : openmc.deplete.TransferRates
+            Instance of openmc.deplete.TransferRates
+        materials : string or two-tuple of strings
+            Two cases are possible:
+
+            1) Material ID as string:
+            Nuclide transfer only. In this case the transfer rate terms will be
+            subtracted from the respective depletion matrix
+
+            2) Two-tuple of material IDs as strings:
+            Nuclide transfer from one material into another.
+            The pair is assumed to be
+            ``(destination_material, source_material)``, where
+            ``destination_material`` and ``source_material`` are the nuclide
+            receiving and losing materials, respectively.
+            The transfer rate terms get placed in the final matrix with indexing
+            position corresponding to the ID of the materials set.
+
+        Returns
+        -------
+        scipy.sparse.csr_matrix
+            Sparse matrix representing transfer term.
+
+        """
+        matrix = defaultdict(float)
+
+        for i, nuclide in enumerate(self.nuclides):
+            element = re.split(r'\d+', nuclide.name)[0]
+            # Build transfer terms matrices
+            if isinstance(materials, str):
+                material = materials
+                if element in transfer_rates.get_elements(material):
+                    matrix[i, i] = transfer_rates.get_transfer_rate(material, element)
+                else:
+                    matrix[i, i] = 0.0
+            #Build transfer terms matrices
+            elif isinstance(materials, tuple):
+                destination_material, material = materials
+                if transfer_rates.get_destination_material(material, element) == destination_material:
+                    matrix[i, i] = transfer_rates.get_transfer_rate(material, element)
+                else:
+                    warn(f'Material {destination_material} is not defined '
+                         f'as a destination material for Material {material}. '
+                         'Setting transfer rate to 0.0')
+                    matrix[i, i] = 0.0
+            #Nothing else is allowed
+        n = len(self)
+        matrix_dok = sp.dok_matrix((n, n))
+        dict.update(matrix_dok, matrix)
+        return matrix_dok.tocsr()
+
     def get_branch_ratios(self, reaction="(n,gamma)"):
         """Return a dictionary with reaction branching ratios
 

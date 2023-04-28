@@ -440,7 +440,8 @@ class Universe(UniverseBase):
             if outline:
                 # Combine R, G, B values into a single int
                 rgb = (img * 256).astype(int)
-                image_value = (rgb[..., 0] << 16) + (rgb[..., 1] << 8) + (rgb[..., 2])
+                image_value = (rgb[..., 0] << 16) + \
+                    (rgb[..., 1] << 8) + (rgb[..., 2])
 
                 axes.contour(
                     image_value,
@@ -476,7 +477,19 @@ class Universe(UniverseBase):
 
                     # this works whether we're doing cells or materials
                     label = key.name if key.name != '' else key.id
-                    key_patch = mpatches.Patch(color=color, label=label)
+
+                    # matplotlib takes RGB on 0-1 scale rather than 0-255. at
+                    # this point PlotBase has already checked that 3-tuple
+                    # based colors are already valid, so if the length is three
+                    # then we know it just needs to be converted to the 0-1
+                    # format.
+                    if len(color) == 3 and not isinstance(color, str):
+                        scaled_color = (
+                            color[0]/255, color[1]/255, color[2]/255)
+                    else:
+                        scaled_color = color
+
+                    key_patch = mpatches.Patch(color=scaled_color, label=label)
                     patches.append(key_patch)
 
                 axes.legend(handles=patches, **legend_kwargs)

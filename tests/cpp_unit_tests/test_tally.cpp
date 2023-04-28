@@ -3,7 +3,7 @@
 
 using namespace openmc;
 
-TEST_CASE("Test add_filter")
+TEST_CASE("Test add/set_filter")
 {
   // create a new tally object
   Tally* tally = Tally::create();

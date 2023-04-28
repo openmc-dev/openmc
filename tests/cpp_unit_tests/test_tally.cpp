@@ -37,4 +37,19 @@ TEST_CASE("Test add_filter")
 
   REQUIRE(tally->filters().size() == 1);
   REQUIRE(model::filter_map[cell_filter->id()] == tally->filters(0));
+
+  // set filters again using both filters
+  std::vector<Filter*> filters = {cell_filter, particle_filter};
+  tally->set_filters(filters);
+
+  REQUIRE(tally->filters().size() == 2);
+  REQUIRE(model::filter_map[cell_filter->id()] == tally->filters(0));
+  REQUIRE(model::filter_map[particle_filter->id()] == tally->filters(1));
+
+  // set filters with a duplicate filter, should only add the filter to the tally once
+  filters = {cell_filter, cell_filter};
+  tally->set_filters(filters);
+  REQUIRE(tally->filters().size() == 1);
+  REQUIRE(model::filter_map[cell_filter->id()] == tally->filters(0));
+
 }

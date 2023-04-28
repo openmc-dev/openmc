@@ -412,7 +412,7 @@ private:
 
   bool full_phi_ {false};
 
-  constexpr inline int sanitize_angular_index(int idx, bool full, int N) const
+  inline int sanitize_angular_index(int idx, bool full, int N) const
   {
     if ((idx > 0) and (idx <= N)) {
       return idx;
@@ -467,7 +467,7 @@ private:
   bool full_theta_ {false};
   bool full_phi_ {false};
 
-  constexpr inline int sanitize_angular_index(int idx, bool full, int N) const
+  inline int sanitize_angular_index(int idx, bool full, int N) const
   {
     if ((idx > 0) and (idx <= N)) {
       return idx;

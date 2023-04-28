@@ -403,7 +403,7 @@ void initialize_source()
     write_message("Writing out initial source...", 5);
     std::string filename = settings::path_output + "initial_source.h5";
     hid_t file_id = file_open(filename, 'w', true);
-    write_source_bank(file_id, false);
+    write_source_bank(file_id, simulation::source_bank, simulation::work_index);
     file_close(file_id);
   }
 }

@@ -6,6 +6,7 @@ from copy import deepcopy
 import numpy as np
 
 from .checkvalue import check_type
+from .bounding_box import BoundingBox
 
 
 class Region(ABC):
@@ -355,7 +356,7 @@ class Intersection(Region, MutableSequence):
 
     Attributes
     ----------
-    bounding_box : tuple of numpy.array
+    bounding_box : openmc.BoundingBox
         Lower-left and upper-right coordinates of an axis-aligned bounding box
 
     """
@@ -418,7 +419,7 @@ class Intersection(Region, MutableSequence):
             lower_left_n, upper_right_n = n.bounding_box
             lower_left[:] = np.maximum(lower_left, lower_left_n)
             upper_right[:] = np.minimum(upper_right, upper_right_n)
-        return lower_left, upper_right
+        return BoundingBox(lower_left, upper_right)
 
 
 class Union(Region, MutableSequence):
@@ -443,7 +444,7 @@ class Union(Region, MutableSequence):
 
     Attributes
     ----------
-    bounding_box : 2-tuple of numpy.array
+    bounding_box : openmc.BoundingBox
         Lower-left and upper-right coordinates of an axis-aligned bounding box
 
     """
@@ -506,7 +507,7 @@ class Union(Region, MutableSequence):
             lower_left_n, upper_right_n = n.bounding_box
             lower_left[:] = np.minimum(lower_left, lower_left_n)
             upper_right[:] = np.maximum(upper_right, upper_right_n)
-        return lower_left, upper_right
+        return BoundingBox(lower_left, upper_right)
 
 
 class Complement(Region):
@@ -533,7 +534,7 @@ class Complement(Region):
     ----------
     node : openmc.Region
         Regions to take the complement of
-    bounding_box : tuple of numpy.array
+    bounding_box : openmc.BoundingBox
         Lower-left and upper-right coordinates of an axis-aligned bounding box
 
     """

@@ -370,22 +370,27 @@ class Universe(UniverseBase):
         if basis == 'xy':
             x, y = 0, 1
             xlabel, ylabel = 'x [cm]', 'y [cm]'
-                
         elif basis == 'yz':
             x, y = 1, 2
             xlabel, ylabel = 'y [cm]', 'z [cm]'
-
         elif basis == 'xz':
             x, y = 0, 2
             xlabel, ylabel = 'x [cm]', 'z [cm]'
 
-        if width is None:
-            x_width = self.bounding_box.width(basis[0])
-            y_width = self.bounding_box.width(basis[1])
-            width = (x_width, y_width)
-
-        if origin is None:
-            origin = self.bounding_box.center
+        # checks to see if bounding box contains -inf or inf values
+        if True in np.isinf(self.bounding_box):
+            if origin is None:
+                origin = (0, 0, 0)
+            if width is None:
+                width = (10, 10)
+        else:
+            if origin is None:
+                origin = self.bounding_box.center
+            if width is None:
+                bb_width = self.bounding_box.width
+                x_width = bb_width[{'x': 0, 'y': 1, 'z': 2}[basis[0]]]
+                y_width = bb_width[{'x': 0, 'y': 1, 'z': 2}[basis[1]]]
+                width = (x_width, y_width)
 
         x_min = origin[x] - 0.5*width[0]
         x_max = origin[x] + 0.5*width[0]

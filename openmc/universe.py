@@ -311,11 +311,14 @@ class Universe(UniverseBase):
         ----------
         origin : Optional Iterable of float
             Coordinates at the origin of the plot, if left as None then the
-            universe.bounding_box.center will be used to ascertain the origin
+            universe.bounding_box.center will be used to attempt to
+            ascertain the origin. Defaults to (0, 0, 0) if the bounding_box
+            contains inf values
         width : Optional Iterable of float
             Width of the plot in each basis direction. If left as none then the
-            universe.bounding_box.width() will be used to ascertain the plot
-            axis widths
+            universe.bounding_box.width() will be used to attempt to
+            ascertain the plot width.  Defaults to (10, 10) if the bounding_box
+            contains inf values
         pixels : Iterable of int
             Number of pixels to use in each basis direction
         basis : {'xy', 'xz', 'yz'}

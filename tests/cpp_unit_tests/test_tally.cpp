@@ -16,6 +16,7 @@ TEST_CASE("Test add_filter")
 
   // the filter should be added to the tally
   REQUIRE(tally->filters().size() == 1);
+  REQUIRE(model::filter_map[particle_filter->id()] == tally->filters(0));
 
   // add the particle filter to the tally again
   tally->add_filter(particle_filter);
@@ -28,10 +29,12 @@ TEST_CASE("Test add_filter")
 
   // now the size of the filters should have increased
   REQUIRE(tally->filters().size() == 2);
+  REQUIRE(model::filter_map[cell_filter->id()] == tally->filters(1));
 
   // if we set the filters explicitly there shouldn't be extra filters hanging
   // around
   tally->set_filters({&cell_filter, 1});
 
   REQUIRE(tally->filters().size() == 1);
+  REQUIRE(model::filter_map[cell_filter->id()] == tally->filters(0));
 }

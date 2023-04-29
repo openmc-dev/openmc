@@ -27,6 +27,8 @@ class BoundingBox(tuple):
         The x, y, z coordinates of the upper right corner of the bounding box in [cm]
     volume : float
         The volume of the bounding box in [cm^3]
+    width : iterable of float
+        The width of the x, y and z axis
     """
 
     def __new__(cls, lower_left: Iterable[float], upper_right: Iterable[float]):
@@ -55,3 +57,7 @@ class BoundingBox(tuple):
     @property
     def volume(self) -> float:
         return np.abs(np.prod(self[1] - self[0]))
+
+    @property
+    def width(self):
+        return abs(self.lower_left - self.upper_right)

@@ -422,6 +422,12 @@ class RegularMesh(StructuredMesh):
             x1, = self.upper_right
             return (np.linspace(x0, x1, nx + 1),)
 
+    @property
+    def bounding_box(self):
+        return openmc.BoundingBox(
+            np.array(self.lower_left), np.array(self.upper_right)
+        )
+
     @dimension.setter
     def dimension(self, dimension):
         cv.check_type('mesh dimension', dimension, Iterable, Integral)

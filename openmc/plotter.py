@@ -1,6 +1,5 @@
 from itertools import chain
 from numbers import Integral, Real
-import string
 
 import numpy as np
 
@@ -56,7 +55,49 @@ _MAX_E = 20.e6
 ELEMENT_NAMES = list(openmc.data.ELEMENT_SYMBOL.values())[1:]
 
 
-def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
+def _get_legend_label(this, type):
+    """Gets a label for the element or nuclide or material and reaction plotted"""
+    if isinstance(this, str):
+        return f'{this} {type}'
+    elif this.name is '':
+        return f'Material {this.id} {type}'
+    else:
+        return f'{this.name} {type}'
+
+
+def _get_yaxis_label(reactions, divisor_types):
+    """Gets a y axis label for the type of data plotted"""
+
+    if all(isinstance(item, str) for item in reactions.keys()):
+        stem = 'Microscopic'
+        if divisor_types:
+            mid, units = 'Data', ''
+        else:
+            mid, units = 'Cross Section', '[b]'
+    elif all(isinstance(item, openmc.Material) for item in reactions.keys()):
+        stem = 'Macroscopic'
+        if divisor_types:
+            mid, units = 'Data', ''
+        else:
+            mid, units = 'Cross Section', '[1/cm]'
+    else:
+        msg = "Mixture of openmc.Material and elements/nuclides. Invalid type for plotting"
+        raise TypeError(msg)
+
+    return f'{stem} {mid} {units}'
+
+
+def _get_title(reactions):
+    """Gets a title for the type of data plotted"""
+    if len(reactions) == 1:
+        this, = reactions
+        name = this.name if isinstance(this, openmc.Material) else this
+        return f'Cross Section Plot For {name}'
+    else:
+        return 'Cross Section Plot'
+
+
+def plot_xs(reactions, divisor_types=None, temperature=294., axis=None,
             sab_name=None, ce_cross_sections=None, mg_cross_sections=None,
             enrichment=None, plot_CE=True, orders=None, divisor_orders=None,
             **kwargs):
@@ -64,10 +105,10 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
 
     Parameters
     ----------
-    this : str or openmc.Material
-        Object to source data from. Nuclides and elements can be input as a str
-    types : Iterable of values of PLOT_TYPES
-        The type of cross sections to include in the plot.
+    reactions : dict
+        keys can be either a nuclide or element in string form or an
+        openmc.Material object. Values are the type of cross sections to
+        include in the plot.
     divisor_types : Iterable of values of PLOT_TYPES, optional
         Cross section types which will divide those produced by types
         before plotting. A type of 'unity' can be used to effectively not
@@ -115,49 +156,6 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
     import matplotlib.pyplot as plt
 
     cv.check_type("plot_CE", plot_CE, bool)
-    cv.check_type("this", this, (str, openmc.Material))
-
-    if plot_CE:
-        # Calculate for the CE cross sections
-        E, data = calculate_cexs(this, types, temperature, sab_name,
-                                 ce_cross_sections, enrichment)
-        if divisor_types:
-            cv.check_length('divisor types', divisor_types, len(types))
-            Ediv, data_div = calculate_cexs(this, divisor_types, temperature,
-                                            sab_name, ce_cross_sections,
-                                            enrichment)
-
-            # Create a new union grid, interpolate data and data_div on to that
-            # grid, and then do the actual division
-            Enum = E[:]
-            E = np.union1d(Enum, Ediv)
-            data_new = np.zeros((len(types), len(E)))
-
-            for line in range(len(types)):
-                data_new[line, :] = \
-                    np.divide(np.interp(E, Enum, data[line, :]),
-                              np.interp(E, Ediv, data_div[line, :]))
-                if divisor_types[line] != 'unity':
-                    types[line] = types[line] + ' / ' + divisor_types[line]
-            data = data_new
-    else:
-        # Calculate for MG cross sections
-        E, data = calculate_mgxs(this, types, orders, temperature,
-                                 mg_cross_sections, ce_cross_sections,
-                                 enrichment)
-
-        if divisor_types:
-            cv.check_length('divisor types', divisor_types, len(types))
-            Ediv, data_div = calculate_mgxs(this, divisor_types,
-                                            divisor_orders, temperature,
-                                            mg_cross_sections,
-                                            ce_cross_sections, enrichment)
-
-            # Perform the division
-            for line in range(len(types)):
-                data[line, :] /= data_div[line, :]
-                if divisor_types[line] != 'unity':
-                    types[line] += ' / ' + divisor_types[line]
 
     # Generate the plot
     if axis is None:
@@ -165,18 +163,69 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
     else:
         fig = None
         ax = axis
+
+    all_types = []
+
+    for this, types in reactions.items():
+        all_types = all_types + types
+
+        if plot_CE:
+            cv.check_type("this", this, (str, openmc.Material))
+            # Calculate for the CE cross sections
+            E, data = calculate_cexs(this, types, temperature, sab_name,
+                                    ce_cross_sections, enrichment)
+            if divisor_types:
+                cv.check_length('divisor types', divisor_types, len(types))
+                Ediv, data_div = calculate_cexs(this, divisor_types, temperature,
+                                                sab_name, ce_cross_sections,
+                                                enrichment)
+
+                # Create a new union grid, interpolate data and data_div on to that
+                # grid, and then do the actual division
+                Enum = E[:]
+                E = np.union1d(Enum, Ediv)
+                data_new = np.zeros((len(types), len(E)))
+
+                for line in range(len(types)):
+                    data_new[line, :] = \
+                        np.divide(np.interp(E, Enum, data[line, :]),
+                                np.interp(E, Ediv, data_div[line, :]))
+                    if divisor_types[line] != 'unity':
+                        types[line] = types[line] + ' / ' + divisor_types[line]
+                data = data_new
+        else:
+            # Calculate for MG cross sections
+            E, data = calculate_mgxs(this, types, orders, temperature,
+                                    mg_cross_sections, ce_cross_sections,
+                                    enrichment)
+
+            if divisor_types:
+                cv.check_length('divisor types', divisor_types, len(types))
+                Ediv, data_div = calculate_mgxs(this, divisor_types,
+                                                divisor_orders, temperature,
+                                                mg_cross_sections,
+                                                ce_cross_sections, enrichment)
+
+                # Perform the division
+                for line in range(len(types)):
+                    data[line, :] /= data_div[line, :]
+                    if divisor_types[line] != 'unity':
+                        types[line] += ' / ' + divisor_types[line]
+
+        # Plot the data
+        for i in range(len(data)):
+            data[i, :] = np.nan_to_num(data[i, :])
+            if np.sum(data[i, :]) > 0.:
+                ax.plot(E, data[i, :], label=_get_legend_label(this, types[i]))
+
     # Set to loglog or semilogx depending on if we are plotting a data
     # type which we expect to vary linearly
-    if set(types).issubset(PLOT_TYPES_LINEAR):
-        plot_func = ax.semilogx
+    if set(all_types).issubset(PLOT_TYPES_LINEAR):
+        ax.set_xscale('log')
+        ax.set_yscale('linear')
     else:
-        plot_func = ax.loglog
-
-    # Plot the data
-    for i in range(len(data)):
-        data[i, :] = np.nan_to_num(data[i, :])
-        if np.sum(data[i, :]) > 0.:
-            plot_func(E, data[i, :], label=types[i])
+        ax.set_xscale('log')
+        ax.set_yscale('log')
 
     ax.set_xlabel('Energy [eV]')
     if plot_CE:
@@ -184,39 +233,16 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
     else:
         ax.set_xlim(E[-1], E[0])
 
-    if divisor_types:
-        if isinstance(this, str):
-            if this in ELEMENT_NAMES:
-                ylabel = 'Elemental Microscopic Data'
-            else:
-                ylabel = 'Nuclide Microscopic Data'
-        elif isinstance(this, openmc.Material):
-            ylabel = 'Macroscopic Data'
-        else:
-            raise TypeError("Invalid type for plotting")
-    else:
-        if isinstance(this, str):
-            if this in ELEMENT_NAMES:
-                ylabel = 'Elemental Cross Section [b]'
-            else:
-                ylabel = 'Microscopic Cross Section [b]'
-        elif isinstance(this, openmc.Material):
-            ylabel = 'Macroscopic Cross Section [1/cm]'
-        else:
-            raise TypeError("Invalid type for plotting")
-    ax.set_ylabel(ylabel)
+    ax.set_ylabel(_get_yaxis_label(reactions, divisor_types))
     ax.legend(loc='best')
-    name = this.name if isinstance(this, openmc.Material) else this
-    if len(types) > 1:
-        ax.set_title('Cross Sections for ' + name)
-    else:
-        ax.set_title('Cross Section for ' + name)
+    ax.set_title(_get_title(reactions))
 
     return fig
 
 
+
 def calculate_cexs(this, types, temperature=294., sab_name=None,
-                   cross_sections=None, enrichment=None):
+                   cross_sections=None, enrichment=None, ncrystal_cfg=None):
     """Calculates continuous-energy cross sections of a requested type.
 
     Parameters
@@ -239,6 +265,8 @@ def calculate_cexs(this, types, temperature=294., sab_name=None,
         Enrichment for U235 in weight percent. For example, input 4.95 for
         4.95 weight percent enriched U. Default is None
         (natural composition).
+    ncrystal_cfg : str, optional
+        Configuration string for NCrystal material.
 
     Returns
     -------
@@ -262,10 +290,10 @@ def calculate_cexs(this, types, temperature=294., sab_name=None,
             energy_grid, data = _calculate_cexs_elem_mat(
                 this, types, temperature, cross_sections, sab_name, enrichment
             )
-
         else:
             energy_grid, xs = _calculate_cexs_nuclide(
-                this, types, temperature, sab_name, cross_sections
+                this, types, temperature, sab_name, cross_sections,
+                ncrystal_cfg
             )
 
             # Convert xs (Iterable of Callable) to a grid of cross section values
@@ -282,7 +310,7 @@ def calculate_cexs(this, types, temperature=294., sab_name=None,
 
 
 def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
-                            cross_sections=None):
+                            cross_sections=None, ncrystal_cfg=None):
     """Calculates continuous-energy cross sections of a requested type.
 
     Parameters
@@ -303,6 +331,8 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
         Name of S(a,b) library to apply to MT=2 data when applicable.
     cross_sections : str, optional
         Location of cross_sections.xml file. Default is None.
+    ncrystal_cfg : str, optional
+        Configuration string for NCrystal material.
 
     Returns
     -------
@@ -420,6 +450,19 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
                             [sab_sum, nuc[mt].xs[nucT]],
                             [sab_Emax])
                         funcs.append(pw_funcs)
+                    elif ncrystal_cfg:
+                        import NCrystal
+                        nc_scatter = NCrystal.createScatter(ncrystal_cfg)
+                        nc_func = nc_scatter.crossSectionNonOriented
+                        nc_emax = 5 # eV # this should be obtained from NCRYSTAL_MAX_ENERGY
+                        energy_grid = np.union1d(np.geomspace(min(energy_grid),
+                                                              1.1*nc_emax,
+                                                              1000),energy_grid) # NCrystal does not have
+                                                                                 # an intrinsic energy grid
+                        pw_funcs = openmc.data.Regions1D(
+                            [nc_func, nuc[mt].xs[nucT]],
+                            [nc_emax])
+                        funcs.append(pw_funcs)
                     else:
                         funcs.append(nuc[mt].xs[nucT])
                 elif mt in nuc:
@@ -522,12 +565,15 @@ def _calculate_cexs_elem_mat(this, types, temperature=294.,
     # Load the library
     library = openmc.data.DataLibrary.from_xml(cross_sections)
 
+    ncrystal_cfg = None
     if isinstance(this, openmc.Material):
         # Expand elements in to nuclides with atomic densities
         nuc_fractions = this.get_nuclide_atom_densities()
         # Create a dict of [nuclide name] = nuclide object to carry forward
         # with a common nuclides format between openmc.Material and Elements
         nuclides = {nuclide: nuclide for nuclide in nuc_fractions}
+        # Add NCrystal cfg string if it exists
+        ncrystal_cfg = this.ncrystal_cfg
     else:
         # Expand elements in to nuclides with atomic densities
         nuclides = openmc.Element(this).expand(1., 'ao', enrichment=enrichment,
@@ -563,7 +609,9 @@ def _calculate_cexs_elem_mat(this, types, temperature=294.,
         name = nuclide[0]
         nuc = nuclide[1]
         sab_tab = sabs[name]
-        temp_E, temp_xs = calculate_cexs(nuc, types, T, sab_tab, cross_sections)
+        temp_E, temp_xs = calculate_cexs(nuc, types, T, sab_tab, cross_sections,
+                                         ncrystal_cfg=ncrystal_cfg
+                                         )
         E.append(temp_E)
         # Since the energy grids are different, store the cross sections as
         # a tabulated function so they can be calculated on any grid needed.

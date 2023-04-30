@@ -587,31 +587,42 @@ std::pair<double, int32_t> DAGCell::distance(
   if (!dag_univ)
     fatal_error("DAGMC call made for particle in a non-DAGMC universe");
 
-  moab::ErrorCode rval;
+  // initialize to lost particle conditions
+  int surf_idx = -1;
+  double dist = INFINITY;
+
   moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, dag_index_);
   moab::EntityHandle hit_surf;
-  double dist;
+
+  // create the ray
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
-  rval = dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &p->history());
-  MB_CHK_ERR_CONT(rval);
-  int surf_idx;
+  MB_CHK_ERR_CONT(
+    dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &p->history()));
   if (hit_surf != 0) {
     surf_idx =
       dag_univ->surf_idx_offset_ + dagmc_ptr_->index_by_handle(hit_surf);
-  } else {
-    // indicate that particle is lost
-    surf_idx = -1;
-    dist = INFINITY;
-    if (!dagmc_ptr_->is_implicit_complement(vol) ||
-        model::universe_map[dag_univ->id_] == model::root_universe) {
-      std::string material_id = p->material() == MATERIAL_VOID
-                              ? "-1 (VOID)"
-                              : std::to_string(model::materials[p->material()]->id());
-      p->mark_as_lost(
-        fmt::format("No intersection found with DAGMC cell {}, material {}",
-          id_, material_id));
-    }
+  } else if (!dagmc_ptr_->is_implicit_complement(vol) ||
+             is_root_universe(dag_univ->id_)) {
+    // surface boundary conditions are ignored for projection plotting, meaning
+    // that the particle may move through the graveyard (bounding) volume and
+    // into the implicit complement on the other side where no intersection will
+    // be found. Treating this as a lost particle is problematic when plotting.
+    // Instead, the infinite distance and invalid surface index are returned.
+    if (settings::run_mode == RunMode::PLOTTING) return {INFTY, -1};
+
+    // the particle should be marked as lost immediately if an intersection
+    // isn't found in a volume that is not the implicit complement. In the case
+    // that the DAGMC model is the root universe of the geometry, even a missing
+    // intersection in the implicit complement should trigger this condition.
+    std::string material_id =
+      p->material() == MATERIAL_VOID
+        ? "-1 (VOID)"
+        : std::to_string(model::materials[p->material()]->id());
+    auto lost_particle_msg = fmt::format(
+      "No intersection found with DAGMC cell {}, filled with material {}", id_,
+      material_id);
+    p->mark_as_lost(lost_particle_msg);
   }
 
   return {dist, surf_idx};
@@ -728,19 +739,22 @@ void check_dagmc_root_univ()
   }
 }
 
-int32_t next_cell(
-  DAGUniverse* dag_univ, DAGCell* cur_cell, DAGSurface* surf_xed)
-{
-  moab::EntityHandle surf =
-    surf_xed->dagmc_ptr()->entity_by_index(2, surf_xed->dag_index());
-  moab::EntityHandle vol =
-    cur_cell->dagmc_ptr()->entity_by_index(3, cur_cell->dag_index());
+int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ) {
+  auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[surf - 1].get());
+  auto cellp = dynamic_cast<DAGCell*>(model::cells[curr_cell].get());
+  auto univp = static_cast<DAGUniverse*>(model::universes[univ].get());
+
+  moab::EntityHandle surf_handle =
+    surfp->dagmc_ptr()->entity_by_index(2, surfp->dag_index());
+  moab::EntityHandle curr_vol =
+    cellp->dagmc_ptr()->entity_by_index(3, cellp->dag_index());
 
   moab::EntityHandle new_vol;
-  cur_cell->dagmc_ptr()->next_vol(surf, vol, new_vol);
+  moab::ErrorCode rval = cellp->dagmc_ptr()->next_vol(surf_handle, curr_vol, new_vol);
+  if (rval != moab::MB_SUCCESS) return -1;
 
-  return cur_cell->dagmc_ptr()->index_by_handle(new_vol) +
-         dag_univ->cell_idx_offset_;
+  return cellp->dagmc_ptr()->index_by_handle(new_vol) +
+         univp->cell_idx_offset_;
 }
 
 } // namespace openmc
@@ -756,7 +770,10 @@ void read_dagmc_universes(pugi::xml_node node)
                 "with DAGMC");
   }
 };
+
 void check_dagmc_root_univ() {};
+
+int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ);
 
 } // namespace openmc
 

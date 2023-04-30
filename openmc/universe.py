@@ -1,3 +1,4 @@
+import typing
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from collections.abc import Iterable
@@ -6,6 +7,7 @@ from numbers import Integral, Real
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from xml.etree import ElementTree as ET
+from warnings import warn
 
 import h5py
 import numpy as np
@@ -87,7 +89,8 @@ class UniverseBase(ABC, IDManagerMixin):
                 self._volume = volume_calc.volumes[self.id].n
                 self._atoms = volume_calc.atoms[self.id]
             else:
-                raise ValueError('No volume information found for this universe.')
+                raise ValueError(
+                    'No volume information found for this universe.')
         else:
             raise ValueError('No volume information found for this universe.')
 
@@ -168,7 +171,7 @@ class UniverseBase(ABC, IDManagerMixin):
             clone._cells = OrderedDict()
             for cell in self._cells.values():
                 clone.add_cell(cell.clone(clone_materials, clone_regions,
-                     memo))
+                                          memo))
 
             # Memoize the clone
             memo[self] = clone
@@ -202,7 +205,7 @@ class Universe(UniverseBase):
         Volume of the universe in cm^3. This can either be set manually or
         calculated in a stochastic volume calculation and added via the
         :meth:`Universe.add_volume_information` method.
-    bounding_box : 2-tuple of numpy.array
+    bounding_box : openmc.BoundingBox
         Lower-left and upper-right coordinates of an axis-aligned bounding box
         of the universe.
 
@@ -293,9 +296,15 @@ class Universe(UniverseBase):
                     return [self, cell] + cell.fill.find(p)
         return []
 
+    # default kwargs that are passed to plt.legend in the plot method below.
+    _default_legend_kwargs = {'bbox_to_anchor': (
+        1.05, 1), 'loc': 2, 'borderaxespad': 0.0}
+
     def plot(self, origin=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
              basis='xy', color_by='cell', colors=None, seed=None,
-             openmc_exec='openmc', axes=None, **kwargs):
+             openmc_exec='openmc', axes=None, legend=False,
+             legend_kwargs=_default_legend_kwargs, outline=False,
+             **kwargs):
         """Display a slice plot of the universe.
 
         Parameters
@@ -329,6 +338,18 @@ class Universe(UniverseBase):
             Axes to draw to
 
             .. versionadded:: 0.13.1
+        legend : bool
+            Whether a legend showing material or cell names should be drawn
+
+            .. versionadded:: 0.13.4
+        legend_kwargs : dict
+            Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
+
+            .. versionadded:: 0.13.4
+        outline : bool
+            Whether outlines between color boundaries should be drawn
+
+            .. versionadded:: 0.13.4
         **kwargs
             Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 
@@ -339,15 +360,19 @@ class Universe(UniverseBase):
 
         """
         import matplotlib.image as mpimg
+        import matplotlib.patches as mpatches
         import matplotlib.pyplot as plt
 
         # Determine extents of plot
         if basis == 'xy':
             x, y = 0, 1
+            xlabel, ylabel = 'x [cm]', 'y [cm]'
         elif basis == 'yz':
             x, y = 1, 2
+            xlabel, ylabel = 'y [cm]', 'z [cm]'
         elif basis == 'xz':
             x, y = 0, 2
+            xlabel, ylabel = 'x [cm]', 'z [cm]'
         x_min = origin[x] - 0.5*width[0]
         x_max = origin[x] + 0.5*width[0]
         y_min = origin[y] - 0.5*width[1]
@@ -391,10 +416,69 @@ class Universe(UniverseBase):
             if axes is None:
                 px = 1/plt.rcParams['figure.dpi']
                 fig, axes = plt.subplots()
+                axes.set_xlabel(xlabel)
+                axes.set_ylabel(ylabel)
                 params = fig.subplotpars
                 width = pixels[0]*px/(params.right - params.left)
                 height = pixels[0]*px/(params.top - params.bottom)
                 fig.set_size_inches(width, height)
+
+            if outline:
+                # Combine R, G, B values into a single int
+                rgb = (img * 256).astype(int)
+                image_value = (rgb[..., 0] << 16) + \
+                    (rgb[..., 1] << 8) + (rgb[..., 2])
+
+                axes.contour(
+                    image_value,
+                    origin="upper",
+                    colors="k",
+                    linestyles="solid",
+                    linewidths=1,
+                    levels=np.unique(image_value),
+                    extent=(x_min, x_max, y_min, y_max),
+                )
+
+            # add legend showing which colors represent which material
+            # or cell if that was requested
+            if legend:
+                if plot.colors is None:
+                    raise ValueError("Must pass 'colors' dictionary if you "
+                                     "are adding a legend via legend=True.")
+
+                if color_by == "cell":
+                    expected_key_type = openmc.Cell
+                else:
+                    expected_key_type = openmc.Material
+
+                patches = []
+                for key, color in plot.colors.items():
+
+                    if isinstance(key, int):
+                        raise TypeError(
+                            "Cannot use IDs in colors dict for auto legend.")
+                    elif not isinstance(key, expected_key_type):
+                        raise TypeError(
+                            "Color dict key type does not match color_by")
+
+                    # this works whether we're doing cells or materials
+                    label = key.name if key.name != '' else key.id
+
+                    # matplotlib takes RGB on 0-1 scale rather than 0-255. at
+                    # this point PlotBase has already checked that 3-tuple
+                    # based colors are already valid, so if the length is three
+                    # then we know it just needs to be converted to the 0-1
+                    # format.
+                    if len(color) == 3 and not isinstance(color, str):
+                        scaled_color = (
+                            color[0]/255, color[1]/255, color[2]/255)
+                    else:
+                        scaled_color = color
+
+                    key_patch = mpatches.Patch(color=scaled_color, label=label)
+                    patches.append(key_patch)
+
+                axes.legend(handles=patches, **legend_kwargs)
 
             # Plot image and return the axes
             return axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
@@ -662,7 +746,7 @@ class DAGMCUniverse(UniverseBase):
     auto_mat_ids : bool
         Set IDs automatically on initialization (True)  or report overlaps in ID
         space between OpenMC and UWUW materials (False)
-    bounding_box : 2-tuple of numpy.array
+    bounding_box : openmc.BoundingBox
         Lower-left and upper-right coordinates of an axis-aligned bounding box
         of the universe.
 
@@ -738,8 +822,9 @@ class DAGMCUniverse(UniverseBase):
     @property
     def material_names(self):
         dagmc_file_contents = h5py.File(self.filename)
-        material_tags_hex=dagmc_file_contents['/tstt/tags/NAME'].get('values')
-        material_tags_ascii=[]
+        material_tags_hex = dagmc_file_contents['/tstt/tags/NAME'].get(
+            'values')
+        material_tags_ascii = []
         for tag in material_tags_hex:
             candidate_tag = tag.tobytes().decode().replace('\x00', '')
             # tags might be for temperature or reflective surfaces
@@ -905,7 +990,8 @@ class DAGMCUniverse(UniverseBase):
         openmc.Universe
             Universe instance
         """
-        bounding_cell = openmc.Cell(fill=self, cell_id=bounding_cell_id, region=self.bounding_region(**kwargs))
+        bounding_cell = openmc.Cell(
+            fill=self, cell_id=bounding_cell_id, region=self.bounding_region(**kwargs))
         return openmc.Universe(cells=[bounding_cell])
 
     @classmethod

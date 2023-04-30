@@ -29,7 +29,7 @@ namespace model {
 
 extern std::unordered_map<int, int> plot_map; //!< map of plot ids to index
 extern vector<std::unique_ptr<PlottableInterface>>
-  plots; //!< Plot instance container
+  plots;                                      //!< Plot instance container
 
 extern uint64_t plotter_seed; // Stream index used by the plotter
 
@@ -321,11 +321,11 @@ private:
   // loop:
   static const int MAX_INTERSECTIONS = 1000000;
 
-  std::array<int, 2> pixels_;       // pixel dimension of resulting image
+  std::array<int, 2> pixels_;              // pixel dimension of resulting image
   double horizontal_field_of_view_ {70.0}; // horiz. f.o.v. in degrees
-  Position camera_position_;        // where camera is
-  Position look_at_;                // point camera is centered looking at
-  Direction up_ {0.0, 0.0, 1.0};    // which way is up
+  Position camera_position_;               // where camera is
+  Position look_at_;             // point camera is centered looking at
+  Direction up_ {0.0, 0.0, 1.0}; // which way is up
 
   // which color IDs should be wireframed. If empty, all cells are wireframed.
   vector<int> wireframe_ids_;

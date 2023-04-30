@@ -36,7 +36,7 @@ vector<SourceSite> mcpl_source_sites(std::string path);
 //!                         calculate_parallel_index_vector on
 //!                         source_bank.size().
 void write_mcpl_source_point(const char* filename,
-  gsl::span<SourceSite> source_bank, vector<int64_t> const& bank_index);
+  gsl::span<SourceSite> source_bank, const vector<int64_t>& bank_index);
 } // namespace openmc
 
 #endif // OPENMC_MCPL_INTERFACE_H

@@ -488,7 +488,9 @@ void Particle::cross_surface()
 #ifdef DAGMC
   // in DAGMC, we know what the next cell should be
   if (surf->geom_type_ == GeometryType::DAG) {
-    int32_t i_cell = next_cell(i_surface, cell_last(n_coord() - 1), lowest_coord().universe) - 1;
+    int32_t i_cell =
+      next_cell(i_surface, cell_last(n_coord() - 1), lowest_coord().universe) -
+      1;
     // save material and temp
     material_last() = material();
     sqrtkT_last() = sqrtkT();

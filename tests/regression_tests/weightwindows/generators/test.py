@@ -30,15 +30,19 @@ def test_ww_generator(run_in_tmpdir):
     mesh = openmc.RegularMesh.from_domain(model.geometry.root_universe)
     energy_bounds = np.linspace(0, 1E6, 70)
     particle = 'neutron'
+    meshes = {mesh.id : mesh}
 
     wwg = openmc.WeightWindowGenerator(mesh, energy_bounds, particle)
     wwg.max_realizations = 1
     wwg.on_the_fly = True
-    wwg.update_params = {'ratio' : 5.0}
+    wwg.update_params = {'ratio' : 5.0,
+                         'threshold': 0.8,
+                         'value' : 'mean'}
 
     model.settings.weight_window_generators = wwg
     model.export_to_xml()
 
+    # rountrip tests
     model_in = openmc.Model.from_xml()
     assert len(model_in.settings.weight_window_generators) == 1
     wwg_in = model_in.settings.weight_window_generators[0]
@@ -51,3 +55,17 @@ def test_ww_generator(run_in_tmpdir):
     # we test the effectiveness of the update ethod elsewhere, so
     # just test that the generation happens successfully here
     assert os.path.exists('weight_windows.h5')
+
+    wws_mean = openmc.hdf5_to_wws(meshes=meshes)
+    assert len(wws_mean) == 1
+
+    # check that generation using the relative error works too
+    wwg.update_params['value'] = 'rel_err'
+    model.run()
+
+    wws_rel_err = openmc.hdf5_to_wws(meshes=meshes)
+    assert len(wws_rel_err) == 1
+
+    # we should not get the same set of weight windows when switching to use of
+    # rel. err.
+    assert (wws_mean[0].lower_ww_bounds != wws_rel_err[0].lower_ww_bounds).any()

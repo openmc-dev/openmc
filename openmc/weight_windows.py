@@ -287,7 +287,7 @@ class WeightWindows(IDManagerMixin):
     @max_lower_bound_ratio.setter
     def max_lower_bound_ratio(self, val: float):
         cv.check_type('Maximum lower bound ratio', val, Real)
-        cv.check_greater_than('Maximum lower bound ratio', val, 1.0)
+        cv.check_greater_than('Maximum lower bound ratio', val, 1.0, equality=True)
         self._max_lower_bound_ratio = val
 
     @property
@@ -780,7 +780,7 @@ class WeightWindowGenerator():
         cv.check_type('on the fly generation', otf, bool)
         self._on_the_fly = otf
 
-    def _update_params_subelement(self, element):
+    def _update_params_subelement(self, element: xml.etree.ElementTree.Element):
         if not self.update_params:
             return
         params_element = ET.SubElement(element, 'update_params')
@@ -875,7 +875,7 @@ class WeightWindowGenerator():
 
         return wwg
 
-def hdf5_to_wws(path, meshes):
+def hdf5_to_wws(path='weight_windows.h5', meshes=None):
     """Create WeightWindows instances from a weight windows HDF5 file
 
     .. versionadded:: 0.13.3
@@ -892,4 +892,4 @@ def hdf5_to_wws(path, meshes):
     list of openmc.WeightWindows
     """
     with h5py.File(path) as h5_file:
-        return [WeightWindows.from_hdf5(ww, meshes) for ww in h5_file['weight_windows']]
+        return [WeightWindows.from_hdf5(ww, meshes) for ww in h5_file['weight_windows'].values()]

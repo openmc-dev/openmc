@@ -34,7 +34,6 @@ def test_raises_error_when_flat(val_left, val_right):
         mesh.upper_right = [25, 25, val_right]
         mesh.lower_left = [-25, -25, val_left]
 
-
 def test_mesh_bounding_box():
     mesh = openmc.RegularMesh()
     mesh.lower_left = [-2, -3 ,-5]
@@ -43,3 +42,54 @@ def test_mesh_bounding_box():
     assert isinstance(bb, openmc.BoundingBox)
     np.testing.assert_array_equal(bb.lower_left, np.array([-2, -3 ,-5]))
     np.testing.assert_array_equal(bb.upper_right, np.array([2, 3, 5]))
+
+
+def test_get_data_slice():
+
+    mesh = openmc.RegularMesh()
+    mesh.dimension = [2, 3, 5]
+
+    data = np.linspace(1, 30, 30)
+
+    xy_slice = mesh.get_data_slice(dataset=data, basis='xy', slice_index=0)
+    assert xy_slice.shape == (3, 2)
+    np.testing.assert_array_equal(
+        xy_slice,
+        np.array(
+            [
+                [5., 6.],
+                [3., 4.],
+                [1., 2.]
+            ]
+        )
+    )
+
+    yz_slice = mesh.get_data_slice(dataset=data, basis='yz', slice_index=0)
+    assert yz_slice.shape == (5, 3)
+    np.testing.assert_array_equal(
+        yz_slice,
+        np.array(
+            [
+                [ 5.,  3.,  1.],
+                [11.,  9.,  7.],
+                [17., 15., 13.],
+                [23., 21., 19.],
+                [29., 27., 25.]
+            ]
+        )
+    )
+
+    xz_slice = mesh.get_data_slice(dataset=data, basis='xz', slice_index=0)
+    assert xz_slice.shape == (5, 2)
+    np.testing.assert_array_equal(
+        xz_slice,
+        np.array(
+            [
+                [ 1.,  2.],
+                [ 7.,  8.],
+                [13., 14.],
+                [19., 20.],
+                [25., 26.]
+            ]
+        )
+    )

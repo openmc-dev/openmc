@@ -961,6 +961,7 @@ void setup_active_tallies()
 
       case TallyType::SURFACE:
         model::active_surface_tallies.push_back(i);
+        break;
 
       case TallyType::PULSE_HEIGHT:
         model::active_pulse_height_tallies.push_back(i);

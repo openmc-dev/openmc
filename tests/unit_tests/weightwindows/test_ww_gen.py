@@ -225,3 +225,29 @@ def test_ww_import_export(run_in_tmpdir, model):
     assert np.allclose(up_before, up_after)
 
     openmc.lib.finalize()
+
+
+def test_ww_gen_roundtrip(run_in_tmpdir, model):
+
+    mesh = openmc.RegularMesh.from_domain(model.geometry.root_universe)
+    energy_groups = np.linspace(0.0, 1E8, 11)
+    particle_type = 'photon'
+
+    wwg = openmc.WeightWindowGenerator(mesh, energy_groups, particle_type)
+
+    wwg.max_realizations = 10
+    wwg.method = 'magic'
+    wwg.update_params = {}
+    wwg.update_interval = 1
+
+    model.settings.weight_window_generators = wwg
+    model.export_to_xml()
+
+    model_in = openmc.Model.from_xml()
+
+    assert len(model_in.settings.weight_window_generators) == 1
+
+    wwg_in = model.settings.weight_window_generators[0]
+
+    assert wwg.max_realizations == wwg_in.max_realizations
+    assert wwg.particle_type == wwg_in.particle_type

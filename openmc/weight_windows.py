@@ -782,6 +782,9 @@ class WeightWindowGenerator():
     def _update_params_subelement(self, element):
         pass
 
+    def _sanitize_update_params(self):
+        pass
+
     def to_xml_element(self):
         """Creates a 'weight_window_generator' element to be written to an XML file.
         """
@@ -811,7 +814,7 @@ class WeightWindowGenerator():
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: xml.etree.ElementTree.Element, meshes: dict) -> WeightWindowGenerator:
         """
         Create a weight window generation object from an XML element
 
@@ -819,23 +822,36 @@ class WeightWindowGenerator():
         ----------
         elem : xml.etree.ElementTree.Element
             XML element
-        tallies : dict
-            A dictionary with IDs as keys and openmc.Tally instances as values
+        meshes : dict
+            A dictionary with IDs as keys and openmc.MeshBase instances as values
 
         Returns
         -------
         openmc.WeightWindowGenerator
         """
 
-        tally_id = int(get_text(elem, 'tally'))
+        print(elem.tag)
+        mesh_id = int(get_text(elem, 'mesh'))
+        mesh = meshes[mesh_id]
 
-        tally = tally[tally_id]
+        energy_bounds = [float(x) for x in get_text(elem, 'energy_bounds').split()]
+        particle_type = get_text(elem, 'particle_type')
 
-        max_realizations = int(get_text(elem, 'max_realizations'))
+        wwg = cls(mesh, energy_bounds, particle_type)
 
-        wwg = cls(tally, wwg)
+        wwg.max_realizations = int(get_text(elem, 'max_realizations'))
+        wwg.update_interval = int(get_text(elem, 'update_interval'))
+        wwg.on_the_fly = bool(get_text(elem, 'on_the_fly'))
+        wwg.method = get_text(elem, 'method')
 
+        if elem.get('update_params'):
+            params_elem = elem.get('update_params')
+            for entry in params_elem:
+                wwg.update_params[entry.tag] = entry.text
 
+        wwg._sanitize_update_params()
+
+        return wwg
 
 def hdf5_to_wws(path, meshes):
     """Create WeightWindows instances from a weight windows HDF5 file

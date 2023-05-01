@@ -1652,6 +1652,11 @@ class Settings:
         if text is not None:
             self.write_initial_source = text in ('true', '1')
 
+    def _weight_window_generators_from_xml_element(self, root, meshes=None):
+        for elem in root.iter('weight_windows_generator'):
+            wwg = WeightWindowGenerator.from_xml_element(elem, meshes)
+            self.weight_window_generators.append(wwg)
+
     def _weight_windows_from_xml_element(self, root, meshes=None):
         for elem in root.findall('weight_windows'):
             ww = WeightWindows.from_xml_element(elem, root)
@@ -1823,6 +1828,7 @@ class Settings:
         settings._log_grid_bins_from_xml_element(elem)
         settings._write_initial_source_from_xml_element(elem)
         settings._weight_windows_from_xml_element(elem, meshes)
+        settings._weight_window_generators_from_xml_element(elem, meshes)
         settings._max_splits_from_xml_element(elem)
         settings._max_tracks_from_xml_element(elem)
 

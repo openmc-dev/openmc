@@ -45,7 +45,9 @@ def test_ww_generator(run_in_tmpdir):
     assert wwg_in.max_realizations == 1
     assert wwg_in.on_the_fly == True
     assert wwg_in.update_interval == 1
-    assert wwg_in.update_params['ratio'] == 5.0
+    assert wwg_in.update_params == wwg.update_params
 
     openmc.run()
+    # we test the effectiveness of the update ethod elsewhere, so
+    # just test that the generation happens successfully here
     assert os.path.exists('weight_windows.h5')

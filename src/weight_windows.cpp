@@ -1002,7 +1002,6 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node) {
   // read information from the XML node
   int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
   int32_t mesh_idx = model::mesh_map[mesh_id];
-  method_ = get_node_value(node, "method");
   max_realizations_ = std::stoi(get_node_value(node, "max_realizations"));
 
   int active_batches = settings::n_batches - settings::n_inactive;
@@ -1061,6 +1060,32 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node) {
   auto pf = dynamic_cast<ParticleFilter*>(particle_filter);
   pf->set_particles({&particle_type, 1});
   ww_tally->add_filter(particle_filter);
+
+  // set method and parameters for updates
+  method_ = get_node_value(node, "method");
+  if (method_ == "magic") {
+    // parse non-default update parameters if specified
+    if (check_for_node(node, "update_parameters")) {
+      pugi::xml_node params_node = node.child("update_parameters");
+      if (check_for_node(params_node, "value"))
+        tally_value_ = get_node_value(params_node, "value");
+      if (check_for_node(params_node, "threshold"))
+        threshold_ = std::stod(get_node_value(params_node, "threshold"));
+      if (check_for_node(params_node, "ratio")) {
+        ratio_ = std::stod(get_node_value(params_node, "ratio"));
+      }
+    }
+    // check update parameter values
+    if (tally_value_ != "mean" && tally_value_ != "rel_err") {
+          fatal_error(fmt::format("Unsupported tally value '{}' specified for weight window generation.", tally_value_));
+    }
+    if (threshold_ <= 0.0)
+    fatal_error(fmt::format("Invalid relative error threshold '{}' (<= 0.0) specified for weight window generation", ratio_));
+    if (ratio_ <= 1.0)
+      fatal_error(fmt::format("Invalid weight window ratio '{}' (<= 1.0) specified for weight window generation"));
+  } else {
+    fatal_error(fmt::format("Unknown weight window update method '{}' specified", method_));
+  }
 
   // create a matching weight windows object
   auto wws = WeightWindows::create();

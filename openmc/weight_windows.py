@@ -664,7 +664,7 @@ class WeightWindowGenerator():
         Whether or not to apply weight windows on the fly. (default: True)
     """
 
-    _MAGIC_PARAMS = {'value': str, 'threshold': Real, 'ratio': Real}
+    _MAGIC_PARAMS = {'value': str, 'threshold': float, 'ratio': float}
 
     def __init__(self, mesh, energy_bounds=None, particle_type='neutron'):
         self.mesh = mesh
@@ -756,18 +756,19 @@ class WeightWindowGenerator():
     def update_params(self) -> dict :
         return self._update_params
 
-    def _check_magic_params(self, params: dict):
+    def _check_update_params(self, params: dict):
+        if self.method == 'magic':
+            check_params = self._MAGIC_PARAMS
+
         for key, val in params.items():
-            if key not in self._MAGIC_PARAMS:
+            if key not in check_params:
                 raise ValueError(f'Invalid param "{key}" for {self.method} '
                                   'weight window generation')
-            cv.check_type(f'generation param: {key}', val, self._MAGIC_PARAMS[key])
+            cv.check_type(f'weight window generation param: "{key}"', val, self._MAGIC_PARAMS[key])
 
     @update_params.setter
     def update_params(self, params: dict):
-        if self.method == 'magic':
-            self._check_magic_params(params)
-
+        self._check_update_params(params)
         self._update_params = params
 
     @property
@@ -780,15 +781,35 @@ class WeightWindowGenerator():
         self._on_the_fly = otf
 
     def _update_params_subelement(self, element):
-        pass
+        if not self.update_params:
+            return
+        params_element = ET.SubElement(element, 'update_params')
+        for pname, value in self.update_params.items():
+            param_element = ET.SubElement(params_element, pname)
+            param_element.text = str(value)
 
-    def _sanitize_update_params(self):
-        pass
+    @classmethod
+    def _sanitize_update_params(cls, method: str, update_params: dict):
+        """
+        Attempt to convert update parameters to their appropriate types
+
+        Parameters
+        ----------
+        method : str
+            The update method for which these update parameters should comply
+        update_params : dict
+            The update parameters as-read from the XML node (keys: str, values: str)
+        """
+        if method == 'magic':
+            check_params = cls._MAGIC_PARAMS
+
+        for param, param_type in check_params.items():
+            if param in update_params:
+                update_params[param] = param_type(update_params[param])
 
     def to_xml_element(self):
         """Creates a 'weight_window_generator' element to be written to an XML file.
         """
-
         element = ET.Element('weight_windows_generator')
 
         mesh_elem = ET.SubElement(element, 'mesh')
@@ -830,7 +851,6 @@ class WeightWindowGenerator():
         openmc.WeightWindowGenerator
         """
 
-        print(elem.tag)
         mesh_id = int(get_text(elem, 'mesh'))
         mesh = meshes[mesh_id]
 
@@ -844,12 +864,14 @@ class WeightWindowGenerator():
         wwg.on_the_fly = bool(get_text(elem, 'on_the_fly'))
         wwg.method = get_text(elem, 'method')
 
-        if elem.get('update_params'):
-            params_elem = elem.get('update_params')
+        if elem.find('update_params'):
+            update_params = {}
+            params_elem = elem.find('update_params')
             for entry in params_elem:
-                wwg.update_params[entry.tag] = entry.text
+                update_params[entry.tag] = entry.text
 
-        wwg._sanitize_update_params()
+            cls._sanitize_update_params(wwg.method, update_params)
+            wwg.update_params = update_params
 
         return wwg
 

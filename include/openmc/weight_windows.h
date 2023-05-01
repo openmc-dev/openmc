@@ -17,6 +17,11 @@
 
 namespace openmc {
 
+enum class WeightWindowUpdateMethod {
+  MAGIC,
+  PSR // pseudo-source region
+};
+
 //==============================================================================
 // Constants
 //==============================================================================
@@ -204,6 +209,13 @@ class WeightWindowsGenerator {
   int32_t max_realizations_; //!< Maximum number of tally realizations
   int32_t update_interval_; //!< Determines how often updates occur
   bool on_the_fly_; //!< Whether or not weight windows
+
+  // MAGIC update parameters
+  std::string tally_value_ {"mean"}; //<! Tally value to use (one of {"mean", "rel_err"})
+  double threshold_ {1.0}; //<! Relative error threshold for values used to update weight windows
+  double ratio_ {5.0}; //<! ratio of lower to upper weight window bounds
+
+  // PSR update parameters (TBD)
   std::string update_params_; //!< Update parameters
 };
 

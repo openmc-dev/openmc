@@ -230,15 +230,15 @@ def test_ww_import_export(run_in_tmpdir, model):
 def test_ww_gen_roundtrip(run_in_tmpdir, model):
 
     mesh = openmc.RegularMesh.from_domain(model.geometry.root_universe)
-    energy_groups = np.linspace(0.0, 1E8, 11)
-    particle_type = 'photon'
+    energy_bounds = np.linspace(0.0, 1E8, 11)
+    particle_type = 'neutron'
 
-    wwg = openmc.WeightWindowGenerator(mesh, energy_groups, particle_type)
-
-    wwg.max_realizations = 10
-    wwg.method = 'magic'
-    wwg.update_params = {}
-    wwg.update_interval = 1
+    wwg = openmc.WeightWindowGenerator(mesh, energy_bounds, particle_type)
+    wwg.max_realizations = 1
+    wwg.on_the_fly = True
+    wwg.update_params = {'ratio' : 5.0,
+                         'threshold': 0.8,
+                         'value' : 'mean'}
 
     model.settings.weight_window_generators = wwg
     model.export_to_xml()
@@ -249,5 +249,23 @@ def test_ww_gen_roundtrip(run_in_tmpdir, model):
 
     wwg_in = model.settings.weight_window_generators[0]
 
-    assert wwg.max_realizations == wwg_in.max_realizations
-    assert wwg.particle_type == wwg_in.particle_type
+    # rountrip tests
+    model_in = openmc.Model.from_xml()
+    assert len(model_in.settings.weight_window_generators) == 1
+    wwg_in = model_in.settings.weight_window_generators[0]
+    assert wwg_in.max_realizations == 1
+    assert wwg_in.on_the_fly == True
+    assert wwg_in.update_interval == 1
+    assert wwg_in.update_params == wwg.update_params
+
+    with pytest.raises(ValueError):
+        wwg.method = 'monkeys'
+
+    with pytest.raises(TypeError):
+        wwg.update_params = {'ratio' : 'one-to-one'}
+
+    
+
+    with pytest.raises(ValueError):
+        wwg.max_realizations = -1
+

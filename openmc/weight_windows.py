@@ -2,8 +2,8 @@ from __future__ import annotations
 from collections.abc import Iterable
 from numbers import Real, Integral
 import pathlib
-import typing
 from typing import Iterable, List, Optional, Union, Dict
+import warnings
 
 import h5py
 import numpy as np
@@ -672,12 +672,14 @@ class WeightWindowGenerator():
             self.energy_bounds = energy_bounds
         self.particle_type = particle_type
         self.max_realizations = 1
+
+        self._update_params = None
+
         self.method = 'magic'
         self.particle_type = particle_type
         self.update_interval = 1
         self.on_the_fly = True
 
-        self._update_params = None
 
     def __repr__(self):
         string = type(self).__name__ + '\n'
@@ -731,6 +733,11 @@ class WeightWindowGenerator():
         cv.check_type('generation method', m, str)
         cv.check_value('generation method', m, ('magic'))
         self._method = m
+        if self._update_params is not None:
+            try:
+                self._check_update_params()
+            except (TypeError, KeyError):
+                warnings.warn(f'Update parameters are invalid for the "{m}" method.')
 
     @property
     def max_realizations(self) -> int:

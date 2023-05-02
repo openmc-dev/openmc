@@ -42,15 +42,6 @@ def test_ww_generator(run_in_tmpdir):
     model.settings.weight_window_generators = wwg
     model.export_to_xml()
 
-    # rountrip tests
-    model_in = openmc.Model.from_xml()
-    assert len(model_in.settings.weight_window_generators) == 1
-    wwg_in = model_in.settings.weight_window_generators[0]
-    assert wwg_in.max_realizations == 1
-    assert wwg_in.on_the_fly == True
-    assert wwg_in.update_interval == 1
-    assert wwg_in.update_params == wwg.update_params
-
     openmc.run()
     # we test the effectiveness of the update ethod elsewhere, so
     # just test that the generation happens successfully here

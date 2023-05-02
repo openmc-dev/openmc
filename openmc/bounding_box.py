@@ -30,8 +30,6 @@ class BoundingBox(tuple):
     extent : dict
         A dictionary of basis as keys and the extent (left, right, bottom, top)
         as values. Intended use in Matplotlib plots when setting extent
-    width : iterable of float
-        The width of the x, y and z axis
     """
 
     def __new__(cls, lower_left: Iterable[float], upper_right: Iterable[float]):
@@ -83,7 +81,3 @@ class BoundingBox(tuple):
                 self.upper_right[2],
             ),
         }
-
-    def width(self):
-        return abs(self.lower_left - self.upper_right)
-

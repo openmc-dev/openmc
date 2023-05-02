@@ -376,22 +376,29 @@ void Tally::set_filters(gsl::span<Filter*> filters)
   auto n = filters.size();
   filters_.reserve(n);
 
-  for (int i = 0; i < n; ++i) {
-    // Add index to vector of filters
-    auto& f {filters[i]};
-    filters_.push_back(model::filter_map.at(f->id()));
-
-    // Keep track of indices for special filters.
-    if (dynamic_cast<const EnergyoutFilter*>(f)) {
-      energyout_filter_ = i;
-    } else if (dynamic_cast<const DelayedGroupFilter*>(f)) {
-      delayedgroup_filter_ = i;
-    } else if (dynamic_cast<const CellFilter*>(f)) {
-      cell_filter_ = i;
-    } else if (dynamic_cast<const EnergyFilter*>(f)) {
-      energy_filter_ = i;
-    }
+  for (auto* filter : filters) {
+    add_filter(filter);
   }
+}
+
+void Tally::add_filter(Filter* filter)
+{
+  int32_t filter_idx = model::filter_map.at(filter->id());
+  // if this filter is already present, do nothing and return
+  if (std::find(filters_.begin(), filters_.end(), filter_idx) != filters_.end())
+    return;
+
+  // Keep track of indices for special filters
+  if (dynamic_cast<const EnergyoutFilter*>(filter)) {
+    energyout_filter_ = filters_.size();
+  } else if (dynamic_cast<const DelayedGroupFilter*>(filter)) {
+    delayedgroup_filter_ = filters_.size();
+  } else if (dynamic_cast<const CellFilter*>(filter)) {
+    cell_filter_ = filters_.size();
+  } else if (dynamic_cast<const EnergyFilter*>(filter)) {
+    energy_filter_ = filters_.size();
+  }
+  filters_.push_back(filter_idx);
 }
 
 void Tally::set_strides()

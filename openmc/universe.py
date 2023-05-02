@@ -300,7 +300,7 @@ class Universe(UniverseBase):
     _default_legend_kwargs = {'bbox_to_anchor': (
         1.05, 1), 'loc': 2, 'borderaxespad': 0.0}
 
-    def plot(self, origin=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
+    def plot(self, origin=None, width=None, pixels=(200, 200),
              basis='xy', color_by='cell', colors=None, seed=None,
              openmc_exec='openmc', axes=None, legend=False,
              legend_kwargs=_default_legend_kwargs, outline=False,
@@ -309,10 +309,16 @@ class Universe(UniverseBase):
 
         Parameters
         ----------
-        origin : Iterable of float
-            Coordinates at the origin of the plot
-        width : Iterable of float
-            Width of the plot in each basis direction
+        origin : iterable of float
+            Coordinates at the origin of the plot, if left as None then the
+            universe.bounding_box.center will be used to attempt to
+            ascertain the origin. Defaults to (0, 0, 0) if the bounding_box
+            contains inf values
+        width : iterable of float
+            Width of the plot in each basis direction. If left as none then the
+            universe.bounding_box.width() will be used to attempt to
+            ascertain the plot width.  Defaults to (10, 10) if the bounding_box
+            contains inf values
         pixels : Iterable of int
             Number of pixels to use in each basis direction
         basis : {'xy', 'xz', 'yz'}
@@ -373,6 +379,22 @@ class Universe(UniverseBase):
         elif basis == 'xz':
             x, y = 0, 2
             xlabel, ylabel = 'x [cm]', 'z [cm]'
+
+        # checks to see if bounding box contains -inf or inf values
+        if True in np.isinf(self.bounding_box):
+            if origin is None:
+                origin = (0, 0, 0)
+            if width is None:
+                width = (10, 10)
+        else:
+            if origin is None:
+                origin = self.bounding_box.center
+            if width is None:
+                bb_width = self.bounding_box.width
+                x_width = bb_width['xyz'.index(basis[0])]
+                y_width = bb_width['xyz'.index(basis[1])]
+                width = (x_width, y_width)
+
         x_min = origin[x] - 0.5*width[0]
         x_max = origin[x] + 0.5*width[0]
         y_min = origin[y] - 0.5*width[1]

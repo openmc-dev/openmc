@@ -398,8 +398,11 @@ class Universe(UniverseBase):
                 y_width = bb_width['xyz'.index(basis[1])]
                 width = (x_width, y_width)
 
-        if pixels is None:
-            total_pixels = 40000
+        if pixels is None or isinstance(pixels, int):
+            if pixels is None:
+                total_pixels = 40000
+            elif isinstance(pixels, int):
+                total_pixels = pixels
             aspect_ratio = width[0] / width[1]
             pixels_y = np.sqrt(total_pixels / aspect_ratio)
             pixels = (int(total_pixels / pixels_y), int(pixels_y))

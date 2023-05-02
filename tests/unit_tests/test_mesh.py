@@ -34,6 +34,7 @@ def test_raises_error_when_flat(val_left, val_right):
         mesh.upper_right = [25, 25, val_right]
         mesh.lower_left = [-25, -25, val_left]
 
+
 def test_mesh_bounding_box():
     mesh = openmc.RegularMesh()
     mesh.lower_left = [-2, -3 ,-5]

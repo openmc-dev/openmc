@@ -799,7 +799,6 @@ class RegularMesh(StructuredMesh):
             volume_normalization=volume_normalization
         )
 
-
 def Mesh(*args, **kwargs):
     warnings.warn("Mesh has been renamed RegularMesh. Future versions of "
                   "OpenMC will not accept the name Mesh.")

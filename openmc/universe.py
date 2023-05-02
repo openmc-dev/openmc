@@ -300,7 +300,7 @@ class Universe(UniverseBase):
     _default_legend_kwargs = {'bbox_to_anchor': (
         1.05, 1), 'loc': 2, 'borderaxespad': 0.0}
 
-    def plot(self, origin=None, width=None, pixels=(200, 200),
+    def plot(self, origin=None, width=None, pixels=None,
              basis='xy', color_by='cell', colors=None, seed=None,
              openmc_exec='openmc', axes=None, legend=False,
              legend_kwargs=_default_legend_kwargs, outline=False,
@@ -320,7 +320,10 @@ class Universe(UniverseBase):
             ascertain the plot width.  Defaults to (10, 10) if the bounding_box
             contains inf values
         pixels : Iterable of int
-            Number of pixels to use in each basis direction
+            Number of pixels to use in each basis direction, if left as None
+            then the pixels in each basis direction is assigned a number
+            of pixels proportionally to it's relative width while also keeping
+            the total number of pixels in the plot equals to 40000.
         basis : {'xy', 'xz', 'yz'}
             The basis directions for the plot
         color_by : {'cell', 'material'}
@@ -394,6 +397,12 @@ class Universe(UniverseBase):
                 x_width = bb_width['xyz'.index(basis[0])]
                 y_width = bb_width['xyz'.index(basis[1])]
                 width = (x_width, y_width)
+
+        if pixels is None:
+            total_pixels = 40000
+            aspect_ratio = width[0] / width[1]
+            pixels_y = np.sqrt(total_pixels / aspect_ratio)
+            pixels = (int(total_pixels / pixels_y), int(pixels_y))
 
         x_min = origin[x] - 0.5*width[0]
         x_max = origin[x] + 0.5*width[0]

@@ -35,7 +35,7 @@ def test_ww_generator(run_in_tmpdir):
     wwg = openmc.WeightWindowGenerator(mesh, energy_bounds, particle)
     wwg.max_realizations = 1
     wwg.on_the_fly = True
-    wwg.update_params = {'ratio' : 5.0,
+    wwg.update_parameters = {'ratio' : 5.0,
                          'threshold': 0.8,
                          'value' : 'mean'}
 
@@ -51,7 +51,7 @@ def test_ww_generator(run_in_tmpdir):
     assert len(wws_mean) == 1
 
     # check that generation using the relative error works too
-    wwg.update_params['value'] = 'rel_err'
+    wwg.update_parameters['value'] = 'rel_err'
     model.run()
 
     wws_rel_err = openmc.hdf5_to_wws(meshes=meshes)

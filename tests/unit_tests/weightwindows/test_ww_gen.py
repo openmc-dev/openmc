@@ -256,15 +256,15 @@ def test_ww_gen_roundtrip(run_in_tmpdir, model):
     assert wwg_in.max_realizations == 1
     assert wwg_in.on_the_fly == True
     assert wwg_in.update_interval == 1
-    assert wwg_in.update_params == wwg.update_params
+    assert wwg_in.update_parameters == wwg.update_parameters
 
     with pytest.raises(ValueError):
         wwg.method = 'monkeys'
 
     with pytest.raises(TypeError):
-        wwg.update_params = {'ratio' : 'one-to-one'}
+        wwg.update_parameters = {'ratio' : 'one-to-one'}
 
-    
+
 
     with pytest.raises(ValueError):
         wwg.max_realizations = -1

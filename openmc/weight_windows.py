@@ -658,7 +658,7 @@ class WeightWindowGenerator():
         windows.
     update_interval : int
         The number of tally realizations between updates. (default: 1)
-    update_params : dict
+    update_parameters : dict
         A set of parameters related to the update.
     on_the_fly : bool
         Whether or not to apply weight windows on the fly. (default: True)
@@ -673,7 +673,7 @@ class WeightWindowGenerator():
         self.particle_type = particle_type
         self.max_realizations = 1
 
-        self._update_params = None
+        self._update_parameters = None
 
         self.method = 'magic'
         self.particle_type = particle_type
@@ -690,8 +690,8 @@ class WeightWindowGenerator():
         string += f'\t{"Max Realizations:":<20}=\t{self.max_realizations}\n'
         string += f'\t{"Update Interval:":<20}=\t{self.update_interval}\n'
         string += f'\t{"On The Fly:":<20}=\t{self.on_the_fly}\n'
-        if self.update_params is not None:
-            string += f'\t{"Update Parameters:":<20}\n\t\t\t{self.update_params}\n'
+        if self.update_parameters is not None:
+            string += f'\t{"Update Parameters:":<20}\n\t\t\t{self.update_parameters}\n'
         string
 
         return string
@@ -733,9 +733,9 @@ class WeightWindowGenerator():
         cv.check_type('generation method', m, str)
         cv.check_value('generation method', m, ('magic'))
         self._method = m
-        if self._update_params is not None:
+        if self._update_parameters is not None:
             try:
-                self._check_update_params()
+                self._check_update_parameters()
             except (TypeError, KeyError):
                 warnings.warn(f'Update parameters are invalid for the "{m}" method.')
 
@@ -760,10 +760,10 @@ class WeightWindowGenerator():
         self._update_interval = ui
 
     @property
-    def update_params(self) -> dict :
-        return self._update_params
+    def update_parameters(self) -> dict :
+        return self._update_parameters
 
-    def _check_update_params(self, params: dict):
+    def _check_update_parameters(self, params: dict):
         if self.method == 'magic':
             check_params = self._MAGIC_PARAMS
 
@@ -773,10 +773,10 @@ class WeightWindowGenerator():
                                   'weight window generation')
             cv.check_type(f'weight window generation param: "{key}"', val, self._MAGIC_PARAMS[key])
 
-    @update_params.setter
-    def update_params(self, params: dict):
-        self._check_update_params(params)
-        self._update_params = params
+    @update_parameters.setter
+    def update_parameters(self, params: dict):
+        self._check_update_parameters(params)
+        self._update_parameters = params
 
     @property
     def on_the_fly(self) -> bool:
@@ -787,16 +787,16 @@ class WeightWindowGenerator():
         cv.check_type('on the fly generation', otf, bool)
         self._on_the_fly = otf
 
-    def _update_params_subelement(self, element: xml.etree.ElementTree.Element):
-        if not self.update_params:
+    def _update_parameters_subelement(self, element: xml.etree.ElementTree.Element):
+        if not self.update_parameters:
             return
-        params_element = ET.SubElement(element, 'update_params')
-        for pname, value in self.update_params.items():
+        params_element = ET.SubElement(element, 'update_parameters')
+        for pname, value in self.update_parameters.items():
             param_element = ET.SubElement(params_element, pname)
             param_element.text = str(value)
 
     @classmethod
-    def _sanitize_update_params(cls, method: str, update_params: dict):
+    def _sanitize_update_parameters(cls, method: str, update_parameters: dict):
         """
         Attempt to convert update parameters to their appropriate types
 
@@ -804,15 +804,15 @@ class WeightWindowGenerator():
         ----------
         method : str
             The update method for which these update parameters should comply
-        update_params : dict
+        update_parameters : dict
             The update parameters as-read from the XML node (keys: str, values: str)
         """
         if method == 'magic':
             check_params = cls._MAGIC_PARAMS
 
         for param, param_type in check_params.items():
-            if param in update_params:
-                update_params[param] = param_type(update_params[param])
+            if param in update_parameters:
+                update_parameters[param] = param_type(update_parameters[param])
 
     def to_xml_element(self):
         """Creates a 'weight_window_generator' element to be written to an XML file.
@@ -834,8 +834,8 @@ class WeightWindowGenerator():
         otf_elem.text = str(self.on_the_fly).lower()
         method_elem = ET.SubElement(element, 'method')
         method_elem.text = self.method
-        if self.update_params is not None:
-            self._update_params_subelement(element)
+        if self.update_parameters is not None:
+            self._update_parameters_subelement(element)
 
         clean_indentation(element)
 
@@ -871,14 +871,14 @@ class WeightWindowGenerator():
         wwg.on_the_fly = bool(get_text(elem, 'on_the_fly'))
         wwg.method = get_text(elem, 'method')
 
-        if elem.find('update_params'):
-            update_params = {}
-            params_elem = elem.find('update_params')
+        if elem.find('update_parameters'):
+            update_parameters = {}
+            params_elem = elem.find('update_parameters')
             for entry in params_elem:
-                update_params[entry.tag] = entry.text
+                update_parameters[entry.tag] = entry.text
 
-            cls._sanitize_update_params(wwg.method, update_params)
-            wwg.update_params = update_params
+            cls._sanitize_update_parameters(wwg.method, update_parameters)
+            wwg.update_parameters = update_parameters
 
         return wwg
 

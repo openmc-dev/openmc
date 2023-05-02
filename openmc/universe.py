@@ -309,12 +309,12 @@ class Universe(UniverseBase):
 
         Parameters
         ----------
-        origin : Optional Iterable of float
+        origin : iterable of float
             Coordinates at the origin of the plot, if left as None then the
             universe.bounding_box.center will be used to attempt to
             ascertain the origin. Defaults to (0, 0, 0) if the bounding_box
             contains inf values
-        width : Optional Iterable of float
+        width : iterable of float
             Width of the plot in each basis direction. If left as none then the
             universe.bounding_box.width() will be used to attempt to
             ascertain the plot width.  Defaults to (10, 10) if the bounding_box
@@ -391,8 +391,8 @@ class Universe(UniverseBase):
                 origin = self.bounding_box.center
             if width is None:
                 bb_width = self.bounding_box.width
-                x_width = bb_width[{'x': 0, 'y': 1, 'z': 2}[basis[0]]]
-                y_width = bb_width[{'x': 0, 'y': 1, 'z': 2}[basis[1]]]
+                x_width = bb_width['xyz'.index(basis[0])]
+                y_width = bb_width['xyz'.index(basis[1])]
                 width = (x_width, y_width)
 
         x_min = origin[x] - 0.5*width[0]

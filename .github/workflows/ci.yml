@@ -18,9 +18,6 @@ env:
   HDF5_ROOT: /usr
   OMP_NUM_THREADS: 2
   COVERALLS_PARALLEL: true
-  COVERALLS_SERVICE_NAME: github
-  COVERALLS_SERVICE_JOB_ID: "${{ github.run_id }}"
-  COVERALLS_SERVICE_NUMBER: "${{ github.workflow }}-${{ github.run_number }}"
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:

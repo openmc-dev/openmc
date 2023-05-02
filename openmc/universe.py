@@ -320,11 +320,11 @@ class Universe(UniverseBase):
             ascertain the plot width.  Defaults to (10, 10) if the bounding_box
             contains inf values
         pixels : Iterable of int or int
-            If iterable of int then provide then this sets the number of pixels
-            to use in each basis direction. If int provided then this sets the
-            total number of pixels in the plot and the number of pixels in each
-            basis direction is calculated from this total and the image aspect
-            ratio.
+            If iterable of ints provided then this directly sets the number of
+            pixels to use in each basis direction. If int provided then this
+            sets the total number of pixels in the plot and the number of
+            pixels in each basis direction is calculated from this total and
+            the image aspect ratio.
         basis : {'xy', 'xz', 'yz'}
             The basis directions for the plot
         color_by : {'cell', 'material'}

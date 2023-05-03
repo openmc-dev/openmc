@@ -2,45 +2,45 @@
 <model>
   <materials>
     <material depletable="true" id="13" name="fuel">
-      <density units="g/cc" value="4.5" />
-      <nuclide ao="1.0" name="U235" />
+      <density units="g/cc" value="4.5"/>
+      <nuclide ao="1.0" name="U235"/>
     </material>
     <material id="14" name="zircaloy">
-      <density units="g/cc" value="5.77" />
-      <nuclide ao="0.5145" name="Zr90" />
-      <nuclide ao="0.1122" name="Zr91" />
-      <nuclide ao="0.1715" name="Zr92" />
-      <nuclide ao="0.1738" name="Zr94" />
-      <nuclide ao="0.028" name="Zr96" />
+      <density units="g/cc" value="5.77"/>
+      <nuclide ao="0.5145" name="Zr90"/>
+      <nuclide ao="0.1122" name="Zr91"/>
+      <nuclide ao="0.1715" name="Zr92"/>
+      <nuclide ao="0.1738" name="Zr94"/>
+      <nuclide ao="0.028" name="Zr96"/>
     </material>
     <material id="15" name="water">
-      <density units="atom/b-cm" value="0.07416" />
-      <nuclide ao="2.0" name="H1" />
-      <nuclide ao="1.0" name="O16" />
+      <density units="atom/b-cm" value="0.07416"/>
+      <nuclide ao="2.0" name="H1"/>
+      <nuclide ao="1.0" name="O16"/>
     </material>
   </materials>
   <geometry>
-    <cell id="13" material="13" name="fuel" region="73 -74 75 -76 77 -78" universe="5" />
-    <cell id="14" material="14" name="clad" region="(-73 | 74 | -75 | 76 | -77 | 78) (79 -80 81 -82 83 -84)" universe="5" />
-    <cell id="15" material="15" name="water" region="(-79 | 80 | -81 | 82 | -83 | 84) (85 -86 87 -88 89 -90)" universe="5" />
-    <surface coeffs="-5.0" id="73" name="minimum x" type="x-plane" />
-    <surface coeffs="5.0" id="74" name="maximum x" type="x-plane" />
-    <surface coeffs="-5.0" id="75" name="minimum y" type="y-plane" />
-    <surface coeffs="5.0" id="76" name="maximum y" type="y-plane" />
-    <surface coeffs="-5.0" id="77" name="minimum z" type="z-plane" />
-    <surface coeffs="5.0" id="78" name="maximum z" type="z-plane" />
-    <surface coeffs="-6.0" id="79" name="minimum x" type="x-plane" />
-    <surface coeffs="6.0" id="80" name="maximum x" type="x-plane" />
-    <surface coeffs="-6.0" id="81" name="minimum y" type="y-plane" />
-    <surface coeffs="6.0" id="82" name="maximum y" type="y-plane" />
-    <surface coeffs="-6.0" id="83" name="minimum z" type="z-plane" />
-    <surface coeffs="6.0" id="84" name="maximum z" type="z-plane" />
-    <surface boundary="vacuum" coeffs="-15" id="85" name="minimum x" type="x-plane" />
-    <surface boundary="vacuum" coeffs="15" id="86" name="maximum x" type="x-plane" />
-    <surface boundary="vacuum" coeffs="-15" id="87" name="minimum y" type="y-plane" />
-    <surface boundary="vacuum" coeffs="15" id="88" name="maximum y" type="y-plane" />
-    <surface boundary="vacuum" coeffs="-15" id="89" name="minimum z" type="z-plane" />
-    <surface boundary="vacuum" coeffs="15" id="90" name="maximum z" type="z-plane" />
+    <cell id="13" material="13" name="fuel" region="73 -74 75 -76 77 -78" universe="5"/>
+    <cell id="14" material="14" name="clad" region="(-73 | 74 | -75 | 76 | -77 | 78) (79 -80 81 -82 83 -84)" universe="5"/>
+    <cell id="15" material="15" name="water" region="(-79 | 80 | -81 | 82 | -83 | 84) (85 -86 87 -88 89 -90)" universe="5"/>
+    <surface coeffs="-5.0" id="73" name="minimum x" type="x-plane"/>
+    <surface coeffs="5.0" id="74" name="maximum x" type="x-plane"/>
+    <surface coeffs="-5.0" id="75" name="minimum y" type="y-plane"/>
+    <surface coeffs="5.0" id="76" name="maximum y" type="y-plane"/>
+    <surface coeffs="-5.0" id="77" name="minimum z" type="z-plane"/>
+    <surface coeffs="5.0" id="78" name="maximum z" type="z-plane"/>
+    <surface coeffs="-6.0" id="79" name="minimum x" type="x-plane"/>
+    <surface coeffs="6.0" id="80" name="maximum x" type="x-plane"/>
+    <surface coeffs="-6.0" id="81" name="minimum y" type="y-plane"/>
+    <surface coeffs="6.0" id="82" name="maximum y" type="y-plane"/>
+    <surface coeffs="-6.0" id="83" name="minimum z" type="z-plane"/>
+    <surface coeffs="6.0" id="84" name="maximum z" type="z-plane"/>
+    <surface boundary="vacuum" coeffs="-15" id="85" name="minimum x" type="x-plane"/>
+    <surface boundary="vacuum" coeffs="15" id="86" name="maximum x" type="x-plane"/>
+    <surface boundary="vacuum" coeffs="-15" id="87" name="minimum y" type="y-plane"/>
+    <surface boundary="vacuum" coeffs="15" id="88" name="maximum y" type="y-plane"/>
+    <surface boundary="vacuum" coeffs="-15" id="89" name="minimum z" type="z-plane"/>
+    <surface boundary="vacuum" coeffs="15" id="90" name="maximum z" type="z-plane"/>
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
@@ -48,7 +48,7 @@
     <batches>10</batches>
     <source strength="1.0">
       <space origin="0.0 0.0 0.0" type="spherical">
-        <r parameters="0.0 0.0" type="uniform" />
+        <r parameters="0.0 0.0" type="uniform"/>
         <cos_theta type="discrete">
           <parameters>1.0 1.0</parameters>
         </cos_theta>
@@ -56,7 +56,7 @@
           <parameters>0.0 1.0</parameters>
         </phi>
       </space>
-      <angle reference_uvw="-1.0 0.0 0.0" type="monodirectional" />
+      <angle reference_uvw="-1.0 0.0 0.0" type="monodirectional"/>
       <energy type="discrete">
         <parameters>15000000.0 1.0</parameters>
       </energy>

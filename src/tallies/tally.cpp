@@ -364,18 +364,25 @@ void Tally::set_filters(gsl::span<Filter*> filters)
   auto n = filters.size();
   filters_.reserve(n);
 
-  for (int i = 0; i < n; ++i) {
-    // Add index to vector of filters
-    auto& f {filters[i]};
-    filters_.push_back(model::filter_map.at(f->id()));
-
-    // Keep track of indices for special filters.
-    if (dynamic_cast<const EnergyoutFilter*>(f)) {
-      energyout_filter_ = i;
-    } else if (dynamic_cast<const DelayedGroupFilter*>(f)) {
-      delayedgroup_filter_ = i;
-    }
+  for (auto* filter : filters) {
+    add_filter(filter);
   }
+}
+
+void Tally::add_filter(Filter* filter)
+{
+  int32_t filter_idx = model::filter_map.at(filter->id());
+  // if this filter is already present, do nothing and return
+  if (std::find(filters_.begin(), filters_.end(), filter_idx) != filters_.end())
+    return;
+
+  // Keep track of indices for special filters
+  if (dynamic_cast<const EnergyoutFilter*>(filter)) {
+    energyout_filter_ = filters_.size();
+  } else if (dynamic_cast<const DelayedGroupFilter*>(filter)) {
+    delayedgroup_filter_ = filters_.size();
+  }
+  filters_.push_back(filter_idx);
 }
 
 void Tally::set_strides()
@@ -1280,12 +1287,11 @@ extern "C" size_t tallies_size()
 extern "C" int openmc_remove_tally(int32_t index)
 {
   // check that id is in the map
-  if (index < 0 || index > model::tallies.size()) {
+  if (index < 0 || index >= model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-  // grab tally so it's ID can be obtained to remove the (ID,index) pair from
-  // tally_map
-  auto& tally = model::tallies[index];
+
   // delete the tally via iterator pointing to correct position
   // this calls the Tally destructor, removing the tally from the map as well
   model::tallies.erase(model::tallies.begin() + index);

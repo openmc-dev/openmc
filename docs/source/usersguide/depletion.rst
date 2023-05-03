@@ -262,7 +262,7 @@ Loading and Generating Microscopic Cross Sections
 -------------------------------------------------
 
 As mentioned earlier, any transport code could be used to calculate one-group
-microscopic cross sections. The :mod:`openmc.deplete` module provides the 
+microscopic cross sections. The :mod:`openmc.deplete` module provides the
 :class:`~openmc.deplete.MicroXS` class, which contains methods to read in
 pre-calculated cross sections from a ``.csv`` file or from data arrays::
 
@@ -355,9 +355,9 @@ Multiple Materials
 
 A transport-independent depletion simulation using ``source-rate`` normalization
 will calculate reaction rates for each material independently. This can be
-useful for running many different cases of a particular scenario. A 
+useful for running many different cases of a particular scenario. A
 transport-independent depletion simulation using ``fission-q`` normalization
-will sum the fission energy values across all materials into :math:`Q_i` in 
+will sum the fission energy values across all materials into :math:`Q_i` in
 Equation :math:numref:`fission-q`, and Equation :math:numref:`fission-q`
 provides the flux we use to calculate the reaction rates in each material.
 This can be useful for running a scenario with multiple depletable materials
@@ -370,3 +370,67 @@ The values of the one-group microscopic cross sections passed to
 :class:`openmc.deplete.IndependentOperator` are fixed for the entire depletion
 simulation. This implicit assumption may produce inaccurate results for certain
 scenarios.
+
+Transfer Rates
+==============
+
+Transfer rates define removal or feed of nuclides to or from one or more
+depletable materials. This can be useful to model continuous fuel reprocessing,
+online fission products separation, etc.
+
+Transfer rates are defined by calling the
+:meth:`~openmc.deplete.abc.Integrator.add_transfer_rate()` method directly from
+one of the Integrator classes::
+
+    ...
+    integrator = openmc.deplete.PredictorIntegrator(op, time_steps, power)
+    integrator.add_transfer_rate(...)
+
+Defining transfer rates
+-----------------------
+
+The :meth:`~openmc.deplete.abc.Integrator.add_transfer_rate()` method requires a
+:class:`~openmc.Material` instance (alternatively, a material id or
+the name) as the depletable material from which nuclides are processed,
+a list of elements that share the same transfer rate, and a transfer rate itself.
+
+.. caution::
+
+   Make sure you set the transfer rate value with the right sign.
+   A positive transfer rate assumes removal, while a negative one assumes feed.
+
+The ``transfer_rate_units`` argument specifies the units for the transfer rate.
+The default is `1/s`, but '1/min', '1/h', '1/d' and '1/a' are also valid
+options.
+
+For example, to define continuous removal of xenon from one material with a
+removal rate value of 0.1 s\ :sup:`-1` (or a cycle time of 10 s), you'd use::
+
+    mat1 = openmc.Material(material_id=1, name='fuel')
+
+    ...
+
+    integrator = openmc.deplete.PredictorIntegrator(op, time_steps, power)
+    # by openmc.Material object
+    integrator.add_transfer_rate(mat1, ['Xe'], 0.1)
+    # or by material id
+    integrator.add_transfer_rate(1, ['Xe'], 0.1)
+    # or by material name
+    integrator.add_transfer_rate('fuel', ['Xe'], 0.1)
+
+Note that in this case the xenon isotopes that are removed will not be tracked.
+
+Defining a destination material
+-------------------------------
+
+To transfer elements from one depletable material to another, the
+``destination_material`` parameter needs to be passed to the
+:meth:`~openmc.deplete.abc.Integrator.add_transfer_rate()` method. For example,
+to transfer xenon from one material to another, you'd use::
+
+    ...
+    mat2 = openmc.Material(name='storage')
+
+    ...
+
+    integrator.add_transfer_rate(mat1, ['Xe'], 0.1, destination_material=mat2)

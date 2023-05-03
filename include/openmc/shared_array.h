@@ -115,6 +115,12 @@ public:
   T* data() { return data_.get(); }
   const T* data() const { return data_.get(); }
 
+  //! Classic iterators
+  T* begin() { return data_.get(); }
+  const T* cbegin() const { return data_.get(); }
+  T* end() { return data_.get() + size_; }
+  const T* cend() const { return data_.get() + size_; }
+
 private:
   //==========================================================================
   // Data members

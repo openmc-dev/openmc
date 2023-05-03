@@ -1105,7 +1105,7 @@ void WeightWindowsGenerator::update() const {
   // update interval, skip the update
   if (max_realizations_ < tally->n_realizations_ || tally->n_realizations_ % update_interval_ != 0) return;
 
-  wws->update_magic(tally);
+  wws->update_magic(tally, tally_value_, threshold_, ratio_);
 
   // if we're not doing on the fly generation, reset the tally results once we're done with the update
   if (!on_the_fly_) tally->reset();

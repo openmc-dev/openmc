@@ -201,3 +201,35 @@ def test_roundtrip(run_in_tmpdir, model, request):
 
     assert space_in.mesh.id == space_out.mesh.id
     assert space_in.volume_normalized == space_out.volume_normalized
+def test_mesh_source(model):
+
+    # define a source for the upper right voxel
+    source = openmc.Source()
+    source.space = openmc.stats.Box((0, 0, 0), (2, 2, 2))
+
+    tally = openmc.Tally()
+    all_cells = list(model.geometry.get_all_cells().values())
+    cell_filter = openmc.CellFilter(all_cells)
+    tally.filters = [cell_filter]
+    tally.scores = ['flux']
+
+    model.tallies = [tally]
+    model.settings.source = source
+
+    sp_filename = model.run()
+    with openmc.StatePoint(sp_filename) as sp:
+        tally_mean = sp.tallies[tally.id].mean
+
+    # change from a standard source to a mesh source with
+    mesh = openmc.RegularMesh()
+    ms = openmc.MeshSource(mesh)
+
+    angle = openmc.stats.Isotropic()
+    src1 = openmc.Source(angle=angle)
+    src2 = openmc.Source(angle=angle)
+
+    ms.sources = [src1, src2]
+
+    model.settings.source.append(ms)
+
+    model.settings.export_to_xml()

@@ -111,9 +111,9 @@ void process_advance_particle_events()
   for (int64_t i = 0; i < simulation::advance_particle_queue.size(); i++) {
     int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
+    p.event_advance();
     if (!p.alive())
       continue;
-    p.event_advance();
     if (p.collision_distance() > p.boundary().distance) {
       simulation::surface_crossing_queue.thread_safe_append({p, buffer_idx});
     } else {

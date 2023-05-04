@@ -163,7 +163,7 @@ class Settings:
     statepoint : dict
         Options for writing state points. Acceptable keys are:
 
-        :batches: list of batches at which to write source
+        :batches: list of batches at which to write statepoint files
     surf_source_read : dict
         Options for reading surface source points. Acceptable keys are:
 

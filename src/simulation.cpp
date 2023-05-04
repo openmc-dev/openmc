@@ -545,6 +545,9 @@ void initialize_history(Particle& p, int64_t index_source)
   // Reset weight window ratio
   p.ww_factor() = 0.0;
 
+  // Reset pulse_height_storage
+  std::fill(p.pht_storage().begin(), p.pht_storage().end(), 0);
+
   // set random number seed
   int64_t particle_seed =
     (simulation::total_gen + overall_generation() - 1) * settings::n_particles +

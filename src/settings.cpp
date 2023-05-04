@@ -933,10 +933,13 @@ void read_settings_xml(pugi::xml_node root)
   // Create weight window generator objects
   if (check_for_node(root, "weight_window_generators")) {
     auto wwgs_node = root.child("weight_window_generators");
-    for (pugi::xml_node node_wwg : wwgs_node.children("weight_windows_generator")) {
-      variance_reduction::weight_windows_generators.emplace_back(std::make_unique<WeightWindowsGenerator>(node_wwg));
+    for (pugi::xml_node node_wwg :
+      wwgs_node.children("weight_windows_generator")) {
+      variance_reduction::weight_windows_generators.emplace_back(
+        std::make_unique<WeightWindowsGenerator>(node_wwg));
     }
-    // if any of the weight windows are intended to be generated otf, make sure they're applied
+    // if any of the weight windows are intended to be generated otf, make sure
+    // they're applied
     for (const auto& wwg : variance_reduction::weight_windows_generators) {
       if (wwg->on_the_fly_) {
         settings::weight_windows_on = true;
@@ -944,7 +947,6 @@ void read_settings_xml(pugi::xml_node root)
       }
     }
   }
-
 }
 
 void free_memory_settings()

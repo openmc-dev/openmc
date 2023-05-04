@@ -412,8 +412,7 @@ void WeightWindows::check_bounds(const T& bounds) const
   }
 }
 
-void WeightWindows::set_bounds(
-  const xt::xtensor<double, 2>& lower_bounds,
+void WeightWindows::set_bounds(const xt::xtensor<double, 2>& lower_bounds,
   const xt::xtensor<double, 2>& upper_bounds)
 {
 
@@ -444,8 +443,10 @@ void WeightWindows::set_bounds(
   upper_ww_ = xt::empty<double>(shape);
 
   // set new weight window values
-  xt::view(lower_ww_, xt::all()) = xt::adapt(lower_bounds.data(), lower_ww_.shape());
-  xt::view(upper_ww_, xt::all()) = xt::adapt(upper_bounds.data(), upper_ww_.shape());
+  xt::view(lower_ww_, xt::all()) =
+    xt::adapt(lower_bounds.data(), lower_ww_.shape());
+  xt::view(upper_ww_, xt::all()) =
+    xt::adapt(upper_bounds.data(), upper_ww_.shape());
 }
 
 void WeightWindows::set_bounds(
@@ -458,8 +459,10 @@ void WeightWindows::set_bounds(
   upper_ww_ = xt::empty<double>(shape);
 
   // set new weight window values
-  xt::view(lower_ww_, xt::all()) = xt::adapt(lower_bounds.data(), lower_ww_.shape());
-  xt::view(upper_ww_, xt::all()) = xt::adapt(lower_bounds.data(), upper_ww_.shape());
+  xt::view(lower_ww_, xt::all()) =
+    xt::adapt(lower_bounds.data(), lower_ww_.shape());
+  xt::view(upper_ww_, xt::all()) =
+    xt::adapt(lower_bounds.data(), upper_ww_.shape());
   upper_ww_ *= ratio;
 }
 
@@ -572,7 +575,8 @@ void WeightWindows::update_magic(
   // down-select data based on particle and score
   auto sum = xt::view(transposed_view, particle_idx, xt::all(), xt::all(),
     score_index, static_cast<int>(TallyResult::SUM));
-  auto sum_sq = xt::view(transposed_view, particle_idx, xt::all(), xt::all(), score_index, static_cast<int>(TallyResult::SUM_SQ));
+  auto sum_sq = xt::view(transposed_view, particle_idx, xt::all(), xt::all(),
+    score_index, static_cast<int>(TallyResult::SUM_SQ));
   int n = tally->n_realizations_;
 
   //////////////////////////////////////////////
@@ -587,7 +591,7 @@ void WeightWindows::update_magic(
   // up to this point the data arrays are views into the tally results (no
   // computation has been performed) now we'll switch references to the tally's
   // bounds to avoid allocating additional memory
-  auto& new_bounds  = this->lower_ww_;
+  auto& new_bounds = this->lower_ww_;
   auto& rel_err = this->upper_ww_;
 
   // noalias avoids memory allocation here
@@ -889,8 +893,7 @@ extern "C" int openmc_extend_weight_windows(
   if (index_end)
     *index_end = variance_reduction::weight_windows.size() + n - 1;
   for (int i = 0; i < n; ++i)
-    variance_reduction::weight_windows.push_back(
-      make_unique<WeightWindows>());
+    variance_reduction::weight_windows.push_back(make_unique<WeightWindows>());
   return 0;
 }
 
@@ -930,7 +933,8 @@ extern "C" int openmc_weight_windows_export(const char* filename)
 
     // if the mesh has already been written, move on
     int32_t mesh_id = ww->mesh()->id();
-    if (std::find(mesh_ids.begin(), mesh_ids.end(), mesh_id) != mesh_ids.end()) continue;
+    if (std::find(mesh_ids.begin(), mesh_ids.end(), mesh_id) != mesh_ids.end())
+      continue;
 
     mesh_ids.push_back(mesh_id);
     ww->mesh()->to_hdf5(mesh_group);
@@ -998,7 +1002,8 @@ extern "C" int openmc_weight_windows_import(const char* filename)
   return 0;
 }
 
-WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node) {
+WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
+{
   // read information from the XML node
   int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
   int32_t mesh_idx = model::mesh_map[mesh_id];
@@ -1006,7 +1011,10 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node) {
 
   int active_batches = settings::n_batches - settings::n_inactive;
   if (max_realizations_ > active_batches) {
-    auto msg = fmt::format("The maximum number of specified tally realizations ({}) is greater than the number of active batches ({}).", max_realizations_, active_batches);
+    auto msg =
+      fmt::format("The maximum number of specified tally realizations ({}) is "
+                  "greater than the number of active batches ({}).",
+        max_realizations_, active_batches);
     warning(msg);
   }
   auto tmp_str = get_node_value(node, "particle_type", true, true);
@@ -1051,7 +1059,8 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node) {
 
   if (e_bounds.size() > 0) {
     auto energy_filter = Filter::create("energy");
-    openmc_energy_filter_set_bins(energy_filter->index(), e_bounds.size(), e_bounds.data());
+    openmc_energy_filter_set_bins(
+      energy_filter->index(), e_bounds.size(), e_bounds.data());
     ww_tally->add_filter(energy_filter);
   }
 
@@ -1077,38 +1086,50 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node) {
     }
     // check update parameter values
     if (tally_value_ != "mean" && tally_value_ != "rel_err") {
-          fatal_error(fmt::format("Unsupported tally value '{}' specified for weight window generation.", tally_value_));
+      fatal_error(fmt::format(
+        "Unsupported tally value '{}' specified for weight window generation.",
+        tally_value_));
     }
     if (threshold_ <= 0.0)
-    fatal_error(fmt::format("Invalid relative error threshold '{}' (<= 0.0) specified for weight window generation", ratio_));
+      fatal_error(fmt::format("Invalid relative error threshold '{}' (<= 0.0) "
+                              "specified for weight window generation",
+        ratio_));
     if (ratio_ <= 1.0)
-      fatal_error(fmt::format("Invalid weight window ratio '{}' (<= 1.0) specified for weight window generation"));
+      fatal_error(fmt::format("Invalid weight window ratio '{}' (<= 1.0) "
+                              "specified for weight window generation"));
   } else {
-    fatal_error(fmt::format("Unknown weight window update method '{}' specified", method_));
+    fatal_error(fmt::format(
+      "Unknown weight window update method '{}' specified", method_));
   }
 
   // create a matching weight windows object
   auto wws = WeightWindows::create();
   ww_idx_ = wws->index();
-  if (e_bounds.size() > 0) wws->set_energy_bounds(e_bounds);
+  if (e_bounds.size() > 0)
+    wws->set_energy_bounds(e_bounds);
   wws->set_mesh(model::mesh_map[mesh_id]);
   wws->set_particle_type(particle_type);
   wws->set_defaults();
 }
 
-void WeightWindowsGenerator::update() const {
+void WeightWindowsGenerator::update() const
+{
   const auto& wws = variance_reduction::weight_windows[ww_idx_];
 
   Tally* tally = model::tallies[tally_idx_].get();
 
   // if we're beyond the number of max realizations or not at the corrrect
   // update interval, skip the update
-  if (max_realizations_ < tally->n_realizations_ || tally->n_realizations_ % update_interval_ != 0) return;
+  if (max_realizations_ < tally->n_realizations_ ||
+      tally->n_realizations_ % update_interval_ != 0)
+    return;
 
   wws->update_magic(tally, tally_value_, threshold_, ratio_);
 
-  // if we're not doing on the fly generation, reset the tally results once we're done with the update
-  if (!on_the_fly_) tally->reset();
+  // if we're not doing on the fly generation, reset the tally results once
+  // we're done with the update
+  if (!on_the_fly_)
+    tally->reset();
 
   // TODO: deactivate or remove tally once weight window generation is complete
 }

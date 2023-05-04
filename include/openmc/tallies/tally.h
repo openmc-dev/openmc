@@ -67,7 +67,8 @@ public:
   //! \brief Returns the tally filter at index i
   int32_t filters(int i) const { return filters_[i]; }
 
-  //! \brief Return a const pointer to a filter instance based on type. Always returns the first matching filter type
+  //! \brief Return a const pointer to a filter instance based on type. Always
+  //! returns the first matching filter type
   template<class T>
   const T* get_filter() const
   {
@@ -82,7 +83,8 @@ public:
   template<class T>
   const T* get_filter(int idx) const
   {
-    if (const T* out = dynamic_cast<T*>(model::tally_filters[filters_.at(idx)])) return out;
+    if (const T* out = dynamic_cast<T*>(model::tally_filters[filters_.at(idx)]))
+      return out;
     return nullptr;
   }
 

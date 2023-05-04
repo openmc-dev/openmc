@@ -4,8 +4,8 @@
 #include <cstdint>
 #include <unordered_map>
 
-#include <hdf5.h>
 #include <gsl/gsl-lite.hpp>
+#include <hdf5.h>
 #include <pugixml.hpp>
 
 #include "openmc/constants.h"
@@ -187,7 +187,7 @@ private:
     lower_ww_; //!< Lower weight window bounds (shape: energy_bins, mesh_bins)
   xt::xtensor<double, 2>
     upper_ww_; //!< Upper weight window bounds (shape: energy_bins, mesh_bins)
-  double survival_ratio_ {3.0};  //!< Survival weight ratio
+  double survival_ratio_ {3.0}; //!< Survival weight ratio
   double max_lb_ratio_ {1.0}; //!< Maximum lower bound to particle weight ratio
   double weight_cutoff_ {DEFAULT_WEIGHT_CUTOFF}; //!< Weight cutoff
   int max_split_ {10}; //!< Maximum value for particle splitting
@@ -195,7 +195,7 @@ private:
 };
 
 class WeightWindowsGenerator {
-  public:
+public:
   // Constructors
   WeightWindowsGenerator(pugi::xml_node node);
 
@@ -203,16 +203,19 @@ class WeightWindowsGenerator {
   void update() const;
 
   // Data members
-  int32_t tally_idx_; //!< Index of the tally used to update the weight windows
-  int32_t ww_idx_; //!< Index of the weight windows object being generated
-  std::string method_; //!< Method used to update weight window. Only "magic" is valid for now.
+  int32_t tally_idx_;  //!< Index of the tally used to update the weight windows
+  int32_t ww_idx_;     //!< Index of the weight windows object being generated
+  std::string method_; //!< Method used to update weight window. Only "magic" is
+                       //!< valid for now.
   int32_t max_realizations_; //!< Maximum number of tally realizations
-  int32_t update_interval_; //!< Determines how often updates occur
-  bool on_the_fly_; //!< Whether or not weight windows
+  int32_t update_interval_;  //!< Determines how often updates occur
+  bool on_the_fly_;          //!< Whether or not weight windows
 
   // MAGIC update parameters
-  std::string tally_value_ {"mean"}; //<! Tally value to use (one of {"mean", "rel_err"})
-  double threshold_ {1.0}; //<! Relative error threshold for values used to update weight windows
+  std::string tally_value_ {
+    "mean"}; //<! Tally value to use (one of {"mean", "rel_err"})
+  double threshold_ {
+    1.0}; //<! Relative error threshold for values used to update weight windows
   double ratio_ {5.0}; //<! ratio of lower to upper weight window bounds
 
   // PSR update parameters (TBD)

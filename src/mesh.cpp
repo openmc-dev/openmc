@@ -1018,11 +1018,12 @@ void RectilinearMesh::to_hdf5(hid_t group) const
   close_group(mesh_group);
 }
 
-double RectilinearMesh::volume(const MeshIndex& ijk) const {
+double RectilinearMesh::volume(const MeshIndex& ijk) const
+{
   double vol {1.0};
 
   for (int i = 0; i < n_dimension_; i++) {
-    vol *= grid_[i][ijk[i]+ 1] - grid_[i][ijk[i]];
+    vol *= grid_[i][ijk[i] + 1] - grid_[i][ijk[i]];
   }
   return vol;
 }
@@ -1282,7 +1283,7 @@ double CylindricalMesh::volume(const MeshIndex& ijk) const
   double z_i = grid_[2][ijk[2] - 1];
   double z_o = grid_[2][ijk[2]];
 
-  return 0.5 * (r_o*r_o - r_i*r_i) * (phi_o - phi_i) * (z_o - z_i);
+  return 0.5 * (r_o * r_o - r_i * r_i) * (phi_o - phi_i) * (z_o - z_i);
 }
 
 //==============================================================================
@@ -1559,7 +1560,8 @@ void SphericalMesh::to_hdf5(hid_t group) const
   close_group(mesh_group);
 }
 
-double SphericalMesh::volume(const MeshIndex& ijk) const {
+double SphericalMesh::volume(const MeshIndex& ijk) const
+{
   double r_i = grid_[0][ijk[0] - 1];
   double r_o = grid_[0][ijk[0]];
 
@@ -1569,7 +1571,7 @@ double SphericalMesh::volume(const MeshIndex& ijk) const {
   double phi_i = grid_[2][ijk[2] - 1];
   double phi_o = grid_[2][ijk[2]];
 
-  return (1.0 / 3.0) * (r_o*r_o*r_o - r_i*r_i*r_i) *
+  return (1.0 / 3.0) * (r_o * r_o * r_o - r_i * r_i * r_i) *
          (std::cos(theta_i) - std::cos(theta_o)) * (phi_o - phi_i);
 }
 

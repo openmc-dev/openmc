@@ -357,11 +357,13 @@ void Tally::set_id(int32_t id)
 std::vector<FilterType> Tally::filter_types() const
 {
   std::vector<FilterType> filter_types;
-  for (auto idx : this->filters()) filter_types.push_back(model::tally_filters[idx]->type());
+  for (auto idx : this->filters())
+    filter_types.push_back(model::tally_filters[idx]->type());
   return filter_types;
 }
 
-std::unordered_map<FilterType, int32_t> Tally::filter_indices() const {
+std::unordered_map<FilterType, int32_t> Tally::filter_indices() const
+{
   std::unordered_map<FilterType, int32_t> filter_indices;
   for (int i = 0; i < this->filters().size(); i++) {
     const auto& f = model::tally_filters[this->filters(i)];
@@ -371,7 +373,8 @@ std::unordered_map<FilterType, int32_t> Tally::filter_indices() const {
   return filter_indices;
 }
 
-bool Tally::has_filter(FilterType filter_type) const {
+bool Tally::has_filter(FilterType filter_type) const
+{
   for (auto idx : this->filters()) {
     if (model::tally_filters[idx]->type() == filter_type)
       return true;
@@ -389,19 +392,23 @@ void Tally::set_filters(gsl::span<Filter*> filters)
   auto n = filters.size();
   filters_.reserve(n);
 
-  for (auto* filter : filters) { add_filter(filter); }
+  for (auto* filter : filters) {
+    add_filter(filter);
+  }
 }
 
-void Tally::add_filter(Filter* filter) {
+void Tally::add_filter(Filter* filter)
+{
   int32_t filter_idx = model::filter_map.at(filter->id());
   // if this filter is already present, do nothing and return
-  if (std::find(filters_.begin(), filters_.end(), filter_idx) != filters_.end()) return;
+  if (std::find(filters_.begin(), filters_.end(), filter_idx) != filters_.end())
+    return;
 
   // Keep track of indices for special filters
   if (dynamic_cast<const EnergyoutFilter*>(filter)) {
-      energyout_filter_ = filters_.size();
+    energyout_filter_ = filters_.size();
   } else if (dynamic_cast<const DelayedGroupFilter*>(filter)) {
-      delayedgroup_filter_ = filters_.size();
+    delayedgroup_filter_ = filters_.size();
   }
   filters_.push_back(filter_idx);
 }
@@ -708,7 +715,8 @@ void Tally::accumulate()
   }
 }
 
-int Tally::score_index(const std::string& score) const {
+int Tally::score_index(const std::string& score) const
+{
   for (int i = 0; i < scores_.size(); i++) {
     if (this->score_name(i) == score)
       return i;

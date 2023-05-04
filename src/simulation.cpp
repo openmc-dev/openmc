@@ -187,7 +187,6 @@ int openmc_simulation_finalize()
     openmc_weight_windows_export();
   }
 
-
   // Deactivate all tallies
   for (auto& t : model::tallies) {
     t->active_ = false;

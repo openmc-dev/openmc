@@ -262,7 +262,10 @@ public:
   //! Get shape as xt::xtensor
   xt::xtensor<int, 1> get_x_shape() const;
 
-  double volume(int bin) const override { return this->volume(get_indices_from_bin(bin)); }
+  double volume(int bin) const override
+  {
+    return this->volume(get_indices_from_bin(bin));
+  }
 
   //! Get the volume of a specified element
   //! \param[in] ijk Mesh index to return the volume for
@@ -345,7 +348,7 @@ public:
 
   // Data members
   double volume_frac_;           //!< Volume fraction of each mesh element
-  double element_volume_;              //!< Volume of each mesh element
+  double element_volume_;        //!< Volume of each mesh element
   xt::xtensor<double, 1> width_; //!< Width of each mesh element
 };
 
@@ -497,7 +500,7 @@ private:
     }
   }
 
-  double volume (const MeshIndex& ijk) const override;
+  double volume(const MeshIndex& ijk) const override;
 
   inline int sanitize_theta(int idx) const
   {

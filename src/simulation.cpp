@@ -428,18 +428,6 @@ void finalize_batch()
     auto filename = settings::path_output + "surface_source";
     auto surf_work_index =
       mpi::calculate_parallel_index_vector(simulation::surf_source_bank.size());
-
-    // Sort, because the file ordering will differ based on the order that
-    // threads finish work in. We want to produce the same output every time
-    // given the same random seed. We probably don't need to sort globally over
-    // MPI ranks to ensure reproducible output.
-    std::sort(simulation::surf_source_bank.begin(),
-      simulation::surf_source_bank.end(),
-      [](const SourceSite& l, const SourceSite& r) {
-        return std::tie(l.parent_id, l.progeny_id) <
-               std::tie(r.parent_id, r.progeny_id);
-      });
-
     gsl::span<SourceSite> surfbankspan(simulation::surf_source_bank.begin(),
       simulation::surf_source_bank.size());
     if (settings::surf_mcpl_write) {

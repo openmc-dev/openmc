@@ -315,8 +315,7 @@ class Nuclide:
         # Write decay sources
         if self.sources:
             for particle, source in self.sources.items():
-                src_elem_xmletree = source.to_xml_element('source')
-                src_elem = ET.fromstring(etree.tostring(src_elem_xmletree))
+                src_elem = source.to_xml_element('source')
                 src_elem.set('particle', particle)
                 elem.append(src_elem)
 

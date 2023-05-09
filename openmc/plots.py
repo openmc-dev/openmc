@@ -1,8 +1,8 @@
 from collections.abc import Iterable, Mapping
 from numbers import Integral, Real
 from pathlib import Path
+import lxml.etree as ET
 from typing import Optional
-from xml.etree import ElementTree as ET
 
 import h5py
 import numpy as np
@@ -476,7 +476,7 @@ class PlotBase(IDManagerMixin):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing plot data
 
         """
@@ -776,7 +776,7 @@ class Plot(PlotBase):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing plot data
 
         """
@@ -833,7 +833,7 @@ class Plot(PlotBase):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1170,7 +1170,7 @@ class ProjectionPlot(PlotBase):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing plot data
 
         """
@@ -1254,7 +1254,7 @@ class ProjectionPlot(PlotBase):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1428,7 +1428,7 @@ class Plots(cv.CheckedList):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing all plot elements
 
         """
@@ -1469,7 +1469,7 @@ class Plots(cv.CheckedList):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns

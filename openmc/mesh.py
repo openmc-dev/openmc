@@ -5,7 +5,7 @@ from math import pi
 from numbers import Real, Integral
 from pathlib import Path
 import warnings
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 
 import numpy as np
 
@@ -103,7 +103,7 @@ class MeshBase(IDManagerMixin, ABC):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -568,7 +568,7 @@ class RegularMesh(StructuredMesh):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mesh data
 
         """
@@ -598,7 +598,7 @@ class RegularMesh(StructuredMesh):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -949,7 +949,7 @@ class RectilinearMesh(StructuredMesh):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -971,7 +971,7 @@ class RectilinearMesh(StructuredMesh):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mesh data
 
         """
@@ -1239,7 +1239,7 @@ class CylindricalMesh(StructuredMesh):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mesh data
 
         """
@@ -1268,7 +1268,7 @@ class CylindricalMesh(StructuredMesh):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1488,7 +1488,7 @@ class SphericalMesh(StructuredMesh):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mesh data
 
         """
@@ -1517,7 +1517,7 @@ class SphericalMesh(StructuredMesh):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1940,7 +1940,7 @@ class UnstructuredMesh(MeshBase):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mesh data
 
         """
@@ -1963,7 +1963,7 @@ class UnstructuredMesh(MeshBase):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1984,7 +1984,7 @@ def _read_meshes(elem):
 
     Parameters
     ----------
-    elem : xml.etree.ElementTree.Element
+    elem : lxml.etree._Element
         XML element
 
     Returns

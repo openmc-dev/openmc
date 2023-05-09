@@ -1,4 +1,4 @@
-"""Nuclide module.
+"""Nuclide module.xml.etree.Ele
 
 Contains the per-nuclide components of a depletion chain.
 """
@@ -8,10 +8,7 @@ from collections.abc import Mapping
 from collections import namedtuple, defaultdict
 from warnings import warn
 from numbers import Real
-try:
-    import lxml.etree as ET
-except ImportError:
-    import xml.etree.ElementTree as ET
+import lxml.etree as ET
 
 import numpy as np
 
@@ -212,9 +209,9 @@ class Nuclide:
 
         Parameters
         ----------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element to read nuclide data from
-        root : xml.etree.ElementTree.Element, optional
+        root : lxml.etree._Element, optional
             Root XML element for chain file (only used when fission product
             yields are borrowed from another parent)
         fission_q : None or float
@@ -297,7 +294,7 @@ class Nuclide:
 
         Returns
         -------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element to write nuclide data to
 
         """
@@ -318,13 +315,7 @@ class Nuclide:
         # Write decay sources
         if self.sources:
             for particle, source in self.sources.items():
-                # TODO: Ugly hack to deal with the fact that
-                # 'source.to_xml_element' will return an xml.etree object
-                # whereas here lxml is being used preferentially. We should just
-                # switch to use lxml everywhere
-                import xml.etree.ElementTree as etree
-                src_elem_xmletree = source.to_xml_element('source')
-                src_elem = ET.fromstring(etree.tostring(src_elem_xmletree))
+                src_elem = source.to_xml_element('source')
                 src_elem.set('particle', particle)
                 elem.append(src_elem)
 
@@ -529,7 +520,7 @@ class FissionYieldDistribution(Mapping):
 
         Parameters
         ----------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element to pull fission yield data from
 
         Returns
@@ -551,7 +542,7 @@ class FissionYieldDistribution(Mapping):
 
         Parameters
         ----------
-        root : xml.etree.ElementTree.Element
+        root : lxml.etree._Element
             Element to write distribution data to
         """
         for energy, yield_obj in self.items():

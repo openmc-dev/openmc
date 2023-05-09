@@ -5,7 +5,7 @@ from copy import deepcopy
 from math import sqrt, floor
 from numbers import Real
 import types
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 
 import numpy as np
 
@@ -833,7 +833,7 @@ class RectLattice(Lattice):
 
         Parameters
         ----------
-        xml_element : xml.etree.ElementTree.Element
+        xml_element : lxml.etree._Element
             XML element to be added to
 
         memo : set or None
@@ -932,7 +932,7 @@ class RectLattice(Lattice):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             `<lattice>` element
         get_universe : function
             Function returning universe (defined in
@@ -1502,7 +1502,7 @@ class HexLattice(Lattice):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             `<hex_lattice>` element
         get_universe : function
             Function returning universe (defined in

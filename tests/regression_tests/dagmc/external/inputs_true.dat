@@ -2,18 +2,18 @@
 <model>
   <materials>
     <material depletable="true" id="40" name="no-void fuel">
-      <density units="g/cc" value="11" />
-      <nuclide ao="1.0" name="U235" />
+      <density units="g/cc" value="11"/>
+      <nuclide ao="1.0" name="U235"/>
     </material>
     <material id="41" name="water">
-      <density units="g/cc" value="1.0" />
-      <nuclide ao="2.0" name="H1" />
-      <nuclide ao="1.0" name="O16" />
-      <sab name="c_H_in_H2O" />
+      <density units="g/cc" value="1.0"/>
+      <nuclide ao="2.0" name="H1"/>
+      <nuclide ao="1.0" name="O16"/>
+      <sab name="c_H_in_H2O"/>
     </material>
   </materials>
   <geometry>
-    <dagmc_universe filename="dagmc.h5m" id="1" />
+    <dagmc_universe filename="dagmc.h5m" id="1"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>

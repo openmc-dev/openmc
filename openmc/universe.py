@@ -6,7 +6,7 @@ from copy import deepcopy
 from numbers import Integral, Real
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 from warnings import warn
 
 import h5py
@@ -117,7 +117,7 @@ class UniverseBase(ABC, IDManagerMixin):
 
         Parameters
         ----------
-        xml_element : xml.etree.ElementTree.Element
+        xml_element : lxml.etree._Element
             XML element to be added to
 
         memo : set or None
@@ -1048,7 +1048,7 @@ class DAGMCUniverse(UniverseBase):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             `<dagmc_universe>` element
 
         Returns

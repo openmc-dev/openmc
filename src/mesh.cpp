@@ -2672,11 +2672,7 @@ void LibMesh::initialize()
 }
 
 // Sample position within a tet for LibMesh type tets
-<<<<<<< HEAD
-Position LibMesh::sample(uint64_t* seed, int32_t bin) const
-=======
 Position LibMesh::sample_element(uint64_t* seed, int32_t bin) const
->>>>>>> fa356e60a (Updating name of high-level sampling method)
 {
   const auto& elem = get_element_from_bin(bin);
   // Get tet vertex coordinates from LibMesh

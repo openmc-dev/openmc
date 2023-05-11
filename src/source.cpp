@@ -409,7 +409,7 @@ MeshSource::MeshSource(pugi::xml_node node)
   if (!mesh_spatial)
     fatal_error("Failed to recast mesh spatital distribution for mesh source.");
 
-  strength_ = mesh_spatial->total_strength();
+  strength_ = {1.0};
 
   int32_t n_mesh_sources = mesh_spatial->n_sources();
 

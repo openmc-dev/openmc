@@ -274,7 +274,11 @@ std::pair<int32_t, Position> MeshSpatial::sample_mesh(uint64_t* seed) const
 {
   // Sample over the CDF defined in initialization above
   int32_t elem_idx = elem_idx_dist_.sample(seed);
-  return mesh()->sample_element(seed, elem_idx);
+  return {elem_idx, mesh()->sample_element(seed, elem_idx)};
+}
+
+Position MeshSpatial::sample(uint64_t* seed) const {
+  return this->sample_mesh(seed).second;
 }
 
 //==============================================================================

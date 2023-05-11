@@ -164,10 +164,10 @@ public:
 
 private:
   // Data members
-  ParticleType particle_ {ParticleType::neutron};      //!< Type of particle emitted
-  double strength_ {1.0};                              //!< Source strength
-  unique_ptr<MeshSpatial> space_;                      //!< Mesh spatial
-  vector<IndependentSource> sources_; //!< Source distributions
+  ParticleType particle_ {ParticleType::neutron}; //!< Type of particle emitted
+  double strength_ {1.0};                         //!< Source strength
+  unique_ptr<MeshSpatial> space_;                 //!< Mesh spatial
+  vector<IndependentSource> sources_;             //!< Source distributions
 };
 
 //==============================================================================

@@ -415,10 +415,12 @@ MeshSource::MeshSource(pugi::xml_node node)
     sources_.emplace_back(IndependentSource(source_node));
   }
 
-  // the number of source distributions should either be one or equal to the number of mesh elements
+  // the number of source distributions should either be one or equal to the
+  // number of mesh elements
   if (sources_.size() > 1 && sources_.size() != n_mesh_sources) {
     fatal_error(fmt::format("Incorrect number of source distributions ({}) for "
-                            "mesh source with {} elements.", sources_.size(), n_mesh_sources));
+                            "mesh source with {} elements.",
+      sources_.size(), n_mesh_sources));
   }
 }
 

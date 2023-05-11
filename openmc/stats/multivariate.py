@@ -700,7 +700,7 @@ class MeshSpatial(Spatial):
             raise ValueError('Strengths are not set')
         return self.strengths.size
 
-    def to_xml_element(self):
+    def to_xml_element(self, parent_elem=None):
         """Return XML representation of the spatial distribution
 
         Returns
@@ -709,7 +709,12 @@ class MeshSpatial(Spatial):
             XML element containing spatial distribution data
 
         """
-        element = ET.Element('space')
+        if parent_elem is not None:
+            element = ET.SubElement(parent_elem, 'space')
+        else:
+            element = ET.Element('space')
+
+
         element.set('type', 'mesh')
         element.set("mesh_id", str(self.mesh.id))
         element.set("volume_normalized", str(self.volume_normalized))

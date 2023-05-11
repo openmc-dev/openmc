@@ -451,6 +451,11 @@ class MeshSource():
         element.set('type', 'mesh')
         element.set('strength', str(self.strength))
 
+        # build a mesh spatial distribution
+        mesh_dist = openmc.MeshSpatial(self.mesh, [s.strength for s in self.sources])
+
+        mesh_dist.to_xml_element(element)
+
         for source in self.sources:
             src_element = ET.SubElement(element, 'source')
             source.populate_xml_element(src_element)

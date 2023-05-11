@@ -157,27 +157,17 @@ public:
   double strength() const override { return strength_; }
 
   // Accessors
-  UnitSphereDistribution* angle(int32_t i) const
+  const IndependentSource& source(int32_t i) const
   {
-    return angle_.size() == 1 ? angle_[0].get() : angle_[i].get();
-  }
-  Distribution* energy(int32_t i) const
-  {
-    return energy_.size() == 1 ? energy_[0].get() : energy_[i].get();
-  }
-  Distribution* time(int32_t i) const
-  {
-    return time_.size() == 1 ? time_[0].get() : time_[i].get();
+    return sources_.size() == 1 ? sources_[0] : sources_[i];
   }
 
 private:
   // Data members
-  ParticleType particle_ {ParticleType::neutron}; //!< Type of particle emitted
-  double strength_ {1.0};                         //!< Source strength
-  unique_ptr<MeshSpatial> space_;                 //!< Mesh spatial
-  vector<UPtrAngle> angle_;                       //!< Angular distributions
-  vector<UPtrDist> energy_;                       //!< Energy distributions
-  vector<UPtrDist> time_;                         //!< Time distributions
+  ParticleType particle_ {ParticleType::neutron};      //!< Type of particle emitted
+  double strength_ {1.0};                              //!< Source strength
+  unique_ptr<MeshSpatial> space_;                      //!< Mesh spatial
+  vector<IndependentSource> sources_; //!< Source distributions
 };
 
 //==============================================================================

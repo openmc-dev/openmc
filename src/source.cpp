@@ -410,49 +410,16 @@ MeshSource::MeshSource(pugi::xml_node node)
 
   int32_t n_mesh_sources = mesh_spatial->n_sources();
 
-  // read all angular distributions
-  for (auto angle_node : node.children("angle")) {
-    angle_.emplace_back(UnitSphereDistribution::create(angle_node));
-  }
-  // if no angular distributions were present, default to an isotropic
-  // distribution
-  if (angle_.size() == 0)
-    angle_.emplace_back(UPtrAngle {new Isotropic()});
-
-  if (angle_.size() != n_mesh_sources || angle_.size() != 1)
-    fatal_error(fmt::format("Incorrect number of angle distributions ({}) for "
-                            "mesh source with {} elements.",
-      angle_.size(), n_mesh_sources));
-
-  // read all energy distributions
-  for (auto energy_node : node.children("energy")) {
-    energy_.emplace_back(distribution_from_xml(energy_node));
-  }
-  // if no energy distributions are present, TODO: determine appropriate default
-  // energy distribution
-  if (energy_.size() == 0)
-    energy_.emplace_back(UPtrDist {new Watt(0.988e6, 2.249e-6)});
-
-  if (angle_.size() != n_mesh_sources || angle_.size() != 1)
-    fatal_error(fmt::format("Incorrect number of angle distributions ({}) for "
-                            "mesh source with {} elements.",
-      angle_.size(), n_mesh_sources));
-
-  // read all time distributions
-  for (auto time_node : node.children("time")) {
-    time_.emplace_back(distribution_from_xml(time_node));
-  }
-  // if no time distributions are present, default to a constant time T=0
-  if (time_.size() == 0) {
-    vector<double> T = {0.0};
-    vector<double> p = {0.0};
-    time_.emplace_back(UPtrDist {new Discrete(T.data(), p.data(), 1)});
+  // read all source distributions
+  for (auto source_node : node.children("source")) {
+    sources_.emplace_back(IndependentSource(source_node));
   }
 
-  if (angle_.size() != n_mesh_sources || angle_.size() != 1)
-    fatal_error(fmt::format("Incorrect number of angle distributions ({}) for "
-                            "mesh source with {} elements.",
-      angle_.size(), n_mesh_sources));
+  // the number of source distributions should either be one or equal to the number of mesh elements
+  if (sources_.size() > 1 && sources_.size() != n_mesh_sources) {
+    fatal_error(fmt::format("Incorrect number of source distributions ({}) for "
+                            "mesh source with {} elements.", sources_.size(), n_mesh_sources));
+  }
 }
 
 SourceSite MeshSource::sample(uint64_t* seed) const
@@ -470,9 +437,12 @@ SourceSite MeshSource::sample(uint64_t* seed) const
 
   int32_t element = mesh_location.first;
 
-  site.u = angle(element)->sample(seed);
+  const auto& src = source(element);
 
-  Distribution* e_dist = energy(element);
+  site.u = src.angle()->sample(seed);
+
+  Distribution* e_dist = src.energy();
+
   auto p = static_cast<int>(particle_);
   // TODO: this is copied code from IndependentSource::sample, refactor
   while (true) {
@@ -492,7 +462,7 @@ SourceSite MeshSource::sample(uint64_t* seed) const
     }
   }
 
-  site.time = time(element)->sample(seed);
+  site.time = src.time()->sample(seed);
 
   // Increment number of accepted samples
   ++n_accept;

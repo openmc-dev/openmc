@@ -62,7 +62,8 @@ unique_ptr<Source> Source::create(pugi::xml_node node)
     }
     // Create custom source
     return make_unique<CustomSourceWrapper>(path, parameters);
-  } else if (check_for_node(node, "mesh") && get_node_value(node, "type") == "mesh") {
+  } else if (check_for_node(node, "mesh") &&
+             get_node_value(node, "type") == "mesh") {
     return make_unique<MeshSource>(node);
   } else {
     return make_unique<IndependentSource>(node);

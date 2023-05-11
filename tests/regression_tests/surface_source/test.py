@@ -74,16 +74,40 @@ class SurfaceSourceTestHarness(PyAPITestHarness):
     def _compare_output(self):
         """Make sure the current surface_source.h5 agree with the reference."""
         if self._model.settings.surf_source_write:
+
+            fields = ['E', 'time', 'wgt', 'delayed_group', 'surf_id', 'particle']
+            subfields = ['x', 'y', 'z']
+
             with h5py.File("surface_source_true.h5", 'r') as f:
                 source_true = f['source_bank'][()]
-                # Convert dtye from mixed to a float for comparison assertion
-                source_true.dtype = 'float64'
+
+                source_true_float64 = []
+
+                for entry in source_true:
+                    for field in ['r', 'u']:
+                        for subfield in subfields:
+                            source_true_float64.append(entry[field][subfield].astype('float64'))
+                    for field in fields:
+                        source_true_float64.append(entry[field].astype('float64'))
+
+                source_true_float64 = np.array(source_true_float64)
+
             with h5py.File("surface_source.h5", 'r') as f:
                 source_test = f['source_bank'][()]
-                # Convert dtye from mixed to a float for comparison assertion
-                source_test.dtype = 'float64'
-            np.testing.assert_allclose(np.sort(source_true),
-                                       np.sort(source_test),
+
+                source_test_float64 = []
+
+                for entry in source_test:
+                    for field in ['r', 'u']:
+                        for subfield in subfields:
+                            source_test_float64.append(entry[field][subfield].astype('float64'))
+                    for field in fields:
+                        source_test_float64.append(entry[field].astype('float64'))
+
+                source_test_float64 = np.array(source_test_float64)
+
+            np.testing.assert_allclose(np.sort(source_true_float64),
+                                       np.sort(source_test_float64),
                                        atol=1e-07)
 
     def execute_test(self):

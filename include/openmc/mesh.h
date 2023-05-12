@@ -10,6 +10,7 @@
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
 
+#include "openmc/error.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
 #include "openmc/position.h"
@@ -240,6 +241,18 @@ public:
   //! \param[in] i Direction index
   virtual int get_index_in_direction(double r, int i) const = 0;
 
+  //! Get the coordinate for the mesh grid boundary in the positive direction
+  //!
+  //! \param[in] ijk Array of mesh indices
+  //! \param[in] i Direction index
+  virtual double positive_grid_boundary(const MeshIndex& ijk, int i) const { fatal_error("Shouldn't be here"); };
+
+  //! Get the coordinate for the mesh grid boundary in the negative direction
+  //!
+  //! \param[in] ijk Array of mesh indices
+  //! \param[in] i Direction index
+  virtual double negative_grid_boundary(const MeshIndex& ijk, int i) const { fatal_error("Shouldn't be here"); };
+
   //! Get the closest distance from the coordinate r to the grid surface
   //! in i direction  that bounds mesh cell ijk and that is larger than l
   //! The coordinate r does not have to be inside the mesh cell ijk. In
@@ -286,6 +299,8 @@ public:
   PeriodicStructuredMesh() = default;
   PeriodicStructuredMesh(pugi::xml_node node) : StructuredMesh {node} {};
 
+  Position sample_mesh(uint64_t* seed) { fatal_error("Shouldn't be here"); }
+
   void local_coords(Position& r) const override { r -= origin_; };
 
   Position local_coords(const Position& r) const override
@@ -322,18 +337,17 @@ public:
 
   void to_hdf5(hid_t group) const override;
 
-  // New methods
   //! Get the coordinate for the mesh grid boundary in the positive direction
   //!
   //! \param[in] ijk Array of mesh indices
   //! \param[in] i Direction index
-  double positive_grid_boundary(const MeshIndex& ijk, int i) const;
+  double positive_grid_boundary(const MeshIndex& ijk, int i) const override;
 
   //! Get the coordinate for the mesh grid boundary in the negative direction
   //!
   //! \param[in] ijk Array of mesh indices
   //! \param[in] i Direction index
-  double negative_grid_boundary(const MeshIndex& ijk, int i) const;
+  double negative_grid_boundary(const MeshIndex& ijk, int i) const override;
 
   //! Count number of bank sites in each mesh bin / energy bin
   //
@@ -373,18 +387,17 @@ public:
 
   void to_hdf5(hid_t group) const override;
 
-  // New methods
   //! Get the coordinate for the mesh grid boundary in the positive direction
   //!
   //! \param[in] ijk Array of mesh indices
   //! \param[in] i Direction index
-  double positive_grid_boundary(const MeshIndex& ijk, int i) const;
+  double positive_grid_boundary(const MeshIndex& ijk, int i) const override;
 
   //! Get the coordinate for the mesh grid boundary in the negative direction
   //!
   //! \param[in] ijk Array of mesh indices
   //! \param[in] i Direction index
-  double negative_grid_boundary(const MeshIndex& ijk, int i) const;
+  double negative_grid_boundary(const MeshIndex& ijk, int i) const override;
 
   //! Return the volume for a given mesh index
   double volume(const MeshIndex& ijk) const override;

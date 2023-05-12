@@ -165,6 +165,27 @@ xt::xtensor<int, 1> StructuredMesh::get_x_shape() const
   return xt::adapt(tmp_shape, {n_dimension_});
 }
 
+Position StructuredMesh::sample_element(uint64_t* seed, int32_t bin) const
+{
+  // get the ijk index of the mesh bin
+  MeshIndex ijk = get_indices_from_bin(bin);
+
+  // lookup the lower/upper bounds for the mesh element
+  double x_min = negative_grid_boundary(ijk, 0);
+  double x_max = positive_grid_boundary(ijk, 0);
+
+  double y_min = negative_grid_boundary(ijk, 1);
+  double y_max = positive_grid_boundary(ijk, 1);
+
+  double z_min = negative_grid_boundary(ijk, 2);
+  double z_max = positive_grid_boundary(ijk, 2);
+
+
+  return { x_min + (x_max - x_min) * prn(seed),
+           y_min + (y_max - y_min) * prn(seed),
+           z_min + (z_max - z_min) * prn(seed) };
+}
+
 //==============================================================================
 // Unstructured Mesh implementation
 //==============================================================================
@@ -384,6 +405,11 @@ StructuredMesh::MeshIndex StructuredMesh::get_indices_from_bin(int bin) const
 Position StructuredMesh::sample_element(uint64_t* seed, int32_t bin) const
 {
   fatal_error("Position sampling on structured meshes is not yet implemented");
+}
+
+double StructuredMesh::volume(int bin) const
+{
+  fatal_error("Unable to get volume of structured mesh, not yet implemented");
 }
 
 int StructuredMesh::get_bin(Position r) const

@@ -231,17 +231,16 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
   // Get pointer to spatial distribution
   mesh_idx_ = model::mesh_map.at(mesh_id);
 
-  auto mesh_ptr =
-    dynamic_cast<UnstructuredMesh*>(model::meshes.at(mesh_idx_).get());
-  if (!mesh_ptr) {
-    fatal_error("Only unstructured mesh is supported for source sampling.");
-  }
+  const auto mesh_ptr = model::meshes.at(mesh_idx_).get();
 
-  // ensure that the unstructured mesh contains only linear tets
-  for (int bin = 0; bin < mesh_ptr->n_bins(); bin++) {
-    if (mesh_ptr->element_type(bin) != ElementType::LINEAR_TET) {
-      fatal_error(
-        "Mesh specified for source must contain only linear tetrahedra.");
+  const auto umesh_ptr = dynamic_cast<UnstructuredMesh*>(model::meshes.at(mesh_idx_).get());
+  if (umesh_ptr) {
+    // ensure that the unstructured mesh contains only linear tets
+    for (int bin = 0; bin < mesh_ptr->n_bins(); bin++) {
+      if (umesh_ptr->element_type(bin) != ElementType::LINEAR_TET) {
+        fatal_error(
+          "Mesh specified for source must contain only linear tetrahedra.");
+      }
     }
   }
 

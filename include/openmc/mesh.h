@@ -184,7 +184,9 @@ public:
     }
   };
 
-  Position sample_element(uint64_t* seed, int32_t bin) const override;
+  Position sample_element(uint64_t* seed, int32_t bin) const override { return sample_element(seed, get_indices_from_bin(bin)); };
+
+  virtual Position sample_element(uint64_t* seed, const MeshIndex& ijk) const;
 
   int get_bin(Position r) const override;
 
@@ -304,8 +306,6 @@ class PeriodicStructuredMesh : public StructuredMesh {
 public:
   PeriodicStructuredMesh() = default;
   PeriodicStructuredMesh(pugi::xml_node node) : StructuredMesh {node} {};
-
-  Position sample_mesh(uint64_t* seed) { fatal_error("Shouldn't be here"); }
 
   void local_coords(Position& r) const override { r -= origin_; };
 
@@ -429,6 +429,8 @@ public:
 
   static const std::string mesh_type;
 
+  Position sample_element(uint64_t* seed, const MeshIndex& ijk) const override;
+
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
     const Position& r0, const Direction& u, double l) const override;
 
@@ -440,6 +442,11 @@ public:
   double volume(const MeshIndex& ijk) const override;
 
   array<vector<double>, 3> grid_;
+
+  // grid accessors
+  double r(int i) const { return grid_[0][i]; }
+  double phi(int i) const { return grid_[1][i]; }
+  double z(int i) const { return grid_[2][i]; }
 
   int set_grid();
 
@@ -485,6 +492,8 @@ public:
 
   static const std::string mesh_type;
 
+  Position sample_element(uint64_t* seed, const MeshIndex& ijk) const override;
+
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
     const Position& r0, const Direction& u, double l) const override;
 
@@ -493,6 +502,9 @@ public:
 
   void to_hdf5(hid_t group) const override;
 
+  double r(int i) const { return grid_[0][i]; }
+  double theta(int i) const { return grid_[1][i]; }
+  double phi(int i) const { return grid_[2][i]; }
   array<vector<double>, 3> grid_;
 
   int set_grid();

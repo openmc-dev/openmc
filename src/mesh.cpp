@@ -165,11 +165,8 @@ xt::xtensor<int, 1> StructuredMesh::get_x_shape() const
   return xt::adapt(tmp_shape, {n_dimension_});
 }
 
-Position StructuredMesh::sample_element(uint64_t* seed, int32_t bin) const
+Position StructuredMesh::sample_element(uint64_t* seed, const MeshIndex& ijk) const
 {
-  // get the ijk index of the mesh bin
-  MeshIndex ijk = get_indices_from_bin(bin);
-
   // lookup the lower/upper bounds for the mesh element
   double x_min = negative_grid_boundary(ijk, 0);
   double x_max = positive_grid_boundary(ijk, 0);
@@ -1091,6 +1088,29 @@ StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   return idx;
 }
 
+Position CylindricalMesh::sample_element(uint64_t* seed, const MeshIndex& ijk) const
+{
+  double r_min = this->r(ijk[0] - 1);
+  double r_max = this->r(ijk[0]);
+
+  double phi_min = this->phi(ijk[1] - 1);
+  double phi_max = this->phi(ijk[1]);
+
+  double z_min = this->z(ijk[2] - 1);
+  double z_max = this->z(ijk[2]);
+
+  double r_min_sq = r_min*r_min;
+  double r_max_sq = r_max*r_max;
+  double r =  sqrt(r_min_sq + (r_max_sq - r_min_sq) * prn(seed));
+  double phi = phi_min + (phi_max - phi_min) *  prn(seed);
+  double z = z_min + (z_max - z_min) * prn(seed);
+
+  double x = r * cos(phi);
+  double y = r * sin(phi);
+
+  return origin_ + Position(x, y, z);
+}
+
 double CylindricalMesh::find_r_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
@@ -1350,6 +1370,36 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(
   idx[2] = sanitize_phi(idx[2]);
 
   return idx;
+}
+
+Position SphericalMesh::sample_element(uint64_t* seed, const MeshIndex& ijk) const
+{
+  double r_min = this->r(ijk[0] - 1);
+  double r_max = this->r(ijk[0]);
+
+  double theta_min = this->theta(ijk[1] - 1);
+  double theta_max = this->theta(ijk[1]);
+
+  double phi_min = this->phi(ijk[2] - 1);
+  double phi_max = this->phi(ijk[2]);
+
+  double u1 = prn(seed);
+  double u2 = prn(seed);
+  double u3 = prn(seed);
+
+  double cos_theta = cos(theta_min) + (cos(theta_max) - cos(theta_min)) * u1;
+  double sin_theta = sin(acos(cos_theta));
+  double phi = phi_min + (phi_max - phi_min) * u2;
+  double r_min_cub = pow(r_min, 3);
+  double r_max_cub = pow(r_max, 3);
+  // might be faster to do rejection here?
+  double r = cbrt(r_min_cub + (r_max_cub - r_min_cub) * u3);
+
+  double x = r * cos(phi) * sin_theta;
+  double y = r * sin(phi) * sin_theta;
+  double z = r * cos_theta;
+
+  return origin_ + Position(x, y, z);
 }
 
 double SphericalMesh::find_r_crossing(

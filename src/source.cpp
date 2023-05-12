@@ -22,6 +22,7 @@
 #include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
+#include "openmc/mcpl_interface.h"
 #include "openmc/memory.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
@@ -31,6 +32,7 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/state_point.h"
+#include "openmc/string_utils.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -52,7 +54,12 @@ unique_ptr<Source> Source::create(pugi::xml_node node)
 {
   if (check_for_node(node, "file")) {
     auto path = get_node_value(node, "file", false, true);
-    return make_unique<FileSource>(path);
+    if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
+      auto sites = mcpl_source_sites(path);
+      return make_unique<FileSource>(sites);
+    } else {
+      return make_unique<FileSource>(path);
+    }
   } else if (check_for_node(node, "library")) {
     // Get shared library path and parameters
     auto path = get_node_value(node, "library", false, true);

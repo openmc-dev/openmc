@@ -457,28 +457,7 @@ void read_settings_xml(pugi::xml_node root)
 
   // Get point to list of <source> elements and make sure there is at least one
   for (pugi::xml_node node : root.children("source")) {
-    if (check_for_node(node, "file")) {
-      auto path = get_node_value(node, "file", false, true);
-      if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
-        auto sites = mcpl_source_sites(path);
-        model::external_sources.push_back(make_unique<FileSource>(sites));
-      } else {
-        model::external_sources.push_back(make_unique<FileSource>(path));
-      }
-    } else if (check_for_node(node, "library")) {
-      // Get shared library path and parameters
-      auto path = get_node_value(node, "library", false, true);
-      std::string parameters;
-      if (check_for_node(node, "parameters")) {
-        parameters = get_node_value(node, "parameters", false, true);
-      }
-
-      // Create custom source
-      model::external_sources.push_back(
-        make_unique<CompiledSourceWrapper>(path, parameters));
-    } else {
-      model::external_sources.push_back(make_unique<IndependentSource>(node));
-    }
+    model::external_sources.push_back(Source::create(node));
   }
 
   // Check if the user has specified to read surface source

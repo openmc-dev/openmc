@@ -12,7 +12,7 @@ import lxml.etree as ET
 import openmc.checkvalue as cv
 from openmc.stats.multivariate import MeshSpatial
 
-from . import (RegularMesh, SourceBase, IndependentSource,
+from . import (RegularMesh, SourceBase, MeshSource, IndependentSource,
                VolumeCalculation, WeightWindows, WeightWindowGenerator)
 from ._xml import clean_indentation, get_text, reorder_attributes
 from openmc.checkvalue import PathLike

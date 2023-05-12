@@ -233,7 +233,8 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
 
   const auto mesh_ptr = model::meshes.at(mesh_idx_).get();
 
-  const auto umesh_ptr = dynamic_cast<UnstructuredMesh*>(model::meshes.at(mesh_idx_).get());
+  const auto umesh_ptr =
+    dynamic_cast<UnstructuredMesh*>(model::meshes.at(mesh_idx_).get());
   if (umesh_ptr) {
     // ensure that the unstructured mesh contains only linear tets
     for (int bin = 0; bin < mesh_ptr->n_bins(); bin++) {

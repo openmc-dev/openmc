@@ -245,13 +245,19 @@ public:
   //!
   //! \param[in] ijk Array of mesh indices
   //! \param[in] i Direction index
-  virtual double positive_grid_boundary(const MeshIndex& ijk, int i) const { fatal_error("Shouldn't be here"); };
+  virtual double positive_grid_boundary(const MeshIndex& ijk, int i) const
+  {
+    fatal_error("Shouldn't be here");
+  };
 
   //! Get the coordinate for the mesh grid boundary in the negative direction
   //!
   //! \param[in] ijk Array of mesh indices
   //! \param[in] i Direction index
-  virtual double negative_grid_boundary(const MeshIndex& ijk, int i) const { fatal_error("Shouldn't be here"); };
+  virtual double negative_grid_boundary(const MeshIndex& ijk, int i) const
+  {
+    fatal_error("Shouldn't be here");
+  };
 
   //! Get the closest distance from the coordinate r to the grid surface
   //! in i direction  that bounds mesh cell ijk and that is larger than l

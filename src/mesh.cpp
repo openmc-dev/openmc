@@ -180,10 +180,8 @@ Position StructuredMesh::sample_element(uint64_t* seed, int32_t bin) const
   double z_min = negative_grid_boundary(ijk, 2);
   double z_max = positive_grid_boundary(ijk, 2);
 
-
-  return { x_min + (x_max - x_min) * prn(seed),
-           y_min + (y_max - y_min) * prn(seed),
-           z_min + (z_max - z_min) * prn(seed) };
+  return {x_min + (x_max - x_min) * prn(seed),
+    y_min + (y_max - y_min) * prn(seed), z_min + (z_max - z_min) * prn(seed)};
 }
 
 //==============================================================================

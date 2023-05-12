@@ -400,16 +400,6 @@ StructuredMesh::MeshIndex StructuredMesh::get_indices_from_bin(int bin) const
   return ijk;
 }
 
-Position StructuredMesh::sample_element(uint64_t* seed, int32_t bin) const
-{
-  fatal_error("Position sampling on structured meshes is not yet implemented");
-}
-
-double StructuredMesh::volume(int bin) const
-{
-  fatal_error("Unable to get volume of structured mesh, not yet implemented");
-}
-
 int StructuredMesh::get_bin(Position r) const
 {
   // Determine indices

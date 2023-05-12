@@ -398,11 +398,14 @@ class MeshSource():
     def __init__(self,
                  mesh: openmc.MeshBase,
                  strength: Optional[float] = 1.0,
-                 sources: Optional[Iterable[Source]] = None):
+                 sources: Optional[Iterable] = None):
 
         self.mesh = mesh
         self.strength = strength
         self._sources = cv.CheckedList(openmc.Source, 'sources')
+
+        if sources is not None:
+            self.sources = sources
 
     @property
     def mesh(self):

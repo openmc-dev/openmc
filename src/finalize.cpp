@@ -72,6 +72,7 @@ int openmc_finalize()
   // Reset global variables
   settings::assume_separate = false;
   settings::check_overlaps = false;
+  settings::coincident_sources = std::vector<std::vector<int>>();
   settings::confidence_intervals = false;
   settings::create_fission_neutrons = true;
   settings::create_delayed_neutrons = true;

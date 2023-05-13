@@ -149,6 +149,9 @@ extern "C" void initialize_source();
 //! \return Sampled source site
 SourceSite sample_external_source(uint64_t* seed);
 
+// Declaration of the function to find a SourceSite by ID
+// SourceSite find_source_site_by_id(int id);
+//
 void free_memory_source();
 
 } // namespace openmc

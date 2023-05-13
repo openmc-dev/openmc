@@ -70,6 +70,7 @@ public:
   SourceSite sample(uint64_t* seed) const override;
 
   // Properties
+  int id() const { return id_; }
   ParticleType particle_type() const { return particle_; }
   double strength() const override { return strength_; }
 
@@ -84,6 +85,7 @@ private:
   enum class DomainType { UNIVERSE, MATERIAL, CELL };
 
   // Data members
+  int id_;                                        //!< Source ID
   ParticleType particle_ {ParticleType::neutron}; //!< Type of particle emitted
   double strength_ {1.0};                         //!< Source strength
   UPtrSpace space_;                               //!< Spatial distribution

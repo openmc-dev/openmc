@@ -237,6 +237,9 @@ class Settings:
         .. versionadded:: 0.13
     write_initial_source : bool
         Indicate whether to write the initial source distribution to file
+
+        .. versionadded:: 0.13.4
+    coincident_sources : iterable of iterable of the ids of the coincident sources 
     """
 
     def __init__(self, **kwargs):
@@ -255,6 +258,7 @@ class Settings:
 
         # Source subelement
         self._source = cv.CheckedList(Source, 'source distributions')
+        self._coincident_sources = None
 
         self._confidence_intervals = None
         self._electron_treatment = None
@@ -361,6 +365,10 @@ class Settings:
     @property
     def source(self) -> typing.List[Source]:
         return self._source
+
+    @property
+    def coincident_sources(self)-> typing.Iterable[typing.Iterable[int]]:
+        return self._coincident_sources
 
     @property
     def confidence_intervals(self) -> bool:
@@ -602,6 +610,21 @@ class Settings:
         if not isinstance(source, MutableSequence):
             source = [source]
         self._source = cv.CheckedList(Source, 'source distributions', source)
+
+    @coincident_sources.setter
+    def coincident_sources(self, coincident_sources: typing.Iterable[typing.Iterable[int]]):
+        cv.check_type('coincident sources', coincident_sources, Iterable) 
+        if not isinstance(coincident_sources, Iterable):
+            raise TypeError("coincident_sources must be an iterable of iterables of integers")
+        for group in coincident_sources:
+            if not isinstance(group, Iterable):
+                raise TypeError("Each group in coincident_sources must be an iterable of integers")
+            if len(group) < 2:
+                raise ValueError("Each group in coincident_sources must contain at least two source IDs")
+            for source_id in group:
+                if not isinstance(source_id, int):
+                    raise TypeError("Each source ID in a group must be an integer")
+        self._coincident_sources = coincident_sources
 
     @output.setter
     def output(self, output: dict):
@@ -997,6 +1020,16 @@ class Settings:
                 if root.find(path) is None:
                     root.append(source.space.mesh.to_xml_element())
 
+    def _create_coincident_sources_subelement(self, root):
+        if self._coincident_sources is not None:
+            coincident_sources_element = ET.SubElement(root, "coincident_sources")
+            for group in self.coincident_sources:
+                group_element = ET.SubElement(coincident_sources_element, "group")
+                for source in group:
+                    source_index = self.source.index(source)
+                    source_element = ET.SubElement(group_element, "source")
+                    source_element.text = str(source_index)
+
     def _create_volume_calcs_subelement(self, root):
         for calc in self.volume_calculations:
             root.append(calc.to_xml_element())
@@ -1352,6 +1385,17 @@ class Settings:
             # add newly constructed source object to the list
             self.source.append(src)
 
+    def _coincident_sources_from_xml_element(self, root):
+        coincident_sources_element = root.find('coincident_sources')
+        if coincident_sources_element is not None:
+            self.coincident_sources = [] 
+            for group_element in coincident_sources_element.findall('group'):
+                group = []
+                for source_element in group_element.findall('source'):
+                    source_id = int(source_element.text) 
+                    group.append(source_id)
+                self.coincident_sources.append(group)
+
     def _volume_calcs_from_xml_element(self, root):
         volume_elems = root.findall("volume_calc")
         if volume_elems:
@@ -1625,6 +1669,7 @@ class Settings:
         mesh_memo : set of ints
             A set of mesh IDs to keep track of whether a mesh has already been written.
         """
+
         # Reset xml element tree
         element = ET.Element("settings")
 
@@ -1637,6 +1682,7 @@ class Settings:
         self._create_generations_per_batch_subelement(element)
         self._create_keff_trigger_subelement(element)
         self._create_source_subelement(element)
+        self._create_coincident_sources_subelement(element)
         self._create_output_subelement(element)
         self._create_statepoint_subelement(element)
         self._create_sourcepoint_subelement(element)
@@ -1730,6 +1776,7 @@ class Settings:
         settings._generations_per_batch_from_xml_element(elem)
         settings._keff_trigger_from_xml_element(elem)
         settings._source_from_xml_element(elem, meshes)
+        settings._coincident_sources_from_xml_element(elem)
         settings._volume_calcs_from_xml_element(elem)
         settings._output_from_xml_element(elem)
         settings._statepoint_from_xml_element(elem)

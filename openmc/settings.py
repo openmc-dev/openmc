@@ -1021,14 +1021,17 @@ class Settings:
                     root.append(source.space.mesh.to_xml_element())
 
     def _create_coincident_sources_subelement(self, root):
+        all_defined_source_ids = [source.id for source in self.source]
         if self._coincident_sources is not None:
             coincident_sources_element = ET.SubElement(root, "coincident_sources")
             for group in self.coincident_sources:
                 group_element = ET.SubElement(coincident_sources_element, "group")
-                for source in group:
-                    source_index = self.source.index(source)
-                    source_element = ET.SubElement(group_element, "source")
-                    source_element.text = str(source_index)
+                for source_id in group:
+                    if source_id in all_defined_source_ids:
+                        source_element = ET.SubElement(group_element, "source")
+                        source_element.text = str(source_id)
+                    else:
+                        raise ValueError(f"Source with the ID {source_id} in coincident_source is not defined.")
 
     def _create_volume_calcs_subelement(self, root):
         for calc in self.volume_calculations:

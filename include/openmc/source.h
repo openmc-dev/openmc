@@ -134,7 +134,7 @@ public:
   }
 
   double strength() const override { return custom_source_->strength(); }
-  
+
   int id() const override { return custom_source_->id(); }
 
 private:

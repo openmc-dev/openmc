@@ -177,7 +177,6 @@ IndependentSource::IndependentSource(pugi::xml_node node)
 
       auto ids = get_node_array<int>(node, "domain_ids");
       domain_ids_.insert(ids.begin(), ids.end());
-
     }
   }
 }

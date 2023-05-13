@@ -481,22 +481,15 @@ void read_settings_xml(pugi::xml_node root)
   // Check if the user has specified coincident sources
   if (check_for_node(root, "coincident_sources")) {
     xml_node coincident_sources_node = root.child("coincident_sources");
-
+  
     for (xml_node group_node : coincident_sources_node.children("group")) {
       std::vector<int> source_group;
-
+        
       for (xml_node source_node : group_node.children("source")) {
-        int source_id = source_node.attribute("id").as_int();
+        int source_id = source_node.text().as_int();
         source_group.push_back(source_id);
       }
       coincident_sources.push_back(std::move(source_group));
-
-      for (const auto& group : coincident_sources) {
-        for (const auto& source_id : group) {
-          std::cout << source_id << " ";
-        }
-        std::cout << std::endl;
-      }
     }
   }
 

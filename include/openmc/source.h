@@ -47,6 +47,7 @@ public:
 
   // Methods that must be implemented
   virtual SourceSite sample(uint64_t* seed) const = 0;
+  virtual int id() const = 0;
 
   // Methods that can be overridden
   virtual double strength() const { return 1.0; }
@@ -109,7 +110,10 @@ public:
   // Methods
   SourceSite sample(uint64_t* seed) const override;
 
+  int id() const override { return id_; }
+
 private:
+  int id_;                   //!< Source ID
   vector<SourceSite> sites_; //!< Source sites from a file
 };
 
@@ -130,6 +134,8 @@ public:
   }
 
   double strength() const override { return custom_source_->strength(); }
+  
+  int id() const override { return custom_source_->id(); }
 
 private:
   void* shared_library_; //!< library from dlopen

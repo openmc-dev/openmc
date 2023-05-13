@@ -18,6 +18,6 @@
     <particles>1000</particles>
     <batches>10</batches>
     <inactive>0</inactive>
-    <source library="build/libsource.so" strength="1.0"/>
+    <source strength="1.0" type="source"/>
   </settings>
   </model>

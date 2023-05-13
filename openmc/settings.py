@@ -13,7 +13,7 @@ import lxml.etree as ET
 import openmc.checkvalue as cv
 from openmc.stats.multivariate import MeshSpatial
 
-from . import RegularMesh, Source, VolumeCalculation, WeightWindows
+from . import RegularMesh, SourceBase, Source, VolumeCalculation, WeightWindows
 from ._xml import clean_indentation, get_text, reorder_attributes
 from openmc.checkvalue import PathLike
 from .mesh import _read_meshes
@@ -601,7 +601,7 @@ class Settings:
     def source(self, source: typing.Union[Source, typing.Iterable[Source]]):
         if not isinstance(source, MutableSequence):
             source = [source]
-        self._source = cv.CheckedList(Source, 'source distributions', source)
+        self._source = cv.CheckedList(SourceBase, 'source distributions', source)
 
     @output.setter
     def output(self, output: dict):
@@ -992,7 +992,7 @@ class Settings:
     def _create_source_subelement(self, root):
         for source in self.source:
             root.append(source.to_xml_element())
-            if isinstance(source.space, MeshSpatial):
+            if isinstance(source, Source) and isinstance(source.space, MeshSpatial):
                 path = f"./mesh[@id='{source.space.mesh.id}']"
                 if root.find(path) is None:
                     root.append(source.space.mesh.to_xml_element())

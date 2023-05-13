@@ -1,11 +1,11 @@
 from collections.abc import Iterable
-from enum import Enum
+from enum import IntEnum
 from numbers import Real
 import warnings
 import typing  # imported separately as py3.8 requires typing.Iterable
 # also required to prevent typing.Union namespace overwriting Union
 from typing import Optional, Sequence
-import lxml.etree as ET 
+import lxml.etree as ET
 
 import numpy as np
 import h5py
@@ -16,9 +16,105 @@ from openmc.checkvalue import PathLike
 from openmc.stats.multivariate import UnitSphere, Spatial
 from openmc.stats.univariate import Univariate
 from ._xml import get_text
+from .mesh import MeshBase
 
 
-class Source:
+class SourceBase():
+    """Base class for sources.
+
+    Parameters
+    ----------
+    strength : float
+        Strength of the source
+
+    Attributes
+    ----------
+    type : str
+        Indicator of source type. One of ('source', 'mesh', 'file', 'compiled')
+    strength : float
+        Strength of the source
+
+    """
+
+    def __init__(self, strength=1.0):
+
+        self.strength = strength
+
+    @property
+    def strength(self):
+        return self._strength
+
+    @strength.setter
+    def strength(self, strength):
+        cv.check_type('source strength', strength, Real)
+        cv.check_greater_than('source strength', strength, 0.0, True)
+        self._strength = strength
+
+    def populate_xml_element(self, element):
+        """Add necessary source information to an XML element
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing source data
+
+        """
+        element.set("type", self.type)
+        element.set("strength", str(self.strength))
+
+
+    def to_xml_element(self) -> ET.Element:
+        """Return XML representation of the source
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing source data
+
+        """
+        element = ET.Element("source")
+        self.populate_xml_element(element)
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem: ET.Element, meshes=None) -> 'openmc.SourceBase':
+        """Generate source from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+        meshes : dict
+            Dictionary with mesh IDs as keys and openmc.MeshBase instaces as
+            values
+
+        Returns
+        -------
+        openmc.Source
+            Source generated from XML element
+
+        """
+        source_type = get_text(elem, 'type')
+
+        if source_type is None:
+            # attempt to determine source type based on attributes
+            # for backward compatibility
+            if get_text(elem, 'file') is not None:
+                return FileSource.from_xml_element(elem)
+            elif get_text(elem, 'library') is not None:
+                return CompiledSource.from_xml_element(elem)
+            else:
+                return Source.from_xml_element(elem)
+        else:
+            if source_type == 'source':
+                return Source.from_xml_element(elem, meshes)
+            elif source_type == 'compiled':
+                return CompiledSource.from_xml_element(elem)
+            elif source_type == 'file':
+                return FileSource.from_xml_element(elem)
+
+
+class Source(SourceBase):
     """Distribution of phase space coordinates for source sites.
 
     Parameters
@@ -87,12 +183,13 @@ class Source:
         particle: str = 'neutron',
         domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None
     ):
+        super().__init__(strength)
+
         self._space = None
         self._angle = None
         self._energy = None
         self._time = None
         self._file = None
-        self._library = None
         self._parameters = None
 
         if space is not None:
@@ -104,11 +201,11 @@ class Source:
         if time is not None:
             self.time = time
         if filename is not None:
-            self.file = filename
+            ValueError('The "filename" attribute has been deprecated on the general source class. Please use the FileSource class.')
         if library is not None:
-            self.library = library
+            ValueError('The "library" attribute has been deprecated on the general source class. Please use the CompiledSource class.')
         if parameters is not None:
-            self.parameters = parameters
+            ValueError('The "parameters" attribute has been deprecated on the general source class. Please use the CompiledSource class.')
         self.strength = strength
         self.particle = particle
 
@@ -124,16 +221,8 @@ class Source:
             self.domain_ids = [d.id for d in domains]
 
     @property
-    def file(self):
-        return self._file
-
-    @property
-    def library(self):
-        return self._library
-
-    @property
-    def parameters(self):
-        return self._parameters
+    def type(self) -> str:
+        return 'source'
 
     @property
     def space(self):
@@ -150,10 +239,6 @@ class Source:
     @property
     def time(self):
         return self._time
-
-    @property
-    def strength(self):
-        return self._strength
 
     @property
     def particle(self):
@@ -177,21 +262,6 @@ class Source:
         cv.check_value('domain type', domain_type, ('cell', 'material', 'universe'))
         self._domain_type = domain_type
 
-    @file.setter
-    def file(self, filename):
-        cv.check_type('source file', filename, str)
-        self._file = filename
-
-    @library.setter
-    def library(self, library_name):
-        cv.check_type('library', library_name, str)
-        self._library = library_name
-
-    @parameters.setter
-    def parameters(self, parameters_path):
-        cv.check_type('parameters', parameters_path, str)
-        self._parameters = parameters_path
-
     @space.setter
     def space(self, space):
         cv.check_type('spatial distribution', space, Spatial)
@@ -212,19 +282,13 @@ class Source:
         cv.check_type('time distribution', time, Univariate)
         self._time = time
 
-    @strength.setter
-    def strength(self, strength):
-        cv.check_type('source strength', strength, Real)
-        cv.check_greater_than('source strength', strength, 0.0, True)
-        self._strength = strength
-
     @particle.setter
     def particle(self, particle):
         cv.check_value('source particle', particle, ['neutron', 'photon'])
         self._particle = particle
 
-    def to_xml_element(self) -> ET.Element:
-        """Return XML representation of the source
+    def populate_xml_element(self, element):
+        """Add necessary source information to an XML element
 
         Returns
         -------
@@ -232,16 +296,9 @@ class Source:
             XML element containing source data
 
         """
-        element = ET.Element("source")
-        element.set("strength", str(self.strength))
+        super().populate_xml_element(element)
         if self.particle != 'neutron':
             element.set("particle", self.particle)
-        if self.file is not None:
-            element.set("file", self.file)
-        if self.library is not None:
-            element.set("library", self.library)
-        if self.parameters is not None:
-            element.set("parameters", self.parameters)
         if self.space is not None:
             element.append(self.space.to_xml_element())
         if self.angle is not None:
@@ -255,7 +312,6 @@ class Source:
             dt_elem.text = self.domain_type
             id_elem = ET.SubElement(element, "domain_ids")
             id_elem.text = ' '.join(str(uid) for uid in self.domain_ids)
-        return element
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element, meshes=None) -> 'openmc.Source':
@@ -306,14 +362,6 @@ class Source:
         if filename is not None:
             source.file = filename
 
-        library = get_text(elem, 'library')
-        if library is not None:
-            source.library = library
-
-        parameters = get_text(elem, 'parameters')
-        if parameters is not None:
-            source.parameters = parameters
-
         space = elem.find('space')
         if space is not None:
             source.space = Spatial.from_xml_element(space, meshes)
@@ -333,11 +381,277 @@ class Source:
         return source
 
 
-class ParticleType(Enum):
+class CompiledSource(SourceBase):
+    """
+    A compiled source
+    """
+    def __init__(self, library: Optional[str] = None, strength=1.0) -> None:
+        super().__init__(strength=strength)
+
+        self._library = None
+        if library is not None:
+            self.library = library
+
+        self._parameters = None
+
+    @property
+    def type(self) -> str:
+        return "compiled"
+
+    @property
+    def library(self) -> str:
+        return self._library
+
+    @property
+    def parameters(self) -> str:
+        return self._parameters
+
+    @library.setter
+    def library(self, library_name):
+        cv.check_type('library', library_name, str)
+        self._library = library_name
+
+    @parameters.setter
+    def parameters(self, parameters_path):
+        cv.check_type('parameters', parameters_path, str)
+        self._parameters = parameters_path
+
+    def populate_xml_element(self, element):
+        """Add necessary compiled source information to an XML element
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing source data
+
+        """
+        super().populate_xml_element(element)
+
+        element.set("library", self.library)
+
+        if self.parameters is not None:
+            element.set("parameters", self.parameters)
+
+    @classmethod
+    def from_xml_element(cls, elem: ET.Element, meshes=None) -> 'openmc.CompiledSource':
+        """Generate a compiled source from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+        meshes : dict
+            Dictionary with mesh IDs as keys and openmc.MeshBase instaces as
+            values
+
+        Returns
+        -------
+        openmc.Source
+            Source generated from XML element
+
+        """
+        library = get_text(elem, 'library')
+
+        source = cls(library)
+
+        strength = get_text(elem, 'strength')
+        if strength is not None:
+            source.strength = float(strength)
+
+        parameters = get_text(elem, 'parameters')
+        if parameters is not None:
+            source.parameters = parameters
+
+        return source
+
+
+class FileSource(SourceBase):
+    """
+    """
+    def __init__(self, filename: Optional[str] = None, strength=1.0) -> None:
+        super().__init__(strength=strength)
+
+        self._file = None
+
+        if filename is not None:
+            self.file = filename
+
+    @property
+    def type(self) -> str:
+        return "file"
+
+    @property
+    def file(self):
+        return self._file
+
+    @file.setter
+    def file(self, filename: str):
+        cv.check_type('source file', filename, str)
+        self._file = filename
+
+    def populate_xml_element(self, element):
+        """Add necessary file source information to an XML element
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing source data
+
+        """
+        super().populate_xml_element(element)
+
+        if self.file is not None:
+            element.set("file", self.file)
+
+    @classmethod
+    def from_xml_element(cls, elem: ET.Element, meshes=None) -> 'openmc.FileSource':
+        """Generate file source from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+        meshes : dict
+            Dictionary with mesh IDs as keys and openmc.MeshBase instaces as
+            values
+
+        Returns
+        -------
+        openmc.Source
+            Source generated from XML element
+
+        """
+
+        filename = get_text(elem, 'file')
+
+        source = cls(filename)
+
+        strength = get_text(elem, 'strength')
+        if strength is not None:
+            source.strength = float(strength)
+
+        return source
+
+
+class MeshSource():
+    """
+    """
+    def __init__(self,
+                 mesh: openmc.MeshBase,
+                 strength: Optional[float] = 1.0,
+                 sources: Optional[Iterable] = None):
+
+        self.mesh = mesh
+        self.strength = strength
+        self._sources = cv.CheckedList(openmc.Source, 'sources')
+
+        if sources is not None:
+            self.sources = sources
+
+    @property
+    def mesh(self):
+        return self._mesh
+
+    @property
+    def strength(self):
+        return self._strength
+
+    @property
+    def sources(self):
+        return self._sources
+
+    @mesh.setter
+    def mesh(self, m):
+        cv.check_type('source mesh', m, openmc.MeshBase)
+        self._mesh = m
+
+    @sources.setter
+    def sources(self, s):
+        cv.check_iterable_type('mesh sources', s, openmc.Source)
+        self._sources = s
+        for src in self.sources:
+            if src.space is not None:
+                warnings.warn('Some sources on the mesh have '
+                              'spatial distributions that will '
+                              'be ignored at runtime.')
+                break
+
+    @strength.setter
+    def strength(self, strength):
+        cv.check_type('source strength', strength, Real)
+        cv.check_greater_than('source strength', strength, 0.0, True)
+        self._strength = strength
+
+    def to_xml_element(self):
+        """Return XML representation of the mesh source
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing source data
+
+        """
+        element = ET.Element('source')
+        element.set('type', 'mesh')
+        element.set('strength', str(self.strength))
+
+        # build a mesh spatial distribution
+        mesh_dist = openmc.MeshSpatial(self.mesh, [s.strength for s in self.sources])
+
+        mesh_dist.to_xml_element(element)
+
+        for source in self.sources:
+            src_element = ET.SubElement(element, 'source')
+            source.populate_xml_element(src_element)
+
+        return element
+
+class ParticleType(IntEnum):
+    """
+    IntEnum class representing a particle type. Type
+    values mirror those found in the C++ class.
+    """
     NEUTRON = 0
     PHOTON = 1
     ELECTRON = 2
     POSITRON = 3
+
+    @classmethod
+    def from_string(cls, value: str):
+        """
+        Constructs a ParticleType instance from a string.
+
+        Parameters
+        ----------
+        value : str
+            The string representation of the particle type.
+
+        Returns
+        -------
+        The corresponding ParticleType instance.
+        """
+        try:
+            return cls[value.upper()]
+        except KeyError:
+            raise ValueError(f"Invalid string for creation of {cls.__name__}: {value}")
+
+    def __repr__(self) -> str:
+        """
+        Returns a string representation of the ParticleType instance.
+
+        Returns:
+            str: The lowercase name of the ParticleType instance.
+        """
+        return self.name.lower()
+
+    # needed for < 3.11
+    def __str__(self) -> str:
+        return self.__repr__()
+
+    # needed for <= 3.7, IntEnum will use the mixed-in type's `__format__` method otherwise
+    # this forces it to default to the standard object format, relying on __str__ under the hood
+    def __format__(self, spec):
+        return object.__format__(self, spec)
 
 
 class SourceParticle:

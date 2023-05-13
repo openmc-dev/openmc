@@ -67,7 +67,7 @@ def test_wrong_source_attributes(run_in_tmpdir):
     settings =  openmc.Settings()
     settings.particles = 100
     settings.batches = 10
-    settings.source = openmc.Source(filename='animal_source.h5')
+    settings.source = openmc.FileSource(filename='animal_source.h5')
     settings.export_to_xml()
 
     # When we run the model, it should error out with a message that includes

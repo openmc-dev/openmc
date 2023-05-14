@@ -48,6 +48,11 @@ public:
   // Methods that must be implemented
   virtual SourceSite sample(uint64_t* seed) const = 0;
   virtual int id() const = 0;
+  virtual ParticleType particle_type() const = 0;
+  virtual SpatialDistribution* space() const = 0;
+  virtual UnitSphereDistribution* angle() const = 0;
+  virtual Distribution* energy() const = 0;
+  virtual Distribution* time() const = 0;
 
   // Methods that can be overridden
   virtual double strength() const { return 1.0; }
@@ -111,6 +116,11 @@ public:
   SourceSite sample(uint64_t* seed) const override;
 
   int id() const override { return id_; }
+  ParticleType particle_type() const override { return ParticleType::neutron; }
+  SpatialDistribution* space() const override { return nullptr; }
+  UnitSphereDistribution* angle() const override { return nullptr; }
+  Distribution* energy() const override { return nullptr; }
+  Distribution* time() const override { return nullptr; }
 
 private:
   int id_;                   //!< Source ID
@@ -136,6 +146,20 @@ public:
   double strength() const override { return custom_source_->strength(); }
 
   int id() const override { return custom_source_->id(); }
+  ParticleType particle_type() const override
+  {
+    return custom_source_->particle_type();
+  }
+  SpatialDistribution* space() const override
+  {
+    return custom_source_->space();
+  }
+  UnitSphereDistribution* angle() const override
+  {
+    return custom_source_->angle();
+  }
+  Distribution* energy() const override { return custom_source_->energy(); }
+  Distribution* time() const override { return custom_source_->time(); }
 
 private:
   void* shared_library_; //!< library from dlopen
@@ -157,9 +181,6 @@ extern "C" void initialize_source();
 //! \return Sampled source site
 SourceSite sample_external_source(uint64_t* seed);
 
-// Declaration of the function to find a SourceSite by ID
-// SourceSite find_source_site_by_id(int id);
-//
 void free_memory_source();
 
 } // namespace openmc

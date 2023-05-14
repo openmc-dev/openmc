@@ -25,7 +25,7 @@ def model():
     settings.particles = 100
     settings.run_mode = 'fixed source'
 
-    source = openmc.Source()
+    source = openmc.IndependentSource()
     source.angle = openmc.stats.Isotropic()
     source.energy = openmc.stats.Discrete([1.0e6], [1.0])
     source.space = openmc.stats.Point((-0.01, -0.01, -0.01))

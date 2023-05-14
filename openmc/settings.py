@@ -13,7 +13,7 @@ import lxml.etree as ET
 import openmc.checkvalue as cv
 from openmc.stats.multivariate import MeshSpatial
 
-from . import RegularMesh, SourceBase, Source, VolumeCalculation, WeightWindows
+from . import RegularMesh, Source, IndependentSource, VolumeCalculation, WeightWindows
 from ._xml import clean_indentation, get_text, reorder_attributes
 from openmc.checkvalue import PathLike
 from .mesh import _read_meshes
@@ -149,7 +149,7 @@ class Settings:
         The type of calculation to perform (default is 'eigenvalue')
     seed : int
         Seed for the linear congruential pseudorandom number generator
-    source : Iterable of openmc.Source
+    source : Iterable of openmc.IndependentSource
         Distribution of source sites in space, angle, and energy
     sourcepoint : dict
         Options for writing source points. Acceptable keys are:
@@ -601,7 +601,7 @@ class Settings:
     def source(self, source: typing.Union[Source, typing.Iterable[Source]]):
         if not isinstance(source, MutableSequence):
             source = [source]
-        self._source = cv.CheckedList(SourceBase, 'source distributions', source)
+        self._source = cv.CheckedList(Source, 'source distributions', source)
 
     @output.setter
     def output(self, output: dict):
@@ -992,7 +992,7 @@ class Settings:
     def _create_source_subelement(self, root):
         for source in self.source:
             root.append(source.to_xml_element())
-            if isinstance(source, Source) and isinstance(source.space, MeshSpatial):
+            if isinstance(source, IndependentSource) and isinstance(source.space, MeshSpatial):
                 path = f"./mesh[@id='{source.space.mesh.id}']"
                 if root.find(path) is None:
                     root.append(source.space.mesh.to_xml_element())

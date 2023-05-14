@@ -94,7 +94,7 @@ def test_unstructured_mesh_sampling(model, request, test_cases):
     space = openmc.stats.MeshSpatial(uscd_mesh, strengths, vol_norm)
 
     energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
-    source = openmc.Source(space=space, energy=energy)
+    source = openmc.IndependentSource(space=space, energy=energy)
     model.settings.source = source
 
     with cdtemp([mesh_filename]):
@@ -155,7 +155,7 @@ def test_strengths_size_failure(request, model):
     space = openmc.stats.MeshSpatial(uscd_mesh, strengths)
 
     energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
-    source = openmc.Source(space=space, energy=energy)
+    source = openmc.IndependentSource(space=space, energy=energy)
     model.settings.source = source
 
     # skip the test if unstructured mesh is not available
@@ -188,7 +188,7 @@ def test_roundtrip(run_in_tmpdir, model, request):
 
     space_out = openmc.MeshSpatial(ucd_mesh)
     space_out.strengths = np.random.rand(n_cells*TETS_PER_VOXEL)
-    model.settings.source = openmc.Source(space=space_out)
+    model.settings.source = openmc.IndependentSource(space=space_out)
 
     # write out the model
     model.export_to_xml()

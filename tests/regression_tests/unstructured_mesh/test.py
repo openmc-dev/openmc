@@ -219,7 +219,7 @@ def model():
 
     space = openmc.stats.SphericalIndependent(r, cos_theta, phi)
     energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
-    source = openmc.Source(space=space, energy=energy)
+    source = openmc.IndependentSource(space=space, energy=energy)
     settings.source = source
 
     model.settings = settings

@@ -19,7 +19,7 @@ from ._xml import get_text
 from .mesh import MeshBase
 
 
-class SourceBase():
+class Source():
     """Base class for sources.
 
     Parameters
@@ -37,7 +37,6 @@ class SourceBase():
     """
 
     def __init__(self, strength=1.0):
-
         self.strength = strength
 
     @property
@@ -77,7 +76,7 @@ class SourceBase():
         return element
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element, meshes=None) -> 'openmc.SourceBase':
+    def from_xml_element(cls, elem: ET.Element, meshes=None) -> 'openmc.Source':
         """Generate source from an XML element
 
         Parameters
@@ -104,17 +103,17 @@ class SourceBase():
             elif get_text(elem, 'library') is not None:
                 return CompiledSource.from_xml_element(elem)
             else:
-                return Source.from_xml_element(elem)
+                return IndependentSource.from_xml_element(elem)
         else:
             if source_type == 'source':
-                return Source.from_xml_element(elem, meshes)
+                return IndependentSource.from_xml_element(elem, meshes)
             elif source_type == 'compiled':
                 return CompiledSource.from_xml_element(elem)
             elif source_type == 'file':
                 return FileSource.from_xml_element(elem)
 
 
-class Source(SourceBase):
+class IndependentSource(Source):
     """Distribution of phase space coordinates for source sites.
 
     Parameters
@@ -381,7 +380,7 @@ class Source(SourceBase):
         return source
 
 
-class CompiledSource(SourceBase):
+class CompiledSource(Source):
     """
     A compiled source
     """
@@ -465,7 +464,7 @@ class CompiledSource(SourceBase):
         return source
 
 
-class FileSource(SourceBase):
+class FileSource(Source):
     """
     """
     def __init__(self, filename: Optional[str] = None, strength=1.0) -> None:

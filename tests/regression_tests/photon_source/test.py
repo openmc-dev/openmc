@@ -21,7 +21,7 @@ class SourceTestHarness(PyAPITestHarness):
         inside_sphere.fill = mat
         self._model.geometry = openmc.Geometry([inside_sphere])
 
-        source = openmc.Source()
+        source = openmc.IndependentSource()
         source.space = openmc.stats.Point((0, 0, 0))
         source.angle = openmc.stats.Isotropic()
         source.energy = openmc.stats.Discrete([10.0e6], [1.0])

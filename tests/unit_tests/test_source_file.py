@@ -90,7 +90,7 @@ def test_source_file_transport(run_in_tmpdir):
     sph = openmc.Sphere(r=10.0, boundary_type='vacuum')
     cell = openmc.Cell(fill=al, region=-sph)
     model.geometry = openmc.Geometry([cell])
-    model.settings.source = openmc.Source(filename='source.h5')
+    model.settings.source = openmc.IndependentSource(filename='source.h5')
     model.settings.particles = 10
     model.settings.batches = 3
     model.settings.run_mode = 'fixed source'

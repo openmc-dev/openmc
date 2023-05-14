@@ -62,7 +62,7 @@ def model():
     model.settings.run_mode = 'fixed source'
 
     # custom source from shared library
-    source = openmc.Source()
+    source = openmc.IndependentSource()
     source.library = 'build/libsource.so'
     model.settings.source = source
 

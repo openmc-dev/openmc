@@ -66,7 +66,7 @@ def complex_cell(run_in_tmpdir, mpi_intracomm):
     model.settings.batches = 10
     model.settings.inactive = 5
     model.settings.particles = 100
-    model.settings.source = openmc.Source(space=openmc.stats.Box(
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
         [-10., -10., -1.], [10., 10., 1.]))
 
     model.settings.verbosity = 1

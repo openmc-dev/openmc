@@ -33,7 +33,7 @@ def pencil_beam_model(cfg, E0, N):
 
     # Source definition
 
-    source = openmc.Source()
+    source = openmc.IndependentSource()
     source.space = openmc.stats.Point((0, 0, -20))
     source.angle = openmc.stats.Monodirectional(reference_uvw=(0, 0, 1))
     source.energy = openmc.stats.Discrete([E0], [1.0])

@@ -73,7 +73,7 @@ def rotated_lattice_model():
     model.settings.batches = 5
     model.settings.inactive = 0
     model.settings.particles = 1000
-    model.settings.source = openmc.Source(space=openmc.stats.Point())
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Point())
     model.settings.export_to_xml()
 
     return model

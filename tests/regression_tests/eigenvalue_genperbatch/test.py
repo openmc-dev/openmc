@@ -22,7 +22,7 @@ def model():
     model.settings.batches = 7
     model.settings.generations_per_batch = 3
     space = openmc.stats.Box((-4.0, -4.0, -4.0), (4.0, 4.0, 4.))
-    model.settings.source = openmc.Source(space=space)
+    model.settings.source = openmc.IndependentSource(space=space)
 
     t = openmc.Tally()
     t.scores = ['flux']

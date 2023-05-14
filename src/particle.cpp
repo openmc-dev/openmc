@@ -82,7 +82,7 @@ void Particle::create_secondary(
   n_bank_second() += 1;
 }
 
-void Particle::from_source(const SourceSite* src)
+void Particle::from_source(const SourceSite* src, uint64_t* seed)
 {
   // Reset some attributes
   clear();
@@ -113,6 +113,26 @@ void Particle::from_source(const SourceSite* src)
   E_last() = E();
   time() = src->time;
   time_last() = src->time;
+  
+  // Check if there is are coincident sources with the given source
+  int source_id = src->source_id;
+  for (const auto& coincident_group : settings::coincident_sources) {
+    if (std::find(coincident_group.begin(), coincident_group.end(), source_id) != coincident_group.end()) {
+      for (const auto& id : coincident_group) {
+        if (id != source_id) {
+           for (const auto& secondary_source : model::external_sources) {
+            if (secondary_source->id() == id) {
+              ParticleType particle_type = secondary_source->particle_type();
+              Direction u = secondary_source->angle()->sample(seed);
+              double E = secondary_source->energy()->sample(seed);
+              create_secondary(1.0, u, E, particle_type);
+          }
+        }
+      }
+    }
+  }
+  }
+
 }
 
 void Particle::event_calculate_xs()
@@ -346,7 +366,8 @@ void Particle::event_revive_from_secondary()
     if (secondary_bank().empty())
       return;
 
-    from_source(&secondary_bank().back());
+    uint64_t pseudo_seed = init_seed(id(), STREAM_SOURCE);
+    from_source(&secondary_bank().back(), &pseudo_seed);
     secondary_bank().pop_back();
     n_event() = 0;
 

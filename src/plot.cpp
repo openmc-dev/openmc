@@ -1256,7 +1256,8 @@ void ProjectionPlot::create_output() const
     s.u.x = 1.0;
     s.u.y = 0.0;
     s.u.z = 0.0;
-    p.from_source(&s);
+    uint64_t pseudo_seed = init_seed(0, STREAM_SOURCE);
+    p.from_source(&s, &pseudo_seed);
 
     int vert = tid;
     for (int iter = 0; iter <= pixels_[1] / n_threads; iter++) {
@@ -1292,8 +1293,8 @@ void ProjectionPlot::create_output() const
                   cam_yaxis * x_pix_coord * orthographic_width_ +
                   cam_zaxis * y_pix_coord * orthographic_width_;
           }
-
-          p.from_source(&s); // put particle at camera
+          uint64_t pseudo_seed = init_seed(0, STREAM_SOURCE);
+          p.from_source(&s, &pseudo_seed); // put particle at camera
           bool hitsomething = false;
           bool intersection_found = true;
           int loop_counter = 0;

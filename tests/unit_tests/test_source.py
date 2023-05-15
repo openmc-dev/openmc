@@ -4,6 +4,7 @@ import openmc
 import openmc.lib
 import openmc.stats
 import numpy as np
+import pytest
 from pytest import approx
 
 
@@ -134,3 +135,17 @@ def test_rejection(run_in_tmpdir):
         assert p.r not in non_source_region
 
     openmc.lib.finalize()
+
+
+def test_exceptions():
+
+    with pytest.raises(ValueError, match=r'Please use the FileSource class'):
+        s = openmc.IndependentSource(filename='my_file')
+
+    with pytest.raises(ValueError, match=r'Please use the CompiledSource class'):
+        s = openmc.IndependentSource(library='my_library')
+
+    with pytest.raises(ValueError, match=r'Please use the CompiledSource class'):
+        s = openmc.IndependentSource(parameters='my_params')
+
+

@@ -200,11 +200,11 @@ class IndependentSource(Source):
         if time is not None:
             self.time = time
         if filename is not None:
-            ValueError('The "filename" attribute has been deprecated on the general source class. Please use the FileSource class.')
+            raise ValueError('The "filename" attribute has been deprecated on the general source class. Please use the FileSource class.')
         if library is not None:
-            ValueError('The "library" attribute has been deprecated on the general source class. Please use the CompiledSource class.')
+            raise ValueError('The "library" attribute has been deprecated on the general source class. Please use the CompiledSource class.')
         if parameters is not None:
-            ValueError('The "parameters" attribute has been deprecated on the general source class. Please use the CompiledSource class.')
+            raise ValueError('The "parameters" attribute has been deprecated on the general source class. Please use the CompiledSource class.')
         self.strength = strength
         self.particle = particle
 
@@ -582,7 +582,7 @@ class MeshSource():
         self._strength = strength
 
     def to_xml_element(self):
-        """Return XML representation of the mesh source
+        """Return an XML representation of the mesh source
 
         Returns
         -------

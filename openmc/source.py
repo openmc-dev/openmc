@@ -1,5 +1,5 @@
 from collections.abc import Iterable
-from enum import IntEnum
+from enum import Enum
 from numbers import Real
 import warnings
 import typing  # imported separately as py3.8 requires typing.Iterable
@@ -382,7 +382,7 @@ class IndependentSource(Source):
 
 class CompiledSource(Source):
     """
-    A compiled source
+    A class used to apply a compiled source library
     """
     def __init__(self, library: Optional[str] = None, strength=1.0) -> None:
         super().__init__(strength=strength)
@@ -503,7 +503,7 @@ class FileSource(Source):
             element.set("file", self.file)
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element, meshes=None) -> 'openmc.FileSource':
+    def from_xml_element(cls, elem: ET.Element) -> 'openmc.FileSource':
         """Generate file source from an XML element
 
         Parameters
@@ -532,125 +532,11 @@ class FileSource(Source):
         return source
 
 
-class MeshSource():
-    """
-    """
-    def __init__(self,
-                 mesh: openmc.MeshBase,
-                 strength: Optional[float] = 1.0,
-                 sources: Optional[Iterable] = None):
-
-        self.mesh = mesh
-        self.strength = strength
-        self._sources = cv.CheckedList(openmc.Source, 'sources')
-
-        if sources is not None:
-            self.sources = sources
-
-    @property
-    def mesh(self):
-        return self._mesh
-
-    @property
-    def strength(self):
-        return self._strength
-
-    @property
-    def sources(self):
-        return self._sources
-
-    @mesh.setter
-    def mesh(self, m):
-        cv.check_type('source mesh', m, openmc.MeshBase)
-        self._mesh = m
-
-    @sources.setter
-    def sources(self, s):
-        cv.check_iterable_type('mesh sources', s, openmc.Source)
-        self._sources = s
-        for src in self.sources:
-            if src.space is not None:
-                warnings.warn('Some sources on the mesh have '
-                              'spatial distributions that will '
-                              'be ignored at runtime.')
-                break
-
-    @strength.setter
-    def strength(self, strength):
-        cv.check_type('source strength', strength, Real)
-        cv.check_greater_than('source strength', strength, 0.0, True)
-        self._strength = strength
-
-    def to_xml_element(self):
-        """Return an XML representation of the mesh source
-
-        Returns
-        -------
-        element : xml.etree.ElementTree.Element
-            XML element containing source data
-
-        """
-        element = ET.Element('source')
-        element.set('type', 'mesh')
-        element.set('strength', str(self.strength))
-
-        # build a mesh spatial distribution
-        mesh_dist = openmc.MeshSpatial(self.mesh, [s.strength for s in self.sources])
-
-        mesh_dist.to_xml_element(element)
-
-        for source in self.sources:
-            src_element = ET.SubElement(element, 'source')
-            source.populate_xml_element(src_element)
-
-        return element
-
-class ParticleType(IntEnum):
-    """
-    IntEnum class representing a particle type. Type
-    values mirror those found in the C++ class.
-    """
+class ParticleType(Enum):
     NEUTRON = 0
     PHOTON = 1
     ELECTRON = 2
     POSITRON = 3
-
-    @classmethod
-    def from_string(cls, value: str):
-        """
-        Constructs a ParticleType instance from a string.
-
-        Parameters
-        ----------
-        value : str
-            The string representation of the particle type.
-
-        Returns
-        -------
-        The corresponding ParticleType instance.
-        """
-        try:
-            return cls[value.upper()]
-        except KeyError:
-            raise ValueError(f"Invalid string for creation of {cls.__name__}: {value}")
-
-    def __repr__(self) -> str:
-        """
-        Returns a string representation of the ParticleType instance.
-
-        Returns:
-            str: The lowercase name of the ParticleType instance.
-        """
-        return self.name.lower()
-
-    # needed for < 3.11
-    def __str__(self) -> str:
-        return self.__repr__()
-
-    # needed for <= 3.7, IntEnum will use the mixed-in type's `__format__` method otherwise
-    # this forces it to default to the standard object format, relying on __str__ under the hood
-    def __format__(self, spec):
-        return object.__format__(self, spec)
 
 
 class SourceParticle:

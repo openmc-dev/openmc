@@ -382,8 +382,7 @@ class Universe(UniverseBase):
 
         bb = self.bounding_box
         # checks to see if bounding box contains -inf or inf values
-        if True in np.isinf([bb[0][x], bb[1][x], bb[0][y], bb[1][y]]):
-            print('can not get origin or with')
+        if np.isinf([bb[0][x], bb[1][x], bb[0][y], bb[1][y]]).any():
             if origin is None:
                 origin = (0, 0, 0)
             if width is None:

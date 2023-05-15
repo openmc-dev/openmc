@@ -16,7 +16,7 @@ import openmc
 import openmc._xml as xml
 from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
-from openmc.checkvalue import check_type, check_value
+from openmc.checkvalue import check_type, check_value, PathLike
 from openmc.exceptions import InvalidIDError
 
 
@@ -632,7 +632,7 @@ class Model:
             Settings.max_tracks is set. Defaults to False.
         output : bool, optional
             Capture OpenMC output from standard out
-        cwd : str, optional
+        cwd : PathLike, optional
             Path to working directory to run in. Defaults to the current working
             directory.
         openmc_exec : str, optional
@@ -669,7 +669,10 @@ class Model:
         last_statepoint = None
 
         # Operate in the provided working directory
-        with _change_directory(Path(cwd)):
+        if not isinstance(cwd, Path):
+            cwd = Path(cwd)
+        cwd.mkdir(parents=True, exist_ok=True)
+        with _change_directory(cwd):
             if self.is_initialized:
                 # Handle the run options as applicable
                 # First dont allow ones that must be set via init

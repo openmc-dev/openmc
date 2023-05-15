@@ -659,6 +659,22 @@ class Geometry:
         """
         return self._get_domains_by_name(name, case_sensitive, matching, 'lattice')
 
+    def get_cells_by_depletable(self) -> typing.List[openmc.Cell]:
+        """Return all cells that are filled with depletable materials.
+
+        Returns
+        -------
+        list of openmc.Cell
+            Cells filled with depletable material
+
+        """
+        depleted_cells = []
+        for cell in self.get_all_cells().values():
+            if cell.fill:
+                if cell.fill.depletable is True:
+                    depleted_cells.append(cell)
+        return depleted_cells
+
     def remove_redundant_surfaces(self) -> typing.Dict[int, openmc.Surface]:
         """Remove and return all of the redundant surfaces.
 

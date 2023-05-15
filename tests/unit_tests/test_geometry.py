@@ -326,6 +326,7 @@ def test_rotation_matrix():
     assert geom.find((0.0, -0.5, 0.0))[-1] == c1
     assert geom.find((0.0, -1.5, 0.0))[-1] == c2
 
+
 def test_remove_redundant_surfaces():
     """Test ability to remove redundant surfaces"""
 
@@ -373,3 +374,21 @@ def test_remove_redundant_surfaces():
     # There should be 0 remaining redundant surfaces
     n_redundant_surfs = len(geom.remove_redundant_surfaces().keys())
     assert n_redundant_surfs == 0
+
+
+def test_get_cells_by_depletable():
+    """Test ability to find cells with materials that are depletable"""
+
+    m1 = openmc.Material()
+    m1.add_nuclide('H1', 1.0)
+    m1.depletable = True
+    m2 = openmc.Material()
+    m2.add_nuclide('H1', 1.0)
+
+    s1 = openmc.Sphere(r=1)
+    c1 = openmc.Cell(fill=m1, region=-s1)
+    s2 = openmc.Sphere(r=2)
+    c2 = openmc.Cell(fill=m2, region=-s2 & +s1)
+
+    geom = openmc.Geometry([c1, c2])
+    assert geom.get_cells_by_depletable() == [c1]

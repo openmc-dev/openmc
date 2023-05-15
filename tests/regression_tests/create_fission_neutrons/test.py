@@ -39,7 +39,7 @@ class CreateFissionNeutronsTestHarness(PyAPITestHarness):
         uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:])
         watt_dist = openmc.stats.Watt()
         settings_file.source = openmc.IndependentSource(space=uniform_dist,
-                                                    energy=watt_dist)
+                                                        energy=watt_dist)
         self._model.settings = settings_file
 
         # Create tallies

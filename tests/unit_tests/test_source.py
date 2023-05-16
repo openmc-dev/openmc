@@ -139,13 +139,25 @@ def test_rejection(run_in_tmpdir):
 
 def test_exceptions():
 
-    with pytest.raises(ValueError, match=r'Please use the FileSource class'):
+    with pytest.raises(AttributeError, match=r'Please use the FileSource class'):
         s = openmc.IndependentSource(filename='my_file')
 
-    with pytest.raises(ValueError, match=r'Please use the CompiledSource class'):
+    with pytest.raises(AttributeError, match=r'Please use the CompiledSource class'):
         s = openmc.IndependentSource(library='my_library')
 
-    with pytest.raises(ValueError, match=r'Please use the CompiledSource class'):
+    with pytest.raises(AttributeError, match=r'Please use the CompiledSource class'):
         s = openmc.IndependentSource(parameters='my_params')
+
+    with pytest.raises(AttributeError, match=r'Please use the FileSource class'):
+        s = openmc.IndependentSource()
+        s.file = 'my_file'
+
+    with pytest.raises(AttributeError, match=r'Please use the CompiledSource class'):
+        s = openmc.IndependentSource(library='my_library')
+        s.library = 'my_library'
+
+    with pytest.raises(AttributeError, match=r'Please use the CompiledSource class'):
+        s = openmc.IndependentSource(parameters='my_params')
+        s.parameters = 'my_params'
 
 

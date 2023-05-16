@@ -200,11 +200,11 @@ class IndependentSource(Source):
         if time is not None:
             self.time = time
         if filename is not None:
-            raise ValueError('The "filename" attribute has been deprecated on the general source class. Please use the FileSource class.')
+            self.file = filename
         if library is not None:
-            raise ValueError('The "library" attribute has been deprecated on the general source class. Please use the CompiledSource class.')
+            self.library = library
         if parameters is not None:
-            raise ValueError('The "parameters" attribute has been deprecated on the general source class. Please use the CompiledSource class.')
+            self.parameters = parameters
         self.strength = strength
         self.particle = particle
 
@@ -222,6 +222,18 @@ class IndependentSource(Source):
     @property
     def type(self) -> str:
         return 'independent'
+
+    @property
+    def file(self):
+        raise AttributeError('The "filename" attribute has been deprecated on the general source class. Please use the FileSource class.')
+
+    @property
+    def library(self):
+        raise AttributeError('The "library" attribute has been deprecated on the general source class. Please use the CompiledSource class.')
+
+    @property
+    def parameters(self):
+        raise AttributeError('The "parameters" attribute has been deprecated on the general source class. Please use the CompiledSource class.')
 
     @property
     def space(self):
@@ -260,6 +272,21 @@ class IndependentSource(Source):
     def domain_type(self, domain_type):
         cv.check_value('domain type', domain_type, ('cell', 'material', 'universe'))
         self._domain_type = domain_type
+
+    @file.setter
+    def file(self, filename):
+        # reference property so attr error is raised
+        self.file
+
+    @library.setter
+    def library(self, library_name):
+        # reference property so attr error is raised
+        self.library
+
+    @parameters.setter
+    def parameters(self, parameters_path):
+        # reference property so attr error is raised
+        self.parameters
 
     @space.setter
     def space(self, space):

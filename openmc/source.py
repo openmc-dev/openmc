@@ -30,7 +30,7 @@ class Source():
     Attributes
     ----------
     type : str
-        Indicator of source type. One of ('source', 'mesh', 'file', 'compiled')
+        Indicator of source type. One of ('independent_source', 'file', 'compiled')
     strength : float
         Strength of the source
 
@@ -105,7 +105,7 @@ class Source():
             else:
                 return IndependentSource.from_xml_element(elem)
         else:
-            if source_type == 'source':
+            if source_type == 'independent':
                 return IndependentSource.from_xml_element(elem, meshes)
             elif source_type == 'compiled':
                 return CompiledSource.from_xml_element(elem)
@@ -221,7 +221,7 @@ class IndependentSource(Source):
 
     @property
     def type(self) -> str:
-        return 'source'
+        return 'independent'
 
     @property
     def space(self):

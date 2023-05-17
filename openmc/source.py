@@ -20,7 +20,7 @@ from .mesh import MeshBase
 
 
 class Source():
-    """Base class for sources.
+    """Base class for external sources
 
     Parameters
     ----------
@@ -159,7 +159,12 @@ class IndependentSource(Source):
     parameters : str
         Parameters to be provided to the custom source library
     strength : float
-        Strength of the source
+        Strength of the source (default is 1.0)
+    type : str
+        Indicator of source type: 'independent_source'
+
+    .. versionadded::0.13.4
+
     particle : {'neutron', 'photon'}
         Source particle type
     ids : Iterable of int
@@ -410,6 +415,29 @@ class IndependentSource(Source):
 class CompiledSource(Source):
     """
     A class used to apply a compiled source library
+
+    .. versionadded:: 0.13.4
+
+    Parameters
+    ----------
+    library : str or None
+        Path to a custom source library
+    parameters : str
+        Parameters to be provided to the custom source library
+    strength : float
+        Strength of the source (default is 1.0)
+
+    Attributes
+    ----------
+    library : str or None
+        Path to a custom source library
+    parameters : str
+        Parameters to be provided to the custom source library
+    strength : float
+        Strength of the source
+    type : str
+        Indicator of source type: 'compiled'
+
     """
     def __init__(self, library: Optional[str] = None, strength=1.0) -> None:
         super().__init__(strength=strength)
@@ -492,7 +520,26 @@ class CompiledSource(Source):
 
 
 class FileSource(Source):
-    """
+    """A source based on particles stored in a file
+
+    .. versionadded:: 0.13.4
+
+    Parameters
+    ----------
+    filename : str
+        Source file from which sites should be sampled
+    strength : float
+        Strength of the source (default is 1.0)
+
+    Attributes
+    ----------
+    filename : str
+        Source file from which sites should be sampled
+    strength : float
+        Strength of the source
+    type : str
+        Indicator of source type: 'file'
+
     """
     def __init__(self, filename: Optional[str] = None, strength=1.0) -> None:
         super().__init__(strength=strength)

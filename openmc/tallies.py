@@ -56,7 +56,7 @@ class Tally(IDManagerMixin):
         Name of the tally
     filters : list of openmc.Filter
         List of specified filters for the tally
-    nuclides : list of openmc.Nuclide
+    nuclides : list of openmc.Nuclide or str
         List of nuclides to score results for
     scores : list of str
         List of defined scores, e.g. 'flux', 'fission', etc.

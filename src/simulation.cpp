@@ -25,6 +25,10 @@
 #include "openmc/timer.h"
 #include "openmc/track_output.h"
 
+//new
+#include "openmc/weight_windows.h"
+#include "openmc/math_functions.h"
+
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -50,6 +54,14 @@
 
 int openmc_run()
 {
+// new in GVR
+  if (openmc::variance_reduction::global_on) {
+    openmc::simulation::time_total.start();
+    openmc_simulation_init();
+    openmc::openmc_generate_WW();
+  }
+//
+  
   openmc::simulation::time_total.start();
   openmc_simulation_init();
 
@@ -790,5 +802,102 @@ void transport_event_based()
     source_offset += n_particles;
   }
 }
+  
+
+// new in GVR
+void openmc_generate_WW() 
+{
+  using namespace openmc;
+
+  // Make sure simulation has been initialized
+  if (!simulation::initialized) {
+    set_errmsg("Simulation has not been initialized yet.");
+  }
+
+  initialize_batch();
+
+  // Backup for the total nps
+  variance_reduction::nps_backup = settings::n_batches * settings::n_particles;
+  int total_iteration_nps = 0;
+  
+
+  // =======================================================================
+  // LOOP OVER ITERATION FOR WW GENERATION
+  for (int i = 1; i <= variance_reduction::iteration.size(); ++i) {
+
+    // Reset the nps in each iteration
+    settings::n_particles = variance_reduction::iteration[i-1];
+    total_iteration_nps += settings::n_particles;
+    if (mpi::master) {
+      std::cout<<"-- Iteration "<<i<<"/"<<variance_reduction::iteration.size()<<" for WW generation by GVR. "
+               <<"   Set nps = "<<settings::n_particles<<" in this iteration, total nps: "<<total_iteration_nps<<std::endl;
+    }
+    
+    // Re-determine how much work each process should do, since the nps has been reset
+    calculate_work();
+
+    // Start timer for transport
+    simulation::time_transport.start();
+
+    // Transport loop
+    if (settings::event_based) {
+      transport_event_based();
+    } else {
+      transport_history_based();
+    }
+
+    // Accumulate time for transport
+    simulation::time_transport.stop();
+
+    accumulate_tallies(); 
+
+#ifdef OPENMC_MPI
+    broadcast_results();
+#endif
+
+    // Calculate the lower WW bound with flux tally results
+    update_WW();
+
+    if (mpi::master) {
+      std::cout<<"-- Iteration "<<i<<"/"<<variance_reduction::iteration.size()<<" is end. Current time: "<<time_stamp()<<std::endl;
+    }
+  }
+
+  finalize_batch();
+
+  if (mpi::master) {
+    header("GVR WW generation", 6);
+    std::cout<<" Total "<<variance_reduction::iteration.size()<<" iteration are used with "<<total_iteration_nps<<" particles."<<std::endl;
+    std::cout<<" Total time : "<<simulation::time_total.elapsed()<<" seconds."<<std::endl;
+    std::cout<<" Current time: "<<time_stamp()<<std::endl;
+  }
+
+  // Reset the total nps
+  settings::n_particles = (variance_reduction::nps_backup - total_iteration_nps)/ settings::n_batches;  
+  if (mpi::master) {
+    std::cout<<" Reset nps: "<<settings::n_particles<<std::endl;
+  }
+
+  // Reset flags
+  simulation::initialized = false;
+
+  // Reset all tallies and timers
+  openmc_reset();
+  reset_timers();
+
+}
+
+void update_WW() 
+{
+  using namespace openmc;
+  
+  if (model::tallies.empty()) return;
+
+  if (mpi::master) std::cout<<"Update the WW bounds . . ."<<std::endl;
+
+  variance_reduction::weight_windows[0]->calculate_WW();
+ 
+  if (mpi::master) std::cout<<"Update the WW bounds FINISH."<<std::endl;
+} 
 
 } // namespace openmc

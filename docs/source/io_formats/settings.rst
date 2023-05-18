@@ -450,7 +450,7 @@ attributes/sub-elements:
     *Default*: 1.0
 
   :type:
-    Indicator of source type. One of ``independent_source``, ``file``, or ``compiled``.
+    Indicator of source type. One of ``independent``, ``file``, or ``compiled``.
 
   :particle:
     The source particle type, either ``neutron`` or ``photon``.

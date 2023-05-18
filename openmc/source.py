@@ -30,7 +30,7 @@ class Source():
     Attributes
     ----------
     type : str
-        Indicator of source type. One of ('independent_source', 'file', 'compiled')
+        Indicator of source type. One of ('independent', 'file', 'compiled')
     strength : float
         Strength of the source
 
@@ -161,7 +161,7 @@ class IndependentSource(Source):
     strength : float
         Strength of the source (default is 1.0)
     type : str
-        Indicator of source type: 'independent_source'
+        Indicator of source type: 'independent'
 
     .. versionadded::0.13.4
 

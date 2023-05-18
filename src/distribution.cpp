@@ -304,7 +304,7 @@ void Tabular::init(
         c_[i] = c_[i - 1] + p_[i - 1] * (x_[i] - x_[i - 1]) /
                               std::log(p_[i] / p_[i - 1]) *
                               (p_[i] / p_[i - 1] - 1);
-      } else {
+      } else if (interp_ == Interpolation::log_log) {
         double m = std::log(p_[i] / p_[i - 1] - x_[i] / x_[i - 1]);
         c_[i] =
           c_[i - 1] + p_[i - 1] / (std::pow(x_[i - 1], m) * (m + 1)) *
@@ -358,6 +358,27 @@ double Tabular::sample(uint64_t* seed) const
       return x_i +
              (std::sqrt(std::max(0.0, p_i * p_i + 2 * m * (c - c_i))) - p_i) /
                m;
+    }
+  } else if (interp_ == Interpolation::lin_log) {
+    // Linear-log interpolation
+    // Inverse transform sampling with linear-log interpolation is not possible
+    // so this uses rejection sampling
+    double x_i1 = x_[i + 1];
+    double p_i1 = p_[i + 1];
+
+    if (p_i1 == p_i) {
+      return x_i + (c - c_i) / p_i;
+    }
+
+    while (true) {
+      double x = x_i + prn(seed) * (x_i1 - x_i);
+      double p_unif = p_i + prn(seed) * (p_i1 - p_i);
+
+      // Sample linear-log PDF
+      double p = p_i + std::log(x / x_i - x_i1 / x_i) * (p_i1 - p_i);
+      if (p_unif < p) {
+        return x;
+      }
     }
   } else if (interp_ == Interpolation::log_lin) {
     // Log-linear interpolation

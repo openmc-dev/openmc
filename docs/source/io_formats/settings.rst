@@ -468,7 +468,7 @@ attributes/sub-elements:
 
   :library:
     If this attribute is given, it indicates that the source type is
-    ``compiled``, meaning tha tparticles are instantiated from an externally
+    ``compiled``, meaning that particles are instantiated from an externally
     compiled source function. This source can be completely customized as needed
     to define the source for your problem. The library has a few basic
     requirements:

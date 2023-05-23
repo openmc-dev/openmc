@@ -84,9 +84,11 @@ void TimeFilter::get_all_bins(
     // -------------------------------------------------------------------------
     // For collision estimator or surface tallies, find a match based on the
     // exact time of the particle
-    const auto i_bin = lower_bound_index(bins_.begin(), bins_.end(), t_end);
-    match.bins_.push_back(i_bin);
-    match.weights_.push_back(1.0);
+    if (t_end < bins_.back()) {
+      const auto i_bin = lower_bound_index(bins_.begin(), bins_.end(), t_end);
+      match.bins_.push_back(i_bin);
+      match.weights_.push_back(1.0);
+    }
   }
 }
 

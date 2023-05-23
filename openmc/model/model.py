@@ -24,7 +24,7 @@ from openmc.exceptions import InvalidIDError
 def _change_directory(working_dir):
     """A context manager for executing in a provided working directory"""
     start_dir = Path.cwd()
-    Path.mkdir(working_dir, exist_ok=True)
+    Path.mkdir(working_dir, parents=True, exist_ok=True)
     os.chdir(working_dir)
     try:
         yield
@@ -669,10 +669,7 @@ class Model:
         last_statepoint = None
 
         # Operate in the provided working directory
-        if not isinstance(cwd, Path):
-            cwd = Path(cwd)
-        cwd.mkdir(parents=True, exist_ok=True)
-        with _change_directory(cwd):
+        with _change_directory(Path(cwd)):
             if self.is_initialized:
                 # Handle the run options as applicable
                 # First dont allow ones that must be set via init

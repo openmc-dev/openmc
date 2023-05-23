@@ -401,7 +401,7 @@ class Universe(UniverseBase):
 
         if isinstance(pixels, int):
             aspect_ratio = width[0] / width[1]
-            pixels_y = np.sqrt(pixels / aspect_ratio)
+            pixels_y = math.sqrt(pixels / aspect_ratio)
             pixels = (int(pixels / pixels_y), int(pixels_y))
 
         x_min = origin[x] - 0.5*width[0]

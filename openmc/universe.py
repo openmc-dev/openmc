@@ -6,7 +6,7 @@ from copy import deepcopy
 from numbers import Integral, Real
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 from warnings import warn
 
 import h5py
@@ -117,7 +117,7 @@ class UniverseBase(ABC, IDManagerMixin):
 
         Parameters
         ----------
-        xml_element : xml.etree.ElementTree.Element
+        xml_element : lxml.etree._Element
             XML element to be added to
 
         memo : set or None
@@ -380,17 +380,20 @@ class Universe(UniverseBase):
             x, y = 0, 2
             xlabel, ylabel = 'x [cm]', 'z [cm]'
 
+        bb = self.bounding_box
         # checks to see if bounding box contains -inf or inf values
-        if True in np.isinf(self.bounding_box):
+        if np.isinf([bb[0][x], bb[1][x], bb[0][y], bb[1][y]]).any():
             if origin is None:
                 origin = (0, 0, 0)
             if width is None:
                 width = (10, 10)
         else:
             if origin is None:
-                origin = self.bounding_box.center
+                # if nan values in the bb.center they get replaced with 0.0
+                # this happens when the bounding_box contains inf values
+                origin = np.nan_to_num(bb.center)
             if width is None:
-                bb_width = self.bounding_box.width
+                bb_width = bb.width
                 x_width = bb_width['xyz'.index(basis[0])]
                 y_width = bb_width['xyz'.index(basis[1])]
                 width = (x_width, y_width)
@@ -1048,7 +1051,7 @@ class DAGMCUniverse(UniverseBase):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             `<dagmc_universe>` element
 
         Returns

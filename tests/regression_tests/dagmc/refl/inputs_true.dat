@@ -3,7 +3,7 @@
   <materials>
   </materials>
   <geometry>
-    <dagmc_universe auto_geom_ids="true" filename="dagmc.h5m" id="1" />
+    <dagmc_universe auto_geom_ids="true" filename="dagmc.h5m" id="1"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>

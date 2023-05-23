@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from copy import deepcopy
 import math
 from numbers import Real
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 from warnings import warn, catch_warnings, simplefilter
 
 import numpy as np
@@ -393,7 +393,7 @@ class Surface(IDManagerMixin, ABC):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing source data
 
         """
@@ -417,7 +417,7 @@ class Surface(IDManagerMixin, ABC):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -624,7 +624,7 @@ class PlaneMixin:
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing source data
 
         """
@@ -1280,7 +1280,7 @@ class Cylinder(QuadricMixin, Surface):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing source data
 
         """
@@ -1802,7 +1802,7 @@ class Cone(QuadricMixin, Surface):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing source data
 
         """

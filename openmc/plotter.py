@@ -59,7 +59,7 @@ def _get_legend_label(this, type):
     """Gets a label for the element or nuclide or material and reaction plotted"""
     if isinstance(this, str):
         return f'{this} {type}'
-    elif this.name is '':
+    elif this.name == '':
         return f'Material {this.id} {type}'
     else:
         return f'{this.name} {type}'

@@ -5,7 +5,7 @@ import warnings
 import typing  # imported separately as py3.8 requires typing.Iterable
 # also required to prevent typing.Union namespace overwriting Union
 from typing import Optional, Sequence
-from xml.etree import ElementTree as ET
+import lxml.etree as ET 
 
 import numpy as np
 import h5py
@@ -228,7 +228,7 @@ class Source:
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing source data
 
         """
@@ -263,7 +263,7 @@ class Source:
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
         meshes : dict
             Dictionary with mesh IDs as keys and openmc.MeshBase instaces as

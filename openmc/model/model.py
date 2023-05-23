@@ -7,7 +7,7 @@ from pathlib import Path
 from numbers import Integral
 from tempfile import NamedTemporaryFile
 import warnings
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 from typing import Optional, Dict
 
 import h5py
@@ -527,17 +527,17 @@ class Model:
             # This will write the XML header also
             materials._write_xml(fh, False, level=1)
             # Write remaining elements as a tree
-            ET.ElementTree(geometry_element).write(fh, encoding='unicode')
-            ET.ElementTree(settings_element).write(fh, encoding='unicode')
+            fh.write(ET.tostring(geometry_element, encoding="unicode"))
+            fh.write(ET.tostring(settings_element, encoding="unicode"))
 
             if self.tallies:
                 tallies_element = self.tallies.to_xml_element(mesh_memo)
                 xml.clean_indentation(tallies_element, level=1, trailing_indent=self.plots)
-                ET.ElementTree(tallies_element).write(fh, encoding='unicode')
+                fh.write(ET.tostring(tallies_element, encoding="unicode"))
             if self.plots:
                 plots_element = self.plots.to_xml_element()
                 xml.clean_indentation(plots_element, level=1, trailing_indent=False)
-                ET.ElementTree(plots_element).write(fh, encoding='unicode')
+                fh.write(ET.tostring(plots_element, encoding="unicode"))
             fh.write("</model>\n")
 
     def import_properties(self, filename):

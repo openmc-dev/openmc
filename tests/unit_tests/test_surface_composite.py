@@ -315,6 +315,7 @@ def test_isogonal_octagon(axis, plane_tb, plane_lr, axis_idx):
     # Make sure repr works
     repr(s)
 
+
 def test_polygon():
     # define a 5 pointed star centered on 1, 1
     star = np.array([[1.        , 2.        ],
@@ -393,3 +394,70 @@ def test_polygon():
                           [6.88, 3.02]])
     with pytest.raises(ValueError):
         openmc.model.Polygon(rz_points)
+
+
+@pytest.mark.parametrize("axis", ["x", "y", "z"])
+def test_cruciform_prism(axis):
+    center = x0, y0 = (3., 4.)
+    distances = [2., 3., 5.]
+    s = openmc.model.CruciformPrism(distances, center, axis=axis)
+
+    if axis == 'x':
+        i1, i2 = 1, 2
+    elif axis == 'y':
+        i1, i2 = 0, 2
+    elif axis == 'z':
+        i1, i2 = 0, 1
+    plane_cls = (openmc.XPlane, openmc.YPlane, openmc.ZPlane)
+
+    # Check type of surfaces
+    for i in range(3):
+        assert isinstance(getattr(s, f'hmin{i}'), plane_cls[i1])
+        assert isinstance(getattr(s, f'hmax{i}'), plane_cls[i1])
+        assert isinstance(getattr(s, f'vmin{i}'), plane_cls[i2])
+        assert isinstance(getattr(s, f'vmax{i}'), plane_cls[i2])
+
+    # Make sure boundary condition propagates
+    s.boundary_type = 'reflective'
+    for i in range(3):
+        assert getattr(s, f'hmin{i}').boundary_type == 'reflective'
+        assert getattr(s, f'hmax{i}').boundary_type == 'reflective'
+        assert getattr(s, f'vmin{i}').boundary_type == 'reflective'
+        assert getattr(s, f'vmax{i}').boundary_type == 'reflective'
+
+    # Check bounding box
+    ll, ur = (+s).bounding_box
+    assert np.all(np.isinf(ll))
+    assert np.all(np.isinf(ur))
+    ll, ur = (-s).bounding_box
+    assert ur[i1] == pytest.approx(x0 + distances[-1])
+    assert ur[i2] == pytest.approx(y0 + distances[-1])
+    assert ll[i1] == pytest.approx(x0 - distances[-1])
+    assert ll[i2] == pytest.approx(y0 - distances[-1])
+
+    # __contains__ on associated half-spaces
+    point_pos, point_neg = np.zeros(3), np.zeros(3)
+    point_pos[i1] = x0 + 3.1
+    point_pos[i2] = y0 + 2.05
+    point_neg[i1] = x0 + 3.5
+    point_neg[i2] = y0 + 1.99
+    assert point_pos in +s
+    assert point_pos not in -s
+    assert point_neg in -s
+    assert point_neg not in +s
+
+    # translate method
+    t = uniform(-5.0, 5.0)
+    s_t = s.translate((t, t, t))
+    ll_t, ur_t = (-s_t).bounding_box
+    assert ur_t == pytest.approx(ur + t)
+    assert ll_t == pytest.approx(ll + t)
+
+    # Make sure repr works
+    repr(s)
+
+    # Check that non-monotonic distances fail
+    with pytest.raises(ValueError):
+        openmc.model.CruciformPrism([1.0, 0.5, 2.0, 3.0])
+    with pytest.raises(ValueError):
+        openmc.model.CruciformPrism([3.0, 2.0, 0.5, 1.0])

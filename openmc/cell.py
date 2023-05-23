@@ -13,6 +13,7 @@ from ._xml import get_text
 from .mixin import IDManagerMixin
 from .region import Region, Complement
 from .surface import Halfspace
+from .bounding_box import BoundingBox
 
 
 class Cell(IDManagerMixin):
@@ -91,6 +92,8 @@ class Cell(IDManagerMixin):
         fill. For example, {'U235': 1.0e22, 'U238': 5.0e22, ...}.
 
         .. versionadded:: 0.12
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the cell
 
     """
 
@@ -249,8 +252,8 @@ class Cell(IDManagerMixin):
         if self.region is not None:
             return self.region.bounding_box
         else:
-            return (np.array([-np.inf, -np.inf, -np.inf]),
-                    np.array([np.inf, np.inf, np.inf]))
+            return BoundingBox(np.array([-np.inf, -np.inf, -np.inf]),
+                               np.array([np.inf, np.inf, np.inf]))
 
     @property
     def num_instances(self):

@@ -91,7 +91,7 @@ inelastic scattering reactions. The specific multi-group scattering
 implementation is discussed in the :ref:`multi-group-scatter` section.
 
 Elastic scattering refers to the process by which a neutron scatters off a
-nucleus and does not leave it in an excited. It is referred to as "elastic"
+nucleus and does not leave it in an excited state. It is referred to as "elastic"
 because in the center-of-mass system, the neutron does not actually lose
 energy. However, in lab coordinates, the neutron does indeed lose
 energy. Elastic scattering can be treated exactly in a Monte Carlo code thanks

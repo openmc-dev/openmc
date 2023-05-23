@@ -16,7 +16,7 @@ import openmc
 import openmc._xml as xml
 from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
-from openmc.checkvalue import check_type, check_value
+from openmc.checkvalue import check_type, check_value, PathLike
 from openmc.exceptions import InvalidIDError
 
 
@@ -24,7 +24,7 @@ from openmc.exceptions import InvalidIDError
 def _change_directory(working_dir):
     """A context manager for executing in a provided working directory"""
     start_dir = Path.cwd()
-    Path.mkdir(working_dir, exist_ok=True)
+    Path.mkdir(working_dir, parents=True, exist_ok=True)
     os.chdir(working_dir)
     try:
         yield
@@ -632,7 +632,7 @@ class Model:
             Settings.max_tracks is set. Defaults to False.
         output : bool, optional
             Capture OpenMC output from standard out
-        cwd : str, optional
+        cwd : PathLike, optional
             Path to working directory to run in. Defaults to the current working
             directory.
         openmc_exec : str, optional

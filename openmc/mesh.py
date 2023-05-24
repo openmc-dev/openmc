@@ -801,13 +801,14 @@ class RegularMesh(StructuredMesh):
 
     def get_data_slice(self, dataset: np.array, basis: str, slice_index: int):
         """Maps the provided dataset values to the mesh and obtains a 2D slice
-        of dataset values on the mesh. Useful for producing plots of slice data.
+        of dataset values on the specified mesh slice index. Useful when plotting
+        slices of mesh tally results.
 
         Parameters
         ----------
         datasets : numpy.array
             1-D array of data values. Will be reshaped to fill the mesh and
-            should therefore have the same number of entries to fill the mesh
+            must have the same number of entries to fill the mesh
         basis : {'xy', 'xz', 'yz'}
             The basis directions for the slice
         slice_index : int

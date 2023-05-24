@@ -185,7 +185,7 @@ class StructuredMesh(MeshBase):
 
     @staticmethod
     def _generate_vertices(i_grid, j_grid, k_grid):
-
+        return np.stack(np.meshgrid(i_grid, j_grid, k_grid, indexing='ij'), axis=0)
         # np.meshgrid changes k fastest, then j, then i assign the appropriate
         # grid points to the i,j,k arrays going into meshgrid
         grid_pnts = np.meshgrid(k_grid, j_grid, i_grid, indexing='ij')[::-1]
@@ -204,7 +204,7 @@ class StructuredMesh(MeshBase):
             i_grid, j_grid, k_grid = [coords[dims.index(i)] for i in range(3)]
 
             # generate vertices from the new grids
-            midpoint_grid = StructuredMesh._generate_vertices(i_grid, j_grid, k_grid)
+            midpoint_grid = StructuredMesh._generate_vertices(i_grid, j_grid, k_grid).T.reshape(-1, 3)
 
             # reshape so points can be indexed as (i, j, k, xyz)
             shape = (i_grid.size, j_grid.size, k_grid.size, 3)
@@ -314,13 +314,13 @@ class StructuredMesh(MeshBase):
             locator.SetDataSet(vtk_grid)
             locator.AutomaticOn() # autmoatically adds points to locator
             locator.InitPointInsertion(vtkPts, vtkPts.GetBounds())
+            locator.BuildLocator()
 
             # this function ensures that coincident points are not
             # re-created in the VTK mesh. It will return an existing
             # point ID if the point is alread present
             def _insert_point(pnt):
                 result = locator.IsInsertedPoint(pnt)
-                print(result)
                 if  result == -1:
                     point_id = vtkPts.InsertNextPoint(pnt)
                     locator.InsertPoint(point_id, pnt)
@@ -328,13 +328,14 @@ class StructuredMesh(MeshBase):
                     point_id = locator.IsInsertedPoint(pnt)
                 return point_id
 
-            vertices = self.vertices.reshape((-1, 3))
-            print(vertices.shape)
+            # vertices = self.vertices.reshape((-1, 3))
+            vertices = points
+            # print(vertices.shape)
 
             # flat array storind point IDs for a given vertex
             # in the grid
             point_ids = []
-            # add element corner vertices to array
+            # # add element corner vertices to arrayp
             for pnt in vertices:
                 point_ids.append(_insert_point(pnt))
 

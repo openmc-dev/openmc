@@ -54,7 +54,6 @@ test_data = ((reg_mesh, False, 'regular'),
              (sphere_mesh, False, 'spherical-linear'),
              (sphere_mesh, True, 'spherical-curvilinear'))
 
-
 @pytest.mark.parametrize('mesh_params',
                          test_data,
                          ids=lambda params: params[2])

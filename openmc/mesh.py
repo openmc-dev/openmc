@@ -245,7 +245,7 @@ class StructuredMesh(MeshBase):
     def num_mesh_cells(self):
         return np.prod(self.dimension)
 
-    def write_data_to_vtk(self, points, filename, datasets,
+    def write_data_to_vtk(self, points, filename, datasets={},
                           volume_normalization=True,
                           curvilinear=False):
         """Creates a VTK object of the mesh
@@ -408,7 +408,7 @@ class StructuredMesh(MeshBase):
             datasets_out.append(dataset)
 
             if volume_normalization:
-                dataset /= self.volumes.T.flatten()
+                dataset = np.divide(dataset, self.volumes.T.flatten())
 
             dataset_array = vtk.vtkDoubleArray()
             dataset_array.SetName(label)
@@ -903,7 +903,7 @@ class RegularMesh(StructuredMesh):
 
         return root_cell, cells
 
-    def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
+    def write_data_to_vtk(self, filename, datasets={}, volume_normalization=True):
         """Creates a VTK object of the mesh
 
         Parameters
@@ -1137,7 +1137,7 @@ class RectilinearMesh(StructuredMesh):
 
         return element
 
-    def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
+    def write_data_to_vtk(self, filename, datasets={}, volume_normalization=True):
         """Creates a VTK object of the mesh
 
         Parameters
@@ -1450,7 +1450,7 @@ class CylindricalMesh(StructuredMesh):
 
         return np.multiply.outer(np.outer(V_r, V_p), V_z)
 
-    def write_data_to_vtk(self, filename, datasets, volume_normalization=True, curvilinear=False):
+    def write_data_to_vtk(self, filename, datasets={}, volume_normalization=True, curvilinear=False):
         """Creates a VTK object of the mesh
 
         Parameters
@@ -1707,7 +1707,7 @@ class SphericalMesh(StructuredMesh):
 
         return np.multiply.outer(np.outer(V_r, V_t), V_p)
 
-    def write_data_to_vtk(self, filename, datasets, volume_normalization=True, curvilinear=False):
+    def write_data_to_vtk(self, filename, datasets={}, volume_normalization=True, curvilinear=False):
         """Creates a VTK object of the mesh
 
         Parameters
@@ -1986,7 +1986,7 @@ class UnstructuredMesh(MeshBase):
         )
         self.write_data_to_vtk(**kwargs)
 
-    def write_data_to_vtk(self, filename=None, datasets=None, volume_normalization=True):
+    def write_data_to_vtk(self, filename=None, datasets={}, volume_normalization=True):
         """Map data to unstructured VTK mesh elements.
 
         Parameters

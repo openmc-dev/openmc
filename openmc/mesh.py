@@ -261,15 +261,13 @@ class StructuredMesh(MeshBase):
     def num_mesh_cells(self):
         return np.prod(self.dimension)
 
-    def write_data_to_vtk(self, corner_vertices, filename, datasets=None,
+    def write_data_to_vtk(self, filename, datasets=None,
                           volume_normalization=True,
                           curvilinear=False):
         """Creates a VTK object of the mesh
 
         Parameters
         ----------
-        corner_vertices : list or np.array
-            List of (X,Y,Z) tuples for the corners of the mesh elements
         filename : str
             Name of the VTK file to write.
         datasets : dict
@@ -301,11 +299,11 @@ class StructuredMesh(MeshBase):
 
         # write linear elements using a structured grid
         if not curvilinear or isinstance(self, (RegularMesh, RectilinearMesh)):
-            vtk_grid = self._create_vtk_structured_grid(corner_vertices)
+            vtk_grid = self._create_vtk_structured_grid()
             writer = vtk.vtkStructuredGridWriter()
         # write curvilinear elements using an unstructured grid
         else:
-            vtk_grid = self._create_vtk_unstructured_grid(corner_vertices)
+            vtk_grid = self._create_vtk_unstructured_grid()
             writer = vtk.vtkUnstructuredGridWriter()
 
         # maintain a list of the datasets as added
@@ -320,23 +318,27 @@ class StructuredMesh(MeshBase):
 
         return vtk_grid
 
-    def _create_vtk_structured_grid(self, corner_vertices):
+    def _create_vtk_structured_grid(self):
         """
         """
         import vtk
         from vtk.util import numpy_support as nps
 
+        vertices = self.cartesian_vertices
+
         vtkPts = vtk.vtkPoints()
-        vtkPts.SetData(nps.numpy_to_vtk(corner_vertices, deep=True))
+        vtkPts.SetData(nps.numpy_to_vtk(vertices, deep=True))
         vtk_grid = vtk.vtkStructuredGrid()
         vtk_grid.SetPoints(vtkPts)
         vtk_grid.SetDimensions(*[dim + 1 for dim in self.dimension])
 
         return vtk_grid
 
-    def _create_vtk_unstructured_grid(self, corner_vertices):
+    def _create_vtk_unstructured_grid(self):
         import vtk
         from vtk.util import numpy_support as nps
+
+        corner_vertices = self.cartesian_vertices
 
         vtkPts = vtk.vtkPoints()
         vtk_grid = vtk.vtkUnstructuredGrid()
@@ -536,6 +538,12 @@ class RegularMesh(StructuredMesh):
                 ls = self._lower_left
                 dims =  self._dimension
                 return [(u - l) / d for u, l, d in zip(us, ls, dims)]
+
+    @property
+    def cartesian_vertices(self):
+        """Returns vertices in cartesian coordiantes. Identical to ``vertices`` for RegularMesh and RectilinearMesh
+        """
+        return self.vertices.T.reshape(-1, 3)
 
     @property
     def volumes(self):
@@ -937,42 +945,6 @@ class RegularMesh(StructuredMesh):
 
         return root_cell, cells
 
-    def write_data_to_vtk(self, filename, datasets=None, volume_normalization=True):
-        """Creates a VTK object of the mesh
-
-        Parameters
-        ----------
-        filename : str or pathlib.Path
-            Name of the VTK file to write.
-        datasets : dict
-            Dictionary whose keys are the data labels
-            and values are the data sets.
-        volume_normalization : bool, optional
-            Whether or not to normalize the data by
-            the volume of the mesh elements.
-            Defaults to True.
-
-        Returns
-        -------
-        vtk.vtkStructuredGrid
-            the VTK object
-        """
-
-        ll, ur = self.lower_left, self.upper_right
-        x_vals = np.linspace(ll[0], ur[0], num=self.dimension[0] + 1)
-        y_vals = np.linspace(ll[1], ur[1], num=self.dimension[1] + 1)
-        z_vals = np.linspace(ll[2], ur[2], num=self.dimension[2] + 1)
-
-        # create points
-        pts_cartesian = np.array([[x, y, z] for z in z_vals for y in y_vals for x in x_vals])
-
-        return super().write_data_to_vtk(
-            corner_vertices=pts_cartesian,
-            filename=filename,
-            datasets=datasets,
-            volume_normalization=volume_normalization
-        )
-
 def Mesh(*args, **kwargs):
     warnings.warn("Mesh has been renamed RegularMesh. Future versions of "
                   "OpenMC will not accept the name Mesh.")
@@ -1043,6 +1015,12 @@ class RectilinearMesh(StructuredMesh):
     @property
     def _grids(self):
         return (self.x_grid, self.y_grid, self.z_grid)
+
+    @property
+    def cartesian_vertices(self):
+        """Returns vertices in cartesian coordiantes. Identical to ``vertices`` for RegularMesh and RectilinearMesh
+        """
+        return self.vertices.T.reshape(-1, 3)
 
     @property
     def volumes(self):
@@ -1170,36 +1148,6 @@ class RectilinearMesh(StructuredMesh):
         subelement.text = ' '.join(map(str, self.z_grid))
 
         return element
-
-    def write_data_to_vtk(self, filename, datasets=None, volume_normalization=True):
-        """Creates a VTK object of the mesh
-
-        Parameters
-        ----------
-        filename : str or pathlib.Path
-            Name of the VTK file to write.
-        datasets : dict
-            Dictionary whose keys are the data labels
-            and values are the data sets.
-        volume_normalization : bool, optional
-            Whether or not to normalize the data by
-            the volume of the mesh elements.
-            Defaults to True.
-
-        Returns
-        -------
-        vtk.vtkStructuredGrid
-            the VTK object
-        """
-        # create points
-        pts_cartesian = self.vertices.T.reshape(-1, 3)
-
-        return super().write_data_to_vtk(
-            corner_vertices=pts_cartesian,
-            filename=filename,
-            datasets=datasets,
-            volume_normalization=volume_normalization
-        )
 
 
 class CylindricalMesh(StructuredMesh):
@@ -1484,46 +1432,9 @@ class CylindricalMesh(StructuredMesh):
 
         return np.multiply.outer(np.outer(V_r, V_p), V_z)
 
-    def write_data_to_vtk(self, filename, datasets=None, volume_normalization=True, curvilinear=False):
-        """Creates a VTK object of the mesh
-
-        Parameters
-        ----------
-        filename : str or pathlib.Path
-            Name of the VTK file to write.
-        datasets : dict
-            Dictionary whose keys are the data labels
-            and values are the data sets.
-        volume_normalization : bool, optional
-            Whether or not to normalize the data by
-            the volume of the mesh elements.
-            Defaults to True.
-
-        Returns
-        -------
-        vtk.vtkStructuredGrid
-            the VTK object
-        """
-        # create points
-        pts_cylindrical = self.vertices.T.reshape(-1, 3)
-        pts_cartesian = np.copy(pts_cylindrical)
-
-        r, phi = pts_cylindrical[:, 0], pts_cylindrical[:, 1]
-        pts_cartesian[:, 0] = r * np.cos(phi) + self.origin[0]
-        pts_cartesian[:, 1] = r * np.sin(phi) + self.origin[1]
-        pts_cartesian[:, 2] += self.origin[2]
-
-        return super().write_data_to_vtk(
-            corner_vertices=pts_cartesian,
-            filename=filename,
-            datasets=datasets,
-            volume_normalization=volume_normalization,
-            curvilinear=curvilinear
-        )
-
     @property
     def cartesian_vertices(self):
-        return self._convert_to_cartesian(self.vertices, self.origin)
+        return self._convert_to_cartesian(self.vertices.T.reshape(-1, 3), self.origin)
 
     @staticmethod
     def _convert_to_cartesian(arr, origin):
@@ -1532,6 +1443,7 @@ class CylindricalMesh(StructuredMesh):
         arr[..., 0] = x
         arr[..., 1] = y
         arr[..., 2] += origin[2]
+        return arr
 
 class SphericalMesh(StructuredMesh):
     """A 3D spherical mesh
@@ -1746,47 +1658,9 @@ class SphericalMesh(StructuredMesh):
 
         return np.multiply.outer(np.outer(V_r, V_t), V_p)
 
-    def write_data_to_vtk(self, filename, datasets=None, volume_normalization=True, curvilinear=False):
-        """Creates a VTK object of the mesh
-
-        Parameters
-        ----------
-        filename : str or pathlib.Path
-            Name of the VTK file to write.
-        datasets : dict
-            Dictionary whose keys are the data labels
-            and values are the data sets.
-        volume_normalization : bool, optional
-            Whether or not to normalize the data by
-            the volume of the mesh elements.
-            Defaults to True.
-
-        Returns
-        -------
-        vtk.vtkStructuredGrid
-            the VTK object
-        """
-        # create points
-        pts_spherical = self.vertices.T.reshape(-1, 3)
-        pts_cartesian = np.copy(pts_spherical)
-
-        r, theta, phi = pts_spherical[:, 0], pts_spherical[:, 1], pts_spherical[:, 2]
-
-        pts_cartesian[:, 0] = r * np.sin(theta) * np.cos(phi) + self.origin[0]
-        pts_cartesian[:, 1] = r * np.sin(theta) * np.sin(phi) + self.origin[1]
-        pts_cartesian[:, 2] = r * np.cos(theta) + self.origin[2]
-
-        return super().write_data_to_vtk(
-            corner_vertices=pts_cartesian,
-            filename=filename,
-            datasets=datasets,
-            volume_normalization=volume_normalization,
-            curvilinear=curvilinear
-        )
-
     @property
     def cartesian_vertices(self):
-        return self._convert_to_cartesian(self.vertices, self.origin)
+        return self._convert_to_cartesian(self.vertices.T.reshape(-1, 3), self.origin)
 
     @staticmethod
     def _convert_to_cartesian(arr, origin):
@@ -1797,6 +1671,7 @@ class SphericalMesh(StructuredMesh):
         arr[..., 0] = x + origin[0]
         arr[..., 1] = y + origin[1]
         arr[..., 2] = z + origin[2]
+        return arr
 
 
 class UnstructuredMesh(MeshBase):

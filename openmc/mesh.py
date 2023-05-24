@@ -191,18 +191,37 @@ class StructuredMesh(MeshBase):
 
     @staticmethod
     def _generate_edge_midpoints(grids):
+        """
+
+        Parameters
+        ----------
+        grids : numpy.ndarray
+            The vertex grids along each dimension of the mesh.
+
+        Returns
+        -------
+        midpoint_grids : list of numpy.ndarray
+            The edge midpoints for the i, j, and k midpoints of each element in
+            i, j, k ordering. Shape of the grids is [(ni-1, nj, nk, 3), (ni, nj-1, nk, 3), (ni, nj, nk-1, 3)]
+        """
         # generate a set of edge midpoints for each dimension
         midpoint_grids = []
+        # generate the element edge midpoints in order s.t.
+        # the epxected element ordering is preserved with respect to the corner vertices
+
+        # each grid is comprised of the mid points for one dimension and the
+        # corner vertices of the other two
         for dims in ((0, 1, 2), (1, 0, 2), (2, 0, 1)):
+            # compute the midpoints along the first dimension
             midpoints = grids[dims[0]][:-1] + 0.5 * np.diff(grids[dims[0]])
+
             coords = (midpoints, grids[dims[1]], grids[dims[2]])
 
             i_grid, j_grid, k_grid = [coords[dims.index(i)] for i in range(3)]
 
-            # generate vertices from the new grids
+            # re-use the generate vertices method to create the full mesh grid
+            # transpose to get (i, j, k) ordering of the gridpoints
             midpoint_grid = StructuredMesh._generate_vertices(i_grid, j_grid, k_grid).T.reshape(-1, 3)
-
-            # reshape so points can be indexed as (i, j, k, xyz)
             shape = (i_grid.size, j_grid.size, k_grid.size, 3)
             midpoint_grids.append(midpoint_grid.reshape(shape))
 
@@ -213,8 +232,9 @@ class StructuredMesh(MeshBase):
         # generate edge midpoints needed for curvilinear element definition
         midpoint_vertices = self._generate_edge_midpoints(self._grids)
 
+        # convert each of the midpoint grids to cartesian coordinates
         for vertices in midpoint_vertices:
-            self._convert_to_cartesian(vertices)
+            self._convert_to_cartesian(vertices, self.origin)
 
         return midpoint_vertices
 
@@ -241,15 +261,15 @@ class StructuredMesh(MeshBase):
     def num_mesh_cells(self):
         return np.prod(self.dimension)
 
-    def write_data_to_vtk(self, points, filename, datasets=None,
+    def write_data_to_vtk(self, corner_vertices, filename, datasets=None,
                           volume_normalization=True,
                           curvilinear=False):
         """Creates a VTK object of the mesh
 
         Parameters
         ----------
-        points : list or np.array
-            List of (X,Y,Z) tuples.
+        corner_vertices : list or np.array
+            List of (X,Y,Z) tuples for the corners of the mesh elements
         filename : str
             Name of the VTK file to write.
         datasets : dict
@@ -272,148 +292,27 @@ class StructuredMesh(MeshBase):
         vtk.vtkStructuredGrid
             the VTK object
         """
-
         import vtk
-        from vtk.util import numpy_support as nps
+        from vtk.util import numpy_support as nps # TODO: move into lower-level functions
 
         # check that the data sets are appropriately sized
         if datasets is not None:
-            for label, dataset in datasets.items():
-                errmsg = (
-                    f"The size of the dataset '{label}' ({dataset.size}) should be"
-                    f" equal to the number of mesh cells ({self.num_mesh_cells})"
-                )
-                if isinstance(dataset, np.ndarray):
-                    if not dataset.size == self.num_mesh_cells:
-                        raise ValueError(errmsg)
-                else:
-                    if len(dataset) == self.num_mesh_cells:
-                        raise ValueError(errmsg)
-                cv.check_type('data label', label, str)
+            self._check_vtk_datasets(datasets)
 
-        vtkPts = vtk.vtkPoints()
-
+        # write linear elements using a structured grid
         if not curvilinear or isinstance(self, (RegularMesh, RectilinearMesh)):
-            vtkPts.SetData(nps.numpy_to_vtk(points, deep=True))
-            vtk_grid = vtk.vtkStructuredGrid()
-            vtk_grid.SetPoints(vtkPts)
-
-            vtk_grid.SetDimensions(*[dim + 1 for dim in self.dimension])
-
-            # write the .vtk file
+            vtk_grid = self._create_vtk_structured_grid(corner_vertices)
             writer = vtk.vtkStructuredGridWriter()
+        # write curvilinear elements using an unstructured grid
         else:
-            vtk_grid = vtk.vtkUnstructuredGrid()
-            vtk_grid.SetPoints(vtkPts)
-            vtkPts.SetData(nps.numpy_to_vtk(np.unique(points, axis=0), deep=True))
-
-            # create a locator to assist with coincident points
-            locator = vtk.vtkPointLocator()
-            locator.SetDataSet(vtk_grid)
-            locator.AutomaticOn() # autmoatically adds points to locator
-            locator.InitPointInsertion(vtkPts, vtkPts.GetBounds())
-            locator.BuildLocator()
-
-            # this function ensures that coincident points are not
-            # re-created in the VTK mesh. It will return an existing
-            # point ID if the point is alread present
-            def _insert_point(pnt):
-                result = locator.IsInsertedPoint(pnt)
-                if result == -1:
-                    point_id = vtkPts.InsertNextPoint(pnt)
-                    locator.InsertPoint(point_id, pnt)
-                    return point_id
-                else:
-                    return result
-
-            # vertices = self.vertices.reshape((-1, 3))
-            vertices = points
-            # print(vertices.shape)
-
-            # flat array storind point IDs for a given vertex
-            # in the grid
-            point_ids = []
-            # # add element corner vertices to arrayp
-            for pnt in vertices:
-                point_ids.append(_insert_point(pnt))
-
-            hex_type = vtk.vtkQuadraticHexahedron
-            n_elem = np.asarray(self.dimension)
-            n_pnts = n_elem + 1
-            # create hexes and set points for corner
-            # vertices
-            hexes = []
-            for i, j, k in self.indices:
-                # handle indices indexed from one
-                i -= 1
-                j -= 1
-                k -= 1
-
-                # create a new vtk hex
-                hex = hex_type()
-
-                # set connectivity of the hex
-                for n, (di, dj, dk) in enumerate(_HEX_VERTEX_CONN):
-                    # compute flat index into the point ID list based on i, j, k
-                    # of the vertex
-                    flat_idx = np.ravel_multi_index((i+di, j+dj, k+dk), n_pnts, order='F')
-                    hex.GetPointIds().SetId(n, point_ids[flat_idx])
-
-                hexes.append(hex)
-
-            # get edge midpoints and add them to the
-            # list of point IDs
-            midpoint_vertices = self.midpoint_vertices
-            for edge_grid in midpoint_vertices:
-                for pnt in edge_grid.reshape(-1, 3):
-                    point_ids.append(_insert_point(pnt))
-
-            # set connectivity of midpoints on hexes
-            for hex_id, (i, j, k) in enumerate(self.indices):
-                # handle indices indexed from one
-                i -= 1
-                j -= 1
-                k -= 1
-
-                hex = hexes[hex_id]
-                n_midpoint_vertices = [mv.size // 3 for mv in midpoint_vertices]
-                for n, (dim, (di, dj, dk)) in enumerate(_HEX_MIDPOINT_CONN):
-                    # initial offset for corner vertices and midpoint dimension
-                    flat_idx = vertices.shape[0] + sum(n_midpoint_vertices[:dim])
-                    # generate a flat index into the table of point IDs
-                    idi, idj, idk = (i + di, j + dj, k + dk)
-                    flat_idx += np.ravel_multi_index((idi, idj, idk),
-                                                    midpoint_vertices[dim].shape[:-1],
-                                                    order='F')
-                    # set hex midpoint connectivity
-                    hex.GetPointIds().SetId(_N_HEX_VERTICES + n, point_ids[flat_idx])
-
-            # add all hexes to the grid
-            for hex in hexes:
-                vtk_grid.InsertNextCell(hex.GetCellType(), hex.GetPointIds())
-
+            vtk_grid = self._create_vtk_unstructured_grid(corner_vertices)
             writer = vtk.vtkUnstructuredGridWriter()
-        # create VTK arrays for each of
-        # the data sets
 
         # maintain a list of the datasets as added
         # to the VTK arrays to ensure they persist
         # in memory until the file is written
         if datasets is not None:
-            datasets_out = []
-            for label, dataset in datasets.items():
-                dataset = np.asarray(dataset).flatten()
-                datasets_out.append(dataset)
-
-                if volume_normalization:
-                    dataset /= self.volumes.T.flatten()
-
-                dataset_array = vtk.vtkDoubleArray()
-                dataset_array.SetName(label)
-                dataset_array.SetArray(nps.numpy_to_vtk(dataset),
-                            dataset.size,
-                            True)
-                vtk_grid.GetCellData().AddArray(dataset_array)
+            datasets_out = self._apply_vtk_datasets(vtk_grid, datasets, volume_normalization)
 
         writer.SetFileName(str(filename))
         writer.SetInputData(vtk_grid)
@@ -421,6 +320,143 @@ class StructuredMesh(MeshBase):
 
         return vtk_grid
 
+    def _create_vtk_structured_grid(self, corner_vertices):
+        """
+        """
+        import vtk
+        from vtk.util import numpy_support as nps
+
+        vtkPts = vtk.vtkPoints()
+        vtkPts.SetData(nps.numpy_to_vtk(corner_vertices, deep=True))
+        vtk_grid = vtk.vtkStructuredGrid()
+        vtk_grid.SetPoints(vtkPts)
+        vtk_grid.SetDimensions(*[dim + 1 for dim in self.dimension])
+
+        return vtk_grid
+
+    def _create_vtk_unstructured_grid(self, corner_vertices):
+        import vtk
+        from vtk.util import numpy_support as nps
+
+        vtkPts = vtk.vtkPoints()
+        vtk_grid = vtk.vtkUnstructuredGrid()
+        vtk_grid.SetPoints(vtkPts)
+        # add corner vertices to the point set for the unstructured grid
+        # only insert unique points, we'll get their IDs in the point set to
+        # define element connectivity later
+        vtkPts.SetData(nps.numpy_to_vtk(np.unique(corner_vertices, axis=0), deep=True))
+
+        # create a locator to assist with duplicate points
+        locator = vtk.vtkPointLocator()
+        locator.SetDataSet(vtk_grid)
+        locator.AutomaticOn() # autmoatically adds points to locator
+        locator.InitPointInsertion(vtkPts, vtkPts.GetBounds())
+        locator.BuildLocator()
+
+        # this function is used to add new points to the unstructured
+        # grid. It will return an existing point ID if the point is alread present
+        def _insert_point(pnt):
+            result = locator.IsInsertedPoint(pnt)
+            if result == -1:
+                point_id = vtkPts.InsertNextPoint(pnt)
+                locator.InsertPoint(point_id, pnt)
+                return point_id
+            else:
+                return result
+
+        ### Add all points to the unstructured grid, maintaining a flat list of IDs as we go ###
+
+        # flat array storind point IDs for a given vertex
+        # in the grid
+        point_ids = []
+
+        # add element corner vertices to array
+        for pnt in corner_vertices:
+            point_ids.append(_insert_point(pnt))
+
+        # get edge midpoints and add them to the
+        # list of point IDs
+        midpoint_vertices = self.midpoint_vertices
+        for edge_grid in midpoint_vertices:
+            for pnt in edge_grid.reshape(-1, 3):
+                point_ids.append(_insert_point(pnt))
+
+        # determine how many elements in each dimension
+        # and how many points in each grid
+        n_elem = np.asarray(self.dimension)
+        n_pnts = n_elem + 1
+
+        # create hexes and set points for corner
+        # vertices
+        for i, j, k in self.indices:
+            # handle indices indexed from one
+            i -= 1
+            j -= 1
+            k -= 1
+
+            # create a new vtk hex
+            hex = vtk.vtkQuadraticHexahedron()
+
+            # set connectivity the hex corners
+            for n, (di, dj, dk) in enumerate(_HEX_VERTEX_CONN):
+                # compute flat index into the point ID list based on i, j, k
+                # of the vertex
+                flat_idx = np.ravel_multi_index((i+di, j+dj, k+dk), n_pnts, order='F')
+                hex.GetPointIds().SetId(n, point_ids[flat_idx])
+
+            # set connectivity of the hex midpoints
+            n_midpoint_vertices = [mv.size // 3 for mv in midpoint_vertices]
+            for n, (dim, (di, dj, dk)) in enumerate(_HEX_MIDPOINT_CONN):
+                # initial offset for corner vertices and midpoint dimension
+                flat_idx = corner_vertices.shape[0] + sum(n_midpoint_vertices[:dim])
+                # generate a flat index into the table of point IDs
+                idi, idj, idk = (i + di, j + dj, k + dk)
+                midpoint_shape = midpoint_vertices[dim].shape[:-1]
+                flat_idx += np.ravel_multi_index((idi, idj, idk),
+                                                    midpoint_shape,
+                                                order='F')
+                # set hex midpoint connectivity
+                hex.GetPointIds().SetId(_N_HEX_VERTICES + n, point_ids[flat_idx])
+
+            # add the hex to the grid
+            vtk_grid.InsertNextCell(hex.GetCellType(), hex.GetPointIds())
+
+        return vtk_grid
+
+    def _check_vtk_datasets(self, datasets):
+        for label, dataset in datasets.items():
+            errmsg = (
+                f"The size of the dataset '{label}' ({dataset.size}) should be"
+                f" equal to the number of mesh cells ({self.num_mesh_cells})"
+            )
+            if isinstance(dataset, np.ndarray):
+                if not dataset.size == self.num_mesh_cells:
+                    raise ValueError(errmsg)
+            else:
+                if len(dataset) == self.num_mesh_cells:
+                    raise ValueError(errmsg)
+            cv.check_type('data label', label, str)
+
+    def _apply_vtk_datasets(self, vtk_grid, datasets, volume_normalization):
+        import vtk
+        from vtk.util import numpy_support as nps
+
+        datasets_out = []
+        for label, dataset in datasets.items():
+            dataset = np.asarray(dataset).flatten()
+            datasets_out.append(dataset)
+
+            if volume_normalization:
+                dataset /= self.volumes.T.flatten()
+
+            dataset_array = vtk.vtkDoubleArray()
+            dataset_array.SetName(label)
+            dataset_array.SetArray(nps.numpy_to_vtk(dataset),
+                                   dataset.size,
+                                   True)
+            vtk_grid.GetCellData().AddArray(dataset_array)
+
+        return datasets_out
 
 class RegularMesh(StructuredMesh):
     """A regular Cartesian mesh in one, two, or three dimensions
@@ -931,7 +967,7 @@ class RegularMesh(StructuredMesh):
         pts_cartesian = np.array([[x, y, z] for z in z_vals for y in y_vals for x in x_vals])
 
         return super().write_data_to_vtk(
-            points=pts_cartesian,
+            corner_vertices=pts_cartesian,
             filename=filename,
             datasets=datasets,
             volume_normalization=volume_normalization
@@ -1159,7 +1195,7 @@ class RectilinearMesh(StructuredMesh):
         pts_cartesian = self.vertices.T.reshape(-1, 3)
 
         return super().write_data_to_vtk(
-            points=pts_cartesian,
+            corner_vertices=pts_cartesian,
             filename=filename,
             datasets=datasets,
             volume_normalization=volume_normalization
@@ -1478,19 +1514,24 @@ class CylindricalMesh(StructuredMesh):
         pts_cartesian[:, 2] += self.origin[2]
 
         return super().write_data_to_vtk(
-            points=pts_cartesian,
+            corner_vertices=pts_cartesian,
             filename=filename,
             datasets=datasets,
             volume_normalization=volume_normalization,
             curvilinear=curvilinear
         )
 
+    @property
+    def cartesian_vertices(self):
+        return self._convert_to_cartesian(self.vertices, self.origin)
+
     @staticmethod
-    def _convert_to_cartesian(arr):
-        x = arr[..., 0] * np.cos(arr[..., 1])
-        y = arr[..., 0] * np.sin(arr[..., 1])
+    def _convert_to_cartesian(arr, origin):
+        x = arr[..., 0] * np.cos(arr[..., 1]) + origin[0]
+        y = arr[..., 0] * np.sin(arr[..., 1]) + origin[1]
         arr[..., 0] = x
         arr[..., 1] = y
+        arr[..., 2] += origin[2]
 
 class SphericalMesh(StructuredMesh):
     """A 3D spherical mesh
@@ -1736,22 +1777,27 @@ class SphericalMesh(StructuredMesh):
         pts_cartesian[:, 2] = r * np.cos(theta) + self.origin[2]
 
         return super().write_data_to_vtk(
-            points=pts_cartesian,
+            corner_vertices=pts_cartesian,
             filename=filename,
             datasets=datasets,
             volume_normalization=volume_normalization,
             curvilinear=curvilinear
         )
 
+    @property
+    def cartesian_vertices(self):
+        return self._convert_to_cartesian(self.vertices, self.origin)
+
     @staticmethod
-    def _convert_to_cartesian(arr):
+    def _convert_to_cartesian(arr, origin):
         r_xy = arr[..., 0] * np.sin(arr[..., 1])
         x = r_xy * np.cos(arr[...,2])
         y = r_xy * np.sin(arr[...,2])
         z = arr[..., 0] * np.cos(arr[..., 1])
-        arr[..., 0] = x
-        arr[..., 1] = y
-        arr[..., 2] = z
+        arr[..., 0] = x + origin[0]
+        arr[..., 1] = y + origin[1]
+        arr[..., 2] = z + origin[2]
+
 
 class UnstructuredMesh(MeshBase):
     """A 3D unstructured mesh

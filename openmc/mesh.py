@@ -1706,7 +1706,7 @@ class SphericalMesh(StructuredMesh):
 
         return np.multiply.outer(np.outer(V_r, V_t), V_p)
 
-    def write_data_to_vtk(self, filename, datasets, volume_normalization=True, curvilienar=False):
+    def write_data_to_vtk(self, filename, datasets, volume_normalization=True, curvilinear=False):
         """Creates a VTK object of the mesh
 
         Parameters
@@ -1741,7 +1741,7 @@ class SphericalMesh(StructuredMesh):
             filename=filename,
             datasets=datasets,
             volume_normalization=volume_normalization,
-            curvilinear=curvilienar
+            curvilinear=curvilinear
         )
 
     @staticmethod

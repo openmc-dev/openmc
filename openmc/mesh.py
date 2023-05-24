@@ -295,9 +295,9 @@ class StructuredMesh(MeshBase):
             cv.check_type('label', label, str)
 
         vtkPts = vtk.vtkPoints()
-        vtkPts.SetData(nps.numpy_to_vtk(points, deep=True))
 
         if not curvilinear or isinstance(self, (RegularMesh, RectilinearMesh)):
+            vtkPts.SetData(nps.numpy_to_vtk(points, deep=True))
             vtk_grid = vtk.vtkStructuredGrid()
             vtk_grid.SetPoints(vtkPts)
 
@@ -308,6 +308,7 @@ class StructuredMesh(MeshBase):
         else:
             vtk_grid = vtk.vtkUnstructuredGrid()
             vtk_grid.SetPoints(vtkPts)
+            vtkPts.SetData(nps.numpy_to_vtk(np.unique(points, axis=0), deep=True))
 
             # create a locator to assist with coincident points
             locator = vtk.vtkPointLocator()
@@ -321,12 +322,12 @@ class StructuredMesh(MeshBase):
             # point ID if the point is alread present
             def _insert_point(pnt):
                 result = locator.IsInsertedPoint(pnt)
-                if  result == -1:
+                if result == -1:
                     point_id = vtkPts.InsertNextPoint(pnt)
                     locator.InsertPoint(point_id, pnt)
+                    return point_id
                 else:
-                    point_id = locator.IsInsertedPoint(pnt)
-                return point_id
+                    return result
 
             # vertices = self.vertices.reshape((-1, 3))
             vertices = points

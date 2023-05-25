@@ -1,5 +1,6 @@
 import numpy as np
 import openmc
+import pytest
 
 from tests.testing_harness import PyAPITestHarness
 
@@ -52,6 +53,7 @@ def sphere_model():
     return model
 
 
-def test_periodic(box_model):
+
+def test_pulse_height(box_model):
     harness = PyAPITestHarness('statepoint.5.h5', sphere_model)
     harness.main()

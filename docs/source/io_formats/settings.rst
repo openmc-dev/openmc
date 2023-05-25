@@ -1146,7 +1146,7 @@ mesh-based weight windows.
   :method:
     Method used to update weight window values (currently only 'magic' is supported)
 
-    *Defualt*: magic
+    *Default*: magic
 
   :update_parameters:
     Method-specific update parameters used when generating/updating weight windows.

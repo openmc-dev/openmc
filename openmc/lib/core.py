@@ -171,7 +171,7 @@ def export_properties(filename=None, output=True):
         _dll.openmc_properties_export(filename)
 
 
-def export_weight_windows(filename=None, output=True):
+def export_weight_windows(filename="weight_windows.h5", output=True):
     """Export weight windows.
 
     .. versionadded:: 0.13.3
@@ -181,7 +181,7 @@ def export_weight_windows(filename=None, output=True):
     filename : PathLike or None
         Filename to export weight windows to (defaults to "weight_windows.h5")
     output : bool, optional
-        Whether or not to show output. Defaults to showing output
+        Whether or not to show output.
 
     See Also
     --------
@@ -205,7 +205,7 @@ def import_weight_windows(filename=None, output=True):
     filename : PathLike or None
         Filename to import properties from (defaults to "weight_windows.h5")
     output : bool, optional
-        Whether or not to show output. Defaults to showing output
+        Whether or not to show output.
 
     See Also
     --------

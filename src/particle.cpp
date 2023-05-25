@@ -356,6 +356,7 @@ void Particle::event_revive_from_secondary()
     secondary_bank().pop_back();
     n_event() = 0;
 
+    // Subtract secondary particle energy from interim pulse-height results
     if (!model::active_pulse_height_tallies.empty() &&
         this->type() == ParticleType::photon) {
       pht_secondary_particles();

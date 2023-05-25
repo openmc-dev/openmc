@@ -542,10 +542,9 @@ void Tally::set_scores(const vector<std::string>& scores)
       for (const auto& i_filt : filters_) {
         auto cell_filter =
           dynamic_cast<CellFilter*>(model::tally_filters[i_filt].get());
-        const auto& cells = cell_filter->cells();
-        const auto* filt {model::tally_filters[i_filt].get()};
-        if (dynamic_cast<const CellFilter*>(filt)) {
-          for (int i = 0; i < filt->n_bins(); i++) {
+        if (cell_filter) {
+          const auto& cells = cell_filter->cells();
+          for (int i = 0; i < cell_filter->n_bins(); i++) {
             int cell_index = cells[i];
             (!contains(model::pulse_height_cells, cell_index))
             {

@@ -54,9 +54,6 @@ def _libmesh_enabled():
 def _mcpl_enabled():
     return c_bool.in_dll(_dll, "MCPL_ENABLED").value
 
-# we borrow this from the main Python API. It is imported here
-# for convenience
-from openmc import ParticleType
 
 from .error import *
 from .core import *

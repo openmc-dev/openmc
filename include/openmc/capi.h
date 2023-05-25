@@ -169,12 +169,12 @@ int openmc_weight_windows_get_id(int32_t index, int32_t* id);
 int openmc_weight_windows_set_id(int32_t index, int32_t id);
 
 //! Updates weight window values using the specified tally
-//! \param[in] tally_idx Index of the tally to use for the update
 //! \param[in] ww_idx Index of the weight window object
+//! \param[in] tally_idx Index of the tally to use for the update
 //! \param[in] value Tally value to use for the update (one of 'mean',
 //! 'rel_err') \param[in] threshold Relative error threshold for applied results
 //! \param[in] ratio Upper to lower weight window bound ratio
-int openmc_weight_windows_update_magic(int32_t tally_idx, int32_t ww_idx,
+int openmc_weight_windows_update_magic(int32_t ww_idx, int32_t tally_idx,
   const char* value, double threshold, double ratio);
 
 int openmc_extend_weight_windows(

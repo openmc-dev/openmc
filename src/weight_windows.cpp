@@ -719,7 +719,7 @@ void WeightWindows::export_to_hdf5(const std::string& filename) const
 
 void WeightWindows::to_hdf5(hid_t group) const
 {
-  hid_t ww_group = create_group(group, fmt::format("weight_windows {}", id()));
+  hid_t ww_group = create_group(group, fmt::format("weight_windows_{}", id()));
 
   write_dataset(ww_group, "mesh", this->mesh()->id());
   write_dataset(

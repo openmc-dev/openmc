@@ -58,6 +58,9 @@ _dll.openmc_energyfunc_filter_set_interpolation.argtypes = [c_int32, c_char_p]
 _dll.openmc_filter_get_id.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_filter_get_id.restype = c_int
 _dll.openmc_filter_get_id.errcheck = _error_handler
+_dll.openmc_filter_get_num_bins.argtypes = [c_int32, POINTER(c_int)]
+_dll.openmc_filter_get_num_bins.restype = c_int
+_dll.openmc_filter_get_num_bins.errchck = _error_handler
 _dll.openmc_filter_get_type.argtypes = [c_int32, c_char_p]
 _dll.openmc_filter_get_type.restype = c_int
 _dll.openmc_filter_get_type.errcheck = _error_handler
@@ -120,10 +123,6 @@ _dll.openmc_zernike_filter_set_order.argtypes = [c_int32, c_int]
 _dll.openmc_zernike_filter_set_order.restype = c_int
 _dll.openmc_zernike_filter_set_order.errcheck = _error_handler
 _dll.tally_filters_size.restype = c_size_t
-
-_dll.openmc_filter_get_num_bins.argtypes = [c_int32, POINTER(c_int)]
-_dll.openmc_filter_get_num_bins.restype = c_int
-_dll.openmc_filter_get_num_bins.errchck = _error_handler
 
 class Filter(_FortranObjectWithID):
     __instances = WeakValueDictionary()

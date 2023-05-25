@@ -884,7 +884,7 @@ class WeightWindowGenerator:
 def hdf5_to_wws(path='weight_windows.h5', meshes=None):
     """Create WeightWindows instances from a weight windows HDF5 file
 
-    .. versionadded:: 0.13.3
+    .. versionadded:: 0.13.4
 
     Parameters
     ----------

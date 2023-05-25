@@ -174,7 +174,7 @@ def export_properties(filename=None, output=True):
 def export_weight_windows(filename="weight_windows.h5", output=True):
     """Export weight windows.
 
-    .. versionadded:: 0.13.3
+    .. versionadded:: 0.13.4
 
     Parameters
     ----------
@@ -195,10 +195,10 @@ def export_weight_windows(filename="weight_windows.h5", output=True):
         _dll.openmc_weight_windows_export(filename)
 
 
-def import_weight_windows(filename=None, output=True):
+def import_weight_windows(filename='weight_windows.h5', output=True):
     """Import weight windows.
 
-    .. versionadded:: 0.13.3
+    .. versionadded:: 0.13.4
 
     Parameters
     ----------

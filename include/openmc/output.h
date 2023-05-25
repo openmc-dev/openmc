@@ -63,9 +63,10 @@ void write_tallies();
 //////////////////////////////////////
 // Custom formatters
 //////////////////////////////////////
+namespace fmt {
 
-template<>
-struct fmt::formatter<std::array<int, 2>> {
+template<typename T>
+struct formatter<std::array<T, 2>> {
   template<typename ParseContext>
   constexpr auto parse(ParseContext& ctx)
   {
@@ -73,8 +74,10 @@ struct fmt::formatter<std::array<int, 2>> {
   }
 
   template<typename FormatContext>
-  auto format(const std::array<int, 2>& arr, FormatContext& ctx)
+  auto format(const std::array<T, 2>& arr, FormatContext& ctx)
   {
-    return fmt::format_to(ctx.out(), "({}, {})", arr[0], arr[1]);
+    return format_to(ctx.out(), "({}, {})", arr[0], arr[1]);
   }
 };
+
+} // namespace fmt

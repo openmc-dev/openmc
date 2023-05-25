@@ -228,10 +228,10 @@ class Settings:
         Weight windows to use for variance reduction
 
         .. versionadded:: 0.13
-    weight_window_generators : WeightWindows or iterable of WeightWindows
-        Weight windows to use for variance reduction
+    weight_window_generators : WeightWindowGenerator or iterable of WeightWindowGenerator
+        Weight windows generation parameters to apply during simulation
 
-        .. versionadded:: 0.13.3
+        .. versionadded:: 0.13.4
 
     create_delayed_neutrons : bool
         Whether delayed neutrons are created in fission.
@@ -522,6 +522,12 @@ class Settings:
     @property
     def weight_window_generators(self) -> typing.List[WeightWindowGenerator]:
         return self._weight_window_generators
+
+    @weight_window_generators.setter
+    def weight_window_generators(self, wwgs):
+        if not isinstance(wwgs, MutableSequence):
+            wwgs = [wwgs]
+        self._weight_window_generators = cv.CheckedList(WeightWindowGenerator, 'weight window generators', wwgs)
 
     @property
     def max_splits(self) -> int:
@@ -951,12 +957,6 @@ class Settings:
     def weight_windows_file(self, value: PathLike):
         cv.check_type('weight windows file', value, (str, Path))
         self._weight_windows_file = value
-
-    @weight_window_generators.setter
-    def weight_window_generators(self, wwgs):
-        if not isinstance(wwgs, MutableSequence):
-            wwgs = [wwgs]
-        self._weight_window_generators = cv.CheckedList(WeightWindowGenerator, 'weight window generators', wwgs)
 
     @max_splits.setter
     def max_splits(self, value: int):

@@ -24,8 +24,6 @@ Simulation Settings
    openmc.Source
    openmc.SourceParticle
    openmc.VolumeCalculation
-   openmc.WeightWindows
-   openmc.WeightWindowGenerator
    openmc.Settings
 
 .. autosummary::
@@ -239,8 +237,10 @@ Variance Reduction
    :nosignatures:
    :template: myclass
 
-   openmc.weight_windows.WeightWindows
-   openmc.weight_windows.hdf5_to_wws
+   openmc.WeightWindows
+   openmc.WeightWindowGenerator
+   openmc.hdf5_to_wws
+
 
 Coarse Mesh Finite Difference Acceleration
 ------------------------------------------

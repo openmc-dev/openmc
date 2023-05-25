@@ -19,7 +19,6 @@ namespace openmc {
 
 enum class WeightWindowUpdateMethod {
   MAGIC,
-  PSR // pseudo-source region
 };
 
 //==============================================================================
@@ -218,9 +217,7 @@ public:
     1.0}; //<! Relative error threshold for values used to update weight windows
   double ratio_ {5.0}; //<! ratio of lower to upper weight window bounds
 
-  // PSR update parameters (TBD)
-  std::string update_params_; //!< Update parameters
-};
+  };
 
 } // namespace openmc
 #endif // OPENMC_WEIGHT_WINDOWS_H

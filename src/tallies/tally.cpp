@@ -547,7 +547,7 @@ void Tally::set_scores(const vector<std::string>& scores)
           const auto& cells = cell_filter->cells();
           for (int i = 0; i < cell_filter->n_bins(); i++) {
             int cell_index = cells[i];
-            (!contains(model::pulse_height_cells, cell_index))
+            if (!contains(model::pulse_height_cells, cell_index))
             {
               model::pulse_height_cells.push_back(cell_index);
             }

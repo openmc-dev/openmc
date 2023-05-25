@@ -196,7 +196,8 @@ class StructuredMesh(MeshBase):
         -------
         midpoint_grids : list of numpy.ndarray
             The edge midpoints for the i, j, and k midpoints of each element in
-            i, j, k ordering. Shape of the grids is [(ni-1, nj, nk, 3), (ni, nj-1, nk, 3), (ni, nj, nk-1, 3)]
+            i, j, k ordering. Shape of the grids is [(ni-1, nj, nk, 3),
+            (ni, nj-1, nk, 3), (ni, nj, nk-1, 3)]
         """
         # generate a set of edge midpoints for each dimension
         midpoint_grids = []

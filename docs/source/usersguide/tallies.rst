@@ -317,8 +317,8 @@ The following tables show all valid scores:
     |                      |particle. This corresponds to MT=444 produced by   |
     |                      |NJOY's HEATR module.                               |
     +----------------------+---------------------------------------------------+
-    |pulse-height          |The energy deposited by an entire photons history  |
-    |                      |(including progenies). Units are eV per source     | 
+    |pulse-height          |The energy deposited by an entire photon's history |
+    |                      |(including its progeny). Units are eV per source   | 
     |                      |particle. Note that this score can only be combined|
     |                      |with a cell filter and an energy filter.           |   
     +----------------------+---------------------------------------------------+

@@ -54,6 +54,6 @@ def sphere_model():
 
 
 
-def test_pulse_height(box_model):
+def test_pulse_height(sphere_model):
     harness = PyAPITestHarness('statepoint.5.h5', sphere_model)
     harness.main()

@@ -447,7 +447,7 @@ void Tally::set_scores(const vector<std::string>& scores)
     if (!(dynamic_cast<const CellFilter*>(filt) ||
           dynamic_cast<const EnergyFilter*>(filt)) ||
         (dynamic_cast<const CellBornFilter*>(filt) ||
-        dynamic_cast<const CellFromFilter*>(filt)) ||
+          dynamic_cast<const CellFromFilter*>(filt)) ||
         dynamic_cast<const EnergyoutFilter*>(filt)) {
       non_cell_energy_present = true;
     }

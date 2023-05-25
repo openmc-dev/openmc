@@ -2525,9 +2525,9 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
     p.coord(0).cell = orig_cell;
     p.E_last() = orig_E_last
   }
-    // Reset all the filter matches for the next tally event.
-    for (auto& match : p.filter_matches())
-      match.bins_present_ = false;
+  // Reset all the filter matches for the next tally event.
+  for (auto& match : p.filter_matches())
+    match.bins_present_ = false;
 }
 
 } // namespace openmc

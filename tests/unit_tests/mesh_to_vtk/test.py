@@ -33,11 +33,13 @@ rect_mesh.y_grid = np.logspace(np.log10(5), np.log10(20), 10)
 rect_mesh.z_grid = np.linspace(1, 100, 20)
 
 cyl_mesh = openmc.CylindricalMesh()
+cyl_mesh.origin = (10, 10, -10)
 cyl_mesh.r_grid = np.linspace(0, 5, 5)
 cyl_mesh.phi_grid = np.linspace(0, 2 * np.pi, 4)
 cyl_mesh.z_grid = np.linspace(0, 2, 4)
 
 sphere_mesh = openmc.SphericalMesh()
+sphere_mesh.origin = (10, 10, -10)
 sphere_mesh.r_grid = np.linspace(0, 5, 3)
 sphere_mesh.theta_grid = np.linspace(0, 0.5 * np.pi, 4)
 sphere_mesh.phi_grid = np.linspace(0, 2*np.pi, 8)

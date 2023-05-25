@@ -14,7 +14,7 @@ import openmc.checkvalue as cv
 from openmc.stats.multivariate import MeshSpatial
 
 from . import (RegularMesh, Source, VolumeCalculation, WeightWindows,
-              WeightWindowGenerator)
+               WeightWindowGenerator)
 from ._xml import clean_indentation, get_text, reorder_attributes
 from openmc.checkvalue import PathLike
 from .mesh import _read_meshes
@@ -516,7 +516,7 @@ class Settings:
         return self._weight_windows_on
 
     @property
-    def weight_windows_file(self) -> PathLike:
+    def weight_windows_file(self) -> Optional[PathLike]:
         return self._weight_windows_file
 
     @property
@@ -1320,7 +1320,7 @@ class Settings:
             return
         elem = ET.SubElement(root, 'weight_window_generators')
         for wwg in self.weight_window_generators:
-         elem.append(wwg.to_xml_element())
+            elem.append(wwg.to_xml_element())
 
         # ensure that mesh elements are created if needed
         for wwg in self.weight_window_generators:

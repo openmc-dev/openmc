@@ -1,11 +1,9 @@
 from itertools import permutations
+from pathlib import Path
 
 import numpy as np
-
 import openmc
 import openmc.lib
-
-from pathlib import Path
 import pytest
 
 
@@ -53,18 +51,18 @@ def model():
 
     ### Settings ###
 
-    settings = openmc.Settings()
-    settings.run_mode = 'fixed source'
-    settings.particles = 100
-    settings.batches = 10
-    settings.max_splits = 10
-    settings.survival_biasing = False
+    settings = openmc.Settings(
+        run_mode='fixed source',
+        particles=100,
+        batches=10,
+        max_splits=10,
+        survival_biasing=False
+    )
 
     # 10 keV neutron point source at the origin
     space = openmc.stats.Point()
-    energy = openmc.stats.Discrete(x=[1.0], p=[1e4])
-    source = openmc.Source(space=space, energy=energy)
-    settings.source = source
+    energy = openmc.stats.Discrete(x=[1e4], p=[1.0])
+    settings.source = openmc.Source(space=space, energy=energy)
 
     return openmc.Model(geometry=geometry, settings=settings)
 
@@ -79,8 +77,7 @@ mesh.dimension = (19, 20, 21)
 
 mf = openmc.MeshFilter(mesh)
 
-e_groups = np.logspace(0, 7, 2)
-ef = openmc.EnergyFilter(e_groups)
+ef = openmc.EnergyFilter([0.0, 1e7])
 
 pf = openmc.ParticleFilter(['neutron', 'photon'])
 
@@ -133,8 +130,6 @@ def test_ww_gen(filters, model):
         # update the weight window values using tally results
         ww.update_magic(lib_tally)
 
-        print(ww.bounds[0].max())
-        print(ww.bounds[0].min())
         assert any(ww.bounds[0] != -1)
         assert any(ww.bounds[1] != -1)
 
@@ -144,12 +139,12 @@ def test_ww_gen(filters, model):
         # check against weight windows from the previous iteration
         # the order of filters should not change the weight window values
         if ref_lower is None:
-            ref_lower = np.copy(ww.bounds[0])
+            ref_lower = ww.bounds[0].copy()
         else:
             np.testing.assert_equal(ref_lower, ww.bounds[0])
 
         if ref_upper is None:
-            ref_upper = np.copy(ww.bounds[1])
+            ref_upper = ww.bounds[1].copy()
         else:
             np.testing.assert_equal(ref_upper, ww.bounds[1])
 
@@ -195,7 +190,7 @@ def test_ww_import_export(run_in_tmpdir, model):
 
     openmc.lib.init()
 
-    tally = openmc.lib.tallies[1]
+    tally = openmc.lib.tallies[tally.id]
 
     ww = openmc.lib.WeightWindows.from_tally(tally)
 
@@ -230,7 +225,7 @@ def test_ww_import_export(run_in_tmpdir, model):
 def test_ww_gen_roundtrip(run_in_tmpdir, model):
 
     mesh = openmc.RegularMesh.from_domain(model.geometry.root_universe)
-    energy_bounds = np.linspace(0.0, 1E8, 11)
+    energy_bounds = np.linspace(0.0, 1e8, 11)
     particle_type = 'neutron'
 
     wwg = openmc.WeightWindowGenerator(mesh, energy_bounds, particle_type)
@@ -259,12 +254,10 @@ def test_ww_gen_roundtrip(run_in_tmpdir, model):
     assert wwg_in.update_parameters == wwg.update_parameters
 
     with pytest.raises(ValueError):
-        wwg.method = 'monkeys'
+        wwg.method = '🦍🐒'
 
     with pytest.raises(TypeError):
         wwg.update_parameters = {'ratio' : 'one-to-one'}
-
-
 
     with pytest.raises(ValueError):
         wwg.max_realizations = -1

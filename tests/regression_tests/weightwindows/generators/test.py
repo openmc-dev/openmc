@@ -1,10 +1,9 @@
 import os
 
 import numpy as np
-
 import openmc
-
 import pytest
+
 
 def test_ww_generator(run_in_tmpdir):
     # create a simple spherical shield model
@@ -14,8 +13,6 @@ def test_ww_generator(run_in_tmpdir):
     water.set_density('g/cc', 1.0)
     water.add_nuclide('H1', 0.66)
     water.add_nuclide('O16', 0.34)
-
-    model.materials = openmc.Materials([water])
 
     s = openmc.Sphere(r=50, boundary_type='vacuum')
     c = openmc.Cell(fill=water, region=-s)
@@ -28,22 +25,20 @@ def test_ww_generator(run_in_tmpdir):
     model.settings.max_splits = 100
 
     mesh = openmc.RegularMesh.from_domain(model.geometry.root_universe)
-    energy_bounds = np.linspace(0, 1E6, 70)
+    energy_bounds = np.linspace(0.0, 1e6, 70)
     particle = 'neutron'
-    meshes = {mesh.id : mesh}
+    meshes = {mesh.id: mesh}
 
     wwg = openmc.WeightWindowGenerator(mesh, energy_bounds, particle)
     wwg.max_realizations = 1
     wwg.on_the_fly = True
-    wwg.update_parameters = {'ratio' : 5.0,
-                         'threshold': 0.8,
-                         'value' : 'mean'}
+    wwg.update_parameters = {'ratio' : 5.0, 'threshold': 0.8, 'value' : 'mean'}
 
     model.settings.weight_window_generators = wwg
     model.export_to_xml()
 
     openmc.run()
-    # we test the effectiveness of the update ethod elsewhere, so
+    # we test the effectiveness of the update method elsewhere, so
     # just test that the generation happens successfully here
     assert os.path.exists('weight_windows.h5')
 

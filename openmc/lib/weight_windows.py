@@ -95,7 +95,7 @@ class WeightWindows(_FortranObjectWithID):
         ID of the weight windows object
     mesh : openmc.lib.Mesh
         Mesh used for the weight windows
-    particle : openmc.lib.ParticleType
+    particle : openmc.ParticleType
         The particle type to which these weight windows apply
     energy_bounds : numpy.ndarray
         The energy bounds for the weight windows
@@ -150,7 +150,8 @@ class WeightWindows(_FortranObjectWithID):
 
     @mesh.setter
     def mesh(self, mesh):
-        _dll.openmc_weight_windows_set_mesh(weight_windows[self.id]._index, meshes[mesh.id]._index)
+        _dll.openmc_weight_windows_set_mesh(
+            weight_windows[self.id]._index, meshes[mesh.id]._index)
 
     @property
     def energy_bounds(self):
@@ -163,7 +164,8 @@ class WeightWindows(_FortranObjectWithID):
     def energy_bounds(self, e_bounds):
         e_bounds_arr = np.asarray(e_bounds, dtype=float)
         e_bounds_ptr = e_bounds_arr.ctypes.data_as(POINTER(c_double))
-        _dll.openmc_weight_windows_set_energy_bounds(self._index, e_bounds_ptr, e_bounds_arr.size)
+        _dll.openmc_weight_windows_set_energy_bounds(
+            self._index, e_bounds_ptr, e_bounds_arr.size)
 
     @property
     def particle(self):
@@ -201,7 +203,8 @@ class WeightWindows(_FortranObjectWithID):
 
     def update_magic(self, tally, value='mean', threshold=1.0, ratio=5.0):
         """Update weight window values using the MAGIC method
-        Reference: https://inis.iaea.org/search/search.aspx?orig_q=reportnumber:%22INIS-BR--17072%22
+
+        Reference: https://inis.iaea.org/search/48022314
 
         Parameters
         ----------
@@ -230,10 +233,10 @@ class WeightWindows(_FortranObjectWithID):
         ----------
         tally : openmc.lib.Tally
             The tally used to create the WeightWindows instance.
-        particle : openmc.lib.ParticleType or str, optional
+        particle : openmc.ParticleType or str, optional
             The particle type to use for the WeightWindows instance. Should be
             specified as an instance of ParticleType or as a string with a value of
-            'neutron' or 'photon'. Defaults to ParticleType.NEUTRON.
+            'neutron' or 'photon'.
 
         Returns
         -------
@@ -272,15 +275,10 @@ class WeightWindows(_FortranObjectWithID):
         # ensure that the tally won't filter out the specified particle
         if particle_filter is not None and particle not in particle_filter.bins:
             raise ValueError(f'Specified tally for weight windows (Tally {tally.id})'
-                               f' does not track the reqeusted particle: "{particle}"')
+                             f' does not track the reqeusted particle: "{particle}"')
 
         # tally must have a mesh filter
-        try:
-            mesh_filter = tally.find_filter(MeshFilter)
-        except ValueError:
-            mesh_filter = None
-        if mesh_filter is None:
-            raise ValueError(f'No mesh filter found on tally {tally.id}')
+        mesh_filter = tally.find_filter(MeshFilter)
 
         # create a new weight windows instance
         out = cls()

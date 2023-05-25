@@ -627,7 +627,7 @@ def wwinp_to_wws(path: PathLike) -> List[WeightWindows]:
     return wws
 
 
-class WeightWindowGenerator():
+class WeightWindowGenerator:
     """Class passed to setting to govern weight window generation
     using the OpenMC executable
 
@@ -638,19 +638,19 @@ class WeightWindowGenerator():
     energy_bounds : Iterable of Real
         A list of values for which each successive pair constitutes a range of
         energies in [eV] for a single bin
-    particle_type : {'neutron', 'photon'} (default is 'neutron')
+    particle_type : {'neutron', 'photon'}
         Particle type the weight windows apply to
 
     Attributes
     ----------
-    mesh : :class:`openmc.MeshBase`
+    mesh : openmc.MeshBase
         Mesh used to represent the weight windows spatially
     energy_bounds : Iterable of Real
         A list of values for which each successive pair constitutes a range of
         energies in [eV] for a single bin
     particle_type : {'neutron', 'photon'}
         Particle type the weight windows apply to
-    method : str
+    method : {'magic'}
         The weight window generation methodology applied during an update. Only
         'magic' is currently supported.
     max_realizations : int
@@ -714,7 +714,6 @@ class WeightWindowGenerator():
         cv.check_type('energy bounds', eb, Iterable, Real)
         self._energy_bounds = eb
 
-
     @property
     def particle_type(self) -> str:
         return self._particle_type
@@ -731,7 +730,7 @@ class WeightWindowGenerator():
     @method.setter
     def method(self, m: str):
         cv.check_type('generation method', m, str)
-        cv.check_value('generation method', m, ('magic'))
+        cv.check_value('generation method', m, {'magic'})
         self._method = m
         if self._update_parameters is not None:
             try:
@@ -760,7 +759,7 @@ class WeightWindowGenerator():
         self._update_interval = ui
 
     @property
-    def update_parameters(self) -> dict :
+    def update_parameters(self) -> dict:
         return self._update_parameters
 
     def _check_update_parameters(self, params: dict):

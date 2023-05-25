@@ -240,6 +240,7 @@ def test_roundtrip(run_in_tmpdir, model, wws):
     for ww_out, ww_in in zipped_wws:
         assert(ww_out == ww_in)
 
+
 def test_ww_attrs(run_in_tmpdir, model):
     model.export_to_xml()
 

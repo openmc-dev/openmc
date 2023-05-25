@@ -445,7 +445,7 @@ public:
   decltype(tracks_)& tracks() { return tracks_; }
   decltype(nu_bank_)& nu_bank() { return nu_bank_; }
   NuBank& nu_bank(int i) { return nu_bank_[i]; }
-  std::vector<double>& pht_storage() { return pht_storage_; }
+  vector<double>& pht_storage() { return pht_storage_; }
 
   double& keff_tally_absorption() { return keff_tally_absorption_; }
   double& keff_tally_collision() { return keff_tally_collision_; }

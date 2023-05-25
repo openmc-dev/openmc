@@ -27,6 +27,11 @@ class BoundingBox(tuple):
         The x, y, z coordinates of the upper right corner of the bounding box in [cm]
     volume : float
         The volume of the bounding box in [cm^3]
+    extent : dict
+        A dictionary of basis as keys and the extent (left, right, bottom, top)
+        as values. Intended use in Matplotlib plots when setting extent
+    width : iterable of float
+        The width of the x, y and z axis in [cm]
     """
 
     def __new__(cls, lower_left: Iterable[float], upper_right: Iterable[float]):
@@ -55,3 +60,30 @@ class BoundingBox(tuple):
     @property
     def volume(self) -> float:
         return np.abs(np.prod(self[1] - self[0]))
+
+    @property
+    def extent(self):
+        return {
+            "xy": (
+                self.lower_left[0],
+                self.upper_right[0],
+                self.lower_left[1],
+                self.upper_right[1],
+            ),
+            "xz": (
+                self.lower_left[0],
+                self.upper_right[0],
+                self.lower_left[2],
+                self.upper_right[2],
+            ),
+            "yz": (
+                self.lower_left[1],
+                self.upper_right[1],
+                self.lower_left[2],
+                self.upper_right[2],
+            ),
+        }
+
+    @property
+    def width(self):
+        return self.upper_right - self.lower_left

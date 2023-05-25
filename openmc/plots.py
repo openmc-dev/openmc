@@ -1,8 +1,8 @@
 from collections.abc import Iterable, Mapping
 from numbers import Integral, Real
 from pathlib import Path
+import lxml.etree as ET
 from typing import Optional
-from xml.etree import ElementTree as ET
 
 import h5py
 import numpy as np
@@ -270,7 +270,7 @@ class PlotBase(IDManagerMixin):
         Name of the plot
     pixels : Iterable of int
         Number of pixels to use in each direction
-    filename :
+    filename : str
         Path to write the plot to
     color_by : {'cell', 'material'}
         Indicate whether the plot should be colored by cell or by material
@@ -279,7 +279,7 @@ class PlotBase(IDManagerMixin):
     mask_components : Iterable of openmc.Cell or openmc.Material or int
         The cells or materials (or corresponding IDs) to mask
     mask_background : Iterable of int or str
-        Color to apply to all cells/materials not listed in mask_components
+        Color to apply to all cells/materials listed in mask_components
     show_overlaps : bool
         Indicate whether or not overlapping regions are shown
     overlap_color : Iterable of int or str
@@ -476,7 +476,7 @@ class PlotBase(IDManagerMixin):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing plot data
 
         """
@@ -515,7 +515,7 @@ class PlotBase(IDManagerMixin):
 
 
 class Plot(PlotBase):
-    '''Definition of a finite region of space to be plotted.
+    """Definition of a finite region of space to be plotted.
 
     OpenMC is capable of generating two-dimensional slice plots, or
     three-dimensional voxel or projection plots. Colors that are used in plots can be given as
@@ -531,6 +531,33 @@ class Plot(PlotBase):
 
     Attributes
     ----------
+    id : int
+        Unique identifier
+    name : str
+        Name of the plot
+    pixels : Iterable of int
+        Number of pixels to use in each direction
+    filename : str
+        Path to write the plot to
+    color_by : {'cell', 'material'}
+        Indicate whether the plot should be colored by cell or by material
+    background : Iterable of int or str
+        Color of the background
+    mask_components : Iterable of openmc.Cell or openmc.Material or int
+        The cells or materials (or corresponding IDs) to mask
+    mask_background : Iterable of int or str
+        Color to apply to all cells/materials listed in mask_components
+    show_overlaps : bool
+        Indicate whether or not overlapping regions are shown
+    overlap_color : Iterable of int or str
+        Color to apply to overlapping regions
+    colors : dict
+        Dictionary indicating that certain cells/materials should be
+        displayed with a particular color. The keys can be of type
+        :class:`~openmc.Cell`, :class:`~openmc.Material`, or int (ID for a
+        cell/material).
+    level : int
+        Universe depth to plot at
     width : Iterable of float
         Width of the plot in each basis direction
     origin : tuple or list of ndarray
@@ -543,7 +570,7 @@ class Plot(PlotBase):
         Dictionary defining type, id, linewidth and color of a mesh to be
         plotted on top of a plot
 
-    '''
+    """
 
     def __init__(self, plot_id=None, name=''):
         super().__init__(plot_id, name)
@@ -749,7 +776,7 @@ class Plot(PlotBase):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing plot data
 
         """
@@ -806,7 +833,7 @@ class Plot(PlotBase):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1143,7 +1170,7 @@ class ProjectionPlot(PlotBase):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing plot data
 
         """
@@ -1227,7 +1254,7 @@ class ProjectionPlot(PlotBase):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1401,7 +1428,7 @@ class Plots(cv.CheckedList):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing all plot elements
 
         """
@@ -1442,7 +1469,7 @@ class Plots(cv.CheckedList):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns

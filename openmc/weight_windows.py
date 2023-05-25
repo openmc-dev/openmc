@@ -5,9 +5,9 @@ import pathlib
 from typing import Iterable, List, Optional, Union, Dict
 import warnings
 
-import h5py
+import lxml.etree as ET
 import numpy as np
-from xml.etree import ElementTree as ET
+import h5py
 
 import openmc
 from openmc.filter import _PARTICLES
@@ -314,7 +314,7 @@ class WeightWindows(IDManagerMixin):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing the weight window information
         """
         element = ET.Element('weight_windows')
@@ -357,9 +357,9 @@ class WeightWindows(IDManagerMixin):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
-        root : xml.etree.ElementTree.Element
+        root : lxml.etree._Element
             Root element for the file where meshes can be found
 
         Returns

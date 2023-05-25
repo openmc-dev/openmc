@@ -1,6 +1,6 @@
 """Tests for the openmc.deplete.Nuclide class."""
 
-import xml.etree.ElementTree as ET
+import lxml.etree as ET
 import copy
 import numpy as np
 import pytest

@@ -2,7 +2,7 @@ from collections import OrderedDict
 from collections.abc import Iterable
 from math import cos, sin, pi
 from numbers import Real
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 
 import numpy as np
 from uncertainties import UFloat
@@ -565,7 +565,7 @@ class Cell(IDManagerMixin):
 
         Parameters
         ----------
-        xml_element : xml.etree.ElementTree.Element
+        xml_element : lxml.etree._Element
             XML element to be added to
 
         memo : set or None
@@ -653,7 +653,7 @@ class Cell(IDManagerMixin):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             `<cell>` element
         surfaces : dict
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances

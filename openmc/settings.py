@@ -8,7 +8,7 @@ from numbers import Integral, Real
 from pathlib import Path
 import typing  # required to prevent typing.Union namespace overwriting Union
 from typing import Optional
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 
 import openmc.checkvalue as cv
 from openmc.stats.multivariate import MeshSpatial
@@ -164,7 +164,7 @@ class Settings:
     statepoint : dict
         Options for writing state points. Acceptable keys are:
 
-        :batches: list of batches at which to write source
+        :batches: list of batches at which to write statepoint files
     surf_source_read : dict
         Options for reading surface source points. Acceptable keys are:
 
@@ -1770,7 +1770,7 @@ class Settings:
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
         meshes : dict or None
             A dictionary with mesh IDs as keys and mesh instances as values that

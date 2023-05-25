@@ -1,4 +1,4 @@
-import xml.etree.ElementTree as ET
+import lxml.etree as ET
 from pathlib import Path
 
 import numpy as np

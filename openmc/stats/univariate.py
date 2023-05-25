@@ -5,7 +5,7 @@ from copy import deepcopy
 import math
 from numbers import Real
 from warnings import warn
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 
 import numpy as np
 
@@ -173,7 +173,7 @@ class Discrete(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing discrete distribution data
 
         """
@@ -191,7 +191,7 @@ class Discrete(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -316,7 +316,7 @@ class Uniform(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing uniform distribution data
 
         """
@@ -331,7 +331,7 @@ class Uniform(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -425,7 +425,7 @@ class PowerLaw(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing distribution data
 
         """
@@ -440,7 +440,7 @@ class PowerLaw(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -508,7 +508,7 @@ class Maxwell(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing Maxwellian distribution data
 
         """
@@ -523,7 +523,7 @@ class Maxwell(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -603,7 +603,7 @@ class Watt(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing Watt distribution data
 
         """
@@ -618,7 +618,7 @@ class Watt(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -693,7 +693,7 @@ class Normal(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing Watt distribution data
 
         """
@@ -708,7 +708,7 @@ class Normal(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -957,7 +957,7 @@ class Tabular(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing tabular distribution data
 
         """
@@ -976,7 +976,7 @@ class Tabular(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1152,7 +1152,7 @@ class Mixture(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mixture distribution data
 
         """
@@ -1174,7 +1174,7 @@ class Mixture(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns

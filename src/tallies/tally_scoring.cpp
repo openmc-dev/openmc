@@ -2467,69 +2467,66 @@ void score_surface_tally(Particle& p, const vector<int>& tallies)
 
 void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
 {
+  // The pulse height tally in OpenMC hijacks the logic of CellFilter and EnergyFilter
+  // to score specific quantities related to particle pulse height. This is achieved
+  // by setting the pulse-height cell of the tally to the cell of the particle being
+  // scored, and the energy to the particle's last recorded energy (E_last()).
+  // After the tally is scored, the values are reset to ensure proper accounting and
+  // avoid interference with subsequent calculations or tallies.
+
+  // Save original cell/energy information
+  int orig_n_coord = p.n_coord();
+  int orig_cell = p.coord(0).cell;
+  double orig_E_last = p.E_last();
 
   for (auto i_tally : tallies) {
     auto& tally {*model::tallies[i_tally]};
 
-    // Initialize an iterator over valid filter bin combinations.  If there are
-    // no valid combinations, use a continue statement to ensure we skip the
-    // assume_separate break below.
-    auto filter_iter = FilterBinIter(tally, p);
-
-    auto i_energy_filt = tally.filters()[tally.energy_filter_];
-    auto i_energy_bin = p.filter_matches(i_energy_filt).i_bin_;
-    auto bin_energy = p.filter_matches(i_energy_filt).bins_[i_energy_bin];
-
-    const EnergyFilter& energy_filt {
-      *dynamic_cast<EnergyFilter*>(model::tally_filters[i_energy_filt].get())};
-
-    auto i_cell_filt = tally.filters()[tally.cell_filter_];
-    auto i_cell_bin = p.filter_matches(i_cell_filt).i_bin_;
-    auto bin_cell = p.filter_matches(i_cell_filt).bins_[i_cell_bin];
-
-    const CellFilter& cell_filt {
-      *dynamic_cast<CellFilter*>(model::tally_filters[i_cell_filt].get())};
-
-    const auto& cells = cell_filt.cells();
-    int cell_counter = 0;
-    for (auto cell_id : cells) {
-
-      p.filter_matches(i_cell_filt).bins_[i_cell_bin] = cell_counter;
+    for (auto cell_id : model::pulse_height_cells) {
+      // Temporarily change cell
+      p.n_coord() = 1;
+      p.coord(0).cell = cell_id;
 
       // determine index of cell in pulse_height_cells
       auto it = std::find(model::pulse_height_cells.begin(),
         model::pulse_height_cells.end(), cell_id);
       int index = std::distance(model::pulse_height_cells.begin(), it);
-
-      double score = p.pht_storage()[index];
-
-      if (score < energy_filt.bins().front() ||
-          score > energy_filt.bins().back()) {
-        cell_counter++;
+      
+      // Temporarily change energy
+      p.E_last() = p.pht_storage()[index];
+      
+      // Initialize an iterator over valid filter bin combinations.  If there are
+      // no valid combinations, use a continue statement to ensure we skip the
+      // assume_separate break below.
+      auto filter_iter = FilterBinIter(tally, p);
+      auto end = FilterBinIter(tally, true, &p.filter_matches());
+      if (filter_iter == end)
         continue;
-      } else {
-        auto i_match = lower_bound_index(
-          energy_filt.bins().begin(), energy_filt.bins().end(), score);
-        p.filter_matches(i_energy_filt).bins_[i_energy_bin] = i_match;
+
+      // Loop over filter bins.
+      for (; filter_iter != end; ++filter_iter) {
+        auto filter_index = filter_iter.index_;
+        auto filter_weight = filter_iter.weight_;
+
+      // Loop over scores.
+      double score = p.E_last() * filter_weight;
+      for (auto score_index = 0; score_index < tally.scores_.size();
+           ++score_index) {
+      #pragma omp atomic
+        tally.results_(filter_index, score_index, TallyResult::VALUE) += score;
       }
-      // Find the filter scoring index for this filter combination
-      int filter_index = 0;
-      double filter_weight = 1.0;
-      for (auto j = 0; j < tally.filters().size(); ++j) {
-        auto i_filt = tally.filters(j);
-        auto& match {p.filter_matches(i_filt)};
-        auto i_bin = match.i_bin_;
-        filter_index += match.bins_[i_bin] * tally.strides(j);
-        filter_weight *= match.weights_[i_bin];
-      }
-#pragma omp atomic
-      tally.results_(filter_index, 0, TallyResult::VALUE) += filter_weight;
-      cell_counter++;
     }
-  }
+    }
+
+  // Restore cell/energy
+  p.n_coord() = orig_n_coord;
+  p.coord(0).cell = orig_cell;
+  p.E_last() = orig_E_last
+
   // Reset all the filter matches for the next tally event.
   for (auto& match : p.filter_matches())
     match.bins_present_ = false;
+}
 }
 
 } // namespace openmc

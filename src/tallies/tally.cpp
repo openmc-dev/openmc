@@ -177,7 +177,8 @@ Tally::Tally(pugi::xml_node node)
     for (int score : scores_) {
       switch (score) {
       case SCORE_PULSE_HEIGHT:
-        fatal_error("Pulse-height tallies are not compatible with filters other than CellFilter and EnergyFilter");
+        fatal_error("Pulse-height tallies are not compatible with filters "
+                    "other than CellFilter and EnergyFilter");
         break;
       }
     }

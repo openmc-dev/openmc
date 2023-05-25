@@ -547,9 +547,7 @@ void Tally::set_scores(const vector<std::string>& scores)
         if (dynamic_cast<const CellFilter*>(filt)) {
           for (int i = 0; i < filt->n_bins(); i++) {
             int cell_index = cells[i];
-            if (std::find(model::pulse_height_cells.begin(),
-                  model::pulse_height_cells.end(),
-                  cell_index) == model::pulse_height_cells.end()) {
+              (!contains(model::pulse_height_cells, cell_index)){
               model::pulse_height_cells.push_back(cell_index);
             }
           }

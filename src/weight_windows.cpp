@@ -265,7 +265,7 @@ void WeightWindows::set_defaults()
   }
 
   // some constructors won't allocate space for the bounds
-  // do that here to the object is valid
+  // do that here so the object is valid
   if (lower_ww_.size() == 0 || upper_ww_.size() == 0) {
     lower_ww_ = xt::empty<double>(bounds_size());
     lower_ww_.fill(-1);
@@ -407,7 +407,7 @@ void WeightWindows::check_bounds(const T& bounds) const
       fmt::format("In weight window domain {} the number of spatial "
                   "energy/spatial bins ({}) does not match the number "
                   "of weight bins ({})",
-        id_, this->bounds_size(), bounds.size());
+        id_, dims, bounds.size());
     fatal_error(err_msg);
   }
 }

@@ -786,7 +786,7 @@ class WeightWindowGenerator:
         cv.check_type('on the fly generation', otf, bool)
         self._on_the_fly = otf
 
-    def _update_parameters_subelement(self, element: xml.etree.ElementTree.Element):
+    def _update_parameters_subelement(self, element: ET.Element):
         if not self.update_parameters:
             return
         params_element = ET.SubElement(element, 'update_parameters')
@@ -841,7 +841,7 @@ class WeightWindowGenerator:
         return element
 
     @classmethod
-    def from_xml_element(cls, elem: xml.etree.ElementTree.Element, meshes: dict) -> WeightWindowGenerator:
+    def from_xml_element(cls, elem: ET.Element, meshes: dict) -> WeightWindowGenerator:
         """
         Create a weight window generation object from an XML element
 

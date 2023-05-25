@@ -2467,12 +2467,13 @@ void score_surface_tally(Particle& p, const vector<int>& tallies)
 
 void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
 {
-  // The pulse height tally in OpenMC hijacks the logic of CellFilter and EnergyFilter
-  // to score specific quantities related to particle pulse height. This is achieved
-  // by setting the pulse-height cell of the tally to the cell of the particle being
-  // scored, and the energy to the particle's last recorded energy (E_last()).
-  // After the tally is scored, the values are reset to ensure proper accounting and
-  // avoid interference with subsequent calculations or tallies.
+  // The pulse height tally in OpenMC hijacks the logic of CellFilter and
+  // EnergyFilter to score specific quantities related to particle pulse height.
+  // This is achieved by setting the pulse-height cell of the tally to the cell
+  // of the particle being scored, and the energy to the particle's last
+  // recorded energy (E_last()). After the tally is scored, the values are reset
+  // to ensure proper accounting and avoid interference with subsequent
+  // calculations or tallies.
 
   // Save original cell/energy information
   int orig_n_coord = p.n_coord();
@@ -2491,13 +2492,13 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
       auto it = std::find(model::pulse_height_cells.begin(),
         model::pulse_height_cells.end(), cell_id);
       int index = std::distance(model::pulse_height_cells.begin(), it);
-      
+
       // Temporarily change energy
       p.E_last() = p.pht_storage()[index];
-      
-      // Initialize an iterator over valid filter bin combinations.  If there are
-      // no valid combinations, use a continue statement to ensure we skip the
-      // assume_separate break below.
+
+      // Initialize an iterator over valid filter bin combinations.  If there
+      // are no valid combinations, use a continue statement to ensure we skip
+      // the assume_separate break below.
       auto filter_iter = FilterBinIter(tally, p);
       auto end = FilterBinIter(tally, true, &p.filter_matches());
       if (filter_iter == end)
@@ -2508,25 +2509,26 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
         auto filter_index = filter_iter.index_;
         auto filter_weight = filter_iter.weight_;
 
-      // Loop over scores.
-      double score = p.E_last() * filter_weight;
-      for (auto score_index = 0; score_index < tally.scores_.size();
-           ++score_index) {
-      #pragma omp atomic
-        tally.results_(filter_index, score_index, TallyResult::VALUE) += score;
+        // Loop over scores.
+        double score = p.E_last() * filter_weight;
+        for (auto score_index = 0; score_index < tally.scores_.size();
+             ++score_index) {
+#pragma omp atomic
+          tally.results_(filter_index, score_index, TallyResult::VALUE) +=
+            score;
+        }
       }
     }
-    }
 
-  // Restore cell/energy
-  p.n_coord() = orig_n_coord;
-  p.coord(0).cell = orig_cell;
-  p.E_last() = orig_E_last
+    // Restore cell/energy
+    p.n_coord() = orig_n_coord;
+    p.coord(0).cell = orig_cell;
+    p.E_last() = orig_E_last
 
-  // Reset all the filter matches for the next tally event.
-  for (auto& match : p.filter_matches())
-    match.bins_present_ = false;
-}
+                 // Reset all the filter matches for the next tally event.
+                 for (auto& match : p.filter_matches())
+                   match.bins_present_ = false;
+  }
 }
 
 } // namespace openmc

@@ -443,8 +443,12 @@ void Tally::set_scores(const vector<std::string>& scores)
   bool non_cell_energy_present = false;
   for (auto i_filt : filters_) {
     const auto* filt {model::tally_filters[i_filt].get()};
+    // Checking for only cell and energy filters for pulse-height tally
     if (!(dynamic_cast<const CellFilter*>(filt) ||
-          dynamic_cast<const EnergyFilter*>(filt))) {
+          dynamic_cast<const EnergyFilter*>(filt)) ||
+        (dynamic_cast<const CellBornFilter*>(filt) ||
+        dynamic_cast<const CellFromFilter*>(filt)) ||
+        dynamic_cast<const EnergyoutFilter*>(filt)) {
       non_cell_energy_present = true;
     }
     if (dynamic_cast<const LegendreFilter*>(filt)) {

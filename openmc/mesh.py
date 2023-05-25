@@ -177,17 +177,11 @@ class StructuredMesh(MeshBase):
             unpacked along the first dimension with xx, yy, zz = mesh.vertices.
 
         """
-        return np.stack(np.meshgrid(*self._grids, indexing='ij'), axis=0)
+        return self._generate_vertices(*self._grids)
 
     @staticmethod
     def _generate_vertices(i_grid, j_grid, k_grid):
         return np.stack(np.meshgrid(i_grid, j_grid, k_grid, indexing='ij'), axis=0)
-        # np.meshgrid changes k fastest, then j, then i assign the appropriate
-        # grid points to the i,j,k arrays going into meshgrid
-        grid_pnts = np.meshgrid(k_grid, j_grid, i_grid, indexing='ij')[::-1]
-
-        # stack the raveled arrays and transpose to get the desired shape (N, 3)
-        return np.vstack(map(np.ndarray.ravel, grid_pnts)).T
 
     @staticmethod
     def _generate_edge_midpoints(grids):
@@ -229,6 +223,8 @@ class StructuredMesh(MeshBase):
 
     @property
     def midpoint_vertices(self):
+        """Create vertices that lie on the midpoint of element edges
+        """
         # generate edge midpoints needed for curvilinear element definition
         midpoint_vertices = self._generate_edge_midpoints(self._grids)
 
@@ -261,7 +257,9 @@ class StructuredMesh(MeshBase):
     def num_mesh_cells(self):
         return np.prod(self.dimension)
 
-    def write_data_to_vtk(self, filename, datasets=None,
+    def write_data_to_vtk(self,
+                          filename,
+                          datasets=None,
                           volume_normalization=True,
                           curvilinear=False):
         """Creates a VTK object of the mesh
@@ -287,11 +285,10 @@ class StructuredMesh(MeshBase):
 
         Returns
         -------
-        vtk.vtkStructuredGrid
-            the VTK object
+        vtk.StructuredGrid or vtk.UnstructuredGrid
+            a VTK grid object representing the mesh
         """
         import vtk
-        from vtk.util import numpy_support as nps # TODO: move into lower-level functions
 
         # check that the data sets are appropriately sized
         if datasets is not None:
@@ -319,7 +316,12 @@ class StructuredMesh(MeshBase):
         return vtk_grid
 
     def _create_vtk_structured_grid(self):
-        """
+        """Create a structured grid
+
+        Returns
+        -------
+        vtk.vtkStructuredGrid
+            a VTK structured grid object representing the mesh
         """
         import vtk
         from vtk.util import numpy_support as nps
@@ -335,6 +337,14 @@ class StructuredMesh(MeshBase):
         return vtk_grid
 
     def _create_vtk_unstructured_grid(self):
+        """Create an unstructured grid of curvilinear elements
+           representing the mesh
+
+        Returns
+        -------
+        vtk.vtkUnstructuredGrid
+            a VTK unstructured grid object representing the mesh
+        """
         import vtk
         from vtk.util import numpy_support as nps
 
@@ -404,19 +414,19 @@ class StructuredMesh(MeshBase):
                 # compute flat index into the point ID list based on i, j, k
                 # of the vertex
                 flat_idx = np.ravel_multi_index((i+di, j+dj, k+dk), n_pnts, order='F')
+                # set corner vertices
                 hex.GetPointIds().SetId(n, point_ids[flat_idx])
 
             # set connectivity of the hex midpoints
-            n_midpoint_vertices = [mv.size // 3 for mv in midpoint_vertices]
+            n_midpoint_vertices = [v.size // 3 for v in midpoint_vertices]
             for n, (dim, (di, dj, dk)) in enumerate(_HEX_MIDPOINT_CONN):
                 # initial offset for corner vertices and midpoint dimension
                 flat_idx = corner_vertices.shape[0] + sum(n_midpoint_vertices[:dim])
                 # generate a flat index into the table of point IDs
-                idi, idj, idk = (i + di, j + dj, k + dk)
                 midpoint_shape = midpoint_vertices[dim].shape[:-1]
-                flat_idx += np.ravel_multi_index((idi, idj, idk),
-                                                    midpoint_shape,
-                                                order='F')
+                flat_idx += np.ravel_multi_index((i+di, j+dj, k+dk),
+                                                 midpoint_shape,
+                                                 order='F')
                 # set hex midpoint connectivity
                 hex.GetPointIds().SetId(_N_HEX_VERTICES + n, point_ids[flat_idx])
 
@@ -426,6 +436,15 @@ class StructuredMesh(MeshBase):
         return vtk_grid
 
     def _check_vtk_datasets(self, datasets):
+        """Perform some basic checks that the datasets are valid for this mesh
+
+        Parameters
+        ----------
+        datasets : dict
+            Dictionary whose keys are the data labels
+            and values are the data sets.
+
+        """
         for label, dataset in datasets.items():
             errmsg = (
                 f"The size of the dataset '{label}' ({dataset.size}) should be"
@@ -440,6 +459,20 @@ class StructuredMesh(MeshBase):
             cv.check_type('data label', label, str)
 
     def _apply_vtk_datasets(self, vtk_grid, datasets, volume_normalization):
+        """Apply datasets to the elements of the vtk grid
+
+        Parameters
+        ----------
+        vtk_grid : vtk.StructuredGrid or vtk.UnstructuredGrid
+            VTK grid object to which the datasets will be applied
+        datasets : dict
+            Dictionary whose keys are the data labels
+            and values are the data sets.
+        volume_normalization : bool
+            Whether or not to normalize the data by the
+            volume of the mesh elements
+
+        """
         import vtk
         from vtk.util import numpy_support as nps
 

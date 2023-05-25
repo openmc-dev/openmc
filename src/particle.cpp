@@ -418,7 +418,8 @@ void Particle::pht_collision_energy()
 
   // If the energy of the particle is below the cutoff, it will not be sampled
   // so its energy is added to the pulse-height in the cell
-  if (E() < settings::energy_cutoff[1]) {
+  int photon = static_cast<int>(ParticleType::photon)
+  if (E() < settings::energy_cutoff[photon]) {
     pht_storage()[index] += E();
   }
 }

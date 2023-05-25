@@ -3,6 +3,7 @@
 #include "openmc/array.h"
 #include "openmc/capi.h"
 #include "openmc/constants.h"
+#include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/mesh.h"

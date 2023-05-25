@@ -272,7 +272,7 @@ def test_ww_attrs(run_in_tmpdir, model):
         wws.particle = '🌠'
 
     energy_filter = tally.find_filter(openmc.lib.EnergyFilter)
-    np.testing.assert_allclose(np.unique(energy_filter.bins), np.unique(wws.energy_bounds))
+    np.testing.assert_allclose(np.unique(energy_filter.bins), wws.energy_bounds)
 
     # at this point the weight window bounds are uninitialized
     assert all(wws.bounds[0] == -1)

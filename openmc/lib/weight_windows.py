@@ -211,7 +211,7 @@ class WeightWindows(_FortranObjectWithID):
         tally : openmc.lib.Tally object
             The tally used to update weight window information
         value : str
-            Value type used to generate weight windows. One of {'mean', 'rel_err', 'std_dev'}.
+            Value type used to generate weight windows. One of {'mean', 'rel_err'}.
             (default is 'mean')
         threshold : float
             Threshold for relative error of results used to generate weight window bounds

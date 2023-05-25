@@ -1167,3 +1167,11 @@ mesh-based weight windows.
         The ratio of the lower to upper weight window bounds.
 
         *Default*: 5.0
+
+--------------------------------------
+``<weight_windows_file>`` Element
+--------------------------------------
+
+  The ``weight_windows_file`` element has no attributes and contains the path to
+  a weight windows HDF5 file to load during simulation initialization.
+

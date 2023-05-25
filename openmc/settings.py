@@ -245,7 +245,7 @@ class Settings:
     weight_windows_file: Pathlike
         Path to a weight window file to load during simulation initialization
 
-        .. versionadded::0.13.3
+        .. versionadded::0.13.4
     write_initial_source : bool
         Indicate whether to write the initial source distribution to file
     """
@@ -1324,15 +1324,12 @@ class Settings:
 
         # ensure that mesh elements are created if needed
         for wwg in self.weight_window_generators:
-            if mesh_memo and wwg.mesh.id in mesh_memo:
+            if mesh_memo is not None and wwg.mesh.id in mesh_memo:
                 continue
 
-            # See if a <mesh> element already exists -- if not, add it
-            path = f"./mesh[@id='{wwg.mesh}']"
-            if root.find(path) is None:
-                root.append(wwg.mesh.to_xml_element())
-                if mesh_memo is not None:
-                    mesh_memo.add(wwg.mesh)
+            root.append(wwg.mesh.to_xml_element())
+            if mesh_memo is not None:
+                mesh_memo.add(wwg.mesh)
 
     def _create_weight_windows_file_element(self, root):
         if self.weight_windows_file is not None:

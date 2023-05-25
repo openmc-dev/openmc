@@ -229,8 +229,6 @@ def test_ww_gen_roundtrip(run_in_tmpdir, model):
     particle_type = 'neutron'
 
     wwg = openmc.WeightWindowGenerator(mesh, energy_bounds, particle_type)
-    wwg.max_realizations = 1
-    wwg.on_the_fly = True
     wwg.update_params = {'ratio' : 5.0,
                          'threshold': 0.8,
                          'value' : 'mean'}

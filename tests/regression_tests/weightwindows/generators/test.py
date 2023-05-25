@@ -30,14 +30,12 @@ def test_ww_generator(run_in_tmpdir):
     meshes = {mesh.id: mesh}
 
     wwg = openmc.WeightWindowGenerator(mesh, energy_bounds, particle)
-    wwg.max_realizations = 1
-    wwg.on_the_fly = True
     wwg.update_parameters = {'ratio' : 5.0, 'threshold': 0.8, 'value' : 'mean'}
 
     model.settings.weight_window_generators = wwg
     model.export_to_xml()
 
-    openmc.run()
+    model.run()
     # we test the effectiveness of the update method elsewhere, so
     # just test that the generation happens successfully here
     assert os.path.exists('weight_windows.h5')

@@ -104,6 +104,7 @@ public:
 
   // Public color-related data
   PlottableInterface(pugi::xml_node plot_node);
+  virtual ~PlottableInterface() = default;
   int level_;                    // Universe level to plot
   bool color_overlaps_;          // Show overlapping cells?
   PlotColorBy color_by_;         // Plot coloring (cell/material)
@@ -151,10 +152,10 @@ public:
 
   // Members
 public:
-  Position origin_;         //!< Plot origin in geometry
-  Position width_;          //!< Plot width in geometry
-  PlotBasis basis_;         //!< Plot basis (XY/XZ/YZ)
-  array<size_t, 3> pixels_; //!< Plot size in pixels
+  Position origin_;           //!< Plot origin in geometry
+  Position width_;            //!< Plot width in geometry
+  PlotBasis basis_;           //!< Plot basis (XY/XZ/YZ)
+  array<size_t, 3> pixels_;   //!< Plot size in pixels
   bool slice_color_overlaps_; //!< Show overlapping cells?
   int slice_level_ {-1};      //!< Plot universe level
 private:
@@ -321,11 +322,11 @@ private:
   // loop:
   static const int MAX_INTERSECTIONS = 1000000;
 
-  std::array<int, 2> pixels_;       // pixel dimension of resulting image
+  std::array<int, 2> pixels_;              // pixel dimension of resulting image
   double horizontal_field_of_view_ {70.0}; // horiz. f.o.v. in degrees
-  Position camera_position_;        // where camera is
-  Position look_at_;                // point camera is centered looking at
-  Direction up_ {0.0, 0.0, 1.0};    // which way is up
+  Position camera_position_;               // where camera is
+  Position look_at_;             // point camera is centered looking at
+  Direction up_ {0.0, 0.0, 1.0}; // which way is up
 
   // which color IDs should be wireframed. If empty, all cells are wireframed.
   vector<int> wireframe_ids_;

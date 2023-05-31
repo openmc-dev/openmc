@@ -14,7 +14,7 @@ import scipy.sparse as sps
 
 import openmc
 import openmc.checkvalue as cv
-from ._xml import clean_indentation, reorder_attributes
+from ._xml import clean_indentation, reorder_attributes, get_text
 from .mixin import IDManagerMixin
 from .mesh import MeshBase
 

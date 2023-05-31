@@ -33,8 +33,8 @@ def test_micro_macro_compare():
         tally_micro = sp.tallies[tally_micro.id]
 
     # Make sure multply_density attribute from statepoint is set correctly
-    assert not tally_macro.multiply_density
-    assert tally_micro.multiply_density
+    assert tally_macro.multiply_density
+    assert not tally_micro.multiply_density
 
     # Dividing macro by density should give micro
     density = mat.get_nuclide_atom_densities()

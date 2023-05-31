@@ -183,7 +183,7 @@ private:
     ParticleType::neutron};      //!< Particle type to apply weight windows to
   vector<double> energy_bounds_; //!< Energy boundaries [eV]
   xt::xtensor<double, 2>
-    lower_ww_; //!< Lower weight window bounds (shape: energy_bins, mesh_bins)
+    lower_ww_; //!< Lower weight window bounds (shape: energy_bins, mesh_bins (k, j, i))
   xt::xtensor<double, 2>
     upper_ww_; //!< Upper weight window bounds (shape: energy_bins, mesh_bins)
   double survival_ratio_ {3.0}; //!< Survival weight ratio

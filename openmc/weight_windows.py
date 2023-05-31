@@ -425,13 +425,16 @@ class WeightWindows(IDManagerMixin):
 
         id = int(group.name.split('/')[-1].lstrip('weight_windows'))
         mesh_id = group['mesh'][()]
+        mesh = meshes[mesh_id]
+
         ptype = group['particle_type'][()].decode()
         e_bounds = group['energy_bounds'][()]
-        lower_ww_bounds = group['lower_ww_bounds'][()]
-        upper_ww_bounds = group['upper_ww_bounds'][()]
+        # weight window bounds are stored with the shape (e, k, j, i)
+        # in C++ and HDF5 -- the opposite of how they are stored here
+        shape = (e_bounds.size - 1,  *mesh.dimension[::-1])
+        lower_ww_bounds = group['lower_ww_bounds'][()].reshape(shape).T
+        upper_ww_bounds = group['upper_ww_bounds'][()].reshape(shape).T
         survival_ratio = group['survival_ratio'][()]
-
-        mesh = meshes[mesh_id]
 
         max_lower_bound_ratio = None
         if group.get('max_lower_bound_ratio') is not None:
@@ -881,7 +884,7 @@ class WeightWindowGenerator:
 
         return wwg
 
-def hdf5_to_wws(path='weight_windows.h5', meshes=None):
+def hdf5_to_wws(path='weight_windows.h5'):
     """Create WeightWindows instances from a weight windows HDF5 file
 
     .. versionadded:: 0.13.4
@@ -890,12 +893,16 @@ def hdf5_to_wws(path='weight_windows.h5', meshes=None):
     ----------
     path : cv.PathLike
         Path to the weight windows hdf5 file
-    meshes : dict
-        A dictionary with IDs as keys and openmc.MeshBase instances as values
 
     Returns
     -------
     list of openmc.WeightWindows
     """
+
     with h5py.File(path) as h5_file:
+        # read in all of the meshes in the mesh node
+        meshes = {}
+        for mesh_group in h5_file['meshes']:
+            mesh = MeshBase.from_hdf5(h5_file['meshes'][mesh_group])
+            meshes[mesh.id] = mesh
         return [WeightWindows.from_hdf5(ww, meshes) for ww in h5_file['weight_windows'].values()]

@@ -260,3 +260,56 @@ def test_ww_gen_roundtrip(run_in_tmpdir, model):
     with pytest.raises(ValueError):
         wwg.max_realizations = -1
 
+def test_python_hdf5_roundtrip(run_in_tmpdir, model):
+
+    # add a tally to the model
+    mesh = openmc.RegularMesh.from_domain(model.geometry)
+
+    # some arbitrary energy groups
+    e_groups = np.logspace(0, 6, 4)
+    energy_filter = openmc.EnergyFilter(e_groups)
+
+    bounds = np.arange(energy_filter.num_bins * np.prod(mesh.dimension))
+
+    wws = openmc.WeightWindows(mesh, bounds, bounds, energy_bounds=e_groups)
+
+    model.settings.weight_windows = [wws]
+
+    model.export_to_xml()
+
+    # initialize and export wws to HDF5
+    openmc.lib.init()
+
+    openmc.lib.export_weight_windows()
+
+    openmc.lib.finalize()
+
+    wws_hdf5 = openmc.hdf5_to_wws()[0]
+
+    # ensure
+    assert all(wws.energy_bounds == wws_hdf5.energy_bounds)
+    assert wws.id == wws_hdf5.id
+    assert wws.mesh.id == wws_hdf5.mesh.id
+    np.testing.assert_array_equal(wws.lower_ww_bounds, wws_hdf5.lower_ww_bounds)
+    np.testing.assert_array_equal(wws.upper_ww_bounds, wws_hdf5.upper_ww_bounds)
+
+
+def test_ww_bounds_set_in_memory(run_in_tmpdir, model):
+    tally = openmc.Tally()
+    tally.filters = filters
+    tally.scores = ['flux']
+    model.tallies = [tally]
+
+    bounds = np.arange(ef.num_bins * np.prod(mf.mesh.dimension))
+
+    model.export_to_xml()
+
+    openmc.lib.init()
+
+    lib_tally = openmc.lib.tallies[tally.id]
+
+    wws = openmc.lib.WeightWindows.from_tally(lib_tally)
+
+    wws.bounds = (bounds, bounds)
+
+    openmc.lib.finalize()

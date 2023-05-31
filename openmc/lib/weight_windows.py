@@ -199,7 +199,7 @@ class WeightWindows(_FortranObjectWithID):
         lower_p = lower.ctypes.data_as(POINTER(c_double))
         upper_p = upper.ctypes.data_as(POINTER(c_double))
 
-        _dll.openmc_weight_windows_set_bounds(self._index, lower_p, upper_p, lower_p.size)
+        _dll.openmc_weight_windows_set_bounds(self._index, lower_p, upper_p, lower.size)
 
     def update_magic(self, tally, value='mean', threshold=1.0, ratio=5.0):
         """Update weight window values using the MAGIC method

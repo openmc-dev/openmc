@@ -277,7 +277,7 @@ def test_vtk_write_ordering(model, mesh, surface):
 
 def test_sphere_mesh_coordinates(run_in_tmpdir):
     mesh = openmc.SphericalMesh()
-    mesh.r_grid = np.linspace(1, 10, 30)
+    mesh.r_grid = np.linspace(0, 10, 30)
     mesh.phi_grid = np.linspace(0, 1.5*np.pi, 25)
     mesh.theta_grid = np.linspace(0, np.pi / 2, 15)
 

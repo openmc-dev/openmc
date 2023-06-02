@@ -69,7 +69,7 @@ def change_directory(output_dir):
     """
     orig_dir  = os.getcwd()
     try:
-        output_dir.mkdir(exist_ok=True)
+        output_dir.mkdir(parents=True, exist_ok=True)
         os.chdir(output_dir)
         yield
     finally:

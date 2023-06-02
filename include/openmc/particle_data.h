@@ -54,6 +54,10 @@ struct SourceSite {
   ParticleType particle;
   int64_t parent_id;
   int64_t progeny_id;
+  
+  //new in LVR
+  std::vector<int> crossed_mesh;
+  std::vector<double> crossed_weight;
 };
 
 //! State of a particle used for particle track files
@@ -337,6 +341,10 @@ private:
 
   int64_t n_progeny_ {0}; // Number of progeny produced by this particle
 
+// new in LVR
+  std::vector<int> crossed_mesh;
+  std::vector<double> crossed_weight;
+  
 public:
   //==========================================================================
   // Methods and accessors
@@ -517,6 +525,19 @@ public:
       d = 0;
     }
   }
+  
+  // new in LVR
+  // add value
+  void add_crossed_mesh(int index) { crossed_mesh.push_back(index); }
+  void add_crossed_weight(double weight) { crossed_weight.push_back(weight); }
+  // get size
+  int crossed_mesh_size() { return crossed_mesh.size(); }
+  // get value
+  int crossed_mesh_value(int index) { return crossed_mesh[index]; }
+  double crossed_weight_value(int index) { return crossed_weight[index]; }
+  // reset vector
+  void reset_crossed_mesh() { crossed_mesh.clear(); }
+  void reset_crossed_weight() { crossed_weight.clear(); }
 };
 
 } // namespace openmc

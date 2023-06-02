@@ -22,6 +22,14 @@ namespace variance_reduction {
 
 std::unordered_map<int32_t, int32_t> ww_map;
 openmc::vector<unique_ptr<WeightWindows>> weight_windows;
+// new in LVR
+bool local_on {false};
+vector<double> target_lower_left;
+vector<double> target_upper_right;
+vector<double> total_weight;
+vector<double> total_score;
+double score_in_target {0.};
+//
 
 } // namespace variance_reduction
 
@@ -110,12 +118,51 @@ void free_memory_weight_windows()
 
 WeightWindows::WeightWindows(pugi::xml_node node)
 {
-  // Make sure required elements are present
-  const vector<std::string> required_elems {"id", "particle_type",
-    "energy_bounds", "lower_ww_bounds", "upper_ww_bounds"};
-  for (const auto& elem : required_elems) {
-    if (!check_for_node(node, elem.c_str())) {
-      fatal_error(fmt::format("Must specify <{}> for weight windows.", elem));
+  using namespace pugi;
+  // check if LVR is used
+  if (check_for_node(node, "local")) {
+    // turn on the flag
+    variance_reduction::local_on = true;
+    std::cout<<"Using LVR"<<std::endl;
+
+    xml_node node_local = node.child("local");
+
+    // Make sure required elements are present
+    const vector<std::string> required_elems {"target_lower_left", "target_upper_right"};
+    for (const auto& elem : required_elems) {
+      if (!check_for_node(node_local, elem.c_str())) {
+        fatal_error(fmt::format("Must specify <{}> for LVR.", elem));
+      }
+    }
+
+    // Read target lower-left corner location
+    variance_reduction::target_lower_left = get_node_array<double>(node_local, "target_lower_left");
+    if (variance_reduction::target_lower_left.size() != 3) fatal_error("Must specify 3 dimension of target_lower_left point.");
+    std::cout<<"target_lower_left: "<<variance_reduction::target_lower_left[0]<<", "<<variance_reduction::target_lower_left[1]<<", "<<variance_reduction::target_lower_left[2]<<std::endl;
+
+    // Read target upper-right corner location
+    variance_reduction::target_upper_right = get_node_array<double>(node_local, "target_upper_right");
+    if (variance_reduction::target_upper_right.size() != 3) fatal_error("Must specify 3 dimension of target_upper_right point.");
+    std::cout<<"target_upper_right: "<<variance_reduction::target_upper_right[0]<<", "<<variance_reduction::target_upper_right[1]<<", "<<variance_reduction::target_upper_right[2]<<std::endl;
+  }
+
+  if (variance_reduction::local_on) {
+    // Make sure required elements are present for GVR or LVR
+    const vector<std::string> required_elems {"id", "particle_type",
+      "energy_bounds"};
+    for (const auto& elem : required_elems) {
+      if (!check_for_node(node, elem.c_str())) {
+        fatal_error(fmt::format("Must specify <{}> for weight windows.", elem));
+      }
+    }
+  } else {
+    // Make sure required elements are present for WWM
+    const vector<std::string> required_elems {"id", "particle_type",
+      "energy_bounds", "lower_ww_bounds", "upper_ww_bounds"};
+    for (const auto& elem : required_elems) {
+      if (!check_for_node(node, elem.c_str())) {
+        fatal_error(fmt::format("Must specify <{}> for weight windows.", elem));
+      }
     }
   }
 
@@ -134,9 +181,21 @@ WeightWindows::WeightWindows(pugi::xml_node node)
   // energy bounds
   energy_bounds_ = get_node_array<double>(node, "energy_bounds");
 
-  // read the lower/upper weight bounds
-  lower_ww_ = get_node_array<double>(node, "lower_ww_bounds");
-  upper_ww_ = get_node_array<double>(node, "upper_ww_bounds");
+  if (variance_reduction::local_on) {
+    // Set the total weight & score for each mesh bin for LVR
+    int mesh_size = this->mesh().n_bins();
+    int energy_size = energy_bounds_.size()-1;
+    for (int i = 0; i < mesh_size*energy_size; i++) {
+      variance_reduction::total_weight.push_back(0.);
+      variance_reduction::total_score.push_back(0.);
+      lower_ww_.push_back(-1);
+      upper_ww_.push_back(-5);
+    }
+  } else {
+    // read the lower/upper weight bounds for WWM
+    lower_ww_ = get_node_array<double>(node, "lower_ww_bounds");
+    upper_ww_ = get_node_array<double>(node, "upper_ww_bounds");
+  }
 
   // get the survival value - optional
   if (check_for_node(node, "survival_ratio")) {
@@ -276,6 +335,13 @@ void WeightWindows::to_hdf5(hid_t group) const
   write_dataset(ww_group, "mesh", this->mesh().id_);
 
   close_group(ww_group);
+}
+  
+// new in LVR
+int WeightWindows::get_energy_bin(double E) 
+{
+  if (E < energy_bounds_.front() || E > energy_bounds_.back()) return -1;
+  return lower_bound_index(energy_bounds_.begin(), energy_bounds_.end(), E);
 }
 
 } // namespace openmc

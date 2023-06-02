@@ -155,6 +155,10 @@ public:
   // Data members
   int id_ {-1};     //!< User-specified ID
   int n_dimension_; //!< Number of dimensions
+  
+  // new in LVR
+  virtual void mesh_bins(Particle& p) const = 0;      //!< record the mesh bins intersected by the track
+  virtual bool arrived_target(Particle& p) const = 0; //!< check if the track arrived target region
 };
 
 class StructuredMesh : public Mesh {
@@ -194,6 +198,10 @@ public:
 
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
+  
+  // new in LVR
+  void mesh_bins(Particle& p) const override;      //!< record the mesh bins intersected by the track
+  bool arrived_target(Particle& p) const override; //!< check if the track arrived target region
 
   //! Determine which cell or surface bins were crossed by a particle
   //

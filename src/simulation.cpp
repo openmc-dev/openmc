@@ -24,6 +24,7 @@
 #include "openmc/tallies/trigger.h"
 #include "openmc/timer.h"
 #include "openmc/track_output.h"
+#include "openmc/weight_windows.h"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -39,6 +40,12 @@
 #include <algorithm>
 #include <cmath>
 #include <string>
+
+// for output the WWM in LVR
+#include <ios>
+#include <iostream>
+#include <fstream>
+#include <sstream>
 
 //==============================================================================
 // C API functions
@@ -700,6 +707,71 @@ void broadcast_results()
   simulation::k_col_abs = temp[0];
   simulation::k_col_tra = temp[1];
   simulation::k_abs_tra = temp[2];
+  
+  // Broadcast the weight and score vectors for LVR to generate WWM
+  if (variance_reduction::local_on) {
+    //Make copy of vector values
+    auto weights = variance_reduction::total_weight;
+    std::vector<double> weights_reduced(weights.size());
+
+    auto scores = variance_reduction::total_score;
+    std::vector<double> scores_reduced(scores.size());
+
+    // Reduce of vector results
+    MPI_Reduce(weights.data(), weights_reduced.data(), weights.size(),
+      MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
+    MPI_Reduce(scores.data(), scores_reduced.data(), scores.size(),
+      MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);    
+
+    // Output the WWM
+    if (mpi::master) {
+      // find the mesh with max weight, which is the source mesh
+      vector<double> max_weight;
+      vector<int> max_mesh;
+      int mesh_size = variance_reduction::weight_windows[0]->mesh().n_bins();
+      int energy_size = variance_reduction::weight_windows[0]->get_energy_size();
+
+      // for each energy bin
+      for (int ee = 0; ee < energy_size; ee++) {
+        max_weight.push_back(-1.);
+        max_mesh.push_back(-1);
+        for (int mm = 0; mm < mesh_size; mm++) {
+          if (weights[mm+ee*mesh_size] > max_weight[ee]) {
+            max_weight[ee] = weights[mm+ee*mesh_size];
+            max_mesh[ee] = mm+ee*mesh_size;
+          }
+        }
+      }      
+
+      std::ofstream lower_ww;
+      lower_ww.open("lower_ww.out", std::ios::out | std::ios::trunc);
+      lower_ww<<"<lower_ww_bounds>"<<std::endl;
+
+      std::ofstream upper_ww;
+      upper_ww.open("upper_ww.out", std::ios::out | std::ios::trunc);
+      upper_ww<<"<upper_ww_bounds>"<<std::endl;
+
+      // for each energy bin
+      for (int ee = 0; ee < energy_size; ee++) {
+        for (int mm = 0; mm < mesh_size; mm++) {
+          double ww = -1.;
+          if (scores[mm+ee*mesh_size] != 0) {
+            ww = 0.5 * scores[max_mesh[ee]] / scores[mm+ee*mesh_size] * weights[mm+ee*mesh_size] / weights[max_mesh[ee]];
+          }
+          lower_ww<<ww<<"   ";
+          upper_ww<<5*ww<<"   ";
+
+          if ((mm+ee*mesh_size+1)%6 == 0) {
+            lower_ww<<std::endl;
+            upper_ww<<std::endl;     
+          }
+        }
+      }
+
+      lower_ww<<std::endl<<"</lower_ww_bounds>"<<std::endl;
+      upper_ww<<std::endl<<"</upper_ww_bounds>"<<std::endl;
+    }
+  }
 }
 
 #endif
@@ -712,16 +784,57 @@ void free_memory_simulation()
 
 void transport_history_based_single_particle(Particle& p)
 {
+  // record the born mesh and the weight of source particle for LVR
+  if (variance_reduction::local_on) {
+    // get mesh index for particle's position
+    int index = variance_reduction::weight_windows[0]->mesh().get_bin(p.r());
+
+    // make sure particle is inside the mesh
+    if (index >= 0) {
+      // particle energy
+      double E = p.E();
+
+      // get the mesh bin in energy group
+      int energy_bin = variance_reduction::weight_windows[0]->get_energy_bin(E);
+
+      // check to make sure energy is in range, expects sorted energy values
+      if (energy_bin >= 0) {
+        // indices now points to the correct mesh bin for the given energy
+        index += energy_bin * variance_reduction::weight_windows[0]->mesh().n_bins();
+
+        //if (mpi::master) std::cout<<"record source with index = "<<index<<", weight = "<<p.wgt()<<std::endl;
+ 
+        // record the mesh & weight
+        p.add_crossed_mesh(index);
+        p.add_crossed_weight(p.wgt());
+      }
+    }
+  }
+  
   while (true) {
     p.event_calculate_xs();
     if (!p.alive())
       break;
     p.event_advance();
+    
+    // record the crossed mesh bin and the weight for each step
+    // and count score if the particle arrived target
+    if (variance_reduction::local_on) {
+      variance_reduction::weight_windows[0]->mesh().mesh_bins(p);
+      if (variance_reduction::weight_windows[0]->mesh().arrived_target(p)) add_score(p);
+    }
+    
     if (p.collision_distance() > p.boundary().distance) {
       p.event_cross_surface();
     } else {
       p.event_collide();
     }
+    
+    // count weight after the particle is dead
+    if (variance_reduction::local_on) {
+      if (!p.alive()) add_weight(p);
+    }
+    
     p.event_revive_from_secondary();
     if (!p.alive())
       break;
@@ -789,6 +902,25 @@ void transport_event_based()
     remaining_work -= n_particles;
     source_offset += n_particles;
   }
+}
+  
+//new in LVR
+void add_weight(Particle& p)
+{
+  for (int i = 0; i < p.crossed_mesh_size(); i++) {
+    variance_reduction::total_weight[p.crossed_mesh_value(i)] += p.crossed_weight_value(i);
+  }
+  //if (mpi::master) std::cout<<"add weight, crossed_mesh_size = "<<p.crossed_mesh_size()<<std::endl;
+}
+
+void add_score(Particle& p)
+{
+  for (int i = 0; i < p.crossed_mesh_size(); i++) {
+    variance_reduction::total_score[p.crossed_mesh_value(i)] += p.wgt();
+  }
+  variance_reduction::score_in_target += p.wgt();
+  //if (mpi::master) 
+  std::cout<<"add score, crossed_mesh_size = "<<p.crossed_mesh_size()<<std::endl;
 }
 
 } // namespace openmc

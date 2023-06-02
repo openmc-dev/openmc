@@ -2483,51 +2483,52 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
   for (auto i_tally : tallies) {
     auto& tally {*model::tallies[i_tally]};
 
-      // Determine the CellFilter in the tally
-      auto i_cell_filt = tally.filters()[tally.cell_filter_];
-      const CellFilter& cell_filter {
-       *dynamic_cast<CellFilter*>(model::tally_filters[i_cell_filt].get())};
-      const auto& cells = cell_filter.cells();
+    // Determine the CellFilter in the tally
+    auto i_cell_filt = tally.filters()[tally.cell_filter_];
+    const CellFilter& cell_filter {
+      *dynamic_cast<CellFilter*>(model::tally_filters[i_cell_filt].get())};
+    const auto& cells = cell_filter.cells();
 
-        // Loop over all cells in the CellFilter
-        for (auto cell_index = 0; cell_index < cells.size(); ++cell_index) {
-          int cell_id = cells[cell_index];
-        
-          // Temporarily change cell of the particle
-          p.n_coord() = 1;
-          p.coord(0).cell = cell_id;
-          
-          // determine index of cell in model::pulse_height_cells
-          auto it = std::find(model::pulse_height_cells.begin(),
-            model::pulse_height_cells.end(), cell_id);
-          int index = std::distance(model::pulse_height_cells.begin(), it);
+    // Loop over all cells in the CellFilter
+    for (auto cell_index = 0; cell_index < cells.size(); ++cell_index) {
+      int cell_id = cells[cell_index];
 
-          // Temporarily change the energy of the particle to the pulse-height value
-          p.E_last() = p.pht_storage()[index];
-          std::cout << "cell " << cell_id << "   " << p.E_last() << std::endl;
-          // Initialize an iterator over valid filter bin combinations.  If there
-          // are no valid combinations, use a continue statement to ensure we skip
-          // the assume_separate break below.
-          auto filter_iter = FilterBinIter(tally, p);
-          auto end = FilterBinIter(tally, true, &p.filter_matches());
-          if (filter_iter == end)
-            continue;
-          // Loop over filter bins.
-          for (; filter_iter != end; ++filter_iter) {
-            auto filter_index = filter_iter.index_;
-            auto filter_weight = filter_iter.weight_;
+      // Temporarily change cell of the particle
+      p.n_coord() = 1;
+      p.coord(0).cell = cell_id;
 
-            // Loop over scores.
-            for (auto score_index = 0; score_index < tally.scores_.size();
-                 ++score_index) {      
-            #pragma omp atomic
-            tally.results_(filter_index, score_index, TallyResult::VALUE) += filter_weight;
-            }
+      // determine index of cell in model::pulse_height_cells
+      auto it = std::find(model::pulse_height_cells.begin(),
+        model::pulse_height_cells.end(), cell_id);
+      int index = std::distance(model::pulse_height_cells.begin(), it);
+
+      // Temporarily change the energy of the particle to the pulse-height value
+      p.E_last() = p.pht_storage()[index];
+      std::cout << "cell " << cell_id << "   " << p.E_last() << std::endl;
+      // Initialize an iterator over valid filter bin combinations.  If there
+      // are no valid combinations, use a continue statement to ensure we skip
+      // the assume_separate break below.
+      auto filter_iter = FilterBinIter(tally, p);
+      auto end = FilterBinIter(tally, true, &p.filter_matches());
+      if (filter_iter == end)
+        continue;
+      // Loop over filter bins.
+      for (; filter_iter != end; ++filter_iter) {
+        auto filter_index = filter_iter.index_;
+        auto filter_weight = filter_iter.weight_;
+
+        // Loop over scores.
+        for (auto score_index = 0; score_index < tally.scores_.size();
+             ++score_index) {
+#pragma omp atomic
+          tally.results_(filter_index, score_index, TallyResult::VALUE) +=
+            filter_weight;
         }
+      }
 
-        // Reset all the filter matches for the next tally event.
-        for (auto& match : p.filter_matches())
-          match.bins_present_ = false;
+      // Reset all the filter matches for the next tally event.
+      for (auto& match : p.filter_matches())
+        match.bins_present_ = false;
     }
     // Restore cell/energy
     p.n_coord() = orig_n_coord;

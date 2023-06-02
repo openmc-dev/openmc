@@ -99,6 +99,19 @@ void transport_history_based();
 
 //! Simulate all particle histories using event-based parallelism
 void transport_event_based();
+  
+//new in GVR
+void openmc_generate_WW();
+void update_WW();
+void asynchronous_scheduling();
+//! Full initialization of a particle history in asynchronous scheduling
+void initialize_history_asynchronous(Particle& p, int64_t index_source, int Part);
+//! Simulate all particle histories using history-based parallelism
+void transport_history_based_asynchronous(int Part);
+
+//new in LVR
+void add_weight(Particle& p);  //!< add weight for the mesh cell that current particle crossed
+void add_score(Particle& p);   //!< add score for the mesh cell that scored particle crossed
 
 } // namespace openmc
 

@@ -12,6 +12,10 @@
 #include <fmt/core.h>
 #include <gsl/gsl-lite.hpp>
 
+// new 
+#include "openmc/tallies/tally.h"
+#include "openmc/math_functions.h"
+
 namespace openmc {
 
 //==============================================================================
@@ -22,7 +26,23 @@ namespace variance_reduction {
 
 std::unordered_map<int32_t, int32_t> ww_map;
 openmc::vector<unique_ptr<WeightWindows>> weight_windows;
-
+// new in GVR 
+bool global_on {false};
+vector<double> iteration;
+int32_t tally_idx {-1};
+int source_space {1};
+int n_statistics {10000};
+int64_t nps_backup {-1};
+// new in asynchronous
+int max_nps_per_task {1000};
+// new in LVR
+bool local_on {false};
+vector<double> target_lower_left;
+vector<double> target_upper_right;
+vector<double> total_weight;
+vector<double> total_score;
+double score_in_target {0.};
+//
 } // namespace variance_reduction
 
 //==============================================================================
@@ -110,15 +130,100 @@ void free_memory_weight_windows()
 
 WeightWindows::WeightWindows(pugi::xml_node node)
 {
-  // Make sure required elements are present
-  const vector<std::string> required_elems {"id", "particle_type",
-    "energy_bounds", "lower_ww_bounds", "upper_ww_bounds"};
-  for (const auto& elem : required_elems) {
-    if (!check_for_node(node, elem.c_str())) {
-      fatal_error(fmt::format("Must specify <{}> for weight windows.", elem));
+  using namespace pugi;
+
+  // check if GVR is used 
+  if (check_for_node(node, "global")) {
+    // turn on the flag
+    variance_reduction::global_on = true;
+    std::cout<<"Using GVR"<<std::endl;
+
+    xml_node node_global = node.child("global");
+
+    // Make sure required elements are present
+    const vector<std::string> required_elems {"iteration", "tally",
+      "source_space"};
+    for (const auto& elem : required_elems) {
+      if (!check_for_node(node_global, elem.c_str())) {
+        fatal_error(fmt::format("Must specify <{}> for GVR.", elem));
+      }
+    }
+
+    // iteration during WW generation
+    variance_reduction::iteration = get_node_array<double>(node_global, "iteration"); 
+    for (int i = 0; i<variance_reduction::iteration.size(); i++) std::cout<<"  "<<variance_reduction::iteration[i]<<"  ";
+      std::cout<<"  "<<std::endl; 
+
+    // tally for WW generation
+    variance_reduction::tally_idx = std::stoi(get_node_value(node_global, "tally"));
+      std::cout<<"  tally "<<variance_reduction::tally_idx<<"  "<<std::endl;
+
+    // S value in the PS-GVR method
+    variance_reduction::source_space = std::stod(get_node_value(node_global, "source_space"));
+      std::cout<<"  S "<<variance_reduction::source_space<<"  "<<std::endl;     
+
+    // n_statistics value in the PS-GVR method
+    if (check_for_node(node_global, "n_statistics")) {
+      variance_reduction::n_statistics = std::stod(get_node_value(node_global, "n_statistics"));
+      std::cout<<"  n_statistics "<<variance_reduction::n_statistics<<"  "<<std::endl;
+    } else std::cout<<"  default n_statistics "<<variance_reduction::n_statistics<<"  "<<std::endl;
+
+    // new in asynchronous
+    if (check_for_node(node_global, "max_nps_per_task")) {
+      variance_reduction::max_nps_per_task = std::stoi(get_node_value(node_global, "max_nps_per_task"));
+       std::cout<<"  max_nps_per_task "<<variance_reduction::max_nps_per_task<<"  "<<std::endl;
     }
   }
 
+  // check if LVR is used
+  if (check_for_node(node, "local")) {
+    // turn on the flag
+    variance_reduction::local_on = true;
+    std::cout<<"Using LVR"<<std::endl;
+
+    xml_node node_local = node.child("local");
+
+    // Make sure required elements are present
+    const vector<std::string> required_elems {"target_lower_left", "target_upper_right"};
+    for (const auto& elem : required_elems) {
+      if (!check_for_node(node_local, elem.c_str())) {
+        fatal_error(fmt::format("Must specify <{}> for LVR.", elem));
+      }
+    }
+
+    // Read target lower-left corner location
+    variance_reduction::target_lower_left = get_node_array<double>(node_local, "target_lower_left");
+    if (variance_reduction::target_lower_left.size() != 3) fatal_error("Must specify 3 dimension of target_lower_left point.");
+    std::cout<<"target_lower_left: "<<variance_reduction::target_lower_left[0]<<", "<<variance_reduction::target_lower_left[1]<<", "<<variance_reduction::target_lower_left[2]<<std::endl;
+
+    // Read target upper-right corner location
+    variance_reduction::target_upper_right = get_node_array<double>(node_local, "target_upper_right");
+    if (variance_reduction::target_upper_right.size() != 3) fatal_error("Must specify 3 dimension of target_upper_right point.");
+    std::cout<<"target_upper_right: "<<variance_reduction::target_upper_right[0]<<", "<<variance_reduction::target_upper_right[1]<<", "<<variance_reduction::target_upper_right[2]<<std::endl;
+  }
+
+  if (variance_reduction::global_on && variance_reduction::local_on) fatal_error("Can not use GVR & LVR in the same run.");
+
+  if (variance_reduction::global_on || variance_reduction::local_on) {
+    // Make sure required elements are present for GVR or LVR
+    const vector<std::string> required_elems {"id", "particle_type",
+      "energy_bounds"};
+    for (const auto& elem : required_elems) {
+      if (!check_for_node(node, elem.c_str())) {
+        fatal_error(fmt::format("Must specify <{}> for weight windows.", elem));
+      }
+    }
+  } else {
+    // Make sure required elements are present for WWM
+    const vector<std::string> required_elems {"id", "particle_type",
+      "energy_bounds", "lower_ww_bounds", "upper_ww_bounds"};
+    for (const auto& elem : required_elems) {
+      if (!check_for_node(node, elem.c_str())) {
+        fatal_error(fmt::format("Must specify <{}> for weight windows.", elem));
+      }
+    }
+  }
+  
   // Get weight windows ID
   int32_t id = std::stoi(get_node_value(node, "id"));
   this->set_id(id);
@@ -134,9 +239,29 @@ WeightWindows::WeightWindows(pugi::xml_node node)
   // energy bounds
   energy_bounds_ = get_node_array<double>(node, "energy_bounds");
 
-  // read the lower/upper weight bounds
-  lower_ww_ = get_node_array<double>(node, "lower_ww_bounds");
-  upper_ww_ = get_node_array<double>(node, "upper_ww_bounds");
+  if (variance_reduction::global_on) {
+    // set the lower/upper weight bounds for GVR
+    int mesh_size = this->mesh().n_bins();
+    int energy_size = energy_bounds_.size()-1;
+    for (int i = 0; i<mesh_size*energy_size; i++) {
+      lower_ww_.push_back(-1);
+      upper_ww_.push_back(-5);
+    }
+  } else if (variance_reduction::local_on) {
+    // Set the total weight & score for each mesh bin for LVR
+    int mesh_size = this->mesh().n_bins();
+    int energy_size = energy_bounds_.size()-1;
+    for (int i = 0; i < mesh_size*energy_size; i++) {
+      variance_reduction::total_weight.push_back(0.);
+      variance_reduction::total_score.push_back(0.);
+      lower_ww_.push_back(-1);
+      upper_ww_.push_back(-5);
+    }
+  } else {
+    // read the lower/upper weight bounds for WWM
+    lower_ww_ = get_node_array<double>(node, "lower_ww_bounds");
+    upper_ww_ = get_node_array<double>(node, "upper_ww_bounds");
+  }
 
   // get the survival value - optional
   if (check_for_node(node, "survival_ratio")) {
@@ -276,6 +401,112 @@ void WeightWindows::to_hdf5(hid_t group) const
   write_dataset(ww_group, "mesh", this->mesh().id_);
 
   close_group(ww_group);
+}
+  
+
+// new in GVR
+//==============================================================================
+
+std::pair<double, double> mean_stdev_GVR(const double* x, int n)
+{
+  double mean = x[static_cast<int>(TallyResult::SUM)] / n;
+  double stdev =
+    n > 1 ? std::sqrt(std::max(0.0,
+              (x[static_cast<int>(TallyResult::SUM_SQ)] / n - mean * mean) /
+                (n - 1)))
+          : 0.0;
+  return {mean, stdev};
+}
+
+//==============================================================================
+
+void WeightWindows::calculate_WW() 
+{
+  // parameters for WW calculation
+  double max_flux = -1;
+  double min_flux = INFTY; 
+  int mesh_size = this->mesh().n_bins();
+  int energy_size = energy_bounds_.size()-1;
+  std::cout<<"mesh_size "<<mesh_size<<", energy_size "<<energy_size<<std::endl;
+  vector<double> flux_data(mesh_size*energy_size, 0);
+  vector<double> max_flux_data(energy_size, 0);
+  vector<double> min_flux_data(energy_size, 0);
+  bool tally_found = false;
+
+  // get the neutron flux from tally
+  for (auto i_tally = 0; i_tally < model::tallies.size(); ++i_tally) {
+    const auto& tally {*model::tallies[i_tally]}; 
+
+    if (variance_reduction::tally_idx == tally.id_) {
+      tally_found = true; 
+  
+      // Calculate t-value for confidence intervals
+      double t_value = 1;
+      if (openmc::settings::confidence_intervals) {
+        auto alpha = 1 - CONFIDENCE_LEVEL;
+        t_value = t_percentile(1 - alpha*0.5, tally.n_realizations_ - 1);
+      }
+  
+      // find the max & min flux for each energy group
+      for (int ee = 0; ee < energy_size; ++ee) {
+        // celar all data before each energy group
+        max_flux = -1;
+        min_flux = INFTY;
+        // mesh
+        for (int mm = 0; mm < mesh_size; ++mm) {    
+          double mean, stdev;
+          std::tie(mean, stdev) = 
+            mean_stdev_GVR(&tally.results_(mm+mesh_size*ee,0,0),
+              tally.n_realizations_);
+          if (mean > 0) {
+            flux_data[mm+ee*mesh_size] = mean;
+            // find the max flux
+            if (mean > max_flux) max_flux = mean;
+            // find the min flux
+            if (mean < min_flux) min_flux = mean;
+          }
+        }
+    
+        // save the max & min flux for each energy group
+        max_flux_data[ee] = max_flux;
+        min_flux_data[ee] = min_flux;
+        std::cout<<"max_flux = "<<max_flux<<", min_flux = "<<min_flux<<" "<<std::endl;
+      }
+    }
+    if (tally_found) break;
+  }
+    if (!tally_found) fatal_error("The tally for GVR is not found. ");
+
+  // calculate the WW based on PS-GVR
+  double near_source = double(variance_reduction::n_statistics*variance_reduction::source_space)/double(variance_reduction::nps_backup);
+  if (near_source > 0.2) near_source = 0.2;
+  std::cout<<"near source "<<near_source<<std::endl;
+
+  // for each energy group
+  for (int ee = 0; ee < energy_size; ++ee) {
+    // celar all data before each energy group
+    double PS_k = 0.4/log(1/near_source);
+    double PS_b = 0.5 - log(max_flux_data[ee]/min_flux_data[ee])*PS_k;
+
+    // mesh
+    for (int mm = 0; mm < mesh_size; ++mm) {    
+      lower_ww_[mm+ee*mesh_size] = -1;
+      upper_ww_[mm+ee*mesh_size] = -5;
+      if (flux_data[mm+ee*mesh_size] <= 0) continue;
+      if (flux_data[mm+ee*mesh_size] >= near_source*max_flux_data[ee]) lower_ww_[mm+ee*mesh_size] = log(flux_data[mm+ee*mesh_size]/min_flux_data[ee]) * PS_k + PS_b;
+      else lower_ww_[mm+ee*mesh_size] = 0.1*flux_data[mm+ee*mesh_size]/(near_source*max_flux_data[ee]);
+      upper_ww_[mm+ee*mesh_size] = 5*lower_ww_[mm+ee*mesh_size];
+      //if ( std::abs(mm-34460) <= 20) std::cout<<"mm, "<<mm<<", ee "<<ee<<", flux "<<flux_data[mm+ee*mesh_size]<<", lower "<<lower_ww_[mm+ee*mesh_size]<<", upper "<<upper_ww_[mm+ee*mesh_size]<<std::endl;
+    }
+  }  
+
+}
+
+// new in LVR
+int WeightWindows::get_energy_bin(double E) 
+{
+  if (E < energy_bounds_.front() || E > energy_bounds_.back()) return -1;
+  return lower_bound_index(energy_bounds_.begin(), energy_bounds_.end(), E);
 }
 
 } // namespace openmc

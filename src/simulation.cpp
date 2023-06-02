@@ -25,6 +25,10 @@
 #include "openmc/timer.h"
 #include "openmc/track_output.h"
 
+//new in GVR
+#include "openmc/weight_windows.h"
+#include "openmc/math_functions.h"
+
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -40,6 +44,12 @@
 #include <cmath>
 #include <string>
 
+// for output the WWM in LVR
+#include <ios>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+
 //==============================================================================
 // C API functions
 //==============================================================================
@@ -50,6 +60,14 @@
 
 int openmc_run()
 {
+// new in GVR
+  if (openmc::variance_reduction::global_on) {
+    openmc::simulation::time_total.start();
+    openmc_simulation_init();
+    openmc::openmc_generate_WW();
+  }
+//
+  
   openmc::simulation::time_total.start();
   openmc_simulation_init();
 
@@ -216,6 +234,23 @@ int openmc_next_batch(int* status)
 
     initialize_generation();
 
+#ifdef OPENMC_MPI
+    if (variance_reduction::global_on) asynchronous_scheduling();
+    else {
+      // Start timer for transport
+      simulation::time_transport.start();
+
+      // Transport loop
+      if (settings::event_based) {
+        transport_event_based();
+      } else {
+        transport_history_based();
+      }
+
+      // Accumulate time for transport
+      simulation::time_transport.stop();
+    }
+#else
     // Start timer for transport
     simulation::time_transport.start();
 
@@ -228,7 +263,7 @@ int openmc_next_batch(int* status)
 
     // Accumulate time for transport
     simulation::time_transport.stop();
-
+#endif
     finalize_generation();
   }
 
@@ -288,6 +323,9 @@ const RegularMesh* ufs_mesh {nullptr};
 
 vector<double> k_generation;
 vector<int64_t> work_index;
+  
+// new in asynchronous_scheduling
+vector<int64_t> work_per_task;
 
 } // namespace simulation
 
@@ -700,6 +738,71 @@ void broadcast_results()
   simulation::k_col_abs = temp[0];
   simulation::k_col_tra = temp[1];
   simulation::k_abs_tra = temp[2];
+
+  // Broadcast the weight and score vectors for LVR to generate WWM
+  if (variance_reduction::local_on) {
+    //Make copy of vector values
+    auto weights = variance_reduction::total_weight;
+    std::vector<double> weights_reduced(weights.size());
+
+    auto scores = variance_reduction::total_score;
+    std::vector<double> scores_reduced(scores.size());
+
+    // Reduce of vector results
+    MPI_Reduce(weights.data(), weights_reduced.data(), weights.size(),
+      MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
+    MPI_Reduce(scores.data(), scores_reduced.data(), scores.size(),
+      MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);    
+
+    // Output the WWM
+    if (mpi::master) {
+      // find the mesh with max weight, which is the source mesh
+      vector<double> max_weight;
+      vector<int> max_mesh;
+      int mesh_size = variance_reduction::weight_windows[0]->mesh().n_bins();
+      int energy_size = variance_reduction::weight_windows[0]->get_energy_size();
+
+      // for each energy bin
+      for (int ee = 0; ee < energy_size; ee++) {
+        max_weight.push_back(-1.);
+        max_mesh.push_back(-1);
+        for (int mm = 0; mm < mesh_size; mm++) {
+          if (weights[mm+ee*mesh_size] > max_weight[ee]) {
+            max_weight[ee] = weights[mm+ee*mesh_size];
+            max_mesh[ee] = mm+ee*mesh_size;
+          }
+        }
+      }      
+
+      std::ofstream lower_ww;
+      lower_ww.open("lower_ww.out", std::ios::out | std::ios::trunc);
+      lower_ww<<"<lower_ww_bounds>"<<std::endl;
+
+      std::ofstream upper_ww;
+      upper_ww.open("upper_ww.out", std::ios::out | std::ios::trunc);
+      upper_ww<<"<upper_ww_bounds>"<<std::endl;
+
+      // for each energy bin
+      for (int ee = 0; ee < energy_size; ee++) {
+        for (int mm = 0; mm < mesh_size; mm++) {
+          double ww = -1.;
+          if (scores[mm+ee*mesh_size] != 0) {
+            ww = 0.5 * scores[max_mesh[ee]] / scores[mm+ee*mesh_size] * weights[mm+ee*mesh_size] / weights[max_mesh[ee]];
+          }
+          lower_ww<<ww<<"   ";
+          upper_ww<<5*ww<<"   ";
+
+          if ((mm+ee*mesh_size+1)%6 == 0) {
+            lower_ww<<std::endl;
+            upper_ww<<std::endl;     
+          }
+        }
+      }
+
+      lower_ww<<std::endl<<"</lower_ww_bounds>"<<std::endl;
+      upper_ww<<std::endl<<"</upper_ww_bounds>"<<std::endl;
+    }
+  }
 }
 
 #endif
@@ -712,16 +815,57 @@ void free_memory_simulation()
 
 void transport_history_based_single_particle(Particle& p)
 {
+  // record the born mesh and the weight of source particle for LVR
+  if (variance_reduction::local_on) {
+    // get mesh index for particle's position
+    int index = variance_reduction::weight_windows[0]->mesh().get_bin(p.r());
+
+    // make sure particle is inside the mesh
+    if (index >= 0) {
+      // particle energy
+      double E = p.E();
+
+      // get the mesh bin in energy group
+      int energy_bin = variance_reduction::weight_windows[0]->get_energy_bin(E);
+
+      // check to make sure energy is in range, expects sorted energy values
+      if (energy_bin >= 0) {
+        // indices now points to the correct mesh bin for the given energy
+        index += energy_bin * variance_reduction::weight_windows[0]->mesh().n_bins();
+
+        //if (mpi::master) std::cout<<"record source with index = "<<index<<", weight = "<<p.wgt()<<std::endl;
+ 
+        // record the mesh & weight
+        p.add_crossed_mesh(index);
+        p.add_crossed_weight(p.wgt());
+      }
+    }
+  }
+  
   while (true) {
     p.event_calculate_xs();
     if (!p.alive())
       break;
     p.event_advance();
+    
+    // record the crossed mesh bin and the weight for each step
+    // and count score if the particle arrived target
+    if (variance_reduction::local_on) {
+      variance_reduction::weight_windows[0]->mesh().mesh_bins(p);
+      if (variance_reduction::weight_windows[0]->mesh().arrived_target(p)) add_score(p);
+    }
+    
     if (p.collision_distance() > p.boundary().distance) {
       p.event_cross_surface();
     } else {
       p.event_collide();
     }
+    
+    // count weight after the particle is dead
+    if (variance_reduction::local_on) {
+      if (!p.alive()) add_weight(p);
+    }
+    
     p.event_revive_from_secondary();
     if (!p.alive())
       break;
@@ -789,6 +933,330 @@ void transport_event_based()
     remaining_work -= n_particles;
     source_offset += n_particles;
   }
+}
+  
+
+// new in GVR
+void openmc_generate_WW() 
+{
+  using namespace openmc;
+
+  // Make sure simulation has been initialized
+  if (!simulation::initialized) {
+    set_errmsg("Simulation has not been initialized yet.");
+  }
+
+  initialize_batch();
+
+  // Backup for the total nps
+  variance_reduction::nps_backup = settings::n_batches * settings::n_particles;
+  int total_iteration_nps = 0;
+  
+
+  // =======================================================================
+  // LOOP OVER ITERATION FOR WW GENERATION
+  for (int i = 1; i <= variance_reduction::iteration.size(); ++i) {
+
+    // Reset the nps in each iteration
+    settings::n_particles = variance_reduction::iteration[i-1];
+    total_iteration_nps += settings::n_particles;
+    if (mpi::master) {
+      std::cout<<"-- Iteration "<<i<<"/"<<variance_reduction::iteration.size()<<" for WW generation by GVR. "
+               <<"   Set nps = "<<settings::n_particles<<" in this iteration, total nps: "<<total_iteration_nps<<std::endl;
+    }
+
+#ifdef OPENMC_MPI
+    // using asynchronous scheduling function in MPI mode
+    asynchronous_scheduling();
+#else
+    // Re-determine how much work each process should do, since the nps has been reset
+    calculate_work();
+
+    // Start timer for transport
+    simulation::time_transport.start();
+
+    // Transport loop
+    if (settings::event_based) {
+      transport_event_based();
+    } else {
+      transport_history_based();
+    }
+
+    // Accumulate time for transport
+    simulation::time_transport.stop();
+#endif
+
+    accumulate_tallies(); 
+
+#ifdef OPENMC_MPI
+    broadcast_results();
+#endif
+
+    // Calculate the lower WW bound with flux tally results
+    update_WW();
+
+    if (mpi::master) {
+      std::cout<<"-- Iteration "<<i<<"/"<<variance_reduction::iteration.size()<<" is end. Current time: "<<time_stamp()<<std::endl;
+    }
+  }
+
+  finalize_batch();
+
+  if (mpi::master) {
+    header("GVR WW generation", 6);
+    std::cout<<" Total "<<variance_reduction::iteration.size()<<" iteration are used with "<<total_iteration_nps<<" particles."<<std::endl;
+    std::cout<<" Total time : "<<simulation::time_total.elapsed()<<" seconds."<<std::endl;
+    std::cout<<" Current time: "<<time_stamp()<<std::endl;
+  }
+
+  // Reset the total nps
+  settings::n_particles = (variance_reduction::nps_backup - total_iteration_nps)/ settings::n_batches;  
+  if (mpi::master) {
+    std::cout<<" Reset nps: "<<settings::n_particles<<std::endl;
+  }
+
+  // Reset flags
+  simulation::initialized = false;
+
+  // Reset all tallies and timers
+  openmc_reset();
+  reset_timers();
+
+}
+
+void asynchronous_scheduling() 
+{
+  // Determine number of tasks
+  int number_of_task = 2 * mpi::n_procs;
+  int task_on_rank;
+  if (settings::n_particles/number_of_task > variance_reduction::max_nps_per_task) {
+    number_of_task = settings::n_particles / variance_reduction::max_nps_per_task;
+  }
+  if (mpi::master) {
+    std::cout<<"Asynchronous scheduling: Total "<<number_of_task<<" tasks in this simulation."<<std::endl;
+  }
+
+  // Determine minimum amount of particles to simulate on each task
+  int64_t min_work = settings::n_particles / number_of_task;
+
+  // Determine number of processors that have one extra particle
+  int64_t remainder = settings::n_particles % number_of_task;
+
+  int64_t i_bank = 0;
+  simulation::work_index.clear();
+  simulation::work_index.resize(number_of_task + 1);
+  simulation::work_index[0] = 0;
+  simulation::work_per_task.clear();
+  simulation::work_per_task.resize(number_of_task);
+  for (int i = 0; i < number_of_task; ++i) {
+    // Number of particles for task i
+    int64_t work_i = i < remainder ? min_work + 1 : min_work;
+
+    // Set nps of task i
+    simulation::work_per_task[i] = work_i;
+
+    // Set index into source bank for task i
+    i_bank += work_i;
+    simulation::work_index[i+1] = i_bank;
+  }
+  if (mpi::master) {
+    std::cout<<"Asynchronous scheduling: Tasks have been devided."<<std::endl;
+  }
+
+  // ---
+  // asynchronous scheduling
+  const int data_tag = 0;
+  const int result_tag = 1;
+  const int terminate_tag = 2;
+
+  int count; // count for the running processes
+  int Part;  // task number to dispatch
+  int finish_flag; // flag indicates the finished task on process
+  MPI_Status stat;
+
+  if (mpi::master) { // dispatch task in the master process
+    count = 0;
+    Part = 0;
+    finish_flag = 0;
+
+    // dispatch the first task for other processes
+    for (int i = 1; i < mpi::n_procs; i++) { 
+      MPI_Send(&Part,1,MPI_INT,i,data_tag,mpi::intracomm);
+      count++;
+      Part++;
+    }
+
+    do {
+      // dispatch task after any process have finished task
+      MPI_Recv(&finish_flag,1,MPI_INT,MPI_ANY_SOURCE,result_tag,mpi::intracomm,&stat);
+      --count;
+
+      if (Part < number_of_task) {
+        // if not all task has been dispatched, dispatch the next task to process
+        MPI_Send(&Part,1,MPI_INT,stat.MPI_SOURCE,data_tag,mpi::intracomm);
+        count++;
+        Part++;
+      } else {
+        // if all task has been dispatched, send the singal to terminate the simulation on process
+        MPI_Send(&Part,1,MPI_INT,stat.MPI_SOURCE,terminate_tag,mpi::intracomm);
+      }
+
+    } while (count > 0);
+
+  } else { // simulation in other process
+    // receive the first task
+    finish_flag = 0;
+    task_on_rank = 0;
+    MPI_Recv(&Part,1,MPI_INT,0,MPI_ANY_TAG,mpi::intracomm,&stat);
+
+    while (stat.MPI_TAG == data_tag) {
+      task_on_rank++;
+
+      // simulation task
+      simulation::work_per_rank = simulation::work_per_task[Part];
+      
+      // Start timer for transport
+      simulation::time_transport.start();
+
+      // Transport loop
+      if (settings::event_based) {
+        transport_event_based();
+      } else {
+        transport_history_based_asynchronous(Part);
+      }
+
+      // Accumulate time for transport
+      simulation::time_transport.stop();
+
+      // Send task-finished singal to master process and receive the next task
+      finish_flag = Part;
+      MPI_Send(&finish_flag,1,MPI_INT,0,result_tag,mpi::intracomm);
+      MPI_Recv(&Part,1,MPI_INT,0,MPI_ANY_TAG,mpi::intracomm,&stat);
+    }
+    std::cout<<"** Total "<<task_on_rank<<" task in rank "<<mpi::rank<<". Current time: "<<time_stamp()<<std::endl; 
+  }
+  // ---
+}
+
+void initialize_history_asynchronous(Particle& p, int64_t index_source, int Part)
+{
+  // set defaults
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    // set defaults for eigenvalue simulations from primary bank
+    p.from_source(&simulation::source_bank[index_source - 1]);
+  } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    // initialize random number seed
+    int64_t id = (simulation::total_gen + overall_generation() - 1) *
+                   settings::n_particles +
+                 simulation::work_index[Part] + index_source;
+    uint64_t seed = init_seed(id, STREAM_SOURCE);
+    // sample from external source distribution or custom library then set
+    auto site = sample_external_source(&seed);
+    p.from_source(&site);
+  }
+  p.current_work() = index_source;
+
+  // set identifier for particle
+  p.id() = simulation::work_index[Part] + index_source;
+
+  // set progeny count to zero
+  p.n_progeny() = 0;
+
+  // Reset particle event counter
+  p.n_event() = 0;
+
+  // Reset split counter
+  p.n_split() = 0;
+
+  // Reset weight window ratio
+  p.ww_factor() = 0.0;
+
+  // set random number seed
+  int64_t particle_seed =
+    (simulation::total_gen + overall_generation() - 1) * settings::n_particles +
+    p.id();
+  init_particle_seeds(particle_seed, p.seeds());
+
+  // set particle trace
+  p.trace() = false;
+  if (simulation::current_batch == settings::trace_batch &&
+      simulation::current_gen == settings::trace_gen &&
+      p.id() == settings::trace_particle)
+    p.trace() = true;
+
+  // Set particle track.
+  p.write_track() = false;
+  if (settings::write_all_tracks) {
+    p.write_track() = true;
+  } else if (settings::track_identifiers.size() > 0) {
+    for (const auto& t : settings::track_identifiers) {
+      if (simulation::current_batch == t[0] &&
+          simulation::current_gen == t[1] && p.id() == t[2]) {
+        p.write_track() = true;
+        break;
+      }
+    }
+  }
+
+  // Display message if high verbosity or trace is on
+  if (settings::verbosity >= 9 || p.trace()) {
+    write_message("Simulating Particle {}", p.id());
+  }
+
+// Add paricle's starting weight to count for normalizing tallies later
+#pragma omp atomic
+  simulation::total_weight += p.wgt();
+
+  // Force calculation of cross-sections by setting last energy to zero
+  if (settings::run_CE) {
+    p.invalidate_neutron_xs();
+  }
+
+  // Prepare to write out particle track.
+  if (p.write_track())
+    add_particle_track(p);
+}
+
+void transport_history_based_asynchronous(int Part) 
+{
+#pragma omp parallel for schedule(runtime)
+  for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
+    Particle p;
+    initialize_history_asynchronous(p, i_work, Part);
+    transport_history_based_single_particle(p);
+  }
+}
+
+void update_WW() 
+{
+  using namespace openmc;
+  
+  if (model::tallies.empty()) return;
+
+  if (mpi::master) std::cout<<"Update the WW bounds . . ."<<std::endl;
+
+  variance_reduction::weight_windows[0]->calculate_WW();
+ 
+  if (mpi::master) std::cout<<"Update the WW bounds FINISH."<<std::endl;
+} 
+
+//new in LVR
+void add_weight(Particle& p)
+{
+  for (int i = 0; i < p.crossed_mesh_size(); i++) {
+    variance_reduction::total_weight[p.crossed_mesh_value(i)] += p.crossed_weight_value(i);
+  }
+  //if (mpi::master) std::cout<<"add weight, crossed_mesh_size = "<<p.crossed_mesh_size()<<std::endl;
+}
+
+void add_score(Particle& p)
+{
+  for (int i = 0; i < p.crossed_mesh_size(); i++) {
+    variance_reduction::total_score[p.crossed_mesh_value(i)] += p.wgt();
+  }
+  variance_reduction::score_in_target += p.wgt();
+  //if (mpi::master) 
+  std::cout<<"add score, crossed_mesh_size = "<<p.crossed_mesh_size()<<std::endl;
 }
 
 } // namespace openmc

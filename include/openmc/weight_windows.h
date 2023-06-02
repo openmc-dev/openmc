@@ -12,6 +12,8 @@
 #include "openmc/mesh.h"
 #include "openmc/particle.h"
 #include "openmc/vector.h"
+//new
+#include "openmc/tallies/tally.h"
 
 namespace openmc {
 
@@ -42,6 +44,23 @@ namespace variance_reduction {
 
 extern std::unordered_map<int32_t, int32_t> ww_map;
 extern vector<unique_ptr<WeightWindows>> weight_windows;
+// new in GVR
+extern bool global_on;             //!< are GVR are enabled?
+extern vector<double> iteration;   //!< iteration during WW generation
+extern int32_t tally_idx;          //!< index in tallies vector
+extern int source_space;       //!< S vaule in the PS-GVR method
+extern int n_statistics;   //!< n_statistics vaule in the PS-GVR method
+extern int64_t nps_backup;
+// new in asynchronous
+extern int max_nps_per_task;       //!< maximum number of particles per task in the asynchronous scheduling function
+//new in LVR
+extern bool local_on;                     //!< are LVR are enabled?
+extern vector<double> target_lower_left;  //!< lower left point of the target 
+extern vector<double> target_upper_right; //!< upper right point of the target
+extern vector<double> total_weight;       //!< total weight for each mesh bin 
+extern vector<double> total_score;        //!< total score for each mesh bin
+extern double score_in_target;            //!< total score in the target region
+//
 
 } // namespace variance_reduction
 
@@ -95,6 +114,13 @@ public:
   // Accessors
   int32_t id() const { return id_; }
   const Mesh& mesh() const { return *model::meshes[mesh_idx_]; }
+  
+  // new in GVR
+  void calculate_WW();
+
+  // new in LVR
+  int get_energy_bin(double E);
+  int get_energy_size() {return energy_bounds_.size()-1;}
 
 private:
   // Data members

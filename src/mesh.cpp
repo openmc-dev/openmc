@@ -32,6 +32,8 @@
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/xml_interface.h"
+// new
+#include "openmc/weight_windows.h"
 
 #ifdef LIBMESH
 #include "libmesh/mesh_modification.h"
@@ -635,6 +637,198 @@ void StructuredMesh::surface_bins_crossed(
 
   // Perform the mesh raytrace with the helper class.
   raytrace_mesh(r0, r1, u, SurfaceAggregator(this, bins));
+}
+  
+// new in LVR
+void StructuredMesh::mesh_bins(Particle& p) const
+{
+  // Copy the starting and ending coordinates of the particle.
+  Position r0 {p.r_last()};
+  Position r1 {p.r()};
+  Direction u {p.u()};
+  double E = p.E();
+
+  // get the mesh bin in energy group
+  // if energy is not inside the energy group, exit here
+  int energy_bin = variance_reduction::weight_windows[0]->get_energy_bin(E);
+  if (energy_bin < 0) return;
+
+  // Compute the length of the entire track.
+  double total_distance = (r1 - r0).norm();
+  if (total_distance == 0.0)
+    return;
+
+  const int n = n_dimension_;
+
+  // Flag if position is inside the mesh
+  bool in_mesh;
+
+  // Position is r = r0 + u * traveled_distance, start at r0
+  double traveled_distance {0.0};
+
+  // Calculate index of current cell. Offset the position a tiny bit in
+  // direction of flight
+  MeshIndex ijk = get_indices(r0 + TINY_BIT * u, in_mesh);
+
+  // if track is very short, assume that it is completely inside one cell. Do not count it twice.
+  if (total_distance < 2 * TINY_BIT) return;
+
+  // Calculate initial distances to next surfaces in all three dimensions
+  std::array<MeshDistance, 3> distances;
+  for (int k = 0; k < n; ++k) {
+    distances[k] = distance_to_grid_boundary(ijk, k, r0, u, 0.0);
+  }
+
+  // Loop until r = r1 is eventually reached
+  while (true) {
+
+    if (in_mesh) {
+
+      // find surface with minimal distance to current position
+      const auto k = std::min_element(distances.begin(), distances.end()) -
+                     distances.begin();
+
+      // update position and leave, if we have reached end position
+      traveled_distance = distances[k].distance;
+      if (traveled_distance >= total_distance)
+        return;
+
+      // Update cell and calculate distance to next surface in k-direction.
+      // The two other directions are still valid!
+      ijk[k] = distances[k].next_index;
+      distances[k] =
+        distance_to_grid_boundary(ijk, k, r0, u, traveled_distance);
+
+      // Check if we have left the interior of the mesh
+      in_mesh = ((ijk[k] >= 1) && (ijk[k] <= shape_[k]));
+
+    } else { // not inside mesh
+
+      // For all directions outside the mesh, find the distance that we need to
+      // travel to reach the next surface. Use the largest distance, as only
+      // this will cross all outer surfaces.
+      int k_max {0};
+      for (int k = 0; k < n; ++k) {
+        if ((ijk[k] < 1 || ijk[k] > shape_[k]) &&
+            (distances[k].distance > traveled_distance)) {
+          traveled_distance = distances[k].distance;
+          k_max = k;
+        }
+      }
+
+      // If r1 is not inside the mesh, exit here
+      if (traveled_distance >= total_distance)
+        return;
+
+      // Calculate the new cell index and update all distances to next surfaces.
+      ijk = get_indices(r0 + (traveled_distance + TINY_BIT) * u, in_mesh);
+      for (int k = 0; k < n; ++k) {
+        distances[k] =
+          distance_to_grid_boundary(ijk, k, r0, u, traveled_distance);
+      }
+    }
+
+    // record the crossed_mesh and crossed_weight
+    if (in_mesh) {
+      int index = get_bin_from_indices(ijk) + energy_bin * n_bins();
+      p.add_crossed_mesh(index);
+      p.add_crossed_weight(p.wgt());
+    }
+  }
+}
+
+bool StructuredMesh::arrived_target(Particle& p) const
+{
+  // Copy the starting and ending coordinates of the particle.
+  Position r0 {p.r_last()};
+  Position r1 {p.r()};
+
+  // Copy coordinates of starting point
+  double x0 = r0.x;
+  double y0 = r0.y;
+  double z0 = r0.z;
+
+  // Copy coordinates of ending point
+  double x1 = r1.x;
+  double y1 = r1.y;
+  double z1 = r1.z;
+  
+  // Copy coordinates of target region lower_left
+  double xm0 = variance_reduction::target_lower_left[0];
+  double ym0 = variance_reduction::target_lower_left[1];
+  double zm0 = variance_reduction::target_lower_left[2];
+
+  // Copy coordinates of target region upper_right
+  double xm1 = variance_reduction::target_upper_right[0];
+  double ym1 = variance_reduction::target_upper_right[1];
+  double zm1 = variance_reduction::target_upper_right[2];
+
+  double min_dist = INFTY;
+
+  // Check if the starting point is inside the target region
+  // starting point is inside the target region, which means it has arrived the target before.
+  if ( (x0 >= xm0 && x0 <= xm1) && (y0 >= ym0 && y0 <= ym1) && (z0 >= zm0 && z0 <= zm1) ) return false;
+
+  // The starting point is outside the target region, check if the ending point is inside the target region.
+  if ( (x1 >= xm0 && x1 <= xm1) && (y1 >= ym0 && y1 <= ym1) && (z1 >= zm0 && z1 <= zm1) ) return true;
+
+  // If not, then check if this step is intersected with the target region
+  
+  // Check if line intersects left surface -- calculate the intersection point (y,z)
+  if ((x0 < xm0 && x1 > xm0) || (x0 > xm0 && x1 < xm0)) {
+    double yi = y0 + (xm0-x0) * (y1 - y0) / (x1 - x0);
+    double zi = z0 + (xm0-x0) * (z1 - z0) / (x1 - x0);
+    if (yi >= ym0 && yi < ym1 && zi >= zm0 && zi < zm1) {
+      check_intersection_point(xm0, x0, yi, y0, zi, z0, r0, min_dist);
+    }
+  }
+
+  // Check if line intersects back surface -- calculate the intersection point (x,z)
+  if ((y0 < ym0 && y1 > ym0) || (y0 > ym0 && y1 < ym0)) {
+    double xi = x0 + (ym0-y0) * (x1 - x0) / (y1 - y0);
+    double zi = z0 + (ym0-y0) * (z1 - z0) / (y1 - y0);
+    if (xi >= xm0 && xi < xm1 && zi >= zm0 && zi < zm1) {
+      check_intersection_point(xi, x0, ym0, y0, zi, z0, r0, min_dist);
+    }
+  }
+
+  // Check if line intersects bottom surface -- calculate the intersection point (x,y)
+  if ((z0 < zm0 && z1 > zm0) || (z0 > zm0 && z1 < zm0)) {
+    double xi = x0 + (zm0-z0) * (x1 - x0) / (z1 - z0);
+    double yi = y0 + (zm0-z0) * (y1 - y0) / (z1 - z0);
+    if (xi >= xm0 && xi < xm1 && yi >= ym0 && yi < ym1) {
+      check_intersection_point(xi, x0, yi, y0, zm0, z0, r0, min_dist);
+    }
+  }
+
+  // Check if line intersects right surface -- calculate the intersection point (y,z)
+  if ((x0 < xm1 && x1 > xm1) || (x0 > xm1 && x1 < xm1)) {
+    double yi = y0 + (xm1-x0) * (y1 - y0) / (x1 - x0);
+    double zi = z0 + (xm1-x0) * (z1 - z0) / (x1 - x0);
+    if (yi >= ym0 && yi < ym1 && zi >= zm0 && zi < zm1) {
+      check_intersection_point(xm1, x0, yi, y0, zi, z0, r0, min_dist);
+    }
+  }
+
+  // Check if line intersects front surface -- calculate the intersection point (x,z)
+  if ((y0 < ym1 && y1 > ym1) || (y0 > ym1 && y1 < ym1)) {
+    double xi = x0 + (ym1-y0) * (x1 - x0) / (y1 - y0);
+    double zi = z0 + (ym1-y0) * (z1 - z0) / (y1 - y0);
+    if (xi >= xm0 && xi < xm1 && zi >= zm0 && zi < zm1) {
+      check_intersection_point(xi, x0, ym1, y0, zi, z0, r0, min_dist);
+    }
+  }
+
+  // Check if line intersects top surface -- calculate the intersection point (x,y)
+  if ((z0 < zm1 && z1 > zm1) || (z0 > zm1 && z1 < zm1)) {
+    double xi = x0 + (zm1-z0) * (x1 - x0) / (z1 - z0);
+    double yi = y0 + (zm1-z0) * (y1 - y0) / (z1 - z0);
+    if (xi >= xm0 && xi < xm1 && yi >= ym0 && yi < ym1) {
+      check_intersection_point(xi, x0, yi, y0, zm1, z0, r0, min_dist);
+    }
+  }
+ 
+  return min_dist < INFTY;
 }
 
 //==============================================================================

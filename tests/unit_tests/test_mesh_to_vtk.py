@@ -277,7 +277,7 @@ def test_vtk_write_ordering(model, mesh, surface):
 
 def test_sphere_mesh_coordinates(run_in_tmpdir):
     mesh = openmc.SphericalMesh()
-    mesh.r_grid = np.linspace(0, 10, 30)
+    mesh.r_grid = np.linspace(0.1, 10, 30)
     mesh.phi_grid = np.linspace(0, 1.5*np.pi, 25)
     mesh.theta_grid = np.linspace(0, np.pi / 2, 15)
 
@@ -301,18 +301,17 @@ def test_sphere_mesh_coordinates(run_in_tmpdir):
     region = +z & +y & -s | -x & -y & +z & -s
 
     # the VTK interface will update this list when GetCentroid is called
-    centroid = [0.0, 0.0, 0.0]
+    centroid = np.zeros(3)
 
     # ensure all centroids of the sphere mesh are inside the cell region
-    for ijk in mesh.indices:
-        ijk = tuple(n - 1 for n in ijk)
+    for i in range(vtk_grid.GetNumberOfCells()):
         # get the cell from the stuctured mesh object
-        cell = vtk_grid.GetCell(*ijk)
+        cell = vtk_grid.GetCell(i)
         cell.GetCentroid(centroid)
 
         # if the coordinate conversion is happening correctly,
         # every one of the cell centroids should be in the CSG region
-        if centroid not in region:
-            raise RuntimeError(f'Cell centroid {centroid} not in equivalent '
-                               f'CSG region for spherical mesh {mesh}')
+        assert centroid in region, \
+            f'Cell centroid {centroid} not in equivalent ' \
+            f'CSG region for spherical mesh {mesh}'
 

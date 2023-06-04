@@ -7,10 +7,18 @@
 #include "openmc/message_passing.h"
 #include "openmc/particle_restart.h"
 #include "openmc/settings.h"
+#include "openmc/timer.h"
+#include <iostream>
+
+extern float finding_time;
 
 int main(int argc, char* argv[])
 {
+
   using namespace openmc;
+
+  Timer t;
+  t.start();
   int err;
 
   // Initialize run -- when run with MPI, pass communicator
@@ -59,4 +67,9 @@ int main(int argc, char* argv[])
 #ifdef OPENMC_MPI
   MPI_Finalize();
 #endif
+
+  float total_time = t.elapsed();
+  std::cout << "=========PERFORMANCE STATISTICS=========\n"; 
+  std::cout << "Total time taken was " << total_time << " seconds.\n";
+  std::cout << "Finding took " << finding_time << " seconds. (" << 100.0 * finding_time / total_time << "%)\n";
 }

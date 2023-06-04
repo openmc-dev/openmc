@@ -1,7 +1,10 @@
 from math import log10
 
+import random
 import numpy as np
+import matplotlib.pyplot as plt
 import openmc
+import sys
 
 ###############################################################################
 # Create materials for the problem
@@ -10,6 +13,16 @@ uo2 = openmc.Material(name='UO2 fuel at 2.4% wt enrichment')
 uo2.set_density('g/cm3', 10.29769)
 uo2.add_element('U', 1., enrichment=2.4)
 uo2.add_element('O', 2.)
+
+iron = openmc.Material(name="Iron")
+iron.set_density('g/cm3', 7.874)
+iron.add_element('Fe', 1.0, 'wo')
+
+air = openmc.Material(name="Air")
+air.set_density('g/cm3', 0.001225)
+air.add_element('O', 0.23, 'wo')
+air.add_element('N', 0.75, 'wo')
+air.add_element('Ar', 0.02, 'wo')
 
 helium = openmc.Material(name='Helium for gap')
 helium.set_density('g/cm3', 0.001598)
@@ -30,29 +43,35 @@ borated_water.add_element('O', 2.4e-2)
 borated_water.add_s_alpha_beta('c_H_in_H2O')
 
 # Collect the materials together and export to XML
-materials = openmc.Materials([uo2, helium, zircaloy, borated_water])
+materials = openmc.Materials([uo2, helium, zircaloy, borated_water, iron, air])
 materials.export_to_xml()
 
 ###############################################################################
 # Define problem geometry
 
-# Create cylindrical surfaces
-fuel_or = openmc.ZCylinder(r=0.39218, name='Fuel OR')
-clad_ir = openmc.ZCylinder(r=0.40005, name='Clad IR')
-clad_or = openmc.ZCylinder(r=0.45720, name='Clad OR')
+objects = []
 
-# Create a region represented as the inside of a rectangular prism
-pitch = 1.25984
-box = openmc.rectangular_prism(pitch, pitch, boundary_type='reflective')
+box_size=100.0
+sphere_radius=0.5
 
-# Create cells, mapping materials to regions
-fuel = openmc.Cell(fill=uo2, region=-fuel_or)
-gap = openmc.Cell(fill=helium, region=+fuel_or & -clad_ir)
-clad = openmc.Cell(fill=zircaloy, region=+clad_ir & -clad_or)
-water = openmc.Cell(fill=borated_water, region=+clad_or & box)
+box_i = openmc.openmc.model.RectangularParallelepiped(0.0, box_size, 0.0, box_size, 0.0, box_size, boundary_type='reflective')
+box_o = openmc.openmc.model.RectangularParallelepiped(-0.1, box_size + 0.1, -0.1, box_size + 0.1, -0.1, box_size + 0.1, boundary_type='reflective')
+
+water_region=-box_i
+
+for i in range(0, 1000, 1):
+    pos = [random.uniform(sphere_radius, box_size-sphere_radius), random.uniform(sphere_radius, box_size-sphere_radius), random.uniform(sphere_radius, box_size-sphere_radius)]
+    sphere = openmc.Sphere(x0=pos[0], y0=pos[1], z0=pos[2], r=sphere_radius, name='Iron Sphere')
+    water_region = water_region & +sphere
+    iron_sphere = openmc.Cell(fill=uo2, region=-sphere)
+    objects.extend([iron_sphere])
+
+boundary=openmc.Cell(fill=zircaloy, region=+box_i & -box_o)
+water = openmc.Cell(fill=air, region=water_region)
+objects.extend([boundary, water])
 
 # Create a geometry and export to XML
-geometry = openmc.Geometry([fuel, gap, clad, water])
+geometry = openmc.Geometry(objects)
 geometry.export_to_xml()
 
 ###############################################################################
@@ -62,20 +81,28 @@ geometry.export_to_xml()
 settings = openmc.Settings()
 settings.batches = 100
 settings.inactive = 10
-settings.particles = 1000
+settings.particles = int(sys.argv[1])
 
 # Create an initial uniform spatial source distribution over fissionable zones
-lower_left = (-pitch/2, -pitch/2, -1)
-upper_right = (pitch/2, pitch/2, 1)
-uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=True)
-settings.source = openmc.source.Source(space=uniform_dist)
+lower_left = (box_size / 2 - 0.001, box_size / 2 - 0.001, box_size / 2 - 0.001)
+upper_right = (box_size / 2 + 0.001, box_size / 2 + 0.001, box_size / 2 + 0.001)
+
+lower_left = (0, 0, 0)
+upper_right = (box_size, box_size, box_size)
+
+source = openmc.Source()
+source.space = openmc.stats.Point(xyz=(box_size / 2, box_size / 2, box_size / 2))
+source.angle = openmc.stats.Isotropic()
+source.energy = openmc.stats.Discrete([10.0e6], [1.0])
+source.time = openmc.stats.Uniform(0, 1e-6)
+settings.source = source
 
 # For source convergence checks, add a mesh that can be used to calculate the
 # Shannon entropy
 entropy_mesh = openmc.RegularMesh()
-entropy_mesh.lower_left = (-fuel_or.r, -fuel_or.r)
-entropy_mesh.upper_right = (fuel_or.r, fuel_or.r)
-entropy_mesh.dimension = (10, 10)
+entropy_mesh.lower_left = lower_left
+entropy_mesh.upper_right = upper_right
+entropy_mesh.dimension = (10, 10, 10)
 settings.entropy_mesh = entropy_mesh
 settings.export_to_xml()
 
@@ -85,8 +112,8 @@ settings.export_to_xml()
 # Create a mesh that will be used for tallying
 mesh = openmc.RegularMesh()
 mesh.dimension = (100, 100)
-mesh.lower_left = (-pitch/2, -pitch/2)
-mesh.upper_right = (pitch/2, pitch/2)
+mesh.lower_left = (0.0, 0.0)
+mesh.upper_right = (box_size, box_size)
 
 # Create a mesh filter that can be used in a tally
 mesh_filter = openmc.MeshFilter(mesh)
@@ -110,3 +137,8 @@ spectrum_tally.scores = ['flux']
 # Instantiate a Tallies collection and export to XML
 tallies = openmc.Tallies([mesh_tally, spectrum_tally])
 tallies.export_to_xml()
+
+openmc.run()
+universe = openmc.Universe(cells=objects)
+image = universe.plot(width=(box_size + 0.3, box_size + 0.3), origin=(box_size/2, box_size/2, 0.1))
+image.write_png(fname='plot.png')

@@ -800,9 +800,7 @@ class RegularMesh(StructuredMesh):
         )
 
     def get_data_slice(self, dataset: np.ndarray, basis: str, slice_index: int) -> np.ndarray:
-        """Maps the provided dataset values to the mesh and obtains a 2D slice
-        of dataset values on the specified mesh slice index. Useful when plotting
-        slices of mesh tally results.
+        """Maps the dataset values to the mesh and gets a 2D slice of values.
 
         Parameters
         ----------

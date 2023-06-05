@@ -693,6 +693,7 @@ void WeightWindows::check_tally_update_compatibility(const Tally* tally)
       }
     }
   }
+}
 
   void WeightWindows::to_hdf5(hid_t group) const
   {

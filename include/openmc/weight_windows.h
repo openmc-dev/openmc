@@ -128,8 +128,6 @@ public:
   void update_magic(const Tally* tally, const std::string& value = "mean",
     double threshold = 1.0, double ratio = 5.0);
 
-  void export_to_hdf5(const std::string& filename = "weight_windows.h5") const;
-
   // NOTE: This is unused for now but may be used in the future
   //! Write weight window settings to an HDF5 file
   //! \param[in] group  HDF5 group to write to

@@ -693,28 +693,6 @@ void WeightWindows::check_tally_update_compatibility(const Tally* tally)
       }
     }
   }
-}
-
-void WeightWindows::export_to_hdf5(const std::string& filename) const
-{
-  hid_t file_id = file_open(filename, 'w');
-
-  // Write file type
-  write_attribute(file_id, "filetype", "weight_windows");
-
-  // Write revision number for the weight windows file
-  write_attribute(file_id, "version", VERSION_WEIGHT_WINDOWS);
-
-  hid_t weight_windows_group =
-    create_group(file_id, fmt::format("weight_windows", id_));
-
-  // write instance information to file
-  this->to_hdf5(weight_windows_group);
-
-  close_group(weight_windows_group);
-
-  file_close(file_id);
-}
 
 void WeightWindows::to_hdf5(hid_t group) const
 {

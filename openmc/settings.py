@@ -519,6 +519,11 @@ class Settings:
     def weight_windows_file(self) -> Optional[PathLike]:
         return self._weight_windows_file
 
+    @weight_windows_file.setter
+    def weight_windows_file(self, value: PathLike):
+        cv.check_type('weight windows file', value, (str, Path))
+        self._weight_windows_file = value
+
     @property
     def weight_window_generators(self) -> typing.List[WeightWindowGenerator]:
         return self._weight_window_generators
@@ -952,11 +957,6 @@ class Settings:
     def weight_windows_on(self, value: bool):
         cv.check_type('weight windows on', value, bool)
         self._weight_windows_on = value
-
-    @weight_windows_file.setter
-    def weight_windows_file(self, value: PathLike):
-        cv.check_type('weight windows file', value, (str, Path))
-        self._weight_windows_file = value
 
     @max_splits.setter
     def max_splits(self, value: int):

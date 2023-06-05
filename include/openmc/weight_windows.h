@@ -1,4 +1,4 @@
-a #ifndef OPENMC_WEIGHT_WINDOWS_H
+#ifndef OPENMC_WEIGHT_WINDOWS_H
 #define OPENMC_WEIGHT_WINDOWS_H
 
 #include <cstdint>
@@ -75,7 +75,6 @@ a #ifndef OPENMC_WEIGHT_WINDOWS_H
       lower_weight *= factor;
       upper_weight *= factor;
     }
-    ng -
   };
 
   //==============================================================================

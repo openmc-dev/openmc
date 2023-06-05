@@ -400,7 +400,8 @@ void Particle::cross_surface()
     write_message(1, "    Crossing surface {}", surf->id_);
   }
 
-  if (surf->surf_source_ && simulation::current_batch  > settings::n_inactive) {
+  if (surf->surf_source_ && simulation::current_batch > settings::n_inactive &&
+      !simulation::surf_source_bank.full()) {
     SourceSite site;
     site.r = r();
     site.u = u();
@@ -433,7 +434,9 @@ void Particle::cross_surface()
 #ifdef DAGMC
   // in DAGMC, we know what the next cell should be
   if (surf->geom_type_ == GeometryType::DAG) {
-    int32_t i_cell = next_cell(i_surface, cell_last(n_coord() - 1), lowest_coord().universe) - 1;
+    int32_t i_cell =
+      next_cell(i_surface, cell_last(n_coord() - 1), lowest_coord().universe) -
+      1;
     // save material and temp
     material_last() = material();
     sqrtkT_last() = sqrtkT();

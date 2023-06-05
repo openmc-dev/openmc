@@ -39,6 +39,10 @@
 #include <algorithm>
 #include <cmath>
 #include <string>
+#include <mutex>
+
+std::mutex total_time_sum_mutex;
+double total_time = 0.0;
 
 //==============================================================================
 // C API functions
@@ -50,6 +54,11 @@
 
 int openmc_run()
 {
+  std::cout << " Using " << (openmc::settings::event_based ? "event-based" : "history-based") << " transport.\n";
+  if(openmc::settings::event_based) {
+    std::cout << " Warning: performance metrics currently only work with history-based transport!\n";
+  }
+
   openmc::simulation::time_total.start();
   openmc_simulation_init();
 
@@ -729,13 +738,20 @@ void transport_history_based_single_particle(Particle& p)
   p.event_death();
 }
 
+
 void transport_history_based()
 {
 #pragma omp parallel for schedule(runtime)
   for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
+    Timer t;
+    t.start();
     Particle p;
     initialize_history(p, i_work);
     transport_history_based_single_particle(p);
+    t.stop();
+    total_time_sum_mutex.lock();
+    total_time += t.elapsed();
+    total_time_sum_mutex.unlock();
   }
 }
 

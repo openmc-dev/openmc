@@ -799,14 +799,14 @@ class RegularMesh(StructuredMesh):
             volume_normalization=volume_normalization
         )
 
-    def get_data_slice(self, dataset: np.array, basis: str, slice_index: int):
+    def get_data_slice(self, dataset: np.ndarray, basis: str, slice_index: int) -> np.ndarray:
         """Maps the provided dataset values to the mesh and obtains a 2D slice
         of dataset values on the specified mesh slice index. Useful when plotting
         slices of mesh tally results.
 
         Parameters
         ----------
-        datasets : numpy.array
+        datasets : np.ndarray
             1-D array of data values. Will be reshaped to fill the mesh and
             must have the same number of entries to fill the mesh
         basis : {'xy', 'xz', 'yz'}
@@ -816,14 +816,14 @@ class RegularMesh(StructuredMesh):
 
         Returns
         -------
-        np.array()
+        np.ndarray
             the 2D array of dataset values
         """
 
         reshaped_ds = dataset.reshape(self.dimension, order="F")
 
         if basis == "yz":
-            transposed_ds = reshaped_ds.transpose(0, 1, 2)[slice_index]
+            transposed_ds = reshaped_ds[slice_index]
             transposed_ds = np.rot90(transposed_ds, -1)
 
         elif basis == "xz":

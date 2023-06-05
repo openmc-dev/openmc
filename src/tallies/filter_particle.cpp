@@ -65,13 +65,12 @@ extern "C" int openmc_particle_filter_get_bins(int32_t idx, int bins[])
 
   const auto& f = model::tally_filters[idx];
   auto pf = dynamic_cast<ParticleFilter*>(f.get());
-  if(pf) {
+  if (pf) {
     const auto& particles = pf->particles();
     for (int i = 0; i < particles.size(); i++) {
       bins[i] = static_cast<int>(particles[i]);
     }
-  }
-  else {
+  } else {
     set_errmsg("The filter at the specified index is not a ParticleFilter");
     return OPENMC_E_INVALID_ARGUMENT;
   }

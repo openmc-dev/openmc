@@ -212,7 +212,6 @@ class WeightWindows(_FortranObjectWithID):
             The tally used to update weight window information
         value : str
             Value type used to generate weight windows. One of {'mean', 'rel_err'}.
-            (default is 'mean')
         threshold : float
             Threshold for relative error of results used to generate weight window bounds
         ratio : float
@@ -275,7 +274,7 @@ class WeightWindows(_FortranObjectWithID):
         # ensure that the tally won't filter out the specified particle
         if particle_filter is not None and particle not in particle_filter.bins:
             raise ValueError(f'Specified tally for weight windows (Tally {tally.id})'
-                             f' does not track the reqeusted particle: "{particle}"')
+                             f' does not track the requested particle: "{particle}"')
 
         # tally must have a mesh filter
         mesh_filter = tally.find_filter(MeshFilter)

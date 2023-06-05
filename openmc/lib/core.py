@@ -179,7 +179,7 @@ def export_weight_windows(filename="weight_windows.h5", output=True):
     Parameters
     ----------
     filename : PathLike or None
-        Filename to export weight windows to (defaults to "weight_windows.h5")
+        Filename to export weight windows to
     output : bool, optional
         Whether or not to show output.
 
@@ -189,7 +189,7 @@ def export_weight_windows(filename="weight_windows.h5", output=True):
 
     """
     if filename is not None:
-        filename = c_char_p(filename.encode())
+        filename = c_char_p(str(filename).encode())
 
     with quiet_dll(output):
         _dll.openmc_weight_windows_export(filename)
@@ -203,7 +203,7 @@ def import_weight_windows(filename='weight_windows.h5', output=True):
     Parameters
     ----------
     filename : PathLike or None
-        Filename to import properties from (defaults to "weight_windows.h5")
+        Filename to import weight windows from
     output : bool, optional
         Whether or not to show output.
 
@@ -213,7 +213,7 @@ def import_weight_windows(filename='weight_windows.h5', output=True):
 
     """
     if filename is not None:
-        filename = c_char_p(filename.encode())
+        filename = c_char_p(str(filename).encode())
 
     with quiet_dll(output):
         _dll.openmc_weight_windows_import(filename)

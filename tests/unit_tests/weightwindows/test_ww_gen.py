@@ -260,6 +260,7 @@ def test_ww_gen_roundtrip(run_in_tmpdir, model):
     with pytest.raises(ValueError):
         wwg.max_realizations = -1
 
+
 def test_python_hdf5_roundtrip(run_in_tmpdir, model):
 
     # add a tally to the model

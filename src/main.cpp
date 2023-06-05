@@ -10,15 +10,14 @@
 #include "openmc/timer.h"
 #include <iostream>
 
-extern float finding_time;
+extern double finding_time;
 
 int main(int argc, char* argv[])
 {
 
   using namespace openmc;
 
-  Timer t;
-  t.start();
+
   int err;
 
   // Initialize run -- when run with MPI, pass communicator
@@ -34,6 +33,11 @@ int main(int argc, char* argv[])
   } else if (err) {
     fatal_error(openmc_err_msg);
   }
+
+  // start timer after initialization
+  Timer t;
+  t.start();
+
 
   // start problem based on mode
   switch (settings::run_mode) {
@@ -68,8 +72,9 @@ int main(int argc, char* argv[])
   MPI_Finalize();
 #endif
 
-  float total_time = t.elapsed();
+  double total_time = t.elapsed();
   std::cout << "=========PERFORMANCE STATISTICS=========\n"; 
-  std::cout << "Total time taken was " << total_time << " seconds.\n";
-  std::cout << "Finding took " << finding_time << " seconds. (" << 100.0 * finding_time / total_time << "%)\n";
+  std::cout << "Warning: performance metrics are only valid for single-threaded runs of OpenMC.\n";
+  std::cout << "Total OpenMC execution time was " << total_time << " seconds.\n";
+  std::cout << "Universe::find_cell took " << finding_time << " seconds in total. (Approximately " << 100.0 * finding_time / total_time << "% of total execution time)\n";
 }

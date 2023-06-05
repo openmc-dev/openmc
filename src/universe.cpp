@@ -6,8 +6,9 @@
 #include "openmc/timer.h"
 #include <iostream>
 #include <mutex>
+#include <time.h>
 
-float finding_time = 0.0;
+double finding_time = 0.0;
 
 namespace openmc {
 
@@ -41,7 +42,7 @@ void Universe::to_hdf5(hid_t universes_group) const
   close_group(group);
 }
 
-std::mutex finding_time_sum_mutex;
+std::mutex time_sum_mutex;
 
 bool Universe::find_cell(Particle& p) const
 {
@@ -63,15 +64,12 @@ bool Universe::find_cell(Particle& p) const
     auto surf = p.surface();
     if (model::cells[i_cell]->contains(r, u, surf)) {
       p.coord(p.n_coord() - 1).cell = i_cell;
-      finding_time_sum_mutex.lock();
       finding_time += t.elapsed();
-      finding_time_sum_mutex.unlock();
       return true;
     }
   }
-  finding_time_sum_mutex.lock();
+
   finding_time += t.elapsed();
-  finding_time_sum_mutex.unlock();
   return false;
 }
 

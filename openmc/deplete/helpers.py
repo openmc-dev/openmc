@@ -26,6 +26,7 @@ __all__ = (
     "ConstantFissionYieldHelper", "FissionYieldCutoffHelper",
     "AveragedFissionYieldHelper", "FluxCollapseHelper")
 
+
 class TalliedFissionYieldHelper(FissionYieldHelper):
     """Abstract class for computing fission yields with tallies
 
@@ -159,22 +160,23 @@ class DirectReactionRateHelper(ReactionRateHelper):
     def generate_tallies(self, materials, scores):
         """Produce one-group reaction rate tally
 
-        Uses the :mod:`openmc.lib` to generate a tally
-        of relevant reactions across all burnable materials.
+        Uses the :mod:`openmc.lib` to generate a tally of relevant reactions
+        across all burnable materials.
 
         Parameters
         ----------
-        materials : iterable of :class:`openmc.Material`
-            Burnable materials in the problem. Used to
-            construct a :class:`openmc.MaterialFilter`
+        materials : iterable of :class:`openmc.lib.Material`
+            Burnable materials in the problem. Used to construct a
+            :class:`openmc.lib.MaterialFilter`
         scores : iterable of str
-            Reaction identifiers, e.g. ``"(n, fission)"``,
-            ``"(n, gamma)"``, needed for the reaction rate tally.
+            Reaction identifiers, e.g. ``"(n, fission)"``, ``"(n, gamma)"``,
+            needed for the reaction rate tally.
         """
         self._rate_tally = Tally()
         self._rate_tally.writable = False
         self._rate_tally.scores = scores
         self._rate_tally.filters = [MaterialFilter(materials)]
+        self._rate_tally.multiply_density = False
         self._rate_tally_means_cache = None
 
     @property
@@ -194,7 +196,7 @@ class DirectReactionRateHelper(ReactionRateHelper):
         """
         self._rate_tally_means_cache = None
 
-    def get_material_rates(self, mat_id, nuc_index, react_index):
+    def get_material_rates(self, mat_id, nuc_index, rx_index):
         """Return an array of reaction rates for a material
 
         Parameters
@@ -204,7 +206,7 @@ class DirectReactionRateHelper(ReactionRateHelper):
         nuc_index : iterable of int
             Index for each nuclide in :attr:`nuclides` in the
             desired reaction rate matrix
-        react_index : iterable of int
+        rx_index : iterable of int
             Index for each reaction scored in the tally
 
         Returns
@@ -215,9 +217,8 @@ class DirectReactionRateHelper(ReactionRateHelper):
         """
         self._results_cache.fill(0.0)
         full_tally_res = self.rate_tally_means[mat_id]
-        for i_tally, (i_nuc, i_react) in enumerate(
-                product(nuc_index, react_index)):
-            self._results_cache[i_nuc, i_react] = full_tally_res[i_tally]
+        for i_tally, (i_nuc, i_rx) in enumerate(product(nuc_index, rx_index)):
+            self._results_cache[i_nuc, i_rx] = full_tally_res[i_tally]
 
         return self._results_cache
 

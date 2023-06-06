@@ -799,36 +799,40 @@ class RegularMesh(StructuredMesh):
             volume_normalization=volume_normalization
         )
 
-    def plot_tally_data_slice(self, tally: 'openmc.Tally', slice_value: int, basis: str='xy', axes=None):
+    def plot_tally_data_slice(self, dataset, basis: str='xy', axes=None):
         """Maps the dataset values to the mesh and exports an image.
 
-           The dataset is assumed to be obtained from a mesh tally and will be
-           transposed 
+            dataset : np.ndarray
+                A 2-D array of values to plot, this is rotated to suit the
+                MatPlotLib imshow function.
+            basis : {'xy', 'xz', 'yz'}
+                The basis directions for the plot
             axes : matplotlib.Axes
                 Axes to draw to
+
+        Returns
+        -------
+        matplotlib.image.AxesImage
+            Resulting image 
         """
 
         import matplotlib.pyplot as plt
         from matplotlib.colors import LogNorm
 
-        # get_data_slice_where also checks basis is acceptable value
-        dataset = tally.get_data_slice_where(basis=basis, slice_value=slice_value)
-
         if basis == "xy":
             oriented_data = np.rot90(dataset, 1)
             xlabel, ylabel = 'x [cm]', 'y [cm]'
         elif basis == "yz":
-            oriented_data = np.rot90(dataset, -1)
+            oriented_data = dataset
             xlabel, ylabel = 'y [cm]', 'z [cm]'
         else:  # basis == "xz"
+            oriented_data = np.rot90(dataset, -1)
             xlabel, ylabel = 'x [cm]', 'z [cm]'
 
         if axes is None:
             fig, axes = plt.subplots()
             axes.set_xlabel(xlabel)
             axes.set_ylabel(ylabel)
-            # get_data_slice_where only works with a single score tally
-            axes.set_title(tally.scores[0])
 
         return axes.imshow(
             oriented_data,

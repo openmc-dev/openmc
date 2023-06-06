@@ -799,39 +799,43 @@ class RegularMesh(StructuredMesh):
             volume_normalization=volume_normalization
         )
 
-    def get_data_slice(self, dataset: np.ndarray, basis: str, slice_index: int) -> np.ndarray:
-        """Maps the dataset values to the mesh and gets a 2D slice of values.
+    def plot_tally_data_slice(self, tally: 'openmc.Tally', slice_value: int, basis: str='xy', axes=None):
+        """Maps the dataset values to the mesh and exports an image.
 
-        Parameters
-        ----------
-        datasets : np.ndarray
-            1-D array of data values. Will be reshaped to fill the mesh and
-            must have the same number of entries to fill the mesh
-        basis : {'xy', 'xz', 'yz'}
-            The basis directions for the slice
-        slice_index : int
-            The index of the mesh slice to extract.
-
-        Returns
-        -------
-        np.ndarray
-            the 2D array of dataset values
+           The dataset is assumed to be obtained from a mesh tally and will be
+           transposed 
+            axes : matplotlib.Axes
+                Axes to draw to
         """
 
-        reshaped_ds = dataset.reshape(self.dimension, order="F")
+        import matplotlib.pyplot as plt
+        from matplotlib.colors import LogNorm
 
-        if basis == "yz":
-            transposed_ds = reshaped_ds[slice_index]
-            transposed_ds = np.rot90(transposed_ds, -1)
+        # get_data_slice_where also checks basis is acceptable value
+        dataset = tally.get_data_slice_where(basis=basis, slice_value=slice_value)
 
-        elif basis == "xz":
-            transposed_ds = reshaped_ds.transpose(1, 2, 0)[slice_index]
+        if basis == "xy":
+            oriented_data = np.rot90(dataset, 1)
+            xlabel, ylabel = 'x [cm]', 'y [cm]'
+        elif basis == "yz":
+            oriented_data = np.rot90(dataset, -1)
+            xlabel, ylabel = 'y [cm]', 'z [cm]'
+        else:  # basis == "xz"
+            xlabel, ylabel = 'x [cm]', 'z [cm]'
 
-        elif basis == "xy":
-            transposed_ds = reshaped_ds.transpose(2, 0, 1)[slice_index]
-            transposed_ds = np.rot90(transposed_ds, 1)
+        if axes is None:
+            fig, axes = plt.subplots()
+            axes.set_xlabel(xlabel)
+            axes.set_ylabel(ylabel)
+            # get_data_slice_where only works with a single score tally
+            axes.set_title(tally.scores[0])
 
-        return transposed_ds
+        return axes.imshow(
+            oriented_data,
+            origin='lower',
+            norm=LogNorm(),
+            extent=self.bounding_box.extent[basis] 
+        )
 
 
 def Mesh(*args, **kwargs):

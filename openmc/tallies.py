@@ -2522,6 +2522,68 @@ class Tally(IDManagerMixin):
         new_tally = self * -1
         return new_tally
 
+    def get_data_slice_where(self, basis: str='xy', slice_value: float=None):
+        """Gets a slice of tally scored on a RegularMesh to the mesh and gets a 2D slice of values.
+
+        Parameters
+        ----------
+        datasets : np.ndarray
+            1-D array of data values. Will be reshaped to fill the mesh and
+            must have the same number of entries to fill the mesh
+        basis : {'xy', 'xz', 'yz'}
+            The basis directions for the slice
+        slice_value : int
+            The axis value of the slice to extract.
+
+        Returns
+        -------
+        np.ndarray
+            the 2D array of dataset values
+        """
+
+        cv.check_value('basis', basis, ['xy', 'xz', 'yz'])
+        
+        mesh = self.find_filter(filter_type=openmc.MeshFilter).mesh
+        if isinstance(mesh, openmc.RegularMesh):
+            print('mesh accepted')
+
+        if len(self.scores) != 1:
+            msg = """
+                get_data_slice is only able to slice a tally with a single
+                score. Make use of Tally.get_slice first to encapsulate the
+                desired score.
+            """
+            raise ValueError(msg)
+
+        basis_to_index = {'xy':2, 'xz':1, 'yz':1}[basis]
+
+        if slice_value < mesh.lower_left[basis_to_index]:
+            msg = f'slice_value [{slice_value}] is smaller than the mesh.lower_left [{mesh.lower_left}]'
+            raise ValueError(msg)
+        if slice_value > mesh.upper_right[basis_to_index]:
+            msg = f'slice_value [{slice_value}] is bigger than the mesh.upper_right [{mesh.upper_right}]'
+            raise ValueError(msg)
+
+        voxel_axis_vals = np.linspace(
+            mesh.lower_left[basis_to_index],
+            mesh.upper_right[basis_to_index],
+            mesh.dimension[basis_to_index], endpoint=True
+        )
+        print(voxel_axis_vals)
+        slice_index = (np.abs(voxel_axis_vals - slice_value)).argmin()
+        print(f'slice_index {slice_index}, slice_value {slice_value}')
+    
+        data = self.get_reshaped_data(expand_dims=True).squeeze()
+
+        if basis == 'xz':
+            slice_data = data[:, slice_index, :]
+        elif basis == 'yz':
+            slice_data = data[slice_index, :, :]
+        else:  # basis == 'xy'
+            slice_data = data[:, :, slice_index]
+
+        return slice_data
+
     def get_slice(self, scores=[], filters=[], filter_bins=[], nuclides=[],
                   squeeze=False):
         """Build a sliced tally for the specified filters, scores and nuclides.

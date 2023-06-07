@@ -543,14 +543,14 @@ class OpenMCOperator(TransportOperator):
             fission_yields.append(self._yield_helper.weighted_yields(i))
 
             # Accumulate energy from fission
-            barn_cm = 1e24 * self.number.get_mat_volume(mat)
+            volume_b_cm = 1e24 * self.number.get_mat_volume(mat)
             if fission_ind is not None:
-                atom_per_bcm = number / barn_cm
+                atom_per_bcm = number / volume_b_cm
                 fission_rates = tally_rates[:, fission_ind] * atom_per_bcm
                 self._normalization_helper.update(fission_rates)
 
             # Divide by [b-cm] to get [(reactions/src)/atom]
-            rates[i] = tally_rates / barn_cm
+            rates[i] = tally_rates / volume_b_cm
 
         # Scale reaction rates to obtain units of [(reactions/sec)/atom]
         rates *= self._normalization_helper.factor(source_rate)

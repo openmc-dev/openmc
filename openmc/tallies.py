@@ -4,6 +4,7 @@ from functools import partial, reduce
 from itertools import product
 from numbers import Integral, Real
 import operator
+import typing
 from pathlib import Path
 import lxml.etree as ET
 
@@ -2522,18 +2523,75 @@ class Tally(IDManagerMixin):
         new_tally = self * -1
         return new_tally
 
-    def get_data_slice_where(self, basis: str='xy', slice_value: float=None):
-        """Gets a slice of tally scored on a RegularMesh to the mesh and gets a 2D slice of values.
+
+    def get_values_slice(
+        self,
+        slice_index: float,
+        basis: str='xy',
+        score: typing.Optional[str] = None,
+        value: str = 'mean'
+    ):
+        """Gets a 2D array of values from a RegularMesh tally at specified index.
 
         Parameters
         ----------
-        datasets : np.ndarray
-            1-D array of data values. Will be reshaped to fill the mesh and
-            must have the same number of entries to fill the mesh
+        slice_index : float
+            The axis index of the slice to extract.
         basis : {'xy', 'xz', 'yz'}
             The basis directions for the slice
+        score : str
+            A score string (e.g., 'absorption'). If score is left as None and
+            only one score is present in the tally then that score will be used
+        value : str
+            A string for the type of value to return  - 'mean' (default),
+            'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
+
+        Returns
+        -------
+        np.ndarray
+            the 2D array of dataset values
+        """
+
+        # in this case there is only one score so we know which to slice even
+        if score == None and len(self.scores) == 1:
+            score = self.scores[0]
+        
+        tally = self.get_slice(scores=[score])
+        # get_values
+        data = tally.get_reshaped_data(value=value,expand_dims=True).squeeze()
+
+        if basis == 'xz':
+            slice_data = data[:, slice_index, :]
+        elif basis == 'yz':
+            slice_data = data[slice_index, :, :]
+        else:  # basis == 'xy'
+            slice_data = data[:, :, slice_index]
+        
+        return slice_data
+
+
+    def get_values_slice_where(
+            self,
+            slice_value: float=None,
+            basis: str='xy',
+            score: typing.Optional[str] = None,
+            value: str = 'mean'
+        ):
+        """Gets a 2D array of values from a RegularMesh tally at specified axis location.
+
+        Parameters
+        ----------
         slice_value : float
-            The axis value of the slice to extract.
+            The axis value of the slice to extract. If left as None the center
+            of the axis will be chosen
+        basis : {'xy', 'xz', 'yz'}
+            The basis directions for the slice
+        score : str
+            A score string (e.g., 'absorption'). If score is left as None and
+            only one score is present in the tally then that score will be used
+        value : str
+            A string for the type of value to return  - 'mean' (default),
+            'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
 
         Returns
         -------
@@ -2544,42 +2602,23 @@ class Tally(IDManagerMixin):
         cv.check_value('basis', basis, ('xy', 'xz', 'yz'))
         
         mesh = self.find_filter(filter_type=openmc.MeshFilter).mesh
-        if isinstance(mesh, openmc.RegularMesh):
-            print('mesh accepted')
+        if not isinstance(mesh, openmc.RegularMesh):
+            msg = 'get_data_slice_where current only supports RegularMesh tallies'
+            raise NotImplementedError(msg)
 
-        if len(self.scores) != 1:
-            msg = """
-                get_data_slice is only able to slice a tally with a single
-                score. Make use of Tally.get_slice first to encapsulate the
-                desired score.
-            """
-            raise ValueError(msg)
+        index_of_basis = {'xy':2, 'xz':1, 'yz':0}[basis]
 
-        basis_to_index = {'xy':2, 'xz':1, 'yz':0}[basis]
+        if slice_value is None:
+            slice_value = mesh.bounding_box.center[index_of_basis]
 
-        if slice_value < mesh.lower_left[basis_to_index]:
-            msg = f'slice_value [{slice_value}] is smaller than the mesh.lower_left [{mesh.lower_left}]'
-            raise ValueError(msg)
-        if slice_value > mesh.upper_right[basis_to_index]:
-            msg = f'slice_value [{slice_value}] is bigger than the mesh.upper_right [{mesh.upper_right}]'
-            raise ValueError(msg)
+        slice_index = mesh.get_index_where(value=slice_value, basis=basis)
 
-        voxel_axis_vals = np.linspace(
-            mesh.lower_left[basis_to_index],
-            mesh.upper_right[basis_to_index],
-            mesh.dimension[basis_to_index], 
-            endpoint=True
+        slice_data = self.get_data_slice(
+            basis=basis,
+            slice_index=slice_index,
+            score=score,
+            value=value
         )
-        slice_index = (np.abs(voxel_axis_vals - slice_value)).argmin()
-    
-        data = self.get_reshaped_data(expand_dims=True).squeeze()
-
-        if basis == 'xz':
-            slice_data = data[:, slice_index, :]
-        elif basis == 'yz':
-            slice_data = data[slice_index, :, :]
-        else:  # basis == 'xy'
-            slice_data = data[:, :, slice_index]
 
         return slice_data
 

@@ -799,7 +799,7 @@ class RegularMesh(StructuredMesh):
             volume_normalization=volume_normalization
         )
 
-    def plot_tally_data_slice(self, dataset, basis: str='xy', axes=None):
+    def plot_tally_values_slice(self, dataset, basis: str='xy', axes=None):
         """Maps the dataset values to the mesh and exports an image.
 
             dataset : np.ndarray
@@ -834,12 +834,53 @@ class RegularMesh(StructuredMesh):
             axes.set_xlabel(xlabel)
             axes.set_ylabel(ylabel)
 
-        return axes.imshow(
+        image = axes.imshow(
             oriented_data,
             origin='lower',
             norm=LogNorm(),
             extent=self.bounding_box.extent[basis] 
         )
+
+        fig.colorbar(image)
+
+        return axes
+
+    def get_index_where(self, value :float, basis: str='xy'):
+        """Gets the mesh cell index nearest to the specified axis value.
+
+        Parameters
+        ----------
+        basis : {'xy', 'xz', 'yz'}
+            The basis directions for the slice
+        value : str
+            A string for the type of value to return  - 'mean' (default),
+            'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
+
+        Returns
+        -------
+        int
+            the index of the mesh cell
+        """
+
+        index_of_basis = {'xy':2, 'xz':1, 'yz':0}[basis]
+
+        if value < self.lower_left[index_of_basis]:
+            msg = f'value [{value}] is smaller than the mesh.lower_left [{self.lower_left}]'
+            raise ValueError(msg)
+        if value > self.upper_right[index_of_basis]:
+            msg = f'value [{value}] is bigger than the mesh.upper_right [{self.upper_right}]'
+            raise ValueError(msg)
+
+        voxel_axis_vals = np.linspace(
+            self.lower_left[index_of_basis],
+            self.upper_right[index_of_basis],
+            self.dimension[index_of_basis], 
+            endpoint=True
+        )
+        slice_index = (np.abs(voxel_axis_vals - value)).argmin()
+
+        return slice_index
+
 
 
 def Mesh(*args, **kwargs):

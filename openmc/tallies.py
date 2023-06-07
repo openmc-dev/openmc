@@ -2532,7 +2532,7 @@ class Tally(IDManagerMixin):
             must have the same number of entries to fill the mesh
         basis : {'xy', 'xz', 'yz'}
             The basis directions for the slice
-        slice_value : int
+        slice_value : float
             The axis value of the slice to extract.
 
         Returns
@@ -2541,7 +2541,7 @@ class Tally(IDManagerMixin):
             the 2D array of dataset values
         """
 
-        cv.check_value('basis', basis, ['xy', 'xz', 'yz'])
+        cv.check_value('basis', basis, ('xy', 'xz', 'yz'))
         
         mesh = self.find_filter(filter_type=openmc.MeshFilter).mesh
         if isinstance(mesh, openmc.RegularMesh):
@@ -2555,7 +2555,7 @@ class Tally(IDManagerMixin):
             """
             raise ValueError(msg)
 
-        basis_to_index = {'xy':2, 'xz':1, 'yz':1}[basis]
+        basis_to_index = {'xy':2, 'xz':1, 'yz':0}[basis]
 
         if slice_value < mesh.lower_left[basis_to_index]:
             msg = f'slice_value [{slice_value}] is smaller than the mesh.lower_left [{mesh.lower_left}]'
@@ -2567,11 +2567,10 @@ class Tally(IDManagerMixin):
         voxel_axis_vals = np.linspace(
             mesh.lower_left[basis_to_index],
             mesh.upper_right[basis_to_index],
-            mesh.dimension[basis_to_index], endpoint=True
+            mesh.dimension[basis_to_index], 
+            endpoint=True
         )
-        print(voxel_axis_vals)
         slice_index = (np.abs(voxel_axis_vals - slice_value)).argmin()
-        print(f'slice_index {slice_index}, slice_value {slice_value}')
     
         data = self.get_reshaped_data(expand_dims=True).squeeze()
 

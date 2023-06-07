@@ -1,5 +1,6 @@
 from math import pi
-
+import filecmp
+from difflib import unified_diff
 import numpy as np
 import openmc
 import openmc.lib
@@ -58,7 +59,6 @@ def pencil_beam_model(cfg, E0, N):
 
     return openmc.Model(geometry, materials, settings, tallies)
 
-
 class NCrystalTest(PyAPITestHarness):
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
@@ -69,6 +69,24 @@ class NCrystalTest(PyAPITestHarness):
             df = tal.get_pandas_dataframe()
         return df.to_string()
 
+def test_cfg_from_xml(model):
+     """Make sure the cfg string is read by from_xml method"""
+
+    #export the original material generated with cfg string
+    model.materials.export_to_xml('materials.xml.orig')
+    expected = open('materials.xml.orig', 'r').readlines()
+    #read back the original material
+    mats_from_xml = openmc.Materials.from_xml('materials.xml.orig')
+    #export again
+    mats_from_xml.export_to_xml('materials.xml.after')
+    actual = open('materials.xml.after', 'r').readlines()
+    compare = filecmp.cmp('materials.xml.orig','materials.xml.after')
+    if not compare:
+        diff = unified_diff(expected, actual, 'materials.xml.orig',
+                           'materials.xml.after')
+        print('Input differences:')
+        print(''.join(diff))
+    assert compare, 'Materials not read correctly from XML'
 
 def test_ncrystal():
     n_particles = 100000
@@ -76,5 +94,6 @@ def test_ncrystal():
     E0 = 0.012  # eV
     cfg = 'Al_sg225.ncmat'
     test = pencil_beam_model(cfg, E0, n_particles)
+    test_cfg_from_xm(test)
     harness = NCrystalTest('statepoint.10.h5', model=test)
     harness.main()

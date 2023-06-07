@@ -305,6 +305,7 @@ class FluxCollapseHelper(ReactionRateHelper):
             self._rate_tally.writable = False
             self._rate_tally.scores = self._reactions_direct
             self._rate_tally.filters = [MaterialFilter(materials)]
+            self._rate_tally.multiply_density = False
             self._rate_tally_means_cache = None
             if self._nuclides_direct is not None:
                 # check if any direct tally nuclides are requested that are not
@@ -376,13 +377,7 @@ class FluxCollapseHelper(ReactionRateHelper):
 
         mat = self._materials[mat_index]
 
-        # Build nucname: density mapping to enable O(1) lookup in loop below
-        densities = dict(zip(mat.nuclides, mat.densities))
-
         for name, i_nuc in zip(self.nuclides, nuc_index):
-            # Determine density of nuclide
-            density = densities[name]
-
             for mt, score, i_rx in zip(self._mts, self._scores, react_index):
                 if score in self._reactions_direct and name in nuclides_direct:
                     # Determine index in rx_rates
@@ -398,7 +393,7 @@ class FluxCollapseHelper(ReactionRateHelper):
                         mt, mat.temperature, self._energies, flux)
 
                     # Multiply by density to get absolute reaction rate
-                    self._results_cache[i_nuc, i_rx] = rate_per_nuc * density
+                    self._results_cache[i_nuc, i_rx] = rate_per_nuc
 
         return self._results_cache
 

@@ -35,7 +35,7 @@ def test_raises_error_when_flat(val_left, val_right):
         mesh.lower_left = [-25, -25, val_left]
 
 
-def test_get_get_values_slice():
+def test_get_index_where():
 
     mesh = openmc.RegularMesh()
     mesh.dimension = [20, 30, 50]
@@ -44,14 +44,14 @@ def test_get_get_values_slice():
 
     #  checks center of mesh
     assert mesh.get_index_where(value=0, basis='xy') == 24
-    assert mesh.get_index_where(value=0, basis='xz' ) == 14
-    assert mesh.get_index_where(value=0, basis='yz' ) == 10
+    assert mesh.get_index_where(value=0, basis='xz') == 14
+    assert mesh.get_index_where(value=0, basis='yz') == 10
 
     #  checks edge of mesh
     mesh.upper_right = (4, 6, 8)
     assert mesh.get_index_where(value=8, basis='xy') == 49
-    assert mesh.get_index_where(value=6, basis='xz' ) == 29
-    assert mesh.get_index_where(value=4, basis='yz' ) == 19
+    assert mesh.get_index_where(value=6, basis='xz') == 29
+    assert mesh.get_index_where(value=4, basis='yz') == 19
 
     # checks outside of the mesh
     with pytest.raises(ValueError):

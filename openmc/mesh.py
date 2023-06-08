@@ -799,7 +799,13 @@ class RegularMesh(StructuredMesh):
             volume_normalization=volume_normalization
         )
 
-    def plot_tally_values_slice(self, dataset, basis: str='xy', axes=None):
+    def plot_tally_values_slice(
+        self,
+        dataset: np.ndarray,
+        basis: str = 'xy',
+        axes: 'matplotlib.axes.Axes' = None,
+        colorbar_label: str = None
+    ) -> 'matplotlib.axes.Axes':
         """Maps the dataset values to the mesh and exports an image.
 
             dataset : np.ndarray
@@ -809,11 +815,13 @@ class RegularMesh(StructuredMesh):
                 The basis directions for the plot
             axes : matplotlib.Axes
                 Axes to draw to
+            colorbar_label : str
+
 
         Returns
         -------
         matplotlib.image.AxesImage
-            Resulting image 
+            Resulting image
         """
 
         import matplotlib.pyplot as plt
@@ -841,11 +849,13 @@ class RegularMesh(StructuredMesh):
             extent=self.bounding_box.extent[basis] 
         )
 
-        fig.colorbar(image)
+        if colorbar_label:
+            cbar = fig.colorbar(image)
+            cbar.set_label(colorbar_label)
 
         return axes
 
-    def get_index_where(self, value :float, basis: str='xy'):
+    def get_index_where(self, value: float, basis: str = 'xy'):
         """Gets the mesh cell index nearest to the specified axis value.
 
         Parameters
@@ -862,7 +872,7 @@ class RegularMesh(StructuredMesh):
             the index of the mesh cell
         """
 
-        index_of_basis = {'xy':2, 'xz':1, 'yz':0}[basis]
+        index_of_basis = {'xy': 2, 'xz': 1, 'yz': 0}[basis]
 
         if value < self.lower_left[index_of_basis]:
             msg = f'value [{value}] is smaller than the mesh.lower_left [{self.lower_left}]'
@@ -880,7 +890,6 @@ class RegularMesh(StructuredMesh):
         slice_index = (np.abs(voxel_axis_vals - value)).argmin()
 
         return slice_index
-
 
 
 def Mesh(*args, **kwargs):

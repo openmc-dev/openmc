@@ -2523,11 +2523,10 @@ class Tally(IDManagerMixin):
         new_tally = self * -1
         return new_tally
 
-
-    def get_values_slice(
+    def get_values_slice_from_mesh(
         self,
-        slice_index: float,
-        basis: str='xy',
+        slice_index: int,
+        basis: str = 'xy',
         score: typing.Optional[str] = None,
         value: str = 'mean'
     ):
@@ -2553,12 +2552,12 @@ class Tally(IDManagerMixin):
         """
 
         # in this case there is only one score so we know which to slice even
-        if score == None and len(self.scores) == 1:
+        if score is None and len(self.scores) == 1:
             score = self.scores[0]
-        
+
         tally = self.get_slice(scores=[score])
-        # get_values
-        data = tally.get_reshaped_data(value=value,expand_dims=True).squeeze()
+
+        data = tally.get_reshaped_data(value=value, expand_dims=True).squeeze()
 
         if basis == 'xz':
             slice_data = data[:, slice_index, :]
@@ -2566,14 +2565,13 @@ class Tally(IDManagerMixin):
             slice_data = data[slice_index, :, :]
         else:  # basis == 'xy'
             slice_data = data[:, :, slice_index]
-        
+
         return slice_data
 
-
-    def get_values_slice_where(
+    def get_values_slice_from_mesh_where(
             self,
-            slice_value: float=None,
-            basis: str='xy',
+            slice_value: float = None,
+            basis: str = 'xy',
             score: typing.Optional[str] = None,
             value: str = 'mean'
         ):
@@ -2600,7 +2598,7 @@ class Tally(IDManagerMixin):
         """
 
         cv.check_value('basis', basis, ('xy', 'xz', 'yz'))
-        
+
         mesh = self.find_filter(filter_type=openmc.MeshFilter).mesh
         if not isinstance(mesh, openmc.RegularMesh):
             msg = 'get_data_slice_where current only supports RegularMesh tallies'
@@ -2613,7 +2611,7 @@ class Tally(IDManagerMixin):
 
         slice_index = mesh.get_index_where(value=slice_value, basis=basis)
 
-        slice_data = self.get_data_slice(
+        slice_data = self.get_values_slice_from_mesh(
             basis=basis,
             slice_index=slice_index,
             score=score,

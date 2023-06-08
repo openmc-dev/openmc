@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib
 
 import openmc
 
@@ -39,3 +40,57 @@ def test_xml_roundtrip(run_in_tmpdir):
     assert new_tally.triggers[0].trigger_type == tally.triggers[0].trigger_type
     assert new_tally.triggers[0].threshold == tally.triggers[0].threshold
     assert new_tally.triggers[0].scores == tally.triggers[0].scores
+
+
+def test_get_values_slice_from_mesh():
+
+    material = openmc.Material()
+    material.set_density('g/cm3', 7)
+    material.add_nuclide('Fe56', 1)
+    materials = openmc.Materials([material])
+
+    surf1 = openmc.Sphere(r=100, boundary_type='vacuum')
+    cell1 = openmc.Cell(region=-surf1)
+    my_geometry = openmc.Geometry([cell1])
+
+    settings = openmc.Settings()
+    settings.batches = 2
+    settings.particles = 1000
+    settings.run_mode = 'fixed source'
+    settings.source = openmc.Source()
+
+    mesh = openmc.RegularMesh().from_domain(my_geometry, dimension=[15, 20, 25])
+    mesh_filter = openmc.MeshFilter(mesh)
+
+    mesh_tally_1 = openmc.Tally(name='flux_on_mesh')
+    mesh_tally_1.filters = [mesh_filter]
+    mesh_tally_1.scores = ['flux']
+    tallies = openmc.Tallies([mesh_tally_1])
+
+    model = openmc.Model(my_geometry, materials, settings, tallies)
+    sp_filename = model.run()
+
+    sp = openmc.StatePoint(sp_filename)
+
+    tally = sp.get_tally(name='flux_on_mesh')
+
+    for basis in ['xz', 'yz', 'xy']:
+        slice_data = tally.get_values_slice_from_mesh(
+            basis=basis,
+            slice_index=10,
+            value='std_dev'
+        )
+        returned_axis = mesh.plot_tally_values_slice(
+            dataset=slice_data,
+            basis=basis,
+        )
+        assert isinstance(returned_axis, matplotlib.axes.Axes)
+
+        tally.get_values_slice_from_mesh_where(basis=basis, slice_value=10)
+        returned_axis = mesh.plot_tally_values_slice(
+            dataset=slice_data,
+            basis=basis,
+            colorbar_label='Flux'
+        )
+        assert isinstance(returned_axis, matplotlib.axes.Axes)
+        returned_axis.set_title('checking plot title can be set')

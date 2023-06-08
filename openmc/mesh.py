@@ -816,7 +816,7 @@ class RegularMesh(StructuredMesh):
             axes : matplotlib.Axes
                 Axes to draw to
             colorbar_label : str
-
+                If set a color bar with the specified label will be added to the plot
 
         Returns
         -------

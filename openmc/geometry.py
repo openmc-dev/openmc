@@ -74,11 +74,6 @@ class Geometry:
     def surface_precision(self) -> int:
         return self._surface_precision
 
-    @root_universe.setter
-    def root_universe(self, root_universe):
-        check_type('root universe', root_universe, openmc.UniverseBase)
-        self._root_universe = root_universe
-
     @merge_surfaces.setter
     def merge_surfaces(self, merge_surfaces):
         check_type('merge surfaces', merge_surfaces, bool)

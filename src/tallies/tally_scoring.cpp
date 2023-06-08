@@ -2504,7 +2504,7 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
 
       // Temporarily change the energy of the particle to the pulse-height value
       p.E_last() = p.pht_storage()[index];
-      std::cout << "cell " << cell_id << "   " << p.E_last() << std::endl;
+      
       // Initialize an iterator over valid filter bin combinations.  If there
       // are no valid combinations, use a continue statement to ensure we skip
       // the assume_separate break below.
@@ -2523,7 +2523,7 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
 #pragma omp atomic
           tally.results_(filter_index, score_index, TallyResult::VALUE) +=
             filter_weight;
-        }
+        } 
       }
 
       // Reset all the filter matches for the next tally event.

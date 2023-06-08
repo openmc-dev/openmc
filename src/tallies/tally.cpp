@@ -541,7 +541,6 @@ void Tally::set_scores(const vector<std::string>& scores)
           "The pulse-height can only be tallied for cell and energy filters");
       }
       type_ = TallyType::PULSE_HEIGHT;
-      estimator_ = TallyEstimator::PULSE_HEIGHT;
 
       // Collecting indices of all cells covered by the filters in the pulse
       // height tally in global variable pulse_height_cells

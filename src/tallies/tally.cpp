@@ -445,12 +445,12 @@ void Tally::set_scores(const vector<std::string>& scores)
   for (auto i_filt : filters_) {
     const auto* filt {model::tally_filters[i_filt].get()};
     // Checking for only cell and energy filters for pulse-height tally
-    if (!(dynamic_cast<const CellFilter*>(filt) ||
-          dynamic_cast<const EnergyFilter*>(filt)) ||
-        (dynamic_cast<const CellBornFilter*>(filt) ||
-          dynamic_cast<const CellFromFilter*>(filt)) ||
-        dynamic_cast<const EnergyoutFilter*>(filt)) {
-      non_cell_energy_present = true;
+    if (!(filt->type() == FilterType::CELL ||
+          filt->type() == FilterType::ENERGY) ||
+         (filt->type() == FilterType::CELLBORN ||
+          filt->type() == FilterType::CELLFROM) ||
+          filt->type() == FilterType::ENERGY_OUT) {
+    non_cell_energy_present = true;
     }
     if (dynamic_cast<const LegendreFilter*>(filt)) {
       legendre_present = true;
@@ -538,7 +538,7 @@ void Tally::set_scores(const vector<std::string>& scores)
     case SCORE_PULSE_HEIGHT:
       if (non_cell_energy_present) {
         fatal_error(
-          "The pulse-height can only be tallied for cell and energy filters");
+          "Pulse-height tallies are not compatible with filters other than CellFilter and EnergyFilter");
       }
       type_ = TallyType::PULSE_HEIGHT;
 

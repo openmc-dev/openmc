@@ -33,7 +33,7 @@ _NUCLIDE_CLASSES = (str, openmc.CrossNuclide, openmc.AggregateNuclide)
 _FILTER_CLASSES = (openmc.Filter, openmc.CrossFilter, openmc.AggregateFilter)
 
 # Valid types of estimators
-ESTIMATOR_TYPES = ['tracklength', 'collision', 'analog', 'pulse-height']
+ESTIMATOR_TYPES = ['tracklength', 'collision', 'analog']
 
 
 class Tally(IDManagerMixin):

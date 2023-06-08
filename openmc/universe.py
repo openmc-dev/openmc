@@ -455,7 +455,7 @@ class Universe(UniverseBase):
                 axes.set_ylabel(ylabel)
                 params = fig.subplotpars
                 width = pixels[0]*px/(params.right - params.left)
-                height = pixels[0]*px/(params.top - params.bottom)
+                height = pixels[1]*px/(params.top - params.bottom)
                 fig.set_size_inches(width, height)
 
             if outline:

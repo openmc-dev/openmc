@@ -828,48 +828,16 @@ class WindowedMultipole(EqualityMixin):
     def sqrtAWR(self):
         return self._sqrtAWR
 
-    @property
-    def E_min(self):
-        return self._E_min
-
-    @property
-    def E_max(self):
-        return self._E_max
-
-    @property
-    def data(self):
-        return self._data
-
-    @property
-    def windows(self):
-        return self._windows
-
-    @property
-    def broaden_poly(self):
-        return self._broaden_poly
-
-    @property
-    def curvefit(self):
-        return self._curvefit
-
-    @name.setter
-    def name(self, name):
-        cv.check_type('name', name, str)
-        self._name = name
-
-    @spacing.setter
-    def spacing(self, spacing):
-        if spacing is not None:
-            cv.check_type('spacing', spacing, Real)
-            cv.check_greater_than('spacing', spacing, 0.0, equality=False)
-        self._spacing = spacing
-
     @sqrtAWR.setter
     def sqrtAWR(self, sqrtAWR):
         if sqrtAWR is not None:
             cv.check_type('sqrtAWR', sqrtAWR, Real)
             cv.check_greater_than('sqrtAWR', sqrtAWR, 0.0, equality=False)
         self._sqrtAWR = sqrtAWR
+
+    @property
+    def E_min(self):
+        return self._E_min
 
     @E_min.setter
     def E_min(self, E_min):
@@ -878,12 +846,20 @@ class WindowedMultipole(EqualityMixin):
             cv.check_greater_than('E_min', E_min, 0.0, equality=True)
         self._E_min = E_min
 
+    @property
+    def E_max(self):
+        return self._E_max
+
     @E_max.setter
     def E_max(self, E_max):
         if E_max is not None:
             cv.check_type('E_max', E_max, Real)
             cv.check_greater_than('E_max', E_max, 0.0, equality=False)
         self._E_max = E_max
+
+    @property
+    def data(self):
+        return self._data
 
     @data.setter
     def data(self, data):
@@ -900,6 +876,10 @@ class WindowedMultipole(EqualityMixin):
                 raise TypeError('Multipole data arrays must be complex dtype')
         self._data = data
 
+    @property
+    def windows(self):
+        return self._windows
+
     @windows.setter
     def windows(self, windows):
         if windows is not None:
@@ -911,6 +891,10 @@ class WindowedMultipole(EqualityMixin):
                                 ' dtype')
         self._windows = windows
 
+    @property
+    def broaden_poly(self):
+        return self._broaden_poly
+
     @broaden_poly.setter
     def broaden_poly(self, broaden_poly):
         if broaden_poly is not None:
@@ -921,6 +905,10 @@ class WindowedMultipole(EqualityMixin):
                 raise TypeError('Multipole broaden_poly arrays must be boolean'
                                 ' dtype')
         self._broaden_poly = broaden_poly
+
+    @property
+    def curvefit(self):
+        return self._curvefit
 
     @curvefit.setter
     def curvefit(self, curvefit):
@@ -934,6 +922,18 @@ class WindowedMultipole(EqualityMixin):
             if not np.issubdtype(curvefit.dtype, np.floating):
                 raise TypeError('Multipole curvefit arrays must be float dtype')
         self._curvefit = curvefit
+
+    @name.setter
+    def name(self, name):
+        cv.check_type('name', name, str)
+        self._name = name
+
+    @spacing.setter
+    def spacing(self, spacing):
+        if spacing is not None:
+            cv.check_type('spacing', spacing, Real)
+            cv.check_greater_than('spacing', spacing, 0.0, equality=False)
+        self._spacing = spacing
 
     @classmethod
     def from_hdf5(cls, group_or_filename):

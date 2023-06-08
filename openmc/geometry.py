@@ -70,14 +70,14 @@ class Geometry:
     def merge_surfaces(self) -> bool:
         return self._merge_surfaces
 
-    @property
-    def surface_precision(self) -> int:
-        return self._surface_precision
-
     @merge_surfaces.setter
     def merge_surfaces(self, merge_surfaces):
         check_type('merge surfaces', merge_surfaces, bool)
         self._merge_surfaces = merge_surfaces
+
+    @property
+    def surface_precision(self) -> int:
+        return self._surface_precision
 
     @property
     def surface_precision(self):

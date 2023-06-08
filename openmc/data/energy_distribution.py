@@ -812,6 +812,11 @@ class DiscretePhoton(EnergyDistribution):
     def primary_flag(self):
         return self._primary_flag
 
+    @primary_flag.setter
+    def primary_flag(self, primary_flag):
+        cv.check_type('discrete photon primary_flag', primary_flag, Integral)
+        self._primary_flag = primary_flag
+
     @property
     def energy(self):
         return self._energy
@@ -819,11 +824,6 @@ class DiscretePhoton(EnergyDistribution):
     @property
     def atomic_weight_ratio(self):
         return self._atomic_weight_ratio
-
-    @primary_flag.setter
-    def primary_flag(self, primary_flag):
-        cv.check_type('discrete photon primary_flag', primary_flag, Integral)
-        self._primary_flag = primary_flag
 
     @energy.setter
     def energy(self, energy):

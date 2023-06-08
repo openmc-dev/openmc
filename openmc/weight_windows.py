@@ -108,8 +108,8 @@ class WeightWindows(IDManagerMixin):
     used_ids = set()
 
     def __init__(
-        self, 
-        mesh: MeshBase, 
+        self,
+        mesh: MeshBase,
         lower_ww_bounds: Iterable[float],
         upper_ww_bounds: Optional[Iterable[float]] = None,
         upper_bound_ratio: Optional[float] = None,
@@ -589,8 +589,6 @@ def wwinp_to_wws(path: PathLike) -> List[WeightWindows]:
     elif nwg == 3:
         mesh = SphericalMesh()
         mesh.r_grid, mesh.theta_grid, mesh.phi_grid = grids
-
-    mesh.write_data_to_vtk('test.vtk', datasets={})
 
     # extract weight window values from array
     wws = []

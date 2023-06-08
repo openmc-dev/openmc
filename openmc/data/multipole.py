@@ -800,6 +800,11 @@ class WindowedMultipole(EqualityMixin):
     def name(self):
         return self._name
 
+    @name.setter
+    def name(self, name):
+        cv.check_type('name', name, str)
+        self._name = name
+
     @property
     def fit_order(self):
         return self.curvefit.shape[1] - 1
@@ -823,6 +828,13 @@ class WindowedMultipole(EqualityMixin):
     @property
     def spacing(self):
         return self._spacing
+
+    @spacing.setter
+    def spacing(self, spacing):
+        if spacing is not None:
+            cv.check_type('spacing', spacing, Real)
+            cv.check_greater_than('spacing', spacing, 0.0, equality=False)
+        self._spacing = spacing
 
     @property
     def sqrtAWR(self):
@@ -922,18 +934,6 @@ class WindowedMultipole(EqualityMixin):
             if not np.issubdtype(curvefit.dtype, np.floating):
                 raise TypeError('Multipole curvefit arrays must be float dtype')
         self._curvefit = curvefit
-
-    @name.setter
-    def name(self, name):
-        cv.check_type('name', name, str)
-        self._name = name
-
-    @spacing.setter
-    def spacing(self, spacing):
-        if spacing is not None:
-            cv.check_type('spacing', spacing, Real)
-            cv.check_greater_than('spacing', spacing, 0.0, equality=False)
-        self._spacing = spacing
 
     @classmethod
     def from_hdf5(cls, group_or_filename):

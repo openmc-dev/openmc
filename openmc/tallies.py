@@ -4,8 +4,9 @@ from functools import partial, reduce
 from itertools import product
 from numbers import Integral, Real
 import operator
+import typing
 from pathlib import Path
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 
 import h5py
 import numpy as np
@@ -56,7 +57,7 @@ class Tally(IDManagerMixin):
         Name of the tally
     filters : list of openmc.Filter
         List of specified filters for the tally
-    nuclides : list of openmc.Nuclide
+    nuclides : list of str
         List of nuclides to score results for
     scores : list of str
         List of defined scores, e.g. 'flux', 'fission', etc.
@@ -815,7 +816,7 @@ class Tally(IDManagerMixin):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing tally data
 
         """
@@ -872,7 +873,7 @@ class Tally(IDManagerMixin):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -2522,6 +2523,105 @@ class Tally(IDManagerMixin):
         new_tally = self * -1
         return new_tally
 
+
+    def get_values_slice(
+        self,
+        slice_index: float,
+        basis: str='xy',
+        score: typing.Optional[str] = None,
+        value: str = 'mean'
+    ):
+        """Gets a 2D array of values from a RegularMesh tally at specified index.
+
+        Parameters
+        ----------
+        slice_index : float
+            The axis index of the slice to extract.
+        basis : {'xy', 'xz', 'yz'}
+            The basis directions for the slice
+        score : str
+            A score string (e.g., 'absorption'). If score is left as None and
+            only one score is present in the tally then that score will be used
+        value : str
+            A string for the type of value to return  - 'mean' (default),
+            'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
+
+        Returns
+        -------
+        np.ndarray
+            the 2D array of dataset values
+        """
+
+        # in this case there is only one score so we know which to slice even
+        if score == None and len(self.scores) == 1:
+            score = self.scores[0]
+        
+        tally = self.get_slice(scores=[score])
+        # get_values
+        data = tally.get_reshaped_data(value=value,expand_dims=True).squeeze()
+
+        if basis == 'xz':
+            slice_data = data[:, slice_index, :]
+        elif basis == 'yz':
+            slice_data = data[slice_index, :, :]
+        else:  # basis == 'xy'
+            slice_data = data[:, :, slice_index]
+        
+        return slice_data
+
+
+    def get_values_slice_where(
+            self,
+            slice_value: float=None,
+            basis: str='xy',
+            score: typing.Optional[str] = None,
+            value: str = 'mean'
+        ):
+        """Gets a 2D array of values from a RegularMesh tally at specified axis location.
+
+        Parameters
+        ----------
+        slice_value : float
+            The axis value of the slice to extract. If left as None the center
+            of the axis will be chosen
+        basis : {'xy', 'xz', 'yz'}
+            The basis directions for the slice
+        score : str
+            A score string (e.g., 'absorption'). If score is left as None and
+            only one score is present in the tally then that score will be used
+        value : str
+            A string for the type of value to return  - 'mean' (default),
+            'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
+
+        Returns
+        -------
+        np.ndarray
+            the 2D array of dataset values
+        """
+
+        cv.check_value('basis', basis, ('xy', 'xz', 'yz'))
+        
+        mesh = self.find_filter(filter_type=openmc.MeshFilter).mesh
+        if not isinstance(mesh, openmc.RegularMesh):
+            msg = 'get_data_slice_where current only supports RegularMesh tallies'
+            raise NotImplementedError(msg)
+
+        index_of_basis = {'xy':2, 'xz':1, 'yz':0}[basis]
+
+        if slice_value is None:
+            slice_value = mesh.bounding_box.center[index_of_basis]
+
+        slice_index = mesh.get_index_where(value=slice_value, basis=basis)
+
+        slice_data = self.get_data_slice(
+            basis=basis,
+            slice_index=slice_index,
+            score=score,
+            value=value
+        )
+
+        return slice_data
+
     def get_slice(self, scores=[], filters=[], filter_bins=[], nuclides=[],
                   squeeze=False):
         """Build a sliced tally for the specified filters, scores and nuclides.
@@ -3226,7 +3326,7 @@ class Tallies(cv.CheckedList):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
         meshes : dict or None
             A dictionary with mesh IDs as keys and mesh instances as values that

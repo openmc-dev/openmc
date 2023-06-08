@@ -5,7 +5,7 @@ from math import pi
 from numbers import Real, Integral
 from pathlib import Path
 import warnings
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 
 import numpy as np
 
@@ -103,7 +103,7 @@ class MeshBase(IDManagerMixin, ABC):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -422,6 +422,12 @@ class RegularMesh(StructuredMesh):
             x1, = self.upper_right
             return (np.linspace(x0, x1, nx + 1),)
 
+    @property
+    def bounding_box(self):
+        return openmc.BoundingBox(
+            np.array(self.lower_left), np.array(self.upper_right)
+        )
+
     @dimension.setter
     def dimension(self, dimension):
         cv.check_type('mesh dimension', dimension, Iterable, Integral)
@@ -568,7 +574,7 @@ class RegularMesh(StructuredMesh):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mesh data
 
         """
@@ -598,7 +604,7 @@ class RegularMesh(StructuredMesh):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -793,40 +799,88 @@ class RegularMesh(StructuredMesh):
             volume_normalization=volume_normalization
         )
 
-    def get_data_slice(self, dataset: np.array, basis: str, slice_index: int):
-        """Maps the provided dataset values to the mesh and obtains a 2D slice
-        of dataset values on the mesh. Useful for producing plots of slice data.
+    def plot_tally_values_slice(self, dataset, basis: str='xy', axes=None):
+        """Maps the dataset values to the mesh and exports an image.
 
-        Parameters
-        ----------
-        datasets : numpy.array
-            1-D array of data values. Will be reshaped to fill the mesh and
-            should therefore have the same number of entries to fill the mesh
-        basis : {'xy', 'xz', 'yz'}
-            The basis directions for the slice
-        slice_index : int
-            The index of the mesh slice to extract.
+            dataset : np.ndarray
+                A 2-D array of values to plot, this is rotated to suit the
+                MatPlotLib imshow function.
+            basis : {'xy', 'xz', 'yz'}
+                The basis directions for the plot
+            axes : matplotlib.Axes
+                Axes to draw to
 
         Returns
         -------
-        np.array()
-            the 2D array of dataset values
+        matplotlib.image.AxesImage
+            Resulting image 
         """
 
-        reshaped_ds = dataset.reshape(self.dimension, order="F")
+        import matplotlib.pyplot as plt
+        from matplotlib.colors import LogNorm
 
-        if basis == "yz":
-            transposed_ds = reshaped_ds.transpose(0, 1, 2)[slice_index]
-            transposed_ds = np.rot90(transposed_ds, -1)
+        if basis == "xy":
+            oriented_data = np.rot90(dataset, 1)
+            xlabel, ylabel = 'x [cm]', 'y [cm]'
+        elif basis == "yz":
+            oriented_data = dataset
+            xlabel, ylabel = 'y [cm]', 'z [cm]'
+        else:  # basis == "xz"
+            oriented_data = np.rot90(dataset, -1)
+            xlabel, ylabel = 'x [cm]', 'z [cm]'
 
-        elif basis == "xz":
-            transposed_ds = reshaped_ds.transpose(1, 2, 0)[slice_index]
+        if axes is None:
+            fig, axes = plt.subplots()
+            axes.set_xlabel(xlabel)
+            axes.set_ylabel(ylabel)
 
-        elif basis == "xy":
-            transposed_ds = reshaped_ds.transpose(2, 0, 1)[slice_index]
-            transposed_ds = np.rot90(transposed_ds, 1)
+        image = axes.imshow(
+            oriented_data,
+            origin='lower',
+            norm=LogNorm(),
+            extent=self.bounding_box.extent[basis] 
+        )
 
-        return transposed_ds
+        fig.colorbar(image)
+
+        return axes
+
+    def get_index_where(self, value :float, basis: str='xy'):
+        """Gets the mesh cell index nearest to the specified axis value.
+
+        Parameters
+        ----------
+        basis : {'xy', 'xz', 'yz'}
+            The basis directions for the slice
+        value : str
+            A string for the type of value to return  - 'mean' (default),
+            'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
+
+        Returns
+        -------
+        int
+            the index of the mesh cell
+        """
+
+        index_of_basis = {'xy':2, 'xz':1, 'yz':0}[basis]
+
+        if value < self.lower_left[index_of_basis]:
+            msg = f'value [{value}] is smaller than the mesh.lower_left [{self.lower_left}]'
+            raise ValueError(msg)
+        if value > self.upper_right[index_of_basis]:
+            msg = f'value [{value}] is bigger than the mesh.upper_right [{self.upper_right}]'
+            raise ValueError(msg)
+
+        voxel_axis_vals = np.linspace(
+            self.lower_left[index_of_basis],
+            self.upper_right[index_of_basis],
+            self.dimension[index_of_basis], 
+            endpoint=True
+        )
+        slice_index = (np.abs(voxel_axis_vals - value)).argmin()
+
+        return slice_index
+
 
 
 def Mesh(*args, **kwargs):
@@ -985,7 +1039,7 @@ class RectilinearMesh(StructuredMesh):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1007,7 +1061,7 @@ class RectilinearMesh(StructuredMesh):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mesh data
 
         """
@@ -1275,7 +1329,7 @@ class CylindricalMesh(StructuredMesh):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mesh data
 
         """
@@ -1304,7 +1358,7 @@ class CylindricalMesh(StructuredMesh):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1524,7 +1578,7 @@ class SphericalMesh(StructuredMesh):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mesh data
 
         """
@@ -1553,7 +1607,7 @@ class SphericalMesh(StructuredMesh):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1976,7 +2030,7 @@ class UnstructuredMesh(MeshBase):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mesh data
 
         """
@@ -1999,7 +2053,7 @@ class UnstructuredMesh(MeshBase):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -2020,7 +2074,7 @@ def _read_meshes(elem):
 
     Parameters
     ----------
-    elem : xml.etree.ElementTree.Element
+    elem : lxml.etree._Element
         XML element
 
     Returns

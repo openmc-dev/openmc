@@ -10,3 +10,4 @@ h5py
 pandas
 uncertainties
 matplotlib
+lxml

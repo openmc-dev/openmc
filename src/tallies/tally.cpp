@@ -447,10 +447,10 @@ void Tally::set_scores(const vector<std::string>& scores)
     // Checking for only cell and energy filters for pulse-height tally
     if (!(filt->type() == FilterType::CELL ||
           filt->type() == FilterType::ENERGY) ||
-         (filt->type() == FilterType::CELLBORN ||
+        (filt->type() == FilterType::CELLBORN ||
           filt->type() == FilterType::CELLFROM) ||
-          filt->type() == FilterType::ENERGY_OUT) {
-    non_cell_energy_present = true;
+        filt->type() == FilterType::ENERGY_OUT) {
+      non_cell_energy_present = true;
     }
     if (dynamic_cast<const LegendreFilter*>(filt)) {
       legendre_present = true;
@@ -537,8 +537,8 @@ void Tally::set_scores(const vector<std::string>& scores)
 
     case SCORE_PULSE_HEIGHT:
       if (non_cell_energy_present) {
-        fatal_error(
-          "Pulse-height tallies are not compatible with filters other than CellFilter and EnergyFilter");
+        fatal_error("Pulse-height tallies are not compatible with filters "
+                    "other than CellFilter and EnergyFilter");
       }
       type_ = TallyType::PULSE_HEIGHT;
 

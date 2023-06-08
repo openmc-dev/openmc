@@ -5,7 +5,7 @@ import pathlib
 import typing
 from typing import Iterable, List, Optional, Union, Dict
 
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 import numpy as np
 import h5py
 
@@ -313,7 +313,7 @@ class WeightWindows(IDManagerMixin):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing the weight window information
         """
         element = ET.Element('weight_windows')
@@ -356,9 +356,9 @@ class WeightWindows(IDManagerMixin):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
-        root : xml.etree.ElementTree.Element
+        root : lxml.etree._Element
             Root element for the file where meshes can be found
 
         Returns

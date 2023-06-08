@@ -6,7 +6,7 @@ from copy import deepcopy
 from collections.abc import Iterable
 from pathlib import Path
 import warnings
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 
 import numpy as np
 
@@ -28,7 +28,7 @@ class Geometry:
     ----------
     root_universe : openmc.UniverseBase
         Root universe which contains all others
-    bounding_box : 2-tuple of numpy.array
+    bounding_box : openmc.BoundingBox
         Lower-left and upper-right coordinates of an axis-aligned bounding box
         of the universe.
     merge_surfaces : bool
@@ -181,7 +181,7 @@ class Geometry:
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
         materials : openmc.Materials or None
             Materials used to assign to cells. If None, an attempt is made to

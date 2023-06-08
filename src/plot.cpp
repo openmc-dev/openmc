@@ -5,8 +5,8 @@
 #include <fstream>
 #include <sstream>
 
-#include "xtensor/xview.hpp"
 #include "xtensor/xmanipulation.hpp"
+#include "xtensor/xview.hpp"
 #include <fmt/core.h>
 #include <fmt/ostream.h>
 #ifdef USE_LIBPNG
@@ -14,6 +14,7 @@
 #endif
 
 #include "openmc/constants.h"
+#include "openmc/container_util.h"
 #include "openmc/dagmc.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
@@ -647,7 +648,7 @@ void PlottableInterface::set_mask(pugi::xml_node plot_node)
 
       // Alter colors based on mask information
       for (int j = 0; j < colors_.size(); j++) {
-        if (std::find(iarray.begin(), iarray.end(), j) == iarray.end()) {
+        if (contains(iarray, j)) {
           if (check_for_node(mask_node, "background")) {
             vector<int> bg_rgb = get_node_array<int>(mask_node, "background");
             colors_[j] = bg_rgb;
@@ -704,7 +705,7 @@ PlottableInterface::PlottableInterface(pugi::xml_node plot_node)
 }
 
 Plot::Plot(pugi::xml_node plot_node, PlotType type)
-  : PlottableInterface(plot_node), index_meshlines_mesh_ {-1}, type_(type)
+  : PlottableInterface(plot_node), type_(type), index_meshlines_mesh_ {-1}
 {
   set_output_path(plot_node);
   set_basis(plot_node);
@@ -1306,12 +1307,15 @@ void ProjectionPlot::create_output() const
             bool inside_cell = false;
 
             int32_t i_surface = std::abs(p.surface()) - 1;
-            if (i_surface > 0 && model::surfaces[i_surface]->geom_type_ == GeometryType::DAG) {
+            if (i_surface > 0 &&
+                model::surfaces[i_surface]->geom_type_ == GeometryType::DAG) {
 #ifdef DAGMC
-              int32_t i_cell = next_cell(i_surface, p.cell_last(p.n_coord() - 1), p.lowest_coord().universe);
+              int32_t i_cell = next_cell(i_surface,
+                p.cell_last(p.n_coord() - 1), p.lowest_coord().universe);
               inside_cell = i_cell >= 0;
 #else
-              fatal_error("Not compiled for DAGMC, but somehow you have a DAGCell!");
+              fatal_error(
+                "Not compiled for DAGMC, but somehow you have a DAGCell!");
 #endif
             } else {
               inside_cell = exhaustive_find_cell(p);

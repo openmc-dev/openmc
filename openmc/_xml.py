@@ -43,7 +43,7 @@ def get_text(elem, name, default=None):
 
     Parameters
     ----------
-    elem : xml.etree.ElementTree.Element
+    elem : lxml.etree._Element
         Element from which to search
     name : str
         Name of attribute/subelement
@@ -68,7 +68,7 @@ def reorder_attributes(root):
 
     Parameters
     ----------
-    root : xml.etree.ElementTree.Element
+    root : lxml.etree._Element
         Root element
 
     """
@@ -86,7 +86,7 @@ def get_elem_tuple(elem, name, dtype=int):
 
     Parameters
     ----------
-    elem : xml.etree.ElementTree.Element
+    elem : lxml.etree._Element
         XML element that should contain a tuple
     name : str
         Name of the subelement to obtain tuple from

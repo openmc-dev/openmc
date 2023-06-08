@@ -1,6 +1,6 @@
 from collections.abc import Iterable
 from numbers import Real
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 
 import openmc.checkvalue as cv
 from .mixin import EqualityMixin
@@ -79,7 +79,7 @@ class Trigger(EqualityMixin):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing trigger data
 
         """
@@ -97,7 +97,7 @@ class Trigger(EqualityMixin):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns

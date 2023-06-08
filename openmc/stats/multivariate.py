@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from math import pi, cos
 from numbers import Real
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 
 import numpy as np
 
@@ -121,7 +121,7 @@ class PolarAzimuthal(UnitSphere):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing angular distribution data
 
         """
@@ -139,7 +139,7 @@ class PolarAzimuthal(UnitSphere):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -168,7 +168,7 @@ class Isotropic(UnitSphere):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing isotropic distribution data
 
         """
@@ -182,7 +182,7 @@ class Isotropic(UnitSphere):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -217,7 +217,7 @@ class Monodirectional(UnitSphere):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing monodirectional distribution data
 
         """
@@ -233,7 +233,7 @@ class Monodirectional(UnitSphere):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -341,7 +341,7 @@ class CartesianIndependent(Spatial):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing spatial distribution data
 
         """
@@ -358,7 +358,7 @@ class CartesianIndependent(Spatial):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -464,7 +464,7 @@ class SphericalIndependent(Spatial):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing spatial distribution data
 
         """
@@ -482,7 +482,7 @@ class SphericalIndependent(Spatial):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -586,7 +586,7 @@ class CylindricalIndependent(Spatial):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing spatial distribution data
 
         """
@@ -604,7 +604,7 @@ class CylindricalIndependent(Spatial):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -698,7 +698,7 @@ class MeshSpatial(Spatial):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing spatial distribution data
 
         """
@@ -719,7 +719,7 @@ class MeshSpatial(Spatial):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
         meshes : dict
             A dictionary with mesh IDs as keys and openmc.MeshBase instances as
@@ -811,7 +811,7 @@ class Box(Spatial):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing box distribution data
 
         """
@@ -831,7 +831,7 @@ class Box(Spatial):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -883,7 +883,7 @@ class Point(Spatial):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing point distribution location
 
         """
@@ -899,7 +899,7 @@ class Point(Spatial):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns

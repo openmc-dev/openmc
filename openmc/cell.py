@@ -2,7 +2,7 @@ from collections import OrderedDict
 from collections.abc import Iterable
 from math import cos, sin, pi
 from numbers import Real
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 
 import numpy as np
 from uncertainties import UFloat
@@ -13,6 +13,7 @@ from ._xml import get_text
 from .mixin import IDManagerMixin
 from .region import Region, Complement
 from .surface import Halfspace
+from .bounding_box import BoundingBox
 
 
 class Cell(IDManagerMixin):
@@ -91,6 +92,8 @@ class Cell(IDManagerMixin):
         fill. For example, {'U235': 1.0e22, 'U238': 5.0e22, ...}.
 
         .. versionadded:: 0.12
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the cell
 
     """
 
@@ -341,8 +344,8 @@ class Cell(IDManagerMixin):
         if self.region is not None:
             return self.region.bounding_box
         else:
-            return (np.array([-np.inf, -np.inf, -np.inf]),
-                    np.array([np.inf, np.inf, np.inf]))
+            return BoundingBox(np.array([-np.inf, -np.inf, -np.inf]),
+                               np.array([np.inf, np.inf, np.inf]))
 
     @property
     def num_instances(self):
@@ -562,7 +565,7 @@ class Cell(IDManagerMixin):
 
         Parameters
         ----------
-        xml_element : xml.etree.ElementTree.Element
+        xml_element : lxml.etree._Element
             XML element to be added to
 
         memo : set or None
@@ -650,7 +653,7 @@ class Cell(IDManagerMixin):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             `<cell>` element
         surfaces : dict
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances

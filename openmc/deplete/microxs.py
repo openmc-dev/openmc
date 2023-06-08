@@ -37,8 +37,9 @@ class MicroXS(DataFrame):
                    dilute_initial=1.0e3,
                    energy_bounds=(0, 20e6),
                    run_kwargs=None):
-        """Generate a one-group cross-section dataframe using
-        OpenMC. Note that the ``openmc`` executable must be compiled.
+        """Generate a one-group cross-section dataframe using OpenMC.
+
+        Note that the ``openmc`` executable must be compiled.
 
         Parameters
         ----------
@@ -55,8 +56,6 @@ class MicroXS(DataFrame):
             Initial atom density [atoms/cm^3] to add for nuclides that
             are zero in initial condition to ensure they exist in the cross
             section data. Only done for nuclides with reaction rates.
-        reactions : list of str, optional
-            Reaction names to tally
         energy_bound : 2-tuple of float, optional
             Bounds for the energy group.
         run_kwargs : dict, optional

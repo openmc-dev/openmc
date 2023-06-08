@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import openmc
 import openmc.examples
 import pytest
@@ -37,6 +39,7 @@ def myplot():
     }
     return plot
 
+
 @pytest.fixture(scope='module')
 def myprojectionplot():
     plot = openmc.ProjectionPlot(name='myprojectionplot')
@@ -64,6 +67,37 @@ def myprojectionplot():
 
     plot.level = 1
     return plot
+
+
+def test_voxel_plot(run_in_tmpdir):
+    # attempt to preload VTK and skip this test if unavailable
+    vtk = pytest.importorskip('vtk')
+    surf1 = openmc.Sphere(r=500, boundary_type='vacuum')
+    cell1 = openmc.Cell(region=-surf1)
+    geometry = openmc.Geometry([cell1])
+    geometry.export_to_xml()
+    materials = openmc.Materials()
+    materials.export_to_xml()
+    vox_plot = openmc.Plot()
+    vox_plot.type = 'voxel'
+    vox_plot.id = 12
+    vox_plot.width = (1500., 1500., 1500.)
+    vox_plot.pixels = (200, 200, 200)
+    vox_plot.color_by = 'cell'
+    vox_plot.to_vtk('test_voxel_plot.vti')
+
+    assert Path('plot_12.h5').is_file()
+    assert Path('test_voxel_plot.vti').is_file()
+
+    vox_plot.filename = 'h5_voxel_plot'
+    vox_plot.to_vtk('another_test_voxel_plot.vti')
+
+    assert Path('h5_voxel_plot.h5').is_file()
+    assert Path('another_test_voxel_plot.vti').is_file()
+
+    slice_plot = openmc.Plot()
+    with pytest.raises(ValueError):
+        slice_plot.to_vtk('shimmy.vti')
 
 
 def test_attributes(myplot):

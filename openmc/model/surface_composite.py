@@ -6,7 +6,6 @@ import operator
 
 import numpy as np
 from scipy.spatial import ConvexHull, Delaunay
-from matplotlib.path import Path
 
 import openmc
 from openmc.checkvalue import (check_greater_than, check_value,
@@ -630,7 +629,7 @@ class ZConeOneSided(CompositeSurface):
 
 
 class Polygon(CompositeSurface):
-    """Create a polygon composite surface from a path of closed points.
+    """Polygon formed from a path of closed points.
 
     .. versionadded:: 0.13.3
 
@@ -1021,6 +1020,7 @@ class Polygon(CompositeSurface):
         -------
         surfsets : a list of lists of surface, operator pairs
         """
+        from matplotlib.path import Path
 
         # Get centroids of all the simplices and determine if they are inside
         # the polygon defined by input vertices or not.
@@ -1079,3 +1079,91 @@ class Polygon(CompositeSurface):
         disp_vec = distance / costheta * unit_nvec
 
         return type(self)(self.points + disp_vec, basis=self.basis)
+
+
+class CruciformPrism(CompositeSurface):
+    """Generalized cruciform prism
+
+    This surface represents a prism parallel to an axis formed by planes at
+    multiple distances from the center. Equivalent to the 'gcross' derived
+    surface in Serpent.
+
+    .. versionadded:: 0.13.4
+
+    Parameters
+    ----------
+    distances : iterable of float
+        A monotonically increasing (or decreasing) iterable of distances in [cm]
+        that form the planes of the generalized cruciform.
+    center : iterable of float
+        The center of the prism in the two non-parallel axes (e.g., (x, y) when
+        axis is 'z') in [cm]
+    axis : {'x', 'y', 'z'}
+        Axis to which the prism is parallel
+    **kwargs
+        Keyword arguments passed to underlying plane classes
+
+    """
+
+    def __init__(self, distances, center=(0., 0.), axis='z', **kwargs):
+        x0, y0 = center
+        self.distances = distances
+
+        if axis == 'x':
+            cls_horizontal = openmc.YPlane
+            cls_vertical = openmc.ZPlane
+        elif axis == 'y':
+            cls_horizontal = openmc.XPlane
+            cls_vertical = openmc.ZPlane
+        elif axis == 'z':
+            cls_horizontal = openmc.XPlane
+            cls_vertical = openmc.YPlane
+        else:
+            raise ValueError("axis must be 'x', 'y', or 'z'")
+
+        # Create each planar surface
+        surfnames = []
+        for i, d in enumerate(distances):
+            setattr(self, f'hmin{i}', cls_horizontal(x0 - d, **kwargs))
+            setattr(self, f'hmax{i}', cls_horizontal(x0 + d, **kwargs))
+            setattr(self, f'vmin{i}', cls_vertical(y0 - d, **kwargs))
+            setattr(self, f'vmax{i}', cls_vertical(y0 + d, **kwargs))
+            surfnames.extend([f'hmin{i}', f'hmax{i}', f'vmin{i}', f'vmax{i}'])
+
+        # Set _surfnames to satisfy CompositeSurface protocol
+        self._surfnames = tuple(surfnames)
+
+    @property
+    def _surface_names(self):
+        return self._surfnames
+
+    @property
+    def distances(self):
+        return self._distances
+
+    @distances.setter
+    def distances(self, values):
+        values = np.array(values, dtype=float)
+        # check for positive values
+        if not (values > 0).all():
+            raise ValueError("distances must be positive")
+        # Check for monotonicity
+        if (values[1:] > values[:-1]).all() or (values[1:] < values[:-1]).all():
+            self._distances = values
+        else:
+            raise ValueError("distances must be monotonic")
+
+    def __neg__(self):
+        n = len(self.distances)
+        regions = []
+        for i in range(n):
+            regions.append(
+                +getattr(self, f'hmin{i}') &
+                -getattr(self, f'hmax{i}') &
+                +getattr(self, f'vmin{n-1-i}') &
+                -getattr(self, f'vmax{n-1-i}')
+            )
+        return openmc.Union(regions)
+
+    def __pos__(self):
+        return ~(-self)

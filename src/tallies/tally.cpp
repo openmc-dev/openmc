@@ -1258,10 +1258,13 @@ extern "C" int openmc_tally_set_nuclides(
     } else {
       auto search = data::nuclide_map.find(word);
       if (search == data::nuclide_map.end()) {
-        set_errmsg("Nuclide \"" + word + "\" has not been loaded yet");
-        return OPENMC_E_DATA;
+        int err = openmc_load_nuclide(word.c_str(), nullptr, 0);
+        if (err < 0) {
+          set_errmsg(openmc_err_msg);
+          return OPENMC_E_DATA;
+        }
       }
-      nucs.push_back(search->second);
+      nucs.push_back(data::nuclide_map.at(word));
     }
   }
 

@@ -47,10 +47,6 @@ class OpenMCOperator(TransportOperator):
         Volumes are divided equally from the original material volume.
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV].
-    dilute_initial : float, optional
-        Initial atom density [atoms/cm^3] to add for nuclides that are zero
-        in initial condition to ensure they exist in the decay chain.
-        Only done for nuclides with reaction rates.
     helper_kwargs : dict
         Keyword arguments for helper classes
     reduce_chain : bool, optional
@@ -68,10 +64,6 @@ class OpenMCOperator(TransportOperator):
     cross_sections : str or MicroXS
             Path to continuous energy cross section library, or object
             containing one-group cross-sections.
-    dilute_initial : float
-        Initial atom density [atoms/cm^3] to add for nuclides that
-        are zero in initial condition to ensure they exist in the decay
-        chain. Only done for nuclides with reaction rates.
     output_dir : pathlib.Path
         Path to output directory to save results.
     round_number : bool
@@ -105,7 +97,6 @@ class OpenMCOperator(TransportOperator):
             prev_results=None,
             diff_burnable_mats=False,
             fission_q=None,
-            dilute_initial=0.0,
             helper_kwargs=None,
             reduce_chain=False,
             reduce_chain_level=None):
@@ -119,7 +110,7 @@ class OpenMCOperator(TransportOperator):
                     "chain in openmc.config['chain_file']"
                 )
 
-        super().__init__(chain_file, fission_q, dilute_initial, prev_results)
+        super().__init__(chain_file, fission_q, prev_results)
         self.round_number = False
         self.materials = materials
         self.cross_sections = cross_sections
@@ -264,11 +255,6 @@ class OpenMCOperator(TransportOperator):
 
         """
         self.number = AtomNumber(local_mats, all_nuclides, volume, len(self.chain))
-
-        if self.dilute_initial != 0.0:
-            for nuc in self._burnable_nucs:
-                self.number.set_atom_density(
-                    np.s_[:], nuc, self.dilute_initial)
 
         # Now extract and store the number densities
         # From the geometry if no previous depletion results
@@ -433,8 +419,7 @@ class OpenMCOperator(TransportOperator):
         # for burning in which the number density is greater than zero.
         for nuc in self.number.nuclides:
             if nuc in self.nuclides_with_data:
-                if np.sum(self.number[:, nuc]) > 0.0:
-                    nuc_set.add(nuc)
+                nuc_set.add(nuc)
 
         # Communicate which nuclides have nonzeros to rank 0
         if comm.rank == 0:

@@ -159,6 +159,11 @@ class Tally(IDManagerMixin):
     def multiply_density(self):
         return self._multiply_density
 
+    @multiply_density.setter
+    def multiply_density(self, value):
+        cv.check_type('multiply density', value, bool)
+        self._multiply_density = value
+
     @property
     def filters(self):
         return self._filters

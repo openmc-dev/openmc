@@ -715,7 +715,7 @@ void Particle::update_neutron_xs(
   // Get microscopic cross section cache
   auto& micro = this->neutron_xs(i_nuclide);
 
-  // If the cache doesn't match, reculcate micro xs
+  // If the cache doesn't match, recalculate micro xs
   if (this->E() != micro.last_E || this->sqrtkT() != micro.last_sqrtkT ||
       i_sab != micro.index_sab || sab_frac != micro.sab_frac) {
     data::nuclides[i_nuclide]->calculate_xs(i_sab, i_grid, sab_frac, *this);

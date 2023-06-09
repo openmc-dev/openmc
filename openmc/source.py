@@ -1,4 +1,5 @@
 from __future__ import annotations
+from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from enum import Enum
 from numbers import Real
@@ -20,7 +21,7 @@ from ._xml import get_text
 from .mesh import MeshBase
 
 
-class SourceBase:
+class SourceBase(ABC):
     """Base class for external sources
 
     Parameters
@@ -50,6 +51,7 @@ class SourceBase:
         cv.check_greater_than('source strength', strength, 0.0, True)
         self._strength = strength
 
+    @abstractmethod
     def populate_xml_element(self, element):
         """Add necessary source information to an XML element
 
@@ -59,9 +61,7 @@ class SourceBase:
             XML element containing source data
 
         """
-        element.set("type", self.type)
-        element.set("strength", str(self.strength))
-
+        pass
 
     def to_xml_element(self) -> ET.Element:
         """Return XML representation of the source
@@ -73,6 +73,8 @@ class SourceBase:
 
         """
         element = ET.Element("source")
+        element.set("type", self.type)
+        element.set("strength", str(self.strength))
         self.populate_xml_element(element)
         return element
 
@@ -112,6 +114,8 @@ class SourceBase:
                 return CompiledSource.from_xml_element(elem)
             elif source_type == 'file':
                 return FileSource.from_xml_element(elem)
+            else:
+                raise ValueError(f'Source type {source_type} is not recognized')
 
 
 class IndependentSource(SourceBase):

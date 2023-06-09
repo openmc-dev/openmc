@@ -14,7 +14,7 @@ import scipy.sparse as sps
 
 import openmc
 import openmc.checkvalue as cv
-from ._xml import clean_indentation, reorder_attributes
+from ._xml import clean_indentation, reorder_attributes, get_text
 from .mixin import IDManagerMixin
 from .mesh import MeshBase
 
@@ -54,6 +54,10 @@ class Tally(IDManagerMixin):
         Unique identifier for the tally
     name : str
         Name of the tally
+    multiply_density : bool
+        Whether reaction rates should be multiplied by atom density
+
+        .. versionadded:: 0.13.4
     filters : list of openmc.Filter
         List of specified filters for the tally
     nuclides : list of str
@@ -111,6 +115,7 @@ class Tally(IDManagerMixin):
         self._estimator = None
         self._triggers = cv.CheckedList(openmc.Trigger, 'tally triggers')
         self._derivative = None
+        self._multiply_density = True
 
         self._num_realizations = 0
         self._with_summary = False
@@ -138,11 +143,16 @@ class Tally(IDManagerMixin):
         parts.append('{: <15}=\t{}'.format('Nuclides', nuclides))
         parts.append('{: <15}=\t{}'.format('Scores', self.scores))
         parts.append('{: <15}=\t{}'.format('Estimator', self.estimator))
+        parts.append('{: <15}=\t{}'.format('Multiply dens.', self.multiply_density))
         return '\n\t'.join(parts)
 
     @property
     def name(self):
         return self._name
+
+    @property
+    def multiply_density(self):
+        return self._multiply_density
 
     @property
     def filters(self):
@@ -322,6 +332,11 @@ class Tally(IDManagerMixin):
     def name(self, name):
         cv.check_type('tally name', name, str, none_ok=True)
         self._name = name
+
+    @multiply_density.setter
+    def multiply_density(self, value):
+        cv.check_type('multiply density', value, bool)
+        self._multiply_density = value
 
     @derivative.setter
     def derivative(self, deriv):
@@ -829,6 +844,10 @@ class Tally(IDManagerMixin):
         if self.name != '':
             element.set("name", self.name)
 
+        # Multiply by density
+        if not self.multiply_density:
+            element.set("multiply_density", str(self.multiply_density).lower())
+
         # Optional Tally filters
         if len(self.filters) > 0:
             subelement = ET.SubElement(element, "filters")
@@ -884,6 +903,10 @@ class Tally(IDManagerMixin):
         tally_id = int(elem.get('id'))
         name = elem.get('name', '')
         tally = cls(tally_id=tally_id, name=name)
+
+        text = get_text(elem, 'multiply_density')
+        if text is not None:
+            tally.multiply_density = text in ('true', '1')
 
         # Read filters
         filters_elem = elem.find('filters')

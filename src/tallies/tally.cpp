@@ -92,6 +92,10 @@ Tally::Tally(pugi::xml_node node)
   if (check_for_node(node, "name"))
     name_ = get_node_value(node, "name");
 
+  if (check_for_node(node, "multiply_density")) {
+    multiply_density_ = get_node_value_bool(node, "multiply_density");
+  }
+
   // =======================================================================
   // READ DATA FOR FILTERS
 
@@ -564,11 +568,12 @@ void Tally::set_nuclides(const vector<std::string>& nuclides)
       nuclides_.push_back(-1);
     } else {
       auto search = data::nuclide_map.find(nuc);
-      if (search == data::nuclide_map.end())
-        fatal_error(fmt::format("Could not find the nuclide {} specified in "
-                                "tally {} in any material",
-          nuc, id_));
-      nuclides_.push_back(search->second);
+      if (search == data::nuclide_map.end()) {
+        int err = openmc_load_nuclide(nuc.c_str(), nullptr, 0);
+        if (err < 0)
+          throw std::runtime_error {openmc_err_msg};
+      }
+      nuclides_.push_back(data::nuclide_map.at(nuc));
     }
   }
 }
@@ -1104,6 +1109,28 @@ extern "C" int openmc_tally_set_writable(int32_t index, bool writable)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
   model::tallies[index]->set_writable(writable);
+
+  return 0;
+}
+
+extern "C" int openmc_tally_get_multiply_density(int32_t index, bool* value)
+{
+  if (index < 0 || index >= model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  *value = model::tallies[index]->multiply_density();
+
+  return 0;
+}
+
+extern "C" int openmc_tally_set_multiply_density(int32_t index, bool value)
+{
+  if (index < 0 || index >= model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  model::tallies[index]->set_multiply_density(value);
 
   return 0;
 }

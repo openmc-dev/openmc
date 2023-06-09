@@ -522,7 +522,7 @@ distribution/repository, run:
 
 .. code-block:: sh
 
-    pip install .
+    python -m pip install .
 
 pip will first check that all :ref:`required third-party packages
 <usersguide_python_prereqs>` have been installed, and if they are not present,
@@ -608,15 +608,15 @@ for OpenMC. Thus, the install process would proceed as follows:
     make install
 
     cd ..
-    MPICC=<path to mpicc> pip install mpi4py
-    HDF5_DIR=<path to HDF5> pip install --no-binary=h5py h5py
+    MPICC=<path to mpicc> python -m pip install mpi4py
+    HDF5_DIR=<path to HDF5> python -m pip install --no-binary=h5py h5py
 
 If you are using parallel HDF5, you'll also need to make sure the right MPI
 wrapper is used when installing h5py:
 
 .. code-block:: sh
 
-    CC=<path to mpicc> HDF5_MPI=ON HDF5_DIR=<path to HDF5> pip install --no-binary=h5py h5py
+    CC=<path to mpicc> HDF5_MPI=ON HDF5_DIR=<path to HDF5> python -m pip install --no-binary=h5py h5py
 
 .. _Conda: https://conda.io/en/latest/
 .. _pip: https://pip.pypa.io/en/stable/

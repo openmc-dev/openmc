@@ -503,11 +503,9 @@ def wwinp_to_wws(path: PathLike) -> List[WeightWindows]:
             ncx, ncy, ncz = line_arr[:3].astype(int)
             # read polar vector (x1, y1, z1)
             xyz1 = line_arr[3:]
-            polar_vec = xyz1 / np.linalg.norm(xyz1)
             # read azimuthal vector (x2, y2, z2)
             line_arr = np.fromstring(wwinp.readline(), sep=' ')
             xyz2 = line_arr[:3]
-            azimuthal_vec = xyz2 / np.linalg.norm(xyz2)
 
             # oriented polar and azimuthal vectors aren't yet supported
             if np.count_nonzero(xyz1) or np.count_nonzero(xyz2):

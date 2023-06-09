@@ -488,13 +488,13 @@ OpenMC locally by specifying an install prefix when running cmake:
 The ``CMAKE_INSTALL_PREFIX`` variable can be changed to any path for which you
 have write-access.
 
-Compiling on Windows 10
------------------------
+Compiling on Windows
+--------------------
 
-Recent versions of Windows 10 include a subsystem for Linux that allows one to
-run Bash within Ubuntu running in Windows. First, follow the installation guide
-`here <https://docs.microsoft.com/en-us/windows/wsl/install-win10>`_ to get Bash
-on Ubuntu on Windows setup. Once you are within bash, obtain the necessary
+Recent versions of Windows include a subsystem for Linux that allows one to run
+Bash within Ubuntu running in Windows. First, follow the installation guide
+`here <https://learn.microsoft.com/en-us/windows/wsl/install>`_ to get Bash on
+Ubuntu on Windows set up. Once you are within bash, obtain the necessary
 :ref:`prerequisites <prerequisites>` via ``apt``. Finally, follow the
 :ref:`instructions for compiling on linux <compile_linux>`.
 

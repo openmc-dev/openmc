@@ -83,12 +83,12 @@ Creating Input Files
 .. currentmodule:: openmc
 
 The most rudimentary option for creating input files is to simply write them
-from scratch using the :ref:`XML format specifications
-<io_file_formats_input>`. This approach will feel familiar to users of other
-Monte Carlo codes such as MCNP and Serpent, with the added bonus that the XML
-formats feel much more "readable". Alternatively, input files can be generated
-using OpenMC's :ref:`Python API <pythonapi>`, which is introduced in the
-following section.
+from scratch using the :ref:`XML format specifications <io_file_formats_input>`.
+This approach will feel familiar to users of other Monte Carlo codes such as
+MCNP and Serpent, with the added bonus that the XML formats feel much more
+"readable". However, it is strongly recommended to generate input files using
+OpenMC's :ref:`Python API <pythonapi>`, which is introduced in the following
+section.
 
 ----------
 Python API
@@ -178,14 +178,3 @@ energy  electronvolt eV
 time    second       s
 ======= ============ ======
 
-------------------------------------
-ERSN-OpenMC Graphical User Interface
-------------------------------------
-
-A third-party Java-based user-friendly graphical user interface for creating XML
-input files called ERSN-OpenMC_ is developed and maintained by members of the
-Radiation and Nuclear Systems Group at the Faculty of Sciences Tetouan, Morocco.
-The GUI also allows one to automatically download prerequisites for installing and
-running OpenMC.
-
-.. _ERSN-OpenMC: https://github.com/EL-Bakkali-Jaafar/ERSN-OpenMC

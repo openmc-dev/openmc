@@ -137,6 +137,7 @@ def test_wwinp_cylindrical():
     np.testing.assert_equal(mesh.r_grid, exp_r_grid)
     np.testing.assert_equal(mesh.phi_grid, exp_phi_grid)
     np.testing.assert_equal(mesh.z_grid, exp_z_grid)
+    np.testing.assert_equal(mesh.origin, (0, 0, -9.0001))
     assert ww.lower_ww_bounds.flat[0] == 0.0
     assert ww.lower_ww_bounds.flat[-1] == np.prod(mesh.dimension) - 1
 
@@ -168,5 +169,6 @@ def test_wwinp_spherical():
     np.testing.assert_equal(mesh.r_grid, exp_r_grid)
     np.testing.assert_equal(mesh.theta_grid, exp_theta_grid)
     np.testing.assert_equal(mesh.phi_grid, exp_phi_grid)
+    np.testing.assert_equal(mesh.origin, (0, 0, -9.0001))
     assert ww.lower_ww_bounds.flat[0] == 0.0
     assert ww.lower_ww_bounds.flat[-1] == np.prod(mesh.dimension) - 1

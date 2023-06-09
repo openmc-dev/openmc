@@ -1,3 +1,4 @@
+from __future__ import annotations
 from collections.abc import Iterable
 from enum import Enum
 from numbers import Real
@@ -19,7 +20,7 @@ from ._xml import get_text
 from .mesh import MeshBase
 
 
-class Source:
+class SourceBase:
     """Base class for external sources
 
     Parameters
@@ -113,7 +114,7 @@ class Source:
                 return FileSource.from_xml_element(elem)
 
 
-class IndependentSource(Source):
+class IndependentSource(SourceBase):
     """Distribution of phase space coordinates for source sites.
 
     Parameters
@@ -412,7 +413,7 @@ class IndependentSource(Source):
         return source
 
 
-class CompiledSource(Source):
+class CompiledSource(SourceBase):
     """A source based on a compiled shared library
 
     .. versionadded:: 0.13.4
@@ -518,7 +519,7 @@ class CompiledSource(Source):
         return source
 
 
-class FileSource(Source):
+class FileSource(SourceBase):
     """A source based on particles stored in a file
 
     .. versionadded:: 0.13.4

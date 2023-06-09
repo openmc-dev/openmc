@@ -233,17 +233,22 @@ class IndependentSource(SourceBase):
     def type(self) -> str:
         return 'independent'
 
-    @property
-    def file(self):
-        raise AttributeError('The "filename" attribute has been deprecated on the general source class. Please use the FileSource class.')
+    def __getattr__(self, name):
+        cls_names = {'file': 'FileSource', 'library': 'CompiledSource',
+                    'parameters': 'CompiledSource'}
+        if name in cls_names:
+            raise AttributeError(
+                f'The "{name}" attribute has been deprecated on the '
+                f'IndependentSource class. Please use the {cls_name[name]} class.')
+        else:
+            super().__getattr__(name, value)
 
-    @property
-    def library(self):
-        raise AttributeError('The "library" attribute has been deprecated on the general source class. Please use the CompiledSource class.')
-
-    @property
-    def parameters(self):
-        raise AttributeError('The "parameters" attribute has been deprecated on the general source class. Please use the CompiledSource class.')
+    def __setattr__(self, name, value):
+        if name in ('file', 'library', 'parameters'):
+            # Ensure proper AttributeError is thrown
+            getattr(self, name)
+        else:
+            super().__setattr__(name, value)
 
     @property
     def space(self):
@@ -333,8 +338,7 @@ class IndependentSource(SourceBase):
 
         """
         super().populate_xml_element(element)
-        if self.particle != 'neutron':
-            element.set("particle", self.particle)
+        element.set("particle", self.particle)
         if self.space is not None:
             element.append(self.space.to_xml_element())
         if self.angle is not None:

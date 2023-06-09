@@ -2,19 +2,20 @@ from __future__ import annotations
 from collections.abc import Iterable
 from numbers import Real, Integral
 import pathlib
-import typing
 from typing import Iterable, List, Optional, Union, Dict
+import warnings
 
 import lxml.etree as ET
 import numpy as np
 import h5py
 
+import openmc
 from openmc.filter import _PARTICLES
 from openmc.mesh import MeshBase, RectilinearMesh, UnstructuredMesh
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 
-from ._xml import get_text
+from ._xml import get_text, clean_indentation
 from .mixin import IDManagerMixin
 
 
@@ -108,8 +109,8 @@ class WeightWindows(IDManagerMixin):
     used_ids = set()
 
     def __init__(
-        self, 
-        mesh: MeshBase, 
+        self,
+        mesh: MeshBase,
         lower_ww_bounds: Iterable[float],
         upper_ww_bounds: Optional[Iterable[float]] = None,
         upper_bound_ratio: Optional[float] = None,
@@ -159,7 +160,7 @@ class WeightWindows(IDManagerMixin):
     def __repr__(self) -> str:
         string = type(self).__name__ + '\n'
         string += '{: <16}=\t{}\n'.format('\tID', self._id)
-        string += '{: <16}=\t{}\n'.format('\tMesh:', self.mesh)
+        string += '{: <16}=\t{}\n'.format('\tMesh', self.mesh)
         string += '{: <16}=\t{}\n'.format('\tParticle Type', self._particle_type)
         string += '{: <16}=\t{}\n'.format('\tEnergy Bounds', self._energy_bounds)
         string += '{: <16}=\t{}\n'.format('\tLower WW Bounds', self._lower_ww_bounds)
@@ -286,7 +287,7 @@ class WeightWindows(IDManagerMixin):
     @max_lower_bound_ratio.setter
     def max_lower_bound_ratio(self, val: float):
         cv.check_type('Maximum lower bound ratio', val, Real)
-        cv.check_greater_than('Maximum lower bound ratio', val, 1.0)
+        cv.check_greater_than('Maximum lower bound ratio', val, 1.0, equality=True)
         self._max_lower_bound_ratio = val
 
     @property
@@ -424,10 +425,15 @@ class WeightWindows(IDManagerMixin):
 
         id = int(group.name.split('/')[-1].lstrip('weight_windows'))
         mesh_id = group['mesh'][()]
+        mesh = meshes[mesh_id]
+
         ptype = group['particle_type'][()].decode()
         e_bounds = group['energy_bounds'][()]
-        lower_ww_bounds = group['lower_ww_bounds'][()]
-        upper_ww_bounds = group['upper_ww_bounds'][()]
+        # weight window bounds are stored with the shape (e, k, j, i)
+        # in C++ and HDF5 -- the opposite of how they are stored here
+        shape = (e_bounds.size - 1,  *mesh.dimension[::-1])
+        lower_ww_bounds = group['lower_ww_bounds'][()].reshape(shape).T
+        upper_ww_bounds = group['upper_ww_bounds'][()].reshape(shape).T
         survival_ratio = group['survival_ratio'][()]
 
         max_lower_bound_ratio = None
@@ -438,7 +444,7 @@ class WeightWindows(IDManagerMixin):
         weight_cutoff = group['weight_cutoff'][()]
 
         return cls(
-            mesh=meshes[mesh_id],
+            mesh=mesh,
             lower_ww_bounds=lower_ww_bounds,
             upper_ww_bounds=upper_ww_bounds,
             energy_bounds=e_bounds,
@@ -622,3 +628,281 @@ def wwinp_to_wws(path: PathLike) -> List[WeightWindows]:
         wws.append(ww)
 
     return wws
+
+
+class WeightWindowGenerator:
+    """Class passed to setting to govern weight window generation
+    using the OpenMC executable
+
+    Parameters
+    ----------
+    mesh : :class:`openmc.MeshBase`
+        Mesh used to represent the weight windows spatially
+    energy_bounds : Iterable of Real
+        A list of values for which each successive pair constitutes a range of
+        energies in [eV] for a single bin
+    particle_type : {'neutron', 'photon'}
+        Particle type the weight windows apply to
+
+    Attributes
+    ----------
+    mesh : openmc.MeshBase
+        Mesh used to represent the weight windows spatially
+    energy_bounds : Iterable of Real
+        A list of values for which each successive pair constitutes a range of
+        energies in [eV] for a single bin
+    particle_type : {'neutron', 'photon'}
+        Particle type the weight windows apply to
+    method : {'magic'}
+        The weight window generation methodology applied during an update. Only
+        'magic' is currently supported.
+    max_realizations : int
+        The upper limit for number of tally realizations when generating weight
+        windows.
+    update_interval : int
+        The number of tally realizations between updates. (default: 1)
+    update_parameters : dict
+        A set of parameters related to the update.
+    on_the_fly : bool
+        Whether or not to apply weight windows on the fly. (default: True)
+    """
+
+    _MAGIC_PARAMS = {'value': str, 'threshold': float, 'ratio': float}
+
+    def __init__(self, mesh, energy_bounds=None, particle_type='neutron'):
+        self.mesh = mesh
+        if energy_bounds is not None:
+            self.energy_bounds = energy_bounds
+        self.particle_type = particle_type
+        self.max_realizations = 1
+
+        self._update_parameters = None
+
+        self.method = 'magic'
+        self.particle_type = particle_type
+        self.update_interval = 1
+        self.on_the_fly = True
+
+
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += f'\t{"Mesh":<20}=\t{self.mesh.id}\n'
+        string += f'\t{"Particle:":<20}=\t{self.particle_type}\n'
+        string += f'\t{"Energy Bounds:":<20}=\t{self.energy_bounds}\n'
+        string += f'\t{"Method":<20}=\t{self.method}\n'
+        string += f'\t{"Max Realizations:":<20}=\t{self.max_realizations}\n'
+        string += f'\t{"Update Interval:":<20}=\t{self.update_interval}\n'
+        string += f'\t{"On The Fly:":<20}=\t{self.on_the_fly}\n'
+        if self.update_parameters is not None:
+            string += f'\t{"Update Parameters:":<20}\n\t\t\t{self.update_parameters}\n'
+        string
+
+        return string
+
+    @property
+    def mesh(self) -> openmc.MeshBase:
+        return self._mesh
+
+    @mesh.setter
+    def mesh(self, m: openmc.MeshBase):
+        cv.check_type('mesh', m, openmc.MeshBase)
+        self._mesh = m
+
+    @property
+    def energy_bounds(self) -> Iterable[Real]:
+        return self._energy_bounds
+
+    @energy_bounds.setter
+    def energy_bounds(self, eb: Iterable[float]):
+        cv.check_type('energy bounds', eb, Iterable, Real)
+        self._energy_bounds = eb
+
+    @property
+    def particle_type(self) -> str:
+        return self._particle_type
+
+    @particle_type.setter
+    def particle_type(self, pt: str):
+        cv.check_value('particle type', pt, ('neutron', 'photon'))
+        self._particle_type = pt
+
+    @property
+    def method(self) -> str:
+        return self._method
+
+    @method.setter
+    def method(self, m: str):
+        cv.check_type('generation method', m, str)
+        cv.check_value('generation method', m, {'magic'})
+        self._method = m
+        if self._update_parameters is not None:
+            try:
+                self._check_update_parameters()
+            except (TypeError, KeyError):
+                warnings.warn(f'Update parameters are invalid for the "{m}" method.')
+
+    @property
+    def max_realizations(self) -> int:
+        return self._max_realizations
+
+    @max_realizations.setter
+    def max_realizations(self, m: int):
+        cv.check_type('max tally realizations', m, Integral)
+        cv.check_greater_than('max tally realizations', m, 0)
+        self._max_realizations = m
+
+    @property
+    def update_interval(self) -> int:
+        return self._update_interval
+
+    @update_interval.setter
+    def update_interval(self, ui: int):
+        cv.check_type('update interval', ui, Integral)
+        cv.check_greater_than('update interval', ui , 0)
+        self._update_interval = ui
+
+    @property
+    def update_parameters(self) -> dict:
+        return self._update_parameters
+
+    def _check_update_parameters(self, params: dict):
+        if self.method == 'magic':
+            check_params = self._MAGIC_PARAMS
+
+        for key, val in params.items():
+            if key not in check_params:
+                raise ValueError(f'Invalid param "{key}" for {self.method} '
+                                  'weight window generation')
+            cv.check_type(f'weight window generation param: "{key}"', val, self._MAGIC_PARAMS[key])
+
+    @update_parameters.setter
+    def update_parameters(self, params: dict):
+        self._check_update_parameters(params)
+        self._update_parameters = params
+
+    @property
+    def on_the_fly(self) -> bool:
+        return self._on_the_fly
+
+    @on_the_fly.setter
+    def on_the_fly(self, otf: bool):
+        cv.check_type('on the fly generation', otf, bool)
+        self._on_the_fly = otf
+
+    def _update_parameters_subelement(self, element: ET.Element):
+        if not self.update_parameters:
+            return
+        params_element = ET.SubElement(element, 'update_parameters')
+        for pname, value in self.update_parameters.items():
+            param_element = ET.SubElement(params_element, pname)
+            param_element.text = str(value)
+
+    @classmethod
+    def _sanitize_update_parameters(cls, method: str, update_parameters: dict):
+        """
+        Attempt to convert update parameters to their appropriate types
+
+        Parameters
+        ----------
+        method : str
+            The update method for which these update parameters should comply
+        update_parameters : dict
+            The update parameters as-read from the XML node (keys: str, values: str)
+        """
+        if method == 'magic':
+            check_params = cls._MAGIC_PARAMS
+
+        for param, param_type in check_params.items():
+            if param in update_parameters:
+                update_parameters[param] = param_type(update_parameters[param])
+
+    def to_xml_element(self):
+        """Creates a 'weight_window_generator' element to be written to an XML file.
+        """
+        element = ET.Element('weight_windows_generator')
+
+        mesh_elem = ET.SubElement(element, 'mesh')
+        mesh_elem.text = str(self.mesh.id)
+        if self.energy_bounds is not None:
+            subelement = ET.SubElement(element, 'energy_bounds')
+            subelement.text = ' '.join(str(e) for e in self.energy_bounds)
+        particle_elem = ET.SubElement(element, 'particle_type')
+        particle_elem.text = self.particle_type
+        realizations_elem = ET.SubElement(element, 'max_realizations')
+        realizations_elem.text = str(self.max_realizations)
+        update_interval_elem = ET.SubElement(element, 'update_interval')
+        update_interval_elem.text = str(self.update_interval)
+        otf_elem = ET.SubElement(element, 'on_the_fly')
+        otf_elem.text = str(self.on_the_fly).lower()
+        method_elem = ET.SubElement(element, 'method')
+        method_elem.text = self.method
+        if self.update_parameters is not None:
+            self._update_parameters_subelement(element)
+
+        clean_indentation(element)
+
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem: ET.Element, meshes: dict) -> WeightWindowGenerator:
+        """
+        Create a weight window generation object from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+        meshes : dict
+            A dictionary with IDs as keys and openmc.MeshBase instances as values
+
+        Returns
+        -------
+        openmc.WeightWindowGenerator
+        """
+
+        mesh_id = int(get_text(elem, 'mesh'))
+        mesh = meshes[mesh_id]
+
+        energy_bounds = [float(x) for x in get_text(elem, 'energy_bounds').split()]
+        particle_type = get_text(elem, 'particle_type')
+
+        wwg = cls(mesh, energy_bounds, particle_type)
+
+        wwg.max_realizations = int(get_text(elem, 'max_realizations'))
+        wwg.update_interval = int(get_text(elem, 'update_interval'))
+        wwg.on_the_fly = bool(get_text(elem, 'on_the_fly'))
+        wwg.method = get_text(elem, 'method')
+
+        if elem.find('update_parameters'):
+            update_parameters = {}
+            params_elem = elem.find('update_parameters')
+            for entry in params_elem:
+                update_parameters[entry.tag] = entry.text
+
+            cls._sanitize_update_parameters(wwg.method, update_parameters)
+            wwg.update_parameters = update_parameters
+
+        return wwg
+
+def hdf5_to_wws(path='weight_windows.h5'):
+    """Create WeightWindows instances from a weight windows HDF5 file
+
+    .. versionadded:: 0.13.4
+
+    Parameters
+    ----------
+    path : cv.PathLike
+        Path to the weight windows hdf5 file
+
+    Returns
+    -------
+    list of openmc.WeightWindows
+    """
+
+    with h5py.File(path) as h5_file:
+        # read in all of the meshes in the mesh node
+        meshes = {}
+        for mesh_group in h5_file['meshes']:
+            mesh = MeshBase.from_hdf5(h5_file['meshes'][mesh_group])
+            meshes[mesh.id] = mesh
+        return [WeightWindows.from_hdf5(ww, meshes) for ww in h5_file['weight_windows'].values()]

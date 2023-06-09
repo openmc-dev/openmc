@@ -59,3 +59,25 @@ void write_tallies();
 
 } // namespace openmc
 #endif // OPENMC_OUTPUT_H
+
+//////////////////////////////////////
+// Custom formatters
+//////////////////////////////////////
+namespace fmt {
+
+template<typename T>
+struct formatter<std::array<T, 2>> {
+  template<typename ParseContext>
+  constexpr auto parse(ParseContext& ctx)
+  {
+    return ctx.begin();
+  }
+
+  template<typename FormatContext>
+  auto format(const std::array<T, 2>& arr, FormatContext& ctx)
+  {
+    return format_to(ctx.out(), "({}, {})", arr[0], arr[1]);
+  }
+};
+
+} // namespace fmt

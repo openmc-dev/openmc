@@ -132,6 +132,15 @@ void Mesh::set_id(int32_t id)
   model::mesh_map[id] = model::meshes.size() - 1;
 }
 
+vector<double> Mesh::volumes() const
+{
+  vector<double> volumes(n_bins());
+  for (int i = 0; i < n_bins(); i++) {
+    volumes[i] = this->volume(i);
+  }
+  return volumes;
+}
+
 //==============================================================================
 // Structured Mesh implementation
 //==============================================================================
@@ -375,11 +384,6 @@ StructuredMesh::MeshIndex StructuredMesh::get_indices_from_bin(int bin) const
 Position StructuredMesh::sample(uint64_t* seed, int32_t bin) const
 {
   fatal_error("Position sampling on structured meshes is not yet implemented");
-}
-
-double StructuredMesh::volume(int bin) const
-{
-  fatal_error("Unable to get volume of structured mesh, not yet implemented");
 }
 
 int StructuredMesh::get_bin(Position r) const
@@ -722,6 +726,11 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
 
   // Set volume fraction
   volume_frac_ = 1.0 / xt::prod(shape)();
+
+  element_volume_ = 1.0;
+  for (int i = 0; i < n_dimension_; i++) {
+    element_volume_ *= width_[i];
+  }
 }
 
 int RegularMesh::get_index_in_direction(double r, int i) const
@@ -875,6 +884,11 @@ xt::xtensor<double, 1> RegularMesh::count_sites(
   return counts;
 }
 
+double RegularMesh::volume(const MeshIndex& ijk) const
+{
+  return element_volume_;
+}
+
 //==============================================================================
 // RectilinearMesh implementation
 //==============================================================================
@@ -1004,6 +1018,16 @@ void RectilinearMesh::to_hdf5(hid_t group) const
   close_group(mesh_group);
 }
 
+double RectilinearMesh::volume(const MeshIndex& ijk) const
+{
+  double vol {1.0};
+
+  for (int i = 0; i < n_dimension_; i++) {
+    vol *= grid_[i][ijk[i] + 1] - grid_[i][ijk[i]];
+  }
+  return vol;
+}
+
 //==============================================================================
 // CylindricalMesh implementation
 //==============================================================================
@@ -1012,7 +1036,6 @@ CylindricalMesh::CylindricalMesh(pugi::xml_node node)
   : PeriodicStructuredMesh {node}
 {
   n_dimension_ = 3;
-
   grid_[0] = get_node_array<double>(node, "r_grid");
   grid_[1] = get_node_array<double>(node, "phi_grid");
   grid_[2] = get_node_array<double>(node, "z_grid");
@@ -1247,6 +1270,20 @@ void CylindricalMesh::to_hdf5(hid_t group) const
   write_dataset(mesh_group, "origin", origin_);
 
   close_group(mesh_group);
+}
+
+double CylindricalMesh::volume(const MeshIndex& ijk) const
+{
+  double r_i = grid_[0][ijk[0] - 1];
+  double r_o = grid_[0][ijk[0]];
+
+  double phi_i = grid_[1][ijk[1] - 1];
+  double phi_o = grid_[1][ijk[1]];
+
+  double z_i = grid_[2][ijk[2] - 1];
+  double z_o = grid_[2][ijk[2]];
+
+  return 0.5 * (r_o * r_o - r_i * r_i) * (phi_o - phi_i) * (z_o - z_i);
 }
 
 //==============================================================================
@@ -1521,6 +1558,21 @@ void SphericalMesh::to_hdf5(hid_t group) const
   write_dataset(mesh_group, "origin", origin_);
 
   close_group(mesh_group);
+}
+
+double SphericalMesh::volume(const MeshIndex& ijk) const
+{
+  double r_i = grid_[0][ijk[0] - 1];
+  double r_o = grid_[0][ijk[0]];
+
+  double theta_i = grid_[1][ijk[1] - 1];
+  double theta_o = grid_[1][ijk[1]];
+
+  double phi_i = grid_[2][ijk[2] - 1];
+  double phi_o = grid_[2][ijk[2]];
+
+  return (1.0 / 3.0) * (r_o * r_o * r_o - r_i * r_i * r_i) *
+         (std::cos(theta_i) - std::cos(theta_o)) * (phi_o - phi_i);
 }
 
 //==============================================================================

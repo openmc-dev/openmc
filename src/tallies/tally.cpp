@@ -358,6 +358,34 @@ void Tally::set_id(int32_t id)
   model::tally_map[id] = index_;
 }
 
+std::vector<FilterType> Tally::filter_types() const
+{
+  std::vector<FilterType> filter_types;
+  for (auto idx : this->filters())
+    filter_types.push_back(model::tally_filters[idx]->type());
+  return filter_types;
+}
+
+std::unordered_map<FilterType, int32_t> Tally::filter_indices() const
+{
+  std::unordered_map<FilterType, int32_t> filter_indices;
+  for (int i = 0; i < this->filters().size(); i++) {
+    const auto& f = model::tally_filters[this->filters(i)];
+
+    filter_indices[f->type()] = i;
+  }
+  return filter_indices;
+}
+
+bool Tally::has_filter(FilterType filter_type) const
+{
+  for (auto idx : this->filters()) {
+    if (model::tally_filters[idx]->type() == filter_type)
+      return true;
+  }
+  return false;
+}
+
 void Tally::set_filters(gsl::span<Filter*> filters)
 {
   // Clear old data.
@@ -692,12 +720,45 @@ void Tally::accumulate()
   }
 }
 
+int Tally::score_index(const std::string& score) const
+{
+  for (int i = 0; i < scores_.size(); i++) {
+    if (this->score_name(i) == score)
+      return i;
+  }
+  return -1;
+}
+
+xt::xarray<double> Tally::get_reshaped_data() const
+{
+  std::vector<uint64_t> shape;
+  for (auto f : filters()) {
+    shape.push_back(model::tally_filters[f]->n_bins());
+  }
+
+  // add number of scores and nuclides to tally
+  shape.push_back(results_.shape()[1]);
+  shape.push_back(results_.shape()[2]);
+
+  xt::xarray<double> reshaped_results = results_;
+  reshaped_results.reshape(shape);
+  return reshaped_results;
+}
+
 std::string Tally::score_name(int score_idx) const
 {
   if (score_idx < 0 || score_idx >= scores_.size()) {
     fatal_error("Index in scores array is out of bounds.");
   }
   return reaction_name(scores_[score_idx]);
+}
+
+std::vector<std::string> Tally::scores() const
+{
+  std::vector<std::string> score_names;
+  for (int score : scores_)
+    score_names.push_back(reaction_name(score));
+  return score_names;
 }
 
 std::string Tally::nuclide_name(int nuclide_idx) const

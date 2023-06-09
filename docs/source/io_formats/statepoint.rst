@@ -68,6 +68,8 @@ The current version of the statepoint file format is 17.0.
 :Attributes: - **n_meshes** (*int*) -- Number of meshes in the problem.
              - **ids** (*int[]*) -- User-defined unique ID of each mesh.
 
+.. _mesh-spec-hdf5:
+
 **/tallies/meshes/mesh <uid>/**
 
 :Datasets: - **type** (*char[]*) -- Type of mesh.

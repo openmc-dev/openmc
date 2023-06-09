@@ -11,7 +11,7 @@ from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler
 
-__all__ = ['RegularMesh', 'RectilinearMesh', 'CylindricalMesh', 'SphericalMesh', 'meshes']
+__all__ = ['RegularMesh', 'RectilinearMesh', 'CylindricalMesh', 'SphericalMesh', 'UnstructuredMesh', 'meshes']
 
 # Mesh functions
 _dll.openmc_extend_meshes.argtypes = [c_int32, c_char_p, POINTER(c_int32),
@@ -504,11 +504,16 @@ class SphericalMesh(Mesh):
                                               ntheta, phi_grid, nphi)
 
 
+class UnstructuredMesh(Mesh):
+    pass
+
+
 _MESH_TYPE_MAP = {
     'regular': RegularMesh,
     'rectilinear': RectilinearMesh,
     'cylindrical': CylindricalMesh,
-    'spherical': SphericalMesh
+    'spherical': SphericalMesh,
+    'unstructured': UnstructuredMesh
 }
 
 

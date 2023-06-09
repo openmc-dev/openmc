@@ -280,6 +280,30 @@ class Tally(_FortranObjectWithID):
 
         _dll.openmc_tally_set_filters(self._index, n, indices)
 
+    def find_filter(self, filter_type):
+        """
+        Returns the first instance of a filter matching the specified type
+
+        Parameters
+        ----------
+        filter_type : subclass of openmc.lib.Filter
+            The filter type to match when retrieving a filter instance
+
+        Returns
+        -------
+        filter : openmc.lib.Filter
+            The filter instance matching the input filter type
+
+        Raises
+        ------
+        ValueError if a filter instance matching the input filter type cannot be found.
+        """
+        for filter in self.filters:
+            if isinstance(filter, filter_type):
+                return filter
+
+        raise ValueError(f'No filter of type {filter_type} on tally {self.id}')
+
     @property
     def mean(self):
         n = self.num_realizations

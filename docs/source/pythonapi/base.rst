@@ -24,7 +24,6 @@ Simulation Settings
    openmc.Source
    openmc.SourceParticle
    openmc.VolumeCalculation
-   openmc.WeightWindows
    openmc.Settings
 
 .. autosummary::
@@ -229,6 +228,19 @@ Various classes may be created when performing tally slicing and/or arithmetic:
    openmc.arithmetic.AggregateScore
    openmc.arithmetic.AggregateNuclide
    openmc.arithmetic.AggregateFilter
+
+Variance Reduction
+------------------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass
+
+   openmc.WeightWindows
+   openmc.WeightWindowGenerator
+   openmc.hdf5_to_wws
+
 
 Coarse Mesh Finite Difference Acceleration
 ------------------------------------------

@@ -19,7 +19,7 @@ from ._xml import get_text
 from .mesh import MeshBase
 
 
-class Source():
+class Source:
     """Base class for external sources
 
     Parameters
@@ -29,8 +29,8 @@ class Source():
 
     Attributes
     ----------
-    type : str
-        Indicator of source type. One of ('independent', 'file', 'compiled')
+    type : {'independent', 'file', 'compiled'}
+        Indicator of source type.
     strength : float
         Strength of the source
 
@@ -76,7 +76,7 @@ class Source():
         return element
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element, meshes=None) -> 'openmc.Source':
+    def from_xml_element(cls, elem: ET.Element, meshes=None) -> openmc.Source:
         """Generate source from an XML element
 
         Parameters
@@ -84,7 +84,7 @@ class Source():
         elem : lxml.etree._Element
             XML element
         meshes : dict
-            Dictionary with mesh IDs as keys and openmc.MeshBase instaces as
+            Dictionary with mesh IDs as keys and openmc.MeshBase instances as
             values
 
         Returns
@@ -159,11 +159,11 @@ class IndependentSource(Source):
     parameters : str
         Parameters to be provided to the custom source library
     strength : float
-        Strength of the source (default is 1.0)
+        Strength of the source
     type : str
         Indicator of source type: 'independent'
 
-    .. versionadded::0.13.4
+    .. versionadded:: 0.13.4
 
     particle : {'neutron', 'photon'}
         Source particle type
@@ -413,26 +413,25 @@ class IndependentSource(Source):
 
 
 class CompiledSource(Source):
-    """
-    A class used to apply a compiled source library
+    """A source based on a compiled shared library
 
     .. versionadded:: 0.13.4
 
     Parameters
     ----------
     library : str or None
-        Path to a custom source library
+        Path to a compiled shared library
     parameters : str
-        Parameters to be provided to the custom source library
+        Parameters to be provided to the compiled shared library function
     strength : float
-        Strength of the source (default is 1.0)
+        Strength of the source
 
     Attributes
     ----------
     library : str or None
-        Path to a custom source library
+        Path to a compiled shared library
     parameters : str
-        Parameters to be provided to the custom source library
+        Parameters to be provided to the compiled shared library function
     strength : float
         Strength of the source
     type : str
@@ -487,7 +486,7 @@ class CompiledSource(Source):
             element.set("parameters", self.parameters)
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element, meshes=None) -> 'openmc.CompiledSource':
+    def from_xml_element(cls, elem: ET.Element, meshes=None) -> openmc.CompiledSource:
         """Generate a compiled source from an XML element
 
         Parameters
@@ -495,7 +494,7 @@ class CompiledSource(Source):
         elem : lxml.etree._Element
             XML element
         meshes : dict
-            Dictionary with mesh IDs as keys and openmc.MeshBase instaces as
+            Dictionary with mesh IDs as keys and openmc.MeshBase instances as
             values
 
         Returns
@@ -577,7 +576,7 @@ class FileSource(Source):
             element.set("file", self.file)
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element) -> 'openmc.FileSource':
+    def from_xml_element(cls, elem: ET.Element) -> openmc.FileSource:
         """Generate file source from an XML element
 
         Parameters
@@ -585,7 +584,7 @@ class FileSource(Source):
         elem : lxml.etree._Element
             XML element
         meshes : dict
-            Dictionary with mesh IDs as keys and openmc.MeshBase instaces as
+            Dictionary with mesh IDs as keys and openmc.MeshBase instances as
             values
 
         Returns

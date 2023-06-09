@@ -460,9 +460,7 @@ attributes/sub-elements:
   :file:
     If this attribute is given, it indicates that the source type is ``file``,
     meaning particles are to be read from a binary source file whose path is
-    given by the value of this element. Note, the number of source sites needs
-    to be the same as the number of particles simulated in a fission source
-    generation.
+    given by the value of this element.
 
     *Default*: None
 

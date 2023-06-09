@@ -132,13 +132,31 @@ class CrossNuclide:
     def left_nuclide(self):
         return self._left_nuclide
 
+    @left_nuclide.setter
+    def left_nuclide(self, left_nuclide):
+        cv.check_type('left_nuclide', left_nuclide,
+                      (openmc.Nuclide, CrossNuclide, AggregateNuclide))
+        self._left_nuclide = left_nuclide
+
     @property
     def right_nuclide(self):
         return self._right_nuclide
 
+    @right_nuclide.setter
+    def right_nuclide(self, right_nuclide):
+        cv.check_type('right_nuclide', right_nuclide,
+                      (openmc.Nuclide, CrossNuclide, AggregateNuclide))
+        self._right_nuclide = right_nuclide
+
     @property
     def binary_op(self):
         return self._binary_op
+
+    @binary_op.setter
+    def binary_op(self, binary_op):
+        cv.check_type('binary_op', binary_op, str)
+        cv.check_value('binary_op', binary_op, _TALLY_ARITHMETIC_OPS)
+        self._binary_op = binary_op
 
     @property
     def name(self):
@@ -162,24 +180,6 @@ class CrossNuclide:
             string += str(self.right_nuclide) + ')'
 
         return string
-
-    @left_nuclide.setter
-    def left_nuclide(self, left_nuclide):
-        cv.check_type('left_nuclide', left_nuclide,
-                      (openmc.Nuclide, CrossNuclide, AggregateNuclide))
-        self._left_nuclide = left_nuclide
-
-    @right_nuclide.setter
-    def right_nuclide(self, right_nuclide):
-        cv.check_type('right_nuclide', right_nuclide,
-                      (openmc.Nuclide, CrossNuclide, AggregateNuclide))
-        self._right_nuclide = right_nuclide
-
-    @binary_op.setter
-    def binary_op(self, binary_op):
-        cv.check_type('binary_op', binary_op, str)
-        cv.check_value('binary_op', binary_op, _TALLY_ARITHMETIC_OPS)
-        self._binary_op = binary_op
 
 
 class CrossFilter:

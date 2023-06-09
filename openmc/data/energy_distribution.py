@@ -821,14 +821,14 @@ class DiscretePhoton(EnergyDistribution):
     def energy(self):
         return self._energy
 
-    @property
-    def atomic_weight_ratio(self):
-        return self._atomic_weight_ratio
-
     @energy.setter
     def energy(self, energy):
         cv.check_type('discrete photon energy', energy, Real)
         self._energy = energy
+
+    @property
+    def atomic_weight_ratio(self):
+        return self._atomic_weight_ratio
 
     @atomic_weight_ratio.setter
     def atomic_weight_ratio(self, atomic_weight_ratio):

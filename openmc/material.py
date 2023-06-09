@@ -230,6 +230,12 @@ class Material(IDManagerMixin):
     def isotropic(self) -> List[str]:
         return self._isotropic
 
+    @isotropic.setter
+    def isotropic(self, isotropic: typing.Iterable[str]):
+        cv.check_iterable_type('Isotropic scattering nuclides', isotropic,
+                               str)
+        self._isotropic = list(isotropic)
+
     @property
     def average_molar_mass(self) -> float:
         # Using the sum of specified atomic or weight amounts as a basis, sum
@@ -251,21 +257,15 @@ class Material(IDManagerMixin):
     def volume(self) -> Optional[float]:
         return self._volume
 
-    @property
-    def ncrystal_cfg(self) -> Optional[str]:
-        return self._ncrystal_cfg
-
     @volume.setter
     def volume(self, volume: Real):
         if volume is not None:
             cv.check_type('material volume', volume, Real)
         self._volume = volume
 
-    @isotropic.setter
-    def isotropic(self, isotropic: typing.Iterable[str]):
-        cv.check_iterable_type('Isotropic scattering nuclides', isotropic,
-                               str)
-        self._isotropic = list(isotropic)
+    @property
+    def ncrystal_cfg(self) -> Optional[str]:
+        return self._ncrystal_cfg
 
     @property
     def fissionable_mass(self) -> float:

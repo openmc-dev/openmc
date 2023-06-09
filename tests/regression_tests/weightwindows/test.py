@@ -125,9 +125,9 @@ def test_wwinp_cylindrical():
                             np.linspace(3.02, 6.0001, 6))).flatten()
 
     exp_phi_grid = np.hstack((np.linspace(0.0, 0.25, 2, endpoint=False),
-                              np.linspace(0.25, 0.5, 1, endpoint=False),
-                              np.linspace(0.5, 0.75, 2, endpoint=False),
-                              np.linspace(0.75, 1.0, 4))).flatten()
+                              np.linspace(0.25, 1.5707, 1, endpoint=False),
+                              np.linspace(1.5707, 3.1415, 2, endpoint=False),
+                              np.linspace(3.1415, 4.7124, 4))).flatten()
 
     exp_z_grid = np.hstack((np.linspace(0.0, 8.008, 4, endpoint=False),
                             np.linspace(8.008, 14.002, 4))).flatten()
@@ -156,12 +156,12 @@ def test_wwinp_spherical():
     exp_theta_grid = np.hstack((np.linspace(0.0, 0.25, 2, endpoint=False),
                               np.linspace(0.25, 0.5, 1, endpoint=False),
                               np.linspace(0.5, 0.75, 2, endpoint=False),
-                              np.linspace(0.75, 1.0, 3))).flatten()
+                              np.linspace(0.75, 1.5707, 3))).flatten()
 
     exp_phi_grid = np.hstack((np.linspace(0.0, 0.25, 2, endpoint=False),
                               np.linspace(0.25, 0.5, 1, endpoint=False),
-                              np.linspace(0.5, 0.75, 2, endpoint=False),
-                              np.linspace(0.75, 1.0, 4))).flatten()
+                              np.linspace(0.5, 1.5707, 2, endpoint=False),
+                              np.linspace(1.5707, 3.1415, 4))).flatten()
 
     assert isinstance(mesh, openmc.SphericalMesh)
 

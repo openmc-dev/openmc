@@ -239,7 +239,7 @@ class IndependentSource(SourceBase):
         if name in cls_names:
             raise AttributeError(
                 f'The "{name}" attribute has been deprecated on the '
-                f'IndependentSource class. Please use the {cls_name[name]} class.')
+                f'IndependentSource class. Please use the {cls_names[name]} class.')
         else:
             super().__getattr__(name, value)
 
@@ -287,21 +287,6 @@ class IndependentSource(SourceBase):
     def domain_type(self, domain_type):
         cv.check_value('domain type', domain_type, ('cell', 'material', 'universe'))
         self._domain_type = domain_type
-
-    @file.setter
-    def file(self, filename):
-        # reference property so attr error is raised
-        self.file
-
-    @library.setter
-    def library(self, library_name):
-        # reference property so attr error is raised
-        self.library
-
-    @parameters.setter
-    def parameters(self, parameters_path):
-        # reference property so attr error is raised
-        self.parameters
 
     @space.setter
     def space(self, space):
@@ -447,7 +432,7 @@ class CompiledSource(SourceBase):
         Indicator of source type: 'compiled'
 
     """
-    def __init__(self, library: Optional[str] = None, strength=1.0) -> None:
+    def __init__(self, library: Optional[str] = None, parameters: Optional[str] = None, strength=1.0) -> None:
         super().__init__(strength=strength)
 
         self._library = None
@@ -455,6 +440,8 @@ class CompiledSource(SourceBase):
             self.library = library
 
         self._parameters = None
+        if parameters is not None:
+            self.parameters = parameters
 
     @property
     def type(self) -> str:

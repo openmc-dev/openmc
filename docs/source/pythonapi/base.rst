@@ -87,6 +87,7 @@ Building geometry
    openmc.Intersection
    openmc.Union
    openmc.Complement
+   openmc.BoundingBox
    openmc.Cell
    openmc.Universe
    openmc.DAGMCUniverse
@@ -190,6 +191,13 @@ Post-processing
    openmc.Summary
    openmc.Track
    openmc.Tracks
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myfunction.rst
+
+   openmc.voxel_to_vtk
 
 The following classes and functions are used for functional expansion reconstruction.
 

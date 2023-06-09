@@ -1,15 +1,18 @@
 from collections.abc import Iterable, Mapping
-from numbers import Real, Integral
+from numbers import Integral, Real
 from pathlib import Path
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
+from typing import Optional
 
+import h5py
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-from ._xml import clean_indentation, reorder_attributes, get_elem_tuple
-from .mixin import IDManagerMixin
+from openmc.checkvalue import PathLike
 
+from ._xml import clean_indentation, get_elem_tuple, reorder_attributes
+from .mixin import IDManagerMixin
 
 _BASES = ['xy', 'xz', 'yz']
 
@@ -178,6 +181,78 @@ def _get_plot_image(plot, cwd):
     return Image(str(png_file))
 
 
+def voxel_to_vtk(voxel_file: PathLike, output: PathLike = 'plot.vti'):
+    """Converts a voxel HDF5 file to a VTK file
+
+    .. versionadded:: 0.13.4
+
+    Parameters
+    ----------
+    voxel_file : path-like
+        Path of the input h5 to convert
+    output : path-like
+        Path of the output vti file produced
+
+    Returns
+    -------
+    Path
+        Path of the .vti file produced
+    """
+
+    # imported vtk only if used as vtk is an option dependency
+    import vtk
+
+    _min_version = (2, 0)
+
+    # Read data from voxel file
+    with h5py.File(voxel_file, "r") as fh:
+        # check version
+        version = tuple(fh.attrs["version"])
+        if version < _min_version:
+            old_version = ".".join(map(str, version))
+            min_version = ".".join(map(str, _min_version))
+            err_msg = (
+                f"This voxel file's version is {old_version}. This function only "
+                f" supports voxel files with version {min_version} or higher. "
+                "Please generate a new voxel file using a newer version of OpenMC."
+            )
+            raise ValueError(err_msg)
+
+        dimension = fh.attrs["num_voxels"]
+        width = fh.attrs["voxel_width"]
+        lower_left = fh.attrs["lower_left"]
+
+        nx, ny, nz = dimension
+
+        grid = vtk.vtkImageData()
+        grid.SetDimensions(nx + 1, ny + 1, nz + 1)
+        grid.SetOrigin(*lower_left)
+        grid.SetSpacing(*width)
+
+        # transpose data from OpenMC ordering (zyx) to VTK ordering (xyz)
+        # and flatten to 1-D array
+        h5data = fh["data"][...]
+
+    data = vtk.vtkIntArray()
+    data.SetName("id")
+    # set the array using the h5data array
+    data.SetArray(h5data, h5data.size, True)
+    # add data to image grid
+    grid.GetCellData().AddArray(data)
+
+    writer = vtk.vtkXMLImageDataWriter()
+    if vtk.vtkVersion.GetVTKMajorVersion() > 5:
+        writer.SetInputData(grid)
+    else:
+        writer.SetInput(grid)
+    if not output.endswith(".vti"):
+        output += ".vti"
+    writer.SetFileName(str(output))
+    writer.Write()
+
+    return output
+
+
 class PlotBase(IDManagerMixin):
     """
     Parameters
@@ -195,7 +270,7 @@ class PlotBase(IDManagerMixin):
         Name of the plot
     pixels : Iterable of int
         Number of pixels to use in each direction
-    filename :
+    filename : str
         Path to write the plot to
     color_by : {'cell', 'material'}
         Indicate whether the plot should be colored by cell or by material
@@ -204,7 +279,7 @@ class PlotBase(IDManagerMixin):
     mask_components : Iterable of openmc.Cell or openmc.Material or int
         The cells or materials (or corresponding IDs) to mask
     mask_background : Iterable of int or str
-        Color to apply to all cells/materials not listed in mask_components
+        Color to apply to all cells/materials listed in mask_components
     show_overlaps : bool
         Indicate whether or not overlapping regions are shown
     overlap_color : Iterable of int or str
@@ -401,7 +476,7 @@ class PlotBase(IDManagerMixin):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing plot data
 
         """
@@ -440,7 +515,7 @@ class PlotBase(IDManagerMixin):
 
 
 class Plot(PlotBase):
-    '''Definition of a finite region of space to be plotted.
+    """Definition of a finite region of space to be plotted.
 
     OpenMC is capable of generating two-dimensional slice plots, or
     three-dimensional voxel or projection plots. Colors that are used in plots can be given as
@@ -456,6 +531,33 @@ class Plot(PlotBase):
 
     Attributes
     ----------
+    id : int
+        Unique identifier
+    name : str
+        Name of the plot
+    pixels : Iterable of int
+        Number of pixels to use in each direction
+    filename : str
+        Path to write the plot to
+    color_by : {'cell', 'material'}
+        Indicate whether the plot should be colored by cell or by material
+    background : Iterable of int or str
+        Color of the background
+    mask_components : Iterable of openmc.Cell or openmc.Material or int
+        The cells or materials (or corresponding IDs) to mask
+    mask_background : Iterable of int or str
+        Color to apply to all cells/materials listed in mask_components
+    show_overlaps : bool
+        Indicate whether or not overlapping regions are shown
+    overlap_color : Iterable of int or str
+        Color to apply to overlapping regions
+    colors : dict
+        Dictionary indicating that certain cells/materials should be
+        displayed with a particular color. The keys can be of type
+        :class:`~openmc.Cell`, :class:`~openmc.Material`, or int (ID for a
+        cell/material).
+    level : int
+        Universe depth to plot at
     width : Iterable of float
         Width of the plot in each basis direction
     origin : tuple or list of ndarray
@@ -468,7 +570,7 @@ class Plot(PlotBase):
         Dictionary defining type, id, linewidth and color of a mesh to be
         plotted on top of a plot
 
-    '''
+    """
 
     def __init__(self, plot_id=None, name=''):
         super().__init__(plot_id, name)
@@ -504,7 +606,7 @@ class Plot(PlotBase):
 
     @type.setter
     def type(self, plottype):
-        cv.check_value('plot type', plottype, ['slice', 'voxel', 'projection'])
+        cv.check_value('plot type', plottype, ['slice', 'voxel'])
         self._type = plottype
 
     @property
@@ -674,7 +776,7 @@ class Plot(PlotBase):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing plot data
 
         """
@@ -731,7 +833,7 @@ class Plot(PlotBase):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -831,6 +933,45 @@ class Plot(PlotBase):
         # Return produced image
         return _get_plot_image(self, cwd)
 
+    def to_vtk(self, output: Optional[PathLike] = None,
+               openmc_exec: str = 'openmc', cwd: str = '.'):
+        """Render plot as an voxel image
+
+        This method runs OpenMC in plotting mode to produce a .vti file.
+
+        .. versionadded:: 0.13.4
+
+        Parameters
+        ----------
+        output : path-like
+            Path of the output .vti file produced
+        openmc_exec : str
+            Path to OpenMC executable
+        cwd : str, optional
+            Path to working directory to run in
+
+        Returns
+        -------
+        Path
+            Path of the .vti file produced
+
+        """
+        if self.type != 'voxel':
+            raise ValueError('Generating a VTK file only works for voxel plots')
+
+        # Create plots.xml
+        Plots([self]).export_to_xml(cwd)
+
+        # Run OpenMC in geometry plotting mode and produces a h5 file
+        openmc.plot_geometry(False, openmc_exec, cwd)
+
+        stem = self.filename if self.filename is not None else f'plot_{self.id}'
+        h5_voxel_file = Path(cwd) / f'{stem}.h5'
+        if output is None:
+            output = h5_voxel_file.with_suffix('.vti')
+
+        return voxel_to_vtk(h5_voxel_file, output)
+
 
 class ProjectionPlot(PlotBase):
     """Definition of a camera's view of OpenMC geometry
@@ -880,7 +1021,7 @@ class ProjectionPlot(PlotBase):
     wireframe_domains : iterable of either Material or Cells
         If provided, the wireframe is only drawn around these.
         If color_by is by material, it must be a list of materials, else cells.
-    xs : dict 
+    xs : dict
         A mapping from cell/material IDs to floats. The floating point values
         are macroscopic cross sections influencing the volume rendering opacity
         of each geometric region. Zero corresponds to perfect transparency, and
@@ -1029,7 +1170,7 @@ class ProjectionPlot(PlotBase):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing plot data
 
         """
@@ -1113,7 +1254,7 @@ class ProjectionPlot(PlotBase):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1287,7 +1428,7 @@ class Plots(cv.CheckedList):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing all plot elements
 
         """
@@ -1328,7 +1469,7 @@ class Plots(cv.CheckedList):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns

@@ -8,7 +8,7 @@ import re
 import typing  # imported separately as py3.8 requires typing.Iterable
 import warnings
 from typing import Optional, List, Union, Dict
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 
 import numpy as np
 import h5py
@@ -1274,7 +1274,7 @@ class Material(IDManagerMixin):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing material data
 
         """
@@ -1442,7 +1442,7 @@ class Material(IDManagerMixin):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1598,7 +1598,7 @@ class Materials(cv.CheckedList):
             element.tail = element.tail.strip(' ')
             file.write((level+1)*spaces_per_level*' ')
             reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
-            ET.ElementTree(element).write(file, encoding='unicode')
+            file.write(ET.tostring(element, encoding="unicode"))
 
         # Write the <material> elements.
         for material in sorted(self, key=lambda x: x.id):
@@ -1607,7 +1607,7 @@ class Materials(cv.CheckedList):
             element.tail = element.tail.strip(' ')
             file.write((level+1)*spaces_per_level*' ')
             reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
-            ET.ElementTree(element).write(file, encoding='unicode')
+            file.write(ET.tostring(element, encoding="unicode"))
 
         # Write the closing tag for the root element.
         file.write(indentation+'</materials>\n')
@@ -1644,7 +1644,7 @@ class Materials(cv.CheckedList):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns

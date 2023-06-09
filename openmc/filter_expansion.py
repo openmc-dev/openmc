@@ -1,5 +1,5 @@
 from numbers import Integral, Real
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 
 import openmc.checkvalue as cv
 from . import Filter
@@ -33,7 +33,7 @@ class ExpansionFilter(Filter):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing Legendre filter data
 
         """
@@ -218,7 +218,7 @@ class SpatialLegendreFilter(ExpansionFilter):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing Legendre filter data
 
         """
@@ -323,7 +323,7 @@ class SphericalHarmonicsFilter(ExpansionFilter):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing spherical harmonics filter data
 
         """
@@ -473,7 +473,7 @@ class ZernikeFilter(ExpansionFilter):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing Zernike filter data
 
         """

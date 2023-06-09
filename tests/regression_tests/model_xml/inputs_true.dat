@@ -2,18 +2,18 @@
 <model>
   <materials>
     <material id="6">
-      <density units="g/cm3" value="2.6989" />
-      <nuclide ao="1.0" name="Al27" />
+      <density units="g/cm3" value="2.6989"/>
+      <nuclide ao="1.0" name="Al27"/>
     </material>
   </materials>
   <geometry>
-    <cell id="12" material="void" region="-16 17 -18" universe="10" />
-    <cell id="13" material="6" region="-16 18 -19" universe="10" />
-    <cell id="14" material="void" region="~(-16 17 -19)" universe="10" />
-    <surface id="16" type="x-cylinder" boundary="vacuum" coeffs="0.0 0.0 1.0" />
-    <surface id="17" type="x-plane" boundary="vacuum" coeffs="-1.0" />
-    <surface id="18" type="x-plane" coeffs="1.0" />
-    <surface id="19" type="x-plane" boundary="vacuum" coeffs="1000000000.0" />
+    <cell id="12" material="void" region="-16 17 -18" universe="10"/>
+    <cell id="13" material="6" region="-16 18 -19" universe="10"/>
+    <cell id="14" material="void" region="~(-16 17 -19)" universe="10"/>
+    <surface id="16" type="x-cylinder" boundary="vacuum" coeffs="0.0 0.0 1.0"/>
+    <surface id="17" type="x-plane" boundary="vacuum" coeffs="-1.0"/>
+    <surface id="18" type="x-plane" coeffs="1.0"/>
+    <surface id="19" type="x-plane" boundary="vacuum" coeffs="1000000000.0"/>
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
@@ -23,7 +23,7 @@
       <space type="point">
         <parameters>0 0 0</parameters>
       </space>
-      <angle type="monodirectional" reference_uvw="1.0 0.0 0.0" />
+      <angle type="monodirectional" reference_uvw="1.0 0.0 0.0"/>
       <energy type="discrete">
         <parameters>14000000.0 1.0</parameters>
       </energy>

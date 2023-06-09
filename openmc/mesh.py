@@ -5,7 +5,7 @@ from math import pi
 from numbers import Real, Integral
 from pathlib import Path
 import warnings
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 
 import numpy as np
 
@@ -103,7 +103,7 @@ class MeshBase(IDManagerMixin, ABC):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -460,6 +460,12 @@ class RegularMesh(StructuredMesh):
             x1, = self.upper_right
             return (np.linspace(x0, x1, nx + 1),)
 
+    @property
+    def bounding_box(self):
+        return openmc.BoundingBox(
+            np.array(self.lower_left), np.array(self.upper_right)
+        )
+
     def __repr__(self):
         string = super().__repr__()
         string += '{0: <16}{1}{2}\n'.format('\tDimensions', '=\t', self.n_dimension)
@@ -568,7 +574,7 @@ class RegularMesh(StructuredMesh):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mesh data
 
         """
@@ -598,7 +604,7 @@ class RegularMesh(StructuredMesh):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -949,7 +955,7 @@ class RectilinearMesh(StructuredMesh):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -971,7 +977,7 @@ class RectilinearMesh(StructuredMesh):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mesh data
 
         """
@@ -1239,7 +1245,7 @@ class CylindricalMesh(StructuredMesh):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mesh data
 
         """
@@ -1268,7 +1274,7 @@ class CylindricalMesh(StructuredMesh):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1332,7 +1338,7 @@ class CylindricalMesh(StructuredMesh):
         pts_cartesian[:, 0] = r * np.cos(phi) + self.origin[0]
         pts_cartesian[:, 1] = r * np.sin(phi) + self.origin[1]
         pts_cartesian[:, 2] += self.origin[2]
-        
+
         return super().write_data_to_vtk(
             points=pts_cartesian,
             filename=filename,
@@ -1488,7 +1494,7 @@ class SphericalMesh(StructuredMesh):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mesh data
 
         """
@@ -1517,7 +1523,7 @@ class SphericalMesh(StructuredMesh):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1579,9 +1585,9 @@ class SphericalMesh(StructuredMesh):
 
         r, theta, phi = pts_spherical[:, 0], pts_spherical[:, 1], pts_spherical[:, 2]
 
-        pts_cartesian[:, 0] = r * np.sin(phi) * np.cos(theta) + self.origin[0]
-        pts_cartesian[:, 1] = r * np.sin(phi) * np.sin(theta) + self.origin[1]
-        pts_cartesian[:, 2] = r * np.cos(phi) + self.origin[2]
+        pts_cartesian[:, 0] = r * np.sin(theta) * np.cos(phi) + self.origin[0]
+        pts_cartesian[:, 1] = r * np.sin(theta) * np.sin(phi) + self.origin[1]
+        pts_cartesian[:, 2] = r * np.cos(theta) + self.origin[2]
 
         return super().write_data_to_vtk(
             points=pts_cartesian,
@@ -1940,7 +1946,7 @@ class UnstructuredMesh(MeshBase):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mesh data
 
         """
@@ -1963,7 +1969,7 @@ class UnstructuredMesh(MeshBase):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1984,7 +1990,7 @@ def _read_meshes(elem):
 
     Parameters
     ----------
-    elem : xml.etree.ElementTree.Element
+    elem : lxml.etree._Element
         XML element
 
     Returns

@@ -1,4 +1,4 @@
-import xml.etree.ElementTree as ET
+import lxml.etree as ET
 
 import numpy as np
 import openmc
@@ -49,17 +49,41 @@ def test_bounding_box():
 
 
 def test_plot(run_in_tmpdir, sphere_model):
+
+    # model with -inf and inf in the bounding box
+    pincell = openmc.examples.pwr_pin_cell()
+    materials = pincell.materials
+
+    mat_colors = {
+        materials[0]: (200, 1, 1),
+        materials[1]: "gray",
+        materials[2]: "limegreen"
+    }
+
+    for basis in ('xy', 'yz', 'xz'):
+        pincell.geometry.root_universe.plot(
+            colors=mat_colors,
+            color_by="material",
+            legend=True,
+            pixels=(10, 10),
+            basis=basis,
+            outline=True
+        )
+
+    # model with no inf values in bounding box
     m = sphere_model.materials[0]
     univ = sphere_model.geometry.root_universe
 
     colors = {m: 'limegreen'}
+
     for basis in ('xy', 'yz', 'xz'):
         univ.plot(
-            basis=basis,
-            pixels=(10, 10),
-            color_by='material',
             colors=colors,
-            outline=True,
+            color_by="cell",
+            legend=False,
+            pixels=100,
+            basis=basis,
+            outline=False
         )
 
 

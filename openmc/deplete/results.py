@@ -54,11 +54,11 @@ class Results(list):
 
     Parameters
     ----------
-    filename : str
+    filename : str, optional
         Path to depletion result file
 
     """
-    def __init__(self, filename=None):
+    def __init__(self, filename='depletion_results.h5'):
         data = []
         if filename is not None:
             with h5py.File(str(filename), "r") as fh:

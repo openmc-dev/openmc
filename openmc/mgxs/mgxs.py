@@ -5417,7 +5417,6 @@ class Chi(MGXS):
     def prompt(self):
         return self._prompt
 
-    @property
     @prompt.setter
     def prompt(self, prompt):
         cv.check_type('prompt', prompt, bool)
@@ -5429,6 +5428,7 @@ class Chi(MGXS):
             self._rxn_type = 'chi-prompt'
             self._mgxs_type = 'chi-prompt'
 
+    @property
     def _dont_squeeze(self):
         """Create a tuple of axes which should not be removed during the get_xs
         process

@@ -406,6 +406,17 @@ class IndependentSource(SourceBase):
         return source
 
 
+class Source(IndependentSource):
+    """
+    A class for backward compatibility of sources. Will be remeved in the
+    future. Please update to IndependentSource.
+    """
+
+    def __init__(self, *args, **kwargs):
+        warnings.warn("This class is deprecated in favor of 'IndependentSource'", DeprecationWarning)
+        super().__init__(*args, **kwargs)
+
+
 class CompiledSource(SourceBase):
     """A source based on a compiled shared library
 

@@ -63,8 +63,9 @@ def model():
 
     tally = openmc.Tally()
     mat_filter = openmc.MaterialFilter([natural_lead])
-    # energy filter with two bins 0 eV - 1 keV and 1 keV - 1 MeV
-    # the second bin shouldn't have any results
+    # energy filter with two bins 0 eV - 1 keV and 1 keV - 1 MeV the second bin
+    # of the energy filter (last two entries in the tally results) should be
+    # zero
     energy_filter = openmc.EnergyFilter([0.0, 2e3, 1e6])
     tally.filters = [mat_filter, energy_filter]
     tally.scores = ['flux']

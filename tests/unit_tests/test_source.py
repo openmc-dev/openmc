@@ -153,11 +153,13 @@ def test_exceptions():
         s.file = 'my_file'
 
     with pytest.raises(AttributeError, match=r'Please use the CompiledSource class'):
-        s = openmc.IndependentSource(library='my_library')
+        s = openmc.IndependentSource()
         s.library = 'my_library'
 
     with pytest.raises(AttributeError, match=r'Please use the CompiledSource class'):
-        s = openmc.IndependentSource(parameters='my_params')
+        s = openmc.IndependentSource()
         s.parameters = 'my_params'
 
+    with pytest.warns(DeprecationWarning, match=r'in favor of \'IndependentSource\''):
+        s = openmc.Source()
 

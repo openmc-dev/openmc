@@ -218,8 +218,9 @@ struct BoundaryInfo {
  *   https://doi.org/10.1016/j.anucene.2017.11.032.
  */
 class ParticleData {
-
 public:
+  //----------------------------------------------------------------------------
+  // Constructors
   ParticleData();
 
 private:

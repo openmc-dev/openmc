@@ -418,6 +418,10 @@ class StatePoint:
                     tally._sp_filename = self._f.filename
                     tally.name = group['name'][()].decode() if 'name' in group else ''
 
+                    # Check if tally has multiply_density attribute
+                    if "multiply_density" in group.attrs:
+                        tally.multiply_density = group.attrs["multiply_density"].item() > 0
+
                     # Read the number of realizations
                     n_realizations = group['n_realizations'][()]
 

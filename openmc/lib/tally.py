@@ -39,6 +39,9 @@ _dll.openmc_tally_get_filters.argtypes = [
     c_int32, POINTER(POINTER(c_int32)), POINTER(c_size_t)]
 _dll.openmc_tally_get_filters.restype = c_int
 _dll.openmc_tally_get_filters.errcheck = _error_handler
+_dll.openmc_tally_get_multiply_density.argtypes = [c_int32, POINTER(c_bool)]
+_dll.openmc_tally_get_multiply_density.restype = c_int
+_dll.openmc_tally_get_multiply_density.errcheck = _error_handler
 _dll.openmc_tally_get_n_realizations.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_tally_get_n_realizations.restype = c_int
 _dll.openmc_tally_get_n_realizations.errcheck = _error_handler
@@ -75,6 +78,9 @@ _dll.openmc_tally_set_estimator.errcheck = _error_handler
 _dll.openmc_tally_set_id.argtypes = [c_int32, c_int32]
 _dll.openmc_tally_set_id.restype = c_int
 _dll.openmc_tally_set_id.errcheck = _error_handler
+_dll.openmc_tally_set_multiply_density.argtypes = [c_int32, c_bool]
+_dll.openmc_tally_set_multiply_density.restype = c_int
+_dll.openmc_tally_set_multiply_density.errcheck = _error_handler
 _dll.openmc_tally_set_nuclides.argtypes = [c_int32, c_int, POINTER(c_char_p)]
 _dll.openmc_tally_set_nuclides.restype = c_int
 _dll.openmc_tally_set_nuclides.errcheck = _error_handler
@@ -174,6 +180,10 @@ class Tally(_FortranObjectWithID):
         List of tally filters
     mean : numpy.ndarray
         An array containing the sample mean for each bin
+    multiply_density : bool
+        Whether reaction rates should be multiplied by atom density
+
+        .. versionadded:: 0.13.4
     nuclides : list of str
         List of nuclides to score results for
     num_realizations : int
@@ -362,6 +372,16 @@ class Tally(_FortranObjectWithID):
     @writable.setter
     def writable(self, writable):
         _dll.openmc_tally_set_writable(self._index, writable)
+
+    @property
+    def multiply_density(self):
+        multiply_density = c_bool()
+        _dll.openmc_tally_get_multiply_density(self._index, multiply_density)
+        return multiply_density.value
+
+    @multiply_density.setter
+    def multiply_density(self, multiply_density):
+        _dll.openmc_tally_set_multiply_density(self._index, multiply_density)
 
     def reset(self):
         """Reset results and num_realizations of tally"""

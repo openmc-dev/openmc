@@ -413,7 +413,6 @@ void Particle::pht_collision_energy()
   auto it = std::find(model::pulse_height_cells.begin(),
     model::pulse_height_cells.end(), coord(n_coord() - 1).cell);
 
-  
   if(it != model::pulse_height_cells.end()){
   int index = std::distance(model::pulse_height_cells.begin(), it);
   // Adds the energy particles lose in a collision to the pulse-height at the

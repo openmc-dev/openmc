@@ -2483,12 +2483,17 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
   for (auto i_tally : tallies) {
     auto& tally {*model::tallies[i_tally]};
 
-    // Determine the CellFilter in the tally
-    auto i_cell_filt = tally.filters()[tally.cell_filter_];
-    const CellFilter& cell_filter {
-      *dynamic_cast<CellFilter*>(model::tally_filters[i_cell_filt].get())};
-    const auto& cells = cell_filter.cells();
+    // Determine all CellFilter in the tally
+    for (const auto& filter : tally.filters()) {
+        auto cell_filter = dynamic_cast<CellFilter*>(model::tally_filters[filter].get());
+          if (cell_filter != nullptr) {
 
+    //auto i_cell_filt = tally.filters()[tally.cell_filter_];
+    //const CellFilter& cell_filter {
+    //  *dynamic_cast<CellFilter*>(model::tally_filters[i_cell_filt].get())};
+    //const auto& cells = cell_filter.cells();
+
+    const auto& cells = cell_filter->cells();
     // Loop over all cells in the CellFilter
     for (auto cell_index = 0; cell_index < cells.size(); ++cell_index) {
       int cell_id = cells[cell_index];
@@ -2504,7 +2509,7 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
 
       // Temporarily change the energy of the particle to the pulse-height value
       p.E_last() = p.pht_storage()[index];
-
+      
       // Initialize an iterator over valid filter bin combinations.  If there
       // are no valid combinations, use a continue statement to ensure we skip
       // the assume_separate break below.
@@ -2530,10 +2535,12 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
       for (auto& match : p.filter_matches())
         match.bins_present_ = false;
     }
+    }
+    }
     // Restore cell/energy
     p.n_coord() = orig_n_coord;
     p.coord(0).cell = orig_cell;
     p.E_last() = orig_E_last;
-  }
+    }  
 }
 } // namespace openmc

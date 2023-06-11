@@ -1,6 +1,4 @@
 import numpy as np
-import matplotlib
-
 import openmc
 
 
@@ -74,23 +72,24 @@ def test_get_values_slice_from_mesh():
 
     tally = sp.get_tally(name='flux_on_mesh')
 
-    for basis in ['xz', 'yz', 'xy']:
+    for basis, dim in zip(['xz', 'yz', 'xy'], ((15, 25), (20, 25), (15, 20))):
         slice_data = tally.get_values_slice_from_mesh(
             basis=basis,
             slice_index=10,
             value='std_dev'
         )
+        assert slice_data.shape == dim
         returned_axis = mesh.plot_tally_values_slice(
             dataset=slice_data,
             basis=basis,
         )
-        assert isinstance(returned_axis, matplotlib.axes.Axes)
+        returned_axis.set_title('checking plot title can be set')
 
         slice_data = tally.get_values_slice_from_mesh_where(basis=basis, slice_value=10)
+        assert slice_data.shape == dim
         returned_axis = mesh.plot_tally_values_slice(
             dataset=slice_data,
             basis=basis,
             colorbar_label='Flux'
         )
-        assert isinstance(returned_axis, matplotlib.axes.Axes)
         returned_axis.set_title('checking plot title can be set')

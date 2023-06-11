@@ -388,6 +388,24 @@ class RightCircularCylinder(CompositeSurface):
         Bottom planar surface of the cylinder
     top : openmc.Plane
         Top planar surface of the cylinder
+    upper_fillet_torus : openmc.Torus
+        Surface that creates the filleted edge for the upper end of the
+        cylinder. Only present if :attr:`upper_fillet_radius` is set.
+    upper_fillet_cylinder : openmc.Cylinder
+        Surface that bounds :attr:`upper_fillet_torus` radially. Only present
+        if :attr:`upper_fillet_radius` is set.
+    upper_fillet_plane : openmc.Plane
+        Surface that bounds :attr:`upper_fillet_torus` axially. Only present if
+        :attr:`upper_fillet_radius` is set.
+    lower_fillet_torus : openmc.Torus
+        Surface that creates the filleted edge for the lower end of the
+        cylinder. Only present if :attr:`lower_fillet_radius` is set.
+    lower_fillet_cylinder : openmc.Cylinder
+        Surface that bounds :attr:`lower_fillet_torus` radially. Only present
+        if :attr:`lower_fillet_radius` is set.
+    lower_fillet_plane : openmc.Plane
+        Surface that bounds :attr:`lower_fillet_torus` axially. Only present if
+        :attr:`lower_fillet_radius` is set.
 
     """
     _surface_names = ('cyl', 'bottom', 'top')

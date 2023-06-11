@@ -804,19 +804,22 @@ class RegularMesh(StructuredMesh):
         dataset: np.ndarray,
         basis: str = 'xy',
         axes: 'matplotlib.axes.Axes' = None,
-        colorbar_label: str = None
+        colorbar_label: str = None,
+        **kwargs
     ) -> 'matplotlib.axes.Axes':
-        """Maps the dataset values to the mesh and exports an image.
+        """Maps the dataset values to the mesh and creates an image.
 
-            dataset : np.ndarray
-                A 2-D array of values to plot, this is rotated to suit the
-                MatPlotLib imshow function.
-            basis : {'xy', 'xz', 'yz'}
-                The basis directions for the plot
-            axes : matplotlib.Axes
-                Axes to draw to
-            colorbar_label : str
-                If set a color bar with the specified label will be added to the plot
+        dataset : np.ndarray
+            A 2-D array of values to plot, this is rotated to suit the
+            MatPlotLib imshow function.
+        basis : {'xy', 'xz', 'yz'}
+            The basis directions for the plot
+        axes : matplotlib.Axes
+            Axes to draw to
+        colorbar_label : str
+            If set a color bar with the specified label will be added to the plot
+        **kwargs
+            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 
         Returns
         -------
@@ -826,6 +829,14 @@ class RegularMesh(StructuredMesh):
 
         import matplotlib.pyplot as plt
         from matplotlib.colors import LogNorm
+
+        # default kwargs that are passed to plt.show in the plot method below.
+        _default_kwargs = {
+            'norm': LogNorm(),
+            'origin': 'lower',
+            'extent': self.bounding_box.extent[basis]
+        }
+        _default_kwargs.update(kwargs)
 
         if basis == "xy":
             oriented_data = np.rot90(dataset, 1)
@@ -844,9 +855,7 @@ class RegularMesh(StructuredMesh):
 
         image = axes.imshow(
             oriented_data,
-            origin='lower',
-            norm=LogNorm(),
-            extent=self.bounding_box.extent[basis] 
+            **_default_kwargs
         )
 
         if colorbar_label:

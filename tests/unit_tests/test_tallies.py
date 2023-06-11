@@ -86,7 +86,7 @@ def test_get_values_slice_from_mesh():
         )
         assert isinstance(returned_axis, matplotlib.axes.Axes)
 
-        tally.get_values_slice_from_mesh_where(basis=basis, slice_value=10)
+        slice_data = tally.get_values_slice_from_mesh_where(basis=basis, slice_value=10)
         returned_axis = mesh.plot_tally_values_slice(
             dataset=slice_data,
             basis=basis,

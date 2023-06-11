@@ -12,7 +12,7 @@ import re
 
 import numpy as np
 
-from .data import gnd_name
+from .data import gnds_name
 from .function import Tabulated1D
 try:
     from ._endf import float_endf
@@ -520,10 +520,10 @@ class Evaluation:
             self.reaction_list.append((mf, mt, nc, mod))
 
     @property
-    def gnd_name(self):
-        return gnd_name(self.target['atomic_number'],
-                        self.target['mass_number'],
-                        self.target['isomeric_state'])
+    def gnds_name(self):
+        return gnds_name(self.target['atomic_number'],
+                         self.target['mass_number'],
+                         self.target['isomeric_state'])
 
 
 class Tabulated2D:
@@ -531,7 +531,7 @@ class Tabulated2D:
 
     This is a dummy class that is not really used other than to store the
     interpolation information for a two-dimensional function. Once we refactor
-    to adopt GND-like data containers, this will probably be removed or
+    to adopt GNDS-like data containers, this will probably be removed or
     extended.
 
     Parameters

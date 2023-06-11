@@ -2,12 +2,9 @@
 set -ex
 
 # Upgrade pip, pytest, numpy before doing anything else.
-# TODO: numpy 1.22 results in several failing tests, so we force a lower version
-# for now (similar change made in pyproject.toml). When this is removed, those
-# tests will need to be updated.
 pip install --upgrade pip
 pip install --upgrade pytest
-pip install --upgrade "numpy<1.22"
+pip install --upgrade numpy
 
 # Install NJOY 2016
 ./tools/ci/gha-install-njoy.sh
@@ -15,6 +12,11 @@ pip install --upgrade "numpy<1.22"
 # Install DAGMC if needed
 if [[ $DAGMC = 'y' ]]; then
     ./tools/ci/gha-install-dagmc.sh
+fi
+
+# Install NCrystal if needed
+if [[ $NCRYSTAL = 'y' ]]; then
+    ./tools/ci/gha-install-ncrystal.sh
 fi
 
 # Install vectfit for WMP generation if needed
@@ -27,6 +29,9 @@ if [[ $LIBMESH = 'y' ]]; then
     ./tools/ci/gha-install-libmesh.sh
 fi
 
+# Install MCPL
+./tools/ci/gha-install-mcpl.sh
+
 # For MPI configurations, make sure mpi4py and h5py are built against the
 # correct version of MPI
 if [[ $MPI == 'y' ]]; then
@@ -35,7 +40,8 @@ if [[ $MPI == 'y' ]]; then
     export CC=mpicc
     export HDF5_MPI=ON
     export HDF5_DIR=/usr/lib/x86_64-linux-gnu/hdf5/mpich
-    pip install --no-binary=h5py h5py
+    pip install wheel cython
+    pip install --no-binary=h5py --no-build-isolation h5py
 fi
 
 # Build and install OpenMC executable

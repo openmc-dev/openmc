@@ -144,7 +144,7 @@ class FissionProductYields(EqualityMixin):
 
         # Assign basic nuclide properties
         self.nuclide = {
-            'name': ev.gnd_name,
+            'name': ev.gnds_name,
             'atomic_number': ev.target['atomic_number'],
             'mass_number': ev.target['mass_number'],
             'isomeric_state': ev.target['isomeric_state']
@@ -558,9 +558,9 @@ class Decay(EqualityMixin):
                     raise NotImplementedError("Multiple interpolation regions: {name}, {particle}")
                 interpolation = INTERPOLATION_SCHEME[f.interpolation[0]]
                 if interpolation not in ('histogram', 'linear-linear'):
-                    raise NotImplementedError(
+                    warn(
                         f"Continuous spectra with {interpolation} interpolation "
-                        f"({name}, {particle}) not supported")
+                        f"({name}, {particle}) encountered.")
 
                 intensity = spectra['continuous_normalization'].n
                 rates = decay_constant * intensity * f.y

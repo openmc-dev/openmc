@@ -2,13 +2,14 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from math import pi, cos
 from numbers import Real
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 
 import numpy as np
 
 import openmc.checkvalue as cv
 from .._xml import get_text
 from .univariate import Univariate, Uniform, PowerLaw
+from ..mesh import MeshBase
 
 
 class UnitSphere(ABC):
@@ -120,7 +121,7 @@ class PolarAzimuthal(UnitSphere):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing angular distribution data
 
         """
@@ -138,7 +139,7 @@ class PolarAzimuthal(UnitSphere):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -167,7 +168,7 @@ class Isotropic(UnitSphere):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing isotropic distribution data
 
         """
@@ -181,7 +182,7 @@ class Isotropic(UnitSphere):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -216,7 +217,7 @@ class Monodirectional(UnitSphere):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing monodirectional distribution data
 
         """
@@ -232,7 +233,7 @@ class Monodirectional(UnitSphere):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -261,7 +262,7 @@ class Spatial(ABC):
 
     @classmethod
     @abstractmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem, meshes=None):
         distribution = get_text(elem, 'type')
         if distribution == 'cartesian':
             return CartesianIndependent.from_xml_element(elem)
@@ -273,6 +274,8 @@ class Spatial(ABC):
             return Box.from_xml_element(elem)
         elif distribution == 'point':
             return Point.from_xml_element(elem)
+        elif distribution == 'mesh':
+            return MeshSpatial.from_xml_element(elem, meshes)
 
 
 class CartesianIndependent(Spatial):
@@ -338,7 +341,7 @@ class CartesianIndependent(Spatial):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing spatial distribution data
 
         """
@@ -355,7 +358,7 @@ class CartesianIndependent(Spatial):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -461,7 +464,7 @@ class SphericalIndependent(Spatial):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing spatial distribution data
 
         """
@@ -479,7 +482,7 @@ class SphericalIndependent(Spatial):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -583,7 +586,7 @@ class CylindricalIndependent(Spatial):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing spatial distribution data
 
         """
@@ -601,7 +604,7 @@ class CylindricalIndependent(Spatial):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -615,6 +618,133 @@ class CylindricalIndependent(Spatial):
         z = Univariate.from_xml_element(elem.find('z'))
         origin = [float(x) for x in elem.get('origin').split()]
         return cls(r, phi, z, origin=origin)
+
+
+class MeshSpatial(Spatial):
+    """Spatial distribution for a mesh.
+
+    This distribution specifies a mesh to sample over with source strengths
+    specified for each mesh element.
+
+    .. versionadded:: 0.13.3
+
+    Parameters
+    ----------
+    mesh : openmc.MeshBase
+        The mesh instance used for sampling
+    strengths : iterable of float, optional
+        An iterable of values that represents the weights of each element. If no
+        source strengths are specified, they will be equal for all mesh
+        elements.
+    volume_normalized : bool, optional
+        Whether or not the strengths will be multiplied by element volumes at
+        runtime. Default is True.
+
+    Attributes
+    ----------
+    mesh : openmc.MeshBase
+        The mesh instance used for sampling
+    strengths : numpy.ndarray or None
+        An array of source strengths for each mesh element
+    volume_normalized : bool
+        Whether or not the strengths will be multiplied by element volumes at
+        runtime.
+    """
+
+    def __init__(self, mesh, strengths=None, volume_normalized=True):
+        self.mesh = mesh
+        self.strengths = strengths
+        self.volume_normalized = volume_normalized
+
+    @property
+    def mesh(self):
+        return self._mesh
+
+    @mesh.setter
+    def mesh(self, mesh):
+        if mesh is not None:
+            cv.check_type('mesh instance', mesh, MeshBase)
+        self._mesh = mesh
+
+    @property
+    def volume_normalized(self):
+        return self._volume_normalized
+
+    @volume_normalized.setter
+    def volume_normalized(self, volume_normalized):
+        cv.check_type('Multiply strengths by element volumes', volume_normalized, bool)
+        self._volume_normalized = volume_normalized
+
+    @property
+    def strengths(self):
+        return self._strengths
+
+    @strengths.setter
+    def strengths(self, given_strengths):
+        if given_strengths is not None:
+            cv.check_type('strengths array passed in', given_strengths, Iterable, Real)
+            self._strengths = np.asarray(given_strengths, dtype=float).flatten()
+        else:
+            self._strengths = None
+
+    @property
+    def num_strength_bins(self):
+        if self.strengths is None:
+            raise ValueError('Strengths are not set')
+        return self.strengths.size
+
+    def to_xml_element(self):
+        """Return XML representation of the spatial distribution
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing spatial distribution data
+
+        """
+        element = ET.Element('space')
+        element.set('type', 'mesh')
+        element.set("mesh_id", str(self.mesh.id))
+        element.set("volume_normalized", str(self.volume_normalized))
+
+        if self.strengths is not None:
+            subelement = ET.SubElement(element, 'strengths')
+            subelement.text = ' '.join(str(e) for e in self.strengths)
+
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem, meshes):
+        """Generate spatial distribution from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+        meshes : dict
+            A dictionary with mesh IDs as keys and openmc.MeshBase instances as
+            values
+
+        Returns
+        -------
+        openmc.stats.MeshSpatial
+            Spatial distribution generated from XML element
+
+        """
+
+        mesh_id = int(elem.get('mesh_id'))
+
+        # check if this mesh has been read in from another location already
+        if mesh_id not in meshes:
+            raise RuntimeError(f'Could not locate mesh with ID "{mesh_id}"')
+
+        volume_normalized = elem.get("volume_normalized")
+        volume_normalized = get_text(elem, 'volume_normalized').lower() == 'true'
+        strengths = get_text(elem, 'strengths')
+        if strengths is not None:
+            strengths = [float(b) for b in get_text(elem, 'strengths').split()]
+
+        return cls(meshes[mesh_id], strengths, volume_normalized)
 
 
 class Box(Spatial):
@@ -681,7 +811,7 @@ class Box(Spatial):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing box distribution data
 
         """
@@ -701,7 +831,7 @@ class Box(Spatial):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -753,7 +883,7 @@ class Point(Spatial):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing point distribution location
 
         """
@@ -769,7 +899,7 @@ class Point(Spatial):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns

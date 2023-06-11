@@ -471,7 +471,7 @@ void Nuclide::create_derived(
         xs_cdf_sum +=
           (std::sqrt(E[i]) * xs[i] + std::sqrt(E[i + 1]) * xs[i + 1]) / 2.0 *
           (E[i + 1] - E[i]);
-        xs_cdf_[i+1] = xs_cdf_sum;
+        xs_cdf_[i + 1] = xs_cdf_sum;
       }
     }
   }
@@ -519,7 +519,7 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
   case EmissionMode::prompt:
     return (*fission_rx_[0]->products_[0].yield_)(E);
   case EmissionMode::delayed:
-    if (n_precursor_ > 0) {
+    if (n_precursor_ > 0 && settings::create_delayed_neutrons) {
       auto rx = fission_rx_[0];
       if (group >= 1 && group < rx->products_.size()) {
         // If delayed group specified, determine yield immediately
@@ -544,7 +544,7 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
       return 0.0;
     }
   case EmissionMode::total:
-    if (total_nu_) {
+    if (total_nu_ && settings::create_delayed_neutrons) {
       return (*total_nu_)(E);
     } else {
       return (*fission_rx_[0]->products_[0].yield_)(E);

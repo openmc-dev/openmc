@@ -24,6 +24,7 @@ from .stepresult import StepResult
 from .chain import Chain
 from .results import Results
 from .pool import deplete
+from .transfer_rates import TransferRates
 
 
 __all__ = [
@@ -68,7 +69,7 @@ def change_directory(output_dir):
     """
     orig_dir  = os.getcwd()
     try:
-        output_dir.mkdir(exist_ok=True)
+        output_dir.mkdir(parents=True, exist_ok=True)
         os.chdir(output_dir)
         yield
     finally:
@@ -265,8 +266,8 @@ class ReactionRateHelper(ABC):
             Ordering of reactions
         """
 
-    def divide_by_adens(self, number):
-        """Normalize reaction rates by number of nuclides
+    def divide_by_atoms(self, number):
+        """Normalize reaction rates by number of atoms
 
         Acts on the current material examined by :meth:`get_material_rates`
 
@@ -547,7 +548,6 @@ class Integrator(ABC):
         :attr:`solver`.
 
         .. versionadded:: 0.12
-
     Attributes
     ----------
     operator : openmc.deplete.abc.TransportOperator
@@ -574,7 +574,10 @@ class Integrator(ABC):
             * ``n1`` is a :class:`numpy.ndarray` of compositions at the
               next time step. Expected to be of the same shape as ``n0``
 
-        .. versionadded:: 0.12
+    transfer_rates : openmc.deplete.TransferRates
+        Instance of TransferRates class to perform continuous transfer during depletion
+
+        .. versionadded:: 0.13.4
 
     """
 
@@ -654,6 +657,8 @@ class Integrator(ABC):
         self.timesteps = asarray(seconds)
         self.source_rates = asarray(source_rates)
 
+        self.transfer_rates = None
+
         if isinstance(solver, str):
             # Delay importing of cram module, which requires this file
             if solver == "cram48":
@@ -704,7 +709,8 @@ class Integrator(ABC):
     def _timed_deplete(self, concs, rates, dt, matrix_func=None):
         start = time.time()
         results = deplete(
-            self._solver, self.chain, concs, rates, dt, matrix_func)
+            self._solver, self.chain, concs, rates, dt, matrix_func,
+            self.transfer_rates)
         return time.time() - start, results
 
     @abstractmethod
@@ -798,7 +804,7 @@ class Integrator(ABC):
             t, self._i_res = self._get_start_data()
 
             for i, (dt, source_rate) in enumerate(self):
-                if output:
+                if output and comm.rank == 0:
                     print(f"[openmc.deplete] t={t} s, dt={dt} s, source={source_rate}")
 
                 # Solve transport equation (or obtain result from restart)
@@ -818,7 +824,7 @@ class Integrator(ABC):
                 conc = conc_list.pop()
 
                 StepResult.save(self.operator, conc_list, res_list, [t, t + dt],
-                             source_rate, self._i_res + i, proc_time)
+                                source_rate, self._i_res + i, proc_time)
 
                 t += dt
 
@@ -826,7 +832,7 @@ class Integrator(ABC):
             # source rate is passed to the transport operator (which knows to
             # just return zero reaction rates without actually doing a transport
             # solve)
-            if output and final_step:
+            if output and final_step and comm.rank == 0:
                 print(f"[openmc.deplete] t={t} (final operator evaluation)")
             res_list = [self.operator(conc, source_rate if final_step else 0.0)]
             StepResult.save(self.operator, [conc], res_list, [t, t],
@@ -835,6 +841,31 @@ class Integrator(ABC):
 
         self.operator.finalize()
 
+    def add_transfer_rate(self, material, elements, transfer_rate,
+                         transfer_rate_units='1/s', destination_material=None):
+        """Add transfer rates to depletable material.
+
+        Parameters
+        ----------
+        material : openmc.Material or str or int
+            Depletable material
+        elements : list of str
+            List of strings of elements that share transfer rate
+        transfer_rate : float
+            Rate at which elements are transferred. A positive or negative values
+            set removal of feed rates, respectively.
+        destination_material : openmc.Material or str or int, Optional
+            Destination material to where nuclides get fed.
+        transfer_rate_units : {'1/s', '1/min', '1/h', '1/d', '1/a'}
+            Units for values specified in the transfer_rate argument. 's' means
+            seconds, 'min' means minutes, 'h' means hours, 'a' means Julian years.
+
+        """
+        if self.transfer_rates is None:
+            self.transfer_rates = TransferRates(self.operator, self.operator.model)
+
+        self.transfer_rates.set_transfer_rate(material, elements, transfer_rate,
+                                      transfer_rate_units, destination_material)
 
 @add_params
 class SIIntegrator(Integrator):

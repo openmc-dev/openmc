@@ -42,11 +42,18 @@ else:
 def _dagmc_enabled():
     return c_bool.in_dll(_dll, "DAGMC_ENABLED").value
 
+def _ncrystal_enabled():
+    return c_bool.in_dll(_dll, "NCRYSTAL_ENABLED").value
+
 def _coord_levels():
     return c_int.in_dll(_dll, "n_coord_levels").value
 
 def _libmesh_enabled():
     return c_bool.in_dll(_dll, "LIBMESH_ENABLED").value
+
+def _mcpl_enabled():
+    return c_bool.in_dll(_dll, "MCPL_ENABLED").value
+
 
 from .error import *
 from .core import *
@@ -59,6 +66,7 @@ from .tally import *
 from .settings import settings
 from .math import *
 from .plot import *
+from .weight_windows import *
 
 # Flag to denote whether or not openmc.lib.init has been called
 # TODO: Establish and use a flag in the C++ code to represent the status of the

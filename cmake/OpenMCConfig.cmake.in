@@ -9,6 +9,11 @@ if(@OPENMC_USE_DAGMC@)
   find_package(DAGMC REQUIRED HINTS @DAGMC_DIR@)
 endif()
 
+if(@OPENMC_USE_NCRYSTAL@)
+  find_package(NCrystal REQUIRED)
+  message(STATUS "Found NCrystal: ${NCrystal_DIR} (version ${NCrystal_VERSION})")
+endif()
+
 if(@OPENMC_USE_LIBMESH@)
   include(FindPkgConfig)
   list(APPEND CMAKE_PREFIX_PATH @LIBMESH_PREFIX@)
@@ -24,4 +29,8 @@ endif()
 
 if(@OPENMC_USE_MPI@)
   find_package(MPI REQUIRED)
+endif()
+
+if(@OPENMC_USE_MCPL@)
+  find_package(MCPL REQUIRED)
 endif()

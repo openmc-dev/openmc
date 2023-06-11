@@ -6,6 +6,7 @@ import pytest
 from uncertainties import ufloat
 
 import openmc
+import openmc.lib
 from openmc.stats import Discrete, Point
 
 from tests import cdtemp
@@ -15,8 +16,6 @@ from tests import cdtemp
 def wws():
 
     # weight windows
-
-
     ww_files = ('ww_n.txt', 'ww_p.txt')
     cwd = Path(__file__).parent.absolute()
     ww_n_file, ww_p_file = [cwd / Path(f) for f in ww_files]
@@ -225,7 +224,7 @@ def test_lower_ww_bounds_shape():
     assert ww.lower_ww_bounds.shape == (2, 3, 4, 1)
 
 
-def test_roundtrip(model, wws):
+def test_roundtrip(run_in_tmpdir, model, wws):
     model.settings.weight_windows = wws
 
     # write the model with weight windows to XML
@@ -240,3 +239,47 @@ def test_roundtrip(model, wws):
     # ensure the lower bounds read in from the XML match those of the
     for ww_out, ww_in in zipped_wws:
         assert(ww_out == ww_in)
+
+
+def test_ww_attrs(run_in_tmpdir, model):
+    model.export_to_xml()
+
+    openmc.lib.init()
+
+    tally = openmc.lib.tallies[model.tallies[0].id]
+
+    wws = openmc.lib.WeightWindows.from_tally(tally)
+
+    # this is the first weight window object created
+    assert wws.id == 1
+
+    with pytest.raises(ValueError):
+        tally.find_filter(openmc.lib.AzimuthalFilter)
+
+    mesh_filter = tally.find_filter(openmc.lib.MeshFilter)
+    mesh = mesh_filter.mesh
+
+    assert wws.mesh.id == mesh.id
+
+    assert wws.particle == openmc.ParticleType.NEUTRON
+
+    wws.particle = 1
+    assert wws.particle == openmc.ParticleType.PHOTON
+    wws.particle = 'photon'
+    assert wws.particle == openmc.ParticleType.PHOTON
+
+    with pytest.raises(ValueError):
+        wws.particle = '🌠'
+
+    energy_filter = tally.find_filter(openmc.lib.EnergyFilter)
+    np.testing.assert_allclose(np.unique(energy_filter.bins), wws.energy_bounds)
+
+    # at this point the weight window bounds are uninitialized
+    assert all(wws.bounds[0] == -1)
+    assert all(wws.bounds[1] == -1)
+
+    wws = openmc.lib.WeightWindows.from_tally(tally, particle='photon')
+    assert wws.id == 2
+    assert wws.particle == openmc.ParticleType.PHOTON
+
+    openmc.lib.finalize()

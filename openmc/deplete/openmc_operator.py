@@ -223,8 +223,13 @@ class OpenMCOperator(TransportOperator):
             if mat.depletable:
                 burnable_mats.add(str(mat.id))
                 if mat.volume is None:
-                    raise RuntimeError("Volume not specified for depletable "
-                                       "material with ID={}.".format(mat.id))
+                    if mat.name is None:
+                        msg = ("Volume not specified for depletable material "
+                               f"with ID={mat.id}.")
+                    else:
+                        msg = ("Volume not specified for depletable material "
+                               f"with ID={mat.id} Name={mat.name}.")
+                    raise RuntimeError(msg)
                 volume[str(mat.id)] = mat.volume
                 self.heavy_metal += mat.fissionable_mass
 
@@ -242,7 +247,6 @@ class OpenMCOperator(TransportOperator):
         for nuc in model_nuclides:
             if nuc not in nuclides:
                 nuclides.append(nuc)
-
         return burnable_mats, volume, nuclides
 
     def _load_previous_results(self):
@@ -541,10 +545,10 @@ class OpenMCOperator(TransportOperator):
                 self._normalization_helper.update(
                     tally_rates[:, fission_ind])
 
-            # Divide by total number and store
-            rates[i] = self._rate_helper.divide_by_adens(number)
+            # Divide by total number of atoms and store
+            rates[i] = self._rate_helper.divide_by_atoms(number)
 
-        # Scale reaction rates to obtain units of reactions/sec
+        # Scale reaction rates to obtain units of (reactions/sec)/atom
         rates *= self._normalization_helper.factor(source_rate)
 
         # Store new fission yields on the chain

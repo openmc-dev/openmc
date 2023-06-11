@@ -187,7 +187,9 @@ The spatial distribution can be set equal to a sub-class of
 :class:`openmc.stats.CartesianIndependent`. To independently specify
 distributions using spherical or cylindrical coordinates, you can use
 :class:`openmc.stats.SphericalIndependent` or
-:class:`openmc.stats.CylindricalIndependent`, respectively.
+:class:`openmc.stats.CylindricalIndependent`, respectively. Meshes can also be
+used to represent spatial distributions with :class:`openmc.stats.MeshSpatial`
+by specifying a mesh and source strengths for each mesh element.
 
 The angular distribution can be set equal to a sub-class of
 :class:`openmc.stats.UnitSphere` such as :class:`openmc.stats.Isotropic`,
@@ -474,7 +476,6 @@ selected::
    Some features related to photon transport are not currently implemented,
    including:
 
-     * Tallying photon energy deposition.
      * Generating a photon source from a neutron calculation that can be used
        for a later fixed source photon calculation.
      * Photoneutron reactions.

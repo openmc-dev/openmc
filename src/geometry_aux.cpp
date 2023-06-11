@@ -61,6 +61,11 @@ void read_geometry_xml()
   // Get root element
   pugi::xml_node root = doc.document_element();
 
+  read_geometry_xml(root);
+}
+
+void read_geometry_xml(pugi::xml_node root)
+{
   // Read surfaces, cells, lattice
   read_surfaces(root);
   read_cells(root);
@@ -603,6 +608,11 @@ int maximum_levels(int32_t univ)
   ++levels_below;
   model::universe_level_counts[univ] = levels_below;
   return levels_below;
+}
+
+bool is_root_universe(int32_t univ_id)
+{
+  return model::universe_map[univ_id] == model::root_universe;
 }
 
 //==============================================================================

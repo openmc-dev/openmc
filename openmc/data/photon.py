@@ -13,7 +13,7 @@ from scipy.interpolate import CubicSpline
 
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
-from . import HDF5_VERSION
+from . import HDF5_VERSION, HDF5_VERSION_MAJOR
 from .ace import Table, get_metadata, get_table
 from .data import ATOMIC_SYMBOL, EV_PER_MEV
 from .endf import Evaluation, get_head_record, get_tab1_record, get_list_record
@@ -143,6 +143,8 @@ class AtomicRelaxation(EqualityMixin):
         Dictionary indicating the number of electrons in a subshell when neutral
         (values) for given subshells (keys). The subshells should be given as
         strings, e.g., 'K', 'L1', 'L2', etc.
+    subshells : list
+        List of subshells as strings, e.g. ``['K', 'L1', ...]``
     transitions : pandas.DataFrame
         Dictionary indicating allowed transitions and their probabilities
         (values) for given subshells (keys). The subshells should be given as
@@ -512,13 +514,13 @@ class IncidentPhoton(EqualityMixin):
 
         # Read each reaction
         data = cls(Z)
-        for mt in (502, 504, 515, 522, 525):
+        for mt in (502, 504, 517, 522, 525):
             data.reactions[mt] = PhotonReaction.from_ace(ace, mt)
 
         # Get heating cross sections [eV-barn] from factors [eV per collision]
         # by multiplying with total xs
         data.reactions[525].xs.y *= sum([data.reactions[mt].xs.y for mt in
-                                         (502, 504, 515, 522)])
+                                         (502, 504, 517, 522)])
 
         # Compton profiles
         n_shell = ace.nxs[5]
@@ -998,7 +1000,7 @@ class PhotonReaction(EqualityMixin):
         elif mt == 504:
             # Incoherent scattering
             idx = ace.jxs[1] + n
-        elif mt == 515:
+        elif mt == 517:
             # Pair production
             idx = ace.jxs[1] + 4*n
         elif mt == 522:
@@ -1019,6 +1021,9 @@ class PhotonReaction(EqualityMixin):
         else:
             nonzero = (xs != 0.0)
             xs[nonzero] = np.exp(xs[nonzero])
+
+            # Replace zero elements to small non-zero to enable log-log
+            xs[~nonzero] = np.exp(-500.0)
         rx.xs = Tabulated1D(energy, xs, [n], [5])
 
         # Get form factors for incoherent/coherent scattering

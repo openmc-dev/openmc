@@ -92,6 +92,10 @@ Tally::Tally(pugi::xml_node node)
   if (check_for_node(node, "name"))
     name_ = get_node_value(node, "name");
 
+  if (check_for_node(node, "multiply_density")) {
+    multiply_density_ = get_node_value_bool(node, "multiply_density");
+  }
+
   // =======================================================================
   // READ DATA FOR FILTERS
 
@@ -191,9 +195,9 @@ Tally::Tally(pugi::xml_node node)
         case SCORE_DELAYED_NU_FISSION:
         case SCORE_PROMPT_NU_FISSION:
         case SCORE_DECAY_RATE:
-          warning("Particle filter is not used with photon transport"
-                  " on and " +
-                  reaction_name(score) + " score.");
+          warning("You are tallying the '" + reaction_name(score) +
+                  "' score and haven't used a particle filter. This score will "
+                  "include contributions from all particles.");
           break;
         }
       }
@@ -354,6 +358,34 @@ void Tally::set_id(int32_t id)
   model::tally_map[id] = index_;
 }
 
+std::vector<FilterType> Tally::filter_types() const
+{
+  std::vector<FilterType> filter_types;
+  for (auto idx : this->filters())
+    filter_types.push_back(model::tally_filters[idx]->type());
+  return filter_types;
+}
+
+std::unordered_map<FilterType, int32_t> Tally::filter_indices() const
+{
+  std::unordered_map<FilterType, int32_t> filter_indices;
+  for (int i = 0; i < this->filters().size(); i++) {
+    const auto& f = model::tally_filters[this->filters(i)];
+
+    filter_indices[f->type()] = i;
+  }
+  return filter_indices;
+}
+
+bool Tally::has_filter(FilterType filter_type) const
+{
+  for (auto idx : this->filters()) {
+    if (model::tally_filters[idx]->type() == filter_type)
+      return true;
+  }
+  return false;
+}
+
 void Tally::set_filters(gsl::span<Filter*> filters)
 {
   // Clear old data.
@@ -364,18 +396,25 @@ void Tally::set_filters(gsl::span<Filter*> filters)
   auto n = filters.size();
   filters_.reserve(n);
 
-  for (int i = 0; i < n; ++i) {
-    // Add index to vector of filters
-    auto& f {filters[i]};
-    filters_.push_back(model::filter_map.at(f->id()));
-
-    // Keep track of indices for special filters.
-    if (dynamic_cast<const EnergyoutFilter*>(f)) {
-      energyout_filter_ = i;
-    } else if (dynamic_cast<const DelayedGroupFilter*>(f)) {
-      delayedgroup_filter_ = i;
-    }
+  for (auto* filter : filters) {
+    add_filter(filter);
   }
+}
+
+void Tally::add_filter(Filter* filter)
+{
+  int32_t filter_idx = model::filter_map.at(filter->id());
+  // if this filter is already present, do nothing and return
+  if (std::find(filters_.begin(), filters_.end(), filter_idx) != filters_.end())
+    return;
+
+  // Keep track of indices for special filters
+  if (dynamic_cast<const EnergyoutFilter*>(filter)) {
+    energyout_filter_ = filters_.size();
+  } else if (dynamic_cast<const DelayedGroupFilter*>(filter)) {
+    delayedgroup_filter_ = filters_.size();
+  }
+  filters_.push_back(filter_idx);
 }
 
 void Tally::set_strides()
@@ -557,11 +596,12 @@ void Tally::set_nuclides(const vector<std::string>& nuclides)
       nuclides_.push_back(-1);
     } else {
       auto search = data::nuclide_map.find(nuc);
-      if (search == data::nuclide_map.end())
-        fatal_error(fmt::format("Could not find the nuclide {} specified in "
-                                "tally {} in any material",
-          nuc, id_));
-      nuclides_.push_back(search->second);
+      if (search == data::nuclide_map.end()) {
+        int err = openmc_load_nuclide(nuc.c_str(), nullptr, 0);
+        if (err < 0)
+          throw std::runtime_error {openmc_err_msg};
+      }
+      nuclides_.push_back(data::nuclide_map.at(nuc));
     }
   }
 }
@@ -680,12 +720,45 @@ void Tally::accumulate()
   }
 }
 
+int Tally::score_index(const std::string& score) const
+{
+  for (int i = 0; i < scores_.size(); i++) {
+    if (this->score_name(i) == score)
+      return i;
+  }
+  return -1;
+}
+
+xt::xarray<double> Tally::get_reshaped_data() const
+{
+  std::vector<uint64_t> shape;
+  for (auto f : filters()) {
+    shape.push_back(model::tally_filters[f]->n_bins());
+  }
+
+  // add number of scores and nuclides to tally
+  shape.push_back(results_.shape()[1]);
+  shape.push_back(results_.shape()[2]);
+
+  xt::xarray<double> reshaped_results = results_;
+  reshaped_results.reshape(shape);
+  return reshaped_results;
+}
+
 std::string Tally::score_name(int score_idx) const
 {
   if (score_idx < 0 || score_idx >= scores_.size()) {
     fatal_error("Index in scores array is out of bounds.");
   }
   return reaction_name(scores_[score_idx]);
+}
+
+std::vector<std::string> Tally::scores() const
+{
+  std::vector<std::string> score_names;
+  for (int score : scores_)
+    score_names.push_back(reaction_name(score));
+  return score_names;
 }
 
 std::string Tally::nuclide_name(int nuclide_idx) const
@@ -719,6 +792,11 @@ void read_tallies_xml()
   doc.load_file(filename.c_str());
   pugi::xml_node root = doc.document_element();
 
+  read_tallies_xml(root);
+}
+
+void read_tallies_xml(pugi::xml_node root)
+{
   // Check for <assume_separate> setting
   if (check_for_node(root, "assume_separate")) {
     settings::assume_separate = get_node_value_bool(root, "assume_separate");
@@ -1096,6 +1174,28 @@ extern "C" int openmc_tally_set_writable(int32_t index, bool writable)
   return 0;
 }
 
+extern "C" int openmc_tally_get_multiply_density(int32_t index, bool* value)
+{
+  if (index < 0 || index >= model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  *value = model::tallies[index]->multiply_density();
+
+  return 0;
+}
+
+extern "C" int openmc_tally_set_multiply_density(int32_t index, bool value)
+{
+  if (index < 0 || index >= model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  model::tallies[index]->set_multiply_density(value);
+
+  return 0;
+}
+
 extern "C" int openmc_tally_get_scores(int32_t index, int** scores, int* n)
 {
   if (index < 0 || index >= model::tallies.size()) {
@@ -1275,11 +1375,11 @@ extern "C" size_t tallies_size()
 extern "C" int openmc_remove_tally(int32_t index)
 {
   // check that id is in the map
-  if (index < 0 || index > model::tallies.size()) {
+  if (index < 0 || index >= model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-  // grab tally so it's ID can be obtained to remove the (ID,index) pair from tally_map
-  auto& tally = model::tallies[index];
+
   // delete the tally via iterator pointing to correct position
   // this calls the Tally destructor, removing the tally from the map as well
   model::tallies.erase(model::tallies.begin() + index);

@@ -5,7 +5,7 @@ from copy import deepcopy
 import math
 from numbers import Real
 from warnings import warn
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 
 import numpy as np
 
@@ -173,7 +173,7 @@ class Discrete(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing discrete distribution data
 
         """
@@ -191,7 +191,7 @@ class Discrete(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -316,7 +316,7 @@ class Uniform(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing uniform distribution data
 
         """
@@ -331,7 +331,7 @@ class Uniform(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -425,7 +425,7 @@ class PowerLaw(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing distribution data
 
         """
@@ -440,7 +440,7 @@ class PowerLaw(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -508,7 +508,7 @@ class Maxwell(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing Maxwellian distribution data
 
         """
@@ -523,7 +523,7 @@ class Maxwell(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -603,7 +603,7 @@ class Watt(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing Watt distribution data
 
         """
@@ -618,7 +618,7 @@ class Watt(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -693,7 +693,7 @@ class Normal(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing Watt distribution data
 
         """
@@ -708,7 +708,7 @@ class Normal(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -834,10 +834,6 @@ class Tabular(Univariate):
         self._interpolation = interpolation
 
     def cdf(self):
-        if not self.interpolation in ('histogram', 'linear-linear'):
-            raise NotImplementedError('Can only generate CDFs for tabular '
-                                      'distributions using histogram or '
-                                      'linear-linear interpolation')
         c = np.zeros_like(self.x)
         x = self.x
         p = self.p
@@ -846,18 +842,18 @@ class Tabular(Univariate):
             c[1:] = p[:-1] * np.diff(x)
         elif self.interpolation == 'linear-linear':
             c[1:] = 0.5 * (p[:-1] + p[1:]) * np.diff(x)
+        else:
+            raise NotImplementedError('Can only generate CDFs for tabular '
+                                      'distributions using histogram or '
+                                      'linear-linear interpolation')
+
 
         return np.cumsum(c)
 
     def mean(self):
         """Compute the mean of the tabular distribution"""
-        if not self.interpolation in ('histogram', 'linear-linear'):
-            raise NotImplementedError('Can only compute mean for tabular '
-                                      'distributions using histogram '
-                                      'or linear-linear interpolation.')
         if self.interpolation == 'linear-linear':
             mean = 0.0
-            self.normalize()
             for i in range(1, len(self.x)):
                 y_min = self.p[i-1]
                 y_max = self.p[i]
@@ -872,9 +868,17 @@ class Tabular(Univariate):
                 mean += exp_val
 
         elif self.interpolation == 'histogram':
-            mean = 0.5 * (self.x[:-1] + self.x[1:])
-            mean *= np.diff(self.cdf())
-            mean = sum(mean)
+            x_l = self.x[:-1]
+            x_r = self.x[1:]
+            p_l = self.p[:-1]
+            mean = (0.5 * (x_l + x_r) * (x_r - x_l) * p_l).sum()
+        else:
+            raise NotImplementedError('Can only compute mean for tabular '
+                                      'distributions using histogram '
+                                      'or linear-linear interpolation.')
+
+        # Normalize for when integral of distribution is not 1
+        mean /= self.integral()
 
         return mean
 
@@ -883,10 +887,6 @@ class Tabular(Univariate):
         self.p /= self.cdf().max()
 
     def sample(self, n_samples=1, seed=None):
-        if not self.interpolation in ('histogram', 'linear-linear'):
-            raise NotImplementedError('Can only sample tabular distributions '
-                                      'using histogram or '
-                                      'linear-linear interpolation')
         np.random.seed(seed)
         xi = np.random.rand(n_samples)
 
@@ -939,6 +939,11 @@ class Tabular(Univariate):
             m[non_zero] = x_i[non_zero] + (np.sqrt(quad) - p_i[non_zero]) / m[non_zero]
             samples_out = m
 
+        else:
+            raise NotImplementedError('Can only sample tabular distributions '
+                                      'using histogram or '
+                                      'linear-linear interpolation')
+
         assert all(samples_out < self.x[-1])
         return samples_out
 
@@ -952,7 +957,7 @@ class Tabular(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing tabular distribution data
 
         """
@@ -971,7 +976,7 @@ class Tabular(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1147,7 +1152,7 @@ class Mixture(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mixture distribution data
 
         """
@@ -1169,7 +1174,7 @@ class Mixture(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns

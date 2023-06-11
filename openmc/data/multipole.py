@@ -1,14 +1,12 @@
 from numbers import Real
 from math import exp, erf, pi, sqrt
 from copy import deepcopy
-import warnings
 
 import os
 import h5py
 import pickle
 import numpy as np
 from scipy.signal import find_peaks
-import matplotlib.pyplot as plt
 
 import openmc.checkvalue as cv
 from ..exceptions import DataError
@@ -364,6 +362,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         for i, mt in enumerate(mts):
             if not test_xs_ref[i].any():
                 continue
+            import matplotlib.pyplot as plt
             fig, ax1 = plt.subplots()
             lns1 = ax1.loglog(test_energy, test_xs_ref[i], 'g', label="ACE xs")
             lns2 = ax1.loglog(test_energy, best_test_xs[i], 'b', label="VF xs")
@@ -748,12 +747,12 @@ class WindowedMultipole(EqualityMixin):
     Parameters
     ----------
     name : str
-        Name of the nuclide using the GND naming convention
+        Name of the nuclide using the GNDS naming convention
 
     Attributes
     ----------
     name : str
-        Name of the nuclide using the GND naming convention
+        Name of the nuclide using the GNDS naming convention
     spacing : float
         The width of each window in sqrt(E)-space.  For example, the frst window
         will end at (sqrt(E_min) + spacing)**2 and the second window at
@@ -1154,8 +1153,8 @@ class WindowedMultipole(EqualityMixin):
         Returns
         -------
         3-tuple of Real
-            Total, absorption, and fission microscopic cross sections at the
-            given energy and temperature.
+            Scattering, absorption, and fission microscopic cross sections
+            at the given energy and temperature.
 
         """
 
@@ -1248,8 +1247,8 @@ class WindowedMultipole(EqualityMixin):
         Returns
         -------
         3-tuple of Real or 3-tuple of numpy.ndarray
-            Total, absorption, and fission microscopic cross sections at the
-            given energy and temperature.
+            Scattering, absorption, and fission microscopic cross sections
+            at the given energy and temperature.
 
         """
 

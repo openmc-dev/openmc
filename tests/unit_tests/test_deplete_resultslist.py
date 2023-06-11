@@ -22,7 +22,7 @@ def test_get_atoms(res):
 
     t_ref = np.array([0.0, 1296000.0, 2592000.0, 3888000.0])
     n_ref = np.array(
-        [6.67473282e+08, 3.72442707e+14, 3.61129692e+14, 4.01920099e+14])
+        [6.67473282e+08, 3.88942731e+14, 3.73091215e+14, 3.26987387e+14])
 
     np.testing.assert_allclose(t, t_ref)
     np.testing.assert_allclose(n, n_ref)
@@ -48,8 +48,8 @@ def test_get_reaction_rate(res):
     t, r = res.get_reaction_rate("1", "Xe135", "(n,gamma)")
 
     t_ref = [0.0, 1296000.0, 2592000.0, 3888000.0]
-    n_ref = [6.67473282e+08, 3.72442707e+14, 3.61129692e+14, 4.01920099e+14]
-    xs_ref = [5.10301159e-05, 3.19379638e-05, 4.50543806e-05, 4.71004301e-05]
+    n_ref = [6.67473282e+08, 3.88942731e+14, 3.73091215e+14, 3.26987387e+14]
+    xs_ref = [2.53336104e-05, 4.21747011e-05, 3.48616127e-05, 3.61775563e-05]
 
     np.testing.assert_allclose(t, t_ref)
     np.testing.assert_allclose(r, np.array(n_ref) * xs_ref)
@@ -61,8 +61,8 @@ def test_get_keff(res):
     t_min, k = res.get_keff(time_units='min')
 
     t_ref = [0.0, 1296000.0, 2592000.0, 3888000.0]
-    k_ref = [1.21409662, 1.16518654, 1.25357797, 1.22611968]
-    u_ref = [0.0278795195, 0.0233141097, 0.0167899218, 0.0246734716]
+    k_ref = [1.1596402556, 1.1914183335, 1.2292570871, 1.1797030302]
+    u_ref = [0.0270680649, 0.0219163444, 0.024268508 , 0.0221401194]
 
     np.testing.assert_allclose(t, t_ref)
     np.testing.assert_allclose(t_min * 60, t_ref)
@@ -74,7 +74,7 @@ def test_get_keff(res):
 def test_get_steps(unit):
     # Make a Results full of near-empty Result instances
     # Just fill out a time schedule
-    results = openmc.deplete.Results()
+    results = openmc.deplete.Results(filename=None)
     # Time in units of unit
     times = np.linspace(0, 100, num=5)
     if unit == "a":

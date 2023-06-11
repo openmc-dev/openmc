@@ -32,6 +32,39 @@ using UPtrDist = unique_ptr<Distribution>;
 UPtrDist distribution_from_xml(pugi::xml_node node);
 
 //==============================================================================
+//! A discrete distribution index (probability mass function)
+//==============================================================================
+
+class DiscreteIndex {
+public:
+  DiscreteIndex() {};
+  DiscreteIndex(pugi::xml_node node);
+  DiscreteIndex(const double* p, int n);
+
+  void assign(const double* p, int n);
+
+  //! Sample a value from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled value
+  size_t sample(uint64_t* seed) const;
+
+  // Properties
+  const vector<double>& prob() const { return prob_; }
+  const vector<size_t>& alias() const { return alias_; }
+
+private:
+  vector<double> prob_; //!< Probability of accepting the uniformly sampled bin,
+                        //!< mapped to alias method table
+  vector<size_t> alias_; //!< Alias table
+
+  //! Normalize distribution so that probabilities sum to unity
+  void normalize();
+
+  //! Initialize alias tables for distribution
+  void init_alias();
+};
+
+//==============================================================================
 //! A discrete distribution (probability mass function)
 //==============================================================================
 
@@ -43,18 +76,17 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
   // Properties
   const vector<double>& x() const { return x_; }
-  const vector<double>& p() const { return p_; }
+  const vector<double>& prob() const { return di_.prob(); }
+  const vector<size_t>& alias() const { return di_.alias(); }
 
 private:
   vector<double> x_; //!< Possible outcomes
-  vector<double> p_; //!< Probability of each outcome
-
-  //! Normalize distribution so that probabilities sum to unity
-  void normalize();
+  DiscreteIndex di_; //!< discrete probability distribution of
+                     //!< outcome indices
 };
 
 //==============================================================================
@@ -69,7 +101,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
   double a() const { return a_; }
   double b() const { return b_; }
@@ -93,7 +125,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
   double a() const { return std::pow(offset_, ninv_); }
   double b() const { return std::pow(offset_ + span_, ninv_); }
@@ -118,7 +150,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
   double theta() const { return theta_; }
 
@@ -138,7 +170,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
   double a() const { return a_; }
   double b() const { return b_; }
@@ -162,7 +194,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
   double mean_value() const { return mean_value_; }
   double std_dev() const { return std_dev_; }
@@ -185,7 +217,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
   // x property
   vector<double>& x() { return x_; }
@@ -219,7 +251,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
   const vector<double>& x() const { return x_; }
 
@@ -238,7 +270,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
 private:
   // Storrage for probability + distribution

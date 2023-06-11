@@ -1,7 +1,7 @@
 from collections import OrderedDict
 from collections.abc import Iterable, Mapping
 from numbers import Real, Integral
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 import warnings
 
 import numpy as np
@@ -333,7 +333,7 @@ class VolumeCalculation:
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing volume calculation data
 
         """
@@ -362,7 +362,7 @@ class VolumeCalculation:
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns

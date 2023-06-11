@@ -178,6 +178,27 @@ been selected. There are three methods available:
             section data is loaded for a single temperature and is used in the
             unresolved resonance and fast energy ranges.
 
+------------------
+NCrystal materials
+------------------
+
+As an alternative of the standard thermal scattering treatment using
+:math:`S(\alpha,\beta)` tables, OpenMC allows to create materials using
+NCrystal_. In addition to the regular thermal elastic, and thermal inelastic
+processes, NCrystal allows the generation of models for materials that cannot
+currently included in ACE files such as oriented single crystals (see the
+`NCrystal paper`_), and further extend the physics `using plugins`_. Thermal
+scattering kernels are generated on the fly from dynamic and structural data, or
+loaded from :math:`S(\alpha,\beta)` tables converted from ENDF6 evaluations.
+These kernels are sampled in a direct way using a fast `rejection algorithm`_
+that does not require previous processing. A `large library`_ of materials is
+already included in the NCrystal distribution, and new materials can be easily
+defined from scratch in the `NCMAT format`_ or `combining existing files`_.
+
+The compositions of the materials defined in NCrystal are passed on to OpenMC
+all other reactions except for thermal neutron scattering are handled by
+continuous energy ACE libraries.
+
 ----------------
 Multi-Group Data
 ----------------
@@ -279,3 +300,10 @@ or even isotropic scattering.
 .. _ENDF/B data: https://www.nndc.bnl.gov/endf-b8.0/
 .. _Leppanen: https://doi.org/10.1016/j.anucene.2009.03.019
 .. _algorithms: http://ab-initio.mit.edu/wiki/index.php/Faddeeva_Package
+.. _NCrystal: https://github.com/mctools/ncrystal
+.. _NCrystal paper: https://doi.org/10.1016/j.cpc.2019.07.015
+.. _using plugins: https://doi.org/10.1016/j.cpc.2021.108082
+.. _rejection algorithm: https://doi.org/10.1016/j.jcp.2018.11.043
+.. _large library: https://github.com/mctools/ncrystal/wiki/Data-library
+.. _NCMAT format: https://github.com/mctools/ncrystal/wiki/NCMAT-format
+.. _combining existing files: https://github.com/mctools/ncrystal/wiki/Announcement-Release3.0.0#2-multiphase-materials

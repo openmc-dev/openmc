@@ -24,7 +24,6 @@ Simulation Settings
    openmc.Source
    openmc.SourceParticle
    openmc.VolumeCalculation
-   openmc.WeightWindows
    openmc.Settings
 
 .. autosummary::
@@ -87,6 +86,7 @@ Building geometry
    openmc.Intersection
    openmc.Union
    openmc.Complement
+   openmc.BoundingBox
    openmc.Cell
    openmc.Universe
    openmc.DAGMCUniverse
@@ -191,6 +191,13 @@ Post-processing
    openmc.Track
    openmc.Tracks
 
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myfunction.rst
+
+   openmc.voxel_to_vtk
+
 The following classes and functions are used for functional expansion reconstruction.
 
 .. autosummary::
@@ -221,6 +228,19 @@ Various classes may be created when performing tally slicing and/or arithmetic:
    openmc.arithmetic.AggregateScore
    openmc.arithmetic.AggregateNuclide
    openmc.arithmetic.AggregateFilter
+
+Variance Reduction
+------------------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass
+
+   openmc.WeightWindows
+   openmc.WeightWindowGenerator
+   openmc.hdf5_to_wws
+
 
 Coarse Mesh Finite Difference Acceleration
 ------------------------------------------

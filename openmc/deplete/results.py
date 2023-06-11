@@ -54,11 +54,11 @@ class Results(list):
 
     Parameters
     ----------
-    filename : str
+    filename : str, optional
         Path to depletion result file
 
     """
-    def __init__(self, filename=None):
+    def __init__(self, filename='depletion_results.h5'):
         data = []
         if filename is not None:
             with h5py.File(str(filename), "r") as fh:
@@ -375,7 +375,8 @@ class Results(list):
     def export_to_materials(
         self,
         burnup_index: int,
-        nuc_with_data: Optional[Iterable[str]] = None
+        nuc_with_data: Optional[Iterable[str]] = None,
+        path: PathLike = 'materials.xml'
     ) -> Materials:
         """Return openmc.Materials object based on results at a given step
 
@@ -394,6 +395,10 @@ class Results(list):
             If not provided, nuclides from the cross_sections element of
             materials.xml will be used. If that element is not present,
             nuclides from openmc.config['cross_sections'] will be used.
+        path : PathLike
+            Path to materials XML file to read. Defaults to 'materials.xml'.
+
+            .. versionadded:: 0.13.3
 
         Returns
         -------
@@ -407,7 +412,7 @@ class Results(list):
         # updated. If for some reason you have modified OpenMC to produce
         # new materials as depletion takes place, this method will not
         # work as expected and leave out that material.
-        mat_file = Materials.from_xml("materials.xml")
+        mat_file = Materials.from_xml(path)
 
         # Only nuclides with valid transport data will be written to
         # the new materials XML file. The precedence of nuclides to select

@@ -15,18 +15,20 @@ public:
   //==========================================================================
   // Constructors
   Ray();
+  Ray(uint64_t index_source, uint64_t nrays, int iter);
 
   //==========================================================================
   // Methods
   void event_advance_ray(double distance_inactive, double distance_active);
   void attenuate_flux(double distance, bool is_active);
   void initialize_ray(uint64_t index_source, uint64_t nrays, int iter);
-  uint64_t transport_history_based_single_ray(openmc::Particle& p, double distance_inactive, double distance_active)
+  uint64_t transport_history_based_single_ray(double distance_inactive, double distance_active)
 
   //==========================================================================
   // Data
   
   std::vector<float> angular_flux_;
+  std::vector<float> delta_psi_;
   double distance_travelled_ {0};
   bool is_active_ {false};
 

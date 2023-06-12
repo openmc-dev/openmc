@@ -20,6 +20,8 @@ public:
   // Methods
   void event_advance_ray(double distance_inactive, double distance_active);
   void attenuate_flux(double distance, bool is_active);
+  void initialize_ray(openmc::Particle & p, uint64_t index_source, uint64_t nrays, int iter);
+  uint64_t transport_history_based_single_ray(openmc::Particle& p, double distance_inactive, double distance_active)
 
   //==========================================================================
   // Data

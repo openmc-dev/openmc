@@ -124,6 +124,10 @@ int verbosity {7};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
 
+// Random Ray Stuff
+double ray_distance_active {100.0};
+double ray_distance_inactive {10.0};
+
 } // namespace settings
 
 //==============================================================================

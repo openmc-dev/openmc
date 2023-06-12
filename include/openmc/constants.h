@@ -338,7 +338,8 @@ enum class RunMode {
   EIGENVALUE,
   PLOTTING,
   PARTICLE,
-  VOLUME
+  VOLUME,
+  RANDOM_RAY
 };
 
 //==============================================================================

@@ -26,6 +26,8 @@ Timer time_event_advance_particle;
 Timer time_event_surface_crossing;
 Timer time_event_collision;
 Timer time_event_death;
+Timer time_update_src;
+Timer time_tally_fission_rates;
 
 } // namespace simulation
 

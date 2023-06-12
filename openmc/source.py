@@ -131,8 +131,6 @@ class IndependentSource(SourceBase):
         Energy distribution of source sites
     time : openmc.stats.Univariate
         time distribution of source sites
-    library : str
-        Path to a custom source library
     strength : float
         Strength of the source
     particle : {'neutron', 'photon'}
@@ -151,8 +149,6 @@ class IndependentSource(SourceBase):
         Energy distribution of source sites
     time : openmc.stats.Univariate or None
         time distribution of source sites
-    library : str or None
-        Path to a custom source library
     strength : float
         Strength of the source
     type : str
@@ -175,7 +171,6 @@ class IndependentSource(SourceBase):
         angle: Optional[openmc.stats.UnitSphere] = None,
         energy: Optional[openmc.stats.Univariate] = None,
         time: Optional[openmc.stats.Univariate] = None,
-        library: Optional[str] = None,
         strength: float = 1.0,
         particle: str = 'neutron',
         domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None
@@ -187,7 +182,6 @@ class IndependentSource(SourceBase):
         self._energy = None
         self._time = None
         self._file = None
-        self._parameters = None
 
         if space is not None:
             self.space = space
@@ -197,8 +191,6 @@ class IndependentSource(SourceBase):
             self.energy = energy
         if time is not None:
             self.time = time
-        if library is not None:
-            self.library = library
         self.strength = strength
         self.particle = particle
 

@@ -86,6 +86,18 @@ class UnstructuredMeshTest(PyAPITestHarness):
             data.shape = (data.size, 1)
         return np.sum(data, axis=1)
 
+    def update_results(self):
+        """Update results_true.dat and inputs_true.dat"""
+        try:
+            self._build_inputs()
+            inputs = self._get_inputs()
+            self._write_inputs(inputs)
+            self._overwrite_inputs()
+            self._run_openmc()
+            self._test_output_created()
+        finally:
+            self._cleanup()
+
     def _cleanup(self):
         super()._cleanup()
         output = glob.glob('tally*.vtk')

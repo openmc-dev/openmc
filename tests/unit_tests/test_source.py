@@ -140,15 +140,6 @@ def test_rejection(run_in_tmpdir):
 def test_exceptions():
 
     with pytest.raises(AttributeError, match=r'Please use the FileSource class'):
-        s = openmc.IndependentSource(filename='my_file')
-
-    with pytest.raises(AttributeError, match=r'Please use the CompiledSource class'):
-        s = openmc.IndependentSource(library='my_library')
-
-    with pytest.raises(AttributeError, match=r'Please use the CompiledSource class'):
-        s = openmc.IndependentSource(parameters='my_params')
-
-    with pytest.raises(AttributeError, match=r'Please use the FileSource class'):
         s = openmc.IndependentSource()
         s.file = 'my_file'
 
@@ -160,7 +151,7 @@ def test_exceptions():
         s = openmc.IndependentSource()
         s.parameters = 'my_params'
 
-    with pytest.warns(DeprecationWarning, match=r'in favor of \'IndependentSource\''):
+    with pytest.warns(FutureWarning, match=r'in favor of \'IndependentSource\''):
         s = openmc.Source()
 
     with pytest.raises(AttributeError, match=r'has no attribute \'frisbee\''):

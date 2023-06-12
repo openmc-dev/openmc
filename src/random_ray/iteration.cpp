@@ -134,10 +134,12 @@ namespace openmc {
     #pragma omp parallel for
     for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
       int material = random_ray::materials[sr]; 
+
       for (int energy_group_out = 0; energy_group_out < negroups; energy_group_out++) {
         float Sigma_t = data::mg.macro_xs_[material].get_xs(MgxsType::TOTAL, energy_group_out, NULL, NULL, NULL);
         float scatter_source = 0.0f;
         float fission_source = 0.0f;
+
         for (int energy_group_in = 0; energy_group_in < negroups; energy_group_in++) {
           float scalar_flux = random_ray::scalar_flux_old[sr * negroups + energy_group_in];
           float Sigma_s = data::mg.macro_xs_[material].get_xs(MgxsType::NU_SCATTER, energy_group_in, &energy_group_out, NULL, NULL);
@@ -146,10 +148,12 @@ namespace openmc {
           scatter_source += Sigma_s    * scalar_flux;
           fission_source += nu_Sigma_f * scalar_flux * Chi;
         }
+
         fission_source *= inverse_k_eff;
         float new_isotropic_source = (scatter_source + fission_source)  / Sigma_t;
         random_ray::source[sr * negroups + energy_group_out] = new_isotropic_source;
       }
+
     }
 
     simulation::time_update_src.stop();
@@ -177,7 +181,42 @@ namespace openmc {
     }
   }
 
-  void add_source_to_scalar_flux(double total_active_distance_per_iteration, int iter);
+  int64_t add_source_to_scalar_flux(void)
+  {
+    int negroups = data::mg.num_energy_groups_;
+
+    int64_t n_hits = 0;
+
+    #pragma omp parallel for reduction(+:n_hits)
+    for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
+      double volume = random_ray::volume[sr];
+      int was_cell_hit = random_ray::was_hit[sr];
+      int material = random_ray::materials[sr]; 
+      for (int e = 0; e < negroups; e++) {
+        int64_t idx = (sr * negroups) + e;
+
+        // There are three scenarios we want to consider
+        if (was_cell_hit) {
+          // If it was hit, then finish computing the scalar flux estimate for the iteration
+          float Sigma_t = data::mg.macro_xs_[material].get_xs(MgxsType::TOTAL, e, NULL, NULL, NULL);
+          random_ray::scalar_flux_new[idx] /= (Sigma_t * volume);
+          random_ray::scalar_flux_new[idx] += random_ray::source[idx];
+          n_hits++;
+        } else if (volume == 0.0) {
+          // If it was not hit this iteration, and the simulation averaged volume is still 0,
+          // then it has never been hit. In this case, just set it to 0
+          random_ray::scalar_flux_new[idx] = 0.f;
+        } else {
+          // If it was not hit this iteration, but the simulation averaged volume is nonzero,
+          // then we can reuse the previous iteration's estimate of the scalar flux. This
+          // induces a small amount of error, but may be beneficial for maintaining stability
+          // when extremely few rays are used per iteration
+          random_ray::scalar_flux_new[idx] = random_ray::scalar_flux_old[idx];
+        }
+      }
+    }
+    return n_hits;
+  }
 
   double compute_k_eff(double k_eff_old);
 

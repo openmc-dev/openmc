@@ -235,7 +235,7 @@ class IndependentSource(SourceBase):
 
     def __getattr__(self, name):
         cls_names = {'file': 'FileSource', 'library': 'CompiledSource',
-                    'parameters': 'CompiledSource'}
+                     'parameters': 'CompiledSource'}
         if name in cls_names:
             raise AttributeError(
                 f'The "{name}" attribute has been deprecated on the '
@@ -406,15 +406,13 @@ class IndependentSource(SourceBase):
         return source
 
 
-class Source(IndependentSource):
+def Source(*args, **kwargs):
     """
-    A class for backward compatibility of sources. Will be remeved in the
+    A function for backward compatibility of sources. Will be removed in the
     future. Please update to IndependentSource.
     """
-
-    def __init__(self, *args, **kwargs):
-        warnings.warn("This class is deprecated in favor of 'IndependentSource'", DeprecationWarning)
-        super().__init__(*args, **kwargs)
+    warnings.warn("This class is deprecated in favor of 'IndependentSource'", FutureWarning)
+    return openmc.IndependentSource(*args, **kwargs)
 
 
 class CompiledSource(SourceBase):

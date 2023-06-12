@@ -31,7 +31,7 @@ public:
   std::vector<float> delta_psi_;
   double distance_travelled_ {0};
   bool is_active_ {false};
-} // class Particle
+}; // class Ray
 
 //==============================================================================
 // Non-member functions

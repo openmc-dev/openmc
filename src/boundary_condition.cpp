@@ -6,6 +6,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/error.h"
+#include "openmc/random_ray/ray.h"
 #include "openmc/surface.h"
 
 namespace openmc {
@@ -16,20 +17,17 @@ namespace openmc {
 
 void VacuumBC::handle_particle(Particle& p, const Surface& surf) const
 {
-  if( settings::run_mode == RunMode::RANDOM_RAY )
-  {
-    Direction u = surf.reflect(p.r(), p.u(), &p);
-    u /= u.norm();
+  p.cross_vacuum_bc(surf);
+}
 
-    p.cross_reflective_bc(surf, u);
+void VacuumBC::handle_particle(Ray& p, const Surface& surf) const
+{
+  Direction u = surf.reflect(p.r(), p.u(), &p);
+  u /= u.norm();
 
-    if( settings::run_mode == RunMode::RANDOM_RAY)
-      std::fill(p.angular_flux_.begin(), p.angular_flux_.end(), 0.0);
-  }
-  else
-  {
-    p.cross_vacuum_bc(surf);
-  }
+  p.cross_reflective_bc(surf, u);
+
+  std::fill(p.angular_flux_.begin(), p.angular_flux_.end(), 0.0);
 }
 
 //==============================================================================

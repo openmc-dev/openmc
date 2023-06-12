@@ -260,7 +260,56 @@ double compute_k_eff(double k_eff_old)
 
 void tally_fission_rates(void)
 {
-  return;
+  /*
+  int negroups = data::mg.num_energy_groups_;
+
+  #pragma omp parallel
+  {
+    for( int i = 0; i < model::cells.size(); i++ )
+    {
+      Cell & cell = *model::cells[i];
+      if(cell.type_ != Fill::MATERIAL)
+        continue;
+      int material = cell.material_[0];
+      #pragma omp for schedule(static) nowait
+      for( int c = 0; c < cell.n_instances_; c++ )
+      {
+        Position & p = cell.positions[c];
+        for( int t = 0; t < model::tallies.size(); t++ )
+        {
+          uint64_t tally_filter_idx = model::tallies[t]->filters(0);
+
+          const auto& filt_base = model::tally_filters[tally_filter_idx].get();
+          auto* filt = dynamic_cast<MeshFilter*>(filt_base);
+          int mesh_idx = filt->mesh();
+
+          // If the distribcell is not inside this mesh, then don't do anything
+          uint64_t tally_array_id = model::meshes[mesh_idx]->get_bin(p);
+          if( tally_array_id == -1 )
+            continue;
+
+          double volume = cell.volume[c];
+
+          for( int e = 0; e < negroups; e++ )
+          {
+            int m_idx = material * negroups + e;
+            float Sigma_f = data::Sigma_f_flat[m_idx];
+            double phi = cell.scalar_flux_new[c * negroups + e];
+
+            //double score = Sigma_f * phi * volume;
+            double score = phi * volume;
+
+            auto& tally {*model::tallies[0]};
+
+            #pragma omp atomic
+            tally.results_(tally_array_id, 0, TallyResult::VALUE) += score;
+          }
+        }
+      }
+    }
+  }
+  */
+  accumulate_tallies();
 }
 
 } // namespace openmc

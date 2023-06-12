@@ -428,7 +428,9 @@ list(APPEND libopenmc_SOURCES
   src/weight_windows.cpp
   src/wmp.cpp
   src/xml_interface.cpp
-  src/xsdata.cpp)
+  src/xsdata.cpp
+  src/zplane_partitioner.cpp
+  )
 
 # Add bundled external dependencies
 list(APPEND libopenmc_SOURCES

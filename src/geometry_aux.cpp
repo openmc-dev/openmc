@@ -22,6 +22,8 @@
 #include "openmc/tallies/filter_cell_instance.h"
 #include "openmc/tallies/filter_distribcell.h"
 
+#include "openmc/partitioners.h"
+
 namespace openmc {
 
 namespace model {
@@ -171,7 +173,7 @@ void partition_universes()
         if (dynamic_cast<const SurfaceZPlane*>(model::surfaces[i_surf].get())) {
           ++n_zplanes;
           if (n_zplanes > 5) {
-            univ->partitioner_ = make_unique<UniversePartitioner>(*univ);
+            univ->partitioner_ = make_unique<DefaultPartitioner>(*univ);
             break;
           }
         }

@@ -163,3 +163,6 @@ def test_exceptions():
     with pytest.warns(DeprecationWarning, match=r'in favor of \'IndependentSource\''):
         s = openmc.Source()
 
+    with pytest.raises(AttributeError, match=r'has no attribute \'frisbee\''):
+        s = openmc.IndependentSource()
+        s.frisbee

@@ -131,14 +131,8 @@ class IndependentSource(SourceBase):
         Energy distribution of source sites
     time : openmc.stats.Univariate
         time distribution of source sites
-    filename : str
-        Source file from which sites should be sampled
     library : str
         Path to a custom source library
-    parameters : str
-        Parameters to be provided to the custom source library
-
-        .. versionadded:: 0.12
     strength : float
         Strength of the source
     particle : {'neutron', 'photon'}
@@ -157,12 +151,8 @@ class IndependentSource(SourceBase):
         Energy distribution of source sites
     time : openmc.stats.Univariate or None
         time distribution of source sites
-    file : str or None
-        Source file from which sites should be sampled
     library : str or None
         Path to a custom source library
-    parameters : str
-        Parameters to be provided to the custom source library
     strength : float
         Strength of the source
     type : str
@@ -185,9 +175,7 @@ class IndependentSource(SourceBase):
         angle: Optional[openmc.stats.UnitSphere] = None,
         energy: Optional[openmc.stats.Univariate] = None,
         time: Optional[openmc.stats.Univariate] = None,
-        filename: Optional[str] = None,
         library: Optional[str] = None,
-        parameters: Optional[str] = None,
         strength: float = 1.0,
         particle: str = 'neutron',
         domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None
@@ -209,12 +197,8 @@ class IndependentSource(SourceBase):
             self.energy = energy
         if time is not None:
             self.time = time
-        if filename is not None:
-            self.file = filename
         if library is not None:
             self.library = library
-        if parameters is not None:
-            self.parameters = parameters
         self.strength = strength
         self.particle = particle
 
@@ -241,7 +225,7 @@ class IndependentSource(SourceBase):
                 f'The "{name}" attribute has been deprecated on the '
                 f'IndependentSource class. Please use the {cls_names[name]} class.')
         else:
-            super().__getattr__(name, value)
+            super().__getattribute__(name)
 
     def __setattr__(self, name, value):
         if name in ('file', 'library', 'parameters'):

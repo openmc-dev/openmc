@@ -705,7 +705,7 @@ PlottableInterface::PlottableInterface(pugi::xml_node plot_node)
 }
 
 Plot::Plot(pugi::xml_node plot_node, PlotType type)
-  : PlottableInterface(plot_node), index_meshlines_mesh_ {-1}, type_(type)
+  : PlottableInterface(plot_node), type_(type), index_meshlines_mesh_ {-1}
 {
   set_output_path(plot_node);
   set_basis(plot_node);

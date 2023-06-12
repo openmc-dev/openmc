@@ -13,7 +13,8 @@ import lxml.etree as ET
 import openmc.checkvalue as cv
 from openmc.stats.multivariate import MeshSpatial
 
-from . import RegularMesh, SourceBase, IndependentSource, VolumeCalculation, WeightWindows
+from . import (RegularMesh, SourceBase, IndependentSource,
+               VolumeCalculation, WeightWindows, WeightWindowGenerator)
 from ._xml import clean_indentation, get_text, reorder_attributes
 from openmc.checkvalue import PathLike
 from .mesh import _read_meshes
@@ -223,10 +224,15 @@ class Settings:
         described in :ref:`verbosity`.
     volume_calculations : VolumeCalculation or iterable of VolumeCalculation
         Stochastic volume calculation specifications
-    weight_windows : WeightWindows iterable of WeightWindows
+    weight_windows : WeightWindows or iterable of WeightWindows
         Weight windows to use for variance reduction
 
         .. versionadded:: 0.13
+    weight_window_generators : WeightWindowGenerator or iterable of WeightWindowGenerator
+        Weight windows generation parameters to apply during simulation
+
+        .. versionadded:: 0.13.4
+
     create_delayed_neutrons : bool
         Whether delayed neutrons are created in fission.
 
@@ -235,6 +241,11 @@ class Settings:
         Whether weight windows are enabled
 
         .. versionadded:: 0.13
+
+    weight_windows_file: Pathlike
+        Path to a weight window file to load during simulation initialization
+
+        .. versionadded::0.13.4
     write_initial_source : bool
         Indicate whether to write the initial source distribution to file
     """
@@ -311,7 +322,9 @@ class Settings:
         self._max_particles_in_flight = None
         self._write_initial_source = None
         self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows')
+        self._weight_window_generators = cv.CheckedList(WeightWindowGenerator, 'weight window generators')
         self._weight_windows_on = None
+        self._weight_windows_file = None
         self._max_splits = None
         self._max_tracks = None
 
@@ -501,6 +514,25 @@ class Settings:
     @property
     def weight_windows_on(self) -> bool:
         return self._weight_windows_on
+
+    @property
+    def weight_windows_file(self) -> Optional[PathLike]:
+        return self._weight_windows_file
+
+    @weight_windows_file.setter
+    def weight_windows_file(self, value: PathLike):
+        cv.check_type('weight windows file', value, (str, Path))
+        self._weight_windows_file = value
+
+    @property
+    def weight_window_generators(self) -> typing.List[WeightWindowGenerator]:
+        return self._weight_window_generators
+
+    @weight_window_generators.setter
+    def weight_window_generators(self, wwgs):
+        if not isinstance(wwgs, MutableSequence):
+            wwgs = [wwgs]
+        self._weight_window_generators = cv.CheckedList(WeightWindowGenerator, 'weight window generators', wwgs)
 
     @property
     def max_splits(self) -> int:
@@ -922,7 +954,7 @@ class Settings:
         self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows', value)
 
     @weight_windows_on.setter
-    def weight_windows_on(self, value):
+    def weight_windows_on(self, value: bool):
         cv.check_type('weight windows on', value, bool)
         self._weight_windows_on = value
 
@@ -1283,6 +1315,28 @@ class Settings:
             elem = ET.SubElement(root, "weight_windows_on")
             elem.text = str(self._weight_windows_on).lower()
 
+    def _create_weight_window_generators_subelement(self, root, mesh_memo=None):
+        if not self.weight_window_generators:
+            return
+        elem = ET.SubElement(root, 'weight_window_generators')
+        for wwg in self.weight_window_generators:
+            elem.append(wwg.to_xml_element())
+
+        # ensure that mesh elements are created if needed
+        for wwg in self.weight_window_generators:
+            if mesh_memo is not None and wwg.mesh.id in mesh_memo:
+                continue
+
+            root.append(wwg.mesh.to_xml_element())
+            if mesh_memo is not None:
+                mesh_memo.add(wwg.mesh)
+
+    def _create_weight_windows_file_element(self, root):
+        if self.weight_windows_file is not None:
+            element = ET.Element("weight_windows_file")
+            element.text = self.weight_windows_file
+            root.append(element)
+
     def _create_max_splits_subelement(self, root):
         if self._max_splits is not None:
             elem = ET.SubElement(root, "max_splits")
@@ -1595,6 +1649,11 @@ class Settings:
         if text is not None:
             self.write_initial_source = text in ('true', '1')
 
+    def _weight_window_generators_from_xml_element(self, root, meshes=None):
+        for elem in root.iter('weight_windows_generator'):
+            wwg = WeightWindowGenerator.from_xml_element(elem, meshes)
+            self.weight_window_generators.append(wwg)
+
     def _weight_windows_from_xml_element(self, root, meshes=None):
         for elem in root.findall('weight_windows'):
             ww = WeightWindows.from_xml_element(elem, root)
@@ -1671,6 +1730,8 @@ class Settings:
         self._create_log_grid_bins_subelement(element)
         self._create_write_initial_source_subelement(element)
         self._create_weight_windows_subelement(element, mesh_memo)
+        self._create_weight_window_generators_subelement(element, mesh_memo)
+        self._create_weight_windows_file_element(element)
         self._create_max_splits_subelement(element)
         self._create_max_tracks_subelement(element)
 
@@ -1764,6 +1825,7 @@ class Settings:
         settings._log_grid_bins_from_xml_element(elem)
         settings._write_initial_source_from_xml_element(elem)
         settings._weight_windows_from_xml_element(elem, meshes)
+        settings._weight_window_generators_from_xml_element(elem, meshes)
         settings._max_splits_from_xml_element(elem)
         settings._max_tracks_from_xml_element(elem)
 

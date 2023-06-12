@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from enum import Enum
+from enum import IntEnum
 from numbers import Real
 import warnings
 import typing  # imported separately as py3.8 requires typing.Iterable
@@ -586,11 +586,52 @@ class FileSource(SourceBase):
         return source
 
 
-class ParticleType(Enum):
+class ParticleType(IntEnum):
+    """
+    IntEnum class representing a particle type. Type
+    values mirror those found in the C++ class.
+    """
     NEUTRON = 0
     PHOTON = 1
     ELECTRON = 2
     POSITRON = 3
+
+    @classmethod
+    def from_string(cls, value: str):
+        """
+        Constructs a ParticleType instance from a string.
+
+        Parameters
+        ----------
+        value : str
+            The string representation of the particle type.
+
+        Returns
+        -------
+        The corresponding ParticleType instance.
+        """
+        try:
+            return cls[value.upper()]
+        except KeyError:
+            raise ValueError(f"Invalid string for creation of {cls.__name__}: {value}")
+
+    def __repr__(self) -> str:
+        """
+        Returns a string representation of the ParticleType instance.
+
+        Returns:
+            str: The lowercase name of the ParticleType instance.
+        """
+        return self.name.lower()
+
+    # needed for < Python 3.11
+    def __str__(self) -> str:
+        return self.__repr__()
+
+    # needed for <= 3.7, IntEnum will use the mixed-in type's `__format__` method otherwise
+    # this forces it to default to the standard object format, relying on __str__ under the hood
+    def __format__(self, spec):
+        return object.__format__(self, spec)
 
 
 class SourceParticle:

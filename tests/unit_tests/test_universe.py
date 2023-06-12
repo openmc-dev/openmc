@@ -81,7 +81,7 @@ def test_plot(run_in_tmpdir, sphere_model):
             colors=colors,
             color_by="cell",
             legend=False,
-            pixels=(10, 10),
+            pixels=100,
             basis=basis,
             outline=False
         )

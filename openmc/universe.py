@@ -1,3 +1,4 @@
+import math
 import typing
 from abc import ABC, abstractmethod
 from collections import OrderedDict
@@ -300,7 +301,7 @@ class Universe(UniverseBase):
     _default_legend_kwargs = {'bbox_to_anchor': (
         1.05, 1), 'loc': 2, 'borderaxespad': 0.0}
 
-    def plot(self, origin=None, width=None, pixels=(200, 200),
+    def plot(self, origin=None, width=None, pixels=40000,
              basis='xy', color_by='cell', colors=None, seed=None,
              openmc_exec='openmc', axes=None, legend=False,
              legend_kwargs=_default_legend_kwargs, outline=False,
@@ -319,8 +320,12 @@ class Universe(UniverseBase):
             universe.bounding_box.width() will be used to attempt to
             ascertain the plot width.  Defaults to (10, 10) if the bounding_box
             contains inf values
-        pixels : Iterable of int
-            Number of pixels to use in each basis direction
+        pixels : Iterable of int or int
+            If iterable of ints provided then this directly sets the number of
+            pixels to use in each basis direction. If int provided then this
+            sets the total number of pixels in the plot and the number of
+            pixels in each basis direction is calculated from this total and
+            the image aspect ratio.
         basis : {'xy', 'xz', 'yz'}
             The basis directions for the plot
         color_by : {'cell', 'material'}
@@ -380,20 +385,28 @@ class Universe(UniverseBase):
             x, y = 0, 2
             xlabel, ylabel = 'x [cm]', 'z [cm]'
 
+        bb = self.bounding_box
         # checks to see if bounding box contains -inf or inf values
-        if True in np.isinf(self.bounding_box):
+        if np.isinf([bb[0][x], bb[1][x], bb[0][y], bb[1][y]]).any():
             if origin is None:
                 origin = (0, 0, 0)
             if width is None:
                 width = (10, 10)
         else:
             if origin is None:
-                origin = self.bounding_box.center
+                # if nan values in the bb.center they get replaced with 0.0
+                # this happens when the bounding_box contains inf values
+                origin = np.nan_to_num(bb.center)
             if width is None:
-                bb_width = self.bounding_box.width
+                bb_width = bb.width
                 x_width = bb_width['xyz'.index(basis[0])]
                 y_width = bb_width['xyz'.index(basis[1])]
                 width = (x_width, y_width)
+
+        if isinstance(pixels, int):
+            aspect_ratio = width[0] / width[1]
+            pixels_y = math.sqrt(pixels / aspect_ratio)
+            pixels = (int(pixels / pixels_y), int(pixels_y))
 
         x_min = origin[x] - 0.5*width[0]
         x_max = origin[x] + 0.5*width[0]
@@ -442,7 +455,7 @@ class Universe(UniverseBase):
                 axes.set_ylabel(ylabel)
                 params = fig.subplotpars
                 width = pixels[0]*px/(params.right - params.left)
-                height = pixels[0]*px/(params.top - params.bottom)
+                height = pixels[1]*px/(params.top - params.bottom)
                 fig.set_size_inches(width, height)
 
             if outline:

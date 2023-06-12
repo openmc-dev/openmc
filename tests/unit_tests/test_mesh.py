@@ -33,3 +33,14 @@ def test_raises_error_when_flat(val_left, val_right):
     with pytest.raises(ValueError):
         mesh.upper_right = [25, 25, val_right]
         mesh.lower_left = [-25, -25, val_left]
+
+
+def test_mesh_bounding_box():
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = [-2, -3 ,-5]
+    mesh.upper_right = [2, 3, 5]
+    bb = mesh.bounding_box
+    assert isinstance(bb, openmc.BoundingBox)
+    np.testing.assert_array_equal(bb.lower_left, np.array([-2, -3 ,-5]))
+    np.testing.assert_array_equal(bb.upper_right, np.array([2, 3, 5]))
+

@@ -422,6 +422,12 @@ class RegularMesh(StructuredMesh):
             x1, = self.upper_right
             return (np.linspace(x0, x1, nx + 1),)
 
+    @property
+    def bounding_box(self):
+        return openmc.BoundingBox(
+            np.array(self.lower_left), np.array(self.upper_right)
+        )
+
     @dimension.setter
     def dimension(self, dimension):
         cv.check_type('mesh dimension', dimension, Iterable, Integral)
@@ -1332,7 +1338,7 @@ class CylindricalMesh(StructuredMesh):
         pts_cartesian[:, 0] = r * np.cos(phi) + self.origin[0]
         pts_cartesian[:, 1] = r * np.sin(phi) + self.origin[1]
         pts_cartesian[:, 2] += self.origin[2]
-        
+
         return super().write_data_to_vtk(
             points=pts_cartesian,
             filename=filename,
@@ -1579,9 +1585,9 @@ class SphericalMesh(StructuredMesh):
 
         r, theta, phi = pts_spherical[:, 0], pts_spherical[:, 1], pts_spherical[:, 2]
 
-        pts_cartesian[:, 0] = r * np.sin(phi) * np.cos(theta) + self.origin[0]
-        pts_cartesian[:, 1] = r * np.sin(phi) * np.sin(theta) + self.origin[1]
-        pts_cartesian[:, 2] = r * np.cos(phi) + self.origin[2]
+        pts_cartesian[:, 0] = r * np.sin(theta) * np.cos(phi) + self.origin[0]
+        pts_cartesian[:, 1] = r * np.sin(theta) * np.sin(phi) + self.origin[1]
+        pts_cartesian[:, 2] = r * np.cos(theta) + self.origin[2]
 
         return super().write_data_to_vtk(
             points=pts_cartesian,

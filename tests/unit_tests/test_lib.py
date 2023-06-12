@@ -366,6 +366,19 @@ def test_tally_activate(lib_simulation_init):
     assert t.active
 
 
+def test_tally_multiply_density(lib_simulation_init):
+    # multiply_density is True by default
+    t = openmc.lib.tallies[1]
+    assert t.multiply_density
+
+    # Make sure setting multiply_density works
+    t.multiply_density = False
+    assert not t.multiply_density
+
+    # Reset to True
+    t.multiply_density = True
+
+
 def test_tally_writable(lib_simulation_init):
     t = openmc.lib.tallies[1]
     assert t.writable

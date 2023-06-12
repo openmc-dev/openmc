@@ -75,3 +75,9 @@ def test_bounding_box_input_checking():
     # checks that a numpy array with four entries is not accepted
     with pytest.raises(ValueError):
         openmc.BoundingBox(np.array([-10, -20, -4]), np.array([1, 2, 3, 4]))
+
+
+def test_bounding_box_extents():
+    assert test_bb_1.extent['xy'] == (-10., 1., -20., 2.)
+    assert test_bb_1.extent['xz'] == (-10., 1., -30., 3.)
+    assert test_bb_1.extent['yz'] == (-20., 2., -30., 3.)

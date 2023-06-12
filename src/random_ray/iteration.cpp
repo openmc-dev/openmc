@@ -63,21 +63,16 @@ namespace openmc {
     openmc::simulation::time_total.start();
 
     // Power Iteration Loop
-    for (int iter = 1; iter <= n_iters_total; iter++)
-    {
+    for (int iter = 1; iter <= n_iters_total; iter++) {
       // Increment current batch
       simulation::current_batch++;
 
       // Update neutron source
-      simulation::time_update_src.start();
       update_neutron_source(k_eff);
-      simulation::time_update_src.stop();
 
       // Reset scalar and volumes flux to zero
-      simulation::time_zero_flux.start();
       std::fill(random_ray::scalar_flux_new.begin(), random_ray::scalar_flux_new.end(), 0.0);
       std::fill(random_ray::volume.begin(), random_ray::volume.end(), 0.0);
-      simulation::time_zero_flux.stop();
 
       // Start timer for transport
       simulation::time_transport.start();
@@ -91,25 +86,19 @@ namespace openmc {
         total_geometric_intersections += r.transport_history_based_single_ray(distance_inactive, distance_active);
       }
 
-      // Start timer for transport
+      // Stop timer for transport
       simulation::time_transport.stop();
 
       // Normalize scalar flux and update volumes
-      simulation::time_normalize_flux.start();
       normalize_scalar_flux_and_volumes(total_active_distance_per_iteration, iter);
-      simulation::time_normalize_flux.stop();
 
       // Add source to scalar flux
-      simulation::time_add_source_to_flux.start();
       add_source_to_scalar_flux();
-      simulation::time_add_source_to_flux.stop();
 
       // Compute k-eff
-      simulation::time_compute_keff.start();
       k_eff = compute_k_eff(k_eff);
       simulation::k_generation.push_back(k_eff);
       calculate_average_keff();
-      simulation::time_compute_keff.stop();
 
       // Output status data
       if (mpi::master && settings::verbosity >= 7) {
@@ -133,43 +122,68 @@ namespace openmc {
         fatal_error("Instability detected");
       }
     }
+  }
 
-    void update_neutron_source(double k_eff)
-    {
-      double inverse_k_eff = 1.0 / k_eff;
-      int negroups = data::mg.num_energy_groups_;
+  void update_neutron_source(double k_eff)
+  {
+    simulation::time_update_src.start();
 
-      #pragma omp parallel for
-      for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
-        int material = random_ray::materials[sr]; 
-        for (int energy_group_out = 0; energy_group_out < negroups; energy_group_out++) {
-          float Sigma_t = data::mg.macro_xs_[material].get_xs(MgxsType::TOTAL, energy_group_out, NULL, NULL, NULL);
-          float scatter_source = 0.0f;
-          float fission_source = 0.0f;
-          for (int energy_group_in = 0; energy_group_in < negroups; energy_group_in++) {
-            float scalar_flux = random_ray::scalar_flux_old[sr * negroups + energy_group_in];
-            float Sigma_s = data::mg.macro_xs_[material].get_xs(MgxsType::NU_SCATTER, energy_group_in, &energy_group_out, NULL, NULL);
-            float nu_Sigma_f = data::mg.macro_xs_[material].get_xs(MgxsType::NU_FISSION, energy_group_in, NULL, NULL, NULL);
-            float Chi = data::mg.macro_xs_[material].get_xs(MgxsType::CHI_PROMPT, energy_group_in, &energy_group_out, NULL, NULL);
-            scatter_source += Sigma_s    * scalar_flux;
-            fission_source += nu_Sigma_f * scalar_flux * Chi;
-          }
-          fission_source *= inverse_k_eff;
-          float new_isotropic_source = (scatter_source + fission_source)  / Sigma_t;
-          random_ray::source[sr * negroups + energy_group_out] = new_isotropic_source;
+    double inverse_k_eff = 1.0 / k_eff;
+    int negroups = data::mg.num_energy_groups_;
+
+    #pragma omp parallel for
+    for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
+      int material = random_ray::materials[sr]; 
+      for (int energy_group_out = 0; energy_group_out < negroups; energy_group_out++) {
+        float Sigma_t = data::mg.macro_xs_[material].get_xs(MgxsType::TOTAL, energy_group_out, NULL, NULL, NULL);
+        float scatter_source = 0.0f;
+        float fission_source = 0.0f;
+        for (int energy_group_in = 0; energy_group_in < negroups; energy_group_in++) {
+          float scalar_flux = random_ray::scalar_flux_old[sr * negroups + energy_group_in];
+          float Sigma_s = data::mg.macro_xs_[material].get_xs(MgxsType::NU_SCATTER, energy_group_in, &energy_group_out, NULL, NULL);
+          float nu_Sigma_f = data::mg.macro_xs_[material].get_xs(MgxsType::NU_FISSION, energy_group_in, NULL, NULL, NULL);
+          float Chi = data::mg.macro_xs_[material].get_xs(MgxsType::CHI_PROMPT, energy_group_in, &energy_group_out, NULL, NULL);
+          scatter_source += Sigma_s    * scalar_flux;
+          fission_source += nu_Sigma_f * scalar_flux * Chi;
         }
+        fission_source *= inverse_k_eff;
+        float new_isotropic_source = (scatter_source + fission_source)  / Sigma_t;
+        random_ray::source[sr * negroups + energy_group_out] = new_isotropic_source;
       }
     }
 
-    void normalize_scalar_flux_and_volumes(double total_active_distance_per_iteration, int iter);
+    simulation::time_update_src.stop();
+  }
 
-    void add_source_to_scalar_flux(double total_active_distance_per_iteration, int iter);
+  void normalize_scalar_flux_and_volumes(double total_active_distance_per_iteration, int iter)
+  {
+    int negroups = data::mg.num_energy_groups_;
 
-    double compute_k_eff(double k_eff_old);
+    float  normalization_factor =        1.0 /  total_active_distance_per_iteration;
+    double volume_normalization_factor = 1.0 / (total_active_distance_per_iteration * iter);
+    
+    // Normalize Scalar flux to total distance travelled by all rays this iteration
+    #pragma omp parallel for
+    for (auto& element : random_ray::scalar_flux_new) {
+      element *= normalization_factor;
+    }
 
-    void tally_fission_rates(void);
+    // Accumulate cell-wise ray length tallies collected this iteration, then
+    // update the simulation-averaged cell-wise volume estimates
+    #pragma omp parallel for
+    for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
+      random_ray::volume_t[sr] += random_ray::volume[sr];
+      random_ray::volume[c] = random_ray::volume_t[sr] * volume_normalization_factor;
+    }
+  }
 
-    double calculate_miss_rate(void);
+  void add_source_to_scalar_flux(double total_active_distance_per_iteration, int iter);
+
+  double compute_k_eff(double k_eff_old);
+
+  void tally_fission_rates(void);
+
+  double calculate_miss_rate(void);
 
 
-  } // namespace openmc
+} // namespace openmc

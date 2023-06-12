@@ -13,6 +13,9 @@ namespace openmc {
     // Scalars
     extern int64_t n_source_elements;
     extern int64_t n_source_regions; // number of source regions (a.k.a. cells)
+    
+		// 1D arrays representing values for each OpenMC "Cell"
+    extern std::vector<int64_t> source_region_offsets;
 
     // Cell-wise Data
     std::vector<OpenMPMutex> lock;

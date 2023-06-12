@@ -82,7 +82,7 @@ namespace openmc {
       for (int i = 0; i < nrays; i++)
       {
         Ray r;
-        initialize_ray(r, i, nrays, iter);
+        r.initialize_ray(i, nrays, iter);
         total_geometric_intersections += r.transport_history_based_single_ray(distance_inactive, distance_active);
       }
 

@@ -10,7 +10,7 @@ namespace openmc {
     int64_t n_source_regions {0}; // Total number of source regions in the model
     
     // 1D arrays representing values for each OpenMC "Cell"
-    std::vector<int64_t> cell_offsets;
+    std::vector<int64_t> source_region_offsets;
 
     // 1D arrays reprenting values for all source regions
     std::vector<OpenMPMutex> lock;
@@ -39,9 +39,9 @@ namespace openmc {
     // arrays directly
     for (auto&& c : model::cells) {
       if (c->type_ != Fill::MATERIAL) {
-        random_ray::cell_offsets.push_back(-1);
+        random_ray::source_region_offsets.push_back(-1);
       } else {
-        random_ray::cell_offsets.push_back(random_ray::n_source_elements);
+        random_ray::source_region_offsets.push_back(random_ray::n_source_regions);
         random_ray::n_source_regions += c->n_instances_;
         random_ray::n_source_elements += c->n_instances_ * negroups;
       }

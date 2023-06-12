@@ -218,7 +218,36 @@ namespace openmc {
     return n_hits;
   }
 
-  double compute_k_eff(double k_eff_old);
+  double compute_k_eff(double k_eff_old)
+  {
+    int negroups = data::mg.num_energy_groups_;
+    double fission_rate_old = 0;
+    double fission_rate_new = 0;
+    
+    #pragma omp parallel for reduction(+:fission_rate_old, fission_rate_new)
+    for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
+      double volume = random_ray::volume[sr];
+      int material = random_ray::materials[sr]; 
+          
+      double sr_fission_source_old = 0;
+      double sr_fission_source_new = 0;
+      
+      for (int e = 0; e < negroups; e++) {
+        int64_t idx = (sr * negroups) + e;
+        double nu_Sigma_f = data::mg.macro_xs_[material].get_xs(MgxsType::NU_FISSION, e, NULL, NULL, NULL);
+        sr_fission_source_old += nu_Sigma_f * random_ray::scalar_flux_old[idx];
+        sr_fission_source_new += nu_Sigma_f * random_ray::scalar_flux_new[idx];
+      }
+
+      fission_rate_old += sr_fission_source_old * volume;
+      fission_rate_new += sr_fission_source_new * volume;
+    }
+
+
+    double k_eff_new = k_eff_old * (fission_rate_new / fission_rate_old);
+
+    return k_eff_new;
+  }
 
   void tally_fission_rates(void);
 

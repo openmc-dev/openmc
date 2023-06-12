@@ -20,7 +20,7 @@ class CustomSource : public openmc::Source
     particle.r.z = 0.;
     // angle
     particle.u = {1.0, 0.0, 0.0};
-    particle.E = 14.08e6;
+    particle.E = 1.00e3;
     particle.delayed_group = 0;
     return particle;
   }

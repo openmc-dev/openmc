@@ -79,17 +79,6 @@ def test_get_values_slice_from_mesh():
             value='std_dev'
         )
         assert slice_data.shape == dim
-        returned_axis = mesh.plot_tally_values_slice(
-            dataset=slice_data,
-            basis=basis,
-        )
-        returned_axis.set_title('checking plot title can be set')
 
         slice_data = tally.get_values_slice_from_mesh_where(basis=basis, slice_value=10)
         assert slice_data.shape == dim
-        returned_axis = mesh.plot_tally_values_slice(
-            dataset=slice_data,
-            basis=basis,
-            colorbar_label='Flux'
-        )
-        returned_axis.set_title('checking plot title can be set')

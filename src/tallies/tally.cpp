@@ -707,6 +707,10 @@ void Tally::accumulate()
     double norm =
       total_source / (settings::n_particles * settings::gen_per_batch);
 
+    if (settings::run_mode == RunMode::RANDOM_RAY) {
+      norm = 1.0;
+    }
+
 // Accumulate each result
 #pragma omp parallel for
     for (int i = 0; i < results_.shape()[0]; ++i) {

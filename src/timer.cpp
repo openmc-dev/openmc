@@ -87,6 +87,8 @@ void reset_timers()
   simulation::time_event_surface_crossing.reset();
   simulation::time_event_collision.reset();
   simulation::time_event_death.reset();
+  simulation::time_update_src.reset();
+  simulation::time_tally_fission_rates.reset();
 }
 
 } // namespace openmc

@@ -21,6 +21,7 @@
 #include "openmc/physics.h"
 #include "openmc/physics_mg.h"
 #include "openmc/random_lcg.h"
+#include "openmc/random_ray/ray.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"
@@ -427,7 +428,11 @@ void Particle::cross_surface()
 
   // Handle any applicable boundary conditions.
   if (surf->bc_ && settings::run_mode != RunMode::PLOTTING) {
-    surf->bc_->handle_particle(*this, *surf);
+    if (settings::run_mode == RunMode::RANDOM_RAY) {
+      surf->bc_->handle_particle(*(static_cast<Ray*>(this)), *surf);
+    } else {
+      surf->bc_->handle_particle(*this, *surf);
+    }
     return;
   }
 

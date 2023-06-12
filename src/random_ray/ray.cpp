@@ -14,5 +14,9 @@ namespace openmc {
   void attenuate_flux(double distance, bool is_active)
   {
   }
+  
+  void initialize_ray(uint64_t index_source, uint64_t nrays, int iter)
+  {
+  }
 
 } // namespace openmc

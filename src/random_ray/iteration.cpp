@@ -93,7 +93,7 @@ namespace openmc {
       normalize_scalar_flux_and_volumes(total_active_distance_per_iteration, iter);
 
       // Add source to scalar flux
-      add_source_to_scalar_flux();
+      int64_t n_hits = add_source_to_scalar_flux();
 
       // Compute k-eff
       k_eff = compute_k_eff(k_eff);
@@ -114,7 +114,8 @@ namespace openmc {
       // Set phi_old = phi_new
       random_ray::scalar_flux_old.swap(random_ray::scalar_flux_new);
 
-      double percent_missed = calculate_miss_rate();
+      // Report if source region miss rate is higher than 0.01%
+      double percent_missed = (1.0 - (static_cast<double>(n_hits) / static_cast<double>(random_ray::n_source_regions))) * 100.0;
       if( percent_missed > 0.01 )
         printf(" High FSR miss rate detected (%.4lf%%)! Consider increasing ray density by adding more particles and/or active distance.\n", percent_missed);
 
@@ -195,7 +196,7 @@ namespace openmc {
       for (int e = 0; e < negroups; e++) {
         int64_t idx = (sr * negroups) + e;
 
-        // There are three scenarios we want to consider
+        // There are three scenarios we need to consider:
         if (was_cell_hit) {
           // If it was hit, then finish computing the scalar flux estimate for the iteration
           float Sigma_t = data::mg.macro_xs_[material].get_xs(MgxsType::TOTAL, e, NULL, NULL, NULL);
@@ -210,11 +211,13 @@ namespace openmc {
           // If it was not hit this iteration, but the simulation averaged volume is nonzero,
           // then we can reuse the previous iteration's estimate of the scalar flux. This
           // induces a small amount of error, but may be beneficial for maintaining stability
-          // when extremely few rays are used per iteration
+          // when the ray density is extremely low.
           random_ray::scalar_flux_new[idx] = random_ray::scalar_flux_old[idx];
         }
       }
     }
+
+    // Return the number of source regions that were hit this iteration
     return n_hits;
   }
 
@@ -226,7 +229,13 @@ namespace openmc {
     
     #pragma omp parallel for reduction(+:fission_rate_old, fission_rate_new)
     for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
+
+      // If simulation averaged volume is zero, don't include this cell
       double volume = random_ray::volume[sr];
+      if (volume == 0.0) {
+        continue;
+      }
+
       int material = random_ray::materials[sr]; 
           
       double sr_fission_source_old = 0;
@@ -249,9 +258,9 @@ namespace openmc {
     return k_eff_new;
   }
 
-  void tally_fission_rates(void);
-
-  double calculate_miss_rate(void);
-
+  void tally_fission_rates(void)
+  {
+    return;
+  }
 
 } // namespace openmc

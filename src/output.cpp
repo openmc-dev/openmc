@@ -31,6 +31,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/plot.h"
+#include "openmc/random_ray/source_region.h"
 #include "openmc/reaction.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
@@ -573,6 +574,40 @@ void print_results()
   }
   fmt::print("\n");
   std::fflush(stdout);
+}
+
+//==============================================================================
+
+void print_results_random_ray(int64_t total_geometric_intersections)
+{
+  using namespace simulation;
+
+  if (settings::verbosity < 4)
+    return;
+	
+  int negroups = data::mg.num_energy_groups_;
+	double total_integrations = (double) total_geometric_intersections * negroups;
+  double TPI = simulation::time_transport.elapsed() / total_integrations;
+  double misc_time = time_total.elapsed() - time_update_src.elapsed() - time_transport.elapsed();
+  
+  header("Simulation Statistics", 4);
+  fmt::print(" Flat Source Regions               = {}\n", random_ray::n_source_regions);
+  fmt::print(" Total Geometric Intersections     = {:.4e}\n", static_cast<double>(total_geometric_intersections));
+  fmt::print(" Energy Groups                     = {}\n", negroups);
+  fmt::print(" Total Integrations                = {:.4e}\n", total_integrations);
+
+	header("Timing Statistics", 4);
+  show_time("Total time for initialization", time_initialize.elapsed());
+  show_time("Reading cross sections", time_read_xs.elapsed(), 1);
+  show_time("Total simulation time", time_total.elapsed());
+  show_time("Transport sweep only", time_transport.elapsed(), 1);
+  show_time("Source update only", time_update_src.elapsed(), 1);
+  show_time("Other iteration routines", misc_time, 1);
+  show_time("Total time for finalization", time_finalize.elapsed());
+  show_time("Time per integration", TPI);
+
+  header("Results", 4);
+	fmt::print(" k-effective                       = {:.5f} +/- {:.5f}\n", simulation::keff, simulation::keff_std);
 }
 
 //==============================================================================

@@ -47,9 +47,6 @@ int openmc_run_random_ray(void)
   double distance_inactive = settings::ray_distance_inactive;
   double total_active_distance_per_iteration = distance_active * nrays;
 
-  // Serialize Material XS data
-  //prep_xs();
-
   openmc::simulation::time_total.start();
 
   // Power Iteration Loop
@@ -114,20 +111,7 @@ int openmc_run_random_ray(void)
   }
 	openmc::simulation::time_total.stop();
 
-	header("Timing Statistics", 6);
-	printf(" Total time elapsed                = %.4le [s]\n", simulation::time_total.elapsed());
-	printf(" Time in transport only            = %.3le [s]\n", simulation::time_transport.elapsed(), 1);
-	printf(" Time in update src only           = %.3le [s]\n", simulation::time_update_src.elapsed(), 1);
-	printf(" Time in other iteration routines  = %.3le [s]\n", simulation::time_total.elapsed() - simulation::time_update_src.elapsed(), 1);
-
-	printf(" Total Geometric Intersections     = %.4e\n", (double) total_geometric_intersections);
-	int negroups = data::mg.num_energy_groups_;
-	double total_integrations = (double) total_geometric_intersections * negroups;
-	printf(" Total Integrations                = %.4e\n", total_integrations);
-	printf(" Time per Integration              = %.4lf [ns]\n", simulation::time_transport.elapsed() * 1.0e9 / total_integrations);
-
-	header("RESULTS", 3);
-	fmt::print(" k-effective                       = {:.5f} +/- {:.5f}\n", simulation::keff, simulation::keff_std);
+  print_results_random_ray(total_geometric_intersections);
 
   return 0;
 }

@@ -60,7 +60,6 @@ void Ray::event_advance_ray(double distance_inactive, double distance_active)
     if(distance_travelled_ + distance >= distance_inactive)
     {
       is_active_ = true;
-      //printf("ray activating!\n");
       double distance_dead = distance_inactive - distance_travelled_;
       attenuate_flux(distance_dead,  false);
 
@@ -163,23 +162,6 @@ void Ray::initialize_ray(uint64_t index_source, uint64_t nrays, int iter)
   // sample from external source distribution (should use box)
   auto site = sample_external_source(current_seed());
   from_source(&site);
-
-  // Debugging
-  /*
-     Position & r = p.r();
-     Direction & u = p.u();
-     r.x = 0.350829492;
-     r.y = -0.558578758;
-     r.z = 0.692907163;
-     u.x = -0.219246640;
-     u.y = 0.875089877;
-     u.z = 0.431449437;
-     */
-  //   Ray - Origin: [ 0.351, -0.559, 22.693] Direction: [-0.219,  0.875,  0.431]
-
-  //Position r = p.r();
-  //Direction u = p.u();
-  //printf("Particle loc:[%.2f, %.2f, %.2f] dir:[%.2f, %.2f, %.2f]\n", r.x, r.y, r.z, u.x, u.y, u.z);
 
   // If the cell hasn't been determined based on the particle's location,
   // initiate a search for the current cell. This generally happens at the

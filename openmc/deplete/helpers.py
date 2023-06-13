@@ -392,7 +392,6 @@ class FluxCollapseHelper(ReactionRateHelper):
                     rate_per_nuc = nuc.collapse_rate(
                         mt, mat.temperature, self._energies, flux)
 
-                    # Multiply by density to get absolute reaction rate
                     self._results_cache[i_nuc, i_rx] = rate_per_nuc
 
         return self._results_cache

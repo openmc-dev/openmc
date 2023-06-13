@@ -90,6 +90,7 @@ int openmc_run_random_ray(void)
 
   // Allocate tally results arrays if they're not allocated yet
   for (auto& t : model::tallies) {
+    t->set_strides();
     t->init_results();
   }
 

@@ -39,7 +39,7 @@ void random_ray_tally()
       double score_flux = flux * volume;
       double score_fission = flux * volume * Sigma_f;
 
-      for (auto i_tally : model::active_analog_tallies) {
+      for (auto i_tally : model::active_tallies) {
         const Tally& tally {*model::tallies[i_tally]};
 
         // Initialize an iterator over valid filter bin combinations.  If there are

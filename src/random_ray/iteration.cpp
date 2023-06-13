@@ -1,6 +1,9 @@
 #include "openmc/random_ray/iteration.h"
 #include "openmc/output.h"
+#include "openmc/geometry.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/tallies/filter.h"
+#include "openmc/tallies/tally_scoring.h"
 #include "openmc/simulation.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/timer.h"
@@ -9,10 +12,78 @@
 
 namespace openmc {
 
+void random_ray_tally()
+{
+  int negroups = data::mg.num_energy_groups_;
+
+  int64_t n_hits = 0;
+
+  #pragma omp parallel for reduction(+:n_hits)
+  for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
+
+    double volume = random_ray::volume[sr];
+    int was_cell_hit = random_ray::was_hit[sr];
+    int material = random_ray::material[sr]; 
+
+    Particle p;
+    p.r() = random_ray::position[sr];  
+    bool found = exhaustive_find_cell(p);
+    assert(found);
+    for (int e = 0; e < negroups; e++) {
+      p.g() = e;
+      p.g_last() = e;
+
+      int64_t idx = (sr * negroups) + e;
+      float flux = random_ray::scalar_flux_new[idx];
+      double Sigma_f = data::mg.macro_xs_[material].get_xs(MgxsType::FISSION, e, NULL, NULL, NULL);
+      double score_flux = flux * volume;
+      double score_fission = flux * volume * Sigma_f;
+
+      for (auto i_tally : model::active_analog_tallies) {
+        const Tally& tally {*model::tallies[i_tally]};
+
+        // Initialize an iterator over valid filter bin combinations.  If there are
+        // no valid combinations, use a continue statement to ensure we skip the
+        // assume_separate break below.
+        auto filter_iter = FilterBinIter(tally, p);
+        auto end = FilterBinIter(tally, true, &p.filter_matches());
+        if (filter_iter == end)
+          continue;
+
+        // Loop over filter bins.
+        for (; filter_iter != end; ++filter_iter) {
+          auto filter_index = filter_iter.index_;
+          auto filter_weight = filter_iter.weight_;
+
+          auto& tally {*model::tallies[i_tally]};
+
+          for (auto score_index = 0; score_index < tally.scores_.size(); score_index++) {
+            auto score_bin = tally.scores_[score_index];
+
+            double score;
+
+            switch (score_bin) {
+              case SCORE_FLUX:
+                score = score_flux;
+                break;
+              case SCORE_FISSION:
+                score = score_fission;
+                break;
+              default:
+                break;
+            }
+
+            #pragma omp atomic
+            tally.results_(filter_index, score_index, TallyResult::VALUE) += score * filter_weight;
+          }
+        }
+      }
+    }
+  }
+}
+
 int openmc_run_random_ray(void)
 {
-  //print_inputs();
-
   // Display header
   header("RANDOM RAY K EIGENVALUE SIMULATION", 3);
   print_columns();
@@ -30,6 +101,21 @@ int openmc_run_random_ray(void)
   simulation::k_generation.clear();
   simulation::entropy.clear();
   openmc_reset();
+
+  // Enable all tallies, and enforce
+  // Note: Currently, only tallies of mesh type that score fission are allowed
+  for (int i = 0; i < model::tallies.size(); i++) {
+    auto& tally {*model::tallies[i]};
+    for (auto s = 0; s < tally.scores_.size(); s++) {
+      auto score_bin = tally.scores_[s];
+      if (score_bin != SCORE_FLUX && score_bin != SCORE_FISSION) {
+        fatal_error("Only flux and fission scores are supported in random ray mode");
+      }
+    }
+    tally.active_ = true;
+  }
+
+  setup_active_tallies();
 
   double k_eff = 1.0;
 
@@ -57,7 +143,7 @@ int openmc_run_random_ray(void)
     // Update neutron source
     update_neutron_source(k_eff);
 
-    // Reset scalar and volumes flux to zero
+    // Reset scalar fluxes and iteration volume tallies to zero
     std::fill(random_ray::scalar_flux_new.begin(), random_ray::scalar_flux_new.end(), 0.0);
     std::fill(random_ray::volume.begin(), random_ray::volume.end(), 0.0);
 
@@ -94,6 +180,7 @@ int openmc_run_random_ray(void)
 
     // Tally fission rates
     if (iter > settings::n_inactive) {
+      random_ray_tally();
       accumulate_tallies();
     }
 
@@ -109,7 +196,10 @@ int openmc_run_random_ray(void)
       fatal_error("Instability detected");
     }
   }
-	openmc::simulation::time_total.stop();
+  openmc::simulation::time_total.stop();
+
+  // Write tally results to tallies.out
+  if (settings::output_tallies) write_tallies();
 
   print_results_random_ray(total_geometric_intersections);
 

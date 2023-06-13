@@ -520,9 +520,9 @@ class RightCircularCylinder(CompositeSurface):
 
                 return cyl, torus, plane
 
-    def get_fillet(self):
-        upper_fillet = self.get_upper_fillet()
-        lower_fillet = self.get_lower_fillet()
+    def _get_fillet(self):
+        upper_fillet = self._get_upper_fillet()
+        lower_fillet = self._get_lower_fillet()
         has_upper_fillet = upper_fillet is not None
         has_lower_fillet = lower_fillet is not None
         if has_lower_fillet and has_upper_fillet:
@@ -535,7 +535,7 @@ class RightCircularCylinder(CompositeSurface):
             fillet = None
         return fillet
 
-    def get_upper_fillet(self):
+    def _get_upper_fillet(self):
         has_upper_fillet = hasattr(self, 'upper_fillet_plane')
         if has_upper_fillet:
             upper_fillet = +self.upper_fillet_cylinder & +self.upper_fillet_torus & +self.upper_fillet_plane
@@ -543,7 +543,7 @@ class RightCircularCylinder(CompositeSurface):
             upper_fillet = None
         return upper_fillet
 
-    def get_lower_fillet(self):
+    def _get_lower_fillet(self):
         has_lower_fillet = hasattr(self, 'lower_fillet_plane')
         if has_lower_fillet:
             lower_fillet = +self.lower_fillet_cylinder & +self.lower_fillet_torus & -self.lower_fillet_plane
@@ -553,14 +553,14 @@ class RightCircularCylinder(CompositeSurface):
 
     def __neg__(self):
         prism = -self.cyl & +self.bottom & -self.top
-        fillet = self.get_fillet()
+        fillet = self._get_fillet()
         if fillet is not None:
             prism = prism & ~fillet
         return prism
 
     def __pos__(self):
         prism = +self.cyl | -self.bottom | +self.top
-        fillet = self.get_fillet()
+        fillet = _self.get_fillet()
         if fillet is not None:
             prism = prism | fillet
         return prism

@@ -71,9 +71,12 @@ class NCrystalTest(PyAPITestHarness):
             df = tal.get_pandas_dataframe()
         return df.to_string()
 
-def test_cfg_from_xml(model):
+def test_cfg_from_xml():
      """Make sure the cfg string is read by from_xml method"""
-
+    n_particles = 100000
+    E0 = 0.012  # eV
+    cfg = 'Al_sg225.ncmat'
+    model = pencil_beam_model(cfg, E0, n_particles)
     #export the original material generated with cfg string
     model.materials.export_to_xml('materials.xml.orig')
     expected = open('materials.xml.orig', 'r').readlines()
@@ -96,6 +99,5 @@ def test_ncrystal():
     E0 = 0.012  # eV
     cfg = 'Al_sg225.ncmat'
     test = pencil_beam_model(cfg, E0, n_particles)
-    test_cfg_from_xm(test)
     harness = NCrystalTest('statepoint.10.h5', model=test)
     harness.main()

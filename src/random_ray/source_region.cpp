@@ -1,5 +1,7 @@
 #include "openmc/cell.h"
 #include "openmc/random_ray/source_region.h"
+#include "openmc/mgxs_interface.h"
+#include <cassert>
 
 namespace openmc {
 
@@ -38,7 +40,7 @@ std::vector<float> source;
 
 void initialize_source_regions()
 {
-  int negroups = data::mg_num_energy_groups_;
+  int negroups = data::mg.num_energy_groups_;
 
   // Count the number of source regions, compute
   // the cell offset indices, and store the material type The reason for the offsets is that

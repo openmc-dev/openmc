@@ -1,4 +1,9 @@
 #include "openmc/random_ray/ray.h"
+#include "openmc/geometry.h"
+#include "openmc/settings.h"
+#include "openmc/mgxs_interface.h"
+#include "openmc/random_ray/source_region.h"
+#include "openmc/source.h"
 
 namespace openmc {
 
@@ -14,23 +19,36 @@ Ray::Ray()
 
 Ray::Ray(uint64_t index_source, uint64_t nrays, int iter) : Ray::Ray()
 {
-  this->initialize_ray(index_source, nrays, iter);
+  initialize_ray(index_source, nrays, iter);
+}
+
+uint64_t Ray::transport_history_based_single_ray(double distance_inactive, double distance_active)
+{
+  using namespace openmc;
+  while (true) {
+    if (!alive())
+      break;
+    event_advance_ray(distance_inactive, distance_active);
+    if (!alive())
+      break;
+    event_cross_surface();
+  }
+
+  return n_event();
 }
 
 void Ray::event_advance_ray(double distance_inactive, double distance_active)
 {
   // Find the distance to the nearest boundary
-  boundary_ = distance_to_boundary(*this);
-  double distance = boundary_.distance;
+  boundary() = distance_to_boundary(*this);
+  double distance = boundary().distance;
   assert(distance > 0.0);
 
   // Check for final termination
-  if(is_active_)
-  {
-    if(distance_travelled_ + distance >= distance_active)
-    {
+  if (is_active_) {
+    if (distance_travelled_ + distance >= distance_active) {
       distance = distance_active - distance_travelled_;
-      alive_ = false;
+      wgt() = 0.0;
     }
     distance_travelled_ += distance;
     attenuate_flux(distance, true);
@@ -52,7 +70,7 @@ void Ray::event_advance_ray(double distance_inactive, double distance_active)
       if (distance_alive > distance_active)
       {
         distance_alive = distance_active;
-        alive_ = false;
+        wgt() = 0.0;
       }
       attenuate_flux(distance_alive, true);
 
@@ -66,8 +84,8 @@ void Ray::event_advance_ray(double distance_inactive, double distance_active)
   }
 
   // Advance particle
-  for (int j = 0; j < n_coord_; ++j) {
-    coord_[j].r += distance * coord_[j].u;
+  for (int j = 0; j < n_coord(); ++j) {
+    coord(j).r += distance * coord(j).u;
   }
 }
 
@@ -78,14 +96,13 @@ void Ray::attenuate_flux(double distance, bool is_active)
 
   int negroups = data::mg.num_energy_groups_;
 
-  n_event_++;
+  n_event()++;
 
   // Determine Cell Index etc.
-  int coord_lvl = n_coord_ - 1;
-  int i_cell = coord_[coord_lvl].cell;
-  int64_t source_region_idx = random_ray::source_region_offsets[i_cell] + cell_instance_;
+  int i_cell = lowest_coord().cell;
+  int64_t source_region_idx = random_ray::source_region_offsets[i_cell] + cell_instance();
   int64_t source_region_group_idx = source_region_idx * negroups;
-  int material = material_;
+  int material = this->material();
 
   for( int e = 0; e < negroups; e++ )
   {
@@ -102,14 +119,14 @@ void Ray::attenuate_flux(double distance, bool is_active)
     random_ray::lock[source_region_idx].lock();
 
     for (int e = 0; e < negroups; e++) {
-      random_ray::scalar_flux_new[source_region_group_idx + e] += delta_psi[e];
+      random_ray::scalar_flux_new[source_region_group_idx + e] += delta_psi_[e];
     }
 
     if (random_ray::was_hit[source_region_idx] == 0) {
-      c.was_hit[source_region_idx] = 1;
+      random_ray::was_hit[source_region_idx] = 1;
     }
 
-    c.volume[source_region_idx] += distance;
+    random_ray::volume[source_region_idx] += distance;
 
     // Tally position if not done already
     if (!random_ray::position_recorded[source_region_idx]) {
@@ -126,24 +143,26 @@ void Ray::attenuate_flux(double distance, bool is_active)
 
 void Ray::initialize_ray(uint64_t index_source, uint64_t nrays, int iter)
 {
-  id_ = index_source;
+  id() = index_source;
 
   // Reset particle event counter
-  n_event_ = 0;
+  n_event() = 0;
 
   if( settings::ray_distance_inactive <= 0.0 )
     is_active_ = true;
   else
     is_active_ = false;
 
+  wgt() = 1.0;
+
   // set random number seed
-  int64_t particle_seed = (iter-1) * nrays + id_;
-  init_particle_seeds(particle_seed, seeds_);
-  stream_ = STREAM_TRACKING;
+  int64_t particle_seed = (iter-1) * nrays + id();
+  init_particle_seeds(particle_seed, seeds());
+  stream() = STREAM_TRACKING;
 
   // sample from external source distribution (should use box)
   auto site = sample_external_source(current_seed());
-  this->from_source(&site);
+  from_source(&site);
 
   // Debugging
   /*
@@ -165,25 +184,23 @@ void Ray::initialize_ray(uint64_t index_source, uint64_t nrays, int iter)
   // If the cell hasn't been determined based on the particle's location,
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
-  if (coord_[n_coord_ - 1].cell == C_NONE) {
+  if (lowest_coord().cell == C_NONE) {
     if (!exhaustive_find_cell(*this)) {
       this->mark_as_lost("Could not find the cell containing particle "
-          + std::to_string(id_));
-      exit(1);
+          + std::to_string(id()));
     }
 
     // Set birth cell attribute
-    if (cell_born_ == C_NONE) cell_born_ = coord_[n_coord_ - 1].cell;
+    if (cell_born() == C_NONE) cell_born() = lowest_coord().cell;
   }
 
   // Initialize ray's starting angular flux to starting location's isotropic source
   int negroups = data::mg.num_energy_groups_;
-  int coord_lvl = n_coord_ - 1;
-  int i_cell = coord_[coord_lvl].cell;
-  int64_t source_region_idx = random_ray::source_region_offsets[i_cell] + cell_instance_;
+  int i_cell = lowest_coord().cell;
+  int64_t source_region_idx = random_ray::source_region_offsets[i_cell] + cell_instance();
 
   for (int e = 0; e < negroups; e++) {
-    p.angular_flux_[e] = c.source[source_region_idx * negroups + e];
+    angular_flux_[e] = random_ray::source[source_region_idx * negroups + e];
   }
 }
 

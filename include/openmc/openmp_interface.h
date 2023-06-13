@@ -29,12 +29,6 @@ public:
 #endif
   }
 
-  // Mutexes cannot be copied.  We need to explicitly delete the copy
-  // constructor and copy assignment operator to ensure the compiler doesn't
-  // "help" us by implicitly trying to copy the underlying mutexes.
-  OpenMPMutex(const OpenMPMutex&) = delete;
-  OpenMPMutex& operator=(const OpenMPMutex&) = delete;
-
   //! Lock the mutex.
   //
   //! This function blocks execution until the lock succeeds.

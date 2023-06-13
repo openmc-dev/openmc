@@ -31,6 +31,7 @@ public:
   std::vector<float> delta_psi_;
   double distance_travelled_ {0};
   bool is_active_ {false};
+  bool is_alive_ {true};
 }; // class Ray
 
 //==============================================================================

@@ -132,6 +132,7 @@ int openmc_run_random_ray(void)
       fatal_error("Instability detected");
     }
   }
+  return 0;
 }
 
 void update_neutron_source(double k_eff)

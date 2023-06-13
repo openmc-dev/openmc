@@ -18,7 +18,7 @@ extern int64_t n_source_regions; // number of source regions (a.k.a. cells)
 extern std::vector<int64_t> source_region_offsets;
 
 // Cell-wise Data
-std::vector<OpenMPMutex> lock;
+extern std::vector<OpenMPMutex> lock;
 extern std::vector<int> material;
 extern std::vector<int> position_recorded;
 extern std::vector<Position> position;

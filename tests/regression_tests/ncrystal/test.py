@@ -60,6 +60,7 @@ def pencil_beam_model(cfg, E0, N):
 
     return openmc.Model(geometry, materials, settings, tallies)
 
+
 class NCrystalTest(PyAPITestHarness):
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""

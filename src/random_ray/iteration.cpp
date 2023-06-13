@@ -1,10 +1,17 @@
 #include "openmc/random_ray/iteration.h"
+#include "openmc/output.h"
+#include "openmc/tallies/tally.h"
+#include "openmc/simulation.h"
+#include "openmc/eigenvalue.h"
+#include "openmc/timer.h"
+#include "openmc/mgxs_interface.h"
+#include "openmc/message_passing.h"
 
 namespace openmc {
 
 int openmc_run_random_ray(void)
 {
-  print_inputs();
+  //print_inputs();
 
   // Display header
   header("RANDOM RAY K EIGENVALUE SIMULATION", 3);
@@ -26,6 +33,7 @@ int openmc_run_random_ray(void)
 
   // Enable all tallies, and enforce
   // Note: Currently, only tallies of mesh type that score fission are allowed
+  /*
   for( int i = 0; i < model::tallies.size(); i++ )
   {
     auto& tally {*model::tallies[i]};
@@ -40,6 +48,7 @@ int openmc_run_random_ray(void)
     tally.active_ = true;
   }
   setup_active_tallies();
+  */
 
   double k_eff = 1.0;
 
@@ -101,7 +110,7 @@ int openmc_run_random_ray(void)
     calculate_average_keff();
 
     // Output status data
-    if (mpi::master && settings::verbosity >= 7) {
+    if (settings::verbosity >= 7) {
       print_generation();
     }
 
@@ -134,7 +143,7 @@ void update_neutron_source(double k_eff)
 
   #pragma omp parallel for
   for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
-    int material = random_ray::materials[sr]; 
+    int material = random_ray::material[sr]; 
 
     for (int energy_group_out = 0; energy_group_out < negroups; energy_group_out++) {
       float Sigma_t = data::mg.macro_xs_[material].get_xs(MgxsType::TOTAL, energy_group_out, NULL, NULL, NULL);
@@ -178,7 +187,7 @@ void normalize_scalar_flux_and_volumes(double total_active_distance_per_iteratio
   #pragma omp parallel for
   for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
     random_ray::volume_t[sr] += random_ray::volume[sr];
-    random_ray::volume[c] = random_ray::volume_t[sr] * volume_normalization_factor;
+    random_ray::volume[sr] = random_ray::volume_t[sr] * volume_normalization_factor;
   }
 }
 
@@ -192,7 +201,7 @@ int64_t add_source_to_scalar_flux(void)
   for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
     double volume = random_ray::volume[sr];
     int was_cell_hit = random_ray::was_hit[sr];
-    int material = random_ray::materials[sr]; 
+    int material = random_ray::material[sr]; 
     for (int e = 0; e < negroups; e++) {
       int64_t idx = (sr * negroups) + e;
 
@@ -236,7 +245,7 @@ double compute_k_eff(double k_eff_old)
       continue;
     }
 
-    int material = random_ray::materials[sr]; 
+    int material = random_ray::material[sr]; 
 
     double sr_fission_source_old = 0;
     double sr_fission_source_new = 0;

@@ -523,11 +523,7 @@ void Particle::cross_surface()
 
   // Handle any applicable boundary conditions.
   if (surf->bc_ && settings::run_mode != RunMode::PLOTTING) {
-    if (settings::run_mode == RunMode::RANDOM_RAY) {
-      surf->bc_->handle_particle(*(static_cast<Ray*>(this)), *surf);
-    } else {
-      surf->bc_->handle_particle(*this, *surf);
-    }
+    surf->bc_->handle_particle(*this, *surf);
     return;
   }
 

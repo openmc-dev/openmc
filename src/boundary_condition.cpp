@@ -17,17 +17,18 @@ namespace openmc {
 
 void VacuumBC::handle_particle(Particle& p, const Surface& surf) const
 {
-  p.cross_vacuum_bc(surf);
-}
-
-void VacuumBC::handle_particle(Ray& p, const Surface& surf) const
-{
-  Direction u = surf.reflect(p.r(), p.u(), &p);
-  u /= u.norm();
-
-  p.cross_reflective_bc(surf, u);
-
-  std::fill(p.angular_flux_.begin(), p.angular_flux_.end(), 0.0);
+  if (settings::run_mode == RunMode::RANDOM_RAY) {
+    // In random ray mode, rays will reflect off of vacuum BCs and 
+    // set their angular flux vectors to zero.
+    //static_cast<ReflectiveBC*>(this)->handle_particle(p, surf); // Can't do this, as it doesn't like casting between derived types
+    //ReflectiveBC::handle_particle(p, surf); //  Can't do this, as it would need to be a static method, but can't have virtual static methods
+    ReflectiveBC rbc;
+    rbc.handle_particle(p, surf); 
+    Ray* r = static_cast<Ray*>(&p);
+    std::fill(r->angular_flux_.begin(), r->angular_flux_.end(), 0.0);
+  } else {
+    p.cross_vacuum_bc(surf);
+  }
 }
 
 //==============================================================================

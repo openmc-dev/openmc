@@ -31,25 +31,6 @@ int openmc_run_random_ray(void)
   simulation::entropy.clear();
   openmc_reset();
 
-  // Enable all tallies, and enforce
-  // Note: Currently, only tallies of mesh type that score fission are allowed
-  /*
-  for( int i = 0; i < model::tallies.size(); i++ )
-  {
-    auto& tally {*model::tallies[i]};
-    assert(tally.scores_.size() == 1 && "Only a single fission score per mesh tally is supported in random ray mode.");
-    assert(tally.scores_[0] == SCORE_FISSION && "Only fission scores are supported in random ray mode.");
-    assert(tally.filters().size() == 1 && "Only a single mesh filter per tally is supported in random ray mode.");
-    uint64_t tally_filter_idx = tally.filters(0);
-    const auto& filt_base = model::tally_filters[tally_filter_idx].get();
-    auto* filt = dynamic_cast<MeshFilter*>(filt_base);
-    assert(filt != NULL && "Only mesh filter types are supported in random ray mode.");
-
-    tally.active_ = true;
-  }
-  setup_active_tallies();
-  */
-
   double k_eff = 1.0;
 
   // Intialize Cell (FSR) data
@@ -115,10 +96,9 @@ int openmc_run_random_ray(void)
     }
 
     // Tally fission rates
-    simulation::time_tally_fission_rates.start();
-    if( iter > settings::n_inactive)
-      tally_fission_rates();
-    simulation::time_tally_fission_rates.stop();
+    if (iter > settings::n_inactive) {
+      accumulate_tallies();
+    }
 
     // Set phi_old = phi_new
     random_ray::scalar_flux_old.swap(random_ray::scalar_flux_new);
@@ -138,7 +118,7 @@ int openmc_run_random_ray(void)
 	printf(" Total time elapsed                = %.4le [s]\n", simulation::time_total.elapsed());
 	printf(" Time in transport only            = %.3le [s]\n", simulation::time_transport.elapsed(), 1);
 	printf(" Time in update src only           = %.3le [s]\n", simulation::time_update_src.elapsed(), 1);
-	printf(" Time in fission rate tally only   = %.3le [s]\n", simulation::time_tally_fission_rates.elapsed(), 1);
+	printf(" Time in other iteration routines  = %.3le [s]\n", simulation::time_total.elapsed() - simulation::time_update_src.elapsed(), 1);
 
 	printf(" Total Geometric Intersections     = %.4e\n", (double) total_geometric_intersections);
 	int negroups = data::mg.num_energy_groups_;
@@ -148,9 +128,6 @@ int openmc_run_random_ray(void)
 
 	header("RESULTS", 3);
 	fmt::print(" k-effective                       = {:.5f} +/- {:.5f}\n", simulation::keff, simulation::keff_std);
-
-	// Write tally results to tallies.out
-	if (settings::output_tallies) write_tallies();
 
   return 0;
 }
@@ -286,60 +263,6 @@ double compute_k_eff(double k_eff_old)
   double k_eff_new = k_eff_old * (fission_rate_new / fission_rate_old);
 
   return k_eff_new;
-}
-
-void tally_fission_rates(void)
-{
-  /*
-  int negroups = data::mg.num_energy_groups_;
-
-  #pragma omp parallel
-  {
-    for( int i = 0; i < model::cells.size(); i++ )
-    {
-      Cell & cell = *model::cells[i];
-      if(cell.type_ != Fill::MATERIAL)
-        continue;
-      int material = cell.material_[0];
-      #pragma omp for schedule(static) nowait
-      for( int c = 0; c < cell.n_instances_; c++ )
-      {
-        Position & p = cell.positions[c];
-        for( int t = 0; t < model::tallies.size(); t++ )
-        {
-          uint64_t tally_filter_idx = model::tallies[t]->filters(0);
-
-          const auto& filt_base = model::tally_filters[tally_filter_idx].get();
-          auto* filt = dynamic_cast<MeshFilter*>(filt_base);
-          int mesh_idx = filt->mesh();
-
-          // If the distribcell is not inside this mesh, then don't do anything
-          uint64_t tally_array_id = model::meshes[mesh_idx]->get_bin(p);
-          if( tally_array_id == -1 )
-            continue;
-
-          double volume = cell.volume[c];
-
-          for( int e = 0; e < negroups; e++ )
-          {
-            int m_idx = material * negroups + e;
-            float Sigma_f = data::Sigma_f_flat[m_idx];
-            double phi = cell.scalar_flux_new[c * negroups + e];
-
-            //double score = Sigma_f * phi * volume;
-            double score = phi * volume;
-
-            auto& tally {*model::tallies[0]};
-
-            #pragma omp atomic
-            tally.results_(tally_array_id, 0, TallyResult::VALUE) += score;
-          }
-        }
-      }
-    }
-  }
-  */
-  accumulate_tallies();
 }
 
 } // namespace openmc

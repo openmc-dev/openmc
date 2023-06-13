@@ -376,6 +376,9 @@ list(APPEND libopenmc_SOURCES
   src/progress_bar.cpp
   src/random_dist.cpp
   src/random_lcg.cpp
+  src/random_ray/iteration.cpp
+  src/random_ray/ray.cpp
+  src/random_ray/source_region.cpp
   src/reaction.cpp
   src/reaction_product.cpp
   src/scattdata.cpp

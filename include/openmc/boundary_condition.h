@@ -22,7 +22,6 @@ public:
   //!   indirectly by calling the particle's appropriate cross_*_bc function.
   //! \param surf The specific surface on the boundary the particle struck.
   virtual void handle_particle(Particle& p, const Surface& surf) const = 0;
-  void handle_particle(Ray& p, const Surface& surf) const {}
 
   //! Return a string classification of this BC.
   virtual std::string type() const = 0;
@@ -35,7 +34,6 @@ public:
 class VacuumBC : public BoundaryCondition {
 public:
   void handle_particle(Particle& p, const Surface& surf) const override;
-  void handle_particle(Ray& p, const Surface& surf) const override;
 
   std::string type() const override { return "vacuum"; }
 };

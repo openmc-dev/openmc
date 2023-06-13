@@ -726,6 +726,8 @@ class Chain:
                 material = materials
                 if element in transfer_rates.get_elements(material):
                     matrix[i, i] = transfer_rates.get_transfer_rate(material, element)
+                elif nuclide.name in transfer_rates.get_nuclides(material):
+                    matrix[i, i] = transfer_rates.get_transfer_rate(material, nuclide)
                 else:
                     matrix[i, i] = 0.0
             #Build transfer terms matrices
@@ -733,6 +735,8 @@ class Chain:
                 destination_material, material = materials
                 if transfer_rates.get_destination_material(material, element) == destination_material:
                     matrix[i, i] = transfer_rates.get_transfer_rate(material, element)
+                elif transfer_rates.get_destination_material(nuclide, element) == destination_material:
+                    matrix[i, i] = transfer_rates.get_transfer_rate(material, nuclide)
                 else:
                     matrix[i, i] = 0.0
             #Nothing else is allowed

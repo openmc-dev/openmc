@@ -1,8 +1,10 @@
 from numbers import Real
+import warnings
+import re
 
 from openmc.checkvalue import check_type, check_value
 from openmc import Material
-from openmc.data import ELEMENT_SYMBOL
+from openmc.data import ELEMENT_SYMBOL, zam, GNDS_NAME_RE
 
 
 class TransferRates:
@@ -91,7 +93,10 @@ class TransferRates:
 
         """
         material_id = self._get_material_id(material)
-        check_value('element', element, ELEMENT_SYMBOL.values())
+        try:
+            assert bool(re.match(GNDS_NAME_RE, element))
+        except:
+            check_value('element', element, ELEMENT_SYMBOL.values())
         return self.transfer_rates[material_id][element][0]
 
     def get_destination_material(self, material, element):
@@ -112,7 +117,10 @@ class TransferRates:
 
         """
         material_id = self._get_material_id(material)
-        check_value('element', element, ELEMENT_SYMBOL.values())
+        try:
+            assert bool(re.match(GNDS_NAME_RE, element))
+        except:
+            check_value('element', element, ELEMENT_SYMBOL.values())
         if element in self.transfer_rates[material_id]:
             return self.transfer_rates[material_id][element][1]
 
@@ -143,7 +151,7 @@ class TransferRates:
         material : openmc.Material or str or int
             Depletable material
         elements : list of str
-            List of strings of elements that share transfer rate
+            List of strings of elements or nuclides that share transfer rate
         transfer_rate : float
             Rate at which elements are transferred. A positive or negative values
             set removal of feed rates, respectively.
@@ -182,7 +190,14 @@ class TransferRates:
             raise ValueError("Invalid transfer rate unit '{}'".format(transfer_rate_units))
 
         for element in elements:
-            check_value('element', element, ELEMENT_SYMBOL.values())
+            try:
+                assert bool(re.match(GNDS_NAME_RE, element))
+            except:
+                check_value('element', element, ELEMENT_SYMBOL.values())
+
+            ############################
+            ## ADD BLOCK TO DISALLOW AN ELEMENT AND NUCLIDE OF THE SAME ELEMENT ##
+            ############################
             self.transfer_rates[material_id][element] = transfer_rate / unit_conv, destination_material_id
             if destination_material_id is not None:
                 self.index_transfer.add((destination_material_id, material_id))

@@ -1,6 +1,7 @@
 from math import pi
 import filecmp
 from difflib import unified_diff
+
 import numpy as np
 import openmc
 import openmc.lib

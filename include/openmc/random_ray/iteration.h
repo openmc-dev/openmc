@@ -12,6 +12,16 @@ void normalize_scalar_flux_and_volumes(double total_active_distance_per_iteratio
 int64_t add_source_to_scalar_flux(void);
 double calculate_miss_rate(void);
 int openmc_run_random_ray(void);
+void instability_check(int64_t n_hits, double k_eff, double& avg_miss_rate);
+
+template <typename T>
+void parallel_fill(std::vector<T>& arr, T value)
+{
+  #pragma omp parallel for schedule(static)
+  for (int i = 0; i < arr.size(); i++) {
+    arr[i] = value;
+  }
+}
 
 } // namespace openmc
 

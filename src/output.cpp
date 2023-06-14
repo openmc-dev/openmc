@@ -588,7 +588,7 @@ void print_results_random_ray(int64_t total_geometric_intersections)
   int negroups = data::mg.num_energy_groups_;
 	double total_integrations = (double) total_geometric_intersections * negroups;
   double TPI = simulation::time_transport.elapsed() / total_integrations;
-  double misc_time = time_total.elapsed() - time_update_src.elapsed() - time_transport.elapsed();
+  double misc_time = time_total.elapsed() - time_update_src.elapsed() - time_transport.elapsed() - time_tallies.elapsed();
   
   header("Simulation Statistics", 4);
   fmt::print(" Flat Source Regions               = {}\n", random_ray::n_source_regions);
@@ -602,6 +602,7 @@ void print_results_random_ray(int64_t total_geometric_intersections)
   show_time("Total simulation time", time_total.elapsed());
   show_time("Transport sweep only", time_transport.elapsed(), 1);
   show_time("Source update only", time_update_src.elapsed(), 1);
+  show_time("Tally conversion only", time_tallies.elapsed(), 1);
   show_time("Other iteration routines", misc_time, 1);
   show_time("Total time for finalization", time_finalize.elapsed());
   show_time("Time per integration", TPI);

@@ -578,7 +578,7 @@ void print_results()
 
 //==============================================================================
 
-void print_results_random_ray(int64_t total_geometric_intersections)
+void print_results_random_ray(int64_t total_geometric_intersections, double avg_miss_rate)
 {
   using namespace simulation;
 
@@ -591,10 +591,12 @@ void print_results_random_ray(int64_t total_geometric_intersections)
   double misc_time = time_total.elapsed() - time_update_src.elapsed() - time_transport.elapsed() - time_tallies.elapsed();
   
   header("Simulation Statistics", 4);
+  fmt::print(" Total Iterations                  = {}\n", settings::n_batches);
   fmt::print(" Flat Source Regions               = {}\n", random_ray::n_source_regions);
   fmt::print(" Total Geometric Intersections     = {:.4e}\n", static_cast<double>(total_geometric_intersections));
   fmt::print(" Energy Groups                     = {}\n", negroups);
   fmt::print(" Total Integrations                = {:.4e}\n", total_integrations);
+  fmt::print(" Avg Source Region Miss Rate       = {:.4f}%\n", avg_miss_rate);
 
 	header("Timing Statistics", 4);
   show_time("Total time for initialization", time_initialize.elapsed());

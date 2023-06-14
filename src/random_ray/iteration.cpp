@@ -68,6 +68,8 @@ int openmc_run_random_ray(void)
 
   bool mapped_all_tallies = false;
 
+  double avg_miss_rate = 0.0;
+
   // Power Iteration Loop
   for (int iter = 1; iter <= n_iters_total; iter++) {
     // Increment current batch
@@ -77,9 +79,10 @@ int openmc_run_random_ray(void)
     // Update neutron source
     update_neutron_source(k_eff);
 
-    // Reset scalar fluxes and iteration volume tallies to zero
-    std::fill(random_ray::scalar_flux_new.begin(), random_ray::scalar_flux_new.end(), 0.0);
-    std::fill(random_ray::volume.begin(), random_ray::volume.end(), 0.0);
+    // Reset scalar fluxes, iteration volume tallies, and region hit flags to zero
+    parallel_fill<float>(random_ray::scalar_flux_new, 0.0f);
+    parallel_fill<double>(random_ray::volume, 0.0);
+    parallel_fill<int>(random_ray::was_hit, 0);
 
     // Start timer for transport
     simulation::time_transport.start();
@@ -107,11 +110,6 @@ int openmc_run_random_ray(void)
     simulation::k_generation.push_back(k_eff);
     calculate_average_keff();
 
-    // Output status data
-    if (settings::verbosity >= 7) {
-      print_generation();
-    }
-
     // Tally fission rates
     if (iter > settings::n_inactive) {
 
@@ -126,15 +124,13 @@ int openmc_run_random_ray(void)
 
     // Set phi_old = phi_new
     random_ray::scalar_flux_old.swap(random_ray::scalar_flux_new);
-
-    // Report if source region miss rate is higher than 0.01%
-    double percent_missed = (1.0 - (static_cast<double>(n_hits) / static_cast<double>(random_ray::n_source_regions))) * 100.0;
-    if( percent_missed > 0.01 )
-      printf(" High FSR miss rate detected (%.4lf%%)! Consider increasing ray density by adding more particles and/or active distance.\n", percent_missed);
-
-    if (k_eff > 2.0 || k_eff < 0.25 || !(std::isfinite(k_eff))) {
-      fatal_error("Instability detected");
+    
+    // Output status data
+    if (settings::verbosity >= 7) {
+      print_generation();
     }
+
+    instability_check(n_hits, k_eff, avg_miss_rate);
 
     //finalize_batch();
   }
@@ -143,12 +139,13 @@ int openmc_run_random_ray(void)
   // Write tally results to tallies.out
   if (settings::output_tallies) write_tallies();
 
-  print_results_random_ray(total_geometric_intersections);
+  print_results_random_ray(total_geometric_intersections, avg_miss_rate/n_iters_total);
 
   //openmc_simulation_finalize();
 
   return 0;
 }
+
 
 void update_neutron_source(double k_eff)
 {
@@ -215,8 +212,14 @@ int64_t add_source_to_scalar_flux(void)
 
   #pragma omp parallel for reduction(+:n_hits)
   for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
-    double volume = random_ray::volume[sr];
+
+    // Check if this cell was hit this iteration
     int was_cell_hit = random_ray::was_hit[sr];
+    if (was_cell_hit) {
+      n_hits++;
+    }
+
+    double volume = random_ray::volume[sr];
     int material = random_ray::material[sr]; 
     for (int e = 0; e < negroups; e++) {
       int64_t idx = (sr * negroups) + e;
@@ -227,7 +230,6 @@ int64_t add_source_to_scalar_flux(void)
         float Sigma_t = data::mg.macro_xs_[material].get_xs(MgxsType::TOTAL, e, NULL, NULL, NULL);
         random_ray::scalar_flux_new[idx] /= (Sigma_t * volume);
         random_ray::scalar_flux_new[idx] += random_ray::source[idx];
-        n_hits++;
       } else if (volume == 0.0) {
         // If it was not hit this iteration, and the simulation averaged volume is still 0,
         // then it has never been hit. In this case, just set it to 0
@@ -281,6 +283,22 @@ double compute_k_eff(double k_eff_old)
   double k_eff_new = k_eff_old * (fission_rate_new / fission_rate_old);
 
   return k_eff_new;
+}
+
+void instability_check(int64_t n_hits, double k_eff, double& avg_miss_rate)
+{
+  double percent_missed = ((random_ray::n_source_regions - n_hits) / static_cast<double>(random_ray::n_source_regions)) * 100.0;
+  avg_miss_rate += percent_missed;
+
+  if( percent_missed > 10.0 ) {
+    warning(fmt::format("Very high FSR miss rate detected ({:.3f}%). Instability may occur. Increase ray density by adding more rays and/or active distance.", percent_missed));
+  } else if( percent_missed > 0.01 ) {
+    warning(fmt::format("Elevated FSR miss rate detected ({:.3f}%). Increasing ray density by adding more rays and/or active distance may improve simulation efficiency.", percent_missed));
+  }
+
+  if (k_eff > 10.0 || k_eff < 0.01 || !(std::isfinite(k_eff))) {
+    fatal_error("Instability detected");
+  }
 }
 
 } // namespace openmc

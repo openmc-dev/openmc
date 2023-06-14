@@ -192,24 +192,25 @@ class TransferRates:
             raise ValueError("Invalid transfer rate unit '{}'".format(transfer_rate_units))
 
         for component in components:
-            try:
-                assert bool(re.match(GNDS_NAME_RE, component))
-            except AssertionError:
-                check_value('component', component, ELEMENT_SYMBOL.values())
-
-            if len(re.split(r'\d+', component)) > 1:
+            current_components = self.transfer_rates[material_id].keys()
+            if bool(re.match(GNDS_NAME_RE, component)):
                 nuc_element = re.split(r'\d+', component)[0]
-                try:
-                    self.get_transfer_rate(material, component, nuc_element)
-                except KeyError:
-                    if nuc_element in components:
-                        raise ValueError(f'Cannot add nuclide {component} and '
-                                         f'element {nuc_element} as transfer '
-                                         'rates')
-                else:
-                    raise ValueError(f'Element of nuclide {component} already '
-                                     'present')
+                if nuc_element in current_components:
+                    raise ValueError('Cannot add transfer rate for nuclide '
+                                     f'{component} to material {material_id} '
+                                     f'where element {nuc_element} already has '
+                                     'a transfer rate.')
+            else:
+                check_value('component', component, ELEMENT_SYMBOL.values())
+                r = re.compile(component + '[0-9]{1,3}(_m[0-9])?')
+                element_nucs = list(filter(r.match, current_components))
+                if len(element_nucs) > 0:
+                    nuc_str = ", ".join(element_nucs)
+                    raise ValueError('Cannot add transfer rate for element '
+                                     f'{component} to material {material_id} '
+                                     f'with transfer rate(s) for nuclide(s) '
+                                     f'{nuc_str}.')
 
-            self.transfer_rates[material_id][element] = transfer_rate / unit_conv, destination_material_id
+            self.transfer_rates[material_id][component] = transfer_rate / unit_conv, destination_material_id
             if destination_material_id is not None:
                 self.index_transfer.add((destination_material_id, material_id))

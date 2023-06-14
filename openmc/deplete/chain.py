@@ -724,10 +724,11 @@ class Chain:
             # Build transfer terms matrices
             if isinstance(materials, str):
                 material = materials
-                if element in transfer_rates.get_elements(material):
+                components = transfer_rates.get_components(material)
+                if element in components:
                     matrix[i, i] = transfer_rates.get_transfer_rate(material, element)
-                elif nuclide.name in transfer_rates.get_nuclides(material):
-                    matrix[i, i] = transfer_rates.get_transfer_rate(material, nuclide)
+                elif nuclide.name in components:
+                    matrix[i, i] = transfer_rates.get_transfer_rate(material, nuclide.name)
                 else:
                     matrix[i, i] = 0.0
             #Build transfer terms matrices

@@ -50,7 +50,7 @@ def test_get_set(model):
     """Tests the get/set methods"""
 
     # create transfer rates for U and Xe
-    transfer_rates = {'U': 0.01, 'Xe': 0.1}
+    transfer_rates = {'U': 0.01, 'Xe': 0.1, 'Gd157': 0.2, 'I135': -0.2}
     op = CoupledOperator(model, CHAIN_PATH)
     transfer = TransferRates(op, model)
 
@@ -60,13 +60,13 @@ def test_get_set(model):
     for material_input in [material, material.name, material.id]:
         for dest_material_input in [dest_material, dest_material.name,
                                     dest_material.id]:
-            for element, transfer_rate in transfer_rates.items():
+            for component, transfer_rate in transfer_rates.items():
                 transfer.set_transfer_rate(material_input, [element], transfer_rate,
                                  destination_material=dest_material_input)
                 assert transfer.get_transfer_rate(material_input,
-                                            element) == transfer_rate
+                                            component) == transfer_rate
                 assert transfer.get_destination_material(material_input,
-                                                    element) == str(dest_material.id)
+                                                    component) == str(dest_material.id)
             assert transfer.get_elements(material_input) == transfer_rates.keys()
 
 
@@ -86,14 +86,15 @@ def test_get_set(model):
 def test_units(transfer_rate_units, unit_conv, model):
     """ Units testing"""
     # create transfer rate Xe
-    element = 'Xe'
+    components = ['Xe', 'U235']
     transfer_rate = 1e-5
     op = CoupledOperator(model, CHAIN_PATH)
     transfer = TransferRates(op, model)
 
-    transfer.set_transfer_rate('f', [element], transfer_rate * unit_conv,
-                         transfer_rate_units=transfer_rate_units)
-    assert transfer.get_transfer_rate('f', element) == transfer_rate
+    for component in components:
+        transfer.set_transfer_rate('f', [component], transfer_rate * unit_conv,
+                             transfer_rate_units=transfer_rate_units)
+        assert transfer.get_transfer_rate('f', component) == transfer_rate
 
 
 def test_transfer(run_in_tmpdir, model):

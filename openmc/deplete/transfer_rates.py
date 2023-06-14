@@ -33,7 +33,7 @@ class TransferRates:
     burnable_mats : list of str
         All burnable material IDs.
     transfer_rates : dict of str to dict
-        Container of transfer rates, elements and destination material
+        Container of transfer rates, components (elements and nuclides) and destination material
     index_transfer : Set of pair of str
         Pair of strings needed to build final matrix (destination_material, mat)
     """
@@ -76,15 +76,15 @@ class TransferRates:
 
         return str(val)
 
-    def get_transfer_rate(self, material, element):
+    def get_transfer_rate(self, material, component):
         """Return transfer rate for given material and element.
 
         Parameters
         ----------
         material : openmc.Material or str or int
             Depletable material
-        element : str
-            Element to get transfer rate value
+        component : str
+            Element or nuclide to get transfer rate value
 
         Returns
         -------
@@ -94,12 +94,12 @@ class TransferRates:
         """
         material_id = self._get_material_id(material)
         try:
-            assert bool(re.match(GNDS_NAME_RE, element))
+            assert bool(re.match(GNDS_NAME_RE, component))
         except:
-            check_value('element', element, ELEMENT_SYMBOL.values())
-        return self.transfer_rates[material_id][element][0]
+            check_value('component', component, ELEMENT_SYMBOL.values())
+        return self.transfer_rates[material_id][component][0]
 
-    def get_destination_material(self, material, element):
+    def get_destination_material(self, material, component):
         """Return destination (or transfer) material for given material and
         element, if defined.
 
@@ -107,25 +107,26 @@ class TransferRates:
         ----------
         material : openmc.Material or str or int
             Depletable material
-        element : str
-            Element that gets transferred to another material.
+        component : str
+            Element or nuclide that gets transferred to another material.
 
         Returns
         -------
         destination_material_id : str
-            Depletable material ID to where the element gets transferred
+            Depletable material ID to where the element or nuclide gets
+            transferred
 
         """
         material_id = self._get_material_id(material)
         try:
-            assert bool(re.match(GNDS_NAME_RE, element))
+            assert bool(re.match(GNDS_NAME_RE, component))
         except:
-            check_value('element', element, ELEMENT_SYMBOL.values())
-        if element in self.transfer_rates[material_id]:
-            return self.transfer_rates[material_id][element][1]
+            check_value('component', component, ELEMENT_SYMBOL.values())
+        if component in self.transfer_rates[material_id]:
+            return self.transfer_rates[material_id][component][1]
 
-    def get_elements(self, material):
-        """Extract removing elements for a given material
+    def get_components(self, material):
+        """Extract removing elements and nuclides for a given material
 
         Parameters
         ----------
@@ -135,23 +136,24 @@ class TransferRates:
         Returns
         -------
         elements : list
-            List of elements where transfer rates exist
+            List of elements and nuclides where transfer rates exist
 
         """
         material_id = self._get_material_id(material)
         if material_id in self.transfer_rates:
             return self.transfer_rates[material_id].keys()
 
-    def set_transfer_rate(self, material, elements, transfer_rate, transfer_rate_units='1/s',
+    def set_transfer_rate(self, material, components, transfer_rate, transfer_rate_units='1/s',
                          destination_material=None):
-        """Set element transfer rates in a depletable material.
+        """Set element and nuclide transfer rates in a depletable material.
 
         Parameters
         ----------
         material : openmc.Material or str or int
             Depletable material
-        elements : list of str
-            List of strings of elements or nuclides that share transfer rate
+        components : list of str
+            List of strings of elements or nuclides that share transfer rate.
+            Cannot add a nuclide of an element if the element is specified.
         transfer_rate : float
             Rate at which elements are transferred. A positive or negative values
             set removal of feed rates, respectively.
@@ -189,15 +191,25 @@ class TransferRates:
         else:
             raise ValueError("Invalid transfer rate unit '{}'".format(transfer_rate_units))
 
-        for element in elements:
+        for component in components:
             try:
-                assert bool(re.match(GNDS_NAME_RE, element))
-            except:
-                check_value('element', element, ELEMENT_SYMBOL.values())
+                assert bool(re.match(GNDS_NAME_RE, component))
+            except AssertionError:
+                check_value('component', component, ELEMENT_SYMBOL.values())
 
-            ############################
-            ## ADD BLOCK TO DISALLOW AN ELEMENT AND NUCLIDE OF THE SAME ELEMENT ##
-            ############################
+            if len(re.split(r'\d+', component)) > 1:
+                nuc_element = re.split(r'\d+', component)[0]
+                try:
+                    self.get_transfer_rate(material, component, nuc_element)
+                except KeyError:
+                    if nuc_element in components:
+                        raise ValueError(f'Cannot add nuclide {component} and '
+                                         f'element {nuc_element} as transfer '
+                                         'rates')
+                else:
+                    raise ValueError(f'Element of nuclide {component} already '
+                                     'present')
+
             self.transfer_rates[material_id][element] = transfer_rate / unit_conv, destination_material_id
             if destination_material_id is not None:
                 self.index_transfer.add((destination_material_id, material_id))

@@ -29,7 +29,6 @@ bool convert_source_regions_to_tallies()
 {
   int negroups = data::mg.num_energy_groups_;
 
-  random_ray::tally_task.resize(random_ray::n_source_elements);
 
   bool all_source_regions_mapped = true;
 

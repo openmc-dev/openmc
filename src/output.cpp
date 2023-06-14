@@ -596,7 +596,7 @@ void print_results_random_ray(int64_t total_geometric_intersections, double avg_
   fmt::print(" Total Geometric Intersections     = {:.4e}\n", static_cast<double>(total_geometric_intersections));
   fmt::print("   Avg per Iteration               = {:.4e}\n", static_cast<double>(total_geometric_intersections)/settings::n_batches);
   fmt::print("   Avg per Iteration per FSR       = {:.2f}\n", static_cast<double>(total_geometric_intersections)/static_cast<double>(settings::n_batches)/random_ray::n_source_regions);
-  fmt::print(" Avg FSR Miss Rate per Iteration   = {:.4f}% (target is 0.01% - 0.001%)\n", avg_miss_rate);
+  fmt::print(" Avg FSR Miss Rate per Iteration   = {:.4f}%\n", avg_miss_rate);
   fmt::print(" Energy Groups                     = {}\n", negroups);
   fmt::print(" Total Integrations                = {:.4e}\n", total_integrations);
   fmt::print("   Avg per Iteration               = {:.4e}\n", total_integrations / settings::n_batches);

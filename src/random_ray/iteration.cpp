@@ -146,7 +146,6 @@ int openmc_run_random_ray(void)
   return 0;
 }
 
-
 void update_neutron_source(double k_eff)
 {
   simulation::time_update_src.start();
@@ -191,14 +190,14 @@ void normalize_scalar_flux_and_volumes(double total_active_distance_per_iteratio
 
   // Normalize Scalar flux to total distance travelled by all rays this iteration
   #pragma omp parallel for
-  for (auto& element : random_ray::scalar_flux_new) {
-    element *= normalization_factor;
+  for (int64_t e = 0; e < random_ray::scalar_flux_new.size(); e++) {
+    random_ray::scalar_flux_new[e] *= normalization_factor;
   }
 
   // Accumulate cell-wise ray length tallies collected this iteration, then
   // update the simulation-averaged cell-wise volume estimates
   #pragma omp parallel for
-  for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
+  for (int64_t sr = 0; sr < random_ray::n_source_regions; sr++) {
     random_ray::volume_t[sr] += random_ray::volume[sr];
     random_ray::volume[sr] = random_ray::volume_t[sr] * volume_normalization_factor;
   }

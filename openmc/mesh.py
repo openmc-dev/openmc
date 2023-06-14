@@ -216,7 +216,8 @@ class StructuredMesh(MeshBase):
 
             # re-use the generate vertices method to create the full mesh grid
             # transpose to get (i, j, k) ordering of the gridpoints
-            midpoint_grid = StructuredMesh._generate_vertices(i_grid, j_grid, k_grid).T.reshape(-1, 3)
+            midpoint_grid = StructuredMesh._generate_vertices(
+                i_grid, j_grid, k_grid).T.reshape(-1, 3)
             shape = (i_grid.size, j_grid.size, k_grid.size, 3)
             midpoint_grids.append(midpoint_grid.reshape(shape))
 
@@ -493,6 +494,7 @@ class StructuredMesh(MeshBase):
             vtk_grid.GetCellData().AddArray(dataset_array)
 
         return datasets_out
+
 
 class RegularMesh(StructuredMesh):
     """A regular Cartesian mesh in one, two, or three dimensions
@@ -1479,6 +1481,7 @@ class CylindricalMesh(StructuredMesh):
         arr[..., 2] += origin[2]
         return arr
 
+
 class SphericalMesh(StructuredMesh):
     """A 3D spherical mesh
 
@@ -1699,8 +1702,8 @@ class SphericalMesh(StructuredMesh):
     @staticmethod
     def _convert_to_cartesian(arr, origin):
         r_xy = arr[..., 0] * np.sin(arr[..., 1])
-        x = r_xy * np.cos(arr[...,2])
-        y = r_xy * np.sin(arr[...,2])
+        x = r_xy * np.cos(arr[..., 2])
+        y = r_xy * np.sin(arr[..., 2])
         z = arr[..., 0] * np.cos(arr[..., 1])
         arr[..., 0] = x + origin[0]
         arr[..., 1] = y + origin[1]
@@ -2116,6 +2119,7 @@ def _read_meshes(elem):
         out[mesh.id] = mesh
 
     return out
+
 
 # hexahedron element connectivity
 # lower-k connectivity offsets

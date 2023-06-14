@@ -29,7 +29,7 @@ reg_mesh.dimension = (10, 20, 30)
 
 rect_mesh = openmc.RectilinearMesh()
 rect_mesh.x_grid = np.linspace(0, 10, 5)
-rect_mesh.y_grid = np.logspace(np.log10(5), np.log10(20), 10)
+rect_mesh.y_grid = np.geomspace(5., 20., 10)
 rect_mesh.z_grid = np.linspace(1, 100, 20)
 
 cyl_mesh = openmc.CylindricalMesh()

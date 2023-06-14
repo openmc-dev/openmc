@@ -1,5 +1,6 @@
 #include "openmc/cell.h"
 #include "openmc/random_ray/source_region.h"
+#include "openmc/random_ray/tally_convert.h"
 #include "openmc/mgxs_interface.h"
 #include <cassert>
 
@@ -71,6 +72,7 @@ void initialize_source_regions()
   random_ray::scalar_flux_new.assign(random_ray::n_source_elements, 0.0);
   random_ray::scalar_flux_old.assign(random_ray::n_source_elements, 1.0);
   random_ray::source.resize(random_ray::n_source_elements);
+  random_ray::tally_task.resize(random_ray::n_source_elements);
 
   // Initialize material array
   int64_t source_region_id = 0;

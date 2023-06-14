@@ -32,8 +32,6 @@ std::vector<float> scalar_flux_new;
 std::vector<float> scalar_flux_old;
 std::vector<float> source;
 
-// 2D arrays representing values for all source regions x energy groups x tally tasks
-std::vector<std::vector<TallyTask>> tally_task;
 
 } // namespace random_ray
 

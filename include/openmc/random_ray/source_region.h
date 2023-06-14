@@ -8,16 +8,6 @@
 
 namespace openmc {
 
-struct TallyTask {
-  int tally_idx;
-  int filter_idx;
-  int score_idx;
-  int score_type;
-  TallyTask(int tally_idx, int filter_idx, int score_idx, int score_type)
-    : tally_idx(tally_idx), filter_idx(filter_idx), score_idx(score_idx), score_type(score_type)
-  {}
-};
-
 namespace random_ray {
 
 // Scalars
@@ -38,7 +28,6 @@ extern std::vector<float> source;
 extern std::vector<double> volume;
 extern std::vector<double> volume_t;
 extern std::vector<int> was_hit;
-extern std::vector<std::vector<TallyTask>> tally_task;
 
 } // namespace random_ray
 

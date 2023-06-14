@@ -586,17 +586,20 @@ void print_results_random_ray(int64_t total_geometric_intersections, double avg_
     return;
 	
   int negroups = data::mg.num_energy_groups_;
-	double total_integrations = (double) total_geometric_intersections * negroups;
+	double total_integrations = total_geometric_intersections * negroups;
   double TPI = simulation::time_transport.elapsed() / total_integrations;
   double misc_time = time_total.elapsed() - time_update_src.elapsed() - time_transport.elapsed() - time_tallies.elapsed();
   
   header("Simulation Statistics", 4);
   fmt::print(" Total Iterations                  = {}\n", settings::n_batches);
-  fmt::print(" Flat Source Regions               = {}\n", random_ray::n_source_regions);
+  fmt::print(" Flat Source Regions (FSRs)        = {}\n", random_ray::n_source_regions);
   fmt::print(" Total Geometric Intersections     = {:.4e}\n", static_cast<double>(total_geometric_intersections));
+  fmt::print("   Avg per Iteration               = {:.4e}\n", static_cast<double>(total_geometric_intersections)/settings::n_batches);
+  fmt::print("   Avg per Iteration per FSR       = {:.2f}\n", static_cast<double>(total_geometric_intersections)/static_cast<double>(settings::n_batches)/random_ray::n_source_regions);
+  fmt::print(" Avg FSR Miss Rate per Iteration   = {:.4f}% (target is 0.01% - 0.001%)\n", avg_miss_rate);
   fmt::print(" Energy Groups                     = {}\n", negroups);
   fmt::print(" Total Integrations                = {:.4e}\n", total_integrations);
-  fmt::print(" Avg Source Region Miss Rate       = {:.4f}%\n", avg_miss_rate);
+  fmt::print("   Avg per Iteration               = {:.4e}\n", total_integrations / settings::n_batches);
 
 	header("Timing Statistics", 4);
   show_time("Total time for initialization", time_initialize.elapsed());

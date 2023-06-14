@@ -560,7 +560,7 @@ class RightCircularCylinder(CompositeSurface):
 
     def __pos__(self):
         prism = +self.cyl | -self.bottom | +self.top
-        fillet = _self.get_fillet()
+        fillet = self._get_fillet()
         if fillet is not None:
             prism = prism | fillet
         return prism

@@ -12,23 +12,37 @@
 
 namespace openmc {
 
-void initialize_tally_tasks()
+bool initialize_tally_tasks()
 {
   int negroups = data::mg.num_energy_groups_;
 
   random_ray::tally_task.resize(random_ray::n_source_elements);
 
+  bool all_source_regions_mapped = true;
+
   #pragma omp parallel for
   for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
+
+    // If this source region has not been hit by a ray yet, then
+    // we aren't going to be able to map it, so skip it.
+    if (!random_ray::position_recorded[sr]) {
+      all_source_regions_mapped = false;
+      continue;
+    }
+
     Particle p;
     p.r() = random_ray::position[sr];  
     bool found = exhaustive_find_cell(p);
-    assert(found);
     for (int e = 0; e < negroups; e++) {
       p.g() = e;
       p.g_last() = e;
 
       int64_t source_element = sr * negroups + e;
+      
+      // If this task has already been populated, we can move on
+      if (random_ray::tally_task[source_element].size() > 0) {
+        continue;
+      }
 
       for (auto i_tally : model::active_tallies) {
         Tally& tally {*model::tallies[i_tally]};
@@ -60,6 +74,7 @@ void initialize_tally_tasks()
         match.bins_present_ = false;
     }
   }
+  return all_source_regions_mapped;
 }
 
 void random_ray_tally()
@@ -204,7 +219,6 @@ int openmc_run_random_ray(void)
 
   // Intialize Cell (FSR) data
   initialize_source_regions();
-  
 
   uint64_t total_geometric_intersections = 0;
 
@@ -218,6 +232,8 @@ int openmc_run_random_ray(void)
   double total_active_distance_per_iteration = distance_active * nrays;
 
   openmc::simulation::time_total.start();
+
+  bool mapped_all_tallies = false;
 
   // Power Iteration Loop
   for (int iter = 1; iter <= n_iters_total; iter++) {
@@ -265,9 +281,12 @@ int openmc_run_random_ray(void)
 
     // Tally fission rates
     if (iter > settings::n_inactive) {
-      if (iter == settings::n_inactive + 1) {
-        initialize_tally_tasks();
+
+      // Create tally tasks for all source regions
+      if (!mapped_all_tallies) {
+        mapped_all_tallies = initialize_tally_tasks();
       }
+      
       random_ray_tally();
       //random_ray_tally_energy_integrated();
       accumulate_tallies();

@@ -181,11 +181,14 @@ class StructuredMesh(MeshBase):
 
     @staticmethod
     def _generate_vertices(i_grid, j_grid, k_grid):
+        """Returns an array with shape (3, i_grid.size+1, j_grid.size+1, k_grid.size+1)
+           containing the corner vertices of mesh elements.
+        """
         return np.stack(np.meshgrid(i_grid, j_grid, k_grid, indexing='ij'), axis=0)
 
     @staticmethod
     def _generate_edge_midpoints(grids):
-        """
+        """Generates the midpoints of mesh element edges for each dimension of the mesh.
 
         Parameters
         ----------
@@ -196,8 +199,8 @@ class StructuredMesh(MeshBase):
         -------
         midpoint_grids : list of numpy.ndarray
             The edge midpoints for the i, j, and k midpoints of each element in
-            i, j, k ordering. Shape of the grids is [(ni-1, nj, nk, 3),
-            (ni, nj-1, nk, 3), (ni, nj, nk-1, 3)]
+            i, j, k ordering. The shapes of the resulting grids are
+            [(3, ni-1, nj, nk), (3, ni, nj-1, nk), (3, ni, nj, nk-1)]
         """
         # generate a set of edge midpoints for each dimension
         midpoint_grids = []
@@ -216,10 +219,8 @@ class StructuredMesh(MeshBase):
 
             # re-use the generate vertices method to create the full mesh grid
             # transpose to get (i, j, k) ordering of the gridpoints
-            midpoint_grid = StructuredMesh._generate_vertices(
-                i_grid, j_grid, k_grid).T.reshape(-1, 3)
-            shape = (i_grid.size, j_grid.size, k_grid.size, 3)
-            midpoint_grids.append(midpoint_grid.reshape(shape))
+            midpoint_grid = StructuredMesh._generate_vertices(i_grid, j_grid, k_grid)
+            midpoint_grids.append(midpoint_grid)
 
         return midpoint_grids
 
@@ -328,7 +329,7 @@ class StructuredMesh(MeshBase):
         import vtk
         from vtk.util import numpy_support as nps
 
-        vertices = self.cartesian_vertices
+        vertices = self.cartesian_vertices.T.reshape(-1, 3)
 
         vtkPts = vtk.vtkPoints()
         vtkPts.SetData(nps.numpy_to_vtk(vertices, deep=True))
@@ -350,7 +351,7 @@ class StructuredMesh(MeshBase):
         import vtk
         from vtk.util import numpy_support as nps
 
-        corner_vertices = self.cartesian_vertices
+        corner_vertices = self.cartesian_vertices.T.reshape(-1, 3)
 
         vtkPts = vtk.vtkPoints()
         vtk_grid = vtk.vtkUnstructuredGrid()
@@ -392,7 +393,7 @@ class StructuredMesh(MeshBase):
         # list of point IDs
         midpoint_vertices = self.midpoint_vertices
         for edge_grid in midpoint_vertices:
-            for pnt in edge_grid.reshape(-1, 3):
+            for pnt in edge_grid.T.reshape(-1, 3):
                 point_ids.append(_insert_point(pnt))
 
         # determine how many elements in each dimension
@@ -425,7 +426,7 @@ class StructuredMesh(MeshBase):
                 # initial offset for corner vertices and midpoint dimension
                 flat_idx = corner_vertices.shape[0] + sum(n_midpoint_vertices[:dim])
                 # generate a flat index into the table of point IDs
-                midpoint_shape = midpoint_vertices[dim].shape[:-1]
+                midpoint_shape = midpoint_vertices[dim].shape[1:]
                 flat_idx += np.ravel_multi_index((i+di, j+dj, k+dk),
                                                  midpoint_shape,
                                                  order='F')
@@ -579,7 +580,7 @@ class RegularMesh(StructuredMesh):
     def cartesian_vertices(self):
         """Returns vertices in cartesian coordiantes. Identical to ``vertices`` for RegularMesh and RectilinearMesh
         """
-        return self.vertices.T.reshape(-1, 3)
+        return self.vertices
 
     @property
     def volumes(self):
@@ -1056,7 +1057,7 @@ class RectilinearMesh(StructuredMesh):
     def cartesian_vertices(self):
         """Returns vertices in cartesian coordiantes. Identical to ``vertices`` for RegularMesh and RectilinearMesh
         """
-        return self.vertices.T.reshape(-1, 3)
+        return self.vertices
 
     @property
     def volumes(self):
@@ -1470,15 +1471,18 @@ class CylindricalMesh(StructuredMesh):
 
     @property
     def cartesian_vertices(self):
-        return self._convert_to_cartesian(self.vertices.T.reshape(-1, 3), self.origin)
+        return self._convert_to_cartesian(self.vertices, self.origin)
 
     @staticmethod
     def _convert_to_cartesian(arr, origin):
-        x = arr[..., 0] * np.cos(arr[..., 1]) + origin[0]
-        y = arr[..., 0] * np.sin(arr[..., 1]) + origin[1]
-        arr[..., 0] = x
-        arr[..., 1] = y
-        arr[..., 2] += origin[2]
+        """Converts an array with xyz values in the first dimension (shape (3, ...))
+        to Cartesian coordinates.
+        """
+        x = arr[0, ...] * np.cos(arr[1, ...]) + origin[0]
+        y = arr[0, ...] * np.sin(arr[1, ...]) + origin[1]
+        arr[0, ...] = x
+        arr[1, ...] = y
+        arr[2, ...] += origin[2]
         return arr
 
 
@@ -1668,7 +1672,6 @@ class SphericalMesh(StructuredMesh):
             Spherical mesh object
 
         """
-
         mesh_id = int(get_text(elem, 'id'))
         mesh = cls(mesh_id)
         mesh.r_grid = [float(x) for x in get_text(elem, "r_grid").split()]
@@ -1697,17 +1700,20 @@ class SphericalMesh(StructuredMesh):
 
     @property
     def cartesian_vertices(self):
-        return self._convert_to_cartesian(self.vertices.T.reshape(-1, 3), self.origin)
+        return self._convert_to_cartesian(self.vertices, self.origin)
 
     @staticmethod
     def _convert_to_cartesian(arr, origin):
-        r_xy = arr[..., 0] * np.sin(arr[..., 1])
-        x = r_xy * np.cos(arr[..., 2])
-        y = r_xy * np.sin(arr[..., 2])
-        z = arr[..., 0] * np.cos(arr[..., 1])
-        arr[..., 0] = x + origin[0]
-        arr[..., 1] = y + origin[1]
-        arr[..., 2] = z + origin[2]
+        """Converts an array with xyz values in the first dimension (shape (3, ...))
+        to Cartesian coordinates.
+        """
+        r_xy = arr[0, ...] * np.sin(arr[1, ...])
+        x = r_xy * np.cos(arr[2, ...])
+        y = r_xy * np.sin(arr[2, ...])
+        z = arr[0, ...] * np.cos(arr[1, ...])
+        arr[0, ...] = x + origin[0]
+        arr[1, ...] = y + origin[1]
+        arr[2, ...] = z + origin[2]
         return arr
 
 

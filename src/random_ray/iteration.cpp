@@ -16,9 +16,7 @@ void random_ray_tally()
 {
   int negroups = data::mg.num_energy_groups_;
 
-  int64_t n_hits = 0;
-
-  #pragma omp parallel for reduction(+:n_hits)
+  #pragma omp parallel for
   for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
 
     double volume = random_ray::volume[sr];
@@ -40,7 +38,7 @@ void random_ray_tally()
       double score_fission = flux * volume * Sigma_f;
 
       for (auto i_tally : model::active_tallies) {
-        const Tally& tally {*model::tallies[i_tally]};
+        Tally& tally {*model::tallies[i_tally]};
 
         // Initialize an iterator over valid filter bin combinations.  If there are
         // no valid combinations, use a continue statement to ensure we skip the
@@ -55,22 +53,13 @@ void random_ray_tally()
           auto filter_index = filter_iter.index_;
           auto filter_weight = filter_iter.weight_;
 
-          auto& tally {*model::tallies[i_tally]};
-
-          for (auto score_index = 0; score_index < tally.scores_.size(); score_index++) {
-            auto score_bin = tally.scores_[score_index];
-
+          for (auto score_bin : tally.scores_) {
             double score;
 
-            switch (score_bin) {
-              case SCORE_FLUX:
-                score = score_flux;
-                break;
-              case SCORE_FISSION:
-                score = score_fission;
-                break;
-              default:
-                break;
+            if (score_bin == SCORE_FLUX) {
+              score = score_flux;
+            } else {
+              score = score_fission;
             }
 
             #pragma omp atomic
@@ -78,6 +67,9 @@ void random_ray_tally()
           }
         }
       }
+      // Reset all the filter matches for the next tally event.
+      for (auto& match : p.filter_matches())
+        match.bins_present_ = false;
     }
   }
 }
@@ -103,17 +95,16 @@ int openmc_run_random_ray(void)
   simulation::entropy.clear();
   openmc_reset();
 
+  //openmc_simulation_init();
+
   // Enable all tallies, and enforce
-  // Note: Currently, only tallies of mesh type that score fission are allowed
-  for (int i = 0; i < model::tallies.size(); i++) {
-    auto& tally {*model::tallies[i]};
-    for (auto s = 0; s < tally.scores_.size(); s++) {
-      auto score_bin = tally.scores_[s];
+  for (auto& tally : model::tallies) {
+    for (auto score_bin : tally->scores_) {
       if (score_bin != SCORE_FLUX && score_bin != SCORE_FISSION) {
         fatal_error("Only flux and fission scores are supported in random ray mode");
       }
     }
-    tally.active_ = true;
+    tally->active_ = true;
   }
 
   setup_active_tallies();
@@ -140,6 +131,7 @@ int openmc_run_random_ray(void)
   for (int iter = 1; iter <= n_iters_total; iter++) {
     // Increment current batch
     simulation::current_batch++;
+    //initialize_batch();
 
     // Update neutron source
     update_neutron_source(k_eff);
@@ -196,6 +188,8 @@ int openmc_run_random_ray(void)
     if (k_eff > 2.0 || k_eff < 0.25 || !(std::isfinite(k_eff))) {
       fatal_error("Instability detected");
     }
+
+    //finalize_batch();
   }
   openmc::simulation::time_total.stop();
 
@@ -203,6 +197,8 @@ int openmc_run_random_ray(void)
   if (settings::output_tallies) write_tallies();
 
   print_results_random_ray(total_geometric_intersections);
+
+  //openmc_simulation_finalize();
 
   return 0;
 }

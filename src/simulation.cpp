@@ -135,6 +135,10 @@ int openmc_simulation_init()
       header("K EIGENVALUE SIMULATION", 3);
       if (settings::verbosity >= 7)
         print_columns();
+    } else if (settings::run_mode == RunMode::RANDOM_RAY) {
+      header("K EIGENVALUE RANDOM RAY SIMULATION", 3);
+      if (settings::verbosity >= 7)
+        print_columns();
     }
   }
 

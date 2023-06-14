@@ -430,6 +430,8 @@ list(APPEND libopenmc_SOURCES
   src/xml_interface.cpp
   src/xsdata.cpp
   src/zplane_partitioner.cpp
+  src/octree_partitioner.cpp
+  src/aabb.cpp
   )
 
 # Add bundled external dependencies

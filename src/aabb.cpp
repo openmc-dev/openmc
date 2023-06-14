@@ -60,7 +60,18 @@ vec3 AABB::get_center() const {
 	return (min + max) * 0.5f;
 }
 
-bool AABB::operator==(const AABB& other) {
+bool AABB::contains(const vec3& pos) const{
+    return (
+        min.x <= pos.x &&
+        min.y <= pos.y &&
+        min.z <= pos.z &&
+        max.x >= pos.x &&
+        max.y >= pos.y &&
+        max.z >= pos.z 
+    );
+}
+
+bool AABB::operator==(const AABB& other) const {
 	return (
 		min.x == other.min.x &&
 		min.y == other.min.y &&
@@ -71,7 +82,7 @@ bool AABB::operator==(const AABB& other) {
 	);
 }
 
-bool AABB::operator!=(const AABB& other) {
+bool AABB::operator!=(const AABB& other) const {
 	return !(*this == other);
 }
 

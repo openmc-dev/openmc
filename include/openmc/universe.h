@@ -34,6 +34,9 @@ public:
 
   virtual bool find_cell(Particle& p) const;
 
+  // assume that cells do not overlap
+  virtual bool find_cell_in_list(std::vector<int> cells_to_search, std::vector<int> cells_found, Position& p) const;
+
   BoundingBox bounding_box() const;
 
   const GeometryType& geom_type() const { return geom_type_; }

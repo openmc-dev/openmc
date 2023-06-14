@@ -77,6 +77,32 @@ bool Universe::find_cell(Particle& p) const
   return false;
 }
 
+// not complete
+bool Universe::find_cell_in_list(std::vector<int> cells_to_search, std::vector<int> cells_found, Position& r) const
+{
+  Timer t;
+  t.start();
+
+  for (int32_t i_cell : cells_to_search) {
+    // Check if this cell contains the particle;
+    Position r {p.r_local()};
+    Direction u {p.u_local()};
+    auto surf = p.surface();
+    if (model::cells[i_cell]->contains(r, u, surf)) {
+      p.coord(p.n_coord() - 1).cell = i_cell;
+      finding_time_sum_mutex.lock();
+      finding_time += t.elapsed();
+      finding_time_sum_mutex.unlock();
+      return true;
+    }
+  }
+
+  finding_time_sum_mutex.lock();
+  finding_time += t.elapsed();
+  finding_time_sum_mutex.unlock();
+  return false;
+}
+
 BoundingBox Universe::bounding_box() const
 {
   BoundingBox bbox = {INFTY, -INFTY, INFTY, -INFTY, INFTY, -INFTY};

@@ -101,7 +101,7 @@ class TransferRates:
 
     def get_destination_material(self, material, component):
         """Return destination (or transfer) material for given material and
-        element, if defined.
+        component, if defined.
 
         Parameters
         ----------
@@ -153,9 +153,10 @@ class TransferRates:
             Depletable material
         components : list of str
             List of strings of elements or nuclides that share transfer rate.
-            Cannot add a nuclide of an element if the element is specified.
+            Cannot add transfer rates for nuclides to a material where a
+            transfer rate for its element is specified and vice versa.
         transfer_rate : float
-            Rate at which elements are transferred. A positive or negative values
+            Rate at which elements or nuclides are transferred. A positive or negative values
             set removal of feed rates, respectively.
         destination_material : openmc.Material or str or int, Optional
             Destination material to where nuclides get fed.

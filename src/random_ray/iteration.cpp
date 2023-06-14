@@ -12,7 +12,57 @@
 
 namespace openmc {
 
-void random_ray_tally_energy_integrated()
+void initialize_tally_tasks()
+{
+  int negroups = data::mg.num_energy_groups_;
+
+  random_ray::tally_task.resize(random_ray::n_source_elements);
+
+  #pragma omp parallel for
+  for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
+    Particle p;
+    p.r() = random_ray::position[sr];  
+    bool found = exhaustive_find_cell(p);
+    assert(found);
+    for (int e = 0; e < negroups; e++) {
+      p.g() = e;
+      p.g_last() = e;
+
+      int64_t source_element = sr * negroups + e;
+
+      for (auto i_tally : model::active_tallies) {
+        Tally& tally {*model::tallies[i_tally]};
+
+        // Initialize an iterator over valid filter bin combinations.  If there are
+        // no valid combinations, use a continue statement to ensure we skip the
+        // assume_separate break below.
+        auto filter_iter = FilterBinIter(tally, p);
+        auto end = FilterBinIter(tally, true, &p.filter_matches());
+        if (filter_iter == end)
+          continue;
+
+        // Loop over filter bins.
+        for (; filter_iter != end; ++filter_iter) {
+          auto filter_index = filter_iter.index_;
+          auto filter_weight = filter_iter.weight_;
+
+          // Loop over scores
+          for (auto score_index = 0; score_index < tally.scores_.size(); score_index++) {
+            auto score_bin = tally.scores_[score_index];
+            random_ray::tally_task[source_element].emplace_back(i_tally, filter_index, score_index, score_bin);
+            TallyTask task = random_ray::tally_task[source_element][0];
+
+          }
+        }
+      }
+      // Reset all the filter matches for the next tally event.
+      for (auto& match : p.filter_matches())
+        match.bins_present_ = false;
+    }
+  }
+}
+
+void random_ray_tally()
 {
   openmc::simulation::time_tallies.start();
 
@@ -20,64 +70,28 @@ void random_ray_tally_energy_integrated()
 
   #pragma omp parallel for
   for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
-
     double volume = random_ray::volume[sr];
-    int was_cell_hit = random_ray::was_hit[sr];
-    int material = random_ray::material[sr]; 
-
-    Particle p;
-    p.r() = random_ray::position[sr];  
-    bool found = exhaustive_find_cell(p);
-    assert(found);
-    double score_flux = 0.0;
-    double score_fission = 0.0;
+    double material = random_ray::material[sr];
     for (int e = 0; e < negroups; e++) {
-      int64_t idx = (sr * negroups) + e;
-      float flux = random_ray::scalar_flux_new[idx];
-      double Sigma_f = data::mg.macro_xs_[material].get_xs(MgxsType::FISSION, e, NULL, NULL, NULL);
-      score_flux += flux * volume;
-      score_fission += flux * volume * Sigma_f;
-    }
-
-    for (auto i_tally : model::active_tallies) {
-      Tally& tally {*model::tallies[i_tally]};
-
-      // Initialize an iterator over valid filter bin combinations.  If there are
-      // no valid combinations, use a continue statement to ensure we skip the
-      // assume_separate break below.
-      auto filter_iter = FilterBinIter(tally, p);
-      auto end = FilterBinIter(tally, true, &p.filter_matches());
-      if (filter_iter == end)
-        continue;
-
-      // Loop over filter bins.
-      for (; filter_iter != end; ++filter_iter) {
-        auto filter_index = filter_iter.index_;
-        auto filter_weight = filter_iter.weight_;
-
-        // Loop over scores
-        for (auto score_index = 0; score_index < tally.scores_.size(); score_index++) {
-          auto score_bin = tally.scores_[score_index];
-          double score;
-
-          if (score_bin == SCORE_FLUX) {
-            score = score_flux;
-          } else {
-            score = score_fission;
-          }
-
-          #pragma omp atomic
-          tally.results_(filter_index, score_index, TallyResult::VALUE) += score * filter_weight;
+      int idx = sr * negroups + e;
+      for (auto& task : random_ray::tally_task[idx]) {
+        double score;
+        if (task.score_type == SCORE_FLUX) {
+          score = random_ray::scalar_flux_new[idx] * volume;
+        } else if(task.score_type == SCORE_FISSION) {
+          double Sigma_f = data::mg.macro_xs_[material].get_xs(MgxsType::FISSION, e, NULL, NULL, NULL);
+          score = random_ray::scalar_flux_new[idx] * volume * Sigma_f;
         }
+        Tally& tally {*model::tallies[task.tally_idx]};
+        #pragma omp atomic
+        tally.results_(task.filter_idx, task.score_idx, TallyResult::VALUE) += score;
       }
     }
-    // Reset all the filter matches for the next tally event.
-    for (auto& match : p.filter_matches())
-      match.bins_present_ = false;
   }
   openmc::simulation::time_tallies.stop();
 }
 
+/*
 void random_ray_tally()
 {
   openmc::simulation::time_tallies.start();
@@ -134,6 +148,11 @@ void random_ray_tally()
 
             #pragma omp atomic
             tally.results_(filter_index, score_index, TallyResult::VALUE) += score * filter_weight;
+            
+            auto task = random_ray::tally_task[idx];
+            assert(task.tally_idx == i_tally);
+            assert(task.filter_idx == filter_index);
+            assert(task.score_idx == score_index);
           }
         }
       }
@@ -144,6 +163,7 @@ void random_ray_tally()
   }
   openmc::simulation::time_tallies.stop();
 }
+*/
 
 int openmc_run_random_ray(void)
 {
@@ -184,6 +204,7 @@ int openmc_run_random_ray(void)
 
   // Intialize Cell (FSR) data
   initialize_source_regions();
+  
 
   uint64_t total_geometric_intersections = 0;
 
@@ -244,8 +265,11 @@ int openmc_run_random_ray(void)
 
     // Tally fission rates
     if (iter > settings::n_inactive) {
-      //random_ray_tally();
-      random_ray_tally_energy_integrated();
+      if (iter == settings::n_inactive + 1) {
+        initialize_tally_tasks();
+      }
+      random_ray_tally();
+      //random_ray_tally_energy_integrated();
       accumulate_tallies();
     }
 

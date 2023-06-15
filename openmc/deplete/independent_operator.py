@@ -295,7 +295,7 @@ class IndependentOperator(OpenMCOperator):
         ----------
         nuc_ind_map : dict of int to str
             Dictionary mapping the nuclide index to nuclide name
-        rxn_ind_map : dict of int to str
+        rx_ind_map : dict of int to str
             Dictionary mapping reaction index to reaction name
 
         """
@@ -305,7 +305,7 @@ class IndependentOperator(OpenMCOperator):
             super().__init__(rates.n_nuc, rates.n_react)
 
             self.nuc_ind_map = {ind: nuc for nuc, ind in rates.index_nuc.items()}
-            self.rxn_ind_map = {ind: rxn for rxn, ind in rates.index_rx.items()}
+            self.rx_ind_map = {ind: rxn for rxn, ind in rates.index_rx.items()}
             self._op = op
 
         def generate_tallies(self, materials, scores):
@@ -330,14 +330,20 @@ class IndependentOperator(OpenMCOperator):
             """
             self._results_cache.fill(0.0)
 
+            # Get volume in units of [b-cm]
+            volume_b_cm = 1e24 * self._op.number.get_mat_volume(mat_id)
+
             for i_nuc, i_react in product(nuc_index, react_index):
                 nuc = self.nuc_ind_map[i_nuc]
-                rxn = self.rxn_ind_map[i_react]
+                rx = self.rx_ind_map[i_react]
 
-                # Sigma^j_i * V = sigma^j_i * n_i * V = sigma^j_i * N_i
-                self._results_cache[i_nuc,i_react] = \
-                    self._op.cross_sections[rxn][nuc] * \
-                    self._op.number[mat_id, nuc]
+                # OK, this is kind of weird, but we multiply by volume in [b-cm]
+                # only because OpenMCOperator._calculate_reaction_rates has to
+                # divide it out later. It might make more sense to account for
+                # the source rate (flux) here rather than in the normalization
+                # helper.
+                self._results_cache[i_nuc, i_react] = \
+                    self._op.cross_sections[rx][nuc] * volume_b_cm
 
             return self._results_cache
 

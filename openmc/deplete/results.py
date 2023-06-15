@@ -10,6 +10,7 @@ import numpy as np
 
 from .stepresult import StepResult, VERSION_RESULTS
 import openmc.checkvalue as cv
+from openmc.data import atomic_mass, AVOGADRO
 from openmc.data.library import DataLibrary
 from openmc.material import Material, Materials
 from openmc.exceptions import DataError
@@ -104,11 +105,11 @@ class Results(list):
         """Get number of nuclides over time from a single material
 
         .. note::
-            Initial values for some isotopes that do not appear in
+            Initial values for some nuclides that do not appear in
             initial concentrations may be non-zero, depending on the
             value of the :attr:`openmc.deplete.CoupledOperator.dilute_initial`
             attribute. The :class:`openmc.deplete.CoupledOperator` class adds
-            isotopes according to this setting, which can be set to zero.
+            nuclides according to this setting, which can be set to zero.
 
         Parameters
         ----------
@@ -161,6 +162,68 @@ class Results(list):
             if nuc_units == "atom/b-cm":
                 # 1 barn = 1e-24 cm^2
                 concentrations *= 1e-24
+
+        return times, concentrations
+
+    def get_mass(self,
+        mat: typing.Union[Material, str],
+        nuc: str,
+        nuc_units: str = "g",
+        time_units: str = "s"
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Get mass of nuclides over time from a single material
+
+        .. versionadded:: 0.13.4
+
+        .. note::
+            Initial values for some nuclides that do not appear in
+            initial concentrations may be non-zero, depending on the
+            value of the :attr:`openmc.deplete.CoupledOperator.dilute_initial`
+            attribute. The :class:`openmc.deplete.CoupledOperator` class adds
+            nuclides according to this setting, which can be set to zero.
+
+        Parameters
+        ----------
+        mat : openmc.Material, str
+            Material object or material id to evaluate
+        nuc : str
+            Nuclide name to evaluate
+        nuc_units : {"g", "g/cm3", "kg"}, optional
+            Units for the returned concentration. Default is ``"g"``
+
+        time_units : {"s", "min", "h", "d", "a"}, optional
+            Units for the returned time array. Default is ``"s"`` to
+            return the value in seconds. Other options are minutes ``"min"``,
+            hours ``"h"``, days ``"d"``, and Julian years ``"a"``.
+
+        Returns
+        -------
+        times : numpy.ndarray
+            Array of times in units of ``time_units``
+        concentrations : numpy.ndarray
+            Concentration of specified nuclide in units of ``nuc_units``
+
+        """
+        cv.check_value("nuc_units", nuc_units,
+                    {"g", "g/cm3", "kg"})
+
+        if isinstance(mat, Material):
+            mat_id = str(mat.id)
+        elif isinstance(mat, str):
+            mat_id = mat
+        else:
+            raise TypeError('mat should be of type openmc.Material or str')
+
+        times, atoms = self.get_atoms(mat, nuc, time_units=time_units)
+
+        concentrations = atoms * atomic_mass(nuc) / AVOGADRO
+
+        # Unit conversions
+        if nuc_units == "g/cm3":
+            # Divide by volume to get density
+            concentrations /= self[0].volume[mat_id]
+        if nuc_units == "kg":
+            concentrations *= 1e3
 
         return times, concentrations
 

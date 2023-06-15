@@ -16,31 +16,9 @@ from openmc.mpi import comm
 from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
 from .reaction_rates import ReactionRates
+from .pool import _distribute
 
 __all__ = ["OpenMCOperator", "OperatorResult"]
-
-
-def _distribute(items):
-    """Distribute items across MPI communicator
-
-    Parameters
-    ----------
-    items : list
-        List of items of distribute
-
-    Returns
-    -------
-    list
-        Items assigned to process that called
-
-    """
-    min_size, extra = divmod(len(items), comm.size)
-    j = 0
-    for i in range(comm.size):
-        chunk_size = min_size + int(i < extra)
-        if comm.rank == i:
-            return items[j:j + chunk_size]
-        j += chunk_size
 
 
 class OpenMCOperator(TransportOperator):

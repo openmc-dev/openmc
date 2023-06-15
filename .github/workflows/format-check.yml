@@ -22,4 +22,4 @@ jobs:
 
       - name: Failure Check
         if: steps.linter.outputs.checks-failed > 0
-        run: echo "Some files failed the linting checks! See job summary and file annotations for more info"
+        run: echo "Some files failed the formatting check! See job summary and file annotations for more info" && exit 1

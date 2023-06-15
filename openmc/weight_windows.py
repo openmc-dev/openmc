@@ -563,9 +563,6 @@ def wwinp_to_wws(path: PathLike) -> List[WeightWindows]:
 
         s = int(grid_vals[::3].sum())
         if s != n_pnts:
-            print("Coarse bins: ", (ncx, ncy, ncz))
-            print("Fine bins: ", (nfx, nfy, nfz))
-
             raise ValueError(f'Sum of the fine bin entries, {s}, does '
                              f'not match the number of fine bins, {n_pnts}')
 

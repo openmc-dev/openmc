@@ -39,9 +39,9 @@ def model():
     geometry = openmc.Geometry([cell_f, cell_w])
 
     settings = openmc.Settings()
-    settings.particles = 100
+    settings.particles = 500
     settings.inactive = 0
-    settings.batches = 10
+    settings.batches = 2
 
     return openmc.Model(geometry, materials, settings)
 

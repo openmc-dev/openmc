@@ -100,12 +100,12 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, transfer_rates=None,
 
         if len(transfer_rates.index_transfer) > 0:
             # Gather all on comm.rank 0
-            matrices = comm.gather(matrices, root=0)
-            x = comm.gather(x, root=0)
+            matrices = comm.gather(matrices)
+            x = comm.gather(x)
 
             if comm.rank == 0:
                 # Expand lists
-                matrices = [elm for matrice in matrices for elm in matrice]
+                matrices = [elm for matrix in matrices for elm in matrix]
                 x = [x_elm for x_mat in x for x_elm in x_mat]
 
                 # Calculate transfer rate terms as diagonal matrices
@@ -146,7 +146,7 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, transfer_rates=None,
                 x_result = None
 
             # Braodcast result to other ranks
-            x_result = comm.bcast(x_result, root=0)
+            x_result = comm.bcast(x_result)
             # Distribute results across MPI
             x_result = _distribute(x_result)
 

@@ -1,5 +1,4 @@
 from numbers import Real
-import warnings
 import re
 
 from openmc.checkvalue import check_type, check_value

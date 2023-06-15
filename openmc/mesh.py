@@ -292,6 +292,7 @@ class StructuredMesh(MeshBase):
             a VTK grid object representing the mesh
         """
         import vtk
+        from vtk.util import numpy_support as nps
 
         # check that the data sets are appropriately sized
         if datasets is not None:
@@ -306,11 +307,24 @@ class StructuredMesh(MeshBase):
             vtk_grid = self._create_vtk_unstructured_grid()
             writer = vtk.vtkUnstructuredGridWriter()
 
-        # maintain a list of the datasets as added
-        # to the VTK arrays to ensure they persist
-        # in memory until the file is written
         if datasets is not None:
-            datasets_out = self._apply_vtk_datasets(vtk_grid, datasets, volume_normalization)
+            # maintain a list of the datasets as added
+            # to the VTK arrays to ensure they persist
+            # in memory until the file is written
+            datasets_out = []
+            for label, dataset in datasets.items():
+                dataset = np.asarray(dataset).flatten()
+                datasets_out.append(dataset)
+
+                if volume_normalization:
+                    dataset /= self.volumes.T.flatten()
+
+                dataset_array = vtk.vtkDoubleArray()
+                dataset_array.SetName(label)
+                dataset_array.SetArray(nps.numpy_to_vtk(dataset),
+                                    dataset.size,
+                                    True)
+                vtk_grid.GetCellData().AddArray(dataset_array)
 
         writer.SetFileName(str(filename))
         writer.SetInputData(vtk_grid)
@@ -460,41 +474,6 @@ class StructuredMesh(MeshBase):
                 if len(dataset) == self.num_mesh_cells:
                     raise ValueError(errmsg)
             cv.check_type('data label', label, str)
-
-    def _apply_vtk_datasets(self, vtk_grid, datasets, volume_normalization):
-        """Apply datasets to the elements of the vtk grid
-
-        Parameters
-        ----------
-        vtk_grid : vtk.StructuredGrid or vtk.UnstructuredGrid
-            VTK grid object to which the datasets will be applied
-        datasets : dict
-            Dictionary whose keys are the data labels
-            and values are the data sets.
-        volume_normalization : bool
-            Whether or not to normalize the data by the
-            volume of the mesh elements
-
-        """
-        import vtk
-        from vtk.util import numpy_support as nps
-
-        datasets_out = []
-        for label, dataset in datasets.items():
-            dataset = np.asarray(dataset).flatten()
-            datasets_out.append(dataset)
-
-            if volume_normalization:
-                dataset /= self.volumes.T.flatten()
-
-            dataset_array = vtk.vtkDoubleArray()
-            dataset_array.SetName(label)
-            dataset_array.SetArray(nps.numpy_to_vtk(dataset),
-                                   dataset.size,
-                                   True)
-            vtk_grid.GetCellData().AddArray(dataset_array)
-
-        return datasets_out
 
 
 class RegularMesh(StructuredMesh):

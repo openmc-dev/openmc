@@ -72,10 +72,18 @@ class Source:
     domain_type : {'cell', 'material', 'universe'}
         Type of domain to use for rejection
 
+        .. versionadded:: 0.13.4            
+    id : int
+        Unique identifier for the source
+
     """
+
+    _next_id = 1
+    _instances = []
 
     def __init__(
         self,
+        id: Optional[int] = None,
         space: Optional[openmc.stats.Spatial] = None,
         angle: Optional[openmc.stats.UnitSphere] = None,
         energy: Optional[openmc.stats.Univariate] = None,
@@ -87,6 +95,8 @@ class Source:
         particle: str = 'neutron',
         domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None
     ):
+        self._id = self._generate_next_id()
+        self._instances.append(self)
         self._space = None
         self._angle = None
         self._energy = None
@@ -95,6 +105,8 @@ class Source:
         self._library = None
         self._parameters = None
 
+        if id is not None:
+            self.id = id
         if space is not None:
             self.space = space
         if angle is not None:
@@ -134,6 +146,10 @@ class Source:
     @property
     def parameters(self):
         return self._parameters
+
+    @property
+    def id(self):
+        return self._id
 
     @property
     def space(self):
@@ -192,6 +208,22 @@ class Source:
         cv.check_type('parameters', parameters_path, str)
         self._parameters = parameters_path
 
+    @id.setter
+    def id(self, id):
+        self._id = id
+
+    @staticmethod
+    def _generate_next_id():
+        source_id = Source._next_id
+        Source._next_id += 1
+
+        # Check if the generated ID is already used
+        while any(source.id == source_id for source in Source._instances):
+            source_id = Source._next_id
+            Source._next_id += 1
+
+        return source_id
+
     @space.setter
     def space(self, space):
         cv.check_type('spatial distribution', space, Spatial)
@@ -234,6 +266,8 @@ class Source:
         """
         element = ET.Element("source")
         element.set("strength", str(self.strength))
+        if self.id is not None:
+            element.set("id", str(self.id))
         if self.particle != 'neutron':
             element.set("particle", self.particle)
         if self.file is not None:
@@ -313,6 +347,10 @@ class Source:
         parameters = get_text(elem, 'parameters')
         if parameters is not None:
             source.parameters = parameters
+        
+        id = get_text(elem, 'id')
+        if id is not None:
+            source.id = int(id)
 
         space = elem.find('space')
         if space is not None:

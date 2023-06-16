@@ -123,6 +123,7 @@ int trigger_batch_interval {1};
 int verbosity {7};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
+std::vector<std::vector<int>> coincident_sources;
 
 } // namespace settings
 
@@ -476,6 +477,21 @@ void read_settings_xml(pugi::xml_node root)
       path = get_node_value(node_ssr, "path", false, true);
     }
     model::external_sources.push_back(make_unique<FileSource>(path));
+  }
+
+  // Check if the user has specified coincident sources
+  if (check_for_node(root, "coincident_sources")) {
+    xml_node coincident_sources_node = root.child("coincident_sources");
+  
+    for (xml_node group_node : coincident_sources_node.children("group")) {
+      std::vector<int> source_group;
+        
+      for (xml_node source_node : group_node.children("source")) {
+        int source_id = source_node.text().as_int();
+        source_group.push_back(source_id);
+      }
+      coincident_sources.push_back(std::move(source_group));
+    }
   }
 
   // If no source specified, default to isotropic point source at origin with

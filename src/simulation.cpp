@@ -522,7 +522,8 @@ void initialize_history(Particle& p, int64_t index_source)
   // set defaults
   if (settings::run_mode == RunMode::EIGENVALUE) {
     // set defaults for eigenvalue simulations from primary bank
-    p.from_source(&simulation::source_bank[index_source - 1]);
+    uint64_t pseudo_seed = init_seed(0, STREAM_SOURCE);
+    p.from_source(&simulation::source_bank[index_source - 1], &pseudo_seed);
   } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
     // initialize random number seed
     int64_t id = (simulation::total_gen + overall_generation() - 1) *
@@ -531,7 +532,7 @@ void initialize_history(Particle& p, int64_t index_source)
     uint64_t seed = init_seed(id, STREAM_SOURCE);
     // sample from external source distribution or custom library then set
     auto site = sample_external_source(&seed);
-    p.from_source(&site);
+    p.from_source(&site, &seed);
   }
   p.current_work() = index_source;
 

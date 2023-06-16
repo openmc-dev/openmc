@@ -47,6 +47,12 @@ public:
 
   // Methods that must be implemented
   virtual SourceSite sample(uint64_t* seed) const = 0;
+  virtual int id() const = 0;
+  virtual ParticleType particle_type() const = 0;
+  virtual SpatialDistribution* space() const = 0;
+  virtual UnitSphereDistribution* angle() const = 0;
+  virtual Distribution* energy() const = 0;
+  virtual Distribution* time() const = 0;
 
   // Methods that can be overridden
   virtual double strength() const { return 1.0; }
@@ -70,6 +76,7 @@ public:
   SourceSite sample(uint64_t* seed) const override;
 
   // Properties
+  int id() const { return id_; }
   ParticleType particle_type() const { return particle_; }
   double strength() const override { return strength_; }
 
@@ -84,6 +91,7 @@ private:
   enum class DomainType { UNIVERSE, MATERIAL, CELL };
 
   // Data members
+  int id_;                                        //!< Source ID
   ParticleType particle_ {ParticleType::neutron}; //!< Type of particle emitted
   double strength_ {1.0};                         //!< Source strength
   UPtrSpace space_;                               //!< Spatial distribution
@@ -107,7 +115,15 @@ public:
   // Methods
   SourceSite sample(uint64_t* seed) const override;
 
+  int id() const override { return id_; }
+  ParticleType particle_type() const override { return ParticleType::neutron; }
+  SpatialDistribution* space() const override { return nullptr; }
+  UnitSphereDistribution* angle() const override { return nullptr; }
+  Distribution* energy() const override { return nullptr; }
+  Distribution* time() const override { return nullptr; }
+
 private:
+  int id_;                   //!< Source ID
   vector<SourceSite> sites_; //!< Source sites from a file
 };
 
@@ -128,6 +144,22 @@ public:
   }
 
   double strength() const override { return custom_source_->strength(); }
+
+  int id() const override { return custom_source_->id(); }
+  ParticleType particle_type() const override
+  {
+    return custom_source_->particle_type();
+  }
+  SpatialDistribution* space() const override
+  {
+    return custom_source_->space();
+  }
+  UnitSphereDistribution* angle() const override
+  {
+    return custom_source_->angle();
+  }
+  Distribution* energy() const override { return custom_source_->energy(); }
+  Distribution* time() const override { return custom_source_->time(); }
 
 private:
   void* shared_library_; //!< library from dlopen

@@ -74,6 +74,11 @@ IndependentSource::IndependentSource(pugi::xml_node node)
     strength_ = std::stod(get_node_value(node, "strength"));
   }
 
+  // Check for source id
+  if (check_for_node(node, "id")) {
+    id_ = std::stod(get_node_value(node, "id"));
+  }
+
   // Check for external source file
   if (check_for_node(node, "file")) {
 
@@ -172,6 +177,8 @@ IndependentSource::IndependentSource(pugi::xml_node node)
 
       auto ids = get_node_array<int>(node, "domain_ids");
       domain_ids_.insert(ids.begin(), ids.end());
+      
+      auto id = get_node_array<int>(node, "id"); 
     }
   }
 }
@@ -180,7 +187,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 {
   SourceSite site;
   site.particle = particle_;
-
+  site.source_id = id_;
   // Repeat sampling source location until a good site has been found
   bool found = false;
   int n_reject = 0;
@@ -429,7 +436,7 @@ SourceSite sample_external_source(uint64_t* seed)
 
   // Sample source site from i-th source distribution
   SourceSite site {model::external_sources[i]->sample(seed)};
-
+  site.source_id = model::external_sources[i]->id();
   // If running in MG, convert site.E to group
   if (!settings::run_CE) {
     site.E = lower_bound_index(data::mg.rev_energy_bins_.begin(),

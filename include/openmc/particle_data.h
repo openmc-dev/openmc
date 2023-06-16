@@ -44,6 +44,7 @@ enum class ParticleType { neutron, photon, electron, positron };
 //! in lib/core.py. Changes made to the type here must also be made to the
 //! python defintion.
 struct SourceSite {
+  int source_id;
   Position r;
   Direction u;
   double E;

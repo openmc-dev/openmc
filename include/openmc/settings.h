@@ -12,6 +12,7 @@
 
 #include "openmc/array.h"
 #include "openmc/constants.h"
+#include "openmc/source.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -130,6 +131,8 @@ extern int trigger_batch_interval; //!< Batch interval for triggers
 extern "C" int verbosity;          //!< How verbose to make output
 extern double weight_cutoff;       //!< Weight cutoff for Russian roulette
 extern double weight_survive;      //!< Survival weight after Russian roulette
+extern std::vector<std::vector<int>> coincident_sources; //!< Coincident
+                                                         //!< sources
 } // namespace settings
 
 //==============================================================================

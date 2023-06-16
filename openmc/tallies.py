@@ -2601,7 +2601,7 @@ class Tally(IDManagerMixin):
 
         mesh = self.find_filter(filter_type=openmc.MeshFilter).mesh
         if not isinstance(mesh, openmc.RegularMesh):
-            msg = 'get_data_slice_where current only supports RegularMesh tallies'
+            msg = 'get_data_slice_where currently only supports MeshFilters using RegularMesh'
             raise NotImplementedError(msg)
 
         index_of_basis = {'xy':2, 'xz':1, 'yz':0}[basis]

@@ -5,8 +5,7 @@
 #include "openmc/random_lcg.h"
 #include "openmc/source.h"
 
-class CustomSource : public openmc::Source
-{
+class CustomSource : public openmc::Source {
   openmc::SourceSite sample(uint64_t* seed) const
   {
     openmc::SourceSite particle;
@@ -26,10 +25,11 @@ class CustomSource : public openmc::Source
   }
 };
 
-// A function to create a unique pointer to an instance of this class when generated
-// via a plugin call using dlopen/dlsym.
-// You must have external C linkage here otherwise dlopen will not find the file
-extern "C" std::unique_ptr<CustomSource> openmc_create_source(std::string parameters)
+// A function to create a unique pointer to an instance of this class when
+// generated via a plugin call using dlopen/dlsym. You must have external C
+// linkage here otherwise dlopen will not find the file
+extern "C" std::unique_ptr<CustomSource> openmc_create_source(
+  std::string parameters)
 {
   return std::make_unique<CustomSource>();
 }

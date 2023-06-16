@@ -777,6 +777,7 @@ class MadlandNix(EnergyDistribution):
         efl, efh = params[0:2]
         return cls(efl, efh, tm)
 
+
 class DiscretePhoton(EnergyDistribution):
     """Discrete photon energy distribution
 

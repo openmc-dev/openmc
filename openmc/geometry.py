@@ -79,10 +79,6 @@ class Geometry:
     def surface_precision(self) -> int:
         return self._surface_precision
 
-    @property
-    def surface_precision(self):
-        return self._surface_precision
-
     @surface_precision.setter
     def surface_precision(self, surface_precision):
         check_type('surface precision', surface_precision, int)

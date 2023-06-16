@@ -11,7 +11,7 @@ import h5py
 
 import openmc
 from openmc.filter import _PARTICLES
-from openmc.mesh import MeshBase, RectilinearMesh, UnstructuredMesh
+from openmc.mesh import MeshBase, RectilinearMesh, CylindricalMesh, SphericalMesh, UnstructuredMesh
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 
@@ -494,10 +494,6 @@ def wwinp_to_wws(path: PathLike) -> List[WeightWindows]:
         else:
             nt = ni * [1]
 
-        if nr == 16:
-            raise NotImplementedError('Cylindrical and spherical mesh '
-                                      'types are not yet supported')
-
         # read number of energy bins for each particle, 'ne(1...ni)'
         ne = np.fromstring(wwinp.readline(), sep=' ', dtype=int)
 
@@ -512,14 +508,18 @@ def wwinp_to_wws(path: PathLike) -> List[WeightWindows]:
             line_arr = np.fromstring(wwinp.readline(), sep=' ')
             ncx, ncy, ncz = line_arr[:3].astype(int)
             # read polar vector (x1, y1, z1)
-            xyz1 = line_arr[3:] - xyz0
-            polar_vec = xyz1 / np.linalg.norm(xyz1)
+            xyz1 = line_arr[3:]
             # read azimuthal vector (x2, y2, z2)
             line_arr = np.fromstring(wwinp.readline(), sep=' ')
-            xyz2 = line_arr[:3] - xyz0
-            azimuthal_vec = xyz2 / np.linalg.norm(xyz2)
+            xyz2 = line_arr[:3]
+
+            # oriented polar and azimuthal vectors aren't yet supported
+            if np.count_nonzero(xyz1) or np.count_nonzero(xyz2):
+                raise NotImplementedError('Custom sphere/cylinder orientations are not supported')
+
             # read geometry type
             nwg = int(line_arr[-1])
+
         elif nr == 10:
             # read rectilinear data:
             # number of coarse mesh bins and mesh type
@@ -537,39 +537,40 @@ def wwinp_to_wws(path: PathLike) -> List[WeightWindows]:
     # first values in the mesh definition arrays are the first
     # coordinate of the grid
     end_idx = start_idx + 1 + 3 * ncx
-    x0, x_vals = ww_data[start_idx], ww_data[start_idx+1:end_idx]
+    i0, i_vals = ww_data[start_idx], ww_data[start_idx+1:end_idx]
     start_idx = end_idx
 
     end_idx = start_idx + 1 + 3 * ncy
-    y0, y_vals = ww_data[start_idx], ww_data[start_idx+1:end_idx]
+    j0, j_vals = ww_data[start_idx], ww_data[start_idx+1:end_idx]
     start_idx = end_idx
 
     end_idx = start_idx + 1 + 3 * ncz
-    z0, z_vals = ww_data[start_idx], ww_data[start_idx+1:end_idx]
+    k0, k_vals = ww_data[start_idx], ww_data[start_idx+1:end_idx]
     start_idx = end_idx
 
     # mesh consistency checks
-    if nr == 16 and nwg == 1:
+    if nr == 16 and nwg == 1 or nr == 10 and nwg != 1:
         raise ValueError(f'Mesh description in header ({nr}) '
                          f'does not match the mesh type ({nwg})')
 
-    if (xyz0 != (x0, y0, z0)).any():
+    if nr == 10 and (xyz0 != (i0, j0, k0)).any():
         raise ValueError(f'Mesh origin in the header ({xyz0}) '
                          f' does not match the origin in the mesh '
-                         f' description ({x0, y0, z0})')
+                         f' description ({i0, j0, k0})')
 
     # create openmc mesh object
     grids = []
-    mesh_definition = [(x0, x_vals, nfx), (y0, y_vals, nfy), (z0, z_vals, nfz)]
+    mesh_definition = [(i0, i_vals, nfx), (j0, j_vals, nfy), (k0, k_vals, nfz)]
     for grid0, grid_vals, n_pnts in mesh_definition:
         # file spec checks for the mesh definition
         if (grid_vals[2::3] != 1.0).any():
             raise ValueError('One or more mesh ratio value, qx, '
                              'is not equal to one')
 
-        if grid_vals[::3].sum() != n_pnts:
-            raise ValueError('Sum of the fine bin entries, s, does '
-                             'not match the number of fine bins')
+        s = int(grid_vals[::3].sum())
+        if s != n_pnts:
+            raise ValueError(f'Sum of the fine bin entries, {s}, does '
+                             f'not match the number of fine bins, {n_pnts}')
 
         # extend the grid based on the next coarse bin endpoint, px
         # and the number of fine bins in the coarse bin, sx
@@ -580,8 +581,17 @@ def wwinp_to_wws(path: PathLike) -> List[WeightWindows]:
 
         grids.append(np.array(coords))
 
-    mesh = RectilinearMesh()
-    mesh.x_grid, mesh.y_grid, mesh.z_grid = grids
+    if nwg == 1:
+        mesh = RectilinearMesh()
+        mesh.x_grid, mesh.y_grid, mesh.z_grid = grids
+    elif nwg == 2:
+        mesh = CylindricalMesh()
+        mesh.r_grid, mesh.z_grid, mesh.phi_grid = grids
+        mesh.origin = xyz0
+    elif nwg == 3:
+        mesh = SphericalMesh()
+        mesh.r_grid, mesh.theta_grid, mesh.phi_grid = grids
+        mesh.origin = xyz0
 
     # extract weight window values from array
     wws = []

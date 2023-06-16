@@ -519,6 +519,9 @@ class StepResult:
             Total process time spent depleting materials. This may
             be process-dependent and will be reduced across MPI
             processes.
+
+        .. versionadded:: 0.13.4
+
         path : PathLike
             Path to file to write. Defaults to 'depletion_results.h5'.
 

@@ -6,7 +6,7 @@ from itertools import repeat, starmap
 from multiprocessing import Pool
 from scipy.sparse import bmat
 import numpy as np
-
+from openmc.mpi import comm
 
 # Configurable switch that enables / disables the use of
 # multiprocessing routines during depletion
@@ -16,6 +16,27 @@ USE_MULTIPROCESSING = True
 # calculations
 NUM_PROCESSES = None
 
+def _distribute(items):
+    """Distribute items across MPI communicator
+
+    Parameters
+    ----------
+    items : list
+        List of items of distribute
+
+    Returns
+    -------
+    list
+        Items assigned to process that called
+
+    """
+    min_size, extra = divmod(len(items), comm.size)
+    j = 0
+    for i in range(comm.size):
+        chunk_size = min_size + int(i < extra)
+        if comm.rank == i:
+            return items[j:j + chunk_size]
+        j += chunk_size
 
 def deplete(func, chain, x, rates, dt, matrix_func=None, transfer_rates=None,
             *matrix_args):
@@ -72,45 +93,62 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, transfer_rates=None,
     if transfer_rates is not None:
         # Calculate transfer rate terms as diagonal matrices
         transfers = map(chain.form_rr_term, repeat(transfer_rates),
-                        transfer_rates.burnable_mats)
+                        transfer_rates.local_mats)
         # Subtract transfer rate terms from Bateman matrices
         matrices = [matrix - transfer for (matrix, transfer) in zip(matrices,
                                                                     transfers)]
 
         if len(transfer_rates.index_transfer) > 0:
-            # Calculate transfer rate terms as diagonal matrices
-            transfer_pair = {
-                mat_pair: chain.form_rr_term(transfer_rates, mat_pair)
-                for mat_pair in transfer_rates.index_transfer
-            }
+            # Gather all on comm.rank 0
+            matrices = comm.gather(matrices)
+            x = comm.gather(x)
 
-            # Combine all matrices together in a single matrix of matrices
-            # to be solved in one go
-            n_rows = n_cols = len(transfer_rates.burnable_mats)
-            rows = []
-            for row in range(n_rows):
-                cols = []
-                for col in range(n_cols):
-                    mat_pair = (transfer_rates.burnable_mats[row],
-                                transfer_rates.burnable_mats[col])
-                    if row == col:
-                        # Fill the diagonals with the Bateman matrices
-                        cols.append(matrices[row])
-                    elif mat_pair in transfer_rates.index_transfer:
-                        # Fill the off-diagonals with the transfer pair matrices
-                        cols.append(transfer_pair[mat_pair])
-                    else:
-                        cols.append(None)
+            if comm.rank == 0:
+                # Expand lists
+                matrices = [elm for matrix in matrices for elm in matrix]
+                x = [x_elm for x_mat in x for x_elm in x_mat]
 
-                rows.append(cols)
-            matrix = bmat(rows)
+                # Calculate transfer rate terms as diagonal matrices
+                transfer_pair = {
+                    mat_pair: chain.form_rr_term(transfer_rates, mat_pair)
+                    for mat_pair in transfer_rates.index_transfer
+                }
 
-            # Concatenate vectors of nuclides in one
-            x_multi = np.concatenate([xx for xx in x])
-            x_result = func(matrix, x_multi, dt)
+                # Combine all matrices together in a single matrix of matrices
+                # to be solved in one go
+                n_rows = n_cols = len(transfer_rates.burnable_mats)
+                rows = []
+                for row in range(n_rows):
+                    cols = []
+                    for col in range(n_cols):
+                        mat_pair = (transfer_rates.burnable_mats[row],
+                                    transfer_rates.burnable_mats[col])
+                        if row == col:
+                            # Fill the diagonals with the Bateman matrices
+                            cols.append(matrices[row])
+                        elif mat_pair in transfer_rates.index_transfer:
+                            # Fill the off-diagonals with the transfer pair matrices
+                            cols.append(transfer_pair[mat_pair])
+                        else:
+                            cols.append(None)
 
-            # Split back the nuclide vector result into the original form
-            x_result = np.split(x_result, np.cumsum([len(i) for i in x])[:-1])
+                    rows.append(cols)
+                matrix = bmat(rows)
+
+                # Concatenate vectors of nuclides in one
+                x_multi = np.concatenate([xx for xx in x])
+                x_result = func(matrix, x_multi, dt)
+
+                # Split back the nuclide vector result into the original form
+                x_result = np.split(x_result, np.cumsum([len(i) for i in x])[:-1])
+
+            else:
+                x_result = None
+
+            # Braodcast result to other ranks
+            x_result = comm.bcast(x_result)
+            # Distribute results across MPI
+            x_result = _distribute(x_result)
 
             return x_result
 

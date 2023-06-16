@@ -3482,7 +3482,6 @@ class FissionXS(MGXS):
             self._rxn_type = 'prompt-nu-fission'
 
 
-
 @add_params
 class KappaFissionXS(MGXS):
     r"""A recoverable fission energy production rate multi-group cross section.

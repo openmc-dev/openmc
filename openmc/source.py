@@ -127,90 +127,68 @@ class Source:
     def file(self):
         return self._file
 
-    @property
-    def library(self):
-        return self._library
-
-    @property
-    def parameters(self):
-        return self._parameters
-
-    @property
-    def space(self):
-        return self._space
-
-    @property
-    def angle(self):
-        return self._angle
-
-    @property
-    def energy(self):
-        return self._energy
-
-    @property
-    def time(self):
-        return self._time
-
-    @property
-    def strength(self):
-        return self._strength
-
-    @property
-    def particle(self):
-        return self._particle
-
-    @property
-    def domain_ids(self):
-        return self._domain_ids
-
-    @property
-    def domain_type(self):
-        return self._domain_type
-
-    @domain_ids.setter
-    def domain_ids(self, ids):
-        cv.check_type('domain IDs', ids, Iterable, Real)
-        self._domain_ids = ids
-
-    @domain_type.setter
-    def domain_type(self, domain_type):
-        cv.check_value('domain type', domain_type, ('cell', 'material', 'universe'))
-        self._domain_type = domain_type
-
     @file.setter
     def file(self, filename):
         cv.check_type('source file', filename, str)
         self._file = filename
+
+    @property
+    def library(self):
+        return self._library
 
     @library.setter
     def library(self, library_name):
         cv.check_type('library', library_name, str)
         self._library = library_name
 
+    @property
+    def parameters(self):
+        return self._parameters
+
     @parameters.setter
     def parameters(self, parameters_path):
         cv.check_type('parameters', parameters_path, str)
         self._parameters = parameters_path
+
+    @property
+    def space(self):
+        return self._space
 
     @space.setter
     def space(self, space):
         cv.check_type('spatial distribution', space, Spatial)
         self._space = space
 
+    @property
+    def angle(self):
+        return self._angle
+
     @angle.setter
     def angle(self, angle):
         cv.check_type('angular distribution', angle, UnitSphere)
         self._angle = angle
+
+    @property
+    def energy(self):
+        return self._energy
 
     @energy.setter
     def energy(self, energy):
         cv.check_type('energy distribution', energy, Univariate)
         self._energy = energy
 
+    @property
+    def time(self):
+        return self._time
+
     @time.setter
     def time(self, time):
         cv.check_type('time distribution', time, Univariate)
         self._time = time
+
+    @property
+    def strength(self):
+        return self._strength
 
     @strength.setter
     def strength(self, strength):
@@ -218,10 +196,32 @@ class Source:
         cv.check_greater_than('source strength', strength, 0.0, True)
         self._strength = strength
 
+    @property
+    def particle(self):
+        return self._particle
+
     @particle.setter
     def particle(self, particle):
         cv.check_value('source particle', particle, ['neutron', 'photon'])
         self._particle = particle
+
+    @property
+    def domain_ids(self):
+        return self._domain_ids
+
+    @domain_ids.setter
+    def domain_ids(self, ids):
+        cv.check_type('domain IDs', ids, Iterable, Real)
+        self._domain_ids = ids
+
+    @property
+    def domain_type(self):
+        return self._domain_type
+
+    @domain_type.setter
+    def domain_type(self, domain_type):
+        cv.check_value('domain type', domain_type, ('cell', 'material', 'universe'))
+        self._domain_type = domain_type
 
     def to_xml_element(self) -> ET.Element:
         """Return XML representation of the source

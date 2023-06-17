@@ -42,15 +42,15 @@ class AngleDistribution(EqualityMixin):
     def energy(self):
         return self._energy
 
-    @property
-    def mu(self):
-        return self._mu
-
     @energy.setter
     def energy(self, energy):
         cv.check_type('angle distribution incoming energy', energy,
                       Iterable, Real)
         self._energy = energy
+
+    @property
+    def mu(self):
+        return self._mu
 
     @mu.setter
     def mu(self, mu):

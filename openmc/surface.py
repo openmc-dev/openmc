@@ -185,18 +185,6 @@ class Surface(IDManagerMixin, ABC):
     def name(self):
         return self._name
 
-    @property
-    def type(self):
-        return self._type
-
-    @property
-    def boundary_type(self):
-        return self._boundary_type
-
-    @property
-    def coefficients(self):
-        return self._coefficients
-
     @name.setter
     def name(self, name):
         if name is not None:
@@ -205,11 +193,23 @@ class Surface(IDManagerMixin, ABC):
         else:
             self._name = ''
 
+    @property
+    def type(self):
+        return self._type
+
+    @property
+    def boundary_type(self):
+        return self._boundary_type
+
     @boundary_type.setter
     def boundary_type(self, boundary_type):
         check_type('boundary type', boundary_type, str)
         check_value('boundary type', boundary_type, _BOUNDARY_TYPES)
         self._boundary_type = boundary_type
+
+    @property
+    def coefficients(self):
+        return self._coefficients
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.

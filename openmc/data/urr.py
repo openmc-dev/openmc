@@ -79,50 +79,50 @@ class ProbabilityTables(EqualityMixin):
     def absorption_flag(self):
         return self._absorption_flag
 
-    @property
-    def energy(self):
-        return self._energy
-
-    @property
-    def inelastic_flag(self):
-        return self._inelastic_flag
-
-    @property
-    def interpolation(self):
-        return self._interpolation
-
-    @property
-    def multiply_smooth(self):
-        return self._multiply_smooth
-
-    @property
-    def table(self):
-        return self._table
-
     @absorption_flag.setter
     def absorption_flag(self, absorption_flag):
         cv.check_type('absorption flag', absorption_flag, Integral)
         self._absorption_flag = absorption_flag
+
+    @property
+    def energy(self):
+        return self._energy
 
     @energy.setter
     def energy(self, energy):
         cv.check_type('probability table energies', energy, Iterable, Real)
         self._energy = energy
 
+    @property
+    def inelastic_flag(self):
+        return self._inelastic_flag
+
     @inelastic_flag.setter
     def inelastic_flag(self, inelastic_flag):
         cv.check_type('inelastic flag', inelastic_flag, Integral)
         self._inelastic_flag = inelastic_flag
+
+    @property
+    def interpolation(self):
+        return self._interpolation
 
     @interpolation.setter
     def interpolation(self, interpolation):
         cv.check_value('interpolation', interpolation, [2, 5])
         self._interpolation = interpolation
 
+    @property
+    def multiply_smooth(self):
+        return self._multiply_smooth
+
     @multiply_smooth.setter
     def multiply_smooth(self, multiply_smooth):
         cv.check_type('multiply by smooth', multiply_smooth, bool)
         self._multiply_smooth = multiply_smooth
+
+    @property
+    def table(self):
+        return self._table
 
     @table.setter
     def table(self, table):

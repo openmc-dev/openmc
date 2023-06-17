@@ -1575,6 +1575,11 @@ class DistribcellFilter(Filter):
     def paths(self):
         return self._paths
 
+    @paths.setter
+    def paths(self, paths):
+        cv.check_iterable_type('paths', paths, str)
+        self._paths = paths
+
     @Filter.bins.setter
     def bins(self, bins):
         # Format the bins as a 1D numpy array.
@@ -1592,11 +1597,6 @@ class DistribcellFilter(Filter):
             bins = np.atleast_1d(bins[0].id)
 
         self._bins = bins
-
-    @paths.setter
-    def paths(self, paths):
-        cv.check_iterable_type('paths', paths, str)
-        self._paths = paths
 
     def can_merge(self, other):
         # Distribcell filters cannot have more than one bin
@@ -2060,22 +2060,6 @@ class EnergyFunctionFilter(Filter):
     def energy(self):
         return self._energy
 
-    @property
-    def y(self):
-        return self._y
-
-    @property
-    def interpolation(self):
-        return self._interpolation
-
-    @property
-    def bins(self):
-        raise AttributeError('EnergyFunctionFilters have no bins.')
-
-    @property
-    def num_bins(self):
-        return 1
-
     @energy.setter
     def energy(self, energy):
         # Format the bins as a 1D numpy array.
@@ -2088,6 +2072,10 @@ class EnergyFunctionFilter(Filter):
 
         self._energy = energy
 
+    @property
+    def y(self):
+        return self._y
+
     @y.setter
     def y(self, y):
         # Format the bins as a 1D numpy array.
@@ -2098,9 +2086,9 @@ class EnergyFunctionFilter(Filter):
 
         self._y = y
 
-    @bins.setter
-    def bins(self, bins):
-        raise RuntimeError('EnergyFunctionFilters have no bins.')
+    @property
+    def interpolation(self):
+        return self._interpolation
 
     @interpolation.setter
     def interpolation(self, val):
@@ -2114,6 +2102,18 @@ class EnergyFunctionFilter(Filter):
             raise ValueError('Cubic interpolation requires 3 or more values.')
 
         self._interpolation = val
+
+    @property
+    def bins(self):
+        raise AttributeError('EnergyFunctionFilters have no bins.')
+
+    @bins.setter
+    def bins(self, bins):
+        raise RuntimeError('EnergyFunctionFilters have no bins.')
+
+    @property
+    def num_bins(self):
+        return 1
 
     def to_xml_element(self):
         """Return XML Element representing the Filter.

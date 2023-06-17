@@ -260,21 +260,61 @@ class XSdata:
     def name(self):
         return self._name
 
+    @name.setter
+    def name(self, name):
+
+        check_type('name for XSdata', name, str)
+        self._name = name
+
     @property
     def energy_groups(self):
         return self._energy_groups
+
+    @energy_groups.setter
+    def energy_groups(self, energy_groups):
+
+        check_type('energy_groups', energy_groups, openmc.mgxs.EnergyGroups)
+        if energy_groups.group_edges is None:
+            msg = 'Unable to assign an EnergyGroups object ' \
+                  'with uninitialized group edges'
+            raise ValueError(msg)
+
+        self._energy_groups = energy_groups
 
     @property
     def num_delayed_groups(self):
         return self._num_delayed_groups
 
+    @num_delayed_groups.setter
+    def num_delayed_groups(self, num_delayed_groups):
+
+        check_type('num_delayed_groups', num_delayed_groups, Integral)
+        check_less_than('num_delayed_groups', num_delayed_groups,
+                        openmc.mgxs.MAX_DELAYED_GROUPS, equality=True)
+        check_greater_than('num_delayed_groups', num_delayed_groups, 0,
+                           equality=True)
+        self._num_delayed_groups = num_delayed_groups
+
     @property
     def representation(self):
         return self._representation
 
+    @representation.setter
+    def representation(self, representation):
+
+        check_value('representation', representation, _REPRESENTATIONS)
+        self._representation = representation
+
     @property
     def atomic_weight_ratio(self):
         return self._atomic_weight_ratio
+
+    @atomic_weight_ratio.setter
+    def atomic_weight_ratio(self, atomic_weight_ratio):
+
+        check_type('atomic_weight_ratio', atomic_weight_ratio, Real)
+        check_greater_than('atomic_weight_ratio', atomic_weight_ratio, 0.0)
+        self._atomic_weight_ratio = atomic_weight_ratio
 
     @property
     def fissionable(self):
@@ -284,21 +324,54 @@ class XSdata:
     def temperatures(self):
         return self._temperatures
 
+    @temperatures.setter
+    def temperatures(self, temperatures):
+
+        check_iterable_type('temperatures', temperatures, Real)
+        self._temperatures = np.array(temperatures)
+
     @property
     def scatter_format(self):
         return self._scatter_format
+
+    @scatter_format.setter
+    def scatter_format(self, scatter_format):
+
+        check_value('scatter_format', scatter_format, _SCATTER_TYPES)
+        self._scatter_format = scatter_format
 
     @property
     def order(self):
         return self._order
 
+    @order.setter
+    def order(self, order):
+
+        check_type('order', order, Integral)
+        check_greater_than('order', order, 0, equality=True)
+        self._order = order
+
     @property
     def num_polar(self):
         return self._num_polar
 
+    @num_polar.setter
+    def num_polar(self, num_polar):
+
+        check_type('num_polar', num_polar, Integral)
+        check_greater_than('num_polar', num_polar, 0)
+        self._num_polar = num_polar
+
     @property
     def num_azimuthal(self):
         return self._num_azimuthal
+
+    @num_azimuthal.setter
+    def num_azimuthal(self, num_azimuthal):
+
+        check_type('num_azimuthal', num_azimuthal, Integral)
+        check_greater_than('num_azimuthal', num_azimuthal, 0)
+        self._num_azimuthal = num_azimuthal
 
     @property
     def total(self):
@@ -400,79 +473,6 @@ class XSdata:
                         = (self.num_polar, self.num_azimuthal) + shapes
 
         return self._xs_shapes
-
-    @name.setter
-    def name(self, name):
-
-        check_type('name for XSdata', name, str)
-        self._name = name
-
-    @energy_groups.setter
-    def energy_groups(self, energy_groups):
-
-        check_type('energy_groups', energy_groups, openmc.mgxs.EnergyGroups)
-        if energy_groups.group_edges is None:
-            msg = 'Unable to assign an EnergyGroups object ' \
-                  'with uninitialized group edges'
-            raise ValueError(msg)
-
-        self._energy_groups = energy_groups
-
-    @num_delayed_groups.setter
-    def num_delayed_groups(self, num_delayed_groups):
-
-        check_type('num_delayed_groups', num_delayed_groups, Integral)
-        check_less_than('num_delayed_groups', num_delayed_groups,
-                        openmc.mgxs.MAX_DELAYED_GROUPS, equality=True)
-        check_greater_than('num_delayed_groups', num_delayed_groups, 0,
-                           equality=True)
-        self._num_delayed_groups = num_delayed_groups
-
-    @representation.setter
-    def representation(self, representation):
-
-        check_value('representation', representation, _REPRESENTATIONS)
-        self._representation = representation
-
-    @atomic_weight_ratio.setter
-    def atomic_weight_ratio(self, atomic_weight_ratio):
-
-        check_type('atomic_weight_ratio', atomic_weight_ratio, Real)
-        check_greater_than('atomic_weight_ratio', atomic_weight_ratio, 0.0)
-        self._atomic_weight_ratio = atomic_weight_ratio
-
-    @temperatures.setter
-    def temperatures(self, temperatures):
-
-        check_iterable_type('temperatures', temperatures, Real)
-        self._temperatures = np.array(temperatures)
-
-    @scatter_format.setter
-    def scatter_format(self, scatter_format):
-
-        check_value('scatter_format', scatter_format, _SCATTER_TYPES)
-        self._scatter_format = scatter_format
-
-    @order.setter
-    def order(self, order):
-
-        check_type('order', order, Integral)
-        check_greater_than('order', order, 0, equality=True)
-        self._order = order
-
-    @num_polar.setter
-    def num_polar(self, num_polar):
-
-        check_type('num_polar', num_polar, Integral)
-        check_greater_than('num_polar', num_polar, 0)
-        self._num_polar = num_polar
-
-    @num_azimuthal.setter
-    def num_azimuthal(self, num_azimuthal):
-
-        check_type('num_azimuthal', num_azimuthal, Integral)
-        check_greater_than('num_azimuthal', num_azimuthal, 0)
-        self._num_azimuthal = num_azimuthal
 
     def add_temperature(self, temperature):
         """This method re-sizes the attributes of this XSdata object so that it
@@ -2330,22 +2330,14 @@ class MGXSLibrary:
     def energy_groups(self):
         return self._energy_groups
 
-    @property
-    def num_delayed_groups(self):
-        return self._num_delayed_groups
-
-    @property
-    def xsdatas(self):
-        return self._xsdatas
-
-    @property
-    def names(self):
-        return [xsdata.name for xsdata in self.xsdatas]
-
     @energy_groups.setter
     def energy_groups(self, energy_groups):
         check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
         self._energy_groups = energy_groups
+
+    @property
+    def num_delayed_groups(self):
+        return self._num_delayed_groups
 
     @num_delayed_groups.setter
     def num_delayed_groups(self, num_delayed_groups):
@@ -2355,6 +2347,14 @@ class MGXSLibrary:
         check_less_than('num_delayed_groups', num_delayed_groups,
                         openmc.mgxs.MAX_DELAYED_GROUPS, equality=True)
         self._num_delayed_groups = num_delayed_groups
+
+    @property
+    def xsdatas(self):
+        return self._xsdatas
+
+    @property
+    def names(self):
+        return [xsdata.name for xsdata in self.xsdatas]
 
     def add_xsdata(self, xsdata):
         """Add an XSdata entry to the file.

@@ -18,7 +18,8 @@ def assert_atoms_equal(res_ref, res_test, tol=1e-5):
             _, y_test = res_test.get_atoms(mat, nuc)
             _, y_ref = res_ref.get_atoms(mat, nuc)
             assert y_test == pytest.approx(y_ref, rel=tol), \
-                f'Atoms not equal for material {mat}, nuclide {nuc}\n{y_ref=}\n{y_test=}'
+                f'Atoms not equal for material {mat}, nuclide {nuc}\n' \
+                f'y_ref={y_ref}\ny_test={y_test}'
 
 
 def assert_reaction_rates_equal(res_ref, res_test, tol=1e-5):
@@ -29,4 +30,5 @@ def assert_reaction_rates_equal(res_ref, res_test, tol=1e-5):
                     y_test = res_test.get_reaction_rate(mat, nuc, rx)[1]
                     y_ref = res_ref.get_reaction_rate(mat, nuc, rx)[1]
                     assert y_test == pytest.approx(y_ref, rel=tol), \
-                        f'Reaction rate not equal for material {mat}, nuclide {nuc}, {rx}\n{y_ref=}\n{y_test=}'
+                        f'Reaction rate not equal for material {mat}, nuclide '\
+                        f'{nuc}, {rx}\ny_ref={y_ref}\ny_test={y_test}'

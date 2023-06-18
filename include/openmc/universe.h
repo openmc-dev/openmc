@@ -34,8 +34,10 @@ public:
 
   virtual bool find_cell(Particle& p) const;
 
-  // assume that cells do not overlap
-  virtual bool find_cell_in_list(std::vector<int> cells_to_search, std::vector<int> cells_found, Position& p) const;
+  virtual bool find_cell_in_list(Particle& p, const std::vector<int>& cells_to_search) const;
+
+  // cells may overlap
+  virtual void find_cell_in_list(const std::vector<int>& cells_to_search, std::vector<int>& cells_found, std::vector<bool>& skip_cell, Position& p) const;
 
   BoundingBox bounding_box() const;
 
@@ -65,6 +67,7 @@ public:
 
   //! Return the list of cells that could contain the given coordinates.
   virtual const vector<int32_t>& get_cells(Position r, Direction u) const = 0;
+  virtual const vector<int32_t>& get_cells_fallback(Position r, Direction u) const;
 };
 
 } // namespace openmc

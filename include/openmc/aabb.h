@@ -23,6 +23,7 @@ struct AABB {
 
 	vec3 get_center() const;
 	float surface_area() const;
+	float volume() const;
     bool contains(const vec3& pos) const;
 
 	void reset();

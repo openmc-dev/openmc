@@ -51,6 +51,11 @@ float AABB::surface_area() const {
 		sideLengths.y *  sideLengths.z);
 }
 
+float AABB::volume() const {
+	vec3 sideLengths = max - min;
+	return sideLengths.x * sideLengths.y * sideLengths.z;
+}
+
 void AABB::extend(const AABB& other_box) {
 	extend_max(other_box.max);
 	extend_min(other_box.min);

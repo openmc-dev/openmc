@@ -174,6 +174,7 @@ void partition_universes()
           ++n_zplanes;
           if (n_zplanes > 5) {
             univ->partitioner_ = make_unique<DefaultPartitioner>(*univ);
+            //univ->partitioner_ = make_unique<ZPlanePartitioner>(*univ);
             break;
           }
         }

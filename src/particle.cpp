@@ -469,8 +469,10 @@ void Particle::cross_surface()
     // Couldn't find next cell anywhere! This probably means there is an actual
     // undefined region in the geometry.
 
+    std::ostringstream parser;
+    parser << r();
     if (!exhaustive_find_cell(*this)) {
-      mark_as_lost("After particle " + std::to_string(id()) +
+      mark_as_lost("After particle " + std::to_string(id()) + " which is located at " + parser.str() +
                    " crossed surface " + std::to_string(surf->id_) +
                    " it could not be located in any cell and it did not leak.");
       return;

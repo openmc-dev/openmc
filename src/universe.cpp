@@ -1,4 +1,5 @@
 #include "openmc/universe.h"
+#include "openmc/partitioners.h"
 
 #include <set>
 
@@ -52,6 +53,22 @@ bool Universe::find_cell(Particle& p) const
   const auto& cells {
     !partitioner_ ? cells_ : partitioner_->get_cells(p.r_local(), p.u_local())};
 
+  bool result = find_cell_in_list(p, cells);
+
+  #ifdef PARTITIONER_FALLBACK_ENABLED
+  if(!result && partitioner_) {
+    result = find_cell_in_list(p, partitioner_->get_cells_fallback(p.r_local(), p.u_local()));
+  }
+  #endif
+  
+  finding_time_sum_mutex.lock();
+  finding_time += t.elapsed();
+  finding_time_sum_mutex.unlock();
+
+  return result;
+}
+
+bool Universe::find_cell_in_list(Particle& p, const std::vector<int>& cells) const {
   for (auto it = cells.begin(); it != cells.end(); it++) {
     int32_t i_cell = *it;
     int32_t i_univ = p.coord(p.n_coord() - 1).universe;
@@ -64,43 +81,27 @@ bool Universe::find_cell(Particle& p) const
     auto surf = p.surface();
     if (model::cells[i_cell]->contains(r, u, surf)) {
       p.coord(p.n_coord() - 1).cell = i_cell;
-      finding_time_sum_mutex.lock();
-      finding_time += t.elapsed();
-      finding_time_sum_mutex.unlock();
       return true;
     }
   }
 
-  finding_time_sum_mutex.lock();
-  finding_time += t.elapsed();
-  finding_time_sum_mutex.unlock();
   return false;
 }
 
-// not complete
-bool Universe::find_cell_in_list(std::vector<int> cells_to_search, std::vector<int> cells_found, Position& r) const
+void Universe::find_cell_in_list(const std::vector<int>& cells_to_search, std::vector<int>& cells_found, std::vector<bool>& skip_cell, Position& r) const
 {
-  Timer t;
-  t.start();
-
-  for (int32_t i_cell : cells_to_search) {
+  for (int i = 0; i < cells_to_search.size(); i++) {
+    if(skip_cell[i]) continue;
+    int32_t i_cell = cells_to_search[i];
     // Check if this cell contains the particle;
-    Position r {p.r_local()};
-    Direction u {p.u_local()};
-    auto surf = p.surface();
+    Direction u {0.0, 0.0, 0.0};
+    int32_t surf = false;
     if (model::cells[i_cell]->contains(r, u, surf)) {
-      p.coord(p.n_coord() - 1).cell = i_cell;
-      finding_time_sum_mutex.lock();
-      finding_time += t.elapsed();
-      finding_time_sum_mutex.unlock();
-      return true;
+      //std::cout << "Found " << i_cell << "\n";
+      cells_found.push_back(i_cell);
+      skip_cell[i] = true;
     }
   }
-
-  finding_time_sum_mutex.lock();
-  finding_time += t.elapsed();
-  finding_time_sum_mutex.unlock();
-  return false;
 }
 
 BoundingBox Universe::bounding_box() const
@@ -120,6 +121,12 @@ BoundingBox Universe::bounding_box() const
 //! We do nothing here since it is a dummy destructor
 UniversePartitioner::~UniversePartitioner() {}
 
+const std::vector<int32_t>& UniversePartitioner::get_cells_fallback(Position r, Direction u) const {
+  std::cout << "Fallback is not enabled for this partitioner. Please recompile with the PARTITIONER_FALLBACK_ENABLED macro disabled in partitioners.h." << std::endl;
+  abort();
 
+  std::vector<int32_t> dummy;
+  return dummy;
+}
 
 } // namespace openmc

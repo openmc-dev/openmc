@@ -12,6 +12,7 @@ from ..checkvalue import (
     check_type, check_value, check_length, check_less_than,
     check_iterable_type)
 import openmc.data
+from openmc.model.surface_composite import (CompositeSurface,CylinderSector)
 
 
 ZERO_CELSIUS_TO_KELVIN = 273.15
@@ -408,10 +409,29 @@ def subdivide(surfaces):
         Regions formed by the given surfaces
 
     """
-    regions = [-surfaces[0]]
+    
+    # Every surface in the list "surfaces" is either a Cylinder or a CylinderSector
+    # The region inside each surface is added to the list "regions" depending on what the current and next surface is
+    
+    regions = []
+    
+    # If the first surface is a Cylinder, the region inside the cylinder is added to "regions".
+    if isinstance(surfaces[0], Cylinder):
+        regions.append(-surfaces[0])
+        
+    # This for loop iterates through "surfaces", adding to regions
+    # If the surface is a CylinderSector, the region inside the surface is added to "regions".
+    # If the current surface and the next surface is a Cylinder, then the region between the cylinders is added to "regions".
     for s0, s1 in zip(surfaces[:-1], surfaces[1:]):
-        regions.append(+s0 & -s1)
+        if isinstance(s0, CylinderSector):
+            regions.append(-s0)
+        
+        elif isinstance(s0, Cylinder) and isinstance(s1, Cylinder):
+            regions.append(+s0 & -s1)
+    
+    # Add the region outside the last surface to "regions". The last surface is a Cylinder.
     regions.append(+surfaces[-1])
+    
     return regions
 
 
@@ -541,5 +561,390 @@ def pin(surfaces, items, subdivisions=None, divide_vols=True,
 
     # Build the universe
     regions = subdivide(surfaces)
+    #zircaloy = openmc.Material(name='Zircaloy 4')
+    #cells = []
+    #print(regions)
+    #print(items)
+    cells = [Cell(fill=f, region=r) for r, f in zip(regions, items)]
+    #print(cells)
+    #for i in cells:
+    #    print(i.fill)
+    #for i in range(len(regions)):
+    #    if (i==0):
+    #        cells.append(Cell(fill=zircaloy, region=regions[i])) 
+    #    else:    
+    #        cells.append(Cell(fill=items[i], region=regions[i])) 
+    return Universe(cells=cells, **kwargs)
+
+
+
+def pin_azimuthal(surfaces, items, subdivisions=None, divide_vols=True,
+        **kwargs):
+    """Convenience function for building a fuel pin
+
+    Parameters
+    ----------
+    surfaces : iterable of :class:`openmc.Cylinder`
+        Cylinders used to define boundaries
+        between items. All cylinders must be
+        concentric and of the same orientation, e.g.
+        all :class:`openmc.ZCylinder`
+    items : iterable
+        Objects to go between ``surfaces``. These can be anything
+        that can fill a :class:`openmc.Cell`, including
+        :class:`openmc.Material`, or other :class:`openmc.Universe`
+        objects. There must be one more item than surfaces,
+        which will span all space outside the final ring.
+    subdivisions : None or dict of int to int
+        Dictionary describing which rings to subdivide azimuthally and how
+        many times. Keys are indexes of the annular rings
+        to be divided. Will construct equal area sectors
+    divide_vols : bool
+        If this evaluates to ``True``, then volumes of subdivided
+        :class:`openmc.Material` instances will also be divided by the
+        number of divisions.  Otherwise the volume of the
+        original material will not be modified before subdivision
+    kwargs:
+        Additional key-word arguments to be passed to
+        :class:`openmc.Universe`, like ``name="Fuel pin"``
+
+    Returns
+    -------
+    :class:`openmc.Universe`
+        Universe of concentric cylinders filled with the desired
+        items
+    """
+    if "cells" in kwargs:
+        raise ValueError(
+            "Cells will be set by this function, not from input arguments.")
+    check_type("items",  items, Iterable)
+    check_length("surfaces", surfaces, len(items) - 1, len(items) - 1)
+    # Check that all surfaces are of similar orientation
+    check_type("surface", surfaces[0], Cylinder)
+    surf_type = type(surfaces[0])
+    check_iterable_type("surfaces", surfaces[1:], surf_type)
+
+    # Check for increasing radii and equal centers
+    if surf_type is ZCylinder:
+        center_getter = attrgetter("x0", "y0")
+    elif surf_type is YCylinder:
+        center_getter = attrgetter("x0", "z0")
+    elif surf_type is XCylinder:
+        center_getter = attrgetter("z0", "y0")
+    else:
+        raise TypeError(
+            "Not configured to interpret {} surfaces".format(
+                surf_type.__name__))
+
+    centers = set()
+    prev_rad = 0
+    for ix, surf in enumerate(surfaces):
+        cur_rad = surf.r
+        if cur_rad <= prev_rad:
+            raise ValueError(
+                "Surfaces do not appear to be increasing in radius. "
+                "Surface {} at index {} has radius {:7.3e} compared to "
+                "previous radius of {:7.5e}".format(
+                    surf.id, ix, cur_rad, prev_rad))
+        prev_rad = cur_rad
+        centers.add(center_getter(surf))
+
+    if len(centers) > 1:
+        raise ValueError(
+            "Surfaces do not appear to be concentric. The following "
+            "centers were found: {}".format(centers))
+
+    if subdivisions is not None:
+        check_length("subdivisions", subdivisions, 1, len(surfaces))
+        orig_indexes = list(subdivisions.keys())
+        check_iterable_type("ring indexes", orig_indexes, int)
+        check_iterable_type(
+            "number of divisions", list(subdivisions.values()), int)
+        for ix in orig_indexes:
+            if ix < 0:
+                subdivisions[len(surfaces) + ix] = subdivisions.pop(ix)
+        # Dissallow subdivision on outer most, infinite region
+        check_less_than(
+            "outer ring", max(subdivisions), len(surfaces), equality=True)
+
+        # ensure ability to concatenate
+        if not isinstance(items, list):
+            items = list(items)
+        if not isinstance(surfaces, list):
+            surfaces = list(surfaces)
+
+        # generate equal area azimuthal divisions
+        # Adding N - 1 new regions
+        # N - 2 surfaces are made
+        for ring_index in reversed(sorted(subdivisions.keys())):
+            nr = subdivisions[ring_index]
+            if nr == 1:
+                continue
+            new_surfs = []
+            center = list(centers)[0]
+
+            lower_rad = 0.0 if ring_index == 0 else surfaces[ring_index - 1].r
+
+            upper_rad = surfaces[ring_index].r
+            
+            # Creates a CylinderSector (composite surface of two cocentric cylinders and two planes) for each azimuthal region
+            spacing = 360.0/nr
+            for ix in range(nr):
+                lower_angle = ix * spacing
+                upper_angle = lower_angle + spacing
+
+                if surf_type is ZCylinder:
+                    cyl_sec = CylinderSector(r1=lower_rad, r2=upper_rad, theta1=lower_angle, theta2=upper_angle, 
+                            center=center, axis='z')
+                elif surf_type is YCylinder:
+                    cyl_sec = CylinderSector(r1=lower_rad, r2=upper_rad, theta1=lower_angle, theta2=upper_angle, 
+                            center=center, axis='y')
+                elif surf_type is XCylinder:
+                    cyl_sec = CylinderSector(r1=lower_rad, r2=upper_rad, theta1=lower_angle, theta2=upper_angle, 
+                            center=center, axis='x')
+                
+                new_surfs.append(cyl_sec)
+
+
+            surfaces = (
+                    surfaces[:ring_index] + new_surfs + surfaces[ring_index:])
+
+            filler = items[ring_index]
+            if (divide_vols and hasattr(filler, "volume")
+                    and filler.volume is not None):
+                filler.volume /= nr
+
+            items[ring_index:ring_index] = [
+                filler for _i in range(nr - 1)]
+            
+    # Build the universe
+    regions = subdivide(surfaces)
+    print(surfaces)
+    print()
+    print()
+    print(regions)
+    #cells = []
     cells = [Cell(fill=f, region=r) for r, f in zip(regions, items)]
     return Universe(cells=cells, **kwargs)
+
+
+def pin_both(surfaces, items, subdivisions_r=None, subdivisions_a=None, divide_vols=True,
+        **kwargs):
+    """Convenience function for building a fuel pin
+
+    Parameters
+    ----------
+    surfaces : iterable of :class:`openmc.Cylinder`
+        Cylinders used to define boundaries
+        between items. All cylinders must be
+        concentric and of the same orientation, e.g.
+        all :class:`openmc.ZCylinder`
+    items : iterable
+        Objects to go between ``surfaces``. These can be anything
+        that can fill a :class:`openmc.Cell`, including
+        :class:`openmc.Material`, or other :class:`openmc.Universe`
+        objects. There must be one more item than surfaces,
+        which will span all space outside the final ring.
+    subdivisions_r : None or dict of int to int
+        Dictionary describing which rings to subdivide radially and how
+        many times. Keys are indexes of the annular rings
+        to be divided. Will construct equal area rings
+    subdivisions_a : None or dict of int to int
+        Dictionary describing which rings to subdivide azimuthally and how
+        many times. Keys are indexes of the annular rings
+        to be divided. Will construct equal area sectors
+    divide_vols : bool
+        If this evaluates to ``True``, then volumes of subdivided
+        :class:`openmc.Material` instances will also be divided by the
+        number of divisions.  Otherwise the volume of the
+        original material will not be modified before subdivision
+    kwargs:
+        Additional key-word arguments to be passed to
+        :class:`openmc.Universe`, like ``name="Fuel pin"``
+
+    Returns
+    -------
+    :class:`openmc.Universe`
+        Universe of concentric cylinders and CylinderSectors filled with the desired
+        items
+    """
+    
+    if "cells" in kwargs:
+        raise ValueError(
+            "Cells will be set by this function, not from input arguments.")
+    check_type("items",  items, Iterable)
+    check_length("surfaces", surfaces, len(items) - 1, len(items) - 1)
+    # Check that all surfaces are of similar orientation
+    check_type("surface", surfaces[0], Cylinder)
+    surf_type = type(surfaces[0])
+    check_iterable_type("surfaces", surfaces[1:], surf_type)
+
+    # Check for increasing radii and equal centers
+    if surf_type is ZCylinder:
+        center_getter = attrgetter("x0", "y0")
+    elif surf_type is YCylinder:
+        center_getter = attrgetter("x0", "z0")
+    elif surf_type is XCylinder:
+        center_getter = attrgetter("z0", "y0")
+    else:
+        raise TypeError(
+            "Not configured to interpret {} surfaces".format(
+                surf_type.__name__))
+
+    centers = set()
+    prev_rad = 0
+    for ix, surf in enumerate(surfaces):
+        cur_rad = surf.r
+        if cur_rad <= prev_rad:
+            raise ValueError(
+                "Surfaces do not appear to be increasing in radius. "
+                "Surface {} at index {} has radius {:7.3e} compared to "
+                "previous radius of {:7.5e}".format(
+                    surf.id, ix, cur_rad, prev_rad))
+        prev_rad = cur_rad
+        centers.add(center_getter(surf))
+
+    if len(centers) > 1:
+        raise ValueError(
+            "Surfaces do not appear to be concentric. The following "
+            "centers were found: {}".format(centers))
+
+    # Divides Cylinders into more rings
+    if subdivisions_r is not None:
+        check_length("subdivisions_r", subdivisions_r, 1, len(surfaces))
+        orig_indexes = list(subdivisions_r.keys())
+        check_iterable_type("ring indexes", orig_indexes, int)
+        check_iterable_type(
+            "number of divisions", list(subdivisions_r.values()), int)
+        for ix in orig_indexes:
+            if ix < 0:
+                subdivisions_r[len(surfaces) + ix] = subdivisions_r.pop(ix)
+        # Dissallow subdivision on outer most, infinite region
+        check_less_than(
+            "outer ring", max(subdivisions_r), len(surfaces), equality=True)
+
+        # ensure ability to concatenate
+        if not isinstance(items, list):
+            items = list(items)
+        if not isinstance(surfaces, list):
+            surfaces = list(surfaces)
+
+        # generate equal area divisions
+        # Adding N - 1 new regions
+        # N - 2 surfaces are made
+        # Original cell is not removed, but not occupies last ring
+        for ring_index in reversed(sorted(subdivisions_r.keys())):
+            nr = subdivisions_r[ring_index]
+            new_surfs = []
+
+            lower_rad = 0.0 if ring_index == 0 else surfaces[ring_index - 1].r
+
+            upper_rad = surfaces[ring_index].r
+
+            area_term = (upper_rad ** 2 - lower_rad ** 2) / nr
+
+            for new_index in range(nr - 1):
+                lower_rad = sqrt(area_term + lower_rad ** 2)
+                new_surfs.append(surf_type(r=lower_rad))
+
+            surfaces = (
+                    surfaces[:ring_index] + new_surfs + surfaces[ring_index:])
+
+            filler = items[ring_index]
+            if (divide_vols and hasattr(filler, "volume")
+                    and filler.volume is not None):
+                filler.volume /= nr
+
+            items[ring_index:ring_index] = [
+                filler.clone() for _i in range(nr - 1)]
+   
+
+    # Loop to correct "subdivisions_a" dictionary after creating more rings
+    if subdivisions_r is not None and subdivisions_a is not None:
+        subdivisions_a_fixed = {}
+        counter = 0
+        
+        for i in range(sorted(subdivisions_r.keys())[-1]+1):
+            if i in subdivisions_r.keys():
+                for j in range(subdivisions_r[i]):
+                    if i in subdivisions_a.keys():
+                        subdivisions_a_fixed[counter] = subdivisions_a[i]
+                    counter += 1
+            
+            elif i in subdivisions_a.keys():
+                subdivisions_a_fixed[counter] = subdivisions_a[i]
+                counter += 1
+            
+            else:
+                counter += 1
+
+        subdivisions_a = subdivisions_a_fixed
+
+
+    # Divides Cylinders into CylinderSectors
+    if subdivisions_a is not None:
+        check_length("subdivisions_a", subdivisions_a, 1, len(surfaces))
+        orig_indexes = list(subdivisions_a.keys())
+        check_iterable_type("ring indexes", orig_indexes, int)
+        check_iterable_type(
+            "number of divisions", list(subdivisions_a.values()), int)
+        for ix in orig_indexes:
+            if ix < 0:
+                subdivisions_a[len(surfaces) + ix] = subdivisions_a.pop(ix)
+        # Dissallow subdivision on outer most, infinite region
+        check_less_than(
+            "outer ring", max(subdivisions_a), len(surfaces), equality=True)
+
+        # ensure ability to concatenate
+        if not isinstance(items, list):
+            items = list(items)
+        if not isinstance(surfaces, list):
+            surfaces = list(surfaces)
+
+        # Generate azimuthal divisions
+        for ring_index in reversed(sorted(subdivisions_a.keys())):
+            ns = subdivisions_a[ring_index]
+            if ns == 1:
+                continue
+            new_surfs = []
+            center = list(centers)[0]
+
+            lower_rad = 0.0 if ring_index == 0 else surfaces[ring_index - 1].r
+
+            upper_rad = surfaces[ring_index].r
+            
+            # Creates a CylinderSector (composite surface of two cocentric cylinders and two planes) for each azimuthal region
+            spacing = 360.0/ns
+            for ix in range(ns):
+                lower_angle = ix * spacing
+                upper_angle = lower_angle + spacing
+
+                if surf_type is ZCylinder:
+                    cyl_sec = CylinderSector(r1=lower_rad, r2=upper_rad, theta1=lower_angle, theta2=upper_angle, 
+                            center=center, axis='z')
+                elif surf_type is YCylinder:
+                    cyl_sec = CylinderSector(r1=lower_rad, r2=upper_rad, theta1=lower_angle, theta2=upper_angle, 
+                            center=center, axis='y')
+                elif surf_type is XCylinder:
+                    cyl_sec = CylinderSector(r1=lower_rad, r2=upper_rad, theta1=lower_angle, theta2=upper_angle, 
+                            center=center, axis='x')
+                
+                new_surfs.append(cyl_sec)
+
+
+            surfaces = (
+                    surfaces[:ring_index] + new_surfs + surfaces[ring_index:])
+
+            filler = items[ring_index]
+            if (divide_vols and hasattr(filler, "volume")
+                    and filler.volume is not None):
+                filler.volume /= ns
+
+            items[ring_index:ring_index] = [
+                filler for _i in range(ns - 1)]
+
+    # Build the universe
+    regions = subdivide(surfaces)
+    cells = [Cell(fill=f, region=r) for r, f in zip(regions, items)]
+    return Universe(cells=cells, **kwargs)
+

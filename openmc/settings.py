@@ -666,7 +666,7 @@ class Settings:
         self._max_order = max_order
 
     @property
-    def source(self) -> typing.List[Source]:
+    def source(self) -> typing.List[SourceBase]:
         return self._source
 
     @source.setter

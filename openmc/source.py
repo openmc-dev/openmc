@@ -504,7 +504,7 @@ class FileSource(SourceBase):
 
     Parameters
     ----------
-    path : str or Pathlike
+    path : str or pathlib.Path
         Path to the source file from which sites should be sampled
     strength : float
         Strength of the source (default is 1.0)

@@ -181,7 +181,6 @@ class IndependentSource(SourceBase):
         self._angle = None
         self._energy = None
         self._time = None
-        self._file = None
 
         if space is not None:
             self.space = space

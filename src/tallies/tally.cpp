@@ -389,15 +389,15 @@ void Tally::add_filter(Filter* filter)
   // if this filter is already present, do nothing and return
   if (std::find(filters_.begin(), filters_.end(), filter_idx) != filters_.end())
     return;
-
+  
   // Keep track of indices for special filters
   if (dynamic_cast<const EnergyoutFilter*>(filter)) {
     energyout_filter_ = filters_.size();
   } else if (dynamic_cast<const DelayedGroupFilter*>(filter)) {
     delayedgroup_filter_ = filters_.size();
-  } else if (filt->type() == FilterType::CELL &&
-             !(filt->type() == FilterType::CELLBORN) &&
-             !(filt->type() == FilterType::CELLFROM)) {
+  } else if ((filter->type() == FilterType::CELL) &&
+             !(filter->type() == FilterType::CELLBORN) &&
+             !(filter->type() == FilterType::CELLFROM)) {
     cell_filter_ = filters_.size();
   } else if (dynamic_cast<const EnergyFilter*>(filter)) {
     energy_filter_ = filters_.size();

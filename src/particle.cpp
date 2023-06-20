@@ -359,6 +359,19 @@ void Particle::event_revive_from_secondary()
     // Subtract secondary particle energy from interim pulse-height results
     if (!model::active_pulse_height_tallies.empty() &&
         this->type() == ParticleType::photon) {
+      // Since the birth cell of the particle has not been set we
+      // have to determine it before the energy of the secondary particle can be
+      // removed from the pulse-height of this cell.
+      if (coord(n_coord() - 1).cell == C_NONE) {
+        if (!exhaustive_find_cell(*this)) {
+          mark_as_lost("Could not find the cell containing particle " +
+                       std::to_string(id()));
+          return;
+        }
+        // Set birth cell attribute
+        if (cell_born() == C_NONE)
+          cell_born() = coord(n_coord() - 1).cell;
+      }
       pht_secondary_particles();
     }
 
@@ -409,14 +422,14 @@ void Particle::event_death()
 
 void Particle::pht_collision_energy()
 {
+  // Adds the energy particles lose in a collision to the pulse-height
+
   // determine index of cell in pulse_height_cells
   auto it = std::find(model::pulse_height_cells.begin(),
     model::pulse_height_cells.end(), coord(n_coord() - 1).cell);
 
   if (it != model::pulse_height_cells.end()) {
     int index = std::distance(model::pulse_height_cells.begin(), it);
-    // Adds the energy particles lose in a collision to the pulse-height at the
-    // cell index
     pht_storage()[index] += E_last() - E();
 
     // If the energy of the particle is below the cutoff, it will not be sampled
@@ -432,21 +445,10 @@ void Particle::pht_secondary_particles()
 {
   // Removes the energy of secondary produced particles from the pulse-height
 
-  // determine the birth cell of the particle
-  if (coord(n_coord() - 1).cell == C_NONE) {
-    if (!exhaustive_find_cell(*this)) {
-      mark_as_lost(
-        "Could not find the cell containing particle " + std::to_string(id()));
-      return;
-    }
-
-    // Set birth cell attribute
-    if (cell_born() == C_NONE)
-      cell_born() = coord(n_coord() - 1).cell;
-  }
   // determine index of cell in pulse_height_cells
   auto it = std::find(model::pulse_height_cells.begin(),
     model::pulse_height_cells.end(), cell_born());
+
   if (it != model::pulse_height_cells.end()) {
     int index = std::distance(model::pulse_height_cells.begin(), it);
     pht_storage()[index] -= E();

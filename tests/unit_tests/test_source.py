@@ -141,7 +141,7 @@ def test_exceptions():
 
     with pytest.raises(AttributeError, match=r'Please use the FileSource class'):
         s = openmc.IndependentSource()
-        s.path = 'my_file'
+        s.file = 'my_file'
 
     with pytest.raises(AttributeError, match=r'Please use the CompiledSource class'):
         s = openmc.IndependentSource()

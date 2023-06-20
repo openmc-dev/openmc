@@ -79,7 +79,7 @@ class SourceBase(ABC):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element, meshes=None) -> openmc.Source:
+    def from_xml_element(cls, elem: ET.Element, meshes=None) -> openmc.SourceBase:
         """Generate source from an XML element
 
         Parameters
@@ -92,7 +92,7 @@ class SourceBase(ABC):
 
         Returns
         -------
-        openmc.Source
+        openmc.SourceBase
             Source generated from XML element
 
         """
@@ -313,7 +313,7 @@ class IndependentSource(SourceBase):
             id_elem.text = ' '.join(str(uid) for uid in self.domain_ids)
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element, meshes=None) -> 'openmc.Source':
+    def from_xml_element(cls, elem: ET.Element, meshes=None) -> 'openmc.SourceBase':
         """Generate source from an XML element
 
         Parameters
@@ -478,7 +478,7 @@ class CompiledSource(SourceBase):
 
         Returns
         -------
-        openmc.Source
+        openmc.CompiledSource
             Source generated from XML element
 
         """
@@ -568,7 +568,7 @@ class FileSource(SourceBase):
 
         Returns
         -------
-        openmc.Source
+        openmc.FileSource
             Source generated from XML element
 
         """

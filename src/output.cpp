@@ -5,8 +5,8 @@
 #include <cstring>   // for strlen
 #include <ctime>     // for time, localtime
 #include <fstream>
-#include <iomanip>   // for setw, setprecision, put_time
-#include <ios>       // for fixed, scientific, left
+#include <iomanip> // for setw, setprecision, put_time
+#include <ios>     // for fixed, scientific, left
 #include <iostream>
 #include <sstream>
 #include <unordered_map>

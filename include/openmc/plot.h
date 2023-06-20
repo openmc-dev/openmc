@@ -29,7 +29,7 @@ namespace model {
 
 extern std::unordered_map<int, int> plot_map; //!< map of plot ids to index
 extern vector<std::unique_ptr<PlottableInterface>>
-  plots;                                      //!< Plot instance container
+  plots; //!< Plot instance container
 
 extern uint64_t plotter_seed; // Stream index used by the plotter
 
@@ -151,10 +151,10 @@ public:
 
   // Members
 public:
-  Position origin_;         //!< Plot origin in geometry
-  Position width_;          //!< Plot width in geometry
-  PlotBasis basis_;         //!< Plot basis (XY/XZ/YZ)
-  array<size_t, 3> pixels_; //!< Plot size in pixels
+  Position origin_;           //!< Plot origin in geometry
+  Position width_;            //!< Plot width in geometry
+  PlotBasis basis_;           //!< Plot basis (XY/XZ/YZ)
+  array<size_t, 3> pixels_;   //!< Plot size in pixels
   bool slice_color_overlaps_; //!< Show overlapping cells?
   int slice_level_ {-1};      //!< Plot universe level
 private:

@@ -395,7 +395,9 @@ void Tally::add_filter(Filter* filter)
     energyout_filter_ = filters_.size();
   } else if (dynamic_cast<const DelayedGroupFilter*>(filter)) {
     delayedgroup_filter_ = filters_.size();
-  } else if (dynamic_cast<const CellFilter*>(filter)) {
+  } else if (filt->type() == FilterType::CELL &&
+             !(filt->type() == FilterType::CELLBORN) &&
+             !(filt->type() == FilterType::CELLFROM)) {
     cell_filter_ = filters_.size();
   } else if (dynamic_cast<const EnergyFilter*>(filter)) {
     energy_filter_ = filters_.size();

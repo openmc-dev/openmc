@@ -4,9 +4,12 @@
 #include "openmc/timer.h"
 
 #include <stack>
+#include <queue>
 #include <thread>
 #include <assert.h>
 #include <mutex>
+
+#include <fstream>
 
 //#define CXX_THREAD_MT_CONSTRUCTION
 #ifdef CXX_THREAD_MT_CONSTRUCTION
@@ -32,7 +35,7 @@ bool OctreeNode::is_leaf() const {
 }
  
 void find_cells_in_box(const Universe& univ, const OctreeNode& parent, OctreeNode& child) {
-    const double NUM_CELL_SEARCH_POINT_DENSITY = 1024.0;
+    const double NUM_CELL_SEARCH_POINT_DENSITY = 4.0;
     const int num_search_points = (int)(child.box.volume() * NUM_CELL_SEARCH_POINT_DENSITY);
 
     // get some numbers that are unique across all invocations
@@ -158,7 +161,7 @@ void process_child(
 #endif
 
 Timer t;
-OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_node, int max_depth) : fallback(univ) {
+OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_node, int max_depth, const std::string& file_path) : fallback(univ) {
     t.start();
     std::cout << "====================OCTREE CONSTRUCTION===================\n";
     int max_tree_size = (2 << (3 * max_depth));
@@ -192,7 +195,7 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
     #endif
 
     int next_id = 1;
-    int num_nodes = 1;
+    num_nodes = 1;
     bool currently_constructing = true;
     std::thread reporter_thread(construction_reporter_thread, max_tree_size, &num_nodes, &currently_constructing);
 
@@ -302,6 +305,15 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
     currently_constructing = false;
     reporter_thread.join();
 
+    // now, we write the octree to disk if a path is specified
+    if(file_path.size() != 0) {
+        write_to_file(file_path);
+    }
+
+}  
+
+OctreePartitioner::OctreePartitioner(const Universe& univ, const std::string& file_path) : fallback(univ) {
+    read_from_file(file_path);
 }
 
 OctreePartitioner::~OctreePartitioner() {
@@ -399,6 +411,123 @@ const vector<int32_t>& OctreePartitioner::get_cells_fallback(Position r, Directi
     //octree_console_mutex.unlock();
     //#endif
     return fallback.get_cells(r, u);
+}
+
+struct OctreeNodeSerialized {
+    int id;
+
+    AABB box;
+    bool is_leaf;
+
+    // parent data
+    int first_child_index;
+
+    // leaf data
+    int contained_cells_index;
+    int num_contained_cells;
+};
+
+void OctreePartitioner::write_to_file(const std::string& file_path){
+    std::fstream octree_file(file_path, std::ios::out | std::ios::binary);
+
+    std::vector<OctreeNodeSerialized> node_data;
+    std::vector<int> cell_data;
+
+    // serialize
+    std::queue<const OctreeNode*> unproc_nodes;
+    unproc_nodes.push(&root);
+
+    while(!unproc_nodes.empty()) {
+        auto& cur = *unproc_nodes.front();
+        unproc_nodes.pop();
+
+        OctreeNodeSerialized ser;
+
+        ser.id = cur.id;
+        ser.box = cur.box;
+
+        if(ser.is_leaf = cur.is_leaf()) {
+            ser.num_contained_cells = cur.cells.size();
+            ser.contained_cells_index = cell_data.size();
+
+            for(int cell : cur.cells) {
+                cell_data.push_back(cell);
+            }
+        } else {
+            ser.first_child_index = 1 + node_data.size() + unproc_nodes.size();
+            for(int i = 0; i < 8; i++) {
+                unproc_nodes.push(&cur.children[i]);
+            }
+        }
+        
+        node_data.push_back(ser);
+    }
+
+    // write to disk
+    #define WR_BIN(x) octree_file.write((char*)&x, sizeof(x))
+
+    WR_BIN(num_nodes);
+    for(const auto& node : node_data) {
+        WR_BIN(node);
+    }    
+
+    int num_cells = cell_data.size();
+    WR_BIN(num_cells);
+    for(auto cell : cell_data) {
+        WR_BIN(cell);
+    }
+}
+
+void OctreePartitioner::read_from_file(const std::string& file_path) {
+    std::fstream octree_file(file_path, std::ios::in | std::ios::binary);
+
+    std::vector<OctreeNodeSerialized> node_data;
+    std::vector<int> cell_data;
+
+    #define RD_BIN(x) octree_file.read((char*)&x, sizeof(x))
+
+    RD_BIN(num_nodes);
+
+    node_data.resize(num_nodes);
+    for(auto& node : node_data) {
+        RD_BIN(node);
+    }
+
+    int num_cells;
+    RD_BIN(num_cells);
+    cell_data.resize(num_cells);
+    for(auto& cell : cell_data) {
+        RD_BIN(cell);
+    }
+
+    std::stack<std::pair<OctreeNode*, int>> unproc_nodes;
+    unproc_nodes.emplace(&root, 0);
+
+    while(!unproc_nodes.empty()) {
+        auto& p = unproc_nodes.top();
+        unproc_nodes.pop();
+
+        OctreeNode& cur = *p.first;
+        int index = p.second;
+
+        OctreeNodeSerialized& ser = node_data[index];
+
+        cur.id = ser.id;
+        cur.box = ser.box;
+
+        if(ser.is_leaf) {
+            cur.cells.reserve(ser.num_contained_cells);
+            for(int i = ser.contained_cells_index; i < ser.contained_cells_index + ser.num_contained_cells; i++) {
+                cur.cells.push_back(cell_data[i]);
+            }
+        } else {
+            cur.children = new OctreeNode[8];
+
+            for(int i = 0; i < 8; i++) {
+                unproc_nodes.emplace(&cur.children[i], ser.first_child_index + i);
+            }
+        }
+    }
 }
 
 }

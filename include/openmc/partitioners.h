@@ -8,11 +8,11 @@
 #include "zplane_partitioner.h"
 #include "octree_partitioner.h"
 
-//#define PARTITIONER_FALLBACK_ENABLED
+#define PARTITIONER_FALLBACK_ENABLED
 
 namespace openmc {
 
-    using DefaultPartitioner = ZPlanePartitioner;
+    using DefaultPartitioner = OctreePartitioner;
 
 }
 

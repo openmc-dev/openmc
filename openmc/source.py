@@ -505,14 +505,14 @@ class FileSource(SourceBase):
 
     Parameters
     ----------
-    filename : str
-        Source file from which sites should be sampled
+    path : str or Pathlike
+        Path to the source file from which sites should be sampled
     strength : float
         Strength of the source (default is 1.0)
 
     Attributes
     ----------
-    filename : str
+    path : Pathlike
         Source file from which sites should be sampled
     strength : float
         Strength of the source
@@ -520,26 +520,26 @@ class FileSource(SourceBase):
         Indicator of source type: 'file'
 
     """
-    def __init__(self, filename: Optional[str] = None, strength=1.0) -> None:
+    def __init__(self, path: Optional[PathLike] = None, strength=1.0) -> None:
         super().__init__(strength=strength)
 
-        self._file = None
+        self._path = None
 
-        if filename is not None:
-            self.file = filename
+        if path is not None:
+            self.path = path
 
     @property
     def type(self) -> str:
         return "file"
 
     @property
-    def file(self):
-        return self._file
+    def path(self) -> PathLike:
+        return self._path
 
-    @file.setter
-    def file(self, filename: str):
-        cv.check_type('source file', filename, str)
-        self._file = filename
+    @path.setter
+    def path(self, p: PathLike):
+        cv.check_type('source file', p, str)
+        self._path = p
 
     def populate_xml_element(self, element):
         """Add necessary file source information to an XML element
@@ -552,8 +552,8 @@ class FileSource(SourceBase):
         """
         super().populate_xml_element(element)
 
-        if self.file is not None:
-            element.set("file", self.file)
+        if self.path is not None:
+            element.set("file", self.path)
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element) -> openmc.FileSource:

@@ -50,8 +50,8 @@ def test_spherical_uniform():
 
 def test_source_file():
     filename = 'source.h5'
-    src = openmc.FileSource(filename=filename)
-    assert src.file == filename
+    src = openmc.FileSource(path=filename)
+    assert src.path == filename
 
     elem = src.to_xml_element()
     assert 'strength' in elem.attrib
@@ -141,7 +141,7 @@ def test_exceptions():
 
     with pytest.raises(AttributeError, match=r'Please use the FileSource class'):
         s = openmc.IndependentSource()
-        s.file = 'my_file'
+        s.path = 'my_file'
 
     with pytest.raises(AttributeError, match=r'Please use the CompiledSource class'):
         s = openmc.IndependentSource()

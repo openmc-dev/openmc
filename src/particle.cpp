@@ -413,17 +413,17 @@ void Particle::pht_collision_energy()
   auto it = std::find(model::pulse_height_cells.begin(),
     model::pulse_height_cells.end(), coord(n_coord() - 1).cell);
 
-  if(it != model::pulse_height_cells.end()){
-  int index = std::distance(model::pulse_height_cells.begin(), it);
-  // Adds the energy particles lose in a collision to the pulse-height at the
-  // cell index
-  pht_storage()[index] += E_last() - E();
+  if (it != model::pulse_height_cells.end()) {
+    int index = std::distance(model::pulse_height_cells.begin(), it);
+    // Adds the energy particles lose in a collision to the pulse-height at the
+    // cell index
+    pht_storage()[index] += E_last() - E();
 
-  // If the energy of the particle is below the cutoff, it will not be sampled
-  // so its energy is added to the pulse-height in the cell
-  int photon = static_cast<int>(ParticleType::photon);
-  if (E() < settings::energy_cutoff[photon]) {
-    pht_storage()[index] += E();
+    // If the energy of the particle is below the cutoff, it will not be sampled
+    // so its energy is added to the pulse-height in the cell
+    int photon = static_cast<int>(ParticleType::photon);
+    if (E() < settings::energy_cutoff[photon]) {
+      pht_storage()[index] += E();
     }
   }
 }
@@ -447,9 +447,9 @@ void Particle::pht_secondary_particles()
   // determine index of cell in pulse_height_cells
   auto it = std::find(model::pulse_height_cells.begin(),
     model::pulse_height_cells.end(), cell_born());
-  if(it != model::pulse_height_cells.end()){  
-  int index = std::distance(model::pulse_height_cells.begin(), it);
-  pht_storage()[index] -= E();
+  if (it != model::pulse_height_cells.end()) {
+    int index = std::distance(model::pulse_height_cells.begin(), it);
+    pht_storage()[index] -= E();
   }
 }
 

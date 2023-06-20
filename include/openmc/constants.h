@@ -75,9 +75,9 @@ constexpr double MASS_NEUTRON_EV {
   939.56542052e6};                             // mass of a neutron in eV/c^2
 constexpr double MASS_PROTON {1.007276466621}; // mass of a proton in amu
 constexpr double MASS_ELECTRON_EV {
-  0.51099895000e6};      // electron mass energy equivalent in eV/c^2
+  0.51099895000e6}; // electron mass energy equivalent in eV/c^2
 constexpr double FINE_STRUCTURE {
-  137.035999084};        // inverse fine structure constant
+  137.035999084}; // inverse fine structure constant
 constexpr double PLANCK_C {
   1.2398419839593942e4}; // Planck's constant times c in eV-Angstroms
 constexpr double AMU {1.66053906660e-27};      // 1 amu in kg
@@ -280,7 +280,7 @@ enum class TallyResult { VALUE, SUM, SUM_SQ };
 
 enum class TallyType { VOLUME, MESH_SURFACE, SURFACE, PULSE_HEIGHT };
 
-enum class TallyEstimator { ANALOG, TRACKLENGTH, COLLISION};
+enum class TallyEstimator { ANALOG, TRACKLENGTH, COLLISION };
 
 enum class TallyEvent { SURFACE, LATTICE, KILL, SCATTER, ABSORB };
 

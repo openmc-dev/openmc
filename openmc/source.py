@@ -230,45 +230,6 @@ class IndependentSource(SourceBase):
     def space(self):
         return self._space
 
-    @property
-    def angle(self):
-        return self._angle
-
-    @property
-    def energy(self):
-        return self._energy
-
-    @property
-    def time(self):
-        return self._time
-
-    @property
-    def particle(self):
-        return self._particle
-
-    @particle.setter
-    def particle(self, particle):
-        cv.check_value('source particle', particle, ['neutron', 'photon'])
-        self._particle = particle
-
-    @property
-    def domain_ids(self):
-        return self._domain_ids
-
-    @domain_ids.setter
-    def domain_ids(self, ids):
-        cv.check_type('domain IDs', ids, Iterable, Real)
-        self._domain_ids = ids
-
-    @property
-    def domain_type(self):
-        return self._domain_type
-
-    @domain_type.setter
-    def domain_type(self, domain_type):
-        cv.check_value('domain type', domain_type, ('cell', 'material', 'universe'))
-        self._domain_type = domain_type
-
     @space.setter
     def space(self, space):
         cv.check_type('spatial distribution', space, Spatial)
@@ -300,6 +261,33 @@ class IndependentSource(SourceBase):
     def time(self, time):
         cv.check_type('time distribution', time, Univariate)
         self._time = time
+
+    @property
+    def particle(self):
+        return self._particle
+
+    @particle.setter
+    def particle(self, particle):
+        cv.check_value('source particle', particle, ['neutron', 'photon'])
+        self._particle = particle
+
+    @property
+    def domain_ids(self):
+        return self._domain_ids
+
+    @domain_ids.setter
+    def domain_ids(self, ids):
+        cv.check_type('domain IDs', ids, Iterable, Real)
+        self._domain_ids = ids
+
+    @property
+    def domain_type(self):
+        return self._domain_type
+
+    @domain_type.setter
+    def domain_type(self, domain_type):
+        cv.check_value('domain type', domain_type, ('cell', 'material', 'universe'))
+        self._domain_type = domain_type
 
     def populate_xml_element(self, element):
         """Add necessary source information to an XML element

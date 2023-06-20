@@ -30,6 +30,8 @@ class TransferRates:
     ----------
     burnable_mats : list of str
         All burnable material IDs.
+    local_mats : list of str
+        All burnable material IDs being managed by a single process
     transfer_rates : dict of str to dict
         Container of transfer rates, elements and destination material
     index_transfer : Set of pair of str
@@ -40,6 +42,7 @@ class TransferRates:
 
         self.materials = model.materials
         self.burnable_mats = operator.burnable_mats
+        self.local_mats = operator.local_mats
 
         #initialize transfer rates container dict
         self.transfer_rates = {mat: {} for mat in self.burnable_mats}

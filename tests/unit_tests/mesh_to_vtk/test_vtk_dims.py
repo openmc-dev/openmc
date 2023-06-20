@@ -212,7 +212,7 @@ def mesh_surf_id(param):
 
 
 @pytest.mark.parametrize("mesh,surface", product(MESHES, SURFS), ids=mesh_surf_id)
-def test_vtk_write_ordering(model, mesh, surface):
+def test_vtk_write_ordering(run_in_tmpdir, model, mesh, surface):
 
     tally = openmc.Tally()
     tally.scores = ['flux']

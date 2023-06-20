@@ -23,11 +23,7 @@ Prerequisites
   OpenMC in development/editable mode. With setuptools, this is accomplished by
   running::
 
-      python setup.py develop
-
-  or using pip (recommended)::
-
-      pip install -e .[test]
+      python -m pip install -e .[test]
 
 - The test suite requires a specific set of cross section data in order for
   tests to pass. A download URL for the data that OpenMC expects can be found
@@ -83,13 +79,13 @@ does not exist run::
 
     touch test_<name-of-header-file>.cpp
 
-The file must be added to the CMake build system in 
-``tests/cpp_unit_tests/CMakeLists.txt``. ``test_<name-of-header-file>`` should 
-be added to ``TEST_NAMES``. 
+The file must be added to the CMake build system in
+``tests/cpp_unit_tests/CMakeLists.txt``. ``test_<name-of-header-file>`` should
+be added to ``TEST_NAMES``.
 
-To add a test case to ``test_<name-of-header-file>.cpp`` ensure 
-``catch2/catch_test_macros.hpp`` is included. A unit test can then be added 
-using the ``TEST_CASE`` macro and the ``REQUIRE`` assertion from Catch2. 
+To add a test case to ``test_<name-of-header-file>.cpp`` ensure
+``catch2/catch_test_macros.hpp`` is included. A unit test can then be added
+using the ``TEST_CASE`` macro and the ``REQUIRE`` assertion from Catch2.
 
 Adding Tests to the Regression Suite
 ------------------------------------

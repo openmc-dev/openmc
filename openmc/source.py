@@ -269,15 +269,27 @@ class IndependentSource(SourceBase):
         cv.check_type('spatial distribution', space, Spatial)
         self._space = space
 
+    @property
+    def angle(self):
+        return self._angle
+
     @angle.setter
     def angle(self, angle):
         cv.check_type('angular distribution', angle, UnitSphere)
         self._angle = angle
 
+    @property
+    def energy(self):
+        return self._energy
+
     @energy.setter
     def energy(self, energy):
         cv.check_type('energy distribution', energy, Univariate)
         self._energy = energy
+
+    @property
+    def time(self):
+        return self._time
 
     @time.setter
     def time(self, time):
@@ -291,7 +303,6 @@ class IndependentSource(SourceBase):
 
     def populate_xml_element(self, element):
         """Add necessary source information to an XML element
-
         Returns
         -------
         element : lxml.etree._Element

@@ -434,14 +434,14 @@ class CompiledSource(SourceBase):
     def library(self) -> str:
         return self._library
 
-    @property
-    def parameters(self) -> str:
-        return self._parameters
-
     @library.setter
     def library(self, library_name):
         cv.check_type('library', library_name, str)
         self._library = library_name
+
+    @property
+    def parameters(self) -> str:
+        return self._parameters
 
     @parameters.setter
     def parameters(self, parameters_path):

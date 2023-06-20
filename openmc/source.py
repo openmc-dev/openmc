@@ -246,18 +246,23 @@ class IndependentSource(SourceBase):
     def particle(self):
         return self._particle
 
+    @particle.setter
+    def particle(self, particle):
+        cv.check_value('source particle', particle, ['neutron', 'photon'])
+        self._particle = particle
+
     @property
     def domain_ids(self):
         return self._domain_ids
-
-    @property
-    def domain_type(self):
-        return self._domain_type
 
     @domain_ids.setter
     def domain_ids(self, ids):
         cv.check_type('domain IDs', ids, Iterable, Real)
         self._domain_ids = ids
+
+    @property
+    def domain_type(self):
+        return self._domain_type
 
     @domain_type.setter
     def domain_type(self, domain_type):
@@ -295,11 +300,6 @@ class IndependentSource(SourceBase):
     def time(self, time):
         cv.check_type('time distribution', time, Univariate)
         self._time = time
-
-    @particle.setter
-    def particle(self, particle):
-        cv.check_value('source particle', particle, ['neutron', 'photon'])
-        self._particle = particle
 
     def populate_xml_element(self, element):
         """Add necessary source information to an XML element

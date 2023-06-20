@@ -5,14 +5,13 @@ nuclide names as row indices and reaction names as column indices.
 """
 
 import tempfile
-from copy import deepcopy
 
 from pandas import DataFrame, read_csv, Series
 import numpy as np
 
 from openmc.checkvalue import check_type, check_value, check_iterable_type
 from openmc.exceptions import DataError
-from openmc import StatePoint, Materials
+from openmc import StatePoint
 import openmc
 from .chain import Chain, REACTIONS
 from .coupled_operator import _find_cross_sections, _get_nuclides_with_data
@@ -31,7 +30,9 @@ class MicroXS(DataFrame):
     @classmethod
     def from_model(cls,
                    model,
-                   reaction_domain,
+                   domain,
+                   nuclides=None,
+                   reactions=None,
                    chain_file=None,
                    energy_bounds=(0, 20e6),
                    run_kwargs=None):
@@ -43,8 +44,14 @@ class MicroXS(DataFrame):
         ----------
         model : openmc.Model
             OpenMC model object. Must contain geometry, materials, and settings.
-        reaction_domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
+        domain : openmc.Material or openmc.Cell or openmc.Universe
             Domain in which to tally reaction rates.
+        nuclides : list of str
+            Nuclides to get cross sections for. If not specified, all burnable
+            nuclides from the depletion chain file are used.
+        reactions : list of str
+            Reactions to get cross sections for. If not specified, all neutron
+            reactions listed in the depletion chain file are used.
         chain_file : str, optional
             Path to the depletion chain XML file that will be used in depletion
             simulation. Used to determine cross sections for materials not
@@ -73,29 +80,24 @@ class MicroXS(DataFrame):
                     "chain in openmc.config['chain_file']"
                 )
         chain = Chain.from_xml(chain_file)
-        reactions = chain.reactions
-        cross_sections = _find_cross_sections(model)
-        nuclides_with_data = _get_nuclides_with_data(cross_sections)
-        burnable_nucs = [nuc.name for nuc in chain.nuclides
-                         if nuc.name in nuclides_with_data]
-
-        # TODO: Right now, we use all nuclides from the material but it probably
-        # should be based on the burnable nuclides
-        nuclides = reaction_domain.get_nuclides()
-        for nuc in burnable_nucs:
-            if nuc not in nuclides:
-                nuclides.append(nuc)
+        if reactions is None:
+            reactions = chain.reactions
+        if not nuclides:
+            cross_sections = _find_cross_sections(model)
+            nuclides_with_data = _get_nuclides_with_data(cross_sections)
+            nuclides = [nuc.name for nuc in chain.nuclides
+                        if nuc.name in nuclides_with_data]
 
         # Set up the reaction rate and flux tallies
         energy_filter = openmc.EnergyFilter(energy_bounds)
-        if isinstance(reaction_domain, openmc.Material):
-            domain_filter = openmc.MaterialFilter([reaction_domain])
-        elif isinstance(reaction_domain, openmc.Cell):
-            domain_filter = openmc.CellFilter([reaction_domain])
-        elif isinstance(reaction_domain, openmc.Universe):
-            domain_filter = openmc.UniverseFilter([reaction_domain])
+        if isinstance(domain, openmc.Material):
+            domain_filter = openmc.MaterialFilter([domain])
+        elif isinstance(domain, openmc.Cell):
+            domain_filter = openmc.CellFilter([domain])
+        elif isinstance(domain, openmc.Universe):
+            domain_filter = openmc.UniverseFilter([domain])
         else:
-            raise ValueError(f"Unsupported domain type: {type(reaction_domain)}")
+            raise ValueError(f"Unsupported domain type: {type(domain)}")
 
         rr_tally = openmc.Tally(name='MicroXS RR')
         rr_tally.filters = [domain_filter, energy_filter]

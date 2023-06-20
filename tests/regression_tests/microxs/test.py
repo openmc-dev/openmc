@@ -47,7 +47,10 @@ def model():
 
 
 def test_from_model(model):
-    test_xs = MicroXS.from_model(model, model.materials[0], CHAIN_FILE)
+    fuel = model.materials[0]
+    nuclides = ['U234', 'U235', 'U238', 'U236', 'O16', 'O17', 'I135', 'Xe135',
+                'Xe136', 'Cs135', 'Gd157', 'Gd156']
+    test_xs = MicroXS.from_model(model, fuel, nuclides, chain_file=CHAIN_FILE)
     if config['update']:
         test_xs.to_csv('test_reference.csv')
 

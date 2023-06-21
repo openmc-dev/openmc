@@ -520,11 +520,10 @@ class StepResult:
             be process-dependent and will be reduced across MPI
             processes.
 
-        .. versionadded:: 0.13.4
-
         path : PathLike
             Path to file to write. Defaults to 'depletion_results.h5'.
 
+            .. versionadded:: 0.13.4
         """
         # Get indexing terms
         vol_dict, nuc_list, burn_list, full_burn_list = op.get_results_info()
@@ -556,7 +555,7 @@ class StepResult:
             results.proc_time = comm.reduce(proc_time, op=MPI.SUM)
 
         if not Path(path).is_file():
-            Path(path).parents[0].mkdir(parents=True, exist_ok=True)
+            Path(path).parent.mkdir(parents=True, exist_ok=True)
         results.export_to_hdf5(path, step_ind)
 
     def transfer_volumes(self, model):

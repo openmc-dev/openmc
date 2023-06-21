@@ -5,8 +5,8 @@
 #include <fstream>
 #include <sstream>
 
-#include "xtensor/xview.hpp"
 #include "xtensor/xmanipulation.hpp"
+#include "xtensor/xview.hpp"
 #include <fmt/core.h>
 #include <fmt/ostream.h>
 #ifdef USE_LIBPNG
@@ -14,6 +14,7 @@
 #endif
 
 #include "openmc/constants.h"
+#include "openmc/container_util.h"
 #include "openmc/dagmc.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
@@ -647,7 +648,7 @@ void PlottableInterface::set_mask(pugi::xml_node plot_node)
 
       // Alter colors based on mask information
       for (int j = 0; j < colors_.size(); j++) {
-        if (std::find(iarray.begin(), iarray.end(), j) == iarray.end()) {
+        if (contains(iarray, j)) {
           if (check_for_node(mask_node, "background")) {
             vector<int> bg_rgb = get_node_array<int>(mask_node, "background");
             colors_[j] = bg_rgb;

@@ -99,6 +99,12 @@ def test_results_save(run_in_tmpdir):
                   for k, rates in zip(eigvl1, rate1)]
     op_result2 = [OperatorResult(ufloat(*k), rates)
                   for k, rates in zip(eigvl2, rate2)]
+
+    # saves within a subdirectory
+    StepResult.save(op, x1, op_result1, t1, 0, 0, path='out/put/depletion.h5')
+    res = Results('out/put/depletion.h5')
+
+    # saves with default filename
     StepResult.save(op, x1, op_result1, t1, 0, 0)
     StepResult.save(op, x2, op_result2, t2, 0, 1)
 

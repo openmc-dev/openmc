@@ -198,7 +198,7 @@ NEUTRON_MASS = 1.00866491595
 _ATOMIC_MASS = {}
 
 # Regex for GNDS nuclide names (used in zam function)
-GNDS_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
+_GNDS_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
 
 # Used in half_life function as a cache
 _HALF_LIFE = {}
@@ -514,7 +514,7 @@ def zam(name):
 
     """
     try:
-        symbol, A, state = GNDS_NAME_RE.match(name).groups()
+        symbol, A, state = _GNDS_NAME_RE.match(name).groups()
     except AttributeError:
         raise ValueError(f"'{name}' does not appear to be a nuclide name in "
                          "GNDS format")

@@ -51,9 +51,10 @@ def model():
     ('nuclides_elements', {'I135': 0.01, 'Gd156': 0.1, 'Gd157': 0.01, 'U': 0.01, 'Xe': 0.1}),
     ('elements_nuclides', {'U': 0.01, 'Xe': 0.1, 'I135': 0.01, 'Gd156': 0.1, 'Gd157': 0.01}),
     ('rates_invalid_1', {'Gd': 0.01, 'Gd157': 0.01, 'Gd156': 0.01}),
-    ('rates_invalid_2', {'Gd156': 0.01, 'Gd157': 0.01, 'Gd': 0.01})
+    ('rates_invalid_2', {'Gd156': 0.01, 'Gd157': 0.01, 'Gd': 0.01}),
+    ('rates_invalid_3', {'Gb156': 0.01}),
+    ('rates_invalid_4', {'Gb': 0.01})
     ])
-
 def test_get_set(model, case_name, transfer_rates):
     """Tests the get/set methods"""
 
@@ -82,6 +83,23 @@ def test_get_set(model, case_name, transfer_rates):
                         transfer.set_transfer_rate(material_input,
                                                    [component],
                                                    transfer_rate)
+            elif case_name == 'rates_invalid_3':
+                with pytest.raises(ValueError, match='Gb156 is not a valid '
+                                   'nuclide or element.'):
+                    for component, transfer_rate in transfer_rates.items():
+                        transfer.set_transfer_rate(material_input,
+                                                   [component],
+                                                   transfer_rate)
+            elif case_name == 'rates_invalid_4':
+                with pytest.raises(ValueError, match='Gb is not a valid '
+                                   'nuclide or element.'):
+                    for component, transfer_rate in transfer_rates.items():
+                        transfer.set_transfer_rate(material_input,
+                                                   [component],
+                                                   transfer_rate)
+
+
+
             else:
                 for component, transfer_rate in transfer_rates.items():
                     transfer.set_transfer_rate(material_input, [component], transfer_rate,

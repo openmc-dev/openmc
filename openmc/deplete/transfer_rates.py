@@ -3,7 +3,7 @@ import re
 
 from openmc.checkvalue import check_type, check_value
 from openmc import Material
-from openmc.data import ELEMENT_SYMBOL, zam, GNDS_NAME_RE
+from openmc.data import ELEMENT_SYMBOL, zam
 
 
 class TransferRates:
@@ -92,10 +92,7 @@ class TransferRates:
 
         """
         material_id = self._get_material_id(material)
-        try:
-            assert bool(re.match(GNDS_NAME_RE, component))
-        except:
-            check_value('component', component, ELEMENT_SYMBOL.values())
+        check_type('component', component, str)
         return self.transfer_rates[material_id][component][0]
 
     def get_destination_material(self, material, component):
@@ -117,10 +114,7 @@ class TransferRates:
 
         """
         material_id = self._get_material_id(material)
-        try:
-            assert bool(re.match(GNDS_NAME_RE, component))
-        except:
-            check_value('component', component, ELEMENT_SYMBOL.values())
+        check_type('component', component, str)
         if component in self.transfer_rates[material_id]:
             return self.transfer_rates[material_id][component][1]
 
@@ -166,6 +160,7 @@ class TransferRates:
         """
         material_id = self._get_material_id(material)
         check_type('transfer_rate', transfer_rate, Real)
+        check_type('components', components, list, expected_iter_type=str)
 
         if destination_material is not None:
             destination_material_id = self._get_material_id(destination_material)
@@ -193,23 +188,28 @@ class TransferRates:
 
         for component in components:
             current_components = self.transfer_rates[material_id].keys()
-            if GNDS_NAME_RE.match(component):
-                nuc_element = re.split(r'\d+', component)[0]
-                if nuc_element in current_components:
-                    raise ValueError('Cannot add transfer rate for nuclide '
-                                     f'{component} to material {material_id} '
-                                     f'where element {nuc_element} already has '
-                                     'a transfer rate.')
+            split_component = re.split(r'\d+', component)
+            element = split_component[0]
+            if element not in ELEMENT_SYMBOL.values():
+                raise ValueError(f'{component} is not a valid nuclide or '
+                                 'element.')
             else:
-                check_value('component', component, ELEMENT_SYMBOL.values())
-                element_nucs = [c for c in current_components
-                                if re.match(component + r'\d', c)]
-                if len(element_nucs) > 0:
-                    nuc_str = ", ".join(element_nucs)
-                    raise ValueError('Cannot add transfer rate for element '
-                                     f'{component} to material {material_id} '
-                                     f'with transfer rate(s) for nuclide(s) '
-                                     f'{nuc_str}.')
+                if len(split_component) == 1:
+                    element_nucs = [c for c in current_components
+                                    if re.match(component + r'\d', c)]
+                    if len(element_nucs) > 0:
+                        nuc_str = ", ".join(element_nucs)
+                        raise ValueError('Cannot add transfer rate for element '
+                                         f'{component} to material {material_id} '
+                                         f'with transfer rate(s) for nuclide(s) '
+                                         f'{nuc_str}.')
+
+                else:
+                    if element in current_components:
+                        raise ValueError('Cannot add transfer rate for nuclide '
+                                         f'{component} to material {material_id} '
+                                         f'where element {element} already has '
+                                         'a transfer rate.')
 
             self.transfer_rates[material_id][component] = transfer_rate / unit_conv, destination_material_id
             if destination_material_id is not None:

@@ -103,13 +103,6 @@ class Results(list):
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Get number of nuclides over time from a single material
 
-        .. note::
-            Initial values for some isotopes that do not appear in
-            initial concentrations may be non-zero, depending on the
-            value of the :attr:`openmc.deplete.CoupledOperator.dilute_initial`
-            attribute. The :class:`openmc.deplete.CoupledOperator` class adds
-            isotopes according to this setting, which can be set to zero.
-
         Parameters
         ----------
         mat : openmc.Material, str
@@ -171,14 +164,6 @@ class Results(list):
         rx: str
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Get reaction rate in a single material/nuclide over time
-
-        .. note::
-
-            Initial values for some isotopes that do not appear in
-            initial concentrations may be non-zero, depending on the
-            value of :class:`openmc.deplete.CoupledOperator` ``dilute_initial``
-            The :class:`openmc.deplete.CoupledOperator` adds isotopes according
-            to this setting, which can be set to zero.
 
         Parameters
         ----------

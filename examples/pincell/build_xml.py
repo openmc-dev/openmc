@@ -53,22 +53,20 @@ surfs = [fuel_or, clad_ir, clad_or, corner]
 mats = [uo2, helium, zircaloy, borated_water, borated_water]
 subdivs_r = {
         0 : 2,
-        #1 : 1,
+        1 : 1,
         2 : 2,
         3 : 1 
         }
 subdivs_a = {
         0 : 7,
-        #1 : 1,
+        1 : 1,
         2 : 3,
         3 : 5
         }
 #subdivs_r = None
 #subdivs_a = None
-#pin_universe = openmc.model.pin_azimuthal(surfs, mats, subdivisions=subdivs_a, divide_vols=True)
 
 pin_universe = openmc.model.pin_both(surfs, mats, subdivisions_r=subdivs_r, subdivisions_a=subdivs_a, divide_vols=True)
-#print(pin_universe)
 #pin = openmc.Cell(fill=pin_universe)
 
 mats = pin_universe.get_all_materials().values()
@@ -145,7 +143,7 @@ plot = openmc.Plot(plot_id=1)
 plot.origin = [0, 0, 0]
 plot.width = [pitch, pitch]
 plot.pixels = [1000, 1000]
-plot.color_by = 'cell'
+plot.color_by = 'material'
 
 # Instantiate a Plots collection and export to XML
 plot_file = openmc.Plots([plot])

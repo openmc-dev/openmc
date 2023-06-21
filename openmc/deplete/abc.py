@@ -850,7 +850,7 @@ class Integrator(ABC):
         material : openmc.Material or str or int
             Depletable material
         components : list of str
-            List of strings of elements and nuclides that share transfer rate.
+            List of strings of elements and/or nuclides that share transfer rate.
             A transfer rate for a nuclide cannot be added to a material
             alongside a transfer rate for its element and vice versa.
         transfer_rate : float

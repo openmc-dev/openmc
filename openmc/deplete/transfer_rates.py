@@ -32,7 +32,7 @@ class TransferRates:
     burnable_mats : list of str
         All burnable material IDs.
     transfer_rates : dict of str to dict
-        Container of transfer rates, components (elements and nuclides) and
+        Container of transfer rates, components (elements and/or nuclides) and
         destination material
     index_transfer : Set of pair of str
         Pair of strings needed to build final matrix (destination_material, mat)
@@ -120,7 +120,7 @@ class TransferRates:
             return self.transfer_rates[material_id][component][1]
 
     def get_components(self, material):
-        """Extract removing elements and nuclides for a given material
+        """Extract removing elements and/or nuclides for a given material
 
         Parameters
         ----------
@@ -139,18 +139,18 @@ class TransferRates:
 
     def set_transfer_rate(self, material, components, transfer_rate,
                           transfer_rate_units='1/s', destination_material=None):
-        """Set element and nuclide transfer rates in a depletable material.
+        """Set element and/or nuclide transfer rates in a depletable material.
 
         Parameters
         ----------
         material : openmc.Material or str or int
             Depletable material
         components : list of str
-            List of strings of elements or nuclides that share transfer rate.
+            List of strings of elements and/or nuclides that share transfer rate.
             Cannot add transfer rates for nuclides to a material where a
             transfer rate for its element is specified and vice versa.
         transfer_rate : float
-            Rate at which elements or nuclides are transferred. A positive or
+            Rate at which elements and/or nuclides are transferred. A positive or
             negative value corresponds to a removal or feed rate, respectively.
         destination_material : openmc.Material or str or int, Optional
             Destination material to where nuclides get fed.

@@ -961,41 +961,6 @@ class RegularMesh(StructuredMesh):
 
         return root_cell, cells
 
-    def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
-        """Creates a VTK object of the mesh
-
-        Parameters
-        ----------
-        filename : str or pathlib.Path
-            Name of the VTK file to write.
-        datasets : dict
-            Dictionary whose keys are the data labels
-            and values are the data sets.
-        volume_normalization : bool, optional
-            Whether or not to normalize the data by
-            the volume of the mesh elements.
-            Defaults to True.
-
-        Returns
-        -------
-        vtk.vtkStructuredGrid
-            the VTK object
-        """
-
-        ll, ur = self.lower_left, self.upper_right
-        x_vals = np.linspace(ll[0], ur[0], num=self.dimension[0] + 1)
-        y_vals = np.linspace(ll[1], ur[1], num=self.dimension[1] + 1)
-        z_vals = np.linspace(ll[2], ur[2], num=self.dimension[2] + 1)
-
-        # create points
-        pts_cartesian = np.array([[x, y, z] for z in z_vals for y in y_vals for x in x_vals])
-
-        return super().write_data_to_vtk(
-            points=pts_cartesian,
-            filename=filename,
-            datasets=datasets,
-            volume_normalization=volume_normalization
-        )
 
     def get_index_where(self, value: float, basis: str = 'xy'):
         """Gets the mesh cell index nearest to the specified axis value.

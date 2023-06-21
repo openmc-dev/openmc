@@ -4,7 +4,6 @@ from functools import partial, reduce
 from itertools import product
 from numbers import Integral, Real
 import operator
-import typing
 from pathlib import Path
 import lxml.etree as ET
 

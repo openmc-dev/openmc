@@ -16,7 +16,7 @@
     <batches>7</batches>
     <inactive>3</inactive>
     <generations_per_batch>3</generations_per_batch>
-    <source strength="1.0">
+    <source particle="neutron" strength="1.0" type="independent">
       <space type="box">
         <parameters>-4.0 -4.0 -4.0 4.0 4.0 4.0</parameters>
       </space>

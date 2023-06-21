@@ -16,7 +16,7 @@ import openmc
 import openmc._xml as xml
 from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
-from openmc.checkvalue import check_type, check_value
+from openmc.checkvalue import check_type, check_value, PathLike
 from openmc.exceptions import InvalidIDError
 
 
@@ -24,7 +24,7 @@ from openmc.exceptions import InvalidIDError
 def _change_directory(working_dir):
     """A context manager for executing in a provided working directory"""
     start_dir = Path.cwd()
-    Path.mkdir(working_dir, exist_ok=True)
+    Path.mkdir(working_dir, parents=True, exist_ok=True)
     os.chdir(working_dir)
     try:
         yield
@@ -98,21 +98,61 @@ class Model:
     def geometry(self) -> Optional[openmc.Geometry]:
         return self._geometry
 
+    @geometry.setter
+    def geometry(self, geometry):
+        check_type('geometry', geometry, openmc.Geometry)
+        self._geometry = geometry
+
     @property
     def materials(self) -> Optional[openmc.Materials]:
         return self._materials
+
+    @materials.setter
+    def materials(self, materials):
+        check_type('materials', materials, Iterable, openmc.Material)
+        if isinstance(materials, openmc.Materials):
+            self._materials = materials
+        else:
+            del self._materials[:]
+            for mat in materials:
+                self._materials.append(mat)
 
     @property
     def settings(self) -> Optional[openmc.Settings]:
         return self._settings
 
+    @settings.setter
+    def settings(self, settings):
+        check_type('settings', settings, openmc.Settings)
+        self._settings = settings
+
     @property
     def tallies(self) -> Optional[openmc.Tallies]:
         return self._tallies
 
+    @tallies.setter
+    def tallies(self, tallies):
+        check_type('tallies', tallies, Iterable, openmc.Tally)
+        if isinstance(tallies, openmc.Tallies):
+            self._tallies = tallies
+        else:
+            del self._tallies[:]
+            for tally in tallies:
+                self._tallies.append(tally)
+
     @property
     def plots(self) -> Optional[openmc.Plots]:
         return self._plots
+
+    @plots.setter
+    def plots(self, plots):
+        check_type('plots', plots, Iterable, openmc.Plot)
+        if isinstance(plots, openmc.Plots):
+            self._plots = plots
+        else:
+            del self._plots[:]
+            for plot in plots:
+                self._plots.append(plot)
 
     @property
     def is_initialized(self) -> bool:
@@ -165,46 +205,6 @@ class Model:
                 result[mat.name] = set()
             result[mat.name].add(mat)
         return result
-
-    @geometry.setter
-    def geometry(self, geometry):
-        check_type('geometry', geometry, openmc.Geometry)
-        self._geometry = geometry
-
-    @materials.setter
-    def materials(self, materials):
-        check_type('materials', materials, Iterable, openmc.Material)
-        if isinstance(materials, openmc.Materials):
-            self._materials = materials
-        else:
-            del self._materials[:]
-            for mat in materials:
-                self._materials.append(mat)
-
-    @settings.setter
-    def settings(self, settings):
-        check_type('settings', settings, openmc.Settings)
-        self._settings = settings
-
-    @tallies.setter
-    def tallies(self, tallies):
-        check_type('tallies', tallies, Iterable, openmc.Tally)
-        if isinstance(tallies, openmc.Tallies):
-            self._tallies = tallies
-        else:
-            del self._tallies[:]
-            for tally in tallies:
-                self._tallies.append(tally)
-
-    @plots.setter
-    def plots(self, plots):
-        check_type('plots', plots, Iterable, openmc.Plot)
-        if isinstance(plots, openmc.Plots):
-            self._plots = plots
-        else:
-            del self._plots[:]
-            for plot in plots:
-                self._plots.append(plot)
 
     @classmethod
     def from_xml(cls, geometry='geometry.xml', materials='materials.xml',
@@ -632,7 +632,7 @@ class Model:
             Settings.max_tracks is set. Defaults to False.
         output : bool, optional
             Capture OpenMC output from standard out
-        cwd : str, optional
+        cwd : PathLike, optional
             Path to working directory to run in. Defaults to the current working
             directory.
         openmc_exec : str, optional

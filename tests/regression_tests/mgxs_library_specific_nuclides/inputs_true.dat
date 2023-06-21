@@ -41,7 +41,7 @@
     <particles>100</particles>
     <batches>10</batches>
     <inactive>5</inactive>
-    <source strength="1.0">
+    <source particle="neutron" strength="1.0" type="independent">
       <space type="fission">
         <parameters>-0.63 -0.63 -1 0.63 0.63 1</parameters>
       </space>

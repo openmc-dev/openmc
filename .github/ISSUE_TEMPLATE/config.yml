@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Troubleshooting and User Support
+    url: https://openmc.discourse.group/
+    about: For user support and troubleshooting, please use our Discourse forum

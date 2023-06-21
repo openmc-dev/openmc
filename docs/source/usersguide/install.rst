@@ -488,13 +488,13 @@ OpenMC locally by specifying an install prefix when running cmake:
 The ``CMAKE_INSTALL_PREFIX`` variable can be changed to any path for which you
 have write-access.
 
-Compiling on Windows 10
------------------------
+Compiling on Windows
+--------------------
 
-Recent versions of Windows 10 include a subsystem for Linux that allows one to
-run Bash within Ubuntu running in Windows. First, follow the installation guide
-`here <https://docs.microsoft.com/en-us/windows/wsl/install-win10>`_ to get Bash
-on Ubuntu on Windows setup. Once you are within bash, obtain the necessary
+Recent versions of Windows include a subsystem for Linux that allows one to run
+Bash within Ubuntu running in Windows. First, follow the installation guide
+`here <https://learn.microsoft.com/en-us/windows/wsl/install>`_ to get Bash on
+Ubuntu on Windows set up. Once you are within bash, obtain the necessary
 :ref:`prerequisites <prerequisites>` via ``apt``. Finally, follow the
 :ref:`instructions for compiling on linux <compile_linux>`.
 
@@ -522,7 +522,7 @@ distribution/repository, run:
 
 .. code-block:: sh
 
-    pip install .
+    python -m pip install .
 
 pip will first check that all :ref:`required third-party packages
 <usersguide_python_prereqs>` have been installed, and if they are not present,
@@ -608,15 +608,15 @@ for OpenMC. Thus, the install process would proceed as follows:
     make install
 
     cd ..
-    MPICC=<path to mpicc> pip install mpi4py
-    HDF5_DIR=<path to HDF5> pip install --no-binary=h5py h5py
+    MPICC=<path to mpicc> python -m pip install mpi4py
+    HDF5_DIR=<path to HDF5> python -m pip install --no-binary=h5py h5py
 
 If you are using parallel HDF5, you'll also need to make sure the right MPI
 wrapper is used when installing h5py:
 
 .. code-block:: sh
 
-    CC=<path to mpicc> HDF5_MPI=ON HDF5_DIR=<path to HDF5> pip install --no-binary=h5py h5py
+    CC=<path to mpicc> HDF5_MPI=ON HDF5_DIR=<path to HDF5> python -m pip install --no-binary=h5py h5py
 
 .. _Conda: https://conda.io/en/latest/
 .. _pip: https://pip.pypa.io/en/stable/

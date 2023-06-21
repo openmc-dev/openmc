@@ -734,9 +734,6 @@ class Chain:
                 if transfer_rates.get_destination_material(material, element) == destination_material:
                     matrix[i, i] = transfer_rates.get_transfer_rate(material, element)
                 else:
-                    warn(f'Material {destination_material} is not defined '
-                         f'as a destination material for Material {material}. '
-                         'Setting transfer rate to 0.0')
                     matrix[i, i] = 0.0
             #Nothing else is allowed
         n = len(self)

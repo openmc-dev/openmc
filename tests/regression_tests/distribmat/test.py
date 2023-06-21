@@ -65,7 +65,7 @@ class DistribmatTestHarness(PyAPITestHarness):
         sets_file.batches = 5
         sets_file.inactive = 0
         sets_file.particles = 1000
-        sets_file.source = openmc.Source(space=openmc.stats.Box(
+        sets_file.source = openmc.IndependentSource(space=openmc.stats.Box(
             [-1, -1, -1], [1, 1, 1]))
         self._model.settings = sets_file
 

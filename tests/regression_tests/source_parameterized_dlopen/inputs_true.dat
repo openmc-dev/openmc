@@ -18,6 +18,18 @@
     <particles>1000</particles>
     <batches>10</batches>
     <inactive>0</inactive>
-    <source library="build/libsource.so" parameters="1e3" strength="1.0"/>
+    <source library="build/libsource.so" parameters="1e3" strength="1.0" type="compiled"/>
   </settings>
-  </model>
+  <tallies>
+    <filter id="1" type="material">
+      <bins>1</bins>
+    </filter>
+    <filter id="2" type="energy">
+      <bins>0.0 2000.0 1000000.0</bins>
+    </filter>
+    <tally id="1">
+      <filters>1 2</filters>
+      <scores>flux</scores>
+    </tally>
+  </tallies>
+</model>

@@ -48,7 +48,7 @@ def test_tracks(sphere_model, particle, run_in_tmpdir):
     sphere_model.settings.track = [(1, 1, 1), (1, 1, 10), (2, 1, 15)]
 
     # Set source particle
-    sphere_model.settings.source = openmc.Source(particle=particle)
+    sphere_model.settings.source = openmc.IndependentSource(particle=particle)
 
     # Run OpenMC to generate tracks.h5 file
     generate_track_file(sphere_model)

@@ -291,6 +291,6 @@ def build_inf_model(xsnames, xslibname, temperature, tempmethod='nearest'):
     bounds = [-INF, -INF, -INF, INF, INF, INF]
     uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=True)
     settings_file.temperature = {'method': tempmethod}
-    settings_file.source = openmc.Source(space=uniform_dist)
+    settings_file.source = openmc.IndependentSource(space=uniform_dist)
     model.settings = settings_file
     model.export_to_model_xml()

@@ -18,8 +18,8 @@ class UWUWTest(PyAPITestHarness):
         self._model.settings.inactive = 0
         self._model.settings.particles = 100
 
-        source = openmc.Source(space=Box([-4, -4, -4],
-                                         [ 4,  4,  4]))
+        source = openmc.IndependentSource(space=Box([-4, -4, -4],
+                                                    [ 4,  4,  4]))
         self._model.settings.source = source
 
         # geometry

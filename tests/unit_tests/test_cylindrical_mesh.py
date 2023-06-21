@@ -23,7 +23,7 @@ def model():
 
     geom = openmc.Geometry([cell])
 
-    source = openmc.Source()
+    source = openmc.IndependentSource()
     source.space = openmc.stats.Point()
     source.energy = openmc.stats.Discrete([10000], [1.0])
 
@@ -155,7 +155,7 @@ def _check_void_cylindrical_tally(statepoint_filename):
         assert neutron_flux == pytest.approx(d_r)
 
 def test_void_geom_pnt_src(run_in_tmpdir, void_coincident_geom_model):
-    src = openmc.Source()
+    src = openmc.IndependentSource()
     src.space = openmc.stats.Point()
     src.angle = openmc.stats.PolarAzimuthal(mu=openmc.stats.Discrete([0.0], [1.0]))
     src.energy = openmc.stats.Discrete([14.06e6], [1])
@@ -180,7 +180,7 @@ def test_void_geom_boundary_src(run_in_tmpdir, void_coincident_geom_model):
 
     energy = openmc.stats.Discrete([14.06e6], [1])
     for val in radial_vals:
-        src = openmc.Source()
+        src = openmc.IndependentSource()
         src.energy = energy
 
         pnt = np.array([np.cos(val), np.sin(val), 0.0])

@@ -102,14 +102,14 @@ class PolarAzimuthal(UnitSphere):
     def mu(self):
         return self._mu
 
-    @property
-    def phi(self):
-        return self._phi
-
     @mu.setter
     def mu(self, mu):
         cv.check_type('cosine of polar angle', mu, Univariate)
         self._mu = mu
+
+    @property
+    def phi(self):
+        return self._phi
 
     @phi.setter
     def phi(self, phi):
@@ -313,23 +313,23 @@ class CartesianIndependent(Spatial):
     def x(self):
         return self._x
 
-    @property
-    def y(self):
-        return self._y
-
-    @property
-    def z(self):
-        return self._z
-
     @x.setter
     def x(self, x):
         cv.check_type('x coordinate', x, Univariate)
         self._x = x
 
+    @property
+    def y(self):
+        return self._y
+
     @y.setter
     def y(self, y):
         cv.check_type('y coordinate', y, Univariate)
         self._y = y
+
+    @property
+    def z(self):
+        return self._z
 
     @z.setter
     def z(self, z):
@@ -426,32 +426,32 @@ class SphericalIndependent(Spatial):
     def r(self):
         return self._r
 
-    @property
-    def cos_theta(self):
-        return self._cos_theta
-
-    @property
-    def phi(self):
-        return self._phi
-
-    @property
-    def origin(self):
-        return self._origin
-
     @r.setter
     def r(self, r):
         cv.check_type('r coordinate', r, Univariate)
         self._r = r
+
+    @property
+    def cos_theta(self):
+        return self._cos_theta
 
     @cos_theta.setter
     def cos_theta(self, cos_theta):
         cv.check_type('cos_theta coordinate', cos_theta, Univariate)
         self._cos_theta = cos_theta
 
+    @property
+    def phi(self):
+        return self._phi
+
     @phi.setter
     def phi(self, phi):
         cv.check_type('phi coordinate', phi, Univariate)
         self._phi = phi
+
+    @property
+    def origin(self):
+        return self._origin
 
     @origin.setter
     def origin(self, origin):
@@ -548,32 +548,32 @@ class CylindricalIndependent(Spatial):
     def r(self):
         return self._r
 
-    @property
-    def phi(self):
-        return self._phi
-
-    @property
-    def z(self):
-        return self._z
-
-    @property
-    def origin(self):
-        return self._origin
-
     @r.setter
     def r(self, r):
         cv.check_type('r coordinate', r, Univariate)
         self._r = r
+
+    @property
+    def phi(self):
+        return self._phi
 
     @phi.setter
     def phi(self, phi):
         cv.check_type('phi coordinate', phi, Univariate)
         self._phi = phi
 
+    @property
+    def z(self):
+        return self._z
+
     @z.setter
     def z(self, z):
         cv.check_type('z coordinate', z, Univariate)
         self._z = z
+
+    @property
+    def origin(self):
+        return self._origin
 
     @origin.setter
     def origin(self, origin):
@@ -781,25 +781,25 @@ class Box(Spatial):
     def lower_left(self):
         return self._lower_left
 
-    @property
-    def upper_right(self):
-        return self._upper_right
-
-    @property
-    def only_fissionable(self):
-        return self._only_fissionable
-
     @lower_left.setter
     def lower_left(self, lower_left):
         cv.check_type('lower left coordinate', lower_left, Iterable, Real)
         cv.check_length('lower left coordinate', lower_left, 3)
         self._lower_left = lower_left
 
+    @property
+    def upper_right(self):
+        return self._upper_right
+
     @upper_right.setter
     def upper_right(self, upper_right):
         cv.check_type('upper right coordinate', upper_right, Iterable, Real)
         cv.check_length('upper right coordinate', upper_right, 3)
         self._upper_right = upper_right
+
+    @property
+    def only_fissionable(self):
+        return self._only_fissionable
 
     @only_fissionable.setter
     def only_fissionable(self, only_fissionable):

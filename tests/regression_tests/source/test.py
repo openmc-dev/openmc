@@ -68,14 +68,14 @@ class SourceTestHarness(PyAPITestHarness):
 
         time1 = openmc.stats.Uniform(2, 5)
 
-        source1 = openmc.Source(spatial1, angle1, energy1, strength=0.3)
-        source2 = openmc.Source(spatial2, angle2, energy2, strength=0.1)
-        source3 = openmc.Source(spatial3, angle3, energy3, strength=0.1)
-        source4 = openmc.Source(spatial4, angle3, energy3, strength=0.1)
-        source5 = openmc.Source(spatial5, angle3, energy3, strength=0.1)
-        source6 = openmc.Source(spatial5, angle3, energy4, strength=0.1)
-        source7 = openmc.Source(spatial6, angle3, energy4, time1, strength=0.1)
-        source8 = openmc.Source(spatial7, angle3, energy4, time1, strength=0.1)
+        source1 = openmc.IndependentSource(spatial1, angle1, energy1, strength=0.3)
+        source2 = openmc.IndependentSource(spatial2, angle2, energy2, strength=0.1)
+        source3 = openmc.IndependentSource(spatial3, angle3, energy3, strength=0.1)
+        source4 = openmc.IndependentSource(spatial4, angle3, energy3, strength=0.1)
+        source5 = openmc.IndependentSource(spatial5, angle3, energy3, strength=0.1)
+        source6 = openmc.IndependentSource(spatial5, angle3, energy4, strength=0.1)
+        source7 = openmc.IndependentSource(spatial6, angle3, energy4, time1, strength=0.1)
+        source8 = openmc.IndependentSource(spatial7, angle3, energy4, time1, strength=0.1)
 
         settings = openmc.Settings()
         settings.batches = 10

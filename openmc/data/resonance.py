@@ -46,6 +46,12 @@ class Resonances:
     def ranges(self):
         return self._ranges
 
+    @ranges.setter
+    def ranges(self, ranges):
+        cv.check_type('resonance ranges', ranges, MutableSequence)
+        self._ranges = cv.CheckedList(ResonanceRange, 'resonance ranges',
+                                      ranges)
+
     @property
     def resolved(self):
         resolved_ranges = [r for r in self.ranges
@@ -64,12 +70,6 @@ class Resonances:
                 return r
         else:
             return None
-
-    @ranges.setter
-    def ranges(self, ranges):
-        cv.check_type('resonance ranges', ranges, MutableSequence)
-        self._ranges = cv.CheckedList(ResonanceRange, 'resonance ranges',
-                                      ranges)
 
     @classmethod
     def from_endf(cls, ev):

@@ -83,6 +83,7 @@ std::string path_particle_restart;
 std::string path_sourcepoint;
 std::string path_statepoint;
 const char* path_statepoint_c {path_statepoint.c_str()};
+std::string weight_windows_file;
 
 int32_t n_inactive {0};
 int32_t max_lost_particles {10};
@@ -457,7 +458,7 @@ void read_settings_xml(pugi::xml_node root)
 
       // Create custom source
       model::external_sources.push_back(
-        make_unique<CustomSourceWrapper>(path, parameters));
+        make_unique<CompiledSourceWrapper>(path, parameters));
     } else {
       model::external_sources.push_back(make_unique<IndependentSource>(node));
     }
@@ -904,11 +905,19 @@ void read_settings_xml(pugi::xml_node root)
   for (pugi::xml_node node_ww : root.children("weight_windows")) {
     variance_reduction::weight_windows.emplace_back(
       std::make_unique<WeightWindows>(node_ww));
-
-    // Enable weight windows by default if one or more are present
-    settings::weight_windows_on = true;
   }
 
+  // Enable weight windows by default if one or more are present
+  if (variance_reduction::weight_windows.size() > 0)
+    settings::weight_windows_on = true;
+
+  // read weight windows from file
+  if (check_for_node(root, "weight_windows_file")) {
+    weight_windows_file = get_node_value(root, "weight_windows_file");
+  }
+
+  // read settings for weight windows value, this will override
+  // the automatic setting even if weight windows are present
   if (check_for_node(root, "weight_windows_on")) {
     weight_windows_on = get_node_value_bool(root, "weight_windows_on");
   }
@@ -919,6 +928,24 @@ void read_settings_xml(pugi::xml_node root)
 
   if (check_for_node(root, "max_tracks")) {
     settings::max_tracks = std::stoi(get_node_value(root, "max_tracks"));
+  }
+
+  // Create weight window generator objects
+  if (check_for_node(root, "weight_window_generators")) {
+    auto wwgs_node = root.child("weight_window_generators");
+    for (pugi::xml_node node_wwg :
+      wwgs_node.children("weight_windows_generator")) {
+      variance_reduction::weight_windows_generators.emplace_back(
+        std::make_unique<WeightWindowsGenerator>(node_wwg));
+    }
+    // if any of the weight windows are intended to be generated otf, make sure
+    // they're applied
+    for (const auto& wwg : variance_reduction::weight_windows_generators) {
+      if (wwg->on_the_fly_) {
+        settings::weight_windows_on = true;
+        break;
+      }
+    }
   }
 }
 

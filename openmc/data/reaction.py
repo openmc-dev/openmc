@@ -855,51 +855,51 @@ class Reaction(EqualityMixin):
     def center_of_mass(self):
         return self._center_of_mass
 
-    @property
-    def redundant(self):
-        return self._redundant
-
-    @property
-    def q_value(self):
-        return self._q_value
-
-    @property
-    def products(self):
-        return self._products
-
-    @property
-    def derived_products(self):
-        return self._derived_products
-
-    @property
-    def xs(self):
-        return self._xs
-
     @center_of_mass.setter
     def center_of_mass(self, center_of_mass):
         cv.check_type('center of mass', center_of_mass, (bool, np.bool_))
         self._center_of_mass = center_of_mass
+
+    @property
+    def redundant(self):
+        return self._redundant
 
     @redundant.setter
     def redundant(self, redundant):
         cv.check_type('redundant', redundant, (bool, np.bool_))
         self._redundant = redundant
 
+    @property
+    def q_value(self):
+        return self._q_value
+
     @q_value.setter
     def q_value(self, q_value):
         cv.check_type('Q value', q_value, Real)
         self._q_value = q_value
+
+    @property
+    def products(self):
+        return self._products
 
     @products.setter
     def products(self, products):
         cv.check_type('reaction products', products, Iterable, Product)
         self._products = products
 
+    @property
+    def derived_products(self):
+        return self._derived_products
+
     @derived_products.setter
     def derived_products(self, derived_products):
         cv.check_type('reaction derived products', derived_products,
                       Iterable, Product)
         self._derived_products = derived_products
+
+    @property
+    def xs(self):
+        return self._xs
 
     @xs.setter
     def xs(self, xs):

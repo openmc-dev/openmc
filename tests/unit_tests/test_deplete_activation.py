@@ -27,7 +27,7 @@ def model():
 
     model.settings.batches = 10
     model.settings.particles = 1000
-    model.settings.source = openmc.Source(
+    model.settings.source = openmc.IndependentSource(
         space=openmc.stats.Point(),
         energy=openmc.stats.Discrete([1.0e6], [1.0])
     )

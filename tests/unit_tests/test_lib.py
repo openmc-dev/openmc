@@ -66,7 +66,7 @@ def uo2_trigger_model():
     model.settings.batches = 10
     model.settings.inactive = 5
     model.settings.particles = 100
-    model.settings.source = openmc.Source(space=openmc.stats.Box(
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
         [-0.5, -0.5, -1], [0.5, 0.5, 1], only_fissionable=True))
     model.settings.verbosity = 1
     model.settings.keff_trigger = {'type': 'std_dev', 'threshold': 0.001}
@@ -849,7 +849,7 @@ def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
     cell = openmc.Cell(fill=mat, region=-sph)
     model = openmc.Model()
     model.geometry = openmc.Geometry([cell])
-    model.settings.source = openmc.Source(
+    model.settings.source = openmc.IndependentSource(
         space=openmc.stats.Box([-5., -5., -5.], [5., 5., 5.]),
         angle=openmc.stats.Monodirectional((0., 0., 1.)),
         energy=openmc.stats.Discrete([1.0e5], [1.0])

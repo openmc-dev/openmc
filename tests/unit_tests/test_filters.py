@@ -17,7 +17,7 @@ def box_model():
     model.settings.particles = 100
     model.settings.batches = 10
     model.settings.inactive = 0
-    model.settings.source = openmc.Source(space=openmc.stats.Point())
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Point())
     return model
 
 

@@ -13,8 +13,8 @@ import lxml.etree as ET
 import openmc.checkvalue as cv
 from openmc.stats.multivariate import MeshSpatial
 
-from . import (RegularMesh, Source, VolumeCalculation, WeightWindows,
-               WeightWindowGenerator)
+from . import (RegularMesh, SourceBase, IndependentSource,
+               VolumeCalculation, WeightWindows, WeightWindowGenerator)
 from ._xml import clean_indentation, get_text, reorder_attributes
 from openmc.checkvalue import PathLike
 from .mesh import _read_meshes
@@ -150,7 +150,7 @@ class Settings:
         The type of calculation to perform (default is 'eigenvalue')
     seed : int
         Seed for the linear congruential pseudorandom number generator
-    source : Iterable of openmc.Source
+    source : Iterable of openmc.SourceBase
         Distribution of source sites in space, angle, and energy
     sourcepoint : dict
         Options for writing source points. Acceptable keys are:
@@ -265,7 +265,7 @@ class Settings:
         self._max_order = None
 
         # Source subelement
-        self._source = cv.CheckedList(Source, 'source distributions')
+        self._source = cv.CheckedList(SourceBase, 'source distributions')
 
         self._confidence_intervals = None
         self._electron_treatment = None
@@ -459,14 +459,14 @@ class Settings:
         self._max_order = max_order
 
     @property
-    def source(self) -> typing.List[Source]:
+    def source(self) -> typing.List[SourceBase]:
         return self._source
 
     @source.setter
-    def source(self, source: typing.Union[Source, typing.Iterable[Source]]):
+    def source(self, source: typing.Union[SourceBase, typing.Iterable[SourceBase]]):
         if not isinstance(source, MutableSequence):
             source = [source]
-        self._source = cv.CheckedList(Source, 'source distributions', source)
+        self._source = cv.CheckedList(SourceBase, 'source distributions', source)
 
     @property
     def confidence_intervals(self) -> bool:
@@ -969,7 +969,7 @@ class Settings:
         if not isinstance(wwgs, MutableSequence):
             wwgs = [wwgs]
         self._weight_window_generators = cv.CheckedList(WeightWindowGenerator, 'weight window generators', wwgs)
-        
+
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
         elem.text = self._run_mode.value
@@ -1024,7 +1024,7 @@ class Settings:
     def _create_source_subelement(self, root):
         for source in self.source:
             root.append(source.to_xml_element())
-            if isinstance(source.space, MeshSpatial):
+            if isinstance(source, IndependentSource) and isinstance(source.space, MeshSpatial):
                 path = f"./mesh[@id='{source.space.mesh.id}']"
                 if root.find(path) is None:
                     root.append(source.space.mesh.to_xml_element())
@@ -1402,7 +1402,7 @@ class Settings:
 
     def _source_from_xml_element(self, root, meshes=None):
         for elem in root.findall('source'):
-            src = Source.from_xml_element(elem, meshes)
+            src = SourceBase.from_xml_element(elem, meshes)
             # add newly constructed source object to the list
             self.source.append(src)
 

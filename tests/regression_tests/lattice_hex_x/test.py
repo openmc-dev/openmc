@@ -187,7 +187,7 @@ class HexLatticeOXTestHarness(PyAPITestHarness):
         settings = openmc.Settings()
         settings.run_mode = 'eigenvalue'
 
-        source = openmc.Source()
+        source = openmc.IndependentSource()
         ll = [-edge_length, -edge_length, 0.0]
         ur = [edge_length, edge_length, 10.0]
         source.space = openmc.stats.Box(ll, ur)

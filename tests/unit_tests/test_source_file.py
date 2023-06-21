@@ -67,7 +67,7 @@ def test_wrong_source_attributes(run_in_tmpdir):
     settings =  openmc.Settings()
     settings.particles = 100
     settings.batches = 10
-    settings.source = openmc.Source(filename='animal_source.h5')
+    settings.source = openmc.FileSource(path='animal_source.h5')
     settings.export_to_xml()
 
     # When we run the model, it should error out with a message that includes
@@ -90,7 +90,7 @@ def test_source_file_transport(run_in_tmpdir):
     sph = openmc.Sphere(r=10.0, boundary_type='vacuum')
     cell = openmc.Cell(fill=al, region=-sph)
     model.geometry = openmc.Geometry([cell])
-    model.settings.source = openmc.Source(filename='source.h5')
+    model.settings.source = openmc.FileSource(path='source.h5')
     model.settings.particles = 10
     model.settings.batches = 3
     model.settings.run_mode = 'fixed source'

@@ -46,7 +46,7 @@ def test_full(run_in_tmpdir, problem, multiproc):
     settings.batches = 10
     settings.inactive = 0
     space = openmc.stats.Box(lower_left, upper_right)
-    settings.source = openmc.Source(space=space)
+    settings.source = openmc.IndependentSource(space=space)
     settings.seed = 1
     settings.verbosity = 1
 

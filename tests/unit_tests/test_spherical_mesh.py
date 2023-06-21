@@ -23,7 +23,7 @@ def model():
 
     geom = openmc.Geometry([cell])
 
-    source = openmc.Source()
+    source = openmc.IndependentSource()
     source.space = openmc.stats.Point()
     source.energy = openmc.stats.Discrete([10000], [1.0])
 
@@ -163,7 +163,7 @@ def _check_void_spherical_tally(statepoint_filename):
 
 def test_void_geom_pnt_src(run_in_tmpdir, void_coincident_geom_model):
     # add isotropic point source
-    src = openmc.Source()
+    src = openmc.IndependentSource()
     src.space = openmc.stats.Point()
     src.energy = openmc.stats.Discrete([14.06e6], [1])
     void_coincident_geom_model.settings.source = src
@@ -190,7 +190,7 @@ def test_void_geom_boundary_src(run_in_tmpdir, void_coincident_geom_model):
 
     for phi, theta in zip(phi_vals, theta_vals):
 
-        src = openmc.Source()
+        src = openmc.IndependentSource()
         src.energy = energy
 
         pnt = np.array([np.sin(phi)*np.cos(theta), np.sin(phi)*np.sin(theta), np.cos(phi)])

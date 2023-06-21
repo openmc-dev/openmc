@@ -40,7 +40,7 @@ def model():
     model.settings.inactive = 5
     model.settings.batches = 10
     source_box = openmc.stats.Box((-4., -4., -4.), (4., 4., 4.))
-    model.settings.source = openmc.Source(space=source_box)
+    model.settings.source = openmc.IndependentSource(space=source_box)
 
     return model
 

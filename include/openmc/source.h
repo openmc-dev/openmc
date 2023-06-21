@@ -115,26 +115,26 @@ private:
 //! Wrapper for custom sources that manages opening/closing shared library
 //==============================================================================
 
-class CustomSourceWrapper : public Source {
+class CompiledSourceWrapper : public Source {
 public:
   // Constructors, destructors
-  CustomSourceWrapper(std::string path, std::string parameters);
-  ~CustomSourceWrapper();
+  CompiledSourceWrapper(std::string path, std::string parameters);
+  ~CompiledSourceWrapper();
 
   // Defer implementation to custom source library
   SourceSite sample(uint64_t* seed) const override
   {
-    return custom_source_->sample(seed);
+    return compiled_source_->sample(seed);
   }
 
-  double strength() const override { return custom_source_->strength(); }
+  double strength() const override { return compiled_source_->strength(); }
 
 private:
   void* shared_library_; //!< library from dlopen
-  unique_ptr<Source> custom_source_;
+  unique_ptr<Source> compiled_source_;
 };
 
-typedef unique_ptr<Source> create_custom_source_t(std::string parameters);
+typedef unique_ptr<Source> create_compiled_source_t(std::string parameters);
 
 //==============================================================================
 // Functions

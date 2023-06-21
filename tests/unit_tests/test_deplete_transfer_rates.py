@@ -85,11 +85,11 @@ def test_get_set(model, case_name, transfer_rates):
             else:
                 for component, transfer_rate in transfer_rates.items():
                     transfer.set_transfer_rate(material_input, [component], transfer_rate,
-                                     destination_material=dest_material_input)
-                    assert transfer.get_transfer_rate(material_input,
-                                                component) == transfer_rate
-                    assert transfer.get_destination_material(material_input,
-                                                        component) == str(dest_material.id)
+                                               destination_material=dest_material_input)
+                    assert transfer.get_transfer_rate(
+                        material_input, component) == transfer_rate
+                    assert transfer.get_destination_material(
+                        material_input, component) == str(dest_material.id)
                 assert transfer.get_components(material_input) == transfer_rates.keys()
 
 
@@ -116,7 +116,7 @@ def test_units(transfer_rate_units, unit_conv, model):
 
     for component in components:
         transfer.set_transfer_rate('f', [component], transfer_rate * unit_conv,
-                             transfer_rate_units=transfer_rate_units)
+                                   transfer_rate_units=transfer_rate_units)
         assert transfer.get_transfer_rate('f', component) == transfer_rate
 
 

@@ -193,7 +193,7 @@ class TransferRates:
 
         for component in components:
             current_components = self.transfer_rates[material_id].keys()
-            if bool(re.match(GNDS_NAME_RE, component)):
+            if GNDS_NAME_RE.match(component):
                 nuc_element = re.split(r'\d+', component)[0]
                 if nuc_element in current_components:
                     raise ValueError('Cannot add transfer rate for nuclide '
@@ -202,8 +202,8 @@ class TransferRates:
                                      'a transfer rate.')
             else:
                 check_value('component', component, ELEMENT_SYMBOL.values())
-                r = re.compile(component + '[0-9]{1,3}(_m[0-9])?')
-                element_nucs = list(filter(r.match, current_components))
+                element_nucs = [c for c in current_components
+                                if re.match(component + r'\d', c)]
                 if len(element_nucs) > 0:
                     nuc_str = ", ".join(element_nucs)
                     raise ValueError('Cannot add transfer rate for element '

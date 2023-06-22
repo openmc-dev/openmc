@@ -575,10 +575,10 @@ class Model:
                 cell_id = int(name.split()[1])
                 cell = cells[cell_id]
                 if cell.fill_type in ('material', 'distribmat'):
-                    cell.temperature = group['temperature'][()]
+                    temperature = group['temperature'][()]
+                    cell.temperature = temperature
                     if self.is_initialized:
                         lib_cell = openmc.lib.cells[cell_id]
-                        temperature = group['temperature'][()]
                         if temperature.size > 1:
                             for i, T in enumerate(temperature):
                                 lib_cell.set_temperature(T, i)

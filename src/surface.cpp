@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <complex>
+#include <cstdarg>
 #include <set>
 #include <utility>
 
@@ -30,105 +31,28 @@ std::unordered_map<int, int> surface_map;
 vector<unique_ptr<Surface>> surfaces;
 } // namespace model
 
-//==============================================================================
-// Helper functions for reading the "coeffs" node of an XML surface element
-//==============================================================================
-
-void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1)
+/*
+ * surf_node  - XML node corresponding to the surface we're reading
+ * surf_id    - ID of the surface. Only for error reporting.
+ * n_coeff    - number of coefficients to be read.
+ * (all else) - pointers to doubles to load coeffs to.
+ */
+void read_coeffs(pugi::xml_node surf_node, int surf_id, int n_coeff...)
 {
   // Check the given number of coefficients.
-  std::string coeffs = get_node_value(surf_node, "coeffs");
-  int n_words = word_count(coeffs);
-  if (n_words != 1) {
-    fatal_error(fmt::format(
-      "Surface {} expects 1 coeff but was given {}", surf_id, n_words));
+  auto coeffs = get_node_array<double>(surf_node, "coeffs");
+  if (coeffs.size() != n_coeff) {
+    fatal_error(fmt::format("Surface {} expects {} coeff but was given {}",
+      surf_id, n_coeff, coeffs.size()));
   }
 
   // Parse the coefficients.
-  int stat = sscanf(coeffs.c_str(), "%lf", &c1);
-  if (stat != 1) {
-    fatal_error(fmt::format(
-      "Something went wrong reading coeffs for surface {}", surf_id));
+  va_list args;
+  va_start(args, n_coeff);
+  for (int i_coeff = 0; i_coeff < n_coeff; ++i_coeff) {
+    *va_arg(args, double*) = coeffs[i_coeff];
   }
-}
-
-void read_coeffs(
-  pugi::xml_node surf_node, int surf_id, double& c1, double& c2, double& c3)
-{
-  // Check the given number of coefficients.
-  std::string coeffs = get_node_value(surf_node, "coeffs");
-  int n_words = word_count(coeffs);
-  if (n_words != 3) {
-    fatal_error(fmt::format(
-      "Surface {} expects 3 coeffs but was given {}", surf_id, n_words));
-  }
-
-  // Parse the coefficients.
-  int stat = sscanf(coeffs.c_str(), "%lf %lf %lf", &c1, &c2, &c3);
-  if (stat != 3) {
-    fatal_error(fmt::format(
-      "Something went wrong reading coeffs for surface {}", surf_id));
-  }
-}
-
-void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1, double& c2,
-  double& c3, double& c4)
-{
-  // Check the given number of coefficients.
-  std::string coeffs = get_node_value(surf_node, "coeffs");
-  int n_words = word_count(coeffs);
-  if (n_words != 4) {
-    fatal_error(fmt::format(
-      "Surface {} expects 4 coeffs but was given ", surf_id, n_words));
-  }
-
-  // Parse the coefficients.
-  int stat = sscanf(coeffs.c_str(), "%lf %lf %lf %lf", &c1, &c2, &c3, &c4);
-  if (stat != 4) {
-    fatal_error(fmt::format(
-      "Something went wrong reading coeffs for surface {}", surf_id));
-  }
-}
-
-void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1, double& c2,
-  double& c3, double& c4, double& c5, double& c6)
-{
-  // Check the given number of coefficients.
-  std::string coeffs = get_node_value(surf_node, "coeffs");
-  int n_words = word_count(coeffs);
-  if (n_words != 6) {
-    fatal_error(fmt::format(
-      "Surface {} expects 6 coeffs but was given {}", surf_id, n_words));
-  }
-
-  // Parse the coefficients.
-  int stat = sscanf(
-    coeffs.c_str(), "%lf %lf %lf %lf %lf %lf", &c1, &c2, &c3, &c4, &c5, &c6);
-  if (stat != 6) {
-    fatal_error(fmt::format(
-      "Something went wrong reading coeffs for surface {}", surf_id));
-  }
-}
-
-void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1, double& c2,
-  double& c3, double& c4, double& c5, double& c6, double& c7, double& c8,
-  double& c9, double& c10)
-{
-  // Check the given number of coefficients.
-  std::string coeffs = get_node_value(surf_node, "coeffs");
-  int n_words = word_count(coeffs);
-  if (n_words != 10) {
-    fatal_error(fmt::format(
-      "Surface {} expects 10 coeffs but was given {}", surf_id, n_words));
-  }
-
-  // Parse the coefficients.
-  int stat = sscanf(coeffs.c_str(), "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
-    &c1, &c2, &c3, &c4, &c5, &c6, &c7, &c8, &c9, &c10);
-  if (stat != 10) {
-    fatal_error(fmt::format(
-      "Something went wrong reading coeffs for surface {}", surf_id));
-  }
+  va_end(args);
 }
 
 //==============================================================================
@@ -279,7 +203,7 @@ double axis_aligned_plane_distance(
 
 SurfaceXPlane::SurfaceXPlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_);
+  read_coeffs(surf_node, id_, 1, &x0_);
 }
 
 double SurfaceXPlane::evaluate(Position r) const
@@ -319,7 +243,7 @@ BoundingBox SurfaceXPlane::bounding_box(bool pos_side) const
 
 SurfaceYPlane::SurfaceYPlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, y0_);
+  read_coeffs(surf_node, id_, 1, &y0_);
 }
 
 double SurfaceYPlane::evaluate(Position r) const
@@ -359,7 +283,7 @@ BoundingBox SurfaceYPlane::bounding_box(bool pos_side) const
 
 SurfaceZPlane::SurfaceZPlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, z0_);
+  read_coeffs(surf_node, id_, 1, &z0_);
 }
 
 double SurfaceZPlane::evaluate(Position r) const
@@ -399,7 +323,7 @@ BoundingBox SurfaceZPlane::bounding_box(bool pos_side) const
 
 SurfacePlane::SurfacePlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, A_, B_, C_, D_);
+  read_coeffs(surf_node, id_, 4, &A_, &B_, &C_, &D_);
 }
 
 double SurfacePlane::evaluate(Position r) const
@@ -518,7 +442,7 @@ Direction axis_aligned_cylinder_normal(
 SurfaceXCylinder::SurfaceXCylinder(pugi::xml_node surf_node)
   : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, y0_, z0_, radius_);
+  read_coeffs(surf_node, id_, 3, &y0_, &z0_, &radius_);
 }
 
 double SurfaceXCylinder::evaluate(Position r) const
@@ -561,7 +485,7 @@ BoundingBox SurfaceXCylinder::bounding_box(bool pos_side) const
 SurfaceYCylinder::SurfaceYCylinder(pugi::xml_node surf_node)
   : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, z0_, radius_);
+  read_coeffs(surf_node, id_, 3, &x0_, &z0_, &radius_);
 }
 
 double SurfaceYCylinder::evaluate(Position r) const
@@ -605,7 +529,7 @@ BoundingBox SurfaceYCylinder::bounding_box(bool pos_side) const
 SurfaceZCylinder::SurfaceZCylinder(pugi::xml_node surf_node)
   : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, radius_);
+  read_coeffs(surf_node, id_, 3, &x0_, &y0_, &radius_);
 }
 
 double SurfaceZCylinder::evaluate(Position r) const
@@ -648,7 +572,7 @@ BoundingBox SurfaceZCylinder::bounding_box(bool pos_side) const
 
 SurfaceSphere::SurfaceSphere(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_);
+  read_coeffs(surf_node, id_, 4, &x0_, &y0_, &z0_, &radius_);
 }
 
 double SurfaceSphere::evaluate(Position r) const
@@ -814,7 +738,7 @@ Direction axis_aligned_cone_normal(
 
 SurfaceXCone::SurfaceXCone(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
+  read_coeffs(surf_node, id_, 4, &x0_, &y0_, &z0_, &radius_sq_);
 }
 
 double SurfaceXCone::evaluate(Position r) const
@@ -846,7 +770,7 @@ void SurfaceXCone::to_hdf5_inner(hid_t group_id) const
 
 SurfaceYCone::SurfaceYCone(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
+  read_coeffs(surf_node, id_, 4, &x0_, &y0_, &z0_, &radius_sq_);
 }
 
 double SurfaceYCone::evaluate(Position r) const
@@ -878,7 +802,7 @@ void SurfaceYCone::to_hdf5_inner(hid_t group_id) const
 
 SurfaceZCone::SurfaceZCone(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
+  read_coeffs(surf_node, id_, 4, &x0_, &y0_, &z0_, &radius_sq_);
 }
 
 double SurfaceZCone::evaluate(Position r) const
@@ -910,7 +834,8 @@ void SurfaceZCone::to_hdf5_inner(hid_t group_id) const
 
 SurfaceQuadric::SurfaceQuadric(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, A_, B_, C_, D_, E_, F_, G_, H_, J_, K_);
+  read_coeffs(
+    surf_node, id_, 10, &A_, &B_, &C_, &D_, &E_, &F_, &G_, &H_, &J_, &K_);
 }
 
 double SurfaceQuadric::evaluate(Position r) const
@@ -1062,7 +987,7 @@ double torus_distance(double x1, double x2, double x3, double u1, double u2,
 
 SurfaceXTorus::SurfaceXTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, A_, B_, C_);
+  read_coeffs(surf_node, id_, 6, &x0_, &y0_, &z0_, &A_, &B_, &C_);
 }
 
 void SurfaceXTorus::to_hdf5_inner(hid_t group_id) const
@@ -1115,7 +1040,7 @@ Direction SurfaceXTorus::normal(Position r) const
 
 SurfaceYTorus::SurfaceYTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, A_, B_, C_);
+  read_coeffs(surf_node, id_, 6, &x0_, &y0_, &z0_, &A_, &B_, &C_);
 }
 
 void SurfaceYTorus::to_hdf5_inner(hid_t group_id) const
@@ -1168,7 +1093,7 @@ Direction SurfaceYTorus::normal(Position r) const
 
 SurfaceZTorus::SurfaceZTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, A_, B_, C_);
+  read_coeffs(surf_node, id_, 6, &x0_, &y0_, &z0_, &A_, &B_, &C_);
 }
 
 void SurfaceZTorus::to_hdf5_inner(hid_t group_id) const

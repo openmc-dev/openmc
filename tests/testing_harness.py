@@ -181,7 +181,7 @@ class CMFDTestHarness(TestHarness):
         outstr += '\ncmfd openmc source comparison\n'
         outstr += '\n'.join(['{:.6E}'.format(x) for x in cmfd_run.src_cmp])
         outstr += '\ncmfd source\n'
-        cmfdsrc = np.reshape(cmfd_run.cmfd_src, np.product(cmfd_run.indices),
+        cmfdsrc = np.reshape(cmfd_run.cmfd_src, np.prod(cmfd_run.indices),
                              order='F')
         outstr += '\n'.join(['{:.6E}'.format(x) for x in cmfdsrc])
         outstr += '\n'

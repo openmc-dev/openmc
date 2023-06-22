@@ -96,13 +96,27 @@ class _PlotBase(Structure):
     def origin(self):
         return self.origin_
 
+    @origin.setter
+    def origin(self, origin):
+        self.origin_.x = origin[0]
+        self.origin_.y = origin[1]
+        self.origin_.z = origin[2]
+
     @property
     def width(self):
         return self.width_.x
 
+    @width.setter
+    def width(self, width):
+        self.width_.x = width
+
     @property
     def height(self):
         return self.width_.y
+
+    @height.setter
+    def height(self, height):
+        self.width_.y = height
 
     @property
     def basis(self):
@@ -145,13 +159,25 @@ class _PlotBase(Structure):
     def h_res(self):
         return self.pixels_[0]
 
+    @h_res.setter
+    def h_res(self, h_res):
+        self.pixels_[0] = h_res
+
     @property
     def v_res(self):
         return self.pixels_[1]
 
+    @v_res.setter
+    def v_res(self, v_res):
+        self.pixels_[1] = v_res
+
     @property
     def level(self):
         return int(self.level_)
+
+    @level.setter
+    def level(self, level):
+        self.level_ = level
 
     @property
     def color_overlaps(self):
@@ -160,32 +186,6 @@ class _PlotBase(Structure):
     @color_overlaps.setter
     def color_overlaps(self, color_overlaps):
         self.color_overlaps_ = color_overlaps
-
-    @origin.setter
-    def origin(self, origin):
-        self.origin_.x = origin[0]
-        self.origin_.y = origin[1]
-        self.origin_.z = origin[2]
-
-    @width.setter
-    def width(self, width):
-        self.width_.x = width
-
-    @height.setter
-    def height(self, height):
-        self.width_.y = height
-
-    @h_res.setter
-    def h_res(self, h_res):
-        self.pixels_[0] = h_res
-
-    @v_res.setter
-    def v_res(self, v_res):
-        self.pixels_[1] = v_res
-
-    @level.setter
-    def level(self, level):
-        self.level_ = level
 
     @property
     def color_overlaps(self):

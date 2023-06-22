@@ -449,24 +449,27 @@ attributes/sub-elements:
 
     *Default*: 1.0
 
+  :type:
+    Indicator of source type. One of ``independent``, ``file``, or ``compiled``.
+
   :particle:
     The source particle type, either ``neutron`` or ``photon``.
 
     *Default*: neutron
 
   :file:
-    If this attribute is given, it indicates that the source is to be read from
-    a binary source file whose path is given by the value of this element. Note,
-    the number of source sites needs to be the same as the number of particles
-    simulated in a fission source generation.
+    If this attribute is given, it indicates that the source type is ``file``,
+    meaning particles are to be read from a binary source file whose path is
+    given by the value of this element.
 
     *Default*: None
 
   :library:
-    If this attribute is given, it indicates that the source is to be
-    instantiated from an externally compiled source function. This source can be
-    as complex as is required to define the source for your problem. The library
-    has a few basic requirements:
+    If this attribute is given, it indicates that the source type is
+    ``compiled``, meaning that particles are instantiated from an externally
+    compiled source function. This source can be completely customized as needed
+    to define the source for your problem. The library has a few basic
+    requirements:
 
     * It must contain a class that inherits from ``openmc::Source``;
     * The class must implement a function called ``sample()``;
@@ -476,14 +479,12 @@ attributes/sub-elements:
 
     More documentation on how to build sources can be found in :ref:`custom_source`.
 
-    *Default*: None
-
   :parameters:
-    If this attribute is given, it provides the parameters to pass through to the
-    class generated using the ``library`` parameter . More documentation on how to
-    build parametrized sources can be found in :ref:`parameterized_custom_source`.
-
-    *Default*: None
+    If this attribute is given, it indicated that the source type is
+    ``compiled``. Its value provides the parameters to pass through to the class
+    generated using the ``library`` parameter. More documentation on how to
+    build parametrized sources can be found in
+    :ref:`parameterized_custom_source`.
 
   :space:
     An element specifying the spatial distribution of source sites. This element

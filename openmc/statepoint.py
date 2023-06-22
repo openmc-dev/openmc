@@ -367,6 +367,26 @@ class StatePoint:
     def sparse(self):
         return self._sparse
 
+    @sparse.setter
+    def sparse(self, sparse):
+        """Convert tally data from NumPy arrays to SciPy list of lists (LIL)
+        sparse matrices, and vice versa.
+
+        This property may be used to reduce the amount of data in memory during
+        tally data processing. The tally data will be stored as SciPy LIL
+        matrices internally within each Tally object. All tally data access
+        properties and methods will return data as a dense NumPy array.
+
+        """
+
+        cv.check_type('sparse', sparse, bool)
+        self._sparse = sparse
+
+        # Update tally sparsities
+        if self._tallies_read:
+            for tally_id in self.tallies:
+                self.tallies[tally_id].sparse = self.sparse
+
     @property
     def tallies(self):
         if self.tallies_present and not self._tallies_read:
@@ -483,26 +503,6 @@ class StatePoint:
     @property
     def summary(self):
         return self._summary
-
-    @sparse.setter
-    def sparse(self, sparse):
-        """Convert tally data from NumPy arrays to SciPy list of lists (LIL)
-        sparse matrices, and vice versa.
-
-        This property may be used to reduce the amount of data in memory during
-        tally data processing. The tally data will be stored as SciPy LIL
-        matrices internally within each Tally object. All tally data access
-        properties and methods will return data as a dense NumPy array.
-
-        """
-
-        cv.check_type('sparse', sparse, bool)
-        self._sparse = sparse
-
-        # Update tally sparsities
-        if self._tallies_read:
-            for tally_id in self.tallies:
-                self.tallies[tally_id].sparse = self.sparse
 
     def close(self):
         """Close the statepoint HDF5 file and the corresponding

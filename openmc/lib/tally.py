@@ -231,6 +231,10 @@ class Tally(_FortranObjectWithID):
         _dll.openmc_tally_get_active(self._index, active)
         return active.value
 
+    @active.setter
+    def active(self, active):
+        _dll.openmc_tally_set_active(self._index, active)
+
     @property
     def type(self):
         type = c_int32()
@@ -250,10 +254,6 @@ class Tally(_FortranObjectWithID):
     @estimator.setter
     def estimator(self, estimator):
         _dll.openmc_tally_set_estimator(self._index, estimator.encode())
-
-    @active.setter
-    def active(self, active):
-        _dll.openmc_tally_set_active(self._index, active)
 
     @property
     def id(self):

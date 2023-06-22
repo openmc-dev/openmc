@@ -193,14 +193,14 @@ class CoherentElastic(Function1D):
     def bragg_edges(self):
         return self._bragg_edges
 
-    @property
-    def factors(self):
-        return self._factors
-
     @bragg_edges.setter
     def bragg_edges(self, bragg_edges):
         cv.check_type('Bragg edges', bragg_edges, Iterable, Real)
         self._bragg_edges = np.asarray(bragg_edges)
+
+    @property
+    def factors(self):
+        return self._factors
 
     @factors.setter
     def factors(self, factors):

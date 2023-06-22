@@ -58,10 +58,6 @@ class UniverseBase(ABC, IDManagerMixin):
     def name(self):
         return self._name
 
-    @property
-    def volume(self):
-        return self._volume
-
     @name.setter
     def name(self, name):
         if name is not None:
@@ -69,6 +65,10 @@ class UniverseBase(ABC, IDManagerMixin):
             self._name = name
         else:
             self._name = ''
+
+    @property
+    def volume(self):
+        return self._volume
 
     @volume.setter
     def volume(self, volume):
@@ -854,6 +854,11 @@ class DAGMCUniverse(UniverseBase):
     def auto_mat_ids(self):
         return self._auto_mat_ids
 
+    @auto_mat_ids.setter
+    def auto_mat_ids(self, val):
+        cv.check_type('DAGMC automatic material ids', val, bool)
+        self._auto_mat_ids = val
+
     @property
     def material_names(self):
         dagmc_file_contents = h5py.File(self.filename)
@@ -869,11 +874,6 @@ class DAGMCUniverse(UniverseBase):
                 material_tags_ascii.append(candidate_tag[4:])
 
         return sorted(set(material_tags_ascii))
-
-    @auto_mat_ids.setter
-    def auto_mat_ids(self, val):
-        cv.check_type('DAGMC automatic material ids', val, bool)
-        self._auto_mat_ids = val
 
     def get_all_cells(self, memo=None):
         return OrderedDict()

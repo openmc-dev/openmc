@@ -458,7 +458,7 @@ void read_settings_xml(pugi::xml_node root)
 
       // Create custom source
       model::external_sources.push_back(
-        make_unique<CustomSourceWrapper>(path, parameters));
+        make_unique<CompiledSourceWrapper>(path, parameters));
     } else {
       model::external_sources.push_back(make_unique<IndependentSource>(node));
     }

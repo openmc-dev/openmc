@@ -17,7 +17,7 @@ def inf_medium_model(cutoff_energy, source_energy):
     model.geometry = openmc.Geometry([cell])
 
     model.settings.run_mode = 'fixed source'
-    model.settings.source = openmc.Source(
+    model.settings.source = openmc.IndependentSource(
         particle='photon',
         energy=openmc.stats.Discrete([source_energy], [1.0]),
     )

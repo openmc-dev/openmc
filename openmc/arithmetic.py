@@ -61,25 +61,25 @@ class CrossScore:
     def left_score(self):
         return self._left_score
 
-    @property
-    def right_score(self):
-        return self._right_score
-
-    @property
-    def binary_op(self):
-        return self._binary_op
-
     @left_score.setter
     def left_score(self, left_score):
         cv.check_type('left_score', left_score,
                       (str, CrossScore, AggregateScore))
         self._left_score = left_score
 
+    @property
+    def right_score(self):
+        return self._right_score
+
     @right_score.setter
     def right_score(self, right_score):
         cv.check_type('right_score', right_score,
                       (str, CrossScore, AggregateScore))
         self._right_score = right_score
+
+    @property
+    def binary_op(self):
+        return self._binary_op
 
     @binary_op.setter
     def binary_op(self, binary_op):
@@ -132,13 +132,31 @@ class CrossNuclide:
     def left_nuclide(self):
         return self._left_nuclide
 
+    @left_nuclide.setter
+    def left_nuclide(self, left_nuclide):
+        cv.check_type('left_nuclide', left_nuclide,
+                      (openmc.Nuclide, CrossNuclide, AggregateNuclide))
+        self._left_nuclide = left_nuclide
+
     @property
     def right_nuclide(self):
         return self._right_nuclide
 
+    @right_nuclide.setter
+    def right_nuclide(self, right_nuclide):
+        cv.check_type('right_nuclide', right_nuclide,
+                      (openmc.Nuclide, CrossNuclide, AggregateNuclide))
+        self._right_nuclide = right_nuclide
+
     @property
     def binary_op(self):
         return self._binary_op
+
+    @binary_op.setter
+    def binary_op(self, binary_op):
+        cv.check_type('binary_op', binary_op, str)
+        cv.check_value('binary_op', binary_op, _TALLY_ARITHMETIC_OPS)
+        self._binary_op = binary_op
 
     @property
     def name(self):
@@ -162,24 +180,6 @@ class CrossNuclide:
             string += str(self.right_nuclide) + ')'
 
         return string
-
-    @left_nuclide.setter
-    def left_nuclide(self, left_nuclide):
-        cv.check_type('left_nuclide', left_nuclide,
-                      (openmc.Nuclide, CrossNuclide, AggregateNuclide))
-        self._left_nuclide = left_nuclide
-
-    @right_nuclide.setter
-    def right_nuclide(self, right_nuclide):
-        cv.check_type('right_nuclide', right_nuclide,
-                      (openmc.Nuclide, CrossNuclide, AggregateNuclide))
-        self._right_nuclide = right_nuclide
-
-    @binary_op.setter
-    def binary_op(self, binary_op):
-        cv.check_type('binary_op', binary_op, str)
-        cv.check_value('binary_op', binary_op, _TALLY_ARITHMETIC_OPS)
-        self._binary_op = binary_op
 
 
 class CrossFilter:
@@ -241,13 +241,31 @@ class CrossFilter:
     def left_filter(self):
         return self._left_filter
 
+    @left_filter.setter
+    def left_filter(self, left_filter):
+        cv.check_type('left_filter', left_filter,
+                      (openmc.Filter, CrossFilter, AggregateFilter))
+        self._left_filter = left_filter
+
     @property
     def right_filter(self):
         return self._right_filter
 
+    @right_filter.setter
+    def right_filter(self, right_filter):
+        cv.check_type('right_filter', right_filter,
+                      (openmc.Filter, CrossFilter, AggregateFilter))
+        self._right_filter = right_filter
+
     @property
     def binary_op(self):
         return self._binary_op
+
+    @binary_op.setter
+    def binary_op(self, binary_op):
+        cv.check_type('binary_op', binary_op, str)
+        cv.check_value('binary_op', binary_op, _TALLY_ARITHMETIC_OPS)
+        self._binary_op = binary_op
 
     @property
     def type(self):
@@ -265,24 +283,6 @@ class CrossFilter:
             return self.left_filter.num_bins * self.right_filter.num_bins
         else:
             return 0
-
-    @left_filter.setter
-    def left_filter(self, left_filter):
-        cv.check_type('left_filter', left_filter,
-                      (openmc.Filter, CrossFilter, AggregateFilter))
-        self._left_filter = left_filter
-
-    @right_filter.setter
-    def right_filter(self, right_filter):
-        cv.check_type('right_filter', right_filter,
-                      (openmc.Filter, CrossFilter, AggregateFilter))
-        self._right_filter = right_filter
-
-    @binary_op.setter
-    def binary_op(self, binary_op):
-        cv.check_type('binary_op', binary_op, str)
-        cv.check_value('binary_op', binary_op, _TALLY_ARITHMETIC_OPS)
-        self._binary_op = binary_op
 
     def get_bin_index(self, filter_bin):
         """Returns the index in the CrossFilter for some bin.
@@ -412,9 +412,20 @@ class AggregateScore:
     def scores(self):
         return self._scores
 
+    @scores.setter
+    def scores(self, scores):
+        cv.check_iterable_type('scores', scores, str)
+        self._scores = scores
+
     @property
     def aggregate_op(self):
         return self._aggregate_op
+
+    @aggregate_op.setter
+    def aggregate_op(self, aggregate_op):
+        cv.check_type('aggregate_op', aggregate_op, (str, CrossScore))
+        cv.check_value('aggregate_op', aggregate_op, _TALLY_AGGREGATE_OPS)
+        self._aggregate_op = aggregate_op
 
     @property
     def name(self):
@@ -422,17 +433,6 @@ class AggregateScore:
         # Append each score in the aggregate to the string
         string = '(' + ', '.join(self.scores) + ')'
         return string
-
-    @scores.setter
-    def scores(self, scores):
-        cv.check_iterable_type('scores', scores, str)
-        self._scores = scores
-
-    @aggregate_op.setter
-    def aggregate_op(self, aggregate_op):
-        cv.check_type('aggregate_op', aggregate_op, (str, CrossScore))
-        cv.check_value('aggregate_op', aggregate_op, _TALLY_AGGREGATE_OPS)
-        self._aggregate_op = aggregate_op
 
 
 class AggregateNuclide:
@@ -486,9 +486,20 @@ class AggregateNuclide:
     def nuclides(self):
         return self._nuclides
 
+    @nuclides.setter
+    def nuclides(self, nuclides):
+        cv.check_iterable_type('nuclides', nuclides, (str, CrossNuclide))
+        self._nuclides = nuclides
+
     @property
     def aggregate_op(self):
         return self._aggregate_op
+
+    @aggregate_op.setter
+    def aggregate_op(self, aggregate_op):
+        cv.check_type('aggregate_op', aggregate_op, str)
+        cv.check_value('aggregate_op', aggregate_op, _TALLY_AGGREGATE_OPS)
+        self._aggregate_op = aggregate_op
 
     @property
     def name(self):
@@ -498,17 +509,6 @@ class AggregateNuclide:
                  else str(nuclide) for nuclide in self.nuclides]
         string = '(' + ', '.join(map(str, names)) + ')'
         return string
-
-    @nuclides.setter
-    def nuclides(self, nuclides):
-        cv.check_iterable_type('nuclides', nuclides, (str, CrossNuclide))
-        self._nuclides = nuclides
-
-    @aggregate_op.setter
-    def aggregate_op(self, aggregate_op):
-        cv.check_type('aggregate_op', aggregate_op, str)
-        cv.check_value('aggregate_op', aggregate_op, _TALLY_AGGREGATE_OPS)
-        self._aggregate_op = aggregate_op
 
 
 class AggregateFilter:
@@ -588,25 +588,25 @@ class AggregateFilter:
     def aggregate_filter(self):
         return self._aggregate_filter
 
+    @aggregate_filter.setter
+    def aggregate_filter(self, aggregate_filter):
+        cv.check_type('aggregate_filter', aggregate_filter,
+                      (openmc.Filter, CrossFilter))
+        self._aggregate_filter = aggregate_filter
+
     @property
     def aggregate_op(self):
         return self._aggregate_op
 
+    @aggregate_op.setter
+    def aggregate_op(self, aggregate_op):
+        cv.check_type('aggregate_op', aggregate_op, str)
+        cv.check_value('aggregate_op', aggregate_op, _TALLY_AGGREGATE_OPS)
+        self._aggregate_op = aggregate_op
+
     @property
     def type(self):
         return self._type
-
-    @property
-    def bins(self):
-        return self._bins
-
-    @property
-    def num_bins(self):
-        return len(self.bins) if self.aggregate_filter else 0
-
-    @property
-    def shape(self):
-        return (self.num_bins,)
 
     @type.setter
     def type(self, filter_type):
@@ -617,22 +617,22 @@ class AggregateFilter:
 
         self._type = filter_type
 
-    @aggregate_filter.setter
-    def aggregate_filter(self, aggregate_filter):
-        cv.check_type('aggregate_filter', aggregate_filter,
-                      (openmc.Filter, CrossFilter))
-        self._aggregate_filter = aggregate_filter
+    @property
+    def bins(self):
+        return self._bins
 
     @bins.setter
     def bins(self, bins):
         cv.check_iterable_type('bins', bins, Iterable)
         self._bins = list(map(tuple, bins))
 
-    @aggregate_op.setter
-    def aggregate_op(self, aggregate_op):
-        cv.check_type('aggregate_op', aggregate_op, str)
-        cv.check_value('aggregate_op', aggregate_op, _TALLY_AGGREGATE_OPS)
-        self._aggregate_op = aggregate_op
+    @property
+    def num_bins(self):
+        return len(self.bins) if self.aggregate_filter else 0
+
+    @property
+    def shape(self):
+        return (self.num_bins,)
 
     def get_bin_index(self, filter_bin):
         """Returns the index in the AggregateFilter for some bin.

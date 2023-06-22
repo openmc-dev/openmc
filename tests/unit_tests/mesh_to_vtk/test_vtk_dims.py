@@ -25,7 +25,7 @@ def model():
     settings.particles = 100
     settings.run_mode = 'fixed source'
 
-    source = openmc.Source()
+    source = openmc.IndependentSource()
     source.angle = openmc.stats.Isotropic()
     source.energy = openmc.stats.Discrete([1.0e6], [1.0])
     source.space = openmc.stats.Point((-0.01, -0.01, -0.01))
@@ -212,7 +212,7 @@ def mesh_surf_id(param):
 
 
 @pytest.mark.parametrize("mesh,surface", product(MESHES, SURFS), ids=mesh_surf_id)
-def test_vtk_write_ordering(model, mesh, surface):
+def test_vtk_write_ordering(run_in_tmpdir, model, mesh, surface):
 
     tally = openmc.Tally()
     tally.scores = ['flux']

@@ -13,7 +13,7 @@ def test_export_to_xml(run_in_tmpdir):
     s.energy_mode = 'continuous-energy'
     s.max_order = 5
     s.max_tracks = 1234
-    s.source = openmc.Source(space=openmc.stats.Point())
+    s.source = openmc.IndependentSource(space=openmc.stats.Point())
     s.output = {'summary': True, 'tallies': False, 'path': 'here'}
     s.verbosity = 7
     s.sourcepoint = {'batches': [50, 150, 500, 1000], 'separate': True,
@@ -71,7 +71,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.energy_mode == 'continuous-energy'
     assert s.max_order == 5
     assert s.max_tracks == 1234
-    assert isinstance(s.source[0], openmc.Source)
+    assert isinstance(s.source[0], openmc.IndependentSource)
     assert isinstance(s.source[0].space, openmc.stats.Point)
     assert s.output == {'summary': True, 'tallies': False, 'path': 'here'}
     assert s.verbosity == 7

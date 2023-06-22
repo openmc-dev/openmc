@@ -15,7 +15,8 @@ import openmc
 from openmc.checkvalue import check_type
 from openmc.mpi import comm
 from .abc import ReactionRateHelper, OperatorResult
-from .openmc_operator import OpenMCOperator, _distribute
+from .openmc_operator import OpenMCOperator
+from .pool import _distribute
 from .microxs import MicroXS
 from .results import Results
 from .helpers import ChainFissionHelper, ConstantFissionYieldHelper, SourceRateHelper
@@ -62,10 +63,6 @@ class IndependentOperator(OpenMCOperator):
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``. Only applicable
         if ``"normalization_mode" == "fission-q"``.
-    dilute_initial : float, optional
-        Initial atom density [atoms/cm^3] to add for nuclides that are zero
-        in initial condition to ensure they exist in the decay chain.
-        Only done for nuclides with reaction rates.
     reduce_chain : bool, optional
         If True, use :meth:`openmc.deplete.Chain.reduce` to reduce the
         depletion chain up to ``reduce_chain_level``.
@@ -85,10 +82,6 @@ class IndependentOperator(OpenMCOperator):
         All materials present in the model
     cross_sections : MicroXS
         Object containing one-group cross-sections in [cm^2].
-    dilute_initial : float
-        Initial atom density [atoms/cm^3] to add for nuclides that
-        are zero in initial condition to ensure they exist in the decay
-        chain. Only done for nuclides with reaction rates.
     output_dir : pathlib.Path
         Path to output directory to save results.
     round_number : bool
@@ -121,7 +114,6 @@ class IndependentOperator(OpenMCOperator):
                  keff=None,
                  normalization_mode='fission-q',
                  fission_q=None,
-                 dilute_initial=1.0e3,
                  prev_results=None,
                  reduce_chain=False,
                  reduce_chain_level=None,
@@ -147,7 +139,6 @@ class IndependentOperator(OpenMCOperator):
             chain_file,
             prev_results,
             fission_q=fission_q,
-            dilute_initial=dilute_initial,
             helper_kwargs=helper_kwargs,
             reduce_chain=reduce_chain,
             reduce_chain_level=reduce_chain_level)
@@ -160,7 +151,6 @@ class IndependentOperator(OpenMCOperator):
                       keff=None,
                       normalization_mode='fission-q',
                       fission_q=None,
-                      dilute_initial=1.0e3,
                       prev_results=None,
                       reduce_chain=False,
                       reduce_chain_level=None,
@@ -195,10 +185,6 @@ class IndependentOperator(OpenMCOperator):
             Dictionary of nuclides and their fission Q values [eV]. If not
             given, values will be pulled from the ``chain_file``. Only
             applicable if ``"normalization_mode" == "fission-q"``.
-        dilute_initial : float
-            Initial atom density [atoms/cm^3] to add for nuclides that
-            are zero in initial condition to ensure they exist in the decay
-            chain. Only done for nuclides with reaction rates.
         prev_results : Results, optional
             Results from a previous depletion calculation.
         reduce_chain : bool, optional
@@ -223,7 +209,6 @@ class IndependentOperator(OpenMCOperator):
                    keff=keff,
                    normalization_mode=normalization_mode,
                    fission_q=fission_q,
-                   dilute_initial=dilute_initial,
                    prev_results=prev_results,
                    reduce_chain=reduce_chain,
                    reduce_chain_level=reduce_chain_level,

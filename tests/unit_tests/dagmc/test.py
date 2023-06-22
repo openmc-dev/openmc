@@ -27,7 +27,7 @@ def dagmc_model(request):
     model.settings.verbosity = 1
     source_box = openmc.stats.Box([ -4, -4, -4 ],
                                   [  4,  4,  4 ])
-    source = openmc.Source(space=source_box)
+    source = openmc.IndependentSource(space=source_box)
     model.settings.source = source
 
     # geometry

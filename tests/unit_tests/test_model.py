@@ -59,7 +59,7 @@ def pin_model_attributes():
     bounds = [-0.62992, -0.62992, -1, 0.62992, 0.62992, 1]
     uniform_dist = openmc.stats.Box(
         bounds[:3], bounds[3:], only_fissionable=True)
-    settings.source = openmc.source.Source(space=uniform_dist)
+    settings.source = openmc.IndependentSource(space=uniform_dist)
 
     entropy_mesh = openmc.RegularMesh()
     entropy_mesh.lower_left = [-0.39218, -0.39218, -1.e50]

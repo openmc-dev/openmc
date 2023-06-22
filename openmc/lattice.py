@@ -57,18 +57,6 @@ class Lattice(IDManagerMixin, ABC):
     def name(self):
         return self._name
 
-    @property
-    def pitch(self):
-        return self._pitch
-
-    @property
-    def outer(self):
-        return self._outer
-
-    @property
-    def universes(self):
-        return self._universes
-
     @name.setter
     def name(self, name):
         if name is not None:
@@ -77,10 +65,22 @@ class Lattice(IDManagerMixin, ABC):
         else:
             self._name = ''
 
+    @property
+    def pitch(self):
+        return self._pitch
+
+    @property
+    def outer(self):
+        return self._outer
+
     @outer.setter
     def outer(self, outer):
         cv.check_type('outer universe', outer, openmc.UniverseBase)
         self._outer = outer
+
+    @property
+    def universes(self):
+        return self._universes
 
     @staticmethod
     def from_hdf5(group, universes):
@@ -460,6 +460,12 @@ class RectLattice(Lattice):
     def lower_left(self):
         return self._lower_left
 
+    @lower_left.setter
+    def lower_left(self, lower_left):
+        cv.check_type('lattice lower left corner', lower_left, Iterable, Real)
+        cv.check_length('lattice lower left corner', lower_left, 2, 3)
+        self._lower_left = lower_left
+
     @property
     def ndim(self):
         if self.pitch is not None:
@@ -471,12 +477,6 @@ class RectLattice(Lattice):
     @property
     def shape(self):
         return self._universes.shape[::-1]
-
-    @lower_left.setter
-    def lower_left(self, lower_left):
-        cv.check_type('lattice lower left corner', lower_left, Iterable, Real)
-        cv.check_length('lattice lower left corner', lower_left, 2, 3)
-        self._lower_left = lower_left
 
     @Lattice.pitch.setter
     def pitch(self, pitch):
@@ -1127,6 +1127,11 @@ class HexLattice(Lattice):
     @property
     def orientation(self):
         return self._orientation
+    
+    @orientation.setter
+    def orientation(self, orientation):
+        cv.check_value('orientation', orientation.lower(), ('x', 'y'))
+        self._orientation = orientation.lower()
 
     @property
     def num_axial(self):
@@ -1135,6 +1140,12 @@ class HexLattice(Lattice):
     @property
     def center(self):
         return self._center
+
+    @center.setter
+    def center(self, center):
+        cv.check_type('lattice center', center, Iterable, Real)
+        cv.check_length('lattice center', center, 2, 3)
+        self._center = center
 
     @property
     def indices(self):
@@ -1174,17 +1185,6 @@ class HexLattice(Lattice):
     @property
     def ndim(self):
         return 2 if isinstance(self.universes[0][0], openmc.UniverseBase) else 3
-
-    @center.setter
-    def center(self, center):
-        cv.check_type('lattice center', center, Iterable, Real)
-        cv.check_length('lattice center', center, 2, 3)
-        self._center = center
-
-    @orientation.setter
-    def orientation(self, orientation):
-        cv.check_value('orientation', orientation.lower(), ('x', 'y'))
-        self._orientation = orientation.lower()
 
     @Lattice.pitch.setter
     def pitch(self, pitch):

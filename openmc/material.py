@@ -170,9 +170,24 @@ class Material(IDManagerMixin):
     def name(self) -> Optional[str]:
         return self._name
 
+    @name.setter
+    def name(self, name: Optional[str]):
+        if name is not None:
+            cv.check_type(f'name for Material ID="{self._id}"',
+                          name, str)
+            self._name = name
+        else:
+            self._name = ''
+
     @property
     def temperature(self) -> Optional[float]:
         return self._temperature
+
+    @temperature.setter
+    def temperature(self, temperature: Optional[Real]):
+        cv.check_type(f'Temperature for Material ID="{self._id}"',
+                      temperature, (Real, type(None)))
+        self._temperature = temperature
 
     @property
     def density(self) -> Optional[float]:
@@ -185,6 +200,12 @@ class Material(IDManagerMixin):
     @property
     def depletable(self) -> bool:
         return self._depletable
+
+    @depletable.setter
+    def depletable(self, depletable: bool):
+        cv.check_type(f'Depletable flag for Material ID="{self._id}"',
+                      depletable, bool)
+        self._depletable = depletable
 
     @property
     def paths(self) -> List[str]:
@@ -209,6 +230,12 @@ class Material(IDManagerMixin):
     def isotropic(self) -> List[str]:
         return self._isotropic
 
+    @isotropic.setter
+    def isotropic(self, isotropic: typing.Iterable[str]):
+        cv.check_iterable_type('Isotropic scattering nuclides', isotropic,
+                               str)
+        self._isotropic = list(isotropic)
+
     @property
     def average_molar_mass(self) -> float:
         # Using the sum of specified atomic or weight amounts as a basis, sum
@@ -230,42 +257,15 @@ class Material(IDManagerMixin):
     def volume(self) -> Optional[float]:
         return self._volume
 
-    @property
-    def ncrystal_cfg(self) -> Optional[str]:
-        return self._ncrystal_cfg
-
-    @name.setter
-    def name(self, name: Optional[str]):
-        if name is not None:
-            cv.check_type(f'name for Material ID="{self._id}"',
-                          name, str)
-            self._name = name
-        else:
-            self._name = ''
-
-    @temperature.setter
-    def temperature(self, temperature: Optional[Real]):
-        cv.check_type(f'Temperature for Material ID="{self._id}"',
-                      temperature, (Real, type(None)))
-        self._temperature = temperature
-
-    @depletable.setter
-    def depletable(self, depletable: bool):
-        cv.check_type(f'Depletable flag for Material ID="{self._id}"',
-                      depletable, bool)
-        self._depletable = depletable
-
     @volume.setter
     def volume(self, volume: Real):
         if volume is not None:
             cv.check_type('material volume', volume, Real)
         self._volume = volume
 
-    @isotropic.setter
-    def isotropic(self, isotropic: typing.Iterable[str]):
-        cv.check_iterable_type('Isotropic scattering nuclides', isotropic,
-                               str)
-        self._isotropic = list(isotropic)
+    @property
+    def ncrystal_cfg(self) -> Optional[str]:
+        return self._ncrystal_cfg
 
     @property
     def fissionable_mass(self) -> float:

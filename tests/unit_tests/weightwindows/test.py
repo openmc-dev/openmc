@@ -99,7 +99,7 @@ def model():
     space = Point((0.001, 0.001, 0.001))
     energy = Discrete([14E6], [1.0])
 
-    settings.source = openmc.Source(space=space, energy=energy)
+    settings.source = openmc.IndependentSource(space=space, energy=energy)
 
     # tally
     mesh = openmc.RegularMesh()

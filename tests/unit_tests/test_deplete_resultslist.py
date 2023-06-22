@@ -59,12 +59,12 @@ def test_get_mass(res):
 
     # Check alternate units
     volume = res[0].volume["1"]
-    t_days, n_cm3 = res.get_mass("1", "Xe135", nuc_units="g/cm3", time_units="d")
+    t_days, n_cm3 = res.get_mass("1", "Xe135", mass_units="g/cm3", time_units="d")
 
     assert t_days == pytest.approx(t_ref / (60 * 60 * 24))
     assert n_cm3 == pytest.approx(n_ref / volume)
 
-    t_min, n_bcm = res.get_mass("1", "Xe135", nuc_units="kg", time_units="min")
+    t_min, n_bcm = res.get_mass("1", "Xe135", mass_units="kg", time_units="min")
     assert n_bcm == pytest.approx(n_ref * 1e3)
     assert t_min == pytest.approx(t_ref / 60)
 

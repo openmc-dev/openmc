@@ -189,7 +189,7 @@ class Results(list):
             Mass of specified nuclide in units of ``mass_units``
 
         """
-        cv.check_value("nuc_units", nuc_units, {"g", "g/cm3", "kg"})
+        cv.check_value("mass_units", mass_units, {"g", "g/cm3", "kg"})
 
         if isinstance(mat, Material):
             mat_id = str(mat.id)

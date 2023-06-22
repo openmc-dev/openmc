@@ -168,19 +168,12 @@ class Results(list):
     def get_mass(self,
         mat: typing.Union[Material, str],
         nuc: str,
-        nuc_units: str = "g",
+        mass_units: str = "g",
         time_units: str = "s"
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Get mass of nuclides over time from a single material
 
         .. versionadded:: 0.13.4
-
-        .. note::
-            Initial values for some nuclides that do not appear in
-            initial concentrations may be non-zero, depending on the
-            value of the :attr:`openmc.deplete.CoupledOperator.dilute_initial`
-            attribute. The :class:`openmc.deplete.CoupledOperator` class adds
-            nuclides according to this setting, which can be set to zero.
 
         Parameters
         ----------
@@ -188,9 +181,8 @@ class Results(list):
             Material object or material id to evaluate
         nuc : str
             Nuclide name to evaluate
-        nuc_units : {"g", "g/cm3", "kg"}, optional
-            Units for the returned concentration. Default is ``"g"``
-
+        mass_units : {"g", "g/cm3", "kg"}, optional
+            Units for the returned mass.
         time_units : {"s", "min", "h", "d", "a"}, optional
             Units for the returned time array. Default is ``"s"`` to
             return the value in seconds. Other options are minutes ``"min"``,
@@ -200,12 +192,11 @@ class Results(list):
         -------
         times : numpy.ndarray
             Array of times in units of ``time_units``
-        concentrations : numpy.ndarray
-            Concentration of specified nuclide in units of ``nuc_units``
+        mass : numpy.ndarray
+            Mass of specified nuclide in units of ``mass_units``
 
         """
-        cv.check_value("nuc_units", nuc_units,
-                    {"g", "g/cm3", "kg"})
+        cv.check_value("nuc_units", nuc_units, {"g", "g/cm3", "kg"})
 
         if isinstance(mat, Material):
             mat_id = str(mat.id)
@@ -216,16 +207,16 @@ class Results(list):
 
         times, atoms = self.get_atoms(mat, nuc, time_units=time_units)
 
-        concentrations = atoms * atomic_mass(nuc) / AVOGADRO
+        mass = atoms * atomic_mass(nuc) / AVOGADRO
 
         # Unit conversions
-        if nuc_units == "g/cm3":
+        if mass_units == "g/cm3":
             # Divide by volume to get density
-            concentrations /= self[0].volume[mat_id]
-        if nuc_units == "kg":
-            concentrations *= 1e3
+            mass /= self[0].volume[mat_id]
+        elif mass_units == "kg":
+            mass *= 1e3
 
-        return times, concentrations
+        return times, mass
 
     def get_reaction_rate(
         self,

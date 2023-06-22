@@ -566,7 +566,7 @@ def pin(surfaces, items, subdivisions=None, divide_vols=True,
 
 
 
-def pin_both(surfaces, items, subdivisions_r=None, subdivisions_a=None, divide_vols=True,
+def pin_new(surfaces, items, subdivisions_r=None, subdivisions_a=None, divide_vols=True,
         **kwargs):
     """Convenience function for building a fuel pin
 
@@ -702,7 +702,7 @@ def pin_both(surfaces, items, subdivisions_r=None, subdivisions_a=None, divide_v
         subdivisions_a_fixed = {}
         counter = 0
         
-        for i in range(sorted(subdivisions_r.keys())[-1]+1):
+        for i in range(len(items)):
             if i in subdivisions_r.keys():
                 for j in range(subdivisions_r[i]):
                     if i in subdivisions_a.keys():
@@ -779,7 +779,7 @@ def pin_both(surfaces, items, subdivisions_r=None, subdivisions_a=None, divide_v
                 filler.volume /= ns
 
             items[ring_index:ring_index] = [
-                filler for _i in range(ns - 1)]
+                filler.clone() for _i in range(ns - 1)]
 
     # Build the universe
     regions = subdivide(surfaces)

@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <complex>
+#include <initializer_list>
 #include <set>
 #include <utility>
 
@@ -34,93 +35,22 @@ vector<unique_ptr<Surface>> surfaces;
 // Helper functions for reading the "coeffs" node of an XML surface element
 //==============================================================================
 
-void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1)
-{
-  // Check the given number of coefficients.
-  auto coeffs = get_node_array<double>(surf_node, "coeffs");
-  if (coeffs.size() != 1) {
-    fatal_error(fmt::format(
-      "Surface {} expects 1 coeff but was given {}", surf_id, coeffs.size()));
-  }
-
-  // Copy the coefficients.
-  c1 = coeffs[0];
-}
-
 void read_coeffs(
-  pugi::xml_node surf_node, int surf_id, double& c1, double& c2, double& c3)
+  pugi::xml_node surf_node, int surf_id, std::initializer_list<double*> coeffs)
 {
   // Check the given number of coefficients.
-  auto coeffs = get_node_array<double>(surf_node, "coeffs");
-  if (coeffs.size() != 3) {
-    fatal_error(fmt::format(
-      "Surface {} expects 3 coeffs but was given {}", surf_id, coeffs.size()));
+  auto coeffs_file = get_node_array<double>(surf_node, "coeffs");
+  if (coeffs_file.size() != coeffs.size()) {
+    fatal_error(
+      fmt::format("Surface {} expects {} coefficient but was given {}", surf_id,
+        coeffs.size(), coeffs_file.size()));
   }
 
   // Copy the coefficients
-  c1 = coeffs[0];
-  c2 = coeffs[1];
-  c3 = coeffs[2];
-}
-
-void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1, double& c2,
-  double& c3, double& c4)
-{
-  // Check the given number of coefficients.
-  auto coeffs = get_node_array<double>(surf_node, "coeffs");
-  if (coeffs.size() != 4) {
-    fatal_error(fmt::format(
-      "Surface {} expects 4 coeffs but was given ", surf_id, coeffs.size()));
+  int i = 0;
+  for (auto c : coeffs) {
+    *c = coeffs_file[i++];
   }
-
-  // Copy the coefficients
-  c1 = coeffs[0];
-  c2 = coeffs[1];
-  c3 = coeffs[2];
-  c4 = coeffs[3];
-}
-
-void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1, double& c2,
-  double& c3, double& c4, double& c5, double& c6)
-{
-  // Check the given number of coefficients.
-  auto coeffs = get_node_array<double>(surf_node, "coeffs");
-  if (coeffs.size() != 6) {
-    fatal_error(fmt::format(
-      "Surface {} expects 6 coeffs but was given {}", surf_id, coeffs.size()));
-  }
-
-  // Copy the coefficients
-  c1 = coeffs[0];
-  c2 = coeffs[1];
-  c3 = coeffs[2];
-  c4 = coeffs[3];
-  c5 = coeffs[4];
-  c6 = coeffs[5];
-}
-
-void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1, double& c2,
-  double& c3, double& c4, double& c5, double& c6, double& c7, double& c8,
-  double& c9, double& c10)
-{
-  // Check the given number of coefficients.
-  auto coeffs = get_node_array<double>(surf_node, "coeffs");
-  if (coeffs.size() != 10) {
-    fatal_error(fmt::format(
-      "Surface {} expects 10 coeffs but was given {}", surf_id, coeffs.size()));
-  }
-
-  // Copy the coefficients
-  c1 = coeffs[0];
-  c2 = coeffs[1];
-  c3 = coeffs[2];
-  c4 = coeffs[3];
-  c5 = coeffs[4];
-  c6 = coeffs[5];
-  c7 = coeffs[6];
-  c8 = coeffs[7];
-  c9 = coeffs[8];
-  c10 = coeffs[9];
 }
 
 //==============================================================================
@@ -271,7 +201,7 @@ double axis_aligned_plane_distance(
 
 SurfaceXPlane::SurfaceXPlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_);
+  read_coeffs(surf_node, id_, {&x0_});
 }
 
 double SurfaceXPlane::evaluate(Position r) const
@@ -311,7 +241,7 @@ BoundingBox SurfaceXPlane::bounding_box(bool pos_side) const
 
 SurfaceYPlane::SurfaceYPlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, y0_);
+  read_coeffs(surf_node, id_, {&y0_});
 }
 
 double SurfaceYPlane::evaluate(Position r) const
@@ -351,7 +281,7 @@ BoundingBox SurfaceYPlane::bounding_box(bool pos_side) const
 
 SurfaceZPlane::SurfaceZPlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, z0_);
+  read_coeffs(surf_node, id_, {&z0_});
 }
 
 double SurfaceZPlane::evaluate(Position r) const
@@ -391,7 +321,7 @@ BoundingBox SurfaceZPlane::bounding_box(bool pos_side) const
 
 SurfacePlane::SurfacePlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, A_, B_, C_, D_);
+  read_coeffs(surf_node, id_, {&A_, &B_, &C_, &D_});
 }
 
 double SurfacePlane::evaluate(Position r) const
@@ -510,7 +440,7 @@ Direction axis_aligned_cylinder_normal(
 SurfaceXCylinder::SurfaceXCylinder(pugi::xml_node surf_node)
   : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, y0_, z0_, radius_);
+  read_coeffs(surf_node, id_, {&y0_, &z0_, &radius_});
 }
 
 double SurfaceXCylinder::evaluate(Position r) const
@@ -553,7 +483,7 @@ BoundingBox SurfaceXCylinder::bounding_box(bool pos_side) const
 SurfaceYCylinder::SurfaceYCylinder(pugi::xml_node surf_node)
   : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, z0_, radius_);
+  read_coeffs(surf_node, id_, {&x0_, &z0_, &radius_});
 }
 
 double SurfaceYCylinder::evaluate(Position r) const
@@ -597,7 +527,7 @@ BoundingBox SurfaceYCylinder::bounding_box(bool pos_side) const
 SurfaceZCylinder::SurfaceZCylinder(pugi::xml_node surf_node)
   : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, radius_);
+  read_coeffs(surf_node, id_, {&x0_, &y0_, &radius_});
 }
 
 double SurfaceZCylinder::evaluate(Position r) const
@@ -640,7 +570,7 @@ BoundingBox SurfaceZCylinder::bounding_box(bool pos_side) const
 
 SurfaceSphere::SurfaceSphere(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_);
+  read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_});
 }
 
 double SurfaceSphere::evaluate(Position r) const
@@ -806,7 +736,7 @@ Direction axis_aligned_cone_normal(
 
 SurfaceXCone::SurfaceXCone(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
+  read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_sq_});
 }
 
 double SurfaceXCone::evaluate(Position r) const
@@ -838,7 +768,7 @@ void SurfaceXCone::to_hdf5_inner(hid_t group_id) const
 
 SurfaceYCone::SurfaceYCone(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
+  read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_sq_});
 }
 
 double SurfaceYCone::evaluate(Position r) const
@@ -870,7 +800,7 @@ void SurfaceYCone::to_hdf5_inner(hid_t group_id) const
 
 SurfaceZCone::SurfaceZCone(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
+  read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_sq_});
 }
 
 double SurfaceZCone::evaluate(Position r) const
@@ -902,7 +832,8 @@ void SurfaceZCone::to_hdf5_inner(hid_t group_id) const
 
 SurfaceQuadric::SurfaceQuadric(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, A_, B_, C_, D_, E_, F_, G_, H_, J_, K_);
+  read_coeffs(
+    surf_node, id_, {&A_, &B_, &C_, &D_, &E_, &F_, &G_, &H_, &J_, &K_});
 }
 
 double SurfaceQuadric::evaluate(Position r) const
@@ -1054,7 +985,7 @@ double torus_distance(double x1, double x2, double x3, double u1, double u2,
 
 SurfaceXTorus::SurfaceXTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, A_, B_, C_);
+  read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &A_, &B_, &C_});
 }
 
 void SurfaceXTorus::to_hdf5_inner(hid_t group_id) const
@@ -1107,7 +1038,7 @@ Direction SurfaceXTorus::normal(Position r) const
 
 SurfaceYTorus::SurfaceYTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, A_, B_, C_);
+  read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &A_, &B_, &C_});
 }
 
 void SurfaceYTorus::to_hdf5_inner(hid_t group_id) const
@@ -1160,7 +1091,7 @@ Direction SurfaceYTorus::normal(Position r) const
 
 SurfaceZTorus::SurfaceZTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, A_, B_, C_);
+  read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &A_, &B_, &C_});
 }
 
 void SurfaceZTorus::to_hdf5_inner(hid_t group_id) const

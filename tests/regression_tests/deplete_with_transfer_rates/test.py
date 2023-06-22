@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import shutil
+import sys
 
 import numpy as np
 import pytest
@@ -45,6 +46,7 @@ def model():
 
     return openmc.Model(geometry, materials, settings)
 
+@pytest.mark.skipif(sys.version_info < (3, 9), reason="Requires Python 3.9+")
 @pytest.mark.parametrize("rate, dest_mat, power, ref_result", [
     (1e-5, None, 0.0, 'no_depletion_only_removal'),
     (-1e-5, None, 0.0, 'no_depletion_only_feed'),

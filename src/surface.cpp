@@ -37,77 +37,66 @@ vector<unique_ptr<Surface>> surfaces;
 void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1)
 {
   // Check the given number of coefficients.
-  std::string coeffs = get_node_value(surf_node, "coeffs");
-  int n_words = word_count(coeffs);
-  if (n_words != 1) {
+  auto coeffs = get_node_array<double>(surf_node, "coeffs");
+  if (coeffs.size() != 1) {
     fatal_error(fmt::format(
-      "Surface {} expects 1 coeff but was given {}", surf_id, n_words));
+      "Surface {} expects 1 coeff but was given {}", surf_id, coeffs.size()));
   }
 
-  // Parse the coefficients.
-  int stat = sscanf(coeffs.c_str(), "%lf", &c1);
-  if (stat != 1) {
-    fatal_error(fmt::format(
-      "Something went wrong reading coeffs for surface {}", surf_id));
-  }
+  // Copy the coefficients.
+  c1 = coeffs[0];
 }
 
 void read_coeffs(
   pugi::xml_node surf_node, int surf_id, double& c1, double& c2, double& c3)
 {
   // Check the given number of coefficients.
-  std::string coeffs = get_node_value(surf_node, "coeffs");
-  int n_words = word_count(coeffs);
-  if (n_words != 3) {
+  auto coeffs = get_node_array<double>(surf_node, "coeffs");
+  if (coeffs.size() != 3) {
     fatal_error(fmt::format(
-      "Surface {} expects 3 coeffs but was given {}", surf_id, n_words));
+      "Surface {} expects 3 coeffs but was given {}", surf_id, coeffs.size()));
   }
 
-  // Parse the coefficients.
-  int stat = sscanf(coeffs.c_str(), "%lf %lf %lf", &c1, &c2, &c3);
-  if (stat != 3) {
-    fatal_error(fmt::format(
-      "Something went wrong reading coeffs for surface {}", surf_id));
-  }
+  // Copy the coefficients
+  c1 = coeffs[0];
+  c2 = coeffs[1];
+  c3 = coeffs[2];
 }
 
 void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1, double& c2,
   double& c3, double& c4)
 {
   // Check the given number of coefficients.
-  std::string coeffs = get_node_value(surf_node, "coeffs");
-  int n_words = word_count(coeffs);
-  if (n_words != 4) {
+  auto coeffs = get_node_array<double>(surf_node, "coeffs");
+  if (coeffs.size() != 4) {
     fatal_error(fmt::format(
-      "Surface {} expects 4 coeffs but was given ", surf_id, n_words));
+      "Surface {} expects 4 coeffs but was given ", surf_id, coeffs.size()));
   }
 
-  // Parse the coefficients.
-  int stat = sscanf(coeffs.c_str(), "%lf %lf %lf %lf", &c1, &c2, &c3, &c4);
-  if (stat != 4) {
-    fatal_error(fmt::format(
-      "Something went wrong reading coeffs for surface {}", surf_id));
-  }
+  // Copy the coefficients
+  c1 = coeffs[0];
+  c2 = coeffs[1];
+  c3 = coeffs[2];
+  c4 = coeffs[3];
 }
 
 void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1, double& c2,
   double& c3, double& c4, double& c5, double& c6)
 {
   // Check the given number of coefficients.
-  std::string coeffs = get_node_value(surf_node, "coeffs");
-  int n_words = word_count(coeffs);
-  if (n_words != 6) {
+  auto coeffs = get_node_array<double>(surf_node, "coeffs");
+  if (coeffs.size() != 6) {
     fatal_error(fmt::format(
-      "Surface {} expects 6 coeffs but was given {}", surf_id, n_words));
+      "Surface {} expects 6 coeffs but was given {}", surf_id, coeffs.size()));
   }
 
-  // Parse the coefficients.
-  int stat = sscanf(
-    coeffs.c_str(), "%lf %lf %lf %lf %lf %lf", &c1, &c2, &c3, &c4, &c5, &c6);
-  if (stat != 6) {
-    fatal_error(fmt::format(
-      "Something went wrong reading coeffs for surface {}", surf_id));
-  }
+  // Copy the coefficients
+  c1 = coeffs[0];
+  c2 = coeffs[1];
+  c3 = coeffs[2];
+  c4 = coeffs[3];
+  c5 = coeffs[4];
+  c6 = coeffs[5];
 }
 
 void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1, double& c2,
@@ -115,20 +104,23 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1, double& c2,
   double& c9, double& c10)
 {
   // Check the given number of coefficients.
-  std::string coeffs = get_node_value(surf_node, "coeffs");
-  int n_words = word_count(coeffs);
-  if (n_words != 10) {
+  auto coeffs = get_node_array<double>(surf_node, "coeffs");
+  if (coeffs.size() != 10) {
     fatal_error(fmt::format(
-      "Surface {} expects 10 coeffs but was given {}", surf_id, n_words));
+      "Surface {} expects 10 coeffs but was given {}", surf_id, coeffs.size()));
   }
 
-  // Parse the coefficients.
-  int stat = sscanf(coeffs.c_str(), "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
-    &c1, &c2, &c3, &c4, &c5, &c6, &c7, &c8, &c9, &c10);
-  if (stat != 10) {
-    fatal_error(fmt::format(
-      "Something went wrong reading coeffs for surface {}", surf_id));
-  }
+  // Copy the coefficients
+  c1 = coeffs[0];
+  c2 = coeffs[1];
+  c3 = coeffs[2];
+  c4 = coeffs[3];
+  c5 = coeffs[4];
+  c6 = coeffs[5];
+  c7 = coeffs[6];
+  c8 = coeffs[7];
+  c9 = coeffs[8];
+  c10 = coeffs[9];
 }
 
 //==============================================================================

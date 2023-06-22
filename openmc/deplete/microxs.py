@@ -82,7 +82,7 @@ class MicroXS(DataFrame):
         elif isinstance(reaction_domain, openmc.Universe):
             domain_filter = openmc.UniverseFilter([reaction_domain])
         else:
-            raise ValueError(f"Unsupport domain type: {type(reaction_domain)}")
+            raise ValueError(f"Unsupported domain type: {type(reaction_domain)}")
 
         # TODO: Right now, we use all nuclides from the material but it probably
         # should be based on the burnable nuclides

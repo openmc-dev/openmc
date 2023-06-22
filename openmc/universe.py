@@ -361,6 +361,10 @@ class Universe(UniverseBase):
             Whether outlines between color boundaries should be drawn
 
             .. versionadded:: 0.13.4
+        axis_units : {'km', 'm', 'cm', 'mm'}
+            Units used on the plot axis, the default is cm
+
+            .. versionadded:: 0.13.4
         **kwargs
             Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 

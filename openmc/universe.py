@@ -362,7 +362,7 @@ class Universe(UniverseBase):
 
             .. versionadded:: 0.13.4
         axis_units : {'km', 'm', 'cm', 'mm'}
-            Units used on the plot axis, the default is cm
+            Units used on the plot axis
 
             .. versionadded:: 0.13.4
         **kwargs

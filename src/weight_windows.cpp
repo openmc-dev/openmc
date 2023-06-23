@@ -611,16 +611,16 @@ void WeightWindows::update_magic(
     // select all
     auto group_view = xt::view(new_bounds, e);
 
-    double group_max = *std::max_element(group_view.begin(), group_view.end());
-    // normalize values in this energy group by the maximum value for this
-    // group
-    if (group_max > 0.0)
-      group_view /= group_max;
-
     // divide by volume of mesh elements
     for (int i = 0; i < group_view.size(); i++) {
       group_view[i] /= mesh_vols[i];
     }
+
+    double group_max = *std::max_element(group_view.begin(), group_view.end());
+    // normalize values in this energy group by the maximum value for this
+    // group
+    if (group_max > 0.0)
+      group_view /= 2.0 * group_max;
   }
 
   // make sure that values where the mean is zero are set s.t. the weight window
@@ -659,7 +659,7 @@ void WeightWindows::check_tally_update_compatibility(const Tally* tally)
     if (allowed_filters.find(filter_pair.first) == allowed_filters.end()) {
       fatal_error(fmt::format("Invalid filter type '{}' found on tally "
                               "used for weight window generation.",
-        model::tally_filters[filter_pair.second]->type_str()));
+        model::tally_filters[tally->filters(filter_pair.second)]->type_str()));
     }
   }
 

@@ -389,7 +389,7 @@ void Tally::add_filter(Filter* filter)
   // if this filter is already present, do nothing and return
   if (std::find(filters_.begin(), filters_.end(), filter_idx) != filters_.end())
     return;
-  
+
   // Keep track of indices for special filters
   if (dynamic_cast<const EnergyoutFilter*>(filter)) {
     energyout_filter_ = filters_.size();
@@ -1357,7 +1357,7 @@ extern "C" int openmc_remove_tally(int32_t index)
     set_errmsg("Index in tallies array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-  
+
   // delete the tally via iterator pointing to correct position
   // this calls the Tally destructor, removing the tally from the map as well
   model::tallies.erase(model::tallies.begin() + index);

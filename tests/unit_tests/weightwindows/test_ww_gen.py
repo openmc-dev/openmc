@@ -62,7 +62,7 @@ def model():
     # 10 keV neutron point source at the origin
     space = openmc.stats.Point()
     energy = openmc.stats.Discrete(x=[1e4], p=[1.0])
-    settings.source = openmc.Source(space=space, energy=energy)
+    settings.source = openmc.IndependentSource(space=space, energy=energy)
 
     return openmc.Model(geometry=geometry, settings=settings)
 

@@ -34,9 +34,9 @@ bool OctreeNode::is_leaf() const {
     return (children == nullptr);
 }
  
-void find_cells_in_box(const Universe& univ, const OctreeNode& parent, OctreeNode& child) {
+void find_cells_in_box(const Universe& univ, const OctreeNode& parent, OctreeNode& child, const AABB& box) {
     const double NUM_CELL_SEARCH_POINT_DENSITY = 4.0;
-    const int num_search_points = (int)(child.box.volume() * NUM_CELL_SEARCH_POINT_DENSITY);
+    const int num_search_points = (int)(box.volume() * NUM_CELL_SEARCH_POINT_DENSITY);
 
     // get some numbers that are unique across all invocations
     uint64_t octree_prng_seed[3] = {(uint64_t)&child, (uint64_t)child.id, (uint64_t)((child.id * 3244230925 + 432534) % 436786)};
@@ -78,9 +78,9 @@ void find_cells_in_box(const Universe& univ, const OctreeNode& parent, OctreeNod
         // gen random point
         // #pragma omp critical
         {
-            rand_pos.x = uniform_distribution(child.box.min.x, child.box.max.x, &octree_prng_seed[0]);
-            rand_pos.y = uniform_distribution(child.box.min.y, child.box.max.y, &octree_prng_seed[1]);
-            rand_pos.z = uniform_distribution(child.box.min.z, child.box.max.z, &octree_prng_seed[2]);
+            rand_pos.x = uniform_distribution(box.min.x, box.max.x, &octree_prng_seed[0]);
+            rand_pos.y = uniform_distribution(box.min.y, box.max.y, &octree_prng_seed[1]);
+            rand_pos.z = uniform_distribution(box.min.z, box.max.z, &octree_prng_seed[2]);
         }
 
         univ.find_cell_in_list(parent.cells, child.cells, skip_cell, rand_pos);
@@ -126,7 +126,29 @@ void find_cells_in_box(const Universe& univ, const OctreeNode& parent, OctreeNod
         child.cells.push_back(cell);
     }
 #endif
+} 
+
+#ifdef OCTREE_PARTITIONER_BLOCK_ALLOCATION
+OctreeNodeAllocator::OctreeNodeAllocator() : last_pool_next_index(0) {}
+
+OctreeNodeAllocator::~OctreeNodeAllocator() {
+    for(auto* ptr : pools) {
+        delete[] ptr;
+    }
 }
+
+const int OCTREE_NODE_ALLOCATOR_POOL_SIZE = 1024; // number of 8 children packs
+OctreeNode* OctreeNodeAllocator::allocate() {
+    if(last_pool_next_index == OCTREE_NODE_ALLOCATOR_POOL_SIZE || pools.size() == 0) {
+        pools.push_back(new OctreeNode[8 * OCTREE_NODE_ALLOCATOR_POOL_SIZE]);
+        last_pool_next_index = 0;
+    }
+
+    auto ptr = &pools.back()[8 * last_pool_next_index];
+    last_pool_next_index++;
+    return ptr;
+}
+#endif
 
 void construction_reporter_thread(int max_tree_size, int* num_nodes, bool* currently_constructing) {
     using namespace std::chrono_literals;
@@ -174,7 +196,8 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
     rootbox.min = vec3(-half_side_length, -half_side_length, -half_side_length);
     rootbox.max = vec3( half_side_length,  half_side_length,  half_side_length);
 
-    root.box = rootbox;
+    bounds = rootbox;
+    root.center = rootbox.get_center();
     root.cells = univ.cells_;
     root.depth = 0;
     root.id = 0;
@@ -201,11 +224,13 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
 
     std::mutex push_mutex;
 
-    std::stack<OctreeNode*> unproc_nodes;
-    unproc_nodes.push(&root);
+    std::stack<std::pair<OctreeNode*, AABB>> unproc_nodes;
+    unproc_nodes.emplace(&root, rootbox);
     while(!unproc_nodes.empty()) {
         //std::cout << "Processing node...\n";
-        auto& current = *unproc_nodes.top();
+        auto p = unproc_nodes.top();
+        auto& current = *p.first;
+        auto box = p.second;
         unproc_nodes.pop();
 
         if(current.depth == max_depth) {
@@ -213,12 +238,16 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
         }
 
         // subdivide
-        current.children = new OctreeNode[8]; // we'll probably want to use more efficient allocation for this
+        #ifdef OCTREE_PARTITIONER_BLOCK_ALLOCATION
+        current.children = node_alloc.allocate();
+        #else
+        current.children = new OctreeNode[8]; 
+        #endif
         num_nodes += 8;
         
         // to write clean code for the subidivision process, I don't hardcode everything out and instead use loops that repeadetly split the box on an axis
         std::vector<AABB> resultant_boxes;
-        resultant_boxes.push_back(current.box);
+        resultant_boxes.push_back(box);
         for(int i = 0; i < 3; i++) {
             std::vector<AABB> temp_box_buffer;
 
@@ -255,7 +284,7 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
         }
 
         for(int i = 0; i < 8; i++) {
-            current.children[i].box = resultant_boxes[i];
+            current.children[i].center = resultant_boxes[i].get_center();
             current.children[i].depth = current.depth + 1;
             current.children[i].id = next_id;
             next_id++;
@@ -286,10 +315,10 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
         #else
         #pragma omp parallel for
         for(int i = 0; i < 8; i++) {
-            find_cells_in_box(univ, current, current.children[i]);
+            find_cells_in_box(univ, current, current.children[i], resultant_boxes[i]);
             if(current.children[i].cells.size() > target_cells_per_node) {
                 push_mutex.lock();
-                unproc_nodes.push(&current.children[i]);
+                unproc_nodes.emplace(&current.children[i], resultant_boxes[i]);
                 push_mutex.unlock();
             }
         }
@@ -317,6 +346,7 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, const std::string& fi
 }
 
 OctreePartitioner::~OctreePartitioner() {
+    #ifndef OCTREE_PARTITIONER_BLOCK_ALLOCATION
     std::stack<OctreeNode*> unprocessed_nodes;
     unprocessed_nodes.push(&root);
 
@@ -337,6 +367,10 @@ OctreePartitioner::~OctreePartitioner() {
         delete[] ptr;
     }
 
+
+    #endif
+    // else, the destructor of the node alloc will take care of things for us
+
     std::cout << "Successful octree uses:\t" << octree_use_count << '\n';
     std::cout << "Octree fallback uses:\t" << fallback_use_count << '\n';
     std::cout << "Again, construction time:\t" << t.elapsed() << '\n';
@@ -356,7 +390,7 @@ const vector<int32_t>& OctreePartitioner::get_cells(Position r, Direction u) con
     //#endif
 
 
-    if(!root.box.contains(r)) {
+    if(!bounds.contains(r)) {
         #ifdef FALLBACK_OPTIMIZATIONS
         return get_cells_fallback(r, u);
         #else
@@ -372,8 +406,7 @@ const vector<int32_t>& OctreePartitioner::get_cells(Position r, Direction u) con
     const OctreeNode* current = &root;
 
     while(!current->is_leaf()) {
-        auto center = current->box.get_center();
-        int idx = 4 * int(r.x < center.x) + 2 * int(r.y < center.y) + int(r.z < center.z);
+        int idx = 4 * int(r.x < current->center.x) + 2 * int(r.y < current->center.y) + int(r.z < current->center.z);
         current = &current->children[idx];
         
     }
@@ -400,7 +433,7 @@ const vector<int32_t>& OctreePartitioner::get_cells_fallback(Position r, Directi
 struct OctreeNodeSerialized {
     int id;
 
-    AABB box;
+    vec3 center;
     bool is_leaf;
 
     // parent data
@@ -428,7 +461,7 @@ void OctreePartitioner::write_to_file(const std::string& file_path){
         OctreeNodeSerialized ser;
 
         ser.id = cur.id;
-        ser.box = cur.box;
+        ser.center = cur.center;
 
         if(ser.is_leaf = cur.is_leaf()) {
             ser.num_contained_cells = cur.cells.size();
@@ -497,7 +530,7 @@ void OctreePartitioner::read_from_file(const std::string& file_path) {
         OctreeNodeSerialized& ser = node_data[index];
 
         cur.id = ser.id;
-        cur.box = ser.box;
+        cur.center = ser.center;
 
         if(ser.is_leaf) {
             cur.cells.reserve(ser.num_contained_cells);
@@ -546,5 +579,8 @@ search_octree:
                 if child contains point
                 current = child
                 break
+
+
+
 
 */

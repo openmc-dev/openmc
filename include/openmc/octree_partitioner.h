@@ -7,6 +7,8 @@
 #include <vector>
 #include <set>
 
+//#define OCTREE_PARTITIONER_BLOCK_ALLOCATION
+
 namespace openmc {
 
 using namespace std;
@@ -16,12 +18,24 @@ struct OctreeNode {
 
   bool is_leaf() const;
   
-  AABB box;
+  vec3 center;
   std::vector<int> cells;
   OctreeNode* children; // if this is a leaf, then children will be null
   int depth;
   int id;
 };
+
+#ifdef OCTREE_PARTITIONER_BLOCK_ALLOCATION
+class OctreeNodeAllocator {
+public:
+  OctreeNodeAllocator();
+  ~OctreeNodeAllocator();
+  OctreeNode* allocate();
+private:
+  std::vector<OctreeNode*> pools;
+  int last_pool_next_index;
+};
+#endif
 
 class OctreePartitioner : public UniversePartitioner {
 public:
@@ -38,11 +52,16 @@ public:
 private:
   //! The root node is where the searching begins
   OctreeNode root;
+  AABB bounds;
 
   int num_nodes;
 
   // fallback if octree doesn't work
   ZPlanePartitioner fallback;
+
+  #ifdef OCTREE_PARTITIONER_BLOCK_ALLOCATION
+  OctreeNodeAllocator node_alloc;
+  #endif
 
 };
 

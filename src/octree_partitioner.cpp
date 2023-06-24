@@ -372,26 +372,10 @@ const vector<int32_t>& OctreePartitioner::get_cells(Position r, Direction u) con
     const OctreeNode* current = &root;
 
     while(!current->is_leaf()) {
-        bool inside = false;
-        for(int i = 0; i < 8; i++) {
-            const OctreeNode& child = current->children[i];
-            if(child.box.contains(r)) {
-                current = &child;
-                inside = true;
-                break;
-            }
-        }
+        auto center = current->box.get_center();
+        int idx = 4 * int(r.x < center.x) + 2 * int(r.y < center.y) + int(r.z < center.z);
+        current = &current->children[idx];
         
-        if(!inside) {
-            #ifdef OCTREE_DEBUG_INFO
-            octree_console_mutex.lock();
-            #endif
-            std::cout << "FATAL ERROR: particle at " << r << " is not contained by any child! It is likely that floating point precision is too low!" << std::endl;
-            #ifdef OCTREE_DEBUG_INFO
-            octree_console_mutex.unlock();
-            #endif
-            abort();
-        }
     }
 
     #ifdef FALLBACK_OPTIMIZATIONS

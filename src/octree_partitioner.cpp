@@ -7,31 +7,89 @@
 #include <queue>
 #include <thread>
 #include <assert.h>
-#include <mutex>
+#include <omp.h>
 
 #include <fstream>
-
-//#define CXX_THREAD_MT_CONSTRUCTION
-#ifdef CXX_THREAD_MT_CONSTRUCTION
-#include <condition_variable>
-#endif
 
 #define OCTREE_DEBUG_INFO
 
 namespace openmc {
 
+struct CellPoint {
+    vec3 pos;
+    int cell;
+};
 
 int octree_use_count = 0;
 int fallback_use_count = 0;
 
 #ifdef OCTREE_DEBUG_INFO
-std::mutex octree_console_mutex;
+omp_lock_t ocm; // short for octree console mutex
+bool ocm_init = false; // unlikely that it will be double init
+
+// shorten some stuff
+#define LOCK_OCM() omp_set_lock(&ocm)
+#define UNLOCK_OCM() omp_unset_lock(&ocm)
 #endif
 
 OctreeNode::OctreeNode() : children(nullptr), depth(0) {}
 
 bool OctreeNode::is_leaf() const {
     return (children == nullptr);
+}
+
+int OctreeNode::get_containing_child_index(const vec3& r) const {
+    int idx = 4 * int(r.x < center.x) + 2 * int(r.y < center.y) + int(r.z < center.z);
+    return idx;
+}
+
+OctreeNode& OctreeNode::get_containing_child(const vec3& r) const {
+    return children[get_containing_child_index(r)];
+}
+
+std::vector<AABB> OctreeNode::subdivide(const AABB& parent) {
+    std::vector<AABB> resultant_boxes;
+    resultant_boxes.push_back(parent);
+    for(int i = 0; i < 3; i++) {
+        std::vector<AABB> temp_box_buffer;
+
+        for(const auto& box : resultant_boxes) {
+            // split on i-th axis
+            float midpoint = box.get_center()[i];
+
+            int j = ((i + 1) % 3);
+            int k = ((i + 2) % 3);
+
+            AABB splitted_boxes[2];
+            vec3 extension_point[2];
+
+            extension_point[0][i] = midpoint;
+            extension_point[0][j] = box.min[j];
+            extension_point[0][k] = box.min[k];
+
+            extension_point[1][i] = midpoint;
+            extension_point[1][j] = box.max[j];
+            extension_point[1][k] = box.max[k];
+
+            splitted_boxes[0].extend(box.max);
+            splitted_boxes[0].extend(extension_point[0]);
+
+            splitted_boxes[1].extend(box.min);
+            splitted_boxes[1].extend(extension_point[1]);
+
+            temp_box_buffer.push_back(splitted_boxes[0]);
+            temp_box_buffer.push_back(splitted_boxes[1]);
+        }
+
+        // move the results to the next splitting stage
+        resultant_boxes = temp_box_buffer;
+    }
+
+    for(int i = 0; i < 8; i++) {
+        children[i].center = resultant_boxes[i].get_center();
+    }
+
+    return resultant_boxes;
 }
  
 void find_cells_in_box(const Universe& univ, const OctreeNode& parent, OctreeNode& child, const AABB& box) {
@@ -45,9 +103,9 @@ void find_cells_in_box(const Universe& univ, const OctreeNode& parent, OctreeNod
     const int POINTS_LOGGING_THRESHOLD = 16384; 
     const int POINTS_LOGGING_INCREMENT = 5000;
     if(num_search_points > POINTS_LOGGING_THRESHOLD) {
-        octree_console_mutex.lock();
+        LOCK_OCM();
         std::cout << "Note: searching node " << child.id << " for " << num_search_points << " points.\n";
-        octree_console_mutex.unlock();
+        UNLOCK_OCM();
     }
 
     Timer t;
@@ -55,77 +113,28 @@ void find_cells_in_box(const Universe& univ, const OctreeNode& parent, OctreeNod
     #endif
 
     std::vector<bool> skip_cell(parent.cells.size());
-    fill(skip_cell.begin(), skip_cell.end(), false); // maybe it initializes to false? but just making sure
-
-    //std::vector<int> temp_buf;
-    //temp_buf.reserve(parent.cells.size());
-
-    child.cells.reserve(parent.cells.size() * 2);
+    child.cells.reserve(parent.cells.size());
     for(int i = 0; i < num_search_points; i++) {
         #ifdef OCTREE_DEBUG_INFO
         if(num_search_points > POINTS_LOGGING_THRESHOLD && i % POINTS_LOGGING_INCREMENT == 0 && i != 0) {
-            octree_console_mutex.lock();
+            LOCK_OCM();
             std::cout << "Node " << child.id << ":\tcurrently searched " << i << " out of " << num_search_points << " points (" << (100.0 * i) / num_search_points 
                       << "%) and found " << child.cells.size() << " unique cells. ";
             std::cout << "ETA is " << ((float)num_search_points / i * t.elapsed()) - t.elapsed() << " more seconds for this node.\n";
             std::cout.flush(); // you may want to comment this out
-            octree_console_mutex.unlock();
+            UNLOCK_OCM();
         }
         #endif
 
         vec3 rand_pos;
 
         // gen random point
-        // #pragma omp critical
-        {
-            rand_pos.x = uniform_distribution(box.min.x, box.max.x, &octree_prng_seed[0]);
-            rand_pos.y = uniform_distribution(box.min.y, box.max.y, &octree_prng_seed[1]);
-            rand_pos.z = uniform_distribution(box.min.z, box.max.z, &octree_prng_seed[2]);
-        }
+        rand_pos.x = uniform_distribution(box.min.x, box.max.x, &octree_prng_seed[0]);
+        rand_pos.y = uniform_distribution(box.min.y, box.max.y, &octree_prng_seed[1]);
+        rand_pos.z = uniform_distribution(box.min.z, box.max.z, &octree_prng_seed[2]);
 
         univ.find_cell_in_list(parent.cells, child.cells, skip_cell, rand_pos);
-
-        // #pragma omp critical
-        /*
-        {
-            for(int cell : temp_buf) {
-                child.cells.push_back(cell);
-            }
-        }
-        */
     }
-
-    
-
-#if 0
-    if(child.cells.empty()) {
-        return;
-    }
-
-    // make sure that the vector only contains unique elements
-    std::sort(child.cells.begin(), child.cells.end());
-    int i = 1, j = 1;
-    int prev_value = child.cells[0];
-    for(; j < child.cells.size(); j++) {
-        if(child.cells[j] == prev_value) {
-            continue;
-        } else {
-            child.cells[i] = child.cells[j];
-            prev_value = child.cells[j];
-            i++;
-        }
-    }
-    child.cells.resize(i);
-#else
-    std::set<int> unique_cells;
-    for(int cell : child.cells) {
-        unique_cells.emplace(cell);
-    }
-    child.cells.clear();
-    for(int cell : unique_cells) {
-        child.cells.push_back(cell);
-    }
-#endif
 } 
 
 #ifdef OCTREE_PARTITIONER_BLOCK_ALLOCATION
@@ -150,40 +159,14 @@ OctreeNode* OctreeNodeAllocator::allocate() {
 }
 #endif
 
-void construction_reporter_thread(int max_tree_size, int* num_nodes, bool* currently_constructing) {
-    using namespace std::chrono_literals;
-    std::this_thread::sleep_for(500ms); // wait for construction to get going
-
-    int last_num_nodes = *num_nodes;
-    while(*currently_constructing) {
-        if(*num_nodes != last_num_nodes) {
-            std::cout << "Tree size is " << *num_nodes << "\t(" << (100.0 * *num_nodes) / max_tree_size << "% of max tree size)\n";
-            last_num_nodes = *num_nodes;
-        }
-        std::this_thread::sleep_for(1000ms);
-    }
-}
-
-#ifdef CXX_THREAD_MT_CONSTRUCTION 
-void process_child(
-    const Universe* univ, const OctreeNode* parent, OctreeNode
-  int successful_use_count;
-  int fallback_use_count;ndition_variable* launcher_waker
-) {
-    alive_threads++;
-    find_cells_in_box(*univ, *parent, *child);
-    if(child->cells.size() > target_cells_per_node) {
-        push_mutex->lock();
-        unproc_nodes->push(child);
-        push_mutex->unlock();
-    }
-    alive_threads--;
-    launcher_waker->notify_all();
-}
-#endif
-
 Timer t;
+const double NUM_CELL_SEARCH_POINT_DENSITY = 32.0;
 OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_node, int max_depth, const std::string& file_path) : fallback(univ) {
+    if(!ocm_init) {
+        ocm_init = true;
+        omp_init_lock(&ocm);
+    }
+
     t.start();
     std::cout << "====================OCTREE CONSTRUCTION===================\n";
     int max_tree_size = (2 << (3 * max_depth));
@@ -198,31 +181,122 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
 
     bounds = rootbox;
     root.center = rootbox.get_center();
-    root.cells = univ.cells_;
+    //root.cells = univ.cells_;
     root.depth = 0;
     root.id = 0;
 
-    std::sort(root.cells.begin(), root.cells.end());
-
-    if(root.cells.size() <= target_cells_per_node) {
-        std::cout << "Root has only " << root.cells.size() << " cells, which is below the target cells per node, " << target_cells_per_node << ". Octree will have depth of only 1.\n";
+    if(univ.cells_.size() <= target_cells_per_node) {
+        std::cout << "Universe has only " << root.cells.size() << " cells, which is below the target cells per node, " 
+                  << target_cells_per_node << ". Octree will have depth of only 1.\n";
+        root.cells = univ.cells_;
         return;
     }
 
-    #ifdef CXX_THREAD_MT_CONSTRUCTION
-    int alive_threads = 0;
-    int available_threads = 15; // TODO: fetch this from the OS
-    std::mutex launch_mutex;
-    std::condition_variable launcher_waker;
-    std::vector<std::thread*> searcher_threads;
-    #endif
+    const int num_search_points = (int)(bounds.volume() * NUM_CELL_SEARCH_POINT_DENSITY);
+    std::vector<CellPoint> points_in_bounds(num_search_points);
 
+    omp_lock_t progess_display_lock;
+    omp_init_lock(&progess_display_lock);
+
+    int total_points_searched = 0;
+    #pragma omp parallel for
+    for(int i = 0; i < num_search_points; i++) {
+        #pragma omp atomic
+        total_points_searched++;
+
+        if(total_points_searched % 500000 == 0 && total_points_searched != 0) {
+            omp_set_lock(&progess_display_lock);
+            std::cout << "Currently searched " << total_points_searched << " out of " << num_search_points << " points (" << (100.0 * total_points_searched) / num_search_points << "%).\tETA is " << (float(num_search_points) / total_points_searched * t.elapsed()) - t.elapsed() << "\tmore seconds for this node.\n";
+            std::cout.flush();
+            omp_unset_lock(&progess_display_lock);
+        }
+
+        auto& point = points_in_bounds[i];
+
+        uint64_t seed[3] = {
+            (uint64_t)i, (uint64_t)(num_search_points + i), (uint64_t)(2 * num_search_points + i)
+        };
+
+        for(int j = 0; j < 3; j++) {
+            point.pos[j] = uniform_distribution(bounds.min[j], bounds.max[j], &seed[j]);
+        }
+
+        Direction dummy_dir{1.0, 0.0, 0.0};
+
+        const auto& possible_cells = fallback.get_cells(point.pos, dummy_dir);
+        point.cell = univ.find_cell_for_point(possible_cells, point.pos);
+    }
+
+
+    std::cout << "Done searching for points! Beginning organization of points in octree...\n";
+
+    struct OctreeConstructionTask {
+        OctreeNode* node;
+        AABB box;
+        std::vector<CellPoint> points;
+
+        OctreeConstructionTask() = default;
+        OctreeConstructionTask(OctreeNode* n, const AABB& b, const std::vector<CellPoint>& p) : node(n), box(b), points(p) {}
+    };
+
+    std::stack<OctreeConstructionTask> oct_unproc;
+    oct_unproc.emplace(&root, bounds, points_in_bounds);
+    while(!oct_unproc.empty()) {
+        auto cur_task = oct_unproc.top();
+        oct_unproc.pop();
+
+        // subdivide
+        #ifdef OCTREE_PARTITIONER_BLOCK_ALLOCATION
+        cur_task.node->children = node_alloc.allocate();
+        #else
+        cur_task.node->children = new OctreeNode[8]; 
+        #endif
+
+        auto boxes = cur_task.node->subdivide(cur_task.box);
+
+        OctreeConstructionTask child_tasks[8];
+        for(int i = 0; i < 8; i++) {
+            child_tasks[i].box = boxes[i];
+            child_tasks[i].node = &cur_task.node->children[i];
+        }
+
+        for(const auto& point : cur_task.points) {
+            child_tasks[cur_task.node->get_containing_child_index(point.pos)].points.push_back(point);
+        }
+
+        for(int i = 0; i < 8; i++) {
+            sstd:;set<int> unique_cells;
+
+            for(const auto& point : child_tasks[i].points) {
+                unique_cells.emplace(point.cell);
+            }
+
+            if(unique_cells.size() > target_cells_per_node) {
+                oct_unproc.push(child_tasks[i]);
+            } else {
+                child_tasks[i].node->cells.resize(unique_cells.size());
+                for(int cell : unique_cells) {
+                    child_tasks[i].node->cells.push_back(cell);
+                }
+            }
+        }
+    }
+
+    std::cout << "Done sorting points into octree!\n";
+
+
+
+
+
+
+
+
+
+#if 0
     int next_id = 1;
     num_nodes = 1;
-    bool currently_constructing = true;
-    std::thread reporter_thread(construction_reporter_thread, max_tree_size, &num_nodes, &currently_constructing);
 
-    std::mutex push_mutex;
+    omp_lock_t push_lock;
 
     std::stack<std::pair<OctreeNode*, AABB>> unproc_nodes;
     unproc_nodes.emplace(&root, rootbox);
@@ -290,49 +364,21 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
             next_id++;
         }
 
-        // for each child
-        #ifdef CXX_THREAD_MT_CONSTRUCTION
-        #error C++ Thread MT is not finished yet
-        searcher_threads.clear();
-        for(int i = 0; i < 8; i++) {
-            bool had_to_wait = false;
-            
-            while(alive_threads < available_threads) {
-                launcher_waker.wait();
-            }
 
-            launch_mutex.lock();
-            searcher_threads.push_back(new std::thread(process_child, 
-                &univ, &current, &current.children[i], &unproc_nodes,
-                &push_mutex, target_cells_per_node, &alive_threads, &launcher_waker
-            ));
-            launch_mutex.unlock();
-        }
-
-        for(auto worker : searcher_threads) {
-            worker->join();
-        }
-        #else
         #pragma omp parallel for
         for(int i = 0; i < 8; i++) {
             find_cells_in_box(univ, current, current.children[i], resultant_boxes[i]);
             if(current.children[i].cells.size() > target_cells_per_node) {
-                push_mutex.lock();
+                omp_set_lock(&push_lock);
                 unproc_nodes.emplace(&current.children[i], resultant_boxes[i]);
-                push_mutex.unlock();
+                omp_unset_lock(&push_lock);
             }
         }
-        #endif
-
-        // free up memory
-        current.cells.clear();
     }    
+#endif
 
     t.stop();
     std::cout << "Construction took " << t.elapsed() << " seconds.\n";
-
-    currently_constructing = false;
-    reporter_thread.join();
 
     // now, we write the octree to disk if a path is specified
     if(file_path.size() != 0) {
@@ -406,9 +452,7 @@ const vector<int32_t>& OctreePartitioner::get_cells(Position r, Direction u) con
     const OctreeNode* current = &root;
 
     while(!current->is_leaf()) {
-        int idx = 4 * int(r.x < current->center.x) + 2 * int(r.y < current->center.y) + int(r.z < current->center.z);
-        current = &current->children[idx];
-        
+        current = &current->get_containing_child(r);
     }
 
     #ifdef FALLBACK_OPTIMIZATIONS
@@ -582,5 +626,57 @@ search_octree:
 
 
 
+proper mt construction algo? multiple threads exec this loop:
+    finished = false
+    push root to unsplit node stack
+    while true
+        update info to console if needed
 
+        if finished
+            break
+        else if unsplit nodes remain
+            split nodes
+            push split results to unsearched node stack
+            wake threads
+        else if  unsearched nodes remain
+            search node
+            if node should be split
+                push to unsplit node stack
+            else if all other threads are sleeping
+                finished = true
+            wake threads
+        else
+            sleep
+    end while 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    older psuedocode:
+
+        if more nodes to search points for
+            search points
+            if should split
+                push to split stack
+            else if all other threads are asleep
+                mark should exit flag
+                wake threads
+        else if more unsplit nodes
+            split nodes and push to searching stack
+            wake threads
+        else
+            sleep
 */

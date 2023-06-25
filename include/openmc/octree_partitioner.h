@@ -7,7 +7,7 @@
 #include <vector>
 #include <set>
 
-//#define OCTREE_PARTITIONER_BLOCK_ALLOCATION
+#define OCTREE_PARTITIONER_BLOCK_ALLOCATION
 
 namespace openmc {
 
@@ -17,6 +17,9 @@ struct OctreeNode {
   OctreeNode();
 
   bool is_leaf() const;
+  int get_containing_child_index(const vec3& pos) const;
+  OctreeNode& get_containing_child(const vec3& pos) const;
+  std::vector<AABB> subdivide(const AABB& parent);
   
   vec3 center;
   std::vector<int> cells;

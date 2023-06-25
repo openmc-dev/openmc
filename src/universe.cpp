@@ -104,6 +104,24 @@ void Universe::find_cell_in_list(const std::vector<int>& cells_to_search, std::v
   }
 }
 
+int Universe::find_cell_for_point(const std::vector<int>& cells_to_search, const Position& r) const {
+  for (int i = 0; i < cells_to_search.size(); i++) {
+    int32_t i_cell = cells_to_search[i];
+    // Check if this cell contains the particle;
+    Direction u {0.0, 0.0, 0.0};
+    int32_t surf = false;
+    if (model::cells[i_cell]->contains(r, u, surf)) {
+      return i_cell;
+    }
+  }
+
+  return -1;
+}
+
+int Universe::find_cell_for_point(const Position& r) const {
+  return find_cell_for_point(cells_, r);
+}
+
 BoundingBox Universe::bounding_box() const
 {
   BoundingBox bbox = {INFTY, -INFTY, INFTY, -INFTY, INFTY, -INFTY};

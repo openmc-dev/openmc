@@ -7,13 +7,12 @@ nuclide names as row indices and reaction names as column indices.
 import tempfile
 from copy import deepcopy
 
-from pandas import DataFrame, read_csv
+from pandas import DataFrame, read_csv, Series
 import numpy as np
 
 from openmc.checkvalue import check_type, check_value, check_iterable_type
 from openmc.exceptions import DataError
-from openmc.mgxs import EnergyGroups, ArbitraryXS, FissionXS
-from openmc import Tallies, StatePoint, Materials
+from openmc import StatePoint, Materials
 import openmc
 from .chain import Chain, REACTIONS
 from .coupled_operator import _find_cross_sections, _get_nuclides_with_data
@@ -67,26 +66,36 @@ class MicroXS(DataFrame):
             Cross section data in [b]
 
         """
-        groups = EnergyGroups(energy_bounds)
-
         # Set up the reaction tallies
         original_tallies = model.tallies
         original_materials = deepcopy(model.materials)
-        tallies = Tallies()
         xs = {}
-        reactions, diluted_materials = cls._add_dilute_nuclides(chain_file,
-                                                                model,
-                                                                dilute_initial)
+        reactions, burnable_nucs, diluted_materials = cls._add_dilute_nuclides(
+            chain_file, model, dilute_initial)
         model.materials = diluted_materials
 
-        for rx in reactions:
-            if rx == 'fission':
-                xs[rx] = FissionXS(domain=reaction_domain,
-                                   energy_groups=groups, by_nuclide=True)
-            else:
-                xs[rx] = ArbitraryXS(rx, domain=reaction_domain,
-                                     energy_groups=groups, by_nuclide=True)
-            tallies += xs[rx].tallies.values()
+        energy_filter = openmc.EnergyFilter(energy_bounds)
+        if isinstance(reaction_domain, openmc.Material):
+            domain_filter = openmc.MaterialFilter([reaction_domain])
+        elif isinstance(reaction_domain, openmc.Cell):
+            domain_filter = openmc.CellFilter([reaction_domain])
+        elif isinstance(reaction_domain, openmc.Universe):
+            domain_filter = openmc.UniverseFilter([reaction_domain])
+        else:
+            raise ValueError(f"Unsupported domain type: {type(reaction_domain)}")
+
+        # TODO: Right now, we use all nuclides from the material but it probably
+        # should be based on the burnable nuclides
+        rr_tally = openmc.Tally(name='MicroXS RR')
+        rr_tally.filters = [domain_filter, energy_filter]
+        rr_tally.nuclides = reaction_domain.get_nuclides()
+        rr_tally.multiply_density = False
+        rr_tally.scores = reactions
+
+        flux_tally = openmc.Tally(name='MicroXS flux')
+        flux_tally.filters = [domain_filter, energy_filter]
+        flux_tally.scores = ['flux']
+        tallies = openmc.Tallies([rr_tally, flux_tally])
 
         model.tallies = tallies
 
@@ -98,14 +107,22 @@ class MicroXS(DataFrame):
             statepoint_path = model.run(**run_kwargs)
 
             with StatePoint(statepoint_path) as sp:
-                for rx in xs:
-                    xs[rx].load_from_statepoint(sp)
+                rr_tally = sp.tallies[rr_tally.id]
+                rr_tally._read_results()
+                flux_tally = sp.tallies[flux_tally.id]
+                flux_tally._read_results()
 
-        # Build the DataFrame
+        # Get reaction rates and flux values
+        reaction_rates = rr_tally.mean.sum(axis=0)  # (nuclides, reactions)
+        flux = flux_tally.mean[0, 0, 0]
+
+        # Divide RR by flux to get microscopic cross sections
+        xs = reaction_rates / flux
+
+        # Build Series objects
         series = {}
-        for rx in xs:
-            df = xs[rx].get_pandas_dataframe(xs_type='micro')
-            series[rx] = df.set_index('nuclide')['mean']
+        for i, rx in enumerate(reactions):
+            series[rx] = Series(xs[..., i], index=rr_tally.nuclides)
 
         # Revert to the original tallies and materials
         model.tallies = original_tallies
@@ -170,7 +187,7 @@ class MicroXS(DataFrame):
                                                      dilute_density)
             diluted_materials.append(material)
 
-        return reactions, diluted_materials
+        return reactions, burnable_nucs, diluted_materials
 
     @classmethod
     def from_array(cls, nuclides, reactions, data):

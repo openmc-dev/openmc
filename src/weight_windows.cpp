@@ -611,16 +611,16 @@ void WeightWindows::update_magic(
     // select all
     auto group_view = xt::view(new_bounds, e);
 
-    double group_max = *std::max_element(group_view.begin(), group_view.end());
-    // normalize values in this energy group by the maximum value for this
-    // group
-    if (group_max > 0.0)
-      group_view /= group_max;
-
     // divide by volume of mesh elements
     for (int i = 0; i < group_view.size(); i++) {
       group_view[i] /= mesh_vols[i];
     }
+
+    double group_max = *std::max_element(group_view.begin(), group_view.end());
+    // normalize values in this energy group by the maximum value for this
+    // group
+    if (group_max > 0.0)
+      group_view /= 2.0 * group_max;
   }
 
   // make sure that values where the mean is zero are set s.t. the weight window
@@ -659,7 +659,7 @@ void WeightWindows::check_tally_update_compatibility(const Tally* tally)
     if (allowed_filters.find(filter_pair.first) == allowed_filters.end()) {
       fatal_error(fmt::format("Invalid filter type '{}' found on tally "
                               "used for weight window generation.",
-        model::tally_filters[filter_pair.second]->type_str()));
+        model::tally_filters[tally->filters(filter_pair.second)]->type_str()));
     }
   }
 
@@ -695,431 +695,421 @@ void WeightWindows::check_tally_update_compatibility(const Tally* tally)
   }
 }
 
-  void WeightWindows::to_hdf5(hid_t group) const
-  {
-    hid_t ww_group =
-      create_group(group, fmt::format("weight_windows_{}", id()));
+void WeightWindows::to_hdf5(hid_t group) const
+{
+  hid_t ww_group = create_group(group, fmt::format("weight_windows_{}", id()));
 
-    write_dataset(ww_group, "mesh", this->mesh()->id());
-    write_dataset(
-      ww_group, "particle_type", openmc::particle_type_to_str(particle_type_));
-    write_dataset(ww_group, "energy_bounds", energy_bounds_);
-    write_dataset(ww_group, "lower_ww_bounds", lower_ww_);
-    write_dataset(ww_group, "upper_ww_bounds", upper_ww_);
-    write_dataset(ww_group, "survival_ratio", survival_ratio_);
-    write_dataset(ww_group, "max_lower_bound_ratio", max_lb_ratio_);
-    write_dataset(ww_group, "max_split", max_split_);
-    write_dataset(ww_group, "weight_cutoff", weight_cutoff_);
+  write_dataset(ww_group, "mesh", this->mesh()->id());
+  write_dataset(
+    ww_group, "particle_type", openmc::particle_type_to_str(particle_type_));
+  write_dataset(ww_group, "energy_bounds", energy_bounds_);
+  write_dataset(ww_group, "lower_ww_bounds", lower_ww_);
+  write_dataset(ww_group, "upper_ww_bounds", upper_ww_);
+  write_dataset(ww_group, "survival_ratio", survival_ratio_);
+  write_dataset(ww_group, "max_lower_bound_ratio", max_lb_ratio_);
+  write_dataset(ww_group, "max_split", max_split_);
+  write_dataset(ww_group, "weight_cutoff", weight_cutoff_);
 
-    close_group(ww_group);
-  }
+  close_group(ww_group);
+}
 
-  WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
-  {
-    // read information from the XML node
-    int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
-    int32_t mesh_idx = model::mesh_map[mesh_id];
-    max_realizations_ = std::stoi(get_node_value(node, "max_realizations"));
+WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
+{
+  // read information from the XML node
+  int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
+  int32_t mesh_idx = model::mesh_map[mesh_id];
+  max_realizations_ = std::stoi(get_node_value(node, "max_realizations"));
 
-    int active_batches = settings::n_batches - settings::n_inactive;
-    if (max_realizations_ > active_batches) {
-      auto msg = fmt::format(
-        "The maximum number of specified tally realizations ({}) is "
-        "greater than the number of active batches ({}).",
+  int active_batches = settings::n_batches - settings::n_inactive;
+  if (max_realizations_ > active_batches) {
+    auto msg =
+      fmt::format("The maximum number of specified tally realizations ({}) is "
+                  "greater than the number of active batches ({}).",
         max_realizations_, active_batches);
-      warning(msg);
-    }
-    auto tmp_str = get_node_value(node, "particle_type", true, true);
-    auto particle_type = str_to_particle_type(tmp_str);
+    warning(msg);
+  }
+  auto tmp_str = get_node_value(node, "particle_type", true, true);
+  auto particle_type = str_to_particle_type(tmp_str);
 
-    update_interval_ = std::stoi(get_node_value(node, "update_interval"));
-    on_the_fly_ = get_node_value_bool(node, "on_the_fly");
+  update_interval_ = std::stoi(get_node_value(node, "update_interval"));
+  on_the_fly_ = get_node_value_bool(node, "on_the_fly");
 
-    std::vector<double> e_bounds;
-    if (check_for_node(node, "energy_bounds")) {
-      e_bounds = get_node_array<double>(node, "energy_bounds");
-    } else {
-      int p_type = static_cast<int>(particle_type);
-      e_bounds.push_back(data::energy_min[p_type]);
-      e_bounds.push_back(data::energy_max[p_type]);
-    }
+  std::vector<double> e_bounds;
+  if (check_for_node(node, "energy_bounds")) {
+    e_bounds = get_node_array<double>(node, "energy_bounds");
+  } else {
+    int p_type = static_cast<int>(particle_type);
+    e_bounds.push_back(data::energy_min[p_type]);
+    e_bounds.push_back(data::energy_max[p_type]);
+  }
 
-    // create a tally based on the WWG information
-    Tally* ww_tally = Tally::create();
-    tally_idx_ = model::tally_map[ww_tally->id()];
-    ww_tally->set_scores({"flux"});
+  // create a tally based on the WWG information
+  Tally* ww_tally = Tally::create();
+  tally_idx_ = model::tally_map[ww_tally->id()];
+  ww_tally->set_scores({"flux"});
 
-    // see if there's already a mesh filter using this mesh
-    bool found_mesh_filter = false;
-    for (const auto& f : model::tally_filters) {
-      if (f->type() == FilterType::MESH) {
-        const auto* mesh_filter = dynamic_cast<MeshFilter*>(f.get());
-        if (mesh_filter->mesh() == mesh_idx && !mesh_filter->translated()) {
-          ww_tally->add_filter(f.get());
-          found_mesh_filter = true;
-          break;
-        }
+  // see if there's already a mesh filter using this mesh
+  bool found_mesh_filter = false;
+  for (const auto& f : model::tally_filters) {
+    if (f->type() == FilterType::MESH) {
+      const auto* mesh_filter = dynamic_cast<MeshFilter*>(f.get());
+      if (mesh_filter->mesh() == mesh_idx && !mesh_filter->translated()) {
+        ww_tally->add_filter(f.get());
+        found_mesh_filter = true;
+        break;
       }
     }
+  }
 
-    if (!found_mesh_filter) {
-      auto mesh_filter = Filter::create("mesh");
-      openmc_mesh_filter_set_mesh(
-        mesh_filter->index(), model::mesh_map[mesh_id]);
-      ww_tally->add_filter(mesh_filter);
-    }
+  if (!found_mesh_filter) {
+    auto mesh_filter = Filter::create("mesh");
+    openmc_mesh_filter_set_mesh(mesh_filter->index(), model::mesh_map[mesh_id]);
+    ww_tally->add_filter(mesh_filter);
+  }
 
-    if (e_bounds.size() > 0) {
-      auto energy_filter = Filter::create("energy");
-      openmc_energy_filter_set_bins(
-        energy_filter->index(), e_bounds.size(), e_bounds.data());
-      ww_tally->add_filter(energy_filter);
-    }
+  if (e_bounds.size() > 0) {
+    auto energy_filter = Filter::create("energy");
+    openmc_energy_filter_set_bins(
+      energy_filter->index(), e_bounds.size(), e_bounds.data());
+    ww_tally->add_filter(energy_filter);
+  }
 
-    // add a particle filter
-    auto particle_filter = Filter::create("particle");
-    auto pf = dynamic_cast<ParticleFilter*>(particle_filter);
-    pf->set_particles({&particle_type, 1});
-    ww_tally->add_filter(particle_filter);
+  // add a particle filter
+  auto particle_filter = Filter::create("particle");
+  auto pf = dynamic_cast<ParticleFilter*>(particle_filter);
+  pf->set_particles({&particle_type, 1});
+  ww_tally->add_filter(particle_filter);
 
-    // set method and parameters for updates
-    method_ = get_node_value(node, "method");
-    if (method_ == "magic") {
-      // parse non-default update parameters if specified
-      if (check_for_node(node, "update_parameters")) {
-        pugi::xml_node params_node = node.child("update_parameters");
-        if (check_for_node(params_node, "value"))
-          tally_value_ = get_node_value(params_node, "value");
-        if (check_for_node(params_node, "threshold"))
-          threshold_ = std::stod(get_node_value(params_node, "threshold"));
-        if (check_for_node(params_node, "ratio")) {
-          ratio_ = std::stod(get_node_value(params_node, "ratio"));
-        }
+  // set method and parameters for updates
+  method_ = get_node_value(node, "method");
+  if (method_ == "magic") {
+    // parse non-default update parameters if specified
+    if (check_for_node(node, "update_parameters")) {
+      pugi::xml_node params_node = node.child("update_parameters");
+      if (check_for_node(params_node, "value"))
+        tally_value_ = get_node_value(params_node, "value");
+      if (check_for_node(params_node, "threshold"))
+        threshold_ = std::stod(get_node_value(params_node, "threshold"));
+      if (check_for_node(params_node, "ratio")) {
+        ratio_ = std::stod(get_node_value(params_node, "ratio"));
       }
-      // check update parameter values
-      if (tally_value_ != "mean" && tally_value_ != "rel_err") {
-        fatal_error(fmt::format("Unsupported tally value '{}' specified for "
-                                "weight window generation.",
-          tally_value_));
-      }
-      if (threshold_ <= 0.0)
-        fatal_error(
-          fmt::format("Invalid relative error threshold '{}' (<= 0.0) "
-                      "specified for weight window generation",
-            ratio_));
-      if (ratio_ <= 1.0)
-        fatal_error(fmt::format("Invalid weight window ratio '{}' (<= 1.0) "
-                                "specified for weight window generation"));
-    } else {
-      fatal_error(fmt::format(
-        "Unknown weight window update method '{}' specified", method_));
     }
-
-    // create a matching weight windows object
-    auto wws = WeightWindows::create();
-    ww_idx_ = wws->index();
-    if (e_bounds.size() > 0)
-      wws->set_energy_bounds(e_bounds);
-    wws->set_mesh(model::mesh_map[mesh_id]);
-    wws->set_particle_type(particle_type);
-    wws->set_defaults();
-  }
-
-  void WeightWindowsGenerator::update() const
-  {
-    const auto& wws = variance_reduction::weight_windows[ww_idx_];
-
-    Tally* tally = model::tallies[tally_idx_].get();
-
-    // if we're beyond the number of max realizations or not at the corrrect
-    // update interval, skip the update
-    if (max_realizations_ < tally->n_realizations_ ||
-        tally->n_realizations_ % update_interval_ != 0)
-      return;
-
-    wws->update_magic(tally, tally_value_, threshold_, ratio_);
-
-    // if we're not doing on the fly generation, reset the tally results once
-    // we're done with the update
-    if (!on_the_fly_)
-      tally->reset();
-
-    // TODO: deactivate or remove tally once weight window generation is
-    // complete
-  }
-
-  //==============================================================================
-  // C API
-  //==============================================================================
-
-  int verify_ww_index(int32_t index)
-  {
-    if (index < 0 || index >= variance_reduction::weight_windows.size()) {
-      set_errmsg(
-        fmt::format("Index '{}' for weight windows is invalid", index));
-      return OPENMC_E_OUT_OF_BOUNDS;
+    // check update parameter values
+    if (tally_value_ != "mean" && tally_value_ != "rel_err") {
+      fatal_error(fmt::format("Unsupported tally value '{}' specified for "
+                              "weight window generation.",
+        tally_value_));
     }
+    if (threshold_ <= 0.0)
+      fatal_error(fmt::format("Invalid relative error threshold '{}' (<= 0.0) "
+                              "specified for weight window generation",
+        ratio_));
+    if (ratio_ <= 1.0)
+      fatal_error(fmt::format("Invalid weight window ratio '{}' (<= 1.0) "
+                              "specified for weight window generation"));
+  } else {
+    fatal_error(fmt::format(
+      "Unknown weight window update method '{}' specified", method_));
+  }
+
+  // create a matching weight windows object
+  auto wws = WeightWindows::create();
+  ww_idx_ = wws->index();
+  if (e_bounds.size() > 0)
+    wws->set_energy_bounds(e_bounds);
+  wws->set_mesh(model::mesh_map[mesh_id]);
+  wws->set_particle_type(particle_type);
+  wws->set_defaults();
+}
+
+void WeightWindowsGenerator::update() const
+{
+  const auto& wws = variance_reduction::weight_windows[ww_idx_];
+
+  Tally* tally = model::tallies[tally_idx_].get();
+
+  // if we're beyond the number of max realizations or not at the corrrect
+  // update interval, skip the update
+  if (max_realizations_ < tally->n_realizations_ ||
+      tally->n_realizations_ % update_interval_ != 0)
+    return;
+
+  wws->update_magic(tally, tally_value_, threshold_, ratio_);
+
+  // if we're not doing on the fly generation, reset the tally results once
+  // we're done with the update
+  if (!on_the_fly_)
+    tally->reset();
+
+  // TODO: deactivate or remove tally once weight window generation is
+  // complete
+}
+
+//==============================================================================
+// C API
+//==============================================================================
+
+int verify_ww_index(int32_t index)
+{
+  if (index < 0 || index >= variance_reduction::weight_windows.size()) {
+    set_errmsg(fmt::format("Index '{}' for weight windows is invalid", index));
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  return 0;
+}
+
+extern "C" int openmc_get_weight_windows_index(int32_t id, int32_t* idx)
+{
+  auto it = variance_reduction::ww_map.find(id);
+  if (it == variance_reduction::ww_map.end()) {
+    set_errmsg(fmt::format("No weight windows exist with ID={}", id));
+    return OPENMC_E_INVALID_ID;
+  }
+
+  *idx = it->second;
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_get_id(int32_t index, int32_t* id)
+{
+  if (int err = verify_ww_index(index))
+    return err;
+
+  const auto& wws = variance_reduction::weight_windows.at(index);
+  *id = wws->id();
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_set_id(int32_t index, int32_t id)
+{
+  if (int err = verify_ww_index(index))
+    return err;
+
+  const auto& wws = variance_reduction::weight_windows.at(index);
+  wws->set_id(id);
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_update_magic(int32_t ww_idx,
+  int32_t tally_idx, const char* value, double threshold, double ratio)
+{
+  if (int err = verify_ww_index(ww_idx))
+    return err;
+
+  if (tally_idx < 0 || tally_idx >= model::tallies.size()) {
+    set_errmsg(fmt::format("Index '{}' for tally is invalid", tally_idx));
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  // get the requested tally
+  const Tally* tally = model::tallies.at(tally_idx).get();
+
+  // get the WeightWindows object
+  const auto& wws = variance_reduction::weight_windows.at(ww_idx);
+
+  wws->update_magic(tally, value, threshold, ratio);
+
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_set_mesh(int32_t ww_idx, int32_t mesh_idx)
+{
+  if (int err = verify_ww_index(ww_idx))
+    return err;
+  const auto& wws = variance_reduction::weight_windows.at(ww_idx);
+  wws->set_mesh(mesh_idx);
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_get_mesh(int32_t ww_idx, int32_t* mesh_idx)
+{
+  if (int err = verify_ww_index(ww_idx))
+    return err;
+  const auto& wws = variance_reduction::weight_windows.at(ww_idx);
+  *mesh_idx = model::mesh_map.at(wws->mesh()->id());
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_set_energy_bounds(
+  int32_t ww_idx, double* e_bounds, size_t e_bounds_size)
+{
+  if (int err = verify_ww_index(ww_idx))
+    return err;
+  const auto& wws = variance_reduction::weight_windows.at(ww_idx);
+  wws->set_energy_bounds({e_bounds, e_bounds_size});
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_get_energy_bounds(
+  int32_t ww_idx, const double** e_bounds, size_t* e_bounds_size)
+{
+  if (int err = verify_ww_index(ww_idx))
+    return err;
+  const auto& wws = variance_reduction::weight_windows[ww_idx].get();
+  *e_bounds = wws->energy_bounds().data();
+  *e_bounds_size = wws->energy_bounds().size();
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_set_particle(int32_t index, int particle)
+{
+  if (int err = verify_ww_index(index))
+    return err;
+
+  const auto& wws = variance_reduction::weight_windows.at(index);
+  wws->set_particle_type(static_cast<ParticleType>(particle));
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_get_particle(int32_t index, int* particle)
+{
+  if (int err = verify_ww_index(index))
+    return err;
+
+  const auto& wws = variance_reduction::weight_windows.at(index);
+  *particle = static_cast<int>(wws->particle_type());
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_get_bounds(int32_t index,
+  const double** lower_bounds, const double** upper_bounds, size_t* size)
+{
+  if (int err = verify_ww_index(index))
+    return err;
+
+  const auto& wws = variance_reduction::weight_windows[index];
+  *size = wws->lower_ww_bounds().size();
+  *lower_bounds = wws->lower_ww_bounds().data();
+  *upper_bounds = wws->upper_ww_bounds().data();
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_set_bounds(int32_t index,
+  const double* lower_bounds, const double* upper_bounds, size_t size)
+{
+  if (int err = verify_ww_index(index))
+    return err;
+
+  const auto& wws = variance_reduction::weight_windows[index];
+  wws->set_bounds({lower_bounds, size}, {upper_bounds, size});
+  return 0;
+}
+
+extern "C" int openmc_extend_weight_windows(
+  int32_t n, int32_t* index_start, int32_t* index_end)
+{
+  if (index_start)
+    *index_start = variance_reduction::weight_windows.size();
+  if (index_end)
+    *index_end = variance_reduction::weight_windows.size() + n - 1;
+  for (int i = 0; i < n; ++i)
+    variance_reduction::weight_windows.push_back(make_unique<WeightWindows>());
+  return 0;
+}
+
+extern "C" size_t openmc_weight_windows_size()
+{
+  return variance_reduction::weight_windows.size();
+}
+
+extern "C" int openmc_weight_windows_export(const char* filename)
+{
+
+  if (!mpi::master)
     return 0;
+
+  std::string name = filename ? filename : "weight_windows.h5";
+
+  write_message(fmt::format("Exporting weight windows to {}...", name), 5);
+
+  hid_t ww_file = file_open(name, 'w');
+
+  // Write file type
+  write_attribute(ww_file, "filetype", "weight_windows");
+
+  // Write revisiion number for state point file
+  write_attribute(ww_file, "version", VERSION_WEIGHT_WINDOWS);
+
+  hid_t weight_windows_group = create_group(ww_file, "weight_windows");
+
+  hid_t mesh_group = create_group(ww_file, "meshes");
+
+  std::vector<int32_t> mesh_ids;
+  std::vector<int32_t> ww_ids;
+  for (const auto& ww : variance_reduction::weight_windows) {
+
+    ww->to_hdf5(weight_windows_group);
+    ww_ids.push_back(ww->id());
+
+    // if the mesh has already been written, move on
+    int32_t mesh_id = ww->mesh()->id();
+    if (std::find(mesh_ids.begin(), mesh_ids.end(), mesh_id) != mesh_ids.end())
+      continue;
+
+    mesh_ids.push_back(mesh_id);
+    ww->mesh()->to_hdf5(mesh_group);
   }
 
-  extern "C" int openmc_get_weight_windows_index(int32_t id, int32_t * idx)
-  {
-    auto it = variance_reduction::ww_map.find(id);
-    if (it == variance_reduction::ww_map.end()) {
-      set_errmsg(fmt::format("No weight windows exist with ID={}", id));
-      return OPENMC_E_INVALID_ID;
-    }
+  write_attribute(mesh_group, "n_meshes", mesh_ids.size());
+  write_attribute(mesh_group, "ids", mesh_ids);
+  close_group(mesh_group);
 
-    *idx = it->second;
-    return 0;
+  write_attribute(weight_windows_group, "n_weight_windows", ww_ids.size());
+  write_attribute(weight_windows_group, "ids", ww_ids);
+  close_group(weight_windows_group);
+
+  file_close(ww_file);
+
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_import(const char* filename)
+{
+  std::string name = filename ? filename : "weight_windows.h5";
+
+  if (mpi::master)
+    write_message(fmt::format("Importing weight windows from {}...", name), 5);
+
+  if (!file_exists(name)) {
+    set_errmsg(fmt::format("File '{}' does not exist", name));
   }
 
-  extern "C" int openmc_weight_windows_get_id(int32_t index, int32_t * id)
-  {
-    if (int err = verify_ww_index(index))
-      return err;
+  hid_t ww_file = file_open(name, 'r');
 
-    const auto& wws = variance_reduction::weight_windows.at(index);
-    *id = wws->id();
-    return 0;
-  }
-
-  extern "C" int openmc_weight_windows_set_id(int32_t index, int32_t id)
-  {
-    if (int err = verify_ww_index(index))
-      return err;
-
-    const auto& wws = variance_reduction::weight_windows.at(index);
-    wws->set_id(id);
-    return 0;
-  }
-
-  extern "C" int openmc_weight_windows_update_magic(int32_t ww_idx,
-    int32_t tally_idx, const char* value, double threshold, double ratio)
-  {
-    if (int err = verify_ww_index(ww_idx))
-      return err;
-
-    if (tally_idx < 0 || tally_idx >= model::tallies.size()) {
-      set_errmsg(fmt::format("Index '{}' for tally is invalid", tally_idx));
-      return OPENMC_E_OUT_OF_BOUNDS;
-    }
-
-    // get the requested tally
-    const Tally* tally = model::tallies.at(tally_idx).get();
-
-    // get the WeightWindows object
-    const auto& wws = variance_reduction::weight_windows.at(ww_idx);
-
-    wws->update_magic(tally, value, threshold, ratio);
-
-    return 0;
-  }
-
-  extern "C" int openmc_weight_windows_set_mesh(
-    int32_t ww_idx, int32_t mesh_idx)
-  {
-    if (int err = verify_ww_index(ww_idx))
-      return err;
-    const auto& wws = variance_reduction::weight_windows.at(ww_idx);
-    wws->set_mesh(mesh_idx);
-    return 0;
-  }
-
-  extern "C" int openmc_weight_windows_get_mesh(
-    int32_t ww_idx, int32_t * mesh_idx)
-  {
-    if (int err = verify_ww_index(ww_idx))
-      return err;
-    const auto& wws = variance_reduction::weight_windows.at(ww_idx);
-    *mesh_idx = model::mesh_map.at(wws->mesh()->id());
-    return 0;
-  }
-
-  extern "C" int openmc_weight_windows_set_energy_bounds(
-    int32_t ww_idx, double* e_bounds, size_t e_bounds_size)
-  {
-    if (int err = verify_ww_index(ww_idx))
-      return err;
-    const auto& wws = variance_reduction::weight_windows.at(ww_idx);
-    wws->set_energy_bounds({e_bounds, e_bounds_size});
-    return 0;
-  }
-
-  extern "C" int openmc_weight_windows_get_energy_bounds(
-    int32_t ww_idx, const double** e_bounds, size_t* e_bounds_size)
-  {
-    if (int err = verify_ww_index(ww_idx))
-      return err;
-    const auto& wws = variance_reduction::weight_windows[ww_idx].get();
-    *e_bounds = wws->energy_bounds().data();
-    *e_bounds_size = wws->energy_bounds().size();
-    return 0;
-  }
-
-  extern "C" int openmc_weight_windows_set_particle(int32_t index, int particle)
-  {
-    if (int err = verify_ww_index(index))
-      return err;
-
-    const auto& wws = variance_reduction::weight_windows.at(index);
-    wws->set_particle_type(static_cast<ParticleType>(particle));
-    return 0;
-  }
-
-  extern "C" int openmc_weight_windows_get_particle(
-    int32_t index, int* particle)
-  {
-    if (int err = verify_ww_index(index))
-      return err;
-
-    const auto& wws = variance_reduction::weight_windows.at(index);
-    *particle = static_cast<int>(wws->particle_type());
-    return 0;
-  }
-
-  extern "C" int openmc_weight_windows_get_bounds(int32_t index,
-    const double** lower_bounds, const double** upper_bounds, size_t* size)
-  {
-    if (int err = verify_ww_index(index))
-      return err;
-
-    const auto& wws = variance_reduction::weight_windows[index];
-    *size = wws->lower_ww_bounds().size();
-    *lower_bounds = wws->lower_ww_bounds().data();
-    *upper_bounds = wws->upper_ww_bounds().data();
-    return 0;
-  }
-
-  extern "C" int openmc_weight_windows_set_bounds(int32_t index,
-    const double* lower_bounds, const double* upper_bounds, size_t size)
-  {
-    if (int err = verify_ww_index(index))
-      return err;
-
-    const auto& wws = variance_reduction::weight_windows[index];
-    wws->set_bounds({lower_bounds, size}, {upper_bounds, size});
-    return 0;
-  }
-
-  extern "C" int openmc_extend_weight_windows(
-    int32_t n, int32_t * index_start, int32_t * index_end)
-  {
-    if (index_start)
-      *index_start = variance_reduction::weight_windows.size();
-    if (index_end)
-      *index_end = variance_reduction::weight_windows.size() + n - 1;
-    for (int i = 0; i < n; ++i)
-      variance_reduction::weight_windows.push_back(
-        make_unique<WeightWindows>());
-    return 0;
-  }
-
-  extern "C" size_t openmc_weight_windows_size()
-  {
-    return variance_reduction::weight_windows.size();
-  }
-
-  extern "C" int openmc_weight_windows_export(const char* filename)
-  {
-
-    if (!mpi::master)
-      return 0;
-
-    std::string name = filename ? filename : "weight_windows.h5";
-
-    write_message(fmt::format("Exporting weight windows to {}...", name), 5);
-
-    hid_t ww_file = file_open(name, 'w');
-
-    // Write file type
-    write_attribute(ww_file, "filetype", "weight_windows");
-
-    // Write revisiion number for state point file
-    write_attribute(ww_file, "version", VERSION_WEIGHT_WINDOWS);
-
-    hid_t weight_windows_group = create_group(ww_file, "weight_windows");
-
-    hid_t mesh_group = create_group(ww_file, "meshes");
-
-    std::vector<int32_t> mesh_ids;
-    std::vector<int32_t> ww_ids;
-    for (const auto& ww : variance_reduction::weight_windows) {
-
-      ww->to_hdf5(weight_windows_group);
-      ww_ids.push_back(ww->id());
-
-      // if the mesh has already been written, move on
-      int32_t mesh_id = ww->mesh()->id();
-      if (std::find(mesh_ids.begin(), mesh_ids.end(), mesh_id) !=
-          mesh_ids.end())
-        continue;
-
-      mesh_ids.push_back(mesh_id);
-      ww->mesh()->to_hdf5(mesh_group);
-    }
-
-    write_attribute(mesh_group, "n_meshes", mesh_ids.size());
-    write_attribute(mesh_group, "ids", mesh_ids);
-    close_group(mesh_group);
-
-    write_attribute(weight_windows_group, "n_weight_windows", ww_ids.size());
-    write_attribute(weight_windows_group, "ids", ww_ids);
-    close_group(weight_windows_group);
-
+  // Check that filetype is correct
+  std::string filetype;
+  read_attribute(ww_file, "filetype", filetype);
+  if (filetype != "weight_windows") {
     file_close(ww_file);
-
-    return 0;
+    set_errmsg(fmt::format("File '{}' is not a weight windows file.", name));
+    return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  extern "C" int openmc_weight_windows_import(const char* filename)
-  {
-    std::string name = filename ? filename : "weight_windows.h5";
-
-    if (mpi::master)
-      write_message(
-        fmt::format("Importing weight windows from {}...", name), 5);
-
-    if (!file_exists(name)) {
-      set_errmsg(fmt::format("File '{}' does not exist", name));
-    }
-
-    hid_t ww_file = file_open(name, 'r');
-
-    // Check that filetype is correct
-    std::string filetype;
-    read_attribute(ww_file, "filetype", filetype);
-    if (filetype != "weight_windows") {
-      file_close(ww_file);
-      set_errmsg(fmt::format("File '{}' is not a weight windows file.", name));
-      return OPENMC_E_INVALID_ARGUMENT;
-    }
-
-    // Check that the file version is compatible
-    std::array<int, 2> file_version;
-    read_attribute(ww_file, "version", file_version);
-    if (file_version[0] != VERSION_WEIGHT_WINDOWS[0]) {
-      std::string err_msg =
-        fmt::format("File '{}' has version {} which is incompatible with the "
-                    "expected version ({}).",
-          name, file_version, VERSION_WEIGHT_WINDOWS);
-      set_errmsg(err_msg);
-      return OPENMC_E_INVALID_ARGUMENT;
-    }
-
-    hid_t weight_windows_group = open_group(ww_file, "weight_windows");
-
-    std::vector<std::string> names = group_names(weight_windows_group);
-
-    for (const auto& name : names) {
-      WeightWindows::from_hdf5(weight_windows_group, name);
-    }
-
-    close_group(weight_windows_group);
-
-    file_close(ww_file);
-
-    return 0;
+  // Check that the file version is compatible
+  std::array<int, 2> file_version;
+  read_attribute(ww_file, "version", file_version);
+  if (file_version[0] != VERSION_WEIGHT_WINDOWS[0]) {
+    std::string err_msg =
+      fmt::format("File '{}' has version {} which is incompatible with the "
+                  "expected version ({}).",
+        name, file_version, VERSION_WEIGHT_WINDOWS);
+    set_errmsg(err_msg);
+    return OPENMC_E_INVALID_ARGUMENT;
   }
+
+  hid_t weight_windows_group = open_group(ww_file, "weight_windows");
+
+  std::vector<std::string> names = group_names(weight_windows_group);
+
+  for (const auto& name : names) {
+    WeightWindows::from_hdf5(weight_windows_group, name);
+  }
+
+  close_group(weight_windows_group);
+
+  file_close(ww_file);
+
+  return 0;
+}
 
 } // namespace openmc

@@ -40,8 +40,8 @@ def model():
 
     settings = openmc.Settings()
     settings.particles = 1000
-    settings.inactive = 10
-    settings.batches = 50
+    settings.inactive = 5
+    settings.batches = 10
 
     return openmc.Model(geometry, materials, settings)
 

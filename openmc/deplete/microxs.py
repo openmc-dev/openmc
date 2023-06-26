@@ -140,7 +140,7 @@ class MicroXS(DataFrame):
         # Revert to the original tallies and materials
         model.tallies = original_tallies
 
-        return cls(series)
+        return cls(series).rename_axis('nuclide')
 
     @classmethod
     def from_array(cls, nuclides, reactions, data):

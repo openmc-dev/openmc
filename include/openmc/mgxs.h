@@ -17,20 +17,6 @@
 namespace openmc {
 
 //==============================================================================
-// Cache contains the cached data for an MGXS object
-//==============================================================================
-
-struct CacheData {
-  double sqrtkT; // last temperature corresponding to t
-  int t;         // temperature index
-  int a;         // angle index
-  // last angle that corresponds to a
-  double u;
-  double v;
-  double w;
-};
-
-//==============================================================================
 // MGXS contains the mgxs data for a nuclide/material
 //==============================================================================
 
@@ -99,7 +85,6 @@ public:
   std::string name;        // name of dataset, e.g., UO2
   double awr;              // atomic weight ratio
   bool fissionable;        // Is this fissionable
-  vector<CacheData> cache; // index and data cache
 
   Mgxs() = default;
 
@@ -170,12 +155,12 @@ public:
   //! \brief Sets the temperature index in cache given a temperature
   //!
   //! @param sqrtkT Temperature of the material.
-  void set_temperature_index(double sqrtkT);
+  int set_temperature_index(Particle& p);
 
   //! \brief Sets the angle index in cache given a direction
   //!
   //! @param u Incoming particle direction.
-  void set_angle_index(Direction u);
+  int set_angle_index(Particle& p);
 
   //! \brief Provide const access to list of XsData held by this
   const vector<XsData>& get_xsdata() const { return xs; }

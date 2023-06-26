@@ -43,6 +43,35 @@ def test_get_atoms(res):
     assert t_hour == pytest.approx(t_ref / (60 * 60))
 
 
+def test_get_mass(res):
+    """Tests evaluating single nuclide concentration."""
+    t, n = res.get_mass("1", "Xe135")
+
+    t_ref = np.array([0.0, 1296000.0, 2592000.0, 3888000.0])
+    n_ref = np.array(
+        [6.67473282e+08, 3.88942731e+14, 3.73091215e+14, 3.26987387e+14])
+
+    # Get g
+    n_ref *= openmc.data.atomic_mass('Xe135') / openmc.data.AVOGADRO
+
+    np.testing.assert_allclose(t, t_ref)
+    np.testing.assert_allclose(n, n_ref)
+
+    # Check alternate units
+    volume = res[0].volume["1"]
+    t_days, n_cm3 = res.get_mass("1", "Xe135", mass_units="g/cm3", time_units="d")
+
+    assert t_days == pytest.approx(t_ref / (60 * 60 * 24))
+    assert n_cm3 == pytest.approx(n_ref / volume)
+
+    t_min, n_bcm = res.get_mass("1", "Xe135", mass_units="kg", time_units="min")
+    assert n_bcm == pytest.approx(n_ref * 1e3)
+    assert t_min == pytest.approx(t_ref / 60)
+
+    t_hour, _n = res.get_mass("1", "Xe135", time_units="h")
+    assert t_hour == pytest.approx(t_ref / (60 * 60))
+
+
 def test_get_reaction_rate(res):
     """Tests evaluating reaction rate."""
     t, r = res.get_reaction_rate("1", "Xe135", "(n,gamma)")

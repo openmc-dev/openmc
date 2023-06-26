@@ -371,8 +371,8 @@ class OpenMCOperator(TransportOperator):
 
         Parameters
         ----------
-        materials : list of str
-            list of material IDs
+        materials : list of openmc.lib.Material
+            list of materials
 
         Returns
         -------
@@ -503,7 +503,7 @@ class OpenMCOperator(TransportOperator):
 
         # Form fast map
         nuc_ind = [rates.index_nuc[nuc] for nuc in rxn_nuclides]
-        react_ind = [rates.index_rx[react] for react in self.chain.reactions]
+        rx_ind = [rates.index_rx[react] for react in self.chain.reactions]
 
         # Keep track of energy produced from all reactions in eV per source
         # particle
@@ -534,21 +534,25 @@ class OpenMCOperator(TransportOperator):
             for nuc, i_nuc_results in zip(rxn_nuclides, nuc_ind):
                 number[i_nuc_results] = self.number[mat, nuc]
 
+            # Get microscopic reaction rates in [(reactions/src)*b-cm/atom]. 2D
+            # array with shape (nuclides, reactions).
             tally_rates = self._rate_helper.get_material_rates(
-                mat_index, nuc_ind, react_ind)
+                mat_index, nuc_ind, rx_ind)
 
             # Compute fission yields for this material
             fission_yields.append(self._yield_helper.weighted_yields(i))
 
             # Accumulate energy from fission
+            volume_b_cm = 1e24 * self.number.get_mat_volume(mat)
             if fission_ind is not None:
-                self._normalization_helper.update(
-                    tally_rates[:, fission_ind])
+                atom_per_bcm = number / volume_b_cm
+                fission_rates = tally_rates[:, fission_ind] * atom_per_bcm
+                self._normalization_helper.update(fission_rates)
 
-            # Divide by total number of atoms and store
-            rates[i] = self._rate_helper.divide_by_atoms(number)
+            # Divide by [b-cm] to get [(reactions/src)/atom]
+            rates[i] = tally_rates / volume_b_cm
 
-        # Scale reaction rates to obtain units of (reactions/sec)/atom
+        # Scale reaction rates to obtain units of [(reactions/sec)/atom]
         rates *= self._normalization_helper.factor(source_rate)
 
         # Store new fission yields on the chain

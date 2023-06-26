@@ -274,8 +274,7 @@ class ReactionRateHelper(ABC):
         Parameters
         ----------
         number : iterable of float
-            Number density [atoms/b-cm] of each nuclide tracked in the
-            calculation.
+            Number of each nuclide in [atom] tracked in the calculation.
 
         Returns
         -------

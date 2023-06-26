@@ -112,7 +112,7 @@ def assembly_model():
     model.settings.batches = 150
     model.settings.inactive = 50
     model.settings.particles = 1000
-    model.settings.source = openmc.Source(space=openmc.stats.Box(
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
         (-pitch/2, -pitch/2, -1),
         (pitch/2, pitch/2, 1),
         only_fissionable=True

@@ -75,15 +75,15 @@ class EnergyGroups:
     def group_edges(self):
         return self._group_edges
 
-    @property
-    def num_groups(self):
-        return len(self.group_edges) - 1
-
     @group_edges.setter
     def group_edges(self, edges):
         cv.check_type('group edges', edges, Iterable, Real)
         cv.check_greater_than('number of group edges', len(edges), 1)
         self._group_edges = np.array(edges)
+
+    @property
+    def num_groups(self):
+        return len(self.group_edges) - 1
 
     def get_group(self, energy):
         """Returns the energy group in which the given energy resides.

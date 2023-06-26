@@ -15,7 +15,7 @@
     <run_mode>fixed source</run_mode>
     <particles>100</particles>
     <batches>10</batches>
-    <source strength="10.0">
+    <source particle="neutron" strength="10.0" type="independent">
       <space type="point">
         <parameters>0.0 0.0 0.0</parameters>
       </space>

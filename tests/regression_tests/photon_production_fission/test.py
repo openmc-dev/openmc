@@ -20,7 +20,7 @@ def model():
     model.settings.batches = 5
     model.settings.inactive = 2
     model.settings.photon_transport = True
-    model.settings.source = openmc.Source(space=openmc.stats.Point((0, 0, 0)))
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Point((0, 0, 0)))
 
     particle_filter = openmc.ParticleFilter(['neutron', 'photon'])
     tally_tracklength = openmc.Tally()

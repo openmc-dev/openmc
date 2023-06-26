@@ -116,7 +116,7 @@ pip_. From the root directory of the OpenMC repository, run:
 
 .. code-block:: sh
 
-    pip install -e .[test]
+    python -m pip install -e .[test]
 
 This installs the OpenMC Python package in `"editable" mode
 <https://pip.pypa.io/en/stable/cli/pip_install/#editable-installs>`_ so that 1)

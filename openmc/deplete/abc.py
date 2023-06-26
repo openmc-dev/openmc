@@ -93,20 +93,11 @@ class TransportOperator(ABC):
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``.
-    dilute_initial : float, optional
-        Initial atom density [atoms/cm^3] to add for nuclides that are zero
-        in initial condition to ensure they exist in the decay chain.
-        Only done for nuclides with reaction rates.
-        Defaults to 1.0e3.
     prev_results : Results, optional
         Results from a previous depletion calculation.
 
     Attributes
     ----------
-    dilute_initial : float
-        Initial atom density [atoms/cm^3] to add for nuclides that are zero
-        in initial condition to ensure they exist in the decay chain.
-        Only done for nuclides with reaction rates.
     output_dir : pathlib.Path
         Path to output directory to save results.
     prev_res : Results or None
@@ -116,9 +107,7 @@ class TransportOperator(ABC):
         The depletion chain information necessary to form matrices and tallies.
 
     """
-    def __init__(self, chain_file, fission_q=None, dilute_initial=1.0e3,
-                 prev_results=None):
-        self.dilute_initial = dilute_initial
+    def __init__(self, chain_file, fission_q=None, prev_results=None):
         self.output_dir = '.'
 
         # Read depletion chain
@@ -128,17 +117,6 @@ class TransportOperator(ABC):
         else:
             check_type("previous results", prev_results, Results)
             self.prev_res = prev_results
-
-    @property
-    def dilute_initial(self):
-        """Initial atom density for nuclides with zero initial concentration"""
-        return self._dilute_initial
-
-    @dilute_initial.setter
-    def dilute_initial(self, value):
-        check_type("dilute_initial", value, Real)
-        check_greater_than("dilute_initial", value, 0.0, equality=True)
-        self._dilute_initial = value
 
     @abstractmethod
     def __call__(self, vec, source_rate):
@@ -274,8 +252,7 @@ class ReactionRateHelper(ABC):
         Parameters
         ----------
         number : iterable of float
-            Number density [atoms/b-cm] of each nuclide tracked in the
-            calculation.
+            Number of each nuclide in [atom] tracked in the calculation.
 
         Returns
         -------

@@ -69,7 +69,7 @@ def model():
     model.settings.batches = 5
     model.settings.inactive = 0
     model.settings.particles = 1000
-    model.settings.source = openmc.Source(space=openmc.stats.Point())
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Point())
 
     instances = ([(c4, i) for i in range(c4.num_instances)] +
                  [(c2, i) for i in range(c2.num_instances)] +

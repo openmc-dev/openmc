@@ -12,7 +12,7 @@ import openmc
 from openmc.data import JOULE_PER_EV
 import openmc.deplete
 
-from tests.regression_tests import config
+from tests.regression_tests import config, assert_atoms_equal
 from .example_geometry import generate_problem
 
 
@@ -46,7 +46,7 @@ def test_full(run_in_tmpdir, problem, multiproc):
     settings.batches = 10
     settings.inactive = 0
     space = openmc.stats.Box(lower_left, upper_right)
-    settings.source = openmc.Source(space=space)
+    settings.source = openmc.IndependentSource(space=space)
     settings.seed = 1
     settings.verbosity = 1
 
@@ -96,23 +96,7 @@ def test_full(run_in_tmpdir, problem, multiproc):
         assert nuc in res_ref[0].index_nuc, \
             "Nuclide {} not in old results.".format(nuc)
 
-    tol = 1.0e-6
-    for mat in res_test[0].index_mat:
-        for nuc in res_test[0].index_nuc:
-            _, y_test = res_test.get_atoms(mat, nuc)
-            _, y_old = res_ref.get_atoms(mat, nuc)
-
-            # Test each point
-            correct = True
-            for i, ref in enumerate(y_old):
-                if ref != y_test[i]:
-                    if ref != 0.0:
-                        correct = np.abs(y_test[i] - ref) / ref <= tol
-                    else:
-                        correct = False
-
-            assert correct, "Discrepancy in mat {} and nuc {}\n{}\n{}".format(
-                mat, nuc, y_old, y_test)
+    assert_atoms_equal(res_ref, res_test, tol=1e-6)
 
     # Compare statepoint files with depletion results
 

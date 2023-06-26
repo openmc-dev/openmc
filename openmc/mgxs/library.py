@@ -178,21 +178,64 @@ class Library:
     def geometry(self):
         return self._geometry
 
+    @geometry.setter
+    def geometry(self, geometry):
+        cv.check_type('geometry', geometry, openmc.Geometry)
+        self._geometry = geometry
+
     @property
     def name(self):
         return self._name
 
+    @name.setter
+    def name(self, name):
+        cv.check_type('name', name, str)
+        self._name = name
+    
     @property
     def mgxs_types(self):
         return self._mgxs_types
+
+    @mgxs_types.setter
+    def mgxs_types(self, mgxs_types):
+        all_mgxs_types = openmc.mgxs.MGXS_TYPES + openmc.mgxs.MDGXS_TYPES + \
+            openmc.mgxs.ARBITRARY_VECTOR_TYPES + \
+            openmc.mgxs.ARBITRARY_MATRIX_TYPES
+        if mgxs_types == 'all':
+            self._mgxs_types = all_mgxs_types
+        else:
+            cv.check_iterable_type('mgxs_types', mgxs_types, str)
+            for mgxs_type in mgxs_types:
+                cv.check_value('mgxs_type', mgxs_type, all_mgxs_types)
+            self._mgxs_types = mgxs_types
 
     @property
     def by_nuclide(self):
         return self._by_nuclide
 
+    @by_nuclide.setter
+    def by_nuclide(self, by_nuclide):
+        cv.check_type('by_nuclide', by_nuclide, bool)
+
+        if by_nuclide and self.domain_type == 'mesh':
+            raise ValueError('Unable to create MGXS library by nuclide with '
+                             'mesh domain')
+
+        self._by_nuclide = by_nuclide
+
     @property
     def domain_type(self):
         return self._domain_type
+
+    @domain_type.setter
+    def domain_type(self, domain_type):
+        cv.check_value('domain type', domain_type, openmc.mgxs.DOMAIN_TYPES)
+
+        if self.by_nuclide and domain_type == 'mesh':
+            raise ValueError('Unable to create MGXS library by nuclide with '
+                             'mesh domain')
+
+        self._domain_type = domain_type
 
     @property
     def domains(self):
@@ -211,118 +254,6 @@ class Library:
                 raise ValueError('Unable to get domains without a domain type')
         else:
             return self._domains
-
-    @property
-    def nuclides(self):
-        return self._nuclides
-
-    @property
-    def energy_groups(self):
-        return self._energy_groups
-
-    @property
-    def num_delayed_groups(self):
-        return self._num_delayed_groups
-
-    @property
-    def num_polar(self):
-        return self._num_polar
-
-    @property
-    def num_azimuthal(self):
-        return self._num_azimuthal
-
-    @property
-    def correction(self):
-        return self._correction
-
-    @property
-    def scatter_format(self):
-        return self._scatter_format
-
-    @property
-    def legendre_order(self):
-        return self._legendre_order
-
-    @property
-    def histogram_bins(self):
-        return self._histogram_bins
-
-    @property
-    def tally_trigger(self):
-        return self._tally_trigger
-
-    @property
-    def estimator(self):
-        return self._estimator
-
-    @property
-    def num_groups(self):
-        return self.energy_groups.num_groups
-
-    @property
-    def all_mgxs(self):
-        return self._all_mgxs
-
-    @property
-    def sp_filename(self):
-        return self._sp_filename
-
-    @property
-    def keff(self):
-        return self._keff
-
-    @property
-    def sparse(self):
-        return self._sparse
-
-    @geometry.setter
-    def geometry(self, geometry):
-        cv.check_type('geometry', geometry, openmc.Geometry)
-        self._geometry = geometry
-
-    @name.setter
-    def name(self, name):
-        cv.check_type('name', name, str)
-        self._name = name
-
-    @nuclides.setter
-    def nuclides(self, nuclides):
-        cv.check_iterable_type('nuclides', nuclides, str)
-        self._nuclides = nuclides
-
-    @mgxs_types.setter
-    def mgxs_types(self, mgxs_types):
-        all_mgxs_types = openmc.mgxs.MGXS_TYPES + openmc.mgxs.MDGXS_TYPES + \
-            openmc.mgxs.ARBITRARY_VECTOR_TYPES + \
-            openmc.mgxs.ARBITRARY_MATRIX_TYPES
-        if mgxs_types == 'all':
-            self._mgxs_types = all_mgxs_types
-        else:
-            cv.check_iterable_type('mgxs_types', mgxs_types, str)
-            for mgxs_type in mgxs_types:
-                cv.check_value('mgxs_type', mgxs_type, all_mgxs_types)
-            self._mgxs_types = mgxs_types
-
-    @by_nuclide.setter
-    def by_nuclide(self, by_nuclide):
-        cv.check_type('by_nuclide', by_nuclide, bool)
-
-        if by_nuclide and self.domain_type == 'mesh':
-            raise ValueError('Unable to create MGXS library by nuclide with '
-                             'mesh domain')
-
-        self._by_nuclide = by_nuclide
-
-    @domain_type.setter
-    def domain_type(self, domain_type):
-        cv.check_value('domain type', domain_type, openmc.mgxs.DOMAIN_TYPES)
-
-        if self.by_nuclide and domain_type == 'mesh':
-            raise ValueError('Unable to create MGXS library by nuclide with '
-                             'mesh domain')
-
-        self._domain_type = domain_type
 
     @domains.setter
     def domains(self, domains):
@@ -363,10 +294,27 @@ class Library:
 
             self._domains = list(domains)
 
+    @property
+    def nuclides(self):
+        return self._nuclides
+
+    @nuclides.setter
+    def nuclides(self, nuclides):
+        cv.check_iterable_type('nuclides', nuclides, str)
+        self._nuclides = nuclides
+
+    @property
+    def energy_groups(self):
+        return self._energy_groups
+    
     @energy_groups.setter
     def energy_groups(self, energy_groups):
         cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
         self._energy_groups = energy_groups
+
+    @property
+    def num_delayed_groups(self):
+        return self._num_delayed_groups
 
     @num_delayed_groups.setter
     def num_delayed_groups(self, num_delayed_groups):
@@ -376,6 +324,10 @@ class Library:
         cv.check_greater_than('num delayed groups', num_delayed_groups, 0,
                               equality=True)
         self._num_delayed_groups = num_delayed_groups
+    
+    @property
+    def num_polar(self):
+        return self._num_polar
 
     @num_polar.setter
     def num_polar(self, num_polar):
@@ -383,11 +335,19 @@ class Library:
         cv.check_greater_than('num_polar', num_polar, 0)
         self._num_polar = num_polar
 
+    @property
+    def num_azimuthal(self):
+        return self._num_azimuthal
+
     @num_azimuthal.setter
     def num_azimuthal(self, num_azimuthal):
         cv.check_type('num_azimuthal', num_azimuthal, Integral)
         cv.check_greater_than('num_azimuthal', num_azimuthal, 0)
         self._num_azimuthal = num_azimuthal
+
+    @property
+    def correction(self):
+        return self._correction
 
     @correction.setter
     def correction(self, correction):
@@ -406,6 +366,10 @@ class Library:
 
         self._correction = correction
 
+    @property
+    def scatter_format(self):
+        return self._scatter_format
+
     @scatter_format.setter
     def scatter_format(self, scatter_format):
         cv.check_value('scatter_format', scatter_format,
@@ -418,6 +382,10 @@ class Library:
             self.correction = None
 
         self._scatter_format = scatter_format
+    
+    @property
+    def legendre_order(self):
+        return self._legendre_order
 
     @legendre_order.setter
     def legendre_order(self, legendre_order):
@@ -440,6 +408,10 @@ class Library:
 
         self._legendre_order = legendre_order
 
+    @property
+    def histogram_bins(self):
+        return self._histogram_bins
+
     @histogram_bins.setter
     def histogram_bins(self, histogram_bins):
         cv.check_type('histogram_bins', histogram_bins, Integral)
@@ -459,15 +431,43 @@ class Library:
 
         self._histogram_bins = histogram_bins
 
+    @property
+    def tally_trigger(self):
+        return self._tally_trigger
+
     @tally_trigger.setter
     def tally_trigger(self, tally_trigger):
         cv.check_type('tally trigger', tally_trigger, openmc.Trigger)
         self._tally_trigger = tally_trigger
 
+    @property
+    def estimator(self):
+        return self._estimator
+
     @estimator.setter
     def estimator(self, estimator):
         cv.check_value('estimator', estimator, ESTIMATOR_TYPES)
         self._estimator = estimator
+
+    @property
+    def num_groups(self):
+        return self.energy_groups.num_groups
+
+    @property
+    def all_mgxs(self):
+        return self._all_mgxs
+
+    @property
+    def sp_filename(self):
+        return self._sp_filename
+
+    @property
+    def keff(self):
+        return self._keff
+
+    @property
+    def sparse(self):
+        return self._sparse
 
     @sparse.setter
     def sparse(self, sparse):

@@ -44,7 +44,7 @@ def model(request):
 
     if surf_source_op == 'write':
         point = openmc.stats.Point((0, 0, 0))
-        pt_src = openmc.Source(space=point)
+        pt_src = openmc.IndependentSource(space=point)
         openmc_model.settings.source = pt_src
 
         openmc_model.settings.surf_source_write = {'surface_ids': [1],

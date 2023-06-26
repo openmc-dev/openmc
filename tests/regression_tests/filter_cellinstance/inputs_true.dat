@@ -39,7 +39,7 @@
     <particles>1000</particles>
     <batches>5</batches>
     <inactive>0</inactive>
-    <source strength="1.0">
+    <source particle="neutron" strength="1.0" type="independent">
       <space type="point">
         <parameters>0.0 0.0 0.0</parameters>
       </space>

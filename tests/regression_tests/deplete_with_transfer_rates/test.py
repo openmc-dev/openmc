@@ -1,12 +1,18 @@
 """ TransferRates depletion test suite """
 
 from pathlib import Path
+import shutil
+import sys
 
 import numpy as np
 import pytest
 import openmc
 import openmc.deplete
 from openmc.deplete import CoupledOperator
+
+from tests.regression_tests import config, assert_reaction_rates_equal, \
+    assert_atoms_equal
+
 
 @pytest.fixture
 def model():
@@ -34,12 +40,13 @@ def model():
     geometry = openmc.Geometry([cell_f, cell_w])
 
     settings = openmc.Settings()
-    settings.particles = 100
+    settings.particles = 500
     settings.inactive = 0
-    settings.batches = 10
+    settings.batches = 2
 
     return openmc.Model(geometry, materials, settings)
 
+@pytest.mark.skipif(sys.version_info < (3, 9), reason="Requires Python 3.9+")
 @pytest.mark.parametrize("rate, dest_mat, power, ref_result", [
     (1e-5, None, 0.0, 'no_depletion_only_removal'),
     (-1e-5, None, 0.0, 'no_depletion_only_feed'),
@@ -66,15 +73,14 @@ def test_transfer_rates(run_in_tmpdir, model, rate, dest_mat, power, ref_result)
     path_test = op.output_dir / 'depletion_results.h5'
     path_reference = Path(__file__).with_name(f'ref_{ref_result}.h5')
 
+    # If updating results, do so and return
+    if config['update']:
+        shutil.copyfile(str(path_test), str(path_reference))
+        return
+
     # Load the reference/test results
     res_ref = openmc.deplete.Results(path_reference)
     res_test = openmc.deplete.Results(path_test)
 
-    for mat in res_test[0].rates[0].index_mat:
-        for nuc in res_test[0].rates[0].index_nuc:
-            for rx in res_test[0].rates[0].index_rx:
-                y_test = res_test.get_reaction_rate(mat, nuc, rx)[1] / \
-                    res_test.get_atoms(mat, nuc)[1]
-                y_ref = res_ref.get_reaction_rate(mat, nuc, rx)[1] / \
-                    res_ref.get_atoms(mat, nuc)[1]
-                assert y_test == pytest.approx(y_ref, abs=1e-5)
+    assert_atoms_equal(res_ref, res_test)
+    assert_reaction_rates_equal(res_ref, res_test)

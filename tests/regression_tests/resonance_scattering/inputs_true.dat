@@ -18,7 +18,7 @@
     <particles>1000</particles>
     <batches>10</batches>
     <inactive>5</inactive>
-    <source strength="1.0">
+    <source particle="neutron" strength="1.0" type="independent">
       <space type="box">
         <parameters>-4 -4 -4 4 4 4</parameters>
       </space>

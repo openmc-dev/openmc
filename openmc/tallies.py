@@ -150,17 +150,60 @@ class Tally(IDManagerMixin):
     def name(self):
         return self._name
 
+    @name.setter
+    def name(self, name):
+        cv.check_type('tally name', name, str, none_ok=True)
+        self._name = name
+
     @property
     def multiply_density(self):
         return self._multiply_density
+
+    @multiply_density.setter
+    def multiply_density(self, value):
+        cv.check_type('multiply density', value, bool)
+        self._multiply_density = value
 
     @property
     def filters(self):
         return self._filters
 
+    @filters.setter
+    def filters(self, filters):
+        cv.check_type('tally filters', filters, MutableSequence)
+
+        # If the filter is already in the Tally, raise an error
+        visited_filters = set()
+        for f in filters:
+            if f in visited_filters:
+                msg = (f'Unable to add a duplicate filter "{f}" to Tally '
+                       f'ID="{self.id}" since duplicate filters are not '
+                       'supported in the OpenMC Python API')
+                raise ValueError(msg)
+            visited_filters.add(f)
+
+        self._filters = cv.CheckedList(_FILTER_CLASSES, 'tally filters', filters)
+
     @property
     def nuclides(self):
         return self._nuclides
+
+    @nuclides.setter
+    def nuclides(self, nuclides):
+        cv.check_type('tally nuclides', nuclides, MutableSequence)
+
+        # If the nuclide is already in the Tally, raise an error
+        visited_nuclides = set()
+        for nuc in nuclides:
+            if nuc in visited_nuclides:
+                msg = (f'Unable to add a duplicate nuclide "{nuc}" to Tally ID='
+                       f'"{self.id}" since duplicate nuclides are not supported '
+                       'in the OpenMC Python API')
+                raise ValueError(msg)
+            visited_nuclides.add(nuc)
+
+        self._nuclides = cv.CheckedList(_NUCLIDE_CLASSES, 'tally nuclides',
+                                        nuclides)
 
     @property
     def num_nuclides(self):
@@ -169,6 +212,33 @@ class Tally(IDManagerMixin):
     @property
     def scores(self):
         return self._scores
+
+    @scores.setter
+    def scores(self, scores):
+        cv.check_type('tally scores', scores, MutableSequence)
+
+        visited_scores = set()
+        for i, score in enumerate(scores):
+            # If the score is already in the Tally, raise an error
+            if score in visited_scores:
+                msg = (f'Unable to add a duplicate score "{score}" to Tally '
+                       f'ID="{self.id}" since duplicate scores are not '
+                       'supported in the OpenMC Python API')
+                raise ValueError(msg)
+            visited_scores.add(score)
+
+            # If score is a string, strip whitespace
+            if isinstance(score, str):
+                # Check to see if scores are deprecated before storing
+                for deprecated in ['scatter-', 'nu-scatter-', 'scatter-p',
+                                   'nu-scatter-p', 'scatter-y', 'nu-scatter-y',
+                                    'flux-y', 'total-y']:
+                    if score.strip().startswith(deprecated):
+                        msg = score.strip() + ' is no longer supported.'
+                        raise ValueError(msg)
+                scores[i] = score.strip()
+
+        self._scores = cv.CheckedList(_SCORE_CLASSES, 'tally scores', scores)
 
     @property
     def num_scores(self):
@@ -194,17 +264,39 @@ class Tally(IDManagerMixin):
     def estimator(self):
         return self._estimator
 
+    @estimator.setter
+    def estimator(self, estimator):
+        cv.check_value('estimator', estimator, ESTIMATOR_TYPES)
+        self._estimator = estimator
+
     @property
     def triggers(self):
         return self._triggers
+
+    @triggers.setter
+    def triggers(self, triggers):
+        cv.check_type('tally triggers', triggers, MutableSequence)
+        self._triggers = cv.CheckedList(openmc.Trigger, 'tally triggers',
+                                        triggers)
 
     @property
     def num_realizations(self):
         return self._num_realizations
 
+    @num_realizations.setter
+    def num_realizations(self, num_realizations):
+        cv.check_type('number of realizations', num_realizations, Integral)
+        cv.check_greater_than('number of realizations', num_realizations, 0, True)
+        self._num_realizations = num_realizations
+
     @property
     def with_summary(self):
         return self._with_summary
+
+    @with_summary.setter
+    def with_summary(self, with_summary):
+        cv.check_type('with_summary', with_summary, bool)
+        self._with_summary = with_summary
 
     def _read_results(self):
         if self._results_read:
@@ -246,6 +338,11 @@ class Tally(IDManagerMixin):
         else:
             return self._sum
 
+    @sum.setter
+    def sum(self, sum):
+        cv.check_type('sum', sum, Iterable)
+        self._sum = sum
+
     @property
     def sum_sq(self):
         if not self._sp_filename or self.derived:
@@ -258,6 +355,11 @@ class Tally(IDManagerMixin):
             return np.reshape(self._sum_sq.toarray(), self.shape)
         else:
             return self._sum_sq
+
+    @sum_sq.setter
+    def sum_sq(self, sum_sq):
+        cv.check_type('sum_sq', sum_sq, Iterable)
+        self._sum_sq = sum_sq
 
     @property
     def mean(self):
@@ -305,6 +407,11 @@ class Tally(IDManagerMixin):
     def with_batch_statistics(self):
         return self._with_batch_statistics
 
+    @with_batch_statistics.setter
+    def with_batch_statistics(self, with_batch_statistics):
+        cv.check_type('with_batch_statistics', with_batch_statistics, bool)
+        self._with_batch_statistics = with_batch_statistics
+
     @property
     def derived(self):
         return self._derived
@@ -313,122 +420,15 @@ class Tally(IDManagerMixin):
     def derivative(self):
         return self._derivative
 
-    @property
-    def sparse(self):
-        return self._sparse
-
-    @estimator.setter
-    def estimator(self, estimator):
-        cv.check_value('estimator', estimator, ESTIMATOR_TYPES)
-        self._estimator = estimator
-
-    @triggers.setter
-    def triggers(self, triggers):
-        cv.check_type('tally triggers', triggers, MutableSequence)
-        self._triggers = cv.CheckedList(openmc.Trigger, 'tally triggers',
-                                        triggers)
-
-    @name.setter
-    def name(self, name):
-        cv.check_type('tally name', name, str, none_ok=True)
-        self._name = name
-
-    @multiply_density.setter
-    def multiply_density(self, value):
-        cv.check_type('multiply density', value, bool)
-        self._multiply_density = value
-
     @derivative.setter
     def derivative(self, deriv):
         cv.check_type('tally derivative', deriv, openmc.TallyDerivative,
                       none_ok=True)
         self._derivative = deriv
 
-    @filters.setter
-    def filters(self, filters):
-        cv.check_type('tally filters', filters, MutableSequence)
-
-        # If the filter is already in the Tally, raise an error
-        visited_filters = set()
-        for f in filters:
-            if f in visited_filters:
-                msg = (f'Unable to add a duplicate filter "{f}" to Tally '
-                       f'ID="{self.id}" since duplicate filters are not '
-                       'supported in the OpenMC Python API')
-                raise ValueError(msg)
-            visited_filters.add(f)
-
-        self._filters = cv.CheckedList(_FILTER_CLASSES, 'tally filters', filters)
-
-    @nuclides.setter
-    def nuclides(self, nuclides):
-        cv.check_type('tally nuclides', nuclides, MutableSequence)
-
-        # If the nuclide is already in the Tally, raise an error
-        visited_nuclides = set()
-        for nuc in nuclides:
-            if nuc in visited_nuclides:
-                msg = (f'Unable to add a duplicate nuclide "{nuc}" to Tally ID='
-                       f'"{self.id}" since duplicate nuclides are not supported '
-                       'in the OpenMC Python API')
-                raise ValueError(msg)
-            visited_nuclides.add(nuc)
-
-        self._nuclides = cv.CheckedList(_NUCLIDE_CLASSES, 'tally nuclides',
-                                        nuclides)
-
-    @scores.setter
-    def scores(self, scores):
-        cv.check_type('tally scores', scores, MutableSequence)
-
-        visited_scores = set()
-        for i, score in enumerate(scores):
-            # If the score is already in the Tally, raise an error
-            if score in visited_scores:
-                msg = (f'Unable to add a duplicate score "{score}" to Tally '
-                       f'ID="{self.id}" since duplicate scores are not '
-                       'supported in the OpenMC Python API')
-                raise ValueError(msg)
-            visited_scores.add(score)
-
-            # If score is a string, strip whitespace
-            if isinstance(score, str):
-                # Check to see if scores are deprecated before storing
-                for deprecated in ['scatter-', 'nu-scatter-', 'scatter-p',
-                                   'nu-scatter-p', 'scatter-y', 'nu-scatter-y',
-                                    'flux-y', 'total-y']:
-                    if score.strip().startswith(deprecated):
-                        msg = score.strip() + ' is no longer supported.'
-                        raise ValueError(msg)
-                scores[i] = score.strip()
-
-        self._scores = cv.CheckedList(_SCORE_CLASSES, 'tally scores', scores)
-
-    @num_realizations.setter
-    def num_realizations(self, num_realizations):
-        cv.check_type('number of realizations', num_realizations, Integral)
-        cv.check_greater_than('number of realizations', num_realizations, 0, True)
-        self._num_realizations = num_realizations
-
-    @with_summary.setter
-    def with_summary(self, with_summary):
-        cv.check_type('with_summary', with_summary, bool)
-        self._with_summary = with_summary
-
-    @with_batch_statistics.setter
-    def with_batch_statistics(self, with_batch_statistics):
-        cv.check_type('with_batch_statistics', with_batch_statistics, bool)
-        self._with_batch_statistics = with_batch_statistics
-
-    @sum.setter
-    def sum(self, sum):
-        cv.check_type('sum', sum, Iterable)
-        self._sum = sum
-
-    @sum_sq.setter
-    def sum_sq(self, sum_sq):
-        cv.check_type('sum_sq', sum_sq, Iterable)
-        self._sum_sq = sum_sq
+    @property
+    def sparse(self):
+        return self._sparse
 
     @sparse.setter
     def sparse(self, sparse):

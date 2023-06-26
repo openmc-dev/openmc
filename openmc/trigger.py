@@ -45,24 +45,24 @@ class Trigger(EqualityMixin):
     def trigger_type(self):
         return self._trigger_type
 
-    @property
-    def threshold(self):
-        return self._threshold
-
-    @property
-    def scores(self):
-        return self._scores
-
     @trigger_type.setter
     def trigger_type(self, trigger_type):
         cv.check_value('tally trigger type', trigger_type,
                        ['variance', 'std_dev', 'rel_err'])
         self._trigger_type = trigger_type
 
+    @property
+    def threshold(self):
+        return self._threshold
+
     @threshold.setter
     def threshold(self, threshold):
         cv.check_type('tally trigger threshold', threshold, Real)
         self._threshold = threshold
+
+    @property
+    def scores(self):
+        return self._scores
 
     @scores.setter
     def scores(self, scores):

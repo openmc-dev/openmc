@@ -58,10 +58,6 @@ class UniverseBase(ABC, IDManagerMixin):
     def name(self):
         return self._name
 
-    @property
-    def volume(self):
-        return self._volume
-
     @name.setter
     def name(self, name):
         if name is not None:
@@ -69,6 +65,10 @@ class UniverseBase(ABC, IDManagerMixin):
             self._name = name
         else:
             self._name = ''
+
+    @property
+    def volume(self):
+        return self._volume
 
     @volume.setter
     def volume(self, volume):
@@ -303,7 +303,7 @@ class Universe(UniverseBase):
 
     def plot(self, origin=None, width=None, pixels=40000,
              basis='xy', color_by='cell', colors=None, seed=None,
-             openmc_exec='openmc', axes=None, legend=False,
+             openmc_exec='openmc', axes=None, legend=False, axis_units='cm',
              legend_kwargs=_default_legend_kwargs, outline=False,
              **kwargs):
         """Display a slice plot of the universe.
@@ -361,6 +361,10 @@ class Universe(UniverseBase):
             Whether outlines between color boundaries should be drawn
 
             .. versionadded:: 0.13.4
+        axis_units : {'km', 'm', 'cm', 'mm'}
+            Units used on the plot axis
+
+            .. versionadded:: 0.13.4
         **kwargs
             Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 
@@ -377,13 +381,13 @@ class Universe(UniverseBase):
         # Determine extents of plot
         if basis == 'xy':
             x, y = 0, 1
-            xlabel, ylabel = 'x [cm]', 'y [cm]'
+            xlabel, ylabel = f'x [{axis_units}]', f'y [{axis_units}]'
         elif basis == 'yz':
             x, y = 1, 2
-            xlabel, ylabel = 'y [cm]', 'z [cm]'
+            xlabel, ylabel = f'y [{axis_units}]', f'z [{axis_units}]'
         elif basis == 'xz':
             x, y = 0, 2
-            xlabel, ylabel = 'x [cm]', 'z [cm]'
+            xlabel, ylabel = f'x [{axis_units}]', f'z [{axis_units}]'
 
         bb = self.bounding_box
         # checks to see if bounding box contains -inf or inf values
@@ -408,10 +412,12 @@ class Universe(UniverseBase):
             pixels_y = math.sqrt(pixels / aspect_ratio)
             pixels = (int(pixels / pixels_y), int(pixels_y))
 
-        x_min = origin[x] - 0.5*width[0]
-        x_max = origin[x] + 0.5*width[0]
-        y_min = origin[y] - 0.5*width[1]
-        y_max = origin[y] + 0.5*width[1]
+        axis_scaling_factor = {'km': 0.00001, 'm': 0.01, 'cm': 1, 'mm': 10}
+
+        x_min = (origin[x] - 0.5*width[0]) * axis_scaling_factor[axis_units]
+        x_max = (origin[x] + 0.5*width[0]) * axis_scaling_factor[axis_units]
+        y_min = (origin[y] - 0.5*width[1]) * axis_scaling_factor[axis_units]
+        y_max = (origin[y] + 0.5*width[1]) * axis_scaling_factor[axis_units]
 
         with TemporaryDirectory() as tmpdir:
             model = openmc.Model()
@@ -854,6 +860,11 @@ class DAGMCUniverse(UniverseBase):
     def auto_mat_ids(self):
         return self._auto_mat_ids
 
+    @auto_mat_ids.setter
+    def auto_mat_ids(self, val):
+        cv.check_type('DAGMC automatic material ids', val, bool)
+        self._auto_mat_ids = val
+
     @property
     def material_names(self):
         dagmc_file_contents = h5py.File(self.filename)
@@ -869,11 +880,6 @@ class DAGMCUniverse(UniverseBase):
                 material_tags_ascii.append(candidate_tag[4:])
 
         return sorted(set(material_tags_ascii))
-
-    @auto_mat_ids.setter
-    def auto_mat_ids(self, val):
-        cv.check_type('DAGMC automatic material ids', val, bool)
-        self._auto_mat_ids = val
 
     def get_all_cells(self, memo=None):
         return OrderedDict()

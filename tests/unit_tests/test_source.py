@@ -4,6 +4,7 @@ import openmc
 import openmc.lib
 import openmc.stats
 import numpy as np
+import pytest
 from pytest import approx
 
 
@@ -12,7 +13,7 @@ def test_source():
     energy = openmc.stats.Discrete([1.0e6], [1.0])
     angle = openmc.stats.Isotropic()
 
-    src = openmc.Source(space=space, angle=angle, energy=energy)
+    src = openmc.IndependentSource(space=space, angle=angle, energy=energy)
     assert src.space == space
     assert src.angle == angle
     assert src.energy == energy
@@ -23,7 +24,7 @@ def test_source():
     assert elem.find('angle') is not None
     assert elem.find('energy') is not None
 
-    src = openmc.Source.from_xml_element(elem)
+    src = openmc.IndependentSource.from_xml_element(elem)
     assert isinstance(src.angle, openmc.stats.Isotropic)
     assert src.space.xyz == [0.0, 0.0, 0.0]
     assert src.energy.x == [1.0e6]
@@ -49,8 +50,8 @@ def test_spherical_uniform():
 
 def test_source_file():
     filename = 'source.h5'
-    src = openmc.Source(filename=filename)
-    assert src.file == filename
+    src = openmc.FileSource(path=filename)
+    assert src.path == filename
 
     elem = src.to_xml_element()
     assert 'strength' in elem.attrib
@@ -59,7 +60,7 @@ def test_source_file():
 
 def test_source_dlopen():
     library = './libsource.so'
-    src = openmc.Source(library=library)
+    src = openmc.CompiledSource(library=library)
     assert src.library == library
 
     elem = src.to_xml_element()
@@ -75,14 +76,14 @@ def test_source_xml_roundtrip():
         phi=openmc.stats.Uniform(0., 2*pi),
         reference_uvw=(0., 1., 0.)
     )
-    src = openmc.Source(
+    src = openmc.IndependentSource(
         space=space, angle=angle, energy=energy,
         particle='photon', strength=100.0
     )
     elem = src.to_xml_element()
 
     # Read from XML element and make sure data is preserved
-    new_src = openmc.Source.from_xml_element(elem)
+    new_src = openmc.IndependentSource.from_xml_element(elem)
     assert isinstance(new_src.space, openmc.stats.Box)
     np.testing.assert_allclose(new_src.space.lower_left, src.space.lower_left)
     np.testing.assert_allclose(new_src.space.upper_right, src.space.upper_right)
@@ -120,7 +121,7 @@ def test_rejection(run_in_tmpdir):
 
     # Set up a box source with rejection on the spherical cell
     space = openmc.stats.Box(*cell3.bounding_box)
-    model.settings.source = openmc.Source(space=space, domains=[cell1, cell2])
+    model.settings.source = openmc.IndependentSource(space=space, domains=[cell1, cell2])
 
     # Load up model via openmc.lib and sample source
     model.export_to_xml()
@@ -134,3 +135,25 @@ def test_rejection(run_in_tmpdir):
         assert p.r not in non_source_region
 
     openmc.lib.finalize()
+
+
+def test_exceptions():
+
+    with pytest.raises(AttributeError, match=r'Please use the FileSource class'):
+        s = openmc.IndependentSource()
+        s.file = 'my_file'
+
+    with pytest.raises(AttributeError, match=r'Please use the CompiledSource class'):
+        s = openmc.IndependentSource()
+        s.library = 'my_library'
+
+    with pytest.raises(AttributeError, match=r'Please use the CompiledSource class'):
+        s = openmc.IndependentSource()
+        s.parameters = 'my_params'
+
+    with pytest.warns(FutureWarning, match=r'in favor of \'IndependentSource\''):
+        s = openmc.Source()
+
+    with pytest.raises(AttributeError, match=r'has no attribute \'frisbee\''):
+        s = openmc.IndependentSource()
+        s.frisbee

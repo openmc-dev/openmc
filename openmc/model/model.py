@@ -98,21 +98,61 @@ class Model:
     def geometry(self) -> Optional[openmc.Geometry]:
         return self._geometry
 
+    @geometry.setter
+    def geometry(self, geometry):
+        check_type('geometry', geometry, openmc.Geometry)
+        self._geometry = geometry
+
     @property
     def materials(self) -> Optional[openmc.Materials]:
         return self._materials
+
+    @materials.setter
+    def materials(self, materials):
+        check_type('materials', materials, Iterable, openmc.Material)
+        if isinstance(materials, openmc.Materials):
+            self._materials = materials
+        else:
+            del self._materials[:]
+            for mat in materials:
+                self._materials.append(mat)
 
     @property
     def settings(self) -> Optional[openmc.Settings]:
         return self._settings
 
+    @settings.setter
+    def settings(self, settings):
+        check_type('settings', settings, openmc.Settings)
+        self._settings = settings
+
     @property
     def tallies(self) -> Optional[openmc.Tallies]:
         return self._tallies
 
+    @tallies.setter
+    def tallies(self, tallies):
+        check_type('tallies', tallies, Iterable, openmc.Tally)
+        if isinstance(tallies, openmc.Tallies):
+            self._tallies = tallies
+        else:
+            del self._tallies[:]
+            for tally in tallies:
+                self._tallies.append(tally)
+
     @property
     def plots(self) -> Optional[openmc.Plots]:
         return self._plots
+
+    @plots.setter
+    def plots(self, plots):
+        check_type('plots', plots, Iterable, openmc.Plot)
+        if isinstance(plots, openmc.Plots):
+            self._plots = plots
+        else:
+            del self._plots[:]
+            for plot in plots:
+                self._plots.append(plot)
 
     @property
     def is_initialized(self) -> bool:
@@ -165,46 +205,6 @@ class Model:
                 result[mat.name] = set()
             result[mat.name].add(mat)
         return result
-
-    @geometry.setter
-    def geometry(self, geometry):
-        check_type('geometry', geometry, openmc.Geometry)
-        self._geometry = geometry
-
-    @materials.setter
-    def materials(self, materials):
-        check_type('materials', materials, Iterable, openmc.Material)
-        if isinstance(materials, openmc.Materials):
-            self._materials = materials
-        else:
-            del self._materials[:]
-            for mat in materials:
-                self._materials.append(mat)
-
-    @settings.setter
-    def settings(self, settings):
-        check_type('settings', settings, openmc.Settings)
-        self._settings = settings
-
-    @tallies.setter
-    def tallies(self, tallies):
-        check_type('tallies', tallies, Iterable, openmc.Tally)
-        if isinstance(tallies, openmc.Tallies):
-            self._tallies = tallies
-        else:
-            del self._tallies[:]
-            for tally in tallies:
-                self._tallies.append(tally)
-
-    @plots.setter
-    def plots(self, plots):
-        check_type('plots', plots, Iterable, openmc.Plot)
-        if isinstance(plots, openmc.Plots):
-            self._plots = plots
-        else:
-            del self._plots[:]
-            for plot in plots:
-                self._plots.append(plot)
 
     @classmethod
     def from_xml(cls, geometry='geometry.xml', materials='materials.xml',
@@ -263,10 +263,10 @@ class Model:
         model.materials = openmc.Materials.from_xml_element(root.find('materials'))
         model.geometry = openmc.Geometry.from_xml_element(root.find('geometry'), model.materials)
 
-        if root.find('tallies'):
+        if root.find('tallies') is not None:
             model.tallies = openmc.Tallies.from_xml_element(root.find('tallies'), meshes)
 
-        if root.find('plots'):
+        if root.find('plots') is not None:
             model.plots = openmc.Plots.from_xml_element(root.find('plots'))
 
         return model
@@ -575,10 +575,15 @@ class Model:
                 cell_id = int(name.split()[1])
                 cell = cells[cell_id]
                 if cell.fill_type in ('material', 'distribmat'):
-                    cell.temperature = group['temperature'][()]
+                    temperature = group['temperature'][()]
+                    cell.temperature = temperature
                     if self.is_initialized:
                         lib_cell = openmc.lib.cells[cell_id]
-                        lib_cell.set_temperature(group['temperature'][()])
+                        if temperature.size > 1:
+                            for i, T in enumerate(temperature):
+                                lib_cell.set_temperature(T, i)
+                        else:
+                            lib_cell.set_temperature(temperature[0])
 
             # Make sure number of materials matches
             mats_group = fh['materials']

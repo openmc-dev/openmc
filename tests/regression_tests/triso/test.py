@@ -81,7 +81,7 @@ class TRISOTestHarness(PyAPITestHarness):
         settings.batches = 4
         settings.inactive = 0
         settings.particles = 100
-        settings.source = openmc.Source(space=openmc.stats.Point())
+        settings.source = openmc.IndependentSource(space=openmc.stats.Point())
         self._model.settings = settings
 
         self._model.materials = openmc.Materials([fuel, porous_carbon, ipyc,

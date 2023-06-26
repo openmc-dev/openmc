@@ -6,6 +6,7 @@
 #include <stack>
 #include <queue>
 #include <thread>
+#include <algorithm>
 #include <assert.h>
 #include <omp.h>
 
@@ -160,7 +161,235 @@ OctreeNode* OctreeNodeAllocator::allocate() {
 #endif
 
 Timer t;
-const double NUM_CELL_SEARCH_POINT_DENSITY = 32.0;
+std::vector<CellPoint> get_cell_points_uniform_dist(const Universe& univ, const UniversePartitioner& fallback, const AABB& bounds) {
+    const float NUM_CELL_SEARCH_POINT_DENSITY = 32.0f;
+    const int num_search_points = (int)(bounds.volume() * NUM_CELL_SEARCH_POINT_DENSITY);
+    std::vector<CellPoint> points_in_bounds(num_search_points);
+
+    int total_points_searched = 0;
+        
+    omp_lock_t progess_display_lock;
+    omp_init_lock(&progess_display_lock);
+
+    #pragma omp parallel for
+    for(int i = 0; i < num_search_points; i++) {
+        #pragma omp atomic
+        total_points_searched++;
+
+        if(total_points_searched % 500000 == 0 && total_points_searched != 0) {
+            omp_set_lock(&progess_display_lock);
+            std::cout << "Currently searched " << total_points_searched << " out of " << num_search_points << " points (" << (100.0 * total_points_searched) / num_search_points << "%).\tETA is " << (float(num_search_points) / total_points_searched * t.elapsed()) - t.elapsed() << "\tmore seconds for this node.\n";
+            std::cout.flush();
+            omp_unset_lock(&progess_display_lock);
+        }
+
+        auto& point = points_in_bounds[i];
+
+        uint64_t seed[3] = {
+            (uint64_t)i, (uint64_t)(num_search_points + i), (uint64_t)(2 * num_search_points + i)
+        };
+
+        for(int j = 0; j < 3; j++) {
+            point.pos[j] = uniform_distribution(bounds.min[j], bounds.max[j], &seed[j]);
+        }
+
+        Direction dummy_dir{1.0, 0.0, 0.0};
+
+        const auto& possible_cells = fallback.get_cells(point.pos, dummy_dir);
+        point.cell = univ.find_cell_for_point(possible_cells, point.pos);
+    }
+
+    return points_in_bounds;
+}
+
+
+
+std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const UniversePartitioner& fallback, const AABB& bounds) {
+    const std::vector<float> NUM_CELL_SEARCH_POINT_DENSITY = {
+        2.0, 2.0, 4.0, 8.0, 16.0
+    };
+
+    /*
+    NUM_CELL_SEARCH_POINT_DENSITY.clear();
+    for(int i = 0; i < 4; i++) {
+        NUM_CELL_SEARCH_POINT_DENSITY.push_back(8.0);
+    }
+    */
+
+    const int BIN_GRID_RES = 32;
+
+    // some console output vars
+    int total_points_searched = 0;    
+    omp_lock_t progess_display_lock;
+    omp_init_lock(&progess_display_lock);
+
+    int total_search_points = 0;
+    for(float density : NUM_CELL_SEARCH_POINT_DENSITY) {
+        total_search_points += (int)(bounds.volume() * density);
+    }
+
+    #define IN_PLACE_UNIQUIFIYING // in place unique-ifiying 
+    const int RESERVATION_SIZE = 512;
+    class Bin {
+    public:
+        Bin() {
+            omp_init_lock(&lock);
+            cells.reserve(RESERVATION_SIZE);
+        }
+
+        void insert(CellPoint p) {
+            omp_set_lock(&lock);
+            cells.push_back(p.cell);
+            if(cells.size() == cells.capacity()) {
+                int cur_size = cells.size();
+
+                make_cells_unique();
+
+                int size_saving = cur_size - cells.size();
+                if(size_saving < (int)(0.25 * cur_size)) {
+                    cells.reserve(2 * cells.capacity());
+                }
+            }
+            omp_unset_lock(&lock);
+        }
+
+        void make_cells_unique() {
+            std::sort(cells.begin(), cells.end());
+            int i = 0, j = 1;
+            while(j < cells.size()) {
+                if(cells[j] != cells[i]) {
+                    i++;
+                    cells[i] = cells[j];
+                }
+                j++;
+            }
+            cells.resize(i + 1);
+        }
+
+        int size() const {
+            return std::max(cells.size(), (size_t)1);
+        }
+
+        float score(int iteration) {
+            float val;
+
+            if(iteration == 0) {
+                val = 1.0;
+            } else if(iteration == 1) {
+                val = (float)size();
+            } else {
+                const float alpha = 0.1;
+
+                float size_score = size();
+                float cell_increase_score = float(cells.size()) / prev_cell_count;
+
+                val = alpha * cell_increase_score + (1 - alpha) * size_score;
+            }
+
+            // do stuff here to update for the next scoring cycle
+            prev_cell_count = size();
+
+            return val;
+        }
+    private:
+        omp_lock_t lock;
+        std::vector<int> cells;
+        int prev_cell_count;
+ 
+    };
+
+    std::vector<Bin> bin_grid(BIN_GRID_RES * BIN_GRID_RES * BIN_GRID_RES); 
+    std::vector<float> bin_cdf(BIN_GRID_RES * BIN_GRID_RES * BIN_GRID_RES);
+
+    vec3 bin_dim;
+    for(int i = 0; i < 3; i++) {
+        bin_dim[i] = (bounds.max[i] - bounds.min[i]) / BIN_GRID_RES;
+    }
+
+    std::vector<CellPoint> points_in_bounds(total_search_points);
+    int write_offset = 0;
+    for(int iteration = 0; iteration < NUM_CELL_SEARCH_POINT_DENSITY.size(); iteration++) {
+        float density = NUM_CELL_SEARCH_POINT_DENSITY[iteration];
+        int num_search_points = (int)(bounds.volume() * density);
+
+        float total_score = 0.0;
+        for(int i = 0; i < bin_grid.size(); i++) {
+            total_score += bin_grid[i].score(iteration);
+            bin_cdf[i] = total_score;
+        }
+
+        for(int i = 0; i < bin_grid.size(); i++) {
+            bin_cdf[i] /= total_score;
+        }
+
+        #pragma omp parallel 
+        {
+            int tid = omp_get_thread_num();
+            int tcount = omp_get_num_threads();
+
+            uint64_t bin_seed = write_offset + tid;
+            uint64_t pos_seed[3] = {
+                (uint64_t)(tid + tcount), (uint64_t)(tid + tcount * 2), (uint64_t)(tid + tcount * 3)
+            };
+            #pragma omp for
+            for(int i = 0; i < num_search_points; i++) {
+                #pragma omp atomic
+                total_points_searched++;
+
+                if(total_points_searched % 500000 == 0 && total_points_searched != 0) {
+                    omp_set_lock(&progess_display_lock);
+                    std::cout << "Currently searched " << total_points_searched << " out of " << total_search_points << " points (" << (100.0 * total_points_searched) / total_search_points << "%).\tETA is " << (float(total_search_points) / total_points_searched * t.elapsed()) - t.elapsed() << "\tmore seconds for this node.\n";
+                    std::cout.flush();
+                    omp_unset_lock(&progess_display_lock);
+                }
+
+                int index = write_offset + i;
+                auto& point = points_in_bounds[index];
+
+                float bin_cdf_val = uniform_distribution(0.0, 1.0, &bin_seed);
+
+                float current_cdf = 0.0;
+                Bin* sample_bin = &bin_grid[0];
+                int idx[3] {0, 0, 0};
+
+                auto cdf_iter = std::upper_bound(bin_cdf.begin(), bin_cdf.end(), bin_cdf_val);
+                int bin_idx = std::distance(bin_cdf.begin(), cdf_iter);
+                sample_bin = &bin_grid[bin_idx];
+                for(int j = 0; j < 3; j++) {
+                    idx[j] = bin_idx % BIN_GRID_RES;
+                    bin_idx /= BIN_GRID_RES;
+                }      
+
+                AABB bin_box;
+                for(int j = 0; j < 3; j++) {
+                    bin_box.min[j] = idx[j] * bin_dim[j] + bounds.min[j];
+                    bin_box.max[j] = bin_dim[j] + bin_box.min[j];
+                }
+
+                for(int j = 0; j < 3; j++) {
+                    point.pos[j] = uniform_distribution(bin_box.min[j], bin_box.max[j], &pos_seed[j]);
+                }
+
+                Direction dummy_dir{1.0, 0.0, 0.0};
+
+                const auto& possible_cells = fallback.get_cells(point.pos, dummy_dir);
+                point.cell = univ.find_cell_for_point(possible_cells, point.pos);
+
+                sample_bin->insert(point);
+            }
+        }
+
+        write_offset += num_search_points;
+        
+        #pragma omp parallel for
+        for(auto& bin : bin_grid) {
+            bin.make_cells_unique();
+        }
+    }
+
+    return points_in_bounds;
+}
+
 OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_node, int max_depth, const std::string& file_path) : fallback(univ) {
     if(!ocm_init) {
         ocm_init = true;
@@ -192,41 +421,9 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
         return;
     }
 
-    const int num_search_points = (int)(bounds.volume() * NUM_CELL_SEARCH_POINT_DENSITY);
-    std::vector<CellPoint> points_in_bounds(num_search_points);
 
-    omp_lock_t progess_display_lock;
-    omp_init_lock(&progess_display_lock);
 
-    int total_points_searched = 0;
-    #pragma omp parallel for
-    for(int i = 0; i < num_search_points; i++) {
-        #pragma omp atomic
-        total_points_searched++;
-
-        if(total_points_searched % 500000 == 0 && total_points_searched != 0) {
-            omp_set_lock(&progess_display_lock);
-            std::cout << "Currently searched " << total_points_searched << " out of " << num_search_points << " points (" << (100.0 * total_points_searched) / num_search_points << "%).\tETA is " << (float(num_search_points) / total_points_searched * t.elapsed()) - t.elapsed() << "\tmore seconds for this node.\n";
-            std::cout.flush();
-            omp_unset_lock(&progess_display_lock);
-        }
-
-        auto& point = points_in_bounds[i];
-
-        uint64_t seed[3] = {
-            (uint64_t)i, (uint64_t)(num_search_points + i), (uint64_t)(2 * num_search_points + i)
-        };
-
-        for(int j = 0; j < 3; j++) {
-            point.pos[j] = uniform_distribution(bounds.min[j], bounds.max[j], &seed[j]);
-        }
-
-        Direction dummy_dir{1.0, 0.0, 0.0};
-
-        const auto& possible_cells = fallback.get_cells(point.pos, dummy_dir);
-        point.cell = univ.find_cell_for_point(possible_cells, point.pos);
-    }
-
+    std::vector<CellPoint> points_in_bounds = get_cell_points_binning(univ, fallback, bounds);
 
     std::cout << "Done searching for points! Beginning organization of points in octree...\n";
 
@@ -285,98 +482,6 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
     std::cout << "Done sorting points into octree!\n";
 
 
-
-
-
-
-
-
-
-#if 0
-    int next_id = 1;
-    num_nodes = 1;
-
-    omp_lock_t push_lock;
-
-    std::stack<std::pair<OctreeNode*, AABB>> unproc_nodes;
-    unproc_nodes.emplace(&root, rootbox);
-    while(!unproc_nodes.empty()) {
-        //std::cout << "Processing node...\n";
-        auto p = unproc_nodes.top();
-        auto& current = *p.first;
-        auto box = p.second;
-        unproc_nodes.pop();
-
-        if(current.depth == max_depth) {
-            continue;
-        }
-
-        // subdivide
-        #ifdef OCTREE_PARTITIONER_BLOCK_ALLOCATION
-        current.children = node_alloc.allocate();
-        #else
-        current.children = new OctreeNode[8]; 
-        #endif
-        num_nodes += 8;
-        
-        // to write clean code for the subidivision process, I don't hardcode everything out and instead use loops that repeadetly split the box on an axis
-        std::vector<AABB> resultant_boxes;
-        resultant_boxes.push_back(box);
-        for(int i = 0; i < 3; i++) {
-            std::vector<AABB> temp_box_buffer;
-
-            for(const auto& box : resultant_boxes) {
-                // split on i-th axis
-                float midpoint = box.get_center()[i];
-
-                int j = ((i + 1) % 3);
-                int k = ((i + 2) % 3);
-
-                AABB splitted_boxes[2];
-                vec3 extension_point[2];
-
-                extension_point[0][i] = midpoint;
-                extension_point[0][j] = box.min[j];
-                extension_point[0][k] = box.min[k];
-
-                extension_point[1][i] = midpoint;
-                extension_point[1][j] = box.max[j];
-                extension_point[1][k] = box.max[k];
-
-                splitted_boxes[0].extend(box.max);
-                splitted_boxes[0].extend(extension_point[0]);
-
-                splitted_boxes[1].extend(box.min);
-                splitted_boxes[1].extend(extension_point[1]);
-
-                temp_box_buffer.push_back(splitted_boxes[0]);
-                temp_box_buffer.push_back(splitted_boxes[1]);
-            }
-
-            // move the results to the next splitting stage
-            resultant_boxes = temp_box_buffer;
-        }
-
-        for(int i = 0; i < 8; i++) {
-            current.children[i].center = resultant_boxes[i].get_center();
-            current.children[i].depth = current.depth + 1;
-            current.children[i].id = next_id;
-            next_id++;
-        }
-
-
-        #pragma omp parallel for
-        for(int i = 0; i < 8; i++) {
-            find_cells_in_box(univ, current, current.children[i], resultant_boxes[i]);
-            if(current.children[i].cells.size() > target_cells_per_node) {
-                omp_set_lock(&push_lock);
-                unproc_nodes.emplace(&current.children[i], resultant_boxes[i]);
-                omp_unset_lock(&push_lock);
-            }
-        }
-    }    
-#endif
-
     t.stop();
     std::cout << "Construction took " << t.elapsed() << " seconds.\n";
 
@@ -427,25 +532,11 @@ OctreePartitioner::~OctreePartitioner() {
 const vector<int32_t>& OctreePartitioner::get_cells(Position r, Direction u) const {
     octree_use_count++;
 
-    // completely ignore the direction argument as we wont need that
-    
-    //#ifdef OCTREE_DEBUG_INFO
-    //octree_console_mutex.lock();
-    //std::cout << "Searching for particle at " << r << std::endl;
-    //octree_console_mutex.unlock();
-    //#endif
-
-
     if(!bounds.contains(r)) {
-        #ifdef FALLBACK_OPTIMIZATIONS
-        return get_cells_fallback(r, u);
-        #else
-        // I don't want this to be counted in the stats
+        // discount this get_cells call from the stats to only focus on points within the octree
         fallback_use_count--; 
         octree_use_count--;
-        // root.cells is empty
-        return root.cells;
-        #endif
+        return get_cells_fallback(r, u);
     }
 
 
@@ -455,11 +546,9 @@ const vector<int32_t>& OctreePartitioner::get_cells(Position r, Direction u) con
         current = &current->get_containing_child(r);
     }
 
-    #ifdef FALLBACK_OPTIMIZATIONS
     if(current->cells.empty()) {
         return get_cells_fallback(r, u);
     }
-    #endif
 
     return current->cells;
 }
@@ -594,6 +683,192 @@ void OctreePartitioner::read_from_file(const std::string& file_path) {
 }
 
 /*
+Successful octree uses:	120035
+Octree fallback uses:	42311
+Again, construction time:	126.471
+ ============================>    PERFORMANCE STATISTICS    <============================
+ Note: performance metrics only count the time spent in the transport loop and currently only support history-based transport.
+ The time below is given as total wall clock seconds across all threads (e.g. 1 second of 8 threads executing is counted as 8 seconds)
+ Total OpenMC execution time was 23.7694 seconds.
+ Universe::find_cell took 5.79047 seconds in total. (Approximately 24.361% of total execution time)
+
+
+Successful octree uses:	120181
+Octree fallback uses:	72779
+Again, construction time:	59.4075
+ ============================>    PERFORMANCE STATISTICS    <============================
+ Note: performance metrics only count the time spent in the transport loop and currently only support history-based transport.
+ The time below is given as total wall clock seconds across all threads (e.g. 1 second of 8 threads executing is counted as 8 seconds)
+ Total OpenMC execution time was 26.0166 seconds.
+ Universe::find_cell took 7.97749 seconds in total. (Approximately 30.663% of total execution time)
+
+
+Successful octree uses:	120036
+Octree fallback uses:	55888
+Again, construction time:	95.169
+ ============================>    PERFORMANCE STATISTICS    <============================
+ Note: performance metrics only count the time spent in the transport loop and currently only support history-based transport.
+ The time below is given as total wall clock seconds across all threads (e.g. 1 second of 8 threads executing is counted as 8 seconds)
+ Total OpenMC execution time was 24.5633 seconds.
+ Universe::find_cell took 6.71337 seconds in total. (Approximately 27.3309% of total execution time)
+
+
+Successful octree uses:	120072
+Octree fallback uses:	42043
+Again, construction time:	126.448
+ ============================>    PERFORMANCE STATISTICS    <============================
+ Note: performance metrics only count the time spent in the transport loop and currently only support history-based transport.
+ The time below is given as total wall clock seconds across all threads (e.g. 1 second of 8 threads executing is counted as 8 seconds)
+ Total OpenMC execution time was 24.1136 seconds.
+ Universe::find_cell took 5.78582 seconds in total. (Approximately 23.994% of total execution time)
+
+
+alpha 0.1, 2-2-4-8-16
+Successful octree uses:	120078
+Octree fallback uses:	42061
+Again, construction time:	123.161
+ ============================>    PERFORMANCE STATISTICS    <============================
+ Note: performance metrics only count the time spent in the transport loop and currently only support history-based transport.
+ The time below is given as total wall clock seconds across all threads (e.g. 1 second of 8 threads executing is counted as 8 seconds)
+ Total OpenMC execution time was 23.8965 seconds.
+ Universe::find_cell took 5.80047 seconds in total. (Approximately 24.2733% of total execution time)
+
+
+alpha 0.4
+Successful octree uses:	119959
+Octree fallback uses:	45403
+Again, construction time:	116.55
+ ============================>    PERFORMANCE STATISTICS    <============================
+ Note: performance metrics only count the time spent in the transport loop and currently only support history-based transport.
+ The time below is given as total wall clock seconds across all threads (e.g. 1 second of 8 threads executing is counted as 8 seconds)
+ Total OpenMC execution time was 24.2023 seconds.
+ Universe::find_cell took 6.06049 seconds in total. (Approximately 25.041% of total execution time)
+
+
+without in-place op
+Successful octree uses:	120009
+Octree fallback uses:	44386
+Again, construction time:	120.182
+ ============================>    PERFORMANCE STATISTICS    <============================
+ Note: performance metrics only count the time spent in the transport loop and currently only support history-based transport.
+ The time below is given as total wall clock seconds across all threads (e.g. 1 second of 8 threads executing is counted as 8 seconds)
+ Total OpenMC execution time was 24.3735 seconds.
+ Universe::find_cell took 6.08325 seconds in total. (Approximately 24.9585% of total execution time)
+
+
+after the fix (4-12-32)
+Successful octree uses:	120090
+Octree fallback uses:	44398
+Again, construction time:	119.082
+ ============================>    PERFORMANCE STATISTICS    <============================
+ Note: performance metrics only count the time spent in the transport loop and currently only support history-based transport.
+ The time below is given as total wall clock seconds across all threads (e.g. 1 second of 8 threads executing is counted as 8 seconds)
+ Total OpenMC execution time was 24.2427 seconds.
+ Universe::find_cell took 5.94023 seconds in total. (Approximately 24.5032% of total execution time)
+
+
+with binning
+Successful octree uses:	120001
+Octree fallback uses:	72621
+Again, construction time:	77.2118
+ ============================>    PERFORMANCE STATISTICS    <============================
+ Note: performance metrics only count the time spent in the transport loop and currently only support history-based transport.
+ The time below is given as total wall clock seconds across all threads (e.g. 1 second of 8 threads executing is counted as 8 seconds)
+ Total OpenMC execution time was 25.9852 seconds.
+ Universe::find_cell took 7.89101 seconds in total. (Approximately 30.3673% of total execution time)
+
+
+with no bining, constant dens 128
+Successful octree uses:	120034
+Octree fallback uses:	46379
+Again, construction time:	233.664
+ ============================>    PERFORMANCE STATISTICS    <============================
+ Note: performance metrics only count the time spent in the transport loop and currently only support history-based transport.
+ The time below is given as total wall clock seconds across all threads (e.g. 1 second of 8 threads executing is counted as 8 seconds)
+ Total OpenMC execution time was 24.2725 seconds.
+ Universe::find_cell took 6.091 seconds in total. (Approximately 25.0942% of total execution time)
+
+with no bining, constant dens 32
+Successful octree uses:	120184
+Octree fallback uses:	72527
+Again, construction time:	59.2701
+ ============================>    PERFORMANCE STATISTICS    <============================
+ Note: performance metrics only count the time spent in the transport loop and currently only support history-based transport.
+ The time below is given as total wall clock seconds across all threads (e.g. 1 second of 8 threads executing is counted as 8 seconds)
+ Total OpenMC execution time was 26.2013 seconds.
+ Universe::find_cell took 7.97431 seconds in total. (Approximately 30.4348% of total execution time)
+
+after fixing binning
+Successful octree uses:	120195
+Octree fallback uses:	72620
+Again, construction time:	76.3437
+ ============================>    PERFORMANCE STATISTICS    <============================
+ Note: performance metrics only count the time spent in the transport loop and currently only support history-based transport.
+ The time below is given as total wall clock seconds across all threads (e.g. 1 second of 8 threads executing is counted as 8 seconds)
+ Total OpenMC execution time was 26.1909 seconds.
+ Universe::find_cell took 7.96369 seconds in total. (Approximately 30.4063% of total execution time)
+
+affter seperation (binning)
+Successful octree uses:	120149
+Octree fallback uses:	72647
+Again, construction time:	77.1117
+ ============================>    PERFORMANCE STATISTICS    <============================
+ Note: performance metrics only count the time spent in the transport loop and currently only support history-based transport.
+ The time below is given as total wall clock seconds across all threads (e.g. 1 second of 8 threads executing is counted as 8 seconds)
+ Total OpenMC execution time was 26.1907 seconds.
+ Universe::find_cell took 7.91638 seconds in total. (Approximately 30.2259% of total execution time)
+
+
+after bin search
+Successful octree uses:	120131
+Octree fallback uses:	72324
+Again, construction time:	58.6078
+ ============================>    PERFORMANCE STATISTICS    <============================
+ Note: performance metrics only count the time spent in the transport loop and currently only support history-based transport.
+ The time below is given as total wall clock seconds across all threads (e.g. 1 second of 8 threads executing is counted as 8 seconds)
+ Total OpenMC execution time was 25.8686 seconds.
+ Universe::find_cell took 7.99754 seconds in total. (Approximately 30.9161% of total execution time)
+
+4-12-16
+Successful octree uses:	120174
+Octree fallback uses:	72944
+Again, construction time:	59.5206
+ ============================>    PERFORMANCE STATISTICS    <============================
+ Note: performance metrics only count the time spent in the transport loop and currently only support history-based transport.
+ The time below is given as total wall clock seconds across all threads (e.g. 1 second of 8 threads executing is counted as 8 seconds)
+ Total OpenMC execution time was 27.0091 seconds.
+ Universe::find_cell took 8.09066 seconds in total. (Approximately 29.9554% of total execution time)
+
+2-2-4-8-16
+Successful octree uses:	120140
+Octree fallback uses:	72310
+Again, construction time:	59.8562
+ ============================>    PERFORMANCE STATISTICS    <============================
+ Note: performance metrics only count the time spent in the transport loop and currently only support history-based transport.
+ The time below is given as total wall clock seconds across all threads (e.g. 1 second of 8 threads executing is counted as 8 seconds)
+ Total OpenMC execution time was 26.2316 seconds.
+ Universe::find_cell took 7.92618 seconds in total. (Approximately 30.2161% of total execution time)
+
+4-4-4-4-8-8
+Successful octree uses:	120151
+Octree fallback uses:	72443
+Again, construction time:	59.5919
+ ============================>    PERFORMANCE STATISTICS    <============================
+ Note: performance metrics only count the time spent in the transport loop and currently only support history-based transport.
+ The time below is given as total wall clock seconds across all threads (e.g. 1 second of 8 threads executing is counted as 8 seconds)
+ Total OpenMC execution time was 26.1838 seconds.
+ Universe::find_cell took 7.90228 seconds in total. (Approximately 30.18% of total execution time)
+            bool unique = true;
+            for(int x : cells) {
+                if(x == p.cell) {
+                    unique = false;
+                    break;
+                }
+            }
+
+            if(unique) {
+                cells.push_back(p.cell);
+            }
 
 Algorithm:
 

@@ -818,7 +818,7 @@ class Integrator(ABC):
 
         self.operator.finalize()
 
-    def add_transfer_rate(self, material, elements, transfer_rate,
+    def add_transfer_rate(self, material, components, transfer_rate,
                          transfer_rate_units='1/s', destination_material=None):
         """Add transfer rates to depletable material.
 
@@ -826,8 +826,10 @@ class Integrator(ABC):
         ----------
         material : openmc.Material or str or int
             Depletable material
-        elements : list of str
-            List of strings of elements that share transfer rate
+        components : list of str
+            List of strings of elements and/or nuclides that share transfer rate.
+            A transfer rate for a nuclide cannot be added to a material
+            alongside a transfer rate for its element and vice versa.
         transfer_rate : float
             Rate at which elements are transferred. A positive or negative values
             set removal of feed rates, respectively.
@@ -841,7 +843,7 @@ class Integrator(ABC):
         if self.transfer_rates is None:
             self.transfer_rates = TransferRates(self.operator, self.operator.model)
 
-        self.transfer_rates.set_transfer_rate(material, elements, transfer_rate,
+        self.transfer_rates.set_transfer_rate(material, components, transfer_rate,
                                       transfer_rate_units, destination_material)
 
 @add_params

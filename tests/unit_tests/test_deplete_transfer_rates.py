@@ -45,29 +45,73 @@ def model():
 
     return openmc.Model(geometry, materials, settings)
 
-
-def test_get_set(model):
+@pytest.mark.parametrize("case_name, transfer_rates", [
+    ('elements', {'U': 0.01, 'Xe': 0.1}),
+    ('nuclides', {'I135': 0.01, 'Gd156': 0.1, 'Gd157': 0.01}),
+    ('nuclides_elements', {'I135': 0.01, 'Gd156': 0.1, 'Gd157': 0.01, 'U': 0.01,
+                           'Xe': 0.1}),
+    ('elements_nuclides', {'U': 0.01, 'Xe': 0.1, 'I135': 0.01, 'Gd156': 0.1,
+                           'Gd157': 0.01}),
+    ('rates_invalid_1', {'Gd': 0.01, 'Gd157': 0.01, 'Gd156': 0.01}),
+    ('rates_invalid_2', {'Gd156': 0.01, 'Gd157': 0.01, 'Gd': 0.01}),
+    ('rates_invalid_3', {'Gb156': 0.01}),
+    ('rates_invalid_4', {'Gb': 0.01})
+    ])
+def test_get_set(model, case_name, transfer_rates):
     """Tests the get/set methods"""
 
-    # create transfer rates for U and Xe
-    transfer_rates = {'U': 0.01, 'Xe': 0.1}
     op = CoupledOperator(model, CHAIN_PATH)
     transfer = TransferRates(op, model)
 
     # Test by Openmc material, material name and material id
     material, dest_material = [m for m in model.materials if m.depletable]
-
     for material_input in [material, material.name, material.id]:
         for dest_material_input in [dest_material, dest_material.name,
                                     dest_material.id]:
-            for element, transfer_rate in transfer_rates.items():
-                transfer.set_transfer_rate(material_input, [element], transfer_rate,
-                                 destination_material=dest_material_input)
-                assert transfer.get_transfer_rate(material_input,
-                                            element) == transfer_rate
-                assert transfer.get_destination_material(material_input,
-                                                    element) == str(dest_material.id)
-            assert transfer.get_elements(material_input) == transfer_rates.keys()
+            if case_name == 'rates_invalid_1':
+                with pytest.raises(ValueError, match='Cannot add transfer '
+                                    'rate for nuclide Gd157 to material 1 '
+                                    'where element Gd already has a '
+                                    'transfer rate.'):
+                    for component, transfer_rate in transfer_rates.items():
+                        transfer.set_transfer_rate(material_input,
+                                                   [component],
+                                                   transfer_rate)
+            elif case_name == 'rates_invalid_2':
+                with pytest.raises(ValueError, match='Cannot add transfer '
+                                    f'rate for element Gd to material 1 with '
+                                   'transfer rate\(s\) for nuclide\(s\) '
+                                   'Gd156, Gd157.'):
+                    for component, transfer_rate in transfer_rates.items():
+                        transfer.set_transfer_rate(material_input,
+                                                   [component],
+                                                   transfer_rate)
+            elif case_name == 'rates_invalid_3':
+                with pytest.raises(ValueError, match='Gb156 is not a valid '
+                                   'nuclide or element.'):
+                    for component, transfer_rate in transfer_rates.items():
+                        transfer.set_transfer_rate(material_input,
+                                                   [component],
+                                                   transfer_rate)
+            elif case_name == 'rates_invalid_4':
+                with pytest.raises(ValueError, match='Gb is not a valid '
+                                   'nuclide or element.'):
+                    for component, transfer_rate in transfer_rates.items():
+                        transfer.set_transfer_rate(material_input,
+                                                   [component],
+                                                   transfer_rate)
+            else:
+                for component, transfer_rate in transfer_rates.items():
+                    transfer.set_transfer_rate(material_input, [component],
+                                               transfer_rate,
+                                               destination_material=\
+                                               dest_material_input)
+                    assert transfer.get_transfer_rate(
+                        material_input, component) == transfer_rate
+                    assert transfer.get_destination_material(
+                        material_input, component) == str(dest_material.id)
+                assert transfer.get_components(material_input) == \
+                    transfer_rates.keys()
 
 
 @pytest.mark.parametrize("transfer_rate_units, unit_conv", [
@@ -86,14 +130,15 @@ def test_get_set(model):
 def test_units(transfer_rate_units, unit_conv, model):
     """ Units testing"""
     # create transfer rate Xe
-    element = 'Xe'
+    components = ['Xe', 'U235']
     transfer_rate = 1e-5
     op = CoupledOperator(model, CHAIN_PATH)
     transfer = TransferRates(op, model)
 
-    transfer.set_transfer_rate('f', [element], transfer_rate * unit_conv,
-                         transfer_rate_units=transfer_rate_units)
-    assert transfer.get_transfer_rate('f', element) == transfer_rate
+    for component in components:
+        transfer.set_transfer_rate('f', [component], transfer_rate * unit_conv,
+                                   transfer_rate_units=transfer_rate_units)
+        assert transfer.get_transfer_rate('f', component) == transfer_rate
 
 
 def test_transfer(run_in_tmpdir, model):

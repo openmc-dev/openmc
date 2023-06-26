@@ -106,3 +106,6 @@ CMakeSettings.json
 
 # Python pickle files
 *.pkl
+
+# Large fules from octree builds
+*octree.bin

@@ -1891,7 +1891,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // delayed-nu-fission
-          double abs_xs = macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
+          double abs_xs = macro_xs.get_xs(MgxsType::ABSORPTION, p_g, macro_t, macro_a);
           if (abs_xs > 0.) {
             if (tally.delayedgroup_filter_ != C_NONE) {
               auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
@@ -2019,13 +2019,13 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
                 score = wgt_absorb * flux;
                 if (i_nuclide >= 0) {
                   score *= nuc_xs.get_xs(
-                             MgxsType::DECAY_RATE, p_g, nullptr, nullptr, &d) *
+                             MgxsType::DECAY_RATE, p_g, nullptr, nullptr, &d, nuc_t, nuc_a) *
                            nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
                              nullptr, nullptr, &d, nuc_t, nuc_a) /
                            abs_xs;
                 } else {
                   score *= macro_xs.get_xs(
-                             MgxsType::DECAY_RATE, p_g, nullptr, nullptr, &d) *
+                             MgxsType::DECAY_RATE, p_g, nullptr, nullptr, &d, macro_t, macro_a) *
                            macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
                              nullptr, nullptr, &d, macro_t, macro_a) /
                            abs_xs;

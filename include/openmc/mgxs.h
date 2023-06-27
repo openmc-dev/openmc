@@ -137,7 +137,9 @@ public:
   //! @param dg Sampled delayed group index.
   //! @param gout Sampled outgoing energy group.
   //! @param seed Pseudorandom seed pointer
-  void sample_fission_energy(int gin, int& dg, int& gout, uint64_t* seed);
+  //! @param t Temperature index.
+  //! @param a Angle index.
+  void sample_fission_energy(int gin, int& dg, int& gout, uint64_t* seed, int t, int a);
 
   //! \brief Samples the outgoing energy and angle from a scatter event.
   //!
@@ -146,8 +148,10 @@ public:
   //! @param mu Sampled cosine of the change-in-angle.
   //! @param wgt Weight of the particle to be adjusted.
   //! @param seed Pseudorandom seed pointer.
+  //! @param t Temperature index.
+  //! @param a Angle index.
   void sample_scatter(
-    int gin, int& gout, double& mu, double& wgt, uint64_t* seed);
+    int gin, int& gout, double& mu, double& wgt, uint64_t* seed, int t, int a);
 
   //! \brief Calculates cross section quantities needed for tracking.
   //!

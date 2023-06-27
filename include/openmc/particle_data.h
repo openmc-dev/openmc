@@ -177,8 +177,8 @@ struct MacroXS {
 struct CacheDataMG {
   int material{-1}; //!< material index
   double sqrtkT;    //!< last temperature corresponding to t
-  int t;            //!< temperature index
-  int a;            //!< angle index
+  int t {0};        //!< temperature index
+  int a {0};        //!< angle index
   Direction u;      //!< angle that corresponds to a
 };
 

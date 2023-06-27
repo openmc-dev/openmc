@@ -593,7 +593,7 @@ void Mgxs::calculate_xs(Particle& p)
     }
     // If the material is the same, but angle is different, need to
     // find the new angle index
-    if (u != p.mg_xs_cache().u) {
+    if (p.u_local() != p.mg_xs_cache().u) {
       set_angle_index(p);
     }
   }

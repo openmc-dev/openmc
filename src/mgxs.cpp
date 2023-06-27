@@ -620,20 +620,26 @@ bool Mgxs::equiv(const Mgxs& that)
 
 //==============================================================================
 
+int Mgxs::get_temperature_index(double sqrtkT)
+{
+  return xt::argmin(xt::abs(kTs - sqrtkT * sqrtkT))[0];
+}
+
+//==============================================================================
+
 void Mgxs::set_temperature_index(Particle& p)
 {
-  // See if we need to find the new index
-  p.mg_xs_cache().t = xt::argmin(xt::abs(kTs - p.sqrtkT() * p.sqrtkT()))[0];
+  p.mg_xs_cache().t = get_temperature_index(p.sqrtkT());
   p.mg_xs_cache().sqrtkT = p.sqrtkT();
 }
 
 //==============================================================================
 
-void Mgxs::set_angle_index(Particle& p)
+int Mgxs::get_angle_index(Direction& u)
 {
-  // See if we need to find the new index
-  if (!is_isotropic) {
-    Direction& u = p.u_local();
+  if (is_isotropic) {
+    return 0;
+  } else {
     // convert direction to polar and azimuthal angles
     double my_pol = std::acos(u.z);
     double my_azi = std::atan2(u.y, u.x);
@@ -644,8 +650,18 @@ void Mgxs::set_angle_index(Particle& p)
     delta_angle = 2. * PI / n_azi;
     int a = std::floor((my_azi + PI) / delta_angle);
 
-    p.mg_xs_cache().a = n_azi * p + a;
-    p.mg_xs_cache().u = u;
+    return n_azi * p + a;
+  }
+}
+
+//==============================================================================
+
+void Mgxs::set_angle_index(Particle& p)
+{
+  // See if we need to find the new index
+  if (!is_isotropic) {
+    p.mg_xs_cache().a = get_angle_index(p.u_local());
+    p.mg_xs_cache().u = p.u_local();
   }
 }
 

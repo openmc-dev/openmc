@@ -119,6 +119,19 @@ def test_subdivide(pin_mats, good_radii, surf_type):
 
 @pytest.mark.parametrize(
     "surf_type", [openmc.ZCylinder, openmc.XCylinder, openmc.YCylinder])
+def test_subdivide_new(pin_mats, good_radii, surf_type):
+    """Test the subdivision with various orientations"""
+    surfs = [surf_type(r=r) for r in good_radii]
+    fresh = pin_new(surfs, pin_mats, name="fresh pin")
+    assert len(fresh.cells) == len(pin_mats)
+    assert fresh.name == "fresh pin"
+
+
+
+
+
+@pytest.mark.parametrize(
+    "surf_type", [openmc.ZCylinder, openmc.XCylinder, openmc.YCylinder])
 def test_subdivide_radially(pin_mats, good_radii, surf_type):
     """Test the subdivision with various orientations"""
     surfs = [surf_type(r=r) for r in good_radii]

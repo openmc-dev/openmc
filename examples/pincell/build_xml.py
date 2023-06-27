@@ -7,7 +7,6 @@ import openmc
 # Create materials for the problem
 
 uo2 = openmc.Material(name='UO2 fuel at 2.4% wt enrichment')
-uo2.volume = 100
 uo2.set_density('g/cm3', 10.29769)
 uo2.add_element('U', 1., enrichment=2.4)
 uo2.add_element('O', 2.)
@@ -17,7 +16,6 @@ helium.set_density('g/cm3', 0.001598)
 helium.add_element('He', 2.4044e-4)
 
 zircaloy = openmc.Material(name='Zircaloy 4')
-zircaloy.volume = 100
 zircaloy.set_density('g/cm3', 6.55)
 zircaloy.add_element('Sn', 0.014  , 'wo')
 zircaloy.add_element('Fe', 0.00165, 'wo')
@@ -54,17 +52,19 @@ corner =  openmc.ZCylinder(r=pitch/2.0, name='Clad OR')
 surfs = [fuel_or, clad_ir, clad_or, corner]
 mats = [uo2, helium, zircaloy, borated_water, borated_water]
 subdivs_r = {
-        0 : 2,
-        2 : 2
+        0 : 3,
+        2 : 1,
+        3 : 2
         }
 subdivs_a = {
         0 : 4,
+        2 : 3,
         3 : 5
         }
 #subdivs_r = None
 #subdivs_a = None
 
-pin_universe = openmc.model.pin_new(surfs, mats, subdivisions_r=subdivs_r, subdivisions_a=subdivs_a, divide_vols=True)
+pin_universe = openmc.model.pin_new(surfs, mats, subdivisions_r=subdivs_r, subdivisions_a=subdivs_a)
 #pin = openmc.Cell(fill=pin_universe)
 
 mats = pin_universe.get_all_materials().values()

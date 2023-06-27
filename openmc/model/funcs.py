@@ -566,7 +566,7 @@ def pin(surfaces, items, subdivisions=None, divide_vols=True,
 
 
 
-def pin_new(surfaces, items, subdivisions_r=None, subdivisions_a=None, divide_vols=True,
+def pin_new(surfaces, items, subdivisions_r=None, subdivisions_a=None,
         **kwargs):
     """Convenience function for building a fuel pin
 
@@ -591,11 +591,6 @@ def pin_new(surfaces, items, subdivisions_r=None, subdivisions_a=None, divide_vo
         Dictionary describing which rings to subdivide azimuthally and how
         many times. Keys are indexes of the annular rings
         to be divided. Will construct equal area sectors
-    divide_vols : bool
-        If this evaluates to ``True``, then volumes of subdivided
-        :class:`openmc.Material` instances will also be divided by the
-        number of divisions.  Otherwise the volume of the
-        original material will not be modified before subdivision
     kwargs:
         Additional key-word arguments to be passed to
         :class:`openmc.Universe`, like ``name="Fuel pin"``
@@ -689,12 +684,12 @@ def pin_new(surfaces, items, subdivisions_r=None, subdivisions_a=None, divide_vo
                     surfaces[:ring_index] + new_surfs + surfaces[ring_index:])
 
             filler = items[ring_index]
-            if (divide_vols and hasattr(filler, "volume")
-                    and filler.volume is not None):
-                filler.volume /= nr
+            #if (divide_vols and hasattr(filler, "volume")
+            #        and filler.volume is not None):
+            #    filler.volume /= nr
 
             items[ring_index:ring_index] = [
-                filler.clone() for _i in range(nr - 1)]
+                filler for _i in range(nr - 1)]
    
 
     # Loop to correct "subdivisions_a" dictionary after creating more rings
@@ -774,12 +769,12 @@ def pin_new(surfaces, items, subdivisions_r=None, subdivisions_a=None, divide_vo
                     surfaces[:ring_index] + new_surfs + surfaces[ring_index:])
 
             filler = items[ring_index]
-            if (divide_vols and hasattr(filler, "volume")
-                    and filler.volume is not None):
-                filler.volume /= ns
+            #if (divide_vols and hasattr(filler, "volume")
+            #        and filler.volume is not None):
+            #    filler.volume /= ns
 
             items[ring_index:ring_index] = [
-                filler.clone() for _i in range(ns - 1)]
+                filler for _i in range(ns - 1)]
 
     # Build the universe
     regions = subdivide(surfaces)

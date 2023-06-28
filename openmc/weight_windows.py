@@ -125,7 +125,9 @@ class WeightWindows(IDManagerMixin):
         self.mesh = mesh
         self.id = id
         self.particle_type = particle_type
-        self.energy_bounds = energy_bounds
+        self._energy_bounds = None
+        if energy_bounds is not None:
+            self.energy_bounds = energy_bounds
         self.lower_ww_bounds = lower_ww_bounds
 
         if upper_ww_bounds is not None and upper_bound_ratio:
@@ -229,7 +231,7 @@ class WeightWindows(IDManagerMixin):
     @property
     def num_energy_bins(self) -> int:
         if self.energy_bounds is None:
-            raise ValueError('Energy bounds are not set')
+            return 1
         return self.energy_bounds.size - 1
 
     @property

@@ -265,16 +265,18 @@ void WeightWindows::set_defaults()
   }
 }
 
-void WeightWindows::allocate_ww_bounds() {
-    auto shape = bounds_size();
-    if (shape[0] * shape[1] == 0) {
-      auto msg = fmt::format("Size of weight window bounds is zero for WeightWindows {}", id());
-      warning(msg);
-    }
-    lower_ww_ = xt::empty<double>(shape);
-    lower_ww_.fill(-1);
-    upper_ww_ = xt::empty<double>(shape);
-    upper_ww_.fill(-1);
+void WeightWindows::allocate_ww_bounds()
+{
+  auto shape = bounds_size();
+  if (shape[0] * shape[1] == 0) {
+    auto msg = fmt::format(
+      "Size of weight window bounds is zero for WeightWindows {}", id());
+    warning(msg);
+  }
+  lower_ww_ = xt::empty<double>(shape);
+  lower_ww_.fill(-1);
+  upper_ww_ = xt::empty<double>(shape);
+  upper_ww_.fill(-1);
 }
 
 void WeightWindows::set_id(int32_t id)
@@ -312,7 +314,8 @@ void WeightWindows::set_energy_bounds(gsl::span<const double> bounds)
   energy_bounds_.clear();
   energy_bounds_.insert(energy_bounds_.begin(), bounds.begin(), bounds.end());
   // if the mesh is set, allocate space for weight window bounds
-  if (mesh_idx_ != C_NONE) allocate_ww_bounds();
+  if (mesh_idx_ != C_NONE)
+    allocate_ww_bounds();
 }
 
 void WeightWindows::set_particle_type(ParticleType p_type)

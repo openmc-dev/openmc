@@ -43,6 +43,8 @@ class IndependentOperator(OpenMCOperator):
     ----------
     materials : openmc.Materials
         Materials to deplete.
+    flux : float
+        Flux in [neutron-cm/src]
     micro_xs : MicroXS
         One-group microscopic cross sections in [b]. If the
         :class:`~openmc.deplete.MicroXS` object is empty, a decay-only calculation will
@@ -111,6 +113,7 @@ class IndependentOperator(OpenMCOperator):
 
     def __init__(self,
                  materials,
+                 flux,
                  micro_xs,
                  chain_file=None,
                  keff=None,
@@ -134,6 +137,7 @@ class IndependentOperator(OpenMCOperator):
         helper_kwargs = {'normalization_mode': normalization_mode,
                          'fission_yield_opts': fission_yield_opts}
 
+        self.flux = flux
         super().__init__(
             materials,
             micro_xs,
@@ -316,20 +320,18 @@ class IndependentOperator(OpenMCOperator):
             """
             self._results_cache.fill(0.0)
 
-            # Get volume in units of [cm³]
-            volume_cm3 = self._op.number.get_mat_volume(mat_id)
-
+            # Get flux and microscopic cross sections from operator
+            flux = self._op.flux
             xs = self._op.cross_sections
-            for i_nuc, i_react in product(nuc_index, react_index):
-                nuc = self.nuc_ind_map[i_nuc]
-                rx = self.rx_ind_map[i_react]
 
-                # OK, this is kind of weird, but we multiply by volume in [cm³]
-                # only because OpenMCOperator._calculate_reaction_rates has to
-                # divide it out later. It might make more sense to account for
-                # the source rate (flux) here rather than in the normalization
-                # helper.
-                self._results_cache[i_nuc, i_react] = xs[nuc, rx] * volume_cm3
+            for i_nuc in nuc_index:
+                nuc = self.nuc_ind_map[i_nuc]
+                for i_rx in react_index:
+                    rx = self.rx_ind_map[i_rx]
+
+                    # Determine reaction rate by multiplying xs in [b] by flux
+                    # in [n-cm/src] to give [(reactions/sec)*b-cm/atom]
+                    self._results_cache[i_nuc, i_rx] = xs[nuc, rx] * flux
 
             return self._results_cache
 

@@ -317,8 +317,9 @@ class IndependentOperator(OpenMCOperator):
             self._results_cache.fill(0.0)
 
             # Get volume in units of [cm³]
-            volume_b_cm = self._op.number.get_mat_volume(mat_id)
+            volume_cm3 = self._op.number.get_mat_volume(mat_id)
 
+            xs = self._op.cross_sections
             for i_nuc, i_react in product(nuc_index, react_index):
                 nuc = self.nuc_ind_map[i_nuc]
                 rx = self.rx_ind_map[i_react]
@@ -328,8 +329,7 @@ class IndependentOperator(OpenMCOperator):
                 # divide it out later. It might make more sense to account for
                 # the source rate (flux) here rather than in the normalization
                 # helper.
-                self._results_cache[i_nuc, i_react] = \
-                    self._op.cross_sections[nuc, rx] * volume_b_cm
+                self._results_cache[i_nuc, i_react] = xs[nuc, rx] * volume_cm3
 
             return self._results_cache
 

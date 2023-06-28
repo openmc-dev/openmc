@@ -28,8 +28,16 @@ def test_ww_generator(run_in_tmpdir):
     energy_bounds = np.linspace(0.0, 1e6, 70)
     particle = 'neutron'
 
+    # include another tally to make sure user-specified tallies and those automaticaly
+    # created by weight window generators can coexist
+    tally = openmc.Tally()
+    ef = openmc.EnergyFilter(energy_bounds)
+    tally.filters = [ef]
+    tally.scores = ['flux']
+    model.tallies = [tally]
+
     wwg = openmc.WeightWindowGenerator(mesh, energy_bounds, particle)
-    wwg.update_parameters = {'ratio' : 5.0, 'threshold': 0.8, 'value' : 'mean'}
+    wwg.update_parameters = {'ratio': 5.0, 'threshold': 0.8, 'value': 'mean'}
 
     model.settings.weight_window_generators = wwg
     model.export_to_xml()

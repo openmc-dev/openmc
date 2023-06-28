@@ -118,6 +118,9 @@
     //! Ready the weight window class for use
     void set_defaults();
 
+    //! Ensure the weight window lower bounds are properly allocated
+    void allocate_ww_bounds();
+
     //! Update weight window boundaries using tally results
     //! \param[in] tally Pointer to the tally whose results will be used to
     //! update weight windows \param[in] value String representing the type of
@@ -192,7 +195,7 @@
       1.0}; //!< Maximum lower bound to particle weight ratio
     double weight_cutoff_ {DEFAULT_WEIGHT_CUTOFF}; //!< Weight cutoff
     int max_split_ {10}; //!< Maximum value for particle splitting
-    int32_t mesh_idx_;   //!< Index in meshes vector
+    int32_t mesh_idx_ {-1};   //!< Index in meshes vector
   };
 
   class WeightWindowsGenerator {
@@ -202,6 +205,9 @@
 
     // Methods
     void update() const;
+
+    //! Create the tally used for weight window generation
+    void create_tally();
 
     // Data members
     int32_t
@@ -220,6 +226,9 @@
                              //update weight windows
     double ratio_ {5.0};     //<! ratio of lower to upper weight window bounds
   };
+
+  //! Finalize variance reduction objects after all inputs have been read
+  void finalize_variance_reduction();
 
 } // namespace openmc
 #endif // OPENMC_WEIGHT_WINDOWS_H

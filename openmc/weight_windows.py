@@ -681,6 +681,7 @@ class WeightWindowGenerator:
 
     def __init__(self, mesh, energy_bounds=None, particle_type='neutron'):
         self.mesh = mesh
+        self._energy_bounds = None
         if energy_bounds is not None:
             self.energy_bounds = energy_bounds
         self.particle_type = particle_type

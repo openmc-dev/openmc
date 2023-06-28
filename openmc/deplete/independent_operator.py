@@ -132,10 +132,9 @@ class IndependentOperator(OpenMCOperator):
         helper_kwargs = {'normalization_mode': normalization_mode,
                          'fission_yield_opts': fission_yield_opts}
 
-        cross_sections = micro_xs * 1e-24
         super().__init__(
             materials,
-            cross_sections,
+            micro_xs,
             chain_file,
             prev_results,
             fission_q=fission_q,
@@ -315,14 +314,14 @@ class IndependentOperator(OpenMCOperator):
             """
             self._results_cache.fill(0.0)
 
-            # Get volume in units of [b-cm]
-            volume_b_cm = 1e24 * self._op.number.get_mat_volume(mat_id)
+            # Get volume in units of [cm³]
+            volume_b_cm = self._op.number.get_mat_volume(mat_id)
 
             for i_nuc, i_react in product(nuc_index, react_index):
                 nuc = self.nuc_ind_map[i_nuc]
                 rx = self.rx_ind_map[i_react]
 
-                # OK, this is kind of weird, but we multiply by volume in [b-cm]
+                # OK, this is kind of weird, but we multiply by volume in [cm³]
                 # only because OpenMCOperator._calculate_reaction_rates has to
                 # divide it out later. It might make more sense to account for
                 # the source rate (flux) here rather than in the normalization

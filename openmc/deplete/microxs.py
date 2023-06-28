@@ -1,12 +1,13 @@
 """MicroXS module
 
-A pandas.DataFrame storing microscopic cross section data with
-nuclide names as row indices and reaction names as column indices.
+A class for storing microscopic cross section data that can be used with the
+IndependentOperator class for depletion.
 """
 
 import tempfile
+from typing import List
 
-from pandas import DataFrame, read_csv, Series
+import pandas as pd
 import numpy as np
 
 from openmc.checkvalue import check_type, check_value, check_iterable_type
@@ -20,12 +21,41 @@ _valid_rxns = list(REACTIONS)
 _valid_rxns.append('fission')
 
 
-class MicroXS(DataFrame):
+class MicroXS:
     """Microscopic cross section data for use in transport-independent depletion.
 
     .. versionadded:: 0.13.1
 
+    Parameters
+    ----------
+    data : numpy.ndarray of floats
+        Array containing one-group microscopic cross section values for
+        each nuclide and reaction. Cross section values are assumed to be
+        in [b].
+    nuclides : list of str
+        List of nuclide symbols for that have data for at least one
+        reaction.
+    reactions : list of str
+        List of reactions. All reactions must match those in
+        :data:`openmc.deplete.chain.REACTIONS`
+
     """
+    def __init__(self, data: np.ndarray, nuclides: List[str], reactions: List[str]):
+        # Validate inputs
+        if data.shape != (len(nuclides), len(reactions)):
+            raise ValueError(
+                f'Nuclides list of length {len(nuclides)} and '
+                f'reactions array of length {len(reactions)} do not '
+                f'match dimensions of data array of shape {data.shape}')
+        check_iterable_type('nuclides', nuclides, str)
+        check_iterable_type('reactions', reactions, str)
+        check_type('data', data, np.ndarray, expected_iter_type=float)
+        for reaction in reactions:
+            check_value('reactions', reaction, _valid_rxns)
+
+        self.data = data
+        self.nuclides = nuclides
+        self.reactions = reactions
 
     @classmethod
     def from_model(cls,
@@ -60,7 +90,7 @@ class MicroXS(DataFrame):
         energy_bound : 2-tuple of float, optional
             Bounds for the energy group.
         run_kwargs : dict, optional
-            Keyword arguments passed to :meth:`openmc.model.Model.run`
+            Keyword arguments passed to :meth:`openmc.Model.run`
 
         Returns
         -------
@@ -130,58 +160,13 @@ class MicroXS(DataFrame):
         flux = flux_tally.mean[0, 0, 0]
 
         # Divide RR by flux to get microscopic cross sections
-        xs = reaction_rates / flux
+        xs = reaction_rates / flux  # (nuclides, reactions)
 
-        # Build Series objects
-        series = {}
-        for i, rx in enumerate(reactions):
-            series[rx] = Series(xs[..., i], index=rr_tally.nuclides)
-
-        # Revert to the original tallies and materials
-        model.tallies = original_tallies
-
-        return cls(series).rename_axis('nuclide')
-
-    @classmethod
-    def from_array(cls, nuclides, reactions, data):
-        """
-        Creates a ``MicroXS`` object from arrays.
-
-        Parameters
-        ----------
-        nuclides : list of str
-            List of nuclide symbols for that have data for at least one
-            reaction.
-        reactions : list of str
-            List of reactions. All reactions must match those in
-            :data:`openmc.deplete.chain.REACTIONS`
-        data : ndarray of floats
-            Array containing one-group microscopic cross section values for
-            each nuclide and reaction. Cross section values are assumed to be
-            in [b].
-
-        Returns
-        -------
-        MicroXS
-        """
-
-        # Validate inputs
-        if data.shape != (len(nuclides), len(reactions)):
-            raise ValueError(
-                f'Nuclides list of length {len(nuclides)} and '
-                f'reactions array of length {len(reactions)} do not '
-                f'match dimensions of data array of shape {data.shape}')
-
-        cls._validate_micro_xs_inputs(
-            nuclides, reactions, data)
-        micro_xs = cls(index=nuclides, columns=reactions, data=data)
-
-        return micro_xs
+        return cls(xs, nuclides, reactions)
 
     @classmethod
     def from_csv(cls, csv_file, **kwargs):
-        """
-        Load a ``MicroXS`` object from a ``.csv`` file.
+        """Load data from a comma-separated values (csv) file.
 
         Parameters
         ----------
@@ -199,17 +184,30 @@ class MicroXS(DataFrame):
         if 'float_precision' not in kwargs:
             kwargs['float_precision'] = 'round_trip'
 
-        micro_xs = cls(read_csv(csv_file, index_col=0, **kwargs))
+        df = pd.read_csv(csv_file, index_col=0, **kwargs)
+        data = df.values
+        nuclides = list(df.index)
+        reactions = list(df)
+        return cls(data, nuclides, reactions)
 
-        cls._validate_micro_xs_inputs(list(micro_xs.index),
-                                      list(micro_xs.columns),
-                                      micro_xs.to_numpy())
-        return micro_xs
+    def __getitem__(self, index):
+        nuc, rx = index
+        i_nuc = self.nuclides.index(nuc)
+        i_rx = self.reactions.index(rx)
+        return self.data[i_nuc, i_rx]
 
-    @staticmethod
-    def _validate_micro_xs_inputs(nuclides, reactions, data):
-        check_iterable_type('nuclides', nuclides, str)
-        check_iterable_type('reactions', reactions, str)
-        check_type('data', data, np.ndarray, expected_iter_type=float)
-        for reaction in reactions:
-            check_value('reactions', reaction, _valid_rxns)
+    def to_csv(self, *args, **kwargs):
+        """Write data to a comma-separated values (csv) file
+
+        Parameters
+        ----------
+        *args
+            Positional arguments passed to :meth:`pandas.DataFrame.to_csv`
+        **kwargs
+            Keyword arguments passed to :meth:`pandas.DataFrame.to_csv`
+
+        """
+        index = pd.Index(self.nuclides, name='nuclide')
+        df = pd.DataFrame(self.data, columns=self.reactions, index=index)
+        df.to_csv(*args, **kwargs)
+

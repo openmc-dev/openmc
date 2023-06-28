@@ -56,4 +56,4 @@ def test_from_model(model):
 
     ref_xs = MicroXS.from_csv('test_reference.csv')
 
-    np.testing.assert_allclose(test_xs, ref_xs, rtol=1e-11)
+    np.testing.assert_allclose(test_xs.data, ref_xs.data, rtol=1e-11)

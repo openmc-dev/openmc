@@ -5,8 +5,10 @@ transport solver by using user-provided one-group cross sections.
 
 """
 
+from __future__ import annotations
 import copy
 from itertools import product
+from typing import Dict, Set
 
 import numpy as np
 from uncertainties import ufloat
@@ -255,9 +257,9 @@ class IndependentOperator(OpenMCOperator):
                 self.prev_res.append(new_res)
 
 
-    def _get_nuclides_with_data(self, cross_sections):
+    def _get_nuclides_with_data(self, cross_sections: MicroXS) -> Set[str]:
         """Finds nuclides with cross section data"""
-        return set(cross_sections.index)
+        return set(cross_sections.nuclides)
 
     class _IndependentRateHelper(ReactionRateHelper):
         """Class for generating one-group reaction rates with flux and
@@ -284,7 +286,7 @@ class IndependentOperator(OpenMCOperator):
 
         """
 
-        def __init__(self, op):
+        def __init__(self, op: IndependentOperator):
             rates = op.reaction_rates
             super().__init__(rates.n_nuc, rates.n_react)
 
@@ -327,7 +329,7 @@ class IndependentOperator(OpenMCOperator):
                 # the source rate (flux) here rather than in the normalization
                 # helper.
                 self._results_cache[i_nuc, i_react] = \
-                    self._op.cross_sections[rx][nuc] * volume_b_cm
+                    self._op.cross_sections[nuc, rx] * volume_b_cm
 
             return self._results_cache
 

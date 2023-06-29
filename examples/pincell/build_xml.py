@@ -66,6 +66,8 @@ subdivs_a = {
 
 pin_universe = openmc.model.pin_new(surfs, mats, subdivisions_r=subdivs_r, subdivisions_a=subdivs_a)
 #pin = openmc.Cell(fill=pin_universe)
+water = openmc.Cell(fill=borated_water, region=+corner & box)
+pin_universe.add_cell(water)
 
 mats = pin_universe.get_all_materials().values()
 

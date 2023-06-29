@@ -668,6 +668,8 @@ def pin_new(surfaces, items, subdivisions_r=None, subdivisions_a=None,
         # Original cell is not removed, but not occupies last ring
         for ring_index in reversed(sorted(subdivisions_r.keys())):
             nr = subdivisions_r[ring_index]
+            if nr < 1:
+                raise ValueError("The number of subdivisions must be a positive integer.")
             new_surfs = []
 
             lower_rad = 0.0 if ring_index == 0 else surfaces[ring_index - 1].r
@@ -737,6 +739,8 @@ def pin_new(surfaces, items, subdivisions_r=None, subdivisions_a=None,
         # Generate azimuthal divisions
         for ring_index in reversed(sorted(subdivisions_a.keys())):
             ns = subdivisions_a[ring_index]
+            if ns < 1:
+                raise ValueError("The number of subdivisions must be a positive integer.")
             if ns == 1:
                 continue
             new_surfs = []

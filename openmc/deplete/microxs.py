@@ -5,7 +5,7 @@ IndependentOperator class for depletion.
 """
 
 import tempfile
-from typing import List, Iterable, Optional
+from typing import List, Iterable, Optional, Union
 
 import pandas as pd
 import numpy as np
@@ -26,8 +26,8 @@ def get_microxs_and_flux(
         domain,
         nuclides: Optional[Iterable[str]] = None,
         reactions: Optional[Iterable[str]] = None,
-        chain_file: Optional[PathLike] =None,
-        energy_bounds: Optional[Iterable[float]] = (0, 20e6),
+        energies: Optional[Union[Iterable[float], str]] = None,
+        chain_file: Optional[PathLike] = None,
         run_kwargs=None
     ):
     """Generate a microscopic cross sections and flux from a Model
@@ -44,20 +44,20 @@ def get_microxs_and_flux(
     reactions : list of str
         Reactions to get cross sections for. If not specified, all neutron
         reactions listed in the depletion chain file are used.
+    energies : iterable of float or str
+        Energy group boundaries in [eV] or the name of the group structure
     chain_file : str, optional
         Path to the depletion chain XML file that will be used in depletion
         simulation. Used to determine cross sections for materials not
         present in the inital composition. Defaults to
         ``openmc.config['chain_file']``.
-    energy_bound : 2-tuple of float, optional
-        Bounds for the energy group.
     run_kwargs : dict, optional
         Keyword arguments passed to :meth:`openmc.Model.run`
 
     Returns
     -------
-    float
-        One-group flux in [n-cm/src]
+    numpy.ndarray
+        Flux in each group in [n-cm/src]
     MicroXS
         Cross section data in [b]
 
@@ -83,7 +83,12 @@ def get_microxs_and_flux(
                     if nuc.name in nuclides_with_data]
 
     # Set up the reaction rate and flux tallies
-    energy_filter = openmc.EnergyFilter(energy_bounds)
+    if energies is None:
+        energies = [0.0, 100.0e6]
+    if isinstance(energies, str):
+        energy_filter = openmc.EnergyFilter.from_group_structure(energies)
+    else:
+        energy_filter = openmc.EnergyFilter(energies)
     if isinstance(domain, openmc.Material):
         domain_filter = openmc.MaterialFilter([domain])
     elif isinstance(domain, openmc.Cell):
@@ -118,11 +123,17 @@ def get_microxs_and_flux(
             flux_tally._read_results()
 
     # Get reaction rates and flux values
-    reaction_rates = rr_tally.mean.sum(axis=0)  # (nuclides, reactions)
-    flux = flux_tally.mean[0, 0, 0]
+    reaction_rates = rr_tally.get_reshaped_data().sum(axis=0)  # (groups, nuclides, reactions)
+    flux = flux_tally.get_reshaped_data().sum(axis=0)  # (groups, 1, 1)
+
+    # Make energy groups last dimension
+    reaction_rates = np.moveaxis(reaction_rates, 0, -1)  # (nuclides, reactions, groups)
+    flux = flux.squeeze()  # (groups,)
 
     # Divide RR by flux to get microscopic cross sections
-    xs = reaction_rates / flux  # (nuclides, reactions)
+    xs = np.empty_like(reaction_rates) # (nuclides, reactions, groups)
+    nonzero = flux > 0.0
+    xs[..., nonzero] = reaction_rates[..., nonzero] / flux[nonzero]
 
     # Reset tallies
     model.tallies = original_tallies
@@ -138,9 +149,9 @@ class MicroXS:
     Parameters
     ----------
     data : numpy.ndarray of floats
-        Array containing one-group microscopic cross section values for
-        each nuclide and reaction. Cross section values are assumed to be
-        in [b].
+        3D array containing microscopic cross section values for each
+        nuclide, reaction, and energy group. Cross section values are assumed to
+        be in [b].
     nuclides : list of str
         List of nuclide symbols for that have data for at least one
         reaction.
@@ -151,7 +162,7 @@ class MicroXS:
     """
     def __init__(self, data: np.ndarray, nuclides: List[str], reactions: List[str]):
         # Validate inputs
-        if data.shape != (len(nuclides), len(reactions)):
+        if data.shape[:2] != (len(nuclides), len(reactions)):
             raise ValueError(
                 f'Nuclides list of length {len(nuclides)} and '
                 f'reactions array of length {len(reactions)} do not '

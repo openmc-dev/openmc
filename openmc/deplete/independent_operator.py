@@ -331,7 +331,7 @@ class IndependentOperator(OpenMCOperator):
 
                     # Determine reaction rate by multiplying xs in [b] by flux
                     # in [n-cm/src] to give [(reactions/sec)*b-cm/atom]
-                    self._results_cache[i_nuc, i_rx] = xs[nuc, rx] * flux
+                    self._results_cache[i_nuc, i_rx] = (xs[nuc, rx] * flux).sum()
 
             return self._results_cache
 

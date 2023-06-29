@@ -72,7 +72,7 @@ class NCrystalTest(PyAPITestHarness):
         return df.to_string()
 
 def test_cfg_from_xml():
-     """Make sure the cfg string is read by from_xml method"""
+    """Make sure the cfg string is read by from_xml method"""
     n_particles = 100000
     E0 = 0.012  # eV
     cfg = 'Al_sg225.ncmat'

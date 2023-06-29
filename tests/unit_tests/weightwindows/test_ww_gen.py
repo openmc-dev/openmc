@@ -62,7 +62,7 @@ def model():
     # 10 keV neutron point source at the origin
     space = openmc.stats.Point()
     energy = openmc.stats.Discrete(x=[1e4], p=[1.0])
-    settings.source = openmc.Source(space=space, energy=energy)
+    settings.source = openmc.IndependentSource(space=space, energy=energy)
 
     return openmc.Model(geometry=geometry, settings=settings)
 
@@ -229,9 +229,9 @@ def test_ww_gen_roundtrip(run_in_tmpdir, model):
     particle_type = 'neutron'
 
     wwg = openmc.WeightWindowGenerator(mesh, energy_bounds, particle_type)
-    wwg.update_params = {'ratio' : 5.0,
-                         'threshold': 0.8,
-                         'value' : 'mean'}
+    wwg.update_parameters = {'ratio' : 5.0,
+                             'threshold': 0.8,
+                             'value' : 'mean'}
 
     model.settings.weight_window_generators = wwg
     model.export_to_xml()

@@ -5,14 +5,13 @@ nuclide names as row indices and reaction names as column indices.
 """
 
 import tempfile
-from copy import deepcopy
 
 from pandas import DataFrame, read_csv, Series
 import numpy as np
 
 from openmc.checkvalue import check_type, check_value, check_iterable_type
 from openmc.exceptions import DataError
-from openmc import StatePoint, Materials
+from openmc import StatePoint
 import openmc
 from .chain import Chain, REACTIONS
 from .coupled_operator import _find_cross_sections, _get_nuclides_with_data
@@ -31,9 +30,10 @@ class MicroXS(DataFrame):
     @classmethod
     def from_model(cls,
                    model,
-                   reaction_domain,
+                   domain,
+                   nuclides=None,
+                   reactions=None,
                    chain_file=None,
-                   dilute_initial=1.0e3,
                    energy_bounds=(0, 20e6),
                    run_kwargs=None):
         """Generate a one-group cross-section dataframe using OpenMC.
@@ -44,17 +44,19 @@ class MicroXS(DataFrame):
         ----------
         model : openmc.Model
             OpenMC model object. Must contain geometry, materials, and settings.
-        reaction_domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
+        domain : openmc.Material or openmc.Cell or openmc.Universe
             Domain in which to tally reaction rates.
+        nuclides : list of str
+            Nuclides to get cross sections for. If not specified, all burnable
+            nuclides from the depletion chain file are used.
+        reactions : list of str
+            Reactions to get cross sections for. If not specified, all neutron
+            reactions listed in the depletion chain file are used.
         chain_file : str, optional
             Path to the depletion chain XML file that will be used in depletion
             simulation. Used to determine cross sections for materials not
             present in the inital composition. Defaults to
             ``openmc.config['chain_file']``.
-        dilute_initial : float, optional
-            Initial atom density [atoms/cm^3] to add for nuclides that
-            are zero in initial condition to ensure they exist in the cross
-            section data. Only done for nuclides with reaction rates.
         energy_bound : 2-tuple of float, optional
             Bounds for the energy group.
         run_kwargs : dict, optional
@@ -66,29 +68,40 @@ class MicroXS(DataFrame):
             Cross section data in [b]
 
         """
-        # Set up the reaction tallies
+        # Save any original tallies on the model
         original_tallies = model.tallies
-        original_materials = deepcopy(model.materials)
-        xs = {}
-        reactions, burnable_nucs, diluted_materials = cls._add_dilute_nuclides(
-            chain_file, model, dilute_initial)
-        model.materials = diluted_materials
 
+        # Determine what reactions and nuclides are available in chain
+        if chain_file is None:
+            chain_file = openmc.config.get('chain_file')
+            if chain_file is None:
+                raise DataError(
+                    "No depletion chain specified and could not find depletion "
+                    "chain in openmc.config['chain_file']"
+                )
+        chain = Chain.from_xml(chain_file)
+        if reactions is None:
+            reactions = chain.reactions
+        if not nuclides:
+            cross_sections = _find_cross_sections(model)
+            nuclides_with_data = _get_nuclides_with_data(cross_sections)
+            nuclides = [nuc.name for nuc in chain.nuclides
+                        if nuc.name in nuclides_with_data]
+
+        # Set up the reaction rate and flux tallies
         energy_filter = openmc.EnergyFilter(energy_bounds)
-        if isinstance(reaction_domain, openmc.Material):
-            domain_filter = openmc.MaterialFilter([reaction_domain])
-        elif isinstance(reaction_domain, openmc.Cell):
-            domain_filter = openmc.CellFilter([reaction_domain])
-        elif isinstance(reaction_domain, openmc.Universe):
-            domain_filter = openmc.UniverseFilter([reaction_domain])
+        if isinstance(domain, openmc.Material):
+            domain_filter = openmc.MaterialFilter([domain])
+        elif isinstance(domain, openmc.Cell):
+            domain_filter = openmc.CellFilter([domain])
+        elif isinstance(domain, openmc.Universe):
+            domain_filter = openmc.UniverseFilter([domain])
         else:
-            raise ValueError(f"Unsupported domain type: {type(reaction_domain)}")
+            raise ValueError(f"Unsupported domain type: {type(domain)}")
 
-        # TODO: Right now, we use all nuclides from the material but it probably
-        # should be based on the burnable nuclides
         rr_tally = openmc.Tally(name='MicroXS RR')
         rr_tally.filters = [domain_filter, energy_filter]
-        rr_tally.nuclides = reaction_domain.get_nuclides()
+        rr_tally.nuclides = nuclides
         rr_tally.multiply_density = False
         rr_tally.scores = reactions
 
@@ -126,68 +139,8 @@ class MicroXS(DataFrame):
 
         # Revert to the original tallies and materials
         model.tallies = original_tallies
-        model.materials = original_materials
 
-        return cls(series)
-
-    @classmethod
-    def _add_dilute_nuclides(cls, chain_file, model, dilute_initial):
-        """
-        Add nuclides not present in burnable materials that have neutron data
-        and are present in the depletion chain to those materials. This allows
-        us to tally those specific nuclides for reactions to create one-group
-        cross sections.
-
-        Parameters
-        ----------
-        chain_file : str
-            Path to the depletion chain XML file that will be used in depletion
-            simulation. Used to determine cross sections for materials not
-            present in the inital composition.
-        model : openmc.Model
-            Model object
-        dilute_initial : float
-            Initial atom density [atoms/cm^3] to add for nuclides that
-            are zero in initial condition to ensure they exist in the cross
-            section data. Only done for nuclides with reaction rates.
-
-        Returns
-        -------
-        reactions : list of str
-            List of reaction names
-        diluted_materials : openmc.Materials
-            :class:`openmc.Materials` object with nuclides added to burnable
-            materials.
-        """
-        if chain_file is None:
-            chain_file = openmc.config.get('chain_file')
-            if chain_file is None:
-                raise DataError(
-                    "No depletion chain specified and could not find depletion "
-                    "chain in openmc.config['chain_file']"
-                )
-        chain = Chain.from_xml(chain_file)
-        reactions = chain.reactions
-        cross_sections = _find_cross_sections(model)
-        nuclides_with_data = _get_nuclides_with_data(cross_sections)
-        burnable_nucs = [nuc.name for nuc in chain.nuclides
-                         if nuc.name in nuclides_with_data]
-        diluted_materials = Materials()
-        for material in model.materials:
-            if material.depletable:
-                nuc_densities = material.get_nuclide_atom_densities()
-                dilute_density = 1.0e-24 * dilute_initial
-                material.set_density('sum')
-                for nuc, density in nuc_densities.items():
-                    material.remove_nuclide(nuc)
-                    material.add_nuclide(nuc, density)
-                for burn_nuc in burnable_nucs:
-                    if burn_nuc not in nuc_densities:
-                        material.add_nuclide(burn_nuc,
-                                                     dilute_density)
-            diluted_materials.append(material)
-
-        return reactions, burnable_nucs, diluted_materials
+        return cls(series).rename_axis('nuclide')
 
     @classmethod
     def from_array(cls, nuclides, reactions, data):

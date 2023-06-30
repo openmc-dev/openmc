@@ -206,7 +206,7 @@ std::vector<CellPoint> get_cell_points_uniform_dist(const Universe& univ, const 
 
 std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const UniversePartitioner& fallback, const AABB& bounds) {
     const std::vector<float> NUM_CELL_SEARCH_POINT_DENSITY = {
-        2.0, 2.0, 4.0, 8.0, 16.0
+        2.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0
     };
 
     /*
@@ -232,13 +232,18 @@ std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const Unive
     const int RESERVATION_SIZE = 512;
     class Bin {
     public:
-        Bin() {
+        Bin() : num_unique_cells(0), prev_cell_count(0) {
             omp_init_lock(&lock);
             cells.reserve(RESERVATION_SIZE);
         }
 
-        void insert(CellPoint p) {
-            omp_set_lock(&lock);
+        void insert(const CellPoint& p) {
+            lock_bin();
+            insert_lockless(p);
+            unlock_bin();
+        }
+
+        void insert_lockless(const CellPoint& p) {
             cells.push_back(p.cell);
             if(cells.size() == cells.capacity()) {
                 int cur_size = cells.size();
@@ -249,12 +254,15 @@ std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const Unive
                 if(size_saving < (int)(0.25 * cur_size)) {
                     cells.reserve(2 * cells.capacity());
                 }
-            }
-            omp_unset_lock(&lock);
+            }            
+        }
+
+        void sort_cells() {
+            std::sort(cells.begin(), cells.end());
         }
 
         void make_cells_unique() {
-            std::sort(cells.begin(), cells.end());
+            sort_cells();
             int i = 0, j = 1;
             while(j < cells.size()) {
                 if(cells[j] != cells[i]) {
@@ -264,10 +272,15 @@ std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const Unive
                 j++;
             }
             cells.resize(i + 1);
+            num_unique_cells = cells.size();
         }
 
         int size() const {
             return std::max(cells.size(), (size_t)1);
+        }
+
+        int unique_size() const {
+            return num_unique_cells;
         }
 
         float score(int iteration) {
@@ -291,9 +304,35 @@ std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const Unive
 
             return val;
         }
+
+        const std::vector<int>& get_cells() const {
+            return cells;
+        }
+
+        void copy_untested_cells(const std::vector<int>& possible_cells, std::vector<int>& untested_cells) {
+            untested_cells.clear();
+
+            lock_bin();
+            for(int cell : possible_cells) {
+                if(!std::binary_search(cells.begin(), cells.begin() + num_unique_cells, cell)) {
+                    untested_cells.push_back(cell);
+                }
+            }
+            unlock_bin();
+
+        }
     private:
+        void lock_bin() {
+            omp_set_lock(&lock);
+        }
+
+        void unlock_bin() {
+            omp_unset_lock(&lock);
+        }
+
         omp_lock_t lock;
         std::vector<int> cells;
+        int num_unique_cells;
         int prev_cell_count;
  
     };
@@ -331,6 +370,10 @@ std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const Unive
             uint64_t pos_seed[3] = {
                 (uint64_t)(tid + tcount), (uint64_t)(tid + tcount * 2), (uint64_t)(tid + tcount * 3)
             };
+
+            std::vector<int> untested_cells;
+            untested_cells.reserve(univ.cells_.size());
+
             #pragma omp for
             for(int i = 0; i < num_search_points; i++) {
                 #pragma omp atomic
@@ -347,44 +390,38 @@ std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const Unive
                 auto& point = points_in_bounds[index];
 
                 float bin_cdf_val = uniform_distribution(0.0, 1.0, &bin_seed);
-
-                float current_cdf = 0.0;
-                Bin* sample_bin = &bin_grid[0];
-                int idx[3] {0, 0, 0};
-
                 auto cdf_iter = std::upper_bound(bin_cdf.begin(), bin_cdf.end(), bin_cdf_val);
                 int bin_idx = std::distance(bin_cdf.begin(), cdf_iter);
-                sample_bin = &bin_grid[bin_idx];
+                Bin* sample_bin = &bin_grid[bin_idx];
+
                 for(int j = 0; j < 3; j++) {
-                    idx[j] = bin_idx % BIN_GRID_RES;
+                    int idx = bin_idx % BIN_GRID_RES;
                     bin_idx /= BIN_GRID_RES;
-                }      
+                    float min = idx * bin_dim[j] + bounds.min[j];
+                    float max = bin_dim[j] + min;
 
-                AABB bin_box;
-                for(int j = 0; j < 3; j++) {
-                    bin_box.min[j] = idx[j] * bin_dim[j] + bounds.min[j];
-                    bin_box.max[j] = bin_dim[j] + bin_box.min[j];
-                }
-
-                for(int j = 0; j < 3; j++) {
-                    point.pos[j] = uniform_distribution(bin_box.min[j], bin_box.max[j], &pos_seed[j]);
+                    point.pos[j] = uniform_distribution(min, max, &pos_seed[j]);
                 }
 
                 Direction dummy_dir{1.0, 0.0, 0.0};
 
-                const auto& possible_cells = fallback.get_cells(point.pos, dummy_dir);
-                point.cell = univ.find_cell_for_point(possible_cells, point.pos);
+                point.cell = univ.find_cell_for_point(sample_bin->get_cells(), point.pos);
+                if(point.cell == -1) {
+                    const auto& possible_cells = fallback.get_cells(point.pos, dummy_dir);
+                    sample_bin->copy_untested_cells(possible_cells, untested_cells);
+                    point.cell = univ.find_cell_for_point(untested_cells, point.pos);
 
-                sample_bin->insert(point);
+                    sample_bin->insert(point);
+                } // else don't bother inserting
             }
         }
-
-        write_offset += num_search_points;
         
         #pragma omp parallel for
         for(auto& bin : bin_grid) {
-            bin.make_cells_unique();
+            bin.sort_cells();
         }
+
+        write_offset += num_search_points;
     }
 
     return points_in_bounds;
@@ -426,6 +463,7 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
     std::vector<CellPoint> points_in_bounds = get_cell_points_binning(univ, fallback, bounds);
 
     std::cout << "Done searching for points! Beginning organization of points in octree...\n";
+    std::cout.flush();
 
     struct OctreeConstructionTask {
         OctreeNode* node;
@@ -436,8 +474,72 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
         OctreeConstructionTask(OctreeNode* n, const AABB& b, const std::vector<CellPoint>& p) : node(n), box(b), points(p) {}
     };
 
+    // kind of a crude way to sort but whatever
+    Timer sorting_timer;
+    sorting_timer.start();
+   
+    #if 0
+    uint64_t total_threads = 16;//omp_get_num_threads(); // TODO: find a way to dynamically get this value
+    std::vector<int> start_index(total_threads), end_index(total_threads);
+
+    for(uint64_t i = 0; i < total_threads; i++) {
+        start_index[i] = (i * points_in_bounds.size()) / total_threads;
+    }
+
+    for(int i = 0; i < total_threads - 1; i++) {
+        end_index[i] = start_index[i + 1];
+    }
+
+    end_index.back() = points_in_bounds.size();
+
+    struct PointComp {
+        inline static bool comp(const CellPoint& lhs, const CellPoint& rhs) {
+            return (lhs.cell < rhs.cell);
+        }
+
+        inline bool operator() (const CellPoint& lhs, const CellPoint& rhs) {
+            return (lhs.cell < rhs.cell);
+        }
+    }; 
+
+    #pragma omp parallel for
+    for(int i = 0; i < total_threads; i++) {
+        std::sort(points_in_bounds.begin() + start_index[i], points_in_bounds.begin() + end_index[i], PointComp());
+    }
+
+    auto temp_points = points_in_bounds;
+
+    std::vector<int> next_point = start_index;
+    for(int i = 0; i < points_in_bounds.size(); i++) {
+        int minidx = -1;
+        for(int j = 0; j < total_threads; j++) {
+            if(next_point[j] == end_index[j]) {
+                continue;
+            } else if(minidx == -1 || PointComp::comp(points_in_bounds[next_point[j]], points_in_bounds[next_point[minidx]])) {
+                minidx = j;
+            }
+        }
+
+        temp_points[i] = points_in_bounds[next_point[minidx]];
+        next_point[minidx]++ ;
+    }
+    #else
+    struct PointComp {
+        inline bool operator() (const CellPoint& lhs, const CellPoint& rhs) {
+            return (lhs.cell < rhs.cell);
+        }
+    }; 
+    std::sort(points_in_bounds.begin(), points_in_bounds.end(), PointComp());
+    #endif
+
+    std::cout << "Total sorting time: " << sorting_timer.elapsed() << '\n';
+
+    double alloc_time = 0.0, node_selec_time = 0.0, post_process_time = 0.0;
+
     std::stack<OctreeConstructionTask> oct_unproc;
     oct_unproc.emplace(&root, bounds, points_in_bounds);
+    Timer a;
+    a.start();
     while(!oct_unproc.empty()) {
         auto cur_task = oct_unproc.top();
         oct_unproc.pop();
@@ -451,35 +553,68 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
 
         auto boxes = cur_task.node->subdivide(cur_task.box);
 
+        Timer t;
+
+        // allocation
+        t.start();
         OctreeConstructionTask child_tasks[8];
         for(int i = 0; i < 8; i++) {
             child_tasks[i].box = boxes[i];
             child_tasks[i].node = &cur_task.node->children[i];
+            child_tasks[i].points.reserve(cur_task.points.size());
         }
+        alloc_time += t.elapsed();
+        t.reset();
 
+        // sort points
+        t.start();
         for(const auto& point : cur_task.points) {
             child_tasks[cur_task.node->get_containing_child_index(point.pos)].points.push_back(point);
         }
+        node_selec_time += t.elapsed();
+        t.reset();
 
+        // post processing (make nodes leaves or push on construction stack)
+        t.start();
         for(int i = 0; i < 8; i++) {
-            sstd:;set<int> unique_cells;
-
-            for(const auto& point : child_tasks[i].points) {
-                unique_cells.emplace(point.cell);
-            }
-
-            if(unique_cells.size() > target_cells_per_node) {
-                oct_unproc.push(child_tasks[i]);
-            } else {
-                child_tasks[i].node->cells.resize(unique_cells.size());
-                for(int cell : unique_cells) {
-                    child_tasks[i].node->cells.push_back(cell);
+            // we don't have to sort since all points were already sorted before processing loop
+            int prev_cell = -1;
+            int num_unique_cells = 0;
+            for(const auto& p : child_tasks[i].points) {
+                if(p.cell != prev_cell) {
+                    num_unique_cells++;
+                    prev_cell = p.cell;
                 }
             }
-        }
-    }
 
-    std::cout << "Done sorting points into octree!\n";
+
+            if(num_unique_cells > target_cells_per_node) {
+                oct_unproc.push(child_tasks[i]);
+            } else {
+                // now, make the points unique
+                
+                child_tasks[i].node->cells.resize(num_unique_cells);
+
+                prev_cell = -1;
+                for(const auto& p : child_tasks[i].points) {
+                    if(p.cell != prev_cell) {
+                        child_tasks[i].node->cells.push_back(p.cell);
+                        prev_cell = p.cell;
+                    }
+                }               
+            }
+        }
+        post_process_time += t.elapsed();
+        t.reset();
+    }
+    a.stop();
+
+    std::cout << "Done placing points into octree! Performance statistics:\n";
+    std::cout << "\tAllocation:\t" << alloc_time << '\n';
+    std::cout << "\tNode selec:\t" << node_selec_time << '\n';
+    std::cout << "\tPost proc:\t" << post_process_time << '\n';
+    std::cout << "\tExpec tot:\t" << alloc_time + node_selec_time + post_process_time << '\n';
+    std::cout << "\tTotal time:\t" << a.elapsed() << '\n';
 
 
     t.stop();

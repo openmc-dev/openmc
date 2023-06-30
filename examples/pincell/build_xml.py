@@ -51,7 +51,7 @@ cell1.region = box
 fuel_or = openmc.ZCylinder(r=0.39218, name='Fuel OR')
 clad_ir = openmc.ZCylinder(r=0.40005, name='Clad IR')
 clad_or = openmc.ZCylinder(r=0.45720, name='Clad OR')
-corner =  openmc.ZCylinder(r=pitch/2, name='Clad OR')
+corner =  openmc.ZCylinder(r=pitch/1.75, name='Clad OR')
 
 # Create cells, mapping materials to regions
 #fuel = openmc.Cell(fill=uo2, region=-fuel_or)
@@ -72,7 +72,7 @@ subdivs_a = {
         3 : 8
         }
 #subdivs_r = None
-#subdivs_a = None
+subdivs_a = None
 
 pin_universe = openmc.model.pin_new(surfs, mats, subdivisions_r=subdivs_r, subdivisions_a=subdivs_a)
 #pin = openmc.Cell(fill=pin_universe)

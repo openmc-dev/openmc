@@ -393,6 +393,57 @@ cylinder_from_points = Cylinder.from_points
 
 
 class CylinderSectorUpdated(CompositeSurface):
+    """Updated version of CylinderSector
+    Better handles case of r1 = 0, does not create a cylinder of zero radius.
+    Also takes angle parameters as radians instead of degrees.
+    Infinite cylindrical sector composite surface.
+
+    A cylinder sector is composed of two cylindrical and two planar surfaces.
+    The cylindrical surfaces are concentric, and the planar surfaces intersect
+    the central axis of the cylindrical surfaces.
+
+    This class acts as a proper surface, meaning that unary `+` and `-`
+    operators applied to it will produce a half-space. The negative
+    side is defined to be the region inside of the cylinder sector.
+
+    .. versionadded:: 0.13.1
+
+    Parameters
+    ----------
+    r1 : float
+        Inner radius of sector. Must be less than r2.
+    r2 : float
+        Outer radius of sector. Must be greater than r1.
+    phi1 : float
+        Clockwise-most bound of sector in radians. Assumed to be in the
+        counterclockwise direction with respect to the first basis axis
+        (+y, +z, or +x).
+    phi2 : float
+        Counterclockwise-most bound of sector in radians. Assumed to be in the
+        counterclockwise direction with respect to the first basis axis
+        (+y, +z, or +x).
+    center : iterable of float
+       Coordinate for central axes of cylinders in the (y, z), (z, x), or (x, y)
+       basis. Defaults to (0,0).
+    axis : {'x', 'y', 'z'}
+        Central axis of the cylinders defining the inner and outer surfaces of
+        the sector. Defaults to 'z'.
+    **kwargs : dict
+        Keyword arguments passed to the :class:`Cylinder` and
+        :class:`Plane` constructors.
+
+    Attributes
+    ----------
+    outer_cyl : openmc.ZCylinder, openmc.YCylinder, or openmc.XCylinder
+        Outer cylinder surface.
+    inner_cyl : openmc.ZCylinder, openmc.YCylinder, or openmc.XCylinder
+        Inner cylinder surface.
+    plane1 : openmc.Plane
+        Plane at angle :math:`\\theta_1` relative to the first basis axis.
+    plane2 : openmc.Plane
+        Plane at angle :math:`\\theta_2` relative to the first basis axis.
+
+    """    
     
     _surface_names = ('outer_cyl', 'inner_cyl', 'plane1', 'plane2')
 
@@ -409,11 +460,6 @@ class CylinderSectorUpdated(CompositeSurface):
             raise ValueError(f'r2 must be greater than r1.')
 
         self.r1 = r1
-        #if theta2 <= theta1:
-        #    raise ValueError(f'theta2 must be greater than theta1.')
-
-        #phi1 = pi / 180 * theta1
-        #phi2 = pi / 180 * theta2
 
         # Coords for axis-perpendicular planes
         p1 = np.array([0., 0., 1.])

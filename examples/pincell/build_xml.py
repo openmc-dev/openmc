@@ -71,7 +71,7 @@ subdivs_a = {
         2 : 4,
         3 : 8
         }
-subdivs_r = None
+#subdivs_r = None
 #subdivs_a = None
 
 pin_universe = openmc.model.pin_new(surfs, mats, subdivisions_r=subdivs_r, subdivisions_a=subdivs_a)
@@ -95,6 +95,7 @@ root.add_cell(cell1)
 #geometry = openmc.Geometry([fuel, gap, clad, water])
 #geometry = openmc.Geometry(pin_universe)
 geometry = openmc.Geometry(root)
+geometry.remove_redundant_surfaces()
 geometry.export_to_xml()
 
 # Collect the materials together and export to XML

@@ -641,7 +641,9 @@ def pin_new(surfaces, items, subdivisions_r=None, subdivisions_a=None,
         raise ValueError(
             "Surfaces do not appear to be concentric. The following "
             "centers were found: {}".format(centers))
-
+    
+    items_new = items.copy()
+    
     # Divides Cylinders into more rings
     if subdivisions_r is not None:
         check_length("subdivisions_r", subdivisions_r, 1, len(surfaces))
@@ -685,12 +687,8 @@ def pin_new(surfaces, items, subdivisions_r=None, subdivisions_a=None,
             surfaces = (
                     surfaces[:ring_index] + new_surfs + surfaces[ring_index:])
 
-            filler = items[ring_index]
-            #if (divide_vols and hasattr(filler, "volume")
-            #        and filler.volume is not None):
-            #    filler.volume /= nr
-
-            items[ring_index:ring_index] = [
+            filler = items_new[ring_index]
+            items_new[ring_index:ring_index] = [
                 filler for _i in range(nr - 1)]
    
 
@@ -753,7 +751,7 @@ def pin_new(surfaces, items, subdivisions_r=None, subdivisions_a=None,
             # Creates a CylinderSector (composite surface of two cocentric cylinders and two planes) for each azimuthal region
             spacing = 360.0/ns
             for ix in range(ns):
-                lower_angle = ix * spacing
+                lower_angle = ix * spacing - 45.0
                 upper_angle = lower_angle + spacing
 
                 if surf_type is ZCylinder:
@@ -772,16 +770,11 @@ def pin_new(surfaces, items, subdivisions_r=None, subdivisions_a=None,
             surfaces = (
                     surfaces[:ring_index] + new_surfs + surfaces[ring_index:])
 
-            filler = items[ring_index]
-            #if (divide_vols and hasattr(filler, "volume")
-            #        and filler.volume is not None):
-            #    filler.volume /= ns
-
-            items[ring_index:ring_index] = [
+            filler = items_new[ring_index]
+            items_new[ring_index:ring_index] = [
                 filler for _i in range(ns - 1)]
 
     # Build the universe
     regions = subdivide(surfaces)
-    cells = [Cell(fill=f, region=r) for r, f in zip(regions, items)]
+    cells = [Cell(fill=f, region=r) for r, f in zip(regions, items_new)]
     return Universe(cells=cells, **kwargs)
-

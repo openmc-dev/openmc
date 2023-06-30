@@ -61,8 +61,8 @@ class PinRadialAzimuthalTestHarness(PyAPITestHarness):
                 2 : 3,
                 3 : 5
                 }
-        #subdivs_r = None
-        #subdivs_a = None
+        subdivs_r = None
+        subdivs_a = None
 
         pin_universe = openmc.model.pin_new(surfs, mats, subdivisions_r=subdivs_r, subdivisions_a=subdivs_a)
         water = openmc.Cell(fill=borated_water, region=+corner & box)

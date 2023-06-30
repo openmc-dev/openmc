@@ -63,7 +63,7 @@ struct WeightWindow {
   double max_lb_ratio {1};
   double survival_weight {0.5};
   double weight_cutoff {DEFAULT_WEIGHT_CUTOFF};
-  int max_split {1};
+  int max_split {10};
 
   //! Whether the weight window is in a valid state
   bool is_valid() const { return lower_weight >= 0.0; }
@@ -211,7 +211,7 @@ public:
                        //!< is valid for now.
   int32_t max_realizations_; //!< Maximum number of tally realizations
   int32_t update_interval_;  //!< Determines how often updates occur
-  bool on_the_fly_;          //!< Whether or not weight windows
+  bool on_the_fly_;          //!< Whether or not to keep tally results between batches or realizations
 
   // MAGIC update parameters
   std::string tally_value_ {

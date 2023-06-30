@@ -49,7 +49,8 @@ class WeightWindows(IDManagerMixin):
         Ratio of the lower to upper weight window bounds
     energy_bounds : Iterable of Real
         A list of values for which each successive pair constitutes a range of
-        energies in [eV] for a single bin
+        energies in [eV] for a single bin. If no energy bins are provided, the
+        maximum and minimum energy for the data available at runtime.
     particle_type : {'neutron', 'photon'}
         Particle type the weight windows apply to
     survival_ratio : float
@@ -652,7 +653,8 @@ class WeightWindowGenerator:
         Mesh used to represent the weight windows spatially
     energy_bounds : Iterable of Real
         A list of values for which each successive pair constitutes a range of
-        energies in [eV] for a single bin
+        energies in [eV] for a single bin. If no energy bins are provided, the
+        maximum and minimum energy for the data available at runtime.
     particle_type : {'neutron', 'photon'}
         Particle type the weight windows apply to
 

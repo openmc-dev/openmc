@@ -243,9 +243,10 @@ def test_roundtrip(run_in_tmpdir, model, wws):
 
 def test_ww_attrs_python(model):
     mesh = openmc.RegularMesh.from_domain(model.geometry)
-
     lower_bounds = np.ones(mesh.dimension)
 
+    # ensure that creation of weight window objects with default arg values
+    # is successful
     wws = openmc.WeightWindows(mesh, lower_bounds, upper_bound_ratio=10.0)
 
     assert wws.energy_bounds == None

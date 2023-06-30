@@ -44,6 +44,9 @@ class PinRadialAzimuthalTestHarness(PyAPITestHarness):
         pitch = 1.25984
         box = openmc.rectangular_prism(pitch, pitch, boundary_type='reflective')
 
+        cell1 = openmc.Cell(name='Cell 1')
+        cell1.region = box
+
         # Create cylindrical surfaces
         fuel_or = openmc.ZCylinder(r=0.39218, name='Fuel OR')
         clad_ir = openmc.ZCylinder(r=0.40005, name='Clad IR')
@@ -51,27 +54,29 @@ class PinRadialAzimuthalTestHarness(PyAPITestHarness):
         corner =  openmc.ZCylinder(r=pitch/2.0, name='Clad OR')
 
         surfs = [fuel_or, clad_ir, clad_or, corner]
-        mats = [uo2, helium, zircaloy, borated_water, borated_water]
+        mats = [uo2, helium, zircaloy, borated_water, borated_water.clone()]
         subdivs_r = {
                 0 : 3,
-                2 : 1,
+                2 : 2,
                 }
         subdivs_a = {
                 0 : 4,
-                2 : 3,
-                3 : 5
+                2 : 4,
+                3 : 8
                 }
-        subdivs_r = None
-        subdivs_a = None
+        #subdivs_r = None
+        #subdivs_a = None
 
         pin_universe = openmc.model.pin_new(surfs, mats, subdivisions_r=subdivs_r, subdivisions_a=subdivs_a)
-        water = openmc.Cell(fill=borated_water, region=+corner & box)
-        pin_universe.add_cell(water)
-        
-        mats = pin_universe.get_all_materials().values()
+    
+        cell1.fill = pin_universe
+
+        root = openmc.Universe(name='root universe')
+        root.add_cell(cell1)
 
         # Create a geometry
-        self._model.geometry = openmc.Geometry(pin_universe)
+        self._model.geometry = openmc.Geometry(root)
+        self._model.geometry.remove_redundant_surfaces()
 
         # Collect the materials together
         self._model.materials = openmc.Materials(mats)

@@ -113,6 +113,10 @@ NATURAL_ABUNDANCE_2013 = {
     'Pa231': 1.0, 'U234': 0.000054, 'U235': 0.007204,
     'U238': 0.992742
 }
+
+# Isotopic abundances from M. Berglund and M. E. Wieser, "Isotopic compositions
+# of the elements 2009 (IUPAC Technical Report)", Pure. Appl. Chem. 83 (2),
+# pp. 397--410 (2011).
 NATURAL_ABUNDANCE_2009 = {
     'H1': 0.999885, 'H2': 0.000115, 'He3': 0.00000134,
     'He4': 0.99999866, 'Li6': 0.0759, 'Li7': 0.9241,

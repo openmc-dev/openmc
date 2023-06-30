@@ -1,6 +1,6 @@
 from collections.abc import Iterable
 from functools import partial
-from math import sqrt
+from math import sqrt, pi, sin, cos
 from numbers import Real
 from operator import attrgetter
 from warnings import warn
@@ -13,6 +13,8 @@ from ..checkvalue import (
     check_iterable_type)
 import openmc.data
 from openmc.model.surface_composite import (CompositeSurface,CylinderSector)
+
+import numpy as np
 
 
 ZERO_CELSIUS_TO_KELVIN = 273.15
@@ -389,6 +391,78 @@ def get_hexagonal_prism(*args, **kwargs):
 cylinder_from_points = Cylinder.from_points
 
 
+
+class CylinderSectorUpdated(CompositeSurface):
+    
+    _surface_names = ('outer_cyl', 'inner_cyl', 'plane1', 'plane2')
+
+    def __init__(self,
+                 r1,
+                 r2,
+                 phi1,
+                 phi2,
+                 center=(0.,0.),
+                 axis='z',
+                 **kwargs):
+
+        if r2 <= r1:
+            raise ValueError(f'r2 must be greater than r1.')
+
+        self.r1 = r1
+        #if theta2 <= theta1:
+        #    raise ValueError(f'theta2 must be greater than theta1.')
+
+        #phi1 = pi / 180 * theta1
+        #phi2 = pi / 180 * theta2
+
+        # Coords for axis-perpendicular planes
+        p1 = np.array([0., 0., 1.])
+
+        p2_plane1 = np.array([r1 * cos(phi1), r1 * sin(phi1), 0.])
+        p3_plane1 = np.array([r2 * cos(phi1), r2 * sin(phi1), 0.])
+
+        p2_plane2 = np.array([r1 * cos(phi2), r1 * sin(phi2), 0.])
+        p3_plane2 = np.array([r2 * cos(phi2), r2 * sin(phi2), 0.])
+
+        points = [p1, p2_plane1, p3_plane1, p2_plane2, p3_plane2]
+        if axis == 'z':
+            coord_map = [0, 1, 2]
+            if r1 > 0:
+                self.inner_cyl = openmc.ZCylinder(*center, r1, **kwargs)
+            self.outer_cyl = openmc.ZCylinder(*center, r2, **kwargs)
+        elif axis == 'y':
+            coord_map = [1, 2, 0]
+            if r1 > 0:
+                self.inner_cyl = openmc.YCylinder(*center, r1, **kwargs)
+            self.outer_cyl = openmc.YCylinder(*center, r2, **kwargs)
+        elif axis == 'x':
+            coord_map = [2, 0, 1]
+            if r1 > 0:
+                self.inner_cyl = openmc.XCylinder(*center, r1, **kwargs)
+            self.outer_cyl = openmc.XCylinder(*center, r2, **kwargs)
+
+        for p in points:
+            p[:] = p[coord_map]
+
+        self.plane1 = openmc.Plane.from_points(p1, p2_plane1, p3_plane1,
+                                               **kwargs)
+        self.plane2 = openmc.Plane.from_points(p1, p2_plane2, p3_plane2,
+                                               **kwargs)
+
+    def __neg__(self):
+        if self.r1 > 0:
+            return -self.outer_cyl & +self.inner_cyl & -self.plane1 & +self.plane2
+        else:
+            return -self.outer_cyl & -self.plane1 & +self.plane2
+
+    def __pos__(self):
+        if self.r1 > 0:
+            return +self.outer_cyl | -self.inner_cyl | +self.plane1 | -self.plane2
+        else:
+            return +self.outer_cyl | +self.plane1 | -self.plane2
+
+
+
 def subdivide(surfaces):
     """Create regions separated by a series of surfaces.
 
@@ -423,7 +497,7 @@ def subdivide(surfaces):
     # If the surface is a CylinderSector, the region inside the surface is added to "regions".
     # If the current surface and the next surface is a Cylinder, then the region between the cylinders is added to "regions".
     for s0, s1 in zip(surfaces[:-1], surfaces[1:]):
-        if isinstance(s0, CylinderSector):
+        if isinstance(s0, CylinderSectorUpdated):
             regions.append(-s0)
         
         elif isinstance(s0, Cylinder) and isinstance(s1, Cylinder):
@@ -750,18 +824,21 @@ def pin_new(surfaces, items, subdivisions_r=None, subdivisions_a=None,
             
             # Creates a CylinderSector (composite surface of two cocentric cylinders and two planes) for each azimuthal region
             spacing = 360.0/ns
+            angles = [(pi/180.0)*(i * spacing - 45.0) for i in range(ns)]
+            angles.append((pi/180.0)*315.0)
+
             for ix in range(ns):
-                lower_angle = ix * spacing - 45.0
-                upper_angle = lower_angle + spacing
+                lower_angle = angles[ix]
+                upper_angle = angles[ix+1]
 
                 if surf_type is ZCylinder:
-                    cyl_sec = CylinderSector(r1=lower_rad, r2=upper_rad, theta1=lower_angle, theta2=upper_angle, 
+                    cyl_sec = CylinderSectorUpdated(r1=lower_rad, r2=upper_rad, phi1=lower_angle, phi2=upper_angle, 
                             center=center, axis='z')
                 elif surf_type is YCylinder:
-                    cyl_sec = CylinderSector(r1=lower_rad, r2=upper_rad, theta1=lower_angle, theta2=upper_angle, 
+                    cyl_sec = CylinderSectorUpdated(r1=lower_rad, r2=upper_rad, phi1=lower_angle, phi2=upper_angle, 
                             center=center, axis='y')
                 elif surf_type is XCylinder:
-                    cyl_sec = CylinderSector(r1=lower_rad, r2=upper_rad, theta1=lower_angle, theta2=upper_angle, 
+                    cyl_sec = CylinderSectorUpdated(r1=lower_rad, r2=upper_rad, phi1=lower_angle, phi2=upper_angle, 
                             center=center, axis='x')
                 
                 new_surfs.append(cyl_sec)

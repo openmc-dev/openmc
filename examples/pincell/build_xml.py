@@ -71,8 +71,8 @@ subdivs_a = {
         2 : 4,
         3 : 8
         }
-#subdivs_r = None
-subdivs_a = None
+subdivs_r = None
+#subdivs_a = None
 
 pin_universe = openmc.model.pin_new(surfs, mats, subdivisions_r=subdivs_r, subdivisions_a=subdivs_a)
 #pin = openmc.Cell(fill=pin_universe)

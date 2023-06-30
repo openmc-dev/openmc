@@ -211,7 +211,8 @@ public:
                        //!< is valid for now.
   int32_t max_realizations_; //!< Maximum number of tally realizations
   int32_t update_interval_;  //!< Determines how often updates occur
-  bool on_the_fly_;          //!< Whether or not to keep tally results between batches or realizations
+  bool on_the_fly_; //!< Whether or not to keep tally results between batches or
+                    //!< realizations
 
   // MAGIC update parameters
   std::string tally_value_ {

@@ -257,21 +257,26 @@ WeightWindows* WeightWindows::from_hdf5(
 
 void WeightWindows::set_defaults()
 {
-  // ensure default values are set
+  // set energy bounds to the min/max energy supported by the data
   if (energy_bounds_.size() == 0) {
     int p_type = static_cast<int>(particle_type_);
     energy_bounds_.push_back(data::energy_min[p_type]);
     energy_bounds_.push_back(data::energy_max[p_type]);
   }
+}
 
-  // some constructors won't allocate space for the bounds
-  // do that here so the object is valid
-  if (lower_ww_.size() == 0 || upper_ww_.size() == 0) {
-    lower_ww_ = xt::empty<double>(bounds_size());
-    lower_ww_.fill(-1);
-    upper_ww_ = xt::empty<double>(bounds_size());
-    upper_ww_.fill(-1);
+void WeightWindows::allocate_ww_bounds()
+{
+  auto shape = bounds_size();
+  if (shape[0] * shape[1] == 0) {
+    auto msg = fmt::format(
+      "Size of weight window bounds is zero for WeightWindows {}", id());
+    warning(msg);
   }
+  lower_ww_ = xt::empty<double>(shape);
+  lower_ww_.fill(-1);
+  upper_ww_ = xt::empty<double>(shape);
+  upper_ww_.fill(-1);
 }
 
 void WeightWindows::set_id(int32_t id)
@@ -308,6 +313,9 @@ void WeightWindows::set_energy_bounds(gsl::span<const double> bounds)
 {
   energy_bounds_.clear();
   energy_bounds_.insert(energy_bounds_.begin(), bounds.begin(), bounds.end());
+  // if the mesh is set, allocate space for weight window bounds
+  if (mesh_idx_ != C_NONE)
+    allocate_ww_bounds();
 }
 
 void WeightWindows::set_particle_type(ParticleType p_type)
@@ -325,6 +333,7 @@ void WeightWindows::set_mesh(int32_t mesh_idx)
     fatal_error(fmt::format("Could not find a mesh for index {}", mesh_idx));
 
   mesh_idx_ = mesh_idx;
+  allocate_ww_bounds();
 }
 
 void WeightWindows::set_mesh(const std::unique_ptr<Mesh>& mesh)
@@ -743,43 +752,6 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
     e_bounds.push_back(data::energy_max[p_type]);
   }
 
-  // create a tally based on the WWG information
-  Tally* ww_tally = Tally::create();
-  tally_idx_ = model::tally_map[ww_tally->id()];
-  ww_tally->set_scores({"flux"});
-
-  // see if there's already a mesh filter using this mesh
-  bool found_mesh_filter = false;
-  for (const auto& f : model::tally_filters) {
-    if (f->type() == FilterType::MESH) {
-      const auto* mesh_filter = dynamic_cast<MeshFilter*>(f.get());
-      if (mesh_filter->mesh() == mesh_idx && !mesh_filter->translated()) {
-        ww_tally->add_filter(f.get());
-        found_mesh_filter = true;
-        break;
-      }
-    }
-  }
-
-  if (!found_mesh_filter) {
-    auto mesh_filter = Filter::create("mesh");
-    openmc_mesh_filter_set_mesh(mesh_filter->index(), model::mesh_map[mesh_id]);
-    ww_tally->add_filter(mesh_filter);
-  }
-
-  if (e_bounds.size() > 0) {
-    auto energy_filter = Filter::create("energy");
-    openmc_energy_filter_set_bins(
-      energy_filter->index(), e_bounds.size(), e_bounds.data());
-    ww_tally->add_filter(energy_filter);
-  }
-
-  // add a particle filter
-  auto particle_filter = Filter::create("particle");
-  auto pf = dynamic_cast<ParticleFilter*>(particle_filter);
-  pf->set_particles({&particle_type, 1});
-  ww_tally->add_filter(particle_filter);
-
   // set method and parameters for updates
   method_ = get_node_value(node, "method");
   if (method_ == "magic") {
@@ -815,11 +787,57 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
   // create a matching weight windows object
   auto wws = WeightWindows::create();
   ww_idx_ = wws->index();
+  wws->set_mesh(mesh_idx);
   if (e_bounds.size() > 0)
     wws->set_energy_bounds(e_bounds);
-  wws->set_mesh(model::mesh_map[mesh_id]);
   wws->set_particle_type(particle_type);
   wws->set_defaults();
+}
+
+void WeightWindowsGenerator::create_tally()
+{
+  const auto& wws = variance_reduction::weight_windows[ww_idx_];
+
+  // create a tally based on the WWG information
+  Tally* ww_tally = Tally::create();
+  tally_idx_ = model::tally_map[ww_tally->id()];
+  ww_tally->set_scores({"flux"});
+
+  int32_t mesh_id = wws->mesh()->id();
+  int32_t mesh_idx = model::mesh_map.at(mesh_id);
+  // see if there's already a mesh filter using this mesh
+  bool found_mesh_filter = false;
+  for (const auto& f : model::tally_filters) {
+    if (f->type() == FilterType::MESH) {
+      const auto* mesh_filter = dynamic_cast<MeshFilter*>(f.get());
+      if (mesh_filter->mesh() == mesh_idx && !mesh_filter->translated()) {
+        ww_tally->add_filter(f.get());
+        found_mesh_filter = true;
+        break;
+      }
+    }
+  }
+
+  if (!found_mesh_filter) {
+    auto mesh_filter = Filter::create("mesh");
+    openmc_mesh_filter_set_mesh(mesh_filter->index(), model::mesh_map[mesh_id]);
+    ww_tally->add_filter(mesh_filter);
+  }
+
+  const auto& e_bounds = wws->energy_bounds();
+  if (e_bounds.size() > 0) {
+    auto energy_filter = Filter::create("energy");
+    openmc_energy_filter_set_bins(
+      energy_filter->index(), e_bounds.size(), e_bounds.data());
+    ww_tally->add_filter(energy_filter);
+  }
+
+  // add a particle filter
+  auto particle_type = wws->particle_type();
+  auto particle_filter = Filter::create("particle");
+  auto pf = dynamic_cast<ParticleFilter*>(particle_filter);
+  pf->set_particles({&particle_type, 1});
+  ww_tally->add_filter(particle_filter);
 }
 
 void WeightWindowsGenerator::update() const
@@ -843,6 +861,17 @@ void WeightWindowsGenerator::update() const
 
   // TODO: deactivate or remove tally once weight window generation is
   // complete
+}
+
+//==============================================================================
+// Non-member functions
+//==============================================================================
+
+void finalize_variance_reduction()
+{
+  for (const auto& wwg : variance_reduction::weight_windows_generators) {
+    wwg->create_tally();
+  }
 }
 
 //==============================================================================

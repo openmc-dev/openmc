@@ -49,7 +49,8 @@ class WeightWindows(IDManagerMixin):
         Ratio of the lower to upper weight window bounds
     energy_bounds : Iterable of Real
         A list of values for which each successive pair constitutes a range of
-        energies in [eV] for a single bin
+        energies in [eV] for a single bin. If no energy bins are provided, the
+        maximum and minimum energy for the data available at runtime.
     particle_type : {'neutron', 'photon'}
         Particle type the weight windows apply to
     survival_ratio : float
@@ -125,7 +126,9 @@ class WeightWindows(IDManagerMixin):
         self.mesh = mesh
         self.id = id
         self.particle_type = particle_type
-        self.energy_bounds = energy_bounds
+        self._energy_bounds = None
+        if energy_bounds is not None:
+            self.energy_bounds = energy_bounds
         self.lower_ww_bounds = lower_ww_bounds
 
         if upper_ww_bounds is not None and upper_bound_ratio:
@@ -229,7 +232,7 @@ class WeightWindows(IDManagerMixin):
     @property
     def num_energy_bins(self) -> int:
         if self.energy_bounds is None:
-            raise ValueError('Energy bounds are not set')
+            return 1
         return self.energy_bounds.size - 1
 
     @property
@@ -650,7 +653,8 @@ class WeightWindowGenerator:
         Mesh used to represent the weight windows spatially
     energy_bounds : Iterable of Real
         A list of values for which each successive pair constitutes a range of
-        energies in [eV] for a single bin
+        energies in [eV] for a single bin. If no energy bins are provided, the
+        maximum and minimum energy for the data available at runtime.
     particle_type : {'neutron', 'photon'}
         Particle type the weight windows apply to
 
@@ -681,6 +685,7 @@ class WeightWindowGenerator:
 
     def __init__(self, mesh, energy_bounds=None, particle_type='neutron'):
         self.mesh = mesh
+        self._energy_bounds = None
         if energy_bounds is not None:
             self.energy_bounds = energy_bounds
         self.particle_type = particle_type

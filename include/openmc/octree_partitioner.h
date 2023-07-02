@@ -18,8 +18,11 @@ struct OctreeNode {
   int get_containing_child_index(const vec3& pos) const;
   OctreeNode& get_containing_child(const vec3& pos) const;
   std::vector<AABB> subdivide(const AABB& parent);
+
+  bool contains(int cell) const;
   
   vec3 center;
+  AABB box;
   std::vector<int> cells;
   OctreeNode* children; // if this is a leaf, then children will be null
   int depth;

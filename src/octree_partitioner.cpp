@@ -93,6 +93,10 @@ std::vector<AABB> OctreeNode::subdivide(const AABB& parent) {
     return resultant_boxes;
 }
  
+bool OctreeNode::contains(int cell) const {
+    return std::binary_search(cells.begin(), cells.end(), cell);
+}
+
 void find_cells_in_box(const Universe& univ, const OctreeNode& parent, OctreeNode& child, const AABB& box) {
     const double NUM_CELL_SEARCH_POINT_DENSITY = 4.0;
     const int num_search_points = (int)(box.volume() * NUM_CELL_SEARCH_POINT_DENSITY);
@@ -200,24 +204,20 @@ std::vector<CellPoint> get_cell_points_uniform_dist(const Universe& univ, const 
     return points_in_bounds;
 }
 
-
-
 std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const UniversePartitioner& fallback, const AABB& bounds) {
     // the purpose of CELL_CLEAR_FLAG is to mention when previous cells should be cleared
     // although we might want to keep all points, organizing the points into a tree baloons memory usage
     // hence we need to reduce points to prevent a crash
     // CELL_CLEAR_FLAG marks a location where we decide that the sampling method has learned enough and points before here can be discarded
     const float CELL_CLEAR_FLAG = -1.0;
-    const std::vector<float> NUM_CELL_SEARCH_POINT_DENSITY = {
+    /*const*/ std::vector<float> K_SEARCH_DENSITY = {
         2.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0
     };
 
-    /*
-    NUM_CELL_SEARCH_POINT_DENSITY.clear();
-    for(int i = 0; i < 4; i++) {
-        NUM_CELL_SEARCH_POINT_DENSITY.push_back(8.0);
+    K_SEARCH_DENSITY.clear();
+    for(int i = 0; i < 192; i++) {
+        K_SEARCH_DENSITY.push_back(1.0);
     }
-    */
 
     const int BIN_GRID_RES = 32;
 
@@ -227,7 +227,7 @@ std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const Unive
     omp_init_lock(&progess_display_lock);
 
     int total_search_points = 0;
-    for(float density : NUM_CELL_SEARCH_POINT_DENSITY) {
+    for(float density : K_SEARCH_DENSITY) {
         if(density == CELL_CLEAR_FLAG)
             continue;
 
@@ -353,8 +353,8 @@ std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const Unive
 
     std::vector<CellPoint> points_in_bounds(total_search_points);
     int write_offset = 0;
-    for(int iteration = 0; iteration < NUM_CELL_SEARCH_POINT_DENSITY.size(); iteration++) {
-        float density = NUM_CELL_SEARCH_POINT_DENSITY[iteration];
+    for(int iteration = 0; iteration < K_SEARCH_DENSITY.size(); iteration++) {
+        float density = K_SEARCH_DENSITY[iteration];
         if(density == CELL_CLEAR_FLAG) {
             continue;
         }
@@ -435,8 +435,8 @@ std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const Unive
     }
 
     int clear_pos = -1; 
-    for(int i = NUM_CELL_SEARCH_POINT_DENSITY.size() - 1; i >= 0; i--) {
-        if(NUM_CELL_SEARCH_POINT_DENSITY[i] == CELL_CLEAR_FLAG) {
+    for(int i = K_SEARCH_DENSITY.size() - 1; i >= 0; i--) {
+        if(K_SEARCH_DENSITY[i] == CELL_CLEAR_FLAG) {
             clear_pos = i;
             break;
         }
@@ -444,7 +444,7 @@ std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const Unive
 
     if(clear_pos != -1) {
         int total_discarded_search_points = 0;
-        for(float density : NUM_CELL_SEARCH_POINT_DENSITY) {
+        for(float density : K_SEARCH_DENSITY) {
             if(density == CELL_CLEAR_FLAG)
                 break;
 
@@ -456,6 +456,116 @@ std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const Unive
     }
 
     return points_in_bounds;
+}
+
+void refine_octree(const Universe& univ, const UniversePartitioner& fallback, OctreeNodeAllocator& node_alloc, OctreeNode& root) {
+    Timer refinement_timer;
+    refinement_timer.start();
+    float search_time = 0.0, insert_time = 0.0;
+
+    std::cout << "Refining octree..\n";
+    std::cout.flush();
+
+    /*const*/ std::vector<double> K_SEARCH_DENSITY = {
+        
+    };
+
+    for(int i = 0; i < 192; i++) {
+        K_SEARCH_DENSITY.push_back(16.0);
+    }
+
+    const int NUM_THREADS = 16;
+    std::vector<uint64_t> rng_bitstream(NUM_THREADS);
+    std::vector<int> bitpos(NUM_THREADS);
+
+    std::vector<uint64_t[3]> rng_pos(NUM_THREADS);
+
+
+    for(int i = 0; i < NUM_THREADS; i++) {
+        rng_bitstream[i] = i;
+        bitpos[i] = 64;
+
+        for(int j = 0; j < 3; j++) {
+            rng_pos[i][j] = NUM_THREADS * (j + 1) + i;
+        }
+    }
+
+    std::vector<std::tuple<CellPoint, OctreeNode*, bool>> search_points;
+    for(int iteration = 0; iteration < K_SEARCH_DENSITY.size(); iteration++) {
+        auto density = K_SEARCH_DENSITY[iteration];
+        int num_search_points = (int)(root.box.volume() * density);
+        
+        search_points.clear();
+        search_points.resize(num_search_points);
+        
+        Timer t;
+        t.start();
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            #pragma omp for
+            for(auto& p : search_points) {
+                OctreeNode* current = &root;
+
+                while(!current->is_leaf()) {
+                    // now make decision
+                    if(bitpos[tid] == 64) {
+                        bitpos[tid] = 0;
+                        prn(&rng_bitstream[tid]); // move forward value
+                    }
+
+                    int dir = ((rng_bitstream[tid] >> bitpos[tid]) & 7); // get index, 7 = 0b111, which means octree index
+                    bitpos[tid] += 4;
+
+                    current = &current->children[dir];
+                }
+
+                CellPoint point;
+                for(int i = 0; i < 3; i++) {
+                    point.pos[i] = uniform_distribution(current->box.min[i], current->box.max[i], &rng_pos[tid][i]);
+                }
+
+                bool found = true;
+                point.cell = univ.find_cell_for_point(current->cells, point.pos);
+                if(point.cell == -1) {
+                    found = false;
+
+                    Direction dummy{0, 0, 1};
+                    point.cell = univ.find_cell_for_point(fallback.get_cells(point.pos, dummy), point.pos);
+                }
+
+                std::get<0>(p) = point;
+                std::get<1>(p) = current;
+                std::get<2>(p) = found;
+            }
+        }
+        search_time += t.elapsed();
+        t.reset();
+
+        t.start();
+        int num_missing_cells = 0;
+        for(auto& p : search_points) {
+            auto point = std::get<0>(p);
+            auto node  = std::get<1>(p);
+            auto found = std::get<2>(p);
+            if(!found && !node->contains(point.cell)) {
+                node->cells.push_back(point.cell);
+                num_missing_cells++;
+            }
+        }
+        insert_time += t.elapsed();
+        t.reset();
+
+        std::cout << "Refinement on iteration " << iteration << ":\t" << num_missing_cells << " mising cells inserted into octree.\n";
+        std::cout.flush();
+    }
+
+    float total = refinement_timer.elapsed();
+    std::cout << "Refinement took " << total << " seconds, here's the breakdown:\n";
+    std::cout << "\tSearch:\t" << search_time << "\tseconds\n";
+    std::cout << "\tInsert:\t" << insert_time << "\tseconds\n";
+    std::cout << "\tExpect:\t" << search_time + insert_time << "\tseconds\n";
+    std::cout.flush();
 }
 
 OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_node, int max_depth, const std::string& file_path) : fallback(univ) {
@@ -481,6 +591,7 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
     //root.cells = univ.cells_;
     root.depth = 0;
     root.id = 0;
+    root.box = bounds;
 
     if(univ.cells_.size() <= target_cells_per_node) {
         std::cout << "Universe has only " << root.cells.size() << " cells, which is below the target cells per node, " 
@@ -517,6 +628,7 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
     std::sort(points_in_bounds.begin(), points_in_bounds.end(), PointComp());
 
     std::cout << "Total sorting time: " << sorting_timer.elapsed() << '\n';
+    std::cout.flush();
 
     double popping_time = 0.0, init_time = 0.0, alloc_time = 0.0, node_selec_time = 0.0, post_process_time = 0.0;
 
@@ -546,8 +658,9 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
         t.start();
         OctreeConstructionTask child_tasks[8];
         for(int i = 0; i < 8; i++) {
-            child_tasks[i].box = boxes[i];
             child_tasks[i].node = &cur_task.node->children[i];
+            child_tasks[i].node->box = boxes[i];
+            child_tasks[i].box = boxes[i];
             child_tasks[i].points.reserve(cur_task.points.size());
         }
         alloc_time += t.elapsed();
@@ -604,10 +717,13 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
     std::cout << "\tPost proc:\t" << post_process_time << '\n';
     std::cout << "\tExpec tot:\t" << popping_time + init_time + alloc_time + node_selec_time + post_process_time << '\n';
     std::cout << "\tTotal time:\t" << total_building_timer.elapsed() << '\n';
+    std::cout.flush();
 
+    refine_octree(univ, fallback, node_alloc, root);
 
     t.stop();
     std::cout << "Construction took " << t.elapsed() << " seconds.\n";
+    std::cout.flush();
 
     // now, we write the octree to disk if a path is specified
     if(file_path.size() != 0) {

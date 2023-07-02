@@ -7,8 +7,6 @@
 #include <vector>
 #include <set>
 
-#define OCTREE_PARTITIONER_BLOCK_ALLOCATION
-
 namespace openmc {
 
 using namespace std;
@@ -28,7 +26,6 @@ struct OctreeNode {
   int id;
 };
 
-#ifdef OCTREE_PARTITIONER_BLOCK_ALLOCATION
 class OctreeNodeAllocator {
 public:
   OctreeNodeAllocator();
@@ -38,7 +35,6 @@ private:
   std::vector<OctreeNode*> pools;
   int last_pool_next_index;
 };
-#endif
 
 class OctreePartitioner : public UniversePartitioner {
 public:
@@ -62,10 +58,7 @@ private:
   // fallback if octree doesn't work
   ZPlanePartitioner fallback;
 
-  #ifdef OCTREE_PARTITIONER_BLOCK_ALLOCATION
   OctreeNodeAllocator node_alloc;
-  #endif
-
 };
 
 }

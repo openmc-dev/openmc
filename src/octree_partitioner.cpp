@@ -138,7 +138,6 @@ void find_cells_in_box(const Universe& univ, const OctreeNode& parent, OctreeNod
     }
 } 
 
-#ifdef OCTREE_PARTITIONER_BLOCK_ALLOCATION
 OctreeNodeAllocator::OctreeNodeAllocator() : last_pool_next_index(0) {}
 
 OctreeNodeAllocator::~OctreeNodeAllocator() {
@@ -158,7 +157,6 @@ OctreeNode* OctreeNodeAllocator::allocate() {
     last_pool_next_index++;
     return ptr;
 }
-#endif
 
 Timer t;
 std::vector<CellPoint> get_cell_points_uniform_dist(const Universe& univ, const UniversePartitioner& fallback, const AABB& bounds) {
@@ -205,6 +203,11 @@ std::vector<CellPoint> get_cell_points_uniform_dist(const Universe& univ, const 
 
 
 std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const UniversePartitioner& fallback, const AABB& bounds) {
+    // the purpose of CELL_CLEAR_FLAG is to mention when previous cells should be cleared
+    // although we might want to keep all points, organizing the points into a tree baloons memory usage
+    // hence we need to reduce points to prevent a crash
+    // CELL_CLEAR_FLAG marks a location where we decide that the sampling method has learned enough and points before here can be discarded
+    const float CELL_CLEAR_FLAG = -1.0;
     const std::vector<float> NUM_CELL_SEARCH_POINT_DENSITY = {
         2.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0
     };
@@ -225,6 +228,9 @@ std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const Unive
 
     int total_search_points = 0;
     for(float density : NUM_CELL_SEARCH_POINT_DENSITY) {
+        if(density == CELL_CLEAR_FLAG)
+            continue;
+
         total_search_points += (int)(bounds.volume() * density);
     }
 
@@ -349,6 +355,10 @@ std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const Unive
     int write_offset = 0;
     for(int iteration = 0; iteration < NUM_CELL_SEARCH_POINT_DENSITY.size(); iteration++) {
         float density = NUM_CELL_SEARCH_POINT_DENSITY[iteration];
+        if(density == CELL_CLEAR_FLAG) {
+            continue;
+        }
+
         int num_search_points = (int)(bounds.volume() * density);
 
         float total_score = 0.0;
@@ -424,6 +434,27 @@ std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const Unive
         write_offset += num_search_points;
     }
 
+    int clear_pos = -1; 
+    for(int i = NUM_CELL_SEARCH_POINT_DENSITY.size() - 1; i >= 0; i--) {
+        if(NUM_CELL_SEARCH_POINT_DENSITY[i] == CELL_CLEAR_FLAG) {
+            clear_pos = i;
+            break;
+        }
+    }
+
+    if(clear_pos != -1) {
+        int total_discarded_search_points = 0;
+        for(float density : NUM_CELL_SEARCH_POINT_DENSITY) {
+            if(density == CELL_CLEAR_FLAG)
+                break;
+
+            total_discarded_search_points += (int)(bounds.volume() * density);
+        }
+
+        points_in_bounds.erase(points_in_bounds.begin(), points_in_bounds.begin() + total_discarded_search_points);
+        points_in_bounds.shrink_to_fit();
+    }
+
     return points_in_bounds;
 }
 
@@ -478,82 +509,38 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
     Timer sorting_timer;
     sorting_timer.start();
    
-    #if 0
-    uint64_t total_threads = 16;//omp_get_num_threads(); // TODO: find a way to dynamically get this value
-    std::vector<int> start_index(total_threads), end_index(total_threads);
-
-    for(uint64_t i = 0; i < total_threads; i++) {
-        start_index[i] = (i * points_in_bounds.size()) / total_threads;
-    }
-
-    for(int i = 0; i < total_threads - 1; i++) {
-        end_index[i] = start_index[i + 1];
-    }
-
-    end_index.back() = points_in_bounds.size();
-
-    struct PointComp {
-        inline static bool comp(const CellPoint& lhs, const CellPoint& rhs) {
-            return (lhs.cell < rhs.cell);
-        }
-
-        inline bool operator() (const CellPoint& lhs, const CellPoint& rhs) {
-            return (lhs.cell < rhs.cell);
-        }
-    }; 
-
-    #pragma omp parallel for
-    for(int i = 0; i < total_threads; i++) {
-        std::sort(points_in_bounds.begin() + start_index[i], points_in_bounds.begin() + end_index[i], PointComp());
-    }
-
-    auto temp_points = points_in_bounds;
-
-    std::vector<int> next_point = start_index;
-    for(int i = 0; i < points_in_bounds.size(); i++) {
-        int minidx = -1;
-        for(int j = 0; j < total_threads; j++) {
-            if(next_point[j] == end_index[j]) {
-                continue;
-            } else if(minidx == -1 || PointComp::comp(points_in_bounds[next_point[j]], points_in_bounds[next_point[minidx]])) {
-                minidx = j;
-            }
-        }
-
-        temp_points[i] = points_in_bounds[next_point[minidx]];
-        next_point[minidx]++ ;
-    }
-    #else
     struct PointComp {
         inline bool operator() (const CellPoint& lhs, const CellPoint& rhs) {
             return (lhs.cell < rhs.cell);
         }
     }; 
     std::sort(points_in_bounds.begin(), points_in_bounds.end(), PointComp());
-    #endif
 
     std::cout << "Total sorting time: " << sorting_timer.elapsed() << '\n';
 
-    double alloc_time = 0.0, node_selec_time = 0.0, post_process_time = 0.0;
+    double popping_time = 0.0, init_time = 0.0, alloc_time = 0.0, node_selec_time = 0.0, post_process_time = 0.0;
 
     std::stack<OctreeConstructionTask> oct_unproc;
     oct_unproc.emplace(&root, bounds, points_in_bounds);
-    Timer a;
-    a.start();
+    Timer total_building_timer;
+    total_building_timer.start();
     while(!oct_unproc.empty()) {
-        auto cur_task = oct_unproc.top();
+        Timer t;
+
+        t.start();
+        auto cur_task = std::move(oct_unproc.top());
         oct_unproc.pop();
+        popping_time += t.elapsed();
+        t.reset();
 
         // subdivide
-        #ifdef OCTREE_PARTITIONER_BLOCK_ALLOCATION
+        t.start();
+
         cur_task.node->children = node_alloc.allocate();
-        #else
-        cur_task.node->children = new OctreeNode[8]; 
-        #endif
 
         auto boxes = cur_task.node->subdivide(cur_task.box);
-
-        Timer t;
+        init_time += t.elapsed();
+        t.reset();
 
         // allocation
         t.start();
@@ -589,7 +576,7 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
 
 
             if(num_unique_cells > target_cells_per_node) {
-                oct_unproc.push(child_tasks[i]);
+                oct_unproc.push(std::move(child_tasks[i]));
             } else {
                 // now, make the points unique
                 
@@ -607,14 +594,16 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
         post_process_time += t.elapsed();
         t.reset();
     }
-    a.stop();
+    total_building_timer.stop();
 
     std::cout << "Done placing points into octree! Performance statistics:\n";
+    std::cout << "\tTask popping:\t" << popping_time << '\n';
+    std::cout << "\tChild init:\t" << init_time << '\n';
     std::cout << "\tAllocation:\t" << alloc_time << '\n';
     std::cout << "\tNode selec:\t" << node_selec_time << '\n';
     std::cout << "\tPost proc:\t" << post_process_time << '\n';
-    std::cout << "\tExpec tot:\t" << alloc_time + node_selec_time + post_process_time << '\n';
-    std::cout << "\tTotal time:\t" << a.elapsed() << '\n';
+    std::cout << "\tExpec tot:\t" << popping_time + init_time + alloc_time + node_selec_time + post_process_time << '\n';
+    std::cout << "\tTotal time:\t" << total_building_timer.elapsed() << '\n';
 
 
     t.stop();
@@ -632,31 +621,6 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, const std::string& fi
 }
 
 OctreePartitioner::~OctreePartitioner() {
-    #ifndef OCTREE_PARTITIONER_BLOCK_ALLOCATION
-    std::stack<OctreeNode*> unprocessed_nodes;
-    unprocessed_nodes.push(&root);
-
-    std::vector<OctreeNode*> unfreed_pointers;
-    while(!unprocessed_nodes.empty()) {
-        auto& current = *unprocessed_nodes.top();
-        unprocessed_nodes.pop();
-
-        if(current.is_leaf()) {
-            unfreed_pointers.push_back(current.children);
-            for(int i = 0; i < 8; i++) {
-                unprocessed_nodes.push(&current.children[i]);
-            }
-        }
-    }
-
-    for(auto ptr : unfreed_pointers) {
-        delete[] ptr;
-    }
-
-
-    #endif
-    // else, the destructor of the node alloc will take care of things for us
-
     std::cout << "Successful octree uses:\t" << octree_use_count << '\n';
     std::cout << "Octree fallback uses:\t" << fallback_use_count << '\n';
     std::cout << "Again, construction time:\t" << t.elapsed() << '\n';
@@ -690,11 +654,7 @@ const vector<int32_t>& OctreePartitioner::get_cells(Position r, Direction u) con
 
 const vector<int32_t>& OctreePartitioner::get_cells_fallback(Position r, Direction u) const {
     fallback_use_count++;
-    //#ifdef OCTREE_DEBUG_INFO
-    //octree_console_mutex.lock();
-    //std::cout << "Falling back to z-plane partitioner for particle at " << r << std::endl;
-    //octree_console_mutex.unlock();
-    //#endif
+
     return fallback.get_cells(r, u);
 }
 
@@ -818,6 +778,8 @@ void OctreePartitioner::read_from_file(const std::string& file_path) {
 }
 
 /*
+parallel splitting algorithm:
+
 Successful octree uses:	120035
 Octree fallback uses:	42311
 Again, construction time:	126.471

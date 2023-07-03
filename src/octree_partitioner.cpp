@@ -522,8 +522,7 @@ void refine_octree_random(
     std::cout.flush();
 
     const float K_SEARCH_DENSITY = 1.0;
-    const float K_REFINEMENT_TIMEOUT = 10.0;
-
+    const float K_REFINEMENT_TIMEOUT = 20.0;
 
     std::vector<uint64_t[2]> rng_node_selec(NUM_THREADS);
     std::vector<uint64_t[3]> rng_pos(NUM_THREADS);
@@ -562,8 +561,8 @@ void refine_octree_random(
             float found_score = std::max(K_FOUND_MULT * num_found, 1.0f) / std::max(K_SEARCHED_MULT * num_searched, 1.0f);
             found_score *= found_score;
 
-            float size_score = contained_nodes.size() * 0.001f;
-            return found_score;
+            float size_score = contained_nodes.size();
+            return size_score;
         }
 
         int num_searched, num_found;
@@ -602,7 +601,7 @@ void refine_octree_random(
         std::vector<int> found_cells;
     };
 
-    const int PROBABILITY_BIN_RES = 32; // ideally should be a power of 2
+    const int PROBABILITY_BIN_RES = 128; // ideally should be a power of 2
     std::vector<ProbabilityBin> prob_bin_grid(PROBABILITY_BIN_RES * PROBABILITY_BIN_RES * PROBABILITY_BIN_RES);
 
     vec3 prob_bin_dim;
@@ -644,6 +643,8 @@ void refine_octree_random(
 
     while(timeout_timer.elapsed() < K_REFINEMENT_TIMEOUT) {
         int num_search_points = (int)(root.box.volume() * K_SEARCH_DENSITY);
+        int num_points_searched = 0;
+        int num_total_missing_cells = 0;
 
         // first, generate cdf
         // std::cout << "GENERATING CDF..." << std::endl;
@@ -660,7 +661,6 @@ void refine_octree_random(
             cdf /= total_cdf;
         }
         
-        int num_total_missing_cells = 0;
 
 
         struct SubDivRes {
@@ -675,20 +675,21 @@ void refine_octree_random(
             }
         };
 
-        std::vector<std::pair<int, SubDivRes>> replacements;
 
         //std::cout << "SEARCHING POINTS..." << std::endl;
         Timer t;
         t.start();
-        #pragma omp parallel
-        {
-            int tid = omp_get_thread_num();
-
+        #pragma omp parallel for
+        for(int tid = 0; tid < NUM_THREADS; tid++) {
             std::vector<int> untested_cells, temp_buf;
             untested_cells.reserve(256);
             temp_buf.reserve(256);
-            #pragma omp for
-            for(int p = 0; p < num_search_points; p++) {
+
+            // we don't need a lock for loop iteration logic since nothing bad will happen if race conditions occur
+            // maybe we do a few points less or more, but that doesn't matter
+            while(num_points_searched < num_search_points) {
+                num_points_searched++;
+
                 ProbabilityBin* prob_bin;
                 while(true) {
                     float cdf_val = uniform_distribution(0.0, 1.0, &rng_node_selec[tid][0]);
@@ -753,8 +754,6 @@ void refine_octree_random(
                     num_total_missing_cells++;
                 }
             }
-
-
         }
 
         search_time += t.elapsed();

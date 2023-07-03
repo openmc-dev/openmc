@@ -334,7 +334,7 @@ std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const Unive
     };
 
     K_SEARCH_DENSITY.clear();
-    for(int i = 0; i < 64; i++) { // 192 is usually good
+    for(int i = 0; i < 32; i++) { // 192 is usually good
         K_SEARCH_DENSITY.push_back(1.0);
     }
 
@@ -522,7 +522,7 @@ void refine_octree_random(
     std::cout.flush();
 
     const float K_SEARCH_DENSITY = 1.0;
-    const float K_REFINEMENT_TIMEOUT = 20.0;
+    const float K_REFINEMENT_TIMEOUT = 10.0;
 
     std::vector<uint64_t[2]> rng_node_selec(NUM_THREADS);
     std::vector<uint64_t[3]> rng_pos(NUM_THREADS);
@@ -691,7 +691,7 @@ void refine_octree_random(
                 num_points_searched++;
 
                 ProbabilityBin* prob_bin;
-                while(true) {
+                do {
                     float cdf_val = uniform_distribution(0.0, 1.0, &rng_node_selec[tid][0]);
                     auto cdf_iter = std::upper_bound(bin_cdf.begin(), bin_cdf.end(), cdf_val);
                     size_t bin_idx = std::distance(bin_cdf.begin(), cdf_iter);
@@ -700,17 +700,14 @@ void refine_octree_random(
                     }
 
                     prob_bin = &prob_bin_grid[bin_idx];
-                    if(prob_bin->contained_nodes.size() != 0) {
-                        break;
-                    }
-                }
+                } while(prob_bin->contained_nodes.size() == 0);
                 prob_bin->num_searched++;
 
                 size_t idx = (size_t)uniform_distribution(0.0, (double)prob_bin->contained_nodes.size(), &rng_node_selec[tid][1]);
 
                 // in the rare case some wierd floating point stuff happens
-                if(idx == prob_bin->contained_nodes.size()) {
-                    idx--;
+                if(idx >= prob_bin->contained_nodes.size()) {
+                    idx =  prob_bin->contained_nodes.size() - 1;
                 }
 
                 OctreeNode* current = prob_bin->contained_nodes[idx].first;
@@ -742,6 +739,12 @@ void refine_octree_random(
                         omp_unset_lock(cell_lock);
 
                         point.cell = univ.find_cell_for_point(untested_cells, point.pos);
+
+                        // rarely happens, but when it does, it segfaults the program
+                        if(point.cell == -1) {
+                            point.cell = univ.find_cell_for_point(univ.cells_, point.pos);
+                        }
+
                         prob_bin->add_cell(point.cell);
                     }
 

@@ -521,10 +521,9 @@ void refine_octree_random(
     std::cout << "Refining octree via random refinement..\n";
     std::cout.flush();
 
-    std::vector<double> K_SEARCH_DENSITY;
-    for(int i = 0; i < 32; i++) {
-        K_SEARCH_DENSITY.push_back(1.0);
-    }
+    const float K_SEARCH_DENSITY = 1.0;
+    const float K_REFINEMENT_TIMEOUT = 10.0;
+
 
     std::vector<uint64_t[2]> rng_node_selec(NUM_THREADS);
     std::vector<uint64_t[3]> rng_pos(NUM_THREADS);
@@ -550,17 +549,21 @@ void refine_octree_random(
 
     struct ProbabilityBin {
         ProbabilityBin() : num_searched(0), num_found(0) {
-            common_cells.reserve(5000);
-            found_cells.reserve(5000);
+            common_cells.reserve(200);
+            found_cells.reserve(500);
 
             omp_init_lock(&found_lock);
         }
 
         float compute_score() {
-            float numer = std::max((float)num_found, 1.0f);
-            float denom = std::max((float)num_searched, 1.0f);
+            const float K_FOUND_MULT = 1.0;
+            const float K_SEARCHED_MULT = 1.0;
 
-            return numer / denom;
+            float found_score = std::max(K_FOUND_MULT * num_found, 1.0f) / std::max(K_SEARCHED_MULT * num_searched, 1.0f);
+            found_score *= found_score;
+
+            float size_score = contained_nodes.size() * 0.001f;
+            return found_score;
         }
 
         int num_searched, num_found;
@@ -634,9 +637,13 @@ void refine_octree_random(
 
     std::vector<float> bin_cdf(prob_bin_grid.size());
 
-    for(int iteration = 0; iteration < K_SEARCH_DENSITY.size(); iteration++) {
-        auto density = K_SEARCH_DENSITY[iteration];
-        int num_search_points = (int)(root.box.volume() * density);
+    Timer timeout_timer;
+    timeout_timer.start();
+
+    int iteration = 0;
+
+    while(timeout_timer.elapsed() < K_REFINEMENT_TIMEOUT) {
+        int num_search_points = (int)(root.box.volume() * K_SEARCH_DENSITY);
 
         // first, generate cdf
         // std::cout << "GENERATING CDF..." << std::endl;
@@ -728,7 +735,7 @@ void refine_octree_random(
                         const auto& possible_cells = fallback.get_cells(point.pos, dummy);
 
                         pick_untested_cells(untested_cells, possible_cells, temp_buf);
-                        
+
                         omp_set_lock(cell_lock);
                         pick_untested_cells(current->cells, temp_buf, untested_cells);
                         omp_unset_lock(cell_lock);
@@ -755,6 +762,8 @@ void refine_octree_random(
 
         std::cout << "Refinement on iteration " << (iteration + 1) << ":\t" << num_search_points << "\tcells searched,\t" << num_total_missing_cells << "\tmising cells inserted into octree. (" << (100.0 * num_total_missing_cells) / num_search_points << "%\tdiscovery rate)\n";
         std::cout.flush();
+
+        iteration++;
     }
 
     float total = refinement_timer.elapsed();
@@ -926,8 +935,6 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
 
     double popping_time = 0.0, init_time = 0.0, alloc_time = 0.0, node_selec_time = 0.0, post_process_time = 0.0;
 
-    std::vector<std::pair<OctreeNode*, std::vector<CellPoint>>> children;
-
     std::stack<OctreeConstructionTask> oct_unproc;
     oct_unproc.emplace(&root, bounds, points_in_bounds);
     Timer total_building_timer;
@@ -1000,12 +1007,15 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
                         child_tasks[i].node->cells.push_back(p.cell);
                         prev_cell = p.cell;
                     }
-                }        
-
-                children.emplace_back(child_tasks[i].node, std::move(child_tasks[i].points));       
+                }      
             }
         }
         post_process_time += t.elapsed();
+
+        // free memory
+        cur_task.points.clear();
+        cur_task.points.shrink_to_fit();
+
         t.reset();
     }
     total_building_timer.stop();

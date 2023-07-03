@@ -495,6 +495,18 @@ std::vector<OctreeNode*> store_children(OctreeNode& root) {
     return children;
 }
 
+void pick_untested_cells(const std::vector<int>& tested_cells, const std::vector<int>& possible_cells, std::vector<int>& untested_cells) {
+    untested_cells.clear();
+    int next_idx = 0;
+    for(int cell : possible_cells) {
+        if(next_idx < tested_cells.size() && tested_cells[next_idx] == cell) {
+            next_idx++;
+        } else {
+            untested_cells.push_back(cell);
+        }
+    }
+}
+
 const int NUM_THREADS = 16;
 void refine_octree_random(
     const Universe& univ,
@@ -514,60 +526,130 @@ void refine_octree_random(
         K_SEARCH_DENSITY.push_back(1.0);
     }
 
-    std::vector<uint64_t> rng_node_selec(NUM_THREADS);
+    std::vector<uint64_t[2]> rng_node_selec(NUM_THREADS);
     std::vector<uint64_t[3]> rng_pos(NUM_THREADS);
 
-
     for(int i = 0; i < NUM_THREADS; i++) {
-        rng_node_selec[i] = i;
+        rng_node_selec[i][0] = i;
+        rng_node_selec[i][1] = i + 324 * NUM_THREADS;
         for(int j = 0; j < 3; j++) {
             rng_pos[i][j] = NUM_THREADS * (j + 1) + i;
         }
     }
 
     auto children = store_children(root);
-    std::vector<float> node_cdf(children.size());
     std::vector<omp_lock_t> cell_locks(children.size());
 
     for(auto& lock : cell_locks) {
         omp_init_lock(&lock);
     }
 
-
     omp_lock_t allocate_lock, replace_lock;
     omp_init_lock(&allocate_lock);
     omp_init_lock(&replace_lock);
 
-    vec3 bin_dim;
+    struct ProbabilityBin {
+        ProbabilityBin() : num_searched(0), num_found(0) {
+            common_cells.reserve(5000);
+            found_cells.reserve(5000);
+
+            omp_init_lock(&found_lock);
+        }
+
+        float compute_score() {
+            float numer = std::max((float)num_found, 1.0f);
+            float denom = std::max((float)num_searched, 1.0f);
+
+            return numer / denom;
+        }
+
+        int num_searched, num_found;
+        std::vector<std::pair<OctreeNode*, omp_lock_t>> contained_nodes;
+
+        void update_common_cells() {
+            found_cells.reserve(common_cells.size() + found_cells.size());
+            
+            for(int cell : common_cells) {
+                found_cells.push_back(cell);
+            }
+
+            std::sort(found_cells.begin(), found_cells.end());
+
+            common_cells.clear();
+
+            int prev_cell = -1;
+            for(int cell : found_cells) {
+                if(cell != prev_cell) {
+                    common_cells.push_back(cell);
+                    prev_cell = cell;
+                }
+            }
+
+            found_cells.clear();
+        }
+
+        void add_cell(int cell) {
+            omp_set_lock(&found_lock);
+            found_cells.push_back(cell);
+            omp_unset_lock(&found_lock);
+        }
+
+        omp_lock_t found_lock;
+        std::vector<int> common_cells;
+        std::vector<int> found_cells;
+    };
+
+    const int PROBABILITY_BIN_RES = 32; // ideally should be a power of 2
+    std::vector<ProbabilityBin> prob_bin_grid(PROBABILITY_BIN_RES * PROBABILITY_BIN_RES * PROBABILITY_BIN_RES);
+
+    vec3 prob_bin_dim;
     for(int i = 0; i < 3; i++) {
-        bin_dim[i] = (root.box.max[i] - root.box.min[i]) / BIN_GRID_RES;
+        prob_bin_dim[i] = (root.box.max[i] - root.box.min[i]) / PROBABILITY_BIN_RES;
     }
 
-    std::vector<std::tuple<CellPoint, OctreeNode*, bool>> search_points;
+    for(auto child : children) {
+        int idx3d[3];
+        for(int i = 0; i < 3; i++) {
+            idx3d[i] = (child->center[i] - root.box.min[i]) / prob_bin_dim[i];
+        }
+
+        int idx = 
+            idx3d[0] +
+            idx3d[1] * PROBABILITY_BIN_RES +
+            idx3d[2] * PROBABILITY_BIN_RES * PROBABILITY_BIN_RES;
+
+        omp_lock_t dummy;
+        prob_bin_grid[idx].contained_nodes.emplace_back(child, dummy);
+        for(int cell : child->cells) {
+            prob_bin_grid[idx].found_cells.push_back(cell);
+        }
+    }
+
+    for(auto& prob_bin : prob_bin_grid) {
+        prob_bin.update_common_cells();
+        for(auto& p : prob_bin.contained_nodes) {
+            omp_init_lock(&p.second);
+        }
+    }
+
+    std::vector<float> bin_cdf(prob_bin_grid.size());
+
     for(int iteration = 0; iteration < K_SEARCH_DENSITY.size(); iteration++) {
         auto density = K_SEARCH_DENSITY[iteration];
         int num_search_points = (int)(root.box.volume() * density);
-        
-        search_points.clear();
-        search_points.resize(num_search_points);
 
         // first, generate cdf
-        //std::cout << "GENERATING CDF..." << std::endl;
+        // std::cout << "GENERATING CDF..." << std::endl;
         float total_cdf = 0.0;
-        for(int i = 0; i < children.size(); i++) {
+        for(int i = 0; i < prob_bin_grid.size(); i++) {
             // compute score
-            size_t size = children[i]->cells.size();
-            float score = size + 64.0 / std::max(0.5f, (float)size);
-
-            if(size > 8) {
-                score *= 8;
-            }
+            float score = prob_bin_grid[i].compute_score();
 
             total_cdf += score;
-            node_cdf[i] = total_cdf;
+            bin_cdf[i] = total_cdf;
         }
 
-        for(float& cdf : node_cdf) {
+        for(float& cdf : bin_cdf) {
             cdf /= total_cdf;
         }
         
@@ -595,18 +677,36 @@ void refine_octree_random(
         {
             int tid = omp_get_thread_num();
 
-            std::vector<int> untested_cells;
+            std::vector<int> untested_cells, temp_buf;
             untested_cells.reserve(256);
+            temp_buf.reserve(256);
             #pragma omp for
-            for(auto& p : search_points) {
-                float cdf_val = uniform_distribution(0.0, 1.0, &rng_node_selec[tid]);
-                auto cdf_iter = std::upper_bound(node_cdf.begin(), node_cdf.end(), cdf_val);
-                size_t idx = std::distance(node_cdf.begin(), cdf_iter);
-                if(idx == node_cdf.size()) {
+            for(int p = 0; p < num_search_points; p++) {
+                ProbabilityBin* prob_bin;
+                while(true) {
+                    float cdf_val = uniform_distribution(0.0, 1.0, &rng_node_selec[tid][0]);
+                    auto cdf_iter = std::upper_bound(bin_cdf.begin(), bin_cdf.end(), cdf_val);
+                    size_t bin_idx = std::distance(bin_cdf.begin(), cdf_iter);
+                    if(bin_idx == bin_cdf.size()) {
+                        bin_idx--;
+                    }
+
+                    prob_bin = &prob_bin_grid[bin_idx];
+                    if(prob_bin->contained_nodes.size() != 0) {
+                        break;
+                    }
+                }
+                prob_bin->num_searched++;
+
+                size_t idx = (size_t)uniform_distribution(0.0, (double)prob_bin->contained_nodes.size(), &rng_node_selec[tid][1]);
+
+                // in the rare case some wierd floating point stuff happens
+                if(idx == prob_bin->contained_nodes.size()) {
                     idx--;
                 }
-                OctreeNode* current = children[idx];
-                omp_lock_t* cell_lock = &cell_locks[idx];
+
+                OctreeNode* current = prob_bin->contained_nodes[idx].first;
+                omp_lock_t* cell_lock = &prob_bin->contained_nodes[idx].second;
 
                 CellPoint point;
                 for(int i = 0; i < 3; i++) {
@@ -619,22 +719,24 @@ void refine_octree_random(
                 omp_unset_lock(cell_lock);
 
                 if(point.cell == -1) {
-                    Direction dummy{0, 0, 1};
-                    const auto& possible_cells = fallback.get_cells(point.pos, dummy);
+                    prob_bin->num_found++;
 
-                    omp_set_lock(cell_lock);
-                    untested_cells.clear();
-                    int next_idx = 0;
-                    for(int cell : possible_cells) {
-                        if(next_idx < current->cells.size() && current->cells[next_idx] == cell) {
-                            next_idx++;
-                        } else {
-                            untested_cells.push_back(cell);
-                        }
-                    }
-                    omp_unset_lock(cell_lock);
-
+                    pick_untested_cells(current->cells, prob_bin->common_cells, untested_cells);
                     point.cell = univ.find_cell_for_point(untested_cells, point.pos);
+                    if(point.cell == -1) {
+                        Direction dummy{0, 0, 1};
+                        const auto& possible_cells = fallback.get_cells(point.pos, dummy);
+
+                        pick_untested_cells(untested_cells, possible_cells, temp_buf);
+                        
+                        omp_set_lock(cell_lock);
+                        pick_untested_cells(current->cells, temp_buf, untested_cells);
+                        omp_unset_lock(cell_lock);
+
+                        point.cell = univ.find_cell_for_point(untested_cells, point.pos);
+                        prob_bin->add_cell(point.cell);
+                    }
+
 
                     omp_set_lock(cell_lock);
                     current->cells.push_back(point.cell);

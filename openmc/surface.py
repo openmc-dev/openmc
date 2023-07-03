@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from copy import deepcopy
 import math
 from numbers import Real
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 from warnings import warn, catch_warnings, simplefilter
 
 import numpy as np
@@ -185,18 +185,6 @@ class Surface(IDManagerMixin, ABC):
     def name(self):
         return self._name
 
-    @property
-    def type(self):
-        return self._type
-
-    @property
-    def boundary_type(self):
-        return self._boundary_type
-
-    @property
-    def coefficients(self):
-        return self._coefficients
-
     @name.setter
     def name(self, name):
         if name is not None:
@@ -205,11 +193,23 @@ class Surface(IDManagerMixin, ABC):
         else:
             self._name = ''
 
+    @property
+    def type(self):
+        return self._type
+
+    @property
+    def boundary_type(self):
+        return self._boundary_type
+
     @boundary_type.setter
     def boundary_type(self, boundary_type):
         check_type('boundary type', boundary_type, str)
         check_value('boundary type', boundary_type, _BOUNDARY_TYPES)
         self._boundary_type = boundary_type
+
+    @property
+    def coefficients(self):
+        return self._coefficients
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -393,7 +393,7 @@ class Surface(IDManagerMixin, ABC):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing source data
 
         """
@@ -417,7 +417,7 @@ class Surface(IDManagerMixin, ABC):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -624,7 +624,7 @@ class PlaneMixin:
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing source data
 
         """
@@ -1280,7 +1280,7 @@ class Cylinder(QuadricMixin, Surface):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing source data
 
         """
@@ -1802,7 +1802,7 @@ class Cone(QuadricMixin, Surface):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing source data
 
         """

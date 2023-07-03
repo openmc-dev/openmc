@@ -6,7 +6,7 @@ from copy import deepcopy
 from collections.abc import Iterable
 from pathlib import Path
 import warnings
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 
 import numpy as np
 
@@ -57,6 +57,11 @@ class Geometry:
     def root_universe(self) -> openmc.UniverseBase:
         return self._root_universe
 
+    @root_universe.setter
+    def root_universe(self, root_universe):
+        check_type('root universe', root_universe, openmc.UniverseBase)
+        self._root_universe = root_universe
+
     @property
     def bounding_box(self) -> np.ndarray:
         return self.root_universe.bounding_box
@@ -65,19 +70,14 @@ class Geometry:
     def merge_surfaces(self) -> bool:
         return self._merge_surfaces
 
-    @property
-    def surface_precision(self) -> int:
-        return self._surface_precision
-
-    @root_universe.setter
-    def root_universe(self, root_universe):
-        check_type('root universe', root_universe, openmc.UniverseBase)
-        self._root_universe = root_universe
-
     @merge_surfaces.setter
     def merge_surfaces(self, merge_surfaces):
         check_type('merge surfaces', merge_surfaces, bool)
         self._merge_surfaces = merge_surfaces
+
+    @property
+    def surface_precision(self) -> int:
+        return self._surface_precision
 
     @surface_precision.setter
     def surface_precision(self, surface_precision):
@@ -172,7 +172,7 @@ class Geometry:
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
         materials : openmc.Materials or None
             Materials used to assign to cells. If None, an attempt is made to

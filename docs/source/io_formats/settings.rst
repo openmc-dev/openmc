@@ -449,24 +449,27 @@ attributes/sub-elements:
 
     *Default*: 1.0
 
+  :type:
+    Indicator of source type. One of ``independent``, ``file``, or ``compiled``.
+
   :particle:
     The source particle type, either ``neutron`` or ``photon``.
 
     *Default*: neutron
 
   :file:
-    If this attribute is given, it indicates that the source is to be read from
-    a binary source file whose path is given by the value of this element. Note,
-    the number of source sites needs to be the same as the number of particles
-    simulated in a fission source generation.
+    If this attribute is given, it indicates that the source type is ``file``,
+    meaning particles are to be read from a binary source file whose path is
+    given by the value of this element.
 
     *Default*: None
 
   :library:
-    If this attribute is given, it indicates that the source is to be
-    instantiated from an externally compiled source function. This source can be
-    as complex as is required to define the source for your problem. The library
-    has a few basic requirements:
+    If this attribute is given, it indicates that the source type is
+    ``compiled``, meaning that particles are instantiated from an externally
+    compiled source function. This source can be completely customized as needed
+    to define the source for your problem. The library has a few basic
+    requirements:
 
     * It must contain a class that inherits from ``openmc::Source``;
     * The class must implement a function called ``sample()``;
@@ -476,14 +479,12 @@ attributes/sub-elements:
 
     More documentation on how to build sources can be found in :ref:`custom_source`.
 
-    *Default*: None
-
   :parameters:
-    If this attribute is given, it provides the parameters to pass through to the
-    class generated using the ``library`` parameter . More documentation on how to
-    build parametrized sources can be found in :ref:`parameterized_custom_source`.
-
-    *Default*: None
+    If this attribute is given, it indicated that the source type is
+    ``compiled``. Its value provides the parameters to pass through to the class
+    generated using the ``library`` parameter. More documentation on how to
+    build parametrized sources can be found in
+    :ref:`parameterized_custom_source`.
 
   :space:
     An element specifying the spatial distribution of source sites. This element
@@ -1066,7 +1067,7 @@ sub-elements/attributes:
   :particle_type:
     The particle that the weight windows will apply to (e.g., 'neutron')
 
-    *Default*: None
+    *Default*: 'neutron'
 
   :energy_bins:
     Monotonically increasing list of bounding energies in [eV] to be used for
@@ -1104,3 +1105,74 @@ sub-elements/attributes:
     Threshold below which particles will be terminated
 
     *Default*: :math:`10^{-38}`
+
+--------------------------------------
+``<weight_window_generator>`` Element
+--------------------------------------
+
+The ``<weight_window_generator>`` element provides information for creating a set of
+mesh-based weight windows.
+
+  :mesh:
+    ID of a mesh that is to be used for the weight windows spatial bins
+
+    *Default*: None
+
+  :energy_bounds:
+    The weight window energy bounds. If not present, the max/min energy of the
+    cross section data is applied as a single energy bin.
+
+    *Default*: None
+
+  :particle_type:
+    The particle that the weight windows will apply to (e.g., 'neutron')
+
+    *Default*: neutron
+
+  :max_realizations:
+    The number of tally realizations after which the weight windows will stop updating.
+
+    *Default*: 1
+
+  :update_interval:
+    The number of tally realizations between weight window updates.
+
+    *Default*: 1
+
+  :on_the_fly:
+    Controls whether or not the tally results are reset after a weight window update.
+
+    *Default*: true
+
+  :method:
+    Method used to update weight window values (currently only 'magic' is supported)
+
+    *Default*: magic
+
+  :update_parameters:
+    Method-specific update parameters used when generating/updating weight windows.
+
+    For MAGIC:
+
+      :value:
+        The type of tally value to use when creating weight windows (one of 'mean' or 'rel_err')
+
+        *Default*: 'mean'
+
+      :threshold:
+        The relative error threshold above which tally results will be ignored.
+
+        *Default*: 1.0
+
+      :ratio:
+        The ratio of the lower to upper weight window bounds.
+
+        *Default*: 5.0
+
+--------------------------------------
+``<weight_windows_file>`` Element
+--------------------------------------
+
+  The ``weight_windows_file`` element has no attributes and contains the path to
+  a weight windows HDF5 file to load during simulation initialization.
+

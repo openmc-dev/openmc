@@ -15,7 +15,8 @@ import openmc
 from openmc.checkvalue import check_type
 from openmc.mpi import comm
 from .abc import ReactionRateHelper, OperatorResult
-from .openmc_operator import OpenMCOperator, _distribute
+from .openmc_operator import OpenMCOperator
+from .pool import _distribute
 from .microxs import MicroXS
 from .results import Results
 from .helpers import ChainFissionHelper, ConstantFissionYieldHelper, SourceRateHelper
@@ -62,10 +63,6 @@ class IndependentOperator(OpenMCOperator):
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``. Only applicable
         if ``"normalization_mode" == "fission-q"``.
-    dilute_initial : float, optional
-        Initial atom density [atoms/cm^3] to add for nuclides that are zero
-        in initial condition to ensure they exist in the decay chain.
-        Only done for nuclides with reaction rates.
     reduce_chain : bool, optional
         If True, use :meth:`openmc.deplete.Chain.reduce` to reduce the
         depletion chain up to ``reduce_chain_level``.
@@ -85,10 +82,6 @@ class IndependentOperator(OpenMCOperator):
         All materials present in the model
     cross_sections : MicroXS
         Object containing one-group cross-sections in [cm^2].
-    dilute_initial : float
-        Initial atom density [atoms/cm^3] to add for nuclides that
-        are zero in initial condition to ensure they exist in the decay
-        chain. Only done for nuclides with reaction rates.
     output_dir : pathlib.Path
         Path to output directory to save results.
     round_number : bool
@@ -121,7 +114,6 @@ class IndependentOperator(OpenMCOperator):
                  keff=None,
                  normalization_mode='fission-q',
                  fission_q=None,
-                 dilute_initial=1.0e3,
                  prev_results=None,
                  reduce_chain=False,
                  reduce_chain_level=None,
@@ -147,7 +139,6 @@ class IndependentOperator(OpenMCOperator):
             chain_file,
             prev_results,
             fission_q=fission_q,
-            dilute_initial=dilute_initial,
             helper_kwargs=helper_kwargs,
             reduce_chain=reduce_chain,
             reduce_chain_level=reduce_chain_level)
@@ -160,7 +151,6 @@ class IndependentOperator(OpenMCOperator):
                       keff=None,
                       normalization_mode='fission-q',
                       fission_q=None,
-                      dilute_initial=1.0e3,
                       prev_results=None,
                       reduce_chain=False,
                       reduce_chain_level=None,
@@ -195,10 +185,6 @@ class IndependentOperator(OpenMCOperator):
             Dictionary of nuclides and their fission Q values [eV]. If not
             given, values will be pulled from the ``chain_file``. Only
             applicable if ``"normalization_mode" == "fission-q"``.
-        dilute_initial : float
-            Initial atom density [atoms/cm^3] to add for nuclides that
-            are zero in initial condition to ensure they exist in the decay
-            chain. Only done for nuclides with reaction rates.
         prev_results : Results, optional
             Results from a previous depletion calculation.
         reduce_chain : bool, optional
@@ -223,7 +209,6 @@ class IndependentOperator(OpenMCOperator):
                    keff=keff,
                    normalization_mode=normalization_mode,
                    fission_q=fission_q,
-                   dilute_initial=dilute_initial,
                    prev_results=prev_results,
                    reduce_chain=reduce_chain,
                    reduce_chain_level=reduce_chain_level,
@@ -295,7 +280,7 @@ class IndependentOperator(OpenMCOperator):
         ----------
         nuc_ind_map : dict of int to str
             Dictionary mapping the nuclide index to nuclide name
-        rxn_ind_map : dict of int to str
+        rx_ind_map : dict of int to str
             Dictionary mapping reaction index to reaction name
 
         """
@@ -305,7 +290,7 @@ class IndependentOperator(OpenMCOperator):
             super().__init__(rates.n_nuc, rates.n_react)
 
             self.nuc_ind_map = {ind: nuc for nuc, ind in rates.index_nuc.items()}
-            self.rxn_ind_map = {ind: rxn for rxn, ind in rates.index_rx.items()}
+            self.rx_ind_map = {ind: rxn for rxn, ind in rates.index_rx.items()}
             self._op = op
 
         def generate_tallies(self, materials, scores):
@@ -330,14 +315,20 @@ class IndependentOperator(OpenMCOperator):
             """
             self._results_cache.fill(0.0)
 
+            # Get volume in units of [b-cm]
+            volume_b_cm = 1e24 * self._op.number.get_mat_volume(mat_id)
+
             for i_nuc, i_react in product(nuc_index, react_index):
                 nuc = self.nuc_ind_map[i_nuc]
-                rxn = self.rxn_ind_map[i_react]
+                rx = self.rx_ind_map[i_react]
 
-                # Sigma^j_i * V = sigma^j_i * n_i * V = sigma^j_i * N_i
-                self._results_cache[i_nuc,i_react] = \
-                    self._op.cross_sections[rxn][nuc] * \
-                    self._op.number[mat_id, nuc]
+                # OK, this is kind of weird, but we multiply by volume in [b-cm]
+                # only because OpenMCOperator._calculate_reaction_rates has to
+                # divide it out later. It might make more sense to account for
+                # the source rate (flux) here rather than in the normalization
+                # helper.
+                self._results_cache[i_nuc, i_react] = \
+                    self._op.cross_sections[rx][nuc] * volume_b_cm
 
             return self._results_cache
 

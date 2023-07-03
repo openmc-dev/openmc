@@ -13,7 +13,7 @@ def test_tallies():
     model.settings.batches = 5
     model.settings.inactive = 0
     model.settings.particles = 400
-    model.settings.source = openmc.Source(space=openmc.stats.Box(
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
         [-160, -160, -183], [160, 160, 183]))
 
     azimuthal_bins = (-3.14159, -1.8850, -0.6283, 0.6283, 1.8850, 3.14159)

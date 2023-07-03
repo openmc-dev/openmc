@@ -221,6 +221,15 @@ extern "C" int openmc_filter_get_type(int32_t index, char* type)
   return 0;
 }
 
+extern "C" int openmc_filter_get_num_bins(int32_t index, int* n_bins)
+{
+  if (int err = verify_filter(index))
+    return err;
+
+  *n_bins = model::tally_filters[index]->n_bins();
+  return 0;
+}
+
 extern "C" int openmc_get_filter_index(int32_t id, int32_t* index)
 {
   auto it = model::filter_map.find(id);

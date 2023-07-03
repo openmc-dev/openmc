@@ -69,7 +69,7 @@ def change_directory(output_dir):
     """
     orig_dir  = os.getcwd()
     try:
-        output_dir.mkdir(exist_ok=True)
+        output_dir.mkdir(parents=True, exist_ok=True)
         os.chdir(output_dir)
         yield
     finally:
@@ -93,20 +93,11 @@ class TransportOperator(ABC):
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``.
-    dilute_initial : float, optional
-        Initial atom density [atoms/cm^3] to add for nuclides that are zero
-        in initial condition to ensure they exist in the decay chain.
-        Only done for nuclides with reaction rates.
-        Defaults to 1.0e3.
     prev_results : Results, optional
         Results from a previous depletion calculation.
 
     Attributes
     ----------
-    dilute_initial : float
-        Initial atom density [atoms/cm^3] to add for nuclides that are zero
-        in initial condition to ensure they exist in the decay chain.
-        Only done for nuclides with reaction rates.
     output_dir : pathlib.Path
         Path to output directory to save results.
     prev_res : Results or None
@@ -116,9 +107,7 @@ class TransportOperator(ABC):
         The depletion chain information necessary to form matrices and tallies.
 
     """
-    def __init__(self, chain_file, fission_q=None, dilute_initial=1.0e3,
-                 prev_results=None):
-        self.dilute_initial = dilute_initial
+    def __init__(self, chain_file, fission_q=None, prev_results=None):
         self.output_dir = '.'
 
         # Read depletion chain
@@ -128,17 +117,6 @@ class TransportOperator(ABC):
         else:
             check_type("previous results", prev_results, Results)
             self.prev_res = prev_results
-
-    @property
-    def dilute_initial(self):
-        """Initial atom density for nuclides with zero initial concentration"""
-        return self._dilute_initial
-
-    @dilute_initial.setter
-    def dilute_initial(self, value):
-        check_type("dilute_initial", value, Real)
-        check_greater_than("dilute_initial", value, 0.0, equality=True)
-        self._dilute_initial = value
 
     @abstractmethod
     def __call__(self, vec, source_rate):
@@ -274,8 +252,7 @@ class ReactionRateHelper(ABC):
         Parameters
         ----------
         number : iterable of float
-            Number density [atoms/b-cm] of each nuclide tracked in the
-            calculation.
+            Number of each nuclide in [atom] tracked in the calculation.
 
         Returns
         -------
@@ -841,7 +818,7 @@ class Integrator(ABC):
 
         self.operator.finalize()
 
-    def add_transfer_rate(self, material, elements, transfer_rate,
+    def add_transfer_rate(self, material, components, transfer_rate,
                          transfer_rate_units='1/s', destination_material=None):
         """Add transfer rates to depletable material.
 
@@ -849,8 +826,10 @@ class Integrator(ABC):
         ----------
         material : openmc.Material or str or int
             Depletable material
-        elements : list of str
-            List of strings of elements that share transfer rate
+        components : list of str
+            List of strings of elements and/or nuclides that share transfer rate.
+            A transfer rate for a nuclide cannot be added to a material
+            alongside a transfer rate for its element and vice versa.
         transfer_rate : float
             Rate at which elements are transferred. A positive or negative values
             set removal of feed rates, respectively.
@@ -864,7 +843,7 @@ class Integrator(ABC):
         if self.transfer_rates is None:
             self.transfer_rates = TransferRates(self.operator, self.operator.model)
 
-        self.transfer_rates.set_transfer_rate(material, elements, transfer_rate,
+        self.transfer_rates.set_transfer_rate(material, components, transfer_rate,
                                       transfer_rate_units, destination_material)
 
 @add_params

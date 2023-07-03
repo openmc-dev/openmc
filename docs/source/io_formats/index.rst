@@ -51,3 +51,4 @@ Output Files
    track
    voxel
    volume
+   weight_windows

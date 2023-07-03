@@ -25,7 +25,7 @@ def model():
     settings.particles = 100
     settings.run_mode = 'fixed source'
 
-    source = openmc.Source()
+    source = openmc.IndependentSource()
     source.angle = openmc.stats.Isotropic()
     source.energy = openmc.stats.Discrete([1.0e6], [1.0])
     source.space = openmc.stats.Point((-0.01, -0.01, -0.01))
@@ -212,7 +212,7 @@ def mesh_surf_id(param):
 
 
 @pytest.mark.parametrize("mesh,surface", product(MESHES, SURFS), ids=mesh_surf_id)
-def test_vtk_write_ordering(model, mesh, surface):
+def test_vtk_write_ordering(run_in_tmpdir, model, mesh, surface):
 
     tally = openmc.Tally()
     tally.scores = ['flux']
@@ -273,3 +273,45 @@ def test_vtk_write_ordering(model, mesh, surface):
             # need to get flat index with axes reversed due to ordering passed into the VTK file
             flat_idx = np.ravel_multi_index(tuple(ijk[::-1]), mesh.dimension[::-1])
             assert vtk_data[flat_idx] == 0.0, err_msg
+
+
+def test_sphere_mesh_coordinates(run_in_tmpdir):
+    mesh = openmc.SphericalMesh()
+    mesh.r_grid = np.linspace(0.1, 10, 30)
+    mesh.phi_grid = np.linspace(0, 1.5*np.pi, 25)
+    mesh.theta_grid = np.linspace(0, np.pi / 2, 15)
+
+    # write the data to a VTK file (no data)
+    vtk_filename = 'test.vtk'
+    mesh.write_data_to_vtk(vtk_filename, {})
+
+    # read file
+    reader = vtk.vtkStructuredGridReader()
+    reader.SetFileName(str(vtk_filename))
+    reader.Update()
+
+    vtk_grid = reader.GetOutput()
+
+    # create a region that matches the spherical mesh description
+    x = openmc.XPlane()
+    z = openmc.ZPlane()
+    y = openmc.YPlane()
+    s = openmc.Sphere(r=10.0)
+
+    region = +z & +y & -s | -x & -y & +z & -s
+
+    # the VTK interface will update this list when GetCentroid is called
+    centroid = np.zeros(3)
+
+    # ensure all centroids of the sphere mesh are inside the cell region
+    for i in range(vtk_grid.GetNumberOfCells()):
+        # get the cell from the stuctured mesh object
+        cell = vtk_grid.GetCell(i)
+        cell.GetCentroid(centroid)
+
+        # if the coordinate conversion is happening correctly,
+        # every one of the cell centroids should be in the CSG region
+        assert centroid in region, \
+            f'Cell centroid {centroid} not in equivalent ' \
+            f'CSG region for spherical mesh {mesh}'
+

@@ -2,13 +2,13 @@
 <model>
   <materials>
     <material depletable="true" id="1">
-      <density units="g/cm3" value="10.0" />
-      <nuclide ao="1.0" name="Am241" />
+      <density units="g/cm3" value="10.0"/>
+      <nuclide ao="1.0" name="Am241"/>
     </material>
   </materials>
   <geometry>
-    <cell id="1" material="1" region="-1" universe="1" />
-    <surface boundary="vacuum" coeffs="0.0 0.0 0.0 100.0" id="1" type="sphere" />
+    <cell id="1" material="1" region="-1" universe="1"/>
+    <surface boundary="vacuum" coeffs="0.0 0.0 0.0 100.0" id="1" type="sphere"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>

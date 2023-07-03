@@ -5,7 +5,7 @@ from copy import deepcopy
 import math
 from numbers import Real
 from warnings import warn
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 
 import numpy as np
 
@@ -130,16 +130,16 @@ class Discrete(Univariate):
     def x(self):
         return self._x
 
-    @property
-    def p(self):
-        return self._p
-
     @x.setter
     def x(self, x):
         if isinstance(x, Real):
             x = [x]
         cv.check_type('discrete values', x, Iterable, Real)
         self._x = np.array(x, dtype=float)
+
+    @property
+    def p(self):
+        return self._p
 
     @p.setter
     def p(self, p):
@@ -173,7 +173,7 @@ class Discrete(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing discrete distribution data
 
         """
@@ -191,7 +191,7 @@ class Discrete(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -282,14 +282,14 @@ class Uniform(Univariate):
     def a(self):
         return self._a
 
-    @property
-    def b(self):
-        return self._b
-
     @a.setter
     def a(self, a):
         cv.check_type('Uniform a', a, Real)
         self._a = a
+
+    @property
+    def b(self):
+        return self._b
 
     @b.setter
     def b(self, b):
@@ -316,7 +316,7 @@ class Uniform(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing uniform distribution data
 
         """
@@ -331,7 +331,7 @@ class Uniform(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -384,23 +384,23 @@ class PowerLaw(Univariate):
     def a(self):
         return self._a
 
-    @property
-    def b(self):
-        return self._b
-
-    @property
-    def n(self):
-        return self._n
-
     @a.setter
     def a(self, a):
         cv.check_type('interval lower bound', a, Real)
         self._a = a
 
+    @property
+    def b(self):
+        return self._b
+
     @b.setter
     def b(self, b):
         cv.check_type('interval upper bound', b, Real)
         self._b = b
+
+    @property
+    def n(self):
+        return self._n
 
     @n.setter
     def n(self, n):
@@ -425,7 +425,7 @@ class PowerLaw(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing distribution data
 
         """
@@ -440,7 +440,7 @@ class PowerLaw(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -508,7 +508,7 @@ class Maxwell(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing Maxwellian distribution data
 
         """
@@ -523,7 +523,7 @@ class Maxwell(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -570,15 +570,15 @@ class Watt(Univariate):
     def a(self):
         return self._a
 
-    @property
-    def b(self):
-        return self._b
-
     @a.setter
     def a(self, a):
         cv.check_type('Watt a', a, Real)
         cv.check_greater_than('Watt a', a, 0.0)
         self._a = a
+
+    @property
+    def b(self):
+        return self._b
 
     @b.setter
     def b(self, b):
@@ -603,7 +603,7 @@ class Watt(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing Watt distribution data
 
         """
@@ -618,7 +618,7 @@ class Watt(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -664,14 +664,14 @@ class Normal(Univariate):
     def mean_value(self):
         return self._mean_value
 
-    @property
-    def std_dev(self):
-        return self._std_dev
-
     @mean_value.setter
     def mean_value(self, mean_value):
         cv.check_type('Normal mean_value', mean_value, Real)
         self._mean_value = mean_value
+
+    @property
+    def std_dev(self):
+        return self._std_dev
 
     @std_dev.setter
     def std_dev(self, std_dev):
@@ -693,7 +693,7 @@ class Normal(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing Watt distribution data
 
         """
@@ -708,7 +708,7 @@ class Normal(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -807,18 +807,14 @@ class Tabular(Univariate):
     def x(self):
         return self._x
 
-    @property
-    def p(self):
-        return self._p
-
-    @property
-    def interpolation(self):
-        return self._interpolation
-
     @x.setter
     def x(self, x):
         cv.check_type('tabulated values', x, Iterable, Real)
         self._x = np.array(x, dtype=float)
+
+    @property
+    def p(self):
+        return self._p
 
     @p.setter
     def p(self, p):
@@ -827,6 +823,10 @@ class Tabular(Univariate):
             for pk in p:
                 cv.check_greater_than('tabulated probability', pk, 0.0, True)
         self._p = np.array(p, dtype=float)
+
+    @property
+    def interpolation(self):
+        return self._interpolation
 
     @interpolation.setter
     def interpolation(self, interpolation):
@@ -957,7 +957,7 @@ class Tabular(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing tabular distribution data
 
         """
@@ -976,7 +976,7 @@ class Tabular(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1093,10 +1093,6 @@ class Mixture(Univariate):
     def probability(self):
         return self._probability
 
-    @property
-    def distribution(self):
-        return self._distribution
-
     @probability.setter
     def probability(self, probability):
         cv.check_type('mixture distribution probabilities', probability,
@@ -1105,6 +1101,10 @@ class Mixture(Univariate):
             cv.check_greater_than('mixture distribution probabilities',
                                   p, 0.0, True)
         self._probability = probability
+
+    @property
+    def distribution(self):
+        return self._distribution
 
     @distribution.setter
     def distribution(self, distribution):
@@ -1152,7 +1152,7 @@ class Mixture(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mixture distribution data
 
         """
@@ -1174,7 +1174,7 @@ class Mixture(Univariate):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns

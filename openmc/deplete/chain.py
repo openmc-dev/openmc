@@ -19,15 +19,7 @@ from openmc.data import gnds_name, zam, DataLibrary
 from openmc.exceptions import DataError
 from .nuclide import FissionYieldDistribution
 
-# Try to use lxml if it is available. It preserves the order of attributes and
-# provides a pretty-printer by default. If not available,
-# use OpenMC function to pretty print.
-try:
-    import lxml.etree as ET
-    _have_lxml = True
-except ImportError:
-    import xml.etree.ElementTree as ET
-    _have_lxml = False
+import lxml.etree as ET
 import scipy.sparse as sp
 
 import openmc.data
@@ -565,11 +557,7 @@ class Chain:
             root_elem.append(nuclide.to_xml_element())
 
         tree = ET.ElementTree(root_elem)
-        if _have_lxml:
-            tree.write(str(filename), encoding='utf-8', pretty_print=True)
-        else:
-            clean_indentation(root_elem)
-            tree.write(str(filename), encoding='utf-8')
+        tree.write(str(filename), encoding='utf-8', pretty_print=True)
 
     def get_default_fission_yields(self):
         """Return fission yields at lowest incident neutron energy
@@ -736,8 +724,11 @@ class Chain:
             # Build transfer terms matrices
             if isinstance(materials, str):
                 material = materials
-                if element in transfer_rates.get_elements(material):
+                components = transfer_rates.get_components(material)
+                if element in components:
                     matrix[i, i] = transfer_rates.get_transfer_rate(material, element)
+                elif nuclide.name in components:
+                    matrix[i, i] = transfer_rates.get_transfer_rate(material, nuclide.name)
                 else:
                     matrix[i, i] = 0.0
             #Build transfer terms matrices
@@ -745,10 +736,9 @@ class Chain:
                 destination_material, material = materials
                 if transfer_rates.get_destination_material(material, element) == destination_material:
                     matrix[i, i] = transfer_rates.get_transfer_rate(material, element)
+                elif transfer_rates.get_destination_material(material, nuclide.name) == destination_material:
+                    matrix[i, i] = transfer_rates.get_transfer_rate(material, nuclide.name)
                 else:
-                    warn(f'Material {destination_material} is not defined '
-                         f'as a destination material for Material {material}. '
-                         'Setting transfer rate to 0.0')
                     matrix[i, i] = 0.0
             #Nothing else is allowed
         n = len(self)

@@ -1074,13 +1074,12 @@ class CMFDRun:
         # Get acceleration map, otherwise set all regions to be accelerated
         if self._mesh.map is not None:
             check_length('CMFD coremap', self._mesh.map,
-                         np.product(self._indices[0:3]))
+                         np.prod(self._indices[:3]))
             if openmc.lib.master():
                 self._coremap = np.array(self._mesh.map)
         else:
             if openmc.lib.master():
-                self._coremap = np.ones((np.product(self._indices[0:3])),
-                                        dtype=int)
+                self._coremap = np.ones(np.prod(self._indices[:3]), dtype=int)
 
         # Check CMFD tallies accummulated before feedback turned on
         if self._feedback and self._solver_begin < self._tally_begin:
@@ -1434,7 +1433,7 @@ class CMFDRun:
         # nfissxs
 
         # Calculate volume
-        vol = np.product(self._hxyz, axis=3)
+        vol = np.prod(self._hxyz, axis=3)
 
         # Reshape phi by number of groups
         phi = self._phi.reshape((n, ng))

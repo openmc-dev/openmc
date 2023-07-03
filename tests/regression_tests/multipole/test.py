@@ -53,7 +53,7 @@ def make_model():
     model.settings.batches = 5
     model.settings.inactive = 0
     model.settings.particles = 1000
-    model.settings.source = openmc.Source(space=openmc.stats.Box(
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
         [-1, -1, -1], [1, 1, 1]))
     model.settings.temperature = {'tolerance': 1000, 'multipole': True}
 

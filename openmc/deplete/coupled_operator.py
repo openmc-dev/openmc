@@ -21,7 +21,8 @@ from openmc.exceptions import DataError
 import openmc.lib
 from openmc.mpi import comm
 from .abc import OperatorResult
-from .openmc_operator import OpenMCOperator, _distribute
+from .openmc_operator import OpenMCOperator
+from .pool import _distribute
 from .results import Results
 from .helpers import (
     DirectReactionRateHelper, ChainFissionHelper, ConstantFissionYieldHelper,
@@ -121,10 +122,6 @@ class CoupledOperator(OpenMCOperator):
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``. Only applicable
         if ``"normalization_mode" == "fission-q"``
-    dilute_initial : float, optional
-        Initial atom density [atoms/cm^3] to add for nuclides that are zero
-        in initial condition to ensure they exist in the decay chain.
-        Only done for nuclides with reaction rates.
     fission_yield_mode : {"constant", "cutoff", "average"}
         Key indicating what fission product yield scheme to use. The
         key determines what fission energy helper is used:
@@ -176,10 +173,6 @@ class CoupledOperator(OpenMCOperator):
         OpenMC geometry object
     settings : openmc.Settings
         OpenMC settings object
-    dilute_initial : float
-        Initial atom density [atoms/cm^3] to add for nuclides that
-        are zero in initial condition to ensure they exist in the decay
-        chain. Only done for nuclides with reaction rates.
     output_dir : pathlib.Path
         Path to output directory to save results.
     round_number : bool
@@ -214,7 +207,7 @@ class CoupledOperator(OpenMCOperator):
 
     def __init__(self, model, chain_file=None, prev_results=None,
                  diff_burnable_mats=False, normalization_mode="fission-q",
-                 fission_q=None, dilute_initial=1.0e3,
+                 fission_q=None,
                  fission_yield_mode="constant", fission_yield_opts=None,
                  reaction_rate_mode="direct", reaction_rate_opts=None,
                  reduce_chain=False, reduce_chain_level=None):
@@ -270,7 +263,6 @@ class CoupledOperator(OpenMCOperator):
             prev_results,
             diff_burnable_mats,
             fission_q,
-            dilute_initial,
             helper_kwargs,
             reduce_chain,
             reduce_chain_level)

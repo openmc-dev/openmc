@@ -1,4 +1,4 @@
-import xml.etree.ElementTree as ET
+import lxml.etree as ET
 from pathlib import Path
 
 import numpy as np
@@ -20,7 +20,7 @@ def test_volume(run_in_tmpdir, uo2):
     model.settings.particles = 100
     model.settings.batches = 10
     model.settings.run_mode = 'fixed source'
-    model.settings.source = openmc.Source(space=openmc.stats.Point())
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Point())
 
     ll, ur = model.geometry.bounding_box
     assert ll == pytest.approx((-outer.r, -outer.r, -outer.r))

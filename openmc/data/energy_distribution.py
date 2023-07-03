@@ -253,14 +253,14 @@ class MaxwellEnergy(EnergyDistribution):
     def theta(self):
         return self._theta
 
-    @property
-    def u(self):
-        return self._u
-
     @theta.setter
     def theta(self, theta):
         cv.check_type('Maxwell theta', theta, Tabulated1D)
         self._theta = theta
+
+    @property
+    def u(self):
+        return self._u
 
     @u.setter
     def u(self, u):
@@ -386,14 +386,14 @@ class Evaporation(EnergyDistribution):
     def theta(self):
         return self._theta
 
-    @property
-    def u(self):
-        return self._u
-
     @theta.setter
     def theta(self, theta):
         cv.check_type('Evaporation theta', theta, Tabulated1D)
         self._theta = theta
+
+    @property
+    def u(self):
+        return self._u
 
     @u.setter
     def u(self, u):
@@ -523,23 +523,23 @@ class WattEnergy(EnergyDistribution):
     def a(self):
         return self._a
 
-    @property
-    def b(self):
-        return self._b
-
-    @property
-    def u(self):
-        return self._u
-
     @a.setter
     def a(self, a):
         cv.check_type('Watt a', a, Tabulated1D)
         self._a = a
 
+    @property
+    def b(self):
+        return self._b
+
     @b.setter
     def b(self, b):
         cv.check_type('Watt b', b, Tabulated1D)
         self._b = b
+
+    @property
+    def u(self):
+        return self._u
 
     @u.setter
     def u(self, u):
@@ -691,14 +691,6 @@ class MadlandNix(EnergyDistribution):
     def efl(self):
         return self._efl
 
-    @property
-    def efh(self):
-        return self._efh
-
-    @property
-    def tm(self):
-        return self._tm
-
     @efl.setter
     def efl(self, efl):
         name = 'Madland-Nix light fragment energy'
@@ -706,12 +698,20 @@ class MadlandNix(EnergyDistribution):
         cv.check_greater_than(name, efl, 0.)
         self._efl = efl
 
+    @property
+    def efh(self):
+        return self._efh
+
     @efh.setter
     def efh(self, efh):
         name = 'Madland-Nix heavy fragment energy'
         cv.check_type(name, efh, Real)
         cv.check_greater_than(name, efh, 0.)
         self._efh = efh
+
+    @property
+    def tm(self):
+        return self._tm
 
     @tm.setter
     def tm(self, tm):
@@ -778,7 +778,6 @@ class MadlandNix(EnergyDistribution):
         return cls(efl, efh, tm)
 
 
-
 class DiscretePhoton(EnergyDistribution):
     """Discrete photon energy distribution
 
@@ -814,23 +813,23 @@ class DiscretePhoton(EnergyDistribution):
     def primary_flag(self):
         return self._primary_flag
 
-    @property
-    def energy(self):
-        return self._energy
-
-    @property
-    def atomic_weight_ratio(self):
-        return self._atomic_weight_ratio
-
     @primary_flag.setter
     def primary_flag(self, primary_flag):
         cv.check_type('discrete photon primary_flag', primary_flag, Integral)
         self._primary_flag = primary_flag
 
+    @property
+    def energy(self):
+        return self._energy
+
     @energy.setter
     def energy(self, energy):
         cv.check_type('discrete photon energy', energy, Real)
         self._energy = energy
+
+    @property
+    def atomic_weight_ratio(self):
+        return self._atomic_weight_ratio
 
     @atomic_weight_ratio.setter
     def atomic_weight_ratio(self, atomic_weight_ratio):
@@ -922,14 +921,14 @@ class LevelInelastic(EnergyDistribution):
     def threshold(self):
         return self._threshold
 
-    @property
-    def mass_ratio(self):
-        return self._mass_ratio
-
     @threshold.setter
     def threshold(self, threshold):
         cv.check_type('level inelastic threhsold', threshold, Real)
         self._threshold = threshold
+
+    @property
+    def mass_ratio(self):
+        return self._mass_ratio
 
     @mass_ratio.setter
     def mass_ratio(self, mass_ratio):
@@ -1029,23 +1028,15 @@ class ContinuousTabular(EnergyDistribution):
     def breakpoints(self):
         return self._breakpoints
 
-    @property
-    def interpolation(self):
-        return self._interpolation
-
-    @property
-    def energy(self):
-        return self._energy
-
-    @property
-    def energy_out(self):
-        return self._energy_out
-
     @breakpoints.setter
     def breakpoints(self, breakpoints):
         cv.check_type('continuous tabular breakpoints', breakpoints,
                       Iterable, Integral)
         self._breakpoints = breakpoints
+
+    @property
+    def interpolation(self):
+        return self._interpolation
 
     @interpolation.setter
     def interpolation(self, interpolation):
@@ -1053,11 +1044,19 @@ class ContinuousTabular(EnergyDistribution):
                       Iterable, Integral)
         self._interpolation = interpolation
 
+    @property
+    def energy(self):
+        return self._energy
+
     @energy.setter
     def energy(self, energy):
         cv.check_type('continuous tabular incoming energy', energy,
                       Iterable, Real)
         self._energy = energy
+
+    @property
+    def energy_out(self):
+        return self._energy_out
 
     @energy_out.setter
     def energy_out(self, energy_out):

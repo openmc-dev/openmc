@@ -5,7 +5,7 @@ from math import pi
 from numbers import Real, Integral
 from pathlib import Path
 import warnings
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 
 import numpy as np
 
@@ -103,7 +103,7 @@ class MeshBase(IDManagerMixin, ABC):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -177,7 +177,65 @@ class StructuredMesh(MeshBase):
             unpacked along the first dimension with xx, yy, zz = mesh.vertices.
 
         """
-        return np.stack(np.meshgrid(*self._grids, indexing='ij'), axis=0)
+        return self._generate_vertices(*self._grids)
+
+    @staticmethod
+    def _generate_vertices(i_grid, j_grid, k_grid):
+        """Returns an array with shape (3, i_grid.size+1, j_grid.size+1, k_grid.size+1)
+           containing the corner vertices of mesh elements.
+        """
+        return np.stack(np.meshgrid(i_grid, j_grid, k_grid, indexing='ij'), axis=0)
+
+    @staticmethod
+    def _generate_edge_midpoints(grids):
+        """Generates the midpoints of mesh element edges for each dimension of the mesh.
+
+        Parameters
+        ----------
+        grids : numpy.ndarray
+            The vertex grids along each dimension of the mesh.
+
+        Returns
+        -------
+        midpoint_grids : list of numpy.ndarray
+            The edge midpoints for the i, j, and k midpoints of each element in
+            i, j, k ordering. The shapes of the resulting grids are
+            [(3, ni-1, nj, nk), (3, ni, nj-1, nk), (3, ni, nj, nk-1)]
+        """
+        # generate a set of edge midpoints for each dimension
+        midpoint_grids = []
+        # generate the element edge midpoints in order s.t.
+        # the epxected element ordering is preserved with respect to the corner vertices
+
+        # each grid is comprised of the mid points for one dimension and the
+        # corner vertices of the other two
+        for dims in ((0, 1, 2), (1, 0, 2), (2, 0, 1)):
+            # compute the midpoints along the first dimension
+            midpoints = grids[dims[0]][:-1] + 0.5 * np.diff(grids[dims[0]])
+
+            coords = (midpoints, grids[dims[1]], grids[dims[2]])
+
+            i_grid, j_grid, k_grid = [coords[dims.index(i)] for i in range(3)]
+
+            # re-use the generate vertices method to create the full mesh grid
+            # transpose to get (i, j, k) ordering of the gridpoints
+            midpoint_grid = StructuredMesh._generate_vertices(i_grid, j_grid, k_grid)
+            midpoint_grids.append(midpoint_grid)
+
+        return midpoint_grids
+
+    @property
+    def midpoint_vertices(self):
+        """Create vertices that lie on the midpoint of element edges
+        """
+        # generate edge midpoints needed for curvilinear element definition
+        midpoint_vertices = self._generate_edge_midpoints(self._grids)
+
+        # convert each of the midpoint grids to cartesian coordinates
+        for vertices in midpoint_vertices:
+            self._convert_to_cartesian(vertices, self.origin)
+
+        return midpoint_vertices
 
     @property
     def centroids(self):
@@ -202,13 +260,15 @@ class StructuredMesh(MeshBase):
     def num_mesh_cells(self):
         return np.prod(self.dimension)
 
-    def write_data_to_vtk(self, points, filename, datasets, volume_normalization=True):
+    def write_data_to_vtk(self,
+                          filename,
+                          datasets=None,
+                          volume_normalization=True,
+                          curvilinear=False):
         """Creates a VTK object of the mesh
 
         Parameters
         ----------
-        points : list or np.array
-            List of (X,Y,Z) tuples.
         filename : str
             Name of the VTK file to write.
         datasets : dict
@@ -217,6 +277,9 @@ class StructuredMesh(MeshBase):
         volume_normalization : bool, optional
             Whether or not to normalize the data by
             the volume of the mesh elements.
+        curvilinear : bool
+            Whether or not to write curvilinear elements. Only applies to
+            ``SphericalMesh`` and ``CylindricalMesh``.
 
         Raises
         ------
@@ -225,14 +288,180 @@ class StructuredMesh(MeshBase):
 
         Returns
         -------
-        vtk.vtkStructuredGrid
-            the VTK object
+        vtk.StructuredGrid or vtk.UnstructuredGrid
+            a VTK grid object representing the mesh
         """
-
         import vtk
         from vtk.util import numpy_support as nps
 
         # check that the data sets are appropriately sized
+        if datasets is not None:
+            self._check_vtk_datasets(datasets)
+
+        # write linear elements using a structured grid
+        if not curvilinear or isinstance(self, (RegularMesh, RectilinearMesh)):
+            vtk_grid = self._create_vtk_structured_grid()
+            writer = vtk.vtkStructuredGridWriter()
+        # write curvilinear elements using an unstructured grid
+        else:
+            vtk_grid = self._create_vtk_unstructured_grid()
+            writer = vtk.vtkUnstructuredGridWriter()
+
+        if datasets is not None:
+            # maintain a list of the datasets as added
+            # to the VTK arrays to ensure they persist
+            # in memory until the file is written
+            datasets_out = []
+            for label, dataset in datasets.items():
+                dataset = np.asarray(dataset).flatten()
+                datasets_out.append(dataset)
+
+                if volume_normalization:
+                    dataset /= self.volumes.T.flatten()
+
+                dataset_array = vtk.vtkDoubleArray()
+                dataset_array.SetName(label)
+                dataset_array.SetArray(nps.numpy_to_vtk(dataset),
+                                    dataset.size,
+                                    True)
+                vtk_grid.GetCellData().AddArray(dataset_array)
+
+        writer.SetFileName(str(filename))
+        writer.SetInputData(vtk_grid)
+        writer.Write()
+
+        return vtk_grid
+
+    def _create_vtk_structured_grid(self):
+        """Create a structured grid
+
+        Returns
+        -------
+        vtk.vtkStructuredGrid
+            a VTK structured grid object representing the mesh
+        """
+        import vtk
+        from vtk.util import numpy_support as nps
+
+        vertices = self.cartesian_vertices.T.reshape(-1, 3)
+
+        vtkPts = vtk.vtkPoints()
+        vtkPts.SetData(nps.numpy_to_vtk(vertices, deep=True))
+        vtk_grid = vtk.vtkStructuredGrid()
+        vtk_grid.SetPoints(vtkPts)
+        vtk_grid.SetDimensions(*[dim + 1 for dim in self.dimension])
+
+        return vtk_grid
+
+    def _create_vtk_unstructured_grid(self):
+        """Create an unstructured grid of curvilinear elements
+           representing the mesh
+
+        Returns
+        -------
+        vtk.vtkUnstructuredGrid
+            a VTK unstructured grid object representing the mesh
+        """
+        import vtk
+        from vtk.util import numpy_support as nps
+
+        corner_vertices = self.cartesian_vertices.T.reshape(-1, 3)
+
+        vtkPts = vtk.vtkPoints()
+        vtk_grid = vtk.vtkUnstructuredGrid()
+        vtk_grid.SetPoints(vtkPts)
+        # add corner vertices to the point set for the unstructured grid
+        # only insert unique points, we'll get their IDs in the point set to
+        # define element connectivity later
+        vtkPts.SetData(nps.numpy_to_vtk(np.unique(corner_vertices, axis=0), deep=True))
+
+        # create a locator to assist with duplicate points
+        locator = vtk.vtkPointLocator()
+        locator.SetDataSet(vtk_grid)
+        locator.AutomaticOn() # autmoatically adds points to locator
+        locator.InitPointInsertion(vtkPts, vtkPts.GetBounds())
+        locator.BuildLocator()
+
+        # this function is used to add new points to the unstructured
+        # grid. It will return an existing point ID if the point is alread present
+        def _insert_point(pnt):
+            result = locator.IsInsertedPoint(pnt)
+            if result == -1:
+                point_id = vtkPts.InsertNextPoint(pnt)
+                locator.InsertPoint(point_id, pnt)
+                return point_id
+            else:
+                return result
+
+        ### Add all points to the unstructured grid, maintaining a flat list of IDs as we go ###
+
+        # flat array storind point IDs for a given vertex
+        # in the grid
+        point_ids = []
+
+        # add element corner vertices to array
+        for pnt in corner_vertices:
+            point_ids.append(_insert_point(pnt))
+
+        # get edge midpoints and add them to the
+        # list of point IDs
+        midpoint_vertices = self.midpoint_vertices
+        for edge_grid in midpoint_vertices:
+            for pnt in edge_grid.T.reshape(-1, 3):
+                point_ids.append(_insert_point(pnt))
+
+        # determine how many elements in each dimension
+        # and how many points in each grid
+        n_elem = np.asarray(self.dimension)
+        n_pnts = n_elem + 1
+
+        # create hexes and set points for corner
+        # vertices
+        for i, j, k in self.indices:
+            # handle indices indexed from one
+            i -= 1
+            j -= 1
+            k -= 1
+
+            # create a new vtk hex
+            hex = vtk.vtkQuadraticHexahedron()
+
+            # set connectivity the hex corners
+            for n, (di, dj, dk) in enumerate(_HEX_VERTEX_CONN):
+                # compute flat index into the point ID list based on i, j, k
+                # of the vertex
+                flat_idx = np.ravel_multi_index((i+di, j+dj, k+dk), n_pnts, order='F')
+                # set corner vertices
+                hex.GetPointIds().SetId(n, point_ids[flat_idx])
+
+            # set connectivity of the hex midpoints
+            n_midpoint_vertices = [v.size // 3 for v in midpoint_vertices]
+            for n, (dim, (di, dj, dk)) in enumerate(_HEX_MIDPOINT_CONN):
+                # initial offset for corner vertices and midpoint dimension
+                flat_idx = corner_vertices.shape[0] + sum(n_midpoint_vertices[:dim])
+                # generate a flat index into the table of point IDs
+                midpoint_shape = midpoint_vertices[dim].shape[1:]
+                flat_idx += np.ravel_multi_index((i+di, j+dj, k+dk),
+                                                 midpoint_shape,
+                                                 order='F')
+                # set hex midpoint connectivity
+                hex.GetPointIds().SetId(_N_HEX_VERTICES + n, point_ids[flat_idx])
+
+            # add the hex to the grid
+            vtk_grid.InsertNextCell(hex.GetCellType(), hex.GetPointIds())
+
+        return vtk_grid
+
+    def _check_vtk_datasets(self, datasets):
+        """Perform some basic checks that the datasets are valid for this mesh
+
+        Parameters
+        ----------
+        datasets : dict
+            Dictionary whose keys are the data labels
+            and values are the data sets.
+
+        """
         for label, dataset in datasets.items():
             errmsg = (
                 f"The size of the dataset '{label}' ({dataset.size}) should be"
@@ -244,44 +473,7 @@ class StructuredMesh(MeshBase):
             else:
                 if len(dataset) == self.num_mesh_cells:
                     raise ValueError(errmsg)
-            cv.check_type('label', label, str)
-
-        vtk_grid = vtk.vtkStructuredGrid()
-
-        vtk_grid.SetDimensions(*[dim + 1 for dim in self.dimension])
-
-        vtkPts = vtk.vtkPoints()
-        vtkPts.SetData(nps.numpy_to_vtk(points, deep=True))
-        vtk_grid.SetPoints(vtkPts)
-
-        # create VTK arrays for each of
-        # the data sets
-
-        # maintain a list of the datasets as added
-        # to the VTK arrays to ensure they persist
-        # in memory until the file is written
-        datasets_out = []
-        for label, dataset in datasets.items():
-            dataset = np.asarray(dataset).flatten()
-            datasets_out.append(dataset)
-
-            if volume_normalization:
-                dataset /= self.volumes.T.flatten()
-
-            dataset_array = vtk.vtkDoubleArray()
-            dataset_array.SetName(label)
-            dataset_array.SetArray(nps.numpy_to_vtk(dataset),
-                           dataset.size,
-                           True)
-            vtk_grid.GetCellData().AddArray(dataset_array)
-
-        # write the .vtk file
-        writer = vtk.vtkStructuredGridWriter()
-        writer.SetFileName(str(filename))
-        writer.SetInputData(vtk_grid)
-        writer.Write()
-
-        return vtk_grid
+            cv.check_type('data label', label, str)
 
 
 class RegularMesh(StructuredMesh):
@@ -330,6 +522,12 @@ class RegularMesh(StructuredMesh):
     def dimension(self):
         return tuple(self._dimension)
 
+    @dimension.setter
+    def dimension(self, dimension):
+        cv.check_type('mesh dimension', dimension, Iterable, Integral)
+        cv.check_length('mesh dimension', dimension, 1, 3)
+        self._dimension = dimension
+
     @property
     def n_dimension(self):
         if self._dimension is not None:
@@ -340,6 +538,15 @@ class RegularMesh(StructuredMesh):
     @property
     def lower_left(self):
         return self._lower_left
+
+    @lower_left.setter
+    def lower_left(self, lower_left):
+        cv.check_type('mesh lower_left', lower_left, Iterable, Real)
+        cv.check_length('mesh lower_left', lower_left, 1, 3)
+        self._lower_left = lower_left
+
+        if self.upper_right is not None and any(np.isclose(self.upper_right, lower_left)):
+            raise ValueError("Mesh cannot have zero thickness in any dimension")
 
     @property
     def upper_right(self):
@@ -352,6 +559,19 @@ class RegularMesh(StructuredMesh):
                 dims = self._dimension
                 return [l + w * d for l, w, d in zip(ls, ws, dims)]
 
+    @upper_right.setter
+    def upper_right(self, upper_right):
+        cv.check_type('mesh upper_right', upper_right, Iterable, Real)
+        cv.check_length('mesh upper_right', upper_right, 1, 3)
+        self._upper_right = upper_right
+
+        if self._width is not None:
+            self._width = None
+            warnings.warn("Unsetting width attribute.")
+
+        if self.lower_left is not None and any(np.isclose(self.lower_left, upper_right)):
+            raise ValueError("Mesh cannot have zero thickness in any dimension")
+
     @property
     def width(self):
         if self._width is not None:
@@ -362,6 +582,22 @@ class RegularMesh(StructuredMesh):
                 ls = self._lower_left
                 dims =  self._dimension
                 return [(u - l) / d for u, l, d in zip(us, ls, dims)]
+
+    @width.setter
+    def width(self, width):
+        cv.check_type('mesh width', width, Iterable, Real)
+        cv.check_length('mesh width', width, 1, 3)
+        self._width = width
+
+        if self._upper_right is not None:
+            self._upper_right = None
+            warnings.warn("Unsetting upper_right attribute.")
+
+    @property
+    def cartesian_vertices(self):
+        """Returns vertices in cartesian coordiantes. Identical to ``vertices`` for RegularMesh and RectilinearMesh
+        """
+        return self.vertices
 
     @property
     def volumes(self):
@@ -422,43 +658,11 @@ class RegularMesh(StructuredMesh):
             x1, = self.upper_right
             return (np.linspace(x0, x1, nx + 1),)
 
-    @dimension.setter
-    def dimension(self, dimension):
-        cv.check_type('mesh dimension', dimension, Iterable, Integral)
-        cv.check_length('mesh dimension', dimension, 1, 3)
-        self._dimension = dimension
-
-    @lower_left.setter
-    def lower_left(self, lower_left):
-        cv.check_type('mesh lower_left', lower_left, Iterable, Real)
-        cv.check_length('mesh lower_left', lower_left, 1, 3)
-        self._lower_left = lower_left
-
-        if self.upper_right is not None and any(np.isclose(self.upper_right, lower_left)):
-            raise ValueError("Mesh cannot have zero thickness in any dimension")
-
-    @upper_right.setter
-    def upper_right(self, upper_right):
-        cv.check_type('mesh upper_right', upper_right, Iterable, Real)
-        cv.check_length('mesh upper_right', upper_right, 1, 3)
-        self._upper_right = upper_right
-
-        if self._width is not None:
-            self._width = None
-            warnings.warn("Unsetting width attribute.")
-
-        if self.lower_left is not None and any(np.isclose(self.lower_left, upper_right)):
-            raise ValueError("Mesh cannot have zero thickness in any dimension")
-
-    @width.setter
-    def width(self, width):
-        cv.check_type('mesh width', width, Iterable, Real)
-        cv.check_length('mesh width', width, 1, 3)
-        self._width = width
-
-        if self._upper_right is not None:
-            self._upper_right = None
-            warnings.warn("Unsetting upper_right attribute.")
+    @property
+    def bounding_box(self):
+        return openmc.BoundingBox(
+            np.array(self.lower_left), np.array(self.upper_right)
+        )
 
     def __repr__(self):
         string = super().__repr__()
@@ -568,7 +772,7 @@ class RegularMesh(StructuredMesh):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mesh data
 
         """
@@ -598,7 +802,7 @@ class RegularMesh(StructuredMesh):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -757,42 +961,6 @@ class RegularMesh(StructuredMesh):
 
         return root_cell, cells
 
-    def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
-        """Creates a VTK object of the mesh
-
-        Parameters
-        ----------
-        filename : str or pathlib.Path
-            Name of the VTK file to write.
-        datasets : dict
-            Dictionary whose keys are the data labels
-            and values are the data sets.
-        volume_normalization : bool, optional
-            Whether or not to normalize the data by
-            the volume of the mesh elements.
-            Defaults to True.
-
-        Returns
-        -------
-        vtk.vtkStructuredGrid
-            the VTK object
-        """
-
-        ll, ur = self.lower_left, self.upper_right
-        x_vals = np.linspace(ll[0], ur[0], num=self.dimension[0] + 1)
-        y_vals = np.linspace(ll[1], ur[1], num=self.dimension[1] + 1)
-        z_vals = np.linspace(ll[2], ur[2], num=self.dimension[2] + 1)
-
-        # create points
-        pts_cartesian = np.array([[x, y, z] for z in z_vals for y in y_vals for x in x_vals])
-
-        return super().write_data_to_vtk(
-            points=pts_cartesian,
-            filename=filename,
-            datasets=datasets,
-            volume_normalization=volume_normalization
-        )
-
 def Mesh(*args, **kwargs):
     warnings.warn("Mesh has been renamed RegularMesh. Future versions of "
                   "OpenMC will not accept the name Mesh.")
@@ -852,17 +1020,38 @@ class RectilinearMesh(StructuredMesh):
     def x_grid(self):
         return self._x_grid
 
+    @x_grid.setter
+    def x_grid(self, grid):
+        cv.check_type('mesh x_grid', grid, Iterable, Real)
+        self._x_grid = np.asarray(grid)
+
     @property
     def y_grid(self):
         return self._y_grid
+
+    @y_grid.setter
+    def y_grid(self, grid):
+        cv.check_type('mesh y_grid', grid, Iterable, Real)
+        self._y_grid = np.asarray(grid)
 
     @property
     def z_grid(self):
         return self._z_grid
 
+    @z_grid.setter
+    def z_grid(self, grid):
+        cv.check_type('mesh z_grid', grid, Iterable, Real)
+        self._z_grid = np.asarray(grid)
+
     @property
     def _grids(self):
         return (self.x_grid, self.y_grid, self.z_grid)
+
+    @property
+    def cartesian_vertices(self):
+        """Returns vertices in cartesian coordiantes. Identical to ``vertices`` for RegularMesh and RectilinearMesh
+        """
+        return self.vertices
 
     @property
     def volumes(self):
@@ -894,21 +1083,6 @@ class RectilinearMesh(StructuredMesh):
                 for z in range(1, nz + 1)
                 for y in range(1, ny + 1)
                 for x in range(1, nx + 1))
-
-    @x_grid.setter
-    def x_grid(self, grid):
-        cv.check_type('mesh x_grid', grid, Iterable, Real)
-        self._x_grid = np.asarray(grid)
-
-    @y_grid.setter
-    def y_grid(self, grid):
-        cv.check_type('mesh y_grid', grid, Iterable, Real)
-        self._y_grid = np.asarray(grid)
-
-    @z_grid.setter
-    def z_grid(self, grid):
-        cv.check_type('mesh z_grid', grid, Iterable, Real)
-        self._z_grid = np.asarray(grid)
 
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'
@@ -949,7 +1123,7 @@ class RectilinearMesh(StructuredMesh):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -971,7 +1145,7 @@ class RectilinearMesh(StructuredMesh):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mesh data
 
         """
@@ -990,36 +1164,6 @@ class RectilinearMesh(StructuredMesh):
         subelement.text = ' '.join(map(str, self.z_grid))
 
         return element
-
-    def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
-        """Creates a VTK object of the mesh
-
-        Parameters
-        ----------
-        filename : str or pathlib.Path
-            Name of the VTK file to write.
-        datasets : dict
-            Dictionary whose keys are the data labels
-            and values are the data sets.
-        volume_normalization : bool, optional
-            Whether or not to normalize the data by
-            the volume of the mesh elements.
-            Defaults to True.
-
-        Returns
-        -------
-        vtk.vtkStructuredGrid
-            the VTK object
-        """
-        # create points
-        pts_cartesian = self.vertices.T.reshape(-1, 3)
-
-        return super().write_data_to_vtk(
-            points=pts_cartesian,
-            filename=filename,
-            datasets=datasets,
-            volume_normalization=volume_normalization
-        )
 
 
 class CylindricalMesh(StructuredMesh):
@@ -1081,17 +1225,38 @@ class CylindricalMesh(StructuredMesh):
     def origin(self):
         return self._origin
 
+    @origin.setter
+    def origin(self, coords):
+        cv.check_type('mesh origin', coords, Iterable, Real)
+        cv.check_length("mesh origin", coords, 3)
+        self._origin = np.asarray(coords)
+
     @property
     def r_grid(self):
         return self._r_grid
+
+    @r_grid.setter
+    def r_grid(self, grid):
+        cv.check_type('mesh r_grid', grid, Iterable, Real)
+        self._r_grid = np.asarray(grid)
 
     @property
     def phi_grid(self):
         return self._phi_grid
 
+    @phi_grid.setter
+    def phi_grid(self, grid):
+        cv.check_type('mesh phi_grid', grid, Iterable, Real)
+        self._phi_grid = np.asarray(grid)
+
     @property
     def z_grid(self):
         return self._z_grid
+    
+    @z_grid.setter
+    def z_grid(self, grid):
+        cv.check_type('mesh z_grid', grid, Iterable, Real)
+        self._z_grid = np.asarray(grid)
 
     @property
     def _grids(self):
@@ -1106,27 +1271,6 @@ class CylindricalMesh(StructuredMesh):
                 for z in range(1, nz + 1)
                 for p in range(1, np + 1)
                 for r in range(1, nr + 1))
-
-    @origin.setter
-    def origin(self, coords):
-        cv.check_type('mesh origin', coords, Iterable, Real)
-        cv.check_length("mesh origin", coords, 3)
-        self._origin = np.asarray(coords)
-
-    @r_grid.setter
-    def r_grid(self, grid):
-        cv.check_type('mesh r_grid', grid, Iterable, Real)
-        self._r_grid = np.asarray(grid)
-
-    @phi_grid.setter
-    def phi_grid(self, grid):
-        cv.check_type('mesh phi_grid', grid, Iterable, Real)
-        self._phi_grid = np.asarray(grid)
-
-    @z_grid.setter
-    def z_grid(self, grid):
-        cv.check_type('mesh z_grid', grid, Iterable, Real)
-        self._z_grid = np.asarray(grid)
 
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'
@@ -1239,7 +1383,7 @@ class CylindricalMesh(StructuredMesh):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mesh data
 
         """
@@ -1268,7 +1412,7 @@ class CylindricalMesh(StructuredMesh):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1304,41 +1448,22 @@ class CylindricalMesh(StructuredMesh):
 
         return np.multiply.outer(np.outer(V_r, V_p), V_z)
 
-    def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
-        """Creates a VTK object of the mesh
+    @property
+    def cartesian_vertices(self):
+        return self._convert_to_cartesian(self.vertices, self.origin)
 
-        Parameters
-        ----------
-        filename : str or pathlib.Path
-            Name of the VTK file to write.
-        datasets : dict
-            Dictionary whose keys are the data labels
-            and values are the data sets.
-        volume_normalization : bool, optional
-            Whether or not to normalize the data by
-            the volume of the mesh elements.
-            Defaults to True.
-
-        Returns
-        -------
-        vtk.vtkStructuredGrid
-            the VTK object
+    @staticmethod
+    def _convert_to_cartesian(arr, origin):
+        """Converts an array with xyz values in the first dimension (shape (3, ...))
+        to Cartesian coordinates.
         """
-        # create points
-        pts_cylindrical = self.vertices.T.reshape(-1, 3)
-        pts_cartesian = np.copy(pts_cylindrical)
+        x = arr[0, ...] * np.cos(arr[1, ...]) + origin[0]
+        y = arr[0, ...] * np.sin(arr[1, ...]) + origin[1]
+        arr[0, ...] = x
+        arr[1, ...] = y
+        arr[2, ...] += origin[2]
+        return arr
 
-        r, phi = pts_cylindrical[:, 0], pts_cylindrical[:, 1]
-        pts_cartesian[:, 0] = r * np.cos(phi) + self.origin[0]
-        pts_cartesian[:, 1] = r * np.sin(phi) + self.origin[1]
-        pts_cartesian[:, 2] += self.origin[2]
-        
-        return super().write_data_to_vtk(
-            points=pts_cartesian,
-            filename=filename,
-            datasets=datasets,
-            volume_normalization=volume_normalization
-        )
 
 class SphericalMesh(StructuredMesh):
     """A 3D spherical mesh
@@ -1400,17 +1525,38 @@ class SphericalMesh(StructuredMesh):
     def origin(self):
         return self._origin
 
+    @origin.setter
+    def origin(self, coords):
+        cv.check_type('mesh origin', coords, Iterable, Real)
+        cv.check_length("mesh origin", coords, 3)
+        self._origin = np.asarray(coords)
+
     @property
     def r_grid(self):
         return self._r_grid
+
+    @r_grid.setter
+    def r_grid(self, grid):
+        cv.check_type('mesh r_grid', grid, Iterable, Real)
+        self._r_grid = np.asarray(grid)
 
     @property
     def theta_grid(self):
         return self._theta_grid
 
+    @theta_grid.setter
+    def theta_grid(self, grid):
+        cv.check_type('mesh theta_grid', grid, Iterable, Real)
+        self._theta_grid = np.asarray(grid)
+
     @property
     def phi_grid(self):
         return self._phi_grid
+
+    @phi_grid.setter
+    def phi_grid(self, grid):
+        cv.check_type('mesh phi_grid', grid, Iterable, Real)
+        self._phi_grid = np.asarray(grid)
 
     @property
     def _grids(self):
@@ -1425,27 +1571,6 @@ class SphericalMesh(StructuredMesh):
                 for p in range(1, np + 1)
                 for t in range(1, nt + 1)
                 for r in range(1, nr + 1))
-
-    @origin.setter
-    def origin(self, coords):
-        cv.check_type('mesh origin', coords, Iterable, Real)
-        cv.check_length("mesh origin", coords, 3)
-        self._origin = np.asarray(coords)
-
-    @r_grid.setter
-    def r_grid(self, grid):
-        cv.check_type('mesh r_grid', grid, Iterable, Real)
-        self._r_grid = np.asarray(grid)
-
-    @theta_grid.setter
-    def theta_grid(self, grid):
-        cv.check_type('mesh theta_grid', grid, Iterable, Real)
-        self._theta_grid = np.asarray(grid)
-
-    @phi_grid.setter
-    def phi_grid(self, grid):
-        cv.check_type('mesh phi_grid', grid, Iterable, Real)
-        self._phi_grid = np.asarray(grid)
 
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'
@@ -1488,7 +1613,7 @@ class SphericalMesh(StructuredMesh):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mesh data
 
         """
@@ -1517,7 +1642,7 @@ class SphericalMesh(StructuredMesh):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1526,7 +1651,6 @@ class SphericalMesh(StructuredMesh):
             Spherical mesh object
 
         """
-
         mesh_id = int(get_text(elem, 'id'))
         mesh = cls(mesh_id)
         mesh.r_grid = [float(x) for x in get_text(elem, "r_grid").split()]
@@ -1553,42 +1677,23 @@ class SphericalMesh(StructuredMesh):
 
         return np.multiply.outer(np.outer(V_r, V_t), V_p)
 
-    def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
-        """Creates a VTK object of the mesh
+    @property
+    def cartesian_vertices(self):
+        return self._convert_to_cartesian(self.vertices, self.origin)
 
-        Parameters
-        ----------
-        filename : str or pathlib.Path
-            Name of the VTK file to write.
-        datasets : dict
-            Dictionary whose keys are the data labels
-            and values are the data sets.
-        volume_normalization : bool, optional
-            Whether or not to normalize the data by
-            the volume of the mesh elements.
-            Defaults to True.
-
-        Returns
-        -------
-        vtk.vtkStructuredGrid
-            the VTK object
+    @staticmethod
+    def _convert_to_cartesian(arr, origin):
+        """Converts an array with xyz values in the first dimension (shape (3, ...))
+        to Cartesian coordinates.
         """
-        # create points
-        pts_spherical = self.vertices.T.reshape(-1, 3)
-        pts_cartesian = np.copy(pts_spherical)
-
-        r, theta, phi = pts_spherical[:, 0], pts_spherical[:, 1], pts_spherical[:, 2]
-
-        pts_cartesian[:, 0] = r * np.sin(phi) * np.cos(theta) + self.origin[0]
-        pts_cartesian[:, 1] = r * np.sin(phi) * np.sin(theta) + self.origin[1]
-        pts_cartesian[:, 2] = r * np.cos(phi) + self.origin[2]
-
-        return super().write_data_to_vtk(
-            points=pts_cartesian,
-            filename=filename,
-            datasets=datasets,
-            volume_normalization=volume_normalization
-        )
+        r_xy = arr[0, ...] * np.sin(arr[1, ...])
+        x = r_xy * np.cos(arr[2, ...])
+        y = r_xy * np.sin(arr[2, ...])
+        z = arr[0, ...] * np.cos(arr[1, ...])
+        arr[0, ...] = x + origin[0]
+        arr[1, ...] = y + origin[1]
+        arr[2, ...] = z + origin[2]
+        return arr
 
 
 class UnstructuredMesh(MeshBase):
@@ -1940,7 +2045,7 @@ class UnstructuredMesh(MeshBase):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mesh data
 
         """
@@ -1963,7 +2068,7 @@ class UnstructuredMesh(MeshBase):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1984,7 +2089,7 @@ def _read_meshes(elem):
 
     Parameters
     ----------
-    elem : xml.etree.ElementTree.Element
+    elem : lxml.etree._Element
         XML element
 
     Returns
@@ -1999,3 +2104,34 @@ def _read_meshes(elem):
         out[mesh.id] = mesh
 
     return out
+
+
+# hexahedron element connectivity
+# lower-k connectivity offsets
+_HEX_VERTEX_CONN = ((0, 0, 0),
+                    (1, 0, 0),
+                    (1, 1, 0),
+                    (0, 1, 0))
+# upper-k connectivity offsets
+_HEX_VERTEX_CONN += ((0, 0, 1),
+                     (1, 0, 1),
+                     (1, 1, 1),
+                     (0, 1, 1))
+
+_N_HEX_VERTICES = 8
+
+# lower-k connectivity offsets
+_HEX_MIDPOINT_CONN = ((0, (0, 0, 0)),
+                      (1, (1, 0, 0)),
+                      (0, (0, 1, 0)),
+                      (1, (0, 0, 0)))
+# upper-k connectivity offsets
+_HEX_MIDPOINT_CONN += ((0, (0, 0, 1)),
+                       (1, (1, 0, 1)),
+                       (0, (0, 1, 1)),
+                       (1, (0, 0, 1)))
+# mid-plane k connectivity
+_HEX_MIDPOINT_CONN += ((2, (0, 0, 0)),
+                       (2, (1, 0, 0)),
+                       (2, (1, 1, 0)),
+                       (2, (0, 1, 0)))

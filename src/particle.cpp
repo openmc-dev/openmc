@@ -404,7 +404,8 @@ void Particle::cross_surface()
     write_message(1, "    Crossing surface {}", surf->id_);
   }
 
-  if (surf->surf_source_ && simulation::current_batch  > settings::n_inactive) {
+  if (surf->surf_source_ && simulation::current_batch > settings::n_inactive &&
+      !simulation::surf_source_bank.full()) {
     SourceSite site;
     site.r = r();
     site.u = u();

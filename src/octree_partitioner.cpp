@@ -567,6 +567,37 @@ void refine_octree_random(
 
         int num_searched, num_found;
         std::vector<std::pair<OctreeNode*, omp_lock_t>> contained_nodes;
+        //std::vector<float> node_cdf;
+
+        /*
+        void update_cdf() {
+            float total_cdf = 0.0;
+            for(int i = 0; i < node_cdf.size(); i++) {
+                float score = contained_nodes[i].first->cells.size();
+                total_cdf += score;
+                node_cdf[i] = total_cdf;
+            }
+
+            for(float& cdf : node_cdf) {
+                cdf /= total_cdf;
+            }
+        }
+        */
+
+        size_t pick_node(uint64_t* seed) {
+            size_t rand_idx = (size_t)uniform_distribution(0.0, (double)contained_nodes.size(), seed);
+            return rand_idx;
+            /*
+            float cdf_val = uniform_distribution(0.0, 1.0, seed);
+            auto cdf_iter = std::upper_bound(node_cdf.begin(), node_cdf.end(), cdf_val);
+            size_t node_idx = std::distance(node_cdf.begin(), cdf_iter);
+            if(node_idx == node_cdf.size()) {
+                node_idx--;
+            }     
+
+            return node_idx;   
+            */
+        }
 
         void update_common_cells() {
             found_cells.reserve(common_cells.size() + found_cells.size());
@@ -628,6 +659,7 @@ void refine_octree_random(
     }
 
     for(auto& prob_bin : prob_bin_grid) {
+        //prob_bin.node_cdf.resize(prob_bin.contained_nodes.size());
         prob_bin.update_common_cells();
         for(auto& p : prob_bin.contained_nodes) {
             omp_init_lock(&p.second);
@@ -661,20 +693,9 @@ void refine_octree_random(
             cdf /= total_cdf;
         }
         
-
-
-        struct SubDivRes {
-            OctreeConstructionTask oct_children[8];
-
-            OctreeConstructionTask& operator[](size_t idx) {
-                return oct_children[idx];
-            }
-
-            const OctreeConstructionTask& operator[](size_t idx) const {
-                return oct_children[idx];
-            }
-        };
-
+        //for(auto& prob_bin : prob_bin_grid) {
+        //    prob_bin.update_cdf();
+        //}
 
         //std::cout << "SEARCHING POINTS..." << std::endl;
         Timer t;
@@ -703,7 +724,7 @@ void refine_octree_random(
                 } while(prob_bin->contained_nodes.size() == 0);
                 prob_bin->num_searched++;
 
-                size_t idx = (size_t)uniform_distribution(0.0, (double)prob_bin->contained_nodes.size(), &rng_node_selec[tid][1]);
+                size_t idx = prob_bin->pick_node(&rng_node_selec[tid][1]);
 
                 // in the rare case some wierd floating point stuff happens
                 if(idx >= prob_bin->contained_nodes.size()) {

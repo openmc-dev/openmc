@@ -412,8 +412,8 @@ void Mgxs::combine(const vector<Mgxs*>& micros, const vector<double>& scalars,
 
 //==============================================================================
 
-double Mgxs::get_xs(
-  MgxsType xstype, int gin, const int* gout, const double* mu, const int* dg, int t, int a)
+double Mgxs::get_xs(MgxsType xstype, int gin, const int* gout, const double* mu,
+  const int* dg, int t, int a)
 {
   XsData* xs_t = &xs[t];
   double val;
@@ -517,7 +517,8 @@ double Mgxs::get_xs(
 
 //==============================================================================
 
-void Mgxs::sample_fission_energy(int gin, int& dg, int& gout, uint64_t* seed, int t, int a)
+void Mgxs::sample_fission_energy(
+  int gin, int& dg, int& gout, uint64_t* seed, int t, int a)
 {
   XsData* xs_t = &xs[t];
   double nu_fission = xs_t->nu_fission(a, gin);

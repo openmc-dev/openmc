@@ -72,8 +72,8 @@ void sample_reaction(Particle& p)
 
 void scatter(Particle& p)
 {
-  data::mg.macro_xs_[p.material()].sample_scatter(
-    p.g_last(), p.g(), p.mu(), p.wgt(), p.current_seed(), p.mg_xs_cache().t, p.mg_xs_cache().a);
+  data::mg.macro_xs_[p.material()].sample_scatter(p.g_last(), p.g(), p.mu(),
+    p.wgt(), p.current_seed(), p.mg_xs_cache().t, p.mg_xs_cache().a);
 
   // Rotate the angle
   p.u() = rotate_angle(p.u(), p.mu(), nullptr, p.current_seed());

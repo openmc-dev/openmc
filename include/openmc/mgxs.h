@@ -82,9 +82,9 @@ private:
   bool equiv(const Mgxs& that);
 
 public:
-  std::string name;        // name of dataset, e.g., UO2
-  double awr;              // atomic weight ratio
-  bool fissionable;        // Is this fissionable
+  std::string name; // name of dataset, e.g., UO2
+  double awr;       // atomic weight ratio
+  bool fissionable; // Is this fissionable
 
   Mgxs() = default;
 
@@ -123,8 +123,8 @@ public:
   //! @param t Temperature index.
   //! @param a Angle index.
   //! @return Requested cross section value.
-  double get_xs(
-    MgxsType xstype, int gin, const int* gout, const double* mu, const int* dg, int t, int a);
+  double get_xs(MgxsType xstype, int gin, const int* gout, const double* mu,
+    const int* dg, int t, int a);
 
   inline double get_xs(MgxsType xstype, int gin, int t, int a)
   {
@@ -139,7 +139,8 @@ public:
   //! @param seed Pseudorandom seed pointer
   //! @param t Temperature index.
   //! @param a Angle index.
-  void sample_fission_energy(int gin, int& dg, int& gout, uint64_t* seed, int t, int a);
+  void sample_fission_energy(
+    int gin, int& dg, int& gout, uint64_t* seed, int t, int a);
 
   //! \brief Samples the outgoing energy and angle from a scatter event.
   //!

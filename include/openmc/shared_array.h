@@ -108,10 +108,7 @@ public:
   void resize(int64_t size) { size_ = size; }
 
   //! Return whether the array is full
-  bool full()
-  {
-    return size_ == capacity_;
-  }
+  bool full() { return size_ == capacity_; }
 
   //! Return the number of elements that the container has currently allocated
   //! space for.

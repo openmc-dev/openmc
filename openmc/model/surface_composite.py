@@ -69,6 +69,8 @@ class CylinderSector(CompositeSurface):
     operators applied to it will produce a half-space. The negative
     side is defined to be the region inside of the cylinder sector.
 
+    Extended to handle r1=0 case. A zero cylinder radius is no longer created.
+
     .. versionadded:: 0.13.1
 
     Parameters
@@ -122,6 +124,8 @@ class CylinderSector(CompositeSurface):
         if r2 <= r1:
             raise ValueError(f'r2 must be greater than r1.')
 
+        self.r1 = r1
+
         if theta2 <= theta1:
             raise ValueError(f'theta2 must be greater than theta1.')
 
@@ -140,15 +144,18 @@ class CylinderSector(CompositeSurface):
         points = [p1, p2_plane1, p3_plane1, p2_plane2, p3_plane2]
         if axis == 'z':
             coord_map = [0, 1, 2]
-            self.inner_cyl = openmc.ZCylinder(*center, r1, **kwargs)
+            if r1 > 0:
+                self.inner_cyl = openmc.ZCylinder(*center, r1, **kwargs)
             self.outer_cyl = openmc.ZCylinder(*center, r2, **kwargs)
         elif axis == 'y':
             coord_map = [1, 2, 0]
-            self.inner_cyl = openmc.YCylinder(*center, r1, **kwargs)
+            if r1 > 0:
+                self.inner_cyl = openmc.YCylinder(*center, r1, **kwargs)
             self.outer_cyl = openmc.YCylinder(*center, r2, **kwargs)
         elif axis == 'x':
             coord_map = [2, 0, 1]
-            self.inner_cyl = openmc.XCylinder(*center, r1, **kwargs)
+            if r1 > 0:
+                self.inner_cyl = openmc.XCylinder(*center, r1, **kwargs)
             self.outer_cyl = openmc.XCylinder(*center, r2, **kwargs)
 
         for p in points:
@@ -212,10 +219,16 @@ class CylinderSector(CompositeSurface):
         return cls(r1, r2, theta1, theta2, center=center, axis=axis, **kwargs)
 
     def __neg__(self):
-        return -self.outer_cyl & +self.inner_cyl & -self.plane1 & +self.plane2
+        if self.r1 > 0:
+            return -self.outer_cyl & +self.inner_cyl & -self.plane1 & +self.plane2
+        else:
+            return -self.outer_cyl & -self.plane1 & +self.plane2
 
     def __pos__(self):
-        return +self.outer_cyl | -self.inner_cyl | +self.plane1 | -self.plane2
+        if self.r1 > 0:
+            return +self.outer_cyl | -self.inner_cyl | +self.plane1 | -self.plane2
+        else:
+            return +self.outer_cyl | +self.plane1 | -self.plane2
 
 
 class IsogonalOctagon(CompositeSurface):

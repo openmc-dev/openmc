@@ -67,7 +67,7 @@ class PinRadialAzimuthalTestHarness(PyAPITestHarness):
         #subdivs_r = None
         #subdivs_a = None
 
-        pin_universe = openmc.model.pin_new(surfs, mats, subdivisions_r=subdivs_r, subdivisions_a=subdivs_a)
+        pin_universe = openmc.model.pin_radial_azimuthal(surfs, mats, subdivisions_r=subdivs_r, subdivisions_a=subdivs_a)
     
         cell1.fill = pin_universe
 

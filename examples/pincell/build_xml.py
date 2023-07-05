@@ -41,17 +41,11 @@ box = openmc.rectangular_prism(pitch, pitch, boundary_type='reflective')
 cell1 = openmc.Cell(name='Cell 1')
 cell1.region = box
 
-# Instantiate a Lattice
-#lattice = openmc.RectLattice(lattice_id=5)
-#lattice.lower_left = [-pitch/2, -pitch/2]
-#lattice.pitch = [pitch, pitch]
-
-
 # Create cylindrical surfaces
 fuel_or = openmc.ZCylinder(r=0.39218, name='Fuel OR')
 clad_ir = openmc.ZCylinder(r=0.40005, name='Clad IR')
 clad_or = openmc.ZCylinder(r=0.45720, name='Clad OR')
-corner =  openmc.ZCylinder(r=pitch/1.75, name='Clad OR')
+corner =  openmc.ZCylinder(r=pitch/2, name='Clad OR')
 
 # Create cells, mapping materials to regions
 #fuel = openmc.Cell(fill=uo2, region=-fuel_or)
@@ -74,26 +68,15 @@ subdivs_a = {
 #subdivs_r = None
 #subdivs_a = None
 
-pin_universe = openmc.model.pin_new(surfs, mats, subdivisions_r=subdivs_r, subdivisions_a=subdivs_a)
-#pin = openmc.Cell(fill=pin_universe)
-#print(pin_universe.get_all_cells())
-#water = openmc.Cell(fill=borated_water, region=+corner & box)
-#pin_universe.add_cell(water)
-
-#lattice.universes = [[pin_universe]]
+pin_universe = openmc.model.pin_radial_azimuthal(surfs, mats, subdivisions_r=subdivs_r, subdivisions_a=subdivs_a)
 
 # Fill Cell with the Lattice
-#cell1.fill = lattice
 cell1.fill = pin_universe
 
 root = openmc.Universe(name='root universe')
 root.add_cell(cell1)
 
-#mats = pin_universe.get_all_materials().values()
-
 # Create a geometry and export to XML
-#geometry = openmc.Geometry([fuel, gap, clad, water])
-#geometry = openmc.Geometry(pin_universe)
 geometry = openmc.Geometry(root)
 geometry.remove_redundant_surfaces()
 geometry.export_to_xml()

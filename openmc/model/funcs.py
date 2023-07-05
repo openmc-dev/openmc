@@ -392,10 +392,9 @@ cylinder_from_points = Cylinder.from_points
 
 
 
-class CylinderSectorUpdated(CompositeSurface):
+class CylinderSectorUpdated(CylinderSector):
     """Updated version of CylinderSector
     Better handles case of r1 = 0, does not create a cylinder of zero radius.
-    Also takes angle parameters as radians instead of degrees.
     Infinite cylindrical sector composite surface.
 
     A cylinder sector is composed of two cylindrical and two planar surfaces.
@@ -414,12 +413,12 @@ class CylinderSectorUpdated(CompositeSurface):
         Inner radius of sector. Must be less than r2.
     r2 : float
         Outer radius of sector. Must be greater than r1.
-    phi1 : float
-        Clockwise-most bound of sector in radians. Assumed to be in the
+    theta1 : float
+        Clockwise-most bound of sector in degrees. Assumed to be in the
         counterclockwise direction with respect to the first basis axis
         (+y, +z, or +x).
-    phi2 : float
-        Counterclockwise-most bound of sector in radians. Assumed to be in the
+    theta2 : float
+        Counterclockwise-most bound of sector in degrees. Assumed to be in the
         counterclockwise direction with respect to the first basis axis
         (+y, +z, or +x).
     center : iterable of float
@@ -450,8 +449,8 @@ class CylinderSectorUpdated(CompositeSurface):
     def __init__(self,
                  r1,
                  r2,
-                 phi1,
-                 phi2,
+                 theta1,
+                 theta2,
                  center=(0.,0.),
                  axis='z',
                  **kwargs):
@@ -460,6 +459,12 @@ class CylinderSectorUpdated(CompositeSurface):
             raise ValueError(f'r2 must be greater than r1.')
 
         self.r1 = r1
+
+        if theta2 <= theta1:
+            raise ValueError(f'theta2 must be greater than theta1.')
+
+        phi1 = pi / 180 * theta1
+        phi2 = pi / 180 * theta2
 
         # Coords for axis-perpendicular planes
         p1 = np.array([0., 0., 1.])
@@ -870,21 +875,23 @@ def pin_new(surfaces, items, subdivisions_r=None, subdivisions_a=None,
             
             # Creates a CylinderSector (composite surface of two cocentric cylinders and two planes) for each azimuthal region
             spacing = 360.0/ns
-            angles = [(pi/180.0)*(i * spacing - 45.0) for i in range(ns)]
-            angles.append((pi/180.0)*315.0)
+            
+            angles = [(i * spacing - 45.0) for i in range(ns)]
+            angles.append(315.0)
+            
 
             for ix in range(ns):
                 lower_angle = angles[ix]
                 upper_angle = angles[ix+1]
 
                 if surf_type is ZCylinder:
-                    cyl_sec = CylinderSectorUpdated(r1=lower_rad, r2=upper_rad, phi1=lower_angle, phi2=upper_angle, 
+                    cyl_sec = CylinderSectorUpdated(r1=lower_rad, r2=upper_rad, theta1=lower_angle, theta2=upper_angle, 
                             center=center, axis='z')
                 elif surf_type is YCylinder:
-                    cyl_sec = CylinderSectorUpdated(r1=lower_rad, r2=upper_rad, phi1=lower_angle, phi2=upper_angle, 
+                    cyl_sec = CylinderSectorUpdated(r1=lower_rad, r2=upper_rad, theta1=lower_angle, theta2=upper_angle, 
                             center=center, axis='y')
                 elif surf_type is XCylinder:
-                    cyl_sec = CylinderSectorUpdated(r1=lower_rad, r2=upper_rad, phi1=lower_angle, phi2=upper_angle, 
+                    cyl_sec = CylinderSectorUpdated(r1=lower_rad, r2=upper_rad, theta1=lower_angle, theta2=upper_angle, 
                             center=center, axis='x')
                 
                 new_surfs.append(cyl_sec)

@@ -158,23 +158,23 @@ public:
   //! @param p The particle whose attributes set which MGXS to get.
   void calculate_xs(Particle& p);
 
-  //! \brief Sets the temperature index in particle cache given a temperature
+  //! \brief Sets the temperature index in particle cache.
   //!
   //! @param p Particle.
   void set_temperature_index(Particle& p);
 
-  //! \brief Gets the temperature index given a temperature
+  //! \brief Gets the temperature index given a temperature.
   //!
   //! @param sqrtkT Temperature of the material.
   //! @return The temperature index corresponding to sqrtkT.
   int get_temperature_index(double sqrtkT);
 
-  //! \brief Sets the angle index in particle cache given a direction
+  //! \brief Sets the angle index in particle cache.
   //!
   //! @param p Particle.
   void set_angle_index(Particle& p);
 
-  //! \brief Gets the angle index given a direction
+  //! \brief Gets the angle index given a direction.
   //!
   //! @param u Incoming particle direction.
   //! @return The angle index corresponding to u.

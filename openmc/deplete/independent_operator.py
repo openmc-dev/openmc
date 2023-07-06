@@ -6,9 +6,9 @@ transport solver by using user-provided one-group cross sections.
 """
 
 from __future__ import annotations
+from collections.abc import Iterable
 import copy
-from itertools import product
-from typing import Dict, Set
+from typing import List, Set
 
 import numpy as np
 from uncertainties import ufloat
@@ -43,12 +43,12 @@ class IndependentOperator(OpenMCOperator):
     ----------
     materials : openmc.Materials
         Materials to deplete.
-    flux : float
-        Flux in [neutron-cm/src]
-    micro_xs : MicroXS
-        One-group microscopic cross sections in [b]. If the
-        :class:`~openmc.deplete.MicroXS` object is empty, a decay-only calculation will
-        be run.
+    fluxes : list of numpy.ndarray
+        Flux in each group in [n-cm/src] for each domain
+    micros : list of MicroXS
+        Cross sections in [b] for each domain. If the
+        :class:`~openmc.deplete.MicroXS` object is empty, a decay-only
+        calculation will be run.
     chain_file : str
         Path to the depletion chain XML file. Defaults to
         ``openmc.config['chain_file']``.
@@ -113,8 +113,8 @@ class IndependentOperator(OpenMCOperator):
 
     def __init__(self,
                  materials,
-                 flux,
-                 micro_xs,
+                 fluxes,
+                 micros,
                  chain_file=None,
                  keff=None,
                  normalization_mode='fission-q',
@@ -125,7 +125,7 @@ class IndependentOperator(OpenMCOperator):
                  fission_yield_opts=None):
         # Validate micro-xs parameters
         check_type('materials', materials, openmc.Materials)
-        check_type('micro_xs', micro_xs, MicroXS)
+        check_type('micros', micros, Iterable, MicroXS)
         if keff is not None:
             check_type('keff', keff, tuple, float)
             keff = ufloat(*keff)
@@ -137,10 +137,15 @@ class IndependentOperator(OpenMCOperator):
         helper_kwargs = {'normalization_mode': normalization_mode,
                          'fission_yield_opts': fission_yield_opts}
 
-        self.flux = flux
+        # Sort fluxes and micros in same order that materials get sorted
+        index_sort = np.argsort([mat.id for mat in materials])
+        fluxes = [fluxes[i] for i in index_sort]
+        micros = [micros[i] for i in index_sort]
+
+        self.fluxes = fluxes
         super().__init__(
             materials,
-            micro_xs,
+            micros,
             chain_file,
             prev_results,
             fission_q=fission_q,
@@ -261,9 +266,9 @@ class IndependentOperator(OpenMCOperator):
                 self.prev_res.append(new_res)
 
 
-    def _get_nuclides_with_data(self, cross_sections: MicroXS) -> Set[str]:
+    def _get_nuclides_with_data(self, cross_sections: List[MicroXS]) -> Set[str]:
         """Finds nuclides with cross section data"""
-        return set(cross_sections.nuclides)
+        return set(cross_sections[0].nuclides)
 
     class _IndependentRateHelper(ReactionRateHelper):
         """Class for generating one-group reaction rates with flux and
@@ -306,13 +311,13 @@ class IndependentOperator(OpenMCOperator):
             """Unused in this case"""
             pass
 
-        def get_material_rates(self, mat_id, nuc_index, react_index):
+        def get_material_rates(self, mat_index, nuc_index, react_index):
             """Return 2D array of [nuclide, reaction] reaction rates
 
             Parameters
             ----------
-            mat_id : int
-                Unique ID for the requested material
+            mat_index : int
+                Index for the material
             nuc_index : list of str
                 Ordering of desired nuclides
             react_index : list of str
@@ -321,8 +326,8 @@ class IndependentOperator(OpenMCOperator):
             self._results_cache.fill(0.0)
 
             # Get flux and microscopic cross sections from operator
-            flux = self._op.flux
-            xs = self._op.cross_sections
+            flux = self._op.fluxes[mat_index]
+            xs = self._op.cross_sections[mat_index]
 
             for i_nuc in nuc_index:
                 nuc = self.nuc_ind_map[i_nuc]

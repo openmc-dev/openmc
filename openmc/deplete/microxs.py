@@ -4,8 +4,9 @@ A class for storing microscopic cross section data that can be used with the
 IndependentOperator class for depletion.
 """
 
+from __future__ import annotations
 import tempfile
-from typing import List, Iterable, Optional, Union
+from typing import List, Tuple, Iterable, Optional, Union
 
 import pandas as pd
 import numpy as np
@@ -23,21 +24,21 @@ _valid_rxns.append('fission')
 
 def get_microxs_and_flux(
         model: openmc.Model,
-        domain,
+        domains,
         nuclides: Optional[Iterable[str]] = None,
         reactions: Optional[Iterable[str]] = None,
         energies: Optional[Union[Iterable[float], str]] = None,
         chain_file: Optional[PathLike] = None,
         run_kwargs=None
-    ):
+    ) -> Tuple[List[np.ndarray], List[MicroXS]]:
     """Generate a microscopic cross sections and flux from a Model
 
     Parameters
     ----------
     model : openmc.Model
         OpenMC model object. Must contain geometry, materials, and settings.
-    domain : openmc.Material or openmc.Cell or openmc.Universe
-        Domain in which to tally reaction rates.
+    domains : list of openmc.Material or openmc.Cell or openmc.Universe
+        Domains in which to tally reaction rates.
     nuclides : list of str
         Nuclides to get cross sections for. If not specified, all burnable
         nuclides from the depletion chain file are used.
@@ -56,10 +57,10 @@ def get_microxs_and_flux(
 
     Returns
     -------
-    numpy.ndarray
-        Flux in each group in [n-cm/src]
-    MicroXS
-        Cross section data in [b]
+    list of numpy.ndarray
+        Flux in each group in [n-cm/src] for each domain
+    list of MicroXS
+        Cross section data in [b] for each domain
 
     """
     # Save any original tallies on the model
@@ -89,14 +90,14 @@ def get_microxs_and_flux(
         energy_filter = openmc.EnergyFilter.from_group_structure(energies)
     else:
         energy_filter = openmc.EnergyFilter(energies)
-    if isinstance(domain, openmc.Material):
-        domain_filter = openmc.MaterialFilter([domain])
-    elif isinstance(domain, openmc.Cell):
-        domain_filter = openmc.CellFilter([domain])
-    elif isinstance(domain, openmc.Universe):
-        domain_filter = openmc.UniverseFilter([domain])
+    if isinstance(domains[0], openmc.Material):
+        domain_filter = openmc.MaterialFilter(domains)
+    elif isinstance(domains[0], openmc.Cell):
+        domain_filter = openmc.CellFilter(domains)
+    elif isinstance(domains[0], openmc.Universe):
+        domain_filter = openmc.UniverseFilter(domains)
     else:
-        raise ValueError(f"Unsupported domain type: {type(domain)}")
+        raise ValueError(f"Unsupported domain type: {type(domains[0])}")
 
     rr_tally = openmc.Tally(name='MicroXS RR')
     rr_tally.filters = [domain_filter, energy_filter]
@@ -123,22 +124,25 @@ def get_microxs_and_flux(
             flux_tally._read_results()
 
     # Get reaction rates and flux values
-    reaction_rates = rr_tally.get_reshaped_data().sum(axis=0)  # (groups, nuclides, reactions)
-    flux = flux_tally.get_reshaped_data().sum(axis=0)  # (groups, 1, 1)
+    reaction_rates = rr_tally.get_reshaped_data()  # (domains, groups, nuclides, reactions)
+    flux = flux_tally.get_reshaped_data()  # (domains, groups, 1, 1)
 
     # Make energy groups last dimension
-    reaction_rates = np.moveaxis(reaction_rates, 0, -1)  # (nuclides, reactions, groups)
-    flux = flux.squeeze()  # (groups,)
+    reaction_rates = np.moveaxis(reaction_rates, 1, -1)  # (domains, nuclides, reactions, groups)
+    flux = np.moveaxis(flux, 1, -1)  # (domains, 1, 1, groups)
 
     # Divide RR by flux to get microscopic cross sections
-    xs = np.empty_like(reaction_rates) # (nuclides, reactions, groups)
-    nonzero = flux > 0.0
-    xs[..., nonzero] = reaction_rates[..., nonzero] / flux[nonzero]
+    xs = np.empty_like(reaction_rates) # (domains, nuclides, reactions, groups)
+    d, _, _, g = np.nonzero(flux)
+    xs[d, ..., g] = reaction_rates[d, ..., g] / flux[d, :, :, g]
 
     # Reset tallies
     model.tallies = original_tallies
 
-    return flux, MicroXS(xs, nuclides, reactions)
+    # Create lists where each item corresponds to one domain
+    fluxes = list(flux.squeeze((1, 2)))
+    micros = [MicroXS(xs_i, nuclides, reactions) for xs_i in xs]
+    return fluxes, micros
 
 
 class MicroXS:

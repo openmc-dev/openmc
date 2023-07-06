@@ -683,21 +683,22 @@ class Integrator(ABC):
 
         self._solver = func
 
-    def _timed_deplete(self, concs, rates, dt, matrix_func=None):
+    def _timed_deplete(self, n, rates, dt, matrix_func=None):
         start = time.time()
         results = deplete(
-            self._solver, self.chain, concs, rates, dt, matrix_func,
+            self._solver, self.chain, n, rates, dt, matrix_func,
             self.transfer_rates)
         return time.time() - start, results
 
     @abstractmethod
-    def __call__(self, conc, rates, dt, source_rate, i):
+    def __call__(self, n, rates, dt, source_rate, i):
         """Perform the integration across one time step
 
         Parameters
         ----------
-        conc : numpy.ndarray
-            Initial concentrations for all nuclides in [atom]
+        n :  list of numpy.ndarray
+            List of atom number arrays for each material. Each array in the list
+            contains the number of [atom] of each nuclide.
         rates : openmc.deplete.ReactionRates
             Reaction rates from operator
         dt : float
@@ -711,7 +712,7 @@ class Integrator(ABC):
         -------
         proc_time : float
             Time spent in CRAM routines for all materials in [s]
-        conc_list : list of numpy.ndarray
+        n_list : list of list of numpy.ndarray
             Concentrations at each of the intermediate points with
             the final concentration as the last element
         op_results : list of openmc.deplete.OperatorResult
@@ -777,7 +778,7 @@ class Integrator(ABC):
             .. versionadded:: 0.13.1
         """
         with change_directory(self.operator.output_dir):
-            conc = self.operator.initial_condition()
+            n = self.operator.initial_condition()
             t, self._i_res = self._get_start_data()
 
             for i, (dt, source_rate) in enumerate(self):
@@ -786,21 +787,21 @@ class Integrator(ABC):
 
                 # Solve transport equation (or obtain result from restart)
                 if i > 0 or self.operator.prev_res is None:
-                    conc, res = self._get_bos_data_from_operator(i, source_rate, conc)
+                    n, res = self._get_bos_data_from_operator(i, source_rate, n)
                 else:
-                    conc, res = self._get_bos_data_from_restart(i, source_rate, conc)
+                    n, res = self._get_bos_data_from_restart(i, source_rate, n)
 
                 # Solve Bateman equations over time interval
-                proc_time, conc_list, res_list = self(conc, res.rates, dt, source_rate, i)
+                proc_time, n_list, res_list = self(n, res.rates, dt, source_rate, i)
 
                 # Insert BOS concentration, transport results
-                conc_list.insert(0, conc)
+                n_list.insert(0, n)
                 res_list.insert(0, res)
 
                 # Remove actual EOS concentration for next step
-                conc = conc_list.pop()
+                n = n_list.pop()
 
-                StepResult.save(self.operator, conc_list, res_list, [t, t + dt],
+                StepResult.save(self.operator, n_list, res_list, [t, t + dt],
                                 source_rate, self._i_res + i, proc_time)
 
                 t += dt
@@ -811,8 +812,8 @@ class Integrator(ABC):
             # solve)
             if output and final_step and comm.rank == 0:
                 print(f"[openmc.deplete] t={t} (final operator evaluation)")
-            res_list = [self.operator(conc, source_rate if final_step else 0.0)]
-            StepResult.save(self.operator, [conc], res_list, [t, t],
+            res_list = [self.operator(n, source_rate if final_step else 0.0)]
+            StepResult.save(self.operator, [n], res_list, [t, t],
                          source_rate, self._i_res + len(self), proc_time)
             self.operator.write_bos_data(len(self) + self._i_res)
 
@@ -942,13 +943,13 @@ class SIIntegrator(Integrator):
             timestep_units=timestep_units, solver=solver)
         self.n_steps = n_steps
 
-    def _get_bos_data_from_operator(self, step_index, step_power, bos_conc):
+    def _get_bos_data_from_operator(self, step_index, step_power, n_bos):
         reset_particles = False
         if step_index == 0 and hasattr(self.operator, "settings"):
             reset_particles = True
             self.operator.settings.particles *= self.n_steps
         inherited = super()._get_bos_data_from_operator(
-            step_index, step_power, bos_conc)
+            step_index, step_power, n_bos)
         if reset_particles:
             self.operator.settings.particles //= self.n_steps
         return inherited
@@ -964,7 +965,7 @@ class SIIntegrator(Integrator):
             .. versionadded:: 0.13.1
         """
         with change_directory(self.operator.output_dir):
-            conc = self.operator.initial_condition()
+            n = self.operator.initial_condition()
             t, self._i_res = self._get_start_data()
 
             for i, (dt, p) in enumerate(self):
@@ -973,30 +974,30 @@ class SIIntegrator(Integrator):
 
                 if i == 0:
                     if self.operator.prev_res is None:
-                        conc, res = self._get_bos_data_from_operator(i, p, conc)
+                        n, res = self._get_bos_data_from_operator(i, p, n)
                     else:
-                        conc, res = self._get_bos_data_from_restart(i, p, conc)
+                        n, res = self._get_bos_data_from_restart(i, p, n)
                 else:
                     # Pull rates, k from previous iteration w/o
                     # re-running transport
                     res = res_list[-1]  # defined in previous i iteration
 
-                proc_time, conc_list, res_list = self(conc, res.rates, dt, p, i)
+                proc_time, n_list, res_list = self(n, res.rates, dt, p, i)
 
                 # Insert BOS concentration, transport results
-                conc_list.insert(0, conc)
+                n_list.insert(0, n)
                 res_list.insert(0, res)
 
                 # Remove actual EOS concentration for next step
-                conc = conc_list.pop()
+                n = n_list.pop()
 
-                StepResult.save(self.operator, conc_list, res_list, [t, t + dt],
+                StepResult.save(self.operator, n_list, res_list, [t, t + dt],
                              p, self._i_res + i, proc_time)
 
                 t += dt
 
             # No final simulation for SIE, use last iteration results
-            StepResult.save(self.operator, [conc], [res_list[-1]], [t, t],
+            StepResult.save(self.operator, [n], [res_list[-1]], [t, t],
                          p, self._i_res + len(self), proc_time)
             self.operator.write_bos_data(self._i_res + len(self))
 

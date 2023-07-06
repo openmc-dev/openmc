@@ -4,8 +4,10 @@ Provided to avoid some circular imports
 """
 from itertools import repeat, starmap
 from multiprocessing import Pool
+
 from scipy.sparse import bmat
 import numpy as np
+
 from openmc.mpi import comm
 
 # Configurable switch that enables / disables the use of
@@ -38,28 +40,28 @@ def _distribute(items):
             return items[j:j + chunk_size]
         j += chunk_size
 
-def deplete(func, chain, x, rates, dt, matrix_func=None, transfer_rates=None,
+def deplete(func, chain, n, rates, dt, matrix_func=None, transfer_rates=None,
             *matrix_args):
     """Deplete materials using given reaction rates for a specified time
 
     Parameters
     ----------
     func : callable
-        Function to use to get new compositions. Expected to have the
-        signature ``func(A, n0, t) -> n1``
+        Function to use to get new compositions. Expected to have the signature
+        ``func(A, n0, t) -> n1``
     chain : openmc.deplete.Chain
         Depletion chain
-    x : list of numpy.ndarray
-        Atom number vectors for each material
+    n : list of numpy.ndarray
+        List of atom number arrays for each material. Each array in the list
+        contains the number of [atom] of each nuclide.
     rates : openmc.deplete.ReactionRates
         Reaction rates (from transport operator)
     dt : float
         Time in [s] to deplete for
     maxtrix_func : callable, optional
-        Function to form the depletion matrix after calling
-        ``matrix_func(chain, rates, fission_yields)``, where
-        ``fission_yields = {parent: {product: yield_frac}}``
-        Expected to return the depletion matrix required by
+        Function to form the depletion matrix after calling ``matrix_func(chain,
+        rates, fission_yields)``, where ``fission_yields = {parent: {product:
+        yield_frac}}`` Expected to return the depletion matrix required by
         ``func``
     transfer_rates : openmc.deplete.TransferRates, Optional
         Object to perform continuous reprocessing.
@@ -70,19 +72,20 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, transfer_rates=None,
 
     Returns
     -------
-    x_result : list of numpy.ndarray
-        Updated atom number vectors for each material
+    n_result : list of numpy.ndarray
+        Updated list of atom number arrays for each material. Each array in the
+        list contains the number of [atom] of each nuclide.
 
     """
 
     fission_yields = chain.fission_yields
     if len(fission_yields) == 1:
         fission_yields = repeat(fission_yields[0])
-    elif len(fission_yields) != len(x):
+    elif len(fission_yields) != len(n):
         raise ValueError(
             "Number of material fission yield distributions {} is not "
             "equal to the number of compositions {}".format(
-                len(fission_yields), len(x)))
+                len(fission_yields), len(n)))
 
     if matrix_func is None:
         matrices = map(chain.form_matrix, rates, fission_yields)
@@ -101,12 +104,12 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, transfer_rates=None,
         if len(transfer_rates.index_transfer) > 0:
             # Gather all on comm.rank 0
             matrices = comm.gather(matrices)
-            x = comm.gather(x)
+            n = comm.gather(n)
 
             if comm.rank == 0:
                 # Expand lists
                 matrices = [elm for matrix in matrices for elm in matrix]
-                x = [x_elm for x_mat in x for x_elm in x_mat]
+                n = [n_elm for n_mat in n for  n_elm in n_mat]
 
                 # Calculate transfer rate terms as diagonal matrices
                 transfer_pair = {
@@ -136,28 +139,28 @@ def deplete(func, chain, x, rates, dt, matrix_func=None, transfer_rates=None,
                 matrix = bmat(rows)
 
                 # Concatenate vectors of nuclides in one
-                x_multi = np.concatenate([xx for xx in x])
-                x_result = func(matrix, x_multi, dt)
+                n_multi = np.concatenate(n)
+                n_result = func(matrix, n_multi, dt)
 
                 # Split back the nuclide vector result into the original form
-                x_result = np.split(x_result, np.cumsum([len(i) for i in x])[:-1])
+                n_result = np.split(n_result, np.cumsum([len(i) for i in n])[:-1])
 
             else:
-                x_result = None
+                n_result = None
 
             # Braodcast result to other ranks
-            x_result = comm.bcast(x_result)
+            n_result = comm.bcast(n_result)
             # Distribute results across MPI
-            x_result = _distribute(x_result)
+            n_result = _distribute(n_result)
 
-            return x_result
+            return n_result
 
-    inputs = zip(matrices, x, repeat(dt))
+    inputs = zip(matrices, n, repeat(dt))
 
     if USE_MULTIPROCESSING:
         with Pool(NUM_PROCESSES) as pool:
-            x_result = list(pool.starmap(func, inputs))
+            n_result = list(pool.starmap(func, inputs))
     else:
-        x_result = list(starmap(func, inputs))
+        n_result = list(starmap(func, inputs))
 
-    return x_result
+    return n_result

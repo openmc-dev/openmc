@@ -12,11 +12,21 @@ namespace openmc {
 using namespace std;
 
 struct OctreeNode {
-  OctreeNode();
+  vec3 center;
+  bool leaf_flag;
+
+  int first_child_index;
+  std::vector<int> cells;
+
+  int get_containing_child_index(const vec3& r) const;
+};
+
+struct OctreeUncompressedNode {
+  OctreeUncompressedNode();
 
   bool is_leaf() const;
   int get_containing_child_index(const vec3& pos) const;
-  OctreeNode& get_containing_child(const vec3& pos) const;
+  OctreeUncompressedNode& get_containing_child(const vec3& pos) const;
   std::vector<AABB> subdivide(const AABB& parent);
 
   bool contains(int cell) const;
@@ -24,20 +34,11 @@ struct OctreeNode {
   vec3 center;
   AABB box;
   std::vector<int> cells;
-  OctreeNode* children; // if this is a leaf, then children will be null
+  OctreeUncompressedNode* children; // if this is a leaf, then children will be null
   int depth;
   int id;
 };
 
-class OctreeNodeAllocator {
-public:
-  OctreeNodeAllocator();
-  ~OctreeNodeAllocator();
-  OctreeNode* allocate();
-private:
-  std::vector<OctreeNode*> pools;
-  int last_pool_next_index;
-};
 
 class OctreePartitioner : public UniversePartitioner {
 public:
@@ -49,19 +50,17 @@ public:
   virtual const vector<int32_t>& get_cells(Position r, Direction u) const override;
   virtual const vector<int32_t>& get_cells_fallback(Position r, Direction u) const override;
 
-  void write_to_file(const std::string& file_path);
+  void write_to_file(const std::string& file_path, const OctreeUncompressedNode& root) const;
   void read_from_file(const std::string& file_path);
+  void compress(const OctreeUncompressedNode& root);
 private:
-  //! The root node is where the searching begins
-  OctreeNode root;
+  std::vector<OctreeNode> nodes;
   AABB bounds;
 
   int num_nodes;
 
   // fallback if octree doesn't work
   ZPlanePartitioner fallback;
-
-  OctreeNodeAllocator node_alloc;
 };
 
 }

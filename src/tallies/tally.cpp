@@ -395,9 +395,7 @@ void Tally::add_filter(Filter* filter)
     energyout_filter_ = filters_.size();
   } else if (dynamic_cast<const DelayedGroupFilter*>(filter)) {
     delayedgroup_filter_ = filters_.size();
-  } else if ((filter->type() == FilterType::CELL) &&
-             !(filter->type() == FilterType::CELLBORN) &&
-             !(filter->type() == FilterType::CELLFROM)) {
+  } else if (filter->type() == FilterType::CELL) {
     cell_filter_ = filters_.size();
   } else if (dynamic_cast<const EnergyFilter*>(filter)) {
     energy_filter_ = filters_.size();
@@ -439,7 +437,6 @@ void Tally::set_scores(const vector<std::string>& scores)
   bool energyout_present = energyout_filter_ != C_NONE;
   bool legendre_present = false;
   bool cell_present = false;
-  bool energy_present = false;
   bool cellfrom_present = false;
   bool surface_present = false;
   bool meshsurface_present = false;
@@ -448,23 +445,18 @@ void Tally::set_scores(const vector<std::string>& scores)
     const auto* filt {model::tally_filters[i_filt].get()};
     // Checking for only cell and energy filters for pulse-height tally
     if (!(filt->type() == FilterType::CELL ||
-          filt->type() == FilterType::ENERGY) ||
-        (filt->type() == FilterType::CELLBORN ||
-          filt->type() == FilterType::CELLFROM) ||
-        filt->type() == FilterType::ENERGY_OUT) {
+          filt->type() == FilterType::ENERGY)){
       non_cell_energy_present = true;
     }
-    if (dynamic_cast<const LegendreFilter*>(filt)) {
+    if (filt->type() == FilterType::LEGENDRE) {
       legendre_present = true;
-    } else if (dynamic_cast<const CellFromFilter*>(filt)) {
+    } else if (filt->type() == FilterType::CELLFROM) {
       cellfrom_present = true;
-    } else if (dynamic_cast<const CellFilter*>(filt)) {
+    } else if (filt->type() == FilterType::CELL) {
       cell_present = true;
-    } else if (dynamic_cast<const EnergyFilter*>(filt)) {
-      energy_present = true;
-    } else if (dynamic_cast<const SurfaceFilter*>(filt)) {
+    } else if (filt->type() == FilterType::SURFACE) {
       surface_present = true;
-    } else if (dynamic_cast<const MeshSurfaceFilter*>(filt)) {
+    } else if (filt->type() == FilterType::MESH_SURFACE) {
       meshsurface_present = true;
     }
   }

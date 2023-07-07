@@ -14,7 +14,7 @@ using namespace std;
 // this contains the bare minimum for traversal
 struct OctreeNode {
   vec3 center;
-  int data;
+  int32_t data;
 
   // a really hacking compression/better cache usage approach would be to do away with vectors and do something like this
   // union {
@@ -49,24 +49,25 @@ struct OctreeUncompressedNode {
   AABB box;
   std::vector<int> cells;
   OctreeUncompressedNode* children; // if this is a leaf, then children will be null
-  int depth;
-  int id;
+  uint32_t depth;
+  uint32_t id;
 };
 
 
 // unlike the compressed node, this contains extra information that might not be used in traversal
 struct OctreeNodeSerialized {
-    int id;
+  AABB box;                            // 24 bytes
 
-    vec3 center;
-    bool is_leaf;
+  union {
+    int32_t first_child_index;        // 28 bytes
+    int32_t num_contained_cells;      // 28 bytes
+  };
 
-    // parent data
-    int first_child_index;
+  void mark_leaf();
+  bool is_leaf() const;
 
-    // leaf data
-    int contained_cells_index;
-    int num_contained_cells;
+  vec3 get_center() const;
+  int32_t get_num_cells() const;
 };
 
 
@@ -88,7 +89,7 @@ private:
   std::vector<std::vector<int>> cell_data;
   AABB bounds;
 
-  int num_nodes;
+  uint32_t num_nodes;
 
   // fallback if octree doesn't work
   ZPlanePartitioner fallback;

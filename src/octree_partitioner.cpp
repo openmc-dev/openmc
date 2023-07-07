@@ -990,11 +990,11 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
 
     double popping_time = 0.0, init_time = 0.0, alloc_time = 0.0, node_selec_time = 0.0, post_process_time = 0.0;
 
+    num_nodes = 1;
     int next_id = 1; // root is already 0
-    int num_nodes = 1;
     int num_leaves = 0;
 
-    std::stack<OctreeConstructionTask> oct_unproc;
+    std::queue<OctreeConstructionTask> oct_unproc;
     oct_unproc.emplace(&root, bounds, points_in_bounds);
     OctreeUncompressedNodeAllocator node_alloc;
     Timer total_building_timer;
@@ -1003,7 +1003,7 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
         Timer t;
 
         t.start();
-        auto cur_task = std::move(oct_unproc.top());
+        auto cur_task = std::move(oct_unproc.front());
         oct_unproc.pop();
         popping_time += t.elapsed();
         t.reset();
@@ -1185,11 +1185,26 @@ const vector<int32_t>& OctreePartitioner::get_cells_fallback(Position r, Directi
     return fallback.get_cells(r, u);
 }
 
-void OctreePartitioner::write_to_file(const std::string& file_path, const OctreeUncompressedNode& root) const{
-    std::fstream octree_file(file_path, std::ios::out | std::ios::binary);
+void OctreeNodeSerialized::mark_leaf() {
+    num_contained_cells = -(num_contained_cells + 1);
+}
 
+bool OctreeNodeSerialized::is_leaf() const {
+    return (num_contained_cells < 0);
+}
+
+vec3 OctreeNodeSerialized::get_center() const {
+    return box.get_center();
+}
+
+int32_t OctreeNodeSerialized::get_num_cells() const {
+    return (-num_contained_cells - 1);
+}
+
+void OctreePartitioner::write_to_file(const std::string& file_path, const OctreeUncompressedNode& root) const{
     std::vector<OctreeNodeSerialized> node_data;
     std::vector<int> ser_cell_data;
+
 
     // serialize
     std::queue<const OctreeUncompressedNode*> unproc_nodes;
@@ -1201,16 +1216,16 @@ void OctreePartitioner::write_to_file(const std::string& file_path, const Octree
 
         OctreeNodeSerialized ser;
 
-        ser.id = cur.id;
-        ser.center = cur.center;
+        ser.box = cur.box;
 
-        if(ser.is_leaf = cur.is_leaf()) {
+        if(cur.is_leaf()) {
             ser.num_contained_cells = cur.cells.size();
-            ser.contained_cells_index = ser_cell_data.size();
 
             for(int cell : cur.cells) {
                 ser_cell_data.push_back(cell);
             }
+
+            ser.mark_leaf();
         } else {
             ser.first_child_index = 1 + node_data.size() + unproc_nodes.size();
             for(int i = 0; i < 8; i++) {
@@ -1221,8 +1236,14 @@ void OctreePartitioner::write_to_file(const std::string& file_path, const Octree
         node_data.push_back(ser);
     }
 
+    std::fstream octree_file(file_path, std::ios::out | std::ios::binary);
+
     // write to disk
     #define WR_BIN(x) octree_file.write((char*)&x, sizeof(x))
+
+    WR_BIN(bounds);
+
+    std::cout << "Writing " << num_nodes << " nodes and " << ser_cell_data.size() << " cells to file." << std::endl;
 
     WR_BIN(num_nodes);
     for(const auto& node : node_data) {
@@ -1235,7 +1256,10 @@ void OctreePartitioner::write_to_file(const std::string& file_path, const Octree
         WR_BIN(cell);
     }
 
-    std::cout << "Cell data array is of size " << num_cells << '\n';
+    std::cout << "File size statistics:\n" 
+              << '\t' << "Node data  size" << ":\t" << (sizeof(node_data[0]) * node_data.size()) / (1024.0 * 1024.0) << "\tMB\n" 
+              << '\t' << "Cell data  size" << ":\t" << (sizeof(ser_cell_data[0]) * ser_cell_data.size()) / (1024.0 * 1024.0) << "\tMB\n" 
+              << '\t' << "Total file size" << ":\t" << (sizeof(node_data[0]) * node_data.size() + sizeof(ser_cell_data[0]) * ser_cell_data.size()) / (1024.0 * 1024.0) << "\tMB\n"; 
 }
 
 void OctreePartitioner::read_from_file(const std::string& file_path) {
@@ -1245,8 +1269,10 @@ void OctreePartitioner::read_from_file(const std::string& file_path) {
     std::vector<int> cell_data;
 
     #define RD_BIN(x) octree_file.read((char*)&x, sizeof(x))
+    RD_BIN(bounds);
 
     RD_BIN(num_nodes);
+    std::cout << "Octree has " << num_nodes << " nodes." << std::endl;
 
     node_data.resize(num_nodes);
     for(auto& node : node_data) {
@@ -1255,6 +1281,7 @@ void OctreePartitioner::read_from_file(const std::string& file_path) {
 
     int num_cells;
     RD_BIN(num_cells);
+    std::cout << "Octree has " << num_cells << " unique cells in leaves." << std::endl;
     cell_data.resize(num_cells);
     for(auto& cell : cell_data) {
         RD_BIN(cell);
@@ -1262,13 +1289,15 @@ void OctreePartitioner::read_from_file(const std::string& file_path) {
 
     OctreeUncompressedNodeAllocator node_alloc;
 
-    std::stack<std::pair<OctreeUncompressedNode*, int>> unproc_nodes;
+    std::queue<std::pair<OctreeUncompressedNode*, int>> unproc_nodes;
     OctreeUncompressedNode root;
     unproc_nodes.emplace(&root, 0);
 
+    int next_cell_index = 0;
+
     int num_nodes = 1;
     while(!unproc_nodes.empty()) {
-        auto& p = unproc_nodes.top();
+        auto& p = unproc_nodes.front();
         unproc_nodes.pop();
 
         OctreeUncompressedNode& cur = *p.first;
@@ -1276,14 +1305,16 @@ void OctreePartitioner::read_from_file(const std::string& file_path) {
 
         OctreeNodeSerialized& ser = node_data[index];
 
-        cur.id = ser.id;
-        cur.center = ser.center;
+        cur.id = index;
+        cur.center = ser.get_center();
+        cur.box = ser.box;
 
-        if(ser.is_leaf) {
-            cur.cells.reserve(ser.num_contained_cells);
-            for(int i = ser.contained_cells_index; i < ser.contained_cells_index + ser.num_contained_cells; i++) {
+        if(ser.is_leaf()) {
+            cur.cells.reserve(ser.get_num_cells());
+            for(int i = next_cell_index; i < next_cell_index + ser.get_num_cells(); i++) {
                 cur.cells.push_back(cell_data[i]);
             }
+            next_cell_index += ser.get_num_cells();
         } else {
             num_nodes++;
             cur.children = node_alloc.allocate();

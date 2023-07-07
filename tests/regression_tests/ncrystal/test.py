@@ -71,6 +71,17 @@ class NCrystalTest(PyAPITestHarness):
             df = tal.get_pandas_dataframe()
         return df.to_string()
 
+
+def test_ncrystal():
+    n_particles = 100000
+    T = 293.6  # K
+    E0 = 0.012  # eV
+    cfg = 'Al_sg225.ncmat'
+    test = pencil_beam_model(cfg, E0, n_particles)
+    harness = NCrystalTest('statepoint.10.h5', model=test)
+    harness.main()
+
+
 def test_cfg_from_xml():
     """Make sure the cfg string is read by from_xml method"""
     n_particles = 100000
@@ -92,12 +103,3 @@ def test_cfg_from_xml():
         print('Input differences:')
         print(''.join(diff))
     assert compare, 'Materials not read correctly from XML'
-
-def test_ncrystal():
-    n_particles = 100000
-    T = 293.6  # K
-    E0 = 0.012  # eV
-    cfg = 'Al_sg225.ncmat'
-    test = pencil_beam_model(cfg, E0, n_particles)
-    harness = NCrystalTest('statepoint.10.h5', model=test)
-    harness.main()

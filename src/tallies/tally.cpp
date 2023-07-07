@@ -445,7 +445,7 @@ void Tally::set_scores(const vector<std::string>& scores)
     const auto* filt {model::tally_filters[i_filt].get()};
     // Checking for only cell and energy filters for pulse-height tally
     if (!(filt->type() == FilterType::CELL ||
-          filt->type() == FilterType::ENERGY)){
+          filt->type() == FilterType::ENERGY)) {
       non_cell_energy_present = true;
     }
     if (filt->type() == FilterType::LEGENDRE) {

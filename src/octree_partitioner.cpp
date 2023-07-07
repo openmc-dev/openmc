@@ -16,10 +16,29 @@
 
 namespace openmc {
 
-class OctreeNodeAllocator {
+OctreeNode::OctreeNode() : data(0) {}
+
+bool OctreeNode::is_leaf() const {
+    return (data < 0);
+}
+
+int OctreeNode::get_child_index(const vec3& r) const {
+    int idx = 4 * int(r.x < center.x) + 2 * int(r.y < center.y) + int(r.z < center.z) + data;
+    return idx;
+}
+
+int OctreeNode::get_cells_index() const{
+    return (-data - 1);
+}
+
+void OctreeNode::mark_leaf() {
+    data = -(data + 1);
+}
+
+class OctreeUncompressedNodeAllocator {
 public:
-  OctreeNodeAllocator();
-  ~OctreeNodeAllocator();
+  OctreeUncompressedNodeAllocator();
+  ~OctreeUncompressedNodeAllocator();
   OctreeUncompressedNode* allocate();
 private:
   std::vector<OctreeUncompressedNode*> pools;
@@ -171,11 +190,6 @@ int OctreeUncompressedNode::get_containing_child_index(const vec3& r) const {
     return idx;
 }
 
-int OctreeNode::get_containing_child_index(const vec3& r) const {
-    int idx = 4 * int(r.x < center.x) + 2 * int(r.y < center.y) + int(r.z < center.z);
-    return idx;
-}
-
 OctreeUncompressedNode& OctreeUncompressedNode::get_containing_child(const vec3& r) const {
     return children[get_containing_child_index(r)];
 }
@@ -274,16 +288,16 @@ void find_cells_in_box(const Universe& univ, const OctreeUncompressedNode& paren
     }
 } 
 
-OctreeNodeAllocator::OctreeNodeAllocator() : last_pool_next_index(0) {}
+OctreeUncompressedNodeAllocator::OctreeUncompressedNodeAllocator() : last_pool_next_index(0) {}
 
-OctreeNodeAllocator::~OctreeNodeAllocator() {
+OctreeUncompressedNodeAllocator::~OctreeUncompressedNodeAllocator() {
     for(auto* ptr : pools) {
         delete[] ptr;
     }
 }
 
 const int OCTREE_NODE_ALLOCATOR_POOL_SIZE = 1024; // number of 8 children packs
-OctreeUncompressedNode* OctreeNodeAllocator::allocate() {
+OctreeUncompressedNode* OctreeUncompressedNodeAllocator::allocate() {
     if(last_pool_next_index == OCTREE_NODE_ALLOCATOR_POOL_SIZE || pools.size() == 0) {
         pools.push_back(new OctreeUncompressedNode[8 * OCTREE_NODE_ALLOCATOR_POOL_SIZE]);
         last_pool_next_index = 0;
@@ -526,7 +540,7 @@ const int NUM_THREADS = 16;
 void refine_octree_random(
     const Universe& univ,
     const UniversePartitioner& fallback,
-    OctreeNodeAllocator& node_alloc,
+    OctreeUncompressedNodeAllocator& node_alloc,
     OctreeUncompressedNode& root
 ) {
     Timer refinement_timer;
@@ -813,7 +827,7 @@ void refine_octree_random(
 }
 
 // This one is extremely difficult to tune, use the randomized optimizer instead
-void refine_octree_iterative(const Universe& univ, const UniversePartitioner& fallback, OctreeNodeAllocator& node_alloc, OctreeUncompressedNode& root) {
+void refine_octree_iterative(const Universe& univ, const UniversePartitioner& fallback, OctreeUncompressedNodeAllocator& node_alloc, OctreeUncompressedNode& root) {
     Timer refinement_timer;
     refinement_timer.start();
 
@@ -976,11 +990,13 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
 
     double popping_time = 0.0, init_time = 0.0, alloc_time = 0.0, node_selec_time = 0.0, post_process_time = 0.0;
 
+    int next_id = 1; // root is already 0
     int num_nodes = 1;
+    int num_leaves = 0;
 
     std::stack<OctreeConstructionTask> oct_unproc;
     oct_unproc.emplace(&root, bounds, points_in_bounds);
-    OctreeNodeAllocator node_alloc;
+    OctreeUncompressedNodeAllocator node_alloc;
     Timer total_building_timer;
     total_building_timer.start();
     while(!oct_unproc.empty()) {
@@ -1012,6 +1028,7 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
             child_tasks[i].points.reserve(cur_task.points.size());
 
             child_tasks[i].node->depth = cur_task.node->depth + 1;
+            child_tasks[i].node->id = next_id++;
         }
         alloc_time += t.elapsed();
         t.reset();
@@ -1052,7 +1069,9 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
                         child_tasks[i].node->cells.push_back(p.cell);
                         prev_cell = p.cell;
                     }
-                }      
+                }
+
+                num_leaves++;      
             }
         }
         post_process_time += t.elapsed();
@@ -1079,6 +1098,7 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
 
     // now copy everything to array
     nodes.reserve(num_nodes);
+    cell_data.reserve(num_leaves);
     compress(root);
 
     t.stop();
@@ -1105,17 +1125,20 @@ void OctreePartitioner::compress(const OctreeUncompressedNode& root){
         OctreeNode compressed;
 
         compressed.center = cur->center;
-        compressed.leaf_flag = cur->is_leaf();
-        compressed.first_child_index = nodes.size() + 1 + unwritten_nodes.size();
-        compressed.cells = std::move(cur->cells);
+
+        if(cur->is_leaf()) {
+            compressed.data = cell_data.size();
+            cell_data.push_back(std::move(cur->cells));
+            compressed.mark_leaf();
+        } else {
+            compressed.data = nodes.size() + 1 + unwritten_nodes.size();
+            for(int i = 0; i < 8; i++) {
+                unwritten_nodes.push(&cur->children[i]);
+            }            
+        }
 
         nodes.push_back(compressed);
 
-        if(!cur->is_leaf()) {
-            for(int i = 0; i < 8; i++) {
-                unwritten_nodes.push(&cur->children[i]);
-            }
-        }
     }
 }
 
@@ -1144,15 +1167,16 @@ const vector<int32_t>& OctreePartitioner::get_cells(Position r, Direction u) con
 
     const OctreeNode* current = &nodes[0];
 
-    while(!current->leaf_flag) {
-        current = &nodes[current->first_child_index + current->get_containing_child_index(r)];
+    while(!current->is_leaf()) {
+        current = &nodes[current->get_child_index(r)];
     }
 
-    if(current->cells.empty()) {
+    const auto& cells = cell_data[current->get_cells_index()];
+    if(cells.empty()) {
         return get_cells_fallback(r, u);
     }
 
-    return current->cells;
+    return cells;
 }
 
 const vector<int32_t>& OctreePartitioner::get_cells_fallback(Position r, Direction u) const {
@@ -1161,25 +1185,11 @@ const vector<int32_t>& OctreePartitioner::get_cells_fallback(Position r, Directi
     return fallback.get_cells(r, u);
 }
 
-struct OctreeNodeSerialized {
-    int id;
-
-    vec3 center;
-    bool is_leaf;
-
-    // parent data
-    int first_child_index;
-
-    // leaf data
-    int contained_cells_index;
-    int num_contained_cells;
-};
-
 void OctreePartitioner::write_to_file(const std::string& file_path, const OctreeUncompressedNode& root) const{
     std::fstream octree_file(file_path, std::ios::out | std::ios::binary);
 
     std::vector<OctreeNodeSerialized> node_data;
-    std::vector<int> cell_data;
+    std::vector<int> ser_cell_data;
 
     // serialize
     std::queue<const OctreeUncompressedNode*> unproc_nodes;
@@ -1196,10 +1206,10 @@ void OctreePartitioner::write_to_file(const std::string& file_path, const Octree
 
         if(ser.is_leaf = cur.is_leaf()) {
             ser.num_contained_cells = cur.cells.size();
-            ser.contained_cells_index = cell_data.size();
+            ser.contained_cells_index = ser_cell_data.size();
 
             for(int cell : cur.cells) {
-                cell_data.push_back(cell);
+                ser_cell_data.push_back(cell);
             }
         } else {
             ser.first_child_index = 1 + node_data.size() + unproc_nodes.size();
@@ -1219,9 +1229,9 @@ void OctreePartitioner::write_to_file(const std::string& file_path, const Octree
         WR_BIN(node);
     }    
 
-    int num_cells = cell_data.size();
+    int num_cells = ser_cell_data.size();
     WR_BIN(num_cells);
-    for(auto cell : cell_data) {
+    for(auto cell : ser_cell_data) {
         WR_BIN(cell);
     }
 
@@ -1250,7 +1260,7 @@ void OctreePartitioner::read_from_file(const std::string& file_path) {
         RD_BIN(cell);
     }
 
-    OctreeNodeAllocator node_alloc;
+    OctreeUncompressedNodeAllocator node_alloc;
 
     std::stack<std::pair<OctreeUncompressedNode*, int>> unproc_nodes;
     OctreeUncompressedNode root;

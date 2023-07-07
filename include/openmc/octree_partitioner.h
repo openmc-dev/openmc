@@ -11,14 +11,28 @@ namespace openmc {
 
 using namespace std;
 
+// this contains the bare minimum for traversal
 struct OctreeNode {
   vec3 center;
-  bool leaf_flag;
+  int data;
 
-  int first_child_index;
-  std::vector<int> cells;
+  // a really hacking compression/better cache usage approach would be to do away with vectors and do something like this
+  // union {
+  //    vec3 center;
+  //    struct {
+  //       int* cells;
+  //       int num_cells;
+  //    };
+  // };
+  // then we wouldn't have to follow get_cells_index to get our cells, we could just use the pointer for better cache
 
-  int get_containing_child_index(const vec3& r) const;
+  OctreeNode();
+  bool is_leaf() const;
+  
+  int get_child_index(const vec3& r) const;
+
+  void mark_leaf();
+  int get_cells_index() const;
 };
 
 struct OctreeUncompressedNode {
@@ -40,6 +54,22 @@ struct OctreeUncompressedNode {
 };
 
 
+// unlike the compressed node, this contains extra information that might not be used in traversal
+struct OctreeNodeSerialized {
+    int id;
+
+    vec3 center;
+    bool is_leaf;
+
+    // parent data
+    int first_child_index;
+
+    // leaf data
+    int contained_cells_index;
+    int num_contained_cells;
+};
+
+
 class OctreePartitioner : public UniversePartitioner {
 public:
   explicit OctreePartitioner(const Universe& univ, int target_cells_per_node=6, int max_depth=6, const std::string& file_path="octree.bin");
@@ -55,6 +85,7 @@ public:
   void compress(const OctreeUncompressedNode& root);
 private:
   std::vector<OctreeNode> nodes;
+  std::vector<std::vector<int>> cell_data;
   AABB bounds;
 
   int num_nodes;

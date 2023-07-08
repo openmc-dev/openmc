@@ -391,13 +391,13 @@ void Tally::add_filter(Filter* filter)
     return;
 
   // Keep track of indices for special filters
-  if (dynamic_cast<const EnergyoutFilter*>(filter)) {
+  if (filt->type() == FilterType::ENERGY_OUT {
     energyout_filter_ = filters_.size();
-  } else if (dynamic_cast<const DelayedGroupFilter*>(filter)) {
+  } else if (filt->type() == FilterType::DELAYED_GROUP) {
     delayedgroup_filter_ = filters_.size();
   } else if (filter->type() == FilterType::CELL) {
     cell_filter_ = filters_.size();
-  } else if (dynamic_cast<const EnergyFilter*>(filter)) {
+  } else if (filter->type() == FilterType::ENERGY) {
     energy_filter_ = filters_.size();
   }
   filters_.push_back(filter_idx);

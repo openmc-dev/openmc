@@ -182,7 +182,7 @@ bool ocm_init = false; // unlikely that it will be double init
 #define UNLOCK_OCM() omp_unset_lock(&ocm)
 #endif
 
-OctreeUncompressedNode::OctreeUncompressedNode() : children(nullptr), depth(0) {}
+OctreeUncompressedNode::OctreeUncompressedNode() : children(nullptr), depth(0), num_unique(0) {}
 
 bool OctreeUncompressedNode::is_leaf() const {
     return (children == nullptr);
@@ -805,9 +805,13 @@ void refine_octree_random(
                     omp_set_lock(cell_lock);
                     current->cells.push_back(point.cell);
                     std::sort(current->cells.begin(), current->cells.end());
+                    current->freq_map[point.cell] = 1;
                     omp_unset_lock(cell_lock);
 
                     num_total_missing_cells++;
+                } else {
+                    // idt we have to set a lock for this
+                    current->freq_map[point.cell]++;
                 }
             }
         }
@@ -934,6 +938,9 @@ void refine_octree_iterative(const Universe& univ, const UniversePartitioner& fa
     std::cout.flush();
 }
 
+//const int SKIP_TO_DEPTH = 5;
+//const int SKIP_NODE_RES = (1 << SKIP_TO_DEPTH);
+//const int SKIP_NUM_NODES = SKIP_NODE_RES * SKIP_NODE_RES * SKIP_NODE_RES;
 OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_node, int max_depth, const std::string& file_path) : fallback(univ) {
     if(!ocm_init) {
         ocm_init = true;
@@ -988,6 +995,15 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
     }; 
     std::sort(points_in_bounds.begin(), points_in_bounds.end(), PointComp());
 
+
+    int prev_cell = -1;
+    for(const auto& p : points_in_bounds) {
+        if(p.cell != prev_cell) {
+            root.num_unique++;
+            prev_cell = p.cell;
+        }
+    }
+
     std::cout << "Total sorting time: " << sorting_timer.elapsed() << '\n';
     std::cout.flush();
 
@@ -996,6 +1012,7 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
     num_nodes = 1;
     int next_id = 1; // root is already 0
     int num_leaves = 0;
+    double avg_leaf_depth = 0.0;
 
     std::queue<OctreeConstructionTask> oct_unproc;
     oct_unproc.emplace(&root, bounds, points_in_bounds);
@@ -1044,8 +1061,12 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
         node_selec_time += t.elapsed();
         t.reset();
 
+        double parent_vh = cur_task.node->num_unique * cur_task.node->box.volume();
+        double children_vh = 0.0;
+
         // post processing (make nodes leaves or push on construction stack)
         t.start();
+        bool force_subdiv = false;
         for(int i = 0; i < 8; i++) {
             // we don't have to sort since all points were already sorted before processing loop
             int prev_cell = -1;
@@ -1056,27 +1077,34 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
                     prev_cell = p.cell;
                 }
             }
+            child_tasks[i].node->num_unique = num_unique_cells;
 
-
-            if(child_tasks[i].node->depth < max_depth && num_unique_cells > target_cells_per_node) {
-                oct_unproc.push(std::move(child_tasks[i]));
+            if(num_unique_cells > target_cells_per_node) {
+                force_subdiv = true;
+                break;
             } else {
-                // now, make the points unique
-                
-                const int NUM_UNIQUE_CELLS_MULT = 4; // prevent refinement stage from having to reallocate
-                child_tasks[i].node->cells.reserve(NUM_UNIQUE_CELLS_MULT * num_unique_cells);
-
-                prev_cell = -1;
-                for(const auto& p : child_tasks[i].points) {
-                    if(p.cell != prev_cell) {
-                        child_tasks[i].node->cells.push_back(p.cell);
-                        prev_cell = p.cell;
-                    }
-                }
-
-                num_leaves++;      
+                children_vh += child_tasks[i].node->num_unique * child_tasks[i].node->box.volume();
             }
         }
+
+        if(force_subdiv || children_vh < parent_vh) {
+            for(int i = 0; i < 8; i++) {
+                oct_unproc.push(std::move(child_tasks[i]));
+            }
+        } else {
+            const int NUM_UNIQUE_CELLS_MULT = 2; // prevent refinement stage from having to reallocate
+            cur_task.node->cells.reserve(NUM_UNIQUE_CELLS_MULT * cur_task.node->num_unique);
+
+            prev_cell = -1;
+            for(const auto& p : cur_task.points) {
+                if(p.cell != prev_cell) {
+                    cur_task.node->cells.push_back(p.cell);
+                    prev_cell = p.cell;
+                }
+                cur_task.node->freq_map[p.cell]++;
+            }
+        }
+
         post_process_time += t.elapsed();
 
         // free memory
@@ -1086,6 +1114,9 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
         t.reset();
     }
     total_building_timer.stop();
+
+    avg_leaf_depth /= num_leaves;
+    std::cout << "Average leaf depth is " << avg_leaf_depth << '\n';
 
     std::cout << "Done placing points into octree! Performance statistics:\n";
     std::cout << "\tTask popping:\t" << popping_time << '\n';
@@ -1099,15 +1130,34 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
 
     refine_octree_random(univ, fallback, node_alloc, root);
 
+    std::stack<OctreeUncompressedNode*> unresorted_nodes;
+    unresorted_nodes.push(&root);
+    while(!unresorted_nodes.empty()) {
+        auto cur = unresorted_nodes.top();
+        unresorted_nodes.pop();
+
+        if(cur->is_leaf()) {
+            static std::map<int, int>* freq = &cur->freq_map;
+            struct CellComp {
+                inline bool operator()(const int& x, const int& y) {
+                    return ((*freq)[x] < (*freq)[y]);
+                }
+            };
+
+            std::sort(cur->cells.begin(), cur->cells.end(), CellComp());
+        }
+    }
+
     // now copy everything to array
     nodes.reserve(num_nodes);
     cell_data.reserve(num_leaves);
     compress(root);
 
+
+
     t.stop();
     std::cout << "Construction took " << t.elapsed() << " seconds.\n";
     std::cout.flush();
-
 
 
     // now, we write the octree to disk if a path is specified

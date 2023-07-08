@@ -13,18 +13,7 @@ using namespace std;
 
 // this contains the bare minimum for traversal
 struct OctreeNode {
-  vec3 center;
   int32_t data;
-
-  // a really hacking compression/better cache usage approach would be to do away with vectors and do something like this
-  // union {
-  //    vec3 center;
-  //    struct {
-  //       int* cells;
-  //       int num_cells;
-  //    };
-  // };
-  // then we wouldn't have to follow get_cells_index to get our cells, we could just use the pointer for better cache
 
   OctreeNode();
   bool is_leaf() const;
@@ -34,6 +23,28 @@ struct OctreeNode {
   void mark_leaf();
   int get_cells_index() const;
 };
+
+/*
+struct OctreeNodeSuperCompressed {
+  union {
+    int32_t leaf_flag;
+
+    struct {
+      int32_t first_child_index;
+    } parent_data;
+
+    struct {
+      uint16_t cell_offset;
+      uint16_t num_cells;
+    } child_data;
+  };
+
+  OctreeNode();
+  bool is_leaf() const;
+
+  void mark_leaf();
+};
+*/
 
 struct OctreeUncompressedNode {
   OctreeUncompressedNode();
@@ -56,24 +67,21 @@ struct OctreeUncompressedNode {
 
 // unlike the compressed node, this contains extra information that might not be used in traversal
 struct OctreeNodeSerialized {
-  AABB box;                            // 24 bytes
-
   union {
-    int32_t first_child_index;        // 28 bytes
-    int32_t num_contained_cells;      // 28 bytes
+    int32_t first_child_index; 
+    int32_t num_contained_cells;      
   };
 
   void mark_leaf();
   bool is_leaf() const;
 
-  vec3 get_center() const;
   int32_t get_num_cells() const;
 };
 
 
 class OctreePartitioner : public UniversePartitioner {
 public:
-  explicit OctreePartitioner(const Universe& univ, int target_cells_per_node=6, int max_depth=6, const std::string& file_path="octree.bin");
+  explicit OctreePartitioner(const Universe& univ, int target_cells_per_node=6, int max_depth=6, const std::string& file_path="octree.omcp");
   explicit OctreePartitioner(const Universe& univ, const std::string& file_path);
   virtual ~OctreePartitioner() override;
 

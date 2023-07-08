@@ -16,15 +16,18 @@
 
 namespace openmc {
 
+const int OMCP_CURRENT_VERSION[3] = {1, 0, 0};
+
+enum OMCPStructureType {
+    Octree = 1,
+    KdTree = 2,               // not yet implemented in OMCP
+    ZPlanePartitioner = 3,    // not yet implemented in OMCP
+};
+
 OctreeNode::OctreeNode() : data(0) {}
 
 bool OctreeNode::is_leaf() const {
     return (data < 0);
-}
-
-int OctreeNode::get_child_index(const vec3& r) const {
-    int idx = 4 * int(r.x < center.x) + 2 * int(r.y < center.y) + int(r.z < center.z) + data;
-    return idx;
 }
 
 int OctreeNode::get_cells_index() const{
@@ -1124,8 +1127,6 @@ void OctreePartitioner::compress(const OctreeUncompressedNode& root){
         // convert and write
         OctreeNode compressed;
 
-        compressed.center = cur->center;
-
         if(cur->is_leaf()) {
             compressed.data = cell_data.size();
             cell_data.push_back(std::move(cur->cells));
@@ -1164,11 +1165,26 @@ const vector<int32_t>& OctreePartitioner::get_cells(Position r, Direction u) con
         return get_cells_fallback(r, u);
     }
 
+    vec3 node_dim;
+    for(int i = 0; i < 3; i++) {
+        node_dim[i] = (bounds.max[i] - bounds.min[i]) * 0.5;
+    }
+
+    vec3 center = bounds.get_center();
 
     const OctreeNode* current = &nodes[0];
 
     while(!current->is_leaf()) {
-        current = &nodes[current->get_child_index(r)];
+        // halve the node dim
+        int idx = 0;
+        for(int i = 0; i < 3; i++) {
+            node_dim[i] *= 0.5;
+            bool less = (r[i] < center[i]);
+            center[i] += node_dim[i] * (less ? -1 : 1);
+            idx = 2 * idx + int(less);
+        }
+
+        current = &nodes[current->data + idx];
     }
 
     const auto& cells = cell_data[current->get_cells_index()];
@@ -1185,26 +1201,22 @@ const vector<int32_t>& OctreePartitioner::get_cells_fallback(Position r, Directi
     return fallback.get_cells(r, u);
 }
 
+const int LEAF_FLAG = (1 << 31);
 void OctreeNodeSerialized::mark_leaf() {
-    num_contained_cells = -(num_contained_cells + 1);
+    num_contained_cells |= LEAF_FLAG;
 }
 
 bool OctreeNodeSerialized::is_leaf() const {
-    return (num_contained_cells < 0);
-}
-
-vec3 OctreeNodeSerialized::get_center() const {
-    return box.get_center();
+    return (num_contained_cells & LEAF_FLAG);
 }
 
 int32_t OctreeNodeSerialized::get_num_cells() const {
-    return (-num_contained_cells - 1);
+    return (num_contained_cells & ~LEAF_FLAG);
 }
 
 void OctreePartitioner::write_to_file(const std::string& file_path, const OctreeUncompressedNode& root) const{
     std::vector<OctreeNodeSerialized> node_data;
-    std::vector<int> ser_cell_data;
-
+    std::vector<uint16_t> ser_cell_data;
 
     // serialize
     std::queue<const OctreeUncompressedNode*> unproc_nodes;
@@ -1215,8 +1227,6 @@ void OctreePartitioner::write_to_file(const std::string& file_path, const Octree
         unproc_nodes.pop();
 
         OctreeNodeSerialized ser;
-
-        ser.box = cur.box;
 
         if(cur.is_leaf()) {
             ser.num_contained_cells = cur.cells.size();
@@ -1241,6 +1251,12 @@ void OctreePartitioner::write_to_file(const std::string& file_path, const Octree
     // write to disk
     #define WR_BIN(x) octree_file.write((char*)&x, sizeof(x))
 
+    for(int i = 0; i < 3; i++) {
+        WR_BIN(OMCP_CURRENT_VERSION[i]);
+    }
+    OMCPStructureType structure_type = OMCPStructureType::Octree;
+    WR_BIN(structure_type);
+
     WR_BIN(bounds);
 
     std::cout << "Writing " << num_nodes << " nodes and " << ser_cell_data.size() << " cells to file." << std::endl;
@@ -1264,11 +1280,30 @@ void OctreePartitioner::write_to_file(const std::string& file_path, const Octree
 
 void OctreePartitioner::read_from_file(const std::string& file_path) {
     std::fstream octree_file(file_path, std::ios::in | std::ios::binary);
+    #define RD_BIN(x) octree_file.read((char*)&x, sizeof(x))
+
+    int file_version[3];
+    for(int i = 0; i < 3; i++) {
+        RD_BIN(file_version[i]);
+        if(file_version[i] != OMCP_CURRENT_VERSION[i]) {
+            std::cout << "OpenMC cannot read an unsupported OMCP file version! Please note that OpenMC currently cannot read older file versions!\n";
+            std::cout.flush();
+            abort();
+        }
+    }
+
+    OMCPStructureType structure_type;
+    RD_BIN(structure_type);
+
+    if(structure_type != OMCPStructureType::Octree) {
+        std::cout << "OpenMC currently only supports octrees for the OMCP file format!\n";
+        std::cout.flush();
+        abort();
+    }
 
     std::vector<OctreeNodeSerialized> node_data;
-    std::vector<int> cell_data;
+    std::vector<uint16_t> cell_data;
 
-    #define RD_BIN(x) octree_file.read((char*)&x, sizeof(x))
     RD_BIN(bounds);
 
     RD_BIN(num_nodes);
@@ -1304,10 +1339,6 @@ void OctreePartitioner::read_from_file(const std::string& file_path) {
         int index = p.second;
 
         OctreeNodeSerialized& ser = node_data[index];
-
-        cur.id = index;
-        cur.center = ser.get_center();
-        cur.box = ser.box;
 
         if(ser.is_leaf()) {
             cur.cells.reserve(ser.get_num_cells());

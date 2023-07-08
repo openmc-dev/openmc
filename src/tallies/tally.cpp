@@ -391,7 +391,7 @@ void Tally::add_filter(Filter* filter)
     return;
 
   // Keep track of indices for special filters
-  if (filt->type() == FilterType::ENERGY_OUT {
+  if (filt->type() == FilterType::ENERGY_OUT) {
     energyout_filter_ = filters_.size();
   } else if (filt->type() == FilterType::DELAYED_GROUP) {
     delayedgroup_filter_ = filters_.size();

@@ -232,7 +232,14 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
         break;
       }
     } else {
-      p.secondary_bank().push_back(site);
+      SecondarySourceSite secondary_site;
+      secondary_site.particle = site.particle;
+      secondary_site.wgt = site.wgt;
+      secondary_site.r = site.r;
+      secondary_site.u = site.u;
+      secondary_site.E = site.E;
+      secondary_site.time = site.time;
+      p.secondary_bank().push_back(secondary_site);
     }
 
     // Set the delayed group on the particle as well
@@ -331,7 +338,8 @@ void sample_photon_reaction(Particle& p)
                            std::sqrt(alpha * alpha + alpha_out * alpha_out -
                                      2.0 * alpha * alpha_out * mu);
       Direction u = rotate_angle(p.u(), mu_electron, &phi, p.current_seed());
-      p.create_secondary(p.wgt(), u, E_electron, ParticleType::electron);
+      p.create_secondary(
+        p.wgt(), u, E_electron, ParticleType::electron, p.n_coord(), p.coord());
     }
 
     // TODO: Compton subshell data does not match atomic relaxation data
@@ -404,7 +412,8 @@ void sample_photon_reaction(Particle& p)
         u.z = std::sqrt(1.0 - mu * mu) * std::sin(phi);
 
         // Create secondary electron
-        p.create_secondary(p.wgt(), u, E_electron, ParticleType::electron);
+        p.create_secondary(p.wgt(), u, E_electron, ParticleType::electron,
+          p.n_coord(), p.coord());
 
         // Allow electrons to fill orbital and produce auger electrons
         // and fluorescent photons
@@ -429,11 +438,13 @@ void sample_photon_reaction(Particle& p)
 
     // Create secondary electron
     Direction u = rotate_angle(p.u(), mu_electron, nullptr, p.current_seed());
-    p.create_secondary(p.wgt(), u, E_electron, ParticleType::electron);
+    p.create_secondary(
+      p.wgt(), u, E_electron, ParticleType::electron, p.n_coord(), p.coord());
 
     // Create secondary positron
     u = rotate_angle(p.u(), mu_positron, nullptr, p.current_seed());
-    p.create_secondary(p.wgt(), u, E_positron, ParticleType::positron);
+    p.create_secondary(
+      p.wgt(), u, E_positron, ParticleType::positron, p.n_coord(), p.coord());
 
     p.event() = TallyEvent::ABSORB;
     p.event_mt() = PAIR_PROD;
@@ -469,8 +480,10 @@ void sample_positron_reaction(Particle& p)
   Direction u = isotropic_direction(p.current_seed());
 
   // Create annihilation photon pair traveling in opposite directions
-  p.create_secondary(p.wgt(), u, MASS_ELECTRON_EV, ParticleType::photon);
-  p.create_secondary(p.wgt(), -u, MASS_ELECTRON_EV, ParticleType::photon);
+  p.create_secondary(
+    p.wgt(), u, MASS_ELECTRON_EV, ParticleType::photon, p.n_coord(), p.coord());
+  p.create_secondary(p.wgt(), -u, MASS_ELECTRON_EV, ParticleType::photon,
+    p.n_coord(), p.coord());
 
   p.E() = 0.0;
   p.wgt() = 0.0;
@@ -1138,7 +1151,8 @@ void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
   if (std::floor(yield) == yield && yield > 0) {
     // If yield is integral, create exactly that many secondary particles
     for (int i = 0; i < static_cast<int>(std::round(yield)) - 1; ++i) {
-      p.create_secondary(p.wgt(), p.u(), p.E(), ParticleType::neutron);
+      p.create_secondary(
+        p.wgt(), p.u(), p.E(), ParticleType::neutron, p.n_coord(), p.coord());
     }
   } else {
     // Otherwise, change weight of particle based on yield
@@ -1184,7 +1198,7 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
     }
 
     // Create the secondary photon
-    p.create_secondary(wgt, u, E, ParticleType::photon);
+    p.create_secondary(wgt, u, E, ParticleType::photon, p.n_coord(), p.coord());
   }
 }
 

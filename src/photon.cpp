@@ -786,7 +786,8 @@ void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
     if (shell.transitions.empty()) {
       Direction u = isotropic_direction(p.current_seed());
       double E = shell.binding_energy;
-      p.create_secondary(p.wgt(), u, E, ParticleType::photon);
+      p.create_secondary(
+        p.wgt(), u, E, ParticleType::photon, p.n_coord(), p.coord());
       continue;
     }
 
@@ -814,12 +815,14 @@ void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
       holes[n_holes++] = transition.secondary_subshell;
 
       // Create auger electron
-      p.create_secondary(p.wgt(), u, transition.energy, ParticleType::electron);
+      p.create_secondary(p.wgt(), u, transition.energy, ParticleType::electron,
+        p.n_coord(), p.coord());
     } else {
       // Radiative transition -- get X-ray energy
 
       // Create fluorescent photon
-      p.create_secondary(p.wgt(), u, transition.energy, ParticleType::photon);
+      p.create_secondary(p.wgt(), u, transition.energy, ParticleType::photon,
+        p.n_coord(), p.coord());
     }
   }
 }

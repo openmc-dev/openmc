@@ -48,7 +48,8 @@ public:
   //! \param u Direction of the secondary particle
   //! \param E Energy of the secondary particle in [eV]
   //! \param type Particle type
-  void create_secondary(double wgt, Direction u, double E, ParticleType type);
+  void create_secondary(double wgt, Direction u, double E, ParticleType type,
+    int n_coord, vector<LocalCoord> coord);
 
   //! initialize from a source site
   //
@@ -56,7 +57,8 @@ public:
   //! site may have been produced from an external source, from fission, or
   //! simply as a secondary particle.
   //! \param src Source site data
-  void from_source(const SourceSite* src);
+  void from_fission_source(const SourceSite* src);
+  void from_source(const SecondarySourceSite* src);
 
   // Coarse-grained particle events
   void event_calculate_xs();

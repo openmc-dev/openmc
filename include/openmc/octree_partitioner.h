@@ -55,13 +55,16 @@ struct OctreeUncompressedNode {
   std::vector<AABB> subdivide(const AABB& parent);
 
   bool contains(int cell) const;
-  
-  vec3 center;
-  AABB box;
-  std::vector<int> cells;
-  OctreeUncompressedNode* children; // if this is a leaf, then children will be null
-  uint32_t depth;
+
   uint32_t id;
+  uint16_t depth;
+
+  AABB box;
+
+  OctreeUncompressedNode* children; // if this is a leaf, then children will be null
+  OctreeUncompressedNode* parent;
+
+  std::vector<int> cells;
 };
 
 

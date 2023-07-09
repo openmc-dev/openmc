@@ -58,6 +58,7 @@ struct OctreeUncompressedNode {
 
   uint32_t id;
   uint16_t depth;
+  uint16_t num_original_cells;
 
   AABB box;
 

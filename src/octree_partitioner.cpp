@@ -1284,6 +1284,8 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
                 auto search_start = cur->children[i].cells.begin();
                 auto search_end   = cur->children[i].cells.begin() + orig_size;
 
+                cur->children[i].num_original_cells = orig_size;
+
                 for(int cell : unique_cells) {
                     if(!std::binary_search(search_start, search_end, cell)) {
                         cur->children[i].cells.push_back(cell);
@@ -1464,7 +1466,8 @@ void OctreePartitioner::write_to_file(const std::string& file_path, const Octree
         if(cur.is_leaf()) {
             ser.num_contained_cells = cur.cells.size();
 
-            for(int cell : cur.cells) {
+            for(int i = 0; i < cur.num_original_cells; i++) {
+                int cell = cur.cells[i];
                 ser_cell_data.push_back(cell);
             }
 

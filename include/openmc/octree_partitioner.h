@@ -5,7 +5,6 @@
 #include "aabb.h"
 #include "zplane_partitioner.h"
 #include <vector>
-#include <map>
 #include <set>
 
 namespace openmc {
@@ -60,11 +59,9 @@ struct OctreeUncompressedNode {
   vec3 center;
   AABB box;
   std::vector<int> cells;
-  std::map<int, int> freq_map;
   OctreeUncompressedNode* children; // if this is a leaf, then children will be null
   uint32_t depth;
   uint32_t id;
-  uint32_t num_unique;
 };
 
 

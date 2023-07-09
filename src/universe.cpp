@@ -43,6 +43,8 @@ void Universe::to_hdf5(hid_t universes_group) const
   close_group(group);
 }
 
+std::mutex finding_time_sum_mutex;
+
 bool Universe::find_cell(Particle& p) const
 {
   Timer t;
@@ -59,8 +61,9 @@ bool Universe::find_cell(Particle& p) const
   }
   #endif
   
-  #pragma omp atomic update
+  finding_time_sum_mutex.lock();
   finding_time += t.elapsed();
+  finding_time_sum_mutex.unlock();
 
   return result;
 }

@@ -48,9 +48,53 @@ private:
   int last_pool_next_index;
 };
 
-struct CellPoint {
+struct CellPointUncompressed {
     vec3 pos;
     int cell;
+};
+
+const int MAX_POINT_DEPTH = 15;
+struct CellPoint {
+    uint64_t data;
+
+    int get_cell() const {
+        uint64_t index = (data >> (3 * MAX_POINT_DEPTH));
+        return (int)index;
+    }
+
+    int get_child_index(int depth) const {
+        uint64_t index = ((data >> (3 * depth)) & 0b111);
+        return (int)index;
+    }
+
+    void compress(const CellPointUncompressed& uncomp, const AABB& bounds) {
+        data = 0;
+
+        vec3 node_dim;
+        for(int i = 0; i < 3; i++) {
+            node_dim[i] = (bounds.max[i] - bounds.min[i]) * 0.5;
+        }
+
+        vec3 center = bounds.get_center();
+
+        for(int i = 0; i < MAX_POINT_DEPTH; i++) {
+            // halve the node dim
+            uint64_t idx = 0;
+            for(int i = 0; i < 3; i++) {
+                node_dim[i] *= 0.5;
+                bool less = (uncomp.pos[i] < center[i]);
+                center[i] += node_dim[i] * (less ? -1 : 1);
+                idx = 2 * idx + int(less);
+            }
+
+            idx = (idx << (3 * i));
+            data |= idx;
+        }
+
+        uint64_t cell_comp = uncomp.cell;
+        cell_comp = (cell_comp << (3 * MAX_POINT_DEPTH));
+        data |= cell_comp;
+    }
 };
 
 const int BIN_GRID_RES = 32;
@@ -61,14 +105,14 @@ public:
         cells.reserve(512);
     }
 
-    void insert(const CellPoint& p) {
+    void insert(int cell) {
         lock_bin();
-        insert_lockless(p);
+        insert_lockless(cell);
         unlock_bin();
     }
 
-    void insert_lockless(const CellPoint& p) {
-        cells.push_back(p.cell);
+    void insert_lockless(int cell) {
+        cells.push_back(cell);
         if(cells.size() == cells.capacity()) {
             int cur_size = cells.size();
 
@@ -336,7 +380,9 @@ std::vector<CellPoint> get_cell_points_uniform_dist(const Universe& univ, const 
             omp_unset_lock(&progess_display_lock);
         }
 
-        auto& point = points_in_bounds[i];
+        //auto& point = points_in_bounds[i];
+
+        CellPointUncompressed point;
 
         uint64_t seed[3] = {
             (uint64_t)i, (uint64_t)(num_search_points + i), (uint64_t)(2 * num_search_points + i)
@@ -350,6 +396,8 @@ std::vector<CellPoint> get_cell_points_uniform_dist(const Universe& univ, const 
 
         const auto& possible_cells = fallback.get_cells(point.pos, dummy_dir);
         point.cell = univ.find_cell_for_point(possible_cells, point.pos);
+
+        points_in_bounds[i].compress(point, bounds);
     }
 
     return points_in_bounds;
@@ -368,7 +416,7 @@ std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const Unive
     };
 
 
-    int32_t total_target_points = 32000000;
+    int32_t total_target_points = 8000000;
     int32_t total_iterations = 32;
     float target_density = total_target_points / (total_iterations * bounds.volume());
 
@@ -448,7 +496,7 @@ std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const Unive
                 }
 
                 int index = write_offset + i;
-                auto& point = points_in_bounds[index];
+                CellPointUncompressed point;
 
                 float bin_cdf_val = uniform_distribution(0.0, 1.0, &bin_seed);
                 auto cdf_iter = std::upper_bound(bin_cdf.begin(), bin_cdf.end(), bin_cdf_val);
@@ -472,8 +520,10 @@ std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const Unive
                     sample_bin->copy_untested_cells(possible_cells, untested_cells);
                     point.cell = univ.find_cell_for_point(untested_cells, point.pos);
 
-                    sample_bin->insert(point);
+                    sample_bin->insert(point.cell);
                 } // else don't bother inserting
+
+                points_in_bounds[index].compress(point, bounds);
             }
         }
         
@@ -794,7 +844,7 @@ void refine_octree_random(
                 OctreeUncompressedNode* current = prob_bin->contained_nodes[idx].first;
                 omp_lock_t* cell_lock = &prob_bin->contained_nodes[idx].second;
 
-                CellPoint point;
+                CellPointUncompressed point;
                 for(int i = 0; i < 3; i++) {
                     point.pos[i] = uniform_distribution(current->box.min[i], current->box.max[i], &rng_pos[tid][i]);
                 }
@@ -810,20 +860,26 @@ void refine_octree_random(
                     pick_untested_cells(current->cells, prob_bin->common_cells, untested_cells);
                     point.cell = univ.find_cell_for_point(untested_cells, point.pos);
                     if(point.cell == -1) {
-                        Direction dummy{0, 0, 1};
-                        const auto& possible_cells = fallback.get_cells(point.pos, dummy);
+                        if(current->parent) {
+                            point.cell = univ.find_cell_for_point(current->parent->cells, point.pos);
+                        }
 
-                        pick_untested_cells(untested_cells, possible_cells, temp_buf);
-
-                        omp_set_lock(cell_lock);
-                        pick_untested_cells(current->cells, temp_buf, untested_cells);
-                        omp_unset_lock(cell_lock);
-
-                        point.cell = univ.find_cell_for_point(untested_cells, point.pos);
-
-                        // rarely happens, but when it does, it segfaults the program
                         if(point.cell == -1) {
-                            point.cell = univ.find_cell_for_point(univ.cells_, point.pos);
+                            Direction dummy{0, 0, 1};
+                            const auto& possible_cells = fallback.get_cells(point.pos, dummy);
+
+                            pick_untested_cells(untested_cells, possible_cells, temp_buf);
+
+                            omp_set_lock(cell_lock);
+                            pick_untested_cells(current->cells, temp_buf, untested_cells);
+                            omp_unset_lock(cell_lock);
+
+                            point.cell = univ.find_cell_for_point(untested_cells, point.pos);
+
+                            // rarely happens, but when it does, it segfaults the program
+                            if(point.cell == -1) {
+                                point.cell = univ.find_cell_for_point(univ.cells_, point.pos);
+                            }
                         }
 
                         prob_bin->add_cell(point.cell);
@@ -928,7 +984,7 @@ void refine_octree_iterative(const Universe& univ, const UniversePartitioner& fa
                     num_total_searched_cells += num_search;
             
                     for(int i = 0; i < num_search; i++) {
-                        CellPoint point;
+                        CellPointUncompressed point;
                         for(int i = 0; i < 3; i++) {
                             point.pos[i] = uniform_distribution(current->box.min[i], current->box.max[i], &rng_pos[tid][i]);
                         }
@@ -1008,7 +1064,7 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
 
     std::vector<Bin> bin_grid;
     std::vector<CellPoint> points_in_bounds = get_cell_points_binning(univ, fallback, bounds, bin_grid);
-
+    binning_timer.stop();
     std::cout << "Done searching for points! Point search took " << binning_timer.elapsed() << " seconds. Beginning organization of points in octree...\n";
     std::cout.flush();
 
@@ -1018,19 +1074,20 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
    
     struct PointComp {
         inline bool operator() (const CellPoint& lhs, const CellPoint& rhs) {
-            return (lhs.cell < rhs.cell);
+            return (lhs.get_cell() < rhs.get_cell());
         }
     }; 
     std::sort(points_in_bounds.begin(), points_in_bounds.end(), PointComp());
 
     int prev_cell = -1;
     for(const auto& p : points_in_bounds) {
-        if(prev_cell != p.cell) {
-            root.cells.push_back(p.cell);
-            prev_cell = p.cell;
+        if(prev_cell != p.get_cell()) {
+            root.cells.push_back(p.get_cell());
+            prev_cell = p.get_cell();
         }
     }
 
+    sorting_timer.stop();
     std::cout << "Total sorting time: " << sorting_timer.elapsed() << '\n';
     std::cout.flush();
 
@@ -1048,6 +1105,7 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
     nodes_to_propagate.push_back(&root);
     Timer total_building_timer;
     total_building_timer.start();
+
     while(!oct_unproc.empty()) {
         Timer t;
 
@@ -1090,7 +1148,7 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
         // sort points
         t.start();
         for(const auto& point : cur_task.points) {
-            child_tasks[cur_task.node->get_containing_child_index(point.pos)].points.push_back(point);
+            child_tasks[point.get_child_index(cur_task.node->depth)].points.push_back(point);
         }
         node_selec_time += t.elapsed();
         t.reset();
@@ -1102,9 +1160,20 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
             int prev_cell = -1;
             int num_unique_cells = 0;
             for(const auto& p : child_tasks[i].points) {
-                if(p.cell != prev_cell) {
+                if(p.get_cell() != prev_cell) {
                     num_unique_cells++;
-                    prev_cell = p.cell;
+                    prev_cell = p.get_cell();
+                }
+            }
+
+            const int NUM_UNIQUE_CELLS_MULT = 1; // prevent refinement stage from having to reallocate
+            child_tasks[i].node->cells.reserve(NUM_UNIQUE_CELLS_MULT * num_unique_cells);
+
+            prev_cell = -1;
+            for(const auto& p : child_tasks[i].points) {
+                if(p.get_cell() != prev_cell) {
+                    child_tasks[i].node->cells.push_back(p.get_cell());
+                    prev_cell = p.get_cell();
                 }
             }
 
@@ -1112,16 +1181,6 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
                 child_tasks[i].node->cells.reserve(num_unique_cells * 2);
                 oct_unproc.push(std::move(child_tasks[i]));
             } else {
-                const int NUM_UNIQUE_CELLS_MULT = 1; // prevent refinement stage from having to reallocate
-                child_tasks[i].node->cells.reserve(NUM_UNIQUE_CELLS_MULT * num_unique_cells);
-
-                prev_cell = -1;
-                for(const auto& p : child_tasks[i].points) {
-                    if(p.cell != prev_cell) {
-                        child_tasks[i].node->cells.push_back(p.cell);
-                        prev_cell = p.cell;
-                    }
-                }
                 num_leaves++;      
             }
         }
@@ -1277,6 +1336,7 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
 
     t.stop();
     std::cout << "Construction took " << t.elapsed() << " seconds.\n";
+    //std::cout << "Expected total construction time should be " << binning_timer.elapsed() + sorting_timer.elapsed() + total_building_timer.elapsed() + 11.0 + node_propagation_timer.elapsed() + information_refilling_timer.elapsed() + compression_timer.elapsed() << " seconds." << std::endl;
     std::cout.flush();
 
 

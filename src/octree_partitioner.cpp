@@ -2,6 +2,7 @@
 #include "openmc/aabb.h"
 #include "openmc/random_dist.h"
 #include "openmc/timer.h"
+#include "openmc/binning.h"
 
 #include <stack>
 #include <queue>
@@ -18,15 +19,9 @@ namespace openmc {
 
 const int32_t NUM_THREADS = 16;
 
-const int32_t CELL_POINT_COMPRESSION_MAX_DEPTH = 15;
-
 const int32_t OCTREE_NODE_ALLOCATOR_POOL_SIZE = 16384; // number of 8 children packs
 
 const int32_t OMCP_CURRENT_VERSION[3] = {1, 0, 0};
-
-const int32_t BINNING_SEARCH_TOTAL_POINTS     = 8000000;
-const int32_t BINNING_SEARCH_TOTAL_ITERATIONS = 128;
-const int32_t BINNING_SEARCH_GRID_RES         = 32;
 
 const float   REFINEMENT_SEARCH_DENSITY = 0.125;
 const float   REFINEMENT_TIMEOUT        = 10.0;
@@ -65,161 +60,6 @@ public:
 private:
   std::vector<OctreeUncompressedNode*> pools;
   int last_pool_next_index;
-};
-
-struct CellPointUncompressed {
-    vec3 pos;
-    int cell;
-};
-
-struct CellPoint {
-    uint64_t data;
-
-    int get_cell() const {
-        uint64_t index = (data >> (3 * CELL_POINT_COMPRESSION_MAX_DEPTH));
-        return (int)index;
-    }
-
-    int get_child_index(int depth) const {
-        uint64_t index = ((data >> (3 * depth)) & 0b111);
-        return (int)index;
-    }
-
-    void compress(const CellPointUncompressed& uncomp, const AABB& bounds) {
-        data = 0;
-
-        vec3 node_dim;
-        for(int i = 0; i < 3; i++) {
-            node_dim[i] = (bounds.max[i] - bounds.min[i]) * 0.5;
-        }
-
-        vec3 center = bounds.get_center();
-
-        for(int i = 0; i < CELL_POINT_COMPRESSION_MAX_DEPTH; i++) {
-            // halve the node dim
-            uint64_t idx = 0;
-            for(int i = 0; i < 3; i++) {
-                node_dim[i] *= 0.5;
-                bool less = (uncomp.pos[i] < center[i]);
-                center[i] += node_dim[i] * (less ? -1 : 1);
-                idx = 2 * idx + int(less);
-            }
-
-            idx = (idx << (3 * i));
-            data |= idx;
-        }
-
-        uint64_t cell_comp = uncomp.cell;
-        cell_comp = (cell_comp << (3 * CELL_POINT_COMPRESSION_MAX_DEPTH));
-        data |= cell_comp;
-    }
-};
-
-class Bin {
-public:
-    Bin() : num_unique_cells(0), prev_cell_count(0) {
-        omp_init_lock(&lock);
-        cells.reserve(512);
-    }
-
-    void insert(int cell) {
-        lock_bin();
-        insert_lockless(cell);
-        unlock_bin();
-    }
-
-    void insert_lockless(int cell) {
-        cells.push_back(cell);
-        if(cells.size() == cells.capacity()) {
-            int cur_size = cells.size();
-
-            make_cells_unique();
-
-            int size_saving = cur_size - cells.size();
-            if(size_saving < (int)(0.25 * cur_size)) {
-                cells.reserve(2 * cells.capacity());
-            }
-        }            
-    }
-
-    void sort_cells() {
-        std::sort(cells.begin(), cells.end());
-    }
-
-    void make_cells_unique() {
-        sort_cells();
-        int i = 0, j = 1;
-        while(j < cells.size()) {
-            if(cells[j] != cells[i]) {
-                i++;
-                cells[i] = cells[j];
-            }
-            j++;
-        }
-        cells.resize(i + 1);
-        num_unique_cells = cells.size();
-    }
-
-    int size() const {
-        return std::max(cells.size(), (size_t)1);
-    }
-
-    int unique_size() const {
-        return num_unique_cells;
-    }
-
-    float score(int iteration) {
-        float val;
-
-        if(iteration == 0) {
-            val = 1.0;
-        } else if(iteration == 1) {
-            val = (float)size();
-        } else {
-            const float alpha = 0.1;
-
-            float size_score = size();
-            float cell_increase_score = float(cells.size()) / prev_cell_count;
-
-            val = alpha * cell_increase_score + (1 - alpha) * size_score;
-        }
-
-        // do stuff here to update for the next scoring cycle
-        prev_cell_count = size();
-
-        return val;
-    }
-
-    const std::vector<int>& get_cells() const {
-        return cells;
-    }
-
-    void copy_untested_cells(const std::vector<int>& possible_cells, std::vector<int>& untested_cells) {
-        untested_cells.clear();
-
-        lock_bin();
-        for(int cell : possible_cells) {
-            if(!std::binary_search(cells.begin(), cells.begin() + num_unique_cells, cell)) {
-                untested_cells.push_back(cell);
-            }
-        }
-        unlock_bin();
-
-    }
-private:
-    void lock_bin() {
-        omp_set_lock(&lock);
-    }
-
-    void unlock_bin() {
-        omp_unset_lock(&lock);
-    }
-
-    omp_lock_t lock;
-    std::vector<int> cells;
-    int num_unique_cells;
-    int prev_cell_count;
-
 };
 
 struct OctreeConstructionTask {
@@ -308,51 +148,6 @@ bool OctreeUncompressedNode::contains(int cell) const {
     return std::binary_search(cells.begin(), cells.end(), cell);
 }
 
-void find_cells_in_box(const Universe& univ, const OctreeUncompressedNode& parent, OctreeUncompressedNode& child, const AABB& box) {
-    const double NUM_CELL_SEARCH_POINT_DENSITY = 4.0;
-    const int num_search_points = (int)(box.volume() * NUM_CELL_SEARCH_POINT_DENSITY);
-
-    // get some numbers that are unique across all invocations
-    uint64_t octree_prng_seed[3] = {(uint64_t)&child, (uint64_t)child.id, (uint64_t)((child.id * 3244230925 + 432534) % 436786)};
-
-    #ifdef OCTREE_DEBUG_INFO
-    const int POINTS_LOGGING_THRESHOLD = 16384; 
-    const int POINTS_LOGGING_INCREMENT = 5000;
-    if(num_search_points > POINTS_LOGGING_THRESHOLD) {
-        LOCK_OCM();
-        std::cout << "Note: searching node " << child.id << " for " << num_search_points << " points.\n";
-        UNLOCK_OCM();
-    }
-
-    Timer t;
-    t.start();
-    #endif
-
-    std::vector<bool> skip_cell(parent.cells.size());
-    child.cells.reserve(parent.cells.size());
-    for(int i = 0; i < num_search_points; i++) {
-        #ifdef OCTREE_DEBUG_INFO
-        if(num_search_points > POINTS_LOGGING_THRESHOLD && i % POINTS_LOGGING_INCREMENT == 0 && i != 0) {
-            LOCK_OCM();
-            std::cout << "Node " << child.id << ":\tcurrently searched " << i << " out of " << num_search_points << " points (" << (100.0 * i) / num_search_points 
-                      << "%) and found " << child.cells.size() << " unique cells. ";
-            std::cout << "ETA is " << ((float)num_search_points / i * t.elapsed()) - t.elapsed() << " more seconds for this node.\n";
-            std::cout.flush(); // you may want to comment this out
-            UNLOCK_OCM();
-        }
-        #endif
-
-        vec3 rand_pos;
-
-        // gen random point
-        rand_pos.x = uniform_distribution(box.min.x, box.max.x, &octree_prng_seed[0]);
-        rand_pos.y = uniform_distribution(box.min.y, box.max.y, &octree_prng_seed[1]);
-        rand_pos.z = uniform_distribution(box.min.z, box.max.z, &octree_prng_seed[2]);
-
-        univ.find_cell_in_list(parent.cells, child.cells, skip_cell, rand_pos);
-    }
-} 
-
 OctreeUncompressedNodeAllocator::OctreeUncompressedNodeAllocator() : last_pool_next_index(0) {}
 
 OctreeUncompressedNodeAllocator::~OctreeUncompressedNodeAllocator() {
@@ -372,201 +167,16 @@ OctreeUncompressedNode* OctreeUncompressedNodeAllocator::allocate() {
     return ptr;
 }
 
-Timer t;
-std::vector<CellPoint> get_cell_points_uniform_dist(const Universe& univ, const UniversePartitioner& fallback, const AABB& bounds) {
-    const float NUM_CELL_SEARCH_POINT_DENSITY = 32.0f;
-    const int num_search_points = (int)(bounds.volume() * NUM_CELL_SEARCH_POINT_DENSITY);
-    std::vector<CellPoint> points_in_bounds(num_search_points);
-
-    int total_points_searched = 0;
-        
-    omp_lock_t progess_display_lock;
-    omp_init_lock(&progess_display_lock);
-
-    #pragma omp parallel for
-    for(int i = 0; i < num_search_points; i++) {
-        #pragma omp atomic
-        total_points_searched++;
-
-        if(total_points_searched % 500000 == 0 && total_points_searched != 0) {
-            omp_set_lock(&progess_display_lock);
-            std::cout << "Currently searched " << total_points_searched << " out of " << num_search_points << " points (" << (100.0 * total_points_searched) / num_search_points << "%).\tETA is " << (float(num_search_points) / total_points_searched * t.elapsed()) - t.elapsed() << "\tmore seconds for this node.\n";
-            std::cout.flush();
-            omp_unset_lock(&progess_display_lock);
-        }
-
-        //auto& point = points_in_bounds[i];
-
-        CellPointUncompressed point;
-
-        uint64_t seed[3] = {
-            (uint64_t)i, (uint64_t)(num_search_points + i), (uint64_t)(2 * num_search_points + i)
-        };
-
-        for(int j = 0; j < 3; j++) {
-            point.pos[j] = uniform_distribution(bounds.min[j], bounds.max[j], &seed[j]);
-        }
-
-        Direction dummy_dir{1.0, 0.0, 0.0};
-
-        const auto& possible_cells = fallback.get_cells(point.pos, dummy_dir);
-        point.cell = univ.find_cell_for_point(possible_cells, point.pos);
-
-        points_in_bounds[i].compress(point, bounds);
-    }
-
-    return points_in_bounds;
-}
-
-
-
-std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const UniversePartitioner& fallback, const AABB& bounds, std::vector<Bin>& bin_grid) {
-    // the purpose of CELL_CLEAR_FLAG is to mention when previous cells should be cleared
-    // although we might want to keep all points, organizing the points into a tree baloons memory usage
-    // hence we need to reduce points to prevent a crash
-    // CELL_CLEAR_FLAG marks a location where we decide that the sampling method has learned enough and points before here can be discarded
-    const float CELL_CLEAR_FLAG = -1.0;
-    std::vector<float> K_SEARCH_DENSITY;// = {2.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0};
-
-    float target_density = BINNING_SEARCH_TOTAL_POINTS / (BINNING_SEARCH_TOTAL_ITERATIONS * bounds.volume());
-
-    K_SEARCH_DENSITY.clear();
-    for(int i = 0; i < BINNING_SEARCH_TOTAL_ITERATIONS; i++) { 
-        K_SEARCH_DENSITY.push_back(target_density);
-    }
-
-
-    // some console output vars
-    int total_points_searched = 0;    
-    omp_lock_t progess_display_lock;
-    omp_init_lock(&progess_display_lock);
-
-    int total_search_points = 0;
-    for(float density : K_SEARCH_DENSITY) {
-        if(density == CELL_CLEAR_FLAG)
-            continue;
-
-        total_search_points += (int)(bounds.volume() * density);
-    }
-
-
-
-    bin_grid.resize(BINNING_SEARCH_GRID_RES * BINNING_SEARCH_GRID_RES * BINNING_SEARCH_GRID_RES); 
-    std::vector<float> bin_cdf(BINNING_SEARCH_GRID_RES * BINNING_SEARCH_GRID_RES * BINNING_SEARCH_GRID_RES);
-
-    vec3 bin_dim;
-    for(int i = 0; i < 3; i++) {
-        bin_dim[i] = (bounds.max[i] - bounds.min[i]) / BINNING_SEARCH_GRID_RES;
-    }
-
-    std::cout << "Allocating " << total_search_points << " search points!" << std::endl;
-    std::vector<CellPoint> points_in_bounds(total_search_points);
-    int write_offset = 0;
-    for(int iteration = 0; iteration < K_SEARCH_DENSITY.size(); iteration++) {
-        float density = K_SEARCH_DENSITY[iteration];
-        if(density == CELL_CLEAR_FLAG) {
-            continue;
-        }
-
-        int num_search_points = (int)(bounds.volume() * density);
-
-        float total_score = 0.0;
-        for(int i = 0; i < bin_grid.size(); i++) {
-            total_score += bin_grid[i].score(iteration);
-            bin_cdf[i] = total_score;
-        }
-
-        for(int i = 0; i < bin_grid.size(); i++) {
-            bin_cdf[i] /= total_score;
-        }
-
-        #pragma omp parallel 
-        {
-            int tid = omp_get_thread_num();
-            int tcount = omp_get_num_threads();
-
-            uint64_t bin_seed = write_offset + tid;
-            uint64_t pos_seed[3] = {
-                (uint64_t)(tid + tcount), (uint64_t)(tid + tcount * 2), (uint64_t)(tid + tcount * 3)
-            };
-
-            std::vector<int> untested_cells;
-            untested_cells.reserve(univ.cells_.size());
-
-            #pragma omp for
-            for(int i = 0; i < num_search_points; i++) {
-                #pragma omp atomic
-                total_points_searched++;
-
-                if(total_points_searched % 500000 == 0 && total_points_searched != 0) {
-                    omp_set_lock(&progess_display_lock);
-                    std::cout << "Currently searched " << total_points_searched << " out of " << total_search_points << " points (" << (100.0 * total_points_searched) / total_search_points << "%).\tETA is " << (float(total_search_points) / total_points_searched * t.elapsed()) - t.elapsed() << "\tmore seconds for this node.\n";
-                    std::cout.flush();
-                    omp_unset_lock(&progess_display_lock);
-                }
-
-                int index = write_offset + i;
-                CellPointUncompressed point;
-
-                float bin_cdf_val = uniform_distribution(0.0, 1.0, &bin_seed);
-                auto cdf_iter = std::upper_bound(bin_cdf.begin(), bin_cdf.end(), bin_cdf_val);
-                int bin_idx = std::distance(bin_cdf.begin(), cdf_iter);
-                Bin* sample_bin = &bin_grid[bin_idx];
-
-                for(int j = 0; j < 3; j++) {
-                    int idx = bin_idx % BINNING_SEARCH_GRID_RES;
-                    bin_idx /= BINNING_SEARCH_GRID_RES;
-                    float min = idx * bin_dim[j] + bounds.min[j];
-                    float max = bin_dim[j] + min;
-
-                    point.pos[j] = uniform_distribution(min, max, &pos_seed[j]);
-                }
-
-                Direction dummy_dir{1.0, 0.0, 0.0};
-
-                point.cell = univ.find_cell_for_point(sample_bin->get_cells(), point.pos);
-                if(point.cell == -1) {
-                    const auto& possible_cells = fallback.get_cells(point.pos, dummy_dir);
-                    sample_bin->copy_untested_cells(possible_cells, untested_cells);
-                    point.cell = univ.find_cell_for_point(untested_cells, point.pos);
-
-                    sample_bin->insert(point.cell);
-                } // else don't bother inserting
-
-                points_in_bounds[index].compress(point, bounds);
-            }
-        }
-        
-        #pragma omp parallel for
-        for(auto& bin : bin_grid) {
-            bin.sort_cells();
-        }
-
-        write_offset += num_search_points;
-    }
-
-    int clear_pos = -1; 
-    for(int i = K_SEARCH_DENSITY.size() - 1; i >= 0; i--) {
-        if(K_SEARCH_DENSITY[i] == CELL_CLEAR_FLAG) {
-            clear_pos = i;
-            break;
+void pick_untested_cells(const std::vector<int>& tested_cells, const std::vector<int>& possible_cells, std::vector<int>& untested_cells) {
+    untested_cells.clear();
+    int next_idx = 0;
+    for(int cell : possible_cells) {
+        if(next_idx < tested_cells.size() && tested_cells[next_idx] == cell) {
+            next_idx++;
+        } else {
+            untested_cells.push_back(cell);
         }
     }
-
-    if(clear_pos != -1) {
-        int total_discarded_search_points = 0;
-        for(float density : K_SEARCH_DENSITY) {
-            if(density == CELL_CLEAR_FLAG)
-                break;
-
-            total_discarded_search_points += (int)(bounds.volume() * density);
-        }
-
-        points_in_bounds.erase(points_in_bounds.begin(), points_in_bounds.begin() + total_discarded_search_points);
-        points_in_bounds.shrink_to_fit();
-    }
-
-    return points_in_bounds;
 }
 
 std::vector<OctreeUncompressedNode*> store_children(OctreeUncompressedNode& root) {
@@ -593,18 +203,6 @@ std::vector<OctreeUncompressedNode*> store_children(OctreeUncompressedNode& root
     std::cout.flush();
 
     return children;
-}
-
-void pick_untested_cells(const std::vector<int>& tested_cells, const std::vector<int>& possible_cells, std::vector<int>& untested_cells) {
-    untested_cells.clear();
-    int next_idx = 0;
-    for(int cell : possible_cells) {
-        if(next_idx < tested_cells.size() && tested_cells[next_idx] == cell) {
-            next_idx++;
-        } else {
-            untested_cells.push_back(cell);
-        }
-    }
 }
 
 void refine_octree_random(
@@ -925,117 +523,14 @@ void refine_octree_random(
     prob_bin_grid.shrink_to_fit();
 }
 
-// This one is extremely difficult to tune, use the randomized optimizer instead
-void refine_octree_iterative(const Universe& univ, const UniversePartitioner& fallback, OctreeUncompressedNodeAllocator& node_alloc, OctreeUncompressedNode& root) {
-    Timer refinement_timer;
-    refinement_timer.start();
-
-    std::cout << "Refining octree via iterative refinement... note that detailed performance statistics will not be available.\n";
-    std::cout.flush();
-
-    // input paramters
-    const int NUM_ITERATIONS = 64;
-    const int NUM_BASE_SEARCH_POINTS = 1;
-    const float K_SCORE_HALF_LIFE = 9.2;
-    const float K_INIT_SCORE_MULT = 0.5;
-    const float K_CELL_DISCOVERY_REWARD = 3.0;
-    // derived parameters
-    const float K_SCORE_ALPHA = exp(-log(2.0) / K_SCORE_HALF_LIFE);
-
-    std::cout << "Using score alpha " << K_SCORE_ALPHA << '\n';
-    std::cout.flush();
-
-    std::vector<uint64_t[3]> rng_pos(NUM_THREADS);
-    for(int i = 0; i < NUM_THREADS; i++) {
-        for(int j = 0; j < 3; j++) {
-            rng_pos[i][j] = NUM_THREADS * (j + 1) + i;
-        }
-    }
-
-    auto children = store_children(root);
-
-    std::vector<float> node_score(children.size());
-    for(int i = 0; i < children.size(); i++) {
-        node_score[i] = children[i]->cells.size() * K_INIT_SCORE_MULT;
-    }
-
-    omp_lock_t loop_lock;
-    omp_init_lock(&loop_lock);
-    for(int iteration = 0; iteration < NUM_ITERATIONS; iteration++) {
-        int num_total_missing_cells = 0;
-        int num_total_searched_cells = 0;
-        int next_unproc_node = 0;
-        #pragma omp parallel for
-        for(int tid = 0; tid < NUM_THREADS; tid++) {
-            std::vector<int> untested_cells;
-            untested_cells.reserve(256);
-
-            while(true) {
-                omp_set_lock(&loop_lock);
-                int idx = next_unproc_node++;
-                omp_unset_lock(&loop_lock);
-
-                if(idx >= children.size()) {
-                    break;
-                } else {
-                    auto current = children[idx];
-
-                    if(iteration != 0) {
-                    }
-
-                    int num_missing_cells = 0;
-
-                    int num_search = std::max(NUM_BASE_SEARCH_POINTS, int(node_score[idx] + 0.5));                    
-                    num_total_searched_cells += num_search;
-            
-                    for(int i = 0; i < num_search; i++) {
-                        CellPointUncompressed point;
-                        for(int i = 0; i < 3; i++) {
-                            point.pos[i] = uniform_distribution(current->box.min[i], current->box.max[i], &rng_pos[tid][i]);
-                        }
-
-                        point.cell = univ.find_cell_for_point(current->cells, point.pos);
-                        if(point.cell == -1) {
-
-                            Direction dummy{0, 0, 1};
-                            const auto& possible_cells = fallback.get_cells(point.pos, dummy);
-
-                            untested_cells.clear();
-                            for(int cell : possible_cells) {
-                                if(!current->contains(cell)) {
-                                    untested_cells.push_back(cell);
-                                }
-                            }
-
-                            point.cell = univ.find_cell_for_point(untested_cells, point.pos);
-                            current->cells.push_back(point.cell);
-
-                            num_missing_cells++;
-                            num_total_missing_cells++;
-                        }
-                    }
-
-                    node_score[idx] = K_SCORE_ALPHA * K_CELL_DISCOVERY_REWARD * num_missing_cells + (1.0 - K_SCORE_ALPHA) * node_score[idx];
-                }
-            }
-        }
-
-
-        std::cout << "Refinement on iteration " << (iteration + 1) << ":\t" << num_total_searched_cells << "\tcells searched,\t" << num_total_missing_cells << "\tmising cells inserted into octree. (" << (100.0 * num_total_missing_cells) / num_total_searched_cells << "%\tdiscovery rate)\n";
-        std::cout.flush();
-    }
-
-    float total = refinement_timer.elapsed();
-    std::cout << "Refinement took " << total << " seconds.\n";
-    std::cout.flush();
-}
-
+float tot_cons_time;
 OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_node, int max_depth, const std::string& file_path) : fallback(univ) {
     if(!ocm_init) {
         ocm_init = true;
         omp_init_lock(&ocm);
     }
 
+    Timer t;
     t.start();
     std::cout << "====================OCTREE CONSTRUCTION===================\n";
 
@@ -1071,8 +566,7 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
     Timer binning_timer;
     binning_timer.start();
 
-    std::vector<Bin> bin_grid;
-    std::vector<CellPoint> points_in_bounds = get_cell_points_binning(univ, fallback, bounds, bin_grid);
+    std::vector<CellPoint> points_in_bounds = get_cell_points_binning(univ, fallback, bounds);
     binning_timer.stop();
     std::cout << "Done searching for points! Point search took " << binning_timer.elapsed() << " seconds. Beginning organization of points in octree...\n";
     std::cout.flush();
@@ -1392,6 +886,7 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
 
     t.stop();
     std::cout << "Construction took " << t.elapsed() << " seconds.\n";
+    tot_cons_time = t.elapsed();
     //std::cout << "Expected total construction time should be " << binning_timer.elapsed() + sorting_timer.elapsed() + total_building_timer.elapsed() + 11.0 + node_propagation_timer.elapsed() + information_refilling_timer.elapsed() + compression_timer.elapsed() << " seconds." << std::endl;
     std::cout.flush();
 
@@ -1438,7 +933,7 @@ OctreePartitioner::~OctreePartitioner() {
     std::cout << "Successful octree uses:  \t" << octree_use_count << '\n';
     std::cout << "Octree fallback uses:    \t" << fallback_use_count << '\n';
     std::cout << "Out of bounds uses:      \t" << oob_use_count << '\n';
-    std::cout << "Again, construction time:\t" << t.elapsed() << '\n';
+    std::cout << "Again, construction time:\t" << tot_cons_time << '\n';
 }
 
 //#define FALLBACK_OPTIMIZATIONS
@@ -2000,4 +1495,200 @@ proper mt construction algo? multiple threads exec this loop:
             wake threads
         else
             sleep
+
+void find_cells_in_box(const Universe& univ, const OctreeUncompressedNode& parent, OctreeUncompressedNode& child, const AABB& box) {
+    const double NUM_CELL_SEARCH_POINT_DENSITY = 4.0;
+    const int num_search_points = (int)(box.volume() * NUM_CELL_SEARCH_POINT_DENSITY);
+
+    // get some numbers that are unique across all invocations
+    uint64_t octree_prng_seed[3] = {(uint64_t)&child, (uint64_t)child.id, (uint64_t)((child.id * 3244230925 + 432534) % 436786)};
+
+    #ifdef OCTREE_DEBUG_INFO
+    const int POINTS_LOGGING_THRESHOLD = 16384; 
+    const int POINTS_LOGGING_INCREMENT = 5000;
+    if(num_search_points > POINTS_LOGGING_THRESHOLD) {
+        LOCK_OCM();
+        std::cout << "Note: searching node " << child.id << " for " << num_search_points << " points.\n";
+        UNLOCK_OCM();
+    }
+
+    Timer t;
+    t.start();
+    #endif
+
+    std::vector<bool> skip_cell(parent.cells.size());
+    child.cells.reserve(parent.cells.size());
+    for(int i = 0; i < num_search_points; i++) {
+        #ifdef OCTREE_DEBUG_INFO
+        if(num_search_points > POINTS_LOGGING_THRESHOLD && i % POINTS_LOGGING_INCREMENT == 0 && i != 0) {
+            LOCK_OCM();
+            std::cout << "Node " << child.id << ":\tcurrently searched " << i << " out of " << num_search_points << " points (" << (100.0 * i) / num_search_points 
+                      << "%) and found " << child.cells.size() << " unique cells. ";
+            std::cout << "ETA is " << ((float)num_search_points / i * t.elapsed()) - t.elapsed() << " more seconds for this node.\n";
+            std::cout.flush(); // you may want to comment this out
+            UNLOCK_OCM();
+        }
+        #endif
+
+        vec3 rand_pos;
+
+        // gen random point
+        rand_pos.x = uniform_distribution(box.min.x, box.max.x, &octree_prng_seed[0]);
+        rand_pos.y = uniform_distribution(box.min.y, box.max.y, &octree_prng_seed[1]);
+        rand_pos.z = uniform_distribution(box.min.z, box.max.z, &octree_prng_seed[2]);
+
+        univ.find_cell_in_list(parent.cells, child.cells, skip_cell, rand_pos);
+    }
+} 
+
+
+std::vector<CellPoint> get_cell_points_uniform_dist(const Universe& univ, const UniversePartitioner& fallback, const AABB& bounds) {
+    const float NUM_CELL_SEARCH_POINT_DENSITY = 32.0f;
+    const int num_search_points = (int)(bounds.volume() * NUM_CELL_SEARCH_POINT_DENSITY);
+    std::vector<CellPoint> points_in_bounds(num_search_points);
+
+    int total_points_searched = 0;
+        
+    omp_lock_t progess_display_lock;
+    omp_init_lock(&progess_display_lock);
+
+    #pragma omp parallel for
+    for(int i = 0; i < num_search_points; i++) {
+        #pragma omp atomic
+        total_points_searched++;
+
+        if(total_points_searched % 500000 == 0 && total_points_searched != 0) {
+            omp_set_lock(&progess_display_lock);
+            std::cout << "Currently searched " << total_points_searched << " out of " << num_search_points << " points (" << (100.0 * total_points_searched) / num_search_points << "%).\tETA is " << (float(num_search_points) / total_points_searched * t.elapsed()) - t.elapsed() << "\tmore seconds for this node.\n";
+            std::cout.flush();
+            omp_unset_lock(&progess_display_lock);
+        }
+
+        //auto& point = points_in_bounds[i];
+
+        CellPointUncompressed point;
+
+        uint64_t seed[3] = {
+            (uint64_t)i, (uint64_t)(num_search_points + i), (uint64_t)(2 * num_search_points + i)
+        };
+
+        for(int j = 0; j < 3; j++) {
+            point.pos[j] = uniform_distribution(bounds.min[j], bounds.max[j], &seed[j]);
+        }
+
+        Direction dummy_dir{1.0, 0.0, 0.0};
+
+        const auto& possible_cells = fallback.get_cells(point.pos, dummy_dir);
+        point.cell = univ.find_cell_for_point(possible_cells, point.pos);
+
+        points_in_bounds[i].compress_from(point, bounds);
+    }
+
+    return points_in_bounds;
+}
+
+// This one is extremely difficult to tune, use the randomized optimizer instead
+void refine_octree_iterative(const Universe& univ, const UniversePartitioner& fallback, OctreeUncompressedNodeAllocator& node_alloc, OctreeUncompressedNode& root) {
+    Timer refinement_timer;
+    refinement_timer.start();
+
+    std::cout << "Refining octree via iterative refinement... note that detailed performance statistics will not be available.\n";
+    std::cout.flush();
+
+    // input paramters
+    const int NUM_ITERATIONS = 64;
+    const int NUM_BASE_SEARCH_POINTS = 1;
+    const float K_SCORE_HALF_LIFE = 9.2;
+    const float K_INIT_SCORE_MULT = 0.5;
+    const float K_CELL_DISCOVERY_REWARD = 3.0;
+    // derived parameters
+    const float K_SCORE_ALPHA = exp(-log(2.0) / K_SCORE_HALF_LIFE);
+
+    std::cout << "Using score alpha " << K_SCORE_ALPHA << '\n';
+    std::cout.flush();
+
+    std::vector<uint64_t[3]> rng_pos(NUM_THREADS);
+    for(int i = 0; i < NUM_THREADS; i++) {
+        for(int j = 0; j < 3; j++) {
+            rng_pos[i][j] = NUM_THREADS * (j + 1) + i;
+        }
+    }
+
+    auto children = store_children(root);
+
+    std::vector<float> node_score(children.size());
+    for(int i = 0; i < children.size(); i++) {
+        node_score[i] = children[i]->cells.size() * K_INIT_SCORE_MULT;
+    }
+
+    omp_lock_t loop_lock;
+    omp_init_lock(&loop_lock);
+    for(int iteration = 0; iteration < NUM_ITERATIONS; iteration++) {
+        int num_total_missing_cells = 0;
+        int num_total_searched_cells = 0;
+        int next_unproc_node = 0;
+        #pragma omp parallel for
+        for(int tid = 0; tid < NUM_THREADS; tid++) {
+            std::vector<int> untested_cells;
+            untested_cells.reserve(256);
+
+            while(true) {
+                omp_set_lock(&loop_lock);
+                int idx = next_unproc_node++;
+                omp_unset_lock(&loop_lock);
+
+                if(idx >= children.size()) {
+                    break;
+                } else {
+                    auto current = children[idx];
+
+                    if(iteration != 0) {
+                    }
+
+                    int num_missing_cells = 0;
+
+                    int num_search = std::max(NUM_BASE_SEARCH_POINTS, int(node_score[idx] + 0.5));                    
+                    num_total_searched_cells += num_search;
+            
+                    for(int i = 0; i < num_search; i++) {
+                        CellPointUncompressed point;
+                        for(int i = 0; i < 3; i++) {
+                            point.pos[i] = uniform_distribution(current->box.min[i], current->box.max[i], &rng_pos[tid][i]);
+                        }
+
+                        point.cell = univ.find_cell_for_point(current->cells, point.pos);
+                        if(point.cell == -1) {
+
+                            Direction dummy{0, 0, 1};
+                            const auto& possible_cells = fallback.get_cells(point.pos, dummy);
+
+                            untested_cells.clear();
+                            for(int cell : possible_cells) {
+                                if(!current->contains(cell)) {
+                                    untested_cells.push_back(cell);
+                                }
+                            }
+
+                            point.cell = univ.find_cell_for_point(untested_cells, point.pos);
+                            current->cells.push_back(point.cell);
+
+                            num_missing_cells++;
+                            num_total_missing_cells++;
+                        }
+                    }
+
+                    node_score[idx] = K_SCORE_ALPHA * K_CELL_DISCOVERY_REWARD * num_missing_cells + (1.0 - K_SCORE_ALPHA) * node_score[idx];
+                }
+            }
+        }
+
+
+        std::cout << "Refinement on iteration " << (iteration + 1) << ":\t" << num_total_searched_cells << "\tcells searched,\t" << num_total_missing_cells << "\tmising cells inserted into octree. (" << (100.0 * num_total_missing_cells) / num_total_searched_cells << "%\tdiscovery rate)\n";
+        std::cout.flush();
+    }
+
+    float total = refinement_timer.elapsed();
+    std::cout << "Refinement took " << total << " seconds.\n";
+    std::cout.flush();
+}
 */

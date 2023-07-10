@@ -332,7 +332,9 @@ endif()
 #===============================================================================
 
 list(APPEND libopenmc_SOURCES
+  src/aabb.cpp
   src/bank.cpp
+  src/binning.cpp
   src/boundary_condition.cpp
   src/bremsstrahlung.cpp
   src/cell.cpp
@@ -432,7 +434,6 @@ list(APPEND libopenmc_SOURCES
   src/xsdata.cpp
   src/zplane_partitioner.cpp
   src/octree_partitioner.cpp
-  src/aabb.cpp
   )
 
 # Add bundled external dependencies

@@ -52,13 +52,14 @@ struct OctreeUncompressedNode {
   bool is_leaf() const;
   int get_containing_child_index(const vec3& pos) const;
   OctreeUncompressedNode& get_containing_child(const vec3& pos) const;
-  std::vector<AABB> subdivide(const AABB& parent);
+  std::vector<AABB> subdivide();
 
   bool contains(int cell) const;
 
   uint32_t id;
   uint16_t depth;
   uint16_t num_original_cells;
+  uint16_t num_unique_cells;
 
   AABB box;
 
@@ -101,10 +102,15 @@ private:
   std::vector<std::vector<int>> cell_data;
   AABB bounds;
 
+  std::vector<int> skip_traversal_grid;
+  vec3 skip_traversal_dim;
+
   uint32_t num_nodes;
 
   // fallback if octree doesn't work
   ZPlanePartitioner fallback;
+
+  const OctreeNode* get_containing_node(Position r,  const OctreeNode* start) const;
 };
 
 }

@@ -16,7 +16,26 @@
 
 namespace openmc {
 
-const int OMCP_CURRENT_VERSION[3] = {1, 0, 0};
+const int32_t NUM_THREADS = 16;
+
+const int32_t CELL_POINT_COMPRESSION_MAX_DEPTH = 15;
+
+const int32_t OCTREE_NODE_ALLOCATOR_POOL_SIZE = 16384; // number of 8 children packs
+
+const int32_t OMCP_CURRENT_VERSION[3] = {1, 0, 0};
+
+const int32_t BINNING_SEARCH_TOTAL_POINTS     = 8000000;
+const int32_t BINNING_SEARCH_TOTAL_ITERATIONS = 128;
+const int32_t BINNING_SEARCH_GRID_RES         = 32;
+
+const float   REFINEMENT_SEARCH_DENSITY = 0.125;
+const float   REFINEMENT_TIMEOUT        = 10.0;
+const int32_t REFINEMENT_GRID_RES       = 128; // ideally should be a power of 2
+
+const int32_t INFORMATION_REFILLING_START_DEPTH_OFFSET = 1;
+
+const int32_t SKIP_TRAVERSAL_START_DEPTH = 7;
+const int32_t SKIP_TRAVERSAL_GRID_RES = (1 << SKIP_TRAVERSAL_START_DEPTH);
 
 enum OMCPStructureType {
     Octree = 1,
@@ -53,12 +72,11 @@ struct CellPointUncompressed {
     int cell;
 };
 
-const int MAX_POINT_DEPTH = 15;
 struct CellPoint {
     uint64_t data;
 
     int get_cell() const {
-        uint64_t index = (data >> (3 * MAX_POINT_DEPTH));
+        uint64_t index = (data >> (3 * CELL_POINT_COMPRESSION_MAX_DEPTH));
         return (int)index;
     }
 
@@ -77,7 +95,7 @@ struct CellPoint {
 
         vec3 center = bounds.get_center();
 
-        for(int i = 0; i < MAX_POINT_DEPTH; i++) {
+        for(int i = 0; i < CELL_POINT_COMPRESSION_MAX_DEPTH; i++) {
             // halve the node dim
             uint64_t idx = 0;
             for(int i = 0; i < 3; i++) {
@@ -92,12 +110,11 @@ struct CellPoint {
         }
 
         uint64_t cell_comp = uncomp.cell;
-        cell_comp = (cell_comp << (3 * MAX_POINT_DEPTH));
+        cell_comp = (cell_comp << (3 * CELL_POINT_COMPRESSION_MAX_DEPTH));
         data |= cell_comp;
     }
 };
 
-const int BIN_GRID_RES = 32;
 class Bin {
 public:
     Bin() : num_unique_cells(0), prev_cell_count(0) {
@@ -207,11 +224,10 @@ private:
 
 struct OctreeConstructionTask {
     OctreeUncompressedNode* node;
-    AABB box;
     std::vector<CellPoint> points;
 
     OctreeConstructionTask() = default;
-    OctreeConstructionTask(OctreeUncompressedNode* n, const AABB& b, const std::vector<CellPoint>& p) : node(n), box(b), points(p) {}
+    OctreeConstructionTask(OctreeUncompressedNode* n, const std::vector<CellPoint>& p) : node(n), points(p) {}
 };
 
 int octree_use_count = 0;
@@ -243,9 +259,9 @@ OctreeUncompressedNode& OctreeUncompressedNode::get_containing_child(const vec3&
     return children[get_containing_child_index(r)];
 }
 
-std::vector<AABB> OctreeUncompressedNode::subdivide(const AABB& parent) {
+std::vector<AABB> OctreeUncompressedNode::subdivide() {
     std::vector<AABB> resultant_boxes;
-    resultant_boxes.push_back(parent);
+    resultant_boxes.push_back(box);
     for(int i = 0; i < 3; i++) {
         std::vector<AABB> temp_box_buffer;
 
@@ -345,7 +361,6 @@ OctreeUncompressedNodeAllocator::~OctreeUncompressedNodeAllocator() {
     }
 }
 
-const int OCTREE_NODE_ALLOCATOR_POOL_SIZE = 1024; // number of 8 children packs
 OctreeUncompressedNode* OctreeUncompressedNodeAllocator::allocate() {
     if(last_pool_next_index == OCTREE_NODE_ALLOCATOR_POOL_SIZE || pools.size() == 0) {
         pools.push_back(new OctreeUncompressedNode[8 * OCTREE_NODE_ALLOCATOR_POOL_SIZE]);
@@ -411,17 +426,12 @@ std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const Unive
     // hence we need to reduce points to prevent a crash
     // CELL_CLEAR_FLAG marks a location where we decide that the sampling method has learned enough and points before here can be discarded
     const float CELL_CLEAR_FLAG = -1.0;
-    /*const*/ std::vector<float> K_SEARCH_DENSITY = {
-        2.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0
-    };
+    std::vector<float> K_SEARCH_DENSITY;// = {2.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0};
 
-
-    int32_t total_target_points = 8000000;
-    int32_t total_iterations = 32;
-    float target_density = total_target_points / (total_iterations * bounds.volume());
+    float target_density = BINNING_SEARCH_TOTAL_POINTS / (BINNING_SEARCH_TOTAL_ITERATIONS * bounds.volume());
 
     K_SEARCH_DENSITY.clear();
-    for(int i = 0; i < total_iterations; i++) { 
+    for(int i = 0; i < BINNING_SEARCH_TOTAL_ITERATIONS; i++) { 
         K_SEARCH_DENSITY.push_back(target_density);
     }
 
@@ -441,12 +451,12 @@ std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const Unive
 
 
 
-    bin_grid.resize(BIN_GRID_RES * BIN_GRID_RES * BIN_GRID_RES); 
-    std::vector<float> bin_cdf(BIN_GRID_RES * BIN_GRID_RES * BIN_GRID_RES);
+    bin_grid.resize(BINNING_SEARCH_GRID_RES * BINNING_SEARCH_GRID_RES * BINNING_SEARCH_GRID_RES); 
+    std::vector<float> bin_cdf(BINNING_SEARCH_GRID_RES * BINNING_SEARCH_GRID_RES * BINNING_SEARCH_GRID_RES);
 
     vec3 bin_dim;
     for(int i = 0; i < 3; i++) {
-        bin_dim[i] = (bounds.max[i] - bounds.min[i]) / BIN_GRID_RES;
+        bin_dim[i] = (bounds.max[i] - bounds.min[i]) / BINNING_SEARCH_GRID_RES;
     }
 
     std::cout << "Allocating " << total_search_points << " search points!" << std::endl;
@@ -504,8 +514,8 @@ std::vector<CellPoint> get_cell_points_binning(const Universe& univ, const Unive
                 Bin* sample_bin = &bin_grid[bin_idx];
 
                 for(int j = 0; j < 3; j++) {
-                    int idx = bin_idx % BIN_GRID_RES;
-                    bin_idx /= BIN_GRID_RES;
+                    int idx = bin_idx % BINNING_SEARCH_GRID_RES;
+                    bin_idx /= BINNING_SEARCH_GRID_RES;
                     float min = idx * bin_dim[j] + bounds.min[j];
                     float max = bin_dim[j] + min;
 
@@ -597,7 +607,6 @@ void pick_untested_cells(const std::vector<int>& tested_cells, const std::vector
     }
 }
 
-const int NUM_THREADS = 16;
 void refine_octree_random(
     const Universe& univ,
     const UniversePartitioner& fallback,
@@ -610,9 +619,6 @@ void refine_octree_random(
 
     std::cout << "Refining octree via random refinement..\n";
     std::cout.flush();
-
-    const float K_SEARCH_DENSITY = 0.5;
-    const float K_REFINEMENT_TIMEOUT = 10.0;
 
     std::vector<uint64_t[2]> rng_node_selec(NUM_THREADS);
     std::vector<uint64_t[3]> rng_pos(NUM_THREADS);
@@ -738,13 +744,12 @@ void refine_octree_random(
 
     std::cout << "Allocating probabiliy bins..." << std::endl;
 
-    const int PROBABILITY_BIN_RES = 128; // ideally should be a power of 2
-    std::vector<ProbabilityBin> prob_bin_grid(PROBABILITY_BIN_RES * PROBABILITY_BIN_RES * PROBABILITY_BIN_RES);
+    std::vector<ProbabilityBin> prob_bin_grid(REFINEMENT_GRID_RES * REFINEMENT_GRID_RES * REFINEMENT_GRID_RES);
 
 
     vec3 prob_bin_dim;
     for(int i = 0; i < 3; i++) {
-        prob_bin_dim[i] = (root.box.max[i] - root.box.min[i]) / PROBABILITY_BIN_RES;
+        prob_bin_dim[i] = (root.box.max[i] - root.box.min[i]) / REFINEMENT_GRID_RES;
     }
 
     for(auto child : children) {
@@ -755,8 +760,8 @@ void refine_octree_random(
 
         int idx = 
             idx3d[0] +
-            idx3d[1] * PROBABILITY_BIN_RES +
-            idx3d[2] * PROBABILITY_BIN_RES * PROBABILITY_BIN_RES;
+            idx3d[1] * REFINEMENT_GRID_RES +
+            idx3d[2] * REFINEMENT_GRID_RES * REFINEMENT_GRID_RES;
 
         omp_lock_t dummy;
         prob_bin_grid[idx].contained_nodes.emplace_back(child, dummy);
@@ -783,8 +788,8 @@ void refine_octree_random(
 
     int iteration = 0;
 
-    while(timeout_timer.elapsed() < K_REFINEMENT_TIMEOUT) {
-        int num_search_points = (int)(root.box.volume() * K_SEARCH_DENSITY);
+    while(timeout_timer.elapsed() < REFINEMENT_TIMEOUT) {
+        int num_search_points = (int)(root.box.volume() * REFINEMENT_SEARCH_DENSITY);
         int num_points_searched = 0;
         int num_total_missing_cells = 0;
 
@@ -1035,6 +1040,10 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
     std::cout << "====================OCTREE CONSTRUCTION===================\n";
 
     max_depth = 999;
+    float depth_vh_mult[] = {
+        1.0, 1.0, 1.0, 1.5, 2.5, 4.0,
+        6.0, 12.5, 19.0, 32.0, 64.0, 128.0, 999.0
+    };
 
     int max_tree_size = (2 << (3 * max_depth));
     std::cout << "Maximum tree size is " << max_tree_size << '\n';
@@ -1087,6 +1096,8 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
         }
     }
 
+    root.num_unique_cells = root.cells.size();
+
     sorting_timer.stop();
     std::cout << "Total sorting time: " << sorting_timer.elapsed() << '\n';
     std::cout.flush();
@@ -1097,15 +1108,15 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
     int next_id = 1; // root is already 0
     int num_leaves = 0;
     uint32_t max_encountered_depth = 0;
+    uint32_t min_leaf_depth = UINT32_MAX;
 
     std::queue<OctreeConstructionTask> oct_unproc;
-    oct_unproc.emplace(&root, bounds, points_in_bounds);
+    oct_unproc.emplace(&root, points_in_bounds);
     OctreeUncompressedNodeAllocator node_alloc;
     std::vector<OctreeUncompressedNode*> nodes_to_propagate;
     nodes_to_propagate.push_back(&root);
     Timer total_building_timer;
     total_building_timer.start();
-
     while(!oct_unproc.empty()) {
         Timer t;
 
@@ -1123,7 +1134,7 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
         num_nodes += 8;
         cur_task.node->children = node_alloc.allocate();
 
-        auto boxes = cur_task.node->subdivide(cur_task.box);
+        auto boxes = cur_task.node->subdivide();
         init_time += t.elapsed();
         t.reset();
 
@@ -1133,7 +1144,6 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
         for(int i = 0; i < 8; i++) {
             child_tasks[i].node = &cur_task.node->children[i];
             child_tasks[i].node->box = boxes[i];
-            child_tasks[i].box = boxes[i];
             //child_tasks[i].points.reserve(cur_task.points.size());
 
             child_tasks[i].node->depth = cur_task.node->depth + 1;
@@ -1153,8 +1163,12 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
         node_selec_time += t.elapsed();
         t.reset();
 
+        float parent_vh = cur_task.node->box.volume() * cur_task.node->num_unique_cells;
+        float children_vh = 0.0;
+
         // post processing (make nodes leaves or push on construction stack)
         t.start();
+        bool force_subdiv = false;
         for(int i = 0; i < 8; i++) {
             // we don't have to sort since all points were already sorted before processing loop
             int prev_cell = -1;
@@ -1168,22 +1182,35 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
 
             const int NUM_UNIQUE_CELLS_MULT = 1; // prevent refinement stage from having to reallocate
             child_tasks[i].node->cells.reserve(NUM_UNIQUE_CELLS_MULT * num_unique_cells);
+            child_tasks[i].node->num_unique_cells = num_unique_cells;
 
-            prev_cell = -1;
-            for(const auto& p : child_tasks[i].points) {
-                if(p.get_cell() != prev_cell) {
-                    child_tasks[i].node->cells.push_back(p.get_cell());
-                    prev_cell = p.get_cell();
-                }
-            }
+            children_vh += child_tasks[i].node->box.volume() * num_unique_cells;
 
-            if(child_tasks[i].node->depth < max_depth && num_unique_cells > target_cells_per_node) {
-                child_tasks[i].node->cells.reserve(num_unique_cells * 2);
-                oct_unproc.push(std::move(child_tasks[i]));
-            } else {
-                num_leaves++;      
+            if(num_unique_cells > target_cells_per_node) {
+                force_subdiv = true;
             }
         }
+
+        if(force_subdiv || depth_vh_mult[cur_task.node->depth] * children_vh < parent_vh) {
+            for(int i = 0; i < 8; i++) {
+                prev_cell = -1;
+                for(const auto& p : child_tasks[i].points) {
+                    if(p.get_cell() != prev_cell) {
+                        child_tasks[i].node->cells.push_back(p.get_cell());
+                        prev_cell = p.get_cell();
+                    }
+                }
+
+                //child_tasks[i].node->cells.reserve(num_unique_cells * 2);
+                oct_unproc.push(std::move(child_tasks[i]));
+            }
+        } else {
+            cur_task.node->children = nullptr; // mark as leaf
+            num_leaves++;
+
+            min_leaf_depth = std::min(min_leaf_depth, (uint32_t)cur_task.node->depth);
+        }
+
         post_process_time += t.elapsed();
 
         // free memory
@@ -1195,6 +1222,7 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
     total_building_timer.stop();
 
     std::cout << "Max encountered depth is " << max_encountered_depth << std::endl;
+    std::cout << "Min leaf depth is " << min_leaf_depth << std::endl;
 
     std::cout << "Done placing points into octree! Performance statistics:\n";
     std::cout << "\tTask popping:\t" << popping_time << '\n';
@@ -1265,11 +1293,10 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
             }
         }
         
-        const int COLLECTION_START_UP_DEPTH = 0;
         auto collection_start = cur;
         #if 1
         // faster but worse results
-        for(int i = 0; i < COLLECTION_START_UP_DEPTH; i++) {
+        for(int i = 0; i < INFORMATION_REFILLING_START_DEPTH_OFFSET; i++) {
             if(collection_start->parent) {
                 collection_start = collection_start->parent;
             }
@@ -1309,7 +1336,7 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
             }
         }
 
-        for(int i = 0; i < COLLECTION_START_UP_DEPTH && collection_start; i++) {
+        for(int i = 0; i < INFORMATION_REFILLING_START_DEPTH_OFFSET && collection_start; i++) {
             for(int cell : collection_start->cells) {
                 for(int j = 0; j < 8; j++) {
                     if(cur->children[j].is_leaf() && !already_inserted_cells[j].count(cell)) {
@@ -1335,6 +1362,33 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
     compress(root);
     compression_timer.stop();
     std::cout << "Compression took " << compression_timer.elapsed() << std::endl;
+
+    Timer skip_traversal_building_timer;
+    skip_traversal_building_timer.start();
+
+    for(int i = 0; i < 3; i++) {
+        skip_traversal_dim[i] = (bounds.max[i] - bounds.min[i]) / SKIP_TRAVERSAL_GRID_RES;
+    }
+
+    skip_traversal_grid.resize(SKIP_TRAVERSAL_GRID_RES * SKIP_TRAVERSAL_GRID_RES * SKIP_TRAVERSAL_GRID_RES);
+    for(int i = 0; i < skip_traversal_grid.size(); i++) {
+        vec3 pos;
+
+        int ic = i;
+        for(int j = 0; j < 3; j++) {
+            int idx = ic % SKIP_TRAVERSAL_GRID_RES;
+            ic /= SKIP_TRAVERSAL_GRID_RES;
+            pos[j] = (idx + 0.5) * skip_traversal_dim[j] + bounds.min[j];
+        }
+
+        auto ptr = get_containing_node(pos, &nodes[0]);
+
+        int dist = ((char*)ptr - (char*)nodes.data()) / sizeof(*ptr);
+        skip_traversal_grid[i] = dist;
+    }
+
+    skip_traversal_building_timer.stop();
+    std::cout << "Building skip travesal took " << skip_traversal_building_timer.elapsed() << std::endl;
 
     t.stop();
     std::cout << "Construction took " << t.elapsed() << " seconds.\n";
@@ -1389,17 +1443,7 @@ OctreePartitioner::~OctreePartitioner() {
 
 //#define FALLBACK_OPTIMIZATIONS
 
-const vector<int32_t>& OctreePartitioner::get_cells(Position r, Direction u) const {
-    octree_use_count++;
-
-    if(!bounds.contains(r)) {
-        // discount this get_cells call from the stats to only focus on points within the octree
-        fallback_use_count--; 
-        octree_use_count--;
-        oob_use_count++;
-        return get_cells_fallback(r, u);
-    }
-
+const OctreeNode* OctreePartitioner::get_containing_node(Position r, const OctreeNode* current) const {
     vec3 node_dim;
     for(int i = 0; i < 3; i++) {
         node_dim[i] = (bounds.max[i] - bounds.min[i]) * 0.5;
@@ -1407,7 +1451,7 @@ const vector<int32_t>& OctreePartitioner::get_cells(Position r, Direction u) con
 
     vec3 center = bounds.get_center();
 
-    const OctreeNode* current = &nodes[0];
+    //const OctreeNode* current = &nodes[0];
 
     while(!current->is_leaf()) {
         // halve the node dim
@@ -1421,6 +1465,30 @@ const vector<int32_t>& OctreePartitioner::get_cells(Position r, Direction u) con
 
         current = &nodes[current->data + idx];
     }
+
+    return current;
+}
+
+const vector<int32_t>& OctreePartitioner::get_cells(Position r, Direction u) const {
+    octree_use_count++;
+
+    if(!bounds.contains(r)) {
+        // discount this get_cells call from the stats to only focus on points within the octree
+        fallback_use_count--; 
+        octree_use_count--;
+        oob_use_count++;
+        return get_cells_fallback(r, u);
+    }
+
+    int idx = 0;
+    for(int i = 2; i >= 0; i--) {
+        int offset = int((r[i] - bounds.min[i]) / skip_traversal_dim[i]);
+        idx = SKIP_TRAVERSAL_GRID_RES * idx + offset;
+    }
+
+    int start = skip_traversal_grid[idx];
+
+    auto current = get_containing_node(r, &nodes[start]);
 
     const auto& cells = cell_data[current->get_cells_index()];
     if(cells.empty()) {

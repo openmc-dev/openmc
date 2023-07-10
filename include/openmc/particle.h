@@ -66,6 +66,10 @@ public:
   void event_revive_from_secondary();
   void event_death();
 
+  //! pulse-height recording
+  void pht_collision_energy();
+  void pht_secondary_particles();
+
   //! Cross a surface and handle boundary conditions
   void cross_surface();
 

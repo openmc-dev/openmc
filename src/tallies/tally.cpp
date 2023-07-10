@@ -3,6 +3,7 @@
 #include "openmc/array.h"
 #include "openmc/capi.h"
 #include "openmc/constants.h"
+#include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/mesh.h"
@@ -18,6 +19,7 @@
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_cell.h"
+#include "openmc/tallies/filter_cellborn.h"
 #include "openmc/tallies/filter_cellfrom.h"
 #include "openmc/tallies/filter_collision.h"
 #include "openmc/tallies/filter_delayedgroup.h"
@@ -55,6 +57,8 @@ vector<int> active_tracklength_tallies;
 vector<int> active_collision_tallies;
 vector<int> active_meshsurf_tallies;
 vector<int> active_surface_tallies;
+vector<int> active_pulse_height_tallies;
+vector<int> pulse_height_cells;
 } // namespace model
 
 namespace simulation {
@@ -175,6 +179,16 @@ Tally::Tally(pugi::xml_node node)
   }
 
   // Check if tally is compatible with particle type
+  if (!settings::photon_transport) {
+    for (int score : scores_) {
+      switch (score) {
+      case SCORE_PULSE_HEIGHT:
+        fatal_error(
+          "For pulse-height tallies, photon transport needs to be activated.");
+        break;
+      }
+    }
+  }
   if (settings::photon_transport) {
     if (particle_filter_index == C_NONE) {
       for (int score : scores_) {
@@ -409,10 +423,14 @@ void Tally::add_filter(Filter* filter)
     return;
 
   // Keep track of indices for special filters
-  if (dynamic_cast<const EnergyoutFilter*>(filter)) {
+  if (filter->type() == FilterType::ENERGY_OUT) {
     energyout_filter_ = filters_.size();
-  } else if (dynamic_cast<const DelayedGroupFilter*>(filter)) {
+  } else if (filter->type() == FilterType::DELAYED_GROUP) {
     delayedgroup_filter_ = filters_.size();
+  } else if (filter->type() == FilterType::CELL) {
+    cell_filter_ = filters_.size();
+  } else if (filter->type() == FilterType::ENERGY) {
+    energy_filter_ = filters_.size();
   }
   filters_.push_back(filter_idx);
 }
@@ -454,17 +472,23 @@ void Tally::set_scores(const vector<std::string>& scores)
   bool cellfrom_present = false;
   bool surface_present = false;
   bool meshsurface_present = false;
+  bool non_cell_energy_present = false;
   for (auto i_filt : filters_) {
     const auto* filt {model::tally_filters[i_filt].get()};
-    if (dynamic_cast<const LegendreFilter*>(filt)) {
+    // Checking for only cell and energy filters for pulse-height tally
+    if (!(filt->type() == FilterType::CELL ||
+          filt->type() == FilterType::ENERGY)) {
+      non_cell_energy_present = true;
+    }
+    if (filt->type() == FilterType::LEGENDRE) {
       legendre_present = true;
-    } else if (dynamic_cast<const CellFromFilter*>(filt)) {
+    } else if (filt->type() == FilterType::CELLFROM) {
       cellfrom_present = true;
-    } else if (dynamic_cast<const CellFilter*>(filt)) {
+    } else if (filt->type() == FilterType::CELL) {
       cell_present = true;
-    } else if (dynamic_cast<const SurfaceFilter*>(filt)) {
+    } else if (filt->type() == FilterType::SURFACE) {
       surface_present = true;
-    } else if (dynamic_cast<const MeshSurfaceFilter*>(filt)) {
+    } else if (filt->type() == FilterType::MESH_SURFACE) {
       meshsurface_present = true;
     }
   }
@@ -535,6 +559,31 @@ void Tally::set_scores(const vector<std::string>& scores)
     case HEATING:
       if (settings::photon_transport)
         estimator_ = TallyEstimator::COLLISION;
+      break;
+
+    case SCORE_PULSE_HEIGHT:
+      if (non_cell_energy_present) {
+        fatal_error("Pulse-height tallies are not compatible with filters "
+                    "other than CellFilter and EnergyFilter");
+      }
+      type_ = TallyType::PULSE_HEIGHT;
+
+      // Collecting indices of all cells covered by the filters in the pulse
+      // height tally in global variable pulse_height_cells
+      for (const auto& i_filt : filters_) {
+        auto cell_filter =
+          dynamic_cast<CellFilter*>(model::tally_filters[i_filt].get());
+        if (cell_filter) {
+          const auto& cells = cell_filter->cells();
+          for (int i = 0; i < cell_filter->n_bins(); i++) {
+            int cell_index = cells[i];
+            if (!contains(model::pulse_height_cells, cell_index)) {
+              model::pulse_height_cells.push_back(cell_index);
+            }
+          }
+        }
+      }
+
       break;
     }
 
@@ -953,6 +1002,7 @@ void setup_active_tallies()
   model::active_collision_tallies.clear();
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
+  model::active_pulse_height_tallies.clear();
 
   for (auto i = 0; i < model::tallies.size(); ++i) {
     const auto& tally {*model::tallies[i]};
@@ -980,6 +1030,11 @@ void setup_active_tallies()
 
       case TallyType::SURFACE:
         model::active_surface_tallies.push_back(i);
+        break;
+
+      case TallyType::PULSE_HEIGHT:
+        model::active_pulse_height_tallies.push_back(i);
+        break;
       }
     }
   }
@@ -1001,6 +1056,7 @@ void free_memory_tally()
   model::active_collision_tallies.clear();
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
+  model::active_pulse_height_tallies.clear();
 
   model::tally_map.clear();
 }
@@ -1122,6 +1178,8 @@ extern "C" int openmc_tally_set_type(int32_t index, const char* type)
     model::tallies[index]->type_ = TallyType::MESH_SURFACE;
   } else if (strcmp(type, "surface") == 0) {
     model::tallies[index]->type_ = TallyType::SURFACE;
+  } else if (strcmp(type, "pulse-height") == 0) {
+    model::tallies[index]->type_ = TallyType::PULSE_HEIGHT;
   } else {
     set_errmsg(fmt::format("Unknown tally type: {}", type));
     return OPENMC_E_INVALID_ARGUMENT;

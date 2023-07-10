@@ -169,8 +169,10 @@ public:
   // We need to have quick access to some filters.  The following gives indices
   // for various filters that could be in the tally or C_NONE if they are not
   // present.
+  int energy_filter_ {C_NONE};
   int energyout_filter_ {C_NONE};
   int delayedgroup_filter_ {C_NONE};
+  int cell_filter_ {C_NONE};
 
   vector<Trigger> triggers_;
 
@@ -206,6 +208,8 @@ extern vector<int> active_tracklength_tallies;
 extern vector<int> active_collision_tallies;
 extern vector<int> active_meshsurf_tallies;
 extern vector<int> active_surface_tallies;
+extern vector<int> active_pulse_height_tallies;
+extern vector<int> pulse_height_cells;
 } // namespace model
 
 namespace simulation {

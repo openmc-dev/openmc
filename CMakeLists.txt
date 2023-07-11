@@ -356,6 +356,7 @@ list(APPEND libopenmc_SOURCES
   src/geometry_aux.cpp
   src/hdf5_interface.cpp
   src/initialize.cpp
+  src/kdtree_partitioner.cpp
   src/lattice.cpp
   src/material.cpp
   src/math_functions.cpp

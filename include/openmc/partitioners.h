@@ -7,12 +7,13 @@
 #include "universe.h"
 #include "zplane_partitioner.h"
 #include "octree_partitioner.h"
+#include "kdtree_partitioner.h"
 
 #define PARTITIONER_FALLBACK_ENABLED
 
 namespace openmc {
 
-    using DefaultPartitioner = OctreePartitioner;
+    using DefaultPartitioner = KdTreePartitioner;
 
 }
 

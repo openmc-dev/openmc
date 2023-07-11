@@ -241,6 +241,7 @@ void refine_octree_random(
     omp_init_lock(&replace_lock);
 
     struct ProbabilityBin {
+    public:
         ProbabilityBin() : num_searched(0), num_found(0) {
             //common_cells.reserve(200);
             //found_cells.reserve(500);
@@ -566,7 +567,7 @@ OctreePartitioner::OctreePartitioner(const Universe& univ, int target_cells_per_
     Timer binning_timer;
     binning_timer.start();
 
-    std::vector<CellPoint> points_in_bounds = get_cell_points_binning(univ, fallback, bounds);
+    auto points_in_bounds = binned_point_search<CellPoint>(univ, fallback, bounds);
     binning_timer.stop();
     std::cout << "Done searching for points! Point search took " << binning_timer.elapsed() << " seconds. Beginning organization of points in octree...\n";
     std::cout.flush();

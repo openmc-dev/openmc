@@ -58,7 +58,7 @@ mats = [uo2, helium, zircaloy, borated_water, borated_water.clone()]
 subdivs_r = {
         0 : 3,
         2 : 1,
-        3 : 3
+        3 : 2
         }
 subdivs_a = {
         0 : 4,
@@ -67,8 +67,13 @@ subdivs_a = {
         }
 #subdivs_r = None
 #subdivs_a = None
+rad_div_types = {
+        0 : "area",
+        2 : "area",
+        3 : "radius"
+        }
 
-pin_universe = openmc.model.pin_radial_azimuthal(surfs, mats, subdivisions_r=subdivs_r, subdivisions_a=subdivs_a, rad_div_type=1)
+pin_universe = openmc.model.pin_radial_azimuthal(surfs, mats, subdivisions_r=subdivs_r, subdivisions_a=subdivs_a, rad_div_types=rad_div_types)
 
 # Fill Cell with the Lattice
 cell1.fill = pin_universe

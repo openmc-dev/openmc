@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 import openmc
-from openmc.model import pin, pin_new
+from openmc.model import pin
 
 
 def get_pin_radii(pin_univ):
@@ -115,4 +115,3 @@ def test_subdivide(pin_mats, good_radii, surf_type):
     sqrs = np.square(radii[:N + 1])
     assert np.all(sqrs[1:] - sqrs[:-1] == pytest.approx(
         (good_radii[1] ** 2 - good_radii[0] ** 2) / N))
-

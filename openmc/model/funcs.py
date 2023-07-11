@@ -568,7 +568,7 @@ def pin(surfaces, items, subdivisions=None, divide_vols=True,
 
 
 
-def pin_radial_azimuthal(surfaces, items, subdivisions_r=None, subdivisions_a=None, rad_div_type=0,
+def pin_radial_azimuthal(surfaces, items, subdivisions_r=None, subdivisions_a=None, rad_div_types=None,
         **kwargs):
     """Convenience function for building a fuel pin
 
@@ -594,11 +594,14 @@ def pin_radial_azimuthal(surfaces, items, subdivisions_r=None, subdivisions_a=No
         Dictionary describing which rings to subdivide azimuthally and how
         many times. Keys are indexes of the annular rings
         to be divided. Will construct equal area sectors
-    rad_div_type : 0 or 1
-        Describes if the radial divisions will be equal area rings 
-        or equal radius rings.
-        Passing 0 will create equal area rings while 
-        passing 1 will create equal radius rings.
+    rad_div_types : None or dict of int to string
+        Dictionary descibing how to subdivide rings radially, either with 
+        equal area or equal radius. Keys are indexes of the annular rings
+        to be divided. Values should be either "area" or "radius".
+        A value of "area" will create equal area rings while 
+        a value of "radius" will create equal radius rings.
+        A division type must be provided for each ring being subdivided
+        i.e. subdivisions_r must be same length as rad_div_types.
     kwargs:
         Additional key-word arguments to be passed to
         :class:`openmc.Universe`, like ``name="Fuel pin"``
@@ -650,8 +653,8 @@ def pin_radial_azimuthal(surfaces, items, subdivisions_r=None, subdivisions_a=No
             "Surfaces do not appear to be concentric. The following "
             "centers were found: {}".format(centers))
     
-    if rad_div_type != 0 and rad_div_type != 1:
-        raise ValueError("The variable rad_div_type must be set to either 0 or 1.")
+    if rad_div_types is not None and len(subdivisions_r) != len(rad_div_types):
+        raise ValueError("There must be a subdivision type provided for each ring being divided.")
 
     items_new = items.copy()
     
@@ -693,9 +696,14 @@ def pin_radial_azimuthal(surfaces, items, subdivisions_r=None, subdivisions_a=No
 
             equal_radius_term = (upper_rad - lower_rad) / nr
 
+            if rad_div_types is None:
+                div_type = "area"
+            else:
+                div_type = rad_div_types[ring_index]
+
             for new_index in range(nr - 1):
                 # generate equal area divisions
-                if rad_div_type == 0:
+                if div_type == "area":
                     lower_rad = sqrt(area_term + lower_rad ** 2)
                 
                 # generate equal radius divisions

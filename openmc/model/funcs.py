@@ -568,7 +568,7 @@ def pin(surfaces, items, subdivisions=None, divide_vols=True,
 
 
 
-def pin_radial_azimuthal(surfaces, items, subdivisions_r=None, subdivisions_a=None,
+def pin_radial_azimuthal(surfaces, items, subdivisions_r=None, subdivisions_a=None, rad_div_type=0,
         **kwargs):
     """Convenience function for building a fuel pin
 
@@ -588,11 +588,17 @@ def pin_radial_azimuthal(surfaces, items, subdivisions_r=None, subdivisions_a=No
     subdivisions_r : None or dict of int to int
         Dictionary describing which rings to subdivide radially and how
         many times. Keys are indexes of the annular rings
-        to be divided. Will construct equal area rings
+        to be divided. Will construct equal area or equal radius rings
+        depending on value of rad_div_type
     subdivisions_a : None or dict of int to int
         Dictionary describing which rings to subdivide azimuthally and how
         many times. Keys are indexes of the annular rings
         to be divided. Will construct equal area sectors
+    rad_div_type : 0 or 1
+        Describes if the radial divisions will be equal area rings 
+        or equal radius rings.
+        Passing 0 will create equal area rings while 
+        passing 1 will create equal radius rings.
     kwargs:
         Additional key-word arguments to be passed to
         :class:`openmc.Universe`, like ``name="Fuel pin"``
@@ -644,6 +650,9 @@ def pin_radial_azimuthal(surfaces, items, subdivisions_r=None, subdivisions_a=No
             "Surfaces do not appear to be concentric. The following "
             "centers were found: {}".format(centers))
     
+    if rad_div_type != 0 and rad_div_type != 1:
+        raise ValueError("The variable rad_div_type must be set to either 0 or 1.")
+
     items_new = items.copy()
     
     # Divides Cylinders into more rings
@@ -682,8 +691,17 @@ def pin_radial_azimuthal(surfaces, items, subdivisions_r=None, subdivisions_a=No
 
             area_term = (upper_rad ** 2 - lower_rad ** 2) / nr
 
+            equal_radius_term = (upper_rad - lower_rad) / nr
+
             for new_index in range(nr - 1):
-                lower_rad = sqrt(area_term + lower_rad ** 2)
+                # generate equal area divisions
+                if rad_div_type == 0:
+                    lower_rad = sqrt(area_term + lower_rad ** 2)
+                
+                # generate equal radius divisions
+                else:
+                    lower_rad = lower_rad + equal_radius_term
+                
                 new_surfs.append(surf_type(r=lower_rad))
 
             surfaces = (

@@ -65,11 +65,11 @@ class CylinderSector(CompositeSurface):
     The cylindrical surfaces are concentric, and the planar surfaces intersect
     the central axis of the cylindrical surfaces.
 
+    For the case of r1=0, a zero radius cylinder is not created.
+
     This class acts as a proper surface, meaning that unary `+` and `-`
     operators applied to it will produce a half-space. The negative
     side is defined to be the region inside of the cylinder sector.
-
-    Extended to handle r1=0 case. A zero cylinder radius is no longer created.
 
     .. versionadded:: 0.13.1
 
@@ -128,18 +128,31 @@ class CylinderSector(CompositeSurface):
 
         if theta2 <= theta1:
             raise ValueError(f'theta2 must be greater than theta1.')
+            
+        self.theta1 = theta1
+        self.theta2 = theta2
 
-        phi1 = pi / 180 * theta1
-        phi2 = pi / 180 * theta2
+        if theta2 < 180 - 45:
+            phi1 = pi / 180 * theta1
+            phi2 = pi / 180 * theta2
+        elif theta2 == 180 - 45:
+            phi1 = pi / 180 * theta1
+            phi2 = pi / 180 * (theta2 - 180)
+        elif theta2 < 360 - 45:
+            phi1 = pi / 180 * (theta1 - 180)
+            phi2 = pi / 180 * (theta2 - 180)
+        else:
+            phi1 = pi / 180 * (theta1 - 180)
+            phi2 = pi / 180 * (theta2 - 360)
 
         # Coords for axis-perpendicular planes
         p1 = np.array([0., 0., 1.])
 
-        p2_plane1 = np.array([r1 * cos(phi1), r1 * sin(phi1), 0.])
-        p3_plane1 = np.array([r2 * cos(phi1), r2 * sin(phi1), 0.])
+        p2_plane1 = np.array([1 * cos(phi1), 1 * sin(phi1), 0.])
+        p3_plane1 = np.array([2 * cos(phi1), 2 * sin(phi1), 0.])
 
-        p2_plane2 = np.array([r1 * cos(phi2), r1 * sin(phi2), 0.])
-        p3_plane2 = np.array([r2 * cos(phi2), r2 * sin(phi2), 0.])
+        p2_plane2 = np.array([1 * cos(phi2), 1 * sin(phi2), 0.])
+        p3_plane2 = np.array([2 * cos(phi2), 2 * sin(phi2), 0.])
 
         points = [p1, p2_plane1, p3_plane1, p2_plane2, p3_plane2]
         if axis == 'z':
@@ -219,16 +232,48 @@ class CylinderSector(CompositeSurface):
         return cls(r1, r2, theta1, theta2, center=center, axis=axis, **kwargs)
 
     def __neg__(self):
-        if self.r1 > 0:
-            return -self.outer_cyl & +self.inner_cyl & -self.plane1 & +self.plane2
+        if self.theta2 < (180 - 45):
+            if self.r1 > 0:
+                return -self.outer_cyl & +self.inner_cyl & -self.plane1 & +self.plane2
+            else:
+                return -self.outer_cyl & -self.plane1 & +self.plane2
+        elif self.theta2 == 180 - 45:
+            if self.r1 > 0:
+                return -self.outer_cyl & +self.inner_cyl & -self.plane1 & -self.plane2
+            else:
+                return -self.outer_cyl & -self.plane1 & -self.plane2
+        elif self.theta2 < 360 - 45:
+            if self.r1 > 0:
+                return -self.outer_cyl & +self.inner_cyl & +self.plane1 & -self.plane2
+            else:
+                return -self.outer_cyl & +self.plane1 & -self.plane2
         else:
-            return -self.outer_cyl & -self.plane1 & +self.plane2
+            if self.r1 > 0:
+                return -self.outer_cyl & +self.inner_cyl & +self.plane1 & +self.plane2
+            else:
+                return -self.outer_cyl & +self.plane1 & +self.plane2
 
     def __pos__(self):
-        if self.r1 > 0:
-            return +self.outer_cyl | -self.inner_cyl | +self.plane1 | -self.plane2
+        if self.theta2 < (180 - 45):
+            if self.r1 > 0:
+                return +self.outer_cyl | -self.inner_cyl | +self.plane1 | -self.plane2
+            else:
+                return +self.outer_cyl | +self.plane1 | -self.plane2
+        elif self.theta2 == 180 - 45:
+            if self.r1 > 0:
+                return +self.outer_cyl | -self.inner_cyl | +self.plane1 | +self.plane2
+            else:
+                return +self.outer_cyl | +self.plane1 | +self.plane2
+        elif self.theta2 < 360 - 45:
+            if self.r1 > 0:
+                return +self.outer_cyl | -self.inner_cyl | -self.plane1 | +self.plane2
+            else:
+                return +self.outer_cyl | -self.plane1 | +self.plane2
         else:
-            return +self.outer_cyl | +self.plane1 | -self.plane2
+            if self.r1 > 0:
+                return +self.outer_cyl | -self.inner_cyl | -self.plane1 | -self.plane2
+            else:
+                return +self.outer_cyl | -self.plane1 | -self.plane2
 
 
 class IsogonalOctagon(CompositeSurface):

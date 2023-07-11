@@ -39,6 +39,10 @@ class IndependentOperator(OpenMCOperator):
 
     .. versionadded:: 0.13.1
 
+    .. versionchanged:: 0.13.4
+        Arguments updated to include list of fluxes and microscopic cross
+        sections.
+
     Parameters
     ----------
     materials : openmc.Materials

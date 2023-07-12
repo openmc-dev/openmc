@@ -43,18 +43,19 @@ namespace openmc {
         return num_unique;
     }
 
-    void update_best_split(const KdTreeConstructionTask& parent_task, KdTreeUncompressedNode best_children[2], std::vector<CellPointUncompressed> best_points[2], float& best_child_vh, int axis) {
+    void update_best_split_median(const KdTreeConstructionTask& parent_task, KdTreeUncompressedNode best_children[2], std::vector<CellPointUncompressed> best_points[2], float& best_child_vh, int axis) {
         KdTreeUncompressedNode cur_children[2];
         std::vector<CellPointUncompressed> cur_points[2];
         
         // split (code copied from octree)
+        float midpoint;
         {
 
             int i = axis;
             int j = ((i + 1) % 3);
             int k = ((i + 2) % 3);
 
-            float midpoint = (parent_task.node->box.max[i] + parent_task.node->box.min[i]) * 0.5;
+            midpoint = (parent_task.node->box.max[i] + parent_task.node->box.min[i]) * 0.5;
             const auto& box = parent_task.node->box;
 
             AABB splitted_boxes[2];
@@ -74,8 +75,8 @@ namespace openmc {
             splitted_boxes[1].extend(box.min);
             splitted_boxes[1].extend(extension_point[1]);
 
-            cur_children[0].box = splitted_boxes[0];
-            cur_children[1].box = splitted_boxes[1];
+            cur_children[0].box = splitted_boxes[1];
+            cur_children[1].box = splitted_boxes[0];
         }
 
         for(const auto& p : parent_task.points) {
@@ -98,8 +99,123 @@ namespace openmc {
                 best_children[i] = std::move(cur_children[i]);
                 best_points[i] = std::move(cur_points[i]);
             }
+
+            parent_task.node->split_axis = axis;
+            parent_task.node->split_location = midpoint;
         }
     }
+
+    void make_elems_unique(std::vector<int>& v) {
+        #if 0
+        std::sort(v.begin(), v.end());
+    
+        int i = 1, j = 0;
+        while(i < v.size()) {
+            if(v[i] != v[j]) {
+                j++;
+                v[j] = v[i];
+            }
+            i++;
+        } 
+
+        v.resize(j);
+        #else
+        std::set<int> unique_elems;
+
+        for(int x : v) {
+            unique_elems.insert(x);
+        }
+
+        v.clear();
+        //v.reserve(unique_elems.size());
+
+        for(int x : unique_elems) {
+            v.push_back(x);
+        }
+
+        #endif
+    }
+
+    struct KdTreeBin {
+        std::vector<int> unique_cells;
+    };
+
+    void consume_bin(const KdTreeBin& bin, std::vector<int>& cells) {
+        std::copy(bin.unique_cells.begin(), bin.unique_cells.end(), std::back_insert_iterator(cells));
+    }
+
+    int best_picked_split = 0;
+    void update_best_split_binning(const KdTreeConstructionTask& parent_task, KdTreeUncompressedNode best_children[2], std::vector<CellPointUncompressed> best_points[2], float& best_child_vh, int axis) {
+        const int NUM_KD_TREE_BINS = 64;
+        float bin_dim = (parent_task.node->box.max[axis] - parent_task.node->box.min[axis]) / NUM_KD_TREE_BINS;
+
+        KdTreeBin bins[NUM_KD_TREE_BINS];
+
+        for(const auto& p : parent_task.points) {
+            int idx = ((p.pos[axis] - parent_task.node->box.min[axis]) / bin_dim);
+
+            if(idx < 0) idx = 0;
+            else if(idx >= NUM_KD_TREE_BINS) idx = NUM_KD_TREE_BINS - 1;
+
+            bins[idx].unique_cells.push_back(p.cell);
+        }
+
+        for(int i = 0; i < NUM_KD_TREE_BINS; i++) {
+            make_elems_unique(bins[i].unique_cells);
+        }
+
+        for(int i = 1; i < NUM_KD_TREE_BINS - 1; i++) {
+            float split = i * bin_dim + parent_task.node->box.min[axis];
+            std::vector<int> cur_cells_list[2]; 
+
+            for(int j = 0; j < i; j++) {
+                consume_bin(bins[j], cur_cells_list[0]);
+            }
+
+            for(int j = i; j < NUM_KD_TREE_BINS; j++) {
+                consume_bin(bins[j], cur_cells_list[1]);
+            }
+
+            for(int i = 0; i < 2; i++) {
+                make_elems_unique(cur_cells_list[i]);
+            }
+
+            // construct AABB
+            AABB boxes[2];
+            float child_vh = 0.0;
+            for(int i = 0; i < 2; i++) {
+                boxes[i] = parent_task.node->box;
+
+                auto update = (i == 0 ? &boxes[i].max[axis] : &boxes[i].min[axis]);
+                *update = split;
+
+                child_vh += boxes[i].volume() * cur_cells_list[i].size();
+            }
+
+            
+            if(child_vh < best_child_vh) {
+                best_child_vh = child_vh;
+
+                for(int i = 0; i < 2; i++) {
+                    best_children[i].box = boxes[i];
+                    best_points[i].clear();
+                }
+
+                for(const auto& p : parent_task.points) {
+                    int idx = (p.pos[axis] < split ? 0 : 1);
+                    best_points[idx].push_back(p);
+                }
+
+                parent_task.node->split_axis = axis;
+                parent_task.node->split_location = split;
+
+                best_picked_split = i;
+            }
+            
+        }
+
+    }
+
 
     void make_leaf(KdTreeUncompressedNode& node, std::vector<CellPointUncompressed>& points) {
         node.children = nullptr;
@@ -113,6 +229,8 @@ namespace openmc {
                 prev_cell = p.cell;
             }
         }
+
+        //std::cout << "SIZE\t" << node.cells.size() << std::endl;
     }
 
     KdTreePartitioner::KdTreePartitioner(const Universe& univ) : fallback(univ) {
@@ -154,11 +272,13 @@ namespace openmc {
             float best_child_vh = FLT_MAX;
             // find best split
             for(int i = 0; i < 3; i++) {
-                update_best_split(task, best_children, best_points, best_child_vh, i);
+                update_best_split_median(task, best_children, best_points, best_child_vh, i);
             }
             
             // update if needed
-            if(best_child_vh < parent_vh) {
+            //std::cout << "RSLT\t" << best_child_vh << '\t' << parent_vh << std::endl;
+            if(0.9 * best_child_vh < parent_vh) {
+                //std::cout << "PICK\t" << best_picked_split << std::endl;
                 num_nodes += 2;
 
                 task.node->children = new KdTreeUncompressedNode[2];
@@ -197,14 +317,15 @@ namespace openmc {
 
             // compress
             KdTreeNode comp_node;
-            comp_node.box = cur.box;
             if(cur.is_leaf()) {
                 comp_node.data = cell_data.size();
                 comp_node.data |= KD_TREE_LEAF_FLAG;
 
                 cell_data.push_back(std::move(cur.cells));
             }  else {
-                comp_node.data = nodes.size() + 1 + uncomp_nodes.size();
+                comp_node.data = (cur.split_axis << 30);
+                comp_node.data += nodes.size() + 1 + uncomp_nodes.size();
+                comp_node.split = cur.split_location;
 
                 for(int i = 0; i < 2; i++) {
                     uncomp_nodes.push(&cur.children[i]);
@@ -238,12 +359,12 @@ namespace openmc {
         kd_tree_use_count++;
 
         const KdTreeNode* cur = &nodes[0];
-        while(!cur->is_leaf()) {
-            auto children = &nodes[cur->index()];
-            if(children[0].box.contains(r)) {
-                cur = &children[0];
+        while(true) {
+            uint32_t axis = (cur->data >> 30);
+            if(axis == 3) {
+                break;
             } else {
-                cur = &children[1];
+                cur = &nodes[cur->index() + uint32_t(r[axis] > cur->split)];
             }
         }
 

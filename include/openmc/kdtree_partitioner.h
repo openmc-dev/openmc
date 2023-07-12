@@ -16,13 +16,16 @@ namespace openmc {
 
         AABB box;
 
+        uint8_t split_axis;
+        float split_location;
         KdTreeUncompressedNode* children;
+
         std::vector<int> cells;
     };
 
     struct KdTreeNode {
-        AABB box;
         uint32_t data; 
+        float split;
 
         bool is_leaf() const;
         uint32_t index() const;

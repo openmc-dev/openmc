@@ -142,9 +142,13 @@ UniversePartitioner::~UniversePartitioner() {}
 const std::vector<int32_t>& UniversePartitioner::get_cells_fallback(Position r, Direction u) const {
   std::cout << "Fallback is not enabled for this partitioner. Please recompile with the PARTITIONER_FALLBACK_ENABLED macro disabled in partitioners.h." << std::endl;
   abort();
-
-  std::vector<int32_t> dummy;
-  return dummy;
 }
+
+void UniversePartitioner::export_to_file(const std::string& path) const {
+  std::cout << "Failed to export partitioner to " << path 
+            << " because current partitioner type currently does not support exporting as a file." << std::endl;
+  // no need to abort
+}
+
 
 } // namespace openmc

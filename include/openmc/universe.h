@@ -70,6 +70,8 @@ public:
   //! Return the list of cells that could contain the given coordinates.
   virtual const vector<int32_t>& get_cells(Position r, Direction u) const = 0;
   virtual const vector<int32_t>& get_cells_fallback(Position r, Direction u) const;
+
+  virtual void export_to_file(const std::string& path) const;
 };
 
 } // namespace openmc

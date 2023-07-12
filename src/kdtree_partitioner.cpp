@@ -1,18 +1,31 @@
 #include "openmc/kdtree_partitioner.h"
 #include <stack>
+#include <queue>
 #include <float.h>
 
 namespace openmc {
 
-    KdTreeNode::KdTreeNode() : children(nullptr) {}
+    const uint32_t KD_TREE_LEAF_FLAG = (0b11 << 30);
 
-    bool KdTreeNode::is_leaf() const {
+    KdTreeUncompressedNode::KdTreeUncompressedNode() : children(nullptr) {}
+
+    bool KdTreeUncompressedNode::is_leaf() const {
         return (children == nullptr);
     }
 
+    bool KdTreeNode::is_leaf() const {
+        return ((data & KD_TREE_LEAF_FLAG) == KD_TREE_LEAF_FLAG);
+    }
+
+    uint32_t KdTreeNode::index() const {
+        uint32_t index = data & ~KD_TREE_LEAF_FLAG;
+        return index;
+    }
+
+
     KdTreeConstructionTask::KdTreeConstructionTask() : node(nullptr), depth(0) {}
 
-    KdTreeConstructionTask::KdTreeConstructionTask(KdTreeNode* node, const std::vector<CellPointUncompressed>& points, uint32_t depth) 
+    KdTreeConstructionTask::KdTreeConstructionTask(KdTreeUncompressedNode* node, const std::vector<CellPointUncompressed>& points, uint32_t depth) 
                             : node(node), points(points), depth(depth) {}
 
     uint32_t get_num_unique_cells(std::vector<CellPointUncompressed>& points) {
@@ -30,8 +43,8 @@ namespace openmc {
         return num_unique;
     }
 
-    void update_best_split(const KdTreeConstructionTask& parent_task, KdTreeNode best_children[2], std::vector<CellPointUncompressed> best_points[2], float& best_child_vh, int axis) {
-        KdTreeNode cur_children[2];
+    void update_best_split(const KdTreeConstructionTask& parent_task, KdTreeUncompressedNode best_children[2], std::vector<CellPointUncompressed> best_points[2], float& best_child_vh, int axis) {
+        KdTreeUncompressedNode cur_children[2];
         std::vector<CellPointUncompressed> cur_points[2];
         
         // split (code copied from octree)
@@ -88,7 +101,7 @@ namespace openmc {
         }
     }
 
-    void make_leaf(KdTreeNode& node, std::vector<CellPointUncompressed>& points) {
+    void make_leaf(KdTreeUncompressedNode& node, std::vector<CellPointUncompressed>& points) {
         node.children = nullptr;
 
         std::sort(points.begin(), points.end());
@@ -109,16 +122,24 @@ namespace openmc {
         const float half_side_length = 130.0;
         bounds.min = vec3(-half_side_length, -half_side_length, -half_side_length);
         bounds.max = vec3( half_side_length,  half_side_length,  half_side_length);
+
+        KdTreeUncompressedNode root;
         root.box = bounds;
 
         auto points_in_bounds = binned_point_search<CellPointUncompressed>(univ, fallback, bounds);
         std::cout << "Done searching points. Beginning organization of points..." << std::endl;
 
+        Timer construction_timer;
+        construction_timer.start();
+
         std::stack<KdTreeConstructionTask> unproc_nodes;
         unproc_nodes.emplace(&root, points_in_bounds, 0);
 
-        Timer construction_timer;
-        construction_timer.start();
+
+        uint32_t num_nodes = 1;
+        uint32_t num_leaves = 0;
+        
+
         while(!unproc_nodes.empty()) {
             auto task = std::move(unproc_nodes.top());
             unproc_nodes.pop();
@@ -128,7 +149,7 @@ namespace openmc {
             float parent_vh = cur->box.volume() * get_num_unique_cells(task.points);
             
 
-            KdTreeNode best_children[2];
+            KdTreeUncompressedNode best_children[2];
             std::vector<CellPointUncompressed> best_points[2];
             float best_child_vh = FLT_MAX;
             // find best split
@@ -138,7 +159,9 @@ namespace openmc {
             
             // update if needed
             if(best_child_vh < parent_vh) {
-                task.node->children = new KdTreeNode[2];
+                num_nodes += 2;
+
+                task.node->children = new KdTreeUncompressedNode[2];
                 uint32_t next_depth = task.depth + 1;
 
                 // why am I using a loop for this? I have no idea
@@ -150,14 +173,46 @@ namespace openmc {
                         unproc_nodes.emplace(&task.node->children[i], std::move(best_points[i]), next_depth);
                     } else {
                         make_leaf(task.node->children[i], best_points[i]);
+                        num_leaves++;
                     }
                 }
             } else {
                 make_leaf(*cur, task.points);
+                num_leaves++;
             }
         }
         construction_timer.stop();
         std::cout << "Kd tree construction took " << construction_timer.elapsed() << " seconds." << std::endl;
+
+        // compress
+        nodes.reserve(num_nodes);
+        cell_data.reserve(num_leaves);
+
+        std::queue<KdTreeUncompressedNode*> uncomp_nodes;
+        uncomp_nodes.push(&root);
+
+        while(!uncomp_nodes.empty()) {
+            auto& cur = *uncomp_nodes.front();
+            uncomp_nodes.pop();
+
+            // compress
+            KdTreeNode comp_node;
+            comp_node.box = cur.box;
+            if(cur.is_leaf()) {
+                comp_node.data = cell_data.size();
+                comp_node.data |= KD_TREE_LEAF_FLAG;
+
+                cell_data.push_back(std::move(cur.cells));
+            }  else {
+                comp_node.data = nodes.size() + 1 + uncomp_nodes.size();
+
+                for(int i = 0; i < 2; i++) {
+                    uncomp_nodes.push(&cur.children[i]);
+                }
+            }
+
+            nodes.push_back(comp_node);
+        }
     }
 
     // statistics
@@ -182,16 +237,17 @@ namespace openmc {
         }
         kd_tree_use_count++;
 
-        const KdTreeNode* cur = &root;
+        const KdTreeNode* cur = &nodes[0];
         while(!cur->is_leaf()) {
-            if(cur->children[0].box.contains(r)) {
-                cur = &cur->children[0];
+            auto children = &nodes[cur->index()];
+            if(children[0].box.contains(r)) {
+                cur = &children[0];
             } else {
-                cur = &cur->children[1];
+                cur = &children[1];
             }
         }
 
-        const auto& cells = cur->cells;
+        const auto& cells = cell_data[cur->index()];
         if(cells.empty()) {
             return get_cells_fallback(r, u);
         }

@@ -10,23 +10,31 @@
 
 namespace openmc {
 
-    struct KdTreeNode {
-        KdTreeNode();
+    struct KdTreeUncompressedNode {
+        KdTreeUncompressedNode();
         bool is_leaf() const;
 
         AABB box;
 
-        KdTreeNode* children;
+        KdTreeUncompressedNode* children;
         std::vector<int> cells;
     };
 
+    struct KdTreeNode {
+        AABB box;
+        uint32_t data; 
+
+        bool is_leaf() const;
+        uint32_t index() const;
+    };
+
     struct KdTreeConstructionTask {
-        KdTreeNode* node;
+        KdTreeUncompressedNode* node;
         std::vector<CellPointUncompressed> points;
         uint32_t depth;
 
         KdTreeConstructionTask();
-        KdTreeConstructionTask(KdTreeNode* node, const std::vector<CellPointUncompressed>& points, uint32_t depth);
+        KdTreeConstructionTask(KdTreeUncompressedNode* node, const std::vector<CellPointUncompressed>& points, uint32_t depth);
     };
 
     class KdTreePartitioner : public UniversePartitioner {
@@ -40,7 +48,8 @@ namespace openmc {
 
     private:
         AABB bounds;
-        KdTreeNode root;
+        std::vector<KdTreeNode> nodes;
+        std::vector<std::vector<int>> cell_data;
         ZPlanePartitioner fallback;
     };
 

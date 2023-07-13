@@ -4,8 +4,6 @@
 #include "openmc/timer.h"
 #include "openmc/error.h"
 
-double finding_time = 0.0;
-
 namespace openmc {
 
 namespace model {
@@ -40,8 +38,6 @@ void Universe::to_hdf5(hid_t universes_group) const
 
 bool Universe::find_cell(Particle& p) const
 {
-  Timer t;
-  t.start();
 
   const auto& cells {
     !partitioner_ ? cells_ : partitioner_->get_cells(p.r_local(), p.u_local())};
@@ -53,9 +49,6 @@ bool Universe::find_cell(Particle& p) const
     result = find_cell_in_list(p, partitioner_->get_cells_fallback(p.r_local(), p.u_local()));
   }
   #endif
-  
-  #pragma omp atomic update
-  finding_time += t.elapsed();
 
   return result;
 }

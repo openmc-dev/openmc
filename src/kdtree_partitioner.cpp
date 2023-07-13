@@ -329,7 +329,6 @@ namespace openmc {
         write_message("Kd-tree construction completed in " + std::to_string(construction_timer.elapsed()) + " seconds.");
     }
 
-    // statistics
     KdTreePartitioner::~KdTreePartitioner() {}
 
     //! Return the list of cells that could contain the given coordinates.

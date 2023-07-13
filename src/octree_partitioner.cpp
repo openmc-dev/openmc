@@ -571,22 +571,13 @@ namespace openmc {
         refill_information();
     }
 
-    int octree_use_count = 0;
-    int fallback_use_count = 0;
-    int oob_use_count = 0;
-    OctreePartitioner::~OctreePartitioner() {
-        write_message("In bounds calls alls to OctreePartitioner::get_cell    :\t" + std::to_string(octree_use_count), 5);
-        write_message("In bounds calls to OctreePartitioner::get_cell_fallback:\t" + std::to_string(fallback_use_count), 5);
-        write_message("Out of bounds calls to OctreePartitioner::get_cell     :\t" + std::to_string(oob_use_count), 5);
-    }
+    OctreePartitioner::~OctreePartitioner() {}
 
     const vector<int32_t>& OctreePartitioner::get_cells(Position r, Direction u) const {
         if(!bounds.contains(r)) {
             // discount this get_cells call from the stats to only focus on points within the octree
-            oob_use_count++;
             return get_cells_fallback(r, u);
         }
-        octree_use_count++;
 
         vec3 node_dim;
         for(int i = 0; i < 3; i++) {
@@ -617,7 +608,6 @@ namespace openmc {
     }
 
     const vector<int32_t>& OctreePartitioner::get_cells_fallback(Position r, Direction u) const {
-        fallback_use_count++;
         return fallback.get_cells(r, u);
     }
 

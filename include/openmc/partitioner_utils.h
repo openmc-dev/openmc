@@ -43,27 +43,27 @@ struct AABB {
 template<class NodeT, size_t NUM_CHILDREN_PER_PARENT, size_t POOL_SIZE = 16384>
 class NodeAllocator {
 public:
-  NodeAllocator() : last_pool_next_index(0) {}
-
-  ~NodeAllocator()
-  {
-    for (auto* ptr : pools) {
-      delete[] ptr;
-    }
-  }
+  NodeAllocator() : last_pool_next_index(0) { omp_init_lock(&lock); }
 
   NodeT* allocate()
   {
+    omp_set_lock(&lock);
     if (last_pool_next_index == POOL_SIZE || pools.size() == 0) {
-      pools.push_back(new NodeT[NUM_CHILDREN_PER_PARENT * POOL_SIZE]);
+      pools.push_back(
+        std::make_unique<NodeT[]>(NUM_CHILDREN_PER_PARENT * POOL_SIZE));
       last_pool_next_index = 0;
     }
 
-    return &pools.back()[NUM_CHILDREN_PER_PARENT * last_pool_next_index++];
+    auto ptr = &pools.back()[NUM_CHILDREN_PER_PARENT * last_pool_next_index++];
+    omp_unset_lock(&lock);
+
+    return ptr;
   }
 
 private:
-  std::vector<NodeT*> pools;
+  omp_lock_t lock;
+
+  std::vector<std::unique_ptr<NodeT[]>> pools;
   size_t last_pool_next_index;
 };
 

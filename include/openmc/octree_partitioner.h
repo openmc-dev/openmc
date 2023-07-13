@@ -68,8 +68,10 @@ namespace openmc {
     // fallback if octree doesn't work
     ZPlanePartitioner fallback;
 
+    // meta data, only used when exporting to file
     uint32_t num_nodes;
     uint32_t num_leaves;
+    std::vector<uint32_t> orig_size;
   };
 
 }

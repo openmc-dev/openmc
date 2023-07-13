@@ -440,7 +440,6 @@ namespace openmc {
         std::stack<OctreeUncompressedNode*> uninfo_refilled_nodes;
         uninfo_refilled_nodes.push(&root);
         while(!uninfo_refilled_nodes.empty()) {
-            break;
             auto cur = uninfo_refilled_nodes.top();
             uninfo_refilled_nodes.pop();
 
@@ -484,6 +483,7 @@ namespace openmc {
         // now copy everything to array
         nodes.reserve(num_nodes);
         cell_data.reserve(num_leaves);
+        orig_size.reserve(num_leaves);
         std::queue<const OctreeUncompressedNode*> unwritten_nodes;
         unwritten_nodes.push(&root);
         while(!unwritten_nodes.empty()) {
@@ -497,6 +497,8 @@ namespace openmc {
                 compressed.store_data(cell_data.size());
                 cell_data.push_back(std::move(cur->cells));
                 compressed.mark_as_leaf();
+
+                orig_size.push_back(cur->num_original_cells);
             } else {
                 compressed.store_data(nodes.size() + 1 + unwritten_nodes.size());
                 for(int i = 0; i < 8; i++) {
@@ -507,12 +509,12 @@ namespace openmc {
             nodes.push_back(compressed);
         }
 
-        refill_information();
-
         write_message("Octree construction completed in " + std::to_string(construction_timer.elapsed()) + " seconds.", 5);
     }  
 
     OctreePartitioner::OctreePartitioner(const Universe& univ, const std::string& path) : fallback(univ) {
+        write_message("Reading octree from " + path, 5);
+
         std::fstream octree_file(path, std::ios::in | std::ios::binary);
         #define READ_BINARY(x) octree_file.read((char*)&x, sizeof(x))
 
@@ -567,37 +569,8 @@ namespace openmc {
                 cell_data.push_back(std::move(cells));
             }
         }
-    }
 
-    void OctreePartitioner::refill_information() {
-        struct OctreeNodeExtraInfo {
-            OctreeNodeExtraInfo() : parent(nullptr), eiparent(nullptr), current(nullptr), eichildren(nullptr), children(nullptr), depth(0) {}
-
-            OctreeNode* parent;
-            OctreeNode* current;
-            OctreeNode* children;
-
-            OctreeNodeExtraInfo* eiparent;
-            OctreeNodeExtraInfo* eichildren;
-
-            std::vector<int> cells;
-
-            uint32_t depth = 0;
-        };
-
-        std::vector<OctreeNodeExtraInfo> nodes_to_propagate(nodes.size());
-        for(int i = 0; i < nodes.size(); i++) {
-            OctreeNodeExtraInfo einode;
-
-            einode.current = &nodes[i];
-            
-            if(!nodes[i].is_leaf()) {
-                int idx = nodes[i].read_data();
-                einode.children = &nodes[idx];
-                einode.eichildren = &nodes_to_propagate[idx];
-            }
-        }
-
+        refill_information();
     }
 
     int octree_use_count = 0;
@@ -652,9 +625,9 @@ namespace openmc {
 
     void OctreePartitioner::export_to_file(const std::string& path) const {
         std::vector<uint16_t> comp_cell_data;
-        for(const auto& v : cell_data) {
-            for(const auto& cell : v) {
-                comp_cell_data.push_back(cell);
+        for(int i = 0; i < cell_data.size(); i++) {
+            for(int j = 0; j < orig_size[i]; j++) {
+                comp_cell_data.push_back(cell_data[i][j]);
             }
         }
 
@@ -674,7 +647,7 @@ namespace openmc {
         for(const auto& raw_node : nodes) {
             auto node = raw_node;
             if(node.is_leaf()) {
-                node.store_data(cell_data[node.read_data()].size());
+                node.store_data(orig_size[node.read_data()]);
             }
             WRITE_BINARY(node);
         }    
@@ -686,6 +659,132 @@ namespace openmc {
         }
 
         write_message("Exported octree to " + path, 5);
+    }
+
+    // this method works on the compressed octree, not hte uncompressed one
+    // since it is pretty slow (and for some reason creates an octree that has the same failure rate but is slower), 
+    // only use it if you are reading from a file
+    void OctreePartitioner::refill_information() {
+        struct OctreeNodeExtraInfo {
+            OctreeNodeExtraInfo() : parent(nullptr), eiparent(nullptr), current(nullptr), eichildren(nullptr), children(nullptr), depth(0) {}
+
+            OctreeNode* parent;
+            OctreeNode* current;
+            OctreeNode* children;
+
+            OctreeNodeExtraInfo* eiparent;
+            OctreeNodeExtraInfo* eichildren;
+
+            std::vector<int> cells;
+
+            uint32_t depth = 0;
+
+            bool is_leaf() const {
+                return (children != nullptr);
+            }
+        };
+
+        // make our nodes easier to work with
+        std::vector<OctreeNodeExtraInfo> einodes(nodes.size());
+        std::vector<OctreeNodeExtraInfo*> nodes_to_propagate(nodes.size());
+        for(int i = 0; i < nodes.size(); i++) {
+            OctreeNodeExtraInfo* einode = &einodes[i];
+            nodes_to_propagate[i] = einode;
+
+            einode->current = &nodes[i];
+            
+            if(!nodes[i].is_leaf()) {
+                int idx = nodes[i].read_data();
+                einode->children = &nodes[idx];
+                einode->eichildren = &einodes[idx];
+
+                for(int i = 0; i < 8; i++) {
+                    einode->eichildren[i].parent = einode->current;
+                    einode->eichildren[i].eiparent = einode;
+                    einode->eichildren[i].depth = einode->depth + 1;
+                }
+            } else {
+                einode->cells = std::move(cell_data[nodes[i].read_data()]);
+            }
+        }
+
+        // propagate all cells forward
+        struct DepthComp {
+            inline bool operator()(const OctreeNodeExtraInfo* lhs, const OctreeNodeExtraInfo* rhs) const {
+                return (lhs->depth < rhs->depth);
+            }
+        };
+        std::sort(nodes_to_propagate.rbegin(), nodes_to_propagate.rend(), DepthComp());
+        for(auto ptr : nodes_to_propagate) {
+            auto& cur = *ptr;
+            if(!cur.is_leaf()) {
+                std::sort(cur.cells.begin(), cur.cells.end());
+
+                int prev_cell = cur.cells[0];
+
+                int next_idx = 1;
+                for(int i = 1; i < cur.cells.size(); i++) {
+                    if(cur.cells[i] != prev_cell) {
+                        cur.cells[next_idx] = cur.cells[i];
+                        next_idx++;
+                        prev_cell = cur.cells[i];
+                    }
+                }
+                cur.cells.resize(next_idx);
+                cur.cells.shrink_to_fit();
+            }
+
+            if(cur.parent) {
+                for(int cell : cur.cells) {
+                    cur.eiparent->cells.push_back(cell);
+                }
+            }
+        }
+
+        // now propagate all cells downward
+        std::stack<OctreeNodeExtraInfo*> uninfo_refilled_nodes;
+        uninfo_refilled_nodes.push(nodes_to_propagate.back());
+        while(!uninfo_refilled_nodes.empty()) {
+            auto cur = uninfo_refilled_nodes.top();
+            uninfo_refilled_nodes.pop();
+
+            bool should_collect_leaves = false;
+            for(int i = 0; i < 8; i++) {
+                if(cur->children[i].is_leaf()) {
+                    should_collect_leaves = true;
+                    break;
+                }
+            }
+            
+            auto collection_start = cur;
+            for(int i = 0; i < INFORMATION_REFILLING_START_DEPTH_OFFSET; i++) {
+                if(collection_start->parent) {
+                    collection_start = collection_start->eiparent;
+                }
+            }
+            
+
+            const auto& unique_cells = collection_start->cells;
+
+            for(int i = 0; i < 8; i++) {
+                if(cur->children[i].is_leaf()) {
+                    int orig_size = cur->eichildren[i].cells.size();
+
+                    auto search_start = cur->eichildren[i].cells.begin();
+                    auto search_end   = cur->eichildren[i].cells.begin() + orig_size;
+
+                    for(int cell : unique_cells) {
+                        if(!std::binary_search(search_start, search_end, cell)) {
+                            cur->eichildren[i].cells.push_back(cell);
+                        }
+                    }
+                    // now that downpropagation is done for this node, update cell_data
+                    cell_data[cur->eichildren[i].current->read_data()] = std::move(cur->eichildren[i].cells);
+                } else {
+                    uninfo_refilled_nodes.push(&cur->eichildren[i]);
+                }
+            }
+        }
     }
 
 }

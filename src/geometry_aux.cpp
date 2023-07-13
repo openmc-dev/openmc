@@ -173,7 +173,7 @@ void partition_universes()
         if (dynamic_cast<const SurfaceZPlane*>(model::surfaces[i_surf].get())) {
           ++n_zplanes;
           if (n_zplanes > 5) {
-            #if 1
+            #if 0
             univ->partitioner_ = make_unique<DefaultPartitioner>(*univ);
             univ->partitioner_->export_to_file("partitioner.omcp");
             #else

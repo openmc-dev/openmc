@@ -573,22 +573,21 @@ def pin(surfaces, items, subdivisions=None, divide_vols=True,
 
 def pin_radial_azimuthal(surfaces, items, subdivisions_r=None, subdivisions_a=None, rad_div_types=None, implicit_azi_div=None,
         **kwargs):
-    """Convenience function for building a fuel pin.
+    """Convenience function for building a fuel pin that is subdivided radially and azimuthally.
+    
     Modeling a fuel pin as an iterable of Cylinders, 
-    this function allows the user to subdivide each ring in the fuel pin 
+    this function allows the user to subdivide each region in the fuel pin 
     radially and azimuthally using the respective subdivisions dictionaries.
+    
     The type of radial subdivison can be set to either equal area or equal radius
     divisions using the rad_div_types dictionary.
-    The radial subdivisions adds more Cylinders to the 'surfaces' iterable, while the
-    azimuthal subdivisions utilizes CylinderSectors.
-
-    New surfaces that are created will be filled with the same material that filled
-    the surface before being subdivided.
     
-    The 'subdivide' function is used to create the regions in the universe.
-    The final region is everything outside the last Cylinder and will be referred to
-    as the implicit outer region. This implicit region is not subdivided by default
-    but can be azimuthally subdivided using the implicit_azi_div variable.
+    New regions that are created will be filled with the same material that filled
+    the region before being subdivided.
+    
+    An implicit complement region is defined to contain everything outside the 
+    outermost cylinder. The implicit complement region can be subdivided azimuthally 
+    but not radially.
 
 
     Parameters

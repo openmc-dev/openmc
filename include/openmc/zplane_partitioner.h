@@ -1,5 +1,5 @@
-#ifndef ZPLANE_PARTITIONER_H
-#define ZPLANE_PARTITIONER_H
+#ifndef OPENMC_ZPLANE_PARTITIONER_H
+#define OPENMC_ZPLANE_PARTITIONER_H
 
 #include "universe.h"
 #include <vector>
@@ -33,4 +33,4 @@ private:
 
 }
 
-#endif
+#endif // OPENMC_ZPLANE_PARTITIONER_H

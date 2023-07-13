@@ -1,5 +1,5 @@
-#ifndef KDTREE_PARTITIONER_H
-#define KDTREE_PARTITIONER_H
+#ifndef OPENMC_KDTREE_PARTITIONER_H
+#define OPENMC_KDTREE_PARTITIONER_H
 
 #include "universe.h"
 #include "zplane_partitioner.h"
@@ -57,4 +57,4 @@ namespace openmc {
 
 };
 
-#endif
+#endif // OPENMC_KDTREE_PARTITIONER_H

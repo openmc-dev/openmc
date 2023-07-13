@@ -3,7 +3,6 @@
 #include <float.h>
 #include <algorithm>
 
-
 namespace openmc {
 
     const int32_t CELL_POINT_COMPRESSION_MAX_DEPTH = 15;

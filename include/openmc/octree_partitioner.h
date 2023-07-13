@@ -1,5 +1,5 @@
-#ifndef OCTREE_PARTITIONER_H
-#define OCTREE_PARTITIONER_H
+#ifndef OPENMC_OCTREE_PARTITIONER_H
+#define OPENMC_OCTREE_PARTITIONER_H
 
 #include "universe.h"
 #include "zplane_partitioner.h"
@@ -76,4 +76,4 @@ namespace openmc {
 
 }
 
-#endif
+#endif // OPENMC_OCTREE_PARTITIONER_H

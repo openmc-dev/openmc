@@ -1,5 +1,5 @@
-#ifndef BINNING_H
-#define BINNING_H
+#ifndef OPENMC_PARTITIONER_UTILS_H
+#define OPENMC_PARTITIONER_UTILS_H
 
 #include "universe.h"
 #include "position.h"
@@ -293,4 +293,4 @@ namespace openmc {
 
 };
 
-#endif
+#endif // OPENMC_PARTITIONER_UTILS_H

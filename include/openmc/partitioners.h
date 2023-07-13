@@ -14,7 +14,7 @@
 
 namespace openmc {
 
-using DefaultPartitioner = KdTreePartitioner;
+using DefaultPartitioner = OctreePartitioner;
 }
 
 #endif

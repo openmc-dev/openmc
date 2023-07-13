@@ -88,7 +88,7 @@ private:
 };
 
 // When building an octree or kd-tree, we first need to sample random points
-// within the universe to determine where the universe's cells are This struct
+// within the universe to determine where the universe's cells are. This struct
 // is used for that task - it contains the position we sample inside the
 // universe and cell we found
 struct CellPointUncompressed {
@@ -105,12 +105,12 @@ struct CellPointUncompressed {
   operator int() const;
 };
 
-// This is an octree-specific struct
-// The uncompressed node takes up a lot of memory for a position variable
+// This is an octree-specific struct.
+// The uncompressed node takes up a lot of memory for a position variable.
 // We often need to quickly iterate through arrays of millions of points, so
-// this is bad For octrees, we can observe we only use the position to determine
-// which child node the point goes into We can actually determine which child
-// node indicies a point will go into for each depth ahead of time We can use
+// this is bad For octrees. We can observe we only use the position to determine
+// which child node the point goes into. We can actually determine which child
+// node indicies a point will go into for each depth ahead of time. We can use
 // this to our advantage and only store those indicies as 3 bit values in an 64
 // bit integer I allocate the least signficant 45 bits to this information (15
 // depths) The remaining 19 bits are dedicated to the cell ID

@@ -9,7 +9,12 @@
 
 namespace openmc {
 
-// this contains the bare minimum for traversal
+// This struct contains the bare minimum information for traversal
+// A leaf flag is stored in the 32nd bit
+// The remaining 31 bits are dedicated to parent or node specfic information
+// In the case of a parent, it stores the index of the first child node in the
+// node array In the case of a leaf, it stores the index of the cell list in the
+// cell_list_ array
 struct OctreeNode {
 public:
   OctreeNode();
@@ -26,6 +31,8 @@ private:
   uint32_t data;
 };
 
+// This struct contains extra information about a node that is not needed for
+// traversal
 struct OctreeUncompressedNode {
   OctreeUncompressedNode();
 

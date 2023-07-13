@@ -79,13 +79,13 @@ double generate_split(
   KdTreeUncompressedNode& parent, KdTreeUncompressedNode children[2], int axis)
 {
   // Calculate the midpoint, this will be where we split
-  double midpoint = (parent.box_.max[axis] + parent.box_.min[axis]) * 0.5;
+  double midpoint = (parent.box_.max_[axis] + parent.box_.min_[axis]) * 0.5;
 
   // Create temporary children and assign them split boxes
   children[0].box_ = parent.box_;
   children[1].box_ = parent.box_;
-  children[0].box_.max[axis] = midpoint;
-  children[1].box_.min[axis] = midpoint;
+  children[0].box_.max_[axis] = midpoint;
+  children[1].box_.min_[axis] = midpoint;
 
   return midpoint;
 }
@@ -108,10 +108,10 @@ void search_best_median_split(KdTreeUncompressedNode& parent,
 
   // Copy over points to each temporary child node
   for (const auto& p : parent.points_) {
-    if (p.pos[axis] < midpoint) {
-      temp_children[0].cells_.push_back(p.cell);
+    if (p.pos_[axis] < midpoint) {
+      temp_children[0].cells_.push_back(p.cell_);
     } else {
-      temp_children[1].cells_.push_back(p.cell);
+      temp_children[1].cells_.push_back(p.cell_);
     }
   }
 
@@ -149,9 +149,9 @@ KdTreePartitioner::KdTreePartitioner(const Universe& univ, uint32_t max_depth)
 
   // Init our bounds
   constexpr double half_side_length = 130.0;
-  bounds_.min =
+  bounds_.min_ =
     Position(-half_side_length, -half_side_length, -half_side_length);
-  bounds_.max = Position(half_side_length, half_side_length, half_side_length);
+  bounds_.max_ = Position(half_side_length, half_side_length, half_side_length);
 
   // Initialize our root
   KdTreeUncompressedNode root;
@@ -219,7 +219,7 @@ KdTreePartitioner::KdTreePartitioner(const Universe& univ, uint32_t max_depth)
       } else {
         // We need to copy over the points to their respective cell
         for (const auto& p : cur.points_) {
-          if (p.pos[cur.split_axis_] < cur.split_location_) {
+          if (p.pos_[cur.split_axis_] < cur.split_location_) {
             cur.children_[0].points_.push_back(p);
           } else {
             cur.children_[1].points_.push_back(p);

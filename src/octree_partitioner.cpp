@@ -89,8 +89,8 @@ void OctreeUncompressedNode::subdivide()
 
       AABB splitted_boxes[2] {resultant_boxes[idx], resultant_boxes[idx]};
 
-      splitted_boxes[0].max[i] = midpoint;
-      splitted_boxes[1].min[i] = midpoint;
+      splitted_boxes[0].max_[i] = midpoint;
+      splitted_boxes[1].min_[i] = midpoint;
 
       temp_box_buffer[next_index++] = splitted_boxes[1];
       temp_box_buffer[next_index++] = splitted_boxes[0];
@@ -149,26 +149,26 @@ void refine_octree_random(const Universe& univ,
 
   Position prob_bin_dim;
   for (int i = 0; i < 3; i++) {
-    prob_bin_dim[i] = (bounds.max[i] - bounds.min[i]) / REFINEMENT_GRID_RES;
+    prob_bin_dim[i] = (bounds.max_[i] - bounds.min_[i]) / REFINEMENT_GRID_RES;
   }
 
   for (auto leaf : leaves) {
     int idx = 0;
     for (int i = 0; i < 3; i++) {
       idx = REFINEMENT_GRID_RES * idx +
-            int((leaf->box.get_center()[i] - bounds.min[i]) / prob_bin_dim[i]);
+            int((leaf->box.get_center()[i] - bounds.min_[i]) / prob_bin_dim[i]);
     }
 
     omp_lock_t dummy;
-    prob_bin_grid[idx].contained_nodes.emplace_back(leaf, dummy);
+    prob_bin_grid[idx].contained_nodes_.emplace_back(leaf, dummy);
     for (int cell : leaf->cells) {
-      prob_bin_grid[idx].found_cells.push_back(cell);
+      prob_bin_grid[idx].found_cells_.push_back(cell);
     }
   }
 
   for (auto& prob_bin : prob_bin_grid) {
     prob_bin.update_common_cells();
-    for (auto& p : prob_bin.contained_nodes) {
+    for (auto& p : prob_bin.contained_nodes_) {
       omp_init_lock(&p.second);
     }
   }
@@ -218,43 +218,44 @@ void refine_octree_random(const Universe& univ,
           }
 
           prob_bin = &prob_bin_grid[bin_idx];
-        } while (prob_bin->contained_nodes.size() == 0);
-        prob_bin->num_searched++;
+        } while (prob_bin->contained_nodes_.size() == 0);
+        prob_bin->num_searched_++;
 
         size_t idx = prob_bin->pick_node(&rng_node_selec[tid][1]);
-        if (idx >= prob_bin->contained_nodes.size()) {
-          idx = prob_bin->contained_nodes.size() - 1;
+        if (idx >= prob_bin->contained_nodes_.size()) {
+          idx = prob_bin->contained_nodes_.size() - 1;
         }
 
-        OctreeUncompressedNode* current = prob_bin->contained_nodes[idx].first;
-        omp_lock_t* cell_lock = &prob_bin->contained_nodes[idx].second;
+        OctreeUncompressedNode* current = prob_bin->contained_nodes_[idx].first;
+        omp_lock_t* cell_lock = &prob_bin->contained_nodes_[idx].second;
 
         CellPointUncompressed point;
         for (int i = 0; i < 3; i++) {
-          point.pos[i] = uniform_distribution(
-            current->box.min[i], current->box.max[i], &rng_pos[tid][i]);
+          point.pos_[i] = uniform_distribution(
+            current->box.min_[i], current->box.max_[i], &rng_pos[tid][i]);
         }
 
         omp_set_lock(cell_lock);
-        point.cell = univ.find_cell_for_point(current->cells, point.pos);
+        point.cell_ = univ.find_cell_for_point(current->cells, point.pos_);
         omp_unset_lock(cell_lock);
 
-        if (point.cell == -1) {
-          prob_bin->num_found++;
+        if (point.cell_ == -1) {
+          prob_bin->num_found_++;
 
           omp_set_lock(cell_lock);
           pick_untested_cells(
-            current->cells, prob_bin->common_cells, untested_cells);
+            current->cells, prob_bin->common_cells_, untested_cells);
           omp_unset_lock(cell_lock);
 
-          point.cell = univ.find_cell_for_point(untested_cells, point.pos);
-          if (point.cell == -1) {
-            point.cell =
-              univ.find_cell_for_point(current->parent->cells, point.pos);
+          point.cell_ = univ.find_cell_for_point(untested_cells, point.pos_);
+          if (point.cell_ == -1) {
+            point.cell_ =
+              univ.find_cell_for_point(current->parent->cells, point.pos_);
 
-            if (point.cell == -1) {
+            if (point.cell_ == -1) {
               Direction dummy {0, 0, 1};
-              const auto& possible_cells = fallback.get_cells(point.pos, dummy);
+              const auto& possible_cells =
+                fallback.get_cells(point.pos_, dummy);
 
               pick_untested_cells(untested_cells, possible_cells, temp_buf);
 
@@ -262,21 +263,22 @@ void refine_octree_random(const Universe& univ,
               pick_untested_cells(current->cells, temp_buf, untested_cells);
               omp_unset_lock(cell_lock);
 
-              point.cell = univ.find_cell_for_point(untested_cells, point.pos);
+              point.cell_ =
+                univ.find_cell_for_point(untested_cells, point.pos_);
 
               // very rarely, even the fallback misses a cell
               // we need to do an exhaustive search or the program will segfault
-              if (point.cell == -1) {
-                point.cell = univ.find_cell_for_point(univ.cells_, point.pos);
+              if (point.cell_ == -1) {
+                point.cell_ = univ.find_cell_for_point(univ.cells_, point.pos_);
               }
             }
 
-            prob_bin->add_cell(point.cell);
+            prob_bin->add_cell(point.cell_);
           }
 
           omp_set_lock(cell_lock);
           // insertion sort
-          current->cells.push_back(point.cell);
+          current->cells.push_back(point.cell_);
           for (int i = current->cells.size() - 1; i > 0; i--) {
             if (current->cells[i] < current->cells[i - 1]) {
               std::swap(current->cells[i], current->cells[i - 1]);
@@ -295,9 +297,9 @@ OctreePartitioner::OctreePartitioner(
   : fallback(univ)
 {
   const double half_side_length = 130.0;
-  bounds.min =
+  bounds.min_ =
     Position(-half_side_length, -half_side_length, -half_side_length);
-  bounds.max = Position(half_side_length, half_side_length, half_side_length);
+  bounds.max_ = Position(half_side_length, half_side_length, half_side_length);
 
   if (univ.cells_.size() <= target_cells_per_node) {
     warning("Universe has only " + std::to_string(univ.cells_.size()) +
@@ -620,7 +622,7 @@ const vector<int32_t>& OctreePartitioner::get_cells(
 
   Position node_dim;
   for (int i = 0; i < 3; i++) {
-    node_dim[i] = (bounds.max[i] - bounds.min[i]) * 0.5;
+    node_dim[i] = (bounds.max_[i] - bounds.min_[i]) * 0.5;
   }
 
   Position center = bounds.get_center();

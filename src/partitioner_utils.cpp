@@ -4,8 +4,7 @@
 
 namespace openmc {
 
-const int32_t CELL_POINT_COMPRESSION_MAX_DEPTH = 15;
-
+// Take the minimum of two vectors
 inline Position vmin(Position lhs, Position rhs)
 {
   Position res;
@@ -15,6 +14,7 @@ inline Position vmin(Position lhs, Position rhs)
   return res;
 }
 
+// Take the maximum of two vectors
 inline Position vmax(Position lhs, Position rhs)
 {
   Position res;
@@ -24,11 +24,15 @@ inline Position vmax(Position lhs, Position rhs)
   return res;
 }
 
-AABB::AABB() : min(DBL_MAX, DBL_MAX, DBL_MAX), max(-DBL_MAX, -DBL_MAX, -DBL_MAX)
+// Initialize
+AABB::AABB()
+  : min_(DBL_MAX, DBL_MAX, DBL_MAX), max_(-DBL_MAX, -DBL_MAX, -DBL_MAX)
 {}
 
-AABB::AABB(const Position& mi, const Position& ma) : min(mi), max(ma) {}
+// Initialize
+AABB::AABB(const Position& mi, const Position& ma) : min_(mi), max_(ma) {}
 
+// Set everything to infinity
 void AABB::reset()
 {
   AABB clear;
@@ -37,12 +41,12 @@ void AABB::reset()
 
 void AABB::extend_max(const Position& val)
 {
-  max = vmax(max, val);
+  max_ = vmax(max_, val);
 }
 
 void AABB::extend_min(const Position& val)
 {
-  min = vmin(min, val);
+  min_ = vmin(min_, val);
 }
 
 void AABB::extend(const Position& pos)
@@ -53,7 +57,7 @@ void AABB::extend(const Position& pos)
 
 double AABB::surface_area() const
 {
-  Position side_lengths = max - min;
+  Position side_lengths = max_ - min_;
 
   return 2 * (side_lengths.x * (side_lengths.y + side_lengths.z) +
                side_lengths.y * side_lengths.z);
@@ -61,32 +65,32 @@ double AABB::surface_area() const
 
 double AABB::volume() const
 {
-  Position side_lengths = max - min;
+  Position side_lengths = max_ - min_;
   return side_lengths.x * side_lengths.y * side_lengths.z;
 }
 
 void AABB::extend(const AABB& other_box)
 {
-  extend_max(other_box.max);
-  extend_min(other_box.min);
+  extend_max(other_box.max_);
+  extend_min(other_box.min_);
 }
 
 Position AABB::get_center() const
 {
-  return (min + max) * 0.5f;
+  return (min_ + max_) * 0.5f;
 }
 
 bool AABB::contains(const Position& pos) const
 {
-  return (min.x <= pos.x && min.y <= pos.y && min.z <= pos.z &&
-          max.x >= pos.x && max.y >= pos.y && max.z >= pos.z);
+  return (min_.x <= pos.x && min_.y <= pos.y && min_.z <= pos.z &&
+          max_.x >= pos.x && max_.y >= pos.y && max_.z >= pos.z);
 }
 
 bool AABB::operator==(const AABB& other) const
 {
-  return (min.x == other.min.x && min.y == other.min.y &&
-          min.z == other.min.z && max.x == other.max.x &&
-          max.y == other.max.y && max.z == other.max.z);
+  return (min_.x == other.min_.x && min_.y == other.min_.y &&
+          min_.z == other.min_.z && max_.x == other.max_.x &&
+          max_.y == other.max_.y && max_.z == other.max_.z);
 }
 
 bool AABB::operator!=(const AABB& other) const
@@ -94,73 +98,96 @@ bool AABB::operator!=(const AABB& other) const
   return !(*this == other);
 }
 
+// Compare by cell IDs
 bool CellPointUncompressed::operator<(const CellPointUncompressed& other) const
 {
-  return (cell < other.cell);
+  return (cell_ < other.cell_);
 }
 
+// Implicit conversion to int
 CellPointUncompressed::operator int() const
 {
-  return cell;
+  return cell_;
 }
 
+// Store octree child information for only 15 depths (45 bits)
+constexpr int32_t CELL_POINT_COMPRESSION_MAX_DEPTH = 15;
+
+// Extract the cell ID
 int CellPoint::get_cell() const
 {
-  uint64_t index = (data >> (3 * CELL_POINT_COMPRESSION_MAX_DEPTH));
+  uint64_t index = (data_ >> (3 * CELL_POINT_COMPRESSION_MAX_DEPTH));
   return (int)index;
 }
 
+// Extract the child index for a particular depth
 int CellPoint::get_child_index(int depth) const
 {
-  uint64_t index = ((data >> (3 * depth)) & 0b111);
+  uint64_t index = ((data_ >> (3 * depth)) & 0b111);
   return (int)index;
 }
 
+// Pack an uncompressed cell
 void CellPoint::compress_from(
   const CellPointUncompressed& uncomp, const AABB& bounds)
 {
-  data = 0;
+  // Clear data
+  data_ = 0;
 
+  // Initialize variables for our encoding loop
   Position node_dim;
   for (int i = 0; i < 3; i++) {
-    node_dim[i] = (bounds.max[i] - bounds.min[i]) * 0.5;
+    node_dim[i] = (bounds.max_[i] - bounds.min_[i]) * 0.5;
   }
 
+  // Go through each depth and find what child index we would pick
+  // center stores the center of the parent node, starting at the root's center,
+  // which is the middle of the bounding box Over time, we update center to find
+  // out center of the child node this point would go into
   Position center = bounds.get_center();
-
   for (int i = 0; i < CELL_POINT_COMPRESSION_MAX_DEPTH; i++) {
-    // halve the node dim
+    // idx is what child index we would pick
     uint64_t idx = 0;
+
     for (int i = 0; i < 3; i++) {
+      // Determine where the point lies relative to the current parent node
+      bool less = (uncomp.pos_[i] < center[i]);
+
+      // Update next center location accordingly
       node_dim[i] *= 0.5;
-      bool less = (uncomp.pos[i] < center[i]);
       center[i] += node_dim[i] * (less ? -1 : 1);
+
+      // Update child index according
       idx = 2 * idx + int(less);
     }
 
-    idx = (idx << (3 * i));
-    data |= idx;
+    // Store the index in our data
+    data_ |= (idx << (3 * i));
   }
 
-  uint64_t cell_comp = uncomp.cell;
-  cell_comp = (cell_comp << (3 * CELL_POINT_COMPRESSION_MAX_DEPTH));
-  data |= cell_comp;
+  // Move our cell ID ahead of the bits used to encode the child index
+  // information
+  data_ |= (static_cast<uint64_t>(uncomp.cell_)
+            << (3 * CELL_POINT_COMPRESSION_MAX_DEPTH));
 }
 
+// Compare by cell IDs
 bool CellPoint::operator<(const CellPoint& other) const
 {
   return (get_cell() < other.get_cell());
 }
 
+// Implicit conversion to int
 CellPoint::operator int() const
 {
   return get_cell();
 }
 
-Bin::Bin() : num_unique_cells(0), prev_cell_count(0)
+// Initialize some variables and reserve memory
+Bin::Bin() : num_sorted_cells_(0), prev_cell_count_(0)
 {
-  omp_init_lock(&lock);
-  cells.reserve(512);
+  omp_init_lock(&lock_);
+  cells_.reserve(512);
 }
 
 void Bin::insert(int cell)
@@ -172,86 +199,93 @@ void Bin::insert(int cell)
 
 void Bin::insert_lockless(int cell)
 {
-  cells.push_back(cell);
-  if (cells.size() == cells.capacity()) {
-    int cur_size = cells.size();
+  cells_.push_back(cell);
+  if (cells_.size() == cells_.capacity()) {
+    int cur_size = cells_.size();
 
     make_cells_unique();
 
-    int size_saving = cur_size - cells.size();
+    int size_saving = cur_size - cells_.size();
     if (size_saving < (int)(0.25 * cur_size)) {
-      cells.reserve(2 * cells.capacity());
+      cells_.reserve(2 * cells_.capacity());
     }
   }
 }
 
 void Bin::sort_cells()
 {
-  std::sort(cells.begin(), cells.end());
+  std::sort(cells_.begin(), cells_.end());
 }
 
 void Bin::make_cells_unique()
 {
+  // First sort the cells
   sort_cells();
+  // Compare adjacent cell IDs to find the unique ones and replace the common
+  // ones in place
   int i = 0, j = 1;
-  while (j < cells.size()) {
-    if (cells[j] != cells[i]) {
+  while (j < cells_.size()) {
+    if (cells_[j] != cells_[i]) {
       i++;
-      cells[i] = cells[j];
+      cells_[i] = cells_[j];
     }
     j++;
   }
-  cells.resize(i + 1);
-  num_unique_cells = cells.size();
+  // Make the size smaller so the vector only consists of unique cells
+  cells_.resize(i + 1);
 }
 
-int Bin::size() const
+double Bin::compute_score(int iteration)
 {
-  return std::max(cells.size(), (size_t)1);
-}
+  // The score we return at the end
+  double score;
 
-int Bin::unique_size() const
-{
-  return num_unique_cells;
-}
-
-double Bin::score(int iteration)
-{
-  double val;
-
+  // we use max here to prevent cases where we don't sample a bin at all
+  size_t bounded_size = std::max(cells_.size(), static_cast<size_t>(1));
   if (iteration == 0) {
-    val = 1.0;
+    // In the start, we don't know anything about the density of unique cells
+    // Let's sample everything uniformly
+    score = 1.0;
   } else if (iteration == 1) {
-    val = (double)size();
+    // We know some information about the scene, so let's set the score to how
+    // many unique cells there are
+    score = (double)bounded_size;
   } else {
-    const double alpha = 0.1;
+    // Since there have been quite a few iterations, now we can incorporate how
+    // many new cells we are finding in a particular bin into the mix If we have
+    // exhausted most cells in a particular bin, then we can slighly discourage
+    // from resampling it again If we are making many discoveries in another
+    // bin, we can put more sampling effort towards it
+    constexpr double alpha = 0.1;
 
-    double size_score = size();
-    double cell_increase_score = double(cells.size()) / prev_cell_count;
+    double size_score = bounded_size;
+    double cell_increase_score = double(cells_.size()) / prev_cell_count_;
 
-    val = alpha * cell_increase_score + (1 - alpha) * size_score;
+    score = alpha * cell_increase_score + (1 - alpha) * size_score;
   }
 
   // do stuff here to update for the next scoring cycle
-  prev_cell_count = size();
+  prev_cell_count_ = bounded_size;
 
-  return val;
+  return score;
 }
 
 const std::vector<int>& Bin::get_cells() const
 {
-  return cells;
+  return cells_;
 }
 
+// assumes that cells are already sorted
 void Bin::copy_untested_cells(
   const std::vector<int>& possible_cells, std::vector<int>& untested_cells)
 {
   untested_cells.clear();
 
   lock_bin();
+  // Copy over the cells that are not in the vector
   for (int cell : possible_cells) {
     if (!std::binary_search(
-          cells.begin(), cells.begin() + num_unique_cells, cell)) {
+          cells_.begin(), cells_.begin() + num_sorted_cells_, cell)) {
       untested_cells.push_back(cell);
     }
   }
@@ -259,11 +293,12 @@ void Bin::copy_untested_cells(
 }
 void Bin::lock_bin()
 {
-  omp_set_lock(&lock);
+  omp_set_lock(&lock_);
 }
 
 void Bin::unlock_bin()
 {
-  omp_unset_lock(&lock);
+  omp_unset_lock(&lock_);
 }
+
 }; // namespace openmc

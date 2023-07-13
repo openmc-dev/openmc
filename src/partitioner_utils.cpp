@@ -14,7 +14,7 @@ inline vec3 vmin(vec3 lhs, vec3 rhs)
   res.y = std::min(lhs.y, rhs.y);
   res.z = std::min(lhs.z, rhs.z);
   return res;
-    }
+}
 
     inline vec3 vmax(vec3 lhs, vec3 rhs) {
         vec3 res;
@@ -237,5 +237,4 @@ inline vec3 vmin(vec3 lhs, vec3 rhs)
     void Bin::unlock_bin() {
         omp_unset_lock(&lock);
     }
-
 };

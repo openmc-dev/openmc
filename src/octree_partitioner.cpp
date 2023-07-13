@@ -618,7 +618,7 @@ namespace openmc {
                 comp_cell_data.push_back(cell_data[i][j]);
             }
         }
- 
+
         std::fstream octree_file(path, std::ios::out | std::ios::binary);
 
         #define WRITE_BINARY(x) octree_file.write((char*)&x, sizeof(x))

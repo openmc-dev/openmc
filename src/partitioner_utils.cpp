@@ -5,15 +5,16 @@
 
 namespace openmc {
 
-    const int32_t CELL_POINT_COMPRESSION_MAX_DEPTH = 15; 
- 
-    inline vec3 vmin(vec3 lhs, vec3 rhs) {
-        vec3 res;    
-        res.x = std::min(lhs.x, rhs.x);
-        res.y = std::min(lhs.y, rhs.y);
-        res.z = std::min(lhs.z, rhs.z);
-        return res;
-    }
+const int32_t CELL_POINT_COMPRESSION_MAX_DEPTH = 15;
+
+inline vec3 vmin(vec3 lhs, vec3 rhs)
+{
+  vec3 res;
+  res.x = std::min(lhs.x, rhs.x);
+  res.y = std::min(lhs.y, rhs.y);
+  res.z = std::min(lhs.z, rhs.z);
+  return res;
+}
 
     inline vec3 vmax(vec3 lhs, vec3 rhs) {
         vec3 res;
@@ -236,5 +237,4 @@ namespace openmc {
     void Bin::unlock_bin() {
         omp_unset_lock(&lock);
     }
-
 };

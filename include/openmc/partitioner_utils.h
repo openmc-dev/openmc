@@ -2,7 +2,7 @@
 #define BINNING_H
 
 #include "universe.h"
-#include "aabb.h"
+#include "position.h"
 #include "timer.h"
 #include "random_dist.h"
 
@@ -11,6 +11,33 @@
 #include <set>
 
 namespace openmc {
+
+    using vec3 = Position;
+
+    // This axis-aligned bounding box class (AABB) is designed to work easier with partitioners than openmc::BoundingBox
+    struct AABB {
+        AABB();
+        AABB(const vec3& mi, const vec3& ma);
+
+        void extend_max(const vec3& val);
+        void extend_min(const vec3& val);
+
+        void extend(const vec3& pos);
+        void extend(const AABB& other_box);
+
+        vec3 get_center() const;
+        float surface_area() const;
+        float volume() const;
+        bool contains(const vec3& pos) const;
+
+        void reset();
+
+        bool operator==(const AABB& other) const;
+        bool operator!=(const AABB& other) const;
+
+        vec3 min;
+        vec3 max;
+    };
 
     template<class NodeT, size_t NUM_CHILDREN_PER_PARENT, size_t POOL_SIZE=16384>
     class NodeAllocator {

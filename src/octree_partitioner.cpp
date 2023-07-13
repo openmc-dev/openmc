@@ -1,8 +1,6 @@
 #include "openmc/octree_partitioner.h"
-#include "openmc/aabb.h"
 #include "openmc/random_dist.h"
 #include "openmc/timer.h"
-#include "openmc/partitioner_utils.h"
 #include "openmc/error.h"
 
 #include <omp.h>

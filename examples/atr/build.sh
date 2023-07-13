@@ -1,1 +1,0 @@
-g++ vtune_exec.cpp -o vtune_exec

@@ -8,8 +8,8 @@ The next value is another 32-bit integer, this time denoting what partitioner is
 ```c
 enum OMCPStructureType {
     Octree = 1,
-    KdTree = 2,               // not yet implemented in OMCP
-    ZPlanePartitioner = 3,    // not yet implemented in OMCP
+    KdTree = 2,               // not implemented in OMCP 1.0.0
+    ZPlanePartitioner = 3,    // not implemented in OMCP 1.0.0
 };
 ```
 
@@ -29,9 +29,9 @@ Here is a rough diagram of what the octree looks like in the file:
 
 The bounds have the following layout on disk:
 ```cpp
-// include/openmc/AABB.h
+// include/openmc/partioner_utils.h
 struct AABB {
-    Position min;
+  Position min;
 	Position max;
 };
 

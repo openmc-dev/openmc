@@ -2,8 +2,8 @@
 #define OCTREE_PARTITIONER_H
 
 #include "universe.h"
-#include "aabb.h"
 #include "zplane_partitioner.h"
+#include "partitioner_utils.h"
 #include <vector>
 #include <set>
 

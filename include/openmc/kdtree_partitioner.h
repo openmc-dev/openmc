@@ -2,7 +2,6 @@
 #define KDTREE_PARTITIONER_H
 
 #include "universe.h"
-#include "aabb.h"
 #include "zplane_partitioner.h"
 #include "octree_partitioner.h"
 #include "partitioner_utils.h"

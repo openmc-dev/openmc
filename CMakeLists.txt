@@ -332,7 +332,6 @@ endif()
 #===============================================================================
 
 list(APPEND libopenmc_SOURCES
-  src/aabb.cpp
   src/bank.cpp
   src/boundary_condition.cpp
   src/bremsstrahlung.cpp

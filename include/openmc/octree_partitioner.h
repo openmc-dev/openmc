@@ -28,7 +28,7 @@ public:
   int get_child_index(const Position& r) const;
 
 private:
-  uint32_t data;
+  uint32_t data_;
 };
 
 // This struct contains extra information about a node that is not needed for
@@ -41,17 +41,17 @@ struct OctreeUncompressedNode {
 
   bool contains(int cell) const;
 
-  uint16_t depth;
-  uint16_t num_original_cells;
-  uint16_t num_unique_cells;
+  uint16_t depth_;
+  uint16_t num_original_cells_;
+  uint16_t num_unique_cells_;
 
-  AABB box;
+  AABB box_;
 
   OctreeUncompressedNode*
-    children; // if this is a leaf, then children will be null
-  OctreeUncompressedNode* parent;
+    children_; // if this is a leaf, then children will be null
+  OctreeUncompressedNode* parent_;
 
-  std::vector<int32_t> cells;
+  std::vector<int32_t> cells_;
 };
 
 class OctreePartitioner : public UniversePartitioner {
@@ -74,18 +74,18 @@ private:
   void compress(const OctreeUncompressedNode& root);
   void refill_information();
 
-  AABB bounds;
+  AABB bounds_;
 
-  std::vector<OctreeNode> nodes;
-  std::vector<std::vector<int32_t>> cell_data;
+  std::vector<OctreeNode> nodes_;
+  std::vector<std::vector<int32_t>> cell_data_;
 
   // fallback if octree doesn't work
   ZPlanePartitioner fallback;
 
   // meta data, only used when exporting to file
-  uint32_t num_nodes;
-  uint32_t num_leaves;
-  std::vector<uint32_t> orig_size;
+  uint32_t num_nodes_;
+  uint32_t num_leaves_;
+  std::vector<uint32_t> orig_size_;
 };
 
 } // namespace openmc

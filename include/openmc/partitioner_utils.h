@@ -72,6 +72,7 @@ struct CellPointUncompressed {
   int cell;
 
   bool operator<(const CellPointUncompressed& other) const;
+  operator int() const;
 };
 
 struct CellPoint {
@@ -82,6 +83,7 @@ struct CellPoint {
   void compress_from(const CellPointUncompressed& uncomp, const AABB& bounds);
 
   bool operator<(const CellPoint& other) const;
+  operator int() const;
 };
 
 class Bin {

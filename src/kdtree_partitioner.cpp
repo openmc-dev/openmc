@@ -5,350 +5,277 @@
 
 namespace openmc {
 
-const uint32_t KD_TREE_LEAF_FLAG = (0b11 << 30);
+KdTreeUncompressedNode::KdTreeUncompressedNode() : children_(nullptr) {}
 
-KdTreeUncompressedNode::KdTreeUncompressedNode() : children(nullptr) {}
-
+// Check whether the current node is a leaf or not by checking if children_ are
+// nullptr
 bool KdTreeUncompressedNode::is_leaf() const
 {
-  return (children == nullptr);
+  return (children_ == nullptr);
 }
 
+// Compute the volume heuristic (VH)
+double KdTreeUncompressedNode::compute_vh() const
+{
+  return box_.volume() * num_unique_cells_;
+}
+
+// If a cell is a leaf, then the last two bits will be on
+constexpr uint32_t KD_TREE_LEAF_FLAG = (0b11 << 30);
+
+// Checks whether the last two bits are on
 bool KdTreeNode::is_leaf() const
 {
-  return ((data & KD_TREE_LEAF_FLAG) == KD_TREE_LEAF_FLAG);
+  return ((data_ & KD_TREE_LEAF_FLAG) == KD_TREE_LEAF_FLAG);
 }
 
+// Extracts the first 30 bits out of data_ and returns them
 uint32_t KdTreeNode::index() const
 {
-  uint32_t index = data & ~KD_TREE_LEAF_FLAG;
+  uint32_t index = data_ & ~KD_TREE_LEAF_FLAG;
   return index;
 }
 
-KdTreeConstructionTask::KdTreeConstructionTask() : node(nullptr), depth(0) {}
-
-KdTreeConstructionTask::KdTreeConstructionTask(KdTreeUncompressedNode* node,
-  const std::vector<CellPointUncompressed>& points, uint32_t depth)
-  : node(node), points(points), depth(depth)
-{}
-
-uint32_t get_num_unique_cells(std::vector<CellPointUncompressed>& points)
+// Gets the number of unique cells captured by the vector
+// This method works by assuming the elements are sorted according to theirs
+// cell IDs and then compares adjacent IDs
+template<typename T>
+uint32_t get_num_unique_cells(const std::vector<T>& v)
 {
-  std::sort(points.begin(), points.end());
-
   int prev_cell = -1;
   uint32_t num_unique = 0;
-  for (const auto& p : points) {
-    if (p.cell != prev_cell) {
+  for (int i = 0; i < v.size(); i++) {
+    int cell = v[i];
+    if (cell != prev_cell) {
       num_unique++;
-      prev_cell = p.cell;
+      prev_cell = cell;
     }
   }
 
   return num_unique;
 }
 
-void update_best_split_median(const KdTreeConstructionTask& parent_task,
-  KdTreeUncompressedNode best_children[2],
-  std::vector<CellPointUncompressed> best_points[2], double& best_child_vh,
-  int axis)
+// This work works exactly like get_num_unique_cells, expect this time it stores
+// the cell list
+template<typename T>
+void build_cells_list(
+  KdTreeUncompressedNode& node, const std::vector<T>& source)
 {
-  KdTreeUncompressedNode cur_children[2];
-  std::vector<CellPointUncompressed> cur_points[2];
+  // Reserve memory
+  node.cells_.reserve(node.num_unique_cells_);
 
-  // split (code copied from octree)
-  double midpoint;
-  {
+  // Go through each point to find the unique cells
+  int prev_cell = -1;
+  for (int i = 0; i < source.size(); i++) {
+    int cell = source[i];
+    if (cell != prev_cell) {
+      node.cells_.push_back(cell);
+      prev_cell = cell;
+    }
+  }
+}
 
-    int i = axis;
-    int j = ((i + 1) % 3);
-    int k = ((i + 2) % 3);
+double generate_split(
+  KdTreeUncompressedNode& parent, KdTreeUncompressedNode children[2], int axis)
+{
+  // Calculate the midpoint, this will be where we split
+  double midpoint = (parent.box_.max[axis] + parent.box_.min[axis]) * 0.5;
 
-    midpoint =
-      (parent_task.node->box.max[i] + parent_task.node->box.min[i]) * 0.5;
-    const auto& box = parent_task.node->box;
+  // Create temporary children and assign them split boxes
+  children[0].box_ = parent.box_;
+  children[1].box_ = parent.box_;
+  children[0].box_.max[axis] = midpoint;
+  children[1].box_.min[axis] = midpoint;
 
-    AABB splitted_boxes[2];
-    Position extension_point[2];
+  return midpoint;
+}
 
-    extension_point[0][i] = midpoint;
-    extension_point[0][j] = box.min[j];
-    extension_point[0][k] = box.min[k];
-
-    extension_point[1][i] = midpoint;
-    extension_point[1][j] = box.max[j];
-    extension_point[1][k] = box.max[k];
-
-    splitted_boxes[0].extend(box.max);
-    splitted_boxes[0].extend(extension_point[0]);
-
-    splitted_boxes[1].extend(box.min);
-    splitted_boxes[1].extend(extension_point[1]);
-
-    cur_children[0].box = splitted_boxes[1];
-    cur_children[1].box = splitted_boxes[0];
+// This function splits the box of a parent node in its midpoint on a given axis
+// It then scores the children generated from that split, and if the children's
+// VH score is better than the previous best, it replaces the previous best
+// children with the new best children
+void search_best_median_split(KdTreeUncompressedNode& parent,
+  KdTreeUncompressedNode temp_children[2], int best_unique_cells[2],
+  double& best_child_vh, int axis)
+{
+  // Clear any point memory from past lists
+  for (int i = 0; i < 2; i++) {
+    temp_children[i].cells_.clear();
   }
 
-  for (const auto& p : parent_task.points) {
-    if (cur_children[0].box.contains(p.pos)) {
-      cur_points[0].push_back(p);
+  // Create the split
+  double midpoint = generate_split(parent, temp_children, axis);
+
+  // Copy over points to each temporary child node
+  for (const auto& p : parent.points_) {
+    if (p.pos[axis] < midpoint) {
+      temp_children[0].cells_.push_back(p.cell);
     } else {
-      cur_points[1].push_back(p);
+      temp_children[1].cells_.push_back(p.cell);
     }
   }
 
+  // Calculate the children vh
   double cur_vh = 0.0;
   for (int i = 0; i < 2; i++) {
-    cur_vh +=
-      cur_children[i].box.volume() * get_num_unique_cells(cur_points[i]);
+    temp_children[i].num_unique_cells_ =
+      get_num_unique_cells(temp_children[i].cells_);
+    cur_vh += temp_children[i].compute_vh();
   }
 
+  // Update our best split so far if we find a split with a better vh
   if (cur_vh < best_child_vh) {
     best_child_vh = cur_vh;
 
     for (int i = 0; i < 2; i++) {
-      best_children[i] = std::move(cur_children[i]);
-      best_points[i] = std::move(cur_points[i]);
+      best_unique_cells[i] = temp_children[i].num_unique_cells_;
     }
 
-    parent_task.node->split_axis = axis;
-    parent_task.node->split_location = midpoint;
+    // Store the split information
+    // If we go through with the split, we will reuse this information when
+    // actually generating the children nodes
+    parent.split_axis_ = axis;
+    parent.split_location_ = midpoint;
   }
 }
 
-void make_elems_unique(std::vector<int>& v)
-{
-#if 0
-        std::sort(v.begin(), v.end());
-    
-        int i = 1, j = 0;
-        while(i < v.size()) {
-            if(v[i] != v[j]) {
-                j++;
-                v[j] = v[i];
-            }
-            i++;
-        } 
-
-        v.resize(j);
-#else
-  std::set<int> unique_elems;
-
-  for (int x : v) {
-    unique_elems.insert(x);
-  }
-
-  v.clear();
-
-  for (int x : unique_elems) {
-    v.push_back(x);
-  }
-
-#endif
-}
-
-struct KdTreeBin {
-  std::vector<int> unique_cells;
-};
-
-void add_bin(const KdTreeBin& bin, std::vector<int>& cells)
-{
-  std::copy(bin.unique_cells.begin(), bin.unique_cells.end(),
-    std::back_insert_iterator(cells));
-}
-
-int best_picked_split = 0;
-void update_best_split_binning(const KdTreeConstructionTask& parent_task,
-  KdTreeUncompressedNode best_children[2],
-  std::vector<CellPointUncompressed> best_points[2], double& best_child_vh,
-  int axis)
-{
-  const int NUM_KD_TREE_BINS = 64;
-  double bin_dim =
-    (parent_task.node->box.max[axis] - parent_task.node->box.min[axis]) /
-    NUM_KD_TREE_BINS;
-
-  KdTreeBin bins[NUM_KD_TREE_BINS];
-
-  for (const auto& p : parent_task.points) {
-    int idx = ((p.pos[axis] - parent_task.node->box.min[axis]) / bin_dim);
-
-    if (idx < 0)
-      idx = 0;
-    else if (idx >= NUM_KD_TREE_BINS)
-      idx = NUM_KD_TREE_BINS - 1;
-
-    bins[idx].unique_cells.push_back(p.cell);
-  }
-
-  for (int i = 0; i < NUM_KD_TREE_BINS; i++) {
-    make_elems_unique(bins[i].unique_cells);
-  }
-
-  for (int i = 1; i < NUM_KD_TREE_BINS - 1; i++) {
-    double split = i * bin_dim + parent_task.node->box.min[axis];
-    std::vector<int> cur_cells_list[2];
-
-    for (int j = 0; j < i; j++) {
-      add_bin(bins[j], cur_cells_list[0]);
-    }
-
-    for (int j = i; j < NUM_KD_TREE_BINS; j++) {
-      add_bin(bins[j], cur_cells_list[1]);
-    }
-
-    for (int i = 0; i < 2; i++) {
-      make_elems_unique(cur_cells_list[i]);
-    }
-
-    // construct AABB
-    AABB boxes[2];
-    double child_vh = 0.0;
-    for (int i = 0; i < 2; i++) {
-      boxes[i] = parent_task.node->box;
-
-      auto update = (i == 0 ? &boxes[i].max[axis] : &boxes[i].min[axis]);
-      *update = split;
-
-      child_vh += boxes[i].volume() * cur_cells_list[i].size();
-    }
-
-    if (child_vh < best_child_vh) {
-      best_child_vh = child_vh;
-
-      for (int i = 0; i < 2; i++) {
-        best_children[i].box = boxes[i];
-        best_points[i].clear();
-      }
-
-      for (const auto& p : parent_task.points) {
-        int idx = (p.pos[axis] < split ? 0 : 1);
-        best_points[idx].push_back(p);
-      }
-
-      parent_task.node->split_axis = axis;
-      parent_task.node->split_location = split;
-
-      best_picked_split = i;
-    }
-  }
-}
-
-void make_leaf(
-  KdTreeUncompressedNode& node, std::vector<CellPointUncompressed>& points)
-{
-  node.children = nullptr;
-
-  std::sort(points.begin(), points.end());
-
-  int prev_cell = -1;
-  for (const auto& p : points) {
-    if (p.cell != prev_cell) {
-      node.cells.push_back(p.cell);
-      prev_cell = p.cell;
-    }
-  }
-}
-
-KdTreePartitioner::KdTreePartitioner(const Universe& univ) : fallback(univ)
+KdTreePartitioner::KdTreePartitioner(const Universe& univ, uint32_t max_depth)
+  : fallback_(univ)
 {
   write_message("Building kd-tree partitioner...", 5);
 
   Timer construction_timer;
   construction_timer.start();
 
-  const uint32_t MAX_DEPTH = 16;
-
-  const double half_side_length = 130.0;
-  bounds.min =
+  // Init our bounds
+  constexpr double half_side_length = 130.0;
+  bounds_.min =
     Position(-half_side_length, -half_side_length, -half_side_length);
-  bounds.max = Position(half_side_length, half_side_length, half_side_length);
+  bounds_.max = Position(half_side_length, half_side_length, half_side_length);
 
-  auto points_in_bounds =
-    binned_point_search<CellPointUncompressed>(univ, fallback, bounds);
+  // Initialize our root
+  KdTreeUncompressedNode root;
+  root.box_ = bounds_;
+  root.depth_ = 0;
+  root.points_ =
+    binned_point_search<CellPointUncompressed>(univ, fallback_, bounds_);
 
+  // Pre-construction work: sort points by their cell IDs
+  std::sort(root.points_.begin(), root.points_.end());
+  root.num_unique_cells_ = get_num_unique_cells(root.points_);
+
+  // Initialize some metadata
   uint32_t num_nodes = 1;
   uint32_t num_leaves = 0;
 
+  // These temporary children are used as preallocated chunks of memory during
+  // subdivision
+  KdTreeUncompressedNode temp_children[2];
+  for (int i = 0; i < 2; i++) {
+    temp_children[i].cells_.reserve(root.points_.size());
+  }
+
+  // This will allocate nodes for us and manage the memory
   NodeAllocator<KdTreeUncompressedNode, 2> node_alloc;
 
-  KdTreeUncompressedNode root;
-  root.box = bounds;
+  // Here is the subdivison loop
+  // We recursively process nodes via a stack
+  // For each node, we try to find the best split for it
+  // If we find a split that results in a lower VH, we go with it
+  // If we are not at max depth, we push the results of the split to the stack
+  std::stack<KdTreeUncompressedNode*> unsubdivided_nodes;
+  unsubdivided_nodes.push(&root);
+  while (!unsubdivided_nodes.empty()) {
+    auto& cur = *unsubdivided_nodes.top();
+    unsubdivided_nodes.pop();
 
-  std::stack<KdTreeConstructionTask> unproc_nodes;
-  unproc_nodes.emplace(&root, points_in_bounds, 0);
-  while (!unproc_nodes.empty()) {
-    auto task = std::move(unproc_nodes.top());
-    unproc_nodes.pop();
-
-    auto cur = task.node;
-
-    double parent_vh = cur->box.volume() * get_num_unique_cells(task.points);
-
-    KdTreeUncompressedNode best_children[2];
-    std::vector<CellPointUncompressed> best_points[2];
-    double best_child_vh = FLT_MAX;
     // find best split
+    double best_child_vh = DBL_MAX;
+    int best_unique_cells[2];
     for (int i = 0; i < 3; i++) {
-      update_best_split_median(
-        task, best_children, best_points, best_child_vh, i);
+      search_best_median_split(
+        cur, temp_children, best_unique_cells, best_child_vh, i);
     }
 
-    // update if needed
-    if (0.9 * best_child_vh < parent_vh) {
+    // Subdivide if we found a better VH
+    if (0.9 * best_child_vh < cur.compute_vh()) {
       num_nodes += 2;
 
-      task.node->children = node_alloc.allocate();
-      uint32_t next_depth = task.depth + 1;
-
-      // why am I using a loop for this? I have no idea
+      // Set up our children
+      cur.children_ = node_alloc.allocate();
+      generate_split(cur, cur.children_, cur.split_axis_);
       for (int i = 0; i < 2; i++) {
-        task.node->children[i] = std::move(best_children[i]);
+        cur.children_[i].num_unique_cells_ = best_unique_cells[i];
+        cur.children_[i].depth_ = cur.depth_ + 1;
+      }
 
-        // make sure depth is less!
-        if (next_depth < MAX_DEPTH) {
-          unproc_nodes.emplace(
-            &task.node->children[i], std::move(best_points[i]), next_depth);
-        } else {
-          make_leaf(task.node->children[i], best_points[i]);
-          num_leaves++;
+      if (cur.depth_ + 1 == max_depth) {
+        // We don't need to do anything too complex besides just building the
+        // cells list
+        for (int i = 0; i < 2; i++) {
+          build_cells_list(cur.children_[i], temp_children[i].cells_);
+          num_leaves += 2;
+        }
+      } else {
+        // We need to copy over the points to their respective cell
+        for (const auto& p : cur.points_) {
+          if (p.pos[cur.split_axis_] < cur.split_location_) {
+            cur.children_[0].points_.push_back(p);
+          } else {
+            cur.children_[1].points_.push_back(p);
+          }
+        }
+
+        // Now push to stack
+        for (int i = 0; i < 2; i++) {
+          unsubdivided_nodes.push(&cur.children_[i]);
         }
       }
+
     } else {
-      make_leaf(*cur, task.points);
+      // Since we didn't find a better VH, just turn the current node into a
+      // leaf
+      build_cells_list(cur, cur.points_);
       num_leaves++;
     }
   }
 
-  // compress
-  nodes.reserve(num_nodes);
-  cell_data.reserve(num_leaves);
+  // Now we begin the process of converting the uncompressed nodes to the
+  // compressed nodes
+  nodes_.reserve(num_nodes);
+  cell_data_.reserve(num_leaves);
 
-  std::queue<KdTreeUncompressedNode*> uncomp_nodes;
-  uncomp_nodes.push(&root);
+  // Process each node recursively, this time using a queue
+  // We go through each node, and if it is a parent, we basically set up its
+  // index to next child (we need a queue to predict this index ahead of time)
+  // If it is a leaf, we store information in cell_data_
+  std::queue<KdTreeUncompressedNode*> uncompressed_nodes;
+  uncompressed_nodes.push(&root);
+  while (!uncompressed_nodes.empty()) {
+    auto& cur = *uncompressed_nodes.front();
+    uncompressed_nodes.pop();
 
-  while (!uncomp_nodes.empty()) {
-    auto& cur = *uncomp_nodes.front();
-    uncomp_nodes.pop();
-
-    // compress
+    // Compress
     KdTreeNode comp_node;
     if (cur.is_leaf()) {
-      comp_node.data = cell_data.size();
-      comp_node.data |= KD_TREE_LEAF_FLAG;
+      // Add information for the leaf
+      comp_node.data_ = cell_data_.size();
+      comp_node.data_ |= KD_TREE_LEAF_FLAG;
 
-      cell_data.push_back(std::move(cur.cells));
+      cell_data_.push_back(std::move(cur.cells_));
     } else {
-      comp_node.data = (cur.split_axis << 30);
-      comp_node.data += nodes.size() + 1 + uncomp_nodes.size();
-      comp_node.split = cur.split_location;
+      // Add information for the parent
+      comp_node.data_ = (cur.split_axis_ << 30);
+      comp_node.data_ += nodes_.size() + 1 + uncompressed_nodes.size();
+      comp_node.split_ = cur.split_location_;
 
       for (int i = 0; i < 2; i++) {
-        uncomp_nodes.push(&cur.children[i]);
+        uncompressed_nodes.push(&cur.children_[i]);
       }
     }
 
-    nodes.push_back(comp_node);
+    // Now add to nodes array
+    nodes_.push_back(comp_node);
   }
   write_message("Kd-tree construction completed in " +
                 std::to_string(construction_timer.elapsed()) + " seconds.");
@@ -360,21 +287,27 @@ KdTreePartitioner::~KdTreePartitioner() {}
 const std::vector<int32_t>& KdTreePartitioner::get_cells(
   Position r, Direction u) const
 {
-  if (!bounds.contains(r)) {
+  // Immediately return fallback cells if outside bounds
+  if (!bounds_.contains(r)) {
     return get_cells_fallback(r, u);
   }
 
-  const KdTreeNode* cur = &nodes[0];
+  // Traverse through loop
+  const KdTreeNode* cur = &nodes_[0];
   while (true) {
-    uint32_t axis = (cur->data >> 30);
+    uint32_t axis = (cur->data_ >> 30);
     if (axis == 3) {
+      // This node is a leaf, exit
       break;
     } else {
-      cur = &nodes[cur->index() + uint32_t(r[axis] > cur->split)];
+      // Continue to the next node
+      cur = &nodes_[cur->index() + uint32_t(r[axis] > cur->split_)];
     }
   }
 
-  const auto& cells = cell_data[cur->index()];
+  const auto& cells = cell_data_[cur->index()];
+
+  // If we have an empty node, return fallback
   if (cells.empty()) {
     return get_cells_fallback(r, u);
   }
@@ -385,7 +318,7 @@ const std::vector<int32_t>& KdTreePartitioner::get_cells(
 const std::vector<int32_t>& KdTreePartitioner::get_cells_fallback(
   Position r, Direction u) const
 {
-  return fallback.get_cells(r, u);
+  return fallback_.get_cells(r, u);
 }
 
 }; // namespace openmc

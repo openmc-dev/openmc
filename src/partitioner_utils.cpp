@@ -99,6 +99,11 @@ bool CellPointUncompressed::operator<(const CellPointUncompressed& other) const
   return (cell < other.cell);
 }
 
+CellPointUncompressed::operator int() const
+{
+  return cell;
+}
+
 int CellPoint::get_cell() const
 {
   uint64_t index = (data >> (3 * CELL_POINT_COMPRESSION_MAX_DEPTH));
@@ -145,6 +150,11 @@ void CellPoint::compress_from(
 bool CellPoint::operator<(const CellPoint& other) const
 {
   return (get_cell() < other.get_cell());
+}
+
+CellPoint::operator int() const
+{
+  return get_cell();
 }
 
 Bin::Bin() : num_unique_cells(0), prev_cell_count(0)

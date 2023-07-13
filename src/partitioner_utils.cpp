@@ -47,16 +47,15 @@ inline vec3 vmin(vec3 lhs, vec3 rhs)
     }
 
     float AABB::surface_area() const {
-        vec3 sideLengths = max - min;
+      vec3 side_lengths = max - min;
 
-        return
-            2 * (sideLengths.x * (sideLengths.y + sideLengths.z) +
-            sideLengths.y *  sideLengths.z);
+      return 2 * (side_lengths.x * (side_lengths.y + side_lengths.z) +
+                   side_lengths.y * side_lengths.z);
     }
 
     float AABB::volume() const {
-        vec3 sideLengths = max - min;
-        return sideLengths.x * sideLengths.y * sideLengths.z;
+      vec3 side_lengths = max - min;
+      return side_lengths.x * side_lengths.y * side_lengths.z;
     }
 
     void AABB::extend(const AABB& other_box) {

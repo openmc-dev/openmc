@@ -468,6 +468,7 @@ target_include_directories(libopenmc
 )
 
 # Set compile flags
+list(APPEND cxxflags "-O3")
 target_compile_options(libopenmc PRIVATE ${cxxflags})
 
 # Add include directory for configured version file

@@ -9,6 +9,9 @@
 
 namespace openmc {
 
+// This ndoe contains all the information you would want to know about a node
+// It is not cache efficient to traverse and takes up extra memory that is not
+// used during traversal
 struct KdTreeUncompressedNode {
   KdTreeUncompressedNode();
   bool is_leaf() const;
@@ -22,6 +25,9 @@ struct KdTreeUncompressedNode {
   std::vector<int> cells;
 };
 
+// This node contains the bare minimum information for traversal
+// It is cut down from to help with better memory efficiency and improve the
+// cache hit rate
 struct KdTreeNode {
   uint32_t data;
   double split;
@@ -30,6 +36,7 @@ struct KdTreeNode {
   uint32_t index() const;
 };
 
+// This serves the same purpose a std::tuple would but with a nicer format
 struct KdTreeConstructionTask {
   KdTreeUncompressedNode* node;
   std::vector<CellPointUncompressed> points;
@@ -40,6 +47,7 @@ struct KdTreeConstructionTask {
     const std::vector<CellPointUncompressed>& points, uint32_t depth);
 };
 
+// The actual partitioner class
 class KdTreePartitioner : public UniversePartitioner {
 public:
   explicit KdTreePartitioner(const Universe& univ);
@@ -52,9 +60,17 @@ public:
     Position r, Direction u) const override;
 
 private:
+  // The bounds of the kd tree. Calling get_cell on points outside this region
+  // will result in the fallback being used.
   AABB bounds;
+  // This array contains all the nodes in the kd tree, with the root being at
+  // index 0
   std::vector<KdTreeNode> nodes;
+  // The cell lists for each leaf are stored here. The are stored seperately to
+  // improve cache efficiency during traversal
   std::vector<std::vector<int>> cell_data;
+  // Utilze the z-plane partitioner in a fallback, as it very rarely fails to
+  // find the cell a particle is in.
   ZPlanePartitioner fallback;
 };
 

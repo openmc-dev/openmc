@@ -747,7 +747,7 @@ def muir(e0, m_rat, kt):
 
     """
     # https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
-    std_dev = math.sqrt(4 * e0 * kt / m_rat)
+    std_dev = math.sqrt(2 * e0 * kt / m_rat)
     return Normal(e0, std_dev)
 
 

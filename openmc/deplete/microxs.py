@@ -206,10 +206,13 @@ class MicroXS:
         if 'float_precision' not in kwargs:
             kwargs['float_precision'] = 'round_trip'
 
-        df = pd.read_csv(csv_file, index_col=0, **kwargs)
-        data = df.values
-        nuclides = list(df.index)
-        reactions = list(df)
+        df = pd.read_csv(csv_file, **kwargs)
+        df.set_index(['nuclides', 'reactions', 'groups'], inplace=True)
+        nuclides = list(df.index.unique(level='nuclides'))
+        reactions = list(df.index.unique(level='reactions'))
+        groups = list(df.index.unique(level='groups'))
+        shape = (len(nuclides), len(reactions), len(groups))
+        data = df.values.reshape(shape)
         return cls(data, nuclides, reactions)
 
     def __getitem__(self, index):
@@ -229,7 +232,11 @@ class MicroXS:
             Keyword arguments passed to :meth:`pandas.DataFrame.to_csv`
 
         """
-        index = pd.Index(self.nuclides, name='nuclide')
-        df = pd.DataFrame(self.data, columns=self.reactions, index=index)
+        groups = self.data.shape[2]
+        multi_index = pd.MultiIndex.from_product(
+            [self.nuclides, self.reactions, range(1, groups + 1)],
+            names=['nuclides', 'reactions', 'groups']
+        )
+        df = pd.DataFrame({'xs': self.data.flatten()}, index=multi_index)
         df.to_csv(*args, **kwargs)
 

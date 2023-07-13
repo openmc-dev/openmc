@@ -16,7 +16,7 @@ struct KdTreeUncompressedNode {
   AABB box;
 
   uint8_t split_axis;
-  float split_location;
+  double split_location;
   KdTreeUncompressedNode* children;
 
   std::vector<int> cells;
@@ -24,7 +24,7 @@ struct KdTreeUncompressedNode {
 
 struct KdTreeNode {
   uint32_t data;
-  float split;
+  double split;
 
   bool is_leaf() const;
   uint32_t index() const;

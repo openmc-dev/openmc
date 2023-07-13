@@ -16,8 +16,8 @@ namespace openmc {
 
 const int32_t OMCP_CURRENT_VERSION[3] = {1, 0, 0};
 
-const float REFINEMENT_SEARCH_DENSITY = 0.125;
-const float REFINEMENT_TIMEOUT = 10.0;
+const double REFINEMENT_SEARCH_DENSITY = 0.125;
+const double REFINEMENT_TIMEOUT = 10.0;
 const int32_t REFINEMENT_GRID_RES = 128; // ideally should be a power of 2
 
 const int32_t INFORMATION_REFILLING_START_DEPTH_OFFSET = 1;
@@ -82,7 +82,7 @@ void OctreeUncompressedNode::subdivide()
     int next_index = 0;
     for (int idx = 0; idx < (1 << i); idx++) {
       // split on i-th axis
-      float midpoint = box.get_center()[i];
+      double midpoint = box.get_center()[i];
 
       int j = ((i + 1) % 3);
       int k = ((i + 2) % 3);
@@ -147,7 +147,7 @@ void refine_octree_random(const Universe& univ,
   std::vector<ProbBinT> prob_bin_grid(
     REFINEMENT_GRID_RES * REFINEMENT_GRID_RES * REFINEMENT_GRID_RES);
 
-  vec3 prob_bin_dim;
+  Position prob_bin_dim;
   for (int i = 0; i < 3; i++) {
     prob_bin_dim[i] = (bounds.max[i] - bounds.min[i]) / REFINEMENT_GRID_RES;
   }
@@ -173,7 +173,7 @@ void refine_octree_random(const Universe& univ,
     }
   }
 
-  std::vector<float> bin_cdf(prob_bin_grid.size());
+  std::vector<double> bin_cdf(prob_bin_grid.size());
 
   Timer timeout_timer;
   timeout_timer.start();
@@ -184,13 +184,13 @@ void refine_octree_random(const Universe& univ,
     int num_points_searched = 0;
 
     // first, generate cdf
-    float total_cdf = 0.0;
+    double total_cdf = 0.0;
     for (int i = 0; i < prob_bin_grid.size(); i++) {
       total_cdf += prob_bin_grid[i].compute_score();
       bin_cdf[i] = total_cdf;
     }
 
-    for (float& cdf : bin_cdf) {
+    for (double& cdf : bin_cdf) {
       cdf /= total_cdf;
     }
 
@@ -208,7 +208,7 @@ void refine_octree_random(const Universe& univ,
 
         ProbBinT* prob_bin;
         do {
-          float cdf_val =
+          double cdf_val =
             uniform_distribution(0.0, 1.0, &rng_node_selec[tid][0]);
           auto cdf_iter =
             std::upper_bound(bin_cdf.begin(), bin_cdf.end(), cdf_val);
@@ -294,9 +294,10 @@ OctreePartitioner::OctreePartitioner(
   const Universe& univ, int target_cells_per_node)
   : fallback(univ)
 {
-  const float half_side_length = 130.0;
-  bounds.min = vec3(-half_side_length, -half_side_length, -half_side_length);
-  bounds.max = vec3(half_side_length, half_side_length, half_side_length);
+  const double half_side_length = 130.0;
+  bounds.min =
+    Position(-half_side_length, -half_side_length, -half_side_length);
+  bounds.max = Position(half_side_length, half_side_length, half_side_length);
 
   if (univ.cells_.size() <= target_cells_per_node) {
     warning("Universe has only " + std::to_string(univ.cells_.size()) +
@@ -336,7 +337,7 @@ OctreePartitioner::OctreePartitioner(
   num_nodes = 1;
   num_leaves = 0;
 
-  float depth_vh_mult[] = {1.0, 1.0, 1.0, 1.5, 2.5, 4.0, 6.0, 12.5, 19.0, 32.0,
+  double depth_vh_mult[] = {1.0, 1.0, 1.0, 1.5, 2.5, 4.0, 6.0, 12.5, 19.0, 32.0,
     64.0, 128.0, 999.0, 9999.0, 99999.0};
 
   NodeAllocator<OctreeUncompressedNode, 8> node_alloc;
@@ -368,9 +369,9 @@ OctreePartitioner::OctreePartitioner(
         point);
     }
 
-    float parent_vh =
+    double parent_vh =
       cur_task.node->box.volume() * cur_task.node->num_unique_cells;
-    float children_vh = 0.0;
+    double children_vh = 0.0;
 
     // post processing (make nodes leaves or push on construction stack)
     bool force_subdiv = false;
@@ -617,12 +618,12 @@ const vector<int32_t>& OctreePartitioner::get_cells(
     return get_cells_fallback(r, u);
   }
 
-  vec3 node_dim;
+  Position node_dim;
   for (int i = 0; i < 3; i++) {
     node_dim[i] = (bounds.max[i] - bounds.min[i]) * 0.5;
   }
 
-  vec3 center = bounds.get_center();
+  Position center = bounds.get_center();
   auto current = nodes[0];
   while (!current.is_leaf()) {
     // halve the node dim

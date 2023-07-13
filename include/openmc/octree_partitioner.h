@@ -20,7 +20,7 @@ public:
   void store_data(uint32_t data);
   uint32_t read_data() const;
 
-  int get_child_index(const vec3& r) const;
+  int get_child_index(const Position& r) const;
 
 private:
   uint32_t data;

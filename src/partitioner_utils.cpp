@@ -1,34 +1,33 @@
 #include "openmc/partitioner_utils.h"
 #include <algorithm>
-#include <float.h>
 #include <stdint.h>
 
 namespace openmc {
 
 const int32_t CELL_POINT_COMPRESSION_MAX_DEPTH = 15;
 
-inline vec3 vmin(vec3 lhs, vec3 rhs)
+inline Position vmin(Position lhs, Position rhs)
 {
-  vec3 res;
+  Position res;
   res.x = std::min(lhs.x, rhs.x);
   res.y = std::min(lhs.y, rhs.y);
   res.z = std::min(lhs.z, rhs.z);
   return res;
 }
 
-inline vec3 vmax(vec3 lhs, vec3 rhs)
+inline Position vmax(Position lhs, Position rhs)
 {
-  vec3 res;
+  Position res;
   res.x = std::max(lhs.x, rhs.x);
   res.y = std::max(lhs.y, rhs.y);
   res.z = std::max(lhs.z, rhs.z);
   return res;
 }
 
-AABB::AABB() : min(FLT_MAX, FLT_MAX, FLT_MAX), max(-FLT_MAX, -FLT_MAX, -FLT_MAX)
+AABB::AABB() : min(DBL_MAX, DBL_MAX, DBL_MAX), max(-DBL_MAX, -DBL_MAX, -DBL_MAX)
 {}
 
-AABB::AABB(const vec3& mi, const vec3& ma) : min(mi), max(ma) {}
+AABB::AABB(const Position& mi, const Position& ma) : min(mi), max(ma) {}
 
 void AABB::reset()
 {
@@ -36,33 +35,33 @@ void AABB::reset()
   *this = clear;
 }
 
-void AABB::extend_max(const vec3& val)
+void AABB::extend_max(const Position& val)
 {
   max = vmax(max, val);
 }
 
-void AABB::extend_min(const vec3& val)
+void AABB::extend_min(const Position& val)
 {
   min = vmin(min, val);
 }
 
-void AABB::extend(const vec3& pos)
+void AABB::extend(const Position& pos)
 {
   extend_max(pos);
   extend_min(pos);
 }
 
-float AABB::surface_area() const
+double AABB::surface_area() const
 {
-  vec3 side_lengths = max - min;
+  Position side_lengths = max - min;
 
   return 2 * (side_lengths.x * (side_lengths.y + side_lengths.z) +
                side_lengths.y * side_lengths.z);
 }
 
-float AABB::volume() const
+double AABB::volume() const
 {
-  vec3 side_lengths = max - min;
+  Position side_lengths = max - min;
   return side_lengths.x * side_lengths.y * side_lengths.z;
 }
 
@@ -72,12 +71,12 @@ void AABB::extend(const AABB& other_box)
   extend_min(other_box.min);
 }
 
-vec3 AABB::get_center() const
+Position AABB::get_center() const
 {
   return (min + max) * 0.5f;
 }
 
-bool AABB::contains(const vec3& pos) const
+bool AABB::contains(const Position& pos) const
 {
   return (min.x <= pos.x && min.y <= pos.y && min.z <= pos.z &&
           max.x >= pos.x && max.y >= pos.y && max.z >= pos.z);
@@ -117,12 +116,12 @@ void CellPoint::compress_from(
 {
   data = 0;
 
-  vec3 node_dim;
+  Position node_dim;
   for (int i = 0; i < 3; i++) {
     node_dim[i] = (bounds.max[i] - bounds.min[i]) * 0.5;
   }
 
-  vec3 center = bounds.get_center();
+  Position center = bounds.get_center();
 
   for (int i = 0; i < CELL_POINT_COMPRESSION_MAX_DEPTH; i++) {
     // halve the node dim
@@ -206,19 +205,19 @@ int Bin::unique_size() const
   return num_unique_cells;
 }
 
-float Bin::score(int iteration)
+double Bin::score(int iteration)
 {
-  float val;
+  double val;
 
   if (iteration == 0) {
     val = 1.0;
   } else if (iteration == 1) {
-    val = (float)size();
+    val = (double)size();
   } else {
-    const float alpha = 0.1;
+    const double alpha = 0.1;
 
-    float size_score = size();
-    float cell_increase_score = float(cells.size()) / prev_cell_count;
+    double size_score = size();
+    double cell_increase_score = double(cells.size()) / prev_cell_count;
 
     val = alpha * cell_increase_score + (1 - alpha) * size_score;
   }

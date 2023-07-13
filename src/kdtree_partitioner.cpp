@@ -1,6 +1,5 @@
 #include "openmc/kdtree_partitioner.h"
 #include "openmc/error.h"
-#include <float.h>
 #include <queue>
 #include <stack>
 
@@ -51,14 +50,14 @@ uint32_t get_num_unique_cells(std::vector<CellPointUncompressed>& points)
 
 void update_best_split_median(const KdTreeConstructionTask& parent_task,
   KdTreeUncompressedNode best_children[2],
-  std::vector<CellPointUncompressed> best_points[2], float& best_child_vh,
+  std::vector<CellPointUncompressed> best_points[2], double& best_child_vh,
   int axis)
 {
   KdTreeUncompressedNode cur_children[2];
   std::vector<CellPointUncompressed> cur_points[2];
 
   // split (code copied from octree)
-  float midpoint;
+  double midpoint;
   {
 
     int i = axis;
@@ -70,7 +69,7 @@ void update_best_split_median(const KdTreeConstructionTask& parent_task,
     const auto& box = parent_task.node->box;
 
     AABB splitted_boxes[2];
-    vec3 extension_point[2];
+    Position extension_point[2];
 
     extension_point[0][i] = midpoint;
     extension_point[0][j] = box.min[j];
@@ -98,7 +97,7 @@ void update_best_split_median(const KdTreeConstructionTask& parent_task,
     }
   }
 
-  float cur_vh = 0.0;
+  double cur_vh = 0.0;
   for (int i = 0; i < 2; i++) {
     cur_vh +=
       cur_children[i].box.volume() * get_num_unique_cells(cur_points[i]);
@@ -152,7 +151,7 @@ struct KdTreeBin {
   std::vector<int> unique_cells;
 };
 
-void consume_bin(const KdTreeBin& bin, std::vector<int>& cells)
+void add_bin(const KdTreeBin& bin, std::vector<int>& cells)
 {
   std::copy(bin.unique_cells.begin(), bin.unique_cells.end(),
     std::back_insert_iterator(cells));
@@ -161,11 +160,11 @@ void consume_bin(const KdTreeBin& bin, std::vector<int>& cells)
 int best_picked_split = 0;
 void update_best_split_binning(const KdTreeConstructionTask& parent_task,
   KdTreeUncompressedNode best_children[2],
-  std::vector<CellPointUncompressed> best_points[2], float& best_child_vh,
+  std::vector<CellPointUncompressed> best_points[2], double& best_child_vh,
   int axis)
 {
   const int NUM_KD_TREE_BINS = 64;
-  float bin_dim =
+  double bin_dim =
     (parent_task.node->box.max[axis] - parent_task.node->box.min[axis]) /
     NUM_KD_TREE_BINS;
 
@@ -187,15 +186,15 @@ void update_best_split_binning(const KdTreeConstructionTask& parent_task,
   }
 
   for (int i = 1; i < NUM_KD_TREE_BINS - 1; i++) {
-    float split = i * bin_dim + parent_task.node->box.min[axis];
+    double split = i * bin_dim + parent_task.node->box.min[axis];
     std::vector<int> cur_cells_list[2];
 
     for (int j = 0; j < i; j++) {
-      consume_bin(bins[j], cur_cells_list[0]);
+      add_bin(bins[j], cur_cells_list[0]);
     }
 
     for (int j = i; j < NUM_KD_TREE_BINS; j++) {
-      consume_bin(bins[j], cur_cells_list[1]);
+      add_bin(bins[j], cur_cells_list[1]);
     }
 
     for (int i = 0; i < 2; i++) {
@@ -204,7 +203,7 @@ void update_best_split_binning(const KdTreeConstructionTask& parent_task,
 
     // construct AABB
     AABB boxes[2];
-    float child_vh = 0.0;
+    double child_vh = 0.0;
     for (int i = 0; i < 2; i++) {
       boxes[i] = parent_task.node->box;
 
@@ -260,9 +259,10 @@ KdTreePartitioner::KdTreePartitioner(const Universe& univ) : fallback(univ)
 
   const uint32_t MAX_DEPTH = 16;
 
-  const float half_side_length = 130.0;
-  bounds.min = vec3(-half_side_length, -half_side_length, -half_side_length);
-  bounds.max = vec3(half_side_length, half_side_length, half_side_length);
+  const double half_side_length = 130.0;
+  bounds.min =
+    Position(-half_side_length, -half_side_length, -half_side_length);
+  bounds.max = Position(half_side_length, half_side_length, half_side_length);
 
   auto points_in_bounds =
     binned_point_search<CellPointUncompressed>(univ, fallback, bounds);
@@ -283,11 +283,11 @@ KdTreePartitioner::KdTreePartitioner(const Universe& univ) : fallback(univ)
 
     auto cur = task.node;
 
-    float parent_vh = cur->box.volume() * get_num_unique_cells(task.points);
+    double parent_vh = cur->box.volume() * get_num_unique_cells(task.points);
 
     KdTreeUncompressedNode best_children[2];
     std::vector<CellPointUncompressed> best_points[2];
-    float best_child_vh = FLT_MAX;
+    double best_child_vh = FLT_MAX;
     // find best split
     for (int i = 0; i < 3; i++) {
       update_best_split_median(

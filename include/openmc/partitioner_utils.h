@@ -6,38 +6,38 @@
 #include "timer.h"
 #include "universe.h"
 
+#include <float.h>
+
 #include <omp.h>
 #include <set>
 #include <vector>
 
 namespace openmc {
 
-using vec3 = Position;
-
 // This axis-aligned bounding box class (AABB) is designed to work easier with
 // partitioners than openmc::BoundingBox
 struct AABB {
   AABB();
-  AABB(const vec3& mi, const vec3& ma);
+  AABB(const Position& mi, const Position& ma);
 
-  void extend_max(const vec3& val);
-  void extend_min(const vec3& val);
+  void extend_max(const Position& val);
+  void extend_min(const Position& val);
 
-  void extend(const vec3& pos);
+  void extend(const Position& pos);
   void extend(const AABB& other_box);
 
-  vec3 get_center() const;
-  float surface_area() const;
-  float volume() const;
-  bool contains(const vec3& pos) const;
+  Position get_center() const;
+  double surface_area() const;
+  double volume() const;
+  bool contains(const Position& pos) const;
 
   void reset();
 
   bool operator==(const AABB& other) const;
   bool operator!=(const AABB& other) const;
 
-  vec3 min;
-  vec3 max;
+  Position min;
+  Position max;
 };
 
 template<class NodeT, size_t NUM_CHILDREN_PER_PARENT, size_t POOL_SIZE = 16384>
@@ -68,7 +68,7 @@ private:
 };
 
 struct CellPointUncompressed {
-  vec3 pos;
+  Position pos;
   int cell;
 
   bool operator<(const CellPointUncompressed& other) const;
@@ -97,7 +97,7 @@ public:
   void make_cells_unique();
   void sort_cells();
 
-  float score(int iteration);
+  double score(int iteration);
 
   const std::vector<int>& get_cells() const;
 
@@ -131,18 +131,18 @@ public:
     }
   }
 
-  float compute_score()
+  double compute_score()
   {
-    const float REFINEMENT_BIN_SCORE_FOUND_MULT = 1.0;
-    const float REFINEMENT_BIN_SCORE_SEARCHED_MULT = 1.0;
+    const double REFINEMENT_BIN_SCORE_FOUND_MULT = 1.0;
+    const double REFINEMENT_BIN_SCORE_SEARCHED_MULT = 1.0;
 
-    float found_score =
+    double found_score =
       std::max(REFINEMENT_BIN_SCORE_FOUND_MULT * num_found, 1.0f) /
       std::max(REFINEMENT_BIN_SCORE_SEARCHED_MULT * num_searched, 1.0f);
 
     found_score *= found_score;
 
-    float size_score = contained_nodes.size();
+    double size_score = contained_nodes.size();
     return size_score;
   }
 
@@ -215,26 +215,27 @@ std::vector<T> binned_point_search(
   const int32_t BINNING_SEARCH_TOTAL_ITERATIONS = 128;
   const int32_t BINNING_SEARCH_GRID_RES = 32;
 
-  float target_density = BINNING_SEARCH_TOTAL_POINTS /
-                         (BINNING_SEARCH_TOTAL_ITERATIONS * bounds.volume());
+  double target_density = BINNING_SEARCH_TOTAL_POINTS /
+                          (BINNING_SEARCH_TOTAL_ITERATIONS * bounds.volume());
 
-  std::vector<float> search_densities;
+  std::vector<double> search_densities;
   for (int i = 0; i < BINNING_SEARCH_TOTAL_ITERATIONS; i++) {
     search_densities.push_back(target_density);
   }
 
   // some console output vars
   int total_search_points = 0;
-  for (float density : search_densities) {
+  for (double density : search_densities) {
     total_search_points += (int)(bounds.volume() * density);
   }
 
   std::vector<Bin> bin_grid(BINNING_SEARCH_GRID_RES * BINNING_SEARCH_GRID_RES *
                             BINNING_SEARCH_GRID_RES);
-  std::vector<float> bin_cdf(BINNING_SEARCH_GRID_RES * BINNING_SEARCH_GRID_RES *
-                             BINNING_SEARCH_GRID_RES);
+  std::vector<double> bin_cdf(BINNING_SEARCH_GRID_RES *
+                              BINNING_SEARCH_GRID_RES *
+                              BINNING_SEARCH_GRID_RES);
 
-  vec3 bin_dim;
+  Position bin_dim;
   for (int i = 0; i < 3; i++) {
     bin_dim[i] = (bounds.max[i] - bounds.min[i]) / BINNING_SEARCH_GRID_RES;
   }
@@ -242,16 +243,16 @@ std::vector<T> binned_point_search(
   std::vector<T> points_in_bounds(total_search_points);
   int write_offset = 0;
   for (int iteration = 0; iteration < search_densities.size(); iteration++) {
-    float density = search_densities[iteration];
+    double density = search_densities[iteration];
     int num_search_points = static_cast<int>(bounds.volume() * density);
 
-    float total_cdf = 0.0;
+    double total_cdf = 0.0;
     for (int i = 0; i < bin_grid.size(); i++) {
       total_cdf += bin_grid[i].score(iteration);
       bin_cdf[i] = total_cdf;
     }
 
-    for (float& cdf : bin_cdf) {
+    for (double& cdf : bin_cdf) {
       cdf /= total_cdf;
     }
 
@@ -275,7 +276,7 @@ std::vector<T> binned_point_search(
         int index = write_offset + i;
         CellPointUncompressed point;
 
-        float bin_cdf_val = uniform_distribution(0.0, 1.0, &bin_seed);
+        double bin_cdf_val = uniform_distribution(0.0, 1.0, &bin_seed);
         auto cdf_iter =
           std::upper_bound(bin_cdf.begin(), bin_cdf.end(), bin_cdf_val);
         int bin_idx = std::distance(bin_cdf.begin(), cdf_iter);
@@ -284,8 +285,8 @@ std::vector<T> binned_point_search(
         for (int j = 0; j < 3; j++) {
           int idx = bin_idx % BINNING_SEARCH_GRID_RES;
           bin_idx /= BINNING_SEARCH_GRID_RES;
-          float min = idx * bin_dim[j] + bounds.min[j];
-          float max = bin_dim[j] + min;
+          double min = idx * bin_dim[j] + bounds.min[j];
+          double max = bin_dim[j] + min;
 
           point.pos[j] = uniform_distribution(min, max, &pos_seed[j]);
         }

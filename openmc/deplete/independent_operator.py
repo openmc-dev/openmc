@@ -159,6 +159,7 @@ class IndependentOperator(OpenMCOperator):
 
     @classmethod
     def from_nuclides(cls, volume, nuclides,
+                      flux,
                       micro_xs,
                       chain_file=None,
                       nuc_units='atom/b-cm',
@@ -177,10 +178,11 @@ class IndependentOperator(OpenMCOperator):
         nuclides : dict of str to float
             Dictionary with nuclide names as keys and nuclide concentrations as
             values.
+        flux : numpy.ndarray
+            Flux in each group in [n-cm/src]
         micro_xs : MicroXS
-            One-group microscopic cross sections in [b]. If the
-            :class:`~openmc.deplete.MicroXS` object is empty, a decay-only calculation
-            will be run.
+            Cross sections in [b]. If the :class:`~openmc.deplete.MicroXS`
+            object is empty, a decay-only calculation will be run.
         chain_file : str, optional
             Path to the depletion chain XML file. Defaults to
             ``openmc.config['chain_file']``.
@@ -217,8 +219,11 @@ class IndependentOperator(OpenMCOperator):
         """
         check_type('nuclides', nuclides, dict, str)
         materials = cls._consolidate_nuclides_to_material(nuclides, nuc_units, volume)
+        fluxes = [flux]
+        micros = [micro_xs]
         return cls(materials,
-                   micro_xs,
+                   fluxes,
+                   micros,
                    chain_file,
                    keff=keff,
                    normalization_mode=normalization_mode,

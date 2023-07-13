@@ -13,6 +13,7 @@
 #include <stdlib.h>
 
 namespace openmc {
+
 const int32_t OMCP_CURRENT_VERSION[3] = {1, 0, 0};
 
 const float REFINEMENT_SEARCH_DENSITY = 0.125;
@@ -178,7 +179,8 @@ void refine_octree_random(const Universe& univ,
   timeout_timer.start();
   int iteration = 0;
   while (timeout_timer.elapsed() < REFINEMENT_TIMEOUT) {
-    int num_search_points = (int)(bounds.volume() * REFINEMENT_SEARCH_DENSITY);
+    int num_search_points =
+      static_cast<int>(bounds.volume() * REFINEMENT_SEARCH_DENSITY);
     int num_points_searched = 0;
 
     // first, generate cdf

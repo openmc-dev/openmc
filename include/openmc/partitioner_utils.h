@@ -243,7 +243,7 @@ std::vector<T> binned_point_search(
   int write_offset = 0;
   for (int iteration = 0; iteration < search_densities.size(); iteration++) {
     float density = search_densities[iteration];
-    int num_search_points = (int)(bounds.volume() * density);
+    int num_search_points = static_cast<int>(bounds.volume() * density);
 
     float total_cdf = 0.0;
     for (int i = 0; i < bin_grid.size(); i++) {
@@ -261,9 +261,10 @@ std::vector<T> binned_point_search(
       int tcount = omp_get_num_threads();
 
       uint64_t bin_seed = write_offset + tid;
-      uint64_t pos_seed[3] = {(uint64_t)(write_offset + tid + tcount),
-        (uint64_t)(write_offset + tid + tcount * 2),
-        (uint64_t)(write_offset + tid + tcount * 3)};
+      uint64_t pos_seed[3] = {
+        static_cast<uint64_t>(write_offset + tid + tcount),
+        static_cast<uint64_t>(write_offset + tid + tcount * 2),
+        static_cast<uint64_t>(write_offset + tid + tcount * 3)};
 
       std::vector<int> untested_cells;
       untested_cells.reserve(univ.cells_.size());

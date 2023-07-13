@@ -40,31 +40,46 @@ struct AABB {
   Position max;
 };
 
+// This works by allocating large pools of nodes
+// When we have to allocate nodes during construction, we allocate one from
+// these pools instead of using new[]
 template<class NodeT, size_t NUM_CHILDREN_PER_PARENT, size_t POOL_SIZE = 16384>
 class NodeAllocator {
 public:
-  NodeAllocator() : last_pool_next_index(0) { omp_init_lock(&lock); }
+  NodeAllocator() : last_pool_next_index(0) { omp_init_lock(&alloc_lock); }
+
+  ~NodeAllocator() { omp_destroy_lock(&lock); }
 
   NodeT* allocate()
   {
-    omp_set_lock(&lock);
+    omp_set_lock(&alloc_lock);
+
+    // If we have no pools or the pool we are currently allocating from is full,
+    // let's allocate a new pool
     if (last_pool_next_index == POOL_SIZE || pools.size() == 0) {
       pools.push_back(
         std::make_unique<NodeT[]>(NUM_CHILDREN_PER_PARENT * POOL_SIZE));
+
+      // Reset the position we allocate nodes from
       last_pool_next_index = 0;
     }
 
+    // Get the next abalaible nodes
     auto ptr = &pools.back()[NUM_CHILDREN_PER_PARENT * last_pool_next_index++];
-    omp_unset_lock(&lock);
+
+    omp_unset_lock(&alloc_lock);
 
     return ptr;
   }
 
 private:
-  omp_lock_t lock;
-
+  // Vector of memory pools. The allocator allocates nodes from the last pool
+  // until it is full, at which point it allocates a new pool
   std::vector<std::unique_ptr<NodeT[]>> pools;
+  // The position in the last pool were we allocate nodes from
   size_t last_pool_next_index;
+  // Lock to allow safe multithreading
+  omp_lock_t alloc_lock;
 };
 
 struct CellPointUncompressed {

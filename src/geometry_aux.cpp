@@ -176,9 +176,9 @@ void partition_universes()
 #if 1
             univ->partitioner_ = make_unique<DefaultPartitioner>(*univ);
             univ->partitioner_->export_to_file("partitioner.omcp");
-            #else
+#else
             univ->partitioner_ = make_unique<DefaultPartitioner>(*univ, "partitioner.omcp");
-            #endif
+#endif
             break;
           }
         }

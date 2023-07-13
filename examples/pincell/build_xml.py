@@ -68,8 +68,8 @@ subdivs_a = {
 #subdivs_r = None
 #subdivs_a = None
 rad_div_types = {
-        0 : "area",
-        2 : "area",
+        #0 : "area",
+        #2 : "area",
         3 : "radius"
         }
 

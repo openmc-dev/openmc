@@ -600,8 +600,7 @@ def pin_radial_azimuthal(surfaces, items, subdivisions_r=None, subdivisions_a=No
         to be divided. Values should be either "area" or "radius".
         A value of "area" will create equal area rings while 
         a value of "radius" will create equal radius rings.
-        A division type must be provided for each ring being subdivided
-        i.e. subdivisions_r must be same length as rad_div_types.
+        The division type will default to equal area.
     kwargs:
         Additional key-word arguments to be passed to
         :class:`openmc.Universe`, like ``name="Fuel pin"``
@@ -653,9 +652,6 @@ def pin_radial_azimuthal(surfaces, items, subdivisions_r=None, subdivisions_a=No
             "Surfaces do not appear to be concentric. The following "
             "centers were found: {}".format(centers))
     
-    if rad_div_types is not None and len(subdivisions_r) != len(rad_div_types):
-        raise ValueError("There must be a subdivision type provided for each ring being divided.")
-
     items_new = items.copy()
     
     # Divides Cylinders into more rings
@@ -696,7 +692,7 @@ def pin_radial_azimuthal(surfaces, items, subdivisions_r=None, subdivisions_a=No
 
             equal_radius_term = (upper_rad - lower_rad) / nr
 
-            if rad_div_types is None:
+            if rad_div_types is None or ring_index not in rad_div_types.keys():
                 div_type = "area"
             else:
                 div_type = rad_div_types[ring_index]

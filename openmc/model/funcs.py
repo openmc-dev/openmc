@@ -420,7 +420,7 @@ def subdivide(surfaces):
     # If the first surface is a Cylinder, the region inside the cylinder is added to "regions".
     if isinstance(surfaces[0], Cylinder):
         regions.append(-surfaces[0])
-        
+       
     # This for loop iterates through "surfaces", adding to regions
     # If the surface is a CylinderSector, the region inside the surface is added to "regions".
     # If the current surface and the next surface is a Cylinder, then the region between the cylinders is added to "regions".
@@ -431,8 +431,11 @@ def subdivide(surfaces):
         elif isinstance(s0, Cylinder) and isinstance(s1, Cylinder):
             regions.append(+s0 & -s1)
     
-    # Add the region outside the last surface to "regions". The last surface is a Cylinder.
-    regions.append(+surfaces[-1])
+    # Add the region outside the last surface.
+    if isinstance(surfaces[-1], Cylinder):
+        regions.append(+surfaces[-1])
+    else:
+        regions.append(-surfaces[-1])
     
     return regions
 
@@ -568,7 +571,7 @@ def pin(surfaces, items, subdivisions=None, divide_vols=True,
 
 
 
-def pin_radial_azimuthal(surfaces, items, subdivisions_r=None, subdivisions_a=None, rad_div_types=None,
+def pin_radial_azimuthal(surfaces, items, subdivisions_r=None, subdivisions_a=None, rad_div_types=None, implicit_azi_div=None,
         **kwargs):
     """Convenience function for building a fuel pin
 
@@ -601,6 +604,9 @@ def pin_radial_azimuthal(surfaces, items, subdivisions_r=None, subdivisions_a=No
         A value of "area" will create equal area rings while 
         a value of "radius" will create equal radius rings.
         The division type will default to equal area.
+    implicit_azi_div : None or int
+        Value describes how to azimuthally divide the implicit outer region.
+        Defaults to None, meaning there are no divisions.
     kwargs:
         Additional key-word arguments to be passed to
         :class:`openmc.Universe`, like ``name="Fuel pin"``
@@ -802,6 +808,48 @@ def pin_radial_azimuthal(surfaces, items, subdivisions_r=None, subdivisions_a=No
             filler = items_new[ring_index]
             items_new[ring_index:ring_index] = [
                 filler for _i in range(ns - 1)]
+
+    if implicit_azi_div is not None and implicit_azi_div != 1:
+        ns = implicit_azi_div
+        if ns < 1:
+            raise ValueError("The number of subdivisions must be a positive integer.")
+        new_surfs = []
+        center = list(centers)[0]
+            
+        lower_rad = surfaces[-1].r
+        upper_rad = None
+            
+        # Creates a CylinderSector (composite surface of two cocentric cylinders and two planes) for each azimuthal region
+        spacing = 360.0/ns
+            
+        angles = [(i * spacing - 45.0) for i in range(ns)]
+        angles.append(315.0)
+
+        for ix in range(ns):
+            lower_angle = angles[ix]
+            upper_angle = angles[ix+1]
+
+            if surf_type is ZCylinder:
+                cyl_sec = CylinderSector(r1=lower_rad, r2=upper_rad, theta1=lower_angle, theta2=upper_angle, 
+                        center=center, axis='z')
+            elif surf_type is YCylinder:
+                cyl_sec = CylinderSector(r1=lower_rad, r2=upper_rad, theta1=lower_angle, theta2=upper_angle, 
+                        center=center, axis='y')
+            elif surf_type is XCylinder:
+                cyl_sec = CylinderSector(r1=lower_rad, r2=upper_rad, theta1=lower_angle, theta2=upper_angle, 
+                        center=center, axis='x')
+                
+            new_surfs.append(cyl_sec)
+
+
+        for _s in new_surfs:
+            surfaces.append(_s)
+            
+        filler = items_new[-1]
+        for _i in range(ns - 1):
+            items_new.append(filler)
+
+
 
     # Build the universe
     regions = subdivide(surfaces)

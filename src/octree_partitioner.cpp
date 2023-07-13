@@ -14,13 +14,13 @@
 
 namespace openmc {
 
-const int32_t OMCP_CURRENT_VERSION[3] = {1, 0, 0};
+constexpr int32_t OMCP_CURRENT_VERSION[3] = {1, 0, 0};
 
-const double REFINEMENT_SEARCH_DENSITY = 0.125;
-const double REFINEMENT_TIMEOUT = 10.0;
-const int32_t REFINEMENT_GRID_RES = 128; // ideally should be a power of 2
+constexpr double REFINEMENT_SEARCH_DENSITY = 0.125;
+constexpr double REFINEMENT_TIMEOUT = 10.0;
+constexpr int32_t REFINEMENT_GRID_RES = 128; // ideally should be a power of 2
 
-const int32_t INFORMATION_REFILLING_START_DEPTH_OFFSET = 1;
+constexpr int32_t INFORMATION_REFILLING_START_DEPTH_OFFSET = 1;
 
 enum OMCPStructureType {
   Octree = 1,
@@ -29,19 +29,19 @@ enum OMCPStructureType {
 };
 
 struct OctreeConstructionTask {
-  OctreeUncompressedNode* node;
-  std::vector<CellPoint> points;
+  OctreeUncompressedNode* node_;
+  std::vector<CellPoint> points_;
 
   OctreeConstructionTask() = default;
   OctreeConstructionTask(
     OctreeUncompressedNode* n, const std::vector<CellPoint>& p)
-    : node(n), points(p)
+    : node_(n), points_(p)
   {}
 };
 
 OctreeNode::OctreeNode() : data_(0) {}
 
-const uint32_t OCTREE_LEAF_FLAG = (1 << 31);
+constexpr uint32_t OCTREE_LEAF_FLAG = (1 << 31);
 void OctreeNode::mark_as_leaf()
 {
   data_ |= OCTREE_LEAF_FLAG;
@@ -297,7 +297,7 @@ OctreePartitioner::OctreePartitioner(
   const Universe& univ, int target_cells_per_node)
   : fallback(univ)
 {
-  const double half_side_length = 130.0;
+  constexpr double half_side_length = 130.0;
   bounds_.min_ =
     Position(-half_side_length, -half_side_length, -half_side_length);
   bounds_.max_ = Position(half_side_length, half_side_length, half_side_length);
@@ -357,23 +357,23 @@ OctreePartitioner::OctreePartitioner(
     unprocessed_tasks.pop();
 
     // subdivide
-    cur_task.node->children_ = node_alloc.allocate();
-    cur_task.node->subdivide();
+    cur_task.node_->children_ = node_alloc.allocate();
+    cur_task.node_->subdivide();
 
     OctreeConstructionTask child_tasks[8];
     for (int i = 0; i < 8; i++) {
-      child_tasks[i].node = &cur_task.node->children_[i];
-      nodes_to_propagate.push_back(child_tasks[i].node);
+      child_tasks[i].node_ = &cur_task.node_->children_[i];
+      nodes_to_propagate.push_back(child_tasks[i].node_);
     }
 
     // sort points
-    for (const auto& point : cur_task.points) {
-      child_tasks[point.get_child_index(cur_task.node->depth_)]
-        .points.push_back(point);
+    for (const auto& point : cur_task.points_) {
+      child_tasks[point.get_child_index(cur_task.node_->depth_)]
+        .points_.push_back(point);
     }
 
     double parent_vh =
-      cur_task.node->box_.volume() * cur_task.node->num_unique_cells_;
+      cur_task.node_->box_.volume() * cur_task.node_->num_unique_cells_;
     double children_vh = 0.0;
 
     // post processing (make nodes leaves or push on construction stack)
@@ -382,32 +382,32 @@ OctreePartitioner::OctreePartitioner(
       // count the number of unique cells
       int num_unique_cells = 0;
       int prev_cell = -1;
-      for (const auto& p : child_tasks[i].points) {
+      for (const auto& p : child_tasks[i].points_) {
         if (p.get_cell() != prev_cell) {
           num_unique_cells++;
           prev_cell = p.get_cell();
         }
       }
 
-      child_tasks[i].node->num_unique_cells_ = num_unique_cells;
+      child_tasks[i].node_->num_unique_cells_ = num_unique_cells;
 
-      children_vh += child_tasks[i].node->box_.volume() * num_unique_cells;
+      children_vh += child_tasks[i].node_->box_.volume() * num_unique_cells;
       if (num_unique_cells > target_cells_per_node) {
         force_subdiv = true;
       }
     }
 
     if (force_subdiv ||
-        depth_vh_mult[cur_task.node->depth_] * children_vh < parent_vh) {
+        depth_vh_mult[cur_task.node_->depth_] * children_vh < parent_vh) {
       // continue subdivision on this branch
       num_nodes_ += 8;
       for (int i = 0; i < 8; i++) {
-        child_tasks[i].node->cells_.reserve(
-          child_tasks[i].node->num_unique_cells_);
+        child_tasks[i].node_->cells_.reserve(
+          child_tasks[i].node_->num_unique_cells_);
         prev_cell = -1;
-        for (const auto& p : child_tasks[i].points) {
+        for (const auto& p : child_tasks[i].points_) {
           if (p.get_cell() != prev_cell) {
-            child_tasks[i].node->cells_.push_back(p.get_cell());
+            child_tasks[i].node_->cells_.push_back(p.get_cell());
             prev_cell = p.get_cell();
           }
         }
@@ -416,14 +416,14 @@ OctreePartitioner::OctreePartitioner(
       }
     } else {
       // terminate subdivision on this branch
-      cur_task.node->children_ = nullptr;
-      leaves.push_back(cur_task.node);
+      cur_task.node_->children_ = nullptr;
+      leaves.push_back(cur_task.node_);
       num_leaves_++;
     }
 
     // free memory
-    cur_task.points.clear();
-    cur_task.points.shrink_to_fit();
+    cur_task.points_.clear();
+    cur_task.points_.shrink_to_fit();
   }
 
   refine_octree_random(univ, fallback, bounds_, leaves);
@@ -701,22 +701,22 @@ void OctreePartitioner::refill_information()
 {
   struct OctreeNodeExtraInfo {
     OctreeNodeExtraInfo()
-      : parent(nullptr), eiparent(nullptr), current(nullptr),
-        eichildren(nullptr), children(nullptr), depth(0)
+      : parent_(nullptr), eiparent_(nullptr), current_(nullptr),
+        eichildren_(nullptr), children_(nullptr), depth_(0)
     {}
 
-    OctreeNode* parent;
-    OctreeNode* current;
-    OctreeNode* children;
+    OctreeNode* parent_;
+    OctreeNode* current_;
+    OctreeNode* children_;
 
-    OctreeNodeExtraInfo* eiparent;
-    OctreeNodeExtraInfo* eichildren;
+    OctreeNodeExtraInfo* eiparent_;
+    OctreeNodeExtraInfo* eichildren_;
 
-    std::vector<int> cells;
+    std::vector<int> cells_;
 
-    uint32_t depth = 0;
+    uint32_t depth_ = 0;
 
-    bool is_leaf() const { return (children != nullptr); }
+    bool is_leaf() const { return (children_ != nullptr); }
   };
 
   // make our nodes easier to work with
@@ -726,20 +726,20 @@ void OctreePartitioner::refill_information()
     OctreeNodeExtraInfo* einode = &einodes[i];
     nodes_to_propagate[i] = einode;
 
-    einode->current = &nodes_[i];
+    einode->current_ = &nodes_[i];
 
     if (!nodes_[i].is_leaf()) {
       int idx = nodes_[i].read_data();
-      einode->children = &nodes_[idx];
-      einode->eichildren = &einodes[idx];
+      einode->children_ = &nodes_[idx];
+      einode->eichildren_ = &einodes[idx];
 
       for (int i = 0; i < 8; i++) {
-        einode->eichildren[i].parent = einode->current;
-        einode->eichildren[i].eiparent = einode;
-        einode->eichildren[i].depth = einode->depth + 1;
+        einode->eichildren_[i].parent_ = einode->current_;
+        einode->eichildren_[i].eiparent_ = einode;
+        einode->eichildren_[i].depth_ = einode->depth_ + 1;
       }
     } else {
-      einode->cells = std::move(cell_data_[nodes_[i].read_data()]);
+      einode->cells_ = std::move(cell_data_[nodes_[i].read_data()]);
     }
   }
 
@@ -748,7 +748,7 @@ void OctreePartitioner::refill_information()
     inline bool operator()(
       const OctreeNodeExtraInfo* lhs, const OctreeNodeExtraInfo* rhs) const
     {
-      return (lhs->depth < rhs->depth);
+      return (lhs->depth_ < rhs->depth_);
     }
   };
   std::sort(
@@ -756,25 +756,25 @@ void OctreePartitioner::refill_information()
   for (auto ptr : nodes_to_propagate) {
     auto& cur = *ptr;
     if (!cur.is_leaf()) {
-      std::sort(cur.cells.begin(), cur.cells.end());
+      std::sort(cur.cells_.begin(), cur.cells_.end());
 
-      int prev_cell = cur.cells[0];
+      int prev_cell = cur.cells_[0];
 
       int next_idx = 1;
-      for (int i = 1; i < cur.cells.size(); i++) {
-        if (cur.cells[i] != prev_cell) {
-          cur.cells[next_idx] = cur.cells[i];
+      for (int i = 1; i < cur.cells_.size(); i++) {
+        if (cur.cells_[i] != prev_cell) {
+          cur.cells_[next_idx] = cur.cells_[i];
           next_idx++;
-          prev_cell = cur.cells[i];
+          prev_cell = cur.cells_[i];
         }
       }
-      cur.cells.resize(next_idx);
-      cur.cells.shrink_to_fit();
+      cur.cells_.resize(next_idx);
+      cur.cells_.shrink_to_fit();
     }
 
-    if (cur.parent) {
-      for (int cell : cur.cells) {
-        cur.eiparent->cells.push_back(cell);
+    if (cur.parent_) {
+      for (int cell : cur.cells_) {
+        cur.eiparent_->cells_.push_back(cell);
       }
     }
   }
@@ -788,7 +788,7 @@ void OctreePartitioner::refill_information()
 
     bool should_collect_leaves = false;
     for (int i = 0; i < 8; i++) {
-      if (cur->children[i].is_leaf()) {
+      if (cur->children_[i].is_leaf()) {
         should_collect_leaves = true;
         break;
       }
@@ -796,30 +796,30 @@ void OctreePartitioner::refill_information()
 
     auto collection_start = cur;
     for (int i = 0; i < INFORMATION_REFILLING_START_DEPTH_OFFSET; i++) {
-      if (collection_start->parent) {
-        collection_start = collection_start->eiparent;
+      if (collection_start->parent_) {
+        collection_start = collection_start->eiparent_;
       }
     }
 
-    const auto& unique_cells = collection_start->cells;
+    const auto& unique_cells = collection_start->cells_;
 
     for (int i = 0; i < 8; i++) {
-      if (cur->children[i].is_leaf()) {
-        int orig_size = cur->eichildren[i].cells.size();
+      if (cur->children_[i].is_leaf()) {
+        int orig_size = cur->eichildren_[i].cells_.size();
 
-        auto search_start = cur->eichildren[i].cells.begin();
-        auto search_end = cur->eichildren[i].cells.begin() + orig_size;
+        auto search_start = cur->eichildren_[i].cells_.begin();
+        auto search_end = cur->eichildren_[i].cells_.begin() + orig_size;
 
         for (int cell : unique_cells) {
           if (!std::binary_search(search_start, search_end, cell)) {
-            cur->eichildren[i].cells.push_back(cell);
+            cur->eichildren_[i].cells_.push_back(cell);
           }
         }
         // now that downpropagation is done for this node, update cell_data
-        cell_data_[cur->eichildren[i].current->read_data()] =
-          std::move(cur->eichildren[i].cells);
+        cell_data_[cur->eichildren_[i].current_->read_data()] =
+          std::move(cur->eichildren_[i].cells_);
       } else {
-        uninfo_refilled_nodes.push(&cur->eichildren[i]);
+        uninfo_refilled_nodes.push(&cur->eichildren_[i]);
       }
     }
   }

@@ -137,8 +137,8 @@ public:
     const double REFINEMENT_BIN_SCORE_SEARCHED_MULT = 1.0;
 
     double found_score =
-      std::max(REFINEMENT_BIN_SCORE_FOUND_MULT * num_found, 1.0f) /
-      std::max(REFINEMENT_BIN_SCORE_SEARCHED_MULT * num_searched, 1.0f);
+      std::max(REFINEMENT_BIN_SCORE_FOUND_MULT * num_found, 1.0) /
+      std::max(REFINEMENT_BIN_SCORE_SEARCHED_MULT * num_searched, 1.0);
 
     found_score *= found_score;
 

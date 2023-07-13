@@ -334,7 +334,6 @@ endif()
 list(APPEND libopenmc_SOURCES
   src/aabb.cpp
   src/bank.cpp
-  src/binning.cpp
   src/boundary_condition.cpp
   src/bremsstrahlung.cpp
   src/cell.cpp
@@ -371,6 +370,7 @@ list(APPEND libopenmc_SOURCES
   src/particle.cpp
   src/particle_data.cpp
   src/particle_restart.cpp
+  src/partitioner_utils.cpp
   src/photon.cpp
   src/physics.cpp
   src/physics_common.cpp

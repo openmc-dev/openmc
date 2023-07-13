@@ -1,4 +1,5 @@
 #include "openmc/kdtree_partitioner.h"
+#include "openmc/error.h"
 #include <stack>
 #include <queue>
 #include <float.h>
@@ -127,7 +128,6 @@ namespace openmc {
         }
 
         v.clear();
-        //v.reserve(unique_elems.size());
 
         for(int x : unique_elems) {
             v.push_back(x);
@@ -229,35 +229,32 @@ namespace openmc {
                 prev_cell = p.cell;
             }
         }
-
-        //std::cout << "SIZE\t" << node.cells.size() << std::endl;
     }
 
     KdTreePartitioner::KdTreePartitioner(const Universe& univ) : fallback(univ) {
-        std::cout << "====================KDTREE CONSTRUCTION===================\n";
+        write_message("Building kd-tree partitioner...", 5);
+
+        Timer construction_timer;
+        construction_timer.start();
+
         const uint32_t MAX_DEPTH = 16;
 
         const float half_side_length = 130.0;
         bounds.min = vec3(-half_side_length, -half_side_length, -half_side_length);
         bounds.max = vec3( half_side_length,  half_side_length,  half_side_length);
 
-        KdTreeUncompressedNode root;
-        root.box = bounds;
-
         auto points_in_bounds = binned_point_search<CellPointUncompressed>(univ, fallback, bounds);
-        std::cout << "Done searching points. Beginning organization of points..." << std::endl;
-
-        Timer construction_timer;
-        construction_timer.start();
-
-        std::stack<KdTreeConstructionTask> unproc_nodes;
-        unproc_nodes.emplace(&root, points_in_bounds, 0);
-
 
         uint32_t num_nodes = 1;
         uint32_t num_leaves = 0;
-        
 
+        NodeAllocator<KdTreeUncompressedNode, 2> node_alloc;
+
+        KdTreeUncompressedNode root;
+        root.box = bounds;
+
+        std::stack<KdTreeConstructionTask> unproc_nodes;
+        unproc_nodes.emplace(&root, points_in_bounds, 0);
         while(!unproc_nodes.empty()) {
             auto task = std::move(unproc_nodes.top());
             unproc_nodes.pop();
@@ -265,7 +262,6 @@ namespace openmc {
             auto cur = task.node;
 
             float parent_vh = cur->box.volume() * get_num_unique_cells(task.points);
-            
 
             KdTreeUncompressedNode best_children[2];
             std::vector<CellPointUncompressed> best_points[2];
@@ -276,12 +272,10 @@ namespace openmc {
             }
             
             // update if needed
-            //std::cout << "RSLT\t" << best_child_vh << '\t' << parent_vh << std::endl;
             if(0.9 * best_child_vh < parent_vh) {
-                //std::cout << "PICK\t" << best_picked_split << std::endl;
                 num_nodes += 2;
 
-                task.node->children = new KdTreeUncompressedNode[2];
+                task.node->children = node_alloc.allocate();
                 uint32_t next_depth = task.depth + 1;
 
                 // why am I using a loop for this? I have no idea
@@ -301,8 +295,6 @@ namespace openmc {
                 num_leaves++;
             }
         }
-        construction_timer.stop();
-        std::cout << "Kd tree construction took " << construction_timer.elapsed() << " seconds." << std::endl;
 
         // compress
         nodes.reserve(num_nodes);
@@ -334,29 +326,17 @@ namespace openmc {
 
             nodes.push_back(comp_node);
         }
+        write_message("Kd-tree construction completed in " + std::to_string(construction_timer.elapsed()) + " seconds.");
     }
 
     // statistics
-    uint32_t kd_tree_use_count = 0;
-    uint32_t kd_tree_fallback_use_count = 0;
-    uint32_t kd_tree_oob_use_count = 0;
-    KdTreePartitioner::~KdTreePartitioner() {
-        // memory leak for now
-
-        std::cout << "=========KD TREE USE STATS==========\n";
-        std::cout << "Kd tree use count      :\t" << kd_tree_use_count << '\n';
-        std::cout << "Fallback use count     :\t" << kd_tree_fallback_use_count << '\n';
-        std::cout << "Out of bounds use count:\t" << kd_tree_oob_use_count << '\n';
-        std::cout.flush();
-    }
+    KdTreePartitioner::~KdTreePartitioner() {}
 
     //! Return the list of cells that could contain the given coordinates.
     const std::vector<int32_t>& KdTreePartitioner::get_cells(Position r, Direction u) const {
         if(!bounds.contains(r)) {
-            kd_tree_oob_use_count++;
             return get_cells_fallback(r, u);
         }
-        kd_tree_use_count++;
 
         const KdTreeNode* cur = &nodes[0];
         while(true) {
@@ -377,7 +357,6 @@ namespace openmc {
     }
 
     const std::vector<int32_t>& KdTreePartitioner::get_cells_fallback(Position r, Direction u) const {
-        kd_tree_fallback_use_count++;
         return fallback.get_cells(r, u);
     }
 

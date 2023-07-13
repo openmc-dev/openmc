@@ -39,9 +39,7 @@
 #include <algorithm>
 #include <cmath>
 #include <string>
-#include <mutex>
 
-std::mutex total_time_sum_mutex;
 double total_time = 0.0;
 
 //==============================================================================
@@ -749,9 +747,8 @@ void transport_history_based()
     initialize_history(p, i_work);
     transport_history_based_single_particle(p);
     t.stop();
-    total_time_sum_mutex.lock();
+    #pragma omp atomic update
     total_time += t.elapsed();
-    total_time_sum_mutex.unlock();
   }
 }
 

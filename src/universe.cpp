@@ -1,13 +1,8 @@
 #include "openmc/universe.h"
 #include "openmc/partitioners.h"
-
-#include <set>
-
 #include "openmc/hdf5_interface.h"
 #include "openmc/timer.h"
-#include <iostream>
-#include <mutex>
-#include <time.h>
+#include "openmc/error.h"
 
 double finding_time = 0.0;
 
@@ -43,8 +38,6 @@ void Universe::to_hdf5(hid_t universes_group) const
   close_group(group);
 }
 
-std::mutex finding_time_sum_mutex;
-
 bool Universe::find_cell(Particle& p) const
 {
   Timer t;
@@ -61,9 +54,8 @@ bool Universe::find_cell(Particle& p) const
   }
   #endif
   
-  finding_time_sum_mutex.lock();
+  #pragma omp atomic update
   finding_time += t.elapsed();
-  finding_time_sum_mutex.unlock();
 
   return result;
 }
@@ -140,13 +132,12 @@ BoundingBox Universe::bounding_box() const
 UniversePartitioner::~UniversePartitioner() {}
 
 const std::vector<int32_t>& UniversePartitioner::get_cells_fallback(Position r, Direction u) const {
-  std::cout << "Fallback is not enabled for this partitioner. Please recompile with the PARTITIONER_FALLBACK_ENABLED macro disabled in partitioners.h." << std::endl;
-  abort();
+  fatal_error("Fallback is not enabled for this partitioner. Please recompile with the PARTITIONER_FALLBACK_ENABLED macro disabled in partitioners.h.");
 }
 
 void UniversePartitioner::export_to_file(const std::string& path) const {
-  std::cout << "Failed to export partitioner to " << path 
-            << " because current partitioner type currently does not support exporting as a file." << std::endl;
+  warning("Failed to export partitioner to " + path 
+        + " because current partitioner type currently does not support exporting as a file.");
   // no need to abort
 }
 

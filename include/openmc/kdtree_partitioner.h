@@ -5,7 +5,7 @@
 #include "aabb.h"
 #include "zplane_partitioner.h"
 #include "octree_partitioner.h"
-#include "binning.h"
+#include "partitioner_utils.h"
 #include <vector>
 
 namespace openmc {

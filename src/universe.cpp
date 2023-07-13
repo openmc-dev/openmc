@@ -42,18 +42,21 @@ bool Universe::find_cell(Particle& p) const
   const auto& cells {
     !partitioner_ ? cells_ : partitioner_->get_cells(p.r_local(), p.u_local())};
 
-  bool result = find_cell_in_list(p, cells);
+  bool result = find_cell_in_list(cells, p);
 
-  #ifdef PARTITIONER_FALLBACK_ENABLED
+#ifdef PARTITIONER_FALLBACK_ENABLED
   if(!result && partitioner_) {
-    result = find_cell_in_list(p, partitioner_->get_cells_fallback(p.r_local(), p.u_local()));
+    result = find_cell_in_list(
+      partitioner_->get_cells_fallback(p.r_local(), p.u_local()), p);
   }
   #endif
 
   return result;
 }
 
-bool Universe::find_cell_in_list(Particle& p, const std::vector<int>& cells) const {
+bool Universe::find_cell_in_list(
+  const std::vector<int>& cells, Particle& p) const
+{
   for (auto it = cells.begin(); it != cells.end(); it++) {
     int32_t i_cell = *it;
     int32_t i_univ = p.coord(p.n_coord() - 1).universe;
@@ -73,22 +76,6 @@ bool Universe::find_cell_in_list(Particle& p, const std::vector<int>& cells) con
   return false;
 }
 
-void Universe::find_cell_in_list(const std::vector<int>& cells_to_search, std::vector<int>& cells_found, std::vector<bool>& skip_cell, Position& r) const
-{
-  for (int i = 0; i < cells_to_search.size(); i++) {
-    if(skip_cell[i]) continue;
-    int32_t i_cell = cells_to_search[i];
-    // Check if this cell contains the particle;
-    Direction u {0.0, 0.0, 0.0};
-    int32_t surf = false;
-    if (model::cells[i_cell]->contains(r, u, surf)) {
-      //std::cout << "Found " << i_cell << "\n";
-      cells_found.push_back(i_cell);
-      skip_cell[i] = true;
-    }
-  }
-}
-
 int Universe::find_cell_for_point(const std::vector<int>& cells_to_search, const Position& r) const {
   for (int i = 0; i < cells_to_search.size(); i++) {
     int32_t i_cell = cells_to_search[i];
@@ -101,10 +88,6 @@ int Universe::find_cell_for_point(const std::vector<int>& cells_to_search, const
   }
 
   return -1;
-}
-
-int Universe::find_cell_for_point(const Position& r) const {
-  return find_cell_for_point(cells_, r);
 }
 
 BoundingBox Universe::bounding_box() const
@@ -129,9 +112,9 @@ const std::vector<int32_t>& UniversePartitioner::get_cells_fallback(Position r, 
 }
 
 void UniversePartitioner::export_to_file(const std::string& path) const {
-  warning("Failed to export partitioner to " + path 
-        + " because current partitioner type currently does not support exporting as a file.");
-  // no need to abort
+  warning("Failed to export partitioner to " + path +
+          " because current partitioner type currently does not support "
+          "exporting as a file.");
 }
 
 

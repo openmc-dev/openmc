@@ -34,12 +34,10 @@ public:
 
   virtual bool find_cell(Particle& p) const;
 
-  virtual bool find_cell_in_list(Particle& p, const std::vector<int>& cells_to_search) const;
-
-  // cells may overlap
-  virtual void find_cell_in_list(const std::vector<int>& cells_to_search, std::vector<int>& cells_found, std::vector<bool>& skip_cell, Position& p) const;
-  virtual int find_cell_for_point(const std::vector<int>& cells_to_search, const Position& p) const;
-  virtual int find_cell_for_point(const Position& p) const;
+  virtual bool find_cell_in_list(
+    const std::vector<int>& cells_to_search, Particle& p) const;
+  virtual int find_cell_for_point(
+    const std::vector<int>& cells_to_search, const Position& p) const;
 
   BoundingBox bounding_box() const;
 

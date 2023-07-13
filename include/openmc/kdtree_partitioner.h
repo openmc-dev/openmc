@@ -1,11 +1,12 @@
 #ifndef OPENMC_KDTREE_PARTITIONER_H
 #define OPENMC_KDTREE_PARTITIONER_H
 
+#include <vector>
+
 #include "octree_partitioner.h"
 #include "partitioner_utils.h"
 #include "universe.h"
 #include "zplane_partitioner.h"
-#include <vector>
 
 namespace openmc {
 

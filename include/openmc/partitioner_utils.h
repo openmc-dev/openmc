@@ -196,17 +196,8 @@ public:
   // like the regular bin, we have node sampling
   double compute_score()
   {
-    constexpr double REFINEMENT_BIN_SCORE_FOUND_MULT = 1.0;
-    constexpr double REFINEMENT_BIN_SCORE_SEARCHED_MULT = 1.0;
-
-    double found_score =
-      std::max(REFINEMENT_BIN_SCORE_FOUND_MULT * num_found_, 1.0) /
-      std::max(REFINEMENT_BIN_SCORE_SEARCHED_MULT * num_searched_, 1.0);
-
-    found_score *= found_score;
-
-    double size_score = contained_nodes_.size();
-    return size_score;
+    // Current, the score is how many nodes are within this bin
+    return contained_nodes_.size();
   }
 
   // get a random node index
@@ -355,10 +346,10 @@ std::vector<T> binned_point_search(
         int index = write_offset + i;
 
         // pick a bin
-        double bin_cdf_val = uniform_distribution(0.0, 1.0, &bin_seed);
-        auto cdf_iter =
-          std::upper_bound(bin_cmf.begin(), bin_cmf.end(), bin_cdf_val);
-        int bin_idx = std::distance(bin_cmf.begin(), cdf_iter);
+        double bin_cmf_val = uniform_distribution(0.0, 1.0, &bin_seed);
+        auto cmf_iter =
+          std::upper_bound(bin_cmf.begin(), bin_cmf.end(), bin_cmf_val);
+        int bin_idx = std::distance(bin_cmf.begin(), cmf_iter);
         Bin* sample_bin = &bin_grid[bin_idx];
 
         // generate a point inside that bin

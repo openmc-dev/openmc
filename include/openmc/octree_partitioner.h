@@ -19,13 +19,15 @@ struct OctreeNode {
 public:
   OctreeNode();
 
+  // Set 32nd bit to on
   void mark_as_leaf();
+  // Check if 32nd bit is on
   bool is_leaf() const;
 
+  // Store a 31 bit integer in the first 31 bits of data_
   void store_data(uint32_t data);
+  // Extract the first 31 bits of data_
   uint32_t read_data() const;
-
-  int get_child_index(const Position& r) const;
 
 private:
   uint32_t data_;
@@ -36,22 +38,34 @@ private:
 struct OctreeUncompressedNode {
   OctreeUncompressedNode();
 
+  // Checks whether children_ is nullptr
   bool is_leaf() const;
+  // Initialize children nodes
   void subdivide();
-
+  // Check whether cell is in cell_ (assumes cells_ is sorted)
   bool contains(int cell) const;
 
-  uint16_t depth_;
-  uint16_t num_original_cells_;
-  uint16_t num_unique_cells_;
-
+  // Bounding box of node
   AABB box_;
+  // List of cells contained within this node
+  std::vector<int32_t> cells_;
 
-  OctreeUncompressedNode*
-    children_; // if this is a leaf, then children will be null
+  // Pointer to first child node (all children nodes are stored contigously in
+  // memory). If the node is a leaf, then children will be null,
+  OctreeUncompressedNode* children_;
+
+  // Pointer to parent node. Used in information refilling.
   OctreeUncompressedNode* parent_;
 
-  std::vector<int32_t> cells_;
+  // Depth of current node
+  uint16_t depth_;
+  // Number of cells contained (equal to cells_.size() but unlike cells_.size(),
+  // you don't have to build the cells list to get the number of unique cells)
+  // Instead you can store them in an integer. This is useful for saving
+  // performance.
+  uint16_t num_unique_cells_;
+  // Number of cells contained in cells_ before information refilling
+  uint16_t num_original_cells_;
 };
 
 class OctreePartitioner : public UniversePartitioner {

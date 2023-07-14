@@ -28,6 +28,10 @@ enum OMCPStructureType {
   ZPlanePartitioner = 3, // not yet implemented in OMCP
 };
 
+// This structure is used during construction to assocaite nodes with arrays of
+// points. I dont directly include the points_ within the nodes because it
+// appears to lower performance. Perhaps that is due to the reduced cache hit
+// rate during refinement.
 struct OctreeConstructionTask {
   OctreeUncompressedNode* node_;
   std::vector<CellPoint> points_;
@@ -41,6 +45,7 @@ struct OctreeConstructionTask {
 
 OctreeNode::OctreeNode() : data_(0) {}
 
+// 32nd bit is on, all else is off
 constexpr uint32_t OCTREE_LEAF_FLAG = (1 << 31);
 void OctreeNode::mark_as_leaf()
 {
@@ -54,12 +59,13 @@ bool OctreeNode::is_leaf() const
 
 void OctreeNode::store_data(uint32_t data)
 {
-  // remove everything except the flag
+  // Store the first 31 bits while keeping the value of the leaf flag
   this->data_ = (this->data_ & OCTREE_LEAF_FLAG) | data;
 }
 
 uint32_t OctreeNode::read_data() const
 {
+  // Return all bits except the leaf flag
   return (data_ & ~OCTREE_LEAF_FLAG);
 }
 
@@ -74,11 +80,16 @@ bool OctreeUncompressedNode::is_leaf() const
 
 void OctreeUncompressedNode::subdivide()
 {
+  // Recursively splits list of boxes on each axis to get 8 sub boxes
+  // Initially this list only consists of parent's box
+
   AABB resultant_boxes[8];
   resultant_boxes[0] = box_;
   for (int i = 0; i < 3; i++) {
     AABB temp_box_buffer[8];
 
+    // Split each box in resultant_boxes on axis i and store them in
+    // temp_box_buffer
     int next_index = 0;
     for (int idx = 0; idx < (1 << i); idx++) {
       // split on i-th axis
@@ -100,6 +111,7 @@ void OctreeUncompressedNode::subdivide()
     std::copy(temp_box_buffer, temp_box_buffer + (2 << i), resultant_boxes);
   }
 
+  // Move boxes over to children
   for (int i = 0; i < 8; i++) {
     children_[i].box_ = resultant_boxes[i];
     children_[i].depth_ = depth_ + 1;
@@ -107,11 +119,14 @@ void OctreeUncompressedNode::subdivide()
   }
 }
 
+// Assumes that cells are storted
 bool OctreeUncompressedNode::contains(int cell) const
 {
   return std::binary_search(cells_.begin(), cells_.end(), cell);
 }
 
+// Serves same functionality as Bin::copy_untested_cells. See the comment on
+// that in partitioner_utils.h
 void pick_untested_cells(const std::vector<int>& tested_cells,
   const std::vector<int>& possible_cells, std::vector<int>& untested_cells)
 {
@@ -126,13 +141,18 @@ void pick_untested_cells(const std::vector<int>& tested_cells,
   }
 }
 
+// The refinement process picks a random node within the octree and samples a
+// point instead it. If the leaf does not have the cell, then it utilizes the
+// fallback to find the actual cell and then inserts the new cell into the leaf.
+// Note that it does not subdivide a leaf if the number of cells exceeds the
+// target cells per leaf paramter. This is done in order to prevent pockets of
+// missing information from forming.
 void refine_octree_random(const Universe& univ,
   const UniversePartitioner& fallback, const AABB& bounds,
   const std::vector<OctreeUncompressedNode*>& leaves)
 {
+  // Generate the seeds that each thread will use ahead of time
   const int32_t num_threads = omp_get_max_threads();
-
-  // generate the seeds
   std::vector<uint64_t[2]> rng_node_selec(num_threads);
   std::vector<uint64_t[3]> rng_pos(num_threads);
   for (int i = 0; i < num_threads; i++) {
@@ -143,15 +163,17 @@ void refine_octree_random(const Universe& univ,
     }
   }
 
+  // Create our probability bins. These basically help us importance sample
+  // nodes for refinement.
   using ProbBinT = ProbabilityBin<OctreeUncompressedNode>;
   std::vector<ProbBinT> prob_bin_grid(
     REFINEMENT_GRID_RES * REFINEMENT_GRID_RES * REFINEMENT_GRID_RES);
-
   Position prob_bin_dim;
   for (int i = 0; i < 3; i++) {
     prob_bin_dim[i] = (bounds.max_[i] - bounds.min_[i]) / REFINEMENT_GRID_RES;
   }
 
+  // For each leaf, add it to a probabilty bin
   for (auto leaf : leaves) {
     int idx = 0;
     for (int i = 0; i < 3; i++) {
@@ -167,6 +189,7 @@ void refine_octree_random(const Universe& univ,
     }
   }
 
+  // For each bin, initalize the locks
   for (auto& prob_bin : prob_bin_grid) {
     prob_bin.update_common_cells();
     for (auto& p : prob_bin.contained_nodes_) {
@@ -174,27 +197,30 @@ void refine_octree_random(const Universe& univ,
     }
   }
 
-  std::vector<double> bin_cdf(prob_bin_grid.size());
-
   Timer timeout_timer;
   timeout_timer.start();
+
+  std::vector<double> bin_cmf(prob_bin_grid.size());
   int iteration = 0;
+
+  // We terminate the loop after refining for a certain amount of time
   while (timeout_timer.elapsed() < REFINEMENT_TIMEOUT) {
     int num_search_points =
       static_cast<int>(bounds.volume() * REFINEMENT_SEARCH_DENSITY);
     int num_points_searched = 0;
 
-    // first, generate cdf
-    double total_cdf = 0.0;
+    // First, generate cmf
+    double total_cmf = 0.0;
     for (int i = 0; i < prob_bin_grid.size(); i++) {
-      total_cdf += prob_bin_grid[i].compute_score();
-      bin_cdf[i] = total_cdf;
+      total_cmf += prob_bin_grid[i].compute_score();
+      bin_cmf[i] = total_cmf;
     }
 
-    for (double& cdf : bin_cdf) {
-      cdf /= total_cdf;
+    for (double& cmf : bin_cmf) {
+      cmf /= total_cmf;
     }
 
+    // Launch a job for each thread
 #pragma omp parallel for
     for (int tid = 0; tid < num_threads; tid++) {
       std::vector<int> untested_cells, temp_buf;
@@ -207,14 +233,15 @@ void refine_octree_random(const Universe& univ,
       while (num_points_searched < num_search_points) {
         num_points_searched++;
 
+        // Find a probabity bin
         ProbBinT* prob_bin;
         do {
-          double cdf_val =
+          double cmf_val =
             uniform_distribution(0.0, 1.0, &rng_node_selec[tid][0]);
-          auto cdf_iter =
-            std::upper_bound(bin_cdf.begin(), bin_cdf.end(), cdf_val);
-          size_t bin_idx = std::distance(bin_cdf.begin(), cdf_iter);
-          if (bin_idx == bin_cdf.size()) {
+          auto cmf_iter =
+            std::upper_bound(bin_cmf.begin(), bin_cmf.end(), cmf_val);
+          size_t bin_idx = std::distance(bin_cmf.begin(), cmf_iter);
+          if (bin_idx == bin_cmf.size()) {
             bin_idx--;
           }
 
@@ -222,6 +249,7 @@ void refine_octree_random(const Universe& univ,
         } while (prob_bin->contained_nodes_.size() == 0);
         prob_bin->num_searched_++;
 
+        // Now pick a node
         size_t idx = prob_bin->pick_node(&rng_node_selec[tid][1]);
         if (idx >= prob_bin->contained_nodes_.size()) {
           idx = prob_bin->contained_nodes_.size() - 1;
@@ -230,17 +258,20 @@ void refine_octree_random(const Universe& univ,
         OctreeUncompressedNode* current = prob_bin->contained_nodes_[idx].first;
         omp_lock_t* cell_lock = &prob_bin->contained_nodes_[idx].second;
 
+        // Generate a point within in
         CellPointUncompressed point;
         for (int i = 0; i < 3; i++) {
           point.pos_[i] = uniform_distribution(
             current->box_.min_[i], current->box_.max_[i], &rng_pos[tid][i]);
         }
 
+        // Search the point for the node
         omp_set_lock(cell_lock);
         point.cell_ = univ.find_cell_for_point(current->cells_, point.pos_);
         omp_unset_lock(cell_lock);
 
         if (point.cell_ == -1) {
+          // Point was not found, let's search in the bin's list of common cells
           prob_bin->num_found_++;
 
           omp_set_lock(cell_lock);
@@ -250,10 +281,12 @@ void refine_octree_random(const Universe& univ,
 
           point.cell_ = univ.find_cell_for_point(untested_cells, point.pos_);
           if (point.cell_ == -1) {
+            // Still not found, let's check the parent
             point.cell_ =
               univ.find_cell_for_point(current->parent_->cells_, point.pos_);
 
             if (point.cell_ == -1) {
+              // We are going to have to check the fallback's list
               Direction dummy {0, 0, 1};
               const auto& possible_cells =
                 fallback.get_cells(point.pos_, dummy);
@@ -267,18 +300,20 @@ void refine_octree_random(const Universe& univ,
               point.cell_ =
                 univ.find_cell_for_point(untested_cells, point.pos_);
 
-              // very rarely, even the fallback misses a cell
-              // we need to do an exhaustive search or the program will segfault
               if (point.cell_ == -1) {
+                // very rarely, even the fallback misses a cell
+                // we need to do an exhaustive search or the program will
+                // segfault
                 point.cell_ = univ.find_cell_for_point(univ.cells_, point.pos_);
               }
             }
 
+            // Add the missing cell to the bin
             prob_bin->add_cell(point.cell_);
           }
 
+          // insertion sort into the leaf's list of cells
           omp_set_lock(cell_lock);
-          // insertion sort
           current->cells_.push_back(point.cell_);
           for (int i = current->cells_.size() - 1; i > 0; i--) {
             if (current->cells_[i] < current->cells_[i - 1]) {
@@ -297,6 +332,7 @@ OctreePartitioner::OctreePartitioner(
   const Universe& univ, int target_cells_per_node)
   : fallback(univ)
 {
+  // Set up our bounds
   constexpr double half_side_length = 130.0;
   bounds_.min_ =
     Position(-half_side_length, -half_side_length, -half_side_length);
@@ -320,13 +356,17 @@ OctreePartitioner::OctreePartitioner(
   Timer construction_timer;
   construction_timer.start();
 
+  // Search for points
   auto points_in_bounds =
     binned_point_search<CellPoint>(univ, fallback, bounds_);
 
+  // Set up our root
   OctreeUncompressedNode root;
   root.box_ = bounds_;
   root.depth_ = 0;
 
+  // Set up the number of unique cells here.
+  // We need to sort anyway for construction.
   std::sort(points_in_bounds.begin(), points_in_bounds.end());
   int prev_cell = -1;
   for (const auto& p : points_in_bounds) {
@@ -337,18 +377,23 @@ OctreePartitioner::OctreePartitioner(
   }
   root.num_unique_cells_ = root.cells_.size();
 
+  // The root already is the first node
   num_nodes_ = 1;
   num_leaves_ = 0;
 
+  // Paramters to control subdivision
   double depth_vh_mult[] = {1.0, 1.0, 1.0, 1.5, 2.5, 4.0, 6.0, 12.5, 19.0, 32.0,
     64.0, 128.0, 999.0, 9999.0, 99999.0};
 
+  // Node allocator to manage uncompressed child node allocation
   NodeAllocator<OctreeUncompressedNode, 8> node_alloc;
-  std::vector<OctreeUncompressedNode*> nodes_to_propagate {&root};
+  // A list of all leaves, used later during refinement
   std::vector<OctreeUncompressedNode*> leaves;
+  // List of all nodes, used later during information refilling
+  std::vector<OctreeUncompressedNode*> nodes_to_propagate {&root};
 
-  // this section of code still needs to be multithreaded
-  // it can become a bottleneck, espcially with large number of points
+  // this section of code still needs to be multithreaded.
+  // it can become a bottleneck, especially with large number of points.
   std::queue<OctreeConstructionTask> unprocessed_tasks;
   unprocessed_tasks.emplace(&root, points_in_bounds);
   while (!unprocessed_tasks.empty()) {
@@ -356,7 +401,7 @@ OctreePartitioner::OctreePartitioner(
     auto cur_task = std::move(unprocessed_tasks.front());
     unprocessed_tasks.pop();
 
-    // subdivide
+    // allocate and subdivide subdivide
     cur_task.node_->children_ = node_alloc.allocate();
     cur_task.node_->subdivide();
 
@@ -366,17 +411,18 @@ OctreePartitioner::OctreePartitioner(
       nodes_to_propagate.push_back(child_tasks[i].node_);
     }
 
-    // sort points
+    // Sort points
     for (const auto& point : cur_task.points_) {
       child_tasks[point.get_child_index(cur_task.node_->depth_)]
         .points_.push_back(point);
     }
 
+    // Initialize the VH values
     double parent_vh =
       cur_task.node_->box_.volume() * cur_task.node_->num_unique_cells_;
     double children_vh = 0.0;
 
-    // post processing (make nodes leaves or push on construction stack)
+    // determine the VH of a a split or determine if we have to split anyway
     bool force_subdiv = false;
     for (int i = 0; i < 8; i++) {
       // count the number of unique cells
@@ -393,15 +439,17 @@ OctreePartitioner::OctreePartitioner(
 
       children_vh += child_tasks[i].node_->box_.volume() * num_unique_cells;
       if (num_unique_cells > target_cells_per_node) {
+        // If we have too many cells, we have to split anyway
         force_subdiv = true;
       }
     }
 
     if (force_subdiv ||
         depth_vh_mult[cur_task.node_->depth_] * children_vh < parent_vh) {
-      // continue subdivision on this branch
+      // Continue subdivision on this branch
       num_nodes_ += 8;
       for (int i = 0; i < 8; i++) {
+        // Build the cell list and push to construction stack
         child_tasks[i].node_->cells_.reserve(
           child_tasks[i].node_->num_unique_cells_);
         prev_cell = -1;
@@ -415,20 +463,40 @@ OctreePartitioner::OctreePartitioner(
         unprocessed_tasks.push(std::move(child_tasks[i]));
       }
     } else {
-      // terminate subdivision on this branch
+      // Terminate subdivision on this branch
       cur_task.node_->children_ = nullptr;
       leaves.push_back(cur_task.node_);
       num_leaves_++;
     }
 
-    // free memory
+    // Free memory
     cur_task.points_.clear();
     cur_task.points_.shrink_to_fit();
   }
 
+  // Run refinement
   refine_octree_random(univ, fallback, bounds_, leaves);
 
-  // now, build the cells list
+  // The next stage is information refilling. The first stage is forward
+  // propagation, where we use the list of unique cells in the leaves to build
+  // the list of unique cells for all nodes in the tree. The second stage is
+  // down propagation, which takes those list of unique cells in the upper
+  // levels of the tree (i.e. non-leaf nodes) and inserts them into the lower
+  // levels of the tree.
+
+  // First, clear out the cells in any upper levels of tree. These contain
+  // information that is no longer useful since we now have refined information
+  // in the lower levels of the tree. If we are not refining, we can entirely
+  // skip the first stage of information refilling as the actual construction
+  // already creates cell lists in the upper levels of the tree.
+  for (auto ptr : nodes_to_propagate) {
+    if (!ptr->is_leaf()) {
+      ptr->cells_.clear();
+    }
+  }
+
+  // Reverse sort the list of nodes according to their depth. This allows us to
+  // process child nodes before thier parents nodes later.
   struct NodeComp {
     inline bool operator()(const OctreeUncompressedNode* lhs,
       const OctreeUncompressedNode* rhs) const
@@ -437,7 +505,7 @@ OctreePartitioner::OctreePartitioner(
     }
   };
   std::sort(nodes_to_propagate.rbegin(), nodes_to_propagate.rend(), NodeComp());
-
+  // Process nodes by depth.
   for (auto ptr : nodes_to_propagate) {
     auto& cur = *ptr;
 
@@ -465,72 +533,84 @@ OctreePartitioner::OctreePartitioner(
     }
   }
 
-  // a possible way to remove issues with missing information in nodes
+  // Now down propagate the cell lists. We traverse through the tree and if we
+  // come to an upper level node that has a leaf child, we down propagate the
+  // cells. We take the upper level node's list of cells (or one of its
+  // ancestors) and insert it into the cells of the tree.
   std::stack<OctreeUncompressedNode*> uninfo_refilled_nodes;
   uninfo_refilled_nodes.push(&root);
   while (!uninfo_refilled_nodes.empty()) {
     auto cur = uninfo_refilled_nodes.top();
     uninfo_refilled_nodes.pop();
 
-    bool should_collect_leaves = false;
+    // Check if there is any leaf child
+    bool should_down_propagate = false;
     for (int i = 0; i < 8; i++) {
       if (cur->children_[i].is_leaf()) {
-        should_collect_leaves = true;
+        should_down_propagate = true;
         break;
       }
     }
 
-    auto collection_start = cur;
+    // Go up a few levels for the collection point. We might do this because the
+    // parent itself might suffer from pockets of missing information.
+    auto collection_point = cur;
     for (int i = 0; i < INFORMATION_REFILLING_START_DEPTH_OFFSET; i++) {
-      if (collection_start->parent_) {
-        collection_start = collection_start->parent_;
+      if (collection_point->parent_) {
+        collection_point = collection_point->parent_;
       }
     }
 
-    const auto& unique_cells = collection_start->cells_;
-
     for (int i = 0; i < 8; i++) {
       if (cur->children_[i].is_leaf()) {
-        int orig_size = cur->children_[i].cells_.size();
+        // Insert the list of nodes into this leaf
 
-        auto search_start = cur->children_[i].cells_.begin();
-        auto search_end = cur->children_[i].cells_.begin() + orig_size;
-
-        cur->children_[i].num_original_cells_ = orig_size;
-
-        for (int cell : unique_cells) {
-          if (!std::binary_search(search_start, search_end, cell)) {
+        cur->children_[i].num_original_cells_ = cur->children_[i].cells_.size();
+        for (int cell : collection_point->cells_) {
+          // Since the leaf's list of cells is sorted, we can binary search it
+          // to avoid adding redundant cells
+          if (!std::binary_search(cur->children_[i].cells_.begin(),
+                cur->children_[i].cells_.begin() +
+                  cur->children_[i].num_original_cells_,
+                cell)) {
             cur->children_[i].cells_.push_back(cell);
           }
         }
       } else {
+        // Push it onto the stack
         uninfo_refilled_nodes.push(&cur->children_[i]);
       }
     }
   }
 
-  // now copy everything to array
+  // Now reduce the information stored in each node as we no longer need it
   nodes_.reserve(num_nodes_);
   cell_data_.reserve(num_leaves_);
+  // This is used to only output the non-information refilled cells to the file
   orig_size_.reserve(num_leaves_);
+
+  // Go through each node and reduce the information
   std::queue<const OctreeUncompressedNode*> unwritten_nodes;
   unwritten_nodes.push(&root);
   while (!unwritten_nodes.empty()) {
     auto cur = unwritten_nodes.front();
     unwritten_nodes.pop();
 
-    // convert and write
     OctreeNode compressed;
-
     if (cur->is_leaf()) {
+      // Store what index in cell_data_ the current leaf's cell list will be
+      // located
       compressed.store_data(cell_data_.size());
       cell_data_.push_back(std::move(cur->cells_));
       compressed.mark_as_leaf();
-
+      // Reduce size when exporting to file
       orig_size_.push_back(cur->num_original_cells_);
     } else {
+      // Determine where the first child will be. We can only do this is we use
+      // a queue instead of a stack.
       compressed.store_data(nodes_.size() + 1 + unwritten_nodes.size());
       for (int i = 0; i < 8; i++) {
+        // Compress this node's children nodes too.
         unwritten_nodes.push(&cur->children_[i]);
       }
     }
@@ -621,6 +701,13 @@ const vector<int32_t>& OctreePartitioner::get_cells(
     return get_cells_fallback(r, u);
   }
 
+  // A normal octree traversal algorithm would store a node's center in the
+  // nodes and use that to determine which child node to proceed to. However,
+  // storing a node's center in a node is bad for the cache hit rate. As it
+  // turns out, we can deduce the node's center on the fly by iteratively
+  // changing the center by certain displacement every time we go down a level.
+
+  // Initialize our node dimensions.
   Position node_dim;
   for (int i = 0; i < 3; i++) {
     node_dim[i] = (bounds_.max_[i] - bounds_.min_[i]) * 0.5;
@@ -629,20 +716,25 @@ const vector<int32_t>& OctreePartitioner::get_cells(
   Position center = bounds_.get_center();
   auto current = nodes_[0];
   while (!current.is_leaf()) {
-    // halve the node dim
     int idx = 0;
     for (int i = 0; i < 3; i++) {
-      node_dim[i] *= 0.5;
+      // Determine position relative to the center on the current axis.
       bool less = (r[i] < center[i]);
+      // Update our node center
+      node_dim[i] *= 0.5;
       center[i] += node_dim[i] * (less ? -1 : 1);
+      // Update our index
       idx = 2 * idx + int(less);
     }
 
+    // Proceed to next node
     current = nodes_[current.read_data() + idx];
   }
 
   const auto& cells = cell_data_[current.read_data()];
+
   if (cells.empty()) {
+    // If we hit an empty cell, proceed to fallback directly
     return get_cells_fallback(r, u);
   }
 
@@ -694,11 +786,15 @@ void OctreePartitioner::export_to_file(const std::string& path) const
   write_message("Exported octree to " + path, 5);
 }
 
-// this method works on the compressed octree, not hte uncompressed one
-// since it is pretty slow (and for some reason creates an octree that has the
-// same failure rate but is slower), only use it if you are reading from a file
+// This method is the exact same as the information refilling method in the
+// octree constructor, the only difference being that it works on the compressed
+// version of the octree instead the compressed one. Since it is pretty slow
+// (and for some reason creates an octree that has the same failure rate but is
+// slower), only use it if you are reading from a file (which would not have had
+// any information refilling to cut down on file size).
 void OctreePartitioner::refill_information()
 {
+  // Octree node but packed with extra info to make it easier to work with.
   struct OctreeNodeExtraInfo {
     OctreeNodeExtraInfo()
       : parent_(nullptr), eiparent_(nullptr), current_(nullptr),
@@ -719,7 +815,7 @@ void OctreePartitioner::refill_information()
     bool is_leaf() const { return (children_ != nullptr); }
   };
 
-  // make our nodes easier to work with
+  // First, decompress the nodes to make them easier to work with
   std::vector<OctreeNodeExtraInfo> einodes(nodes_.size());
   std::vector<OctreeNodeExtraInfo*> nodes_to_propagate(nodes_.size());
   for (int i = 0; i < nodes_.size(); i++) {
@@ -743,7 +839,7 @@ void OctreePartitioner::refill_information()
     }
   }
 
-  // propagate all cells forward
+  // Forward propagation
   struct DepthComp {
     inline bool operator()(
       const OctreeNodeExtraInfo* lhs, const OctreeNodeExtraInfo* rhs) const
@@ -779,29 +875,29 @@ void OctreePartitioner::refill_information()
     }
   }
 
-  // now propagate all cells downward
+  // Down propagation.
   std::stack<OctreeNodeExtraInfo*> uninfo_refilled_nodes;
   uninfo_refilled_nodes.push(nodes_to_propagate.back());
   while (!uninfo_refilled_nodes.empty()) {
     auto cur = uninfo_refilled_nodes.top();
     uninfo_refilled_nodes.pop();
 
-    bool should_collect_leaves = false;
+    bool should_down_propagate = false;
     for (int i = 0; i < 8; i++) {
       if (cur->children_[i].is_leaf()) {
-        should_collect_leaves = true;
+        should_down_propagate = true;
         break;
       }
     }
 
-    auto collection_start = cur;
+    auto collection_point = cur;
     for (int i = 0; i < INFORMATION_REFILLING_START_DEPTH_OFFSET; i++) {
-      if (collection_start->parent_) {
-        collection_start = collection_start->eiparent_;
+      if (collection_point->parent_) {
+        collection_point = collection_point->eiparent_;
       }
     }
 
-    const auto& unique_cells = collection_start->cells_;
+    const auto& unique_cells = collection_point->cells_;
 
     for (int i = 0; i < 8; i++) {
       if (cur->children_[i].is_leaf()) {

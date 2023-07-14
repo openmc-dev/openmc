@@ -87,8 +87,8 @@ def get_microxs_and_flux(
 
     # Set up the reaction rate and flux tallies
     if energies is None:
-        energies = [0.0, 100.0e6]
-    if isinstance(energies, str):
+        energy_filter = openmc.EnergyFilter([0.0, 100.0e6])
+    elif isinstance(energies, str):
         energy_filter = openmc.EnergyFilter.from_group_structure(energies)
     else:
         energy_filter = openmc.EnergyFilter(energies)

@@ -972,7 +972,14 @@ double torus_distance(double x1, double x2, double x3, double u1, double u2,
     if (roots[i].imag() == 0) {
       double root = roots[i].real();
       if (root > cutoff && root < distance) {
-        distance = root;
+        // Avoid roots corresponding to internal surfaces
+        double s1 = x1 + u1 * root;
+        double s2 = x2 + u2 * root;
+        double s3 = x3 + u3 * root;
+        double check = D * s3 * s3 + s1 * s1 + s2 * s2 + A * A - C * C;
+        if (check >= 0) {
+          distance = root;
+        }
       }
     }
   }

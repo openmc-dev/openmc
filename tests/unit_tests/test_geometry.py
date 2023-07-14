@@ -3,7 +3,6 @@ from pathlib import Path
 
 import numpy as np
 import openmc
-import openmc.lib
 import pytest
 
 

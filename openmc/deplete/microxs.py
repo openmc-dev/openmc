@@ -160,7 +160,7 @@ class MicroXS:
     data : numpy.ndarray of floats
         3D array containing microscopic cross section values for each
         nuclide, reaction, and energy group. Cross section values are assumed to
-        be in [b].
+        be in [b], and indexed by [nuclide, reaction, energy group]
     nuclides : list of str
         List of nuclide symbols for that have data for at least one
         reaction.

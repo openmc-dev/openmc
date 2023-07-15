@@ -734,12 +734,12 @@ class Settings:
                 cv.check_type('average survival weight', cutoff[key], Real)
                 cv.check_greater_than('average survival weight',
                                       cutoff[key], 0.0)
-            elif key in ['energy_neutron', 'energy_photon', 'energy_electron',
-                         'energy_positron']:
+            elif key in ('energy_neutron', 'energy_photon', 'energy_electron',
+                         'energy_positron'):
                 cv.check_type('energy cutoff', cutoff[key], Real)
                 cv.check_greater_than('energy cutoff', cutoff[key], 0.0)
-            elif key in ['time_neutron', 'time_photon', 'time_electron',
-                         'time_positron']:
+            elif key in ('time_neutron', 'time_photon', 'time_electron',
+                         'time_positron'):
                 cv.check_type('time cutoff', cutoff[key], Real)
                 cv.check_greater_than('time cutoff', cutoff[key], 0.0)
             else:

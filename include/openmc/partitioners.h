@@ -16,6 +16,13 @@
 namespace openmc {
 
 using DefaultPartitioner = BinGridPartitioner;
+
+enum PartitionerTypeID {
+  Octree = 1,
+  KdTree = 2,
+  BinGrid = 3,
+  ZPlane = 4,
+};
 }
 
 #endif

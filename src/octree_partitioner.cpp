@@ -1,5 +1,6 @@
 #include "openmc/octree_partitioner.h"
 #include "openmc/error.h"
+#include "openmc/partitioners.h"
 #include "openmc/random_dist.h"
 #include "openmc/timer.h"
 
@@ -13,20 +14,11 @@
 #include <stdlib.h>
 
 namespace openmc {
-
-constexpr int32_t OMCP_CURRENT_VERSION[3] = {1, 0, 0};
-
 constexpr double REFINEMENT_SEARCH_DENSITY = 0.125;
 constexpr double REFINEMENT_TIMEOUT = 10.0;
 constexpr int32_t REFINEMENT_GRID_RES = 128; // ideally should be a power of 2
 
 constexpr int32_t INFORMATION_REFILLING_START_DEPTH_OFFSET = 1;
-
-enum OMCPStructureType {
-  Octree = 1,
-  KdTree = 2,            // not yet implemented in OMCP
-  ZPlanePartitioner = 3, // not yet implemented in OMCP
-};
 
 // This structure is used during construction to assocaite nodes with arrays of
 // points. I dont directly include the points_ within the nodes because it
@@ -67,6 +59,16 @@ uint32_t OctreeNode::read_data() const
 {
   // Return all bits except the leaf flag
   return (data_ & ~OCTREE_LEAF_FLAG);
+}
+
+void OctreeNode::store_raw_data(uint32_t val)
+{
+  data_ = val;
+}
+
+uint32_t OctreeNode::read_raw_data()
+{
+  return data_;
 }
 
 OctreeUncompressedNode::OctreeUncompressedNode()
@@ -619,65 +621,45 @@ OctreePartitioner::OctreePartitioner(
 }
 
 OctreePartitioner::OctreePartitioner(
-  const Universe& univ, const std::string& path)
-  : fallback(univ)
+  const Universe& univ, const AABB& bounds, hid_t file)
+  : fallback(univ), bounds_(bounds)
 {
-  write_message("Reading octree from " + path, 5);
 
-  std::fstream octree_file(path, std::ios::in | std::ios::binary);
-#define READ_BINARY(x) octree_file.read((char*)&x, sizeof(x))
+  // read the nodes
+  hid_t nodes_group = open_group(file, "node_data");
+  read_attr_int(nodes_group, "n_nodes", &num_nodes_);
+  std::vector<uint32_t> serialized_nodes;
+  read_dataset(nodes_group, "nodes", serialized_nodes);
+  close_group(nodes_group);
 
-  for (int i = 0; i < 3; i++) {
-    int version;
-    READ_BINARY(version);
-    if (version != OMCP_CURRENT_VERSION[i]) {
-      fatal_error(
-        "OpenMC cannot read an unsupported OMCP file version! Please note that "
-        "OpenMC currently cannot read older file versions!");
-    }
-  }
-
-  OMCPStructureType structure_type;
-  READ_BINARY(structure_type);
-
-  if (structure_type != OMCPStructureType::Octree) {
-    fatal_error(
-      "OpenMC currently only supports octrees for the OMCP file format!");
-  }
-
-  std::vector<uint16_t> comp_cell_data;
-
-  READ_BINARY(bounds_);
-
-  READ_BINARY(num_nodes_);
-
-  int num_leaves = 0;
-  nodes_.resize(num_nodes_);
-  for (auto& node : nodes_) {
-    READ_BINARY(node);
-    num_leaves++;
-  }
-  cell_data_.reserve(num_leaves);
-
+  // read the cells
+  hid_t cells_group = open_group(file, "cell_data");
   int num_cells;
-  READ_BINARY(num_cells);
-  comp_cell_data.resize(num_cells);
-  for (auto& cell : comp_cell_data) {
-    READ_BINARY(cell);
-  }
+  read_attr_int(cells_group, "n_cells", &num_cells);
+  std::vector<int32_t> comp_cell_data;
+  read_dataset(cells_group, "cells", comp_cell_data);
+  close_group(cells_group);
+
+  // now take the information we read from the files and init our octree
+  num_leaves_ = 0;
+  nodes_.resize(num_nodes_);
 
   int next_cell_index = 0;
-  for (auto& node : nodes_) {
-    if (node.is_leaf()) {
+
+  for (int i = 0; i < num_nodes_; i++) {
+    nodes_[i].store_raw_data(serialized_nodes[i]);
+    if (nodes_[i].is_leaf()) {
+      num_leaves_++;
+
       std::vector<int> cells;
-      cells.resize(node.read_data());
+      cells.resize(nodes_[i].read_data());
 
       for (int& cell : cells) {
         cell = comp_cell_data.at(next_cell_index);
         next_cell_index++;
       }
 
-      node.store_data(cell_data_.size());
+      nodes_[i].store_data(cell_data_.size());
       cell_data_.push_back(std::move(cells));
     }
   }
@@ -686,6 +668,52 @@ OctreePartitioner::OctreePartitioner(
 }
 
 OctreePartitioner::~OctreePartitioner() {}
+
+void OctreePartitioner::export_to_hdf5(const std::string& path) const
+{
+  std::vector<int32_t> comp_cell_data;
+  for (int i = 0; i < cell_data_.size(); i++) {
+    for (int j = 0; j < orig_size_[i]; j++) {
+      comp_cell_data.push_back(cell_data_[i][j]);
+    }
+  }
+
+  hid_t file = file_open(path, 'w');
+
+  // Write header
+  write_attribute(file, "filetype", "partitioner");
+
+  // write general partitioner information
+  write_attribute(
+    file, "part_type", static_cast<int>(PartitionerTypeID::Octree));
+  write_dataset(file, "bounds_max", bounds_.max_);
+  write_dataset(file, "bounds_min", bounds_.min_);
+
+  // write the nodes
+  hid_t nodes_group = create_group(file, "node_data");
+  write_attribute(nodes_group, "n_nodes", nodes_.size());
+  // Serialize the data
+  std::vector<uint32_t> serialized_nodes(nodes_.size());
+  for (int i = 0; i < nodes_.size(); i++) {
+    auto node = nodes_[i]; // copy
+    if (node.is_leaf()) {
+      node.store_data(orig_size_[node.read_data()]);
+    }
+    serialized_nodes[i] = node.read_raw_data();
+  }
+  write_dataset(nodes_group, "nodes", serialized_nodes);
+  close_group(nodes_group);
+
+  // write the cell data
+  hid_t cells_group = create_group(file, "cell_data");
+  write_attribute(cells_group, "n_cells", comp_cell_data.size());
+  write_dataset(cells_group, "cells", comp_cell_data);
+  close_group(cells_group);
+
+  file_close(file);
+
+  write_message("Exported octree to " + path, 5);
+}
 
 const vector<int32_t>& OctreePartitioner::get_cells(
   Position r, Direction u) const
@@ -740,45 +768,6 @@ const vector<int32_t>& OctreePartitioner::get_cells_fallback(
   Position r, Direction u) const
 {
   return fallback.get_cells(r, u);
-}
-
-void OctreePartitioner::export_to_file(const std::string& path) const
-{
-  std::vector<uint16_t> comp_cell_data;
-  for (int i = 0; i < cell_data_.size(); i++) {
-    for (int j = 0; j < orig_size_[i]; j++) {
-      comp_cell_data.push_back(cell_data_[i][j]);
-    }
-  }
-
-  std::fstream octree_file(path, std::ios::out | std::ios::binary);
-
-#define WRITE_BINARY(x) octree_file.write((char*)&x, sizeof(x))
-
-  for (int i = 0; i < 3; i++) {
-    WRITE_BINARY(OMCP_CURRENT_VERSION[i]);
-  }
-  OMCPStructureType structure_type = OMCPStructureType::Octree;
-  WRITE_BINARY(structure_type);
-
-  WRITE_BINARY(bounds_);
-
-  WRITE_BINARY(num_nodes_);
-  for (const auto& raw_node : nodes_) {
-    auto node = raw_node;
-    if (node.is_leaf()) {
-      node.store_data(orig_size_[node.read_data()]);
-    }
-    WRITE_BINARY(node);
-  }
-
-  int num_cells = comp_cell_data.size();
-  WRITE_BINARY(num_cells);
-  for (auto cell : comp_cell_data) {
-    WRITE_BINARY(cell);
-  }
-
-  write_message("Exported octree to " + path, 5);
 }
 
 // This method is the exact same as the information refilling method in the

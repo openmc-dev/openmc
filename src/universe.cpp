@@ -153,11 +153,18 @@ const std::vector<int32_t>& UniversePartitioner::get_cells_fallback(Position r, 
   fatal_error("Fallback is not enabled for this partitioner. Please recompile with the PARTITIONER_FALLBACK_ENABLED macro disabled in partitioners.h.");
 }
 
-void UniversePartitioner::export_to_file(const std::string& path) const {
+void UniversePartitioner::export_to_hdf5(const std::string& path) const
+{
   warning("Failed to export partitioner to " + path +
           " because current partitioner type currently does not support "
-          "exporting as a file.");
+          "exporting to HDF5.");
 }
 
+void UniversePartitioner::export_to_vtk(const std::string& path) const
+{
+  warning("Failed to export partitioner to " + path +
+          " because current partitioner type currently does not support "
+          "exporting to VTK.");
+}
 
 } // namespace openmc

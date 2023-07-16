@@ -199,6 +199,32 @@ void partition_universes(pugi::xml_node root)
       continue;
     }
 
+    if (check_for_node(part_node, "path")) {
+      std::string path = get_node_value(part_node, "path");
+      write_message("Reading octree from " + path, 5);
+
+      hid_t file = file_open(path.c_str(), 'r');
+
+      // Read box
+      AABB box;
+      read_dataset(file, "bounds_max", box.max_);
+      read_dataset(file, "bounds_min", box.min_);
+
+      // Read type id
+      int type_id;
+      read_attr_int(file, "part_type", &type_id);
+
+      if (type_id == PartitionerTypeID::Octree) {
+        univ->partitioner_ = make_unique<OctreePartitioner>(*univ, box, file);
+      } else {
+        fatal_error("Unknown partitioner ID " + std::to_string(type_id));
+      }
+
+      file_close(file);
+
+      continue;
+    }
+
     AABB box = univ->gen_partitioner_bounding_box();
     if (check_for_node(part_node, "bounds")) {
       std::string bounds = get_node_value(part_node, "bounds");
@@ -276,6 +302,8 @@ void partition_universes(pugi::xml_node root)
     } else {
       fatal_error("Unrecognized partitioner type \"" + type + "\"");
     }
+
+    univ->partitioner_->export_to_hdf5("part.h5");
   }
 }
 

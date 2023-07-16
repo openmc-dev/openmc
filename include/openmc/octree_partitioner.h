@@ -1,9 +1,11 @@
 #ifndef OPENMC_OCTREE_PARTITIONER_H
 #define OPENMC_OCTREE_PARTITIONER_H
 
+#include "hdf5_interface.h"
 #include "partitioner_utils.h"
 #include "universe.h"
 #include "zplane_partitioner.h"
+
 #include <set>
 #include <vector>
 
@@ -28,6 +30,11 @@ public:
   void store_data(uint32_t data);
   // Extract the first 31 bits of data_
   uint32_t read_data() const;
+
+  // Store raw data into the node
+  void store_raw_data(uint32_t val);
+  // Get the raw stored data
+  uint32_t read_raw_data();
 
 private:
   uint32_t data_;
@@ -73,7 +80,7 @@ public:
   explicit OctreePartitioner(
     const Universe& univ, const AABB& bounds, int target_cells_per_node = 6);
   explicit OctreePartitioner(
-    const Universe& univ, const std::string& file_path);
+    const Universe& univ, const AABB& bounds, hid_t file);
   virtual ~OctreePartitioner() override;
 
   //! Return the list of cells that could contain the given coordinates.
@@ -82,7 +89,7 @@ public:
   virtual const vector<int32_t>& get_cells_fallback(
     Position r, Direction u) const override;
 
-  virtual void export_to_file(const std::string& file_path) const override;
+  virtual void export_to_hdf5(const std::string& file_path) const override;
 
 private:
   void compress(const OctreeUncompressedNode& root);
@@ -97,9 +104,9 @@ private:
   ZPlanePartitioner fallback;
 
   // meta data, only used when exporting to file
-  uint32_t num_nodes_;
-  uint32_t num_leaves_;
-  std::vector<uint32_t> orig_size_;
+  int32_t num_nodes_;
+  int32_t num_leaves_;
+  std::vector<int32_t> orig_size_;
 };
 
 } // namespace openmc

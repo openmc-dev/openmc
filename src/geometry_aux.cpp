@@ -262,7 +262,7 @@ void partition_universes(pugi::xml_node root)
 
       univ->partitioner_ =
         make_unique<KdTreePartitioner>(*univ, box, max_depth);
-    } else if (type == "grid" || type == "auto") {
+    } else if (type == "bin-grid" || type == "auto") {
       int grid_res = 32;
       if (check_for_node(part_node, "grid-res")) {
         std::string val = get_node_value(part_node, "grid-res").c_str();

@@ -5,6 +5,7 @@
 #ifndef OPENMC_PARTITIONERS_H
 #define OPENMC_PARTITIONERS_H
 
+#include "bin_grid_partitioner.h"
 #include "kdtree_partitioner.h"
 #include "octree_partitioner.h"
 #include "universe.h"
@@ -14,7 +15,7 @@
 
 namespace openmc {
 
-using DefaultPartitioner = OctreePartitioner;
+using DefaultPartitioner = BinGridPartitioner;
 }
 
 #endif

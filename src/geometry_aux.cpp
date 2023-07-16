@@ -149,9 +149,35 @@ void adjust_indices()
   }
 }
 
+void read_partitioner_from_file(
+  const std::unique_ptr<Universe>& univ, const std::string& path)
+{
+  write_message("Reading partitoner from " + path, 5);
+
+  hid_t file = file_open(path.c_str(), 'r');
+
+  // Read box
+  AABB box;
+  read_dataset(file, "bounds_max", box.max_);
+  read_dataset(file, "bounds_min", box.min_);
+
+  // Read type id
+  int type_id;
+  read_attr_int(file, "part_type", &type_id);
+
+  if (type_id == PartitionerTypeID::Octree) {
+    univ->partitioner_ = make_unique<OctreePartitioner>(*univ, box, file);
+  } else if (type_id == PartitionerTypeID::KdTree) {
+    univ->partitioner_ = make_unique<KdTreePartitioner>(*univ, box, file);
+  } else {
+    fatal_error("Unknown partitioner ID " + std::to_string(type_id));
+  }
+
+  file_close(file);
+}
+
 //==============================================================================
 //! Partition universes for faster cell searchers.
-
 void partition_universes(pugi::xml_node root)
 {
   // Iterate over all universes and check if there's any partitioner defined for
@@ -201,27 +227,7 @@ void partition_universes(pugi::xml_node root)
 
     if (check_for_node(part_node, "path")) {
       std::string path = get_node_value(part_node, "path");
-      write_message("Reading octree from " + path, 5);
-
-      hid_t file = file_open(path.c_str(), 'r');
-
-      // Read box
-      AABB box;
-      read_dataset(file, "bounds_max", box.max_);
-      read_dataset(file, "bounds_min", box.min_);
-
-      // Read type id
-      int type_id;
-      read_attr_int(file, "part_type", &type_id);
-
-      if (type_id == PartitionerTypeID::Octree) {
-        univ->partitioner_ = make_unique<OctreePartitioner>(*univ, box, file);
-      } else {
-        fatal_error("Unknown partitioner ID " + std::to_string(type_id));
-      }
-
-      file_close(file);
-
+      read_partitioner_from_file(univ, path);
       continue;
     }
 
@@ -303,7 +309,17 @@ void partition_universes(pugi::xml_node root)
       fatal_error("Unrecognized partitioner type \"" + type + "\"");
     }
 
-    univ->partitioner_->export_to_hdf5("part.h5");
+    if (check_for_node(part_node, "export-path")) {
+      std::string path = get_node_value(part_node, "export-path");
+      univ->partitioner_->export_to_hdf5(path);
+
+      // reload from memory
+      if (check_for_node(part_node, "dbg-serialization") &&
+          get_node_value_bool(part_node, "dbg-serialization")) {
+        write_message("Debugging serialization...", 5);
+        read_partitioner_from_file(univ, path);
+      }
+    }
   }
 }
 

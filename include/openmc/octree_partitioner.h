@@ -83,13 +83,13 @@ public:
     const Universe& univ, const AABB& bounds, hid_t file);
   virtual ~OctreePartitioner() override;
 
+  virtual void export_to_hdf5(const std::string& file_path) const override;
+
   //! Return the list of cells that could contain the given coordinates.
   virtual const vector<int32_t>& get_cells(
     Position r, Direction u) const override;
   virtual const vector<int32_t>& get_cells_fallback(
     Position r, Direction u) const override;
-
-  virtual void export_to_hdf5(const std::string& file_path) const override;
 
 private:
   void compress(const OctreeUncompressedNode& root);

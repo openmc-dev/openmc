@@ -82,8 +82,12 @@ struct KdTreeNode {
 class KdTreePartitioner : public UniversePartitioner {
 public:
   explicit KdTreePartitioner(
-    const Universe& univ, const AABB& bounds, uint32_t max_depth = 16);
+    const Universe& univ, const AABB& bounds, int32_t max_depth = 16);
+  explicit KdTreePartitioner(
+    const Universe& univ, const AABB& bounds, hid_t file);
   virtual ~KdTreePartitioner() override;
+
+  virtual void export_to_hdf5(const std::string& file_path) const override;
 
   //! Return the list of cells that could contain the given coordinates.
   virtual const std::vector<int32_t>& get_cells(
@@ -104,6 +108,9 @@ private:
   // Utilze the z-plane partitioner in a fallback, as it very rarely fails to
   // find the cell a particle is in.
   ZPlanePartitioner fallback_;
+  // statistics about the kd tree
+  int32_t num_nodes_;
+  int32_t num_leaves_;
 };
 
 }; // namespace openmc

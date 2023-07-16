@@ -1,5 +1,6 @@
 #include "openmc/kdtree_partitioner.h"
 #include "openmc/error.h"
+#include "openmc/partitioners.h"
 #include <queue>
 #include <stack>
 
@@ -140,7 +141,7 @@ void search_best_median_split(KdTreeUncompressedNode& parent,
 }
 
 KdTreePartitioner::KdTreePartitioner(
-  const Universe& univ, const AABB& bounds, uint32_t max_depth)
+  const Universe& univ, const AABB& bounds, int32_t max_depth)
   : fallback_(univ), bounds_(bounds)
 {
   write_message("Building kd-tree partitioner...", 5);
@@ -277,6 +278,102 @@ KdTreePartitioner::KdTreePartitioner(
 }
 
 KdTreePartitioner::~KdTreePartitioner() {}
+
+KdTreePartitioner::KdTreePartitioner(
+  const Universe& univ, const AABB& bounds, hid_t file)
+  : fallback_(univ), bounds_(bounds)
+{
+  // read the nodes
+  hid_t nodes_group = open_group(file, "node_data");
+  read_attr_int(nodes_group, "n_nodes", &num_nodes_);
+  std::vector<int32_t> serialized_nodes;
+  read_dataset(nodes_group, "nodes", serialized_nodes);
+  close_group(nodes_group);
+
+  // read the cells
+  hid_t cells_group = open_group(file, "cell_data");
+  int num_cells;
+  read_attr_int(cells_group, "n_cells", &num_cells);
+  std::vector<int32_t> comp_cell_data;
+  read_dataset(cells_group, "cells", comp_cell_data);
+  close_group(cells_group);
+
+  // now take the information we read from the files and init our octree
+  num_leaves_ = 0;
+  nodes_.resize(num_nodes_);
+
+  int next_cell_index = 0;
+
+  for (int i = 0; i < num_nodes_; i++) {
+    nodes_[i].data_ = serialized_nodes[2 * i + 0];
+    nodes_[i].split_ = reinterpret_cast<float&>(serialized_nodes[2 * i + 1]);
+    if (nodes_[i].is_leaf()) {
+      num_leaves_++;
+
+      std::vector<int> cells;
+      cells.resize(nodes_[i].index());
+
+      for (int& cell : cells) {
+        cell = comp_cell_data.at(next_cell_index);
+        next_cell_index++;
+      }
+
+      nodes_[i].data_ =
+        KD_TREE_LEAF_FLAG | static_cast<uint32_t>(cell_data_.size());
+      cell_data_.push_back(std::move(cells));
+    }
+  }
+}
+
+void KdTreePartitioner::export_to_hdf5(const std::string& path) const
+{
+  std::vector<int32_t> comp_cell_data;
+  for (int i = 0; i < cell_data_.size(); i++) {
+    for (int j = 0; j < cell_data_[i].size(); j++) {
+      comp_cell_data.push_back(cell_data_[i][j]);
+    }
+  }
+
+  hid_t file = file_open(path, 'w');
+
+  // Write header
+  write_attribute(file, "filetype", "partitioner");
+
+  // write general partitioner information
+  write_attribute(
+    file, "part_type", static_cast<int>(PartitionerTypeID::KdTree));
+  write_dataset(file, "bounds_max", bounds_.max_);
+  write_dataset(file, "bounds_min", bounds_.min_);
+
+  // write the nodes
+  hid_t nodes_group = create_group(file, "node_data");
+  write_attribute(nodes_group, "n_nodes", nodes_.size());
+  // Serialize the data
+  std::vector<int32_t> serialized_nodes(nodes_.size() * 2);
+  for (int i = 0; i < nodes_.size(); i++) {
+    auto node = nodes_[i]; // copy
+
+    if (node.is_leaf()) {
+      node.data_ = KD_TREE_LEAF_FLAG |
+                   static_cast<uint32_t>(cell_data_[node.index()].size());
+    }
+
+    serialized_nodes[2 * i + 0] = reinterpret_cast<int32_t&>(node.data_);
+    serialized_nodes[2 * i + 1] = reinterpret_cast<int32_t&>(node.split_);
+  }
+  write_dataset(nodes_group, "nodes", serialized_nodes);
+  close_group(nodes_group);
+
+  // write the cell data
+  hid_t cells_group = create_group(file, "cell_data");
+  write_attribute(cells_group, "n_cells", comp_cell_data.size());
+  write_dataset(cells_group, "cells", comp_cell_data);
+  close_group(cells_group);
+
+  file_close(file);
+
+  write_message("Exported octree to " + path, 5);
+}
 
 //! Return the list of cells that could contain the given coordinates.
 const std::vector<int32_t>& KdTreePartitioner::get_cells(

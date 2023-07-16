@@ -1,6 +1,7 @@
 #ifndef OPENMC_UNIVERSE_H
 #define OPENMC_UNIVERSE_H
 
+#include "openmc/aabb.h"
 #include "openmc/cell.h"
 
 namespace openmc {
@@ -39,7 +40,11 @@ public:
   virtual int find_cell_for_point(
     const std::vector<int>& cells_to_search, const Position& p) const;
 
+  // Get bounding box of the entire universe
   BoundingBox bounding_box() const;
+  // Get the bounding box for the partitioner set by the user (not yet
+  // supported), or generate an optimal one and return it
+  AABB partitioner_bounding_box() const;
 
   const GeometryType& geom_type() const { return geom_type_; }
   GeometryType& geom_type() { return geom_type_; }

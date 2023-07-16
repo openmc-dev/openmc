@@ -148,10 +148,7 @@ KdTreePartitioner::KdTreePartitioner(const Universe& univ, uint32_t max_depth)
   construction_timer.start();
 
   // Init our bounds
-  constexpr double half_side_length = 130.0;
-  bounds_.min_ =
-    Position(-half_side_length, -half_side_length, -half_side_length);
-  bounds_.max_ = Position(half_side_length, half_side_length, half_side_length);
+  bounds_ = univ.partitioner_bounding_box();
 
   // Initialize our root
   KdTreeUncompressedNode root;

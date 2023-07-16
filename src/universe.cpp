@@ -104,6 +104,55 @@ BoundingBox Universe::bounding_box() const
   return bbox;
 }
 
+double max_ignore_infinities(double orig, double val)
+{
+  if (val == INFTY || val == -INFTY) {
+    return orig;
+  } else {
+    return std::max(orig, val);
+  }
+}
+
+double min_ignore_infinities(double orig, double val)
+{
+  if (val == INFTY || val == -INFTY) {
+    return orig;
+  } else {
+    return std::min(orig, val);
+  }
+}
+
+AABB Universe::partitioner_bounding_box() const
+{
+  AABB box;
+  if (cells_.size() == 0) {
+    box.max_ = {0, 0, 0};
+    box.min_ = {0, 0, 0};
+  } else {
+    for (const auto& cell : cells_) {
+      auto bbox = model::cells[cell]->bounding_box();
+      // extend on each axis, ignoring any infinities
+
+      box.max_.x = max_ignore_infinities(box.max_.x, bbox.xmax);
+      box.max_.y = max_ignore_infinities(box.max_.y, bbox.ymax);
+      box.max_.z = max_ignore_infinities(box.max_.z, bbox.zmax);
+
+      box.min_.x = min_ignore_infinities(box.min_.x, bbox.xmin);
+      box.min_.y = min_ignore_infinities(box.min_.y, bbox.ymin);
+      box.min_.z = min_ignore_infinities(box.min_.z, bbox.zmin);
+    }
+
+    write_message(
+      "Paritioner bounding box ranges from (" + std::to_string(box.min_.x) +
+        ", " + std::to_string(box.min_.y) + ", " + std::to_string(box.min_.z) +
+        ") to (" + std::to_string(box.max_.x) + ", " +
+        std::to_string(box.max_.y) + ", " + std::to_string(box.max_.z) + ")",
+      5);
+  }
+
+  return box;
+}
+
 //! We do nothing here since it is a dummy destructor
 UniversePartitioner::~UniversePartitioner() {}
 

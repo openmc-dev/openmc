@@ -333,10 +333,7 @@ OctreePartitioner::OctreePartitioner(
   : fallback(univ)
 {
   // Set up our bounds
-  constexpr double half_side_length = 130.0;
-  bounds_.min_ =
-    Position(-half_side_length, -half_side_length, -half_side_length);
-  bounds_.max_ = Position(half_side_length, half_side_length, half_side_length);
+  bounds_ = univ.partitioner_bounding_box();
 
   if (univ.cells_.size() <= target_cells_per_node) {
     warning("Universe has only " + std::to_string(univ.cells_.size()) +

@@ -15,10 +15,7 @@ BinGridPartitioner::BinGridPartitioner(const Universe& univ, uint32_t grid_res)
   build_timer.start();
 
   // Initialize
-  constexpr float half_length = 130.0;
-  bounds_.max_ = Position(half_length, half_length, half_length);
-  bounds_.min_ = Position(-half_length, -half_length, -half_length);
-
+  bounds_ = univ.partitioner_bounding_box();
   for (int i = 0; i < 3; i++) {
     bin_dim_[i] = (bounds_.max_[i] - bounds_.min_[i]) / grid_res;
   }

@@ -169,6 +169,8 @@ void read_partitioner_from_file(
     univ->partitioner_ = make_unique<OctreePartitioner>(*univ, box, file);
   } else if (type_id == PartitionerTypeID::KdTree) {
     univ->partitioner_ = make_unique<KdTreePartitioner>(*univ, box, file);
+  } else if (type_id == PartitionerTypeID::BinGrid) {
+    univ->partitioner_ = make_unique<BinGridPartitioner>(*univ, box, file);
   } else {
     fatal_error("Unknown partitioner ID " + std::to_string(type_id));
   }

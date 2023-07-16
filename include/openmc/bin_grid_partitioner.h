@@ -1,6 +1,7 @@
 #ifndef OPENMC_BIN_GRID_PARTITIONER_H
 #define OPENMC_BIN_GRID_PARTITIONER_H
 
+#include "hdf5_interface.h"
 #include "partitioner_utils.h"
 #include "universe.h"
 #include "zplane_partitioner.h"
@@ -14,8 +15,12 @@ namespace openmc {
 class BinGridPartitioner : public UniversePartitioner {
 public:
   explicit BinGridPartitioner(
-    const Universe& univ, const AABB& bounds, uint32_t grid_res = 32);
+    const Universe& univ, const AABB& bounds, int32_t grid_res = 32);
+  explicit BinGridPartitioner(
+    const Universe& univ, const AABB& bounds, hid_t file);
   virtual ~BinGridPartitioner() override;
+
+  virtual void export_to_hdf5(const std::string& file_path) const override;
 
   //! Return the list of cells that could contain the given coordinates.
   virtual const std::vector<int32_t>& get_cells(
@@ -28,7 +33,7 @@ private:
   AABB bounds_;
 
   // Resolution of the bin grid on each axis
-  uint32_t grid_res_;
+  int32_t grid_res_;
 
   // Dimensions of each bin
   Position bin_dim_;

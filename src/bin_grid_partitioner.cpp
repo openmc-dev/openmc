@@ -1,6 +1,7 @@
 #include "openmc/bin_grid_partitioner.h"
 #include "openmc/error.h"
 #include "openmc/partitioner_utils.h"
+#include "openmc/partitioners.h"
 #include "openmc/timer.h"
 
 #include <set>
@@ -8,7 +9,7 @@
 namespace openmc {
 
 BinGridPartitioner::BinGridPartitioner(
-  const Universe& univ, const AABB& bounds, uint32_t grid_res)
+  const Universe& univ, const AABB& bounds, int32_t grid_res)
   : grid_res_(grid_res), fallback_(univ), bounds_(bounds)
 {
   write_message("Building bin grid partitioner...", 5);
@@ -46,6 +47,49 @@ BinGridPartitioner::BinGridPartitioner(
 }
 
 BinGridPartitioner::~BinGridPartitioner() {}
+
+BinGridPartitioner::BinGridPartitioner(
+  const Universe& univ, const AABB& bounds, hid_t file)
+  : fallback_(univ), bounds_(bounds)
+{
+  read_attr_int(file, "grid_res", &grid_res_);
+
+  for (int i = 0; i < 3; i++) {
+    bin_dim_[i] = (bounds_.max_[i] - bounds_.min_[i]) / grid_res_;
+  }
+
+  bin_grid_.resize(grid_res_ * grid_res_ * grid_res_);
+
+  hid_t bins = open_group(file, "bins");
+  for (int i = 0; i < bin_grid_.size(); i++) {
+    read_dataset(bins, std::to_string(i).c_str(), bin_grid_[i]);
+  }
+  close_group(bins);
+}
+
+void BinGridPartitioner::export_to_hdf5(const std::string& path) const
+{
+  hid_t file = file_open(path, 'w');
+
+  // Write header
+  write_attribute(file, "filetype", "partitioner");
+
+  // write general partitioner information
+  write_attribute(
+    file, "part_type", static_cast<int>(PartitionerTypeID::BinGrid));
+  write_dataset(file, "bounds_max", bounds_.max_);
+  write_dataset(file, "bounds_min", bounds_.min_);
+
+  write_attribute(file, "grid_res", grid_res_);
+
+  hid_t bins = create_group(file, "bins");
+  for (int i = 0; i < bin_grid_.size(); i++) {
+    write_dataset(bins, std::to_string(i).c_str(), bin_grid_[i]);
+  }
+  close_group(bins);
+
+  file_close(file);
+}
 
 int BinGridPartitioner::convert_to_index(const Position& r) const
 {

@@ -81,7 +81,8 @@ struct KdTreeNode {
 // The actual partitioner class
 class KdTreePartitioner : public UniversePartitioner {
 public:
-  explicit KdTreePartitioner(const Universe& univ, uint32_t max_depth = 16);
+  explicit KdTreePartitioner(
+    const Universe& univ, const AABB& bounds, uint32_t max_depth = 16);
   virtual ~KdTreePartitioner() override;
 
   //! Return the list of cells that could contain the given coordinates.

@@ -13,7 +13,8 @@ namespace openmc {
 // each bin.
 class BinGridPartitioner : public UniversePartitioner {
 public:
-  explicit BinGridPartitioner(const Universe& univ, uint32_t grid_res = 32);
+  explicit BinGridPartitioner(
+    const Universe& univ, const AABB& bounds, uint32_t grid_res = 32);
   virtual ~BinGridPartitioner() override;
 
   //! Return the list of cells that could contain the given coordinates.

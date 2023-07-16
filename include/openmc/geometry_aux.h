@@ -57,6 +57,8 @@ void get_temperatures(
 //! \brief Perform final setup for geometry
 //==============================================================================
 
+void finalize_geometry(pugi::xml_node root);
+
 void finalize_geometry();
 
 //==============================================================================

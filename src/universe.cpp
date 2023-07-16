@@ -122,7 +122,7 @@ double min_ignore_infinities(double orig, double val)
   }
 }
 
-AABB Universe::partitioner_bounding_box() const
+AABB Universe::gen_partitioner_bounding_box() const
 {
   AABB box;
   if (cells_.size() == 0) {
@@ -141,13 +141,6 @@ AABB Universe::partitioner_bounding_box() const
       box.min_.y = min_ignore_infinities(box.min_.y, bbox.ymin);
       box.min_.z = min_ignore_infinities(box.min_.z, bbox.zmin);
     }
-
-    write_message(
-      "Paritioner bounding box ranges from (" + std::to_string(box.min_.x) +
-        ", " + std::to_string(box.min_.y) + ", " + std::to_string(box.min_.z) +
-        ") to (" + std::to_string(box.max_.x) + ", " +
-        std::to_string(box.max_.y) + ", " + std::to_string(box.max_.z) + ")",
-      5);
   }
 
   return box;

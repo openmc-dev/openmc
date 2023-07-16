@@ -329,11 +329,9 @@ void refine_octree_random(const Universe& univ,
 }
 
 OctreePartitioner::OctreePartitioner(
-  const Universe& univ, int target_cells_per_node)
-  : fallback(univ)
+  const Universe& univ, const AABB& bounds, int target_cells_per_node)
+  : fallback(univ), bounds_(bounds)
 {
-  // Set up our bounds
-  bounds_ = univ.partitioner_bounding_box();
 
   if (univ.cells_.size() <= target_cells_per_node) {
     warning("Universe has only " + std::to_string(univ.cells_.size()) +

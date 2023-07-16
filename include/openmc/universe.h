@@ -42,9 +42,8 @@ public:
 
   // Get bounding box of the entire universe
   BoundingBox bounding_box() const;
-  // Get the bounding box for the partitioner set by the user (not yet
-  // supported), or generate an optimal one and return it
-  AABB partitioner_bounding_box() const;
+  // Generate an optimal bounding box for the partitioner and return it
+  AABB gen_partitioner_bounding_box() const;
 
   const GeometryType& geom_type() const { return geom_type_; }
   GeometryType& geom_type() { return geom_type_; }

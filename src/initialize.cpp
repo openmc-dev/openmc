@@ -379,10 +379,11 @@ bool read_model_xml()
     fatal_error(fmt::format(
       "No <geometry> node present in the {} file.", model_filename));
   }
-  read_geometry_xml(root.child("geometry"));
+  auto geometry_xml = root.child("geometry");
+  read_geometry_xml(geometry_xml);
 
   // Final geometry setup and assign temperatures
-  finalize_geometry();
+  finalize_geometry(geometry_xml);
 
   // Finalize cross sections having assigned temperatures
   finalize_cross_sections();

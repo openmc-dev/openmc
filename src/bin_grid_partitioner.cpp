@@ -7,15 +7,15 @@
 
 namespace openmc {
 
-BinGridPartitioner::BinGridPartitioner(const Universe& univ, uint32_t grid_res)
-  : grid_res_(grid_res), fallback_(univ)
+BinGridPartitioner::BinGridPartitioner(
+  const Universe& univ, const AABB& bounds, uint32_t grid_res)
+  : grid_res_(grid_res), fallback_(univ), bounds_(bounds)
 {
   write_message("Building bin grid partitioner...", 5);
   Timer build_timer;
   build_timer.start();
 
   // Initialize
-  bounds_ = univ.partitioner_bounding_box();
   for (int i = 0; i < 3; i++) {
     bin_dim_[i] = (bounds_.max_[i] - bounds_.min_[i]) / grid_res;
   }

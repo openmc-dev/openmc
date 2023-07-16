@@ -71,7 +71,7 @@ struct OctreeUncompressedNode {
 class OctreePartitioner : public UniversePartitioner {
 public:
   explicit OctreePartitioner(
-    const Universe& univ, int target_cells_per_node = 6);
+    const Universe& univ, const AABB& bounds, int target_cells_per_node = 6);
   explicit OctreePartitioner(
     const Universe& univ, const std::string& file_path);
   virtual ~OctreePartitioner() override;

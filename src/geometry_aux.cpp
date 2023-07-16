@@ -171,6 +171,8 @@ void read_partitioner_from_file(
     univ->partitioner_ = make_unique<KdTreePartitioner>(*univ, box, file);
   } else if (type_id == PartitionerTypeID::BinGrid) {
     univ->partitioner_ = make_unique<BinGridPartitioner>(*univ, box, file);
+  } else if (type_id == PartitionerTypeID::ZPlane) {
+    univ->partitioner_ = make_unique<ZPlanePartitioner>(*univ, file);
   } else {
     fatal_error("Unknown partitioner ID " + std::to_string(type_id));
   }

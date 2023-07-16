@@ -1,6 +1,7 @@
 #ifndef OPENMC_ZPLANE_PARTITIONER_H
 #define OPENMC_ZPLANE_PARTITIONER_H
 
+#include "hdf5_interface.h"
 #include "universe.h"
 #include <set>
 #include <vector>
@@ -12,7 +13,10 @@ using namespace std;
 class ZPlanePartitioner : public UniversePartitioner {
 public:
   explicit ZPlanePartitioner(const Universe& univ);
+  explicit ZPlanePartitioner(const Universe& univ, hid_t file);
   virtual ~ZPlanePartitioner() override = default;
+
+  virtual void export_to_hdf5(const std::string& file_path) const override;
 
   //! Return the list of cells that could contain the given coordinates.
   virtual const vector<int32_t>& get_cells(

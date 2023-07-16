@@ -1,4 +1,5 @@
 #include "openmc/zplane_partitioner.h"
+#include "openmc/partitioners.h"
 
 //==============================================================================
 // ZPlanePartitioner implementation
@@ -104,6 +105,55 @@ ZPlanePartitioner::ZPlanePartitioner(const Universe& univ)
       partitions_[i].push_back(i_cell);
     }
   }
+}
+
+ZPlanePartitioner::ZPlanePartitioner(const Universe& univ, hid_t file)
+{
+  read_dataset(file, "surfs", surfs_);
+
+  hid_t partitions_group = open_group(file, "partitions");
+
+  int partitions_size;
+  read_attr_int(partitions_group, "n_partitions", &partitions_size);
+  partitions_.resize(partitions_size);
+
+  for (int i = 0; i < partitions_.size(); i++) {
+    read_dataset(partitions_group, ("partition" + std::to_string(i)).c_str(),
+      partitions_[i]);
+  }
+
+  close_group(partitions_group);
+}
+
+void ZPlanePartitioner::export_to_hdf5(const std::string& path) const
+{
+  hid_t file = file_open(path, 'w');
+
+  // Write header
+  write_attribute(file, "filetype", "partitioner");
+
+  // write general partitioner information
+  write_attribute(
+    file, "part_type", static_cast<int>(PartitionerTypeID::ZPlane));
+  write_dataset(file, "bounds_max", Position(INFTY, INFTY, INFTY));
+  write_dataset(file, "bounds_min", Position(-INFTY, -INFTY, -INFTY));
+
+  // write planes
+  write_dataset(file, "surfs", surfs_);
+
+  // write cell partitions
+  hid_t partitions_group = create_group(file, "partitions");
+  write_attribute(
+    partitions_group, "n_partitions", static_cast<int>(partitions_.size()));
+
+  for (int i = 0; i < partitions_.size(); i++) {
+    write_dataset(partitions_group, ("partition" + std::to_string(i)).c_str(),
+      partitions_[i]);
+  }
+
+  close_group(partitions_group);
+
+  file_close(file);
 }
 
 const vector<int32_t>& ZPlanePartitioner::get_cells(

@@ -1,6 +1,7 @@
 #ifndef OPENMC_PARTITIONER_UTILS_H
 #define OPENMC_PARTITIONER_UTILS_H
 
+#include "aabb.h"
 #include "position.h"
 #include "random_dist.h"
 #include "timer.h"
@@ -13,32 +14,6 @@
 #include <vector>
 
 namespace openmc {
-
-// This axis-aligned bounding box class (AABB) is designed to work easier with
-// partitioners than openmc::BoundingBox
-struct AABB {
-  AABB();
-  AABB(const Position& mi, const Position& ma);
-
-  void extend_max(const Position& val);
-  void extend_min(const Position& val);
-
-  void extend(const Position& pos);
-  void extend(const AABB& other_box);
-
-  Position get_center() const;
-  double surface_area() const;
-  double volume() const;
-  bool contains(const Position& pos) const;
-
-  void reset();
-
-  bool operator==(const AABB& other) const;
-  bool operator!=(const AABB& other) const;
-
-  Position min_;
-  Position max_;
-};
 
 // This works by allocating large pools of nodes
 // When we have to allocate nodes during construction, we allocate one from

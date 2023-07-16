@@ -55,7 +55,8 @@ int BinGridPartitioner::convert_to_index(const Position& r) const
   // The idea behind this mapping is to count, on each axis, how many bins
   // (rounded down) the point is from the minimum bounds of the bin grid
   // partitioner. This information gives us the location of a unique bins, and
-  // we can then convert this distances into a base grid_res_ number.
+  // we can convert this information into a base grid_res_ number to map it to
+  // an index.
   int idx = 0;
   for (int i = 0; i < 3; i++) {
     idx = grid_res_ * idx +

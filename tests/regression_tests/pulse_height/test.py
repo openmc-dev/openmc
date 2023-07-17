@@ -30,7 +30,7 @@ def sphere_model():
     model.settings.batches = 5
     model.settings.particles = 100
     model.settings.photon_transport = True
-    model.settings.source = openmc.Source(space=openmc.stats.Point(),
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Point(),
                                           energy=openmc.stats.Discrete([1e6],[1]),
                                           particle='photon')
 

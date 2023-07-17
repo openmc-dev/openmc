@@ -579,15 +579,16 @@ def pin_radial_azimuthal(surfaces, items, subdivisions_r=None, subdivisions_a=No
     this function allows the user to subdivide each region in the fuel pin 
     radially and azimuthally using the respective subdivisions dictionaries.
     
-    The type of radial subdivison can be set to either equal area or equal radius
-    divisions using the rad_div_types dictionary.
-    
+    The type of radial subdivison can be set to either equal area or equal radius.
+        
     New regions that are created will be filled with the same material that filled
     the region before being subdivided.
     
     An implicit complement region is defined to contain everything outside the 
     outermost cylinder. The implicit complement region can be subdivided azimuthally 
     but not radially.
+
+    Any existing material volumes will not be modified by this function.
 
 
     Parameters

@@ -168,7 +168,7 @@ public:
   //!
   //! @param sqrtkT Temperature of the material.
   //! @return The temperature index corresponding to sqrtkT.
-  int get_temperature_index(double sqrtkT);
+  int get_temperature_index(double sqrtkT) const;
 
   //! \brief Sets the angle index in particle cache.
   //!
@@ -179,7 +179,7 @@ public:
   //!
   //! @param u Incoming particle direction.
   //! @return The angle index corresponding to u.
-  int get_angle_index(Direction& u);
+  int get_angle_index(const Direction& u) const;
 
   //! \brief Provide const access to list of XsData held by this
   const vector<XsData>& get_xsdata() const { return xs; }

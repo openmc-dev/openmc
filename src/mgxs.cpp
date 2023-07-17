@@ -621,7 +621,7 @@ bool Mgxs::equiv(const Mgxs& that)
 
 //==============================================================================
 
-int Mgxs::get_temperature_index(double sqrtkT)
+int Mgxs::get_temperature_index(double sqrtkT) const
 {
   return xt::argmin(xt::abs(kTs - sqrtkT * sqrtkT))[0];
 }
@@ -636,7 +636,7 @@ void Mgxs::set_temperature_index(Particle& p)
 
 //==============================================================================
 
-int Mgxs::get_angle_index(Direction& u)
+int Mgxs::get_angle_index(const Direction& u) const
 {
   if (is_isotropic) {
     return 0;

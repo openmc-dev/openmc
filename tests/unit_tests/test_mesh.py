@@ -44,3 +44,12 @@ def test_mesh_bounding_box():
     np.testing.assert_array_equal(bb.lower_left, np.array([-2, -3 ,-5]))
     np.testing.assert_array_equal(bb.upper_right, np.array([2, 3, 5]))
 
+def test_mesh_spherical_upper_right():
+    mesh = openmc.SphericalMesh()
+    mesh.r_grid = np.array([1.0])
+    mesh.origin = (0,0,0)
+    assert mesh.upper_right == (1.,1.,1.)
+    assert mesh.lower_left == (-1.,-1.,-1.)
+    mesh.origin = (3, 5, 7)
+    assert mesh.upper_right == (4,6,8)
+    assert mesh.lower_left == (2,4,6)

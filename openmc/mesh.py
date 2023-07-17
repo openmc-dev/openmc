@@ -1323,7 +1323,7 @@ class CylindricalMesh(StructuredMesh):
         domain: typing.Union['openmc.Cell', 'openmc.Region', 'openmc.Universe', 'openmc.Geometry'],
         dimension: typing.Tuple[int] = (10, 10, 10),
         mesh_id: typing.Optional[int] = None,
-        phi_grid_bounds: typing.Tuple[float]=(0.0, 2*pi),
+        phi_grid_bounds: typing.Tuple[float] = (0.0, 2*pi),
         name=''
     ):
         """Creates a regular CylindricalMesh from an existing openmc domain.

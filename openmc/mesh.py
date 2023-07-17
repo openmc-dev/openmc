@@ -525,7 +525,7 @@ class RegularMesh(StructuredMesh):
         return tuple(self._dimension)
 
     @dimension.setter
-    def dimension(self, dimension: Iterable[int]):
+    def dimension(self, dimension: typing.Iterable[int]):
         cv.check_type('mesh dimension', dimension, Iterable, Integral)
         cv.check_length('mesh dimension', dimension, 1, 3)
         self._dimension = dimension
@@ -542,7 +542,7 @@ class RegularMesh(StructuredMesh):
         return self._lower_left
 
     @lower_left.setter
-    def lower_left(self, lower_left: Iterable[Real]):
+    def lower_left(self, lower_left: typing.Iterable[Real]):
         cv.check_type('mesh lower_left', lower_left, Iterable, Real)
         cv.check_length('mesh lower_left', lower_left, 1, 3)
         self._lower_left = lower_left
@@ -562,7 +562,7 @@ class RegularMesh(StructuredMesh):
                 return [l + w * d for l, w, d in zip(ls, ws, dims)]
 
     @upper_right.setter
-    def upper_right(self, upper_right: Iterable[Real]):
+    def upper_right(self, upper_right: typing.Iterable[Real]):
         cv.check_type('mesh upper_right', upper_right, Iterable, Real)
         cv.check_length('mesh upper_right', upper_right, 1, 3)
         self._upper_right = upper_right
@@ -586,7 +586,7 @@ class RegularMesh(StructuredMesh):
                 return [(u - l) / d for u, l, d in zip(us, ls, dims)]
 
     @width.setter
-    def width(self, width: Iterable[Real]):
+    def width(self, width: typing.Iterable[Real]):
         cv.check_type('mesh width', width, Iterable, Real)
         cv.check_length('mesh width', width, 1, 3)
         self._width = width
@@ -695,7 +695,7 @@ class RegularMesh(StructuredMesh):
     @classmethod
     def from_rect_lattice(
         cls,
-        lattice: openmc.RectLattice,
+        lattice: 'openmc.RectLattice',
         division: int = 1,
         mesh_id: typing.Optional[int] = None,
         name: str = ''
@@ -735,7 +735,7 @@ class RegularMesh(StructuredMesh):
     @classmethod
     def from_domain(
         cls,
-        domain: typing.Union[openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry],
+        domain: typing.Union['openmc.Cell', 'openmc.Region', 'openmc.Universe', 'openmc.Geometry'],
         dimension: typing.Tuple[int] = (10, 10, 10),
         mesh_id: typing.Optional[int] = None,
         name: str = ''
@@ -1320,7 +1320,7 @@ class CylindricalMesh(StructuredMesh):
     @classmethod
     def from_domain(
         cls,
-        domain: typing.Union[openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry],
+        domain: typing.Union['openmc.Cell', 'openmc.Region', 'openmc.Universe', 'openmc.Geometry'],
         dimension: typing.Tuple[int] = (10, 10, 10),
         mesh_id: typing.Optional[int] = None,
         phi_grid_bounds: typing.Tuple[float]=(0.0, 2*pi),

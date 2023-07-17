@@ -68,10 +68,11 @@ subdivs_a = {
 #subdivs_r = None
 #subdivs_a = None
 rad_div_types = {
-        #0 : "area",
-        #2 : "area",
-        #3 : "radius"
+        0 : "area",
+        2 : "area",
+        3 : "area"
         }
+#rad_div_types = None
 
 pin_universe = openmc.model.pin_radial_azimuthal(surfs, mats, subdivisions_r=subdivs_r, subdivisions_a=subdivs_a, rad_div_types=rad_div_types, implicit_azi_div=8)
 

@@ -1500,7 +1500,12 @@ class SphericalMesh(StructuredMesh):
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]
-
+    lower_left : Iterable of float
+        The lower-left corner of the structured mesh. If only two coordinate
+        are given, it is assumed that the mesh is an x-y mesh.
+    upper_right : Iterable of float
+        The upper-right corner of the structured mesh. If only two coordinate
+        are given, it is assumed that the mesh is an x-y mesh.
     """
 
     def __init__(self, mesh_id=None, name=''):
@@ -1571,6 +1576,36 @@ class SphericalMesh(StructuredMesh):
                 for p in range(1, np + 1)
                 for t in range(1, nt + 1)
                 for r in range(1, nr + 1))
+
+    @property
+    def lower_left(self):
+        return (self.origin[0]-self.r_grid[-1], self.origin[1]-self.r_grid[-1], self.origin[2]-self.r_grid[-1])
+
+    @lower_left.setter
+    def lower_left(self, lower_left):
+        cv.check_type('mesh lower_left', lower_left, Iterable, Real)
+        cv.check_length('mesh lower_left', lower_left, 1, 3)
+        self._lower_left = lower_left
+
+        if self.upper_right is not None and any(np.isclose(self.upper_right, lower_left)):
+            raise ValueError("Mesh cannot have zero thickness in any dimension")
+
+    @property
+    def upper_right(self):
+        return (self.origin[0]+self.r_grid[-1], self.origin[1]+self.r_grid[-1], self.origin[2]+self.r_grid[-1])
+
+    @upper_right.setter
+    def upper_right(self, upper_right):
+        cv.check_type('mesh upper_right', upper_right, Iterable, Real)
+        cv.check_length('mesh upper_right', upper_right, 1, 3)
+        self._upper_right = upper_right
+
+        if self._width is not None:
+            self._width = None
+            warnings.warn("Unsetting width attribute.")
+
+        if self.lower_left is not None and any(np.isclose(self.lower_left, upper_right)):
+            raise ValueError("Mesh cannot have zero thickness in any dimension")
 
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'

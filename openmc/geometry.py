@@ -23,6 +23,8 @@ class Geometry:
     root : openmc.UniverseBase or Iterable of openmc.Cell, optional
         Root universe which contains all others, or an iterable of cells that
         should be used to create a root universe.
+    **kwargs : dict, optional
+        Any keyword arguments are used to set attributes on the instance.
 
     Attributes
     ----------
@@ -39,7 +41,7 @@ class Geometry:
 
     """
 
-    def __init__(self, root=None):
+    def __init__(self, root=None, **kwargs):
         self._root_universe = None
         self._offsets = {}
         self.merge_surfaces = False
@@ -52,6 +54,9 @@ class Geometry:
                 for cell in root:
                     univ.add_cell(cell)
                 self._root_universe = univ
+
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
     @property
     def root_universe(self) -> openmc.UniverseBase:

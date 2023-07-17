@@ -65,7 +65,8 @@ class CylinderSector(CompositeSurface):
     The cylindrical surfaces are concentric, and the planar surfaces intersect
     the central axis of the cylindrical surfaces.
 
-    For the case of r1=0, a zero radius cylinder is not created.
+    For the case where r1=0, a zero radius inner cylinder is not created.
+    For the case where r2 is None (i.e. where r2 goes to infinity), an outer cylinder is not created.
 
     This class acts as a proper surface, meaning that unary `+` and `-`
     operators applied to it will produce a half-space. The negative
@@ -78,7 +79,7 @@ class CylinderSector(CompositeSurface):
     r1 : float
         Inner radius of sector. Must be less than r2.
     r2 : float
-        Outer radius of sector. Must be greater than r1.
+        Outer radius of sector. Must be greater than r1 or set to None (if r2 goes to infinity).
     theta1 : float
         Clockwise-most bound of sector in degrees. Assumed to be in the
         counterclockwise direction with respect to the first basis axis
@@ -133,6 +134,9 @@ class CylinderSector(CompositeSurface):
         self.theta1 = theta1
         self.theta2 = theta2
 
+        # phi1 and phi2 are the angles defining the sector in radians
+        # In order to minimize the number of planes created, phi1 and phi2 are 
+        # either equal to the original angle or the original angle minus 180 degrees
         if theta2 < 180 - 45:
             phi1 = pi / 180 * theta1
             phi2 = pi / 180 * theta2
@@ -237,60 +241,76 @@ class CylinderSector(CompositeSurface):
 
     def __neg__(self):
         if self.theta2 < (180 - 45):
-            if self.r2 is None:
+            if self.r1 == 0 and self.r2 is None:
+                return -self.plane1 & +self.plane2
+            elif self.r1 > 0 and self.r2 is None:
                 return +self.inner_cyl & -self.plane1 & +self.plane2 
-            elif self.r1 > 0:
+            elif self.r1 > 0 and self.r2 is not None:
                 return -self.outer_cyl & +self.inner_cyl & -self.plane1 & +self.plane2
             else:
                 return -self.outer_cyl & -self.plane1 & +self.plane2
         elif self.theta2 == 180 - 45:
-            if self.r2 is None:
+            if self.r1 == 0 and self.r2 is None:
+                return -self.plane1 & -self.plane2
+            elif self.r1 > 0 and self.r2 is None:
                 return +self.inner_cyl & -self.plane1 & -self.plane2 
-            elif self.r1 > 0:
+            elif self.r1 > 0 and self.r2 is not None:
                 return -self.outer_cyl & +self.inner_cyl & -self.plane1 & -self.plane2
             else:
                 return -self.outer_cyl & -self.plane1 & -self.plane2
         elif self.theta2 < 360 - 45:
-            if self.r2 is None:
+            if self.r1 == 0 and self.r2 is None:
+                return +self.plane1 & -self.plane2
+            elif self.r1 > 0 and self.r2 is None:
                 return +self.inner_cyl & +self.plane1 & -self.plane2
-            elif self.r1 > 0:
+            elif self.r1 > 0 and self.r2 is not None:
                 return -self.outer_cyl & +self.inner_cyl & +self.plane1 & -self.plane2
             else:
                 return -self.outer_cyl & +self.plane1 & -self.plane2
         else:
-            if self.r2 is None:
+            if self.r1 == 0 and self.r2 is None:
+                return +self.plane1 & +self.plane2
+            elif self.r1 > 0 and self.r2 is None:
                 return +self.inner_cyl & +self.plane1 & +self.plane2
-            elif self.r1 > 0:
+            elif self.r1 > 0 and self.r2 is not None:
                 return -self.outer_cyl & +self.inner_cyl & +self.plane1 & +self.plane2
             else:
                 return -self.outer_cyl & +self.plane1 & +self.plane2
 
     def __pos__(self):
         if self.theta2 < (180 - 45):
-            if self.r2 is None:
+            if self.r1 == 0 and self.r2 is None:
+                return +self.plane1 | -self.plane2
+            elif self.r1 > 0 and self.r2 is None:
                 return -self.inner_cyl | +self.plane1 | -self.plane2
-            elif self.r1 > 0:
+            elif self.r1 > 0 and self.r2 is not None:
                 return +self.outer_cyl | -self.inner_cyl | +self.plane1 | -self.plane2
             else:
                 return +self.outer_cyl | +self.plane1 | -self.plane2
         elif self.theta2 == 180 - 45:
-            if self.r2 is None:
+            if self.r1 == 0 and self.r2 is None:
+                return +self.plane1 | +self.plane2
+            elif self.r1 > 0 and self.r2 is None:
                 return -self.inner_cyl | +self.plane1 | +self.plane2
-            elif self.r1 > 0:
+            elif self.r1 > 0 and self.r2 is not None:
                 return +self.outer_cyl | -self.inner_cyl | +self.plane1 | +self.plane2
             else:
                 return +self.outer_cyl | +self.plane1 | +self.plane2
         elif self.theta2 < 360 - 45:
-            if self.r2 is None:
+            if self.r1 == 0 and self.r2 is None:
+                return -self.plane1 | +self.plane2
+            elif self.r1 > 0 and self.r2 is None:
                 return -self.inner_cyl | -self.plane1 | +self.plane2
-            elif self.r1 > 0:
+            elif self.r1 > 0 and self.r2 is not None:
                 return +self.outer_cyl | -self.inner_cyl | -self.plane1 | +self.plane2
             else:
                 return +self.outer_cyl | -self.plane1 | +self.plane2
         else:
-            if self.r2 is None:
+            if self.r1 == 0 and self.r2 is None:
+                return -self.plane1 | -self.plane2
+            elif self.r1 > 0 and self.r2 is None:
                 return -self.inner_cyl | -self.plane1 | -self.plane2
-            elif self.r1 > 0:
+            elif self.r1 > 0 and self.r2 is not None:
                 return +self.outer_cyl | -self.inner_cyl | -self.plane1 | -self.plane2
             else:
                 return +self.outer_cyl | -self.plane1 | -self.plane2

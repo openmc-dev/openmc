@@ -1484,7 +1484,7 @@ class SphericalMesh(StructuredMesh):
         Name of the mesh
     dimension : Iterable of int
         The number of mesh cells in each direction (r_grid,
-        phi_grid, phi_grid).
+        theta_grid, phi_grid).
     n_dimension : int
         Number of mesh dimensions (always 3 for a SphericalMesh).
     r_grid : numpy.ndarray

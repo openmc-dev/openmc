@@ -1095,8 +1095,7 @@ extern "C" int openmc_weight_windows_get_max_split(
   return 0;
 }
 
-extern "C" int openmc_weight_windows_set_max_split(
-  int32_t index, int max_split)
+extern "C" int openmc_weight_windows_set_max_split(int32_t index, int max_split)
 {
   if (int err = verify_ww_index(index))
     return err;

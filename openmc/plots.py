@@ -167,6 +167,81 @@ _SVG_COLORS = {
 }
 
 
+def plot_mesh_tally(
+    tally: 'openmc.Tally',
+    basis: Optional[str] = 'xy',
+    slice_index: int = None,
+    score: Optional[str] = None,
+    axes: Optional[str] = None,
+    axis_units: Optional[str] = 'cm',
+    **kwargs
+):
+    """Display a slice plot of the mesh tally score.
+
+    Parameters
+    ----------
+    tally : openmc.Tally
+        todo
+    basis : str
+        todo
+    slice_index : int
+        todo
+    score : str
+        todo
+    axes : str
+        todo
+    axis_units : str
+        todo
+
+    Returns
+    -------
+    matplotlib.image.AxesImage
+        Resulting image
+
+    """
+
+    import matplotlib.pyplot as plt
+
+    cv.check_value('basis', basis, ['xy', 'xz', 'yz'])
+    mesh = tally.find_filter(filter_type=openmc.MeshFilter).mesh
+    if not isinstance(mesh, openmc.RegularMesh):
+        raise NotImplemented(f'Only RegularMesh are currently supported not {type(mesh)}')
+
+    # if score is not specified and tally has a single score then we know which score to use
+    if score is None and len(tally.scores) == 1:
+        score = tally.scores[0]
+
+    data = tally.get_reshaped_data(expand_dims=True).squeeze()
+
+    if slice_index is None:
+        basis_to_index = {'xy': 2, 'xz': 1, 'yz': 0}[basis]
+        slice_index = int(data.shape[basis_to_index]/2)
+
+    if basis == 'xz':
+        slice_data = data[:, slice_index, :]
+        oriented_data = np.flip(np.rot90(slice_data, -1))
+        xlabel, ylabel = f'x [{axis_units}]', f'z [{axis_units}]'
+    elif basis == 'yz':
+        slice_data = data[slice_index, :, :]
+        oriented_data = np.flip(np.rot90(slice_data, -1))
+        xlabel, ylabel = f'y [{axis_units}]', f'z [{axis_units}]'
+    else:  # basis == 'xy'
+        slice_data = data[:, :, slice_index]
+        oriented_data = np.rot90(slice_data, 1)
+        xlabel, ylabel = f'x [{axis_units}]', f'y [{axis_units}]'
+
+    axis_scaling_factor = {'km': 0.00001, 'm': 0.01, 'cm': 1, 'mm': 10}[axis_units]
+
+    x_min, x_max, y_min, y_max = [i * axis_scaling_factor for i in mesh.bounding_box.extent[basis]]
+
+    if axes is None:
+        fig, axes = plt.subplots()
+        axes.set_xlabel(xlabel)
+        axes.set_ylabel(ylabel)
+
+    return axes.imshow(oriented_data, extent=(x_min, x_max, y_min, y_max), **kwargs)
+
+
 def _get_plot_image(plot, cwd):
     from IPython.display import Image
 

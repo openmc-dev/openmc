@@ -1784,7 +1784,7 @@ class UnstructuredMesh(MeshBase):
 
     @filename.setter
     def filename(self, filename):
-        cv.check_type('Unstructured Mesh filename', filename, PathLike)
+        cv.check_type('Unstructured Mesh filename', filename, (str, Path))
         self._filename = filename
 
     @property

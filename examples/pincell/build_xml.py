@@ -29,67 +29,31 @@ borated_water.add_element('H', 5.0e-2)
 borated_water.add_element('O', 2.4e-2)
 borated_water.add_s_alpha_beta('c_H_in_H2O')
 
+# Collect the materials together and export to XML
+materials = openmc.Materials([uo2, helium, zircaloy, borated_water])
+materials.export_to_xml()
 
 ###############################################################################
 # Define problem geometry
-
-# Create a region represented as the inside of a rectangular prism
-
-pitch = 1.25984
-box = openmc.rectangular_prism(pitch, pitch, boundary_type='reflective')
-
-cell1 = openmc.Cell(name='Cell 1')
-cell1.region = box
 
 # Create cylindrical surfaces
 fuel_or = openmc.ZCylinder(r=0.39218, name='Fuel OR')
 clad_ir = openmc.ZCylinder(r=0.40005, name='Clad IR')
 clad_or = openmc.ZCylinder(r=0.45720, name='Clad OR')
-corner =  openmc.ZCylinder(r=pitch/2, name='Clad OR')
+
+# Create a region represented as the inside of a rectangular prism
+pitch = 1.25984
+box = openmc.rectangular_prism(pitch, pitch, boundary_type='reflective')
 
 # Create cells, mapping materials to regions
-#fuel = openmc.Cell(fill=uo2, region=-fuel_or)
-#gap = openmc.Cell(fill=helium, region=+fuel_or & -clad_ir)
-#clad = openmc.Cell(fill=zircaloy, region=+clad_ir & -clad_or)
-#water = openmc.Cell(fill=borated_water, region=+clad_or & box)
-
-surfs = [fuel_or, clad_ir, clad_or, corner]
-mats = [uo2, helium, zircaloy, borated_water, borated_water.clone()]
-subdivs_r = {
-        0 : 3,
-        2 : 1,
-        3 : 2
-        }
-subdivs_a = {
-        0 : 4,
-        2 : 4,
-        3 : 8
-        }
-#subdivs_r = None
-#subdivs_a = None
-rad_div_types = {
-        0 : "area",
-        2 : "area",
-        3 : "area"
-        }
-#rad_div_types = None
-
-pin_universe = openmc.model.pin_radial_azimuthal(surfs, mats, subdivisions_r=subdivs_r, subdivisions_a=subdivs_a, rad_div_types=rad_div_types, implicit_azi_div=8)
-
-# Fill Cell with the Lattice
-cell1.fill = pin_universe
-
-root = openmc.Universe(name='root universe')
-root.add_cell(cell1)
+fuel = openmc.Cell(fill=uo2, region=-fuel_or)
+gap = openmc.Cell(fill=helium, region=+fuel_or & -clad_ir)
+clad = openmc.Cell(fill=zircaloy, region=+clad_ir & -clad_or)
+water = openmc.Cell(fill=borated_water, region=+clad_or & box)
 
 # Create a geometry and export to XML
-geometry = openmc.Geometry(root)
-geometry.remove_redundant_surfaces()
+geometry = openmc.Geometry([fuel, gap, clad, water])
 geometry.export_to_xml()
-
-# Collect the materials together and export to XML
-materials = openmc.Materials(mats)
-materials.export_to_xml()
 
 ###############################################################################
 # Define problem settings
@@ -103,8 +67,8 @@ settings.particles = 1000
 # Create an initial uniform spatial source distribution over fissionable zones
 lower_left = (-pitch/2, -pitch/2, -1)
 upper_right = (pitch/2, pitch/2, 1)
-uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=False)
-settings.source = openmc.source.Source(space=uniform_dist)
+uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=True)
+settings.source = openmc.IndependentSource(space=uniform_dist)
 
 # For source convergence checks, add a mesh that can be used to calculate the
 # Shannon entropy
@@ -146,17 +110,3 @@ spectrum_tally.scores = ['flux']
 # Instantiate a Tallies collection and export to XML
 tallies = openmc.Tallies([mesh_tally, spectrum_tally])
 tallies.export_to_xml()
-
-###############################################################################
-# Make Plot
-
-plot = openmc.Plot(plot_id=1)
-plot.origin = [0, 0, 0]
-plot.width = [pitch, pitch]
-plot.pixels = [1000, 1000]
-plot.color_by = 'cell'
-
-# Instantiate a Plots collection and export to XML
-plot_file = openmc.Plots([plot])
-plot_file.export_to_xml()
-#openmc.plot_geometry()

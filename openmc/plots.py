@@ -181,17 +181,17 @@ def plot_mesh_tally(
     Parameters
     ----------
     tally : openmc.Tally
-        todo
-    basis : str
-        todo
+        The openmc tally to plot. Tally must contain a MeshFilter that uses a RegularMesh.
+    basis : {'xy', 'xz', 'yz'}
+        The basis directions for the plot
     slice_index : int
-        todo
+        The mesh index to plot
     score : str
-        todo
-    axes : str
-        todo
-    axis_units : str
-        todo
+        Score to plot, e.g. 'flux'
+    axes : matplotlib.Axes
+        Axes to draw to
+    axis_units : {'km', 'm', 'cm', 'mm'}
+        Units used on the plot axis
 
     Returns
     -------

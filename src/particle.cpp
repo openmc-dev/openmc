@@ -203,6 +203,7 @@ void Particle::event_advance()
   double distance = std::min(boundary().distance, collision_distance());
 
   // Advance particle in space and time
+  distance = std::max(distance, 1.e-12);
   for (int j = 0; j < n_coord(); ++j) {
     coord(j).r += distance * coord(j).u;
   }

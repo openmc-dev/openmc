@@ -133,6 +133,18 @@ class OpenMCOperator(TransportOperator):
         # This nuclides variables contains every nuclides
         # for which there is an entry in the micro_xs parameter
         openmc.reset_auto_ids()
+
+        self.nuclides_with_data = self._get_nuclides_with_data(
+            self.cross_sections)
+
+        # Select nuclides with data that are also in the chain
+        self._burnable_nucs = [nuc.name for nuc in self.chain.nuclides
+                               if nuc.name in self.nuclides_with_data]
+
+        # Select nuclides without data that are also in the chain
+        self._decay_nucs = [nuc.name for nuc in self.chain.nuclides
+                            if nuc.name not in self.nuclides_with_data]
+
         self.burnable_mats, volumes, all_nuclides = self._get_burnable_mats()
         self.local_mats = _distribute(self.burnable_mats)
 
@@ -141,13 +153,6 @@ class OpenMCOperator(TransportOperator):
 
         if self.prev_res is not None:
             self._load_previous_results()
-
-        self.nuclides_with_data = self._get_nuclides_with_data(
-            self.cross_sections)
-
-        # Select nuclides with data that are also in the chain
-        self._burnable_nucs = [nuc.name for nuc in self.chain.nuclides
-                               if nuc.name in self.nuclides_with_data]
 
         # Extract number densities from the geometry / previous depletion run
         self._extract_number(self.local_mats,
@@ -188,7 +193,13 @@ class OpenMCOperator(TransportOperator):
         # Iterate once through the geometry to get dictionaries
         for mat in self.materials:
             for nuclide in mat.get_nuclides():
-                model_nuclides.add(nuclide)
+                if nuclide in self.nuclides_with_data or self._decay_nucs:
+                    model_nuclides.add(nuclide)
+                else:
+                    msg = (f"Nuclilde {nuclide} in material {mat.id} is not "
+                           "present in the depletion chain and has no cross "
+                           "section data. Aborting simulation.")
+                    raise RuntimeError(msg)
             if mat.depletable:
                 burnable_mats.add(str(mat.id))
                 if mat.volume is None:

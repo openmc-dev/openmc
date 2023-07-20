@@ -11,7 +11,7 @@ filesystem.
 import copy
 from warnings import warn
 import typing
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 import numpy as np
 from uncertainties import ufloat
@@ -423,7 +423,8 @@ class CoupledOperator(OpenMCOperator):
         material_decay_nuclides = self._remove_decay_nuclides(self.burnable_mats)
 
         self.materials.export_to_xml()
-        self._add_decay_nuclides(self.burnable_mats, material_decay_nuclides)
+        if bool(material_decay_nuclides):
+            self._add_decay_nuclides(self.burnable_mats, material_decay_nuclides)
 
     def _remove_decay_nuclides(
         self, material_ids: List[str]
@@ -453,7 +454,7 @@ class CoupledOperator(OpenMCOperator):
 
                 # Remove decay-only nuclides
                 for nuc_tuple in mat._nuclides:
-                    if nuc_tuple.name in self._decay_nuclides:
+                    if nuc_tuple.name in self._decay_nucs:
                         decay_nuclides += [nuc_tuple]
 
                 if len(decay_nuclides) != 0:

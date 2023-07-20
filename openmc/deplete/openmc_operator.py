@@ -7,6 +7,7 @@ transport-independent transport operators.
 
 from abc import abstractmethod
 from collections import OrderedDict
+from warnings import warn
 
 import numpy as np
 
@@ -198,8 +199,8 @@ class OpenMCOperator(TransportOperator):
                 else:
                     msg = (f"Nuclilde {nuclide} in material {mat.id} is not "
                            "present in the depletion chain and has no cross "
-                           "section data. Aborting simulation.")
-                    raise RuntimeError(msg)
+                           "section data.")
+                    raise warn(msg)
             if mat.depletable:
                 burnable_mats.add(str(mat.id))
                 if mat.volume is None:

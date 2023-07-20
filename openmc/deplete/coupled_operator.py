@@ -10,6 +10,8 @@ filesystem.
 
 import copy
 from warnings import warn
+import typing
+from typing import List, Dict
 
 import numpy as np
 from uncertainties import ufloat
@@ -416,7 +418,76 @@ class CoupledOperator(OpenMCOperator):
         for mat in self.materials:
             mat._nuclides.sort(key=lambda x: nuclides.index(x[0]))
 
+        # Remove decay-only nuclides
+        #mat_ids = [mat.id for mat in self.materials]
+        material_decay_nuclides = self._remove_decay_nuclides(self.burnable_mats)
+
         self.materials.export_to_xml()
+        self._add_decay_nuclides(self.burnable_mats, material_decay_nuclides)
+
+    def _remove_decay_nuclides(
+        self, material_ids: List[str]
+    ) -> Dict[str, List[Tuple[str, float, str]]]:
+        """ Remove any decay-only nuclides (nuclides in the chain file without
+        cross section data) from the specified materials,
+
+        Parameters
+        ----------
+        material_ids : list of str
+            Material IDs as strings
+
+        Returns
+        -------
+        material_decay_nuclides : dict of str to list of 3-tuples
+            Dictionary mapping material ID's as strings to a list containing
+            decay-only nudclides as 3-tuples of (nuclide, density percent,
+            density percent type)
+
+        """
+
+        material_decay_nuclides = {}
+        for mat in self.materials:
+            mat_id = str(mat.id)
+            if mat_id in material_ids:
+                decay_nuclides = []
+
+                # Remove decay-only nuclides
+                for nuc_tuple in mat._nuclides:
+                    if nuc_tuple.name in self._decay_nuclides:
+                        decay_nuclides += [nuc_tuple]
+
+                if len(decay_nuclides) != 0:
+                    for nuc_tuple in decay_nuclides:
+                        mat._nuclides.remove(nuc_tuple)
+                    material_decay_nuclides[mat_id] = decay_nuclides
+
+        return material_decay_nuclides
+
+    def _add_decay_nuclides(
+            self,
+            material_ids: List[str],
+            material_decay_nuclides: Dict[str, List[Tuple[str, float, str]]]):
+        """Add decay-only nuclides to the specified materials
+
+        Parameters
+        ----------
+        material_ids : list of str
+            Material IDs as strings
+
+        material_decay_nuclides : dict of str to list of 3-tuples
+            Dictionary mapping material ID's as strings to a list containing
+            decay-only nudclides as 3-tuples of (nuclide, density percent,
+            density percent type)
+
+        """
+        # Add decay-only nuclides back in
+        nuclides = list(self.number.nuclides)
+        for mat in self.materials:
+            mat_id = str(mat.id)
+            if mat_id in material_ids:
+                mat._nuclides += material_decay_nuclides[mat_id]
+                # Sort nuclides according to order in AtomNumber object
+                mat._nuclides.sort(key=lambda x: nuclides.index(x[0]))
 
     def __call__(self, vec, source_rate):
         """Runs a simulation.

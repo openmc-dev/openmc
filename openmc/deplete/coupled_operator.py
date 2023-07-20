@@ -432,6 +432,8 @@ class CoupledOperator(OpenMCOperator):
         """ Remove any decay-only nuclides (nuclides in the chain file without
         cross section data) from the specified materials,
 
+        .. versionadded:: 0.13.4
+
         Parameters
         ----------
         material_ids : list of str
@@ -469,6 +471,8 @@ class CoupledOperator(OpenMCOperator):
             material_ids: List[str],
             material_decay_nuclides: Dict[str, List[Tuple[str, float, str]]]):
         """Add decay-only nuclides to the specified materials
+
+        .. versionadded:: 0.13.4
 
         Parameters
         ----------

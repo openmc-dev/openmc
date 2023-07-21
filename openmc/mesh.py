@@ -3,11 +3,11 @@ from collections.abc import Iterable
 from math import pi
 from numbers import Real, Integral
 from pathlib import Path
-import h5py
 import typing
 import warnings
 import lxml.etree as ET
 
+import h5py
 import numpy as np
 
 import openmc.checkvalue as cv
@@ -40,7 +40,7 @@ class MeshBase(IDManagerMixin, ABC):
     next_id = 1
     used_ids = set()
 
-    def __init__(self, mesh_id: int = None, name: str = ''):
+    def __init__(self, mesh_id: typing.Optional[int] = None, name: str = ''):
         # Initialize Mesh class attributes
         self.id = mesh_id
         self.name = name
@@ -264,7 +264,7 @@ class StructuredMesh(MeshBase):
 
     def write_data_to_vtk(self,
                           filename: PathLike,
-                          datasets: dict = None,
+                          datasets: Optional[dict] = None,
                           volume_normalization: bool = True,
                           curvilinear: bool = False):
         """Creates a VTK object of the mesh
@@ -736,7 +736,7 @@ class RegularMesh(StructuredMesh):
     def from_domain(
         cls,
         domain: typing.Union['openmc.Cell', 'openmc.Region', 'openmc.Universe', 'openmc.Geometry'],
-        dimension: typing.Tuple[int] = (10, 10, 10),
+        dimension: typing.Sequence[int] = (10, 10, 10),
         mesh_id: typing.Optional[int] = None,
         name: str = ''
     ):
@@ -1321,9 +1321,9 @@ class CylindricalMesh(StructuredMesh):
     def from_domain(
         cls,
         domain: typing.Union['openmc.Cell', 'openmc.Region', 'openmc.Universe', 'openmc.Geometry'],
-        dimension: typing.Tuple[int] = (10, 10, 10),
+        dimension: typing.Sequence[int] = (10, 10, 10),
         mesh_id: typing.Optional[int] = None,
-        phi_grid_bounds: typing.Tuple[float] = (0.0, 2*pi),
+        phi_grid_bounds: typing.Sequence[float] = (0.0, 2*pi),
         name=''
     ):
         """Creates a regular CylindricalMesh from an existing openmc domain.
@@ -1462,7 +1462,7 @@ class CylindricalMesh(StructuredMesh):
         return self._convert_to_cartesian(self.vertices, self.origin)
 
     @staticmethod
-    def _convert_to_cartesian(arr, origin: typing.Tuple[float]):
+    def _convert_to_cartesian(arr, origin: typing.Sequence[float]):
         """Converts an array with xyz values in the first dimension (shape (3, ...))
         to Cartesian coordinates.
         """
@@ -1691,7 +1691,7 @@ class SphericalMesh(StructuredMesh):
         return self._convert_to_cartesian(self.vertices, self.origin)
 
     @staticmethod
-    def _convert_to_cartesian(arr, origin: typing.Tuple[float]):
+    def _convert_to_cartesian(arr, origin: typing.Sequence[float]):
         """Converts an array with xyz values in the first dimension (shape (3, ...))
         to Cartesian coordinates.
         """
@@ -1766,7 +1766,7 @@ class UnstructuredMesh(MeshBase):
     _LINEAR_TET = 0
     _LINEAR_HEX = 1
 
-    def __init__(self, filename: PathLike, library: str, mesh_id: int = None,
+    def __init__(self, filename: PathLike, library: str, mesh_id: typing.Optional[int] = None,
                  name: str = '', length_multiplier: float = 1.0):
         super().__init__(mesh_id, name)
         self.filename = filename
@@ -1939,7 +1939,7 @@ class UnstructuredMesh(MeshBase):
     def write_data_to_vtk(
             self,
             filename: typing.Optional[PathLike] = None,
-            datasets: dict = None,
+            datasets: typing.Optional[dict] = None,
             volume_normalization: bool = True
     ):
         """Map data to unstructured VTK mesh elements.

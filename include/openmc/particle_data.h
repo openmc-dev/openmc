@@ -171,6 +171,18 @@ struct MacroXS {
 };
 
 //==============================================================================
+// Cache contains the cached data for an MGXS object
+//==============================================================================
+
+struct CacheDataMG {
+  int material {-1}; //!< material index
+  double sqrtkT;     //!< last temperature corresponding to t
+  int t {0};         //!< temperature index
+  int a {0};         //!< angle index
+  Direction u;       //!< angle that corresponds to a
+};
+
+//==============================================================================
 // Information about nearest boundary crossing
 //==============================================================================
 
@@ -231,6 +243,7 @@ private:
   vector<NuclideMicroXS> neutron_xs_; //!< Microscopic neutron cross sections
   vector<ElementMicroXS> photon_xs_;  //!< Microscopic photon cross sections
   MacroXS macro_xs_;                  //!< Macroscopic cross sections
+  CacheDataMG mg_xs_cache_;           //!< Multigroup XS cache
 
   int64_t id_;                                //!< Unique ID
   ParticleType type_ {ParticleType::neutron}; //!< Particle type (n, p, e, etc.)
@@ -349,6 +362,8 @@ public:
   ElementMicroXS& photon_xs(int i) { return photon_xs_[i]; }
   MacroXS& macro_xs() { return macro_xs_; }
   const MacroXS& macro_xs() const { return macro_xs_; }
+  CacheDataMG& mg_xs_cache() { return mg_xs_cache_; }
+  const CacheDataMG& mg_xs_cache() const { return mg_xs_cache_; }
 
   int64_t& id() { return id_; }
   const int64_t& id() const { return id_; }

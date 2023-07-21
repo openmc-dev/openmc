@@ -264,7 +264,7 @@ class StructuredMesh(MeshBase):
 
     def write_data_to_vtk(self,
                           filename: PathLike,
-                          datasets: Optional[dict] = None,
+                          datasets: typing.Optional[dict] = None,
                           volume_normalization: bool = True,
                           curvilinear: bool = False):
         """Creates a VTK object of the mesh

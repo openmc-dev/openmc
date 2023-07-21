@@ -395,7 +395,7 @@ class StructuredMesh(MeshBase):
 
         ### Add all points to the unstructured grid, maintaining a flat list of IDs as we go ###
 
-        # flat array storind point IDs for a given vertex
+        # flat array storing point IDs for a given vertex
         # in the grid
         point_ids = []
 

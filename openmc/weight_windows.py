@@ -166,6 +166,7 @@ class WeightWindows(IDManagerMixin):
         string += '{: <16}=\t{}\n'.format('\tMesh', self.mesh)
         string += '{: <16}=\t{}\n'.format('\tParticle Type', self._particle_type)
         string += '{: <16}=\t{}\n'.format('\tEnergy Bounds', self._energy_bounds)
+        string += '{: <16}=\t{}\n'.format('\tMax lower bound ratio', self.max_lower_bound_ratio)
         string += '{: <16}=\t{}\n'.format('\tLower WW Bounds', self._lower_ww_bounds)
         string += '{: <16}=\t{}\n'.format('\tUpper WW Bounds', self._upper_ww_bounds)
         string += '{: <16}=\t{}\n'.format('\tSurvival Ratio', self._survival_ratio)

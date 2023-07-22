@@ -1184,6 +1184,9 @@ class CylindricalMesh(StructuredMesh):
         Unique identifier for the mesh
     name : str
         Name of the mesh
+    origin : numpy.ndarray
+        1-D array of length 3 the (x,y,z) origin of the mesh in
+        cartesian coordinates
 
     Attributes
     ----------
@@ -1204,22 +1207,24 @@ class CylindricalMesh(StructuredMesh):
         The default value is [0, 2π], i.e. the full phi range.
     z_grid : numpy.ndarray
         1-D array of mesh boundary points along the z-axis.
-    origin : numpy.ndarray
-        1-D array of length 3 the (x,y,z) origin of the mesh in
-        cartesian coordinates
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]
 
     """
 
-    def __init__(self, mesh_id: int = None, name: str = ''):
+    def __init__(
+        self,
+        mesh_id: int = None,
+        name: str = '',
+        origin: typing.Tuple[float] = (0., 0., 0.)
+    ):
         super().__init__(mesh_id, name)
 
         self._r_grid = None
         self._phi_grid = [0.0, 2*pi]
         self._z_grid = None
-        self.origin = (0., 0., 0.)
+        self.origin = origin
 
     @property
     def dimension(self):
@@ -1325,7 +1330,7 @@ class CylindricalMesh(StructuredMesh):
         dimension: typing.Sequence[int] = (10, 10, 10),
         mesh_id: typing.Optional[int] = None,
         phi_grid_bounds: typing.Sequence[float] = (0.0, 2*pi),
-        name=''
+        name: str = ''
     ):
         """Creates a regular CylindricalMesh from an existing openmc domain.
 
@@ -1484,6 +1489,9 @@ class SphericalMesh(StructuredMesh):
         Unique identifier for the mesh
     name : str
         Name of the mesh
+    origin : numpy.ndarray
+        1-D array of length 3 the (x,y,z) origin of the mesh in
+        cartesian coordinates
 
     Attributes
     ----------
@@ -1505,22 +1513,24 @@ class SphericalMesh(StructuredMesh):
     phi_grid : numpy.ndarray
         1-D array of mesh boundary points along the phi-axis in radians.
         The default value is [0, 2π], i.e. the full phi range.
-    origin : numpy.ndarray
-        1-D array of length 3 the (x,y,z) origin of the mesh in
-        cartesian coordinates
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]
 
     """
 
-    def __init__(self, mesh_id=None, name=''):
+    def __init__(
+        self,
+        mesh_id: typing.Optional[int] = None,
+        name: str = '',
+        origin: typing.Tuple[float] = (0, 0, 0)
+    ):
         super().__init__(mesh_id, name)
 
         self._r_grid = None
         self._theta_grid = [0, pi]
         self._phi_grid = [0, 2*pi]
-        self.origin = (0., 0., 0.)
+        self.origin = origin
 
     @property
     def dimension(self):

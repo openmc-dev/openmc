@@ -397,7 +397,7 @@ class StructuredMesh(MeshBase):
 
         # Add all points to the unstructured grid, maintaining a flat list of IDs as we go ###
 
-        # flat array storind point IDs for a given vertex
+        # flat array storing point IDs for a given vertex
         # in the grid
         point_ids = []
 
@@ -495,7 +495,7 @@ class RegularMesh(StructuredMesh):
     name : str
         Name of the mesh
     dimension : Iterable of int
-        The number of mesh cells in each direction.
+        The number of mesh cells in each direction (x, y, z).
     n_dimension : int
         Number of mesh dimensions.
     lower_left : Iterable of float
@@ -750,7 +750,7 @@ class RegularMesh(StructuredMesh):
             bounding box of the property of the object passed will be used to
             set the lower_left and upper_right of the mesh instance
         dimension : Iterable of int
-            The number of mesh cells in each direction.
+            The number of mesh cells in each direction (x, y, z).
         mesh_id : int
             Unique identifier for the mesh
         name : str
@@ -993,7 +993,7 @@ class RectilinearMesh(StructuredMesh):
     name : str
         Name of the mesh
     dimension : Iterable of int
-        The number of mesh cells in each direction.
+        The number of mesh cells in each direction (x, y, z).
     n_dimension : int
         Number of mesh dimensions (always 3 for a RectilinearMesh).
     x_grid : numpy.ndarray
@@ -1192,7 +1192,8 @@ class CylindricalMesh(StructuredMesh):
     name : str
         Name of the mesh
     dimension : Iterable of int
-        The number of mesh cells in each direction.
+        The number of mesh cells in each direction (r_grid,
+        phi_grid, z_grid).
     n_dimension : int
         Number of mesh dimensions (always 3 for a CylindricalMesh).
     r_grid : numpy.ndarray
@@ -1491,7 +1492,8 @@ class SphericalMesh(StructuredMesh):
     name : str
         Name of the mesh
     dimension : Iterable of int
-        The number of mesh cells in each direction.
+        The number of mesh cells in each direction (r_grid,
+        theta_grid, phi_grid).
     n_dimension : int
         Number of mesh dimensions (always 3 for a SphericalMesh).
     r_grid : numpy.ndarray

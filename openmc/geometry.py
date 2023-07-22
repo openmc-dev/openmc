@@ -39,7 +39,12 @@ class Geometry:
 
     """
 
-    def __init__(self, root : openmc.UniverseBase = None, merge_surfaces: bool = False, surface_precision: int = 10):
+    def __init__(
+        self,
+        root : openmc.UniverseBase = None,
+        merge_surfaces: bool = False,
+        surface_precision: int = 10
+    ):
         self._root_universe = None
         self._offsets = {}
         self.merge_surfaces = merge_surfaces

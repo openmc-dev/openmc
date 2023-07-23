@@ -1546,7 +1546,7 @@ class SphericalMesh(StructuredMesh):
         self,
         mesh_id: typing.Optional[int] = None,
         name: str = '',
-        origin: typing.Tuple[float] = (0, 0, 0),
+        origin: typing.Tuple[float] = (0., 0., 0.),
         r_grid: typing.Optional[np.ndarray] = None,
         theta_grid: np.ndarray = np.array([0, pi]),
         phi_grid: np.ndarray = np.array([0, 2*pi])

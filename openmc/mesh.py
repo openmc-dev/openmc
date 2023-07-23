@@ -1595,7 +1595,7 @@ class SphericalMesh(StructuredMesh):
                 for t in range(1, nt + 1)
                 for r in range(1, nr + 1))
 
-     @property
+    @property
     def lower_left(self):
         return (self.origin[0]-self.r_grid[-1], self.origin[1]-self.r_grid[-1], self.origin[2]-self.r_grid[-1])
 

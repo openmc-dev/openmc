@@ -1187,6 +1187,14 @@ class CylindricalMesh(StructuredMesh):
     origin : numpy.ndarray
         1-D array of length 3 the (x,y,z) origin of the mesh in
         cartesian coordinates
+    r_grid : numpy.ndarray
+        1-D array of mesh boundary points along the r-axis.
+        Requirement is r >= 0.
+    phi_grid : numpy.ndarray
+        1-D array of mesh boundary points along the phi-axis in radians.
+        The default value is [0, 2π], i.e. the full phi range.
+    z_grid : numpy.ndarray
+        1-D array of mesh boundary points along the z-axis.
 
     Attributes
     ----------
@@ -1217,13 +1225,16 @@ class CylindricalMesh(StructuredMesh):
         self,
         mesh_id: int = None,
         name: str = '',
-        origin: typing.Tuple[float] = (0., 0., 0.)
+        origin: typing.Tuple[float] = (0., 0., 0.),
+        r_grid: typing.Optional[np.ndarray] = None,
+        phi_grid: np.ndarray = np.array([0, 2*pi]),
+        z_grid: typing.Optional[np.ndarray] = None,
     ):
         super().__init__(mesh_id, name)
 
-        self._r_grid = None
-        self._phi_grid = [0.0, 2*pi]
-        self._z_grid = None
+        self._r_grid = r_grid
+        self._phi_grid = phi_grid
+        self._z_grid = z_grid
         self.origin = origin
 
     @property
@@ -1489,6 +1500,15 @@ class SphericalMesh(StructuredMesh):
         Unique identifier for the mesh
     name : str
         Name of the mesh
+    r_grid : numpy.ndarray
+        1-D array of mesh boundary points along the r-axis.
+        Requirement is r >= 0.
+    theta_grid : numpy.ndarray
+        1-D array of mesh boundary points along the theta-axis in radians.
+        The default value is [0, π], i.e. the full theta range.
+    phi_grid : numpy.ndarray
+        1-D array of mesh boundary points along the phi-axis in radians.
+        The default value is [0, 2π], i.e. the full phi range.
     origin : numpy.ndarray
         1-D array of length 3 the (x,y,z) origin of the mesh in
         cartesian coordinates
@@ -1513,6 +1533,9 @@ class SphericalMesh(StructuredMesh):
     phi_grid : numpy.ndarray
         1-D array of mesh boundary points along the phi-axis in radians.
         The default value is [0, 2π], i.e. the full phi range.
+    origin : numpy.ndarray
+        1-D array of length 3 the (x,y,z) origin of the mesh in
+        cartesian coordinates
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]
@@ -1523,13 +1546,16 @@ class SphericalMesh(StructuredMesh):
         self,
         mesh_id: typing.Optional[int] = None,
         name: str = '',
-        origin: typing.Tuple[float] = (0, 0, 0)
+        origin: typing.Tuple[float] = (0, 0, 0),
+        r_grid: typing.Optional[np.ndarray] = None,
+        theta_grid: np.ndarray = np.array([0, pi]),
+        phi_grid: np.ndarray = np.array([0, 2*pi])
     ):
         super().__init__(mesh_id, name)
 
-        self._r_grid = None
-        self._theta_grid = [0, pi]
-        self._phi_grid = [0, 2*pi]
+        self._r_grid = r_grid
+        self._theta_grid = theta_grid
+        self._phi_grid = phi_grid
         self.origin = origin
 
     @property

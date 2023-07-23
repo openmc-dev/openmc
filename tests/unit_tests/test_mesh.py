@@ -39,7 +39,7 @@ def test_mesh_regular_bounding_box():
     mesh = openmc.RegularMesh()
     mesh.lower_left = [-2, -3 ,-5]
     mesh.upper_right = [2, 3, 5]
-    bb = mesh.bounding_box()
+    bb = mesh.bounding_box
     assert isinstance(bb, openmc.BoundingBox)
     np.testing.assert_array_equal(bb.lower_left, np.array([-2, -3 ,-5]))
     np.testing.assert_array_equal(bb.upper_right, np.array([2, 3, 5]))

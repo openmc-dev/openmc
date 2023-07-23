@@ -41,7 +41,7 @@ class Geometry:
 
     def __init__(
         self,
-        root : openmc.UniverseBase = None,
+        root: typing.Optional[openmc.UniverseBase] = None,
         merge_surfaces: bool = False,
         surface_precision: int = 10
     ):

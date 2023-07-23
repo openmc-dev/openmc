@@ -663,7 +663,7 @@ class RegularMesh(StructuredMesh):
     @property
     def bounding_box(self):
         return openmc.BoundingBox(
-            np.array(self.lower_left), np.array(self.upper_right)
+           np.array(self.lower_left), np.array(self.upper_right)
         )
 
     def __repr__(self):
@@ -1628,7 +1628,7 @@ class SphericalMesh(StructuredMesh):
     @property
     def bounding_box(self):
         return openmc.BoundingBox(
-            np.array(self.upper_right), np.array(self.lower_left)
+            np.array(self.lower_left), np.array(self.upper_right)
         )
 
     def __repr__(self):

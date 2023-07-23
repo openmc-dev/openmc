@@ -53,10 +53,10 @@ def test_mesh_bounding_box():
     np.testing.assert_array_equal(bb.lower_left, np.array([-2, -3 ,-5]))
     np.testing.assert_array_equal(bb.upper_right, np.array([2, 3, 5]))
 
-def test_mesh_clyindrical_bounding_box():
+def test_mesh_cylindrical_bounding_box():
 
 
-    mesh = openmc.ClyindricalMesh()
+    mesh = openmc.CylindricalMesh()
     mesh.r_grid = np.array([0.1, 0.2, 0.5, 1.])
     mesh.z_grid = np.array([0.1, 0.2, 0.4, 0.6, 1.])
     

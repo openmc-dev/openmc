@@ -191,6 +191,16 @@ int openmc_weight_windows_get_bounds(int32_t index, const double** lower_bounds,
   const double** upper_bounds, size_t* size);
 int openmc_weight_windows_set_bounds(int32_t index, const double* lower_bounds,
   const double* upper_bounds, size_t size);
+int openmc_weight_windows_get_survival_ratio(int32_t index, double* ratio);
+int openmc_weight_windows_set_survival_ratio(int32_t index, double ratio);
+int openmc_weight_windows_get_max_lower_bound_ratio(
+  int32_t index, double* lb_ratio);
+int openmc_weight_windows_set_max_lower_bound_ratio(
+  int32_t index, double lb_ratio);
+int openmc_weight_windows_get_weight_cutoff(int32_t index, double* cutoff);
+int openmc_weight_windows_set_weight_cutoff(int32_t index, double cutoff);
+int openmc_weight_windows_get_max_split(int32_t index, int* max_split);
+int openmc_weight_windows_set_max_split(int32_t index, int max_split);
 size_t openmc_weight_windows_size();
 int openmc_weight_windows_export(const char* filename = nullptr);
 int openmc_weight_windows_import(const char* filename = nullptr);

@@ -199,3 +199,25 @@ def test_plots(run_in_tmpdir):
     assert new_plots[0].colors == p1.colors
     assert new_plots[0].mask_components == p1.mask_components
     assert new_plots[1].origin == p2.origin
+
+
+def test_voxel_plot_roundtrip():
+    # Define a voxel plot and create XML element
+    plot = openmc.Plot(name='my voxel plot')
+    plot.type = 'voxel'
+    plot.filename = 'voxel1'
+    plot.pixels = (50, 50, 50)
+    plot.origin = (0., 0., 0.)
+    plot.width = (75., 75., 75.)
+    plot.color_by = 'material'
+    elem = plot.to_xml_element()
+
+    # Read back from XML and make sure it hasn't changed
+    new_plot = plot.from_xml_element(elem)
+    assert new_plot.name == plot.name
+    assert new_plot.filename == plot.filename
+    assert new_plot.type == plot.type
+    assert new_plot.pixels == plot.pixels
+    assert new_plot.origin == plot.origin
+    assert new_plot.width == plot.width
+    assert new_plot.color_by == plot.color_by

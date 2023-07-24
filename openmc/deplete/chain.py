@@ -726,18 +726,20 @@ class Chain:
                 material = materials
                 components = transfer_rates.get_components(material)
                 if element in components:
-                    matrix[i, i] = transfer_rates.get_transfer_rate(material, element)
+                    matrix[i, i] = sum(transfer_rates.get_transfer_rate(material, element))
                 elif nuclide.name in components:
-                    matrix[i, i] = transfer_rates.get_transfer_rate(material, nuclide.name)
+                    matrix[i, i] = sum(transfer_rates.get_transfer_rate(material, nuclide.name))
                 else:
                     matrix[i, i] = 0.0
             #Build transfer terms matrices
             elif isinstance(materials, tuple):
                 destination_material, material = materials
-                if transfer_rates.get_destination_material(material, element) == destination_material:
-                    matrix[i, i] = transfer_rates.get_transfer_rate(material, element)
-                elif transfer_rates.get_destination_material(material, nuclide.name) == destination_material:
-                    matrix[i, i] = transfer_rates.get_transfer_rate(material, nuclide.name)
+                if destination_material in transfer_rates.get_destination_material(material, element):
+                    destination_material_index = transfer_rates.get_destination_material(material, element).index(destination_material)
+                    matrix[i, i] = transfer_rates.get_transfer_rate(material, element)[destination_material_index]
+                elif destination_material in transfer_rates.get_destination_material(material, nuclide.name):
+                    destination_material_index = transfer_rates.get_destination_material(material, nuclide.name).index(destination_material)
+                    matrix[i, i] = transfer_rates.get_transfer_rate(material, nuclide.name)[destination_material_index]
                 else:
                     matrix[i, i] = 0.0
             #Nothing else is allowed

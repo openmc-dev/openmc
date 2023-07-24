@@ -101,7 +101,7 @@ class Results(list):
         units: str = "Bq/cm3",
         by_nuclide: bool = False, 
         volume: Optional[float] = None
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> Tuple[np.ndarray, typing.Union[np.ndarray, list[dict]]]:
         """Get activity of material over time.
 
         Parameters
@@ -138,7 +138,7 @@ class Results(list):
         
         times = np.empty_like(self, dtype=float)
         if by_nuclide:
-            activities = np.empty_like(self, dtype=dict)
+            activities = [None] * len(self)
         else:
             activities = np.empty_like(self, dtype=float)
 

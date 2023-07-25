@@ -13,16 +13,19 @@ GROUP_STRUCTURES = {}
 - "XMAS-172_" designed for LWR analysis ([SAR1990]_, [SAN2004]_)
 - "SHEM-361_" designed for LWR analysis to eliminate self-shielding calculations
   of thermal resonances ([HFA2005]_, [SAN2007]_, [HEB2008]_)
-- "SCALE-44" designed for criticality analysis ([ZAL1999]_)
-- "MPACT-X" (where X is 51 (PWR), 60 (BWR), 69 (Magnox), 252(thermal)) from the
-  MPACT_ reactor physics code ([KIM2019]_)
+- "SCALE-X" (where X is 44 which is designed for criticality analysis
+  and 252 is designed for thermal reactors) for the SCALE code suite 
+  ([ZAL1999]_ and [REARDEN2013]_)
+- "MPACT-X" (where X is 51 (PWR), 60 (BWR), 69 (Magnox)) from the MPACT_ reactor
+  physics code ([KIM2019]_ and [KIM2020]_)
 - "ECCO-1968_" designed for fine group reactor cell calculations for fast,
   intermediate and thermal reactor applications ([SAR1990]_)
 - activation_ energy group structures "VITAMIN-J-42", "VITAMIN-J-175",
   "TRIPOLI-315", "CCFE-709_" and "UKAEA-1102_"
 
 .. _CASMO: https://www.studsvik.com/SharepointFiles/CASMO-5%20Development%20and%20Applications.pdf
-.. _SCALE: https://www-nds.iaea.org/publications/indc/indc-czr-0001.pdf
+.. _SCALE44: https://www-nds.iaea.org/publications/indc/indc-czr-0001.pdf
+.. _SCALE252: https://oecd-nea.org/science/wpncs/amct/workingarea/meeting2013/EGAMCT2013_08.pdf
 .. _MPACT: https://vera.ornl.gov/mpact/
 .. _XMAS-172: https://www-nds.iaea.org/wimsd/energy.htm
 .. _SHEM-361: https://www.polymtl.ca/merlin/downloads/FP214.pdf
@@ -50,10 +53,18 @@ GROUP_STRUCTURES = {}
    Santamarina-Hfaiedh energy mesh between 22.5 eV and 11.4 keV. International
    Conference on the Physics of Reactors 2008, PHYSOR 08. 2. 929-938.
 .. [ZAL1999] K. Záleský and L. Marková (1999), Assessment of Nuclear Data Needs
-   for Broad-Group SCALE Library Related to VVER Spent Fuel Applications, IAEA.
+   for Broad-Group SCALE Library Related to VVER Spent Fuel Applications, IAEA. SCALE44_.
+.. [REARDEN2013] B. T. Rearden, M. E. Dunn, D. Wiarda, C. Celik, K. Bekar,
+                 M. L. Williams, D. E. Peplow, M. A. Jessee, C. M. Perfetti,
+                 I. C. Gauld, W. A. Wieselquist, J. P. Lefebvre, R. A. Lefebvre,
+                 W. J. Marshall, A. B. Thompson, F. Havluj, S. E. Skutnik,
+                 K. J. Dugan.  (2013). Overview of SCALE 6.2.  OECD.  SCALE252_.
 .. [KIM2019] Kim, K.S., Williams, M., Wiarda, D., & Clarno, K.  (2019). Development
    of the multigroup cross section library for the CASL neutronics simulator MPACT:
    Method and procedure.  Annals of Nuclear Energy, 133. pp. 46-58.
+.. [KIM2020] Kim, K.S., Ade, B., & Luciano, N.  (2020). Development
+   of the MPACT 69-group Library for Magnox Reactor Analysis using VERA.
+   Proceedings of International Conference on Physics of Reactors PHYSOR2020.
 """
 
 GROUP_STRUCTURES['CASMO-2'] = np.array([
@@ -187,7 +198,7 @@ GROUP_STRUCTURES['VITAMIN-J-175'] = np.array([
     1.1052e7, 1.1618e7, 1.2214e7, 1.2523e7, 1.2840e7, 1.3499e7,
     1.3840e7, 1.4191e7, 1.4550e7, 1.4918e7, 1.5683e7, 1.6487e7,
     1.6905e7, 1.7332e7, 1.9640e7])
-GROUP_STRUCTURES['MPACT-252'] = np.array([
+GROUP_STRUCTURES['SCALE-252'] = np.array([
     0., 1.e-4, 5.e-4, 7.5e-4, 1.e-3, 1.2e-3, 1.5e-3, 2.e-3, 2.5e-3, 3.e-3,
     4.e-3, 5.e-3, 7.5e-3, 1.e-2, 2.53e-2, 3.e-2, 4.e-2, 5.e-2, 6.e-2, 7.e-2,
     8.e-2, 9.e-2, 1.e-1, 1.25e-1, 1.5e-1, 1.75e-1, 2.e-1, 2.25e-1, 2.5e-1,

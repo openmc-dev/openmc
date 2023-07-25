@@ -28,7 +28,7 @@ commands:
 .. code-block:: sh
 
     mkdir build-debug && cd build-debug
-    cmake -Ddebug=on /path/to/openmc
+    cmake -DCMAKE_BUILD_TYPE=Debug /path/to/openmc
     make
 
 Now when you re-run your problem, it should report exactly where the program

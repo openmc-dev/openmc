@@ -845,7 +845,7 @@ class Plot(PlotBase):
 
         """
         plot_id = int(elem.get("id"))
-        name = get_text(elem, 'name')
+        name = get_text(elem, 'name', '')
         plot = cls(plot_id, name)
         if "filename" in elem.keys():
             plot.filename = elem.get("filename")

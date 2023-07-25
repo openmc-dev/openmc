@@ -2,7 +2,7 @@ import numbers
 import bisect
 import math
 import typing  # required to prevent typing.Union namespace overwriting Union
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, Optional, Tuple, List
 from warnings import warn
 
 import h5py
@@ -101,7 +101,7 @@ class Results(list):
         units: str = "Bq/cm3",
         by_nuclide: bool = False, 
         volume: Optional[float] = None
-    ) -> Tuple[np.ndarray, typing.Union[np.ndarray, list[dict]]]:
+    ) -> Tuple[np.ndarray, typing.Union[np.ndarray, List[dict]]]:
         """Get activity of material over time.
 
         Parameters

@@ -31,9 +31,7 @@ def test_get_activity(res):
         [2.106574218e+05, 1.227519888e+11, 1.177491828e+11, 1.031986176e+11])
     t_nuc, a_nuc = res.get_activity("1", by_nuclide=True)
     
-    a_xe135 = np.empty_like(a_nuc, dtype=float)
-    for idx in range(0, len(a_nuc)):
-        a_xe135[idx] = a_nuc[idx]["Xe135"]
+    a_xe135 = np.array([a_nuc_i["Xe135"] for a_nuc_i in a_nuc])
 
     np.testing.assert_allclose(t_nuc, t_ref)
     np.testing.assert_allclose(a_xe135, a_xe135_ref)

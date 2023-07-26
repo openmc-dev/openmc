@@ -175,6 +175,8 @@ def plot_mesh_tally(
     axes: Optional[str] = None,
     axis_units: str = 'cm',
     value: str = 'mean',
+    pixels: int = 40000,
+    outline: Optional[str] = None,
     **kwargs
 ) -> 'matplotlib.image.AxesImage':
     """Display a slice plot of the mesh tally score.
@@ -196,6 +198,9 @@ def plot_mesh_tally(
     value : str
         A string for the type of value to return  - 'mean' (default),
         'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
+    outline : {'material', 'cell'}
+        If set then an outline will be added to the plot. The outline can be
+        by cell or by material.
     **kwargs
         Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 
@@ -246,6 +251,15 @@ def plot_mesh_tally(
         axes.set_ylabel(ylabel)
     axes.imshow(oriented_data, extent=(x_min, x_max, y_min, y_max), **kwargs)
     fig.colorbar()
+
+    if outline is not None:
+        plot = openmc.Plot()
+        plot.origin = mesh.center
+        plot.width = mesh.bounding_box.extent[basis]
+        plot.pixels = pixels
+        plot.basis = basis
+        plot.color_by = outline
+        model.plots.append(plot)
 
     return axes
 

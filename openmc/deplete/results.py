@@ -122,9 +122,9 @@ class Results(list):
         -------
         times : numpy.ndarray
             Array of times in [s]
-        activities : numpy.ndarray
+        activities : numpy.ndarray or List[dict]
             Array of total activities if by_nuclide = False (default)
-            or array of dictionaries of activities by nuclide if
+            or list of dictionaries of activities by nuclide if
             by_nuclide = True.
             
         """

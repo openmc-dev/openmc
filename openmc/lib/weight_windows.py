@@ -69,6 +69,38 @@ _dll.openmc_weight_windows_get_bounds.argtypes = [c_int32, POINTER(POINTER(c_dou
 _dll.openmc_weight_windows_get_bounds.restype = c_int
 _dll.openmc_weight_windows_get_bounds.errcheck = _error_handler
 
+_dll.openmc_weight_windows_get_survival_ratio.argtypes = [c_int32, POINTER(c_double)]
+_dll.openmc_weight_windows_get_survival_ratio.restype = c_int
+_dll.openmc_weight_windows_get_survival_ratio.errcheck = _error_handler
+
+_dll.openmc_weight_windows_set_survival_ratio.argtypes = [c_int32, c_double]
+_dll.openmc_weight_windows_set_survival_ratio.restype = c_int
+_dll.openmc_weight_windows_set_survival_ratio.errcheck = _error_handler
+
+_dll.openmc_weight_windows_get_max_lower_bound_ratio.argtypes = [c_int32, POINTER(c_double)]
+_dll.openmc_weight_windows_get_max_lower_bound_ratio.restype = c_int
+_dll.openmc_weight_windows_get_max_lower_bound_ratio.errcheck = _error_handler
+
+_dll.openmc_weight_windows_set_max_lower_bound_ratio.argtypes = [c_int32, c_double]
+_dll.openmc_weight_windows_set_max_lower_bound_ratio.restype = c_int
+_dll.openmc_weight_windows_set_max_lower_bound_ratio.errcheck = _error_handler
+
+_dll.openmc_weight_windows_get_weight_cutoff.argtypes = [c_int32, POINTER(c_double)]
+_dll.openmc_weight_windows_get_weight_cutoff.restype = c_int
+_dll.openmc_weight_windows_get_weight_cutoff.errcheck = _error_handler
+
+_dll.openmc_weight_windows_set_weight_cutoff.argtypes = [c_int32, c_double]
+_dll.openmc_weight_windows_set_weight_cutoff.restype = c_int
+_dll.openmc_weight_windows_set_weight_cutoff.errcheck = _error_handler
+
+_dll.openmc_weight_windows_get_max_split.argtypes = [c_int32, POINTER(c_int)]
+_dll.openmc_weight_windows_get_max_split.restype = c_int
+_dll.openmc_weight_windows_get_max_split.errcheck = _error_handler
+
+_dll.openmc_weight_windows_set_max_split.argtypes = [c_int32, c_int]
+_dll.openmc_weight_windows_set_max_split.restype = c_int
+_dll.openmc_weight_windows_set_max_split.errcheck = _error_handler
+
 
 class WeightWindows(_FortranObjectWithID):
     """WeightWindows stored internally.
@@ -200,6 +232,46 @@ class WeightWindows(_FortranObjectWithID):
         upper_p = upper.ctypes.data_as(POINTER(c_double))
 
         _dll.openmc_weight_windows_set_bounds(self._index, lower_p, upper_p, lower.size)
+
+    @property
+    def survival_ratio(self):
+        ratio = c_double()
+        _dll.openmc_weight_windows_get_survival_ratio(self._index, ratio)
+        return ratio.value
+
+    @survival_ratio.setter
+    def survival_ratio(self, ratio):
+        _dll.openmc_weight_windows_set_survival_ratio(self._index, ratio)
+
+    @property
+    def max_lower_bound_ratio(self):
+        lb_ratio = c_double()
+        _dll.openmc_weight_windows_get_max_lower_bound_ratio(self._index, lb_ratio)
+        return lb_ratio.value
+
+    @max_lower_bound_ratio.setter
+    def max_lower_bound_ratio(self, lb_ratio):
+        _dll.openmc_weight_windows_set_max_lower_bound_ratio(self._index, lb_ratio)
+
+    @property
+    def weight_cutoff(self):
+        cutoff = c_double()
+        _dll.openmc_weight_windows_get_weight_cutoff(self._index, cutoff)
+        return cutoff.value
+
+    @weight_cutoff.setter
+    def weight_cutoff(self, cutoff):
+        _dll.openmc_weight_windows_set_weight_cutoff(self._index, cutoff)
+
+    @property
+    def max_split(self):
+        max_split = c_int()
+        _dll.openmc_weight_windows_get_max_split(self._index, max_split)
+        return max_split.value
+
+    @max_split.setter
+    def max_split(self, max_split):
+        _dll.openmc_weight_windows_set_max_split(self._index, max_split)
 
     def update_magic(self, tally, value='mean', threshold=1.0, ratio=5.0):
         """Update weight window values using the MAGIC method

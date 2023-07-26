@@ -5,12 +5,9 @@ from numbers import Real
 from operator import attrgetter
 from warnings import warn
 
-from openmc import (
-    XPlane, YPlane, Plane, ZCylinder, Cylinder, XCylinder,
-    YCylinder, Universe, Cell)
-from ..checkvalue import (
-    check_type, check_value, check_length, check_less_than,
-    check_iterable_type)
+from openmc import Plane, Cylinder, Universe, Cell
+from ..checkvalue import (check_type, check_value, check_length,
+                          check_less_than, check_iterable_type)
 import openmc.data
 
 
@@ -111,6 +108,13 @@ def borated_water(boron_ppm, temperature=293., pressure=0.1013, temp_unit='K',
     return out
 
 
+# Define function to create a plane on given axis
+def _plane(axis, name, value, boundary_type='transmission'):
+        cls = getattr(openmc, f'{axis.upper()}Plane')
+        return cls(value, name=f'{name} {axis}',
+                   boundary_type=boundary_type)
+
+
 def rectangular_prism(width, height, axis='z', origin=(0., 0.),
                       boundary_type='transmission', corner_radius=0.):
     """Get an infinite rectangular prism from four planar surfaces.
@@ -153,13 +157,6 @@ def rectangular_prism(width, height, axis='z', origin=(0., 0.),
     check_value('axis', axis, ['x', 'y', 'z'])
     check_type('origin', origin, Iterable, Real)
 
-    # Define function to create a plane on given axis
-    def plane(axis, name, value):
-        cls = globals()['{}Plane'.format(axis.upper())]
-        return cls(name='{} {}'.format(name, axis),
-                   boundary_type=boundary_type,
-                   **{axis + '0': value})
-
     if axis == 'x':
         x1, x2 = 'y', 'z'
     elif axis == 'y':
@@ -168,13 +165,17 @@ def rectangular_prism(width, height, axis='z', origin=(0., 0.),
         x1, x2 = 'x', 'y'
 
     # Get cylinder class corresponding to given axis
-    cyl = globals()['{}Cylinder'.format(axis.upper())]
+    cyl = getattr(openmc, f'{axis.upper()}Cylinder')
 
     # Create rectangular region
-    min_x1 = plane(x1, 'minimum', -width/2 + origin[0])
-    max_x1 = plane(x1, 'maximum', width/2 + origin[0])
-    min_x2 = plane(x2, 'minimum', -height/2 + origin[1])
-    max_x2 = plane(x2, 'maximum', height/2 + origin[1])
+    min_x1 = _plane(x1, 'minimum', -width/2 + origin[0],
+                    boundary_type=boundary_type)
+    max_x1 = _plane(x1, 'maximum', width/2 + origin[0],
+                    boundary_type=boundary_type)
+    min_x2 = _plane(x2, 'minimum', -height/2 + origin[1],
+                    boundary_type=boundary_type)
+    max_x2 = _plane(x2, 'maximum', height/2 + origin[1],
+                    boundary_type=boundary_type)
     if boundary_type == 'periodic':
         min_x1.periodic_surface = max_x1
         min_x2.periodic_surface = max_x2
@@ -208,10 +209,14 @@ def rectangular_prism(width, height, axis='z', origin=(0., 0.),
         args[x2 + '0'] = origin[1] + height/2 - corner_radius
         x1_max_x2_max = cyl(name='{} max {} max'.format(x1, x2), **args)
 
-        x1_min = plane(x1, 'min', -width/2 + origin[0] + corner_radius)
-        x1_max = plane(x1, 'max', width/2 + origin[0] - corner_radius)
-        x2_min = plane(x2, 'min', -height/2 + origin[1] + corner_radius)
-        x2_max = plane(x2, 'max', height/2 + origin[1] - corner_radius)
+        x1_min = _plane(x1, 'min', -width/2 + origin[0] + corner_radius,
+                        boundary_type=boundary_type)
+        x1_max = _plane(x1, 'max', width/2 + origin[0] - corner_radius,
+                        boundary_type=boundary_type)
+        x2_min = _plane(x2, 'min', -height/2 + origin[1] + corner_radius,
+                        boundary_type=boundary_type)
+        x2_max = _plane(x2, 'max', height/2 + origin[1] - corner_radius,
+                        boundary_type=boundary_type)
 
         corners = (+x1_min_x2_min & -x1_min & -x2_min) | \
                   (+x1_min_x2_max & -x1_min & +x2_max) | \
@@ -265,8 +270,8 @@ def hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
     x, y = origin
 
     if orientation == 'y':
-        right = XPlane(x + sqrt(3.)/2*l, boundary_type=boundary_type)
-        left = XPlane(x - sqrt(3.)/2*l, boundary_type=boundary_type)
+        right = openmc.XPlane(x + sqrt(3.)/2*l, boundary_type=boundary_type)
+        left = openmc.XPlane(x - sqrt(3.)/2*l, boundary_type=boundary_type)
         c = sqrt(3.)/3.
 
         # y = -x/sqrt(3) + a
@@ -290,8 +295,8 @@ def hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
             lower_right.periodic_surface = upper_left
 
     elif orientation == 'x':
-        top = YPlane(y0=y + sqrt(3.)/2*l, boundary_type=boundary_type)
-        bottom = YPlane(y0=y - sqrt(3.)/2*l, boundary_type=boundary_type)
+        top = openmc.YPlane(y0=y + sqrt(3.)/2*l, boundary_type=boundary_type)
+        bottom = openmc.YPlane(y0=y - sqrt(3.)/2*l, boundary_type=boundary_type)
         c = sqrt(3.)
 
         # y = -sqrt(3)*(x - a)
@@ -325,8 +330,9 @@ def hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
         t = l - corner_radius/c
 
         # Cylinder with corner radius and boundary type pre-applied
-        cyl1 = partial(ZCylinder, r=corner_radius, boundary_type=boundary_type)
-        cyl2 = partial(ZCylinder, r=corner_radius/(2*c),
+        cyl1 = partial(openmc.ZCylinder, r=corner_radius,
+                       boundary_type=boundary_type)
+        cyl2 = partial(openmc.ZCylinder, r=corner_radius/(2*c),
                        boundary_type=boundary_type)
 
         if orientation == 'x':
@@ -462,11 +468,11 @@ def pin(surfaces, items, subdivisions=None, divide_vols=True,
     check_iterable_type("surfaces", surfaces[1:], surf_type)
 
     # Check for increasing radii and equal centers
-    if surf_type is ZCylinder:
+    if surf_type is openmc.ZCylinder:
         center_getter = attrgetter("x0", "y0")
-    elif surf_type is YCylinder:
+    elif surf_type is openmc.YCylinder:
         center_getter = attrgetter("x0", "z0")
-    elif surf_type is XCylinder:
+    elif surf_type is openmc.XCylinder:
         center_getter = attrgetter("z0", "y0")
     else:
         raise TypeError(

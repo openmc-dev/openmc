@@ -1024,6 +1024,86 @@ extern "C" int openmc_weight_windows_set_bounds(int32_t index,
   return 0;
 }
 
+extern "C" int openmc_weight_windows_get_survival_ratio(
+  int32_t index, double* ratio)
+{
+  if (int err = verify_ww_index(index))
+    return err;
+  const auto& wws = variance_reduction::weight_windows[index];
+  *ratio = wws->survival_ratio();
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_set_survival_ratio(
+  int32_t index, double ratio)
+{
+  if (int err = verify_ww_index(index))
+    return err;
+  const auto& wws = variance_reduction::weight_windows[index];
+  wws->survival_ratio() = ratio;
+  std::cout << "Survival ratio: " << wws->survival_ratio() << std::endl;
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_get_max_lower_bound_ratio(
+  int32_t index, double* lb_ratio)
+{
+  if (int err = verify_ww_index(index))
+    return err;
+  const auto& wws = variance_reduction::weight_windows[index];
+  *lb_ratio = wws->max_lower_bound_ratio();
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_set_max_lower_bound_ratio(
+  int32_t index, double lb_ratio)
+{
+  if (int err = verify_ww_index(index))
+    return err;
+  const auto& wws = variance_reduction::weight_windows[index];
+  wws->max_lower_bound_ratio() = lb_ratio;
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_get_weight_cutoff(
+  int32_t index, double* cutoff)
+{
+  if (int err = verify_ww_index(index))
+    return err;
+  const auto& wws = variance_reduction::weight_windows[index];
+  *cutoff = wws->weight_cutoff();
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_set_weight_cutoff(
+  int32_t index, double cutoff)
+{
+  if (int err = verify_ww_index(index))
+    return err;
+  const auto& wws = variance_reduction::weight_windows[index];
+  wws->weight_cutoff() = cutoff;
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_get_max_split(
+  int32_t index, int* max_split)
+{
+  if (int err = verify_ww_index(index))
+    return err;
+  const auto& wws = variance_reduction::weight_windows[index];
+  *max_split = wws->max_split();
+  return 0;
+}
+
+extern "C" int openmc_weight_windows_set_max_split(int32_t index, int max_split)
+{
+  if (int err = verify_ww_index(index))
+    return err;
+  const auto& wws = variance_reduction::weight_windows[index];
+  wws->max_split() = max_split;
+  return 0;
+}
+
 extern "C" int openmc_extend_weight_windows(
   int32_t n, int32_t* index_start, int32_t* index_end)
 {

@@ -225,7 +225,7 @@ distributed over a cube centered at the origin with an edge length of 10 cm, and
 emitting a pulse of particles from 0 to 10 µs, one
 would run::
 
-  source = openmc.Source()
+  source = openmc.IndependentSource()
   source.space = openmc.stats.Box((-5, -5, -5), (5, 5, 5))
   source.angle = openmc.stats.Isotropic()
   source.energy = openmc.stats.Discrete([10.0e6], [1.0])
@@ -237,11 +237,11 @@ that indicates the relative strength of a source distribution if multiple are
 used. For example, to create two sources, one that should be sampled 70% of the
 time and another that should be sampled 30% of the time::
 
-  src1 = openmc.Source()
+  src1 = openmc.IndependentSource()
   src1.strength = 0.7
   ...
 
-  src2 = openmc.Source()
+  src2 = openmc.IndependentSource()
   src2.strength = 0.3
   ...
 
@@ -251,7 +251,7 @@ Finally, the :attr:`Source.particle` attribute can be used to indicate the
 source should be composed of particles other than neutrons. For example, the
 following would generate a photon source::
 
-  source = openmc.Source()
+  source = openmc.IndependentSource()
   source.particle = 'photon'
   ...
 
@@ -266,7 +266,7 @@ File-based Sources
 OpenMC can use a pregenerated HDF5 source file by specifying the ``filename``
 argument to :class:`openmc.Source`::
 
-  settings.source = openmc.Source(filename='source.h5')
+  settings.source = openmc.IndependentSource(filename='source.h5')
 
 Statepoint and source files are generated automatically when a simulation is run
 and can be used as the starting source in a new simulation. Alternatively, a

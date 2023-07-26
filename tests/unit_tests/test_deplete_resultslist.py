@@ -15,6 +15,27 @@ def res():
                 / 'test_reference.h5')
     return openmc.deplete.Results(filename)
 
+def test_get_activity(res):
+    """Tests evaluating activity"""
+    t, a = res.get_activity("1")
+
+    t_ref = np.array([0.0, 1296000.0, 2592000.0, 3888000.0])
+    a_ref = np.array(
+        [1.25167956e+06, 3.71938527e+11, 4.43264300e+11, 3.55547176e+11])
+
+    np.testing.assert_allclose(t, t_ref)
+    np.testing.assert_allclose(a, a_ref)
+
+    # Check by_nuclide
+    a_xe135_ref = np.array(
+        [2.106574218e+05, 1.227519888e+11, 1.177491828e+11, 1.031986176e+11])
+    t_nuc, a_nuc = res.get_activity("1", by_nuclide=True)
+    
+    a_xe135 = np.array([a_nuc_i["Xe135"] for a_nuc_i in a_nuc])
+
+    np.testing.assert_allclose(t_nuc, t_ref)
+    np.testing.assert_allclose(a_xe135, a_xe135_ref)
+
 
 def test_get_atoms(res):
     """Tests evaluating single nuclide concentration."""

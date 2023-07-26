@@ -907,7 +907,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
 
       int m;
       switch (score_bin) {
-      // clang-format off
+        // clang-format off
       case N_GAMMA: m = 0; break;
       case N_P:     m = 1; break;
       case N_A:     m = 2; break;
@@ -1595,10 +1595,13 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
   auto& macro_xs = data::mg.macro_xs_[p.material()];
 
   // Find the temperature and angle indices of interest
-  macro_xs.set_angle_index(p_u);
+  int macro_t = p.mg_xs_cache().t;
+  int macro_a = macro_xs.get_angle_index(p_u);
+  int nuc_t = 0;
+  int nuc_a = 0;
   if (i_nuclide >= 0) {
-    nuc_xs.set_temperature_index(p.sqrtkT());
-    nuc_xs.set_angle_index(p_u);
+    nuc_t = nuc_xs.get_temperature_index(p.sqrtkT());
+    nuc_a = nuc_xs.get_angle_index(p_u);
   }
 
   for (auto i = 0; i < tally.scores_.size(); ++i) {
@@ -1626,12 +1629,14 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
         // use the weight of the particle entering the collision as the score
         score = flux * p.wgt_last();
         if (i_nuclide >= 0) {
-          score *= atom_density * nuc_xs.get_xs(MgxsType::TOTAL, p_g) /
-                   macro_xs.get_xs(MgxsType::TOTAL, p_g);
+          score *= atom_density *
+                   nuc_xs.get_xs(MgxsType::TOTAL, p_g, nuc_t, nuc_a) /
+                   macro_xs.get_xs(MgxsType::TOTAL, p_g, macro_t, macro_a);
         }
       } else {
         if (i_nuclide >= 0) {
-          score = atom_density * flux * nuc_xs.get_xs(MgxsType::TOTAL, p_g);
+          score = atom_density * flux *
+                  nuc_xs.get_xs(MgxsType::TOTAL, p_g, nuc_t, nuc_a);
         } else {
           score = p.macro_xs().total * flux;
         }
@@ -1646,17 +1651,21 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
         // to count 'events' exactly for the inverse velocity
         score = flux * p.wgt_last();
         if (i_nuclide >= 0) {
-          score *= nuc_xs.get_xs(MgxsType::INVERSE_VELOCITY, p_g) /
-                   macro_xs.get_xs(MgxsType::TOTAL, p_g);
+          score *=
+            nuc_xs.get_xs(MgxsType::INVERSE_VELOCITY, p_g, nuc_t, nuc_a) /
+            macro_xs.get_xs(MgxsType::TOTAL, p_g, macro_t, macro_a);
         } else {
-          score *= macro_xs.get_xs(MgxsType::INVERSE_VELOCITY, p_g) /
-                   macro_xs.get_xs(MgxsType::TOTAL, p_g);
+          score *=
+            macro_xs.get_xs(MgxsType::INVERSE_VELOCITY, p_g, macro_t, macro_a) /
+            macro_xs.get_xs(MgxsType::TOTAL, p_g, macro_t, macro_a);
         }
       } else {
         if (i_nuclide >= 0) {
-          score = flux * nuc_xs.get_xs(MgxsType::INVERSE_VELOCITY, p_g);
+          score =
+            flux * nuc_xs.get_xs(MgxsType::INVERSE_VELOCITY, p_g, nuc_t, nuc_a);
         } else {
-          score = flux * macro_xs.get_xs(MgxsType::INVERSE_VELOCITY, p_g);
+          score = flux * macro_xs.get_xs(
+                           MgxsType::INVERSE_VELOCITY, p_g, macro_t, macro_a);
         }
       }
       break;
@@ -1672,18 +1681,18 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
         if (i_nuclide >= 0) {
           score *= atom_density *
                    nuc_xs.get_xs(MgxsType::SCATTER_FMU, p.g_last(), &p.g(),
-                     &p.mu(), nullptr) /
+                     &p.mu(), nullptr, nuc_t, nuc_a) /
                    macro_xs.get_xs(MgxsType::SCATTER_FMU, p.g_last(), &p.g(),
-                     &p.mu(), nullptr);
+                     &p.mu(), nullptr, macro_t, macro_a);
         }
       } else {
         if (i_nuclide >= 0) {
-          score =
-            atom_density * flux *
-            nuc_xs.get_xs(MgxsType::SCATTER, p_g, nullptr, &p.mu(), nullptr);
+          score = atom_density * flux *
+                  nuc_xs.get_xs(MgxsType::SCATTER, p_g, nullptr, &p.mu(),
+                    nullptr, nuc_t, nuc_a);
         } else {
-          score = flux * macro_xs.get_xs(
-                           MgxsType::SCATTER, p_g, nullptr, &p.mu(), nullptr);
+          score = flux * macro_xs.get_xs(MgxsType::SCATTER, p_g, nullptr,
+                           &p.mu(), nullptr, macro_t, macro_a);
         }
       }
       break;
@@ -1703,16 +1712,17 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
         if (i_nuclide >= 0) {
           score *= atom_density *
                    nuc_xs.get_xs(MgxsType::NU_SCATTER_FMU, p.g_last(), &p.g(),
-                     &p.mu(), nullptr) /
+                     &p.mu(), nullptr, nuc_t, nuc_a) /
                    macro_xs.get_xs(MgxsType::NU_SCATTER_FMU, p.g_last(), &p.g(),
-                     &p.mu(), nullptr);
+                     &p.mu(), nullptr, macro_t, macro_a);
         }
       } else {
         if (i_nuclide >= 0) {
-          score =
-            atom_density * flux * nuc_xs.get_xs(MgxsType::NU_SCATTER, p_g);
+          score = atom_density * flux *
+                  nuc_xs.get_xs(MgxsType::NU_SCATTER, p_g, nuc_t, nuc_a);
         } else {
-          score = flux * macro_xs.get_xs(MgxsType::NU_SCATTER, p_g);
+          score =
+            flux * macro_xs.get_xs(MgxsType::NU_SCATTER, p_g, macro_t, macro_a);
         }
       }
       break;
@@ -1732,13 +1742,14 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           score = p.wgt_last() * flux;
         }
         if (i_nuclide >= 0) {
-          score *= atom_density * nuc_xs.get_xs(MgxsType::ABSORPTION, p_g) /
-                   macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
+          score *= atom_density *
+                   nuc_xs.get_xs(MgxsType::ABSORPTION, p_g, nuc_t, nuc_a) /
+                   macro_xs.get_xs(MgxsType::ABSORPTION, p_g, macro_t, macro_a);
         }
       } else {
         if (i_nuclide >= 0) {
-          score =
-            atom_density * flux * nuc_xs.get_xs(MgxsType::ABSORPTION, p_g);
+          score = atom_density * flux *
+                  nuc_xs.get_xs(MgxsType::ABSORPTION, p_g, nuc_t, nuc_a);
         } else {
           score = p.macro_xs().absorption * flux;
         }
@@ -1762,17 +1773,20 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           score = p.wgt_last() * flux;
         }
         if (i_nuclide >= 0) {
-          score *= atom_density * nuc_xs.get_xs(MgxsType::FISSION, p_g) /
-                   macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
+          score *= atom_density *
+                   nuc_xs.get_xs(MgxsType::FISSION, p_g, nuc_t, nuc_a) /
+                   macro_xs.get_xs(MgxsType::ABSORPTION, p_g, macro_t, macro_a);
         } else {
-          score *= macro_xs.get_xs(MgxsType::FISSION, p_g) /
-                   macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
+          score *= macro_xs.get_xs(MgxsType::FISSION, p_g, macro_t, macro_a) /
+                   macro_xs.get_xs(MgxsType::ABSORPTION, p_g, macro_t, macro_a);
         }
       } else {
         if (i_nuclide >= 0) {
-          score = atom_density * flux * nuc_xs.get_xs(MgxsType::FISSION, p_g);
+          score = atom_density * flux *
+                  nuc_xs.get_xs(MgxsType::FISSION, p_g, nuc_t, nuc_a);
         } else {
-          score = flux * macro_xs.get_xs(MgxsType::FISSION, p_g);
+          score =
+            flux * macro_xs.get_xs(MgxsType::FISSION, p_g, macro_t, macro_a);
         }
       }
       break;
@@ -1793,11 +1807,14 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           // nu-fission
           score = wgt_absorb * flux;
           if (i_nuclide >= 0) {
-            score *= atom_density * nuc_xs.get_xs(MgxsType::NU_FISSION, p_g) /
-                     macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
+            score *=
+              atom_density *
+              nuc_xs.get_xs(MgxsType::NU_FISSION, p_g, nuc_t, nuc_a) /
+              macro_xs.get_xs(MgxsType::ABSORPTION, p_g, macro_t, macro_a);
           } else {
-            score *= macro_xs.get_xs(MgxsType::NU_FISSION, p_g) /
-                     macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
+            score *=
+              macro_xs.get_xs(MgxsType::NU_FISSION, p_g, macro_t, macro_a) /
+              macro_xs.get_xs(MgxsType::ABSORPTION, p_g, macro_t, macro_a);
           }
         } else {
           // Skip any non-fission events
@@ -1810,16 +1827,18 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           // score.
           score = simulation::keff * p.wgt_bank() * flux;
           if (i_nuclide >= 0) {
-            score *= atom_density * nuc_xs.get_xs(MgxsType::FISSION, p_g) /
-                     macro_xs.get_xs(MgxsType::FISSION, p_g);
+            score *= atom_density *
+                     nuc_xs.get_xs(MgxsType::FISSION, p_g, nuc_t, nuc_a) /
+                     macro_xs.get_xs(MgxsType::FISSION, p_g, macro_t, macro_a);
           }
         }
       } else {
         if (i_nuclide >= 0) {
-          score =
-            atom_density * flux * nuc_xs.get_xs(MgxsType::NU_FISSION, p_g);
+          score = atom_density * flux *
+                  nuc_xs.get_xs(MgxsType::NU_FISSION, p_g, nuc_t, nuc_a);
         } else {
-          score = flux * macro_xs.get_xs(MgxsType::NU_FISSION, p_g);
+          score =
+            flux * macro_xs.get_xs(MgxsType::NU_FISSION, p_g, macro_t, macro_a);
         }
       }
       break;
@@ -1840,12 +1859,15 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           // prompt-nu-fission
           score = wgt_absorb * flux;
           if (i_nuclide >= 0) {
-            score *= atom_density *
-                     nuc_xs.get_xs(MgxsType::PROMPT_NU_FISSION, p_g) /
-                     macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
+            score *=
+              atom_density *
+              nuc_xs.get_xs(MgxsType::PROMPT_NU_FISSION, p_g, nuc_t, nuc_a) /
+              macro_xs.get_xs(MgxsType::ABSORPTION, p_g, macro_t, macro_a);
           } else {
-            score *= macro_xs.get_xs(MgxsType::PROMPT_NU_FISSION, p_g) /
-                     macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
+            score *=
+              macro_xs.get_xs(
+                MgxsType::PROMPT_NU_FISSION, p_g, macro_t, macro_a) /
+              macro_xs.get_xs(MgxsType::ABSORPTION, p_g, macro_t, macro_a);
           }
         } else {
           // Skip any non-fission events
@@ -1861,16 +1883,18 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           auto prompt_frac = 1. - n_delayed / static_cast<double>(p.n_bank());
           score = simulation::keff * p.wgt_bank() * prompt_frac * flux;
           if (i_nuclide >= 0) {
-            score *= atom_density * nuc_xs.get_xs(MgxsType::FISSION, p_g) /
-                     macro_xs.get_xs(MgxsType::FISSION, p_g);
+            score *= atom_density *
+                     nuc_xs.get_xs(MgxsType::FISSION, p_g, nuc_t, nuc_a) /
+                     macro_xs.get_xs(MgxsType::FISSION, p_g, macro_t, macro_a);
           }
         }
       } else {
         if (i_nuclide >= 0) {
           score = atom_density * flux *
-                  nuc_xs.get_xs(MgxsType::PROMPT_NU_FISSION, p_g);
+                  nuc_xs.get_xs(MgxsType::PROMPT_NU_FISSION, p_g, nuc_t, nuc_a);
         } else {
-          score = flux * macro_xs.get_xs(MgxsType::PROMPT_NU_FISSION, p_g);
+          score = flux * macro_xs.get_xs(
+                           MgxsType::PROMPT_NU_FISSION, p_g, macro_t, macro_a);
         }
       }
       break;
@@ -1889,7 +1913,8 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // delayed-nu-fission
-          double abs_xs = macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
+          double abs_xs =
+            macro_xs.get_xs(MgxsType::ABSORPTION, p_g, macro_t, macro_a);
           if (abs_xs > 0.) {
             if (tally.delayedgroup_filter_ != C_NONE) {
               auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
@@ -1902,11 +1927,11 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
                 score = wgt_absorb * flux;
                 if (i_nuclide >= 0) {
                   score *= nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
-                             nullptr, nullptr, &d) /
+                             nullptr, nullptr, &d, nuc_t, nuc_a) /
                            abs_xs;
                 } else {
                   score *= macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
-                             nullptr, nullptr, &d) /
+                             nullptr, nullptr, &d, macro_t, macro_a) /
                            abs_xs;
                 }
                 score_fission_delayed_dg(
@@ -1919,11 +1944,13 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
               // delayed-nu-fission xs to the absorption xs
               score = wgt_absorb * flux;
               if (i_nuclide >= 0) {
-                score *=
-                  nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g) / abs_xs;
+                score *= nuc_xs.get_xs(
+                           MgxsType::DELAYED_NU_FISSION, p_g, nuc_t, nuc_a) /
+                         abs_xs;
               } else {
-                score *=
-                  macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g) / abs_xs;
+                score *= macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
+                           macro_t, macro_a) /
+                         abs_xs;
               }
             }
           }
@@ -1948,8 +1975,10 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
               score = simulation::keff * p.wgt_bank() / p.n_bank() *
                       p.n_delayed_bank(d - 1) * flux;
               if (i_nuclide >= 0) {
-                score *= atom_density * nuc_xs.get_xs(MgxsType::FISSION, p_g) /
-                         macro_xs.get_xs(MgxsType::FISSION, p_g);
+                score *=
+                  atom_density *
+                  nuc_xs.get_xs(MgxsType::FISSION, p_g, nuc_t, nuc_a) /
+                  macro_xs.get_xs(MgxsType::FISSION, p_g, macro_t, macro_a);
               }
               score_fission_delayed_dg(
                 i_tally, d_bin, score, score_index, p.filter_matches());
@@ -1962,8 +1991,10 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
             score =
               simulation::keff * p.wgt_bank() / p.n_bank() * n_delayed * flux;
             if (i_nuclide >= 0) {
-              score *= atom_density * nuc_xs.get_xs(MgxsType::FISSION, p_g) /
-                       macro_xs.get_xs(MgxsType::FISSION, p_g);
+              score *=
+                atom_density *
+                nuc_xs.get_xs(MgxsType::FISSION, p_g, nuc_t, nuc_a) /
+                macro_xs.get_xs(MgxsType::FISSION, p_g, macro_t, macro_a);
             }
           }
         }
@@ -1978,10 +2009,10 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
             if (i_nuclide >= 0) {
               score = flux * atom_density *
                       nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g, nullptr,
-                        nullptr, &d);
+                        nullptr, &d, nuc_t, nuc_a);
             } else {
               score = flux * macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
-                               nullptr, nullptr, &d);
+                               nullptr, nullptr, &d, macro_t, macro_a);
             }
             score_fission_delayed_dg(
               i_tally, d_bin, score, score_index, p.filter_matches());
@@ -1989,10 +2020,12 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           continue;
         } else {
           if (i_nuclide >= 0) {
-            score = flux * atom_density *
-                    nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g);
+            score =
+              flux * atom_density *
+              nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g, nuc_t, nuc_a);
           } else {
-            score = flux * macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g);
+            score = flux * macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
+                             macro_t, macro_a);
           }
         }
       }
@@ -2004,7 +2037,8 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // delayed-nu-fission
-          double abs_xs = macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
+          double abs_xs =
+            macro_xs.get_xs(MgxsType::ABSORPTION, p_g, macro_t, macro_a);
           if (abs_xs > 0) {
             if (tally.delayedgroup_filter_ != C_NONE) {
               auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
@@ -2016,16 +2050,16 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
                 auto d = filt.groups()[d_bin] - 1;
                 score = wgt_absorb * flux;
                 if (i_nuclide >= 0) {
-                  score *= nuc_xs.get_xs(
-                             MgxsType::DECAY_RATE, p_g, nullptr, nullptr, &d) *
+                  score *= nuc_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr,
+                             nullptr, &d, nuc_t, nuc_a) *
                            nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
-                             nullptr, nullptr, &d) /
+                             nullptr, nullptr, &d, nuc_t, nuc_a) /
                            abs_xs;
                 } else {
-                  score *= macro_xs.get_xs(
-                             MgxsType::DECAY_RATE, p_g, nullptr, nullptr, &d) *
+                  score *= macro_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr,
+                             nullptr, &d, macro_t, macro_a) *
                            macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
-                             nullptr, nullptr, &d) /
+                             nullptr, nullptr, &d, macro_t, macro_a) /
                            abs_xs;
                 }
                 score_fission_delayed_dg(
@@ -2041,17 +2075,17 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
               for (auto d = 0; d < data::mg.num_delayed_groups_; ++d) {
                 if (i_nuclide >= 0) {
                   score += wgt_absorb * flux *
-                           nuc_xs.get_xs(
-                             MgxsType::DECAY_RATE, p_g, nullptr, nullptr, &d) *
+                           nuc_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr,
+                             nullptr, &d, nuc_t, nuc_a) *
                            nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
-                             nullptr, nullptr, &d) /
+                             nullptr, nullptr, &d, nuc_t, nuc_a) /
                            abs_xs;
                 } else {
                   score += wgt_absorb * flux *
-                           macro_xs.get_xs(
-                             MgxsType::DECAY_RATE, p_g, nullptr, nullptr, &d) *
+                           macro_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr,
+                             nullptr, &d, macro_t, macro_a) *
                            macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
-                             nullptr, nullptr, &d) /
+                             nullptr, nullptr, &d, macro_t, macro_a) /
                            abs_xs;
                 }
               }
@@ -2074,15 +2108,16 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
             auto d = bank.delayed_group - 1;
             if (d != -1) {
               if (i_nuclide >= 0) {
-                score += simulation::keff * atom_density * bank.wgt * flux *
-                         nuc_xs.get_xs(
-                           MgxsType::DECAY_RATE, p_g, nullptr, nullptr, &d) *
-                         nuc_xs.get_xs(MgxsType::FISSION, p_g) /
-                         macro_xs.get_xs(MgxsType::FISSION, p_g);
+                score +=
+                  simulation::keff * atom_density * bank.wgt * flux *
+                  nuc_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr, nullptr, &d,
+                    nuc_t, nuc_a) *
+                  nuc_xs.get_xs(MgxsType::FISSION, p_g, nuc_t, nuc_a) /
+                  macro_xs.get_xs(MgxsType::FISSION, p_g, macro_t, macro_a);
               } else {
                 score += simulation::keff * bank.wgt * flux *
-                         macro_xs.get_xs(
-                           MgxsType::DECAY_RATE, p_g, nullptr, nullptr, &d);
+                         macro_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr,
+                           nullptr, &d, macro_t, macro_a);
               }
               if (tally.delayedgroup_filter_ != C_NONE) {
                 auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
@@ -2112,17 +2147,17 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
             auto d = filt.groups()[d_bin] - 1;
             if (i_nuclide >= 0) {
-              score =
-                atom_density * flux *
-                nuc_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr, nullptr, &d) *
-                nuc_xs.get_xs(
-                  MgxsType::DELAYED_NU_FISSION, p_g, nullptr, nullptr, &d);
+              score = atom_density * flux *
+                      nuc_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr, nullptr,
+                        &d, nuc_t, nuc_a) *
+                      nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g, nullptr,
+                        nullptr, &d, nuc_t, nuc_a);
             } else {
               score = flux *
-                      macro_xs.get_xs(
-                        MgxsType::DECAY_RATE, p_g, nullptr, nullptr, &d) *
+                      macro_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr,
+                        nullptr, &d, macro_t, macro_a) *
                       macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
-                        nullptr, nullptr, &d);
+                        nullptr, nullptr, &d, macro_t, macro_a);
             }
             score_fission_delayed_dg(
               i_tally, d_bin, score, score_index, p.filter_matches());
@@ -2132,17 +2167,17 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           score = 0.;
           for (auto d = 0; d < data::mg.num_delayed_groups_; ++d) {
             if (i_nuclide >= 0) {
-              score +=
-                atom_density * flux *
-                nuc_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr, nullptr, &d) *
-                nuc_xs.get_xs(
-                  MgxsType::DELAYED_NU_FISSION, p_g, nullptr, nullptr, &d);
+              score += atom_density * flux *
+                       nuc_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr,
+                         nullptr, &d, nuc_t, nuc_a) *
+                       nuc_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g, nullptr,
+                         nullptr, &d, nuc_t, nuc_a);
             } else {
               score += flux *
-                       macro_xs.get_xs(
-                         MgxsType::DECAY_RATE, p_g, nullptr, nullptr, &d) *
+                       macro_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr,
+                         nullptr, &d, macro_t, macro_a) *
                        macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, p_g,
-                         nullptr, nullptr, &d);
+                         nullptr, nullptr, &d, macro_t, macro_a);
             }
           }
         }
@@ -2166,18 +2201,21 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           score = p.wgt_last() * flux;
         }
         if (i_nuclide >= 0) {
-          score *= atom_density * nuc_xs.get_xs(MgxsType::KAPPA_FISSION, p_g) /
-                   macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
+          score *= atom_density *
+                   nuc_xs.get_xs(MgxsType::KAPPA_FISSION, p_g, nuc_t, nuc_a) /
+                   macro_xs.get_xs(MgxsType::ABSORPTION, p_g, macro_t, macro_a);
         } else {
-          score *= macro_xs.get_xs(MgxsType::KAPPA_FISSION, p_g) /
-                   macro_xs.get_xs(MgxsType::ABSORPTION, p_g);
+          score *=
+            macro_xs.get_xs(MgxsType::KAPPA_FISSION, p_g, macro_t, macro_a) /
+            macro_xs.get_xs(MgxsType::ABSORPTION, p_g, macro_t, macro_a);
         }
       } else {
         if (i_nuclide >= 0) {
-          score =
-            atom_density * flux * nuc_xs.get_xs(MgxsType::KAPPA_FISSION, p_g);
+          score = atom_density * flux *
+                  nuc_xs.get_xs(MgxsType::KAPPA_FISSION, p_g, nuc_t, nuc_a);
         } else {
-          score = flux * macro_xs.get_xs(MgxsType::KAPPA_FISSION, p_g);
+          score = flux * macro_xs.get_xs(
+                           MgxsType::KAPPA_FISSION, p_g, macro_t, macro_a);
         }
       }
       break;

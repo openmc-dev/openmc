@@ -206,18 +206,36 @@ def test_ww_import_export(run_in_tmpdir, model):
 
     lb_before, up_before = ww.bounds
 
+    # set some additional weight windows properties after transport
+    ww.survival_ratio = 0.7
+    assert ww.survival_ratio == 0.7
+
+    ww.weight_cutoff = 1e-10
+    assert ww.weight_cutoff == 1e-10
+
+    ww.max_lower_bound_ratio = 200.0
+    assert ww.max_lower_bound_ratio == 200.0
+
+    ww.max_split = 26000
+    assert ww.max_split == 26000
+
     openmc.lib.export_weight_windows()
 
     assert Path('weight_windows.h5').exists()
 
     openmc.lib.import_weight_windows('weight_windows.h5')
 
-    ww = openmc.lib.weight_windows[2]
+    imported_ww = openmc.lib.weight_windows[2]
 
-    lb_after, up_after = ww.bounds
+    lb_after, up_after = imported_ww.bounds
 
     assert np.allclose(lb_before, lb_after)
     assert np.allclose(up_before, up_after)
+
+    assert ww.survival_ratio == imported_ww.survival_ratio
+    assert ww.max_lower_bound_ratio == imported_ww.max_lower_bound_ratio
+    assert ww.weight_cutoff == imported_ww.weight_cutoff
+    assert ww.max_split == imported_ww.max_split
 
     openmc.lib.finalize()
 

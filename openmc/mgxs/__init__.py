@@ -13,14 +13,20 @@ GROUP_STRUCTURES = {}
 - "XMAS-172_" designed for LWR analysis ([SAR1990]_, [SAN2004]_)
 - "SHEM-361_" designed for LWR analysis to eliminate self-shielding calculations
   of thermal resonances ([HFA2005]_, [SAN2007]_, [HEB2008]_)
-- "SCALE-44" designed for criticality analysis ([ZAL1999]_)
+- "SCALE-X" (where X is 44 which is designed for criticality analysis
+  and 252 is designed for thermal reactors) for the SCALE code suite 
+  ([ZAL1999]_ and [REARDEN2013]_)
+- "MPACT-X" (where X is 51 (PWR), 60 (BWR), 69 (Magnox)) from the MPACT_ reactor
+  physics code ([KIM2019]_ and [KIM2020]_)
 - "ECCO-1968_" designed for fine group reactor cell calculations for fast,
   intermediate and thermal reactor applications ([SAR1990]_)
 - activation_ energy group structures "VITAMIN-J-42", "VITAMIN-J-175",
   "TRIPOLI-315", "CCFE-709_" and "UKAEA-1102_"
 
 .. _CASMO: https://www.studsvik.com/SharepointFiles/CASMO-5%20Development%20and%20Applications.pdf
-.. _SCALE: https://www-nds.iaea.org/publications/indc/indc-czr-0001.pdf
+.. _SCALE44: https://www-nds.iaea.org/publications/indc/indc-czr-0001.pdf
+.. _SCALE252: https://oecd-nea.org/science/wpncs/amct/workingarea/meeting2013/EGAMCT2013_08.pdf
+.. _MPACT: https://vera.ornl.gov/mpact/
 .. _XMAS-172: https://www-nds.iaea.org/wimsd/energy.htm
 .. _SHEM-361: https://www.polymtl.ca/merlin/downloads/FP214.pdf
 .. _activation: https://fispact.ukaea.uk/wiki/Keyword:GETXS
@@ -47,7 +53,18 @@ GROUP_STRUCTURES = {}
    Santamarina-Hfaiedh energy mesh between 22.5 eV and 11.4 keV. International
    Conference on the Physics of Reactors 2008, PHYSOR 08. 2. 929-938.
 .. [ZAL1999] K. Záleský and L. Marková (1999), Assessment of Nuclear Data Needs
-   for Broad-Group SCALE Library Related to VVER Spent Fuel Applications, IAEA.
+   for Broad-Group SCALE Library Related to VVER Spent Fuel Applications, IAEA. SCALE44_.
+.. [REARDEN2013] B. T. Rearden, M. E. Dunn, D. Wiarda, C. Celik, K. Bekar,
+                 M. L. Williams, D. E. Peplow, M. A. Jessee, C. M. Perfetti,
+                 I. C. Gauld, W. A. Wieselquist, J. P. Lefebvre, R. A. Lefebvre,
+                 W. J. Marshall, A. B. Thompson, F. Havluj, S. E. Skutnik,
+                 K. J. Dugan.  (2013). Overview of SCALE 6.2.  OECD.  SCALE252_.
+.. [KIM2019] Kim, K.S., Williams, M., Wiarda, D., & Clarno, K.  (2019). Development
+   of the multigroup cross section library for the CASL neutronics simulator MPACT:
+   Method and procedure.  Annals of Nuclear Energy, 133. pp. 46-58.
+.. [KIM2020] Kim, K.S., Ade, B., & Luciano, N.  (2020). Development
+   of the MPACT 69-group Library for Magnox Reactor Analysis using VERA.
+   Proceedings of International Conference on Physics of Reactors PHYSOR2020.
 """
 
 GROUP_STRUCTURES['CASMO-2'] = np.array([
@@ -80,6 +97,30 @@ GROUP_STRUCTURES['SCALE-44'] = np.array([1e-5, 3.e-3, 7.5e-3, 1.e-2, 2.53e-2,
     3.25e-1, 3.5e-1, 3.75e-1, 4.e-1, 6.25e-1, 1., 1.77, 3., 4.75, 6., 8.1,
     1.e1, 3.e1, 1.e2, 5.5e2, 3.e3, 1.7e4, 2.5e4, 1.e5, 4.e5, 9.e5, 1.4e6,
     1.85e6, 2.354e6, 2.479e6, 3.e6, 4.8e6, 6.434e6, 8.1873e6, 2.e7])
+GROUP_STRUCTURES['MPACT-51'] = np.array([
+    0., 1.e-2, 3.e-2, 4.e-2, 6.e-2, 8.e-2, 1.e-1, 1.5e-1, 2.e-1, 2.75e-1,
+    3.5e-1, 5.e-1, 6.25e-1, 7.5e-1, 9.25e-1, 9.75e-1, 1.010, 1.080, 1.130,
+    1.175, 1.250, 1.450, 1.860, 2.470, 3.730, 4.700, 5.000, 5.400, 6.250,
+    7.150, 8.100, 1.19e+1, 1.44e+1, 3.e+1, 4.83e+1, 7.6e+1, 1.43e+2, 3.05e+2,
+    9.5e+2, 2.25e+3, 9.5e+3, 2.e+4, 5.e+4, 7.3e+4, 2.e+5, 4.92e+5, 8.2e+5,
+    1.356e+6, 2.354e+6, 4.304e+6, 6.434e+6, 2.e+7])
+GROUP_STRUCTURES['MPACT-60'] = np.array([
+    0., 1.e-2, 3.e-2, 4.e-2, 6.e-2, 8.e-2, 1.e-1, 1.5e-1, 2.e-1, 2.75e-1,
+    3.5e-1, 5.e-1, 6.25e-1, 7.5e-1, 9.25e-1, 9.75e-1, 1.01, 1.08, 1.13,
+    1.175, 1.25, 1.45, 1.86, 2.47, 3.73, 4.7, 5., 5.4, 6.25, 7.15, 8.1,
+    1.19e+1, 1.44e+1, 3.e+1, 4.83e+1, 7.6e+1, 1.43e+2, 2.095e+2, 3.05e+2,
+    6.7e+2, 9.5e+2, 1.55e+3, 2.25e+3, 3.9e+3, 9.5e+3, 1.3e+4, 2.e+4, 3.e+4,
+    5.e+4, 7.3e+4, 1.283e+5, 2.e+5, 3.3e+5, 4.92e+5, 6.7e+5, 8.2e+5, 1.356e+6,
+    2.354e+6, 4.304e+6, 6.434e+6, 2.e+7])
+GROUP_STRUCTURES['MPACT-69'] = np.array([
+    0., 1.e-2, 3.e-2, 4.e-2, 6.e-2, 8.e-2, 9.e-2, 1.e-1, 1.25e-1, 1.5e-1,
+    1.75e-1, 2.e-1, 2.25e-1, 2.5e-1, 2.75e-1, 3.e-1, 3.25e-1, 3.5e-1, 3.75e-1,
+    4.e-1, 4.5e-1, 5.e-1, 5.5e-1, 6.e-1, 6.25e-1, 6.5e-1, 7.5e-1, 8.5e-1,
+    9.25e-1, 9.75e-1, 1.01, 1.08, 1.13, 1.175, 1.25, 1.45, 1.86, 2.47, 3.,
+    3.73, 4.7, 5., 5.4, 6.25, 7.15, 8.1, 1.e+1, 1.19e+1, 1.44e+1, 3.e+1,
+    4.83e+1, 7.6e+1, 1.43e+2, 3.05e+2, 5.5e+2, 9.5e+2, 2.25e+3, 3.9e+3, 9.5e+3,
+    2.e+4, 5.e+4, 7.3e+4, 2.e+5, 4.92e+5, 8.2e+5, 1.356e+6, 2.354e+6, 4.304e+6,
+    6.434e+6, 2.e+7])
 GROUP_STRUCTURES['CASMO-70'] = np.array([
     0., 5.e-3, 1.e-2, 1.5e-2, 2.e-2, 2.5e-2, 3.e-2, 3.5e-2, 4.2e-2,
     5.e-2, 5.8e-2, 6.7e-2, 8.e-2, 1.e-1, 1.4e-1, 1.8e-1, 2.2e-1,
@@ -157,6 +198,34 @@ GROUP_STRUCTURES['VITAMIN-J-175'] = np.array([
     1.1052e7, 1.1618e7, 1.2214e7, 1.2523e7, 1.2840e7, 1.3499e7,
     1.3840e7, 1.4191e7, 1.4550e7, 1.4918e7, 1.5683e7, 1.6487e7,
     1.6905e7, 1.7332e7, 1.9640e7])
+GROUP_STRUCTURES['SCALE-252'] = np.array([
+    0., 1.e-4, 5.e-4, 7.5e-4, 1.e-3, 1.2e-3, 1.5e-3, 2.e-3, 2.5e-3, 3.e-3,
+    4.e-3, 5.e-3, 7.5e-3, 1.e-2, 2.53e-2, 3.e-2, 4.e-2, 5.e-2, 6.e-2, 7.e-2,
+    8.e-2, 9.e-2, 1.e-1, 1.25e-1, 1.5e-1, 1.75e-1, 2.e-1, 2.25e-1, 2.5e-1,
+    2.75e-1, 3.e-1, 3.25e-1, 3.5e-1, 3.75e-1, 4.e-1, 4.5e-1, 5.e-1, 5.5e-1,
+    6.e-1, 6.25e-1, 6.5e-1, 7.e-1, 7.5e-1, 8.e-1, 8.5e-1, 9.e-1, 9.25e-1,
+    9.5e-1, 9.75e-1, 1., 1.01, 1.02, 1.03, 1.04, 1.05, 1.06, 1.07, 1.08, 1.09,
+    1.1, 1.11, 1.12, 1.13, 1.14, 1.15, 1.175, 1.2, 1.225, 1.25, 1.3, 1.35, 1.4,
+    1.45, 1.5, 1.59, 1.68, 1.77, 1.86, 1.94, 2., 2.12, 2.21, 2.3, 2.38, 2.47,
+    2.57, 2.67, 2.77, 2.87, 2.97, 3., 3.1, 3.2, 3.5, 3.73, 4.1, 4.7, 5., 5.4,
+    6., 6.25, 6.5, 6.75, 6.875, 7., 7.15, 8.1, 9.1, 1.e+1, 1.15e+1, 1.19e+1,
+    1.29e+1, 1.44e+1, 1.6e+1, 1.7e+1, 1.85e+1, 1.94e+1, 2.e+1, 2.05e+1,
+    2.12e+1, 2.175e+1, 2.25e+1, 2.5e+1, 2.75e+1, 3.e+1, 3.125e+1, 3.175e+1,
+    3.325e+1, 3.375e+1, 3.5e+1, 3.55e+1, 3.6e+1, 3.7e+1, 3.713e+1, 3.727e+1,
+    3.763e+1, 3.8e+1, 3.91e+1, 3.96e+1, 4.1e+1, 4.24e+1, 4.4e+1, 4.52e+1,
+    4.83e+1, 5.06e+1, 5.34e+1, 5.8e+1, 6.1e+1, 6.3e+1, 6.5e+1, 6.75e+1, 7.2e+1,
+    7.6e+1, 8.e+1, 8.17e+1, 9.e+1, 9.7e+1, 1.012e+2, 1.05e+2, 1.08e+2, 1.13e+2,
+    1.16e+2, 1.175e+2, 1.19e+2, 1.22e+2, 1.43e+2, 1.7e+2, 1.8e+2, 1.877e+2,
+    1.885e+2, 1.915e+2, 1.93e+2, 2.02e+2, 2.074e+2, 2.095e+2, 2.2e+2, 2.4e+2,
+    2.85e+2, 3.05e+2, 5.5e+2, 6.7e+2, 6.83e+2, 9.5e+2, 1.15e+3, 1.5e+3,
+    1.55e+3, 1.8e+3, 2.2e+3, 2.25e+3, 2.5e+3, 3.e+3, 3.74e+3, 3.9e+3, 5.7e+3,
+    8.03e+3, 9.5e+3, 1.3e+4, 1.7e+4, 2.e+4, 3.e+4, 4.5e+4, 5.e+4, 5.2e+4,
+    6.e+4, 7.3e+4, 7.5e+4, 8.2e+4, 8.5e+4, 1.e+5, 1.283e+5, 1.49e+5, 2.e+5,
+    2.7e+5, 3.3e+5, 4.e+5, 4.2e+5, 4.4e+5, 4.7e+5, 4.92e+5, 5.5e+5, 5.73e+5,
+    6.e+5, 6.7e+5, 6.79e+5, 7.5e+5, 8.2e+5, 8.611e+5, 8.75e+5, 9.e+5, 9.2e+5,
+    1.01e+6, 1.1e+6, 1.2e+6, 1.25e+6, 1.317e+6, 1.356e+6, 1.4e+6, 1.5e+6,
+    1.85e+6, 2.354e+6, 2.479e+6, 3.e+6, 4.304e+6, 4.8e+6, 6.434e+6, 8.187e+6,
+    1.e+7, 1.284e+7, 1.384e+7, 1.455e+7, 1.568e+7, 1.733e+7, 2.e+7])
 GROUP_STRUCTURES['TRIPOLI-315'] = np.array([
     1.0e-5, 1.1e-4, 3.000e-3, 5.500e-3, 1.000e-2, 1.500e-2, 2.000e-2, 3.000e-2,
     3.200e-2, 3.238e-2, 4.300e-2, 5.900e-2, 7.700e-2, 9.500e-2, 1.000e-1,

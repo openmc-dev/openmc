@@ -293,9 +293,9 @@ plot = openmc.plot_mesh_tally(
     axis_units='mm',
     score='flux',
     value= 'mean',
-    norm=LogNorm(vmin=0.1, vmax=100)
+    norm=LogNorm(vmin=0.1, vmax=100),
+    outline=(geom, 'material')
 )
-plot.colorbar()
 assert plot.xaxis.get_label().get_text() == 'x [mm]'
 assert plot.yaxis.get_label().get_text() == 'z [mm]'
 assert plot.get_xlim() == (-1000., 500)  # note that units are in mm

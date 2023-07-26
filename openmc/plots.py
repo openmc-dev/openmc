@@ -177,6 +177,7 @@ def plot_mesh_tally(
     value: str = 'mean',
     pixels: int = 40000,
     outline: Optional[str] = None,
+    geometry: Optional['openmc.Geometry'] = None,
     **kwargs
 ) -> 'matplotlib.image.AxesImage':
     """Display a slice plot of the mesh tally score.
@@ -198,7 +199,7 @@ def plot_mesh_tally(
     value : str
         A string for the type of value to return  - 'mean' (default),
         'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
-    outline : {'material', 'cell'}
+    outline : tuple
         If set then an outline will be added to the plot. The outline can be
         by cell or by material.
     **kwargs
@@ -250,16 +251,54 @@ def plot_mesh_tally(
         axes.set_xlabel(xlabel)
         axes.set_ylabel(ylabel)
     axes.imshow(oriented_data, extent=(x_min, x_max, y_min, y_max), **kwargs)
-    fig.colorbar()
+    # fig.colorbar()
 
     if outline is not None:
+        import matplotlib.image as mpimg
+        import math
+        from tempfile import TemporaryDirectory
+        model = openmc.Model()
+        model.geometry = outline[0]
         plot = openmc.Plot()
-        plot.origin = mesh.center
-        plot.width = mesh.bounding_box.extent[basis]
+        plot.origin = mesh.bounding_box.center
+        bb_width = mesh.bounding_box.extent[basis]
+        plot.width = (bb_width[0]-bb_width[1], bb_width[2]-bb_width[3])
+        aspect_ratio = (bb_width[0]-bb_width[1]) / (bb_width[2]-bb_width[3])
+        print(plot.width )
+        print(bb_width)
+        pixels_y = math.sqrt(pixels / aspect_ratio)
+        pixels = (int(pixels / pixels_y), int(pixels_y))
         plot.pixels = pixels
         plot.basis = basis
-        plot.color_by = outline
+        plot.color_by = outline[1]
         model.plots.append(plot)
+
+        with TemporaryDirectory() as tmpdir:
+            # Run OpenMC in geometry plotting mode
+            model.plot_geometry(False, cwd=tmpdir)
+
+            # Read image from file
+            img_path = Path(tmpdir) / f'plot_{plot.id}.png'
+            if not img_path.is_file():
+                img_path = img_path.with_suffix('.ppm')
+            img = mpimg.imread(str(img_path))
+
+        # Combine R, G, B values into a single int
+        rgb = (img * 256).astype(int)
+        image_value = (rgb[..., 0] << 16) + \
+            (rgb[..., 1] << 8) + (rgb[..., 2])
+
+        # Plot image and return the axes
+        axes.contour(
+            image_value,
+            origin="upper",
+            colors="k",
+            linestyles="solid",
+            linewidths=1,
+            levels=np.unique(image_value),
+            extent=(x_min, x_max, y_min, y_max),
+            **kwargs
+        )
 
     return axes
 

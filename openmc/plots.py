@@ -292,7 +292,7 @@ def plot_mesh_tally(
         axes.contour(
             image_value,
             origin="upper",
-            colors="k",
+            colors="r",
             linestyles="solid",
             linewidths=1,
             levels=np.unique(image_value),

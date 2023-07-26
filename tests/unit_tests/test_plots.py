@@ -3,6 +3,7 @@ from pathlib import Path
 import openmc
 import openmc.examples
 import pytest
+from matplotlib.colors import LogNorm
 
 
 @pytest.fixture(scope='module')
@@ -221,3 +222,82 @@ def test_voxel_plot_roundtrip():
     assert new_plot.origin == plot.origin
     assert new_plot.width == plot.width
     assert new_plot.color_by == plot.color_by
+
+
+# def test_plot_mesh_tally(run_in_tmpdir):
+
+mat1 = openmc.Material()
+mat1.add_nuclide('Li6', 1, percent_type='ao')
+mats = openmc.Materials([mat1])
+
+# this shape is chose to create axis with testable ranges
+surface = openmc.model.RectangularParallelepiped(
+    -100, 50, -200, 250, -300, 350, boundary_type='vacuum'
+)
+cell = openmc.Cell(region=-surface)
+cell.fill = mat1
+geom = openmc.Geometry([cell])
+
+source = openmc.IndependentSource()
+source.angle = openmc.stats.Isotropic()
+source.energy = openmc.stats.Discrete([14e6], [1])
+# puts the source in the center of the RectangularParallelepiped
+source.space = openmc.stats.Point(cell.bounding_box.center)
+
+sett = openmc.Settings()
+sett.batches = 2
+sett.inactive = 0
+sett.particles = 5000
+sett.run_mode = 'fixed source'
+sett.source = source
+
+mesh = openmc.RegularMesh().from_domain(geom, dimension=[10, 20, 30])
+mesh_filter = openmc.MeshFilter(mesh)
+mesh_tally = openmc.Tally(name='mesh-tal')
+mesh_tally.filters = [mesh_filter]
+mesh_tally.scores = ['flux']
+tallies = openmc.Tallies([mesh_tally])
+
+model = openmc.Model(geom, mats, sett, tallies)
+sp_filename = model.run()
+statepoint = openmc.StatePoint(sp_filename)
+tally_result = statepoint.get_tally(name='mesh-tal')
+
+plot = openmc.plot_mesh_tally(
+    tally=tally_result,
+    basis='xy',
+    slice_index=29  # max value of slice selected
+)
+# axis_units defaults to cm
+assert plot.xaxis.get_label().get_text() == 'x [cm]'
+assert plot.yaxis.get_label().get_text() == 'y [cm]'
+assert plot.get_xlim() == (-100., 50)
+assert plot.get_ylim() == (-200., 250.)
+
+plot = openmc.plot_mesh_tally(
+    tally=tally_result,
+    basis='yz',
+    axis_units='m',
+    slice_index=9,  # max value of slice selected
+    value= 'std_dev'
+)
+assert plot.xaxis.get_label().get_text() == 'y [m]'
+assert plot.yaxis.get_label().get_text() == 'z [m]'
+assert plot.get_xlim() == (-2., 2.5)  # note that units are in m
+assert plot.get_ylim() == (-3., 3.5)
+
+plot = openmc.plot_mesh_tally(
+    tally=tally_result,
+    basis='xz',
+    slice_index=19,  # max value of slice selected
+    axis_units='mm',
+    score='flux',
+    value= 'mean',
+    norm=LogNorm(vmin=0.1, vmax=100)
+)
+plot.colorbar()
+assert plot.xaxis.get_label().get_text() == 'x [mm]'
+assert plot.yaxis.get_label().get_text() == 'z [mm]'
+assert plot.get_xlim() == (-1000., 500)  # note that units are in mm
+assert plot.get_ylim() == (-3000.0, 3500.0)
+plot.figure.savefig('z.png')

@@ -169,13 +169,14 @@ _SVG_COLORS = {
 
 def plot_mesh_tally(
     tally: 'openmc.Tally',
-    basis: Optional[str] = 'xy',
-    slice_index: int = None,
+    basis: str = 'xy',
+    slice_index: Optional[int] = None,
     score: Optional[str] = None,
     axes: Optional[str] = None,
-    axis_units: Optional[str] = 'cm',
+    axis_units: str = 'cm',
+    value: str = 'mean',
     **kwargs
-):
+) -> 'matplotlib.image.AxesImage':
     """Display a slice plot of the mesh tally score.
 
     Parameters
@@ -192,6 +193,11 @@ def plot_mesh_tally(
         Axes to draw to
     axis_units : {'km', 'm', 'cm', 'mm'}
         Units used on the plot axis
+    value : str
+        A string for the type of value to return  - 'mean' (default),
+        'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
+    **kwargs
+        Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 
     Returns
     -------
@@ -211,7 +217,7 @@ def plot_mesh_tally(
     if score is None and len(tally.scores) == 1:
         score = tally.scores[0]
 
-    data = tally.get_reshaped_data(expand_dims=True).squeeze()
+    data = tally.get_reshaped_data(expand_dims=True, value=value).squeeze()
 
     if slice_index is None:
         basis_to_index = {'xy': 2, 'xz': 1, 'yz': 0}[basis]
@@ -238,8 +244,10 @@ def plot_mesh_tally(
         fig, axes = plt.subplots()
         axes.set_xlabel(xlabel)
         axes.set_ylabel(ylabel)
+    axes.imshow(oriented_data, extent=(x_min, x_max, y_min, y_max), **kwargs)
+    fig.colorbar()
 
-    return axes.imshow(oriented_data, extent=(x_min, x_max, y_min, y_max), **kwargs)
+    return axes
 
 
 def _get_plot_image(plot, cwd):

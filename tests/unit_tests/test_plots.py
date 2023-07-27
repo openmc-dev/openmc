@@ -298,7 +298,9 @@ plot = openmc.plot_mesh_tally(
     score='flux',
     value= 'mean',
     # norm=LogNorm(vmin=0.1, vmax=100),
-    outline=(geom, 'material')
+    outline=True,
+    geometry=geom,
+    outline_by='material'
 )
 # assert plot.xaxis.get_label().get_text() == 'x [mm]'
 # assert plot.yaxis.get_label().get_text() == 'z [mm]'

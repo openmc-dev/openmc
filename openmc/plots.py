@@ -175,8 +175,10 @@ def plot_mesh_tally(
     axes: Optional[str] = None,
     axis_units: str = 'cm',
     value: str = 'mean',
+    outline: bool = False,
+    outline_by: str = 'cell',
+    outline_color: str = 'black',
     pixels: int = 40000,
-    outline: Optional[str] = None,
     geometry: Optional['openmc.Geometry'] = None,
     **kwargs
 ) -> 'matplotlib.image.AxesImage':
@@ -202,6 +204,16 @@ def plot_mesh_tally(
     outline : tuple
         If set then an outline will be added to the plot. The outline can be
         by cell or by material.
+    outline_by : {'cell', 'material'}
+        Indicate whether the plot should be colored by cell or by material
+    outline_color : str
+        The matplotlib color to use for the plot.
+    geometry : openmc.Geometry
+        The geometry to use for the outline.
+    pixels : int
+        This sets the total number of pixels in the plot and the number of
+        pixels in each basis direction is calculated from this total and
+        the image aspect ratio.
     **kwargs
         Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 
@@ -253,24 +265,22 @@ def plot_mesh_tally(
     axes.imshow(oriented_data, extent=(x_min, x_max, y_min, y_max), **kwargs)
     # fig.colorbar()
 
-    if outline is not None:
+    if outline and geometry is not None:
         import matplotlib.image as mpimg
         import math
         from tempfile import TemporaryDirectory
         model = openmc.Model()
-        model.geometry = outline[0]
+        model.geometry = geometry
         plot = openmc.Plot()
         plot.origin = mesh.bounding_box.center
         bb_width = mesh.bounding_box.extent[basis]
         plot.width = (bb_width[0]-bb_width[1], bb_width[2]-bb_width[3])
         aspect_ratio = (bb_width[0]-bb_width[1]) / (bb_width[2]-bb_width[3])
-        print(plot.width )
-        print(bb_width)
         pixels_y = math.sqrt(pixels / aspect_ratio)
         pixels = (int(pixels / pixels_y), int(pixels_y))
         plot.pixels = pixels
         plot.basis = basis
-        plot.color_by = outline[1]
+        plot.color_by = outline_by
         model.plots.append(plot)
 
         with TemporaryDirectory() as tmpdir:
@@ -292,7 +302,7 @@ def plot_mesh_tally(
         axes.contour(
             image_value,
             origin="upper",
-            colors="r",
+            colors=outline_color,
             linestyles="solid",
             linewidths=1,
             levels=np.unique(image_value),

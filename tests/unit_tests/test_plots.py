@@ -285,6 +285,7 @@ plot = openmc.plot_mesh_tally(
     slice_index=9,  # max value of slice selected
     value= 'std_dev'
 )
+plot.figure.savefig('x.png')
 # assert plot.xaxis.get_label().get_text() == 'y [m]'
 # assert plot.yaxis.get_label().get_text() == 'z [m]'
 # assert plot.get_xlim() == (-2., 2.5)  # note that units are in m
@@ -300,7 +301,8 @@ plot = openmc.plot_mesh_tally(
     # norm=LogNorm(vmin=0.1, vmax=100),
     outline=True,
     geometry=geom,
-    outline_by='material'
+    outline_by='material',
+    color_bar_title='neutron flux'
 )
 # assert plot.xaxis.get_label().get_text() == 'x [mm]'
 # assert plot.yaxis.get_label().get_text() == 'z [mm]'

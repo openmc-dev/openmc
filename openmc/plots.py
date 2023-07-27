@@ -180,6 +180,9 @@ def plot_mesh_tally(
     outline_color: str = 'black',
     pixels: int = 40000,
     geometry: Optional['openmc.Geometry'] = None,
+    colorbar: bool = True,
+    color_bar_title : str = None,
+    volume_normalization: bool = True,
     **kwargs
 ) -> 'matplotlib.image.AxesImage':
     """Display a slice plot of the mesh tally score.
@@ -214,6 +217,12 @@ def plot_mesh_tally(
         This sets the total number of pixels in the plot and the number of
         pixels in each basis direction is calculated from this total and
         the image aspect ratio.
+    colorbar : bool
+    color_bar_title : str
+        The title to assign the color bar.
+    volume_normalization : bool, optional
+        Whether or not to normalize the data by
+        the volume of the mesh elements.
     **kwargs
         Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 
@@ -262,8 +271,13 @@ def plot_mesh_tally(
         fig, axes = plt.subplots()
         axes.set_xlabel(xlabel)
         axes.set_ylabel(ylabel)
-    axes.imshow(oriented_data, extent=(x_min, x_max, y_min, y_max), **kwargs)
-    # fig.colorbar()
+    im = axes.imshow(oriented_data, extent=(x_min, x_max, y_min, y_max), **kwargs)
+    if colorbar:
+        cbar = fig.colorbar(im)
+        if color_bar_title is None:
+            cbar.set_label(score)
+        else:
+            cbar.set_label(color_bar_title)
 
     if outline and geometry is not None:
         import matplotlib.image as mpimg

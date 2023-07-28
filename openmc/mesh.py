@@ -749,7 +749,7 @@ class RegularMesh(StructuredMesh):
         domain : {openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry}
             The object passed in will be used as a template for this mesh. The
             bounding box of the property of the object passed will be used to
-            set the lower_left and upper_right of the mesh instance
+            set the lower_left and upper_right and of the mesh instance
         dimension : Iterable of int
             The number of mesh cells in each direction (x, y, z).
         mesh_id : int
@@ -1181,21 +1181,21 @@ class CylindricalMesh(StructuredMesh):
 
     Parameters
     ----------
+    r_grid : numpy.ndarray
+        1-D array of mesh boundary points along the r-axis.
+        Requirement is r >= 0.
+    z_grid : numpy.ndarray
+        1-D array of mesh boundary points along the z-axis.
+    phi_grid : numpy.ndarray
+        1-D array of mesh boundary points along the phi-axis in radians.
+        The default value is [0, 2π], i.e. the full phi range.
+    origin : numpy.ndarray
+        1-D array of length 3 the (x,y,z) origin of the mesh in
+        cartesian coordinates
     mesh_id : int
         Unique identifier for the mesh
     name : str
         Name of the mesh
-    origin : numpy.ndarray
-        1-D array of length 3 the (x,y,z) origin of the mesh in
-        cartesian coordinates
-    r_grid : numpy.ndarray
-        1-D array of mesh boundary points along the r-axis.
-        Requirement is r >= 0.
-    phi_grid : numpy.ndarray
-        1-D array of mesh boundary points along the phi-axis in radians.
-        The default value is [0, 2π], i.e. the full phi range.
-    z_grid : numpy.ndarray
-        1-D array of mesh boundary points along the z-axis.
 
     Attributes
     ----------
@@ -1228,8 +1228,8 @@ class CylindricalMesh(StructuredMesh):
     def __init__(
         self,
         r_grid: Sequence[float],
+        z_grid: Sequence[float],
         phi_grid: Sequence[float] = (0, 2*pi),
-        z_grid: Sequence[float] = (0, 10),
         origin: Tuple[float] = (0., 0., 0.),
         mesh_id: int = None,
         name: str = '',
@@ -1378,7 +1378,6 @@ class CylindricalMesh(StructuredMesh):
             (openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry),
         )
 
-        mesh = cls(mesh_id=mesh_id, name=name)
 
         # loaded once to avoid reading h5m file repeatedly
         cached_bb = domain.bounding_box
@@ -1390,20 +1389,23 @@ class CylindricalMesh(StructuredMesh):
                 cached_bb[1][1],
             ]
         )
-        mesh.r_grid = np.linspace(
+        r_grid = np.linspace(
             0,
             max_bounding_box_radius,
             num=dimension[0]+1
         )
-        mesh.phi_grid = np.linspace(
+        phi_grid = np.linspace(
             phi_grid_bounds[0],
             phi_grid_bounds[1],
             num=dimension[1]+1
         )
-        mesh.z_grid = np.linspace(
+        z_grid = np.linspace(
             cached_bb[0][2],
             cached_bb[1][2],
             num=dimension[2]+1
+        )
+        mesh = cls(
+            r_grid=r_grid, z_grid=z_grid, phi_grid=phi_grid, mesh_id=mesh_id, name=name
         )
 
         return mesh
@@ -1500,22 +1502,22 @@ class SphericalMesh(StructuredMesh):
 
     Parameters
     ----------
+    r_grid : numpy.ndarray
+        1-D array of mesh boundary points along the r-axis.
+        Requirement is r >= 0.
+    phi_grid : numpy.ndarray
+        1-D array of mesh boundary points along the phi-axis in radians.
+        The default value is [0, 2π], i.e. the full phi range.
+    theta_grid : numpy.ndarray
+        1-D array of mesh boundary points along the theta-axis in radians.
+        The default value is [0, π], i.e. the full theta range.
+    origin : numpy.ndarray
+        1-D array of length 3 the (x,y,z) origin of the mesh in
+        cartesian coordinates
     mesh_id : int
         Unique identifier for the mesh
     name : str
         Name of the mesh
-    r_grid : numpy.ndarray
-        1-D array of mesh boundary points along the r-axis.
-        Requirement is r >= 0.
-    theta_grid : numpy.ndarray
-        1-D array of mesh boundary points along the theta-axis in radians.
-        The default value is [0, π], i.e. the full theta range.
-    phi_grid : numpy.ndarray
-        1-D array of mesh boundary points along the phi-axis in radians.
-        The default value is [0, 2π], i.e. the full phi range.
-    origin : numpy.ndarray
-        1-D array of length 3 the (x,y,z) origin of the mesh in
-        cartesian coordinates
 
     Attributes
     ----------

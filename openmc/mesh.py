@@ -5,7 +5,7 @@ from collections.abc import Iterable
 from math import pi
 from numbers import Integral, Real
 from pathlib import Path
-from typing import Iterable, Optional, Sequence, Tuple
+from typing import Optional, Sequence, Tuple
 
 import h5py
 import lxml.etree as ET
@@ -14,7 +14,6 @@ import numpy as np
 import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
-
 from ._xml import get_text
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
@@ -527,7 +526,7 @@ class RegularMesh(StructuredMesh):
         return tuple(self._dimension)
 
     @dimension.setter
-    def dimension(self, dimension: Iterable[int]):
+    def dimension(self, dimension: typing.Iterable[int]):
         cv.check_type('mesh dimension', dimension, Iterable, Integral)
         cv.check_length('mesh dimension', dimension, 1, 3)
         self._dimension = dimension
@@ -544,7 +543,7 @@ class RegularMesh(StructuredMesh):
         return self._lower_left
 
     @lower_left.setter
-    def lower_left(self, lower_left: Iterable[Real]):
+    def lower_left(self, lower_left: typing.Iterable[Real]):
         cv.check_type('mesh lower_left', lower_left, Iterable, Real)
         cv.check_length('mesh lower_left', lower_left, 1, 3)
         self._lower_left = lower_left
@@ -564,7 +563,7 @@ class RegularMesh(StructuredMesh):
                 return [l + w * d for l, w, d in zip(ls, ws, dims)]
 
     @upper_right.setter
-    def upper_right(self, upper_right: Iterable[Real]):
+    def upper_right(self, upper_right: typing.Iterable[Real]):
         cv.check_type('mesh upper_right', upper_right, Iterable, Real)
         cv.check_length('mesh upper_right', upper_right, 1, 3)
         self._upper_right = upper_right
@@ -588,7 +587,7 @@ class RegularMesh(StructuredMesh):
                 return [(u - l) / d for u, l, d in zip(us, ls, dims)]
 
     @width.setter
-    def width(self, width: Iterable[Real]):
+    def width(self, width: typing.Iterable[Real]):
         cv.check_type('mesh width', width, Iterable, Real)
         cv.check_length('mesh width', width, 1, 3)
         self._width = width
@@ -1228,10 +1227,10 @@ class CylindricalMesh(StructuredMesh):
 
     def __init__(
         self,
-        origin: Tuple[float] = (0., 0., 0.),
-        r_grid: Sequence[float] = (0, 10),
+        r_grid: Sequence[float],
         phi_grid: Sequence[float] = (0, 2*pi),
         z_grid: Sequence[float] = (0, 10),
+        origin: Tuple[float] = (0., 0., 0.),
         mesh_id: int = None,
         name: str = '',
     ):
@@ -1549,10 +1548,10 @@ class SphericalMesh(StructuredMesh):
 
     def __init__(
         self,
-        origin: Tuple[float] = (0., 0., 0.),
-        r_grid: Sequence[float] = (0, 10),
+        r_grid: Sequence[float],
         phi_grid: Sequence[float] = (0, 2*pi),
         theta_grid: Sequence[float] = (0, pi),
+        origin: Tuple[float] = (0., 0., 0.),
         mesh_id: Optional[int] = None,
         name: str = '',
     ):

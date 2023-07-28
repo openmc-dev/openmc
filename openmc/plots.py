@@ -166,6 +166,11 @@ _SVG_COLORS = {
     'yellowgreen': (154, 205, 50)
 }
 
+_default_outline_kwargs = {
+    'colors': 'black',
+    'linestyles': 'solid',
+    'linewidths': 1
+}
 
 def plot_mesh_tally(
     tally: 'openmc.Tally',
@@ -177,12 +182,13 @@ def plot_mesh_tally(
     value: str = 'mean',
     outline: bool = False,
     outline_by: str = 'cell',
-    outline_color: str = 'black',
     pixels: int = 40000,
     geometry: Optional['openmc.Geometry'] = None,
     colorbar: bool = True,
     color_bar_title : str = None,
     volume_normalization: bool = True,
+    scaling_factor: Optional[float] = None,
+    outline_kwargs: dict = _default_outline_kwargs,
     **kwargs
 ) -> 'matplotlib.image.AxesImage':
     """Display a slice plot of the mesh tally score.
@@ -221,8 +227,11 @@ def plot_mesh_tally(
     color_bar_title : str
         The title to assign the color bar.
     volume_normalization : bool, optional
-        Whether or not to normalize the data by
-        the volume of the mesh elements.
+        Whether or not to normalize the data by the volume of the mesh elements.
+    scaling_factor : float
+        A optional multiplier to apply to the tally data prior to ploting.
+    outline_kwargs : dict
+        Keyword arguments passed to :func:`matplotlib.pyplot.contour`.
     **kwargs
         Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 
@@ -263,6 +272,12 @@ def plot_mesh_tally(
         oriented_data = np.rot90(slice_data, 1)
         xlabel, ylabel = f'x [{axis_units}]', f'y [{axis_units}]'
 
+    if volume_normalization:
+        # in a regular mesh all volumes are the same so we just divide by the first
+        oriented_data = oriented_data / mesh.volumes[0][0][0]
+    if scaling_factor:
+        oriented_data = oriented_data * scaling_factor
+
     axis_scaling_factor = {'km': 0.00001, 'm': 0.01, 'cm': 1, 'mm': 10}[axis_units]
 
     x_min, x_max, y_min, y_max = [i * axis_scaling_factor for i in mesh.bounding_box.extent[basis]]
@@ -271,7 +286,9 @@ def plot_mesh_tally(
         fig, axes = plt.subplots()
         axes.set_xlabel(xlabel)
         axes.set_ylabel(ylabel)
+
     im = axes.imshow(oriented_data, extent=(x_min, x_max, y_min, y_max), **kwargs)
+
     if colorbar:
         cbar = fig.colorbar(im)
         if color_bar_title is None:
@@ -316,12 +333,9 @@ def plot_mesh_tally(
         axes.contour(
             image_value,
             origin="upper",
-            colors=outline_color,
-            linestyles="solid",
-            linewidths=1,
             levels=np.unique(image_value),
             extent=(x_min, x_max, y_min, y_max),
-            **kwargs
+            **outline_kwargs
         )
 
     return axes

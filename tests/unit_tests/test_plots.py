@@ -240,6 +240,7 @@ surface = openmc.model.RectangularParallelepiped(
 cell1 = openmc.Cell(region=-surface1)
 cell2 = openmc.Cell(region=-surface&+surface1)
 cell1.fill = mat1
+cell2.fill = mat1
 geom = openmc.Geometry([cell1, cell2])
 
 source = openmc.IndependentSource()
@@ -270,7 +271,7 @@ tally_result = statepoint.get_tally(name='mesh-tal')
 plot = openmc.plot_mesh_tally(
     tally=tally_result,
     basis='xy',
-    slice_index=29  # max value of slice selected
+    # slice_index=29  # max value of slice selected
 )
 # axis_units defaults to cm
 # assert plot.xaxis.get_label().get_text() == 'x [cm]'
@@ -298,11 +299,11 @@ plot = openmc.plot_mesh_tally(
     # axis_units='mm',
     score='flux',
     value= 'mean',
-    # norm=LogNorm(vmin=0.1, vmax=100),
     outline=True,
     geometry=geom,
     outline_by='material',
-    color_bar_title='neutron flux'
+    color_bar_title='neutron flux',
+    norm=LogNorm(vmin=1e-6, vmax=max(tally_result.mean.flatten())),
 )
 # assert plot.xaxis.get_label().get_text() == 'x [mm]'
 # assert plot.yaxis.get_label().get_text() == 'z [mm]'

@@ -186,6 +186,9 @@ class MicroXS:
         self.nuclides = nuclides
         self.reactions = reactions
 
+    # TODO: Add a classmethod for generating MicroXS directly from cross section
+    # data using a known flux spectrum
+
     @classmethod
     def from_csv(cls, csv_file, **kwargs):
         """Load data from a comma-separated values (csv) file.

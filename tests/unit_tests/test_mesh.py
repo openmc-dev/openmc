@@ -2,7 +2,6 @@ from math import pi
 
 import numpy as np
 import pytest
-
 import openmc
 
 
@@ -41,7 +40,7 @@ def test_raises_error_when_flat(val_left, val_right):
 
 def test_mesh_bounding_box():
     mesh = openmc.RegularMesh()
-    mesh.lower_left = [-2, -3 ,-5]
+    mesh.lower_left = [-2, -3, -5]
     mesh.upper_right = [2, 3, 5]
     bb = mesh.bounding_box
     assert isinstance(bb, openmc.BoundingBox)
@@ -54,49 +53,50 @@ def test_SphericalMesh_initiation():
     # test defaults
     mesh = openmc.SphericalMesh()
     assert (mesh.origin == np.array([0, 0, 0])).all()
-    assert mesh.r_grid == None
+    assert mesh.r_grid == (0, 10)
     assert (mesh.theta_grid == np.array([0, pi])).all()
     assert (mesh.phi_grid == np.array([0, 2*pi])).all()
 
     # test setting on creation
     mesh = openmc.SphericalMesh(
         origin=(1, 2, 3),
-        r_grid=[0, 2],
-        theta_grid=[1, 3],
-        phi_grid=[2, 4]
+        r_grid=(0, 2),
+        theta_grid=(1, 3),
+        phi_grid=(2, 4)
     )
     assert (mesh.origin == np.array([1, 2, 3])).all()
-    assert (mesh.r_grid == np.array([0., 2.])).all()
-    assert (mesh.theta_grid == np.array([1, 3])).all()
-    assert (mesh.phi_grid == np.array([2, 4])).all()
+    assert mesh.r_grid == (0., 2.)
+    assert mesh.theta_grid == (1, 3)
+    assert mesh.phi_grid == (2, 4)
 
     # test attribute changing
-    mesh.r_grid = np.array([0, 10])
-    assert (mesh.r_grid == np.array([0., 10.])).all()
+    mesh.r_grid = (0, 11)
+    assert (mesh.r_grid == np.array([0., 11.])).all()
+
 
 def test_CylindricalMesh_initiation():
 
     # test defaults
     mesh = openmc.CylindricalMesh()
     assert (mesh.origin == np.array([0, 0, 0])).all()
-    assert mesh.r_grid == None
-    assert (mesh.phi_grid == np.array([0, 2*pi])).all()
-    assert mesh.z_grid == None
+    assert mesh.r_grid == (0, 10)
+    assert mesh.phi_grid == (0, 2*pi)
+    assert mesh.z_grid == (0, 10)
 
     # test setting on creation
     mesh = openmc.CylindricalMesh(
         origin=(1, 2, 3),
-        r_grid=[0, 2],
-        z_grid=[1, 3],
-        phi_grid=[2, 4]
+        r_grid=(0, 2),
+        z_grid=(1, 3),
+        phi_grid=(2, 4)
     )
     assert (mesh.origin == np.array([1, 2, 3])).all()
     assert (mesh.r_grid == np.array([0., 2.])).all()
-    assert (mesh.z_grid == np.array([1, 3])).all()
+    assert mesh.z_grid == (1, 3)
     assert (mesh.phi_grid == np.array([2, 4])).all()
 
     # test attribute changing
-    mesh.r_grid = np.array([0., 10.])
+    mesh.r_grid = (0., 10.)
     assert (mesh.r_grid == np.array([0, 10.])).all()
-    mesh.z_grid = np.array([0., 4.])
+    mesh.z_grid = (0., 4.)
     assert (mesh.z_grid == np.array([0, 4.])).all()

@@ -11,7 +11,6 @@ import lxml.etree as ET
 import numpy as np
 
 import openmc.checkvalue as cv
-
 from .._xml import get_text
 from ..mixin import EqualityMixin
 

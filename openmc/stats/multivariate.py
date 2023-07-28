@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
@@ -308,9 +310,9 @@ class CartesianIndependent(Spatial):
 
     def __init__(
         self,
-        x: 'openmc.stats.Univariate',
-        y: 'openmc.stats.Univariate',
-        z: 'openmc.stats.Univariate'
+        x: openmc.stats.Univariate,
+        y: openmc.stats.Univariate,
+        z: openmc.stats.Univariate
     ):
         self.x = x
         self.y = y

@@ -211,7 +211,7 @@ class Monodirectional(UnitSphere):
 
     """
 
-    def __init__(self, reference_uvw: typing.Sequence[float]=[1., 0., 0.]):
+    def __init__(self, reference_uvw: typing.Sequence[float] = [1., 0., 0.]):
         super().__init__(reference_uvw)
 
     def to_xml_element(self):
@@ -877,7 +877,7 @@ class Point(Spatial):
 
     """
 
-    def __init__(self, xyz: typing.Tuple[float]=(0., 0., 0.)):
+    def __init__(self, xyz: typing.Sequence[float] = (0., 0., 0.)):
         self.xyz = xyz
 
     @property

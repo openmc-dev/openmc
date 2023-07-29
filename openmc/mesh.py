@@ -1872,7 +1872,7 @@ class UnstructuredMesh(MeshBase):
         return self._volumes
 
     @volumes.setter
-    def volumes(self, volumes: Iterable[Real]):
+    def volumes(self, volumes: typing.Iterable[Real]):
         cv.check_type("Unstructured mesh volumes", volumes, Iterable, Real)
         self._volumes = volumes
 

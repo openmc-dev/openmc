@@ -224,6 +224,7 @@ def plot_mesh_tally(
         pixels in each basis direction is calculated from this total and
         the image aspect ratio.
     colorbar : bool
+        Whether or not to add a colorbar to the plot.
     color_bar_title : str
         The title to assign the color bar.
     volume_normalization : bool, optional
@@ -245,38 +246,47 @@ def plot_mesh_tally(
     import matplotlib.pyplot as plt
 
     cv.check_value('basis', basis, ['xy', 'xz', 'yz'])
+    cv.check_value('axis_units', axis_units, ['km', 'm', 'cm', 'mm'])
+    cv.check_type('volume_normalization', volume_normalization, bool)
+    cv.check_type('outline', outline, bool)
+
     mesh = tally.find_filter(filter_type=openmc.MeshFilter).mesh
     if not isinstance(mesh, openmc.RegularMesh):
         raise NotImplemented(f'Only RegularMesh are currently supported not {type(mesh)}')
 
     # if score is not specified and tally has a single score then we know which score to use
-    if score is None and len(tally.scores) == 1:
-        score = tally.scores[0]
+    if score is None:
+        if len(tally.scores) == 1:
+            score = tally.scores[0]
+        else:
+            msg = 'score was not specified and there are multiple scores in the tally.'
+            raise ValueError(msg)
 
-    data = tally.get_reshaped_data(expand_dims=True, value=value).squeeze()
+    tally_data = tally.get_reshaped_data(expand_dims=True, value=value).squeeze()
 
     if slice_index is None:
         basis_to_index = {'xy': 2, 'xz': 1, 'yz': 0}[basis]
-        slice_index = int(data.shape[basis_to_index]/2)
+        slice_index = int(tally_data.shape[basis_to_index]/2)
 
     if basis == 'xz':
-        slice_data = data[:, slice_index, :]
-        oriented_data = np.flip(np.rot90(slice_data, -1))
+        slice_data = tally_data[:, slice_index, :]
+        data = np.flip(np.rot90(slice_data, -1))
         xlabel, ylabel = f'x [{axis_units}]', f'z [{axis_units}]'
     elif basis == 'yz':
-        slice_data = data[slice_index, :, :]
-        oriented_data = np.flip(np.rot90(slice_data, -1))
+        slice_data = tally_data[slice_index, :, :]
+        data = np.flip(np.rot90(slice_data, -1))
         xlabel, ylabel = f'y [{axis_units}]', f'z [{axis_units}]'
     else:  # basis == 'xy'
-        slice_data = data[:, :, slice_index]
-        oriented_data = np.rot90(slice_data, 1)
+        slice_data = tally_data[:, :, slice_index]
+        data = np.rot90(slice_data, -3)
         xlabel, ylabel = f'x [{axis_units}]', f'y [{axis_units}]'
 
     if volume_normalization:
         # in a regular mesh all volumes are the same so we just divide by the first
-        oriented_data = oriented_data / mesh.volumes[0][0][0]
+        data = data / mesh.volumes[0][0][0]
+
     if scaling_factor:
-        oriented_data = oriented_data * scaling_factor
+        data = data * scaling_factor
 
     axis_scaling_factor = {'km': 0.00001, 'm': 0.01, 'cm': 1, 'mm': 10}[axis_units]
 
@@ -287,7 +297,7 @@ def plot_mesh_tally(
         axes.set_xlabel(xlabel)
         axes.set_ylabel(ylabel)
 
-    im = axes.imshow(oriented_data, extent=(x_min, x_max, y_min, y_max), **kwargs)
+    im = axes.imshow(data, extent=(x_min, x_max, y_min, y_max), **kwargs)
 
     if colorbar:
         cbar = fig.colorbar(im)
@@ -328,6 +338,13 @@ def plot_mesh_tally(
         rgb = (img * 256).astype(int)
         image_value = (rgb[..., 0] << 16) + \
             (rgb[..., 1] << 8) + (rgb[..., 2])
+
+        if basis == 'xz':
+            image_value = np.flip(np.rot90(image_value, -1))
+        elif basis == 'yz':
+            image_value = np.flip(np.rot90(image_value, -1))
+        else:  # basis == 'xy'
+            image_value = np.rot90(image_value, 2)
 
         # Plot image and return the axes
         axes.contour(

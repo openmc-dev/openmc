@@ -598,7 +598,7 @@ class RegularMesh(StructuredMesh):
 
     @property
     def cartesian_vertices(self):
-        """Returns vertices in cartesian coordiantes. Identical to ``vertices`` for RegularMesh and RectilinearMesh
+        """Returns vertices in cartesian coordinates. Identical to ``vertices`` for RegularMesh and RectilinearMesh
         """
         return self.vertices
 
@@ -726,7 +726,7 @@ class RegularMesh(StructuredMesh):
         shape = np.array(lattice.shape)
         width = lattice.pitch*shape
 
-        mesh = cls(mesh_id, name)
+        mesh = cls(mesh_id=mesh_id, name=name)
         mesh.lower_left = lattice.lower_left
         mesh.upper_right = lattice.lower_left + width
         mesh.dimension = shape*division
@@ -1231,7 +1231,7 @@ class CylindricalMesh(StructuredMesh):
         z_grid: Sequence[float],
         phi_grid: Sequence[float] = (0, 2*pi),
         origin: Tuple[float] = (0., 0., 0.),
-        mesh_id: int = None,
+        mesh_id: Optional[int] = None,
         name: str = '',
     ):
         super().__init__(mesh_id, name)
@@ -1329,10 +1329,12 @@ class CylindricalMesh(StructuredMesh):
         mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
 
         # Read and assign mesh properties
-        mesh = cls(mesh_id=mesh_id)
-        mesh.r_grid = group['r_grid'][()]
-        mesh.phi_grid = group['phi_grid'][()]
-        mesh.z_grid = group['z_grid'][()]
+        mesh = cls(
+            mesh_id=mesh_id,
+            r_grid = group['r_grid'][()],
+            phi_grid = group['phi_grid'][()],
+            z_grid = group['z_grid'][()],
+        )
         if 'origin' in group:
             mesh.origin = group['origin'][()]
 
@@ -1455,11 +1457,13 @@ class CylindricalMesh(StructuredMesh):
         """
 
         mesh_id = int(get_text(elem, 'id'))
-        mesh = cls(mesh_id=mesh_id)
-        mesh.r_grid = [float(x) for x in get_text(elem, "r_grid").split()]
-        mesh.phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()]
-        mesh.z_grid = [float(x) for x in get_text(elem, "z_grid").split()]
-        mesh.origin = [float(x) for x in get_text(elem, "origin", default=[0., 0., 0.]).split()]
+        mesh = cls(
+            r_grid = [float(x) for x in get_text(elem, "r_grid").split()],
+            phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()],
+            z_grid = [float(x) for x in get_text(elem, "z_grid").split()],
+            origin = [float(x) for x in get_text(elem, "origin", default=[0., 0., 0.]).split()],
+            mesh_id=mesh_id,
+        )
 
         return mesh
 
@@ -1553,7 +1557,7 @@ class SphericalMesh(StructuredMesh):
         r_grid: Sequence[float],
         phi_grid: Sequence[float] = (0, 2*pi),
         theta_grid: Sequence[float] = (0, pi),
-        origin: Tuple[float] = (0., 0., 0.),
+        origin: Sequence[float] = (0., 0., 0.),
         mesh_id: Optional[int] = None,
         name: str = '',
     ):
@@ -1652,10 +1656,12 @@ class SphericalMesh(StructuredMesh):
         mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
 
         # Read and assign mesh properties
-        mesh = cls(mesh_id=mesh_id)
-        mesh.r_grid = group['r_grid'][()]
-        mesh.theta_grid = group['theta_grid'][()]
-        mesh.phi_grid = group['phi_grid'][()]
+        mesh = cls(
+            r_grid = group['r_grid'][()],
+            theta_grid = group['theta_grid'][()],
+            phi_grid = group['phi_grid'][()],
+            mesh_id=mesh_id,
+        )
         if 'origin' in group:
             mesh.origin = group['origin'][()]
 
@@ -1705,11 +1711,13 @@ class SphericalMesh(StructuredMesh):
 
         """
         mesh_id = int(get_text(elem, 'id'))
-        mesh = cls(mesh_id=mesh_id)
-        mesh.r_grid = [float(x) for x in get_text(elem, "r_grid").split()]
-        mesh.theta_grid = [float(x) for x in get_text(elem, "theta_grid").split()]
-        mesh.phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()]
-        mesh.origin = [float(x) for x in get_text(elem, "origin", default=[0., 0., 0.]).split()]
+        mesh = cls(
+            mesh_id=mesh_id,
+            r_grid = [float(x) for x in get_text(elem, "r_grid").split()],
+            theta_grid = [float(x) for x in get_text(elem, "theta_grid").split()],
+            phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()],
+            origin = [float(x) for x in get_text(elem, "origin", default=[0., 0., 0.]).split()],
+        )
 
         return mesh
 

@@ -799,8 +799,8 @@ class Tabular(Univariate):
 
     def __init__(
             self,
-            x: np.ndarray,
-            p: np.ndarray,
+            x: typing.Sequence[float],
+            p: typing.Sequence[float],
             interpolation: str = 'linear-linear',
             ignore_negative: bool = False
         ):

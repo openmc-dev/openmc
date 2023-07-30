@@ -51,7 +51,7 @@ def test_mesh_bounding_box():
 def test_SphericalMesh_initiation():
 
     # test defaults
-    mesh = openmc.SphericalMesh(r_grid = (0, 10))
+    mesh = openmc.SphericalMesh(r_grid=(0, 10))
     assert (mesh.origin == np.array([0, 0, 0])).all()
     assert mesh.r_grid == (0, 10)
     assert (mesh.theta_grid == np.array([0, pi])).all()
@@ -77,7 +77,7 @@ def test_SphericalMesh_initiation():
 def test_CylindricalMesh_initiation():
 
     # test defaults
-    mesh = openmc.CylindricalMesh(r_grid = (0, 10), z_grid = (0, 10))
+    mesh = openmc.CylindricalMesh(r_grid=(0, 10), z_grid=(0, 10))
     assert (mesh.origin == np.array([0, 0, 0])).all()
     assert mesh.r_grid == (0, 10)
     assert mesh.phi_grid == (0, 2*pi)

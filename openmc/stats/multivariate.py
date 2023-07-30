@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 import typing
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
@@ -10,7 +9,6 @@ import lxml.etree as ET
 import numpy as np
 
 import openmc.checkvalue as cv
-
 from .._xml import get_text
 from ..mesh import MeshBase
 from .univariate import PowerLaw, Uniform, Univariate

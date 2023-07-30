@@ -78,8 +78,8 @@ def test_cylindrical_mesh_estimators(run_in_tmpdir):
     model.settings.batches = 20
 
     cyl_mesh = openmc.CylindricalMesh(
-        r_grid = np.linspace(0.0, 5.0**3, 20)**(1/3),
-        z_grid = [-5., 5.]
+        r_grid=np.linspace(0.0, 5.0**3, 20)**(1/3),
+        z_grid=[-5., 5.]
     )
     tally1 = openmc.Tally()
     tally1.filters = [openmc.MeshFilter(cyl_mesh)]
@@ -87,8 +87,8 @@ def test_cylindrical_mesh_estimators(run_in_tmpdir):
     tally1.estimator = 'collision'
 
     cyl_mesh = openmc.CylindricalMesh(
-        r_grid = np.linspace(0.0, 5.0**3, 20)**(1/3),
-        z_grid = [-5., 5.]
+        r_grid=np.linspace(0.0, 5.0**3, 20)**(1/3),
+        z_grid=[-5., 5.]
     )
     tally2 = openmc.Tally()
     tally2.filters = [openmc.MeshFilter(cyl_mesh)]
@@ -138,9 +138,9 @@ def test_cylindrical_mesh_coincident(scale, run_in_tmpdir):
     model.settings.inactive = 0
 
     cyl_mesh = openmc.CylindricalMesh(
-        r_grid = [0., 1.25*scale],
-        phi_grid = [0., 2*math.pi],
-        z_grid = [-1e10, 1e10]
+        r_grid=[0., 1.25*scale],
+        phi_grid=[0., 2*math.pi],
+        z_grid=[-1e10, 1e10]
     )
     cyl_mesh_filter = openmc.MeshFilter(cyl_mesh)
     cell_filter = openmc.CellFilter([cell1])

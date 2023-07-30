@@ -1230,7 +1230,7 @@ class CylindricalMesh(StructuredMesh):
         r_grid: Sequence[float],
         z_grid: Sequence[float],
         phi_grid: Sequence[float] = (0, 2*pi),
-        origin: Tuple[float] = (0., 0., 0.),
+        origin: Sequence[float] = (0., 0., 0.),
         mesh_id: Optional[int] = None,
         name: str = '',
     ):

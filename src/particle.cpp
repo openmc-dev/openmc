@@ -106,17 +106,7 @@ void Particle::from_source(const SourceSite* src)
   wgt_last() = src->wgt;
   r() = src->r;
   u() = src->u;
-  r_last_current() = src->r;
-  r_last() = src->r;
-  u_last() = src->u;
-  if (settings::run_CE) {
-    E() = src->E;
-    g() = 0;
-  } else {
-    g() = static_cast<int>(src->E);
-    g_last() = static_cast<int>(src->E);
-    E() = data::mg.energy_bin_avg_[g()];
-  }
+  r_last_current() = src;
   E_last() = E();
   time() = src->time;
   time_last() = src->time;
@@ -205,16 +195,22 @@ void Particle::event_advance()
   double distance = std::min(boundary().distance, collision_distance());
 
   // Advance particle in space and time
-  this->move_distance(distance);
+  // Short-term solution until the surface source is revised and we can use
+  // this->move_distance(distance)
+  for (int j = 0; j < n_coord(); ++j) {
+    coord(j).r += distance * coord(j).u;
+  }
   this->time() += distance / this->speed();
 
   // Kill particle if its time exceeds the cutoff
   bool hit_time_boundary = false;
-  if (time() > settings::time_cutoff[static_cast<int>(type())]) {
-    double time_dif = time() - settings::time_cutoff[static_cast<int>(type())];
-    time() = settings::time_cutoff[static_cast<int>(type())];
+  double time_cutoff =
+    settings::time_cutoff[static_cast<int>(type())] if (time() > time_cutoff)
+  {
+    double dt = time() - time_cutoff;
+    time() = time_cutoff;
 
-    double push_back_distance = speed() * time_dif;
+    double push_back_distance = speed() * dt;
     this->move_distance(-push_back_distance);
     hit_time_boundary = true;
   }
@@ -454,7 +450,9 @@ void Particle::cross_surface()
 #ifdef DAGMC
   // in DAGMC, we know what the next cell should be
   if (surf->geom_type_ == GeometryType::DAG) {
-    int32_t i_cell = next_cell(i_surface, cell_last(n_coord() - 1), lowest_coord().universe) - 1;
+    int32_t i_cell =
+      next_cell(i_surface, cell_last(n_coord() - 1), lowest_coord().universe) -
+      1;
     // save material and temp
     material_last() = material();
     sqrtkT_last() = sqrtkT();

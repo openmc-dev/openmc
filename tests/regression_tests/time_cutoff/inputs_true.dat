@@ -3,10 +3,8 @@
   <materials>
   </materials>
   <geometry>
-    <cell id="1" material="void" name="inner sphere" region="-1" universe="0"/>
-    <cell id="2" material="void" name="outer sphere" region="1 -2" universe="0"/>
-    <surface coeffs="0.0 0.0 0.0 100" id="1" type="sphere"/>
-    <surface boundary="vacuum" coeffs="0.0 0.0 0.0 200" id="2" type="sphere"/>
+    <cell id="1" material="void" region="-1" universe="1" />
+    <surface boundary="vacuum" coeffs="0.0 0.0 0.0 200" id="1" type="sphere" />
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
@@ -25,8 +23,8 @@
     </cutoff>
   </settings>
   <tallies>
-    <filter id="1" type="cell">
-      <bins>2</bins>
+    <filter id="1" type="time">
+      <bins>0.0 1e-07 2e-07</bins>
     </filter>
     <tally id="1">
       <filters>1</filters>

@@ -2,20 +2,20 @@
 <model>
   <materials>
     <material depletable="true" id="1">
-      <density units="g/cc" value="7.5" />
-      <nuclide ao="1.0" name="O16" />
-      <nuclide ao="0.0001" name="U238" />
+      <density units="g/cc" value="7.5"/>
+      <nuclide ao="1.0" name="O16"/>
+      <nuclide ao="0.0001" name="U238"/>
     </material>
   </materials>
   <geometry>
-    <cell id="1" material="1" region="-1" universe="1" />
-    <surface boundary="vacuum" coeffs="0.0 0.0 0.0 10.0" id="1" type="sphere" />
+    <cell id="1" material="1" region="-1" universe="1"/>
+    <surface boundary="vacuum" coeffs="0.0 0.0 0.0 10.0" id="1" type="sphere"/>
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
     <particles>100</particles>
     <batches>10</batches>
-    <source strength="10.0">
+    <source particle="neutron" strength="10.0" type="independent">
       <space type="point">
         <parameters>0.0 0.0 0.0</parameters>
       </space>

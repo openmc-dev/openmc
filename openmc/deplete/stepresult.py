@@ -4,15 +4,17 @@ Contains capabilities for generating and saving results of a single depletion
 timestep.
 """
 
-from collections import OrderedDict
 import copy
 import warnings
+from collections import OrderedDict
+from pathlib import Path
 
 import h5py
 import numpy as np
 
 import openmc
 from openmc.mpi import comm, MPI
+from openmc.checkvalue import PathLike
 from .reaction_rates import ReactionRates
 
 VERSION_RESULTS = (1, 1)
@@ -495,7 +497,8 @@ class StepResult:
         return results
 
     @staticmethod
-    def save(op, x, op_results, t, source_rate, step_ind, proc_time=None):
+    def save(op, x, op_results, t, source_rate, step_ind, proc_time=None,
+             path: PathLike = "depletion_results.h5"):
         """Creates and writes depletion results to disk
 
         Parameters
@@ -517,6 +520,10 @@ class StepResult:
             be process-dependent and will be reduced across MPI
             processes.
 
+        path : PathLike
+            Path to file to write. Defaults to 'depletion_results.h5'.
+
+            .. versionadded:: 0.13.4
         """
         # Get indexing terms
         vol_dict, nuc_list, burn_list, full_burn_list = op.get_results_info()
@@ -547,7 +554,9 @@ class StepResult:
         if results.proc_time is not None:
             results.proc_time = comm.reduce(proc_time, op=MPI.SUM)
 
-        results.export_to_hdf5("depletion_results.h5", step_ind)
+        if not Path(path).is_file():
+            Path(path).parent.mkdir(parents=True, exist_ok=True)
+        results.export_to_hdf5(path, step_ind)
 
     def transfer_volumes(self, model):
         """Transfers volumes from depletion results to geometry

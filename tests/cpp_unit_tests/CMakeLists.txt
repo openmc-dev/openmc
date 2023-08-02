@@ -1,6 +1,7 @@
 set(TEST_NAMES
   test_distribution
   test_file_utils
+  test_tally
   # Add additional unit test files here
 )
 

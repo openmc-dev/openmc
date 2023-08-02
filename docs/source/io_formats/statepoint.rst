@@ -4,7 +4,7 @@
 State Point File Format
 =======================
 
-The current version of the statepoint file format is 17.0.
+The current version of the statepoint file format is 18.1.
 
 **/**
 
@@ -67,6 +67,8 @@ The current version of the statepoint file format is 17.0.
 
 :Attributes: - **n_meshes** (*int*) -- Number of meshes in the problem.
              - **ids** (*int[]*) -- User-defined unique ID of each mesh.
+
+.. _mesh-spec-hdf5:
 
 **/tallies/meshes/mesh <uid>/**
 
@@ -139,6 +141,8 @@ The current version of the statepoint file format is 17.0.
              - **internal** (*int*) -- Flag indicating the presence of tally
                data (0) or absence of tally data (1). All user defined
                tallies will have a value of 0 unless otherwise instructed.
+             - **multiply_density** (*int*) -- Flag indicating whether reaction
+               rates should be multiplied by atom density (1) or not (0).
 
 :Datasets: - **n_realizations** (*int*) -- Number of realizations.
            - **n_filters** (*int*) -- Number of filters used.

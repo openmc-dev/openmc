@@ -33,6 +33,7 @@ constexpr array<int, 2> VERSION_VOLUME {1, 0};
 constexpr array<int, 2> VERSION_VOXEL {2, 0};
 constexpr array<int, 2> VERSION_MGXS_LIBRARY {1, 0};
 constexpr array<int, 2> VERSION_PROPERTIES {1, 0};
+constexpr array<int, 2> VERSION_WEIGHT_WINDOWS {1, 0};
 
 // ============================================================================
 // ADJUSTABLE PARAMETERS
@@ -276,9 +277,9 @@ enum class MgxsType {
 // ============================================================================
 // TALLY-RELATED CONSTANTS
 
-enum class TallyResult { VALUE, SUM, SUM_SQ };
+enum class TallyResult { VALUE, SUM, SUM_SQ, SIZE };
 
-enum class TallyType { VOLUME, MESH_SURFACE, SURFACE };
+enum class TallyType { VOLUME, MESH_SURFACE, SURFACE, PULSE_HEIGHT };
 
 enum class TallyEstimator { ANALOG, TRACKLENGTH, COLLISION };
 
@@ -306,7 +307,8 @@ enum TallyScore {
   SCORE_INVERSE_VELOCITY = -13,   // flux-weighted inverse velocity
   SCORE_FISS_Q_PROMPT = -14,      // prompt fission Q-value
   SCORE_FISS_Q_RECOV = -15,       // recoverable fission Q-value
-  SCORE_DECAY_RATE = -16          // delayed neutron precursor decay rate
+  SCORE_DECAY_RATE = -16,         // delayed neutron precursor decay rate
+  SCORE_PULSE_HEIGHT = -17        // pulse-height
 };
 
 // Global tally parameters

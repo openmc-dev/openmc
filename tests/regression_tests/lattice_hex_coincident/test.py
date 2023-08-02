@@ -132,7 +132,7 @@ class HexLatticeCoincidentTestHarness(PyAPITestHarness):
         settings = openmc.Settings()
         settings.run_mode = 'eigenvalue'
 
-        source = openmc.Source()
+        source = openmc.IndependentSource()
         corner_dist = sqrt(2) * pin_rad
         ll = [-corner_dist, -corner_dist, 0.0]
         ur = [corner_dist, corner_dist, 10.0]

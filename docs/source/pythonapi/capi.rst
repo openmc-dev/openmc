@@ -15,6 +15,8 @@ Functions
    calculate_volumes
    current_batch
    export_properties
+   export_weight_windows
+   import_weight_windows
    finalize
    find_cell
    find_material

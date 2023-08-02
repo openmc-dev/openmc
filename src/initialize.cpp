@@ -33,6 +33,7 @@
 #include "openmc/thermal.h"
 #include "openmc/timer.h"
 #include "openmc/vector.h"
+#include "openmc/weight_windows.h"
 
 #ifdef LIBMESH
 #include "libmesh/libmesh.h"
@@ -404,6 +405,8 @@ bool read_model_xml()
     }
   }
 
+  finalize_variance_reduction();
+
   return true;
 }
 
@@ -427,6 +430,8 @@ void read_separate_xml_files()
   // Read the plots.xml regardless of plot mode in case plots are requested
   // via the API
   read_plots_xml();
+
+  finalize_variance_reduction();
 }
 
 void initial_output()

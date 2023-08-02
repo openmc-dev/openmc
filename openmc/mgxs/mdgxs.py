@@ -187,13 +187,6 @@ class MDGXS(MGXS):
     def delayed_groups(self):
         return self._delayed_groups
 
-    @property
-    def num_delayed_groups(self):
-        if self.delayed_groups is None:
-            return 1
-        else:
-            return len(self.delayed_groups)
-
     @delayed_groups.setter
     def delayed_groups(self, delayed_groups):
 
@@ -209,6 +202,13 @@ class MDGXS(MGXS):
                                    equality=True)
 
         self._delayed_groups = delayed_groups
+
+    @property
+    def num_delayed_groups(self):
+        if self.delayed_groups is None:
+            return 1
+        else:
+            return len(self.delayed_groups)
 
     @property
     def filters(self):

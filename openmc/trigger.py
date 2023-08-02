@@ -1,6 +1,6 @@
 from collections.abc import Iterable
 from numbers import Real
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 
 import openmc.checkvalue as cv
 from .mixin import EqualityMixin
@@ -45,24 +45,24 @@ class Trigger(EqualityMixin):
     def trigger_type(self):
         return self._trigger_type
 
-    @property
-    def threshold(self):
-        return self._threshold
-
-    @property
-    def scores(self):
-        return self._scores
-
     @trigger_type.setter
     def trigger_type(self, trigger_type):
         cv.check_value('tally trigger type', trigger_type,
                        ['variance', 'std_dev', 'rel_err'])
         self._trigger_type = trigger_type
 
+    @property
+    def threshold(self):
+        return self._threshold
+
     @threshold.setter
     def threshold(self, threshold):
         cv.check_type('tally trigger threshold', threshold, Real)
         self._threshold = threshold
+
+    @property
+    def scores(self):
+        return self._scores
 
     @scores.setter
     def scores(self, scores):
@@ -79,7 +79,7 @@ class Trigger(EqualityMixin):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing trigger data
 
         """
@@ -97,7 +97,7 @@ class Trigger(EqualityMixin):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns

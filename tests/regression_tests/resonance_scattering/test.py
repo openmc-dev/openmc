@@ -35,7 +35,7 @@ class ResonanceScatteringTestHarness(PyAPITestHarness):
         settings.batches = 10
         settings.inactive = 5
         settings.particles = 1000
-        settings.source = openmc.source.Source(
+        settings.source = openmc.IndependentSource(
              space=openmc.stats.Box([-4, -4, -4], [4, 4, 4]))
         settings.resonance_scattering = res_scat_settings
         self._model.settings = settings

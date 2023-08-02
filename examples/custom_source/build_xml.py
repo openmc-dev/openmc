@@ -18,7 +18,7 @@ settings = openmc.Settings()
 settings.run_mode = 'fixed source'
 settings.batches = 10
 settings.particles = 1000
-source = openmc.Source()
+source = openmc.CompiledSource()
 source.library = 'build/libsource.so'
 settings.source = source
 settings.export_to_xml()

@@ -1,7 +1,7 @@
 from collections import OrderedDict
 from collections.abc import Iterable, Mapping
 from numbers import Real, Integral
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 import warnings
 
 import numpy as np
@@ -126,29 +126,74 @@ class VolumeCalculation:
     def ids(self):
         return self._ids
 
+    @ids.setter
+    def ids(self, ids):
+        cv.check_type('domain IDs', ids, Iterable, Real)
+        self._ids = ids
+
     @property
     def samples(self):
         return self._samples
+
+    @samples.setter
+    def samples(self, samples):
+        cv.check_type('number of samples', samples, Integral)
+        cv.check_greater_than('number of samples', samples, 0)
+        self._samples = samples
 
     @property
     def lower_left(self):
         return self._lower_left
 
+    @lower_left.setter
+    def lower_left(self, lower_left):
+        name = 'lower-left bounding box coordinates',
+        cv.check_type(name, lower_left, Iterable, Real)
+        cv.check_length(name, lower_left, 3)
+        self._lower_left = lower_left
+
     @property
     def upper_right(self):
         return self._upper_right
+
+    @upper_right.setter
+    def upper_right(self, upper_right):
+        name = 'upper-right bounding box coordinates'
+        cv.check_type(name, upper_right, Iterable, Real)
+        cv.check_length(name, upper_right, 3)
+        self._upper_right = upper_right
 
     @property
     def threshold(self):
         return self._threshold
 
+    @threshold.setter
+    def threshold(self, threshold):
+        name = 'volume std. dev. threshold'
+        cv.check_type(name, threshold, Real)
+        cv.check_greater_than(name, threshold, 0.0)
+        self._threshold = threshold
+
     @property
     def trigger_type(self):
         return self._trigger_type
 
+    @trigger_type.setter
+    def trigger_type(self, trigger_type):
+        cv.check_value('tally trigger type', trigger_type,
+                       ('variance', 'std_dev', 'rel_err'))
+        self._trigger_type = trigger_type
+
     @property
     def iterations(self):
         return self._iterations
+
+    @iterations.setter
+    def iterations(self, iterations):
+        name = 'volume calculation iterations'
+        cv.check_type(name, iterations, Integral)
+        cv.check_greater_than(name, iterations, 0)
+        self._iterations = iterations
 
     @property
     def domain_type(self):
@@ -158,9 +203,19 @@ class VolumeCalculation:
     def atoms(self):
         return self._atoms
 
+    @atoms.setter
+    def atoms(self, atoms):
+        cv.check_type('atoms', atoms, Mapping)
+        self._atoms = atoms
+
     @property
     def volumes(self):
         return self._volumes
+
+    @volumes.setter
+    def volumes(self, volumes):
+        cv.check_type('volumes', volumes, Mapping)
+        self._volumes = volumes
 
     @property
     def atoms_dataframe(self):
@@ -171,61 +226,6 @@ class VolumeCalculation:
                 items.append((uid, name, atoms))
 
         return pd.DataFrame.from_records(items, columns=columns)
-
-    @ids.setter
-    def ids(self, ids):
-        cv.check_type('domain IDs', ids, Iterable, Real)
-        self._ids = ids
-
-    @samples.setter
-    def samples(self, samples):
-        cv.check_type('number of samples', samples, Integral)
-        cv.check_greater_than('number of samples', samples, 0)
-        self._samples = samples
-
-    @lower_left.setter
-    def lower_left(self, lower_left):
-        name = 'lower-left bounding box coordinates',
-        cv.check_type(name, lower_left, Iterable, Real)
-        cv.check_length(name, lower_left, 3)
-        self._lower_left = lower_left
-
-    @upper_right.setter
-    def upper_right(self, upper_right):
-        name = 'upper-right bounding box coordinates'
-        cv.check_type(name, upper_right, Iterable, Real)
-        cv.check_length(name, upper_right, 3)
-        self._upper_right = upper_right
-
-    @threshold.setter
-    def threshold(self, threshold):
-        name = 'volume std. dev. threshold'
-        cv.check_type(name, threshold, Real)
-        cv.check_greater_than(name, threshold, 0.0)
-        self._threshold = threshold
-
-    @trigger_type.setter
-    def trigger_type(self, trigger_type):
-        cv.check_value('tally trigger type', trigger_type,
-                       ('variance', 'std_dev', 'rel_err'))
-        self._trigger_type = trigger_type
-
-    @iterations.setter
-    def iterations(self, iterations):
-        name = 'volume calculation iterations'
-        cv.check_type(name, iterations, Integral)
-        cv.check_greater_than(name, iterations, 0)
-        self._iterations = iterations
-
-    @volumes.setter
-    def volumes(self, volumes):
-        cv.check_type('volumes', volumes, Mapping)
-        self._volumes = volumes
-
-    @atoms.setter
-    def atoms(self, atoms):
-        cv.check_type('atoms', atoms, Mapping)
-        self._atoms = atoms
 
     def set_trigger(self, threshold, trigger_type):
         """Set a trigger on the volume calculation
@@ -333,7 +333,7 @@ class VolumeCalculation:
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing volume calculation data
 
         """
@@ -362,7 +362,7 @@ class VolumeCalculation:
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns

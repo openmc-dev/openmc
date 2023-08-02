@@ -326,10 +326,10 @@ SourceSite FileSource::sample(uint64_t* seed) const
 }
 
 //==============================================================================
-// CustomSourceWrapper implementation
+// CompiledSourceWrapper implementation
 //==============================================================================
 
-CustomSourceWrapper::CustomSourceWrapper(
+CompiledSourceWrapper::CompiledSourceWrapper(
   std::string path, std::string parameters)
 {
 #ifdef HAS_DYNAMIC_LINKING
@@ -343,7 +343,7 @@ CustomSourceWrapper::CustomSourceWrapper(
   dlerror();
 
   // get the function to create the custom source from the library
-  auto create_custom_source = reinterpret_cast<create_custom_source_t*>(
+  auto create_compiled_source = reinterpret_cast<create_compiled_source_t*>(
     dlsym(shared_library_, "openmc_create_source"));
 
   // check for any dlsym errors
@@ -356,7 +356,7 @@ CustomSourceWrapper::CustomSourceWrapper(
   }
 
   // create a pointer to an instance of the custom source
-  custom_source_ = create_custom_source(parameters);
+  compiled_source_ = create_compiled_source(parameters);
 
 #else
   fatal_error("Custom source libraries have not yet been implemented for "
@@ -364,11 +364,11 @@ CustomSourceWrapper::CustomSourceWrapper(
 #endif
 }
 
-CustomSourceWrapper::~CustomSourceWrapper()
+CompiledSourceWrapper::~CompiledSourceWrapper()
 {
   // Make sure custom source is cleared before closing shared library
-  if (custom_source_.get())
-    custom_source_.reset();
+  if (compiled_source_.get())
+    compiled_source_.reset();
 
 #ifdef HAS_DYNAMIC_LINKING
   dlclose(shared_library_);

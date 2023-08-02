@@ -7,7 +7,7 @@ from pathlib import Path
 from numbers import Integral
 from tempfile import NamedTemporaryFile
 import warnings
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 from typing import Optional, Dict
 
 import h5py
@@ -16,7 +16,7 @@ import openmc
 import openmc._xml as xml
 from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
-from openmc.checkvalue import check_type, check_value
+from openmc.checkvalue import check_type, check_value, PathLike
 from openmc.exceptions import InvalidIDError
 
 
@@ -24,7 +24,7 @@ from openmc.exceptions import InvalidIDError
 def _change_directory(working_dir):
     """A context manager for executing in a provided working directory"""
     start_dir = Path.cwd()
-    Path.mkdir(working_dir, exist_ok=True)
+    Path.mkdir(working_dir, parents=True, exist_ok=True)
     os.chdir(working_dir)
     try:
         yield
@@ -98,21 +98,61 @@ class Model:
     def geometry(self) -> Optional[openmc.Geometry]:
         return self._geometry
 
+    @geometry.setter
+    def geometry(self, geometry):
+        check_type('geometry', geometry, openmc.Geometry)
+        self._geometry = geometry
+
     @property
     def materials(self) -> Optional[openmc.Materials]:
         return self._materials
+
+    @materials.setter
+    def materials(self, materials):
+        check_type('materials', materials, Iterable, openmc.Material)
+        if isinstance(materials, openmc.Materials):
+            self._materials = materials
+        else:
+            del self._materials[:]
+            for mat in materials:
+                self._materials.append(mat)
 
     @property
     def settings(self) -> Optional[openmc.Settings]:
         return self._settings
 
+    @settings.setter
+    def settings(self, settings):
+        check_type('settings', settings, openmc.Settings)
+        self._settings = settings
+
     @property
     def tallies(self) -> Optional[openmc.Tallies]:
         return self._tallies
 
+    @tallies.setter
+    def tallies(self, tallies):
+        check_type('tallies', tallies, Iterable, openmc.Tally)
+        if isinstance(tallies, openmc.Tallies):
+            self._tallies = tallies
+        else:
+            del self._tallies[:]
+            for tally in tallies:
+                self._tallies.append(tally)
+
     @property
     def plots(self) -> Optional[openmc.Plots]:
         return self._plots
+
+    @plots.setter
+    def plots(self, plots):
+        check_type('plots', plots, Iterable, openmc.Plot)
+        if isinstance(plots, openmc.Plots):
+            self._plots = plots
+        else:
+            del self._plots[:]
+            for plot in plots:
+                self._plots.append(plot)
 
     @property
     def is_initialized(self) -> bool:
@@ -165,46 +205,6 @@ class Model:
                 result[mat.name] = set()
             result[mat.name].add(mat)
         return result
-
-    @geometry.setter
-    def geometry(self, geometry):
-        check_type('geometry', geometry, openmc.Geometry)
-        self._geometry = geometry
-
-    @materials.setter
-    def materials(self, materials):
-        check_type('materials', materials, Iterable, openmc.Material)
-        if isinstance(materials, openmc.Materials):
-            self._materials = materials
-        else:
-            del self._materials[:]
-            for mat in materials:
-                self._materials.append(mat)
-
-    @settings.setter
-    def settings(self, settings):
-        check_type('settings', settings, openmc.Settings)
-        self._settings = settings
-
-    @tallies.setter
-    def tallies(self, tallies):
-        check_type('tallies', tallies, Iterable, openmc.Tally)
-        if isinstance(tallies, openmc.Tallies):
-            self._tallies = tallies
-        else:
-            del self._tallies[:]
-            for tally in tallies:
-                self._tallies.append(tally)
-
-    @plots.setter
-    def plots(self, plots):
-        check_type('plots', plots, Iterable, openmc.Plot)
-        if isinstance(plots, openmc.Plots):
-            self._plots = plots
-        else:
-            del self._plots[:]
-            for plot in plots:
-                self._plots.append(plot)
 
     @classmethod
     def from_xml(cls, geometry='geometry.xml', materials='materials.xml',
@@ -263,10 +263,10 @@ class Model:
         model.materials = openmc.Materials.from_xml_element(root.find('materials'))
         model.geometry = openmc.Geometry.from_xml_element(root.find('geometry'), model.materials)
 
-        if root.find('tallies'):
+        if root.find('tallies') is not None:
             model.tallies = openmc.Tallies.from_xml_element(root.find('tallies'), meshes)
 
-        if root.find('plots'):
+        if root.find('plots') is not None:
             model.plots = openmc.Plots.from_xml_element(root.find('plots'))
 
         return model
@@ -527,17 +527,17 @@ class Model:
             # This will write the XML header also
             materials._write_xml(fh, False, level=1)
             # Write remaining elements as a tree
-            ET.ElementTree(geometry_element).write(fh, encoding='unicode')
-            ET.ElementTree(settings_element).write(fh, encoding='unicode')
+            fh.write(ET.tostring(geometry_element, encoding="unicode"))
+            fh.write(ET.tostring(settings_element, encoding="unicode"))
 
             if self.tallies:
                 tallies_element = self.tallies.to_xml_element(mesh_memo)
                 xml.clean_indentation(tallies_element, level=1, trailing_indent=self.plots)
-                ET.ElementTree(tallies_element).write(fh, encoding='unicode')
+                fh.write(ET.tostring(tallies_element, encoding="unicode"))
             if self.plots:
                 plots_element = self.plots.to_xml_element()
                 xml.clean_indentation(plots_element, level=1, trailing_indent=False)
-                ET.ElementTree(plots_element).write(fh, encoding='unicode')
+                fh.write(ET.tostring(plots_element, encoding="unicode"))
             fh.write("</model>\n")
 
     def import_properties(self, filename):
@@ -575,10 +575,15 @@ class Model:
                 cell_id = int(name.split()[1])
                 cell = cells[cell_id]
                 if cell.fill_type in ('material', 'distribmat'):
-                    cell.temperature = group['temperature'][()]
+                    temperature = group['temperature'][()]
+                    cell.temperature = temperature
                     if self.is_initialized:
                         lib_cell = openmc.lib.cells[cell_id]
-                        lib_cell.set_temperature(group['temperature'][()])
+                        if temperature.size > 1:
+                            for i, T in enumerate(temperature):
+                                lib_cell.set_temperature(T, i)
+                        else:
+                            lib_cell.set_temperature(temperature[0])
 
             # Make sure number of materials matches
             mats_group = fh['materials']
@@ -632,7 +637,7 @@ class Model:
             Settings.max_tracks is set. Defaults to False.
         output : bool, optional
             Capture OpenMC output from standard out
-        cwd : str, optional
+        cwd : PathLike, optional
             Path to working directory to run in. Defaults to the current working
             directory.
         openmc_exec : str, optional

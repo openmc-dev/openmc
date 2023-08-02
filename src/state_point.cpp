@@ -193,6 +193,12 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
           continue;
         }
 
+        if (tally->multiply_density()) {
+          write_attribute(tally_group, "multiply_density", 1);
+        } else {
+          write_attribute(tally_group, "multiply_density", 0);
+        }
+
         if (tally->estimator_ == TallyEstimator::ANALOG) {
           write_dataset(tally_group, "estimator", "analog");
         } else if (tally->estimator_ == TallyEstimator::TRACKLENGTH) {

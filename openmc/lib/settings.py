@@ -35,6 +35,7 @@ class _Settings:
     run_CE = _DLLGlobal(c_bool, 'run_CE')
     verbosity = _DLLGlobal(c_int, 'verbosity')
     event_based = _DLLGlobal(c_bool, 'event_based')
+    weight_windows_on = _DLLGlobal(c_bool, 'weight_windows_on')
 
     @property
     def run_mode(self):

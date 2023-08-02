@@ -1,8 +1,8 @@
 from collections.abc import Iterable, Mapping
 from numbers import Integral, Real
 from pathlib import Path
+import lxml.etree as ET
 from typing import Optional
-from xml.etree import ElementTree as ET
 
 import h5py
 import numpy as np
@@ -270,7 +270,7 @@ class PlotBase(IDManagerMixin):
         Name of the plot
     pixels : Iterable of int
         Number of pixels to use in each direction
-    filename :
+    filename : str
         Path to write the plot to
     color_by : {'cell', 'material'}
         Indicate whether the plot should be colored by cell or by material
@@ -279,7 +279,7 @@ class PlotBase(IDManagerMixin):
     mask_components : Iterable of openmc.Cell or openmc.Material or int
         The cells or materials (or corresponding IDs) to mask
     mask_background : Iterable of int or str
-        Color to apply to all cells/materials not listed in mask_components
+        Color to apply to all cells/materials listed in mask_components
     show_overlaps : bool
         Indicate whether or not overlapping regions are shown
     overlap_color : Iterable of int or str
@@ -315,50 +315,14 @@ class PlotBase(IDManagerMixin):
     def name(self):
         return self._name
 
-    @property
-    def pixels(self):
-        return self._pixels
-
-    @property
-    def filename(self):
-        return self._filename
-
-    @property
-    def color_by(self):
-        return self._color_by
-
-    @property
-    def background(self):
-        return self._background
-
-    @property
-    def mask_components(self):
-        return self._mask_components
-
-    @property
-    def mask_background(self):
-        return self._mask_background
-
-    @property
-    def show_overlaps(self):
-        return self._show_overlaps
-
-    @property
-    def overlap_color(self):
-        return self._overlap_color
-
-    @property
-    def colors(self):
-        return self._colors
-
-    @property
-    def level(self):
-        return self._level
-
     @name.setter
     def name(self, name):
         cv.check_type('plot name', name, str)
         self._name = name
+
+    @property
+    def pixels(self):
+        return self._pixels
 
     @pixels.setter
     def pixels(self, pixels):
@@ -368,20 +332,74 @@ class PlotBase(IDManagerMixin):
             cv.check_greater_than('plot pixels', dim, 0)
         self._pixels = pixels
 
+    @property
+    def filename(self):
+        return self._filename
+
     @filename.setter
     def filename(self, filename):
         cv.check_type('filename', filename, str)
         self._filename = filename
+
+    @property
+    def color_by(self):
+        return self._color_by
 
     @color_by.setter
     def color_by(self, color_by):
         cv.check_value('plot color_by', color_by, ['cell', 'material'])
         self._color_by = color_by
 
+    @property
+    def background(self):
+        return self._background
+
     @background.setter
     def background(self, background):
         self._check_color('plot background', background)
         self._background = background
+
+    @property
+    def mask_components(self):
+        return self._mask_components
+
+    @mask_components.setter
+    def mask_components(self, mask_components):
+        cv.check_type('plot mask components', mask_components, Iterable,
+                      (openmc.Cell, openmc.Material, Integral))
+        self._mask_components = mask_components
+
+    @property
+    def mask_background(self):
+        return self._mask_background
+
+    @mask_background.setter
+    def mask_background(self, mask_background):
+        self._check_color('plot mask background', mask_background)
+        self._mask_background = mask_background
+
+    @property
+    def show_overlaps(self):
+        return self._show_overlaps
+
+    @show_overlaps.setter
+    def show_overlaps(self, show_overlaps):
+        cv.check_type(f'Show overlaps flag for Plot ID="{self.id}"',
+                      show_overlaps, bool)
+        self._show_overlaps = show_overlaps
+
+    @property
+    def overlap_color(self):
+        return self._overlap_color
+
+    @overlap_color.setter
+    def overlap_color(self, overlap_color):
+        self._check_color('plot overlap color', overlap_color)
+        self._overlap_color = overlap_color
+
+    @property
+    def colors(self):
+        return self._colors
 
     @colors.setter
     def colors(self, colors):
@@ -392,27 +410,9 @@ class PlotBase(IDManagerMixin):
             self._check_color('plot color value', value)
         self._colors = colors
 
-    @mask_components.setter
-    def mask_components(self, mask_components):
-        cv.check_type('plot mask components', mask_components, Iterable,
-                      (openmc.Cell, openmc.Material, Integral))
-        self._mask_components = mask_components
-
-    @mask_background.setter
-    def mask_background(self, mask_background):
-        self._check_color('plot mask background', mask_background)
-        self._mask_background = mask_background
-
-    @show_overlaps.setter
-    def show_overlaps(self, show_overlaps):
-        cv.check_type(f'Show overlaps flag for Plot ID="{self.id}"',
-                      show_overlaps, bool)
-        self._show_overlaps = show_overlaps
-
-    @overlap_color.setter
-    def overlap_color(self, overlap_color):
-        self._check_color('plot overlap color', overlap_color)
-        self._overlap_color = overlap_color
+    @property
+    def level(self):
+        return self._level
 
     @level.setter
     def level(self, plot_level):
@@ -476,7 +476,7 @@ class PlotBase(IDManagerMixin):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing plot data
 
         """
@@ -515,7 +515,7 @@ class PlotBase(IDManagerMixin):
 
 
 class Plot(PlotBase):
-    '''Definition of a finite region of space to be plotted.
+    """Definition of a finite region of space to be plotted.
 
     OpenMC is capable of generating two-dimensional slice plots, or
     three-dimensional voxel or projection plots. Colors that are used in plots can be given as
@@ -531,6 +531,33 @@ class Plot(PlotBase):
 
     Attributes
     ----------
+    id : int
+        Unique identifier
+    name : str
+        Name of the plot
+    pixels : Iterable of int
+        Number of pixels to use in each direction
+    filename : str
+        Path to write the plot to
+    color_by : {'cell', 'material'}
+        Indicate whether the plot should be colored by cell or by material
+    background : Iterable of int or str
+        Color of the background
+    mask_components : Iterable of openmc.Cell or openmc.Material or int
+        The cells or materials (or corresponding IDs) to mask
+    mask_background : Iterable of int or str
+        Color to apply to all cells/materials listed in mask_components
+    show_overlaps : bool
+        Indicate whether or not overlapping regions are shown
+    overlap_color : Iterable of int or str
+        Color to apply to overlapping regions
+    colors : dict
+        Dictionary indicating that certain cells/materials should be
+        displayed with a particular color. The keys can be of type
+        :class:`~openmc.Cell`, :class:`~openmc.Material`, or int (ID for a
+        cell/material).
+    level : int
+        Universe depth to plot at
     width : Iterable of float
         Width of the plot in each basis direction
     origin : tuple or list of ndarray
@@ -543,7 +570,7 @@ class Plot(PlotBase):
         Dictionary defining type, id, linewidth and color of a mesh to be
         plotted on top of a plot
 
-    '''
+    """
 
     def __init__(self, plot_id=None, name=''):
         super().__init__(plot_id, name)
@@ -557,27 +584,15 @@ class Plot(PlotBase):
     def width(self):
         return self._width
 
-    @property
-    def origin(self):
-        return self._origin
-
-    @property
-    def type(self):
-        return self._type
-
-    @property
-    def basis(self):
-        return self._basis
-
-    @property
-    def meshlines(self):
-        return self._meshlines
-
     @width.setter
     def width(self, width):
         cv.check_type('plot width', width, Iterable, Real)
         cv.check_length('plot width', width, 2, 3)
         self._width = width
+
+    @property
+    def origin(self):
+        return self._origin
 
     @origin.setter
     def origin(self, origin):
@@ -585,15 +600,27 @@ class Plot(PlotBase):
         cv.check_length('plot origin', origin, 3)
         self._origin = origin
 
+    @property
+    def type(self):
+        return self._type
+
     @type.setter
     def type(self, plottype):
         cv.check_value('plot type', plottype, ['slice', 'voxel'])
         self._type = plottype
 
+    @property
+    def basis(self):
+        return self._basis
+
     @basis.setter
     def basis(self, basis):
         cv.check_value('plot basis', basis, _BASES)
         self._basis = basis
+
+    @property
+    def meshlines(self):
+        return self._meshlines
 
     @meshlines.setter
     def meshlines(self, meshlines):
@@ -749,7 +776,7 @@ class Plot(PlotBase):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing plot data
 
         """
@@ -806,7 +833,7 @@ class Plot(PlotBase):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1019,38 +1046,6 @@ class ProjectionPlot(PlotBase):
     def horizontal_field_of_view(self):
         return self._horizontal_field_of_view
 
-    @property
-    def camera_position(self):
-        return self._camera_position
-
-    @property
-    def look_at(self):
-        return self._look_at
-
-    @property
-    def up(self):
-        return self._up
-
-    @property
-    def orthographic_width(self):
-        return self._orthographic_width
-
-    @property
-    def wireframe_thickness(self):
-        return self._wireframe_thickness
-
-    @property
-    def wireframe_color(self):
-        return self._wireframe_color
-
-    @property
-    def wireframe_domains(self):
-        return self._wireframe_domains
-
-    @property
-    def xs(self):
-        return self._xs
-
     @horizontal_field_of_view.setter
     def horizontal_field_of_view(self, horizontal_field_of_view):
         cv.check_type('plot horizontal field of view', horizontal_field_of_view,
@@ -1059,11 +1054,19 @@ class ProjectionPlot(PlotBase):
         assert horizontal_field_of_view < 180.0
         self._horizontal_field_of_view = horizontal_field_of_view
 
+    @property
+    def camera_position(self):
+        return self._camera_position
+
     @camera_position.setter
     def camera_position(self, camera_position):
         cv.check_type('plot camera position', camera_position, Iterable, Real)
         cv.check_length('plot camera position', camera_position, 3)
         self._camera_position = camera_position
+
+    @property
+    def look_at(self):
+        return self._look_at
 
     @look_at.setter
     def look_at(self, look_at):
@@ -1071,17 +1074,29 @@ class ProjectionPlot(PlotBase):
         cv.check_length('plot look at', look_at, 3)
         self._look_at = look_at
 
+    @property
+    def up(self):
+        return self._up
+
     @up.setter
     def up(self, up):
         cv.check_type('plot up', up, Iterable, Real)
         cv.check_length('plot up', up, 3)
         self._up = up
 
+    @property
+    def orthographic_width(self):
+        return self._orthographic_width
+
     @orthographic_width.setter
     def orthographic_width(self, orthographic_width):
         cv.check_type('plot orthographic width', orthographic_width, Real)
         assert orthographic_width >= 0.0
         self._orthographic_width = orthographic_width
+
+    @property
+    def wireframe_thickness(self):
+        return self._wireframe_thickness
 
     @wireframe_thickness.setter
     def wireframe_thickness(self, wireframe_thickness):
@@ -1090,10 +1105,18 @@ class ProjectionPlot(PlotBase):
         assert wireframe_thickness >= 0
         self._wireframe_thickness = wireframe_thickness
 
+    @property
+    def wireframe_color(self):
+        return self._wireframe_color
+
     @wireframe_color.setter
     def wireframe_color(self, wireframe_color):
         self._check_color('plot wireframe color', wireframe_color)
         self._wireframe_color = wireframe_color
+
+    @property
+    def wireframe_domains(self):
+        return self._wireframe_domains
 
     @wireframe_domains.setter
     def wireframe_domains(self, wireframe_domains):
@@ -1107,6 +1130,10 @@ class ProjectionPlot(PlotBase):
                     raise Exception('Must provide a list of cells for \
                             wireframe_region if color_by=cell')
         self._wireframe_domains = wireframe_domains
+
+    @property
+    def xs(self):
+        return self._xs
 
     @xs.setter
     def xs(self, xs):
@@ -1143,7 +1170,7 @@ class ProjectionPlot(PlotBase):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing plot data
 
         """
@@ -1227,7 +1254,7 @@ class ProjectionPlot(PlotBase):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1401,7 +1428,7 @@ class Plots(cv.CheckedList):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing all plot elements
 
         """
@@ -1442,7 +1469,7 @@ class Plots(cv.CheckedList):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns

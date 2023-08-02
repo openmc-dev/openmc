@@ -258,7 +258,7 @@ def test_external_mesh(cpp_driver):
     space = openmc.stats.Point()
     angle = openmc.stats.Monodirectional((-1.0, 0.0, 0.0))
     energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
-    source = openmc.Source(space=space, energy=energy, angle=angle)
+    source = openmc.IndependentSource(space=space, energy=energy, angle=angle)
     settings.source = source
 
     model = openmc.model.Model(geometry=geometry,

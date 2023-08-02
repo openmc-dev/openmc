@@ -2,26 +2,26 @@
 <model>
   <materials>
     <material id="1">
-      <density units="g/cm3" value="0.998207" />
-      <nuclide ao="0.11187657362844" name="H1" />
-      <nuclide ao="1.7426371559999997e-05" name="H2" />
-      <nuclide ao="0.8877694078259999" name="O16" />
-      <nuclide ao="0.000336592174" name="O17" />
+      <density units="g/cm3" value="0.998207"/>
+      <nuclide ao="0.11187657362844" name="H1"/>
+      <nuclide ao="1.7426371559999997e-05" name="H2"/>
+      <nuclide ao="0.8877694078259999" name="O16"/>
+      <nuclide ao="0.000336592174" name="O17"/>
     </material>
   </materials>
   <geometry>
-    <cell id="1" material="1" region="-1" universe="1" />
-    <surface boundary="reflective" coeffs="0.0 0.0 0.0 1000000000.0" id="1" type="sphere" />
+    <cell id="1" material="1" region="-1" universe="1"/>
+    <surface boundary="reflective" coeffs="0.0 0.0 0.0 1000000000.0" id="1" type="sphere"/>
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
     <particles>10000</particles>
     <batches>1</batches>
-    <source particle="photon" strength="1.0">
+    <source particle="photon" strength="1.0" type="independent">
       <space type="point">
         <parameters>0 0 0</parameters>
       </space>
-      <angle type="isotropic" />
+      <angle type="isotropic"/>
       <energy type="discrete">
         <parameters>10000000.0 1.0</parameters>
       </energy>

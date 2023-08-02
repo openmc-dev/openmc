@@ -86,6 +86,18 @@ class UnstructuredMeshTest(PyAPITestHarness):
             data.shape = (data.size, 1)
         return np.sum(data, axis=1)
 
+    def update_results(self):
+        """Update results_true.dat and inputs_true.dat"""
+        try:
+            self._build_inputs()
+            inputs = self._get_inputs()
+            self._write_inputs(inputs)
+            self._overwrite_inputs()
+            self._run_openmc()
+            self._test_output_created()
+        finally:
+            self._cleanup()
+
     def _cleanup(self):
         super()._cleanup()
         output = glob.glob('tally*.vtk')
@@ -219,7 +231,7 @@ def model():
 
     space = openmc.stats.SphericalIndependent(r, cos_theta, phi)
     energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
-    source = openmc.Source(space=space, energy=energy)
+    source = openmc.IndependentSource(space=space, energy=energy)
     settings.source = source
 
     model.settings = settings

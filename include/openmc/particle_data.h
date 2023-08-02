@@ -218,8 +218,9 @@ struct BoundaryInfo {
  *   https://doi.org/10.1016/j.anucene.2017.11.032.
  */
 class ParticleData {
-
 public:
+  //----------------------------------------------------------------------------
+  // Constructors
   ParticleData();
 
 private:
@@ -311,6 +312,8 @@ private:
   vector<TrackStateHistory> tracks_;   // tracks for outputting to file
 
   vector<NuBank> nu_bank_; // bank of most recently fissioned particles
+
+  vector<double> pht_storage_; // interim pulse-height results
 
   // Global tally accumulators
   double keff_tally_absorption_ {0.0};
@@ -443,6 +446,7 @@ public:
   decltype(tracks_)& tracks() { return tracks_; }
   decltype(nu_bank_)& nu_bank() { return nu_bank_; }
   NuBank& nu_bank(int i) { return nu_bank_[i]; }
+  vector<double>& pht_storage() { return pht_storage_; }
 
   double& keff_tally_absorption() { return keff_tally_absorption_; }
   double& keff_tally_collision() { return keff_tally_collision_; }

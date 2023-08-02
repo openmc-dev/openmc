@@ -28,7 +28,7 @@ def model():
     model.settings.run_mode ='fixed source'
     model.settings.particles = 1000
     model.settings.batches = 10
-    model.settings.source = openmc.Source(space=openmc.stats.Point((-R, 0, 0,)))
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Point((-R, 0, 0,)))
 
     tally = openmc.Tally()
     tally.scores = ['flux']

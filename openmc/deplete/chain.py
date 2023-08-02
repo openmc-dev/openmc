@@ -19,15 +19,7 @@ from openmc.data import gnds_name, zam, DataLibrary
 from openmc.exceptions import DataError
 from .nuclide import FissionYieldDistribution
 
-# Try to use lxml if it is available. It preserves the order of attributes and
-# provides a pretty-printer by default. If not available,
-# use OpenMC function to pretty print.
-try:
-    import lxml.etree as ET
-    _have_lxml = True
-except ImportError:
-    import xml.etree.ElementTree as ET
-    _have_lxml = False
+import lxml.etree as ET
 import scipy.sparse as sp
 
 import openmc.data
@@ -565,11 +557,7 @@ class Chain:
             root_elem.append(nuclide.to_xml_element())
 
         tree = ET.ElementTree(root_elem)
-        if _have_lxml:
-            tree.write(str(filename), encoding='utf-8', pretty_print=True)
-        else:
-            clean_indentation(root_elem)
-            tree.write(str(filename), encoding='utf-8')
+        tree.write(str(filename), encoding='utf-8', pretty_print=True)
 
     def get_default_fission_yields(self):
         """Return fission yields at lowest incident neutron energy
@@ -693,6 +681,66 @@ class Chain:
                 reactions.clear()
 
         # Use DOK matrix as intermediate representation, then convert to CSR and return
+        n = len(self)
+        matrix_dok = sp.dok_matrix((n, n))
+        dict.update(matrix_dok, matrix)
+        return matrix_dok.tocsr()
+
+    def form_rr_term(self, transfer_rates, materials):
+        """Function to form the transfer rate term matrices.
+
+        .. versionadded:: 0.13.4
+
+        Parameters
+        ----------
+        transfer_rates : openmc.deplete.TransferRates
+            Instance of openmc.deplete.TransferRates
+        materials : string or two-tuple of strings
+            Two cases are possible:
+
+            1) Material ID as string:
+            Nuclide transfer only. In this case the transfer rate terms will be
+            subtracted from the respective depletion matrix
+
+            2) Two-tuple of material IDs as strings:
+            Nuclide transfer from one material into another.
+            The pair is assumed to be
+            ``(destination_material, source_material)``, where
+            ``destination_material`` and ``source_material`` are the nuclide
+            receiving and losing materials, respectively.
+            The transfer rate terms get placed in the final matrix with indexing
+            position corresponding to the ID of the materials set.
+
+        Returns
+        -------
+        scipy.sparse.csr_matrix
+            Sparse matrix representing transfer term.
+
+        """
+        matrix = defaultdict(float)
+
+        for i, nuclide in enumerate(self.nuclides):
+            element = re.split(r'\d+', nuclide.name)[0]
+            # Build transfer terms matrices
+            if isinstance(materials, str):
+                material = materials
+                components = transfer_rates.get_components(material)
+                if element in components:
+                    matrix[i, i] = transfer_rates.get_transfer_rate(material, element)
+                elif nuclide.name in components:
+                    matrix[i, i] = transfer_rates.get_transfer_rate(material, nuclide.name)
+                else:
+                    matrix[i, i] = 0.0
+            #Build transfer terms matrices
+            elif isinstance(materials, tuple):
+                destination_material, material = materials
+                if transfer_rates.get_destination_material(material, element) == destination_material:
+                    matrix[i, i] = transfer_rates.get_transfer_rate(material, element)
+                elif transfer_rates.get_destination_material(material, nuclide.name) == destination_material:
+                    matrix[i, i] = transfer_rates.get_transfer_rate(material, nuclide.name)
+                else:
+                    matrix[i, i] = 0.0
+            #Nothing else is allowed
         n = len(self)
         matrix_dok = sp.dok_matrix((n, n))
         dict.update(matrix_dok, matrix)

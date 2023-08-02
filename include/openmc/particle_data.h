@@ -104,10 +104,10 @@ public:
 
 struct NuclideMicroXS {
   // Microscopic cross sections in barns
-  double total;           //!< total cross section
-  double absorption;      //!< absorption (disappearance)
-  double fission;         //!< fission
-  double nu_fission;      //!< neutron production from fission
+  double total;      //!< total cross section
+  double absorption; //!< absorption (disappearance)
+  double fission;    //!< fission
+  double nu_fission; //!< neutron production from fission
 
   double elastic;         //!< If sab_frac is not 1 or 0, then this value is
                           //!<   averaged over bound and non-bound nuclei

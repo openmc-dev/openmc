@@ -695,7 +695,7 @@ class Settings:
     def cutoff(self, cutoff: dict):
         if not isinstance(cutoff, Mapping):
             msg = f'Unable to set cutoff from "{cutoff}" which is not a '\
-                  'Python dictionary'14 expected and 1 successful checks
+                  'Python dictionary'
             raise ValueError(msg)
         for key in cutoff:
             if key == 'weight':
@@ -740,7 +740,7 @@ class Settings:
         cv.check_type('trigger batch interval', trigger_batch_interval, Integral)
         cv.check_greater_than('trigger batch interval', trigger_batch_interval, 0)
         self._trigger_batch_interval = trigger_batch_interval
-        
+
     @property
     def no_reduce(self) -> bool:
         return self._no_reduce

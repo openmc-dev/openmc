@@ -667,7 +667,7 @@ class RegularMesh(StructuredMesh):
     @property
     def bounding_box(self):
         return openmc.BoundingBox(
-            np.array(self.lower_left), np.array(self.upper_right)
+           np.array(self.lower_left), np.array(self.upper_right)
         )
 
     def __repr__(self):
@@ -1009,6 +1009,12 @@ class RectilinearMesh(StructuredMesh):
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]
+    lower_left : Iterable of float
+        The lower-left corner of the structured mesh. If only two coordinate
+        are given, it is assumed that the mesh is an x-y mesh.
+    upper_right : Iterable of float
+        The upper-right corner of the structured mesh. If only two coordinate
+        are given, it is assumed that the mesh is an x-y mesh.
 
     """
 
@@ -1609,7 +1615,6 @@ class SphericalMesh(StructuredMesh):
         return openmc.BoundingBox(
            np.array(self.lower_left), np.array(self.upper_right)
         )
-
 
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'

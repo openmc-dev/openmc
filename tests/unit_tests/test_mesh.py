@@ -47,7 +47,6 @@ def test_regular_mesh_bounding_box():
 
 
 def test_spherical_mesh_bounding_box():
-
     mesh = openmc.SphericalMesh()
     mesh.r_grid = np.array([0.1, 0.2, 0.5, 1.])
     #test with mesh at origin 0, 0, 0
@@ -67,6 +66,3 @@ def test_spherical_mesh_bounding_box():
     assert isinstance(bb, openmc.BoundingBox)
     np.testing.assert_array_equal(bb.lower_left, np.array([2, 4, 6]))
     np.testing.assert_array_equal(bb.upper_right, np.array([4, 6, 8]))
-
-
-

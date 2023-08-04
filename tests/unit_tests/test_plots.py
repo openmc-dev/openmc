@@ -3,7 +3,6 @@ from pathlib import Path
 import openmc
 import openmc.examples
 import pytest
-from matplotlib.colors import LogNorm
 
 
 @pytest.fixture(scope='module')
@@ -225,7 +224,7 @@ def test_voxel_plot_roundtrip():
 
 
 def test_plot_mesh_tally(run_in_tmpdir):
-
+    from matplotlib.colors import LogNorm
     mat1 = openmc.Material()
     mat1.add_nuclide('Li6', 1, percent_type='ao')
     mats = openmc.Materials([mat1])

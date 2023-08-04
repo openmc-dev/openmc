@@ -76,6 +76,9 @@ bool weight_windows_on {false};
 bool write_all_tracks {false};
 bool write_initial_source {false};
 
+bool survival_normalization {true};
+bool source_file {false};
+
 std::string path_cross_sections;
 std::string path_input;
 std::string path_output;
@@ -123,6 +126,9 @@ int trigger_batch_interval {1};
 int verbosity {7};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
+
+double weight_cutoff_fixed{0.25};
+double weight_survive_fixed{1.0};
 
 } // namespace settings
 
@@ -444,6 +450,7 @@ void read_settings_xml(pugi::xml_node root)
       auto path = get_node_value(node, "file", false, true);
       if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
         auto sites = mcpl_source_sites(path);
+        source_file = true;
         model::external_sources.push_back(make_unique<FileSource>(sites));
       } else {
         model::external_sources.push_back(make_unique<FileSource>(path));
@@ -512,6 +519,13 @@ void read_settings_xml(pugi::xml_node root)
     }
     if (check_for_node(node_cutoff, "weight_avg")) {
       weight_survive = std::stod(get_node_value(node_cutoff, "weight_avg"));
+    }
+    if(check_for_node(node_cutoff, "survival_normalization")){ 
+      survival_normalization = get_node_value_bool(node_cutoff, "survival_normalization");
+      if(survival_normalization && survival_biasing){
+        weight_cutoff_fixed = weight_cutoff;
+        weight_survive_fixed = weight_survive;
+      }
     }
     if (check_for_node(node_cutoff, "energy_neutron")) {
       energy_cutoff[0] =

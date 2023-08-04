@@ -62,6 +62,9 @@ extern "C" bool weight_windows_on; //!< are weight windows are enabled?
 extern bool write_all_tracks;      //!< write track files for every particle?
 extern bool write_initial_source;  //!< write out initial source file?
 
+extern bool survival_normalization; //!< weight cutoff/weight survive adjust simulation file?
+extern bool source_file; //!< weight cutoff/weight survive adjust simulation file?
+
 // Paths to various files
 extern std::string path_cross_sections; //!< path to cross_sections.xml
 extern std::string path_input;  //!< directory where main .xml files resides
@@ -130,6 +133,8 @@ extern int trigger_batch_interval; //!< Batch interval for triggers
 extern "C" int verbosity;          //!< How verbose to make output
 extern double weight_cutoff;       //!< Weight cutoff for Russian roulette
 extern double weight_survive;      //!< Survival weight after Russian roulette
+extern double weight_cutoff_fixed; //!< weight cutoff/weight survive adjust simulation file?
+extern double weight_survive_fixed; //!< weight cutoff/weight survive adjust simulation file?
 } // namespace settings
 
 //==============================================================================

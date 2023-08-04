@@ -578,6 +578,17 @@ void initialize_history(Particle& p, int64_t index_source)
 #pragma omp atomic
   simulation::total_weight += p.wgt();
 
+//Toggle to adjust weight cutoff and weight survive by multiplying the current weight
+  if(settings::source_file || settings::surf_source_read){
+    if(settings::survival_normalization && settings::survival_biasing){
+      settings::weight_cutoff = settings::weight_cutoff_fixed * p.wgt();
+      settings::weight_survive = settings::weight_survive_fixed * p.wgt();
+      std::cout<<"Weight Cutoff: "<<weight_cutoff;
+      std::cout<<" Weight Survive: "<<weight_survive;
+      std::cout<<" Current Weight: "<<p.wgt()<<std::endl;
+    }
+  }
+  
   // Force calculation of cross-sections by setting last energy to zero
   if (settings::run_CE) {
     p.invalidate_neutron_xs();

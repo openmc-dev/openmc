@@ -513,7 +513,6 @@ class RegularMesh(StructuredMesh):
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]
 
-
     """
 
     def __init__(self, mesh_id: typing.Optional[int] = None, name: str = ''):

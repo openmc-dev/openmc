@@ -1,7 +1,9 @@
+import math
 from collections.abc import Iterable, Mapping
 from numbers import Integral, Real
 from pathlib import Path
 import lxml.etree as ET
+from tempfile import TemporaryDirectory
 from typing import Optional
 
 import h5py
@@ -311,8 +313,6 @@ def plot_mesh_tally(
 
     if outline and geometry is not None:
         import matplotlib.image as mpimg
-        import math
-        from tempfile import TemporaryDirectory
         model = openmc.Model()
         model.geometry = geometry
         plot = openmc.Plot()

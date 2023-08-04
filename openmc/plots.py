@@ -172,6 +172,7 @@ _default_outline_kwargs = {
     'linewidths': 1
 }
 
+
 def plot_mesh_tally(
     tally: 'openmc.Tally',
     basis: str = 'xy',
@@ -185,7 +186,7 @@ def plot_mesh_tally(
     pixels: int = 40000,
     geometry: Optional['openmc.Geometry'] = None,
     colorbar: bool = True,
-    color_bar_title : str = None,
+    color_bar_title: str = None,
     volume_normalization: bool = True,
     scaling_factor: Optional[float] = None,
     outline_kwargs: dict = _default_outline_kwargs,
@@ -245,7 +246,7 @@ def plot_mesh_tally(
 
     import matplotlib.pyplot as plt
 
-    cv.check_value('basis', basis, ['xy', 'xz', 'yz'])
+    cv.check_value('basis', basis, _BASES)
     cv.check_value('axis_units', axis_units, ['km', 'm', 'cm', 'mm'])
     cv.check_type('volume_normalization', volume_normalization, bool)
     cv.check_type('outline', outline, bool)
@@ -262,7 +263,9 @@ def plot_mesh_tally(
             msg = 'score was not specified and there are multiple scores in the tally.'
             raise ValueError(msg)
 
-    tally_data = tally.get_reshaped_data(expand_dims=True, value=value).squeeze()
+    tally_slice = tally.get_slice(scores=[score])
+    print(tally_slice)
+    tally_data = tally_slice.get_reshaped_data(expand_dims=True, value=value).squeeze()
 
     if slice_index is None:
         basis_to_index = {'xy': 2, 'xz': 1, 'yz': 0}[basis]
@@ -340,9 +343,9 @@ def plot_mesh_tally(
             (rgb[..., 1] << 8) + (rgb[..., 2])
 
         if basis == 'xz':
-            image_value = np.flip(np.rot90(image_value, -1))
+            image_value = np.rot90(image_value, 2)
         elif basis == 'yz':
-            image_value = np.flip(np.rot90(image_value, -1))
+            image_value = np.rot90(image_value, 2)
         else:  # basis == 'xy'
             image_value = np.rot90(image_value, 2)
 

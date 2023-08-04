@@ -77,3 +77,4 @@ def test_cylindrical_mesh_bounding_box():
     assert isinstance(bb, openmc.BoundingBox)
     np.testing.assert_array_equal(bb.lower_left, np.array([2, 4, 6]))
     np.testing.assert_array_equal(bb.upper_right, np.array([4, 6, 8]))
+

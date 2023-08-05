@@ -30,7 +30,7 @@ def test_get_activity(res):
     a_xe135_ref = np.array(
         [2.106574218e+05, 1.227519888e+11, 1.177491828e+11, 1.031986176e+11])
     t_nuc, a_nuc = res.get_activity("1", by_nuclide=True)
-    
+
     a_xe135 = np.array([a_nuc_i["Xe135"] for a_nuc_i in a_nuc])
 
     np.testing.assert_allclose(t_nuc, t_ref)
@@ -63,6 +63,7 @@ def test_get_atoms(res):
     t_hour, _n = res.get_atoms("1", "Xe135", time_units="h")
     assert t_hour == pytest.approx(t_ref / (60 * 60))
 
+
 def test_get_decay_heat(res):
     """Tests evaluating decay heat."""
     # Set chain file for testing
@@ -71,7 +72,7 @@ def test_get_decay_heat(res):
     t_ref = np.array([0.0, 1296000.0, 2592000.0, 3888000.0])
     dh_ref = np.array(
         [1.27933813e-09, 5.85347232e-03, 7.38773010e-03, 5.79954067e-03])
-    
+
     t, dh = res.get_decay_heat("1")
 
     np.testing.assert_allclose(t, t_ref)

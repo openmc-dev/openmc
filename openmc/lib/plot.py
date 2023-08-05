@@ -229,7 +229,8 @@ def id_map(plot):
     -------
     id_map : numpy.ndarray
         A NumPy array with shape (vertical pixels, horizontal pixels, 3) of
-        OpenMC property ids with dtype int32
+        OpenMC property ids with dtype int32. The last dimension of the array
+        contains, in order, cell IDs, cell instances, and material IDs.
 
     """
     img_data = np.zeros((plot.v_res, plot.h_res, 3),

@@ -1649,7 +1649,7 @@ class SphericalMesh(StructuredMesh):
     @property
     def upper_right(self):
         r = self.r_grid[-1]
-        return np.array(self.origin[0] + r, self.origin[1] + r, self.origin[2] + r)
+        return np.array((self.origin[0] + r, self.origin[1] + r, self.origin[2] + r))
 
     @property
     def bounding_box(self):

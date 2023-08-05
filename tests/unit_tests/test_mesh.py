@@ -49,25 +49,23 @@ def test_regular_mesh_bounding_box():
 
 
 def test_spherical_mesh_bounding_box():
-    mesh = openmc.SphericalMesh()
-    mesh.r_grid = np.array([0.1, 0.2, 0.5, 1.])
     # test with mesh at origin (0, 0, 0)
-    mesh.origin = (0, 0, 0)
-    assert mesh.upper_right == (1, 1, 1)
-    assert mesh.lower_left == (-1, -1, -1)
+    mesh = openmc.SphericalMesh([0.1, 0.2, 0.5, 1.], origin=(0., 0., 0.))
+    np.testing.assert_array_equal(mesh.upper_right, (1, 1, 1))
+    np.testing.assert_array_equal(mesh.lower_left, (-1, -1, -1))
     bb = mesh.bounding_box
     assert isinstance(bb, openmc.BoundingBox)
-    np.testing.assert_array_equal(bb.lower_left, np.array([-1, -1, -1]))
-    np.testing.assert_array_equal(bb.upper_right, np.array([1, 1, 1]))
+    np.testing.assert_array_equal(bb.lower_left, (-1, -1, -1))
+    np.testing.assert_array_equal(bb.upper_right, (1, 1, 1))
 
     # test with mesh at origin (3, 5, 7)
     mesh.origin = (3, 5, 7)
-    assert mesh.upper_right == (4, 6, 8)
-    assert mesh.lower_left == (2, 4, 6)
+    np.testing.assert_array_equal(mesh.upper_right, (4, 6, 8))
+    np.testing.assert_array_equal(mesh.lower_left, (2, 4, 6))
     bb = mesh.bounding_box
     assert isinstance(bb, openmc.BoundingBox)
-    np.testing.assert_array_equal(bb.lower_left, np.array([2, 4, 6]))
-    np.testing.assert_array_equal(bb.upper_right, np.array([4, 6, 8]))
+    np.testing.assert_array_equal(bb.lower_left, (2, 4, 6))
+    np.testing.assert_array_equal(bb.upper_right, (4, 6, 8))
 
 
 def test_SphericalMesh_initiation():

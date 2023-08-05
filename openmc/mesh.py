@@ -1294,17 +1294,24 @@ class CylindricalMesh(StructuredMesh):
 
     @property
     def lower_left(self):
-        return (self.origin[0]-self.r_grid[-1], self.origin[1]-self.r_grid[-1], self.origin[2]-self.z_grid[-1])
+        return np.array((
+            self.origin[0] - self.r_grid[-1],
+            self.origin[1] - self.r_grid[-1],
+            self.origin[2] - self.z_grid[-1]
+        ))
 
     @property
     def upper_right(self):
-        return (self.origin[0]+self.r_grid[-1], self.origin[1]+self.r_grid[-1], self.origin[2]+self.z_grid[-1])
+        return np.array((
+            self.origin[0] + self.r_grid[-1],
+            self.origin[1] + self.r_grid[-1],
+            self.origin[2] + self.z_grid[-1]
+        ))
 
     @property
     def bounding_box(self):
-        return openmc.BoundingBox(
-            np.array(self.lower_left), np.array(self.upper_right)
-        )
+        return openmc.BoundingBox(self.lower_left, self.upper_right)
+
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'
         string = super().__repr__()

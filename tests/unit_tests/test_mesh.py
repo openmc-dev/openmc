@@ -1,6 +1,9 @@
-import openmc
-import pytest
+from math import pi
+
 import numpy as np
+import pytest
+import openmc
+
 
 @pytest.mark.parametrize("val_left,val_right", [(0, 0), (-1., -1.), (2.0, 2)])
 def test_raises_error_when_flat(val_left, val_right):
@@ -37,7 +40,7 @@ def test_raises_error_when_flat(val_left, val_right):
 
 def test_regular_mesh_bounding_box():
     mesh = openmc.RegularMesh()
-    mesh.lower_left = [-2, -3 ,-5]
+    mesh.lower_left = [-2, -3, -5]
     mesh.upper_right = [2, 3, 5]
     bb = mesh.bounding_box
     assert isinstance(bb, openmc.BoundingBox)
@@ -48,7 +51,7 @@ def test_regular_mesh_bounding_box():
 def test_spherical_mesh_bounding_box():
     mesh = openmc.SphericalMesh()
     mesh.r_grid = np.array([0.1, 0.2, 0.5, 1.])
-    #test with mesh at origin 0, 0, 0
+    # test with mesh at origin (0, 0, 0)
     mesh.origin = (0, 0, 0)
     assert mesh.upper_right == (1, 1, 1)
     assert mesh.lower_left == (-1, -1, -1)
@@ -57,7 +60,7 @@ def test_spherical_mesh_bounding_box():
     np.testing.assert_array_equal(bb.lower_left, np.array([-1, -1, -1]))
     np.testing.assert_array_equal(bb.upper_right, np.array([1, 1, 1]))
 
-    # test with mesh at origin 3, 5, 7
+    # test with mesh at origin (3, 5, 7)
     mesh.origin = (3, 5, 7)
     assert mesh.upper_right == (4, 6, 8)
     assert mesh.lower_left == (2, 4, 6)
@@ -65,3 +68,57 @@ def test_spherical_mesh_bounding_box():
     assert isinstance(bb, openmc.BoundingBox)
     np.testing.assert_array_equal(bb.lower_left, np.array([2, 4, 6]))
     np.testing.assert_array_equal(bb.upper_right, np.array([4, 6, 8]))
+
+
+def test_SphericalMesh_initiation():
+
+    # test defaults
+    mesh = openmc.SphericalMesh(r_grid=(0, 10))
+    assert (mesh.origin == np.array([0, 0, 0])).all()
+    assert mesh.r_grid == (0, 10)
+    assert (mesh.theta_grid == np.array([0, pi])).all()
+    assert (mesh.phi_grid == np.array([0, 2*pi])).all()
+
+    # test setting on creation
+    mesh = openmc.SphericalMesh(
+        origin=(1, 2, 3),
+        r_grid=(0, 2),
+        theta_grid=(1, 3),
+        phi_grid=(2, 4)
+    )
+    assert (mesh.origin == np.array([1, 2, 3])).all()
+    assert mesh.r_grid == (0., 2.)
+    assert mesh.theta_grid == (1, 3)
+    assert mesh.phi_grid == (2, 4)
+
+    # test attribute changing
+    mesh.r_grid = (0, 11)
+    assert (mesh.r_grid == np.array([0., 11.])).all()
+
+
+def test_CylindricalMesh_initiation():
+
+    # test defaults
+    mesh = openmc.CylindricalMesh(r_grid=(0, 10), z_grid=(0, 10))
+    assert (mesh.origin == np.array([0, 0, 0])).all()
+    assert mesh.r_grid == (0, 10)
+    assert mesh.phi_grid == (0, 2*pi)
+    assert mesh.z_grid == (0, 10)
+
+    # test setting on creation
+    mesh = openmc.CylindricalMesh(
+        origin=(1, 2, 3),
+        r_grid=(0, 2),
+        z_grid=(1, 3),
+        phi_grid=(2, 4)
+    )
+    assert (mesh.origin == np.array([1, 2, 3])).all()
+    assert (mesh.r_grid == np.array([0., 2.])).all()
+    assert mesh.z_grid == (1, 3)
+    assert (mesh.phi_grid == np.array([2, 4])).all()
+
+    # test attribute changing
+    mesh.r_grid = (0., 10.)
+    assert (mesh.r_grid == np.array([0, 10.])).all()
+    mesh.z_grid = (0., 4.)
+    assert (mesh.z_grid == np.array([0, 4.])).all()

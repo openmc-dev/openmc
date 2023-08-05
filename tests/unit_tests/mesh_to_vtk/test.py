@@ -32,17 +32,19 @@ rect_mesh.x_grid = np.linspace(0, 10, 5)
 rect_mesh.y_grid = np.geomspace(5., 20., 10)
 rect_mesh.z_grid = np.linspace(1, 100, 20)
 
-cyl_mesh = openmc.CylindricalMesh()
-cyl_mesh.origin = (10, 10, -10)
-cyl_mesh.r_grid = np.linspace(0, 5, 5)
-cyl_mesh.phi_grid = np.linspace(0, 2 * np.pi, 4)
-cyl_mesh.z_grid = np.linspace(0, 2, 4)
+cyl_mesh = openmc.CylindricalMesh(
+    origin=(10, 10, -10),
+    r_grid=np.linspace(0, 5, 5),
+    phi_grid=np.linspace(0, 2 * np.pi, 4),
+    z_grid=np.linspace(0, 2, 4),
+)
 
-sphere_mesh = openmc.SphericalMesh()
-sphere_mesh.origin = (10, 10, -10)
-sphere_mesh.r_grid = np.linspace(0, 5, 3)
-sphere_mesh.theta_grid = np.linspace(0, 0.5 * np.pi, 4)
-sphere_mesh.phi_grid = np.linspace(0, 2*np.pi, 8)
+sphere_mesh = openmc.SphericalMesh(
+    origin=(10, 10, -10),
+    r_grid=np.linspace(0, 5, 3),
+    theta_grid=np.linspace(0, 0.5 * np.pi, 4),
+    phi_grid=np.linspace(0, 2*np.pi, 8),
+)
 
 
 def mesh_data(mesh_dims):

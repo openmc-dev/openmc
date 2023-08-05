@@ -39,11 +39,16 @@ class Geometry:
 
     """
 
-    def __init__(self, root=None):
+    def __init__(
+        self,
+        root: typing.Optional[openmc.UniverseBase] = None,
+        merge_surfaces: bool = False,
+        surface_precision: int = 10
+    ):
         self._root_universe = None
         self._offsets = {}
-        self.merge_surfaces = False
-        self.surface_precision = 10
+        self.merge_surfaces = merge_surfaces
+        self.surface_precision = surface_precision
         if root is not None:
             if isinstance(root, openmc.UniverseBase):
                 self.root_universe = root

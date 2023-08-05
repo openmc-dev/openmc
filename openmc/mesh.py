@@ -1,19 +1,20 @@
+import typing
+import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from math import pi
-from numbers import Real, Integral
+from numbers import Integral, Real
 from pathlib import Path
-import typing
-import warnings
-import lxml.etree as ET
+from typing import Optional, Sequence, Tuple
 
 import h5py
+import lxml.etree as ET
 import numpy as np
 
-import openmc.checkvalue as cv
 import openmc
-from ._xml import get_text
+import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
+from ._xml import get_text
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
 
@@ -40,7 +41,7 @@ class MeshBase(IDManagerMixin, ABC):
     next_id = 1
     used_ids = set()
 
-    def __init__(self, mesh_id: typing.Optional[int] = None, name: str = ''):
+    def __init__(self, mesh_id: Optional[int] = None, name: str = ''):
         # Initialize Mesh class attributes
         self.id = mesh_id
         self.name = name
@@ -264,7 +265,7 @@ class StructuredMesh(MeshBase):
 
     def write_data_to_vtk(self,
                           filename: PathLike,
-                          datasets: typing.Optional[dict] = None,
+                          datasets: Optional[dict] = None,
                           volume_normalization: bool = True,
                           curvilinear: bool = False):
         """Creates a VTK object of the mesh
@@ -515,7 +516,7 @@ class RegularMesh(StructuredMesh):
 
     """
 
-    def __init__(self, mesh_id: typing.Optional[int] = None, name: str = ''):
+    def __init__(self, mesh_id: Optional[int] = None, name: str = ''):
         super().__init__(mesh_id, name)
 
         self._dimension = None
@@ -600,7 +601,7 @@ class RegularMesh(StructuredMesh):
 
     @property
     def cartesian_vertices(self):
-        """Returns vertices in cartesian coordiantes. Identical to ``vertices`` for RegularMesh and RectilinearMesh
+        """Returns vertices in cartesian coordinates. Identical to ``vertices`` for RegularMesh and RectilinearMesh
         """
         return self.vertices
 
@@ -700,7 +701,7 @@ class RegularMesh(StructuredMesh):
         cls,
         lattice: 'openmc.RectLattice',
         division: int = 1,
-        mesh_id: typing.Optional[int] = None,
+        mesh_id: Optional[int] = None,
         name: str = ''
     ):
         """Create mesh from an existing rectangular lattice
@@ -728,7 +729,7 @@ class RegularMesh(StructuredMesh):
         shape = np.array(lattice.shape)
         width = lattice.pitch*shape
 
-        mesh = cls(mesh_id, name)
+        mesh = cls(mesh_id=mesh_id, name=name)
         mesh.lower_left = lattice.lower_left
         mesh.upper_right = lattice.lower_left + width
         mesh.dimension = shape*division
@@ -739,8 +740,8 @@ class RegularMesh(StructuredMesh):
     def from_domain(
         cls,
         domain: typing.Union['openmc.Cell', 'openmc.Region', 'openmc.Universe', 'openmc.Geometry'],
-        dimension: typing.Sequence[int] = (10, 10, 10),
-        mesh_id: typing.Optional[int] = None,
+        dimension: Sequence[int] = (10, 10, 10),
+        mesh_id: Optional[int] = None,
         name: str = ''
     ):
         """Create mesh from an existing openmc cell, region, universe or
@@ -751,7 +752,7 @@ class RegularMesh(StructuredMesh):
         domain : {openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry}
             The object passed in will be used as a template for this mesh. The
             bounding box of the property of the object passed will be used to
-            set the lower_left and upper_right of the mesh instance
+            set the lower_left and upper_right and of the mesh instance
         dimension : Iterable of int
             The number of mesh cells in each direction (x, y, z).
         mesh_id : int
@@ -771,7 +772,7 @@ class RegularMesh(StructuredMesh):
             (openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry),
         )
 
-        mesh = cls(mesh_id, name)
+        mesh = cls(mesh_id=mesh_id, name=name)
         mesh.lower_left = domain.bounding_box[0]
         mesh.upper_right = domain.bounding_box[1]
         mesh.dimension = dimension
@@ -823,7 +824,7 @@ class RegularMesh(StructuredMesh):
 
         """
         mesh_id = int(get_text(elem, 'id'))
-        mesh = cls(mesh_id)
+        mesh = cls(mesh_id=mesh_id)
 
         mesh_type = get_text(elem, 'type')
         if mesh_type is not None:
@@ -847,7 +848,7 @@ class RegularMesh(StructuredMesh):
 
         return mesh
 
-    def build_cells(self, bc: typing.Optional[str] = None):
+    def build_cells(self, bc: Optional[str] = None):
         """Generates a lattice of universes with the same dimensionality
         as the mesh object.  The individual cells/universes produced
         will not have material definitions applied and so downstream code
@@ -1122,7 +1123,7 @@ class RectilinearMesh(StructuredMesh):
         mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
 
         # Read and assign mesh properties
-        mesh = cls(mesh_id)
+        mesh = cls(mesh_id=mesh_id)
         mesh.x_grid = group['x_grid'][()]
         mesh.y_grid = group['y_grid'][()]
         mesh.z_grid = group['z_grid'][()]
@@ -1144,8 +1145,8 @@ class RectilinearMesh(StructuredMesh):
             Rectilinear mesh object
 
         """
-        id = int(get_text(elem, 'id'))
-        mesh = cls(id)
+        mesh_id = int(get_text(elem, 'id'))
+        mesh = cls(mesh_id=mesh_id)
         mesh.x_grid = [float(x) for x in get_text(elem, 'x_grid').split()]
         mesh.y_grid = [float(y) for y in get_text(elem, 'y_grid').split()]
         mesh.z_grid = [float(z) for z in get_text(elem, 'z_grid').split()]
@@ -1183,6 +1184,17 @@ class CylindricalMesh(StructuredMesh):
 
     Parameters
     ----------
+    r_grid : numpy.ndarray
+        1-D array of mesh boundary points along the r-axis.
+        Requirement is r >= 0.
+    z_grid : numpy.ndarray
+        1-D array of mesh boundary points along the z-axis.
+    phi_grid : numpy.ndarray
+        1-D array of mesh boundary points along the phi-axis in radians.
+        The default value is [0, 2π], i.e. the full phi range.
+    origin : numpy.ndarray
+        1-D array of length 3 the (x,y,z) origin of the mesh in
+        cartesian coordinates
     mesh_id : int
         Unique identifier for the mesh
     name : str
@@ -1216,13 +1228,21 @@ class CylindricalMesh(StructuredMesh):
 
     """
 
-    def __init__(self, mesh_id: int = None, name: str = ''):
+    def __init__(
+        self,
+        r_grid: Sequence[float],
+        z_grid: Sequence[float],
+        phi_grid: Sequence[float] = (0, 2*pi),
+        origin: Sequence[float] = (0., 0., 0.),
+        mesh_id: Optional[int] = None,
+        name: str = '',
+    ):
         super().__init__(mesh_id, name)
 
-        self._r_grid = None
-        self._phi_grid = [0.0, 2*pi]
-        self._z_grid = None
-        self.origin = (0., 0., 0.)
+        self._r_grid = r_grid
+        self._phi_grid = phi_grid
+        self._z_grid = z_grid
+        self.origin = origin
 
     @property
     def dimension(self):
@@ -1312,10 +1332,12 @@ class CylindricalMesh(StructuredMesh):
         mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
 
         # Read and assign mesh properties
-        mesh = cls(mesh_id)
-        mesh.r_grid = group['r_grid'][()]
-        mesh.phi_grid = group['phi_grid'][()]
-        mesh.z_grid = group['z_grid'][()]
+        mesh = cls(
+            mesh_id=mesh_id,
+            r_grid = group['r_grid'][()],
+            phi_grid = group['phi_grid'][()],
+            z_grid = group['z_grid'][()],
+        )
         if 'origin' in group:
             mesh.origin = group['origin'][()]
 
@@ -1325,10 +1347,10 @@ class CylindricalMesh(StructuredMesh):
     def from_domain(
         cls,
         domain: typing.Union['openmc.Cell', 'openmc.Region', 'openmc.Universe', 'openmc.Geometry'],
-        dimension: typing.Sequence[int] = (10, 10, 10),
-        mesh_id: typing.Optional[int] = None,
-        phi_grid_bounds: typing.Sequence[float] = (0.0, 2*pi),
-        name=''
+        dimension: Sequence[int] = (10, 10, 10),
+        mesh_id: Optional[int] = None,
+        phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
+        name: str = ''
     ):
         """Creates a regular CylindricalMesh from an existing openmc domain.
 
@@ -1361,7 +1383,6 @@ class CylindricalMesh(StructuredMesh):
             (openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry),
         )
 
-        mesh = cls(mesh_id, name)
 
         # loaded once to avoid reading h5m file repeatedly
         cached_bb = domain.bounding_box
@@ -1373,20 +1394,23 @@ class CylindricalMesh(StructuredMesh):
                 cached_bb[1][1],
             ]
         )
-        mesh.r_grid = np.linspace(
+        r_grid = np.linspace(
             0,
             max_bounding_box_radius,
             num=dimension[0]+1
         )
-        mesh.phi_grid = np.linspace(
+        phi_grid = np.linspace(
             phi_grid_bounds[0],
             phi_grid_bounds[1],
             num=dimension[1]+1
         )
-        mesh.z_grid = np.linspace(
+        z_grid = np.linspace(
             cached_bb[0][2],
             cached_bb[1][2],
             num=dimension[2]+1
+        )
+        mesh = cls(
+            r_grid=r_grid, z_grid=z_grid, phi_grid=phi_grid, mesh_id=mesh_id, name=name
         )
 
         return mesh
@@ -1436,11 +1460,13 @@ class CylindricalMesh(StructuredMesh):
         """
 
         mesh_id = int(get_text(elem, 'id'))
-        mesh = cls(mesh_id)
-        mesh.r_grid = [float(x) for x in get_text(elem, "r_grid").split()]
-        mesh.phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()]
-        mesh.z_grid = [float(x) for x in get_text(elem, "z_grid").split()]
-        mesh.origin = [float(x) for x in get_text(elem, "origin", default=[0., 0., 0.]).split()]
+        mesh = cls(
+            r_grid = [float(x) for x in get_text(elem, "r_grid").split()],
+            phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()],
+            z_grid = [float(x) for x in get_text(elem, "z_grid").split()],
+            origin = [float(x) for x in get_text(elem, "origin", default=[0., 0., 0.]).split()],
+            mesh_id=mesh_id,
+        )
 
         return mesh
 
@@ -1466,7 +1492,7 @@ class CylindricalMesh(StructuredMesh):
         return self._convert_to_cartesian(self.vertices, self.origin)
 
     @staticmethod
-    def _convert_to_cartesian(arr, origin: typing.Sequence[float]):
+    def _convert_to_cartesian(arr, origin: Sequence[float]):
         """Converts an array with xyz values in the first dimension (shape (3, ...))
         to Cartesian coordinates.
         """
@@ -1483,6 +1509,18 @@ class SphericalMesh(StructuredMesh):
 
     Parameters
     ----------
+    r_grid : numpy.ndarray
+        1-D array of mesh boundary points along the r-axis.
+        Requirement is r >= 0.
+    phi_grid : numpy.ndarray
+        1-D array of mesh boundary points along the phi-axis in radians.
+        The default value is [0, 2π], i.e. the full phi range.
+    theta_grid : numpy.ndarray
+        1-D array of mesh boundary points along the theta-axis in radians.
+        The default value is [0, π], i.e. the full theta range.
+    origin : numpy.ndarray
+        1-D array of length 3 the (x,y,z) origin of the mesh in
+        cartesian coordinates
     mesh_id : int
         Unique identifier for the mesh
     name : str
@@ -1526,13 +1564,21 @@ class SphericalMesh(StructuredMesh):
 
     """
 
-    def __init__(self, mesh_id=None, name=''):
+    def __init__(
+        self,
+        r_grid: Sequence[float],
+        phi_grid: Sequence[float] = (0, 2*pi),
+        theta_grid: Sequence[float] = (0, pi),
+        origin: Sequence[float] = (0., 0., 0.),
+        mesh_id: Optional[int] = None,
+        name: str = '',
+    ):
         super().__init__(mesh_id, name)
 
-        self._r_grid = None
-        self._theta_grid = [0, pi]
-        self._phi_grid = [0, 2*pi]
-        self.origin = (0., 0., 0.)
+        self._r_grid = r_grid
+        self._theta_grid = theta_grid
+        self._phi_grid = phi_grid
+        self.origin = origin
 
     @property
     def dimension(self):
@@ -1636,10 +1682,12 @@ class SphericalMesh(StructuredMesh):
         mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
 
         # Read and assign mesh properties
-        mesh = cls(mesh_id)
-        mesh.r_grid = group['r_grid'][()]
-        mesh.theta_grid = group['theta_grid'][()]
-        mesh.phi_grid = group['phi_grid'][()]
+        mesh = cls(
+            r_grid = group['r_grid'][()],
+            theta_grid = group['theta_grid'][()],
+            phi_grid = group['phi_grid'][()],
+            mesh_id=mesh_id,
+        )
         if 'origin' in group:
             mesh.origin = group['origin'][()]
 
@@ -1689,11 +1737,13 @@ class SphericalMesh(StructuredMesh):
 
         """
         mesh_id = int(get_text(elem, 'id'))
-        mesh = cls(mesh_id)
-        mesh.r_grid = [float(x) for x in get_text(elem, "r_grid").split()]
-        mesh.theta_grid = [float(x) for x in get_text(elem, "theta_grid").split()]
-        mesh.phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()]
-        mesh.origin = [float(x) for x in get_text(elem, "origin", default=[0., 0., 0.]).split()]
+        mesh = cls(
+            mesh_id=mesh_id,
+            r_grid = [float(x) for x in get_text(elem, "r_grid").split()],
+            theta_grid = [float(x) for x in get_text(elem, "theta_grid").split()],
+            phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()],
+            origin = [float(x) for x in get_text(elem, "origin", default=[0., 0., 0.]).split()],
+        )
 
         return mesh
 
@@ -1719,7 +1769,7 @@ class SphericalMesh(StructuredMesh):
         return self._convert_to_cartesian(self.vertices, self.origin)
 
     @staticmethod
-    def _convert_to_cartesian(arr, origin: typing.Sequence[float]):
+    def _convert_to_cartesian(arr, origin: Sequence[float]):
         """Converts an array with xyz values in the first dimension (shape (3, ...))
         to Cartesian coordinates.
         """
@@ -1794,7 +1844,7 @@ class UnstructuredMesh(MeshBase):
     _LINEAR_TET = 0
     _LINEAR_HEX = 1
 
-    def __init__(self, filename: PathLike, library: str, mesh_id: typing.Optional[int] = None,
+    def __init__(self, filename: PathLike, library: str, mesh_id: Optional[int] = None,
                  name: str = '', length_multiplier: float = 1.0):
         super().__init__(mesh_id, name)
         self.filename = filename
@@ -1966,8 +2016,8 @@ class UnstructuredMesh(MeshBase):
 
     def write_data_to_vtk(
             self,
-            filename: typing.Optional[PathLike] = None,
-            datasets: typing.Optional[dict] = None,
+            filename: Optional[PathLike] = None,
+            datasets: Optional[dict] = None,
             volume_normalization: bool = True
     ):
         """Map data to unstructured VTK mesh elements.
@@ -2066,7 +2116,7 @@ class UnstructuredMesh(MeshBase):
         filename = group['filename'][()].decode()
         library = group['library'][()].decode()
 
-        mesh = cls(filename, library, mesh_id=mesh_id)
+        mesh = cls(filename=filename, library=library, mesh_id=mesh_id)
         vol_data = group['volumes'][()]
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
         mesh.n_elements = mesh.volumes.size

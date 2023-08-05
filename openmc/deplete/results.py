@@ -2,7 +2,7 @@ import numbers
 import bisect
 import math
 import typing  # required to prevent typing.Union namespace overwriting Union
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, Optional, Tuple, List
 from warnings import warn
 
 import h5py
@@ -94,6 +94,59 @@ class Results(list):
             FutureWarning
         )
         return cls(filename)
+
+    def get_activity(
+        self,
+        mat: typing.Union[Material, str],
+        units: str = "Bq/cm3",
+        by_nuclide: bool = False, 
+        volume: Optional[float] = None
+    ) -> Tuple[np.ndarray, typing.Union[np.ndarray, List[dict]]]:
+        """Get activity of material over time.
+
+        Parameters
+        ----------
+        mat : openmc.Material, str
+            Material object or material id to evaluate
+        units : {'Bq', 'Bq/g', 'Bq/cm3'}
+            Specifies the type of activity to return, options include total
+            activity [Bq], specific [Bq/g] or volumetric activity [Bq/cm3].
+        by_nuclide : bool
+            Specifies if the activity should be returned for the material as a
+            whole or per nuclide. Default is False.
+        volume : float, optional
+            Volume of the material. If not passed, defaults to using the
+            :attr:`Material.volume` attribute.
+
+        Returns
+        -------
+        times : numpy.ndarray
+            Array of times in [s]
+        activities : numpy.ndarray
+            Array of total activities if by_nuclide = False (default)
+            or array of dictionaries of activities by nuclide if
+            by_nuclide = True.
+            
+        """
+        if isinstance(mat, Material):
+            mat_id = str(mat.id)
+        elif isinstance(mat, str):
+            mat_id = mat
+        else:
+            raise TypeError('mat should be of type openmc.Material or str')
+        
+        times = np.empty_like(self, dtype=float)
+        if by_nuclide:
+            activities = [None] * len(self)
+        else:
+            activities = np.empty_like(self, dtype=float)
+
+        # Evaluate activity for each depletion time
+        for i, result in enumerate(self):
+            times[i] = result.time[0]
+            activities[i] = result.get_material(mat_id).get_activity(units, by_nuclide, volume)
+        
+        return times, activities
 
     def get_atoms(
         self,

@@ -419,13 +419,14 @@ BoundaryInfo distance_to_boundary(Particle& p)
     double& d = info.distance;
     if (d_surf < d_lat - FP_COINCIDENT) {
       if (d == INFINITY || (d - d_surf) / d >= FP_REL_PRECISION) {
+        // Update closest distance
         d = d_surf;
 
         // If the cell is not simple, it is possible that both the negative and
         // positive half-space were given in the region specification. Thus, we
         // have to explicitly check which half-space the particle would be
         // traveling into if the surface is crossed
-        if (c.is_simple()) {
+        if (c.is_simple() || d == INFTY) {
           info.surface_index = level_surf_cross;
         } else {
           Position r_hit = r + d_surf * u;

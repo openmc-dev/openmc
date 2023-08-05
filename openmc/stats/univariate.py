@@ -1,18 +1,18 @@
+import math
+import typing
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Iterable
 from copy import deepcopy
-import math
 from numbers import Real
 from warnings import warn
-import lxml.etree as ET
 
+import lxml.etree as ET
 import numpy as np
 
 import openmc.checkvalue as cv
 from .._xml import get_text
 from ..mixin import EqualityMixin
-
 
 _INTERPOLATION_SCHEMES = [
     'histogram',
@@ -66,7 +66,7 @@ class Univariate(EqualityMixin, ABC):
             return Mixture.from_xml_element(elem)
 
     @abstractmethod
-    def sample(n_samples=1, seed=None):
+    def sample(n_samples: int = 1, seed: typing.Optional[int] = None):
         """Sample the univariate distribution
 
         Parameters
@@ -186,7 +186,7 @@ class Discrete(Univariate):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate discrete distribution from an XML element
 
         Parameters
@@ -206,7 +206,11 @@ class Discrete(Univariate):
         return cls(x, p)
 
     @classmethod
-    def merge(cls, dists, probs):
+    def merge(
+        cls,
+        dists: typing.Sequence['openmc.stats.Discrete'],
+        probs: typing.Sequence[int]
+    ):
         """Merge multiple discrete distributions into a single distribution
 
         .. versionadded:: 0.13.1
@@ -271,7 +275,7 @@ class Uniform(Univariate):
 
     """
 
-    def __init__(self, a=0.0, b=1.0):
+    def __init__(self, a: float = 0.0, b: float = 1.0):
         self.a = a
         self.b = b
 
@@ -306,7 +310,7 @@ class Uniform(Univariate):
         np.random.seed(seed)
         return np.random.uniform(self.a, self.b, n_samples)
 
-    def to_xml_element(self, element_name):
+    def to_xml_element(self, element_name: str):
         """Return XML representation of the uniform distribution
 
         Parameters
@@ -326,7 +330,7 @@ class Uniform(Univariate):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate uniform distribution from an XML element
 
         Parameters
@@ -372,7 +376,7 @@ class PowerLaw(Univariate):
 
     """
 
-    def __init__(self, a=0.0, b=1.0, n=0):
+    def __init__(self, a: float = 0.0, b: float = 1.0, n: float = 0.):
         self.a = a
         self.b = b
         self.n = n
@@ -415,7 +419,7 @@ class PowerLaw(Univariate):
         span = self.b**pwr - offset
         return np.power(offset + xi * span, 1/pwr)
 
-    def to_xml_element(self, element_name):
+    def to_xml_element(self, element_name: str):
         """Return XML representation of the power law distribution
 
         Parameters
@@ -435,7 +439,7 @@ class PowerLaw(Univariate):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate power law distribution from an XML element
 
         Parameters
@@ -493,12 +497,12 @@ class Maxwell(Univariate):
         return self.sample_maxwell(self.theta, n_samples)
 
     @staticmethod
-    def sample_maxwell(t, n_samples):
+    def sample_maxwell(t, n_samples: int):
         r1, r2, r3 = np.random.rand(3, n_samples)
         c = np.cos(0.5 * np.pi * r3)
         return -t * (np.log(r1) + np.log(r2) * c * c)
 
-    def to_xml_element(self, element_name):
+    def to_xml_element(self, element_name: str):
         """Return XML representation of the Maxwellian distribution
 
         Parameters
@@ -518,7 +522,7 @@ class Maxwell(Univariate):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate Maxwellian distribution from an XML element
 
         Parameters
@@ -593,7 +597,7 @@ class Watt(Univariate):
         aab = self.a * self.a * self.b
         return w + 0.25*aab + u*np.sqrt(aab*w)
 
-    def to_xml_element(self, element_name):
+    def to_xml_element(self, element_name: str):
         """Return XML representation of the Watt distribution
 
         Parameters
@@ -613,7 +617,7 @@ class Watt(Univariate):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate Watt distribution from an XML element
 
         Parameters
@@ -683,7 +687,7 @@ class Normal(Univariate):
         np.random.seed(seed)
         return np.random.normal(self.mean_value, self.std_dev, n_samples)
 
-    def to_xml_element(self, element_name):
+    def to_xml_element(self, element_name: str):
         """Return XML representation of the Normal distribution
 
         Parameters
@@ -703,7 +707,7 @@ class Normal(Univariate):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate Normal distribution from an XML element
 
         Parameters
@@ -721,7 +725,7 @@ class Normal(Univariate):
         return cls(*map(float, params))
 
 
-def muir(e0, m_rat, kt):
+def muir(e0: float, m_rat: float, kt: float):
     """Generate a Muir energy spectrum
 
     The Muir energy spectrum is a normal distribution, but for convenience
@@ -793,8 +797,13 @@ class Tabular(Univariate):
 
     """
 
-    def __init__(self, x, p, interpolation='linear-linear',
-                 ignore_negative=False):
+    def __init__(
+            self,
+            x: typing.Sequence[float],
+            p: typing.Sequence[float],
+            interpolation: str = 'linear-linear',
+            ignore_negative: bool = False
+        ):
         self._ignore_negative = ignore_negative
         self.x = x
         self.p = p
@@ -886,7 +895,7 @@ class Tabular(Univariate):
         """Normalize the probabilities stored on the distribution"""
         self.p /= self.cdf().max()
 
-    def sample(self, n_samples=1, seed=None):
+    def sample(self, n_samples: int = 1, seed: typing.Optional[int] = None):
         np.random.seed(seed)
         xi = np.random.rand(n_samples)
 
@@ -947,7 +956,7 @@ class Tabular(Univariate):
         assert all(samples_out < self.x[-1])
         return samples_out
 
-    def to_xml_element(self, element_name):
+    def to_xml_element(self, element_name: str):
         """Return XML representation of the tabular distribution
 
         Parameters
@@ -971,7 +980,7 @@ class Tabular(Univariate):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate tabular distribution from an XML element
 
         Parameters
@@ -1028,7 +1037,7 @@ class Legendre(Univariate):
 
     """
 
-    def __init__(self, coefficients):
+    def __init__(self, coefficients: typing.Sequence[float]):
         self.coefficients = coefficients
         self._legendre_poly = None
 
@@ -1082,7 +1091,11 @@ class Mixture(Univariate):
 
     """
 
-    def __init__(self, probability, distribution):
+    def __init__(
+        self,
+        probability: typing.Sequence[float],
+        distribution: typing.Sequence['openmc.Univariate']
+    ):
         self.probability = probability
         self.distribution = distribution
 
@@ -1140,7 +1153,7 @@ class Mixture(Univariate):
         norm = sum(self.probability)
         self.probability = [val / norm for val in self.probability]
 
-    def to_xml_element(self, element_name):
+    def to_xml_element(self, element_name: str):
         """Return XML representation of the mixture distribution
 
         .. versionadded:: 0.13.0
@@ -1167,7 +1180,7 @@ class Mixture(Univariate):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate mixture distribution from an XML element
 
         .. versionadded:: 0.13.0
@@ -1207,7 +1220,10 @@ class Mixture(Univariate):
         ])
 
 
-def combine_distributions(dists, probs):
+def combine_distributions(
+    dists: typing.Sequence['openmc.Univariate'],
+    probs: typing.Sequence[float]
+):
     """Combine distributions with specified probabilities
 
     This function can be used to combine multiple instances of

@@ -1,15 +1,17 @@
+from __future__ import annotations
+import typing
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from math import pi, cos
+from math import cos, pi
 from numbers import Real
-import lxml.etree as ET
 
+import lxml.etree as ET
 import numpy as np
 
 import openmc.checkvalue as cv
 from .._xml import get_text
-from .univariate import Univariate, Uniform, PowerLaw
 from ..mesh import MeshBase
+from .univariate import PowerLaw, Uniform, Univariate
 
 
 class UnitSphere(ABC):
@@ -177,7 +179,7 @@ class Isotropic(UnitSphere):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate isotropic distribution from an XML element
 
         Parameters
@@ -209,7 +211,7 @@ class Monodirectional(UnitSphere):
 
     """
 
-    def __init__(self, reference_uvw=[1., 0., 0.]):
+    def __init__(self, reference_uvw: typing.Sequence[float] = [1., 0., 0.]):
         super().__init__(reference_uvw)
 
     def to_xml_element(self):
@@ -228,7 +230,7 @@ class Monodirectional(UnitSphere):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate monodirectional distribution from an XML element
 
         Parameters
@@ -304,7 +306,12 @@ class CartesianIndependent(Spatial):
 
     """
 
-    def __init__(self, x, y, z):
+    def __init__(
+        self,
+        x: openmc.stats.Univariate,
+        y: openmc.stats.Univariate,
+        z: openmc.stats.Univariate
+    ):
         self.x = x
         self.y = y
         self.z = z
@@ -353,7 +360,7 @@ class CartesianIndependent(Spatial):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate spatial distribution from an XML element
 
         Parameters
@@ -477,7 +484,7 @@ class SphericalIndependent(Spatial):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate spatial distribution from an XML element
 
         Parameters
@@ -599,7 +606,7 @@ class CylindricalIndependent(Spatial):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate spatial distribution from an XML element
 
         Parameters
@@ -772,7 +779,12 @@ class Box(Spatial):
 
     """
 
-    def __init__(self, lower_left, upper_right, only_fissionable=False):
+    def __init__(
+        self,
+        lower_left: typing.Sequence[float],
+        upper_right: typing.Sequence[float],
+        only_fissionable: bool = False
+    ):
         self.lower_left = lower_left
         self.upper_right = upper_right
         self.only_fissionable = only_fissionable
@@ -826,7 +838,7 @@ class Box(Spatial):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate box distribution from an XML element
 
         Parameters
@@ -865,7 +877,7 @@ class Point(Spatial):
 
     """
 
-    def __init__(self, xyz=(0., 0., 0.)):
+    def __init__(self, xyz: typing.Sequence[float] = (0., 0., 0.)):
         self.xyz = xyz
 
     @property
@@ -894,7 +906,7 @@ class Point(Spatial):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate point distribution from an XML element
 
         Parameters
@@ -912,8 +924,13 @@ class Point(Spatial):
         return cls(xyz)
 
 
-def spherical_uniform(r_outer, r_inner=0.0, thetas=(0., pi), phis=(0., 2*pi),
-                      origin=(0., 0., 0.)):
+def spherical_uniform(
+        r_outer: float,
+        r_inner: float = 0.0,
+        thetas: typing.Sequence[float] = (0., pi),
+        phis: typing.Sequence[float] = (0., 2*pi),
+        origin: typing.Sequence[float] = (0., 0., 0.)
+    ):
     """Return a uniform spatial distribution over a spherical shell.
 
     This function provides a uniform spatial distribution over a spherical
@@ -926,15 +943,15 @@ def spherical_uniform(r_outer, r_inner=0.0, thetas=(0., pi), phis=(0., 2*pi),
     ----------
     r_outer : float
         Outer radius of the spherical shell in [cm]
-    r_inner : float, optional
+    r_inner : float
         Inner radius of the spherical shell in [cm]
-    thetas : iterable of float, optional
+    thetas : iterable of float
         Starting and ending theta coordinates (angle relative to
         the z-axis) in radius in a reference frame centered at `origin`
-    phis : iterable of float, optional
+    phis : iterable of float
         Starting and ending phi coordinates (azimuthal angle) in
         radians in a reference frame centered at `origin`
-    origin: iterable of float, optional
+    origin: iterable of float
         Coordinates (x0, y0, z0) of the center of the spherical
         reference frame for the distribution.
 

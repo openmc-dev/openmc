@@ -9,7 +9,7 @@ def test_reg_mesh_from_cell():
     surface = openmc.Sphere(r=10, x0=2, y0=3, z0=5)
     cell = openmc.Cell(region=-surface)
 
-    mesh = openmc.RegularMesh.from_domain(cell, dimension=[7, 11, 13])
+    mesh = openmc.RegularMesh.from_domain(domain=cell, dimension=[7, 11, 13])
     assert isinstance(mesh, openmc.RegularMesh)
     assert np.array_equal(mesh.dimension, (7, 11, 13))
     assert np.array_equal(mesh.lower_left, cell.bounding_box[0])
@@ -23,7 +23,7 @@ def test_cylindrical_mesh_from_cell():
     z_surface_1 = openmc.ZPlane(z0=30)
     z_surface_2 = openmc.ZPlane(z0=0)
     cell = openmc.Cell(region=-cy_surface & -z_surface_1 & +z_surface_2)
-    mesh = openmc.CylindricalMesh.from_domain(cell, dimension=[2, 4, 3])
+    mesh = openmc.CylindricalMesh.from_domain(domain=cell, dimension=[2, 4, 3])
 
     assert isinstance(mesh, openmc.CylindricalMesh)
     assert np.array_equal(mesh.dimension, (2, 4, 3))
@@ -38,7 +38,7 @@ def test_reg_mesh_from_region():
     surface = openmc.Sphere(r=1, x0=-5, y0=-3, z0=-2)
     region = -surface
 
-    mesh = openmc.RegularMesh.from_domain(region)
+    mesh = openmc.RegularMesh.from_domain(domain=region)
     assert isinstance(mesh, openmc.RegularMesh)
     assert np.array_equal(mesh.dimension, (10, 10, 10))  # default values
     assert np.array_equal(mesh.lower_left, region.bounding_box[0])
@@ -53,7 +53,7 @@ def test_cylindrical_mesh_from_region():
     z_surface_2 = openmc.ZPlane(z0=-30)
     cell = openmc.Cell(region=-cy_surface & -z_surface_1 & +z_surface_2)
     mesh = openmc.CylindricalMesh.from_domain(
-        cell,
+        domain=cell,
         dimension=(6, 2, 3),
         phi_grid_bounds=(0., np.pi)
     )

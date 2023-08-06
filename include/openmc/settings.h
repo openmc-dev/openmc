@@ -92,6 +92,8 @@ extern ElectronTreatment
   electron_treatment; //!< how to treat secondary electrons
 extern array<double, 4>
   energy_cutoff; //!< Energy cutoff in [eV] for each particle type
+extern array<double, 4>
+  time_cutoff; //!< Time cutoff in [s] for each particle type
 extern int
   legendre_to_tabular_points; //!< number of points to convert Legendres
 extern int max_order;         //!< Maximum Legendre order for multigroup data

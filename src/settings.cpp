@@ -95,6 +95,7 @@ int64_t max_particles_in_flight {100000};
 
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
+array<double, 4> time_cutoff {INFTY, INFTY, INFTY, INFTY};
 int legendre_to_tabular_points {C_NONE};
 int max_order {0};
 int n_log_bins {8000};
@@ -532,6 +533,18 @@ void read_settings_xml(pugi::xml_node root)
     if (check_for_node(node_cutoff, "energy_positron")) {
       energy_cutoff[3] =
         std::stod(get_node_value(node_cutoff, "energy_positron"));
+    }
+    if (check_for_node(node_cutoff, "time_neutron")) {
+      time_cutoff[0] = std::stod(get_node_value(node_cutoff, "time_neutron"));
+    }
+    if (check_for_node(node_cutoff, "time_photon")) {
+      time_cutoff[1] = std::stod(get_node_value(node_cutoff, "time_photon"));
+    }
+    if (check_for_node(node_cutoff, "time_electron")) {
+      time_cutoff[2] = std::stod(get_node_value(node_cutoff, "time_electron"));
+    }
+    if (check_for_node(node_cutoff, "time_positron")) {
+      time_cutoff[3] = std::stod(get_node_value(node_cutoff, "time_positron"));
     }
   }
 

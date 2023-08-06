@@ -1225,6 +1225,15 @@ class CylindricalMesh(StructuredMesh):
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]
+    lower_left : Iterable of float
+        The lower-left corner of the structured mesh. If only two coordinate
+        are given, it is assumed that the mesh is an x-y mesh.
+    upper_right : Iterable of float
+        The upper-right corner of the structured mesh. If only two coordinate
+        are given, it is assumed that the mesh is an x-y mesh.
+    bounding_box: openmc.OpenMC
+        Axis-aligned cartesian bounding box of cell defined by upper-right and lower-
+        left coordinates
 
     """
 
@@ -1304,6 +1313,27 @@ class CylindricalMesh(StructuredMesh):
                 for z in range(1, nz + 1)
                 for p in range(1, np + 1)
                 for r in range(1, nr + 1))
+
+
+    @property
+    def lower_left(self):
+        return np.array((
+            self.origin[0] - self.r_grid[-1],
+            self.origin[1] - self.r_grid[-1],
+            self.origin[2] - self.z_grid[-1]
+        ))
+
+    @property
+    def upper_right(self):
+        return np.array((
+            self.origin[0] + self.r_grid[-1],
+            self.origin[1] + self.r_grid[-1],
+            self.origin[2] + self.z_grid[-1]
+        ))
+
+    @property
+    def bounding_box(self):
+        return openmc.BoundingBox(self.lower_left, self.upper_right)
 
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'

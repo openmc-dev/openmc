@@ -33,11 +33,11 @@ def model():
     settings.run_mode = 'fixed source'
 
     # build
-    mesh = openmc.SphericalMesh()
-    mesh.phi_grid = np.linspace(0, 2*np.pi, 13)
-    mesh.theta_grid = np.linspace(0, np.pi, 7)
-    mesh.r_grid = np.linspace(0, geom_size, geom_size)
-
+    mesh = openmc.SphericalMesh(
+        phi_grid=np.linspace(0, 2*np.pi, 13),
+        theta_grid=np.linspace(0, np.pi, 7),
+        r_grid=np.linspace(0, geom_size, geom_size),
+    )
     tally = openmc.Tally()
 
     mesh_filter = openmc.MeshFilter(mesh)
@@ -135,8 +135,7 @@ def void_coincident_geom_model():
     settings.particles = 5000
     model.settings = settings
 
-    mesh = openmc.SphericalMesh()
-    mesh.r_grid = np.linspace(0, 250, 501)
+    mesh = openmc.SphericalMesh(r_grid=np.linspace(0, 250, 501))
     mesh_filter = openmc.MeshFilter(mesh)
 
     tally = openmc.Tally()

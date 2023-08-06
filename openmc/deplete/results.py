@@ -99,7 +99,7 @@ class Results(list):
         self,
         mat: typing.Union[Material, str],
         units: str = "Bq/cm3",
-        by_nuclide: bool = False, 
+        by_nuclide: bool = False,
         volume: Optional[float] = None
     ) -> Tuple[np.ndarray, typing.Union[np.ndarray, List[dict]]]:
         """Get activity of material over time.
@@ -122,11 +122,11 @@ class Results(list):
         -------
         times : numpy.ndarray
             Array of times in [s]
-        activities : numpy.ndarray
+        activities : numpy.ndarray or List[dict]
             Array of total activities if by_nuclide = False (default)
-            or array of dictionaries of activities by nuclide if
+            or list of dictionaries of activities by nuclide if
             by_nuclide = True.
-            
+
         """
         if isinstance(mat, Material):
             mat_id = str(mat.id)
@@ -134,7 +134,7 @@ class Results(list):
             mat_id = mat
         else:
             raise TypeError('mat should be of type openmc.Material or str')
-        
+
         times = np.empty_like(self, dtype=float)
         if by_nuclide:
             activities = [None] * len(self)
@@ -145,7 +145,7 @@ class Results(list):
         for i, result in enumerate(self):
             times[i] = result.time[0]
             activities[i] = result.get_material(mat_id).get_activity(units, by_nuclide, volume)
-        
+
         return times, activities
 
     def get_atoms(
@@ -210,6 +210,60 @@ class Results(list):
                 concentrations *= 1e-24
 
         return times, concentrations
+
+    def get_decay_heat(
+            self,
+            mat: typing.Union[Material, str],
+            units: str = "W",
+            by_nuclide: bool = False,
+            volume: Optional[float] = None
+    ) -> Tuple[np.ndarray, typing.Union[np.ndarray, List[dict]]]:
+        """Get decay heat of material over time.
+
+        Parameters
+        ----------
+        mat : openmc.Material, str
+            Material object or material id to evaluate.
+        units : {'W', 'W/g', 'W/cm3'}
+            Specifies the units of decay heat to return. Options include total
+            heat [W], specific [W/g] or volumetric heat [W/cm3].
+        by_nuclide : bool
+            Specifies if the decay heat should be returned for the material as a
+            whole or per nuclide. Default is False.
+        volume : float, optional
+            Volume of the material. If not passed, defaults to using the
+            :attr:`Material.volume` attribute.
+
+        Returns
+        -------
+        times : numpy.ndarray
+            Array of times in [s]
+        decay_heat : numpy.ndarray or List[dict]
+            Array of total decay heat values if by_nuclide = False (default)
+            or list of dictionaries of decay heat values by nuclide if
+            by_nuclide = True.
+        """
+
+        if isinstance(mat, Material):
+            mat_id = str(mat.id)
+        elif isinstance(mat, str):
+            mat_id = mat
+        else:
+            raise TypeError('mat should be of type openmc.Material or str')
+
+        times = np.empty_like(self, dtype=float)
+        if by_nuclide:
+            decay_heat = [None] * len(self)
+        else:
+            decay_heat = np.empty_like(self, dtype=float)
+
+        # Evaluate decay heat for each depletion time
+        for i, result in enumerate(self):
+            times[i] = result.time[0]
+            decay_heat[i] = result.get_material(mat_id).get_decay_heat(
+                units, by_nuclide, volume)
+
+        return times, decay_heat
 
     def get_mass(self,
         mat: typing.Union[Material, str],

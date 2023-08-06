@@ -505,6 +505,9 @@ class RegularMesh(StructuredMesh):
     upper_right : Iterable of float
         The upper-right corner of the structured mesh. If only two coordinate
         are given, it is assumed that the mesh is an x-y mesh.
+    bounding_box: openmc.BoundingBox
+        Axis-aligned bounding box of the cell defined by the upper-right and lower-
+        left coordinates
     width : Iterable of float
         The width of mesh cells in each direction.
     indices : Iterable of tuple
@@ -1549,6 +1552,15 @@ class SphericalMesh(StructuredMesh):
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]
+    lower_left : numpy.ndarray
+        The lower-left corner of the structured mesh. If only two coordinate
+        are given, it is assumed that the mesh is an x-y mesh.
+    upper_right : numpy.ndarray
+        The upper-right corner of the structured mesh. If only two coordinate
+        are given, it is assumed that the mesh is an x-y mesh.
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the cell defined by the upper-right and lower-
+        left coordinates
 
     """
 
@@ -1628,6 +1640,20 @@ class SphericalMesh(StructuredMesh):
                 for p in range(1, np + 1)
                 for t in range(1, nt + 1)
                 for r in range(1, nr + 1))
+
+    @property
+    def lower_left(self):
+        r = self.r_grid[-1]
+        return np.array((self.origin[0] - r, self.origin[1] - r, self.origin[2] - r))
+
+    @property
+    def upper_right(self):
+        r = self.r_grid[-1]
+        return np.array((self.origin[0] + r, self.origin[1] + r, self.origin[2] + r))
+
+    @property
+    def bounding_box(self):
+        return openmc.BoundingBox(self.lower_left, self.upper_right)
 
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'

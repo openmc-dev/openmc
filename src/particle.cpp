@@ -219,9 +219,8 @@ void Particle::event_advance()
 
   // Kill particle if its time exceeds the cutoff
   bool hit_time_boundary = false;
-  double time_cutoff =
-    settings::time_cutoff[static_cast<int>(type())] if (time() > time_cutoff)
-  {
+  double time_cutoff = settings::time_cutoff[static_cast<int>(type())];
+  if (time() > time_cutoff) {
     double dt = time() - time_cutoff;
     time() = time_cutoff;
 

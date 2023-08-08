@@ -641,7 +641,8 @@ class Material(IDManagerMixin):
     def add_element(self, element: str, percent: float, percent_type: str = 'ao',
                     enrichment: Optional[float] = None,
                     enrichment_target: Optional[str] = None,
-                    enrichment_type: Optional[str] = None):
+                    enrichment_type: Optional[str] = None,
+                    cross_sections: str = None):
         """Add a natural element to the material
 
         Parameters
@@ -668,6 +669,8 @@ class Material(IDManagerMixin):
             Default is: 'ao' for two-isotope enrichment; 'wo' for U enrichment
 
             .. versionadded:: 0.12
+        cross_sections : str, optional
+            Location of cross_sections.xml file. Default is None.
 
         Notes
         -----
@@ -746,7 +749,8 @@ class Material(IDManagerMixin):
                                       percent_type,
                                       enrichment,
                                       enrichment_target,
-                                      enrichment_type):
+                                      enrichment_type,
+                                      cross_sections):
             self.add_nuclide(*nuclide)
 
     def add_elements_from_formula(self, formula: str, percent_type: str = 'ao',

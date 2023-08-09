@@ -266,7 +266,7 @@ def plot_mesh_tally(
             raise ValueError(msg)
 
     tally_slice = tally.get_slice(scores=[score])
-    print(tally_slice)
+
     tally_data = tally_slice.get_reshaped_data(expand_dims=True, value=value).squeeze()
 
     if slice_index is None:

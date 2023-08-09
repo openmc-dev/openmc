@@ -185,8 +185,8 @@ def plot_mesh_tally(
     value: str = 'mean',
     outline: bool = False,
     outline_by: str = 'cell',
-    pixels: int = 40000,
     geometry: Optional['openmc.Geometry'] = None,
+    pixels: int = 40000,
     colorbar: bool = True,
     color_bar_title: str = None,
     volume_normalization: bool = True,
@@ -218,8 +218,6 @@ def plot_mesh_tally(
         by cell or by material.
     outline_by : {'cell', 'material'}
         Indicate whether the plot should be colored by cell or by material
-    outline_color : str
-        The matplotlib color to use for the plot.
     geometry : openmc.Geometry
         The geometry to use for the outline.
     pixels : int

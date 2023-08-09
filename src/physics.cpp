@@ -106,7 +106,7 @@ void sample_neutron_reaction(Particle& p)
 
   const auto& nuc {data::nuclides[i_nuclide]};
 
-  if (nuc->fissionable_) {
+  if (nuc->fissionable_ && p.neutron_xs(i_nuclide).fission > 0.0) {
     auto& rx = sample_fission(i_nuclide, p);
     if (settings::run_mode == RunMode::EIGENVALUE) {
       create_fission_sites(p, i_nuclide, rx);

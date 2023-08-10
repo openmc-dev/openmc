@@ -1678,6 +1678,13 @@ default, the cutoff weight in OpenMC is :math:`w_c = 0.25` and the survival
 weight is :math:`w_s = 1.0`. These parameters vary from one Monte Carlo code to
 another.
 
+.. _survival_normalization:
+
+Survival Normalization
+----------------
+
+... Insert ...
+
 Weight Windows
 --------------
 

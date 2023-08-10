@@ -533,6 +533,12 @@ void initialize_history(Particle& p, int64_t index_source)
     auto site = sample_external_source(&seed);
     p.from_source(&site);
   }
+  if(settings::source_file || settings::surf_source_read){
+    if(settings::survival_normalization && settings::survival_biasing){
+      p.wgt_cutoff(settings::weight_cutoff * p.wgt());
+      p.wgt_survive(settings::weight_survive * p.wgt());   
+    }
+  }
   p.current_work() = index_source;
 
   // set identifier for particle

@@ -64,7 +64,11 @@ void sample_reaction(Particle& p)
 
   // Play Russian roulette if survival biasing is turned on
   if (settings::survival_biasing) {
-    if (p.wgt() < settings::weight_cutoff) {
+    double weight_cutoff = settings::weight_cutoff;
+    if((settings::source_file || settings::surf_source_read)&&(settings::survival_normalization)){
+      weight_cutoff  = p.wgt_cutoff();
+    }
+    if (p.wgt() < weight_cutoff) {
       russian_roulette(p, settings::weight_survive);
     }
   }

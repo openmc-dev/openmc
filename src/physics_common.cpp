@@ -11,11 +11,14 @@ namespace openmc {
 
 void russian_roulette(Particle& p, double weight_survive)
 {
+  if((settings::source_file || settings::surf_source_read)&&(settings::survival_normalization && settings::survival_biasing)){
+    weight_survive = p.wgt_survive();
+  }
   if (weight_survive * prn(p.current_seed()) < p.wgt()) {
     p.wgt() = weight_survive;
   } else {
     p.wgt() = 0.;
-  }
+  } 
 }
 
 } // namespace openmc

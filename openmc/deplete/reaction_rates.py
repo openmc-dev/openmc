@@ -29,11 +29,11 @@ class ReactionRates(np.ndarray):
 
     Attributes
     ----------
-    index_mat : OrderedDict of str to int
+    index_mat : Dict of str to int
         A dictionary mapping material ID as string to index.
-    index_nuc : OrderedDict of str to int
+    index_nuc : Dict of str to int
         A dictionary mapping nuclide name as string to index.
-    index_rx : OrderedDict of str to int
+    index_rx : Dict of str to int
         A dictionary mapping reaction name as string to index.
     n_mat : int
         Number of materials.

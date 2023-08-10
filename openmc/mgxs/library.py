@@ -1,4 +1,3 @@
-from collections import OrderedDict
 from collections.abc import Iterable
 import copy
 from numbers import Integral
@@ -83,7 +82,7 @@ class Library:
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
-    all_mgxs : collections.OrderedDict
+    all_mgxs : Dict
         MGXS objects keyed by domain ID and cross section type
     sp_filename : str
         The filename of the statepoint with tally data used to the
@@ -119,7 +118,7 @@ class Library:
         self._legendre_order = 0
         self._histogram_bins = 16
         self._tally_trigger = None
-        self._all_mgxs = OrderedDict()
+        self._all_mgxs = {}
         self._sp_filename = None
         self._keff = None
         self._sparse = False
@@ -159,9 +158,9 @@ class Library:
             clone._keff = self._keff
             clone._sparse = self.sparse
 
-            clone._all_mgxs = OrderedDict()
+            clone._all_mgxs = {}
             for domain in self.domains:
-                clone.all_mgxs[domain.id] = OrderedDict()
+                clone.all_mgxs[domain.id] = {}
                 for mgxs_type in self.mgxs_types:
                     mgxs = copy.deepcopy(self.all_mgxs[domain.id][mgxs_type])
                     clone.all_mgxs[domain.id][mgxs_type] = mgxs
@@ -503,7 +502,7 @@ class Library:
 
         # Initialize MGXS for each domain and mgxs type and store in dictionary
         for domain in self.domains:
-            self.all_mgxs[domain.id] = OrderedDict()
+            self.all_mgxs[domain.id] = {}
             for mgxs_type in self.mgxs_types:
                 if mgxs_type in openmc.mgxs.MDGXS_TYPES:
                     mgxs = openmc.mgxs.MDGXS.get_mgxs(

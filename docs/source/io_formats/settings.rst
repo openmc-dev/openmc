@@ -812,6 +812,18 @@ survival biasing, otherwise known as implicit capture or absorption.
 
 .. _tabular_legendre:
 
+------------------------------
+``<survival_normalization>`` Element
+------------------------------
+
+The ``<survival_normalization>`` element has no attributes and has an accepted value
+of "true" or "false". If set to "true", this option will enable the use of
+survival normalization, otherwise known as implicit capture or absorption per particle.
+
+  *Default*: true
+
+.. _tabular_legendre:
+
 ---------------------------------
 ``<tabular_legendre>`` Element
 ---------------------------------

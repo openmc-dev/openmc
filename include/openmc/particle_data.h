@@ -263,12 +263,12 @@ private:
   int g_last_;    //!< pre-collision energy group (MG only)
 
   // Other physical data
-  double wgt_ {1.0};         //!< particle weight
-  double wgt_cutoff_ {0.25}; //!< particle weight cutoff
-  double wgt_survive_ {1.0}; //!< particle weight survive
-  double mu_;                //!< angle of scatter
-  double time_ {0.0};        //!< time in [s]
-  double time_last_ {0.0};   //!< previous time in [s]
+  double wgt_ {1.0};       //!< particle weight
+  double wgt_cutoff_;      //!< particle weight cutoff
+  double wgt_survive_;     //!< particle weight survive
+  double mu_;              //!< angle of scatter
+  double time_ {0.0};      //!< time in [s]
+  double time_last_ {0.0}; //!< previous time in [s]
 
   // Other physical data
   Position r_last_current_; //!< coordinates of the last collision or

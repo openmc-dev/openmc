@@ -79,6 +79,11 @@ you care. This element has the following attributes/sub-elements:
 
     *Default*: 1.0
 
+  :survival_normalization:
+    toggle boolean that turns on our off the survival bias per particle.
+
+    *Default*: true
+
   :energy_neutron:
     The energy under which neutrons will be killed.
 

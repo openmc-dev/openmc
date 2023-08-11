@@ -533,6 +533,8 @@ void initialize_history(Particle& p, int64_t index_source)
     auto site = sample_external_source(&seed);
     p.from_source(&site);
   }
+  // normalize biasing weight parameters; multiply them by start weight of initialized history
+  // applicable only for MCPL and HDF5 phase-space sources.
   if(settings::source_file || settings::surf_source_read){
     if(settings::survival_normalization && settings::survival_biasing){
       p.wgt_cutoff(settings::weight_cutoff * p.wgt());

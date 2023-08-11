@@ -11,6 +11,7 @@ namespace openmc {
 
 void russian_roulette(Particle& p, double weight_survive)
 {
+  // if survival normalization is applicable, use normalized weight survive
   if((settings::source_file || settings::surf_source_read)&&(settings::survival_normalization && settings::survival_biasing)){
     weight_survive = p.wgt_survive();
   }

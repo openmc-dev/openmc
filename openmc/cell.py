@@ -49,6 +49,8 @@ class Cell(IDManagerMixin):
     color : {'str', 'tuple'}
         Color of this Cell when 'color_by == cell'.
         Can be a named color or an RGB tuple.
+
+        .. versionadded:: 0.14.1
     rotation : Iterable of float
         If the cell is filled with a universe, this array specifies the angles
         in degrees about the x, y, and z axes that the filled universe should be

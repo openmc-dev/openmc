@@ -102,6 +102,8 @@ class Material(IDManagerMixin):
         Color of this Material when 'color_by == material'.
         Can be a named color or an RGB tuple.
 
+        .. versionadded:: 0.14.1
+
     """
 
     next_id = 1

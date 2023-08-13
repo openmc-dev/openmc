@@ -423,7 +423,7 @@ class Universe(UniverseBase):
             model = openmc.Model()
             model.geometry = openmc.Geometry(self)
             if seed is not None:
-                model.settings.seed = seed
+                model.settings.plot_seed = seed
 
             # Determine whether any materials contains macroscopic data and if
             # so, set energy mode accordingly

@@ -22,6 +22,7 @@
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
 #include "openmc/output.h"
+#include "openmc/plot.h"
 #include "openmc/random_lcg.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"
@@ -388,6 +389,12 @@ void read_settings_xml(pugi::xml_node root)
     } else if (rel_max_lost_particles <= 0.0 || rel_max_lost_particles >= 1.0) {
       fatal_error("Relative max lost particles must be between zero and one.");
     }
+  }
+
+  // Copy plotting random number seed if specified
+  if (check_for_node(root, "plot_seed")) {
+    auto seed = std::stoll(get_node_value(root, "plot_seed"));
+    model::plotter_seed = seed;
   }
 
   // Copy random number seed if specified

@@ -23,6 +23,7 @@ def test_export_to_xml(run_in_tmpdir):
     s.surf_source_write = {'surface_ids': [2], 'max_particles': 200}
     s.confidence_intervals = True
     s.ptables = True
+    s.plot_seed = 100
     s.survival_biasing = True
     s.cutoff = {'weight': 0.25, 'weight_avg': 0.5, 'energy_neutron': 1.0e-5,
                 'energy_photon': 1000.0, 'energy_electron': 1.0e-5,
@@ -82,6 +83,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.surf_source_write == {'surface_ids': [2], 'max_particles': 200}
     assert s.confidence_intervals
     assert s.ptables
+    assert s.plot_seed == 100
     assert s.seed == 17
     assert s.survival_biasing
     assert s.cutoff == {'weight': 0.25, 'weight_avg': 0.5,
@@ -108,7 +110,7 @@ def test_export_to_xml(run_in_tmpdir):
                                       'energy_min': 1.0, 'energy_max': 1000.0,
                                       'nuclides': ['U235', 'U238', 'Pu239']}
     assert s.create_fission_neutrons
-    assert not s.create_delayed_neutrons 
+    assert not s.create_delayed_neutrons
     assert s.log_grid_bins == 2000
     assert not s.photon_transport
     assert s.electron_treatment == 'led'

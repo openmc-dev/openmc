@@ -207,7 +207,7 @@ class PlotBase(IDManagerMixin):
 
     @background.setter
     def background(self, background):
-        self._check_color('plot background', background)
+        openmc.colors.check_color('plot background', background)
         self._background = background
 
     @property
@@ -226,7 +226,7 @@ class PlotBase(IDManagerMixin):
 
     @mask_background.setter
     def mask_background(self, mask_background):
-        self._check_color('plot mask background', mask_background)
+        openmc.colors.check_color('plot mask background', mask_background)
         self._mask_background = mask_background
 
     @property
@@ -245,7 +245,7 @@ class PlotBase(IDManagerMixin):
 
     @overlap_color.setter
     def overlap_color(self, overlap_color):
-        self._check_color('plot overlap color', overlap_color)
+        openmc.colors.check_color('plot overlap color', overlap_color)
         self._overlap_color = overlap_color
 
     @property
@@ -258,7 +258,7 @@ class PlotBase(IDManagerMixin):
         for key, value in colors.items():
             cv.check_type('plot color key', key,
                           (openmc.Cell, openmc.Material, Integral))
-            self._check_color('plot color value', value)
+            openmc.colors.check_color('plot color value', value)
         self._colors = colors
 
     @property
@@ -270,19 +270,6 @@ class PlotBase(IDManagerMixin):
         cv.check_type('plot level', plot_level, Integral)
         cv.check_greater_than('plot level', plot_level, 0, equality=True)
         self._level = plot_level
-
-    @staticmethod
-    def _check_color(err_string, color):
-        cv.check_type(err_string, color, Iterable)
-        if isinstance(color, str):
-            if color.lower() not in openmc.colors.SVG_COLORS:
-                raise ValueError(f"'{color}' is not a valid color.")
-        else:
-            cv.check_length(err_string, color, 3)
-            for rgb in color:
-                cv.check_type(err_string, rgb, Real)
-                cv.check_greater_than('RGB component', rgb, 0, True)
-                cv.check_less_than('RGB component', rgb, 256)
 
     # Helper function that returns the domain ID given either a
     # Cell/Material object or the domain ID itself
@@ -501,7 +488,7 @@ class Plot(PlotBase):
                                   0, equality=True)
 
         if 'color' in meshlines:
-            self._check_color('plot meshlines color', meshlines['color'])
+            openmc.colors.check_color('plot meshlines color', meshlines['color'])
 
         self._meshlines = meshlines
 
@@ -968,7 +955,7 @@ class ProjectionPlot(PlotBase):
 
     @wireframe_color.setter
     def wireframe_color(self, wireframe_color):
-        self._check_color('plot wireframe color', wireframe_color)
+        openmc.colors.check_color('plot wireframe color', wireframe_color)
         self._wireframe_color = wireframe_color
 
     @property

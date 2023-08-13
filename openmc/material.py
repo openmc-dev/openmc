@@ -15,6 +15,7 @@ import h5py
 
 import openmc
 import openmc.data
+import openmc.colors
 import openmc.checkvalue as cv
 from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
@@ -97,6 +98,9 @@ class Material(IDManagerMixin):
         NCrystal configuration string
 
         .. versionadded:: 0.13.3
+    color : {'str', 'tuple'}
+        Color of this Material when 'color_by == material'.
+        Can be a named color or an RGB tuple.
 
     """
 
@@ -117,6 +121,7 @@ class Material(IDManagerMixin):
         self._atoms = {}
         self._isotropic = []
         self._ncrystal_cfg = None
+        self._color = None
 
         # A list of tuples (nuclide, percent, percent type)
         self._nuclides = []
@@ -260,6 +265,16 @@ class Material(IDManagerMixin):
     @property
     def ncrystal_cfg(self) -> Optional[str]:
         return self._ncrystal_cfg
+
+    @property
+    def color(self):
+        return self._color
+
+    @color.setter
+    def color(self, color):
+        if color is not None:
+            openmc.colors.check_color(f'Material {self._id} color', color)
+        self._color = color
 
     @property
     def fissionable_mass(self) -> float:

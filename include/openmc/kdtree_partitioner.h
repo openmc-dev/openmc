@@ -10,7 +10,7 @@
 
 namespace openmc {
 
-// This ndoe contains all the information you would want to know about a node
+// This node contains all the information you would want to know about a node
 // It is not cache efficient to traverse and takes up extra memory that is not
 // used during traversal
 struct KdTreeUncompressedNode {

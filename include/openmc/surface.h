@@ -76,12 +76,19 @@ struct BoundingBox {
     return *this;
   }
 
-  void extend_init() {
+  inline void extend_init() {
     min_ = Position(DBL_MAX, DBL_MAX, DBL_MAX);
     max_ = Position(-DBL_MAX, -DBL_MAX, -DBL_MAX);
   }
 
-  double surface_area() const
+  inline void extend(const Position& pos) {
+    for (int i = 0; i < 3; i++) {
+      min_[i] = std::min(min_[i], pos[i]);
+      max_[i] = std::max(max_[i], pos[i]);
+    }    
+  }
+
+  inline double surface_area() const
   {
     Position side_lengths = max_ - min_;
 
@@ -89,18 +96,18 @@ struct BoundingBox {
                 side_lengths.y * side_lengths.z);
   }
 
-  double volume() const
+  inline double volume() const
   {
     Position side_lengths = max_ - min_;
     return side_lengths.x * side_lengths.y * side_lengths.z;
   }
 
-  Position get_center() const
+  inline Position get_center() const
   {
     return (min_ + max_) * 0.5f;
   }
 
-  bool contains(const Position& pos) const
+  inline bool contains(const Position& pos) const
   {
     return (min_.x <= pos.x && min_.y <= pos.y && min_.z <= pos.z &&
             max_.x >= pos.x && max_.y >= pos.y && max_.z >= pos.z);

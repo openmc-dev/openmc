@@ -33,12 +33,14 @@ extern vector<unique_ptr<Surface>> surfaces;
 //==============================================================================
 
 struct BoundingBox {
-  double xmin = -INFTY;
-  double xmax = INFTY;
-  double ymin = -INFTY;
-  double ymax = INFTY;
-  double zmin = -INFTY;
-  double zmax = INFTY;
+  Position min_;
+  Position max_;
+
+  BoundingBox() : min_(-INFTY, -INFTY, -INFTY), max_(INFTY, INFTY, INFTY) {}
+  BoundingBox(double xmin, double xmax, double ymin, double ymax, double zmin,
+    double zmax)
+    : min_(xmin, ymin, zmin), max_(xmax, ymax, zmax)
+  {}
 
   inline BoundingBox operator&(const BoundingBox& other)
   {
@@ -55,24 +57,21 @@ struct BoundingBox {
   // intersect operator
   inline BoundingBox& operator&=(const BoundingBox& other)
   {
-    xmin = std::max(xmin, other.xmin);
-    xmax = std::min(xmax, other.xmax);
-    ymin = std::max(ymin, other.ymin);
-    ymax = std::min(ymax, other.ymax);
-    zmin = std::max(zmin, other.zmin);
-    zmax = std::min(zmax, other.zmax);
+    for (int i = 0; i < 3; i++) {
+      min_[i] = std::max(min_[i], other.min_[i]);
+      max_[i] = std::min(max_[i], other.max_[i]);
+    }
+
     return *this;
   }
 
   // union operator
   inline BoundingBox& operator|=(const BoundingBox& other)
   {
-    xmin = std::min(xmin, other.xmin);
-    xmax = std::max(xmax, other.xmax);
-    ymin = std::min(ymin, other.ymin);
-    ymax = std::max(ymax, other.ymax);
-    zmin = std::min(zmin, other.zmin);
-    zmax = std::max(zmax, other.zmax);
+    for (int i = 0; i < 3; i++) {
+      min_[i] = std::min(min_[i], other.min_[i]);
+      max_[i] = std::max(max_[i], other.max_[i]);
+    }
     return *this;
   }
 };

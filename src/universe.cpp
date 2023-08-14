@@ -133,13 +133,13 @@ AABB Universe::gen_partitioner_bounding_box() const
       auto bbox = model::cells[cell]->bounding_box();
       // extend on each axis, ignoring any infinities
 
-      box.max_.x = max_ignore_infinities(box.max_.x, bbox.xmax);
-      box.max_.y = max_ignore_infinities(box.max_.y, bbox.ymax);
-      box.max_.z = max_ignore_infinities(box.max_.z, bbox.zmax);
+      box.max_.x = max_ignore_infinities(box.max_.x, bbox.max_.x);
+      box.max_.y = max_ignore_infinities(box.max_.y, bbox.max_.y);
+      box.max_.z = max_ignore_infinities(box.max_.z, bbox.max_.z);
 
-      box.min_.x = min_ignore_infinities(box.min_.x, bbox.xmin);
-      box.min_.y = min_ignore_infinities(box.min_.y, bbox.ymin);
-      box.min_.z = min_ignore_infinities(box.min_.z, bbox.zmin);
+      box.min_.x = min_ignore_infinities(box.min_.x, bbox.min_.x);
+      box.min_.y = min_ignore_infinities(box.min_.y, bbox.min_.y);
+      box.min_.z = min_ignore_infinities(box.min_.z, bbox.min_.z);
     }
   }
 

@@ -107,8 +107,6 @@ CMakeSettings.json
 # Python pickle files
 *.pkl
 
-# Large fules from partitioner builds
-*.omcp
 # Building scripts in root folder
 debug-*.sh
 

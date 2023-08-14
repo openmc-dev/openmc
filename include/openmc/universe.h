@@ -1,7 +1,7 @@
 #ifndef OPENMC_UNIVERSE_H
 #define OPENMC_UNIVERSE_H
 
-#include "openmc/aabb.h"
+#include "openmc/surface.h"
 #include "openmc/cell.h"
 
 namespace openmc {
@@ -43,7 +43,7 @@ public:
   // Get bounding box of the entire universe
   BoundingBox bounding_box() const;
   // Generate an optimal bounding box for the partitioner and return it
-  AABB gen_partitioner_bounding_box() const;
+  BoundingBox gen_partitioner_bounding_box() const;
 
   const GeometryType& geom_type() const { return geom_type_; }
   GeometryType& geom_type() { return geom_type_; }

@@ -85,10 +85,10 @@ void OctreeUncompressedNode::subdivide()
   // Recursively splits list of boxes on each axis to get 8 sub boxes
   // Initially this list only consists of parent's box
 
-  AABB resultant_boxes[8];
+  BoundingBox resultant_boxes[8];
   resultant_boxes[0] = box_;
   for (int i = 0; i < 3; i++) {
-    AABB temp_box_buffer[8];
+    BoundingBox temp_box_buffer[8];
 
     // Split each box in resultant_boxes on axis i and store them in
     // temp_box_buffer
@@ -100,7 +100,7 @@ void OctreeUncompressedNode::subdivide()
       int j = ((i + 1) % 3);
       int k = ((i + 2) % 3);
 
-      AABB splitted_boxes[2] {resultant_boxes[idx], resultant_boxes[idx]};
+      BoundingBox splitted_boxes[2] {resultant_boxes[idx], resultant_boxes[idx]};
 
       splitted_boxes[0].max_[i] = midpoint;
       splitted_boxes[1].min_[i] = midpoint;
@@ -150,7 +150,7 @@ void pick_untested_cells(const std::vector<int>& tested_cells,
 // target cells per leaf paramter. This is done in order to prevent pockets of
 // missing information from forming.
 void refine_octree_random(const Universe& univ,
-  const UniversePartitioner& fallback, const AABB& bounds,
+  const UniversePartitioner& fallback, const BoundingBox& bounds,
   const std::vector<OctreeUncompressedNode*>& leaves)
 {
   // Generate the seeds that each thread will use ahead of time
@@ -331,7 +331,7 @@ void refine_octree_random(const Universe& univ,
 }
 
 OctreePartitioner::OctreePartitioner(
-  const Universe& univ, const AABB& bounds, int target_cells_per_node)
+  const Universe& univ, const BoundingBox& bounds, int target_cells_per_node)
   : fallback(univ), bounds_(bounds)
 {
 
@@ -621,7 +621,7 @@ OctreePartitioner::OctreePartitioner(
 }
 
 OctreePartitioner::OctreePartitioner(
-  const Universe& univ, const AABB& bounds, hid_t file)
+  const Universe& univ, const BoundingBox& bounds, hid_t file)
   : fallback(univ), bounds_(bounds)
 {
 

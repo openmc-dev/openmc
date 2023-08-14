@@ -15,9 +15,9 @@ namespace openmc {
 class BinGridPartitioner : public UniversePartitioner {
 public:
   explicit BinGridPartitioner(
-    const Universe& univ, const AABB& bounds, int32_t grid_res = 32);
+    const Universe& univ, const BoundingBox& bounds, int32_t grid_res = 32);
   explicit BinGridPartitioner(
-    const Universe& univ, const AABB& bounds, hid_t file);
+    const Universe& univ, const BoundingBox& bounds, hid_t file);
   virtual ~BinGridPartitioner() override;
 
   virtual void export_to_hdf5(const std::string& file_path) const override;
@@ -30,7 +30,7 @@ public:
 
 private:
   // bounds of the bin grid partitioner
-  AABB bounds_;
+  BoundingBox bounds_;
 
   // Resolution of the bin grid on each axis
   int32_t grid_res_;

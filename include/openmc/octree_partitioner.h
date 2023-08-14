@@ -53,7 +53,7 @@ struct OctreeUncompressedNode {
   bool contains(int cell) const;
 
   // Bounding box of node
-  AABB box_;
+  BoundingBox box_;
   // List of cells contained within this node
   std::vector<int32_t> cells_;
 
@@ -78,9 +78,9 @@ struct OctreeUncompressedNode {
 class OctreePartitioner : public UniversePartitioner {
 public:
   explicit OctreePartitioner(
-    const Universe& univ, const AABB& bounds, int target_cells_per_node = 6);
+    const Universe& univ, const BoundingBox& bounds, int target_cells_per_node = 6);
   explicit OctreePartitioner(
-    const Universe& univ, const AABB& bounds, hid_t file);
+    const Universe& univ, const BoundingBox& bounds, hid_t file);
   virtual ~OctreePartitioner() override;
 
   virtual void export_to_hdf5(const std::string& file_path) const override;
@@ -95,7 +95,7 @@ private:
   void compress(const OctreeUncompressedNode& root);
   void refill_information();
 
-  AABB bounds_;
+  BoundingBox bounds_;
 
   std::vector<OctreeNode> nodes_;
   std::vector<std::vector<int32_t>> cell_data_;

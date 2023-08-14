@@ -122,9 +122,10 @@ double min_ignore_infinities(double orig, double val)
   }
 }
 
-AABB Universe::gen_partitioner_bounding_box() const
+BoundingBox Universe::gen_partitioner_bounding_box() const
 {
-  AABB box;
+  BoundingBox box;
+  box.extend_init();
   if (cells_.size() == 0) {
     box.max_ = {0, 0, 0};
     box.min_ = {0, 0, 0};

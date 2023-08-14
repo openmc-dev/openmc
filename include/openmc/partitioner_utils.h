@@ -1,7 +1,6 @@
 #ifndef OPENMC_PARTITIONER_UTILS_H
 #define OPENMC_PARTITIONER_UTILS_H
 
-#include "aabb.h"
 #include "position.h"
 #include "random_dist.h"
 #include "timer.h"
@@ -99,7 +98,7 @@ struct CellPoint {
   int get_child_index(int depth) const;
 
   // Store an uncompressed node into data_
-  void compress_from(const CellPointUncompressed& uncomp, const AABB& bounds);
+  void compress_from(const CellPointUncompressed& uncomp, const BoundingBox& bounds);
 
   // Compare cell IDs
   bool operator<(const CellPoint& other) const;
@@ -229,18 +228,18 @@ public:
 // points whereas kd trees need uncompressed cell points
 template<typename StoreT, typename ToStoreT>
 void store_cell_point(
-  StoreT& storage, const ToStoreT& to_store, const AABB& bounds);
+  StoreT& storage, const ToStoreT& to_store, const BoundingBox& bounds);
 
 template<>
 inline void store_cell_point(
-  CellPoint& storage, const CellPointUncompressed& to_store, const AABB& bounds)
+  CellPoint& storage, const CellPointUncompressed& to_store, const BoundingBox& bounds)
 {
   storage.compress_from(to_store, bounds);
 }
 
 template<>
 inline void store_cell_point(CellPointUncompressed& storage,
-  const CellPointUncompressed& to_store, const AABB& bounds)
+  const CellPointUncompressed& to_store, const BoundingBox& bounds)
 {
   storage = to_store;
 }
@@ -248,7 +247,7 @@ inline void store_cell_point(CellPointUncompressed& storage,
 // Return a large point cloud of cells in the scene
 template<typename T>
 std::vector<T> binned_point_search(
-  const Universe& univ, const UniversePartitioner& fallback, const AABB& bounds)
+  const Universe& univ, const UniversePartitioner& fallback, const BoundingBox& bounds)
 {
   constexpr int32_t BINNING_SEARCH_TOTAL_POINTS =
     8000000; // how many total points we want to search

@@ -141,7 +141,7 @@ void search_best_median_split(KdTreeUncompressedNode& parent,
 }
 
 KdTreePartitioner::KdTreePartitioner(
-  const Universe& univ, const AABB& bounds, int32_t max_depth)
+  const Universe& univ, const BoundingBox& bounds, int32_t max_depth)
   : fallback_(univ), bounds_(bounds)
 {
   write_message("Building kd-tree partitioner...", 5);
@@ -280,7 +280,7 @@ KdTreePartitioner::KdTreePartitioner(
 KdTreePartitioner::~KdTreePartitioner() {}
 
 KdTreePartitioner::KdTreePartitioner(
-  const Universe& univ, const AABB& bounds, hid_t file)
+  const Universe& univ, const BoundingBox& bounds, hid_t file)
   : fallback_(univ), bounds_(bounds)
 {
   // read the nodes

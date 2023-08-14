@@ -23,7 +23,7 @@ struct KdTreeUncompressedNode {
   double compute_vh() const;
 
   // Bounding box of the node
-  AABB box_;
+  BoundingBox box_;
 
   // If this node is a parent, then split_axis_ marks which axis (x=0, y=1, z=2)
   // the split is on
@@ -82,9 +82,9 @@ struct KdTreeNode {
 class KdTreePartitioner : public UniversePartitioner {
 public:
   explicit KdTreePartitioner(
-    const Universe& univ, const AABB& bounds, int32_t max_depth = 16);
+    const Universe& univ, const BoundingBox& bounds, int32_t max_depth = 16);
   explicit KdTreePartitioner(
-    const Universe& univ, const AABB& bounds, hid_t file);
+    const Universe& univ, const BoundingBox& bounds, hid_t file);
   virtual ~KdTreePartitioner() override;
 
   virtual void export_to_hdf5(const std::string& file_path) const override;
@@ -98,7 +98,7 @@ public:
 private:
   // The bounds of the kd tree. Calling get_cell on points outside this region
   // will result in the fallback being used.
-  AABB bounds_;
+  BoundingBox bounds_;
   // This array contains all the nodes in the kd tree, with the root being at
   // index 0
   std::vector<KdTreeNode> nodes_;

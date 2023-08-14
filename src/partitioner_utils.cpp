@@ -35,7 +35,7 @@ int CellPoint::get_child_index(int depth) const
 
 // Pack an uncompressed cell
 void CellPoint::compress_from(
-  const CellPointUncompressed& uncomp, const AABB& bounds)
+  const CellPointUncompressed& uncomp, const BoundingBox& bounds)
 {
   // Clear data
   data_ = 0;

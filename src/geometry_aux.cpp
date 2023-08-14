@@ -157,7 +157,7 @@ void read_partitioner_from_file(
   hid_t file = file_open(path.c_str(), 'r');
 
   // Read box
-  AABB box;
+  BoundingBox box;
   read_dataset(file, "bounds_max", box.max_);
   read_dataset(file, "bounds_min", box.min_);
 
@@ -235,7 +235,7 @@ void partition_universes(pugi::xml_node root)
       continue;
     }
 
-    AABB box = univ->gen_partitioner_bounding_box();
+    BoundingBox box = univ->gen_partitioner_bounding_box();
     if (check_for_node(part_node, "bounds")) {
       std::string bounds = get_node_value(part_node, "bounds");
       if (bounds != "auto") {

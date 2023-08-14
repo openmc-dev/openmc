@@ -9,7 +9,7 @@
 namespace openmc {
 
 BinGridPartitioner::BinGridPartitioner(
-  const Universe& univ, const AABB& bounds, int32_t grid_res)
+  const Universe& univ, const BoundingBox& bounds, int32_t grid_res)
   : grid_res_(grid_res), fallback_(univ), bounds_(bounds)
 {
   write_message("Building bin grid partitioner...", 5);
@@ -49,7 +49,7 @@ BinGridPartitioner::BinGridPartitioner(
 BinGridPartitioner::~BinGridPartitioner() {}
 
 BinGridPartitioner::BinGridPartitioner(
-  const Universe& univ, const AABB& bounds, hid_t file)
+  const Universe& univ, const BoundingBox& bounds, hid_t file)
   : fallback_(univ), bounds_(bounds)
 {
   read_attr_int(file, "grid_res", &grid_res_);

@@ -4,6 +4,7 @@
 #include <limits> // For numeric_limits
 #include <string>
 #include <unordered_map>
+#include <float.h>
 
 #include "hdf5.h"
 #include "pugixml.hpp"
@@ -74,6 +75,37 @@ struct BoundingBox {
     }
     return *this;
   }
+
+  void extend_init() {
+    min_ = Position(DBL_MAX, DBL_MAX, DBL_MAX);
+    max_ = Position(-DBL_MAX, -DBL_MAX, -DBL_MAX);
+  }
+
+  double surface_area() const
+  {
+    Position side_lengths = max_ - min_;
+
+    return 2 * (side_lengths.x * (side_lengths.y + side_lengths.z) +
+                side_lengths.y * side_lengths.z);
+  }
+
+  double volume() const
+  {
+    Position side_lengths = max_ - min_;
+    return side_lengths.x * side_lengths.y * side_lengths.z;
+  }
+
+  Position get_center() const
+  {
+    return (min_ + max_) * 0.5f;
+  }
+
+  bool contains(const Position& pos) const
+  {
+    return (min_.x <= pos.x && min_.y <= pos.y && min_.z <= pos.z &&
+            max_.x >= pos.x && max_.y >= pos.y && max_.z >= pos.z);
+  }
+
 };
 
 //==============================================================================

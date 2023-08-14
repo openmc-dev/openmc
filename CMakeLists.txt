@@ -79,6 +79,7 @@ if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "No build type selected, defaulting to RelWithDebInfo")
     set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Choose the type of build" FORCE)
 endif()
+message(STATUS "Using build type ${CMAKE_BUILD_TYPE}")
 
 #===============================================================================
 # MPI for distributed-memory parallelism
@@ -332,6 +333,7 @@ endif()
 
 list(APPEND libopenmc_SOURCES
   src/bank.cpp
+  src/bin_grid_partitioner.cpp
   src/boundary_condition.cpp
   src/bremsstrahlung.cpp
   src/cell.cpp
@@ -353,6 +355,7 @@ list(APPEND libopenmc_SOURCES
   src/geometry_aux.cpp
   src/hdf5_interface.cpp
   src/initialize.cpp
+  src/kdtree_partitioner.cpp
   src/lattice.cpp
   src/material.cpp
   src/math_functions.cpp
@@ -367,6 +370,7 @@ list(APPEND libopenmc_SOURCES
   src/particle.cpp
   src/particle_data.cpp
   src/particle_restart.cpp
+  src/partitioner_utils.cpp
   src/photon.cpp
   src/physics.cpp
   src/physics_common.cpp
@@ -428,7 +432,10 @@ list(APPEND libopenmc_SOURCES
   src/weight_windows.cpp
   src/wmp.cpp
   src/xml_interface.cpp
-  src/xsdata.cpp)
+  src/xsdata.cpp
+  src/zplane_partitioner.cpp
+  src/octree_partitioner.cpp
+  )
 
 # Add bundled external dependencies
 list(APPEND libopenmc_SOURCES
@@ -597,3 +604,6 @@ install(FILES man/man1/openmc.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 install(FILES LICENSE DESTINATION "${CMAKE_INSTALL_DOCDIR}" RENAME copyright)
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(FILES "${CMAKE_BINARY_DIR}/include/openmc/version.h" DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openmc)
+
+#set(CMAKE_VERBOSE_MAKEFILE ON)
+

@@ -194,9 +194,9 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 
     // Sample spatial distribution
     p.r() = space_->sample(seed);
-
     // Now search to see if location exists in geometry
     found = exhaustive_find_cell(p);
+
 
     // Check if spatial site is in fissionable material
     if (found) {
@@ -238,6 +238,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
       ++n_reject;
       if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
           static_cast<double>(n_accept) / n_reject <= EXTSRC_REJECT_FRACTION) {
+        std::cout << "Position sampling failed!" << std::endl;
         fatal_error("More than 95% of external source sites sampled were "
                     "rejected. Please check your external source's spatial "
                     "definition.");
@@ -272,6 +273,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     n_reject++;
     if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
         static_cast<double>(n_accept) / n_reject <= EXTSRC_REJECT_FRACTION) {
+      std::cout << "Energy spectrum sampling failed!" << std::endl;
       fatal_error("More than 95% of external source sites sampled were "
                   "rejected. Please check your external source energy spectrum "
                   "definition.");

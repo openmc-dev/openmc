@@ -22,6 +22,8 @@
 #include "openmc/tallies/filter_cell_instance.h"
 #include "openmc/tallies/filter_distribcell.h"
 
+#include "openmc/partitioners.h"
+
 namespace openmc {
 
 namespace model {
@@ -147,15 +149,121 @@ void adjust_indices()
   }
 }
 
-//==============================================================================
-//! Partition some universes with many z-planes for faster find_cell searches.
-
-void partition_universes()
+void read_partitioner_from_file(
+  const std::unique_ptr<Universe>& univ, const std::string& path)
 {
-  // Iterate over universes with more than 10 cells.  (Fewer than 10 is likely
-  // not worth partitioning.)
-  for (const auto& univ : model::universes) {
-    if (univ->cells_.size() > 10) {
+  write_message("Reading partitoner from " + path, 5);
+
+  hid_t file = file_open(path.c_str(), 'r');
+
+  // Read box
+  BoundingBox box;
+  read_dataset(file, "bounds_max", box.max_);
+  read_dataset(file, "bounds_min", box.min_);
+
+  // Read type id
+  int type_id;
+  read_attr_int(file, "part_type", &type_id);
+
+  if (type_id == PartitionerTypeID::Octree) {
+    univ->partitioner_ = make_unique<OctreePartitioner>(*univ, box, file);
+  } else if (type_id == PartitionerTypeID::KdTree) {
+    univ->partitioner_ = make_unique<KdTreePartitioner>(*univ, box, file);
+  } else if (type_id == PartitionerTypeID::BinGrid) {
+    univ->partitioner_ = make_unique<BinGridPartitioner>(*univ, box, file);
+  } else if (type_id == PartitionerTypeID::ZPlane) {
+    univ->partitioner_ = make_unique<ZPlanePartitioner>(*univ, file);
+  } else {
+    fatal_error("Unknown partitioner ID " + std::to_string(type_id));
+  }
+
+  file_close(file);
+}
+
+//==============================================================================
+//! Partition universes for faster cell searchers.
+void partition_universes(pugi::xml_node root)
+{
+  // Iterate over all universes and check if there's any partitioner defined for
+  // them. If there isn't, we automatically use a bin grid partitioner on
+  // universes with more than 10 cells.
+  for (int i = 0; i < model::universes.size(); i++) {
+    const auto& univ = model::universes[i];
+
+    // determine our universe ID in our XML file
+    int uid;
+    for (const auto& p : model::universe_map) {
+      if (p.second == i) {
+        uid = p.first;
+        break;
+      }
+    }
+
+    // now, search for our associated univ node
+    pugi::xml_node part_node;
+    bool part_node_found = false;
+    for (pugi::xml_node node : root.children("partitioner")) {
+      if (std::stoi(get_node_value(node, "universe")) == uid) {
+        if (part_node_found) {
+          fatal_error(
+            "Universe " + std::to_string(uid) +
+            " has multiple partitioners defined for it geometry.xml!");
+        }
+
+        part_node = node;
+        part_node_found = true;
+      }
+    }
+
+    if (!part_node_found) {
+      // The user didn't set a partitioner, let's set one automatically if we
+      // have more than 10 cells
+      if (univ->cells_.size() > 10) {
+        write_message("No partitioner detected for universe " +
+                        std::to_string(uid) +
+                        ". Defaulting to bin grid partitioner.",
+          5);
+        univ->partitioner_ = make_unique<BinGridPartitioner>(
+          *univ, univ->gen_partitioner_bounding_box());
+      }
+      continue;
+    }
+
+    if (check_for_node(part_node, "path")) {
+      std::string path = get_node_value(part_node, "path");
+      read_partitioner_from_file(univ, path);
+      continue;
+    }
+
+    BoundingBox box = univ->gen_partitioner_bounding_box();
+    if (check_for_node(part_node, "bounds")) {
+      std::string bounds = get_node_value(part_node, "bounds");
+      if (bounds != "auto") {
+        if (sscanf(bounds.c_str(), "%lf %lf %lf %lf %lf %lf", &box.min_.x,
+              &box.max_.x, &box.min_.y, &box.max_.y, &box.min_.z,
+              &box.max_.z) != 6) {
+          fatal_error("Unrecognized bounds format \"" + bounds +
+                      "\". Please note you must supply 6 values in the format "
+                      "xmin xmax ymin ymax zmin zmax");
+        }
+      } else {
+        write_message(
+          "Universe " + std::to_string(uid) +
+            "'s partitioner bounds will to defualt to (" +
+            std::to_string(box.min_.x) + ", " + std::to_string(box.min_.y) +
+            ", " + std::to_string(box.min_.z) + ") to (" +
+            std::to_string(box.max_.x) + ", " + std::to_string(box.max_.y) +
+            ", " + std::to_string(box.max_.z) + ")",
+          5);
+      }
+    }
+
+    if (!check_for_node(part_node, "type")) {
+      fatal_error("Must define type for partitioner!");
+    }
+
+    std::string type = get_node_value(part_node, "type");
+    if (type == "zplane") {
       // Collect the set of surfaces in this universe.
       std::unordered_set<int32_t> surf_inds;
       for (auto i_cell : univ->cells_) {
@@ -164,17 +272,56 @@ void partition_universes()
         }
       }
 
-      // Partition the universe if there are more than 5 z-planes.  (Fewer than
-      // 5 is likely not worth it.)
-      int n_zplanes = 0;
-      for (auto i_surf : surf_inds) {
-        if (dynamic_cast<const SurfaceZPlane*>(model::surfaces[i_surf].get())) {
-          ++n_zplanes;
-          if (n_zplanes > 5) {
-            univ->partitioner_ = make_unique<UniversePartitioner>(*univ);
-            break;
-          }
+      univ->partitioner_ = make_unique<ZPlanePartitioner>(*univ);
+    } else if (type == "octree") {
+      int target_cells_per_node = 6;
+      if (check_for_node(part_node, "target-cells")) {
+        std::string val = get_node_value(part_node, "target-cells").c_str();
+        if (sscanf(val.c_str(), "%d", &target_cells_per_node) != 1) {
+          fatal_error("Unrecognized target cells per node paramter: " + val);
         }
+      }
+
+      // to do: set the maximum depth parameter and the VH parameters
+
+      univ->partitioner_ =
+        make_unique<OctreePartitioner>(*univ, box, target_cells_per_node);
+    } else if (type == "kdtree") {
+      // to do: set the VH parameters
+      int max_depth = 16;
+      if (check_for_node(part_node, "max-depth")) {
+        std::string val = get_node_value(part_node, "max-depth").c_str();
+        if (sscanf(val.c_str(), "%d", &max_depth) != 1) {
+          fatal_error("Unrecognized max depth paramter: " + val);
+        }
+      }
+
+      univ->partitioner_ =
+        make_unique<KdTreePartitioner>(*univ, box, max_depth);
+    } else if (type == "bin-grid" || type == "auto") {
+      int grid_res = 32;
+      if (check_for_node(part_node, "grid-res")) {
+        std::string val = get_node_value(part_node, "grid-res").c_str();
+        if (sscanf(val.c_str(), "%d", &grid_res) != 1) {
+          fatal_error("Unrecognized grid-res paramter: " + val);
+        }
+      }
+
+      univ->partitioner_ =
+        make_unique<BinGridPartitioner>(*univ, box, grid_res);
+    } else {
+      fatal_error("Unrecognized partitioner type \"" + type + "\"");
+    }
+
+    if (check_for_node(part_node, "export-path")) {
+      std::string path = get_node_value(part_node, "export-path");
+      univ->partitioner_->export_to_hdf5(path);
+
+      // reload from memory
+      if (check_for_node(part_node, "dbg-serialization") &&
+          get_node_value_bool(part_node, "dbg-serialization")) {
+        write_message("Debugging serialization...", 5);
+        read_partitioner_from_file(univ, path);
       }
     }
   }
@@ -258,18 +405,29 @@ void get_temperatures(
 
 //==============================================================================
 
-void finalize_geometry()
+void finalize_geometry(pugi::xml_node root)
 {
   // Perform some final operations to set up the geometry
   adjust_indices();
   count_cell_instances(model::root_universe);
-  partition_universes();
+  partition_universes(root);
 
   // Assign temperatures to cells that don't have temperatures already assigned
   assign_temperatures();
 
   // Determine number of nested coordinate levels in the geometry
   model::n_coord_levels = maximum_levels(model::root_universe);
+}
+
+void finalize_geometry()
+{
+  // Skip checks this time because we know that geometry.xml already exists
+  std::string filename = settings::path_input + "geometry.xml";
+  pugi::xml_document doc;
+  auto result = doc.load_file(filename.c_str());
+  pugi::xml_node root = doc.document_element();
+
+  finalize_geometry(root);
 }
 
 //==============================================================================

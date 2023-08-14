@@ -7,10 +7,17 @@
 #include "openmc/message_passing.h"
 #include "openmc/particle_restart.h"
 #include "openmc/settings.h"
+#include "openmc/timer.h"
+#include <iostream>
+
+extern double total_time;
 
 int main(int argc, char* argv[])
 {
+
   using namespace openmc;
+
+
   int err;
 
   // Initialize run -- when run with MPI, pass communicator

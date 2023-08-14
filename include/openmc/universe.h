@@ -1,6 +1,7 @@
 #ifndef OPENMC_UNIVERSE_H
 #define OPENMC_UNIVERSE_H
 
+#include "openmc/surface.h"
 #include "openmc/cell.h"
 
 namespace openmc {
@@ -34,7 +35,15 @@ public:
 
   virtual bool find_cell(Particle& p) const;
 
+  virtual bool find_cell_in_list(
+    const std::vector<int>& cells_to_search, Particle& p) const;
+  virtual int find_cell_for_point(
+    const std::vector<int>& cells_to_search, const Position& p) const;
+
+  // Get bounding box of the entire universe
   BoundingBox bounding_box() const;
+  // Generate an optimal bounding box for the partitioner and return it
+  BoundingBox gen_partitioner_bounding_box() const;
 
   const GeometryType& geom_type() const { return geom_type_; }
   GeometryType& geom_type() { return geom_type_; }
@@ -48,30 +57,24 @@ private:
 //==============================================================================
 //! Speeds up geometry searches by grouping cells in a search tree.
 //
-//! Currently this object only works with universes that are divided up by a
-//! bunch of z-planes.  It could be generalized to other planes, cylinders,
-//! and spheres.
+//! The UniversePartitioner is an abstract class. Thus, the actual partitioning 
+//! algorithm is implemented in subclasses like ZPlanePartitioner.
 //==============================================================================
 
 class UniversePartitioner {
 public:
-  explicit UniversePartitioner(const Universe& univ);
+  //! Although the constructor is left to be defined by the derived class,
+  //! it should ideally take a Universe as an argument 
+  
+  //! Dummy destructor 
+  virtual ~UniversePartitioner();
 
   //! Return the list of cells that could contain the given coordinates.
-  const vector<int32_t>& get_cells(Position r, Direction u) const;
+  virtual const vector<int32_t>& get_cells(Position r, Direction u) const = 0;
+  virtual const vector<int32_t>& get_cells_fallback(Position r, Direction u) const;
 
-private:
-  //! A sorted vector of indices to surfaces that partition the universe
-  vector<int32_t> surfs_;
-
-  //! Vectors listing the indices of the cells that lie within each partition
-  //
-  //! There are n+1 partitions with n surfaces.  `partitions_.front()` gives the
-  //! cells that lie on the negative side of `surfs_.front()`.
-  //! `partitions_.back()` gives the cells that lie on the positive side of
-  //! `surfs_.back()`.  Otherwise, `partitions_[i]` gives cells sandwiched
-  //! between `surfs_[i-1]` and `surfs_[i]`.
-  vector<vector<int32_t>> partitions_;
+  virtual void export_to_hdf5(const std::string& path) const;
+  virtual void export_to_vtk(const std::string& path) const;
 };
 
 } // namespace openmc

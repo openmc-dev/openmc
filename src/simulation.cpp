@@ -51,6 +51,11 @@
 
 int openmc_run()
 {
+  std::cout << " Using " << (openmc::settings::event_based ? "event-based" : "history-based") << " transport.\n";
+  if(openmc::settings::event_based) {
+    std::cout << " Warning: performance metrics currently only work with history-based transport!\n";
+  }
+
   openmc::simulation::time_total.start();
   openmc_simulation_init();
 
@@ -748,6 +753,7 @@ void transport_history_based_single_particle(Particle& p)
   }
   p.event_death();
 }
+
 
 void transport_history_based()
 {

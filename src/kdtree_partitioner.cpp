@@ -283,15 +283,16 @@ KdTreePartitioner::KdTreePartitioner(
   const Universe& univ, const BoundingBox& bounds, hid_t file)
   : fallback_(univ), bounds_(bounds)
 {
+  hid_t kdtree_group = open_group(file, "kdtree");
   // read the nodes
-  hid_t nodes_group = open_group(file, "node_data");
+  hid_t nodes_group = open_group(kdtree_group, "node_data");
   read_attr_int(nodes_group, "n_nodes", &num_nodes_);
   std::vector<int32_t> serialized_nodes;
   read_dataset(nodes_group, "nodes", serialized_nodes);
   close_group(nodes_group);
 
   // read the cells
-  hid_t cells_group = open_group(file, "cell_data");
+  hid_t cells_group = open_group(kdtree_group, "cell_data");
   int num_cells;
   read_attr_int(cells_group, "n_cells", &num_cells);
   std::vector<int32_t> comp_cell_data;
@@ -323,6 +324,8 @@ KdTreePartitioner::KdTreePartitioner(
       cell_data_.push_back(std::move(cells));
     }
   }
+
+  close_group(kdtree_group);
 }
 
 void KdTreePartitioner::export_to_hdf5(const std::string& path) const
@@ -345,8 +348,10 @@ void KdTreePartitioner::export_to_hdf5(const std::string& path) const
   write_dataset(file, "bounds_max", bounds_.max_);
   write_dataset(file, "bounds_min", bounds_.min_);
 
+  hid_t kdtree_group = open_group(file, "kdtree");
+
   // write the nodes
-  hid_t nodes_group = create_group(file, "node_data");
+  hid_t nodes_group = create_group(kdtree_group, "node_data");
   write_attribute(nodes_group, "n_nodes", nodes_.size());
   // Serialize the data
   std::vector<int32_t> serialized_nodes(nodes_.size() * 2);
@@ -365,11 +370,12 @@ void KdTreePartitioner::export_to_hdf5(const std::string& path) const
   close_group(nodes_group);
 
   // write the cell data
-  hid_t cells_group = create_group(file, "cell_data");
+  hid_t cells_group = create_group(kdtree_group, "cell_data");
   write_attribute(cells_group, "n_cells", comp_cell_data.size());
   write_dataset(cells_group, "cells", comp_cell_data);
   close_group(cells_group);
 
+  close_group(kdtree_group);
   file_close(file);
 
   write_message("Exported octree to " + path, 5);

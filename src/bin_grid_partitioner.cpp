@@ -52,7 +52,9 @@ BinGridPartitioner::BinGridPartitioner(
   const Universe& univ, const BoundingBox& bounds, hid_t file)
   : fallback_(univ), bounds_(bounds)
 {
-  read_attr_int(file, "grid_res", &grid_res_);
+  hid_t bin_grid_group = open_group(file, "bin_grid");
+
+  read_attr_int(bin_grid_group, "grid_res", &grid_res_);
 
   for (int i = 0; i < 3; i++) {
     bin_dim_[i] = (bounds_.max_[i] - bounds_.min_[i]) / grid_res_;
@@ -60,11 +62,13 @@ BinGridPartitioner::BinGridPartitioner(
 
   bin_grid_.resize(grid_res_ * grid_res_ * grid_res_);
 
-  hid_t bins = open_group(file, "bins");
+  hid_t bins = open_group(bin_grid_group, "bins");
   for (int i = 0; i < bin_grid_.size(); i++) {
     read_dataset(bins, std::to_string(i).c_str(), bin_grid_[i]);
   }
   close_group(bins);
+
+  close_group(bin_grid_group);
 }
 
 void BinGridPartitioner::export_to_hdf5(const std::string& path) const
@@ -80,14 +84,17 @@ void BinGridPartitioner::export_to_hdf5(const std::string& path) const
   write_dataset(file, "bounds_max", bounds_.max_);
   write_dataset(file, "bounds_min", bounds_.min_);
 
-  write_attribute(file, "grid_res", grid_res_);
+  hid_t bin_grid_group = open_group(file, "bin_grid");
 
-  hid_t bins = create_group(file, "bins");
+  write_attribute(bin_grid_group, "grid_res", grid_res_);
+
+  hid_t bins = create_group(bin_grid_group, "bins");
   for (int i = 0; i < bin_grid_.size(); i++) {
     write_dataset(bins, std::to_string(i).c_str(), bin_grid_[i]);
   }
   close_group(bins);
 
+  close_group(bin_grid_group);
   file_close(file);
 }
 

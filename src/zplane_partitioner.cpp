@@ -109,9 +109,10 @@ ZPlanePartitioner::ZPlanePartitioner(const Universe& univ)
 
 ZPlanePartitioner::ZPlanePartitioner(const Universe& univ, hid_t file)
 {
-  read_dataset(file, "surfs", surfs_);
+  hid_t zplane_group = open_group(file, "zplane");
+  read_dataset(zplane_group, "surfs", surfs_);
 
-  hid_t partitions_group = open_group(file, "partitions");
+  hid_t partitions_group = open_group(zplane_group, "partitions");
 
   int partitions_size;
   read_attr_int(partitions_group, "n_partitions", &partitions_size);
@@ -123,6 +124,8 @@ ZPlanePartitioner::ZPlanePartitioner(const Universe& univ, hid_t file)
   }
 
   close_group(partitions_group);
+
+  close_group(zplane_group);
 }
 
 void ZPlanePartitioner::export_to_hdf5(const std::string& path) const
@@ -138,11 +141,13 @@ void ZPlanePartitioner::export_to_hdf5(const std::string& path) const
   write_dataset(file, "bounds_max", Position(INFTY, INFTY, INFTY));
   write_dataset(file, "bounds_min", Position(-INFTY, -INFTY, -INFTY));
 
+  hid_t zplane_group = open_group(file, "zplane");
+
   // write planes
-  write_dataset(file, "surfs", surfs_);
+  write_dataset(zplane_group, "surfs", surfs_);
 
   // write cell partitions
-  hid_t partitions_group = create_group(file, "partitions");
+  hid_t partitions_group = create_group(zplane_group, "partitions");
   write_attribute(
     partitions_group, "n_partitions", static_cast<int>(partitions_.size()));
 
@@ -152,7 +157,7 @@ void ZPlanePartitioner::export_to_hdf5(const std::string& path) const
   }
 
   close_group(partitions_group);
-
+  close_group(zplane_group);
   file_close(file);
 }
 

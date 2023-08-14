@@ -106,7 +106,3 @@ CMakeSettings.json
 
 # Python pickle files
 *.pkl
-
-# Building scripts in root folder
-debug-*.sh
-

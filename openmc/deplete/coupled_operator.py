@@ -110,7 +110,7 @@ class CoupledOperator(OpenMCOperator):
         in the previous results.
     diff_burnable_mats : bool, optional
         Whether to differentiate burnable materials with multiple instances.
-        Volumes are divided equally from the original material volume.
+        Volumes of materials are set to the volume of the cell they fill.
     normalization_mode : {"energy-deposition", "fission-q", "source-rate"}
         Indicate how tally results should be normalized. ``"energy-deposition"``
         computes the total energy deposited in the system and uses the ratio of
@@ -278,19 +278,21 @@ class CoupledOperator(OpenMCOperator):
             [mat for mat in self.materials
              if mat.depletable and mat.num_instances > 1])
 
-        for mat in distribmats:
-            if mat.volume is None:
-                raise RuntimeError("Volume not specified for depletable "
-                                   "material with ID={}.".format(mat.id))
-            mat.volume /= mat.num_instances
-
         if distribmats:
             # Assign distribmats to cells
             for cell in self.geometry.get_all_material_cells().values():
                 if cell.fill in distribmats:
                     mat = cell.fill
-                    cell.fill = [mat.clone()
-                                 for i in range(cell.num_instances)]
+                    for i in range(cell.num_instances):
+                        cell.fill = mat.clone()
+                        if cell.volume:
+                            cell.fill.volume = cell.volume
+                        else:
+                            raise RuntimeError(
+                                f"Volume if cell ID={cell.id} not specified. "
+                                "Set volumes of cells prior to using "
+                                "CoupledOperator with diff_burnable_mats=True"
+                            )
 
         self.materials = openmc.Materials(
             self.model.geometry.get_all_materials().values()

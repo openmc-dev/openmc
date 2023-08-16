@@ -158,8 +158,9 @@ class Material(IDManagerMixin):
         string += '{: <16}\n'.format('\tNuclides')
 
         for nuclide, percent, percent_type in self._nuclides:
-            string += '{: <16}'.format('\t{}'.format(nuclide))
-            string += '=\t{: <12} [{}]\n'.format(percent, percent_type)
+            if percent != 0.:
+                string += '{: <16}'.format('\t{}'.format(nuclide))
+                string += '=\t{: <12} [{}]\n'.format(percent, percent_type)
 
         if self._macroscopic is not None:
             string += '{: <16}\n'.format('\tMacroscopic Data')

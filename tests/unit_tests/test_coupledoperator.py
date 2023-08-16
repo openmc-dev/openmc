@@ -35,9 +35,6 @@ def test_diff_burnable_mats():
 
     operator = openmc.deplete.CoupledOperator(
         model=model,
-        normalization_mode="source-rate",
-        reduce_chain=True,
-        reduce_chain_level=5,
         diff_burnable_mats=True,
     )
 

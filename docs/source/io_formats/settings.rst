@@ -816,20 +816,6 @@ survival biasing, otherwise known as implicit capture or absorption.
 
   *Default*: false
 
-.. _survival_normalization:
-
-------------------------------
-``<survival_normalization>`` Element
-------------------------------
-
-The ``<survival_normalization>`` element has no attributes and has an accepted value
-of "true" or "false". If set to "true", this option will enable the use of
-survival normalization, whereby the weight parameters, weight_avg and weight
-are multiplied per history by the start weight of said history. Currently only
-implemented for phase-space sources.
-
-  *Default*: true
-
 .. _tabular_legendre:
 
 ---------------------------------

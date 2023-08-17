@@ -511,6 +511,7 @@ class Results(list):
 
         if math.isclose(time, times[ix], rel_tol=rtol, abs_tol=atol):
             return ix
+
         closest = min(times, key=lambda t: abs(time - t))
         raise ValueError(
             f"A value of {time} {time_units} was not found given absolute and "

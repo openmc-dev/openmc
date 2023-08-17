@@ -30,13 +30,16 @@ void LocalCoord::reset()
   rotated = false;
 }
 
-ParticleData::ParticleData()
+Geometron::Geometron()
 {
   // Create and clear coordinate levels
   coord_.resize(model::n_coord_levels);
   cell_last_.resize(model::n_coord_levels);
   clear();
+}
 
+ParticleData::ParticleData()
+{
   zero_delayed_bank();
 
   // Every particle starts with no accumulated flux derivative.  Note that in

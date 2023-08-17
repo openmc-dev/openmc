@@ -515,7 +515,7 @@ class Results(list):
         closest = min(times, key=lambda t: abs(time - t))
         raise ValueError(
             f"A value of {time} {time_units} was not found given absolute and "
-            f"relative tolerances {atol} and {rtol}. Closest time is {closest}"
+            f"relative tolerances {atol} and {rtol}. Closest time is {closest} "
             f"{time_units}."
         )
 

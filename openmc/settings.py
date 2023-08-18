@@ -133,7 +133,7 @@ class Settings:
         Number of particles per generation
     photon_transport : bool
         Whether to use photon transport.
-    plot_seed : bool
+    plot_seed : int
        Initial seed for randomly generated plot colors.
     ptables : bool
         Determine whether probability tables are used.

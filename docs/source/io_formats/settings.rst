@@ -345,12 +345,12 @@ either "false" or "true".
 
   *Default*: false
 
-------------------
+-----------------------
 ``<plot_seed>`` Element
-------------------
+-----------------------
 
-The ``plot_seed`` element is used to set the seed used for the linear congruential
-pseudo-random number generator during generation of colors in plots.
+The ``<plot_seed>`` element is used to set the seed for the pseudorandom number
+generator during generation of colors in plots.
 
   *Default*: 1
 

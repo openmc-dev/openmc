@@ -642,7 +642,7 @@ class Material(IDManagerMixin):
                     enrichment: Optional[float] = None,
                     enrichment_target: Optional[str] = None,
                     enrichment_type: Optional[str] = None,
-                    cross_sections: str = None):
+                    cross_sections: Optional[str] = None):
         """Add a natural element to the material
 
         Parameters
@@ -670,7 +670,7 @@ class Material(IDManagerMixin):
 
             .. versionadded:: 0.12
         cross_sections : str, optional
-            Location of cross_sections.xml file. Default is None.
+            Location of cross_sections.xml file.
 
         Notes
         -----
@@ -1460,7 +1460,7 @@ class Material(IDManagerMixin):
         if "cfg" in elem.attrib:
             cfg = elem.get("cfg")
             return Material.from_ncrystal(cfg, material_id=mat_id)
-     
+
         mat = cls(mat_id)
         mat.name = elem.get('name')
 

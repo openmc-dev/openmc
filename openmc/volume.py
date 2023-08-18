@@ -121,10 +121,10 @@ class VolumeCalculation:
             else:
                 raise ValueError('Could not automatically determine bounding box '
                                  'for stochastic volume calculation.')
-        
+
         if np.isinf(self.lower_left).any() or np.isinf(self.upper_right).any():
-            raise ValueError('Infinite value found in lower_left or '
-                             'upper_right. Could not compute volume.')
+            raise ValueError('Lower-left and upper-right bounding box '
+                             'coordinates must be finite.')
 
     @property
     def ids(self):

@@ -75,7 +75,7 @@ class IncidentNeutron(EqualityMixin):
         state.
     name : str
         Name of the nuclide using the GNDS naming convention
-    reactions : Dict
+    reactions : dict
         Contains the cross sections, secondary angle and energy distributions,
         and other associated data for each reaction. The keys are the MT values
         and the values are Reaction objects.

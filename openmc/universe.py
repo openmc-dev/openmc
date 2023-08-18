@@ -99,7 +99,7 @@ class UniverseBase(ABC, IDManagerMixin):
 
         Returns
         -------
-        universes : Dict
+        universes : dict
             Dictionary whose keys are universe IDs and values are
             :class:`Universe` instances
 
@@ -198,7 +198,7 @@ class Universe(UniverseBase):
         Unique identifier of the universe
     name : str
         Name of the universe
-    cells : Dict
+    cells : dict
         Dictionary whose keys are cell IDs and values are :class:`Cell`
         instances
     volume : float
@@ -609,7 +609,7 @@ class Universe(UniverseBase):
 
         Returns
         -------
-        nuclides : Dict
+        nuclides : dict
             Dictionary whose keys are nuclide names and values are 2-tuples of
             (nuclide, density)
 
@@ -636,7 +636,7 @@ class Universe(UniverseBase):
 
         Returns
         -------
-        cells : Dict
+        cells : dict
             Dictionary whose keys are cell IDs and values are :class:`Cell`
             instances
 
@@ -664,7 +664,7 @@ class Universe(UniverseBase):
 
         Returns
         -------
-        materials : Dict
+        materials : dict
             Dictionary whose keys are material IDs and values are
             :class:`Material` instances
 

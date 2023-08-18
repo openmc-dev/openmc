@@ -2548,12 +2548,12 @@ class Halfspace(Region):
 
         Parameters
         ----------
-        surfaces: Dict, optional
+        surfaces : dict, optional
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
 
         Returns
         -------
-        surfaces: Dict
+        surfaces : dict
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
 
         """

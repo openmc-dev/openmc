@@ -367,7 +367,7 @@ class Geometry:
 
         Returns
         -------
-        Dict
+        dict
             Dictionary mapping cell IDs to :class:`openmc.Cell` instances
 
         """
@@ -381,7 +381,7 @@ class Geometry:
 
         Returns
         -------
-        Dict
+        dict
             Dictionary mapping universe IDs to :class:`openmc.Universe`
             instances
 
@@ -396,7 +396,7 @@ class Geometry:
 
         Returns
         -------
-        Dict
+        dict
             Dictionary mapping material IDs to :class:`openmc.Material`
             instances
 
@@ -411,7 +411,7 @@ class Geometry:
 
         Returns
         -------
-        Dict
+        dict
             Dictionary mapping cell IDs to :class:`openmc.Cell` instances that
             are filled with materials or distributed materials.
 
@@ -433,7 +433,7 @@ class Geometry:
 
         Returns
         -------
-        Dict
+        dict
             Dictionary mapping universe IDs to :class:`openmc.Universe`
             instances with at least one material-filled cell
 
@@ -453,7 +453,7 @@ class Geometry:
 
         Returns
         -------
-        Dict
+        dict
             Dictionary mapping lattice IDs to :class:`openmc.Lattice` instances
 
         """
@@ -472,7 +472,7 @@ class Geometry:
 
         Returns
         -------
-        Dict
+        dict
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
 
         """

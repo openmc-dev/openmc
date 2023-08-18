@@ -431,7 +431,7 @@ class IncidentPhoton(EqualityMixin):
         the projection of the electron momentum on the scattering vector,
         :math:`p_z` for each subshell). Note that subshell occupancies may not
         match the atomic relaxation data.
-    reactions : Dict
+    reactions : dict
         Contains the cross sections for each photon reaction. The keys are MT
         values and the values are instances of :class:`PhotonReaction`.
 

@@ -42,13 +42,13 @@ class StepResult:
         Number of nuclides.
     rates : list of ReactionRates
         The reaction rates for each substep.
-    volume : Dict of str to float
+    volume : dict of str to float
         Dictionary mapping mat id to volume.
-    index_mat : Dict of str to int
+    index_mat : dict of str to int
         A dictionary mapping mat ID as string to index.
-    index_nuc : Dict of str to int
+    index_nuc : dict of str to int
         A dictionary mapping nuclide name as string to index.
-    mat_to_hdf5_ind : Dict of str to int
+    mat_to_hdf5_ind : dict of str to int
         A dictionary mapping mat ID as string to global index.
     n_hdf5_mats : int
         Number of materials in entire geometry.

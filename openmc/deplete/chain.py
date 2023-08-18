@@ -248,7 +248,7 @@ class Chain:
         Nuclides present in the chain.
     reactions : list of str
         Reactions that are tracked in the depletion chain
-    nuclide_dict : Dict of str to int
+    nuclide_dict : dict of str to int
         Maps a nuclide name to an index in nuclides.
     fission_yields : None or iterable of dict
         List of effective fission yields for materials. Each dictionary

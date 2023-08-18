@@ -82,7 +82,7 @@ class Library:
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
-    all_mgxs : Dict
+    all_mgxs : dict
         MGXS objects keyed by domain ID and cross section type
     sp_filename : str
         The filename of the statepoint with tally data used to the
@@ -190,7 +190,7 @@ class Library:
     def name(self, name):
         cv.check_type('name', name, str)
         self._name = name
-    
+
     @property
     def mgxs_types(self):
         return self._mgxs_types
@@ -305,7 +305,7 @@ class Library:
     @property
     def energy_groups(self):
         return self._energy_groups
-    
+
     @energy_groups.setter
     def energy_groups(self, energy_groups):
         cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
@@ -323,7 +323,7 @@ class Library:
         cv.check_greater_than('num delayed groups', num_delayed_groups, 0,
                               equality=True)
         self._num_delayed_groups = num_delayed_groups
-    
+
     @property
     def num_polar(self):
         return self._num_polar
@@ -381,7 +381,7 @@ class Library:
             self.correction = None
 
         self._scatter_format = scatter_format
-    
+
     @property
     def legendre_order(self):
         return self._legendre_order

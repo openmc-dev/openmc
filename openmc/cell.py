@@ -85,7 +85,7 @@ class Cell(IDManagerMixin):
         calculated in a stochastic volume calculation and added via the
         :meth:`Cell.add_volume_information` method. For 'distribmat' cells
         it is the total volume of all instances.
-    atoms : Dict
+    atoms : dict
         Mapping of nuclides to the total number of atoms for each nuclide
         present in the cell, or in all of its instances for a 'distribmat'
         fill. For example, {'U235': 1.0e22, 'U238': 5.0e22, ...}.
@@ -388,7 +388,7 @@ class Cell(IDManagerMixin):
 
         Returns
         -------
-        nuclides : Dict
+        nuclides : dict
             Dictionary whose keys are nuclide names and values are 2-tuples of
             (nuclide, density)
 
@@ -422,7 +422,7 @@ class Cell(IDManagerMixin):
 
         Returns
         -------
-        cells : Dict
+        cells : dict
             Dictionary whose keys are cell IDs and values are :class:`Cell`
             instances
 
@@ -446,7 +446,7 @@ class Cell(IDManagerMixin):
 
         Returns
         -------
-        materials : Dict
+        materials : dict
             Dictionary whose keys are material IDs and values are
             :class:`Material` instances
 
@@ -472,7 +472,7 @@ class Cell(IDManagerMixin):
 
         Returns
         -------
-        universes : Dict
+        universes : dict
             Dictionary whose keys are universe IDs and values are
             :class:`Universe` instances
 

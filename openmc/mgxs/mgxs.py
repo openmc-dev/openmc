@@ -215,7 +215,7 @@ class MGXS:
         the multi-group cross section
     estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
-    tallies : Dict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section
     rxn_rate_tally : openmc.Tally
         Derived tally for the reaction rate tally used in the numerator to
@@ -2689,7 +2689,7 @@ class TransportXS(MGXS):
         the multi-group cross section
     estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
-    tallies : Dict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`TransportXS.tally_keys` property and
         values are instances of :class:`openmc.Tally`.
@@ -2930,7 +2930,7 @@ class DiffusionCoefficient(TransportXS):
         the multi-group cross section
     estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
-    tallies : Dict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`TransportXS.tally_keys` property and
         values are instances of :class:`openmc.Tally`.
@@ -3077,7 +3077,7 @@ class DiffusionCoefficient(TransportXS):
             diff_coef = transport**(-1) / 3.0
             diff_coef *= self.tallies['flux (tracklength)']
             flux_tally = condensed_xs.tallies['flux (tracklength)']
-            condensed_xs._tallies ={}
+            condensed_xs._tallies = {}
             condensed_xs._tallies[self._rxn_type] = diff_coef
             condensed_xs._tallies['flux (tracklength)'] = flux_tally
             condensed_xs._rxn_rate_tally = diff_coef
@@ -3393,7 +3393,7 @@ class FissionXS(MGXS):
         the multi-group cross section
     estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
-    tallies : Dict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`FissionXS.tally_keys` property and
         values are instances of :class:`openmc.Tally`.
@@ -3612,7 +3612,7 @@ class ScatterXS(MGXS):
         the multi-group cross section
     estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
-    tallies : Dict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`ScatterXS.tally_keys` property and
         values are instances of :class:`openmc.Tally`.
@@ -3922,7 +3922,7 @@ class ScatterMatrixXS(MatrixMGXS):
         the multi-group cross section
     estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
-    tallies : Dict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`ScatterMatrixXS.tally_keys` property
         and values are instances of :class:`openmc.Tally`.
@@ -5192,7 +5192,7 @@ class NuFissionMatrixXS(MatrixMGXS):
         the multi-group cross section
     estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
-    tallies : Dict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`NuFissionMatrixXS.tally_keys`
         property and values are instances of :class:`openmc.Tally`.
@@ -5353,7 +5353,7 @@ class Chi(MGXS):
         the multi-group cross section
     estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
-    tallies : Dict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`Chi.tally_keys` property and values are
         instances of :class:`openmc.Tally`.
@@ -5921,7 +5921,7 @@ class MeshSurfaceMGXS(MGXS):
         the multi-group cross section
     estimator : {'analog'}
         The tally estimator used to compute the multi-group cross section
-    tallies : Dict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section
     rxn_rate_tally : openmc.Tally
         Derived tally for the reaction rate tally used in the numerator to
@@ -6308,7 +6308,7 @@ class Current(MeshSurfaceMGXS):
         the multi-group cross section
     estimator : {'analog'}
         The tally estimator used to compute the multi-group cross section
-    tallies : Dict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`TotalXS.tally_keys` property and values
         are instances of :class:`openmc.Tally`.

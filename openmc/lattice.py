@@ -112,7 +112,7 @@ class Lattice(IDManagerMixin, ABC):
 
         Returns
         -------
-        universes : Dict
+        universes : dict
             Dictionary whose keys are universe IDs and values are
             :class:`openmc.UniverseBase` instances
 
@@ -163,7 +163,7 @@ class Lattice(IDManagerMixin, ABC):
 
         Returns
         -------
-        cells : Dict
+        cells : dict
             Dictionary whose keys are cell IDs and values are :class:`Cell`
             instances
 
@@ -188,7 +188,7 @@ class Lattice(IDManagerMixin, ABC):
 
         Returns
         -------
-        materials : Dict
+        materials : dict
             Dictionary whose keys are material IDs and values are
             :class:`Material` instances
 
@@ -208,7 +208,7 @@ class Lattice(IDManagerMixin, ABC):
 
         Returns
         -------
-        universes : Dict
+        universes : dict
             Dictionary whose keys are universe IDs and values are
             :class:`Universe` instances
 
@@ -1126,7 +1126,7 @@ class HexLattice(Lattice):
     @property
     def orientation(self):
         return self._orientation
-    
+
     @orientation.setter
     def orientation(self, orientation):
         cv.check_value('orientation', orientation.lower(), ('x', 'y'))

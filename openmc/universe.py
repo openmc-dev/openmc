@@ -370,8 +370,8 @@ class Universe(UniverseBase):
 
         Returns
         -------
-        matplotlib.image.AxesImage
-            Resulting image
+        matplotlib.axes.Axes
+            Axes containing resulting image
 
         """
         import matplotlib.image as mpimg

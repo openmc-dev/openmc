@@ -534,8 +534,17 @@ int openmc_calculate_volumes()
 
       // Display domain volumes
       for (int j = 0; j < vol_calc.domain_ids_.size(); j++) {
-        write_message(4, "{}{}: {} +/- {} cm^3", domain_type,
-          vol_calc.domain_ids_[j], results[j].volume[0], results[j].volume[1]);
+        std::string cell_name {""};
+        if (vol_calc.domain_type_ == VolumeCalculation::TallyDomain::CELL) {
+          int cell_idx = model::cell_map[vol_calc.domain_ids_[j]];
+          cell_name = model::cells[cell_idx]->name();
+          if (cell_name.size())
+            cell_name.insert(0, " "); // prepend space for formatting
+        }
+
+        write_message(4, "{}{}{}: {} +/- {} cm^3", domain_type,
+          vol_calc.domain_ids_[j], cell_name, results[j].volume[0],
+          results[j].volume[1]);
       }
 
       // Write volumes to HDF5 file

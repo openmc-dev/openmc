@@ -22,6 +22,10 @@ class Distribution {
 public:
   virtual ~Distribution() = default;
   virtual double sample(uint64_t* seed) const = 0;
+
+  //! Return integral of distribution
+  //! \return Integral of distribution
+  virtual double integral() const { return 1.0; };
 };
 
 using UPtrDist = unique_ptr<Distribution>;
@@ -51,11 +55,13 @@ public:
   // Properties
   const vector<double>& prob() const { return prob_; }
   const vector<size_t>& alias() const { return alias_; }
+  double integral() const { return integral_; }
 
 private:
   vector<double> prob_; //!< Probability of accepting the uniformly sampled bin,
                         //!< mapped to alias method table
   vector<size_t> alias_; //!< Alias table
+  double integral_;      //!< Integral of distribution
 
   //! Normalize distribution so that probabilities sum to unity
   void normalize();
@@ -77,6 +83,8 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
+
+  double integral() const override { return di_.integral(); };
 
   // Properties
   const vector<double>& x() const { return x_; }
@@ -219,17 +227,19 @@ public:
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
 
-  // x property
+  // properties
   vector<double>& x() { return x_; }
   const vector<double>& x() const { return x_; }
   const vector<double>& p() const { return p_; }
   Interpolation interp() const { return interp_; }
+  double integral() const override { return integral_; };
 
 private:
   vector<double> x_;     //!< tabulated independent variable
   vector<double> p_;     //!< tabulated probability density
   vector<double> c_;     //!< cumulative distribution at tabulated values
   Interpolation interp_; //!< interpolation rule
+  double integral_;      //!< Integral of distribution
 
   //! Initialize tabulated probability density function
   //! \param x Array of values for independent variable
@@ -272,12 +282,15 @@ public:
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
 
+  double integral() const override { return integral_; }
+
 private:
   // Storrage for probability + distribution
   using DistPair = std::pair<double, UPtrDist>;
 
   vector<DistPair>
-    distribution_; //!< sub-distributions + cummulative probabilities
+    distribution_;  //!< sub-distributions + cummulative probabilities
+  double integral_; //!< integral of distribution
 };
 
 } // namespace openmc

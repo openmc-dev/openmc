@@ -404,7 +404,7 @@ int32_t DAGUniverse::implicit_complement_idx() const
   return cell_idx_offset_ + dagmc_instance_->index_by_handle(ic) - 1;
 }
 
-bool DAGUniverse::find_cell(Particle& p) const
+bool DAGUniverse::find_cell(Geometron& p) const
 {
   // if the particle isn't in any of the other DagMC
   // cells, place it in the implicit complement
@@ -583,9 +583,8 @@ DAGCell::DAGCell(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx)
 };
 
 std::pair<double, int32_t> DAGCell::distance(
-  Position r, Direction u, int32_t on_surface, Particle* p) const
+  Position r, Direction u, int32_t on_surface, Geometron* p) const
 {
-  Expects(p);
   // if we've changed direction or we're not on a surface,
   // reset the history and update last direction
   if (u != p->last_dir()) {
@@ -631,14 +630,7 @@ std::pair<double, int32_t> DAGCell::distance(
     // isn't found in a volume that is not the implicit complement. In the case
     // that the DAGMC model is the root universe of the geometry, even a missing
     // intersection in the implicit complement should trigger this condition.
-    std::string material_id =
-      p->material() == MATERIAL_VOID
-        ? "-1 (VOID)"
-        : std::to_string(model::materials[p->material()]->id());
-    auto lost_particle_msg = fmt::format(
-      "No intersection found with DAGMC cell {}, filled with material {}", id_,
-      material_id);
-    p->mark_as_lost(lost_particle_msg);
+    throw ParticleLost(ParticleLost::Reason::no_dagmc_intersection, id_);
   }
 
   return {dist, surf_idx};

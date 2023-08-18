@@ -205,7 +205,38 @@ void Particle::event_calculate_xs()
 void Particle::event_advance()
 {
   // Find the distance to the nearest boundary
-  boundary() = distance_to_boundary(*this);
+  try {
+    boundary() = distance_to_boundary(*this);
+  } catch (ParticleLost msg) {
+    // Lost particles do not mean we should terminate the code.
+    // Instead we accept that they're lost and only allow a certain
+    // amount to geometrically fail.
+    switch (msg.reason) {
+    case ParticleLost::Reason::negative_lattice_distance:
+      mark_as_lost(fmt::format(
+        "Particle {} had a negative distance to a lattice boundary", id()));
+      break;
+    case ParticleLost::Reason::bad_boundary_crossing:
+      mark_as_lost(fmt::format("Particle {} could not be located after "
+                               "crossing a boundary of lattice {}",
+        id(), msg.id));
+      break;
+    case ParticleLost::Reason::no_universe_outside_lattice:
+      mark_as_lost(fmt::format(
+        "Particle {} left lattice {}, but it has no outer definition.", id(),
+        msg.id));
+      break;
+    case ParticleLost::Reason::no_dagmc_intersection:
+      std::string material_id =
+        material() == MATERIAL_VOID
+          ? "-1 (VOID)"
+          : std::to_string(model::materials[material()]->id());
+      mark_as_lost(fmt::format(
+        "No intersection found with DAGMC cell {}, filled with material {}",
+        msg.id, material_id));
+      break;
+    }
+  }
 
   // Sample a distance to collision
   if (type() == ParticleType::electron || type() == ParticleType::positron) {
@@ -277,7 +308,9 @@ void Particle::event_cross_surface()
       boundary().lattice_translation[1] != 0 ||
       boundary().lattice_translation[2] != 0) {
     // Particle crosses lattice boundary
-    cross_lattice(*this, boundary());
+
+    bool verbose = settings::verbosity >= 10 || trace();
+    cross_lattice(*this, boundary(), verbose);
     event() = TallyEvent::LATTICE;
   } else {
     // Particle crosses surface
@@ -406,7 +439,8 @@ void Particle::event_revive_from_secondary()
       // have to determine it before the energy of the secondary particle can be
       // removed from the pulse-height of this cell.
       if (lowest_coord().cell == C_NONE) {
-        if (!exhaustive_find_cell(*this)) {
+        bool verbose = settings::verbosity >= 10 || trace();
+        if (!exhaustive_find_cell(*this, verbose)) {
           mark_as_lost("Could not find the cell containing particle " +
                        std::to_string(id()));
           return;
@@ -556,7 +590,8 @@ void Particle::cross_surface()
   }
 #endif
 
-  if (neighbor_list_find_cell(*this))
+  bool verbose = settings::verbosity >= 10 || trace();
+  if (neighbor_list_find_cell(*this, verbose))
     return;
 
   // ==========================================================================
@@ -564,7 +599,7 @@ void Particle::cross_surface()
 
   // Remove lower coordinate levels
   n_coord() = 1;
-  bool found = exhaustive_find_cell(*this);
+  bool found = exhaustive_find_cell(*this, verbose);
 
   if (settings::run_mode != RunMode::PLOTTING && (!found)) {
     // If a cell is still not found, there are two possible causes: 1) there is
@@ -579,7 +614,7 @@ void Particle::cross_surface()
     // Couldn't find next cell anywhere! This probably means there is an actual
     // undefined region in the geometry.
 
-    if (!exhaustive_find_cell(*this)) {
+    if (!exhaustive_find_cell(*this, verbose)) {
       mark_as_lost("After particle " + std::to_string(id()) +
                    " crossed surface " + std::to_string(surf->id_) +
                    " it could not be located in any cell and it did not leak.");

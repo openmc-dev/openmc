@@ -267,6 +267,22 @@ public:
     n_coord_ = 1;
   }
 
+#ifdef DAGMC
+  // DagMC state variables
+  moab::DagMC::RayHistory& history() { return history_; }
+  Direction& last_dir() { return last_dir_; }
+#endif
+
+  // material of current and last cell
+  int& material() { return material_; }
+  const int& material() const { return material_; }
+  int& material_last() { return material_last_; }
+
+  // temperature of current and last cell
+  double& sqrtkT() { return sqrtkT_; }
+  const double& sqrtkT() const { return sqrtkT_; }
+  double& sqrtkT_last() { return sqrtkT_last_; }
+
 private:
   int n_coord_ {1};
   int cell_instance_;
@@ -282,6 +298,17 @@ private:
   int surface_ {0};
 
   BoundaryInfo boundary_;
+
+  int material_ {-1};
+  int material_last_ {-1};
+
+  double sqrtkT_ {-1.0};
+  double sqrtkT_last_ {0.0};
+
+#ifdef DAGMC
+  moab::DagMC::RayHistory history_;
+  Direction last_dir_;
+#endif
 };
 
 //============================================================================
@@ -355,11 +382,6 @@ private:
   int n_delayed_bank_[MAX_DELAYED_GROUPS];
 
   int cell_born_ {-1};
-  int material_ {-1};
-  int material_last_ {-1};
-
-  double sqrtkT_ {-1.0};
-  double sqrtkT_last_ {0.0};
 
   int n_collision_ {0};
 
@@ -395,11 +417,6 @@ private:
 
   int n_split_ {0};
   double ww_factor_ {0.0};
-
-#ifdef DAGMC
-  moab::DagMC::RayHistory history_;
-  Direction last_dir_;
-#endif
 
   int64_t n_progeny_ {0};
 
@@ -498,16 +515,6 @@ public:
   const int& cell_born() const { return cell_born_; }
 
   // index of the current and last material
-  int& material() { return material_; }
-  const int& material() const { return material_; }
-  int& material_last() { return material_last_; }
-  const int& material_last() const { return material_last_; }
-
-  // temperature of current and last cell
-  double& sqrtkT() { return sqrtkT_; }
-  const double& sqrtkT() const { return sqrtkT_; }
-  double& sqrtkT_last() { return sqrtkT_last_; }
-
   // Total number of collisions suffered by particle
   int& n_collision() { return n_collision_; }
   const int& n_collision() const { return n_collision_; }
@@ -568,12 +575,6 @@ public:
   // Particle-specific factor for on-the-fly weight window adjustment
   double ww_factor() const { return ww_factor_; }
   double& ww_factor() { return ww_factor_; }
-
-#ifdef DAGMC
-  // DagMC state variables
-  moab::DagMC::RayHistory& history() { return history_; }
-  Direction& last_dir() { return last_dir_; }
-#endif
 
   // Number of progeny produced by this particle
   int64_t& n_progeny() { return n_progeny_; }

@@ -512,10 +512,11 @@ class Results(list):
         if math.isclose(time, times[ix], rel_tol=rtol, abs_tol=atol):
             return ix
 
+        closest = min(times, key=lambda t: abs(time - t))
         raise ValueError(
-            "A value of {} {} was not found given absolute and "
-            "relative tolerances {} and {}.".format(
-                time, time_units, atol, rtol)
+            f"A value of {time} {time_units} was not found given absolute and "
+            f"relative tolerances {atol} and {rtol}. Closest time is {closest} "
+            f"{time_units}."
         )
 
     def export_to_materials(

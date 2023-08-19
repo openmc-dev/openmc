@@ -60,13 +60,15 @@ fission.
 ``<cutoff>`` Element
 --------------------
 
-The ``<cutoff>`` element indicates two kinds of cutoffs. The first is the weight
-cutoff used below which particles undergo Russian roulette. Surviving particles
-are assigned a user-determined weight. Note that weight cutoffs and Russian
-rouletting are not turned on by default. The second is the energy cutoff which
-is used to kill particles under certain energy. The energy cutoff should not be
-used unless you know particles under the energy are of no importance to results
-you care. This element has the following attributes/sub-elements:
+The ``<cutoff>`` element indicates three kinds of cutoffs. The first is the
+weight cutoff used below which particles undergo Russian roulette. Surviving
+particles are assigned a user-determined weight. Note that weight cutoffs and
+Russian rouletting are not turned on by default. The second is the energy cutoff
+which is used to kill particles under certain energy. The energy cutoff should
+not be used unless you know particles under the energy are of no importance to
+results you care. The third is the time cutoff used to kill particles whose time
+exceeds a specific cutoff. Particles will be killed exactly at the specified
+time.
 
   :weight:
     The weight below which particles undergo Russian roulette.
@@ -98,6 +100,26 @@ you care. This element has the following attributes/sub-elements:
     The energy under which positrons will be killed.
 
     *Default*: 0.0
+
+  :time_neutron
+    The time above which neutrons will be killed.
+
+    *Default*: Infinity
+
+  :time_photon
+    The time above which photons will be killed.
+
+    *Default*: Infinity
+
+  :time_electron
+    The time above which electrons will be killed.
+
+    *Default*: Infinity
+
+  :time_positron
+    The time above which positorns will be killed.
+
+    *Default*: Infinity
 
 ----------------------------
 ``<delayed_photon_scaling>``

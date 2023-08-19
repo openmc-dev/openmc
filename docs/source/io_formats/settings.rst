@@ -345,6 +345,15 @@ either "false" or "true".
 
   *Default*: false
 
+-----------------------
+``<plot_seed>`` Element
+-----------------------
+
+The ``<plot_seed>`` element is used to set the seed for the pseudorandom number
+generator during generation of colors in plots.
+
+  *Default*: 1
+
 ---------------------
 ``<ptables>`` Element
 ---------------------
@@ -1175,4 +1184,3 @@ mesh-based weight windows.
 
   The ``weight_windows_file`` element has no attributes and contains the path to
   a weight windows HDF5 file to load during simulation initialization.
-

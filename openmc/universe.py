@@ -370,8 +370,8 @@ class Universe(UniverseBase):
 
         Returns
         -------
-        matplotlib.image.AxesImage
-            Resulting image
+        matplotlib.axes.Axes
+            Axes containing resulting image
 
         """
         import matplotlib.image as mpimg
@@ -483,7 +483,7 @@ class Universe(UniverseBase):
             # add legend showing which colors represent which material
             # or cell if that was requested
             if legend:
-                if plot.colors is None:
+                if plot.colors == {}:
                     raise ValueError("Must pass 'colors' dictionary if you "
                                      "are adding a legend via legend=True.")
 
@@ -522,7 +522,8 @@ class Universe(UniverseBase):
                 axes.legend(handles=patches, **legend_kwargs)
 
             # Plot image and return the axes
-            return axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
+            axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
+            return axes
 
     def add_cell(self, cell):
         """Add a cell to the universe.

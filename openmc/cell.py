@@ -1,4 +1,3 @@
-from collections import OrderedDict
 from collections.abc import Iterable
 from math import cos, sin, pi
 from numbers import Real
@@ -86,7 +85,7 @@ class Cell(IDManagerMixin):
         calculated in a stochastic volume calculation and added via the
         :meth:`Cell.add_volume_information` method. For 'distribmat' cells
         it is the total volume of all instances.
-    atoms : collections.OrderedDict
+    atoms : dict
         Mapping of nuclides to the total number of atoms for each nuclide
         present in the cell, or in all of its instances for a 'distribmat'
         fill. For example, {'U235': 1.0e22, 'U238': 5.0e22, ...}.
@@ -316,7 +315,7 @@ class Cell(IDManagerMixin):
                 # Assumes that volume is total volume of all instances
                 # Also assumes that all instances have the same volume
                 partial_volume = self.volume / len(self.fill)
-                self._atoms = OrderedDict()
+                self._atoms = {}
                 for mat in self.fill:
                     for key, atom_per_bcm in mat.get_nuclide_atom_densities().items():
                         # To account for overlap of nuclides between distribmat
@@ -389,13 +388,13 @@ class Cell(IDManagerMixin):
 
         Returns
         -------
-        nuclides : collections.OrderedDict
+        nuclides : dict
             Dictionary whose keys are nuclide names and values are 2-tuples of
             (nuclide, density)
 
         """
 
-        nuclides = OrderedDict()
+        nuclides = {}
 
         if self.fill_type == 'material':
             nuclides.update(self.fill.get_nuclide_densities())
@@ -423,13 +422,13 @@ class Cell(IDManagerMixin):
 
         Returns
         -------
-        cells : collections.orderedDict
+        cells : dict
             Dictionary whose keys are cell IDs and values are :class:`Cell`
             instances
 
         """
 
-        cells = OrderedDict()
+        cells = {}
 
         if memo and self in memo:
             return cells
@@ -447,12 +446,12 @@ class Cell(IDManagerMixin):
 
         Returns
         -------
-        materials : collections.OrderedDict
+        materials : dict
             Dictionary whose keys are material IDs and values are
             :class:`Material` instances
 
         """
-        materials = OrderedDict()
+        materials = {}
         if self.fill_type == 'material':
             materials[self.fill.id] = self.fill
         elif self.fill_type == 'distribmat':
@@ -473,13 +472,13 @@ class Cell(IDManagerMixin):
 
         Returns
         -------
-        universes : collections.OrderedDict
+        universes : dict
             Dictionary whose keys are universe IDs and values are
             :class:`Universe` instances
 
         """
 
-        universes = OrderedDict()
+        universes = {}
 
         if self.fill_type == 'universe':
             universes[self.fill.id] = self.fill

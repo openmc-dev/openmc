@@ -1,5 +1,5 @@
 from __future__ import annotations
-from collections import OrderedDict, defaultdict, namedtuple, Counter
+from collections import defaultdict, namedtuple, Counter
 from collections.abc import Iterable
 from copy import deepcopy
 from numbers import Real
@@ -942,8 +942,7 @@ class Material(IDManagerMixin):
 
         """
 
-        # keep ordered dictionary for testing purposes
-        nuclides = OrderedDict()
+        nuclides = {}
 
         for nuclide in self._nuclides:
             nuclides[nuclide.name] = nuclide
@@ -1028,7 +1027,7 @@ class Material(IDManagerMixin):
 
         nuc_densities = density * nuc_densities
 
-        nuclides = OrderedDict()
+        nuclides = {}
         for n, nuc in enumerate(nucs):
             if nuclide is None or nuclide == nuc:
                 nuclides[nuc] = nuc_densities[n]

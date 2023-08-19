@@ -1,7 +1,7 @@
 from __future__ import annotations
 import os
 import typing
-from collections import OrderedDict, defaultdict
+from collections import defaultdict
 from copy import deepcopy
 from collections.abc import Iterable
 from pathlib import Path
@@ -362,41 +362,41 @@ class Geometry:
 
         return indices if return_list else indices[0]
 
-    def get_all_cells(self) -> typing.OrderedDict[int, openmc.Cell]:
+    def get_all_cells(self) -> typing.Dict[int, openmc.Cell]:
         """Return all cells in the geometry.
 
         Returns
         -------
-        collections.OrderedDict
+        dict
             Dictionary mapping cell IDs to :class:`openmc.Cell` instances
 
         """
         if self.root_universe is not None:
             return self.root_universe.get_all_cells(memo=set())
         else:
-            return OrderedDict()
+            return {}
 
-    def get_all_universes(self) -> typing.OrderedDict[int, openmc.Universe]:
+    def get_all_universes(self) -> typing.Dict[int, openmc.Universe]:
         """Return all universes in the geometry.
 
         Returns
         -------
-        collections.OrderedDict
+        dict
             Dictionary mapping universe IDs to :class:`openmc.Universe`
             instances
 
         """
-        universes = OrderedDict()
+        universes = {}
         universes[self.root_universe.id] = self.root_universe
         universes.update(self.root_universe.get_all_universes())
         return universes
 
-    def get_all_materials(self) -> typing.OrderedDict[int, openmc.Material]:
+    def get_all_materials(self) -> typing.Dict[int, openmc.Material]:
         """Return all materials within the geometry.
 
         Returns
         -------
-        collections.OrderedDict
+        dict
             Dictionary mapping material IDs to :class:`openmc.Material`
             instances
 
@@ -404,19 +404,19 @@ class Geometry:
         if self.root_universe is not None:
             return self.root_universe.get_all_materials(memo=set())
         else:
-            return OrderedDict()
+            return {}
 
-    def get_all_material_cells(self) -> typing.OrderedDict[int, openmc.Cell]:
+    def get_all_material_cells(self) -> typing.Dict[int, openmc.Cell]:
         """Return all cells filled by a material
 
         Returns
         -------
-        collections.OrderedDict
+        dict
             Dictionary mapping cell IDs to :class:`openmc.Cell` instances that
             are filled with materials or distributed materials.
 
         """
-        material_cells = OrderedDict()
+        material_cells = {}
 
         for cell in self.get_all_cells().values():
             if cell.fill_type in ('material', 'distribmat'):
@@ -425,7 +425,7 @@ class Geometry:
 
         return material_cells
 
-    def get_all_material_universes(self) -> typing.OrderedDict[int, openmc.Universe]:
+    def get_all_material_universes(self) -> typing.Dict[int, openmc.Universe]:
         """Return all universes having at least one material-filled cell.
 
         This method can be used to find universes that have at least one cell
@@ -433,12 +433,12 @@ class Geometry:
 
         Returns
         -------
-        collections.OrderedDict
+        dict
             Dictionary mapping universe IDs to :class:`openmc.Universe`
             instances with at least one material-filled cell
 
         """
-        material_universes = OrderedDict()
+        material_universes = {}
 
         for universe in self.get_all_universes().values():
             for cell in universe.cells.values():
@@ -448,16 +448,16 @@ class Geometry:
 
         return material_universes
 
-    def get_all_lattices(self) -> typing.OrderedDict[int, openmc.Lattice]:
+    def get_all_lattices(self) -> typing.Dict[int, openmc.Lattice]:
         """Return all lattices defined
 
         Returns
         -------
-        collections.OrderedDict
+        dict
             Dictionary mapping lattice IDs to :class:`openmc.Lattice` instances
 
         """
-        lattices = OrderedDict()
+        lattices = {}
 
         for cell in self.get_all_cells().values():
             if cell.fill_type == 'lattice':
@@ -466,17 +466,17 @@ class Geometry:
 
         return lattices
 
-    def get_all_surfaces(self) -> typing.OrderedDict[int, openmc.Surface]:
+    def get_all_surfaces(self) -> typing.Dict[int, openmc.Surface]:
         """
         Return all surfaces used in the geometry
 
         Returns
         -------
-        collections.OrderedDict
+        dict
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
 
         """
-        surfaces = OrderedDict()
+        surfaces = {}
 
         for cell in self.get_all_cells().values():
             if cell.region is not None:

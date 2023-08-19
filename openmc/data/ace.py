@@ -15,7 +15,6 @@ generates ACE-format cross sections.
 
 """
 
-from collections import OrderedDict
 import enum
 from pathlib import Path
 import struct
@@ -544,7 +543,7 @@ def get_libraries_from_xsdir(path):
 
     # Create list of ACE libraries -- we use an ordered dictionary while
     # building to get O(1) membership checks while retaining insertion order
-    libraries = OrderedDict()
+    libraries = {}
     for line in lines:
         words = line.split()
         if len(words) < 3:
@@ -576,7 +575,7 @@ def get_libraries_from_xsdata(path):
     with open(xsdata, 'r') as xsdata_file:
         # As in get_libraries_from_xsdir, we use a dict for O(1) membership
         # check while retaining insertion order
-        libraries = OrderedDict()
+        libraries = {}
         for line in xsdata_file:
             words = line.split()
             if len(words) >= 9:

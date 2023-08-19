@@ -1,7 +1,6 @@
 import math
 import typing
 from abc import ABC, abstractmethod
-from collections import OrderedDict
 from collections.abc import Iterable
 from copy import deepcopy
 from numbers import Integral, Real
@@ -46,7 +45,7 @@ class UniverseBase(ABC, IDManagerMixin):
 
         # Keys   - Cell IDs
         # Values - Cells
-        self._cells = OrderedDict()
+        self._cells = {}
 
     def __repr__(self):
         string = 'Universe\n'
@@ -100,13 +99,13 @@ class UniverseBase(ABC, IDManagerMixin):
 
         Returns
         -------
-        universes : collections.OrderedDict
+        universes : dict
             Dictionary whose keys are universe IDs and values are
             :class:`Universe` instances
 
         """
         # Append all Universes within each Cell to the dictionary
-        universes = OrderedDict()
+        universes = {}
         for cell in self.get_all_cells().values():
             universes.update(cell.get_all_universes())
 
@@ -169,7 +168,7 @@ class UniverseBase(ABC, IDManagerMixin):
             clone = self._partial_deepcopy()
 
             # Clone all cells for the universe clone
-            clone._cells = OrderedDict()
+            clone._cells = {}
             for cell in self._cells.values():
                 clone.add_cell(cell.clone(clone_materials, clone_regions,
                                           memo))
@@ -199,7 +198,7 @@ class Universe(UniverseBase):
         Unique identifier of the universe
     name : str
         Name of the universe
-    cells : collections.OrderedDict
+    cells : dict
         Dictionary whose keys are cell IDs and values are :class:`Cell`
         instances
     volume : float
@@ -611,12 +610,12 @@ class Universe(UniverseBase):
 
         Returns
         -------
-        nuclides : collections.OrderedDict
+        nuclides : dict
             Dictionary whose keys are nuclide names and values are 2-tuples of
             (nuclide, density)
 
         """
-        nuclides = OrderedDict()
+        nuclides = {}
 
         if self._atoms:
             volume = self.volume
@@ -638,13 +637,13 @@ class Universe(UniverseBase):
 
         Returns
         -------
-        cells : collections.OrderedDict
+        cells : dict
             Dictionary whose keys are cell IDs and values are :class:`Cell`
             instances
 
         """
 
-        cells = OrderedDict()
+        cells = {}
 
         if memo and self in memo:
             return cells
@@ -666,13 +665,13 @@ class Universe(UniverseBase):
 
         Returns
         -------
-        materials : collections.OrderedDict
+        materials : dict
             Dictionary whose keys are material IDs and values are
             :class:`Material` instances
 
         """
 
-        materials = OrderedDict()
+        materials = {}
 
         # Append all Cells in each Cell in the Universe to the dictionary
         cells = self.get_all_cells(memo)
@@ -883,10 +882,10 @@ class DAGMCUniverse(UniverseBase):
         return sorted(set(material_tags_ascii))
 
     def get_all_cells(self, memo=None):
-        return OrderedDict()
+        return {}
 
     def get_all_materials(self, memo=None):
-        return OrderedDict()
+        return {}
 
     def _n_geom_elements(self, geom_type):
         """

@@ -1,5 +1,4 @@
 from abc import ABCMeta
-from collections import OrderedDict
 from collections.abc import Iterable
 import hashlib
 from itertools import product
@@ -1677,7 +1676,7 @@ class DistribcellFilter(Filter):
                 level_key = f'level {i_level + 1}'
 
                 # Create a dictionary for this level for Pandas Multi-index
-                level_dict = OrderedDict()
+                level_dict = {}
 
                 # Use the first distribcell path to determine if level
                 # is a universe/cell or lattice level

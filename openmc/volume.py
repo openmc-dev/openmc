@@ -1,4 +1,3 @@
-from collections import OrderedDict
 from collections.abc import Iterable, Mapping
 from numbers import Real, Integral
 import lxml.etree as ET
@@ -285,7 +284,7 @@ class VolumeCalculation:
                     volumes[domain_id] = volume
                     nucnames = group['nuclides'][()]
                     atoms_ = group['atoms'][()]
-                    atom_dict = OrderedDict()
+                    atom_dict = {}
                     for name_i, atoms_i in zip(nucnames, atoms_):
                         atom_dict[name_i.decode()] = ufloat(*atoms_i)
                     atoms[domain_id] = atom_dict

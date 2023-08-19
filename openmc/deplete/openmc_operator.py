@@ -6,7 +6,6 @@ transport-independent transport operators.
 """
 
 from abc import abstractmethod
-from collections import OrderedDict
 
 import numpy as np
 
@@ -172,7 +171,7 @@ class OpenMCOperator(TransportOperator):
         -------
         burnable_mats : list of str
             List of burnable material IDs
-        volume : OrderedDict of str to float
+        volume : dict of str to float
             Volume of each material in [cm^3]
         nuclides : list of str
             Nuclides in order of how they'll appear in the simulation.
@@ -181,7 +180,7 @@ class OpenMCOperator(TransportOperator):
 
         burnable_mats = set()
         model_nuclides = set()
-        volume = OrderedDict()
+        volume = {}
 
         self.heavy_metal = 0.0
 
@@ -246,7 +245,7 @@ class OpenMCOperator(TransportOperator):
         ----------
         local_mats : list of str
             Material IDs to be managed by this process
-        volume : OrderedDict of str to float
+        volume : dict of str to float
             Volumes for the above materials in [cm^3]
         all_nuclides : list of str
             Nuclides to be used in the simulation.

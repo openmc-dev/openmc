@@ -1,4 +1,3 @@
-from collections import OrderedDict
 import re
 import lxml.etree as ET
 
@@ -124,7 +123,7 @@ class Element(str):
         natural_nuclides = {name for name, abundance in natural_isotopes(self)}
 
         # Create dict to store the expanded nuclides and abundances
-        abundances = OrderedDict()
+        abundances = {}
 
         # If cross_sections is None, get the cross sections from the global
         # configuration

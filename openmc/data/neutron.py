@@ -1,4 +1,3 @@
-from collections import OrderedDict
 from collections.abc import Mapping, MutableMapping
 from io import StringIO
 from math import log10
@@ -76,7 +75,7 @@ class IncidentNeutron(EqualityMixin):
         state.
     name : str
         Name of the nuclide using the GNDS naming convention
-    reactions : collections.OrderedDict
+    reactions : dict
         Contains the cross sections, secondary angle and energy distributions,
         and other associated data for each reaction. The keys are the MT values
         and the values are Reaction objects.
@@ -107,7 +106,7 @@ class IncidentNeutron(EqualityMixin):
         self.kTs = kTs
         self.energy = {}
         self._fission_energy = None
-        self.reactions = OrderedDict()
+        self.reactions = {}
         self._urr = {}
         self._resonances = None
 

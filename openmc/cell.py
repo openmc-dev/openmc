@@ -563,24 +563,24 @@ class Cell(IDManagerMixin):
     def plot(self, *args, **kwargs):
         """Display a slice plot of the cell.
 
+        .. versionadded:: 0.13.4
+
         Parameters
         ----------
         origin : iterable of float
-            Coordinates at the origin of the plot, if left as None then the
-            universe.bounding_box.center will be used to attempt to
-            ascertain the origin. Defaults to (0, 0, 0) if the bounding_box
-            contains inf values
+            Coordinates at the origin of the plot. If left as None then the
+            bounding box center will be used to attempt to ascertain the origin.
+            Defaults to (0, 0, 0) if the bounding box is not finite
         width : iterable of float
             Width of the plot in each basis direction. If left as none then the
-            universe.bounding_box.width() will be used to attempt to
-            ascertain the plot width.  Defaults to (10, 10) if the bounding_box
-            contains inf values
+            bounding box width will be used to attempt to ascertain the plot
+            width. Defaults to (10, 10) if the bounding box is not finite
         pixels : Iterable of int or int
-            If iterable of ints provided then this directly sets the number of
-            pixels to use in each basis direction. If int provided then this
-            sets the total number of pixels in the plot and the number of
-            pixels in each basis direction is calculated from this total and
-            the image aspect ratio.
+            If iterable of ints provided, then this directly sets the number of
+            pixels to use in each basis direction. If int provided, then this
+            sets the total number of pixels in the plot and the number of pixels
+            in each basis direction is calculated from this total and the image
+            aspect ratio.
         basis : {'xy', 'xz', 'yz'}
             The basis directions for the plot
         color_by : {'cell', 'material'}
@@ -602,31 +602,21 @@ class Cell(IDManagerMixin):
             Path to OpenMC executable.
         axes : matplotlib.Axes
             Axes to draw to
-
-            .. versionadded:: 0.13.1
         legend : bool
             Whether a legend showing material or cell names should be drawn
-
-            .. versionadded:: 0.13.4
         legend_kwargs : dict
             Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
-
-            .. versionadded:: 0.13.4
         outline : bool
             Whether outlines between color boundaries should be drawn
-
-            .. versionadded:: 0.13.4
         axis_units : {'km', 'm', 'cm', 'mm'}
             Units used on the plot axis
-
-            .. versionadded:: 0.13.4
         **kwargs
             Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 
         Returns
         -------
-        matplotlib.image.AxesImage
-            Resulting image
+        matplotlib.axes.Axes
+            Axes containing resulting image
 
         """
         return openmc.Universe(cells=[self]).plot(*args, **kwargs)

@@ -7,7 +7,7 @@ from numbers import Integral, Real
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import lxml.etree as ET
-from warnings import warn
+import warnings
 
 import h5py
 import numpy as np
@@ -399,7 +399,9 @@ class Universe(UniverseBase):
             if origin is None:
                 # if nan values in the bb.center they get replaced with 0.0
                 # this happens when the bounding_box contains inf values
-                origin = np.nan_to_num(bb.center)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", RuntimeWarning)
+                    origin = np.nan_to_num(bb.center)
             if width is None:
                 bb_width = bb.width
                 x_width = bb_width['xyz'.index(basis[0])]

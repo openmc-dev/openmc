@@ -532,7 +532,7 @@ int openmc_calculate_volumes()
         domain_type = "  Universe ";
       }
 
-      // Display domain volumes
+      // Display domain volumes in terminal
       for (int j = 0; j < vol_calc.domain_ids_.size(); j++) {
         std::string region_name {""};
         if (vol_calc.domain_type_ == VolumeCalculation::TallyDomain::CELL) {

@@ -538,7 +538,8 @@ int openmc_calculate_volumes()
         if (vol_calc.domain_type_ == VolumeCalculation::TallyDomain::CELL) {
           int cell_idx = model::cell_map[vol_calc.domain_ids_[j]];
           region_name = model::cells[cell_idx]->name();
-        } else if (vol_calc.domain_type_ == VolumeCalculation::TallyDomain::MATERIAL) {
+        } else if (vol_calc.domain_type_ ==
+                   VolumeCalculation::TallyDomain::MATERIAL) {
           int mat_idx = model::material_map[vol_calc.domain_ids_[j]];
           region_name = model::materials[mat_idx]->name();
         }

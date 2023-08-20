@@ -86,6 +86,24 @@ Surface::Surface(pugi::xml_node surf_node)
       bc_ = std::make_shared<ReflectiveBC>();
     } else if (surf_bc == "white") {
       bc_ = std::make_shared<WhiteBC>();
+    } else if (surf_bc == "leaky") {
+      bc_ = std::make_shared<LeakyBC>();
+
+      if (check_for_node(surf_node, "leakage")) {
+        std::double_t surf_leak =
+          std::stod(get_node_value(surf_node, "leakage", false));
+
+        if (surf_leak < 0.0 || surf_leak > 1.0) {
+          fatal_error(fmt::format("Surface {} has a leakage value of {}."
+                                  "Leakage values must be between 0 and 1.",
+            id_, surf_leak));
+        }
+
+        bc_leak_ = surf_leak;
+      } else {
+        // Default to reflecting all incident particles
+        bc_leak_ = 0.0;
+      }
     } else if (surf_bc == "periodic") {
       // periodic BC's are handled separately
     } else {
@@ -93,6 +111,22 @@ Surface::Surface(pugi::xml_node surf_node)
                               "on surface {}",
         surf_bc, id_));
     }
+  }
+
+  // Check for surface albedo regardless of boundary type to simplify the code
+  if (check_for_node(surf_node, "albedo")) {
+    std::double_t surf_alb =
+      std::stod(get_node_value(surf_node, "albedo", false));
+
+    if (surf_alb < 0.0 || surf_alb > 1.0)
+      fatal_error(fmt::format("Surface {} has an albedo of {}. "
+                              "Surface albedo values must be between 0 and 1",
+        id_, surf_alb));
+
+    bc_alb_ = surf_alb;
+  } else {
+    // Default to not modifying particle weights
+    bc_alb_ = 1.0;
   }
 }
 
@@ -154,6 +188,17 @@ void Surface::to_hdf5(hid_t group_id) const
 
     if (bc_) {
       write_string(surf_group, "boundary_type", bc_->type(), false);
+
+      if (bc_->type() == "reflective" || bc_->type() == "periodic" ||
+          bc_->type() == "white") {
+        write_string(
+          surf_group, "boundary_albedo", fmt::format("{}", bc_alb_), false);
+      }
+
+      if (bc_->type() == "leaky") {
+        write_string(
+          surf_group, "boundary_leakage", fmt::format("{}", bc_leak_), false);
+      }
     } else {
       write_string(surf_group, "boundary_type", "transmission", false);
     }

@@ -29,6 +29,8 @@ void ReflectiveBC::handle_particle(Particle& p, const Surface& surf) const
   u /= u.norm();
 
   p.cross_reflective_bc(surf, u);
+  // Modify the particle's weight to account for the albedo of the surface.
+  p.wgt() *= surf.bc_alb_;
 }
 
 //==============================================================================
@@ -41,6 +43,26 @@ void WhiteBC::handle_particle(Particle& p, const Surface& surf) const
   u /= u.norm();
 
   p.cross_reflective_bc(surf, u);
+  // Modify the particle's weight to account for the albedo of the surface.
+  p.wgt() *= surf.bc_alb_;
+}
+
+//==============================================================================
+// LeakyBC implementation
+//==============================================================================
+
+void LeakyBC::handle_particle(Particle& p, const Surface& surf) const
+{
+  if (prn(p.current_seed()) > surf.bc_leak_) {
+    // Reflect particle like ReflectiveBC
+    Direction u = surf.reflect(p.r(), p.u(), &p);
+    u /= u.norm();
+
+    p.cross_reflective_bc(surf, u);
+  } else {
+    // Tally and kill particle
+    p.cross_vacuum_bc(surf);
+  }
 }
 
 //==============================================================================
@@ -132,6 +154,8 @@ void TranslationalPeriodicBC::handle_particle(
 
   // Pass the new location and surface to the particle.
   p.cross_periodic_bc(surf, new_r, p.u(), new_surface);
+  // Modify the particle's weight to account for the albedo of the surface.
+  p.wgt() *= surf.bc_alb_;
 }
 
 //==============================================================================
@@ -266,6 +290,8 @@ void RotationalPeriodicBC::handle_particle(
 
   // Pass the new location, direction, and surface to the particle.
   p.cross_periodic_bc(surf, new_r, new_u, new_surface);
+  // Modify the particle's weight to account for the albedo of the surface.
+  p.wgt() *= surf.bc_alb_;
 }
 
 } // namespace openmc

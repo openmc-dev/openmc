@@ -60,6 +60,17 @@ public:
 };
 
 //==============================================================================
+//! A BC that partially reflects incident particles, killing the remaining ones.
+//==============================================================================
+
+class LeakyBC : public BoundaryCondition {
+public:
+  void handle_particle(Particle& p, const Surface& surf) const override;
+
+  std::string type() const override { return "leaky"; }
+};
+
+//==============================================================================
 //! A BC that moves particles to another part of the problem.
 //==============================================================================
 

@@ -86,6 +86,8 @@ public:
   int id_;                                          //!< Unique ID
   std::string name_;                                //!< User-defined name
   std::shared_ptr<BoundaryCondition> bc_ {nullptr}; //!< Boundary condition
+  std::double_t bc_alb_;                            //!< Boundary albedo
+  std::double_t bc_leak_;                           //!< Boundary leakage
   GeometryType geom_type_;   //!< Geometry type indicator (CSG or DAGMC)
   bool surf_source_ {false}; //!< Activate source banking for the surface?
 

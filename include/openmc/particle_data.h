@@ -201,7 +201,27 @@ class Geometron {
 public:
   Geometron();
 
-public:
+  // resets all coordinate levels for the particle
+  void clear()
+  {
+    for (auto& level : coord_)
+      level.reset();
+    n_coord_ = 1;
+  }
+
+  // Initialize all internal state from position and direction
+  void init_from_r_u(Position r_a, Direction u_a)
+  {
+    clear();
+    surface() = 0;
+    material() = C_NONE;
+    r() = r_a;
+    u() = u_a;
+    r_last_current() = r_a;
+    r_last() = r_a;
+    u_last() = u_a;
+  }
+
   // Number of current coordinate levels
   int& n_coord() { return n_coord_; }
   const int& n_coord() const { return n_coord_; }
@@ -258,14 +278,6 @@ public:
 
   // Boundary information
   BoundaryInfo& boundary() { return boundary_; }
-
-  // resets all coordinate levels for the particle
-  void clear()
-  {
-    for (auto& level : coord_)
-      level.reset();
-    n_coord_ = 1;
-  }
 
 #ifdef DAGMC
   // DagMC state variables

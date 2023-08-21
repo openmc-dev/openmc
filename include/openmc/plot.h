@@ -121,7 +121,7 @@ struct IdData {
   IdData(size_t h_res, size_t v_res);
 
   // Methods
-  void set_value(size_t y, size_t x, const Particle& p, int level);
+  void set_value(size_t y, size_t x, const Geometron& p, int level);
   void set_overlap(size_t y, size_t x);
 
   // Members
@@ -133,7 +133,7 @@ struct PropertyData {
   PropertyData(size_t h_res, size_t v_res);
 
   // Methods
-  void set_value(size_t y, size_t x, const Particle& p, int level);
+  void set_value(size_t y, size_t x, const Geometron& p, int level);
   void set_overlap(size_t y, size_t x);
 
   // Members
@@ -205,7 +205,7 @@ T SlicePlotBase::get_map() const
 
 #pragma omp parallel
   {
-    Particle p;
+    Geometron p;
     p.r() = xyz;
     p.u() = dir;
     p.coord(0).universe = model::root_universe;

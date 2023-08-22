@@ -1327,9 +1327,8 @@ void ProjectionPlot::create_output() const
               // edges on the model boundary for the same cell.
               if (first_inside_model) {
                 this_line_segments[tid][horiz].emplace_back(
-                  color_by_ == PlotColorBy::mats
-                    ? p.material()
-                    : p.lowest_coord().cell,
+                  color_by_ == PlotColorBy::mats ? p.material()
+                                                 : p.lowest_coord().cell,
                   0.0, first_surface);
                 first_inside_model = false;
               }

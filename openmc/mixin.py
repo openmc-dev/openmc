@@ -117,8 +117,7 @@ def release_ids(ids, cls=None):
         for cls in IDManagerMixin.__subclasses__():
             release_ids(ids, cls)
     else:
-        for uid in ids:
-            cls.used_ids.remove(uid)
+        cls.used_ids -= set(ids)
         cls.next_id = max(cls.used_ids) + 1
 
 

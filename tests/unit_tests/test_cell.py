@@ -360,4 +360,6 @@ def test_plot(run_in_tmpdir):
     # create a universe after the plot
     u_after = openmc.Universe()
 
+    # ensure that calling the plot method doesn't
+    # affect the universe ID space
     assert u_before.id + 1 == u_after.id

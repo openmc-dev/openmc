@@ -106,6 +106,9 @@ def release_ids(ids, cls):
     Parameters
     ----------
     ids : iterable of int
+        IDs to release
+    cls : type
+       Class for which IDs should be released (e.g., :class:`openmc.Cell`).
 
     """
     for uid in ids:

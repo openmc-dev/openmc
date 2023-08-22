@@ -8,8 +8,8 @@ import numpy as np
 from scipy.spatial import ConvexHull, Delaunay
 
 import openmc
-from openmc.checkvalue import (check_greater_than, check_value,
-                               check_iterable_type, check_length)
+from openmc.checkvalue import (check_greater_than, check_value, check_less_than,
+                               check_iterable_type, check_length, check_type)
 
 
 class CompositeSurface(ABC):
@@ -372,6 +372,10 @@ class RightCircularCylinder(CompositeSurface):
         Radius of the cylinder
     axis : {'x', 'y', 'z'}
         Axis of the cylinder
+    upper_fillet_radius : float
+        Upper edge fillet radius in [cm].
+    lower_fillet_radius : float
+        Lower edge fillet radius in [cm].
     **kwargs
         Keyword arguments passed to underlying cylinder and plane classes
 
@@ -383,33 +387,173 @@ class RightCircularCylinder(CompositeSurface):
         Bottom planar surface of the cylinder
     top : openmc.Plane
         Top planar surface of the cylinder
+    upper_fillet_torus : openmc.Torus
+        Surface that creates the filleted edge for the upper end of the
+        cylinder. Only present if :attr:`upper_fillet_radius` is set.
+    upper_fillet_cylinder : openmc.Cylinder
+        Surface that bounds :attr:`upper_fillet_torus` radially. Only present
+        if :attr:`upper_fillet_radius` is set.
+    upper_fillet_plane : openmc.Plane
+        Surface that bounds :attr:`upper_fillet_torus` axially. Only present if
+        :attr:`upper_fillet_radius` is set.
+    lower_fillet_torus : openmc.Torus
+        Surface that creates the filleted edge for the lower end of the
+        cylinder. Only present if :attr:`lower_fillet_radius` is set.
+    lower_fillet_cylinder : openmc.Cylinder
+        Surface that bounds :attr:`lower_fillet_torus` radially. Only present
+        if :attr:`lower_fillet_radius` is set.
+    lower_fillet_plane : openmc.Plane
+        Surface that bounds :attr:`lower_fillet_torus` axially. Only present if
+        :attr:`lower_fillet_radius` is set.
 
     """
     _surface_names = ('cyl', 'bottom', 'top')
 
-    def __init__(self, center_base, height, radius, axis='z', **kwargs):
+    def __init__(self, center_base, height, radius, axis='z',
+                 upper_fillet_radius=0., lower_fillet_radius=0., **kwargs):
         cx, cy, cz = center_base
         check_greater_than('cylinder height', height, 0.0)
         check_greater_than('cylinder radius', radius, 0.0)
         check_value('cylinder axis', axis, ('x', 'y', 'z'))
+        check_type('upper_fillet_radius', upper_fillet_radius, float)
+        check_less_than('upper_fillet_radius', upper_fillet_radius,
+                        radius, equality=True)
+        check_type('lower_fillet_radius', lower_fillet_radius, float)
+        check_less_than('lower_fillet_radius', lower_fillet_radius,
+                        radius, equality=True)
+
         if axis == 'x':
             self.cyl = openmc.XCylinder(y0=cy, z0=cz, r=radius, **kwargs)
             self.bottom = openmc.XPlane(x0=cx, **kwargs)
             self.top = openmc.XPlane(x0=cx + height, **kwargs)
+            x1, x2 = 'y', 'z'
+            axcoord, axcoord1, axcoord2 = 0, 1, 2
         elif axis == 'y':
             self.cyl = openmc.YCylinder(x0=cx, z0=cz, r=radius, **kwargs)
             self.bottom = openmc.YPlane(y0=cy, **kwargs)
             self.top = openmc.YPlane(y0=cy + height, **kwargs)
+            x1, x2 = 'x', 'z'
+            axcoord, axcoord1, axcoord2 = 1, 0, 2
         elif axis == 'z':
             self.cyl = openmc.ZCylinder(x0=cx, y0=cy, r=radius, **kwargs)
             self.bottom = openmc.ZPlane(z0=cz, **kwargs)
             self.top = openmc.ZPlane(z0=cz + height, **kwargs)
+            x1, x2 = 'x', 'y'
+            axcoord, axcoord1, axcoord2 = 2, 0, 1
+
+        def _create_fillet_objects(axis_args, height, center_base, radius, fillet_radius, pos='upper'):
+            axis, x1, x2, axcoord, axcoord1, axcoord2 = axis_args
+            fillet_ext = height / 2 - fillet_radius
+            sign = 1
+            if pos == 'lower':
+                sign = -1
+            coord = center_base[axcoord] + (height / 2) + sign * fillet_ext
+
+            # cylinder
+            cyl_name = f'{pos}_min'
+            cylinder_args = {
+                x1 + '0': center_base[axcoord1],
+                x2 + '0': center_base[axcoord2],
+                'r': radius - fillet_radius
+            }
+            cls = getattr(openmc, f'{axis.upper()}Cylinder')
+            cyl = cls(name=f'{cyl_name} {axis}', **cylinder_args)
+
+            #torus
+            tor_name = f'{axis} {pos}'
+            tor_args = {
+                'a': radius - fillet_radius,
+                'b': fillet_radius,
+                'c': fillet_radius,
+                x1 + '0': center_base[axcoord1],
+                x2 + '0': center_base[axcoord2],
+                axis + '0': coord
+            }
+            cls = getattr(openmc, f'{axis.upper()}Torus')
+            torus = cls(name=tor_name, **tor_args)
+
+            # plane
+            p_name = f'{pos} ext'
+            p_args = {axis + '0': coord}
+            cls = getattr(openmc, f'{axis.upper()}Plane')
+            plane = cls(name=p_name, **p_args)
+
+            return cyl, torus, plane
+
+        if upper_fillet_radius > 0. or lower_fillet_radius > 0.:
+            if 'boundary_type' in kwargs:
+                if kwargs['boundary_type'] == 'periodic':
+                    raise ValueError('Periodic boundary conditions not permitted when '
+                                     'rounded corners are used.')
+
+            axis_args = (axis, x1, x2, axcoord, axcoord1, axcoord2)
+            if upper_fillet_radius > 0.:
+                cylinder, torus, plane = _create_fillet_objects(
+                    axis_args, height, center_base, radius, upper_fillet_radius)
+                self.upper_fillet_cylinder = cylinder
+                self.upper_fillet_torus = torus
+                self.upper_fillet_plane = plane
+                self._surface_names += ('upper_fillet_cylinder',
+                                        'upper_fillet_torus',
+                                        'upper_fillet_plane')
+
+            if lower_fillet_radius > 0.:
+                cylinder, torus, plane = _create_fillet_objects(
+                    axis_args, height, center_base, radius, lower_fillet_radius,
+                    pos='lower'
+                )
+                self.lower_fillet_cylinder = cylinder
+                self.lower_fillet_torus = torus
+                self.lower_fillet_plane = plane
+
+                self._surface_names += ('lower_fillet_cylinder',
+                                        'lower_fillet_torus',
+                                        'lower_fillet_plane')
+
+    def _get_fillet(self):
+        upper_fillet = self._get_upper_fillet()
+        lower_fillet = self._get_lower_fillet()
+        has_upper_fillet = upper_fillet is not None
+        has_lower_fillet = lower_fillet is not None
+        if has_lower_fillet and has_upper_fillet:
+            fillet = lower_fillet | upper_fillet
+        elif has_upper_fillet and not has_lower_fillet:
+            fillet = upper_fillet
+        elif not has_upper_fillet and has_lower_fillet:
+            fillet = lower_fillet
+        else:
+            fillet = None
+        return fillet
+
+    def _get_upper_fillet(self):
+        has_upper_fillet = hasattr(self, 'upper_fillet_plane')
+        if has_upper_fillet:
+            upper_fillet = +self.upper_fillet_cylinder & +self.upper_fillet_torus & +self.upper_fillet_plane
+        else:
+            upper_fillet = None
+        return upper_fillet
+
+    def _get_lower_fillet(self):
+        has_lower_fillet = hasattr(self, 'lower_fillet_plane')
+        if has_lower_fillet:
+            lower_fillet = +self.lower_fillet_cylinder & +self.lower_fillet_torus & -self.lower_fillet_plane
+        else:
+            lower_fillet = None
+        return lower_fillet
 
     def __neg__(self):
-        return -self.cyl & +self.bottom & -self.top
+        prism = -self.cyl & +self.bottom & -self.top
+        fillet = self._get_fillet()
+        if fillet is not None:
+            prism = prism & ~fillet
+        return prism
 
     def __pos__(self):
-        return +self.cyl | -self.bottom | +self.top
+        prism = +self.cyl | -self.bottom | +self.top
+        fillet = self._get_fillet()
+        if fillet is not None:
+            prism = prism | fillet
+        return prism
 
 
 class RectangularParallelepiped(CompositeSurface):

@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from collections import OrderedDict
 from collections.abc import MutableSequence
 from copy import deepcopy
 
@@ -47,17 +46,17 @@ class Region(ABC):
 
         Parameters
         ----------
-        surfaces: collections.OrderedDict, optional
+        surfaces : dict, optional
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
 
         Returns
         -------
-        surfaces: collections.OrderedDict
+        surfaces : dict
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
 
         """
         if surfaces is None:
-            surfaces = OrderedDict()
+            surfaces = {}
         for region in self:
             surfaces = region.get_surfaces(surfaces)
         return surfaces
@@ -590,17 +589,17 @@ class Complement(Region):
 
         Parameters
         ----------
-        surfaces: collections.OrderedDict, optional
+        surfaces : dict, optional
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
 
         Returns
         -------
-        surfaces: collections.OrderedDict
+        surfaces : dict
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
 
         """
         if surfaces is None:
-            surfaces = OrderedDict()
+            surfaces = {}
         for region in self.node:
             surfaces = region.get_surfaces(surfaces)
         return surfaces

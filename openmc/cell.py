@@ -1,4 +1,3 @@
-from collections import OrderedDict
 from collections.abc import Iterable
 from math import cos, sin, pi
 from numbers import Real
@@ -86,7 +85,7 @@ class Cell(IDManagerMixin):
         calculated in a stochastic volume calculation and added via the
         :meth:`Cell.add_volume_information` method. For 'distribmat' cells
         it is the total volume of all instances.
-    atoms : collections.OrderedDict
+    atoms : dict
         Mapping of nuclides to the total number of atoms for each nuclide
         present in the cell, or in all of its instances for a 'distribmat'
         fill. For example, {'U235': 1.0e22, 'U238': 5.0e22, ...}.
@@ -316,7 +315,7 @@ class Cell(IDManagerMixin):
                 # Assumes that volume is total volume of all instances
                 # Also assumes that all instances have the same volume
                 partial_volume = self.volume / len(self.fill)
-                self._atoms = OrderedDict()
+                self._atoms = {}
                 for mat in self.fill:
                     for key, atom_per_bcm in mat.get_nuclide_atom_densities().items():
                         # To account for overlap of nuclides between distribmat
@@ -389,13 +388,13 @@ class Cell(IDManagerMixin):
 
         Returns
         -------
-        nuclides : collections.OrderedDict
+        nuclides : dict
             Dictionary whose keys are nuclide names and values are 2-tuples of
             (nuclide, density)
 
         """
 
-        nuclides = OrderedDict()
+        nuclides = {}
 
         if self.fill_type == 'material':
             nuclides.update(self.fill.get_nuclide_densities())
@@ -423,13 +422,13 @@ class Cell(IDManagerMixin):
 
         Returns
         -------
-        cells : collections.orderedDict
+        cells : dict
             Dictionary whose keys are cell IDs and values are :class:`Cell`
             instances
 
         """
 
-        cells = OrderedDict()
+        cells = {}
 
         if memo and self in memo:
             return cells
@@ -447,12 +446,12 @@ class Cell(IDManagerMixin):
 
         Returns
         -------
-        materials : collections.OrderedDict
+        materials : dict
             Dictionary whose keys are material IDs and values are
             :class:`Material` instances
 
         """
-        materials = OrderedDict()
+        materials = {}
         if self.fill_type == 'material':
             materials[self.fill.id] = self.fill
         elif self.fill_type == 'distribmat':
@@ -473,13 +472,13 @@ class Cell(IDManagerMixin):
 
         Returns
         -------
-        universes : collections.OrderedDict
+        universes : dict
             Dictionary whose keys are universe IDs and values are
             :class:`Universe` instances
 
         """
 
-        universes = OrderedDict()
+        universes = {}
 
         if self.fill_type == 'universe':
             universes[self.fill.id] = self.fill
@@ -559,6 +558,67 @@ class Cell(IDManagerMixin):
             memo[self] = clone
 
         return memo[self]
+
+    def plot(self, *args, **kwargs):
+        """Display a slice plot of the cell.
+
+        .. versionadded:: 0.13.4
+
+        Parameters
+        ----------
+        origin : iterable of float
+            Coordinates at the origin of the plot. If left as None then the
+            bounding box center will be used to attempt to ascertain the origin.
+            Defaults to (0, 0, 0) if the bounding box is not finite
+        width : iterable of float
+            Width of the plot in each basis direction. If left as none then the
+            bounding box width will be used to attempt to ascertain the plot
+            width. Defaults to (10, 10) if the bounding box is not finite
+        pixels : Iterable of int or int
+            If iterable of ints provided, then this directly sets the number of
+            pixels to use in each basis direction. If int provided, then this
+            sets the total number of pixels in the plot and the number of pixels
+            in each basis direction is calculated from this total and the image
+            aspect ratio.
+        basis : {'xy', 'xz', 'yz'}
+            The basis directions for the plot
+        color_by : {'cell', 'material'}
+            Indicate whether the plot should be colored by cell or by material
+        colors : dict
+            Assigns colors to specific materials or cells. Keys are instances of
+            :class:`Cell` or :class:`Material` and values are RGB 3-tuples, RGBA
+            4-tuples, or strings indicating SVG color names. Red, green, blue,
+            and alpha should all be floats in the range [0.0, 1.0], for example:
+
+            .. code-block:: python
+
+               # Make water blue
+               water = openmc.Cell(fill=h2o)
+               universe.plot(..., colors={water: (0., 0., 1.))
+        seed : int
+            Seed for the random number generator
+        openmc_exec : str
+            Path to OpenMC executable.
+        axes : matplotlib.Axes
+            Axes to draw to
+        legend : bool
+            Whether a legend showing material or cell names should be drawn
+        legend_kwargs : dict
+            Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
+        outline : bool
+            Whether outlines between color boundaries should be drawn
+        axis_units : {'km', 'm', 'cm', 'mm'}
+            Units used on the plot axis
+        **kwargs
+            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            Axes containing resulting image
+
+        """
+        return openmc.Universe(cells=[self]).plot(*args, **kwargs)
 
     def create_xml_subelement(self, xml_element, memo=None):
         """Add the cell's xml representation to an incoming xml element

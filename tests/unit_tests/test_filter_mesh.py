@@ -22,15 +22,17 @@ def test_spherical_mesh_estimators(run_in_tmpdir):
     model.settings.inactive = 10
     model.settings.batches = 20
 
-    sph_mesh = openmc.SphericalMesh()
-    sph_mesh.r_grid = np.linspace(0.0, 5.0**3, 20)**(1/3)
+    sph_mesh = openmc.SphericalMesh(
+        r_grid=np.linspace(0.0, 5.0**3, 20)**(1/3)
+    )
     tally1 = openmc.Tally()
     tally1.filters = [openmc.MeshFilter(sph_mesh)]
     tally1.scores = ['flux']
     tally1.estimator = 'collision'
 
-    sph_mesh = openmc.SphericalMesh()
-    sph_mesh.r_grid = np.linspace(0.0, 5.0**3, 20)**(1/3)
+    sph_mesh = openmc.SphericalMesh(
+        r_grid=np.linspace(0.0, 5.0**3, 20)**(1/3)
+    )
     tally2 = openmc.Tally()
     tally2.filters = [openmc.MeshFilter(sph_mesh)]
     tally2.scores = ['flux']
@@ -75,17 +77,19 @@ def test_cylindrical_mesh_estimators(run_in_tmpdir):
     model.settings.inactive = 10
     model.settings.batches = 20
 
-    cyl_mesh = openmc.CylindricalMesh()
-    cyl_mesh.r_grid = np.linspace(0.0, 5.0**3, 20)**(1/3)
-    cyl_mesh.z_grid = [-5., 5.]
+    cyl_mesh = openmc.CylindricalMesh(
+        r_grid=np.linspace(0.0, 5.0**3, 20)**(1/3),
+        z_grid=[-5., 5.]
+    )
     tally1 = openmc.Tally()
     tally1.filters = [openmc.MeshFilter(cyl_mesh)]
     tally1.scores = ['flux']
     tally1.estimator = 'collision'
 
-    cyl_mesh = openmc.CylindricalMesh()
-    cyl_mesh.r_grid = np.linspace(0.0, 5.0**3, 20)**(1/3)
-    cyl_mesh.z_grid = [-5., 5.]
+    cyl_mesh = openmc.CylindricalMesh(
+        r_grid=np.linspace(0.0, 5.0**3, 20)**(1/3),
+        z_grid=[-5., 5.]
+    )
     tally2 = openmc.Tally()
     tally2.filters = [openmc.MeshFilter(cyl_mesh)]
     tally2.scores = ['flux']
@@ -133,10 +137,11 @@ def test_cylindrical_mesh_coincident(scale, run_in_tmpdir):
     model.settings.batches = 10
     model.settings.inactive = 0
 
-    cyl_mesh = openmc.CylindricalMesh()
-    cyl_mesh.r_grid = [0., 1.25*scale]
-    cyl_mesh.phi_grid = [0., 2*math.pi]
-    cyl_mesh.z_grid = [-1e10, 1e10]
+    cyl_mesh = openmc.CylindricalMesh(
+        r_grid=[0., 1.25*scale],
+        phi_grid=[0., 2*math.pi],
+        z_grid=[-1e10, 1e10]
+    )
     cyl_mesh_filter = openmc.MeshFilter(cyl_mesh)
     cell_filter = openmc.CellFilter([cell1])
 
@@ -183,10 +188,12 @@ def test_spherical_mesh_coincident(scale, run_in_tmpdir):
     model.settings.batches = 10
     model.settings.inactive = 0
 
-    sph_mesh = openmc.SphericalMesh()
-    sph_mesh.r_grid = [0., 1.25*scale]
-    sph_mesh.phi_grid = [0., 2*math.pi]
-    sph_mesh.theta_grid = [0., math.pi]
+    sph_mesh = openmc.SphericalMesh(
+        r_grid=[0., 1.25*scale],
+        phi_grid=[0., 2*math.pi],
+        theta_grid=[0., math.pi],
+    )
+        
     sph_mesh_filter = openmc.MeshFilter(sph_mesh)
     cell_filter = openmc.CellFilter([cell1])
 
@@ -227,10 +234,11 @@ def test_get_reshaped_data(run_in_tmpdir):
     model.settings.inactive = 10
     model.settings.batches = 20
 
-    sph_mesh = openmc.SphericalMesh()
-    sph_mesh.r_grid = np.linspace(0.0, 5.0**3, 20)**(1/3)
-    sph_mesh.theta_grid = np.linspace(0, math.pi, 4)
-    sph_mesh.phi_grid = np.linspace(0, 2*math.pi, 3)
+    sph_mesh = openmc.SphericalMesh(
+        r_grid=np.linspace(0.0, 5.0**3, 20)**(1/3),
+        theta_grid=np.linspace(0, math.pi, 4),
+        phi_grid=np.linspace(0, 2*math.pi, 3)
+    )
     tally1 = openmc.Tally()
     efilter = openmc.EnergyFilter([0, 1e5, 1e8])
     meshfilter = openmc.MeshFilter(sph_mesh)

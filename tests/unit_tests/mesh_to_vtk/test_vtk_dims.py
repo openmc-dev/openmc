@@ -49,15 +49,17 @@ rectilinear_mesh.y_grid = \
     np.concatenate((-rectilinear_mesh.y_grid[::-1], rectilinear_mesh.y_grid))
 rectilinear_mesh.z_grid = np.linspace(-10, 10, 11)
 
-cylinder_mesh = openmc.CylindricalMesh()
-cylinder_mesh.r_grid = np.linspace(0, 10, 23)
+cylinder_mesh = openmc.CylindricalMesh(
+    r_grid=np.linspace(0, 10, 23),
+    z_grid=np.linspace(0, 1, 15)
+)
 cylinder_mesh.phi_grid = np.linspace(0, np.pi, 21)
-cylinder_mesh.z_grid = np.linspace(0, 1, 15)
 
-spherical_mesh = openmc.SphericalMesh()
-spherical_mesh.r_grid = np.linspace(1, 10, 30)
-spherical_mesh.phi_grid = np.linspace(0, 0.8*np.pi, 25)
-spherical_mesh.theta_grid = np.linspace(0, np.pi / 2, 15)
+spherical_mesh = openmc.SphericalMesh(
+    r_grid=np.linspace(1, 10, 30),
+    phi_grid=np.linspace(0, 0.8*np.pi, 25),
+    theta_grid=np.linspace(0, np.pi / 2, 15),
+)
 
 MESHES = [cylinder_mesh, regular_mesh, rectilinear_mesh, spherical_mesh]
 
@@ -143,16 +145,17 @@ def test_write_data_to_vtk_size_mismatch(mesh):
         mesh.write_data_to_vtk(filename="out.vtk", datasets={"label": data})
 
 def test_write_data_to_vtk_round_trip(run_in_tmpdir):
-    cmesh = openmc.CylindricalMesh()
-    cmesh.r_grid = (0.0, 1.0, 2.0)
-    cmesh.z_grid = (0.0, 2.0, 4.0, 5.0)
-    cmesh.phi_grid = (0.0, 3.0, 6.0)
+    cmesh = openmc.CylindricalMesh(
+        r_grid=(0.0, 1.0, 2.0),
+        z_grid=(0.0, 2.0, 4.0, 5.0),
+        phi_grid=(0.0, 3.0, 6.0),
+    )
 
-    smesh = openmc.SphericalMesh()
-    smesh.r_grid = (0.0, 1.0, 2.0)
-    smesh.theta_grid = (0.0, 2.0, 4.0, 5.0)
-    smesh.phi_grid = (0.0, 3.0, 6.0)
-
+    smesh = openmc.SphericalMesh(
+        r_grid=(0.0, 1.0, 2.0),
+        theta_grid=(0.0, 2.0, 4.0, 5.0),
+        phi_grid=(0.0, 3.0, 6.0),
+    )
     rmesh = openmc.RegularMesh()
     rmesh.lower_left = (0.0, 0.0, 0.0)
     rmesh.upper_right = (1.0, 3.0, 5.0)
@@ -276,11 +279,11 @@ def test_vtk_write_ordering(run_in_tmpdir, model, mesh, surface):
 
 
 def test_sphere_mesh_coordinates(run_in_tmpdir):
-    mesh = openmc.SphericalMesh()
-    mesh.r_grid = np.linspace(0.1, 10, 30)
-    mesh.phi_grid = np.linspace(0, 1.5*np.pi, 25)
-    mesh.theta_grid = np.linspace(0, np.pi / 2, 15)
-
+    mesh = openmc.SphericalMesh(
+        r_grid=np.linspace(0.1, 10, 30),
+        phi_grid=np.linspace(0, 1.5*np.pi, 25),
+        theta_grid=np.linspace(0, np.pi / 2, 15),
+    )
     # write the data to a VTK file (no data)
     vtk_filename = 'test.vtk'
     mesh.write_data_to_vtk(vtk_filename, {})

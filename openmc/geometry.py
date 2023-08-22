@@ -1,7 +1,7 @@
 from __future__ import annotations
 import os
 import typing
-from collections import OrderedDict, defaultdict
+from collections import defaultdict
 from copy import deepcopy
 from collections.abc import Iterable
 from pathlib import Path
@@ -39,11 +39,16 @@ class Geometry:
 
     """
 
-    def __init__(self, root=None):
+    def __init__(
+        self,
+        root: typing.Optional[openmc.UniverseBase] = None,
+        merge_surfaces: bool = False,
+        surface_precision: int = 10
+    ):
         self._root_universe = None
         self._offsets = {}
-        self.merge_surfaces = False
-        self.surface_precision = 10
+        self.merge_surfaces = merge_surfaces
+        self.surface_precision = surface_precision
         if root is not None:
             if isinstance(root, openmc.UniverseBase):
                 self.root_universe = root
@@ -357,41 +362,41 @@ class Geometry:
 
         return indices if return_list else indices[0]
 
-    def get_all_cells(self) -> typing.OrderedDict[int, openmc.Cell]:
+    def get_all_cells(self) -> typing.Dict[int, openmc.Cell]:
         """Return all cells in the geometry.
 
         Returns
         -------
-        collections.OrderedDict
+        dict
             Dictionary mapping cell IDs to :class:`openmc.Cell` instances
 
         """
         if self.root_universe is not None:
             return self.root_universe.get_all_cells(memo=set())
         else:
-            return OrderedDict()
+            return {}
 
-    def get_all_universes(self) -> typing.OrderedDict[int, openmc.Universe]:
+    def get_all_universes(self) -> typing.Dict[int, openmc.Universe]:
         """Return all universes in the geometry.
 
         Returns
         -------
-        collections.OrderedDict
+        dict
             Dictionary mapping universe IDs to :class:`openmc.Universe`
             instances
 
         """
-        universes = OrderedDict()
+        universes = {}
         universes[self.root_universe.id] = self.root_universe
         universes.update(self.root_universe.get_all_universes())
         return universes
 
-    def get_all_materials(self) -> typing.OrderedDict[int, openmc.Material]:
+    def get_all_materials(self) -> typing.Dict[int, openmc.Material]:
         """Return all materials within the geometry.
 
         Returns
         -------
-        collections.OrderedDict
+        dict
             Dictionary mapping material IDs to :class:`openmc.Material`
             instances
 
@@ -399,19 +404,19 @@ class Geometry:
         if self.root_universe is not None:
             return self.root_universe.get_all_materials(memo=set())
         else:
-            return OrderedDict()
+            return {}
 
-    def get_all_material_cells(self) -> typing.OrderedDict[int, openmc.Cell]:
+    def get_all_material_cells(self) -> typing.Dict[int, openmc.Cell]:
         """Return all cells filled by a material
 
         Returns
         -------
-        collections.OrderedDict
+        dict
             Dictionary mapping cell IDs to :class:`openmc.Cell` instances that
             are filled with materials or distributed materials.
 
         """
-        material_cells = OrderedDict()
+        material_cells = {}
 
         for cell in self.get_all_cells().values():
             if cell.fill_type in ('material', 'distribmat'):
@@ -420,7 +425,7 @@ class Geometry:
 
         return material_cells
 
-    def get_all_material_universes(self) -> typing.OrderedDict[int, openmc.Universe]:
+    def get_all_material_universes(self) -> typing.Dict[int, openmc.Universe]:
         """Return all universes having at least one material-filled cell.
 
         This method can be used to find universes that have at least one cell
@@ -428,12 +433,12 @@ class Geometry:
 
         Returns
         -------
-        collections.OrderedDict
+        dict
             Dictionary mapping universe IDs to :class:`openmc.Universe`
             instances with at least one material-filled cell
 
         """
-        material_universes = OrderedDict()
+        material_universes = {}
 
         for universe in self.get_all_universes().values():
             for cell in universe.cells.values():
@@ -443,16 +448,16 @@ class Geometry:
 
         return material_universes
 
-    def get_all_lattices(self) -> typing.OrderedDict[int, openmc.Lattice]:
+    def get_all_lattices(self) -> typing.Dict[int, openmc.Lattice]:
         """Return all lattices defined
 
         Returns
         -------
-        collections.OrderedDict
+        dict
             Dictionary mapping lattice IDs to :class:`openmc.Lattice` instances
 
         """
-        lattices = OrderedDict()
+        lattices = {}
 
         for cell in self.get_all_cells().values():
             if cell.fill_type == 'lattice':
@@ -461,17 +466,17 @@ class Geometry:
 
         return lattices
 
-    def get_all_surfaces(self) -> typing.OrderedDict[int, openmc.Surface]:
+    def get_all_surfaces(self) -> typing.Dict[int, openmc.Surface]:
         """
         Return all surfaces used in the geometry
 
         Returns
         -------
-        collections.OrderedDict
+        dict
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
 
         """
-        surfaces = OrderedDict()
+        surfaces = {}
 
         for cell in self.get_all_cells().values():
             if cell.region is not None:
@@ -729,3 +734,61 @@ class Geometry:
         clone = deepcopy(self)
         clone.root_universe = self.root_universe.clone()
         return clone
+
+    def plot(self, *args, **kwargs):
+        """Display a slice plot of the geometry.
+
+        .. versionadded:: 0.13.4
+
+        Parameters
+        ----------
+        origin : iterable of float
+            Coordinates at the origin of the plot. If left as None then the
+            bounding box center will be used to attempt to ascertain the origin.
+            Defaults to (0, 0, 0) if the bounding box is not finite
+        width : iterable of float
+            Width of the plot in each basis direction. If left as none then the
+            bounding box width will be used to attempt to ascertain the plot
+            width. Defaults to (10, 10) if the bounding box is not finite
+        pixels : Iterable of int or int
+            If iterable of ints provided, then this directly sets the number of
+            pixels to use in each basis direction. If int provided, then this
+            sets the total number of pixels in the plot and the number of pixels
+            in each basis direction is calculated from this total and the image
+            aspect ratio.
+        basis : {'xy', 'xz', 'yz'}
+            The basis directions for the plot
+        color_by : {'cell', 'material'}
+            Indicate whether the plot should be colored by cell or by material
+        colors : dict
+            Assigns colors to specific materials or cells. Keys are instances of
+            :class:`Cell` or :class:`Material` and values are RGB 3-tuples, RGBA
+            4-tuples, or strings indicating SVG color names. Red, green, blue,
+            and alpha should all be floats in the range [0.0, 1.0], for example:
+            .. code-block:: python
+               # Make water blue
+               water = openmc.Cell(fill=h2o)
+               universe.plot(..., colors={water: (0., 0., 1.))
+        seed : int
+            Seed for the random number generator
+        openmc_exec : str
+            Path to OpenMC executable.
+        axes : matplotlib.Axes
+            Axes to draw to
+        legend : bool
+            Whether a legend showing material or cell names should be drawn
+        legend_kwargs : dict
+            Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
+        outline : bool
+            Whether outlines between color boundaries should be drawn
+        axis_units : {'km', 'm', 'cm', 'mm'}
+            Units used on the plot axis
+        **kwargs
+            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
+        Returns
+        -------
+        matplotlib.axes.Axes
+            Axes containing resulting image
+        """
+
+        return self.root_universe.plot(*args, **kwargs)

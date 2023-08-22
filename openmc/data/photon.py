@@ -1,4 +1,3 @@
-from collections import OrderedDict
 from collections.abc import Mapping, Callable
 from copy import deepcopy
 from io import StringIO
@@ -432,7 +431,7 @@ class IncidentPhoton(EqualityMixin):
         the projection of the electron momentum on the scattering vector,
         :math:`p_z` for each subshell). Note that subshell occupancies may not
         match the atomic relaxation data.
-    reactions : collections.OrderedDict
+    reactions : dict
         Contains the cross sections for each photon reaction. The keys are MT
         values and the values are instances of :class:`PhotonReaction`.
 
@@ -441,7 +440,7 @@ class IncidentPhoton(EqualityMixin):
     def __init__(self, atomic_number):
         self.atomic_number = atomic_number
         self._atomic_relaxation = None
-        self.reactions = OrderedDict()
+        self.reactions = {}
         self.compton_profiles = {}
         self.bremsstrahlung = {}
 

@@ -9,7 +9,7 @@ from itertools import chain
 import math
 import os
 import re
-from collections import OrderedDict, defaultdict, namedtuple
+from collections import defaultdict, namedtuple
 from collections.abc import Mapping, Iterable
 from numbers import Real, Integral
 from warnings import warn
@@ -248,7 +248,7 @@ class Chain:
         Nuclides present in the chain.
     reactions : list of str
         Reactions that are tracked in the depletion chain
-    nuclide_dict : OrderedDict of str to int
+    nuclide_dict : dict of str to int
         Maps a nuclide name to an index in nuclides.
     fission_yields : None or iterable of dict
         List of effective fission yields for materials. Each dictionary
@@ -264,7 +264,7 @@ class Chain:
     def __init__(self):
         self.nuclides = []
         self.reactions = []
-        self.nuclide_dict = OrderedDict()
+        self.nuclide_dict = {}
         self._fission_yields = None
 
     def __contains__(self, nuclide):

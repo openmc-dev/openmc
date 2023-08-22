@@ -188,9 +188,9 @@ def plot_mesh_tally(
     geometry: Optional['openmc.Geometry'] = None,
     pixels: int = 40000,
     colorbar: bool = True,
-    color_bar_title: str = None,
     volume_normalization: bool = True,
     scaling_factor: Optional[float] = None,
+    colorbar_kwargs: dict = {},
     outline_kwargs: dict = _default_outline_kwargs,
     **kwargs
 ) -> 'matplotlib.image.AxesImage':
@@ -226,12 +226,12 @@ def plot_mesh_tally(
         the image aspect ratio.
     colorbar : bool
         Whether or not to add a colorbar to the plot.
-    color_bar_title : str
-        The title to assign the color bar.
     volume_normalization : bool, optional
         Whether or not to normalize the data by the volume of the mesh elements.
     scaling_factor : float
         A optional multiplier to apply to the tally data prior to ploting.
+    colorbar_kwargs : dict
+        Keyword arguments passed to :func:`matplotlib.colorbar.Colorbar`.
     outline_kwargs : dict
         Keyword arguments passed to :func:`matplotlib.pyplot.contour`.
     **kwargs
@@ -303,11 +303,7 @@ def plot_mesh_tally(
     im = axes.imshow(data, extent=(x_min, x_max, y_min, y_max), **kwargs)
 
     if colorbar:
-        cbar = fig.colorbar(im)
-        if color_bar_title is None:
-            cbar.set_label(score)
-        else:
-            cbar.set_label(color_bar_title)
+        fig.colorbar(im, **colorbar_kwargs)
 
     if outline and geometry is not None:
         import matplotlib.image as mpimg

@@ -237,7 +237,7 @@ def test_plot_mesh_tally(run_in_tmpdir):
         -100, 50, -200, 250, -300, 350, boundary_type='vacuum'
     )
     cell1 = openmc.Cell(region=-surface1)
-    cell2 = openmc.Cell(region=-surface&+surface1)
+    cell2 = openmc.Cell(region=-surface & +surface1)
     cell1.fill = mat1
     cell2.fill = mat1
     geom = openmc.Geometry([cell1, cell2])
@@ -283,7 +283,7 @@ def test_plot_mesh_tally(run_in_tmpdir):
         basis='yz',
         axis_units='m',
         slice_index=9,  # max value of slice selected
-        value= 'std_dev'
+        value='std_dev'
     )
     plot.figure.savefig('x.png')
     assert plot.xaxis.get_label().get_text() == 'y [m]'
@@ -297,11 +297,11 @@ def test_plot_mesh_tally(run_in_tmpdir):
         slice_index=19,  # max value of slice selected
         axis_units='mm',
         score='flux',
-        value= 'mean',
+        value='mean',
         outline=True,
         geometry=geom,
         outline_by='material',
-        color_bar_title='neutron flux',
+        colorbar_kwargs={'label': 'neutron flux'},
         norm=LogNorm(vmin=1e-6, vmax=max(tally_result.mean.flatten())),
     )
     assert plot.xaxis.get_label().get_text() == 'x [mm]'

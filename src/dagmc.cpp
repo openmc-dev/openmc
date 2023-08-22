@@ -395,7 +395,7 @@ bool DAGUniverse::find_cell(Particle& p) const
   // cells, place it in the implicit complement
   bool found = Universe::find_cell(p);
   if (!found && model::universe_map[this->id_] != model::root_universe) {
-    p.coord(p.n_coord() - 1).cell = implicit_complement_idx();
+    p.lowest_coord().cell = implicit_complement_idx();
     found = true;
   }
   return found;
@@ -581,7 +581,7 @@ std::pair<double, int32_t> DAGCell::distance(
     p->history().reset();
   }
 
-  const auto& univ = model::universes[p->coord(p->n_coord() - 1).universe];
+  const auto& univ = model::universes[p->lowest_coord().universe];
 
   DAGUniverse* dag_univ = static_cast<DAGUniverse*>(univ.get());
   if (!dag_univ)

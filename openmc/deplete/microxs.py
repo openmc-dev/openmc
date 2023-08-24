@@ -116,6 +116,8 @@ def get_microxs_and_flux(
     with tempfile.TemporaryDirectory() as temp_dir:
         if run_kwargs is None:
             run_kwargs = {}
+        else:
+            run_kwargs = dict(run_kwargs)
         run_kwargs.setdefault('cwd', temp_dir)
         statepoint_path = model.run(**run_kwargs)
 

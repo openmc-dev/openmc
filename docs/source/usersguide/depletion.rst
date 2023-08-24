@@ -334,22 +334,27 @@ normalizing reaction rates:
    the time integrator is a flux, and obtains the reaction rates by multiplying
    the cross sections by the ``source-rate``.
 2. ``fission-q`` normalization, which uses the ``power`` or ``power_density``
-   provided by the time integrator to obtain reaction rates by computing a value
-   for the flux based on this power. The equation we use for this calculation is
+   provided by the time integrator to obtain normalized reaction rates by
+   computing a normalization factor as the ratio of the user-specified power to
+   the "observed" power based on fission reaction rates. The equation for the
+   normalization factor is
 
    .. math::
       :label: fission-q
 
-      \phi = \frac{P}{\sum\limits_i (Q_i \sigma^f_i N_i)}
+      f = \frac{P}{\sum\limits_m \sum\limits_i \left(Q_i N_{i,m} \sum\limits_g
+      \sigma^f_{i,g,m} \phi_{g,m} \right)}
 
    where :math:`P` is the power, :math:`Q_i` is the fission Q value for nuclide
-   :math:`i`, :math:`\sigma_i^f` is the microscopic fission cross section for
-   nuclide :math:`i`, and :math:`N_i` is the number of atoms of nuclide
-   :math:`i`. This equation makes the same assumptions and issues as discussed
-   in :ref:`energy-deposition`. Unfortunately, the proposed solution in that
-   section does not apply here since we are decoupled from transport code.
-   However, there is a method to converge to a more accurate value for flux by
-   using substeps during time integration. `This paper
+   :math:`i`, :math:`\sigma_{i,g,m}^f` is the microscopic fission cross section
+   for nuclide :math:`i` in energy group :math:`g` for material :math:`m`,
+   :math:`\phi_{g,m}` is the neutron flux in group :math:`g` for material
+   :math:`m`, and :math:`N_{i,m}` is the number of atoms of nuclide :math:`i`
+   for material :math:`m`. This equation makes the same assumptions and issues
+   as discussed in :ref:`energy-deposition`. Unfortunately, the proposed
+   solution in that section does not apply here since we are decoupled from
+   transport code. However, there is a method to converge to a more accurate
+   value for flux by using substeps during time integration. `This paper
    <https://doi.org/10.1016/j.anucene.2016.05.031>`_ provides a good discussion
    of this method.
 

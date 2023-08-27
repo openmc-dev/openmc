@@ -58,7 +58,7 @@ void IdData::set_value(size_t y, size_t x, const Particle& p, int level)
   }
 
   // set material data
-  Cell* c = model::cells.at(p.coord(p.n_coord() - 1).cell).get();
+  Cell* c = model::cells.at(p.lowest_coord().cell).get();
   if (p.material() == MATERIAL_VOID) {
     data_(y, x, 2) = MATERIAL_VOID;
     return;
@@ -79,7 +79,7 @@ PropertyData::PropertyData(size_t h_res, size_t v_res)
 
 void PropertyData::set_value(size_t y, size_t x, const Particle& p, int level)
 {
-  Cell* c = model::cells.at(p.coord(p.n_coord() - 1).cell).get();
+  Cell* c = model::cells.at(p.lowest_coord().cell).get();
   data_(y, x, 0) = (p.sqrtkT() * p.sqrtkT()) / K_BOLTZMANN;
   if (c->type_ != Fill::UNIVERSE && p.material() != MATERIAL_VOID) {
     Material* m = model::materials.at(p.material()).get();
@@ -1327,9 +1327,8 @@ void ProjectionPlot::create_output() const
               // edges on the model boundary for the same cell.
               if (first_inside_model) {
                 this_line_segments[tid][horiz].emplace_back(
-                  color_by_ == PlotColorBy::mats
-                    ? p.material()
-                    : p.coord(p.n_coord() - 1).cell,
+                  color_by_ == PlotColorBy::mats ? p.material()
+                                                 : p.lowest_coord().cell,
                   0.0, first_surface);
                 first_inside_model = false;
               }
@@ -1339,7 +1338,7 @@ void ProjectionPlot::create_output() const
               auto dist = distance_to_boundary(p);
               this_line_segments[tid][horiz].emplace_back(
                 color_by_ == PlotColorBy::mats ? p.material()
-                                               : p.coord(p.n_coord() - 1).cell,
+                                               : p.lowest_coord().cell,
                 dist.distance, std::abs(dist.surface_index));
 
               // Advance particle

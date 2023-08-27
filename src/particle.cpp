@@ -148,7 +148,7 @@ void Particle::event_calculate_xs()
   // If the cell hasn't been determined based on the particle's location,
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
-  if (coord(n_coord() - 1).cell == C_NONE) {
+  if (lowest_coord().cell == C_NONE) {
     if (!exhaustive_find_cell(*this)) {
       mark_as_lost(
         "Could not find the cell containing particle " + std::to_string(id()));
@@ -157,7 +157,7 @@ void Particle::event_calculate_xs()
 
     // Set birth cell attribute
     if (cell_born() == C_NONE)
-      cell_born() = coord(n_coord() - 1).cell;
+      cell_born() = lowest_coord().cell;
   }
 
   // Write particle track.
@@ -405,7 +405,7 @@ void Particle::event_revive_from_secondary()
       // Since the birth cell of the particle has not been set we
       // have to determine it before the energy of the secondary particle can be
       // removed from the pulse-height of this cell.
-      if (coord(n_coord() - 1).cell == C_NONE) {
+      if (lowest_coord().cell == C_NONE) {
         if (!exhaustive_find_cell(*this)) {
           mark_as_lost("Could not find the cell containing particle " +
                        std::to_string(id()));
@@ -413,7 +413,7 @@ void Particle::event_revive_from_secondary()
         }
         // Set birth cell attribute
         if (cell_born() == C_NONE)
-          cell_born() = coord(n_coord() - 1).cell;
+          cell_born() = lowest_coord().cell;
       }
       pht_secondary_particles();
     }
@@ -469,7 +469,7 @@ void Particle::pht_collision_energy()
 
   // determine index of cell in pulse_height_cells
   auto it = std::find(model::pulse_height_cells.begin(),
-    model::pulse_height_cells.end(), coord(n_coord() - 1).cell);
+    model::pulse_height_cells.end(), lowest_coord().cell);
 
   if (it != model::pulse_height_cells.end()) {
     int index = std::distance(model::pulse_height_cells.begin(), it);
@@ -548,7 +548,7 @@ void Particle::cross_surface()
     material_last() = material();
     sqrtkT_last() = sqrtkT();
     // set new cell value
-    coord(n_coord() - 1).cell = i_cell;
+    lowest_coord().cell = i_cell;
     cell_instance() = 0;
     material() = model::cells[i_cell]->material_[0];
     sqrtkT() = model::cells[i_cell]->sqrtkT_[0];

@@ -274,16 +274,16 @@ void Particle::event_cross_surface()
     // Particle crosses surface
     cross_surface();
     switch (this->type()) {
-      case ParticleType::neutron:
-        if(settings::weight_windows_on && this->alive()) {
-          apply_weight_windows(*this);
-        }
-        break;
-      case ParticleType::photon:
-        if(settings::weight_windows_on && this->alive()) {
-          apply_weight_windows(*this);
-        }
-        break;
+    case ParticleType::neutron:
+      if (settings::weight_windows_on && this->alive()) {
+        apply_weight_windows(*this);
+      }
+      break;
+    case ParticleType::photon:
+      if (settings::weight_windows_on && this->alive()) {
+        apply_weight_windows(*this);
+      }
+      break;
     }
     event() = TallyEvent::SURFACE;
   }

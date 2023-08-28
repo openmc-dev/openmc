@@ -886,6 +886,8 @@ class Tally(IDManagerMixin):
     def add_results(self, statepoint):
         """Add results from the provided statepoint file to this tally instance
 
+            .. versionadded: 0.13.4
+
         Parameters
         ----------
         statepoint : openmc.PathLike or openmc.StatePoint instance
@@ -3181,6 +3183,8 @@ class Tallies(cv.CheckedList):
 
     def add_results(self, statepoint):
         """Add results from the provided statepoint file the tally objects in this collection
+
+            .. versionadded: 0.13.4
 
         Parameters
         ----------

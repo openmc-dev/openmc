@@ -883,6 +883,19 @@ class Tally(IDManagerMixin):
 
         return element
 
+    def add_results(self, statepoint):
+        """Add results from the provided statepoint file to this tally instance
+
+        Parameters
+        ----------
+        statepoint : openmc.PathLike or openmc.StatePoint instance
+            StatePoint used to update tally results
+        """
+        sp = statepoint if isinstance(statepoint, openmc.StatePoint) else openmc.StatePoint(statepoint)
+        # check for an exact tally match in the sp file
+        sp.match_tally(self)
+        sp._populate_tally(self)
+
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
         """Generate tally object from an XML element
@@ -3165,6 +3178,20 @@ class Tallies(cv.CheckedList):
 
                     # Continue iterating from the first loop
                     break
+
+    def add_results(self, statepoint):
+        """Add results from the provided statepoint file the tally objects in this collection
+
+        Parameters
+        ----------
+        statepoint : openmc.PathLike or openmc.StatePoint instance
+            StatePoint used to update tally results
+        """
+        if not self:
+            return
+        sp = statepoint if isinstance(statepoint, openmc.StatePoint) else openmc.StatePoint(statepoint)
+        for tally in self:
+            tally.add_results(sp)
 
     def _create_tally_subelements(self, root_element):
         for tally in self:

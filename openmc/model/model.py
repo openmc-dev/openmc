@@ -806,6 +806,16 @@ class Model:
                             openmc.lib.materials[domain_id].volume = \
                                 vol_calc.volumes[domain_id].n
 
+    def add_tally_results(self, statepoint):
+        """Add results from simulation to tally objects on the Model
+
+        Parameters
+        ----------
+        statepoint : openmc.PathLike or openmc.StatePoint instance
+            StatePoint used to update tally results
+        """
+        self.tallies.add_results(statepoint)
+
     def plot_geometry(self, output=True, cwd='.', openmc_exec='openmc'):
         """Creates plot images as specified by the Model.plots attribute
 

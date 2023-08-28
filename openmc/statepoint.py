@@ -531,7 +531,18 @@ class StatePoint:
 
     def match_tally(self, tally):
         """
-        Find a tally with an exact specification match
+        Find a tally with an exact specification match.
+
+            .. versionadded 0.13.4
+
+        Parameters
+        ----------
+        tally : openmc.Tally instance
+            The Tally object to match.
+
+        Returns
+        -------
+        None or openmc.Tally
         """
         try:
             sp_tally = self.get_tally(tally.scores,
@@ -553,8 +564,27 @@ class StatePoint:
         if tally.multiply_density != sp_tally.multiply_density:
             sp_tally = None
 
-        if sp_tally is None:
-            raise LookupError(f'Could not find matching tally in {self._f.filename}')
+        return sp_tally
+
+    def contains_tally(self, tally):
+        """
+        Determine whether or not the statepoint contains an exact match for this tally.
+
+            .. versionadded 0.13.4
+
+        Parameters
+        ----------
+        tally : openmc.Tally instance
+            The Tally object to check for.
+
+        Returns
+        -------
+        True if the tally was matched. False if not.
+        """
+        sp_tally = self.match_tally(tally)
+        return sp_tally is not None
+
+
 
     def get_tally(self, scores=[], filters=[], nuclides=[],
                   name=None, id=None, estimator=None, exact_filters=False,

@@ -1692,8 +1692,9 @@ is done per source particle. That is for each history the parameters,
 :math:`w_c` and :math:`w_s`, are multiplied by the start weight of the current
 history.
 
-For most problems this normalization is found to improve Figure of Merits and is 
-recommended.
+This normalization is recommended for problems where numerous source particles are
+initialized below the survival biasing weight cutoff, :math:`w_c`; to prevent them
+from being immediately rouletted. This can notably be the case for biased sources.
 
 Weight Windows
 --------------

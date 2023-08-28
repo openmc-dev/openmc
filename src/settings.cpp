@@ -75,7 +75,7 @@ bool urr_ptables_on {true};
 bool weight_windows_on {false};
 bool write_all_tracks {false};
 bool write_initial_source {false};
-bool survival_normalization {true};
+bool survival_normalization {false};
 bool source_file {false};
 
 std::string path_cross_sections;

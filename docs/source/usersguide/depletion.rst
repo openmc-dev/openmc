@@ -350,13 +350,14 @@ normalizing reaction rates:
    for nuclide :math:`i` in energy group :math:`g` for material :math:`m`,
    :math:`\phi_{g,m}` is the neutron flux in group :math:`g` for material
    :math:`m`, and :math:`N_{i,m}` is the number of atoms of nuclide :math:`i`
-   for material :math:`m`. This equation makes the same assumptions and issues
-   as discussed in :ref:`energy-deposition`. Unfortunately, the proposed
-   solution in that section does not apply here since we are decoupled from
-   transport code. However, there is a method to converge to a more accurate
-   value for flux by using substeps during time integration. `This paper
-   <https://doi.org/10.1016/j.anucene.2016.05.031>`_ provides a good discussion
-   of this method.
+   for material :math:`m`. Reaction rates are then multiplied by :math:`f` so
+   that the total fission power matches :math:`P`. This equation makes the same
+   assumptions and issues as discussed in :ref:`energy-deposition`.
+   Unfortunately, the proposed solution in that section does not apply here
+   since we are decoupled from transport code. However, there is a method to
+   converge to a more accurate value for flux by using substeps during time
+   integration. `This paper <https://doi.org/10.1016/j.anucene.2016.05.031>`_
+   provides a good discussion of this method.
 
 .. warning::
 
@@ -373,14 +374,14 @@ useful for running many different cases of a particular scenario. A
 transport-independent depletion simulation using ``fission-q`` normalization
 will sum the fission energy values across all materials into :math:`Q_i` in
 Equation :math:numref:`fission-q`, and Equation :math:numref:`fission-q`
-provides the flux we use to calculate the reaction rates in each material.
+provides the normalization factor applied to reaction rates in each material.
 This can be useful for running a scenario with multiple depletable materials
 that are part of the same reactor. This behavior may change in the future.
 
 Time integration
 ~~~~~~~~~~~~~~~~
 
-The values of the one-group microscopic cross sections passed to
+The values of the microscopic cross sections passed to
 :class:`openmc.deplete.IndependentOperator` are fixed for the entire depletion
 simulation. This implicit assumption may produce inaccurate results for certain
 scenarios.

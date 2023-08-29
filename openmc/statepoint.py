@@ -410,13 +410,20 @@ class StatePoint:
 
                 # Iterate over all tallies
                 for tally_id in tally_ids:
-                    tally = openmc.Tally(tally_id)
-                    self._populate_tally(tally)
-                    self._tallies[tally_id] = tally
+                    tally = self._read_tally(tally_id)
+                    if tally is not None:
+                        self._tallies[tally_id] = tally
 
             self._tallies_read = True
 
         return self._tallies
+
+    def _read_tally(self, tally_id):
+        if self._f['tallies'][f'tally {tally_id}'].attrs.get('internal'):
+            return
+        tally = openmc.Tally(tally_id)
+        self._populate_tally(tally)
+        return tally
 
     def _populate_tally(self, tally):
         group = self._f['tallies'][f'tally {tally.id}']

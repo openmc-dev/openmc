@@ -383,7 +383,7 @@ Mixture::Mixture(pugi::xml_node node)
     // cummulative sum of probabilities
     double p = std::stod(pair.attribute("probability").value());
 
-    // Save cummulative probybility and distrubution
+    // Save cummulative probability and distribution
     auto dist = distribution_from_xml(pair.child("dist"));
     cumsum += p * dist->integral();
 

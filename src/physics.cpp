@@ -47,13 +47,15 @@ void collision(Particle& p)
   switch (p.type()) {
   case ParticleType::neutron:
     sample_neutron_reaction(p);
-    if (settings::weight_windows_on) {
+    if (settings::weight_windows_on &&
+        settings::weight_window_checkpoint_collision) {
       apply_weight_windows(p);
     }
     break;
   case ParticleType::photon:
     sample_photon_reaction(p);
-    if (settings::weight_windows_on) {
+    if (settings::weight_windows_on &&
+        settings::weight_window_checkpoint_collision) {
       apply_weight_windows(p);
     }
     break;

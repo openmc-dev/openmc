@@ -1,194 +1,45 @@
-import os
-import typing  # imported separately as py3.8 requires typing.Iterable
-from collections.abc import Iterable, Mapping, MutableSequence
-from enum import Enum
-import itertools
-from math import ceil
-from numbers import Integral, Real
-from pathlib import Path
-import typing  # required to prevent typing.Union namespace overwriting Union
-from typing import Optional
-import lxml.etree as ET
+import os import typing #imported separately as py3 .8 requires typing.Iterable from collections.abc import Iterable, Mapping, MutableSequence from enum import Enum import itertools from math import ceil from numbers import Integral, Real from pathlib import Path import typing #required to prevent typing.Union namespace overwriting Union from typing import Optional import lxml.etree as ET
 
-import openmc.checkvalue as cv
-from openmc.stats.multivariate import MeshSpatial
+                                                                                                                                                                                                                                          import openmc.checkvalue as cv from openmc.stats.multivariate import MeshSpatial
 
-from . import (RegularMesh, SourceBase, IndependentSource,
-               VolumeCalculation, WeightWindows, WeightWindowGenerator)
-from ._xml import clean_indentation, get_text, reorder_attributes
-from openmc.checkvalue import PathLike
-from .mesh import _read_meshes
+                                                                                                                                                                                                                                          from.import(RegularMesh, SourceBase, IndependentSource, VolumeCalculation, WeightWindows, WeightWindowGenerator) from._xml import clean_indentation, get_text, reorder_attributes from openmc.checkvalue import PathLike from.mesh import _read_meshes
 
+                                                                                                                                                                                                                                                                                                                                                                                                         class RunMode(Enum) :EIGENVALUE = 'eigenvalue' FIXED_SOURCE = 'fixed source' PLOT = 'plot' VOLUME = 'volume' PARTICLE_RESTART = 'particle restart'
 
-class RunMode(Enum):
-    EIGENVALUE = 'eigenvalue'
-    FIXED_SOURCE = 'fixed source'
-    PLOT = 'plot'
-    VOLUME = 'volume'
-    PARTICLE_RESTART = 'particle restart'
+                                                                                                                                                                                                                                                                                                                                                                                                         _RES_SCAT_METHODS =['dbrc', 'rvs']
 
+                                                                                                                                                                                                                                                                                                                                                                                                           class Settings: ""
+                                                                                                                                                                                                                                                                                                                                                                                                                           "Settings used for an OpenMC simulation.
 
-_RES_SCAT_METHODS = ['dbrc', 'rvs']
+                                                                                                                                                                                                                                                                                                                                                                                                           Parameters -- -- -- -- -- ** kwargs:dict, optional Any keyword arguments are used to set attributes on the instance.
 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                     Attributes -- -- -- -- -- batches: int Number of batches to simulate confidence_intervals: bool If True, uncertainties on tally results will be reported as the half - width of the 95 % two - sided confidence interval.If False, uncertainties on tally results will be reported as the sample standard deviation.create_fission_neutrons: bool Indicate whether fission neutrons should be created or not.cutoff:dict Dictionary defining weight cutoff, energy cutoff and time cutoff.The dictionary may have ten keys, 'weight', 'weight_avg', 'energy_neutron', 'energy_photon', 'energy_electron', 'energy_positron', 'time_neutron', 'time_photon', 'time_electron', and 'time_positron'.Value for 'weight' should be a float indicating weight cutoff below which particle undergo Russian roulette.Value for 'weight_avg' should be a float indicating weight assigned to particles that are not killed after Russian roulette.Value of energy should be a float indicating energy in eV below which particle type will be killed.Value of time should be a float in seconds.Particles will be killed exactly at the specified time.delayed_photon_scaling: bool Indicate whether to scale the fission photon yield by(EGP + EGD) / EGP where EGP is the energy release of prompt photons and EGD is the energy release of delayed photons.
 
-class Settings:
-    """Settings used for an OpenMC simulation.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      ..versionadded::0.12 electron_treatment: {'led', 'ttb' } Whether to deposit all energy from electrons locally('led') or create secondary bremsstrahlung photons('ttb').energy_mode: {'continuous-energy', 'multi-group' } Set whether the calculation should be continuous - energy or multi - group.entropy_mesh:openmc.RegularMesh Mesh to be used to calculate Shannon entropy.If the mesh dimensions are not specified, OpenMC assigns a mesh such that 20 source sites per mesh cell are to be expected on average.event_based: bool Indicate whether to use event - based parallelism instead of the default history - based parallelism.
 
-    Parameters
-    ----------
-    **kwargs : dict, optional
-        Any keyword arguments are used to set attributes on the instance.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ..versionadded::0.12 generations_per_batch: int Number of generations per batch max_lost_particles: int Maximum number of lost particles
 
-    Attributes
-    ----------
-    batches : int
-        Number of batches to simulate
-    confidence_intervals : bool
-        If True, uncertainties on tally results will be reported as the
-        half-width of the 95% two-sided confidence interval. If False,
-        uncertainties on tally results will be reported as the sample standard
-        deviation.
-    create_fission_neutrons : bool
-        Indicate whether fission neutrons should be created or not.
-    cutoff : dict
-        Dictionary defining weight cutoff, energy cutoff and time cutoff. The
-        dictionary may have ten keys, 'weight', 'weight_avg', 'energy_neutron',
-        'energy_photon', 'energy_electron', 'energy_positron', 'time_neutron',
-        'time_photon', 'time_electron', and 'time_positron'. Value for 'weight'
-        should be a float indicating weight cutoff below which particle undergo
-        Russian roulette. Value for 'weight_avg' should be a float indicating
-        weight assigned to particles that are not killed after Russian roulette.
-        Value of energy should be a float indicating energy in eV below which
-        particle type will be killed. Value of time should be a float in
-        seconds. Particles will be killed exactly at the specified time.
-    delayed_photon_scaling : bool
-        Indicate whether to scale the fission photon yield by (EGP + EGD)/EGP
-        where EGP is the energy release of prompt photons and EGD is the energy
-        release of delayed photons.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ..versionadded::0.12 rel_max_lost_particles: float Maximum number of lost particles, relative to the total number of particles
 
-        .. versionadded:: 0.12
-    electron_treatment : {'led', 'ttb'}
-        Whether to deposit all energy from electrons locally ('led') or create
-        secondary bremsstrahlung photons ('ttb').
-    energy_mode : {'continuous-energy', 'multi-group'}
-        Set whether the calculation should be continuous-energy or multi-group.
-    entropy_mesh : openmc.RegularMesh
-        Mesh to be used to calculate Shannon entropy. If the mesh dimensions are
-        not specified, OpenMC assigns a mesh such that 20 source sites per mesh
-        cell are to be expected on average.
-    event_based : bool
-        Indicate whether to use event-based parallelism instead of the default
-        history-based parallelism.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ..versionadded::0.12 inactive: int Number of inactive batches keff_trigger:dict Dictionary defining a trigger on eigenvalue.The dictionary must have two keys, 'type' and 'threshold'.Acceptable values corresponding to type are 'variance', 'std_dev', and 'rel_err'.The threshold value should be a float indicating the variance, standard deviation, or relative error used.log_grid_bins: int Number of bins for logarithmic energy grid search material_cell_offsets: bool Generate an "offset table" for material cells by default.These tables are necessary when a particular instance of a cell needs to be tallied.
 
-        .. versionadded:: 0.12
-    generations_per_batch : int
-        Number of generations per batch
-    max_lost_particles : int
-        Maximum number of lost particles
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ..versionadded::0.12 max_particles_in_flight: int Number of neutrons to run concurrently when using event - based parallelism.
 
-        .. versionadded:: 0.12
-    rel_max_lost_particles : float
-        Maximum number of lost particles, relative to the total number of particles
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ..versionadded::0.12 max_order:None or int Maximum scattering order to apply globally when in multi - group mode.max_splits: int Maximum number of times a particle can split during a history
 
-        .. versionadded:: 0.12
-    inactive : int
-        Number of inactive batches
-    keff_trigger : dict
-        Dictionary defining a trigger on eigenvalue. The dictionary must have
-        two keys, 'type' and 'threshold'. Acceptable values corresponding to
-        type are 'variance', 'std_dev', and 'rel_err'. The threshold value
-        should be a float indicating the variance, standard deviation, or
-        relative error used.
-    log_grid_bins : int
-        Number of bins for logarithmic energy grid search
-    material_cell_offsets : bool
-        Generate an "offset table" for material cells by default. These tables
-        are necessary when a particular instance of a cell needs to be tallied.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ..versionadded::0.13 max_tracks: int Maximum number of tracks written to a track file(per MPI process).
 
-        .. versionadded:: 0.12
-    max_particles_in_flight : int
-        Number of neutrons to run concurrently when using event-based
-        parallelism.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ..versionadded::0.13.1 no_reduce: bool Indicate that all user - defined and global tallies should not be reduced across processes in a parallel calculation.output:dict Dictionary indicating what files to output.Acceptable keys are:
 
-        .. versionadded:: 0.12
-    max_order : None or int
-        Maximum scattering order to apply globally when in multi-group mode.
-    max_splits : int
-        Maximum number of times a particle can split during a history
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         :path:String indicating a directory where output files should be written:summary:Whether the 'summary.h5' file should be written(bool) :tallies:Whether the 'tallies.out' file should be written(bool) particles: int Number of particles per generation photon_transport: bool Whether to use photon transport.plot_seed: int Initial seed for randomly generated plot colors.ptables: bool Determine whether probability tables are used.resonance_scattering:dict Settings for resonance elastic scattering.Accepted keys are 'enable'(bool), 'method'(str), 'energy_min'(float), 'energy_max'(float), and 'nuclides'(list).The 'method' can be set to 'dbrc'(Doppler broadening rejection correction) or 'rvs'(relative velocity sampling).If not specified, 'rvs' is the default method.The 'energy_min' and 'energy_max' values indicate the minimum and maximum energies above and below which the resonance elastic scattering method is to be applied.The 'nuclides' list indicates what nuclides the method should be applied to.In its absence, the method will be applied to all nuclides with 0 K elastic scattering data present.run_mode: {'eigenvalue', 'fixed source', 'plot', 'volume', 'particle restart' } The type of calculation to perform(default is 'eigenvalue') seed: int Seed for the linear congruential pseudorandom number generator source:Iterable of openmc.SourceBase Distribution of source sites in space, angle, and energy sourcepoint:dict Options for writing source points.Acceptable keys are:
 
-        .. versionadded:: 0.13
-    max_tracks : int
-        Maximum number of tracks written to a track file (per MPI process).
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                :batches:list of batches at which to write source:overwrite: bool indicating whether to overwrite:separate: bool indicating whether the source should be written as a separate file:write: bool indicating whether or not to write the source:mcpl: bool indicating whether to write the source as an MCPL file statepoint:dict Options for writing state points.Acceptable keys are:
 
-        .. versionadded:: 0.13.1
-    no_reduce : bool
-        Indicate that all user-defined and global tallies should not be reduced
-        across processes in a parallel calculation.
-    output : dict
-        Dictionary indicating what files to output. Acceptable keys are:
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                :batches:list of batches at which to write statepoint files surf_source_read:dict Options for reading surface source points.Acceptable keys are:
 
-        :path: String indicating a directory where output files should be
-               written
-        :summary: Whether the 'summary.h5' file should be written (bool)
-        :tallies: Whether the 'tallies.out' file should be written (bool)
-    particles : int
-        Number of particles per generation
-    photon_transport : bool
-        Whether to use photon transport.
-    plot_seed : int
-       Initial seed for randomly generated plot colors.
-    ptables : bool
-        Determine whether probability tables are used.
-    resonance_scattering : dict
-        Settings for resonance elastic scattering. Accepted keys are 'enable'
-        (bool), 'method' (str), 'energy_min' (float), 'energy_max' (float), and
-        'nuclides' (list). The 'method' can be set to 'dbrc' (Doppler broadening
-        rejection correction) or 'rvs' (relative velocity sampling). If not
-        specified, 'rvs' is the default method. The 'energy_min' and
-        'energy_max' values indicate the minimum and maximum energies above and
-        below which the resonance elastic scattering method is to be
-        applied. The 'nuclides' list indicates what nuclides the method should
-        be applied to. In its absence, the method will be applied to all
-        nuclides with 0 K elastic scattering data present.
-    run_mode : {'eigenvalue', 'fixed source', 'plot', 'volume', 'particle restart'}
-        The type of calculation to perform (default is 'eigenvalue')
-    seed : int
-        Seed for the linear congruential pseudorandom number generator
-    source : Iterable of openmc.SourceBase
-        Distribution of source sites in space, angle, and energy
-    sourcepoint : dict
-        Options for writing source points. Acceptable keys are:
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                :path:Path to surface source file(str).surf_source_write:dict Options for writing surface source points.Acceptable keys are:
 
-        :batches: list of batches at which to write source
-        :overwrite: bool indicating whether to overwrite
-        :separate: bool indicating whether the source should be written as a
-                   separate file
-        :write: bool indicating whether or not to write the source
-        :mcpl: bool indicating whether to write the source as an MCPL file
-    statepoint : dict
-        Options for writing state points. Acceptable keys are:
-
-        :batches: list of batches at which to write statepoint files
-    surf_source_read : dict
-        Options for reading surface source points. Acceptable keys are:
-
-        :path: Path to surface source file (str).
-    surf_source_write : dict
-        Options for writing surface source points. Acceptable keys are:
-
-        :surface_ids: List of surface ids at which crossing particles are to be
-                   banked (int)
-        :max_particles: Maximum number of particles to be banked on
-                   surfaces per process (int)
-        :mcpl: Output in the form of an MCPL-file (bool)
-    survival_biasing : bool
-        Indicate whether survival biasing is to be used
-    tabular_legendre : dict
-        Determines if a multi-group scattering moment kernel expanded via
-        Legendre polynomials is to be converted to a tabular distribution or
-        not. Accepted keys are 'enable' and 'num_points'. The value for
-        'enable' is a bool stating whether the conversion to tabular is
-        performed; the value for 'num_points' sets the number of points to use
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  :surface_ids:List of surface ids at which crossing particles are to be banked(int) :max_particles:Maximum number of particles to be banked on surfaces per process(int) :mcpl:Output in the form of an MCPL - file(bool) survival_biasing: bool Indicate whether survival biasing is to be used tabular_legendre:dict Determines if a multi - group scattering moment kernel expanded via Legendre polynomials is to be converted to a tabular distribution or not.Accepted keys are 'enable' and 'num_points'.The value for 'enable' is a bool stating whether the conversion to tabular is performed; the value for 'num_points' sets the number of points to use
         in the tabular distribution, should 'enable' be True.
     temperature : dict
         Defines a default temperature and method for treating intermediate
@@ -264,11 +115,11 @@ class Settings:
         self._particles = None
         self._keff_trigger = None
 
-        # Energy mode subelement
+#Energy mode subelement
         self._energy_mode = None
         self._max_order = None
 
-        # Source subelement
+#Source subelement
         self._source = cv.CheckedList(SourceBase, 'source distributions')
 
         self._confidence_intervals = None
@@ -279,17 +130,17 @@ class Settings:
         self._seed = None
         self._survival_biasing = None
 
-        # Shannon entropy mesh
+#Shannon entropy mesh
         self._entropy_mesh = None
 
-        # Trigger subelement
+#Trigger subelement
         self._trigger_active = None
         self._trigger_max_batches = None
         self._trigger_batch_interval = None
 
         self._output = None
 
-        # Output options
+#Output options
         self._statepoint = {}
         self._sourcepoint = {}
 
@@ -307,10 +158,10 @@ class Settings:
 
         self._temperature = {}
 
-        # Cutoff subelement
+#Cutoff subelement
         self._cutoff = None
 
-        # Uniform fission source subelement
+#Uniform fission source subelement
         self._ufs_mesh = None
 
         self._resonance_scattering = {}
@@ -330,6 +181,7 @@ class Settings:
         self._weight_window_generators = cv.CheckedList(WeightWindowGenerator, 'weight window generators')
         self._weight_windows_on = None
         self._weight_windows_file = None
+        self._weight_window_checkpoints = {}
         self._max_splits = None
         self._max_tracks = None
 
@@ -424,15 +276,14 @@ class Settings:
                   'which does not have a "type" key'
             raise ValueError(msg)
 
-        elif keff_trigger['type'] not in ['variance', 'std_dev', 'rel_err']:
-            msg = 'Unable to set a trigger on keff with ' \
-                  'type "{0}"'.format(keff_trigger['type'])
-            raise ValueError(msg)
+elif keff_trigger['type'] not in['variance', 'std_dev', 'rel_err']
+  : msg = 'Unable to set a trigger on keff with ' 'type "{0}"'.format(
+      keff_trigger['type']) raise
+          ValueError(msg)
 
-        elif 'threshold' not in keff_trigger:
-            msg = f'Unable to set a trigger on keff from "{keff_trigger}" ' \
-                  'which does not have a "threshold" key'
-            raise ValueError(msg)
+            elif 'threshold' not in keff_trigger : msg =
+      f 'Unable to set a trigger on keff from "{keff_trigger}" ' 'which does not have a "threshold" key' raise
+        ValueError(msg)
 
         elif not isinstance(keff_trigger['threshold'], Real):
             msg = 'Unable to set a trigger on keff with ' \
@@ -945,7 +796,15 @@ class Settings:
     def weight_windows_on(self, value: bool):
         cv.check_type('weight windows on', value, bool)
         self._weight_windows_on = value
-
+    
+    @property
+    def weight_window_checkpoints(self) -> dict:
+        return self._weight_window_checkpoints
+    
+    @weight_window_checkpoints.setter
+    def weight_window_checkpoints(self, weight_window_checkpoints: dict):
+        self._weight_window_checkpoints = weight_window_checkpoints
+    
     @property
     def max_splits(self) -> int:
         return self._max_splits
@@ -1088,7 +947,7 @@ class Settings:
                 subelement = ET.SubElement(element, "write")
                 subelement.text = str(self._sourcepoint['write']).lower()
 
-            # Overwrite latest subelement
+#Overwrite latest subelement
             if 'overwrite' in self._sourcepoint:
                 subelement = ET.SubElement(element, "overwrite_latest")
                 subelement.text = str(self._sourcepoint['overwrite']).lower()
@@ -1164,7 +1023,7 @@ class Settings:
         if self.entropy_mesh is None:
             return
 
-        # use default heuristic for entropy mesh if not set by user
+#use default heuristic for entropy mesh if not set by user
         if self.entropy_mesh.dimension is None:
             if self.particles is None:
                 raise RuntimeError("Number of particles must be set in order to " \
@@ -1174,16 +1033,16 @@ class Settings:
                 d = len(self.entropy_mesh.lower_left)
                 self.entropy_mesh.dimension = (n,)*d
 
-        # add mesh ID to this element
+#add mesh ID to this element
         subelement = ET.SubElement(root, "entropy_mesh")
         subelement.text = str(self.entropy_mesh.id)
 
-        # If this mesh has already been written outside the
-        # settings element, skip writing it again
+#If this mesh has already been written outside the
+#settings element, skip writing it again
         if mesh_memo and self.entropy_mesh.id in mesh_memo:
             return
 
-        # See if a <mesh> element already exists -- if not, add it
+#See if a < mesh> element already exists-- if not, add it
         path = f"./mesh[@id='{self.entropy_mesh.id}']"
         if root.find(path) is None:
             root.append(self.entropy_mesh.to_xml_element())
@@ -1249,7 +1108,7 @@ class Settings:
         if mesh_memo and self.ufs_mesh.id in mesh_memo:
             return
 
-        # See if a <mesh> element already exists -- if not, add it
+#See if a < mesh> element already exists-- if not, add it
         path = f"./mesh[@id='{self.ufs_mesh.id}']"
         if root.find(path) is None:
             root.append(self.ufs_mesh.to_xml_element())
@@ -1317,15 +1176,15 @@ class Settings:
 
     def _create_weight_windows_subelement(self, root, mesh_memo=None):
         for ww in self._weight_windows:
-            # Add weight window information
+#Add weight window information
             root.append(ww.to_xml_element())
 
-            # if this mesh has already been written,
-            # skip writing the mesh element
+#if this mesh has already been written,
+#skip writing the mesh element
             if mesh_memo and ww.mesh.id in mesh_memo:
                 continue
 
-            # See if a <mesh> element already exists -- if not, add it
+#See if a < mesh> element already exists-- if not, add it
             path = f"./mesh[@id='{ww.mesh.id}']"
             if root.find(path) is None:
                 root.append(ww.mesh.to_xml_element())
@@ -1342,7 +1201,7 @@ class Settings:
         for wwg in self.weight_window_generators:
             elem.append(wwg.to_xml_element())
 
-        # ensure that mesh elements are created if needed
+#ensure that mesh elements are created if needed
         for wwg in self.weight_window_generators:
             if mesh_memo is not None and wwg.mesh.id in mesh_memo:
                 continue
@@ -1356,6 +1215,19 @@ class Settings:
             element = ET.Element("weight_windows_file")
             element.text = self.weight_windows_file
             root.append(element)
+
+    def _create_weight_window_checkpoints_subelement(self, root):
+        if not bool(self._weight_window_checkpoints):
+            return;
+        element = ET.SubElement(root, "weight_window_checkpoints")
+        
+        if 'collision' in self._weight_window_checkpoints:
+            subelement = ET.SubElement(element, "collision")
+            subelement.text = str(self._weight_window_checkpoints['collision']).lower()
+            
+        if 'surface' in self._weight_window_checkpoints:
+            subelement = ET.SubElement(element, "surface")
+            subelement.text = str(self._weight_window_checkpoints['surface']).lower()
 
     def _create_max_splits_subelement(self, root):
         if self._max_splits is not None:
@@ -1423,7 +1295,7 @@ class Settings:
     def _source_from_xml_element(self, root, meshes=None):
         for elem in root.findall('source'):
             src = SourceBase.from_xml_element(elem, meshes)
-            # add newly constructed source object to the list
+#add newly constructed source object to the list
             self.source.append(src)
 
     def _volume_calcs_from_xml_element(self, root):
@@ -1692,6 +1564,14 @@ class Settings:
         if meshes is not None and self.weight_windows:
             meshes.update({ww.mesh.id: ww.mesh for ww in self.weight_windows})
 
+    def _weight_window_checkpoints_from_xml_element(self, root):
+        elem = root.find('weight_window_checkpoints')
+        if elem is not None:
+            for key in ('collision', 'surface'):
+                value = get_text(elem, key)
+                if value is not None:
+                    self.weight_window_checkpoints[key] = value
+
     def _max_splits_from_xml_element(self, root):
         text = get_text(root, 'max_splits')
         if text is not None:
@@ -1710,7 +1590,7 @@ class Settings:
         mesh_memo : set of ints
             A set of mesh IDs to keep track of whether a mesh has already been written.
         """
-        # Reset xml element tree
+#Reset xml element tree
         element = ET.Element("settings")
 
         self._create_run_mode_subelement(element)
@@ -1759,10 +1639,11 @@ class Settings:
         self._create_weight_windows_subelement(element, mesh_memo)
         self._create_weight_window_generators_subelement(element, mesh_memo)
         self._create_weight_windows_file_element(element)
+        self._create_weight_window_checkpoints_subelement(element)
         self._create_max_splits_subelement(element)
         self._create_max_tracks_subelement(element)
 
-        # Clean the indentation in the file to be user-readable
+#Clean the indentation in the file to be user - readable
         clean_indentation(element)
         reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
 
@@ -1779,12 +1660,12 @@ class Settings:
         """
         root_element = self.to_xml_element()
 
-        # Check if path is a directory
+#Check if path is a directory
         p = Path(path)
         if p.is_dir():
             p /= 'settings.xml'
 
-        # Write the XML Tree to the settings.xml file
+#Write the XML Tree to the settings.xml file
         tree = ET.ElementTree(root_element)
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
 
@@ -1854,10 +1735,11 @@ class Settings:
         settings._write_initial_source_from_xml_element(elem)
         settings._weight_windows_from_xml_element(elem, meshes)
         settings._weight_window_generators_from_xml_element(elem, meshes)
+        settings._weight_window_checkpoints_from_xml_element(elem)
         settings._max_splits_from_xml_element(elem)
         settings._max_tracks_from_xml_element(elem)
 
-        # TODO: Get volume calculations
+#TODO : Get volume calculations
         return settings
 
     @classmethod

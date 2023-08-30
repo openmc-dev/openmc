@@ -275,12 +275,14 @@ void Particle::event_cross_surface()
     cross_surface();
     switch (this->type()) {
     case ParticleType::neutron:
-      if (settings::weight_windows_on && this->alive()) {
+      if (this->alive() && settings::weight_windows_on &&
+          settings::weight_window_checkpoint_surface) {
         apply_weight_windows(*this);
       }
       break;
     case ParticleType::photon:
-      if (settings::weight_windows_on && this->alive()) {
+      if (this->alive() && settings::weight_windows_on &&
+          settings::weight_window_checkpoint_surface) {
         apply_weight_windows(*this);
       }
       break;

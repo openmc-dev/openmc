@@ -10,7 +10,6 @@ filesystem.
 
 import copy
 from warnings import warn
-import typing
 from typing import List, Dict, Tuple
 
 import numpy as np

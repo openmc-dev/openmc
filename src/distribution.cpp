@@ -104,7 +104,9 @@ size_t DiscreteIndex::sample(uint64_t* seed) const
 
 void DiscreteIndex::normalize()
 {
-  // Renormalize density function so that it sums to unity
+  // Renormalize density function so that it sums to unity. Note that we save
+  // the integral of the distribution so that if it is used as part of another
+  // distribution (e.g., Mixture), we know its relative strength.
   integral_ = std::accumulate(prob_.begin(), prob_.end(), 0.0);
   for (auto& p_i : prob_) {
     p_i /= integral_;
@@ -300,7 +302,9 @@ void Tabular::init(
     }
   }
 
-  // Normalize density and distribution functions
+  // Normalize density and distribution functions. Note that we save the
+  // integral of the distribution so that if it is used as part of another
+  // distribution (e.g., Mixture), we know its relative strength.
   integral_ = c_[n - 1];
   for (int i = 0; i < n; ++i) {
     p_[i] = p_[i] / integral_;

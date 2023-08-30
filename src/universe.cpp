@@ -41,18 +41,17 @@ bool Universe::find_cell(Particle& p) const
   const auto& cells {
     !partitioner_ ? cells_ : partitioner_->get_cells(p.r_local(), p.u_local())};
 
-  for (auto it = cells.begin(); it != cells.end(); it++) {
-    int32_t i_cell = *it;
-    int32_t i_univ = p.coord(p.n_coord() - 1).universe;
+  Position r {p.r_local()};
+  Position u {p.u_local()};
+  auto surf = p.surface();
+  int32_t i_univ = p.lowest_coord().universe;
+
+  for (auto i_cell : cells) {
     if (model::cells[i_cell]->universe_ != i_univ)
       continue;
-
-    // Check if this cell contains the particle;
-    Position r {p.r_local()};
-    Direction u {p.u_local()};
-    auto surf = p.surface();
+    // Check if this cell contains the particle
     if (model::cells[i_cell]->contains(r, u, surf)) {
-      p.coord(p.n_coord() - 1).cell = i_cell;
+      p.lowest_coord().cell = i_cell;
       return true;
     }
   }

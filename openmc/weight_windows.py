@@ -166,6 +166,7 @@ class WeightWindows(IDManagerMixin):
         string += '{: <16}=\t{}\n'.format('\tMesh', self.mesh)
         string += '{: <16}=\t{}\n'.format('\tParticle Type', self._particle_type)
         string += '{: <16}=\t{}\n'.format('\tEnergy Bounds', self._energy_bounds)
+        string += '{: <16}=\t{}\n'.format('\tMax lower bound ratio', self.max_lower_bound_ratio)
         string += '{: <16}=\t{}\n'.format('\tLower WW Bounds', self._lower_ww_bounds)
         string += '{: <16}=\t{}\n'.format('\tUpper WW Bounds', self._upper_ww_bounds)
         string += '{: <16}=\t{}\n'.format('\tSurvival Ratio', self._survival_ratio)
@@ -588,13 +589,19 @@ def wwinp_to_wws(path: PathLike) -> List[WeightWindows]:
         mesh = RectilinearMesh()
         mesh.x_grid, mesh.y_grid, mesh.z_grid = grids
     elif nwg == 2:
-        mesh = CylindricalMesh()
-        mesh.r_grid, mesh.z_grid, mesh.phi_grid = grids
-        mesh.origin = xyz0
+        mesh = CylindricalMesh(
+            r_grid=grids[0],
+            z_grid=grids[1],
+            phi_grid=grids[2],
+            origin = xyz0,
+        )
     elif nwg == 3:
-        mesh = SphericalMesh()
-        mesh.r_grid, mesh.theta_grid, mesh.phi_grid = grids
-        mesh.origin = xyz0
+        mesh = SphericalMesh(
+            r_grid=grids[0],
+            theta_grid=grids[1],
+            phi_grid=grids[2],
+            origin = xyz0
+        )
 
     # extract weight window values from array
     wws = []

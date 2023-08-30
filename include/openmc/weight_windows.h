@@ -155,6 +155,22 @@ public:
 
   void set_particle_type(ParticleType p_type);
 
+  double survival_ratio() const { return survival_ratio_; }
+
+  double& survival_ratio() { return survival_ratio_; }
+
+  double max_lower_bound_ratio() const { return max_lb_ratio_; }
+
+  double& max_lower_bound_ratio() { return max_lb_ratio_; }
+
+  int max_split() const { return max_split_; }
+
+  int& max_split() { return max_split_; }
+
+  double weight_cutoff() const { return weight_cutoff_; }
+
+  double& weight_cutoff() { return weight_cutoff_; }
+
   //----------------------------------------------------------------------------
   // Accessors
   int32_t id() const { return id_; }

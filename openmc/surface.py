@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from collections import OrderedDict
 from collections.abc import Iterable
 from copy import deepcopy
 import math
@@ -2549,17 +2548,17 @@ class Halfspace(Region):
 
         Parameters
         ----------
-        surfaces: collections.OrderedDict, optional
+        surfaces : dict, optional
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
 
         Returns
         -------
-        surfaces: collections.OrderedDict
+        surfaces : dict
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
 
         """
         if surfaces is None:
-            surfaces = OrderedDict()
+            surfaces = {}
 
         surfaces[self.surface.id] = self.surface
         return surfaces

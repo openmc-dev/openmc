@@ -1,4 +1,3 @@
-from collections import OrderedDict
 from collections.abc import Iterable, Mapping
 from numbers import Real, Integral
 import lxml.etree as ET
@@ -121,6 +120,10 @@ class VolumeCalculation:
             else:
                 raise ValueError('Could not automatically determine bounding box '
                                  'for stochastic volume calculation.')
+
+        if np.isinf(self.lower_left).any() or np.isinf(self.upper_right).any():
+            raise ValueError('Lower-left and upper-right bounding box '
+                             'coordinates must be finite.')
 
     @property
     def ids(self):
@@ -281,7 +284,7 @@ class VolumeCalculation:
                     volumes[domain_id] = volume
                     nucnames = group['nuclides'][()]
                     atoms_ = group['atoms'][()]
-                    atom_dict = OrderedDict()
+                    atom_dict = {}
                     for name_i, atoms_i in zip(nucnames, atoms_):
                         atom_dict[name_i.decode()] = ufloat(*atoms_i)
                     atoms[domain_id] = atom_dict

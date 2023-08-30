@@ -51,14 +51,16 @@ class Settings:
     create_fission_neutrons : bool
         Indicate whether fission neutrons should be created or not.
     cutoff : dict
-        Dictionary defining weight cutoff and energy cutoff. The dictionary may
-        have six keys, 'weight', 'weight_avg', 'energy_neutron', 'energy_photon',
-        'energy_electron', and 'energy_positron'. Value for 'weight'
+        Dictionary defining weight cutoff, energy cutoff and time cutoff. The
+        dictionary may have ten keys, 'weight', 'weight_avg', 'energy_neutron',
+        'energy_photon', 'energy_electron', 'energy_positron', 'time_neutron',
+        'time_photon', 'time_electron', and 'time_positron'. Value for 'weight'
         should be a float indicating weight cutoff below which particle undergo
         Russian roulette. Value for 'weight_avg' should be a float indicating
-        weight assigned to particles that are not killed after Russian
-        roulette. Value of energy should be a float indicating energy in eV
-        below which particle type will be killed.
+        weight assigned to particles that are not killed after Russian roulette.
+        Value of energy should be a float indicating energy in eV below which
+        particle type will be killed. Value of time should be a float in
+        seconds. Particles will be killed exactly at the specified time.
     delayed_photon_scaling : bool
         Indicate whether to scale the fission photon yield by (EGP + EGD)/EGP
         where EGP is the energy release of prompt photons and EGD is the energy
@@ -133,6 +135,8 @@ class Settings:
         Number of particles per generation
     photon_transport : bool
         Whether to use photon transport.
+    plot_seed : int
+       Initial seed for randomly generated plot colors.
     ptables : bool
         Determine whether probability tables are used.
     resonance_scattering : dict
@@ -270,6 +274,7 @@ class Settings:
         self._confidence_intervals = None
         self._electron_treatment = None
         self._photon_transport = None
+        self._plot_seed = None
         self._ptables = None
         self._seed = None
         self._survival_biasing = None
@@ -503,6 +508,16 @@ class Settings:
     def photon_transport(self, photon_transport: bool):
         cv.check_type('photon transport', photon_transport, bool)
         self._photon_transport = photon_transport
+
+    @property
+    def plot_seed(self):
+        return self._plot_seed
+
+    @plot_seed.setter
+    def plot_seed(self, seed):
+        cv.check_type('random plot color seed', seed, Integral)
+        cv.check_greater_than('random plot color seed', seed, 0)
+        self._plot_seed = seed
 
     @property
     def seed(self) -> int:
@@ -1118,6 +1133,11 @@ class Settings:
             element = ET.SubElement(root, "photon_transport")
             element.text = str(self._photon_transport).lower()
 
+    def _create_plot_seed_subelement(self, root):
+        if self._plot_seed is not None:
+            element = ET.SubElement(root, "plot_seed")
+            element.text = str(self._plot_seed)
+
     def _create_ptables_subelement(self, root):
         if self._ptables is not None:
             element = ET.SubElement(root, "ptables")
@@ -1491,6 +1511,11 @@ class Settings:
         if text is not None:
             self.photon_transport = text in ('true', '1')
 
+    def _plot_seed_from_xml_element(self, root):
+        text = get_text(root, 'plot_seed')
+        if text is not None:
+            self.plot_seed = int(text)
+
     def _ptables_from_xml_element(self, root):
         text = get_text(root, 'ptables')
         if text is not None:
@@ -1511,7 +1536,8 @@ class Settings:
         if elem is not None:
             self.cutoff = {}
             for key in ('energy_neutron', 'energy_photon', 'energy_electron',
-                        'energy_positron', 'weight', 'weight_avg'):
+                        'energy_positron', 'weight', 'weight_avg', 'time_neutron',
+                        'time_photon', 'time_electron', 'time_positron'):
                 value = get_text(elem, key)
                 if value is not None:
                     self.cutoff[key] = float(value)
@@ -1706,6 +1732,7 @@ class Settings:
         self._create_energy_mode_subelement(element)
         self._create_max_order_subelement(element)
         self._create_photon_transport_subelement(element)
+        self._create_plot_seed_subelement(element)
         self._create_ptables_subelement(element)
         self._create_seed_subelement(element)
         self._create_survival_biasing_subelement(element)
@@ -1802,6 +1829,7 @@ class Settings:
         settings._energy_mode_from_xml_element(elem)
         settings._max_order_from_xml_element(elem)
         settings._photon_transport_from_xml_element(elem)
+        settings._plot_seed_from_xml_element(elem)
         settings._ptables_from_xml_element(elem)
         settings._seed_from_xml_element(elem)
         settings._survival_biasing_from_xml_element(elem)

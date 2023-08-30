@@ -1,5 +1,4 @@
 from abc import ABC
-from collections import OrderedDict
 from collections.abc import Iterable
 from copy import deepcopy
 from math import sqrt, floor
@@ -113,13 +112,13 @@ class Lattice(IDManagerMixin, ABC):
 
         Returns
         -------
-        universes : collections.OrderedDict
+        universes : dict
             Dictionary whose keys are universe IDs and values are
             :class:`openmc.UniverseBase` instances
 
         """
 
-        univs = OrderedDict()
+        univs = {}
         for k in range(len(self._universes)):
             for j in range(len(self._universes[k])):
                 if isinstance(self._universes[k][j], openmc.UniverseBase):
@@ -164,12 +163,12 @@ class Lattice(IDManagerMixin, ABC):
 
         Returns
         -------
-        cells : collections.OrderedDict
+        cells : dict
             Dictionary whose keys are cell IDs and values are :class:`Cell`
             instances
 
         """
-        cells = OrderedDict()
+        cells = {}
 
         if memo and self in memo:
             return cells
@@ -189,13 +188,13 @@ class Lattice(IDManagerMixin, ABC):
 
         Returns
         -------
-        materials : collections.OrderedDict
+        materials : dict
             Dictionary whose keys are material IDs and values are
             :class:`Material` instances
 
         """
 
-        materials = OrderedDict()
+        materials = {}
 
         # Append all Cells in each Cell in the Universe to the dictionary
         cells = self.get_all_cells(memo)
@@ -209,7 +208,7 @@ class Lattice(IDManagerMixin, ABC):
 
         Returns
         -------
-        universes : collections.OrderedDict
+        universes : dict
             Dictionary whose keys are universe IDs and values are
             :class:`Universe` instances
 
@@ -217,7 +216,7 @@ class Lattice(IDManagerMixin, ABC):
 
         # Initialize a dictionary of all Universes contained by the Lattice
         # in each nested Universe level
-        all_universes = OrderedDict()
+        all_universes = {}
 
         # Get all unique Universes contained in each of the lattice cells
         unique_universes = self.get_unique_universes()
@@ -1127,7 +1126,7 @@ class HexLattice(Lattice):
     @property
     def orientation(self):
         return self._orientation
-    
+
     @orientation.setter
     def orientation(self, orientation):
         cv.check_value('orientation', orientation.lower(), ('x', 'y'))

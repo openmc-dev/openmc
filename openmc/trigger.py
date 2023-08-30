@@ -29,7 +29,7 @@ class Trigger(EqualityMixin):
 
     """
 
-    def __init__(self, trigger_type, threshold):
+    def __init__(self, trigger_type: str, threshold: float):
         self.trigger_type = trigger_type
         self.threshold = threshold
         self._scores = []
@@ -92,7 +92,7 @@ class Trigger(EqualityMixin):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate trigger object from an XML element
 
         Parameters

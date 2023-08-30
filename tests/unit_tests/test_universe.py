@@ -61,14 +61,17 @@ def test_plot(run_in_tmpdir, sphere_model):
     }
 
     for basis in ('xy', 'yz', 'xz'):
-        pincell.geometry.root_universe.plot(
+        plot = pincell.geometry.root_universe.plot(
             colors=mat_colors,
             color_by="material",
             legend=True,
             pixels=(10, 10),
             basis=basis,
-            outline=True
+            outline=True,
+            axis_units='m'
         )
+        assert plot.xaxis.get_label().get_text() == f'{basis[0]} [m]'
+        assert plot.yaxis.get_label().get_text() == f'{basis[1]} [m]'
 
     # model with no inf values in bounding box
     m = sphere_model.materials[0]
@@ -77,13 +80,24 @@ def test_plot(run_in_tmpdir, sphere_model):
     colors = {m: 'limegreen'}
 
     for basis in ('xy', 'yz', 'xz'):
-        univ.plot(
+        plot = univ.plot(
             colors=colors,
             color_by="cell",
             legend=False,
             pixels=100,
             basis=basis,
             outline=False
+        )
+        assert plot.xaxis.get_label().get_text() == f'{basis[0]} [cm]'
+        assert plot.yaxis.get_label().get_text() == f'{basis[1]} [cm]'
+
+    msg = "Must pass 'colors' dictionary if you are adding a legend via legend=True."
+    # This plot call should fail as legend is True but colors is None
+    with pytest.raises(ValueError, match=msg):
+        univ.plot(
+            color_by="cell",
+            legend=True,
+            pixels=100,
         )
 
 

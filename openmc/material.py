@@ -1,5 +1,5 @@
 from __future__ import annotations
-from collections import OrderedDict, defaultdict, namedtuple, Counter
+from collections import defaultdict, namedtuple, Counter
 from collections.abc import Iterable
 from copy import deepcopy
 from numbers import Real
@@ -145,6 +145,7 @@ class Material(IDManagerMixin):
         string += f' [{self._density_units}]\n'
 
         string += '{: <16}=\t{} [cm^3]\n'.format('\tVolume', self._volume)
+        string += '{: <16}=\t{}\n'.format('\tDepletable', self._depletable)
 
         string += '{: <16}\n'.format('\tS(a,b) Tables')
 
@@ -641,7 +642,8 @@ class Material(IDManagerMixin):
     def add_element(self, element: str, percent: float, percent_type: str = 'ao',
                     enrichment: Optional[float] = None,
                     enrichment_target: Optional[str] = None,
-                    enrichment_type: Optional[str] = None):
+                    enrichment_type: Optional[str] = None,
+                    cross_sections: Optional[str] = None):
         """Add a natural element to the material
 
         Parameters
@@ -668,6 +670,8 @@ class Material(IDManagerMixin):
             Default is: 'ao' for two-isotope enrichment; 'wo' for U enrichment
 
             .. versionadded:: 0.12
+        cross_sections : str, optional
+            Location of cross_sections.xml file.
 
         Notes
         -----
@@ -746,7 +750,8 @@ class Material(IDManagerMixin):
                                       percent_type,
                                       enrichment,
                                       enrichment_target,
-                                      enrichment_type):
+                                      enrichment_type,
+                                      cross_sections):
             self.add_nuclide(*nuclide)
 
     def add_elements_from_formula(self, formula: str, percent_type: str = 'ao',
@@ -937,8 +942,7 @@ class Material(IDManagerMixin):
 
         """
 
-        # keep ordered dictionary for testing purposes
-        nuclides = OrderedDict()
+        nuclides = {}
 
         for nuclide in self._nuclides:
             nuclides[nuclide.name] = nuclide
@@ -1023,7 +1027,7 @@ class Material(IDManagerMixin):
 
         nuc_densities = density * nuc_densities
 
-        nuclides = OrderedDict()
+        nuclides = {}
         for n, nuc in enumerate(nucs):
             if nuclide is None or nuclide == nuc:
                 nuclides[nuc] = nuc_densities[n]
@@ -1456,7 +1460,7 @@ class Material(IDManagerMixin):
         if "cfg" in elem.attrib:
             cfg = elem.get("cfg")
             return Material.from_ncrystal(cfg, material_id=mat_id)
-     
+
         mat = cls(mat_id)
         mat.name = elem.get('name')
 

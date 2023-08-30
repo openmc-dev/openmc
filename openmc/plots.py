@@ -11,7 +11,7 @@ import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 
-from ._xml import clean_indentation, get_elem_tuple, reorder_attributes
+from ._xml import clean_indentation, get_elem_tuple, reorder_attributes, get_text
 from .mixin import IDManagerMixin
 
 _BASES = ['xy', 'xz', 'yz']
@@ -482,6 +482,9 @@ class PlotBase(IDManagerMixin):
         """
 
         element = ET.Element("plot")
+        element.set("id", str(self._id))
+        if len(self._name) > 0:
+            element.set("name", str(self.name))
         if self._filename is not None:
             element.set("filename", self._filename)
         element.set("color_by", self._color_by)
@@ -782,7 +785,6 @@ class Plot(PlotBase):
         """
 
         element = super().to_xml_element()
-        element.set("id", str(self._id))
         element.set("type", self._type)
 
         if self._type == 'slice':
@@ -843,12 +845,14 @@ class Plot(PlotBase):
 
         """
         plot_id = int(elem.get("id"))
-        plot = cls(plot_id)
+        name = get_text(elem, 'name', '')
+        plot = cls(plot_id, name)
         if "filename" in elem.keys():
             plot.filename = elem.get("filename")
         plot.color_by = elem.get("color_by")
         plot.type = elem.get("type")
-        plot.basis = elem.get("basis")
+        if plot.type == 'slice':
+            plot.basis = elem.get("basis")
 
         plot.origin = get_elem_tuple(elem, "origin", float)
         plot.width = get_elem_tuple(elem, "width", float)
@@ -1176,7 +1180,6 @@ class ProjectionPlot(PlotBase):
         """
 
         element = super().to_xml_element()
-        element.set("id", str(self._id))
         element.set("type", "projection")
 
         subelement = ET.SubElement(element, "camera_position")
@@ -1276,7 +1279,7 @@ class ProjectionPlot(PlotBase):
 
         tmp = elem.find("orthographic_width")
         if tmp is not None:
-            self.orthographic_width = float(tmp)
+            plot.orthographic_width = float(tmp)
 
         plot.pixels = get_elem_tuple(elem, "pixels")
         plot.camera_position = get_elem_tuple(elem, "camera_position", float)

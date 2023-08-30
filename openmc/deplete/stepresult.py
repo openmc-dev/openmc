@@ -210,6 +210,11 @@ class StepResult:
         mat_id : str
             Material ID as a string
 
+        Raises
+        ------
+        KeyError
+            If mat_id specified is not found in the StepResult
+
         Returns
         -------
         openmc.Material
@@ -222,8 +227,8 @@ class StepResult:
             vol = self.volume[mat_id]
         except KeyError:
             msg = (
-                'mat_id not found in StepResult. Available mat_id values are'
-                f'{list(self.volume.keys())}'
+                f'mat_id {mat_id} not found in StepResult. Available mat_id '
+                f'values are {list(self.volume.keys())}'
             )
             raise KeyError(msg)
         for nuc, _ in sorted(self.index_nuc.items(), key=lambda x: x[1]):

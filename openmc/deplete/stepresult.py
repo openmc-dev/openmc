@@ -218,7 +218,14 @@ class StepResult:
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', openmc.IDWarning)
             material = openmc.Material(material_id=int(mat_id))
-        vol = self.volume[mat_id]
+        try:
+            vol = self.volume[mat_id]
+        except KeyError:
+            msg = (
+                'mat_id not found in StepResult. Available mat_id values are'
+                f'{list(self.volume.keys())}'
+            )
+            raise KeyError(msg)
         for nuc, _ in sorted(self.index_nuc.items(), key=lambda x: x[1]):
             atoms = self[0, mat_id, nuc]
             if atoms < 0.0:

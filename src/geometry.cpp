@@ -110,7 +110,7 @@ bool find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       i_cell = *it;
 
       // Make sure the search cell is in the same universe.
-      int i_universe = p.coord(p.n_coord() - 1).universe;
+      int i_universe = p.lowest_coord().universe;
       if (model::cells[i_cell]->universe_ != i_universe)
         continue;
 
@@ -119,7 +119,7 @@ bool find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       Direction u {p.u_local()};
       auto surf = p.surface();
       if (model::cells[i_cell]->contains(r, u, surf)) {
-        p.coord(p.n_coord() - 1).cell = i_cell;
+        p.lowest_coord().cell = i_cell;
         found = true;
         break;
       }
@@ -145,7 +145,7 @@ bool find_cell_inner(Particle& p, const NeighborList* neighbor_list)
     // code below this conditional, we set i_cell back to C_NONE to indicate
     // that.
     if (i_cell == C_NONE) {
-      int i_universe = p.coord(p.n_coord() - 1).universe;
+      int i_universe = p.lowest_coord().universe;
       const auto& univ {model::universes[i_universe]};
       found = univ->find_cell(p);
     }
@@ -153,7 +153,7 @@ bool find_cell_inner(Particle& p, const NeighborList* neighbor_list)
     if (!found) {
       return found;
     }
-    i_cell = p.coord(p.n_coord() - 1).cell;
+    i_cell = p.lowest_coord().cell;
 
     // Announce the cell that the particle is entering.
     if (found && (settings::verbosity >= 10 || p.trace())) {
@@ -289,7 +289,7 @@ bool neighbor_list_find_cell(Particle& p)
 
 bool exhaustive_find_cell(Particle& p)
 {
-  int i_universe = p.coord(p.n_coord() - 1).universe;
+  int i_universe = p.lowest_coord().universe;
   if (i_universe == C_NONE) {
     p.coord(0).universe = model::root_universe;
     p.n_coord() = 1;
@@ -306,7 +306,7 @@ bool exhaustive_find_cell(Particle& p)
 
 void cross_lattice(Particle& p, const BoundaryInfo& boundary)
 {
-  auto& coord {p.coord(p.n_coord() - 1)};
+  auto& coord {p.lowest_coord()};
   auto& lat {*model::lattices[coord.lattice]};
 
   if (settings::verbosity >= 10 || p.trace()) {
@@ -344,7 +344,7 @@ void cross_lattice(Particle& p, const BoundaryInfo& boundary)
 
   } else {
     // Find cell in next lattice element.
-    p.coord(p.n_coord() - 1).universe = lat[coord.lattice_i];
+    p.lowest_coord().universe = lat[coord.lattice_i];
     bool found = exhaustive_find_cell(p);
 
     if (!found) {
@@ -472,7 +472,7 @@ extern "C" int openmc_find_cell(
     return OPENMC_E_GEOMETRY;
   }
 
-  *index = p.coord(p.n_coord() - 1).cell;
+  *index = p.lowest_coord().cell;
   *instance = p.cell_instance();
   return 0;
 }

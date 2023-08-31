@@ -1368,7 +1368,7 @@ class Settings:
 
     def _create_weight_window_checkpoints_subelement(self, root):
         if not bool(self._weight_window_checkpoints):
-            return;
+            return
         element = ET.SubElement(root, "weight_window_checkpoints")
         
         if 'collision' in self._weight_window_checkpoints:

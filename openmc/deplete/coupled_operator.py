@@ -418,7 +418,6 @@ class CoupledOperator(OpenMCOperator):
             mat._nuclides.sort(key=lambda x: nuclides.index(x[0]))
 
         # Remove decay-only nuclides
-        #mat_ids = [mat.id for mat in self.materials]
         material_decay_nuclides = self._remove_decay_nuclides(self.burnable_mats)
 
         self.materials.export_to_xml()
@@ -451,14 +450,12 @@ class CoupledOperator(OpenMCOperator):
         for mat in self.materials:
             mat_id = str(mat.id)
             if mat_id in material_ids:
-                decay_nuclides = []
-
                 # Remove decay-only nuclides
-                for nuc_tuple in mat._nuclides:
-                    if nuc_tuple.name in self._decay_nucs:
-                        decay_nuclides += [nuc_tuple]
+                decay_nuclides = [nuc_tuple for nuc_tuple in mat._nuclides
+                                  if nuc_tuple.name in self._decay_nucs]
 
-                if len(decay_nuclides) != 0:
+
+                if decay_nuclides:
                     for nuc_tuple in decay_nuclides:
                         mat._nuclides.remove(nuc_tuple)
                     material_decay_nuclides[mat_id] = decay_nuclides

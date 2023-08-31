@@ -104,10 +104,12 @@ size_t DiscreteIndex::sample(uint64_t* seed) const
 
 void DiscreteIndex::normalize()
 {
-  // Renormalize density function so that it sums to unity
-  double norm = std::accumulate(prob_.begin(), prob_.end(), 0.0);
+  // Renormalize density function so that it sums to unity. Note that we save
+  // the integral of the distribution so that if it is used as part of another
+  // distribution (e.g., Mixture), we know its relative strength.
+  integral_ = std::accumulate(prob_.begin(), prob_.end(), 0.0);
   for (auto& p_i : prob_) {
-    p_i /= norm;
+    p_i /= integral_;
   }
 }
 
@@ -300,10 +302,13 @@ void Tabular::init(
     }
   }
 
-  // Normalize density and distribution functions
+  // Normalize density and distribution functions. Note that we save the
+  // integral of the distribution so that if it is used as part of another
+  // distribution (e.g., Mixture), we know its relative strength.
+  integral_ = c_[n - 1];
   for (int i = 0; i < n; ++i) {
-    p_[i] = p_[i] / c_[n - 1];
-    c_[i] = c_[i] / c_[n - 1];
+    p_[i] = p_[i] / integral_;
+    c_[i] = c_[i] / integral_;
   }
 }
 
@@ -379,12 +384,14 @@ Mixture::Mixture(pugi::xml_node node)
     if (!pair.child("dist"))
       fatal_error("Mixture pair element does not have a distribution.");
 
-    // cummulative sum of probybilities
-    cumsum += std::stod(pair.attribute("probability").value());
+    // cummulative sum of probabilities
+    double p = std::stod(pair.attribute("probability").value());
 
-    // Save cummulative probybility and distrubution
-    distribution_.push_back(
-      std::make_pair(cumsum, distribution_from_xml(pair.child("dist"))));
+    // Save cummulative probability and distribution
+    auto dist = distribution_from_xml(pair.child("dist"));
+    cumsum += p * dist->integral();
+
+    distribution_.push_back(std::make_pair(cumsum, std::move(dist)));
   }
 
   // Normalize cummulative probabilities to 1

@@ -1314,7 +1314,6 @@ class CylindricalMesh(StructuredMesh):
                 for p in range(1, np + 1)
                 for r in range(1, nr + 1))
 
-
     @property
     def lower_left(self):
         return np.array((
@@ -1413,7 +1412,6 @@ class CylindricalMesh(StructuredMesh):
             (openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry),
         )
 
-
         # loaded once to avoid reading h5m file repeatedly
         cached_bb = domain.bounding_box
         max_bounding_box_radius = max(
@@ -1439,8 +1437,14 @@ class CylindricalMesh(StructuredMesh):
             cached_bb[1][2],
             num=dimension[2]+1
         )
+        origin = cached_bb.center
         mesh = cls(
-            r_grid=r_grid, z_grid=z_grid, phi_grid=phi_grid, mesh_id=mesh_id, name=name
+            r_grid=r_grid,
+            z_grid=z_grid,
+            phi_grid=phi_grid,
+            mesh_id=mesh_id,
+            name=name,
+            origin=origin
         )
 
         return mesh

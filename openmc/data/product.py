@@ -61,31 +61,15 @@ class Product(EqualityMixin):
     def applicability(self):
         return self._applicability
 
-    @property
-    def decay_rate(self):
-        return self._decay_rate
-
-    @property
-    def distribution(self):
-        return self._distribution
-
-    @property
-    def emission_mode(self):
-        return self._emission_mode
-
-    @property
-    def particle(self):
-        return self._particle
-
-    @property
-    def yield_(self):
-        return self._yield
-
     @applicability.setter
     def applicability(self, applicability):
         cv.check_type('product distribution applicability', applicability,
                       Iterable, Tabulated1D)
         self._applicability = applicability
+
+    @property
+    def decay_rate(self):
+        return self._decay_rate
 
     @decay_rate.setter
     def decay_rate(self, decay_rate):
@@ -93,11 +77,19 @@ class Product(EqualityMixin):
         cv.check_greater_than('product decay rate', decay_rate, 0.0, True)
         self._decay_rate = decay_rate
 
+    @property
+    def distribution(self):
+        return self._distribution
+
     @distribution.setter
     def distribution(self, distribution):
         cv.check_type('product angle-energy distribution', distribution,
                       Iterable, AngleEnergy)
         self._distribution = distribution
+
+    @property
+    def emission_mode(self):
+        return self._emission_mode
 
     @emission_mode.setter
     def emission_mode(self, emission_mode):
@@ -105,10 +97,18 @@ class Product(EqualityMixin):
                        ('prompt', 'delayed', 'total'))
         self._emission_mode = emission_mode
 
+    @property
+    def particle(self):
+        return self._particle
+
     @particle.setter
     def particle(self, particle):
         cv.check_type('product particle type', particle, str)
         self._particle = particle
+
+    @property
+    def yield_(self):
+        return self._yield
 
     @yield_.setter
     def yield_(self, yield_):

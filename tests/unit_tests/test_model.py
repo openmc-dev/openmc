@@ -1,5 +1,6 @@
 from math import pi
 from pathlib import Path
+import os
 
 import numpy as np
 import pytest
@@ -58,7 +59,7 @@ def pin_model_attributes():
     bounds = [-0.62992, -0.62992, -1, 0.62992, 0.62992, 1]
     uniform_dist = openmc.stats.Box(
         bounds[:3], bounds[3:], only_fissionable=True)
-    settings.source = openmc.source.Source(space=uniform_dist)
+    settings.source = openmc.IndependentSource(space=uniform_dist)
 
     entropy_mesh = openmc.RegularMesh()
     entropy_mesh.lower_left = [-0.39218, -0.39218, -1.e50]
@@ -529,3 +530,40 @@ def test_calc_volumes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     assert openmc.lib.materials[3].volume == mats[2].volume
 
     test_model.finalize_lib()
+
+def test_model_xml(run_in_tmpdir):
+
+    # load a model from examples
+    pwr_model = openmc.examples.pwr_core()
+
+    # export to separate XMLs manually
+    pwr_model.settings.export_to_xml('settings_ref.xml')
+    pwr_model.materials.export_to_xml('materials_ref.xml')
+    pwr_model.geometry.export_to_xml('geometry_ref.xml')
+
+    # now write and read a model.xml file
+    pwr_model.export_to_model_xml()
+    new_model = openmc.Model.from_model_xml()
+
+    # make sure we can also export this again to separate
+    # XML files
+    new_model.export_to_xml()
+
+def test_single_xml_exec(run_in_tmpdir):
+
+    pincell_model = openmc.examples.pwr_pin_cell()
+
+    pincell_model.export_to_model_xml('pwr_pincell.xml')
+
+    openmc.run(path_input='pwr_pincell.xml')
+
+    with pytest.raises(RuntimeError, match='ex-em-ell.xml'):
+        openmc.run(path_input='ex-em-ell.xml')
+
+    # test that a file in a different directory can be used
+    os.mkdir('inputs')
+    pincell_model.export_to_model_xml('./inputs/pincell.xml')
+    openmc.run(path_input='./inputs/pincell.xml')
+
+    with pytest.raises(RuntimeError, match='input_dir'):
+        openmc.run(path_input='input_dir/pincell.xml')

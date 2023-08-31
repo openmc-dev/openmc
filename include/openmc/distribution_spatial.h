@@ -4,6 +4,7 @@
 #include "pugixml.hpp"
 
 #include "openmc/distribution.h"
+#include "openmc/mesh.h"
 #include "openmc/position.h"
 
 namespace openmc {
@@ -31,7 +32,7 @@ public:
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const;
+  Position sample(uint64_t* seed) const override;
 
   // Observer pointers
   Distribution* x() const { return x_.get(); }
@@ -55,7 +56,7 @@ public:
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const;
+  Position sample(uint64_t* seed) const override;
 
   Distribution* r() const { return r_.get(); }
   Distribution* phi() const { return phi_.get(); }
@@ -80,7 +81,7 @@ public:
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const;
+  Position sample(uint64_t* seed) const override;
 
   Distribution* r() const { return r_.get(); }
   Distribution* cos_theta() const { return cos_theta_.get(); }
@@ -95,6 +96,29 @@ private:
 };
 
 //==============================================================================
+//! Distribution of points within a mesh
+//==============================================================================
+
+class MeshSpatial : public SpatialDistribution {
+public:
+  explicit MeshSpatial(pugi::xml_node node);
+
+  //! Sample a position from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled position
+  Position sample(uint64_t* seed) const override;
+
+  const Mesh* mesh() const { return model::meshes.at(mesh_idx_).get(); }
+
+  int32_t n_sources() const { return this->mesh()->n_bins(); }
+
+private:
+  int32_t mesh_idx_ {C_NONE};
+  DiscreteIndex elem_idx_dist_; //!< Distribution of
+                                //!< mesh element indices
+};
+
+//==============================================================================
 //! Uniform distribution of points over a box
 //==============================================================================
 
@@ -105,7 +129,7 @@ public:
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const;
+  Position sample(uint64_t* seed) const override;
 
   // Properties
   bool only_fissionable() const { return only_fissionable_; }
@@ -131,7 +155,7 @@ public:
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const;
+  Position sample(uint64_t* seed) const override;
 
   Position r() const { return r_; }
 

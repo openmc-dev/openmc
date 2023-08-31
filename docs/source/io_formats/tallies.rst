@@ -69,6 +69,12 @@ The ``<tally>`` element accepts the following sub-elements:
     list of valid scores can be found in the :ref:`user's guide
     <usersguide_scores>`.
 
+  :multiply_density:
+    A boolean that indicates whether reaction rate scores should be computed by
+    multiplying by the atom density of a nuclide present in a material.
+
+    *Default*: true
+
   :trigger:
     Precision trigger applied to all filter bins and nuclides for this tally.
     It must specify the trigger's type, threshold and scores to which it will
@@ -350,6 +356,9 @@ attributes/sub-elements:
 
   :theta_grid:
     The mesh divisions along the theta-axis. (For spherical mesh only.)
+
+  :origin:
+    The origin in cartesian coordinates. (For cylindrical and spherical meshes only.)
 
   :library:
     The mesh library used to represent an unstructured mesh. This can be either

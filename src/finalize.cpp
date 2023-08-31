@@ -74,9 +74,11 @@ int openmc_finalize()
   settings::check_overlaps = false;
   settings::confidence_intervals = false;
   settings::create_fission_neutrons = true;
+  settings::create_delayed_neutrons = true;
   settings::electron_treatment = ElectronTreatment::LED;
   settings::delayed_photon_scaling = true;
   settings::energy_cutoff = {0.0, 1000.0, 0.0, 0.0};
+  settings::time_cutoff = {INFTY, INFTY, INFTY, INFTY};
   settings::entropy_on = false;
   settings::event_based = false;
   settings::gen_per_batch = 1;

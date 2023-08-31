@@ -18,7 +18,7 @@ settings = openmc.Settings()
 settings.run_mode = 'fixed source'
 settings.batches = 10
 settings.particles = 1000
-source = openmc.Source()
+source = openmc.CompiledSource()
 source.library = 'build/libparameterized_source.so'
 source.parameters = 'radius=3.0, energy=14.08e6'
 settings.source = source

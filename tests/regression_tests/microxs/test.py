@@ -4,8 +4,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 import openmc
-
 from openmc.deplete import MicroXS
+
+from tests.regression_tests import config
 
 CHAIN_FILE = Path(__file__).parents[2] / "chain_simple.xml"
 
@@ -39,14 +40,20 @@ def model():
 
     settings = openmc.Settings()
     settings.particles = 1000
-    settings.inactive = 10
-    settings.batches = 50
+    settings.inactive = 5
+    settings.batches = 10
 
     return openmc.Model(geometry, materials, settings)
 
 
 def test_from_model(model):
+    fuel = model.materials[0]
+    nuclides = ['U234', 'U235', 'U238', 'U236', 'O16', 'O17', 'I135', 'Xe135',
+                'Xe136', 'Cs135', 'Gd157', 'Gd156']
+    test_xs = MicroXS.from_model(model, fuel, nuclides, chain_file=CHAIN_FILE)
+    if config['update']:
+        test_xs.to_csv('test_reference.csv')
+
     ref_xs = MicroXS.from_csv('test_reference.csv')
-    test_xs = MicroXS.from_model(model, model.materials[0], CHAIN_FILE)
 
     np.testing.assert_allclose(test_xs, ref_xs, rtol=1e-11)

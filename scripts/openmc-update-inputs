@@ -4,7 +4,6 @@
 """
 
 import argparse
-from difflib import get_close_matches
 from itertools import chain
 from random import randint
 from shutil import move
@@ -27,8 +26,8 @@ geometry.xml: Lattices containing 'outside' attributes/tags will be replaced
   will be renamed 'region'.
 
 materials.xml: Nuclide names will be changed from ACE aliases (e.g., Am-242m) to
-  HDF5/GND names (e.g., Am242_m1). Thermal scattering table names will be
-  changed from ACE aliases (e.g., HH2O) to HDF5/GND names (e.g., c_H_in_H2O).
+  HDF5/GNDS names (e.g., Am242_m1). Thermal scattering table names will be
+  changed from ACE aliases (e.g., HH2O) to HDF5/GNDS names (e.g., c_H_in_H2O).
 
 """
 

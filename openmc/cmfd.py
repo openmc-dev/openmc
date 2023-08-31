@@ -246,7 +246,7 @@ class CMFDMesh:
                        Real)
             check_greater_than('CMFD mesh {}-grid length'.format(dims[i]),
                                len(grid[i]), 1)
-        self._grid = np.array(grid)
+        self._grid = [np.array(g) for g in grid]
         self._display_mesh_warning('rectilinear', 'CMFD mesh grid')
 
     def _display_mesh_warning(self, mesh_type, variable_label):
@@ -1074,13 +1074,12 @@ class CMFDRun:
         # Get acceleration map, otherwise set all regions to be accelerated
         if self._mesh.map is not None:
             check_length('CMFD coremap', self._mesh.map,
-                         np.product(self._indices[0:3]))
+                         np.prod(self._indices[:3]))
             if openmc.lib.master():
                 self._coremap = np.array(self._mesh.map)
         else:
             if openmc.lib.master():
-                self._coremap = np.ones((np.product(self._indices[0:3])),
-                                        dtype=int)
+                self._coremap = np.ones(np.prod(self._indices[:3]), dtype=int)
 
         # Check CMFD tallies accummulated before feedback turned on
         if self._feedback and self._solver_begin < self._tally_begin:
@@ -1382,9 +1381,7 @@ class CMFDRun:
 
         """
         # Write each element in vector to file
-        with open(base_filename+'.dat', 'w') as fh:
-            for val in vector:
-                fh.write('{:0.8f}\n'.format(val))
+        np.savetxt(f'{base_filename}.dat', vector, fmt='%.8f')
 
         # Save as numpy format
         np.save(base_filename, vector)
@@ -1436,7 +1433,7 @@ class CMFDRun:
         # nfissxs
 
         # Calculate volume
-        vol = np.product(self._hxyz, axis=3)
+        vol = np.prod(self._hxyz, axis=3)
 
         # Reshape phi by number of groups
         phi = self._phi.reshape((n, ng))

@@ -11,6 +11,7 @@ from numpy.ctypeslib import as_array
 
 from . import _dll
 from .error import _error_handler
+from openmc.checkvalue import PathLike
 import openmc.lib
 import openmc
 
@@ -102,7 +103,6 @@ _dll.openmc_sample_external_source.argtypes = [c_size_t, POINTER(c_uint64), POIN
 _dll.openmc_sample_external_source.restype = c_int
 _dll.openmc_sample_external_source.errcheck = _error_handler
 
-
 def global_bounding_box():
     """Calculate a global bounding box for the model"""
     inf = sys.float_info.max
@@ -169,6 +169,54 @@ def export_properties(filename=None, output=True):
 
     with quiet_dll(output):
         _dll.openmc_properties_export(filename)
+
+
+def export_weight_windows(filename="weight_windows.h5", output=True):
+    """Export weight windows.
+
+    .. versionadded:: 0.13.4
+
+    Parameters
+    ----------
+    filename : PathLike or None
+        Filename to export weight windows to
+    output : bool, optional
+        Whether or not to show output.
+
+    See Also
+    --------
+    openmc.lib.import_weight_windows
+
+    """
+    if filename is not None:
+        filename = c_char_p(str(filename).encode())
+
+    with quiet_dll(output):
+        _dll.openmc_weight_windows_export(filename)
+
+
+def import_weight_windows(filename='weight_windows.h5', output=True):
+    """Import weight windows.
+
+    .. versionadded:: 0.13.4
+
+    Parameters
+    ----------
+    filename : PathLike or None
+        Filename to import weight windows from
+    output : bool, optional
+        Whether or not to show output.
+
+    See Also
+    --------
+    openmc.lib.export_weight_windows
+
+    """
+    if filename is not None:
+        filename = c_char_p(str(filename).encode())
+
+    with quiet_dll(output):
+        _dll.openmc_weight_windows_import(filename)
 
 
 def finalize():

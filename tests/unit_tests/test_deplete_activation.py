@@ -27,13 +27,13 @@ def model():
 
     model.settings.batches = 10
     model.settings.particles = 1000
-    model.settings.source = openmc.Source(
+    model.settings.source = openmc.IndependentSource(
         space=openmc.stats.Point(),
         energy=openmc.stats.Discrete([1.0e6], [1.0])
     )
     model.settings.run_mode = 'fixed source'
 
-    rx_tally = openmc.Tally()
+    rx_tally = openmc.Tally(name='activation tally')
     rx_tally.scores = ['(n,gamma)']
     model.tallies.append(rx_tally)
 
@@ -47,13 +47,13 @@ ENERGIES = np.logspace(log10(1e-5), log10(2e7), 100)
     ("direct", {}, 1e-5),
     ("flux", {'energies': ENERGIES}, 0.01),
     ("flux", {'energies': ENERGIES, 'reactions': ['(n,gamma)']}, 1e-5),
-    ("flux", {'energies': ENERGIES, 'reactions': ['(n,gamma)'], 'nuclides': ['W186']}, 1e-5),
+    ("flux", {'energies': ENERGIES, 'reactions': ['(n,gamma)'], 'nuclides': ['W186', 'H3']}, 1e-2),
 ])
 def test_activation(run_in_tmpdir, model, reaction_rate_mode, reaction_rate_opts, tolerance):
     # Determine (n.gamma) reaction rate using initial run
     sp = model.run()
     with openmc.StatePoint(sp) as sp:
-        tally = sp.tallies[1]
+        tally = sp.get_tally(name='activation tally')
         capture_rate = tally.mean.flat[0]
 
     # Create one-nuclide depletion chain

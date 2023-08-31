@@ -1,4 +1,3 @@
-from collections import OrderedDict
 import copy
 from numbers import Integral
 import os
@@ -216,7 +215,7 @@ class MGXS:
         the multi-group cross section
     estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section
     rxn_rate_tally : openmc.Tally
         Derived tally for the reaction rate tally used in the numerator to
@@ -319,7 +318,7 @@ class MGXS:
         clone._derived = self.derived
         clone._mgxs_type = self._mgxs_type
 
-        clone._tallies = OrderedDict()
+        clone._tallies = {}
         for tally_type, tally in self.tallies.items():
             clone.tallies[tally_type] = copy.deepcopy(tally, memo)
 
@@ -453,6 +452,11 @@ class MGXS:
     def name(self):
         return self._name
 
+    @name.setter
+    def name(self, name):
+        cv.check_type('name', name, str)
+        self._name = name
+
     @property
     def rxn_type(self):
         return self._rxn_type
@@ -461,29 +465,77 @@ class MGXS:
     def by_nuclide(self):
         return self._by_nuclide
 
+    @by_nuclide.setter
+    def by_nuclide(self, by_nuclide):
+        cv.check_type('by_nuclide', by_nuclide, bool)
+        self._by_nuclide = by_nuclide
+
     @property
     def domain(self):
         return self._domain
+
+    @domain.setter
+    def domain(self, domain):
+        cv.check_type('domain', domain, _DOMAINS)
+        self._domain = domain
+
+        # Assign a domain type
+        if self.domain_type is None:
+            if isinstance(domain, openmc.Material):
+                self._domain_type = 'material'
+            elif isinstance(domain, openmc.Cell):
+                self._domain_type = 'cell'
+            elif isinstance(domain, openmc.Universe):
+                self._domain_type = 'universe'
+            elif isinstance(domain, openmc.RegularMesh):
+                self._domain_type = 'mesh'
 
     @property
     def domain_type(self):
         return self._domain_type
 
+    @domain_type.setter
+    def domain_type(self, domain_type):
+        cv.check_value('domain type', domain_type, DOMAIN_TYPES)
+        self._domain_type = domain_type
+
     @property
     def energy_groups(self):
         return self._energy_groups
+
+    @energy_groups.setter
+    def energy_groups(self, energy_groups):
+        cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
+        self._energy_groups = energy_groups
 
     @property
     def num_polar(self):
         return self._num_polar
 
+    @num_polar.setter
+    def num_polar(self, num_polar):
+        cv.check_type('num_polar', num_polar, Integral)
+        cv.check_greater_than('num_polar', num_polar, 0)
+        self._num_polar = num_polar
+
     @property
     def num_azimuthal(self):
         return self._num_azimuthal
 
+    @num_azimuthal.setter
+    def num_azimuthal(self, num_azimuthal):
+        cv.check_type('num_azimuthal', num_azimuthal, Integral)
+        cv.check_greater_than('num_azimuthal', num_azimuthal, 0)
+        self._num_azimuthal = num_azimuthal
+
     @property
     def tally_trigger(self):
         return self._tally_trigger
+
+    @tally_trigger.setter
+    def tally_trigger(self, tally_trigger):
+        cv.check_type('tally trigger', tally_trigger, openmc.Trigger)
+        self._tally_trigger = tally_trigger
 
     @property
     def num_groups(self):
@@ -511,6 +563,11 @@ class MGXS:
     def estimator(self):
         return self._estimator
 
+    @estimator.setter
+    def estimator(self, estimator):
+        cv.check_value('estimator', estimator, self._valid_estimators)
+        self._estimator = estimator
+
     @property
     def tallies(self):
 
@@ -518,7 +575,7 @@ class MGXS:
         if self._tallies is None:
 
             # Initialize a collection of Tallies
-            self._tallies = OrderedDict()
+            self._tallies ={}
 
             # Create a domain Filter object
             filter_type = _DOMAIN_TO_FILTER[self.domain_type]
@@ -585,6 +642,31 @@ class MGXS:
     def sparse(self):
         return self._sparse
 
+    @sparse.setter
+    def sparse(self, sparse):
+        """Convert tally data from NumPy arrays to SciPy list of lists (LIL)
+        sparse matrices, and vice versa.
+
+        This property may be used to reduce the amount of data in memory during
+        tally data processing. The tally data will be stored as SciPy LIL
+        matrices internally within the Tally object. All tally data access
+        properties and methods will return data as a dense NumPy array.
+
+        """
+
+        cv.check_type('sparse', sparse, bool)
+
+        # Sparsify or densify the derived MGXS tallies and the base tallies
+        if self._xs_tally:
+            self.xs_tally.sparse = sparse
+        if self._rxn_rate_tally:
+            self.rxn_rate_tally.sparse = sparse
+
+        for tally_name in self.tallies:
+            self.tallies[tally_name].sparse = sparse
+
+        self._sparse = sparse
+
     @property
     def num_subdomains(self):
         if self.domain_type.startswith('sum('):
@@ -612,6 +694,11 @@ class MGXS:
         else:
             return ['sum']
 
+    @nuclides.setter
+    def nuclides(self, nuclides):
+        cv.check_iterable_type('nuclides', nuclides, str)
+        self._nuclides = nuclides
+
     @property
     def loaded_sp(self):
         return self._loaded_sp
@@ -626,94 +713,6 @@ class MGXS:
             return self._mgxs_type
         else:
             return self._rxn_type
-
-    @name.setter
-    def name(self, name):
-        cv.check_type('name', name, str)
-        self._name = name
-
-    @by_nuclide.setter
-    def by_nuclide(self, by_nuclide):
-        cv.check_type('by_nuclide', by_nuclide, bool)
-        self._by_nuclide = by_nuclide
-
-    @nuclides.setter
-    def nuclides(self, nuclides):
-        cv.check_iterable_type('nuclides', nuclides, str)
-        self._nuclides = nuclides
-
-    @estimator.setter
-    def estimator(self, estimator):
-        cv.check_value('estimator', estimator, self._valid_estimators)
-        self._estimator = estimator
-
-    @domain.setter
-    def domain(self, domain):
-        cv.check_type('domain', domain, _DOMAINS)
-        self._domain = domain
-
-        # Assign a domain type
-        if self.domain_type is None:
-            if isinstance(domain, openmc.Material):
-                self._domain_type = 'material'
-            elif isinstance(domain, openmc.Cell):
-                self._domain_type = 'cell'
-            elif isinstance(domain, openmc.Universe):
-                self._domain_type = 'universe'
-            elif isinstance(domain, openmc.RegularMesh):
-                self._domain_type = 'mesh'
-
-    @domain_type.setter
-    def domain_type(self, domain_type):
-        cv.check_value('domain type', domain_type, DOMAIN_TYPES)
-        self._domain_type = domain_type
-
-    @energy_groups.setter
-    def energy_groups(self, energy_groups):
-        cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
-        self._energy_groups = energy_groups
-
-    @num_polar.setter
-    def num_polar(self, num_polar):
-        cv.check_type('num_polar', num_polar, Integral)
-        cv.check_greater_than('num_polar', num_polar, 0)
-        self._num_polar = num_polar
-
-    @num_azimuthal.setter
-    def num_azimuthal(self, num_azimuthal):
-        cv.check_type('num_azimuthal', num_azimuthal, Integral)
-        cv.check_greater_than('num_azimuthal', num_azimuthal, 0)
-        self._num_azimuthal = num_azimuthal
-
-    @tally_trigger.setter
-    def tally_trigger(self, tally_trigger):
-        cv.check_type('tally trigger', tally_trigger, openmc.Trigger)
-        self._tally_trigger = tally_trigger
-
-    @sparse.setter
-    def sparse(self, sparse):
-        """Convert tally data from NumPy arrays to SciPy list of lists (LIL)
-        sparse matrices, and vice versa.
-
-        This property may be used to reduce the amount of data in memory during
-        tally data processing. The tally data will be stored as SciPy LIL
-        matrices internally within the Tally object. All tally data access
-        properties and methods will return data as a dense NumPy array.
-
-        """
-
-        cv.check_type('sparse', sparse, bool)
-
-        # Sparsify or densify the derived MGXS tallies and the base tallies
-        if self._xs_tally:
-            self.xs_tally.sparse = sparse
-        if self._rxn_rate_tally:
-            self.rxn_rate_tally.sparse = sparse
-
-        for tally_name in self.tallies:
-            self.tallies[tally_name].sparse = sparse
-
-        self._sparse = sparse
 
     @staticmethod
     def get_mgxs(mgxs_type, domain=None, domain_type=None,
@@ -918,20 +917,20 @@ class MGXS:
         # Sum the atomic number densities for all nuclides
         if nuclides == 'sum':
             nuclides = self.get_nuclides()
-            densities = np.zeros(1, dtype=np.float)
+            densities = np.zeros(1, dtype=float)
             for nuclide in nuclides:
                 densities[0] += self.get_nuclide_density(nuclide)
 
         # Tabulate the atomic number densities for all nuclides
         elif nuclides == 'all':
             nuclides = self.get_nuclides()
-            densities = np.zeros(self.num_nuclides, dtype=np.float)
+            densities = np.zeros(self.num_nuclides, dtype=float)
             for i, nuclide in enumerate(nuclides):
                 densities[i] += self.get_nuclide_density(nuclide)
 
         # Tabulate the atomic number densities for each specified nuclide
         else:
-            densities = np.zeros(len(nuclides), dtype=np.float)
+            densities = np.zeros(len(nuclides), dtype=float)
             for i, nuclide in enumerate(nuclides):
                 densities[i] = self.get_nuclide_density(nuclide)
 
@@ -1690,7 +1689,7 @@ class MGXS:
             merged_mgxs.nuclides = self.nuclides + other.nuclides
 
         # Null base tallies but merge reaction rate and cross section tallies
-        merged_mgxs._tallies = OrderedDict()
+        merged_mgxs._tallies ={}
         merged_mgxs._rxn_rate_tally = self.rxn_rate_tally.merge(other.rxn_rate_tally)
         merged_mgxs._xs_tally = self.xs_tally.merge(other.xs_tally)
 
@@ -1720,7 +1719,7 @@ class MGXS:
         if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
-            subdomains = np.arange(self.num_subdomains, dtype=np.int)
+            subdomains = np.arange(self.num_subdomains, dtype=int)
         elif self.domain_type == 'mesh':
             subdomains = list(self.domain.indices)
         else:
@@ -1887,7 +1886,7 @@ class MGXS:
         if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
-            subdomains = np.arange(self.num_subdomains, dtype=np.int)
+            subdomains = np.arange(self.num_subdomains, dtype=int)
         elif self.domain_type == 'sum(distribcell)':
             domain_filter = self.xs_tally.find_filter('sum(distribcell)')
             subdomains = domain_filter.bins
@@ -1900,7 +1899,7 @@ class MGXS:
         if self.by_nuclide:
             if nuclides == 'all':
                 nuclides = self.get_nuclides()
-                densities = np.zeros(len(nuclides), dtype=np.float)
+                densities = np.zeros(len(nuclides), dtype=float)
             elif nuclides == 'sum':
                 nuclides = ['sum']
             else:
@@ -2447,7 +2446,7 @@ class MatrixMGXS(MGXS):
         if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
-            subdomains = np.arange(self.num_subdomains, dtype=np.int)
+            subdomains = np.arange(self.num_subdomains, dtype=int)
         elif self.domain_type == 'mesh':
             subdomains = list(self.domain.indices)
         else:
@@ -2690,7 +2689,7 @@ class TransportXS(MGXS):
         the multi-group cross section
     estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`TransportXS.tally_keys` property and
         values are instances of :class:`openmc.Tally`.
@@ -2931,7 +2930,7 @@ class DiffusionCoefficient(TransportXS):
         the multi-group cross section
     estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`TransportXS.tally_keys` property and
         values are instances of :class:`openmc.Tally`.
@@ -3019,7 +3018,7 @@ class DiffusionCoefficient(TransportXS):
                 new_filt = openmc.EnergyFilter(old_filt.values)
                 p1_tally.filters[-2] = new_filt
 
-                p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter], 
+                p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
                     filter_bins=[('P1',)],squeeze=True)
                 p1_tally._scores = ['scatter-1']
                 total_xs = self.tallies['total'] / self.tallies['flux (tracklength)']
@@ -3078,7 +3077,7 @@ class DiffusionCoefficient(TransportXS):
             diff_coef = transport**(-1) / 3.0
             diff_coef *= self.tallies['flux (tracklength)']
             flux_tally = condensed_xs.tallies['flux (tracklength)']
-            condensed_xs._tallies = OrderedDict()
+            condensed_xs._tallies = {}
             condensed_xs._tallies[self._rxn_type] = diff_coef
             condensed_xs._tallies['flux (tracklength)'] = flux_tally
             condensed_xs._rxn_rate_tally = diff_coef
@@ -3394,7 +3393,7 @@ class FissionXS(MGXS):
         the multi-group cross section
     estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`FissionXS.tally_keys` property and
         values are instances of :class:`openmc.Tally`.
@@ -3453,10 +3452,6 @@ class FissionXS(MGXS):
     def nu(self):
         return self._nu
 
-    @property
-    def prompt(self):
-        return self._prompt
-
     @nu.setter
     def nu(self, nu):
         cv.check_type('nu', nu, bool)
@@ -3468,6 +3463,10 @@ class FissionXS(MGXS):
                 self._rxn_type = 'nu-fission'
         else:
             self._rxn_type = 'prompt-nu-fission'
+
+    @property
+    def prompt(self):
+        return self._prompt
 
     @prompt.setter
     def prompt(self, prompt):
@@ -3613,7 +3612,7 @@ class ScatterXS(MGXS):
         the multi-group cross section
     estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`ScatterXS.tally_keys` property and
         values are instances of :class:`openmc.Tally`.
@@ -3923,7 +3922,7 @@ class ScatterMatrixXS(MatrixMGXS):
         the multi-group cross section
     estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`ScatterMatrixXS.tally_keys` property
         and values are instances of :class:`openmc.Tally`.
@@ -4006,25 +4005,114 @@ class ScatterMatrixXS(MatrixMGXS):
     def formulation(self):
         return self._formulation
 
+    @formulation.setter
+    def formulation(self, formulation):
+        cv.check_value('formulation', formulation, ('simple', 'consistent'))
+        self._formulation = formulation
+
+        if self.formulation == 'simple':
+            self._valid_estimators = ['analog']
+            if not self.nu:
+                self._mgxs_type = 'scatter matrix'
+            else:
+                self._mgxs_type = 'nu-scatter matrix'
+        else:
+            self._valid_estimators = ['tracklength']
+            if not self.nu:
+                self._mgxs_type = 'consistent scatter matrix'
+            else:
+                self._mgxs_type = 'consistent nu-scatter matrix'
+
     @property
     def correction(self):
         return self._correction
+
+    @correction.setter
+    def correction(self, correction):
+        cv.check_value('correction', correction, ('P0', None))
+
+        if self.scatter_format == SCATTER_LEGENDRE:
+            if correction == 'P0' and self.legendre_order > 0:
+                msg = 'The P0 correction will be ignored since the ' \
+                      'scattering order {} is greater than '\
+                      'zero'.format(self.legendre_order)
+                warnings.warn(msg)
+        elif self.scatter_format == SCATTER_HISTOGRAM:
+            msg = 'The P0 correction will be ignored since the ' \
+                  'scatter format is set to histogram'
+            warnings.warn(msg)
+
+        self._correction = correction
 
     @property
     def scatter_format(self):
         return self._scatter_format
 
+    @scatter_format.setter
+    def scatter_format(self, scatter_format):
+        cv.check_value('scatter_format', scatter_format, MU_TREATMENTS)
+        self._scatter_format = scatter_format
+
     @property
     def legendre_order(self):
         return self._legendre_order
+
+    @legendre_order.setter
+    def legendre_order(self, legendre_order):
+        cv.check_type('legendre_order', legendre_order, Integral)
+        cv.check_greater_than('legendre_order', legendre_order, 0,
+                              equality=True)
+        cv.check_less_than('legendre_order', legendre_order, _MAX_LEGENDRE,
+                           equality=True)
+
+        if self.scatter_format == SCATTER_LEGENDRE:
+            if self.correction == 'P0' and legendre_order > 0:
+                msg = 'The P0 correction will be ignored since the ' \
+                      'scattering order {} is greater than '\
+                      'zero'.format(legendre_order)
+                warnings.warn(msg, RuntimeWarning)
+                self.correction = None
+        elif self.scatter_format == SCATTER_HISTOGRAM:
+            msg = 'The legendre order will be ignored since the ' \
+                  'scatter format is set to histogram'
+            warnings.warn(msg)
+
+        self._legendre_order = legendre_order
 
     @property
     def histogram_bins(self):
         return self._histogram_bins
 
+    @histogram_bins.setter
+    def histogram_bins(self, histogram_bins):
+        cv.check_type('histogram_bins', histogram_bins, Integral)
+        cv.check_greater_than('histogram_bins', histogram_bins, 0)
+
+        self._histogram_bins = histogram_bins
+
     @property
     def nu(self):
         return self._nu
+
+    @nu.setter
+    def nu(self, nu):
+        cv.check_type('nu', nu, bool)
+        self._nu = nu
+
+        if self.formulation == 'simple':
+            if not nu:
+                self._rxn_type = 'scatter'
+                self._mgxs_type = 'scatter matrix'
+            else:
+                self._rxn_type = 'nu-scatter'
+                self._mgxs_type = 'nu-scatter matrix'
+        else:
+            if not nu:
+                self._rxn_type = 'scatter'
+                self._mgxs_type = 'consistent scatter matrix'
+            else:
+                self._rxn_type = 'nu-scatter'
+                self._mgxs_type = 'consistent nu-scatter matrix'
 
     @property
     def scores(self):
@@ -4306,95 +4394,6 @@ class ScatterMatrixXS(MatrixMGXS):
                                                  angle_filter)
 
         return self._xs_tally
-
-    @nu.setter
-    def nu(self, nu):
-        cv.check_type('nu', nu, bool)
-        self._nu = nu
-
-        if self.formulation == 'simple':
-            if not nu:
-                self._rxn_type = 'scatter'
-                self._mgxs_type = 'scatter matrix'
-            else:
-                self._rxn_type = 'nu-scatter'
-                self._mgxs_type = 'nu-scatter matrix'
-        else:
-            if not nu:
-                self._rxn_type = 'scatter'
-                self._mgxs_type = 'consistent scatter matrix'
-            else:
-                self._rxn_type = 'nu-scatter'
-                self._mgxs_type = 'consistent nu-scatter matrix'
-
-    @formulation.setter
-    def formulation(self, formulation):
-        cv.check_value('formulation', formulation, ('simple', 'consistent'))
-        self._formulation = formulation
-
-        if self.formulation == 'simple':
-            self._valid_estimators = ['analog']
-            if not self.nu:
-                self._mgxs_type = 'scatter matrix'
-            else:
-                self._mgxs_type = 'nu-scatter matrix'
-        else:
-            self._valid_estimators = ['tracklength']
-            if not self.nu:
-                self._mgxs_type = 'consistent scatter matrix'
-            else:
-                self._mgxs_type = 'consistent nu-scatter matrix'
-
-    @correction.setter
-    def correction(self, correction):
-        cv.check_value('correction', correction, ('P0', None))
-
-        if self.scatter_format == SCATTER_LEGENDRE:
-            if correction == 'P0' and self.legendre_order > 0:
-                msg = 'The P0 correction will be ignored since the ' \
-                      'scattering order {} is greater than '\
-                      'zero'.format(self.legendre_order)
-                warnings.warn(msg)
-        elif self.scatter_format == SCATTER_HISTOGRAM:
-            msg = 'The P0 correction will be ignored since the ' \
-                  'scatter format is set to histogram'
-            warnings.warn(msg)
-
-        self._correction = correction
-
-    @scatter_format.setter
-    def scatter_format(self, scatter_format):
-        cv.check_value('scatter_format', scatter_format, MU_TREATMENTS)
-        self._scatter_format = scatter_format
-
-    @legendre_order.setter
-    def legendre_order(self, legendre_order):
-        cv.check_type('legendre_order', legendre_order, Integral)
-        cv.check_greater_than('legendre_order', legendre_order, 0,
-                              equality=True)
-        cv.check_less_than('legendre_order', legendre_order, _MAX_LEGENDRE,
-                           equality=True)
-
-        if self.scatter_format == SCATTER_LEGENDRE:
-            if self.correction == 'P0' and legendre_order > 0:
-                msg = 'The P0 correction will be ignored since the ' \
-                      'scattering order {} is greater than '\
-                      'zero'.format(legendre_order)
-                warnings.warn(msg, RuntimeWarning)
-                self.correction = None
-        elif self.scatter_format == SCATTER_HISTOGRAM:
-            msg = 'The legendre order will be ignored since the ' \
-                  'scatter format is set to histogram'
-            warnings.warn(msg)
-
-        self._legendre_order = legendre_order
-
-    @histogram_bins.setter
-    def histogram_bins(self, histogram_bins):
-        cv.check_type('histogram_bins', histogram_bins, Integral)
-        cv.check_greater_than('histogram_bins', histogram_bins, 0)
-
-        self._histogram_bins = histogram_bins
 
     def load_from_statepoint(self, statepoint):
         """Extracts tallies in an OpenMC StatePoint with the data needed to
@@ -4785,7 +4784,7 @@ class ScatterMatrixXS(MatrixMGXS):
         if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
-            subdomains = np.arange(self.num_subdomains, dtype=np.int)
+            subdomains = np.arange(self.num_subdomains, dtype=int)
         elif self.domain_type == 'mesh':
             subdomains = list(self.domain.indices)
         else:
@@ -5193,7 +5192,7 @@ class NuFissionMatrixXS(MatrixMGXS):
         the multi-group cross section
     estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`NuFissionMatrixXS.tally_keys`
         property and values are instances of :class:`openmc.Tally`.
@@ -5354,7 +5353,7 @@ class Chi(MGXS):
         the multi-group cross section
     estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`Chi.tally_keys` property and values are
         instances of :class:`openmc.Tally`.
@@ -5416,6 +5415,17 @@ class Chi(MGXS):
     def prompt(self):
         return self._prompt
 
+    @prompt.setter
+    def prompt(self, prompt):
+        cv.check_type('prompt', prompt, bool)
+        self._prompt = prompt
+        if not self.prompt:
+            self._rxn_type = 'chi'
+            self._mgxs_type = 'chi'
+        else:
+            self._rxn_type = 'chi-prompt'
+            self._mgxs_type = 'chi-prompt'
+
     @property
     def _dont_squeeze(self):
         """Create a tuple of axes which should not be removed during the get_xs
@@ -5471,17 +5481,6 @@ class Chi(MGXS):
             nu_fission_in.filters.append(energy_filter)
 
         return self._xs_tally
-
-    @prompt.setter
-    def prompt(self, prompt):
-        cv.check_type('prompt', prompt, bool)
-        self._prompt = prompt
-        if not self.prompt:
-            self._rxn_type = 'chi'
-            self._mgxs_type = 'chi'
-        else:
-            self._rxn_type = 'chi-prompt'
-            self._mgxs_type = 'chi-prompt'
 
     def get_homogenized_mgxs(self, other_mgxs):
         """Construct a homogenized mgxs with other MGXS objects.
@@ -5922,7 +5921,7 @@ class MeshSurfaceMGXS(MGXS):
         the multi-group cross section
     estimator : {'analog'}
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section
     rxn_rate_tally : openmc.Tally
         Derived tally for the reaction rate tally used in the numerator to
@@ -5968,10 +5967,6 @@ class MeshSurfaceMGXS(MGXS):
     def domain(self):
         return self._domain
 
-    @property
-    def domain_type(self):
-        return self._domain_type
-
     @domain.setter
     def domain(self, domain):
         cv.check_type('domain', domain, openmc.RegularMesh)
@@ -5980,6 +5975,10 @@ class MeshSurfaceMGXS(MGXS):
         # Assign a domain type
         if self.domain_type is None:
             self._domain_type = 'mesh'
+
+    @property
+    def domain_type(self):
+        return self._domain_type
 
     @domain_type.setter
     def domain_type(self, domain_type):
@@ -6309,7 +6308,7 @@ class Current(MeshSurfaceMGXS):
         the multi-group cross section
     estimator : {'analog'}
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`TotalXS.tally_keys` property and values
         are instances of :class:`openmc.Tally`.

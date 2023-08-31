@@ -24,8 +24,10 @@ Composite Surfaces
    :nosignatures:
    :template: myclass.rst
 
+   openmc.model.CruciformPrism
    openmc.model.CylinderSector
    openmc.model.IsogonalOctagon
+   openmc.model.Polygon
    openmc.model.RectangularParallelepiped
    openmc.model.RightCircularCylinder
    openmc.model.XConeOneSided

@@ -269,9 +269,8 @@ The following tables show all valid scores:
     |heating               |Total nuclear heating in units of eV per source    |
     |                      |particle. For neutrons, this corresponds to MT=301 |
     |                      |produced by NJOY's HEATR module while for photons, |
-    |                      |this is tallied from either direct photon energy   |
-    |                      |deposition (analog estimator) or pre-generated     |
-    |                      |photon heating number. See :ref:`methods_heating`  |
+    |                      |this is tallied from direct photon energy          |
+    |                      |deposition. See :ref:`methods_heating`.            |
     +----------------------+---------------------------------------------------+
     |heating-local         |Total nuclear heating in units of eV per source    |
     |                      |particle assuming energy from secondary photons is |
@@ -317,6 +316,11 @@ The following tables show all valid scores:
     |damage-energy         |Damage energy production in units of eV per source |
     |                      |particle. This corresponds to MT=444 produced by   |
     |                      |NJOY's HEATR module.                               |
+    +----------------------+---------------------------------------------------+
+    |pulse-height          |The energy deposited by an entire photon's history |
+    |                      |(including its progeny). Units are eV per source   | 
+    |                      |particle. Note that this score can only be combined|
+    |                      |with a cell filter and an energy filter.           |   
     +----------------------+---------------------------------------------------+
 
 .. _usersguide_tally_normalization:

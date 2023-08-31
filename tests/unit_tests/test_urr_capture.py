@@ -19,7 +19,7 @@ def th232_model():
     model.settings.batches = 10
     model.settings.run_mode = 'fixed source'
     energies = openmc.stats.Uniform(e_min, e_max)
-    model.settings.source = openmc.Source(energy=energies)
+    model.settings.source = openmc.IndependentSource(energy=energies)
 
     tally = openmc.Tally(name='rates')
     tally.filters = [openmc.EnergyFilter([e_min, e_max])]

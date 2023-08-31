@@ -1,4 +1,5 @@
-import xml.etree.ElementTree as ET
+import lxml.etree as ET
+from pathlib import Path
 
 import numpy as np
 import openmc
@@ -19,7 +20,7 @@ def test_volume(run_in_tmpdir, uo2):
     model.settings.particles = 100
     model.settings.batches = 10
     model.settings.run_mode = 'fixed source'
-    model.settings.source = openmc.Source(space=openmc.stats.Point())
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Point())
 
     ll, ur = model.geometry.bounding_box
     assert ll == pytest.approx((-outer.r, -outer.r, -outer.r))
@@ -159,12 +160,13 @@ def test_get_by_name():
     m2 = openmc.Material(name='Zirconium')
     m2.add_element('Zr', 1.0)
 
-    c1 = openmc.Cell(fill=m1, name='cell1')
+    s1 = openmc.Sphere(name='surface1')
+    c1 = openmc.Cell(fill=m1, region=-s1, name='cell1')
     u1 = openmc.Universe(name='Zircaloy universe', cells=[c1])
 
-    cyl = openmc.ZCylinder()
-    c2 = openmc.Cell(fill=u1, region=-cyl, name='cell2')
-    c3 = openmc.Cell(fill=m2, region=+cyl, name='Cell3')
+    s2 = openmc.ZCylinder(name='surface2')
+    c2 = openmc.Cell(fill=u1, region=-s2, name='cell2')
+    c3 = openmc.Cell(fill=m2, region=+s2, name='Cell3')
     root = openmc.Universe(name='root Universe', cells=[c2, c3])
     geom = openmc.Geometry(root)
 
@@ -176,6 +178,13 @@ def test_get_by_name():
     assert not mats ^ {m2}
     mats = geom.get_materials_by_name('zirconium', True, True)
     assert not mats
+
+    surfaces = set(geom.get_surfaces_by_name('surface'))
+    assert not surfaces ^ {s1, s2}
+    surfaces = set(geom.get_surfaces_by_name('Surface2', False, True))
+    assert not surfaces ^ {s2}
+    surfaces = geom.get_surfaces_by_name('Surface2', True, True)
+    assert not surfaces
 
     cells = set(geom.get_cells_by_name('cell'))
     assert not cells ^ {c1, c2, c3}
@@ -274,7 +283,22 @@ def test_from_xml(run_in_tmpdir, mixed_lattice_model):
     # Export model
     mixed_lattice_model.export_to_xml()
 
-    # Import geometry
+    mats_from_xml = openmc.Materials.from_xml('materials.xml')
+    # checking string a Path are both acceptable
+    for path in ['geometry.xml', Path('geometry.xml')]:
+        for materials in [mats_from_xml, 'materials.xml']:
+            # Import geometry from file
+            geom = openmc.Geometry.from_xml(path=path, materials=materials)
+            assert isinstance(geom, openmc.Geometry)
+            ll, ur = geom.bounding_box
+            assert ll == pytest.approx((-6.0, -6.0, -np.inf))
+            assert ur == pytest.approx((6.0, 6.0, np.inf))
+
+    with pytest.raises(TypeError) as excinfo:
+        geom = openmc.Geometry.from_xml(path='geometry.xml', materials=None)
+    assert 'Unable to set "materials" to "None"' in str(excinfo.value)
+
+    # checking that the default args also work
     geom = openmc.Geometry.from_xml()
     assert isinstance(geom, openmc.Geometry)
     ll, ur = geom.bounding_box
@@ -338,8 +362,13 @@ def test_remove_redundant_surfaces():
     clad = get_cyl_cell(r1, r2, z1, z2, m2)
     water = get_cyl_cell(r2, r3, z1, z2, m3)
     root = openmc.Universe(cells=[fuel, clad, water])
-    geom = openmc.Geometry(root)
-    geom.merge_surfaces=True
+    geom = openmc.Geometry(root=root, merge_surfaces=True, surface_precision=11)
+    assert geom.merge_surfaces is True
+    geom.merge_surfaces = False
+    assert geom.merge_surfaces is False
+    assert geom.surface_precision == 11
+    geom.surface_precision = 10
+    assert geom.surface_precision == 10
     model = openmc.model.Model(geometry=geom,
                                materials=openmc.Materials([m1, m2, m3]))
 

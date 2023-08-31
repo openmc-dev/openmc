@@ -33,6 +33,17 @@ standard deviation.
   *Default*: false
 
 -------------------------------------
+``<create_delayed_neutrons>`` Element
+-------------------------------------
+
+The ``<create_delayed_neutrons>`` element indicates whether delayed neutrons
+are created in fission. If this element is set to "true", delayed neutrons
+will be created in fission events; otherwise only prompt neutrons will be
+created.
+
+  *Default*: true
+
+-------------------------------------
 ``<create_fission_neutrons>`` Element
 -------------------------------------
 
@@ -49,13 +60,15 @@ fission.
 ``<cutoff>`` Element
 --------------------
 
-The ``<cutoff>`` element indicates two kinds of cutoffs. The first is the weight
-cutoff used below which particles undergo Russian roulette. Surviving particles
-are assigned a user-determined weight. Note that weight cutoffs and Russian
-rouletting are not turned on by default. The second is the energy cutoff which
-is used to kill particles under certain energy. The energy cutoff should not be
-used unless you know particles under the energy are of no importance to results
-you care. This element has the following attributes/sub-elements:
+The ``<cutoff>`` element indicates three kinds of cutoffs. The first is the
+weight cutoff used below which particles undergo Russian roulette. Surviving
+particles are assigned a user-determined weight. Note that weight cutoffs and
+Russian rouletting are not turned on by default. The second is the energy cutoff
+which is used to kill particles under certain energy. The energy cutoff should
+not be used unless you know particles under the energy are of no importance to
+results you care. The third is the time cutoff used to kill particles whose time
+exceeds a specific cutoff. Particles will be killed exactly at the specified
+time.
 
   :weight:
     The weight below which particles undergo Russian roulette.
@@ -87,6 +100,26 @@ you care. This element has the following attributes/sub-elements:
     The energy under which positrons will be killed.
 
     *Default*: 0.0
+
+  :time_neutron
+    The time above which neutrons will be killed.
+
+    *Default*: Infinity
+
+  :time_photon
+    The time above which photons will be killed.
+
+    *Default*: Infinity
+
+  :time_electron
+    The time above which electrons will be killed.
+
+    *Default*: Infinity
+
+  :time_positron
+    The time above which positorns will be killed.
+
+    *Default*: Infinity
 
 ----------------------------
 ``<delayed_photon_scaling>``
@@ -334,6 +367,15 @@ either "false" or "true".
 
   *Default*: false
 
+-----------------------
+``<plot_seed>`` Element
+-----------------------
+
+The ``<plot_seed>`` element is used to set the seed for the pseudorandom number
+generator during generation of colors in plots.
+
+  *Default*: 1
+
 ---------------------
 ``<ptables>`` Element
 ---------------------
@@ -438,24 +480,27 @@ attributes/sub-elements:
 
     *Default*: 1.0
 
+  :type:
+    Indicator of source type. One of ``independent``, ``file``, or ``compiled``.
+
   :particle:
     The source particle type, either ``neutron`` or ``photon``.
 
     *Default*: neutron
 
   :file:
-    If this attribute is given, it indicates that the source is to be read from
-    a binary source file whose path is given by the value of this element. Note,
-    the number of source sites needs to be the same as the number of particles
-    simulated in a fission source generation.
+    If this attribute is given, it indicates that the source type is ``file``,
+    meaning particles are to be read from a binary source file whose path is
+    given by the value of this element.
 
     *Default*: None
 
   :library:
-    If this attribute is given, it indicates that the source is to be
-    instantiated from an externally compiled source function. This source can be
-    as complex as is required to define the source for your problem. The library
-    has a few basic requirements:
+    If this attribute is given, it indicates that the source type is
+    ``compiled``, meaning that particles are instantiated from an externally
+    compiled source function. This source can be completely customized as needed
+    to define the source for your problem. The library has a few basic
+    requirements:
 
     * It must contain a class that inherits from ``openmc::Source``;
     * The class must implement a function called ``sample()``;
@@ -465,14 +510,12 @@ attributes/sub-elements:
 
     More documentation on how to build sources can be found in :ref:`custom_source`.
 
-    *Default*: None
-
   :parameters:
-    If this attribute is given, it provides the parameters to pass through to the
-    class generated using the ``library`` parameter . More documentation on how to
-    build parametrized sources can be found in :ref:`parameterized_custom_source`.
-
-    *Default*: None
+    If this attribute is given, it indicated that the source type is
+    ``compiled``. Its value provides the parameters to pass through to the class
+    generated using the ``library`` parameter. More documentation on how to
+    build parametrized sources can be found in
+    :ref:`parameterized_custom_source`.
 
   :space:
     An element specifying the spatial distribution of source sites. This element
@@ -493,7 +536,10 @@ attributes/sub-elements:
       independent distributions of r-, cos_theta-, and phi-coordinates where
       cos_theta is the cosine of the angle with respect to the z-axis, phi is
       the azimuthal angle, and the sphere is centered on the coordinate
-      (x0,y0,z0).
+      (x0,y0,z0). A "mesh" spatial distribution samples source sites from a mesh element
+      based on the relative strengths provided in the node. Source locations
+      within an element are sampled isotropically. If no strengths are provided,
+      the space within the mesh is uniformly sampled.
 
       *Default*: None
 
@@ -732,6 +778,14 @@ attributes/sub-elements:
 
     *Default*: false
 
+  :mcpl:
+    If this element is set to "true", the source point file containing the
+    source bank will be written as an MCPL_ file name ``source.mcpl`` instead of
+    an HDF5 file. This option is only applicable if the ``<separate>`` element
+    is set to true.
+
+    *Default*: false
+
 ------------------------------
 ``<surf_source_read>`` Element
 ------------------------------
@@ -766,6 +820,16 @@ certain surfaces and write out the source bank in a separate file called
     processors.
 
     *Default*: None
+
+  :mcpl:
+    An optional boolean which indicates if the banked particles should be
+    written to a file in the MCPL_-format instead of the native HDF5-based
+    format. If activated the output file name is changed to
+    ``surface_source.mcpl``.
+
+    *Default*: false
+
+    .. _MCPL: https://mctools.github.io/mcpl/mcpl.pdf
 
 ------------------------------
 ``<survival_biasing>`` Element
@@ -832,7 +896,9 @@ cell, the nearest temperature at which cross sections are given is to be
 applied, within a given tolerance (see :ref:`temperature_tolerance`). A value of
 "interpolation" indicates that cross sections are to be linear-linear
 interpolated between temperatures at which nuclear data are present (see
-:ref:`temperature_treatment`).
+:ref:`temperature_treatment`). With the "interpolation" method, temperatures
+outside of the bounds of the nuclear data may be accepted, provided they still
+fall within the tolerance (see :ref:`temperature_tolerance`).
 
   *Default*: "nearest"
 
@@ -871,7 +937,12 @@ The ``<temperature_tolerance>`` element specifies a tolerance in Kelvin that is
 to be applied when the "nearest" temperature method is used. For example, if a
 cell temperature is 340 K and the tolerance is 15 K, then the closest
 temperature in the range of 325 K to 355 K will be used to evaluate cross
-sections.
+sections. If the ``<temperature_method>`` is "interpolation", the tolerance
+specified applies to cell temperatures outside of the data bounds. For example,
+if a cell is specified at 695K, a tolerance of 15K and data is only available
+at 700K and 1000K, the cell's cross sections will be evaluated at 700K, since
+the desired temperature of 695K is within the tolerance of the actual data
+despite not being bounded on both sides.
 
   *Default*: 10 K
 
@@ -1027,7 +1098,7 @@ sub-elements/attributes:
   :particle_type:
     The particle that the weight windows will apply to (e.g., 'neutron')
 
-    *Default*: None
+    *Default*: 'neutron'
 
   :energy_bins:
     Monotonically increasing list of bounding energies in [eV] to be used for
@@ -1065,3 +1136,73 @@ sub-elements/attributes:
     Threshold below which particles will be terminated
 
     *Default*: :math:`10^{-38}`
+
+--------------------------------------
+``<weight_window_generator>`` Element
+--------------------------------------
+
+The ``<weight_window_generator>`` element provides information for creating a set of
+mesh-based weight windows.
+
+  :mesh:
+    ID of a mesh that is to be used for the weight windows spatial bins
+
+    *Default*: None
+
+  :energy_bounds:
+    The weight window energy bounds. If not present, the max/min energy of the
+    cross section data is applied as a single energy bin.
+
+    *Default*: None
+
+  :particle_type:
+    The particle that the weight windows will apply to (e.g., 'neutron')
+
+    *Default*: neutron
+
+  :max_realizations:
+    The number of tally realizations after which the weight windows will stop updating.
+
+    *Default*: 1
+
+  :update_interval:
+    The number of tally realizations between weight window updates.
+
+    *Default*: 1
+
+  :on_the_fly:
+    Controls whether or not the tally results are reset after a weight window update.
+
+    *Default*: true
+
+  :method:
+    Method used to update weight window values (currently only 'magic' is supported)
+
+    *Default*: magic
+
+  :update_parameters:
+    Method-specific update parameters used when generating/updating weight windows.
+
+    For MAGIC:
+
+      :value:
+        The type of tally value to use when creating weight windows (one of 'mean' or 'rel_err')
+
+        *Default*: 'mean'
+
+      :threshold:
+        The relative error threshold above which tally results will be ignored.
+
+        *Default*: 1.0
+
+      :ratio:
+        The ratio of the lower to upper weight window bounds.
+
+        *Default*: 5.0
+
+--------------------------------------
+``<weight_windows_file>`` Element
+--------------------------------------
+
+  The ``weight_windows_file`` element has no attributes and contains the path to
+  a weight windows HDF5 file to load during simulation initialization.

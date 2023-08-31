@@ -171,6 +171,18 @@ struct MacroXS {
 };
 
 //==============================================================================
+// Cache contains the cached data for an MGXS object
+//==============================================================================
+
+struct CacheDataMG {
+  int material {-1}; //!< material index
+  double sqrtkT;     //!< last temperature corresponding to t
+  int t {0};         //!< temperature index
+  int a {0};         //!< angle index
+  Direction u;       //!< angle that corresponds to a
+};
+
+//==============================================================================
 // Information about nearest boundary crossing
 //==============================================================================
 
@@ -218,8 +230,9 @@ struct BoundaryInfo {
  *   https://doi.org/10.1016/j.anucene.2017.11.032.
  */
 class ParticleData {
-
 public:
+  //----------------------------------------------------------------------------
+  // Constructors
   ParticleData();
 
 private:
@@ -230,6 +243,7 @@ private:
   vector<NuclideMicroXS> neutron_xs_; //!< Microscopic neutron cross sections
   vector<ElementMicroXS> photon_xs_;  //!< Microscopic photon cross sections
   MacroXS macro_xs_;                  //!< Macroscopic cross sections
+  CacheDataMG mg_xs_cache_;           //!< Multigroup XS cache
 
   int64_t id_;                                //!< Unique ID
   ParticleType type_ {ParticleType::neutron}; //!< Particle type (n, p, e, etc.)
@@ -312,6 +326,8 @@ private:
 
   vector<NuBank> nu_bank_; // bank of most recently fissioned particles
 
+  vector<double> pht_storage_; // interim pulse-height results
+
   // Global tally accumulators
   double keff_tally_absorption_ {0.0};
   double keff_tally_collision_ {0.0};
@@ -346,6 +362,8 @@ public:
   ElementMicroXS& photon_xs(int i) { return photon_xs_[i]; }
   MacroXS& macro_xs() { return macro_xs_; }
   const MacroXS& macro_xs() const { return macro_xs_; }
+  CacheDataMG& mg_xs_cache() { return mg_xs_cache_; }
+  const CacheDataMG& mg_xs_cache() const { return mg_xs_cache_; }
 
   int64_t& id() { return id_; }
   const int64_t& id() const { return id_; }
@@ -443,6 +461,7 @@ public:
   decltype(tracks_)& tracks() { return tracks_; }
   decltype(nu_bank_)& nu_bank() { return nu_bank_; }
   NuBank& nu_bank(int i) { return nu_bank_[i]; }
+  vector<double>& pht_storage() { return pht_storage_; }
 
   double& keff_tally_absorption() { return keff_tally_absorption_; }
   double& keff_tally_collision() { return keff_tally_collision_; }

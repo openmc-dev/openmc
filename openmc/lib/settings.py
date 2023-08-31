@@ -35,6 +35,7 @@ class _Settings:
     run_CE = _DLLGlobal(c_bool, 'run_CE')
     verbosity = _DLLGlobal(c_int, 'verbosity')
     event_based = _DLLGlobal(c_bool, 'event_based')
+    weight_windows_on = _DLLGlobal(c_bool, 'weight_windows_on')
 
     @property
     def run_mode(self):
@@ -56,7 +57,7 @@ class _Settings:
 
     @property
     def path_statepoint(self):
-        path = c_char_p.in_dll(_dll, 'path_statepoint').value
+        path = c_char_p.in_dll(_dll, 'path_statepoint_c').value
         return path.decode()
 
     @property

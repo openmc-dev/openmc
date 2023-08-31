@@ -14,6 +14,7 @@
 #include "openmc/constants.h"
 #include "openmc/cross_sections.h"
 #include "openmc/error.h"
+#include "openmc/file_utils.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
@@ -32,6 +33,7 @@
 #include "openmc/thermal.h"
 #include "openmc/timer.h"
 #include "openmc/vector.h"
+#include "openmc/weight_windows.h"
 
 #ifdef LIBMESH
 #include "libmesh/libmesh.h"
@@ -105,7 +107,11 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   openmc::openmc_set_seed(DEFAULT_SEED);
 
   // Read XML input files
-  read_input_xml();
+  if (!read_model_xml())
+    read_separate_xml_files();
+
+  // Write some initial output under the header if needed
+  initial_output();
 
   // Check for particle restart run
   if (settings::particle_restart_run)
@@ -177,10 +183,8 @@ int parse_command_line(int argc, char* argv[])
 
       } else if (arg == "-e" || arg == "--event") {
         settings::event_based = true;
-
       } else if (arg == "-r" || arg == "--restart") {
         i += 1;
-
         // Check what type of file this is
         hid_t file_id = file_open(argv[i], 'r', true);
         std::string filetype;
@@ -190,6 +194,7 @@ int parse_command_line(int argc, char* argv[])
         // Set path and flag for type of run
         if (filetype == "statepoint") {
           settings::path_statepoint = argv[i];
+          settings::path_statepoint_c = settings::path_statepoint.c_str();
           settings::restart_run = true;
         } else if (filetype == "particle restart") {
           settings::path_particle_restart = argv[i];
@@ -280,7 +285,15 @@ int parse_command_line(int argc, char* argv[])
   if (argc > 1 && last_flag < argc - 1) {
     settings::path_input = std::string(argv[last_flag + 1]);
 
-    // Add slash at end of directory if it isn't there
+    // check that the path is either a valid directory or file
+    if (!dir_exists(settings::path_input) &&
+        !file_exists(settings::path_input)) {
+      fatal_error(fmt::format(
+        "The path specified to the OpenMC executable '{}' does not exist.",
+        settings::path_input));
+    }
+
+    // Add slash at end of directory if it isn't the
     if (!ends_with(settings::path_input, "/")) {
       settings::path_input += "/";
     }
@@ -289,7 +302,115 @@ int parse_command_line(int argc, char* argv[])
   return 0;
 }
 
-void read_input_xml()
+bool read_model_xml()
+{
+  std::string model_filename =
+    settings::path_input.empty() ? "." : settings::path_input;
+
+  // some string cleanup
+  // a trailing "/" is applied to path_input if it's specified,
+  // remove it for the first attempt at reading the input file
+  if (ends_with(model_filename, "/"))
+    model_filename.pop_back();
+
+  // if the current filename is a directory, append the default model filename
+  if (dir_exists(model_filename))
+    model_filename += "/model.xml";
+
+  // if this file doesn't exist, stop here
+  if (!file_exists(model_filename))
+    return false;
+
+  // try to process the path input as an XML file
+  pugi::xml_document doc;
+  if (!doc.load_file(model_filename.c_str())) {
+    fatal_error(fmt::format(
+      "Error reading from single XML input file '{}'", model_filename));
+  }
+
+  pugi::xml_node root = doc.document_element();
+
+  // Read settings
+  if (!check_for_node(root, "settings")) {
+    fatal_error("No <settings> node present in the model.xml file.");
+  }
+  auto settings_root = root.child("settings");
+
+  // Verbosity
+  if (check_for_node(settings_root, "verbosity")) {
+    settings::verbosity = std::stoi(get_node_value(settings_root, "verbosity"));
+  }
+
+  // To this point, we haven't displayed any output since we didn't know what
+  // the verbosity is. Now that we checked for it, show the title if necessary
+  if (mpi::master) {
+    if (settings::verbosity >= 2)
+      title();
+  }
+
+  write_message(
+    fmt::format("Reading model XML file '{}' ...", model_filename), 5);
+
+  read_settings_xml(settings_root);
+
+  // If other XML files are present, display warning
+  // that they will be ignored
+  auto other_inputs = {"materials.xml", "geometry.xml", "settings.xml",
+    "tallies.xml", "plots.xml"};
+  for (const auto& input : other_inputs) {
+    if (file_exists(settings::path_input + input)) {
+      warning((fmt::format("Other XML file input(s) are present. These files "
+                           "may be ignored in favor of the {} file.",
+        model_filename)));
+      break;
+    }
+  }
+
+  // Read materials and cross sections
+  if (!check_for_node(root, "materials")) {
+    fatal_error(fmt::format(
+      "No <materials> node present in the {} file.", model_filename));
+  }
+
+  read_cross_sections_xml(root.child("materials"));
+  read_materials_xml(root.child("materials"));
+
+  // Read geometry
+  if (!check_for_node(root, "geometry")) {
+    fatal_error(fmt::format(
+      "No <geometry> node present in the {} file.", model_filename));
+  }
+  read_geometry_xml(root.child("geometry"));
+
+  // Final geometry setup and assign temperatures
+  finalize_geometry();
+
+  // Finalize cross sections having assigned temperatures
+  finalize_cross_sections();
+
+  if (check_for_node(root, "tallies"))
+    read_tallies_xml(root.child("tallies"));
+
+  // Initialize distribcell_filters
+  prepare_distribcell();
+
+  if (check_for_node(root, "plots")) {
+    read_plots_xml(root.child("plots"));
+  } else {
+    // When no <plots> element is present in the model.xml file, check for a
+    // regular plots.xml file
+    std::string filename = settings::path_input + "plots.xml";
+    if (file_exists(filename)) {
+      read_plots_xml();
+    }
+  }
+
+  finalize_variance_reduction();
+
+  return true;
+}
+
+void read_separate_xml_files()
 {
   read_settings_xml();
   read_cross_sections_xml();
@@ -301,7 +422,6 @@ void read_input_xml()
 
   // Finalize cross sections having assigned temperatures
   finalize_cross_sections();
-
   read_tallies_xml();
 
   // Initialize distribcell_filters
@@ -310,6 +430,13 @@ void read_input_xml()
   // Read the plots.xml regardless of plot mode in case plots are requested
   // via the API
   read_plots_xml();
+
+  finalize_variance_reduction();
+}
+
+void initial_output()
+{
+  // write initial output
   if (settings::run_mode == RunMode::PLOTTING) {
     // Read plots.xml if it exists
     if (mpi::master && settings::verbosity >= 5)

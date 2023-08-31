@@ -1,9 +1,7 @@
-from collections import OrderedDict
 from collections.abc import Iterable
-from copy import deepcopy
 from math import cos, sin, pi
 from numbers import Real
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 
 import numpy as np
 from uncertainties import UFloat
@@ -14,6 +12,7 @@ from ._xml import get_text
 from .mixin import IDManagerMixin
 from .region import Region, Complement
 from .surface import Halfspace
+from .bounding_box import BoundingBox
 
 
 class Cell(IDManagerMixin):
@@ -86,12 +85,14 @@ class Cell(IDManagerMixin):
         calculated in a stochastic volume calculation and added via the
         :meth:`Cell.add_volume_information` method. For 'distribmat' cells
         it is the total volume of all instances.
-    atoms : collections.OrderedDict
+    atoms : dict
         Mapping of nuclides to the total number of atoms for each nuclide
         present in the cell, or in all of its instances for a 'distribmat'
         fill. For example, {'U235': 1.0e22, 'U238': 5.0e22, ...}.
 
         .. versionadded:: 0.12
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the cell
 
     """
 
@@ -148,9 +149,36 @@ class Cell(IDManagerMixin):
     def name(self):
         return self._name
 
+    @name.setter
+    def name(self, name):
+        if name is not None:
+            cv.check_type('cell name', name, str)
+            self._name = name
+        else:
+            self._name = ''
+
     @property
     def fill(self):
         return self._fill
+
+    @fill.setter
+    def fill(self, fill):
+        if fill is not None:
+            if isinstance(fill, Iterable):
+                for i, f in enumerate(fill):
+                    if f is not None:
+                        cv.check_type('cell.fill[i]', f, openmc.Material)
+
+            elif not isinstance(fill, (openmc.Material, openmc.Lattice,
+                                       openmc.UniverseBase)):
+                msg = (f'Unable to set Cell ID="{self._id}" to use a '
+                       f'non-Material or Universe fill "{fill}"')
+                raise ValueError(msg)
+        self._fill = fill
+
+        # Info about atom content can now be invalid
+        # (since fill has just changed)
+        self._atoms = None
 
     @property
     def fill_type(self):
@@ -169,9 +197,36 @@ class Cell(IDManagerMixin):
     def region(self):
         return self._region
 
+    @region.setter
+    def region(self, region):
+        if region is not None:
+            cv.check_type('cell region', region, Region)
+        self._region = region
+
     @property
     def rotation(self):
         return self._rotation
+
+    @rotation.setter
+    def rotation(self, rotation):
+        cv.check_length('cell rotation', rotation, 3)
+        self._rotation = np.asarray(rotation)
+
+        # Save rotation matrix -- the reason we do this instead of having it be
+        # automatically calculated when the rotation_matrix property is accessed
+        # is so that plotting on a rotated geometry can be done faster.
+        if self._rotation.ndim == 2:
+            # User specified rotation matrix directly
+            self._rotation_matrix = self._rotation
+        else:
+            phi, theta, psi = self.rotation*(-pi/180.)
+            c3, s3 = cos(phi), sin(phi)
+            c2, s2 = cos(theta), sin(theta)
+            c1, s1 = cos(psi), sin(psi)
+            self._rotation_matrix = np.array([
+                [c1*c2, c1*s2*s3 - c3*s1, s1*s3 + c1*c3*s2],
+                [c2*s1, c1*c3 + s1*s2*s3, c3*s1*s2 - c1*s3],
+                [-s2, c2*s3, c2*c3]])
 
     @property
     def rotation_matrix(self):
@@ -181,13 +236,51 @@ class Cell(IDManagerMixin):
     def temperature(self):
         return self._temperature
 
+    @temperature.setter
+    def temperature(self, temperature):
+        # Make sure temperatures are positive
+        cv.check_type('cell temperature', temperature, (Iterable, Real), none_ok=True)
+        if isinstance(temperature, Iterable):
+            cv.check_type('cell temperature', temperature, Iterable, Real)
+            for T in temperature:
+                cv.check_greater_than('cell temperature', T, 0.0, True)
+        elif isinstance(temperature, Real):
+            cv.check_greater_than('cell temperature', temperature, 0.0, True)
+
+        # If this cell is filled with a universe or lattice, propagate
+        # temperatures to all cells contained. Otherwise, simply assign it.
+        if self.fill_type in ('universe', 'lattice'):
+            for c in self.get_all_cells().values():
+                if c.fill_type == 'material':
+                    c._temperature = temperature
+        else:
+            self._temperature = temperature
+
     @property
     def translation(self):
         return self._translation
 
+    @translation.setter
+    def translation(self, translation):
+        cv.check_type('cell translation', translation, Iterable, Real)
+        cv.check_length('cell translation', translation, 3)
+        self._translation = np.asarray(translation)
+
     @property
     def volume(self):
         return self._volume
+
+    @volume.setter
+    def volume(self, volume):
+        if volume is not None:
+            cv.check_type('cell volume', volume, (Real, UFloat))
+            cv.check_greater_than('cell volume', volume, 0.0, equality=True)
+
+        self._volume = volume
+
+        # Info about atom content can now be invalid
+        # (since volume has just changed)
+        self._atoms = None
 
     @property
     def atoms(self):
@@ -222,7 +315,7 @@ class Cell(IDManagerMixin):
                 # Assumes that volume is total volume of all instances
                 # Also assumes that all instances have the same volume
                 partial_volume = self.volume / len(self.fill)
-                self._atoms = OrderedDict()
+                self._atoms = {}
                 for mat in self.fill:
                     for key, atom_per_bcm in mat.get_nuclide_atom_densities().items():
                         # To account for overlap of nuclides between distribmat
@@ -250,8 +343,8 @@ class Cell(IDManagerMixin):
         if self.region is not None:
             return self.region.bounding_box
         else:
-            return (np.array([-np.inf, -np.inf, -np.inf]),
-                    np.array([np.inf, np.inf, np.inf]))
+            return BoundingBox(np.array([-np.inf, -np.inf, -np.inf]),
+                               np.array([np.inf, np.inf, np.inf]))
 
     @property
     def num_instances(self):
@@ -260,98 +353,6 @@ class Cell(IDManagerMixin):
                 'Number of cell instances have not been determined. Call the '
                 'Geometry.determine_paths() method.')
         return self._num_instances
-
-    @name.setter
-    def name(self, name):
-        if name is not None:
-            cv.check_type('cell name', name, str)
-            self._name = name
-        else:
-            self._name = ''
-
-    @fill.setter
-    def fill(self, fill):
-        if fill is not None:
-            if isinstance(fill, Iterable):
-                for i, f in enumerate(fill):
-                    if f is not None:
-                        cv.check_type('cell.fill[i]', f, openmc.Material)
-
-            elif not isinstance(fill, (openmc.Material, openmc.Lattice,
-                                       openmc.UniverseBase)):
-                msg = (f'Unable to set Cell ID="{self._id}" to use a '
-                       f'non-Material or Universe fill "{fill}"')
-                raise ValueError(msg)
-        self._fill = fill
-
-        # Info about atom content can now be invalid
-        # (since fill has just changed)
-        self._atoms = None
-
-    @rotation.setter
-    def rotation(self, rotation):
-        cv.check_length('cell rotation', rotation, 3)
-        self._rotation = np.asarray(rotation)
-
-        # Save rotation matrix -- the reason we do this instead of having it be
-        # automatically calculated when the rotation_matrix property is accessed
-        # is so that plotting on a rotated geometry can be done faster.
-        if self._rotation.ndim == 2:
-            # User specified rotation matrix directly
-            self._rotation_matrix = self._rotation
-        else:
-            phi, theta, psi = self.rotation*(-pi/180.)
-            c3, s3 = cos(phi), sin(phi)
-            c2, s2 = cos(theta), sin(theta)
-            c1, s1 = cos(psi), sin(psi)
-            self._rotation_matrix = np.array([
-                [c1*c2, c1*s2*s3 - c3*s1, s1*s3 + c1*c3*s2],
-                [c2*s1, c1*c3 + s1*s2*s3, c3*s1*s2 - c1*s3],
-                [-s2, c2*s3, c2*c3]])
-
-    @translation.setter
-    def translation(self, translation):
-        cv.check_type('cell translation', translation, Iterable, Real)
-        cv.check_length('cell translation', translation, 3)
-        self._translation = np.asarray(translation)
-
-    @temperature.setter
-    def temperature(self, temperature):
-        # Make sure temperatures are positive
-        cv.check_type('cell temperature', temperature, (Iterable, Real))
-        if isinstance(temperature, Iterable):
-            cv.check_type('cell temperature', temperature, Iterable, Real)
-            for T in temperature:
-                cv.check_greater_than('cell temperature', T, 0.0, True)
-        else:
-            cv.check_greater_than('cell temperature', temperature, 0.0, True)
-
-        # If this cell is filled with a universe or lattice, propagate
-        # temperatures to all cells contained. Otherwise, simply assign it.
-        if self.fill_type in ('universe', 'lattice'):
-            for c in self.get_all_cells().values():
-                if c.fill_type == 'material':
-                    c._temperature = temperature
-        else:
-            self._temperature = temperature
-
-    @region.setter
-    def region(self, region):
-        if region is not None:
-            cv.check_type('cell region', region, Region)
-        self._region = region
-
-    @volume.setter
-    def volume(self, volume):
-        if volume is not None:
-            cv.check_type('cell volume', volume, (Real, UFloat))
-            cv.check_greater_than('cell volume', volume, 0.0, equality=True)
-
-        self._volume = volume
-
-        # Info about atom content can now be invalid
-        # (since volume has just changed)
-        self._atoms = None
 
     def add_volume_information(self, volume_calc):
         """Add volume information to a cell.
@@ -387,13 +388,13 @@ class Cell(IDManagerMixin):
 
         Returns
         -------
-        nuclides : collections.OrderedDict
+        nuclides : dict
             Dictionary whose keys are nuclide names and values are 2-tuples of
             (nuclide, density)
 
         """
 
-        nuclides = OrderedDict()
+        nuclides = {}
 
         if self.fill_type == 'material':
             nuclides.update(self.fill.get_nuclide_densities())
@@ -421,13 +422,13 @@ class Cell(IDManagerMixin):
 
         Returns
         -------
-        cells : collections.orderedDict
+        cells : dict
             Dictionary whose keys are cell IDs and values are :class:`Cell`
             instances
 
         """
 
-        cells = OrderedDict()
+        cells = {}
 
         if memo and self in memo:
             return cells
@@ -445,12 +446,12 @@ class Cell(IDManagerMixin):
 
         Returns
         -------
-        materials : collections.OrderedDict
+        materials : dict
             Dictionary whose keys are material IDs and values are
             :class:`Material` instances
 
         """
-        materials = OrderedDict()
+        materials = {}
         if self.fill_type == 'material':
             materials[self.fill.id] = self.fill
         elif self.fill_type == 'distribmat':
@@ -471,13 +472,13 @@ class Cell(IDManagerMixin):
 
         Returns
         -------
-        universes : collections.OrderedDict
+        universes : dict
             Dictionary whose keys are universe IDs and values are
             :class:`Universe` instances
 
         """
 
-        universes = OrderedDict()
+        universes = {}
 
         if self.fill_type == 'universe':
             universes[self.fill.id] = self.fill
@@ -519,8 +520,14 @@ class Cell(IDManagerMixin):
             paths = self._paths
             self._paths = None
 
-            clone = deepcopy(self)
-            clone.id = None
+            clone = openmc.Cell(name=self.name)
+            clone.volume = self.volume
+            if self.temperature is not None:
+                clone.temperature = self.temperature
+            if self.translation is not None:
+                clone.translation = self.translation
+            if self.rotation is not None:
+                clone.rotation = self.rotation
             clone._num_instances = None
 
             # Restore paths on original instance
@@ -552,12 +559,73 @@ class Cell(IDManagerMixin):
 
         return memo[self]
 
+    def plot(self, *args, **kwargs):
+        """Display a slice plot of the cell.
+
+        .. versionadded:: 0.13.4
+
+        Parameters
+        ----------
+        origin : iterable of float
+            Coordinates at the origin of the plot. If left as None then the
+            bounding box center will be used to attempt to ascertain the origin.
+            Defaults to (0, 0, 0) if the bounding box is not finite
+        width : iterable of float
+            Width of the plot in each basis direction. If left as none then the
+            bounding box width will be used to attempt to ascertain the plot
+            width. Defaults to (10, 10) if the bounding box is not finite
+        pixels : Iterable of int or int
+            If iterable of ints provided, then this directly sets the number of
+            pixels to use in each basis direction. If int provided, then this
+            sets the total number of pixels in the plot and the number of pixels
+            in each basis direction is calculated from this total and the image
+            aspect ratio.
+        basis : {'xy', 'xz', 'yz'}
+            The basis directions for the plot
+        color_by : {'cell', 'material'}
+            Indicate whether the plot should be colored by cell or by material
+        colors : dict
+            Assigns colors to specific materials or cells. Keys are instances of
+            :class:`Cell` or :class:`Material` and values are RGB 3-tuples, RGBA
+            4-tuples, or strings indicating SVG color names. Red, green, blue,
+            and alpha should all be floats in the range [0.0, 1.0], for example:
+
+            .. code-block:: python
+
+               # Make water blue
+               water = openmc.Cell(fill=h2o)
+               universe.plot(..., colors={water: (0., 0., 1.))
+        seed : int
+            Seed for the random number generator
+        openmc_exec : str
+            Path to OpenMC executable.
+        axes : matplotlib.Axes
+            Axes to draw to
+        legend : bool
+            Whether a legend showing material or cell names should be drawn
+        legend_kwargs : dict
+            Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
+        outline : bool
+            Whether outlines between color boundaries should be drawn
+        axis_units : {'km', 'm', 'cm', 'mm'}
+            Units used on the plot axis
+        **kwargs
+            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            Axes containing resulting image
+
+        """
+        return openmc.Universe(cells=[self]).plot(*args, **kwargs)
+
     def create_xml_subelement(self, xml_element, memo=None):
         """Add the cell's xml representation to an incoming xml element
 
         Parameters
         ----------
-        xml_element : xml.etree.ElementTree.Element
+        xml_element : lxml.etree._Element
             XML element to be added to
 
         memo : set or None
@@ -645,12 +713,12 @@ class Cell(IDManagerMixin):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             `<cell>` element
         surfaces : dict
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
         materials : dict
-            Dictionary mapping material IDs to :class:`openmc.Material`
+            Dictionary mapping material ID strings to :class:`openmc.Material`
             instances (defined in :math:`openmc.Geometry.from_xml`)
         get_universe : function
             Function returning universe (defined in

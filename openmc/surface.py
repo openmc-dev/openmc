@@ -1,10 +1,9 @@
 from abc import ABC, abstractmethod
-from collections import OrderedDict
 from collections.abc import Iterable
 from copy import deepcopy
 import math
 from numbers import Real
-from xml.etree import ElementTree as ET
+import lxml.etree as ET
 from warnings import warn, catch_warnings, simplefilter
 
 import numpy as np
@@ -12,6 +11,7 @@ import numpy as np
 from .checkvalue import check_type, check_value, check_length
 from .mixin import IDManagerMixin, IDWarning
 from .region import Region, Intersection, Union
+from .bounding_box import BoundingBox
 
 
 _BOUNDARY_TYPES = ['transmission', 'vacuum', 'reflective', 'periodic', 'white']
@@ -184,18 +184,6 @@ class Surface(IDManagerMixin, ABC):
     def name(self):
         return self._name
 
-    @property
-    def type(self):
-        return self._type
-
-    @property
-    def boundary_type(self):
-        return self._boundary_type
-
-    @property
-    def coefficients(self):
-        return self._coefficients
-
     @name.setter
     def name(self, name):
         if name is not None:
@@ -204,11 +192,23 @@ class Surface(IDManagerMixin, ABC):
         else:
             self._name = ''
 
+    @property
+    def type(self):
+        return self._type
+
+    @property
+    def boundary_type(self):
+        return self._boundary_type
+
     @boundary_type.setter
     def boundary_type(self, boundary_type):
         check_type('boundary type', boundary_type, str)
         check_value('boundary type', boundary_type, _BOUNDARY_TYPES)
         self._boundary_type = boundary_type
+
+    @property
+    def coefficients(self):
+        return self._coefficients
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -233,8 +233,10 @@ class Surface(IDManagerMixin, ABC):
             desired half-space
 
         """
-        return (np.array([-np.inf, -np.inf, -np.inf]),
-                np.array([np.inf, np.inf, np.inf]))
+        return BoundingBox(
+            np.array([-np.inf, -np.inf, -np.inf]),
+            np.array([np.inf, np.inf, np.inf])
+        )
 
     def clone(self, memo=None):
         """Create a copy of this surface with a new unique ID.
@@ -390,7 +392,7 @@ class Surface(IDManagerMixin, ABC):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing source data
 
         """
@@ -414,7 +416,7 @@ class Surface(IDManagerMixin, ABC):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -539,7 +541,7 @@ class PlaneMixin:
                 else:
                     ur = np.array([v if not np.isnan(v) else np.inf for v in vals])
 
-        return (ll, ur)
+        return BoundingBox(ll, ur)
 
     def evaluate(self, point):
         """Evaluate the surface equation at a given point.
@@ -621,7 +623,7 @@ class PlaneMixin:
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing source data
 
         """
@@ -737,15 +739,24 @@ class Plane(PlaneMixin, Surface):
         Plane
             Plane that passes through the three points
 
+        Raises
+        ------
+        ValueError
+            If all three points lie along a line
+
         """
         # Convert to numpy arrays
-        p1 = np.asarray(p1)
-        p2 = np.asarray(p2)
-        p3 = np.asarray(p3)
+        p1 = np.asarray(p1, dtype=float)
+        p2 = np.asarray(p2, dtype=float)
+        p3 = np.asarray(p3, dtype=float)
 
         # Find normal vector to plane by taking cross product of two vectors
         # connecting p1->p2 and p1->p3
         n = np.cross(p2 - p1, p3 - p1)
+
+        # Check for points along a line
+        if np.allclose(n, 0.):
+            raise ValueError("All three points appear to lie along a line.")
 
         # The equation of the plane will by n·(<x,y,z> - p1) = 0. Determine
         # coefficients a, b, c, and d based on that
@@ -1196,8 +1207,10 @@ class Cylinder(QuadricMixin, Surface):
             return (np.array(ll), np.array(ur))
 
         elif side == '+':
-            return (np.array([-np.inf, -np.inf, -np.inf]),
-                    np.array([np.inf, np.inf, np.inf]))
+            return BoundingBox(
+                np.array([-np.inf, -np.inf, -np.inf]),
+                np.array([np.inf, np.inf, np.inf])
+            )
 
     def _get_base_coeffs(self):
         # Get x, y, z coordinates of two points
@@ -1240,7 +1253,7 @@ class Cylinder(QuadricMixin, Surface):
         Parameters
         ----------
         p1, p2 : 3-tuples
-            Points that pass through the plane, p1 will be used as (x0, y0, z0)
+            Points that pass through the cylinder axis.
         r : float, optional
             Radius of the cylinder in [cm]. Defaults to 1.
         kwargs : dict
@@ -1266,7 +1279,7 @@ class Cylinder(QuadricMixin, Surface):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing source data
 
         """
@@ -1359,11 +1372,15 @@ class XCylinder(QuadricMixin, Surface):
 
     def bounding_box(self, side):
         if side == '-':
-            return (np.array([-np.inf, self.y0 - self.r, self.z0 - self.r]),
-                    np.array([np.inf, self.y0 + self.r, self.z0 + self.r]))
+            return BoundingBox(
+                np.array([-np.inf, self.y0 - self.r, self.z0 - self.r]),
+                np.array([np.inf, self.y0 + self.r, self.z0 + self.r])
+            )
         elif side == '+':
-            return (np.array([-np.inf, -np.inf, -np.inf]),
-                    np.array([np.inf, np.inf, np.inf]))
+            return BoundingBox(
+                np.array([-np.inf, -np.inf, -np.inf]),
+                np.array([np.inf, np.inf, np.inf])
+            )
 
     def evaluate(self, point):
         y = point[1] - self.y0
@@ -1450,11 +1467,15 @@ class YCylinder(QuadricMixin, Surface):
 
     def bounding_box(self, side):
         if side == '-':
-            return (np.array([self.x0 - self.r, -np.inf, self.z0 - self.r]),
-                    np.array([self.x0 + self.r, np.inf, self.z0 + self.r]))
+            return BoundingBox(
+                np.array([self.x0 - self.r, -np.inf, self.z0 - self.r]),
+                np.array([self.x0 + self.r, np.inf, self.z0 + self.r])
+            )
         elif side == '+':
-            return (np.array([-np.inf, -np.inf, -np.inf]),
-                    np.array([np.inf, np.inf, np.inf]))
+            return BoundingBox(
+                np.array([-np.inf, -np.inf, -np.inf]),
+                np.array([np.inf, np.inf, np.inf])
+            )
 
     def evaluate(self, point):
         x = point[0] - self.x0
@@ -1541,11 +1562,15 @@ class ZCylinder(QuadricMixin, Surface):
 
     def bounding_box(self, side):
         if side == '-':
-            return (np.array([self.x0 - self.r, self.y0 - self.r, -np.inf]),
-                    np.array([self.x0 + self.r, self.y0 + self.r, np.inf]))
+            return BoundingBox(
+                np.array([self.x0 - self.r, self.y0 - self.r, -np.inf]),
+                np.array([self.x0 + self.r, self.y0 + self.r, np.inf])
+            )
         elif side == '+':
-            return (np.array([-np.inf, -np.inf, -np.inf]),
-                    np.array([np.inf, np.inf, np.inf]))
+            return BoundingBox(
+                np.array([-np.inf, -np.inf, -np.inf]),
+                np.array([np.inf, np.inf, np.inf])
+            )
 
     def evaluate(self, point):
         x = point[0] - self.x0
@@ -1631,13 +1656,15 @@ class Sphere(QuadricMixin, Surface):
 
     def bounding_box(self, side):
         if side == '-':
-            return (np.array([self.x0 - self.r, self.y0 - self.r,
-                              self.z0 - self.r]),
-                    np.array([self.x0 + self.r, self.y0 + self.r,
-                              self.z0 + self.r]))
+            return BoundingBox(
+                np.array([self.x0 - self.r, self.y0 - self.r, self.z0 - self.r]),
+                np.array([self.x0 + self.r, self.y0 + self.r, self.z0 + self.r])
+            )
         elif side == '+':
-            return (np.array([-np.inf, -np.inf, -np.inf]),
-                    np.array([np.inf, np.inf, np.inf]))
+            return BoundingBox(
+                np.array([-np.inf, -np.inf, -np.inf]),
+                np.array([np.inf, np.inf, np.inf])
+            )
 
     def evaluate(self, point):
         x = point[0] - self.x0
@@ -1774,7 +1801,7 @@ class Cone(QuadricMixin, Surface):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing source data
 
         """
@@ -2253,11 +2280,15 @@ class XTorus(TorusMixin, Surface):
         x0, y0, z0 = self.x0, self.y0, self.z0
         a, b, c = self.a, self.b, self.c
         if side == '-':
-            return (np.array([x0 - b, y0 - a - c, z0 - a - c]),
-                    np.array([x0 + b, y0 + a + c, z0 + a + c]))
+            return BoundingBox(
+                np.array([x0 - b, y0 - a - c, z0 - a - c]),
+                np.array([x0 + b, y0 + a + c, z0 + a + c])
+            )
         elif side == '+':
-            return (np.array([-np.inf, -np.inf, -np.inf]),
-                    np.array([np.inf, np.inf, np.inf]))
+            return BoundingBox(
+                np.array([-np.inf, -np.inf, -np.inf]),
+                np.array([np.inf, np.inf, np.inf])
+            )
 
 class YTorus(TorusMixin, Surface):
     r"""A torus of the form :math:`(y - y_0)^2/B^2 + (\sqrt{(x - x_0)^2 + (z -
@@ -2324,11 +2355,16 @@ class YTorus(TorusMixin, Surface):
         x0, y0, z0 = self.x0, self.y0, self.z0
         a, b, c = self.a, self.b, self.c
         if side == '-':
-            return (np.array([x0 - a - c, y0 - b, z0 - a - c]),
-                    np.array([x0 + a + c, y0 + b, z0 + a + c]))
+            return BoundingBox(
+                np.array([x0 - a - c, y0 - b, z0 - a - c]),
+                np.array([x0 + a + c, y0 + b, z0 + a + c])
+            )
         elif side == '+':
-            return (np.array([-np.inf, -np.inf, -np.inf]),
-                    np.array([np.inf, np.inf, np.inf]))
+            return BoundingBox(
+                np.array([-np.inf, -np.inf, -np.inf]),
+                np.array([np.inf, np.inf, np.inf])
+            )
+
 
 class ZTorus(TorusMixin, Surface):
     r"""A torus of the form :math:`(z - z_0)^2/B^2 + (\sqrt{(x - x_0)^2 + (y -
@@ -2395,11 +2431,15 @@ class ZTorus(TorusMixin, Surface):
         x0, y0, z0 = self.x0, self.y0, self.z0
         a, b, c = self.a, self.b, self.c
         if side == '-':
-            return (np.array([x0 - a - c, y0 - a - c, z0 - b]),
-                    np.array([x0 + a + c, y0 + a + c, z0 + b]))
+            return BoundingBox(
+                np.array([x0 - a - c, y0 - a - c, z0 - b]),
+                np.array([x0 + a + c, y0 + a + c, z0 + b])
+            )
         elif side == '+':
-            return (np.array([-np.inf, -np.inf, -np.inf]),
-                    np.array([np.inf, np.inf, np.inf]))
+            return BoundingBox(
+                np.array([-np.inf, -np.inf, -np.inf]),
+                np.array([np.inf, np.inf, np.inf])
+            )
 
 
 class Halfspace(Region):
@@ -2434,7 +2474,7 @@ class Halfspace(Region):
         Surface which divides Euclidean space.
     side : {'+', '-'}
         Indicates whether the positive or negative half-space is used.
-    bounding_box : tuple of numpy.ndarray
+    bounding_box : openmc.BoundingBox
         Lower-left and upper-right coordinates of an axis-aligned bounding box
 
     """
@@ -2508,17 +2548,17 @@ class Halfspace(Region):
 
         Parameters
         ----------
-        surfaces: collections.OrderedDict, optional
+        surfaces : dict, optional
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
 
         Returns
         -------
-        surfaces: collections.OrderedDict
+        surfaces : dict
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
 
         """
         if surfaces is None:
-            surfaces = OrderedDict()
+            surfaces = {}
 
         surfaces[self.surface.id] = self.surface
         return surfaces

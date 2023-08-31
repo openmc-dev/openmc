@@ -9,25 +9,17 @@ from itertools import chain
 import math
 import os
 import re
-from collections import OrderedDict, defaultdict, namedtuple
+from collections import defaultdict, namedtuple
 from collections.abc import Mapping, Iterable
 from numbers import Real, Integral
 from warnings import warn
 
 from openmc.checkvalue import check_type, check_greater_than
-from openmc.data import gnd_name, zam, DataLibrary
+from openmc.data import gnds_name, zam, DataLibrary
 from openmc.exceptions import DataError
 from .nuclide import FissionYieldDistribution
 
-# Try to use lxml if it is available. It preserves the order of attributes and
-# provides a pretty-printer by default. If not available,
-# use OpenMC function to pretty print.
-try:
-    import lxml.etree as ET
-    _have_lxml = True
-except ImportError:
-    import xml.etree.ElementTree as ET
-    _have_lxml = False
+import lxml.etree as ET
 import scipy.sparse as sp
 
 import openmc.data
@@ -135,14 +127,14 @@ def replace_missing(product, decay_data):
     Parameters
     ----------
     product : str
-        Name of product in GND format, e.g. 'Y86_m1'.
+        Name of product in GNDS format, e.g. 'Y86_m1'.
     decay_data : dict
         Dictionary of decay data
 
     Returns
     -------
     product : str
-        Replacement for missing product in GND format.
+        Replacement for missing product in GNDS format.
 
     """
     # Determine atomic number, mass number, and metastable state
@@ -213,7 +205,7 @@ def replace_missing_fpy(actinide, fpy_data, decay_data):
     # Check if metastable state has data (e.g., Am242m)
     Z, A, m = zam(actinide)
     if m == 0:
-        metastable = gnd_name(Z, A, 1)
+        metastable = gnds_name(Z, A, 1)
         if metastable in fpy_data:
             return metastable
 
@@ -222,7 +214,7 @@ def replace_missing_fpy(actinide, fpy_data, decay_data):
     while isotone in decay_data:
         Z += 1
         A += 1
-        isotone = gnd_name(Z, A, 0)
+        isotone = gnds_name(Z, A, 0)
         if isotone in fpy_data:
             return isotone
 
@@ -231,7 +223,7 @@ def replace_missing_fpy(actinide, fpy_data, decay_data):
     while isotone in decay_data:
         Z -= 1
         A -= 1
-        isotone = gnd_name(Z, A, 0)
+        isotone = gnds_name(Z, A, 0)
         if isotone in fpy_data:
             return isotone
 
@@ -256,7 +248,7 @@ class Chain:
         Nuclides present in the chain.
     reactions : list of str
         Reactions that are tracked in the depletion chain
-    nuclide_dict : OrderedDict of str to int
+    nuclide_dict : dict of str to int
         Maps a nuclide name to an index in nuclides.
     fission_yields : None or iterable of dict
         List of effective fission yields for materials. Each dictionary
@@ -272,7 +264,7 @@ class Chain:
     def __init__(self):
         self.nuclides = []
         self.reactions = []
-        self.nuclide_dict = OrderedDict()
+        self.nuclide_dict = {}
         self._fission_yields = None
 
     def __contains__(self, nuclide):
@@ -357,7 +349,7 @@ class Chain:
         reactions = {}
         for f in neutron_files:
             evaluation = openmc.data.endf.Evaluation(f)
-            name = evaluation.gnd_name
+            name = evaluation.gnds_name
             reactions[name] = {}
             for mf, mt, nc, mod in evaluation.reaction_list:
                 if mf == 3:
@@ -565,11 +557,7 @@ class Chain:
             root_elem.append(nuclide.to_xml_element())
 
         tree = ET.ElementTree(root_elem)
-        if _have_lxml:
-            tree.write(str(filename), encoding='utf-8', pretty_print=True)
-        else:
-            clean_indentation(root_elem)
-            tree.write(str(filename), encoding='utf-8')
+        tree.write(str(filename), encoding='utf-8', pretty_print=True)
 
     def get_default_fission_yields(self):
         """Return fission yields at lowest incident neutron energy
@@ -630,14 +618,26 @@ class Chain:
 
             # Gain from radioactive decay
             if nuc.n_decay_modes != 0:
-                for _, target, branching_ratio in nuc.decay_modes:
-                    # Allow for total annihilation for debug purposes
-                    if target is not None:
-                        branch_val = branching_ratio * decay_constant
+                for decay_type, target, branching_ratio in nuc.decay_modes:
+                    branch_val = branching_ratio * decay_constant
 
-                        if branch_val != 0.0:
+                    # Allow for total annihilation for debug purposes
+                    if branch_val != 0.0:
+                        if target is not None:
                             k = self.nuclide_dict[target]
                             matrix[k, i] += branch_val
+
+                        # Produce alphas and protons from decay
+                        if 'alpha' in decay_type:
+                            k = self.nuclide_dict.get('He4')
+                            if k is not None:
+                                count = decay_type.count('alpha')
+                                matrix[k, i] += count * branch_val
+                        elif 'p' in decay_type:
+                            k = self.nuclide_dict.get('H1')
+                            if k is not None:
+                                count = decay_type.count('p')
+                                matrix[k, i] += count * branch_val
 
             if nuc.name in rates.index_nuc:
                 # Extract all reactions for this nuclide in this cell
@@ -681,6 +681,66 @@ class Chain:
                 reactions.clear()
 
         # Use DOK matrix as intermediate representation, then convert to CSR and return
+        n = len(self)
+        matrix_dok = sp.dok_matrix((n, n))
+        dict.update(matrix_dok, matrix)
+        return matrix_dok.tocsr()
+
+    def form_rr_term(self, transfer_rates, materials):
+        """Function to form the transfer rate term matrices.
+
+        .. versionadded:: 0.13.4
+
+        Parameters
+        ----------
+        transfer_rates : openmc.deplete.TransferRates
+            Instance of openmc.deplete.TransferRates
+        materials : string or two-tuple of strings
+            Two cases are possible:
+
+            1) Material ID as string:
+            Nuclide transfer only. In this case the transfer rate terms will be
+            subtracted from the respective depletion matrix
+
+            2) Two-tuple of material IDs as strings:
+            Nuclide transfer from one material into another.
+            The pair is assumed to be
+            ``(destination_material, source_material)``, where
+            ``destination_material`` and ``source_material`` are the nuclide
+            receiving and losing materials, respectively.
+            The transfer rate terms get placed in the final matrix with indexing
+            position corresponding to the ID of the materials set.
+
+        Returns
+        -------
+        scipy.sparse.csr_matrix
+            Sparse matrix representing transfer term.
+
+        """
+        matrix = defaultdict(float)
+
+        for i, nuclide in enumerate(self.nuclides):
+            element = re.split(r'\d+', nuclide.name)[0]
+            # Build transfer terms matrices
+            if isinstance(materials, str):
+                material = materials
+                components = transfer_rates.get_components(material)
+                if element in components:
+                    matrix[i, i] = transfer_rates.get_transfer_rate(material, element)
+                elif nuclide.name in components:
+                    matrix[i, i] = transfer_rates.get_transfer_rate(material, nuclide.name)
+                else:
+                    matrix[i, i] = 0.0
+            #Build transfer terms matrices
+            elif isinstance(materials, tuple):
+                destination_material, material = materials
+                if transfer_rates.get_destination_material(material, element) == destination_material:
+                    matrix[i, i] = transfer_rates.get_transfer_rate(material, element)
+                elif transfer_rates.get_destination_material(material, nuclide.name) == destination_material:
+                    matrix[i, i] = transfer_rates.get_transfer_rate(material, nuclide.name)
+                else:
+                    matrix[i, i] = 0.0
+            #Nothing else is allowed
         n = len(self)
         matrix_dok = sp.dok_matrix((n, n))
         dict.update(matrix_dok, matrix)
@@ -892,7 +952,7 @@ class Chain:
                 ground_target = grounds.get(parent_name)
                 if ground_target is None:
                     pz, pa, pm = zam(parent_name)
-                    ground_target = gnd_name(pz, pa + 1, 0)
+                    ground_target = gnds_name(pz, pa + 1, 0)
                 new_ratios[ground_target] = ground_br
                 parent.add_reaction(reaction, ground_target, rxn_Q, ground_br)
 

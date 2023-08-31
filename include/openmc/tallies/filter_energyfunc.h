@@ -24,7 +24,8 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override { return "energyfunction"; }
+  std::string type_str() const override { return "energyfunction"; }
+  FilterType type() const override { return FilterType::ENERGY_FUNCTION; }
 
   void from_xml(pugi::xml_node node) override;
 

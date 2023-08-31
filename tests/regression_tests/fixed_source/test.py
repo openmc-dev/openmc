@@ -48,8 +48,8 @@ def test_fixed_source():
     model.settings.batches = 10
     model.settings.particles = 100
     model.settings.temperature = {'default': 294}
-    model.settings.source = openmc.Source(space=openmc.stats.Point(),
-                                          strength=10.0)
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Point(),
+                                                     strength=10.0)
 
     tally = openmc.Tally()
     tally.scores = ['flux']

@@ -17,6 +17,34 @@
 
 namespace openmc {
 
+enum class FilterType {
+  AZIMUTHAL,
+  CELLBORN,
+  CELLFROM,
+  CELL,
+  CELL_INSTANCE,
+  COLLISION,
+  DELAYED_GROUP,
+  DISTRIBCELL,
+  ENERGY_FUNCTION,
+  ENERGY,
+  ENERGY_OUT,
+  LEGENDRE,
+  MATERIAL,
+  MESH,
+  MESH_SURFACE,
+  MU,
+  PARTICLE,
+  POLAR,
+  SPHERICAL_HARMONICS,
+  SPATIAL_LEGENDRE,
+  SURFACE,
+  TIME,
+  UNIVERSE,
+  ZERNIKE,
+  ZERNIKE_RADIAL
+};
+
 //==============================================================================
 //! Modifies tally score events.
 //==============================================================================
@@ -58,7 +86,8 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  virtual std::string type() const = 0;
+  virtual std::string type_str() const = 0;
+  virtual FilterType type() const = 0;
 
   //! Matches a tally event to a set of filter bins and weights.
   //!
@@ -72,7 +101,7 @@ public:
   //! Writes data describing this filter to an HDF5 statepoint group.
   virtual void to_statepoint(hid_t filter_group) const
   {
-    write_dataset(filter_group, "type", type());
+    write_dataset(filter_group, "type", type_str());
     write_dataset(filter_group, "n_bins", n_bins_);
   }
 
@@ -127,6 +156,25 @@ extern vector<unique_ptr<Filter>> tally_filters;
 
 //! Make sure index corresponds to a valid filter
 int verify_filter(int32_t index);
+
+//==============================================================================
+// Filter implementation
+//==============================================================================
+
+template<typename T>
+T* Filter::create(int32_t id)
+{
+  static_assert(std::is_base_of<Filter, T>::value,
+    "Type specified is not derived from openmc::Filter");
+  // Create filter and add to filters vector
+  auto filter = make_unique<T>();
+  auto ptr_out = filter.get();
+  model::tally_filters.emplace_back(std::move(filter));
+  // Assign ID
+  model::tally_filters.back()->set_id(id);
+
+  return ptr_out;
+}
 
 } // namespace openmc
 #endif // OPENMC_TALLIES_FILTER_H

@@ -1,5 +1,5 @@
 from math import sqrt
-import xml.etree.ElementTree as ET
+import lxml.etree as ET
 
 import openmc
 import pytest

@@ -58,9 +58,9 @@ void collision(Particle& p)
     sample_positron_reaction(p);
     break;
   }
-    
+
   if (settings::weight_windows_on &&
-    settings::weight_window_checkpoint_collision) {
+      settings::weight_window_checkpoint_collision) {
     apply_weight_windows(p);
   }
 

@@ -316,6 +316,38 @@ Tally::Tally(pugi::xml_node node)
     }
   }
 
+  // =======================================================================
+  // SET GAUSSIAN ENERGY BROADENING
+  if (check_for_node(node, "gaussian-energy-broadening")) {
+    if (settings::run_CE == false) {
+      // Cannot use Gaussian broadening in a MG problem
+      throw std::runtime_error {fmt::format("Cannot use Gaussian energy broadening in a multi-group problem. Found on tally {}", id_)};
+    }
+
+    auto params = get_node_array<double>(node, "gaussian-energy-broadening");
+
+    if (params.size() != 3) {
+      throw std::runtime_error {fmt::format("Gaussian energy broadening was given {} parameters instead of 3 on tally {}", params.size(), id_)};
+    }
+
+    gaussian_energy_broadening_.active = true;
+    gaussian_energy_broadening_.a = params[0];
+    gaussian_energy_broadening_.b = params[1];
+    gaussian_energy_broadening_.c = params[2];
+
+    if (gaussian_energy_broadening_.a < 0.) {
+      throw std::runtime_error {fmt::format("Gaussian energy broadening parameter a is < 0 on tally {}", id_)};
+    }
+
+    if (gaussian_energy_broadening_.b < 0.) {
+      throw std::runtime_error {fmt::format("Gaussian energy broadening parameter b is < 0 on tally {}", id_)};
+    }
+
+    if (gaussian_energy_broadening_.c < 0.) {
+      throw std::runtime_error {fmt::format("Gaussian energy broadening parameter c is < 0 on tally {}", id_)};
+    }
+  }
+
 #ifdef LIBMESH
   // ensure a tracklength tally isn't used with a libMesh filter
   for (auto i : this->filters_) {

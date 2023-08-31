@@ -8,6 +8,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
+#include "openmc/random_dist.h"
 #include "openmc/reaction_product.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
@@ -140,6 +141,28 @@ void FilterBinIter::compute_index_weight()
 //==============================================================================
 // Non-member functions
 //==============================================================================
+
+//! Helper function to apply Gaussian Energy Broadening
+
+void apply_geb(const Tally::GaussianEnergyBroadening& geb, Particle& p) {
+  if (geb.active) {
+    // Calculate the FWHM
+    const double FWHM = geb.a + geb.b*std::sqrt(p.E_last() + geb.c * p.E_last() * p.E_last());
+    
+    // Calculate sigma of the gaussian
+    constexpr double sigma_coeff = 1. / (4. * std::log(2.));
+    const double sigma = sigma_coeff * FWHM;
+
+    // Sample new energy
+    double E = normal_variate(p.E_last(), sigma, p.current_seed());
+
+    // Set E_last to the sampled energy. We only do this however if we
+    // sampled a valid energy.
+    if (E > 0.) {
+      p.E_last() = E;
+    }
+  }
+}
 
 //! Helper function used to increment tallies with a delayed group filter.
 
@@ -2250,13 +2273,24 @@ void score_analog_tally_ce(Particle& p)
   for (auto i_tally : model::active_analog_tallies) {
     const Tally& tally {*model::tallies[i_tally]};
 
+    // Save the original incident energy, in case we change it with Gaussian
+    // energy broadening.
+    const double orig_E_last = p.E_last();
+    
+    // Do Gaussian Energy Broadening
+    apply_geb(tally.gaussian_energy_broadening_, p);
+
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
     auto filter_iter = FilterBinIter(tally, p);
     auto end = FilterBinIter(tally, true, &p.filter_matches());
-    if (filter_iter == end)
+    if (filter_iter == end) {
+      // Reset E_last of the particle, in case it was changed with Gaussian
+      // energy broadening.
+      p.E_last() = orig_E_last;
       continue;
+    }
 
     // Loop over filter bins.
     for (; filter_iter != end; ++filter_iter) {
@@ -2276,6 +2310,10 @@ void score_analog_tally_ce(Particle& p)
       }
     }
 
+    // Reset E_last of the particle, in case it was changed with Gaussian
+    // energy broadening.
+    p.E_last() = orig_E_last;
+
     // If the user has specified that we can assume all tallies are spatially
     // separate, this implies that once a tally has been scored to, we needn't
     // check the others. This cuts down on overhead when there are many
@@ -2293,6 +2331,8 @@ void score_analog_tally_mg(Particle& p)
 {
   for (auto i_tally : model::active_analog_tallies) {
     const Tally& tally {*model::tallies[i_tally]};
+
+    // No Gaussian energy broadening in MG tallies
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2349,13 +2389,24 @@ void score_tracklength_tally(Particle& p, double distance)
   for (auto i_tally : model::active_tracklength_tallies) {
     const Tally& tally {*model::tallies[i_tally]};
 
+    // Save the original incident energy, in case we change it with Gaussian
+    // energy broadening.
+    const double orig_E_last = p.E_last();
+    
+    // Do Gaussian Energy Broadening
+    apply_geb(tally.gaussian_energy_broadening_, p);
+
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
     auto filter_iter = FilterBinIter(tally, p);
     auto end = FilterBinIter(tally, true, &p.filter_matches());
-    if (filter_iter == end)
+    if (filter_iter == end) {
+      // Reset E_last of the particle, in case it was changed with Gaussian
+      // energy broadening.
+      p.E_last() = orig_E_last;
       continue;
+    }
 
     // Loop over filter bins.
     for (; filter_iter != end; ++filter_iter) {
@@ -2402,6 +2453,10 @@ void score_tracklength_tally(Particle& p, double distance)
       }
     }
 
+    // Reset E_last of the particle, in case it was changed with Gaussian
+    // energy broadening.
+    p.E_last() = orig_E_last;
+
     // If the user has specified that we can assume all tallies are spatially
     // separate, this implies that once a tally has been scored to, we needn't
     // check the others. This cuts down on overhead when there are many
@@ -2429,13 +2484,24 @@ void score_collision_tally(Particle& p)
   for (auto i_tally : model::active_collision_tallies) {
     const Tally& tally {*model::tallies[i_tally]};
 
+    // Save the original incident energy, in case we change it with Gaussian
+    // energy broadening.
+    const double orig_E_last = p.E_last();
+    
+    // Do Gaussian Energy Broadening
+    apply_geb(tally.gaussian_energy_broadening_, p);
+
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
     auto filter_iter = FilterBinIter(tally, p);
     auto end = FilterBinIter(tally, true, &p.filter_matches());
-    if (filter_iter == end)
+    if (filter_iter == end) {
+      // Reset E_last of the particle, in case it was changed with Gaussian
+      // energy broadening.
+      p.E_last() = orig_E_last;
       continue;
+    }
 
     // Loop over filter bins.
     for (; filter_iter != end; ++filter_iter) {
@@ -2480,6 +2546,10 @@ void score_collision_tally(Particle& p)
       }
     }
 
+    // Reset E_last of the particle, in case it was changed with Gaussian
+    // energy broadening.
+    p.E_last() = orig_E_last;
+
     // If the user has specified that we can assume all tallies are spatially
     // separate, this implies that once a tally has been scored to, we needn't
     // check the others. This cuts down on overhead when there are many
@@ -2500,13 +2570,24 @@ void score_surface_tally(Particle& p, const vector<int>& tallies)
   for (auto i_tally : tallies) {
     auto& tally {*model::tallies[i_tally]};
 
+    // Save the original incident energy, in case we change it with Gaussian
+    // energy broadening.
+    const double orig_E_last = p.E_last();
+    
+    // Do Gaussian Energy Broadening
+    apply_geb(tally.gaussian_energy_broadening_, p);
+
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
     // assume_separate break below.
     auto filter_iter = FilterBinIter(tally, p);
     auto end = FilterBinIter(tally, true, &p.filter_matches());
-    if (filter_iter == end)
+    if (filter_iter == end) {
+      // Reset E_last of the particle, in case it was changed with Gaussian
+      // energy broadening.
+      p.E_last() = orig_E_last;
       continue;
+    }
 
     // Loop over filter bins.
     for (; filter_iter != end; ++filter_iter) {
@@ -2523,6 +2604,10 @@ void score_surface_tally(Particle& p, const vector<int>& tallies)
         tally.results_(filter_index, score_index, TallyResult::VALUE) += score;
       }
     }
+
+    // Reset E_last of the particle, in case it was changed with Gaussian
+    // energy broadening.
+    p.E_last() = orig_E_last;
 
     // If the user has specified that we can assume all tallies are spatially
     // separate, this implies that once a tally has been scored to, we needn't

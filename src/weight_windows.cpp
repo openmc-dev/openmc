@@ -56,7 +56,10 @@ void apply_weight_windows(Particle& p)
   // skip dead or no energy
   if (p.E() <= 0 || !p.alive())
     return;
-
+  // skip particles other than neutrons and photons
+  if (p.type() != ParticleType::neutron && p.type() != ParticleType::photon)
+    return;
+    
   bool in_domain = false;
   // TODO: this is a linear search - should do something more clever
   WeightWindow weight_window;

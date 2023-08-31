@@ -273,19 +273,9 @@ void Particle::event_cross_surface()
   } else {
     // Particle crosses surface
     cross_surface();
-    switch (this->type()) {
-    case ParticleType::neutron:
-      if (this->alive() && settings::weight_windows_on &&
-          settings::weight_window_checkpoint_surface) {
-        apply_weight_windows(*this);
-      }
-      break;
-    case ParticleType::photon:
-      if (this->alive() && settings::weight_windows_on &&
-          settings::weight_window_checkpoint_surface) {
-        apply_weight_windows(*this);
-      }
-      break;
+    if (settings::weight_windows_on &&
+        settings::weight_window_checkpoint_surface) {
+      apply_weight_windows(*this);
     }
     event() = TallyEvent::SURFACE;
   }

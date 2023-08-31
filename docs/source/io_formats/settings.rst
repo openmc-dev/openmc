@@ -1201,6 +1201,14 @@ mesh-based weight windows.
         *Default*: 5.0
 
 --------------------------------------
+``<weight_window_checkpoints>`` Element
+--------------------------------------
+The ``<weight_window_checkpoints>`` element is a dict which indicates the checkpoints
+for weight window split/roulette (surface, collision or both).
+
+    *Default*: {'surface': False, 'collision': True}
+
+--------------------------------------
 ``<weight_windows_file>`` Element
 --------------------------------------
 

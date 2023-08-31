@@ -1717,11 +1717,11 @@ class Settings:
     def _weight_window_checkpoints_from_xml_element(self, root):
         elem = root.find('weight_window_checkpoints')
         if elem is not None:
-            for key in ('collision', 'surface'):
-                value = get_text(elem, key)
-                if value is not None:
-                    self.weight_window_checkpoints[key] = value
-
+            return
+        for key in ('collision', 'surface'):
+            value = get_text(elem, key)
+            if value is not None:
+                self.weight_window_checkpoints[key] = value
     def _max_splits_from_xml_element(self, root):
         text = get_text(root, 'max_splits')
         if text is not None:

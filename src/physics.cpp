@@ -59,10 +59,8 @@ void collision(Particle& p)
     break;
   }
 
-  if (settings::weight_windows_on &&
-      settings::weight_window_checkpoint_collision) {
+  if (settings::weight_window_checkpoint_collision)
     apply_weight_windows(p);
-  }
 
   // Kill particle if energy falls below cutoff
   int type = static_cast<int>(p.type());

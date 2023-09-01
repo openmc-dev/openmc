@@ -954,8 +954,7 @@ class Settings:
     @weight_window_checkpoints.setter
     def weight_window_checkpoints(self, weight_window_checkpoints: dict):
         for key in weight_window_checkpoints.keys():
-            if key not in ('collision', 'surface'):
-                raise ValueError('Wrong values on weight_window_checkpoints. Use either \"collision\" or \"surface\".')
+            cv.check_value('weight_window_checkpoints', key, ('collision', 'surface'))
         self._weight_window_checkpoints = weight_window_checkpoints
     
     @property

@@ -273,10 +273,8 @@ void Particle::event_cross_surface()
   } else {
     // Particle crosses surface
     cross_surface();
-    if (settings::weight_windows_on &&
-        settings::weight_window_checkpoint_surface) {
+    if (settings::weight_window_checkpoint_surface)
       apply_weight_windows(*this);
-    }
     event() = TallyEvent::SURFACE;
   }
   // Score cell to cell partial currents

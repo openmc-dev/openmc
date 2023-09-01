@@ -349,6 +349,10 @@ std::vector<T> binned_point_search(
           sample_bin->copy_untested_cells(possible_cells, untested_cells);
           point.cell_ = univ.find_cell_for_point(untested_cells, point.pos_);
 
+          if (point.cell_ == -1) {
+            point.cell_ = univ.find_cell_for_point(univ.cells_, point.pos_);
+          }
+
           sample_bin->insert(point.cell_);
         } // else don't bother inserting
 

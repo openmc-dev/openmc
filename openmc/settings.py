@@ -1724,6 +1724,7 @@ class Settings:
             value = get_text(elem, key)
             if value is not None:
                 self.weight_window_checkpoints[key] = value
+
     def _max_splits_from_xml_element(self, root):
         text = get_text(root, 'max_splits')
         if text is not None:

@@ -43,17 +43,18 @@ def test_from_array():
                      [0., 0.],
                      [0., 0.1],
                      [0., 0.1]])
+    data.shape = (12, 2, 1)
 
-    MicroXS.from_array(nuclides, reactions, data)
+    MicroXS(data, nuclides, reactions)
     with pytest.raises(ValueError, match=r'Nuclides list of length \d* and '
                        r'reactions array of length \d* do not '
-                       r'match dimensions of data array of shape \(\d*\,d*\)'):
-        MicroXS.from_array(nuclides, reactions, data[:, 0])
+                       r'match dimensions of data array of shape \(\d*\, \d*\)'):
+        MicroXS(data[:, 0], nuclides, reactions)
 
 def test_csv():
     ref_xs = MicroXS.from_csv(ONE_GROUP_XS)
     ref_xs.to_csv('temp_xs.csv')
     temp_xs = MicroXS.from_csv('temp_xs.csv')
-    assert np.all(ref_xs == temp_xs)
+    assert np.all(ref_xs.data == temp_xs.data)
     remove('temp_xs.csv')
 

@@ -57,6 +57,16 @@ The :class:`CoupledOperator` and :class:`IndependentOperator` classes must also
 have some knowledge of how nuclides transmute and decay. This is handled by the
 :class:`Chain` class.
 
+The :class:`IndependentOperator` class requires a set of fluxes and microscopic
+cross sections. The following function can be used to generate this information:
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myfunction.rst
+
+   get_microxs_and_flux
+
 Minimal Example
 ---------------
 

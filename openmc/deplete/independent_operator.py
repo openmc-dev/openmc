@@ -5,8 +5,10 @@ transport solver by using user-provided one-group cross sections.
 
 """
 
+from __future__ import annotations
+from collections.abc import Iterable
 import copy
-from itertools import product
+from typing import List, Set
 
 import numpy as np
 from uncertainties import ufloat
@@ -37,14 +39,20 @@ class IndependentOperator(OpenMCOperator):
 
     .. versionadded:: 0.13.1
 
+    .. versionchanged:: 0.13.4
+        Arguments updated to include list of fluxes and microscopic cross
+        sections.
+
     Parameters
     ----------
     materials : openmc.Materials
         Materials to deplete.
-    micro_xs : MicroXS
-        One-group microscopic cross sections in [b]. If the
-        :class:`~openmc.deplete.MicroXS` object is empty, a decay-only calculation will
-        be run.
+    fluxes : list of numpy.ndarray
+        Flux in each group in [n-cm/src] for each domain
+    micros : list of MicroXS
+        Cross sections in [b] for each domain. If the
+        :class:`~openmc.deplete.MicroXS` object is empty, a decay-only
+        calculation will be run.
     chain_file : str
         Path to the depletion chain XML file. Defaults to
         ``openmc.config['chain_file']``.
@@ -109,7 +117,8 @@ class IndependentOperator(OpenMCOperator):
 
     def __init__(self,
                  materials,
-                 micro_xs,
+                 fluxes,
+                 micros,
                  chain_file=None,
                  keff=None,
                  normalization_mode='fission-q',
@@ -120,7 +129,7 @@ class IndependentOperator(OpenMCOperator):
                  fission_yield_opts=None):
         # Validate micro-xs parameters
         check_type('materials', materials, openmc.Materials)
-        check_type('micro_xs', micro_xs, MicroXS)
+        check_type('micros', micros, Iterable, MicroXS)
         if keff is not None:
             check_type('keff', keff, tuple, float)
             keff = ufloat(*keff)
@@ -132,10 +141,15 @@ class IndependentOperator(OpenMCOperator):
         helper_kwargs = {'normalization_mode': normalization_mode,
                          'fission_yield_opts': fission_yield_opts}
 
-        cross_sections = micro_xs * 1e-24
+        # Sort fluxes and micros in same order that materials get sorted
+        index_sort = np.argsort([mat.id for mat in materials])
+        fluxes = [fluxes[i] for i in index_sort]
+        micros = [micros[i] for i in index_sort]
+
+        self.fluxes = fluxes
         super().__init__(
             materials,
-            cross_sections,
+            micros,
             chain_file,
             prev_results,
             fission_q=fission_q,
@@ -145,6 +159,7 @@ class IndependentOperator(OpenMCOperator):
 
     @classmethod
     def from_nuclides(cls, volume, nuclides,
+                      flux,
                       micro_xs,
                       chain_file=None,
                       nuc_units='atom/b-cm',
@@ -163,10 +178,11 @@ class IndependentOperator(OpenMCOperator):
         nuclides : dict of str to float
             Dictionary with nuclide names as keys and nuclide concentrations as
             values.
+        flux : numpy.ndarray
+            Flux in each group in [n-cm/src]
         micro_xs : MicroXS
-            One-group microscopic cross sections in [b]. If the
-            :class:`~openmc.deplete.MicroXS` object is empty, a decay-only calculation
-            will be run.
+            Cross sections in [b]. If the :class:`~openmc.deplete.MicroXS`
+            object is empty, a decay-only calculation will be run.
         chain_file : str, optional
             Path to the depletion chain XML file. Defaults to
             ``openmc.config['chain_file']``.
@@ -203,8 +219,11 @@ class IndependentOperator(OpenMCOperator):
         """
         check_type('nuclides', nuclides, dict, str)
         materials = cls._consolidate_nuclides_to_material(nuclides, nuc_units, volume)
+        fluxes = [flux]
+        micros = [micro_xs]
         return cls(materials,
-                   micro_xs,
+                   fluxes,
+                   micros,
                    chain_file,
                    keff=keff,
                    normalization_mode=normalization_mode,
@@ -256,9 +275,9 @@ class IndependentOperator(OpenMCOperator):
                 self.prev_res.append(new_res)
 
 
-    def _get_nuclides_with_data(self, cross_sections):
+    def _get_nuclides_with_data(self, cross_sections: List[MicroXS]) -> Set[str]:
         """Finds nuclides with cross section data"""
-        return set(cross_sections.index)
+        return set(cross_sections[0].nuclides)
 
     class _IndependentRateHelper(ReactionRateHelper):
         """Class for generating one-group reaction rates with flux and
@@ -285,7 +304,7 @@ class IndependentOperator(OpenMCOperator):
 
         """
 
-        def __init__(self, op):
+        def __init__(self, op: IndependentOperator):
             rates = op.reaction_rates
             super().__init__(rates.n_nuc, rates.n_react)
 
@@ -301,13 +320,13 @@ class IndependentOperator(OpenMCOperator):
             """Unused in this case"""
             pass
 
-        def get_material_rates(self, mat_id, nuc_index, react_index):
+        def get_material_rates(self, mat_index, nuc_index, react_index):
             """Return 2D array of [nuclide, reaction] reaction rates
 
             Parameters
             ----------
-            mat_id : int
-                Unique ID for the requested material
+            mat_index : int
+                Index for the material
             nuc_index : list of str
                 Ordering of desired nuclides
             react_index : list of str
@@ -315,20 +334,18 @@ class IndependentOperator(OpenMCOperator):
             """
             self._results_cache.fill(0.0)
 
-            # Get volume in units of [b-cm]
-            volume_b_cm = 1e24 * self._op.number.get_mat_volume(mat_id)
+            # Get flux and microscopic cross sections from operator
+            flux = self._op.fluxes[mat_index]
+            xs = self._op.cross_sections[mat_index]
 
-            for i_nuc, i_react in product(nuc_index, react_index):
+            for i_nuc in nuc_index:
                 nuc = self.nuc_ind_map[i_nuc]
-                rx = self.rx_ind_map[i_react]
+                for i_rx in react_index:
+                    rx = self.rx_ind_map[i_rx]
 
-                # OK, this is kind of weird, but we multiply by volume in [b-cm]
-                # only because OpenMCOperator._calculate_reaction_rates has to
-                # divide it out later. It might make more sense to account for
-                # the source rate (flux) here rather than in the normalization
-                # helper.
-                self._results_cache[i_nuc, i_react] = \
-                    self._op.cross_sections[rx][nuc] * volume_b_cm
+                    # Determine reaction rate by multiplying xs in [b] by flux
+                    # in [n-cm/src] to give [(reactions/src)*b-cm/atom]
+                    self._results_cache[i_nuc, i_rx] = (xs[nuc, rx] * flux).sum()
 
             return self._results_cache
 

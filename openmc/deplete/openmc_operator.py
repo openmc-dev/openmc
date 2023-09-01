@@ -7,6 +7,7 @@ transport-independent transport operators.
 
 from abc import abstractmethod
 from warnings import warn
+from typing import List, Tuple, Dict
 
 import numpy as np
 
@@ -32,9 +33,9 @@ class OpenMCOperator(TransportOperator):
     ----------
     materials : openmc.Materials
         List of all materials in the model
-    cross_sections : str or pandas.DataFrame
-        Path to continuous energy cross section library, or object containing
-        one-group cross-sections.
+    cross_sections : str or list of MicroXS
+        Path to continuous energy cross section library, or list of objects
+        containing cross sections.
     chain_file : str, optional
         Path to the depletion chain XML file. Defaults to
         openmc.config['chain_file'].
@@ -61,9 +62,9 @@ class OpenMCOperator(TransportOperator):
     ----------
     materials : openmc.Materials
         All materials present in the model
-    cross_sections : str or MicroXS
-            Path to continuous energy cross section library, or object
-            containing one-group cross-sections.
+    cross_sections : str or list of MicroXS
+        Path to continuous energy cross section library, or list of objects
+        containing cross sections.
     output_dir : pathlib.Path
         Path to output directory to save results.
     round_number : bool
@@ -170,13 +171,13 @@ class OpenMCOperator(TransportOperator):
         """Assign distribmats for each burnable material"""
         pass
 
-    def _get_burnable_mats(self):
+    def _get_burnable_mats(self) -> Tuple[List[str], Dict[str, float], List[str]]:
         """Determine depletable materials, volumes, and nuclides
 
         Returns
         -------
         burnable_mats : list of str
-            List of burnable material IDs
+            F of burnable material IDs
         volume : dict of str to float
             Volume of each material in [cm^3]
         nuclides : list of str

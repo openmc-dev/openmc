@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 import openmc
-from openmc.deplete import MicroXS
+from openmc.deplete import MicroXS, get_microxs_and_flux
 
 from tests.regression_tests import config
 
@@ -47,13 +47,13 @@ def model():
 
 
 def test_from_model(model):
-    fuel = model.materials[0]
+    domains = model.materials[:1]
     nuclides = ['U234', 'U235', 'U238', 'U236', 'O16', 'O17', 'I135', 'Xe135',
                 'Xe136', 'Cs135', 'Gd157', 'Gd156']
-    test_xs = MicroXS.from_model(model, fuel, nuclides, chain_file=CHAIN_FILE)
+    _, test_xs = get_microxs_and_flux(model, domains, nuclides, chain_file=CHAIN_FILE)
     if config['update']:
-        test_xs.to_csv('test_reference.csv')
+        test_xs[0].to_csv('test_reference.csv')
 
     ref_xs = MicroXS.from_csv('test_reference.csv')
 
-    np.testing.assert_allclose(test_xs, ref_xs, rtol=1e-11)
+    np.testing.assert_allclose(test_xs[0].data, ref_xs.data, rtol=1e-11)

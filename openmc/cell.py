@@ -618,7 +618,10 @@ class Cell(IDManagerMixin):
             Axes containing resulting image
 
         """
-        return openmc.Universe(cells=[self]).plot(*args, **kwargs)
+        # Create dummy universe but preserve used_ids
+        u = openmc.Universe(cells=[self], universe_id=openmc.Universe.next_id + 1)
+        openmc.Universe.used_ids.remove(u.id)
+        return u.plot(*args, **kwargs)
 
     def create_xml_subelement(self, xml_element, memo=None):
         """Add the cell's xml representation to an incoming xml element

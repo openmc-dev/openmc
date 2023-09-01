@@ -677,7 +677,7 @@ class ThermalScattering(EqualityMixin):
                     # doesn't matter.
                     mu.sort()
 
-                    # Older versions of NJOY had a bug, and the discreet
+                    # Older versions of NJOY had a bug, and the discrete
                     # scattering angles could sometimes be less than -1 or
                     # greater than 1. We check for this here, and warn users.
                     if mu[0] < -1. or mu[-1] > 1.:

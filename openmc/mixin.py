@@ -73,7 +73,6 @@ class IDManagerMixin:
             self._id = uid
 
 
-
 def reset_auto_ids():
     """Reset counters for all auto-generated IDs"""
     for cls in IDManagerMixin.__subclasses__():
@@ -98,27 +97,6 @@ def reserve_ids(ids, cls=None):
             cls.used_ids |= set(ids)
     else:
         cls.used_ids |= set(ids)
-
-
-def release_ids(ids, cls=None):
-    """Release IDs from the set of used IDs
-
-    Parameters
-    ----------
-    ids : iterable of int
-        IDs to release
-    cls : type
-       Class for which IDs should be released (e.g., :class:`openmc.Cell`). If
-       None, all classes that have auto-generated IDs will be used.
-
-
-    """
-    if cls is None:
-        for cls in IDManagerMixin.__subclasses__():
-            release_ids(ids, cls)
-    else:
-        cls.used_ids -= set(ids)
-        cls.next_id = max(cls.used_ids) + 1
 
 
 def set_auto_id(next_id):

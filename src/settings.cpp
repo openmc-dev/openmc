@@ -972,14 +972,14 @@ void read_settings_xml(pugi::xml_node root)
 
   // Set up weight window checkpoints
   if (check_for_node(root, "weight_window_checkpoints")) {
-    xml_node WW_checkpoints = root.child("weight_window_checkpoints");
-    if (check_for_node(WW_checkpoints, "collision")) {
+    xml_node ww_checkpoints = root.child("weight_window_checkpoints");
+    if (check_for_node(ww_checkpoints, "collision")) {
       weight_window_checkpoint_collision =
-        get_node_value_bool(WW_checkpoints, "collision");
+        get_node_value_bool(ww_checkpoints, "collision");
     }
-    if (check_for_node(WW_checkpoints, "surface")) {
+    if (check_for_node(ww_checkpoints, "surface")) {
       weight_window_checkpoint_surface =
-        get_node_value_bool(WW_checkpoints, "surface");
+        get_node_value_bool(ww_checkpoints, "surface");
     }
   }
 }

@@ -1188,7 +1188,8 @@ class CylindricalMesh(StructuredMesh):
         1-D array of mesh boundary points along the r-axis.
         Requirement is r >= 0.
     z_grid : numpy.ndarray
-        1-D array of mesh boundary points along the z-axis.
+        1-D array of mesh boundary points along the z-axis relative to the
+        origin.
     phi_grid : numpy.ndarray
         1-D array of mesh boundary points along the phi-axis in radians.
         The default value is [0, 2π], i.e. the full phi range.
@@ -1207,8 +1208,7 @@ class CylindricalMesh(StructuredMesh):
     name : str
         Name of the mesh
     dimension : Iterable of int
-        The number of mesh cells in each direction (r_grid,
-        phi_grid, z_grid).
+        The number of mesh cells in each direction (r_grid, phi_grid, z_grid).
     n_dimension : int
         Number of mesh dimensions (always 3 for a CylindricalMesh).
     r_grid : numpy.ndarray
@@ -1218,7 +1218,8 @@ class CylindricalMesh(StructuredMesh):
         1-D array of mesh boundary points along the phi-axis in radians.
         The default value is [0, 2π], i.e. the full phi range.
     z_grid : numpy.ndarray
-        1-D array of mesh boundary points along the z-axis.
+        1-D array of mesh boundary points along the z-axis relative to the
+        origin.
     origin : numpy.ndarray
         1-D array of length 3 the (x,y,z) origin of the mesh in
         cartesian coordinates

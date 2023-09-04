@@ -18,10 +18,11 @@ def test_reg_mesh_from_cell():
 
 def test_cylindrical_mesh_from_cell():
     """Tests a CylindricalMesh can be made from a Cell and the specified
-    dimensions are propagated through. Cell is not centralized"""
+    dimensions are propagated through."""
+    # Cell is not centralized on Z axis
     cy_surface = openmc.ZCylinder(r=50)
-    z_surface_1 = openmc.ZPlane(z0=30)
-    z_surface_2 = openmc.ZPlane(z0=0)
+    z_surface_1 = openmc.ZPlane(z0=40)
+    z_surface_2 = openmc.ZPlane(z0=10)
     cell = openmc.Cell(region=-cy_surface & -z_surface_1 & +z_surface_2)
     mesh = openmc.CylindricalMesh.from_domain(domain=cell, dimension=[2, 4, 3])
 
@@ -29,8 +30,27 @@ def test_cylindrical_mesh_from_cell():
     assert np.array_equal(mesh.dimension, (2, 4, 3))
     assert np.array_equal(mesh.r_grid, [0., 25., 50.])
     assert np.array_equal(mesh.phi_grid, [0., 0.5*np.pi, np.pi, 1.5*np.pi, 2.*np.pi])
-    assert np.array_equal(mesh.z_grid, [0., 10., 20., 30.])
-    assert np.array_equal(mesh.origin, [0., 0., 15.])
+    assert np.array_equal(mesh.z_grid, [10., 20., 30., 40.])
+    assert np.array_equal(mesh.origin, [0., 0., 10.])
+
+    # Cell is not centralized on Z or X axis
+    cy_surface = openmc.ZCylinder(r=50, x0=100)
+    cell = openmc.Cell(region=-cy_surface & -z_surface_1 & +z_surface_2)
+    mesh = openmc.CylindricalMesh.from_domain(domain=cell, dimension=[1, 1, 1])
+
+    assert isinstance(mesh, openmc.CylindricalMesh)
+    assert np.array_equal(mesh.dimension, (1, 1, 1))
+    assert np.array_equal(mesh.r_grid, [0., 150.])
+    assert np.array_equal(mesh.origin, [100., 0., 10.])
+
+    # Cell is not centralized on Z, X or Y axis
+    cy_surface = openmc.ZCylinder(r=50, x0=100, y0=170)
+    cell = openmc.Cell(region=-cy_surface & -z_surface_1 & +z_surface_2)
+    mesh = openmc.CylindricalMesh.from_domain(domain=cell, dimension=[1, 1, 1])
+
+    assert isinstance(mesh, openmc.CylindricalMesh)
+    assert np.array_equal(mesh.r_grid, [0., 220.])
+    assert np.array_equal(mesh.origin, [100., 170., 10.])
 
 
 def test_reg_mesh_from_region():

@@ -1188,7 +1188,8 @@ class CylindricalMesh(StructuredMesh):
         1-D array of mesh boundary points along the r-axis.
         Requirement is r >= 0.
     z_grid : numpy.ndarray
-        1-D array of mesh boundary points along the z-axis.
+        1-D array of mesh boundary points along the z-axis relative to the
+        origin.
     phi_grid : numpy.ndarray
         1-D array of mesh boundary points along the phi-axis in radians.
         The default value is [0, 2π], i.e. the full phi range.
@@ -1207,8 +1208,7 @@ class CylindricalMesh(StructuredMesh):
     name : str
         Name of the mesh
     dimension : Iterable of int
-        The number of mesh cells in each direction (r_grid,
-        phi_grid, z_grid).
+        The number of mesh cells in each direction (r_grid, phi_grid, z_grid).
     n_dimension : int
         Number of mesh dimensions (always 3 for a CylindricalMesh).
     r_grid : numpy.ndarray
@@ -1218,7 +1218,8 @@ class CylindricalMesh(StructuredMesh):
         1-D array of mesh boundary points along the phi-axis in radians.
         The default value is [0, 2π], i.e. the full phi range.
     z_grid : numpy.ndarray
-        1-D array of mesh boundary points along the z-axis.
+        1-D array of mesh boundary points along the z-axis relative to the
+        origin.
     origin : numpy.ndarray
         1-D array of length 3 the (x,y,z) origin of the mesh in
         cartesian coordinates
@@ -1313,7 +1314,6 @@ class CylindricalMesh(StructuredMesh):
                 for z in range(1, nz + 1)
                 for p in range(1, np + 1)
                 for r in range(1, nr + 1))
-
 
     @property
     def lower_left(self):
@@ -1413,7 +1413,6 @@ class CylindricalMesh(StructuredMesh):
             (openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry),
         )
 
-
         # loaded once to avoid reading h5m file repeatedly
         cached_bb = domain.bounding_box
         max_bounding_box_radius = max(
@@ -1439,8 +1438,14 @@ class CylindricalMesh(StructuredMesh):
             cached_bb[1][2],
             num=dimension[2]+1
         )
+        origin = cached_bb.center
         mesh = cls(
-            r_grid=r_grid, z_grid=z_grid, phi_grid=phi_grid, mesh_id=mesh_id, name=name
+            r_grid=r_grid,
+            z_grid=z_grid,
+            phi_grid=phi_grid,
+            mesh_id=mesh_id,
+            name=name,
+            origin=origin
         )
 
         return mesh

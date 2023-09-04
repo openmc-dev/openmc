@@ -30,6 +30,7 @@ def test_cylindrical_mesh_from_cell():
     assert np.array_equal(mesh.r_grid, [0., 25., 50.])
     assert np.array_equal(mesh.phi_grid, [0., 0.5*np.pi, np.pi, 1.5*np.pi, 2.*np.pi])
     assert np.array_equal(mesh.z_grid, [0., 10., 20., 30.])
+    assert np.array_equal(mesh.origin, [0., 0., 15.])
 
 
 def test_reg_mesh_from_region():

@@ -1413,7 +1413,7 @@ class CylindricalMesh(StructuredMesh):
             (openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry),
         )
 
-        # loaded once to avoid reading h5m file repeatedly
+        # loaded once to avoid recalculating bounding box
         cached_bb = domain.bounding_box
         max_bounding_box_radius = max(
             [

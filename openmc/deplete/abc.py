@@ -787,6 +787,14 @@ class Integrator(ABC):
         x, root = self.batchwise.search_for_keff(x, step_index)
         return x, root
 
+    def _get_bos_from_batchwise(self, step_index, bos_conc):
+        """Get BOS from criticality batch-wise control
+        """
+        x = deepcopy(bos_conc)
+        # Get new vector after keff criticality control
+        x, root = self.batchwise.search_for_keff(x, step_index)
+        return x, root
+
     def integrate(
             self,
             final_step: bool = True,

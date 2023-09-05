@@ -75,7 +75,8 @@ def test_decay_only(run_in_tmpdir,
                              chain_file=chain_file)
     else:
         op = IndependentOperator(openmc.Materials([model.materials[0]]),
-                                 micro_xs,
+                                 [1e15],
+                                 [micro_xs],
                                  chain_file)
 
     # Power and timesteps

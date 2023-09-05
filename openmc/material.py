@@ -1273,10 +1273,10 @@ class Material(IDManagerMixin):
 
         # Remove any nuclides to ignore from the XML export
         if nuclides_to_ignore:
-            nuclides = set(nuclides).difference(set(nuclides_to_ignore))
+            nuclides = [nuclide for nuclide in nuclides if nuclide.name not in nuclides_to_ignore]
 
-        for nuclide in nuclides:
-            xml_elements.append(self._get_nuclide_xml(nuclide))
+        xml_elements = [self._get_nuclide_xml(nuclide) for nuclide in nuclides]
+
         return xml_elements
 
     def to_xml_element(self, nuclides_to_ignore: typing.Iterable[str] = None) -> ET.Element:

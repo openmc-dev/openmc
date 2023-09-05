@@ -291,7 +291,7 @@ class Batchwise(ABC):
             # Get mass dens from beginning, intended to be held constant
             density = openmc.lib.materials[int(mat)].get_density('g/cm3')
             number_i.volume[mat_idx] = agpm / AVOGADRO / density
-            
+
     def _update_materials(self, x):
         """
         Update number density and material compositions in OpenMC on all processes.

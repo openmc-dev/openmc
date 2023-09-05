@@ -21,7 +21,10 @@ Simulation Settings
    :nosignatures:
    :template: myclass.rst
 
-   openmc.Source
+   openmc.SourceBase
+   openmc.IndependentSource
+   openmc.FileSource
+   openmc.CompiledSource
    openmc.SourceParticle
    openmc.VolumeCalculation
    openmc.Settings
@@ -42,9 +45,6 @@ Material Specification
    :nosignatures:
    :template: myclass.rst
 
-   openmc.Nuclide
-   openmc.Element
-   openmc.Macroscopic
    openmc.Material
    openmc.Materials
 

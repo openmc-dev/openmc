@@ -106,12 +106,13 @@ def test_cell_methods(run_in_tmpdir, model, attribute):
     assert integrator.batchwise._get_cell_attrib() == 0
     vol = integrator.batchwise._calculate_volumes()
     for cell in integrator.batchwise.cell_materials:
-        assert vol[str(cell.id)] == pytest.approx([mat.volume for mat in model.materials if mat.id == cell.id])
+        assert vol[str(cell.id)] == pytest.approx([mat.volume for mat in model.materials if mat.id == cell.id][0])
     openmc.lib.finalize()
 
-def test_update_materials_methods(run_in_tmpdir):
+def test_update_volumes(run_in_tmpdir):
     """
-    It's the same methods for all classe so one class is enough
+    Method to update volume in AtomNumber after depletion step.
+    Method inheritated by all derived classes so one check is enough.
     """
     bracket = [-1,1]
     bracket_limit = [-10,10]
@@ -124,12 +125,82 @@ def test_update_materials_methods(run_in_tmpdir):
 
     model.export_to_xml()
     openmc.lib.init()
-    x = op.number.number
-    #Double  number of atoms of U238 in fuel
+
+    #Increase  number of atoms of U238 in fuel by fix amount and check the
+    # volume increase at constant-density
     mat_index = op.number.index_mat['1']
     nuc_index = op.number.index_nuc['U238']
     vol = op.number.get_mat_volume('1')
-    op.number.number[mat_index][nuc_idx] *= 2
-    integrator.batchwise._update_volumes(op.number.number)
+    atoms_to_add = 1e22
+    op.number.number[mat_index][nuc_idx] += atoms_to_add
+    integrator.batchwise._update_volumes()
     
-    vol = integrator.batchwise._calculate_volumes()
+    atoms_to_vol = atoms_to_add * openmc.data.atomic_mass('U238') \
+                   /openmc.data.AVOGADRO / 10.4
+    assert op.number.get_mat_volume('1') == vol + atoms_to_vol
+
+    openmc.lib.finalize()
+
+# def test_update_materials(run_in_tmpdir):
+#     """
+#     Method to update volume in AtomNumber after depletion step if 'constant-density'
+#     is passed to the batchwise instance.
+#     Method inheritated by all derived classes so one check is enough.
+#     """
+#     bracket = [-1,1]
+#     bracket_limit = [-10,10]
+#     axis = 2
+#     op = CoupledOperator(model, CHAIN_PATH)
+#     integrator = openmc.deplete.PredictorIntegrator(
+#         op, [1,1], 0.0, timestep_units = 'd')
+#     integrator.add_batchwise('wh', 'translation', axis=axis, bracket=bracket,
+#                              bracket_limit=bracket_limit)
+#
+#     model.export_to_xml()
+#     openmc.lib.init()
+#
+#     #Increase  number of atoms of U238 in fuel by fix amount and check that the
+#     # densities in openmc.lib have beeen updated
+#     mat_index = op.number.index_mat['1']
+#     nuc_index = op.number.index_nuc['U238']
+#     vol = op.number.get_mat_volume('1')
+#     atoms_to_add = 1e20
+#     op.number.number[mat_index][nuc_idx] += atoms_to_add
+#     integrator.batchwise._update_materials(op.number.number)
+#
+#     assert openmc.lib.materials[1][] == op.number.get_atom_density('1','U238')
+#
+#     openmc.lib.finalize()
+#
+# def test_update_x_and_set_volumes_method(run_in_tmpdir):
+#     """
+#     Method to update volume in AtomNumber after depletion step if 'constant-density'
+#     is passed to the batchwise instance.
+#     Method inheritated by all derived classes so one check is enough.
+#     """
+#     bracket = [-1,1]
+#     bracket_limit = [-10,10]
+#     axis = 2
+#     op = CoupledOperator(model, CHAIN_PATH)
+#     integrator = openmc.deplete.PredictorIntegrator(
+#         op, [1,1], 0.0, timestep_units = 'd')
+#     integrator.add_batchwise('wh', 'translation', axis=axis, bracket=bracket,
+#                              bracket_limit=bracket_limit)
+#
+#     model.export_to_xml()
+#     openmc.lib.init()
+#
+#     #Increase  number of atoms of U238 in fuel by fix amount and check that the
+#     # densities in openmc.lib have beeen updated
+#     mat_index = op.number.index_mat['1']
+#     nuc_index = op.number.index_nuc['U238']
+#     vol = op.number.get_mat_volume('1')
+#     atoms_to_add = 1e20
+#     vol_to_add = 10
+#     op.number.number[mat_index][nuc_idx] += atoms_to_add
+#     op.number.volumes[mat_index] += vol_to_add
+#     integrator.batchwise._update_x_and_set_volumes(op.number.number, op.number.volumes)
+#
+#     assert
+#
+#     openmc.lib.finalize()

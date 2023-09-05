@@ -2663,6 +2663,9 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
           // Temporarily change energy of particle to pulse-height value
           p.E_last() = p.pht_storage()[index];
 
+          // Do Gaussian Energy Broadening on the pulse-height of the particle
+          apply_geb(tally.gaussian_energy_broadening_, p);
+
           // Initialize an iterator over valid filter bin combinations. If
           // there are no valid combinations, use a continue statement to ensure
           // we skip the assume_separate break below.

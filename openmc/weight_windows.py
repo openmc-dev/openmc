@@ -709,6 +709,8 @@ class WeightWindowGenerator:
         update_interval: int = 1,
         on_the_fly: bool = True
     ):
+        self._update_parameters = None
+
         self.mesh = mesh
         self._energy_bounds = None
         if energy_bounds is not None:
@@ -719,7 +721,6 @@ class WeightWindowGenerator:
         self.update_interval = update_interval
         self.on_the_fly = on_the_fly
 
-        self._update_parameters = None
 
     def __repr__(self):
         string = type(self).__name__ + '\n'

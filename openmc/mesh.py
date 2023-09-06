@@ -1320,7 +1320,7 @@ class CylindricalMesh(StructuredMesh):
         return np.array((
             self.origin[0] - self.r_grid[-1],
             self.origin[1] - self.r_grid[-1],
-            self.origin[2] - self.z_grid[-1]
+            self.origin[2] + self.z_grid[0]
         ))
 
     @property

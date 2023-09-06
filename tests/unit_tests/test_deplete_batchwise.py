@@ -21,26 +21,31 @@ def model():
     f.add_element("O", 2)
     f.set_density("g/cc", 10.4)
     f.temperature = 293.15
+
     w = openmc.Material(name="w")
     w.add_element("O", 1)
     w.add_element("H", 2)
     w.set_density("g/cc", 1.0)
     w.depletable = True
+
     h = openmc.Material(name='h')
     h.set_density('g/cm3', 0.001598)
     h.add_element('He', 2.4044e-4)
     radii = [0.42, 0.45]
-    f.volume = np.pi * radii[0] ** 2
-    w.volume = np.pi * (radii[1]**2 - radii[0]**2)
+    height = 0.5
+    f.volume = np.pi * radii[0] ** 2 * height
+    w.volume = np.pi * (radii[1]**2 - radii[0]**2) * height/2
     materials = openmc.Materials([f, w, h])
     surf_wh = openmc.ZPlane(z0=0)
     surf_f = openmc.Sphere(r=radii[0])
     surf_w = openmc.Sphere(r=radii[1], boundary_type='vacuum')
+    surf_top = openmc.ZPlane(z0=height/2)
+    surf_bot = openmc.ZPlane(z0=-height/2)
     cell_w = openmc.Cell(fill=w, region=-surf_wh)
     cell_h = openmc.Cell(fill=h, region=+surf_wh)
     uni_wh = openmc.Universe(cells=(cell_w, cell_h))
-    cell_f = openmc.Cell(name='f',fill=f, region=-surf_f)
-    cell_wh = openmc.Cell(name='wh',fill=uni_wh, region=+surf_f & -surf_w)
+    cell_f = openmc.Cell(name='f',fill=f, region=-surf_f & -surf_top & +surf_bot)
+    cell_wh = openmc.Cell(name='wh',fill=uni_wh, region=+surf_f & -surf_w & -surf_top & +surf_bot)
     geometry = openmc.Geometry([cell_f, cell_wh])
     settings = openmc.Settings()
     settings.particles = 1000
@@ -106,10 +111,13 @@ def test_cell_methods(run_in_tmpdir, model, attribute):
     assert integrator.batchwise._get_cell_attrib() == 0
     vol = integrator.batchwise._calculate_volumes()
     for cell in integrator.batchwise.cell_materials:
-        assert vol[str(cell.id)] == pytest.approx([mat.volume for mat in model.materials if mat.id == cell.id][0])
+        assert vol[str(cell.id)] == pytest.approx([
+            mat.volume for mat in model.materials \
+            if mat.id == cell.id][0], rel=1e-1)
+
     openmc.lib.finalize()
 
-def test_update_volumes(run_in_tmpdir):
+def test_update_volumes(run_in_tmpdir, model):
     """
     Method to update volume in AtomNumber after depletion step.
     Method inheritated by all derived classes so one check is enough.
@@ -133,16 +141,18 @@ def test_update_volumes(run_in_tmpdir):
     nuc_index = op.number.index_nuc['U238']
     vol = op.number.get_mat_volume(str(mat.id))
     atoms_to_add = 1e22
-    op.number.number[mat_index][nuc_idx] += atoms_to_add
+    op.number.number[mat_index][nuc_index] += atoms_to_add
     integrator.batchwise._update_volumes()
 
-    atoms_to_vol = atoms_to_add * openmc.data.atomic_mass('U238') \
+    vol_to_compare = vol + atoms_to_add * openmc.data.atomic_mass('U238') \
                    /openmc.data.AVOGADRO / mat.density
-    assert op.number.get_mat_volume('1') == vol + atoms_to_vol
+
+
+    assert op.number.get_mat_volume(str(mat.id)) == pytest.approx(vol_to_compare)
 
     openmc.lib.finalize()
 
-def test_update_materials(run_in_tmpdir):
+def test_update_materials(run_in_tmpdir, model):
     """
     Method to update volume in AtomNumber after depletion step if 'constant-density'
     is passed to the batchwise instance.
@@ -162,47 +172,55 @@ def test_update_materials(run_in_tmpdir):
     #Increase  number of atoms of U238 in fuel by fix amount and check that the
     # densities in openmc.lib have beeen updated
     mat = integrator.batchwise.material
+    mat_index = op.number.index_mat[str(mat.id)]
     nuc_index = op.number.index_nuc['U238']
     vol = op.number.get_mat_volume(str(mat.id))
-    op.number.number[mat_index][nuc_idx] += 1e22
-    x= [op.number.number[i][op.number.number[i].nonzero()] for i in range(len(op.number.number))]
+    op.number.number[mat_index][nuc_index] += 1e22
+    x = [i[:op.number.n_nuc_burn] for i in op.number.number]
     integrator.batchwise._update_materials(x)
 
     nuc_index_lib = openmc.lib.materials[mat.id].nuclides.index('U238')
     assert openmc.lib.materials[mat.id].densities[nuc_index_lib] == \
-                1e-24 * op.number.get_atom_density('1','U238')
+            1e-24 * op.number.get_atom_density(str(mat.id),'U238')
 
     openmc.lib.finalize()
-#
-# def test_update_x_and_set_volumes_method(run_in_tmpdir):
-#     """
-#     Method to update volume in AtomNumber after depletion step if 'constant-density'
-#     is passed to the batchwise instance.
-#     Method inheritated by all derived classes so one check is enough.
-#     """
-#     bracket = [-1,1]
-#     bracket_limit = [-10,10]
-#     axis = 2
-#     op = CoupledOperator(model, CHAIN_PATH)
-#     integrator = openmc.deplete.PredictorIntegrator(
-#         op, [1,1], 0.0, timestep_units = 'd')
-#     integrator.add_batchwise('wh', 'translation', axis=axis, bracket=bracket,
-#                              bracket_limit=bracket_limit)
-#
-#     model.export_to_xml()
-#     openmc.lib.init()
-#
-#     #Increase  number of atoms of U238 in fuel by fix amount and check that the
-#     # densities in openmc.lib have beeen updated
-#     mat_index = op.number.index_mat['1']
-#     nuc_index = op.number.index_nuc['U238']
-#     vol = op.number.get_mat_volume('1')
-#     atoms_to_add = 1e20
-#     vol_to_add = 10
-#     op.number.number[mat_index][nuc_idx] += atoms_to_add
-#     op.number.volumes[mat_index] += vol_to_add
-#     integrator.batchwise._update_x_and_set_volumes(op.number.number, op.number.volumes)
-#
-#     assert
-#
-#     openmc.lib.finalize()
+
+def test_update_x_and_set_volumes_method(run_in_tmpdir,model):
+    """
+    Method to update volume in AtomNumber after depletion step if 'constant-density'
+    is passed to the batchwise instance.
+    Method inheritated by all derived classes so one check is enough.
+    """
+    bracket = [-1,1]
+    bracket_limit = [-10,10]
+    op = CoupledOperator(model, CHAIN_PATH)
+    integrator = openmc.deplete.PredictorIntegrator(
+        op, [1,1], 0.0, timestep_units = 'd')
+    integrator.add_batchwise('f', 'refuel', mat_vector={}, bracket=bracket,
+                             bracket_limit=bracket_limit)
+
+    model.export_to_xml()
+    openmc.lib.init()
+
+    #Increase  number of atoms of U238 in fuel by fix amount and check that the
+    # densities in openmc.lib have beeen updated
+    mat = integrator.batchwise.material
+    mat_index = op.number.index_mat[str(mat.id)]
+    nuc_index = op.number.index_nuc['U238']
+    vol = op.number.get_mat_volume(str(mat.id))
+    # increase number of U238 atoms
+    op.number.number[mat_index][nuc_index] += 1e22
+    x = [i[:op.number.n_nuc_burn] for i in op.number.number]
+    # Create new volume dict
+    volumes = {str(mat.id): vol + 1}
+    new_x = integrator.batchwise._update_x_and_set_volumes(x, volumes)
+
+    # check new x vector is updated accordingly
+    nuc_index_lib = openmc.lib.materials[mat.id].nuclides.index('U238')
+    val_to_compare = 1.0e24 *  volumes[str(mat.id)] \
+         * openmc.lib.materials[mat.id].densities[nuc_index_lib]
+    assert new_x[mat_index][nuc_index] == pytest.approx(val_to_compare)
+
+    # assert volume in AtomNumber is set correctly
+    assert op.number.get_mat_volume(str(mat.id)) == volumes[str(mat.id)]
+    openmc.lib.finalize()

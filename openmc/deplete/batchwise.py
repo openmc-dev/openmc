@@ -335,7 +335,8 @@ class Batchwise(ABC):
         x : list of numpy.ndarray
             Total atoms concentrations
         volumes : dict
-
+            Updated volumes, where key is the material id and value the material
+            volume in cm3
         Returns
         -------
         x : list of numpy.ndarray
@@ -697,7 +698,8 @@ class BatchwiseCellGeometrical(BatchwiseCell):
         Returns
         -------
         volumes : dict
-            Dictionary of calculate volumes, where key is the mat id
+            Dictionary of calculated volumes, where key is the mat id and value
+            the material volume in cm3
         """
         openmc.lib.calculate_volumes()
         volumes = {}

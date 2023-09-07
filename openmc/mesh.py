@@ -1376,23 +1376,23 @@ class CylindricalMesh(StructuredMesh):
 
         """
         r_value = sqrt(x**2 + y**2)
-        r_grid_values = np.linspace(
-            self.origin[0] + self.r_grid[0],
-            self.origin[0] + self.r_grid[-1],
-            self.dimension[0]
-        )
+
+        r_origin = sqrt(self.origin[0]**2 + self.origin[1]**2)
+        r_grid_values = np.array(self.r_grid) + r_origin
+
         r_index = np.argmax(r_grid_values > r_value) - 1
 
-        z_grid_values = np.linspace(
-            self.origin[2]+self.z_grid[0],
-            self.origin[2]+self.z_grid[-1],
-            self.dimension[2]
-        )
+        z_grid_values = np.array(self.z_grid) + self.origin[2]
+
         z_index = np.argmax(z_grid_values > z) - 1
 
-        phi_value = atan((self.origin[1]-y)/(self.origin[0]-x))
-        phi_index = np.argmax(self.phi_grid > phi_value) - 1
-
+        phi_value = atan((y-self.origin[1])/(x-self.origin[0]))
+        print('phi_value',phi_value)
+        phi_grid_values = np.array(self.phi_grid)
+        print('phi_grid_values', phi_grid_values)
+        phi_index = np.argmax(phi_grid_values > phi_value) - 1
+        print('phi_index', phi_index)
+        print()
         return (r_index, phi_index, z_index)
 
     @classmethod

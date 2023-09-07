@@ -2,7 +2,7 @@ import typing
 import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from math import pi
+from math import pi, sqrt, atan
 from numbers import Integral, Real
 from pathlib import Path
 from typing import Optional, Sequence, Tuple
@@ -1356,6 +1356,44 @@ class CylindricalMesh(StructuredMesh):
             string += fmt.format('\tZ Min:', '=\t', self._z_grid[0])
             string += fmt.format('\tZ Max:', '=\t', self._z_grid[-1])
         return string
+
+    def get_indices_at_coords(self, x: float, y: float, z: float):
+        """Finds the index of the mesh voxel at the specified coordinates.
+
+        Parameters
+        ----------
+        x : float
+            The x axis value
+        y : float
+            The y axis value
+        z : float
+            The z axis value
+
+        Returns
+        -------
+        Tuple[int]
+            The r, phi, z indices
+
+        """
+        r_value = sqrt(x**2 + y**2)
+        r_grid_values = np.linspace(
+            self.origin[0] + self.r_grid[0],
+            self.origin[0] + self.r_grid[-1],
+            self.dimension[0]
+        )
+        r_index = np.argmax(r_grid_values > r_value) - 1
+
+        z_grid_values = np.linspace(
+            self.origin[2]+self.z_grid[0],
+            self.origin[2]+self.z_grid[-1],
+            self.dimension[2]
+        )
+        z_index = np.argmax(z_grid_values > z) - 1
+
+        phi_value = atan((self.origin[1]-y)/(self.origin[0]-x))
+        phi_index = np.argmax(self.phi_grid > phi_value) - 1
+
+        return (r_index, phi_index, z_index)
 
     @classmethod
     def from_hdf5(cls, group: h5py.Group):

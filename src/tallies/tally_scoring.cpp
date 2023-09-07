@@ -8,7 +8,6 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
-#include "openmc/random_dist.h"
 #include "openmc/reaction_product.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
@@ -141,28 +140,6 @@ void FilterBinIter::compute_index_weight()
 //==============================================================================
 // Non-member functions
 //==============================================================================
-
-//! Helper function to apply Gaussian Energy Broadening
-
-void apply_geb(const Tally::GaussianEnergyBroadening& geb, Particle& p) {
-  if (geb.active) {
-    // Calculate the FWHM
-    const double FWHM = geb.a + geb.b*std::sqrt(p.E_last() + geb.c * p.E_last() * p.E_last());
-    
-    // Calculate sigma of the gaussian
-    constexpr double sigma_coeff = 1. / (4. * std::log(2.));
-    const double sigma = sigma_coeff * FWHM;
-
-    // Sample new energy
-    double E = normal_variate(p.E_last(), sigma, p.current_seed());
-
-    // Set E_last to the sampled energy. We only do this however if we
-    // sampled a valid energy.
-    if (E > 0.) {
-      p.E_last() = E;
-    }
-  }
-}
 
 //! Helper function used to increment tallies with a delayed group filter.
 
@@ -2278,7 +2255,7 @@ void score_analog_tally_ce(Particle& p)
     const double orig_E_last = p.E_last();
     
     // Do Gaussian Energy Broadening
-    apply_geb(tally.gaussian_energy_broadening_, p);
+    tally.gaussian_energy_broadening_.apply(p);
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2394,7 +2371,7 @@ void score_tracklength_tally(Particle& p, double distance)
     const double orig_E_last = p.E_last();
     
     // Do Gaussian Energy Broadening
-    apply_geb(tally.gaussian_energy_broadening_, p);
+    tally.gaussian_energy_broadening_.apply(p);
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2489,7 +2466,7 @@ void score_collision_tally(Particle& p)
     const double orig_E_last = p.E_last();
     
     // Do Gaussian Energy Broadening
-    apply_geb(tally.gaussian_energy_broadening_, p);
+    tally.gaussian_energy_broadening_.apply(p);
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2575,7 +2552,7 @@ void score_surface_tally(Particle& p, const vector<int>& tallies)
     const double orig_E_last = p.E_last();
     
     // Do Gaussian Energy Broadening
-    apply_geb(tally.gaussian_energy_broadening_, p);
+    tally.gaussian_energy_broadening_.apply(p);
 
     // Initialize an iterator over valid filter bin combinations.  If there are
     // no valid combinations, use a continue statement to ensure we skip the
@@ -2664,7 +2641,7 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
           p.E_last() = p.pht_storage()[index];
 
           // Do Gaussian Energy Broadening on the pulse-height of the particle
-          apply_geb(tally.gaussian_energy_broadening_, p);
+          tally.gaussian_energy_broadening_.apply(p);
 
           // Initialize an iterator over valid filter bin combinations. If
           // there are no valid combinations, use a continue statement to ensure

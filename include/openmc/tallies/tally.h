@@ -185,6 +185,8 @@ public:
   struct GaussianEnergyBroadening {
     bool active = false;
     double a = 0., b = 0., c = 0.;
+
+    void apply(Particle& p) const;
   };
 
   GaussianEnergyBroadening gaussian_energy_broadening_;

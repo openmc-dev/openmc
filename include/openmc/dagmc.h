@@ -37,6 +37,8 @@ class DAGSurface : public Surface {
 public:
   DAGSurface(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx);
 
+  moab::EntityHandle mesh_handle() const;
+
   double evaluate(Position r) const override;
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
@@ -56,6 +58,8 @@ private:
 class DAGCell : public Cell {
 public:
   DAGCell(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx);
+
+  moab::EntityHandle mesh_handle() const;
 
   bool contains(Position r, Direction u, int32_t on_surface) const override;
 
@@ -122,6 +126,16 @@ public:
   void legacy_assign_material(
     std::string mat_string, std::unique_ptr<DAGCell>& c) const;
 
+  //! Return the index into the model cells vector for a given DAGMC volume
+  //! handle in the universe
+  //! \param[in] vol MOAB handle to the DAGMC volume set
+  int32_t cell_index(moab::EntityHandle vol) const;
+
+  //! Return the index into the model surfaces vector for a given DAGMC surface
+  //! handle in the universe
+  //! \param[in] surf MOAB handle to the DAGMC surface set
+  int32_t surface_index(moab::EntityHandle surf) const;
+
   //! Generate a string representing the ranges of IDs present in the DAGMC
   //! model. Contiguous chunks of IDs are represented as a range (i.e. 1-10). If
   //! there is a single ID a chunk, it will be represented as a single number
@@ -142,6 +156,7 @@ public:
                             //!< universe in OpenMC's surface vector
 
   // Accessors
+  std::shared_ptr<moab::DagMC> dagmc_ptr() const { return dagmc_instance_; }
   bool has_graveyard() const { return has_graveyard_; }
 
 private:

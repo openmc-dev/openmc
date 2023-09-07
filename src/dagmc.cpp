@@ -329,13 +329,15 @@ void DAGUniverse::init_geometry()
   } // end surface loop
 }
 
-int32_t DAGUniverse::cell_index(moab::EntityHandle vol) const {
+int32_t DAGUniverse::cell_index(moab::EntityHandle vol) const
+{
   // return the index of the volume in the DAGMC instance and then
   // adjust by the offset into the model cells for this DAGMC universe
   return dagmc_ptr()->index_by_handle(vol) + cell_idx_offset_;
 }
 
-int32_t DAGUniverse::surface_index(moab::EntityHandle surf) const {
+int32_t DAGUniverse::surface_index(moab::EntityHandle surf) const
+{
   // return the index of the surface in the DAGMC instance and then
   // adjust by the offset into the model cells for this DAGMC universe
   return dagmc_ptr()->index_by_handle(surf) + surf_idx_offset_;
@@ -655,7 +657,8 @@ bool DAGCell::contains(Position r, Direction u, int32_t on_surface) const
   return result;
 }
 
-moab::EntityHandle DAGCell::mesh_handle() const {
+moab::EntityHandle DAGCell::mesh_handle() const
+{
   return dagmc_ptr()->entity_by_index(3, dag_index());
 }
 
@@ -684,7 +687,8 @@ DAGSurface::DAGSurface(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx)
   geom_type_ = GeometryType::DAG;
 } // empty constructor
 
-moab::EntityHandle DAGSurface::mesh_handle() const {
+moab::EntityHandle DAGSurface::mesh_handle() const
+{
   return dagmc_ptr()->entity_by_index(2, dag_index());
 }
 

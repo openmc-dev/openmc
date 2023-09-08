@@ -2,7 +2,7 @@ import typing
 import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from math import pi, sqrt, atan
+from math import pi, sqrt, atan2
 from numbers import Integral, Real
 from pathlib import Path
 from typing import Optional, Sequence, Tuple
@@ -1380,13 +1380,20 @@ class CylindricalMesh(StructuredMesh):
         r_origin = sqrt(self.origin[0]**2 + self.origin[1]**2)
         r_grid_values = np.array(self.r_grid) + r_origin
 
+        if r_value < r_grid_values[0]:
+            raise ValueError()
+        if r_value > r_grid_values[-1]:
+            raise ValueError()
+
         r_index = np.argmax(r_grid_values > r_value) - 1
 
         z_grid_values = np.array(self.z_grid) + self.origin[2]
 
         z_index = np.argmax(z_grid_values > z) - 1
 
-        phi_value = atan((y-self.origin[1])/(x-self.origin[0]))
+        delta_x = x - self.origin[0]
+        delta_y = y - self.origin[1]
+        phi_value = atan2(delta_y, delta_x)
         print('phi_value',phi_value)
         phi_grid_values = np.array(self.phi_grid)
         print('phi_grid_values', phi_grid_values)

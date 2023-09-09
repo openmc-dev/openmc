@@ -1357,8 +1357,8 @@ class CylindricalMesh(StructuredMesh):
             string += fmt.format('\tZ Max:', '=\t', self._z_grid[-1])
         return string
 
-    def get_indices_at_coords(self, x: float, y: float, z: float):
-        """Finds the index of the mesh voxel at the specified coordinates.
+    def get_indices_at_coords(self, x: float, y: float, z: float) -> Tuple[int]:
+        """Finds the index of the mesh voxel at the specified x,y,z coordinates.
 
         Parameters
         ----------
@@ -1380,26 +1380,43 @@ class CylindricalMesh(StructuredMesh):
         r_origin = sqrt(self.origin[0]**2 + self.origin[1]**2)
         r_grid_values = np.array(self.r_grid) + r_origin
 
-        if r_value < r_grid_values[0]:
-            raise ValueError()
-        if r_value > r_grid_values[-1]:
-            raise ValueError()
+        if r_value < r_grid_values[0] or r_value > r_grid_values[-1]:
+            raise ValueError(
+                f'The specified x, y ({x}, {y}) values from the origin {self.origin} '
+                f'are outside outside the absolute r grid values {r_grid_values}.'
+            )
 
         r_index = np.argmax(r_grid_values > r_value) - 1
 
         z_grid_values = np.array(self.z_grid) + self.origin[2]
 
+        z_value = z + self.origin[2]
+
+        if z_value < z_grid_values[0] or z_value > z_grid_values[-1]:
+            raise ValueError(
+                f'The specified z value ({z}) from the origin of {self.origin} '
+                f'is outside of the absolute z grid range {z_grid_values}.'
+            )
+
         z_index = np.argmax(z_grid_values > z) - 1
 
         delta_x = x - self.origin[0]
         delta_y = y - self.origin[1]
-        phi_value = atan2(delta_y, delta_x)
-        print('phi_value',phi_value)
+        phi_value = atan2(delta_y, delta_x) + pi
+        # check if this is needed
+        # if phi_value < 0:
+        #     phi_value += 2 * pi
         phi_grid_values = np.array(self.phi_grid)
-        print('phi_grid_values', phi_grid_values)
+
+        if phi_value < phi_grid_values[0] or phi_value > phi_grid_values[-1]:
+            raise ValueError(
+                f'The phi value ({phi_value}) resulting from the specified x, y '
+                f'values is outside of the absolute  phi grid range {phi_grid_values}.'
+            )
+        print('phi_grid_values',phi_grid_values)
+        print('phi_value',phi_value)
         phi_index = np.argmax(phi_grid_values > phi_value) - 1
-        print('phi_index', phi_index)
-        print()
+
         return (r_index, phi_index, z_index)
 
     @classmethod

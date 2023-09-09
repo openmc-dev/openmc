@@ -151,20 +151,36 @@ def test_CylindricalMesh_initiation():
 
 def test_CylindricalMesh_get_indices_at_coords():
 
+    # default origin (0, 0, 0) and default phi grind (0, 2*pi)
     mesh = openmc.CylindricalMesh(r_grid=(0,5, 10), z_grid=(0,5, 10))
     assert mesh.get_indices_at_coords(1,0,1) == (0,0,0)
     assert mesh.get_indices_at_coords(6,0,1) == (1,0,0)
     assert mesh.get_indices_at_coords(9,0,1) == (1,0,0)
     assert mesh.get_indices_at_coords(0,6,0) == (1,0,0)
-    assert mesh.get_indices_at_coords(0,9,1) == (1,0,0)
+    assert mesh.get_indices_at_coords(0,9,6) == (1,0,1)
+    assert mesh.get_indices_at_coords(-2,-2,9) == (0,0,1)
 
+    with pytest.raises(ValueError):
+        assert mesh.get_indices_at_coords(8,8,1)  # resulting r value to large
+    with pytest.raises(ValueError):
+        assert mesh.get_indices_at_coords(-8,-8,1)  # resulting r value to large
+    with pytest.raises(ValueError):
+        assert mesh.get_indices_at_coords(1,0,-1)  # z value below range
+    with pytest.raises(ValueError):
+        assert mesh.get_indices_at_coords(1,0,11)  # z value above range
+
+    # negative range on z grid
     mesh = openmc.CylindricalMesh(
         r_grid=(0,5, 10),
-        phi_grid=(0, pi, 2*pi),
-        z_grid=(0,5, 10),
+        phi_grid=(0, 0.5*pi, pi, 1.5*pi, 2*pi),
+        z_grid=(-5, 0, 5, 10),
     )
-    assert mesh.get_indices_at_coords(1,1,1) == (0,0,0)
-    assert mesh.get_indices_at_coords(2,2,1) == (0,0,0)
-    assert mesh.get_indices_at_coords(-2,0,1) == (0,1,0)
-    assert mesh.get_indices_at_coords(-2,-0.1,1) == (0,1,0)
+    assert mesh.get_indices_at_coords(1,1,1) == (0,0,1)
+    assert mesh.get_indices_at_coords(2,2,6) == (0,0,2)
+    assert mesh.get_indices_at_coords(-2,0,-1) == (0,1,0)
+
+    with pytest.raises(ValueError):
+        assert mesh.get_indices_at_coords(-2,-0.1,1)
     # assert mesh.get_indices_at_coords(-1,-1,1) == (0,1,0)
+
+# move origin on x, y and z

@@ -165,7 +165,8 @@ xt::xtensor<int, 1> StructuredMesh::get_x_shape() const
   return xt::adapt(tmp_shape, {n_dimension_});
 }
 
-Position StructuredMesh::sample_element(uint64_t* seed, const MeshIndex& ijk) const
+Position StructuredMesh::sample_element(
+  uint64_t* seed, const MeshIndex& ijk) const
 {
   // lookup the lower/upper bounds for the mesh element
   double x_min = negative_grid_boundary(ijk, 0);
@@ -1088,7 +1089,8 @@ StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   return idx;
 }
 
-Position CylindricalMesh::sample_element(uint64_t* seed, const MeshIndex& ijk) const
+Position CylindricalMesh::sample_element(
+  uint64_t* seed, const MeshIndex& ijk) const
 {
   double r_min = this->r(ijk[0] - 1);
   double r_max = this->r(ijk[0]);
@@ -1099,10 +1101,10 @@ Position CylindricalMesh::sample_element(uint64_t* seed, const MeshIndex& ijk) c
   double z_min = this->z(ijk[2] - 1);
   double z_max = this->z(ijk[2]);
 
-  double r_min_sq = r_min*r_min;
-  double r_max_sq = r_max*r_max;
-  double r =  sqrt(r_min_sq + (r_max_sq - r_min_sq) * prn(seed));
-  double phi = phi_min + (phi_max - phi_min) *  prn(seed);
+  double r_min_sq = r_min * r_min;
+  double r_max_sq = r_max * r_max;
+  double r = sqrt(r_min_sq + (r_max_sq - r_min_sq) * prn(seed));
+  double phi = phi_min + (phi_max - phi_min) * prn(seed);
   double z = z_min + (z_max - z_min) * prn(seed);
 
   double x = r * cos(phi);
@@ -1372,7 +1374,8 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(
   return idx;
 }
 
-Position SphericalMesh::sample_element(uint64_t* seed, const MeshIndex& ijk) const
+Position SphericalMesh::sample_element(
+  uint64_t* seed, const MeshIndex& ijk) const
 {
   double r_min = this->r(ijk[0] - 1);
   double r_max = this->r(ijk[0]);

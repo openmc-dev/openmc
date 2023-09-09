@@ -184,7 +184,10 @@ public:
     }
   };
 
-  Position sample_element(uint64_t* seed, int32_t bin) const override { return sample_element(seed, get_indices_from_bin(bin)); };
+  Position sample_element(uint64_t* seed, int32_t bin) const override
+  {
+    return sample_element(seed, get_indices_from_bin(bin));
+  };
 
   virtual Position sample_element(uint64_t* seed, const MeshIndex& ijk) const;
 

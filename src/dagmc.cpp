@@ -715,7 +715,7 @@ Direction DAGSurface::normal(Position r) const
   return dir;
 }
 
-Direction DAGSurface::reflect(Position r, Direction u, Particle* p) const
+Direction DAGSurface::reflect(Position r, Direction u, Geometron* p) const
 {
   Expects(p);
   p->history().reset_to_last_intersection();

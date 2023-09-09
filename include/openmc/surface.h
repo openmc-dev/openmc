@@ -105,12 +105,13 @@ public:
   //! Determine the direction of a ray reflected from the surface.
   //! \param[in] r The point at which the ray is incident.
   //! \param[in] u Incident direction of the ray
-  //! \param[inout] p Pointer to the particle
+  //! \param[inout] p Pointer to the particle. Only DAGMC uses this.
   //! \return Outgoing direction of the ray
-  virtual Direction reflect(Position r, Direction u) const;
+  virtual Direction reflect(
+    Position r, Direction u, Geometron* p = nullptr) const;
 
   virtual Direction diffuse_reflect(
-    Position r, Direction u, uint64_t* seed) const;
+    Position r, Direction u, uint64_t* seed, Geometron* p = nullptr) const;
 
   //! Evaluate the equation describing the surface.
   //!

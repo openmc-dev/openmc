@@ -164,6 +164,12 @@ class CoupledOperator(OpenMCOperator):
         ``None`` implies no limit on the depth.
 
         .. versionadded:: 0.12
+    diff_volume_method : str
+        Specifies how the volumes of the new materials should be found. Default
+        is to 'divide equally' which divides the original material volume
+        equally between the new materials, 'match cell' sets the volume of the
+        material to volume of the cell they fill.
+        .. versionadded:: 0.13.4
 
     Attributes
     ----------
@@ -206,8 +212,8 @@ class CoupledOperator(OpenMCOperator):
     }
 
     def __init__(self, model, chain_file=None, prev_results=None,
-                 diff_burnable_mats=False, normalization_mode="fission-q",
-                 fission_q=None,
+                 diff_burnable_mats=False, diff_volume_method='divide equally',
+                 normalization_mode="fission-q", fission_q=None,
                  fission_yield_mode="constant", fission_yield_opts=None,
                  reaction_rate_mode="direct", reaction_rate_opts=None,
                  reduce_chain=False, reduce_chain_level=None):
@@ -257,15 +263,16 @@ class CoupledOperator(OpenMCOperator):
         }
 
         super().__init__(
-            model.materials,
-            cross_sections,
-            chain_file,
-            prev_results,
-            diff_burnable_mats,
-            fission_q,
-            helper_kwargs,
-            reduce_chain,
-            reduce_chain_level)
+            materials=model.materials,
+            cross_sections=cross_sections,
+            chain_file=chain_file,
+            prev_results=prev_results,
+            diff_burnable_mats=diff_burnable_mats,
+            diff_volume_method=diff_volume_method,
+            fission_q=fission_q,
+            helper_kwargs=helper_kwargs,
+            reduce_chain=reduce_chain,
+            reduce_chain_level=reduce_chain_level)
 
     def _differentiate_burnable_mats(self):
         """Assign distribmats for each burnable material"""
@@ -278,19 +285,38 @@ class CoupledOperator(OpenMCOperator):
             [mat for mat in self.materials
              if mat.depletable and mat.num_instances > 1])
 
-        for mat in distribmats:
-            if mat.volume is None:
-                raise RuntimeError("Volume not specified for depletable "
-                                   "material with ID={}.".format(mat.id))
-            mat.volume /= mat.num_instances
+        if self.diff_volume_method == 'divide equally':
+            for mat in distribmats:
+                if mat.volume is None:
+                    raise RuntimeError("Volume not specified for depletable "
+                                       f"material with ID={mat.id}.")
+                mat.volume /= mat.num_instances
 
         if distribmats:
             # Assign distribmats to cells
             for cell in self.geometry.get_all_material_cells().values():
                 if cell.fill in distribmats:
                     mat = cell.fill
-                    cell.fill = [mat.clone()
-                                 for i in range(cell.num_instances)]
+                    if self.diff_volume_method == 'divide equally':
+                        cell.fill = [mat.clone()
+                                    for i in range(cell.num_instances)]
+                    elif self.diff_volume_method == 'match cell':
+                        for i in range(cell.num_instances):
+                            cell.fill = mat.clone()
+                            if cell.volume:
+                                cell.fill.volume = cell.volume
+                            else:
+                                raise RuntimeError(
+                                    f"Volume if cell ID={cell.id} not specified. "
+                                    "Set volumes of cells prior to using "
+                                    "diff_volume_method='match cell'."
+                                )
+                    else:
+                        raise ValueError(
+                            "diff_volume_method must be set to either 'match"
+                            "cell' or 'divide equally', not "
+                            f"{self.diff_volume_method}."
+                        )
 
         self.materials = openmc.Materials(
             self.model.geometry.get_all_materials().values()

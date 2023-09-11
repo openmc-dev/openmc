@@ -857,9 +857,8 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   // This guarantees the randomness and, at the same time, makes sure we
   // reuse random numbers for the same nuclide at different temperatures,
   // therefore preserving correlation of temperature in probability tables.
-  p.stream() = STREAM_URR_PTABLE;
-  double r = future_prn(static_cast<int64_t>(index_), *p.current_seed());
-  p.stream() = STREAM_TRACKING;
+  double r =
+    future_prn(static_cast<int64_t>(index_), p.seeds(STREAM_URR_PTABLE));
 
   // Warning: this assumes row-major order of cdf_values_
   int i_low = upper_bound_index(&urr.cdf_values_(i_energy, 0),

@@ -150,9 +150,7 @@ void sample_neutron_reaction(Particle& p)
 
   // Advance URR seed stream 'N' times after energy changes
   if (p.E() != p.E_last()) {
-    p.stream() = STREAM_URR_PTABLE;
-    advance_prn_seed(data::nuclides.size(), p.current_seed());
-    p.stream() = STREAM_TRACKING;
+    advance_prn_seed(data::nuclides.size(), &p.seeds(STREAM_URR_PTABLE));
   }
 
   // Play russian roulette if survival biasing is turned on

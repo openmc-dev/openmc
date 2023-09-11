@@ -508,14 +508,15 @@ attributes/sub-elements:
       as a unique pointer. This function can be used to pass parameters through to
       the source from the XML, if needed.
 
-    More documentation on how to build sources can be found in :ref:`custom_source`.
+    More documentation on how to build sources can be found in
+    :ref:`compiled_source`.
 
   :parameters:
     If this attribute is given, it indicated that the source type is
     ``compiled``. Its value provides the parameters to pass through to the class
     generated using the ``library`` parameter. More documentation on how to
     build parametrized sources can be found in
-    :ref:`parameterized_custom_source`.
+    :ref:`parameterized_compiled_source`.
 
   :space:
     An element specifying the spatial distribution of source sites. This element

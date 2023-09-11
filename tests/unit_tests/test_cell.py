@@ -345,3 +345,21 @@ def test_rotation_from_xml(rotation):
         elem, {s.id: s}, {'void': None}, openmc.Universe
     )
     np.testing.assert_allclose(new_cell.rotation, cell.rotation)
+
+
+def test_plot(run_in_tmpdir):
+    zcyl = openmc.ZCylinder()
+    c = openmc.Cell(region=-zcyl)
+
+    # create a universe before the plot
+    u_before = openmc.Universe()
+
+    # create a plot of the cell
+    c.plot()
+
+    # create a universe after the plot
+    u_after = openmc.Universe()
+
+    # ensure that calling the plot method doesn't
+    # affect the universe ID space
+    assert u_before.id + 1 == u_after.id

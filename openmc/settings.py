@@ -1718,7 +1718,7 @@ class Settings:
 
     def _weight_window_checkpoints_from_xml_element(self, root):
         elem = root.find('weight_window_checkpoints')
-        if elem is not None:
+        if elem is None:
             return
         for key in ('collision', 'surface'):
             value = get_text(elem, key)

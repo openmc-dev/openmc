@@ -1,4 +1,5 @@
 import openmc.deplete
+import numpy as np
 import pytest
 
 
@@ -16,11 +17,14 @@ def test_deplete_decay_products(run_in_tmpdir):
 </depletion_chain>
         """)
 
+    # Create MicroXS object with no cross sections
+    micro_xs = openmc.deplete.MicroXS(np.empty((0, 0)), [], [])
+
     # Create depletion operator with no reactions
-    micro_xs = openmc.deplete.MicroXS()
     op = openmc.deplete.IndependentOperator.from_nuclides(
         volume=1.0,
         nuclides={'Li5': 1.0},
+        flux=0.0,
         micro_xs=micro_xs,
         chain_file='test_chain.xml',
         normalization_mode='source-rate'

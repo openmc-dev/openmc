@@ -182,10 +182,11 @@ void DAGUniverse::init_geometry()
       model::cell_map[c->id_] = model::cells.size();
     } else {
       warning(fmt::format("DAGMC Cell IDs: {}", dagmc_ids_for_dim(3)));
-      fatal_error(fmt::format("DAGMC Universe {} contains a cell with ID {}, which "
-                              "already exists elsewhere in the geometry. Setting auto_geom_ids "
-                              "to True when initiating the DAGMC Universe may "
-                              "resolve this issue",
+      fatal_error(fmt::format(
+        "DAGMC Universe {} contains a cell with ID {}, which "
+        "already exists elsewhere in the geometry. Setting auto_geom_ids "
+        "to True when initiating the DAGMC Universe may "
+        "resolve this issue",
         this->id_, c->id_));
     }
 
@@ -395,7 +396,7 @@ bool DAGUniverse::find_cell(Particle& p) const
   // cells, place it in the implicit complement
   bool found = Universe::find_cell(p);
   if (!found && model::universe_map[this->id_] != model::root_universe) {
-    p.coord(p.n_coord() - 1).cell = implicit_complement_idx();
+    p.lowest_coord().cell = implicit_complement_idx();
     found = true;
   }
   return found;
@@ -581,7 +582,7 @@ std::pair<double, int32_t> DAGCell::distance(
     p->history().reset();
   }
 
-  const auto& univ = model::universes[p->coord(p->n_coord() - 1).universe];
+  const auto& univ = model::universes[p->lowest_coord().universe];
 
   DAGUniverse* dag_univ = static_cast<DAGUniverse*>(univ.get());
   if (!dag_univ)
@@ -609,7 +610,8 @@ std::pair<double, int32_t> DAGCell::distance(
     // into the implicit complement on the other side where no intersection will
     // be found. Treating this as a lost particle is problematic when plotting.
     // Instead, the infinite distance and invalid surface index are returned.
-    if (settings::run_mode == RunMode::PLOTTING) return {INFTY, -1};
+    if (settings::run_mode == RunMode::PLOTTING)
+      return {INFTY, -1};
 
     // the particle should be marked as lost immediately if an intersection
     // isn't found in a volume that is not the implicit complement. In the case
@@ -739,7 +741,8 @@ void check_dagmc_root_univ()
   }
 }
 
-int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ) {
+int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ)
+{
   auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[surf - 1].get());
   auto cellp = dynamic_cast<DAGCell*>(model::cells[curr_cell].get());
   auto univp = static_cast<DAGUniverse*>(model::universes[univ].get());
@@ -750,11 +753,12 @@ int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ) {
     cellp->dagmc_ptr()->entity_by_index(3, cellp->dag_index());
 
   moab::EntityHandle new_vol;
-  moab::ErrorCode rval = cellp->dagmc_ptr()->next_vol(surf_handle, curr_vol, new_vol);
-  if (rval != moab::MB_SUCCESS) return -1;
+  moab::ErrorCode rval =
+    cellp->dagmc_ptr()->next_vol(surf_handle, curr_vol, new_vol);
+  if (rval != moab::MB_SUCCESS)
+    return -1;
 
-  return cellp->dagmc_ptr()->index_by_handle(new_vol) +
-         univp->cell_idx_offset_;
+  return cellp->dagmc_ptr()->index_by_handle(new_vol) + univp->cell_idx_offset_;
 }
 
 } // namespace openmc

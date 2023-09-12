@@ -36,13 +36,16 @@ def chain_file():
     return Path(__file__).parents[2] / 'chain_simple.xml'
 
 
-@pytest.mark.parametrize("multiproc, from_nuclides, normalization_mode, power, flux", [
-    (True, True, 'source-rate', None, 1164719970082145.0),
-    (False, True, 'source-rate', None, 1164719970082145.0),
+neutron_per_cm2_sec = 1164719970082145.0
+
+
+@pytest.mark.parametrize("multiproc, from_nuclides, normalization_mode, power, source_rate", [
+    (True, True, 'source-rate', None, 1.0),
+    (False, True, 'source-rate', None, 1.0),
     (True, True, 'fission-q', 174, None),
     (False, True, 'fission-q', 174, None),
-    (True, False, 'source-rate', None, 1164719970082145.0),
-    (False, False, 'source-rate', None, 1164719970082145.0),
+    (True, False, 'source-rate', None, 1.0),
+    (False, False, 'source-rate', None, 1.0),
     (True, False, 'fission-q', 174, None),
     (False, False, 'fission-q', 174, None)])
 def test_against_self(run_in_tmpdir,
@@ -53,7 +56,7 @@ def test_against_self(run_in_tmpdir,
                       from_nuclides,
                       normalization_mode,
                       power,
-                      flux):
+                      source_rate):
     """Transport free system test suite.
 
     Runs an OpenMC transport-free depletion calculation and verifies
@@ -61,8 +64,10 @@ def test_against_self(run_in_tmpdir,
 
     """
     # Create operator
+    flux = neutron_per_cm2_sec * fuel.volume
     op = _create_operator(from_nuclides,
                           fuel,
+                          flux,
                           micro_xs,
                           chain_file,
                           normalization_mode)
@@ -75,12 +80,12 @@ def test_against_self(run_in_tmpdir,
     openmc.deplete.PredictorIntegrator(op,
                                        dt,
                                        power=power,
-                                       source_rates=flux,
+                                       source_rates=source_rate,
                                        timestep_units='s').integrate()
 
     # Get path to test and reference results
     path_test = op.output_dir / 'depletion_results.h5'
-    if flux is not None:
+    if power is None:
         ref_path = 'test_reference_source_rate.h5'
     else:
         ref_path = 'test_reference_fission_q.h5'
@@ -99,8 +104,8 @@ def test_against_self(run_in_tmpdir,
     _assert_same_mats(res_test, res_ref)
 
     tol = 1.0e-14
-    assert_atoms_equal(res_test, res_ref, tol)
-    assert_reaction_rates_equal(res_test, res_ref, tol)
+    assert_atoms_equal(res_ref, res_test, tol)
+    assert_reaction_rates_equal(res_ref, res_test, tol)
 
 
 @pytest.mark.parametrize("multiproc, dt, time_units, time_type, atom_tol, rx_tol ", [
@@ -123,7 +128,8 @@ def test_against_coupled(run_in_tmpdir,
                          atom_tol,
                          rx_tol):
     # Create operator
-    op = _create_operator(False, fuel, micro_xs, chain_file, 'fission-q')
+    flux = neutron_per_cm2_sec * fuel.volume
+    op = _create_operator(False, fuel, flux, micro_xs, chain_file, 'fission-q')
 
     # Power and timesteps
     dt = [dt]  # single step
@@ -151,12 +157,13 @@ def test_against_coupled(run_in_tmpdir,
     # Assert same mats
     _assert_same_mats(res_test, res_ref)
 
-    assert_atoms_equal(res_test, res_ref, atom_tol)
-    assert_reaction_rates_equal(res_test, res_ref, rx_tol)
+    assert_atoms_equal(res_ref, res_test, atom_tol)
+    assert_reaction_rates_equal(res_ref, res_test, rx_tol)
 
 
 def _create_operator(from_nuclides,
                      fuel,
+                     flux,
                      micro_xs,
                      chain_file,
                      normalization_mode):
@@ -167,13 +174,15 @@ def _create_operator(from_nuclides,
 
         op = IndependentOperator.from_nuclides(fuel.volume,
                                                nuclides,
+                                               flux,
                                                micro_xs,
                                                chain_file,
                                                normalization_mode=normalization_mode)
 
     else:
         op = IndependentOperator(openmc.Materials([fuel]),
-                                 micro_xs,
+                                 [flux],
+                                 [micro_xs],
                                  chain_file,
                                  normalization_mode=normalization_mode)
 

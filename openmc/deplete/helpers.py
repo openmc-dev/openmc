@@ -196,13 +196,13 @@ class DirectReactionRateHelper(ReactionRateHelper):
         """
         self._rate_tally_means_cache = None
 
-    def get_material_rates(self, mat_id, nuc_index, rx_index):
+    def get_material_rates(self, mat_index, nuc_index, rx_index):
         """Return an array of reaction rates for a material
 
         Parameters
         ----------
-        mat_id : int
-            Unique ID for the requested material
+        mat_index : int
+            Index for the material
         nuc_index : iterable of int
             Index for each nuclide in :attr:`nuclides` in the
             desired reaction rate matrix
@@ -216,7 +216,7 @@ class DirectReactionRateHelper(ReactionRateHelper):
             reaction rates in this material
         """
         self._results_cache.fill(0.0)
-        full_tally_res = self.rate_tally_means[mat_id]
+        full_tally_res = self.rate_tally_means[mat_index]
         for i_tally, (i_nuc, i_rx) in enumerate(product(nuc_index, rx_index)):
             self._results_cache[i_nuc, i_rx] = full_tally_res[i_tally]
 

@@ -119,6 +119,8 @@ public:
   const Mesh* mesh() const { return model::meshes.at(mesh_idx_).get(); }
   int32_t n_sources() const { return this->mesh()->n_bins(); }
 
+  double total_strength() { return this->elem_idx_dist_.integral(); }
+
 private:
   int32_t mesh_idx_ {C_NONE};
   DiscreteIndex elem_idx_dist_; //!< Distribution of

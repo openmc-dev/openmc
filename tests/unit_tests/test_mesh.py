@@ -56,20 +56,25 @@ def test_cylindrical_mesh_bounding_box():
         origin=(0, 0, 0)
     )
     np.testing.assert_array_equal(mesh.upper_right, (1, 1, 1))
-    np.testing.assert_array_equal(mesh.lower_left, (-1, -1, -1))
+    np.testing.assert_array_equal(mesh.lower_left, (-1, -1, 0.1))
     bb = mesh.bounding_box
     assert isinstance(bb, openmc.BoundingBox)
-    np.testing.assert_array_equal(bb.lower_left, (-1, -1, -1))
+    np.testing.assert_array_equal(bb.lower_left, (-1, -1, 0.1))
     np.testing.assert_array_equal(bb.upper_right, (1, 1, 1))
 
     # test with mesh at origin (3, 5, 7)
     mesh.origin = (3, 5, 7)
     np.testing.assert_array_equal(mesh.upper_right, (4, 6, 8))
-    np.testing.assert_array_equal(mesh.lower_left, (2, 4, 6))
+    np.testing.assert_array_equal(mesh.lower_left, (2, 4, 7.1))
     bb = mesh.bounding_box
     assert isinstance(bb, openmc.BoundingBox)
-    np.testing.assert_array_equal(bb.lower_left, (2, 4, 6))
+    np.testing.assert_array_equal(bb.lower_left, (2, 4, 7.1))
     np.testing.assert_array_equal(bb.upper_right, (4, 6, 8))
+
+    # changing z grid to contain negative numbers
+    mesh.z_grid = [-10, 0, 10]
+    np.testing.assert_array_equal(mesh.lower_left, (2, 4, -3))
+    np.testing.assert_array_equal(mesh.upper_right, (4, 6, 17))
 
 
 def test_spherical_mesh_bounding_box():

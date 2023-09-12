@@ -112,7 +112,7 @@ class TransferRates:
 
         Returns
         -------
-        destination_material_id : List of str
+        destination_material_id : list of str
             Depletable material ID to where the element or nuclide gets
             transferred
 
@@ -220,10 +220,10 @@ class TransferRates:
                                          'a transfer rate.')
 
             if component in self.transfer_rates[material_id]:
-                self.transfer_rates[material_id][component].append( \
+                self.transfer_rates[material_id][component].append(
                     (transfer_rate / unit_conv, destination_material_id))
             else:
-                self.transfer_rates[material_id][component] =  \
-                    [(transfer_rate / unit_conv, destination_material_id)]
+                self.transfer_rates[material_id][component] = [
+                    (transfer_rate / unit_conv, destination_material_id)]
             if destination_material_id is not None:
                 self.index_transfer.add((destination_material_id, material_id))

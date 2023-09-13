@@ -545,6 +545,9 @@ class Integrator(ABC):
 
     transfer_rates : openmc.deplete.TransferRates
         Instance of TransferRates class to perform continuous transfer during depletion
+    batchwise : openmc.deplete.Batchwise
+        Instance of Batchwise class to perform batch-wise scheme during
+        transport-depletion simulation.
 
         .. versionadded:: 0.14.0
 
@@ -888,15 +891,18 @@ class Integrator(ABC):
 
         Parameters
         ----------
+        obj : openmc.Cell or openmc.Material object or id or str name
+            Cell or Materials identifier to where add batchwise scheme
         attr : str
-            Type of batchwise operation to add. `Trans` stands for geometrical
-            translation, `refuel` for material refueling and `dilute` for material
-            dilute.
+            Attribute to specify the type of batchwise scheme. Accepted values
+            are: 'translation', 'rotation', 'temperature' for an openmc.Cell
+            object; 'refuel' for an openmc.Material object.
         **kwargs
             keyword arguments that are passed to the batchwise class.
 
         """
-        check_value('attribute', attr, ('translation', 'rotation', 'temperature', 'refuel'))
+        check_value('attribute', attr, ('translation', 'rotation',
+                                        'temperature', 'refuel'))
         if attr in ('translation', 'rotation'):
             batchwise = BatchwiseCellGeometrical
         elif attr == 'temperature':

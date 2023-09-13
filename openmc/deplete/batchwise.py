@@ -15,14 +15,13 @@ from openmc.checkvalue import (check_type, check_value, check_less_than,
 class Batchwise(ABC):
     """Abstract class defining a generalized batch wise scheme.
 
-    Almost any type of nuclear reactors adopt batchwise schemes to control
-    reactivity and maintain keff constant and equal to 1, such as control rod
-    adjustment or material refueling.
+    Batchwise schemes, such as control rod adjustment or material refueling to
+    control reactivity and maintain keff constant and equal to one.
 
     A batch wise scheme can be added here to an integrator instance,
     such as  :class:`openmc.deplete.CECMIntegrator`, to parametrize one system
-    variable with the aim of fulfilling a design criteria, such as keeping
-    keff equal to 1, while running transport-depletion caculations. 
+    variable with the aim of satisfy certain design criteria, such as keeping
+    keff equal to one, while running transport-depletion caculations.
 
     Specific classes for running batch wise depletion calculations are
     implemented as derived class of Batchwise
@@ -277,7 +276,7 @@ class Batchwise(ABC):
         """
         Update volumes stored in AtomNumber.
         After a depletion step, both material volume and density change, due to
-        change in nuclides composition.
+        changes in nuclides composition.
         At present we lack an implementation to calculate density and volume
         changes due to the different molecules speciation. Therefore, OpenMC
         assumes by default that the depletable volume does not change and only

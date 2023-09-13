@@ -10,7 +10,6 @@ filesystem.
 
 import copy
 from warnings import warn
-from typing import List, Dict, Tuple
 
 import numpy as np
 from uncertainties import ufloat
@@ -417,7 +416,7 @@ class CoupledOperator(OpenMCOperator):
         for mat in self.materials:
             mat._nuclides.sort(key=lambda x: nuclides.index(x[0]))
 
-        self.materials.export_to_xml(nuclides_to_ignore = self._decay_nucs)
+        self.materials.export_to_xml(nuclides_to_ignore=self._decay_nucs)
 
     def __call__(self, vec, source_rate):
         """Runs a simulation.

@@ -1250,7 +1250,7 @@ class Material(IDManagerMixin):
 
         return memo[self]
 
-    def _get_nuclide_xml(self, nuclide: str) -> ET.Element:
+    def _get_nuclide_xml(self, nuclide: NuclideTuple) -> ET.Element:
         xml_element = ET.Element("nuclide")
         xml_element.set("name", nuclide.name)
 
@@ -1267,8 +1267,9 @@ class Material(IDManagerMixin):
 
         return xml_element
 
-    def _get_nuclides_xml(self, nuclides: typing.Iterable[str],
-                          nuclides_to_ignore: typing.Iterable[str] = None) -> List[ET.Element]:
+    def _get_nuclides_xml(
+            self, nuclides: typing.Iterable[NuclideTuple],
+            nuclides_to_ignore: Optional[typing.Iterable[str]] = None)-> List[ET.Element]:
         xml_elements = []
 
         # Remove any nuclides to ignore from the XML export
@@ -1279,7 +1280,8 @@ class Material(IDManagerMixin):
 
         return xml_elements
 
-    def to_xml_element(self, nuclides_to_ignore: typing.Iterable[str] = None) -> ET.Element:
+    def to_xml_element(
+            self, nuclides_to_ignore: Optional[typing.Iterable[str]] = None) -> ET.Element:
         """Return XML representation of the material
 
         Parameters
@@ -1588,8 +1590,8 @@ class Materials(cv.CheckedList):
         for material in self:
             material.make_isotropic_in_lab()
 
-    def _write_xml(self, file, header=True, level=0, spaces_per_level=2, trailing_indent=True,
-                   nuclides_to_ignore=None):
+    def _write_xml(self, file, header=True, level=0, spaces_per_level=2,
+                   trailing_indent=True, nuclides_to_ignore=None):
         """Writes XML content of the materials to an open file handle.
 
         Parameters
@@ -1642,7 +1644,7 @@ class Materials(cv.CheckedList):
             file.write(indentation)
 
     def export_to_xml(self, path: PathLike = 'materials.xml',
-                      nuclides_to_ignore: typing.Iterable[str] = None):
+                      nuclides_to_ignore: Optional[typing.Iterable[str]] = None):
         """Export material collection to an XML file.
 
         Parameters

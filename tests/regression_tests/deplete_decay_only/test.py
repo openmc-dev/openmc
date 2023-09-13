@@ -58,21 +58,14 @@ def chain_file():
     return Path(__file__).parents[2] / 'chain_simple_decay.xml'
 
 
-@pytest.mark.parametrize("operator_type", [
-    "coupled",
-    "independent"])
-def test_decay_only(run_in_tmpdir,
-               operator_type,
-               model,
-               micro_xs,
-               chain_file):
+@pytest.mark.parametrize("operator_type", ["coupled", "independent"])
+def test_decay_only(run_in_tmpdir, operator_type, model, micro_xs, chain_file):
     """Transport free system test suite.
 
     """
     # Create operator
     if operator_type == "coupled":
-        op = CoupledOperator(model,
-                             chain_file=chain_file)
+        op = CoupledOperator(model, chain_file=chain_file)
     else:
         op = IndependentOperator(openmc.Materials([model.materials[0]]),
                                  [1e15],

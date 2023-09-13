@@ -177,7 +177,7 @@ class OpenMCOperator(TransportOperator):
         Returns
         -------
         burnable_mats : list of str
-            F of burnable material IDs
+            list of burnable material IDs
         volume : dict of str to float
             Volume of each material in [cm^3]
         nuclides : list of str

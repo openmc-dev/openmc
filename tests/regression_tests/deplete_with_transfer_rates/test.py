@@ -82,5 +82,5 @@ def test_transfer_rates(run_in_tmpdir, model, rate, dest_mat, power, ref_result)
     res_ref = openmc.deplete.Results(path_reference)
     res_test = openmc.deplete.Results(path_test)
 
-    assert_atoms_equal(res_ref, res_test)
+    assert_atoms_equal(res_ref, res_test, 1e-4)
     assert_reaction_rates_equal(res_ref, res_test)

@@ -28,7 +28,7 @@ from .results import Results
 from .pool import deplete
 from .reaction_rates import ReactionRates
 from .transfer_rates import TransferRates
-from openmc import Material, Cell, Universe
+from openmc import Material, Cell
 from .batchwise import (BatchwiseCellGeometrical, BatchwiseCellTemperature,
     BatchwiseMaterialRefuel)
 

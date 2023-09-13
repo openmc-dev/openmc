@@ -670,9 +670,9 @@ class WeightWindowGenerator:
         The upper limit for number of tally realizations when generating weight
         windows.
     update_interval : int
-        The number of tally realizations between updates. (default: 1)
+        The number of tally realizations between updates.
     on_the_fly : bool
-        Whether or not to apply weight windows on the fly. (default: True)
+        Whether or not to apply weight windows on the fly.
 
     Attributes
     ----------
@@ -690,11 +690,11 @@ class WeightWindowGenerator:
         The upper limit for number of tally realizations when generating weight
         windows.
     update_interval : int
-        The number of tally realizations between updates. (default: 1)
+        The number of tally realizations between updates.
     update_parameters : dict
         A set of parameters related to the update.
     on_the_fly : bool
-        Whether or not to apply weight windows on the fly. (default: True)
+        Whether or not to apply weight windows on the fly.
     """
 
     _MAGIC_PARAMS = {'value': str, 'threshold': float, 'ratio': float}
@@ -702,7 +702,7 @@ class WeightWindowGenerator:
     def __init__(
         self,
         mesh: openmc.MeshBase,
-        energy_bounds: Sequence[float] = None,
+        energy_bounds: Optional[Sequence[float]] = None,
         particle_type: str = 'neutron',
         method: str = 'magic',
         max_realizations: int = 1,
@@ -720,7 +720,6 @@ class WeightWindowGenerator:
         self.max_realizations = max_realizations
         self.update_interval = update_interval
         self.on_the_fly = on_the_fly
-
 
     def __repr__(self):
         string = type(self).__name__ + '\n'

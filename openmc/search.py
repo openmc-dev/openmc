@@ -205,7 +205,7 @@ def search_for_keff(model_builder, initial_guess=None, target=1.0,
     # Perform the search
     if not run_in_memory:
         zero_value = root_finder(**args)
-        return zero_value
+        return zero_value, guesses, results
 
     else:
         try:

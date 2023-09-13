@@ -25,7 +25,7 @@ from .chain import Chain
 from .results import Results
 from .pool import deplete
 from .transfer_rates import TransferRates
-from openmc import Material, Cell, Universe
+from openmc import Material, Cell
 from .batchwise import (BatchwiseCellGeometrical, BatchwiseCellTemperature,
     BatchwiseMaterialRefuel)
 

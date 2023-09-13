@@ -117,6 +117,6 @@ def test_batchwise(run_in_tmpdir, model, obj, attribute, bracket_limit, axis,
     res_test = openmc.deplete.Results(path_test)
     res_ref = openmc.deplete.Results(path_reference)
 
-    # Use hight tolerance here
+    # Use high tolerance here
     assert [res.batchwise for res in res_test] == pytest.approx(
            [res.batchwise for res in res_ref], rel=2)

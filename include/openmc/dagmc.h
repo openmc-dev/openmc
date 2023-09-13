@@ -47,7 +47,7 @@ public:
   inline void to_hdf5_inner(hid_t group_id) const override {};
 
   // Accessor methods
-  const std::shared_ptr<moab::DagMC>& dagmc_ptr() const { return dagmc_ptr_; }
+  moab::DagMC* dagmc_ptr() const { return dagmc_ptr_.get(); }
   int32_t dag_index() const { return dag_index_; }
 
 private:
@@ -71,7 +71,7 @@ public:
   void to_hdf5_inner(hid_t group_id) const override;
 
   // Accessor methods
-  const std::shared_ptr<moab::DagMC>& dagmc_ptr() const { return dagmc_ptr_; }
+  moab::DagMC* dagmc_ptr() const { return dagmc_ptr_.get(); }
   int32_t dag_index() const { return dag_index_; }
 
 private:
@@ -156,7 +156,7 @@ public:
                             //!< universe in OpenMC's surface vector
 
   // Accessors
-  std::shared_ptr<moab::DagMC> dagmc_ptr() const { return dagmc_instance_; }
+  moab::DagMC* dagmc_ptr() const { return dagmc_instance_.get(); }
   bool has_graveyard() const { return has_graveyard_; }
 
 private:

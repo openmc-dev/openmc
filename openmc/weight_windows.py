@@ -1,8 +1,7 @@
 from __future__ import annotations
 from collections.abc import Iterable
 from numbers import Real, Integral
-import pathlib
-from typing import Iterable, List, Optional, Union, Dict
+from typing import Iterable, List, Optional, Dict, Sequence
 import warnings
 
 import lxml.etree as ET
@@ -664,6 +663,16 @@ class WeightWindowGenerator:
         maximum and minimum energy for the data available at runtime.
     particle_type : {'neutron', 'photon'}
         Particle type the weight windows apply to
+    method : {'magic'}
+        The weight window generation methodology applied during an update. Only
+        'magic' is currently supported.
+    max_realizations : int
+        The upper limit for number of tally realizations when generating weight
+        windows.
+    update_interval : int
+        The number of tally realizations between updates.
+    on_the_fly : bool
+        Whether or not to apply weight windows on the fly.
 
     Attributes
     ----------
@@ -681,30 +690,36 @@ class WeightWindowGenerator:
         The upper limit for number of tally realizations when generating weight
         windows.
     update_interval : int
-        The number of tally realizations between updates. (default: 1)
+        The number of tally realizations between updates.
     update_parameters : dict
         A set of parameters related to the update.
     on_the_fly : bool
-        Whether or not to apply weight windows on the fly. (default: True)
+        Whether or not to apply weight windows on the fly.
     """
 
     _MAGIC_PARAMS = {'value': str, 'threshold': float, 'ratio': float}
 
-    def __init__(self, mesh, energy_bounds=None, particle_type='neutron'):
+    def __init__(
+        self,
+        mesh: openmc.MeshBase,
+        energy_bounds: Optional[Sequence[float]] = None,
+        particle_type: str = 'neutron',
+        method: str = 'magic',
+        max_realizations: int = 1,
+        update_interval: int = 1,
+        on_the_fly: bool = True
+    ):
+        self._update_parameters = None
+
         self.mesh = mesh
         self._energy_bounds = None
         if energy_bounds is not None:
             self.energy_bounds = energy_bounds
         self.particle_type = particle_type
-        self.max_realizations = 1
-
-        self._update_parameters = None
-
-        self.method = 'magic'
-        self.particle_type = particle_type
-        self.update_interval = 1
-        self.on_the_fly = True
-
+        self.method = method
+        self.max_realizations = max_realizations
+        self.update_interval = update_interval
+        self.on_the_fly = on_the_fly
 
     def __repr__(self):
         string = type(self).__name__ + '\n'

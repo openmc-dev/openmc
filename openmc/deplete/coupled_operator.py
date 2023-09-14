@@ -416,7 +416,7 @@ class CoupledOperator(OpenMCOperator):
         for mat in self.materials:
             mat._nuclides.sort(key=lambda x: nuclides.index(x[0]))
 
-        self.materials.export_to_xml()
+        self.materials.export_to_xml(nuclides_to_ignore=self._decay_nucs)
 
     def __call__(self, vec, source_rate):
         """Runs a simulation.

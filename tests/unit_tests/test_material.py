@@ -74,6 +74,18 @@ def test_add_components():
     with pytest.raises(ValueError):
         m.add_components({'H1': 1.0}, percent_type = 'oa')
 
+def test_nuclides_to_ignore(run_in_tmpdir):
+    """Test nuclides_to_ignore when exporting a material to XML"""
+    m = openmc.Material()
+    m.add_nuclide('U235', 1.0)
+    m.add_nuclide('H1', 1.0)
+    m.add_nuclide('O16', 1.0)
+
+    mats = openmc.Materials([m])
+    mats.export_to_xml(nuclides_to_ignore=['H1'])
+
+    test_mats = openmc.Materials.from_xml()
+    assert 'H1' not in test_mats[0].get_nuclides()
 
 def test_remove_nuclide():
     """Test removing nuclides."""

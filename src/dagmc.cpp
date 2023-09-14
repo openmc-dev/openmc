@@ -329,6 +329,20 @@ void DAGUniverse::init_geometry()
   } // end surface loop
 }
 
+int32_t DAGUniverse::cell_index(moab::EntityHandle vol) const
+{
+  // return the index of the volume in the DAGMC instance and then
+  // adjust by the offset into the model cells for this DAGMC universe
+  return dagmc_ptr()->index_by_handle(vol) + cell_idx_offset_;
+}
+
+int32_t DAGUniverse::surface_index(moab::EntityHandle surf) const
+{
+  // return the index of the surface in the DAGMC instance and then
+  // adjust by the offset into the model cells for this DAGMC universe
+  return dagmc_ptr()->index_by_handle(surf) + surf_idx_offset_;
+}
+
 std::string DAGUniverse::dagmc_ids_for_dim(int dim) const
 {
   // generate a vector of ids
@@ -643,6 +657,11 @@ bool DAGCell::contains(Position r, Direction u, int32_t on_surface) const
   return result;
 }
 
+moab::EntityHandle DAGCell::mesh_handle() const
+{
+  return dagmc_ptr()->entity_by_index(3, dag_index());
+}
+
 void DAGCell::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "geom_type", "dagmc", false);
@@ -667,6 +686,11 @@ DAGSurface::DAGSurface(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx)
 {
   geom_type_ = GeometryType::DAG;
 } // empty constructor
+
+moab::EntityHandle DAGSurface::mesh_handle() const
+{
+  return dagmc_ptr()->entity_by_index(2, dag_index());
+}
 
 double DAGSurface::evaluate(Position r) const
 {
@@ -747,10 +771,8 @@ int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ)
   auto cellp = dynamic_cast<DAGCell*>(model::cells[curr_cell].get());
   auto univp = static_cast<DAGUniverse*>(model::universes[univ].get());
 
-  moab::EntityHandle surf_handle =
-    surfp->dagmc_ptr()->entity_by_index(2, surfp->dag_index());
-  moab::EntityHandle curr_vol =
-    cellp->dagmc_ptr()->entity_by_index(3, cellp->dag_index());
+  moab::EntityHandle surf_handle = surfp->mesh_handle();
+  moab::EntityHandle curr_vol = cellp->mesh_handle();
 
   moab::EntityHandle new_vol;
   moab::ErrorCode rval =
@@ -758,7 +780,7 @@ int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ)
   if (rval != moab::MB_SUCCESS)
     return -1;
 
-  return cellp->dagmc_ptr()->index_by_handle(new_vol) + univp->cell_idx_offset_;
+  return univp->cell_index(new_vol);
 }
 
 } // namespace openmc

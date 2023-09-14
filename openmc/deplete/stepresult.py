@@ -468,18 +468,20 @@ class StepResult:
         else:
             # Older versions used "power" instead of "source_rate"
             source_rate_dset = handle["/power"]
-        root_dset = handle["/batchwise_root"]
 
         results.data = number_dset[step, :, :, :]
         results.k = eigenvalues_dset[step, :]
         results.time = time_dset[step, :]
         results.source_rate = source_rate_dset[step, 0]
-        results.batchwise = root_dset[step]
 
         if "depletion time" in handle:
             proc_time_dset = handle["/depletion time"]
             if step < proc_time_dset.shape[0]:
                 results.proc_time = proc_time_dset[step]
+
+        if "batchwise_root" in handle:
+            root_dset = handle["/batchwise_root"]
+            results.batchwise = root_dset[step]
 
         if results.proc_time is None:
             results.proc_time = np.array([np.nan])

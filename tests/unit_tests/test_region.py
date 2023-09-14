@@ -222,3 +222,21 @@ def test_translate_inplace():
     # Translating a region in-place should *not* produce new surfaces
     region3 = region.translate((0.5, -6.7, 3.9), inplace=True)
     assert str(region) == str(region3)
+
+
+def test_invalid_operands():
+    s = openmc.Sphere()
+    z = 3
+
+    # Intersection with invalid operand
+    with pytest.raises(ValueError, match='must be of type Region'):
+        -s & +z
+
+    # Union with invalid operand
+    with pytest.raises(ValueError, match='must be of type Region'):
+        -s | +z
+
+    # Complement with invalid operand
+    with pytest.raises(ValueError, match='must be of type Region'):
+        openmc.Complement(z)
+

@@ -91,13 +91,13 @@ class TransferRates:
 
         Returns
         -------
-        transfer_rate : float
-            Transfer rate value
+        transfer_rate : list of floats
+            Transfer rate values
 
         """
         material_id = self._get_material_id(material)
         check_type('component', component, str)
-        return self.transfer_rates[material_id][component][0]
+        return [i[0] for i in self.transfer_rates[material_id][component]]
 
     def get_destination_material(self, material, component):
         """Return destination material for given material and
@@ -112,7 +112,7 @@ class TransferRates:
 
         Returns
         -------
-        destination_material_id : str
+        destination_material_id : list of str
             Depletable material ID to where the element or nuclide gets
             transferred
 
@@ -120,7 +120,9 @@ class TransferRates:
         material_id = self._get_material_id(material)
         check_type('component', component, str)
         if component in self.transfer_rates[material_id]:
-            return self.transfer_rates[material_id][component][1]
+            return [i[1] for i in self.transfer_rates[material_id][component]]
+        else:
+            return []
 
     def get_components(self, material):
         """Extract removing elements and/or nuclides for a given material
@@ -217,7 +219,11 @@ class TransferRates:
                                          f'where element {element} already has '
                                          'a transfer rate.')
 
-            self.transfer_rates[material_id][component] = \
-                transfer_rate / unit_conv, destination_material_id
+            if component in self.transfer_rates[material_id]:
+                self.transfer_rates[material_id][component].append(
+                    (transfer_rate / unit_conv, destination_material_id))
+            else:
+                self.transfer_rates[material_id][component] = [
+                    (transfer_rate / unit_conv, destination_material_id)]
             if destination_material_id is not None:
                 self.index_transfer.add((destination_material_id, material_id))

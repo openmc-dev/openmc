@@ -686,16 +686,16 @@ class Chain:
         dict.update(matrix_dok, matrix)
         return matrix_dok.tocsr()
 
-    def form_rr_term(self, transfer_rates, materials):
+    def form_rr_term(self, tr_rates, mats):
         """Function to form the transfer rate term matrices.
 
         .. versionadded:: 0.13.4
 
         Parameters
         ----------
-        transfer_rates : openmc.deplete.TransferRates
+        tr_rates : openmc.deplete.TransferRates
             Instance of openmc.deplete.TransferRates
-        materials : string or two-tuple of strings
+        mats : string or two-tuple of strings
             Two cases are possible:
 
             1) Material ID as string:
@@ -719,25 +719,27 @@ class Chain:
         """
         matrix = defaultdict(float)
 
-        for i, nuclide in enumerate(self.nuclides):
-            element = re.split(r'\d+', nuclide.name)[0]
+        for i, nuc in enumerate(self.nuclides):
+            elm = re.split(r'\d+', nuc.name)[0]
             # Build transfer terms matrices
-            if isinstance(materials, str):
-                material = materials
-                components = transfer_rates.get_components(material)
-                if element in components:
-                    matrix[i, i] = transfer_rates.get_transfer_rate(material, element)
-                elif nuclide.name in components:
-                    matrix[i, i] = transfer_rates.get_transfer_rate(material, nuclide.name)
+            if isinstance(mats, str):
+                mat = mats
+                components = tr_rates.get_components(mat)
+                if elm in components:
+                    matrix[i, i] = sum(tr_rates.get_transfer_rate(mat, elm))
+                elif nuc.name in components:
+                    matrix[i, i] = sum(tr_rates.get_transfer_rate(mat, nuc.name))
                 else:
                     matrix[i, i] = 0.0
             #Build transfer terms matrices
-            elif isinstance(materials, tuple):
-                destination_material, material = materials
-                if transfer_rates.get_destination_material(material, element) == destination_material:
-                    matrix[i, i] = transfer_rates.get_transfer_rate(material, element)
-                elif transfer_rates.get_destination_material(material, nuclide.name) == destination_material:
-                    matrix[i, i] = transfer_rates.get_transfer_rate(material, nuclide.name)
+            elif isinstance(mats, tuple):
+                dest_mat, mat = mats
+                if dest_mat in tr_rates.get_destination_material(mat, elm):
+                    dest_mat_idx = tr_rates.get_destination_material(mat, elm).index(dest_mat)
+                    matrix[i, i] = tr_rates.get_transfer_rate(mat, elm)[dest_mat_idx]
+                elif dest_mat in tr_rates.get_destination_material(mat, nuc.name):
+                    dest_mat_idx = tr_rates.get_destination_material(mat, nuc.name).index(dest_mat)
+                    matrix[i, i] = tr_rates.get_transfer_rate(mat, nuc.name)[dest_mat_idx]
                 else:
                     matrix[i, i] = 0.0
             #Nothing else is allowed

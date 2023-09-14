@@ -1250,7 +1250,7 @@ class Material(IDManagerMixin):
 
         return memo[self]
 
-    def _get_nuclide_xml(self, nuclide: str) -> ET.Element:
+    def _get_nuclide_xml(self, nuclide: NuclideTuple) -> ET.Element:
         xml_element = ET.Element("nuclide")
         xml_element.set("name", nuclide.name)
 
@@ -1267,14 +1267,27 @@ class Material(IDManagerMixin):
 
         return xml_element
 
-    def _get_nuclides_xml(self, nuclides: typing.Iterable[str]) -> List[ET.Element]:
+    def _get_nuclides_xml(
+            self, nuclides: typing.Iterable[NuclideTuple],
+            nuclides_to_ignore: Optional[typing.Iterable[str]] = None)-> List[ET.Element]:
         xml_elements = []
-        for nuclide in nuclides:
-            xml_elements.append(self._get_nuclide_xml(nuclide))
+
+        # Remove any nuclides to ignore from the XML export
+        if nuclides_to_ignore:
+            nuclides = [nuclide for nuclide in nuclides if nuclide.name not in nuclides_to_ignore]
+
+        xml_elements = [self._get_nuclide_xml(nuclide) for nuclide in nuclides]
+
         return xml_elements
 
-    def to_xml_element(self) -> ET.Element:
+    def to_xml_element(
+            self, nuclides_to_ignore: Optional[typing.Iterable[str]] = None) -> ET.Element:
         """Return XML representation of the material
+
+        Parameters
+        ----------
+        nuclides_to_ignore : list of str
+            Nuclides to ignore when exporting to XML.
 
         Returns
         -------
@@ -1320,7 +1333,8 @@ class Material(IDManagerMixin):
 
         if self._macroscopic is None:
             # Create nuclide XML subelements
-            subelements = self._get_nuclides_xml(self._nuclides)
+            subelements = self._get_nuclides_xml(self._nuclides,
+                                                 nuclides_to_ignore=nuclides_to_ignore)
             for subelement in subelements:
                 element.append(subelement)
         else:
@@ -1576,7 +1590,8 @@ class Materials(cv.CheckedList):
         for material in self:
             material.make_isotropic_in_lab()
 
-    def _write_xml(self, file, header=True, level=0, spaces_per_level=2, trailing_indent=True):
+    def _write_xml(self, file, header=True, level=0, spaces_per_level=2,
+                   trailing_indent=True, nuclides_to_ignore=None):
         """Writes XML content of the materials to an open file handle.
 
         Parameters
@@ -1591,6 +1606,8 @@ class Materials(cv.CheckedList):
             Number of spaces per indentation
         trailing_indentation : bool
             Whether or not to write a trailing indentation for the materials element
+        nuclides_to_ignore : list of str
+            Nuclides to ignore when exporting to XML.
 
         """
         indentation = level*spaces_per_level*' '
@@ -1611,7 +1628,7 @@ class Materials(cv.CheckedList):
 
         # Write the <material> elements.
         for material in sorted(self, key=lambda x: x.id):
-            element = material.to_xml_element()
+            element = material.to_xml_element(nuclides_to_ignore=nuclides_to_ignore)
             clean_indentation(element, level=level+1)
             element.tail = element.tail.strip(' ')
             file.write((level+1)*spaces_per_level*' ')
@@ -1626,13 +1643,16 @@ class Materials(cv.CheckedList):
         if trailing_indent:
             file.write(indentation)
 
-    def export_to_xml(self, path: PathLike = 'materials.xml'):
+    def export_to_xml(self, path: PathLike = 'materials.xml',
+                      nuclides_to_ignore: Optional[typing.Iterable[str]] = None):
         """Export material collection to an XML file.
 
         Parameters
         ----------
         path : str
             Path to file to write. Defaults to 'materials.xml'.
+        nuclides_to_ignore : list of str
+            Nuclides to ignore when exporting to XML.
 
         """
         # Check if path is a directory
@@ -1645,7 +1665,7 @@ class Materials(cv.CheckedList):
         # one go.
         with open(str(p), 'w', encoding='utf-8',
                   errors='xmlcharrefreplace') as fh:
-            self._write_xml(fh)
+            self._write_xml(fh, nuclides_to_ignore=nuclides_to_ignore)
 
     @classmethod
     def from_xml_element(cls, elem) -> Material:

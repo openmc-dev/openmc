@@ -27,16 +27,25 @@ def model():
     w.set_density("g/cc", 1.0)
     w.depletable = True
 
+    # material just to test multiple destination material
+    h = openmc.Material(name="h")
+    h.add_element("He", 1)
+    h.set_density("g/cc", 1.78e-4)
+    h.depletable = True
+
     radii = [0.42, 0.45]
     f.volume = np.pi * radii[0] ** 2
     w.volume = np.pi * (radii[1]**2 - radii[0]**2)
-    materials = openmc.Materials([f, w])
+    h.volume = 1
+    materials = openmc.Materials([f, w, h])
 
     surf_f = openmc.Sphere(r=radii[0])
     surf_w = openmc.Sphere(r=radii[1], boundary_type='vacuum')
+    surf_h = openmc.Sphere(x0=10, r=1, boundary_type='vacuum')
     cell_f = openmc.Cell(fill=f, region=-surf_f)
     cell_w = openmc.Cell(fill=w, region=+surf_f & -surf_w)
-    geometry = openmc.Geometry([cell_f, cell_w])
+    cell_h = openmc.Cell(fill=h, region=-surf_h)
+    geometry = openmc.Geometry([cell_f, cell_w, cell_h])
 
     settings = openmc.Settings()
     settings.particles = 1000
@@ -52,6 +61,8 @@ def model():
                            'Xe': 0.1}),
     ('elements_nuclides', {'U': 0.01, 'Xe': 0.1, 'I135': 0.01, 'Gd156': 0.1,
                            'Gd157': 0.01}),
+    ('multiple_transfer', {'U': 0.01, 'Xe': 0.1, 'I135': 0.01, 'Gd156': 0.1,
+                           'Gd157': 0.01}),
     ('rates_invalid_1', {'Gd': 0.01, 'Gd157': 0.01, 'Gd156': 0.01}),
     ('rates_invalid_2', {'Gd156': 0.01, 'Gd157': 0.01, 'Gd': 0.01}),
     ('rates_invalid_3', {'Gb156': 0.01}),
@@ -64,7 +75,8 @@ def test_get_set(model, case_name, transfer_rates):
     transfer = TransferRates(op, model)
 
     # Test by Openmc material, material name and material id
-    material, dest_material = [m for m in model.materials if m.depletable]
+    material, dest_material, dest_material2 = [m for m in model.materials
+                                               if m.depletable]
     for material_input in [material, material.name, material.id]:
         for dest_material_input in [dest_material, dest_material.name,
                                     dest_material.id]:
@@ -107,12 +119,25 @@ def test_get_set(model, case_name, transfer_rates):
                                                destination_material=\
                                                dest_material_input)
                     assert transfer.get_transfer_rate(
-                        material_input, component) == transfer_rate
+                        material_input, component)[0] == transfer_rate
                     assert transfer.get_destination_material(
-                        material_input, component) == str(dest_material.id)
+                        material_input, component)[0] == str(dest_material.id)
                 assert transfer.get_components(material_input) == \
                     transfer_rates.keys()
 
+            if case_name == 'multiple_transfer':
+                for dest2_material_input in [dest_material2, dest_material2.name,
+                                    dest_material2.id]:
+                    for component, transfer_rate in transfer_rates.items():
+                        transfer.set_transfer_rate(material_input, [component],
+                                               transfer_rate,
+                                               destination_material=\
+                                               dest2_material_input)
+                        for id, dest_mat in zip([0,1],[dest_material,dest_material2]):
+                            assert transfer.get_transfer_rate(
+                                material_input, component)[id] == transfer_rate
+                            assert transfer.get_destination_material(
+                                material_input, component)[id] == str(dest_mat.id)
 
 @pytest.mark.parametrize("transfer_rate_units, unit_conv", [
     ('1/s', 1),
@@ -138,7 +163,7 @@ def test_units(transfer_rate_units, unit_conv, model):
     for component in components:
         transfer.set_transfer_rate('f', [component], transfer_rate * unit_conv,
                                    transfer_rate_units=transfer_rate_units)
-        assert transfer.get_transfer_rate('f', component) == transfer_rate
+        assert transfer.get_transfer_rate('f', component)[0] == transfer_rate
 
 
 def test_transfer(run_in_tmpdir, model):

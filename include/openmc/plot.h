@@ -99,8 +99,8 @@ public:
   virtual void print_info() const = 0;
 
   const std::string& path_plot() const { return path_plot_; }
-  const int id() const { return id_; }
-  const int level() const { return level_; }
+  int id() const { return id_; }
+  int level() const { return level_; }
 
   // Public color-related data
   PlottableInterface(pugi::xml_node plot_node);

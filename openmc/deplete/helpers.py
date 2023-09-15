@@ -268,6 +268,11 @@ class FluxCollapseHelper(ReactionRateHelper):
         if self._reactions_direct and self._nuclides_direct is None:
             self._rate_tally.nuclides = nuclides
 
+        # Make sure nuclide data is loaded
+        for nuclide in self.nuclides:
+            if nuclide not in openmc.lib.nuclides:
+                openmc.lib.load_nuclide(nuclide)
+
     def generate_tallies(self, materials, scores):
         """Produce multigroup flux spectrum tally
 

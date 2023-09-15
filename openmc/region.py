@@ -4,7 +4,6 @@ from copy import deepcopy
 
 import numpy as np
 
-from .checkvalue import check_type
 from .bounding_box import BoundingBox
 
 
@@ -362,6 +361,9 @@ class Intersection(Region, MutableSequence):
 
     def __init__(self, nodes):
         self._nodes = list(nodes)
+        for node in nodes:
+            if not isinstance(node, Region):
+                raise ValueError('Intersection operands must be of type Region')
 
     def __and__(self, other):
         new = Intersection(self)
@@ -450,6 +452,9 @@ class Union(Region, MutableSequence):
 
     def __init__(self, nodes):
         self._nodes = list(nodes)
+        for node in nodes:
+            if not isinstance(node, Region):
+                raise ValueError('Union operands must be of type Region')
 
     def __or__(self, other):
         new = Union(self)
@@ -566,7 +571,8 @@ class Complement(Region):
 
     @node.setter
     def node(self, node):
-        check_type('node', node, Region)
+        if not isinstance(node, Region):
+            raise ValueError('Complement operand must be of type Region')
         self._node = node
 
     @property

@@ -4,12 +4,6 @@ import glob
 import os
 from pytest import approx
 
-def _cleanup_wrapper(func):
-  @functools.wraps(func)
-  def _cleanup_particles():
-    func()
-  return _cleanup_particles
-
 try:
   mpi_np=config['mpi_np']
 except:
@@ -37,7 +31,6 @@ class TestHarness_limit_particle_output(TestHarness):
     def _test_output_created(self):
       super()._test_output_created()
       self._check_output_limit_lost()
-
 
 def test_limit_particle_output():
     harness = TestHarness_limit_particle_output('statepoint.10.h5')

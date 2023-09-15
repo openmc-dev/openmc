@@ -376,6 +376,9 @@ class Batchwise(ABC):
                 number_i.volume[mat_idx] = res_vol
         return x
 
+    def _get_molar_composition(self, x):
+        
+
 class BatchwiseCell(Batchwise):
     """Abstract class holding batch wise cell-based functions.
 

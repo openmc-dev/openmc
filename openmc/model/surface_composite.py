@@ -120,10 +120,10 @@ class CylinderSector(CompositeSurface):
                  **kwargs):
 
         if r2 <= r1:
-            raise ValueError(f'r2 must be greater than r1.')
+            raise ValueError('r2 must be greater than r1.')
 
         if theta2 <= theta1:
-            raise ValueError(f'theta2 must be greater than theta1.')
+            raise ValueError('theta2 must be greater than theta1.')
 
         phi1 = pi / 180 * theta1
         phi2 = pi / 180 * theta2
@@ -204,7 +204,7 @@ class CylinderSector(CompositeSurface):
             offset.
         """
         if theta >= 360. or theta <= 0:
-            raise ValueError(f'theta must be less than 360 and greater than 0.')
+            raise ValueError('theta must be less than 360 and greater than 0.')
 
         theta1 = alpha
         theta2 = alpha + theta
@@ -288,10 +288,10 @@ class IsogonalOctagon(CompositeSurface):
 
         # Side lengths
         if r2 > r1 * sqrt(2):
-            raise ValueError(f'r2 is greater than sqrt(2) * r1. Octagon' +
+            raise ValueError('r2 is greater than sqrt(2) * r1. Octagon' +
                              ' may be erroneous.')
         if r1 > r2 * sqrt(2):
-            raise ValueError(f'r1 is greater than sqrt(2) * r2. Octagon' +
+            raise ValueError('r1 is greater than sqrt(2) * r2. Octagon' +
                              ' may be erroneous.')
 
         L_basis_ax = (r2 * sqrt(2) - r1)

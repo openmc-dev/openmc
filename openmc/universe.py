@@ -7,7 +7,7 @@ from numbers import Integral, Real
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import lxml.etree as ET
-from warnings import warn
+import warnings
 
 import h5py
 import numpy as np
@@ -310,10 +310,9 @@ class Universe(UniverseBase):
         Parameters
         ----------
         origin : iterable of float
-            Coordinates at the origin of the plot, if left as None then the
-            universe.bounding_box.center will be used to attempt to
-            ascertain the origin. Defaults to (0, 0, 0) if the bounding_box
-            contains inf values
+            Coordinates at the origin of the plot. If left as None,
+            universe.bounding_box.center will be used to attempt to ascertain
+            the origin with infinite values being replaced by 0.
         width : iterable of float
             Width of the plot in each basis direction. If left as none then the
             universe.bounding_box.width() will be used to attempt to
@@ -399,7 +398,9 @@ class Universe(UniverseBase):
             if origin is None:
                 # if nan values in the bb.center they get replaced with 0.0
                 # this happens when the bounding_box contains inf values
-                origin = np.nan_to_num(bb.center)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", RuntimeWarning)
+                    origin = np.nan_to_num(bb.center)
             if width is None:
                 bb_width = bb.width
                 x_width = bb_width['xyz'.index(basis[0])]

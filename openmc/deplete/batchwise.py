@@ -11,6 +11,8 @@ from openmc import Material, Cell
 from openmc.data import atomic_mass, AVOGADRO
 from openmc.checkvalue import (check_type, check_value, check_less_than,
     check_iterable_type, check_length)
+from ._density_funcs import (
+        test_data, oxidation_state, flithu, flithtru)
 
 class Batchwise(ABC):
     """Abstract class defining a generalized batch wise scheme.
@@ -376,8 +378,58 @@ class Batchwise(ABC):
                 number_i.volume[mat_idx] = res_vol
         return x
 
-    def _get_molar_composition(self, x):
-        
+    def _get_molar_composition(self, mats):
+        """
+        Parameters
+        ----------
+        mats : list of openmc.materials
+            materials where to calculate molar composition on
+        Return
+        ------
+         mat_molar_comp: dict of dict of floats
+            dictionary where keys are material id and values dict of molar
+            compositions, where keys are element and values molar fractions
+        """
+        mat_molar_comp = {mat:{} for mat in mats}
+        number_i = self.operator.number
+        for mat in self.local_mats:
+            if mat in mats:
+                elm_molar_comp = {elm:0 for elm in ['Li', 'Th', 'U', 'Pu']}
+                for nuc in number_i.nuclides:
+                    elm = regex.split(nuc)[0]
+                    if elm in molar_compositions:
+                        # alwyas consider 1 anion of Fluorine
+                        ions = oxidation_sate[elm] + 1
+                        elm_molar_comp[elm] += number_i[mat, nuc] * ions
+                mat_molar_comp[mat] = elm_molar_comp
+
+        return mat_molar_comp
+
+
+    def _get_excess_fluorine(self, mats):
+        """
+        Parameters
+        ----------
+        mats : list of openmc.materials
+            materials where to calculate excess (definciency) of fluorine atoms
+        Return
+        ------
+        excess_f_dict : dict of float
+            dictionary where keys are material id and values excess (definciency)
+            of fluorine atoms
+        """
+        # initialize excess fluorine for each material in list
+        excess_f_dict = {mat:0 for mat in mats}
+        number_i = self.operator.number
+
+        for mat in self.local_mats:
+            if mat in excess_f_dict:
+                for nuc in number_i.nuclides:
+                    elm = regex.split(nuc)[0]
+                    #esxcess (definciency) or fluorine is fiven by the number of atoms
+                    # of each element that bind to fluorine, with a given oxidation state
+                    excess_f_dict[mat] += number_i[mat, nuc] * oxidation_sate[elm]
+        return excess_f_dict
 
 class BatchwiseCell(Batchwise):
     """Abstract class holding batch wise cell-based functions.

@@ -4,22 +4,28 @@ import glob
 import os
 from pytest import approx
 
-try:
-  mpi_np=config['mpi_np']
-except:
-  mpi_np=1
-
-try:
-  omp_nt=os.environ['OMP_NUM_THREADS']
-except:
-  omp_nt=1
-  os.environ['OMP_NUM_THREADS']=str(omp_nt)
-
 class TestHarness_limit_particle_output(TestHarness):
+
+    def get_num_threads(self):
+      #get the number of concurrent threads - as this
+      #is the maximum number of extra particle-files that may
+      #be written.
+      try:
+        mpi_np=config['mpi_np']
+      except:
+        mpi_np=1
+
+      try:
+        omp_nt=os.environ['OMP_NUM_THREADS']
+      except:
+        omp_nt=1
+        os.environ['OMP_NUM_THREADS']=str(omp_nt)
+      return mpi_np*omp_nt
+
     #redefine the check output method to do something else
     def _check_output_limit_lost(self):
       glb=glob.glob('particle_[0-9]_*.h5')
-      assert (len(glb) <= 5 + numthreads-1)
+      assert (len(glb) <= 5 + self.get_num_threads()-1)
 
     def _cleanup(self):
       super()._cleanup()

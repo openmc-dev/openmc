@@ -339,8 +339,11 @@ std::vector<T> binned_point_search(
 
         // check if the bin already has the cell containing our point
         Direction dummy_dir {1.0, 0.0, 0.0};
+
+        sample_bin->lock_bin();
         point.cell_ =
           univ.find_cell_for_point(sample_bin->get_cells(), point.pos_);
+        sample_bin->unlock_bin();
 
         // if we didn't find the point, we need to sample and reinsert
         if (point.cell_ == -1) {

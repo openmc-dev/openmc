@@ -11,16 +11,15 @@ class TestHarness_limit_particle_output(TestHarness):
       #is the maximum number of extra particle-files that may
       #be written.
       try:
-        mpi_np=config['mpi_np']
+        mpi_np=int(config['mpi_np'])
       except:
-        mpi_np='1'
+        mpi_np=1
 
       try:
         omp_nt=os.environ['OMP_NUM_THREADS']
       except:
-        omp_nt='1'
-        os.environ['OMP_NUM_THREADS']=str(omp_nt)
-      return int(mpi_np)*int(omp_nt)
+        omp_nt=len(os.sched_getaffinity(0))
+      return (mpi_np*omp_nt)
 
     #redefine the check output method to do something else
     def _check_output_limit_lost(self):

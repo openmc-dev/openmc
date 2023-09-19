@@ -16,7 +16,7 @@ class TestHarness_limit_particle_output(TestHarness):
         mpi_np=1
 
       try:
-        omp_nt=os.environ['OMP_NUM_THREADS']
+        omp_nt=int(os.environ['OMP_NUM_THREADS'])
       except:
         omp_nt=len(os.sched_getaffinity(0))
       return (mpi_np*omp_nt)

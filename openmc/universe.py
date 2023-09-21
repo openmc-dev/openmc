@@ -950,7 +950,13 @@ class DAGMCUniverse(UniverseBase):
         dagmc_element.set('filename', str(self.filename))
         xml_element.append(dagmc_element)
 
-    def bounding_region(self, bounded_type='box', boundary_type='vacuum', starting_id=10000):
+    def bounding_region(
+            self,
+            bounded_type: str = 'box',
+            boundary_type: str = 'vacuum',
+            starting_id: int = 10000,
+            padding: float = 0.
+        ):
         """Creates a either a spherical or box shaped bounding region around
         the DAGMC geometry.
 
@@ -970,6 +976,10 @@ class DAGMCUniverse(UniverseBase):
             Starting ID of the surface(s) used in the region. For bounded_type
             'box', the next 5 IDs will also be used. Defaults to 10000 to reduce
             the chance of an overlap of surface IDs with the DAGMC geometry.
+        padding : float
+            Distance between the bounding region surfaces and the minimal
+            bounding box. Allows for the region to be larger than the DAGMC
+            geometry.
 
         Returns
         -------
@@ -994,19 +1004,19 @@ class DAGMCUniverse(UniverseBase):
                 y0=bbox_center[1],
                 z0=bbox_center[2],
                 boundary_type=boundary_type,
-                r=radius,
+                r=radius + padding,
             )
 
             return -bounding_surface
 
         if bounded_type == 'box':
             # defines plane surfaces for all six faces of the bounding box
-            lower_x = openmc.XPlane(bbox[0][0], surface_id=starting_id)
-            upper_x = openmc.XPlane(bbox[1][0], surface_id=starting_id+1)
-            lower_y = openmc.YPlane(bbox[0][1], surface_id=starting_id+2)
-            upper_y = openmc.YPlane(bbox[1][1], surface_id=starting_id+3)
-            lower_z = openmc.ZPlane(bbox[0][2], surface_id=starting_id+4)
-            upper_z = openmc.ZPlane(bbox[1][2], surface_id=starting_id+5)
+            lower_x = openmc.XPlane(bbox[0][0]-padding, surface_id=starting_id)
+            upper_x = openmc.XPlane(bbox[1][0]+padding, surface_id=starting_id+1)
+            lower_y = openmc.YPlane(bbox[0][1]-padding, surface_id=starting_id+2)
+            upper_y = openmc.YPlane(bbox[1][1]+padding, surface_id=starting_id+3)
+            lower_z = openmc.ZPlane(bbox[0][2]-padding, surface_id=starting_id+4)
+            upper_z = openmc.ZPlane(bbox[1][2]+padding, surface_id=starting_id+5)
 
             region = +lower_x & -upper_x & +lower_y & -upper_y & +lower_z & -upper_z
 

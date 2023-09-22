@@ -114,6 +114,8 @@ class SourceBase(ABC):
                 return CompiledSource.from_xml_element(elem)
             elif source_type == 'file':
                 return FileSource.from_xml_element(elem)
+            elif source_type == 'mesh':
+                return MeshSource.from_xml_element(elem)
             else:
                 raise ValueError(f'Source type {source_type} is not recognized')
 
@@ -464,6 +466,35 @@ class MeshSource():
             source.populate_xml_element(src_element)
 
         return element
+
+    @classmethod
+    def from_xml_element(cls, elem: ET.Element, meshes=None) -> openmc.MeshSource:
+        """
+        Generate MeshSource from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+        meshes : dict
+            A dictionary with mesh IDs as keys and openmc.MeshBase instances as
+            values
+
+        Returns
+        -------
+        openmc.MeshSource
+            MeshSource generated from the XML element
+        """
+        mesh_id = int(elem.get('mesh_id'))
+
+        mesh = meshes[mesh_id]
+
+        strength = get_text(elem, 'strength')
+
+        sources = [Source.from_xml_element(e) for e in elem.iter('source')]
+
+        return cls(mesh, strength, sources)
+
 
 def Source(*args, **kwargs):
     """

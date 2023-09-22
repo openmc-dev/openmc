@@ -46,14 +46,22 @@ def model():
     return openmc.Model(geometry, materials, settings)
 
 
-def test_from_model(model):
-    domains = model.materials[:1]
+@pytest.mark.parametrize("domain_type", ["materials", "mesh"])
+def test_from_model(model, domain_type):
+    if domain_type == 'materials':
+        domains = model.materials[:1]
+    elif domain_type == 'mesh':
+        mesh = openmc.RegularMesh()
+        mesh.lower_left = (-0.62, -0.62)
+        mesh.upper_right = (0.62, 0.62)
+        mesh.dimension = (3, 3)
+        domains = mesh
     nuclides = ['U234', 'U235', 'U238', 'U236', 'O16', 'O17', 'I135', 'Xe135',
                 'Xe136', 'Cs135', 'Gd157', 'Gd156']
     _, test_xs = get_microxs_and_flux(model, domains, nuclides, chain_file=CHAIN_FILE)
     if config['update']:
-        test_xs[0].to_csv('test_reference.csv')
+        test_xs[0].to_csv(f'test_reference_{domain_type}.csv')
 
-    ref_xs = MicroXS.from_csv('test_reference.csv')
+    ref_xs = MicroXS.from_csv(f'test_reference_{domain_type}.csv')
 
     np.testing.assert_allclose(test_xs[0].data, ref_xs.data, rtol=1e-11)

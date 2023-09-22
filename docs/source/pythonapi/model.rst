@@ -15,6 +15,7 @@ Convenience Functions
    openmc.model.rectangular_prism
    openmc.model.subdivide
    openmc.model.pin
+   openmc.model.pin_radial_azimuthal
 
 Composite Surfaces
 ------------------

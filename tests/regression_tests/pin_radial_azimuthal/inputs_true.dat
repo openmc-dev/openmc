@@ -1,0 +1,131 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material depletable="true" id="1" name="UO2 fuel at 2.4% wt enrichment">
+      <density units="g/cm3" value="10.29769"/>
+      <nuclide ao="0.00021719193857965748" name="U234"/>
+      <nuclide ao="0.024299453780301263" name="U235"/>
+      <nuclide ao="0.9753720511113888" name="U238"/>
+      <nuclide ao="0.00011130316973028953" name="U236"/>
+      <nuclide ao="1.999242" name="O16"/>
+      <nuclide ao="0.000758" name="O17"/>
+    </material>
+    <material id="2" name="Helium for gap">
+      <density units="g/cm3" value="0.001598"/>
+      <nuclide ao="4.8088e-10" name="He3"/>
+      <nuclide ao="0.00024043951912" name="He4"/>
+    </material>
+    <material id="3" name="Zircaloy 4">
+      <density units="g/cm3" value="6.55"/>
+      <nuclide name="Sn112" wo="0.00012801500069834377"/>
+      <nuclide name="Sn114" wo="8.865813200572833e-05"/>
+      <nuclide name="Sn115" wo="4.607357419970216e-05"/>
+      <nuclide name="Sn116" wo="0.001987443035732492"/>
+      <nuclide name="Sn117" wo="0.0010588319126396692"/>
+      <nuclide name="Sn118" wo="0.0033677060620942315"/>
+      <nuclide name="Sn119" wo="0.0012045572050073863"/>
+      <nuclide name="Sn120" wo="0.004607003663713992"/>
+      <nuclide name="Sn122" wo="0.0006656367453273949"/>
+      <nuclide name="Sn124" wo="0.0008460746685810585"/>
+      <nuclide name="Fe54" wo="9.315171067466311e-05"/>
+      <nuclide name="Fe56" wo="0.0015163752248627805"/>
+      <nuclide name="Fe57" wo="3.56460821256315e-05"/>
+      <nuclide name="Fe58" wo="4.826982336924971e-06"/>
+      <nuclide name="Cr50" wo="4.173686622718313e-05"/>
+      <nuclide name="Cr52" wo="0.000836993623513459"/>
+      <nuclide name="Cr53" wo="9.673586818675183e-05"/>
+      <nuclide name="Cr54" wo="2.4533642072606143e-05"/>
+      <nuclide name="Zr90" wo="0.49861860652704426"/>
+      <nuclide name="Zr91" wo="0.10994725677006655"/>
+      <nuclide name="Zr92" wo="0.1699042107425875"/>
+      <nuclide name="Zr94" wo="0.17593217455043395"/>
+      <nuclide name="Zr96" wo="0.02894775140986776"/>
+    </material>
+    <material id="4" name="Borated water">
+      <density units="g/cm3" value="0.740582"/>
+      <nuclide ao="7.928e-06" name="B10"/>
+      <nuclide ao="3.2072e-05" name="B11"/>
+      <nuclide ao="0.04999221300000001" name="H1"/>
+      <nuclide ao="7.787e-06" name="H2"/>
+      <nuclide ao="0.023990904" name="O16"/>
+      <nuclide ao="9.096e-06" name="O17"/>
+      <sab name="c_H_in_H2O"/>
+    </material>
+    <material id="5" name="Borated water">
+      <density units="g/cm3" value="0.740582"/>
+      <nuclide ao="7.928e-06" name="B10"/>
+      <nuclide ao="3.2072e-05" name="B11"/>
+      <nuclide ao="0.04999221300000001" name="H1"/>
+      <nuclide ao="7.787e-06" name="H2"/>
+      <nuclide ao="0.023990904" name="O16"/>
+      <nuclide ao="9.096e-06" name="O17"/>
+      <sab name="c_H_in_H2O"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell fill="1" id="1" name="Cell 1" region="1 -2 3 -4" universe="2"/>
+    <cell id="2" material="1" region="-108 -109 110" universe="1"/>
+    <cell id="3" material="1" region="-108 -110 -109" universe="1"/>
+    <cell id="4" material="1" region="-108 109 -110" universe="1"/>
+    <cell id="5" material="1" region="-108 110 109" universe="1"/>
+    <cell id="6" material="1" region="-93 108 -109 110" universe="1"/>
+    <cell id="7" material="1" region="-93 108 -110 -109" universe="1"/>
+    <cell id="8" material="1" region="-93 108 109 -110" universe="1"/>
+    <cell id="9" material="1" region="-93 108 110 109" universe="1"/>
+    <cell id="10" material="1" region="-77 93 -109 110" universe="1"/>
+    <cell id="11" material="1" region="-77 93 -110 -109" universe="1"/>
+    <cell id="12" material="1" region="-77 93 109 -110" universe="1"/>
+    <cell id="13" material="1" region="-77 93 110 109" universe="1"/>
+    <cell id="14" material="2" region="77 -6" universe="1"/>
+    <cell id="15" material="3" region="-61 6 -109 110" universe="1"/>
+    <cell id="16" material="3" region="-61 6 -110 -109" universe="1"/>
+    <cell id="17" material="3" region="-61 6 109 -110" universe="1"/>
+    <cell id="18" material="3" region="-61 6 110 109" universe="1"/>
+    <cell id="19" material="3" region="-45 61 -109 110" universe="1"/>
+    <cell id="20" material="3" region="-45 61 -110 -109" universe="1"/>
+    <cell id="21" material="3" region="-45 61 109 -110" universe="1"/>
+    <cell id="22" material="3" region="-45 61 110 109" universe="1"/>
+    <cell id="23" material="4" region="-13 45 -109 15" universe="1"/>
+    <cell id="24" material="4" region="-13 45 -15 110" universe="1"/>
+    <cell id="25" material="4" region="-13 45 -110 23" universe="1"/>
+    <cell id="26" material="4" region="-13 45 -23 -109" universe="1"/>
+    <cell id="27" material="4" region="-13 45 109 -15" universe="1"/>
+    <cell id="28" material="4" region="-13 45 15 -110" universe="1"/>
+    <cell id="29" material="4" region="-13 45 110 -23" universe="1"/>
+    <cell id="30" material="4" region="-13 45 23 109" universe="1"/>
+    <cell id="31" material="5" region="13 -109 15" universe="1"/>
+    <cell id="32" material="5" region="13 -15 110" universe="1"/>
+    <cell id="33" material="5" region="13 -110 23" universe="1"/>
+    <cell id="34" material="5" region="13 -23 -109" universe="1"/>
+    <cell id="35" material="5" region="13 109 -15" universe="1"/>
+    <cell id="36" material="5" region="13 15 -110" universe="1"/>
+    <cell id="37" material="5" region="13 110 -23" universe="1"/>
+    <cell id="38" material="5" region="13 23 109" universe="1"/>
+    <surface boundary="reflective" coeffs="-0.62992" id="1" name="minimum x" type="x-plane"/>
+    <surface boundary="reflective" coeffs="0.62992" id="2" name="maximum x" type="x-plane"/>
+    <surface boundary="reflective" coeffs="-0.62992" id="3" name="minimum y" type="y-plane"/>
+    <surface boundary="reflective" coeffs="0.62992" id="4" name="maximum y" type="y-plane"/>
+    <surface coeffs="0.0 0.0 0.40005" id="6" name="Clad IR" type="z-cylinder"/>
+    <surface coeffs="0.0 0.0 0.62992" id="13" type="z-cylinder"/>
+    <surface coeffs="0.0 -1.0 0.0 0.0" id="15" type="plane"/>
+    <surface coeffs="1.0 -6.123233995736766e-17 0.0 0.0" id="23" type="plane"/>
+    <surface coeffs="0.0 0.0 0.4572" id="45" type="z-cylinder"/>
+    <surface coeffs="0.0 0.0 0.42957644401200584" id="61" type="z-cylinder"/>
+    <surface coeffs="0.0 0.0 0.39218" id="77" type="z-cylinder"/>
+    <surface coeffs="0.0 0.0 0.3202136291082356" id="93" type="z-cylinder"/>
+    <surface coeffs="0.0 0.0 0.22642522857078742" id="108" type="z-cylinder"/>
+    <surface coeffs="-0.7071067811865475 -0.7071067811865476 0.0 0.0" id="109" type="plane"/>
+    <surface coeffs="0.7071067811865475 -0.7071067811865476 0.0 0.0" id="110" type="plane"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>1000</particles>
+    <batches>100</batches>
+    <inactive>10</inactive>
+    <source strength="1.0">
+      <space type="box">
+        <parameters>-0.62992 -0.62992 -1 0.62992 0.62992 1</parameters>
+      </space>
+    </source>
+  </settings>
+  </model>

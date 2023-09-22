@@ -428,7 +428,7 @@ class MeshSource():
 
     @sources.setter
     def sources(self, s):
-        cv.check_iterable_type('mesh sources', s, openmc.Source)
+        cv.check_iterable_type('mesh sources', s, openmc.SourceBase)
         self._sources = s
         for src in self.sources:
             if src.space is not None:

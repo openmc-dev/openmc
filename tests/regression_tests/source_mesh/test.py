@@ -5,8 +5,11 @@ import pytest
 import openmc
 import openmc.model
 
+
 def test_source_mesh():
-    # build a simple void model
+    """
+    A void model containing a single box
+    """
     min, max = -10, 10
     box = openmc.model.RectangularParallelepiped(min, max, min, max, min, max, boundary_type='vacuum')
 
@@ -17,8 +20,10 @@ def test_source_mesh():
     settings.batches = 10
     settings.run_mode = 'fixed source'
 
+    model = openmc.Model(geometry=geometry, settings=settings)
+
     # define a 2 x 2 x 2 mesh
-    mesh = openmc.RegularMesh.from_domain(-box, (2, 2, 2))
+    mesh = openmc.RegularMesh.from_domain(model.geometry, (2, 2, 2))
 
     strengths = np.ones((2, 2, 2))
 
@@ -29,34 +34,48 @@ def test_source_mesh():
     # out of the problem from there. This demonstrates that
     # 1) particles are only being sourced within the intented mesh voxel based on source strength
     # 2) particles are respecting the angle distributions assigned to each voxel
-    vec = np.ones((3,))
-    vec /= -np.linalg.norm(vec)
-    angle = openmc.stats.Monodirectional(vec)
 
-    sources = [openmc.Source(energy=energy, angle=angle, strength=0.0) for _ in range(strengths.size)]
+    x, y, z = mesh.centroids
 
-    sources[0].strength = 1.0
+    sources = []
+    for idx in mesh.indices:
 
-    mesh_source = openmc.MeshSource(mesh, sources=sources)
+        idx = tuple(i-1 for i in idx)
+        centroid = np.array((x[idx], y[idx], z[idx]))
+        print(centroid)
+        vec = np.sign(centroid, dtype=float)
+        print(vec)
+        vec /= np.linalg.norm(vec)
+        angle = openmc.stats.Monodirectional(vec)
+        sources.append(openmc.Source(energy=energy, angle=angle, strength=0.0))
 
-    settings.source = mesh_source
+    for idx in range(mesh.num_mesh_cells):
 
-    model = openmc.Model(geometry=geometry, settings=settings)
+        for s in sources:
+            s.strength = 0.0
 
-    # tally the flux on the mesh
-    mesh_filter = openmc.MeshFilter(mesh)
-    tally = openmc.Tally()
-    tally.filters = [mesh_filter]
-    tally.scores = ['flux']
+        sources[idx].strength = 1.0
 
-    model.tallies = openmc.Tallies([tally])
+        mesh_source = openmc.MeshSource(mesh, sources=sources)
 
-    sp_file = model.run()
+        model.settings.source = mesh_source
 
-    with openmc.StatePoint(sp_file) as sp:
-        tally_out = sp.get_tally(id=tally.id)
 
-    assert tally_out.mean[0] != 0
-    assert np.all(tally_out.mean[1:] == 0)
+        # tally the flux on the mesh
+        mesh_filter = openmc.MeshFilter(mesh)
+        tally = openmc.Tally()
+        tally.filters = [mesh_filter]
+        tally.scores = ['flux']
 
-    
+        model.tallies = openmc.Tallies([tally])
+
+        sp_file = model.run()
+
+        with openmc.StatePoint(sp_file) as sp:
+            tally_out = sp.get_tally(id=tally.id)
+            mean = tally_out.mean
+
+        assert mean[idx] != 0
+        mean[idx] = 0
+        assert np.all(mean == 0)
+

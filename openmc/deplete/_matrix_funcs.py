@@ -77,4 +77,4 @@ def leqi_f4(chain, inputs, fission_yields=None):
     return (-dt ** 2 / (12 * dt_l * (dt + dt_l)) * f1
             + (dt ** 2 + 2 * dt * dt_l + dt_l ** 2)
             / (12 * dt_l * (dt + dt_l)) * f2
-            + (4 * dt * dt_l + 5 * dt_l ** 2) / (12 * dt_l * (dt + dt_l)) * f3)
+            + (4 * dt + 5 * dt_l) / (12 * (dt + dt_l)) * f3)

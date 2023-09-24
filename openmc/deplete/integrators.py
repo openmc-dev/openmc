@@ -137,7 +137,7 @@ class CF4Integrator(Integrator):
         \mathbf{n}_{i+1} &= \exp \left ( \frac{\mathbf{A}_1}{4} + \frac{\mathbf{A}_2}{6}
             + \frac{\mathbf{A}_3}{6} - \frac{\mathbf{A}_4}{12} \right )
         \exp \left ( -\frac{\mathbf{A}_1}{12} + \frac{\mathbf{A}_2}{6} +
-            \frac{\mathbf{A}_3}{6} - \frac{\mathbf{A}_4}{4} \right ) \mathbf{n}_i.
+            \frac{\mathbf{A}_3}{6} + \frac{\mathbf{A}_4}{4} \right ) \mathbf{n}_i.
         \end{aligned}
     """
     _num_stages = 4

@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "openmc/array.h"
 #include "openmc/position.h"
@@ -11,8 +12,10 @@
 
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
-
 #include <gsl/gsl-lite.hpp>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 namespace openmc {
 
@@ -88,6 +91,47 @@ extern vector<VolumeCalculation> volume_calcs;
 //==============================================================================
 // Non-member functions
 //==============================================================================
+
+//! Reduce vector of indices and hits from each thread to a single copy
+//
+//! \param[in] local_indices Indices specific to each thread
+//! \param[in] local_hits Hit count specific to each thread
+//! \param[out] indices Reduced vector of indices
+//! \param[out] hits Reduced vector of hits
+template<typename T, typename T2>
+void reduce_indices_hits(const vector<T>& local_indices,
+  const vector<T2>& local_hits, vector<T>& indices, vector<T2>& hits)
+{
+#ifdef _OPENMP
+  int n_threads = omp_get_num_threads();
+#else
+  int n_threads = 1;
+#endif
+
+#pragma omp for ordered schedule(static, 1)
+  for (int i = 0; i < n_threads; ++i) {
+#pragma omp ordered
+    for (int j = 0; j < local_indices.size(); ++j) {
+      // Check if this material has been added to the master list and if
+      // so, accumulate the number of hits
+      bool already_added = false;
+      for (int k = 0; k < indices.size(); k++) {
+        if (local_indices[j] == indices[k]) {
+          hits[k] += local_hits[j];
+          already_added = true;
+          break;
+        }
+      }
+      if (!already_added) {
+        // If we made it here, the material hasn't yet been added to the
+        // master list, so add entries to the master indices and master
+        // hits lists
+        indices.push_back(local_indices[j]);
+        hits.push_back(local_hits[j]);
+      }
+    }
+  }
+}
 
 void free_memory_volume();
 

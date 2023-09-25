@@ -9,6 +9,7 @@
 #include "hdf5.h"
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
+#include <gsl/gsl-lite.hpp>
 
 #include "openmc/error.h"
 #include "openmc/memory.h" // for unique_ptr
@@ -69,6 +70,12 @@ extern const libMesh::Parallel::Communicator* libmesh_comm;
 
 class Mesh {
 public:
+  // Types, aliases
+  struct MaterialVolume {
+    gsl::index material; //!< material index
+    double volume;       //!< volume in [cm^3]
+  };
+
   // Constructors and destructor
   Mesh() = default;
   Mesh(pugi::xml_node node);
@@ -156,6 +163,23 @@ public:
   vector<double> volumes() const;
 
   virtual std::string get_mesh_type() const = 0;
+
+  //! Determine volume fractions of materials within each mesh elemenet
+  //
+  //! \param[in] n_sample Number of samples within each element
+  //! \param[inout] seed Pseudorandom number seed
+  //! \return Vector of (material index, volume) for each element
+  vector<vector<MaterialVolume>> volume_fractions(
+    int n_sample, uint64_t* seed) const;
+
+  //! Determine volume fractions of materials within a single mesh elemenet
+  //
+  //! \param[in] n_sample Number of samples within each element
+  //! \param[in] bin Index of mesh element
+  //! \param[out] Vector of (material index, volume) for desired element
+  //! \param[inout] seed Pseudorandom number seed
+  void element_volume_fractions(int n_sample, int bin,
+    vector<MaterialVolume>& volumes, uint64_t* seed) const;
 
   // Data members
   int id_ {-1};     //!< User-specified ID

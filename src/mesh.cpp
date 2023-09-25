@@ -24,7 +24,9 @@
 #include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/material.h"
 #include "openmc/memory.h"
 #include "openmc/message_passing.h"
 #include "openmc/random_dist.h"
@@ -32,6 +34,7 @@
 #include "openmc/settings.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/volume_calc.h"
 #include "openmc/xml_interface.h"
 
 #ifdef LIBMESH
@@ -140,6 +143,84 @@ vector<double> Mesh::volumes() const
     volumes[i] = this->volume(i);
   }
   return volumes;
+}
+
+vector<vector<Mesh::MaterialVolume>> Mesh::volume_fractions(
+  int n_sample, uint64_t* seed) const
+{
+  // Create vector for results
+  vector<vector<MaterialVolume>> results(this->n_bins());
+
+  // Loop over mesh elements
+  // TODO: MPI parallelization over elements
+  for (int bin = 0; bin < n_bins(); bin++) {
+    fmt::print("Mesh element {}\n", bin);
+    this->element_volume_fractions(n_sample, bin, results[bin], seed);
+
+    // Display results
+    for (const auto& result : results[bin]) {
+      int id = model::materials[result.material]->id();
+      fmt::print("  Material {}, fraction = {}\n", id, result.volume);
+    }
+  }
+
+  return results;
+}
+
+void Mesh::element_volume_fractions(
+  int n_sample, int bin, vector<MaterialVolume>& result, uint64_t* seed) const
+{
+  vector<gsl::index> materials;
+  vector<int64_t> hits;
+
+#pragma omp parallel
+  {
+    vector<gsl::index> local_materials;
+    vector<int64_t> local_hits;
+    Particle p;
+
+#pragma omp for
+    for (int i = 0; i < n_sample; ++i) {
+      p.r() = this->sample_element(bin, seed);
+      p.u() = {1., 0., 0.};
+      p.n_coord() = 1;
+
+      // If this location is not in the geometry at all, move on to next block
+      if (!exhaustive_find_cell(p))
+        continue;
+
+      int i_material = p.material();
+      if (i_material == MATERIAL_VOID)
+        continue;
+
+      // Check if this material was previously hit and if so, increment count
+      bool already_hit = false;
+      for (int j = 0; j < local_materials.size(); j++) {
+        if (local_materials[j] == i_material) {
+          local_hits[j]++;
+          already_hit = true;
+        }
+      }
+
+      // If the material was not previously hit, append an entry to the material
+      // indices and hits lists
+      if (!already_hit) {
+        local_materials.push_back(i_material);
+        local_hits.push_back(1);
+      }
+    }
+
+    // Reduce index/hits lists from each thread into a single copy
+    reduce_indices_hits(local_materials, local_hits, materials, hits);
+  }
+
+  // Convert hits to fractions
+  int64_t total_hits = std::accumulate(hits.begin(), hits.end(), 0.0);
+  result.reserve(hits.size());
+  for (int i_mat = 0; i_mat < hits.size(); ++i_mat) {
+    double fraction = double(hits[i_mat]) / total_hits;
+    result.push_back({materials[i_mat], fraction * this->volume(bin)});
+  }
 }
 
 //==============================================================================
@@ -1779,6 +1860,21 @@ extern "C" int openmc_mesh_set_id(int32_t index, int32_t id)
     return err;
   model::meshes[index]->id_ = id;
   model::mesh_map[id] = index;
+  return 0;
+}
+
+extern "C" int openmc_mesh_volume_fractions(
+  int32_t index, int n_sample, uint64_t* seed)
+{
+  if (!seed) {
+    set_errmsg("Received null pointer.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (int err = check_mesh(index))
+    return err;
+  model::meshes[index]->volume_fractions(n_sample, seed);
+
   return 0;
 }
 

@@ -1,6 +1,7 @@
 from collections.abc import Mapping
 from ctypes import (c_int, c_int32, c_char_p, c_double, POINTER,
-                    create_string_buffer)
+                    create_string_buffer, c_uint64)
+from random import getrandbits
 from weakref import WeakValueDictionary
 
 import numpy as np
@@ -24,6 +25,9 @@ _dll.openmc_mesh_get_id.errcheck = _error_handler
 _dll.openmc_mesh_set_id.argtypes = [c_int32, c_int32]
 _dll.openmc_mesh_set_id.restype = c_int
 _dll.openmc_mesh_set_id.errcheck = _error_handler
+_dll.openmc_mesh_volume_fractions.argtypes = [c_int32, c_int, POINTER(c_uint64)]
+_dll.openmc_mesh_volume_fractions.restype = c_int
+_dll.openmc_mesh_volume_fractions.errcheck = _error_handler
 _dll.openmc_get_mesh_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_mesh_index.restype = c_int
 _dll.openmc_get_mesh_index.errcheck = _error_handler
@@ -122,6 +126,25 @@ class Mesh(_FortranObjectWithID):
     @id.setter
     def id(self, mesh_id):
         _dll.openmc_mesh_set_id(self._index, mesh_id)
+
+    def volume_fractions(self, n_samples=10_000, prn_seed=None):
+        """Determine volume fractions of materials in each mesh element
+
+        Parameters
+        ----------
+        n_samples : int
+            Number of samples in each mesh element
+        prn_seed : int
+            Pseudorandom number generator (PRNG) seed; if None, one will be
+            generated randomly.
+
+        """
+        if n_samples <= 0:
+            raise ValueError("Number of samples must be positive")
+        if prn_seed is None:
+            prn_seed = getrandbits(63)
+
+        _dll.openmc_mesh_volume_fractions(self._index, n_samples, c_uint64(prn_seed))
 
 
 class RegularMesh(Mesh):

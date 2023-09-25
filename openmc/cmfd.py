@@ -1308,9 +1308,6 @@ class CMFDRun:
             Whether or not to run an adjoint calculation
 
         """
-        # Check for physical adjoint
-        self._adjoint_type == 'physical'
-
         # Start timer for build
         time_start_buildcmfd = time.time()
 

@@ -170,7 +170,11 @@ class StructuredMesh(MeshBase):
 
     @property
     def vertices(self):
-        """Return coordinates of mesh vertices.
+        """Return coordinates of mesh vertices in Cartesian coordinates. Also
+           see :meth:`CylindricalMesh.cylindrical_vertices` and
+           :meth:`SphericalMesh.spherical_vertices` for coordinates in the mesh
+           coordinate system.
+
 
         Returns
         -------
@@ -257,7 +261,12 @@ class StructuredMesh(MeshBase):
         vertices = self.vertices
         s0 = (slice(None),) + (slice(0, -1),)*ndim
         s1 = (slice(None),) + (slice(1, None),)*ndim
-        return (vertices[s0] + vertices[s1]) / 2
+        centroids = (vertices[s0] + vertices[s1]) / 2
+
+        if isinstance(self, (CylindricalMesh, SphericalMesh)):
+            centroids = self._convert_to_cartesian(centroids, self.origin)
+
+        return centroids
 
     @property
     def num_mesh_cells(self):
@@ -346,7 +355,7 @@ class StructuredMesh(MeshBase):
         import vtk
         from vtk.util import numpy_support as nps
 
-        vertices = self.cartesian_vertices.T.reshape(-1, 3)
+        vertices = self.vertices.T.reshape(-1, 3)
 
         vtkPts = vtk.vtkPoints()
         vtkPts.SetData(nps.numpy_to_vtk(vertices, deep=True))
@@ -368,7 +377,7 @@ class StructuredMesh(MeshBase):
         import vtk
         from vtk.util import numpy_support as nps
 
-        corner_vertices = self.cartesian_vertices.T.reshape(-1, 3)
+        corner_vertices = self.vertices.T.reshape(-1, 3)
 
         vtkPts = vtk.vtkPoints()
         vtk_grid = vtk.vtkUnstructuredGrid()
@@ -598,12 +607,6 @@ class RegularMesh(StructuredMesh):
         if self._upper_right is not None:
             self._upper_right = None
             warnings.warn("Unsetting upper_right attribute.")
-
-    @property
-    def cartesian_vertices(self):
-        """Returns vertices in cartesian coordinates. Identical to ``vertices`` for RegularMesh and RectilinearMesh
-        """
-        return self.vertices
 
     @property
     def volumes(self):
@@ -1061,12 +1064,6 @@ class RectilinearMesh(StructuredMesh):
         return (self.x_grid, self.y_grid, self.z_grid)
 
     @property
-    def cartesian_vertices(self):
-        """Returns vertices in cartesian coordiantes. Identical to ``vertices`` for RegularMesh and RectilinearMesh
-        """
-        return self.vertices
-
-    @property
     def volumes(self):
         """Return Volumes for every mesh cell
 
@@ -1439,6 +1436,7 @@ class CylindricalMesh(StructuredMesh):
             num=dimension[2]+1
         )
         origin = (cached_bb.center[0], cached_bb.center[1], z_grid[0])
+
         mesh = cls(
             r_grid=r_grid,
             z_grid=z_grid,
@@ -1523,8 +1521,24 @@ class CylindricalMesh(StructuredMesh):
         return np.multiply.outer(np.outer(V_r, V_p), V_z)
 
     @property
-    def cartesian_vertices(self):
-        return self._convert_to_cartesian(self.vertices, self.origin)
+    def vertices(self):
+        return self._convert_to_cartesian(self.cylindrical_vertices, self.origin)
+
+    @property
+    def cylindrical_vertices(self):
+        """Returns vertices of the mesh in cylindrical coordinates.
+        """
+        return super().vertices
+
+    @property
+    def centroids(self):
+        return self._convert_to_cartesian(self.cylindrical_centroids, self.origin)
+
+    @property
+    def cylindrical_centroids(self):
+        """Returns centroids of the mesh in cylindrical coordinates.
+        """
+        return super().centroids
 
     @staticmethod
     def _convert_to_cartesian(arr, origin: Sequence[float]):
@@ -1800,8 +1814,25 @@ class SphericalMesh(StructuredMesh):
         return np.multiply.outer(np.outer(V_r, V_t), V_p)
 
     @property
-    def cartesian_vertices(self):
-        return self._convert_to_cartesian(self.vertices, self.origin)
+    def vertices(self):
+        return self._convert_to_cartesian(self.spherical_vertices, self.origin)
+
+    @property
+    def spherical_vertices(self):
+        """Returns vertices of the mesh in cylindrical coordinates.
+        """
+        return super().vertices
+
+    @property
+    def centroids(self):
+        return self._convert_to_cartesian(self.spherical_centroids, self.origin)
+
+    @property
+    def spherical_centroids(self):
+        """Returns centroids of the mesh in cylindrical coordinates.
+        """
+        return super().centroids
+
 
     @staticmethod
     def _convert_to_cartesian(arr, origin: Sequence[float]):
@@ -1951,7 +1982,7 @@ class UnstructuredMesh(MeshBase):
 
     @property
     def vertices(self):
-        return self._vertices
+        return self._vertices.T
 
     @property
     def connectivity(self):
@@ -1963,7 +1994,7 @@ class UnstructuredMesh(MeshBase):
 
     @property
     def centroids(self):
-        return np.array([self.centroid(i) for i in range(self.n_elements)])
+        return np.array([self.centroid(i) for i in range(self.n_elements)]).T
 
     @property
     def n_elements(self):
@@ -2086,7 +2117,7 @@ class UnstructuredMesh(MeshBase):
         grid = vtk.vtkUnstructuredGrid()
 
         vtk_pnts = vtk.vtkPoints()
-        vtk_pnts.SetData(nps.numpy_to_vtk(self.vertices))
+        vtk_pnts.SetData(nps.numpy_to_vtk(self.vertices.T))
         grid.SetPoints(vtk_pnts)
 
         n_skipped = 0

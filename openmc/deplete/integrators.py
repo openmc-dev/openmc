@@ -360,8 +360,7 @@ class LEQIIntegrator(Integrator):
               h_i)} \mathbf{A}_0 + \frac{h_{i-1}}{12 (h_{i-1} + h_i)} \mathbf{A}_1 \\
         \mathbf{F}_4 &= \frac{-h_i^2}{12 h_{i-1} (h_{i-1} + h_i)} \mathbf{A}_{-1} +
               \frac{h_{i-1}^2 + 2 h_i h_{i-1} + h_i^2}{12 h_{i-1} (h_{i-1} + h_i)}
-              \mathbf{A}_0 + \frac{5 h_{i-1}^2 + 4 h_i h_{i-1}}{12 h_{i-1}
-              (h_{i-1} + h_i)} \mathbf{A}_1 \\
+              \mathbf{A}_0 + \frac{5 h_{i-1} + 4 h_i}{12 (h_{i-1} + h_i)} \mathbf{A}_1 \\
         \mathbf{n}_{i+1} &= \exp(h_i \mathbf{F}_4) \exp(h_i \mathbf{F}_3) \mathbf{n}_i
         \end{aligned}
 

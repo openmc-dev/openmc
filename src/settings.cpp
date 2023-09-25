@@ -89,7 +89,7 @@ std::string weight_windows_file;
 int32_t n_inactive {0};
 int32_t max_lost_particles {10};
 double rel_max_lost_particles {1.0e-6};
-int32_t max_write_lost_particles {0};
+int32_t max_write_lost_particles {-1};
 int32_t gen_per_batch {1};
 int64_t n_particles {-1};
 

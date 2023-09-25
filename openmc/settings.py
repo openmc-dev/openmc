@@ -121,6 +121,11 @@ class Settings:
         Maximum number of tracks written to a track file (per MPI process).
 
         .. versionadded:: 0.13.1
+    max_write_lost_particles : int
+        Maximum number of particle restart files (per MPI process) to write for
+        lost particles.
+
+        .. versionadded:: 0.13.4
     no_reduce : bool
         Indicate that all user-defined and global tallies should not be reduced
         across processes in a parallel calculation.

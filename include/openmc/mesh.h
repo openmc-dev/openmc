@@ -252,7 +252,8 @@ public:
   //! \param[in] i Direction index
   virtual double positive_grid_boundary(const MeshIndex& ijk, int i) const
   {
-    fatal_error("Shouldn't be here");
+    auto msg = fmt::format("Attempting to call positive_grid_boundary on a {} mesh.", get_mesh_type());
+    fatal_error(msg);
   };
 
   //! Get the coordinate for the mesh grid boundary in the negative direction
@@ -261,7 +262,8 @@ public:
   //! \param[in] i Direction index
   virtual double negative_grid_boundary(const MeshIndex& ijk, int i) const
   {
-    fatal_error("Shouldn't be here");
+    auto msg = fmt::format("Attempting to call negative_grid_boundary on a {} mesh.", get_mesh_type());
+    fatal_error(msg);
   };
 
   //! Get the closest distance from the coordinate r to the grid surface

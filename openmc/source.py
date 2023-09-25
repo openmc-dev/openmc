@@ -61,7 +61,8 @@ class SourceBase(ABC):
             XML element containing source data
 
         """
-        pass
+        element.set("type", self.type)
+        element.set("strength", str(self.strength))
 
     def to_xml_element(self) -> ET.Element:
         """Return XML representation of the source
@@ -73,8 +74,6 @@ class SourceBase(ABC):
 
         """
         element = ET.Element("source")
-        element.set("type", self.type)
-        element.set("strength", str(self.strength))
         self.populate_xml_element(element)
         return element
 

@@ -103,12 +103,12 @@ private:
 class FileSource : public Source {
 public:
   // Constructors
-  explicit FileSource(std::string path);
-  explicit FileSource(const vector<SourceSite>& sites) : sites_ {sites} {}
+  explicit FileSource(pugi::xml_node node);
+  explicit FileSource(const std::string& path);
 
   // Methods
   SourceSite sample(uint64_t* seed) const override;
-
+  void load_sites_from_file(const std::string& path); //!< Load source sites from file
 private:
   vector<SourceSite> sites_; //!< Source sites from a file
 };
@@ -120,7 +120,7 @@ private:
 class CompiledSourceWrapper : public Source {
 public:
   // Constructors, destructors
-  CompiledSourceWrapper(std::string path, std::string parameters);
+  CompiledSourceWrapper(pugi::xml_node node);
   ~CompiledSourceWrapper();
 
   // Defer implementation to custom source library
@@ -130,6 +130,8 @@ public:
   }
 
   double strength() const override { return compiled_source_->strength(); }
+
+  void setup(const std::string& path, const std::string& parameters);
 
 private:
   void* shared_library_; //!< library from dlopen

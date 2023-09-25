@@ -52,27 +52,28 @@ vector<unique_ptr<Source>> external_sources;
 
 unique_ptr<Source> Source::create(pugi::xml_node node)
 {
-  if (check_for_node(node, "file")) {
-    auto path = get_node_value(node, "file", false, true);
-    if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
-      auto sites = mcpl_source_sites(path);
-      return make_unique<FileSource>(sites);
-    } else {
-      return make_unique<FileSource>(path);
+  // if the source type is present, use it to determine the type
+  // of object to create
+  if (check_for_node(node, "type")) {
+    std::string source_type = get_node_value(node, "type");
+    if (source_type == "independent") {
+      return make_unique<IndependentSource>(node);
+    } else if (source_type == "file") {
+        return make_unique<FileSource>(node);
+    } else if (source_type == "compiled") {
+        return make_unique<CompiledSourceWrapper>(node);
+    } else if (source_type == "mesh") {
+      return make_unique<MeshSource>(node);
     }
-  } else if (check_for_node(node, "library")) {
-    // Get shared library path and parameters
-    auto path = get_node_value(node, "library", false, true);
-    std::string parameters;
-    if (check_for_node(node, "parameters")) {
-      parameters = get_node_value(node, "parameters", false, true);
-    }
-    // Create compiled source
-    return make_unique<CompiledSourceWrapper>(path, parameters);
-  } else if (get_node_value(node, "type") == "mesh") {
-    return make_unique<MeshSource>(node);
   } else {
-    return make_unique<IndependentSource>(node);
+    // support legacy source format
+    if (check_for_node(node, "file")) {
+      return make_unique<FileSource>(node);
+    } else if (check_for_node(node, "library")) {
+      return make_unique<CompiledSourceWrapper>(node);
+    } else {
+      return make_unique<IndependentSource>(node);
+    }
   }
 }
 
@@ -297,8 +298,20 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 //==============================================================================
 // FileSource implementation
 //==============================================================================
+FileSource::FileSource(pugi::xml_node node) {
+  auto path = get_node_value(node, "file", false, true);
+      if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
+        sites_ = mcpl_source_sites(path);
+      } else {
+        this->load_sites_from_file(path);
+      }
+}
 
-FileSource::FileSource(std::string path)
+FileSource::FileSource(const std::string& path) {
+  load_sites_from_file(path);
+}
+
+void FileSource::load_sites_from_file(const std::string& path)
 {
   // Check if source file exists
   if (!file_exists(path)) {
@@ -335,10 +348,17 @@ SourceSite FileSource::sample(uint64_t* seed) const
 //==============================================================================
 // CompiledSourceWrapper implementation
 //==============================================================================
+CompiledSourceWrapper::CompiledSourceWrapper(pugi::xml_node node) {
+    // Get shared library path and parameters
+  auto path = get_node_value(node, "library", false, true);
+  std::string parameters;
+  if (check_for_node(node, "parameters")) {
+    parameters = get_node_value(node, "parameters", false, true);
+  }
+  setup(path, parameters);
+}
 
-CompiledSourceWrapper::CompiledSourceWrapper(
-  std::string path, std::string parameters)
-{
+void CompiledSourceWrapper::setup(const std::string& path, const std::string& parameters) {
 #ifdef HAS_DYNAMIC_LINKING
   // Open the library
   shared_library_ = dlopen(path.c_str(), RTLD_LAZY);

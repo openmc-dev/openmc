@@ -11,6 +11,7 @@ import numpy as np
 
 CHAIN_PATH = Path(__file__).parents[1] / "chain_simple.xml"
 
+
 @pytest.fixture(scope="module")
 def model():
     fuel = openmc.Material(name="uo2")
@@ -48,6 +49,7 @@ def model():
 
     return openmc.Model(geometry, materials, settings)
 
+
 @pytest.fixture()
 def model_with_volumes():
     mat1 = openmc.Material()
@@ -59,32 +61,29 @@ def model_with_volumes():
     mat2 = openmc.Material()
     mat2.add_element("Ag", 1, percent_type="ao")
     mat2.set_density("g/cm3", 10.49)
-    materials = openmc.Materials([mat1, mat2])
 
     sph1 = openmc.Sphere(r=1.0)
     sph2 = openmc.Sphere(r=2.0, x0=3)
     sph3 = openmc.Sphere(r=5.0, boundary_type="vacuum")
 
-    cell1 = openmc.Cell(region=-sph1, cell_id=1)
+    cell1 = openmc.Cell(region=-sph1, fill=mat1)
     cell1.volume = 4.19
-    cell2 = openmc.Cell(region=-sph2, cell_id=2)
+    cell2 = openmc.Cell(region=-sph2, fill=mat1)
     cell2.volume = 33.51
-    cell3 = openmc.Cell(region=-sph3 & +sph1 & +sph2, cell_id=3)
+    cell3 = openmc.Cell(region=-sph3 & +sph1 & +sph2, fill=mat2)
     cell3.volume = 485.9
-
-    cell1.fill = mat1
-    cell2.fill = mat1
-    cell3.fill = mat2
 
     geometry = openmc.Geometry([cell1, cell2, cell3])
 
-    return openmc.model.Model(geometry, materials)
+    return openmc.Model(geometry)
+
 
 def test_operator_init(model):
     """The test uses a temporary dummy chain. This file will be removed
     at the end of the test, and only contains a depletion_chain node."""
 
     CoupledOperator(model, CHAIN_PATH)
+
 
 def test_diff_volume_method_match_cell(model_with_volumes):
     """Tests the volumes assigned to the materials match the cell volumes"""
@@ -96,11 +95,12 @@ def test_diff_volume_method_match_cell(model_with_volumes):
         chain_file=CHAIN_PATH
     )
 
-    all_cells = operator.geometry.get_all_cells()
-    assert all_cells[1].fill.volume == 4.19
-    assert all_cells[2].fill.volume == 33.51
+    all_cells = list(operator.geometry.get_all_cells().values())
+    assert all_cells[0].fill.volume == 4.19
+    assert all_cells[1].fill.volume == 33.51
     # mat2 is not depletable
-    assert all_cells[3].fill.volume is None
+    assert all_cells[2].fill.volume is None
+
 
 def test_diff_volume_method_divide_equally(model_with_volumes):
     """Tests the volumes assigned to the materials are divided equally"""
@@ -112,9 +112,9 @@ def test_diff_volume_method_divide_equally(model_with_volumes):
         chain_file=CHAIN_PATH
     )
 
-    all_cells = operator.geometry.get_all_cells()
+    all_cells = list(operator.geometry.get_all_cells().values())
+    assert all_cells[0].fill[0].volume == 51
     assert all_cells[1].fill[0].volume == 51
-    assert all_cells[2].fill[0].volume == 51
     # mat2 is not depletable
-    assert all_cells[3].fill.volume is None
+    assert all_cells[2].fill.volume is None
 

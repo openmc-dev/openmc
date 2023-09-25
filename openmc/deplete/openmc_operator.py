@@ -62,6 +62,7 @@ class OpenMCOperator(TransportOperator):
         is to 'divide equally' which divides the original material volume
         equally between the new materials, 'match cell' sets the volume of the
         material to volume of the cell they fill.
+
         .. versionadded:: 0.13.4
 
     Attributes
@@ -123,7 +124,8 @@ class OpenMCOperator(TransportOperator):
         self.materials = materials
         self.cross_sections = cross_sections
 
-        check_value('diff volume method', diff_volume_method, ['divide equally', 'match cell'])
+        check_value('diff volume method', diff_volume_method,
+                    {'divide equally', 'match cell'})
         self.diff_volume_method = diff_volume_method
 
         # Reduce the chain to only those nuclides present

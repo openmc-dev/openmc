@@ -18,7 +18,7 @@ from openmc.checkvalue import PathLike
 from openmc.stats.multivariate import UnitSphere, Spatial
 from openmc.stats.univariate import Univariate
 from ._xml import get_text
-from .mesh import MeshBase
+from .mesh import MeshBase, StructuredMesh, UnstructuredMesh
 
 
 class SourceBase(ABC):
@@ -394,19 +394,36 @@ class IndependentSource(SourceBase):
         return source
 
 class MeshSource():
-    """
+    """A mesh-based source in which random positions are uniformly sampled
+    within mesh elements and each element can have independent angle, energy,
+    and time distributions. The element sampled is chosen based on the relative
+    strengths of the sources applied to the elements. The strength of the mesh
+    source as a whole is the sum of all source strengths applied to the elements.
+
+    Parameters
+    ----------
+    mesh : openmc.MeshBase
+        The mesh on which source sites will be generated.
+    sources : iterable of openmc.SourceBase
+        Sources for each element in the mesh. If spatial distributions are set
+        on any of the source objects, they will be ignored during source site
+        sampling.
+
+    Attributes
+    ----------
+    mesh : openmc.MeshBase
+        The mesh on which source sites will be generated.
+    sources : numpy.ndarray or iterable of openmc.SourceBase
+        The set of sources to apply to each element. The shape of this array must match
+        the shape of the mesh with and exception in the case of unstructured mesh, which
+        allows for application of 1-D array or iterable.
     """
     def __init__(self,
                  mesh: openmc.MeshBase,
-                 strength: Optional[float] = 1.0,
-                 sources: Optional[Iterable] = None):
+                 sources: Optional[Iterable]):
 
         self.mesh = mesh
-        self.strength = strength
-        self._sources = cv.CheckedList(openmc.Source, 'sources')
-
-        if sources is not None:
-            self.sources = sources
+        self.sources = sources
 
     @property
     def mesh(self):
@@ -414,7 +431,9 @@ class MeshSource():
 
     @property
     def strength(self):
-        return self._strength
+        if self.sources is None:
+            return 0.0
+        return sum(s.strength for s in self.sources.flat)
 
     @property
     def sources(self):
@@ -427,9 +446,20 @@ class MeshSource():
 
     @sources.setter
     def sources(self, s):
-        cv.check_iterable_type('mesh sources', s, openmc.SourceBase)
+        cv.check_iterable_type('mesh sources', s, openmc.SourceBase, max_depth=3)
+
+        s = np.asarray(s)
+
+        if isinstance(self.mesh, StructuredMesh) and s.shape != self.mesh.dimension:
+            raise ValueError('The shape of the source array' \
+                             f'({s.shape}) does not match the' \
+                             f'dimensions of the structured mesh ({self.mesh.dimension})')
+        elif isinstance(self.mesh, UnstructuredMesh):
+            if len(s.shape) > 1:
+                raise ValueError('Sources must be a 1-D array for unstructured mesh')
+
         self._sources = s
-        for src in self.sources:
+        for src in self.sources.flat:
             if src.space is not None:
                 warnings.warn('Some sources on the mesh have '
                               'spatial distributions that will '
@@ -437,10 +467,23 @@ class MeshSource():
                 break
 
     @strength.setter
-    def strength(self, strength):
-        cv.check_type('source strength', strength, Real)
-        cv.check_greater_than('source strength', strength, 0.0, True)
-        self._strength = strength
+    def strength(self, val):
+        cv.check_type('mesh source strength', val, Real)
+        self._set_total_strength(val)
+
+    def _set_total_strength(self, new_strength):
+        """Scales the element source strengths based on a desired
+           total mesh strength.
+        """
+        current_strength = self.strength
+
+        for s in self.sources.flat:
+            s.strength *= new_strength / current_strength
+
+    def normalize_source_strengths(self):
+        """Update all element source strengths such that they sum to 1.0.
+        """
+        self.set_total_strength(1.0)
 
     def to_xml_element(self):
         """Return XML representation of the mesh source
@@ -456,11 +499,15 @@ class MeshSource():
         element.set('strength', str(self.strength))
 
         # build a mesh spatial distribution
-        mesh_dist = openmc.MeshSpatial(self.mesh, [s.strength for s in self.sources])
+        strengths = [self.sources[i-1, j-1, k-1].strength for i, j, k in self.mesh.indices]
+        mesh_dist = openmc.MeshSpatial(self.mesh, strengths)
 
         mesh_dist.to_xml_element(element)
 
-        for source in self.sources:
+        # write in the order of mesh indices
+        for idx in self.mesh.indices:
+            idx = tuple(i - 1 for i in idx)
+            source = self.sources[idx]
             src_element = ET.SubElement(element, 'source')
             source.populate_xml_element(src_element)
 

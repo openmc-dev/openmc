@@ -491,7 +491,8 @@ attributes/sub-elements:
     *Default*: 1.0
 
   :type:
-    Indicator of source type. One of ``independent``, ``file``, or ``compiled``.
+    Indicator of source type. One of ``independent``, ``file``, ``compiled``, or ``mesh``.
+    The type of the source will be determined by this attribute if it is present.
 
   :particle:
     The source particle type, either ``neutron`` or ``photon``.
@@ -663,6 +664,9 @@ attributes/sub-elements:
     "initial_source.h5"
 
     *Default*: false
+
+  :source:
+    For mesh sources, a set of sources that will be applied to each element.
 
 .. _univariate:
 

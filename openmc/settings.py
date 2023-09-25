@@ -232,6 +232,11 @@ class Settings:
         Weight windows to use for variance reduction
 
         .. versionadded:: 0.13
+    weight_window_checkpoints : dict
+        Indicates the checkpoints for weight window split/roulettes. Valid keys
+        include "collision" and "surface". Values must be of type bool.
+
+        .. versionadded:: 0.13.4
     weight_window_generators : WeightWindowGenerator or iterable of WeightWindowGenerator
         Weight windows generation parameters to apply during simulation
 
@@ -946,17 +951,17 @@ class Settings:
     def weight_windows_on(self, value: bool):
         cv.check_type('weight windows on', value, bool)
         self._weight_windows_on = value
-    
+
     @property
     def weight_window_checkpoints(self) -> dict:
         return self._weight_window_checkpoints
-    
+
     @weight_window_checkpoints.setter
     def weight_window_checkpoints(self, weight_window_checkpoints: dict):
         for key in weight_window_checkpoints.keys():
             cv.check_value('weight_window_checkpoints', key, ('collision', 'surface'))
         self._weight_window_checkpoints = weight_window_checkpoints
-    
+
     @property
     def max_splits(self) -> int:
         return self._max_splits
@@ -1369,14 +1374,14 @@ class Settings:
             root.append(element)
 
     def _create_weight_window_checkpoints_subelement(self, root):
-        if not bool(self._weight_window_checkpoints):
+        if not self._weight_window_checkpoints:
             return
         element = ET.SubElement(root, "weight_window_checkpoints")
-        
+
         if 'collision' in self._weight_window_checkpoints:
             subelement = ET.SubElement(element, "collision")
             subelement.text = str(self._weight_window_checkpoints['collision']).lower()
-            
+
         if 'surface' in self._weight_window_checkpoints:
             subelement = ET.SubElement(element, "surface")
             subelement.text = str(self._weight_window_checkpoints['surface']).lower()

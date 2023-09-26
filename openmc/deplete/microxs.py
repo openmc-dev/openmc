@@ -189,6 +189,8 @@ class MicroXS:
         self.data = data
         self.nuclides = nuclides
         self.reactions = reactions
+        self._index_nuc = {nuc: i for i, nuc in enumerate(nuclides)}
+        self._index_rx = {rx: i for i, rx in enumerate(reactions)}
 
     # TODO: Add a classmethod for generating MicroXS directly from cross section
     # data using a known flux spectrum
@@ -224,8 +226,8 @@ class MicroXS:
 
     def __getitem__(self, index):
         nuc, rx = index
-        i_nuc = self.nuclides.index(nuc)
-        i_rx = self.reactions.index(rx)
+        i_nuc = self._index_nuc[nuc]
+        i_rx = self._index_rx[rx]
         return self.data[i_nuc, i_rx]
 
     def to_csv(self, *args, **kwargs):

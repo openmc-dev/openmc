@@ -148,10 +148,10 @@ class IndependentOperator(OpenMCOperator):
 
         self.fluxes = fluxes
         super().__init__(
-            materials,
-            micros,
-            chain_file,
-            prev_results,
+            materials=materials,
+            cross_sections=micros,
+            chain_file=chain_file,
+            prev_results=prev_results,
             fission_q=fission_q,
             helper_kwargs=helper_kwargs,
             reduce_chain=reduce_chain,

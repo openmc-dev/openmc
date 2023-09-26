@@ -93,9 +93,8 @@ class Resonances:
         n_isotope = items[4]  # Number of isotopes
 
         ranges = []
-        for iso in range(n_isotope):
+        for _ in range(n_isotope):
             items = get_cont_record(file_obj)
-            abundance = items[1]
             fission_widths = (items[3] == 1)  # fission widths are given?
             n_ranges = items[4]  # number of resonance energy ranges
 
@@ -424,14 +423,12 @@ class MultiLevelBreitWigner(ResonanceRange):
             # Determine penetration and shift corresponding to resonance energy
             k = wave_number(A, E)
             rho = k*self.channel_radius[l](E)
-            rhohat = k*self.scattering_radius[l](E)
             p[i], s[i] = penetration_shift(l, rho)
 
             # Determine penetration at modified energy for competitive reaction
             if gx > 0:
                 Ex = E + self.q_value[l]*(A + 1)/A
                 rho = k*self.channel_radius[l](Ex)
-                rhohat = k*self.scattering_radius[l](Ex)
                 px[i], sx[i] = penetration_shift(l, rho)
             else:
                 px[i] = sx[i] = 0.0
@@ -680,7 +677,6 @@ class ReichMoore(ResonanceRange):
             # Determine penetration and shift corresponding to resonance energy
             k = wave_number(A, E)
             rho = k*self.channel_radius[l](E)
-            rhohat = k*self.scattering_radius[l](E)
             p[i], s[i] = penetration_shift(l, rho)
 
         df['p'] = p

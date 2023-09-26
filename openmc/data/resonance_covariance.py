@@ -93,10 +93,8 @@ class ResonanceCovariances(Resonances):
         n_isotope = items[4]  # Number of isotopes
 
         ranges = []
-        for iso in range(n_isotope):
+        for _ in range(n_isotope):
             items = endf.get_cont_record(file_obj)
-            abundance = items[1]
-            fission_widths = (items[3] == 1)  # Flag for fission widths
             n_ranges = items[4]  # Number of resonance energy ranges
 
             for j in range(n_ranges):
@@ -378,7 +376,6 @@ class MultiLevelBreitWignerCovariance(ResonanceCovarianceRange):
 
         # Other scatter radius parameters
         items = endf.get_cont_record(file_obj)
-        target_spin = items[0]
         lcomp = items[3]  # Flag for compatibility 0, 1, 2 - 2 is compact form
         nls = items[4]  # number of l-values
 
@@ -387,8 +384,6 @@ class MultiLevelBreitWignerCovariance(ResonanceCovarianceRange):
             items = endf.get_cont_record(file_obj)
             # Number of short range type resonance covariances
             num_short_range = items[4]
-            # Number of long range type resonance covariances
-            num_long_range = items[5]
 
             # Read resonance widths, J values, etc
             records = []
@@ -421,7 +416,6 @@ class MultiLevelBreitWignerCovariance(ResonanceCovarianceRange):
         # compact correlations
         elif lcomp == 2:
             items, values = endf.get_list_record(file_obj)
-            mean = items
             num_res = items[5]
             energy = values[0::12]
             spin = values[1::12]
@@ -613,20 +607,14 @@ class ReichMooreCovariance(ResonanceCovarianceRange):
 
         # Other scatter radius parameters
         items = endf.get_cont_record(file_obj)
-        target_spin = items[0]
         lcomp = items[3]  # Flag for compatibility 0, 1, 2 - 2 is compact form
-        nls = items[4]  # Number of l-values
 
         # Build covariance matrix for General Resolved Resonance Formats
         if lcomp == 1:
             items = endf.get_cont_record(file_obj)
             # Number of short range type resonance covariances
             num_short_range = items[4]
-            # Number of long range type resonance covariances
-            num_long_range = items[5]
             # Read resonance widths, J values, etc
-            channel_radius = {}
-            scattering_radius = {}
             records = []
             for i in range(num_short_range):
                 items, values = endf.get_list_record(file_obj)

@@ -1308,9 +1308,6 @@ class CMFDRun:
             Whether or not to run an adjoint calculation
 
         """
-        # Check for physical adjoint
-        physical_adjoint = adjoint and self._adjoint_type == 'physical'
-
         # Start timer for build
         time_start_buildcmfd = time.time()
 
@@ -1431,9 +1428,6 @@ class CMFDRun:
         # Compute cmfd_src in a vectorized manner by phi to the spatial
         # indices of the actual problem so that cmfd_flux can be multiplied by
         # nfissxs
-
-        # Calculate volume
-        vol = np.prod(self._hxyz, axis=3)
 
         # Reshape phi by number of groups
         phi = self._phi.reshape((n, ng))
@@ -2148,7 +2142,6 @@ class CMFDRun:
         is_accel = self._coremap != _CMFD_NOACCEL
         # Logical for determining whether a zero flux "albedo" b.c. should be
         # applied
-        is_zero_flux_alb = abs(self._albedo - _ZERO_FLUX) < _TINY_BIT
         x_inds, y_inds, z_inds = np.indices((nx, ny, nz))
 
         # Define slice equivalent to is_accel[0,:,:]
@@ -2725,8 +2718,6 @@ class CMFDRun:
 
         # Define flux in each cell
         cell_flux = self._flux / dxdydz
-        # Extract indices of coremap that are accelerated
-        is_accel = self._coremap != _CMFD_NOACCEL
 
         # Define dhat at left surface for all mesh cells on left boundary
         boundary = self._first_x_accel

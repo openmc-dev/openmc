@@ -109,7 +109,6 @@ def _get_products(ev, mt):
 
         za = int(params[0])
         awr = params[1]
-        lip = params[2]
         law = params[3]
 
         if za == 0:

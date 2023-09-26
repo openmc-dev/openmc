@@ -499,8 +499,6 @@ class Model:
             warnings.warn("remove_surfs kwarg will be deprecated soon, please "
                           "set the Geometry.merge_surfaces attribute instead.")
             self.geometry.merge_surfaces = True
-            # Can be used to modify tallies in case any surfaces are redundant
-            redundant_surfaces = self.geometry.remove_redundant_surfaces()
 
         # provide a memo to track which meshes have been written
         mesh_memo = set()

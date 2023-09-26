@@ -216,7 +216,7 @@ class MDGXS(MGXS):
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.EnergyFilter(group_edges)
 
-        if self.delayed_groups != None:
+        if self.delayed_groups is not None:
             delayed_filter = openmc.DelayedGroupFilter(self.delayed_groups)
             filters = [[energy_filter], [delayed_filter, energy_filter]]
         else:
@@ -1883,9 +1883,6 @@ class DecayRate(MDGXS):
 
     @property
     def filters(self):
-
-        # Create the non-domain specific Filters for the Tallies
-        group_edges = self.energy_groups.group_edges
 
         if self.delayed_groups is not None:
             delayed_filter = openmc.DelayedGroupFilter(self.delayed_groups)

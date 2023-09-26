@@ -57,6 +57,29 @@ Benchmarking
 Coupling and Multi-physics
 --------------------------
 
+- April Novak, Patrick Shriwise, Paul Romano, Ron Rahaman, Elia Merzari, and Derek Gaston,
+  "`Coupled Monte Carlo Transport and Conjugate Heat Transfer for Wire-Wrapped Bundles Within the MOOSE Framework
+  <https://www.tandfonline.com/doi/epdf/10.1080/00295639.2022.2158715?needAccess=true&role=button>`_,"
+  *Nuclear Science and Engineering* (2023)
+
+- April Novak, David Andrs, Patrick Shriwise, Jun Fang, Haomin Yuan, Dillon Shaver,
+  Elia Merzari, Paul Romano, and Richard Martineau,
+  "`Coupled Monte Carlo and Thermal-Fluid Modeling of High Temperature Gas Reactors Using Cardinal
+  <https://www.sciencedirect.com/science/article/pii/S0306454922003450>`_,"
+  177 (109310) *Annals of Nuclear Energy* (2022)
+
+- Elia Merzari, Haomin Yuan, Misun Min, Dillon Shaver, Ron Rahaman, Patrick Shriwise,
+  Paul Romano, Albert Talamo, Yu-Hsiang Lan, Derek Gaston,
+  Richard Martineau, Paul Fischer, and Yassin Hassan,
+  "`Cardinal: A Lower Length-Scale Multiphysics Simulator for Pebble Bed Reactors
+  <https://www.tandfonline.com/doi/full/10.1080/00295450.2020.1824471>`_,"
+  *Nuclear Technology* (2021)
+
+- Paul Romano, Steven Hamilton, Ron Rahaman, April Novak, Elia Merzari, Sterling Harper,
+  Patrick Shriwise, and Tom Evans. "`A Code-Agnostic Driver Application for Coupled Neutronics
+  and Thermal-Hydraulic Simulations <https://doi.org/10.1080/00295639.2020.1830620>`_,"
+  *Nuclear Science and Engineering* 195:391-411 (2020)
+
 - Miriam A. Kreher, Benoit Forget, and Kord Smith, "Single-Batch Monte Carlo
   Multiphysics Coupling," *Proc. M&C*, 1789-1797, Portland, Oregon, Aug. 25-29
   (2019).

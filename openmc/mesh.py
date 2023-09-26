@@ -1888,14 +1888,14 @@ class UnstructuredMesh(MeshBase):
     volumes : Iterable of float
         Volumes of the unstructured mesh elements
     centroids : numpy.ndarray
-        Centroids of the mesh elements with array shape (n_elements, 3)
+        Centroids of the mesh elements with array shape (3, n_elements)
 
     vertices : numpy.ndarray
-        Coordinates of the mesh vertices with array shape (n_elements, 3)
+        Coordinates of the mesh vertices with array shape (3, n_elements)
 
         .. versionadded:: 0.13.1
     connectivity : numpy.ndarray
-        Connectivity of the elements with array shape (n_elements, 8)
+        Connectivity of the elements with array shape (8, n_elements)
 
         .. versionadded:: 0.13.1
     element_types : Iterable of integers
@@ -1986,7 +1986,7 @@ class UnstructuredMesh(MeshBase):
 
     @property
     def connectivity(self):
-        return self._connectivity
+        return self._connectivity.T
 
     @property
     def element_types(self):
@@ -2050,7 +2050,7 @@ class UnstructuredMesh(MeshBase):
             x, y, z values of the element centroid
 
         """
-        conn = self.connectivity[bin]
+        conn = self.connectivity[:, bin]
         # remove invalid connectivity values
         conn = conn[conn >= 0]
         coords = self.vertices[conn]
@@ -2122,7 +2122,7 @@ class UnstructuredMesh(MeshBase):
 
         n_skipped = 0
         elems = []
-        for elem_type, conn in zip(self.element_types, self.connectivity):
+        for elem_type, conn in zip(self.element_types, self.connectivity.T):
             if elem_type == self._LINEAR_TET:
                 elem = vtk.vtkTetra()
             elif elem_type == self._LINEAR_HEX:

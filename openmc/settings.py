@@ -121,6 +121,11 @@ class Settings:
         Maximum number of tracks written to a track file (per MPI process).
 
         .. versionadded:: 0.13.1
+    max_write_lost_particles : int
+        Maximum number of particle restart files (per MPI process) to write for
+        lost particles.
+
+        .. versionadded:: 0.13.4
     no_reduce : bool
         Indicate that all user-defined and global tallies should not be reduced
         across processes in a parallel calculation.
@@ -261,6 +266,7 @@ class Settings:
         self._inactive = None
         self._max_lost_particles = None
         self._rel_max_lost_particles = None
+        self._max_write_lost_particles = None
         self._particles = None
         self._keff_trigger = None
 
@@ -397,6 +403,16 @@ class Settings:
         cv.check_greater_than('rel_max_lost_particles', rel_max_lost_particles, 0)
         cv.check_less_than('rel_max_lost_particles', rel_max_lost_particles, 1)
         self._rel_max_lost_particles = rel_max_lost_particles
+
+    @property
+    def max_write_lost_particles(self) -> int:
+        return self._max_write_lost_particles
+
+    @max_write_lost_particles.setter
+    def max_write_lost_particles(self, max_write_lost_particles: int):
+        cv.check_type('max_write_lost_particles', max_write_lost_particles, Integral)
+        cv.check_greater_than('max_write_lost_particles', max_write_lost_particles, 0)
+        self._max_write_lost_particles = max_write_lost_particles
 
     @property
     def particles(self) -> int:
@@ -1014,6 +1030,11 @@ class Settings:
             element = ET.SubElement(root, "rel_max_lost_particles")
             element.text = str(self._rel_max_lost_particles)
 
+    def _create_max_write_lost_particles_subelement(self, root):
+        if self._max_write_lost_particles is not None:
+            element = ET.SubElement(root, "max_write_lost_particles")
+            element.text = str(self._max_write_lost_particles)
+
     def _create_particles_subelement(self, root):
         if self._particles is not None:
             element = ET.SubElement(root, "particles")
@@ -1376,6 +1397,7 @@ class Settings:
             self._inactive_from_xml_element(elem)
             self._max_lost_particles_from_xml_element(elem)
             self._rel_max_lost_particles_from_xml_element(elem)
+            self._max_write_lost_particles_from_xml_element(elem)
             self._generations_per_batch_from_xml_element(elem)
 
     def _run_mode_from_xml_element(self, root):
@@ -1407,6 +1429,11 @@ class Settings:
         text = get_text(root, 'rel_max_lost_particles')
         if text is not None:
             self.rel_max_lost_particles = float(text)
+
+    def _max_write_lost_particles_from_xml_element(self, root):
+        text = get_text(root, 'max_write_lost_particles')
+        if text is not None:
+            self.max_write_lost_particles = int(text)
 
     def _generations_per_batch_from_xml_element(self, root):
         text = get_text(root, 'generations_per_batch')
@@ -1719,6 +1746,7 @@ class Settings:
         self._create_inactive_subelement(element)
         self._create_max_lost_particles_subelement(element)
         self._create_rel_max_lost_particles_subelement(element)
+        self._create_max_write_lost_particles_subelement(element)
         self._create_generations_per_batch_subelement(element)
         self._create_keff_trigger_subelement(element)
         self._create_source_subelement(element)
@@ -1815,6 +1843,7 @@ class Settings:
         settings._inactive_from_xml_element(elem)
         settings._max_lost_particles_from_xml_element(elem)
         settings._rel_max_lost_particles_from_xml_element(elem)
+        settings._max_write_lost_particles_from_xml_element(elem)
         settings._generations_per_batch_from_xml_element(elem)
         settings._keff_trigger_from_xml_element(elem)
         settings._source_from_xml_element(elem, meshes)

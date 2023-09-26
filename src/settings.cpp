@@ -89,6 +89,7 @@ std::string weight_windows_file;
 int32_t n_inactive {0};
 int32_t max_lost_particles {10};
 double rel_max_lost_particles {1.0e-6};
+int32_t max_write_lost_particles {-1};
 int32_t gen_per_batch {1};
 int64_t n_particles {-1};
 
@@ -170,6 +171,12 @@ void get_run_parameters(pugi::xml_node node_base)
   if (check_for_node(node_base, "rel_max_lost_particles")) {
     rel_max_lost_particles =
       std::stod(get_node_value(node_base, "rel_max_lost_particles"));
+  }
+
+  // Get relative number of lost particles
+  if (check_for_node(node_base, "max_write_lost_particles")) {
+    max_write_lost_particles =
+      std::stoi(get_node_value(node_base, "max_write_lost_particles"));
   }
 
   // Get number of inactive batches

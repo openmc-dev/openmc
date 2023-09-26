@@ -1211,6 +1211,25 @@ mesh-based weight windows.
 
         *Default*: 5.0
 
+---------------------------------------
+``<weight_window_checkpoints>`` Element
+---------------------------------------
+
+The ``<weight_window_checkpoints>`` element indicates the checkpoints for weight
+window split/roulette (surface, collision or both). This element has the
+following sub-elements/attributes:
+
+  :surface:
+    If set to "true", weight window checks will be performed at surface
+    crossings.
+
+    *Default*: False
+
+  :collision:
+    If set to "true", weight window checks will be performed at collisions.
+
+    *Default*: True
+
 --------------------------------------
 ``<weight_windows_file>`` Element
 --------------------------------------

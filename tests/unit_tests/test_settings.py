@@ -57,6 +57,7 @@ def test_export_to_xml(run_in_tmpdir):
     s.photon_transport = False
     s.electron_treatment = 'led'
     s.write_initial_source = True
+    s.weight_window_checkpoints = {'surface': True, 'collision': False}
 
     # Make sure exporting XML works
     s.export_to_xml()
@@ -126,3 +127,4 @@ def test_export_to_xml(run_in_tmpdir):
     assert vol.samples == 1000
     assert vol.lower_left == (-10., -10., -10.)
     assert vol.upper_right == (10., 10., 10.)
+    assert s.weight_window_checkpoints == {'surface': True, 'collision': False}

@@ -74,6 +74,8 @@ bool trigger_predict {false};
 bool ufs_on {false};
 bool urr_ptables_on {true};
 bool weight_windows_on {false};
+bool weight_window_checkpoint_surface {false};
+bool weight_window_checkpoint_collision {true};
 bool write_all_tracks {false};
 bool write_initial_source {false};
 
@@ -972,6 +974,19 @@ void read_settings_xml(pugi::xml_node root)
         settings::weight_windows_on = true;
         break;
       }
+    }
+  }
+
+  // Set up weight window checkpoints
+  if (check_for_node(root, "weight_window_checkpoints")) {
+    xml_node ww_checkpoints = root.child("weight_window_checkpoints");
+    if (check_for_node(ww_checkpoints, "collision")) {
+      weight_window_checkpoint_collision =
+        get_node_value_bool(ww_checkpoints, "collision");
+    }
+    if (check_for_node(ww_checkpoints, "surface")) {
+      weight_window_checkpoint_surface =
+        get_node_value_bool(ww_checkpoints, "surface");
     }
   }
 }

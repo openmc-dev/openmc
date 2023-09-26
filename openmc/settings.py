@@ -236,6 +236,11 @@ class Settings:
         Weight windows to use for variance reduction
 
         .. versionadded:: 0.13
+    weight_window_checkpoints : dict
+        Indicates the checkpoints for weight window split/roulettes. Valid keys
+        include "collision" and "surface". Values must be of type bool.
+
+        .. versionadded:: 0.13.4
     weight_window_generators : WeightWindowGenerator or iterable of WeightWindowGenerator
         Weight windows generation parameters to apply during simulation
 
@@ -335,6 +340,7 @@ class Settings:
         self._weight_window_generators = cv.CheckedList(WeightWindowGenerator, 'weight window generators')
         self._weight_windows_on = None
         self._weight_windows_file = None
+        self._weight_window_checkpoints = {}
         self._max_splits = None
         self._max_tracks = None
 
@@ -962,6 +968,16 @@ class Settings:
         self._weight_windows_on = value
 
     @property
+    def weight_window_checkpoints(self) -> dict:
+        return self._weight_window_checkpoints
+
+    @weight_window_checkpoints.setter
+    def weight_window_checkpoints(self, weight_window_checkpoints: dict):
+        for key in weight_window_checkpoints.keys():
+            cv.check_value('weight_window_checkpoints', key, ('collision', 'surface'))
+        self._weight_window_checkpoints = weight_window_checkpoints
+
+    @property
     def max_splits(self) -> int:
         return self._max_splits
 
@@ -1377,6 +1393,19 @@ class Settings:
             element.text = self.weight_windows_file
             root.append(element)
 
+    def _create_weight_window_checkpoints_subelement(self, root):
+        if not self._weight_window_checkpoints:
+            return
+        element = ET.SubElement(root, "weight_window_checkpoints")
+
+        if 'collision' in self._weight_window_checkpoints:
+            subelement = ET.SubElement(element, "collision")
+            subelement.text = str(self._weight_window_checkpoints['collision']).lower()
+
+        if 'surface' in self._weight_window_checkpoints:
+            subelement = ET.SubElement(element, "surface")
+            subelement.text = str(self._weight_window_checkpoints['surface']).lower()
+
     def _create_max_splits_subelement(self, root):
         if self._max_splits is not None:
             elem = ET.SubElement(root, "max_splits")
@@ -1718,6 +1747,16 @@ class Settings:
         if meshes is not None and self.weight_windows:
             meshes.update({ww.mesh.id: ww.mesh for ww in self.weight_windows})
 
+    def _weight_window_checkpoints_from_xml_element(self, root):
+        elem = root.find('weight_window_checkpoints')
+        if elem is None:
+            return
+        for key in ('collision', 'surface'):
+            value = get_text(elem, key)
+            if value is not None:
+                value = value in ('true', '1')
+                self.weight_window_checkpoints[key] = value
+
     def _max_splits_from_xml_element(self, root):
         text = get_text(root, 'max_splits')
         if text is not None:
@@ -1786,6 +1825,7 @@ class Settings:
         self._create_weight_windows_subelement(element, mesh_memo)
         self._create_weight_window_generators_subelement(element, mesh_memo)
         self._create_weight_windows_file_element(element)
+        self._create_weight_window_checkpoints_subelement(element)
         self._create_max_splits_subelement(element)
         self._create_max_tracks_subelement(element)
 
@@ -1882,6 +1922,7 @@ class Settings:
         settings._write_initial_source_from_xml_element(elem)
         settings._weight_windows_from_xml_element(elem, meshes)
         settings._weight_window_generators_from_xml_element(elem, meshes)
+        settings._weight_window_checkpoints_from_xml_element(elem)
         settings._max_splits_from_xml_element(elem)
         settings._max_tracks_from_xml_element(elem)
 

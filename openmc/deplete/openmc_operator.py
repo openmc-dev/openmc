@@ -12,6 +12,7 @@ from typing import List, Tuple, Dict
 import numpy as np
 
 import openmc
+from openmc.checkvalue import check_value
 from openmc.exceptions import DataError
 from openmc.mpi import comm
 from .abc import TransportOperator, OperatorResult
@@ -45,7 +46,6 @@ class OpenMCOperator(TransportOperator):
         in the previous results.
     diff_burnable_mats : bool, optional
         Whether to differentiate burnable materials with multiple instances.
-        Volumes are divided equally from the original material volume.
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV].
     helper_kwargs : dict
@@ -57,6 +57,14 @@ class OpenMCOperator(TransportOperator):
         Depth of the search when reducing the depletion chain. Only used
         if ``reduce_chain`` evaluates to true. The default value of
         ``None`` implies no limit on the depth.
+
+    diff_volume_method : str
+        Specifies how the volumes of the new materials should be found. Default
+        is to 'divide equally' which divides the original material volume
+        equally between the new materials, 'match cell' sets the volume of the
+        material to volume of the cell they fill.
+
+        .. versionadded:: 0.13.4
 
     Attributes
     ----------
@@ -97,6 +105,7 @@ class OpenMCOperator(TransportOperator):
             chain_file=None,
             prev_results=None,
             diff_burnable_mats=False,
+            diff_volume_method='divide equally',
             fission_q=None,
             helper_kwargs=None,
             reduce_chain=False,
@@ -115,6 +124,10 @@ class OpenMCOperator(TransportOperator):
         self.round_number = False
         self.materials = materials
         self.cross_sections = cross_sections
+
+        check_value('diff volume method', diff_volume_method,
+                    {'divide equally', 'match cell'})
+        self.diff_volume_method = diff_volume_method
 
         # Reduce the chain to only those nuclides present
         if reduce_chain:

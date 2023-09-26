@@ -594,7 +594,6 @@ class ConstantFissionYieldHelper(FissionYieldHelper):
                 self._constant_yields[name] = yield_data
                 continue
             # Specific energy not found, use closest energy
-            distances = [abs(energy - ene) for ene in nuc.yield_energies]
             min_E = min(nuc.yield_energies, key=lambda e: abs(e - energy))
             self._constant_yields[name] = nuc.yield_data[min_E]
 

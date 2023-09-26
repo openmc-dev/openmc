@@ -1,5 +1,4 @@
 import os
-import typing  # imported separately as py3.8 requires typing.Iterable
 from collections.abc import Iterable, Mapping, MutableSequence
 from enum import Enum
 import itertools

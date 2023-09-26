@@ -1,5 +1,4 @@
 from __future__ import annotations
-from collections.abc import Iterable
 from numbers import Real, Integral
 from typing import Iterable, List, Optional, Dict, Sequence
 import warnings
@@ -481,7 +480,6 @@ def wwinp_to_wws(path: PathLike) -> List[WeightWindows]:
         # read file type, time-dependence, number of
         # particles, mesh type and problem identifier
         _if, iv, ni, nr = [int(x) for x in header[:4]]
-        probid = header[4] if len(header) > 4 else ""
 
         # header value checks
         if _if != 1:

@@ -88,6 +88,7 @@ int openmc_finalize()
   settings::max_particles_in_flight = 100000;
   settings::max_splits = 1000;
   settings::max_tracks = 1000;
+  settings::max_write_lost_particles = -1;
   settings::n_inactive = 0;
   settings::n_particles = -1;
   settings::output_summary = true;

@@ -276,6 +276,16 @@ then, OpenMC will only use up to the :math:`P_1` data.
   .. note:: This element is not used in the continuous-energy
     :ref:`energy_mode`.
 
+
+--------------------------------------
+``<max_write_lost_particles>`` Element
+--------------------------------------
+
+This ``<max_write_lost_particles>`` element indicates the maximum number of
+particle restart files (per MPI process) to write for lost particles.
+
+  *Default*: None
+
 .. _mesh_element:
 
 ------------------

@@ -709,8 +709,10 @@ void Particle::mark_as_lost(const char* message)
 {
   // Print warning and write lost particle file
   warning(message);
-  write_restart();
-
+  if (settings::max_write_lost_particles < 0 ||
+      simulation::n_lost_particles < settings::max_write_lost_particles) {
+    write_restart();
+  }
   // Increment number of lost particles
   wgt() = 0.0;
 #pragma omp atomic

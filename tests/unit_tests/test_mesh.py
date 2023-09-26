@@ -150,9 +150,20 @@ def test_CylindricalMesh_initiation():
 
 
 def test_CylindricalMesh_get_indices_at_coords():
-    mesh = openmc.CylindricalMesh(r_grid=(0,5, 10), z_grid=(0,5, 10))
-    assert mesh.get_indices_at_coords(1,0,1) == (0,0,0)
-    assert mesh.get_indices_at_coords(6,0,1) == (1,0,0)
-    assert mesh.get_indices_at_coords(9,0,1) == (1,0,0)
-    assert mesh.get_indices_at_coords(0,6,0) == (1,0,0)
-    assert mesh.get_indices_at_coords(0,9,1) == (1,0,0)
+    mesh = openmc.CylindricalMesh(r_grid=(0, 5, 10), z_grid=(0, 5, 10))
+    assert mesh.get_indices_at_coords(1, 0, 1) == (0, 0, 0)
+    assert mesh.get_indices_at_coords(6, 0, 1) == (1, 0, 0)
+    assert mesh.get_indices_at_coords(9, 0, 1) == (1, 0, 0)
+    assert mesh.get_indices_at_coords(0, 6, 0) == (1, 0, 0)
+    assert mesh.get_indices_at_coords(0, 9, 1) == (1, 0, 0)
+
+    mesh = openmc.CylindricalMesh(
+        r_grid=(0, 5, 10),
+        z_grid=(-10, -5, 5, 10),
+        phi_grid=(0, pi)
+    )
+    assert mesh.get_indices_at_coords(-1, -6, 6) == (0, 1, 1)
+    # assert mesh.get_indices_at_coords(6, 0, 1) == (1, 0, 0)
+    # assert mesh.get_indices_at_coords(9, 0, 1) == (1, 0, 0)
+    # assert mesh.get_indices_at_coords(0, 6, 0) == (1, 0, 0)
+    # assert mesh.get_indices_at_coords(0, 9, 1) == (1, 0, 0)

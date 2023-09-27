@@ -5,8 +5,8 @@ import pytest
 import openmc
 import openmc.model
 
-
-def test_source_mesh():
+@pytest.mark.parametrize('mesh_type', ('rectangular', 'cylindrical'))
+def test_source_mesh(mesh_type):
     """
     A void model containing a single box
     """
@@ -23,7 +23,10 @@ def test_source_mesh():
     model = openmc.Model(geometry=geometry, settings=settings)
 
     # define a 2 x 2 x 2 mesh
-    mesh = openmc.RegularMesh.from_domain(model.geometry, (2, 2, 2))
+    if mesh_type == 'rectangular':
+        mesh = openmc.RegularMesh.from_domain(model.geometry, (2, 2, 2))
+    elif mesh_type == 'cylindrical':
+        mesh = openmc.CylindricalMesh.from_domain(model.geometry, (1, 4, 2))
 
     energy = openmc.stats.Discrete([1.e6], [1.0])
 
@@ -32,10 +35,11 @@ def test_source_mesh():
     # out of the problem from there. This demonstrates that
     # 1) particles are only being sourced within the intented mesh voxel based on source strength
     # 2) particles are respecting the angle distributions assigned to each voxel
-
     x, y, z = mesh.centroids
+    if mesh_type == 'cylindrical':
+        x, y, z = mesh._convert_to_cartesian(mesh.centroids, mesh.origin)
 
-    sources = np.ndarray((2,2,2), dtype=openmc.SourceBase)
+    sources = np.ndarray(mesh.dimension, dtype=openmc.SourceBase)
     for i, j, k in mesh.indices:
         # mesh.indices is currently one-indexed, adjust for Python arrays
         idx = (i-1, j-1, k-1)
@@ -65,6 +69,7 @@ def test_source_mesh():
     # mesh elements
     for i, j, k in mesh.indices:
         ijk = (i-1, j-1, k-1)
+        print(ijk)
         # zero-out all source strengths and set the strength
         # on the element of interest
         mesh_source.strength = 0.0
@@ -74,7 +79,10 @@ def test_source_mesh():
 
         with openmc.StatePoint(sp_file) as sp:
             tally_out = sp.get_tally(id=tally.id)
-            mean = tally_out.get_reshaped_data(expand_dims=True).squeeze()
+            mean = tally_out.get_reshaped_data(expand_dims=True)
+
+        # remove nuclides and scores axes
+        mean = mean[..., 0, 0]
 
         assert mean[ijk] != 0
         mean[ijk] = 0

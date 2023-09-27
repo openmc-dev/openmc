@@ -84,6 +84,7 @@ def test_cylindrical_mesh_from_region():
     assert np.array_equal(mesh.r_grid, [0., 1., 2., 3., 4., 5., 6.])
     assert np.array_equal(mesh.phi_grid, [0., 0.5*np.pi, np.pi])
     assert np.array_equal(mesh.z_grid, [0.0, 20., 40., 60])
+    assert np.array_equal(mesh.origin, (0.0, 0.0, -30.))
 
 
 def test_reg_mesh_from_universe():

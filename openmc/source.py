@@ -393,7 +393,7 @@ class IndependentSource(SourceBase):
 
         return source
 
-class MeshSource():
+class MeshSource(SourceBase):
     """A mesh-based source in which random positions are uniformly sampled
     within mesh elements and each element can have independent angle, energy,
     and time distributions. The element sampled is chosen based on the relative
@@ -424,6 +424,10 @@ class MeshSource():
 
         self.mesh = mesh
         self.sources = sources
+
+    @property
+    def type(self):
+        return "mesh"
 
     @property
     def mesh(self):
@@ -485,33 +489,17 @@ class MeshSource():
         """
         self.set_total_strength(1.0)
 
-    def to_xml_element(self):
-        """Return XML representation of the mesh source
+    def populate_xml_element(self, elem):
+        super().populate_xml_element(elem)
 
-        Returns
-        -------
-        element : xml.etree.ElementTree.Element
-            XML element containing source data
-
-        """
-        element = ET.Element('source')
-        element.set('type', 'mesh')
-        element.set('strength', str(self.strength))
-
-        # build a mesh spatial distribution
-        strengths = [self.sources[i-1, j-1, k-1].strength for i, j, k in self.mesh.indices]
-        mesh_dist = openmc.MeshSpatial(self.mesh, strengths)
-
-        mesh_dist.to_xml_element(element)
+        elem.set("mesh", str(self.mesh.id))
 
         # write in the order of mesh indices
         for idx in self.mesh.indices:
             idx = tuple(i - 1 for i in idx)
             source = self.sources[idx]
-            src_element = ET.SubElement(element, 'source')
+            src_element = ET.SubElement(elem, 'source')
             source.populate_xml_element(src_element)
-
-        return element
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element, meshes=None) -> openmc.MeshSource:

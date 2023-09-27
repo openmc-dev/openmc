@@ -424,33 +424,27 @@ MeshSource::MeshSource(pugi::xml_node node)
     }
   }
 
-  // read mesh distribution
-  if (check_for_node(node, "space")) {
-    space_ = std::make_unique<MeshSpatial>(node.child("space"));
-  } else {
-    fatal_error("No spatial distribution found for mesh source.");
-  }
+  int32_t mesh_id = stoi(get_node_value(node, "mesh"));
+  int32_t mesh_idx = model::mesh_map.at(mesh_id);
+  const auto& mesh = model::meshes[mesh_idx];
 
-  MeshSpatial* mesh_spatial = dynamic_cast<MeshSpatial*>(space_.get());
-  if (!mesh_spatial)
-    fatal_error("Failed to recast mesh spatital distribution for mesh source.");
-
-  strength_ = mesh_spatial->total_strength();
-
-  int32_t n_mesh_sources = mesh_spatial->n_sources();
-
-  // read all source distributions
+  std::vector<double> strengths;
+  // read all source distributions and populate strengths vector for MeshSpatial object
   for (auto source_node : node.children("source")) {
     sources_.emplace_back(IndependentSource(source_node));
+    strengths.push_back(sources_.back().strength());
   }
 
   // the number of source distributions should either be one or equal to the
   // number of mesh elements
-  if (sources_.size() > 1 && sources_.size() != n_mesh_sources) {
+  if (sources_.size() > 1 && sources_.size() != mesh->n_bins()) {
     fatal_error(fmt::format("Incorrect number of source distributions ({}) for "
                             "mesh source with {} elements.",
-      sources_.size(), n_mesh_sources));
+      sources_.size(), mesh->n_bins()));
   }
+
+  space_ = std::make_unique<MeshSpatial>(mesh_idx, strengths);
+  strength_ = std::accumulate(strengths.begin(), strengths.end(), 0.0);
 }
 
 SourceSite MeshSource::sample(uint64_t* seed) const

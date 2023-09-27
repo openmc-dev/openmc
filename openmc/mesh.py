@@ -1439,6 +1439,10 @@ class CylindricalMesh(StructuredMesh):
             num=dimension[2]+1
         )
         origin = (cached_bb.center[0], cached_bb.center[1], z_grid[0])
+
+        # make z-grid relative to the origin
+        z_grid -= origin[2]
+
         mesh = cls(
             r_grid=r_grid,
             z_grid=z_grid,

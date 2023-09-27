@@ -30,7 +30,7 @@ def test_cylindrical_mesh_from_cell():
     assert np.array_equal(mesh.dimension, (2, 4, 3))
     assert np.array_equal(mesh.r_grid, [0., 25., 50.])
     assert np.array_equal(mesh.phi_grid, [0., 0.5*np.pi, np.pi, 1.5*np.pi, 2.*np.pi])
-    assert np.array_equal(mesh.z_grid, [10., 20., 30., 40.])
+    assert np.array_equal(mesh.z_grid, [0., 10., 20., 30.])
     assert np.array_equal(mesh.origin, [0., 0., 10.])
 
     # Cell is not centralized on Z or X axis
@@ -83,7 +83,8 @@ def test_cylindrical_mesh_from_region():
     assert np.array_equal(mesh.dimension, (6, 2, 3))
     assert np.array_equal(mesh.r_grid, [0., 1., 2., 3., 4., 5., 6.])
     assert np.array_equal(mesh.phi_grid, [0., 0.5*np.pi, np.pi])
-    assert np.array_equal(mesh.z_grid, [-30., -10., 10., 30.])
+    assert np.array_equal(mesh.z_grid, [0.0, 20., 40., 60])
+    assert np.array_equal(mesh.origin, (0.0, 0.0, -30.))
 
 
 def test_reg_mesh_from_universe():

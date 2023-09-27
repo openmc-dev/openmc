@@ -19,7 +19,7 @@ import openmc.checkvalue as cv
 from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
 from openmc.checkvalue import PathLike
-from openmc.stats import Univariate
+from openmc.stats import Univariate, Discrete, Mixture
 
 
 # Units for density supported by OpenMC
@@ -93,13 +93,6 @@ class Material(IDManagerMixin):
     fissionable_mass : float
         Mass of fissionable nuclides in the material in [g]. Requires that the
         :attr:`volume` attribute is set.
-    decay_photon_energy : openmc.stats.Univariate or None
-        Energy distribution of photons emitted from decay of unstable nuclides
-        within the material, or None if no photon source exists. The integral of
-        this distribution is the total intensity of the photon source in
-        [decay/sec].
-
-        .. versionadded:: 0.13.2
     ncrystal_cfg : str
         NCrystal configuration string
 
@@ -282,6 +275,27 @@ class Material(IDManagerMixin):
 
     @property
     def decay_photon_energy(self) -> Optional[Univariate]:
+        warnings.warn(
+            "The 'decay_photon_energy' property has been replaced by the "
+            "get_decay_photon_energy() method and will be removed in a future "
+            "version.", FutureWarning)
+        return self.get_decay_photon_energy(0.0)
+
+    def get_decay_photon_energy(self, clip_threshold: float = 1e-6) -> Optional[Univariate]:
+        """Return energy distribution of decay photons from unstable nuclides.
+
+        Parameters
+        ----------
+        clip_threshold : float
+            Maximum fraction of integral of the product of `x` and `p` for
+            discrete distributions that will be discarded.
+
+        Returns
+        -------
+        Decay photon energy distribution. The integral of this distribution is
+        the total intensity of the photon source in [decay/sec].
+
+        """
         atoms = self.get_nuclide_atoms()
         dists = []
         probs = []
@@ -290,7 +304,21 @@ class Material(IDManagerMixin):
             if source_per_atom is not None:
                 dists.append(source_per_atom)
                 probs.append(num_atoms)
-        return openmc.data.combine_distributions(dists, probs) if dists else None
+
+        # If no photon sources, exit early
+        if not dists:
+            return None
+
+        # Clip low-intensity values in discrete spectra
+        combined = openmc.data.combine_distributions(dists, probs)
+        if isinstance(combined, Discrete):
+            combined.clip(clip_threshold, inplace=True)
+        elif isinstance(combined, Mixture):
+            for dist in combined.distribution:
+                if isinstance(dist, Discrete):
+                    dist.clip(clip_threshold, inplace=True)
+
+        return combined
 
     @classmethod
     def from_hdf5(cls, group: h5py.Group) -> Material:

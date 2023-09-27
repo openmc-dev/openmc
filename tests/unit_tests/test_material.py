@@ -626,13 +626,13 @@ def test_decay_photon_energy():
     m.volume = 1.0
 
     # Get decay photon source and make sure it's the right type
-    src = m.decay_photon_energy
+    src = m.get_decay_photon_energy()
     assert isinstance(src, openmc.stats.Discrete)
 
     # If we add Xe135 (which has a tabular distribution), the photon source
     # should be a mixture distribution
     m.add_nuclide('Xe135', 1.0e-24)
-    src = m.decay_photon_energy
+    src = m.get_decay_photon_energy()
     assert isinstance(src, openmc.stats.Mixture)
 
     # With a single atom of each, the intensity of the photon source should be
@@ -642,10 +642,16 @@ def test_decay_photon_energy():
 
     assert src.integral() == pytest.approx(sum(
         intensity(decay_photon_energy(nuc)) for nuc in m.get_nuclides()
+    ), rel=1e-3)
+
+    # When the clipping threshold is zero, the intensities should match exactly
+    src = m.get_decay_photon_energy(0.0)
+    assert src.integral() == pytest.approx(sum(
+        intensity(decay_photon_energy(nuc)) for nuc in m.get_nuclides()
     ))
 
     # A material with no unstable nuclides should have no decay photon source
     stable = openmc.Material()
     stable.add_nuclide('Gd156', 1.0)
     stable.volume = 1.0
-    assert stable.decay_photon_energy is None
+    assert stable.get_decay_photon_energy() is None

@@ -74,6 +74,22 @@ def test_merge_discrete():
     assert triple.integral() == pytest.approx(6.0)
 
 
+def test_clip_discrete():
+    # Create discrete distribution with two points that are not important, one
+    # because the x value is very small, and one because the p value is very
+    # small
+    d = openmc.stats.Discrete([1e-8, 1.0, 2.0, 1000.0], [3.0, 2.0, 5.0, 1e-12])
+
+    # Clipping the distribution should result in two points
+    d_clip = d.clip(1e-6)
+    assert d_clip.x.size == 2
+    assert d_clip.p.size == 2
+
+    # Make sure inplace returns same object
+    d_same = d.clip(1e-6, inplace=True)
+    assert d_same is d
+
+
 def test_uniform():
     a, b = 10.0, 20.0
     d = openmc.stats.Uniform(a, b)

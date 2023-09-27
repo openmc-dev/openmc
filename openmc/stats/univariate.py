@@ -1,3 +1,4 @@
+from __future__ import annotations
 import math
 import typing
 from abc import ABC, abstractmethod
@@ -255,6 +256,59 @@ class Discrete(Univariate):
             Integral of discrete distribution
         """
         return np.sum(self.p)
+
+    def clip(self, threshold: float = 1e-6, inplace: bool = False) -> Discrete:
+        r"""Remove low-importance points from discrete distribution.
+
+        Given a probability mass function :math:`p(x)` with :math:`\{x_1, x_2,
+        x_3, \dots\}` the possible values of the random variable with
+        corresponding probabilities :math:`\{p_1, p_2, p_3, \dots\}`, this
+        function will remove any low-importance points such that :math:`\sum_i
+        x_i p_i` is preserved to within some threshold.
+
+        .. versionadded:: 0.13.4
+
+        Parameters
+        ----------
+        threshold : float
+            Maximum fraction of integral of the product of `x` and `p` that will
+            be discarded.
+        inplace : bool
+            Whether to modify the current object in-place or return a new one.
+
+        Returns
+        -------
+        Discrete distribution with low-importance points removed
+
+        """
+        # Determine (reversed) sorted order of probabilities
+        intensity = self.p * self.x
+        index_sort = np.argsort(intensity)[::-1]
+
+        # Get probabilities in above order
+        sorted_intensity = intensity[index_sort]
+
+        # Determine cumulative sum of probabilities
+        cumsum = np.cumsum(sorted_intensity)
+        cumsum /= cumsum[-1]
+
+        # Find index which satisfies cutoff
+        index_cutoff = np.searchsorted(cumsum, 1.0 - threshold)
+
+        # Now get indices up to cutoff
+        new_indices = index_sort[:index_cutoff + 1]
+        new_indices.sort()
+
+        # Create new discrete distribution
+        if inplace:
+            self.x = self.x[new_indices]
+            self.p = self.p[new_indices]
+            return self
+        else:
+            new_x = self.x[new_indices]
+            new_p = self.p[new_indices]
+            return type(self)(new_x, new_p)
+
 
 class Uniform(Univariate):
     """Distribution with constant probability over a finite interval [a,b]

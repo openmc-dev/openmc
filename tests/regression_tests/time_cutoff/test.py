@@ -21,8 +21,8 @@ def time_model():
     settings_file.batches = 10
     settings_file.particles = 100
     settings_file.cutoff = {'time_neutron': time_cutoff}
-    settings_file.source = openmc.source.Source(space=openmc.stats.Point(),
-                                                energy=openmc.stats.Discrete([1e4], [1]))
+    settings_file.source = openmc.IndependentSource(
+        space=openmc.stats.Point(), energy=openmc.stats.Discrete([1e4], [1]))
     model.settings = settings_file
 
     # Tally flux under time cutoff

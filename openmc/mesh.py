@@ -1036,7 +1036,7 @@ class RectilinearMesh(StructuredMesh):
     @x_grid.setter
     def x_grid(self, grid):
         cv.check_type('mesh x_grid', grid, Iterable, Real)
-        self._x_grid = np.asarray(grid)
+        self._x_grid = np.asarray(grid, dtype=float)
 
     @property
     def y_grid(self):
@@ -1045,7 +1045,7 @@ class RectilinearMesh(StructuredMesh):
     @y_grid.setter
     def y_grid(self, grid):
         cv.check_type('mesh y_grid', grid, Iterable, Real)
-        self._y_grid = np.asarray(grid)
+        self._y_grid = np.asarray(grid, dtype=float)
 
     @property
     def z_grid(self):
@@ -1054,7 +1054,7 @@ class RectilinearMesh(StructuredMesh):
     @z_grid.setter
     def z_grid(self, grid):
         cv.check_type('mesh z_grid', grid, Iterable, Real)
-        self._z_grid = np.asarray(grid)
+        self._z_grid = np.asarray(grid, dtype=float)
 
     @property
     def _grids(self):
@@ -1249,9 +1249,9 @@ class CylindricalMesh(StructuredMesh):
     ):
         super().__init__(mesh_id, name)
 
-        self._r_grid = r_grid
-        self._phi_grid = phi_grid
-        self._z_grid = z_grid
+        self.r_grid = r_grid
+        self.phi_grid = phi_grid
+        self.z_grid = z_grid
         self.origin = origin
 
     @property
@@ -1281,7 +1281,7 @@ class CylindricalMesh(StructuredMesh):
     @r_grid.setter
     def r_grid(self, grid):
         cv.check_type('mesh r_grid', grid, Iterable, Real)
-        self._r_grid = np.asarray(grid)
+        self._r_grid = np.asarray(grid, dtype=float)
 
     @property
     def phi_grid(self):
@@ -1290,7 +1290,7 @@ class CylindricalMesh(StructuredMesh):
     @phi_grid.setter
     def phi_grid(self, grid):
         cv.check_type('mesh phi_grid', grid, Iterable, Real)
-        self._phi_grid = np.asarray(grid)
+        self._phi_grid = np.asarray(grid, dtype=float)
 
     @property
     def z_grid(self):
@@ -1299,7 +1299,7 @@ class CylindricalMesh(StructuredMesh):
     @z_grid.setter
     def z_grid(self, grid):
         cv.check_type('mesh z_grid', grid, Iterable, Real)
-        self._z_grid = np.asarray(grid)
+        self._z_grid = np.asarray(grid, dtype=float)
 
     @property
     def _grids(self):
@@ -1610,9 +1610,9 @@ class SphericalMesh(StructuredMesh):
     ):
         super().__init__(mesh_id, name)
 
-        self._r_grid = r_grid
-        self._theta_grid = theta_grid
-        self._phi_grid = phi_grid
+        self.r_grid = r_grid
+        self.theta_grid = theta_grid
+        self.phi_grid = phi_grid
         self.origin = origin
 
     @property
@@ -1633,7 +1633,7 @@ class SphericalMesh(StructuredMesh):
     def origin(self, coords):
         cv.check_type('mesh origin', coords, Iterable, Real)
         cv.check_length("mesh origin", coords, 3)
-        self._origin = np.asarray(coords)
+        self._origin = np.asarray(coords, dtype=float)
 
     @property
     def r_grid(self):
@@ -1642,7 +1642,7 @@ class SphericalMesh(StructuredMesh):
     @r_grid.setter
     def r_grid(self, grid):
         cv.check_type('mesh r_grid', grid, Iterable, Real)
-        self._r_grid = np.asarray(grid)
+        self._r_grid = np.asarray(grid, dtype=float)
 
     @property
     def theta_grid(self):
@@ -1651,7 +1651,7 @@ class SphericalMesh(StructuredMesh):
     @theta_grid.setter
     def theta_grid(self, grid):
         cv.check_type('mesh theta_grid', grid, Iterable, Real)
-        self._theta_grid = np.asarray(grid)
+        self._theta_grid = np.asarray(grid, dtype=float)
 
     @property
     def phi_grid(self):
@@ -1660,7 +1660,7 @@ class SphericalMesh(StructuredMesh):
     @phi_grid.setter
     def phi_grid(self, grid):
         cv.check_type('mesh phi_grid', grid, Iterable, Real)
-        self._phi_grid = np.asarray(grid)
+        self._phi_grid = np.asarray(grid, dtype=float)
 
     @property
     def _grids(self):

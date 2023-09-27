@@ -908,7 +908,7 @@ class WeightWindowGenerator:
         wwg.on_the_fly = bool(get_text(elem, 'on_the_fly'))
         wwg.method = get_text(elem, 'method')
 
-        if elem.find('update_parameters'):
+        if elem.find('update_parameters') is not None:
             update_parameters = {}
             params_elem = elem.find('update_parameters')
             for entry in params_elem:

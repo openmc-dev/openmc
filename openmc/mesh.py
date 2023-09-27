@@ -260,12 +260,7 @@ class StructuredMesh(MeshBase):
         vertices = self.vertices
         s0 = (slice(None),) + (slice(0, -1),)*ndim
         s1 = (slice(None),) + (slice(1, None),)*ndim
-        centroids = (vertices[s0] + vertices[s1]) / 2
-
-        if isinstance(self, (CylindricalMesh, SphericalMesh)):
-            centroids = self._convert_to_cartesian(centroids, self.origin)
-
-        return centroids
+        return (vertices[s0] + vertices[s1]) / 2
 
     @property
     def num_mesh_cells(self):

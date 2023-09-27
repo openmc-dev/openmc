@@ -1068,8 +1068,14 @@ The ``<volume_calc>`` element indicates that a stochastic volume calculation
 should be run at the beginning of the simulation. This element has the following
 sub-elements/attributes:
 
-  :cells:
-    The unique IDs of cells for which the volume should be estimated.
+  :domain_type:
+    The type of each domain for the volume calculation ("cell", "material", or
+    "universe").
+
+    *Default*: None
+
+  :domain_ids:
+    The unique IDs of domains for which the volume should be estimated.
 
     *Default*: None
 
@@ -1079,16 +1085,41 @@ sub-elements/attributes:
     *Default*: None
 
   :lower_left:
-     The lower-left Cartesian coordinates of a bounding box that is used to
-     sample points within.
+    The lower-left Cartesian coordinates of a bounding box that is used to
+    sample points within.
 
-     *Default*: None
+    *Default*: None
 
   :upper_right:
-     The upper-right Cartesian coordinates of a bounding box that is used to
-     sample points within.
+    The upper-right Cartesian coordinates of a bounding box that is used to
+    sample points within.
 
-     *Default*: None
+    *Default*: None
+
+  :threshold:
+    Presence of a ``<threshold>`` sub-element indicates that the volume
+    calculation will be halted based on a threshold on the error. It has the
+    following sub-elements/attributes:
+
+    :type:
+      The type of the trigger. Accepted options are "variance", "std_dev",
+      and "rel_err".
+
+      :variance:
+        Variance of the mean, :math:`\sigma^2`
+
+      :std_dev:
+        Standard deviation of the mean, :math:`\sigma`
+
+      :rel_err:
+        Relative error of the mean, :math:`\frac{\sigma}{\mu}`
+
+      *Default*: None
+
+    :threshold:
+      The trigger's convergence criterion for the given type.
+
+      *Default*: None
 
 ----------------------------
 ``<weight_windows>`` Element

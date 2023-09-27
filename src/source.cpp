@@ -457,6 +457,11 @@ extern "C" int openmc_sample_external_source(
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
+  if (model::external_sources.empty()) {
+    set_errmsg("No external sources have been defined.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
   auto sites_array = static_cast<SourceSite*>(sites);
   for (size_t i = 0; i < n; ++i) {
     sites_array[i] = sample_external_source(seed);

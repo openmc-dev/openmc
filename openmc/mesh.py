@@ -2047,8 +2047,8 @@ class UnstructuredMesh(MeshBase):
         conn = self.connectivity[:, bin]
         # remove invalid connectivity values
         conn = conn[conn >= 0]
-        coords = self.vertices[conn]
-        return coords.mean(axis=0)
+        coords = self.vertices[:, conn]
+        return coords.mean(axis=1)
 
     def write_vtk_mesh(self, **kwargs):
         """Map data to unstructured VTK mesh elements.

@@ -475,7 +475,7 @@ class MeshSource():
         """Scales the element source strengths based on a desired
            total mesh strength.
         """
-        current_strength = self.strength
+        current_strength = self.strength if self.strength != 0.0 else 1.0
 
         for s in self.sources.flat:
             s.strength *= new_strength / current_strength

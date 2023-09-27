@@ -104,6 +104,7 @@ private:
 class MeshSpatial : public SpatialDistribution {
 public:
   explicit MeshSpatial(pugi::xml_node node);
+  explicit MeshSpatial(int32_t mesh_id, gsl::span<const double> strengths);
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
@@ -114,6 +115,9 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled element index and position within that element
   std::pair<int32_t, Position> sample_mesh(uint64_t* seed) const;
+
+  //! For unstructured meshes, ensure that elements are all linear tetrahedra
+  void check_element_types() const;
 
   // Accessors
   const Mesh* mesh() const { return model::meshes.at(mesh_idx_).get(); }

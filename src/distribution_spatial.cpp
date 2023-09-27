@@ -233,19 +233,9 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
 
   const auto mesh_ptr = model::meshes.at(mesh_idx_).get();
 
-  const auto umesh_ptr =
-    dynamic_cast<UnstructuredMesh*>(model::meshes.at(mesh_idx_).get());
-  if (umesh_ptr) {
-    // ensure that the unstructured mesh contains only linear tets
-    for (int bin = 0; bin < mesh_ptr->n_bins(); bin++) {
-      if (umesh_ptr->element_type(bin) != ElementType::LINEAR_TET) {
-        fatal_error(
-          "Mesh specified for source must contain only linear tetrahedra.");
-      }
-    }
-  }
+  check_element_types();
 
-  int32_t n_bins = this->n_sources();
+  size_t n_bins = this->n_sources();
   std::vector<double> strengths(n_bins, 1.0);
 
   // Create cdfs for sampling for an element over a mesh
@@ -263,11 +253,30 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
 
   if (get_node_value_bool(node, "volume_normalized")) {
     for (int i = 0; i < n_bins; i++) {
-      strengths[i] *= mesh()->volume(i);
+      strengths[i] *= this->mesh()->volume(i);
     }
   }
 
-  elem_idx_dist_.assign(strengths.data(), n_bins);
+  elem_idx_dist_.assign(strengths);
+}
+
+MeshSpatial::MeshSpatial(int32_t mesh_idx, gsl::span<const double> strengths) : mesh_idx_(mesh_idx) {
+  check_element_types();
+  elem_idx_dist_.assign(strengths);
+}
+
+void MeshSpatial::check_element_types() const {
+  const auto umesh_ptr =
+    dynamic_cast<const UnstructuredMesh*>(this->mesh());
+  if (umesh_ptr) {
+    // ensure that the unstructured mesh contains only linear tets
+    for (int bin = 0; bin < umesh_ptr->n_bins(); bin++) {
+      if (umesh_ptr->element_type(bin) != ElementType::LINEAR_TET) {
+        fatal_error(
+          "Mesh specified for source must contain only linear tetrahedra.");
+      }
+    }
+  }
 }
 
 std::pair<int32_t, Position> MeshSpatial::sample_mesh(uint64_t* seed) const

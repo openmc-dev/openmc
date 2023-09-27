@@ -172,9 +172,8 @@ class StructuredMesh(MeshBase):
     def vertices(self):
         """Return coordinates of mesh vertices in Cartesian coordinates. Also
            see :meth:`CylindricalMesh.cylindrical_vertices` and
-           :meth:`SphericalMesh.spherical_vertices` for coordinates in the mesh
-           coordinate system.
-
+           :meth:`SphericalMesh.spherical_vertices` for coordinates in other coordinate
+           systems.
 
         Returns
         -------

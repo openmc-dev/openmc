@@ -837,7 +837,7 @@ class DAGMCUniverse(UniverseBase):
             coords = dagmc_file['tstt']['nodes']['coordinates'][()]
             lower_left_corner = coords.min(axis=0)
             upper_right_corner = coords.max(axis=0)
-            return (lower_left_corner, upper_right_corner)
+            return openmc.BoundingBox(lower_left_corner, upper_right_corner)
 
     @property
     def filename(self):
@@ -955,7 +955,7 @@ class DAGMCUniverse(UniverseBase):
             bounded_type: str = 'box',
             boundary_type: str = 'vacuum',
             starting_id: int = 10000,
-            padding: float = 0.
+            padding_distance: float = 0.
         ):
         """Creates a either a spherical or box shaped bounding region around
         the DAGMC geometry.
@@ -976,7 +976,7 @@ class DAGMCUniverse(UniverseBase):
             Starting ID of the surface(s) used in the region. For bounded_type
             'box', the next 5 IDs will also be used. Defaults to 10000 to reduce
             the chance of an overlap of surface IDs with the DAGMC geometry.
-        padding : float
+        padding_distance : float
             Distance between the bounding region surfaces and the minimal
             bounding box. Allows for the region to be larger than the DAGMC
             geometry.
@@ -993,30 +993,29 @@ class DAGMCUniverse(UniverseBase):
         check_type('bounded type', bounded_type, str)
         check_value('bounded type', bounded_type, ('box', 'sphere'))
 
-        bbox = self.bounding_box
+        bbox = self.bounding_box.extend(padding_distance)
 
         if bounded_type == 'sphere':
-            bbox_center = (bbox[0] + bbox[1])/2
-            radius = np.linalg.norm(np.asarray(bbox))
+            radius = np.linalg.norm(bbox.upper_right - bbox.center)
             bounding_surface = openmc.Sphere(
                 surface_id=starting_id,
-                x0=bbox_center[0],
-                y0=bbox_center[1],
-                z0=bbox_center[2],
+                x0=bbox.center[0],
+                y0=bbox.center[1],
+                z0=bbox.center[2],
                 boundary_type=boundary_type,
-                r=radius + padding,
+                r=radius,
             )
 
             return -bounding_surface
 
         if bounded_type == 'box':
             # defines plane surfaces for all six faces of the bounding box
-            lower_x = openmc.XPlane(bbox[0][0]-padding, surface_id=starting_id)
-            upper_x = openmc.XPlane(bbox[1][0]+padding, surface_id=starting_id+1)
-            lower_y = openmc.YPlane(bbox[0][1]-padding, surface_id=starting_id+2)
-            upper_y = openmc.YPlane(bbox[1][1]+padding, surface_id=starting_id+3)
-            lower_z = openmc.ZPlane(bbox[0][2]-padding, surface_id=starting_id+4)
-            upper_z = openmc.ZPlane(bbox[1][2]+padding, surface_id=starting_id+5)
+            lower_x = openmc.XPlane(bbox[0][0], surface_id=starting_id)
+            upper_x = openmc.XPlane(bbox[1][0], surface_id=starting_id+1)
+            lower_y = openmc.YPlane(bbox[0][1], surface_id=starting_id+2)
+            upper_y = openmc.YPlane(bbox[1][1], surface_id=starting_id+3)
+            lower_z = openmc.ZPlane(bbox[0][2], surface_id=starting_id+4)
+            upper_z = openmc.ZPlane(bbox[1][2], surface_id=starting_id+5)
 
             region = +lower_x & -upper_x & +lower_y & -upper_y & +lower_z & -upper_z
 

@@ -87,3 +87,24 @@ class BoundingBox(tuple):
     @property
     def width(self):
         return self.upper_right - self.lower_left
+
+    def extend(self, padding_distance: float) -> 'openmc.BoundingBox':
+        """Returns an extended bounding box
+
+        padding_distance : float
+            The distance to enlarge the bounding box by
+        """
+
+        return BoundingBox(np.array(
+            [
+                self[0][0] - padding_distance,
+                self[0][1] - padding_distance, 
+                self[0][2] - padding_distance
+            ]
+        ), np.array(
+            [
+                self[1][0] + padding_distance,
+                self[1][1] + padding_distance, 
+                self[1][2] + padding_distance
+            ]
+        ))

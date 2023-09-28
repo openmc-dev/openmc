@@ -257,7 +257,7 @@ class Discrete(Univariate):
         """
         return np.sum(self.p)
 
-    def clip(self, threshold: float = 1e-6, inplace: bool = False) -> Discrete:
+    def clip(self, tolerance: float = 1e-6, inplace: bool = False) -> Discrete:
         r"""Remove low-importance points from discrete distribution.
 
         Given a probability mass function :math:`p(x)` with :math:`\{x_1, x_2,
@@ -270,7 +270,7 @@ class Discrete(Univariate):
 
         Parameters
         ----------
-        threshold : float
+        tolerance : float
             Maximum fraction of integral of the product of `x` and `p` that will
             be discarded.
         inplace : bool
@@ -293,7 +293,7 @@ class Discrete(Univariate):
         cumsum /= cumsum[-1]
 
         # Find index which satisfies cutoff
-        index_cutoff = np.searchsorted(cumsum, 1.0 - threshold)
+        index_cutoff = np.searchsorted(cumsum, 1.0 - tolerance)
 
         # Now get indices up to cutoff
         new_indices = index_sort[:index_cutoff + 1]

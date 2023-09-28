@@ -281,25 +281,24 @@ class Material(IDManagerMixin):
             "version.", FutureWarning)
         return self.get_decay_photon_energy(0.0)
 
-    def get_decay_photon_energy(self, clip_threshold: float = 1e-6) -> Optional[Univariate]:
+    def get_decay_photon_energy(self, clip_tolerance: float = 1e-6) -> Optional[Univariate]:
         """Return energy distribution of decay photons from unstable nuclides.
 
         Parameters
         ----------
-        clip_threshold : float
+        clip_tolerance : float
             Maximum fraction of integral of the product of `x` and `p` for
             discrete distributions that will be discarded.
 
         Returns
         -------
         Decay photon energy distribution. The integral of this distribution is
-        the total intensity of the photon source in [decay/sec].
+        the total intensity of the photon source in [Bq].
 
         """
-        atoms = self.get_nuclide_atoms()
         dists = []
         probs = []
-        for nuc, num_atoms in atoms.items():
+        for nuc, num_atoms in self.get_nuclide_atoms().items():
             source_per_atom = openmc.data.decay_photon_energy(nuc)
             if source_per_atom is not None:
                 dists.append(source_per_atom)
@@ -312,11 +311,11 @@ class Material(IDManagerMixin):
         # Clip low-intensity values in discrete spectra
         combined = openmc.data.combine_distributions(dists, probs)
         if isinstance(combined, Discrete):
-            combined.clip(clip_threshold, inplace=True)
+            combined.clip(clip_tolerance, inplace=True)
         elif isinstance(combined, Mixture):
             for dist in combined.distribution:
                 if isinstance(dist, Discrete):
-                    dist.clip(clip_threshold, inplace=True)
+                    dist.clip(clip_tolerance, inplace=True)
 
         return combined
 

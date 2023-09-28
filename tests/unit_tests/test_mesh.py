@@ -101,7 +101,7 @@ def test_SphericalMesh_initiation():
     # test defaults
     mesh = openmc.SphericalMesh(r_grid=(0, 10))
     assert (mesh.origin == np.array([0, 0, 0])).all()
-    assert mesh.r_grid == (0, 10)
+    assert (mesh.r_grid == np.array([0, 10])).all()
     assert (mesh.theta_grid == np.array([0, pi])).all()
     assert (mesh.phi_grid == np.array([0, 2*pi])).all()
 
@@ -113,22 +113,26 @@ def test_SphericalMesh_initiation():
         phi_grid=(2, 4)
     )
     assert (mesh.origin == np.array([1, 2, 3])).all()
-    assert mesh.r_grid == (0., 2.)
-    assert mesh.theta_grid == (1, 3)
-    assert mesh.phi_grid == (2, 4)
+    assert (mesh.r_grid == np.array([0., 2.])).all()
+    assert (mesh.theta_grid == np.array([1, 3])).all()
+    assert (mesh.phi_grid == np.array([2, 4])).all()
 
     # test attribute changing
     mesh.r_grid = (0, 11)
     assert (mesh.r_grid == np.array([0., 11.])).all()
+
+    # waffles and pancakes are unfortunately not valid radii
+    with pytest.raises(TypeError):
+        openmc.SphericalMesh(('🧇', '🥞'))
 
 
 def test_CylindricalMesh_initiation():
     # test defaults
     mesh = openmc.CylindricalMesh(r_grid=(0, 10), z_grid=(0, 10))
     assert (mesh.origin == np.array([0, 0, 0])).all()
-    assert mesh.r_grid == (0, 10)
-    assert mesh.phi_grid == (0, 2*pi)
-    assert mesh.z_grid == (0, 10)
+    assert (mesh.r_grid == np.array([0, 10])).all()
+    assert (mesh.phi_grid == np.array([0, 2*pi])).all()
+    assert (mesh.z_grid == np.array([0, 10])).all()
 
     # test setting on creation
     mesh = openmc.CylindricalMesh(
@@ -139,7 +143,7 @@ def test_CylindricalMesh_initiation():
     )
     assert (mesh.origin == np.array([1, 2, 3])).all()
     assert (mesh.r_grid == np.array([0., 2.])).all()
-    assert mesh.z_grid == (1, 3)
+    assert (mesh.z_grid == np.array([1, 3])).all()
     assert (mesh.phi_grid == np.array([2, 4])).all()
 
     # test attribute changing
@@ -147,3 +151,7 @@ def test_CylindricalMesh_initiation():
     assert (mesh.r_grid == np.array([0, 10.])).all()
     mesh.z_grid = (0., 4.)
     assert (mesh.z_grid == np.array([0, 4.])).all()
+
+    # waffles and pancakes are unfortunately not valid radii
+    with pytest.raises(TypeError):
+        openmc.SphericalMesh(('🧇', '🥞'))

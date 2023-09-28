@@ -91,8 +91,8 @@ def test_get_set(model, case_name, transfer_rates):
                                                    transfer_rate)
             elif case_name == 'rates_invalid_2':
                 with pytest.raises(ValueError, match='Cannot add transfer '
-                                    f'rate for element Gd to material 1 with '
-                                   'transfer rate\(s\) for nuclide\(s\) '
+                                   f'rate for element Gd to material 1 with '
+                                   r'transfer rate\(s\) for nuclide\(s\) '
                                    'Gd156, Gd157.'):
                     for component, transfer_rate in transfer_rates.items():
                         transfer.set_transfer_rate(material_input,

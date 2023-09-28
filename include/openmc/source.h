@@ -156,7 +156,7 @@ public:
 
   // Properties
   ParticleType particle_type() const { return particle_; }
-  double strength() const override { return strength_; }
+  double strength() const { return space_->total_strength(); } //!< Total source strength
 
   // Accessors
   const IndependentSource& source(int32_t i) const
@@ -167,7 +167,6 @@ public:
 private:
   // Data members
   ParticleType particle_ {ParticleType::neutron}; //!< Type of particle emitted
-  double strength_ {1.0};                         //!< Total source strength
   unique_ptr<MeshSpatial> space_;                 //!< Mesh spatial
   vector<IndependentSource> sources_;             //!< Source distributions
 };

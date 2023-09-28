@@ -444,7 +444,6 @@ MeshSource::MeshSource(pugi::xml_node node)
   }
 
   space_ = std::make_unique<MeshSpatial>(mesh_idx, strengths);
-  strength_ = std::accumulate(strengths.begin(), strengths.end(), 0.0);
 }
 
 SourceSite MeshSource::sample(uint64_t* seed) const

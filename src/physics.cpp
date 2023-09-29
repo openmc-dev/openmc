@@ -161,14 +161,13 @@ void sample_neutron_reaction(Particle& p)
     if ((settings::source_file || settings::surf_source_read)&&(settings::survival_normalization)) {
       if (p.wgt() < settings::weight_cutoff*p.wgt0()) {
         russian_roulette(p, settings::weight_survive*p.wgt0());
-      } else {
-          if (p.wgt() < settings::weight_cutoff) {
+      } 
+    } else if (p.wgt() < settings::weight_cutoff) {
             russian_roulette(p, settings::weight_survive);
-          }
-      }
     }
   }
 }
+
 void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 {
   // If uniform fission source weighting is turned on, we increase or decrease

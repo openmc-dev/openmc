@@ -168,7 +168,7 @@ void sample_neutron_reaction(Particle& p)
       }
     }
   }
-
+}
 void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 {
   // If uniform fission source weighting is turned on, we increase or decrease

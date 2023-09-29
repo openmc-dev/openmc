@@ -271,8 +271,7 @@ class Discrete(Univariate):
         Parameters
         ----------
         tolerance : float
-            Maximum fraction of integral of the product of `x` and `p` that will
-            be discarded.
+            Maximum fraction of :math:`\sum_i x_i p_i` that will be discarded.
         inplace : bool
             Whether to modify the current object in-place or return a new one.
 

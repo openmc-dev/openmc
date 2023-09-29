@@ -1204,7 +1204,7 @@ class Cylinder(QuadricMixin, Surface):
                   else -np.inf for xi, dxi in zip(self._origin, self._axis)]
             ur = [xi + r if np.isclose(dxi, 0., rtol=0., atol=self._atol)
                   else np.inf for xi, dxi in zip(self._origin, self._axis)]
-            return (np.array(ll), np.array(ur))
+            return BoundingBox(np.array(ll), np.array(ur))
 
         elif side == '+':
             return BoundingBox(

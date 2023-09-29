@@ -6,7 +6,7 @@ import numpy as np
 from .checkvalue import check_length
 
 
-class BoundingBox(tuple):
+class BoundingBox:
     """Axis-aligned bounding box.
 
     .. versionadded:: 0.13.4
@@ -35,16 +35,23 @@ class BoundingBox(tuple):
         The width of the x, y and z axis in [cm]
     """
 
-    def __new__(cls, lower_left: Iterable[float], upper_right: Iterable[float]):
+    def __init__(self, lower_left: Iterable[float], upper_right: Iterable[float]):
         check_length("lower_left", lower_left, 3, 3)
         check_length("upper_right", upper_right, 3, 3)
-        lower_left = np.array(lower_left, dtype=float)
-        upper_right = np.array(upper_right, dtype=float)
-        return tuple.__new__(cls, (lower_left, upper_right))
+        self._bounds = np.asarray([lower_left, upper_right], dtype=float)
 
     def __repr__(self) -> str:
         return "BoundingBox(lower_left={}, upper_right={})".format(
             tuple(self.lower_left), tuple(self.upper_right))
+
+    def __getitem__(self, key) -> np.ndarray:
+        return self._bounds[key]
+
+    def __setitem__(self, key, val):
+        self._bounds[key]
+
+    def __hash__(self) -> int:
+        return hash(self._bounds.data)
 
     @property
     def center(self) -> np.ndarray:
@@ -99,19 +106,52 @@ class BoundingBox(tuple):
 
         Returns
         -------
-        An enlarged bounding box
-
+        An expanded bounding box
         """
-        return BoundingBox(np.array(
-            [
-                self[0][0] - padding_distance,
-                self[0][1] - padding_distance,
-                self[0][2] - padding_distance
-            ]
-        ), np.array(
-            [
-                self[1][0] + padding_distance,
-                self[1][1] + padding_distance,
-                self[1][2] + padding_distance
-            ]
-        ))
+        self[0] -= padding_distance
+        self[1] += padding_distance
+        return self
+
+    def update(self, other_box: BoundingBox) -> BoundingBox:
+        """Expand the box to contain another box
+
+        Parameters
+        ----------
+        other_box : BoundingBox
+            The box used to resize this box
+
+        Returns
+        -------
+        An expanded bounding box
+        """
+        self[0][:] = np.minimum(self.lower_left, other_box.lower_left)
+        self[1][:] = np.maximum(self.upper_right, other_box.upper_right)
+        return self
+
+    def reduce(self, other_box: BoundingBox) -> BoundingBox:
+        """Reduce the box to match the dimensions of the input bounding box
+
+        Parameters
+        ----------
+        other_box : BoundingBox
+            The box used to resize this box
+
+        Returns
+        -------
+        A reduced bounding box
+        """
+        self[0][:] = np.maximum(self.lower_left, other_box.lower_left)
+        self[1][:] = np.minimum(self.upper_right, other_box.upper_right)
+        return self
+
+    @classmethod
+    def unbounded_box(cls):
+        """Create an infinite box. Useful as a starting point for determining
+           geometry bounds.
+
+        Returns
+        -------
+        An infinitely large bounding box.
+        """
+        infs = np.full((3,), np.inf)
+        return cls(-infs, infs)

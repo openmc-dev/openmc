@@ -30,14 +30,9 @@ from .pool import deplete
 from .reaction_rates import ReactionRates
 from .transfer_rates import TransferRates
 from openmc import Material, Cell
-<<<<<<< HEAD
 from .batchwise import (BatchwisePure, BatchwiseCellGeometrical, BatchwiseCellTemperature,
     BatchwiseMaterialRefuel, BatchwiseMaterialDilute, BatchwiseMaterialAdd,
     BatchwiseSchemeStd, BatchwiseSchemeRefuel, BatchwiseSchemeFlex)
-=======
-from .batchwise import (BatchwiseCellGeometrical, BatchwiseCellTemperature,
-    BatchwiseMaterialRefuel)
->>>>>>> cdd0df6fb (remove unused import)
 
 __all__ = [
     "OperatorResult", "TransportOperator",

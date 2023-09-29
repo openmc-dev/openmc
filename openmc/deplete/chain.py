@@ -21,7 +21,7 @@ from openmc.checkvalue import check_type, check_greater_than
 from openmc.data import gnds_name, zam
 from .nuclide import FissionYieldDistribution, Nuclide
 import openmc.data
-
+from ._density_funcs import oxidation_state
 
 # tuple of (possible MT values, secondaries)
 ReactionInfo = namedtuple('ReactionInfo', ('mts', 'secondaries'))

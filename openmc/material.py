@@ -311,6 +311,8 @@ class Material(IDManagerMixin):
         cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/cm3'})
         if units == 'Bq':
             multiplier = volume if volume is not None else self.volume
+            if multiplier is None:
+                raise ValueError("volume must be specified if units='Bq'")
         elif units == 'Bq/cm3':
             multiplier = 1
         elif units == 'Bq/g':

@@ -281,28 +281,48 @@ class Material(IDManagerMixin):
             "version.", FutureWarning)
         return self.get_decay_photon_energy(0.0)
 
-    def get_decay_photon_energy(self, clip_tolerance: float = 1e-6) -> Optional[Univariate]:
-        """Return energy distribution of decay photons from unstable nuclides.
+    def get_decay_photon_energy(
+            self,
+            clip_tolerance: float = 1e-6,
+            units: str = 'Bq',
+            volume: Optional[float] = None
+        ) -> Optional[Univariate]:
+        r"""Return energy distribution of decay photons from unstable nuclides.
+
+        .. versionadded:: 0.13.4
 
         Parameters
         ----------
         clip_tolerance : float
-            Maximum fraction of integral of the product of `x` and `p` for
-            discrete distributions that will be discarded.
+            Maximum fraction of :math:`\sum_i x_i p_i` for discrete
+            distributions that will be discarded.
+        units : {'Bq', 'Bq/g', 'Bq/cm3'}
+            Specifies the units on the integral of the distribution.
+        volume : float, optional
+            Volume of the material. If not passed, defaults to using the
+            :attr:`Material.volume` attribute.
 
         Returns
         -------
         Decay photon energy distribution. The integral of this distribution is
-        the total intensity of the photon source in [Bq].
+        the total intensity of the photon source in the requested units.
 
         """
+        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/cm3'})
+        if units == 'Bq':
+            multiplier = volume if volume is not None else self.volume
+        elif units == 'Bq/cm3':
+            multiplier = 1
+        elif units == 'Bq/g':
+            multiplier = 1.0 / self.get_mass_density()
+
         dists = []
         probs = []
-        for nuc, num_atoms in self.get_nuclide_atoms().items():
+        for nuc, atoms_per_bcm in self.get_nuclide_atom_densities().items():
             source_per_atom = openmc.data.decay_photon_energy(nuc)
             if source_per_atom is not None:
                 dists.append(source_per_atom)
-                probs.append(num_atoms)
+                probs.append(1e24 * atoms_per_bcm * multiplier)
 
         # If no photon sources, exit early
         if not dists:

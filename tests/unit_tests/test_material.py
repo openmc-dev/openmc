@@ -629,6 +629,12 @@ def test_decay_photon_energy():
     src = m.get_decay_photon_energy()
     assert isinstance(src, openmc.stats.Discrete)
 
+    # Make sure units/volume work as expected
+    src_v2 = m.get_decay_photon_energy(volume=2.0)
+    assert src.p * 2.0 == pytest.approx(src_v2.p)
+    src_per_cm3 = m.get_decay_photon_energy(units='Bq/cm3', volume=100.0)
+    assert (src.p == src_per_cm3.p).all()
+
     # If we add Xe135 (which has a tabular distribution), the photon source
     # should be a mixture distribution
     m.add_nuclide('Xe135', 1.0e-24)

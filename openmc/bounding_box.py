@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Iterable
 
 import numpy as np
@@ -88,23 +89,29 @@ class BoundingBox(tuple):
     def width(self):
         return self.upper_right - self.lower_left
 
-    def extend(self, padding_distance: float) -> 'openmc.BoundingBox':
+    def extend(self, padding_distance: float) -> BoundingBox:
         """Returns an extended bounding box
 
+        Parameters
+        ----------
         padding_distance : float
             The distance to enlarge the bounding box by
-        """
 
+        Returns
+        -------
+        An enlarged bounding box
+
+        """
         return BoundingBox(np.array(
             [
                 self[0][0] - padding_distance,
-                self[0][1] - padding_distance, 
+                self[0][1] - padding_distance,
                 self[0][2] - padding_distance
             ]
         ), np.array(
             [
                 self[1][0] + padding_distance,
-                self[1][1] + padding_distance, 
+                self[1][1] + padding_distance,
                 self[1][2] + padding_distance
             ]
         ))

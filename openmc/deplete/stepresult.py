@@ -449,7 +449,7 @@ class StepResult:
                 rxn_dset[index, i, low:high+1] = self.rates[i]
             if comm.rank == 0:
                 eigenvalues_dset[index, i] = self.k[i]
-            vol_dset[index, i, low:high+1] = self.dep_volume
+                vol_dset[index, i, low:high+1] = self.dep_volume
         if comm.rank == 0:
             time_dset[index] = self.time
             source_rate_dset[index] = self.source_rate
@@ -570,7 +570,6 @@ class StepResult:
         """
         # Get indexing terms
         vol_dict, nuc_list, burn_list, full_burn_list = op.get_results_info()
-
         stages = len(x)
 
         # Create results
@@ -597,7 +596,8 @@ class StepResult:
         if results.proc_time is not None:
             results.proc_time = comm.reduce(proc_time, op=MPI.SUM)
         results.batchwise = root
-        results.dep_volume = [vol for vol in vol_dict.values()]
+        # split between the processes
+        results.dep_volume = [vol_dict[mat] for mat in burn_list]
 
         if not Path(path).is_file():
             Path(path).parent.mkdir(parents=True, exist_ok=True)

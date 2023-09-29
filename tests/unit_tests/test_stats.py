@@ -248,6 +248,24 @@ def test_mixture():
     assert len(d) == 4
 
 
+def test_mixture_clip():
+    # Create mixture distribution containing a discrete distribution with two
+    # points that are not important, one because the x value is very small, and
+    # one because the p value is very small
+    d1 = openmc.stats.Discrete([1e-8, 1.0, 2.0, 1000.0], [3.0, 2.0, 5.0, 1e-12])
+    d2 = openmc.stats.Uniform(0, 5)
+    mix = openmc.stats.Mixture([0.5, 0.5], [d1, d2])
+
+    # Clipping should reduce the contained discrete distribution to 2 points
+    mix_clip = mix.clip(1e-6)
+    assert mix_clip.distribution[0].x.size == 2
+    assert mix_clip.distribution[0].p.size == 2
+
+    # Make sure inplace returns same object
+    mix_same = mix.clip(1e-6, inplace=True)
+    assert mix_same is mix
+
+
 def test_polar_azimuthal():
     # default polar-azimuthal should be uniform in mu and phi
     d = openmc.stats.PolarAzimuthal()

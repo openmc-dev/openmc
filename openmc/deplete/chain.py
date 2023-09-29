@@ -25,7 +25,7 @@ import scipy.sparse as sp
 import openmc.data
 from openmc._xml import clean_indentation
 from .nuclide import Nuclide, DecayTuple, ReactionTuple
-
+from ._density_funcs import oxidation_state
 
 # tuple of (possible MT values, (dA, dZ), secondaries) where dA is the change in
 # the mass number and dZ is the change in the atomic number
@@ -681,6 +681,38 @@ class Chain:
                 reactions.clear()
 
         # Use DOK matrix as intermediate representation, then convert to CSR and return
+        n = len(self)
+        matrix_dok = sp.dok_matrix((n, n))
+        dict.update(matrix_dok, matrix)
+        return matrix_dok.tocsr()
+
+    def form_redox_term(self, rates, nuc, fission_yields=None):
+        matrix = defaultdict(float)
+        if fission_yields is None:
+            fission_yields = self.get_default_fission_yields()
+
+        index_nuc = [i for i,n in enumerate(self.nuclides) if n.name==nuc][0]
+        elm = re.split(r'\d+', nuc)[0]
+        os_nuc = oxidation_state[elm]
+
+        f_id = rates.index_rx['fission']
+        for i, nuc in enumerate(self.nuclides):
+            if nuc.name in fission_yields:
+                nuc_ind = rates.index_nuc[nuc.name]
+                nuc_rates = rates[nuc_ind, :]
+                path_rate = nuc_rates[f_id]
+                # oxidation state
+                elm = re.split(r'\d+', nuc.name)[0]
+                yield_val = path_rate * oxidation_state[elm]
+
+                for product, y in fission_yields[nuc.name].items():
+                    elm = re.split(r'\d+', product)[0]
+                    yield_val -= y * path_rate * oxidation_state[elm]
+
+                if yield_val != 0.0:
+                    k = self.nuclide_dict[nuc.name]
+                    matrix[index_nuc, k] = yield_val / os_nuc
+
         n = len(self)
         matrix_dok = sp.dok_matrix((n, n))
         dict.update(matrix_dok, matrix)

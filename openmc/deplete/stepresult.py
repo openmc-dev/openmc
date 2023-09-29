@@ -75,6 +75,7 @@ class StepResult:
 
         self.data = None
         self.batchwise = None
+        self.dep_volume = None
     def __repr__(self):
         t = self.time[0]
         dt = self.time[1] - self.time[0]
@@ -353,6 +354,12 @@ class StepResult:
             "batchwise_root", (1,), maxshape=(None,),
             dtype="float64")
 
+        handle.create_dataset(
+            "depletable_volume", (1, n_stages, n_mats),
+            maxshape=(None, n_stages, n_mats),
+            chunks=(1, 1, n_mats),
+            dtype="float64")
+
     def _to_hdf5(self, handle, index, parallel=False):
         """Converts results object into an hdf5 object.
 
@@ -384,6 +391,7 @@ class StepResult:
         source_rate_dset = handle["/source_rate"]
         proc_time_dset = handle["/depletion time"]
         root_dset = handle["/batchwise_root"]
+        vol_dset = handle["/depletable_volume"]
 
         # Get number of results stored
         number_shape = list(number_dset.shape)
@@ -421,6 +429,10 @@ class StepResult:
             root_shape[0] = new_shape
             root_dset.resize(root_shape)
 
+            vol_shape = list(vol_dset.shape)
+            vol_shape[0] = new_shape
+            vol_dset.resize(vol_shape)
+
         # If nothing to write, just return
         if len(self.index_mat) == 0:
             return
@@ -437,6 +449,7 @@ class StepResult:
                 rxn_dset[index, i, low:high+1] = self.rates[i]
             if comm.rank == 0:
                 eigenvalues_dset[index, i] = self.k[i]
+            vol_dset[index, i, low:high+1] = self.dep_volume
         if comm.rank == 0:
             time_dset[index] = self.time
             source_rate_dset[index] = self.source_rate
@@ -445,6 +458,7 @@ class StepResult:
                     self.proc_time / (comm.size * self.n_hdf5_mats)
                 )
             root_dset[index] = self.batchwise
+
 
     @classmethod
     def from_hdf5(cls, handle, step):
@@ -482,6 +496,10 @@ class StepResult:
         if "batchwise_root" in handle:
             root_dset = handle["/batchwise_root"]
             results.batchwise = root_dset[step]
+
+        if "depletable_volume" in handle:
+            vol_dset = handle["/depletable_volume"]
+            results.dep_volume = vol_dset[step]
 
         if results.proc_time is None:
             results.proc_time = np.array([np.nan])
@@ -579,6 +597,7 @@ class StepResult:
         if results.proc_time is not None:
             results.proc_time = comm.reduce(proc_time, op=MPI.SUM)
         results.batchwise = root
+        results.dep_volume = [vol for vol in vol_dict.values()]
 
         if not Path(path).is_file():
             Path(path).parent.mkdir(parents=True, exist_ok=True)

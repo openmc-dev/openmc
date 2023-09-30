@@ -264,8 +264,7 @@ private:
 
   // Other physical data
   double wgt_ {1.0};       //!< particle weight
-  double wgt_cutoff_;      //!< particle weight cutoff
-  double wgt_survive_;     //!< particle weight survive
+  double wgt0_ {1.0};      //!< particle start weight
   double mu_;              //!< angle of scatter
   double time_ {0.0};      //!< time in [s]
   double time_last_ {0.0}; //!< previous time in [s]
@@ -399,12 +398,9 @@ public:
 
   double& wgt() { return wgt_; }
   double wgt() const { return wgt_; }
-  double& wgt_cutoff() { return wgt_cutoff_; }
-  double wgt_cutoff() const { return wgt_cutoff_; }
-  void wgt_cutoff(double cutoff) { wgt_cutoff_ = cutoff; }
-  double& wgt_survive() { return wgt_survive_; }
-  double wgt_survive() const { return wgt_survive_; }
-  void wgt_survive(double survive) { wgt_survive_ = survive; }
+  double& wgt0() { return wgt0_; }
+  double wgt0() const { return wgt0_; }
+
   double& mu() { return mu_; }
   const double& mu() const { return mu_; }
   double& time() { return time_; }

@@ -155,7 +155,7 @@ void sample_neutron_reaction(Particle& p)
     p.stream() = STREAM_TRACKING;
   }
 
-  // Play russian roulette if survival biasing is turned on
+  // Play Russian roulette if survival biasing is turned on
   if (settings::survival_biasing) {
     // if survival normalization is applicable, use normalized weight cutoff and normalized weight survive
     if ((settings::source_file || settings::surf_source_read)&&(settings::survival_normalization)) {

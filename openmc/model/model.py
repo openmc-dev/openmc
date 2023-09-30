@@ -609,6 +609,7 @@ class Model:
         this method creates the XML files and runs OpenMC via a system call. In
         both cases this method returns the path to the last statepoint file
         generated.
+
         .. versionchanged:: 0.12
             Instead of returning the final k-effective value, this function now
             returns the path to the final statepoint written.

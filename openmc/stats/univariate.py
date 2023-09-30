@@ -1,3 +1,4 @@
+from __future__ import annotations
 import math
 import typing
 from abc import ABC, abstractmethod
@@ -208,7 +209,7 @@ class Discrete(Univariate):
     @classmethod
     def merge(
         cls,
-        dists: typing.Sequence['openmc.stats.Discrete'],
+        dists: typing.Sequence[Discrete],
         probs: typing.Sequence[int]
     ):
         """Merge multiple discrete distributions into a single distribution
@@ -255,6 +256,58 @@ class Discrete(Univariate):
             Integral of discrete distribution
         """
         return np.sum(self.p)
+
+    def clip(self, tolerance: float = 1e-6, inplace: bool = False) -> Discrete:
+        r"""Remove low-importance points from discrete distribution.
+
+        Given a probability mass function :math:`p(x)` with :math:`\{x_1, x_2,
+        x_3, \dots\}` the possible values of the random variable with
+        corresponding probabilities :math:`\{p_1, p_2, p_3, \dots\}`, this
+        function will remove any low-importance points such that :math:`\sum_i
+        x_i p_i` is preserved to within some threshold.
+
+        .. versionadded:: 0.13.4
+
+        Parameters
+        ----------
+        tolerance : float
+            Maximum fraction of :math:`\sum_i x_i p_i` that will be discarded.
+        inplace : bool
+            Whether to modify the current object in-place or return a new one.
+
+        Returns
+        -------
+        Discrete distribution with low-importance points removed
+
+        """
+        # Determine (reversed) sorted order of probabilities
+        intensity = self.p * self.x
+        index_sort = np.argsort(intensity)[::-1]
+
+        # Get probabilities in above order
+        sorted_intensity = intensity[index_sort]
+
+        # Determine cumulative sum of probabilities
+        cumsum = np.cumsum(sorted_intensity)
+        cumsum /= cumsum[-1]
+
+        # Find index which satisfies cutoff
+        index_cutoff = np.searchsorted(cumsum, 1.0 - tolerance)
+
+        # Now get indices up to cutoff
+        new_indices = index_sort[:index_cutoff + 1]
+        new_indices.sort()
+
+        # Create new discrete distribution
+        if inplace:
+            self.x = self.x[new_indices]
+            self.p = self.p[new_indices]
+            return self
+        else:
+            new_x = self.x[new_indices]
+            new_p = self.p[new_indices]
+            return type(self)(new_x, new_p)
+
 
 class Uniform(Univariate):
     """Distribution with constant probability over a finite interval [a,b]
@@ -1094,7 +1147,7 @@ class Mixture(Univariate):
     def __init__(
         self,
         probability: typing.Sequence[float],
-        distribution: typing.Sequence['openmc.Univariate']
+        distribution: typing.Sequence[Univariate]
     ):
         self.probability = probability
         self.distribution = distribution
@@ -1219,9 +1272,45 @@ class Mixture(Univariate):
             for p, dist in zip(self.probability, self.distribution)
         ])
 
+    def clip(self, tolerance: float = 1e-6, inplace: bool = False) -> Mixture:
+        r"""Remove low-importance points from contained discrete distributions.
+
+        Given a probability mass function :math:`p(x)` with :math:`\{x_1, x_2,
+        x_3, \dots\}` the possible values of the random variable with
+        corresponding probabilities :math:`\{p_1, p_2, p_3, \dots\}`, this
+        function will remove any low-importance points such that :math:`\sum_i
+        x_i p_i` is preserved to within some threshold.
+
+        .. versionadded:: 0.13.4
+
+        Parameters
+        ----------
+        tolerance : float
+            Maximum fraction of :math:`\sum_i x_i p_i` that will be discarded
+            for any discrete distributions within the mixture distribution.
+        inplace : bool
+            Whether to modify the current object in-place or return a new one.
+
+        Returns
+        -------
+        Discrete distribution with low-importance points removed
+
+        """
+        if inplace:
+            for dist in self.distribution:
+                if isinstance(dist, Discrete):
+                    dist.clip(tolerance, inplace=True)
+            return self
+        else:
+            distribution = [
+                dist.clip(tolerance) if isinstance(dist, Discrete) else dist
+                for dist in self.distribution
+            ]
+            return type(self)(self.probability, distribution)
+
 
 def combine_distributions(
-    dists: typing.Sequence['openmc.Univariate'],
+    dists: typing.Sequence[Univariate],
     probs: typing.Sequence[float]
 ):
     """Combine distributions with specified probabilities

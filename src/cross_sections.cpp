@@ -129,6 +129,21 @@ void read_cross_sections_xml(pugi::xml_node root)
           "information on how to set up data libraries.");
       }
       settings::path_cross_sections = envvar;
+    } else if (settings::run_mode == RunMode::VOLUME) {
+      char* envvar = std::getenv("OPENMC_CROSS_SECTIONS");
+      if (!envvar) {
+        warning(
+          "No cross_sections.xml file was specified in "
+          "materials.xml or in the OPENMC_CROSS_SECTIONS"
+          " environment variable. For the full extend of"
+          " volume calculation OpenMC needs such a file to identify"
+          " where to find data libraries. Some volume calculation"
+          " capability will be disable.");
+        settings::path_cross_sections = "";
+        return;
+      } else {
+        settings::path_cross_sections = envvar;
+      }
     } else {
       char* envvar = std::getenv("OPENMC_MG_CROSS_SECTIONS");
       if (!envvar) {
@@ -332,7 +347,7 @@ void read_ce_cross_sections_xml()
 
 void finalize_cross_sections()
 {
-  if (settings::run_mode != RunMode::PLOTTING || settings::run_mode != RunMode::VOLUME) {
+  if (settings::run_mode != RunMode::PLOTTING or settings::run_mode != RunMode::VOLUME) {
     simulation::time_read_xs.start();
     if (settings::run_CE) {
       // Determine desired temperatures for each nuclide and S(a,b) table

@@ -242,10 +242,11 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       // Get reference to result for this domain
       auto& result {results[i_domain]};
 
-      // Guards against atom density calculation when no cross_section is presents
+      // Guards against atom density calculation when no cross_section is
+      // presents
       if (settings::path_cross_sections != "") {
-        // Create 2D array to store atoms/uncertainty for each nuclide. Later this
-        // is compressed into vectors storing only those nuclides that are
+        // Create 2D array to store atoms/uncertainty for each nuclide. Later
+        // this is compressed into vectors storing only those nuclides that are
         // non-zero
         auto n_nuc =
           settings::run_CE ? data::nuclides.size() : data::mg.nuclides_.size();
@@ -302,7 +303,8 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
           if (i_material == MATERIAL_VOID)
             continue;
 
-          // Guards against atom density calculation when no cross_section is presents
+          // Guards against atom density calculation when no cross_section is
+          // presents
           if (settings::path_cross_sections != "") {
             const auto& mat = model::materials[i_material];
             for (int k = 0; k < mat->nuclide_.size(); ++k) {
@@ -345,7 +347,8 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
           }
         }
 
-        // Guards against atom density calculation when no cross_section is presents
+        // Guards against atom density calculation when no cross_section is
+        // presents
         if (settings::path_cross_sections != "") {
 
           for (int j = 0; j < n_nuc; ++j) {

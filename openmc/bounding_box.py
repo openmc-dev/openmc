@@ -145,6 +145,18 @@ class BoundingBox:
         return self
 
     @classmethod
+    def inverted_box(cls):
+        """Create an infinite, inverted box. Useful as a starting point for determining
+           geometry bounds for union operations.
+
+        Returns
+        -------
+        An infinitely large bounding box.
+        """
+        infs = np.full((3,), np.inf)
+        return cls(infs, -infs)
+
+    @classmethod
     def unbounded_box(cls):
         """Create an infinite box. Useful as a starting point for determining
            geometry bounds.

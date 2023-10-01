@@ -502,13 +502,10 @@ class Union(Region, MutableSequence):
 
     @property
     def bounding_box(self):
-        lower_left = np.array([np.inf, np.inf, np.inf])
-        upper_right = np.array([-np.inf, -np.inf, -np.inf])
+        bbox = BoundingBox.inverted_box()
         for n in self:
-            lower_left_n, upper_right_n = n.bounding_box
-            lower_left[:] = np.minimum(lower_left, lower_left_n)
-            upper_right[:] = np.maximum(upper_right, upper_right_n)
-        return BoundingBox(lower_left, upper_right)
+            bbox.update(n.bounding_box)
+        return bbox
 
 
 class Complement(Region):

@@ -855,7 +855,7 @@ void read_tallies_xml(pugi::xml_node root)
   read_meshes(root);
 
   // We only need the mesh info for plotting
-  if (settings::run_mode == RunMode::PLOTTING)
+  if (settings::run_mode == RunMode::PLOTTING or settings::run_mode == RunMode::VOLUME)
     return;
 
   // Read data for tally derivatives

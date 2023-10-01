@@ -242,13 +242,15 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       // Get reference to result for this domain
       auto& result {results[i_domain]};
 
-      // Create 2D array to store atoms/uncertainty for each nuclide. Later this
-      // is compressed into vectors storing only those nuclides that are
-      // non-zero
-      auto n_nuc =
-        settings::run_CE ? data::nuclides.size() : data::mg.nuclides_.size();
-      xt::xtensor<double, 2> atoms({n_nuc, 2}, 0.0);
-
+      // Guards against atom density calculation when no cross_section is presents
+      if (settings::path_cross_sections != "") {
+        // Create 2D array to store atoms/uncertainty for each nuclide. Later this
+        // is compressed into vectors storing only those nuclides that are
+        // non-zero
+        auto n_nuc =
+          settings::run_CE ? data::nuclides.size() : data::mg.nuclides_.size();
+        xt::xtensor<double, 2> atoms({n_nuc, 2}, 0.0);
+      }
 #ifdef OPENMC_MPI
       if (mpi::master) {
         for (int j = 1; j < mpi::n_procs; j++) {
@@ -300,12 +302,15 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
           if (i_material == MATERIAL_VOID)
             continue;
 
-          const auto& mat = model::materials[i_material];
-          for (int k = 0; k < mat->nuclide_.size(); ++k) {
-            // Accumulate nuclide density
-            int i_nuclide = mat->nuclide_[k];
-            atoms(i_nuclide, 0) += mat->atom_density_[k] * f;
-            atoms(i_nuclide, 1) += std::pow(mat->atom_density_[k], 2) * var_f;
+          // Guards against atom density calculation when no cross_section is presents
+          if (settings::path_cross_sections != "") {
+            const auto& mat = model::materials[i_material];
+            for (int k = 0; k < mat->nuclide_.size(); ++k) {
+              // Accumulate nuclide density
+              int i_nuclide = mat->nuclide_[k];
+              atoms(i_nuclide, 0) += mat->atom_density_[k] * f;
+              atoms(i_nuclide, 1) += std::pow(mat->atom_density_[k], 2) * var_f;
+            }
           }
         }
 
@@ -340,17 +345,22 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
           }
         }
 
-        for (int j = 0; j < n_nuc; ++j) {
-          // Determine total number of atoms. At this point, we have values in
-          // atoms/b-cm. To get to atoms we multiply by 10^24 V.
-          double mean = 1.0e24 * volume_sample * atoms(j, 0);
-          double stdev = 1.0e24 * volume_sample * std::sqrt(atoms(j, 1));
+        // Guards against atom density calculation when no cross_section is presents
+        if (settings::path_cross_sections != "") {
 
-          // Convert full arrays to vectors
-          if (mean > 0.0) {
-            result.nuclides.push_back(j);
-            result.atoms.push_back(mean);
-            result.uncertainty.push_back(stdev);
+          for (int j = 0; j < n_nuc; ++j) {
+
+            // Determine total number of atoms. At this point, we have values in
+            // atoms/b-cm. To get to atoms we multiply by 10^24 V.
+            double mean = 1.0e24 * volume_sample * atoms(j, 0);
+            double stdev = 1.0e24 * volume_sample * std::sqrt(atoms(j, 1));
+
+            // Convert full arrays to vectors
+            if (mean > 0.0) {
+              result.nuclides.push_back(j);
+              result.atoms.push_back(mean);
+              result.uncertainty.push_back(stdev);
+            }
           }
         }
       }
@@ -456,15 +466,17 @@ void VolumeCalculation::to_hdf5(
                                           : data::mg.nuclides_[i_nuc].name);
     }
 
-    // Create array of total # of atoms with uncertainty for each nuclide
-    xt::xtensor<double, 2> atom_data({n_nuc, 2});
-    xt::view(atom_data, xt::all(), 0) = xt::adapt(result.atoms);
-    xt::view(atom_data, xt::all(), 1) = xt::adapt(result.uncertainty);
+    // Guards against atom density calculation when no cross_section is presents
+    if (settings::path_cross_sections != "") {
+      // Create array of total # of atoms with uncertainty for each nuclide
+      xt::xtensor<double, 2> atom_data({n_nuc, 2});
+      xt::view(atom_data, xt::all(), 0) = xt::adapt(result.atoms);
+      xt::view(atom_data, xt::all(), 1) = xt::adapt(result.uncertainty);
 
-    // Write results
-    write_dataset(group_id, "nuclides", nucnames);
-    write_dataset(group_id, "atoms", atom_data);
-
+      // Write results
+      write_dataset(group_id, "nuclides", nucnames);
+      write_dataset(group_id, "atoms", atom_data);
+    }
     close_group(group_id);
   }
 

@@ -414,7 +414,7 @@ class Intersection(Region, MutableSequence):
 
     @property
     def bounding_box(self):
-        box = BoundingBox.unbounded_box()
+        box = BoundingBox.inf_box()
         for n in self:
             box.reduce(n.bounding_box)
         return box
@@ -502,9 +502,9 @@ class Union(Region, MutableSequence):
 
     @property
     def bounding_box(self):
-        bbox = BoundingBox.inverted_box()
+        bbox = BoundingBox.inf_inverted_box()
         for n in self:
-            bbox.update(n.bounding_box)
+            bbox.expand(n.bounding_box)
         return bbox
 
 

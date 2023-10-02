@@ -112,7 +112,7 @@ class BoundingBox:
         self[1] += padding_distance
         return self
 
-    def update(self, other_box: BoundingBox) -> BoundingBox:
+    def expand(self, other_box: BoundingBox) -> BoundingBox:
         """Expand the box to contain another box
 
         Parameters
@@ -145,7 +145,7 @@ class BoundingBox:
         return self
 
     @classmethod
-    def inverted_box(cls):
+    def inf_inverted_box(cls):
         """Create an infinite, inverted box. Useful as a starting point for determining
            geometry bounds for union operations.
 
@@ -157,7 +157,7 @@ class BoundingBox:
         return cls(infs, -infs)
 
     @classmethod
-    def unbounded_box(cls):
+    def inf_box(cls):
         """Create an infinite box. Useful as a starting point for determining
            geometry bounds.
 

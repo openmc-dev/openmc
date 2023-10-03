@@ -76,28 +76,12 @@ void initialize_source_regions()
 
   // Initialize material array
   int64_t source_region_id = 0;
-  for (int i = 0; i < model::cells.size(); i++) {
+  for (int i =  0; i < model::cells.size(); i++) {
     Cell& cell = *model::cells[i];
     if (cell.type_ == Fill::MATERIAL) {
-      // Cells with multiple instances can either all share the same material -OR- each
-      // have a different material assigned
-      if (cell.material_.size() == 1) {
-        // In the event they all share the material, the lone entry in the material array
-        // should be applied to all source regions
-        for (int j = 0; j < cell.n_instances_; j++) {
-          random_ray::material[source_region_id++] = cell.material_[0];
-        }
-      } else if(cell.material_.size() == cell.n_instances_) {
-        // Otherwise, apply each material type to each cell instance
-        for (int j = 0; j < cell.n_instances_; j++) {
-          random_ray::material[source_region_id++] = cell.material_[j];
-        }
-      } else {
-        fatal_error(fmt::format(
-          "Cell {} was specified with {} materials but has {} distributed "
-          "instances. The number of materials must equal one or the number "
-          "of instances.",
-          cell.id_, cell.material_.size(), cell.n_instances_));
+      int material = cell.material_[0];
+      for (int j = 0; j < cell.n_instances_; j++) {
+        random_ray::material[source_region_id++] = material;;
       }
     }
   }

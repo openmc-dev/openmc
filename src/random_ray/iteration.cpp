@@ -142,6 +142,8 @@ int openmc_run_random_ray(void)
   print_results_random_ray(total_geometric_intersections, avg_miss_rate/n_iters_total);
 
   //openmc_simulation_finalize();
+  bool b = false;
+  openmc_statepoint_write(nullptr, &b);
 
   return 0;
 }
@@ -153,20 +155,27 @@ void update_neutron_source(double k_eff)
   double inverse_k_eff = 1.0 / k_eff;
   int negroups = data::mg.num_energy_groups_;
 
+  // Temperature and angle indices, if using multiple temperature
+  // data sets and/or anisotropic data sets.
+  // TODO: Currently assumes we are only using single temp/single
+  // angle data.
+  const int t = 0;
+  const int a = 0;
+
   #pragma omp parallel for
   for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
     int material = random_ray::material[sr]; 
 
     for (int energy_group_out = 0; energy_group_out < negroups; energy_group_out++) {
-      float Sigma_t = data::mg.macro_xs_[material].get_xs(MgxsType::TOTAL, energy_group_out, NULL, NULL, NULL);
+      float Sigma_t = data::mg.macro_xs_[material].get_xs(MgxsType::TOTAL, energy_group_out, nullptr, nullptr, nullptr, t, a);
       float scatter_source = 0.0f;
       float fission_source = 0.0f;
 
       for (int energy_group_in = 0; energy_group_in < negroups; energy_group_in++) {
         float scalar_flux = random_ray::scalar_flux_old[sr * negroups + energy_group_in];
-        float Sigma_s = data::mg.macro_xs_[material].get_xs(MgxsType::NU_SCATTER, energy_group_in, &energy_group_out, NULL, NULL);
-        float nu_Sigma_f = data::mg.macro_xs_[material].get_xs(MgxsType::NU_FISSION, energy_group_in, NULL, NULL, NULL);
-        float Chi = data::mg.macro_xs_[material].get_xs(MgxsType::CHI_PROMPT, energy_group_in, &energy_group_out, NULL, NULL);
+        float Sigma_s = data::mg.macro_xs_[material].get_xs(MgxsType::NU_SCATTER, energy_group_in, &energy_group_out, nullptr, nullptr, t, a);
+        float nu_Sigma_f = data::mg.macro_xs_[material].get_xs(MgxsType::NU_FISSION, energy_group_in, nullptr, nullptr, nullptr, t, a);
+        float Chi = data::mg.macro_xs_[material].get_xs(MgxsType::CHI_PROMPT, energy_group_in, &energy_group_out, nullptr, nullptr, t, a);
         scatter_source += Sigma_s    * scalar_flux;
         fission_source += nu_Sigma_f * scalar_flux * Chi;
       }
@@ -208,6 +217,13 @@ int64_t add_source_to_scalar_flux(void)
   int negroups = data::mg.num_energy_groups_;
 
   int64_t n_hits = 0;
+  
+  // Temperature and angle indices, if using multiple temperature
+  // data sets and/or anisotropic data sets.
+  // TODO: Currently assumes we are only using single temp/single
+  // angle data.
+  const int t = 0;
+  const int a = 0;
 
   #pragma omp parallel for reduction(+:n_hits)
   for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
@@ -226,7 +242,7 @@ int64_t add_source_to_scalar_flux(void)
       // There are three scenarios we need to consider:
       if (was_cell_hit) {
         // If it was hit, then finish computing the scalar flux estimate for the iteration
-        float Sigma_t = data::mg.macro_xs_[material].get_xs(MgxsType::TOTAL, e, NULL, NULL, NULL);
+        float Sigma_t = data::mg.macro_xs_[material].get_xs(MgxsType::TOTAL, e, nullptr, nullptr, nullptr, t, a);
         random_ray::scalar_flux_new[idx] /= (Sigma_t * volume);
         random_ray::scalar_flux_new[idx] += random_ray::source[idx];
       } else if (volume == 0.0) {
@@ -252,6 +268,13 @@ double compute_k_eff(double k_eff_old)
   int negroups = data::mg.num_energy_groups_;
   double fission_rate_old = 0;
   double fission_rate_new = 0;
+  
+  // Temperature and angle indices, if using multiple temperature
+  // data sets and/or anisotropic data sets.
+  // TODO: Currently assumes we are only using single temp/single
+  // angle data.
+  const int t = 0;
+  const int a = 0;
 
   #pragma omp parallel for reduction(+:fission_rate_old, fission_rate_new)
   for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
@@ -269,7 +292,7 @@ double compute_k_eff(double k_eff_old)
 
     for (int e = 0; e < negroups; e++) {
       int64_t idx = (sr * negroups) + e;
-      double nu_Sigma_f = data::mg.macro_xs_[material].get_xs(MgxsType::NU_FISSION, e, NULL, NULL, NULL);
+      double nu_Sigma_f = data::mg.macro_xs_[material].get_xs(MgxsType::NU_FISSION, e, nullptr, nullptr, nullptr, t, a);
       sr_fission_source_old += nu_Sigma_f * random_ray::scalar_flux_old[idx];
       sr_fission_source_new += nu_Sigma_f * random_ray::scalar_flux_new[idx];
     }

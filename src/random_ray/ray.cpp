@@ -102,10 +102,17 @@ void Ray::attenuate_flux(double distance, bool is_active)
   int64_t source_region_idx = random_ray::source_region_offsets[i_cell] + cell_instance();
   int64_t source_region_group_idx = source_region_idx * negroups;
   int material = this->material();
+  
+  // Temperature and angle indices, if using multiple temperature
+  // data sets and/or anisotropic data sets.
+  // TODO: Currently assumes we are only using single temp/single
+  // angle data.
+  const int t = 0;
+  const int a = 0;
 
   for( int e = 0; e < negroups; e++ )
   {
-    float Sigma_t = data::mg.macro_xs_[material].get_xs(MgxsType::TOTAL, e, NULL, NULL, NULL);
+    float Sigma_t = data::mg.macro_xs_[material].get_xs(MgxsType::TOTAL, e, NULL, NULL, NULL, t, a);
     float tau = Sigma_t * distance;
     float exponential = cjosey_exponential(tau);
     float new_delta_psi = (angular_flux_[e] - random_ray::source[source_region_group_idx + e]) * exponential;

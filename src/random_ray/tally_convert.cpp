@@ -92,6 +92,13 @@ void random_ray_tally()
   openmc::simulation::time_tallies.start();
 
   int negroups = data::mg.num_energy_groups_;
+  
+  // Temperature and angle indices, if using multiple temperature
+  // data sets and/or anisotropic data sets.
+  // TODO: Currently assumes we are only using single temp/single
+  // angle data.
+  const int t = 0;
+  const int a = 0;
 
   #pragma omp parallel for
   for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
@@ -104,7 +111,7 @@ void random_ray_tally()
         if (task.score_type == SCORE_FLUX) {
           score = random_ray::scalar_flux_new[idx] * volume;
         } else if(task.score_type == SCORE_FISSION) {
-          double Sigma_f = data::mg.macro_xs_[material].get_xs(MgxsType::FISSION, e, NULL, NULL, NULL);
+          double Sigma_f = data::mg.macro_xs_[material].get_xs(MgxsType::FISSION, e, NULL, NULL, NULL, t, a);
           score = random_ray::scalar_flux_new[idx] * volume * Sigma_f;
         }
         Tally& tally {*model::tallies[task.tally_idx]};

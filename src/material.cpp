@@ -249,7 +249,7 @@ Material::Material(pugi::xml_node node)
     // transport will be used, we need to add its symbol to the element_dict
     if (settings::photon_transport and
         (settings::run_mode != RunMode::PLOTTING or
-        settings::run_mode != RunMode::VOLUME)) {
+          settings::run_mode != RunMode::VOLUME)) {
       std::string element = to_element(name);
 
       // Make sure photon cross section data is available
@@ -313,7 +313,7 @@ Material::Material(pugi::xml_node node)
   // =======================================================================
   // READ AND PARSE <sab> TAG FOR THERMAL SCATTERING DATA
   if (settings::run_CE and (settings::run_mode != RunMode::PLOTTING or
-      settings::run_mode != RunMode::VOLUME)) {
+                             settings::run_mode != RunMode::VOLUME)) {
     // Loop over <sab> elements
 
     vector<std::string> sab_names;

@@ -242,16 +242,13 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       // Get reference to result for this domain
       auto& result {results[i_domain]};
 
-      // Guards against atom density calculation when no cross_section is
-      // presents
-      if (settings::path_cross_sections != "") {
-        // Create 2D array to store atoms/uncertainty for each nuclide. Later
-        // this is compressed into vectors storing only those nuclides that are
-        // non-zero
-        auto n_nuc =
-          settings::run_CE ? data::nuclides.size() : data::mg.nuclides_.size();
-        xt::xtensor<double, 2> atoms({n_nuc, 2}, 0.0);
-      }
+      // Create 2D array to store atoms/uncertainty for each nuclide. Later
+      // this is compressed into vectors storing only those nuclides that are
+      // non-zero
+      auto n_nuc =
+        settings::run_CE ? data::nuclides.size() : data::mg.nuclides_.size();
+      xt::xtensor<double, 2> atoms({n_nuc, 2}, 0.0);
+
 #ifdef OPENMC_MPI
       if (mpi::master) {
         for (int j = 1; j < mpi::n_procs; j++) {

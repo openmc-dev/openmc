@@ -479,9 +479,14 @@ class Batchwise(ABC):
                             nuclides.append(nuc)
                             densities.append(val)
                 # Update densities on C API side
+<<<<<<< HEAD
                 openmc.lib.materials[int(mat_id)].set_densities(nuclides, densities)
 
         return x
+=======
+                print(mat,nuclides,densities)
+                openmc.lib.materials[int(mat)].set_densities(nuclides, densities)
+>>>>>>> 0c3eee56a (run batchwise redox)
 
     def _update_x_and_set_volumes(self, x, volumes):
         """

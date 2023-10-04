@@ -382,8 +382,8 @@ class Batchwise(ABC):
         """
         self.operator.number.set_density(x)
 
-        if self.redox_vec is not None:
-            self._balance_redox()
+        #if self.redox_vec is not None:
+        #    x = self._balance_redox(x)
         if self.density_functions:
             self._update_densities()
             self._update_volumes()
@@ -507,7 +507,7 @@ class Batchwise(ABC):
         redox = 0
         number_i = self.operator.number
 
-        for mat in self.local_mats:
+        for mat_idx, mat in enumerate(self.local_mats):
             if mat == mat_id:
                 for nuc in number_i.nuclides:
                     elm = re.split(r'\d+', nuc)[0]
@@ -518,9 +518,9 @@ class Batchwise(ABC):
                         redox += number_i[mat, nuc] * oxidation_state[elm]
         return redox
 
-    def _balance_redox(self):
+    def _balance_redox(self, x):
         number_i = self.operator.number
-        for mat in self.local_mats:
+        for mat_idx,mat in enumerate(self.local_mats):
             # number of fluorine atoms to balance
             redox = self._get_redox(mat)
             # excess/deficiency of F, add or remove mat_vec nuclides to balance it
@@ -529,6 +529,10 @@ class Batchwise(ABC):
             for nuc,fraction in self.redox_vec.items():
                 elm = re.split(r'\d+', nuc)[0]
                 number_i[mat, nuc] -= redox * fraction / oxidation_state[elm]
+            #Also update x vector
+            nuc_idx = number_i.index_nuc[nuc]
+            x[mat_idx][nuc_idx] = number_i[mat, nuc]
+        return x
 
 class BatchwiseCell(Batchwise):
     """Abstract class holding batch wise cell-based functions.

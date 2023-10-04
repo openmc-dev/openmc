@@ -101,8 +101,9 @@ def deplete(func, chain, n, rates, dt, matrix_func=None, transfer_rates=None,
         matrices = [matrix - transfer for (matrix, transfer) in zip(matrices,
                                                                     transfers)]
 
-        #redox = map(chain.form_redox_term, rates, repeat('Th232'), fission_yields)
-        #matrices = [matrix + redox for (matrix, redox) in zip(matrices, redox)]
+        redox = map(chain.form_redox_term, repeat({'Th230': 0.0002, 'Th232':0.9998}), rates, fission_yields,
+                    repeat(transfer_rates), transfer_rates.local_mats)
+        matrices = [matrix + redox for (matrix, redox) in zip(matrices, redox)]
 
         if len(transfer_rates.index_transfer) > 0:
             # Gather all on comm.rank 0
@@ -116,7 +117,8 @@ def deplete(func, chain, n, rates, dt, matrix_func=None, transfer_rates=None,
 
                 # Calculate transfer rate terms as diagonal matrices
                 transfer_pair = {
-                    mat_pair: chain.form_rr_term(transfer_rates, mat_pair)
+                    mat_pair: chain.form_rr_term(transfer_rates, mat_pair) +
+                              chain.form_redox_term({'Th230': 0.0002, 'Th232':0.9998}, tr_rates=transfer_rates, mats=mat_pair)
                     for mat_pair in transfer_rates.index_transfer
                 }
 

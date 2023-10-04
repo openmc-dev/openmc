@@ -233,16 +233,13 @@ def test_mesh_vertices(mesh_type):
         z_grid = np.linspace(-10, 10, 20)
         phi_grid = np.linspace(0, 2*np.pi, 8)
         mesh = openmc.CylindricalMesh(r_grid=r_grid, z_grid=z_grid, phi_grid=phi_grid)
-
         exp_vert = np.asarray((mesh.r_grid[2], mesh.phi_grid[3], mesh.z_grid[2]))
         np.testing.assert_equal(mesh.cylindrical_vertices[:, 2, 3, 2], exp_vert)
-
     elif mesh_type == 'spherical':
         r_grid = np.linspace(0, 13, 14)
         theta_grid = np.linspace(0, np.pi, 11)
         phi_grid = np.linspace(0, 2*np.pi, 7)
         mesh = openmc.SphericalMesh(r_grid=r_grid, theta_grid=theta_grid, phi_grid=phi_grid)
-
         exp_vert = np.asarray((mesh.r_grid[2], mesh.theta_grid[3], mesh.phi_grid[2]))
         np.testing.assert_equal(mesh.spherical_vertices[:, 2, 3, 2], exp_vert)
 

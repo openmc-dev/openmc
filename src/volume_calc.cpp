@@ -242,8 +242,8 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       // Get reference to result for this domain
       auto& result {results[i_domain]};
 
-      // Create 2D array to store atoms/uncertainty for each nuclide. Later
-      // this is compressed into vectors storing only those nuclides that are
+      // Create 2D array to store atoms/uncertainty for each nuclide. Later this
+      // is compressed into vectors storing only those nuclides that are
       // non-zero
       auto n_nuc =
         settings::run_CE ? data::nuclides.size() : data::mg.nuclides_.size();

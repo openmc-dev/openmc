@@ -1,5 +1,7 @@
 #include "openmc/particle_data.h"
 
+#include <sstream>
+
 #include "openmc/cell.h"
 #include "openmc/geometry.h"
 #include "openmc/material.h"
@@ -11,6 +13,21 @@
 #include "openmc/tallies/tally.h"
 
 namespace openmc {
+
+void Geometron::mark_as_lost(const char* message)
+{
+  fatal_error(message);
+}
+
+void Geometron::mark_as_lost(const std::string& message)
+{
+  mark_as_lost(message.c_str());
+}
+
+void Geometron::mark_as_lost(const std::stringstream& message)
+{
+  mark_as_lost(message.str());
+}
 
 void LocalCoord::rotate(const vector<double>& rotation)
 {

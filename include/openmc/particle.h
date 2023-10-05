@@ -103,14 +103,14 @@ public:
 
   //! mark a particle as lost and create a particle restart file
   //! \param message A warning message to display
-  void mark_as_lost(const char* message);
+  virtual void mark_as_lost(const char* message) override;
 
-  void mark_as_lost(const std::string& message)
+  virtual void mark_as_lost(const std::string& message) override
   {
     mark_as_lost(message.c_str());
   }
 
-  void mark_as_lost(const std::stringstream& message)
+  virtual void mark_as_lost(const std::stringstream& message) override
   {
     mark_as_lost(message.str());
   }

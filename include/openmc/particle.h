@@ -105,16 +105,6 @@ public:
   //! \param message A warning message to display
   virtual void mark_as_lost(const char* message) override;
 
-  virtual void mark_as_lost(const std::string& message) override
-  {
-    mark_as_lost(message.c_str());
-  }
-
-  virtual void mark_as_lost(const std::stringstream& message) override
-  {
-    mark_as_lost(message.str());
-  }
-
   //! create a particle restart HDF5 file
   void write_restart() const;
 

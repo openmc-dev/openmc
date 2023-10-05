@@ -244,8 +244,9 @@ bool find_cell_inner(
         if (lat.outer_ != NO_OUTER_UNIVERSE) {
           coord.universe = lat.outer_;
         } else {
-          throw ParticleLost(
-            ParticleLost::Reason::no_universe_outside_lattice, lat.id_);
+          p.mark_as_lost(fmt::format(
+            "Particle {} left lattice {}, but it has no outer definition.",
+            p.id(), lat.id_));
         }
       }
     }
@@ -337,7 +338,9 @@ void cross_lattice(Geometron& p, const BoundaryInfo& boundary, bool verbose)
     bool found = exhaustive_find_cell(p);
 
     if (!found) {
-      throw ParticleLost(ParticleLost::Reason::bad_boundary_crossing, lat.id_);
+      p.mark_as_lost(fmt::format("Particle {} could not be located after "
+                                 "crossing a boundary of lattice {}",
+        p.id(), lat.id_));
     }
 
   } else {
@@ -351,8 +354,9 @@ void cross_lattice(Geometron& p, const BoundaryInfo& boundary, bool verbose)
       p.n_coord() = 1;
       bool found = exhaustive_find_cell(p);
       if (!found) {
-        throw ParticleLost(
-          ParticleLost::Reason::bad_boundary_crossing, lat.id_);
+        p.mark_as_lost(fmt::format("Particle {} could not be located after "
+                                   "crossing a boundary of lattice {}",
+          p.id(), lat.id_));
       }
     }
   }
@@ -405,7 +409,9 @@ BoundaryInfo distance_to_boundary(Geometron& p)
       level_lat_trans = lattice_distance.second;
 
       if (d_lat < 0) {
-        throw ParticleLost(ParticleLost::Reason::negative_lattice_distance);
+        p.mark_as_lost(fmt::format("Particle {} had a negative distance "
+                                   "to a lattice boundary.",
+          p.id()));
       }
     }
 

@@ -205,38 +205,7 @@ void Particle::event_calculate_xs()
 void Particle::event_advance()
 {
   // Find the distance to the nearest boundary
-  try {
-    boundary() = distance_to_boundary(*this);
-  } catch (ParticleLost msg) {
-    // Lost particles do not mean we should terminate the code.
-    // Instead we accept that they're lost and only allow a certain
-    // amount to geometrically fail.
-    switch (msg.reason) {
-    case ParticleLost::Reason::negative_lattice_distance:
-      mark_as_lost(fmt::format(
-        "Particle {} had a negative distance to a lattice boundary", id()));
-      break;
-    case ParticleLost::Reason::bad_boundary_crossing:
-      mark_as_lost(fmt::format("Particle {} could not be located after "
-                               "crossing a boundary of lattice {}",
-        id(), msg.id));
-      break;
-    case ParticleLost::Reason::no_universe_outside_lattice:
-      mark_as_lost(fmt::format(
-        "Particle {} left lattice {}, but it has no outer definition.", id(),
-        msg.id));
-      break;
-    case ParticleLost::Reason::no_dagmc_intersection:
-      std::string material_id =
-        material() == MATERIAL_VOID
-          ? "-1 (VOID)"
-          : std::to_string(model::materials[material()]->id());
-      mark_as_lost(fmt::format(
-        "No intersection found with DAGMC cell {}, filled with material {}",
-        msg.id, material_id));
-      break;
-    }
-  }
+  boundary() = distance_to_boundary(*this);
 
   // Sample a distance to collision
   if (type() == ParticleType::electron || type() == ParticleType::positron) {

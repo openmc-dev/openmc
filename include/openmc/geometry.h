@@ -77,43 +77,6 @@ void cross_lattice(
 
 BoundaryInfo distance_to_boundary(Geometron& p);
 
-/* Geometry routines can potentially throw this type of exception
- */
-class ParticleLost : public std::exception {
-public:
-  enum class Reason {
-    negative_lattice_distance,   // should not have negative distance to lattice
-    bad_boundary_crossing,       // could not locate after crossing a boundary
-    no_universe_outside_lattice, // undefined behavior. All space should be
-                                 // defined.
-    no_dagmc_intersection
-  } reason;
-
-  // Extra data to be passed up for exception handling or for detailed
-  // error reporting. For instance no_dagmc_intersection will give the
-  // DAGMC cell ID.
-  int id;
-
-  ParticleLost(Reason reason_a, int id_a = 0) : reason(reason_a), id(id_a) {}
-
-  // Handles uncaught exception messages, e.g. Geometron with no ID.
-  // These will not show up in the usual particle tracking, as more
-  // detailed error reporting is provided in the Particle class.
-  const char* what()
-  {
-    switch (reason) {
-    case Reason::negative_lattice_distance:
-      return "Negative distance to a lattice";
-    case Reason::bad_boundary_crossing:
-      return "Crossed a boundary and lost particle";
-    case Reason::no_universe_outside_lattice:
-      return "Outside lattice but no outer region defined";
-    case Reason::no_dagmc_intersection:
-      return "No intersection found with DAGMC cell";
-    }
-  }
-};
-
 } // namespace openmc
 
 #endif // OPENMC_GEOMETRY_H

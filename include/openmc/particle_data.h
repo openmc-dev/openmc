@@ -206,8 +206,14 @@ public:
   // reporting behavior that occurs in geometry.cpp. The explanation for
   // mark_as_lost is the same.
   virtual void mark_as_lost(const char* message);
-  virtual void mark_as_lost(const std::string& message);
-  virtual void mark_as_lost(const std::stringstream& message);
+  void mark_as_lost(const std::string& message)
+  {
+    mark_as_lost(message.c_str());
+  }
+  void mark_as_lost(const std::stringstream& message)
+  {
+    mark_as_lost(message.c_str());
+  }
 
   // resets all coordinate levels for the particle
   void clear()

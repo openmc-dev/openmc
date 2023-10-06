@@ -30,7 +30,7 @@ from .reaction_rates import ReactionRates
 from .transfer_rates import TransferRates
 from openmc import Material, Cell
 from .batchwise import (BatchwiseCellGeometrical, BatchwiseCellTemperature,
-    BatchwiseMaterialRefuel)
+    BatchwiseMaterialRefuel, BatchwiseMaterialDilute, BatchwiseSchemeStd)
 
 __all__ = [
     "OperatorResult", "TransportOperator",
@@ -902,16 +902,40 @@ class Integrator(ABC):
 
         """
         check_value('attribute', attr, ('translation', 'rotation',
-                                        'temperature', 'refuel'))
+                                        'temperature', 'refuel','dilute'))
         if attr in ('translation', 'rotation'):
             batchwise = BatchwiseCellGeometrical
         elif attr == 'temperature':
             batchwise = BatchwiseCellTemperature
         elif attr == 'refuel':
             batchwise = BatchwiseMaterialRefuel
+        elif attr == 'dilute':
+            batchwise = BatchwiseMaterialDilute
 
-        self.batchwise = batchwise.from_params(obj, attr, self.operator,
+        batchwise_inst = batchwise.from_params(obj, attr, self.operator,
                                            self.operator.model, **kwargs)
+        if self.batchwise is None:
+            self.batchwise = batchwise_inst
+        else:
+            self.batchwise = [self.batchwise, batchwise_inst]
+
+    def add_batchwise_scheme(self, scheme_name, **kwargs):
+        """Add batchwise wrapper to integrator scheme, after calls to
+        meth:`add_batchwise`.
+
+        Parameters
+        ----------
+        wrap_name : str
+            wrap_name of wrapper function. So far only '1' or '2'.
+        **kwargs
+            keyword arguments that are passed to the batchwise wrapper class.
+
+        """
+
+        if scheme_name == 'std':
+            self.batchwise = BatchwiseSchemeStd(self.batchwise, **kwargs)
+        #elif scheme_name == 'flex':
+        #    self.batchwise = BatchwiseSchemeFlex(self.batchwise, **kwargs)
 
     def add_density_function(self, mat, density_func):
         self.batchwise.set_density_function(mat, density_func)

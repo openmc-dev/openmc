@@ -388,6 +388,7 @@ class Batchwise(ABC):
         if self.density_functions:
             self._update_densities()
             self._update_volumes()
+
         elif self.density_treatment == 'constant-density':
             self._update_volumes()
         #else
@@ -408,7 +409,6 @@ class Batchwise(ABC):
                             nuclides.append(nuc)
                             densities.append(val)
                 # Update densities on C API side
-                print(mat,nuclides,densities)
                 openmc.lib.materials[int(mat)].set_densities(nuclides, densities)
 
     def _update_x_and_set_volumes(self, x, volumes):
@@ -1111,6 +1111,33 @@ class BatchwiseMaterial(Batchwise):
 
         return  x, root
 
+    def _calculate_volumes(self, res):
+        """
+        Uses :meth:`openmc.batchwise._search_for_keff` solution as grams of
+        material to add or remove to calculate new material volume.
+        Parameters
+        ----------
+        res : float
+            Solution in grams of material, coming from
+            :meth:`openmc.batchwise._search_for_keff`
+        Returns
+        -------
+        volumes : dict
+            Dictionary of calculated volume, where key mat id and value
+            material volume, in cm3
+        """
+        number_i = self.operator.number
+        volumes = {}
+
+        for mat in self.local_mats:
+            if int(mat) == self.material.id:
+                if self.density_treatment == 'constant-density':
+                    volumes[mat] =  number_i.get_mat_volume(mat) + \
+                              (res / self.material.get_mass_density())
+                elif self.density_treatment == 'constant-volume':
+                    volumes[mat] = number_i.get_mat_volume(mat)
+        return volumes
+
 class BatchwiseMaterialRefuel(BatchwiseMaterial):
     """
     Batch wise material-based class for refuelling (addition or removal) scheme.
@@ -1254,29 +1281,274 @@ class BatchwiseMaterialRefuel(BatchwiseMaterial):
         # always need to return a model
         return self.model
 
-    def _calculate_volumes(self, res):
+class BatchwiseMaterialDilute(BatchwiseMaterial):
+    """
+    Batch wise material-based class for refuelling (addition or removal) scheme.
+
+    A user doesn't need to call this class directly.
+    Instead an instance of this class is automatically created by calling
+    :meth:`openmc.deplete.Integrator.add_batchwise` method from an integrator
+    class, such as  :class:`openmc.deplete.CECMIntegrator`.
+
+    .. versionadded:: 0.13.4
+
+    Parameters
+    ----------
+    material : openmc.Material or int or str
+        OpenMC Material identifier to where apply batch wise scheme
+    operator : openmc.deplete.Operator
+        OpenMC operator object
+    attrib_name : str
+        Material attribute
+    model : openmc.model.Model
+        OpenMC model object
+    mat_vector : dict
+        Dictionary of material composition to parameterize, where a pair key value
+        represents a nuclide and its weight fraction, respectively.
+    bracket : list of float
+        Bracketing interval to search for the solution, always relative to the
+        solution at previous step.
+    bracket_limit : list of float
+        Absolute bracketing interval lower and upper; if during the adaptive
+        algorithm the search_for_keff solution lies off these limits the closest
+        limit will be set as new result.
+    density_treatment : str
+        Whether or not to keep constant volume or density after a depletion step
+        before the next one.
+        Default to 'constant-volume'
+    bracketed_method : {'brentq', 'brenth', 'ridder', 'bisect'}, optional
+        Solution method to use.
+        This is equivalent to the `bracket_method` parameter of the
+        `search_for_keff`.
+        Defaults to 'brentq'.
+    tol : float
+        Tolerance for search_for_keff method.
+        This is equivalent to the `tol` parameter of the `search_for_keff`.
+        Default to 0.01
+    target : Real, optional
+        This is equivalent to the `target` parameter of the `search_for_keff`.
+        Default to 1.0.
+    print_iterations : Bool, Optional
+        Whether or not to print `search_for_keff` iterations.
+        Default to True
+    search_for_keff_output : Bool, Optional
+        Whether or not to print transport iterations during  `search_for_keff`.
+        Default to False
+    Attributes
+    ----------
+    material : openmc.Material or int or str
+        OpenMC Material identifier to where apply batch wise scheme
+    mat_vector : dict
+        Dictionary of material composition to parameterize, where a pair key value
+        represents a nuclide and its weight fraction, respectively.
+    """
+
+    def __init__(self, material, attrib_name, operator, model, mat_vector, bracket,
+                 bracket_limit, density_treatment='constant-volume',
+                 bracketed_method='brentq', redox_vec=None, tol=0.01, target=1.0,
+                 print_iterations=True, search_for_keff_output=True):
+
+        super().__init__(material, operator, model, mat_vector, bracket,
+                         bracket_limit, density_treatment, bracketed_method, redox_vec, tol,
+                         target, print_iterations, search_for_keff_output)
+
+        # Not needed but used for consistency with other classes
+        check_value('attrib_name', attrib_name, 'dilute')
+        self.attrib_name = attrib_name
+
+    def _model_builder(self, param):
         """
-        Uses :meth:`openmc.batchwise._search_for_keff` solution as grams of
-        material to add or remove to calculate new material volume.
+        Callable function which builds a model according to a passed
+        parameter. This function must return an openmc.model.Model object.
+        Builds the parametric model to be passed to the
+        :meth:`openmc.search.search_for_keff` method.
+        The parametrization can either be at constant volume or constant
+        density, according to user input.
+        Default is constant volume.
         Parameters
         ----------
-        res : float
-            Solution in grams of material, coming from
-            :meth:`openmc.batchwise._search_for_keff`
+        param : float
+            Model function variable, total grams of material to add or remove
         Returns
         -------
-        volumes : dict
-            Dictionary of calculated volume, where key mat id and value
-            material volume, in cm3
+        model :  openmc.model.Model
+            Openmc parametric model
         """
-        number_i = self.operator.number
-        volumes = {}
+        for rank in range(comm.size):
+            number_i = comm.bcast(self.operator.number, root=rank)
 
-        for mat in self.local_mats:
-            if int(mat) == self.material.id:
-                if self.density_treatment == 'constant-density':
-                    volumes[mat] =  number_i.get_mat_volume(mat) + \
-                              (res / self.material.get_mass_density())
-                elif self.density_treatment == 'constant-volume':
-                    volumes[mat] = number_i.get_mat_volume(mat)
-        return volumes
+            for mat in number_i.materials:
+                nuclides = []
+                densities = []
+
+                if int(mat) == self.material.id:
+
+                    if self.density_treatment == 'constant-density':
+                        vol = number_i.get_mat_volume(mat) + \
+                                    (param / self.material.get_mass_density())
+
+                    elif self.density_treatment == 'constant-volume':
+                        vol = number_i.get_mat_volume(mat)
+
+                    # Sum all atoms present and convert in [#atoms/b-cm]
+                    mat_ind = number_i.index_mat(mat)
+                    tot_atoms = 1.0e-24 * sum(number_i.number[mat_ind]) / vol
+
+                    for nuc in number_i.index_nuc:
+                        # check only nuclides with cross sections data
+                        if nuc in self.operator.nuclides_with_data:
+                            # [#atoms/b-cm]
+                            val = 1.0e-24 * number_i.get_atom_density(mat,nuc)
+                            # Build parametric function, where param is the
+                            # dilute fraction to replace.
+                            # it assumes all nuclides in material vector have
+                            # cross sections data
+                            if nuc in self.mat_vector:
+                                # units [#atoms/cm-b]
+                                val = (1-param) * val + param * \
+                                      self.mat_vector[nuc] * tot_atoms
+
+                            else:
+                                val *= (1-param)
+
+                            if val > 0.0:
+                                nuclides.append(nuc)
+                                densities.append(val)
+
+                else:
+                    # for all other materials, still check atom density limits
+                    for nuc in number_i.nuclides:
+                        if nuc in self.operator.nuclides_with_data:
+                            # get normalized atoms density in [atoms/b-cm]
+                            val = 1.0e-24 * number_i.get_atom_density(mat, nuc)
+
+                            if val > 0.0:
+                                nuclides.append(nuc)
+                                densities.append(val)
+
+                #set nuclides and densities to the in-memory model
+                openmc.lib.materials[int(mat)].set_densities(nuclides, densities)
+
+        # always need to return a model
+        return self.model
+
+class BatchwiseSchemeStd():
+    """
+    Batchwise wrapper class, it wraps BatchwiseGeom and BatchwiseMat instances,
+    with some user defined logic.
+
+    This class should probably not be defined here, but we can keep it now for
+    convenience
+
+    The loop logic of this wrapper class is the following:
+
+    1. Run BatchwiseGeom and return geometrical coefficient
+    2. check if step index equals user definde dilute interval
+    3.1 if not, update geometry
+    3.2 if yes, set geometrical coefficient to user-defined restart level and
+    run BatchwiseMatDilute
+
+    In this case if the bracket upper geometrical limit is hitted,
+    simply stop the simulation.
+
+    An instance of this class can be passed directly to an instance of the
+    integrator class, such as :class:`openmc.deplete.CECMIntegrator`.
+
+    Parameters
+    ----------
+    bw_geom : BatchwiseGeom
+        openmc.deplete.batchwise.BatchwiseGeom object
+    bw_mat : BatchwiseMat
+        openmc.deplete.batchwise.BatchwiseMat object
+    dilute_interval : int
+        Frequency of dilution in number of timesteps
+    first_dilute : int or None
+        Timestep index for first dilution, to be used during restart simulation
+        Default to None
+    """
+
+    def __init__(self, bw_list, dilute_interval, restart_level, first_dilute=None,
+                 interrupt=False):
+
+        if isinstance(bw_list, list):
+            for bw in bw_list:
+                if isinstance(bw, BatchwiseCell):
+                    self.bw_geom = bw
+                elif isinstance(bw, BatchwiseMaterial):
+                    self.bw_mat = bw
+                else:
+                    raise ValueError(f'{bw} is not a valid instance of'
+                                      ' Batchwise class')
+        else:
+            raise ValueError(f'{bw_list} is not a list')
+
+        self.bw_list = bw_list
+
+        if not isinstance(restart_level, (float, int)):
+            raise ValueError(f'{restart_level} is of type {type(restart_level)},'
+                             ' while it should be int or float')
+        else:
+            self.restart_level = restart_level
+
+        #TODO check these values
+        self.first_dilute = first_dilute
+        self.step_interval = dilute_interval
+
+        # if first dilute is set, the dilute interval needs to be updated
+        if self.first_dilute is not None:
+            self.dilute_interval = dilute_interval + self.first_dilute
+        else:
+            self.dilute_interval = dilute_interval
+        self.interrupt = interrupt
+
+
+    def set_density_function(self, mat, density_func):
+        for bw in self.bw_list:
+            bw.set_density_function(mat, density_func)
+
+    def _update_volumes_after_depletion(self, x):
+        """
+        This is for a restart. TODO update abc class
+        Parameters
+        ----------
+        x : list of numpy.ndarray
+            Total atom concentrations
+        """
+        self.bw_geom._update_volumes(x)
+
+    def search_for_keff(self, x, step_index):
+        """
+        Perform the criticality search on the parametric material model.
+        Will set the root of the `search_for_keff` function to the atoms
+        concentrations vector.
+        Parameters
+        ----------
+        x : list of numpy.ndarray
+            Total atoms concentrations
+        Returns
+        -------
+        x : list of numpy.ndarray
+            Updated total atoms concentrations
+        """
+        #Check if index lies in dilution timesteps
+        if step_index in np.arange(self.dilute_interval,1000,self.dilute_interval) and self.bw_geom._get_cell_attrib() <= self.restart_level:
+            # restart level and perform dilution
+            self.bw_geom._set_cell_attrib(self.bw_mat.restart_level)
+            x = self.bw_mat.search_for_keff(x, step_index)
+            #update dulution interval
+            #if step_index == self.dilute_interval:
+            #    self.dilute_interval += self.step_interval
+
+
+        else:
+            x = self.bw_geom.search_for_keff(x, step_index)
+            # in this case if upper limit gets hit, stop directly
+            if self.bw_geom._get_cell_attrib() >= self.bw_geom.bracket_limit[1]:
+                from pathlib import Path
+                print(f'Reached maximum of {self.bw_geom.bracket_limit[1]} cm'
+                       ' exit..')
+                Path('sim.done').touch()
+
+                for rank in range(comm.size):
+                    comm.Abort()
+        return x

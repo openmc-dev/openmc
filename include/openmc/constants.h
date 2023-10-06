@@ -338,8 +338,7 @@ enum class RunMode {
   EIGENVALUE,
   PLOTTING,
   PARTICLE,
-  VOLUME,
-  VOLUME_NO_XS
+  VOLUME
 };
 
 //==============================================================================

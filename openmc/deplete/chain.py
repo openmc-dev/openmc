@@ -700,7 +700,6 @@ class Chain:
 
             k = self.nuclide_dict[nuc.name]
             os_elm = oxidation_state[elm]
-
             if rates is not None:
                 #redox from decay
                 if nuc.n_decay_modes != 0:
@@ -733,14 +732,14 @@ class Chain:
                         yield_val = path_rate * os_elm
 
                         if r_type != 'fission':
-                           target_elm = re.split(r'\d+', target)[0]
-                           yield_val -= path_rate * br * oxidation_state[target_elm]
+                            target_elm = re.split(r'\d+', target)[0]
+                            yield_val -= path_rate * br * oxidation_state[target_elm]
 
-                           light_nucs = REACTIONS[r_type].secondaries
-                           for light_nuc in light_nucs:
-                               if self.nuclide_dict.get(light_nuc) is not None:
-                                   ln_elm = re.split(r'\d+', light_nuc)[0]
-                                   yield_val -= path_rate * br * oxidation_state[ln_elm]
+                            light_nucs = REACTIONS[r_type].secondaries
+                            for light_nuc in light_nucs:
+                                if self.nuclide_dict.get(light_nuc) is not None:
+                                    ln_elm = re.split(r'\d+', light_nuc)[0]
+                                    yield_val -= path_rate * br * oxidation_state[ln_elm]
 
                         else:
                             for product, y in fission_yields[nuc.name].items():
@@ -750,6 +749,22 @@ class Chain:
                         if yield_val != 0.0:
                             for buf_nuc, buf_ind in buffer_dict.items():
                                 matrix[buf_ind, k] = yield_val / buffer_os * buffer[buf_nuc]
+
+                f_id = rates.index_rx['fission']
+                if nuc.name in fission_yields:
+                    nuc_ind = rates.index_nuc[nuc.name]
+                    nuc_rates = rates[nuc_ind, :]
+                    path_rate = nuc_rates[f_id]
+                    # oxidation state
+                    yield_val = path_rate * os_elm
+
+                    for product, y in fission_yields[nuc.name].items():
+                        p_elm = re.split(r'\d+', product)[0]
+                        yield_val -= y * path_rate * oxidation_state[p_elm]
+
+                    if yield_val != 0.0:
+                        for buf_nuc, buf_ind in buffer_dict.items():
+                            matrix[buf_ind, k] = yield_val / buffer_os * buffer[buf_nuc]
 
             if tr_rates is not None:
                 # redox from transfer

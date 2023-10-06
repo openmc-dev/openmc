@@ -381,7 +381,8 @@ class Batchwise(ABC):
             Total atom concentrations
         """
         self.operator.number.set_density(x)
-
+        print(self._get_redox('1')/openmc.data.AVOGADRO)
+        print(self._get_redox('2')/openmc.data.AVOGADRO)
         #if self.redox_vec is not None:
         #    x = self._balance_redox(x)
         if self.density_functions:

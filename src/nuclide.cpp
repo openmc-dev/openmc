@@ -1086,7 +1086,7 @@ extern "C" int openmc_load_nuclide(const char* name, const double* temps, int n)
 {
   // Plotting mode no nuclide data available or required
   if (settings::run_mode == RunMode::PLOTTING) {
-    return 0
+    return 0;
   }
   if (data::nuclide_map.find(name) == data::nuclide_map.end() ||
       data::nuclide_map.at(name) >= data::elements.size()) {

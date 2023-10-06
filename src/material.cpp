@@ -245,15 +245,16 @@ Material::Material(pugi::xml_node node)
 
     // If the corresponding element hasn't been encountered yet and photon
     // transport will be used, we need to add its symbol to the element_dict
-    if (settings::photon_transport and
-        settings::run_mode != RunMode::PLOTTING) {
+    if (settings::photon_transport) {
       std::string element = to_element(name);
 
       // Make sure photon cross section data is available
-      LibraryKey key {Library::Type::photon, element};
-      if (data::library_map.find(key) == data::library_map.end()) {
-        fatal_error(
-          "Could not find element " + element + " in cross_sections.xml.");
+      if (settings::run_mode != RunMode::PLOTTING) {
+        LibraryKey key {Library::Type::photon, element};
+        if (data::library_map.find(key) == data::library_map.end()) {
+          fatal_error(
+            "Could not find element " + element + " in cross_sections.xml.");
+        }
       }
 
       if (data::element_map.find(element) == data::element_map.end()) {
@@ -307,7 +308,7 @@ Material::Material(pugi::xml_node node)
 
   // =======================================================================
   // READ AND PARSE <sab> TAG FOR THERMAL SCATTERING DATA
-  if (settings::run_CE and settings::run_mode != RunMode::PLOTTING) {
+  if (settings::run_CE) {
     // Loop over <sab> elements
 
     vector<std::string> sab_names;
@@ -327,10 +328,12 @@ Material::Material(pugi::xml_node node)
 
       // Check that the thermal scattering table is listed in the
       // cross_sections.xml file
-      LibraryKey key {Library::Type::thermal, name};
-      if (data::library_map.find(key) == data::library_map.end()) {
-        fatal_error("Could not find thermal scattering data " + name +
-                    " in cross_sections.xml file.");
+      if (settings::run_mode != RunMode::PLOTTING) {
+        LibraryKey key {Library::Type::thermal, name};
+        if (data::library_map.find(key) == data::library_map.end()) {
+          fatal_error("Could not find thermal scattering data " + name +
+                      " in cross_sections.xml file.");
+        }
       }
 
       // Determine index of thermal scattering data in global

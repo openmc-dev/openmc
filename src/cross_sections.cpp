@@ -93,20 +93,18 @@ Library::Library(pugi::xml_node node, const std::string& directory)
 
 void read_cross_sections_xml()
 {
-  if (settings::run_mode != RunMode::PLOTTING) {
-    pugi::xml_document doc;
-    std::string filename = settings::path_input + "materials.xml";
-    // Check if materials.xml exists
-    if (!file_exists(filename)) {
-      fatal_error("Material XML file '" + filename + "' does not exist.");
-    }
-    // Parse materials.xml file
-    doc.load_file(filename.c_str());
-
-    auto root = doc.document_element();
-
-    read_cross_sections_xml(root);
+  pugi::xml_document doc;
+  std::string filename = settings::path_input + "materials.xml";
+  // Check if materials.xml exists
+  if (!file_exists(filename)) {
+    fatal_error("Material XML file '" + filename + "' does not exist.");
   }
+  // Parse materials.xml file
+  doc.load_file(filename.c_str());
+
+  auto root = doc.document_element();
+
+  read_cross_sections_xml(root);
 }
 
 void read_cross_sections_xml(pugi::xml_node root)

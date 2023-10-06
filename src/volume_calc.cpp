@@ -341,7 +341,6 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         }
 
         for (int j = 0; j < n_nuc; ++j) {
-
           // Determine total number of atoms. At this point, we have values in
           // atoms/b-cm. To get to atoms we multiply by 10^24 V.
           double mean = 1.0e24 * volume_sample * atoms(j, 0);
@@ -465,6 +464,7 @@ void VolumeCalculation::to_hdf5(
     // Write results
     write_dataset(group_id, "nuclides", nucnames);
     write_dataset(group_id, "atoms", atom_data);
+
     close_group(group_id);
   }
 

@@ -312,7 +312,7 @@ Material::Material(pugi::xml_node node)
   // =======================================================================
   // READ AND PARSE <sab> TAG FOR THERMAL SCATTERING DATA
   if (settings::run_CE and settings::run_mode != RunMode::PLOTTING and
-                            settings::run_mode != RunMode::VOLUME_NO_XS) {
+      settings::run_mode != RunMode::VOLUME_NO_XS) {
     // Loop over <sab> elements
 
     vector<std::string> sab_names;

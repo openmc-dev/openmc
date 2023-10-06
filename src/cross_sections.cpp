@@ -138,7 +138,7 @@ void read_cross_sections_xml(pugi::xml_node root)
                 " volume calculation OpenMC needs such a file to identify"
                 " where to find data libraries. Some volume calculation"
                 " capability will be disable.");
-        settings::path_cross_sections = "";
+        settings::run_mode = RunMode::VOLUME_NO_XS;
         return;
       } else {
         settings::path_cross_sections = envvar;
@@ -346,7 +346,7 @@ void read_ce_cross_sections_xml()
 
 void finalize_cross_sections()
 {
-  if (settings::run_mode != RunMode::PLOTTING or
+  if (settings::run_mode != RunMode::PLOTTING and
       settings::run_mode != RunMode::VOLUME) {
     simulation::time_read_xs.start();
     if (settings::run_CE) {

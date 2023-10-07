@@ -224,11 +224,13 @@ Material::Material(pugi::xml_node node)
 
     // Check that this nuclide is listed in the nuclear data library
     // (cross_sections.xml for CE and the MGXS HDF5 for MG)
-    LibraryKey key {Library::Type::neutron, name};
-    if (data::library_map.find(key) == data::library_map.end()) {
-      fatal_error("Could not find nuclide " + name +
-                  " in the "
-                  "nuclear data library.");
+    if (settings::run_mode != RunMode::PLOTTING) {
+      LibraryKey key {Library::Type::neutron, name};
+      if (data::library_map.find(key) == data::library_map.end()) {
+        fatal_error("Could not find nuclide " + name +
+                    " in the "
+                    "nuclear data library.");
+      }
     }
 
     // If this nuclide hasn't been encountered yet, we need to add its name
@@ -247,10 +249,12 @@ Material::Material(pugi::xml_node node)
       std::string element = to_element(name);
 
       // Make sure photon cross section data is available
-      LibraryKey key {Library::Type::photon, element};
-      if (data::library_map.find(key) == data::library_map.end()) {
-        fatal_error(
-          "Could not find element " + element + " in cross_sections.xml.");
+      if (settings::run_mode != RunMode::PLOTTING) {
+        LibraryKey key {Library::Type::photon, element};
+        if (data::library_map.find(key) == data::library_map.end()) {
+          fatal_error(
+            "Could not find element " + element + " in cross_sections.xml.");
+        }
       }
 
       if (data::element_map.find(element) == data::element_map.end()) {
@@ -324,10 +328,12 @@ Material::Material(pugi::xml_node node)
 
       // Check that the thermal scattering table is listed in the
       // cross_sections.xml file
-      LibraryKey key {Library::Type::thermal, name};
-      if (data::library_map.find(key) == data::library_map.end()) {
-        fatal_error("Could not find thermal scattering data " + name +
-                    " in cross_sections.xml file.");
+      if (settings::run_mode != RunMode::PLOTTING) {
+        LibraryKey key {Library::Type::thermal, name};
+        if (data::library_map.find(key) == data::library_map.end()) {
+          fatal_error("Could not find thermal scattering data " + name +
+                      " in cross_sections.xml file.");
+        }
       }
 
       // Determine index of thermal scattering data in global

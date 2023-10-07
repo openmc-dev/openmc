@@ -372,7 +372,9 @@ bool read_model_xml()
       "No <materials> node present in the {} file.", model_filename));
   }
 
-  read_cross_sections_xml(root.child("materials"));
+  if (settings::run_mode != RunMode::PLOTTING) {
+    read_cross_sections_xml(root.child("materials"));
+  }
   read_materials_xml(root.child("materials"));
 
   // Read geometry
@@ -413,7 +415,9 @@ bool read_model_xml()
 void read_separate_xml_files()
 {
   read_settings_xml();
-  read_cross_sections_xml();
+  if (settings::run_mode != RunMode::PLOTTING) {
+    read_cross_sections_xml();
+  }
   read_materials_xml();
   read_geometry_xml();
 

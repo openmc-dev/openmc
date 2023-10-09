@@ -233,7 +233,7 @@ class Surface(IDManagerMixin, ABC):
             desired half-space
 
         """
-        return BoundingBox.inf_box()
+        return BoundingBox.infinite()
 
     def clone(self, memo=None):
         """Create a copy of this surface with a new unique ID.
@@ -1203,7 +1203,7 @@ class Cylinder(QuadricMixin, Surface):
                   else np.inf for xi, dxi in zip(self._origin, self._axis)]
             return BoundingBox(np.array(ll), np.array(ur))
         elif side == '+':
-            return BoundingBox.inf_box()
+            return BoundingBox.infinite()
 
     def _get_base_coeffs(self):
         # Get x, y, z coordinates of two points
@@ -1370,7 +1370,7 @@ class XCylinder(QuadricMixin, Surface):
                 np.array([np.inf, self.y0 + self.r, self.z0 + self.r])
             )
         elif side == '+':
-            return BoundingBox.inf_box()
+            return BoundingBox.infinite()
 
     def evaluate(self, point):
         y = point[1] - self.y0
@@ -1462,7 +1462,7 @@ class YCylinder(QuadricMixin, Surface):
                 np.array([self.x0 + self.r, np.inf, self.z0 + self.r])
             )
         elif side == '+':
-            return BoundingBox.inf_box()
+            return BoundingBox.infinite()
 
     def evaluate(self, point):
         x = point[0] - self.x0
@@ -1554,7 +1554,7 @@ class ZCylinder(QuadricMixin, Surface):
                 np.array([self.x0 + self.r, self.y0 + self.r, np.inf])
             )
         elif side == '+':
-            return BoundingBox.inf_box()
+            return BoundingBox.infinite()
 
     def evaluate(self, point):
         x = point[0] - self.x0
@@ -1645,7 +1645,7 @@ class Sphere(QuadricMixin, Surface):
                 np.array([self.x0 + self.r, self.y0 + self.r, self.z0 + self.r])
             )
         elif side == '+':
-            return BoundingBox.inf_box()
+            return BoundingBox.infinite()
 
     def evaluate(self, point):
         x = point[0] - self.x0
@@ -2266,7 +2266,7 @@ class XTorus(TorusMixin, Surface):
                 np.array([x0 + b, y0 + a + c, z0 + a + c])
             )
         elif side == '+':
-            return BoundingBox.inf_box()
+            return BoundingBox.infinite()
 class YTorus(TorusMixin, Surface):
     r"""A torus of the form :math:`(y - y_0)^2/B^2 + (\sqrt{(x - x_0)^2 + (z -
     z_0)^2} - A)^2/C^2 - 1 = 0`.
@@ -2337,7 +2337,7 @@ class YTorus(TorusMixin, Surface):
                 np.array([x0 + a + c, y0 + b, z0 + a + c])
             )
         elif side == '+':
-            return BoundingBox.inf_box()
+            return BoundingBox.infinite()
 
 
 class ZTorus(TorusMixin, Surface):
@@ -2410,7 +2410,7 @@ class ZTorus(TorusMixin, Surface):
                 np.array([x0 + a + c, y0 + a + c, z0 + b])
             )
         elif side == '+':
-            return BoundingBox.inf_box()
+            return BoundingBox.infinite()
 
 
 class Halfspace(Region):

@@ -44,14 +44,15 @@ class BoundingBox:
         return "BoundingBox(lower_left={}, upper_right={})".format(
             tuple(self.lower_left), tuple(self.upper_right))
 
+    def __iter__(self):
+        yield self[0]
+        yield self[1]
+
     def __getitem__(self, key) -> np.ndarray:
         return self._bounds[key]
 
     def __setitem__(self, key, val):
         self._bounds[key] = val
-
-    def __hash__(self) -> int:
-        return hash(self._bounds.data)
 
     @property
     def center(self) -> np.ndarray:
@@ -112,13 +113,16 @@ class BoundingBox:
         self[1] += padding_distance
         return self
 
-    def expand(self, other_box: BoundingBox) -> BoundingBox:
+    def expand(self, other_box: BoundingBox, inplace: bool = False) -> BoundingBox:
         """Expand the box to contain another box
 
         Parameters
         ----------
         other_box : BoundingBox
             The box used to resize this box
+        inplace : bool
+            Whether or not to return a new BoundingBox instance or to modify the
+            coefficients of this plane.
 
         Returns
         -------
@@ -126,15 +130,18 @@ class BoundingBox:
         """
         self[0][:] = np.minimum(self.lower_left, other_box.lower_left)
         self[1][:] = np.maximum(self.upper_right, other_box.upper_right)
-        return self
+        return self if inplace else BoundingBox(*self)
 
-    def reduce(self, other_box: BoundingBox) -> BoundingBox:
+    def reduce(self, other_box: BoundingBox, inplace: bool = False) -> BoundingBox:
         """Reduce the box to match the dimensions of the input bounding box
 
         Parameters
         ----------
         other_box : BoundingBox
             The box used to resize this box
+        inplace : bool
+            Whether or not to return a new BoundingBox instance or to modify the
+            coefficients of this plane.
 
         Returns
         -------
@@ -142,22 +149,10 @@ class BoundingBox:
         """
         self[0][:] = np.maximum(self.lower_left, other_box.lower_left)
         self[1][:] = np.minimum(self.upper_right, other_box.upper_right)
-        return self
+        return self if inplace else BoundingBox(*self)
 
     @classmethod
-    def inf_inverted_box(cls):
-        """Create an infinite, inverted box. Useful as a starting point for determining
-           geometry bounds for union operations.
-
-        Returns
-        -------
-        An infinitely large bounding box.
-        """
-        infs = np.full((3,), np.inf)
-        return cls(infs, -infs)
-
-    @classmethod
-    def inf_box(cls):
+    def infinite(cls):
         """Create an infinite box. Useful as a starting point for determining
            geometry bounds.
 

@@ -128,8 +128,8 @@ class BoundingBox:
         -------
         An expanded bounding box
         """
-        self[0][:] = np.minimum(self.lower_left, other_box.lower_left)
-        self[1][:] = np.maximum(self.upper_right, other_box.upper_right)
+        self[0] = np.minimum(self.lower_left, other_box.lower_left)
+        self[1] = np.maximum(self.upper_right, other_box.upper_right)
         return self if inplace else BoundingBox(*self)
 
     def reduce(self, other_box: BoundingBox, inplace: bool = False) -> BoundingBox:

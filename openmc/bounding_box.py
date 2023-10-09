@@ -48,7 +48,7 @@ class BoundingBox:
         return self._bounds[key]
 
     def __setitem__(self, key, val):
-        self._bounds[key]
+        self._bounds[key] = val
 
     def __hash__(self) -> int:
         return hash(self._bounds.data)

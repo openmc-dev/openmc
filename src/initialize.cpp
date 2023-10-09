@@ -43,6 +43,14 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
 {
   using namespace openmc;
 
+  // This fixes parsing the xml files when running openmc-plotter in regions
+  // where the decimal separator is , insted of .
+  // This is an issue of the upstream xml parser pugixml.
+  // See https://github.com/zeux/pugixml/issues/469
+  if (std::setlocale(LC_ALL, "C") == NULL) {
+    fatal_error("Cannot set local to C.");
+  }
+
 #ifdef OPENMC_MPI
   // Check if intracomm was passed
   MPI_Comm comm;

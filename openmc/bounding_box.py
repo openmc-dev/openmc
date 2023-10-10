@@ -44,12 +44,11 @@ class BoundingBox:
         return "BoundingBox(lower_left={}, upper_right={})".format(
             tuple(self.lower_left), tuple(self.upper_right))
 
-    def __iter__(self):
-        yield self[0]
-        yield self[1]
-
     def __getitem__(self, key) -> np.ndarray:
         return self._bounds[key]
+
+    def __len__(self):
+        return 2
 
     def __setitem__(self, key, val):
         self._bounds[key] = val
@@ -62,9 +61,19 @@ class BoundingBox:
     def lower_left(self) -> np.ndarray:
         return self[0]
 
+    @lower_left.setter
+    def lower_left(self, llc):
+        check_length('lower_left', llc, 3, 3)
+        self[0] = llc
+
     @property
     def upper_right(self) -> np.ndarray:
         return self[1]
+
+    @upper_right.setter
+    def upper_right(self, urc):
+        check_length('upper_right', urc, 3, 3)
+        self[1] = urc
 
     @property
     def volume(self) -> float:
@@ -128,9 +137,14 @@ class BoundingBox:
         -------
         An expanded bounding box
         """
-        self[0] = np.minimum(self.lower_left, other_box.lower_left)
-        self[1] = np.maximum(self.upper_right, other_box.upper_right)
-        return self if inplace else BoundingBox(*self)
+        llc = np.minimum(self.lower_left, other_box.lower_left)
+        urc = np.maximum(self.upper_right, other_box.upper_right)
+        if inplace:
+            self.lower_left = llc
+            self.upper_right = urc
+            return self
+        else:
+            return BoundingBox(llc, urc)
 
     def reduce(self, other_box: BoundingBox, inplace: bool = False) -> BoundingBox:
         """Reduce the box to match the dimensions of the input bounding box
@@ -147,9 +161,14 @@ class BoundingBox:
         -------
         A reduced bounding box
         """
-        self[0][:] = np.maximum(self.lower_left, other_box.lower_left)
-        self[1][:] = np.minimum(self.upper_right, other_box.upper_right)
-        return self if inplace else BoundingBox(*self)
+        llc = np.maximum(self.lower_left, other_box.lower_left)
+        urc = np.minimum(self.upper_right, other_box.upper_right)
+        if inplace:
+            self.lower_left = llc
+            self.upper_right = urc
+            return self
+        else:
+            return BoundingBox(llc, urc)
 
     @classmethod
     def infinite(cls):

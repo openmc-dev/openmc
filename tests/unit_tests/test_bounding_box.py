@@ -101,6 +101,10 @@ def test_bounding_box_methods():
     # inplace was False by default. BoundingBox.reduce should return a new object
     assert test_bb is not reduced_bb
 
+    # the original bounding box should be unchanged
+    assert all(test_bb[0] == [-10, -11, -12])
+    assert all(test_bb[1] == [13, 14, 15])
+
     assert all(reduced_bb[0] == [-5, -5, -12])
     assert all(reduced_bb[1] == [5, 14, 5])
 
@@ -118,6 +122,10 @@ def test_bounding_box_methods():
 
     # inplace was False by default. BoundingBox.expand should return a new object
     assert test_bb is not expanded_bb
+
+    # the original bounding box should be unchanged
+    assert all(test_bb[0] == [-5, -5, -12])
+    assert all(test_bb[1] == [5, 14, 5])
 
     assert all(expanded_bb[0] == [-50, -50, -12])
     assert all(expanded_bb[1] == [50, 14, 50])

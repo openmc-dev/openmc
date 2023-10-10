@@ -132,8 +132,28 @@ def test_bounding_box_methods():
 
     expanded_bb = test_bb.expand(other_bb, True)
 
-    # inplace was set to true. BoundingBox.reduce should return the same object
+    # inplace was set to True. BoundingBox.reduce should return the same object
     assert test_bb is expanded_bb
 
     assert all(test_bb[0] == [-50, -50, -12])
     assert all(test_bb[1] == [50, 14, 50])
+
+    extended_bbox = test_bb.extend(0.1)
+
+    assert extended_bbox is not test_bb
+
+    # the original bounding box should not be changed with inplace as False
+    assert all(test_bb[0] == [-50, -50, -12])
+    assert all(test_bb[1] == [50, 14, 50])
+
+    assert all(extended_bbox[0] == [-50.1, -50.1, -12.1])
+    assert all(extended_bbox[1] == [50.1, 14.1, 50.1])
+
+    extended_bbox = test_bb.extend(0.1, True)
+
+    # inplace was set to True. BoundingBox.reduce should return the same object
+    assert extended_bbox is test_bb
+
+    assert all(test_bb[0] == [-50.1, -50.1, -12.1])
+    assert all(test_bb[1] == [50.1, 14.1, 50.1])
+

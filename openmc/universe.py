@@ -993,7 +993,7 @@ class DAGMCUniverse(UniverseBase):
         check_type('bounded type', bounded_type, str)
         check_value('bounded type', bounded_type, ('box', 'sphere'))
 
-        bbox = self.bounding_box.extend(padding_distance)
+        bbox = self.bounding_box.extend(padding_distance, True)
 
         if bounded_type == 'sphere':
             radius = np.linalg.norm(bbox.upper_right - bbox.center)

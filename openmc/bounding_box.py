@@ -106,21 +106,27 @@ class BoundingBox:
     def width(self):
         return self.upper_right - self.lower_left
 
-    def extend(self, padding_distance: float) -> BoundingBox:
+    def extend(self, padding_distance: float, inplace: bool = False) -> BoundingBox:
         """Returns an extended bounding box
 
         Parameters
         ----------
         padding_distance : float
             The distance to enlarge the bounding box by
+        inplace : bool
+            Whether or not to return a new BoundingBox instance or to modify the
+            current BoundingBox object.
 
         Returns
         -------
-        An expanded bounding box
+        An extended bounding box
         """
-        self[0] -= padding_distance
-        self[1] += padding_distance
-        return self
+        if inplace:
+            self[0] -= padding_distance
+            self[1] += padding_distance
+            return self
+        else:
+            return BoundingBox(self[0] - padding_distance, self[1] + padding_distance)
 
     def expand(self, other_box: BoundingBox, inplace: bool = False) -> BoundingBox:
         """Expand the box to contain another box
@@ -131,7 +137,7 @@ class BoundingBox:
             The box used to resize this box
         inplace : bool
             Whether or not to return a new BoundingBox instance or to modify the
-            coefficients of this plane.
+            current BoundingBox object.
 
         Returns
         -------
@@ -155,7 +161,7 @@ class BoundingBox:
             The box used to resize this box
         inplace : bool
             Whether or not to return a new BoundingBox instance or to modify the
-            coefficients of this plane.
+            current BoundingBox object.
 
         Returns
         -------

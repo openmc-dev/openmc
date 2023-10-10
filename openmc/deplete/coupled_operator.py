@@ -278,7 +278,7 @@ class CoupledOperator(OpenMCOperator):
     def _differentiate_burnable_mats(self):
         """Assign distribmats for each burnable material"""
 
-        self.model.differentiate_burnable_mats(
+        self.model.differentiate_depletable_mats(
             diff_volume_method=self.diff_volume_method
         )
 

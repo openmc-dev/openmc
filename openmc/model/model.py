@@ -1016,8 +1016,8 @@ class Model:
 
         self._change_py_lib_attribs(names_or_ids, volume, 'material', 'volume')
 
-    def differentiate_burnable_mats(self, diff_volume_method: str):
-        """Assign distribmats for each burnable material
+    def differentiate_depletable_mats(self, diff_volume_method: str):
+        """Assign distribmats for each depletable material
 
         .. versionadded:: 0.13.4
 
@@ -1032,7 +1032,7 @@ class Model:
         # Count the number of instances for each cell and material
         self.geometry.determine_paths(instances_only=True)
 
-        # Extract all burnable materials which have multiple instances
+        # Extract all depletable materials which have multiple instances
         distribmats = set(
             [mat for mat in self.materials
                 if mat.depletable and mat.num_instances > 1])
@@ -1062,6 +1062,7 @@ class Model:
                                 )
                             cell.fill.volume = cell.volume
 
-        self.materials = openmc.Materials(
-            self.geometry.get_all_materials().values()
-        )
+        if self.materials is not None:
+            self.materials = openmc.Materials(
+                self.geometry.get_all_materials().values()
+            )

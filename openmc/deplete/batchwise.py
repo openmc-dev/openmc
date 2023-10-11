@@ -1054,6 +1054,7 @@ class BatchwiseMaterial(Batchwise):
                          density_treatment, bracketed_method, redox_vec, tol, target,
                          print_iterations, search_for_keff_output)
 
+
         self.material = super()._get_material(material)
 
         check_type("material vector", mat_vector, dict, str)
@@ -1391,7 +1392,7 @@ class BatchwiseMaterialDilute(BatchwiseMaterial):
                         vol = number_i.get_mat_volume(mat)
 
                     # Sum all atoms present and convert in [#atoms/b-cm]
-                    mat_ind = number_i.index_mat(mat)
+                    mat_ind = number_i.index_mat[mat]
                     tot_atoms = 1.0e-24 * sum(number_i.number[mat_ind]) / vol
 
                     for nuc in number_i.index_nuc:
@@ -1533,7 +1534,7 @@ class BatchwiseSchemeStd():
         #Check if index lies in dilution timesteps
         if step_index in np.arange(self.dilute_interval,1000,self.dilute_interval) and self.bw_geom._get_cell_attrib() <= self.restart_level:
             # restart level and perform dilution
-            self.bw_geom._set_cell_attrib(self.bw_mat.restart_level)
+            self.bw_geom._set_cell_attrib(self.restart_level)
             x = self.bw_mat.search_for_keff(x, step_index)
             #update dulution interval
             #if step_index == self.dilute_interval:

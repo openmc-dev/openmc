@@ -45,10 +45,11 @@ class TransferRates:
         self.materials = model.materials
         self.burnable_mats = operator.burnable_mats
         self.local_mats = operator.local_mats
-
+        self.chain_nuclides = [nuc.name for nuc in operator.chain.nuclides]
         #initialize transfer rates container dict
         self.transfer_rates = {mat: {} for mat in self.burnable_mats}
         self.index_transfer = set()
+        self.redox = dict()
 
     def _get_material_id(self, val):
         """Helper method for getting material id from Material obj or name.
@@ -227,3 +228,9 @@ class TransferRates:
                     (transfer_rate / unit_conv, destination_material_id)]
             if destination_material_id is not None:
                 self.index_transfer.add((destination_material_id, material_id))
+
+    def set_redox(self, material, buffer):
+        material_id = self._get_material_id(material)
+        for nuc in buffer:
+            check_value('redox buffer', nuc, self.chain_nuclides)
+        self.redox[material_id] =  buffer

@@ -97,49 +97,48 @@ def test_unstructured_mesh_sampling(model, request, test_cases):
     source = openmc.IndependentSource(space=space, energy=energy)
     model.settings.source = source
 
-    with cdtemp([mesh_filename]):
-        model.export_to_xml()
+    model.export_to_xml()
 
-        n_measurements = 100
-        n_samples = 1000
+    n_measurements = 100
+    n_samples = 1000
 
-        cell_counts = np.zeros((n_cells, n_measurements))
+    cell_counts = np.zeros((n_cells, n_measurements))
 
-        # This model contains 1000 geometry cells. Each cell is a hex
-        # corresponding to 12 of the tets. This test runs 1000 samples. This
-        #  results in the following average for each cell
-        openmc.lib.init([])
+    # This model contains 1000 geometry cells. Each cell is a hex
+    # corresponding to 12 of the tets. This test runs 1000 samples. This
+    #  results in the following average for each cell
+    openmc.lib.init([])
 
-        # perform many sets of samples and track counts for each cell
-        for m in range(n_measurements):
-            sites = openmc.lib.sample_external_source(n_samples)
-            cells = [openmc.lib.find_cell(s.r) for s in sites]
+    # perform many sets of samples and track counts for each cell
+    for m in range(n_measurements):
+        sites = openmc.lib.sample_external_source(n_samples)
+        cells = [openmc.lib.find_cell(s.r) for s in sites]
 
-            for c in cells:
-                # subtract one from index to account for root cell
-                cell_counts[c[0]._index - 1, m] += 1
+        for c in cells:
+            # subtract one from index to account for root cell
+            cell_counts[c[0]._index - 1, m] += 1
 
-        # make sure particle transport is successful
-        openmc.lib.run()
-        openmc.lib.finalize()
+    # make sure particle transport is successful
+    openmc.lib.run()
+    openmc.lib.finalize()
 
-        # normalize cell counts to get sampling frequency per particle
-        cell_counts /= n_samples
+    # normalize cell counts to get sampling frequency per particle
+    cell_counts /= n_samples
 
-        # get the mean and std. dev. of the cell counts
-        mean = cell_counts.mean(axis=1)
-        std_dev = cell_counts.std(axis=1)
+    # get the mean and std. dev. of the cell counts
+    mean = cell_counts.mean(axis=1)
+    std_dev = cell_counts.std(axis=1)
 
-        if test_cases['source_strengths'] == 'uniform':
-            exp_vals = np.ones(n_cells) / n_cells
-        else:
-            # sum up the source strengths for each tet, these are the expected true mean
-            # of the sampling frequency for that cell
-            exp_vals = strengths.reshape(-1, 12).sum(axis=1) / sum(strengths)
+    if test_cases['source_strengths'] == 'uniform':
+        exp_vals = np.ones(n_cells) / n_cells
+    else:
+        # sum up the source strengths for each tet, these are the expected true mean
+        # of the sampling frequency for that cell
+        exp_vals = strengths.reshape(-1, 12).sum(axis=1) / sum(strengths)
 
-        diff = np.abs(mean - exp_vals)
-        assert((diff < 2*std_dev).sum() / diff.size >= 0.95)
-        assert((diff < 6*std_dev).sum() / diff.size >= 0.997)
+    diff = np.abs(mean - exp_vals)
+    assert((diff < 2*std_dev).sum() / diff.size >= 0.95)
+    assert((diff < 6*std_dev).sum() / diff.size >= 0.997)
 
 
 def test_strengths_size_failure(request, model):

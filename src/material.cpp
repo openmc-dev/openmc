@@ -246,13 +246,12 @@ Material::Material(pugi::xml_node node)
 
     // If the corresponding element hasn't been encountered yet and photon
     // transport will be used, we need to add its symbol to the element_dict
-    if (settings::photon_transport and
-        settings::run_mode != RunMode::PLOTTING and
-        settings::run_mode != RunMode::VOLUME_NO_XS) {
+    if (settings::photon_transport) {
       std::string element = to_element(name);
 
       // Make sure photon cross section data is available
-      if (settings::run_mode != RunMode::PLOTTING) {
+      if (settings::run_mode != RunMode::PLOTTING and
+        settings::run_mode != RunMode::VOLUME_NO_XS) {
         LibraryKey key {Library::Type::photon, element};
         if (data::library_map.find(key) == data::library_map.end()) {
           fatal_error(
@@ -311,8 +310,7 @@ Material::Material(pugi::xml_node node)
 
   // =======================================================================
   // READ AND PARSE <sab> TAG FOR THERMAL SCATTERING DATA
-  if (settings::run_CE and settings::run_mode != RunMode::PLOTTING and
-      settings::run_mode != RunMode::VOLUME_NO_XS) {
+  if (settings::run_CE) {
     // Loop over <sab> elements
 
     vector<std::string> sab_names;

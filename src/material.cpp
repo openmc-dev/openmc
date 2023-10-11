@@ -251,7 +251,7 @@ Material::Material(pugi::xml_node node)
 
       // Make sure photon cross section data is available
       if (settings::run_mode != RunMode::PLOTTING and
-        settings::run_mode != RunMode::VOLUME_NO_XS) {
+          settings::run_mode != RunMode::VOLUME_NO_XS) {
         LibraryKey key {Library::Type::photon, element};
         if (data::library_map.find(key) == data::library_map.end()) {
           fatal_error(

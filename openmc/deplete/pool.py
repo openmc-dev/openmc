@@ -102,9 +102,10 @@ def deplete(func, chain, n, rates, dt, matrix_func=None, transfer_rates=None,
                                                                     transfers)]
 
         if transfer_rates.redox:
-            for mat_id, buffer in transfer_rates.redox.items():
-                mat_ind = transfer_rates.burnable_mats.index(mat_id)
-                matrices[mat_ind] = chain.add_redox_term(matrices[mat_ind], buffer)
+            for mat_ind, mat_id in enumerate(transfer_rates.local_mats):
+                if mat_id in transfer_rates.redox:
+                    matrices[mat_ind] = chain.add_redox_term(matrices[mat_ind],
+                                        transfer_rates.redox[mat_id])
 
         if len(transfer_rates.index_transfer) > 0:
             # Gather all on comm.rank 0

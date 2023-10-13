@@ -480,12 +480,9 @@ class Batchwise(ABC):
                             nuclides.append(nuc)
                             densities.append(val)
                 # Update densities on C API side
-<<<<<<< HEAD
                 openmc.lib.materials[int(mat_id)].set_densities(nuclides, densities)
 
         return x
-                openmc.lib.materials[int(mat)].set_densities(nuclides, densities)
->>>>>>> 0c3eee56a (run batchwise redox)
 
     def _update_x_and_set_volumes(self, x, volumes):
         """
@@ -2278,6 +2275,7 @@ class BatchwiseSchemeRefuel():
             raise ValueError(f'{bw_list} is not a list')
 
         self.bw_list = bw_list
+        self.n_timesteps = n_timesteps
 
         if not isinstance(restart_level, (float, int)):
             raise ValueError(f'{restart_level} is of type {type(restart_level)},'

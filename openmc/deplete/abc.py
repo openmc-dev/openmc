@@ -914,14 +914,13 @@ class Integrator(ABC):
             keyword arguments that are passed to the batchwise wrapper class.
 
         """
-
         if scheme_name == 'std':
-            self.batchwise = BatchwiseSchemeStd(self.batchwise, **kwargs)
+            self.batchwise = BatchwiseSchemeStd(self.batchwise, len(self), **kwargs)
         #elif scheme_name == 'flex':
         #    self.batchwise = BatchwiseSchemeFlex(self.batchwise, **kwargs)
 
-    def add_density_function(self, mat, density_func):
-        self.batchwise.set_density_function(mat, density_func)
+    def add_density_function(self, mats, density_func):
+        self.batchwise.set_density_function(mats, density_func)
 
 @add_params
 class SIIntegrator(Integrator):

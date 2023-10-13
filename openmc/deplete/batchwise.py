@@ -384,10 +384,7 @@ class Batchwise(ABC):
             Total atom concentrations
         """
         self.operator.number.set_density(x)
-
-        if self.redox_vec is not None:
-            x = self._balance_redox(x)
-
+        
         if self.density_functions:
             self._update_densities()
             self._update_volumes()
@@ -525,6 +522,7 @@ class Batchwise(ABC):
 
     def _balance_redox(self, x):
         number_i = self.operator.number
+
         for mat_idx, mat_id in enumerate(self.local_mats):
             if mat_id != '9':
                 # number of fluorine atoms to balance

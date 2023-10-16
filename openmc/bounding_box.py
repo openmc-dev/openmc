@@ -177,7 +177,7 @@ class BoundingBox:
             return BoundingBox(llc, urc)
 
     @classmethod
-    def infinite(cls):
+    def infinite(cls) -> BoundingBox:
         """Create an infinite box. Useful as a starting point for determining
            geometry bounds.
 

@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+import os
+import sysconfig
+import sys
+
+os.execv(sysconfig.get_path("platlib") + "/openmc/lib/openmc", sys.argv)

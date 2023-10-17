@@ -171,8 +171,8 @@ class StructuredMesh(MeshBase):
     @property
     def vertices(self):
         """Return coordinates of mesh vertices in Cartesian coordinates. Also
-           see :meth:`CylindricalMesh.cylindrical_vertices` and
-           :meth:`SphericalMesh.spherical_vertices` for coordinates in other coordinate
+           see :meth:`CylindricalMesh.vertices_cylindrical` and
+           :meth:`SphericalMesh.vertices_spherical` for coordinates in other coordinate
            systems.
 
         Returns
@@ -1520,10 +1520,10 @@ class CylindricalMesh(StructuredMesh):
     @property
     def vertices(self):
         warnings.warn('Cartesian coordinates are returned from this property as of version 0.13.4')
-        return self._convert_to_cartesian(self.cylindrical_vertices, self.origin)
+        return self._convert_to_cartesian(self.vertices_cylindrical, self.origin)
 
     @property
-    def cylindrical_vertices(self):
+    def vertices_cylindrical(self):
         """Returns vertices of the mesh in cylindrical coordinates.
         """
         return super().vertices
@@ -1531,10 +1531,10 @@ class CylindricalMesh(StructuredMesh):
     @property
     def centroids(self):
         warnings.warn('Cartesian coordinates are returned from this property as of version 0.13.4')
-        return self._convert_to_cartesian(self.cylindrical_centroids, self.origin)
+        return self._convert_to_cartesian(self.centroids_cylindrical, self.origin)
 
     @property
-    def cylindrical_centroids(self):
+    def centroids_cylindrical(self):
         """Returns centroids of the mesh in cylindrical coordinates.
         """
         return super().centroids
@@ -1815,10 +1815,10 @@ class SphericalMesh(StructuredMesh):
     @property
     def vertices(self):
         warnings.warn('Cartesian coordinates are returned from this property as of version 0.13.4')
-        return self._convert_to_cartesian(self.spherical_vertices, self.origin)
+        return self._convert_to_cartesian(self.vertices_spherical, self.origin)
 
     @property
-    def spherical_vertices(self):
+    def vertices_spherical(self):
         """Returns vertices of the mesh in cylindrical coordinates.
         """
         return super().vertices
@@ -1826,10 +1826,10 @@ class SphericalMesh(StructuredMesh):
     @property
     def centroids(self):
         warnings.warn('Cartesian coordinates are returned from this property as of version 0.13.4')
-        return self._convert_to_cartesian(self.spherical_centroids, self.origin)
+        return self._convert_to_cartesian(self.centroids_spherical, self.origin)
 
     @property
-    def spherical_centroids(self):
+    def centroids_spherical(self):
         """Returns centroids of the mesh in cylindrical coordinates.
         """
         return super().centroids

@@ -81,3 +81,78 @@ def test_bounding_box_extents():
     assert test_bb_1.extent['xy'] == (-10., 1., -20., 2.)
     assert test_bb_1.extent['xz'] == (-10., 1., -30., 3.)
     assert test_bb_1.extent['yz'] == (-20., 2., -30., 3.)
+
+
+def test_bounding_box_methods():
+    test_bb = openmc.BoundingBox.infinite()
+
+    # check assignment operator
+    test_bb[0] = [-10, -11, -12]
+    test_bb[1] = [13, 14, 15]
+
+    assert all(test_bb[0] == [-10, -11, -12])
+    assert all(test_bb[1] == [13, 14, 15])
+
+    # check length and iteration
+    assert len(test_bb) == 2
+    ll, ur = test_bb
+    assert all(ll == [-10, -11, -12])
+    assert all(ur == [13, 14, 15])
+
+    # test expand/reduce methods
+    other_bb = openmc.BoundingBox([-5, -5, -50], [5, 50, 5])
+
+    reduced_bb = test_bb & other_bb
+
+    # inplace was False by default. BoundingBox.reduce should return a new object
+    assert test_bb is not reduced_bb
+
+    # the original bounding box should be unchanged
+    assert all(test_bb[0] == [-10, -11, -12])
+    assert all(test_bb[1] == [13, 14, 15])
+
+    assert all(reduced_bb[0] == [-5, -5, -12])
+    assert all(reduced_bb[1] == [5, 14, 5])
+
+    test_bb &= other_bb
+
+    assert all(test_bb[0] == [-5, -5, -12])
+    assert all(test_bb[1] == [5, 14, 5])
+
+    other_bb = openmc.BoundingBox([-50, -50, -1], [50, 1, 50])
+
+    expanded_bb = test_bb | other_bb
+
+    # inplace was False by default. BoundingBox.expand should return a new object
+    assert test_bb is not expanded_bb
+
+    # the original bounding box should be unchanged
+    assert all(test_bb[0] == [-5, -5, -12])
+    assert all(test_bb[1] == [5, 14, 5])
+
+    assert all(expanded_bb[0] == [-50, -50, -12])
+    assert all(expanded_bb[1] == [50, 14, 50])
+
+    test_bb |= other_bb
+
+    assert all(test_bb[0] == [-50, -50, -12])
+    assert all(test_bb[1] == [50, 14, 50])
+
+    extended_bbox = test_bb.expand(0.1)
+
+    assert extended_bbox is not test_bb
+
+    # the original bounding box should not be changed with inplace as False
+    assert all(test_bb[0] == [-50, -50, -12])
+    assert all(test_bb[1] == [50, 14, 50])
+
+    assert all(extended_bbox[0] == [-50.1, -50.1, -12.1])
+    assert all(extended_bbox[1] == [50.1, 14.1, 50.1])
+
+    extended_bbox = test_bb.expand(0.1, True)
+
+    # inplace was set to True. BoundingBox.reduce should return the same object
+    assert extended_bbox is test_bb
+
+    assert all(test_bb[0] == [-50.1, -50.1, -12.1])
+    assert all(test_bb[1] == [50.1, 14.1, 50.1])

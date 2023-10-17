@@ -134,7 +134,7 @@ jobs:
             ~/nndc_hdf5
             ~/endf-b-vii.1
           key: ${{ runner.os }}-build-xs-cache
-      
+
       - name: before
         shell: bash
         run: $GITHUB_WORKSPACE/tools/ci/gha-before-script.sh

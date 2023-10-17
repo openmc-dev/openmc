@@ -53,6 +53,26 @@ class BoundingBox:
     def __setitem__(self, key, val):
         self._bounds[key] = val
 
+    def __iand__(self, other: BoundingBox) -> BoundingBox:
+        self.lower_left = np.maximum(self.lower_left, other.lower_left)
+        self.upper_right = np.minimum(self.upper_right, other.upper_right)
+        return self
+
+    def __and__(self, other: BoundingBox) -> BoundingBox:
+        new = BoundingBox(*self)
+        new &= other
+        return new
+
+    def __ior__(self, other: BoundingBox) -> BoundingBox:
+        self.lower_left = np.minimum(self.lower_left, other.lower_left)
+        self.upper_right = np.maximum(self.upper_right, other.upper_right)
+        return self
+
+    def __or__(self, other: BoundingBox) -> BoundingBox:
+        new = BoundingBox(*self)
+        new |= other
+        return new
+
     @property
     def center(self) -> np.ndarray:
         return (self[0] + self[1]) / 2
@@ -143,14 +163,11 @@ class BoundingBox:
         -------
         An expanded bounding box
         """
-        llc = np.minimum(self.lower_left, other_box.lower_left)
-        urc = np.maximum(self.upper_right, other_box.upper_right)
         if inplace:
-            self.lower_left = llc
-            self.upper_right = urc
+            self |= other_box
             return self
         else:
-            return BoundingBox(llc, urc)
+            return self | other_box
 
     def reduce(self, other_box: BoundingBox, inplace: bool = False) -> BoundingBox:
         """Reduce the box to match the dimensions of the input bounding box
@@ -167,14 +184,11 @@ class BoundingBox:
         -------
         A reduced bounding box
         """
-        llc = np.maximum(self.lower_left, other_box.lower_left)
-        urc = np.minimum(self.upper_right, other_box.upper_right)
         if inplace:
-            self.lower_left = llc
-            self.upper_right = urc
+            self &= other_box
             return self
         else:
-            return BoundingBox(llc, urc)
+            return self & other_box
 
     @classmethod
     def infinite(cls) -> BoundingBox:

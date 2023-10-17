@@ -234,8 +234,7 @@ class Universe(UniverseBase):
         if regions:
             return openmc.Union(regions).bounding_box
         else:
-            # Infinite bounding box
-            return openmc.Intersection([]).bounding_box
+            return openmc.BoundingBox.infinite()
 
     @classmethod
     def from_hdf5(cls, group, cells):
@@ -993,7 +992,7 @@ class DAGMCUniverse(UniverseBase):
         check_type('bounded type', bounded_type, str)
         check_value('bounded type', bounded_type, ('box', 'sphere'))
 
-        bbox = self.bounding_box.extend(padding_distance)
+        bbox = self.bounding_box.expand(padding_distance, True)
 
         if bounded_type == 'sphere':
             radius = np.linalg.norm(bbox.upper_right - bbox.center)

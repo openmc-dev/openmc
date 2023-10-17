@@ -54,6 +54,17 @@ class BoundingBox:
         self._bounds[key] = val
 
     def __iand__(self, other: BoundingBox) -> BoundingBox:
+        """Updates the box be the intersection of itself and another box
+
+        Parameters
+        ----------
+        other : BoundingBox
+            The box used to resize this box
+
+        Returns
+        -------
+        An updated bounding box
+        """
         self.lower_left = np.maximum(self.lower_left, other.lower_left)
         self.upper_right = np.minimum(self.upper_right, other.upper_right)
         return self
@@ -64,6 +75,17 @@ class BoundingBox:
         return new
 
     def __ior__(self, other: BoundingBox) -> BoundingBox:
+        """Updates the box be the union of itself and another box
+
+        Parameters
+        ----------
+        other : BoundingBox
+            The box used to resize this box
+
+        Returns
+        -------
+        An updated bounding box
+        """
         self.lower_left = np.minimum(self.lower_left, other.lower_left)
         self.upper_right = np.maximum(self.upper_right, other.upper_right)
         return self
@@ -126,8 +148,8 @@ class BoundingBox:
     def width(self):
         return self.upper_right - self.lower_left
 
-    def extend(self, padding_distance: float, inplace: bool = False) -> BoundingBox:
-        """Returns an extended bounding box
+    def expand(self, padding_distance: float, inplace: bool = False) -> BoundingBox:
+        """Returns an expanded bounding box
 
         Parameters
         ----------
@@ -139,7 +161,7 @@ class BoundingBox:
 
         Returns
         -------
-        An extended bounding box
+        An expanded bounding box
         """
         if inplace:
             self[0] -= padding_distance
@@ -147,48 +169,6 @@ class BoundingBox:
             return self
         else:
             return BoundingBox(self[0] - padding_distance, self[1] + padding_distance)
-
-    def expand(self, other_box: BoundingBox, inplace: bool = False) -> BoundingBox:
-        """Expand the box to contain another box
-
-        Parameters
-        ----------
-        other_box : BoundingBox
-            The box used to resize this box
-        inplace : bool
-            Whether or not to return a new BoundingBox instance or to modify the
-            current BoundingBox object.
-
-        Returns
-        -------
-        An expanded bounding box
-        """
-        if inplace:
-            self |= other_box
-            return self
-        else:
-            return self | other_box
-
-    def reduce(self, other_box: BoundingBox, inplace: bool = False) -> BoundingBox:
-        """Reduce the box to match the dimensions of the input bounding box
-
-        Parameters
-        ----------
-        other_box : BoundingBox
-            The box used to resize this box
-        inplace : bool
-            Whether or not to return a new BoundingBox instance or to modify the
-            current BoundingBox object.
-
-        Returns
-        -------
-        A reduced bounding box
-        """
-        if inplace:
-            self &= other_box
-            return self
-        else:
-            return self & other_box
 
     @classmethod
     def infinite(cls) -> BoundingBox:

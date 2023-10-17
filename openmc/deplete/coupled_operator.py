@@ -278,41 +278,8 @@ class CoupledOperator(OpenMCOperator):
     def _differentiate_burnable_mats(self):
         """Assign distribmats for each burnable material"""
 
-        # Count the number of instances for each cell and material
-        self.geometry.determine_paths(instances_only=True)
-
-        # Extract all burnable materials which have multiple instances
-        distribmats = set(
-            [mat for mat in self.materials
-             if mat.depletable and mat.num_instances > 1])
-
-        if self.diff_volume_method == 'divide equally':
-            for mat in distribmats:
-                if mat.volume is None:
-                    raise RuntimeError("Volume not specified for depletable "
-                                       f"material with ID={mat.id}.")
-                mat.volume /= mat.num_instances
-
-        if distribmats:
-            # Assign distribmats to cells
-            for cell in self.geometry.get_all_material_cells().values():
-                if cell.fill in distribmats:
-                    mat = cell.fill
-                    if self.diff_volume_method == 'divide equally':
-                        cell.fill = [mat.clone() for _ in range(cell.num_instances)]
-                    elif self.diff_volume_method == 'match cell':
-                        for _ in range(cell.num_instances):
-                            cell.fill = mat.clone()
-                            if not cell.volume:
-                                raise ValueError(
-                                    f"Volume of cell ID={cell.id} not specified. "
-                                    "Set volumes of cells prior to using "
-                                    "diff_volume_method='match cell'."
-                                )
-                            cell.fill.volume = cell.volume
-
-        self.materials = openmc.Materials(
-            self.model.geometry.get_all_materials().values()
+        self.model.differentiate_depletable_mats(
+            diff_volume_method=self.diff_volume_method
         )
 
     def _load_previous_results(self):

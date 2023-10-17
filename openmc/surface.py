@@ -2267,6 +2267,8 @@ class XTorus(TorusMixin, Surface):
             )
         elif side == '+':
             return BoundingBox.infinite()
+
+
 class YTorus(TorusMixin, Surface):
     r"""A torus of the form :math:`(y - y_0)^2/B^2 + (\sqrt{(x - x_0)^2 + (z -
     z_0)^2} - A)^2/C^2 - 1 = 0`.

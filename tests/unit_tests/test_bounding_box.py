@@ -82,8 +82,8 @@ def test_bounding_box_extents():
     assert test_bb_1.extent['xz'] == (-10., 1., -30., 3.)
     assert test_bb_1.extent['yz'] == (-20., 2., -30., 3.)
 
-def test_bounding_box_methods():
 
+def test_bounding_box_methods():
     test_bb = openmc.BoundingBox.infinite()
 
     # check assignment operator
@@ -92,6 +92,12 @@ def test_bounding_box_methods():
 
     assert all(test_bb[0] == [-10, -11, -12])
     assert all(test_bb[1] == [13, 14, 15])
+
+    # check length and iteration
+    assert len(test_bb) == 2
+    ll, ur = test_bb
+    assert all(ll == [-10, -11, -12])
+    assert all(ur == [13, 14, 15])
 
     # test expand/reduce methods
     other_bb = openmc.BoundingBox([-5, -5, -50], [5, 50, 5])
@@ -156,4 +162,3 @@ def test_bounding_box_methods():
 
     assert all(test_bb[0] == [-50.1, -50.1, -12.1])
     assert all(test_bb[1] == [50.1, 14.1, 50.1])
-

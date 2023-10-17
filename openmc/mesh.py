@@ -170,7 +170,10 @@ class StructuredMesh(MeshBase):
 
     @property
     def vertices(self):
-        """Return coordinates of mesh vertices.
+        """Return coordinates of mesh vertices in Cartesian coordinates. Also
+           see :meth:`CylindricalMesh.cylindrical_vertices` and
+           :meth:`SphericalMesh.spherical_vertices` for coordinates in other coordinate
+           systems.
 
         Returns
         -------
@@ -346,7 +349,7 @@ class StructuredMesh(MeshBase):
         import vtk
         from vtk.util import numpy_support as nps
 
-        vertices = self.cartesian_vertices.T.reshape(-1, 3)
+        vertices = self.vertices.T.reshape(-1, 3)
 
         vtkPts = vtk.vtkPoints()
         vtkPts.SetData(nps.numpy_to_vtk(vertices, deep=True))
@@ -368,7 +371,7 @@ class StructuredMesh(MeshBase):
         import vtk
         from vtk.util import numpy_support as nps
 
-        corner_vertices = self.cartesian_vertices.T.reshape(-1, 3)
+        corner_vertices = self.vertices.T.reshape(-1, 3)
 
         vtkPts = vtk.vtkPoints()
         vtk_grid = vtk.vtkUnstructuredGrid()
@@ -598,12 +601,6 @@ class RegularMesh(StructuredMesh):
         if self._upper_right is not None:
             self._upper_right = None
             warnings.warn("Unsetting upper_right attribute.")
-
-    @property
-    def cartesian_vertices(self):
-        """Returns vertices in cartesian coordinates. Identical to ``vertices`` for RegularMesh and RectilinearMesh
-        """
-        return self.vertices
 
     @property
     def volumes(self):
@@ -1059,12 +1056,6 @@ class RectilinearMesh(StructuredMesh):
     @property
     def _grids(self):
         return (self.x_grid, self.y_grid, self.z_grid)
-
-    @property
-    def cartesian_vertices(self):
-        """Returns vertices in cartesian coordiantes. Identical to ``vertices`` for RegularMesh and RectilinearMesh
-        """
-        return self.vertices
 
     @property
     def volumes(self):
@@ -1527,8 +1518,26 @@ class CylindricalMesh(StructuredMesh):
         return np.multiply.outer(np.outer(V_r, V_p), V_z)
 
     @property
-    def cartesian_vertices(self):
-        return self._convert_to_cartesian(self.vertices, self.origin)
+    def vertices(self):
+        warnings.warn('Cartesian coordinates are returned from this property as of version 0.13.4')
+        return self._convert_to_cartesian(self.cylindrical_vertices, self.origin)
+
+    @property
+    def cylindrical_vertices(self):
+        """Returns vertices of the mesh in cylindrical coordinates.
+        """
+        return super().vertices
+
+    @property
+    def centroids(self):
+        warnings.warn('Cartesian coordinates are returned from this property as of version 0.13.4')
+        return self._convert_to_cartesian(self.cylindrical_centroids, self.origin)
+
+    @property
+    def cylindrical_centroids(self):
+        """Returns centroids of the mesh in cylindrical coordinates.
+        """
+        return super().centroids
 
     @staticmethod
     def _convert_to_cartesian(arr, origin: Sequence[float]):
@@ -1804,8 +1813,27 @@ class SphericalMesh(StructuredMesh):
         return np.multiply.outer(np.outer(V_r, V_t), V_p)
 
     @property
-    def cartesian_vertices(self):
-        return self._convert_to_cartesian(self.vertices, self.origin)
+    def vertices(self):
+        warnings.warn('Cartesian coordinates are returned from this property as of version 0.13.4')
+        return self._convert_to_cartesian(self.spherical_vertices, self.origin)
+
+    @property
+    def spherical_vertices(self):
+        """Returns vertices of the mesh in cylindrical coordinates.
+        """
+        return super().vertices
+
+    @property
+    def centroids(self):
+        warnings.warn('Cartesian coordinates are returned from this property as of version 0.13.4')
+        return self._convert_to_cartesian(self.spherical_centroids, self.origin)
+
+    @property
+    def spherical_centroids(self):
+        """Returns centroids of the mesh in cylindrical coordinates.
+        """
+        return super().centroids
+
 
     @staticmethod
     def _convert_to_cartesian(arr, origin: Sequence[float]):
@@ -1861,14 +1889,14 @@ class UnstructuredMesh(MeshBase):
     volumes : Iterable of float
         Volumes of the unstructured mesh elements
     centroids : numpy.ndarray
-        Centroids of the mesh elements with array shape (n_elements, 3)
+        Centroids of the mesh elements with array shape (3, n_elements)
 
     vertices : numpy.ndarray
-        Coordinates of the mesh vertices with array shape (n_elements, 3)
+        Coordinates of the mesh vertices with array shape (3, n_elements)
 
         .. versionadded:: 0.13.1
     connectivity : numpy.ndarray
-        Connectivity of the elements with array shape (n_elements, 8)
+        Connectivity of the elements with array shape (8, n_elements)
 
         .. versionadded:: 0.13.1
     element_types : Iterable of integers
@@ -1955,11 +1983,11 @@ class UnstructuredMesh(MeshBase):
 
     @property
     def vertices(self):
-        return self._vertices
+        return self._vertices.T
 
     @property
     def connectivity(self):
-        return self._connectivity
+        return self._connectivity.T
 
     @property
     def element_types(self):
@@ -1967,7 +1995,7 @@ class UnstructuredMesh(MeshBase):
 
     @property
     def centroids(self):
-        return np.array([self.centroid(i) for i in range(self.n_elements)])
+        return np.array([self.centroid(i) for i in range(self.n_elements)]).T
 
     @property
     def n_elements(self):
@@ -2023,11 +2051,11 @@ class UnstructuredMesh(MeshBase):
             x, y, z values of the element centroid
 
         """
-        conn = self.connectivity[bin]
+        conn = self.connectivity[:, bin]
         # remove invalid connectivity values
         conn = conn[conn >= 0]
-        coords = self.vertices[conn]
-        return coords.mean(axis=0)
+        coords = self.vertices[:, conn]
+        return coords.mean(axis=1)
 
     def write_vtk_mesh(self, **kwargs):
         """Map data to unstructured VTK mesh elements.
@@ -2090,12 +2118,12 @@ class UnstructuredMesh(MeshBase):
         grid = vtk.vtkUnstructuredGrid()
 
         vtk_pnts = vtk.vtkPoints()
-        vtk_pnts.SetData(nps.numpy_to_vtk(self.vertices))
+        vtk_pnts.SetData(nps.numpy_to_vtk(self.vertices.T))
         grid.SetPoints(vtk_pnts)
 
         n_skipped = 0
         elems = []
-        for elem_type, conn in zip(self.element_types, self.connectivity):
+        for elem_type, conn in zip(self.element_types, self.connectivity.T):
             if elem_type == self._LINEAR_TET:
                 elem = vtk.vtkTetra()
             elif elem_type == self._LINEAR_HEX:

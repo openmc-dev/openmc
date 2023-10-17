@@ -54,7 +54,7 @@ class UnstructuredMeshTest(PyAPITestHarness):
                 exp_vertex = (-10.0, -10.0, 10.0)
                 exp_centroid = (-9.0, -9.0, 9.0)
 
-            np.testing.assert_array_equal(umesh.vertices[0], exp_vertex)
+            np.testing.assert_array_equal(umesh.vertices[:, 0], exp_vertex)
             np.testing.assert_array_equal(umesh.centroid(0), exp_centroid)
 
             # loop over the tallies and get data
@@ -322,4 +322,3 @@ def test_unstructured_mesh_hexes(model):
     harness.ELEM_PER_VOXEL = 1
 
     harness.main()
-

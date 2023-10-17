@@ -102,7 +102,7 @@ def test_bounding_box_methods():
     # test expand/reduce methods
     other_bb = openmc.BoundingBox([-5, -5, -50], [5, 50, 5])
 
-    reduced_bb = test_bb.reduce(other_bb)
+    reduced_bb = test_bb & other_bb
 
     # inplace was False by default. BoundingBox.reduce should return a new object
     assert test_bb is not reduced_bb
@@ -114,17 +114,14 @@ def test_bounding_box_methods():
     assert all(reduced_bb[0] == [-5, -5, -12])
     assert all(reduced_bb[1] == [5, 14, 5])
 
-    reduced_bb = test_bb.reduce(other_bb, True)
-
-    # inplace was set to true. BoundingBox.reduce should return the same object
-    assert test_bb is reduced_bb
+    test_bb &= other_bb
 
     assert all(test_bb[0] == [-5, -5, -12])
     assert all(test_bb[1] == [5, 14, 5])
 
     other_bb = openmc.BoundingBox([-50, -50, -1], [50, 1, 50])
 
-    expanded_bb = test_bb.expand(other_bb)
+    expanded_bb = test_bb | other_bb
 
     # inplace was False by default. BoundingBox.expand should return a new object
     assert test_bb is not expanded_bb
@@ -136,15 +133,12 @@ def test_bounding_box_methods():
     assert all(expanded_bb[0] == [-50, -50, -12])
     assert all(expanded_bb[1] == [50, 14, 50])
 
-    expanded_bb = test_bb.expand(other_bb, True)
-
-    # inplace was set to True. BoundingBox.reduce should return the same object
-    assert test_bb is expanded_bb
+    test_bb |= other_bb
 
     assert all(test_bb[0] == [-50, -50, -12])
     assert all(test_bb[1] == [50, 14, 50])
 
-    extended_bbox = test_bb.extend(0.1)
+    extended_bbox = test_bb.expand(0.1)
 
     assert extended_bbox is not test_bb
 
@@ -155,7 +149,7 @@ def test_bounding_box_methods():
     assert all(extended_bbox[0] == [-50.1, -50.1, -12.1])
     assert all(extended_bbox[1] == [50.1, 14.1, 50.1])
 
-    extended_bbox = test_bb.extend(0.1, True)
+    extended_bbox = test_bb.expand(0.1, True)
 
     # inplace was set to True. BoundingBox.reduce should return the same object
     assert extended_bbox is test_bb

@@ -172,11 +172,11 @@ Position StructuredMesh::sample_element(
   double x_min = negative_grid_boundary(ijk, 0);
   double x_max = positive_grid_boundary(ijk, 0);
 
-  double y_min = negative_grid_boundary(ijk, 1);
-  double y_max = positive_grid_boundary(ijk, 1);
+  double y_min = (n_dimension_ >= 2) ? negative_grid_boundary(ijk, 1) : 0.0;
+  double y_max = (n_dimension_ >= 2) ? positive_grid_boundary(ijk, 1) : 0.0;
 
-  double z_min = negative_grid_boundary(ijk, 2);
-  double z_max = positive_grid_boundary(ijk, 2);
+  double z_min = (n_dimension_ == 3) ? negative_grid_boundary(ijk, 2) : 0.0;
+  double z_max = (n_dimension_ == 3) ? positive_grid_boundary(ijk, 2) : 0.0;
 
   return {x_min + (x_max - x_min) * prn(seed),
     y_min + (y_max - y_min) * prn(seed), z_min + (z_max - z_min) * prn(seed)};

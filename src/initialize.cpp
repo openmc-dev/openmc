@@ -1,5 +1,6 @@
 #include "openmc/initialize.h"
 
+#include <clocale>
 #include <cstddef>
 #include <cstdlib> // for getenv
 #include <cstring>
@@ -106,9 +107,24 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   // will be re-initialized later
   openmc::openmc_set_seed(DEFAULT_SEED);
 
+  // Copy previous locale and set locale to C. This is a workaround for an issue
+  // whereby when openmc_init is called from the plotter, the Qt application
+  // framework first calls std::setlocale, which affects how pugixml reads
+  // floating point numbers due to a bug:
+  // https://github.com/zeux/pugixml/issues/469
+  std::string prev_locale = std::setlocale(LC_ALL, nullptr);
+  if (std::setlocale(LC_ALL, "C") == NULL) {
+    fatal_error("Cannot set locale to C.");
+  }
+
   // Read XML input files
   if (!read_model_xml())
     read_separate_xml_files();
+
+  // Reset locale to previous state
+  if (std::setlocale(LC_ALL, prev_locale.c_str()) == NULL) {
+    fatal_error("Cannot reset locale.");
+  }
 
   // Write some initial output under the header if needed
   initial_output();

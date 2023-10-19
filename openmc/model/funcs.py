@@ -1,12 +1,10 @@
 from collections.abc import Iterable
-from functools import partial
 from math import sqrt
-from numbers import Real
 from operator import attrgetter
 from warnings import warn
 
-from openmc import Plane, Cylinder, Universe, Cell
-from .surface_composite import RectangularPrism
+from openmc import Cylinder, Universe, Cell
+from .surface_composite import RectangularPrism, HexagonalPrism
 from ..checkvalue import (check_type, check_value, check_length,
                           check_less_than, check_iterable_type)
 import openmc.data
@@ -123,151 +121,12 @@ def rectangular_prism(width, height, axis='z', origin=(0., 0.),
 
 def hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
                     boundary_type='transmission', corner_radius=0.):
-    """Create a hexagon region from six surface planes.
-
-    .. versionchanged:: 0.11
-        This function was renamed from `get_hexagonal_prism` to
-        `hexagonal_prism`.
-
-    Parameters
-    ----------
-    edge_length : float
-        Length of a side of the hexagon in cm
-    orientation : {'x', 'y'}
-        An 'x' orientation means that two sides of the hexagon are parallel to
-        the x-axis and a 'y' orientation means that two sides of the hexagon are
-        parallel to the y-axis.
-    origin: Iterable of two floats
-        Origin of the prism. Defaults to (0., 0.).
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
-        Boundary condition that defines the behavior for particles hitting the
-        surfaces comprising the hexagonal prism (default is 'transmission').
-    corner_radius: float
-        Prism corner radius in units of cm. Defaults to 0.
-
-    Returns
-    -------
-    openmc.Region
-        The inside of a hexagonal prism
-
-    """
-
-    l = edge_length
-    x, y = origin
-
-    if orientation == 'y':
-        right = openmc.XPlane(x + sqrt(3.)/2*l, boundary_type=boundary_type)
-        left = openmc.XPlane(x - sqrt(3.)/2*l, boundary_type=boundary_type)
-        c = sqrt(3.)/3.
-
-        # y = -x/sqrt(3) + a
-        upper_right = Plane(a=c, b=1., d=l+x*c+y, boundary_type=boundary_type)
-
-        # y = x/sqrt(3) + a
-        upper_left = Plane(a=-c, b=1., d=l-x*c+y, boundary_type=boundary_type)
-
-        # y = x/sqrt(3) - a
-        lower_right = Plane(a=-c, b=1., d=-l-x*c+y, boundary_type=boundary_type)
-
-        # y = -x/sqrt(3) - a
-        lower_left = Plane(a=c, b=1., d=-l+x*c+y, boundary_type=boundary_type)
-
-        prism = -right & +left & -upper_right & -upper_left & \
-                +lower_right & +lower_left
-
-        if boundary_type == 'periodic':
-            right.periodic_surface = left
-            upper_right.periodic_surface = lower_left
-            lower_right.periodic_surface = upper_left
-
-    elif orientation == 'x':
-        top = openmc.YPlane(y0=y + sqrt(3.)/2*l, boundary_type=boundary_type)
-        bottom = openmc.YPlane(y0=y - sqrt(3.)/2*l, boundary_type=boundary_type)
-        c = sqrt(3.)
-
-        # y = -sqrt(3)*(x - a)
-        upper_right = Plane(a=c, b=1., d=c*l+x*c+y, boundary_type=boundary_type)
-
-        # y = sqrt(3)*(x + a)
-        lower_right = Plane(a=-c, b=1., d=-c*l-x*c+y,
-                            boundary_type=boundary_type)
-
-        # y = -sqrt(3)*(x + a)
-        lower_left = Plane(a=c, b=1., d=-c*l+x*c+y, boundary_type=boundary_type)
-
-        # y = sqrt(3)*(x + a)
-        upper_left = Plane(a=-c, b=1., d=c*l-x*c+y, boundary_type=boundary_type)
-
-        prism = -top & +bottom & -upper_right & +lower_right & \
-                            +lower_left & -upper_left
-
-        if boundary_type == 'periodic':
-            top.periodic_surface = bottom
-            upper_right.periodic_surface = lower_left
-            lower_right.periodic_surface = upper_left
-
-    # Handle rounded corners if given
-    if corner_radius > 0.:
-        if boundary_type == 'periodic':
-            raise ValueError('Periodic boundary conditions not permitted when '
-                             'rounded corners are used.')
-
-        c = sqrt(3.)/2
-        t = l - corner_radius/c
-
-        # Cylinder with corner radius and boundary type pre-applied
-        cyl1 = partial(openmc.ZCylinder, r=corner_radius,
-                       boundary_type=boundary_type)
-        cyl2 = partial(openmc.ZCylinder, r=corner_radius/(2*c),
-                       boundary_type=boundary_type)
-
-        if orientation == 'x':
-            x_min_y_min_in = cyl1(name='x min y min in', x0=x-t/2, y0=y-c*t)
-            x_min_y_max_in = cyl1(name='x min y max in', x0=x+t/2, y0=y-c*t)
-            x_max_y_min_in = cyl1(name='x max y min in', x0=x-t/2, y0=y+c*t)
-            x_max_y_max_in = cyl1(name='x max y max in', x0=x+t/2, y0=y+c*t)
-            x_min_in = cyl1(name='x min in', x0=x-t, y0=y)
-            x_max_in = cyl1(name='x max in', x0=x+t, y0=y)
-
-            x_min_y_min_out = cyl2(name='x min y min out', x0=x-l/2, y0=y-c*l)
-            x_min_y_max_out = cyl2(name='x min y max out', x0=x+l/2, y0=y-c*l)
-            x_max_y_min_out = cyl2(name='x max y min out', x0=x-l/2, y0=y+c*l)
-            x_max_y_max_out = cyl2(name='x max y max out', x0=x+l/2, y0=y+c*l)
-            x_min_out = cyl2(name='x min out', x0=x-l, y0=y)
-            x_max_out = cyl2(name='x max out', x0=x+l, y0=y)
-
-            corners = (+x_min_y_min_in & -x_min_y_min_out |
-                       +x_min_y_max_in & -x_min_y_max_out |
-                       +x_max_y_min_in & -x_max_y_min_out |
-                       +x_max_y_max_in & -x_max_y_max_out |
-                       +x_min_in & -x_min_out |
-                       +x_max_in & -x_max_out)
-
-        elif orientation == 'y':
-            x_min_y_min_in = cyl1(name='x min y min in', x0=x-c*t, y0=y-t/2)
-            x_min_y_max_in = cyl1(name='x min y max in', x0=x-c*t, y0=y+t/2)
-            x_max_y_min_in = cyl1(name='x max y min in', x0=x+c*t, y0=y-t/2)
-            x_max_y_max_in = cyl1(name='x max y max in', x0=x+c*t, y0=y+t/2)
-            y_min_in = cyl1(name='y min in', x0=x, y0=y-t)
-            y_max_in = cyl1(name='y max in', x0=x, y0=y+t)
-
-            x_min_y_min_out = cyl2(name='x min y min out', x0=x-c*l, y0=y-l/2)
-            x_min_y_max_out = cyl2(name='x min y max out', x0=x-c*l, y0=y+l/2)
-            x_max_y_min_out = cyl2(name='x max y min out', x0=x+c*l, y0=y-l/2)
-            x_max_y_max_out = cyl2(name='x max y max out', x0=x+c*l, y0=y+l/2)
-            y_min_out = cyl2(name='y min out', x0=x, y0=y-l)
-            y_max_out = cyl2(name='y max out', x0=x, y0=y+l)
-
-            corners = (+x_min_y_min_in & -x_min_y_min_out |
-                       +x_min_y_max_in & -x_min_y_max_out |
-                       +x_max_y_min_in & -x_max_y_min_out |
-                       +x_max_y_max_in & -x_max_y_max_out |
-                       +y_min_in & -y_min_out |
-                       +y_max_in & -y_max_out)
-
-        prism = prism & ~corners
-
-    return prism
+    warn("The hexagonal_prism(...) function has been replaced by the "
+         "HexagonalPrism(...) class. Future versions of OpenMC will not "
+         "accept hexagonal_prism.", FutureWarning)
+    return -HexagonalPrism(
+        edge_length=edge_length, orientation=orientation, origin=origin,
+        boundary_type=boundary_type, corner_radius=corner_radius)
 
 
 def get_hexagonal_prism(*args, **kwargs):

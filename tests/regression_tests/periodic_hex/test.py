@@ -12,8 +12,8 @@ def hex_model():
     fuel.add_nuclide('U235', 1.0)
     fuel.set_density('g/cc', 4.5)
 
-    hex_region = openmc.model.hexagonal_prism(10.0, boundary_type='periodic')
-    cell = openmc.Cell(fill=fuel, region=hex_region)
+    hex_region = openmc.model.HexagonalPrism(10.0, boundary_type='periodic')
+    cell = openmc.Cell(fill=fuel, region=-hex_region)
     model.geometry = openmc.Geometry([cell])
 
     # Define settings

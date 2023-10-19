@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from copy import copy
+from functools import partial
 from math import sqrt, pi, sin, cos, isclose
 from numbers import Real
 import warnings
@@ -53,12 +54,12 @@ class CompositeSurface(ABC):
         """Iterable of attribute names corresponding to underlying surfaces."""
 
     @abstractmethod
-    def __pos__(self):
-        """Return the positive half-space of the composite surface."""
-
-    @abstractmethod
-    def __neg__(self):
+    def __neg__(self) -> openmc.Region:
         """Return the negative half-space of the composite surface."""
+
+    def __pos__(self) -> openmc.Region:
+        """Return the positive half-space of the composite surface."""
+        return ~(-self)
 
 
 class CylinderSector(CompositeSurface):
@@ -839,9 +840,6 @@ class Polygon(CompositeSurface):
     def __neg__(self):
         return self._region
 
-    def __pos__(self):
-        return ~self._region
-
     @property
     def _surface_names(self):
         return self._surfnames
@@ -1312,9 +1310,6 @@ class CruciformPrism(CompositeSurface):
             )
         return openmc.Union(regions)
 
-    def __pos__(self):
-        return ~(-self)
-
 
 # Define function to create a plane on given axis
 def _plane(axis, name, value, boundary_type='transmission'):
@@ -1330,24 +1325,22 @@ class RectangularPrism(CompositeSurface):
 
     Parameters
     ----------
-    width: float
-        Prism width in units of cm. The width is aligned with the y, x,
-        or x axes for prisms parallel to the x, y, or z axis, respectively.
-    height: float
-        Prism height in units of cm. The height is aligned with the z, z,
-        or y axes for prisms parallel to the x, y, or z axis, respectively.
+    width : float
+        Prism width in units of [cm]. The width is aligned with the x, x, or z
+        axes for prisms parallel to the x, y, or z axis, respectively.
+    height : float
+        Prism height in units of [cm]. The height is aligned with the x, y, or z
+        axes for prisms parallel to the x, y, or z axis, respectively.
     axis : {'x', 'y', 'z'}
         Axis with which the infinite length of the prism should be aligned.
-        Defaults to 'z'.
-    origin: Iterable of two floats
-        Origin of the prism. The two floats correspond to (y,z), (x,z) or
-        (x,y) for prisms parallel to the x, y or z axis, respectively.
-        Defaults to (0., 0.).
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    origin : Iterable of two floats
+        Origin of the prism. The two floats correspond to (y,z), (x,z) or (x,y)
+        for prisms parallel to the x, y or z axis, respectively.
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
-        surfaces comprising the rectangular prism (default is 'transmission').
-    corner_radius: float
-        Prism corner radius in units of cm. Defaults to 0.
+        surfaces comprising the rectangular prism.
+    corner_radius : float
+        Prism corner radius in units of [cm].
 
     """
     _surface_names = ('min_x1', 'max_x1', 'min_x2', 'max_x2')
@@ -1438,9 +1431,154 @@ class RectangularPrism(CompositeSurface):
                 (+self.x1_max_x2_min & +self.x1_max & -self.x2_min) |
                 (+self.x1_max_x2_max & +self.x1_max & +self.x2_max)
             )
-            prism = prism & ~corners
+            prism &= ~corners
 
         return prism
 
-    def __pos__(self):
-        return ~(-self)
+
+class HexagonalPrism(CompositeSurface):
+    """Hexagonal prism comoposed of six planar surfaces
+
+    Parameters
+    ----------
+    edge_length : float
+        Length of a side of the hexagon in [cm]
+    orientation : {'x', 'y'}
+        An 'x' orientation means that two sides of the hexagon are parallel to
+        the x-axis and a 'y' orientation means that two sides of the hexagon are
+        parallel to the y-axis.
+    origin : Iterable of two floats
+        Origin of the prism.
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
+        Boundary condition that defines the behavior for particles hitting the
+        surfaces comprising the hexagonal prism.
+    corner_radius : float
+        Prism corner radius in units of [cm].
+
+    """
+    _surface_names = ('plane_max', 'plane_min', 'upper_right', 'upper_left',
+                      'lower_right', 'lower_left')
+
+    def __init__(
+            self,
+            edge_length: float = 1.,
+            orientation: str = 'y',
+            origin: Sequence[float] = (0., 0.),
+            boundary_type: str = 'transmission',
+            corner_radius: float = 0.
+    ):
+        l = edge_length
+        x, y = origin
+
+        kwargs = {'boundary_type': boundary_type}
+        if orientation == 'y':
+            # Left and right planes
+            self.plane_max = openmc.XPlane(x + sqrt(3.)/2*l, **kwargs)
+            self.plane_min = openmc.XPlane(x - sqrt(3.)/2*l, **kwargs)
+            c = sqrt(3.)/3.
+
+            # y = -x/sqrt(3) + a
+            self.upper_right = openmc.Plane(a=c, b=1., d=l+x*c+y, **kwargs)
+
+            # y = x/sqrt(3) + a
+            self.upper_left = openmc.Plane(a=-c, b=1., d=l-x*c+y, **kwargs)
+
+            # y = x/sqrt(3) - a
+            self.lower_right = openmc.Plane(a=-c, b=1., d=-l-x*c+y, **kwargs)
+
+            # y = -x/sqrt(3) - a
+            self.lower_left = openmc.Plane(a=c, b=1., d=-l+x*c+y, **kwargs)
+
+        elif orientation == 'x':
+            self.plane_max = openmc.YPlane(y + sqrt(3.)/2*l, **kwargs)
+            self.plane_min = openmc.YPlane(y - sqrt(3.)/2*l, **kwargs)
+            c = sqrt(3.)
+
+            # Upper-right surface: y = -sqrt(3)*(x - a)
+            self.upper_right = openmc.Plane(a=c, b=1., d=c*l+x*c+y, **kwargs)
+
+            # Lower-right surface: y = sqrt(3)*(x + a)
+            self.lower_right = openmc.Plane(a=-c, b=1., d=-c*l-x*c+y, **kwargs)
+
+            # Lower-left surface: y = -sqrt(3)*(x + a)
+            self.lower_left = openmc.Plane(a=c, b=1., d=-c*l+x*c+y, **kwargs)
+
+            # Upper-left surface: y = sqrt(3)*(x + a)
+            self.upper_left = openmc.Plane(a=-c, b=1., d=c*l-x*c+y, **kwargs)
+
+        # Handle periodic boundary conditions
+        if boundary_type == 'periodic':
+            self.plane_min.periodic_surface = self.plane_max
+            self.upper_right.periodic_surface = self.lower_left
+            self.lower_right.periodic_surface = self.upper_left
+
+        # Handle rounded corners if given
+        if corner_radius > 0.:
+            if boundary_type == 'periodic':
+                raise ValueError('Periodic boundary conditions not permitted '
+                                 'when rounded corners are used.')
+
+            c = sqrt(3.)/2
+            t = l - corner_radius/c
+
+            # Cylinder with corner radius and boundary type pre-applied
+            cyl1 = partial(openmc.ZCylinder, r=corner_radius, **kwargs)
+            cyl2 = partial(openmc.ZCylinder, r=corner_radius/(2*c), **kwargs)
+
+            if orientation == 'x':
+                self.x_min_y_min_in = cyl1(name='x min y min in', x0=x-t/2, y0=y-c*t)
+                self.x_min_y_max_in = cyl1(name='x min y max in', x0=x+t/2, y0=y-c*t)
+                self.x_max_y_min_in = cyl1(name='x max y min in', x0=x-t/2, y0=y+c*t)
+                self.x_max_y_max_in = cyl1(name='x max y max in', x0=x+t/2, y0=y+c*t)
+                self.min_in = cyl1(name='x min in', x0=x-t, y0=y)
+                self.max_in = cyl1(name='x max in', x0=x+t, y0=y)
+
+                self.x_min_y_min_out = cyl2(name='x min y min out', x0=x-l/2, y0=y-c*l)
+                self.x_min_y_max_out = cyl2(name='x min y max out', x0=x+l/2, y0=y-c*l)
+                self.x_max_y_min_out = cyl2(name='x max y min out', x0=x-l/2, y0=y+c*l)
+                self.x_max_y_max_out = cyl2(name='x max y max out', x0=x+l/2, y0=y+c*l)
+                self.min_out = cyl2(name='x min out', x0=x-l, y0=y)
+                self.max_out = cyl2(name='x max out', x0=x+l, y0=y)
+
+            elif orientation == 'y':
+                self.x_min_y_min_in = cyl1(name='x min y min in', x0=x-c*t, y0=y-t/2)
+                self.x_min_y_max_in = cyl1(name='x min y max in', x0=x-c*t, y0=y+t/2)
+                self.x_max_y_min_in = cyl1(name='x max y min in', x0=x+c*t, y0=y-t/2)
+                self.x_max_y_max_in = cyl1(name='x max y max in', x0=x+c*t, y0=y+t/2)
+                self.min_in = cyl1(name='y min in', x0=x, y0=y-t)
+                self.max_in = cyl1(name='y max in', x0=x, y0=y+t)
+
+                self.x_min_y_min_out = cyl2(name='x min y min out', x0=x-c*l, y0=y-l/2)
+                self.x_min_y_max_out = cyl2(name='x min y max out', x0=x-c*l, y0=y+l/2)
+                self.x_max_y_min_out = cyl2(name='x max y min out', x0=x+c*l, y0=y-l/2)
+                self.x_max_y_max_out = cyl2(name='x max y max out', x0=x+c*l, y0=y+l/2)
+                self.min_out = cyl2(name='y min out', x0=x, y0=y-l)
+                self.max_out = cyl2(name='y max out', x0=x, y0=y+l)
+
+            # Add to tuple of surface names
+            for s in ('in', 'out'):
+                self._surface_names += (
+                    f'x_min_y_min_{s}', f'x_min_y_max_{s}',
+                    f'x_max_y_min_{s}', f'x_max_y_max_{s}',
+                    f'min_{s}', f'max_{s}')
+
+    def __neg__(self) -> openmc.Region:
+        prism = (
+            -self.plane_max & +self.plane_min &
+            -self.upper_right & -self.upper_left &
+            +self.lower_right & +self.lower_left
+        )
+
+        # Cut out corners if a corner radius was given
+        if hasattr(self, 'min_in'):
+            corners = (
+                +self.x_min_y_min_in & -self.x_min_y_min_out |
+                +self.x_min_y_max_in & -self.x_min_y_max_out |
+                +self.x_max_y_min_in & -self.x_max_y_min_out |
+                +self.x_max_y_max_in & -self.x_max_y_max_out |
+                +self.min_in & -self.min_out |
+                +self.max_in & -self.max_out
+            )
+            prism &= ~corners
+
+        return prism

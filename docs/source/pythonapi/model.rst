@@ -11,7 +11,6 @@ Convenience Functions
    :template: myfunction.rst
 
    openmc.model.borated_water
-   openmc.model.hexagonal_prism
    openmc.model.subdivide
    openmc.model.pin
 
@@ -25,6 +24,7 @@ Composite Surfaces
 
    openmc.model.CruciformPrism
    openmc.model.CylinderSector
+   openmc.model.HexagonalPrism
    openmc.model.IsogonalOctagon
    openmc.model.Polygon
    openmc.model.RectangularParallelepiped

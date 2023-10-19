@@ -1878,6 +1878,12 @@ class Settings:
             Settings object
 
         """
+        settings_meshes = _read_meshes(elem)
+        if meshes is None:
+            meshes = settings_meshes
+        else:
+            meshes.update(settings_meshes)
+
         settings = cls()
         settings._eigenvalue_from_xml_element(elem)
         settings._run_mode_from_xml_element(elem)

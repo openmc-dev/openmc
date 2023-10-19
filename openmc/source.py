@@ -114,7 +114,7 @@ class SourceBase(ABC):
             elif source_type == 'file':
                 return FileSource.from_xml_element(elem)
             elif source_type == 'mesh':
-                return MeshSource.from_xml_element(elem)
+                return MeshSource.from_xml_element(elem, meshes)
             else:
                 raise ValueError(f'Source type {source_type} is not recognized')
 
@@ -421,7 +421,6 @@ class MeshSource(SourceBase):
     def __init__(self,
                  mesh: openmc.MeshBase,
                  sources: Optional[Iterable]):
-
         self.mesh = mesh
         self.sources = sources
 
@@ -456,7 +455,7 @@ class MeshSource(SourceBase):
 
         if isinstance(self.mesh, StructuredMesh) and s.shape != self.mesh.dimension:
             raise ValueError('The shape of the source array' \
-                             f'({s.shape}) does not match the' \
+                             f'({s.shape}) does not match the ' \
                              f'dimensions of the structured mesh ({self.mesh.dimension})')
         elif isinstance(self.mesh, UnstructuredMesh):
             if len(s.shape) > 1:
@@ -519,15 +518,13 @@ class MeshSource(SourceBase):
         openmc.MeshSource
             MeshSource generated from the XML element
         """
-        mesh_id = int(elem.get('mesh_id'))
+        mesh_id = int(get_text(elem, 'mesh'))
 
         mesh = meshes[mesh_id]
 
-        strength = get_text(elem, 'strength')
-
-        sources = [Source.from_xml_element(e) for e in elem.iter('source')]
-
-        return cls(mesh, strength, sources)
+        sources = [SourceBase.from_xml_element(e) for e in elem.iter('source') if e != elem]
+        sources = np.asarray(sources).reshape(mesh.dimension, order='F')
+        return cls(mesh, sources)
 
 
 def Source(*args, **kwargs):

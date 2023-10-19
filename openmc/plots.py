@@ -184,7 +184,7 @@ def _get_plot_image(plot, cwd):
 def voxel_to_vtk(voxel_file: PathLike, output: PathLike = 'plot.vti'):
     """Converts a voxel HDF5 file to a VTK file
 
-    .. versionadded:: 0.13.4
+    .. versionadded:: 0.14.0
 
     Parameters
     ----------
@@ -943,7 +943,7 @@ class Plot(PlotBase):
 
         This method runs OpenMC in plotting mode to produce a .vti file.
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
 
         Parameters
         ----------

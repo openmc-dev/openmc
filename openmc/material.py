@@ -289,7 +289,7 @@ class Material(IDManagerMixin):
         ) -> Optional[Univariate]:
         r"""Return energy distribution of decay photons from unstable nuclides.
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
 
         Parameters
         ----------

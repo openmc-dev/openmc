@@ -1232,7 +1232,7 @@ class CruciformPrism(CompositeSurface):
     multiple distances from the center. Equivalent to the 'gcross' derived
     surface in Serpent.
 
-    .. versionadded:: 0.13.4
+    .. versionadded:: 0.14.0
 
     Parameters
     ----------

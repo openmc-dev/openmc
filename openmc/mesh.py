@@ -1519,7 +1519,7 @@ class CylindricalMesh(StructuredMesh):
 
     @property
     def vertices(self):
-        warnings.warn('Cartesian coordinates are returned from this property as of version 0.13.4')
+        warnings.warn('Cartesian coordinates are returned from this property as of version 0.14.0')
         return self._convert_to_cartesian(self.vertices_cylindrical, self.origin)
 
     @property
@@ -1530,7 +1530,7 @@ class CylindricalMesh(StructuredMesh):
 
     @property
     def centroids(self):
-        warnings.warn('Cartesian coordinates are returned from this property as of version 0.13.4')
+        warnings.warn('Cartesian coordinates are returned from this property as of version 0.14.0')
         return self._convert_to_cartesian(self.centroids_cylindrical, self.origin)
 
     @property
@@ -1814,7 +1814,7 @@ class SphericalMesh(StructuredMesh):
 
     @property
     def vertices(self):
-        warnings.warn('Cartesian coordinates are returned from this property as of version 0.13.4')
+        warnings.warn('Cartesian coordinates are returned from this property as of version 0.14.0')
         return self._convert_to_cartesian(self.vertices_spherical, self.origin)
 
     @property
@@ -1825,7 +1825,7 @@ class SphericalMesh(StructuredMesh):
 
     @property
     def centroids(self):
-        warnings.warn('Cartesian coordinates are returned from this property as of version 0.13.4')
+        warnings.warn('Cartesian coordinates are returned from this property as of version 0.14.0')
         return self._convert_to_cartesian(self.centroids_spherical, self.origin)
 
     @property

@@ -109,7 +109,7 @@ class WeightWindows(_FortranObjectWithID):
     OpenMC library. To obtain a view of a weight windows object with a given ID,
     use the :data:`openmc.lib.weight_windows` mapping.
 
-    .. versionadded:: 0.13.4
+    .. versionadded:: 0.14.0
 
     Parameters
     ----------

@@ -1,8 +1,11 @@
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from copy import copy
 from math import sqrt, pi, sin, cos, isclose
+from numbers import Real
 import warnings
 import operator
+from typing import Sequence
 
 import numpy as np
 from scipy.spatial import ConvexHull, Delaunay
@@ -1308,6 +1311,136 @@ class CruciformPrism(CompositeSurface):
                 -getattr(self, f'vmax{n-1-i}')
             )
         return openmc.Union(regions)
+
+    def __pos__(self):
+        return ~(-self)
+
+
+# Define function to create a plane on given axis
+def _plane(axis, name, value, boundary_type='transmission'):
+        cls = getattr(openmc, f'{axis.upper()}Plane')
+        return cls(value, name=f'{name} {axis}',
+                   boundary_type=boundary_type)
+
+
+class RectangularPrism(CompositeSurface):
+    """Infinite rectangular prism bounded by four planar surfaces.
+
+    .. versionadded:: 0.13.4
+
+    Parameters
+    ----------
+    width: float
+        Prism width in units of cm. The width is aligned with the y, x,
+        or x axes for prisms parallel to the x, y, or z axis, respectively.
+    height: float
+        Prism height in units of cm. The height is aligned with the z, z,
+        or y axes for prisms parallel to the x, y, or z axis, respectively.
+    axis : {'x', 'y', 'z'}
+        Axis with which the infinite length of the prism should be aligned.
+        Defaults to 'z'.
+    origin: Iterable of two floats
+        Origin of the prism. The two floats correspond to (y,z), (x,z) or
+        (x,y) for prisms parallel to the x, y or z axis, respectively.
+        Defaults to (0., 0.).
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surfaces comprising the rectangular prism (default is 'transmission').
+    corner_radius: float
+        Prism corner radius in units of cm. Defaults to 0.
+
+    """
+    _surface_names = ('min_x1', 'max_x1', 'min_x2', 'max_x2')
+
+    def __init__(
+            self,
+            width: float,
+            height: float,
+            axis: str = 'z',
+            origin: Sequence[float] = (0., 0.),
+            boundary_type: str = 'transmission',
+            corner_radius: float = 0.
+        ):
+        check_type('width', width, Real)
+        check_type('height', height, Real)
+        check_type('corner_radius', corner_radius, Real)
+        check_value('axis', axis, ('x', 'y', 'z'))
+        check_type('origin', origin, Iterable, Real)
+
+        if axis == 'x':
+            x1, x2 = 'y', 'z'
+        elif axis == 'y':
+            x1, x2 = 'x', 'z'
+        else:
+            x1, x2 = 'x', 'y'
+
+        # Get cylinder class corresponding to given axis
+        cyl = getattr(openmc, f'{axis.upper()}Cylinder')
+
+        # Create rectangular region
+        self.min_x1 = _plane(x1, 'minimum', -width/2 + origin[0],
+                             boundary_type=boundary_type)
+        self.max_x1 = _plane(x1, 'maximum', width/2 + origin[0],
+                             boundary_type=boundary_type)
+        self.min_x2 = _plane(x2, 'minimum', -height/2 + origin[1],
+                             boundary_type=boundary_type)
+        self.max_x2 = _plane(x2, 'maximum', height/2 + origin[1],
+                             boundary_type=boundary_type)
+        if boundary_type == 'periodic':
+            self.min_x1.periodic_surface = self.max_x1
+            self.min_x2.periodic_surface = self.max_x2
+
+        # Handle rounded corners if given
+        if corner_radius > 0.:
+            if boundary_type == 'periodic':
+                raise ValueError('Periodic boundary conditions not permitted when '
+                                'rounded corners are used.')
+
+            args = {'r': corner_radius, 'boundary_type': boundary_type}
+
+            args[x1 + '0'] = origin[0] - width/2 + corner_radius
+            args[x2 + '0'] = origin[1] - height/2 + corner_radius
+            self.x1_min_x2_min = cyl(name=f'{x1} min {x2} min', **args)
+
+            args[x1 + '0'] = origin[0] - width/2 + corner_radius
+            args[x2 + '0'] = origin[1] + height/2 - corner_radius
+            self.x1_min_x2_max = cyl(name=f'{x1} min {x2} max', **args)
+
+            args[x1 + '0'] = origin[0] + width/2 - corner_radius
+            args[x2 + '0'] = origin[1] - height/2 + corner_radius
+            self.x1_max_x2_min = cyl(name=f'{x1} max {x2} min', **args)
+
+            args[x1 + '0'] = origin[0] + width/2 - corner_radius
+            args[x2 + '0'] = origin[1] + height/2 - corner_radius
+            self.x1_max_x2_max = cyl(name=f'{x1} max {x2} max', **args)
+
+            self.x1_min = _plane(x1, 'min', -width/2 + origin[0] + corner_radius,
+                            boundary_type=boundary_type)
+            self.x1_max = _plane(x1, 'max', width/2 + origin[0] - corner_radius,
+                            boundary_type=boundary_type)
+            self.x2_min = _plane(x2, 'min', -height/2 + origin[1] + corner_radius,
+                            boundary_type=boundary_type)
+            self.x2_max = _plane(x2, 'max', height/2 + origin[1] - corner_radius,
+                            boundary_type=boundary_type)
+            self._surface_names += (
+                'x1_min_x2_min', 'x1_min_x2_max', 'x1_max_x2_min',
+                'x1_max_x2_max', 'x1_min', 'x1_max', 'x2_min', 'x2_max'
+            )
+
+    def __neg__(self):
+        prism = +self.min_x1 & -self.max_x1 & +self.min_x2 & -self.max_x2
+
+        # Cut out corners if a corner radius was given
+        if hasattr(self, 'x1_min'):
+            corners = (
+                (+self.x1_min_x2_min & -self.x1_min & -self.x2_min) |
+                (+self.x1_min_x2_max & -self.x1_min & +self.x2_max) |
+                (+self.x1_max_x2_min & +self.x1_max & -self.x2_min) |
+                (+self.x1_max_x2_max & +self.x1_max & +self.x2_max)
+            )
+            prism = prism & ~corners
+
+        return prism
 
     def __pos__(self):
         return ~(-self)

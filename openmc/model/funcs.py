@@ -6,6 +6,7 @@ from operator import attrgetter
 from warnings import warn
 
 from openmc import Plane, Cylinder, Universe, Cell
+from .surface_composite import RectangularPrism
 from ..checkvalue import (check_type, check_value, check_length,
                           check_less_than, check_iterable_type)
 import openmc.data
@@ -108,131 +109,16 @@ def borated_water(boron_ppm, temperature=293., pressure=0.1013, temp_unit='K',
     return out
 
 
-# Define function to create a plane on given axis
-def _plane(axis, name, value, boundary_type='transmission'):
-        cls = getattr(openmc, f'{axis.upper()}Plane')
-        return cls(value, name=f'{name} {axis}',
-                   boundary_type=boundary_type)
 
 
 def rectangular_prism(width, height, axis='z', origin=(0., 0.),
                       boundary_type='transmission', corner_radius=0.):
-    """Get an infinite rectangular prism from four planar surfaces.
-
-    .. versionchanged:: 0.11
-        This function was renamed from `get_rectangular_prism` to
-        `rectangular_prism`.
-
-    Parameters
-    ----------
-    width: float
-        Prism width in units of cm. The width is aligned with the y, x,
-        or x axes for prisms parallel to the x, y, or z axis, respectively.
-    height: float
-        Prism height in units of cm. The height is aligned with the z, z,
-        or y axes for prisms parallel to the x, y, or z axis, respectively.
-    axis : {'x', 'y', 'z'}
-        Axis with which the infinite length of the prism should be aligned.
-        Defaults to 'z'.
-    origin: Iterable of two floats
-        Origin of the prism. The two floats correspond to (y,z), (x,z) or
-        (x,y) for prisms parallel to the x, y or z axis, respectively.
-        Defaults to (0., 0.).
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
-        Boundary condition that defines the behavior for particles hitting the
-        surfaces comprising the rectangular prism (default is 'transmission').
-    corner_radius: float
-        Prism corner radius in units of cm. Defaults to 0.
-
-    Returns
-    -------
-    openmc.Region
-        The inside of a rectangular prism
-
-    """
-
-    check_type('width', width, Real)
-    check_type('height', height, Real)
-    check_type('corner_radius', corner_radius, Real)
-    check_value('axis', axis, ['x', 'y', 'z'])
-    check_type('origin', origin, Iterable, Real)
-
-    if axis == 'x':
-        x1, x2 = 'y', 'z'
-    elif axis == 'y':
-        x1, x2 = 'x', 'z'
-    else:
-        x1, x2 = 'x', 'y'
-
-    # Get cylinder class corresponding to given axis
-    cyl = getattr(openmc, f'{axis.upper()}Cylinder')
-
-    # Create rectangular region
-    min_x1 = _plane(x1, 'minimum', -width/2 + origin[0],
-                    boundary_type=boundary_type)
-    max_x1 = _plane(x1, 'maximum', width/2 + origin[0],
-                    boundary_type=boundary_type)
-    min_x2 = _plane(x2, 'minimum', -height/2 + origin[1],
-                    boundary_type=boundary_type)
-    max_x2 = _plane(x2, 'maximum', height/2 + origin[1],
-                    boundary_type=boundary_type)
-    if boundary_type == 'periodic':
-        min_x1.periodic_surface = max_x1
-        min_x2.periodic_surface = max_x2
-    prism = +min_x1 & -max_x1 & +min_x2 & -max_x2
-
-    # Handle rounded corners if given
-    if corner_radius > 0.:
-        if boundary_type == 'periodic':
-            raise ValueError('Periodic boundary conditions not permitted when '
-                             'rounded corners are used.')
-
-        args = {'r': corner_radius, 'boundary_type': boundary_type}
-
-        args[x1 + '0'] = origin[0] - width/2 + corner_radius
-        args[x2 + '0'] = origin[1] - height/2 + corner_radius
-        x1_min_x2_min = cyl(name='{} min {} min'.format(x1, x2), **args)
-
-        args[x1 + '0'] = origin[0] - width/2 + corner_radius
-        args[x2 + '0'] = origin[1] - height/2 + corner_radius
-        x1_min_x2_min = cyl(name='{} min {} min'.format(x1, x2), **args)
-
-        args[x1 + '0'] = origin[0] - width/2 + corner_radius
-        args[x2 + '0'] = origin[1] + height/2 - corner_radius
-        x1_min_x2_max = cyl(name='{} min {} max'.format(x1, x2), **args)
-
-        args[x1 + '0'] = origin[0] + width/2 - corner_radius
-        args[x2 + '0'] = origin[1] - height/2 + corner_radius
-        x1_max_x2_min = cyl(name='{} max {} min'.format(x1, x2), **args)
-
-        args[x1 + '0'] = origin[0] + width/2 - corner_radius
-        args[x2 + '0'] = origin[1] + height/2 - corner_radius
-        x1_max_x2_max = cyl(name='{} max {} max'.format(x1, x2), **args)
-
-        x1_min = _plane(x1, 'min', -width/2 + origin[0] + corner_radius,
-                        boundary_type=boundary_type)
-        x1_max = _plane(x1, 'max', width/2 + origin[0] - corner_radius,
-                        boundary_type=boundary_type)
-        x2_min = _plane(x2, 'min', -height/2 + origin[1] + corner_radius,
-                        boundary_type=boundary_type)
-        x2_max = _plane(x2, 'max', height/2 + origin[1] - corner_radius,
-                        boundary_type=boundary_type)
-
-        corners = (+x1_min_x2_min & -x1_min & -x2_min) | \
-                  (+x1_min_x2_max & -x1_min & +x2_max) | \
-                  (+x1_max_x2_min & +x1_max & -x2_min) | \
-                  (+x1_max_x2_max & +x1_max & +x2_max)
-
-        prism = prism & ~corners
-
-    return prism
-
-
-def get_rectangular_prism(*args, **kwargs):
-    warn("get_rectangular_prism(...) has been renamed rectangular_prism(...). "
-         "Future versions of OpenMC will not accept get_rectangular_prism.",
-         FutureWarning)
-    return rectangular_prism(*args, **kwargs)
+    warn("The rectangular_prism(...) function has been replaced by the "
+         "RectangularPrism(...) class. Future versions of OpenMC will not "
+         "accept rectangular_prism.", FutureWarning)
+    return -RectangularPrism(
+        width=width, height=height, axis=axis, origin=origin,
+        boundary_type=boundary_type, corner_radius=corner_radius)
 
 
 def hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),

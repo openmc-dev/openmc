@@ -257,8 +257,8 @@ class StructuredMesh(MeshBase):
 
         """
         ndim = self.n_dimension
-        # this line ensures that the vertices aren't adjusted by the origin for
-        # cylindrical and spherical meshes
+        # this line ensures that the vertices aren't adjusted by the origin or
+        # converted to the Cartesian system for cylindrical and spherical meshes
         vertices = StructuredMesh.vertices.fget(self)
         s0 = (slice(None),) + (slice(0, -1),)*ndim
         s1 = (slice(None),) + (slice(1, None),)*ndim

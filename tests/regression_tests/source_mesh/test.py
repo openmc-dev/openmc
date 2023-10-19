@@ -35,11 +35,8 @@ def test_source_mesh(mesh_type):
     # out of the problem from there. This demonstrates that
     # 1) particles are only being sourced within the intented mesh voxel based on source strength
     # 2) particles are respecting the angle distributions assigned to each voxel
-    x, y, z = mesh.centroids
-    if mesh_type == 'cylindrical':
-        x, y, z = mesh._convert_to_cartesian(mesh.centroids, mesh.origin)
-
     sources = np.ndarray(mesh.dimension, dtype=openmc.SourceBase)
+    x, y, z = mesh.centroids
     for i, j, k in mesh.indices:
         # mesh.indices is currently one-indexed, adjust for Python arrays
         idx = (i-1, j-1, k-1)
@@ -83,10 +80,9 @@ def test_source_mesh(mesh_type):
 
         # remove nuclides and scores axes
         mean = mean[..., 0, 0]
-
         assert mean[ijk] != 0
         mean[ijk] = 0
-        assert np.all(mean == 0)
+        assert np.all(mean == 0), f'Failed on index {ijk} with centroid {mesh.centroids[(..., *ijk)]}'
 
     # check strength adjustment methods
     assert mesh_source.strength == 1.0

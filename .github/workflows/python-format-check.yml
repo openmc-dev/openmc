@@ -1,0 +1,14 @@
+name: Python Format Check
+
+on: pull_request
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+      - name: Lint code
+        run: |
+          pip install black==23.10.0
+          black --check --verbose --diff openmc/arithmetic.py

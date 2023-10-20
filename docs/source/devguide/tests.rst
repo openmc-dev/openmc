@@ -78,9 +78,11 @@ that, consider the following:
   :envvar:`OMP_NUM_THREADS` environment variable to 2.
 - Recent versions of NumPy use instruction dispatch that may generate different
   results depending the particular ISA that you are running on. To avoid issues,
-  you may need to disable AVX512 instructions. This can be done by settings the
+  you may need to disable AVX512 instructions. This can be done by setting the
   :envvar:`NPY_DISABLE_CPU_FEATURES` environment variable to "AVX512F
-  AVX512_SKX".
+  AVX512_SKX". When NumPy/SciPy are built against OpenBLAS, you may also need to
+  limit the number of threads that OpenBLAS uses internally; this can be done by
+  setting the :envvar:`OPENBLAS_NUM_THREADS` environment variable to 1.
 
 Generating XML Inputs
 ---------------------

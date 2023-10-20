@@ -26,7 +26,7 @@ public:
   //! \param surf The specific surface on the boundary the particle struck.
   virtual void handle_particle(Particle& p, const Surface& surf) const
   {
-    if (!has_alebedo_)
+    if (!has_albedo_)
       return;
     // Save incident particle's weight
     double initial_wgt = p.wgt();
@@ -52,14 +52,14 @@ public:
   //! Set albedo of this BC.
   void set_albedo(double albedo)
   {
-    // Flag that this BC has an albedo multiplier for incident particles
-    has_alebedo_ = true;
+    // Flag that this BC has a weight multiplier for incident particles
+    has_albedo_ = true;
     albedo_ = albedo;
   }
 
 private:
   double albedo_ = 1.0;
-  bool has_alebedo_ = false;
+  bool has_albedo_ = false;
 };
 
 //==============================================================================

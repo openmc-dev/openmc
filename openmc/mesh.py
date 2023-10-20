@@ -179,9 +179,8 @@ class StructuredMesh(MeshBase):
         -------
         vertices : numpy.ndarray
             Returns a numpy.ndarray representing the coordinates of the mesh
-            vertices with a shape equal to (dim1 + 1, ..., dimn + 1, ndim).  Can
-            be unpacked along the first dimension with xx, yy, zz =
-            np.rollaxis(mesh.vertices, -1).
+            vertices with a shape equal to (dim1 + 1, ..., dimn + 1, ndim). X, Y, Z values
+            can be unpacked with xx, yy, zz = np.rollaxis(mesh.vertices, -1).
 
         """
         return self._generate_vertices(*self._grids)
@@ -217,7 +216,7 @@ class StructuredMesh(MeshBase):
         # each grid is comprised of the mid points for one dimension and the
         # corner vertices of the other two
         for dims in ((0, 1, 2), (1, 0, 2), (2, 0, 1)):
-            # compute the midpoints along the first dimension
+            # compute the midpoints along the last dimension
             midpoints = grids[dims[0]][:-1] + 0.5 * np.diff(grids[dims[0]])
 
             coords = (midpoints, grids[dims[1]], grids[dims[2]])
@@ -252,11 +251,9 @@ class StructuredMesh(MeshBase):
         -------
         centroids : numpy.ndarray
             Returns a numpy.ndarray representing the mesh element centroid
-            coordinates with a shape equal to (dim1, ..., dimn, ndim). Can be
-            unpacked along the first dimension with xx, yy, zz =
+            coordinates with a shape equal to (dim1, ..., dimn, ndim). X,
+            Y, Z values can be unpacked with xx, yy, zz =
             np.rollaxis(mesh.centroids, -1).
-
-
         """
         ndim = self.n_dimension
         # this line ensures that the vertices aren't adjusted by the origin or
@@ -1543,7 +1540,7 @@ class CylindricalMesh(StructuredMesh):
 
     @staticmethod
     def _convert_to_cartesian(arr, origin: Sequence[float]):
-        """Converts an array with xyz values in the first dimension (shape (3, ...))
+        """Converts an array with xyz values in the last dimension (shape (..., 3))
         to Cartesian coordinates.
         """
         print(arr.shape)
@@ -1840,7 +1837,7 @@ class SphericalMesh(StructuredMesh):
 
     @staticmethod
     def _convert_to_cartesian(arr, origin: Sequence[float]):
-        """Converts an array with xyz values in the first dimension (shape (3, ...))
+        """Converts an array with xyz values in the last dimension (shape (..., 3))
         to Cartesian coordinates.
         """
         r_xy = arr[..., 0] * np.sin(arr[..., 1])

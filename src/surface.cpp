@@ -87,11 +87,29 @@ Surface::Surface(pugi::xml_node surf_node)
     } else if (surf_bc == "white") {
       bc_ = std::make_shared<WhiteBC>();
     } else if (surf_bc == "periodic") {
-      // periodic BC's are handled separately
+      // Periodic BCs are handled separately
     } else {
       fatal_error(fmt::format("Unknown boundary condition \"{}\" specified "
                               "on surface {}",
         surf_bc, id_));
+    }
+
+    double surf_alb;
+    if (check_for_node(surf_node, "albedo") && bc_ != nullptr) {
+      surf_alb = std::stod(get_node_value(surf_node, "albedo"));
+
+      if (surf_alb < 0.0)
+        fatal_error(fmt::format("Surface {} has an albedo of {}. "
+                                "Albedo values must be positive.",
+          id_, surf_alb));
+
+      if (surf_alb > 1.0)
+        warning(fmt::format("Surface {} has an albedo of {}. "
+                            "Albedos greater than 1 may cause "
+                            "unphysical behaviour.",
+          id_, surf_alb));
+
+      bc_->set_albedo(surf_alb);
     }
   }
 }
@@ -154,6 +172,7 @@ void Surface::to_hdf5(hid_t group_id) const
 
     if (bc_) {
       write_string(surf_group, "boundary_type", bc_->type(), false);
+      bc_->to_hdf5(surf_group);
     } else {
       write_string(surf_group, "boundary_type", "transmission", false);
     }
@@ -1156,9 +1175,10 @@ void read_surfaces(pugi::xml_node node)
   }
 
   // Loop over XML surface elements and populate the array.  Keep track of
-  // periodic surfaces.
+  // periodic surfaces and their albedos.
   model::surfaces.reserve(n_surfaces);
   std::set<std::pair<int, int>> periodic_pairs;
+  std::unordered_map<int, double> albedo_map;
   {
     pugi::xml_node surf_node;
     int i_surf;
@@ -1221,6 +1241,13 @@ void read_surfaces(pugi::xml_node node)
       if (check_for_node(surf_node, "boundary")) {
         std::string surf_bc = get_node_value(surf_node, "boundary", true, true);
         if (surf_bc == "periodic") {
+          // Check for surface albedo. Skip sanity check as it is already done
+          // in the Surface class's constructor.
+          if (check_for_node(surf_node, "albedo")) {
+            albedo_map.insert(
+              std::pair<int, double>(model::surfaces.back()->id_,
+                std::stod(get_node_value(surf_node, "albedo"))));
+          }
           if (check_for_node(surf_node, "periodic_surface_id")) {
             int i_periodic =
               std::stoi(get_node_value(surf_node, "periodic_surface_id"));
@@ -1284,7 +1311,7 @@ void read_surfaces(pugi::xml_node node)
     periodic_pairs.erase(second_unresolved);
   }
 
-  // Assign the periodic boundary conditions
+  // Assign the periodic boundary conditions with albedos
   for (auto periodic_pair : periodic_pairs) {
     int i_surf = model::surface_map[periodic_pair.first];
     int j_surf = model::surface_map[periodic_pair.second];
@@ -1303,10 +1330,18 @@ void read_surfaces(pugi::xml_node node)
     // condition.  Otherwise, it is a rotational periodic BC.
     if (std::abs(1.0 - dot_prod) < FP_PRECISION) {
       surf1.bc_ = std::make_shared<TranslationalPeriodicBC>(i_surf, j_surf);
-      surf2.bc_ = surf1.bc_;
+      surf2.bc_ = std::make_shared<TranslationalPeriodicBC>(i_surf, j_surf);
     } else {
       surf1.bc_ = std::make_shared<RotationalPeriodicBC>(i_surf, j_surf);
-      surf2.bc_ = surf1.bc_;
+      surf2.bc_ = std::make_shared<RotationalPeriodicBC>(i_surf, j_surf);
+    }
+
+    // If albedo data is present in albedo map, set the boundary albedo.
+    if (albedo_map.count(surf1.id_)) {
+      surf1.bc_->set_albedo(albedo_map[surf1.id_]);
+    }
+    if (albedo_map.count(surf2.id_)) {
+      surf2.bc_->set_albedo(albedo_map[surf2.id_]);
     }
   }
 }

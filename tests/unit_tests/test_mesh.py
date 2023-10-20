@@ -76,7 +76,6 @@ def test_cylindrical_mesh_bounding_box():
     np.testing.assert_array_equal(mesh.lower_left, (2, 4, -3))
     np.testing.assert_array_equal(mesh.upper_right, (4, 6, 17))
 
-
 def test_spherical_mesh_bounding_box():
     # test with mesh at origin (0, 0, 0)
     mesh = openmc.SphericalMesh([0.1, 0.2, 0.5, 1.], origin=(0., 0., 0.))
@@ -155,3 +154,37 @@ def test_CylindricalMesh_initiation():
     # waffles and pancakes are unfortunately not valid radii
     with pytest.raises(TypeError):
         openmc.SphericalMesh(('🧇', '🥞'))
+
+
+def test_centroids():
+    # regular mesh
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = (1., 2., 3.)
+    mesh.upper_right = (11., 12., 13.)
+    mesh.dimension = (1, 1, 1)
+    np.testing.assert_array_almost_equal(mesh.centroids[:, 0, 0, 0], [6., 7., 8.])
+
+    # rectilinear mesh
+    mesh = openmc.RectilinearMesh()
+    mesh.x_grid = [1., 11.]
+    mesh.y_grid = [2., 12.]
+    mesh.z_grid = [3., 13.]
+    np.testing.assert_array_almost_equal(mesh.centroids[:, 0, 0, 0], [6., 7., 8.])
+
+    # cylindrical mesh
+    mesh = openmc.CylindricalMesh(r_grid=(0, 10), z_grid=(0, 10), phi_grid=(0, np.pi))
+    np.testing.assert_array_almost_equal(mesh.centroids[:, 0, 0, 0], [0.0, 5.0, 5.0])
+    # ensure that setting an origin is handled correctly
+    mesh.origin = (5.0, 0, -10)
+    np.testing.assert_array_almost_equal(mesh.centroids[:, 0, 0, 0], [5.0, 5.0, -5.0])
+
+    # spherical mesh, single element xyz-positive octant
+    mesh = openmc.SphericalMesh(r_grid=[0, 10], theta_grid=[0, 0.5*np.pi], phi_grid=[0, np.pi])
+    x = 5.*np.cos(0.5*np.pi)*np.sin(0.25*np.pi)
+    y = 5.*np.sin(0.5*np.pi)*np.sin(0.25*np.pi)
+    z = 5.*np.sin(0.25*np.pi)
+    np.testing.assert_array_almost_equal(mesh.centroids[:, 0, 0, 0], [x, y, z])
+
+    mesh.origin = (-5.0, -5.0, 5.0)
+    np.testing.assert_array_almost_equal(mesh.centroids[:, 0, 0, 0], [x-5.0, y-5.0, z+5.0])
+

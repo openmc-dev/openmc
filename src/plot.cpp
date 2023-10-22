@@ -1084,7 +1084,7 @@ void ProjectionPlot::set_output_path(pugi::xml_node node)
 // Advances to the next boundary from outside the geometry
 // Returns -1 if no intersection found, and the surface index
 // if an intersection was found.
-int ProjectionPlot::advance_to_boundary_from_void(Particle& p)
+int ProjectionPlot::advance_to_boundary_from_void(Geometron& p)
 {
   constexpr double scoot = 1e-5;
   double min_dist = {INFINITY};

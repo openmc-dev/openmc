@@ -291,7 +291,7 @@ private:
    * find a distance to the boundary in a non-standard surface intersection
    * check. It's an exhaustive search over surfaces in the top-level universe.
    */
-  static int advance_to_boundary_from_void(Particle& p);
+  static int advance_to_boundary_from_void(Geometron& p);
 
   /* Checks if a vector of two TrackSegments is equivalent. We define this
    * to mean not having matching intersection lengths, but rather having

@@ -1327,11 +1327,11 @@ void read_surfaces(pugi::xml_node node)
     // planes are parallel which indicates a translational periodic boundary
     // condition.  Otherwise, it is a rotational periodic BC.
     if (std::abs(1.0 - dot_prod) < FP_PRECISION) {
-      surf1.bc_ = std::make_shared<TranslationalPeriodicBC>(i_surf, j_surf);
-      surf2.bc_ = std::make_shared<TranslationalPeriodicBC>(i_surf, j_surf);
+      surf1.bc_ = std::make_unique<TranslationalPeriodicBC>(i_surf, j_surf);
+      surf2.bc_ = std::make_unique<TranslationalPeriodicBC>(i_surf, j_surf);
     } else {
-      surf1.bc_ = std::make_shared<RotationalPeriodicBC>(i_surf, j_surf);
-      surf2.bc_ = std::make_shared<RotationalPeriodicBC>(i_surf, j_surf);
+      surf1.bc_ = std::make_unique<RotationalPeriodicBC>(i_surf, j_surf);
+      surf2.bc_ = std::make_unique<RotationalPeriodicBC>(i_surf, j_surf);
     }
 
     // If albedo data is present in albedo map, set the boundary albedo.

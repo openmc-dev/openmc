@@ -1713,7 +1713,7 @@ class Materials(cv.CheckedList):
             self._write_xml(fh, nuclides_to_ignore=nuclides_to_ignore)
 
     @classmethod
-    def from_xml_element(cls, elem) -> Material:
+    def from_xml_element(cls, elem) -> Materials:
         """Generate materials collection from XML file
 
         Parameters
@@ -1740,7 +1740,7 @@ class Materials(cv.CheckedList):
         return materials
 
     @classmethod
-    def from_xml(cls, path: PathLike = 'materials.xml') -> Material:
+    def from_xml(cls, path: PathLike = 'materials.xml') -> Materials:
         """Generate materials collection from XML file
 
         Parameters

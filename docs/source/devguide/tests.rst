@@ -59,6 +59,31 @@ If you want to view testing output on failure run::
 
     ctest --output-on-failure
 
+Possible Reasons for Test Failures
+----------------------------------
+
+You may find that when you run the test suite, not everything passes. First,
+make sure you have satisfied all the prerequisites above. After you have done
+that, consider the following:
+
+- When building OpenMC, make sure you run CMake with
+  ``-DCMAKE_BUILD_TYPE=Debug``. Building with a release build will result in
+  some test failures due to differences in which compiler optimizations are
+  used.
+- Because tallies involve the sum of many floating point numbers, the
+  non-associativity of floating point numbers can result in different answers
+  especially when the number of threads is high (different order of operations).
+  Thus, if you are running on a CPU with many cores, you may need to limit the
+  number of OpenMP threads used. It is recommended to set the
+  :envvar:`OMP_NUM_THREADS` environment variable to 2.
+- Recent versions of NumPy use instruction dispatch that may generate different
+  results depending the particular ISA that you are running on. To avoid issues,
+  you may need to disable AVX512 instructions. This can be done by setting the
+  :envvar:`NPY_DISABLE_CPU_FEATURES` environment variable to "AVX512F
+  AVX512_SKX". When NumPy/SciPy are built against OpenBLAS, you may also need to
+  limit the number of threads that OpenBLAS uses internally; this can be done by
+  setting the :envvar:`OPENBLAS_NUM_THREADS` environment variable to 1.
+
 Generating XML Inputs
 ---------------------
 

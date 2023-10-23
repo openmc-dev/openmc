@@ -109,8 +109,7 @@ def borated_water(boron_ppm, temperature=293., pressure=0.1013, temp_unit='K',
 
 
 # Define function to create a plane on given axis
-def _plane(axis, name, value, boundary_type='transmission',
-           albedo=1.):
+def _plane(axis, name, value, boundary_type='transmission', albedo=1.):
         cls = getattr(openmc, f'{axis.upper()}Plane')
         return cls(value, name=f'{name} {axis}',
                    boundary_type=boundary_type,
@@ -118,8 +117,7 @@ def _plane(axis, name, value, boundary_type='transmission',
 
 
 def rectangular_prism(width, height, axis='z', origin=(0., 0.),
-                      boundary_type='transmission',
-                      albedo=1.,
+                      boundary_type='transmission', albedo=1.,
                       corner_radius=0.):
     """Get an infinite rectangular prism from four planar surfaces.
 
@@ -147,9 +145,9 @@ def rectangular_prism(width, height, axis='z', origin=(0., 0.),
         surfaces comprising the rectangular prism (default is 'transmission').
     albedo : float, optional
         Albedo of the prism's surfaces as a ratio of particle weight after
-        interaction with the surface to the initial weight. Defaults to 1.
-        Values must be positive. Only applicable if the boundary type is
-        'reflective', 'periodic' or 'white'.
+        interaction with the surface to the initial weight. Values must be
+        positive. Only applicable if the boundary type is 'reflective',
+        'periodic', or 'white'.
     corner_radius: float
         Prism corner radius in units of cm. Defaults to 0.
 
@@ -178,8 +176,7 @@ def rectangular_prism(width, height, axis='z', origin=(0., 0.),
     cyl = getattr(openmc, f'{axis.upper()}Cylinder')
 
     # Create container for boundary arguments
-    bc_args = {'boundary_type': boundary_type,
-               'albedo' : albedo}
+    bc_args = {'boundary_type': boundary_type, 'albedo': albedo}
 
     # Create rectangular region
     min_x1 = _plane(x1, 'minimum', -width/2 + origin[0], **bc_args)
@@ -197,9 +194,7 @@ def rectangular_prism(width, height, axis='z', origin=(0., 0.),
             raise ValueError('Periodic boundary conditions not permitted when '
                              'rounded corners are used.')
 
-        args = {'r': corner_radius,
-                'boundary_type': boundary_type,
-                'albedo' : albedo}
+        args = {'r': corner_radius, 'boundary_type': boundary_type, 'albedo' : albedo}
 
         args[x1 + '0'] = origin[0] - width/2 + corner_radius
         args[x2 + '0'] = origin[1] - height/2 + corner_radius
@@ -248,9 +243,7 @@ def get_rectangular_prism(*args, **kwargs):
 
 
 def hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
-                    boundary_type='transmission',
-                    albedo=1.,
-                    corner_radius=0.):
+                    boundary_type='transmission', albedo=1., corner_radius=0.):
     """Create a hexagon region from six surface planes.
 
     .. versionchanged:: 0.11
@@ -272,9 +265,9 @@ def hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
         surfaces comprising the hexagonal prism (default is 'transmission').
     albedo : float, optional
         Albedo of the prism's surfaces as a ratio of particle weight after
-        interaction with the surface to the initial weight. Defaults to 1.
-        Values must be positive. Only applicable if the boundary type is
-        'reflective', 'periodic' or 'white'.
+        interaction with the surface to the initial weight. Values must be
+        positive. Only applicable if the boundary type is 'reflective',
+        'periodic', or 'white'.
     corner_radius: float
         Prism corner radius in units of cm. Defaults to 0.
 
@@ -296,8 +289,7 @@ def hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
 
 
     # Create container for boundary arguments
-    bc_args = {'boundary_type': boundary_type,
-               'albedo' : albedo}
+    bc_args = {'boundary_type': boundary_type, 'albedo' : albedo}
 
     if orientation == 'y':
         right = openmc.XPlane(x + sqrt(3.)/2*l, **bc_args)

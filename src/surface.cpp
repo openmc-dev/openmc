@@ -94,9 +94,8 @@ Surface::Surface(pugi::xml_node surf_node)
         surf_bc, id_));
     }
 
-    double surf_alb;
-    if (check_for_node(surf_node, "albedo") && bc_ != nullptr) {
-      surf_alb = std::stod(get_node_value(surf_node, "albedo"));
+    if (check_for_node(surf_node, "albedo") && bc_) {
+      double surf_alb = std::stod(get_node_value(surf_node, "albedo"));
 
       if (surf_alb < 0.0)
         fatal_error(fmt::format("Surface {} has an albedo of {}. "
@@ -1244,9 +1243,8 @@ void read_surfaces(pugi::xml_node node)
           // Check for surface albedo. Skip sanity check as it is already done
           // in the Surface class's constructor.
           if (check_for_node(surf_node, "albedo")) {
-            albedo_map.insert(
-              std::pair<int, double>(model::surfaces.back()->id_,
-                std::stod(get_node_value(surf_node, "albedo"))));
+            albedo_map[model::surfaces.back()->id_] =
+              std::stod(get_node_value(surf_node, "albedo"));
           }
           if (check_for_node(surf_node, "periodic_surface_id")) {
             int i_periodic =

@@ -201,16 +201,16 @@ in the fourth quadrant, the :class:`YPlane` must be replaced by a
 :class:`Plane` with the normal vector pointing in the :math:`-y` direction.
 
 Additionally, 'reflective', 'periodic', and 'white' boundary conditions have
-an albedo parameter which can be used to modify the importance of particles
+an albedo parameter that can be used to modify the importance of particles
 that encounter the boundary. The albedo value specifies the ratio between
 the particle's importance after interaction with the boundary to its initial
 importance. The following example creates a reflective planar surface which
-reduces the reflected particles' importance by 33.3 %::
+reduces the reflected particles' importance by 33.3%::
 
-   x1 = openmc.XPlane(x0=1, boundary_type='reflective', albedo=0.667)
+   x1 = openmc.XPlane(1.0, boundary_type='reflective', albedo=0.667)
 
    # This is equivalent
-   x1 = openmc.XPlane(x0=1)
+   x1 = openmc.XPlane(1.0)
    x1.boundary_type = 'reflective'
    x1.albedo = 0.667
 

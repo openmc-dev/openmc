@@ -126,9 +126,8 @@ class Surface(IDManagerMixin, ABC):
         periodicity is supported.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
-        with the surface to the initial weight. Defaults to 1.
-        Values must be positive. Only applicable if the boundary type is
-        'reflective', 'periodic' or 'white'.
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the surface. If not specified, the name will be the empty
         string.
@@ -500,8 +499,7 @@ class Surface(IDManagerMixin, ABC):
         else:
             bc_alb = 1.0
         coeffs = group['coefficients'][...]
-        kwargs = {'boundary_type': bc, 'albedo' : bc_alb,
-                  'name': name,
+        kwargs = {'boundary_type': bc, 'albedo': bc_alb, 'name': name,
                   'surface_id': surface_id}
 
         surf_type = group['type'][()].decode()
@@ -647,7 +645,7 @@ class PlaneMixin:
         a, b, c = Rmat @ [a, b, c]
 
         kwargs = {'boundary_type': surf.boundary_type,
-                  'albedo' : surf.albedo,
+                  'albedo': surf.albedo,
                   'name': surf.name}
         if inplace:
             kwargs['surface_id'] = surf.id
@@ -694,9 +692,8 @@ class Plane(PlaneMixin, Surface):
         freely pass through the surface.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
-        with the surface to the initial weight. Defaults to 1.
-        Values must be positive. Only applicable if the boundary type is
-        'reflective', 'periodic' or 'white'.
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the plane. If not specified, the name will be the empty string.
     surface_id : int, optional
@@ -824,9 +821,8 @@ class XPlane(PlaneMixin, Surface):
         supported, i.e., x-planes can only be paired with x-planes.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
-        with the surface to the initial weight. Defaults to 1.
-        Values must be positive. Only applicable if the boundary type is
-        'reflective', 'periodic' or 'white'.
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the plane. If not specified, the name will be the empty string.
     surface_id : int, optional
@@ -890,9 +886,8 @@ class YPlane(PlaneMixin, Surface):
         supported, i.e., y-planes can only be paired with y-planes.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
-        with the surface to the initial weight. Defaults to 1.
-        Values must be positive. Only applicable if the boundary type is
-        'reflective', 'periodic' or 'white'.
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the plane. If not specified, the name will be the empty string.
     surface_id : int, optional
@@ -956,9 +951,8 @@ class ZPlane(PlaneMixin, Surface):
         supported, i.e., z-planes can only be paired with z-planes.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
-        with the surface to the initial weight. Defaults to 1.
-        Values must be positive. Only applicable if the boundary type is
-        'reflective', 'periodic' or 'white'.
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the plane. If not specified, the name will be the empty string.
     surface_id : int, optional
@@ -1146,8 +1140,7 @@ class QuadricMixin:
             base_cls = type(tsurf)._virtual_base
             # Copy necessary surface attributes to new kwargs dictionary
             kwargs = {'boundary_type': tsurf.boundary_type,
-                      'albedo' : tsurf.albedo,
-                      'name': tsurf.name}
+                      'albedo': tsurf.albedo, 'name': tsurf.name}
             if inplace:
                 kwargs['surface_id'] = tsurf.id
             kwargs.update({k: getattr(tsurf, k) for k in base_cls._coeff_keys})
@@ -1206,9 +1199,8 @@ class Cylinder(QuadricMixin, Surface):
         freely pass through the surface.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
-        with the surface to the initial weight. Defaults to 1.
-        Values must be positive. Only applicable if the boundary type is
-        'reflective', 'periodic' or 'white'.
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the cylinder. If not specified, the name will be the empty
         string.
@@ -1362,10 +1354,8 @@ class Cylinder(QuadricMixin, Surface):
         # since the C++ layer doesn't support Cylinders right now
         with catch_warnings():
             simplefilter('ignore', IDWarning)
-            kwargs = {'boundary_type': self.boundary_type,
-                      'albedo' : self.albedo,
-                      'name': self.name,
-                      'surface_id': self.id}
+            kwargs = {'boundary_type': self.boundary_type, 'albedo': self.albedo,
+                      'name': self.name, 'surface_id': self.id}
             quad_rep = Quadric(*self._get_base_coeffs(), **kwargs)
         return quad_rep.to_xml_element()
 
@@ -1388,9 +1378,8 @@ class XCylinder(QuadricMixin, Surface):
         freely pass through the surface.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
-        with the surface to the initial weight. Defaults to 1.
-        Values must be positive. Only applicable if the boundary type is
-        'reflective', 'periodic' or 'white'.
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the cylinder. If not specified, the name will be the empty
         string.
@@ -1490,9 +1479,8 @@ class YCylinder(QuadricMixin, Surface):
         freely pass through the surface.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
-        with the surface to the initial weight. Defaults to 1.
-        Values must be positive. Only applicable if the boundary type is
-        'reflective', 'periodic' or 'white'.
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the cylinder. If not specified, the name will be the empty
         string.
@@ -1592,9 +1580,8 @@ class ZCylinder(QuadricMixin, Surface):
         freely pass through the surface.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
-        with the surface to the initial weight. Defaults to 1.
-        Values must be positive. Only applicable if the boundary type is
-        'reflective', 'periodic' or 'white'.
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the cylinder. If not specified, the name will be the empty
         string.
@@ -1695,9 +1682,8 @@ class Sphere(QuadricMixin, Surface):
         freely pass through the surface.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
-        with the surface to the initial weight. Defaults to 1.
-        Values must be positive. Only applicable if the boundary type is
-        'reflective', 'periodic' or 'white'.
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the sphere. If not specified, the name will be the empty string.
     surface_id : int, optional
@@ -1809,9 +1795,8 @@ class Cone(QuadricMixin, Surface):
         freely pass through the surface.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
-        with the surface to the initial weight. Defaults to 1.
-        Values must be positive. Only applicable if the boundary type is
-        'reflective', 'periodic' or 'white'.
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
 
     name : str
         Name of the cone. If not specified, the name will be the empty string.
@@ -1923,7 +1908,7 @@ class Cone(QuadricMixin, Surface):
         with catch_warnings():
             simplefilter('ignore', IDWarning)
             kwargs = {'boundary_type': self.boundary_type,
-                      'albedo' : self.albedo,
+                      'albedo': self.albedo,
                       'name': self.name,
                       'surface_id': self.id}
             quad_rep = Quadric(*self._get_base_coeffs(), **kwargs)
@@ -1950,9 +1935,8 @@ class XCone(QuadricMixin, Surface):
         freely pass through the surface.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
-        with the surface to the initial weight. Defaults to 1.
-        Values must be positive. Only applicable if the boundary type is
-        'reflective', 'periodic' or 'white'.
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the cone. If not specified, the name will be the empty string.
     surface_id : int, optional
@@ -2046,9 +2030,8 @@ class YCone(QuadricMixin, Surface):
         freely pass through the surface.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
-        with the surface to the initial weight. Defaults to 1.
-        Values must be positive. Only applicable if the boundary type is
-        'reflective', 'periodic' or 'white'.
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the cone. If not specified, the name will be the empty string.
     surface_id : int, optional
@@ -2142,9 +2125,8 @@ class ZCone(QuadricMixin, Surface):
         freely pass through the surface.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
-        with the surface to the initial weight. Defaults to 1.
-        Values must be positive. Only applicable if the boundary type is
-        'reflective', 'periodic' or 'white'.
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the cone. If not specified, the name will be the empty string.
     surface_id : int, optional
@@ -2232,9 +2214,8 @@ class Quadric(QuadricMixin, Surface):
         freely pass through the surface.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
-        with the surface to the initial weight. Defaults to 1.
-        Values must be positive. Only applicable if the boundary type is
-        'reflective', 'periodic' or 'white'.
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the surface. If not specified, the name will be the empty string.
     surface_id : int, optional
@@ -2346,7 +2327,7 @@ class TorusMixin:
         # Create rotated torus
         kwargs = {
             'boundary_type': surf.boundary_type,
-            'albedo' : surf.albedo,
+            'albedo': surf.albedo,
             'name': surf.name,
             'a': surf.a, 'b': surf.b, 'c': surf.c
         }

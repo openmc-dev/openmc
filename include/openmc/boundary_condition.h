@@ -26,7 +26,7 @@ public:
   //! \param surf The specific surface on the boundary the particle struck.
   virtual void handle_particle(Particle& p, const Surface& surf) const
   {
-    if (!has_albedo_)
+    if (!has_albedo())
       return;
     // Save incident particle's weight
     double initial_wgt = p.wgt();
@@ -44,22 +44,19 @@ public:
   //! Write albedo data of this BC to hdf5.
   void to_hdf5(hid_t surf_group) const
   {
-    if (std::abs(albedo_ - 1.0) <= FP_PRECISION) {
+    if (has_albedo()) {
       write_string(surf_group, "albedo", fmt::format("{}", albedo_), false);
     }
   };
 
   //! Set albedo of this BC.
-  void set_albedo(double albedo)
-  {
-    // Flag that this BC has a weight multiplier for incident particles
-    has_albedo_ = true;
-    albedo_ = albedo;
-  }
+  void set_albedo(double albedo) { albedo_ = albedo; }
+
+  //! Return if this BC has an albedo.
+  bool has_albedo() const { return (albedo_ > 0.0); }
 
 private:
-  double albedo_ = 1.0;
-  bool has_albedo_ = false;
+  double albedo_ = -1.0;
 };
 
 //==============================================================================

@@ -136,7 +136,7 @@ void read_cross_sections_xml(pugi::xml_node root)
                 " volume calculation OpenMC needs such a file to identify"
                 " where to find data libraries. Some volume calculation"
                 " capability will be disable.");
-        settings::run_mode = RunMode::VOLUME_NO_XS;
+        settings::path_cross_sections = "";
         return;
       } else {
         settings::path_cross_sections = envvar;

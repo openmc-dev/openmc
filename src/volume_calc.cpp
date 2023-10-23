@@ -302,7 +302,7 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 
           // Guards against atom density calculation when no cross_section is
           // presents
-          if (settings::run_mode == RunMode::VOLUME_NO_XS) {
+          if (settings::path_cross_sections != "") {
             const auto& mat = model::materials[i_material];
             for (int k = 0; k < mat->nuclide_.size(); ++k) {
               // Accumulate nuclide density
@@ -346,7 +346,7 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 
         // Guards against atom density calculation when no cross_section is
         // presents
-        if (settings::run_mode == RunMode::VOLUME_NO_XS) {
+        if (settings::path_cross_sections != "") {
 
           for (int j = 0; j < n_nuc; ++j) {
 
@@ -467,7 +467,7 @@ void VolumeCalculation::to_hdf5(
     }
 
     // Guards against atom density calculation when no cross_section is presents
-    if (settings::run_mode == RunMode::VOLUME_NO_XS) {
+    if (settings::path_cross_sections != "") {
       // Create array of total # of atoms with uncertainty for each nuclide
       xt::xtensor<double, 2> atom_data({n_nuc, 2});
       xt::view(atom_data, xt::all(), 0) = xt::adapt(result.atoms);

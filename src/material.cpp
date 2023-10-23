@@ -225,7 +225,7 @@ Material::Material(pugi::xml_node node)
     // Check that this nuclide is listed in the nuclear data library
     // (cross_sections.xml for CE and the MGXS HDF5 for MG)
     if (settings::run_mode != RunMode::PLOTTING and
-        settings::run_mode != RunMode::VOLUME_NO_XS) {
+        settings::path_cross_sections != "") {
       LibraryKey key {Library::Type::neutron, name};
       if (data::library_map.find(key) == data::library_map.end()) {
         fatal_error("Could not find nuclide " + name +
@@ -251,7 +251,7 @@ Material::Material(pugi::xml_node node)
 
       // Make sure photon cross section data is available
       if (settings::run_mode != RunMode::PLOTTING and
-          settings::run_mode != RunMode::VOLUME_NO_XS) {
+          settings::path_cross_sections != "") {
         LibraryKey key {Library::Type::photon, element};
         if (data::library_map.find(key) == data::library_map.end()) {
           fatal_error(

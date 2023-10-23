@@ -29,3 +29,17 @@ def test_invalid_id(run_in_tmpdir, cls):
 
     with pytest.raises(RuntimeError):
         model.calculate_volumes()
+
+
+def test_no_bcs(run_in_tmpdir):
+    """Ensure that a model without boundary conditions can be used in a volume calculation"""
+    model = openmc.examples.pwr_pin_cell()
+    for surface in model.geometry.get_all_surfaces().values():
+        surface.boundary_type = 'transmission'
+
+    bbox = openmc.BoundingBox([-1.]*3, [1.]*3)
+    cells = list(model.geometry.get_all_cells().values())
+    vc = openmc.VolumeCalculation(cells, samples=10, lower_left=bbox[0], upper_right=bbox[1])
+
+    model.settings.volume_calculations = [vc]
+    model.calculate_volumes()

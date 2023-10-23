@@ -81,7 +81,8 @@ void read_geometry_xml(pugi::xml_node root)
     }
   }
 
-  if (settings::run_mode != RunMode::PLOTTING && !boundary_exists) {
+  if (settings::run_mode != RunMode::PLOTTING &&
+      settings::run_mode != RunMode::VOLUME && !boundary_exists) {
     fatal_error("No boundary conditions were applied to any surfaces!");
   }
 

@@ -345,7 +345,7 @@ void read_ce_cross_sections_xml()
 void finalize_cross_sections()
 {
   if (settings::run_mode != RunMode::PLOTTING and
-        settings::path_cross_sections != "") {
+      settings::path_cross_sections != "") {
     simulation::time_read_xs.start();
     if (settings::run_CE) {
       // Determine desired temperatures for each nuclide and S(a,b) table

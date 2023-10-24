@@ -18,7 +18,8 @@ void MaterialFromFilter::get_all_bins(
 
 std::string MaterialFromFilter::text_label(int bin) const
 {
-  return "Material from " + std::to_string(model::materials[material_[bin]]->id_);
+  return "Material from " +
+         std::to_string(model::materials[material_[bin]]->id_);
 }
 
 } // namespace openmc

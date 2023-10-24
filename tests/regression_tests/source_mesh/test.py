@@ -66,7 +66,6 @@ def test_source_mesh(mesh_type):
     # mesh elements
     for i, j, k in mesh.indices:
         ijk = (i-1, j-1, k-1)
-        print(ijk)
         # zero-out all source strengths and set the strength
         # on the element of interest
         mesh_source.strength = 0.0

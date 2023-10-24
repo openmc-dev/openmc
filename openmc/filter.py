@@ -22,7 +22,7 @@ from ._xml import get_text
 _FILTER_TYPES = (
     'universe', 'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
     'energyout', 'mu', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
-    'energyfunction', 'cellfrom', 'legendre', 'spatiallegendre',
+    'energyfunction', 'cellfrom', 'materialfrom', 'legendre', 'spatiallegendre',
     'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance',
     'collision', 'time'
 )
@@ -492,6 +492,28 @@ class MaterialFilter(WithIDFilter):
     """
     expected_type = Material
 
+class MaterialFromFilter(WithIDFilter):
+    """Bins tally event locations based on the Material they occurred in.
+
+    Parameters
+    ----------
+    bins : openmc.Material, Integral, or iterable thereof
+        The Materials to tally. Either openmc.Material objects or their
+        Integral ID numbers can be used.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : Iterable of Integral
+        openmc.Material IDs.
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins
+
+    """
+    expected_type = Material
 
 class CellFilter(WithIDFilter):
     """Bins tally event locations based on the Cell they occurred in.

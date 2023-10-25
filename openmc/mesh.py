@@ -187,7 +187,7 @@ class StructuredMesh(MeshBase):
 
     @staticmethod
     def _generate_vertices(i_grid, j_grid, k_grid):
-        """Returns an array with shape (i_grid.size+1, j_grid.size+1, k_grid.size+1, 3)
+        """Returns an array with shape (i_grid.size, j_grid.size, k_grid.size, 3)
            containing the corner vertices of mesh elements.
         """
         return np.stack(np.meshgrid(i_grid, j_grid, k_grid, indexing='ij'), axis=-1)

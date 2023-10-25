@@ -52,7 +52,7 @@ def dose_coefficients(particle, geometry='AP', library='icrp116'):
     geometry : {'AP', 'PA', 'LLAT', 'RLAT', 'ROT', 'ISO'}
         Irradiation geometry assumed. Refer to ICRP-116 (Section 3.2) for the
         meaning of the options here.
-    library : {icrp116}
+    library : {'icrp116'}
         The dose conversion library to use.
 
     Returns

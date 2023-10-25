@@ -1889,14 +1889,14 @@ class UnstructuredMesh(MeshBase):
     volumes : Iterable of float
         Volumes of the unstructured mesh elements
     centroids : numpy.ndarray
-        Centroids of the mesh elements with array shape (3, n_elements)
+        Centroids of the mesh elements with array shape (n_elements, 3)
 
     vertices : numpy.ndarray
-        Coordinates of the mesh vertices with array shape (3, n_elements)
+        Coordinates of the mesh vertices with array shape (n_elements, 3)
 
         .. versionadded:: 0.13.1
     connectivity : numpy.ndarray
-        Connectivity of the elements with array shape (8, n_elements)
+        Connectivity of the elements with array shape (n_elements, 8)
 
         .. versionadded:: 0.13.1
     element_types : Iterable of integers
@@ -1983,11 +1983,11 @@ class UnstructuredMesh(MeshBase):
 
     @property
     def vertices(self):
-        return self._vertices.T
+        return self._vertices
 
     @property
     def connectivity(self):
-        return self._connectivity.T
+        return self._connectivity
 
     @property
     def element_types(self):
@@ -1995,7 +1995,7 @@ class UnstructuredMesh(MeshBase):
 
     @property
     def centroids(self):
-        return np.array([self.centroid(i) for i in range(self.n_elements)]).T
+        return np.array([self.centroid(i) for i in range(self.n_elements)])
 
     @property
     def n_elements(self):
@@ -2051,11 +2051,11 @@ class UnstructuredMesh(MeshBase):
             x, y, z values of the element centroid
 
         """
-        conn = self.connectivity[:, bin]
+        conn = self.connectivity[bin]
         # remove invalid connectivity values
         conn = conn[conn >= 0]
-        coords = self.vertices[:, conn]
-        return coords.mean(axis=1)
+        coords = self.vertices[conn]
+        return coords.mean(axis=0)
 
     def write_vtk_mesh(self, **kwargs):
         """Map data to unstructured VTK mesh elements.
@@ -2118,12 +2118,12 @@ class UnstructuredMesh(MeshBase):
         grid = vtk.vtkUnstructuredGrid()
 
         vtk_pnts = vtk.vtkPoints()
-        vtk_pnts.SetData(nps.numpy_to_vtk(self.vertices.T))
+        vtk_pnts.SetData(nps.numpy_to_vtk(self.vertices))
         grid.SetPoints(vtk_pnts)
 
         n_skipped = 0
         elems = []
-        for elem_type, conn in zip(self.element_types, self.connectivity.T):
+        for elem_type, conn in zip(self.element_types, self.connectivity):
             if elem_type == self._LINEAR_TET:
                 elem = vtk.vtkTetra()
             elif elem_type == self._LINEAR_HEX:

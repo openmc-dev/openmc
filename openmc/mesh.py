@@ -1540,7 +1540,7 @@ class CylindricalMesh(StructuredMesh):
 
     @staticmethod
     def _convert_to_cartesian(arr, origin: Sequence[float]):
-        """Converts an array with xyz values in the last dimension (shape (..., 3))
+        """Converts an array with r, phi, z values in the last dimension (shape (..., 3))
         to Cartesian coordinates.
         """
         print(arr.shape)
@@ -1837,7 +1837,7 @@ class SphericalMesh(StructuredMesh):
 
     @staticmethod
     def _convert_to_cartesian(arr, origin: Sequence[float]):
-        """Converts an array with xyz values in the last dimension (shape (..., 3))
+        """Converts an array with r, theta, phi values in the last dimension (shape (..., 3))
         to Cartesian coordinates.
         """
         r_xy = arr[..., 0] * np.sin(arr[..., 1])

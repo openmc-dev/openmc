@@ -24,7 +24,7 @@ def _load_dose(library='icrp116'):
 
     Parameters
     ----------
-    library : {icrp116}
+    library : {'icrp116'}
         The dose conversion library to use see `ICRP Publication 116 
         <https://doi.org/10.1016/j.icrp.2011.10.001>`_.
 

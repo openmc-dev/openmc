@@ -2,6 +2,9 @@ from pathlib import Path
 
 import numpy as np
 
+import openmc.checkvalue as cv
+
+
 _FILES = {
     ('icrp116', 'electron'): Path('icrp116') / 'electrons.txt',
     ('icrp116', 'helium'): Path('icrp116') / 'helium_ions.txt',
@@ -68,6 +71,10 @@ def dose_coefficients(particle, geometry='AP', library='icrp116'):
         'photon kerma', the coefficients are given in [Sv/Gy].
 
     """
+
+    cv.check_value('geometry', geometry, {'AP', 'PA', 'LLAT', 'RLAT', 'ROT', 'ISO'})
+    cv.check_value('library', library, {'icrp116', 'icrp119'})
+
     if _DOSE_TABLES[library, particle] is None:
         _load_dose(library=library, particle=particle)
 
@@ -87,6 +94,6 @@ def dose_coefficients(particle, geometry='AP', library='icrp116'):
     dose_coeffs = data[:, index + 1].copy()
     # icrp119 neutron does have NaN values in them
     if library == 'icrp119' and particle == 'neutron' and geometry in ['ISO', 'RLAT']:
-        energy = energy[:len(dose_coeffs)]
         dose_coeffs = dose_coeffs[~np.isnan(dose_coeffs)]
+        energy = energy[:len(dose_coeffs)]
     return energy, dose_coeffs

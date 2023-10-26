@@ -35,9 +35,9 @@ def test_dose_coefficients():
     assert dose[-1] == approx(699.0)
 
     # Invalid particle/geometry should raise an exception
-    with raises(KeyError):
+    with raises(ValueError):
         dose_coefficients('slime', 'LAT')
     with raises(ValueError):
         dose_coefficients('neutron', 'ZZ')
-    with raises(KeyError):
+    with raises(ValueError):
         dose_coefficients('neutron', 'ISO', 'foo')

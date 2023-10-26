@@ -25,6 +25,8 @@ def _load_dose(particle, library='icrp116'):
 
     Parameters
     ----------
+    particle : {'neutron', 'photon', 'photon kerma', 'electron', 'positron'}
+        Incident particle
     library : {'icrp116', 'icrp119'}
         The dose conversion library to use
 

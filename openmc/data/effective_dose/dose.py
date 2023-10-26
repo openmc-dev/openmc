@@ -17,7 +17,7 @@ _FILES = {
     ('icrp119', 'neutron'): Path('icrp119') / 'neutrons.txt',
 }
 
-_DOSE_TABLES = {key: None for key, _v in _FILES.items()}
+_DOSE_TABLES = {key: None for key in _FILES.keys()}
 
 
 def _load_dose(particle, library='icrp116'):
@@ -37,13 +37,15 @@ def _load_dose(particle, library='icrp116'):
 
 
 def dose_coefficients(particle, geometry='AP', library='icrp116'):
-    """Return effective dose conversion coefficients from ICRP-116
+    """Return effective dose conversion coefficients from ICRP
 
     This function provides fluence (and air kerma) to effective dose conversion
     coefficients for various types of external exposures based on values in ICRP
     publications. Corrected values found in a corrigendum are used rather than
-    the values in the original report. Avaiable libraries include `ICRP
-    Publication 116 <https://doi.org/10.1016/j.icrp.2011.10.001>`_
+    the values in the original report. Available libraries include `ICRP
+    Publication 116 <https://doi.org/10.1016/j.icrp.2011.10.001>`_ and `ICRP
+    Publication 119 <https://journals.sagepub.com/doi/pdf/10.1016/j.icrp.2013.05.003>`_
+
 
     Parameters
     ----------
@@ -52,7 +54,7 @@ def dose_coefficients(particle, geometry='AP', library='icrp116'):
     geometry : {'AP', 'PA', 'LLAT', 'RLAT', 'ROT', 'ISO'}
         Irradiation geometry assumed. Refer to ICRP-116 (Section 3.2) for the
         meaning of the options here.
-    library : {'icrp116'}
+    library : {'icrp116', 'icrp119'}
         The dose conversion library to use.
 
     Returns
@@ -83,7 +85,6 @@ def dose_coefficients(particle, geometry='AP', library='icrp116'):
     dose_coeffs = data[:, index + 1].copy()
     # icrp119 neutron does have NaN values in them
     if library == 'icrp119' and particle == 'neutron' and geometry in ['ISO', 'RLAT']:
+        energy = energy[:len(dose_coeffs)]
         dose_coeffs = dose_coeffs[~np.isnan(dose_coeffs)]
-    print(dose_coeffs)
-    print(type(dose_coeffs))
     return energy, dose_coeffs

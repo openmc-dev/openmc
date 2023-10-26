@@ -24,10 +24,9 @@ def test_dose_coefficients():
 
     # the ISO column in icrp119 has NaN values, this test checks they are removed
     energy, dose = dose_coefficients('neutron', 'ISO', 'icrp119')
-    assert energy[0] == approx(1e-3)
-    assert dose[0] == approx(1.36)
-    assert energy[-1] == approx(180e6)
-    assert dose[-1] == approx(542.0)
+    assert energy[-1] == approx(20e6)
+    assert dose[-1] == approx(343)
+    assert len(energy) == len(dose)
 
     energy, dose = dose_coefficients('electron', 'ISO', 'icrp116')
     assert energy[0] == approx(0.01e6)

@@ -286,7 +286,7 @@ class Batchwise(ABC):
 
             else:
                 raise ValueError('ERROR: Search_for_keff output is not valid')
-
+        
         return root
 
     def _get_materials(self, vals):
@@ -818,16 +818,20 @@ class BatchwiseCellGeometrical(BatchwiseCell):
         check_value('attrib_name', attrib_name,
                     ('rotation', 'translation'))
         self.attrib_name = attrib_name
-
+        
         # check if cell is filled with 2 cells
-        check_length('fill materials', self.cell.fill.cells, 2)
+        if not isinstance(self.cell.fill, openmc.universe.DAGMCUniverse):
+
+            check_length('fill materials', self.cell.fill.cells, 2)
+            self.cell_materials = [cell.fill for cell in \
+                        self.cell.fill.cells.values() if cell.fill.depletable]
+        else:
+            self.cell_materials = None
 
         # Initialize vector
         self.vector = np.zeros(3)
 
-        self.cell_materials = [cell.fill for cell in \
-                        self.cell.fill.cells.values() if cell.fill.depletable]
-
+        
         check_type('samples', samples, int)
         self.samples = samples
 

@@ -286,7 +286,7 @@ class Batchwise(ABC):
 
             else:
                 raise ValueError('ERROR: Search_for_keff output is not valid')
-        print(f'root is {root}')
+        
         return root
 
     def _get_materials(self, vals):

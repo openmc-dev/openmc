@@ -19,22 +19,28 @@ class Surface;
 class BoundaryCondition {
 public:
   //! Perform tracking operations for a particle that strikes the boundary.
-  //! Handle the boundary albedo and modify the incident particle's weight.
   //! \param p The particle that struck the boundary.  This class is not meant
   //!   to directly modify anything about the particle, but it will do so
   //!   indirectly by calling the particle's appropriate cross_*_bc function.
   //! \param surf The specific surface on the boundary the particle struck.
-  virtual void handle_particle(Particle& p, const Surface& surf) const
+  virtual void handle_particle(Particle& p, const Surface& surf) const = 0;
+
+  //! Modify the incident particle's weight according to the boundary's albedo.
+  //! \param p The particle that struck the boundary.  This function calculates
+  //!   the reduction in the incident particle's weight as it interacts
+  //!   with a boundary. The lost weight is tallied before the remaining weight
+  //!   is reassigned to the incident particle. Implementations of the
+  //!   handle_particle function typically call this method in its body.
+  //! \param surf The specific surface on the boundary the particle struck.
+  void handle_albedo(Particle& p, const Surface& surf) const
   {
     if (!has_albedo())
       return;
-    // Save incident particle's weight
     double initial_wgt = p.wgt();
     // Treat the lost weight fraction as leakage, similar to VacuumBC.
     // This ensures the lost weight is tallied properly.
     p.wgt() *= (1.0 - albedo_);
     p.cross_vacuum_bc(surf);
-    // Reassign the remaining weight and pass particle to BaseBC
     p.wgt() = initial_wgt * albedo_;
   };
 

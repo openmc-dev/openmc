@@ -29,7 +29,7 @@ void ReflectiveBC::handle_particle(Particle& p, const Surface& surf) const
   u /= u.norm();
 
   // Handle the effects of the surface albedo on the particle's weight.
-  BoundaryCondition::handle_particle(p, surf);
+  BoundaryCondition::handle_albedo(p, surf);
 
   p.cross_reflective_bc(surf, u);
 }
@@ -44,7 +44,7 @@ void WhiteBC::handle_particle(Particle& p, const Surface& surf) const
   u /= u.norm();
 
   // Handle the effects of the surface albedo on the particle's weight.
-  BoundaryCondition::handle_particle(p, surf);
+  BoundaryCondition::handle_albedo(p, surf);
 
   p.cross_reflective_bc(surf, u);
 }
@@ -137,7 +137,7 @@ void TranslationalPeriodicBC::handle_particle(
   }
 
   // Handle the effects of the surface albedo on the particle's weight.
-  BoundaryCondition::handle_particle(p, surf);
+  BoundaryCondition::handle_albedo(p, surf);
 
   // Pass the new location and surface to the particle.
   p.cross_periodic_bc(surf, new_r, p.u(), new_surface);
@@ -274,7 +274,7 @@ void RotationalPeriodicBC::handle_particle(
     cos_theta * u.x - sin_theta * u.y, sin_theta * u.x + cos_theta * u.y, u.z};
 
   // Handle the effects of the surface albedo on the particle's weight.
-  BoundaryCondition::handle_particle(p, surf);
+  BoundaryCondition::handle_albedo(p, surf);
 
   // Pass the new location, direction, and surface to the particle.
   p.cross_periodic_bc(surf, new_r, new_u, new_surface);

@@ -2,38 +2,38 @@ from pathlib import Path
 
 import numpy as np
 
-_FILES = (
-    ('electron', 'electrons.txt'),
-    ('helium', 'helium_ions.txt'),
-    ('mu-', 'negative_muons.txt'),
-    ('pi-', 'negative_pions.txt'),
-    ('neutron', 'neutrons.txt'),
-    ('photon', 'photons.txt'),
-    ('photon kerma', 'photons_kerma.txt'),
-    ('mu+', 'positive_muons.txt'),
-    ('pi+', 'positive_pions.txt'),
-    ('positron', 'positrons.txt'),
-    ('proton', 'protons.txt')
-)
+_FILES = {
+    ('icrp116', 'electron'): Path('icrp116') / 'electrons.txt',
+    ('icrp116', 'helium'): Path('icrp116') / 'helium_ions.txt',
+    ('icrp116', 'mu-'): Path('icrp116') / 'negative_muons.txt',
+    ('icrp116', 'pi-'): Path('icrp116') / 'negative_pions.txt',
+    ('icrp116', 'neutron'): Path('icrp116') / 'neutrons.txt',
+    ('icrp116', 'photon'): Path('icrp116') / 'photons.txt',
+    ('icrp116', 'photon kerm'): Path('icrp116') / 'photons_kerma.txt',
+    ('icrp116', 'mu+'): Path('icrp116') / 'positive_muons.txt',
+    ('icrp116', 'pi+'): Path('icrp116') / 'positive_pions.txt',
+    ('icrp116', 'positron'): Path('icrp116') / 'positrons.txt',
+    ('icrp116', 'proton'): Path('icrp116') / 'protons.txt',
+    ('icrp119', 'neutron'): Path('icrp119') / 'neutrons.txt',
+}
 
-_DOSE_TABLES = {'icrp116':{}}
+_DOSE_TABLES = {key: None for key, _v in _FILES.items()}
 
 
-def _load_dose(library='icrp116'):
+def _load_dose(particle, library='icrp116'):
     """Load effective dose tables from text files
 
     Parameters
     ----------
-    library : {'icrp116'}
-        The dose conversion library to use see `ICRP Publication 116 
-        <https://doi.org/10.1016/j.icrp.2011.10.001>`_.
+    library : {'icrp116', 'icrp119'}
+        The dose conversion library to use
 
     """
-    for particle, filename in _FILES:
-        path = Path(__file__).parent / library / filename
-        data = np.loadtxt(path, skiprows=3, encoding='utf-8')
-        data[:, 0] *= 1e6   # Change energies to eV
-        _DOSE_TABLES[library][particle] = data
+    print(f'loading {particle} {library}')
+    path = Path(__file__).parent / _FILES[library, particle]
+    data = np.loadtxt(path, skiprows=3, encoding='utf-8')
+    data[:, 0] *= 1e6   # Change energies to eV
+    _DOSE_TABLES[library, particle] = data
 
 
 def dose_coefficients(particle, geometry='AP', library='icrp116'):
@@ -41,8 +41,8 @@ def dose_coefficients(particle, geometry='AP', library='icrp116'):
 
     This function provides fluence (and air kerma) to effective dose conversion
     coefficients for various types of external exposures based on values in ICRP
-    publications. Corrected values found in a correigendum are used rather than
-    the values in theoriginal report. Avaiable libraries include `ICRP
+    publications. Corrected values found in a corrigendum are used rather than
+    the values in the original report. Avaiable libraries include `ICRP
     Publication 116 <https://doi.org/10.1016/j.icrp.2011.10.001>`_
 
     Parameters
@@ -64,11 +64,11 @@ def dose_coefficients(particle, geometry='AP', library='icrp116'):
         'photon kerma', the coefficients are given in [Sv/Gy].
 
     """
-    if not _DOSE_TABLES[library]:
-        _load_dose(library=library)
+    if _DOSE_TABLES[library, particle] is None:
+        _load_dose(library=library, particle=particle)
 
     # Get all data for selected particle
-    data = _DOSE_TABLES[library].get(particle)
+    data = _DOSE_TABLES[library, particle]
     if data is None:
         raise ValueError(f"{particle} has no effective dose data")
 
@@ -81,4 +81,9 @@ def dose_coefficients(particle, geometry='AP', library='icrp116'):
     # Pull out energy and dose from table
     energy = data[:, 0].copy()
     dose_coeffs = data[:, index + 1].copy()
+    # icrp119 neutron does have NaN values in them
+    if library == 'icrp119' and particle == 'neutron' and geometry in ['ISO', 'RLAT']:
+        dose_coeffs = dose_coeffs[~np.isnan(dose_coeffs)]
+    print(dose_coeffs)
+    print(type(dose_coeffs))
     return energy, dose_coeffs

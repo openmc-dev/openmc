@@ -12,7 +12,7 @@ _FILES = {
     ('icrp116', 'pi-'): Path('icrp116') / 'negative_pions.txt',
     ('icrp116', 'neutron'): Path('icrp116') / 'neutrons.txt',
     ('icrp116', 'photon'): Path('icrp116') / 'photons.txt',
-    ('icrp116', 'photon kerm'): Path('icrp116') / 'photons_kerma.txt',
+    ('icrp116', 'photon kerma'): Path('icrp116') / 'photons_kerma.txt',
     ('icrp116', 'mu+'): Path('icrp116') / 'positive_muons.txt',
     ('icrp116', 'pi+'): Path('icrp116') / 'positive_pions.txt',
     ('icrp116', 'positron'): Path('icrp116') / 'positrons.txt',

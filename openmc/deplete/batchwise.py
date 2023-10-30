@@ -286,7 +286,7 @@ class Batchwise(ABC):
 
             else:
                 raise ValueError('ERROR: Search_for_keff output is not valid')
-        
+
         return root
 
     def _get_materials(self, vals):
@@ -817,7 +817,7 @@ class BatchwiseCellGeometrical(BatchwiseCell):
         check_value('attrib_name', attrib_name,
                     ('rotation', 'translation'))
         self.attrib_name = attrib_name
-        
+
         # check if cell is filled with 2 cells
         if not isinstance(self.cell.fill, openmc.universe.DAGMCUniverse):
 
@@ -830,7 +830,7 @@ class BatchwiseCellGeometrical(BatchwiseCell):
         # Initialize vector
         self.vector = np.zeros(3)
 
-        
+
         check_type('samples', samples, int)
         self.samples = samples
 
@@ -1564,3 +1564,91 @@ class BatchwiseSchemeStd():
                 for rank in range(comm.size):
                     comm.Abort()
         return x
+
+class BatchwiseSchemeRefuel():
+    """
+    Batchwise wrapper class, it wraps BatchwiseGeom and BatchwiseMat instances,
+    with some user defined logic.
+
+    This class should probably not be defined here, but we can keep it now for
+    convenience
+
+    The loop logic of this wrapper class is the following:
+
+    1. Run BatchwiseGeom and return geometrical coefficient
+    2. check if geometrical coefficient hit upper limit
+    3.1 if not, continue
+    3.2 if yes, refuel and reset geometrical coefficient
+
+    An instance of this class can be passed directly to an instance of the
+    integrator class, such as :class:`openmc.deplete.CECMIntegrator`.
+
+    Parameters
+    ----------
+    bw_geom : BatchwiseGeom
+        openmc.deplete.batchwise.BatchwiseGeom object
+    bw_mat : BatchwiseMat
+        openmc.deplete.batchwise.BatchwiseMat object
+    restart_level : int
+        Geometrical coefficient after reset
+    """
+
+    def __init__(self, bw_list, restart_level):
+
+        if isinstance(bw_list, list):
+            for bw in bw_list:
+                if isinstance(bw, BatchwiseCell):
+                    self.bw_geom = bw
+                elif isinstance(bw, BatchwiseMaterial):
+                    self.bw_mat = bw
+                else:
+                    raise ValueError(f'{bw} is not a valid instance of'
+                                      ' Batchwise class')
+        else:
+            raise ValueError(f'{bw_list} is not a list')
+
+        self.bw_list = bw_list
+        
+        if not isinstance(restart_level, (float, int)):
+            raise ValueError(f'{restart_level} is of type {type(restart_level)},'
+                             ' while it should be int or float')
+        else:
+            self.restart_level = restart_level
+        
+    def set_density_function(self, mats, density_func, oxidation_states):
+        for bw in self.bw_list:
+            bw.set_density_function(mats, density_func, oxidation_states)
+
+    def _update_volumes_after_depletion(self, x):
+        """
+        This is for a restart. TODO update abc class
+        Parameters
+        ----------
+        x : list of numpy.ndarray
+            Total atom concentrations
+        """
+        self.bw_geom._update_volumes(x)
+
+    def search_for_keff(self, x, step_index):
+        """
+        Perform the criticality search on the parametric material model.
+        Will set the root of the `search_for_keff` function to the atoms
+        concentrations vector.
+        Parameters
+        ----------
+        x : list of numpy.ndarray
+            Total atoms concentrations
+        Returns
+        -------
+        x : list of numpy.ndarray
+            Updated total atoms concentrations
+        """
+        #Start by doing a geometrical search§
+        x,root = self.bw_geom.search_for_keff(x, step_index)
+        #check if upper geometrical limit gets hit
+        if root >= self.bw_geom.bracket_limit[1]:
+            # Reset geometry and refuel 
+            self.bw_geom._set_cell_attrib(self.restart_level)
+            x,root = self.bw_mat.search_for_keff(x, step_index)
+
+        return x,root

@@ -30,7 +30,8 @@ from .reaction_rates import ReactionRates
 from .transfer_rates import TransferRates
 from openmc import Material, Cell
 from .batchwise import (BatchwiseCellGeometrical, BatchwiseCellTemperature,
-    BatchwiseMaterialRefuel, BatchwiseMaterialDilute, BatchwiseSchemeStd)
+    BatchwiseMaterialRefuel, BatchwiseMaterialDilute, BatchwiseSchemeStd,
+    BatchwiseSchemeRefuel)
 
 __all__ = [
     "OperatorResult", "TransportOperator",
@@ -933,8 +934,8 @@ class Integrator(ABC):
         """
         if scheme_name == 'std':
             self.batchwise = BatchwiseSchemeStd(self.batchwise, len(self), **kwargs)
-        #elif scheme_name == 'flex':
-        #    self.batchwise = BatchwiseSchemeFlex(self.batchwise, **kwargs)
+        elif scheme_name == 'refuel':
+            self.batchwise = BatchwiseSchemeRefuel(self.batchwise, **kwargs)
 
     def add_density_function(self, mats, density_func, oxidation_states):
         self.batchwise.set_density_function(mats, density_func, oxidation_states)

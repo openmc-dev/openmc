@@ -1547,7 +1547,8 @@ class BatchwiseSchemeStd():
 
             # restart level and perform dilution
             self.bw_geom._set_cell_attrib(self.restart_level)
-            x, root = self.bw_mat.search_for_keff(x, step_index)
+            x, _ = self.bw_mat.search_for_keff(x, step_index)
+            root = self.restart_level
             #update dulution interval
             #if step_index == self.dilute_interval:
             #    self.dilute_interval += self.step_interval
@@ -1646,10 +1647,12 @@ class BatchwiseSchemeRefuel():
         """
         #Start by doing a geometrical search§
         x, root = self.bw_geom.search_for_keff(x, step_index)
+        
         #check if upper geometrical limit gets hit
         if root >= self.bw_geom.bracket_limit[1]:
             # Reset geometry and refuel
             self.bw_geom._set_cell_attrib(self.restart_level)
-            x,root = self.bw_mat.search_for_keff(x, step_index)
-
-        return x,root
+            x,_ = self.bw_mat.search_for_keff(x, step_index)
+            root = self.restart_level
+        
+        return x, root

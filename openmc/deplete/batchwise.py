@@ -1546,16 +1546,16 @@ class BatchwiseSchemeStd():
 
             # restart level and perform dilution
             self.bw_geom._set_cell_attrib(self.restart_level)
-            x = self.bw_mat.search_for_keff(x, step_index)
+            x, root = self.bw_mat.search_for_keff(x, step_index)
             #update dulution interval
             #if step_index == self.dilute_interval:
             #    self.dilute_interval += self.step_interval
 
 
         else:
-            x = self.bw_geom.search_for_keff(x, step_index)
+            x, root = self.bw_geom.search_for_keff(x, step_index)
             # in this case if upper limit gets hit, stop directly
-            if self.bw_geom._get_cell_attrib() >= self.bw_geom.bracket_limit[1]:
+            if root >= self.bw_geom.bracket_limit[1]:
                 from pathlib import Path
                 print(f'Reached maximum of {self.bw_geom.bracket_limit[1]} cm'
                        ' exit..')
@@ -1563,7 +1563,7 @@ class BatchwiseSchemeStd():
 
                 for rank in range(comm.size):
                     comm.Abort()
-        return x
+        return x, root
 
 class BatchwiseSchemeRefuel():
     """
@@ -1608,13 +1608,13 @@ class BatchwiseSchemeRefuel():
             raise ValueError(f'{bw_list} is not a list')
 
         self.bw_list = bw_list
-        
+
         if not isinstance(restart_level, (float, int)):
             raise ValueError(f'{restart_level} is of type {type(restart_level)},'
                              ' while it should be int or float')
         else:
             self.restart_level = restart_level
-        
+
     def set_density_function(self, mats, density_func, oxidation_states):
         for bw in self.bw_list:
             bw.set_density_function(mats, density_func, oxidation_states)
@@ -1644,10 +1644,10 @@ class BatchwiseSchemeRefuel():
             Updated total atoms concentrations
         """
         #Start by doing a geometrical search§
-        x,root = self.bw_geom.search_for_keff(x, step_index)
+        x, root = self.bw_geom.search_for_keff(x, step_index)
         #check if upper geometrical limit gets hit
         if root >= self.bw_geom.bracket_limit[1]:
-            # Reset geometry and refuel 
+            # Reset geometry and refuel
             self.bw_geom._set_cell_attrib(self.restart_level)
             x,root = self.bw_mat.search_for_keff(x, step_index)
 

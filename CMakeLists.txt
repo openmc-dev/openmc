@@ -120,6 +120,7 @@ if(OPENMC_USE_DAGMC)
     message(FATAL_ERROR "Discovered DAGMC Version: ${DAGMC_VERSION}. \
     Please update DAGMC to version 3.2.0 or greater.")
   endif()
+  message(STATUS "Found DAGMC: ${DAGMC_DIR} (version ${DAGMC_VERSION})")
 endif()
 
 #===============================================================================

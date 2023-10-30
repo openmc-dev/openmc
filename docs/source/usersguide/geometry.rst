@@ -172,13 +172,17 @@ surface. To specify a vacuum boundary condition, simply change the
    outer_surface = openmc.Sphere(r=100.0)
    outer_surface.boundary_type = 'vacuum'
 
-Reflective and periodic boundary conditions can be set with the strings
-'reflective' and 'periodic'. Vacuum and reflective boundary conditions can be
-applied to any type of surface. Periodic boundary conditions can be applied to
-pairs of planar surfaces. If there are only two periodic surfaces they will be
-matched automatically. Otherwise it is necessary to specify pairs explicitly
-using the :attr:`Surface.periodic_surface` attribute as in the following
-example::
+Reflective, periodic, and white boundary conditions can be set with the
+strings 'reflective', 'periodic', and 'white' respectively.
+Vacuum, reflective and white boundary conditions can be applied to any
+type of surface. The 'white' boundary condition supports diffuse particle
+reflection in contrast to specular reflection provided by the 'reflective'
+boundary condition.
+
+Periodic boundary conditions can be applied to pairs of planar surfaces.
+If there are only two periodic surfaces they will be matched automatically.
+Otherwise it is necessary to specify pairs explicitly using the
+:attr:`Surface.periodic_surface` attribute as in the following example::
 
   p1 = openmc.Plane(a=0.3, b=5.0, d=1.0, boundary_type='periodic')
   p2 = openmc.Plane(a=0.3, b=5.0, d=-1.0, boundary_type='periodic')
@@ -195,6 +199,20 @@ inwards---towards the valid geometry. For example, a :class:`XPlane` and
 lies in the first quadrant of the Cartesian grid. If the geometry instead lies
 in the fourth quadrant, the :class:`YPlane` must be replaced by a
 :class:`Plane` with the normal vector pointing in the :math:`-y` direction.
+
+Additionally, 'reflective', 'periodic', and 'white' boundary conditions have
+an albedo parameter that can be used to modify the importance of particles
+that encounter the boundary. The albedo value specifies the ratio between
+the particle's importance after interaction with the boundary to its initial
+importance. The following example creates a reflective planar surface which
+reduces the reflected particles' importance by 33.3%::
+
+   x1 = openmc.XPlane(1.0, boundary_type='reflective', albedo=0.667)
+
+   # This is equivalent
+   x1 = openmc.XPlane(1.0)
+   x1.boundary_type = 'reflective'
+   x1.albedo = 0.667
 
 .. _usersguide_cells:
 

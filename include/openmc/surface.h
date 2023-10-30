@@ -83,10 +83,10 @@ struct BoundingBox {
 
 class Surface {
 public:
-  int id_;                                          //!< Unique ID
-  std::string name_;                                //!< User-defined name
-  std::shared_ptr<BoundaryCondition> bc_ {nullptr}; //!< Boundary condition
-  GeometryType geom_type_;   //!< Geometry type indicator (CSG or DAGMC)
+  int id_;                           //!< Unique ID
+  std::string name_;                 //!< User-defined name
+  unique_ptr<BoundaryCondition> bc_; //!< Boundary condition
+  GeometryType geom_type_;           //!< Geometry type indicator (CSG or DAGMC)
   bool surf_source_ {false}; //!< Activate source banking for the surface?
 
   explicit Surface(pugi::xml_node surf_node);

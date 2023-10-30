@@ -289,10 +289,10 @@ void DAGUniverse::init_geometry()
         bc_value == "transmission") {
       // set to transmission by default (nullptr)
     } else if (bc_value == "vacuum") {
-      s->bc_ = std::make_shared<VacuumBC>();
+      s->bc_ = make_unique<VacuumBC>();
     } else if (bc_value == "reflective" || bc_value == "reflect" ||
                bc_value == "reflecting") {
-      s->bc_ = std::make_shared<ReflectiveBC>();
+      s->bc_ = make_unique<ReflectiveBC>();
     } else if (bc_value == "periodic") {
       fatal_error("Periodic boundary condition not supported in DAGMC.");
     } else {
@@ -310,7 +310,7 @@ void DAGUniverse::init_geometry()
     // if this surface belongs to the graveyard
     if (graveyard && parent_vols.find(graveyard) != parent_vols.end()) {
       // set graveyard surface BC's to vacuum
-      s->bc_ = std::make_shared<VacuumBC>();
+      s->bc_ = make_unique<VacuumBC>();
     }
 
     // add to global array and map

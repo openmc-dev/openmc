@@ -109,14 +109,16 @@ def borated_water(boron_ppm, temperature=293., pressure=0.1013, temp_unit='K',
 
 
 # Define function to create a plane on given axis
-def _plane(axis, name, value, boundary_type='transmission'):
+def _plane(axis, name, value, boundary_type='transmission', albedo=1.):
         cls = getattr(openmc, f'{axis.upper()}Plane')
         return cls(value, name=f'{name} {axis}',
-                   boundary_type=boundary_type)
+                   boundary_type=boundary_type,
+                   albedo=albedo)
 
 
 def rectangular_prism(width, height, axis='z', origin=(0., 0.),
-                      boundary_type='transmission', corner_radius=0.):
+                      boundary_type='transmission', albedo=1.,
+                      corner_radius=0.):
     """Get an infinite rectangular prism from four planar surfaces.
 
     .. versionchanged:: 0.11
@@ -138,9 +140,14 @@ def rectangular_prism(width, height, axis='z', origin=(0., 0.),
         Origin of the prism. The two floats correspond to (y,z), (x,z) or
         (x,y) for prisms parallel to the x, y or z axis, respectively.
         Defaults to (0., 0.).
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surfaces comprising the rectangular prism (default is 'transmission').
+    albedo : float, optional
+        Albedo of the prism's surfaces as a ratio of particle weight after
+        interaction with the surface to the initial weight. Values must be
+        positive. Only applicable if the boundary type is 'reflective',
+        'periodic', or 'white'.
     corner_radius: float
         Prism corner radius in units of cm. Defaults to 0.
 
@@ -153,6 +160,7 @@ def rectangular_prism(width, height, axis='z', origin=(0., 0.),
 
     check_type('width', width, Real)
     check_type('height', height, Real)
+    check_type('albedo', albedo, Real)
     check_type('corner_radius', corner_radius, Real)
     check_value('axis', axis, ['x', 'y', 'z'])
     check_type('origin', origin, Iterable, Real)
@@ -167,15 +175,14 @@ def rectangular_prism(width, height, axis='z', origin=(0., 0.),
     # Get cylinder class corresponding to given axis
     cyl = getattr(openmc, f'{axis.upper()}Cylinder')
 
+    # Create container for boundary arguments
+    bc_args = {'boundary_type': boundary_type, 'albedo': albedo}
+
     # Create rectangular region
-    min_x1 = _plane(x1, 'minimum', -width/2 + origin[0],
-                    boundary_type=boundary_type)
-    max_x1 = _plane(x1, 'maximum', width/2 + origin[0],
-                    boundary_type=boundary_type)
-    min_x2 = _plane(x2, 'minimum', -height/2 + origin[1],
-                    boundary_type=boundary_type)
-    max_x2 = _plane(x2, 'maximum', height/2 + origin[1],
-                    boundary_type=boundary_type)
+    min_x1 = _plane(x1, 'minimum', -width/2 + origin[0], **bc_args)
+    max_x1 = _plane(x1, 'maximum', width/2 + origin[0], **bc_args)
+    min_x2 = _plane(x2, 'minimum', -height/2 + origin[1], **bc_args)
+    max_x2 = _plane(x2, 'maximum', height/2 + origin[1], **bc_args)
     if boundary_type == 'periodic':
         min_x1.periodic_surface = max_x1
         min_x2.periodic_surface = max_x2
@@ -187,7 +194,7 @@ def rectangular_prism(width, height, axis='z', origin=(0., 0.),
             raise ValueError('Periodic boundary conditions not permitted when '
                              'rounded corners are used.')
 
-        args = {'r': corner_radius, 'boundary_type': boundary_type}
+        args = {'r': corner_radius, 'boundary_type': boundary_type, 'albedo' : albedo}
 
         args[x1 + '0'] = origin[0] - width/2 + corner_radius
         args[x2 + '0'] = origin[1] - height/2 + corner_radius
@@ -210,13 +217,13 @@ def rectangular_prism(width, height, axis='z', origin=(0., 0.),
         x1_max_x2_max = cyl(name='{} max {} max'.format(x1, x2), **args)
 
         x1_min = _plane(x1, 'min', -width/2 + origin[0] + corner_radius,
-                        boundary_type=boundary_type)
+                        **bc_args)
         x1_max = _plane(x1, 'max', width/2 + origin[0] - corner_radius,
-                        boundary_type=boundary_type)
+                        **bc_args)
         x2_min = _plane(x2, 'min', -height/2 + origin[1] + corner_radius,
-                        boundary_type=boundary_type)
+                        **bc_args)
         x2_max = _plane(x2, 'max', height/2 + origin[1] - corner_radius,
-                        boundary_type=boundary_type)
+                        **bc_args)
 
         corners = (+x1_min_x2_min & -x1_min & -x2_min) | \
                   (+x1_min_x2_max & -x1_min & +x2_max) | \
@@ -236,7 +243,7 @@ def get_rectangular_prism(*args, **kwargs):
 
 
 def hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
-                    boundary_type='transmission', corner_radius=0.):
+                    boundary_type='transmission', albedo=1., corner_radius=0.):
     """Create a hexagon region from six surface planes.
 
     .. versionchanged:: 0.11
@@ -253,9 +260,14 @@ def hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
         parallel to the y-axis.
     origin: Iterable of two floats
         Origin of the prism. Defaults to (0., 0.).
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surfaces comprising the hexagonal prism (default is 'transmission').
+    albedo : float, optional
+        Albedo of the prism's surfaces as a ratio of particle weight after
+        interaction with the surface to the initial weight. Values must be
+        positive. Only applicable if the boundary type is 'reflective',
+        'periodic', or 'white'.
     corner_radius: float
         Prism corner radius in units of cm. Defaults to 0.
 
@@ -266,25 +278,35 @@ def hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
 
     """
 
+    check_type('edge_length', edge_length, Real)
+    check_type('albedo', albedo, Real)
+    check_type('corner_radius', corner_radius, Real)
+    check_value('orientation', orientation, ['x', 'y'])
+    check_type('origin', origin, Iterable, Real)
+
     l = edge_length
     x, y = origin
 
+
+    # Create container for boundary arguments
+    bc_args = {'boundary_type': boundary_type, 'albedo' : albedo}
+
     if orientation == 'y':
-        right = openmc.XPlane(x + sqrt(3.)/2*l, boundary_type=boundary_type)
-        left = openmc.XPlane(x - sqrt(3.)/2*l, boundary_type=boundary_type)
+        right = openmc.XPlane(x + sqrt(3.)/2*l, **bc_args)
+        left = openmc.XPlane(x - sqrt(3.)/2*l, **bc_args)
         c = sqrt(3.)/3.
 
         # y = -x/sqrt(3) + a
-        upper_right = Plane(a=c, b=1., d=l+x*c+y, boundary_type=boundary_type)
+        upper_right = Plane(a=c, b=1., d=l+x*c+y, **bc_args)
 
         # y = x/sqrt(3) + a
-        upper_left = Plane(a=-c, b=1., d=l-x*c+y, boundary_type=boundary_type)
+        upper_left = Plane(a=-c, b=1., d=l-x*c+y, **bc_args)
 
         # y = x/sqrt(3) - a
-        lower_right = Plane(a=-c, b=1., d=-l-x*c+y, boundary_type=boundary_type)
+        lower_right = Plane(a=-c, b=1., d=-l-x*c+y, **bc_args)
 
         # y = -x/sqrt(3) - a
-        lower_left = Plane(a=c, b=1., d=-l+x*c+y, boundary_type=boundary_type)
+        lower_left = Plane(a=c, b=1., d=-l+x*c+y, **bc_args)
 
         prism = -right & +left & -upper_right & -upper_left & \
                 +lower_right & +lower_left
@@ -295,22 +317,21 @@ def hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
             lower_right.periodic_surface = upper_left
 
     elif orientation == 'x':
-        top = openmc.YPlane(y0=y + sqrt(3.)/2*l, boundary_type=boundary_type)
-        bottom = openmc.YPlane(y0=y - sqrt(3.)/2*l, boundary_type=boundary_type)
+        top = openmc.YPlane(y0=y + sqrt(3.)/2*l, **bc_args)
+        bottom = openmc.YPlane(y0=y - sqrt(3.)/2*l, **bc_args)
         c = sqrt(3.)
 
         # y = -sqrt(3)*(x - a)
-        upper_right = Plane(a=c, b=1., d=c*l+x*c+y, boundary_type=boundary_type)
+        upper_right = Plane(a=c, b=1., d=c*l+x*c+y, **bc_args)
 
         # y = sqrt(3)*(x + a)
-        lower_right = Plane(a=-c, b=1., d=-c*l-x*c+y,
-                            boundary_type=boundary_type)
+        lower_right = Plane(a=-c, b=1., d=-c*l-x*c+y, **bc_args)
 
         # y = -sqrt(3)*(x + a)
-        lower_left = Plane(a=c, b=1., d=-c*l+x*c+y, boundary_type=boundary_type)
+        lower_left = Plane(a=c, b=1., d=-c*l+x*c+y, **bc_args)
 
         # y = sqrt(3)*(x + a)
-        upper_left = Plane(a=-c, b=1., d=c*l-x*c+y, boundary_type=boundary_type)
+        upper_left = Plane(a=-c, b=1., d=c*l-x*c+y, **bc_args)
 
         prism = -top & +bottom & -upper_right & +lower_right & \
                             +lower_left & -upper_left
@@ -329,11 +350,9 @@ def hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
         c = sqrt(3.)/2
         t = l - corner_radius/c
 
-        # Cylinder with corner radius and boundary type pre-applied
-        cyl1 = partial(openmc.ZCylinder, r=corner_radius,
-                       boundary_type=boundary_type)
-        cyl2 = partial(openmc.ZCylinder, r=corner_radius/(2*c),
-                       boundary_type=boundary_type)
+        # Cylinder with corner radius and boundary conditions pre-applied
+        cyl1 = partial(openmc.ZCylinder, r=corner_radius, **bc_args)
+        cyl2 = partial(openmc.ZCylinder, r=corner_radius/(2*c), **bc_args)
 
         if orientation == 'x':
             x_min_y_min_in = cyl1(name='x min y min in', x0=x-t/2, y0=y-c*t)

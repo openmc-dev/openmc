@@ -8,13 +8,14 @@ from warnings import warn, catch_warnings, simplefilter
 
 import numpy as np
 
-from .checkvalue import check_type, check_value, check_length
+from .checkvalue import check_type, check_value, check_length, check_greater_than
 from .mixin import IDManagerMixin, IDWarning
 from .region import Region, Intersection, Union
 from .bounding_box import BoundingBox
 
 
 _BOUNDARY_TYPES = ['transmission', 'vacuum', 'reflective', 'periodic', 'white']
+_ALBEDO_BOUNDARIES = ['reflective', 'periodic', 'white']
 
 _WARNING_UPPER = """\
 "{}(...) accepts an argument named '{}', not '{}'. Future versions of OpenMC \
@@ -123,6 +124,10 @@ class Surface(IDManagerMixin, ABC):
         freely pass through the surface. Note that periodic boundary conditions
         can only be applied to x-, y-, and z-planes, and only axis-aligned
         periodicity is supported.
+    albedo : float, optional
+        Albedo of the surfaces as a ratio of particle weight after interaction
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the surface. If not specified, the name will be the empty
         string.
@@ -132,6 +137,8 @@ class Surface(IDManagerMixin, ABC):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
+    albedo : float
+        Boundary albedo as a positive multiplier of particle weight
     coefficients : dict
         Dictionary of surface coefficients
     id : int
@@ -147,10 +154,12 @@ class Surface(IDManagerMixin, ABC):
     used_ids = set()
     _atol = 1.e-12
 
-    def __init__(self, surface_id=None, boundary_type='transmission', name=''):
+    def __init__(self, surface_id=None, boundary_type='transmission',
+                 albedo=1., name=''):
         self.id = surface_id
         self.name = name
         self.boundary_type = boundary_type
+        self.albedo = albedo
 
         # A dictionary of the quadratic surface coefficients
         # Key      - coefficient name
@@ -165,15 +174,20 @@ class Surface(IDManagerMixin, ABC):
 
     def __repr__(self):
         string = 'Surface\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._type)
-        string += '{0: <16}{1}{2}\n'.format('\tBoundary', '=\t', self._boundary_type)
+        string += '{0: <20}{1}{2}\n'.format('\tID', '=\t', self._id)
+        string += '{0: <20}{1}{2}\n'.format('\tName', '=\t', self._name)
+        string += '{0: <20}{1}{2}\n'.format('\tType', '=\t', self._type)
+        string += '{0: <20}{1}{2}\n'.format('\tBoundary', '=\t',
+                                            self._boundary_type)
+        if (self._boundary_type in _ALBEDO_BOUNDARIES and
+            not math.isclose(self._albedo, 1.0)):
+            string += '{0: <20}{1}{2}\n'.format('\tBoundary Albedo', '=\t',
+                                                self._albedo)
 
-        coefficients = '{0: <16}'.format('\tCoefficients') + '\n'
+        coefficients = '{0: <20}'.format('\tCoefficients') + '\n'
 
         for coeff in self._coefficients:
-            coefficients += '{0: <16}{1}{2}\n'.format(
+            coefficients += '{0: <20}{1}{2}\n'.format(
                 coeff, '=\t', self._coefficients[coeff])
 
         string += coefficients
@@ -205,6 +219,16 @@ class Surface(IDManagerMixin, ABC):
         check_type('boundary type', boundary_type, str)
         check_value('boundary type', boundary_type, _BOUNDARY_TYPES)
         self._boundary_type = boundary_type
+
+    @property
+    def albedo(self):
+        return self._albedo
+
+    @albedo.setter
+    def albedo(self, albedo):
+        check_type('albedo', albedo, Real)
+        check_greater_than('albedo', albedo, 0.0)
+        self._albedo = float(albedo)
 
     @property
     def coefficients(self):
@@ -402,6 +426,9 @@ class Surface(IDManagerMixin, ABC):
         element.set("type", self._type)
         if self.boundary_type != 'transmission':
             element.set("boundary", self.boundary_type)
+            if (self.boundary_type in _ALBEDO_BOUNDARIES and
+                not math.isclose(self.albedo, 1.0)):
+                element.set("albedo", str(self.albedo))
         element.set("coeffs", ' '.join([str(self._coefficients.setdefault(key, 0.0))
                                         for key in self._coeff_keys]))
 
@@ -427,10 +454,12 @@ class Surface(IDManagerMixin, ABC):
         surf_type = elem.get('type')
         cls = _SURFACE_CLASSES[surf_type]
 
-        # Determine ID, boundary type, coefficients
+        # Determine ID, boundary type, boundary albedo, coefficients
         kwargs = {}
         kwargs['surface_id'] = int(elem.get('id'))
         kwargs['boundary_type'] = elem.get('boundary', 'transmission')
+        if kwargs['boundary_type'] in _ALBEDO_BOUNDARIES:
+            kwargs['albedo'] = float(elem.get('albedo', 1.0))
         kwargs['name'] = elem.get('name')
         coeffs = [float(x) for x in elem.get('coeffs').split()]
         kwargs.update(dict(zip(cls._coeff_keys, coeffs)))
@@ -462,8 +491,13 @@ class Surface(IDManagerMixin, ABC):
         name = group['name'][()].decode() if 'name' in group else ''
 
         bc = group['boundary_type'][()].decode()
+        if 'albedo' in group:
+            bc_alb = float(group['albedo'][()].decode())
+        else:
+            bc_alb = 1.0
         coeffs = group['coefficients'][...]
-        kwargs = {'boundary_type': bc, 'name': name, 'surface_id': surface_id}
+        kwargs = {'boundary_type': bc, 'albedo': bc_alb, 'name': name,
+                  'surface_id': surface_id}
 
         surf_type = group['type'][()].decode()
         cls = _SURFACE_CLASSES[surf_type]
@@ -607,7 +641,9 @@ class PlaneMixin:
         # Compute new rotated coefficients a, b, c
         a, b, c = Rmat @ [a, b, c]
 
-        kwargs = {'boundary_type': surf.boundary_type, 'name': surf.name}
+        kwargs = {'boundary_type': surf.boundary_type,
+                  'albedo': surf.albedo,
+                  'name': surf.name}
         if inplace:
             kwargs['surface_id'] = surf.id
 
@@ -651,6 +687,10 @@ class Plane(PlaneMixin, Surface):
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
+    albedo : float, optional
+        Albedo of the surfaces as a ratio of particle weight after interaction
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the plane. If not specified, the name will be the empty string.
     surface_id : int, optional
@@ -670,6 +710,8 @@ class Plane(PlaneMixin, Surface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
+    albedo : float
+        Boundary albedo as a positive multiplier of particle weight
     periodic_surface : openmc.Surface
         If a periodic boundary condition is used, the surface with which this
         one is periodic with
@@ -774,6 +816,10 @@ class XPlane(PlaneMixin, Surface):
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface. Only axis-aligned periodicity is
         supported, i.e., x-planes can only be paired with x-planes.
+    albedo : float, optional
+        Albedo of the surfaces as a ratio of particle weight after interaction
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the plane. If not specified, the name will be the empty string.
     surface_id : int, optional
@@ -787,6 +833,8 @@ class XPlane(PlaneMixin, Surface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
+    albedo : float
+        Boundary albedo as a positive multiplier of particle weight
     periodic_surface : openmc.Surface
         If a periodic boundary condition is used, the surface with which this
         one is periodic with
@@ -832,7 +880,11 @@ class YPlane(PlaneMixin, Surface):
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface. Only axis-aligned periodicity is
-        supported, i.e., x-planes can only be paired with x-planes.
+        supported, i.e., y-planes can only be paired with y-planes.
+    albedo : float, optional
+        Albedo of the surfaces as a ratio of particle weight after interaction
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the plane. If not specified, the name will be the empty string.
     surface_id : int, optional
@@ -846,6 +898,8 @@ class YPlane(PlaneMixin, Surface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
+    albedo : float
+        Boundary albedo as a positive multiplier of particle weight
     periodic_surface : openmc.Surface
         If a periodic boundary condition is used, the surface with which this
         one is periodic with
@@ -891,7 +945,11 @@ class ZPlane(PlaneMixin, Surface):
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface. Only axis-aligned periodicity is
-        supported, i.e., x-planes can only be paired with x-planes.
+        supported, i.e., z-planes can only be paired with z-planes.
+    albedo : float, optional
+        Albedo of the surfaces as a ratio of particle weight after interaction
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the plane. If not specified, the name will be the empty string.
     surface_id : int, optional
@@ -905,6 +963,8 @@ class ZPlane(PlaneMixin, Surface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
+    albedo : float
+        Boundary albedo as a positive multiplier of particle weight
     periodic_surface : openmc.Surface
         If a periodic boundary condition is used, the surface with which this
         one is periodic with
@@ -1076,7 +1136,8 @@ class QuadricMixin:
         else:
             base_cls = type(tsurf)._virtual_base
             # Copy necessary surface attributes to new kwargs dictionary
-            kwargs = {'boundary_type': tsurf.boundary_type, 'name': tsurf.name}
+            kwargs = {'boundary_type': tsurf.boundary_type,
+                      'albedo': tsurf.albedo, 'name': tsurf.name}
             if inplace:
                 kwargs['surface_id'] = tsurf.id
             kwargs.update({k: getattr(tsurf, k) for k in base_cls._coeff_keys})
@@ -1133,6 +1194,10 @@ class Cylinder(QuadricMixin, Surface):
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
+    albedo : float, optional
+        Albedo of the surfaces as a ratio of particle weight after interaction
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the cylinder. If not specified, the name will be the empty
         string.
@@ -1159,6 +1224,8 @@ class Cylinder(QuadricMixin, Surface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
+    albedo : float
+        Boundary albedo as a positive multiplier of particle weight
     coefficients : dict
         Dictionary of surface coefficients
     id : int
@@ -1280,8 +1347,8 @@ class Cylinder(QuadricMixin, Surface):
         # since the C++ layer doesn't support Cylinders right now
         with catch_warnings():
             simplefilter('ignore', IDWarning)
-            kwargs = {'boundary_type': self.boundary_type, 'name': self.name,
-                      'surface_id': self.id}
+            kwargs = {'boundary_type': self.boundary_type, 'albedo': self.albedo,
+                      'name': self.name, 'surface_id': self.id}
             quad_rep = Quadric(*self._get_base_coeffs(), **kwargs)
         return quad_rep.to_xml_element()
 
@@ -1302,6 +1369,10 @@ class XCylinder(QuadricMixin, Surface):
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
+    albedo : float, optional
+        Albedo of the surfaces as a ratio of particle weight after interaction
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the cylinder. If not specified, the name will be the empty
         string.
@@ -1320,6 +1391,8 @@ class XCylinder(QuadricMixin, Surface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
+    albedo : float
+        Boundary albedo as a positive multiplier of particle weight
     coefficients : dict
         Dictionary of surface coefficients
     id : int
@@ -1394,6 +1467,10 @@ class YCylinder(QuadricMixin, Surface):
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
+    albedo : float, optional
+        Albedo of the surfaces as a ratio of particle weight after interaction
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the cylinder. If not specified, the name will be the empty
         string.
@@ -1412,6 +1489,8 @@ class YCylinder(QuadricMixin, Surface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
+    albedo : float
+        Boundary albedo as a positive multiplier of particle weight
     coefficients : dict
         Dictionary of surface coefficients
     id : int
@@ -1486,6 +1565,10 @@ class ZCylinder(QuadricMixin, Surface):
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
+    albedo : float, optional
+        Albedo of the surfaces as a ratio of particle weight after interaction
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the cylinder. If not specified, the name will be the empty
         string.
@@ -1504,6 +1587,8 @@ class ZCylinder(QuadricMixin, Surface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
+    albedo : float
+        Boundary albedo as a positive multiplier of particle weight
     coefficients : dict
         Dictionary of surface coefficients
     id : int
@@ -1579,6 +1664,10 @@ class Sphere(QuadricMixin, Surface):
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
+    albedo : float, optional
+        Albedo of the surfaces as a ratio of particle weight after interaction
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the sphere. If not specified, the name will be the empty string.
     surface_id : int, optional
@@ -1598,6 +1687,8 @@ class Sphere(QuadricMixin, Surface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
+    albedo : float
+        Boundary albedo as a positive multiplier of particle weight
     coefficients : dict
         Dictionary of surface coefficients
     id : int
@@ -1683,6 +1774,11 @@ class Cone(QuadricMixin, Surface):
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
+    albedo : float, optional
+        Albedo of the surfaces as a ratio of particle weight after interaction
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
+
     name : str
         Name of the cone. If not specified, the name will be the empty string.
 
@@ -1705,6 +1801,8 @@ class Cone(QuadricMixin, Surface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
+    albedo : float
+        Boundary albedo as a positive multiplier of particle weight
     coefficients : dict
         Dictionary of surface coefficients
     id : int
@@ -1790,7 +1888,9 @@ class Cone(QuadricMixin, Surface):
         # since the C++ layer doesn't support Cones right now
         with catch_warnings():
             simplefilter('ignore', IDWarning)
-            kwargs = {'boundary_type': self.boundary_type, 'name': self.name,
+            kwargs = {'boundary_type': self.boundary_type,
+                      'albedo': self.albedo,
+                      'name': self.name,
                       'surface_id': self.id}
             quad_rep = Quadric(*self._get_base_coeffs(), **kwargs)
         return quad_rep.to_xml_element()
@@ -1814,6 +1914,10 @@ class XCone(QuadricMixin, Surface):
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
+    albedo : float, optional
+        Albedo of the surfaces as a ratio of particle weight after interaction
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the cone. If not specified, the name will be the empty string.
     surface_id : int, optional
@@ -1833,6 +1937,8 @@ class XCone(QuadricMixin, Surface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
+    albedo : float
+        Boundary albedo as a positive multiplier of particle weight
     coefficients : dict
         Dictionary of surface coefficients
     id : int
@@ -1903,6 +2009,10 @@ class YCone(QuadricMixin, Surface):
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
+    albedo : float, optional
+        Albedo of the surfaces as a ratio of particle weight after interaction
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the cone. If not specified, the name will be the empty string.
     surface_id : int, optional
@@ -1922,6 +2032,8 @@ class YCone(QuadricMixin, Surface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
+    albedo : float
+        Boundary albedo as a positive multiplier of particle weight
     coefficients : dict
         Dictionary of surface coefficients
     id : int
@@ -1992,6 +2104,10 @@ class ZCone(QuadricMixin, Surface):
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
+    albedo : float, optional
+        Albedo of the surfaces as a ratio of particle weight after interaction
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the cone. If not specified, the name will be the empty string.
     surface_id : int, optional
@@ -2011,6 +2127,8 @@ class ZCone(QuadricMixin, Surface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
+    albedo : float
+        Boundary albedo as a positive multiplier of particle weight
     coefficients : dict
         Dictionary of surface coefficients
     id : int
@@ -2075,6 +2193,10 @@ class Quadric(QuadricMixin, Surface):
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
+    albedo : float, optional
+        Albedo of the surfaces as a ratio of particle weight after interaction
+        with the surface to the initial weight. Values must be positive. Only
+        applicable if the boundary type is 'reflective', 'periodic', or 'white'.
     name : str, optional
         Name of the surface. If not specified, the name will be the empty string.
     surface_id : int, optional
@@ -2088,6 +2210,8 @@ class Quadric(QuadricMixin, Surface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
+    albedo : float
+        Boundary albedo as a positive multiplier of particle weight
     coefficients : dict
         Dictionary of surface coefficients
     id : int
@@ -2183,7 +2307,9 @@ class TorusMixin:
 
         # Create rotated torus
         kwargs = {
-            'boundary_type': surf.boundary_type, 'name': surf.name,
+            'boundary_type': surf.boundary_type,
+            'albedo': surf.albedo,
+            'name': surf.name,
             'a': surf.a, 'b': surf.b, 'c': surf.c
         }
         if inplace:
@@ -2236,6 +2362,8 @@ class XTorus(TorusMixin, Surface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
+    albedo : float
+        Boundary albedo as a positive multiplier of particle weight
     coefficients : dict
         Dictionary of surface coefficients
     id : int
@@ -2309,6 +2437,8 @@ class YTorus(TorusMixin, Surface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
+    albedo : float
+        Boundary albedo as a positive multiplier of particle weight
     coefficients : dict
         Dictionary of surface coefficients
     id : int
@@ -2382,6 +2512,8 @@ class ZTorus(TorusMixin, Surface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
+    albedo : float
+        Boundary albedo as a positive multiplier of particle weight
     coefficients : dict
         Dictionary of surface coefficients
     id : int

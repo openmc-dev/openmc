@@ -302,7 +302,7 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 
           // Guards against atom density calculation when no cross_section is
           // presents
-          if (settings::path_cross_sections != "") {
+          if (!settings::path_cross_sections.empty()) {
             const auto& mat = model::materials[i_material];
             for (int k = 0; k < mat->nuclide_.size(); ++k) {
               // Accumulate nuclide density
@@ -346,10 +346,8 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 
         // Guards against atom density calculation when no cross_section is
         // presents
-        if (settings::path_cross_sections != "") {
-
+        if (!settings::path_cross_sections.empty()) {
           for (int j = 0; j < n_nuc; ++j) {
-
             // Determine total number of atoms. At this point, we have values in
             // atoms/b-cm. To get to atoms we multiply by 10^24 V.
             double mean = 1.0e24 * volume_sample * atoms(j, 0);
@@ -467,7 +465,7 @@ void VolumeCalculation::to_hdf5(
     }
 
     // Guards against atom density calculation when no cross_section is presents
-    if (settings::path_cross_sections != "") {
+    if (!settings::path_cross_sections.empty()) {
       // Create array of total # of atoms with uncertainty for each nuclide
       xt::xtensor<double, 2> atom_data({n_nuc, 2});
       xt::view(atom_data, xt::all(), 0) = xt::adapt(result.atoms);

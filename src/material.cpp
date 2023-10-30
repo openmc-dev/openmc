@@ -219,18 +219,22 @@ Material::Material(pugi::xml_node node)
   if (settings::photon_transport)
     element_.reserve(n);
 
+  // Loading data is not necessary in plotting mode or in volume mode when no
+  // cross section source is specified.
+  bool require_data = !(settings::run_mode == RunMode::PLOTTING ||
+                        (settings::run_mode == RunMode::VOLUME &&
+                          settings::path_cross_sections.empty()));
+
   for (int i = 0; i < n; ++i) {
     const auto& name {names[i]};
 
     // Check that this nuclide is listed in the nuclear data library
     // (cross_sections.xml for CE and the MGXS HDF5 for MG)
-    if (settings::run_mode != RunMode::PLOTTING and
-        settings::path_cross_sections != "") {
+    if (require_data) {
       LibraryKey key {Library::Type::neutron, name};
       if (data::library_map.find(key) == data::library_map.end()) {
-        fatal_error("Could not find nuclide " + name +
-                    " in the "
-                    "nuclear data library.");
+        fatal_error(
+          "Could not find nuclide " + name + " in the nuclear data library.");
       }
     }
 
@@ -250,8 +254,7 @@ Material::Material(pugi::xml_node node)
       std::string element = to_element(name);
 
       // Make sure photon cross section data is available
-      if (settings::run_mode != RunMode::PLOTTING and
-          settings::path_cross_sections != "") {
+      if (require_data) {
         LibraryKey key {Library::Type::photon, element};
         if (data::library_map.find(key) == data::library_map.end()) {
           fatal_error(
@@ -330,7 +333,7 @@ Material::Material(pugi::xml_node node)
 
       // Check that the thermal scattering table is listed in the
       // cross_sections.xml file
-      if (settings::run_mode != RunMode::PLOTTING) {
+      if (require_data) {
         LibraryKey key {Library::Type::thermal, name};
         if (data::library_map.find(key) == data::library_map.end()) {
           fatal_error("Could not find thermal scattering data " + name +

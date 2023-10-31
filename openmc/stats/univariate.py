@@ -266,7 +266,7 @@ class Discrete(Univariate):
         function will remove any low-importance points such that :math:`\sum_i
         x_i p_i` is preserved to within some threshold.
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
 
         Parameters
         ----------
@@ -1281,7 +1281,7 @@ class Mixture(Univariate):
         function will remove any low-importance points such that :math:`\sum_i
         x_i p_i` is preserved to within some threshold.
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
 
         Parameters
         ----------

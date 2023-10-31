@@ -39,7 +39,7 @@ class IndependentOperator(OpenMCOperator):
 
     .. versionadded:: 0.13.1
 
-    .. versionchanged:: 0.13.4
+    .. versionchanged:: 0.14.0
         Arguments updated to include list of fluxes and microscopic cross
         sections.
 

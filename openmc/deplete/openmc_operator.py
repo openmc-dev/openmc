@@ -64,7 +64,7 @@ class OpenMCOperator(TransportOperator):
         equally between the new materials, 'match cell' sets the volume of the
         material to volume of the cell they fill.
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
 
     Attributes
     ----------

@@ -16,7 +16,7 @@ class TransferRates:
     An instance of this class can be passed directly to an instance of one of
     the :class:`openmc.deplete.Integrator` classes.
 
-    .. versionadded:: 0.13.4
+    .. versionadded:: 0.14.0
 
     Parameters
     ----------

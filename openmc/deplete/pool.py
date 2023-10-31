@@ -66,7 +66,7 @@ def deplete(func, chain, n, rates, dt, matrix_func=None, transfer_rates=None,
     transfer_rates : openmc.deplete.TransferRates, Optional
         Object to perform continuous reprocessing.
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
     matrix_args: Any, optional
         Additional arguments passed to matrix_func
 

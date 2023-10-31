@@ -15,7 +15,7 @@ class DataLibrary(list):
     cross section data from a single file. The dictionary has keys 'path',
     'type', and 'materials'.
 
-    .. versionchanged:: 0.13.4
+    .. versionchanged:: 0.14.0
         This class now behaves like a list rather than requiring you to access
         the list of libraries through a special attribute.
 

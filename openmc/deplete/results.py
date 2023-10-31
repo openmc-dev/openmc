@@ -273,7 +273,7 @@ class Results(list):
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Get mass of nuclides over time from a single material
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
 
         Parameters
         ----------

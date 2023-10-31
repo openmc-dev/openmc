@@ -566,7 +566,7 @@ class StepResult:
         path : PathLike
             Path to file to write. Defaults to 'depletion_results.h5'.
 
-            .. versionadded:: 0.13.4
+            .. versionadded:: 0.14.0
         """
         # Get indexing terms
         vol_dict, nuc_list, burn_list, full_burn_list = op.get_results_info()

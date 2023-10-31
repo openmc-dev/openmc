@@ -560,7 +560,7 @@ class Integrator(ABC):
         Instance of Batchwise class to perform batch-wise scheme during
         transport-depletion simulation.
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
 
     """
 

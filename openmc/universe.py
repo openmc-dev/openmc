@@ -349,19 +349,19 @@ class Universe(UniverseBase):
         legend : bool
             Whether a legend showing material or cell names should be drawn
 
-            .. versionadded:: 0.13.4
+            .. versionadded:: 0.14.0
         legend_kwargs : dict
             Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
 
-            .. versionadded:: 0.13.4
+            .. versionadded:: 0.14.0
         outline : bool
             Whether outlines between color boundaries should be drawn
 
-            .. versionadded:: 0.13.4
+            .. versionadded:: 0.14.0
         axis_units : {'km', 'm', 'cm', 'mm'}
             Units used on the plot axis
 
-            .. versionadded:: 0.13.4
+            .. versionadded:: 0.14.0
         **kwargs
             Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 

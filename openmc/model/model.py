@@ -1019,7 +1019,7 @@ class Model:
     def differentiate_depletable_mats(self, diff_volume_method: str):
         """Assign distribmats for each depletable material
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
 
         Parameters
         ----------

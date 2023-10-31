@@ -33,7 +33,7 @@ def get_microxs_and_flux(
     ) -> Tuple[List[np.ndarray], List[MicroXS]]:
     """Generate a microscopic cross sections and flux from a Model
 
-    .. versionadded:: 0.13.4
+    .. versionadded:: 0.14.0
 
     Parameters
     ----------
@@ -156,7 +156,7 @@ class MicroXS:
 
     .. versionadded:: 0.13.1
 
-    .. versionchanged:: 0.13.4
+    .. versionchanged:: 0.14.0
         Class was heavily refactored and no longer subclasses pandas.DataFrame.
 
     Parameters

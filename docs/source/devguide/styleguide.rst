@@ -29,6 +29,10 @@ whenever a file is saved. For example, `Visual Studio Code
 <https://code.visualstudio.com/docs/cpp/cpp-ide#_code-formatting>`_ includes
 support for running clang-format.
 
+.. note::
+    OpenMC's CI uses `clang-format` version 15. A different version of `clang-format`
+    may produce different line changes and as a result fail the CI test.
+
 Miscellaneous
 -------------
 

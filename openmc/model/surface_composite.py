@@ -1233,7 +1233,7 @@ class CruciformPrism(CompositeSurface):
     multiple distances from the center. Equivalent to the 'gcross' derived
     surface in Serpent.
 
-    .. versionadded:: 0.13.4
+    .. versionadded:: 0.14.0
 
     Parameters
     ----------
@@ -1339,6 +1339,11 @@ class RectangularPrism(CompositeSurface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surfaces comprising the rectangular prism.
+    albedo : float, optional
+        Albedo of the prism's surfaces as a ratio of particle weight after
+        interaction with the surface to the initial weight. Values must be
+        positive. Only applicable if the boundary type is 'reflective',
+        'periodic', or 'white'.
     corner_radius : float
         Prism corner radius in units of [cm].
 
@@ -1352,10 +1357,12 @@ class RectangularPrism(CompositeSurface):
             axis: str = 'z',
             origin: Sequence[float] = (0., 0.),
             boundary_type: str = 'transmission',
+            albedo: float = 1.,
             corner_radius: float = 0.
         ):
         check_type('width', width, Real)
         check_type('height', height, Real)
+        check_type('albedo', albedo, Real)
         check_type('corner_radius', corner_radius, Real)
         check_value('axis', axis, ('x', 'y', 'z'))
         check_type('origin', origin, Iterable, Real)
@@ -1370,15 +1377,14 @@ class RectangularPrism(CompositeSurface):
         # Get cylinder class corresponding to given axis
         cyl = getattr(openmc, f'{axis.upper()}Cylinder')
 
+        # Create container for boundary arguments
+        bc_args = {'boundary_type': boundary_type, 'albedo': albedo}
+
         # Create rectangular region
-        self.min_x1 = _plane(x1, 'minimum', -width/2 + origin[0],
-                             boundary_type=boundary_type)
-        self.max_x1 = _plane(x1, 'maximum', width/2 + origin[0],
-                             boundary_type=boundary_type)
-        self.min_x2 = _plane(x2, 'minimum', -height/2 + origin[1],
-                             boundary_type=boundary_type)
-        self.max_x2 = _plane(x2, 'maximum', height/2 + origin[1],
-                             boundary_type=boundary_type)
+        self.min_x1 = _plane(x1, 'minimum', -width/2 + origin[0], **bc_args)
+        self.max_x1 = _plane(x1, 'maximum', width/2 + origin[0], **bc_args)
+        self.min_x2 = _plane(x2, 'minimum', -height/2 + origin[1], **bc_args)
+        self.max_x2 = _plane(x2, 'maximum', height/2 + origin[1], **bc_args)
         if boundary_type == 'periodic':
             self.min_x1.periodic_surface = self.max_x1
             self.min_x2.periodic_surface = self.max_x2
@@ -1389,7 +1395,7 @@ class RectangularPrism(CompositeSurface):
                 raise ValueError('Periodic boundary conditions not permitted when '
                                 'rounded corners are used.')
 
-            args = {'r': corner_radius, 'boundary_type': boundary_type}
+            args = {'r': corner_radius, 'boundary_type': boundary_type, 'albedo': albedo}
 
             args[x1 + '0'] = origin[0] - width/2 + corner_radius
             args[x2 + '0'] = origin[1] - height/2 + corner_radius
@@ -1452,6 +1458,11 @@ class HexagonalPrism(CompositeSurface):
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surfaces comprising the hexagonal prism.
+    albedo : float, optional
+        Albedo of the prism's surfaces as a ratio of particle weight after
+        interaction with the surface to the initial weight. Values must be
+        positive. Only applicable if the boundary type is 'reflective',
+        'periodic', or 'white'.
     corner_radius : float
         Prism corner radius in units of [cm].
 
@@ -1465,46 +1476,55 @@ class HexagonalPrism(CompositeSurface):
             orientation: str = 'y',
             origin: Sequence[float] = (0., 0.),
             boundary_type: str = 'transmission',
+            albedo: float = 1.,
             corner_radius: float = 0.
     ):
+        check_type('edge_length', edge_length, Real)
+        check_type('albedo', albedo, Real)
+        check_type('corner_radius', corner_radius, Real)
+        check_value('orientation', orientation, ('x', 'y'))
+        check_type('origin', origin, Iterable, Real)
+
         l = edge_length
         x, y = origin
 
-        kwargs = {'boundary_type': boundary_type}
+        # Create container for boundary arguments
+        bc_args = {'boundary_type': boundary_type, 'albedo': albedo}
+
         if orientation == 'y':
             # Left and right planes
-            self.plane_max = openmc.XPlane(x + sqrt(3.)/2*l, **kwargs)
-            self.plane_min = openmc.XPlane(x - sqrt(3.)/2*l, **kwargs)
+            self.plane_max = openmc.XPlane(x + sqrt(3.)/2*l, **bc_args)
+            self.plane_min = openmc.XPlane(x - sqrt(3.)/2*l, **bc_args)
             c = sqrt(3.)/3.
 
             # y = -x/sqrt(3) + a
-            self.upper_right = openmc.Plane(a=c, b=1., d=l+x*c+y, **kwargs)
+            self.upper_right = openmc.Plane(a=c, b=1., d=l+x*c+y, **bc_args)
 
             # y = x/sqrt(3) + a
-            self.upper_left = openmc.Plane(a=-c, b=1., d=l-x*c+y, **kwargs)
+            self.upper_left = openmc.Plane(a=-c, b=1., d=l-x*c+y, **bc_args)
 
             # y = x/sqrt(3) - a
-            self.lower_right = openmc.Plane(a=-c, b=1., d=-l-x*c+y, **kwargs)
+            self.lower_right = openmc.Plane(a=-c, b=1., d=-l-x*c+y, **bc_args)
 
             # y = -x/sqrt(3) - a
-            self.lower_left = openmc.Plane(a=c, b=1., d=-l+x*c+y, **kwargs)
+            self.lower_left = openmc.Plane(a=c, b=1., d=-l+x*c+y, **bc_args)
 
         elif orientation == 'x':
-            self.plane_max = openmc.YPlane(y + sqrt(3.)/2*l, **kwargs)
-            self.plane_min = openmc.YPlane(y - sqrt(3.)/2*l, **kwargs)
+            self.plane_max = openmc.YPlane(y + sqrt(3.)/2*l, **bc_args)
+            self.plane_min = openmc.YPlane(y - sqrt(3.)/2*l, **bc_args)
             c = sqrt(3.)
 
             # Upper-right surface: y = -sqrt(3)*(x - a)
-            self.upper_right = openmc.Plane(a=c, b=1., d=c*l+x*c+y, **kwargs)
+            self.upper_right = openmc.Plane(a=c, b=1., d=c*l+x*c+y, **bc_args)
 
             # Lower-right surface: y = sqrt(3)*(x + a)
-            self.lower_right = openmc.Plane(a=-c, b=1., d=-c*l-x*c+y, **kwargs)
+            self.lower_right = openmc.Plane(a=-c, b=1., d=-c*l-x*c+y, **bc_args)
 
             # Lower-left surface: y = -sqrt(3)*(x + a)
-            self.lower_left = openmc.Plane(a=c, b=1., d=-c*l+x*c+y, **kwargs)
+            self.lower_left = openmc.Plane(a=c, b=1., d=-c*l+x*c+y, **bc_args)
 
             # Upper-left surface: y = sqrt(3)*(x + a)
-            self.upper_left = openmc.Plane(a=-c, b=1., d=c*l-x*c+y, **kwargs)
+            self.upper_left = openmc.Plane(a=-c, b=1., d=c*l-x*c+y, **bc_args)
 
         # Handle periodic boundary conditions
         if boundary_type == 'periodic':
@@ -1522,8 +1542,8 @@ class HexagonalPrism(CompositeSurface):
             t = l - corner_radius/c
 
             # Cylinder with corner radius and boundary type pre-applied
-            cyl1 = partial(openmc.ZCylinder, r=corner_radius, **kwargs)
-            cyl2 = partial(openmc.ZCylinder, r=corner_radius/(2*c), **kwargs)
+            cyl1 = partial(openmc.ZCylinder, r=corner_radius, **bc_args)
+            cyl2 = partial(openmc.ZCylinder, r=corner_radius/(2*c), **bc_args)
 
             if orientation == 'x':
                 self.x_min_y_min_in = cyl1(name='x min y min in', x0=x-t/2, y0=y-c*t)

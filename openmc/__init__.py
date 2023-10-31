@@ -39,4 +39,4 @@ from .config import *
 from openmc.model import Model
 
 
-__version__ = '0.13.4-dev'
+__version__ = '0.14.0-dev'

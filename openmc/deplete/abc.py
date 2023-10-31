@@ -554,7 +554,7 @@ class Integrator(ABC):
     transfer_rates : openmc.deplete.TransferRates
         Instance of TransferRates class to perform continuous transfer during depletion
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
 
     """
 

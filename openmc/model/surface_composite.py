@@ -1312,10 +1312,10 @@ class CruciformPrism(CompositeSurface):
 
 
 # Define function to create a plane on given axis
-def _plane(axis, name, value, boundary_type='transmission'):
+def _plane(axis, name, value, boundary_type='transmission', albedo=1.0):
         cls = getattr(openmc, f'{axis.upper()}Plane')
         return cls(value, name=f'{name} {axis}',
-                   boundary_type=boundary_type)
+                   boundary_type=boundary_type, albedo=albedo)
 
 
 class RectangularPrism(CompositeSurface):
@@ -1414,13 +1414,13 @@ class RectangularPrism(CompositeSurface):
             self.x1_max_x2_max = cyl(name=f'{x1} max {x2} max', **args)
 
             self.x1_min = _plane(x1, 'min', -width/2 + origin[0] + corner_radius,
-                            boundary_type=boundary_type)
+                                 **bc_args)
             self.x1_max = _plane(x1, 'max', width/2 + origin[0] - corner_radius,
-                            boundary_type=boundary_type)
+                                 **bc_args)
             self.x2_min = _plane(x2, 'min', -height/2 + origin[1] + corner_radius,
-                            boundary_type=boundary_type)
+                                 **bc_args)
             self.x2_max = _plane(x2, 'max', height/2 + origin[1] - corner_radius,
-                            boundary_type=boundary_type)
+                                 **bc_args)
             self._surface_names += (
                 'x1_min_x2_min', 'x1_min_x2_max', 'x1_max_x2_min',
                 'x1_max_x2_max', 'x1_min', 'x1_max', 'x2_min', 'x2_max'

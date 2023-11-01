@@ -10,8 +10,8 @@ def box_model():
     m.add_nuclide('U235', 1.0)
     m.set_density('g/cm3', 1.0)
 
-    box = openmc.model.rectangular_prism(10., 10., boundary_type='vacuum')
-    c = openmc.Cell(fill=m, region=box)
+    box = openmc.model.RectangularPrism(10., 10., boundary_type='vacuum')
+    c = openmc.Cell(fill=m, region=-box)
     model.geometry.root_universe = openmc.Universe(cells=[c])
 
     model.settings.particles = 100

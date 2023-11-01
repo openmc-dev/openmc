@@ -1,8 +1,12 @@
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from copy import copy
+from functools import partial
 from math import sqrt, pi, sin, cos, isclose
+from numbers import Real
 import warnings
 import operator
+from typing import Sequence
 
 import numpy as np
 from scipy.spatial import ConvexHull, Delaunay
@@ -50,12 +54,12 @@ class CompositeSurface(ABC):
         """Iterable of attribute names corresponding to underlying surfaces."""
 
     @abstractmethod
-    def __pos__(self):
-        """Return the positive half-space of the composite surface."""
-
-    @abstractmethod
-    def __neg__(self):
+    def __neg__(self) -> openmc.Region:
         """Return the negative half-space of the composite surface."""
+
+    def __pos__(self) -> openmc.Region:
+        """Return the positive half-space of the composite surface."""
+        return ~(-self)
 
 
 class CylinderSector(CompositeSurface):
@@ -836,9 +840,6 @@ class Polygon(CompositeSurface):
     def __neg__(self):
         return self._region
 
-    def __pos__(self):
-        return ~self._region
-
     @property
     def _surface_names(self):
         return self._surfnames
@@ -1309,5 +1310,295 @@ class CruciformPrism(CompositeSurface):
             )
         return openmc.Union(regions)
 
-    def __pos__(self):
-        return ~(-self)
+
+# Define function to create a plane on given axis
+def _plane(axis, name, value, boundary_type='transmission', albedo=1.0):
+        cls = getattr(openmc, f'{axis.upper()}Plane')
+        return cls(value, name=f'{name} {axis}',
+                   boundary_type=boundary_type, albedo=albedo)
+
+
+class RectangularPrism(CompositeSurface):
+    """Infinite rectangular prism bounded by four planar surfaces.
+
+    .. versionadded:: 0.13.4
+
+    Parameters
+    ----------
+    width : float
+        Prism width in units of [cm]. The width is aligned with the x, x, or z
+        axes for prisms parallel to the x, y, or z axis, respectively.
+    height : float
+        Prism height in units of [cm]. The height is aligned with the x, y, or z
+        axes for prisms parallel to the x, y, or z axis, respectively.
+    axis : {'x', 'y', 'z'}
+        Axis with which the infinite length of the prism should be aligned.
+    origin : Iterable of two floats
+        Origin of the prism. The two floats correspond to (y,z), (x,z) or (x,y)
+        for prisms parallel to the x, y or z axis, respectively.
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
+        Boundary condition that defines the behavior for particles hitting the
+        surfaces comprising the rectangular prism.
+    albedo : float, optional
+        Albedo of the prism's surfaces as a ratio of particle weight after
+        interaction with the surface to the initial weight. Values must be
+        positive. Only applicable if the boundary type is 'reflective',
+        'periodic', or 'white'.
+    corner_radius : float
+        Prism corner radius in units of [cm].
+
+    """
+    _surface_names = ('min_x1', 'max_x1', 'min_x2', 'max_x2')
+
+    def __init__(
+            self,
+            width: float,
+            height: float,
+            axis: str = 'z',
+            origin: Sequence[float] = (0., 0.),
+            boundary_type: str = 'transmission',
+            albedo: float = 1.,
+            corner_radius: float = 0.
+        ):
+        check_type('width', width, Real)
+        check_type('height', height, Real)
+        check_type('albedo', albedo, Real)
+        check_type('corner_radius', corner_radius, Real)
+        check_value('axis', axis, ('x', 'y', 'z'))
+        check_type('origin', origin, Iterable, Real)
+
+        if axis == 'x':
+            x1, x2 = 'y', 'z'
+        elif axis == 'y':
+            x1, x2 = 'x', 'z'
+        else:
+            x1, x2 = 'x', 'y'
+
+        # Get cylinder class corresponding to given axis
+        cyl = getattr(openmc, f'{axis.upper()}Cylinder')
+
+        # Create container for boundary arguments
+        bc_args = {'boundary_type': boundary_type, 'albedo': albedo}
+
+        # Create rectangular region
+        self.min_x1 = _plane(x1, 'minimum', -width/2 + origin[0], **bc_args)
+        self.max_x1 = _plane(x1, 'maximum', width/2 + origin[0], **bc_args)
+        self.min_x2 = _plane(x2, 'minimum', -height/2 + origin[1], **bc_args)
+        self.max_x2 = _plane(x2, 'maximum', height/2 + origin[1], **bc_args)
+        if boundary_type == 'periodic':
+            self.min_x1.periodic_surface = self.max_x1
+            self.min_x2.periodic_surface = self.max_x2
+
+        # Handle rounded corners if given
+        if corner_radius > 0.:
+            if boundary_type == 'periodic':
+                raise ValueError('Periodic boundary conditions not permitted when '
+                                'rounded corners are used.')
+
+            args = {'r': corner_radius, 'boundary_type': boundary_type, 'albedo': albedo}
+
+            args[x1 + '0'] = origin[0] - width/2 + corner_radius
+            args[x2 + '0'] = origin[1] - height/2 + corner_radius
+            self.x1_min_x2_min = cyl(name=f'{x1} min {x2} min', **args)
+
+            args[x1 + '0'] = origin[0] - width/2 + corner_radius
+            args[x2 + '0'] = origin[1] + height/2 - corner_radius
+            self.x1_min_x2_max = cyl(name=f'{x1} min {x2} max', **args)
+
+            args[x1 + '0'] = origin[0] + width/2 - corner_radius
+            args[x2 + '0'] = origin[1] - height/2 + corner_radius
+            self.x1_max_x2_min = cyl(name=f'{x1} max {x2} min', **args)
+
+            args[x1 + '0'] = origin[0] + width/2 - corner_radius
+            args[x2 + '0'] = origin[1] + height/2 - corner_radius
+            self.x1_max_x2_max = cyl(name=f'{x1} max {x2} max', **args)
+
+            self.x1_min = _plane(x1, 'min', -width/2 + origin[0] + corner_radius,
+                                 **bc_args)
+            self.x1_max = _plane(x1, 'max', width/2 + origin[0] - corner_radius,
+                                 **bc_args)
+            self.x2_min = _plane(x2, 'min', -height/2 + origin[1] + corner_radius,
+                                 **bc_args)
+            self.x2_max = _plane(x2, 'max', height/2 + origin[1] - corner_radius,
+                                 **bc_args)
+            self._surface_names += (
+                'x1_min_x2_min', 'x1_min_x2_max', 'x1_max_x2_min',
+                'x1_max_x2_max', 'x1_min', 'x1_max', 'x2_min', 'x2_max'
+            )
+
+    def __neg__(self):
+        prism = +self.min_x1 & -self.max_x1 & +self.min_x2 & -self.max_x2
+
+        # Cut out corners if a corner radius was given
+        if hasattr(self, 'x1_min'):
+            corners = (
+                (+self.x1_min_x2_min & -self.x1_min & -self.x2_min) |
+                (+self.x1_min_x2_max & -self.x1_min & +self.x2_max) |
+                (+self.x1_max_x2_min & +self.x1_max & -self.x2_min) |
+                (+self.x1_max_x2_max & +self.x1_max & +self.x2_max)
+            )
+            prism &= ~corners
+
+        return prism
+
+
+class HexagonalPrism(CompositeSurface):
+    """Hexagonal prism comoposed of six planar surfaces
+
+    Parameters
+    ----------
+    edge_length : float
+        Length of a side of the hexagon in [cm]
+    orientation : {'x', 'y'}
+        An 'x' orientation means that two sides of the hexagon are parallel to
+        the x-axis and a 'y' orientation means that two sides of the hexagon are
+        parallel to the y-axis.
+    origin : Iterable of two floats
+        Origin of the prism.
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
+        Boundary condition that defines the behavior for particles hitting the
+        surfaces comprising the hexagonal prism.
+    albedo : float, optional
+        Albedo of the prism's surfaces as a ratio of particle weight after
+        interaction with the surface to the initial weight. Values must be
+        positive. Only applicable if the boundary type is 'reflective',
+        'periodic', or 'white'.
+    corner_radius : float
+        Prism corner radius in units of [cm].
+
+    """
+    _surface_names = ('plane_max', 'plane_min', 'upper_right', 'upper_left',
+                      'lower_right', 'lower_left')
+
+    def __init__(
+            self,
+            edge_length: float = 1.,
+            orientation: str = 'y',
+            origin: Sequence[float] = (0., 0.),
+            boundary_type: str = 'transmission',
+            albedo: float = 1.,
+            corner_radius: float = 0.
+    ):
+        check_type('edge_length', edge_length, Real)
+        check_type('albedo', albedo, Real)
+        check_type('corner_radius', corner_radius, Real)
+        check_value('orientation', orientation, ('x', 'y'))
+        check_type('origin', origin, Iterable, Real)
+
+        l = edge_length
+        x, y = origin
+
+        # Create container for boundary arguments
+        bc_args = {'boundary_type': boundary_type, 'albedo': albedo}
+
+        if orientation == 'y':
+            # Left and right planes
+            self.plane_max = openmc.XPlane(x + sqrt(3.)/2*l, **bc_args)
+            self.plane_min = openmc.XPlane(x - sqrt(3.)/2*l, **bc_args)
+            c = sqrt(3.)/3.
+
+            # y = -x/sqrt(3) + a
+            self.upper_right = openmc.Plane(a=c, b=1., d=l+x*c+y, **bc_args)
+
+            # y = x/sqrt(3) + a
+            self.upper_left = openmc.Plane(a=-c, b=1., d=l-x*c+y, **bc_args)
+
+            # y = x/sqrt(3) - a
+            self.lower_right = openmc.Plane(a=-c, b=1., d=-l-x*c+y, **bc_args)
+
+            # y = -x/sqrt(3) - a
+            self.lower_left = openmc.Plane(a=c, b=1., d=-l+x*c+y, **bc_args)
+
+        elif orientation == 'x':
+            self.plane_max = openmc.YPlane(y + sqrt(3.)/2*l, **bc_args)
+            self.plane_min = openmc.YPlane(y - sqrt(3.)/2*l, **bc_args)
+            c = sqrt(3.)
+
+            # Upper-right surface: y = -sqrt(3)*(x - a)
+            self.upper_right = openmc.Plane(a=c, b=1., d=c*l+x*c+y, **bc_args)
+
+            # Lower-right surface: y = sqrt(3)*(x + a)
+            self.lower_right = openmc.Plane(a=-c, b=1., d=-c*l-x*c+y, **bc_args)
+
+            # Lower-left surface: y = -sqrt(3)*(x + a)
+            self.lower_left = openmc.Plane(a=c, b=1., d=-c*l+x*c+y, **bc_args)
+
+            # Upper-left surface: y = sqrt(3)*(x + a)
+            self.upper_left = openmc.Plane(a=-c, b=1., d=c*l-x*c+y, **bc_args)
+
+        # Handle periodic boundary conditions
+        if boundary_type == 'periodic':
+            self.plane_min.periodic_surface = self.plane_max
+            self.upper_right.periodic_surface = self.lower_left
+            self.lower_right.periodic_surface = self.upper_left
+
+        # Handle rounded corners if given
+        if corner_radius > 0.:
+            if boundary_type == 'periodic':
+                raise ValueError('Periodic boundary conditions not permitted '
+                                 'when rounded corners are used.')
+
+            c = sqrt(3.)/2
+            t = l - corner_radius/c
+
+            # Cylinder with corner radius and boundary type pre-applied
+            cyl1 = partial(openmc.ZCylinder, r=corner_radius, **bc_args)
+            cyl2 = partial(openmc.ZCylinder, r=corner_radius/(2*c), **bc_args)
+
+            if orientation == 'x':
+                self.x_min_y_min_in = cyl1(name='x min y min in', x0=x-t/2, y0=y-c*t)
+                self.x_min_y_max_in = cyl1(name='x min y max in', x0=x+t/2, y0=y-c*t)
+                self.x_max_y_min_in = cyl1(name='x max y min in', x0=x-t/2, y0=y+c*t)
+                self.x_max_y_max_in = cyl1(name='x max y max in', x0=x+t/2, y0=y+c*t)
+                self.min_in = cyl1(name='x min in', x0=x-t, y0=y)
+                self.max_in = cyl1(name='x max in', x0=x+t, y0=y)
+
+                self.x_min_y_min_out = cyl2(name='x min y min out', x0=x-l/2, y0=y-c*l)
+                self.x_min_y_max_out = cyl2(name='x min y max out', x0=x+l/2, y0=y-c*l)
+                self.x_max_y_min_out = cyl2(name='x max y min out', x0=x-l/2, y0=y+c*l)
+                self.x_max_y_max_out = cyl2(name='x max y max out', x0=x+l/2, y0=y+c*l)
+                self.min_out = cyl2(name='x min out', x0=x-l, y0=y)
+                self.max_out = cyl2(name='x max out', x0=x+l, y0=y)
+
+            elif orientation == 'y':
+                self.x_min_y_min_in = cyl1(name='x min y min in', x0=x-c*t, y0=y-t/2)
+                self.x_min_y_max_in = cyl1(name='x min y max in', x0=x-c*t, y0=y+t/2)
+                self.x_max_y_min_in = cyl1(name='x max y min in', x0=x+c*t, y0=y-t/2)
+                self.x_max_y_max_in = cyl1(name='x max y max in', x0=x+c*t, y0=y+t/2)
+                self.min_in = cyl1(name='y min in', x0=x, y0=y-t)
+                self.max_in = cyl1(name='y max in', x0=x, y0=y+t)
+
+                self.x_min_y_min_out = cyl2(name='x min y min out', x0=x-c*l, y0=y-l/2)
+                self.x_min_y_max_out = cyl2(name='x min y max out', x0=x-c*l, y0=y+l/2)
+                self.x_max_y_min_out = cyl2(name='x max y min out', x0=x+c*l, y0=y-l/2)
+                self.x_max_y_max_out = cyl2(name='x max y max out', x0=x+c*l, y0=y+l/2)
+                self.min_out = cyl2(name='y min out', x0=x, y0=y-l)
+                self.max_out = cyl2(name='y max out', x0=x, y0=y+l)
+
+            # Add to tuple of surface names
+            for s in ('in', 'out'):
+                self._surface_names += (
+                    f'x_min_y_min_{s}', f'x_min_y_max_{s}',
+                    f'x_max_y_min_{s}', f'x_max_y_max_{s}',
+                    f'min_{s}', f'max_{s}')
+
+    def __neg__(self) -> openmc.Region:
+        prism = (
+            -self.plane_max & +self.plane_min &
+            -self.upper_right & -self.upper_left &
+            +self.lower_right & +self.lower_left
+        )
+
+        # Cut out corners if a corner radius was given
+        if hasattr(self, 'min_in'):
+            corners = (
+                +self.x_min_y_min_in & -self.x_min_y_min_out |
+                +self.x_min_y_max_in & -self.x_min_y_max_out |
+                +self.x_max_y_min_in & -self.x_max_y_min_out |
+                +self.x_max_y_max_in & -self.x_max_y_max_out |
+                +self.min_in & -self.min_out |
+                +self.max_in & -self.max_out
+            )
+            prism &= ~corners
+
+        return prism

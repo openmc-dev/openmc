@@ -92,10 +92,9 @@ def model():
     lattice.pitch = (4.0, 4.0)
     lattice.lower_left = (-4.0, -4.0)
     lattice.universes = [[extra_univ, extra_univ], [extra_univ, extra_univ]]
-    lattice_region = openmc.model.rectangular_prism(8.0,
-                                                    8.0,
-                                                    boundary_type='reflective')
-    lattice_cell = openmc.Cell(fill=lattice, region=lattice_region)
+    lattice_prism = openmc.model.RectangularPrism(
+        8.0, 8.0, boundary_type='reflective')
+    lattice_cell = openmc.Cell(fill=lattice, region=-lattice_prism)
 
     model.geometry = openmc.Geometry([lattice_cell])
 

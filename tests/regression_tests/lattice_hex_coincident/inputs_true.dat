@@ -38,7 +38,7 @@
     <cell id="5" material="3" name="lead_shell" region="5 -6 2 -3" universe="2"/>
     <cell id="6" material="2" name="matrix coolant surround" region="6 2 -3" universe="2"/>
     <cell id="7" material="2" universe="3"/>
-    <cell fill="4" id="8" name="container cell" region="-7 8 -9 10 11 -12 2 -3" universe="5"/>
+    <cell fill="4" id="8" name="container cell" region="-7 8 -9 -12 10 11 2 -3" universe="5"/>
     <hex_lattice id="4" n_rings="2" name="regular fuel assembly">
       <pitch>1.4</pitch>
       <outer>3</outer>

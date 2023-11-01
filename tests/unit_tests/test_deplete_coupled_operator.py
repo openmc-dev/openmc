@@ -38,8 +38,8 @@ def model():
 
     pin_surfaces = [openmc.ZCylinder(r=r) for r in radii]
     pin_univ = openmc.model.pin(pin_surfaces, materials)
-    bound_box = openmc.rectangular_prism(1.24, 1.24, boundary_type="reflective")
-    root_cell = openmc.Cell(fill=pin_univ, region=bound_box)
+    bound_box = openmc.model.RectangularPrism(1.24, 1.24, boundary_type="reflective")
+    root_cell = openmc.Cell(fill=pin_univ, region=-bound_box)
     geometry = openmc.Geometry([root_cell])
 
     settings = openmc.Settings()

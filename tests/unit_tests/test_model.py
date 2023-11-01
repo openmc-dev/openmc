@@ -35,8 +35,8 @@ def pin_model_attributes():
     pitch = 1.25984
     fuel_or = openmc.ZCylinder(r=0.39218, name='Fuel OR')
     clad_or = openmc.ZCylinder(r=0.45720, name='Clad OR')
-    box = openmc.model.rectangular_prism(pitch, pitch,
-                                         boundary_type='reflective')
+    box = openmc.model.RectangularPrism(pitch, pitch,
+                                        boundary_type='reflective')
 
     # Define cells
     fuel_inf_cell = openmc.Cell(cell_id=1, name='inf fuel', fill=uo2)
@@ -44,7 +44,7 @@ def pin_model_attributes():
     fuel = openmc.Cell(cell_id=2, name='fuel',
                        fill=fuel_inf_univ, region=-fuel_or)
     clad = openmc.Cell(cell_id=3, fill=zirc, region=+fuel_or & -clad_or)
-    water = openmc.Cell(cell_id=4, fill=borated_water, region=+clad_or & box)
+    water = openmc.Cell(cell_id=4, fill=borated_water, region=+clad_or & -box)
 
     # Define overall geometry
     geom = openmc.Geometry([fuel, clad, water])

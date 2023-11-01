@@ -30,6 +30,11 @@ class Region(ABC):
     def __contains__(self, point):
         pass
 
+    @property
+    @abstractmethod
+    def bounding_box(self) -> BoundingBox:
+        pass
+
     @abstractmethod
     def __str__(self):
         pass
@@ -413,7 +418,7 @@ class Intersection(Region, MutableSequence):
         return '(' + ' '.join(map(str, self)) + ')'
 
     @property
-    def bounding_box(self):
+    def bounding_box(self) -> BoundingBox:
         box = BoundingBox.infinite()
         for n in self:
             box &= n.bounding_box
@@ -501,7 +506,7 @@ class Union(Region, MutableSequence):
         return '(' + ' | '.join(map(str, self)) + ')'
 
     @property
-    def bounding_box(self):
+    def bounding_box(self) -> BoundingBox:
         bbox = BoundingBox(np.array([np.inf]*3),
                            np.array([-np.inf]*3))
         for n in self:
@@ -571,7 +576,7 @@ class Complement(Region):
         self._node = node
 
     @property
-    def bounding_box(self):
+    def bounding_box(self) -> BoundingBox:
         # Use De Morgan's laws to distribute the complement operator so that it
         # only applies to surface half-spaces, thus allowing us to calculate the
         # bounding box in the usual recursive manner.

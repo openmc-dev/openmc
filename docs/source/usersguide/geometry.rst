@@ -147,12 +147,13 @@ For many regions, a bounding-box can be determined automatically::
 While a bounding box can be determined for regions involving half-spaces of
 spheres, cylinders, and axis-aligned planes, it generally cannot be determined
 if the region involves cones, non-axis-aligned planes, or other exotic
-second-order surfaces. For example, the :func:`openmc.model.hexagonal_prism`
-function returns the interior region of a hexagonal prism; because it is bounded
-by a :class:`openmc.Plane`, trying to get its bounding box won't work::
+second-order surfaces. For example, the :class:`openmc.model.HexagonalPrism`
+class returns a hexagonal prism surface; because it utilizes a
+:class:`openmc.Plane`, trying to get the bounding box of its interior won't
+work::
 
-  >>> hex = openmc.model.hexagonal_prism()
-  >>> hex.bounding_box
+  >>> hex = openmc.model.HexagonalPrism()
+  >>> (-hex).bounding_box
   (array([-0.8660254,       -inf,       -inf]),
    array([ 0.8660254,        inf,        inf]))
 
@@ -428,7 +429,7 @@ code would work::
   hexlat.universes = [outer_ring, middle_ring, inner_ring]
 
 If you need to create a hexagonal boundary (composed of six planar surfaces) for
-a hexagonal lattice, :func:`openmc.model.hexagonal_prism` can be used.
+a hexagonal lattice, :class:`openmc.model.HexagonalPrism` can be used.
 
 .. _usersguide_geom_export:
 

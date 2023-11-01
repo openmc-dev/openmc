@@ -127,9 +127,9 @@ def test_cylindrical_mesh_coincident(scale, run_in_tmpdir):
     fuel.set_density('g/cm3', 4.5)
 
     zcyl = openmc.ZCylinder(r=1.25*scale)
-    box = openmc.rectangular_prism(4*scale, 4*scale, boundary_type='reflective')
+    box = openmc.model.RectangularPrism(4*scale, 4*scale, boundary_type='reflective')
     cell1 = openmc.Cell(fill=fuel, region=-zcyl)
-    cell2 = openmc.Cell(fill=None, region=+zcyl & box)
+    cell2 = openmc.Cell(fill=None, region=+zcyl & -box)
     model = openmc.Model()
     model.geometry = openmc.Geometry([cell1, cell2])
 
@@ -193,7 +193,7 @@ def test_spherical_mesh_coincident(scale, run_in_tmpdir):
         phi_grid=[0., 2*math.pi],
         theta_grid=[0., math.pi],
     )
-        
+
     sph_mesh_filter = openmc.MeshFilter(sph_mesh)
     cell_filter = openmc.CellFilter([cell1])
 

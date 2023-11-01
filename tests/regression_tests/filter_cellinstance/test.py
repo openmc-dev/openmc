@@ -60,8 +60,8 @@ def model():
         [u3, u3, u2, u3],
         [u3, u3, u3, u2]
     ]
-    box = openmc.model.rectangular_prism(8.0, 8.0, boundary_type='reflective')
-    main_cell = openmc.Cell(fill=lat, region=box)
+    box = openmc.model.RectangularPrism(8.0, 8.0, boundary_type='reflective')
+    main_cell = openmc.Cell(fill=lat, region=-box)
     model.geometry.root_universe = openmc.Universe(cells=[main_cell])
     model.geometry.determine_paths()
 

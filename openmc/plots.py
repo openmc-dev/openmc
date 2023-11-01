@@ -990,6 +990,8 @@ class ProjectionPlot(PlotBase):
     projections are more similar to a pinhole camera, and orthographic projections
     preserve parallel lines and distances.
 
+    .. versionadded:: 0.14.0
+
     Parameters
     ----------
     plot_id : int

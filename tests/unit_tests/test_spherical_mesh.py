@@ -102,7 +102,7 @@ def test_offset_mesh(run_in_tmpdir, model, estimator, origin):
         centroids = mesh.centroids
         for ijk in mesh.indices:
             i, j, k = np.array(ijk) - 1
-            if model.geometry.find(centroids[:, i, j, k]):
+            if model.geometry.find(centroids[i, j, k]):
                 mean[i, j, k] == 0.0
             else:
                 mean[i, j, k] != 0.0

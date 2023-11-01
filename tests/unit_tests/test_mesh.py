@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 import openmc
 
+from openmc import RegularMesh, RectilinearMesh, CylindricalMesh, SphericalMesh
 
 @pytest.mark.parametrize("val_left,val_right", [(0, 0), (-1., -1.), (2.0, 2)])
 def test_raises_error_when_flat(val_left, val_right):
@@ -162,29 +163,80 @@ def test_centroids():
     mesh.lower_left = (1., 2., 3.)
     mesh.upper_right = (11., 12., 13.)
     mesh.dimension = (1, 1, 1)
-    np.testing.assert_array_almost_equal(mesh.centroids[:, 0, 0, 0], [6., 7., 8.])
+    np.testing.assert_array_almost_equal(mesh.centroids[0, 0, 0], [6., 7., 8.])
 
     # rectilinear mesh
     mesh = openmc.RectilinearMesh()
     mesh.x_grid = [1., 11.]
     mesh.y_grid = [2., 12.]
     mesh.z_grid = [3., 13.]
-    np.testing.assert_array_almost_equal(mesh.centroids[:, 0, 0, 0], [6., 7., 8.])
+    np.testing.assert_array_almost_equal(mesh.centroids[0, 0, 0], [6., 7., 8.])
 
     # cylindrical mesh
     mesh = openmc.CylindricalMesh(r_grid=(0, 10), z_grid=(0, 10), phi_grid=(0, np.pi))
-    np.testing.assert_array_almost_equal(mesh.centroids[:, 0, 0, 0], [0.0, 5.0, 5.0])
+    np.testing.assert_array_almost_equal(mesh.centroids[0, 0, 0], [0.0, 5.0, 5.0])
     # ensure that setting an origin is handled correctly
     mesh.origin = (5.0, 0, -10)
-    np.testing.assert_array_almost_equal(mesh.centroids[:, 0, 0, 0], [5.0, 5.0, -5.0])
+    np.testing.assert_array_almost_equal(mesh.centroids[0, 0, 0], [5.0, 5.0, -5.0])
 
     # spherical mesh, single element xyz-positive octant
     mesh = openmc.SphericalMesh(r_grid=[0, 10], theta_grid=[0, 0.5*np.pi], phi_grid=[0, np.pi])
     x = 5.*np.cos(0.5*np.pi)*np.sin(0.25*np.pi)
     y = 5.*np.sin(0.5*np.pi)*np.sin(0.25*np.pi)
     z = 5.*np.sin(0.25*np.pi)
-    np.testing.assert_array_almost_equal(mesh.centroids[:, 0, 0, 0], [x, y, z])
+    np.testing.assert_array_almost_equal(mesh.centroids[0, 0, 0], [x, y, z])
 
     mesh.origin = (-5.0, -5.0, 5.0)
-    np.testing.assert_array_almost_equal(mesh.centroids[:, 0, 0, 0], [x-5.0, y-5.0, z+5.0])
+    np.testing.assert_array_almost_equal(mesh.centroids[0, 0, 0], [x-5.0, y-5.0, z+5.0])
+
+
+@pytest.mark.parametrize('mesh_type', ('regular', 'rectilinear', 'cylindrical', 'spherical'))
+def test_mesh_vertices(mesh_type):
+
+    ijk = (2, 3, 2)
+
+    # create a new mesh object
+    if mesh_type == 'regular':
+        mesh = openmc.RegularMesh()
+        ll = np.asarray([0.]*3)
+        width = np.asarray([0.5]*3)
+        mesh.lower_left = ll
+        mesh.width = width
+        mesh.dimension = (5, 7, 9)
+
+        # spot check that an element has the correct vertex coordinates asociated with it
+        # (using zero-indexing here)
+        exp_i_j_k = ll + np.asarray(ijk, dtype=float) * width
+        np.testing.assert_equal(mesh.vertices[ijk], exp_i_j_k)
+
+        # shift the mesh using the llc
+        shift  = np.asarray((3.0, 6.0, 10.0))
+        mesh.lower_left += shift
+        np.testing.assert_equal(mesh.vertices[ijk], exp_i_j_k+shift)
+    elif mesh_type == 'rectilinear':
+        mesh = openmc.RectilinearMesh()
+        w = np.asarray([0.5] * 3)
+        ll = np.asarray([0.]*3)
+        dims = (5, 7, 9)
+        mesh.x_grid = np.linspace(ll[0], w[0]*dims[0], dims[0])
+        mesh.y_grid = np.linspace(ll[1], w[1]*dims[1], dims[1])
+        mesh.z_grid = np.linspace(ll[2], w[2]*dims[2], dims[2])
+        exp_vert = np.asarray((mesh.x_grid[2], mesh.y_grid[3], mesh.z_grid[2]))
+        np.testing.assert_equal(mesh.vertices[ijk], exp_vert)
+    elif mesh_type == 'cylindrical':
+        r_grid = np.linspace(0, 5, 10)
+        z_grid = np.linspace(-10, 10, 20)
+        phi_grid = np.linspace(0, 2*np.pi, 8)
+        mesh = openmc.CylindricalMesh(r_grid=r_grid, z_grid=z_grid, phi_grid=phi_grid)
+        exp_vert = np.asarray((mesh.r_grid[2], mesh.phi_grid[3], mesh.z_grid[2]))
+        np.testing.assert_equal(mesh.vertices_cylindrical[ijk], exp_vert)
+    elif mesh_type == 'spherical':
+        r_grid = np.linspace(0, 13, 14)
+        theta_grid = np.linspace(0, np.pi, 11)
+        phi_grid = np.linspace(0, 2*np.pi, 7)
+        mesh = openmc.SphericalMesh(r_grid=r_grid, theta_grid=theta_grid, phi_grid=phi_grid)
+        exp_vert = np.asarray((mesh.r_grid[2], mesh.theta_grid[3], mesh.phi_grid[2]))
+        np.testing.assert_equal(mesh.vertices_spherical[ijk], exp_vert)
+
+
 

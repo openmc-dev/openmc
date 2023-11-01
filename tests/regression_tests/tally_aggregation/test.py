@@ -33,8 +33,8 @@ def model():
         [pin, pin],
         [pin, pin],
     ]
-    box = openmc.model.rectangular_prism(2*d, 2*d, boundary_type='reflective')
-    main_cell = openmc.Cell(fill=lattice, region=box)
+    box = openmc.model.RectangularPrism(2*d, 2*d, boundary_type='reflective')
+    main_cell = openmc.Cell(fill=lattice, region=-box)
     model.geometry = openmc.Geometry([main_cell])
 
     model.settings.batches = 10

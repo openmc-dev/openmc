@@ -36,7 +36,7 @@ from . import examples
 from .config import *
 
 # Import a few names from the model module
-from openmc.model import rectangular_prism, hexagonal_prism, Model
+from openmc.model import Model
 
 
 __version__ = '0.14.0-dev'

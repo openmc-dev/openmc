@@ -42,8 +42,8 @@ def model():
     lattice.pitch = (2*d, 2*d)
     lattice.universes = np.full((2, 2), inner_univ)
 
-    box = openmc.model.rectangular_prism(4*d, 4*d, boundary_type='reflective')
-    main_cell = openmc.Cell(fill=lattice, region=box)
+    box = openmc.model.RectangularPrism(4*d, 4*d, boundary_type='reflective')
+    main_cell = openmc.Cell(fill=lattice, region=-box)
     model.geometry = openmc.Geometry([main_cell])
 
     model.settings.batches = 10

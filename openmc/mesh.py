@@ -1543,7 +1543,6 @@ class CylindricalMesh(StructuredMesh):
         """Converts an array with r, phi, z values in the last dimension (shape (..., 3))
         to Cartesian coordinates.
         """
-        print(arr.shape)
         x = arr[..., 0] * np.cos(arr[..., 1]) + origin[0]
         y = arr[..., 0] * np.sin(arr[..., 1]) + origin[1]
         arr[..., 0] = x

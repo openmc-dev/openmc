@@ -108,14 +108,14 @@ def test_mg_temperature_multi():
 
     # Create a region represented as the inside of a rectangular prism
     pitch = 1.26
-    box = openmc.rectangular_prism(pitch, pitch, boundary_type='reflective')
+    box = openmc.model.RectangularPrism(pitch, pitch, boundary_type='reflective')
 
     # Instantiate Cells
     fuel_inner = openmc.Cell(fill=uo2, region=-fuel_ir, name='fuel inner')
     fuel_inner.temperature = 600.0
     fuel_outer = openmc.Cell(fill=uo2, region=+fuel_ir & -fuel_or, name='fuel outer')
     fuel_outer.temperature = 294.0
-    moderator = openmc.Cell(fill=water, region=+fuel_or & box, name='moderator')
+    moderator = openmc.Cell(fill=water, region=+fuel_or & -box, name='moderator')
 
     # Create a geometry with the two cells and export to XML
     geometry = openmc.Geometry([fuel_inner, fuel_outer, moderator])

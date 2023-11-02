@@ -124,7 +124,7 @@ class Settings:
         Maximum number of particle restart files (per MPI process) to write for
         lost particles.
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
     no_reduce : bool
         Indicate that all user-defined and global tallies should not be reduced
         across processes in a parallel calculation.
@@ -240,11 +240,11 @@ class Settings:
         Indicates the checkpoints for weight window split/roulettes. Valid keys
         include "collision" and "surface". Values must be of type bool.
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
     weight_window_generators : WeightWindowGenerator or iterable of WeightWindowGenerator
         Weight windows generation parameters to apply during simulation
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
 
     create_delayed_neutrons : bool
         Whether delayed neutrons are created in fission.
@@ -258,7 +258,7 @@ class Settings:
     weight_windows_file: Pathlike
         Path to a weight window file to load during simulation initialization
 
-        .. versionadded::0.13.4
+        .. versionadded::0.14.0
     write_initial_source : bool
         Indicate whether to write the initial source distribution to file
     """

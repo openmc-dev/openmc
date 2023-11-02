@@ -183,7 +183,7 @@ class Tally(_FortranObjectWithID):
     multiply_density : bool
         Whether reaction rates should be multiplied by atom density
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
     nuclides : list of str
         List of nuclides to score results for
     num_realizations : int

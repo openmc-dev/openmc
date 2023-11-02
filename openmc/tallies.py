@@ -57,7 +57,7 @@ class Tally(IDManagerMixin):
     multiply_density : bool
         Whether reaction rates should be multiplied by atom density
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
     filters : list of openmc.Filter
         List of specified filters for the tally
     nuclides : list of str

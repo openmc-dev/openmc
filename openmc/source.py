@@ -428,8 +428,6 @@ class MeshSource(SourceBase):
 
     @property
     def strength(self):
-        if self.sources is None:
-            return 0.0
         return sum(s.strength for s in self.sources.flat)
 
     @property

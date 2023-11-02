@@ -193,7 +193,7 @@ class StepResult:
 
         # Direct transfer
         direct_attrs = ("time", "k", "source_rate", "index_nuc",
-                        "mat_to_hdf5_ind", "proc_time")
+                        "mat_to_hdf5_ind", "proc_time","batchwise")
         for attr in direct_attrs:
             setattr(new, attr, getattr(self, attr))
         # Get applicable slice of data

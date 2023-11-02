@@ -766,8 +766,13 @@ class Integrator(ABC):
     def _get_start_data(self):
         if self.operator.prev_res is None:
             return 0.0, 0
-        return (self.operator.prev_res[-1].time[-1],
-                len(self.operator.prev_res) - 1)
+        else:
+            if comm.size != 1:
+                return (self.operator.prev_res[-1].time[-1],
+                        int(len(self.operator.prev_res)/2) - 1)
+            else:
+                return (self.operator.prev_res[-1].time[-1],
+                        len(self.operator.prev_res) - 1)
 
     def _get_bos_from_batchwise(self, step_index, bos_conc):
         """Get BOS from criticality batch-wise control
@@ -810,6 +815,11 @@ class Integrator(ABC):
                     n, res = self._get_bos_data_from_operator(i, source_rate, n)
                 else:
                     n, res = self._get_bos_data_from_restart(i, source_rate, n)
+                    if self.batchwise:
+                        root = self.operator.prev_res[-1].batchwise
+                        self.batchwise.update_from_restart(n, root)
+                    else:
+                        root = None
 
                 # Solve Bateman equations over time interval
                 proc_time, n_list, res_list = self(n, res.rates, dt, source_rate, i)

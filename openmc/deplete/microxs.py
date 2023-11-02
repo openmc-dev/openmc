@@ -22,6 +22,29 @@ _valid_rxns = list(REACTIONS)
 _valid_rxns.append('fission')
 
 
+def resolve_chain_file_path(chain_file:str):
+    # Determine what reactions and nuclides are available in chain
+    if chain_file is None:
+        if 'chain_file' in openmc.config:
+            raise DataError(
+                "No depletion chain specified and could not find depletion "
+                "chain in openmc.config['chain_file']"
+            )
+        else:
+            chain_file = openmc.config['chain_file']
+    return chain_file
+
+
+def resolve_openmc_data_path(openmc_data_path:str=None):
+    if not openmc_data_path:
+        if 'cross_sections' not in openmc.config:
+            raise ValueError("`openmc_data_path` is not defined nor `openmc.config['cross_sections']` is defined.")
+        else:
+            openmc_data_path = openmc.config['cross_sections']
+    return openmc_data_path
+
+
+
 def get_microxs_and_flux(
         model: openmc.Model,
         domains,
@@ -69,13 +92,7 @@ def get_microxs_and_flux(
     original_tallies = model.tallies
 
     # Determine what reactions and nuclides are available in chain
-    if chain_file is None:
-        chain_file = openmc.config.get('chain_file')
-        if chain_file is None:
-            raise DataError(
-                "No depletion chain specified and could not find depletion "
-                "chain in openmc.config['chain_file']"
-            )
+    chain_file = resolve_chain_file_path(chain_file)
     chain = Chain.from_xml(chain_file)
     if reactions is None:
         reactions = chain.reactions
@@ -151,6 +168,87 @@ def get_microxs_and_flux(
     return fluxes, micros
 
 
+
+
+def get_microxs_from_mg_flux(energies: list or str, mg_flux: list, 
+                             chain_file_path:str=None, openmc_data_path:str=None,
+                             temperature:int=294):
+    """Generated MicroXS object from a known flux and a chain file. The size of the MicroXs matrix depends
+       on the chain file.
+
+    Args:
+        energies: iterable of float or str
+            Energy group boundaries in [eV] or the name of the group structure
+        mg_flux: iterable of float
+            Energy-dependent multigroup flux values
+        chain_file_path: str, optional
+            Path to the depletion chain XML file that will be used in
+            depletion simulation.
+        openmc_dat_path: str, optional
+            Path to the cross section XML file that contains data library paths.
+        temperature: int, optional
+            Temperature for cross section evaluation in [K].
+    """
+    # check energies
+    if isinstance(energies, str):
+        energies = openmc.EnergyFilter.from_group_structure(energies).values
+    
+    # check ascending (low to high)
+    if not all(energies[i] <= energies[i+1] for i in range(len(energies) - 1)):
+         raise ValueError('Energy bin must be in ascending order')
+    
+    # check dimension consistency
+    if not len(mg_flux) == len(energies)-1:
+        raise ValueError('Length of flux array should be len(energies)-1')
+    
+    chain_file_path = resolve_chain_file_path(chain_file_path)
+    chain = openmc.deplete.Chain.from_xml(chain_file_path)
+    
+    # resolve data library
+    openmc_data_path = resolve_openmc_data_path(openmc_data_path)
+    data_lib = openmc.data.DataLibrary.from_xml(openmc_data_path)
+
+    # get reactions and nuclides from chain file
+    nuclides, reactions = chain.nuclides, chain.reactions
+    nuclides = [nuc.name for nuc in nuclides]
+    if 'fission' in reactions:
+        # send to back
+        reactions.append(reactions.pop(reactions.index('fission')))
+    # convert reactions to mt file
+    #! I feel like this zero indexing will backfire
+    #! There has to be a better way for this
+    mts = [list(REACTIONS[reaction].mts)[0] for reaction in reactions if reaction != 'fission']
+    if 'fission' in reactions:
+        mts.append(18) # fission is not in the REACTIONS
+
+    # normalize flux and get energy midpoint
+    norm_mg_flux = mg_flux / sum(mg_flux)
+    energies_midpoint = [(energies[i]+energies[i+1])/2 for i in range(len(energies)-1)]
+    temperature_key = str(temperature) + 'K'
+    microxs_arr = np.zeros((len(nuclides), len(mts)))
+
+    for nuc_indx, nuc in enumerate(nuclides):
+        mat_lib = data_lib.get_by_material(nuc, data_type='neutron')
+        if not mat_lib: # file does not exist
+            microxs_arr[nuc_indx, :] = 0
+            continue
+        else:
+            hdf5_path = mat_lib['path']
+        nuc_data = openmc.data.IncidentNeutron.from_hdf5(hdf5_path)
+        for mt_indx, mt in enumerate(mts):
+            try: # sometimes it fails cause there's no entry
+                total_xs = np.array(nuc_data[mt].xs[temperature_key](energies_midpoint))
+                # collapse
+                total_norm = sum(total_xs * norm_mg_flux)
+                microxs_arr[nuc_indx, mt_indx] = total_norm            
+            except KeyError:
+                microxs_arr[nuc_indx, mt_indx] = 0.0
+    
+    return openmc.deplete.MicroXS.from_array(nuclides=nuclides,
+                                             reactions=reactions,
+                                             data=microxs_arr)
+
+
 class MicroXS:
     """Microscopic cross section data for use in transport-independent depletion.
 
@@ -192,8 +290,6 @@ class MicroXS:
         self._index_nuc = {nuc: i for i, nuc in enumerate(nuclides)}
         self._index_rx = {rx: i for i, rx in enumerate(reactions)}
 
-    # TODO: Add a classmethod for generating MicroXS directly from cross section
-    # data using a known flux spectrum
 
     @classmethod
     def from_csv(cls, csv_file, **kwargs):

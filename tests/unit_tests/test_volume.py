@@ -110,7 +110,7 @@ def test_volume_no_cross_section(run_in_tmpdir):
     root_universe = openmc.Universe(cells=(fuel, gap, clad, moderator))
     geometry = openmc.Geometry(root_universe)
     geometry.export_to_xml()
-    volumes_calc = openmc.VolumeCalculation([fuel, gap, clad, moderator], 100000, lower_left, upper_right)
+    volumes_calc = openmc.VolumeCalculation([fuel, gap, clad, moderator], 100, lower_left, upper_right)
     settings = openmc.Settings()
     settings.volume_calculations = [volumes_calc]
     settings.export_to_xml()

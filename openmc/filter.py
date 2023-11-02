@@ -1400,6 +1400,7 @@ class EnergyFilter(RealFilter):
 
         """
 
+        cv.check_value('group_structure', group_structure, openmc.mgxs.GROUP_STRUCTURES.keys())
         return cls(openmc.mgxs.GROUP_STRUCTURES[group_structure.upper()])
 
 

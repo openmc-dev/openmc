@@ -1087,20 +1087,30 @@ void Material::to_hdf5(hid_t group) const
   vector<std::string> nuc_names;
   vector<std::string> macro_names;
   vector<double> nuc_densities;
-  if (settings::run_CE) {
-    for (int i = 0; i < nuclide_.size(); ++i) {
-      int i_nuc = nuclide_[i];
-      nuc_names.push_back(data::nuclides[i_nuc]->name_);
-      nuc_densities.push_back(atom_density_(i));
-    }
-  } else {
-    for (int i = 0; i < nuclide_.size(); ++i) {
-      int i_nuc = nuclide_[i];
-      if (data::mg.nuclides_[i_nuc].awr != MACROSCOPIC_AWR) {
-        nuc_names.push_back(data::mg.nuclides_[i_nuc].name);
+
+  // Loading data is not necessary in plotting mode or in volume mode when no
+  // cross section source is specified.
+  bool require_data = !(settings::run_mode == RunMode::PLOTTING ||
+                        (settings::run_mode == RunMode::VOLUME &&
+                          settings::path_cross_sections.empty()));
+
+
+  if (require_data) {
+    if (settings::run_CE) {
+      for (int i = 0; i < nuclide_.size(); ++i) {
+        int i_nuc = nuclide_[i];
+        nuc_names.push_back(data::nuclides[i_nuc]->name_);
         nuc_densities.push_back(atom_density_(i));
-      } else {
-        macro_names.push_back(data::mg.nuclides_[i_nuc].name);
+      }
+    } else {
+      for (int i = 0; i < nuclide_.size(); ++i) {
+        int i_nuc = nuclide_[i];
+        if (data::mg.nuclides_[i_nuc].awr != MACROSCOPIC_AWR) {
+          nuc_names.push_back(data::mg.nuclides_[i_nuc].name);
+          nuc_densities.push_back(atom_density_(i));
+        } else {
+          macro_names.push_back(data::mg.nuclides_[i_nuc].name);
+        }
       }
     }
   }
@@ -1116,7 +1126,7 @@ void Material::to_hdf5(hid_t group) const
     write_dataset(material_group, "macroscopics", macro_names);
   }
 
-  if (!thermal_tables_.empty()) {
+  if (!thermal_tables_.empty() and require_data) {
     vector<std::string> sab_names;
     for (const auto& table : thermal_tables_) {
       sab_names.push_back(data::thermal_scatt[table.index_table]->name_);

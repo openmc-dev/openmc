@@ -115,7 +115,7 @@ void read_cross_sections_xml(pugi::xml_node root)
   if (!check_for_node(root, "cross_sections")) {
     // No cross_sections.xml file specified in settings.xml, check
     // environment variable
-    if (settings::run_CE) {
+    if (settings::run_CE and settings::run_mode != RunMode::VOLUME) {
       char* envvar = std::getenv("OPENMC_CROSS_SECTIONS");
       if (!envvar) {
         fatal_error(

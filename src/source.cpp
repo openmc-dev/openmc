@@ -222,10 +222,10 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
             found = contains(domain_ids_, model::materials[mat_index]->id());
           }
         } else {
-          for (const auto& coord : p.coord()) {
+          for (int i = 0; i < p.n_coord(); i++) {
             auto id = (domain_type_ == DomainType::CELL)
-                        ? model::cells[coord.cell]->id_
-                        : model::universes[coord.universe]->id_;
+                        ? model::cells[p.coord(i).cell]->id_
+                        : model::universes[p.coord(i).universe]->id_;
             if ((found = contains(domain_ids_, id)))
               break;
           }

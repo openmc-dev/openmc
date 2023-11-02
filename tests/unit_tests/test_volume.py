@@ -102,10 +102,6 @@ def test_volume_no_cross_section(run_in_tmpdir):
     moderator = openmc.Cell(name='moderator')
     moderator.fill = water
     moderator.region = water_region
-    box = openmc.rectangular_prism(width=pitch, height=pitch,
-                               boundary_type='reflective')
-
-    water_region = box & +clad_outer_radius
 
     root_universe = openmc.Universe(cells=(fuel, gap, clad, moderator))
     geometry = openmc.Geometry(root_universe)

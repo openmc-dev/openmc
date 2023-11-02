@@ -313,19 +313,6 @@ class IndependentSource(SourceBase):
             id_elem = ET.SubElement(element, "domain_ids")
             id_elem.text = ' '.join(str(uid) for uid in self.domain_ids)
 
-    def to_xml_element(self) -> ET.Element:
-        """Return XML representation of the source
-
-        Returns
-        -------
-        element : xml.etree.ElementTree.Element
-            XML element containing source data
-
-        """
-        element = ET.Element("source")
-        self.populate_xml_element(element)
-        return element
-
     @classmethod
     def from_xml_element(cls, elem: ET.Element, meshes=None) -> 'openmc.SourceBase':
         """Generate source from an XML element
@@ -393,17 +380,23 @@ class IndependentSource(SourceBase):
 
         return source
 
+
 class MeshSource(SourceBase):
-    """A mesh-based source in which random positions are uniformly sampled
-    within mesh elements and each element can have independent angle, energy,
-    and time distributions. The element sampled is chosen based on the relative
-    strengths of the sources applied to the elements. The strength of the mesh
-    source as a whole is the sum of all source strengths applied to the elements.
+    """A source with a spatial distribution over mesh elements
+
+    This class represents a mesh-based source in which random positions are
+    uniformly sampled within mesh elements and each element can have independent
+    angle, energy, and time distributions. The element sampled is chosen based
+    on the relative strengths of the sources applied to the elements. The
+    strength of the mesh source as a whole is the sum of all source strengths
+    applied to the elements.
+
+    .. versionadded:: 0.14.1
 
     Parameters
     ----------
     mesh : openmc.MeshBase
-        The mesh on which source sites will be generated.
+        The mesh over which source sites will be generated.
     sources : iterable of openmc.SourceBase
         Sources for each element in the mesh. If spatial distributions are set
         on any of the source objects, they will be ignored during source site
@@ -412,15 +405,16 @@ class MeshSource(SourceBase):
     Attributes
     ----------
     mesh : openmc.MeshBase
-        The mesh on which source sites will be generated.
+        The mesh over which source sites will be generated.
     sources : numpy.ndarray or iterable of openmc.SourceBase
-        The set of sources to apply to each element. The shape of this array must match
-        the shape of the mesh with and exception in the case of unstructured mesh, which
-        allows for application of 1-D array or iterable.
+        The set of sources to apply to each element. The shape of this array
+        must match the shape of the mesh with and exception in the case of
+        unstructured mesh, which allows for application of 1-D array or
+        iterable.
     """
     def __init__(self,
                  mesh: openmc.MeshBase,
-                 sources: Optional[Iterable]):
+                 sources: Sequence[SourceBase]):
         self.mesh = mesh
         self.sources = sources
 
@@ -462,19 +456,18 @@ class MeshSource(SourceBase):
                 raise ValueError('Sources must be a 1-D array for unstructured mesh')
 
         self._sources = s
-        for src in self.sources.flat:
+        for src in self._sources.flat:
             if src.space is not None:
-                warnings.warn('Some sources on the mesh have '
-                              'spatial distributions that will '
-                              'be ignored at runtime.')
+                warnings.warn('Some sources on the mesh have spatial '
+                              'distributions that will be ignored at runtime.')
                 break
 
     @strength.setter
     def strength(self, val):
         cv.check_type('mesh source strength', val, Real)
-        self._set_total_strength(val)
+        self.set_total_strength(val)
 
-    def _set_total_strength(self, new_strength):
+    def set_total_strength(self, new_strength):
         """Scales the element source strengths based on a desired
            total mesh strength.
         """

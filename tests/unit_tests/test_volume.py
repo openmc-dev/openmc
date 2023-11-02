@@ -16,7 +16,10 @@ def test_infinity_handling():
 
 
 def test_volume_no_cross_section(run_in_tmpdir):
+    # removing path to cross section
     del openmc.config['cross_sections']
+
+    # setting the simulation
     uo2 = openmc.Material(1, "uo2")
     mat = openmc.Material()
     # Add nuclides to uo2
@@ -81,6 +84,6 @@ def test_volume_no_cross_section(run_in_tmpdir):
     settings = openmc.Settings()
     settings.volume_calculations = [volumes_calc]
     settings.export_to_xml()
-    openmc.calculate_volumes()
 
-    assert False
+    # This should not fail
+    openmc.calculate_volumes()

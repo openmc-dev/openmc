@@ -1094,7 +1094,6 @@ void Material::to_hdf5(hid_t group) const
                         (settings::run_mode == RunMode::VOLUME &&
                           settings::path_cross_sections.empty()));
 
-
   if (require_data) {
     if (settings::run_CE) {
       for (int i = 0; i < nuclide_.size(); ++i) {

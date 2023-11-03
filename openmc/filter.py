@@ -451,7 +451,7 @@ class UniverseFilter(WithIDFilter):
     Parameters
     ----------
     bins : openmc.UniverseBase, int, or iterable thereof
-        The Universes to tally. Either openmc.UniverseBase objects or their
+        The Universes to tally. Either :class:`openmc.UniverseBase` objects or their
         Integral ID numbers can be used.
     filter_id : int
         Unique identifier for the filter
@@ -475,7 +475,7 @@ class MaterialFilter(WithIDFilter):
     Parameters
     ----------
     bins : openmc.Material, Integral, or iterable thereof
-        The Materials to tally. Either openmc.Material objects or their
+        The material(s) to tally. Either :class:`openmc.Material` objects or their
         Integral ID numbers can be used.
     filter_id : int
         Unique identifier for the filter
@@ -498,7 +498,7 @@ class MaterialFromFilter(WithIDFilter):
     Parameters
     ----------
     bins : openmc.Material, Integral, or iterable thereof
-        The Materials to tally. Either openmc.Material objects or their
+        The material(s) to tally. Either :class:`openmc.Material` objects or their
         Integral ID numbers can be used.
     filter_id : int
         Unique identifier for the filter
@@ -521,7 +521,7 @@ class CellFilter(WithIDFilter):
     Parameters
     ----------
     bins : openmc.Cell, int, or iterable thereof
-        The cells to tally. Either openmc.Cell objects or their ID numbers can
+        The cells to tally. Either :class:`openmc.Cell` objects or their ID numbers can
         be used.
     filter_id : int
         Unique identifier for the filter

@@ -209,7 +209,6 @@ class MicroXS:
         self._index_nuc = {nuc: i for i, nuc in enumerate(nuclides)}
         self._index_rx = {rx: i for i, rx in enumerate(reactions)}
 
-
     @classmethod
     def from_multi_group_flux(
         cls,

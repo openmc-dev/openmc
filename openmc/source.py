@@ -419,19 +419,19 @@ class MeshSource(SourceBase):
         self.sources = sources
 
     @property
-    def type(self):
+    def type(self) -> str:
         return "mesh"
 
     @property
-    def mesh(self):
+    def mesh(self) -> openmc.MeshBase:
         return self._mesh
 
     @property
-    def strength(self):
+    def strength(self) -> float:
         return sum(s.strength for s in self.sources.flat)
 
     @property
-    def sources(self):
+    def sources(self) -> np.ndarray:
         return self._sources
 
     @mesh.setter
@@ -465,7 +465,7 @@ class MeshSource(SourceBase):
         cv.check_type('mesh source strength', val, Real)
         self.set_total_strength(val)
 
-    def set_total_strength(self, new_strength):
+    def set_total_strength(self, new_strength: float):
         """Scales the element source strengths based on a desired
            total mesh strength.
         """
@@ -475,11 +475,10 @@ class MeshSource(SourceBase):
             s.strength *= new_strength / current_strength
 
     def normalize_source_strengths(self):
-        """Update all element source strengths such that they sum to 1.0.
-        """
+        """Update all element source strengths such that they sum to 1.0."""
         self.set_total_strength(1.0)
 
-    def populate_xml_element(self, elem):
+    def populate_xml_element(self, elem: ET.Element):
         super().populate_xml_element(elem)
 
         elem.set("mesh", str(self.mesh.id))

@@ -35,7 +35,7 @@ def _resolve_chain_file_path(chain_file:str):
     return chain_file
 
 
-def _resolve_openmc_data_path(openmc_data_path:str=None):
+def _resolve_openmc_data_path(openmc_data_path: str=None):
     if not openmc_data_path:
         if 'cross_sections' not in openmc.config:
             raise ValueError("`openmc_data_path` is not defined nor `openmc.config['cross_sections']` is defined.")
@@ -216,23 +216,23 @@ class MicroXS:
         multi_group_flux: Sequence[float],
         chain_file: Optional[PathLike] = None,
         openmc_data_path: Optional[PathLike] = None,
-        temperature:int=294
+        temperature: int=294
     ):
-        """Generated MicroXS object from a known flux and a chain file. The size of the MicroXs matrix depends
+        """Generated MicroXS object from a known flux and a chain file. The size of the MicroXS matrix depends
         on the chain file.
 
         Parameters
         ----------
-        energies: iterable of float or str
+        energies : iterable of float or str
             Energy group boundaries in [eV] or the name of the group structure
-        multi_group_flux: iterable of float
+        multi_group_flux : iterable of float
             Energy-dependent multigroup flux values
-        chain_file: str, optional
+        chain_file : str, optional
             Path to the depletion chain XML file that will be used in
             depletion simulation.
-        openmc_dat_path: str, optional
+        openmc_data_path : str, optional
             Path to the cross section XML file that contains data library paths.
-        temperature: int, optional
+        temperature : int, optional
             Temperature for cross section evaluation in [K].
 
         Returns

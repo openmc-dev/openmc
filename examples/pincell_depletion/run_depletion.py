@@ -41,13 +41,13 @@ pitch = 1.25984
 fuel_or = openmc.ZCylinder(r=0.39218, name='Fuel OR')
 clad_ir = openmc.ZCylinder(r=0.40005, name='Clad IR')
 clad_or = openmc.ZCylinder(r=0.45720, name='Clad OR')
-box = openmc.model.rectangular_prism(pitch, pitch, boundary_type='reflective')
+box = openmc.model.RectangularPrism(pitch, pitch, boundary_type='reflective')
 
 # Define cells
 fuel = openmc.Cell(fill=uo2, region=-fuel_or)
 gap = openmc.Cell(fill=helium, region=+fuel_or & -clad_ir)
 clad = openmc.Cell(fill=zircaloy, region=+clad_ir & -clad_or)
-water = openmc.Cell(fill=borated_water, region=+clad_or & box)
+water = openmc.Cell(fill=borated_water, region=+clad_or & -box)
 
 # Define overall geometry
 geometry = openmc.Geometry([fuel, gap, clad, water])

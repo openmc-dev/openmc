@@ -11,7 +11,7 @@ import pytest
 @pytest.fixture
 def model():
     """Sphere of single nuclide"""
-    model = openmc.model.Model()
+    model = openmc.Model()
 
     w = openmc.Material(name='tungsten')
     w.add_nuclide('W186', 1.0)
@@ -161,3 +161,30 @@ def test_decay(run_in_tmpdir):
     # Ensure density goes down by a factor of 2 after each half-life
     assert atoms[1] / atoms[0] == pytest.approx(0.5)
     assert atoms[2] / atoms[1] == pytest.approx(0.25)
+
+
+def test_flux_rr_missing_nuclide(run_in_tmpdir, model):
+    # Create two-nuclide depletion chain -- since W184 is not in the model, this
+    # test ensures that FluxCollapseHelper loads missing nuclides appropriately
+    chain = openmc.deplete.Chain()
+    w184 = openmc.deplete.Nuclide('W184')
+    w184.add_reaction('(n,gamma)', None, 0.0, 1.0)
+    chain.add_nuclide(w184)
+    w186 = openmc.deplete.Nuclide('W186')
+    w186.add_reaction('(n,gamma)', None, 0.0, 1.0)
+    chain.add_nuclide(w186)
+    chain.export_to_xml('test_chain.xml')
+
+    # Create transport operator
+    op = openmc.deplete.CoupledOperator(
+        model, 'test_chain.xml',
+        normalization_mode="source-rate",
+        reaction_rate_mode="flux",
+        reaction_rate_opts={'energies': [0.0, 20.0e6]},
+    )
+
+    # Deplete with two decay steps
+    integrator = openmc.deplete.PredictorIntegrator(
+        op, [100.0], source_rates=[10.0]
+    )
+    integrator.integrate()

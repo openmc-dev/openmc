@@ -176,14 +176,14 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
           if (!contains(temps_to_read, temps_available.front())) {
             temps_to_read.push_back(std::round(temps_available.front()));
           }
-          break;
+          continue;
         }
         if (std::abs(T_desired - temps_available.back()) <=
             settings::temperature_tolerance) {
           if (!contains(temps_to_read, temps_available.back())) {
             temps_to_read.push_back(std::round(temps_available.back()));
           }
-          break;
+          continue;
         }
         fatal_error(
           "Nuclear data library does not contain cross sections for " + name_ +
@@ -857,9 +857,8 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   // This guarantees the randomness and, at the same time, makes sure we
   // reuse random numbers for the same nuclide at different temperatures,
   // therefore preserving correlation of temperature in probability tables.
-  p.stream() = STREAM_URR_PTABLE;
-  double r = future_prn(static_cast<int64_t>(index_), *p.current_seed());
-  p.stream() = STREAM_TRACKING;
+  double r =
+    future_prn(static_cast<int64_t>(index_), p.seeds(STREAM_URR_PTABLE));
 
   // Warning: this assumes row-major order of cdf_values_
   int i_low = upper_bound_index(&urr.cdf_values_(i_energy, 0),

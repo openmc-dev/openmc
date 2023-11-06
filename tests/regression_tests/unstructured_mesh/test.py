@@ -322,4 +322,3 @@ def test_unstructured_mesh_hexes(model):
     harness.ELEM_PER_VOXEL = 1
 
     harness.main()
-

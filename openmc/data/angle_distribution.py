@@ -235,7 +235,6 @@ class AngleDistribution(EqualityMixin):
         items = get_cont_record(file_obj)
         li = items[2]
         nk = items[4]
-        center_of_mass = (items[3] == 2)
 
         # Check for obsolete energy transformation matrix. If present, just skip
         # it and keep reading
@@ -259,7 +258,6 @@ class AngleDistribution(EqualityMixin):
             mu = []
             for i in range(n_energy):
                 items, al = get_list_record(file_obj)
-                temperature = items[0]
                 energy[i] = items[1]
                 coefficients = np.asarray([1.0] + al)
                 mu.append(Legendre(coefficients))
@@ -273,7 +271,6 @@ class AngleDistribution(EqualityMixin):
             mu = []
             for i in range(n_energy):
                 params, f = get_tab1_record(file_obj)
-                temperature = params[0]
                 energy[i] = params[1]
                 if f.n_regions > 1:
                     raise NotImplementedError('Angular distribution with multiple '
@@ -289,7 +286,6 @@ class AngleDistribution(EqualityMixin):
             mu = []
             for i in range(n_energy_legendre):
                 items, al = get_list_record(file_obj)
-                temperature = items[0]
                 energy_legendre[i] = items[1]
                 coefficients = np.asarray([1.0] + al)
                 mu.append(Legendre(coefficients))
@@ -300,7 +296,6 @@ class AngleDistribution(EqualityMixin):
             energy_tabulated = np.zeros(n_energy_tabulated)
             for i in range(n_energy_tabulated):
                 params, f = get_tab1_record(file_obj)
-                temperature = params[0]
                 energy_tabulated[i] = params[1]
                 if f.n_regions > 1:
                     raise NotImplementedError('Angular distribution with multiple '

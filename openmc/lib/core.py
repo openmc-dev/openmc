@@ -174,7 +174,7 @@ def export_properties(filename=None, output=True):
 def export_weight_windows(filename="weight_windows.h5", output=True):
     """Export weight windows.
 
-    .. versionadded:: 0.13.4
+    .. versionadded:: 0.14.0
 
     Parameters
     ----------
@@ -198,7 +198,7 @@ def export_weight_windows(filename="weight_windows.h5", output=True):
 def import_weight_windows(filename='weight_windows.h5', output=True):
     """Import weight windows.
 
-    .. versionadded:: 0.13.4
+    .. versionadded:: 0.14.0
 
     Parameters
     ----------

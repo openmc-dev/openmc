@@ -268,6 +268,11 @@ class FluxCollapseHelper(ReactionRateHelper):
         if self._reactions_direct and self._nuclides_direct is None:
             self._rate_tally.nuclides = nuclides
 
+        # Make sure nuclide data is loaded
+        for nuclide in self.nuclides:
+            if nuclide not in openmc.lib.nuclides:
+                openmc.lib.load_nuclide(nuclide)
+
     def generate_tallies(self, materials, scores):
         """Produce multigroup flux spectrum tally
 
@@ -589,7 +594,6 @@ class ConstantFissionYieldHelper(FissionYieldHelper):
                 self._constant_yields[name] = yield_data
                 continue
             # Specific energy not found, use closest energy
-            distances = [abs(energy - ene) for ene in nuc.yield_energies]
             min_E = min(nuc.yield_energies, key=lambda e: abs(e - energy))
             self._constant_yields[name] = nuc.yield_data[min_E]
 

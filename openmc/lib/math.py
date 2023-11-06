@@ -103,7 +103,7 @@ def evaluate_legendre(data, x):
     """
 
     data_arr = np.array(data, dtype=np.float64)
-    return _dll.evaluate_legendre(len(data),
+    return _dll.evaluate_legendre(len(data)-1,
                                   data_arr.ctypes.data_as(POINTER(c_double)), x)
 
 

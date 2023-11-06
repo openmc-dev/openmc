@@ -30,6 +30,7 @@
 #include "openmc/tallies/tally.h"
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/track_output.h"
+#include "openmc/weight_windows.h"
 
 #ifdef DAGMC
 #include "DagMC.hpp"
@@ -272,6 +273,9 @@ void Particle::event_cross_surface()
   } else {
     // Particle crosses surface
     cross_surface();
+    if (settings::weight_window_checkpoint_surface) {
+      apply_weight_windows(*this);
+    }
     event() = TallyEvent::SURFACE;
   }
   // Score cell to cell partial currents
@@ -709,8 +713,10 @@ void Particle::mark_as_lost(const char* message)
 {
   // Print warning and write lost particle file
   warning(message);
-  write_restart();
-
+  if (settings::max_write_lost_particles < 0 ||
+      simulation::n_lost_particles < settings::max_write_lost_particles) {
+    write_restart();
+  }
   // Increment number of lost particles
   wgt() = 0.0;
 #pragma omp atomic

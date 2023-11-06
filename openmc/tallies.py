@@ -56,13 +56,13 @@ class Tally(IDManagerMixin):
         Name of the tally
     multiply_density : bool
         Whether reaction rates should be multiplied by atom density
-
-        .. versionadded:: 0.13.4
+        
+        .. versionadded:: 0.14.0
     gaussian_broadening : 3-tuple of float
         Parameters for applying Gaussian energy broadening to the tally. The
         parameters have units of eV, eV^(1/2), and eV^(-1), respectively.
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.1
     filters : list of openmc.Filter
         List of specified filters for the tally
     nuclides : list of str

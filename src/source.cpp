@@ -222,10 +222,10 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
             found = contains(domain_ids_, model::materials[mat_index]->id());
           }
         } else {
-          for (const auto& coord : p.coord()) {
+          for (int i = 0; i < p.n_coord(); i++) {
             auto id = (domain_type_ == DomainType::CELL)
-                        ? model::cells[coord.cell]->id_
-                        : model::universes[coord.universe]->id_;
+                        ? model::cells[p.coord(i).cell]->id_
+                        : model::universes[p.coord(i).universe]->id_;
             if ((found = contains(domain_ids_, id)))
               break;
           }
@@ -455,6 +455,11 @@ extern "C" int openmc_sample_external_source(
   if (!sites || !seed) {
     set_errmsg("Received null pointer.");
     return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (model::external_sources.empty()) {
+    set_errmsg("No external sources have been defined.");
+    return OPENMC_E_OUT_OF_BOUNDS;
   }
 
   auto sites_array = static_cast<SourceSite*>(sites);

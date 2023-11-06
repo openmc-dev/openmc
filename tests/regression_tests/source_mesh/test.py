@@ -36,18 +36,19 @@ def test_source_mesh(mesh_type):
     # 1) particles are only being sourced within the intented mesh voxel based on source strength
     # 2) particles are respecting the angle distributions assigned to each voxel
     sources = np.ndarray(mesh.dimension, dtype=openmc.SourceBase)
-    x, y, z = mesh.centroids
+    centroids = mesh.centroids
+    x, y, z = np.swapaxes(mesh.centroids, -1, 0)
     for i, j, k in mesh.indices:
         # mesh.indices is currently one-indexed, adjust for Python arrays
-        idx = (i-1, j-1, k-1)
+        ijk = (i-1, j-1, k-1)
 
         # get the centroid of the ijk mesh element, set a particle source
         # vector based on the
-        centroid = np.array((x[idx], y[idx], z[idx]))
+        centroid = centroids[ijk]
         vec = np.sign(centroid, dtype=float)
         vec /= np.linalg.norm(vec)
         angle = openmc.stats.Monodirectional(vec)
-        sources[idx] = openmc.Source(energy=energy, angle=angle, strength=0.0)
+        sources[ijk] = openmc.Source(energy=energy, angle=angle, strength=0.0)
 
     # create and apply the mesh source
     mesh_source = openmc.MeshSource(mesh, sources)
@@ -79,9 +80,11 @@ def test_source_mesh(mesh_type):
 
         # remove nuclides and scores axes
         mean = mean[..., 0, 0]
+        # the mesh elment with a non-zero source strength should have a value
         assert mean[ijk] != 0
+        # all other values should be zero
         mean[ijk] = 0
-        assert np.all(mean == 0), f'Failed on index {ijk} with centroid {mesh.centroids[(..., *ijk)]}'
+        assert np.all(mean == 0), f'Failed on index {ijk} with centroid {mesh.centroids[ijk]}'
 
     # check strength adjustment methods
     assert mesh_source.strength == 1.0

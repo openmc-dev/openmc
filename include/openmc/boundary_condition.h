@@ -18,6 +18,8 @@ class Surface;
 
 class BoundaryCondition {
 public:
+  virtual ~BoundaryCondition() = default;
+
   //! Perform tracking operations for a particle that strikes the boundary.
   //! \param p The particle that struck the boundary.  This class is not meant
   //!   to directly modify anything about the particle, but it will do so

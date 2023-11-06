@@ -104,6 +104,8 @@ class Results(list):
     ) -> Tuple[np.ndarray, typing.Union[np.ndarray, List[dict]]]:
         """Get activity of material over time.
 
+        .. versionadded:: 0.14.0
+
         Parameters
         ----------
         mat : openmc.Material, str
@@ -219,6 +221,8 @@ class Results(list):
             volume: Optional[float] = None
     ) -> Tuple[np.ndarray, typing.Union[np.ndarray, List[dict]]]:
         """Get decay heat of material over time.
+
+        .. versionadded:: 0.14.0
 
         Parameters
         ----------

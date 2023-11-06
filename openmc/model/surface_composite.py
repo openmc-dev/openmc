@@ -1321,7 +1321,7 @@ def _plane(axis, name, value, boundary_type='transmission', albedo=1.0):
 class RectangularPrism(CompositeSurface):
     """Infinite rectangular prism bounded by four planar surfaces.
 
-    .. versionadded:: 0.13.4
+    .. versionadded:: 0.14.0
 
     Parameters
     ----------
@@ -1444,6 +1444,8 @@ class RectangularPrism(CompositeSurface):
 
 class HexagonalPrism(CompositeSurface):
     """Hexagonal prism comoposed of six planar surfaces
+
+    .. versionadded:: 0.14.0
 
     Parameters
     ----------

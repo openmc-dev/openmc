@@ -121,6 +121,8 @@ class SourceBase(ABC):
 class IndependentSource(SourceBase):
     """Distribution of phase space coordinates for source sites.
 
+    .. versionadded:: 0.14.0
+
     Parameters
     ----------
     space : openmc.stats.Spatial

@@ -86,8 +86,17 @@ def test_source_mesh(mesh_type):
         mean[ijk] = 0
         assert np.all(mean == 0), f'Failed on index {ijk} with centroid {mesh.centroids[ijk]}'
 
+        # test roundtrip
+        xml_model = openmc.Model.from_model_xml()
+        xml_source = xml_model.settings.source[0]
+        assert isinstance(xml_source, openmc.MeshSource)
+        assert xml_source.strength == 1.0
+        assert isinstance(xml_source.mesh, type(mesh_source.mesh))
+        assert xml_source.mesh.dimension == mesh_source.mesh.dimension
+        assert xml_source.mesh.id == mesh_source.mesh.id
+        assert len(xml_source.sources) == len(mesh_source.sources)
+
     # check strength adjustment methods
     assert mesh_source.strength == 1.0
     mesh_source.strength = 100.0
     assert mesh_source.strength == 100.0
-

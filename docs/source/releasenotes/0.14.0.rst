@@ -41,8 +41,9 @@ Compatibility Notes and Deprecations
   :class:`~openmc.CompiledSource`. (`#2524
   <https://github.com/openmc-dev/openmc/pull/2524>`_)
 - The ``vertices`` and ``centroids`` attributes on mesh classes now always
-  return Cartesian coordinates. (`#2711
-  <https://github.com/openmc-dev/openmc/pull/2711>`_)
+  return Cartesian coordinates and the shape of the returned arrays has changed
+  to allow `ijk` indexing using a tuple (i.e., `xyz = vertices[i, j, k]`).
+  (`#2711 <https://github.com/openmc-dev/openmc/pull/2711>`_)
 - The :attr:`openmc.Material.decay_photon_energy` attribute has been replaced by
   the :meth:`openmc.Material.get_decay_photon_energy` method. (`#2715
   <https://github.com/openmc-dev/openmc/pull/2715>`_)

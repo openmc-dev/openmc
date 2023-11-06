@@ -108,7 +108,8 @@ public:
 
   // Methods
   SourceSite sample(uint64_t* seed) const override;
-  void load_sites_from_file(const std::string& path); //!< Load source sites from file
+  void load_sites_from_file(
+    const std::string& path); //!< Load source sites from file
 private:
   vector<SourceSite> sites_; //!< Source sites from a file
 };
@@ -156,7 +157,10 @@ public:
 
   // Properties
   ParticleType particle_type() const { return particle_; }
-  double strength() const { return space_->total_strength(); } //!< Total source strength
+  double strength() const
+  {
+    return space_->total_strength();
+  } //!< Total source strength
 
   // Accessors
   const IndependentSource& source(int32_t i) const

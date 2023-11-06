@@ -252,7 +252,9 @@ public:
   //! \param[in] i Direction index
   virtual double positive_grid_boundary(const MeshIndex& ijk, int i) const
   {
-    auto msg = fmt::format("Attempting to call positive_grid_boundary on a {} mesh.", get_mesh_type());
+    auto msg =
+      fmt::format("Attempting to call positive_grid_boundary on a {} mesh.",
+        get_mesh_type());
     fatal_error(msg);
   };
 
@@ -262,7 +264,9 @@ public:
   //! \param[in] i Direction index
   virtual double negative_grid_boundary(const MeshIndex& ijk, int i) const
   {
-    auto msg = fmt::format("Attempting to call negative_grid_boundary on a {} mesh.", get_mesh_type());
+    auto msg =
+      fmt::format("Attempting to call negative_grid_boundary on a {} mesh.",
+        get_mesh_type());
     fatal_error(msg);
   };
 

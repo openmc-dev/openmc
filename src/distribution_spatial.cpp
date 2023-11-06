@@ -260,14 +260,16 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
   elem_idx_dist_.assign(strengths);
 }
 
-MeshSpatial::MeshSpatial(int32_t mesh_idx, gsl::span<const double> strengths) : mesh_idx_(mesh_idx) {
+MeshSpatial::MeshSpatial(int32_t mesh_idx, gsl::span<const double> strengths)
+  : mesh_idx_(mesh_idx)
+{
   check_element_types();
   elem_idx_dist_.assign(strengths);
 }
 
-void MeshSpatial::check_element_types() const {
-  const auto umesh_ptr =
-    dynamic_cast<const UnstructuredMesh*>(this->mesh());
+void MeshSpatial::check_element_types() const
+{
+  const auto umesh_ptr = dynamic_cast<const UnstructuredMesh*>(this->mesh());
   if (umesh_ptr) {
     // ensure that the unstructured mesh contains only linear tets
     for (int bin = 0; bin < umesh_ptr->n_bins(); bin++) {

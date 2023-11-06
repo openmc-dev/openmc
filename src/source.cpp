@@ -59,9 +59,9 @@ unique_ptr<Source> Source::create(pugi::xml_node node)
     if (source_type == "independent") {
       return make_unique<IndependentSource>(node);
     } else if (source_type == "file") {
-        return make_unique<FileSource>(node);
+      return make_unique<FileSource>(node);
     } else if (source_type == "compiled") {
-        return make_unique<CompiledSourceWrapper>(node);
+      return make_unique<CompiledSourceWrapper>(node);
     } else if (source_type == "mesh") {
       return make_unique<MeshSource>(node);
     }
@@ -298,16 +298,18 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 //==============================================================================
 // FileSource implementation
 //==============================================================================
-FileSource::FileSource(pugi::xml_node node) {
+FileSource::FileSource(pugi::xml_node node)
+{
   auto path = get_node_value(node, "file", false, true);
-      if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
-        sites_ = mcpl_source_sites(path);
-      } else {
-        this->load_sites_from_file(path);
-      }
+  if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
+    sites_ = mcpl_source_sites(path);
+  } else {
+    this->load_sites_from_file(path);
+  }
 }
 
-FileSource::FileSource(const std::string& path) {
+FileSource::FileSource(const std::string& path)
+{
   load_sites_from_file(path);
 }
 
@@ -348,8 +350,9 @@ SourceSite FileSource::sample(uint64_t* seed) const
 //==============================================================================
 // CompiledSourceWrapper implementation
 //==============================================================================
-CompiledSourceWrapper::CompiledSourceWrapper(pugi::xml_node node) {
-    // Get shared library path and parameters
+CompiledSourceWrapper::CompiledSourceWrapper(pugi::xml_node node)
+{
+  // Get shared library path and parameters
   auto path = get_node_value(node, "library", false, true);
   std::string parameters;
   if (check_for_node(node, "parameters")) {
@@ -358,7 +361,9 @@ CompiledSourceWrapper::CompiledSourceWrapper(pugi::xml_node node) {
   setup(path, parameters);
 }
 
-void CompiledSourceWrapper::setup(const std::string& path, const std::string& parameters) {
+void CompiledSourceWrapper::setup(
+  const std::string& path, const std::string& parameters)
+{
 #ifdef HAS_DYNAMIC_LINKING
   // Open the library
   shared_library_ = dlopen(path.c_str(), RTLD_LAZY);
@@ -429,7 +434,8 @@ MeshSource::MeshSource(pugi::xml_node node)
   const auto& mesh = model::meshes[mesh_idx];
 
   std::vector<double> strengths;
-  // read all source distributions and populate strengths vector for MeshSpatial object
+  // read all source distributions and populate strengths vector for MeshSpatial
+  // object
   for (auto source_node : node.children("source")) {
     sources_.emplace_back(IndependentSource(source_node));
     strengths.push_back(sources_.back().strength());

@@ -30,11 +30,13 @@ DiscreteIndex::DiscreteIndex(pugi::xml_node node)
   assign({params.data() + n, n});
 }
 
-DiscreteIndex::DiscreteIndex(gsl::span<const double> p) {
+DiscreteIndex::DiscreteIndex(gsl::span<const double> p)
+{
   assign(p);
 }
 
-void DiscreteIndex::assign(gsl::span<const double> p) {
+void DiscreteIndex::assign(gsl::span<const double> p)
+{
   prob_.assign(p.begin(), p.end());
 
   this->init_alias();

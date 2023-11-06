@@ -8,7 +8,7 @@ namespace openmc {
 void MaterialFromFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
-  auto search = map_.find(p.const_material_last());
+  auto search = map_.find(p.material_last());
   if (search != map_.end()) {
     match.bins_.push_back(search->second);
     match.weights_.push_back(1.0);

@@ -280,6 +280,11 @@ class Batchwise(ABC):
                         bracket[np.argmax(keffs)] = bracket[np.argmin(keffs)]
                         bracket[np.argmin(keffs)] += grad * (min(keffs).n - \
                                                   self.target) * dir
+                    #check if adapted bracket are within bracketing limits
+                    if max(bracket) + val > self.bracket_limit[1]:
+                        bracket[np.argmax(bracket)] = self.bracket_limit[1] - val
+                    if min(bracket) + val < self.bracket_limit[0]:
+                        bracket[np.argmin(bracket)] = self.bracket_limit[0] - val
 
                 else:
                     # Set res with closest limit and continue
@@ -838,7 +843,6 @@ class BatchwiseCellGeometrical(BatchwiseCell):
         # Initialize vector
         self.vector = np.zeros(3)
 
-
         check_type('samples', samples, int)
         self.samples = samples
 
@@ -880,10 +884,10 @@ class BatchwiseCellGeometrical(BatchwiseCell):
         Set volume calculation model settings of depletable materials filling
         the parametric Cell.
         """
-        ll, ur = self.geometry.bounding_box
-        mat_vol = openmc.VolumeCalculation(self.cell_materials, self.samples,
-                                           ll, ur)
-        self.model.settings.volume_calculations = mat_vol
+        if not self.model.settings.volume_calculations:
+            mat_vol = openmc.VolumeCalculation(self.cell_materials, self.samples,
+                                           ll.values(), ur.values())
+            self.model.settings.volume_calculations = mat_vol
 
     def _calculate_volumes(self):
         """
@@ -1451,6 +1455,347 @@ class BatchwiseMaterialDilute(BatchwiseMaterial):
         # always need to return a model
         return self.model
 
+class BatchwiseMaterialAdd(BatchwiseMaterial):
+    """
+    Batch wise material-based class point-wise material addition or removal.
+    Not based on criticality control but on user-defined values.
+
+    A user doesn't need to call this class directly.
+    Instead an instance of this class is automatically created by calling
+    :meth:`openmc.deplete.Integrator.add_batchwise` method from an integrator
+    class, such as  :class:`openmc.deplete.CECMIntegrator`.
+
+    .. versionadded:: 0.13.4
+
+    Parameters
+    ----------
+    materials : List of openmc.Material or int or str
+        OpenMC Material identifier to where apply batch wise scheme
+    operator : openmc.deplete.Operator
+        OpenMC operator object
+    attrib_name : str
+        Material attribute
+    model : openmc.model.Model
+        OpenMC model object
+    mat_vector : dict
+        Dictionary of material composition to parameterize, where a pair key value
+        represents a nuclide and its weight fraction, respectively.
+    bracket : list of float
+        Bracketing interval to search for the solution, always relative to the
+        solution at previous step.
+    bracket_limit : list of float
+        Absolute bracketing interval lower and upper; if during the adaptive
+        algorithm the search_for_keff solution lies off these limits the closest
+        limit will be set as new result.
+    density_treatment : str
+        Whether or not to keep constant volume or density after a depletion step
+        before the next one.
+        Default to 'constant-volume'
+    bracketed_method : {'brentq', 'brenth', 'ridder', 'bisect'}, optional
+        Solution method to use.
+        This is equivalent to the `bracket_method` parameter of the
+        `search_for_keff`.
+        Defaults to 'brentq'.
+    tol : float
+        Tolerance for search_for_keff method.
+        This is equivalent to the `tol` parameter of the `search_for_keff`.
+        Default to 0.01
+    target : Real, optional
+        This is equivalent to the `target` parameter of the `search_for_keff`.
+        Default to 1.0.
+    print_iterations : Bool, Optional
+        Whether or not to print `search_for_keff` iterations.
+        Default to True
+    search_for_keff_output : Bool, Optional
+        Whether or not to print transport iterations during  `search_for_keff`.
+        Default to False
+    Attributes
+    ----------
+    materials : List of openmc.Material or int or str
+        OpenMC Material identifier to where apply batch wise scheme
+    mat_vector : dict
+        Dictionary of material composition to parameterize, where a pair key value
+        represents a nuclide and its weight fraction, respectively.
+    """
+
+    def __init__(self, materials, attrib_name, operator, model, mat_vector, bracket,
+                 bracket_limit, density, volume, density_treatment='constant-volume',
+                 bracketed_method='brentq', redox_vec=None, tol=0.01, target=1.0,
+                 print_iterations=True, search_for_keff_output=True):
+
+        super().__init__(materials, operator, model, mat_vector, bracket,
+                         bracket_limit, density_treatment, bracketed_method,
+                         redox_vec, tol, target, print_iterations,
+                         search_for_keff_output)
+
+        check_value('attrib_name', attrib_name, 'addition')
+        self.attrib_name = attrib_name
+
+        self.density = density
+        self.volume_to_add = volume
+
+    def _model_builder(self, param):
+        """
+        Builds the parametric model that is passed to the `msr_search_for_keff`
+        function by updating the material densities and setting the parametric
+        variable to the material nuclides to add. Here we fix the total number
+        of atoms per material and try to conserve this quantity. Both the
+        material volume and density are let free to vary.
+        Parameters
+        ----------
+        param :
+            Model function variable, fraction of total atoms to dilute
+        Returns
+        -------
+        _model :  openmc.model.Model
+            OpenMC parametric model
+        """
+
+    def _update_densities(self, mat_id, atoms, vol):
+        """
+        Calculate new atom densities dividing new total atoms
+        with new volume and assign them to openmc.lib.materials.
+        Parameters
+        ----------
+        x : list of numpy.ndarray
+            Total atoms concentrations
+        mat_id : str
+            openmc.materials id
+        atoms : dict
+            dictionary of update atoms concentrations
+        vol : float
+            new update volume
+        """
+        for rank in range(comm.size):
+            number_i = comm.bcast(self.operator.number, root=rank)
+            if str(mat_id) in number_i.materials:
+                mat_idx = number_i.index_mat[str(mat_id)]
+                nuclides = []
+                densities = []
+                for nuc in number_i.nuclides:
+                    # Only modify nuclides with cross section data available
+                    if nuc in self.operator.nuclides_with_data:
+                        # number of atoms before volume change
+                        val = number_i.get_atom_density(str(mat_id) ,nuc) * \
+                                                number_i.volume[mat_idx]
+                        if nuc in atoms:
+                            # add atoms
+                            val += atoms[nuc]
+                        # obtain density [atoms/b-cm], dividing by new volume
+                        if val > 0.0:
+                            # divide by new volume to obtain density
+                            val *= 1.0e-24 / vol
+                            nuclides.append(nuc)
+                            densities.append(val)
+                openmc.lib.materials[mat_id].set_densities(nuclides, densities)
+
+    def _update_x(self, x, mat_id, vol):
+        """
+        Update x vector with newly update atoms densities and volume.
+        Parameters
+        ----------
+        x : list of numpy.ndarray
+            Total atoms concentrations
+        mat_id : str
+            openmc.materials id
+        vol : float
+            new update volume
+        Returns
+        -------
+        x : list of numpy.ndarray
+            Total atoms concentrations
+        """
+        number_i = self.operator.number
+        if str(mat_id) in self.local_mats:
+            mat_idx = self.local_mats.index(str(mat_id))
+            #update x vector
+            for nuc, dens in zip(openmc.lib.materials[mat_id].nuclides,
+                                 openmc.lib.materials[mat_id].densities):
+                if nuc in number_i.burnable_nuclides:
+                    nuc_idx = number_i.burnable_nuclides.index(nuc)
+                    # convert [#atoms/b-cm] into [#atoms]
+                    x[mat_idx][nuc_idx] = dens / 1.0e-24 * vol
+                else:
+                    #Divide by 1.0e-24, atom density here must be in [#atoms/cm3]
+                    number_i.set_atom_density(mat_idx, nuc, dens / 1.0e-24)
+
+        return x
+
+    def _dilute_x(self, x, mat_id, vol):
+        """
+        Dilute atom vector x within new volume
+        Parameters
+        ----------
+        x : list of numpy.ndarray
+            Total atoms concentrations
+        mat_id : str
+            openmc.materials id
+        vol : float
+            new update volume
+        Returns
+        -------
+        x : list of numpy.ndarray
+            Total atoms concentrations
+        """
+        number_i = self.operator.number
+        if str(mat_id) in self.local_mats:
+            mat_idx = self.local_mats.index(str(mat_id))
+            for nuc in number_i.burnable_nuclides:
+                nuc_idx = number_i.burnable_nuclides.index(nuc)
+                # update number of atoms in new volume
+                x[mat_idx][nuc_idx] *= vol / number_i.volume[mat_idx]
+        return x
+
+    def _find_ofc_material_id(self, mat_name):
+        """
+        Giving a material name, search if exist out-of-core region materials
+        and return material id.
+        Parameters
+        ----------
+        mat_name : str
+            openmc material name
+        Returns
+        -------
+            mat_ids : list
+            list of ofc materials
+        """
+        # split by "-" and "_" characters
+        return [mat.id for mat in self.model.materials if \
+            all(x in re.split(', |-|-|\+', mat.name) for x in [mat_name, 'ofc'])]
+
+    def _calc_volumes(self):
+        """
+        Calculate new volumes after geometrical cell change
+        Returns
+        -------
+        openmc.Volume : dict
+            Dictionary of calculate volumes
+        """
+        openmc.lib.calculate_volumes()
+        comm.barrier()
+        return openmc.VolumeCalculation.from_hdf5('volume_1.h5')
+
+    def _distribute_volumes(self, materials):
+        """
+        Following a volumes update, the new volume difference must be added
+        or removed from the material compositions.
+        Prepare dictionary with new volume and new total atoms for each
+        material to update.
+        Parameters
+        ----------
+        materials : list
+            list of openmc.materials to update material compositions
+        Returns
+        -------
+        mats_to_update : dict of dict
+            Dictionary of materials to update where keys are material ids and
+            values dictionaries, where keys are 'volume' and 'atoms' and values
+            calculated new volume and atoms to update.
+        """
+        # firstly, calculate the new volumes
+        res = self._calc_volumes()
+        # Gather all AtomNumbers and x in rank 0
+        number = comm.gather(self.operator.number)
+        mats_to_update = {}
+        # Perform all on rank 0
+        if comm.rank == 0:
+            for mat in materials:
+                # get rank index of AtomNumber that contains mat.id
+                rank_index = [i for i,n in enumerate(number) \
+                                if str(mat.id) in n.materials][0]
+                mat_index = number[rank_index].index_mat[str(mat.id)]
+                vol_new = res.volumes[mat.id].n
+                #calculate volume difference
+                vol_diff = vol_new - number[rank_index].volume[mat_index]
+
+                # add updated volume to materials in user defined list
+                if str(mat.id) in self.materials:
+                    #convert user defined mass density in atomic density [#atoms/cm3]
+                    atom_dens = {nuc: self.density / \
+                             atomic_mass(nuc) * AVOGADRO * frac \
+                             for nuc, frac in self.mat_vector.items()}
+
+                    #if the material has an ofc region, the volume_to_add user
+                    # defined value is added directly to the ofc region, subtracted
+                    # by the volume change in core, which is added to the in-core
+                    #materials
+                    if self._find_ofc_material_id(mat.name):
+                        mats_to_update[mat.id] = {'vol':vol_new}
+                        mats_to_update[mat.id]['atoms'] = \
+                                {nuc: i*vol_diff for nuc,i in atom_dens.items()}
+                        #update out of core densities using the remaining volume
+                        # to self.volume_to_add
+                        mat_ofc_id = self._find_ofc_material_id(mat.name)[0]
+                        # mat_ofc_id might not be in the same AtomNumber chunk
+                        # as mat_id
+                        rank_index = [i for i,n in enumerate(number) \
+                                if str(mat_ofc_id) in n.materials][0]
+                        mat_ofc_index = number[rank_index].index_mat[str(mat_ofc_id)]
+                        vol_ofc_new = number[rank_index].volume[mat_ofc_index] + \
+                                        (self.volume_to_add-vol_diff)
+                        mats_to_update[mat_ofc_id] = {'vol':vol_ofc_new}
+                        mats_to_update[mat_ofc_id]['atoms'] = {nuc: i * \
+                            (self.volume_to_add-vol_diff) for nuc,i in atom_dens.items()}
+                    else:
+                        vol_new = number[rank_index].volume[mat_index] + \
+                                    self.volume_to_add
+                        mats_to_update[mat.id] = {'vol':vol_new}
+                        mats_to_update[mat.id]['atoms'] = {nuc: i * \
+                            self.volume_to_add for nuc,i in atom_dens.items()}
+                else:
+                    #if the material is not in the user defined material list
+                    #, check anyway if it has an ofc region. In this case the
+                    #volume difference is added or removed there
+                    if self._find_ofc_material_id(mat.name):
+                        mat_ofc_id = self._find_ofc_material_id(mat.name)[0]
+                        rank_index = [i for i,n in enumerate(number) \
+                                        if str(mat_ofc_id) in n.materials][0]
+                        mat_ofc_index = number[rank_index].index_mat[str(mat_ofc_id)]
+                        vol_ofc_new = number[rank_index].volume[mat_ofc_index] - \
+                                                                    vol_diff
+                        mats_to_update[mat.id] = {'vol':vol_new}
+                        mats_to_update[mat_ofc_id] = {'vol':vol_ofc_new}
+                    else:
+                        # the geometrical volume changes but the total volume remains
+                        # unchanged
+                        continue
+
+        return mats_to_update
+
+    def add_materials(self, x, materials):
+        """
+        Materials update after a geometrical change.
+        Updates x composition vector, material densities and material volumes
+        Parameters
+        ----------
+        x : list of numpy.ndarray
+            Total atoms concentrations
+        materials : list
+            list of openmc.materials to update
+        Returns
+        -------
+        x : list of numpy.ndarray
+            Total atoms concentrations
+        """
+        mats_to_update = self._distribute_volumes(materials)
+
+        for rank in range(comm.size):
+            # update in all comm.ranks
+            mats_to_update = comm.bcast(mats_to_update, root=rank)
+            number_i = comm.bcast(self.operator.number, root=rank)
+            for mat_id, vals in mats_to_update.items():
+                if 'atoms' in vals:
+                    self._update_densities(mat_id, vals['atoms'], vals['vol'])
+                    x = self._update_x(x, mat_id, vals['vol'])
+                else:
+                    x = self._dilute_x(x, mat_id, vals['vol'])
+
+                if str(mat_id) in self.operator.number.materials:
+                    mat_index = self.operator.number.index_mat[str(mat_id)]
+                    self.operator.number.volume[mat_index] = vals['vol']
+
+        return x
+
 class BatchwiseSchemeStd():
     """
     Batchwise wrapper class, it wraps BatchwiseGeom and BatchwiseMat instances,
@@ -1657,12 +2002,212 @@ class BatchwiseSchemeRefuel():
         """
         #Start by doing a geometrical search§
         x, root = self.bw_geom.search_for_keff(x, step_index)
-        
+
         #check if upper geometrical limit gets hit
         if root >= self.bw_geom.bracket_limit[1]:
             # Reset geometry and refuel
             self.bw_geom._set_cell_attrib(self.restart_level)
             x,_ = self.bw_mat.search_for_keff(x, step_index)
             root = self.restart_level
-        
+
+        return x, root
+
+class BatchwiseSchemeFlex():
+    """
+    Batchwise wrapper class, it wraps BatchwiseGeom and BatchwiseMat instances,
+    with some user defined logic.
+
+    This class should probably not be defined here, but we can keep it now for
+    convenience
+
+    The loop logic of this wrapper class is the following:
+
+    1. Run BatchwiseGeom and return geometrical coefficient
+    2. check if nuclide density of user defined nuclide is within limit
+    3.1 if not, continue
+    3.2 if yes, make a flex rotation and update all the materials before
+    proceeding.
+    4 When all flex rotations have been made, conclude the simulation.
+
+    In this case if the bracket upper geometrical limit is hitted,
+    simply stop the simulation.
+
+    An instance of this class can be passed directly to an instance of the
+    integrator class, such as :class:`openmc.deplete.CECMIntegrator`.
+
+    Parameters
+    ----------
+    bw_list : list of Batchwise classes
+        list of openmc.deplete.batchwise objects
+    nuclide : str
+        Nuclide to monitor nuclide density
+    limit : float
+        Nuclide density of nuclide to monitor
+    flex_fraction : float
+        Initial flex fraction in core
+    span : float
+        Flex rotation angle
+    Attributes
+    ----------
+    rotation : int
+        Initial flex rotation
+        Default to 1.
+    """
+    def __init__(self, bw_list, n_timesteps, nuclide, limit, flex_fraction, span,
+                    dilute_interval=None, restart_level = 0):
+
+        if isinstance(bw_list, list):
+            for bw in bw_list:
+                if isinstance(bw, BatchwiseCell):
+                    if bw.attrib_name == 'translation':
+                        self.bw_geom_trans = bw
+                    elif bw.attrib_name == 'rotation':
+                        self.bw_geom_rot = bw
+                elif isinstance(bw, BatchwiseMaterial):
+                    if bw.attrib_name == 'addition':
+                        self.bw_mat_add = bw
+                    elif bw.attrib_name == 'dilute':
+                        self.bw_mat_dil = bw
+                else:
+                    raise ValueError(f'{bw} is not a valid instance of'
+                                      ' Batchwise class')
+        else:
+            raise ValueError(f'{bw_list} is not a list')
+
+        self.bw_list = bw_list
+        self.n_timesteps = n_timesteps
+        check_value("nuclide exists", nuclide, \
+                    self.bw_geom_trans.operator.nuclides_with_data)
+        self.nuclide = nuclide
+        self.limit = limit
+        self.span = span
+        self.flex_fraction = flex_fraction
+        # start roation counter at 1
+        self.rotation = 1
+
+        #container for water level
+        self.levels = []
+        #Linear fit water level 1st coeff (line slope, or 1st derivative )
+        self.a = 0
+
+        # Dilution interval after all sections are converted
+        self.dilute_interval = dilute_interval
+        self.restart_level = restart_level
+        #
+        self.converged_flex = False
+
+    def set_density_function(self, mats, density_func, oxidation_states):
+        for bw in self.bw_list:
+            bw.set_density_function(mats, density_func, oxidation_states)
+
+    def _nuclide_density(self, mat_name, nuc):
+        """
+        Return nuclide of specific nuclide in a material
+        Parameters
+        ----------
+        mat_name : str
+            Name of material to look for nuclide
+        nuclide : str
+            Name of nuclide to look for
+        Returns
+        -------
+        atoms density : float
+            Atom density in [atoms/b-cm]
+
+        """
+        mat_id = [id for id,mat in openmc.lib.materials.items() \
+                    if mat.name == mat_name][0]
+
+        if nuc not in openmc.lib.materials[mat_id].nuclides:
+            return 0
+        else:
+            nuc_index = openmc.lib.materials[mat_id].nuclides.index(nuc)
+
+        return openmc.lib.materials[mat_id].densities[nuc_index]
+
+    def search_for_keff(self, x, step_index):
+        """
+        Perform the criticality search on the parametric material model.
+        Will set the root of the `search_for_keff` function to the atoms
+        concentrations vector.
+        Parameters
+        ----------
+        x : list of numpy.ndarray
+            Total atoms concentrations
+        Returns
+        -------
+        x : list of numpy.ndarray
+            Updated total atoms concentrations
+        """
+
+        nuc_density = self._nuclide_density('flex', self.nuclide)
+        print('{} density: {:.7f} [atoms/b-cm]'.format(self.nuclide, nuc_density))
+        #Compute liner fit of water level variation (needs at least 20 points)
+        if len(self.levels) >= 8:
+            self.a = np.polyfit(np.arange(0, len(self.levels), 1), \
+                                np.array(self.levels), 1)[0]
+
+        #If water level too close to the upper border don't apply rotation (just temporary ) or
+        # water level first derivative is negative:
+        if (nuc_density >= self.limit and \
+            self.bw_geom_trans._get_cell_attrib() < self.bw_geom_trans.bracket_limit[1] - 15) or \
+            self.a < 0:
+
+            if self.rotation < 1/self.flex_fraction:
+                print(f'Flex rotation nr: {self.rotation}')
+                print(f'Slope coeff: {self.a}')
+                # each time make a rotation anti-clockwise, i.e increase the
+                #volume of flex
+                self.bw_geom_rot._set_cell_attrib(self.span * \
+                                            self.flex_fraction * self.rotation)
+                # For every rotation, the volume and the materials must be updated
+                x = self.bw_mat_add.add_materials(x, self.bw_geom_rot.cell_materials)
+                self.rotation += 1
+                # reset water level container
+                self.levels = []
+                self.a = 0
+                if self.rotation == 1/self.flex_fraction:
+                    print('All flex sections converted')
+                    # set start dilution time step index from next one
+                    self.start_dilute_index = step_index + 1
+                    self.converged_flex = True
+            else:
+                if self.dilute_interval is not None:
+                    if step_index in np.arange(self.start_dilute_index,
+                                    self.n_timesteps,self.dilute_interval) and \
+                    self.bw_geom_trans._get_cell_attrib() <= self.restart_level:
+                        # restart level and perform dilution
+                        self.bw_geom_trans._set_cell_attrib(self.restart_level)
+                        x,_ = self.bw_mat_dil.search_for_keff(x, step_index)
+                    else:
+                        x, root = self.bw_geom_trans.search_for_keff(x, step_index)
+                        # in this case if upper limit gets hit, stop directly
+                        if root >= self.bw_geom_trans.bracket_limit[1]:
+                            from pathlib import Path
+                            print(f""" Reached maximum of
+                                    {self.bw_geom_trans.bracket_limit[1]} cm
+                                    exit..""")
+                            Path('sim.done').touch()
+                            for rank in range(comm.size):
+                                comm.Abort()
+                else:
+                    print('Stop simulation')
+                    from pathlib import Path
+                    Path('sim.done').touch()
+                    for rank in range(comm.size):
+                        comm.Abort()
+
+        x, root = self.bw_geom_trans.search_for_keff(x, step_index)
+        # update water level container after geom keff search
+        self.levels.append(root)
+        # in this case if upper limit gets hit, stop directly
+        if root >= self.bw_geom_trans.bracket_limit[1]:
+            from pathlib import Path
+            print(f'Reached maximum of {self.bw_geom_trans.bracket_limit[1]} cm'
+                   ' exit..')
+            Path('sim.done').touch()
+
+            for rank in range(comm.size):
+                comm.Abort()
+
         return x, root

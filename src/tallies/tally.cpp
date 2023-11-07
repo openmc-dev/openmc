@@ -873,8 +873,15 @@ void Tally::GaussianEnergyBroadening::apply(Particle& p) const {
   constexpr double sigma_coeff = 1. / (4. * std::log(2.));
   const double sigma = sigma_coeff * FWHM;
 
+  // Save a copy of the original RNG stream, and set the stream for GEB
+  const int orig_stream = p.stream();
+  p.stream() = STREAM_TALLYING;
+
   // Sample new energy
   const double E = normal_variate(p.E_last(), sigma, p.current_seed());
+
+  // Reset the original RNG stream of the particle
+  p.stream() = orig_stream;
 
   // Set E_last to the sampled energy. We only do this however if we
   // sampled a valid energy.

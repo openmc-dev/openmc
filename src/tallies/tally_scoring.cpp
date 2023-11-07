@@ -2610,9 +2610,9 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
   // calculations or tallies.
 
   // Save original cell/energy information
-  int orig_n_coord = p.n_coord();
-  int orig_cell = p.coord(0).cell;
-  double orig_E_last = p.E_last();
+  const int orig_n_coord = p.n_coord();
+  const int orig_cell = p.coord(0).cell;
+  const double orig_E_last = p.E_last();
 
   for (auto i_tally : tallies) {
     auto& tally {*model::tallies[i_tally]};

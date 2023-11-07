@@ -118,7 +118,7 @@ REACTIONS = {
     '(n,5n2p)': ReactionInfo({200}, (-6, -2, 0), ('H1', 'H1')),
 }
 
-REACTIONS.update({f'(n,n{i - 50})': ReactionInfo({i-1}, (0, 0, i - 50), ()) for i in range(51, 91)})
+REACTIONS.update({f'(n,n{i - 50})': ReactionInfo({i-1}, (0, 0, i - 51), ()) for i in range(51, 91)})
 
 __all__ = ["Chain", "REACTIONS"]
 
@@ -147,9 +147,12 @@ def replace_missing(product, decay_data):
     if Z == 0:
         return None
 
-    # First check if ground state is available
-    if state:
-        product = '{}{}'.format(symbol, A)
+    if state == 0:
+        # check if first ground state is available
+        product = f'{symbol}{A}'
+    else:
+        # check if first metastable state is available
+        product = f'{symbol}{A}_m{state}'
 
     # Find isotope with longest half-life
     half_life = 0.0
@@ -168,6 +171,14 @@ def replace_missing(product, decay_data):
     # product, assume it undergoes beta-. Otherwise assume beta+.
     beta_minus = (mass_longest_lived < A)
 
+    # Iterate through metastable states until we find an existing nuclide
+    if state > 0:
+        while product not in decay_data:
+            state = state -1
+            product = f'{openmc.data.ATOMIC_SYMBOL[Z]}{A}_m{state}'
+            if state < 0:
+                break
+
     # Iterate until we find an existing nuclide
     while product not in decay_data:
         if Z > 98:
@@ -180,7 +191,7 @@ def replace_missing(product, decay_data):
                 Z += 1
             else:
                 Z -= 1
-        product = '{}{}'.format(openmc.data.ATOMIC_SYMBOL[Z], A)
+        product = f'{openmc.data.ATOMIC_SYMBOL[Z]}{A}'
 
     return product
 

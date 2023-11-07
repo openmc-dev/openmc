@@ -172,11 +172,12 @@ def replace_missing(product, decay_data):
     beta_minus = (mass_longest_lived < A)
 
     # Iterate through metastable states until we find an existing nuclide
-    if state > 0:
+    if state != 0:
         while product not in decay_data:
             state = state -1
             product = f'{openmc.data.ATOMIC_SYMBOL[Z]}{A}_m{state}'
-            if state < 0:
+            if state == 0:
+                product = f'{openmc.data.ATOMIC_SYMBOL[Z]}{A}'
                 break
 
     # Iterate until we find an existing nuclide

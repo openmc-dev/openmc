@@ -30,8 +30,8 @@ from .reaction_rates import ReactionRates
 from .transfer_rates import TransferRates
 from openmc import Material, Cell
 from .batchwise import (BatchwiseCellGeometrical, BatchwiseCellTemperature,
-    BatchwiseMaterialRefuel, BatchwiseMaterialDilute, BatchwiseSchemeStd,
-    BatchwiseSchemeRefuel)
+    BatchwiseMaterialRefuel, BatchwiseMaterialDilute, BatchwiseMaterialAdd,
+    BatchwiseSchemeStd, BatchwiseSchemeRefuel, BatchwiseSchemeFlex)
 
 __all__ = [
     "OperatorResult", "TransportOperator",
@@ -913,7 +913,8 @@ class Integrator(ABC):
 
         """
         check_value('attribute', attr, ('translation', 'rotation',
-                                        'temperature', 'refuel','dilute'))
+                                        'temperature', 'refuel','dilute',
+                                        'addition'))
         if attr in ('translation', 'rotation'):
             batchwise = BatchwiseCellGeometrical
         elif attr == 'temperature':
@@ -922,13 +923,17 @@ class Integrator(ABC):
             batchwise = BatchwiseMaterialRefuel
         elif attr == 'dilute':
             batchwise = BatchwiseMaterialDilute
+        elif attr == 'addition':
+            batchwise = BatchwiseMaterialAdd
 
         batchwise_inst = batchwise.from_params(obj, attr, self.operator,
                                            self.operator.model, **kwargs)
         if self.batchwise is None:
             self.batchwise = batchwise_inst
         else:
-            self.batchwise = [self.batchwise, batchwise_inst]
+            if not isinstance(self.batchwise, list):
+                self.batchwise = [self.batchwise]
+            self.batchwise.append(batchwise_inst)
 
     def add_batchwise_scheme(self, scheme_name, **kwargs):
         """Add batchwise wrapper to integrator scheme, after calls to
@@ -946,6 +951,8 @@ class Integrator(ABC):
             self.batchwise = BatchwiseSchemeStd(self.batchwise, len(self), **kwargs)
         elif scheme_name == 'refuel':
             self.batchwise = BatchwiseSchemeRefuel(self.batchwise, **kwargs)
+        elif scheme_name == 'flex':
+            self.batchwise = BatchwiseSchemeFlex(self.batchwise, len(self), **kwargs)
 
     def add_density_function(self, mats, density_func, oxidation_states):
         self.batchwise.set_density_function(mats, density_func, oxidation_states)

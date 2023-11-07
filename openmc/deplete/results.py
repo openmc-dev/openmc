@@ -318,7 +318,7 @@ class Results(list):
             # Divide by volume to get density
             mass /= self[0].volume[mat_id]
         elif mass_units == "kg":
-            mass *= 1e3
+            mass /= 1e3
 
         return times, mass
 

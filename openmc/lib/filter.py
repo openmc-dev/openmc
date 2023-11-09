@@ -20,7 +20,7 @@ __all__ = [
     'Filter', 'AzimuthalFilter', 'CellFilter', 'CellbornFilter', 'CellfromFilter',
     'CellInstanceFilter', 'CollisionFilter', 'DistribcellFilter', 'DelayedGroupFilter',
     'EnergyFilter', 'EnergyoutFilter', 'EnergyFunctionFilter', 'LegendreFilter',
-    'MaterialFilter', 'MeshFilter', 'MeshSurfaceFilter', 'MuFilter', 'ParticleFilter',
+    'MaterialFilter', 'MaterialFromFilter', 'MeshFilter', 'MeshSurfaceFilter', 'MuFilter', 'ParticleFilter',
     'PolarFilter', 'SphericalHarmonicsFilter', 'SpatialLegendreFilter', 'SurfaceFilter',
     'UniverseFilter', 'ZernikeFilter', 'ZernikeRadialFilter', 'filters'
 ]
@@ -342,6 +342,10 @@ class MaterialFilter(Filter):
         _dll.openmc_material_filter_set_bins(self._index, n, bins)
 
 
+class MaterialFromFilter(Filter):
+    filter_type = 'materialfrom'
+
+
 class MeshFilter(Filter):
     filter_type = 'mesh'
 
@@ -501,6 +505,7 @@ _FILTER_TYPE_MAP = {
     'energyfunction': EnergyFunctionFilter,
     'legendre': LegendreFilter,
     'material': MaterialFilter,
+    'materialfrom': MaterialFromFilter,
     'mesh': MeshFilter,
     'meshsurface': MeshSurfaceFilter,
     'mu': MuFilter,

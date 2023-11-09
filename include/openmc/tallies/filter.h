@@ -31,6 +31,7 @@ enum class FilterType {
   ENERGY_OUT,
   LEGENDRE,
   MATERIAL,
+  MATERIALFROM,
   MESH,
   MESH_SURFACE,
   MU,

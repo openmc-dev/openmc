@@ -118,6 +118,7 @@ Constructing Tallies
    openmc.Filter
    openmc.UniverseFilter
    openmc.MaterialFilter
+   openmc.MaterialFromFilter
    openmc.CellFilter
    openmc.CellFromFilter
    openmc.CellBornFilter

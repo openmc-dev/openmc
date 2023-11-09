@@ -64,6 +64,8 @@ unique_ptr<Source> Source::create(pugi::xml_node node)
       return make_unique<CompiledSourceWrapper>(node);
     } else if (source_type == "mesh") {
       return make_unique<MeshSource>(node);
+    } else {
+      fatal_error(fmt::format("Invalid source type '{}' found.", source_type));
     }
   } else {
     // support legacy source format
@@ -416,19 +418,6 @@ CompiledSourceWrapper::~CompiledSourceWrapper()
 
 MeshSource::MeshSource(pugi::xml_node node)
 {
-  // Check for particle type
-  if (check_for_node(node, "particle")) {
-    auto temp_str = get_node_value(node, "particle", true, true);
-    if (temp_str == "neutron") {
-      particle_ = ParticleType::neutron;
-    } else if (temp_str == "photon") {
-      particle_ = ParticleType::photon;
-      settings::photon_transport = true;
-    } else {
-      fatal_error(std::string("Unknown source particle type: ") + temp_str);
-    }
-  }
-
   int32_t mesh_id = stoi(get_node_value(node, "mesh"));
   int32_t mesh_idx = model::mesh_map.at(mesh_id);
   const auto& mesh = model::meshes[mesh_idx];
@@ -437,8 +426,8 @@ MeshSource::MeshSource(pugi::xml_node node)
   // read all source distributions and populate strengths vector for MeshSpatial
   // object
   for (auto source_node : node.children("source")) {
-    sources_.emplace_back(IndependentSource(source_node));
-    strengths.push_back(sources_.back().strength());
+    sources_.emplace_back(Source::create(source_node));
+    strengths.push_back(sources_.back()->strength());
   }
 
   // the number of source distributions should either be one or equal to the
@@ -454,48 +443,17 @@ MeshSource::MeshSource(pugi::xml_node node)
 
 SourceSite MeshSource::sample(uint64_t* seed) const
 {
-  SourceSite site;
-  site.particle = particle_;
-
-  int n_reject = 0;
-  static int n_accept = 0;
 
   // sample location and element from mesh
   auto mesh_location = space_->sample_mesh(seed);
 
-  site.r = mesh_location.second;
+  Position r_in_element = mesh_location.second;
 
   int32_t element = mesh_location.first;
 
-  const auto& src = source(element);
+  SourceSite site = source(element)->sample(seed);
 
-  site.u = src.angle()->sample(seed);
-
-  Distribution* e_dist = src.energy();
-
-  auto p = static_cast<int>(particle_);
-  // TODO: this is copied code from IndependentSource::sample, refactor
-  while (true) {
-    // Sample energy spectrum
-    site.E = e_dist->sample(seed);
-
-    // Resample if energy falls above maximum particle energy
-    if (site.E < data::energy_max[p])
-      break;
-
-    n_reject++;
-    if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
-        static_cast<double>(n_accept) / n_reject <= EXTSRC_REJECT_FRACTION) {
-      fatal_error("More than 95% of external source sites sampled were "
-                  "rejected. Please check your external source energy spectrum "
-                  "definition.");
-    }
-  }
-
-  site.time = src.time()->sample(seed);
-
-  // Increment number of accepted samples
-  ++n_accept;
+  site.r = r_in_element;
 
   return site;
 }

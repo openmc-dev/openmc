@@ -156,23 +156,21 @@ public:
   SourceSite sample(uint64_t* seed) const override;
 
   // Properties
-  ParticleType particle_type() const { return particle_; }
-  double strength() const
+  double strength() const override
   {
     return space_->total_strength();
   } //!< Total source strength
 
   // Accessors
-  const IndependentSource& source(int32_t i) const
+  const std::unique_ptr<Source>& source(int32_t i) const
   {
     return sources_.size() == 1 ? sources_[0] : sources_[i];
   }
 
 private:
   // Data members
-  ParticleType particle_ {ParticleType::neutron}; //!< Type of particle emitted
   unique_ptr<MeshSpatial> space_;                 //!< Mesh spatial
-  vector<IndependentSource> sources_;             //!< Source distributions
+  vector<std::unique_ptr<Source>> sources_;             //!< Source distributions
 };
 
 //==============================================================================

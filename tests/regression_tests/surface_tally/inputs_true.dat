@@ -54,7 +54,7 @@
     <filter id="4" type="surface">
       <bins>1</bins>
     </filter>
-    <filter id="7" type="cellfrom">
+    <filter id="7" type="materialfrom">
       <bins>2</bins>
     </filter>
     <filter id="8" type="cell">

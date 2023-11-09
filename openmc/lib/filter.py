@@ -341,8 +341,10 @@ class MaterialFilter(Filter):
         bins = (c_int32*n)(*(m._index for m in materials))
         _dll.openmc_material_filter_set_bins(self._index, n, bins)
 
+
 class MaterialFromFilter(Filter):
     filter_type = 'materialfrom'
+
 
 class MeshFilter(Filter):
     filter_type = 'mesh'

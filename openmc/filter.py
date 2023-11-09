@@ -492,6 +492,7 @@ class MaterialFilter(WithIDFilter):
     """
     expected_type = Material
 
+
 class MaterialFromFilter(WithIDFilter):
     """Bins tally event locations based on the Material they occurred in.
 
@@ -514,6 +515,7 @@ class MaterialFromFilter(WithIDFilter):
 
     """
     expected_type = Material
+
 
 class CellFilter(WithIDFilter):
     """Bins tally event locations based on the Cell they occurred in.

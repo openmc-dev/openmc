@@ -8,7 +8,7 @@
 namespace openmc {
 
 //==============================================================================
-//! Specifies which geometric cells particles exit when crossing a surface.
+//! Specifies which material particles exit when crossing a surface.
 //==============================================================================
 
 class MaterialFromFilter : public MaterialFilter {

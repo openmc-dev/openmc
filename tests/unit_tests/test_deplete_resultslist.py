@@ -111,7 +111,7 @@ def test_get_mass(res):
     assert n_cm3 == pytest.approx(n_ref / volume)
 
     t_min, n_bcm = res.get_mass("1", "Xe135", mass_units="kg", time_units="min")
-    assert n_bcm == pytest.approx(n_ref * 1e3)
+    assert n_bcm == pytest.approx(n_ref / 1e3)
     assert t_min == pytest.approx(t_ref / 60)
 
     t_hour, _n = res.get_mass("1", "Xe135", time_units="h")

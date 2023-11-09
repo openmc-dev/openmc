@@ -61,8 +61,6 @@ class SourceBase(ABC):
             XML element containing source data
 
         """
-        element.set("type", self.type)
-        element.set("strength", str(self.strength))
 
     def to_xml_element(self) -> ET.Element:
         """Return XML representation of the source
@@ -74,6 +72,8 @@ class SourceBase(ABC):
 
         """
         element = ET.Element("source")
+        element.set("type", self.type)
+        element.set("strength", str(self.strength))
         self.populate_xml_element(element)
         return element
 
@@ -297,7 +297,6 @@ class IndependentSource(SourceBase):
             XML element containing source data
 
         """
-        super().populate_xml_element(element)
         element.set("particle", self.particle)
         if self.space is not None:
             element.append(self.space.to_xml_element())
@@ -479,8 +478,6 @@ class MeshSource(SourceBase):
         self.set_total_strength(1.0)
 
     def populate_xml_element(self, elem: ET.Element):
-        super().populate_xml_element(elem)
-
         elem.set("mesh", str(self.mesh.id))
 
         # write in the order of mesh indices
@@ -594,8 +591,6 @@ class CompiledSource(SourceBase):
             XML element containing source data
 
         """
-        super().populate_xml_element(element)
-
         element.set("library", self.library)
 
         if self.parameters is not None:
@@ -686,8 +681,6 @@ class FileSource(SourceBase):
             XML element containing source data
 
         """
-        super().populate_xml_element(element)
-
         if self.path is not None:
             element.set("file", self.path)
 

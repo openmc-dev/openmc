@@ -100,3 +100,6 @@ def test_source_mesh(mesh_type):
     assert mesh_source.strength == 1.0
     mesh_source.strength = 100.0
     assert mesh_source.strength == 100.0
+
+    mesh_source.normalize_source_strengths()
+    assert mesh_source.strength == 1.0

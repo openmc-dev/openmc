@@ -483,9 +483,7 @@ class MeshSource(SourceBase):
         # write in the order of mesh indices
         for idx in self.mesh.indices:
             idx = tuple(i - 1 for i in idx)
-            source = self.sources[idx]
-            src_element = ET.SubElement(elem, 'source')
-            source.populate_xml_element(src_element)
+            elem.append(self.sources[idx].to_xml_element())
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element, meshes=None) -> openmc.MeshSource:

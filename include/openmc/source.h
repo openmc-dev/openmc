@@ -169,8 +169,8 @@ public:
 
 private:
   // Data members
-  unique_ptr<MeshSpatial> space_;                 //!< Mesh spatial
-  vector<std::unique_ptr<Source>> sources_;             //!< Source distributions
+  unique_ptr<MeshSpatial> space_;           //!< Mesh spatial
+  vector<std::unique_ptr<Source>> sources_; //!< Source distributions
 };
 
 //==============================================================================

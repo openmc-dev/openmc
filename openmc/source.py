@@ -454,7 +454,7 @@ class MeshSource(SourceBase):
 
         self._sources = s
         for src in self._sources.flat:
-            if src.space is not None:
+            if isinstance(src, IndependentSource) and src.space is not None:
                 warnings.warn('Some sources on the mesh have spatial '
                               'distributions that will be ignored at runtime.')
                 break

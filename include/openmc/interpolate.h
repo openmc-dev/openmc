@@ -4,7 +4,10 @@
 #include <cmath>
 #include <vector>
 
+#include <gsl/gsl-lite.hpp>
+
 #include "openmc/search.h"
+#include "openmc/error.h"
 
 namespace openmc {
 

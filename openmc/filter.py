@@ -85,7 +85,7 @@ def _repeat_and_tile(bins, repeat_factor, data_size):
 class Filter(IDManagerMixin, metaclass=FilterMeta):
     """Tally modifier that describes phase-space and other characteristics.
 
-    ParametersMaría José
+    Parameters
     ----------
     bins : Integral or Iterable of Integral or Iterable of Real
         The bins for the filter. This takes on different meaning for different

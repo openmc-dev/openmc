@@ -9,8 +9,8 @@
 namespace openmc {
 
 //==============================================================================
-//! Bins the incoming-outgoing direction cosine.  This is only used for scatter
-//! reactions.
+//! Bins the incoming-outgoing direction cosine.  This is only used for surface
+//! crossings.
 //==============================================================================
 
 class MuSurfaceFilter : public Filter {

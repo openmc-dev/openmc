@@ -265,7 +265,7 @@ private:
   // Other physical data
   double wgt_ {1.0};       //!< particle weight
   double mu_;              //!< angle of scatter
-  double musurface_;              //!< angle of scatter
+  double musurface_;       //!< cosine of surface crossing angle
   double time_ {0.0};      //!< time in [s]
   double time_last_ {0.0}; //!< previous time in [s]
 

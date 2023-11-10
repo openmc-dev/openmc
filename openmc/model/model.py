@@ -352,7 +352,7 @@ class Model:
             method: str = 'cecm',
             operator_class: str = 'CoupledOperator',
             final_step: bool = True,
-            operator_kwargs: Optional[Dict]=None,
+            operator_kwargs: Optional[Dict] = None,
             directory: PathLike = '.',
             output:bool = True,
             **integrator_kwargs

@@ -526,7 +526,7 @@ void Particle::cross_surface()
     // update musurface value of particle relative to surface normal
     if (!model::active_surface_tallies.empty()) {
       auto n = surf->normal(this->r());
-      n = n/n.norm();
+      n /= n.norm();
       if (this->surface() < 0) n *= -1;
       this->musurface() = this->u().dot(n);
     }

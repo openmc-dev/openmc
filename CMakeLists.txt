@@ -410,6 +410,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_mesh.cpp
   src/tallies/filter_meshsurface.cpp
   src/tallies/filter_mu.cpp
+  src/tallies/filter_musurface.cpp
   src/tallies/filter_particle.cpp
   src/tallies/filter_polar.cpp
   src/tallies/filter_sph_harm.cpp

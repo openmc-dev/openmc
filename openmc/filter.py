@@ -21,7 +21,7 @@ from ._xml import get_text
 
 _FILTER_TYPES = (
     'universe', 'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
-    'energyout', 'mu', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
+    'energyout', 'mu', 'musurface', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
     'energyfunction', 'cellfrom', 'materialfrom', 'legendre', 'spatiallegendre',
     'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance',
     'collision', 'time'
@@ -85,7 +85,7 @@ def _repeat_and_tile(bins, repeat_factor, data_size):
 class Filter(IDManagerMixin, metaclass=FilterMeta):
     """Tally modifier that describes phase-space and other characteristics.
 
-    Parameters
+    ParametersMaría José
     ----------
     bins : Integral or Iterable of Integral or Iterable of Real
         The bins for the filter. This takes on different meaning for different
@@ -1817,6 +1817,46 @@ class MuFilter(RealFilter):
             if not np.isclose(x, 1.):
                 cv.check_less_than('filter value', x, 1., equality=True)
 
+class MuSurfaceFilter(RealFilter):
+    """Bins tally events based on particle scattering angle.
+
+    Parameters
+    ----------
+    values : int or Iterable of Real
+        A grid of scattering angles which events will binned into. Values
+        represent the cosine of the scattering angle. If an iterable is given,
+        the values will be used explicitly as grid points. If a single int is
+        given, the range [-1, 1] will be divided up equally into that number of
+        bins.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    values : numpy.ndarray
+        An array of values for which each successive pair constitutes a range of
+        scattering angle cosines for a single bin
+    id : int
+        Unique identifier for the filter
+    bins : numpy.ndarray
+        An array of shape (N, 2) where each row is a pair of scattering angle
+        cosines for a single filter bin
+    num_bins : Integral
+        The number of filter bins
+
+    """
+    def __init__(self, values, filter_id=None):
+        if isinstance(values, Integral):
+            values = np.linspace(-1., 1., values + 1)
+        super().__init__(values, filter_id)
+
+    def check_bins(self, bins):
+        super().check_bins(bins)
+        for x in np.ravel(bins):
+            if not np.isclose(x, -1.):
+                cv.check_greater_than('filter value', x, -1., equality=True)
+            if not np.isclose(x, 1.):
+                cv.check_less_than('filter value', x, 1., equality=True)
 
 class PolarFilter(RealFilter):
     """Bins tally events based on the incident particle's direction.

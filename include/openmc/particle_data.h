@@ -265,6 +265,7 @@ private:
   // Other physical data
   double wgt_ {1.0};       //!< particle weight
   double mu_;              //!< angle of scatter
+  double musurface_;              //!< angle of scatter
   double time_ {0.0};      //!< time in [s]
   double time_last_ {0.0}; //!< previous time in [s]
 
@@ -399,6 +400,8 @@ public:
   double wgt() const { return wgt_; }
   double& mu() { return mu_; }
   const double& mu() const { return mu_; }
+  double& musurface() { return musurface_; }
+  const double& musurface() const { return musurface_; }
   double& time() { return time_; }
   const double& time() const { return time_; }
   double& time_last() { return time_last_; }

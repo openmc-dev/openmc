@@ -1818,29 +1818,33 @@ class MuFilter(RealFilter):
                 cv.check_less_than('filter value', x, 1., equality=True)
 
 class MuSurfaceFilter(RealFilter):
-    """Bins tally events based on particle scattering angle.
+    """Bins tally events based on the cosine of the angle between the 
+    direction of the particle and the normal to the surface at the point 
+    it crosses. Only used in conjunction with a SurfaceFilter and current 
+    score. 
 
     Parameters
     ----------
     values : int or Iterable of Real
-        A grid of scattering angles which events will binned into. Values
-        represent the cosine of the scattering angle. If an iterable is given,
-        the values will be used explicitly as grid points. If a single int is
-        given, the range [-1, 1] will be divided up equally into that number of
-        bins.
+        A grid of surface crossing angles which the events will be divided into. 
+        Values represent the cosine of the angle between the direction of the 
+        particle and the normal to the surface at the point it crosses. If an 
+        iterable is given, the values will be used explicitly as grid points. 
+        If a single int is given, the range [-1, 1] will be divided equally 
+        into that number of bins.
     filter_id : int
         Unique identifier for the filter
 
     Attributes
     ----------
     values : numpy.ndarray
-        An array of values for which each successive pair constitutes a range of
-        scattering angle cosines for a single bin
+        An array of values for which each successive pair constitutes a range of 
+        surface crossing angle cosines for a single bin.
     id : int
         Unique identifier for the filter
     bins : numpy.ndarray
-        An array of shape (N, 2) where each row is a pair of scattering angle
-        cosines for a single filter bin
+        An array of shape (N, 2) where each row is a pair of cosines of surface 
+        crossing angle for a single filter
     num_bins : Integral
         The number of filter bins
 

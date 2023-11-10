@@ -369,14 +369,14 @@ class Model:
             Array of timesteps in units of [s]. Note that values are not
             cumulative.
         method : str, optional
-             Integration method used for depletion (e.g., 'cecm', 'predictor').
-             Defaults to 'cecm'.
+            Integration method used for depletion (e.g., 'cecm', 'predictor').
+            Defaults to 'cecm'.
         operator_class : str, optional
-             Operator class used for depletion (e.g., 'CoupledOperator' or
-             'IndependentOperator'). Defaults to 'CoupledOperator'. If
-             IndependentOperator is selected then all depletable materials
-             in the model will be used and fluxes and micros will need passing
-             in via the operator_kwargs.
+            Operator class used for depletion (e.g., 'CoupledOperator' or
+            'IndependentOperator'). Defaults to 'CoupledOperator'. If
+            IndependentOperator is selected then all depletable materials
+            in the model will be used and fluxes and micros will need passing
+            in via the operator_kwargs.
         final_step : bool, optional
             Indicate whether or not a transport solve should be run at the end
             of the last timestep. Defaults to running this transport solve.

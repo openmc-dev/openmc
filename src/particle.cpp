@@ -528,7 +528,9 @@ void Particle::cross_surface()
       auto n = surf->normal(this->r());
       n /= n.norm();
       if (this->surface() < 0) n *= -1;
-      this->musurface() = this->u().dot(n);
+      double mu = this->u().dot(n);;
+      mu = (mu > 1) ? 1 : mu;
+      this->musurface() = mu; 
     }
     return;
   }

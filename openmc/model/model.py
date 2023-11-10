@@ -8,7 +8,7 @@ from numbers import Integral
 from tempfile import NamedTemporaryFile
 import warnings
 import lxml.etree as ET
-from typing import Optional, Dict
+from typing import Optional, Dict, Sequence
 
 import h5py
 
@@ -346,9 +346,17 @@ class Model:
 
         openmc.lib.finalize()
 
-    def deplete(self, timesteps, method='cecm', final_step=True,
-                operator_kwargs=None, directory='.', output=True,
-                **integrator_kwargs):
+    def deplete(
+            self,
+            timesteps: Sequence[float],
+            method: str = 'cecm',
+            operator_class: str = 'CoupledOperator',
+            final_step: bool = True,
+            operator_kwargs: Optional[Dict]=None,
+            directory: PathLike = '.',
+            output:bool = True,
+            **integrator_kwargs
+        ):
         """Deplete model using specified timesteps/power
 
         .. versionchanged:: 0.13.0
@@ -363,6 +371,12 @@ class Model:
         method : str, optional
              Integration method used for depletion (e.g., 'cecm', 'predictor').
              Defaults to 'cecm'.
+        operator_class : str, optional
+             Operator class used for depletion (e.g., 'CoupledOperator' or
+             'IndependentOperator'). Defaults to 'CoupledOperator'. If
+             IndependentOperator is selected then all depletable materials
+             in the model will be used and fluxes and micros will need passing
+             in via the operator_kwargs.
         final_step : bool, optional
             Indicate whether or not a transport solve should be run at the end
             of the last timestep. Defaults to running this transport solve.
@@ -387,6 +401,8 @@ class Model:
         else:
             raise ValueError("operator_kwargs must be a dict or None")
 
+        check_value('operator_class', operator_class, ('IndependentOperator', 'CoupledOperator'))
+
         # Import openmc.deplete here so the Model can be used even if the
         # shared library is unavailable.
         import openmc.deplete as dep
@@ -396,8 +412,13 @@ class Model:
 
         with _change_directory(Path(directory)):
             with openmc.lib.quiet_dll(output):
-                # TODO: Support use of IndependentOperator too
-                depletion_operator = dep.CoupledOperator(self, **op_kwargs)
+                if operator_class == 'IndependentOperator':
+                    materials=[mat for mat in self.materials if mat.depletable]
+                    depletion_operator = dep.IndependentOperator(
+                        materials=materials, **op_kwargs)
+
+                else:  # operator is CoupledOperator
+                    depletion_operator = dep.CoupledOperator(self, **op_kwargs)
 
             # Tell depletion_operator.finalize NOT to clear C API memory when
             # it is done

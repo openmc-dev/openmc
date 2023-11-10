@@ -34,6 +34,7 @@ def test_spherical_mesh_estimators(run_in_tmpdir):
         current_mu = sp.tallies[tally.id].mean.ravel()
 
     assert (current_mu[-1] ==  current_mu.max())
+    assert (current_mu[-1] ==  1.0)
     assert (current_mu[0:-2] == 0)
 
 

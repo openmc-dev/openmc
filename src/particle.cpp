@@ -524,9 +524,12 @@ void Particle::cross_surface()
   if (surf->bc_ && settings::run_mode != RunMode::PLOTTING) {
     surf->bc_->handle_particle(*this, *surf);
     // update musurface value of particle relative to surface normal
-    auto n = surf->normal(this->r());
-    if (this->surface() < 0) n *= -1;
-    this->musurface() = this->u().dot(n);
+    if (!model::active_surface_tallies.empty()) {
+      auto n = surf->normal(this->r());
+      n =/ n.norm();
+      if (this->surface() < 0) n *= -1;
+      this->musurface() = this->u().dot(n);
+    }
     return;
   }
 

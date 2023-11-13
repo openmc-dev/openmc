@@ -6,8 +6,8 @@
 
 #include <gsl/gsl-lite.hpp>
 
-#include "openmc/search.h"
 #include "openmc/error.h"
+#include "openmc/search.h"
 
 namespace openmc {
 

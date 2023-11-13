@@ -4,7 +4,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
-
 #include "openmc/interpolate.h"
 #include "openmc/search.h"
 
@@ -28,7 +27,8 @@ TEST_CASE("Test Lagranian Interpolation")
     }
   }
 
-  // spot checks based on an independent implementation of Lagrangian interpolation
+  // spot checks based on an independent implementation of Lagrangian
+  // interpolation
   std::map<int, std::vector<std::pair<double, double>>> checks;
   checks[1] = {{0.5, 0.5}, {4.5, 3.0}, {2.5, 1.5}, {5.5, 4.0}};
   checks[2] = {{2.5, 1.5}, {4.5, 2.75}, {4.9999, 3.0}, {4.00001, 3.0}};

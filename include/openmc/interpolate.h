@@ -50,7 +50,7 @@ inline double interpolate_lagrangian(gsl::span<const double> xs,
       numerator *= (x - xs[idx + j]);
       denominator *= (xs[idx + i] - xs[idx + j]);
     }
-    output += (numerator / denominator) * ys[i];
+    output += (numerator / denominator) * ys[idx + i];
   }
 
   return output;

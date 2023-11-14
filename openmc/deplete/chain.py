@@ -412,8 +412,7 @@ class Chain:
                     if mode.daughter in decay_data:
                         target = mode.daughter
                     else:
-                        print('missing {} {} {}'.format(
-                            parent, ','.join(mode.modes), mode.daughter))
+                        print(f'missing {parent} {",".join(mode.modes)} {mode.daughter}')
                         target = replace_missing(mode.daughter, decay_data)
 
                     # Write branching ratio, taking care to ensure sum is unity
@@ -440,9 +439,9 @@ class Chain:
                         m = data.nuclide['isomeric_state'] + delta_m
 
                         if m == 0:
-                            daughter = '{}{}'.format(openmc.data.ATOMIC_SYMBOL[Z], A)
+                            daughter = f'{openmc.data.ATOMIC_SYMBOL[Z]}{A}'
                         else:
-                            daughter = '{}{}_m{}'.format(openmc.data.ATOMIC_SYMBOL[Z], A, m)
+                            daughter = f'{openmc.data.ATOMIC_SYMBOL[Z]}{A}_m{m}'
                         if daughter not in decay_data:
                             daughter = replace_missing(daughter, decay_data)
                             if daughter is None:
@@ -508,7 +507,7 @@ class Chain:
         if missing_daughter:
             print('The following decay modes have daughters with no decay data:')
             for mode in missing_daughter:
-                print('  {}'.format(mode))
+                print(f'  {mode}')
             print('')
 
         if missing_rx_product:
@@ -520,7 +519,7 @@ class Chain:
         if missing_fpy:
             print('The following fissionable nuclides have no fission product yields:')
             for parent, replacement in missing_fpy:
-                print('  {}, replaced with {}'.format(parent, replacement))
+                print(f'  {parent}, replaced with {replacement}')
             print('')
 
         if missing_fp:
@@ -897,8 +896,7 @@ class Chain:
             if len(indexes) == 0:
                 if strict:
                     raise AttributeError(
-                        "Nuclide {} does not have {} reactions".format(
-                            parent, reaction))
+                        f"Nuclide {parent} does not have {reaction} reactions")
                 missing_reaction.add(parent)
                 continue
 
@@ -920,8 +918,7 @@ class Chain:
 
         if len(rxn_ix_map) == 0:
             raise IndexError(
-                "No {} reactions found in this {}".format(
-                    reaction, self.__class__.__name__))
+                f"No {reaction} reactions found in this {self.__class__.__name__}")
 
         if len(missing_parents) > 0:
             warn("The following nuclides were not found in {}: {}".format(

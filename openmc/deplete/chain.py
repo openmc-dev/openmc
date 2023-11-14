@@ -456,7 +456,8 @@ class Chain:
                         else:
                             q_value = 0.0
 
-                        nuclide.add_reaction(name, daughter, q_value, 1.0)
+                        if nuclide.name != daughter:
+                            nuclide.add_reaction(name, daughter, q_value, 1.0)
 
                 if any(mt in reactions_available for mt in openmc.data.FISSION_MTS):
                     q_value = reactions[parent][18]

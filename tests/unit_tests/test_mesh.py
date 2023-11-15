@@ -241,9 +241,8 @@ def test_mesh_vertices(mesh_type):
 
 
 def test_CylindricalMesh_get_indices_at_coords():
-
     # default origin (0, 0, 0) and default phi grind (0, 2*pi)
-    mesh = openmc.CylindricalMesh(r_grid=(0,5, 10), z_grid=(0,5, 10))
+    mesh = openmc.CylindricalMesh(r_grid=(0, 5, 10), z_grid=(0, 5, 10))
     assert mesh.get_indices_at_coords(1, 0, 1) == (0, 0, 0)
     assert mesh.get_indices_at_coords(6, 0, 1) == (1, 0, 0)
     assert mesh.get_indices_at_coords(9, 0, 1) == (1, 0, 0)
@@ -264,8 +263,8 @@ def test_CylindricalMesh_get_indices_at_coords():
 
     # negative range on z grid
     mesh = openmc.CylindricalMesh(
-        r_grid=(0,5, 10),
-        phi_grid=(0, 0.5*pi, pi, 1.5*pi, 1.9*pi),
+        r_grid=(0, 5, 10),
+        phi_grid=(0, 0.5 * pi, pi, 1.5 * pi, 1.9 * pi),
         z_grid=(-5, 0, 5, 10),
     )
     assert mesh.get_indices_at_coords(1, 1, 1) == (0, 0, 1)  # first angle quadrant
@@ -280,9 +279,9 @@ def test_CylindricalMesh_get_indices_at_coords():
     # origin of mesh not default
     mesh = openmc.CylindricalMesh(
         r_grid=(0, 5, 10),
-        phi_grid=(0, 0.5*pi, pi, 1.5*pi, 1.9*pi),
+        phi_grid=(0, 0.5 * pi, pi, 1.5 * pi, 1.9 * pi),
         z_grid=(-5, 0, 5, 10),
-        origin=(100, 200, 300)
+        origin=(100, 200, 300),
     )
     assert mesh.get_indices_at_coords(101, 201, 301) == (0, 0, 1)  # first angle quadrant
     assert mesh.get_indices_at_coords(102, 202, 306) == (0, 0, 2)  # first angle quadrant

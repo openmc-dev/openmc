@@ -132,7 +132,7 @@ Filter* Filter::create(const std::string& type, int32_t id)
   } else if (type == "mu") {
     return Filter::create<MuFilter>(id);
   } else if (type == "musurface") {
-    return Filter::create<MuSurfaceFilter>(id);   
+    return Filter::create<MuSurfaceFilter>(id);
   } else if (type == "particle") {
     return Filter::create<ParticleFilter>(id);
   } else if (type == "polar") {

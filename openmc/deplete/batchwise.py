@@ -126,6 +126,7 @@ class Batchwise(ABC):
 
         self.print_iterations = print_iterations
         self.search_for_keff_output = search_for_keff_output
+        # List of materials to add as single action in time
         self.materials_to_add = {}
 
     @property
@@ -558,17 +559,45 @@ class Batchwise(ABC):
                 x[mat_idx][nuc_idx] = number_i[mat_id, nuc]
         return x
 
-    def add_material(self, mat, value, mat_vector, when, quantity='grams'):
+    def add_material(self, mat, value, mat_vector, timestep, units='grams'):
         """
+        Add material entries to self.materials_to_add dictionary for later use,
+        before converting grams into atoms.
+        Parameters
+        ----------
+        mat : openmc.Material or str or int
+            Material identifier
+        value : float
+            Material to add in units of 'units'
+        mat_vector : dict of float
+            Nuclide composition of material to add where keys are the nuclides
+            and values the fractions.
+        units : str
+            Units of material value.
+            Default : grams
         """
         # convert grams in atoms
-        self.materials_to_add[(mat,when)] = dict()
+        self.materials_to_add[(mat,timestep)] = dict()
         for nuc,frac in mat_vector.items():
-            self.materials_to_add[(mat,when)][nuc] = \
+            self.materials_to_add[(mat,timestep)][nuc] = \
                     frac * value / atomic_mass(nuc) * AVOGADRO
 
     def _add_material(self, x, mat, values):
         """
+        Private method to add materials as number of atoms to number and x.
+        Parameters
+        ----------
+        x : list of numpy.ndarray
+            Total atoms concentrations
+        mat : openmc.Material or str or int
+            Material identifier
+        values : dict of floats
+            Numebr of atoms per nuclide to add, where keys are nuclides and
+            values number of atoms.
+        Return
+        ------
+        x : list of numpy.ndarray
+            Total atoms concentrations
         """
         number_i = self.operator.number
         #get material id
@@ -1905,8 +1934,8 @@ class BatchwiseSchemeStd():
         for bw in self.bw_list:
             bw.set_density_function(mats, density_func, oxidation_states)
 
-    def add_material(self, mat, value, mat_vector, when, quantity):
-        self.bw_geom.add_material(mat, value, mat_vector, when, quantity )
+    def add_material(self, mat, value, mat_vector, timestep, units):
+        self.bw_geom.add_material(mat, value, mat_vector, timestep, units)
 
     def update_from_restart(self, x, root):
         """
@@ -2013,8 +2042,8 @@ class BatchwiseSchemeRefuel():
         for bw in self.bw_list:
             bw.set_density_function(mats, density_func, oxidation_states)
 
-    def add_material(self, mat, value, mat_vector, when, quantity):
-        self.bw_geom.add_material(mat, value, mat_vector, when, quantity )
+    def add_material(self, mat, value, mat_vector, timestep, units):
+        self.bw_geom.add_material(mat, value, mat_vector, timestep, units)
 
     def update_from_restart(self, x, root):
         """

@@ -960,8 +960,8 @@ class Integrator(ABC):
     def add_redox(self, mat, buffer, oxidation_states):
         self.transfer_rates.set_redox(mat, buffer, oxidation_states)
 
-    def add_material(self, mat, value, mat_vector, when, quantity='grams'):
-        self.batchwise.add_material(mat, value, mat_vector, when,
+    def add_material(self, mat, value, mat_vector, timestep, quantity='grams'):
+        self.batchwise.add_material(mat, value, mat_vector, timestep,
                                     quantity)
 @add_params
 class SIIntegrator(Integrator):

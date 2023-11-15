@@ -14,6 +14,7 @@ import numpy as np
 from uncertainties import ufloat
 
 import openmc
+import openmc.lib
 from openmc.checkvalue import check_type
 from openmc.mpi import comm
 from .abc import ReactionRateHelper, OperatorResult

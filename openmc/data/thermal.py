@@ -676,6 +676,15 @@ class ThermalScattering(EqualityMixin):
                     # here, because they are equiprobable, so the order
                     # doesn't matter.
                     mu.sort()
+
+                    # Older versions of NJOY had a bug, and the discrete
+                    # scattering angles could sometimes be less than -1 or
+                    # greater than 1. We check for this here, and warn users.
+                    if mu[0] < -1. or mu[-1] > 1.:
+                        warn('S(a,b) scattering angle for incident energy index '
+                             f'{i} and exit energy index {j} outside of the '
+                             'interval [-1, 1].')
+
                     p_mu = 1. / n_mu * np.ones(n_mu)
                     mu_ij = Discrete(mu, p_mu)
                     mu_ij.c = np.cumsum(p_mu)

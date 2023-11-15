@@ -74,6 +74,8 @@ bool trigger_predict {false};
 bool ufs_on {false};
 bool urr_ptables_on {true};
 bool weight_windows_on {false};
+bool weight_window_checkpoint_surface {false};
+bool weight_window_checkpoint_collision {true};
 bool write_all_tracks {false};
 bool write_initial_source {false};
 
@@ -89,6 +91,7 @@ std::string weight_windows_file;
 int32_t n_inactive {0};
 int32_t max_lost_particles {10};
 double rel_max_lost_particles {1.0e-6};
+int32_t max_write_lost_particles {-1};
 int32_t gen_per_batch {1};
 int64_t n_particles {-1};
 
@@ -170,6 +173,12 @@ void get_run_parameters(pugi::xml_node node_base)
   if (check_for_node(node_base, "rel_max_lost_particles")) {
     rel_max_lost_particles =
       std::stod(get_node_value(node_base, "rel_max_lost_particles"));
+  }
+
+  // Get relative number of lost particles
+  if (check_for_node(node_base, "max_write_lost_particles")) {
+    max_write_lost_particles =
+      std::stoi(get_node_value(node_base, "max_write_lost_particles"));
   }
 
   // Get number of inactive batches
@@ -965,6 +974,19 @@ void read_settings_xml(pugi::xml_node root)
         settings::weight_windows_on = true;
         break;
       }
+    }
+  }
+
+  // Set up weight window checkpoints
+  if (check_for_node(root, "weight_window_checkpoints")) {
+    xml_node ww_checkpoints = root.child("weight_window_checkpoints");
+    if (check_for_node(ww_checkpoints, "collision")) {
+      weight_window_checkpoint_collision =
+        get_node_value_bool(ww_checkpoints, "collision");
+    }
+    if (check_for_node(ww_checkpoints, "surface")) {
+      weight_window_checkpoint_surface =
+        get_node_value_bool(ww_checkpoints, "surface");
     }
   }
 }

@@ -3,8 +3,8 @@ project(openmc C CXX)
 
 # Set version numbers
 set(OPENMC_VERSION_MAJOR 0)
-set(OPENMC_VERSION_MINOR 13)
-set(OPENMC_VERSION_RELEASE 4)
+set(OPENMC_VERSION_MINOR 14)
+set(OPENMC_VERSION_RELEASE 1)
 set(OPENMC_VERSION ${OPENMC_VERSION_MAJOR}.${OPENMC_VERSION_MINOR}.${OPENMC_VERSION_RELEASE})
 configure_file(include/openmc/version.h.in "${CMAKE_BINARY_DIR}/include/openmc/version.h" @ONLY)
 
@@ -120,6 +120,7 @@ if(OPENMC_USE_DAGMC)
     message(FATAL_ERROR "Discovered DAGMC Version: ${DAGMC_VERSION}. \
     Please update DAGMC to version 3.2.0 or greater.")
   endif()
+  message(STATUS "Found DAGMC: ${DAGMC_DIR} (version ${DAGMC_VERSION})")
 endif()
 
 #===============================================================================
@@ -405,6 +406,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_energyfunc.cpp
   src/tallies/filter_legendre.cpp
   src/tallies/filter_material.cpp
+  src/tallies/filter_materialfrom.cpp
   src/tallies/filter_mesh.cpp
   src/tallies/filter_meshsurface.cpp
   src/tallies/filter_mu.cpp

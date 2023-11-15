@@ -121,6 +121,8 @@ class SourceBase(ABC):
 class IndependentSource(SourceBase):
     """Distribution of phase space coordinates for source sites.
 
+    .. versionadded:: 0.14.0
+
     Parameters
     ----------
     space : openmc.stats.Spatial
@@ -154,7 +156,7 @@ class IndependentSource(SourceBase):
     type : str
         Indicator of source type: 'independent'
 
-    .. versionadded:: 0.13.4
+    .. versionadded:: 0.14.0
 
     particle : {'neutron', 'photon'}
         Source particle type
@@ -392,7 +394,7 @@ def Source(*args, **kwargs):
 class CompiledSource(SourceBase):
     """A source based on a compiled shared library
 
-    .. versionadded:: 0.13.4
+    .. versionadded:: 0.14.0
 
     Parameters
     ----------
@@ -500,7 +502,7 @@ class CompiledSource(SourceBase):
 class FileSource(SourceBase):
     """A source based on particles stored in a file
 
-    .. versionadded:: 0.13.4
+    .. versionadded:: 0.14.0
 
     Parameters
     ----------

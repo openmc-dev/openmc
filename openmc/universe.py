@@ -7,7 +7,7 @@ from numbers import Integral, Real
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import lxml.etree as ET
-from warnings import warn
+import warnings
 
 import h5py
 import numpy as np
@@ -234,8 +234,7 @@ class Universe(UniverseBase):
         if regions:
             return openmc.Union(regions).bounding_box
         else:
-            # Infinite bounding box
-            return openmc.Intersection([]).bounding_box
+            return openmc.BoundingBox.infinite()
 
     @classmethod
     def from_hdf5(cls, group, cells):
@@ -310,10 +309,9 @@ class Universe(UniverseBase):
         Parameters
         ----------
         origin : iterable of float
-            Coordinates at the origin of the plot, if left as None then the
-            universe.bounding_box.center will be used to attempt to
-            ascertain the origin. Defaults to (0, 0, 0) if the bounding_box
-            contains inf values
+            Coordinates at the origin of the plot. If left as None,
+            universe.bounding_box.center will be used to attempt to ascertain
+            the origin with infinite values being replaced by 0.
         width : iterable of float
             Width of the plot in each basis direction. If left as none then the
             universe.bounding_box.width() will be used to attempt to
@@ -351,19 +349,19 @@ class Universe(UniverseBase):
         legend : bool
             Whether a legend showing material or cell names should be drawn
 
-            .. versionadded:: 0.13.4
+            .. versionadded:: 0.14.0
         legend_kwargs : dict
             Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
 
-            .. versionadded:: 0.13.4
+            .. versionadded:: 0.14.0
         outline : bool
             Whether outlines between color boundaries should be drawn
 
-            .. versionadded:: 0.13.4
+            .. versionadded:: 0.14.0
         axis_units : {'km', 'm', 'cm', 'mm'}
             Units used on the plot axis
 
-            .. versionadded:: 0.13.4
+            .. versionadded:: 0.14.0
         **kwargs
             Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 
@@ -399,7 +397,9 @@ class Universe(UniverseBase):
             if origin is None:
                 # if nan values in the bb.center they get replaced with 0.0
                 # this happens when the bounding_box contains inf values
-                origin = np.nan_to_num(bb.center)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", RuntimeWarning)
+                    origin = np.nan_to_num(bb.center)
             if width is None:
                 bb_width = bb.width
                 x_width = bb_width['xyz'.index(basis[0])]
@@ -836,7 +836,7 @@ class DAGMCUniverse(UniverseBase):
             coords = dagmc_file['tstt']['nodes']['coordinates'][()]
             lower_left_corner = coords.min(axis=0)
             upper_right_corner = coords.max(axis=0)
-            return (lower_left_corner, upper_right_corner)
+            return openmc.BoundingBox(lower_left_corner, upper_right_corner)
 
     @property
     def filename(self):
@@ -949,7 +949,13 @@ class DAGMCUniverse(UniverseBase):
         dagmc_element.set('filename', str(self.filename))
         xml_element.append(dagmc_element)
 
-    def bounding_region(self, bounded_type='box', boundary_type='vacuum', starting_id=10000):
+    def bounding_region(
+            self,
+            bounded_type: str = 'box',
+            boundary_type: str = 'vacuum',
+            starting_id: int = 10000,
+            padding_distance: float = 0.
+        ):
         """Creates a either a spherical or box shaped bounding region around
         the DAGMC geometry.
 
@@ -969,6 +975,10 @@ class DAGMCUniverse(UniverseBase):
             Starting ID of the surface(s) used in the region. For bounded_type
             'box', the next 5 IDs will also be used. Defaults to 10000 to reduce
             the chance of an overlap of surface IDs with the DAGMC geometry.
+        padding_distance : float
+            Distance between the bounding region surfaces and the minimal
+            bounding box. Allows for the region to be larger than the DAGMC
+            geometry.
 
         Returns
         -------
@@ -982,16 +992,15 @@ class DAGMCUniverse(UniverseBase):
         check_type('bounded type', bounded_type, str)
         check_value('bounded type', bounded_type, ('box', 'sphere'))
 
-        bbox = self.bounding_box
+        bbox = self.bounding_box.expand(padding_distance, True)
 
         if bounded_type == 'sphere':
-            bbox_center = (bbox[0] + bbox[1])/2
-            radius = np.linalg.norm(np.asarray(bbox))
+            radius = np.linalg.norm(bbox.upper_right - bbox.center)
             bounding_surface = openmc.Sphere(
                 surface_id=starting_id,
-                x0=bbox_center[0],
-                y0=bbox_center[1],
-                z0=bbox_center[2],
+                x0=bbox.center[0],
+                y0=bbox.center[1],
+                z0=bbox.center[2],
                 boundary_type=boundary_type,
                 r=radius,
             )

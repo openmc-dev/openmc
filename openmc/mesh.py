@@ -170,24 +170,27 @@ class StructuredMesh(MeshBase):
 
     @property
     def vertices(self):
-        """Return coordinates of mesh vertices.
+        """Return coordinates of mesh vertices in Cartesian coordinates. Also
+           see :meth:`CylindricalMesh.vertices_cylindrical` and
+           :meth:`SphericalMesh.vertices_spherical` for coordinates in other coordinate
+           systems.
 
         Returns
         -------
         vertices : numpy.ndarray
             Returns a numpy.ndarray representing the coordinates of the mesh
-            vertices with a shape equal to (ndim, dim1 + 1, ..., dimn + 1).  Can be
-            unpacked along the first dimension with xx, yy, zz = mesh.vertices.
+            vertices with a shape equal to (dim1 + 1, ..., dimn + 1, ndim). X, Y, Z values
+            can be unpacked with xx, yy, zz = np.rollaxis(mesh.vertices, -1).
 
         """
         return self._generate_vertices(*self._grids)
 
     @staticmethod
     def _generate_vertices(i_grid, j_grid, k_grid):
-        """Returns an array with shape (3, i_grid.size+1, j_grid.size+1, k_grid.size+1)
+        """Returns an array with shape (i_grid.size, j_grid.size, k_grid.size, 3)
            containing the corner vertices of mesh elements.
         """
-        return np.stack(np.meshgrid(i_grid, j_grid, k_grid, indexing='ij'), axis=0)
+        return np.stack(np.meshgrid(i_grid, j_grid, k_grid, indexing='ij'), axis=-1)
 
     @staticmethod
     def _generate_edge_midpoints(grids):
@@ -203,7 +206,7 @@ class StructuredMesh(MeshBase):
         midpoint_grids : list of numpy.ndarray
             The edge midpoints for the i, j, and k midpoints of each element in
             i, j, k ordering. The shapes of the resulting grids are
-            [(3, ni-1, nj, nk), (3, ni, nj-1, nk), (3, ni, nj, nk-1)]
+            [(ni-1, nj, nk, 3), (ni, nj-1, nk, 3), (ni, nj, nk-1, 3)]
         """
         # generate a set of edge midpoints for each dimension
         midpoint_grids = []
@@ -213,7 +216,7 @@ class StructuredMesh(MeshBase):
         # each grid is comprised of the mid points for one dimension and the
         # corner vertices of the other two
         for dims in ((0, 1, 2), (1, 0, 2), (2, 0, 1)):
-            # compute the midpoints along the first dimension
+            # compute the midpoints along the last dimension
             midpoints = grids[dims[0]][:-1] + 0.5 * np.diff(grids[dims[0]])
 
             coords = (midpoints, grids[dims[1]], grids[dims[2]])
@@ -248,15 +251,16 @@ class StructuredMesh(MeshBase):
         -------
         centroids : numpy.ndarray
             Returns a numpy.ndarray representing the mesh element centroid
-            coordinates with a shape equal to (ndim, dim1, ..., dimn). Can be
-            unpacked along the first dimension with xx, yy, zz = mesh.centroids.
-
-
+            coordinates with a shape equal to (dim1, ..., dimn, ndim). X,
+            Y, Z values can be unpacked with xx, yy, zz =
+            np.rollaxis(mesh.centroids, -1).
         """
         ndim = self.n_dimension
-        vertices = self.vertices
-        s0 = (slice(None),) + (slice(0, -1),)*ndim
-        s1 = (slice(None),) + (slice(1, None),)*ndim
+        # this line ensures that the vertices aren't adjusted by the origin or
+        # converted to the Cartesian system for cylindrical and spherical meshes
+        vertices = StructuredMesh.vertices.fget(self)
+        s0 = (slice(0, -1),)*ndim + (slice(None),)
+        s1 = (slice(1, None),)*ndim + (slice(None),)
         return (vertices[s0] + vertices[s1]) / 2
 
     @property
@@ -346,10 +350,8 @@ class StructuredMesh(MeshBase):
         import vtk
         from vtk.util import numpy_support as nps
 
-        vertices = self.cartesian_vertices.T.reshape(-1, 3)
-
         vtkPts = vtk.vtkPoints()
-        vtkPts.SetData(nps.numpy_to_vtk(vertices, deep=True))
+        vtkPts.SetData(nps.numpy_to_vtk(np.swapaxes(self.vertices, 0, 2).reshape(-1, 3), deep=True))
         vtk_grid = vtk.vtkStructuredGrid()
         vtk_grid.SetPoints(vtkPts)
         vtk_grid.SetDimensions(*[dim + 1 for dim in self.dimension])
@@ -368,7 +370,7 @@ class StructuredMesh(MeshBase):
         import vtk
         from vtk.util import numpy_support as nps
 
-        corner_vertices = self.cartesian_vertices.T.reshape(-1, 3)
+        corner_vertices = np.swapaxes(self.vertices, 0, 2).reshape(-1, 3)
 
         vtkPts = vtk.vtkPoints()
         vtk_grid = vtk.vtkUnstructuredGrid()
@@ -410,7 +412,7 @@ class StructuredMesh(MeshBase):
         # list of point IDs
         midpoint_vertices = self.midpoint_vertices
         for edge_grid in midpoint_vertices:
-            for pnt in edge_grid.T.reshape(-1, 3):
+            for pnt in np.swapaxes(edge_grid, 0, 2).reshape(-1, 3):
                 point_ids.append(_insert_point(pnt))
 
         # determine how many elements in each dimension
@@ -443,7 +445,7 @@ class StructuredMesh(MeshBase):
                 # initial offset for corner vertices and midpoint dimension
                 flat_idx = corner_vertices.shape[0] + sum(n_midpoint_vertices[:dim])
                 # generate a flat index into the table of point IDs
-                midpoint_shape = midpoint_vertices[dim].shape[1:]
+                midpoint_shape = midpoint_vertices[dim].shape[:-1]
                 flat_idx += np.ravel_multi_index((i+di, j+dj, k+dk),
                                                  midpoint_shape,
                                                  order='F')
@@ -598,12 +600,6 @@ class RegularMesh(StructuredMesh):
         if self._upper_right is not None:
             self._upper_right = None
             warnings.warn("Unsetting upper_right attribute.")
-
-    @property
-    def cartesian_vertices(self):
-        """Returns vertices in cartesian coordinates. Identical to ``vertices`` for RegularMesh and RectilinearMesh
-        """
-        return self.vertices
 
     @property
     def volumes(self):
@@ -1036,7 +1032,7 @@ class RectilinearMesh(StructuredMesh):
     @x_grid.setter
     def x_grid(self, grid):
         cv.check_type('mesh x_grid', grid, Iterable, Real)
-        self._x_grid = np.asarray(grid)
+        self._x_grid = np.asarray(grid, dtype=float)
 
     @property
     def y_grid(self):
@@ -1045,7 +1041,7 @@ class RectilinearMesh(StructuredMesh):
     @y_grid.setter
     def y_grid(self, grid):
         cv.check_type('mesh y_grid', grid, Iterable, Real)
-        self._y_grid = np.asarray(grid)
+        self._y_grid = np.asarray(grid, dtype=float)
 
     @property
     def z_grid(self):
@@ -1054,17 +1050,11 @@ class RectilinearMesh(StructuredMesh):
     @z_grid.setter
     def z_grid(self, grid):
         cv.check_type('mesh z_grid', grid, Iterable, Real)
-        self._z_grid = np.asarray(grid)
+        self._z_grid = np.asarray(grid, dtype=float)
 
     @property
     def _grids(self):
         return (self.x_grid, self.y_grid, self.z_grid)
-
-    @property
-    def cartesian_vertices(self):
-        """Returns vertices in cartesian coordiantes. Identical to ``vertices`` for RegularMesh and RectilinearMesh
-        """
-        return self.vertices
 
     @property
     def volumes(self):
@@ -1185,7 +1175,7 @@ class CylindricalMesh(StructuredMesh):
     Parameters
     ----------
     r_grid : numpy.ndarray
-        1-D array of mesh boundary points along the r-axis.
+        1-D array of mesh boundary points along the r-axis
         Requirement is r >= 0.
     z_grid : numpy.ndarray
         1-D array of mesh boundary points along the z-axis relative to the
@@ -1249,9 +1239,9 @@ class CylindricalMesh(StructuredMesh):
     ):
         super().__init__(mesh_id, name)
 
-        self._r_grid = r_grid
-        self._phi_grid = phi_grid
-        self._z_grid = z_grid
+        self.r_grid = r_grid
+        self.phi_grid = phi_grid
+        self.z_grid = z_grid
         self.origin = origin
 
     @property
@@ -1281,7 +1271,7 @@ class CylindricalMesh(StructuredMesh):
     @r_grid.setter
     def r_grid(self, grid):
         cv.check_type('mesh r_grid', grid, Iterable, Real)
-        self._r_grid = np.asarray(grid)
+        self._r_grid = np.asarray(grid, dtype=float)
 
     @property
     def phi_grid(self):
@@ -1290,7 +1280,7 @@ class CylindricalMesh(StructuredMesh):
     @phi_grid.setter
     def phi_grid(self, grid):
         cv.check_type('mesh phi_grid', grid, Iterable, Real)
-        self._phi_grid = np.asarray(grid)
+        self._phi_grid = np.asarray(grid, dtype=float)
 
     @property
     def z_grid(self):
@@ -1299,7 +1289,7 @@ class CylindricalMesh(StructuredMesh):
     @z_grid.setter
     def z_grid(self, grid):
         cv.check_type('mesh z_grid', grid, Iterable, Real)
-        self._z_grid = np.asarray(grid)
+        self._z_grid = np.asarray(grid, dtype=float)
 
     @property
     def _grids(self):
@@ -1501,6 +1491,10 @@ class CylindricalMesh(StructuredMesh):
             num=dimension[2]+1
         )
         origin = (cached_bb.center[0], cached_bb.center[1], z_grid[0])
+
+        # make z-grid relative to the origin
+        z_grid -= origin[2]
+
         mesh = cls(
             r_grid=r_grid,
             z_grid=z_grid,
@@ -1585,19 +1579,37 @@ class CylindricalMesh(StructuredMesh):
         return np.multiply.outer(np.outer(V_r, V_p), V_z)
 
     @property
-    def cartesian_vertices(self):
-        return self._convert_to_cartesian(self.vertices, self.origin)
+    def vertices(self):
+        warnings.warn('Cartesian coordinates are returned from this property as of version 0.14.0')
+        return self._convert_to_cartesian(self.vertices_cylindrical, self.origin)
+
+    @property
+    def vertices_cylindrical(self):
+        """Returns vertices of the mesh in cylindrical coordinates.
+        """
+        return super().vertices
+
+    @property
+    def centroids(self):
+        warnings.warn('Cartesian coordinates are returned from this property as of version 0.14.0')
+        return self._convert_to_cartesian(self.centroids_cylindrical, self.origin)
+
+    @property
+    def centroids_cylindrical(self):
+        """Returns centroids of the mesh in cylindrical coordinates.
+        """
+        return super().centroids
 
     @staticmethod
     def _convert_to_cartesian(arr, origin: Sequence[float]):
-        """Converts an array with xyz values in the first dimension (shape (3, ...))
+        """Converts an array with r, phi, z values in the last dimension (shape (..., 3))
         to Cartesian coordinates.
         """
-        x = arr[0, ...] * np.cos(arr[1, ...]) + origin[0]
-        y = arr[0, ...] * np.sin(arr[1, ...]) + origin[1]
-        arr[0, ...] = x
-        arr[1, ...] = y
-        arr[2, ...] += origin[2]
+        x = arr[..., 0] * np.cos(arr[..., 1]) + origin[0]
+        y = arr[..., 0] * np.sin(arr[..., 1]) + origin[1]
+        arr[..., 0] = x
+        arr[..., 1] = y
+        arr[..., 2] += origin[2]
         return arr
 
 
@@ -1672,9 +1684,9 @@ class SphericalMesh(StructuredMesh):
     ):
         super().__init__(mesh_id, name)
 
-        self._r_grid = r_grid
-        self._theta_grid = theta_grid
-        self._phi_grid = phi_grid
+        self.r_grid = r_grid
+        self.theta_grid = theta_grid
+        self.phi_grid = phi_grid
         self.origin = origin
 
     @property
@@ -1695,7 +1707,7 @@ class SphericalMesh(StructuredMesh):
     def origin(self, coords):
         cv.check_type('mesh origin', coords, Iterable, Real)
         cv.check_length("mesh origin", coords, 3)
-        self._origin = np.asarray(coords)
+        self._origin = np.asarray(coords, dtype=float)
 
     @property
     def r_grid(self):
@@ -1704,7 +1716,7 @@ class SphericalMesh(StructuredMesh):
     @r_grid.setter
     def r_grid(self, grid):
         cv.check_type('mesh r_grid', grid, Iterable, Real)
-        self._r_grid = np.asarray(grid)
+        self._r_grid = np.asarray(grid, dtype=float)
 
     @property
     def theta_grid(self):
@@ -1713,7 +1725,7 @@ class SphericalMesh(StructuredMesh):
     @theta_grid.setter
     def theta_grid(self, grid):
         cv.check_type('mesh theta_grid', grid, Iterable, Real)
-        self._theta_grid = np.asarray(grid)
+        self._theta_grid = np.asarray(grid, dtype=float)
 
     @property
     def phi_grid(self):
@@ -1722,7 +1734,7 @@ class SphericalMesh(StructuredMesh):
     @phi_grid.setter
     def phi_grid(self, grid):
         cv.check_type('mesh phi_grid', grid, Iterable, Real)
-        self._phi_grid = np.asarray(grid)
+        self._phi_grid = np.asarray(grid, dtype=float)
 
     @property
     def _grids(self):
@@ -1862,21 +1874,40 @@ class SphericalMesh(StructuredMesh):
         return np.multiply.outer(np.outer(V_r, V_t), V_p)
 
     @property
-    def cartesian_vertices(self):
-        return self._convert_to_cartesian(self.vertices, self.origin)
+    def vertices(self):
+        warnings.warn('Cartesian coordinates are returned from this property as of version 0.14.0')
+        return self._convert_to_cartesian(self.vertices_spherical, self.origin)
+
+    @property
+    def vertices_spherical(self):
+        """Returns vertices of the mesh in cylindrical coordinates.
+        """
+        return super().vertices
+
+    @property
+    def centroids(self):
+        warnings.warn('Cartesian coordinates are returned from this property as of version 0.14.0')
+        return self._convert_to_cartesian(self.centroids_spherical, self.origin)
+
+    @property
+    def centroids_spherical(self):
+        """Returns centroids of the mesh in cylindrical coordinates.
+        """
+        return super().centroids
+
 
     @staticmethod
     def _convert_to_cartesian(arr, origin: Sequence[float]):
-        """Converts an array with xyz values in the first dimension (shape (3, ...))
+        """Converts an array with r, theta, phi values in the last dimension (shape (..., 3))
         to Cartesian coordinates.
         """
-        r_xy = arr[0, ...] * np.sin(arr[1, ...])
-        x = r_xy * np.cos(arr[2, ...])
-        y = r_xy * np.sin(arr[2, ...])
-        z = arr[0, ...] * np.cos(arr[1, ...])
-        arr[0, ...] = x + origin[0]
-        arr[1, ...] = y + origin[1]
-        arr[2, ...] = z + origin[2]
+        r_xy = arr[..., 0] * np.sin(arr[..., 1])
+        x = r_xy * np.cos(arr[..., 2])
+        y = r_xy * np.sin(arr[..., 2])
+        z = arr[..., 0] * np.cos(arr[..., 1])
+        arr[..., 0] = x + origin[0]
+        arr[..., 1] = y + origin[1]
+        arr[..., 2] = z + origin[2]
         return arr
 
 

@@ -118,6 +118,7 @@ Constructing Tallies
    openmc.Filter
    openmc.UniverseFilter
    openmc.MaterialFilter
+   openmc.MaterialFromFilter
    openmc.CellFilter
    openmc.CellFromFilter
    openmc.CellBornFilter
@@ -160,6 +161,7 @@ Geometry Plotting
    :template: myclass.rst
 
    openmc.Plot
+   openmc.ProjectionPlot
    openmc.Plots
 
 Running OpenMC

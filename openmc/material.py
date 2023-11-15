@@ -19,7 +19,7 @@ import openmc.checkvalue as cv
 from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
 from openmc.checkvalue import PathLike
-from openmc.stats import Univariate
+from openmc.stats import Univariate, Discrete, Mixture
 
 
 # Units for density supported by OpenMC
@@ -93,13 +93,6 @@ class Material(IDManagerMixin):
     fissionable_mass : float
         Mass of fissionable nuclides in the material in [g]. Requires that the
         :attr:`volume` attribute is set.
-    decay_photon_energy : openmc.stats.Univariate or None
-        Energy distribution of photons emitted from decay of unstable nuclides
-        within the material, or None if no photon source exists. The integral of
-        this distribution is the total intensity of the photon source in
-        [decay/sec].
-
-        .. versionadded:: 0.13.2
     ncrystal_cfg : str
         NCrystal configuration string
 
@@ -282,15 +275,67 @@ class Material(IDManagerMixin):
 
     @property
     def decay_photon_energy(self) -> Optional[Univariate]:
-        atoms = self.get_nuclide_atoms()
+        warnings.warn(
+            "The 'decay_photon_energy' property has been replaced by the "
+            "get_decay_photon_energy() method and will be removed in a future "
+            "version.", FutureWarning)
+        return self.get_decay_photon_energy(0.0)
+
+    def get_decay_photon_energy(
+            self,
+            clip_tolerance: float = 1e-6,
+            units: str = 'Bq',
+            volume: Optional[float] = None
+        ) -> Optional[Univariate]:
+        r"""Return energy distribution of decay photons from unstable nuclides.
+
+        .. versionadded:: 0.14.0
+
+        Parameters
+        ----------
+        clip_tolerance : float
+            Maximum fraction of :math:`\sum_i x_i p_i` for discrete
+            distributions that will be discarded.
+        units : {'Bq', 'Bq/g', 'Bq/cm3'}
+            Specifies the units on the integral of the distribution.
+        volume : float, optional
+            Volume of the material. If not passed, defaults to using the
+            :attr:`Material.volume` attribute.
+
+        Returns
+        -------
+        Decay photon energy distribution. The integral of this distribution is
+        the total intensity of the photon source in the requested units.
+
+        """
+        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/cm3'})
+        if units == 'Bq':
+            multiplier = volume if volume is not None else self.volume
+            if multiplier is None:
+                raise ValueError("volume must be specified if units='Bq'")
+        elif units == 'Bq/cm3':
+            multiplier = 1
+        elif units == 'Bq/g':
+            multiplier = 1.0 / self.get_mass_density()
+
         dists = []
         probs = []
-        for nuc, num_atoms in atoms.items():
+        for nuc, atoms_per_bcm in self.get_nuclide_atom_densities().items():
             source_per_atom = openmc.data.decay_photon_energy(nuc)
             if source_per_atom is not None:
                 dists.append(source_per_atom)
-                probs.append(num_atoms)
-        return openmc.data.combine_distributions(dists, probs) if dists else None
+                probs.append(1e24 * atoms_per_bcm * multiplier)
+
+        # If no photon sources, exit early
+        if not dists:
+            return None
+
+        # Get combined distribution, clip low-intensity values in discrete spectra
+        combined = openmc.data.combine_distributions(dists, probs)
+        if isinstance(combined, (Discrete, Mixture)):
+            combined.clip(clip_tolerance, inplace=True)
+
+        return combined
 
     @classmethod
     def from_hdf5(cls, group: h5py.Group) -> Material:
@@ -1250,7 +1295,7 @@ class Material(IDManagerMixin):
 
         return memo[self]
 
-    def _get_nuclide_xml(self, nuclide: str) -> ET.Element:
+    def _get_nuclide_xml(self, nuclide: NuclideTuple) -> ET.Element:
         xml_element = ET.Element("nuclide")
         xml_element.set("name", nuclide.name)
 
@@ -1267,14 +1312,27 @@ class Material(IDManagerMixin):
 
         return xml_element
 
-    def _get_nuclides_xml(self, nuclides: typing.Iterable[str]) -> List[ET.Element]:
+    def _get_nuclides_xml(
+            self, nuclides: typing.Iterable[NuclideTuple],
+            nuclides_to_ignore: Optional[typing.Iterable[str]] = None)-> List[ET.Element]:
         xml_elements = []
-        for nuclide in nuclides:
-            xml_elements.append(self._get_nuclide_xml(nuclide))
+
+        # Remove any nuclides to ignore from the XML export
+        if nuclides_to_ignore:
+            nuclides = [nuclide for nuclide in nuclides if nuclide.name not in nuclides_to_ignore]
+
+        xml_elements = [self._get_nuclide_xml(nuclide) for nuclide in nuclides]
+
         return xml_elements
 
-    def to_xml_element(self) -> ET.Element:
+    def to_xml_element(
+            self, nuclides_to_ignore: Optional[typing.Iterable[str]] = None) -> ET.Element:
         """Return XML representation of the material
+
+        Parameters
+        ----------
+        nuclides_to_ignore : list of str
+            Nuclides to ignore when exporting to XML.
 
         Returns
         -------
@@ -1320,7 +1378,8 @@ class Material(IDManagerMixin):
 
         if self._macroscopic is None:
             # Create nuclide XML subelements
-            subelements = self._get_nuclides_xml(self._nuclides)
+            subelements = self._get_nuclides_xml(self._nuclides,
+                                                 nuclides_to_ignore=nuclides_to_ignore)
             for subelement in subelements:
                 element.append(subelement)
         else:
@@ -1576,7 +1635,8 @@ class Materials(cv.CheckedList):
         for material in self:
             material.make_isotropic_in_lab()
 
-    def _write_xml(self, file, header=True, level=0, spaces_per_level=2, trailing_indent=True):
+    def _write_xml(self, file, header=True, level=0, spaces_per_level=2,
+                   trailing_indent=True, nuclides_to_ignore=None):
         """Writes XML content of the materials to an open file handle.
 
         Parameters
@@ -1591,6 +1651,8 @@ class Materials(cv.CheckedList):
             Number of spaces per indentation
         trailing_indentation : bool
             Whether or not to write a trailing indentation for the materials element
+        nuclides_to_ignore : list of str
+            Nuclides to ignore when exporting to XML.
 
         """
         indentation = level*spaces_per_level*' '
@@ -1611,7 +1673,7 @@ class Materials(cv.CheckedList):
 
         # Write the <material> elements.
         for material in sorted(self, key=lambda x: x.id):
-            element = material.to_xml_element()
+            element = material.to_xml_element(nuclides_to_ignore=nuclides_to_ignore)
             clean_indentation(element, level=level+1)
             element.tail = element.tail.strip(' ')
             file.write((level+1)*spaces_per_level*' ')
@@ -1626,13 +1688,16 @@ class Materials(cv.CheckedList):
         if trailing_indent:
             file.write(indentation)
 
-    def export_to_xml(self, path: PathLike = 'materials.xml'):
+    def export_to_xml(self, path: PathLike = 'materials.xml',
+                      nuclides_to_ignore: Optional[typing.Iterable[str]] = None):
         """Export material collection to an XML file.
 
         Parameters
         ----------
         path : str
             Path to file to write. Defaults to 'materials.xml'.
+        nuclides_to_ignore : list of str
+            Nuclides to ignore when exporting to XML.
 
         """
         # Check if path is a directory
@@ -1645,10 +1710,10 @@ class Materials(cv.CheckedList):
         # one go.
         with open(str(p), 'w', encoding='utf-8',
                   errors='xmlcharrefreplace') as fh:
-            self._write_xml(fh)
+            self._write_xml(fh, nuclides_to_ignore=nuclides_to_ignore)
 
     @classmethod
-    def from_xml_element(cls, elem) -> Material:
+    def from_xml_element(cls, elem) -> Materials:
         """Generate materials collection from XML file
 
         Parameters
@@ -1675,7 +1740,7 @@ class Materials(cv.CheckedList):
         return materials
 
     @classmethod
-    def from_xml(cls, path: PathLike = 'materials.xml') -> Material:
+    def from_xml(cls, path: PathLike = 'materials.xml') -> Materials:
         """Generate materials collection from XML file
 
         Parameters

@@ -276,6 +276,16 @@ then, OpenMC will only use up to the :math:`P_1` data.
   .. note:: This element is not used in the continuous-energy
     :ref:`energy_mode`.
 
+
+--------------------------------------
+``<max_write_lost_particles>`` Element
+--------------------------------------
+
+This ``<max_write_lost_particles>`` element indicates the maximum number of
+particle restart files (per MPI process) to write for lost particles.
+
+  *Default*: None
+
 .. _mesh_element:
 
 ------------------
@@ -1058,8 +1068,14 @@ The ``<volume_calc>`` element indicates that a stochastic volume calculation
 should be run at the beginning of the simulation. This element has the following
 sub-elements/attributes:
 
-  :cells:
-    The unique IDs of cells for which the volume should be estimated.
+  :domain_type:
+    The type of each domain for the volume calculation ("cell", "material", or
+    "universe").
+
+    *Default*: None
+
+  :domain_ids:
+    The unique IDs of domains for which the volume should be estimated.
 
     *Default*: None
 
@@ -1069,16 +1085,41 @@ sub-elements/attributes:
     *Default*: None
 
   :lower_left:
-     The lower-left Cartesian coordinates of a bounding box that is used to
-     sample points within.
+    The lower-left Cartesian coordinates of a bounding box that is used to
+    sample points within.
 
-     *Default*: None
+    *Default*: None
 
   :upper_right:
-     The upper-right Cartesian coordinates of a bounding box that is used to
-     sample points within.
+    The upper-right Cartesian coordinates of a bounding box that is used to
+    sample points within.
 
-     *Default*: None
+    *Default*: None
+
+  :threshold:
+    Presence of a ``<threshold>`` sub-element indicates that the volume
+    calculation will be halted based on a threshold on the error. It has the
+    following sub-elements/attributes:
+
+    :type:
+      The type of the trigger. Accepted options are "variance", "std_dev",
+      and "rel_err".
+
+      :variance:
+        Variance of the mean, :math:`\sigma^2`
+
+      :std_dev:
+        Standard deviation of the mean, :math:`\sigma`
+
+      :rel_err:
+        Relative error of the mean, :math:`\frac{\sigma}{\mu}`
+
+      *Default*: None
+
+    :threshold:
+      The trigger's convergence criterion for the given type.
+
+      *Default*: None
 
 ----------------------------
 ``<weight_windows>`` Element
@@ -1200,6 +1241,25 @@ mesh-based weight windows.
         The ratio of the lower to upper weight window bounds.
 
         *Default*: 5.0
+
+---------------------------------------
+``<weight_window_checkpoints>`` Element
+---------------------------------------
+
+The ``<weight_window_checkpoints>`` element indicates the checkpoints for weight
+window split/roulette (surface, collision or both). This element has the
+following sub-elements/attributes:
+
+  :surface:
+    If set to "true", weight window checks will be performed at surface
+    crossings.
+
+    *Default*: False
+
+  :collision:
+    If set to "true", weight window checks will be performed at collisions.
+
+    *Default*: True
 
 --------------------------------------
 ``<weight_windows_file>`` Element

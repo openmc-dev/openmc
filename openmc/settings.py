@@ -1,5 +1,4 @@
 import os
-import typing  # imported separately as py3.8 requires typing.Iterable
 from collections.abc import Iterable, Mapping, MutableSequence
 from enum import Enum
 import itertools
@@ -121,6 +120,11 @@ class Settings:
         Maximum number of tracks written to a track file (per MPI process).
 
         .. versionadded:: 0.13.1
+    max_write_lost_particles : int
+        Maximum number of particle restart files (per MPI process) to write for
+        lost particles.
+
+        .. versionadded:: 0.14.0
     no_reduce : bool
         Indicate that all user-defined and global tallies should not be reduced
         across processes in a parallel calculation.
@@ -232,10 +236,15 @@ class Settings:
         Weight windows to use for variance reduction
 
         .. versionadded:: 0.13
+    weight_window_checkpoints : dict
+        Indicates the checkpoints for weight window split/roulettes. Valid keys
+        include "collision" and "surface". Values must be of type bool.
+
+        .. versionadded:: 0.14.0
     weight_window_generators : WeightWindowGenerator or iterable of WeightWindowGenerator
         Weight windows generation parameters to apply during simulation
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
 
     create_delayed_neutrons : bool
         Whether delayed neutrons are created in fission.
@@ -249,7 +258,7 @@ class Settings:
     weight_windows_file: Pathlike
         Path to a weight window file to load during simulation initialization
 
-        .. versionadded::0.13.4
+        .. versionadded::0.14.0
     write_initial_source : bool
         Indicate whether to write the initial source distribution to file
     """
@@ -261,6 +270,7 @@ class Settings:
         self._inactive = None
         self._max_lost_particles = None
         self._rel_max_lost_particles = None
+        self._max_write_lost_particles = None
         self._particles = None
         self._keff_trigger = None
 
@@ -330,6 +340,7 @@ class Settings:
         self._weight_window_generators = cv.CheckedList(WeightWindowGenerator, 'weight window generators')
         self._weight_windows_on = None
         self._weight_windows_file = None
+        self._weight_window_checkpoints = {}
         self._max_splits = None
         self._max_tracks = None
 
@@ -397,6 +408,16 @@ class Settings:
         cv.check_greater_than('rel_max_lost_particles', rel_max_lost_particles, 0)
         cv.check_less_than('rel_max_lost_particles', rel_max_lost_particles, 1)
         self._rel_max_lost_particles = rel_max_lost_particles
+
+    @property
+    def max_write_lost_particles(self) -> int:
+        return self._max_write_lost_particles
+
+    @max_write_lost_particles.setter
+    def max_write_lost_particles(self, max_write_lost_particles: int):
+        cv.check_type('max_write_lost_particles', max_write_lost_particles, Integral)
+        cv.check_greater_than('max_write_lost_particles', max_write_lost_particles, 0)
+        self._max_write_lost_particles = max_write_lost_particles
 
     @property
     def particles(self) -> int:
@@ -947,6 +968,16 @@ class Settings:
         self._weight_windows_on = value
 
     @property
+    def weight_window_checkpoints(self) -> dict:
+        return self._weight_window_checkpoints
+
+    @weight_window_checkpoints.setter
+    def weight_window_checkpoints(self, weight_window_checkpoints: dict):
+        for key in weight_window_checkpoints.keys():
+            cv.check_value('weight_window_checkpoints', key, ('collision', 'surface'))
+        self._weight_window_checkpoints = weight_window_checkpoints
+
+    @property
     def max_splits(self) -> int:
         return self._max_splits
 
@@ -1013,6 +1044,11 @@ class Settings:
         if self._rel_max_lost_particles is not None:
             element = ET.SubElement(root, "rel_max_lost_particles")
             element.text = str(self._rel_max_lost_particles)
+
+    def _create_max_write_lost_particles_subelement(self, root):
+        if self._max_write_lost_particles is not None:
+            element = ET.SubElement(root, "max_write_lost_particles")
+            element.text = str(self._max_write_lost_particles)
 
     def _create_particles_subelement(self, root):
         if self._particles is not None:
@@ -1357,6 +1393,19 @@ class Settings:
             element.text = self.weight_windows_file
             root.append(element)
 
+    def _create_weight_window_checkpoints_subelement(self, root):
+        if not self._weight_window_checkpoints:
+            return
+        element = ET.SubElement(root, "weight_window_checkpoints")
+
+        if 'collision' in self._weight_window_checkpoints:
+            subelement = ET.SubElement(element, "collision")
+            subelement.text = str(self._weight_window_checkpoints['collision']).lower()
+
+        if 'surface' in self._weight_window_checkpoints:
+            subelement = ET.SubElement(element, "surface")
+            subelement.text = str(self._weight_window_checkpoints['surface']).lower()
+
     def _create_max_splits_subelement(self, root):
         if self._max_splits is not None:
             elem = ET.SubElement(root, "max_splits")
@@ -1376,6 +1425,7 @@ class Settings:
             self._inactive_from_xml_element(elem)
             self._max_lost_particles_from_xml_element(elem)
             self._rel_max_lost_particles_from_xml_element(elem)
+            self._max_write_lost_particles_from_xml_element(elem)
             self._generations_per_batch_from_xml_element(elem)
 
     def _run_mode_from_xml_element(self, root):
@@ -1407,6 +1457,11 @@ class Settings:
         text = get_text(root, 'rel_max_lost_particles')
         if text is not None:
             self.rel_max_lost_particles = float(text)
+
+    def _max_write_lost_particles_from_xml_element(self, root):
+        text = get_text(root, 'max_write_lost_particles')
+        if text is not None:
+            self.max_write_lost_particles = int(text)
 
     def _generations_per_batch_from_xml_element(self, root):
         text = get_text(root, 'generations_per_batch')
@@ -1692,6 +1747,16 @@ class Settings:
         if meshes is not None and self.weight_windows:
             meshes.update({ww.mesh.id: ww.mesh for ww in self.weight_windows})
 
+    def _weight_window_checkpoints_from_xml_element(self, root):
+        elem = root.find('weight_window_checkpoints')
+        if elem is None:
+            return
+        for key in ('collision', 'surface'):
+            value = get_text(elem, key)
+            if value is not None:
+                value = value in ('true', '1')
+                self.weight_window_checkpoints[key] = value
+
     def _max_splits_from_xml_element(self, root):
         text = get_text(root, 'max_splits')
         if text is not None:
@@ -1719,6 +1784,7 @@ class Settings:
         self._create_inactive_subelement(element)
         self._create_max_lost_particles_subelement(element)
         self._create_rel_max_lost_particles_subelement(element)
+        self._create_max_write_lost_particles_subelement(element)
         self._create_generations_per_batch_subelement(element)
         self._create_keff_trigger_subelement(element)
         self._create_source_subelement(element)
@@ -1759,6 +1825,7 @@ class Settings:
         self._create_weight_windows_subelement(element, mesh_memo)
         self._create_weight_window_generators_subelement(element, mesh_memo)
         self._create_weight_windows_file_element(element)
+        self._create_weight_window_checkpoints_subelement(element)
         self._create_max_splits_subelement(element)
         self._create_max_tracks_subelement(element)
 
@@ -1815,6 +1882,7 @@ class Settings:
         settings._inactive_from_xml_element(elem)
         settings._max_lost_particles_from_xml_element(elem)
         settings._rel_max_lost_particles_from_xml_element(elem)
+        settings._max_write_lost_particles_from_xml_element(elem)
         settings._generations_per_batch_from_xml_element(elem)
         settings._keff_trigger_from_xml_element(elem)
         settings._source_from_xml_element(elem, meshes)
@@ -1854,6 +1922,7 @@ class Settings:
         settings._write_initial_source_from_xml_element(elem)
         settings._weight_windows_from_xml_element(elem, meshes)
         settings._weight_window_generators_from_xml_element(elem, meshes)
+        settings._weight_window_checkpoints_from_xml_element(elem)
         settings._max_splits_from_xml_element(elem)
         settings._max_tracks_from_xml_element(elem)
 

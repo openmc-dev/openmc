@@ -738,7 +738,7 @@ class Geometry:
     def plot(self, *args, **kwargs):
         """Display a slice plot of the geometry.
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
 
         Parameters
         ----------
@@ -764,8 +764,9 @@ class Geometry:
             Assigns colors to specific materials or cells. Keys are instances of
             :class:`Cell` or :class:`Material` and values are RGB 3-tuples, RGBA
             4-tuples, or strings indicating SVG color names. Red, green, blue,
-            and alpha should all be floats in the range [0.0, 1.0], for example:
-            .. code-block:: python
+            and alpha should all be floats in the range [0.0, 1.0], for
+            example::
+
                # Make water blue
                water = openmc.Cell(fill=h2o)
                universe.plot(..., colors={water: (0., 0., 1.))

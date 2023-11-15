@@ -47,15 +47,9 @@ void collision(Particle& p)
   switch (p.type()) {
   case ParticleType::neutron:
     sample_neutron_reaction(p);
-    if (settings::weight_windows_on) {
-      apply_weight_windows(p);
-    }
     break;
   case ParticleType::photon:
     sample_photon_reaction(p);
-    if (settings::weight_windows_on) {
-      apply_weight_windows(p);
-    }
     break;
   case ParticleType::electron:
     sample_electron_reaction(p);
@@ -64,6 +58,9 @@ void collision(Particle& p)
     sample_positron_reaction(p);
     break;
   }
+
+  if (settings::weight_window_checkpoint_collision)
+    apply_weight_windows(p);
 
   // Kill particle if energy falls below cutoff
   int type = static_cast<int>(p.type());
@@ -150,9 +147,7 @@ void sample_neutron_reaction(Particle& p)
 
   // Advance URR seed stream 'N' times after energy changes
   if (p.E() != p.E_last()) {
-    p.stream() = STREAM_URR_PTABLE;
-    advance_prn_seed(data::nuclides.size(), p.current_seed());
-    p.stream() = STREAM_TRACKING;
+    advance_prn_seed(data::nuclides.size(), &p.seeds(STREAM_URR_PTABLE));
   }
 
   // Play russian roulette if survival biasing is turned on

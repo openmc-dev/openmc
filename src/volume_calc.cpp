@@ -97,6 +97,31 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
 
 vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 {
+  // Check to make sure domain IDs are valid
+  for (auto uid : domain_ids_) {
+    switch (domain_type_) {
+    case TallyDomain::CELL:
+      if (model::cell_map.find(uid) == model::cell_map.end()) {
+        throw std::runtime_error {fmt::format(
+          "Cell {} in volume calculation does not exist in geometry.", uid)};
+      }
+      break;
+    case TallyDomain::MATERIAL:
+      if (model::material_map.find(uid) == model::material_map.end()) {
+        throw std::runtime_error {fmt::format(
+          "Material {} in volume calculation does not exist in geometry.",
+          uid)};
+      }
+      break;
+    case TallyDomain::UNIVERSE:
+      if (model::universe_map.find(uid) == model::universe_map.end()) {
+        throw std::runtime_error {fmt::format(
+          "Universe {} in volume calculation does not exist in geometry.",
+          uid)};
+      }
+    }
+  }
+
   // Shared data that is collected from all threads
   int n = domain_ids_.size();
   vector<vector<uint64_t>> master_indices(
@@ -519,7 +544,13 @@ int openmc_calculate_volumes()
 
     // Run volume calculation
     const auto& vol_calc {model::volume_calcs[i]};
-    auto results = vol_calc.execute();
+    std::vector<VolumeCalculation::Result> results;
+    try {
+      results = vol_calc.execute();
+    } catch (const std::exception& e) {
+      set_errmsg(e.what());
+      return OPENMC_E_UNASSIGNED;
+    }
 
     if (mpi::master) {
       std::string domain_type;

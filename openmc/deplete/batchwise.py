@@ -126,6 +126,7 @@ class Batchwise(ABC):
 
         self.print_iterations = print_iterations
         self.search_for_keff_output = search_for_keff_output
+        self.materials_to_add = {}
 
     @property
     def bracketed_method(self):
@@ -384,7 +385,7 @@ class Batchwise(ABC):
                 else:
                     print(f'Mat ID: {mat_id}, with comp: {mol_comp}, returned nan density')
 
-    def _update_materials(self, x):
+    def _update_materials(self, x, step_index):
         """
         Update number density and material compositions in OpenMC on all processes.
         If density_treatment is set to 'constant-density'
@@ -398,6 +399,11 @@ class Batchwise(ABC):
             Total atom concentrations
         """
         self.operator.number.set_density(x)
+
+        if self.materials_to_add:
+            for (mat, t), values in self.materials_to_add.items():
+                if t == step_index:
+                    x = self._add_material(x, mat, values)
 
         if self.density_functions:
             self._update_densities()
@@ -424,6 +430,8 @@ class Batchwise(ABC):
                             densities.append(val)
                 # Update densities on C API side
                 openmc.lib.materials[int(mat_id)].set_densities(nuclides, densities)
+
+        return x
 
     def _update_x_and_set_volumes(self, x, volumes):
         """
@@ -506,7 +514,6 @@ class Batchwise(ABC):
 
         return mol_comp
 
-
     def _get_redox(self, mat_rx_id):
         """
         Parameters
@@ -549,6 +556,32 @@ class Batchwise(ABC):
                 #Now updates x vector
                 nuc_idx = number_i.index_nuc[nuc]
                 x[mat_idx][nuc_idx] = number_i[mat_id, nuc]
+        return x
+
+    def add_material(self, mat, value, mat_vector, when, quantity='grams'):
+        """
+        """
+        # convert grams in atoms
+        self.materials_to_add[(mat,when)] = dict()
+        for nuc,frac in mat_vector.items():
+            self.materials_to_add[(mat,when)][nuc] = \
+                    frac * value / atomic_mass(nuc) * AVOGADRO
+
+    def _add_material(self, x, mat, values):
+        """
+        """
+        number_i = self.operator.number
+        #get material id
+        mats = self._get_materials([mat])
+
+        for mat_idx, mat_id in enumerate(self.local_mats):
+            if mat_id in mats:
+                for nuc, val in values.items():
+                    number_i[mat_id, nuc] += val
+                    #Now updates x vector
+                    if nuc in number_i.burnable_nuclides:
+                        nuc_idx = number_i.index_nuc[nuc]
+                        x[mat_idx][nuc_idx] += val
         return x
 
 class BatchwiseCell(Batchwise):
@@ -731,7 +764,7 @@ class BatchwiseCell(Batchwise):
         # Update all material densities from concentration vectors
         #before performing the search_for_keff. This is needed before running
         # the  transport equations in the search_for_keff algorithm
-        super()._update_materials(x)
+        x = super()._update_materials(x, step_index)
 
         # Calculate new cell attribute
         root = super()._search_for_keff(val)
@@ -740,8 +773,9 @@ class BatchwiseCell(Batchwise):
         self._set_cell_attrib(root)
 
         # if at least one of the cell materials is depletable, calculate new
-        # volume and update x and number accordingly
-        # new volume
+        # volume and update x and number accordingly.
+        # Alternatively, if material has been edded x needs to be updated
+        # TODO: improve this
         if self.cell_materials:
             volumes = self._calculate_volumes()
             x = super()._update_x_and_set_volumes(x, volumes)
@@ -1120,7 +1154,7 @@ class BatchwiseMaterial(Batchwise):
         """
         # Update AtomNumber with new conc vectors x. Materials are also updated
         # even though they are also re-calculated when running the search_for_kef
-        super()._update_materials(x)
+        x = super()._update_materials(x, step_index)
 
         # Solve search_for_keff and find new value
         root = super()._search_for_keff(0)
@@ -1871,6 +1905,9 @@ class BatchwiseSchemeStd():
         for bw in self.bw_list:
             bw.set_density_function(mats, density_func, oxidation_states)
 
+    def add_material(self, mat, value, mat_vector, when, quantity):
+        self.bw_geom.add_material(mat, value, mat_vector, when, quantity )
+
     def update_from_restart(self, x, root):
         """
         This is for a restart. TODO update abc class
@@ -1975,6 +2012,9 @@ class BatchwiseSchemeRefuel():
     def set_density_function(self, mats, density_func, oxidation_states):
         for bw in self.bw_list:
             bw.set_density_function(mats, density_func, oxidation_states)
+
+    def add_material(self, mat, value, mat_vector, when, quantity):
+        self.bw_geom.add_material(mat, value, mat_vector, when, quantity )
 
     def update_from_restart(self, x, root):
         """

@@ -960,6 +960,9 @@ class Integrator(ABC):
     def add_redox(self, mat, buffer, oxidation_states):
         self.transfer_rates.set_redox(mat, buffer, oxidation_states)
 
+    def add_material(self, mat, value, mat_vector, when, quantity='grams'):
+        self.batchwise.add_material(mat, value, mat_vector, when,
+                                    quantity)
 @add_params
 class SIIntegrator(Integrator):
     r"""Abstract class for the Stochastic Implicit Euler integrators

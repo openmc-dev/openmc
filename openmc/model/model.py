@@ -415,7 +415,7 @@ class Model:
                 if operator_class == 'IndependentOperator':
                     materials=[mat for mat in self.materials if mat.depletable]
                     depletion_operator = dep.IndependentOperator(
-                        materials=materials, **op_kwargs)
+                        materials=openmc.Materials(materials), **op_kwargs)
 
                 else:  # operator is CoupledOperator
                     depletion_operator = dep.CoupledOperator(self, **op_kwargs)

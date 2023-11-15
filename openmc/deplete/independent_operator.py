@@ -112,7 +112,9 @@ class IndependentOperator(OpenMCOperator):
     prev_res : Results or None
         Results from a previous depletion calculation. ``None`` if no
         results are to be used.
-
+    cleanup_when_done : bool
+        Whether to finalize and clear the shared library memory when the
+        depletion operation is complete. Defaults to clearing the library.
     """
 
     def __init__(self,
@@ -135,6 +137,8 @@ class IndependentOperator(OpenMCOperator):
             keff = ufloat(*keff)
 
         self._keff = keff
+
+        self.cleanup_when_done = True
 
         if fission_yield_opts is None:
             fission_yield_opts = {}
@@ -444,3 +448,8 @@ class IndependentOperator(OpenMCOperator):
 
                                       ' atom/b-cm)')
                             number_i[mat, nuc] = 0.0
+
+    def finalize(self):
+        """Finalize a depletion simulation and release resources."""
+        if self.cleanup_when_done:
+            openmc.lib.finalize()

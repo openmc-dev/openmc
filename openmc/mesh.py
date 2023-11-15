@@ -1365,37 +1365,49 @@ class CylindricalMesh(StructuredMesh):
             The r, phi, z indices
 
         """
-        r_value = sqrt(x**2 + y**2)
+        r_value_from_origin = sqrt((x-self.origin[0])**2 + (y-self.origin[1])**2)
+        print('self.origin',self.origin)
+        print('x',x)
+        print('y',y)
 
-        r_origin = sqrt(self.origin[0]**2 + self.origin[1]**2)
-        r_grid_values = np.array(self.r_grid) + r_origin
+        r_grid_values = np.array(self.r_grid)
 
-        if r_value < r_grid_values[0] or r_value > r_grid_values[-1]:
+        if r_value_from_origin < r_grid_values[0] or r_value_from_origin > r_grid_values[-1]:
             raise ValueError(
-                f'The specified x, y ({x}, {y}) values from the origin {self.origin} '
-                f'are outside outside the absolute r grid values {r_grid_values}.'
+                f'The specified x, y ({x}, {y}) combine to give an r value of '
+                f'{r_value_from_origin} from the origin of {self.origin}.which is outside the origin absolute r grid values '
+                f'{r_grid_values}.'
             )
 
-        r_index = np.argmax(r_grid_values > r_value) - 1
+        r_index = np.argmax(r_grid_values > r_value_from_origin) - 1
 
         z_grid_values = np.array(self.z_grid) + self.origin[2]
 
-        z_value = z + self.origin[2]
-
-        if z_value < z_grid_values[0] or z_value > z_grid_values[-1]:
+        if z < z_grid_values[0] or z > z_grid_values[-1]:
             raise ValueError(
-                f'The specified z value ({z}) from the origin of {self.origin} '
-                f'is outside of the absolute z grid range {z_grid_values}.'
+                f'The specified z value ({z}) from the z origin of '
+                f'{self.origin[-1]} is outside of the absolute z grid range {z_grid_values}.'
             )
 
         z_index = np.argmax(z_grid_values > z) - 1
 
         delta_x = x - self.origin[0]
         delta_y = y - self.origin[1]
-        phi_value = atan2(delta_y, delta_x) + pi
-        # check if this is needed
-        # if phi_value < 0:
-        #     phi_value += 2 * pi
+        print(f'delta_y {delta_y}')
+        print(f'delta_x {delta_x}')
+        # atan2 returns values in -pi to +pi range
+        phi_value = atan2(delta_y, delta_x)  # 
+        if delta_x < 0 and delta_y < 0:
+            print(f'changing {phi_value} to {2 * pi - phi_value}')
+            # returned phi_value anticlockwise and negative
+            phi_value = phi_value + 2 * pi
+        if delta_x > 0 and delta_y < 0:
+            print(f'changing {phi_value} to {2 * pi - phi_value}')
+            # returned phi_value anticlockwise and negative
+            phi_value = phi_value + 2 * pi
+
+        print('phi_value',phi_value)
+
         phi_grid_values = np.array(self.phi_grid)
 
         if phi_value < phi_grid_values[0] or phi_value > phi_grid_values[-1]:
@@ -1404,8 +1416,9 @@ class CylindricalMesh(StructuredMesh):
                 f'values is outside of the absolute  phi grid range {phi_grid_values}.'
             )
         print('phi_grid_values',phi_grid_values)
-        print('phi_value',phi_value)
         phi_index = np.argmax(phi_grid_values > phi_value) - 1
+        print('phi_index',phi_index)
+        print('\n')
 
         return (r_index, phi_index, z_index)
 

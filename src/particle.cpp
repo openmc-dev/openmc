@@ -530,7 +530,7 @@ void Particle::cross_surface()
       if (this->surface() < 0) n *= -1;
       double mu = this->u().dot(n);
       mu = (mu > 1) ? 1 : mu;
-      this->musurface() = mu; 
+      this->musurface() = mu;
     }
     return;
   }

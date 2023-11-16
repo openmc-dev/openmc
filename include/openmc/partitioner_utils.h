@@ -135,10 +135,11 @@ public:
   void copy_untested_cells(
     const std::vector<int>& possible_cells, std::vector<int>& untested_cells);
 
-private:
   // utility functions
   void lock_bin();
   void unlock_bin();
+
+private:
   // Thread lock
   omp_lock_t lock_;
   // Cells in this bin

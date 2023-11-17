@@ -45,10 +45,12 @@ class TransferRates:
         self.materials = model.materials
         self.burnable_mats = operator.burnable_mats
         self.local_mats = operator.local_mats
+        self.chain_nuclides = [nuc.name for nuc in operator.chain.nuclides]
 
         #initialize transfer rates container dict
         self.transfer_rates = {mat: {} for mat in self.burnable_mats}
         self.index_transfer = set()
+        self.redox = dict()
 
     def _get_material_id(self, val):
         """Helper method for getting material id from Material obj or name.
@@ -227,3 +229,27 @@ class TransferRates:
                     (transfer_rate / unit_conv, destination_material_id)]
             if destination_material_id is not None:
                 self.index_transfer.add((destination_material_id, material_id))
+
+    def set_redox(self, material, buffer, oxidation_states):
+        """Add redox control to depletable material.
+
+        Parameters
+        ----------
+        material : openmc.Material or str or int
+            Depletable material
+        buffer : dict
+            Dictionary of buffer nuclides to be added to keep redox constant,
+            where keys are nuclide names and values fractions to 1.
+        oxidation_states : dict
+            User-defined oxidation states for elements.
+        """
+        material_id = self._get_material_id(material)
+        #Check nuclides in buffer exist
+        for nuc in buffer:
+            check_value('redox buffer', nuc, self.chain_nuclides)
+        # Checks element in oxidation states exist
+        for elm in oxidation_states:
+            if elm not in ELEMENT_SYMBOL.values():
+                raise ValueError(f'{elm} is not a valid element.')
+
+        self.redox[material_id] =  (buffer, oxidation_states)

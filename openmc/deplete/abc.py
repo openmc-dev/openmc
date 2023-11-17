@@ -847,6 +847,24 @@ class Integrator(ABC):
         self.transfer_rates.set_transfer_rate(material, components, transfer_rate,
                                       transfer_rate_units, destination_material)
 
+    def add_redox(self, material, buffer, oxidation_states):
+        """Add redox control to depletable material.
+
+        Parameters
+        ----------
+        material : openmc.Material or str or int
+            Depletable material
+        buffer : dict
+            Dictionary of buffer nuclides to be added to keep redox constant,
+            where keys are nuclide names and values fractions to 1.
+        oxidation_states : dict
+            User-defined oxidation states for elements.
+        """
+        if self.transfer_rates is None:
+            self.transfer_rates = TransferRates(self.operator, self.operator.model)
+            
+        self.transfer_rates.set_redox(material, buffer, oxidation_states)
+
 @add_params
 class SIIntegrator(Integrator):
     r"""Abstract class for the Stochastic Implicit Euler integrators

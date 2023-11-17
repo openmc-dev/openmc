@@ -3,6 +3,7 @@ from collections import defaultdict, namedtuple, Counter
 from collections.abc import Iterable
 from copy import deepcopy
 from numbers import Real
+from math import log
 from pathlib import Path
 import re
 import typing  # imported separately as py3.8 requires typing.Iterable
@@ -1079,8 +1080,14 @@ class Material(IDManagerMixin):
 
         return nuclides
 
-    def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False,
-                     volume: Optional[float] = None) -> Union[Dict[str, float], float]:
+    def get_activity(
+        self,
+        units: str = "Bq/cm3",
+        by_nuclide: bool = False,
+        volume: Optional[float] = None,
+        particle: Optional[str] = None,
+        chain_file: Optional[PathLike] = None,
+    ) -> Union[Dict[str, float], float]:
         """Returns the activity of the material or for each nuclide in the
         material in units of [Bq], [Bq/g] or [Bq/cm3].
 
@@ -1098,6 +1105,13 @@ class Material(IDManagerMixin):
         volume : float, optional
             Volume of the material. If not passed, defaults to using the
             :attr:`Material.volume` attribute.
+        particle : {'beta-', 'alpha', 'p', 'n', 'beta+', 'gamma', 'sf'}
+            Specifies if the activity of an individual particle should be
+            returned. If left as None then any particles is used. If setting
+            particle then it is also necessary to specify the chain file to use
+        chain_file: Pathlike
+            The chain file to use when finding decay constant of nuclides. If
+            left as None then openmc.data.decay_constant is used.
 
             .. versionadded:: 0.13.3
 
@@ -1109,8 +1123,34 @@ class Material(IDManagerMixin):
             of the material is returned as a float.
         """
 
-        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/cm3'})
-        cv.check_type('by_nuclide', by_nuclide, bool)
+        cv.check_value("units", units, {"Bq", "Bq/g", "Bq/cm3"})
+        cv.check_type("by_nuclide", by_nuclide, bool)
+
+        if particle:
+            if not chain_file:
+                msg = f"Particle {particle} is requested but a chain file has not been provided"
+                raise ValueError(msg)
+        if chain_file:
+            from openmc.deplete import Chain
+
+            chain = Chain.from_xml(chain_file)
+            nucs_in_mat = [nuc.name for nuc in self.nuclides]
+            decay_const_dict = {}
+            for nuc in chain.nuclides:
+                if nuc.name in nucs_in_mat:
+                    if particle:
+                        decay_const_dict[nuc.name] = 0.0
+                        for dt in nuc.decay_modes:
+                            if particle in dt[0]:
+                                # multiplied by dt[2] which is the branching ratio
+                                decay_const_dict[nuc.name] = (
+                                    log(2.0) / nuc.half_life * dt[2]
+                                )
+                    else:
+                        if nuc.n_decay_modes == 0:
+                            decay_const_dict[nuc.name] = 0.0
+                        else:
+                            decay_const_dict[nuc.name] = log(2.0) / nuc.half_life
 
         if units == 'Bq':
             multiplier = volume if volume is not None else self.volume
@@ -1121,7 +1161,11 @@ class Material(IDManagerMixin):
 
         activity = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
-            inv_seconds = openmc.data.decay_constant(nuclide)
+            if chain_file:
+                inv_seconds = decay_const_dict[nuclide]
+            else:
+                inv_seconds = openmc.data.decay_constant(nuclide)
+
             activity[nuclide] = inv_seconds * 1e24 * atoms_per_bcm * multiplier
 
         return activity if by_nuclide else sum(activity.values())

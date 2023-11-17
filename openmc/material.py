@@ -1105,7 +1105,7 @@ class Material(IDManagerMixin):
         volume : float, optional
             Volume of the material. If not passed, defaults to using the
             :attr:`Material.volume` attribute.
-        particle : {'beta-', 'alpha', 'p', 'n', 'beta+', 'gamma', 'sf'}
+        particle : {'beta', 'alpha', 'p', 'n' 'gamma', 'sf'}
             Specifies if the activity of an individual particle should be
             returned. If left as None then any particles is used. If setting
             particle then it is also necessary to specify the chain file to use
@@ -1143,9 +1143,9 @@ class Material(IDManagerMixin):
                         for dt in nuc.decay_modes:
                             if particle in dt[0]:
                                 # multiplied by dt[2] which is the branching ratio
-                                decay_const_dict[nuc.name] = (
-                                    log(2.0) / nuc.half_life * dt[2]
-                                )
+                                decay_const_dict[nuc.name] = decay_const_dict[
+                                    nuc.name
+                                ] + (log(2.0) / nuc.half_life * dt[2])
                     else:
                         if nuc.n_decay_modes == 0:
                             decay_const_dict[nuc.name] = 0.0

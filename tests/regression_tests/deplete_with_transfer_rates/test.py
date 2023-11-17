@@ -54,6 +54,9 @@ def model():
     (-1e-5, None, 174.0, 'depletion_with_feed'),
     (-1e-5, 'w', 0.0, 'no_depletion_with_transfer'),
     (1e-5, 'w', 174.0, 'depletion_with_transfer'),
+    (0.0, None, 174.0, 'depletion_with_redox'),
+    (1e-5, None, 174.0, 'depletion_with_removal_and_redox'),
+    (1e-5, 'w', 174.0, 'depletion_with_transfer_and_redox'),
     ])
 def test_transfer_rates(run_in_tmpdir, model, rate, dest_mat, power, ref_result):
     """Tests transfer_rates depletion class with transfer rates"""
@@ -61,12 +64,16 @@ def test_transfer_rates(run_in_tmpdir, model, rate, dest_mat, power, ref_result)
     chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
 
     transfer_elements = ['Xe']
-
+    ox = {'I': -1, 'Xe':0, 'Cs': 1, 'Gd': 3, 'U': 4}
+    
     op = CoupledOperator(model, chain_file)
     integrator = openmc.deplete.PredictorIntegrator(
         op, [1], power, timestep_units = 'd')
-    integrator.add_transfer_rate('f', transfer_elements, rate,
-                                destination_material=dest_mat)
+    if rate != 0.0:
+        integrator.add_transfer_rate('f', transfer_elements, rate,
+                                    destination_material=dest_mat)
+    if 'redox' in ref_result.split('_'):
+        integrator.add_redox('f', {'Gd157':1}, ox)
     integrator.integrate()
 
     # Get path to test and reference results

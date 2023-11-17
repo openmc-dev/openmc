@@ -180,7 +180,7 @@ class Batchwise(ABC):
         """
 
     @abstractmethod
-    def update_from_restart(self, x, root):
+    def update_from_restart(self, step_index, x, root):
         """
         """
 
@@ -811,9 +811,9 @@ class BatchwiseCell(Batchwise):
 
         return x, root
 
-    def update_from_restart(self, x, root):
+    def update_from_restart(self, step_index, x, root):
         self._set_cell_attrib(root)
-        super()._update_materials(x)
+        super()._update_materials(x, step_index)
 
 class BatchwiseCellGeometrical(BatchwiseCell):
     """
@@ -1221,8 +1221,8 @@ class BatchwiseMaterial(Batchwise):
                     volumes[mat_id] = number_i.get_mat_volume(mat_id)
         return volumes
 
-    def update_from_restart(self, x, root):
-        super()._update_materials(x)
+    def update_from_restart(self, step_index, x, root):
+        super()._update_materials(x, step_index)
 
 class BatchwiseMaterialRefuel(BatchwiseMaterial):
     """
@@ -1937,7 +1937,7 @@ class BatchwiseSchemeStd():
     def add_material(self, mat, value, mat_vector, timestep, units):
         self.bw_geom.add_material(mat, value, mat_vector, timestep, units)
 
-    def update_from_restart(self, x, root):
+    def update_from_restart(self, step_index, x, root):
         """
         This is for a restart. TODO update abc class
         Parameters
@@ -1945,7 +1945,7 @@ class BatchwiseSchemeStd():
         x : list of numpy.ndarray
             Total atom concentrations
         """
-        self.bw_geom.update_from_restart(x, root)
+        self.bw_geom.update_from_restart(step_index, x, root)
 
     def search_for_keff(self, x, step_index):
         """
@@ -2045,7 +2045,7 @@ class BatchwiseSchemeRefuel():
     def add_material(self, mat, value, mat_vector, timestep, units):
         self.bw_geom.add_material(mat, value, mat_vector, timestep, units)
 
-    def update_from_restart(self, x, root):
+    def update_from_restart(self, step_index, x, root):
         """
         This is for a restart. TODO update abc class
         Parameters
@@ -2053,7 +2053,7 @@ class BatchwiseSchemeRefuel():
         x : list of numpy.ndarray
             Total atom concentrations
         """
-        self.bw_geom.update_from_restart(x, root)
+        self.bw_geom.update_from_restart(step_index, x, root)
 
     def search_for_keff(self, x, step_index):
         """

@@ -762,7 +762,8 @@ class Integrator(ABC):
         k = ufloat(res.k[0, 0], res.k[0, 1])
 
         # Scale reaction rates by ratio of source rates
-        rates *= source_rate / res.source_rate
+        if res.source_rate != 0.0:
+            rates *= source_rate / res.source_rate
         return bos_conc, OperatorResult(k, rates)
 
     def _get_start_data(self):
@@ -819,8 +820,12 @@ class Integrator(ABC):
                 # Solve transport equation (or obtain result from restart)
                 if i > 0 or self.operator.prev_res is None:
                     # Update geometry/material according to batchwise definition
-                    if self.batchwise and source_rate != 0.0:
-                        n, root = self._get_bos_from_batchwise(i, n)
+                    if self.batchwise:
+                        if source_rate != 0.0:
+                            n, root = self._get_bos_from_batchwise(i, n)
+                        else:
+                            # Store root at previous timestep
+                            root = self.batchwise._get_cell_attrib()
                     else:
                         root = None
                     n, res = self._get_bos_data_from_operator(i, source_rate, n)
@@ -828,7 +833,15 @@ class Integrator(ABC):
                     n, res = self._get_bos_data_from_restart(i, source_rate, n)
                     if self.batchwise:
                         root = self.operator.prev_res[-1].batchwise
-                        self.batchwise.update_from_restart(n, root)
+                        #TODO: this is just temporary (import math)
+                        import math
+                        if math.isnan(root):
+                            prev_res_ts = -2
+                            while (math.isnan(root)):
+                                root = self.operator.prev_res[prev_res_ts].batchwise
+                                prev_res_ts -= 1
+
+                        self.batchwise.update_from_restart(i, n, root)
                     else:
                         root = None
 

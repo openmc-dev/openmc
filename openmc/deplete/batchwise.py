@@ -254,13 +254,13 @@ class Batchwise(ABC):
                     print("Search_for_keff returned values below or above "
                           "target. Trying to iteratively adapt bracket...")
 
-                    # if the bracket ends up being smaller than the std of the
-                    # keff's closer value to target, no need to continue-
+                    # if the retured keffs range ends up being smaller than the
+                    # max keff std deviation, set closest value and continue
                     if all(abs(keff-self.target) <= max(keffs).s for keff in keffs):
                         arg_min = abs(self.target - np.array(keffs)).argmin()
-                        print("Search_for_keff returned values with std below "
-                              "the current deviation to target. Set root to "
-                              "closest value and continue...")
+                        print("Search_for_keff returned keffs range smaller than"
+                              "max std dev. Set root to guess with "
+                              "closest keff to target and continue...")
                         root = guesses[arg_min]
 
                     # Calculate gradient as ratio of delta bracket and delta keffs

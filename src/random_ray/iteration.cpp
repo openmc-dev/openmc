@@ -110,8 +110,14 @@ int openmc_run_random_ray(void)
 
     // Compute k-eff
     k_eff = compute_k_eff(k_eff);
-    simulation::k_generation.push_back(k_eff);
-    calculate_average_keff();
+    //simulation::k_generation.push_back(k_eff);
+
+    // Get keff for this generation by subtracting off the starting value
+    //auto& gt = simulation::global_tallies;
+    //gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) = k_eff;
+    global_tally_tracklength = k_eff;
+
+    //calculate_average_keff();
 
     // Tally fission rates
     if (iter > settings::n_inactive) {
@@ -128,10 +134,12 @@ int openmc_run_random_ray(void)
     // Set phi_old = phi_new
     random_ray::scalar_flux_old.swap(random_ray::scalar_flux_new);
     
+    /*
     // Output status data
     if (settings::verbosity >= 7) {
       print_generation();
     }
+    */
 
     instability_check(n_hits, k_eff, avg_miss_rate);
 

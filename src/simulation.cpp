@@ -461,7 +461,7 @@ void finalize_batch()
 
 void initialize_generation()
 {
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE || settings::run_mode == RunMode::RANDOM_RAY) {
     // Clear out the fission bank
     simulation::fission_bank.resize(0);
 
@@ -480,7 +480,7 @@ void finalize_generation()
   auto& gt = simulation::global_tallies;
 
   // Update global tallies with the accumulation variables
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE || settings::run_mode == RunMode::RANDOM_RAY) {
     gt(GlobalTally::K_COLLISION, TallyResult::VALUE) += global_tally_collision;
     gt(GlobalTally::K_ABSORPTION, TallyResult::VALUE) +=
       global_tally_absorption;
@@ -505,6 +505,9 @@ void finalize_generation()
 
     // Distribute fission bank across processors evenly
     synchronize_bank();
+  }
+  
+  if (settings::run_mode == RunMode::EIGENVALUE || settings::run_mode == RunMode::RANDOM_RAY) {
 
     // Calculate shannon entropy
     if (settings::entropy_on)

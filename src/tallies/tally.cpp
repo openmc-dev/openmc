@@ -756,7 +756,7 @@ void Tally::accumulate()
     double norm =
       total_source / (settings::n_particles * settings::gen_per_batch);
 
-    if (settings::run_mode == RunMode::RANDOM_RAY) {
+    if (settings::solver_type == SolverType::RANDOM_RAY) {
       norm = 1.0;
     }
 

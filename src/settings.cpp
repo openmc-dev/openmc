@@ -112,6 +112,7 @@ double res_scat_energy_min {0.01};
 double res_scat_energy_max {1000.0};
 vector<std::string> res_scat_nuclides;
 RunMode run_mode {RunMode::UNSET};
+SolverType solver_type {SolverType::MONTE_CARLO};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
 std::unordered_set<int> source_write_surf_id;
@@ -186,7 +187,7 @@ void get_run_parameters(pugi::xml_node node_base)
   }
 
   // Get number of inactive batches
-  if (run_mode == RunMode::EIGENVALUE || run_mode == RunMode::RANDOM_RAY) {
+  if (run_mode == RunMode::EIGENVALUE) {
     if (check_for_node(node_base, "inactive")) {
       n_inactive = std::stoi(get_node_value(node_base, "inactive"));
     }
@@ -232,7 +233,7 @@ void get_run_parameters(pugi::xml_node node_base)
   }
 
   // Random ray variables
-  if (run_mode == RunMode::RANDOM_RAY) {
+  if (solver_type == SolverType::RANDOM_RAY) {
     if (check_for_node(node_base, "ray_distance_active")) {
       ray_distance_active = std::stod(get_node_value(node_base, "ray_distance_active"));
     }
@@ -372,8 +373,6 @@ void read_settings_xml(pugi::xml_node root)
         run_mode = RunMode::PARTICLE;
       } else if (temp_str == "volume") {
         run_mode = RunMode::VOLUME;
-      } else if (temp_str == "random_ray") {
-        run_mode = RunMode::RANDOM_RAY;
       } else {
         fatal_error("Unrecognized run mode: " + temp_str);
       }
@@ -398,7 +397,17 @@ void read_settings_xml(pugi::xml_node root)
     }
   }
 
-  if (run_mode == RunMode::EIGENVALUE || run_mode == RunMode::FIXED_SOURCE || run_mode == RunMode::RANDOM_RAY) {
+  // Check solver type
+  if (check_for_node(root, "solver_type")) {
+    std::string temp_str = get_node_value(root, "solver_type", true, true);
+    if (temp_str == "monte_carlo") {
+      solver_type = SolverType::MONTE_CARLO;
+    } else if (temp_str == "random_ray") {
+      solver_type = SolverType::RANDOM_RAY;
+    }
+  }
+
+  if (run_mode == RunMode::EIGENVALUE || run_mode == RunMode::FIXED_SOURCE) {
     // Read run parameters
     get_run_parameters(node_mode);
 

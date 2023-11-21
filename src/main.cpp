@@ -32,7 +32,14 @@ int main(int argc, char* argv[])
   switch (settings::run_mode) {
   case RunMode::FIXED_SOURCE:
   case RunMode::EIGENVALUE:
-    err = openmc_run();
+    switch (settings::solver_type) {
+      case SolverType::MONTE_CARLO:
+        err = openmc_run();
+        break;
+      case SolverType::RANDOM_RAY:
+        err = openmc_run_random_ray();
+        break;
+    }
     break;
   case RunMode::PLOTTING:
     err = openmc_plot_geometry();
@@ -44,9 +51,6 @@ int main(int argc, char* argv[])
     break;
   case RunMode::VOLUME:
     err = openmc_calculate_volumes();
-    break;
-  case RunMode::RANDOM_RAY:
-    err = openmc_run_random_ray();
     break;
   default:
     break;

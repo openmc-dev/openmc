@@ -536,7 +536,7 @@ void print_results()
   const auto& gt = simulation::global_tallies;
   double mean, stdev;
   if (n > 1) {
-    if (settings::run_mode == RunMode::EIGENVALUE || settings::run_mode == RunMode::RANDOM_RAY) {
+    if (settings::run_mode == RunMode::EIGENVALUE) {
       std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_COLLISION, 0), n);
       fmt::print(" k-effective (Collision)     = {:.5f} +/- {:.5f}\n", mean,
         t_n1 * stdev);
@@ -609,7 +609,13 @@ void print_results_random_ray(int64_t total_geometric_intersections, double avg_
   show_time("Source update only", time_update_src.elapsed(), 1);
   show_time("Tally conversion only", time_tallies.elapsed(), 1);
   show_time("Other iteration routines", misc_time, 1);
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    show_time("Time in inactive batches", time_inactive.elapsed());
+  }
+  show_time("Time in active batches", time_active.elapsed());
+  show_time("Time writing statepoints", time_statepoint.elapsed());
   show_time("Total time for finalization", time_finalize.elapsed());
+  show_time("Total time elapsed", time_total.elapsed());
   show_time("Time per integration", TPI);
 
   header("Results", 4);

@@ -66,7 +66,7 @@ void calculate_generation_keff()
 
   // Normalize single batch estimate of k
   // TODO: This should be normalized by total_weight, not by n_particles
-  if (settings::run_mode != RunMode::RANDOM_RAY) {
+  if (settings::solver_type != SolverType::RANDOM_RAY) {
     keff_reduced /= settings::n_particles;
   }
 

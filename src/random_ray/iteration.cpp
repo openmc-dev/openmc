@@ -92,8 +92,6 @@ int openmc_run_random_ray(void)
     k_eff = compute_k_eff(k_eff);
     global_tally_tracklength = k_eff;
 
-    //calculate_average_keff();
-
     // Tally fission rates
     if (iter > settings::n_inactive) {
 
@@ -103,7 +101,6 @@ int openmc_run_random_ray(void)
       }
       
       random_ray_tally();
-      //accumulate_tallies();
     }
 
     // Set phi_old = phi_new
@@ -118,11 +115,11 @@ int openmc_run_random_ray(void)
   openmc::simulation::time_total.stop();
 
   // Write tally results to tallies.out
-  if (settings::output_tallies) write_tallies();
-
-  print_results_random_ray(total_geometric_intersections, avg_miss_rate/n_iters_total);
+  //if (settings::output_tallies) write_tallies();
 
   openmc_simulation_finalize();
+  
+  print_results_random_ray(total_geometric_intersections, avg_miss_rate/n_iters_total);
 
   return 0;
 }

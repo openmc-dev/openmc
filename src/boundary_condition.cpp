@@ -18,7 +18,7 @@ namespace openmc {
 void VacuumBC::handle_particle(Particle& p, const Surface& surf) const
 {
   // Random ray and Monte Carlo need different treatments at vacuum BCs
-  if (settings::run_mode == RunMode::RANDOM_RAY) {
+  if (settings::solver_type == SolverType::RANDOM_RAY) {
     // Reflect ray off of the surface
     ReflectiveBC rbc;
     rbc.handle_particle(p, surf); 

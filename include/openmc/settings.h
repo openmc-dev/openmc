@@ -114,6 +114,7 @@ extern double res_scat_energy_max; //!< Max energy in [eV] for res. upscattering
 extern vector<std::string>
   res_scat_nuclides;     //!< Nuclides using res. upscattering treatment
 extern RunMode run_mode; //!< Run mode (eigenvalue, fixed src, etc.)
+extern SolverType solver_type; //!< Solver Type (Monte Carlo or Random Ray)
 extern std::unordered_set<int>
   sourcepoint_batch; //!< Batches when source should be written
 extern std::unordered_set<int>

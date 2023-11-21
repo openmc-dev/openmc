@@ -77,6 +77,7 @@ int openmc_run_random_ray(void)
     // Increment current batch
     //simulation::current_batch++;
     initialize_batch();
+    initialize_generation();
 
     // Update neutron source
     update_neutron_source(k_eff);
@@ -134,6 +135,8 @@ int openmc_run_random_ray(void)
 
     instability_check(n_hits, k_eff, avg_miss_rate);
 
+    finalize_generation();
+
     finalize_batch();
   }
   openmc::simulation::time_total.stop();
@@ -143,9 +146,9 @@ int openmc_run_random_ray(void)
 
   print_results_random_ray(total_geometric_intersections, avg_miss_rate/n_iters_total);
 
-  //openmc_simulation_finalize();
-  bool b = false;
-  openmc_statepoint_write(nullptr, &b);
+  openmc_simulation_finalize();
+  //bool b = false;
+  //openmc_statepoint_write(nullptr, &b);
 
   return 0;
 }

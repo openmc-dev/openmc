@@ -45,10 +45,10 @@ int openmc_run_random_ray(void)
         fatal_error("Only flux and fission scores are supported in random ray mode");
       }
     }
-    tally->active_ = true;
+    //tally->active_ = true;
   }
 
-  setup_active_tallies();
+  //setup_active_tallies();
 
   double k_eff = 1.0;
 
@@ -75,8 +75,8 @@ int openmc_run_random_ray(void)
   // Power Iteration Loop
   for (int iter = 1; iter <= n_iters_total; iter++) {
     // Increment current batch
-    simulation::current_batch++;
-    //initialize_batch();
+    //simulation::current_batch++;
+    initialize_batch();
 
     // Update neutron source
     update_neutron_source(k_eff);
@@ -121,7 +121,7 @@ int openmc_run_random_ray(void)
       }
       
       random_ray_tally();
-      accumulate_tallies();
+      //accumulate_tallies();
     }
 
     // Set phi_old = phi_new
@@ -134,7 +134,7 @@ int openmc_run_random_ray(void)
 
     instability_check(n_hits, k_eff, avg_miss_rate);
 
-    //finalize_batch();
+    finalize_batch();
   }
   openmc::simulation::time_total.stop();
 

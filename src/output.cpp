@@ -615,7 +615,6 @@ void print_results_random_ray(int64_t total_geometric_intersections, double avg_
   show_time("Time in active batches", time_active.elapsed());
   show_time("Time writing statepoints", time_statepoint.elapsed());
   show_time("Total time for finalization", time_finalize.elapsed());
-  show_time("Total time elapsed", time_total.elapsed());
   show_time("Time per integration", TPI);
 
   header("Results", 4);

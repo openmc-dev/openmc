@@ -246,7 +246,8 @@ class TransferRates:
         material_id = self._get_material_id(material)
         #Check nuclides in buffer exist
         for nuc in buffer:
-            check_value('redox buffer', nuc, self.chain_nuclides)
+            if nuc not in self.chain_nuclides:
+                raise ValueError(f'{nuc} is not a valid nuclide.')
         # Checks element in oxidation states exist
         for elm in oxidation_states:
             if elm not in ELEMENT_SYMBOL.values():

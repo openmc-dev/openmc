@@ -77,7 +77,7 @@ class IPFCramSolver(DepSystemSolver):
         """
         A = sp.csr_matrix(A * dt, dtype=np.float64)
         y = n0.copy()
-        ident = sp.eye(A.shape[0])
+        ident = sp.eye(A.shape[0], format='csr')
         for alpha, theta in zip(self.alpha, self.theta):
             y += 2*np.real(alpha*sla.spsolve(A - theta*ident, y))
         return y * self.alpha0

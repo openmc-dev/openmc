@@ -15,40 +15,17 @@ namespace openmc {
 
 int openmc_run_random_ray(void)
 {
-  // Display header
-  //header("RANDOM RAY K EIGENVALUE SIMULATION", 3);
-  //print_columns();
-
-  // Allocate tally results arrays if they're not allocated yet
-  /*
-  for (auto& t : model::tallies) {
-    t->set_strides();
-    t->init_results();
-  }
-    */
-
-  // Reset global variables -- this is done before loading state point (as that
-  // will potentially populate k_generation and entropy)
-  //simulation::current_batch = 0;
-  //simulation::current_gen = 1;
-  //simulation::n_realizations = 0;
-  //simulation::k_generation.clear();
-  //simulation::entropy.clear();
-  //openmc_reset();
-
   openmc_simulation_init();
 
-  // Enable all tallies, and enforce
+  // Enforce assumptions
+  // TOD: add more enforcements
   for (auto& tally : model::tallies) {
     for (auto score_bin : tally->scores_) {
       if (score_bin != SCORE_FLUX && score_bin != SCORE_FISSION) {
         fatal_error("Only flux and fission scores are supported in random ray mode");
       }
     }
-    //tally->active_ = true;
   }
-
-  //setup_active_tallies();
 
   double k_eff = 1.0;
 
@@ -78,6 +55,9 @@ int openmc_run_random_ray(void)
     //simulation::current_batch++;
     initialize_batch();
     initialize_generation();
+
+    // Reset total starting particle weight used for normalizing tallies
+    simulation::total_weight = 1.0;
 
     // Update neutron source
     update_neutron_source(k_eff);
@@ -110,11 +90,6 @@ int openmc_run_random_ray(void)
 
     // Compute k-eff
     k_eff = compute_k_eff(k_eff);
-    //simulation::k_generation.push_back(k_eff);
-
-    // Get keff for this generation by subtracting off the starting value
-    //auto& gt = simulation::global_tallies;
-    //gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) = k_eff;
     global_tally_tracklength = k_eff;
 
     //calculate_average_keff();
@@ -133,13 +108,6 @@ int openmc_run_random_ray(void)
 
     // Set phi_old = phi_new
     random_ray::scalar_flux_old.swap(random_ray::scalar_flux_new);
-    
-    /*
-    // Output status data
-    if (settings::verbosity >= 7) {
-      print_generation();
-    }
-    */
 
     instability_check(n_hits, k_eff, avg_miss_rate);
 
@@ -155,8 +123,6 @@ int openmc_run_random_ray(void)
   print_results_random_ray(total_geometric_intersections, avg_miss_rate/n_iters_total);
 
   openmc_simulation_finalize();
-  //bool b = false;
-  //openmc_statepoint_write(nullptr, &b);
 
   return 0;
 }

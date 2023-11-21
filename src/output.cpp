@@ -536,7 +536,7 @@ void print_results()
   const auto& gt = simulation::global_tallies;
   double mean, stdev;
   if (n > 1) {
-    if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (settings::run_mode == RunMode::EIGENVALUE || settings::run_mode == RunMode::RANDOM_RAY) {
       std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_COLLISION, 0), n);
       fmt::print(" k-effective (Collision)     = {:.5f} +/- {:.5f}\n", mean,
         t_n1 * stdev);

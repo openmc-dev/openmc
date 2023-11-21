@@ -16,25 +16,27 @@ namespace openmc {
 int openmc_run_random_ray(void)
 {
   // Display header
-  header("RANDOM RAY K EIGENVALUE SIMULATION", 3);
-  print_columns();
+  //header("RANDOM RAY K EIGENVALUE SIMULATION", 3);
+  //print_columns();
 
   // Allocate tally results arrays if they're not allocated yet
+  /*
   for (auto& t : model::tallies) {
     t->set_strides();
     t->init_results();
   }
+    */
 
   // Reset global variables -- this is done before loading state point (as that
   // will potentially populate k_generation and entropy)
-  simulation::current_batch = 0;
+  //simulation::current_batch = 0;
   simulation::current_gen = 1;
   simulation::n_realizations = 0;
-  simulation::k_generation.clear();
-  simulation::entropy.clear();
-  openmc_reset();
+  //simulation::k_generation.clear();
+  //simulation::entropy.clear();
+  //openmc_reset();
 
-  //openmc_simulation_init();
+  openmc_simulation_init();
 
   // Enable all tallies, and enforce
   for (auto& tally : model::tallies) {

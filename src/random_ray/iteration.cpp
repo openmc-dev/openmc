@@ -65,6 +65,11 @@ void validate_random_ray_inputs(void)
       fatal_error("Non-isothermal MGXS detected. Only isothermal XS data sets supported in random ray mode.");
     }
   }
+
+  // Validate solver mode
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    fatal_error("Invalid run mode. Fixed source not yet supported in random ray mode.");
+  }
 }
 
 int openmc_run_random_ray(void)

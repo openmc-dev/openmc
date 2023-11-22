@@ -13,19 +13,65 @@
 
 namespace openmc {
 
+void validate_random_ray_inputs(void)
+{
+  // Validate tallies
+  for (auto& tally : model::tallies) {
+
+    // Validate score types
+    for (auto score_bin : tally->scores_) {
+      switch (score_bin) {
+        case SCORE_FLUX:
+        case SCORE_TOTAL:
+        case SCORE_FISSION:
+        case SCORE_NU_FISSION:
+        case SCORE_EVENTS:
+          break;
+        default:
+          fatal_error("Invalid score specified. Only flux, total, fission, nu-fission, and event scores are supported in random ray mode.");
+      }
+    }
+
+    // Validate estimator types
+    if (tally->estimator_ != TallyEstimator::ANALOG) {
+      fatal_error("Invalid estimator specified. Only analog estimators are supported in random ray mode.");
+    }
+
+    // Validate filter types
+    for (auto f : tally->filters()) {
+      auto& filter = *model::tally_filters[f];
+
+      switch (filter.type()) {
+        case  FilterType::CELL:
+        case  FilterType::CELL_INSTANCE:
+        case  FilterType::DISTRIBCELL:
+        case  FilterType::ENERGY:
+        case  FilterType::MATERIAL:
+        case  FilterType::MESH:
+        case  FilterType::UNIVERSE:
+          break;
+        default:
+          fatal_error("Invalid filter specified. Only cell, cell_instance, distribcell, energy, material, mesh, and universe filters are supported in random ray mode.");
+      }
+    }
+  }
+
+  // Validate MGXS data
+  for (auto& material : data::mg.macro_xs_) {
+    if (!material.is_isotropic) {
+      fatal_error("Anisotropic MGXS detected. Only isotropic XS data sets supported in random ray mode.");
+    }
+    if (material.get_xsdata().size() > 1) {
+      fatal_error("Non-isothermal MGXS detected. Only isothermal XS data sets supported in random ray mode.");
+    }
+  }
+}
+
 int openmc_run_random_ray(void)
 {
   openmc_simulation_init();
 
-  // Enforce assumptions
-  // TOD: add more enforcements
-  for (auto& tally : model::tallies) {
-    for (auto score_bin : tally->scores_) {
-      if (score_bin != SCORE_FLUX && score_bin != SCORE_FISSION) {
-        fatal_error("Only flux and fission scores are supported in random ray mode");
-      }
-    }
-  }
+  validate_random_ray_inputs();
 
   double k_eff = 1.0;
 
@@ -44,6 +90,8 @@ int openmc_run_random_ray(void)
   double total_active_distance_per_iteration = distance_active * nrays;
 
   openmc::simulation::time_total.start();
+
+  simulation::current_gen = 1;
 
   bool mapped_all_tallies = false;
 
@@ -130,9 +178,6 @@ void update_neutron_source(double k_eff)
 
   double inverse_k_eff = 1.0 / k_eff;
   int negroups = data::mg.num_energy_groups_;
-  for( auto e : data::mg.energy_bins_) {
-    printf("%.30le\n", e);
-  }
 
   // Temperature and angle indices, if using multiple temperature
   // data sets and/or anisotropic data sets.

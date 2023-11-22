@@ -44,6 +44,7 @@ bool convert_source_regions_to_tallies()
 
     Particle p;
     p.r() = random_ray::position[sr];  
+
     bool found = exhaustive_find_cell(p);
     for (int e = 0; e < negroups; e++) {
       p.g() = e;
@@ -77,7 +78,6 @@ bool convert_source_regions_to_tallies()
           // Loop over scores
           for (auto score_index = 0; score_index < tally.scores_.size(); score_index++) {
             auto score_bin = tally.scores_[score_index];
-            printf("storing score on SR = %d, e = %d, i_tally = %d, filter_index = %d, score_index = %d, score_bin = %d\n", sr, e, i_tally, filter_index, score_index, score_bin);
             random_ray::tally_task[source_element].emplace_back(i_tally, filter_index, score_index, score_bin);
           }
         }
@@ -103,20 +103,43 @@ void random_ray_tally()
   const int t = 0;
   const int a = 0;
 
+  // We loop over all source regions and energy groups. For each
+  // element, we check if there are any scores needed and apply
+  // them.
   #pragma omp parallel for
   for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
     double volume = random_ray::volume[sr];
     double material = random_ray::material[sr];
     for (int e = 0; e < negroups; e++) {
       int idx = sr * negroups + e;
+      double flux  = random_ray::scalar_flux_new[idx] * volume;
       for (auto& task : random_ray::tally_task[idx]) {
         double score;
-        if (task.score_type == SCORE_FLUX) {
-          score = random_ray::scalar_flux_new[idx] * volume;
-          printf("Tallying flux of %.3le to SR %d in egroup %d\n", score, sr, e);
-        } else if(task.score_type == SCORE_FISSION) {
-          double Sigma_f = data::mg.macro_xs_[material].get_xs(MgxsType::FISSION, e, NULL, NULL, NULL, t, a);
-          score = random_ray::scalar_flux_new[idx] * volume * Sigma_f;
+        switch (task.score_type) {
+
+          case SCORE_FLUX:
+            score = flux;
+            break;
+          
+          case SCORE_TOTAL:
+            score = flux * data::mg.macro_xs_[material].get_xs(MgxsType::TOTAL, e, NULL, NULL, NULL, t, a);
+            break;
+
+          case SCORE_FISSION:
+            score = flux * data::mg.macro_xs_[material].get_xs(MgxsType::FISSION, e, NULL, NULL, NULL, t, a);
+            break;
+          
+          case SCORE_NU_FISSION:
+            score = flux * data::mg.macro_xs_[material].get_xs(MgxsType::NU_FISSION, e, NULL, NULL, NULL, t, a);
+            break;
+          
+          case SCORE_EVENTS:
+            score = 1.0;
+            break;
+    
+          default:
+            fatal_error("Invalid score specified in tallies.xml. Only flux, total, fission, nu-fission, and events are supported in random ray mode.");
+            break;
         }
         Tally& tally {*model::tallies[task.tally_idx]};
         #pragma omp atomic

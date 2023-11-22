@@ -13,6 +13,7 @@ int64_t add_source_to_scalar_flux(void);
 double calculate_miss_rate(void);
 int openmc_run_random_ray(void);
 void instability_check(int64_t n_hits, double k_eff, double& avg_miss_rate);
+void validate_random_ray_inputs(void);
 
 template <typename T>
 void parallel_fill(std::vector<T>& arr, T value)

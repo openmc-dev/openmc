@@ -257,10 +257,10 @@ private:
   vector<int> cell_last_; //!< coordinates for all levels
 
   // Energy data
-  double E_;      //!< post-collision energy in eV
-  double E_last_; //!< pre-collision energy in eV
-  int g_ {0};     //!< post-collision energy group (MG only)
-  int g_last_;    //!< pre-collision energy group (MG only)
+  double E_;       //!< post-collision energy in eV
+  double E_last_;  //!< pre-collision energy in eV
+  int g_ {C_NONE}; //!< post-collision energy group (MG only)
+  int g_last_;     //!< pre-collision energy group (MG only)
 
   // Other physical data
   double wgt_ {1.0};       //!< particle weight

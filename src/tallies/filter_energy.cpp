@@ -47,19 +47,23 @@ void EnergyFilter::set_bins(gsl::span<const double> bins)
     if (n_bins_ == data::mg.num_energy_groups_) {
       matches_transport_groups_ = true;
       for (gsl::index i = 0; i < n_bins_ + 1; ++i) {
-        if (data::mg.rev_energy_bins_[i] != bins_[i]) {
+        double delta = std::fabs(data::mg.rev_energy_bins_[i] - bins_[i]);
+        if ((delta/data::mg.rev_energy_bins_[i]) > 1e-3) {
+        //if (data::mg.rev_energy_bins_[i] != bins_[i]) {
           matches_transport_groups_ = false;
           break;
         }
       }
     }
   }
+    //printf("Matches transport groups = %d\n", matches_transport_groups_);
 }
 
 void EnergyFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   if (p.g() != F90_NONE && matches_transport_groups_) {
+  //printf("Getting bins for egroup = %d\n", p.g());
     if (estimator == TallyEstimator::TRACKLENGTH) {
       match.bins_.push_back(data::mg.num_energy_groups_ - p.g() - 1);
     } else {
@@ -68,6 +72,7 @@ void EnergyFilter::get_all_bins(
     match.weights_.push_back(1.0);
 
   } else {
+  printf("Getting bins for egroup = %d, with e last = %.3le\n", p.g(), p.E_last());
     // Get the pre-collision energy of the particle.
     auto E = p.E_last();
 

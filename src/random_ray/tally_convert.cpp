@@ -48,6 +48,8 @@ bool convert_source_regions_to_tallies()
     for (int e = 0; e < negroups; e++) {
       p.g() = e;
       p.g_last() = e;
+      p.E() = data::mg.energy_bin_avg_[p.g()];
+      p.E_last() = p.E();
 
       int64_t source_element = sr * negroups + e;
       
@@ -75,6 +77,7 @@ bool convert_source_regions_to_tallies()
           // Loop over scores
           for (auto score_index = 0; score_index < tally.scores_.size(); score_index++) {
             auto score_bin = tally.scores_[score_index];
+            printf("storing score on SR = %d, e = %d, i_tally = %d, filter_index = %d, score_index = %d, score_bin = %d\n", sr, e, i_tally, filter_index, score_index, score_bin);
             random_ray::tally_task[source_element].emplace_back(i_tally, filter_index, score_index, score_bin);
           }
         }
@@ -110,6 +113,7 @@ void random_ray_tally()
         double score;
         if (task.score_type == SCORE_FLUX) {
           score = random_ray::scalar_flux_new[idx] * volume;
+          printf("Tallying flux of %.3le to SR %d in egroup %d\n", score, sr, e);
         } else if(task.score_type == SCORE_FISSION) {
           double Sigma_f = data::mg.macro_xs_[material].get_xs(MgxsType::FISSION, e, NULL, NULL, NULL, t, a);
           score = random_ray::scalar_flux_new[idx] * volume * Sigma_f;

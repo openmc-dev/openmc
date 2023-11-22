@@ -130,6 +130,9 @@ void update_neutron_source(double k_eff)
 
   double inverse_k_eff = 1.0 / k_eff;
   int negroups = data::mg.num_energy_groups_;
+  for( auto e : data::mg.energy_bins_) {
+    printf("%.30le\n", e);
+  }
 
   // Temperature and angle indices, if using multiple temperature
   // data sets and/or anisotropic data sets.

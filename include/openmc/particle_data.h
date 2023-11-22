@@ -259,7 +259,7 @@ private:
   // Energy data
   double E_;      //!< post-collision energy in eV
   double E_last_; //!< pre-collision energy in eV
-  int g_ {0};     //!< post-collision energy group (MG only)
+  int g_ {C_NONE};//!< post-collision energy group (MG only)
   int g_last_;    //!< pre-collision energy group (MG only)
 
   // Other physical data

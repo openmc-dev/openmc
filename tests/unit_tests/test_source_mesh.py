@@ -49,7 +49,7 @@ def test_source_mesh(run_in_tmpdir, mesh_type):
         vec = np.sign(centroid, dtype=float)
         vec /= np.linalg.norm(vec)
         angle = openmc.stats.Monodirectional(vec)
-        sources[ijk] = openmc.Source(energy=energy, angle=angle, strength=0.0)
+        sources[ijk] = openmc.IndependentSource(energy=energy, angle=angle, strength=0.0)
 
     # create and apply the mesh source
     mesh_source = openmc.MeshSource(mesh, sources)
@@ -146,6 +146,7 @@ def test_file_source(run_in_tmpdir):
     openmc.lib.init()
     openmc.lib.simulation_init()
     sites = openmc.lib.sample_external_source(10)
+    openmc.lib.simulation_finalize()
     openmc.lib.finalize()
 
 

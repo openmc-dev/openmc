@@ -56,8 +56,9 @@ inline double interpolate_lagrangian(gsl::span<const double> xs,
   return output;
 }
 
-double interpolate(gsl::span<const double> xs, gsl::span<const double> ys,
-  double x, Interpolation i = Interpolation::lin_lin)
+inline double interpolate(gsl::span<const double> xs,
+  gsl::span<const double> ys, double x,
+  Interpolation i = Interpolation::lin_lin)
 {
   int idx = lower_bound_index(xs.begin(), xs.end(), x);
 

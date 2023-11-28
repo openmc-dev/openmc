@@ -152,9 +152,8 @@ def test_file_source(run_in_tmpdir):
 
     # the mesh bounds do not contain the point of the lone
     # source site in the file source, so it should not appear
-    # in the set of source sites produced from the mesh source
-
-    # additionally, the source should be located within the mesh
+    # in the set of source sites produced from the mesh source.
+    # Additionally, the source should be located within the mesh
     bbox = mesh.bounding_box
     for site in sites:
         assert site.r != (0, 0, 0)

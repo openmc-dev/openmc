@@ -1347,49 +1347,46 @@ class CylindricalMesh(StructuredMesh):
             string += fmt.format('\tZ Max:', '=\t', self._z_grid[-1])
         return string
 
-    def get_indices_at_coords(self, x: float, y: float, z: float) -> Tuple[int]:
+    def get_indices_at_coords(
+            self,
+            coords: Sequence[float]
+        ) -> Tuple[int, int, int]:
         """Finds the index of the mesh voxel at the specified x,y,z coordinates.
 
         Parameters
         ----------
-        x : float
-            The x axis value
-        y : float
-            The y axis value
-        z : float
-            The z axis value
+        coords : Sequence[float]
+            The x, y, z axis coordinates
 
         Returns
         -------
-        Tuple[int]
+        Tuple[int, int, int]
             The r, phi, z indices
 
         """
-        r_value_from_origin = sqrt((x-self.origin[0])**2 + (y-self.origin[1])**2)
+        r_value_from_origin = sqrt((coords[0]-self.origin[0])**2 + (coords[1]-self.origin[1])**2)
 
-        r_grid_values = np.array(self.r_grid)
-
-        if r_value_from_origin < r_grid_values[0] or r_value_from_origin > r_grid_values[-1]:
+        if r_value_from_origin < self.r_grid[0] or r_value_from_origin > self.r_grid[-1]:
             raise ValueError(
-                f'The specified x, y ({x}, {y}) combine to give an r value of '
-                f'{r_value_from_origin} from the origin of {self.origin}.which is outside the origin absolute r grid values '
-                f'{r_grid_values}.'
+                f'The specified x, y ({coords[0]}, {coords[1]}) combine to give an r value of '
+                f'{r_value_from_origin} from the origin of {self.origin}.which '
+                f'is outside the origin absolute r grid values {self.r_grid}.'
             )
 
-        r_index = np.argmax(r_grid_values > r_value_from_origin) - 1
+        r_index = np.searchsorted(self.r_grid, r_value_from_origin) - 1
 
         z_grid_values = np.array(self.z_grid) + self.origin[2]
 
-        if z < z_grid_values[0] or z > z_grid_values[-1]:
+        if coords[2] < z_grid_values[0] or coords[2] > z_grid_values[-1]:
             raise ValueError(
-                f'The specified z value ({z}) from the z origin of '
+                f'The specified z value ({coords[2]}) from the z origin of '
                 f'{self.origin[-1]} is outside of the absolute z grid range {z_grid_values}.'
             )
 
-        z_index = np.argmax(z_grid_values > z) - 1
+        z_index = np.argmax(z_grid_values > coords[2]) - 1
 
-        delta_x = x - self.origin[0]
-        delta_y = y - self.origin[1]
+        delta_x = coords[0] - self.origin[0]
+        delta_y = coords[1] - self.origin[1]
         # atan2 returns values in -pi to +pi range
         phi_value = atan2(delta_y, delta_x)
         if delta_x < 0 and delta_y < 0:

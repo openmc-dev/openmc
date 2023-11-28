@@ -317,7 +317,6 @@ enum class GlobalTally { K_COLLISION, K_ABSORPTION, K_TRACKLENGTH, LEAKAGE };
 
 // Miscellaneous
 constexpr int C_NONE {-1};
-constexpr int F90_NONE {0}; // TODO: replace usage of this with C_NONE
 
 // Interpolation rules
 enum class Interpolation {

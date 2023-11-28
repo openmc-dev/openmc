@@ -62,6 +62,10 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
   read_attribute(group, "metastable", metastable_);
   read_attribute(group, "atomic_weight_ratio", awr_);
 
+  if (settings::run_mode == RunMode::VOLUME) {
+    return;
+  }
+
   // Determine temperatures available
   hid_t kT_group = open_group(group, "kTs");
   auto dset_names = dataset_names(kT_group);

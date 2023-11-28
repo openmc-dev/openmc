@@ -596,7 +596,7 @@ class Chain:
 
         Returns
         -------
-        scipy.sparse.csr_matrix
+        scipy.sparse.csc_matrix
             Sparse matrix representing depletion.
 
         See Also
@@ -680,11 +680,11 @@ class Chain:
                 # Clear set of reactions
                 reactions.clear()
 
-        # Use DOK matrix as intermediate representation, then convert to CSR and return
+        # Use DOK matrix as intermediate representation, then convert to CSC and return
         n = len(self)
         matrix_dok = sp.dok_matrix((n, n))
         dict.update(matrix_dok, matrix)
-        return matrix_dok.tocsr()
+        return matrix_dok.tocsc()
 
     def add_redox_term(self, matrix, buffer, oxidation_states):
 
@@ -732,7 +732,7 @@ class Chain:
 
         Returns
         -------
-        scipy.sparse.csr_matrix
+        scipy.sparse.csc_matrix
             Sparse matrix representing transfer term.
 
         """
@@ -765,7 +765,7 @@ class Chain:
         n = len(self)
         matrix_dok = sp.dok_matrix((n, n))
         dict.update(matrix_dok, matrix)
-        return matrix_dok.tocsr()
+        return matrix_dok.tocsc()
 
     def get_branch_ratios(self, reaction="(n,gamma)"):
         """Return a dictionary with reaction branching ratios

@@ -546,7 +546,7 @@ class Integrator(ABC):
         User-supplied functions are expected to have the following signature:
         ``solver(A, n0, t) -> n1`` where
 
-            * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
+            * ``A`` is a :class:`scipy.sparse.csc_matrix` making up the
               depletion matrix
             * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
               for a given material in atoms/cm3
@@ -1150,7 +1150,7 @@ class SIIntegrator(Integrator):
         User-supplied functions are expected to have the following signature:
         ``solver(A, n0, t) -> n1`` where
 
-            * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
+            * ``A`` is a :class:`scipy.sparse.csc_matrix` making up the
               depletion matrix
             * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
               for a given material in atoms/cm3
@@ -1252,7 +1252,7 @@ class DepSystemSolver(ABC):
 
         Parameters
         ----------
-        A : scipy.sparse.csr_matrix
+        A : scipy.sparse.csc_matrix
             Sparse transmutation matrix ``A[j, i]`` describing rates at
             which isotope ``i`` transmutes to isotope ``j``
         n0 : numpy.ndarray

@@ -5,7 +5,7 @@ IndependentOperator class for depletion.
 """
 
 from __future__ import annotations
-import tempfile
+from tempfile import TemporaryDirectory
 from typing import List, Tuple, Iterable, Optional, Union, Sequence
 
 import pandas as pd
@@ -17,6 +17,7 @@ from openmc import StatePoint
 import openmc
 from .chain import Chain, REACTIONS
 from .coupled_operator import _find_cross_sections, _get_nuclides_with_data
+import openmc.lib
 
 _valid_rxns = list(REACTIONS)
 _valid_rxns.append('fission')
@@ -132,7 +133,7 @@ def get_microxs_and_flux(
     model.tallies = openmc.Tallies([rr_tally, flux_tally])
 
     # create temporary run
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with TemporaryDirectory() as temp_dir:
         if run_kwargs is None:
             run_kwargs = {}
         else:
@@ -239,7 +240,9 @@ class MicroXS:
         -------
         MicroXS
         """
-        # check energies
+
+        check_type("temperature", temperature, int)
+        # if energy is string then use group structure of that name
         if isinstance(energies, str):
             energies = openmc.EnergyFilter.from_group_structure(energies).values
         else:
@@ -256,7 +259,6 @@ class MicroXS:
         chain = openmc.deplete.Chain.from_xml(chain_file_path)
 
         openmc_data_path = _resolve_openmc_data_path(openmc_data_path)
-        data_lib = openmc.data.DataLibrary.from_xml(openmc_data_path)
 
         # get reactions and nuclides from chain file
         nuclides, reactions = chain.nuclides, chain.reactions
@@ -271,29 +273,42 @@ class MicroXS:
         if 'fission' in reactions:
             mts.append(18) # fission is not in the REACTIONS
 
-        # normalize flux and get energy midpoint
-        norm_multi_group_flux = np.array(multi_group_flux) / sum(multi_group_flux)
-        energies_midpoint = [(energies[i]+energies[i+1])/2 for i in range(len(energies)-1)]
-        temperature_key = f'{temperature}K'
         microxs_arr = np.zeros((len(nuclides), len(mts)))
 
-        for nuc_indx, nuc in enumerate(nuclides):
-            mat_lib = data_lib.get_by_material(nuc, data_type='neutron')
-            if not mat_lib: # file does not exist
-                microxs_arr[nuc_indx, :] = 0
-                continue
-            else:
-                hdf5_path = mat_lib['path']
-            nuc_data = openmc.data.IncidentNeutron.from_hdf5(hdf5_path)
-            for mt_indx, mt in enumerate(mts):
-                try: # sometimes it fails cause there's no entry
-                    # perhaps a multigroup mgxs should be made as chosing the xs at the energy bin center is not always fair
-                    total_xs = np.array(nuc_data[mt].xs[temperature_key](energies_midpoint))
-                    # collapse
-                    total_norm = sum(total_xs * norm_multi_group_flux)
-                    microxs_arr[nuc_indx, mt_indx] = total_norm
-                except KeyError:
-                    microxs_arr[nuc_indx, mt_indx] = 0.0
+        with TemporaryDirectory():
+            from ctypes import c_int, c_double
+
+            mat_all_nucs = openmc.Material()
+            for nuc in nuclides:
+                mat_all_nucs.add_nuclide(nuc, 1)
+            mat_all_nucs.set_density("atom/b-cm", 1)
+            materials = openmc.Materials([mat_all_nucs])
+
+            surf1 = openmc.Sphere(r=1, boundary_type="vacuum")
+            surf1_region = -surf1
+            surf1_cell = openmc.Cell(region=surf1_region)
+            geometry = openmc.Geometry([surf1_cell])
+
+            settings = openmc.Settings()
+            settings.particles = 1
+            settings.batches = 1
+
+            model = openmc.Model(geometry, materials, settings)
+            model.export_to_model_xml()
+
+            c_temperature = c_double(temperature)
+
+            openmc.lib.init()
+            for nuc_indx, nuc in enumerate(nuclides):
+                lib_nuc = openmc.lib.nuclides[nuc]
+                for mt_indx, mt in enumerate(mts):
+                    c_mt = c_int(mt)
+                    collapse = lib_nuc.collapse_rate(
+                        c_mt, c_temperature, energies, multi_group_flux
+                    )
+                    microxs_arr[nuc_indx, mt_indx] = collapse
+
+            openmc.lib.finalize()
 
         return cls(nuclides=nuclides, reactions=reactions, data=microxs_arr)
 

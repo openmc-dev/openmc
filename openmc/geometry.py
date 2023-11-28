@@ -104,6 +104,10 @@ class Geometry:
             for cell in self.get_all_cells().values():
                 if cell.id in volume_calc.volumes:
                     cell.add_volume_information(volume_calc)
+        elif volume_calc.domain_type == 'material':
+            for material in self.get_all_materials().values():
+                if material.id in volume_calc.volumes:
+                    material.add_volume_information(volume_calc)
         elif volume_calc.domain_type == 'universe':
             for universe in self.get_all_universes().values():
                 if universe.id in volume_calc.volumes:

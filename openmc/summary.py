@@ -240,7 +240,7 @@ class Summary:
             Results from a stochastic volume calculation
 
         """
-        if volume_calc.domain_type == "material":
+        if volume_calc.domain_type == "material" and self.materials:
             for material in self.materials:
                 if material.id in volume_calc.volumes:
                     material.add_volume_information(volume_calc)

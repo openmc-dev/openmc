@@ -4,10 +4,9 @@
 
 #include "openmc/error.h"
 #include "openmc/search.h"
-#include "openmc/xml_interface.h"
 #include "openmc/surface.h"
 #include "openmc/tallies/tally_scoring.h"
-
+#include "openmc/xml_interface.h"
 namespace openmc {
 
 void MuSurfaceFilter::from_xml(pugi::xml_node node)
@@ -53,15 +52,15 @@ void MuSurfaceFilter::set_bins(gsl::span<double> bins)
 void MuSurfaceFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
-  const auto surf {model::surfaces[std::abs(p.surface())-1].get()};
+  const auto surf {model::surfaces[std::abs(p.surface()) - 1].get()};
   if (!model::active_surface_tallies.empty()) {
     auto n = surf->normal(p.r());
     n /= n.norm();
     if (p.surface() < 0)
-    n *= -1;
+      n *= -1;
     double mu = p.u().dot(n);
     mu = (mu > 1) ? 1 : mu;
-    
+
     if (mu >= bins_.front() && mu <= bins_.back()) {
       auto bin = lower_bound_index(bins_.begin(), bins_.end(), mu);
       match.bins_.push_back(bin);

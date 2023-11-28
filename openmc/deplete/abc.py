@@ -671,8 +671,8 @@ class Integrator(ABC):
             return
 
         # Inspect arguments
-        if len(sig.parameters) != 3:
-            raise ValueError("Function {} does not support three arguments: "
+        if len(sig.parameters) < 3:
+            raise ValueError("Function {} does not support less than three arguments: "
                              "{!s}".format(func, sig))
 
         for ix, param in enumerate(sig.parameters.values()):
@@ -683,15 +683,16 @@ class Integrator(ABC):
 
         self._solver = func
 
-    def _timed_deplete(self, n, rates, dt, matrix_func=None):
+    def _timed_deplete(self, n, rates, dt, matrix_func=None,
+                       use_cache=False):
         start = time.time()
         results = deplete(
             self._solver, self.chain, n, rates, dt, matrix_func,
-            self.transfer_rates)
+            self.transfer_rates, use_cache=use_cache)
         return time.time() - start, results
 
     @abstractmethod
-    def __call__(self, n, rates, dt, source_rate, i):
+    def __call__(self, n, rates, dt, source_rate, i, use_cache=False):
         """Perform the integration across one time step
 
         Parameters
@@ -781,7 +782,10 @@ class Integrator(ABC):
             n = self.operator.initial_condition()
             t, self._i_res = self._get_start_data()
 
+            prev_dt = None
+            prev_source_rate = None
             for i, (dt, source_rate) in enumerate(self):
+                use_cache = (prev_dt == dt) and (prev_source_rate == source_rate)
                 if output and comm.rank == 0:
                     print(f"[openmc.deplete] t={t} s, dt={dt} s, source={source_rate}")
 
@@ -792,7 +796,9 @@ class Integrator(ABC):
                     n, res = self._get_bos_data_from_restart(i, source_rate, n)
 
                 # Solve Bateman equations over time interval
-                proc_time, n_list, res_list = self(n, res.rates, dt, source_rate, i)
+                proc_time, n_list, res_list = self(n, res.rates, dt,
+                                                   source_rate, i,
+                                                   use_cache=use_cache)
 
                 # Insert BOS concentration, transport results
                 n_list.insert(0, n)
@@ -804,6 +810,8 @@ class Integrator(ABC):
                 StepResult.save(self.operator, n_list, res_list, [t, t + dt],
                                 source_rate, self._i_res + i, proc_time)
 
+                prev_dt = dt
+                prev_source_rate = source_rate
                 t += dt
 
             # Final simulation -- in the case that final_step is False, a zero

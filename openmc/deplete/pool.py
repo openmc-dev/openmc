@@ -41,7 +41,7 @@ def _distribute(items):
         j += chunk_size
 
 def deplete(func, chain, n, rates, dt, matrix_func=None, transfer_rates=None,
-            *matrix_args):
+            *matrix_args, use_cache=False):
     """Deplete materials using given reaction rates for a specified time
 
     Parameters
@@ -140,7 +140,7 @@ def deplete(func, chain, n, rates, dt, matrix_func=None, transfer_rates=None,
 
                 # Concatenate vectors of nuclides in one
                 n_multi = np.concatenate(n)
-                n_result = func(matrix, n_multi, dt)
+                n_result = func(matrix, n_multi, dt, use_cache=use_cache)
 
                 # Split back the nuclide vector result into the original form
                 n_result = np.split(n_result, np.cumsum([len(i) for i in n])[:-1])
@@ -155,7 +155,7 @@ def deplete(func, chain, n, rates, dt, matrix_func=None, transfer_rates=None,
 
             return n_result
 
-    inputs = zip(matrices, n, repeat(dt))
+    inputs = zip(matrices, n, repeat(dt), repeat(use_cache))
 
     if USE_MULTIPROCESSING:
         with Pool(NUM_PROCESSES) as pool:

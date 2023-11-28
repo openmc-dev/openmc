@@ -63,6 +63,9 @@ using namespace openmc;
 
 int openmc_finalize()
 {
+  if (simulation::initialized)
+    openmc_simulation_finalize();
+
   // Clear results
   openmc_reset();
 

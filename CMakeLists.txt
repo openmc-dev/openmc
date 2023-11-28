@@ -377,7 +377,7 @@ list(APPEND libopenmc_SOURCES
   src/random_dist.cpp
   src/random_lcg.cpp
   src/random_ray/iteration.cpp
-  src/random_ray/ray.cpp
+  src/random_ray/random_ray.cpp
   src/random_ray/source_region.cpp
   src/random_ray/tally_convert.cpp
   src/reaction.cpp

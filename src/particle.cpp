@@ -22,7 +22,7 @@
 #include "openmc/physics.h"
 #include "openmc/physics_mg.h"
 #include "openmc/random_lcg.h"
-#include "openmc/random_ray/ray.h"
+#include "openmc/random_ray/random_ray.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"

@@ -6,16 +6,16 @@
 namespace openmc {
 
 /*
- * The Ray class encompasses data and methods for transporting random rays
+ * The RandomRay class encompasses data and methods for transporting random rays
  * through the model. It is a small extension of the Particle class.
  */
 
-class Ray : public Particle {
+class RandomRay : public Particle {
 public:
   //==========================================================================
   // Constructors
-  Ray();
-  Ray(uint64_t index_source, uint64_t nrays, int iter);
+  RandomRay();
+  RandomRay(uint64_t index_source, uint64_t nrays, int iter);
 
   //==========================================================================
   // Methods
@@ -32,7 +32,7 @@ public:
   double distance_travelled_ {0};
   bool is_active_ {false};
   bool is_alive_ {true};
-}; // class Ray
+}; // class RandomRay
 
 //==============================================================================
 // Non-member functions

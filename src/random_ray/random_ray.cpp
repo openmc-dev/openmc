@@ -1,4 +1,4 @@
-#include "openmc/random_ray/ray.h"
+#include "openmc/random_ray/random_ray.h"
 #include "openmc/geometry.h"
 #include "openmc/settings.h"
 #include "openmc/mgxs_interface.h"
@@ -8,21 +8,21 @@
 namespace openmc {
 
 //==============================================================================
-// Ray implementation
+// RandomRay implementation
 //==============================================================================
 
-Ray::Ray()
+RandomRay::RandomRay()
 {
   angular_flux_.resize(data::mg.num_energy_groups_);
   delta_psi_.resize(data::mg.num_energy_groups_);
 }
 
-Ray::Ray(uint64_t index_source, uint64_t nrays, int iter) : Ray::Ray()
+RandomRay::RandomRay(uint64_t index_source, uint64_t nrays, int iter) : RandomRay::RandomRay()
 {
   initialize_ray(index_source, nrays, iter);
 }
 
-uint64_t Ray::transport_history_based_single_ray(double distance_inactive, double distance_active)
+uint64_t RandomRay::transport_history_based_single_ray(double distance_inactive, double distance_active)
 {
   using namespace openmc;
   while (true) {
@@ -37,7 +37,7 @@ uint64_t Ray::transport_history_based_single_ray(double distance_inactive, doubl
   return n_event();
 }
 
-void Ray::event_advance_ray(double distance_inactive, double distance_active)
+void RandomRay::event_advance_ray(double distance_inactive, double distance_active)
 {
   // Find the distance to the nearest boundary
   boundary() = distance_to_boundary(*this);
@@ -89,7 +89,7 @@ void Ray::event_advance_ray(double distance_inactive, double distance_active)
 }
 
 
-void Ray::attenuate_flux(double distance, bool is_active)
+void RandomRay::attenuate_flux(double distance, bool is_active)
 {
   assert(distance > 0.0);
 
@@ -147,7 +147,7 @@ void Ray::attenuate_flux(double distance, bool is_active)
 
 
 
-void Ray::initialize_ray(uint64_t index_source, uint64_t nrays, int iter)
+void RandomRay::initialize_ray(uint64_t index_source, uint64_t nrays, int iter)
 {
   id() = index_source;
 

@@ -7,7 +7,7 @@ namespace openmc {
 
 // Forward declare some types used in function arguments.
 class Particle;
-class Ray;
+class RandomRay;
 class Surface;
 
 //==============================================================================

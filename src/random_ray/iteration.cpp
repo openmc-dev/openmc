@@ -127,7 +127,7 @@ int openmc_run_random_ray(void)
     #pragma omp parallel for schedule(runtime) reduction(+:total_geometric_intersections)
     for (int i = 0; i < nrays; i++)
     {
-      Ray r;
+      RandomRay r;
       r.initialize_ray(i, nrays, iter);
       total_geometric_intersections += r.transport_history_based_single_ray(distance_inactive, distance_active);
     }

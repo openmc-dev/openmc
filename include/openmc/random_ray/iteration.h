@@ -1,7 +1,7 @@
 #ifndef OPENMC_RANDOM_RAY_ITERATION_H
 #define OPENMC_RANDOM_RAY_ITERATION_H
 
-#include "openmc/random_ray/ray.h"
+#include "openmc/random_ray/random_ray.h"
 #include "openmc/random_ray/source_region.h"
 
 namespace openmc {

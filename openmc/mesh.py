@@ -1391,14 +1391,13 @@ class CylindricalMesh(StructuredMesh):
         delta_x = x - self.origin[0]
         delta_y = y - self.origin[1]
         # atan2 returns values in -pi to +pi range
-        phi_value = atan2(delta_y, delta_x)  # 
+        phi_value = atan2(delta_y, delta_x)
         if delta_x < 0 and delta_y < 0:
             # returned phi_value anticlockwise and negative
-            phi_value = phi_value + 2 * pi
+            phi_value += 2 * pi
         if delta_x > 0 and delta_y < 0:
             # returned phi_value anticlockwise and negative
-            phi_value = phi_value + 2 * pi
-
+            phi_value += 2 * pi
 
         phi_grid_values = np.array(self.phi_grid)
 

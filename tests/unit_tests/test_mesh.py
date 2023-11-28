@@ -241,7 +241,7 @@ def test_mesh_vertices(mesh_type):
 
 
 def test_CylindricalMesh_get_indices_at_coords():
-    # default origin (0, 0, 0) and default phi grind (0, 2*pi)
+    # default origin (0, 0, 0) and default phi grid (0, 2*pi)
     mesh = openmc.CylindricalMesh(r_grid=(0, 5, 10), z_grid=(0, 5, 10))
     assert mesh.get_indices_at_coords(1, 0, 1) == (0, 0, 0)
     assert mesh.get_indices_at_coords(6, 0, 1) == (1, 0, 0)

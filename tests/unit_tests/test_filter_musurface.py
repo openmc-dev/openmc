@@ -8,8 +8,6 @@ import openmc
 
 
 def test_musurface(run_in_tmpdir):
-    #"""Test that collision/tracklength estimators agree for SphericalMesh"""
-
     sphere = openmc.Sphere(r=1.0, boundary_type='vacuum')
     cell = openmc.Cell(fill=None, region=-sphere)
     model = openmc.Model()

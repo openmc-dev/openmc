@@ -492,7 +492,7 @@ class Settings:
     def source(self, source: typing.Union[SourceBase, typing.Iterable[SourceBase]]):
         if not isinstance(source, MutableSequence):
             source = [source]
-        self._source = cv.CheckedList((SourceBase, MeshSource), 'source distributions', source)
+        self._source = cv.CheckedList(SourceBase, 'source distributions', source)
 
     @property
     def confidence_intervals(self) -> bool:
@@ -1878,11 +1878,10 @@ class Settings:
             Settings object
 
         """
+        # read all meshes under the settings node and update
         settings_meshes = _read_meshes(elem)
-        if meshes is None:
-            meshes = settings_meshes
-        else:
-            meshes.update(settings_meshes)
+        meshes = dict() if meshes is None else meshes
+        meshes.update(settings_meshes)
 
         settings = cls()
         settings._eigenvalue_from_xml_element(elem)

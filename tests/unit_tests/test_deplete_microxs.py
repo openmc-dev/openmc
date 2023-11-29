@@ -63,7 +63,7 @@ def test_from_multi_group_flux():
     microxs = MicroXS.from_multi_group_flux(
         energies='CASMO-4',
         multi_group_flux=[1.1e-7, 1.2e-6, 1.3e-5, 1.4e-4],
-        temperature='293',
+        temperature=293,
         chain_file=Path(__file__).parents[1] / 'chain_simple.xml'
     )
     assert isinstance(microxs, MicroXS)
@@ -71,7 +71,7 @@ def test_from_multi_group_flux():
     microxs = MicroXS.from_multi_group_flux(
         energies=[0., 6.25e-1, 5.53e3, 8.21e5, 2.e7],
         multi_group_flux=[1.1e-7, 1.2e-6, 1.3e-5, 1.4e-4],
-        temperature='293',
+        temperature=293,
         chain_file=Path(__file__).parents[1] / 'chain_simple.xml'
     )
     assert isinstance(microxs, MicroXS)

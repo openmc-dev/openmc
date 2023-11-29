@@ -787,7 +787,12 @@ class Model:
                 for i, vol_calc in enumerate(self.settings.volume_calculations):
                     vol_calc.load_results(f"volume_{i + 1}.h5")
                     # First add them to the Python side
-                    self.geometry.add_volume_information(vol_calc)
+                    if vol_calc.domain_type == "material" and self.materials:
+                        for material in self.materials:
+                            if material.id in vol_calc.volumes:
+                                material.add_volume_information(vol_calc)
+                    else:
+                        self.geometry.add_volume_information(vol_calc)
 
                     # And now repeat for the C API
                     if self.is_initialized and vol_calc.domain_type == 'material':

@@ -450,14 +450,15 @@ public:
 
   double volume(const MeshIndex& ijk) const override;
 
-  array<vector<double>, 3> grid_;
-
   // grid accessors
   double r(int i) const { return grid_[0][i]; }
   double phi(int i) const { return grid_[1][i]; }
   double z(int i) const { return grid_[2][i]; }
 
   int set_grid();
+
+  // Data members
+  array<vector<double>, 3> grid_;
 
 private:
   double find_r_crossing(
@@ -514,9 +515,11 @@ public:
   double r(int i) const { return grid_[0][i]; }
   double theta(int i) const { return grid_[1][i]; }
   double phi(int i) const { return grid_[2][i]; }
-  array<vector<double>, 3> grid_;
 
   int set_grid();
+
+  // Data members
+  array<vector<double>, 3> grid_;
 
 private:
   double find_r_crossing(

@@ -14,97 +14,6 @@
 
 namespace openmc {
 
-void validate_random_ray_inputs()
-{
-  // Validate tallies
-  for (auto& tally : model::tallies) {
-
-    // Validate score types
-    for (auto score_bin : tally->scores_) {
-      switch (score_bin) {
-        case SCORE_FLUX:
-        case SCORE_TOTAL:
-        case SCORE_FISSION:
-        case SCORE_NU_FISSION:
-        case SCORE_EVENTS:
-          break;
-        default:
-          fatal_error("Invalid score specified. Only flux, total, fission, nu-fission, and event scores are supported in random ray mode.");
-      }
-    }
-
-    // Validate estimator types
-    if (tally->estimator_ != TallyEstimator::ANALOG) {
-      fatal_error("Invalid estimator specified. Only analog estimators are supported in random ray mode.");
-    }
-
-    // Validate filter types
-    for (auto f : tally->filters()) {
-      auto& filter = *model::tally_filters[f];
-
-      switch (filter.type()) {
-        case  FilterType::CELL:
-        case  FilterType::CELL_INSTANCE:
-        case  FilterType::DISTRIBCELL:
-        case  FilterType::ENERGY:
-        case  FilterType::MATERIAL:
-        case  FilterType::MESH:
-        case  FilterType::UNIVERSE:
-          break;
-        default:
-          fatal_error("Invalid filter specified. Only cell, cell_instance, distribcell, energy, material, mesh, and universe filters are supported in random ray mode.");
-      }
-    }
-  }
-
-  // Validate MGXS data
-  for (auto& material : data::mg.macro_xs_) {
-    if (!material.is_isotropic) {
-      fatal_error("Anisotropic MGXS detected. Only isotropic XS data sets supported in random ray mode.");
-    }
-    if (material.get_xsdata().size() > 1) {
-      fatal_error("Non-isothermal MGXS detected. Only isothermal XS data sets supported in random ray mode.");
-    }
-  }
-
-  // Validate solver mode
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    fatal_error("Invalid run mode. Fixed source not yet supported in random ray mode.");
-  }
-  
-  // Validate eigenvalue sources (must be uniform isotropic box source)
-  if (model::external_sources.size() != 1) {
-    fatal_error("Invalid source definition -- only a single source is allowed in random ray mode.");
-  }
-
-  Source* s = model::external_sources[0].get();
-
-  // Check for independent source
-  IndependentSource* is = dynamic_cast<IndependentSource*>(s);
-  if (is == nullptr) {
-    fatal_error("Invalid source definition -- only independent sources are allowed in random ray mode.");
-  }
-
-  // Check for box source
-  SpatialDistribution* space_dist = is->space();
-  SpatialBox* sb = dynamic_cast<SpatialBox*>(space_dist);
-  if (sb == nullptr) {
-    fatal_error("Invalid source definition -- only box sources are allowed in random ray mode. If no source is specified, OpenMC default is an isotropic point source at the origin, which is invalid in random ray mode.");
-  }
-
-  // Check that box source is not restricted to fissionable areas
-  if (sb->only_fissionable()) {
-    fatal_error("Invalid source definition -- fissionable spatial distribution not allowed in random ray mode.");
-  }
-
-  // Check for isotropic source
-  UnitSphereDistribution* angle_dist = is->angle();
-  Isotropic* id = dynamic_cast<Isotropic*>(angle_dist);
-  if (id == nullptr) {
-    fatal_error("Invalid source definition -- only isotropic sources are allowed in random ray mode.");
-  }
-}
-
 int openmc_run_random_ray()
 {
   // Initialize OpenMC general data structures
@@ -394,5 +303,97 @@ void instability_check(int64_t n_hits, double k_eff, double& avg_miss_rate)
     fatal_error("Instability detected");
   }
 }
+
+void validate_random_ray_inputs()
+{
+  // Validate tallies
+  for (auto& tally : model::tallies) {
+
+    // Validate score types
+    for (auto score_bin : tally->scores_) {
+      switch (score_bin) {
+        case SCORE_FLUX:
+        case SCORE_TOTAL:
+        case SCORE_FISSION:
+        case SCORE_NU_FISSION:
+        case SCORE_EVENTS:
+          break;
+        default:
+          fatal_error("Invalid score specified. Only flux, total, fission, nu-fission, and event scores are supported in random ray mode.");
+      }
+    }
+
+    // Validate estimator types
+    if (tally->estimator_ != TallyEstimator::ANALOG) {
+      fatal_error("Invalid estimator specified. Only analog estimators are supported in random ray mode.");
+    }
+
+    // Validate filter types
+    for (auto f : tally->filters()) {
+      auto& filter = *model::tally_filters[f];
+
+      switch (filter.type()) {
+        case  FilterType::CELL:
+        case  FilterType::CELL_INSTANCE:
+        case  FilterType::DISTRIBCELL:
+        case  FilterType::ENERGY:
+        case  FilterType::MATERIAL:
+        case  FilterType::MESH:
+        case  FilterType::UNIVERSE:
+          break;
+        default:
+          fatal_error("Invalid filter specified. Only cell, cell_instance, distribcell, energy, material, mesh, and universe filters are supported in random ray mode.");
+      }
+    }
+  }
+
+  // Validate MGXS data
+  for (auto& material : data::mg.macro_xs_) {
+    if (!material.is_isotropic) {
+      fatal_error("Anisotropic MGXS detected. Only isotropic XS data sets supported in random ray mode.");
+    }
+    if (material.get_xsdata().size() > 1) {
+      fatal_error("Non-isothermal MGXS detected. Only isothermal XS data sets supported in random ray mode.");
+    }
+  }
+
+  // Validate solver mode
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    fatal_error("Invalid run mode. Fixed source not yet supported in random ray mode.");
+  }
+  
+  // Validate eigenvalue sources (must be uniform isotropic box source)
+  if (model::external_sources.size() != 1) {
+    fatal_error("Invalid source definition -- only a single source is allowed in random ray mode.");
+  }
+
+  Source* s = model::external_sources[0].get();
+
+  // Check for independent source
+  IndependentSource* is = dynamic_cast<IndependentSource*>(s);
+  if (is == nullptr) {
+    fatal_error("Invalid source definition -- only independent sources are allowed in random ray mode.");
+  }
+
+  // Check for box source
+  SpatialDistribution* space_dist = is->space();
+  SpatialBox* sb = dynamic_cast<SpatialBox*>(space_dist);
+  if (sb == nullptr) {
+    fatal_error("Invalid source definition -- only box sources are allowed in random ray mode. If no source is specified, OpenMC default is an isotropic point source at the origin, which is invalid in random ray mode.");
+  }
+
+  // Check that box source is not restricted to fissionable areas
+  if (sb->only_fissionable()) {
+    fatal_error("Invalid source definition -- fissionable spatial distribution not allowed in random ray mode.");
+  }
+
+  // Check for isotropic source
+  UnitSphereDistribution* angle_dist = is->angle();
+  Isotropic* id = dynamic_cast<Isotropic*>(angle_dist);
+  if (id == nullptr) {
+    fatal_error("Invalid source definition -- only isotropic sources are allowed in random ray mode.");
+  }
+}
+
 
 } // namespace openmc

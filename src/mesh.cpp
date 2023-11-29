@@ -167,8 +167,8 @@ vector<vector<Mesh::MaterialVolume>> Mesh::volume_fractions(
   return results;
 }
 
-void Mesh::element_volume_fractions(
-  int n_sample, int bin, vector<MaterialVolume>& result, uint64_t* seed) const
+int Mesh::element_volume_fractions(
+  int n_sample, int bin, gsl::span<MaterialVolume> result, uint64_t* seed) const
 {
   vector<gsl::index> materials;
   vector<int64_t> hits;
@@ -214,13 +214,19 @@ void Mesh::element_volume_fractions(
     reduce_indices_hits(local_materials, local_hits, materials, hits);
   }
 
+  // Make sure span passed in is large enough
+  if (hits.size() > result.size()) {
+    return -1;
+  }
+
   // Convert hits to fractions
   int64_t total_hits = std::accumulate(hits.begin(), hits.end(), 0.0);
-  result.reserve(hits.size());
   for (int i_mat = 0; i_mat < hits.size(); ++i_mat) {
     double fraction = double(hits[i_mat]) / total_hits;
-    result.push_back({materials[i_mat], fraction * this->volume(bin)});
+    result[i_mat].material = materials[i_mat];
+    result[i_mat].volume = fraction * this->volume(bin);
   }
+  return hits.size();
 }
 
 //==============================================================================
@@ -1863,6 +1869,15 @@ extern "C" int openmc_mesh_set_id(int32_t index, int32_t id)
   return 0;
 }
 
+//! Get the number of elements in a mesh
+extern "C" int openmc_mesh_get_n_elements(int32_t index, size_t* n)
+{
+  if (int err = check_mesh(index))
+    return err;
+  *n = model::meshes[index]->n_bins();
+  return 0;
+}
+
 extern "C" int openmc_mesh_volume_fractions(
   int32_t index, int n_sample, uint64_t* seed)
 {
@@ -1876,6 +1891,19 @@ extern "C" int openmc_mesh_volume_fractions(
   model::meshes[index]->volume_fractions(n_sample, seed);
 
   return 0;
+}
+
+extern "C" int openmc_mesh_element_volume_fractions(int32_t index, int n_sample,
+  int bin, int result_size, Mesh::MaterialVolume* result, int* hits,
+  uint64_t* seed)
+{
+  if (int err = check_mesh(index))
+    return err;
+
+  int n = model::meshes[index]->element_volume_fractions(
+    n_sample, bin, {result, result + result_size}, seed);
+  *hits = n;
+  return (n == -1) ? OPENMC_E_ALLOCATE : 0;
 }
 
 //! Get the dimension of a regular mesh

@@ -176,10 +176,11 @@ public:
   //
   //! \param[in] n_sample Number of samples within each element
   //! \param[in] bin Index of mesh element
-  //! \param[out] Vector of (material index, volume) for desired element
+  //! \param[out] Array of (material index, volume) for desired element
   //! \param[inout] seed Pseudorandom number seed
-  void element_volume_fractions(int n_sample, int bin,
-    vector<MaterialVolume>& volumes, uint64_t* seed) const;
+  //! \return Number of materials within element
+  int element_volume_fractions(int n_sample, int bin,
+    gsl::span<MaterialVolume> volumes, uint64_t* seed) const;
 
   // Data members
   int id_ {-1};     //!< User-specified ID

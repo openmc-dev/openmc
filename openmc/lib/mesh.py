@@ -1,7 +1,8 @@
 from collections.abc import Mapping
-from ctypes import (c_int, c_int32, c_char_p, c_double, POINTER,
-                    create_string_buffer, c_uint64)
+from ctypes import (c_int, c_int32, c_char_p, c_double, POINTER, Structure,
+                    create_string_buffer, c_uint64, c_size_t)
 from random import getrandbits
+from typing import Optional, List, Tuple
 from weakref import WeakValueDictionary
 
 import numpy as np
@@ -11,8 +12,17 @@ from ..exceptions import AllocationError, InvalidIDError
 from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler
+from .material import Material
 
 __all__ = ['RegularMesh', 'RectilinearMesh', 'CylindricalMesh', 'SphericalMesh', 'UnstructuredMesh', 'meshes']
+
+
+class MaterialVolume(Structure):
+    _fields_ = [
+        ("material", c_size_t),
+        ("volume", c_double)
+    ]
+
 
 # Mesh functions
 _dll.openmc_extend_meshes.argtypes = [c_int32, c_char_p, POINTER(c_int32),
@@ -25,9 +35,17 @@ _dll.openmc_mesh_get_id.errcheck = _error_handler
 _dll.openmc_mesh_set_id.argtypes = [c_int32, c_int32]
 _dll.openmc_mesh_set_id.restype = c_int
 _dll.openmc_mesh_set_id.errcheck = _error_handler
+_dll.openmc_mesh_get_n_elements.argtypes = [c_int32, POINTER(c_size_t)]
+_dll.openmc_mesh_get_n_elements.restype = c_int
+_dll.openmc_mesh_get_n_elements.errcheck = _error_handler
 _dll.openmc_mesh_volume_fractions.argtypes = [c_int32, c_int, POINTER(c_uint64)]
 _dll.openmc_mesh_volume_fractions.restype = c_int
 _dll.openmc_mesh_volume_fractions.errcheck = _error_handler
+_dll.openmc_mesh_element_volume_fractions.argtypes = [
+    c_int32, c_int, c_int, c_int, POINTER(MaterialVolume),
+    POINTER(c_int), POINTER(c_uint64)]
+_dll.openmc_mesh_element_volume_fractions.restype = c_int
+_dll.openmc_mesh_element_volume_fractions.errcheck = _error_handler
 _dll.openmc_get_mesh_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_mesh_index.restype = c_int
 _dll.openmc_get_mesh_index.errcheck = _error_handler
@@ -127,7 +145,17 @@ class Mesh(_FortranObjectWithID):
     def id(self, mesh_id):
         _dll.openmc_mesh_set_id(self._index, mesh_id)
 
-    def volume_fractions(self, n_samples=10_000, prn_seed=None):
+    @property
+    def n_elements(self):
+        n = c_size_t()
+        _dll.openmc_mesh_get_n_elements(self._index, n)
+        return n.value
+
+    def volume_fractions(
+            self,
+            n_samples: int = 10_000,
+            prn_seed: Optional[int] = None
+    ) -> List[List[Tuple[Material, float]]]:
         """Determine volume fractions of materials in each mesh element
 
         Parameters
@@ -138,13 +166,41 @@ class Mesh(_FortranObjectWithID):
             Pseudorandom number generator (PRNG) seed; if None, one will be
             generated randomly.
 
+        Returns
+        -------
+        List of tuple of (material, volume) for each mesh element
+
         """
         if n_samples <= 0:
             raise ValueError("Number of samples must be positive")
         if prn_seed is None:
             prn_seed = getrandbits(63)
+        prn_seed = c_uint64(prn_seed)
 
-        _dll.openmc_mesh_volume_fractions(self._index, n_samples, c_uint64(prn_seed))
+        # Preallocate space for MaterialVolume results
+        size = 16
+        result = (MaterialVolume * size)()
+
+        hits = c_int()  # Number of materials hit in a given element
+        volumes = []
+        for i_element in range(self.n_elements):
+            while True:
+                try:
+                    _dll.openmc_mesh_element_volume_fractions(
+                        self._index, n_samples, i_element, size, result, hits, prn_seed)
+                except AllocationError:
+                    # Increase size of result array and try again
+                    size *= 2
+                    result = (MaterialVolume * size)()
+                else:
+                    # If no error, break out of loop
+                    break
+
+            volumes.append([
+                (Material(index=r.material), r.volume)
+                for r in result[:hits.value]
+            ])
+        return volumes
 
 
 class RegularMesh(Mesh):

@@ -6,6 +6,7 @@
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/simulation.h"
+#include "openmc/source.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/timer.h"
 #include "openmc/mgxs_interface.h"
@@ -69,6 +70,38 @@ void validate_random_ray_inputs(void)
   // Validate solver mode
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     fatal_error("Invalid run mode. Fixed source not yet supported in random ray mode.");
+  }
+  
+  // Validate eigenvalue sources (must be uniform isotropic box source)
+  if (model::external_sources.size() != 1) {
+    fatal_error("Invalid source definition -- only a single source is allowed in random ray mode.");
+  }
+
+  Source* s = model::external_sources[0].get();
+
+  // Check for independent source
+  IndependentSource* is = dynamic_cast<IndependentSource*>(s);
+  if (is == nullptr) {
+    fatal_error("Invalid source definition -- only independent sources are allowed in random ray mode.");
+  }
+
+  // Check for box source
+  SpatialDistribution* space_dist = is->space();
+  SpatialBox* sb = dynamic_cast<SpatialBox*>(space_dist);
+  if (sb == nullptr) {
+    fatal_error("Invalid source definition -- only box sources are allowed in random ray mode. If no source is specified, OpenMC default is an isotropic point source at the origin, which is invalid in random ray mode.");
+  }
+
+  // Check that box source is not restricted to fissionable areas
+  if (sb->only_fissionable()) {
+    fatal_error("Invalid source definition -- fissionable spatial distribution not allowed in random ray mode.");
+  }
+
+  // Check for isotropic source
+  UnitSphereDistribution* angle_dist = is->angle();
+  Isotropic* id = dynamic_cast<Isotropic*>(angle_dist);
+  if (id == nullptr) {
+    fatal_error("Invalid source definition -- only isotropic sources are allowed in random ray mode.");
   }
 }
 

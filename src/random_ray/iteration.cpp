@@ -14,7 +14,7 @@
 
 namespace openmc {
 
-void validate_random_ray_inputs(void)
+void validate_random_ray_inputs()
 {
   // Validate tallies
   for (auto& tally : model::tallies) {
@@ -105,7 +105,7 @@ void validate_random_ray_inputs(void)
   }
 }
 
-int openmc_run_random_ray(void)
+int openmc_run_random_ray()
 {
   openmc_simulation_init();
 
@@ -113,32 +113,23 @@ int openmc_run_random_ray(void)
 
   double k_eff = 1.0;
 
-  // Intialize Cell (FSR) data
+  // Intialize Cell (FSR) data structures
   initialize_source_regions();
 
   uint64_t total_geometric_intersections = 0;
 
-  int n_iters_total = settings::n_batches;
-  int n_iters_inactive = settings::n_inactive;
-  int n_iters_active = n_iters_total - n_iters_inactive;
-
-  int nrays = settings::n_particles;
-  double distance_active = settings::ray_distance_active;
-  double distance_inactive = settings::ray_distance_inactive;
-  double total_active_distance_per_iteration = distance_active * nrays;
-
   openmc::simulation::time_total.start();
 
   simulation::current_gen = 1;
+  settings::source_write = false;
 
   bool mapped_all_tallies = false;
 
   double avg_miss_rate = 0.0;
 
   // Power Iteration Loop
-  for (int iter = 1; iter <= n_iters_total; iter++) {
-    // Increment current batch
-    //simulation::current_batch++;
+  while (simulation::current_batch < settings::n_batches) {
+    
     initialize_batch();
     initialize_generation();
 
@@ -158,18 +149,18 @@ int openmc_run_random_ray(void)
 
     // Transport Sweep
     #pragma omp parallel for schedule(runtime) reduction(+:total_geometric_intersections)
-    for (int i = 0; i < nrays; i++)
+    for (int i = 0; i < settings::n_particles; i++)
     {
       RandomRay r;
-      r.initialize_ray(i, nrays, iter);
-      total_geometric_intersections += r.transport_history_based_single_ray(distance_inactive, distance_active);
+      r.initialize_ray(i);
+      total_geometric_intersections += r.transport_history_based_single_ray();
     }
 
     // Stop timer for transport
     simulation::time_transport.stop();
 
     // Normalize scalar flux and update volumes
-    normalize_scalar_flux_and_volumes(total_active_distance_per_iteration, iter);
+    normalize_scalar_flux_and_volumes();
 
     // Add source to scalar flux
     int64_t n_hits = add_source_to_scalar_flux();
@@ -179,7 +170,7 @@ int openmc_run_random_ray(void)
     global_tally_tracklength = k_eff;
 
     // Tally fission rates
-    if (iter > settings::n_inactive) {
+    if (simulation::current_batch > settings::n_inactive) {
 
       // Create tally tasks for all source regions
       if (!mapped_all_tallies) {
@@ -200,12 +191,9 @@ int openmc_run_random_ray(void)
   }
   openmc::simulation::time_total.stop();
 
-  // Write tally results to tallies.out
-  //if (settings::output_tallies) write_tallies();
-
   openmc_simulation_finalize();
   
-  print_results_random_ray(total_geometric_intersections, avg_miss_rate/n_iters_total);
+  print_results_random_ray(total_geometric_intersections, avg_miss_rate/settings::n_batches);
 
   return 0;
 }
@@ -252,12 +240,13 @@ void update_neutron_source(double k_eff)
   simulation::time_update_src.stop();
 }
 
-void normalize_scalar_flux_and_volumes(double total_active_distance_per_iteration, int iter)
+void normalize_scalar_flux_and_volumes()
 {
   int negroups = data::mg.num_energy_groups_;
+  double total_active_distance_per_iteration = settings::ray_distance_active * settings::n_particles;
 
   float  normalization_factor =        1.0 /  total_active_distance_per_iteration;
-  double volume_normalization_factor = 1.0 / (total_active_distance_per_iteration * iter);
+  double volume_normalization_factor = 1.0 / (total_active_distance_per_iteration * simulation::current_batch);
 
   // Normalize Scalar flux to total distance travelled by all rays this iteration
   #pragma omp parallel for
@@ -274,7 +263,7 @@ void normalize_scalar_flux_and_volumes(double total_active_distance_per_iteratio
   }
 }
 
-int64_t add_source_to_scalar_flux(void)
+int64_t add_source_to_scalar_flux()
 {
   int negroups = data::mg.num_energy_groups_;
 

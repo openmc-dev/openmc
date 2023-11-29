@@ -3,6 +3,7 @@
 #include "openmc/settings.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/random_ray/source_region.h"
+#include "openmc/simulation.h"
 #include "openmc/source.h"
 
 namespace openmc {
@@ -17,18 +18,18 @@ RandomRay::RandomRay()
   delta_psi_.resize(data::mg.num_energy_groups_);
 }
 
-RandomRay::RandomRay(uint64_t index_source, uint64_t nrays, int iter) : RandomRay::RandomRay()
+RandomRay::RandomRay(uint64_t index_source) : RandomRay::RandomRay()
 {
-  initialize_ray(index_source, nrays, iter);
+  initialize_ray(index_source);
 }
 
-uint64_t RandomRay::transport_history_based_single_ray(double distance_inactive, double distance_active)
+uint64_t RandomRay::transport_history_based_single_ray()
 {
   using namespace openmc;
   while (true) {
     if (!alive())
       break;
-    event_advance_ray(distance_inactive, distance_active);
+    event_advance_ray();
     if (!alive())
       break;
     event_cross_surface();
@@ -37,7 +38,7 @@ uint64_t RandomRay::transport_history_based_single_ray(double distance_inactive,
   return n_event();
 }
 
-void RandomRay::event_advance_ray(double distance_inactive, double distance_active)
+void RandomRay::event_advance_ray()
 {
   // Find the distance to the nearest boundary
   boundary() = distance_to_boundary(*this);
@@ -46,8 +47,8 @@ void RandomRay::event_advance_ray(double distance_inactive, double distance_acti
 
   // Check for final termination
   if (is_active_) {
-    if (distance_travelled_ + distance >= distance_active) {
-      distance = distance_active - distance_travelled_;
+    if (distance_travelled_ + distance >= settings::ray_distance_active) {
+      distance = settings::ray_distance_active - distance_travelled_;
       wgt() = 0.0;
     }
     distance_travelled_ += distance;
@@ -57,18 +58,18 @@ void RandomRay::event_advance_ray(double distance_inactive, double distance_acti
   // Check for end of inactive region (dead zone)
   if(!is_active_)
   {
-    if(distance_travelled_ + distance >= distance_inactive)
+    if(distance_travelled_ + distance >= settings::ray_distance_inactive)
     {
       is_active_ = true;
-      double distance_dead = distance_inactive - distance_travelled_;
+      double distance_dead = settings::ray_distance_inactive - distance_travelled_;
       attenuate_flux(distance_dead,  false);
 
       double distance_alive = distance - distance_dead;
 
       // Ensure we haven't travelled past the active phase as well
-      if (distance_alive > distance_active)
+      if (distance_alive > settings::ray_distance_active)
       {
-        distance_alive = distance_active;
+        distance_alive = settings::ray_distance_active;
         wgt() = 0.0;
       }
       attenuate_flux(distance_alive, true);
@@ -87,7 +88,6 @@ void RandomRay::event_advance_ray(double distance_inactive, double distance_acti
     coord(j).r += distance * coord(j).u;
   }
 }
-
 
 void RandomRay::attenuate_flux(double distance, bool is_active)
 {
@@ -147,7 +147,7 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
 
 
 
-void RandomRay::initialize_ray(uint64_t index_source, uint64_t nrays, int iter)
+void RandomRay::initialize_ray(uint64_t index_source)
 {
   id() = index_source;
 
@@ -162,7 +162,7 @@ void RandomRay::initialize_ray(uint64_t index_source, uint64_t nrays, int iter)
   wgt() = 1.0;
 
   // set random number seed
-  int64_t particle_seed = (iter-1) * nrays + id();
+  int64_t particle_seed = (simulation::current_batch-1) * settings::n_particles + id();
   init_particle_seeds(particle_seed, seeds());
   stream() = STREAM_TRACKING;
 

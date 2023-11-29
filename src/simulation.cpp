@@ -315,7 +315,7 @@ vector<int64_t> work_index;
 
 void allocate_banks()
 {
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE && settings::solver_type == SolverType::MONTE_CARLO) {
     // Allocate source bank
     simulation::source_bank.resize(simulation::work_per_rank);
 

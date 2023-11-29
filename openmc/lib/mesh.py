@@ -19,7 +19,7 @@ __all__ = ['RegularMesh', 'RectilinearMesh', 'CylindricalMesh', 'SphericalMesh',
 
 class MaterialVolume(Structure):
     _fields_ = [
-        ("material", c_size_t),
+        ("material", c_int32),
         ("volume", c_double)
     ]
 

@@ -72,8 +72,8 @@ class Mesh {
 public:
   // Types, aliases
   struct MaterialVolume {
-    gsl::index material; //!< material index
-    double volume;       //!< volume in [cm^3]
+    int32_t material; //!< material index
+    double volume;    //!< volume in [cm^3]
   };
 
   // Constructors and destructor

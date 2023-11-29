@@ -148,12 +148,12 @@ vector<double> Mesh::volumes() const
 int Mesh::volume_fractions(
   int n_sample, int bin, gsl::span<MaterialVolume> result, uint64_t* seed) const
 {
-  vector<gsl::index> materials;
+  vector<int32_t> materials;
   vector<int64_t> hits;
 
 #pragma omp parallel
   {
-    vector<gsl::index> local_materials;
+    vector<int32_t> local_materials;
     vector<int64_t> local_hits;
     Particle p;
 
@@ -168,8 +168,6 @@ int Mesh::volume_fractions(
         continue;
 
       int i_material = p.material();
-      if (i_material == MATERIAL_VOID)
-        continue;
 
       // Check if this material was previously hit and if so, increment count
       bool already_hit = false;

@@ -107,36 +107,50 @@ void validate_random_ray_inputs()
 
 int openmc_run_random_ray()
 {
+  // Initialize OpenMC general data structures
   openmc_simulation_init();
 
+  // Validate that inputs meet requirements for random ray mode
   validate_random_ray_inputs();
 
-  double k_eff = 1.0;
-
-  // Intialize Cell (FSR) data structures
+  // Intialize Cell (Flat Source Region) data structures
   initialize_source_regions();
 
-  uint64_t total_geometric_intersections = 0;
-
-  openmc::simulation::time_total.start();
-
+  // Random ray mode does not have an inner loop over generations within a batch, so set the current gen to 1
   simulation::current_gen = 1;
+
+  // There are no source sites in random ray mode, so be sure to disable to ensure we don't attempt
+  // to write source sites to statepoint
   settings::source_write = false;
 
+  // If all source regions have been hit by a ray during transport, then we can skip the mapping process
+  // for future iterations.
   bool mapped_all_tallies = false;
+  
+  // Random ray eigenvalue
+  // TODO: Use OpenMC native eigenvalue?
+  double k_eff = 1.0;
 
+  // Tracks the average FSR miss rate for analysis and reporting
   double avg_miss_rate = 0.0;
 
-  // Power Iteration Loop
+  // Tracks the total number of geometric intersections by all rays for reporting
+  uint64_t total_geometric_intersections = 0;
+
+  // Begin main simulation timer
+  simulation::time_total.start();
+
+  // Random ray power iteration loop
   while (simulation::current_batch < settings::n_batches) {
     
+    // Initialize the current batch
     initialize_batch();
     initialize_generation();
 
     // Reset total starting particle weight used for normalizing tallies
     simulation::total_weight = 1.0;
 
-    // Update neutron source
+    // Update source term (scattering + fission)
     update_neutron_source(k_eff);
 
     // Reset scalar fluxes, iteration volume tallies, and region hit flags to zero
@@ -147,7 +161,7 @@ int openmc_run_random_ray()
     // Start timer for transport
     simulation::time_transport.start();
 
-    // Transport Sweep
+    // Transport sweep over all random rays for the iteration
     #pragma omp parallel for schedule(runtime) reduction(+:total_geometric_intersections)
     for (int i = 0; i < settings::n_particles; i++)
     {
@@ -162,37 +176,44 @@ int openmc_run_random_ray()
     // Normalize scalar flux and update volumes
     normalize_scalar_flux_and_volumes();
 
-    // Add source to scalar flux
+    // Add source to scalar flux, compute number of FSR hits
     int64_t n_hits = add_source_to_scalar_flux();
 
-    // Compute k-eff
+    // Compute random ray k-eff
     k_eff = compute_k_eff(k_eff);
+
+    // Store random ray k-eff into OpenMC's native k-eff variable
     global_tally_tracklength = k_eff;
 
-    // Tally fission rates
+    // Execute all tallying tasks, if this is an active batch
     if (simulation::current_batch > settings::n_inactive) {
 
-      // Create tally tasks for all source regions
+      // Generate mapping between source regions and tallies
       if (!mapped_all_tallies) {
         mapped_all_tallies = convert_source_regions_to_tallies();
       }
       
+      // Use above mapping to contribute FSR flux data to appropriate tallies
       random_ray_tally();
     }
 
     // Set phi_old = phi_new
     random_ray::scalar_flux_old.swap(random_ray::scalar_flux_new);
 
+    // Check for any obvious insabilities/nans/infs
     instability_check(n_hits, k_eff, avg_miss_rate);
 
+    // Finalize the current batch
     finalize_generation();
-
     finalize_batch();
-  }
+  } // End random ray power iteration loop
+
   openmc::simulation::time_total.stop();
 
+  // Finalize OpenMC
   openmc_simulation_finalize();
   
+  // Print random ray results
   print_results_random_ray(total_geometric_intersections, avg_miss_rate/settings::n_batches);
 
   return 0;
@@ -291,21 +312,21 @@ int64_t add_source_to_scalar_flux()
       int64_t idx = (sr * negroups) + e;
 
       // There are three scenarios we need to consider:
+        
       if (was_cell_hit) {
-        // If it was hit, then finish computing the scalar flux estimate for the iteration
+        // 1. If the FSR was hit this iteration, then the new flux is equal to the flat source from the previous iteration
+        // plus the contributions from rays passing through the source region (computed during the transport sweep)
         float Sigma_t = data::mg.macro_xs_[material].get_xs(MgxsType::TOTAL, e, nullptr, nullptr, nullptr, t, a);
         random_ray::scalar_flux_new[idx] /= (Sigma_t * volume);
         random_ray::scalar_flux_new[idx] += random_ray::source[idx];
-      } else if (volume == 0.0) {
-        // If it was not hit this iteration, and the simulation averaged volume is still 0,
-        // then it has never been hit. In this case, just set it to 0
-        random_ray::scalar_flux_new[idx] = 0.f;
+      } else if (volume > 0.0) {
+        // 2. If the FSR was not hit this iteration, but has been hit some previous iteration, then we simply set the
+        // new scalar flux to be equal to the contribution from the flat source alone. 
+        random_ray::scalar_flux_new[idx] = random_ray::source[idx];
       } else {
-        // If it was not hit this iteration, but the simulation averaged volume is nonzero,
-        // then we can reuse the previous iteration's estimate of the scalar flux. This
-        // induces a small amount of error, but may be beneficial for maintaining stability
-        // when the ray density is extremely low.
-        random_ray::scalar_flux_new[idx] = random_ray::scalar_flux_old[idx];
+        // If the FSR was not hit this iteration, and it has never been hit in any iteration (i.e., volume is zero),
+        // then we want to set this to 0 to avoid dividing anything by a zero volume.
+        random_ray::scalar_flux_new[idx] = 0.f;
       }
     }
   }

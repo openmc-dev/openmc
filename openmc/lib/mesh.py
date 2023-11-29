@@ -38,14 +38,11 @@ _dll.openmc_mesh_set_id.errcheck = _error_handler
 _dll.openmc_mesh_get_n_elements.argtypes = [c_int32, POINTER(c_size_t)]
 _dll.openmc_mesh_get_n_elements.restype = c_int
 _dll.openmc_mesh_get_n_elements.errcheck = _error_handler
-_dll.openmc_mesh_volume_fractions.argtypes = [c_int32, c_int, POINTER(c_uint64)]
-_dll.openmc_mesh_volume_fractions.restype = c_int
-_dll.openmc_mesh_volume_fractions.errcheck = _error_handler
-_dll.openmc_mesh_element_volume_fractions.argtypes = [
+_dll.openmc_mesh_volume_fractions.argtypes = [
     c_int32, c_int, c_int, c_int, POINTER(MaterialVolume),
     POINTER(c_int), POINTER(c_uint64)]
-_dll.openmc_mesh_element_volume_fractions.restype = c_int
-_dll.openmc_mesh_element_volume_fractions.errcheck = _error_handler
+_dll.openmc_mesh_volume_fractions.restype = c_int
+_dll.openmc_mesh_volume_fractions.errcheck = _error_handler
 _dll.openmc_get_mesh_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_mesh_index.restype = c_int
 _dll.openmc_get_mesh_index.errcheck = _error_handler
@@ -186,7 +183,7 @@ class Mesh(_FortranObjectWithID):
         for i_element in range(self.n_elements):
             while True:
                 try:
-                    _dll.openmc_mesh_element_volume_fractions(
+                    _dll.openmc_mesh_volume_fractions(
                         self._index, n_samples, i_element, size, result, hits, prn_seed)
                 except AllocationError:
                     # Increase size of result array and try again

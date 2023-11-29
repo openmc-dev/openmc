@@ -145,29 +145,7 @@ vector<double> Mesh::volumes() const
   return volumes;
 }
 
-vector<vector<Mesh::MaterialVolume>> Mesh::volume_fractions(
-  int n_sample, uint64_t* seed) const
-{
-  // Create vector for results
-  vector<vector<MaterialVolume>> results(this->n_bins());
-
-  // Loop over mesh elements
-  // TODO: MPI parallelization over elements
-  for (int bin = 0; bin < n_bins(); bin++) {
-    fmt::print("Mesh element {}\n", bin);
-    this->element_volume_fractions(n_sample, bin, results[bin], seed);
-
-    // Display results
-    for (const auto& result : results[bin]) {
-      int id = model::materials[result.material]->id();
-      fmt::print("  Material {}, fraction = {}\n", id, result.volume);
-    }
-  }
-
-  return results;
-}
-
-int Mesh::element_volume_fractions(
+int Mesh::volume_fractions(
   int n_sample, int bin, gsl::span<MaterialVolume> result, uint64_t* seed) const
 {
   vector<gsl::index> materials;
@@ -1878,29 +1856,14 @@ extern "C" int openmc_mesh_get_n_elements(int32_t index, size_t* n)
   return 0;
 }
 
-extern "C" int openmc_mesh_volume_fractions(
-  int32_t index, int n_sample, uint64_t* seed)
-{
-  if (!seed) {
-    set_errmsg("Received null pointer.");
-    return OPENMC_E_INVALID_ARGUMENT;
-  }
-
-  if (int err = check_mesh(index))
-    return err;
-  model::meshes[index]->volume_fractions(n_sample, seed);
-
-  return 0;
-}
-
-extern "C" int openmc_mesh_element_volume_fractions(int32_t index, int n_sample,
+extern "C" int openmc_mesh_volume_fractions(int32_t index, int n_sample,
   int bin, int result_size, Mesh::MaterialVolume* result, int* hits,
   uint64_t* seed)
 {
   if (int err = check_mesh(index))
     return err;
 
-  int n = model::meshes[index]->element_volume_fractions(
+  int n = model::meshes[index]->volume_fractions(
     n_sample, bin, {result, result + result_size}, seed);
   *hits = n;
   return (n == -1) ? OPENMC_E_ALLOCATE : 0;

@@ -299,7 +299,7 @@ class MicroXS:
             settings = openmc.Settings()
             settings.particles = 1
             settings.batches = 1
-
+            settings.output = {'summary': False}
             model = openmc.Model(geometry, materials, settings)
             model.export_to_model_xml()
 

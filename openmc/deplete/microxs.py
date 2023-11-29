@@ -219,8 +219,11 @@ class MicroXS:
         openmc_data_path: Optional[PathLike] = None,
         temperature: int=294
     ):
-        """Generated MicroXS object from a known flux and a chain file. The size of the MicroXS matrix depends
-        on the chain file.
+        """Generated MicroXS object from a known flux and a chain file.
+
+        The size of the MicroXS matrix depends on the chain file and cross
+        sections available. MicroXS entry will be 0 if the nuclide cross section
+        is not found.
 
         Parameters
         ----------
@@ -259,6 +262,7 @@ class MicroXS:
         chain = openmc.deplete.Chain.from_xml(chain_file_path)
 
         openmc_data_path = _resolve_openmc_data_path(openmc_data_path)
+        data_lib = openmc.data.DataLibrary.from_xml(openmc_data_path)
 
         # get reactions and nuclides from chain file
         nuclides, reactions = chain.nuclides, chain.reactions
@@ -280,7 +284,10 @@ class MicroXS:
 
             mat_all_nucs = openmc.Material()
             for nuc in nuclides:
-                mat_all_nucs.add_nuclide(nuc, 1)
+                mat_lib = data_lib.get_by_material(nuc, data_type="neutron")
+                # limits the material to nuclides that have cross sections
+                if mat_lib:
+                    mat_all_nucs.add_nuclide(nuc, 1)
             mat_all_nucs.set_density("atom/b-cm", 1)
             materials = openmc.Materials([mat_all_nucs])
 
@@ -300,13 +307,17 @@ class MicroXS:
 
             openmc.lib.init()
             for nuc_indx, nuc in enumerate(nuclides):
-                lib_nuc = openmc.lib.nuclides[nuc]
-                for mt_indx, mt in enumerate(mts):
-                    c_mt = c_int(mt)
-                    collapse = lib_nuc.collapse_rate(
-                        c_mt, c_temperature, energies, multi_group_flux
-                    )
-                    microxs_arr[nuc_indx, mt_indx] = collapse
+                mat_lib = data_lib.get_by_material(nuc, data_type="neutron")
+                if mat_lib:
+                    lib_nuc = openmc.lib.nuclides[nuc]
+                    for mt_indx, mt in enumerate(mts):
+                        c_mt = c_int(mt)
+                        collapse = lib_nuc.collapse_rate(
+                            c_mt, c_temperature, energies, multi_group_flux
+                        )
+                        microxs_arr[nuc_indx, mt_indx] = collapse
+                else:
+                    microxs_arr[nuc_indx, :] = 0
 
             openmc.lib.finalize()
 

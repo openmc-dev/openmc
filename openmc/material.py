@@ -337,6 +337,67 @@ class Material(IDManagerMixin):
 
         return combined
 
+    def get_decay_energy(
+            self,
+            radiation_type: str = 'photon', # FIND DICTIONARY ENTRIES
+            clip_tolerance: float = 1e-6,
+            units: str = 'Bq',
+            volume: Optional[float] = None
+        ) -> Optional[Univariate]:
+        r"""Return energy distribution of decay from unstable nuclides.
+
+        .. versionadded:: 0.14.0
+
+        Parameters
+        ----------
+        radiation_type: str {'gamma', 'beta-', 'ec/beta+', 'alpha', 'n', 'sf',
+            'p', 'e-', 'xray', 'anti-neutrino', 'neutrino'}
+            Radiation type emitted by decay of interest. If not passed, 
+            defaults to 'gamma'.
+        clip_tolerance : float
+            Maximum fraction of :math:`\sum_i x_i p_i` for discrete
+            distributions that will be discarded.
+        units : {'Bq', 'Bq/g', 'Bq/cm3'}
+            Specifies the units on the integral of the distribution.
+        volume : float, optional
+            Volume of the material. If not passed, defaults to using the
+            :attr:`Material.volume` attribute.
+
+        Returns
+        -------
+        Decay photon energy distribution. The integral of this distribution is
+        the total intensity of the photon source in the requested units.
+
+        """
+        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/cm3'})
+        if units == 'Bq':
+            multiplier = volume if volume is not None else self.volume
+            if multiplier is None:
+                raise ValueError("volume must be specified if units='Bq'")
+        elif units == 'Bq/cm3':
+            multiplier = 1
+        elif units == 'Bq/g':
+            multiplier = 1.0 / self.get_mass_density()
+
+        dists = []
+        probs = []
+        for nuc, atoms_per_bcm in self.get_nuclide_atom_densities().items():
+            source_per_atom = openmc.data.decay_energy_spectrum(nuc, radiation_type)
+            if source_per_atom is not None:
+                dists.append(source_per_atom)
+                probs.append(1e24 * atoms_per_bcm * multiplier)
+
+        # If no photon sources, exit early
+        if not dists:
+            return None
+
+        # Get combined distribution, clip low-intensity values in discrete spectra
+        combined = openmc.data.combine_distributions(dists, probs)
+        if isinstance(combined, (Discrete, Mixture)):
+            combined.clip(clip_tolerance, inplace=True)
+
+        return combined
+
     @classmethod
     def from_hdf5(cls, group: h5py.Group) -> Material:
         """Create material from HDF5 group

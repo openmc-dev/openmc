@@ -446,7 +446,7 @@ class Model:
                 if mat.depletable:
                     # Get the C data
                     if operator_class == 'IndependentOperator':
-                        c_mat=step.get_material(str(mat_id))
+                        c_mat = step.get_material(str(mat_id))
                     else:  # operator is CoupledOperator
                         c_mat = openmc.lib.materials[mat_id]
                     nuclides, densities = c_mat._get_densities()

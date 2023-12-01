@@ -194,17 +194,12 @@ class IndependentSource(SourceBase):
             self.time = time
         self.strength = strength
         self.particle = particle
+        self.domains = domains
 
         self._domain_ids = []
         self._domain_type = None
-        if domains is not None:
-            if isinstance(domains[0], openmc.Cell):
-                self.domain_type = 'cell'
-            elif isinstance(domains[0], openmc.Material):
-                self.domain_type = 'material'
-            elif isinstance(domains[0], openmc.Universe):
-                self.domain_type = 'universe'
-            self.domain_ids = [d.id for d in domains]
+
+        self.check_domains()
 
     @property
     def type(self) -> str:
@@ -272,6 +267,16 @@ class IndependentSource(SourceBase):
         cv.check_value('source particle', particle, ['neutron', 'photon'])
         self._particle = particle
 
+    def check_domains(self):
+        if self.domains is not None:
+            if isinstance(self.domains[0], openmc.Cell):
+                self.domain_type = 'cell'
+            elif isinstance(self.domains[0], openmc.Material):
+                self.domain_type = 'material'
+            elif isinstance(self.domains[0], openmc.Universe):
+                self.domain_type = 'universe'
+            self.domain_ids = [d.id for d in self.domains]
+
     @property
     def domain_ids(self):
         return self._domain_ids
@@ -298,6 +303,7 @@ class IndependentSource(SourceBase):
             XML element containing source data
 
         """
+        self.check_domains()
         super().populate_xml_element(element)
         element.set("particle", self.particle)
         if self.space is not None:

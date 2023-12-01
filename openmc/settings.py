@@ -1050,7 +1050,7 @@ class Settings:
 
     @random_ray_distance_active.setter
     def random_ray_distance_active(self, value):
-        cv.check_type('random ray distance active', value, Integral)
+        cv.check_type('random ray distance active', value, Real)
         cv.check_greater_than('random ray distance active', value, 0)
         self._random_ray_distance_active = value
     
@@ -1060,7 +1060,7 @@ class Settings:
 
     @random_ray_distance_inactive.setter
     def random_ray_distance_inactive(self, value):
-        cv.check_type('random ray distance inactive', value, Integral)
+        cv.check_type('random ray distance inactive', value, Real)
         cv.check_greater_than('random ray distance inactive', value, 0, True)
         self._random_ray_distance_inactive = value
 

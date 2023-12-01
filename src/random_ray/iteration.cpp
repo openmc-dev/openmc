@@ -393,7 +393,13 @@ void validate_random_ray_inputs()
   if (id == nullptr) {
     fatal_error("Invalid source definition -- only isotropic sources are allowed in random ray mode.");
   }
-}
 
+  // Check for MPI
+  #ifdef OPENMC_MPI
+  if (mpi::n_procs > 1) {
+    fatal_error("Domain replication via MPI not currently supported in random ray mode.");
+  }
+  #endif
+}
 
 } // namespace openmc

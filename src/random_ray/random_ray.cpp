@@ -47,8 +47,8 @@ void RandomRay::event_advance_ray()
 
   // Check for final termination
   if (is_active_) {
-    if (distance_travelled_ + distance >= settings::ray_distance_active) {
-      distance = settings::ray_distance_active - distance_travelled_;
+    if (distance_travelled_ + distance >= settings::random_ray_distance_active) {
+      distance = settings::random_ray_distance_active - distance_travelled_;
       wgt() = 0.0;
     }
     distance_travelled_ += distance;
@@ -58,18 +58,18 @@ void RandomRay::event_advance_ray()
   // Check for end of inactive region (dead zone)
   if(!is_active_)
   {
-    if(distance_travelled_ + distance >= settings::ray_distance_inactive)
+    if(distance_travelled_ + distance >= settings::random_ray_distance_inactive)
     {
       is_active_ = true;
-      double distance_dead = settings::ray_distance_inactive - distance_travelled_;
+      double distance_dead = settings::random_ray_distance_inactive - distance_travelled_;
       attenuate_flux(distance_dead,  false);
 
       double distance_alive = distance - distance_dead;
 
       // Ensure we haven't travelled past the active phase as well
-      if (distance_alive > settings::ray_distance_active)
+      if (distance_alive > settings::random_ray_distance_active)
       {
-        distance_alive = settings::ray_distance_active;
+        distance_alive = settings::random_ray_distance_active;
         wgt() = 0.0;
       }
       attenuate_flux(distance_alive, true);
@@ -154,7 +154,7 @@ void RandomRay::initialize_ray(uint64_t index_source)
   // Reset particle event counter
   n_event() = 0;
 
-  if( settings::ray_distance_inactive <= 0.0 )
+  if( settings::random_ray_distance_inactive <= 0.0 )
     is_active_ = true;
   else
     is_active_ = false;

@@ -143,6 +143,15 @@ class Settings:
        Initial seed for randomly generated plot colors.
     ptables : bool
         Determine whether probability tables are used.
+
+        .. versionadded::0.14.0
+    random_ray_distance_active : float
+       Indicate the total active distance a ray should travel in random ray mode
+
+        .. versionadded::0.14.0
+    random_ray_distance_inactive : float
+       Indicate the total inactive distance a ray should travel in random ray mode
+
     resonance_scattering : dict
         Settings for resonance elastic scattering. Accepted keys are 'enable'
         (bool), 'method' (str), 'energy_min' (float), 'energy_max' (float), and
@@ -158,6 +167,12 @@ class Settings:
         The type of calculation to perform (default is 'eigenvalue')
     seed : int
         Seed for the linear congruential pseudorandom number generator
+
+        .. versionadded::0.14.0
+    solver_type : {'monte carlo', 'random ray'}
+        Set whether the simulation method should be 'monte carlo' or 'random ray'.
+        The default method is 'monte carlo'.
+
     source : Iterable of openmc.SourceBase
         Distribution of source sites in space, angle, and energy
     sourcepoint : dict
@@ -343,6 +358,10 @@ class Settings:
         self._weight_window_checkpoints = {}
         self._max_splits = None
         self._max_tracks = None
+
+        self._solver_type = None
+        self._random_ray_distance_active = None
+        self._random_ray_distance_inactive = None
 
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -1015,6 +1034,15 @@ class Settings:
         if not isinstance(wwgs, MutableSequence):
             wwgs = [wwgs]
         self._weight_window_generators = cv.CheckedList(WeightWindowGenerator, 'weight window generators', wwgs)
+
+    @property
+    def solver_type(self) -> str:
+        return self._solver_type
+
+    @solver_type.setter
+     def solver_type(self, solver_type: str):
+        cv.check_value('solver type', solver_type, ['monte carlo', 'random ray'])
+        self._solver_type = solver_type
 
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")

@@ -130,9 +130,9 @@ int verbosity {7};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
 
-// Random Ray Stuff
-double ray_distance_active {100.0};
-double ray_distance_inactive {10.0};
+// Random Ray variables
+double random_ray_distance_active;
+double random_ray_distance_inactive;
 
 } // namespace settings
 
@@ -234,11 +234,21 @@ void get_run_parameters(pugi::xml_node node_base)
 
   // Random ray variables
   if (solver_type == SolverType::RANDOM_RAY) {
-    if (check_for_node(node_base, "ray_distance_active")) {
-      ray_distance_active = std::stod(get_node_value(node_base, "ray_distance_active"));
+    if (check_for_node(node_base, "random_ray_distance_active")) {
+     random_ray_distance_active = std::stod(get_node_value(node_base, "random_ray_distance_active"));
+     if (random_ray_distance_active <= 0.0 ) {
+      fatal_error("Random ray active distance must be greater than 0");
+     }
+    } else {
+      fatal_error("Specify random ray active distance in settings XML");
     }
-    if (check_for_node(node_base, "ray_distance_inactive")) {
-      ray_distance_inactive = std::stod(get_node_value(node_base, "ray_distance_inactive"));
+    if (check_for_node(node_base, "random_ray_distance_inactive")) {
+      random_ray_distance_inactive = std::stod(get_node_value(node_base, "random_ray_distance_inactive"));
+     if (random_ray_distance_inactive < 0 ) {
+      fatal_error("Random ray inactive distance must be greater than or equal to 0");
+     }
+    } else {
+      fatal_error("Specify random ray inactive distance in settings XML");
     }
   }
 }
@@ -400,10 +410,12 @@ void read_settings_xml(pugi::xml_node root)
   // Check solver type
   if (check_for_node(root, "solver_type")) {
     std::string temp_str = get_node_value(root, "solver_type", true, true);
-    if (temp_str == "monte_carlo") {
+    if (temp_str == "monte carlo") {
       solver_type = SolverType::MONTE_CARLO;
-    } else if (temp_str == "random_ray") {
+    } else if (temp_str == "random ray") {
       solver_type = SolverType::RANDOM_RAY;
+    } else {
+      fatal_error("Unrecognized solver type: " + temp_str + ".");
     }
   }
 

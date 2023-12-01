@@ -398,6 +398,24 @@ or sub-elements and can be set to either "false" or "true".
 
   .. note:: This element is not used in the multi-group :ref:`energy_mode`.
 
+-----------------------
+``<random_ray_distance_active>`` Element
+-----------------------
+
+The ``<random_ray_distance_active>`` element is used to set the active distance
+each ray will travel in random ray mode.
+
+  *Default*: None
+
+-----------------------
+``<random_ray_distance_inactive>`` Element
+-----------------------
+
+The ``<random_ray_distance_inactive>`` element is used to set the inactive
+distance (dead zone length) each ray will travel in random ray mode.
+
+  *Default*: None
+
 ----------------------------------
 ``<resonance_scattering>`` Element
 ----------------------------------
@@ -472,6 +490,16 @@ The ``seed`` element is used to set the seed used for the linear congruential
 pseudo-random number generator.
 
   *Default*: 1
+
+--------------------
+``<solver_type>`` Element
+--------------------
+
+The ``solver_type`` element is used to select the transport method used by the
+simulation. This element has no attributes or sub-elements and can be set to
+"monte carlo" or "random ray".
+
+  *Default*: monte carlo
 
 --------------------
 ``<source>`` Element

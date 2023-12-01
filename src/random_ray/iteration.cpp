@@ -173,7 +173,7 @@ void update_neutron_source(double k_eff)
 void normalize_scalar_flux_and_volumes()
 {
   int negroups = data::mg.num_energy_groups_;
-  double total_active_distance_per_iteration = settings::ray_distance_active * settings::n_particles;
+  double total_active_distance_per_iteration = settings::random_ray_distance_active * settings::n_particles;
 
   float  normalization_factor =        1.0 /  total_active_distance_per_iteration;
   double volume_normalization_factor = 1.0 / (total_active_distance_per_iteration * simulation::current_batch);

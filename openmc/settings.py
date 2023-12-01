@@ -1040,9 +1040,29 @@ class Settings:
         return self._solver_type
 
     @solver_type.setter
-     def solver_type(self, solver_type: str):
+    def solver_type(self, solver_type: str):
         cv.check_value('solver type', solver_type, ['monte carlo', 'random ray'])
         self._solver_type = solver_type
+    
+    @property
+    def random_ray_distance_active(self):
+         return self._random_ray_distance_active
+
+    @random_ray_distance_active.setter
+    def random_ray_distance_active(self, value):
+        cv.check_type('random ray distance active', value, Integral)
+        cv.check_greater_than('random ray distance active', value, 0)
+        self._random_ray_distance_active = value
+    
+    @property
+    def random_ray_distance_inactive(self):
+         return self._random_ray_distance_inactive
+
+    @random_ray_distance_inactive.setter
+    def random_ray_distance_inactive(self, value):
+        cv.check_type('random ray distance inactive', value, Integral)
+        cv.check_greater_than('random ray distance inactive', value, 0, True)
+        self._random_ray_distance_inactive = value
 
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
@@ -1443,6 +1463,21 @@ class Settings:
         if self._max_tracks is not None:
             elem = ET.SubElement(root, "max_tracks")
             elem.text = str(self._max_tracks)
+    
+    def _create_solver_type_subelement(self, root):
+        if self._solver_type is not None:
+            elem = ET.SubElement(root, "solver_type")
+            elem.text = str(self._solver_type).lower()
+    
+    def _create_random_ray_distance_active_subelement(self, root):
+        if self._random_ray_distance_active is not None:
+            elem = ET.SubElement(root, "random_ray_distance_active")
+            elem.text = str(self._random_ray_distance_active).lower()
+    
+    def _create_random_ray_distance_inactive_subelement(self, root):
+        if self._random_ray_distance_inactive is not None:
+            elem = ET.SubElement(root, "random_ray_distance_inactive")
+            elem.text = str(self._random_ray_distance_inactive).lower()
 
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
@@ -1794,6 +1829,21 @@ class Settings:
         text = get_text(root, 'max_tracks')
         if text is not None:
             self.max_tracks = int(text)
+    
+    def _solver_type_from_xml_element(self, root):
+        text = get_text(root, 'solver_type')
+        if text is not None:
+            self.solver_type = text
+
+    def _random_ray_distance_active_from_xml_element(self, root):
+         text = get_text(root, 'random_ray_distance_active')
+         if text is not None:
+             self.random_ray_distance_active = float(text)
+    
+    def _random_ray_distance_inactive_from_xml_element(self, root):
+         text = get_text(root, 'random_ray_distance_inactive')
+         if text is not None:
+             self.random_ray_distance_inactive = float(text)
 
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.
@@ -1856,6 +1906,9 @@ class Settings:
         self._create_weight_window_checkpoints_subelement(element)
         self._create_max_splits_subelement(element)
         self._create_max_tracks_subelement(element)
+        self._create_solver_type_subelement(element)
+        self._create_random_ray_distance_active_subelement(element)
+        self._create_random_ray_distance_inactive_subelement(element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)
@@ -1953,6 +2006,9 @@ class Settings:
         settings._weight_window_checkpoints_from_xml_element(elem)
         settings._max_splits_from_xml_element(elem)
         settings._max_tracks_from_xml_element(elem)
+        settings._solver_type_from_xml_element(elem)
+        settings._random_ray_distance_active_from_xml_element(elem)
+        settings._random_ray_distance_inactive_from_xml_element(elem)
 
         # TODO: Get volume calculations
         return settings

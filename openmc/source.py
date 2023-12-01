@@ -1,6 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from collections.abc import MutableSequence
 from enum import IntEnum
 from numbers import Real
 import warnings
@@ -183,6 +184,7 @@ class IndependentSource(SourceBase):
         self._angle = None
         self._energy = None
         self._time = None
+        self._domains = None
 
         if space is not None:
             self.space = space
@@ -192,14 +194,10 @@ class IndependentSource(SourceBase):
             self.energy = energy
         if time is not None:
             self.time = time
+        if domains is not None:
+            self.domains = domains
         self.strength = strength
         self.particle = particle
-        self.domains = domains
-
-        self._domain_ids = []
-        self._domain_type = None
-
-        self.check_domains()
 
     @property
     def type(self) -> str:
@@ -267,33 +265,41 @@ class IndependentSource(SourceBase):
         cv.check_value('source particle', particle, ['neutron', 'photon'])
         self._particle = particle
 
-    def check_domains(self):
-        if self.domains is not None:
-            if isinstance(self.domains[0], openmc.Cell):
-                self.domain_type = 'cell'
-            elif isinstance(self.domains[0], openmc.Material):
-                self.domain_type = 'material'
-            elif isinstance(self.domains[0], openmc.Universe):
-                self.domain_type = 'universe'
-            self.domain_ids = [d.id for d in self.domains]
+    @property
+    def domains(self):
+        return self._domains
+    
+    @domains.setter
+    def domains(self, d):
+        if not isinstance(d, MutableSequence):
+            d = [d]
+        allowed_domain_types = (openmc.Cell, openmc.Material, openmc.Universe)
+        cv.check_iterable_type('source domains', d, allowed_domain_types)
+        self._domains = d
+
+        if isinstance(d[0], openmc.Cell):
+            self._domain_type = 'cell'
+        elif isinstance(d[0], openmc.Material):
+            self._domain_type = 'material'
+        elif isinstance(d[0], openmc.Universe):
+            self._domain_type = 'universe'
 
     @property
     def domain_ids(self):
-        return self._domain_ids
+        if self.domains is not None:
+            return [d.id for d in self.domains]
 
     @domain_ids.setter
-    def domain_ids(self, ids):
-        cv.check_type('domain IDs', ids, Iterable, Real)
-        self._domain_ids = ids
+    def domain_ids(self):
+        raise DeprecationWarning('Substituted in the domain property. Will be deprecated.')
 
     @property
     def domain_type(self):
         return self._domain_type
 
     @domain_type.setter
-    def domain_type(self, domain_type):
-        cv.check_value('domain type', domain_type, ('cell', 'material', 'universe'))
-        self._domain_type = domain_type
+    def domain_type(self):
+        raise DeprecationWarning('Substituted in the domain property. Will be deprecated.')
 
     def populate_xml_element(self, element):
         """Add necessary source information to an XML element
@@ -303,7 +309,6 @@ class IndependentSource(SourceBase):
             XML element containing source data
 
         """
-        self.check_domains()
         super().populate_xml_element(element)
         element.set("particle", self.particle)
         if self.space is not None:
@@ -316,7 +321,7 @@ class IndependentSource(SourceBase):
             element.append(self.time.to_xml_element('time'))
         if self.domain_ids:
             dt_elem = ET.SubElement(element, "domain_type")
-            dt_elem.text = self.domain_type
+            dt_elem.text = self._domain_type
             id_elem = ET.SubElement(element, "domain_ids")
             id_elem.text = ' '.join(str(uid) for uid in self.domain_ids)
 

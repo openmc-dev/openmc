@@ -436,11 +436,19 @@ class Model:
             with openmc.lib.quiet_dll(output):
                 integrator.integrate(final_step)
 
+            if operator_class == 'IndependentOperator':
+                # loading depletion results from HDF5 and updating materials to match
+                results = openmc.deplete.Results(Path(directory) / 'depletion_results.h5')
+                step = results[-1] # TODO not sure which timestep to use here
+
             # Now make the python Materials match the C API material data
             for mat_id, mat in self._materials_by_id.items():
                 if mat.depletable:
                     # Get the C data
-                    c_mat = openmc.lib.materials[mat_id]
+                    if operator_class == 'IndependentOperator':
+                        c_mat=step.get_material(str(mat_id))
+                    else:  # operator is CoupledOperator
+                        c_mat = openmc.lib.materials[mat_id]
                     nuclides, densities = c_mat._get_densities()
                     # And now we can remove isotopes and add these ones in
                     mat.nuclides.clear()

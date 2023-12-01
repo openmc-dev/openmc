@@ -21,10 +21,12 @@ Simulation Settings
    :nosignatures:
    :template: myclass.rst
 
-   openmc.Source
+   openmc.SourceBase
+   openmc.IndependentSource
+   openmc.FileSource
+   openmc.CompiledSource
    openmc.SourceParticle
    openmc.VolumeCalculation
-   openmc.WeightWindows
    openmc.Settings
 
 .. autosummary::
@@ -43,9 +45,6 @@ Material Specification
    :nosignatures:
    :template: myclass.rst
 
-   openmc.Nuclide
-   openmc.Element
-   openmc.Macroscopic
    openmc.Material
    openmc.Materials
 
@@ -87,6 +86,7 @@ Building geometry
    openmc.Intersection
    openmc.Union
    openmc.Complement
+   openmc.BoundingBox
    openmc.Cell
    openmc.Universe
    openmc.DAGMCUniverse
@@ -118,6 +118,7 @@ Constructing Tallies
    openmc.Filter
    openmc.UniverseFilter
    openmc.MaterialFilter
+   openmc.MaterialFromFilter
    openmc.CellFilter
    openmc.CellFromFilter
    openmc.CellBornFilter
@@ -160,6 +161,7 @@ Geometry Plotting
    :template: myclass.rst
 
    openmc.Plot
+   openmc.ProjectionPlot
    openmc.Plots
 
 Running OpenMC
@@ -191,6 +193,13 @@ Post-processing
    openmc.Track
    openmc.Tracks
 
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myfunction.rst
+
+   openmc.voxel_to_vtk
+
 The following classes and functions are used for functional expansion reconstruction.
 
 .. autosummary::
@@ -221,6 +230,19 @@ Various classes may be created when performing tally slicing and/or arithmetic:
    openmc.arithmetic.AggregateScore
    openmc.arithmetic.AggregateNuclide
    openmc.arithmetic.AggregateFilter
+
+Variance Reduction
+------------------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass
+
+   openmc.WeightWindows
+   openmc.WeightWindowGenerator
+   openmc.hdf5_to_wws
+
 
 Coarse Mesh Finite Difference Acceleration
 ------------------------------------------

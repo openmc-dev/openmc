@@ -74,6 +74,22 @@ def test_merge_discrete():
     assert triple.integral() == pytest.approx(6.0)
 
 
+def test_clip_discrete():
+    # Create discrete distribution with two points that are not important, one
+    # because the x value is very small, and one because the p value is very
+    # small
+    d = openmc.stats.Discrete([1e-8, 1.0, 2.0, 1000.0], [3.0, 2.0, 5.0, 1e-12])
+
+    # Clipping the distribution should result in two points
+    d_clip = d.clip(1e-6)
+    assert d_clip.x.size == 2
+    assert d_clip.p.size == 2
+
+    # Make sure inplace returns same object
+    d_same = d.clip(1e-6, inplace=True)
+    assert d_same is d
+
+
 def test_uniform():
     a, b = 10.0, 20.0
     d = openmc.stats.Uniform(a, b)
@@ -166,7 +182,7 @@ def test_watt():
 
 def test_tabular():
     x = np.array([0.0, 5.0, 7.0])
-    p = np.array([0.1, 0.2, 0.05])
+    p = np.array([10.0, 20.0, 5.0])
     d = openmc.stats.Tabular(x, p, 'linear-linear')
     elem = d.to_xml_element('distribution')
 
@@ -178,18 +194,21 @@ def test_tabular():
 
     # test linear-linear sampling
     d = openmc.stats.Tabular(x, p)
-
     n_samples = 100_000
     samples = d.sample(n_samples)
     assert_sample_mean(samples, d.mean())
 
-    # test histogram sampling
-    d = openmc.stats.Tabular(x, p, interpolation='histogram')
+    # test linear-linear normalization
     d.normalize()
     assert d.integral() == pytest.approx(1.0)
 
+    # test histogram sampling
+    d = openmc.stats.Tabular(x, p, interpolation='histogram')
     samples = d.sample(n_samples)
     assert_sample_mean(samples, d.mean())
+
+    d.normalize()
+    assert d.integral() == pytest.approx(1.0)
 
 
 def test_legendre():
@@ -227,6 +246,24 @@ def test_mixture():
     assert d.probability == p
     assert d.distribution == [d1, d2]
     assert len(d) == 4
+
+
+def test_mixture_clip():
+    # Create mixture distribution containing a discrete distribution with two
+    # points that are not important, one because the x value is very small, and
+    # one because the p value is very small
+    d1 = openmc.stats.Discrete([1e-8, 1.0, 2.0, 1000.0], [3.0, 2.0, 5.0, 1e-12])
+    d2 = openmc.stats.Uniform(0, 5)
+    mix = openmc.stats.Mixture([0.5, 0.5], [d1, d2])
+
+    # Clipping should reduce the contained discrete distribution to 2 points
+    mix_clip = mix.clip(1e-6)
+    assert mix_clip.distribution[0].x.size == 2
+    assert mix_clip.distribution[0].p.size == 2
+
+    # Make sure inplace returns same object
+    mix_same = mix.clip(1e-6, inplace=True)
+    assert mix_same is mix
 
 
 def test_polar_azimuthal():

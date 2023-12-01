@@ -72,8 +72,8 @@ void sample_reaction(Particle& p)
 
 void scatter(Particle& p)
 {
-  data::mg.macro_xs_[p.material()].sample_scatter(
-    p.g_last(), p.g(), p.mu(), p.wgt(), p.current_seed());
+  data::mg.macro_xs_[p.material()].sample_scatter(p.g_last(), p.g(), p.mu(),
+    p.wgt(), p.current_seed(), p.mg_xs_cache().t, p.mg_xs_cache().a);
 
   // Rotate the angle
   p.u() = rotate_angle(p.u(), p.mu(), nullptr, p.current_seed());
@@ -145,7 +145,7 @@ void create_fission_sites(Particle& p)
     int dg;
     int gout;
     data::mg.macro_xs_[p.material()].sample_fission_energy(
-      p.g(), dg, gout, p.current_seed());
+      p.g(), dg, gout, p.current_seed(), p.mg_xs_cache().t, p.mg_xs_cache().a);
 
     // Store the energy and delayed groups on the fission bank
     site.E = gout;

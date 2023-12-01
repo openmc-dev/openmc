@@ -107,6 +107,9 @@ public:
   //! \param size The new size of the container
   void resize(int64_t size) { size_ = size; }
 
+  //! Return whether the array is full
+  bool full() const { return size_ == capacity_; }
+
   //! Return the number of elements that the container has currently allocated
   //! space for.
   int64_t capacity() { return capacity_; }
@@ -114,6 +117,12 @@ public:
   //! Return pointer to the underlying array serving as element storage.
   T* data() { return data_.get(); }
   const T* data() const { return data_.get(); }
+
+  //! Classic iterators
+  T* begin() { return data_.get(); }
+  const T* cbegin() const { return data_.get(); }
+  T* end() { return data_.get() + size_; }
+  const T* cend() const { return data_.get() + size_; }
 
 private:
   //==========================================================================

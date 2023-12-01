@@ -197,43 +197,54 @@ across all material instances.
 Transport-independent depletion
 ===============================
 
-.. warning::
+This category of operator uses multigroup microscopic cross sections along with
+multigroup flux spectra to obtain transmutation reaction rates. The cross
+sections are pre-calculated, so there is no need for direct coupling between a
+transport-independent operator and a transport solver. The :mod:`openmc.deplete`
+module offers a single transport-independent operator,
+:class:`~openmc.deplete.IndependentOperator`, and only one operator is needed
+since, in theory, any transport code could calculate the multigroup microscopic
+cross sections. The :class:`~openmc.deplete.IndependentOperator` class has two
+constructors. The default constructor requires a :class:`openmc.Materials`
+instance, a list of multigroup flux arrays, and a list of
+:class:`~openmc.deplete.MicroXS` instances containing multigroup microscopic
+cross sections in units of barns. This might look like the following::
 
-   This feature is still under heavy development and has yet to be rigorously
-   verified. API changes and feature additions are possible and likely in
-   the near future.
-
-This category of operator uses one-group microscopic cross sections to obtain
-transmutation reaction rates. The cross sections are pre-calculated, so there is
-no need for direct coupling between a transport-independent operator and a
-transport solver. The :mod:`openmc.deplete` module offers a single
-transport-independent operator, :class:`~openmc.deplete.IndependentOperator`,
-and only one operator is needed since, in theory, any transport code could
-calcuate the one-group microscopic cross sections.
-
-The :class:`~openmc.deplete.IndependentOperator` class has two constructors.
-The default constructor requires a :class:`openmc.Materials` instance, a
-:class:`~openmc.deplete.MicroXS` instance containing one-group microscoic cross
-sections in units of barns, and a path to a depletion chain file::
-
-    materials = openmc.Materials()
+    materials = openmc.Materials([m1, m2, m3])
     ...
 
-    # load in the microscopic cross sections
-    micro_xs = openmc.deplete.MicroXS.from_csv(micro_xs_path)
+    # Assign fluxes (generated from any code)
+    flux_m1 = numpy.array([...])
+    flux_m2 = numpy.array([...])
+    flux_m3 = numpy.array([...])
+    fluxes = [flux_m1, flux_m2, flux_m3]
 
-    op = openmc.deplete.IndependentOperator(materials, micro_xs, chain_file)
+    # Assign microscopic cross sections
+    micro_m1 = openmc.deplete.MicroXS.from_csv('xs_m1.csv')
+    micro_m2 = openmc.deplete.MicroXS.from_csv('xs_m2.csv')
+    micro_m3 = openmc.deplete.MicroXS.from_csv('xs_m3.csv')
+    micros = [micro_m1, micro_m2, micro_m3]
+
+    # Create operator
+    op = openmc.deplete.IndependentOperator(materials, fluxes, micros)
+
+For more details on the :class:`~openmc.deplete.MicroXS` class, including how to
+use OpenMC's transport solver to generate microscopic cross sections and fluxes
+for use with :class:`~openmc.deplete.IndependentOperator`, see :ref:`micros`.
 
 .. note::
 
-   The same statements from :ref:`coupled-depletion` about which
-   materials are depleted and the requirement for depletable materials to have
-   a specified volume also apply here.
+   The same statements from :ref:`coupled-depletion` about which materials are
+   depleted and the requirement for depletable materials to have a specified
+   volume also apply here.
 
 An alternate constructor,
 :meth:`~openmc.deplete.IndependentOperator.from_nuclides`, accepts a volume and
 dictionary of nuclide concentrations in place of the :class:`openmc.Materials`
-instance::
+instance. Note that while the normal constructor allows multiple materials to be
+depleted with a single operator, the
+:meth:`~openmc.deplete.IndependentOperator.from_nuclides` classmethod only works
+for a single material::
 
     nuclides = {'U234': 8.92e18,
                 'U235': 9.98e20,
@@ -244,6 +255,7 @@ instance::
     volume = 0.5
     op = openmc.deplete.IndependentOperator.from_nuclides(volume,
                                                           nuclides,
+                                                          flux,
                                                           micro_xs,
                                                           chain_file,
                                                           nuc_units='atom/cm3')
@@ -253,18 +265,21 @@ transport-depletion calculation and follow the same steps from there.
 
 .. note::
 
-   Ideally, one-group cross section data should be available for every
-   reaction in the depletion chain. If cross section data is not present for
-   a nuclide in the depletion chain with at least one reaction, that reaction
-   will not be simulated.
+   Ideally, multigroup cross section data should be available for every reaction
+   in the depletion chain. If cross section data is not present for a nuclide in
+   the depletion chain with at least one reaction, that reaction will not be
+   simulated.
+
+.. _micros:
 
 Loading and Generating Microscopic Cross Sections
 -------------------------------------------------
 
-As mentioned earlier, any transport code could be used to calculate one-group
-microscopic cross sections. The :mod:`openmc.deplete` module provides the 
-:class:`~openmc.deplete.MicroXS` class, which contains methods to read in
-pre-calculated cross sections from a ``.csv`` file or from data arrays::
+As mentioned above, any transport code could be used to calculate multigroup
+microscopic cross sections and fluxes. The :mod:`openmc.deplete` module provides
+the :class:`~openmc.deplete.MicroXS` class, which can either be instantiated
+from pre-calculated cross sections in a ``.csv`` file or from data arrays
+directly::
 
     micro_xs = MicroXS.from_csv(micro_xs_path)
 
@@ -273,37 +288,31 @@ pre-calculated cross sections from a ``.csv`` file or from data arrays::
     data = np.array([[0.1, 0.2],
                      [0.3, 0.4],
                      [0.01, 0.5]])
-    micro_xs = MicroXS.from_array(nuclides, reactions, data)
+    micro_xs = MicroXS(data, nuclides, reactions)
 
 .. important::
 
-   Both :meth:`~openmc.deplete.MicroXS.from_csv()` and
-   :meth:`~openmc.deplete.MicroXS.from_array()` assume the cross section values
-   provided are in barns by defualt, but have no way of verifying this. Make
-   sure your cross sections are in the correct units before passing to a
+   The cross section values are assumed to be in units of barns. Make sure your
+   cross sections are in the correct units before passing to a
    :class:`~openmc.deplete.IndependentOperator` object.
 
-The :class:`~openmc.deplete.MicroXS` class also contains a method to generate one-group microscopic cross sections using OpenMC's transport solver. The
-:meth:`~openmc.deplete.MicroXS.from_model()` method will produce a
-:class:`~openmc.deplete.MicroXS` instance with microscopic cross section data in
-units of barns::
+Additionally, a convenience function,
+:func:`~openmc.deplete.get_microxs_and_flux`, can provide the needed fluxes and
+cross sections using OpenMC's transport solver::
 
-    import openmc
+    model = openmc.Model()
+    ...
 
-    model = openmc.Model.from_xml()
+    fluxes, micros = openmc.deplete.get_microxs_and_flux(model, materials)
 
-    micro_xs = openmc.deplete.MicroXS.from_model(model,
-                                                 model.materials[0],
-                                                 chain_file)
-
-If you are running :meth:`~openmc.deplete.MicroXS.from_model()` on a cluster
+If you are running :func:`~openmc.deplete.get_microxs_and_flux` on a cluster
 where temporary files are created on a local filesystem that is not shared
 across nodes, you'll need to set an environment variable pointing to a local
 directoy so that each MPI process knows where to store output files used to
 calculate the microscopic cross sections. In order of priority, they are
-:envvar:`TMPDIR`. :envvar:`TEMP`, and :envvar:`TMP`. Users interested in
-further details can read the documentation for the `tempfile <https://docs.python.org/3/library/tempfile.html#tempfile.gettempdir>`_ module.
-
+:envvar:`TMPDIR`. :envvar:`TEMP`, and :envvar:`TMP`. Users interested in further
+details can read the documentation for the `tempfile
+<https://docs.python.org/3/library/tempfile.html#tempfile.gettempdir>`_ module.
 
 Caveats
 -------
@@ -325,24 +334,30 @@ normalizing reaction rates:
    the time integrator is a flux, and obtains the reaction rates by multiplying
    the cross sections by the ``source-rate``.
 2. ``fission-q`` normalization, which uses the ``power`` or ``power_density``
-   provided by the time integrator to obtain reaction rates by computing a value
-   for the flux based on this power. The equation we use for this calculation is
+   provided by the time integrator to obtain normalized reaction rates by
+   computing a normalization factor as the ratio of the user-specified power to
+   the "observed" power based on fission reaction rates. The equation for the
+   normalization factor is
 
    .. math::
       :label: fission-q
 
-      \phi = \frac{P}{\sum\limits_i (Q_i \sigma^f_i N_i)}
+      f = \frac{P}{\sum\limits_m \sum\limits_i \left(Q_i N_{i,m} \sum\limits_g
+      \sigma^f_{i,g,m} \phi_{g,m} \right)}
 
    where :math:`P` is the power, :math:`Q_i` is the fission Q value for nuclide
-   :math:`i`, :math:`\sigma_i^f` is the microscopic fission cross section for
-   nuclide :math:`i`, and :math:`N_i` is the number of atoms of nuclide
-   :math:`i`. This equation makes the same assumptions and issues as discussed
-   in :ref:`energy-deposition`. Unfortunately, the proposed solution in that
-   section does not apply here since we are decoupled from transport code.
-   However, there is a method to converge to a more accurate value for flux by
-   using substeps during time integration. `This paper
-   <https://doi.org/10.1016/j.anucene.2016.05.031>`_ provides a good discussion
-   of this method.
+   :math:`i`, :math:`\sigma_{i,g,m}^f` is the microscopic fission cross section
+   for nuclide :math:`i` in energy group :math:`g` for material :math:`m`,
+   :math:`\phi_{g,m}` is the neutron flux in group :math:`g` for material
+   :math:`m`, and :math:`N_{i,m}` is the number of atoms of nuclide :math:`i`
+   for material :math:`m`. Reaction rates are then multiplied by :math:`f` so
+   that the total fission power matches :math:`P`. This equation makes the same
+   assumptions and issues as discussed in :ref:`energy-deposition`.
+   Unfortunately, the proposed solution in that section does not apply here
+   since we are decoupled from transport code. However, there is a method to
+   converge to a more accurate value for flux by using substeps during time
+   integration. `This paper <https://doi.org/10.1016/j.anucene.2016.05.031>`_
+   provides a good discussion of this method.
 
 .. warning::
 
@@ -355,18 +370,82 @@ Multiple Materials
 
 A transport-independent depletion simulation using ``source-rate`` normalization
 will calculate reaction rates for each material independently. This can be
-useful for running many different cases of a particular scenario. A 
+useful for running many different cases of a particular scenario. A
 transport-independent depletion simulation using ``fission-q`` normalization
-will sum the fission energy values across all materials into :math:`Q_i` in 
+will sum the fission energy values across all materials into :math:`Q_i` in
 Equation :math:numref:`fission-q`, and Equation :math:numref:`fission-q`
-provides the flux we use to calculate the reaction rates in each material.
+provides the normalization factor applied to reaction rates in each material.
 This can be useful for running a scenario with multiple depletable materials
 that are part of the same reactor. This behavior may change in the future.
 
 Time integration
 ~~~~~~~~~~~~~~~~
 
-The values of the one-group microscopic cross sections passed to
+The values of the microscopic cross sections passed to
 :class:`openmc.deplete.IndependentOperator` are fixed for the entire depletion
 simulation. This implicit assumption may produce inaccurate results for certain
 scenarios.
+
+Transfer Rates
+==============
+
+Transfer rates define removal or feed of nuclides to or from one or more
+depletable materials. This can be useful to model continuous fuel reprocessing,
+online fission products separation, etc.
+
+Transfer rates are defined by calling the
+:meth:`~openmc.deplete.abc.Integrator.add_transfer_rate()` method directly from
+one of the Integrator classes::
+
+    ...
+    integrator = openmc.deplete.PredictorIntegrator(op, time_steps, power)
+    integrator.add_transfer_rate(...)
+
+Defining transfer rates
+-----------------------
+
+The :meth:`~openmc.deplete.abc.Integrator.add_transfer_rate()` method requires a
+:class:`~openmc.Material` instance (alternatively, a material id or
+the name) as the depletable material from which nuclides are processed,
+a list of elements that share the same transfer rate, and a transfer rate itself.
+
+.. caution::
+
+   Make sure you set the transfer rate value with the right sign.
+   A positive transfer rate assumes removal, while a negative one assumes feed.
+
+The ``transfer_rate_units`` argument specifies the units for the transfer rate.
+The default is `1/s`, but '1/min', '1/h', '1/d' and '1/a' are also valid
+options.
+
+For example, to define continuous removal of xenon from one material with a
+removal rate value of 0.1 s\ :sup:`-1` (or a cycle time of 10 s), you'd use::
+
+    mat1 = openmc.Material(material_id=1, name='fuel')
+
+    ...
+
+    integrator = openmc.deplete.PredictorIntegrator(op, time_steps, power)
+    # by openmc.Material object
+    integrator.add_transfer_rate(mat1, ['Xe'], 0.1)
+    # or by material id
+    integrator.add_transfer_rate(1, ['Xe'], 0.1)
+    # or by material name
+    integrator.add_transfer_rate('fuel', ['Xe'], 0.1)
+
+Note that in this case the xenon isotopes that are removed will not be tracked.
+
+Defining a destination material
+-------------------------------
+
+To transfer elements from one depletable material to another, the
+``destination_material`` parameter needs to be passed to the
+:meth:`~openmc.deplete.abc.Integrator.add_transfer_rate()` method. For example,
+to transfer xenon from one material to another, you'd use::
+
+    ...
+    mat2 = openmc.Material(name='storage')
+
+    ...
+
+    integrator.add_transfer_rate(mat1, ['Xe'], 0.1, destination_material=mat2)

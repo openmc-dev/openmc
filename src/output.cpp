@@ -74,7 +74,7 @@ void title()
   // Write version information
   fmt::print(
     "                 | The OpenMC Monte Carlo Code\n"
-    "       Copyright | 2011-2022 MIT, UChicago Argonne LLC, and contributors\n"
+    "       Copyright | 2011-2023 MIT, UChicago Argonne LLC, and contributors\n"
     "         License | https://docs.openmc.org/en/latest/license.html\n"
     "         Version | {}.{}.{}{}\n",
     VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE, VERSION_DEV ? "-dev" : "");
@@ -221,56 +221,11 @@ void print_plot()
   if (settings::verbosity < 5)
     return;
 
-  for (auto pl : model::plots) {
-    // Plot id
-    fmt::print("Plot ID: {}\n", pl.id_);
-    // Plot filename
-    fmt::print("Plot file: {}\n", pl.path_plot_);
-    // Plot level
-    fmt::print("Universe depth: {}\n", pl.level_);
-
-    // Plot type
-    if (PlotType::slice == pl.type_) {
-      fmt::print("Plot Type: Slice\n");
-    } else if (PlotType::voxel == pl.type_) {
-      fmt::print("Plot Type: Voxel\n");
-    }
-
-    // Plot parameters
-    fmt::print(
-      "Origin: {} {} {}\n", pl.origin_[0], pl.origin_[1], pl.origin_[2]);
-
-    if (PlotType::slice == pl.type_) {
-      fmt::print("Width: {:4} {:4}\n", pl.width_[0], pl.width_[1]);
-    } else if (PlotType::voxel == pl.type_) {
-      fmt::print(
-        "Width: {:4} {:4} {:4}\n", pl.width_[0], pl.width_[1], pl.width_[2]);
-    }
-
-    if (PlotColorBy::cells == pl.color_by_) {
-      fmt::print("Coloring: Cells\n");
-    } else if (PlotColorBy::mats == pl.color_by_) {
-      fmt::print("Coloring: Materials\n");
-    }
-
-    if (PlotType::slice == pl.type_) {
-      switch (pl.basis_) {
-      case PlotBasis::xy:
-        fmt::print("Basis: XY\n");
-        break;
-      case PlotBasis::xz:
-        fmt::print("Basis: XZ\n");
-        break;
-      case PlotBasis::yz:
-        fmt::print("Basis: YZ\n");
-        break;
-      }
-      fmt::print("Pixels: {} {}\n", pl.pixels_[0], pl.pixels_[1]);
-    } else if (PlotType::voxel == pl.type_) {
-      fmt::print(
-        "Voxels: {} {} {}\n", pl.pixels_[0], pl.pixels_[1], pl.pixels_[2]);
-    }
-
+  for (const auto& pl : model::plots) {
+    fmt::print("Plot ID: {}\n", pl->id());
+    fmt::print("Plot file: {}\n", pl->path_plot());
+    fmt::print("Universe depth: {}\n", pl->level());
+    pl->print_info(); // prints type-specific plot info
     fmt::print("\n");
   }
 }
@@ -313,7 +268,7 @@ void print_usage()
 {
   if (mpi::master) {
     fmt::print(
-      "Usage: openmc [options] [directory]\n\n"
+      "Usage: openmc [options] [path]\n\n"
       "Options:\n"
       "  -c, --volume           Run in stochastic volume calculation mode\n"
       "  -g, --geometry-debug   Run with geometry debugging on\n"
@@ -340,7 +295,7 @@ void print_version()
 #ifdef GIT_SHA1
     fmt::print("Git SHA1: {}\n", GIT_SHA1);
 #endif
-    fmt::print("Copyright (c) 2011-2022 MIT, UChicago Argonne LLC, and "
+    fmt::print("Copyright (c) 2011-2023 MIT, UChicago Argonne LLC, and "
                "contributors\nMIT/X license at "
                "<https://docs.openmc.org/en/latest/license.html>\n");
   }
@@ -360,6 +315,8 @@ void print_build_info()
   std::string png(n);
   std::string profiling(n);
   std::string coverage(n);
+  std::string mcpl(n);
+  std::string ncrystal(n);
 
 #ifdef PHDF5
   phdf5 = y;
@@ -372,6 +329,12 @@ void print_build_info()
 #endif
 #ifdef LIBMESH
   libmesh = y;
+#endif
+#ifdef OPENMC_MCPL
+  mcpl = y;
+#endif
+#ifdef NCRYSTAL
+  ncrystal = y;
 #endif
 #ifdef USE_LIBPNG
   png = y;
@@ -396,6 +359,8 @@ void print_build_info()
     fmt::print("PNG support:           {}\n", png);
     fmt::print("DAGMC support:         {}\n", dagmc);
     fmt::print("libMesh support:       {}\n", libmesh);
+    fmt::print("MCPL support:          {}\n", mcpl);
+    fmt::print("NCrystal support:      {}\n", ncrystal);
     fmt::print("Coverage testing:      {}\n", coverage);
     fmt::print("Profiling flags:       {}\n", profiling);
   }
@@ -629,6 +594,7 @@ const std::unordered_map<int, const char*> score_names = {
   {SCORE_FISS_Q_PROMPT, "Prompt fission power"},
   {SCORE_FISS_Q_RECOV, "Recoverable fission power"},
   {SCORE_CURRENT, "Current"},
+  {SCORE_PULSE_HEIGHT, "pulse-height"},
 };
 
 //! Create an ASCII output file showing all tally results.

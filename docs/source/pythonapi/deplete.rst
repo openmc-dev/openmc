@@ -54,8 +54,18 @@ provides the following transport operator classes:
    IndependentOperator
 
 The :class:`CoupledOperator` and :class:`IndependentOperator` classes must also
-have some knowledge of how nuclides transmute and decay. This is handled by the 
+have some knowledge of how nuclides transmute and decay. This is handled by the
 :class:`Chain` class.
+
+The :class:`IndependentOperator` class requires a set of fluxes and microscopic
+cross sections. The following function can be used to generate this information:
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myfunction.rst
+
+   get_microxs_and_flux
 
 Minimal Example
 ---------------
@@ -195,14 +205,24 @@ total system energy.
    helpers.FissionYieldCutoffHelper
    helpers.FluxCollapseHelper
 
-The :class:`openmc.deplete.IndependentOperator` uses inner classes subclassed 
+The :class:`openmc.deplete.IndependentOperator` uses inner classes subclassed
 from those listed above to perform similar calculations.
+
+The following classes are used to define transfer rates to model continuous
+removal or feed of nuclides during depletion.
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   transfer_rates.TransferRates
 
 Intermediate Classes
 --------------------
 
 Specific implementations of abstract base classes may utilize some of
-the same methods and data structures. These methods and data are stored 
+the same methods and data structures. These methods and data are stored
 in intermediate classes.
 
 Methods common to tally-based implementation of :class:`FissionYieldHelper`

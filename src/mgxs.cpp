@@ -5,10 +5,6 @@
 #include <cstdlib>
 #include <sstream>
 
-#ifdef _OPENMP
-#include <omp.h>
-#endif
-
 #include "xtensor/xadapt.hpp"
 #include "xtensor/xmath.hpp"
 #include "xtensor/xsort.hpp"
@@ -46,15 +42,6 @@ void Mgxs::init(const std::string& in_name, double in_awr,
   n_azi = in_azimuthal.size();
   polar = in_polar;
   azimuthal = in_azimuthal;
-
-  // Set the cross section index cache
-#ifdef _OPENMP
-  int n_threads = omp_get_max_threads();
-#else
-  int n_threads = 1;
-#endif
-  cache.resize(n_threads);
-  // vector.resize() will value-initialize the members of cache[:]
 }
 
 //==============================================================================
@@ -425,18 +412,10 @@ void Mgxs::combine(const vector<Mgxs*>& micros, const vector<double>& scalars,
 
 //==============================================================================
 
-double Mgxs::get_xs(
-  MgxsType xstype, int gin, const int* gout, const double* mu, const int* dg)
+double Mgxs::get_xs(MgxsType xstype, int gin, const int* gout, const double* mu,
+  const int* dg, int t, int a)
 {
-  // This method assumes that the temperature and angle indices are set
-#ifdef _OPENMP
-  int tid = omp_get_thread_num();
-  XsData* xs_t = &xs[cache[tid].t];
-  int a = cache[tid].a;
-#else
-  XsData* xs_t = &xs[cache[0].t];
-  int a = cache[0].a;
-#endif
+  XsData* xs_t = &xs[t];
   double val;
   switch (xstype) {
   case MgxsType::TOTAL:
@@ -538,19 +517,14 @@ double Mgxs::get_xs(
 
 //==============================================================================
 
-void Mgxs::sample_fission_energy(int gin, int& dg, int& gout, uint64_t* seed)
+void Mgxs::sample_fission_energy(
+  int gin, int& dg, int& gout, uint64_t* seed, int t, int a)
 {
-  // This method assumes that the temperature and angle indices are set
-#ifdef _OPENMP
-  int tid = omp_get_thread_num();
-#else
-  int tid = 0;
-#endif
-  XsData* xs_t = &xs[cache[tid].t];
-  double nu_fission = xs_t->nu_fission(cache[tid].a, gin);
+  XsData* xs_t = &xs[t];
+  double nu_fission = xs_t->nu_fission(a, gin);
 
   // Find the probability of having a prompt neutron
-  double prob_prompt = xs_t->prompt_nu_fission(cache[tid].a, gin);
+  double prob_prompt = xs_t->prompt_nu_fission(a, gin);
 
   // sample random numbers
   double xi_pd = prn(seed) * nu_fission;
@@ -566,7 +540,7 @@ void Mgxs::sample_fission_energy(int gin, int& dg, int& gout, uint64_t* seed)
     // sample the outgoing energy group
     double prob_gout = 0.;
     for (gout = 0; gout < num_groups; ++gout) {
-      prob_gout += xs_t->chi_prompt(cache[tid].a, gin, gout);
+      prob_gout += xs_t->chi_prompt(a, gin, gout);
       if (xi_gout < prob_gout)
         break;
     }
@@ -576,7 +550,7 @@ void Mgxs::sample_fission_energy(int gin, int& dg, int& gout, uint64_t* seed)
 
     // get the delayed group
     for (dg = 0; dg < num_delayed_groups; ++dg) {
-      prob_prompt += xs_t->delayed_nu_fission(cache[tid].a, dg, gin);
+      prob_prompt += xs_t->delayed_nu_fission(a, dg, gin);
       if (xi_pd < prob_prompt)
         break;
     }
@@ -587,7 +561,7 @@ void Mgxs::sample_fission_energy(int gin, int& dg, int& gout, uint64_t* seed)
     // sample the outgoing energy group
     double prob_gout = 0.;
     for (gout = 0; gout < num_groups; ++gout) {
-      prob_gout += xs_t->chi_delayed(cache[tid].a, dg, gin, gout);
+      prob_gout += xs_t->chi_delayed(a, dg, gin, gout);
       if (xi_gout < prob_gout)
         break;
     }
@@ -597,35 +571,39 @@ void Mgxs::sample_fission_energy(int gin, int& dg, int& gout, uint64_t* seed)
 //==============================================================================
 
 void Mgxs::sample_scatter(
-  int gin, int& gout, double& mu, double& wgt, uint64_t* seed)
+  int gin, int& gout, double& mu, double& wgt, uint64_t* seed, int t, int a)
 {
-  // This method assumes that the temperature and angle indices are set
   // Sample the data
-#ifdef _OPENMP
-  int tid = omp_get_thread_num();
-#else
-  int tid = 0;
-#endif
-  xs[cache[tid].t].scatter[cache[tid].a]->sample(gin, gout, mu, wgt, seed);
+  xs[t].scatter[a]->sample(gin, gout, mu, wgt, seed);
 }
 
 //==============================================================================
 
 void Mgxs::calculate_xs(Particle& p)
 {
-  // Set our indices
-#ifdef _OPENMP
-  int tid = omp_get_thread_num();
-#else
-  int tid = 0;
-#endif
-  set_temperature_index(p.sqrtkT());
-  set_angle_index(p.u_local());
-  XsData* xs_t = &xs[cache[tid].t];
-  p.macro_xs().total = xs_t->total(cache[tid].a, p.g());
-  p.macro_xs().absorption = xs_t->absorption(cache[tid].a, p.g());
+  // If the material is different, then we need to do a full lookup
+  if (p.material() != p.mg_xs_cache().material) {
+    set_temperature_index(p);
+    set_angle_index(p);
+    p.mg_xs_cache().material = p.material();
+  } else {
+    // If material is the same, but temperature is different, need to
+    // find the new temperature index
+    if (p.sqrtkT() != p.mg_xs_cache().sqrtkT) {
+      set_temperature_index(p);
+    }
+    // If the material is the same, but angle is different, need to
+    // find the new angle index
+    if (p.u_local() != p.mg_xs_cache().u) {
+      set_angle_index(p);
+    }
+  }
+  int temperature = p.mg_xs_cache().t;
+  int angle = p.mg_xs_cache().a;
+  p.macro_xs().total = xs[temperature].total(angle, p.g());
+  p.macro_xs().absorption = xs[temperature].absorption(angle, p.g());
   p.macro_xs().nu_fission =
-    fissionable ? xs_t->nu_fission(cache[tid].a, p.g()) : 0.;
+    fissionable ? xs[temperature].nu_fission(angle, p.g()) : 0.;
 }
 
 //==============================================================================
@@ -643,32 +621,26 @@ bool Mgxs::equiv(const Mgxs& that)
 
 //==============================================================================
 
-void Mgxs::set_temperature_index(double sqrtkT)
+int Mgxs::get_temperature_index(double sqrtkT) const
 {
-  // See if we need to find the new index
-#ifdef _OPENMP
-  int tid = omp_get_thread_num();
-#else
-  int tid = 0;
-#endif
-  if (sqrtkT != cache[tid].sqrtkT) {
-    cache[tid].t = xt::argmin(xt::abs(kTs - sqrtkT * sqrtkT))[0];
-    cache[tid].sqrtkT = sqrtkT;
-  }
+  return xt::argmin(xt::abs(kTs - sqrtkT * sqrtkT))[0];
 }
 
 //==============================================================================
 
-void Mgxs::set_angle_index(Direction u)
+void Mgxs::set_temperature_index(Particle& p)
 {
-  // See if we need to find the new index
-#ifdef _OPENMP
-  int tid = omp_get_thread_num();
-#else
-  int tid = 0;
-#endif
-  if (!is_isotropic && ((u.x != cache[tid].u) || (u.y != cache[tid].v) ||
-                         (u.z != cache[tid].w))) {
+  p.mg_xs_cache().t = get_temperature_index(p.sqrtkT());
+  p.mg_xs_cache().sqrtkT = p.sqrtkT();
+}
+
+//==============================================================================
+
+int Mgxs::get_angle_index(const Direction& u) const
+{
+  if (is_isotropic) {
+    return 0;
+  } else {
     // convert direction to polar and azimuthal angles
     double my_pol = std::acos(u.z);
     double my_azi = std::atan2(u.y, u.x);
@@ -679,12 +651,18 @@ void Mgxs::set_angle_index(Direction u)
     delta_angle = 2. * PI / n_azi;
     int a = std::floor((my_azi + PI) / delta_angle);
 
-    cache[tid].a = n_azi * p + a;
+    return n_azi * p + a;
+  }
+}
 
-    // store this direction as the last one used
-    cache[tid].u = u.x;
-    cache[tid].v = u.y;
-    cache[tid].w = u.z;
+//==============================================================================
+
+void Mgxs::set_angle_index(Particle& p)
+{
+  // See if we need to find the new index
+  if (!is_isotropic) {
+    p.mg_xs_cache().a = get_angle_index(p.u_local());
+    p.mg_xs_cache().u = p.u_local();
   }
 }
 

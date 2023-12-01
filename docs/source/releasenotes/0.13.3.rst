@@ -1,0 +1,134 @@
+====================
+What's New in 0.13.3
+====================
+
+.. currentmodule:: openmc
+
+-------
+Summary
+-------
+
+This release of OpenMC includes many bug fixes, performance improvements, and
+several notable new features. Some of the highlights include support for MCPL
+source files, NCrystal thermal scattering materials, and a new
+:class:`openmc.stats.MeshSpatial` class that allows a source distribution to be
+specified over a mesh. Additionally, OpenMC now allows you to export your model
+as a single XML file rather than separate XML files for geometry, materials,
+settings, and tallies.
+
+------------------------------------
+Compatibility Notes and Deprecations
+------------------------------------
+
+- Atomic mass data used in :func:`openmc.data.atomic_mass` has been updated to
+  AME 2020, which results in slightly different masses.
+
+------------
+New Features
+------------
+
+- Support was added for `MCPL <https://mctools.github.io/mcpl/>`_ files to be
+  used as external sources. Additionally, source points and surfaces sources can
+  be written as MCPL files instead of HDF5 files. (`#2116
+  <https://github.com/openmc-dev/openmc/pull/2116>`_)
+- Support was added for `NCrystal <https://github.com/mctools/ncrystal>`_
+  thermal scattering materials. (`#2222
+  <https://github.com/openmc-dev/openmc/pull/2222>`_)
+- The :class:`~openmc.CylindricalMesh` and :class:`~openmc.SphericalMesh`
+  classes now have an ``origin`` attribute that changes the center of the mesh.
+  (`#2256 <https://github.com/openmc-dev/openmc/pull/2256>`_)
+- A new :class:`openmc.model.Polygon` class allows defining generalized 2D
+  polygons. (`#2266 <https://github.com/openmc-dev/openmc/pull/2266>`_)
+- A new :func:`openmc.data.decay_energy` function and
+  :meth:`openmc.Material.get_decay_heat` method enable determination of decay
+  heat from a single nuclide or material. (`#2287
+  <https://github.com/openmc-dev/openmc/pull/2287>`_)
+- Full models can now be written as a single XML file rather than separate
+  geometry, materials, settings, and tallies XML files. (`#2291
+  <https://github.com/openmc-dev/openmc/pull/2291>`_)
+- Discrete distributions are now sampled using alias sampling, which is O(1) in
+  time. (`#2329 <https://github.com/openmc-dev/openmc/pull/2329>`_)
+- The new :class:`openmc.stats.MeshSpatial` allows a spatial source distribution
+  to be specified with source strengths for each mesh element. (`#2334
+  <https://github.com/openmc-dev/openmc/pull/2334>`_)
+- The new :meth:`openmc.Geometry.get_surfaces_by_name` method returns a list of
+  matching surfaces in a geometry. (`#2347
+  <https://github.com/openmc-dev/openmc/pull/2347>`_)
+- A new :attr:`openmc.Settings.create_delayed_neutrons` attribute controls
+  whether delayed neutrons are created during a simulation. (`#2348
+  <https://github.com/openmc-dev/openmc/pull/2348>`_)
+- The :meth:`openmc.deplete.Results.export_to_materials` method now takes a
+  ``path`` argument. (`#2364 <https://github.com/openmc-dev/openmc/pull/2364>`_)
+- A new :meth:`openmc.EnergyFilter.get_tabular` method allows one to create a
+  tabular distribution based on tally results using an energy filter. (`#2371
+  <https://github.com/openmc-dev/openmc/pull/2371>`_)
+- Several methods in the :class:`openmc.Material` class that require a volume to
+  be set (e.g., :meth:`~openmc.Material.get_mass`) now accept a ``volume``
+  argument. (`#2412 <https://github.com/openmc-dev/openmc/pull/2412>`_)
+
+---------
+Bug Fixes
+---------
+
+- Fix for finding redundant surfaces (`#2263 <https://github.com/openmc-dev/openmc/pull/2263>`_)
+- Adds tolerance for temperatures slightly out of bounds (`#2265 <https://github.com/openmc-dev/openmc/pull/2265>`_)
+- Fix getter/setter for weight window bounds (`#2275 <https://github.com/openmc-dev/openmc/pull/2275>`_)
+- Make sure Chain.reduce preserves decay source (`#2283 <https://github.com/openmc-dev/openmc/pull/2283>`_)
+- Fix array shape for weight window bounds (`#2284 <https://github.com/openmc-dev/openmc/pull/2284>`_)
+- Fix for non-zero CDF start points in TSL data (`#2290 <https://github.com/openmc-dev/openmc/pull/2290>`_)
+- Fix a case where inelastic scattering yield is zero (`#2295 <https://github.com/openmc-dev/openmc/pull/2295>`_)
+- Prevent Compton profile out-of-bounds memory access (`#2297 <https://github.com/openmc-dev/openmc/pull/2297>`_)
+- Produce light particles from decay (`#2301 <https://github.com/openmc-dev/openmc/pull/2301>`_)
+- Fix zero runtime attributes in depletion statepoints (`#2302 <https://github.com/openmc-dev/openmc/pull/2302>`_)
+- Fix bug in openmc.Universe.get_nuclide_densities (`#2310 <https://github.com/openmc-dev/openmc/pull/2310>`_)
+- Only show print output from depletion on rank 0 (`#2311 <https://github.com/openmc-dev/openmc/pull/2311>`_)
+- Fix photon transport with no atomic relaxation data (`#2312 <https://github.com/openmc-dev/openmc/pull/2312>`_)
+- Fix for precedence in region expressions (`#2318 <https://github.com/openmc-dev/openmc/pull/2318>`_)
+- Allow source particles with energy below cutoff (`#2319 <https://github.com/openmc-dev/openmc/pull/2319>`_)
+- Fix IncidentNeutron.from_njoy for high temperatures (`#2320 <https://github.com/openmc-dev/openmc/pull/2320>`_)
+- Add capability to unset cell temperatures (`#2323 <https://github.com/openmc-dev/openmc/pull/2323>`_)
+- Fix in plot_xs when S(a,b) tables are present (`#2335 <https://github.com/openmc-dev/openmc/pull/2335>`_)
+- Various fixes for tally triggers (`#2344 <https://github.com/openmc-dev/openmc/pull/2344>`_)
+- Raise error when mesh is flat (`#2363 <https://github.com/openmc-dev/openmc/pull/2363>`_)
+- Don't call normalize inside Tabular.mean (`#2375 <https://github.com/openmc-dev/openmc/pull/2375>`_)
+- Avoid out-of-bounds access in inelastic scatter sampling (`#2378 <https://github.com/openmc-dev/openmc/pull/2378>`_)
+- Use correct direction for anisotropic fission (`#2381 <https://github.com/openmc-dev/openmc/pull/2381>`_)
+- Fix several thermal scattering nuclide assignments (`#2382 <https://github.com/openmc-dev/openmc/pull/2382>`_)
+- Fix _materials_by_id attribute in Model (`#2385 <https://github.com/openmc-dev/openmc/pull/2385>`_)
+- Updates to batch checks for simulation restarts (`#2390 <https://github.com/openmc-dev/openmc/pull/2390>`_)
+- write_data_to_vtk volume normalization correction (`#2397 <https://github.com/openmc-dev/openmc/pull/2397>`_)
+- Enable generation of JEFF 3.3 depletion chain (`#2410 <https://github.com/openmc-dev/openmc/pull/2410>`_)
+- Fix spherical to Cartesian coordinate conversion (`#2417 <https://github.com/openmc-dev/openmc/pull/2417>`_)
+- Handle zero photon cross sections in IncidentPhoton.from_ace (`#2433 <https://github.com/openmc-dev/openmc/pull/2433>`_)
+- Fix hybrid depletion when nuclides are not present (`#2436 <https://github.com/openmc-dev/openmc/pull/2436>`_)
+- Fix bug in cylindrical and spherical meshes (`#2439 <https://github.com/openmc-dev/openmc/pull/2439>`_)
+- Improvements to mesh radial boundary coincidence (`#2443 <https://github.com/openmc-dev/openmc/pull/2443>`_)
+
+------------
+Contributors
+------------
+
+- `Hunter Belanger <https://github.com/HunterBelanger>`_
+- `Rémi Delaporte-Mathurin <https://github.com/RemDelaporteMathurin>`_
+- `Christopher Fichtlscherer <https://github.com/cfichtlscherer>`_
+- `Valerio Giusti <https://github.com/valeriogiusti>`_
+- `Chris Keckler <https://github.com/keckler>`_
+- `Kalin Kiesling <https://github.com/kkiesling>`_
+- `Thomas Kittelmann <https://github.com/tkittel>`_
+- `Erik Knudsen <https://github.com/ebknudsen>`_
+- `Colin Larmier <https://github.com/colinelarmier>`_
+- `Amanda Lund <https://github.com/amandalund>`_
+- `Jose Ignacio Marquez Damien <https://github.com/marquezj>`_
+- `Josh May <https://github.com/joshmay1>`_
+- `Patrick Myers <https://github.com/myerspat>`_
+- `Baptiste Mouginot <https://github.com/bam241>`_
+- `April Novak <https://github.com/aprilnovak>`_
+- `Matthew Nyberg <https://github.com/NybergWISC>`_
+- `Ethan Peterson <https://github.com/eepeterson>`_
+- `Gavin Ridley <https://github.com/gridley>`_
+- `Paul Romano <https://github.com/paulromano>`_
+- `Patrick Shriwise <https://github.com/pshriwise>`_
+- `Jonathan Shimwell <https://github.com/Shimwell>`_
+- `Paul Wilson <https://github.com/gonuke>`_
+- `Olek Yardas <https://github.com/yardasol>`_
+- `Jiankai Yu <https://github.com/rockfool>`_

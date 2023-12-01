@@ -24,14 +24,14 @@ def model():
 
     # Create one cell on top of the other. Only one
     # has a rotation
-    box = openmc.rectangular_prism(15., 15., 'z', boundary_type='vacuum')
+    box = openmc.model.RectangularPrism(15., 15., 'z', boundary_type='vacuum')
     lower_z = openmc.ZPlane(-7.5, boundary_type='vacuum')
     upper_z = openmc.ZPlane(22.5, boundary_type='vacuum')
     middle_z = openmc.ZPlane(7.5)
 
-    lower_cell = openmc.Cell(fill=univ, region=box & +lower_z & -middle_z)
+    lower_cell = openmc.Cell(fill=univ, region=-box & +lower_z & -middle_z)
     lower_cell.rotation = (10, 20, 30)
-    upper_cell = openmc.Cell(fill=univ, region=box & +middle_z & -upper_z)
+    upper_cell = openmc.Cell(fill=univ, region=-box & +middle_z & -upper_z)
     upper_cell.translation = (0, 0, 15)
 
     model.geometry = openmc.Geometry(root=[lower_cell, upper_cell])
@@ -40,7 +40,7 @@ def model():
     model.settings.inactive = 5
     model.settings.batches = 10
     source_box = openmc.stats.Box((-4., -4., -4.), (4., 4., 4.))
-    model.settings.source = openmc.Source(space=source_box)
+    model.settings.source = openmc.IndependentSource(space=source_box)
 
     return model
 

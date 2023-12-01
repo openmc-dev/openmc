@@ -182,11 +182,12 @@ void DAGUniverse::init_geometry()
       model::cell_map[c->id_] = model::cells.size();
     } else {
       warning(fmt::format("DAGMC Cell IDs: {}", dagmc_ids_for_dim(3)));
-      fatal_error(fmt::format("Cell ID {} exists in both DAGMC Universe {} "
-                              "and the CSG geometry. Setting auto_geom_ids "
-                              "to True when initiating the DAGMC Universe may "
-                              "resolve this issue",
-        c->id_, this->id_));
+      fatal_error(fmt::format(
+        "DAGMC Universe {} contains a cell with ID {}, which "
+        "already exists elsewhere in the geometry. Setting auto_geom_ids "
+        "to True when initiating the DAGMC Universe may "
+        "resolve this issue",
+        this->id_, c->id_));
     }
 
     // --- Materials ---
@@ -288,10 +289,10 @@ void DAGUniverse::init_geometry()
         bc_value == "transmission") {
       // set to transmission by default (nullptr)
     } else if (bc_value == "vacuum") {
-      s->bc_ = std::make_shared<VacuumBC>();
+      s->bc_ = make_unique<VacuumBC>();
     } else if (bc_value == "reflective" || bc_value == "reflect" ||
                bc_value == "reflecting") {
-      s->bc_ = std::make_shared<ReflectiveBC>();
+      s->bc_ = make_unique<ReflectiveBC>();
     } else if (bc_value == "periodic") {
       fatal_error("Periodic boundary condition not supported in DAGMC.");
     } else {
@@ -309,7 +310,7 @@ void DAGUniverse::init_geometry()
     // if this surface belongs to the graveyard
     if (graveyard && parent_vols.find(graveyard) != parent_vols.end()) {
       // set graveyard surface BC's to vacuum
-      s->bc_ = std::make_shared<VacuumBC>();
+      s->bc_ = make_unique<VacuumBC>();
     }
 
     // add to global array and map
@@ -326,6 +327,20 @@ void DAGUniverse::init_geometry()
 
     model::surfaces.emplace_back(std::move(s));
   } // end surface loop
+}
+
+int32_t DAGUniverse::cell_index(moab::EntityHandle vol) const
+{
+  // return the index of the volume in the DAGMC instance and then
+  // adjust by the offset into the model cells for this DAGMC universe
+  return dagmc_ptr()->index_by_handle(vol) + cell_idx_offset_;
+}
+
+int32_t DAGUniverse::surface_index(moab::EntityHandle surf) const
+{
+  // return the index of the surface in the DAGMC instance and then
+  // adjust by the offset into the model cells for this DAGMC universe
+  return dagmc_ptr()->index_by_handle(surf) + surf_idx_offset_;
 }
 
 std::string DAGUniverse::dagmc_ids_for_dim(int dim) const
@@ -395,7 +410,7 @@ bool DAGUniverse::find_cell(Particle& p) const
   // cells, place it in the implicit complement
   bool found = Universe::find_cell(p);
   if (!found && model::universe_map[this->id_] != model::root_universe) {
-    p.coord(p.n_coord() - 1).cell = implicit_complement_idx();
+    p.lowest_coord().cell = implicit_complement_idx();
     found = true;
   }
   return found;
@@ -581,37 +596,49 @@ std::pair<double, int32_t> DAGCell::distance(
     p->history().reset();
   }
 
-  const auto& univ = model::universes[p->coord(p->n_coord() - 1).universe];
+  const auto& univ = model::universes[p->lowest_coord().universe];
 
   DAGUniverse* dag_univ = static_cast<DAGUniverse*>(univ.get());
   if (!dag_univ)
     fatal_error("DAGMC call made for particle in a non-DAGMC universe");
 
-  moab::ErrorCode rval;
+  // initialize to lost particle conditions
+  int surf_idx = -1;
+  double dist = INFINITY;
+
   moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, dag_index_);
   moab::EntityHandle hit_surf;
-  double dist;
+
+  // create the ray
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
-  rval = dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &p->history());
-  MB_CHK_ERR_CONT(rval);
-  int surf_idx;
+  MB_CHK_ERR_CONT(
+    dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &p->history()));
   if (hit_surf != 0) {
     surf_idx =
       dag_univ->surf_idx_offset_ + dagmc_ptr_->index_by_handle(hit_surf);
-  } else {
-    // indicate that particle is lost
-    surf_idx = -1;
-    dist = INFINITY;
-    if (!dagmc_ptr_->is_implicit_complement(vol) ||
-        model::universe_map[dag_univ->id_] == model::root_universe) {
-      std::string material_id = p->material() == MATERIAL_VOID
-                              ? "-1 (VOID)"
-                              : std::to_string(model::materials[p->material()]->id());
-      p->mark_as_lost(
-        fmt::format("No intersection found with DAGMC cell {}, material {}",
-          id_, material_id));
-    }
+  } else if (!dagmc_ptr_->is_implicit_complement(vol) ||
+             is_root_universe(dag_univ->id_)) {
+    // surface boundary conditions are ignored for projection plotting, meaning
+    // that the particle may move through the graveyard (bounding) volume and
+    // into the implicit complement on the other side where no intersection will
+    // be found. Treating this as a lost particle is problematic when plotting.
+    // Instead, the infinite distance and invalid surface index are returned.
+    if (settings::run_mode == RunMode::PLOTTING)
+      return {INFTY, -1};
+
+    // the particle should be marked as lost immediately if an intersection
+    // isn't found in a volume that is not the implicit complement. In the case
+    // that the DAGMC model is the root universe of the geometry, even a missing
+    // intersection in the implicit complement should trigger this condition.
+    std::string material_id =
+      p->material() == MATERIAL_VOID
+        ? "-1 (VOID)"
+        : std::to_string(model::materials[p->material()]->id());
+    auto lost_particle_msg = fmt::format(
+      "No intersection found with DAGMC cell {}, filled with material {}", id_,
+      material_id);
+    p->mark_as_lost(lost_particle_msg);
   }
 
   return {dist, surf_idx};
@@ -628,6 +655,11 @@ bool DAGCell::contains(Position r, Direction u, int32_t on_surface) const
   rval = dagmc_ptr_->point_in_volume(vol, pnt, result, dir);
   MB_CHK_ERR_CONT(rval);
   return result;
+}
+
+moab::EntityHandle DAGCell::mesh_handle() const
+{
+  return dagmc_ptr()->entity_by_index(3, dag_index());
 }
 
 void DAGCell::to_hdf5_inner(hid_t group_id) const
@@ -654,6 +686,11 @@ DAGSurface::DAGSurface(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx)
 {
   geom_type_ = GeometryType::DAG;
 } // empty constructor
+
+moab::EntityHandle DAGSurface::mesh_handle() const
+{
+  return dagmc_ptr()->entity_by_index(2, dag_index());
+}
 
 double DAGSurface::evaluate(Position r) const
 {
@@ -728,19 +765,22 @@ void check_dagmc_root_univ()
   }
 }
 
-int32_t next_cell(
-  DAGUniverse* dag_univ, DAGCell* cur_cell, DAGSurface* surf_xed)
+int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ)
 {
-  moab::EntityHandle surf =
-    surf_xed->dagmc_ptr()->entity_by_index(2, surf_xed->dag_index());
-  moab::EntityHandle vol =
-    cur_cell->dagmc_ptr()->entity_by_index(3, cur_cell->dag_index());
+  auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[surf - 1].get());
+  auto cellp = dynamic_cast<DAGCell*>(model::cells[curr_cell].get());
+  auto univp = static_cast<DAGUniverse*>(model::universes[univ].get());
+
+  moab::EntityHandle surf_handle = surfp->mesh_handle();
+  moab::EntityHandle curr_vol = cellp->mesh_handle();
 
   moab::EntityHandle new_vol;
-  cur_cell->dagmc_ptr()->next_vol(surf, vol, new_vol);
+  moab::ErrorCode rval =
+    cellp->dagmc_ptr()->next_vol(surf_handle, curr_vol, new_vol);
+  if (rval != moab::MB_SUCCESS)
+    return -1;
 
-  return cur_cell->dagmc_ptr()->index_by_handle(new_vol) +
-         dag_univ->cell_idx_offset_;
+  return univp->cell_index(new_vol);
 }
 
 } // namespace openmc
@@ -756,7 +796,10 @@ void read_dagmc_universes(pugi::xml_node node)
                 "with DAGMC");
   }
 };
+
 void check_dagmc_root_univ() {};
+
+int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ);
 
 } // namespace openmc
 

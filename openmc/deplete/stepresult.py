@@ -4,15 +4,16 @@ Contains capabilities for generating and saving results of a single depletion
 timestep.
 """
 
-from collections import OrderedDict
 import copy
 import warnings
+from pathlib import Path
 
 import h5py
 import numpy as np
 
 import openmc
 from openmc.mpi import comm, MPI
+from openmc.checkvalue import PathLike
 from .reaction_rates import ReactionRates
 
 VERSION_RESULTS = (1, 1)
@@ -41,13 +42,13 @@ class StepResult:
         Number of nuclides.
     rates : list of ReactionRates
         The reaction rates for each substep.
-    volume : OrderedDict of str to float
+    volume : dict of str to float
         Dictionary mapping mat id to volume.
-    index_mat : OrderedDict of str to int
+    index_mat : dict of str to int
         A dictionary mapping mat ID as string to index.
-    index_nuc : OrderedDict of str to int
+    index_nuc : dict of str to int
         A dictionary mapping nuclide name as string to index.
-    mat_to_hdf5_ind : OrderedDict of str to int
+    mat_to_hdf5_ind : dict of str to int
         A dictionary mapping mat ID as string to global index.
     n_hdf5_mats : int
         Number of materials in entire geometry.
@@ -213,11 +214,23 @@ class StepResult:
         -------
         openmc.Material
             Equivalent material
+
+        Raises
+        ------
+        KeyError
+            If specified material ID is not found in the StepResult
+
         """
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', openmc.IDWarning)
             material = openmc.Material(material_id=int(mat_id))
-        vol = self.volume[mat_id]
+        try:
+            vol = self.volume[mat_id]
+        except KeyError as e:
+            raise KeyError(
+                f'mat_id {mat_id} not found in StepResult. Available mat_id '
+                f'values are {list(self.volume.keys())}'
+            ) from e
         for nuc, _ in sorted(self.index_nuc.items(), key=lambda x: x[1]):
             atoms = self[0, mat_id, nuc]
             if atoms < 0.0:
@@ -318,10 +331,11 @@ class StepResult:
                               chunks=(1, 1, n_mats, n_nuc_number),
                               dtype='float64')
 
-        handle.create_dataset("reaction rates", (1, n_stages, n_mats, n_nuc_rxn, n_rxn),
-                              maxshape=(None, n_stages, n_mats, n_nuc_rxn, n_rxn),
-                              chunks=(1, 1, n_mats, n_nuc_rxn, n_rxn),
-                              dtype='float64')
+        if n_nuc_rxn > 0 and n_rxn > 0:
+            handle.create_dataset("reaction rates", (1, n_stages, n_mats, n_nuc_rxn, n_rxn),
+                                maxshape=(None, n_stages, n_mats, n_nuc_rxn, n_rxn),
+                                chunks=(1, 1, n_mats, n_nuc_rxn, n_rxn),
+                                dtype='float64')
 
         handle.create_dataset("eigenvalues", (1, n_stages, 2),
                               maxshape=(None, n_stages, 2), dtype='float64')
@@ -358,7 +372,9 @@ class StepResult:
 
         # Grab handles
         number_dset = handle["/number"]
-        rxn_dset = handle["/reaction rates"]
+        has_reactions = ("reaction rates" in handle)
+        if has_reactions:
+            rxn_dset = handle["/reaction rates"]
         eigenvalues_dset = handle["/eigenvalues"]
         time_dset = handle["/time"]
         source_rate_dset = handle["/source_rate"]
@@ -375,9 +391,10 @@ class StepResult:
             number_shape[0] = new_shape
             number_dset.resize(number_shape)
 
-            rxn_shape = list(rxn_dset.shape)
-            rxn_shape[0] = new_shape
-            rxn_dset.resize(rxn_shape)
+            if has_reactions:
+                rxn_shape = list(rxn_dset.shape)
+                rxn_shape[0] = new_shape
+                rxn_dset.resize(rxn_shape)
 
             eigenvalues_shape = list(eigenvalues_dset.shape)
             eigenvalues_shape[0] = new_shape
@@ -407,7 +424,8 @@ class StepResult:
         high = max(inds)
         for i in range(n_stages):
             number_dset[index, i, low:high+1] = self.data[i]
-            rxn_dset[index, i, low:high+1] = self.rates[i]
+            if has_reactions:
+                rxn_dset[index, i, low:high+1] = self.rates[i]
             if comm.rank == 0:
                 eigenvalues_dset[index, i] = self.k[i]
         if comm.rank == 0:
@@ -455,11 +473,11 @@ class StepResult:
             results.proc_time = np.array([np.nan])
 
         # Reconstruct dictionaries
-        results.volume = OrderedDict()
-        results.index_mat = OrderedDict()
-        results.index_nuc = OrderedDict()
-        rxn_nuc_to_ind = OrderedDict()
-        rxn_to_ind = OrderedDict()
+        results.volume = {}
+        results.index_mat = {}
+        results.index_nuc = {}
+        rxn_nuc_to_ind = {}
+        rxn_to_ind = {}
 
         for mat, mat_handle in handle["/materials"].items():
             vol = mat_handle.attrs["volume"]
@@ -483,13 +501,15 @@ class StepResult:
         for i in range(results.n_stages):
             rate = ReactionRates(results.index_mat, rxn_nuc_to_ind, rxn_to_ind, True)
 
-            rate[:] = handle["/reaction rates"][step, i, :, :, :]
+            if "reaction rates" in handle:
+                rate[:] = handle["/reaction rates"][step, i, :, :, :]
             results.rates.append(rate)
 
         return results
 
     @staticmethod
-    def save(op, x, op_results, t, source_rate, step_ind, proc_time=None):
+    def save(op, x, op_results, t, source_rate, step_ind, proc_time=None,
+             path: PathLike = "depletion_results.h5"):
         """Creates and writes depletion results to disk
 
         Parameters
@@ -511,6 +531,10 @@ class StepResult:
             be process-dependent and will be reduced across MPI
             processes.
 
+        path : PathLike
+            Path to file to write. Defaults to 'depletion_results.h5'.
+
+            .. versionadded:: 0.14.0
         """
         # Get indexing terms
         vol_dict, nuc_list, burn_list, full_burn_list = op.get_results_info()
@@ -541,7 +565,9 @@ class StepResult:
         if results.proc_time is not None:
             results.proc_time = comm.reduce(proc_time, op=MPI.SUM)
 
-        results.export_to_hdf5("depletion_results.h5", step_ind)
+        if not Path(path).is_file():
+            Path(path).parent.mkdir(parents=True, exist_ok=True)
+        results.export_to_hdf5(path, step_ind)
 
     def transfer_volumes(self, model):
         """Transfers volumes from depletion results to geometry

@@ -121,3 +121,91 @@ will depend on the 3D viewer, but should be straightforward.
           program (Visit, ParaView, etc.) if the number of voxels is large (>10
           million or so).  Thus if you want an accurate picture that renders
           smoothly, consider using only one voxel in a certain direction.
+
+----------------
+Projection Plots
+----------------
+
+.. only:: html
+
+   .. image:: ../_images/hexlat_anim.gif
+     :width: 200px
+
+The :class:`openmc.ProjectionPlot` class presents an alternative method of
+producing 3D visualizations of OpenMC geometries. It was developed to overcome
+the primary shortcoming of voxel plots, that an enormous number of voxels must
+be employed to capture detailed geometric features. Projection plots perform
+volume rendering on material or cell volumes, with colors specified in the same
+manner as slice plots. This is done using the native ray tracing capabilities
+within OpenMC, so any geometry in which particles successfully run without
+overlaps or leaks will work with projection plots.
+
+One drawback of projection plots is that particle tracks cannot be overlaid on
+them at present. Moreover, checking for overlap regions is not currently
+possible with projection plots. The image heading this section can be created by
+adding the following code to the hexagonal lattice example packaged with OpenMC,
+before exporting to plots.xml.
+
+::
+
+  r = 5
+  import numpy as np
+  for i in range(100):
+      phi = 2 * np.pi * i/100
+      thisp = openmc.ProjectionPlot(plot_id = 4 + i)
+      thisp.filename = 'frame%s'%(str(i).zfill(3))
+      thisp.look_at = [0, 0, 0]
+      thisp.camera_position = [r * np.cos(phi), r * np.sin(phi), 6 * np.sin(phi)]
+      thisp.pixels = [200, 200]
+      thisp.color_by = 'material'
+      thisp.colorize(geometry)
+      thisp.set_transparent(geometry)
+      thisp.xs[fuel] = 1.0
+      thisp.xs[iron] = 1.0
+      thisp.wireframe_domains = [fuel]
+      thisp.wireframe_thickness = 2
+
+      plot_file.append(thisp)
+
+This generates a sequence of png files which can be joined to form a gif. Each
+image specifies a different camera position using some simple periodic functions
+to create a perfectly looped gif. :attr:`ProjectionPlot.look_at` defines where
+the camera's centerline should point at. :attr:`ProjectionPlot.camera_position`
+similarly defines where the camera is situated in the universe level we seek to
+plot. The other settings resemble those employed by :class:`openmc.Plot`, with
+the exception of the :class:`ProjectionPlot.set_transparent` method and
+:attr:`ProjectionPlot.xs` dictionary. These are used to control volume rendering
+of material volumes. "xs" here stands for cross section, and it defines material
+opacities in units of inverse centimeters. Setting this value to a large number
+would make a material or cell opaque, and setting it to zero makes a material
+transparent. Thus, the :class:`ProjectionPlot.set_transparent` can be used to
+make all materials in the geometry transparent. From there, individual material
+or cell opacities can be tuned to produce the desired result.
+
+Two camera projections are available when using these plots, perspective and
+orthographic. The default, perspective projection, is a cone of rays passing
+through each pixel which radiate from the camera position and span the field of
+view in the x and y positions. The horizontal field of view can be set with the
+:attr: `ProjectionPlot.horizontal_field_of_view` attribute, which is to be
+specified in units of degrees. The field of view only influences behavior in
+perspective projection mode.
+
+In the orthographic projection, rays follow the same angle but originate from
+different points. The horizontal width of this plane of ray starting points may
+be set with the :attr: `ProjectionPlot.orthographic_width` element. If this
+element is nonzero, the orthographic projection is employed. Left to its default
+value of zero, the perspective projection is employed.
+
+Lastly, projection plots come packaged with wireframe generation that can target
+either all surface/cell/material boundaries in the geometry, or only wireframing
+around specific regions. In the above example, we have set only the fuel region
+from the hexagonal lattice example to have a wireframe drawn around it. This is
+accomplished by setting the :attr: `ProjectionPlot.wireframe_domains`, which may
+be set to either material IDs or cell IDs. The
+:attr:`ProjectionPlot.wireframe_thickness` attribute sets the wireframe
+thickness in units of pixels.
+
+.. note:: When setting specific material or cell regions to have wireframes
+          drawn around them, the plot must be colored by materials if wireframing
+          around specific materials and similarly colored by cell instance if
+          wireframing around specific cells.

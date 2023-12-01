@@ -65,42 +65,46 @@ def test_right_circular_cylinder(axis, indices):
     x, y, z = 1.0, -2.5, 3.0
     h, r = 5.0, 3.0
     s = openmc.model.RightCircularCylinder((x, y, z), h, r, axis=axis.lower())
-    assert isinstance(s.cyl, getattr(openmc, axis + "Cylinder"))
-    assert isinstance(s.top, getattr(openmc, axis + "Plane"))
-    assert isinstance(s.bottom, getattr(openmc, axis + "Plane"))
+    s_r = openmc.model.RightCircularCylinder((x, y, z), h, r, axis=axis.lower(),
+                                             upper_fillet_radius=1.6,
+                                             lower_fillet_radius=1.6)
+    for s in (s, s_r):
+        assert isinstance(s.cyl, getattr(openmc, axis + "Cylinder"))
+        assert isinstance(s.top, getattr(openmc, axis + "Plane"))
+        assert isinstance(s.bottom, getattr(openmc, axis + "Plane"))
 
-    # Make sure boundary condition propagates
-    s.boundary_type = 'reflective'
-    assert s.boundary_type == 'reflective'
-    assert s.cyl.boundary_type == 'reflective'
-    assert s.bottom.boundary_type == 'reflective'
-    assert s.top.boundary_type == 'reflective'
+        # Make sure boundary condition propagates
+        s.boundary_type = 'reflective'
+        assert s.boundary_type == 'reflective'
+        assert s.cyl.boundary_type == 'reflective'
+        assert s.bottom.boundary_type == 'reflective'
+        assert s.top.boundary_type == 'reflective'
 
-    # Check bounding box
-    ll, ur = (+s).bounding_box
-    assert np.all(np.isinf(ll))
-    assert np.all(np.isinf(ur))
-    ll, ur = (-s).bounding_box
-    assert ll == pytest.approx((x, y, z) + np.roll([0, -r, -r], indices[0]))
-    assert ur == pytest.approx((x, y, z) + np.roll([h, r, r], indices[0]))
+        # Check bounding box
+        ll, ur = (+s).bounding_box
+        assert np.all(np.isinf(ll))
+        assert np.all(np.isinf(ur))
+        ll, ur = (-s).bounding_box
+        assert ll == pytest.approx((x, y, z) + np.roll([0, -r, -r], indices[0]))
+        assert ur == pytest.approx((x, y, z) + np.roll([h, r, r], indices[0]))
 
-    # __contains__ on associated half-spaces
-    point_pos = (x, y, z) + np.roll([h/2, r+1, r+1], indices[0])
-    assert point_pos in +s
-    assert point_pos not in -s
-    point_neg = (x, y, z) + np.roll([h/2, 0, 0], indices[0])
-    assert point_neg in -s
-    assert point_neg not in +s
+        # __contains__ on associated half-spaces
+        point_pos = (x, y, z) + np.roll([h/2, r+1, r+1], indices[0])
+        assert point_pos in +s
+        assert point_pos not in -s
+        point_neg = (x, y, z) + np.roll([h/2, 0, 0], indices[0])
+        assert point_neg in -s
+        assert point_neg not in +s
 
-    # translate method
-    t = uniform(-5.0, 5.0)
-    s_t = s.translate((t, t, t))
-    ll_t, ur_t = (-s_t).bounding_box
-    assert ur_t == pytest.approx(ur + t)
-    assert ll_t == pytest.approx(ll + t)
+        # translate method
+        t = uniform(-5.0, 5.0)
+        s_t = s.translate((t, t, t))
+        ll_t, ur_t = (-s_t).bounding_box
+        assert ur_t == pytest.approx(ur + t)
+        assert ll_t == pytest.approx(ll + t)
 
-    # Make sure repr works
-    repr(s)
+        # Make sure repr works
+        repr(s)
 
 
 @pytest.mark.parametrize(
@@ -315,6 +319,7 @@ def test_isogonal_octagon(axis, plane_tb, plane_lr, axis_idx):
     # Make sure repr works
     repr(s)
 
+
 def test_polygon():
     # define a 5 pointed star centered on 1, 1
     star = np.array([[1.        , 2.        ],
@@ -339,3 +344,124 @@ def test_polygon():
             offset_star = star_poly.offset(.6)
             assert (0, 0, 0) in -offset_star
             assert any([(0, 0, 0) in reg for reg in offset_star.regions])
+
+    # check invalid Polygon input points
+    # duplicate points not just at start and end
+    rz_points = np.array([[6.88, 3.02],
+                          [6.88, 2.72],
+                          [6.88, 3.02],
+                          [7.63, 0.0],
+                          [5.75, 0.0],
+                          [5.75, 1.22],
+                          [7.63, 0.0],
+                          [6.30, 1.22],
+                          [6.30, 3.02],
+                          [6.88, 3.02]])
+    with pytest.raises(ValueError):
+        openmc.model.Polygon(rz_points)
+
+    # segment traces back on previous segment
+    rz_points = np.array([[6.88, 3.02],
+                          [6.88, 2.72],
+                          [6.88, 2.32],
+                          [6.88, 2.52],
+                          [7.63, 0.0],
+                          [5.75, 0.0],
+                          [6.75, 0.0],
+                          [5.75, 1.22],
+                          [6.30, 1.22],
+                          [6.30, 3.02],
+                          [6.88, 3.02]])
+    with pytest.raises(ValueError):
+        openmc.model.Polygon(rz_points)
+
+    # segments intersect (line-line)
+    rz_points = np.array([[6.88, 3.02],
+                          [5.88, 2.32],
+                          [7.63, 0.0],
+                          [5.75, 0.0],
+                          [5.75, 1.22],
+                          [6.30, 1.22],
+                          [6.30, 3.02],
+                          [6.88, 3.02]])
+    with pytest.raises(ValueError):
+        openmc.model.Polygon(rz_points)
+
+    # segments intersect (line-point)
+    rz_points = np.array([[6.88, 3.02],
+                          [6.3, 2.32],
+                          [7.63, 0.0],
+                          [5.75, 0.0],
+                          [5.75, 1.22],
+                          [6.30, 1.22],
+                          [6.30, 3.02],
+                          [6.88, 3.02]])
+    with pytest.raises(ValueError):
+        openmc.model.Polygon(rz_points)
+
+
+@pytest.mark.parametrize("axis", ["x", "y", "z"])
+def test_cruciform_prism(axis):
+    center = x0, y0 = (3., 4.)
+    distances = [2., 3., 5.]
+    s = openmc.model.CruciformPrism(distances, center, axis=axis)
+
+    if axis == 'x':
+        i1, i2 = 1, 2
+    elif axis == 'y':
+        i1, i2 = 0, 2
+    elif axis == 'z':
+        i1, i2 = 0, 1
+    plane_cls = (openmc.XPlane, openmc.YPlane, openmc.ZPlane)
+
+    # Check type of surfaces
+    for i in range(3):
+        assert isinstance(getattr(s, f'hmin{i}'), plane_cls[i1])
+        assert isinstance(getattr(s, f'hmax{i}'), plane_cls[i1])
+        assert isinstance(getattr(s, f'vmin{i}'), plane_cls[i2])
+        assert isinstance(getattr(s, f'vmax{i}'), plane_cls[i2])
+
+    # Make sure boundary condition propagates
+    s.boundary_type = 'reflective'
+    for i in range(3):
+        assert getattr(s, f'hmin{i}').boundary_type == 'reflective'
+        assert getattr(s, f'hmax{i}').boundary_type == 'reflective'
+        assert getattr(s, f'vmin{i}').boundary_type == 'reflective'
+        assert getattr(s, f'vmax{i}').boundary_type == 'reflective'
+
+    # Check bounding box
+    ll, ur = (+s).bounding_box
+    assert np.all(np.isinf(ll))
+    assert np.all(np.isinf(ur))
+    ll, ur = (-s).bounding_box
+    assert ur[i1] == pytest.approx(x0 + distances[-1])
+    assert ur[i2] == pytest.approx(y0 + distances[-1])
+    assert ll[i1] == pytest.approx(x0 - distances[-1])
+    assert ll[i2] == pytest.approx(y0 - distances[-1])
+
+    # __contains__ on associated half-spaces
+    point_pos, point_neg = np.zeros(3), np.zeros(3)
+    point_pos[i1] = x0 + 3.1
+    point_pos[i2] = y0 + 2.05
+    point_neg[i1] = x0 + 3.5
+    point_neg[i2] = y0 + 1.99
+    assert point_pos in +s
+    assert point_pos not in -s
+    assert point_neg in -s
+    assert point_neg not in +s
+
+    # translate method
+    t = uniform(-5.0, 5.0)
+    s_t = s.translate((t, t, t))
+    ll_t, ur_t = (-s_t).bounding_box
+    assert ur_t == pytest.approx(ur + t)
+    assert ll_t == pytest.approx(ll + t)
+
+    # Make sure repr works
+    repr(s)
+
+    # Check that non-monotonic distances fail
+    with pytest.raises(ValueError):
+        openmc.model.CruciformPrism([1.0, 0.5, 2.0, 3.0])
+    with pytest.raises(ValueError):
+        openmc.model.CruciformPrism([3.0, 2.0, 0.5, 1.0])

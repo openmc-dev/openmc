@@ -104,7 +104,7 @@ def get_thermal_name(name):
     Returns
     -------
     str
-        GND-format thermal scattering name
+        GNDS-format thermal scattering name
 
     """
     if name in _THERMAL_NAMES:
@@ -193,14 +193,14 @@ class CoherentElastic(Function1D):
     def bragg_edges(self):
         return self._bragg_edges
 
-    @property
-    def factors(self):
-        return self._factors
-
     @bragg_edges.setter
     def bragg_edges(self, bragg_edges):
         cv.check_type('Bragg edges', bragg_edges, Iterable, Real)
         self._bragg_edges = np.asarray(bragg_edges)
+
+    @property
+    def factors(self):
+        return self._factors
 
     @factors.setter
     def factors(self, factors):
@@ -396,7 +396,7 @@ class ThermalScattering(EqualityMixin):
     Parameters
     ----------
     name : str
-        Name of the material using GND convention, e.g. c_H_in_H2O
+        Name of the material using GNDS convention, e.g. c_H_in_H2O
     atomic_weight_ratio : float
         Atomic mass ratio of the target nuclide.
     kTs : Iterable of float
@@ -415,7 +415,7 @@ class ThermalScattering(EqualityMixin):
         Inelastic scattering cross section derived in the incoherent
         approximation
     name : str
-        Name of the material using GND convention, e.g. c_H_in_H2O
+        Name of the material using GNDS convention, e.g. c_H_in_H2O
     temperatures : Iterable of str
         List of string representations the temperatures of the target nuclide
         in the data set.  The temperatures are strings of the temperature,
@@ -491,7 +491,7 @@ class ThermalScattering(EqualityMixin):
             ACE table to read from. If given as a string, it is assumed to be
             the filename for the ACE file.
         name : str
-            GND-conforming name of the material, e.g. c_H_in_H2O. If none is
+            GNDS-conforming name of the material, e.g. c_H_in_H2O. If none is
             passed, the appropriate name is guessed based on the name of the ACE
             table.
 
@@ -596,7 +596,7 @@ class ThermalScattering(EqualityMixin):
             ACE table to read from. If given as a string, it is assumed to be
             the filename for the ACE file.
         name : str
-            GND-conforming name of the material, e.g. c_H_in_H2O. If none is
+            GNDS-conforming name of the material, e.g. c_H_in_H2O. If none is
             passed, the appropriate name is guessed based on the name of the ACE
             table.
 
@@ -676,6 +676,15 @@ class ThermalScattering(EqualityMixin):
                     # here, because they are equiprobable, so the order
                     # doesn't matter.
                     mu.sort()
+
+                    # Older versions of NJOY had a bug, and the discrete
+                    # scattering angles could sometimes be less than -1 or
+                    # greater than 1. We check for this here, and warn users.
+                    if mu[0] < -1. or mu[-1] > 1.:
+                        warn('S(a,b) scattering angle for incident energy index '
+                             f'{i} and exit energy index {j} outside of the '
+                             'interval [-1, 1].')
+
                     p_mu = 1. / n_mu * np.ones(n_mu)
                     mu_ij = Discrete(mu, p_mu)
                     mu_ij.c = np.cumsum(p_mu)

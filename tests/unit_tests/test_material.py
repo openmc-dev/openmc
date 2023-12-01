@@ -74,6 +74,18 @@ def test_add_components():
     with pytest.raises(ValueError):
         m.add_components({'H1': 1.0}, percent_type = 'oa')
 
+def test_nuclides_to_ignore(run_in_tmpdir):
+    """Test nuclides_to_ignore when exporting a material to XML"""
+    m = openmc.Material()
+    m.add_nuclide('U235', 1.0)
+    m.add_nuclide('H1', 1.0)
+    m.add_nuclide('O16', 1.0)
+
+    mats = openmc.Materials([m])
+    mats.export_to_xml(nuclides_to_ignore=['H1'])
+
+    test_mats = openmc.Materials.from_xml()
+    assert 'H1' not in test_mats[0].get_nuclides()
 
 def test_remove_nuclide():
     """Test removing nuclides."""
@@ -377,6 +389,9 @@ def test_get_nuclide_atoms():
     atoms = mat.get_nuclide_atoms()
     assert atoms['Li6'] == pytest.approx(mat.density * mat.volume)
 
+    atoms = mat.get_nuclide_atoms(volume=10.0)
+    assert atoms['Li6'] == pytest.approx(mat.density * 10.0)
+
 
 def test_mass():
     m = openmc.Material()
@@ -393,6 +408,9 @@ def test_mass():
     assert m.get_mass('U235') == pytest.approx(10.0)
     assert m.get_mass() == pytest.approx(20.0)
     assert m.fissionable_mass == pytest.approx(10.0)
+
+    # Test with volume specified as argument
+    assert m.get_mass('Zr90', volume=1.0) == pytest.approx(1.0)
 
 
 def test_materials(run_in_tmpdir):
@@ -544,6 +562,58 @@ def test_get_activity():
     m4.volume = 10.
     assert pytest.approx(m4.get_activity(units='Bq')) == 355978108155965.94*3/2*10 # [Bq]
 
+    # Test with volume specified as argument
+    assert pytest.approx(m4.get_activity(units='Bq', volume=1.0)) == 355978108155965.94*3/2
+
+
+def test_get_decay_heat():
+    # Set chain file for testing
+    openmc.config['chain_file'] = Path(__file__).parents[1] / 'chain_simple.xml'
+
+    """Tests the decay heat of stable, metastable and active materials"""
+    m1 = openmc.Material()
+    m1.add_nuclide("U235", 0.2)
+    m1.add_nuclide("U238", 0.8)
+    m1.set_density('g/cm3', 10.5)
+    # decay heat in W/cc and W/g should not require volume setting
+    assert m1.get_decay_heat(units='W/cm3') == 0
+    assert m1.get_decay_heat(units='W/g') == 0
+    m1.volume = 1
+    assert m1.get_decay_heat(units='W') == 0
+
+    # Checks that 1g of tritium has the correct decay heat scaling
+    m2 = openmc.Material()
+    m2.add_nuclide("I135", 1)
+    m2.set_density('g/cm3', 1)
+    m2.volume = 1
+    assert pytest.approx(m2.get_decay_heat(units='W')) == 40175.15720273193
+    m2.set_density('g/cm3', 2)
+    assert pytest.approx(m2.get_decay_heat(units='W')) == 40175.15720273193*2
+    m2.volume = 3
+    assert pytest.approx(m2.get_decay_heat(units='W')) == 40175.15720273193*2*3
+
+    # Checks that 1 mol of a metastable nuclides has the correct decay heat
+    m3 = openmc.Material()
+    m3.add_nuclide("Xe135", 1)
+    m3.set_density('g/cm3', 1)
+    m3.volume = 98.9
+    assert pytest.approx(m3.get_decay_heat(units='W'), rel=0.001) == 846181.2921143445
+
+    # Checks that specific and volumetric decay heat of tritium are correct
+    m4 = openmc.Material()
+    m4.add_nuclide("I135", 1)
+    m4.set_density('g/cm3', 1.5)
+    assert pytest.approx(m4.get_decay_heat(units='W/g')) == 40175.15720273193 # [W/g]
+    assert pytest.approx(m4.get_decay_heat(units='W/g', by_nuclide=True)["I135"]) == 40175.15720273193 # [W/g]
+    assert pytest.approx(m4.get_decay_heat(units='W/cm3')) == 40175.15720273193*3/2 # [W/cc]
+    assert pytest.approx(m4.get_decay_heat(units='W/cm3', by_nuclide=True)["I135"]) == 40175.15720273193*3/2 #[W/cc]
+    # volume is required to calculate total decay heat
+    m4.volume = 10.
+    assert pytest.approx(m4.get_decay_heat(units='W')) == 40175.15720273193*3/2*10 # [W]
+
+    # Test with volume specified as argument
+    assert pytest.approx(m4.get_decay_heat(units='W', volume=1.0)) == 40175.15720273193*3/2
+
 
 def test_decay_photon_energy():
     # Set chain file for testing
@@ -556,13 +626,19 @@ def test_decay_photon_energy():
     m.volume = 1.0
 
     # Get decay photon source and make sure it's the right type
-    src = m.decay_photon_energy
+    src = m.get_decay_photon_energy()
     assert isinstance(src, openmc.stats.Discrete)
+
+    # Make sure units/volume work as expected
+    src_v2 = m.get_decay_photon_energy(volume=2.0)
+    assert src.p * 2.0 == pytest.approx(src_v2.p)
+    src_per_cm3 = m.get_decay_photon_energy(units='Bq/cm3', volume=100.0)
+    assert (src.p == src_per_cm3.p).all()
 
     # If we add Xe135 (which has a tabular distribution), the photon source
     # should be a mixture distribution
     m.add_nuclide('Xe135', 1.0e-24)
-    src = m.decay_photon_energy
+    src = m.get_decay_photon_energy()
     assert isinstance(src, openmc.stats.Mixture)
 
     # With a single atom of each, the intensity of the photon source should be
@@ -572,10 +648,16 @@ def test_decay_photon_energy():
 
     assert src.integral() == pytest.approx(sum(
         intensity(decay_photon_energy(nuc)) for nuc in m.get_nuclides()
+    ), rel=1e-3)
+
+    # When the clipping threshold is zero, the intensities should match exactly
+    src = m.get_decay_photon_energy(0.0)
+    assert src.integral() == pytest.approx(sum(
+        intensity(decay_photon_energy(nuc)) for nuc in m.get_nuclides()
     ))
 
     # A material with no unstable nuclides should have no decay photon source
     stable = openmc.Material()
     stable.add_nuclide('Gd156', 1.0)
     stable.volume = 1.0
-    assert stable.decay_photon_energy is None
+    assert stable.get_decay_photon_energy() is None

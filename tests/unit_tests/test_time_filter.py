@@ -59,7 +59,7 @@ def model(request):
     model.settings.particles = 1000
     model.settings.batches = 20
     particle = request.param
-    model.settings.source = openmc.Source(
+    model.settings.source = openmc.IndependentSource(
         space=openmc.stats.Point((x, 0., 0.)),
         angle=openmc.stats.Monodirectional([-1., 0., 0.]),
         energy=openmc.stats.Discrete([E], [1.0]),
@@ -100,7 +100,7 @@ def model_surf(request):
     model.settings.particles = 1000
     model.settings.batches = 20
     particle = request.param
-    model.settings.source = openmc.Source(
+    model.settings.source = openmc.IndependentSource(
         space=openmc.stats.Point((0., 0., 0.)),
         angle=openmc.stats.Monodirectional([1., 0., 0.]),
         energy=openmc.stats.Discrete([E], [1.0]),
@@ -165,7 +165,7 @@ def test_small_time_interval(run_in_tmpdir):
     model.settings.particles = 100
     model.settings.batches = 10
     model.settings.run_mode = 'fixed source'
-    model.settings.source = openmc.Source(
+    model.settings.source = openmc.IndependentSource(
         time=openmc.stats.Discrete([1.0e8], [1.0]),
         particle='photon'
     )

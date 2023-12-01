@@ -8,8 +8,8 @@ mats = openmc.Materials([iron])
 mats.export_to_xml()
 
 # Create a 5 cm x 5 cm box filled with iron
-box = openmc.model.rectangular_prism(10.0, 10.0, boundary_type='vacuum')
-cell = openmc.Cell(fill=iron, region=box)
+box = openmc.model.RectangularPrism(10.0, 10.0, boundary_type='vacuum')
+cell = openmc.Cell(fill=iron, region=-box)
 geometry = openmc.Geometry([cell])
 geometry.export_to_xml()
 
@@ -18,7 +18,7 @@ settings = openmc.Settings()
 settings.run_mode = 'fixed source'
 settings.batches = 10
 settings.particles = 1000
-source = openmc.Source()
+source = openmc.CompiledSource()
 source.library = 'build/libparameterized_source.so'
 source.parameters = 'radius=3.0, energy=14.08e6'
 settings.source = source

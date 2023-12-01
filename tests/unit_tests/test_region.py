@@ -208,7 +208,8 @@ def test_from_expression(reset):
     # Opening parenthesis immediately after halfspace
     r = openmc.Region.from_expression('1(2|-3)', surfs)
     assert str(r) == '(1 (2 | -3))'
-
+    r = openmc.Region.from_expression('-1|(1 2(-3))', surfs)
+    assert str(r) == '(-1 | (1 2 -3))'
 
 def test_translate_inplace():
     sph = openmc.Sphere()
@@ -222,3 +223,21 @@ def test_translate_inplace():
     # Translating a region in-place should *not* produce new surfaces
     region3 = region.translate((0.5, -6.7, 3.9), inplace=True)
     assert str(region) == str(region3)
+
+
+def test_invalid_operands():
+    s = openmc.Sphere()
+    z = 3
+
+    # Intersection with invalid operand
+    with pytest.raises(ValueError, match='must be of type Region'):
+        -s & +z
+
+    # Union with invalid operand
+    with pytest.raises(ValueError, match='must be of type Region'):
+        -s | +z
+
+    # Complement with invalid operand
+    with pytest.raises(ValueError, match='must be of type Region'):
+        openmc.Complement(z)
+

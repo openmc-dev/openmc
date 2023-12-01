@@ -1,7 +1,3 @@
-import random
-from math import sqrt
-
-import numpy as np
 import openmc
 import openmc.model
 
@@ -9,7 +5,8 @@ from tests.testing_harness import PyAPITestHarness
 
 
 class TRISOTestHarness(PyAPITestHarness):
-    def _build_inputs(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         # Define TRISO matrials
         fuel = openmc.Material()
         fuel.set_density('g/cm3', 10.5)
@@ -64,8 +61,8 @@ class TRISOTestHarness(PyAPITestHarness):
         box = openmc.Cell(region=box_region)
 
         outer_radius = 422.5*1e-4
-        centers = openmc.model.pack_spheres(radius=outer_radius,
-            region=box_region, num_spheres=100)
+        centers = openmc.model.pack_spheres(
+            radius=outer_radius, region=box_region, num_spheres=100, seed=1)
         trisos = [openmc.model.TRISO(outer_radius, inner_univ, c)
             for c in centers]
 
@@ -78,20 +75,19 @@ class TRISOTestHarness(PyAPITestHarness):
         box.fill = lattice
 
         root = openmc.Universe(0, cells=[box])
-        geom = openmc.Geometry(root)
-        geom.export_to_xml()
+        self._model.geometry = openmc.Geometry(root)
 
         settings = openmc.Settings()
         settings.batches = 4
         settings.inactive = 0
         settings.particles = 100
-        settings.source = openmc.Source(space=openmc.stats.Point())
-        settings.export_to_xml()
+        settings.source = openmc.IndependentSource(space=openmc.stats.Point())
+        self._model.settings = settings
 
-        mats = openmc.Materials([fuel, porous_carbon, ipyc, sic, opyc, graphite])
-        mats.export_to_xml()
+        self._model.materials = openmc.Materials([fuel, porous_carbon, ipyc,
+                                                  sic, opyc, graphite])
 
 
 def test_triso():
-    harness = TRISOTestHarness('statepoint.4.h5')
+    harness = TRISOTestHarness('statepoint.4.h5', model=openmc.Model())
     harness.main()

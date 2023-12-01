@@ -18,9 +18,11 @@
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/mcpl_interface.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
 #include "openmc/output.h"
+#include "openmc/plot.h"
 #include "openmc/random_lcg.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"
@@ -43,6 +45,7 @@ bool assume_separate {false};
 bool check_overlaps {false};
 bool cmfd_run {false};
 bool confidence_intervals {false};
+bool create_delayed_neutrons {true};
 bool create_fission_neutrons {true};
 bool delayed_photon_scaling {true};
 bool entropy_on {false};
@@ -60,7 +63,9 @@ bool run_CE {true};
 bool source_latest {false};
 bool source_separate {false};
 bool source_write {true};
+bool source_mcpl_write {false};
 bool surf_source_write {false};
+bool surf_mcpl_write {false};
 bool surf_source_read {false};
 bool survival_biasing {false};
 bool temperature_multipole {false};
@@ -69,6 +74,8 @@ bool trigger_predict {false};
 bool ufs_on {false};
 bool urr_ptables_on {true};
 bool weight_windows_on {false};
+bool weight_window_checkpoint_surface {false};
+bool weight_window_checkpoint_collision {true};
 bool write_all_tracks {false};
 bool write_initial_source {false};
 
@@ -78,10 +85,13 @@ std::string path_output;
 std::string path_particle_restart;
 std::string path_sourcepoint;
 std::string path_statepoint;
+const char* path_statepoint_c {path_statepoint.c_str()};
+std::string weight_windows_file;
 
 int32_t n_inactive {0};
 int32_t max_lost_particles {10};
 double rel_max_lost_particles {1.0e-6};
+int32_t max_write_lost_particles {-1};
 int32_t gen_per_batch {1};
 int64_t n_particles {-1};
 
@@ -89,6 +99,7 @@ int64_t max_particles_in_flight {100000};
 
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
+array<double, 4> time_cutoff {INFTY, INFTY, INFTY, INFTY};
 int legendre_to_tabular_points {C_NONE};
 int max_order {0};
 int n_log_bins {8000};
@@ -164,6 +175,12 @@ void get_run_parameters(pugi::xml_node node_base)
       std::stod(get_node_value(node_base, "rel_max_lost_particles"));
   }
 
+  // Get relative number of lost particles
+  if (check_for_node(node_base, "max_write_lost_particles")) {
+    max_write_lost_particles =
+      std::stoi(get_node_value(node_base, "max_write_lost_particles"));
+  }
+
   // Get number of inactive batches
   if (run_mode == RunMode::EIGENVALUE) {
     if (check_for_node(node_base, "inactive")) {
@@ -215,20 +232,15 @@ void read_settings_xml()
 {
   using namespace settings;
   using namespace pugi;
-
   // Check if settings.xml exists
-  std::string filename = path_input + "settings.xml";
+  std::string filename = settings::path_input + "settings.xml";
   if (!file_exists(filename)) {
     if (run_mode != RunMode::PLOTTING) {
-      fatal_error(
-        fmt::format("Settings XML file '{}' does not exist! In order "
-                    "to run OpenMC, you first need a set of input files; at a "
-                    "minimum, this "
-                    "includes settings.xml, geometry.xml, and materials.xml. "
-                    "Please consult "
-                    "the user's guide at https://docs.openmc.org for further "
-                    "information.",
-          filename));
+      fatal_error("Could not find any XML input files! In order to run OpenMC, "
+                  "you first need a set of input files; at a minimum, this "
+                  "includes settings.xml, geometry.xml, and materials.xml or a "
+                  "single model XML file. Please consult the user's guide at "
+                  "https://docs.openmc.org for further information.");
     } else {
       // The settings.xml file is optional if we just want to make a plot.
       return;
@@ -256,7 +268,16 @@ void read_settings_xml()
     if (verbosity >= 2)
       title();
   }
+
   write_message("Reading settings XML file...", 5);
+
+  read_settings_xml(root);
+}
+
+void read_settings_xml(pugi::xml_node root)
+{
+  using namespace settings;
+  using namespace pugi;
 
   // Find if a multi-group or continuous-energy simulation is desired
   if (check_for_node(root, "energy_mode")) {
@@ -267,6 +288,9 @@ void read_settings_xml()
       run_CE = true;
     }
   }
+
+  // Check for user meshes and allocate
+  read_meshes(root);
 
   // Look for deprecated cross_sections.xml file in settings.xml
   if (check_for_node(root, "cross_sections")) {
@@ -377,6 +401,12 @@ void read_settings_xml()
     }
   }
 
+  // Copy plotting random number seed if specified
+  if (check_for_node(root, "plot_seed")) {
+    auto seed = std::stoll(get_node_value(root, "plot_seed"));
+    model::plotter_seed = seed;
+  }
+
   // Copy random number seed if specified
   if (check_for_node(root, "seed")) {
     auto seed = std::stoll(get_node_value(root, "seed"));
@@ -429,7 +459,12 @@ void read_settings_xml()
   for (pugi::xml_node node : root.children("source")) {
     if (check_for_node(node, "file")) {
       auto path = get_node_value(node, "file", false, true);
-      model::external_sources.push_back(make_unique<FileSource>(path));
+      if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
+        auto sites = mcpl_source_sites(path);
+        model::external_sources.push_back(make_unique<FileSource>(sites));
+      } else {
+        model::external_sources.push_back(make_unique<FileSource>(path));
+      }
     } else if (check_for_node(node, "library")) {
       // Get shared library path and parameters
       auto path = get_node_value(node, "library", false, true);
@@ -440,7 +475,7 @@ void read_settings_xml()
 
       // Create custom source
       model::external_sources.push_back(
-        make_unique<CustomSourceWrapper>(path, parameters));
+        make_unique<CompiledSourceWrapper>(path, parameters));
     } else {
       model::external_sources.push_back(make_unique<IndependentSource>(node));
     }
@@ -515,6 +550,18 @@ void read_settings_xml()
       energy_cutoff[3] =
         std::stod(get_node_value(node_cutoff, "energy_positron"));
     }
+    if (check_for_node(node_cutoff, "time_neutron")) {
+      time_cutoff[0] = std::stod(get_node_value(node_cutoff, "time_neutron"));
+    }
+    if (check_for_node(node_cutoff, "time_photon")) {
+      time_cutoff[1] = std::stod(get_node_value(node_cutoff, "time_photon"));
+    }
+    if (check_for_node(node_cutoff, "time_electron")) {
+      time_cutoff[2] = std::stod(get_node_value(node_cutoff, "time_electron"));
+    }
+    if (check_for_node(node_cutoff, "time_positron")) {
+      time_cutoff[3] = std::stod(get_node_value(node_cutoff, "time_positron"));
+    }
   }
 
   // Particle trace
@@ -547,9 +594,6 @@ void read_settings_xml()
         {temp[3 * i], temp[3 * i + 1], temp[3 * i + 2]});
     }
   }
-
-  // Read meshes
-  read_meshes(root);
 
   // Shannon Entropy mesh
   if (check_for_node(root, "entropy_mesh")) {
@@ -647,6 +691,15 @@ void read_settings_xml()
     if (check_for_node(node_sp, "write")) {
       source_write = get_node_value_bool(node_sp, "write");
     }
+    if (check_for_node(node_sp, "mcpl")) {
+      source_mcpl_write = get_node_value_bool(node_sp, "mcpl");
+
+      // Make sure MCPL support is enabled
+      if (source_mcpl_write && !MCPL_ENABLED) {
+        fatal_error(
+          "Your build of OpenMC does not support writing MCPL source files.");
+      }
+    }
     if (check_for_node(node_sp, "overwrite_latest")) {
       source_latest = get_node_value_bool(node_sp, "overwrite_latest");
       source_separate = source_latest;
@@ -677,9 +730,18 @@ void read_settings_xml()
       max_surface_particles =
         std::stoll(get_node_value(node_ssw, "max_particles"));
     }
+    if (check_for_node(node_ssw, "mcpl")) {
+      surf_mcpl_write = get_node_value_bool(node_ssw, "mcpl");
+
+      // Make sure MCPL support is enabled
+      if (surf_mcpl_write && !MCPL_ENABLED) {
+        fatal_error("Your build of OpenMC does not support writing MCPL "
+                    "surface source files.");
+      }
+    }
   }
 
-  // If source is not seperate and is to be written out in the statepoint file,
+  // If source is not separate and is to be written out in the statepoint file,
   // make sure that the sourcepoint batch numbers are contained in the
   // statepoint list
   if (!source_separate) {
@@ -838,6 +900,12 @@ void read_settings_xml()
     }
   }
 
+  // Check whether create delayed neutrons in fission
+  if (check_for_node(root, "create_delayed_neutrons")) {
+    create_delayed_neutrons =
+      get_node_value_bool(root, "create_delayed_neutrons");
+  }
+
   // Check whether create fission sites
   if (run_mode == RunMode::FIXED_SOURCE) {
     if (check_for_node(root, "create_fission_neutrons")) {
@@ -866,11 +934,19 @@ void read_settings_xml()
   for (pugi::xml_node node_ww : root.children("weight_windows")) {
     variance_reduction::weight_windows.emplace_back(
       std::make_unique<WeightWindows>(node_ww));
-
-    // Enable weight windows by default if one or more are present
-    settings::weight_windows_on = true;
   }
 
+  // Enable weight windows by default if one or more are present
+  if (variance_reduction::weight_windows.size() > 0)
+    settings::weight_windows_on = true;
+
+  // read weight windows from file
+  if (check_for_node(root, "weight_windows_file")) {
+    weight_windows_file = get_node_value(root, "weight_windows_file");
+  }
+
+  // read settings for weight windows value, this will override
+  // the automatic setting even if weight windows are present
   if (check_for_node(root, "weight_windows_on")) {
     weight_windows_on = get_node_value_bool(root, "weight_windows_on");
   }
@@ -881,6 +957,37 @@ void read_settings_xml()
 
   if (check_for_node(root, "max_tracks")) {
     settings::max_tracks = std::stoi(get_node_value(root, "max_tracks"));
+  }
+
+  // Create weight window generator objects
+  if (check_for_node(root, "weight_window_generators")) {
+    auto wwgs_node = root.child("weight_window_generators");
+    for (pugi::xml_node node_wwg :
+      wwgs_node.children("weight_windows_generator")) {
+      variance_reduction::weight_windows_generators.emplace_back(
+        std::make_unique<WeightWindowsGenerator>(node_wwg));
+    }
+    // if any of the weight windows are intended to be generated otf, make sure
+    // they're applied
+    for (const auto& wwg : variance_reduction::weight_windows_generators) {
+      if (wwg->on_the_fly_) {
+        settings::weight_windows_on = true;
+        break;
+      }
+    }
+  }
+
+  // Set up weight window checkpoints
+  if (check_for_node(root, "weight_window_checkpoints")) {
+    xml_node ww_checkpoints = root.child("weight_window_checkpoints");
+    if (check_for_node(ww_checkpoints, "collision")) {
+      weight_window_checkpoint_collision =
+        get_node_value_bool(ww_checkpoints, "collision");
+    }
+    if (check_for_node(ww_checkpoints, "surface")) {
+      weight_window_checkpoint_surface =
+        get_node_value_bool(ww_checkpoints, "surface");
+    }
   }
 }
 

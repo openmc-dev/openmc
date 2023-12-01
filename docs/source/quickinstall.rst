@@ -157,7 +157,7 @@ distribution/repository, run:
 
 .. code-block:: sh
 
-    pip install .
+    python -m pip install .
 
 If you want to build a parallel version of OpenMC (using OpenMP or MPI),
 directions can be found in the :ref:`detailed installation instructions

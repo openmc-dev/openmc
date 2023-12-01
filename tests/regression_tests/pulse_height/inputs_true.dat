@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="1">
+      <density units="g/cc" value="3.7"/>
+      <nuclide ao="1.0" name="Na23"/>
+      <nuclide ao="1.0" name="I127"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" name="inner sphere" region="-1" universe="1"/>
+    <cell id="2" material="void" name="outer sphere" region="1 -2" universe="1"/>
+    <surface coeffs="0.0 0.0 0.0 1" id="1" type="sphere"/>
+    <surface boundary="vacuum" coeffs="0.0 0.0 0.0 2" id="2" type="sphere"/>
+  </geometry>
+  <settings>
+    <run_mode>fixed source</run_mode>
+    <particles>100</particles>
+    <batches>5</batches>
+    <source particle="photon" strength="1.0" type="independent">
+      <space type="point">
+        <parameters>0.0 0.0 0.0</parameters>
+      </space>
+      <energy type="discrete">
+        <parameters>1000000.0 1.0</parameters>
+      </energy>
+    </source>
+    <photon_transport>true</photon_transport>
+  </settings>
+  <tallies>
+    <filter id="1" type="cell">
+      <bins>1</bins>
+    </filter>
+    <filter id="2" type="energy">
+      <bins>0.0 10000.0 20000.0 30000.0 40000.0 50000.0 60000.0 70000.0 80000.0 90000.0 100000.0 110000.0 120000.0 130000.0 140000.0 150000.0 160000.0 170000.0 180000.0 190000.0 200000.0 210000.0 220000.0 230000.0 240000.0 250000.0 260000.0 270000.0 280000.0 290000.0 300000.0 310000.0 320000.0 330000.0 340000.0 350000.0 360000.0 370000.0 380000.0 390000.0 400000.0 410000.0 420000.0 430000.0 440000.0 450000.0 460000.0 470000.0 480000.0 490000.0 500000.0 510000.0 520000.0 530000.0 540000.0 550000.0 560000.0 570000.0 580000.0 590000.0 600000.0 610000.0 620000.0 630000.0 640000.0 650000.0 660000.0 670000.0 680000.0 690000.0 700000.0 710000.0 720000.0 730000.0 740000.0 750000.0 760000.0 770000.0 780000.0 790000.0 800000.0 810000.0 820000.0 830000.0 840000.0 850000.0 860000.0 870000.0 880000.0 890000.0 900000.0 910000.0 920000.0 930000.0 940000.0 950000.0 960000.0 970000.0 980000.0 990000.0 1000000.0</bins>
+    </filter>
+    <tally id="1" name="pht tally">
+      <filters>1 2</filters>
+      <scores>pulse-height</scores>
+    </tally>
+  </tallies>
+</model>

@@ -22,11 +22,9 @@ def model():
 
     source_box = openmc.stats.Box([-4, -4, -4],
                                   [ 4,  4,  4])
-    source = openmc.Source(space=source_box)
+    source = openmc.IndependentSource(space=source_box)
 
     model.settings.source = source
-
-    model.settings.dagmc = True
 
     # geometry
     dag_univ = openmc.DAGMCUniverse(Path("dagmc.h5m"))

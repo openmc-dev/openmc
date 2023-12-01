@@ -1,14 +1,12 @@
 from numbers import Real
 from math import exp, erf, pi, sqrt
 from copy import deepcopy
-import warnings
 
 import os
 import h5py
 import pickle
 import numpy as np
 from scipy.signal import find_peaks
-import matplotlib.pyplot as plt
 
 import openmc.checkvalue as cv
 from ..exceptions import DataError
@@ -364,6 +362,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         for i, mt in enumerate(mts):
             if not test_xs_ref[i].any():
                 continue
+            import matplotlib.pyplot as plt
             fig, ax1 = plt.subplots()
             lns1 = ax1.loglog(test_energy, test_xs_ref[i], 'g', label="ACE xs")
             lns2 = ax1.loglog(test_energy, best_test_xs[i], 'b', label="VF xs")
@@ -748,12 +747,12 @@ class WindowedMultipole(EqualityMixin):
     Parameters
     ----------
     name : str
-        Name of the nuclide using the GND naming convention
+        Name of the nuclide using the GNDS naming convention
 
     Attributes
     ----------
     name : str
-        Name of the nuclide using the GND naming convention
+        Name of the nuclide using the GNDS naming convention
     spacing : float
         The width of each window in sqrt(E)-space.  For example, the frst window
         will end at (sqrt(E_min) + spacing)**2 and the second window at
@@ -800,6 +799,11 @@ class WindowedMultipole(EqualityMixin):
     def name(self):
         return self._name
 
+    @name.setter
+    def name(self, name):
+        cv.check_type('name', name, str)
+        self._name = name
+
     @property
     def fit_order(self):
         return self.curvefit.shape[1] - 1
@@ -824,45 +828,16 @@ class WindowedMultipole(EqualityMixin):
     def spacing(self):
         return self._spacing
 
-    @property
-    def sqrtAWR(self):
-        return self._sqrtAWR
-
-    @property
-    def E_min(self):
-        return self._E_min
-
-    @property
-    def E_max(self):
-        return self._E_max
-
-    @property
-    def data(self):
-        return self._data
-
-    @property
-    def windows(self):
-        return self._windows
-
-    @property
-    def broaden_poly(self):
-        return self._broaden_poly
-
-    @property
-    def curvefit(self):
-        return self._curvefit
-
-    @name.setter
-    def name(self, name):
-        cv.check_type('name', name, str)
-        self._name = name
-
     @spacing.setter
     def spacing(self, spacing):
         if spacing is not None:
             cv.check_type('spacing', spacing, Real)
             cv.check_greater_than('spacing', spacing, 0.0, equality=False)
         self._spacing = spacing
+
+    @property
+    def sqrtAWR(self):
+        return self._sqrtAWR
 
     @sqrtAWR.setter
     def sqrtAWR(self, sqrtAWR):
@@ -871,6 +846,10 @@ class WindowedMultipole(EqualityMixin):
             cv.check_greater_than('sqrtAWR', sqrtAWR, 0.0, equality=False)
         self._sqrtAWR = sqrtAWR
 
+    @property
+    def E_min(self):
+        return self._E_min
+
     @E_min.setter
     def E_min(self, E_min):
         if E_min is not None:
@@ -878,12 +857,20 @@ class WindowedMultipole(EqualityMixin):
             cv.check_greater_than('E_min', E_min, 0.0, equality=True)
         self._E_min = E_min
 
+    @property
+    def E_max(self):
+        return self._E_max
+
     @E_max.setter
     def E_max(self, E_max):
         if E_max is not None:
             cv.check_type('E_max', E_max, Real)
             cv.check_greater_than('E_max', E_max, 0.0, equality=False)
         self._E_max = E_max
+
+    @property
+    def data(self):
+        return self._data
 
     @data.setter
     def data(self, data):
@@ -900,6 +887,10 @@ class WindowedMultipole(EqualityMixin):
                 raise TypeError('Multipole data arrays must be complex dtype')
         self._data = data
 
+    @property
+    def windows(self):
+        return self._windows
+
     @windows.setter
     def windows(self, windows):
         if windows is not None:
@@ -911,6 +902,10 @@ class WindowedMultipole(EqualityMixin):
                                 ' dtype')
         self._windows = windows
 
+    @property
+    def broaden_poly(self):
+        return self._broaden_poly
+
     @broaden_poly.setter
     def broaden_poly(self, broaden_poly):
         if broaden_poly is not None:
@@ -921,6 +916,10 @@ class WindowedMultipole(EqualityMixin):
                 raise TypeError('Multipole broaden_poly arrays must be boolean'
                                 ' dtype')
         self._broaden_poly = broaden_poly
+
+    @property
+    def curvefit(self):
+        return self._curvefit
 
     @curvefit.setter
     def curvefit(self, curvefit):
@@ -1154,8 +1153,8 @@ class WindowedMultipole(EqualityMixin):
         Returns
         -------
         3-tuple of Real
-            Total, absorption, and fission microscopic cross sections at the
-            given energy and temperature.
+            Scattering, absorption, and fission microscopic cross sections
+            at the given energy and temperature.
 
         """
 
@@ -1248,8 +1247,8 @@ class WindowedMultipole(EqualityMixin):
         Returns
         -------
         3-tuple of Real or 3-tuple of numpy.ndarray
-            Total, absorption, and fission microscopic cross sections at the
-            given energy and temperature.
+            Scattering, absorption, and fission microscopic cross sections
+            at the given energy and temperature.
 
         """
 

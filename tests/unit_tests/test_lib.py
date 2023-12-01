@@ -66,7 +66,7 @@ def uo2_trigger_model():
     model.settings.batches = 10
     model.settings.inactive = 5
     model.settings.particles = 100
-    model.settings.source = openmc.Source(space=openmc.stats.Box(
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
         [-0.5, -0.5, -1], [0.5, 0.5, 1], only_fissionable=True))
     model.settings.verbosity = 1
     model.settings.keff_trigger = {'type': 'std_dev', 'threshold': 0.001}
@@ -364,6 +364,19 @@ def test_tally_activate(lib_simulation_init):
     assert not t.active
     t.active = True
     assert t.active
+
+
+def test_tally_multiply_density(lib_simulation_init):
+    # multiply_density is True by default
+    t = openmc.lib.tallies[1]
+    assert t.multiply_density
+
+    # Make sure setting multiply_density works
+    t.multiply_density = False
+    assert not t.multiply_density
+
+    # Reset to True
+    t.multiply_density = True
 
 
 def test_tally_writable(lib_simulation_init):
@@ -836,7 +849,7 @@ def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
     cell = openmc.Cell(fill=mat, region=-sph)
     model = openmc.Model()
     model.geometry = openmc.Geometry([cell])
-    model.settings.source = openmc.Source(
+    model.settings.source = openmc.IndependentSource(
         space=openmc.stats.Box([-5., -5., -5.], [5., 5., 5.]),
         angle=openmc.stats.Monodirectional((0., 0., 1.)),
         energy=openmc.stats.Discrete([1.0e5], [1.0])

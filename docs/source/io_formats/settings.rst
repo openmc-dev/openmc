@@ -81,6 +81,12 @@ time.
 
     *Default*: 1.0
 
+  :survival_normalization:
+    If this element is set to "true", this will enable the use of survival biasing source normalization, whereby the weight parameters, weight and weight_avg, are multiplied per 
+    history by the start weight of said history. Currently only implemented for phase-space (surface) sources.
+
+    *Default*: false
+
   :energy_neutron:
     The energy under which neutrons will be killed.
 

@@ -533,11 +533,15 @@ void initialize_history(Particle& p, int64_t index_source)
     auto site = sample_external_source(&seed);
     p.from_source(&site);
   }
+
   p.current_work() = index_source;
 
   // set identifier for particle
   p.id() = simulation::work_index[mpi::rank] + index_source;
 
+  // set particle history start weight
+  p.wgt0(p.wgt());
+  
   // set progeny count to zero
   p.n_progeny() = 0;
 
@@ -574,7 +578,7 @@ void initialize_history(Particle& p, int64_t index_source)
     write_message("Simulating Particle {}", p.id());
   }
 
-// Add paricle's starting weight to count for normalizing tallies later
+// Add particle's starting weight to count for normalizing tallies later
 #pragma omp atomic
   simulation::total_weight += p.wgt();
 

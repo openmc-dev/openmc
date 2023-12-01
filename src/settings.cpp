@@ -78,6 +78,8 @@ bool weight_window_checkpoint_surface {false};
 bool weight_window_checkpoint_collision {true};
 bool write_all_tracks {false};
 bool write_initial_source {false};
+bool survival_normalization {false};
+bool source_file {false};
 
 std::string path_cross_sections;
 std::string path_input;
@@ -459,6 +461,7 @@ void read_settings_xml(pugi::xml_node root)
   for (pugi::xml_node node : root.children("source")) {
     if (check_for_node(node, "file")) {
       auto path = get_node_value(node, "file", false, true);
+      source_file = true;
       if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
         auto sites = mcpl_source_sites(path);
         model::external_sources.push_back(make_unique<FileSource>(sites));
@@ -529,6 +532,9 @@ void read_settings_xml(pugi::xml_node root)
     }
     if (check_for_node(node_cutoff, "weight_avg")) {
       weight_survive = std::stod(get_node_value(node_cutoff, "weight_avg"));
+    }
+    if(check_for_node(node_cutoff, "survival_normalization")){ 
+      survival_normalization = get_node_value_bool(node_cutoff, "survival_normalization");
     }
     if (check_for_node(node_cutoff, "energy_neutron")) {
       energy_cutoff[0] =

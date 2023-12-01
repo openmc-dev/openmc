@@ -264,6 +264,7 @@ private:
 
   // Other physical data
   double wgt_ {1.0};       //!< particle weight
+  double wgt0_ {1.0};      //!< particle start weight
   double mu_;              //!< angle of scatter
   double time_ {0.0};      //!< time in [s]
   double time_last_ {0.0}; //!< previous time in [s]
@@ -397,6 +398,9 @@ public:
 
   double& wgt() { return wgt_; }
   double wgt() const { return wgt_; }
+  double& wgt0() { return wgt0_; }
+  double wgt0() const { return wgt0_; }
+
   double& mu() { return mu_; }
   const double& mu() const { return mu_; }
   double& time() { return time_; }

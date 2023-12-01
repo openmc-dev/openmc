@@ -5,6 +5,7 @@
 #include "openmc/random_ray/source_region.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"
+#include "openmc/message_passing.h"
 
 namespace openmc {
 
@@ -149,7 +150,7 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
 
 void RandomRay::initialize_ray(uint64_t index_source)
 {
-  id() = index_source;
+  //id() = index_source;
 
   // Reset particle event counter
   n_event() = 0;
@@ -160,6 +161,29 @@ void RandomRay::initialize_ray(uint64_t index_source)
     is_active_ = false;
 
   wgt() = 1.0;
+
+
+
+
+  /*
+
+  // initialize random number seed
+  int64_t id = (simulation::total_gen + overall_generation() - 1) *
+                 settings::n_particles +
+               simulation::work_index[mpi::rank] + index_source;
+  uint64_t seed = init_seed(id, STREAM_SOURCE);
+  // sample from external source distribution or custom library then set
+  auto site = sample_external_source(&seed);
+  p.from_source(&site);
+
+  p.current_work() = index_source;
+  */
+
+  // set identifier for particle
+  id() = simulation::work_index[mpi::rank] + index_source;
+
+
+
 
   // set random number seed
   int64_t particle_seed = (simulation::current_batch-1) * settings::n_particles + id();

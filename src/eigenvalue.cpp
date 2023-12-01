@@ -57,9 +57,13 @@ void calculate_generation_keff()
 
   double keff_reduced;
 #ifdef OPENMC_MPI
+  if (settings::solver_type != SolverType::RANDOM_RAY) {
   // Combine values across all processors
   MPI_Allreduce(&simulation::keff_generation, &keff_reduced, 1, MPI_DOUBLE,
     MPI_SUM, mpi::intracomm);
+  } else {
+  keff_reduced = simulation::keff_generation;
+  }
 #else
   keff_reduced = simulation::keff_generation;
 #endif

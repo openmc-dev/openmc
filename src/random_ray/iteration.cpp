@@ -14,6 +14,59 @@
 
 namespace openmc {
 
+void all_reduce_random_ray_batch_results()
+{
+#ifdef OPENMC_MPI
+
+  // If we only have 1 MPI rank, no need
+  // to reduce anything.
+  if (mpi::n_procs <= 1)
+    return;
+
+  // Otherwise, reduce all items written
+  // to during transport sweep
+  MPI_Allreduce(
+      MPI_IN_PLACE,
+      random_ray::position_recorded.data(),
+      random_ray::n_source_regions,
+      MPI_INT,
+      MPI_SUM,
+      mpi::intracomm);
+
+  MPI_Allreduce(
+      MPI_IN_PLACE,
+      random_ray::position.data(),
+      random_ray::n_source_regions * 3,
+      MPI_DOUBLE,
+      MPI_SUM,
+      mpi::intracomm);
+
+  MPI_Allreduce(
+      MPI_IN_PLACE,
+      random_ray::volume.data(),
+      random_ray::n_source_regions,
+      MPI_DOUBLE,
+      MPI_SUM,
+      mpi::intracomm);
+
+  MPI_Allreduce(
+      MPI_IN_PLACE,
+      random_ray::was_hit.data(),
+      random_ray::n_source_regions,
+      MPI_INT,
+      MPI_SUM,
+      mpi::intracomm);
+
+  MPI_Allreduce(
+      MPI_IN_PLACE,
+      random_ray::scalar_flux_new.data(),
+      random_ray::n_source_elements,
+      MPI_FLOAT,
+      MPI_SUM,
+      mpi::intracomm);
+#endif
+}
+
 int openmc_run_random_ray()
 {
   // Initialize OpenMC general data structures
@@ -72,12 +125,16 @@ int openmc_run_random_ray()
 
     // Transport sweep over all random rays for the iteration
     #pragma omp parallel for schedule(runtime) reduction(+:total_geometric_intersections)
-    for (int i = 0; i < settings::n_particles; i++)
+    for (int i = 0; i < simulation::work_per_rank; i++)
     {
       RandomRay r;
       r.initialize_ray(i);
       total_geometric_intersections += r.transport_history_based_single_ray();
     }
+    
+    // If using multiple MPI ranks, perform all reduce on all transport results
+    // TODO: reduce total intersections as well...
+    all_reduce_random_ray_batch_results();
 
     // Stop timer for transport
     simulation::time_transport.stop();
@@ -396,9 +453,9 @@ void validate_random_ray_inputs()
 
   // Check for MPI
   #ifdef OPENMC_MPI
-  if (mpi::n_procs > 1) {
-    fatal_error("Domain replication via MPI not currently supported in random ray mode.");
-  }
+  //if (mpi::n_procs > 1) {
+  //  fatal_error("Domain replication via MPI not currently supported in random ray mode.");
+  //}
   #endif
 }
 

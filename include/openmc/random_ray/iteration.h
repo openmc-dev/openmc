@@ -14,6 +14,7 @@ double calculate_miss_rate();
 int openmc_run_random_ray();
 void instability_check(int64_t n_hits, double k_eff, double& avg_miss_rate);
 void validate_random_ray_inputs();
+void all_reduce_random_ray_batch_results();
 
 template <typename T>
 void parallel_fill(std::vector<T>& arr, T value)

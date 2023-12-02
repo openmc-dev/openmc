@@ -18,7 +18,7 @@ from openmc.checkvalue import PathLike
 from openmc.stats.multivariate import UnitSphere, Spatial
 from openmc.stats.univariate import Univariate
 from ._xml import get_text
-from .mesh import MeshBase
+from .mesh import MeshBase, StructuredMesh, UnstructuredMesh
 
 
 class SourceBase(ABC):
@@ -31,7 +31,7 @@ class SourceBase(ABC):
 
     Attributes
     ----------
-    type : {'independent', 'file', 'compiled'}
+    type : {'independent', 'file', 'compiled', 'mesh'}
         Indicator of source type.
     strength : float
         Strength of the source
@@ -61,7 +61,6 @@ class SourceBase(ABC):
             XML element containing source data
 
         """
-        pass
 
     def to_xml_element(self) -> ET.Element:
         """Return XML representation of the source
@@ -79,7 +78,7 @@ class SourceBase(ABC):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element, meshes=None) -> openmc.SourceBase:
+    def from_xml_element(cls, elem: ET.Element, meshes=None) -> SourceBase:
         """Generate source from an XML element
 
         Parameters
@@ -114,6 +113,8 @@ class SourceBase(ABC):
                 return CompiledSource.from_xml_element(elem)
             elif source_type == 'file':
                 return FileSource.from_xml_element(elem)
+            elif source_type == 'mesh':
+                return MeshSource.from_xml_element(elem, meshes)
             else:
                 raise ValueError(f'Source type {source_type} is not recognized')
 
@@ -292,13 +293,13 @@ class IndependentSource(SourceBase):
 
     def populate_xml_element(self, element):
         """Add necessary source information to an XML element
+
         Returns
         -------
         element : lxml.etree._Element
             XML element containing source data
 
         """
-        super().populate_xml_element(element)
         element.set("particle", self.particle)
         if self.space is not None:
             element.append(self.space.to_xml_element())
@@ -315,7 +316,7 @@ class IndependentSource(SourceBase):
             id_elem.text = ' '.join(str(uid) for uid in self.domain_ids)
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element, meshes=None) -> 'openmc.SourceBase':
+    def from_xml_element(cls, elem: ET.Element, meshes=None) -> SourceBase:
         """Generate source from an XML element
 
         Parameters
@@ -380,6 +381,154 @@ class IndependentSource(SourceBase):
             source.time = Univariate.from_xml_element(time)
 
         return source
+
+
+class MeshSource(SourceBase):
+    """A source with a spatial distribution over mesh elements
+
+    This class represents a mesh-based source in which random positions are
+    uniformly sampled within mesh elements and each element can have independent
+    angle, energy, and time distributions. The element sampled is chosen based
+    on the relative strengths of the sources applied to the elements. The
+    strength of the mesh source as a whole is the sum of all source strengths
+    applied to the elements.
+
+    .. versionadded:: 0.14.1
+
+    Parameters
+    ----------
+    mesh : openmc.MeshBase
+        The mesh over which source sites will be generated.
+    sources : iterable of openmc.SourceBase
+        Sources for each element in the mesh. If spatial distributions are set
+        on any of the source objects, they will be ignored during source site
+        sampling.
+
+    Attributes
+    ----------
+    mesh : openmc.MeshBase
+        The mesh over which source sites will be generated.
+    sources : numpy.ndarray or iterable of openmc.SourceBase
+        The set of sources to apply to each element. The shape of this array
+        must match the shape of the mesh with and exception in the case of
+        unstructured mesh, which allows for application of 1-D array or
+        iterable.
+    strength : float
+        Strength of the source
+    type : str
+        Indicator of source type: 'mesh'
+
+    """
+    def __init__(self, mesh: MeshBase, sources: Sequence[SourceBase]):
+        self.mesh = mesh
+        self.sources = sources
+
+    @property
+    def type(self) -> str:
+        return "mesh"
+
+    @property
+    def mesh(self) -> MeshBase:
+        return self._mesh
+
+    @property
+    def strength(self) -> float:
+        return sum(s.strength for s in self.sources.flat)
+
+    @property
+    def sources(self) -> np.ndarray:
+        return self._sources
+
+    @mesh.setter
+    def mesh(self, m):
+        cv.check_type('source mesh', m, MeshBase)
+        self._mesh = m
+
+    @sources.setter
+    def sources(self, s):
+        cv.check_iterable_type('mesh sources', s, SourceBase, max_depth=3)
+
+        s = np.asarray(s)
+
+        if isinstance(self.mesh, StructuredMesh) and s.shape != self.mesh.dimension:
+            raise ValueError('The shape of the source array'
+                             f'({s.shape}) does not match the '
+                             f'dimensions of the structured mesh ({self.mesh.dimension})')
+        elif isinstance(self.mesh, UnstructuredMesh):
+            if len(s.shape) > 1:
+                raise ValueError('Sources must be a 1-D array for unstructured mesh')
+
+        self._sources = s
+        for src in self._sources.flat:
+            if isinstance(src, IndependentSource) and src.space is not None:
+                warnings.warn('Some sources on the mesh have spatial '
+                              'distributions that will be ignored at runtime.')
+                break
+
+    @strength.setter
+    def strength(self, val):
+        cv.check_type('mesh source strength', val, Real)
+        self.set_total_strength(val)
+
+    def set_total_strength(self, strength: float):
+        """Scales the element source strengths based on a desired total strength.
+
+        Parameters
+        ----------
+        strength : float
+            Total source strength
+
+        """
+        current_strength = self.strength if self.strength != 0.0 else 1.0
+
+        for s in self.sources.flat:
+            s.strength *= strength / current_strength
+
+    def normalize_source_strengths(self):
+        """Update all element source strengths such that they sum to 1.0."""
+        self.set_total_strength(1.0)
+
+    def populate_xml_element(self, elem: ET.Element):
+        """Add necessary source information to an XML element
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing source data
+
+        """
+        elem.set("mesh", str(self.mesh.id))
+
+        # write in the order of mesh indices
+        for idx in self.mesh.indices:
+            idx = tuple(i - 1 for i in idx)
+            elem.append(self.sources[idx].to_xml_element())
+
+    @classmethod
+    def from_xml_element(cls, elem: ET.Element, meshes) -> openmc.MeshSource:
+        """
+        Generate MeshSource from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+        meshes : dict
+            A dictionary with mesh IDs as keys and openmc.MeshBase instances as
+            values
+
+        Returns
+        -------
+        openmc.MeshSource
+            MeshSource generated from the XML element
+        """
+        mesh_id = int(get_text(elem, 'mesh'))
+
+        mesh = meshes[mesh_id]
+
+        sources = [SourceBase.from_xml_element(e) for e in elem.iterchildren('source')]
+        sources = np.asarray(sources).reshape(mesh.dimension, order='F')
+        return cls(mesh, sources)
 
 
 def Source(*args, **kwargs):
@@ -459,15 +608,13 @@ class CompiledSource(SourceBase):
             XML element containing source data
 
         """
-        super().populate_xml_element(element)
-
         element.set("library", self.library)
 
         if self.parameters is not None:
             element.set("parameters", self.parameters)
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element, meshes=None) -> openmc.CompiledSource:
+    def from_xml_element(cls, elem: ET.Element) -> openmc.CompiledSource:
         """Generate a compiled source from an XML element
 
         Parameters
@@ -551,8 +698,6 @@ class FileSource(SourceBase):
             XML element containing source data
 
         """
-        super().populate_xml_element(element)
-
         if self.path is not None:
             element.set("file", self.path)
 

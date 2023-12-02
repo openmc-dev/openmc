@@ -31,7 +31,7 @@ class SourceBase(ABC):
 
     Attributes
     ----------
-    type : {'independent', 'file', 'compiled'}
+    type : {'independent', 'file', 'compiled', 'mesh'}
         Indicator of source type.
     strength : float
         Strength of the source
@@ -78,7 +78,7 @@ class SourceBase(ABC):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element, meshes=None) -> openmc.SourceBase:
+    def from_xml_element(cls, elem: ET.Element, meshes=None) -> SourceBase:
         """Generate source from an XML element
 
         Parameters
@@ -291,6 +291,7 @@ class IndependentSource(SourceBase):
 
     def populate_xml_element(self, element):
         """Add necessary source information to an XML element
+
         Returns
         -------
         element : lxml.etree._Element
@@ -313,7 +314,7 @@ class IndependentSource(SourceBase):
             id_elem.text = ' '.join(str(uid) for uid in self.domain_ids)
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element, meshes=None) -> 'openmc.SourceBase':
+    def from_xml_element(cls, elem: ET.Element, meshes=None) -> SourceBase:
         """Generate source from an XML element
 
         Parameters
@@ -410,10 +411,13 @@ class MeshSource(SourceBase):
         must match the shape of the mesh with and exception in the case of
         unstructured mesh, which allows for application of 1-D array or
         iterable.
+    strength : float
+        Strength of the source
+    type : str
+        Indicator of source type: 'mesh'
+
     """
-    def __init__(self,
-                 mesh: openmc.MeshBase,
-                 sources: Sequence[SourceBase]):
+    def __init__(self, mesh: MeshBase, sources: Sequence[SourceBase]):
         self.mesh = mesh
         self.sources = sources
 
@@ -422,7 +426,7 @@ class MeshSource(SourceBase):
         return "mesh"
 
     @property
-    def mesh(self) -> openmc.MeshBase:
+    def mesh(self) -> MeshBase:
         return self._mesh
 
     @property
@@ -435,18 +439,18 @@ class MeshSource(SourceBase):
 
     @mesh.setter
     def mesh(self, m):
-        cv.check_type('source mesh', m, openmc.MeshBase)
+        cv.check_type('source mesh', m, MeshBase)
         self._mesh = m
 
     @sources.setter
     def sources(self, s):
-        cv.check_iterable_type('mesh sources', s, openmc.SourceBase, max_depth=3)
+        cv.check_iterable_type('mesh sources', s, SourceBase, max_depth=3)
 
         s = np.asarray(s)
 
         if isinstance(self.mesh, StructuredMesh) and s.shape != self.mesh.dimension:
-            raise ValueError('The shape of the source array' \
-                             f'({s.shape}) does not match the ' \
+            raise ValueError('The shape of the source array'
+                             f'({s.shape}) does not match the '
                              f'dimensions of the structured mesh ({self.mesh.dimension})')
         elif isinstance(self.mesh, UnstructuredMesh):
             if len(s.shape) > 1:
@@ -464,20 +468,33 @@ class MeshSource(SourceBase):
         cv.check_type('mesh source strength', val, Real)
         self.set_total_strength(val)
 
-    def set_total_strength(self, new_strength: float):
-        """Scales the element source strengths based on a desired
-           total mesh strength.
+    def set_total_strength(self, strength: float):
+        """Scales the element source strengths based on a desired total strength.
+
+        Parameters
+        ----------
+        strength : float
+            Total source strength
+
         """
         current_strength = self.strength if self.strength != 0.0 else 1.0
 
         for s in self.sources.flat:
-            s.strength *= new_strength / current_strength
+            s.strength *= strength / current_strength
 
     def normalize_source_strengths(self):
         """Update all element source strengths such that they sum to 1.0."""
         self.set_total_strength(1.0)
 
     def populate_xml_element(self, elem: ET.Element):
+        """Add necessary source information to an XML element
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing source data
+
+        """
         elem.set("mesh", str(self.mesh.id))
 
         # write in the order of mesh indices
@@ -486,7 +503,7 @@ class MeshSource(SourceBase):
             elem.append(self.sources[idx].to_xml_element())
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element, meshes=None) -> openmc.MeshSource:
+    def from_xml_element(cls, elem: ET.Element, meshes) -> openmc.MeshSource:
         """
         Generate MeshSource from an XML element
 
@@ -507,7 +524,7 @@ class MeshSource(SourceBase):
 
         mesh = meshes[mesh_id]
 
-        sources = [SourceBase.from_xml_element(e) for e in elem.iter('source') if e != elem]
+        sources = [SourceBase.from_xml_element(e) for e in elem.iterchildren('source')]
         sources = np.asarray(sources).reshape(mesh.dimension, order='F')
         return cls(mesh, sources)
 
@@ -595,7 +612,7 @@ class CompiledSource(SourceBase):
             element.set("parameters", self.parameters)
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element, meshes=None) -> openmc.CompiledSource:
+    def from_xml_element(cls, elem: ET.Element) -> openmc.CompiledSource:
         """Generate a compiled source from an XML element
 
         Parameters

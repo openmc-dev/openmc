@@ -1880,7 +1880,7 @@ class Settings:
         """
         # read all meshes under the settings node and update
         settings_meshes = _read_meshes(elem)
-        meshes = dict() if meshes is None else meshes
+        meshes = {} if meshes is None else meshes
         meshes.update(settings_meshes)
 
         settings = cls()

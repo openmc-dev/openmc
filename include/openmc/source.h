@@ -156,10 +156,7 @@ public:
   SourceSite sample(uint64_t* seed) const override;
 
   // Properties
-  double strength() const override
-  {
-    return space_->total_strength();
-  } //!< Total source strength
+  double strength() const override { return space_->total_strength(); }
 
   // Accessors
   const std::unique_ptr<Source>& source(int32_t i) const

@@ -426,17 +426,15 @@ MeshSource::MeshSource(pugi::xml_node node)
 
 SourceSite MeshSource::sample(uint64_t* seed) const
 {
-
   // sample location and element from mesh
   auto mesh_location = space_->sample_mesh(seed);
 
-  Position r_in_element = mesh_location.second;
-
+  // Sample source for the chosen element
   int32_t element = mesh_location.first;
-
   SourceSite site = source(element)->sample(seed);
 
-  site.r = r_in_element;
+  // Replace spatial position with the one already sampled
+  site.r = mesh_location.second;
 
   return site;
 }

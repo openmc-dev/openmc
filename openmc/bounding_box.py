@@ -96,8 +96,7 @@ class BoundingBox:
         return new
 
     def __contains__(self, point):
-        """Check whether or not a point is in the bounding box
-        """
+        """Check whether or not a point is in the bounding box"""
         return all(point > self.lower_left) and all(point < self.upper_right)
 
     @property

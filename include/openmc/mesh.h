@@ -82,11 +82,11 @@ public:
   //! Return a position in the local coordinates of the mesh
   virtual Position local_coords(const Position& r) const { return r; };
 
-  //! Sample mesh element
+  //! Sample a position within a mesh element
   //
-  //! \param[in] seed Seed to use for random sampling
-  //! \param[in] bin Bin value of the tet sampled
-  //! \return sampled position within tet
+  //! \param[inout] seed Seed to use for random sampling
+  //! \param[in] bin Bin value of the mesh element sampled
+  //! \return sampled position within mesh element
   virtual Position sample_element(uint64_t* seed, int32_t bin) const = 0;
 
   //! Determine which bins were crossed by a particle

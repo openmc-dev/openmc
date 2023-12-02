@@ -5,15 +5,13 @@ import pytest
 import numpy as np
 import openmc
 import openmc.lib
-import openmc.model
 
 from tests import cdtemp
-from tests.regression_tests import config
 
 
-###############
+###################
 # MeshSpatial Tests
-###############
+###################
 TETS_PER_VOXEL = 12
 
 # This test uses a geometry file with cells that match a regular mesh. Each cell
@@ -51,9 +49,9 @@ def model():
     settings.particles = 100
     settings.batches = 2
 
-    return openmc.model.Model(geometry=geometry,
-                              materials=materials,
-                              settings=settings)
+    return openmc.Model(geometry=geometry,
+                        materials=materials,
+                        settings=settings)
 
 ### Setup test cases ###
 param_values = (['libmesh', 'moab'], # mesh libraries
@@ -177,6 +175,7 @@ def test_strengths_size_failure(request, model):
         model.export_to_xml()
         openmc.run()
 
+
 def test_roundtrip(run_in_tmpdir, model, request):
     if not openmc.lib._libmesh_enabled() and not openmc.lib._dagmc_enabled():
         pytest.skip("Unstructured mesh is not enabled in this build.")
@@ -210,12 +209,13 @@ def test_roundtrip(run_in_tmpdir, model, request):
 # MeshSource tests
 ###################
 @pytest.mark.parametrize('mesh_type', ('rectangular', 'cylindrical'))
-def test_source_mesh(run_in_tmpdir, mesh_type):
+def test_mesh_source_independent(run_in_tmpdir, mesh_type):
     """
     A void model containing a single box
     """
     min, max = -10, 10
-    box = openmc.model.RectangularParallelepiped(min, max, min, max, min, max, boundary_type='vacuum')
+    box = openmc.model.RectangularParallelepiped(
+        min, max, min, max, min, max, boundary_type='vacuum')
 
     geometry = openmc.Geometry([openmc.Cell(region=-box)])
 
@@ -234,20 +234,21 @@ def test_source_mesh(run_in_tmpdir, mesh_type):
 
     energy = openmc.stats.Discrete([1.e6], [1.0])
 
-    # create sources with only one non-zero strength for the source in the
-    # mesh voxel occupyting the lowest octant. Direct source particles straight
-    # out of the problem from there. This demonstrates that
-    # 1) particles are only being sourced within the intented mesh voxel based on source strength
+    # create sources with only one non-zero strength for the source in the mesh
+    # voxel occupying the lowest octant. Direct source particles straight out of
+    # the problem from there. This demonstrates that
+    # 1) particles are only being sourced within the intented mesh voxel based
+    #    on source strength
     # 2) particles are respecting the angle distributions assigned to each voxel
-    sources = np.ndarray(mesh.dimension, dtype=openmc.SourceBase)
+    sources = np.empty(mesh.dimension, dtype=openmc.SourceBase)
     centroids = mesh.centroids
     x, y, z = np.swapaxes(mesh.centroids, -1, 0)
     for i, j, k in mesh.indices:
         # mesh.indices is currently one-indexed, adjust for Python arrays
         ijk = (i-1, j-1, k-1)
 
-        # get the centroid of the ijk mesh element, set a particle source
-        # vector based on the
+        # get the centroid of the ijk mesh element and use it to set the
+        # direction of the source directly out of the problem
         centroid = centroids[ijk]
         vec = np.sign(centroid, dtype=float)
         vec /= np.linalg.norm(vec)
@@ -309,29 +310,23 @@ def test_source_mesh(run_in_tmpdir, mesh_type):
     assert mesh_source.strength == 1.0
 
 
-def test_file_source(run_in_tmpdir):
-    source_particle = openmc.SourceParticle(r=(0.0, 0.0, 0.0),
-                                            u=(0.0, 0.0, 1.0),
-                                            E=1e6,
-                                            time=10.0)
-
+def test_mesh_source_file(run_in_tmpdir):
+    # Creating a source file with a single particle
+    source_particle = openmc.SourceParticle(time=10.0)
     openmc.write_source_file([source_particle], 'source.h5')
-
     file_source = openmc.FileSource('source.h5')
 
     model = openmc.Model()
 
-    rect_prism = openmc.model.RectangularParallelepiped(-5.0, 5.0,
-                                                        -5.0, 5.0,
-                                                        -5.0, 5.0,
-                                                        boundary_type='vacuum')
+    rect_prism = openmc.model.RectangularParallelepiped(
+        -5.0, 5.0, -5.0, 5.0, -5.0, 5.0, boundary_type='vacuum')
+
     mat = openmc.Material()
     mat.add_nuclide('H1', 1.0)
 
     model.geometry = openmc.Geometry([openmc.Cell(fill=mat, region=-rect_prism)])
     model.settings.particles = 1000
     model.settings.batches = 10
-    model.settings.inactive = 1
     model.settings.run_mode = 'fixed source'
 
     mesh = openmc.RegularMesh()
@@ -352,11 +347,10 @@ def test_file_source(run_in_tmpdir):
     openmc.lib.simulation_finalize()
     openmc.lib.finalize()
 
-
-    # the mesh bounds do not contain the point of the lone
-    # source site in the file source, so it should not appear
-    # in the set of source sites produced from the mesh source.
-    # Additionally, the source should be located within the mesh
+    # The mesh bounds do not contain the point of the lone source site in the
+    # file source, so it should not appear in the set of source sites produced
+    # from the mesh source. Additionally, the source should be located within
+    # the mesh
     bbox = mesh.bounding_box
     for site in sites:
         assert site.r != (0, 0, 0)

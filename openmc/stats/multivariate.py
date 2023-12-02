@@ -710,6 +710,7 @@ class MeshSpatial(Spatial):
 
         """
         element = ET.Element('space')
+
         element.set('type', 'mesh')
         element.set("mesh_id", str(self.mesh.id))
         element.set("volume_normalized", str(self.volume_normalized))

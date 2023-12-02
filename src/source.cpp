@@ -22,6 +22,7 @@
 #include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
+#include "openmc/mcpl_interface.h"
 #include "openmc/memory.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
@@ -31,6 +32,7 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/state_point.h"
+#include "openmc/string_utils.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -42,6 +44,39 @@ namespace openmc {
 namespace model {
 
 vector<unique_ptr<Source>> external_sources;
+}
+
+//==============================================================================
+// Source create implementation
+//==============================================================================
+
+unique_ptr<Source> Source::create(pugi::xml_node node)
+{
+  // if the source type is present, use it to determine the type
+  // of object to create
+  if (check_for_node(node, "type")) {
+    std::string source_type = get_node_value(node, "type");
+    if (source_type == "independent") {
+      return make_unique<IndependentSource>(node);
+    } else if (source_type == "file") {
+      return make_unique<FileSource>(node);
+    } else if (source_type == "compiled") {
+      return make_unique<CompiledSourceWrapper>(node);
+    } else if (source_type == "mesh") {
+      return make_unique<MeshSource>(node);
+    } else {
+      fatal_error(fmt::format("Invalid source type '{}' found.", source_type));
+    }
+  } else {
+    // support legacy source format
+    if (check_for_node(node, "file")) {
+      return make_unique<FileSource>(node);
+    } else if (check_for_node(node, "library")) {
+      return make_unique<CompiledSourceWrapper>(node);
+    } else {
+      return make_unique<IndependentSource>(node);
+    }
+  }
 }
 
 //==============================================================================
@@ -81,32 +116,7 @@ IndependentSource::IndependentSource(pugi::xml_node node)
 
     // Spatial distribution for external source
     if (check_for_node(node, "space")) {
-      // Get pointer to spatial distribution
-      pugi::xml_node node_space = node.child("space");
-
-      // Check for type of spatial distribution and read
-      std::string type;
-      if (check_for_node(node_space, "type"))
-        type = get_node_value(node_space, "type", true, true);
-      if (type == "cartesian") {
-        space_ = UPtrSpace {new CartesianIndependent(node_space)};
-      } else if (type == "cylindrical") {
-        space_ = UPtrSpace {new CylindricalIndependent(node_space)};
-      } else if (type == "spherical") {
-        space_ = UPtrSpace {new SphericalIndependent(node_space)};
-      } else if (type == "mesh") {
-        space_ = UPtrSpace {new MeshSpatial(node_space)};
-      } else if (type == "box") {
-        space_ = UPtrSpace {new SpatialBox(node_space)};
-      } else if (type == "fission") {
-        space_ = UPtrSpace {new SpatialBox(node_space, true)};
-      } else if (type == "point") {
-        space_ = UPtrSpace {new SpatialPoint(node_space)};
-      } else {
-        fatal_error(fmt::format(
-          "Invalid spatial distribution for external source: {}", type));
-      }
-
+      space_ = SpatialDistribution::create(node.child("space"));
     } else {
       // If no spatial distribution specified, make it a point source
       space_ = UPtrSpace {new SpatialPoint()};
@@ -114,24 +124,7 @@ IndependentSource::IndependentSource(pugi::xml_node node)
 
     // Determine external source angular distribution
     if (check_for_node(node, "angle")) {
-      // Get pointer to angular distribution
-      pugi::xml_node node_angle = node.child("angle");
-
-      // Check for type of angular distribution
-      std::string type;
-      if (check_for_node(node_angle, "type"))
-        type = get_node_value(node_angle, "type", true, true);
-      if (type == "isotropic") {
-        angle_ = UPtrAngle {new Isotropic()};
-      } else if (type == "monodirectional") {
-        angle_ = UPtrAngle {new Monodirectional(node_angle)};
-      } else if (type == "mu-phi") {
-        angle_ = UPtrAngle {new PolarAzimuthal(node_angle)};
-      } else {
-        fatal_error(fmt::format(
-          "Invalid angular distribution for external source: {}", type));
-      }
-
+      angle_ = UnitSphereDistribution::create(node.child("angle"));
     } else {
       angle_ = UPtrAngle {new Isotropic()};
     }
@@ -290,8 +283,22 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 //==============================================================================
 // FileSource implementation
 //==============================================================================
+FileSource::FileSource(pugi::xml_node node)
+{
+  auto path = get_node_value(node, "file", false, true);
+  if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
+    sites_ = mcpl_source_sites(path);
+  } else {
+    this->load_sites_from_file(path);
+  }
+}
 
-FileSource::FileSource(std::string path)
+FileSource::FileSource(const std::string& path)
+{
+  load_sites_from_file(path);
+}
+
+void FileSource::load_sites_from_file(const std::string& path)
 {
   // Check if source file exists
   if (!file_exists(path)) {
@@ -328,9 +335,19 @@ SourceSite FileSource::sample(uint64_t* seed) const
 //==============================================================================
 // CompiledSourceWrapper implementation
 //==============================================================================
+CompiledSourceWrapper::CompiledSourceWrapper(pugi::xml_node node)
+{
+  // Get shared library path and parameters
+  auto path = get_node_value(node, "library", false, true);
+  std::string parameters;
+  if (check_for_node(node, "parameters")) {
+    parameters = get_node_value(node, "parameters", false, true);
+  }
+  setup(path, parameters);
+}
 
-CompiledSourceWrapper::CompiledSourceWrapper(
-  std::string path, std::string parameters)
+void CompiledSourceWrapper::setup(
+  const std::string& path, const std::string& parameters)
 {
 #ifdef HAS_DYNAMIC_LINKING
   // Open the library
@@ -376,6 +393,50 @@ CompiledSourceWrapper::~CompiledSourceWrapper()
   fatal_error("Custom source libraries have not yet been implemented for "
               "non-POSIX systems");
 #endif
+}
+
+//==============================================================================
+// MeshSource implementation
+//==============================================================================
+
+MeshSource::MeshSource(pugi::xml_node node)
+{
+  int32_t mesh_id = stoi(get_node_value(node, "mesh"));
+  int32_t mesh_idx = model::mesh_map.at(mesh_id);
+  const auto& mesh = model::meshes[mesh_idx];
+
+  std::vector<double> strengths;
+  // read all source distributions and populate strengths vector for MeshSpatial
+  // object
+  for (auto source_node : node.children("source")) {
+    sources_.emplace_back(Source::create(source_node));
+    strengths.push_back(sources_.back()->strength());
+  }
+
+  // the number of source distributions should either be one or equal to the
+  // number of mesh elements
+  if (sources_.size() > 1 && sources_.size() != mesh->n_bins()) {
+    fatal_error(fmt::format("Incorrect number of source distributions ({}) for "
+                            "mesh source with {} elements.",
+      sources_.size(), mesh->n_bins()));
+  }
+
+  space_ = std::make_unique<MeshSpatial>(mesh_idx, strengths);
+}
+
+SourceSite MeshSource::sample(uint64_t* seed) const
+{
+  // sample location and element from mesh
+  auto mesh_location = space_->sample_mesh(seed);
+
+  // Sample source for the chosen element
+  int32_t element = mesh_location.first;
+  SourceSite site = source(element)->sample(seed);
+
+  // Replace spatial position with the one already sampled
+  site.r = mesh_location.second;
+
+  return site;
 }
 
 //==============================================================================

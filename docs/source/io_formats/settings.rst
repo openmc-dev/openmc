@@ -473,6 +473,8 @@ pseudo-random number generator.
 
   *Default*: 1
 
+.. _source_element:
+
 --------------------
 ``<source>`` Element
 --------------------
@@ -491,7 +493,8 @@ attributes/sub-elements:
     *Default*: 1.0
 
   :type:
-    Indicator of source type. One of ``independent``, ``file``, or ``compiled``.
+    Indicator of source type. One of ``independent``, ``file``, ``compiled``, or ``mesh``.
+    The type of the source will be determined by this attribute if it is present.
 
   :particle:
     The source particle type, either ``neutron`` or ``photon``.
@@ -663,6 +666,14 @@ attributes/sub-elements:
     "initial_source.h5"
 
     *Default*: false
+
+  :mesh:
+    For mesh sources, this indicates the ID of the corresponding mesh.
+
+  :source:
+    For mesh sources, this sub-element specifies the source for an individual
+    mesh element and follows the format for :ref:`source_element`. The number of
+    ``<source>`` sub-elements should correspond to the number of mesh elements.
 
 .. _univariate:
 

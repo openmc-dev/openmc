@@ -1,6 +1,13 @@
 name: C++ Format Check
 
-on: pull_request
+on:
+  # allow workflow to be run manually
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - develop
+      - master
 
 jobs:
   cpp-linter:

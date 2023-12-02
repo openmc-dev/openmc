@@ -84,10 +84,10 @@ public:
 
   //! Sample a position within a mesh element
   //
-  //! \param[inout] seed Seed to use for random sampling
   //! \param[in] bin Bin value of the mesh element sampled
+  //! \param[inout] seed Seed to use for random sampling
   //! \return sampled position within mesh element
-  virtual Position sample_element(uint64_t* seed, int32_t bin) const = 0;
+  virtual Position sample_element(int32_t bin, uint64_t* seed) const = 0;
 
   //! Determine which bins were crossed by a particle
   //
@@ -184,12 +184,12 @@ public:
     }
   };
 
-  Position sample_element(uint64_t* seed, int32_t bin) const override
+  Position sample_element(int32_t bin, uint64_t* seed) const override
   {
-    return sample_element(seed, get_indices_from_bin(bin));
+    return sample_element(get_indices_from_bin(bin), seed);
   };
 
-  virtual Position sample_element(uint64_t* seed, const MeshIndex& ijk) const;
+  virtual Position sample_element(const MeshIndex& ijk, uint64_t* seed) const;
 
   int get_bin(Position r) const override;
 
@@ -438,7 +438,7 @@ public:
 
   static const std::string mesh_type;
 
-  Position sample_element(uint64_t* seed, const MeshIndex& ijk) const override;
+  Position sample_element(const MeshIndex& ijk, uint64_t* seed) const override;
 
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
     const Position& r0, const Direction& u, double l) const override;
@@ -502,7 +502,7 @@ public:
 
   static const std::string mesh_type;
 
-  Position sample_element(uint64_t* seed, const MeshIndex& ijk) const override;
+  Position sample_element(const MeshIndex& ijk, uint64_t* seed) const override;
 
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
     const Position& r0, const Direction& u, double l) const override;
@@ -664,7 +664,7 @@ public:
 
   // Overridden Methods
 
-  Position sample_element(uint64_t* seed, int32_t bin) const override;
+  Position sample_element(int32_t bin, uint64_t* seed) const override;
 
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
@@ -832,7 +832,7 @@ public:
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
 
-  Position sample_element(uint64_t* seed, int32_t bin) const override;
+  Position sample_element(int32_t bin, uint64_t* seed) const override;
 
   int get_bin(Position r) const override;
 

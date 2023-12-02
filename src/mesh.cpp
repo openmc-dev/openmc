@@ -167,7 +167,7 @@ xt::xtensor<int, 1> StructuredMesh::get_x_shape() const
 }
 
 Position StructuredMesh::sample_element(
-  uint64_t* seed, const MeshIndex& ijk) const
+  const MeshIndex& ijk, uint64_t* seed) const
 {
   // lookup the lower/upper bounds for the mesh element
   double x_min = negative_grid_boundary(ijk, 0);
@@ -1091,7 +1091,7 @@ StructuredMesh::MeshIndex CylindricalMesh::get_indices(
 }
 
 Position CylindricalMesh::sample_element(
-  uint64_t* seed, const MeshIndex& ijk) const
+  const MeshIndex& ijk, uint64_t* seed) const
 {
   double r_min = this->r(ijk[0] - 1);
   double r_max = this->r(ijk[0]);
@@ -1376,7 +1376,7 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(
 }
 
 Position SphericalMesh::sample_element(
-  uint64_t* seed, const MeshIndex& ijk) const
+  const MeshIndex& ijk, uint64_t* seed) const
 {
   double r_min = this->r(ijk[0] - 1);
   double r_max = this->r(ijk[0]);
@@ -2249,7 +2249,7 @@ std::string MOABMesh::library() const
 }
 
 // Sample position within a tet for MOAB type tets
-Position MOABMesh::sample_element(uint64_t* seed, int32_t bin) const
+Position MOABMesh::sample_element(int32_t bin, uint64_t* seed) const
 {
 
   moab::EntityHandle tet_ent = get_ent_handle_from_bin(bin);
@@ -2736,7 +2736,7 @@ void LibMesh::initialize()
 }
 
 // Sample position within a tet for LibMesh type tets
-Position LibMesh::sample_element(uint64_t* seed, int32_t bin) const
+Position LibMesh::sample_element(int32_t bin, uint64_t* seed) const
 {
   const auto& elem = get_element_from_bin(bin);
   // Get tet vertex coordinates from LibMesh

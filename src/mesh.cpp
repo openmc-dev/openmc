@@ -27,6 +27,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/memory.h"
 #include "openmc/message_passing.h"
+#include "openmc/random_dist.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/tallies/filter.h"
@@ -1103,12 +1104,12 @@ Position CylindricalMesh::sample_element(
 
   double r_min_sq = r_min * r_min;
   double r_max_sq = r_max * r_max;
-  double r = sqrt(r_min_sq + (r_max_sq - r_min_sq) * prn(seed));
-  double phi = phi_min + (phi_max - phi_min) * prn(seed);
-  double z = z_min + (z_max - z_min) * prn(seed);
+  double r = std::sqrt(uniform_distribution(r_min_sq, r_max_sq, seed));
+  double phi = uniform_distribution(phi_min, phi_max, seed);
+  double z = uniform_distribution(z_min, z_max, seed);
 
-  double x = r * cos(phi);
-  double y = r * sin(phi);
+  double x = r * std::cos(phi);
+  double y = r * std::sin(phi);
 
   return origin_ + Position(x, y, z);
 }
@@ -1386,20 +1387,16 @@ Position SphericalMesh::sample_element(
   double phi_min = this->phi(ijk[2] - 1);
   double phi_max = this->phi(ijk[2]);
 
-  double u1 = prn(seed);
-  double u2 = prn(seed);
-  double u3 = prn(seed);
-
-  double cos_theta = cos(theta_min) + (cos(theta_max) - cos(theta_min)) * u1;
-  double sin_theta = sin(acos(cos_theta));
-  double phi = phi_min + (phi_max - phi_min) * u2;
-  double r_min_cub = pow(r_min, 3);
-  double r_max_cub = pow(r_max, 3);
+  double cos_theta = uniform_distribution(theta_min, theta_max, seed);
+  double sin_theta = std::sin(std::acos(cos_theta));
+  double phi = uniform_distribution(phi_min, phi_max, seed);
+  double r_min_cub = std::pow(r_min, 3);
+  double r_max_cub = std::pow(r_max, 3);
   // might be faster to do rejection here?
-  double r = cbrt(r_min_cub + (r_max_cub - r_min_cub) * u3);
+  double r = std::cbrt(uniform_distribution(r_min_cub, r_max_cub, seed));
 
-  double x = r * cos(phi) * sin_theta;
-  double y = r * sin(phi) * sin_theta;
+  double x = r * std::cos(phi) * sin_theta;
+  double y = r * std::sin(phi) * sin_theta;
   double z = r * cos_theta;
 
   return origin_ + Position(x, y, z);

@@ -124,24 +124,7 @@ IndependentSource::IndependentSource(pugi::xml_node node)
 
     // Determine external source angular distribution
     if (check_for_node(node, "angle")) {
-      // Get pointer to angular distribution
-      pugi::xml_node node_angle = node.child("angle");
-
-      // Check for type of angular distribution
-      std::string type;
-      if (check_for_node(node_angle, "type"))
-        type = get_node_value(node_angle, "type", true, true);
-      if (type == "isotropic") {
-        angle_ = UPtrAngle {new Isotropic()};
-      } else if (type == "monodirectional") {
-        angle_ = UPtrAngle {new Monodirectional(node_angle)};
-      } else if (type == "mu-phi") {
-        angle_ = UPtrAngle {new PolarAzimuthal(node_angle)};
-      } else {
-        fatal_error(fmt::format(
-          "Invalid angular distribution for external source: {}", type));
-      }
-
+      angle_ = UnitSphereDistribution::create(node.child("angle"));
     } else {
       angle_ = UPtrAngle {new Isotropic()};
     }

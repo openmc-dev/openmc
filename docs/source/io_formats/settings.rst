@@ -473,6 +473,8 @@ pseudo-random number generator.
 
   *Default*: 1
 
+.. _source_element:
+
 --------------------
 ``<source>`` Element
 --------------------
@@ -665,8 +667,13 @@ attributes/sub-elements:
 
     *Default*: false
 
+  :mesh:
+    For mesh sources, this indicates the ID of the corresponding mesh.
+
   :source:
-    For mesh sources, a set of sources that will be applied to each element.
+    For mesh sources, this sub-element specifies the source for an individual
+    mesh element and follows the format for :ref:`source_element`. The number of
+    ``<source>`` sub-elements should correspond to the number of mesh elements.
 
 .. _univariate:
 

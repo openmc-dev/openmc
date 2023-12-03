@@ -365,10 +365,10 @@ void restart_set_keff()
 void load_state_point()
 {
   // Write message
-  write_message("Loading state point " + settings::path_statepoint + "...", 5);
+  write_message(fmt::format("Loading state point {}...", settings::path_statepoint_c), 5);
 
   // Open file for reading
-  hid_t file_id = file_open(settings::path_statepoint.c_str(), 'r', true);
+  hid_t file_id = file_open(settings::path_statepoint_c, 'r', true);
 
   // Read filetype
   std::string word;
@@ -420,12 +420,12 @@ void load_state_point()
   // Read batch number to restart at
   read_dataset(file_id, "current_batch", simulation::restart_batch);
 
-  if (simulation::restart_batch >= settings::n_max_batches) {
-    fatal_error(fmt::format(
-      "The number of batches specified for simulation ({}) is smaller"
-      " than the number of batches in the restart statepoint file ({})",
-      settings::n_max_batches, simulation::restart_batch));
-  }
+  // if (simulation::restart_batch >= settings::n_max_batches) {
+  //   fatal_error(fmt::format(
+  //     "The number of batches specified for simulation ({}) is smaller"
+  //     " than the number of batches in the restart statepoint file ({})",
+  //     settings::n_max_batches, simulation::restart_batch));
+  // }
 
   // Logical flag for source present in statepoint file
   bool source_present;
@@ -923,8 +923,6 @@ void write_tally_results_nr(hid_t file_id)
 
   for (const auto& t : model::tallies) {
     // Skip any tallies that are not active
-    if (!t->active_)
-      continue;
     if (!t->writable_)
       continue;
 
@@ -988,6 +986,14 @@ void write_tally_results_nr(hid_t file_id)
 
     close_group(tallies_group);
   }
+}
+
+extern "C" int openmc_statepoint_load(const char* filename) {
+  const char*  tmp = settings::path_statepoint_c;
+  if (filename)  settings::path_statepoint_c = filename;
+  load_state_point();
+  settings::path_statepoint_c = tmp;
+  return 0;
 }
 
 } // namespace openmc

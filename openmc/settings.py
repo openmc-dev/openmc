@@ -12,7 +12,7 @@ import lxml.etree as ET
 import openmc.checkvalue as cv
 from openmc.stats.multivariate import MeshSpatial
 
-from . import (RegularMesh, SourceBase, IndependentSource,
+from . import (RegularMesh, SourceBase, MeshSource, IndependentSource,
                VolumeCalculation, WeightWindows, WeightWindowGenerator)
 from ._xml import clean_indentation, get_text, reorder_attributes
 from openmc.checkvalue import PathLike
@@ -1072,13 +1072,19 @@ class Settings:
             element = ET.SubElement(root, "max_order")
             element.text = str(self._max_order)
 
-    def _create_source_subelement(self, root):
+    def _create_source_subelement(self, root, mesh_memo=None):
         for source in self.source:
             root.append(source.to_xml_element())
             if isinstance(source, IndependentSource) and isinstance(source.space, MeshSpatial):
                 path = f"./mesh[@id='{source.space.mesh.id}']"
                 if root.find(path) is None:
                     root.append(source.space.mesh.to_xml_element())
+            if isinstance(source, MeshSource):
+                path = f"./mesh[@id='{source.mesh.id}']"
+                if root.find(path) is None:
+                    root.append(source.mesh.to_xml_element())
+                    if mesh_memo is not None:
+                        mesh_memo.add(source.mesh.id)
 
     def _create_volume_calcs_subelement(self, root):
         for calc in self.volume_calculations:
@@ -1365,7 +1371,8 @@ class Settings:
             path = f"./mesh[@id='{ww.mesh.id}']"
             if root.find(path) is None:
                 root.append(ww.mesh.to_xml_element())
-                if mesh_memo is not None: mesh_memo.add(ww.mesh.id)
+                if mesh_memo is not None:
+                    mesh_memo.add(ww.mesh.id)
 
         if self._weight_windows_on is not None:
             elem = ET.SubElement(root, "weight_windows_on")
@@ -1787,7 +1794,7 @@ class Settings:
         self._create_max_write_lost_particles_subelement(element)
         self._create_generations_per_batch_subelement(element)
         self._create_keff_trigger_subelement(element)
-        self._create_source_subelement(element)
+        self._create_source_subelement(element, mesh_memo)
         self._create_output_subelement(element)
         self._create_statepoint_subelement(element)
         self._create_sourcepoint_subelement(element)
@@ -1874,6 +1881,11 @@ class Settings:
             Settings object
 
         """
+        # read all meshes under the settings node and update
+        settings_meshes = _read_meshes(elem)
+        meshes = {} if meshes is None else meshes
+        meshes.update(settings_meshes)
+
         settings = cls()
         settings._eigenvalue_from_xml_element(elem)
         settings._run_mode_from_xml_element(elem)

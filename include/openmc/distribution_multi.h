@@ -22,6 +22,8 @@ public:
   explicit UnitSphereDistribution(pugi::xml_node node);
   virtual ~UnitSphereDistribution() = default;
 
+  static unique_ptr<UnitSphereDistribution> create(pugi::xml_node node);
+
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Direction sampled

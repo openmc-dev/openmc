@@ -95,6 +95,10 @@ class BoundingBox:
         new |= other
         return new
 
+    def __contains__(self, point):
+        """Check whether or not a point is in the bounding box"""
+        return all(point > self.lower_left) and all(point < self.upper_right)
+
     @property
     def center(self) -> np.ndarray:
         return (self[0] + self[1]) / 2

@@ -36,14 +36,6 @@ void all_reduce_random_ray_batch_results(bool mapped_all_tallies)
       MPI_MAX,
       mpi::intracomm);
 
-  int mapped_all_tallies_i = static_cast<int>(mapped_all_tallies);
-  MPI_Bcast(
-      &mapped_all_tallies_i,
-      1,
-      MPI_INT,
-      0, 
-      mpi::intracomm);
-
   // The posiiton variable is more complicated to reduce than the others,
   // as we do not want the sum of all positions in each cell, rather, we
   // want to just pick any single valid position. Thus, we perform a gather
@@ -56,6 +48,17 @@ void all_reduce_random_ray_batch_results(bool mapped_all_tallies)
   // fully mapped, then the position vector is fully populated, so this
   // operation can be skipped.
   
+  // First, we broadcast the fully mapped tally status variable so that
+  // all ranks are on the same page
+  int mapped_all_tallies_i = static_cast<int>(mapped_all_tallies);
+  MPI_Bcast(
+      &mapped_all_tallies_i,
+      1,
+      MPI_INT,
+      0, 
+      mpi::intracomm);
+  
+  // Then, we perform the gather of position data, if needed
   if (simulation::current_batch > settings::n_inactive && !mapped_all_tallies_i) {
     
     // Master rank will gather results and pick valid positions

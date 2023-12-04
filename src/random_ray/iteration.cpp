@@ -208,7 +208,6 @@ int openmc_run_random_ray()
     simulation::time_transport.stop();
     
     // If using multiple MPI ranks, perform all reduce on all transport results
-    // TODO: reduce total intersections as well...
     all_reduce_random_ray_batch_results(mapped_all_tallies);
 
     // Normalize scalar flux and update volumes

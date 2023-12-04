@@ -578,13 +578,13 @@ void print_results()
 
 //==============================================================================
 
-void print_results_random_ray(int64_t total_geometric_intersections, double avg_miss_rate)
+void print_results_random_ray(uint64_t total_geometric_intersections, double avg_miss_rate)
 {
   using namespace simulation;
 
   if (settings::verbosity < 4)
     return;
-	
+  
   int negroups = data::mg.num_energy_groups_;
 	double total_integrations = total_geometric_intersections * negroups;
   double TPI = simulation::time_transport.elapsed() / total_integrations;

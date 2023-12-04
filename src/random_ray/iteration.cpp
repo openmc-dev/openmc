@@ -243,9 +243,25 @@ int openmc_run_random_ray()
   } // End random ray power iteration loop
 
   openmc::simulation::time_total.stop();
-
+  
   // Finalize OpenMC
   openmc_simulation_finalize();
+  
+  // Reduce number of intersections
+#ifdef OPENMC_MPI
+  if (mpi::n_procs > 1) {
+    uint64_t total_geometric_intersections_reduced = 0;
+    MPI_Reduce(
+        &total_geometric_intersections,
+        &total_geometric_intersections_reduced,
+        1,
+        MPI_UNSIGNED_LONG,
+        MPI_SUM,
+        0,
+        mpi::intracomm);
+    total_geometric_intersections = total_geometric_intersections_reduced;
+  }
+  #endif
   
   // Print random ray results
   if (mpi::master) {

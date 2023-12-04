@@ -588,7 +588,7 @@ void print_results_random_ray(uint64_t total_geometric_intersections, double avg
   int negroups = data::mg.num_energy_groups_;
 	double total_integrations = total_geometric_intersections * negroups;
   double TPI = simulation::time_transport.elapsed() / total_integrations;
-  double misc_time = time_total.elapsed() - time_update_src.elapsed() - time_transport.elapsed() - time_tallies.elapsed();
+  double misc_time = time_total.elapsed() - time_update_src.elapsed() - time_transport.elapsed() - time_tallies.elapsed() - time_bank_sendrecv.elapsed();
   
   header("Simulation Statistics", 4);
   fmt::print(" Total Iterations                  = {}\n", settings::n_batches);
@@ -608,6 +608,7 @@ void print_results_random_ray(uint64_t total_geometric_intersections, double avg
   show_time("Transport sweep only", time_transport.elapsed(), 1);
   show_time("Source update only", time_update_src.elapsed(), 1);
   show_time("Tally conversion only", time_tallies.elapsed(), 1);
+  show_time("MPI source reductions only", time_bank_sendrecv.elapsed(), 1);
   show_time("Other iteration routines", misc_time, 1);
   if (settings::run_mode == RunMode::EIGENVALUE) {
     show_time("Time in inactive batches", time_inactive.elapsed());

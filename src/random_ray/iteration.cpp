@@ -22,6 +22,8 @@ void all_reduce_random_ray_batch_results(bool mapped_all_tallies)
   // to reduce anything.
   if (mpi::n_procs <= 1)
     return;
+    
+  simulation::time_bank_sendrecv.start();
   
   // The "position_recorded" variable needs to be allreduced (and maxed),
   // as whether or not a cell was hit will affect some decisions in how the
@@ -132,6 +134,8 @@ void all_reduce_random_ray_batch_results(bool mapped_all_tallies)
       MPI_FLOAT,
       MPI_SUM,
       mpi::intracomm);
+  
+  simulation::time_bank_sendrecv.stop();
 #endif
 }
 
@@ -141,7 +145,8 @@ int openmc_run_random_ray()
   openmc_simulation_init();
 
   // Validate that inputs meet requirements for random ray mode
-  validate_random_ray_inputs();
+  if (mpi::master)
+    validate_random_ray_inputs();
 
   // Intialize Cell (Flat Source Region) data structures
   initialize_source_regions();
@@ -200,12 +205,11 @@ int openmc_run_random_ray()
       total_geometric_intersections += r.transport_history_based_single_ray();
     }
     
+    simulation::time_transport.stop();
+    
     // If using multiple MPI ranks, perform all reduce on all transport results
     // TODO: reduce total intersections as well...
     all_reduce_random_ray_batch_results(mapped_all_tallies);
-
-    // Stop timer for transport
-    simulation::time_transport.stop();
 
     // Normalize scalar flux and update volumes
     normalize_scalar_flux_and_volumes();
@@ -539,9 +543,9 @@ void validate_random_ray_inputs()
 
   // Check for MPI
   #ifdef OPENMC_MPI
-  //if (mpi::n_procs > 1) {
-  //  fatal_error("Domain replication via MPI not currently supported in random ray mode.");
-  //}
+  if (mpi::n_procs > 1) {
+    warning("Domain replication in random ray is supported, but not recommended due to poor scaling of source all-reduce operations. Domain decomposition may be implemented in the future to provide efficient scaling.");
+  }
   #endif
 }
 

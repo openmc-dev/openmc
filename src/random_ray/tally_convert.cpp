@@ -28,7 +28,8 @@ std::vector<std::vector<TallyTask>> tally_task;
 bool convert_source_regions_to_tallies()
 {
   int negroups = data::mg.num_energy_groups_;
-
+  
+  openmc::simulation::time_tallies.start();
 
   bool all_source_regions_mapped = true;
 
@@ -87,6 +88,8 @@ bool convert_source_regions_to_tallies()
         match.bins_present_ = false;
     }
   }
+  openmc::simulation::time_tallies.stop();
+
   return all_source_regions_mapped;
 }
 

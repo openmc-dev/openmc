@@ -956,8 +956,9 @@ void accumulate_tallies()
 {
 #ifdef OPENMC_MPI
   // Combine tally results onto master process
-  if (mpi::n_procs > 1)
+  if (mpi::n_procs > 1 && settings::solver_type == SolverType::MONTE_CARLO) {
     reduce_tally_results();
+  }
 #endif
 
   // Increase number of realizations (only used for global tallies)

@@ -147,7 +147,6 @@ void random_ray_tally()
       }
     }
   }
-  openmc::simulation::time_tallies.stop();
 }
 
 } // namespace openmc

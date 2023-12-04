@@ -14,7 +14,7 @@
 
 namespace openmc {
 
-void all_reduce_random_ray_batch_results()
+void all_reduce_random_ray_batch_results(bool mapped_all_tallies)
 {
 #ifdef OPENMC_MPI
 
@@ -22,25 +22,90 @@ void all_reduce_random_ray_batch_results()
   // to reduce anything.
   if (mpi::n_procs <= 1)
     return;
-
-  // Otherwise, reduce all items written
-  // to during transport sweep
+  
+  // The "position_recorded" variable needs to be allreduced (and maxed),
+  // as whether or not a cell was hit will affect some decisions in how the
+  // source is calculated in the next iteration so as to avoid dividing
+  // by zero. We take the max rather than the sum as the hit values are
+  // expected to be zero or 1.
   MPI_Allreduce(
       MPI_IN_PLACE,
       random_ray::position_recorded.data(),
       random_ray::n_source_regions,
       MPI_INT,
-      MPI_SUM,
+      MPI_MAX,
       mpi::intracomm);
 
-  MPI_Allreduce(
-      MPI_IN_PLACE,
-      random_ray::position.data(),
-      random_ray::n_source_regions * 3,
-      MPI_DOUBLE,
-      MPI_SUM,
+  int mapped_all_tallies_i = static_cast<int>(mapped_all_tallies);
+  MPI_Bcast(
+      &mapped_all_tallies_i,
+      1,
+      MPI_INT,
+      0, 
       mpi::intracomm);
 
+  // The posiiton variable is more complicated to reduce than the others,
+  // as we do not want the sum of all positions in each cell, rather, we
+  // want to just pick any single valid position. Thus, we perform a gather
+  // and then pick the first valid position we find for all source regions
+  // that have had a position recorded. This operation does not need to
+  // be broadcast back to other ranks, as this value is only used for the
+  // tally conversion operation, which is only performed on the master rank.
+  // While this is expensive, it only needs to be done for active batches,
+  // and only if we have not mapped all the tallies yet. Once tallies are
+  // fully mapped, then the position vector is fully populated, so this
+  // operation can be skipped.
+  
+  if (simulation::current_batch > settings::n_inactive && !mapped_all_tallies_i) {
+    
+    // Master rank will gather results and pick valid positions
+    if (mpi::master) {
+      // Initialize temporary vector for receiving positions
+      std::vector<std::vector<Position>> all_position;
+      all_position.resize(mpi::n_procs);
+      for (int i = 0; i < mpi::n_procs; i++) {
+        all_position[i].resize(random_ray::n_source_regions);
+      }
+
+      // Copy master rank data into gathered vector for convenience
+      all_position[0] = random_ray::position;
+
+      // Receive all data into gather vector
+      for (int i = 1; i < mpi::n_procs; i++) {
+        MPI_Recv(all_position[i].data(), 
+            random_ray::n_source_regions * 3,
+            MPI_DOUBLE,
+            i,
+            0,
+            mpi::intracomm,
+            MPI_STATUS_IGNORE);
+      }
+      
+      // Scan through gathered data and pick first valid cell posiiton
+      for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
+        if (random_ray::position_recorded[sr] == 1) {
+          for (int i = 0; i < mpi::n_procs; i++) {
+            if (all_position[i][sr].x != 0.0 || all_position[i][sr].y != 0.0 || all_position[i][sr].z != 0.0) {
+              random_ray::position[sr] = all_position[i][sr];
+              break;
+            }
+          }
+        }
+      }
+    } else {
+      // Other ranks just send in their data
+      MPI_Send(random_ray::position.data(),
+          random_ray::n_source_regions * 3,
+          MPI_DOUBLE,
+          0,
+          0,
+          mpi::intracomm);
+    }
+  }
+
+  // For the rest of the source region data, we simply perform an all reduce,
+  // as these values will be needed on all ranks for transport during the
+  // next iteration.
   MPI_Allreduce(
       MPI_IN_PLACE,
       random_ray::volume.data(),
@@ -134,7 +199,7 @@ int openmc_run_random_ray()
     
     // If using multiple MPI ranks, perform all reduce on all transport results
     // TODO: reduce total intersections as well...
-    all_reduce_random_ray_batch_results();
+    all_reduce_random_ray_batch_results(mapped_all_tallies);
 
     // Stop timer for transport
     simulation::time_transport.stop();
@@ -152,7 +217,7 @@ int openmc_run_random_ray()
     global_tally_tracklength = k_eff;
 
     // Execute all tallying tasks, if this is an active batch
-    if (simulation::current_batch > settings::n_inactive) {
+    if (simulation::current_batch > settings::n_inactive && mpi::master) {
 
       // Generate mapping between source regions and tallies
       if (!mapped_all_tallies) {
@@ -180,7 +245,9 @@ int openmc_run_random_ray()
   openmc_simulation_finalize();
   
   // Print random ray results
-  print_results_random_ray(total_geometric_intersections, avg_miss_rate/settings::n_batches);
+  if (mpi::master) {
+    print_results_random_ray(total_geometric_intersections, avg_miss_rate/settings::n_batches);
+  }
 
   return 0;
 }

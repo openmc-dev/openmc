@@ -413,11 +413,7 @@ class Model:
         with _change_directory(Path(directory)):
             with openmc.lib.quiet_dll(output):
                 if operator_class == 'IndependentOperator':
-                    # materials=[mat for mat in self.materials if mat.depletable]
-                    depletion_operator = dep.IndependentOperator(
-                        **op_kwargs)
-                        # materials=openmc.Materials(materials), **op_kwargs)
-
+                    depletion_operator = dep.IndependentOperator(**op_kwargs)
                 else:  # operator is CoupledOperator
                     depletion_operator = dep.CoupledOperator(self, **op_kwargs)
 

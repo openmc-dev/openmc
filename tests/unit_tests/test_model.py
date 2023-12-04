@@ -471,6 +471,7 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
 
     op_kwargs["fluxes"] = flux_in_each_group
     op_kwargs["micros"] = micro_xs
+    op_kwargs["materials"] = [mat for mat in mats if mat.depletable]
     test_model.deplete(
         timesteps=[1e6],
         method='predictor',

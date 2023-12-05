@@ -14,6 +14,7 @@
 #include "openmc/timer.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/message_passing.h"
+#include "openmc/plot.h"
 
 namespace openmc {
 
@@ -53,35 +54,45 @@ int eswap_int( int f )
 
 void plot_3D_vtk()
 {
-	FILE * fast;
+	FILE* plot;
   char* fname = "plots.vtk";
-	fast = fopen(fname, "w");
+	plot = fopen(fname, "w");
   
-  Source* s = model::external_sources[0].get();
-
+  // Get handle to plot
+  Plot& openmc_plot = *dynamic_cast<Plot*>(model::plots[0].get());
+  //IndependentSource* is = dynamic_cast<IndependentSource*>(s);
+  int Nx = openmc_plot.pixels_[0];
+  int Ny = openmc_plot.pixels_[1];
+  int Nz = openmc_plot.pixels_[2];
+  
+  Position origin = openmc_plot.origin_;           //!< Plot origin in geometry
+  Position width = openmc_plot.width_;            //!< Plot width in geometry
+  
   // Use box source for plotting bounds
-  IndependentSource* is = dynamic_cast<IndependentSource*>(s);
-  SpatialDistribution* space_dist = is->space();
-  SpatialBox* sb = dynamic_cast<SpatialBox*>(space_dist);
-  Position ll = sb->lower_left();
-  Position ur = sb->upper_right();
+  //Source* s = model::external_sources[0].get();
+  //IndependentSource* is = dynamic_cast<IndependentSource*>(s);
+  //SpatialDistribution* space_dist = is->space();
+  //SpatialBox* sb = dynamic_cast<SpatialBox*>(space_dist);
 
-  int Nx = 1000;
-  int Ny = 1000;
-  int Nz = 1;
+  Position ll = origin - width/2.0;
+  //Position ur = origin + width/2.0;;
 
-	double x_delta = (ur.x - ll.x) / Nx;
-	double y_delta = (ur.y - ll.y) / Ny;
-	double z_delta = (ur.z - ll.z) / Nz;
+  //int Nx = 1000;
+  //int Ny = 1000;
+  //int Nz = 1;
 
-	fprintf(fast,"# vtk DataFile Version 2.0\n");
-	fprintf(fast, "Dataset File\n");
-	fprintf(fast, "BINARY\n");
-	fprintf(fast, "DATASET STRUCTURED_POINTS\n");
-	fprintf(fast, "DIMENSIONS %d %d %d\n", Nx, Ny, Nz);
-	fprintf(fast, "ORIGIN 0 0 0\n");
-	fprintf(fast, "SPACING %lf %lf %lf\n", x_delta, y_delta, z_delta);
-	fprintf(fast, "POINT_DATA %d\n", Nx*Ny*Nz);
+	double x_delta = width.x / Nx;
+	double y_delta = width.y / Ny;
+	double z_delta = width.z / Nz;
+
+	fprintf(plot,"# vtk DataFile Version 2.0\n");
+	fprintf(plot, "Dataset File\n");
+	fprintf(plot, "BINARY\n");
+	fprintf(plot, "DATASET STRUCTURED_POINTS\n");
+	fprintf(plot, "DIMENSIONS %d %d %d\n", Nx, Ny, Nz);
+	fprintf(plot, "ORIGIN 0 0 0\n");
+	fprintf(plot, "SPACING %lf %lf %lf\n", x_delta, y_delta, z_delta);
+	fprintf(plot, "POINT_DATA %d\n", Nx*Ny*Nz);
   
   std::vector<int> voxel_indices(Nx*Ny*Nz);
 
@@ -107,35 +118,51 @@ void plot_3D_vtk()
   
   // Plot multigroup flux data
   for( int g = 0; g < negroups; g++ ) {
-    fprintf(fast, "SCALARS flux_group_%d float\n", g);
-    fprintf(fast, "LOOKUP_TABLE default\n");
+    fprintf(plot, "SCALARS flux_group_%d float\n", g);
+    fprintf(plot, "LOOKUP_TABLE default\n");
     for (int fsr : voxel_indices) {
       int64_t source_element = fsr * negroups + g;
       float flux = random_ray::scalar_flux_old[source_element];
       flux = eswap_float(flux);
-      fwrite(&flux, sizeof(float), 1, fast);
+      fwrite(&flux, sizeof(float), 1, plot);
     }
   }
   
   // Plot FSRs
-  fprintf(fast, "SCALARS FSRs float\n");
-  fprintf(fast, "LOOKUP_TABLE default\n");
+  fprintf(plot, "SCALARS FSRs float\n");
+  fprintf(plot, "LOOKUP_TABLE default\n");
   for (int fsr : voxel_indices) {
     float value = future_prn(10, fsr);
     value = eswap_float(value);
-    fwrite(&value, sizeof(float), 1, fast);
+    fwrite(&value, sizeof(float), 1, plot);
   }
 
   // Plot Materials
-  fprintf(fast, "SCALARS Materials int\n");
-  fprintf(fast, "LOOKUP_TABLE default\n");
+  fprintf(plot, "SCALARS Materials int\n");
+  fprintf(plot, "LOOKUP_TABLE default\n");
   for (int fsr : voxel_indices) {
     int mat = random_ray::material[fsr];
     mat = eswap_int(mat);
-    fwrite(&mat, sizeof(int), 1, fast);
+    fwrite(&mat, sizeof(int), 1, plot);
+  }
+  
+  // Plot fission source
+  fprintf(plot, "SCALARS total_fission_source float\n");
+  fprintf(plot, "LOOKUP_TABLE default\n");
+  for (int fsr : voxel_indices) {
+    float total_fission = 0.0;
+    int mat = random_ray::material[fsr];
+    for( int g = 0; g < negroups; g++ ) {
+      int64_t source_element = fsr * negroups + g;
+      float flux = random_ray::scalar_flux_old[source_element];
+      float Sigma_f = data::mg.macro_xs_[mat].get_xs(MgxsType::FISSION, g, nullptr, nullptr, nullptr, 0, 0);
+      total_fission += Sigma_f * flux;
+    }
+    total_fission = eswap_float(total_fission);
+    fwrite(&total_fission, sizeof(float), 1, plot);
   }
 
-	fclose(fast);
+	fclose(plot);
 	printf("Finished plotting!\n");
 }
 

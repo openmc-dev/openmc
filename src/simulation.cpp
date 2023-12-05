@@ -214,6 +214,11 @@ int openmc_next_batch(int* status)
   using namespace openmc;
   using openmc::simulation::current_gen;
 
+  if (status && simulation::current_batch >= settings::n_max_batches) {
+    *status = STATUS_EXIT_MAX_BATCH;
+    return 0;
+  }
+
   // Make sure simulation has been initialized
   if (!simulation::initialized) {
     set_errmsg("Simulation has not been initialized yet.");

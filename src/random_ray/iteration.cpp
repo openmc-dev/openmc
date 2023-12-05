@@ -234,7 +234,14 @@ int openmc_run_random_ray()
       
       // Use above mapping to contribute FSR flux data to appropriate tallies
       random_ray_tally();
+    
+      // Add this iteration's scalar flux estimate to final accumulated estimate
+      #pragma omp parallel for
+      for (int64_t se = 0; se < random_ray::n_source_elements; se++) {
+        random_ray::scalar_flux_final[se] += random_ray::scalar_flux_new[se];
+      } 
     }
+    
 
     // Set phi_old = phi_new
     random_ray::scalar_flux_old.swap(random_ray::scalar_flux_new);

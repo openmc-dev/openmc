@@ -30,6 +30,7 @@ std::vector<int> was_hit;
 // 2D arrays stored in 1D representing values for all source regions x energy groups
 std::vector<float> scalar_flux_new;
 std::vector<float> scalar_flux_old;
+std::vector<float> scalar_flux_final;
 std::vector<float> source;
 
 
@@ -69,6 +70,7 @@ void initialize_source_regions()
   // Initialize element-wise arrays
   random_ray::scalar_flux_new.assign(random_ray::n_source_elements, 0.0);
   random_ray::scalar_flux_old.assign(random_ray::n_source_elements, 1.0);
+  random_ray::scalar_flux_final.assign(random_ray::n_source_elements, 0.0);
   random_ray::source.resize(random_ray::n_source_elements);
   random_ray::tally_task.resize(random_ray::n_source_elements);
 

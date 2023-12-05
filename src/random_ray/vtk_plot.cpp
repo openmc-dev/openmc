@@ -122,7 +122,8 @@ void plot_3D_vtk()
     fprintf(plot, "LOOKUP_TABLE default\n");
     for (int fsr : voxel_indices) {
       int64_t source_element = fsr * negroups + g;
-      float flux = random_ray::scalar_flux_old[source_element];
+      float flux = random_ray::scalar_flux_final[source_element];
+      flux /= (settings::n_batches - settings::n_inactive);
       flux = eswap_float(flux);
       fwrite(&flux, sizeof(float), 1, plot);
     }
@@ -154,7 +155,8 @@ void plot_3D_vtk()
     int mat = random_ray::material[fsr];
     for( int g = 0; g < negroups; g++ ) {
       int64_t source_element = fsr * negroups + g;
-      float flux = random_ray::scalar_flux_old[source_element];
+      float flux = random_ray::scalar_flux_final[source_element];
+      flux /= (settings::n_batches - settings::n_inactive);
       float Sigma_f = data::mg.macro_xs_[mat].get_xs(MgxsType::FISSION, g, nullptr, nullptr, nullptr, 0, 0);
       total_fission += Sigma_f * flux;
     }

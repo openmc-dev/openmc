@@ -24,6 +24,7 @@ extern std::vector<int> position_recorded;
 extern std::vector<Position> position;
 extern std::vector<float> scalar_flux_new;
 extern std::vector<float> scalar_flux_old;
+extern std::vector<float> scalar_flux_final;
 extern std::vector<float> source;
 extern std::vector<double> volume;
 extern std::vector<double> volume_t;

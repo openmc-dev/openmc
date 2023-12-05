@@ -54,42 +54,35 @@ int eswap_int( int f )
 
 void plot_3D_vtk()
 {
-  //char* fname = "plots.vtk";
-	//plot = fopen(fname, "w");
-  
-  // Get handle to plot
+  // Print header information
+  print_plot();
+
+  // Get handle to OpenMC plot object and extract params
   Plot& openmc_plot = *dynamic_cast<Plot*>(model::plots[0].get());
   int Nx = openmc_plot.pixels_[0];
   int Ny = openmc_plot.pixels_[1];
   int Nz = openmc_plot.pixels_[2];
-  Position origin = openmc_plot.origin_;           //!< Plot origin in geometry
-  Position width = openmc_plot.width_;            //!< Plot width in geometry
-  
-  std::string filename = openmc_plot.path_plot();
-  filename.replace(filename.size() - 3, 3, ".vtk");
-	FILE* plot = fopen(filename.c_str(), "w");
-  
-  // Use box source for plotting bounds
-  //Source* s = model::external_sources[0].get();
-  //IndependentSource* is = dynamic_cast<IndependentSource*>(s);
-  //SpatialDistribution* space_dist = is->space();
-  //SpatialBox* sb = dynamic_cast<SpatialBox*>(space_dist);
-
+  Position origin = openmc_plot.origin_;
+  Position width = openmc_plot.width_;
   Position ll = origin - width/2.0;
-
 	double x_delta = width.x / Nx;
 	double y_delta = width.y / Ny;
 	double z_delta = width.z / Nz;
-
-	fprintf(plot,"# vtk DataFile Version 2.0\n");
-	fprintf(plot, "Dataset File\n");
-	fprintf(plot, "BINARY\n");
-	fprintf(plot, "DATASET STRUCTURED_POINTS\n");
-	fprintf(plot, "DIMENSIONS %d %d %d\n", Nx, Ny, Nz);
-	fprintf(plot, "ORIGIN 0 0 0\n");
-	fprintf(plot, "SPACING %lf %lf %lf\n", x_delta, y_delta, z_delta);
-	fprintf(plot, "POINT_DATA %d\n", Nx*Ny*Nz);
+  std::string filename = openmc_plot.path_plot();
+  filename.replace(filename.size() - 3, 3, ".vtk");
   
+  int negroups = data::mg.num_energy_groups_;
+
+  // Perform sanity checks on file size
+  uint64_t bytes = Nx * Ny * Nz * (negroups + 1 + 1 + 1) * sizeof(float);
+  write_message(5, "Processing plot {}: {}... (Estimated size is {} MB)", openmc_plot.id(), filename, bytes / 1.0e6);
+  if (bytes/1.0e9 > 1.0) {
+    warning("Voxel plot specification is very large (>1 GB). Plotting may be slow.");
+  } else if (bytes/1.0e9 > 100.0) {
+    fatal_error("Voxel plot specification is too large (>100 GB). Exiting.");
+  }
+  
+  // Relate voxel spatial locations to random ray source regions
   std::vector<int> voxel_indices(Nx*Ny*Nz);
 
   #pragma omp parallel for collapse(3)
@@ -110,7 +103,18 @@ void plot_3D_vtk()
     }
   }
   
-  int negroups = data::mg.num_energy_groups_;
+  // Open file for writing
+	FILE* plot = fopen(filename.c_str(), "w");
+  
+  // Write vtk metadata
+	fprintf(plot,"# vtk DataFile Version 2.0\n");
+	fprintf(plot, "Dataset File\n");
+	fprintf(plot, "BINARY\n");
+	fprintf(plot, "DATASET STRUCTURED_POINTS\n");
+	fprintf(plot, "DIMENSIONS %d %d %d\n", Nx, Ny, Nz);
+	fprintf(plot, "ORIGIN 0 0 0\n");
+	fprintf(plot, "SPACING %lf %lf %lf\n", x_delta, y_delta, z_delta);
+	fprintf(plot, "POINT_DATA %d\n", Nx*Ny*Nz);
   
   // Plot multigroup flux data
   for( int g = 0; g < negroups; g++ ) {
@@ -159,7 +163,6 @@ void plot_3D_vtk()
   }
 
 	fclose(plot);
-	printf("Finished plotting!\n");
 }
 
 } // namespace openmc

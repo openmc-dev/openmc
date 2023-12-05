@@ -12,6 +12,7 @@
 #include "openmc/timer.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/message_passing.h"
+#include "openmc/plot.h"
 
 namespace openmc {
 
@@ -555,6 +556,20 @@ void validate_random_ray_inputs()
   Isotropic* id = dynamic_cast<Isotropic*>(angle_dist);
   if (id == nullptr) {
     fatal_error("Invalid source definition -- only isotropic sources are allowed in random ray mode.");
+  }
+
+  // Check plotting file
+  if (model::plots.size() > 1) {
+    fatal_error("Invalid plotting file -- multiple plots not allowed in random ray mode.");
+  }
+
+  if (model::plots.size() == 1) {
+    Plot* p = dynamic_cast<Plot*>(model::plots[0].get());
+    if (p == nullptr) {
+      fatal_error("Invalid plot type -- only voxel plotting is allowed in random ray mode.");
+    } else if (p->type_ != Plot::PlotType::voxel) {
+      fatal_error("Invalid plot type -- only voxel plotting is allowed in random ray mode.");
+    }
   }
 
   // Warn about slow MPI domain replication, if detected

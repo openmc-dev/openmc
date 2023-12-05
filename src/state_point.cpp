@@ -364,19 +364,12 @@ void restart_set_keff()
 
 void load_state_point()
 {
-  // Write message
   write_message(fmt::format("Loading state point {}...", settings::path_statepoint_c), 5);
+  openmc_statepoint_load(settings::path_statepoint.c_str());
+}
 
-  // Open file for reading
-  hid_t file_id = file_open(settings::path_statepoint_c, 'r', true);
-
-  // Read filetype
-  std::string word;
-  read_attribute(file_id, "filetype", word);
-  if (word != "statepoint") {
-    fatal_error("OpenMC tried to restart from a non-statepoint file.");
-  }
-
+void statepoint_version_check(hid_t file_id)
+{
   // Read revision number for state point file and make sure it matches with
   // current version
   array<int, 2> array;
@@ -385,6 +378,21 @@ void load_state_point()
     fatal_error(
       "State point version does not match current version in OpenMC.");
   }
+}
+
+extern "C" int openmc_statepoint_load(const char* filename)
+{
+  // Open file for reading
+  hid_t file_id = file_open(filename, 'r', true);
+
+  // Read filetype
+  std::string word;
+  read_attribute(file_id, "filetype", word);
+  if (word != "statepoint") {
+    fatal_error("OpenMC tried to restart from a non-statepoint file.");
+  }
+
+  statepoint_version_check(file_id);
 
   // Read and overwrite random number seed
   int64_t seed;
@@ -420,12 +428,12 @@ void load_state_point()
   // Read batch number to restart at
   read_dataset(file_id, "current_batch", simulation::restart_batch);
 
-  // if (simulation::restart_batch >= settings::n_max_batches) {
-  //   fatal_error(fmt::format(
-  //     "The number of batches specified for simulation ({}) is smaller"
-  //     " than the number of batches in the restart statepoint file ({})",
-  //     settings::n_max_batches, simulation::restart_batch));
-  // }
+  if (simulation::restart_batch >= settings::n_max_batches) {
+    warning(fmt::format(
+      "The number of batches specified for simulation ({}) is smaller"
+      " than or equal to the number of batches in the restart statepoint file ({})",
+      settings::n_max_batches, simulation::restart_batch));
+  }
 
   // Logical flag for source present in statepoint file
   bool source_present;
@@ -489,7 +497,6 @@ void load_state_point()
         if (internal) {
           tally->writable_ = false;
         } else {
-
           auto& results = tally->results_;
           read_tally_results(tally_group, results.shape()[0],
             results.shape()[1], results.data());
@@ -497,7 +504,6 @@ void load_state_point()
           close_group(tally_group);
         }
       }
-
       close_group(tallies_group);
     }
   }
@@ -525,6 +531,8 @@ void load_state_point()
 
   // Close file
   file_close(file_id);
+
+  return 0;
 }
 
 hid_t h5banktype()
@@ -923,6 +931,8 @@ void write_tally_results_nr(hid_t file_id)
 
   for (const auto& t : model::tallies) {
     // Skip any tallies that are not active
+    if (!t->active_)
+      continue;
     if (!t->writable_)
       continue;
 
@@ -986,14 +996,6 @@ void write_tally_results_nr(hid_t file_id)
 
     close_group(tallies_group);
   }
-}
-
-extern "C" int openmc_statepoint_load(const char* filename) {
-  const char*  tmp = settings::path_statepoint_c;
-  if (filename)  settings::path_statepoint_c = filename;
-  load_state_point();
-  settings::path_statepoint_c = tmp;
-  return 0;
 }
 
 } // namespace openmc

@@ -83,24 +83,22 @@ void plot_3D_vtk()
 	fprintf(fast, "SPACING %lf %lf %lf\n", x_delta, y_delta, z_delta);
 	fprintf(fast, "POINT_DATA %d\n", Nx*Ny*Nz);
   
-  Position sample;
-  std::vector<int> voxel_indices;
+  std::vector<int> voxel_indices(Nx*Ny*Nz);
 
-  for( int z = 0; z < Nz; z++ )
-  {
-    sample.z = ll.z + z_delta/2.0 + z * z_delta;
-    for( int y = 0; y < Ny; y++ )
-    {
-      sample.y = ll.y + y_delta/2.0 + y * y_delta;
-      for( int x = 0; x < Nx; x++ )
-      {
+  #pragma omp parallel for collapse(3)
+  for( int z = 0; z < Nz; z++ ) {
+    for( int y = 0; y < Ny; y++ ) {
+      for( int x = 0; x < Nx; x++ ) {
+        Position sample;
+        sample.z = ll.z + z_delta/2.0 + z * z_delta;
+        sample.y = ll.y + y_delta/2.0 + y * y_delta;
         sample.x = ll.x + x_delta/2.0 + x * x_delta;
         Particle p;
         p.r() = sample;  
         bool found = exhaustive_find_cell(p);
         int i_cell = p.lowest_coord().cell;
         int64_t source_region_idx = random_ray::source_region_offsets[i_cell] + p.cell_instance();
-        voxel_indices.push_back(source_region_idx);
+        voxel_indices[z*Ny*Nx + y*Nx + x] = source_region_idx;
       }
     }
   }

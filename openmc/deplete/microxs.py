@@ -217,7 +217,8 @@ class MicroXS:
         multi_group_flux: Sequence[float],
         chain_file: Optional[PathLike] = None,
         openmc_data_path: Optional[PathLike] = None,
-        temperature: int=294
+        temperature: int=294,
+        nuclides: Optional[Iterable[str]] = None,
     ):
         """Generated MicroXS object from a known flux and a chain file.
 
@@ -233,11 +234,15 @@ class MicroXS:
             Energy-dependent multigroup flux values
         chain_file : str, optional
             Path to the depletion chain XML file that will be used in
-            depletion simulation.
+            depletion simulation.  Defaults to ``openmc.config['chain_file']``.
         openmc_data_path : str, optional
             Path to the cross section XML file that contains data library paths.
+            Defaults to ``openmc.config['cross_sections']``.
         temperature : int, optional
             Temperature for cross section evaluation in [K].
+        nuclides : list of str
+                Nuclides to get cross sections for. If not specified, all burnable
+                nuclides from the depletion chain file are used.
 
         Returns
         -------
@@ -262,10 +267,13 @@ class MicroXS:
         chain = openmc.deplete.Chain.from_xml(chain_file_path)
 
         openmc_data_path = _resolve_openmc_data_path(openmc_data_path)
-        data_lib = openmc.data.DataLibrary.from_xml(openmc_data_path)
+        cross_sections = openmc.data.DataLibrary.from_xml(openmc_data_path)
+        nuclides_with_data = _get_nuclides_with_data(cross_sections)
 
         # get reactions and nuclides from chain file
-        nuclides, reactions = chain.nuclides, chain.reactions
+        if not nuclides:
+                nuclides = chain.nuclides
+        reactions = chain.reactions
         nuclides = [nuc.name for nuc in nuclides]
         if 'fission' in reactions:
             # send to back
@@ -307,8 +315,7 @@ class MicroXS:
 
             openmc.lib.init()
             for nuc_indx, nuc in enumerate(nuclides):
-                mat_lib = data_lib.get_by_material(nuc, data_type="neutron")
-                if mat_lib:
+                if nuc in nuclides_with_data:
                     lib_nuc = openmc.lib.nuclides[nuc]
                     for mt_indx, mt in enumerate(mts):
                         c_mt = c_int(mt)

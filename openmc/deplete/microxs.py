@@ -36,16 +36,6 @@ def _resolve_chain_file_path(chain_file:str):
     return chain_file
 
 
-def _resolve_openmc_data_path(openmc_data_path: str=None):
-    if not openmc_data_path:
-        if 'cross_sections' not in openmc.config:
-            raise ValueError("`openmc_data_path` is not defined nor `openmc.config['cross_sections']` is defined.")
-        else:
-            openmc_data_path = openmc.config['cross_sections']
-    return openmc_data_path
-
-
-
 def get_microxs_and_flux(
         model: openmc.Model,
         domains,
@@ -216,8 +206,7 @@ class MicroXS:
         energies: Union[Iterable[float], str],
         multi_group_flux: Sequence[float],
         chain_file: Optional[PathLike] = None,
-        openmc_data_path: Optional[PathLike] = None,
-        temperature: int=294,
+        temperature: float=294.,
         nuclides: Optional[Iterable[str]] = None,
     ):
         """Generated MicroXS object from a known flux and a chain file.
@@ -235,9 +224,6 @@ class MicroXS:
         chain_file : str, optional
             Path to the depletion chain XML file that will be used in
             depletion simulation.  Defaults to ``openmc.config['chain_file']``.
-        openmc_data_path : str, optional
-            Path to the cross section XML file that contains data library paths.
-            Defaults to ``openmc.config['cross_sections']``.
         temperature : int, optional
             Temperature for cross section evaluation in [K].
         nuclides : list of str
@@ -249,7 +235,7 @@ class MicroXS:
         MicroXS
         """
 
-        check_type("temperature", temperature, int)
+        check_type("temperature", temperature, (int, float))
         # if energy is string then use group structure of that name
         if isinstance(energies, str):
             energies = openmc.EnergyFilter.from_group_structure(energies).values
@@ -266,15 +252,15 @@ class MicroXS:
         chain_file_path = _resolve_chain_file_path(chain_file)
         chain = openmc.deplete.Chain.from_xml(chain_file_path)
 
-        openmc_data_path = _resolve_openmc_data_path(openmc_data_path)
-        cross_sections = openmc.data.DataLibrary.from_xml(openmc_data_path)
+        cross_sections = _find_cross_sections(model=None)
+        data_lib = openmc.data.DataLibrary.from_xml(cross_sections)
         nuclides_with_data = _get_nuclides_with_data(cross_sections)
 
         # get reactions and nuclides from chain file
         if not nuclides:
-                nuclides = chain.nuclides
+            nuclides = chain.nuclides
+            nuclides = [nuc.name for nuc in nuclides]
         reactions = chain.reactions
-        nuclides = [nuc.name for nuc in nuclides]
         if 'fission' in reactions:
             # send to back
             reactions.append(reactions.pop(reactions.index('fission')))
@@ -308,6 +294,7 @@ class MicroXS:
             settings.particles = 1
             settings.batches = 1
             settings.output = {'summary': False}
+
             model = openmc.Model(geometry, materials, settings)
             model.export_to_model_xml()
 

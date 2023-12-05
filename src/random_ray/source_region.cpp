@@ -2,7 +2,6 @@
 #include "openmc/random_ray/source_region.h"
 #include "openmc/random_ray/tally_convert.h"
 #include "openmc/mgxs_interface.h"
-#include <cassert>
 
 namespace openmc {
 
@@ -44,11 +43,10 @@ void initialize_source_regions()
 {
   int negroups = data::mg.num_energy_groups_;
 
-  // Count the number of source regions, compute
-  // the cell offset indices, and store the material type The reason for the offsets is that
-  // some cell types may not have material fills, and therefore
-  // do not produce FSRs. Thus, we cannot index into the global
-  // arrays directly
+  // Count the number of source regions, compute the cell offset
+  // indices, and store the material type The reason for the offsets is that
+  // some cell types may not have material fills, and therefore do not
+  // produce FSRs. Thus, we cannot index into the global arrays directly
   for (auto&& c : model::cells) {
     if (c->type_ != Fill::MATERIAL) {
       random_ray::source_region_offsets.push_back(-1);
@@ -85,7 +83,11 @@ void initialize_source_regions()
       }
     }
   }
-  assert(source_region_id == random_ray::n_source_regions);
+
+  // Sanity check
+  if (source_region_id != random_ray::n_source_regions) {
+    fatal_error("Unexpected number of source regions");
+  }
 }
 
 } // namespace openmc

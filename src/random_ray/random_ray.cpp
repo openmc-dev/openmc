@@ -46,7 +46,12 @@ void RandomRay::event_advance_ray()
   // Find the distance to the nearest boundary
   boundary() = distance_to_boundary(*this);
   double distance = boundary().distance;
-  assert(distance > 0.0);
+
+  if (distance <= 0.0) {
+    mark_as_lost("Negative transport distance detected for particle " +
+        std::to_string(id()));
+    return;
+  }
 
   // Check for final termination
   if (is_active_) {
@@ -107,8 +112,6 @@ void RandomRay::event_advance_ray()
 // performed when inside the lock.
 void RandomRay::attenuate_flux(double distance, bool is_active)
 {
-  assert(distance > 0.0);
-
   int negroups = data::mg.num_energy_groups_;
 
   // The number of geometric intersections is counted for reporting purposes

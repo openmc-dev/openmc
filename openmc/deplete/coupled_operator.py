@@ -10,6 +10,7 @@ filesystem.
 
 import copy
 from warnings import warn
+from typing import Optional
 
 import numpy as np
 from uncertainties import ufloat
@@ -33,18 +34,19 @@ from .helpers import (
 __all__ = ["CoupledOperator", "Operator", "OperatorResult"]
 
 
-def _find_cross_sections(model):
+def _find_cross_sections(model: Optional[str] = None):
     """Determine cross sections to use for depletion
 
     Parameters
     ----------
-    model : openmc.model.Model
+    model : openmc.model.Model, optional
         Reactor model
 
     """
-    if model.materials and model.materials.cross_sections is not None:
-        # Prefer info from Model class if available
-        return model.materials.cross_sections
+    if model:
+        if model.materials and model.materials.cross_sections is not None:
+            # Prefer info from Model class if available
+            return model.materials.cross_sections
 
     # otherwise fallback to environment variable
     cross_sections = openmc.config.get("cross_sections")

@@ -54,19 +54,20 @@ int eswap_int( int f )
 
 void plot_3D_vtk()
 {
-	FILE* plot;
-  char* fname = "plots.vtk";
-	plot = fopen(fname, "w");
+  //char* fname = "plots.vtk";
+	//plot = fopen(fname, "w");
   
   // Get handle to plot
   Plot& openmc_plot = *dynamic_cast<Plot*>(model::plots[0].get());
-  //IndependentSource* is = dynamic_cast<IndependentSource*>(s);
   int Nx = openmc_plot.pixels_[0];
   int Ny = openmc_plot.pixels_[1];
   int Nz = openmc_plot.pixels_[2];
-  
   Position origin = openmc_plot.origin_;           //!< Plot origin in geometry
   Position width = openmc_plot.width_;            //!< Plot width in geometry
+  
+  std::string filename = openmc_plot.path_plot();
+  filename.replace(filename.size() - 3, 3, ".vtk");
+	FILE* plot = fopen(filename.c_str(), "w");
   
   // Use box source for plotting bounds
   //Source* s = model::external_sources[0].get();
@@ -75,11 +76,6 @@ void plot_3D_vtk()
   //SpatialBox* sb = dynamic_cast<SpatialBox*>(space_dist);
 
   Position ll = origin - width/2.0;
-  //Position ur = origin + width/2.0;;
-
-  //int Nx = 1000;
-  //int Ny = 1000;
-  //int Nz = 1;
 
 	double x_delta = width.x / Nx;
 	double y_delta = width.y / Ny;
@@ -97,9 +93,9 @@ void plot_3D_vtk()
   std::vector<int> voxel_indices(Nx*Ny*Nz);
 
   #pragma omp parallel for collapse(3)
-  for( int z = 0; z < Nz; z++ ) {
-    for( int y = 0; y < Ny; y++ ) {
-      for( int x = 0; x < Nx; x++ ) {
+  for (int z = 0; z < Nz; z++) {
+    for (int y = 0; y < Ny; y++) {
+      for (int x = 0; x < Nx; x++) {
         Position sample;
         sample.z = ll.z + z_delta/2.0 + z * z_delta;
         sample.y = ll.y + y_delta/2.0 + y * y_delta;

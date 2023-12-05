@@ -206,7 +206,7 @@ class MicroXS:
         energies: Union[Iterable[float], str],
         multi_group_flux: Sequence[float],
         chain_file: Optional[PathLike] = None,
-        temperature: int=294,
+        temperature: float=294.,
         nuclides: Optional[Iterable[str]] = None,
     ):
         """Generated MicroXS object from a known flux and a chain file.
@@ -235,7 +235,7 @@ class MicroXS:
         MicroXS
         """
 
-        check_type("temperature", temperature, int)
+        check_type("temperature", temperature, (int, float))
         # if energy is string then use group structure of that name
         if isinstance(energies, str):
             energies = openmc.EnergyFilter.from_group_structure(energies).values
@@ -294,6 +294,7 @@ class MicroXS:
             settings.particles = 1
             settings.batches = 1
             settings.output = {'summary': False}
+
             model = openmc.Model(geometry, materials, settings)
             model.export_to_model_xml()
 

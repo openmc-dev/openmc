@@ -69,7 +69,7 @@ def _get_nuclides_with_data(cross_sections):
     Returns
     -------
     nuclides : set of str
-        Set of nuclide names that have cross secton data
+        Set of nuclide names that have cross section data
 
     """
     nuclides = set()

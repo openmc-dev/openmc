@@ -76,7 +76,6 @@ void plot_3D_vtk()
 
 	fprintf(fast,"# vtk DataFile Version 2.0\n");
 	fprintf(fast, "Dataset File\n");
-	//fprintf(fast, "ASCII\n");
 	fprintf(fast, "BINARY\n");
 	fprintf(fast, "DATASET STRUCTURED_POINTS\n");
 	fprintf(fast, "DIMENSIONS %d %d %d\n", Nx, Ny, Nz);
@@ -85,74 +84,7 @@ void plot_3D_vtk()
 	fprintf(fast, "POINT_DATA %d\n", Nx*Ny*Nz);
   
   Position sample;
-
-  // Plot Flux Data
-  int negroups = data::mg.num_energy_groups_;
-  for( int g = 0; g < negroups; g++ )
-  {
-
-    fprintf(fast, "SCALARS flux_group_%d float\n", g);
-    fprintf(fast, "LOOKUP_TABLE default\n");
-
-    for( int z = 0; z < Nz; z++ )
-    {
-      sample.z = ll.z + z_delta/2.0 + z * z_delta;
-      for( int y = 0; y < Ny; y++ )
-      {
-        sample.y = ll.y + y_delta/2.0 + y * y_delta;
-        for( int x = 0; x < Nx; x++ )
-        {
-          sample.x = ll.x + x_delta/2.0 + x * x_delta;
-          Particle p;
-          p.r() = sample;  
-          bool found = exhaustive_find_cell(p);
-    
-          // Initialize ray's starting angular flux to starting location's isotropic source
-          int i_cell = p.lowest_coord().cell;
-          int64_t source_region_idx = random_ray::source_region_offsets[i_cell] + p.cell_instance();
-          int64_t source_element = source_region_idx * negroups + g;
-          float flux = random_ray::scalar_flux_old[source_element];
-
-          //fprintf(fast,    "%.4e\n", thermal_flux);
-          flux = eswap_float(flux);
-          fwrite(&flux, sizeof(float), 1, fast);
-        }
-      }
-    }
-  }
-  
-  // Plot FSRs
-  fprintf(fast, "SCALARS FSRs float\n");
-  fprintf(fast, "LOOKUP_TABLE default\n");
-
-  for( int z = 0; z < Nz; z++ )
-  {
-    sample.z = ll.z + z_delta/2.0 + z * z_delta;
-    for( int y = 0; y < Ny; y++ )
-    {
-      sample.y = ll.y + y_delta/2.0 + y * y_delta;
-      for( int x = 0; x < Nx; x++ )
-      {
-        sample.x = ll.x + x_delta/2.0 + x * x_delta;
-          Particle p;
-        p.r() = sample;  
-        bool found = exhaustive_find_cell(p);
-
-        // Initialize ray's starting angular flux to starting location's isotropic source
-        int i_cell = p.lowest_coord().cell;
-        uint64_t source_region_idx = random_ray::source_region_offsets[i_cell] + p.cell_instance();
-
-        float fsr = future_prn(10, source_region_idx);
-
-        fsr = eswap_float(fsr);
-        fwrite(&fsr, sizeof(float), 1, fast);
-      }
-    }
-  }
-  
-  // Plot Materials
-  fprintf(fast, "SCALARS Materials int\n");
-  fprintf(fast, "LOOKUP_TABLE default\n");
+  std::vector<int> voxel_indices;
 
   for( int z = 0; z < Nz; z++ )
   {
@@ -166,16 +98,43 @@ void plot_3D_vtk()
         Particle p;
         p.r() = sample;  
         bool found = exhaustive_find_cell(p);
-
-        // Initialize ray's starting angular flux to starting location's isotropic source
         int i_cell = p.lowest_coord().cell;
         int64_t source_region_idx = random_ray::source_region_offsets[i_cell] + p.cell_instance();
-        int mat = random_ray::material[source_region_idx];
-
-        mat = eswap_int(mat);
-        fwrite(&mat, sizeof(int), 1, fast);
+        voxel_indices.push_back(source_region_idx);
       }
     }
+  }
+  
+  int negroups = data::mg.num_energy_groups_;
+  
+  // Plot multigroup flux data
+  for( int g = 0; g < negroups; g++ ) {
+    fprintf(fast, "SCALARS flux_group_%d float\n", g);
+    fprintf(fast, "LOOKUP_TABLE default\n");
+    for (int fsr : voxel_indices) {
+      int64_t source_element = fsr * negroups + g;
+      float flux = random_ray::scalar_flux_old[source_element];
+      flux = eswap_float(flux);
+      fwrite(&flux, sizeof(float), 1, fast);
+    }
+  }
+  
+  // Plot FSRs
+  fprintf(fast, "SCALARS FSRs float\n");
+  fprintf(fast, "LOOKUP_TABLE default\n");
+  for (int fsr : voxel_indices) {
+    float value = future_prn(10, fsr);
+    value = eswap_float(value);
+    fwrite(&value, sizeof(float), 1, fast);
+  }
+
+  // Plot Materials
+  fprintf(fast, "SCALARS Materials int\n");
+  fprintf(fast, "LOOKUP_TABLE default\n");
+  for (int fsr : voxel_indices) {
+    int mat = random_ray::material[fsr];
+    mat = eswap_int(mat);
+    fwrite(&mat, sizeof(int), 1, fast);
   }
 
 	fclose(fast);

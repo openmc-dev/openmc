@@ -1,5 +1,6 @@
 #include "openmc/random_ray/iteration.h"
 #include "openmc/random_ray/tally_convert.h"
+#include "openmc/random_ray/vtk_plot.h"
 #include "openmc/output.h"
 #include "openmc/geometry.h"
 #include "openmc/tallies/tally.h"
@@ -269,6 +270,7 @@ int openmc_run_random_ray()
   // Print random ray results
   if (mpi::master) {
     print_results_random_ray(total_geometric_intersections, avg_miss_rate/settings::n_batches);
+    plot_3D_vtk();
   }
 
   return 0;

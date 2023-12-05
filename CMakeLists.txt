@@ -380,6 +380,7 @@ list(APPEND libopenmc_SOURCES
   src/random_ray/random_ray.cpp
   src/random_ray/source_region.cpp
   src/random_ray/tally_convert.cpp
+  src/random_ray/vtk_plot.cpp
   src/reaction.cpp
   src/reaction_product.cpp
   src/scattdata.cpp

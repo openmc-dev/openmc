@@ -274,6 +274,8 @@ int openmc_run_random_ray()
   return 0;
 }
 
+// Compute new estimate of scattering + fission sources in each source region
+// based on the flux estimate from the previous iteration.
 void update_neutron_source(double k_eff)
 {
   simulation::time_update_src.start();
@@ -316,6 +318,7 @@ void update_neutron_source(double k_eff)
   simulation::time_update_src.stop();
 }
 
+// Normalizes flux and updates simulation-averaged volume estimate
 void normalize_scalar_flux_and_volumes()
 {
   int negroups = data::mg.num_energy_groups_;
@@ -339,6 +342,9 @@ void normalize_scalar_flux_and_volumes()
   }
 }
 
+// Combines transport flux contributions and flat source contributions
+// from the previous iteration to generate this iteration's estimate of
+// scalar flux.
 int64_t add_source_to_scalar_flux()
 {
   int negroups = data::mg.num_energy_groups_;
@@ -367,7 +373,6 @@ int64_t add_source_to_scalar_flux()
       int64_t idx = (sr * negroups) + e;
 
       // There are three scenarios we need to consider:
-        
       if (was_cell_hit) {
         // 1. If the FSR was hit this iteration, then the new flux is equal to the flat source from the previous iteration
         // plus the contributions from rays passing through the source region (computed during the transport sweep)
@@ -390,6 +395,8 @@ int64_t add_source_to_scalar_flux()
   return n_hits;
 }
 
+// Generates new estimate of k_eff based on the differences between this
+// iteration's estimate of the scalar flux and the last iteration's estimate.
 double compute_k_eff(double k_eff_old)
 {
   int negroups = data::mg.num_energy_groups_;
@@ -434,6 +441,8 @@ double compute_k_eff(double k_eff_old)
   return k_eff_new;
 }
 
+// Apply a few sanity checks to catch obvious cases of numerical instability.
+// Instability typically only occurs if ray density is extremely low.
 void instability_check(int64_t n_hits, double k_eff, double& avg_miss_rate)
 {
   double percent_missed = ((random_ray::n_source_regions - n_hits) / static_cast<double>(random_ray::n_source_regions)) * 100.0;
@@ -450,6 +459,10 @@ void instability_check(int64_t n_hits, double k_eff, double& avg_miss_rate)
   }
 }
 
+// Enforces restrictions on inputs in random ray mode.  While there are
+// many features that don't make sense in random ray mode, and are therefore
+// unsupported, we limit our testing/enforcement operations only to inputs
+// that may cause erroneous/misleading output or crashes from the solver.
 void validate_random_ray_inputs()
 {
   // Validate tallies
@@ -508,7 +521,9 @@ void validate_random_ray_inputs()
     fatal_error("Invalid run mode. Fixed source not yet supported in random ray mode.");
   }
   
-  // Validate eigenvalue sources (must be uniform isotropic box source)
+  // Validate eigenvalue sources (must be single uniform isotropic box source)
+
+  // Ensure only a single source is present
   if (model::external_sources.size() != 1) {
     fatal_error("Invalid source definition -- only a single source is allowed in random ray mode.");
   }
@@ -540,10 +555,10 @@ void validate_random_ray_inputs()
     fatal_error("Invalid source definition -- only isotropic sources are allowed in random ray mode.");
   }
 
-  // Check for MPI
+  // Warn about slow MPI domain replication, if detected
   #ifdef OPENMC_MPI
   if (mpi::n_procs > 1) {
-    warning("Domain replication in random ray is supported, but not recommended due to poor scaling of source all-reduce operations. Domain decomposition may be implemented in the future to provide efficient scaling.");
+    warning("Domain replication in random ray is supported, but suffers from poor scaling of source all-reduce operations. Performance may severely degrade beyond just a few MPI ranks. Domain decomposition may be implemented in the future to provide efficient scaling.");
   }
   #endif
 }

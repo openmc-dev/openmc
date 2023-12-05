@@ -24,6 +24,7 @@ RandomRay::RandomRay(uint64_t index_source) : RandomRay::RandomRay()
   initialize_ray(index_source);
 }
 
+// Transports ray until termination criteria are met
 uint64_t RandomRay::transport_history_based_single_ray()
 {
   using namespace openmc;
@@ -39,6 +40,7 @@ uint64_t RandomRay::transport_history_based_single_ray()
   return n_event();
 }
 
+// Transports ray across a single source region
 void RandomRay::event_advance_ray()
 {
   // Find the distance to the nearest boundary
@@ -90,18 +92,36 @@ void RandomRay::event_advance_ray()
   }
 }
 
+// This function forms the inner loop of the random ray transport process.
+// It is responsible for several tasks. Based on the incoming angular flux
+// of the ray and the source term in the region, the outgoing angular flux
+// is computed. The delta psi between the incoming and outgoing fluxes is
+// contributed to the estimate of the total scalar flux in the source region.
+// Additionally, the contribution of the ray path to the stochastically
+// estimated volume is also kept track of. All tasks involving writing
+// to the data for the source region are done with a lock over the entire
+// source region.  Locks are used instead of atomics as all energy groups
+// must be written, such that locking once is typically much more efficient
+// than use of many atomic operations corresponding to each energy group
+// individually (at least on CPU). Several other bookeeping tasks are also
+// performed when inside the lock.
 void RandomRay::attenuate_flux(double distance, bool is_active)
 {
   assert(distance > 0.0);
 
   int negroups = data::mg.num_energy_groups_;
 
+  // The number of geometric intersections is counted for reporting purposes
   n_event()++;
 
-  // Determine Cell Index etc.
+  // Determine source region index etc.
   int i_cell = lowest_coord().cell;
-  int64_t source_region_idx = random_ray::source_region_offsets[i_cell] + cell_instance();
-  int64_t source_region_group_idx = source_region_idx * negroups;
+
+  // The source region is the spatial region index
+  int64_t source_region = random_ray::source_region_offsets[i_cell] + cell_instance();
+
+  // The source element is the energy-specific region index
+  int64_t source_element = source_region * negroups;
   int material = this->material();
   
   // Temperature and angle indices, if using multiple temperature
@@ -111,38 +131,49 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
   const int t = 0;
   const int a = 0;
 
-  for( int e = 0; e < negroups; e++ )
-  {
+  // MOC incoming flux attenuation + source contribution/attenuation equation
+  for (int e = 0; e < negroups; e++) {
     float Sigma_t = data::mg.macro_xs_[material].get_xs(MgxsType::TOTAL, e, NULL, NULL, NULL, t, a);
     float tau = Sigma_t * distance;
-    float exponential = cjosey_exponential(tau);
-    float new_delta_psi = (angular_flux_[e] - random_ray::source[source_region_group_idx + e]) * exponential;
+    float exponential = cjosey_exponential(tau); // exponential = 1 - exp(-tau)
+    float new_delta_psi = (angular_flux_[e] - random_ray::source[source_element + e]) * exponential;
     delta_psi_[e] = new_delta_psi;
     angular_flux_[e] -= new_delta_psi;
   }
 
-  if(is_active)
-  {
-    random_ray::lock[source_region_idx].lock();
+  // If ray is in the active phase (not in dead zone), make contributions to
+  // source region bookkeeping
+  if (is_active) {
+    
+    // Aquire lock for source region 
+    random_ray::lock[source_region].lock();
 
+    // Accumulate delta psi into new estimate of source region flux for
+    // this iteration
     for (int e = 0; e < negroups; e++) {
-      random_ray::scalar_flux_new[source_region_group_idx + e] += delta_psi_[e];
+      random_ray::scalar_flux_new[source_element + e] += delta_psi_[e];
     }
 
-    if (random_ray::was_hit[source_region_idx] == 0) {
-      random_ray::was_hit[source_region_idx] = 1;
+    // If the source region hasn't been hit yet this iteration,
+    // indicate that it now has
+    if (random_ray::was_hit[source_region] == 0) {
+      random_ray::was_hit[source_region] = 1;
     }
 
-    random_ray::volume[source_region_idx] += distance;
+    // Accomulate volume (ray distance) into this iteration's estimate
+    // of the source region's volume
+    random_ray::volume[source_region] += distance;
 
-    // Tally position if not done already
-    if (!random_ray::position_recorded[source_region_idx]) {
+    // Tally valid position inside the source region (e.g., midpoint of
+    // the ray) if not done already
+    if (!random_ray::position_recorded[source_region]) {
       Position midpoint = r() + u() * (distance/2.0);
-      random_ray::position[source_region_idx] = midpoint;
-      random_ray::position_recorded[source_region_idx] = 1;
+      random_ray::position[source_region] = midpoint;
+      random_ray::position_recorded[source_region] = 1;
     }
 
-    random_ray::lock[source_region_idx].unlock();
+    // Release lock
+    random_ray::lock[source_region].unlock();
   }
 }
 
@@ -150,53 +181,29 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
 
 void RandomRay::initialize_ray(uint64_t index_source)
 {
-  //id() = index_source;
-
   // Reset particle event counter
   n_event() = 0;
 
-  if( settings::random_ray_distance_inactive <= 0.0 )
+  if (settings::random_ray_distance_inactive <= 0.0)
     is_active_ = true;
   else
     is_active_ = false;
 
   wgt() = 1.0;
 
-
-
-
-  /*
-
-  // initialize random number seed
-  int64_t id = (simulation::total_gen + overall_generation() - 1) *
-                 settings::n_particles +
-               simulation::work_index[mpi::rank] + index_source;
-  uint64_t seed = init_seed(id, STREAM_SOURCE);
-  // sample from external source distribution or custom library then set
-  auto site = sample_external_source(&seed);
-  p.from_source(&site);
-
-  p.current_work() = index_source;
-  */
-
   // set identifier for particle
   id() = simulation::work_index[mpi::rank] + index_source;
-
-
-
 
   // set random number seed
   int64_t particle_seed = (simulation::current_batch-1) * settings::n_particles + id();
   init_particle_seeds(particle_seed, seeds());
   stream() = STREAM_TRACKING;
 
-  // sample from external source distribution (should use box)
+  // sample from external source distribution
   auto site = sample_external_source(current_seed());
   from_source(&site);
 
-  // If the cell hasn't been determined based on the particle's location,
-  // initiate a search for the current cell. This generally happens at the
-  // beginning of the history and again for any secondary particles
+  // Locate ray
   if (lowest_coord().cell == C_NONE) {
     if (!exhaustive_find_cell(*this)) {
       this->mark_as_lost("Could not find the cell containing particle "
@@ -223,6 +230,7 @@ void RandomRay::initialize_ray(uint64_t index_source)
 
 // returns 1 - exp(-tau)
 // Equivalent to -(_expm1f(-tau)), but is stable
+// Written by Colin Josey.
 inline float cjosey_exponential(const float tau)
 {
   const float c1n = -1.0000013559236386308f;

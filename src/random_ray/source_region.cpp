@@ -28,7 +28,7 @@ std::vector<double> volume;
 std::vector<double> volume_t;
 std::vector<int> was_hit;
 
-// 1D arrays representing values for all source regions x energy groups
+// 2D arrays stored in 1D representing values for all source regions x energy groups
 std::vector<float> scalar_flux_new;
 std::vector<float> scalar_flux_old;
 std::vector<float> source;

@@ -3,6 +3,9 @@
 
 namespace openmc {
 
+// A mapping object that is used to map between a specific random ray 
+// source region and an OpenMC native tally bin that it should score to
+// every iteration.
 struct TallyTask {
   int tally_idx;
   int filter_idx;

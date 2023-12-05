@@ -104,7 +104,7 @@ bool convert_source_regions_to_tallies()
 
       // Loop over all active tallies. This logic is essentially identical
       // to what happens when scanning for applicable tallies during
-      MC transport.
+      // MC transport.
       for (auto i_tally : model::active_tallies) {
         Tally& tally {*model::tallies[i_tally]};
 

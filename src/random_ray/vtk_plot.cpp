@@ -83,13 +83,77 @@ void plot_3D_vtk()
 	fprintf(fast, "ORIGIN 0 0 0\n");
 	fprintf(fast, "SPACING %lf %lf %lf\n", x_delta, y_delta, z_delta);
 	fprintf(fast, "POINT_DATA %d\n", Nx*Ny*Nz);
+  
+  Position sample;
 
-  fprintf(fast, "SCALARS thermal float\n");
+  // Plot Flux Data
+  int negroups = data::mg.num_energy_groups_;
+  for( int g = 0; g < negroups; g++ )
+  {
+
+    fprintf(fast, "SCALARS flux_group_%d float\n", g);
+    fprintf(fast, "LOOKUP_TABLE default\n");
+
+    for( int z = 0; z < Nz; z++ )
+    {
+      sample.z = ll.z + z_delta/2.0 + z * z_delta;
+      for( int y = 0; y < Ny; y++ )
+      {
+        sample.y = ll.y + y_delta/2.0 + y * y_delta;
+        for( int x = 0; x < Nx; x++ )
+        {
+          sample.x = ll.x + x_delta/2.0 + x * x_delta;
+          Particle p;
+          p.r() = sample;  
+          bool found = exhaustive_find_cell(p);
+    
+          // Initialize ray's starting angular flux to starting location's isotropic source
+          int i_cell = p.lowest_coord().cell;
+          int64_t source_region_idx = random_ray::source_region_offsets[i_cell] + p.cell_instance();
+          int64_t source_element = source_region_idx * negroups + g;
+          float flux = random_ray::scalar_flux_old[source_element];
+
+          //fprintf(fast,    "%.4e\n", thermal_flux);
+          flux = eswap_float(flux);
+          fwrite(&flux, sizeof(float), 1, fast);
+        }
+      }
+    }
+  }
+  
+  // Plot FSRs
+  fprintf(fast, "SCALARS FSRs int\n");
   fprintf(fast, "LOOKUP_TABLE default\n");
 
-  Position sample;
-  int group = 0;
-  int negroups = data::mg.num_energy_groups_;
+  for( int z = 0; z < Nz; z++ )
+  {
+    sample.z = ll.z + z_delta/2.0 + z * z_delta;
+    for( int y = 0; y < Ny; y++ )
+    {
+      sample.y = ll.y + y_delta/2.0 + y * y_delta;
+      for( int x = 0; x < Nx; x++ )
+      {
+        sample.x = ll.x + x_delta/2.0 + x * x_delta;
+          Particle p;
+        p.r() = sample;  
+        bool found = exhaustive_find_cell(p);
+
+        // Initialize ray's starting angular flux to starting location's isotropic source
+        int i_cell = p.lowest_coord().cell;
+        uint64_t source_region_idx = random_ray::source_region_offsets[i_cell] + p.cell_instance();
+
+        int fsr = future_seed(10, source_region_idx) % 500;
+
+        fsr = eswap_int(fsr);
+        fwrite(&fsr, sizeof(int), 1, fast);
+      }
+    }
+  }
+  
+  // Plot Materials
+  fprintf(fast, "SCALARS Materials int\n");
+  fprintf(fast, "LOOKUP_TABLE default\n");
+
   for( int z = 0; z < Nz; z++ )
   {
     sample.z = ll.z + z_delta/2.0 + z * z_delta;
@@ -102,16 +166,14 @@ void plot_3D_vtk()
         Particle p;
         p.r() = sample;  
         bool found = exhaustive_find_cell(p);
-  
+
         // Initialize ray's starting angular flux to starting location's isotropic source
         int i_cell = p.lowest_coord().cell;
         int64_t source_region_idx = random_ray::source_region_offsets[i_cell] + p.cell_instance();
-        int64_t source_element = source_region_idx * negroups + group;
-        float flux = random_ray::scalar_flux_old[source_element];
+        int mat = random_ray::material[source_region_idx];
 
-        //fprintf(fast,    "%.4e\n", thermal_flux);
-        flux = eswap_float(flux);
-        fwrite(&flux, sizeof(float), 1, fast);
+        mat = eswap_int(mat);
+        fwrite(&mat, sizeof(int), 1, fast);
       }
     }
   }

@@ -122,7 +122,7 @@ void plot_3D_vtk()
   }
   
   // Plot FSRs
-  fprintf(fast, "SCALARS FSRs int\n");
+  fprintf(fast, "SCALARS FSRs float\n");
   fprintf(fast, "LOOKUP_TABLE default\n");
 
   for( int z = 0; z < Nz; z++ )
@@ -142,10 +142,10 @@ void plot_3D_vtk()
         int i_cell = p.lowest_coord().cell;
         uint64_t source_region_idx = random_ray::source_region_offsets[i_cell] + p.cell_instance();
 
-        int fsr = future_seed(10, source_region_idx) % 500;
+        float fsr = future_prn(10, source_region_idx);
 
-        fsr = eswap_int(fsr);
-        fwrite(&fsr, sizeof(int), 1, fast);
+        fsr = eswap_float(fsr);
+        fwrite(&fsr, sizeof(float), 1, fast);
       }
     }
   }

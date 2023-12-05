@@ -271,7 +271,9 @@ int openmc_run_random_ray()
   // Print random ray results
   if (mpi::master) {
     print_results_random_ray(total_geometric_intersections, avg_miss_rate/settings::n_batches);
-    plot_3D_vtk();
+    if (model::plots.size() == 1) {
+      plot_3D_vtk();
+    }
   }
 
   return 0;

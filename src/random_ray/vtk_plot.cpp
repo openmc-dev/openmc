@@ -1,20 +1,7 @@
-#include <stdio.h>
-
-#include "openmc/random_ray/iteration.h"
-#include "openmc/random_ray/tally_convert.h"
-#include "openmc/random_ray/vtk_plot.h"
-#include "openmc/output.h"
-#include "openmc/geometry.h"
-#include "openmc/tallies/tally.h"
-#include "openmc/tallies/filter.h"
-#include "openmc/tallies/tally_scoring.h"
-#include "openmc/simulation.h"
-#include "openmc/source.h"
-#include "openmc/eigenvalue.h"
-#include "openmc/timer.h"
 #include "openmc/mgxs_interface.h"
-#include "openmc/message_passing.h"
+#include "openmc/output.h"
 #include "openmc/plot.h"
+#include "openmc/random_ray/vtk_plot.h"
 
 namespace openmc {
 
@@ -117,7 +104,7 @@ void plot_3D_vtk()
 	fprintf(plot, "POINT_DATA %d\n", Nx*Ny*Nz);
   
   // Plot multigroup flux data
-  for( int g = 0; g < negroups; g++ ) {
+  for (int g = 0; g < negroups; g++) {
     fprintf(plot, "SCALARS flux_group_%d float\n", g);
     fprintf(plot, "LOOKUP_TABLE default\n");
     for (int fsr : voxel_indices) {

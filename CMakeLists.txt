@@ -155,6 +155,11 @@ if(NOT DEFINED HDF5_PREFER_PARALLEL)
 endif()
 
 find_package(HDF5 REQUIRED COMPONENTS C HL)
+
+# Remove HDF5 transitive dependencies that are system libraries
+list(FILTER HDF5_LIBRARIES EXCLUDE REGEX ".*lib(pthread|dl|m).*")
+message(STATUS "HDF5 Libraries: ${HDF5_LIBRARIES}")
+
 if(HDF5_IS_PARALLEL)
   if(NOT OPENMC_USE_MPI)
     message(FATAL_ERROR "Parallel HDF5 was detected, but MPI was not enabled.\

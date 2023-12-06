@@ -385,7 +385,7 @@ class HashedPyAPITestHarness(PyAPITestHarness):
 
 class TolerantPyAPITestHarness(PyAPITestHarness):
 
-    def _are_files_equal(file1_path, file2_path, tolerance=0.01):
+    def _are_files_equal(self, actual_path, expected_path, tolerance):
         def isfloat(value):
             try:
                 float(value)
@@ -403,8 +403,8 @@ class TolerantPyAPITestHarness(PyAPITestHarness):
             else:
                 return token1 == token2
 
-        expected = open('results_true.dat').readlines()
-        actual = open('results_test.dat').readlines()
+        expected = open(expected_path).readlines()
+        actual = open(actual_path).readlines()
 
         if len(expected) != len(actual):
             return False
@@ -424,7 +424,7 @@ class TolerantPyAPITestHarness(PyAPITestHarness):
 
     def _compare_results(self):
         """Make sure the current results agree with the reference."""
-        compare = self._are_files_equal('results_test.dat', 'results_true.dat')
+        compare = self._are_files_equal('results_test.dat', 'results_true.dat', 1e-6)
         if not compare:
             expected = open('results_true.dat').readlines()
             actual = open('results_test.dat').readlines()

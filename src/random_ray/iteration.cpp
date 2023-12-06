@@ -278,7 +278,7 @@ int openmc_run_random_ray()
   // Print random ray results
   if (mpi::master) {
     print_results_random_ray(total_geometric_intersections, avg_miss_rate/settings::n_batches);
-    if (model::plots.size() == 1) {
+    if (model::plots.size() > 0) {
       plot_3D_vtk();
     }
   }
@@ -567,18 +567,20 @@ void validate_random_ray_inputs()
     fatal_error("Invalid source definition -- only isotropic sources are allowed in random ray mode.");
   }
 
-  // Check plotting file
-  if (model::plots.size() > 1) {
-    fatal_error("Invalid plotting file -- multiple plots not allowed in random ray mode.");
-  }
+  // Check plotting files
+  for (int p = 0; p < model::plots.size(); p++) {
 
-  if (model::plots.size() == 1) {
-    Plot* p = dynamic_cast<Plot*>(model::plots[0].get());
-    if (p == nullptr) {
-      fatal_error("Invalid plot type -- only voxel plotting is allowed in random ray mode.");
-    } else if (p->type_ != Plot::PlotType::voxel) {
-      fatal_error("Invalid plot type -- only voxel plotting is allowed in random ray mode.");
-    }
+    // Get handle to OpenMC plot object and extract params
+    Plot* openmc_plot = dynamic_cast<Plot*>(model::plots[p].get());
+      
+    // Random ray plots only support voxel plots
+    if (openmc_plot == nullptr) {
+      warning(fmt::format("Plot {} will not be used for end of simulation data plotting -- only voxel plotting is allowed in random ray mode.", p));
+      continue;
+    } else if (openmc_plot->type_ != Plot::PlotType::voxel) {
+      warning(fmt::format("Plot {} will not be used for end of simulation data plotting -- only voxel plotting is allowed in random ray mode.", p));
+      continue;
+    } 
   }
 
   // Warn about slow MPI domain replication, if detected

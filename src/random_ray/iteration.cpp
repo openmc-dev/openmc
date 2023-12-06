@@ -570,7 +570,7 @@ void validate_random_ray_inputs()
   // Check plotting files
   for (int p = 0; p < model::plots.size(); p++) {
 
-    // Get handle to OpenMC plot object and extract params
+    // Get handle to OpenMC plot object
     Plot* openmc_plot = dynamic_cast<Plot*>(model::plots[p].get());
       
     // Random ray plots only support voxel plots

@@ -17,7 +17,7 @@ from .material import Material
 __all__ = ['RegularMesh', 'RectilinearMesh', 'CylindricalMesh', 'SphericalMesh', 'UnstructuredMesh', 'meshes']
 
 
-class MaterialVolume(Structure):
+class _MaterialVolume(Structure):
     _fields_ = [
         ("material", c_int32),
         ("volume", c_double)
@@ -39,7 +39,7 @@ _dll.openmc_mesh_get_n_elements.argtypes = [c_int32, POINTER(c_size_t)]
 _dll.openmc_mesh_get_n_elements.restype = c_int
 _dll.openmc_mesh_get_n_elements.errcheck = _error_handler
 _dll.openmc_mesh_volume_fractions.argtypes = [
-    c_int32, c_int, c_int, c_int, POINTER(MaterialVolume),
+    c_int32, c_int, c_int, c_int, POINTER(_MaterialVolume),
     POINTER(c_int), POINTER(c_uint64)]
 _dll.openmc_mesh_volume_fractions.restype = c_int
 _dll.openmc_mesh_volume_fractions.errcheck = _error_handler
@@ -155,6 +155,8 @@ class Mesh(_FortranObjectWithID):
     ) -> List[List[Tuple[Material, float]]]:
         """Determine volume fractions of materials in each mesh element
 
+        .. versionadded:: 0.14.1
+
         Parameters
         ----------
         n_samples : int
@@ -165,7 +167,9 @@ class Mesh(_FortranObjectWithID):
 
         Returns
         -------
-        List of tuple of (material, volume) for each mesh element
+        List of tuple of (material, volume) for each mesh element. Void volume
+        is represented by having a value of None in the first element of a
+        tuple.
 
         """
         if n_samples <= 0:
@@ -176,7 +180,7 @@ class Mesh(_FortranObjectWithID):
 
         # Preallocate space for MaterialVolume results
         size = 16
-        result = (MaterialVolume * size)()
+        result = (_MaterialVolume * size)()
 
         hits = c_int()  # Number of materials hit in a given element
         volumes = []
@@ -188,7 +192,7 @@ class Mesh(_FortranObjectWithID):
                 except AllocationError:
                     # Increase size of result array and try again
                     size *= 2
-                    result = (MaterialVolume * size)()
+                    result = (_MaterialVolume * size)()
                 else:
                     # If no error, break out of loop
                     break

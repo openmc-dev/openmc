@@ -1099,7 +1099,7 @@ double RectilinearMesh::volume(const MeshIndex& ijk) const
   double vol {1.0};
 
   for (int i = 0; i < n_dimension_; i++) {
-    vol *= grid_[i][ijk[i] + 1] - grid_[i][ijk[i]];
+    vol *= grid_[i][ijk[i]] - grid_[i][ijk[i] - 1];
   }
   return vol;
 }

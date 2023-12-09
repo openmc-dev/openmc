@@ -175,8 +175,8 @@ public:
     uint64_t* seed) const;
 
   // Data members
-  int id_ {-1};     //!< User-specified ID
-  int n_dimension_; //!< Number of dimensions
+  int id_ {-1};          //!< User-specified ID
+  int n_dimension_ {-1}; //!< Number of dimensions
 };
 
 class StructuredMesh : public Mesh {

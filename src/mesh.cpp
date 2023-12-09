@@ -1921,6 +1921,11 @@ extern "C" int openmc_regular_mesh_set_params(
     return err;
   RegularMesh* m = dynamic_cast<RegularMesh*>(model::meshes[index].get());
 
+  if (m->n_dimension_ == -1) {
+    set_errmsg("Need to set mesh dimension before setting parameters.");
+    return OPENMC_E_UNASSIGNED;
+  }
+
   vector<std::size_t> shape = {static_cast<std::size_t>(n)};
   if (ll && ur) {
     m->lower_left_ = xt::adapt(ll, n, xt::no_ownership(), shape);
@@ -1937,6 +1942,16 @@ extern "C" int openmc_regular_mesh_set_params(
   } else {
     set_errmsg("At least two parameters must be specified.");
     return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  // Set volume fraction
+
+  // TODO: incorporate this into method in RegularMesh that can be called from
+  // here and from constructor
+  m->volume_frac_ = 1.0 / xt::prod(m->get_x_shape())();
+  m->element_volume_ = 1.0;
+  for (int i = 0; i < m->n_dimension_; i++) {
+    m->element_volume_ *= m->width_[i];
   }
 
   return 0;

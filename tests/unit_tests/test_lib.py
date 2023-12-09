@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from math import pi
 import os
 
 import numpy as np
@@ -126,7 +127,7 @@ def test_cell(lib_init):
     cell = openmc.lib.cells[1]
     assert isinstance(cell.fill, openmc.lib.Material)
     cell.fill = openmc.lib.materials[1]
-    assert str(cell) == 'Cell[0]'
+    assert str(cell) == '<Cell(id=1)>'
     assert cell.name == "Fuel"
     cell.name = "Not fuel"
     assert cell.name == "Not fuel"
@@ -580,6 +581,16 @@ def test_regular_mesh(lib_init):
     msf.translation = translation
     assert msf.translation == translation
 
+    # Test volume fraction
+    mesh = openmc.lib.RegularMesh()
+    mesh.dimension = (2, 2, 1)
+    mesh.set_parameters(lower_left=(-0.63, -0.63, -0.5),
+                        upper_right=(0.63, 0.63, 0.5))
+    vol_fracs = mesh.volume_fractions()
+    assert len(vol_fracs) == 4
+    for elem_fracs in vol_fracs:
+        assert sum(f[1] for f in elem_fracs) == pytest.approx(1.26 * 1.26 / 4)
+
 
 def test_rectilinear_mesh(lib_init):
     mesh = openmc.lib.RectilinearMesh()
@@ -600,7 +611,7 @@ def test_rectilinear_mesh(lib_init):
 
     meshes = openmc.lib.meshes
     assert isinstance(meshes, Mapping)
-    assert len(meshes) == 2
+    assert len(meshes) == 3
 
     mesh = meshes[mesh.id]
     assert isinstance(mesh, openmc.lib.RectilinearMesh)
@@ -611,8 +622,21 @@ def test_rectilinear_mesh(lib_init):
     msf = openmc.lib.MeshSurfaceFilter(mesh)
     assert msf.mesh == mesh
 
+    # Test volume fraction
+    mesh = openmc.lib.RectilinearMesh()
+    w = 1.26
+    mesh.set_grid([-w/2, -w/4, w/2], [-w/2, -w/4, w/2], [-0.5, 0.5])
+
+    vol_fracs = mesh.volume_fractions()
+    assert len(vol_fracs) == 4
+    assert sum(f[1] for f in vol_fracs[0]) == pytest.approx(w/4 * w/4)
+    assert sum(f[1] for f in vol_fracs[1]) == pytest.approx(w/4 * 3*w/4)
+    assert sum(f[1] for f in vol_fracs[2]) == pytest.approx(3*w/4 * w/4)
+    assert sum(f[1] for f in vol_fracs[3]) == pytest.approx(3*w/4 * 3*w/4)
+
+
 def test_cylindrical_mesh(lib_init):
-    deg2rad = lambda deg: deg*np.pi/180
+    deg2rad = lambda deg: deg*pi/180
     mesh = openmc.lib.CylindricalMesh()
     r_grid = [0., 5., 10.]
     phi_grid = np.radians([0., 10., 20.])
@@ -631,7 +655,7 @@ def test_cylindrical_mesh(lib_init):
 
     meshes = openmc.lib.meshes
     assert isinstance(meshes, Mapping)
-    assert len(meshes) == 3
+    assert len(meshes) == 5
 
     mesh = meshes[mesh.id]
     assert isinstance(mesh, openmc.lib.CylindricalMesh)
@@ -641,6 +665,21 @@ def test_cylindrical_mesh(lib_init):
 
     msf = openmc.lib.MeshSurfaceFilter(mesh)
     assert msf.mesh == mesh
+
+    # Test volume fraction
+    mesh = openmc.lib.CylindricalMesh()
+    r_grid = (0., 0.5, 1.0)
+    phi_grid = np.linspace(0., 2.0*pi, 4)
+    z_grid = (-0.5, 0.5)
+    mesh.set_grid(r_grid, phi_grid, z_grid)
+
+    vol_fracs = mesh.volume_fractions()
+    assert len(vol_fracs) == 6
+    for i in range(0, 6, 2):
+        assert sum(f[1] for f in vol_fracs[i]) == pytest.approx(pi * 0.5**2 / 3)
+    for i in range(1, 6, 2):
+        assert sum(f[1] for f in vol_fracs[i]) == pytest.approx(pi * (1.0**2 - 0.5**2) / 3)
+
 
 def test_spherical_mesh(lib_init):
     deg2rad = lambda deg: deg*np.pi/180
@@ -662,7 +701,7 @@ def test_spherical_mesh(lib_init):
 
     meshes = openmc.lib.meshes
     assert isinstance(meshes, Mapping)
-    assert len(meshes) == 4
+    assert len(meshes) == 7
 
     mesh = meshes[mesh.id]
     assert isinstance(mesh, openmc.lib.SphericalMesh)
@@ -672,6 +711,24 @@ def test_spherical_mesh(lib_init):
 
     msf = openmc.lib.MeshSurfaceFilter(mesh)
     assert msf.mesh == mesh
+
+    # Test volume fraction
+    mesh = openmc.lib.SphericalMesh()
+    r_grid = (0., 0.5, 1.0)
+    theta_grid = np.linspace(0., pi, 3)
+    phi_grid = np.linspace(0., 2.0*pi, 4)
+    mesh.set_grid(r_grid, theta_grid, phi_grid)
+
+    vol_fracs = mesh.volume_fractions()
+    assert len(vol_fracs) == 12
+    d_theta = theta_grid[1] - theta_grid[0]
+    d_phi = phi_grid[1] - phi_grid[0]
+    for i in range(0, 12, 2):
+        assert sum(f[1] for f in vol_fracs[i]) == pytest.approx(
+            0.5**3 / 3 * d_theta * d_phi * 2/pi)
+    for i in range(1, 12, 2):
+        assert sum(f[1] for f in vol_fracs[i]) == pytest.approx(
+            (1.0**3 - 0.5**3) / 3 * d_theta * d_phi * 2/pi)
 
 
 def test_restart(lib_init, mpi_intracomm):

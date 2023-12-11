@@ -1647,7 +1647,7 @@ class Materials(cv.CheckedList):
             material.make_isotropic_in_lab()
 
     def _write_xml(self, file, header=True, level=0, spaces_per_level=2,
-                   trailing_indent=True, nuclides_to_ignore=None):
+                   trailing_indent=True, nuclides_to_ignore=None, ignore_phantom_nuclides=False):
         """Writes XML content of the materials to an open file handle.
 
         Parameters
@@ -1666,6 +1666,18 @@ class Materials(cv.CheckedList):
             Nuclides to ignore when exporting to XML.
 
         """
+        if ignore_phantom_nuclides:
+            xml_path = openmc.config.get("cross_sections", None)
+            if xml_path is None:
+                raise ValueError("A cross_sections.xml file must be set to identify phantom nuclides.")
+            available = get_nuclides_with_data(xml_path)
+            candidates = list(set([nuc.name for m in self for nuc in m.nuclides]))
+            phantoms = [nuc for nuc in candidates if nuc not in available]
+            if nuclides_to_ignore is None:
+                nuclides_to_ignore = phantoms
+            else:
+                nuclides_to_ignore += phantoms
+
         indentation = level*spaces_per_level*' '
         # Write the header and the opening tag for the root element.
         if header:
@@ -1717,24 +1729,14 @@ class Materials(cv.CheckedList):
         if p.is_dir():
             p /= 'materials.xml'
 
-        if ignore_phantom_nuclides:
-            xml_path = openmc.config.get("cross_sections", None)
-            if xml_path is None:
-                raise ValueError("A cross_sections.xml file must be set to identify phantom nuclides.")
-            available = get_nuclides_with_data(xml_path)
-            candidates = list(set([nuc.name for m in self for nuc in m.nuclides]))
-            phantoms = [nuc for nuc in candidates if nuc not in available]
-            if nuclides_to_ignore is None:
-                nuclides_to_ignore = phantoms
-            else:
-                nuclides_to_ignore += phantoms
-
         # Write materials to the file one-at-a-time.  This significantly reduces
         # memory demand over allocating a complete ElementTree and writing it in
         # one go.
         with open(str(p), 'w', encoding='utf-8',
                   errors='xmlcharrefreplace') as fh:
-            self._write_xml(fh, nuclides_to_ignore=nuclides_to_ignore)
+            self._write_xml(fh, 
+                            ignore_phantom_nuclides=ignore_phantom_nuclides, 
+                            nuclides_to_ignore=nuclides_to_ignore)
 
     @classmethod
     def from_xml_element(cls, elem) -> Materials:

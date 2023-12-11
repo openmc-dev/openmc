@@ -1315,7 +1315,7 @@ class Material(IDManagerMixin):
 
     def _get_nuclides_xml(
             self, nuclides: typing.Iterable[NuclideTuple],
-            nuclides_to_ignore: Optional[typing.Iterable[str]] = None)-> List[ET.Element]:
+            nuclides_to_ignore: Optional[typing.Iterable[str]] = None) -> List[ET.Element]:
         xml_elements = []
 
         # Remove any nuclides to ignore from the XML export
@@ -1734,8 +1734,8 @@ class Materials(cv.CheckedList):
         # one go.
         with open(str(p), 'w', encoding='utf-8',
                   errors='xmlcharrefreplace') as fh:
-            self._write_xml(fh, 
-                            ignore_phantom_nuclides=ignore_phantom_nuclides, 
+            self._write_xml(fh,
+                            ignore_phantom_nuclides=ignore_phantom_nuclides,
                             nuclides_to_ignore=nuclides_to_ignore)
 
     @classmethod
@@ -1801,7 +1801,7 @@ def get_nuclides_with_data(cross_sections):
         Set of nuclide names that have cross secton data
 
     """
-    if isinstance(cross_sections, Path):
+    if isinstance(cross_sections, cv.PathLike):
         nuclides = set()
         data_lib = DataLibrary.from_xml(cross_sections)
         for library in data_lib.libraries:

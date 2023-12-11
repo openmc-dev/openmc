@@ -95,15 +95,6 @@ run::
 
     pytest --build-inputs <name-of-test>
 
-Generating Expected Outputs
----------------------
-
-Many of the regression tests rely on the Python API to reformat output so it can
-be compared to an expected output file for the test. To generate the expected
-output file, you can run::
-
-    pytest --update <name-of-test>
-
 Adding C++ Unit Tests
 ---------------------
 
@@ -142,6 +133,12 @@ following files to your new test directory:
       commit. It should be noted that this file should be generated with basic
       compiler options during openmc configuration and build (e.g., no MPI, no
       debug/optimization).
+
+For tests using the python API, both the **inputs_true.dat** and
+**results_true.dat** files can be generated automatically in the correct format
+via::
+
+    pytest --update <name-of-test>
 
 In addition to this description, please see the various types of tests that are
 already included in the test suite to see how to create them. If all is

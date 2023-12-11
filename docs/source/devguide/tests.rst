@@ -134,7 +134,7 @@ following files to your new test directory:
       compiler options during openmc configuration and build (e.g., no MPI, no
       debug/optimization).
 
-For tests using the python API, both the **inputs_true.dat** and
+For tests using the Python API, both the **inputs_true.dat** and
 **results_true.dat** files can be generated automatically in the correct format
 via::
 

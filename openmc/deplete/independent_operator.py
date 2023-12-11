@@ -275,10 +275,6 @@ class IndependentOperator(OpenMCOperator):
                 self.prev_res.append(new_res)
 
 
-    def _get_nuclides_with_data(self, cross_sections: List[MicroXS]) -> Set[str]:
-        """Finds nuclides with cross section data"""
-        return set(cross_sections[0].nuclides)
-
     class _IndependentRateHelper(ReactionRateHelper):
         """Class for generating one-group reaction rates with flux and
         one-group cross sections.

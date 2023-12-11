@@ -95,6 +95,15 @@ run::
 
     pytest --build-inputs <name-of-test>
 
+Generating Expected Outputs
+---------------------
+
+Many of the regression tests rely on the Python API to reformat output so it can
+be compared to an expected output file for the test. To generate the expected
+output file, you can run::
+
+    pytest --update <name-of-test>
+
 Adding C++ Unit Tests
 ---------------------
 

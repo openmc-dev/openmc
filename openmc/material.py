@@ -1807,7 +1807,7 @@ def get_nuclides_with_data(cross_sections):
         Set of nuclide names that have cross secton data
 
     """
-    if isinstance(cross_sections, cv.PathLike):
+    if isinstance(cross_sections, Path):
         nuclides = set()
         data_lib = DataLibrary.from_xml(cross_sections)
         for library in data_lib.libraries:

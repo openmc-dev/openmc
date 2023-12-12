@@ -378,3 +378,15 @@ def test_remove_redundant_surfaces():
     # There should be 0 remaining redundant surfaces
     n_redundant_surfs = len(geom.remove_redundant_surfaces().keys())
     assert n_redundant_surfs == 0
+
+def test_get_all_nuclides():
+    m1 = openmc.Material()
+    m1.add_nuclide('Fe56', 1)
+    m1.add_nuclide('Be9', 1)
+    m2 = openmc.Material()
+    m2.add_nuclide('Be9', 1)
+    s = openmc.Sphere()
+    c1 = openmc.Cell(fill=m1, region=-s)
+    c2 = openmc.Cell(fill=m2, region=+s)
+    geom = openmc.Geometry([c1, c2])
+    assert geom.get_all_nuclides() == ['Be9', 'Fe56']

@@ -132,10 +132,10 @@ class IndependentOperator(OpenMCOperator):
         check_type('micros', micros, Iterable, MicroXS)
         check_type('fluxes', fluxes, Iterable, float)
 
-        if len(set([len(fluxes), len(micros), len(materials)])) != 1:
-            msg = (f'The length of fluxes {len(fluxes)} should be equal to ' 
-                   f'the length of micros {len(micros)} and the length of '
-                   f'materials {len(materials)}.')
+        if not (len(fluxes) == len(micros) == len(materials)):
+            msg = (f'The length of fluxes ({len(fluxes)}) should be equal to '
+                   f'the length of micros ({len(micros)}) and the length of '
+                   f'materials ({len(materials)}).')
             raise ValueError(msg)
 
         if keff is not None:

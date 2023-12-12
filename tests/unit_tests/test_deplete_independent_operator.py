@@ -40,7 +40,7 @@ def test_operator_init():
     IndependentOperator(materials, fluxes, micros, CHAIN_PATH)
 
 
-def test_error_handeling():
+def test_error_handling():
     micro_xs = MicroXS.from_csv(ONE_GROUP_XS)
     fuel = Material(name="oxygen")
     fuel.add_element("O", 2)
@@ -50,6 +50,5 @@ def test_error_handeling():
     materials = Materials([fuel])
     fluxes = [1.0, 2.0]
     micros = [micro_xs]
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(ValueError, match=r"The length of fluxes \(2\)"):
         IndependentOperator(materials, fluxes, micros, CHAIN_PATH)
-    assert "The length of fluxes 2" in str(excinfo.value)

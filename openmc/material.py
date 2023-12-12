@@ -1664,6 +1664,9 @@ class Materials(cv.CheckedList):
             Whether or not to write a trailing indentation for the materials element
         nuclides_to_ignore : list of str
             Nuclides to ignore when exporting to XML.
+        ignore_phantom_nuclides: bool
+            If True, nuclides present in the materials but with no available cross-sections
+            will be ignored when writing to xml.
 
         """
         if ignore_phantom_nuclides:
@@ -1722,6 +1725,9 @@ class Materials(cv.CheckedList):
             Path to file to write. Defaults to 'materials.xml'.
         nuclides_to_ignore : list of str
             Nuclides to ignore when exporting to XML.
+        ignore_phantom_nuclides: bool
+            If True, nuclides present in the materials but with no available cross-sections
+            will be ignored when writing to xml.
 
         """
         # Check if path is a directory

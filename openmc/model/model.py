@@ -442,6 +442,9 @@ class Model:
         remove_surfs : bool
             Whether or not to remove redundant surfaces from the geometry when
             exporting.
+        ignore_phantom_nuclides: bool
+            If True, nuclides present in the materials but with no available cross-sections
+            will be ignored when writing to xml.
 
             .. versionadded:: 0.13.1
         """
@@ -481,6 +484,9 @@ class Model:
         remove_surfs : bool
             Whether or not to remove redundant surfaces from the geometry when
             exporting.
+        ignore_phantom_nuclides: bool
+            If True, nuclides present in the materials but with no available cross-sections
+            will be ignored when writing to xml.
 
         """
         xml_path = Path(path)

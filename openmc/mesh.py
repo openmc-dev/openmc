@@ -2,7 +2,7 @@ import typing
 import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from math import pi
+from math import pi, sqrt, atan2
 from numbers import Integral, Real
 from pathlib import Path
 from typing import Optional, Sequence, Tuple
@@ -1346,6 +1346,66 @@ class CylindricalMesh(StructuredMesh):
             string += fmt.format('\tZ Min:', '=\t', self._z_grid[0])
             string += fmt.format('\tZ Max:', '=\t', self._z_grid[-1])
         return string
+
+    def get_indices_at_coords(
+            self,
+            coords: Sequence[float]
+        ) -> Tuple[int, int, int]:
+        """Finds the index of the mesh voxel at the specified x,y,z coordinates.
+
+        Parameters
+        ----------
+        coords : Sequence[float]
+            The x, y, z axis coordinates
+
+        Returns
+        -------
+        Tuple[int, int, int]
+            The r, phi, z indices
+
+        """
+        r_value_from_origin = sqrt((coords[0]-self.origin[0])**2 + (coords[1]-self.origin[1])**2)
+
+        if r_value_from_origin < self.r_grid[0] or r_value_from_origin > self.r_grid[-1]:
+            raise ValueError(
+                f'The specified x, y ({coords[0]}, {coords[1]}) combine to give an r value of '
+                f'{r_value_from_origin} from the origin of {self.origin}.which '
+                f'is outside the origin absolute r grid values {self.r_grid}.'
+            )
+
+        r_index = np.searchsorted(self.r_grid, r_value_from_origin) - 1
+
+        z_grid_values = np.array(self.z_grid) + self.origin[2]
+
+        if coords[2] < z_grid_values[0] or coords[2] > z_grid_values[-1]:
+            raise ValueError(
+                f'The specified z value ({coords[2]}) from the z origin of '
+                f'{self.origin[-1]} is outside of the absolute z grid range {z_grid_values}.'
+            )
+
+        z_index = np.argmax(z_grid_values > coords[2]) - 1
+
+        delta_x = coords[0] - self.origin[0]
+        delta_y = coords[1] - self.origin[1]
+        # atan2 returns values in -pi to +pi range
+        phi_value = atan2(delta_y, delta_x)
+        if delta_x < 0 and delta_y < 0:
+            # returned phi_value anticlockwise and negative
+            phi_value += 2 * pi
+        if delta_x > 0 and delta_y < 0:
+            # returned phi_value anticlockwise and negative
+            phi_value += 2 * pi
+
+        phi_grid_values = np.array(self.phi_grid)
+
+        if phi_value < phi_grid_values[0] or phi_value > phi_grid_values[-1]:
+            raise ValueError(
+                f'The phi value ({phi_value}) resulting from the specified x, y '
+                f'values is outside of the absolute  phi grid range {phi_grid_values}.'
+            )
+        phi_index = np.argmax(phi_grid_values > phi_value) - 1
+
+        return (r_index, phi_index, z_index)
 
     @classmethod
     def from_hdf5(cls, group: h5py.Group):

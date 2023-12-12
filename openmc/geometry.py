@@ -391,6 +391,20 @@ class Geometry:
         universes.update(self.root_universe.get_all_universes())
         return universes
 
+    def get_all_nuclides(self) -> typing.List[str]:
+        """Return all nuclides within the geometry.
+
+        Returns
+        -------
+        list
+            Sorted list of all nuclides in materials appearing in the geometry
+
+        """
+        all_nuclides = set()
+        for material in self.get_all_materials().values():
+            all_nuclides |= set(material.get_nuclides())
+        return sorted(all_nuclides)
+
     def get_all_materials(self) -> typing.Dict[int, openmc.Material]:
         """Return all materials within the geometry.
 

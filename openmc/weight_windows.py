@@ -12,7 +12,6 @@ from openmc.filter import _PARTICLES
 from openmc.mesh import MeshBase, RectilinearMesh, CylindricalMesh, SphericalMesh, UnstructuredMesh
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
-
 from ._xml import get_text, clean_indentation
 from .mixin import IDManagerMixin
 

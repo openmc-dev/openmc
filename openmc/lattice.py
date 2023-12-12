@@ -4,8 +4,8 @@ from copy import deepcopy
 from math import sqrt, floor
 from numbers import Real
 import types
-import lxml.etree as ET
 
+import lxml.etree as ET
 import numpy as np
 
 import openmc

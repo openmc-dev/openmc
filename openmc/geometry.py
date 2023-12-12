@@ -397,16 +397,13 @@ class Geometry:
         Returns
         -------
         list
-            sorted list of all the nuclides in the geometry materials
+            Sorted list of all nuclides in materials appearing in the geometry
 
         """
-        all_nuclides = []
+        all_nuclides = set()
         for material in self.get_all_materials().values():
-            for nuclide in material.get_nuclides():
-                if nuclide not in all_nuclides:
-                    all_nuclides.append(nuclide)
+            all_nuclides |= set(material.get_nuclides())
         return sorted(all_nuclides)
-
 
     def get_all_materials(self) -> typing.Dict[int, openmc.Material]:
         """Return all materials within the geometry.

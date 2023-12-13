@@ -2316,7 +2316,7 @@ def _read_meshes(elem):
         A dictionary with mesh IDs as keys and openmc.MeshBase
         instanaces as values
     """
-    out = dict()
+    out = {}
     for mesh_elem in elem.findall('mesh'):
         mesh = MeshBase.from_xml_element(mesh_elem)
         out[mesh.id] = mesh

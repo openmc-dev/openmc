@@ -1932,6 +1932,8 @@ class BatchwiseSchemeStd():
             self.dilute_interval = dilute_interval
         self.interrupt = interrupt
 
+    def _get_cell_attrib(self):
+        return self.bw_geom._get_cell_attrib()
 
     def set_density_function(self, mats, density_func, oxidation_states):
         for bw in self.bw_list:
@@ -2040,6 +2042,9 @@ class BatchwiseSchemeRefuel():
                              ' while it should be int or float')
         else:
             self.restart_level = restart_level
+
+    def _get_cell_attrib(self):
+        return self.bw_geom._get_cell_attrib()
 
     def set_density_function(self, mats, density_func, oxidation_states):
         for bw in self.bw_list:
@@ -2167,6 +2172,9 @@ class BatchwiseSchemeFlex():
         self.restart_level = restart_level
         #
         self.converged_flex = False
+
+    def _get_cell_attrib(self):
+        return self.bw_geom_trans._get_cell_attrib()
 
     def set_density_function(self, mats, density_func, oxidation_states):
         for bw in self.bw_list:

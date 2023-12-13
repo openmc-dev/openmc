@@ -7,8 +7,8 @@ import warnings
 import typing  # imported separately as py3.8 requires typing.Iterable
 # also required to prevent typing.Union namespace overwriting Union
 from typing import Optional, Sequence
-import lxml.etree as ET
 
+import lxml.etree as ET
 import numpy as np
 import h5py
 

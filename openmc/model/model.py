@@ -7,10 +7,10 @@ from pathlib import Path
 from numbers import Integral
 from tempfile import NamedTemporaryFile
 import warnings
-import lxml.etree as ET
 from typing import Optional, Dict
 
 import h5py
+import lxml.etree as ET
 
 import openmc
 import openmc._xml as xml

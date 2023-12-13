@@ -1,24 +1,20 @@
 import math
-import typing
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from copy import deepcopy
 from numbers import Integral, Real
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import lxml.etree as ET
 import warnings
 
 import h5py
+import lxml.etree as ET
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-
 from ._xml import get_text
 from .checkvalue import check_type, check_value
 from .mixin import IDManagerMixin
-from .plots import _SVG_COLORS
 from .surface import _BOUNDARY_TYPES
 
 

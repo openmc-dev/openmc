@@ -1603,15 +1603,14 @@ class Settings:
                 if value is not None:
                     self.cutoff[key] = float(value)
 
-    def _entropy_mesh_from_xml_element(self, root, meshes=None):
+    def _entropy_mesh_from_xml_element(self, root, meshes):
         text = get_text(root, 'entropy_mesh')
-        if text is not None:
-            path = f"./mesh[@id='{int(text)}']"
-            elem = root.find(path)
-            if elem is not None:
-                self.entropy_mesh = RegularMesh.from_xml_element(elem)
-        if meshes is not None and self.entropy_mesh is not None:
-            meshes[self.entropy_mesh.id] = self.entropy_mesh
+        if text is None:
+            return
+        mesh_id = int(text)
+        if mesh_id not in meshes:
+            raise ValueError(f'Could not locate mesh with ID "{mesh_id}"')
+        self.entropy_mesh = meshes[mesh_id]
 
     def _trigger_from_xml_element(self, root):
         elem = root.find('trigger')
@@ -1671,15 +1670,14 @@ class Settings:
             values = [int(x) for x in text.split()]
             self.track = list(zip(values[::3], values[1::3], values[2::3]))
 
-    def _ufs_mesh_from_xml_element(self, root, meshes=None):
+    def _ufs_mesh_from_xml_element(self, root, meshes):
         text = get_text(root, 'ufs_mesh')
-        if text is not None:
-            path = f"./mesh[@id='{int(text)}']"
-            elem = root.find(path)
-            if elem is not None:
-                self.ufs_mesh = RegularMesh.from_xml_element(elem)
-        if meshes is not None and self.ufs_mesh is not None:
-            meshes[self.ufs_mesh.id] = self.ufs_mesh
+        if text is None:
+            return
+        mesh_id = int(text)
+        if mesh_id not in meshes:
+            raise ValueError(f'Could not locate mesh with ID "{mesh_id}"')
+        self.ufs_mesh = meshes[mesh_id]
 
     def _resonance_scattering_from_xml_element(self, root):
         elem = root.find('resonance_scattering')
@@ -1743,15 +1741,12 @@ class Settings:
 
     def _weight_windows_from_xml_element(self, root, meshes=None):
         for elem in root.findall('weight_windows'):
-            ww = WeightWindows.from_xml_element(elem, root)
+            ww = WeightWindows.from_xml_element(elem, meshes)
             self.weight_windows.append(ww)
 
         text = get_text(root, 'weight_windows_on')
         if text is not None:
             self.weight_windows_on = text in ('true', '1')
-
-        if meshes is not None and self.weight_windows:
-            meshes.update({ww.mesh.id: ww.mesh for ww in self.weight_windows})
 
     def _weight_window_checkpoints_from_xml_element(self, root):
         elem = root.find('weight_window_checkpoints')

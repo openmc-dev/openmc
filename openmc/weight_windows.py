@@ -353,15 +353,15 @@ class WeightWindows(IDManagerMixin):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element, root: ET.Element) -> WeightWindows:
+    def from_xml_element(cls, elem: ET.Element, meshes: Dict[int, MeshBase]) -> WeightWindows:
         """Generate weight window settings from an XML element
 
         Parameters
         ----------
         elem : lxml.etree._Element
             XML element
-        root : lxml.etree._Element
-            Root element for the file where meshes can be found
+        meshes : dict
+            Dictionary mapping IDs to mesh objects
 
         Returns
         -------
@@ -370,10 +370,9 @@ class WeightWindows(IDManagerMixin):
         """
         # Get mesh for weight windows
         mesh_id = int(get_text(elem, 'mesh'))
-        path = f"./mesh[@id='{mesh_id}']"
-        mesh_elem = root.find(path)
-        if mesh_elem is not None:
-            mesh = MeshBase.from_xml_element(mesh_elem)
+        if mesh_id not in meshes:
+            raise ValueError(f'Could not locate mesh with ID "{mesh_id}"')
+        mesh = meshes[mesh_id]
 
         # Read all other parameters
         lower_ww_bounds = [float(l) for l in get_text(elem, 'lower_ww_bounds').split()]

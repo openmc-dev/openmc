@@ -13,6 +13,7 @@ from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler
 from .material import Material
+from .plot import _Position
 
 __all__ = ['RegularMesh', 'RectilinearMesh', 'CylindricalMesh', 'SphericalMesh', 'UnstructuredMesh', 'meshes']
 
@@ -43,6 +44,11 @@ _dll.openmc_mesh_material_volumes.argtypes = [
     POINTER(c_int), POINTER(c_uint64)]
 _dll.openmc_mesh_material_volumes.restype = c_int
 _dll.openmc_mesh_material_volumes.errcheck = _error_handler
+_dll.openmc_mesh_get_plot_bins.argtypes = [
+    c_int32, _Position, _Position, c_int, POINTER(c_int), POINTER(c_int32)
+]
+_dll.openmc_mesh_get_plot_bins.restype = c_int
+_dll.openmc_mesh_get_plot_bins.errcheck = _error_handler
 _dll.openmc_get_mesh_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_mesh_index.restype = c_int
 _dll.openmc_get_mesh_index.errcheck = _error_handler
@@ -203,6 +209,18 @@ class Mesh(_FortranObjectWithID):
             ])
         return volumes
 
+    def get_plot_bins(self, origin, width, basis, pixels):
+        origin = _Position(*origin)
+        width = _Position(*width)
+        basis = {'xy': 1, 'xz': 2, 'yz': 3}[basis]
+        pixel_array = (c_int*2)(*pixels)
+        img_data = np.zeros((pixels[1], pixels[0]), dtype=np.dtype('int32'))
+
+        _dll.openmc_mesh_get_plot_bins(
+            self._index, origin, width, basis, pixel_array,
+            img_data.ctypes.data_as(POINTER(c_int32))
+        )
+        return img_data
 
 class RegularMesh(Mesh):
     """RegularMesh stored internally.

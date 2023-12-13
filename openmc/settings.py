@@ -1,4 +1,3 @@
-import os
 from collections.abc import Iterable, Mapping, MutableSequence
 from enum import Enum
 import itertools
@@ -7,11 +6,11 @@ from numbers import Integral, Real
 from pathlib import Path
 import typing  # required to prevent typing.Union namespace overwriting Union
 from typing import Optional
+
 import lxml.etree as ET
 
 import openmc.checkvalue as cv
 from openmc.stats.multivariate import MeshSpatial
-
 from . import (RegularMesh, SourceBase, MeshSource, IndependentSource,
                VolumeCalculation, WeightWindows, WeightWindowGenerator)
 from ._xml import clean_indentation, get_text, reorder_attributes

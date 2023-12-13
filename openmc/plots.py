@@ -1,10 +1,10 @@
 from collections.abc import Iterable, Mapping
 from numbers import Integral, Real
 from pathlib import Path
-import lxml.etree as ET
 from typing import Optional
 
 import h5py
+import lxml.etree as ET
 import numpy as np
 
 import openmc

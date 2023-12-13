@@ -1,8 +1,8 @@
 from collections.abc import Iterable
 from math import cos, sin, pi
 from numbers import Real
-import lxml.etree as ET
 
+import lxml.etree as ET
 import numpy as np
 from uncertainties import UFloat
 

@@ -3,9 +3,9 @@ from collections.abc import Iterable
 from copy import deepcopy
 import math
 from numbers import Real
-import lxml.etree as ET
 from warnings import warn, catch_warnings, simplefilter
 
+import lxml.etree as ET
 import numpy as np
 
 from .checkvalue import check_type, check_value, check_length, check_greater_than

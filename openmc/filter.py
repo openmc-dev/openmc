@@ -3,9 +3,9 @@ from collections.abc import Iterable
 import hashlib
 from itertools import product
 from numbers import Real, Integral
-import lxml.etree as ET
 import warnings
 
+import lxml.etree as ET
 import numpy as np
 import pandas as pd
 

@@ -299,7 +299,7 @@ class MicroXS:
             model.export_to_model_xml()
 
             c_temperature = c_double(temperature)
-
+            norm_multi_group_flux = [val*1/sum(multi_group_flux) for val in multi_group_flux]
             openmc.lib.init()
             for nuc_indx, nuc in enumerate(nuclides):
                 if nuc in nuclides_with_data:
@@ -307,7 +307,7 @@ class MicroXS:
                     for mt_indx, mt in enumerate(mts):
                         c_mt = c_int(mt)
                         collapse = lib_nuc.collapse_rate(
-                            c_mt, c_temperature, energies, multi_group_flux
+                            c_mt, c_temperature, energies, norm_multi_group_flux
                         )
                         microxs_arr[nuc_indx, mt_indx] = collapse
                 else:

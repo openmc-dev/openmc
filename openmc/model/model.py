@@ -1054,18 +1054,16 @@ class Model:
             for cell in self.geometry.get_all_material_cells().values():
                 if cell.fill in distribmats:
                     mat = cell.fill
-                    if diff_volume_method == 'divide equally':
-                        cell.fill = [mat.clone() for _ in range(cell.num_instances)]
-                    elif diff_volume_method == 'match cell':
-                        for _ in range(cell.num_instances):
-                            cell.fill = mat.clone()
-                            if not cell.volume:
-                                raise ValueError(
-                                    f"Volume of cell ID={cell.id} not specified. "
-                                    "Set volumes of cells prior to using "
-                                    "diff_volume_method='match cell'."
-                                )
-                            cell.fill.volume = cell.volume
+                    cell.fill = [mat.clone() for _ in range(cell.num_instances)]
+                    if self.diff_volume_method == "match cell":
+                        if not cell.volume:
+                            raise ValueError(
+                                f"Volume of cell ID={cell.id} not specified. "
+                                "Set volumes of cells prior to using "
+                                "diff_volume_method='match cell'."
+                            )
+                        for mat in cell.fill:
+                            mat.volume = cell.volume
 
         if self.materials is not None:
             self.materials = openmc.Materials(

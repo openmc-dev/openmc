@@ -1,5 +1,4 @@
 import lxml.etree as ET
-
 import numpy as np
 import openmc
 import pytest

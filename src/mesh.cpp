@@ -8,9 +8,7 @@
 #ifdef OPENMC_MPI
 #include "mpi.h"
 #endif
-#ifdef _OPENMP
-#include <omp.h>
-#endif
+
 #include "xtensor/xbuilder.hpp"
 #include "xtensor/xeval.hpp"
 #include "xtensor/xmath.hpp"
@@ -27,6 +25,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/memory.h"
 #include "openmc/message_passing.h"
+#include "openmc/openmp_interface.h"
 #include "openmc/random_dist.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"

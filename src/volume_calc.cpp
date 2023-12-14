@@ -17,9 +17,9 @@
 #include "openmc/timer.h"
 #include "openmc/xml_interface.h"
 
-#include <fmt/core.h>
 #include "xtensor/xadapt.hpp"
 #include "xtensor/xview.hpp"
+#include <fmt/core.h>
 
 #include <algorithm> // for copy
 #include <cmath>     // for pow, sqrt

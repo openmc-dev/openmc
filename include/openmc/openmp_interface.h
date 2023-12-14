@@ -24,7 +24,7 @@ inline int openmc_thread_num()
 #ifdef _OPENMP
   return omp_get_thread_num();
 #else
-  return 1;
+  return 0;
 #endif
 }
 

@@ -23,25 +23,25 @@ _FILES = {
 _DOSE_TABLES = {key: None for key in _FILES.keys()}
 
 
-def _load_dose(particle, library='icrp116'):
+def _load_dose(particle, data_source='icrp116'):
     """Load effective dose tables from text files
 
     Parameters
     ----------
     particle : {'neutron', 'photon', 'photon kerma', 'electron', 'positron'}
         Incident particle
-    library : {'icrp116', 'icrp119'}
-        The dose conversion library to use
+    data_source : {'icrp116', 'icrp119'}
+        The dose conversion data source to use
 
     """
-    print(f'loading {particle} {library}')
-    path = Path(__file__).parent / _FILES[library, particle]
+    print(f'loading {particle} {data_source}')
+    path = Path(__file__).parent / _FILES[data_source, particle]
     data = np.loadtxt(path, skiprows=3, encoding='utf-8')
     data[:, 0] *= 1e6   # Change energies to eV
-    _DOSE_TABLES[library, particle] = data
+    _DOSE_TABLES[data_source, particle] = data
 
 
-def dose_coefficients(particle, geometry='AP', library='icrp116'):
+def dose_coefficients(particle, geometry='AP', data_source='icrp116'):
     """Return effective dose conversion coefficients from ICRP
 
     This function provides fluence (and air kerma) to effective dose conversion
@@ -59,8 +59,8 @@ def dose_coefficients(particle, geometry='AP', library='icrp116'):
     geometry : {'AP', 'PA', 'LLAT', 'RLAT', 'ROT', 'ISO'}
         Irradiation geometry assumed. Refer to ICRP-116 (Section 3.2) for the
         meaning of the options here.
-    library : {'icrp116', 'icrp119'}
-        The dose conversion library to use.
+    data_source : {'icrp116', 'icrp119'}
+        The dose conversion data source to use.
 
     Returns
     -------
@@ -73,13 +73,13 @@ def dose_coefficients(particle, geometry='AP', library='icrp116'):
     """
 
     cv.check_value('geometry', geometry, {'AP', 'PA', 'LLAT', 'RLAT', 'ROT', 'ISO'})
-    cv.check_value('library', library, {'icrp116', 'icrp119'})
+    cv.check_value('data_source', data_source, {'icrp116', 'icrp119'})
 
-    if _DOSE_TABLES[library, particle] is None:
-        _load_dose(library=library, particle=particle)
+    if _DOSE_TABLES[data_source, particle] is None:
+        _load_dose(data_source=data_source, particle=particle)
 
     # Get all data for selected particle
-    data = _DOSE_TABLES[library, particle]
+    data = _DOSE_TABLES[data_source, particle]
     if data is None:
         raise ValueError(f"{particle} has no effective dose data")
 
@@ -93,7 +93,7 @@ def dose_coefficients(particle, geometry='AP', library='icrp116'):
     energy = data[:, 0].copy()
     dose_coeffs = data[:, index + 1].copy()
     # icrp119 neutron does have NaN values in them
-    if library == 'icrp119' and particle == 'neutron' and geometry in ['ISO', 'RLAT']:
+    if data_source == 'icrp119' and particle == 'neutron' and geometry in ['ISO', 'RLAT']:
         dose_coeffs = dose_coeffs[~np.isnan(dose_coeffs)]
         energy = energy[:len(dose_coeffs)]
     return energy, dose_coeffs

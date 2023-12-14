@@ -7,7 +7,8 @@ from functools import wraps
 from math import pi, sqrt, atan2
 from numbers import Integral, Real
 from pathlib import Path
-from typing import Optional, Sequence, Tuple
+import tempfile
+from typing import Optional, Sequence, Tuple, List
 
 import h5py
 import lxml.etree as ET
@@ -144,6 +145,88 @@ class MeshBase(IDManagerMixin, ABC):
             return UnstructuredMesh.from_xml_element(elem)
         else:
             raise ValueError(f'Unrecognized mesh type "{mesh_type}" found.')
+
+    def get_homogenized_materials(
+            self,
+            model: openmc.Model,
+            n_samples: int = 10_000,
+            **kwargs
+    ) -> List[openmc.Material]:
+        """Generate homogenized materials over each element in a mesh.
+
+        Parameters
+        ----------
+        model : openmc.Model
+            Model containing materials to be homogenized and the associated
+            geometry.
+        n_samples : int
+            Number of samples in each mesh element.
+        **kwargs
+            Keyword-arguments passed to :func:`openmc.lib.init`.
+
+        Returns
+        -------
+        list of openmc.Material
+            Homogenized material in each mesh element
+
+        """
+        import openmc.lib
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # In order to get mesh into model, we temporarily replace the
+            # tallies with a single mesh tally using the current mesh
+            original_tallies = model.tallies
+            new_tally = openmc.Tally()
+            new_tally.filters = [openmc.MeshFilter(self)]
+            new_tally.scores = ['flux']
+            model.tallies = [new_tally]
+
+            # Export model to XML
+            model.export_to_model_xml()
+
+            # Get material volume fractions
+            openmc.lib.init(**kwargs)
+            mesh = openmc.lib.tallies[new_tally.id].filters[0].mesh
+            mat_volume_by_element = [
+                [
+                    (mat.id if mat is not None else None, volume)
+                    for mat, volume in mat_volume_list
+                ]
+                for mat_volume_list in mesh.material_volumes(n_samples)
+            ]
+            openmc.lib.finalize()
+
+            # Restore original tallies
+            model.tallies = original_tallies
+
+        # Create homogenized material for each element
+        materials = model.geometry.get_all_materials()
+        homogenized_materials = []
+        for mat_volume_list in mat_volume_by_element:
+            material_ids, volumes = zip(*mat_volume_list)
+            total_volume = sum(volumes)
+
+            # Check for void material and remove
+            try:
+                index_void = material_ids.index(None)
+            except ValueError:
+                pass
+            else:
+                material_ids.pop(index_void)
+                volumes.pop(index_void)
+
+            # Compute volume fractions
+            volume_fracs = np.array(volumes) / total_volume
+
+            # Get list of materials and mix 'em up!
+            mats = [materials[uid] for uid in material_ids]
+            homogenized_mat = openmc.Material.mix_materials(
+                mats, volume_fracs, 'vo'
+            )
+            homogenized_mat.volume = total_volume
+            homogenized_materials.append(homogenized_mat)
+
+        return homogenized_materials
 
 
 class StructuredMesh(MeshBase):

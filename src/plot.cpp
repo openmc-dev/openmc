@@ -1232,7 +1232,7 @@ void ProjectionPlot::create_output() const
 #pragma omp parallel
   {
     const int n_threads = openmc_n_threads();
-    const int tid = openmc_n_threads();
+    const int tid = openmc_thread_num();
 
     SourceSite s; // Where particle starts from (camera)
     s.E = 1;

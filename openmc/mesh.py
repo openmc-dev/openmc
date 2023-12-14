@@ -2181,7 +2181,6 @@ class UnstructuredMesh(MeshBase):
         grid.SetPoints(vtk_pnts)
 
         n_skipped = 0
-        elems = []
         for elem_type, conn in zip(self.element_types, self.connectivity):
             if elem_type == self._LINEAR_TET:
                 elem = vtk.vtkTetra()
@@ -2195,14 +2194,12 @@ class UnstructuredMesh(MeshBase):
                 if c == -1:
                     break
                 elem.GetPointIds().SetId(i, c)
-            elems.append(elem)
+
+            grid.InsertNextCell(elem.GetCellType(), elem.GetPointIds())
 
         if n_skipped > 0:
             warnings.warn(f'{n_skipped} elements were not written because '
                           'they are not of type linear tet/hex')
-
-        for elem in elems:
-            grid.InsertNextCell(elem.GetCellType(), elem.GetPointIds())
 
         # check that datasets are the correct size
         datasets_out = []

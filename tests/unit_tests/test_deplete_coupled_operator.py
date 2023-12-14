@@ -65,12 +65,16 @@ def model_with_volumes():
     sph1 = openmc.Sphere(r=1.0)
     sph2 = openmc.Sphere(r=2.0, x0=3)
     sph3 = openmc.Sphere(r=5.0, boundary_type="vacuum")
+    plane = openmc.XPlane(x0=0.0, boundary_type="vacuum")
 
-    cell1 = openmc.Cell(region=-sph1, fill=mat1)
-    cell1.volume = 4.19
-    cell2 = openmc.Cell(region=-sph2, fill=mat1)
+    cell1 = openmc.Cell(fill=mat1, name="hemisphere")
+    cell1.volume = 2.095
+    universe1 = openmc.Universe(cells=[cell1])
+    cell01 = openmc.Cell(region=-sph1 & +plane, fill=universe1)
+    cell02 = openmc.Cell(region=-sph1 & -plane, fill=universe1)
+    cell2 = openmc.Cell(region=-sph2, fill=mat1, name="offsite sphere")
     cell2.volume = 33.51
-    cell3 = openmc.Cell(region=-sph3 & +sph1 & +sph2, fill=mat2)
+    cell3 = openmc.Cell(region=-sph3 & +sph1 & +sph2, fill=mat2, name="others")
     cell3.volume = 485.9
 
     geometry = openmc.Geometry([cell1, cell2, cell3])
@@ -95,11 +99,13 @@ def test_diff_volume_method_match_cell(model_with_volumes):
         chain_file=CHAIN_PATH
     )
 
-    all_cells = list(operator.geometry.get_all_cells().values())
-    assert all_cells[0].fill.volume == 4.19
-    assert all_cells[1].fill.volume == 33.51
+    # the hemisphere cell has 2 instances, and filled with 2 mats with the same volume
+    for mat in operator.geometry.get_cell_by_name("hemisphere").fill:
+        assert mat.volume == 2.095
+    # the offsite sphere cell has only 1 instance, and the volume of the mat should be the cell volume
+    assert operator.geometry.get_cell_by_name("offsite sphere").fill.volume == 33.51
     # mat2 is not depletable
-    assert all_cells[2].fill.volume is None
+    assert operator.geometry.get_cell_by_name("others").fill.volume is None
 
 
 def test_diff_volume_method_divide_equally(model_with_volumes):

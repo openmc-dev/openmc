@@ -170,19 +170,13 @@ int Mesh::volume_fractions(
       int i_material = p.material();
 
       // Check if this material was previously hit and if so, increment count
-      bool already_hit = false;
-      for (int j = 0; j < local_materials.size(); j++) {
-        if (local_materials[j] == i_material) {
-          local_hits[j]++;
-          already_hit = true;
-        }
-      }
-
-      // If the material was not previously hit, append an entry to the material
-      // indices and hits lists
-      if (!already_hit) {
+      auto it =
+        std::find(local_materials.begin(), local_materials.end(), i_material);
+      if (it == local_materials.end()) {
         local_materials.push_back(i_material);
         local_hits.push_back(1);
+      } else {
+        local_hits[it - local_materials.begin()]++;
       }
     }
 
@@ -1855,14 +1849,19 @@ extern "C" int openmc_mesh_get_n_elements(int32_t index, size_t* n)
 }
 
 extern "C" int openmc_mesh_volume_fractions(int32_t index, int n_sample,
-  int bin, int result_size, Mesh::MaterialVolume* result, int* hits,
-  uint64_t* seed)
+  int bin, int result_size, void* result, int* hits, uint64_t* seed)
 {
+  auto result_ = reinterpret_cast<Mesh::MaterialVolume*>(result);
+  if (!result_) {
+    set_errmsg("Invalid result pointer passed to openmc_mesh_volume_fractions");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
   if (int err = check_mesh(index))
     return err;
 
   int n = model::meshes[index]->volume_fractions(
-    n_sample, bin, {result, result + result_size}, seed);
+    n_sample, bin, {result_, result_ + result_size}, seed);
   *hits = n;
   return (n == -1) ? OPENMC_E_ALLOCATE : 0;
 }

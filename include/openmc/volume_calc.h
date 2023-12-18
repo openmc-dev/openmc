@@ -1,6 +1,7 @@
 #ifndef OPENMC_VOLUME_CALC_H
 #define OPENMC_VOLUME_CALC_H
 
+#include <algorithm> // for find
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -114,20 +115,12 @@ void reduce_indices_hits(const vector<T>& local_indices,
     for (int j = 0; j < local_indices.size(); ++j) {
       // Check if this material has been added to the master list and if
       // so, accumulate the number of hits
-      bool already_added = false;
-      for (int k = 0; k < indices.size(); k++) {
-        if (local_indices[j] == indices[k]) {
-          hits[k] += local_hits[j];
-          already_added = true;
-          break;
-        }
-      }
-      if (!already_added) {
-        // If we made it here, the material hasn't yet been added to the
-        // master list, so add entries to the master indices and master
-        // hits lists
+      auto it = std::find(indices.begin(), indices.end(), local_indices[j]);
+      if (it == indices.end()) {
         indices.push_back(local_indices[j]);
         hits.push_back(local_hits[j]);
+      } else {
+        hits[it - indices.begin()] += local_hits[j];
       }
     }
   }

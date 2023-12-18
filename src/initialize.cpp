@@ -64,7 +64,7 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
     return err;
 
 #ifdef LIBMESH
-  const int n_threads = openmc_n_threads();
+  const int n_threads = num_threads();
   // initialize libMesh if it hasn't been initialized already
   // (if initialized externally, the libmesh_init object needs to be provided
   // also)

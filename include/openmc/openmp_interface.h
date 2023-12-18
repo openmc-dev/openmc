@@ -10,7 +10,7 @@ namespace openmc {
 //==============================================================================
 //! Accessor functions related to number of threads and thread number
 //==============================================================================
-inline int openmc_n_threads()
+inline int num_threads()
 {
 #ifdef _OPENMP
   return omp_get_max_threads();
@@ -19,7 +19,7 @@ inline int openmc_n_threads()
 #endif
 }
 
-inline int openmc_thread_num()
+inline int thread_num()
 {
 #ifdef _OPENMP
   return omp_get_thread_num();

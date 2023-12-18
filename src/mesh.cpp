@@ -2714,7 +2714,7 @@ void LibMesh::initialize()
   libMesh::ExplicitSystem& eq_sys =
     equation_systems_->add_system<libMesh::ExplicitSystem>(eq_system_name_);
 
-  for (int i = 0; i < openmc_n_threads(); i++) {
+  for (int i = 0; i < num_threads(); i++) {
     pl_.emplace_back(m_->sub_point_locator());
     pl_.back()->set_contains_point_tol(FP_COINCIDENT);
     pl_.back()->enable_out_of_mesh_mode();
@@ -2889,8 +2889,7 @@ int LibMesh::get_bin(Position r) const
     return -1;
   }
 
-  const int thread_num = openmc_thread_num();
-  const auto& point_locator = pl_.at(thread_num);
+  const auto& point_locator = pl_.at(thread_num());
 
   const auto elem_ptr = (*point_locator)(p);
   return elem_ptr ? get_bin_from_element(elem_ptr) : -1;

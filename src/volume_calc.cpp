@@ -203,7 +203,7 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       // At this point, each thread has its own pair of index/hits lists and we
       // now need to reduce them. OpenMP is not nearly smart enough to do this
       // on its own, so we have to manually reduce them
-      const int n_threads = openmc_n_threads();
+      const int n_threads = num_threads();
 
 #pragma omp for ordered schedule(static)
       for (int i = 0; i < n_threads; ++i) {

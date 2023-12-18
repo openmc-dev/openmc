@@ -1219,7 +1219,7 @@ void ProjectionPlot::create_output() const
    * Note that a vector of vectors is required rather than a 2-tensor,
    * since the stack size varies within each column.
    */
-  const int n_threads = openmc_n_threads();
+  const int n_threads = num_threads();
   std::vector<std::vector<std::vector<TrackSegment>>> this_line_segments(
     n_threads);
   for (int t = 0; t < n_threads; ++t) {
@@ -1231,8 +1231,8 @@ void ProjectionPlot::create_output() const
 
 #pragma omp parallel
   {
-    const int n_threads = openmc_n_threads();
-    const int tid = openmc_thread_num();
+    const int n_threads = num_threads();
+    const int tid = thread_num();
 
     SourceSite s; // Where particle starts from (camera)
     s.E = 1;

@@ -174,6 +174,15 @@ public:
   int volume_fractions(int n_sample, int bin, gsl::span<MaterialVolume> volumes,
     uint64_t* seed) const;
 
+  //! Determine volume fractions of materials within a single mesh elemenet
+  //
+  //! \param[in] n_sample Number of samples within each element
+  //! \param[in] bin Index of mesh element
+  //! \param[inout] seed Pseudorandom number seed
+  //! \return Vector of (material index, volume) for desired element
+  vector<MaterialVolume> volume_fractions(
+    int n_sample, int bin, uint64_t* seed) const;
+
   // Data members
   int id_ {-1};          //!< User-specified ID
   int n_dimension_ {-1}; //!< Number of dimensions

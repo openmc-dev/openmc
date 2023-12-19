@@ -198,6 +198,32 @@ int Mesh::volume_fractions(
   return hits.size();
 }
 
+vector<Mesh::MaterialVolume> Mesh::volume_fractions(
+  int n_sample, int bin, uint64_t* seed) const
+{
+  // Create result vector with space for 8 pairs
+  vector<Mesh::MaterialVolume> result;
+  result.reserve(8);
+
+  int size = -1;
+  while (true) {
+    // Get material volumes
+    size = this->volume_fractions(
+      n_sample, bin, {result.data(), result.data() + result.capacity()}, seed);
+
+    // If capacity was sufficient, resize the vector and return
+    if (size >= 0) {
+      result.resize(size);
+      break;
+    }
+
+    // Otherwise, increase capacity of the vector
+    result.reserve(2 * result.capacity());
+  }
+
+  return result;
+}
+
 //==============================================================================
 // Structured Mesh implementation
 //==============================================================================

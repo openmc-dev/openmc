@@ -689,6 +689,10 @@ int32_t const& HexLattice::operator[](array<int, 3> const& i_xyz)
 
 //==============================================================================
 
+// The HexLattice iterators need their own versions b/c the universes array is "square",
+// meaning that it is allocated with entries that are intentionally left empty. As such,
+// the iterator indices need to skip the empty entries to get cell instances and geometry
+// paths correct.
 LatticeIter HexLattice::begin()
 {
   return LatticeIter(*this, n_rings_ - 1);

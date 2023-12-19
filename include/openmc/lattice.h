@@ -59,10 +59,11 @@ public:
   virtual int32_t const& operator[](array<int, 3> const& i_xyz) = 0;
 
   virtual LatticeIter begin();
-  LatticeIter end();
+  virtual LatticeIter end();
+  virtual int32_t& back();
 
   virtual ReverseLatticeIter rbegin();
-  ReverseLatticeIter rend();
+  virtual ReverseLatticeIter rend();
 
   //! Convert internal universe values from IDs to indices using universe_map.
   void adjust_indices();
@@ -167,12 +168,12 @@ public:
 
   LatticeIter& operator++()
   {
-    while (indx_ < lat_.universes_.size()) {
+    while (indx_ < lat_.end().indx_) {
       ++indx_;
       if (lat_.is_valid_index(indx_))
         return *this;
     }
-    indx_ = lat_.universes_.size();
+    indx_ = lat_.end().indx_;
     return *this;
   }
 
@@ -190,7 +191,7 @@ public:
 
   ReverseLatticeIter& operator++()
   {
-    while (indx_ > -1) {
+    while (indx_ > lat_.begin().indx_ - 1) {
       --indx_;
       if (lat_.is_valid_index(indx_))
         return *this;
@@ -246,6 +247,12 @@ public:
   LatticeIter begin() override;
 
   ReverseLatticeIter rbegin() override;
+
+  LatticeIter end() override;
+
+  int32_t& back() override;
+
+  ReverseLatticeIter rend() override;
 
   bool are_valid_indices(array<int, 3> const& i_xyz) const override;
 

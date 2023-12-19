@@ -8,6 +8,27 @@
 namespace openmc {
 
 //==============================================================================
+//! Accessor functions related to number of threads and thread number
+//==============================================================================
+inline int num_threads()
+{
+#ifdef _OPENMP
+  return omp_get_max_threads();
+#else
+  return 1;
+#endif
+}
+
+inline int thread_num()
+{
+#ifdef _OPENMP
+  return omp_get_thread_num();
+#else
+  return 0;
+#endif
+}
+
+//==============================================================================
 //! An object used to prevent concurrent access to a piece of data.
 //
 //! This type meets the C++ "Lockable" requirements.

@@ -52,8 +52,6 @@ def double_lattice_model():
     space = openmc.stats.Box(*bbox)
     source = openmc.IndependentSource(space=space)
     model.settings.source = source
-    # TODO: fix problem with tally output for multilattice models
-    model.settings.output = {'tallies': False}
 
     # Add necessary settings and export
     model.settings.batches = 10

@@ -58,6 +58,11 @@ LatticeIter Lattice::end()
   return LatticeIter(*this, universes_.size());
 }
 
+int32_t& Lattice::back()
+{
+  return universes_.back();
+}
+
 ReverseLatticeIter Lattice::rbegin()
 {
   return ReverseLatticeIter(*this, universes_.size() - 1);
@@ -106,9 +111,9 @@ int32_t Lattice::fill_offset_table(int32_t offset, int32_t target_univ_id,
   // offsets_ array doesn't actually include the offset accounting for the last
   // universe, so we get the before-last offset for the given map and then
   // explicitly add the count for the last universe.
-  if (offsets_[map * universes_.size()] != C_NONE) {
-    int last_offset = offsets_[(map + 1) * universes_.size() - 1];
-    int last_univ = universes_.back();
+  if (offsets_[map * universes_.size() + this->begin().indx_] != C_NONE) {
+    int last_offset = offsets_[(map + 1) * universes_.size() - this->begin().indx_ - 1];
+    int last_univ = this->back();
     return last_offset +
            count_universe_instances(last_univ, target_univ_id, univ_count_memo);
   }
@@ -117,6 +122,7 @@ int32_t Lattice::fill_offset_table(int32_t offset, int32_t target_univ_id,
     offsets_[map * universes_.size() + it.indx_] = offset;
     offset += count_universe_instances(*it, target_univ_id, univ_count_memo);
   }
+
   return offset;
 }
 
@@ -691,6 +697,21 @@ LatticeIter HexLattice::begin()
 ReverseLatticeIter HexLattice::rbegin()
 {
   return ReverseLatticeIter(*this, universes_.size() - n_rings_);
+}
+
+int32_t& HexLattice::back()
+{
+  return universes_[universes_.size() - n_rings_];
+}
+
+LatticeIter HexLattice::end()
+{
+  return LatticeIter(*this, universes_.size() - n_rings_ + 1);
+}
+
+ReverseLatticeIter HexLattice::rend()
+{
+  return ReverseLatticeIter(*this, n_rings_ - 2);
 }
 
 //==============================================================================

@@ -10,18 +10,16 @@
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
+#include "openmc/openmp_interface.h"
 #include "openmc/output.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/timer.h"
 #include "openmc/xml_interface.h"
 
-#include <fmt/core.h>
-#ifdef _OPENMP
-#include <omp.h>
-#endif
 #include "xtensor/xadapt.hpp"
 #include "xtensor/xview.hpp"
+#include <fmt/core.h>
 
 #include <algorithm> // for copy
 #include <cmath>     // for pow, sqrt
@@ -205,12 +203,7 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       // At this point, each thread has its own pair of index/hits lists and we
       // now need to reduce them. OpenMP is not nearly smart enough to do this
       // on its own, so we have to manually reduce them
-
-#ifdef _OPENMP
-      int n_threads = omp_get_num_threads();
-#else
-      int n_threads = 1;
-#endif
+      const int n_threads = num_threads();
 
 #pragma omp for ordered schedule(static)
       for (int i = 0; i < n_threads; ++i) {

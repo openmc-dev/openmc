@@ -564,8 +564,8 @@ std::string distribcell_path_inner(int32_t target_cell, int32_t map,
       if (temp_offset <= target_offset - c.offset_[map]) {
         offset = temp_offset;
         path << "(" << lat.index_to_string(it.indx_) << ")->";
-        path << distribcell_path_inner(
-          target_cell, map, target_offset, *model::universes[*it], offset+c.offset_[map]);
+        path << distribcell_path_inner(target_cell, map, target_offset,
+          *model::universes[*it], offset + c.offset_[map]);
         return path.str();
       }
     }

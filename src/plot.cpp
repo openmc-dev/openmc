@@ -23,6 +23,7 @@
 #include "openmc/material.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
+#include "openmc/openmp_interface.h"
 #include "openmc/output.h"
 #include "openmc/particle.h"
 #include "openmc/progress_bar.h"
@@ -1218,11 +1219,7 @@ void ProjectionPlot::create_output() const
    * Note that a vector of vectors is required rather than a 2-tensor,
    * since the stack size varies within each column.
    */
-#ifdef _OPENMP
-  const int n_threads = omp_get_max_threads();
-#else
-  const int n_threads = 1;
-#endif
+  const int n_threads = num_threads();
   std::vector<std::vector<std::vector<TrackSegment>>> this_line_segments(
     n_threads);
   for (int t = 0; t < n_threads; ++t) {
@@ -1234,14 +1231,8 @@ void ProjectionPlot::create_output() const
 
 #pragma omp parallel
   {
-
-#ifdef _OPENMP
-    const int n_threads = omp_get_max_threads();
-    const int tid = omp_get_thread_num();
-#else
-    int n_threads = 1;
-    int tid = 0;
-#endif
+    const int n_threads = num_threads();
+    const int tid = thread_num();
 
     SourceSite s; // Where particle starts from (camera)
     s.E = 1;

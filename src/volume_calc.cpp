@@ -10,18 +10,16 @@
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
+#include "openmc/openmp_interface.h"
 #include "openmc/output.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/timer.h"
 #include "openmc/xml_interface.h"
 
-#include <fmt/core.h>
-#ifdef _OPENMP
-#include <omp.h>
-#endif
 #include "xtensor/xadapt.hpp"
 #include "xtensor/xview.hpp"
+#include <fmt/core.h>
 
 #include <algorithm> // for copy
 #include <cmath>     // for pow, sqrt

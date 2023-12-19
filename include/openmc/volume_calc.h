@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "openmc/array.h"
+#include "openmc/openmp_interface.h"
 #include "openmc/position.h"
 #include "openmc/tallies/trigger.h"
 #include "openmc/vector.h"
@@ -103,11 +104,7 @@ template<typename T, typename T2>
 void reduce_indices_hits(const vector<T>& local_indices,
   const vector<T2>& local_hits, vector<T>& indices, vector<T2>& hits)
 {
-#ifdef _OPENMP
-  int n_threads = omp_get_num_threads();
-#else
-  int n_threads = 1;
-#endif
+  const int n_threads = num_threads();
 
 #pragma omp for ordered schedule(static, 1)
   for (int i = 0; i < n_threads; ++i) {

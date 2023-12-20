@@ -164,23 +164,23 @@ public:
 
   virtual std::string get_mesh_type() const = 0;
 
-  //! Determine volume fractions of materials within a single mesh elemenet
+  //! Determine volume of materials within a single mesh elemenet
   //
   //! \param[in] n_sample Number of samples within each element
   //! \param[in] bin Index of mesh element
   //! \param[out] Array of (material index, volume) for desired element
   //! \param[inout] seed Pseudorandom number seed
   //! \return Number of materials within element
-  int volume_fractions(int n_sample, int bin, gsl::span<MaterialVolume> volumes,
+  int material_volumes(int n_sample, int bin, gsl::span<MaterialVolume> volumes,
     uint64_t* seed) const;
 
-  //! Determine volume fractions of materials within a single mesh elemenet
+  //! Determine volume of materials within a single mesh elemenet
   //
   //! \param[in] n_sample Number of samples within each element
   //! \param[in] bin Index of mesh element
   //! \param[inout] seed Pseudorandom number seed
   //! \return Vector of (material index, volume) for desired element
-  vector<MaterialVolume> volume_fractions(
+  vector<MaterialVolume> material_volumes(
     int n_sample, int bin, uint64_t* seed) const;
 
   // Data members

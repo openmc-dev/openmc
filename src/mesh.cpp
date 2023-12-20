@@ -144,7 +144,7 @@ vector<double> Mesh::volumes() const
   return volumes;
 }
 
-int Mesh::volume_fractions(
+int Mesh::material_volumes(
   int n_sample, int bin, gsl::span<MaterialVolume> result, uint64_t* seed) const
 {
   vector<int32_t> materials;
@@ -198,7 +198,7 @@ int Mesh::volume_fractions(
   return hits.size();
 }
 
-vector<Mesh::MaterialVolume> Mesh::volume_fractions(
+vector<Mesh::MaterialVolume> Mesh::material_volumes(
   int n_sample, int bin, uint64_t* seed) const
 {
   // Create result vector with space for 8 pairs
@@ -208,7 +208,7 @@ vector<Mesh::MaterialVolume> Mesh::volume_fractions(
   int size = -1;
   while (true) {
     // Get material volumes
-    size = this->volume_fractions(
+    size = this->material_volumes(
       n_sample, bin, {result.data(), result.data() + result.capacity()}, seed);
 
     // If capacity was sufficient, resize the vector and return
@@ -819,7 +819,7 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
     fatal_error("Must specify either <upper_right> or <width> on a mesh.");
   }
 
-  // Set volume fraction
+  // Set material volumes
   volume_frac_ = 1.0 / xt::prod(shape)();
 
   element_volume_ = 1.0;
@@ -1873,19 +1873,19 @@ extern "C" int openmc_mesh_get_n_elements(int32_t index, size_t* n)
   return 0;
 }
 
-extern "C" int openmc_mesh_volume_fractions(int32_t index, int n_sample,
+extern "C" int openmc_mesh_material_volumes(int32_t index, int n_sample,
   int bin, int result_size, void* result, int* hits, uint64_t* seed)
 {
   auto result_ = reinterpret_cast<Mesh::MaterialVolume*>(result);
   if (!result_) {
-    set_errmsg("Invalid result pointer passed to openmc_mesh_volume_fractions");
+    set_errmsg("Invalid result pointer passed to openmc_mesh_material_volumes");
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
   if (int err = check_mesh(index))
     return err;
 
-  int n = model::meshes[index]->volume_fractions(
+  int n = model::meshes[index]->material_volumes(
     n_sample, bin, {result_, result_ + result_size}, seed);
   *hits = n;
   return (n == -1) ? OPENMC_E_ALLOCATE : 0;
@@ -1968,7 +1968,7 @@ extern "C" int openmc_regular_mesh_set_params(
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  // Set volume fraction
+  // Set material volumes
 
   // TODO: incorporate this into method in RegularMesh that can be called from
   // here and from constructor

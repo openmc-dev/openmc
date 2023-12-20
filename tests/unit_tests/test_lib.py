@@ -581,12 +581,12 @@ def test_regular_mesh(lib_init):
     msf.translation = translation
     assert msf.translation == translation
 
-    # Test volume fraction
+    # Test material volumes
     mesh = openmc.lib.RegularMesh()
     mesh.dimension = (2, 2, 1)
     mesh.set_parameters(lower_left=(-0.63, -0.63, -0.5),
                         upper_right=(0.63, 0.63, 0.5))
-    vol_fracs = mesh.volume_fractions()
+    vol_fracs = mesh.material_volumes()
     assert len(vol_fracs) == 4
     for elem_fracs in vol_fracs:
         assert sum(f[1] for f in elem_fracs) == pytest.approx(1.26 * 1.26 / 4)
@@ -622,12 +622,12 @@ def test_rectilinear_mesh(lib_init):
     msf = openmc.lib.MeshSurfaceFilter(mesh)
     assert msf.mesh == mesh
 
-    # Test volume fraction
+    # Test material volumes
     mesh = openmc.lib.RectilinearMesh()
     w = 1.26
     mesh.set_grid([-w/2, -w/4, w/2], [-w/2, -w/4, w/2], [-0.5, 0.5])
 
-    vol_fracs = mesh.volume_fractions()
+    vol_fracs = mesh.material_volumes()
     assert len(vol_fracs) == 4
     assert sum(f[1] for f in vol_fracs[0]) == pytest.approx(w/4 * w/4)
     assert sum(f[1] for f in vol_fracs[1]) == pytest.approx(w/4 * 3*w/4)
@@ -666,14 +666,14 @@ def test_cylindrical_mesh(lib_init):
     msf = openmc.lib.MeshSurfaceFilter(mesh)
     assert msf.mesh == mesh
 
-    # Test volume fraction
+    # Test material volumes
     mesh = openmc.lib.CylindricalMesh()
     r_grid = (0., 0.5, 1.0)
     phi_grid = np.linspace(0., 2.0*pi, 4)
     z_grid = (-0.5, 0.5)
     mesh.set_grid(r_grid, phi_grid, z_grid)
 
-    vol_fracs = mesh.volume_fractions()
+    vol_fracs = mesh.material_volumes()
     assert len(vol_fracs) == 6
     for i in range(0, 6, 2):
         assert sum(f[1] for f in vol_fracs[i]) == pytest.approx(pi * 0.5**2 / 3)
@@ -712,14 +712,14 @@ def test_spherical_mesh(lib_init):
     msf = openmc.lib.MeshSurfaceFilter(mesh)
     assert msf.mesh == mesh
 
-    # Test volume fraction
+    # Test material volumes
     mesh = openmc.lib.SphericalMesh()
     r_grid = (0., 0.5, 1.0)
     theta_grid = np.linspace(0., pi, 3)
     phi_grid = np.linspace(0., 2.0*pi, 4)
     mesh.set_grid(r_grid, theta_grid, phi_grid)
 
-    vol_fracs = mesh.volume_fractions()
+    vol_fracs = mesh.material_volumes()
     assert len(vol_fracs) == 12
     d_theta = theta_grid[1] - theta_grid[0]
     d_phi = phi_grid[1] - phi_grid[0]

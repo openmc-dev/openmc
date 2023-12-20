@@ -125,11 +125,12 @@ int openmc_simulation_init()
     }
   } else {
     for (int i = 0; i < data::mg.macro_xs_.size(); i++){
-      if (data::mg.macro_xs_[i].fissionable) {
-        int  idx = simulation::fissionable_index[i];
+        auto& macro_xs = data::mg.macro_xs_[i];
+      if (macro_xs.fissionable) {
+        int idx = simulation::fissionable_index[i];
         for (int j = 0; j < simulation::n_precursors; ++j) {
-          simulation::precursor_decay(idx,j) = data::mg.macro_xs_[i].
-            get_xs(MgxsType::DECAY_RATE,0,nullptr,nullptr,&j);
+          simulation::precursor_decay(idx,j) = 
+            macro_xs.get_xs(MgxsType::DECAY_RATE,0,nullptr,nullptr,&j,0,0);
         }
       }
     }

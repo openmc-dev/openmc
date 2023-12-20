@@ -44,12 +44,6 @@ namespace openmc {
 
 double Particle::speed() const
 {
-  // For MG mode
-  if (!settings::run_CE) {
-    return 1.0/data::mg.macro_xs_[material()]
-      .get_xs(MgxsType::INVERSE_VELOCITY, g(), nullptr, nullptr, nullptr);
-  }
-
   // Determine mass in eV/c^2
   double mass;
   switch (this->type()) {
@@ -303,11 +297,15 @@ void Particle::event_advance()
           }
         }
       } else {
-        if (data::mg.macro_xs_[material()].fissionable) {
+        auto& macro_xs = data::mg.macro_xs_[material()];
+        if (macro_xs.fissionable) {
           int idx = simulation::fissionable_index[material()]; 
+          int macro_t = mg_xs_cache().t;
+          int macro_a = macro_xs.get_angle_index(u());
           for (int j = 0; j < simulation::n_precursors; j++) {
-            alpha_tally_Cd(idx,j) += score * data::mg.macro_xs_[material()]
-              .get_xs(MgxsType::DELAYED_NU_FISSION, g(), nullptr, nullptr, &j);
+            alpha_tally_Cd(idx,j) += score * 
+              macro_xs.get_xs(MgxsType::DELAYED_NU_FISSION, g(), 
+                              nullptr, nullptr, &j, macro_t, macro_a);
           }             
         }               
       }                 
@@ -324,6 +322,7 @@ void Particle::event_advance()
   if (settings::alpha_mode) {
     wgt_last() = weight_time; // Also assign to the pre-collision weight
     wgt() = weight_time;
+  }
 
   // Set particle weight to zero if it hit the time boundary
   if (hit_time_boundary) {
@@ -541,6 +540,7 @@ void Particle::event_death()
         alpha_tally_Cd(i,j) = 0.0;
       }
     }
+  }
 
   if (!model::active_pulse_height_tallies.empty()) {
     score_pulse_height_tally(*this, model::active_pulse_height_tallies);

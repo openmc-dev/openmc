@@ -2058,6 +2058,13 @@ void MOABMesh::initialize()
       }
     }
   }
+}
+
+void MOABMesh::prepare_for_tallies()
+{
+  // if the KDTree has already been constructed, do nothing
+  if (kdtree_)
+    return;
 
   // build acceleration data structures
   compute_barycentric_data(ehs_);

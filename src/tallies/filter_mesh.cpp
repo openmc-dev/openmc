@@ -28,6 +28,9 @@ void MeshFilter::from_xml(pugi::xml_node node)
       fmt::format("Could not find mesh {} specified on tally filter.", id));
   }
 
+  // perform any additional perparation for mesh tallies here
+  model::meshes[search->second]->prepare_for_tallies();
+
   if (check_for_node(node, "translation")) {
     set_translation(get_node_array<double>(node, "translation"));
   }

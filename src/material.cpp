@@ -1550,6 +1550,18 @@ extern "C" int openmc_material_set_volume(int32_t index, double volume)
   }
 }
 
+extern "C" int openmc_material_get_depletable(int32_t index, bool* depletable) {
+   if (index < 0 || index >= model::materials.size()) {
+    set_errmsg("Index in materials array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  const auto& mat = model::materials[index];
+  *depletable = mat->depletable_;
+
+  return 0;
+}
+
 extern "C" int openmc_extend_materials(
   int32_t n, int32_t* index_start, int32_t* index_end)
 {

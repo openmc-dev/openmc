@@ -1,6 +1,8 @@
 #include "openmc/particle_data.h"
 
+#include "openmc/cell.h"
 #include "openmc/geometry.h"
+#include "openmc/material.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
 #include "openmc/simulation.h"
@@ -56,6 +58,27 @@ ParticleData::ParticleData()
   // Allocate alpha_tally_Cd_
   vector<size_t> shape {simulation::n_fissionables, simulation::n_precursors};
   alpha_tally_Cd_ = xt::zeros<double>(shape);
+
+  // Creates the pulse-height storage for the particle
+  if (!model::pulse_height_cells.empty()) {
+    pht_storage_.resize(model::pulse_height_cells.size(), 0.0);
+  }
+}
+
+TrackState ParticleData::get_track_state() const
+{
+  TrackState state;
+  state.r = this->r();
+  state.u = this->u();
+  state.E = this->E();
+  state.time = this->time();
+  state.wgt = this->wgt();
+  state.cell_id = model::cells[this->lowest_coord().cell]->id_;
+  state.cell_instance = this->cell_instance();
+  if (this->material() != MATERIAL_VOID) {
+    state.material_id = model::materials[material()]->id_;
+  }
+  return state;
 }
 
 } // namespace openmc

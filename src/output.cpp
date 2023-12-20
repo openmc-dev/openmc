@@ -1,6 +1,7 @@
 #include "openmc/output.h"
 
 #include <algorithm> // for transform, max
+#include <cstdio>    // for stdout
 #include <cstring>   // for strlen
 #include <ctime>     // for time, localtime
 #include <fstream>
@@ -73,7 +74,7 @@ void title()
   // Write version information
   fmt::print(
     "                 | The OpenMC Monte Carlo Code\n"
-    "       Copyright | 2011-2021 MIT, UChicago Argonne LLC, and contributors\n"
+    "       Copyright | 2011-2023 MIT, UChicago Argonne LLC, and contributors\n"
     "         License | https://docs.openmc.org/en/latest/license.html\n"
     "         Version | {}.{}.{}{}\n",
     VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE, VERSION_DEV ? "-dev" : "");
@@ -93,7 +94,8 @@ void title()
   // Write number of OpenMP threads
   fmt::print("  OpenMP Threads | {}\n", omp_get_max_threads());
 #endif
-  std::cout << std::endl;
+  fmt::print("\n");
+  std::fflush(stdout);
 }
 
 //==============================================================================
@@ -133,8 +135,10 @@ void header(const char* msg, int level)
   auto out = header(msg);
 
   // Print header based on verbosity level.
-  if (settings::verbosity >= level)
-    std::cout << '\n' << out << "\n" << std::endl;
+  if (settings::verbosity >= level) {
+    fmt::print("\n{}\n\n", out);
+    std::fflush(stdout);
+  }
 }
 
 //==============================================================================
@@ -218,56 +222,11 @@ void print_plot()
   if (settings::verbosity < 5)
     return;
 
-  for (auto pl : model::plots) {
-    // Plot id
-    fmt::print("Plot ID: {}\n", pl.id_);
-    // Plot filename
-    fmt::print("Plot file: {}\n", pl.path_plot_);
-    // Plot level
-    fmt::print("Universe depth: {}\n", pl.level_);
-
-    // Plot type
-    if (PlotType::slice == pl.type_) {
-      fmt::print("Plot Type: Slice\n");
-    } else if (PlotType::voxel == pl.type_) {
-      fmt::print("Plot Type: Voxel\n");
-    }
-
-    // Plot parameters
-    fmt::print(
-      "Origin: {} {} {}\n", pl.origin_[0], pl.origin_[1], pl.origin_[2]);
-
-    if (PlotType::slice == pl.type_) {
-      fmt::print("Width: {:4} {:4}\n", pl.width_[0], pl.width_[1]);
-    } else if (PlotType::voxel == pl.type_) {
-      fmt::print(
-        "Width: {:4} {:4} {:4}\n", pl.width_[0], pl.width_[1], pl.width_[2]);
-    }
-
-    if (PlotColorBy::cells == pl.color_by_) {
-      fmt::print("Coloring: Cells\n");
-    } else if (PlotColorBy::mats == pl.color_by_) {
-      fmt::print("Coloring: Materials\n");
-    }
-
-    if (PlotType::slice == pl.type_) {
-      switch (pl.basis_) {
-      case PlotBasis::xy:
-        fmt::print("Basis: XY\n");
-        break;
-      case PlotBasis::xz:
-        fmt::print("Basis: XZ\n");
-        break;
-      case PlotBasis::yz:
-        fmt::print("Basis: YZ\n");
-        break;
-      }
-      fmt::print("Pixels: {} {}\n", pl.pixels_[0], pl.pixels_[1]);
-    } else if (PlotType::voxel == pl.type_) {
-      fmt::print(
-        "Voxels: {} {} {}\n", pl.pixels_[0], pl.pixels_[1], pl.pixels_[2]);
-    }
-
+  for (const auto& pl : model::plots) {
+    fmt::print("Plot ID: {}\n", pl->id());
+    fmt::print("Plot file: {}\n", pl->path_plot());
+    fmt::print("Universe depth: {}\n", pl->level());
+    pl->print_info(); // prints type-specific plot info
     fmt::print("\n");
   }
 }
@@ -310,7 +269,7 @@ void print_usage()
 {
   if (mpi::master) {
     fmt::print(
-      "Usage: openmc [options] [directory]\n\n"
+      "Usage: openmc [options] [path]\n\n"
       "Options:\n"
       "  -c, --volume           Run in stochastic volume calculation mode\n"
       "  -g, --geometry-debug   Run with geometry debugging on\n"
@@ -319,7 +278,8 @@ void print_usage()
       "  -r, --restart          Restart a previous run from a state point\n"
       "                         or a particle restart file\n"
       "  -s, --threads          Number of OpenMP threads\n"
-      "  -t, --track            Write tracks for all particles\n"
+      "  -t, --track            Write tracks for all particles (up to "
+      "max_tracks)\n"
       "  -e, --event            Run using event-based parallelism\n"
       "  -v, --version          Show version information\n"
       "  -h, --help             Show this message\n");
@@ -336,9 +296,74 @@ void print_version()
 #ifdef GIT_SHA1
     fmt::print("Git SHA1: {}\n", GIT_SHA1);
 #endif
-    fmt::print("Copyright (c) 2011-2021 MIT, UChicago Argonne LLC, and "
+    fmt::print("Copyright (c) 2011-2023 MIT, UChicago Argonne LLC, and "
                "contributors\nMIT/X license at "
                "<https://docs.openmc.org/en/latest/license.html>\n");
+  }
+}
+
+//==============================================================================
+
+void print_build_info()
+{
+  const std::string n("no");
+  const std::string y("yes");
+
+  std::string mpi(n);
+  std::string phdf5(n);
+  std::string dagmc(n);
+  std::string libmesh(n);
+  std::string png(n);
+  std::string profiling(n);
+  std::string coverage(n);
+  std::string mcpl(n);
+  std::string ncrystal(n);
+
+#ifdef PHDF5
+  phdf5 = y;
+#endif
+#ifdef OPENMC_MPI
+  mpi = y;
+#endif
+#ifdef DAGMC
+  dagmc = y;
+#endif
+#ifdef LIBMESH
+  libmesh = y;
+#endif
+#ifdef OPENMC_MCPL
+  mcpl = y;
+#endif
+#ifdef NCRYSTAL
+  ncrystal = y;
+#endif
+#ifdef USE_LIBPNG
+  png = y;
+#endif
+#ifdef PROFILINGBUILD
+  profiling = y;
+#endif
+#ifdef COVERAGEBUILD
+  coverage = y;
+#endif
+
+  // Wraps macro variables in quotes
+#define STRINGIFY(x) STRINGIFY2(x)
+#define STRINGIFY2(x) #x
+
+  if (mpi::master) {
+    fmt::print("Build type:            {}\n", STRINGIFY(BUILD_TYPE));
+    fmt::print("Compiler ID:           {} {}\n", STRINGIFY(COMPILER_ID),
+      STRINGIFY(COMPILER_VERSION));
+    fmt::print("MPI enabled:           {}\n", mpi);
+    fmt::print("Parallel HDF5 enabled: {}\n", phdf5);
+    fmt::print("PNG support:           {}\n", png);
+    fmt::print("DAGMC support:         {}\n", dagmc);
+    fmt::print("libMesh support:       {}\n", libmesh);
+    fmt::print("MCPL support:          {}\n", mcpl);
+    fmt::print("NCrystal support:      {}\n", ncrystal);
+    fmt::print("Coverage testing:      {}\n", coverage);
+    fmt::print("Profiling flags:       {}\n", profiling);
   }
 }
 
@@ -401,7 +426,8 @@ void print_generation()
       fmt::print("   {:11.3e} +/-{:11.3e}", simulation::alpha_eff, 
           simulation::alpha_eff_std);
   }
-  std::cout << std::endl;
+  fmt::print("\n");
+  std::fflush(stdout);
 }
 
 //==============================================================================
@@ -578,6 +604,7 @@ void print_results()
       gt(GlobalTally::LEAKAGE, TallyResult::SUM) / n);
   }
   fmt::print("\n");
+  std::fflush(stdout);
 }
 
 //==============================================================================
@@ -599,6 +626,7 @@ const std::unordered_map<int, const char*> score_names = {
   {SCORE_FISS_Q_PROMPT, "Prompt fission power"},
   {SCORE_FISS_Q_RECOV, "Recoverable fission power"},
   {SCORE_CURRENT, "Current"},
+  {SCORE_PULSE_HEIGHT, "pulse-height"},
 };
 
 //! Create an ASCII output file showing all tally results.
@@ -608,9 +636,12 @@ void write_tallies()
   if (model::tallies.empty())
     return;
 
+  // Set filename for tallies_out
+  std::string filename = fmt::format("{}tallies.out", settings::path_output);
+
   // Open the tallies.out file.
   std::ofstream tallies_out;
-  tallies_out.open("tallies.out", std::ios::out | std::ios::trunc);
+  tallies_out.open(filename, std::ios::out | std::ios::trunc);
 
   // Loop over each tally.
   for (auto i_tally = 0; i_tally < model::tallies.size(); ++i_tally) {

@@ -25,7 +25,8 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override { return "material"; }
+  std::string type_str() const override { return "material"; }
+  FilterType type() const override { return FilterType::MATERIAL; }
 
   void from_xml(pugi::xml_node node) override;
 
@@ -45,7 +46,7 @@ public:
 
   void set_materials(gsl::span<const int32_t> materials);
 
-private:
+protected:
   //----------------------------------------------------------------------------
   // Data members
 

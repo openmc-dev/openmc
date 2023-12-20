@@ -58,6 +58,24 @@ struct SourceSite {
   int64_t progeny_id;
 };
 
+//! State of a particle used for particle track files
+struct TrackState {
+  Position r;           //!< Position in [cm]
+  Direction u;          //!< Direction
+  double E;             //!< Energy in [eV]
+  double time {0.0};    //!< Time in [s]
+  double wgt {1.0};     //!< Weight
+  int cell_id;          //!< Cell ID
+  int cell_instance;    //!< Cell instance
+  int material_id {-1}; //!< Material ID (default value indicates void)
+};
+
+//! Full history of a single particle's track states
+struct TrackStateHistory {
+  ParticleType particle;
+  std::vector<TrackState> states;
+};
+
 //! Saved ("banked") state of a particle, for nu-fission tallying
 struct NuBank {
   double E;          //!< particle energy
@@ -165,6 +183,18 @@ struct MacroXS {
 };
 
 //==============================================================================
+// Cache contains the cached data for an MGXS object
+//==============================================================================
+
+struct CacheDataMG {
+  int material {-1}; //!< material index
+  double sqrtkT;     //!< last temperature corresponding to t
+  int t {0};         //!< temperature index
+  int a {0};         //!< angle index
+  Direction u;       //!< angle that corresponds to a
+};
+
+//==============================================================================
 // Information about nearest boundary crossing
 //==============================================================================
 
@@ -212,8 +242,9 @@ struct BoundaryInfo {
  *   https://doi.org/10.1016/j.anucene.2017.11.032.
  */
 class ParticleData {
-
 public:
+  //----------------------------------------------------------------------------
+  // Constructors
   ParticleData();
 
 private:
@@ -224,6 +255,7 @@ private:
   vector<NuclideMicroXS> neutron_xs_; //!< Microscopic neutron cross sections
   vector<ElementMicroXS> photon_xs_;  //!< Microscopic photon cross sections
   MacroXS macro_xs_;                  //!< Macroscopic cross sections
+  CacheDataMG mg_xs_cache_;           //!< Multigroup XS cache
 
   int64_t id_;                                //!< Unique ID
   ParticleType type_ {ParticleType::neutron}; //!< Particle type (n, p, e, etc.)
@@ -237,17 +269,16 @@ private:
   vector<int> cell_last_; //!< coordinates for all levels
 
   // Energy data
-  double E_;      //!< post-collision energy in eV
-  double E_last_; //!< pre-collision energy in eV
-  int g_ {0};     //!< post-collision energy group (MG only)
-  int g_last_;    //!< pre-collision energy group (MG only)
+  double E_;       //!< post-collision energy in eV
+  double E_last_;  //!< pre-collision energy in eV
+  int g_ {C_NONE}; //!< post-collision energy group (MG only)
+  int g_last_;     //!< pre-collision energy group (MG only)
 
   // Other physical data
   double wgt_ {1.0};       //!< particle weight
   double mu_;              //!< angle of scatter
   double time_ {0.0};      //!< time in [s]
   double time_last_ {0.0}; //!< previous time in [s]
-  bool alive_ {true};      //!< is particle alive?
 
   // Other physical data
   Position r_last_current_; //!< coordinates of the last collision or
@@ -256,7 +287,6 @@ private:
   Position r_last_;         //!< previous coordinates
   Direction u_last_;        //!< previous direction coordinates
   double wgt_last_ {1.0};   //!< pre-collision particle weight
-  double wgt_absorb_ {0.0}; //!< weight absorbed for survival biasing
 
   // What event took place
   bool fission_ {false};  //!< did particle cause implicit fission
@@ -304,9 +334,11 @@ private:
 
   vector<FilterMatch> filter_matches_; // tally filter matches
 
-  vector<vector<Position>> tracks_; // tracks for outputting to file
+  vector<TrackStateHistory> tracks_; // tracks for outputting to file
 
   vector<NuBank> nu_bank_; // bank of most recently fissioned particles
+
+  vector<double> pht_storage_; // interim pulse-height results
 
   // Global tally accumulators
   double keff_tally_absorption_ {0.0};
@@ -328,7 +360,9 @@ private:
   int n_event_ {0}; // number of events executed in this particle's history
 
   // Weight window information
-  int n_split_ {0}; // Number of splits this particle has undergone
+  int n_split_ {0}; // Number of times this particle has been split
+  double ww_factor_ {
+    0.0}; // Particle-specific factor for on-the-fly weight window adjustment
 
 // DagMC state variables
 #ifdef DAGMC
@@ -347,6 +381,8 @@ public:
   ElementMicroXS& photon_xs(int i) { return photon_xs_[i]; }
   MacroXS& macro_xs() { return macro_xs_; }
   const MacroXS& macro_xs() const { return macro_xs_; }
+  CacheDataMG& mg_xs_cache() { return mg_xs_cache_; }
+  const CacheDataMG& mg_xs_cache() const { return mg_xs_cache_; }
 
   int64_t& id() { return id_; }
   const int64_t& id() const { return id_; }
@@ -359,6 +395,10 @@ public:
   const int& cell_instance() const { return cell_instance_; }
   LocalCoord& coord(int i) { return coord_[i]; }
   const LocalCoord& coord(int i) const { return coord_[i]; }
+  const vector<LocalCoord>& coord() const { return coord_; }
+
+  LocalCoord& lowest_coord() { return coord_[n_coord_ - 1]; }
+  const LocalCoord& lowest_coord() const { return coord_[n_coord_ - 1]; }
 
   int& n_coord_last() { return n_coord_last_; }
   const int& n_coord_last() const { return n_coord_last_; }
@@ -375,13 +415,14 @@ public:
   const int& g_last() const { return g_last_; }
 
   double& wgt() { return wgt_; }
+  double wgt() const { return wgt_; }
   double& mu() { return mu_; }
   const double& mu() const { return mu_; }
   double& time() { return time_; }
   const double& time() const { return time_; }
   double& time_last() { return time_last_; }
   const double& time_last() const { return time_last_; }
-  bool& alive() { return alive_; }
+  bool alive() const { return wgt_ != 0.0; }
 
   Position& r_last_current() { return r_last_current_; }
   const Position& r_last_current() const { return r_last_current_; }
@@ -391,8 +432,6 @@ public:
   const Position& u_last() const { return u_last_; }
   double& wgt_last() { return wgt_last_; }
   const double& wgt_last() const { return wgt_last_; }
-  double& wgt_absorb() { return wgt_absorb_; }
-  const double& wgt_absorb() const { return wgt_absorb_; }
 
   bool& fission() { return fission_; }
   TallyEvent& event() { return event_; }
@@ -415,6 +454,7 @@ public:
   int& material() { return material_; }
   const int& material() const { return material_; }
   int& material_last() { return material_last_; }
+  const int& material_last() const { return material_last_; }
 
   BoundaryInfo& boundary() { return boundary_; }
 
@@ -441,6 +481,7 @@ public:
   decltype(tracks_)& tracks() { return tracks_; }
   decltype(nu_bank_)& nu_bank() { return nu_bank_; }
   NuBank& nu_bank(int i) { return nu_bank_[i]; }
+  vector<double>& pht_storage() { return pht_storage_; }
 
   double& keff_tally_absorption() { return keff_tally_absorption_; }
   double& keff_tally_collision() { return keff_tally_collision_; }
@@ -456,6 +497,9 @@ public:
 
   int n_split() const { return n_split_; }
   int& n_split() { return n_split_; }
+
+  double ww_factor() const { return ww_factor_; }
+  double& ww_factor() { return ww_factor_; }
 
 #ifdef DAGMC
   moab::DagMC::RayHistory& history() { return history_; }
@@ -498,6 +542,9 @@ public:
       level.reset();
     n_coord_ = 1;
   }
+
+  //! Get track information based on particle's current state
+  TrackState get_track_state() const;
 
   void zero_delayed_bank()
   {

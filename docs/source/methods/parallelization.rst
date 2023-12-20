@@ -293,7 +293,7 @@ Cost of Nearest Neighbor Algorithm
 ----------------------------------
 
 With the communication cost of the traditional fission bank algorithm
-quantified, we now proceed to discuss the communicatin cost of the proposed
+quantified, we now proceed to discuss the communication cost of the proposed
 algorithm. Comparing the cost of communication of this algorithm with the
 traditional algorithm is not trivial due to fact that the cost will be a
 function of how many fission sites are sampled on each node. If each node
@@ -398,7 +398,7 @@ equation :eq:`k-to-source`, we can relate the stochastic eigenvalue to the
 integral of the noise component of the source distribution as
 
 .. math::
-    :label: noise-integeral
+    :label: noise-integral
 
     N\hat{k} = Nk + \sqrt{N} \int \hat{\epsilon}(\mathbf{r}) \: d\mathbf{r}.
 

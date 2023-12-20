@@ -14,6 +14,11 @@ _VERSION_SUMMARY = 6
 class Summary:
     """Summary of model used in a simulation.
 
+    Parameters
+    ----------
+    filename : str or path-like
+        Path to file to load
+
     Attributes
     ----------
     date_and_time : str
@@ -33,8 +38,9 @@ class Summary:
     """
 
     def __init__(self, filename):
+        filename = str(filename)
         if not filename.endswith(('.h5', '.hdf5')):
-            msg = 'Unable to open "{0}" which is not an HDF5 summary file'
+            msg = f'Unable to open "{filename}" which is not an HDF5 summary file'
             raise ValueError(msg)
 
         self._f = h5py.File(filename, 'r')
@@ -234,4 +240,9 @@ class Summary:
             Results from a stochastic volume calculation
 
         """
-        self.geometry.add_volume_information(volume_calc)
+        if volume_calc.domain_type == "material" and self.materials:
+            for material in self.materials:
+                if material.id in volume_calc.volumes:
+                    material.add_volume_information(volume_calc)
+        else:
+            self.geometry.add_volume_information(volume_calc)

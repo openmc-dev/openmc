@@ -1,8 +1,3 @@
-from math import sqrt
-import xml.etree.ElementTree as ET
-
-import openmc
-import pytest
 
 from tests.unit_tests.test_lattice import zr, pincell1, pincell2, rlat2
 
@@ -39,8 +34,8 @@ def test_discretization_clone_only_some_materials(rlat2):
     fuel1 = next(iter(rlat_clone.get_universe((0, 0)).cells.values())).fill
     rlat_clone.discretize(materials_to_clone=[fuel1])
 
-    assert next(reversed(rlat_clone.get_universe((0, 0)).cells.values())).fill\
-         == next(reversed(rlat_clone.get_universe((1, 0)).cells.values())).fill
+    assert next(reversed(list(rlat_clone.get_universe((0, 0)).cells.values()))).fill\
+         == next(reversed(list(rlat_clone.get_universe((1, 0)).cells.values()))).fill
     assert next(iter(rlat_clone.get_universe((0, 0)).cells.values())).fill\
          != next(iter(rlat_clone.get_universe((1, 0)).cells.values())).fill
 

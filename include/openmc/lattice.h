@@ -99,6 +99,11 @@ public:
   virtual void get_indices(
     Position r, Direction u, array<int, 3>& result) const = 0;
 
+  //! \brief Compute the the flat index for a set of lattice cell indices
+  //! \param i_xyz The indices for a lattice cell.
+  //! \return Flat index into the universes vector.
+  virtual int get_flat_index(const array<int, 3>& i_xyz) const = 0;
+
   //! \brief Get coordinates local to a lattice tile.
   //! \param r A 3D Cartesian coordinate.
   //! \param i_xyz The indices for a lattice tile.
@@ -201,24 +206,28 @@ class RectLattice : public Lattice {
 public:
   explicit RectLattice(pugi::xml_node lat_node);
 
-  int32_t const& operator[](array<int, 3> const& i_xyz);
+  int32_t const& operator[](array<int, 3> const& i_xyz) override;
 
-  bool are_valid_indices(array<int, 3> const& i_xyz) const;
+  bool are_valid_indices(array<int, 3> const& i_xyz) const override;
 
   std::pair<double, array<int, 3>> distance(
-    Position r, Direction u, const array<int, 3>& i_xyz) const;
+    Position r, Direction u, const array<int, 3>& i_xyz) const override;
 
-  void get_indices(Position r, Direction u, array<int, 3>& result) const;
+  void get_indices(
+    Position r, Direction u, array<int, 3>& result) const override;
 
-  Position get_local_position(Position r, const array<int, 3>& i_xyz) const;
+  int get_flat_index(const array<int, 3>& i_xyz) const override;
 
-  int32_t& offset(int map, array<int, 3> const& i_xyz);
+  Position get_local_position(
+    Position r, const array<int, 3>& i_xyz) const override;
 
-  int32_t offset(int map, int indx) const;
+  int32_t& offset(int map, array<int, 3> const& i_xyz) override;
 
-  std::string index_to_string(int indx) const;
+  int32_t offset(int map, int indx) const override;
 
-  void to_hdf5_inner(hid_t group_id) const;
+  std::string index_to_string(int indx) const override;
+
+  void to_hdf5_inner(hid_t group_id) const override;
 
 private:
   array<int, 3> n_cells_; //!< Number of cells along each axis
@@ -232,30 +241,34 @@ class HexLattice : public Lattice {
 public:
   explicit HexLattice(pugi::xml_node lat_node);
 
-  int32_t const& operator[](array<int, 3> const& i_xyz);
+  int32_t const& operator[](array<int, 3> const& i_xyz) override;
 
-  LatticeIter begin();
+  LatticeIter begin() override;
 
-  ReverseLatticeIter rbegin();
+  ReverseLatticeIter rbegin() override;
 
-  bool are_valid_indices(array<int, 3> const& i_xyz) const;
+  bool are_valid_indices(array<int, 3> const& i_xyz) const override;
 
   std::pair<double, array<int, 3>> distance(
-    Position r, Direction u, const array<int, 3>& i_xyz) const;
+    Position r, Direction u, const array<int, 3>& i_xyz) const override;
 
-  void get_indices(Position r, Direction u, array<int, 3>& result) const;
+  void get_indices(
+    Position r, Direction u, array<int, 3>& result) const override;
 
-  Position get_local_position(Position r, const array<int, 3>& i_xyz) const;
+  int get_flat_index(const array<int, 3>& i_xyz) const override;
 
-  bool is_valid_index(int indx) const;
+  Position get_local_position(
+    Position r, const array<int, 3>& i_xyz) const override;
 
-  int32_t& offset(int map, array<int, 3> const& i_xyz);
+  bool is_valid_index(int indx) const override;
 
-  int32_t offset(int map, int indx) const;
+  int32_t& offset(int map, array<int, 3> const& i_xyz) override;
 
-  std::string index_to_string(int indx) const;
+  int32_t offset(int map, int indx) const override;
 
-  void to_hdf5_inner(hid_t group_id) const;
+  std::string index_to_string(int indx) const override;
+
+  void to_hdf5_inner(hid_t group_id) const override;
 
 private:
   enum class Orientation {

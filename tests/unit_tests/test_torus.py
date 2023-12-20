@@ -17,14 +17,14 @@ def get_torus_keff(cls, R, r, center=(0, 0, 0)):
     outer_cell = openmc.Cell(region=+torus & -sphere)
     model.geometry = openmc.Geometry([torus_cell, outer_cell])
 
-    model.settings.source = openmc.Source(space=openmc.stats.Point(center))
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Point(center))
     model.settings.batches = 10
     model.settings.inactive = 5
     model.settings.particles = 1000
 
     sp_path = model.run()
     with openmc.StatePoint(sp_path) as sp:
-        return sp.k_combined
+        return sp.keff
 
 
 @pytest.mark.parametrize("R,r", [(2.1, 2.0), (3.0, 1.0)])

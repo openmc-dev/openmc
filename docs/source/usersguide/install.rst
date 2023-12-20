@@ -8,39 +8,56 @@ Installation and Configuration
 
 .. _install_conda:
 
-----------------------------------------
-Installing on Linux/Mac with conda-forge
-----------------------------------------
+--------------------------------------------------
+Installing on Linux/Mac with Mamba and conda-forge
+--------------------------------------------------
 
-Conda_ is an open source package management system and environment management
-system for installing multiple versions of software packages and their
-dependencies and switching easily between them. If you have `conda` installed on
-your system, OpenMC can be installed via the `conda-forge` channel. First, add
-the `conda-forge` channel with:
+`Conda <https://conda.io/en/latest/>`_ is an open source package management
+systems and environments management system for installing multiple versions of
+software packages and their dependencies and switching easily between them.
+`Mamba <https://mamba.readthedocs.io/en/latest/>`_ is a cross-platform package
+manager and is compatible with `conda` packages.
+OpenMC can be installed in a `conda` environment with `mamba`.
+First, `conda` should be installed with one of the following installers:
+`Miniconda <https://docs.conda.io/en/latest/miniconda.html>`_,
+`Anaconda <https://www.anaconda.com/>`_, or `Miniforge <https://github.com/conda-forge/miniforge>`_.
+Once you have `conda` installed on your system, OpenMC can be installed via the
+`conda-forge` channel with `mamba`.
+
+First, add the `conda-forge` channel with:
 
 .. code-block:: sh
 
     conda config --add channels conda-forge
+
+Then create and activate a new conda enviroment called `openmc-env` in
+which to install OpenMC.
+
+.. code-block:: sh
+
+    conda create -n openmc-env
+    conda activate openmc-env
+
+Then install `mamba`, which will be used to install OpenMC.
+
+.. code-block:: sh
+
+    conda install mamba
 
 To list the versions of OpenMC that are available on the `conda-forge` channel,
 in your terminal window or an Anaconda Prompt run:
 
 .. code-block:: sh
 
-    conda search openmc
+    mamba search openmc
 
 OpenMC can then be installed with:
 
 .. code-block:: sh
 
-    conda create -n openmc-env openmc
+    mamba install openmc
 
-This will install OpenMC in a conda environment called `openmc-env`. To activate
-the environment, run:
-
-.. code-block:: sh
-
-    conda activate openmc-env
+You are now in a conda environment called `openmc-env` that has OpenMC installed.
 
 -------------------------------------------
 Installing on Linux/Mac/Windows with Docker
@@ -88,9 +105,9 @@ other information use:
 
 .. note::
 
-    It should be noted that by default OpenMC builds with ``-O2 -g`` flags which
-    are equivalent to a CMake build type of `RelwithDebInfo`. In addition, MPI
-    is OFF while OpenMP is ON.
+    It should be noted that by default OpenMC is built with
+    `-DCMAKE_BUILD_TYPE=RelwithDebInfo`. In addition, MPI is OFF while OpenMP is
+    ON.
 
 It is recommended to install OpenMC with the Python API. Information about this
 Spack recipe can be found with the following command:
@@ -116,17 +133,18 @@ following command:
     configured defaults unless otherwise specfied in the specification on the
     command line. In the above example, assuming the default options weren't
     changed in Spack's package configuration, py-openmc will link against a
-    non-optimized non-MPI openmc. Even if an optimized openmc was built
-    separately, it will rebuild openmc with optimization OFF. Thus, if you are
-    trying to link against dependencies that were configured different than
-    defaults, ``^openmc[variants]`` will have to be present in the command.
+    non-MPI non-release build of openmc. Even if a release build of openmc was
+    built separately, it will rebuild openmc with the default build type. Thus,
+    if you are trying to link against dependencies that were configured
+    different than defaults, ``^openmc[variants]`` will have to be present in
+    the command.
 
-For a more performant build of OpenMC with optimization turned ON and MPI
-provided by OpenMPI, the following command can be used:
+For a release build of OpenMC with MPI support on (provided by OpenMPI), the
+following command can be used:
 
 .. code-block:: sh
 
-    spack install py-openmc+mpi ^openmc+optimize ^openmpi
+    spack install py-openmc +mpi ^openmpi ^openmc build_type=Release
 
 .. note::
 
@@ -146,7 +164,7 @@ This can be observed using Spack's ``spec`` tool:
 
 .. code-block::
 
-    spack spec py-openmc+mpi ^openmc+optimize
+    spack spec py-openmc +mpi ^openmc build_type=Release
 
 Once installed, environment/lmod modules can be generated or Spack's ``load``
 feature can be used to access the installed packages.
@@ -203,7 +221,7 @@ Prerequisites
       respectively. To link against a parallel HDF5 library, make sure to set
       the HDF5_PREFER_PARALLEL CMake option, e.g.::
 
-          CXX=mpicxx.mpich cmake -DHDF5_PREFER_PARALLEL=on ..
+          cmake -DHDF5_PREFER_PARALLEL=on -DOPENMC_USE_MPI=on ..
 
       Note that the exact package names may vary depending on your particular
       distribution and version.
@@ -252,7 +270,28 @@ Prerequisites
       In addition to turning this option on, the path to the DAGMC installation
       should be specified as part of the ``CMAKE_PREFIX_PATH`` variable::
 
-          cmake -Ddagmc=on -DCMAKE_PREFIX_PATH=/path/to/dagmc/installation
+          cmake -DOPENMC_USE_DAGMC=on -DCMAKE_PREFIX_PATH=/path/to/dagmc/installation ..
+
+    * MCPL_ library for reading and writing .mcpl files
+
+      This option allows OpenMC to read and write MCPL (Monte Carlo Particle
+      Lists) files instead of .h5 files for sources (external source
+      distribution, k-eigenvalue source distribution, and surface sources). To
+      turn this option on in the CMake configuration step, add the following
+      option::
+
+          cmake -DOPENMC_USE_MCPL=on ..
+
+    * NCrystal_ library for defining materials with enhanced thermal neutron transport
+
+      Adding this option allows the creation of materials from NCrystal, which
+      replaces the scattering kernel treatment of ACE files with a modular,
+      on-the-fly approach. To use it `install
+      <https://github.com/mctools/ncrystal/wiki/Get-NCrystal>`_ and `initialize
+      <https://github.com/mctools/ncrystal/wiki/Using-NCrystal#setting-up>`_
+      NCrystal and turn on the option in the CMake configuration step::
+
+          cmake -DOPENMC_USE_NCRYSTAL=on ..
 
     * libMesh_ mesh library framework for numerical simulations of partial differential equations
 
@@ -261,9 +300,9 @@ Prerequisites
       be used, but the implementation is currently restricted to collision
       estimators. In addition to turning this option on, the path to the libMesh
       installation should be specified as part of the ``CMAKE_PREFIX_PATH``
-      variable.::
+      variable::
 
-          CXX=mpicxx cmake -Dlibmesh=on -DCMAKE_PREFIX_PATH=/path/to/libmesh/installation
+          cmake -DOPENMC_USE_LIBMESH=on -DOPENMC_USE_MPI=on -DCMAKE_PREFIX_PATH=/path/to/libmesh/installation ..
 
       Note that libMesh is most commonly compiled with MPI support. If that
       is the case, then OpenMC should be compiled with MPI support as well.
@@ -274,7 +313,11 @@ Prerequisites
 .. _MPICH: https://www.mpich.org
 .. _HDF5: https://www.hdfgroup.org/solutions/hdf5/
 .. _DAGMC: https://svalinn.github.io/DAGMC/index.html
+.. _MOAB: https://bitbucket.org/fathomteam/moab
 .. _libMesh: https://libmesh.github.io/
+.. _libpng: http://www.libpng.org/pub/png/libpng.html
+.. _MCPL: https://github.com/mctools/mcpl
+.. _NCrystal: https://github.com/mctools/ncrystal
 
 Obtaining the Source
 --------------------
@@ -329,63 +372,73 @@ CMakeLists.txt Options
 
 The following options are available in the CMakeLists.txt file:
 
-debug
-  Enables debugging when compiling. The flags added are dependent on which
-  compiler is used.
+OPENMC_ENABLE_COVERAGE
+  Compile and link code instrumented for coverage analysis. This is typically
+  used in conjunction with gcov_. (Default: off)
 
-profile
-  Enables profiling using the GNU profiler, gprof.
+OPENMC_ENABLE_PROFILE
+  Enables profiling using the GNU profiler, gprof. (Default: off)
 
-optimize
-  Enables high-optimization using compiler-dependent flags. For gcc and
-  Intel C++, this compiles with -O3.
-
-openmp
+OPENMC_USE_OPENMP
   Enables shared-memory parallelism using the OpenMP API. The C++ compiler
   being used must support OpenMP. (Default: on)
 
-dagmc
+OPENMC_USE_DAGMC
   Enables use of CAD-based DAGMC_ geometries and MOAB_ unstructured mesh
   tallies. Please see the note about DAGMC in the optional dependencies list
   for more information on this feature. The installation directory for DAGMC
   should also be defined as `DAGMC_ROOT` in the CMake configuration command.
   (Default: off)
 
-libmesh
+OPENMC_USE_MCPL
+  Turns on support for reading MCPL_ source files and writing MCPL source points
+  and surface sources. (Default: off)
+
+OPENMC_USE_NCRYSTAL
+  Turns on support for NCrystal materials. NCrystal must be `installed
+  <https://github.com/mctools/ncrystal/wiki/Get-NCrystal>`_ and `initialized
+  <https://github.com/mctools/ncrystal/wiki/Using-NCrystal#setting-up>`_.
+  (Default: off)
+
+OPENMC_USE_LIBMESH
   Enables the use of unstructured mesh tallies with libMesh_. (Default: off)
 
-coverage
-  Compile and link code instrumented for coverage analysis. This is typically
-  used in conjunction with gcov_.
+OPENMC_USE_MPI
+  Turns on compiling with MPI (Default: off). For further information on MPI
+  options, please see the `FindMPI.cmake documentation
+  <https://cmake.org/cmake/help/latest/module/FindMPI.html>`_.
 
-To set any of these options (e.g. turning on debug mode), the following form
+To set any of these options (e.g., turning on profiling), the following form
 should be used:
 
 .. code-block:: sh
 
-    cmake -Ddebug=on /path/to/openmc
+    cmake -DOPENMC_ENABLE_PROFILE=on /path/to/openmc
 
 .. _gcov: https://gcc.gnu.org/onlinedocs/gcc/Gcov.html
 
 .. _usersguide_compile_mpi:
 
-Compiling with MPI
-++++++++++++++++++
+Specifying the Build Type
++++++++++++++++++++++++++
 
-To compile with MPI, set the :envvar:`CXX` environment variable to the path to
-the MPI C++ wrapper. For example, in a bash shell:
+OpenMC can be configured for debug, release, or release with debug info by setting
+the `CMAKE_BUILD_TYPE` option.
+
+Debug
+  Enable debug compiler flags with no optimization `-O0 -g`.
+
+Release
+  Disable debug and enable optimization `-O3 -DNDEBUG`.
+
+RelWithDebInfo
+  (Default if no type is specified.) Enable optimization and debug `-O2 -g`.
+
+Example of configuring for Debug mode:
 
 .. code-block:: sh
 
-    export CXX=mpicxx
-    cmake /path/to/openmc
-
-Note that in many shells, environment variables can be set for a single command,
-i.e.
-
-.. code-block:: sh
-
-    CXX=mpicxx cmake /path/to/openmc
+    cmake -DCMAKE_BUILD_TYPE=Debug /path/to/openmc
 
 Selecting HDF5 Installation
 +++++++++++++++++++++++++++
@@ -435,13 +488,13 @@ OpenMC locally by specifying an install prefix when running cmake:
 The ``CMAKE_INSTALL_PREFIX`` variable can be changed to any path for which you
 have write-access.
 
-Compiling on Windows 10
------------------------
+Compiling on Windows
+--------------------
 
-Recent versions of Windows 10 include a subsystem for Linux that allows one to
-run Bash within Ubuntu running in Windows. First, follow the installation guide
-`here <https://docs.microsoft.com/en-us/windows/wsl/install-win10>`_ to get Bash
-on Ubuntu on Windows setup. Once you are within bash, obtain the necessary
+Recent versions of Windows include a subsystem for Linux that allows one to run
+Bash within Ubuntu running in Windows. First, follow the installation guide
+`here <https://learn.microsoft.com/en-us/windows/wsl/install>`_ to get Bash on
+Ubuntu on Windows set up. Once you are within bash, obtain the necessary
 :ref:`prerequisites <prerequisites>` via ``apt``. Finally, follow the
 :ref:`instructions for compiling on linux <compile_linux>`.
 
@@ -469,18 +522,12 @@ distribution/repository, run:
 
 .. code-block:: sh
 
-    pip install .
+    python -m pip install .
 
 pip will first check that all :ref:`required third-party packages
 <usersguide_python_prereqs>` have been installed, and if they are not present,
 they will be installed by downloading the appropriate packages from the Python
-Package Index (`PyPI <https://pypi.org/>`_). However, do note that since pip
-runs the ``setup.py`` script which requires NumPy, you will have to first
-install NumPy:
-
-.. code-block:: sh
-
-    pip install numpy
+Package Index (`PyPI <https://pypi.org/>`_).
 
 Installing in "Development" Mode
 --------------------------------
@@ -493,7 +540,7 @@ to install the Python package in :ref:`"editable" mode <devguide_editable>`.
 Prerequisites
 -------------
 
-The Python API works with Python 3.6+. In addition to Python itself, the API
+The Python API works with Python 3.7+. In addition to Python itself, the API
 relies on a number of third-party packages. All prerequisites can be installed
 using Conda_ (recommended), pip_, or through the package manager in most Linux
 distributions.
@@ -510,8 +557,9 @@ distributions.
       are used for several optional features in the API.
 
    `pandas <https://pandas.pydata.org/>`_
-      Pandas is used to generate tally DataFrames as demonstrated in
-      an `example notebook <../examples/pandas-dataframes.ipynb>`_.
+      Pandas is used to generate tally DataFrames as demonstrated in an `example
+      notebook
+      <https://nbviewer.jupyter.org/github/openmc-dev/openmc-notebooks/blob/main/pandas-dataframes.ipynb>`_.
 
    `h5py <http://www.h5py.org/>`_
       h5py provides Python bindings to the HDF5 library. Since OpenMC outputs
@@ -526,8 +574,7 @@ distributions.
       Uncertainties are used for decay data in the :mod:`openmc.data` module.
 
    `lxml <https://lxml.de/>`_
-      lxml is used for the :ref:`scripts_validate` script and various other
-      parts of the Python API.
+      lxml is used for various parts of the Python API.
 
 .. admonition:: Optional
    :class: note
@@ -561,41 +608,15 @@ for OpenMC. Thus, the install process would proceed as follows:
     make install
 
     cd ..
-    MPICC=<path to mpicc> pip install mpi4py
-    HDF5_DIR=<path to HDF5> pip install --no-binary=h5py h5py
+    MPICC=<path to mpicc> python -m pip install mpi4py
+    HDF5_DIR=<path to HDF5> python -m pip install --no-binary=h5py h5py
 
 If you are using parallel HDF5, you'll also need to make sure the right MPI
 wrapper is used when installing h5py:
 
 .. code-block:: sh
 
-    CC=<path to mpicc> HDF5_MPI=ON HDF5_DIR=<path to HDF5> pip install --no-binary=h5py h5py
+    CC=<path to mpicc> HDF5_MPI=ON HDF5_DIR=<path to HDF5> python -m pip install --no-binary=h5py h5py
 
-.. _usersguide_nxml:
-
------------------------------------------------------
-Configuring Input Validation with GNU Emacs nXML mode
------------------------------------------------------
-
-The `GNU Emacs`_ text editor has a built-in mode that extends functionality for
-editing XML files. One of the features in nXML mode is the ability to perform
-real-time `validation`_ of XML files against a `RELAX NG`_ schema. The OpenMC
-source contains RELAX NG schemas for each type of user input file. In order for
-nXML mode to know about these schemas, you need to tell emacs where to find a
-"locating files" description. Adding the following lines to your ``~/.emacs``
-file will enable real-time validation of XML input files:
-
-.. code-block:: common-lisp
-
-    (require 'rng-loc)
-    (add-to-list 'rng-schema-locating-files "~/openmc/schemas.xml")
-
-Make sure to replace the last string on the second line with the path to the
-schemas.xml file in your own OpenMC source directory.
-
-.. _GNU Emacs: http://www.gnu.org/software/emacs/
-.. _validation: https://en.wikipedia.org/wiki/XML_validation
-.. _RELAX NG: https://relaxng.org/
-.. _ctest: https://cmake.org/cmake/help/latest/manual/ctest.1.html
 .. _Conda: https://conda.io/en/latest/
 .. _pip: https://pip.pypa.io/en/stable/

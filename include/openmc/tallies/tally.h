@@ -35,7 +35,11 @@ public:
 
   void set_id(int32_t id);
 
+  int id() const { return id_; }
+
   void set_active(bool active) { active_ = active; }
+
+  void set_multiply_density(bool value) { multiply_density_ = value; }
 
   void set_writable(bool writable) { writable_ = writable; }
 
@@ -43,13 +47,51 @@ public:
 
   void set_scores(const vector<std::string>& scores);
 
+  std::vector<std::string> scores() const;
+
+  int32_t n_scores() const { return scores_.size(); }
+
   void set_nuclides(pugi::xml_node node);
 
   void set_nuclides(const vector<std::string>& nuclides);
 
+  const xt::xtensor<double, 3>& results() const { return results_; }
+
+  //! returns vector of indices corresponding to the tally this is called on
   const vector<int32_t>& filters() const { return filters_; }
 
+  //! returns a vector of filter types for the tally
+  std::vector<FilterType> filter_types() const;
+
+  //! returns a mapping of filter types to index into the tally's filters
+  std::unordered_map<FilterType, int32_t> filter_indices() const;
+
+  //! \brief Returns the tally filter at index i
   int32_t filters(int i) const { return filters_[i]; }
+
+  //! \brief Return a const pointer to a filter instance based on type. Always
+  //! returns the first matching filter type
+  template<class T>
+  const T* get_filter() const
+  {
+    const T* out;
+    for (auto filter_idx : filters_) {
+      if ((out = dynamic_cast<T*>(model::tally_filters[filter_idx].get())))
+        return out;
+    }
+    return nullptr;
+  }
+
+  template<class T>
+  const T* get_filter(int idx) const
+  {
+    if (const T* out = dynamic_cast<T*>(model::tally_filters[filters_.at(idx)]))
+      return out;
+    return nullptr;
+  }
+
+  //! \brief Check if this tally has a specified type of filter
+  bool has_filter(FilterType filter_type) const;
 
   void set_filters(gsl::span<Filter*> filters);
 
@@ -60,12 +102,14 @@ public:
 
   int32_t n_filter_bins() const { return n_filter_bins_; }
 
+  bool multiply_density() const { return multiply_density_; }
+
   bool writable() const { return writable_; }
 
   //----------------------------------------------------------------------------
   // Other methods.
 
-  void add_filter(Filter* filter) { set_filters({&filter, 1}); }
+  void add_filter(Filter* filter);
 
   void init_triggers(pugi::xml_node node);
 
@@ -74,6 +118,12 @@ public:
   void reset();
 
   void accumulate();
+
+  //! return the index of a score specified by name
+  int score_index(const std::string& score) const;
+
+  //! Tally results reshaped according to filter sizes
+  xt::xarray<double> get_reshaped_data() const;
 
   //! A string representing the i-th score on this tally
   std::string score_name(int score_idx) const;
@@ -104,9 +154,6 @@ public:
   //! Index of each nuclide to be tallied.  -1 indicates total material.
   vector<int> nuclides_ {-1};
 
-  //! True if this tally has a bin for every nuclide in the problem
-  bool all_nuclides_ {false};
-
   //! Results for each bin -- the first dimension of the array is for the
   //! combination of filters (e.g. specific cell, specific energy group, etc.)
   //! and the second dimension of the array is for scores (e.g. flux, total
@@ -122,8 +169,10 @@ public:
   // We need to have quick access to some filters.  The following gives indices
   // for various filters that could be in the tally or C_NONE if they are not
   // present.
+  int energy_filter_ {C_NONE};
   int energyout_filter_ {C_NONE};
   int delayedgroup_filter_ {C_NONE};
+  int cell_filter_ {C_NONE};
 
   vector<Trigger> triggers_;
 
@@ -139,6 +188,9 @@ private:
   vector<int32_t> strides_;
 
   int32_t n_filter_bins_ {0};
+
+  //! Whether to multiply by atom density for reaction rates
+  bool multiply_density_ {true};
 
   gsl::index index_;
 };
@@ -156,6 +208,8 @@ extern vector<int> active_tracklength_tallies;
 extern vector<int> active_collision_tallies;
 extern vector<int> active_meshsurf_tallies;
 extern vector<int> active_surface_tallies;
+extern vector<int> active_pulse_height_tallies;
+extern vector<int> pulse_height_cells;
 } // namespace model
 
 namespace simulation {
@@ -184,6 +238,10 @@ extern xt::xtensor<double, 2>
 
 //! Read tally specification from tallies.xml
 void read_tallies_xml();
+
+//! Read tally specification from an XML node
+//! \param[in] root node of tallies XML element
+void read_tallies_xml(pugi::xml_node root);
 
 //! \brief Accumulate the sum of the contributions from each history within the
 //! batch to a new random variable

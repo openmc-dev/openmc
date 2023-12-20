@@ -36,7 +36,6 @@ public:
   int threshold;
   double n_electrons;
   double binding_energy;
-  xt::xtensor<double, 1> cross_section;
   vector<Transition> transitions;
 };
 
@@ -80,8 +79,11 @@ public:
   Tabulated1D coherent_anomalous_real_;
   Tabulated1D coherent_anomalous_imag_;
 
-  // Photoionization and atomic relaxation data
+  // Photoionization and atomic relaxation data. Subshell cross sections are
+  // stored separately to improve memory access pattern when calculating the
+  // total cross section
   vector<ElectronSubshell> shells_;
+  xt::xtensor<double, 2> cross_sections_;
 
   // Compton profile data
   xt::xtensor<double, 2> profile_pdf_;
@@ -97,6 +99,9 @@ public:
 
   // Bremsstrahlung scaled DCS
   xt::xtensor<double, 2> dcs_;
+
+  // Whether atomic relaxation data is present
+  bool has_atomic_relaxation_ {false};
 
   // Constant data
   static constexpr int MAX_STACK_SIZE =

@@ -28,7 +28,8 @@ extern bool check_overlaps;       //!< check overlaps in geometry?
 extern bool confidence_intervals; //!< use confidence intervals for results?
 extern bool
   create_fission_neutrons; //!< create fission neutrons (fixed source)?
-extern "C" bool cmfd_run;  //!< is a CMFD run?
+extern bool create_delayed_neutrons; //!< create delayed fission neutrons?
+extern "C" bool cmfd_run;            //!< is a CMFD run?
 extern bool
   delayed_photon_scaling;   //!< Scale fission photon yield to include delayed
 extern "C" bool entropy_on; //!< calculate Shannon entropy?
@@ -47,7 +48,9 @@ extern "C" bool run_CE;            //!< run with continuous-energy data?
 extern bool source_latest;         //!< write latest source at each batch?
 extern bool source_separate;       //!< write source to separate file?
 extern bool source_write;          //!< write source in HDF5 files?
+extern bool source_mcpl_write;     //!< write source in mcpl files?
 extern bool surf_source_write;     //!< write surface source file?
+extern bool surf_mcpl_write;       //!< write surface mcpl file?
 extern bool surf_source_read;      //!< read surface source file?
 extern bool survival_biasing;      //!< use survival biasing?
 extern bool temperature_multipole; //!< use multipole data?
@@ -55,9 +58,13 @@ extern "C" bool trigger_on;        //!< tally triggers enabled?
 extern bool trigger_predict;       //!< predict batches for triggers?
 extern bool ufs_on;                //!< uniform fission site method on?
 extern bool urr_ptables_on;        //!< use unresolved resonance prob. tables?
-extern bool weight_windows_on;     //!< are weight windows are enabled?
-extern bool write_all_tracks;      //!< write track files for every particle?
-extern bool write_initial_source;  //!< write out initial source file?
+extern "C" bool weight_windows_on; //!< are weight windows are enabled?
+extern bool weight_window_checkpoint_surface;   //!< enable weight window check
+                                                //!< upon surface crossing?
+extern bool weight_window_checkpoint_collision; //!< enable weight window check
+                                                //!< upon collision?
+extern bool write_all_tracks;     //!< write track files for every particle?
+extern bool write_initial_source; //!< write out initial source file?
 
 // Paths to various files
 extern std::string path_cross_sections; //!< path to cross_sections.xml
@@ -65,13 +72,23 @@ extern std::string path_input;  //!< directory where main .xml files resides
 extern std::string path_output; //!< directory where output files are written
 extern std::string path_particle_restart; //!< path to a particle restart file
 extern std::string path_sourcepoint;      //!< path to a source file
-extern "C" std::string path_statepoint;   //!< path to a statepoint file
+extern std::string path_statepoint;       //!< path to a statepoint file
+extern std::string weight_windows_file;   //!< Location of weight window file to
+                                          //!< load on simulation initialization
+
+// This is required because the c_str() may not be the first thing in
+// std::string. Sometimes it is, but it seems libc++ may not be like that
+// on some computers, like the intel Mac.
+extern "C" const char* path_statepoint_c; //!< C pointer to statepoint file name
 
 extern "C" int32_t n_inactive;         //!< number of inactive batches
 extern "C" int32_t max_lost_particles; //!< maximum number of lost particles
 extern double
   rel_max_lost_particles; //!< maximum number of lost particles, relative to the
                           //!< total number of particles
+extern "C" int32_t
+  max_write_lost_particles;       //!< maximum number of lost particles
+                                  //!< to be written to files
 extern "C" int32_t gen_per_batch; //!< number of generations per batch
 extern "C" int64_t n_particles;   //!< number of particles per generation
 
@@ -82,12 +99,15 @@ extern ElectronTreatment
   electron_treatment; //!< how to treat secondary electrons
 extern array<double, 4>
   energy_cutoff; //!< Energy cutoff in [eV] for each particle type
+extern array<double, 4>
+  time_cutoff; //!< Time cutoff in [s] for each particle type
 extern int
   legendre_to_tabular_points; //!< number of points to convert Legendres
 extern int max_order;         //!< Maximum Legendre order for multigroup data
 extern int n_log_bins;        //!< number of bins for logarithmic energy grid
 extern int n_batches;         //!< number of (inactive+active) batches
 extern int n_max_batches;     //!< Maximum number of batches
+extern int max_tracks; //!< Maximum number of particle tracks written to file
 extern ResScatMethod res_scat_method; //!< resonance upscattering method
 extern double res_scat_energy_min; //!< Min energy in [eV] for res. upscattering
 extern double res_scat_energy_max; //!< Max energy in [eV] for res. upscattering
@@ -127,8 +147,11 @@ extern double weight_survive;      //!< Survival weight after Russian roulette
 //==============================================================================
 
 //! Read settings from XML file
-//! \param[in] root XML node for <settings>
 void read_settings_xml();
+
+//! Read settings from XML node
+//! \param[in] root XML node for <settings>
+void read_settings_xml(pugi::xml_node root);
 
 void free_memory_settings();
 

@@ -13,7 +13,7 @@ def test_tallies():
     model.settings.batches = 5
     model.settings.inactive = 0
     model.settings.particles = 400
-    model.settings.source = openmc.Source(space=openmc.stats.Box(
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
         [-160, -160, -183], [160, 160, 183]))
 
     azimuthal_bins = (-3.14159, -1.8850, -0.6283, 0.6283, 1.8850, 3.14159)
@@ -40,7 +40,7 @@ def test_tallies():
 
     cellborn_tally = Tally()
     cellborn_tally.filters = [
-        CellbornFilter((model.geometry.get_all_cells()[10],
+        CellBornFilter((model.geometry.get_all_cells()[10],
                         model.geometry.get_all_cells()[21],
                         22, 23))]  # Test both Cell objects and ids
     cellborn_tally.scores = ['total']
@@ -154,17 +154,6 @@ def test_tallies():
     flux_tallies[1].estimator = 'analog'
     flux_tallies[2].estimator = 'collision'
 
-    all_nuclide_tallies = [Tally() for i in range(4)]
-    for t in all_nuclide_tallies:
-        t.filters = [cell_filter]
-        t.estimator = 'tracklength'
-        t.nuclides = ['all']
-        t.scores = ['total']
-    all_nuclide_tallies[1].estimator = 'collision'
-    all_nuclide_tallies[2].filters = [mesh_filter]
-    all_nuclide_tallies[3].filters = [mesh_filter]
-    all_nuclide_tallies[3].nuclides = ['U235']
-
     fusion_tally = Tally()
     fusion_tally.scores = ['H1-production', 'H2-production', 'H3-production',
         'He3-production', 'He4-production', 'heating', 'damage-energy']
@@ -180,11 +169,10 @@ def test_tallies():
         cellborn_tally, dg_tally, energy_tally, energyout_tally,
         transfer_tally, material_tally, mu_tally1, mu_tally2,
         polar_tally1, polar_tally2, polar_tally3, legendre_tally,
-        harmonics_tally, harmonics_tally2, harmonics_tally3, 
+        harmonics_tally, harmonics_tally2, harmonics_tally3,
         universe_tally, collision_tally]
     model.tallies += score_tallies
     model.tallies += flux_tallies
-    model.tallies += all_nuclide_tallies
     model.tallies.append(fusion_tally)
 
     harness.main()

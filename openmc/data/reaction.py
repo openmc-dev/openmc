@@ -80,6 +80,14 @@ def _get_products(ev, mt):
     mt : int
         The MT value of the reaction to get products for
 
+    Raises
+    ------
+    IOError
+        When the Kalbach-Mann systematics is used, but the product
+        is not defined in the 'center-of-mass' system. The breakup logic
+        is not implemented which can lead to this error being raised while
+        the definition of the product is correct.
+
     Returns
     -------
     products : list of openmc.data.Product
@@ -101,7 +109,6 @@ def _get_products(ev, mt):
 
         za = int(params[0])
         awr = params[1]
-        lip = params[2]
         law = params[3]
 
         if za == 0:
@@ -141,7 +148,26 @@ def _get_products(ev, mt):
             if lang == 1:
                 p.distribution = [CorrelatedAngleEnergy.from_endf(file_obj)]
             elif lang == 2:
-                p.distribution = [KalbachMann.from_endf(file_obj)]
+                # Products need to be described in the center-of-mass system
+                product_center_of_mass = False
+                if reference_frame == 'center-of-mass':
+                    product_center_of_mass = True
+                elif reference_frame == 'light-heavy':
+                    product_center_of_mass = (awr <= 4.0)
+                # TODO: 'breakup' logic not implemented
+
+                if product_center_of_mass is False:
+                    raise IOError(
+                        "Kalbach-Mann representation must be defined in the "
+                        "'center-of-mass' system"
+                    )
+
+                zat = ev.target["atomic_number"] * 1000 + ev.target["mass_number"]
+                projectile_mass = ev.projectile["mass"]
+                p.distribution = [KalbachMann.from_endf(file_obj,
+                                                        za,
+                                                        zat,
+                                                        projectile_mass)]
 
         elif law == 2:
             # Discrete two-body scattering
@@ -528,7 +554,7 @@ def _get_activation_products(ev, rx):
             Z, A = divmod(items[2], 1000)
             excited_state = items[3]
 
-            # Get GND name for product
+            # Get GNDS name for product
             symbol = ATOMIC_SYMBOL[Z]
             if excited_state > 0:
                 name = '{}{}_e{}'.format(symbol, A, excited_state)
@@ -828,51 +854,51 @@ class Reaction(EqualityMixin):
     def center_of_mass(self):
         return self._center_of_mass
 
-    @property
-    def redundant(self):
-        return self._redundant
-
-    @property
-    def q_value(self):
-        return self._q_value
-
-    @property
-    def products(self):
-        return self._products
-
-    @property
-    def derived_products(self):
-        return self._derived_products
-
-    @property
-    def xs(self):
-        return self._xs
-
     @center_of_mass.setter
     def center_of_mass(self, center_of_mass):
         cv.check_type('center of mass', center_of_mass, (bool, np.bool_))
         self._center_of_mass = center_of_mass
+
+    @property
+    def redundant(self):
+        return self._redundant
 
     @redundant.setter
     def redundant(self, redundant):
         cv.check_type('redundant', redundant, (bool, np.bool_))
         self._redundant = redundant
 
+    @property
+    def q_value(self):
+        return self._q_value
+
     @q_value.setter
     def q_value(self, q_value):
         cv.check_type('Q value', q_value, Real)
         self._q_value = q_value
+
+    @property
+    def products(self):
+        return self._products
 
     @products.setter
     def products(self, products):
         cv.check_type('reaction products', products, Iterable, Product)
         self._products = products
 
+    @property
+    def derived_products(self):
+        return self._derived_products
+
     @derived_products.setter
     def derived_products(self, derived_products):
         cv.check_type('reaction derived products', derived_products,
                       Iterable, Product)
         self._derived_products = derived_products
+
+    @property
+    def xs(self):
+        return self._xs
 
     @xs.setter
     def xs(self, xs):

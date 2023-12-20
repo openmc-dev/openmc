@@ -169,16 +169,19 @@ External Source Distributions
 
 External source distributions can be specified through the
 :attr:`Settings.source` attribute. If you have a single external source, you can
-create an instance of :class:`openmc.Source` and use it to set the
-:attr:`Settings.source` attribute. If you have multiple external sources with
-varying source strengths, :attr:`Settings.source` should be set to a list of
-:class:`openmc.Source` objects.
+create an instance of any of the subclasses of :class:`openmc.SourceBase`
+(:class:`openmc.IndependentSource`, :class:`openmc.FileSource`,
+:class:`openmc.CompiledSource`) and use it to set the :attr:`Settings.source`
+attribute. If you have multiple external sources with varying source strengths,
+:attr:`Settings.source` should be set to a list of :class:`openmc.SourceBase`
+objects.
 
-The :class:`openmc.Source` class has four main attributes that one can set:
-:attr:`Source.space`, which defines the spatial distribution,
-:attr:`Source.angle`, which defines the angular distribution,
-:attr:`Source.energy`, which defines the energy distribution, and
-:attr:`Source.time`, which defines the time distribution.
+The :class:`openmc.IndependentSource` class is the primary class for defining
+source distributions and has four main attributes that one can set:
+:attr:`IndependentSource.space`, which defines the spatial distribution,
+:attr:`IndependentSource.angle`, which defines the angular distribution,
+:attr:`IndependentSource.energy`, which defines the energy distribution, and
+:attr:`IndependentSource.time`, which defines the time distribution.
 
 The spatial distribution can be set equal to a sub-class of
 :class:`openmc.stats.Spatial`; common choices are :class:`openmc.stats.Point` or
@@ -187,7 +190,9 @@ The spatial distribution can be set equal to a sub-class of
 :class:`openmc.stats.CartesianIndependent`. To independently specify
 distributions using spherical or cylindrical coordinates, you can use
 :class:`openmc.stats.SphericalIndependent` or
-:class:`openmc.stats.CylindricalIndependent`, respectively.
+:class:`openmc.stats.CylindricalIndependent`, respectively. Meshes can also be
+used to represent spatial distributions with :class:`openmc.stats.MeshSpatial`
+by specifying a mesh and source strengths for each mesh element.
 
 The angular distribution can be set equal to a sub-class of
 :class:`openmc.stats.UnitSphere` such as :class:`openmc.stats.Isotropic`,
@@ -223,33 +228,33 @@ distributed over a cube centered at the origin with an edge length of 10 cm, and
 emitting a pulse of particles from 0 to 10 µs, one
 would run::
 
-  source = openmc.Source()
+  source = openmc.IndependentSource()
   source.space = openmc.stats.Box((-5, -5, -5), (5, 5, 5))
   source.angle = openmc.stats.Isotropic()
   source.energy = openmc.stats.Discrete([10.0e6], [1.0])
   source.time = openmc.stats.Uniform(0, 1e-6)
   settings.source = source
 
-The :class:`openmc.Source` class also has a :attr:`Source.strength` attribute
-that indicates the relative strength of a source distribution if multiple are
-used. For example, to create two sources, one that should be sampled 70% of the
-time and another that should be sampled 30% of the time::
+All subclasses of :class:`openmc.SourceBase` have a :attr:`SourceBase.strength`
+attribute that indicates the relative strength of a source distribution if
+multiple are used. For example, to create two sources, one that should be
+sampled 70% of the time and another that should be sampled 30% of the time::
 
-  src1 = openmc.Source()
+  src1 = openmc.IndependentSource()
   src1.strength = 0.7
   ...
 
-  src2 = openmc.Source()
+  src2 = openmc.IndependentSource()
   src2.strength = 0.3
   ...
 
   settings.source = [src1, src2]
 
-Finally, the :attr:`Source.particle` attribute can be used to indicate the
-source should be composed of particles other than neutrons. For example, the
-following would generate a photon source::
+Finally, the :attr:`IndependentSource.particle` attribute can be used to
+indicate the source should be composed of particles other than neutrons. For
+example, the following would generate a photon source::
 
-  source = openmc.Source()
+  source = openmc.IndependentSource()
   source.particle = 'photon'
   ...
 
@@ -261,10 +266,10 @@ For a full list of all classes related to statistical distributions, see
 File-based Sources
 ------------------
 
-OpenMC can use a pregenerated HDF5 source file by specifying the ``filename``
-argument to :class:`openmc.Source`::
+OpenMC can use a pregenerated HDF5 source file through the
+:class:`openmc.FileSource` class::
 
-  settings.source = openmc.Source(filename='source.h5')
+  settings.source = openmc.FileSource('source.h5')
 
 Statepoint and source files are generated automatically when a simulation is run
 and can be used as the starting source in a new simulation. Alternatively, a
@@ -284,10 +289,10 @@ attribute::
 In this example, at most 10,000 source particles are stored when particles cross
 surfaces with IDs of 1, 2, or 3.
 
-.. _custom_source:
+.. _compiled_source:
 
-Custom Sources
---------------
+Compiled Sources
+----------------
 
 It is often the case that one may wish to simulate a complex source distribution
 that is not possible to represent with the classes described above. For these
@@ -303,7 +308,7 @@ below.
   #include "openmc/source.h"
   #include "openmc/particle.h"
 
-  class CustomSource : public openmc::Source
+  class CompiledSource : public openmc::Source
   {
     openmc::SourceSite sample(uint64_t* seed) const
     {
@@ -325,9 +330,9 @@ below.
     }
   };
 
-  extern "C" std::unique_ptr<CustomSource> openmc_create_source(std::string parameters)
+  extern "C" std::unique_ptr<CompiledSource> openmc_create_source(std::string parameters)
   {
-    return std::make_unique<CustomSource>();
+    return std::make_unique<CompiledSource>();
   }
 
 The above source creates monodirectional 14.08 MeV neutrons that are distributed
@@ -354,19 +359,21 @@ OpenMC shared library. This can be done by writing a CMakeLists.txt file:
    target_link_libraries(source OpenMC::libopenmc)
 
 After running ``cmake`` and ``make``, you will have a libsource.so (or .dylib)
-file in your build directory. Setting the :attr:`openmc.Source.library`
-attribute to the path of this shared library will indicate that it should be
-used for sampling source particles at runtime.
+file in your build directory. You can then use this as an external source during
+an OpenMC run by passing the path of the shared library to the
+:class:`openmc.CompiledSource` class, which is then set as the
+:attr:`Settings.source` attribute::
 
-.. _parameterized_custom_source:
+  settings.source = openmc.CompiledSource('libsource.so')
 
-Custom Parameterized Sources
-----------------------------
+.. _parameterized_compiled_source:
 
-Some custom sources may have values (parameters) that can be changed between
-runs. This is supported by using the ``openmc_create_source()`` function to
-pass parameters defined in the :attr:`openmc.Source.parameters` attribute to
-the source class when it is created:
+Parameterized Compiled Sources
+------------------------------
+
+Some compiled sources may have values (parameters) that can be changed between
+runs. This is supported by using the ``openmc_create_source()`` function to pass
+parameters to the source class when it is created:
 
 .. code-block:: c++
 
@@ -375,9 +382,9 @@ the source class when it is created:
   #include "openmc/source.h"
   #include "openmc/particle.h"
 
-  class CustomSource : public openmc::Source {
+  class CompiledSource : public openmc::Source {
   public:
-    CustomSource(double energy) : energy_{energy} { }
+    CompiledSource(double energy) : energy_{energy} { }
 
     // Samples from an instance of this class.
     openmc::SourceSite sample(uint64_t* seed) const
@@ -402,13 +409,16 @@ the source class when it is created:
     double energy_;
   };
 
-  extern "C" std::unique_ptr<CustomSource> openmc_create_source(std::string parameter) {
+  extern "C" std::unique_ptr<CompiledSource> openmc_create_source(std::string parameter) {
     double energy = std::stod(parameter);
-    return std::make_unique<CustomSource>(energy);
+    return std::make_unique<CompiledSource>(energy);
   }
 
-As with the basic custom source functionality, the custom source library
-location must be provided in the :attr:`openmc.Source.library` attribute.
+When creating an instance of the :class:`openmc.CompiledSource` class, you will
+need to pass both the path of the shared library as well as the parameters as a
+string, which gets passed down to the ``openmc_create_source()`` function::
+
+  settings.source = openmc.CompiledSource('libsource.so', '3.5e6')
 
 .. _usersguide_entropy:
 
@@ -474,7 +484,6 @@ selected::
    Some features related to photon transport are not currently implemented,
    including:
 
-     * Tallying photon energy deposition.
      * Generating a photon source from a neutron calculation that can be used
        for a later fixed source photon calculation.
      * Photoneutron reactions.
@@ -514,4 +523,108 @@ As an example, to write a statepoint file every five batches::
   settings.batches = n
   settings.statepoint = {'batches': range(5, n + 5, 5)}
 
-.. _NIST ESTAR database: https://physics.nist.gov/PhysRefData/Star/Text/ESTAR.html
+Particle Track Files
+--------------------
+
+OpenMC can generate a particle track file that contains track information
+(position, direction, energy, time, weight, cell ID, and material ID) for each
+state along a particle's history. There are two ways to indicate which particles
+and/or how many particles should have their tracks written. First, you can
+identify specific source particles by their batch, generation, and particle ID
+numbers::
+
+  settings.tracks = [
+    (1, 1, 50),
+    (2, 1, 30),
+    (5, 1, 75)
+  ]
+
+In this example, track information would be written for the 50th particle in the
+1st generation of batch 1, the 30th particle in the first generation of batch 2,
+and the 75th particle in the 1st generation of batch 5. Unless you are using
+more than one generation per batch (see :ref:`usersguide_particles`), the
+generation number should be 1. Alternatively, you can run OpenMC in a mode where
+track information is written for *all* particles, up to a user-specified limit::
+
+  openmc.run(tracks=True)
+
+In this case, you can control the maximum number of source particles for which
+tracks will be written as follows::
+
+  settings.max_tracks = 1000
+
+Particle track information is written to the ``tracks.h5`` file, which can be
+analyzed using the :class:`~openmc.Tracks` class::
+
+  >>> tracks = openmc.Tracks('tracks.h5')
+  >>> tracks
+  [<Track (1, 1, 50): 151 particles>,
+   <Track (2, 1, 30): 191 particles>,
+   <Track (5, 1, 75): 81 particles>]
+
+Each :class:`~openmc.Track` object stores a list of track information for every
+primary/secondary particle. In the above example, the first source particle
+produced 150 secondary particles for a total of 151 particles. Information for
+each primary/secondary particle can be accessed using the
+:attr:`~openmc.Track.particle_tracks` attribute::
+
+  >>> first_track = tracks[0]
+  >>> first_track.particle_tracks
+  [<ParticleTrack: neutron, 120 states>,
+   <ParticleTrack: photon, 6 states>,
+   <ParticleTrack: electron, 2 states>,
+   <ParticleTrack: electron, 2 states>,
+   <ParticleTrack: electron, 2 states>,
+   ...
+   <ParticleTrack: electron, 2 states>,
+   <ParticleTrack: electron, 2 states>]
+  >>> photon = first_track.particle_tracks[1]
+
+The :class:`~openmc.ParticleTrack` class is a named tuple indicating the
+particle type and then a NumPy array of the "states". The states array is a
+compound type with a field for each physical quantity (position, direction,
+energy, time, weight, cell ID, and material ID). For example, to get the
+position for the above particle track::
+
+  >>> photon.states['r']
+  array([(-11.92987939, -12.28467295, 0.67837495),
+         (-11.95213726, -12.2682    , 0.68783964),
+         (-12.2682    , -12.03428339, 0.82223855),
+         (-12.5913778 , -11.79510096, 0.95966298),
+         (-12.6622572 , -11.74264344, 0.98980293),
+         (-12.6907775 , -11.7215357 , 1.00193058)],
+        dtype=[('x', '<f8'), ('y', '<f8'), ('z', '<f8')])
+
+The full list of fields is as follows:
+
+  :r: Position (each direction in [cm])
+  :u: Direction
+  :E: Energy in [eV]
+  :time: Time in [s]
+  :wgt: Weight
+  :cell_id: Cell ID
+  :cell_instance: Cell instance
+  :material_id: Material ID
+
+Both the :class:`~openmc.Tracks` and :class:`~openmc.Track` classes have a
+``filter`` method that allows you to get a subset of tracks that meet a given
+criteria. For example, to get all tracks that involved a photon::
+
+  >>> tracks.filter(particle='photon')
+  [<Track (1, 1, 50): 151 particles>,
+   <Track (2, 1, 30): 191 particles>,
+   <Track (5, 1, 75): 81 particles>]
+
+The :meth:`openmc.Tracks.filter` method returns a new :class:`~openmc.Tracks`
+instance, whereas the :meth:`openmc.Track.filter` method returns a new
+:class:`~openmc.Track` instance.
+
+.. note:: If you are using an MPI-enabled install of OpenMC and run a simulation
+          with more than one process, a separate track file will be written for
+          each MPI process with the filename ``tracks_p#.h5`` where # is the
+          rank of the corresponding process. Multiple track files can be
+          combined with the :ref:`scripts_track_combine` script:
+
+          .. code-block:: sh
+
+            openmc-track-combine tracks_p*.h5 --out tracks.h5

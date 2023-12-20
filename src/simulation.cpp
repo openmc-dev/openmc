@@ -8,6 +8,7 @@
 #include "openmc/event.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/material.h"
+#include "openmc/mcpl_interface.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
@@ -24,6 +25,7 @@
 #include "openmc/tallies/trigger.h"
 #include "openmc/timer.h"
 #include "openmc/track_output.h"
+#include "openmc/weight_windows.h"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -153,6 +155,11 @@ int openmc_simulation_init()
   // Allocate source, fission and surface source banks.
   allocate_banks();
 
+  // Create track file if needed
+  if (!settings::track_identifiers.empty() || settings::write_all_tracks) {
+    open_track_file();
+  }
+
   // If doing an event-based simulation, intialize the particle buffer
   // and event queues
   if (settings::event_based) {
@@ -163,6 +170,7 @@ int openmc_simulation_init()
 
   // Allocate tally results arrays if they're not allocated yet
   for (auto& t : model::tallies) {
+    t->set_strides();
     t->init_results();
   }
 
@@ -206,6 +214,11 @@ int openmc_simulation_init()
     }
   }
 
+  // load weight windows from file
+  if (!settings::weight_windows_file.empty()) {
+    openmc_weight_windows_import(settings::weight_windows_file.c_str());
+  }
+
   // Set flag indicating initialization is done
   simulation::initialized = true;
   return 0;
@@ -228,6 +241,11 @@ int openmc_simulation_finalize()
     mat->mat_nuclide_index_.clear();
   }
 
+  // Close track file if open
+  if (!settings::track_identifiers.empty() || settings::write_all_tracks) {
+    close_track_file();
+  }
+
   // Increment total number of generations
   simulation::total_gen += simulation::current_batch * settings::gen_per_batch;
 
@@ -238,6 +256,12 @@ int openmc_simulation_finalize()
   // Write tally results to tallies.out
   if (settings::output_tallies && mpi::master)
     write_tallies();
+
+  // If weight window generators are present in this simulation,
+  // write a weight windows file
+  if (variance_reduction::weight_windows_generators.size() > 0) {
+    openmc_weight_windows_export();
+  }
 
   // Deactivate all tallies
   for (auto& t : model::tallies) {
@@ -300,7 +324,7 @@ int openmc_next_batch(int* status)
 
   // Check simulation ending criteria
   if (status) {
-    if (simulation::current_batch == settings::n_max_batches) {
+    if (simulation::current_batch >= settings::n_max_batches) {
       *status = STATUS_EXIT_MAX_BATCH;
     } else if (simulation::satisfy_triggers) {
       *status = STATUS_EXIT_ON_TRIGGER;
@@ -431,6 +455,11 @@ void finalize_batch()
   accumulate_tallies();
   simulation::time_tallies.stop();
 
+  // update weight windows if needed
+  for (const auto& wwg : variance_reduction::weight_windows_generators) {
+    wwg->update();
+  }
+
   // Reset global tally results
   if (simulation::current_batch <= settings::n_inactive) {
     xt::view(simulation::global_tallies, xt::all()) = 0.0;
@@ -467,21 +496,49 @@ void finalize_batch()
     // Write out a separate source point if it's been specified for this batch
     if (contains(settings::sourcepoint_batch, simulation::current_batch) &&
         settings::source_write && settings::source_separate) {
-      write_source_point(nullptr);
+
+      // Determine width for zero padding
+      int w = std::to_string(settings::n_max_batches).size();
+      std::string source_point_filename = fmt::format("{0}source.{1:0{2}}",
+        settings::path_output, simulation::current_batch, w);
+      gsl::span<SourceSite> bankspan(simulation::source_bank);
+      if (settings::source_mcpl_write) {
+        write_mcpl_source_point(
+          source_point_filename.c_str(), bankspan, simulation::work_index);
+      } else {
+        write_source_point(
+          source_point_filename.c_str(), bankspan, simulation::work_index);
+      }
     }
 
     // Write a continously-overwritten source point if requested.
     if (settings::source_latest) {
-      auto filename = settings::path_output + "source.h5";
-      write_source_point(filename.c_str());
+
+      // note: correct file extension appended automatically
+      auto filename = settings::path_output + "source";
+      gsl::span<SourceSite> bankspan(simulation::source_bank);
+      if (settings::source_mcpl_write) {
+        write_mcpl_source_point(
+          filename.c_str(), bankspan, simulation::work_index);
+      } else {
+        write_source_point(filename.c_str(), bankspan, simulation::work_index);
+      }
     }
   }
 
   // Write out surface source if requested.
   if (settings::surf_source_write &&
       simulation::current_batch == settings::n_batches) {
-    auto filename = settings::path_output + "surface_source.h5";
-    write_source_point(filename.c_str(), true);
+    auto filename = settings::path_output + "surface_source";
+    auto surf_work_index =
+      mpi::calculate_parallel_index_vector(simulation::surf_source_bank.size());
+    gsl::span<SourceSite> surfbankspan(simulation::surf_source_bank.begin(),
+      simulation::surf_source_bank.size());
+    if (settings::surf_mcpl_write) {
+      write_mcpl_source_point(filename.c_str(), surfbankspan, surf_work_index);
+    } else {
+      write_source_point(filename.c_str(), surfbankspan, surf_work_index);
+    }
   }
 }
 
@@ -596,6 +653,12 @@ void initialize_history(Particle& p, int64_t index_source)
   // Reset split counter
   p.n_split() = 0;
 
+  // Reset weight window ratio
+  p.ww_factor() = 0.0;
+
+  // Reset pulse_height_storage
+  std::fill(p.pht_storage().begin(), p.pht_storage().end(), 0);
+
   // set random number seed
   int64_t particle_seed =
     (simulation::total_gen + overall_generation() - 1) * settings::n_particles +
@@ -610,18 +673,7 @@ void initialize_history(Particle& p, int64_t index_source)
     p.trace() = true;
 
   // Set particle track.
-  p.write_track() = false;
-  if (settings::write_all_tracks) {
-    p.write_track() = true;
-  } else if (settings::track_identifiers.size() > 0) {
-    for (const auto& t : settings::track_identifiers) {
-      if (simulation::current_batch == t[0] &&
-          simulation::current_gen == t[1] && p.id() == t[2]) {
-        p.write_track() = true;
-        break;
-      }
-    }
-  }
+  p.write_track() = check_track_criteria(p);
 
   // Display message if high verbosity or trace is on
   if (settings::verbosity >= 9 || p.trace()) {

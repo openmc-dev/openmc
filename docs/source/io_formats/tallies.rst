@@ -40,15 +40,15 @@ The ``<tally>`` element accepts the following sub-elements:
 
   :nuclides:
     If specified, the scores listed will be for particular nuclides, not the
-    summation of reactions from all nuclides. The format for nuclides should be
-    [Atomic symbol]-[Mass number], e.g. "U-235". The reaction rate for all
+    summation of reactions from all nuclides. Nuclides are expressed using the
+    GNDS naming convention, e.g. "U235" or "Am242_m1". The reaction rate for all
     nuclides can be obtained with "total". For example, to obtain the reaction
-    rates for U-235, Pu-239, and all nuclides in a material, this element should
+    rates for U235, Pu239, and all nuclides in a material, this element should
     be:
 
     .. code-block:: xml
 
-        <nuclides>U-235 Pu-239 total</nuclides>
+        <nuclides>U235 Pu239 total</nuclides>
 
     *Default*: total
 
@@ -68,6 +68,12 @@ The ``<tally>`` element accepts the following sub-elements:
     A space-separated list of the desired responses to be accumulated. A full
     list of valid scores can be found in the :ref:`user's guide
     <usersguide_scores>`.
+
+  :multiply_density:
+    A boolean that indicates whether reaction rate scores should be computed by
+    multiplying by the atom density of a nuclide present in a material.
+
+    *Default*: true
 
   :trigger:
     Precision trigger applied to all filter bins and nuclides for this tally.
@@ -350,6 +356,9 @@ attributes/sub-elements:
 
   :theta_grid:
     The mesh divisions along the theta-axis. (For spherical mesh only.)
+
+  :origin:
+    The origin in cartesian coordinates. (For cylindrical and spherical meshes only.)
 
   :library:
     The mesh library used to represent an unstructured mesh. This can be either

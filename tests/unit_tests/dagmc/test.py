@@ -1,6 +1,7 @@
 import shutil
 
 import numpy as np
+from pathlib import Path
 import pytest
 
 import openmc
@@ -26,12 +27,21 @@ def dagmc_model(request):
     model.settings.verbosity = 1
     source_box = openmc.stats.Box([ -4, -4, -4 ],
                                   [  4,  4,  4 ])
-    source = openmc.Source(space=source_box)
+    source = openmc.IndependentSource(space=source_box)
     model.settings.source = source
 
     # geometry
-    dagmc_universe = openmc.DAGMCUniverse('dagmc.h5m')
+    dagmc_file = Path(request.fspath).parent / 'dagmc.h5m'
+    dagmc_universe = openmc.DAGMCUniverse(dagmc_file)
     model.geometry = openmc.Geometry(dagmc_universe)
+
+    # check number of surfaces and volumes for this pincell model there should
+    # be 5 volumes: two fuel regions, water, graveyard, implicit complement (the
+    # implicit complement cell is created automatically at runtime)
+    # and 21 surfaces: 3 cylinders (9 surfaces) and a bounding cubic shell
+    # (12 surfaces)
+    assert dagmc_universe.n_cells == 5
+    assert dagmc_universe.n_surfaces == 21
 
     # tally
     tally = openmc.Tally()

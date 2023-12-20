@@ -101,6 +101,18 @@ void Lattice::adjust_indices()
 int32_t Lattice::fill_offset_table(int32_t offset, int32_t target_univ_id,
   int map, std::unordered_map<int32_t, int32_t>& univ_count_memo)
 {
+  // If the offsets have already been determined for this "map", don't bother
+  // recalculating all of them and just return the total offset. Note that the
+  // offsets_ array doesn't actually include the offset accounting for the last
+  // universe, so we get the before-last offset for the given map and then
+  // explicitly add the count for the last universe.
+  if (offsets_[map * universes_.size()] != C_NONE) {
+    int last_offset = offsets_[(map + 1) * universes_.size() - 1];
+    int last_univ = universes_.back();
+    return last_offset +
+           count_universe_instances(last_univ, target_univ_id, univ_count_memo);
+  }
+
   for (LatticeIter it = begin(); it != end(); ++it) {
     offsets_[map * universes_.size() + it.indx_] = offset;
     offset += count_universe_instances(*it, target_univ_id, univ_count_memo);
@@ -215,9 +227,7 @@ RectLattice::RectLattice(pugi::xml_node lat_node) : Lattice {lat_node}
 
 int32_t const& RectLattice::operator[](array<int, 3> const& i_xyz)
 {
-  int indx =
-    n_cells_[0] * n_cells_[1] * i_xyz[2] + n_cells_[0] * i_xyz[1] + i_xyz[0];
-  return universes_[indx];
+  return universes_[get_flat_index(i_xyz)];
 }
 
 //==============================================================================
@@ -321,6 +331,12 @@ void RectLattice::get_indices(
       result[2] = std::floor(iz_);
     }
   }
+}
+
+int RectLattice::get_flat_index(const array<int, 3>& i_xyz) const
+{
+  return n_cells_[0] * n_cells_[1] * i_xyz[2] + n_cells_[0] * i_xyz[1] +
+         i_xyz[0];
 }
 
 //==============================================================================
@@ -662,9 +678,7 @@ void HexLattice::fill_lattice_y(const vector<std::string>& univ_words)
 
 int32_t const& HexLattice::operator[](array<int, 3> const& i_xyz)
 {
-  int indx = (2 * n_rings_ - 1) * (2 * n_rings_ - 1) * i_xyz[2] +
-             (2 * n_rings_ - 1) * i_xyz[1] + i_xyz[0];
-  return universes_[indx];
+  return universes_[get_flat_index(i_xyz)];
 }
 
 //==============================================================================
@@ -927,6 +941,12 @@ void HexLattice::get_indices(
   // update outgoing indices
   result[0] += i1_chg;
   result[1] += i2_chg;
+}
+
+int HexLattice::get_flat_index(const array<int, 3>& i_xyz) const
+{
+  return (2 * n_rings_ - 1) * (2 * n_rings_ - 1) * i_xyz[2] +
+         (2 * n_rings_ - 1) * i_xyz[1] + i_xyz[0];
 }
 
 //==============================================================================

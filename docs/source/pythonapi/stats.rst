@@ -22,7 +22,13 @@ Univariate Probability Distributions
    openmc.stats.Legendre
    openmc.stats.Mixture
    openmc.stats.Normal
-   openmc.stats.Muir
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myfunction.rst
+
+   openmc.stats.muir
 
 Angular Distributions
 ---------------------
@@ -51,3 +57,11 @@ Spatial Distributions
    openmc.stats.SphericalIndependent
    openmc.stats.Box
    openmc.stats.Point
+   openmc.stats.MeshSpatial
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myfunction.rst
+
+   openmc.stats.spherical_uniform

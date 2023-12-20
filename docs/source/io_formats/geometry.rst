@@ -48,7 +48,7 @@ Each ``<surface>`` element can have the following attributes or sub-elements:
 
   :periodic_surface_id:
      If a periodic boundary condition is applied, this attribute identifies the
-     ``id`` of the corresponding periodic sufrace.
+     ``id`` of the corresponding periodic surface.
 
 The following quadratic surfaces can be modeled:
 

@@ -63,6 +63,9 @@ using namespace openmc;
 
 int openmc_finalize()
 {
+  if (simulation::initialized)
+    openmc_simulation_finalize();
+
   // Clear results
   openmc_reset();
 
@@ -74,9 +77,11 @@ int openmc_finalize()
   settings::check_overlaps = false;
   settings::confidence_intervals = false;
   settings::create_fission_neutrons = true;
+  settings::create_delayed_neutrons = true;
   settings::electron_treatment = ElectronTreatment::LED;
   settings::delayed_photon_scaling = true;
   settings::energy_cutoff = {0.0, 1000.0, 0.0, 0.0};
+  settings::time_cutoff = {INFTY, INFTY, INFTY, INFTY};
   settings::entropy_on = false;
   settings::event_based = false;
   settings::gen_per_batch = 1;
@@ -85,6 +90,8 @@ int openmc_finalize()
   settings::material_cell_offsets = true;
   settings::max_particles_in_flight = 100000;
   settings::max_splits = 1000;
+  settings::max_tracks = 1000;
+  settings::max_write_lost_particles = -1;
   settings::n_inactive = 0;
   settings::n_particles = -1;
   settings::output_summary = true;
@@ -124,9 +131,7 @@ int openmc_finalize()
   simulation::keff = 1.0;
   simulation::alpha_eff = 0.0;
   simulation::alpha_min = -INFTY;
-  simulation::n_lost_particles = 0;
   simulation::need_depletion_rx = false;
-  simulation::satisfy_triggers = false;
   simulation::total_gen = 0;
 
   simulation::entropy_mesh = nullptr;
@@ -174,8 +179,11 @@ int openmc_reset()
   simulation::k_col_tra = 0.0;
   simulation::k_abs_tra = 0.0;
   simulation::k_sum = {0.0, 0.0};
+  simulation::satisfy_triggers = false;
 
   settings::cmfd_run = false;
+
+  simulation::n_lost_particles = 0;
 
   return 0;
 }

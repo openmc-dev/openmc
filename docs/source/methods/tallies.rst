@@ -179,12 +179,12 @@ n(\mathbf{r}, \mathbf{\hat{\Omega}}, E, t)` and :math:`d\ell = v \, dt` where
 
 Equation :eq:`track-length-integral` indicates that we can use the length of a
 particle's trajectory as an estimate for the flux, i.e. the track-length
-estimator of the flux would be
+estimator of the volume-integrated flux would be
 
 .. math::
     :label: track-length-flux
 
-    \phi = \frac{1}{W} \sum_{i \in T} w_i \ell_i
+    V \phi = \frac{1}{W} \sum_{i \in T} w_i \ell_i
 
 where :math:`T` is the set of all the particle's trajectories within the desired
 volume and :math:`\ell_i` is the length of the :math:`i`-th trajectory. In the
@@ -510,6 +510,6 @@ improve the estimate of the percentile.
 
 .. _Cauchy distribution: https://en.wikipedia.org/wiki/Cauchy_distribution
 
-.. _unpublished rational approximation: https://web.archive.org/web/20150926021742/http://home.online.no/~pjacklam/notes/invnorm/
+.. _unpublished rational approximation: https://stackedboxes.org/2017/05/01/acklams-normal-quantile-function/
 
 .. _MC21: http://www.osti.gov/bridge/servlets/purl/903083-HT5p1o/903083.pdf

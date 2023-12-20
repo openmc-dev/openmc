@@ -17,6 +17,7 @@
 #include "openmc/neighbor_list.h"
 #include "openmc/position.h"
 #include "openmc/surface.h"
+#include "openmc/universe.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -48,37 +49,103 @@ namespace model {
 extern std::unordered_map<int32_t, int32_t> cell_map;
 extern vector<unique_ptr<Cell>> cells;
 
-extern std::unordered_map<int32_t, int32_t> universe_map;
-extern vector<unique_ptr<Universe>> universes;
 } // namespace model
 
 //==============================================================================
-//! A geometry primitive that fills all space and contains cells.
-//==============================================================================
 
-class Universe {
+class Region {
 public:
-  int32_t id_;            //!< Unique ID
-  vector<int32_t> cells_; //!< Cells within this universe
+  //----------------------------------------------------------------------------
+  // Constructors
+  Region() {}
+  explicit Region(std::string region_spec, int32_t cell_id);
 
-  //! \brief Write universe information to an HDF5 group.
-  //! \param group_id An HDF5 group id.
-  virtual void to_hdf5(hid_t group_id) const;
+  //----------------------------------------------------------------------------
+  // Methods
 
-  virtual bool find_cell(Particle& p) const;
+  //! \brief Determine if a cell contains the particle at a given location.
+  //!
+  //! The bounds of the cell are determined by a logical expression involving
+  //! surface half-spaces. The expression used is given in infix notation
+  //!
+  //! The function is split into two cases, one for simple cells (those
+  //! involving only the intersection of half-spaces) and one for complex cells.
+  //! Both cases use short circuiting; however, in the case fo complex cells,
+  //! the complexity increases with the binary operators involved.
+  //! \param r The 3D Cartesian coordinate to check.
+  //! \param u A direction used to "break ties" the coordinates are very
+  //!   close to a surface.
+  //! \param on_surface The signed index of a surface that the coordinate is
+  //!   known to be on.  This index takes precedence over surface sense
+  //!   calculations.
+  bool contains(Position r, Direction u, int32_t on_surface) const;
 
-  BoundingBox bounding_box() const;
+  //! Find the oncoming boundary of this cell.
+  std::pair<double, int32_t> distance(
+    Position r, Direction u, int32_t on_surface, Particle* p) const;
 
-  const GeometryType& geom_type() const { return geom_type_; }
-  GeometryType& geom_type() { return geom_type_; }
+  //! Get the BoundingBox for this cell.
+  BoundingBox bounding_box(int32_t cell_id) const;
 
-  unique_ptr<UniversePartitioner> partitioner_;
+  //! Get the CSG expression as a string
+  std::string str() const;
+
+  //! Get a vector containing all the surfaces in the region expression
+  vector<int32_t> surfaces() const;
+
+  //----------------------------------------------------------------------------
+  // Accessors
+
+  //! Get Boolean of if the cell is simple or not
+  bool is_simple() const { return simple_; }
 
 private:
-  GeometryType geom_type_ = GeometryType::CSG;
+  //----------------------------------------------------------------------------
+  // Private Methods
+
+  //! Get a vector of the region expression in postfix notation
+  vector<int32_t> generate_postfix(int32_t cell_id) const;
+
+  //! Determine if a particle is inside the cell for a simple cell (only
+  //! intersection operators)
+  bool contains_simple(Position r, Direction u, int32_t on_surface) const;
+
+  //! Determine if a particle is inside the cell for a complex cell.
+  //!
+  //! Uses the comobination of half-spaces and binary operators to determine
+  //! if short circuiting can be used. Short cicuiting uses the relative and
+  //! absolute depth of parenthases in the expression.
+  bool contains_complex(Position r, Direction u, int32_t on_surface) const;
+
+  //! BoundingBox if the paritcle is in a simple cell.
+  BoundingBox bounding_box_simple() const;
+
+  //! BoundingBox if the particle is in a complex cell.
+  BoundingBox bounding_box_complex(vector<int32_t> postfix) const;
+
+  //! Enfource precedence: Parenthases, Complement, Intersection, Union
+  void add_precedence();
+
+  //! Add parenthesis to enforce precedence
+  std::vector<int32_t>::iterator add_parentheses(
+    std::vector<int32_t>::iterator start);
+
+  //! Remove complement operators from the expression
+  void remove_complement_ops();
+
+  //! Remove complement operators by using DeMorgan's laws
+  void apply_demorgan(
+    vector<int32_t>::iterator start, vector<int32_t>::iterator stop);
+
+  //----------------------------------------------------------------------------
+  // Private Data
+
+  //! Definition of spatial region as Boolean expression of half-spaces
+  // TODO: Should this be a vector of some other type
+  vector<int32_t> expression_;
+  bool simple_; //!< Does the region contain only intersections?
 };
 
-//==============================================================================
 //==============================================================================
 
 class Cell {
@@ -135,6 +202,12 @@ public:
   //! Get the BoundingBox for this cell.
   virtual BoundingBox bounding_box() const = 0;
 
+  //! Get a vector of surfaces in the cell
+  virtual vector<int32_t> surfaces() const { return vector<int32_t>(); }
+
+  //! Check if the cell region expression is simple
+  virtual bool is_simple() const { return true; }
+
   //----------------------------------------------------------------------------
   // Accessors
 
@@ -169,14 +242,30 @@ public:
   //! Get all cell instances contained by this cell
   //! \param[in] instance Instance of the cell for which to get contained cells
   //! (default instance is zero)
+  //! \param[in] hint positional hint for determining the parent cells
   //! \return Map with cell indexes as keys and
   //! instances as values
   std::unordered_map<int32_t, vector<int32_t>> get_contained_cells(
-    int32_t instance = 0) const;
+    int32_t instance = 0, Position* hint = nullptr) const;
 
 protected:
   //! Determine the path to this cell instance in the geometry hierarchy
-  vector<ParentCell> find_parent_cells(int32_t instance) const;
+  //! \param[in] instance of the cell to find parent cells for
+  //! \param[in] r position used to do a fast search for parent cells
+  //! \return parent cells
+  vector<ParentCell> find_parent_cells(
+    int32_t instance, const Position& r) const;
+
+  //! Determine the path to this cell instance in the geometry hierarchy
+  //! \param[in] instance of the cell to find parent cells for
+  //! \param[in] p particle used to do a fast search for parent cells
+  //! \return parent cells
+  vector<ParentCell> find_parent_cells(int32_t instance, Particle& p) const;
+
+  //! Determine the path to this cell instance in the geometry hierarchy
+  //! \param[in] instance of the cell to find parent cells for
+  //! \return parent cells
+  vector<ParentCell> exhaustive_find_parent_cells(int32_t instance) const;
 
   //! Inner function for retrieving contained cells
   void get_contained_cells_inner(
@@ -209,12 +298,6 @@ public:
   //! T. The units are sqrt(eV).
   vector<double> sqrtkT_;
 
-  //! Definition of spatial region as Boolean expression of half-spaces
-  vector<std::int32_t> region_;
-  //! Reverse Polish notation for region expression
-  vector<std::int32_t> rpn_;
-  bool simple_; //!< Does the region contain only intersections?
-
   //! \brief Neighboring cells in the same universe.
   NeighborList neighbors_;
 
@@ -240,35 +323,36 @@ struct CellInstanceItem {
 
 class CSGCell : public Cell {
 public:
+  //----------------------------------------------------------------------------
+  // Constructors
   CSGCell();
-
   explicit CSGCell(pugi::xml_node cell_node);
 
-  bool contains(Position r, Direction u, int32_t on_surface) const override;
+  //----------------------------------------------------------------------------
+  // Methods
+  vector<int32_t> surfaces() const override { return region_.surfaces(); }
 
   std::pair<double, int32_t> distance(
-    Position r, Direction u, int32_t on_surface, Particle* p) const override;
+    Position r, Direction u, int32_t on_surface, Particle* p) const override
+  {
+    return region_.distance(r, u, on_surface, p);
+  }
+
+  bool contains(Position r, Direction u, int32_t on_surface) const override
+  {
+    return region_.contains(r, u, on_surface);
+  }
+
+  BoundingBox bounding_box() const override
+  {
+    return region_.bounding_box(id_);
+  }
 
   void to_hdf5_inner(hid_t group_id) const override;
 
-  BoundingBox bounding_box() const override;
+  bool is_simple() const override { return region_.is_simple(); }
 
 protected:
-  bool contains_simple(Position r, Direction u, int32_t on_surface) const;
-  bool contains_complex(Position r, Direction u, int32_t on_surface) const;
-  BoundingBox bounding_box_simple() const;
-  static BoundingBox bounding_box_complex(vector<int32_t> rpn);
-
-  //! Applies DeMorgan's laws to a section of the RPN
-  //! \param start Starting point for token modification
-  //! \param stop Stopping point for token modification
-  static void apply_demorgan(
-    vector<int32_t>::iterator start, vector<int32_t>::iterator stop);
-
-  //! Removes complement operators from the RPN
-  //! \param rpn The rpn to remove complement operators from.
-  static void remove_complement_ops(vector<int32_t>& rpn);
-
   //! Returns the beginning position of a parenthesis block (immediately before
   //! two surface tokens) in the RPN given a starting position at the end of
   //! that block (immediately after two surface tokens)
@@ -276,35 +360,9 @@ protected:
   //! \param rpn The rpn being searched
   static vector<int32_t>::iterator find_left_parenthesis(
     vector<int32_t>::iterator start, const vector<int32_t>& rpn);
-};
-
-//==============================================================================
-//! Speeds up geometry searches by grouping cells in a search tree.
-//
-//! Currently this object only works with universes that are divided up by a
-//! bunch of z-planes.  It could be generalized to other planes, cylinders,
-//! and spheres.
-//==============================================================================
-
-class UniversePartitioner {
-public:
-  explicit UniversePartitioner(const Universe& univ);
-
-  //! Return the list of cells that could contain the given coordinates.
-  const vector<int32_t>& get_cells(Position r, Direction u) const;
 
 private:
-  //! A sorted vector of indices to surfaces that partition the universe
-  vector<int32_t> surfs_;
-
-  //! Vectors listing the indices of the cells that lie within each partition
-  //
-  //! There are n+1 partitions with n surfaces.  `partitions_.front()` gives the
-  //! cells that lie on the negative side of `surfs_.front()`.
-  //! `partitions_.back()` gives the cells that lie on the positive side of
-  //! `surfs_.back()`.  Otherwise, `partitions_[i]` gives cells sandwiched
-  //! between `surfs_[i-1]` and `surfs_[i]`.
-  vector<vector<int32_t>> partitions_;
+  Region region_;
 };
 
 //==============================================================================
@@ -338,9 +396,8 @@ struct CellInstanceHash {
 
 void read_cells(pugi::xml_node node);
 
-#ifdef DAGMC
-class DAGUniverse;
-#endif
+//!  Add cells to universes
+void populate_universes();
 
 } // namespace openmc
 #endif // OPENMC_CELL_H

@@ -59,7 +59,7 @@ class ZernikeRadial(Polynomial):
         Domain of Zernike polynomials to be applied on. Default is 1.
     norm_coef : iterable of float
         The list of coefficients of each term in the polynomials after
-        normailization.
+        normalization.
 
     """
     def __init__(self, coef, radius=1):
@@ -106,7 +106,7 @@ class Zernike(Polynomial):
         Azimuthal of Zernike polynomial to be applied on. Default is 0.
     norm_coef : iterable of float
         The list of coefficients of each term in the polynomials after
-        normailization.
+        normalization.
     """
     def __init__(self, coef, radius=1):
         super().__init__(coef)

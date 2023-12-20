@@ -21,13 +21,14 @@ Simulation Settings
    :nosignatures:
    :template: myclass.rst
 
-   openmc.Source
+   openmc.SourceBase
+   openmc.IndependentSource
+   openmc.FileSource
+   openmc.CompiledSource
+   openmc.MeshSource
    openmc.SourceParticle
    openmc.VolumeCalculation
-   openmc.WeightWindows
    openmc.Settings
-
-The following function can be used for generating a source file:
 
 .. autosummary::
    :toctree: generated
@@ -35,6 +36,7 @@ The following function can be used for generating a source file:
    :template: myfunction.rst
 
    openmc.write_source_file
+   openmc.wwinp_to_wws
 
 Material Specification
 ----------------------
@@ -44,9 +46,6 @@ Material Specification
    :nosignatures:
    :template: myclass.rst
 
-   openmc.Nuclide
-   openmc.Element
-   openmc.Macroscopic
    openmc.Material
    openmc.Materials
 
@@ -88,8 +87,10 @@ Building geometry
    openmc.Intersection
    openmc.Union
    openmc.Complement
+   openmc.BoundingBox
    openmc.Cell
    openmc.Universe
+   openmc.DAGMCUniverse
    openmc.RectLattice
    openmc.HexLattice
    openmc.Geometry
@@ -118,9 +119,10 @@ Constructing Tallies
    openmc.Filter
    openmc.UniverseFilter
    openmc.MaterialFilter
+   openmc.MaterialFromFilter
    openmc.CellFilter
    openmc.CellFromFilter
-   openmc.CellbornFilter
+   openmc.CellBornFilter
    openmc.CellInstanceFilter
    openmc.CollisionFilter
    openmc.SurfaceFilter
@@ -143,6 +145,8 @@ Constructing Tallies
    openmc.ParticleFilter
    openmc.RegularMesh
    openmc.RectilinearMesh
+   openmc.CylindricalMesh
+   openmc.SphericalMesh
    openmc.UnstructuredMesh
    openmc.Trigger
    openmc.TallyDerivative
@@ -158,6 +162,7 @@ Geometry Plotting
    :template: myclass.rst
 
    openmc.Plot
+   openmc.ProjectionPlot
    openmc.Plots
 
 Running OpenMC
@@ -183,8 +188,18 @@ Post-processing
    :template: myclass.rst
 
    openmc.Particle
+   openmc.ParticleTrack
    openmc.StatePoint
    openmc.Summary
+   openmc.Track
+   openmc.Tracks
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myfunction.rst
+
+   openmc.voxel_to_vtk
 
 The following classes and functions are used for functional expansion reconstruction.
 
@@ -216,6 +231,19 @@ Various classes may be created when performing tally slicing and/or arithmetic:
    openmc.arithmetic.AggregateScore
    openmc.arithmetic.AggregateNuclide
    openmc.arithmetic.AggregateFilter
+
+Variance Reduction
+------------------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass
+
+   openmc.WeightWindows
+   openmc.WeightWindowGenerator
+   openmc.hdf5_to_wws
+
 
 Coarse Mesh Finite Difference Acceleration
 ------------------------------------------

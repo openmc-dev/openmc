@@ -1,0 +1,99 @@
+====================
+What's New in 0.13.2
+====================
+
+.. currentmodule:: openmc
+
+-------
+Summary
+-------
+
+This release of OpenMC includes several bug fixes, performance improvements for
+complex geometries and depletion simulations, and other general enhancements.
+Notably, a capability has been added to compute the photon spectra from decay of
+unstable nuclides. Alongside that, a new :data:`openmc.config` configuration
+variable has been introduced that allows easier configuration of data sources.
+Additionally, users can now perform cell or material rejection when sampling
+external source distributions.
+
+------------------------------------
+Compatibility Notes and Deprecations
+------------------------------------
+
+- If you are building against libMesh for unstructured mesh tally support,
+  version 1.6 or higher is now required.
+- The ``openmc.stats.Muir`` class has been replaced by a
+  :func:`openmc.stats.muir` function that returns an instance of
+  :class:`openmc.stats.Normal`.
+
+------------
+New Features
+------------
+
+- The :meth:`openmc.Material.get_nuclide_atom_densities` method now takes an
+  optional ``nuclide`` argument.
+- Functions/methods in the :mod:`openmc.deplete` module now accept times in
+  Julian years (``'a'``).
+- The :meth:`openmc.Universe.plot` method now allows a pre-existing axes object
+  to be passed in.
+- Performance optimization for geometries with many complex regions.
+- Performance optimization for depletion by avoiding deepcopies and caching
+  reaction rates.
+- The :class:`openmc.RegularMesh` class now has a
+  :meth:`~openmc.RegularMesh.from_domain` classmethod.
+- The :class:`openmc.CylindricalMesh` class now has a
+  :meth:`~openmc.CylindricalMesh.from_domain` classmethod.
+- Improved method to condense diffusion coefficients from the :mod:`openmc.mgxs`
+  module.
+- A new :data:`openmc.config` configuration variable has been introduced that
+  allows data sources to be specified at runtime or via environment variables.
+- The :class:`openmc.EnergyFunctionFilter` class now supports multiple
+  interpolation schemes, not just linear-linear interpolation.
+- The :class:`openmc.DAGMCUniverse` class now has ``material_names``,
+  ``n_cells``, and ``n_surfaces`` attributes.
+- A new :func:`openmc.data.decay_photon_energy` function has been added that
+  returns the energy spectrum of photons emitted from the decay of an unstable
+  nuclide.
+- The :class:`openmc.Material` class also has a new
+  :attr:`~openmc.Material.decay_photon_energy` attribute that gives the decay
+  photon energy spectrum from the material based on its constituent nuclides.
+- The :class:`openmc.deplete.StepResult` now has a
+  :meth:`~openmc.deplete.StepResult.get_material` method.
+- The :class:`openmc.Source` class now takes a ``domains`` argument that
+  specifies a list of cells, materials, or universes that is used to reject
+  source sites (i.e., if the sampled sites are not within the specified domain,
+  they are rejected).
+
+---------
+Bug Fixes
+---------
+
+- `Delay call to Tally::set_strides <https://github.com/openmc-dev/openmc/pull/2183>`_
+- `Fix reading reference direction from XML for angular distributions <https://github.com/openmc-dev/openmc/pull/2204>`_
+- `Fix erroneous behavior in Material.add_components <https://github.com/openmc-dev/openmc/pull/2205>`_
+- `Fix reading thermal elastic data from ACE <https://github.com/openmc-dev/openmc/pull/2226>`_
+- `Fix reading source file with time attribute <https://github.com/openmc-dev/openmc/pull/2228>`_
+- `Fix conversion of multiple thermal scattering data files from ACE <https://github.com/openmc-dev/openmc/pull/2232>`_
+- `Fix reading values from wwinp file <https://github.com/openmc-dev/openmc/pull/2242>`_
+- `Handle possibility of .ppm file in Universe.plot <https://github.com/openmc-dev/openmc/pull/2251>`_
+- `Update volume calc types to mitigate overflow issues <https://github.com/openmc-dev/openmc/pull/2270>`_
+
+------------
+Contributors
+------------
+
+- `Lewis Gross <https://github.com/lewisgross1296>`_
+- `Andrew Johnson <https://github.com/drewejohnson>`_
+- `Miriam Kreher <https://github.com/mkreher13>`_
+- `James Logan <https://github.com/jlogan03>`_
+- `Jose Ignacio Marquez Damien <https://github.com/marquezj>`_
+- `Josh May <https://github.com/joshmay1>`_
+- `Patrick Myers <https://github.com/myerspat>`_
+- `Adam Nelson <https://github.com/nelsonag>`_
+- `April Novak <https://github.com/aprilnovak>`_
+- `Ethan Peterson <https://github.com/eepeterson>`_
+- `Gavin Ridley <https://github.com/gridley>`_
+- `Paul Romano <https://github.com/paulromano>`_
+- `Patrick Shriwise <https://github.com/pshriwise>`_
+- `Jonathan Shimwell <https://github.com/Shimwell>`_
+- `Olek Yardas <https://github.com/yardasol>`_

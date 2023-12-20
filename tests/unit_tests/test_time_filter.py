@@ -59,7 +59,7 @@ def model(request):
     model.settings.particles = 1000
     model.settings.batches = 20
     particle = request.param
-    model.settings.source = openmc.Source(
+    model.settings.source = openmc.IndependentSource(
         space=openmc.stats.Point((x, 0., 0.)),
         angle=openmc.stats.Monodirectional([-1., 0., 0.]),
         energy=openmc.stats.Discrete([E], [1.0]),
@@ -100,7 +100,7 @@ def model_surf(request):
     model.settings.particles = 1000
     model.settings.batches = 20
     particle = request.param
-    model.settings.source = openmc.Source(
+    model.settings.source = openmc.IndependentSource(
         space=openmc.stats.Point((0., 0., 0.)),
         angle=openmc.stats.Monodirectional([1., 0., 0.]),
         energy=openmc.stats.Discrete([E], [1.0]),
@@ -149,3 +149,39 @@ def test_time_filter_surface(model_surf, run_in_tmpdir):
 
         # After t0+ε, the current should be zero
         assert values[2] == 0.0
+
+
+def test_small_time_interval(run_in_tmpdir):
+    # Create a model with a photon source at 1.0e8 seconds. Based on the speed
+    # of the photon, the time intervals are on the order of 1e-9 seconds, which
+    # are effectively 0 when compared to the starting time of the photon.
+    mat = openmc.Material()
+    mat.add_element('N', 1.0)
+    mat.set_density('g/cm3', 0.001)
+    sph = openmc.Sphere(r=5.0, boundary_type='vacuum')
+    cell = openmc.Cell(fill=mat, region=-sph)
+    model = openmc.Model()
+    model.geometry = openmc.Geometry([cell])
+    model.settings.particles = 100
+    model.settings.batches = 10
+    model.settings.run_mode = 'fixed source'
+    model.settings.source = openmc.IndependentSource(
+        time=openmc.stats.Discrete([1.0e8], [1.0]),
+        particle='photon'
+    )
+
+    # Add tallies with and without a time filter that should match all particles
+    time_filter = openmc.TimeFilter([0.0, 1.0e100])
+    tally_with_filter = openmc.Tally()
+    tally_with_filter.filters = [time_filter]
+    tally_with_filter.scores = ['flux']
+    tally_without_filter = openmc.Tally()
+    tally_without_filter.scores = ['flux']
+    model.tallies.extend([tally_with_filter, tally_without_filter])
+
+    # Run the model and make sure the two tallies match
+    sp_filename = model.run()
+    with openmc.StatePoint(sp_filename) as sp:
+        flux_with = sp.tallies[tally_with_filter.id].mean.ravel()[0]
+        flux_without = sp.tallies[tally_without_filter.id].mean.ravel()[0]
+        assert flux_with == pytest.approx(flux_without)

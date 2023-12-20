@@ -4,6 +4,8 @@
 #ifndef OPENMC_SOURCE_H
 #define OPENMC_SOURCE_H
 
+#include <unordered_set>
+
 #include "pugixml.hpp"
 
 #include "openmc/distribution_multi.h"
@@ -48,16 +50,20 @@ public:
 
   // Methods that can be overridden
   virtual double strength() const { return 1.0; }
+
+  static unique_ptr<Source> create(pugi::xml_node node);
 };
 
 //==============================================================================
-//! Source composed of independent spatial, angle, energy, and time distributions
+//! Source composed of independent spatial, angle, energy, and time
+//! distributions
 //==============================================================================
 
 class IndependentSource : public Source {
 public:
   // Constructors
-  IndependentSource(UPtrSpace space, UPtrAngle angle, UPtrDist energy, UPtrDist time);
+  IndependentSource(
+    UPtrSpace space, UPtrAngle angle, UPtrDist energy, UPtrDist time);
   explicit IndependentSource(pugi::xml_node node);
 
   //! Sample from the external source distribution
@@ -76,12 +82,18 @@ public:
   Distribution* time() const { return time_.get(); }
 
 private:
+  // Domain types
+  enum class DomainType { UNIVERSE, MATERIAL, CELL };
+
+  // Data members
   ParticleType particle_ {ParticleType::neutron}; //!< Type of particle emitted
   double strength_ {1.0};                         //!< Source strength
   UPtrSpace space_;                               //!< Spatial distribution
   UPtrAngle angle_;                               //!< Angular distribution
   UPtrDist energy_;                               //!< Energy distribution
   UPtrDist time_;                                 //!< Time distribution
+  DomainType domain_type_;                        //!< Domain type for rejection
+  std::unordered_set<int32_t> domain_ids_;        //!< Domains to reject from
 };
 
 //==============================================================================
@@ -91,11 +103,13 @@ private:
 class FileSource : public Source {
 public:
   // Constructors
-  explicit FileSource(std::string path);
+  explicit FileSource(pugi::xml_node node);
+  explicit FileSource(const std::string& path);
 
   // Methods
   SourceSite sample(uint64_t* seed) const override;
-
+  void load_sites_from_file(
+    const std::string& path); //!< Load source sites from file
 private:
   vector<SourceSite> sites_; //!< Source sites from a file
 };
@@ -104,26 +118,57 @@ private:
 //! Wrapper for custom sources that manages opening/closing shared library
 //==============================================================================
 
-class CustomSourceWrapper : public Source {
+class CompiledSourceWrapper : public Source {
 public:
   // Constructors, destructors
-  CustomSourceWrapper(std::string path, std::string parameters);
-  ~CustomSourceWrapper();
+  CompiledSourceWrapper(pugi::xml_node node);
+  ~CompiledSourceWrapper();
 
   // Defer implementation to custom source library
   SourceSite sample(uint64_t* seed) const override
   {
-    return custom_source_->sample(seed);
+    return compiled_source_->sample(seed);
   }
 
-  double strength() const override { return custom_source_->strength(); }
+  double strength() const override { return compiled_source_->strength(); }
+
+  void setup(const std::string& path, const std::string& parameters);
 
 private:
   void* shared_library_; //!< library from dlopen
-  unique_ptr<Source> custom_source_;
+  unique_ptr<Source> compiled_source_;
 };
 
-typedef unique_ptr<Source> create_custom_source_t(std::string parameters);
+typedef unique_ptr<Source> create_compiled_source_t(std::string parameters);
+
+//==============================================================================
+//! Mesh-based source with different distributions for each element
+//==============================================================================
+
+class MeshSource : public Source {
+public:
+  // Constructors
+  explicit MeshSource(pugi::xml_node node);
+
+  //! Sample from the external source distribution
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Sampled site
+  SourceSite sample(uint64_t* seed) const override;
+
+  // Properties
+  double strength() const override { return space_->total_strength(); }
+
+  // Accessors
+  const std::unique_ptr<Source>& source(int32_t i) const
+  {
+    return sources_.size() == 1 ? sources_[0] : sources_[i];
+  }
+
+private:
+  // Data members
+  unique_ptr<MeshSpatial> space_;           //!< Mesh spatial
+  vector<std::unique_ptr<Source>> sources_; //!< Source distributions
+};
 
 //==============================================================================
 // Functions

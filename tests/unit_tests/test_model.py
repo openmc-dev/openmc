@@ -1,6 +1,6 @@
 from math import pi
 from pathlib import Path
-from shutil import which
+import os
 
 import numpy as np
 import pytest
@@ -35,8 +35,8 @@ def pin_model_attributes():
     pitch = 1.25984
     fuel_or = openmc.ZCylinder(r=0.39218, name='Fuel OR')
     clad_or = openmc.ZCylinder(r=0.45720, name='Clad OR')
-    box = openmc.model.rectangular_prism(pitch, pitch,
-                                         boundary_type='reflective')
+    box = openmc.model.RectangularPrism(pitch, pitch,
+                                        boundary_type='reflective')
 
     # Define cells
     fuel_inf_cell = openmc.Cell(cell_id=1, name='inf fuel', fill=uo2)
@@ -44,7 +44,7 @@ def pin_model_attributes():
     fuel = openmc.Cell(cell_id=2, name='fuel',
                        fill=fuel_inf_univ, region=-fuel_or)
     clad = openmc.Cell(cell_id=3, fill=zirc, region=+fuel_or & -clad_or)
-    water = openmc.Cell(cell_id=4, fill=borated_water, region=+clad_or & box)
+    water = openmc.Cell(cell_id=4, fill=borated_water, region=+clad_or & -box)
 
     # Define overall geometry
     geom = openmc.Geometry([fuel, clad, water])
@@ -59,7 +59,7 @@ def pin_model_attributes():
     bounds = [-0.62992, -0.62992, -1, 0.62992, 0.62992, 1]
     uniform_dist = openmc.stats.Box(
         bounds[:3], bounds[3:], only_fissionable=True)
-    settings.source = openmc.source.Source(space=uniform_dist)
+    settings.source = openmc.IndependentSource(space=uniform_dist)
 
     entropy_mesh = openmc.RegularMesh()
     entropy_mesh.lower_left = [-0.39218, -0.39218, -1.e50]
@@ -195,8 +195,8 @@ def test_from_xml(run_in_tmpdir, pin_model_attributes):
     keys = sorted(k for k in settings.__dict__.keys() if k not in no_test)
     for ref_k in keys:
         assert test_model.settings.__dict__[ref_k] == settings.__dict__[ref_k]
-    assert len(test_model.tallies) == 0
-    assert len(test_model.plots) == 0
+    assert len(test_model.tallies) == 1
+    assert len(test_model.plots) == 2
     assert test_model._materials_by_id == \
         {1: test_model.materials[0], 2: test_model.materials[1],
          3: test_model.materials[2]}
@@ -294,14 +294,14 @@ def test_run(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     # C API execution modes and ensuring they give the same result.
     sp_path = test_model.run(output=False)
     with openmc.StatePoint(sp_path) as sp:
-        cli_keff = sp.k_combined
+        cli_keff = sp.keff
         cli_flux = sp.get_tally(id=1).get_values(scores=['flux'])[0, 0, 0]
         cli_fiss = sp.get_tally(id=1).get_values(scores=['fission'])[0, 0, 0]
 
     test_model.init_lib(output=False, intracomm=mpi_intracomm)
     sp_path = test_model.run(output=False)
     with openmc.StatePoint(sp_path) as sp:
-        lib_keff = sp.k_combined
+        lib_keff = sp.keff
         lib_flux = sp.get_tally(id=1).get_values(scores=['flux'])[0, 0, 0]
         lib_fiss = sp.get_tally(id=1).get_values(scores=['fission'])[0, 0, 0]
 
@@ -392,16 +392,14 @@ def test_py_lib_attributes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     assert openmc.lib.materials[1].get_density('atom/b-cm') == \
         pytest.approx(0.06891296988603757, abs=1e-13)
     mat_a_dens = np.sum(
-        [v[1] for v in test_model.materials[0].
-            get_nuclide_atom_densities().values()])
+        list(test_model.materials[0].get_nuclide_atom_densities().values()))
     assert mat_a_dens == pytest.approx(0.06891296988603757, abs=1e-8)
     # Change the density
     test_model.update_densities(['UO2'], 2.)
     assert openmc.lib.materials[1].get_density('atom/b-cm') == \
         pytest.approx(2., abs=1e-13)
     mat_a_dens = np.sum(
-        [v[1] for v in test_model.materials[0].
-            get_nuclide_atom_densities().values()])
+        list(test_model.materials[0].get_nuclide_atom_densities().values()))
     assert mat_a_dens == pytest.approx(2., abs=1e-8)
 
     # Now lets do the cell temperature updates.
@@ -442,7 +440,7 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     test_model = openmc.Model(geom, mats, settings, tals, plots)
 
     initial_mat = mats[0].clone()
-    initial_u = initial_mat.get_nuclide_atom_densities()['U235'][1]
+    initial_u = initial_mat.get_nuclide_atom_densities()['U235']
 
     # Note that the chain file includes only U-235 fission to a stable Xe136 w/
     # a yield of 100%. Thus all the U235 we lose becomes Xe136
@@ -454,8 +452,8 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
                        operator_kwargs=op_kwargs,
                        power=1., output=False)
     # Get the new Xe136 and U235 atom densities
-    after_xe = mats[0].get_nuclide_atom_densities()['Xe136'][1]
-    after_u = mats[0].get_nuclide_atom_densities()['U235'][1]
+    after_xe = mats[0].get_nuclide_atom_densities()['Xe136']
+    after_u = mats[0].get_nuclide_atom_densities()['U235']
     assert after_xe + after_u == pytest.approx(initial_u, abs=1e-15)
     assert test_model.is_initialized is False
 
@@ -463,7 +461,7 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     mats[0].nuclides.clear()
     densities = initial_mat.get_nuclide_atom_densities()
     tot_density = 0.
-    for nuc, density in densities.values():
+    for nuc, density in densities.items():
         mats[0].add_nuclide(nuc, density)
         tot_density += density
     mats[0].set_density('atom/b-cm', tot_density)
@@ -474,8 +472,8 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
                        operator_kwargs=op_kwargs,
                        power=1., output=False)
     # Get the new Xe136 and U235 atom densities
-    after_lib_xe = mats[0].get_nuclide_atom_densities()['Xe136'][1]
-    after_lib_u = mats[0].get_nuclide_atom_densities()['U235'][1]
+    after_lib_xe = mats[0].get_nuclide_atom_densities()['Xe136']
+    after_lib_u = mats[0].get_nuclide_atom_densities()['U235']
     assert after_lib_xe + after_lib_u == pytest.approx(initial_u, abs=1e-15)
     assert test_model.is_initialized is True
 
@@ -532,3 +530,40 @@ def test_calc_volumes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     assert openmc.lib.materials[3].volume == mats[2].volume
 
     test_model.finalize_lib()
+
+def test_model_xml(run_in_tmpdir):
+
+    # load a model from examples
+    pwr_model = openmc.examples.pwr_core()
+
+    # export to separate XMLs manually
+    pwr_model.settings.export_to_xml('settings_ref.xml')
+    pwr_model.materials.export_to_xml('materials_ref.xml')
+    pwr_model.geometry.export_to_xml('geometry_ref.xml')
+
+    # now write and read a model.xml file
+    pwr_model.export_to_model_xml()
+    new_model = openmc.Model.from_model_xml()
+
+    # make sure we can also export this again to separate
+    # XML files
+    new_model.export_to_xml()
+
+def test_single_xml_exec(run_in_tmpdir):
+
+    pincell_model = openmc.examples.pwr_pin_cell()
+
+    pincell_model.export_to_model_xml('pwr_pincell.xml')
+
+    openmc.run(path_input='pwr_pincell.xml')
+
+    with pytest.raises(RuntimeError, match='ex-em-ell.xml'):
+        openmc.run(path_input='ex-em-ell.xml')
+
+    # test that a file in a different directory can be used
+    os.mkdir('inputs')
+    pincell_model.export_to_model_xml('./inputs/pincell.xml')
+    openmc.run(path_input='./inputs/pincell.xml')
+
+    with pytest.raises(RuntimeError, match='input_dir'):
+        openmc.run(path_input='input_dir/pincell.xml')

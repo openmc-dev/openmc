@@ -246,7 +246,7 @@ class CMFDMesh:
                        Real)
             check_greater_than('CMFD mesh {}-grid length'.format(dims[i]),
                                len(grid[i]), 1)
-        self._grid = np.array(grid)
+        self._grid = [np.array(g) for g in grid]
         self._display_mesh_warning('rectilinear', 'CMFD mesh grid')
 
     def _display_mesh_warning(self, mesh_type, variable_label):
@@ -262,7 +262,7 @@ class CMFDRun:
     Attributes
     ----------
     tally_begin : int
-        Batch number at which CMFD tallies should begin accummulating
+        Batch number at which CMFD tallies should begin accumulating
     solver_begin: int
         Batch number at which CMFD solver should start executing
     ref_d : list of floats
@@ -271,13 +271,13 @@ class CMFDRun:
         Dictionary indicating which CMFD results to output. Note that CMFD
         k-effective will always be outputted. Acceptable keys are:
 
-        * "balance" - Whether to output RMS [%] of the resdiual from the
+        * "balance" - Whether to output RMS [%] of the residual from the
           neutron balance equation on CMFD tallies (bool)
         * "dominance" - Whether to output the estimated dominance ratio from
           the CMFD iterations (bool)
         * "entropy" - Whether to output the *entropy* of the CMFD predicted
           fission source (bool)
-        * "source" - Whether to ouput the RMS [%] between the OpenMC fission
+        * "source" - Whether to output the RMS [%] between the OpenMC fission
           source and CMFD fission source (bool)
 
     downscatter : bool
@@ -315,7 +315,7 @@ class CMFDRun:
     adjoint_type : {'physical', 'math'}
         Stores type of adjoint calculation that should be performed.
         ``run_adjoint`` must be true for an adjoint calculation to be
-        perfomed. Options are:
+        performed. Options are:
 
         * "physical" - Create adjoint matrices from physical parameters of
           CMFD problem
@@ -887,7 +887,7 @@ class CMFDRun:
         information.
 
         """
-        # Finalize simuation
+        # Finalize simulation
         openmc.lib.simulation_finalize()
 
         if openmc.lib.master():
@@ -1074,13 +1074,12 @@ class CMFDRun:
         # Get acceleration map, otherwise set all regions to be accelerated
         if self._mesh.map is not None:
             check_length('CMFD coremap', self._mesh.map,
-                         np.product(self._indices[0:3]))
+                         np.prod(self._indices[:3]))
             if openmc.lib.master():
                 self._coremap = np.array(self._mesh.map)
         else:
             if openmc.lib.master():
-                self._coremap = np.ones((np.product(self._indices[0:3])),
-                                        dtype=int)
+                self._coremap = np.ones(np.prod(self._indices[:3]), dtype=int)
 
         # Check CMFD tallies accummulated before feedback turned on
         if self._feedback and self._solver_begin < self._tally_begin:
@@ -1309,9 +1308,6 @@ class CMFDRun:
             Whether or not to run an adjoint calculation
 
         """
-        # Check for physical adjoint
-        physical_adjoint = adjoint and self._adjoint_type == 'physical'
-
         # Start timer for build
         time_start_buildcmfd = time.time()
 
@@ -1382,9 +1378,7 @@ class CMFDRun:
 
         """
         # Write each element in vector to file
-        with open(base_filename+'.dat', 'w') as fh:
-            for val in vector:
-                fh.write('{:0.8f}\n'.format(val))
+        np.savetxt(f'{base_filename}.dat', vector, fmt='%.8f')
 
         # Save as numpy format
         np.save(base_filename, vector)
@@ -1431,12 +1425,9 @@ class CMFDRun:
         nx, ny, nz, ng = self._indices
         n = self._mat_dim
 
-        # Compute cmfd_src in a vecotorized manner by phi to the spatial
+        # Compute cmfd_src in a vectorized manner by phi to the spatial
         # indices of the actual problem so that cmfd_flux can be multiplied by
         # nfissxs
-
-        # Calculate volume
-        vol = np.product(self._hxyz, axis=3)
 
         # Reshape phi by number of groups
         phi = self._phi.reshape((n, ng))
@@ -2151,7 +2142,6 @@ class CMFDRun:
         is_accel = self._coremap != _CMFD_NOACCEL
         # Logical for determining whether a zero flux "albedo" b.c. should be
         # applied
-        is_zero_flux_alb = abs(self._albedo - _ZERO_FLUX) < _TINY_BIT
         x_inds, y_inds, z_inds = np.indices((nx, ny, nz))
 
         # Define slice equivalent to is_accel[0,:,:]
@@ -2728,8 +2718,6 @@ class CMFDRun:
 
         # Define flux in each cell
         cell_flux = self._flux / dxdydz
-        # Extract indices of coremap that are accelerated
-        is_accel = self._coremap != _CMFD_NOACCEL
 
         # Define dhat at left surface for all mesh cells on left boundary
         boundary = self._first_x_accel

@@ -62,6 +62,10 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
   read_attribute(group, "metastable", metastable_);
   read_attribute(group, "atomic_weight_ratio", awr_);
 
+  if (settings::run_mode == RunMode::VOLUME) {
+    return;
+  }
+
   // Determine temperatures available
   hid_t kT_group = open_group(group, "kTs");
   auto dset_names = dataset_names(kT_group);
@@ -169,6 +173,22 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
       }
 
       if (!found_pair) {
+        // If no pairs found, check if the desired temperature falls just
+        // outside of data
+        if (std::abs(T_desired - temps_available.front()) <=
+            settings::temperature_tolerance) {
+          if (!contains(temps_to_read, temps_available.front())) {
+            temps_to_read.push_back(std::round(temps_available.front()));
+          }
+          continue;
+        }
+        if (std::abs(T_desired - temps_available.back()) <=
+            settings::temperature_tolerance) {
+          if (!contains(temps_to_read, temps_available.back())) {
+            temps_to_read.push_back(std::round(temps_available.back()));
+          }
+          continue;
+        }
         fatal_error(
           "Nuclear data library does not contain cross sections for " + name_ +
           " at temperatures that bound " + std::to_string(T_desired) + " K.");
@@ -455,7 +475,7 @@ void Nuclide::create_derived(
         xs_cdf_sum +=
           (std::sqrt(E[i]) * xs[i] + std::sqrt(E[i + 1]) * xs[i + 1]) / 2.0 *
           (E[i + 1] - E[i]);
-        xs_cdf_[i+1] = xs_cdf_sum;
+        xs_cdf_[i + 1] = xs_cdf_sum;
       }
     }
   }
@@ -503,7 +523,7 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
   case EmissionMode::prompt:
     return (*fission_rx_[0]->products_[0].yield_)(E);
   case EmissionMode::delayed:
-    if (n_precursor_ > 0) {
+    if (n_precursor_ > 0 && settings::create_delayed_neutrons) {
       auto rx = fission_rx_[0];
       if (group >= 1 && group < rx->products_.size()) {
         // If delayed group specified, determine yield immediately
@@ -556,7 +576,7 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
       return 0.0;
     }
   case EmissionMode::total:
-    if (total_nu_) {
+    if (total_nu_ && settings::create_delayed_neutrons) {
       return (*total_nu_)(E);
     } else {
       return (*fission_rx_[0]->products_[0].yield_)(E);
@@ -676,6 +696,16 @@ void Nuclide::calculate_xs(
     } break;
 
     case TemperatureMethod::INTERPOLATION:
+      // If current kT outside of the bounds of available, snap to the bound
+      if (kT < kTs_.front()) {
+        i_temp = 0;
+        break;
+      }
+      if (kT > kTs_.back()) {
+        i_temp = kTs_.size() - 1;
+        break;
+      }
+
       // Find temperatures that bound the actual temperature
       for (i_temp = 0; i_temp < kTs_.size() - 1; ++i_temp) {
         if (kTs_[i_temp] <= kT && kT < kTs_[i_temp + 1])
@@ -868,9 +898,8 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   // This guarantees the randomness and, at the same time, makes sure we
   // reuse random numbers for the same nuclide at different temperatures,
   // therefore preserving correlation of temperature in probability tables.
-  p.stream() = STREAM_URR_PTABLE;
-  double r = future_prn(static_cast<int64_t>(index_), *p.current_seed());
-  p.stream() = STREAM_TRACKING;
+  double r =
+    future_prn(static_cast<int64_t>(index_), p.seeds(STREAM_URR_PTABLE));
 
   // Warning: this assumes row-major order of cdf_values_
   int i_low = upper_bound_index(&urr.cdf_values_(i_energy, 0),
@@ -1006,6 +1035,15 @@ std::pair<gsl::index, double> Nuclide::find_temperature(double T) const
   } break;
 
   case TemperatureMethod::INTERPOLATION:
+    // If current kT outside of the bounds of available, snap to the bound
+    if (kT < kTs_.front()) {
+      i_temp = 0;
+      break;
+    }
+    if (kT > kTs_.back()) {
+      i_temp = kTs_.size() - 1;
+      break;
+    }
     // Find temperatures that bound the actual temperature
     while (kTs_[i_temp + 1] < kT && i_temp + 1 < n - 1)
       ++i_temp;

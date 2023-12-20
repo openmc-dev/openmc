@@ -37,8 +37,7 @@ def cpp_driver(request):
             add_executable(main main.cpp)
             find_package(OpenMC REQUIRED HINTS {})
             target_link_libraries(main OpenMC::libopenmc)
-            set_target_properties(main PROPERTIES CXX_STANDARD
-            14 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO)
+            target_compile_features(main PUBLIC cxx_std_14)
             set(CMAKE_CXX_FLAGS "-pedantic-errors")
             add_compile_definitions(DAGMC=1)
             """.format(openmc_dir)))
@@ -49,12 +48,14 @@ def cpp_driver(request):
     os.chdir(str(local_builddir))
 
     if config['mpi']:
-        os.environ['CXX'] = 'mpicxx'
+        mpi_arg = "On"
+    else:
+        mpi_arg = "Off"
 
     try:
         print("Building driver")
         # Run cmake/make to build the shared libary
-        subprocess.run(['cmake', os.path.pardir], check=True)
+        subprocess.run(['cmake', os.path.pardir, f'-DOPENMC_USE_MPI={mpi_arg}'], check=True)
         subprocess.run(['make'], check=True)
         os.chdir(os.path.pardir)
 
@@ -161,8 +162,6 @@ def test_external_mesh(cpp_driver):
     water_mat.set_density("atom/b-cm", 0.07416)
     materials.append(water_mat)
 
-    materials.export_to_xml()
-
     # Geometry
     fuel_min_x = openmc.XPlane(-5.0, name="minimum x")
     fuel_max_x = openmc.XPlane(5.0, name="maximum x")
@@ -259,7 +258,7 @@ def test_external_mesh(cpp_driver):
     space = openmc.stats.Point()
     angle = openmc.stats.Monodirectional((-1.0, 0.0, 0.0))
     energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
-    source = openmc.Source(space=space, energy=energy, angle=angle)
+    source = openmc.IndependentSource(space=space, energy=energy, angle=angle)
     settings.source = source
 
     model = openmc.model.Model(geometry=geometry,

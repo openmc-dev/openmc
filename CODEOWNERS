@@ -46,3 +46,6 @@ openmc/lib/plot.py @pshriwise
 
 # Resonance covariance
 openmc/data/resonance_covariance.py @icmeyer
+
+# Docker
+Dockerfile @shimwell

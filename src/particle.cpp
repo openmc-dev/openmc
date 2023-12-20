@@ -17,6 +17,7 @@
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
+#include "openmc/particle_data.h"
 #include "openmc/photon.h"
 #include "openmc/physics.h"
 #include "openmc/physics_mg.h"
@@ -29,12 +30,17 @@
 #include "openmc/tallies/tally.h"
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/track_output.h"
+#include "openmc/weight_windows.h"
 
 #ifdef DAGMC
 #include "DagMC.hpp"
 #endif
 
 namespace openmc {
+
+//==============================================================================
+// Particle implementation
+//==============================================================================
 
 double Particle::speed() const
 {
@@ -66,6 +72,13 @@ double Particle::speed() const
   return C_LIGHT * std::sqrt(1 - inv_gamma * inv_gamma);
 }
 
+void Particle::move_distance(double length)
+{
+  for (int j = 0; j < n_coord(); ++j) {
+    coord(j).r += length * coord(j).u;
+  }
+}
+
 void Particle::create_secondary(
   double wgt, Direction u, double E, ParticleType type)
 {
@@ -92,7 +105,6 @@ void Particle::from_source(const SourceSite* src)
 {
   // Reset some attributes
   clear();
-  alive() = true;
   surface() = 0;
   cell_born() = C_NONE;
   material() = C_NONE;
@@ -142,7 +154,7 @@ void Particle::event_calculate_xs()
   // If the cell hasn't been determined based on the particle's location,
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
-  if (coord(n_coord() - 1).cell == C_NONE) {
+  if (lowest_coord().cell == C_NONE) {
     if (!exhaustive_find_cell(*this)) {
       mark_as_lost(
         "Could not find the cell containing particle " + std::to_string(id()));
@@ -151,7 +163,7 @@ void Particle::event_calculate_xs()
 
     // Set birth cell attribute
     if (cell_born() == C_NONE)
-      cell_born() = coord(n_coord() - 1).cell;
+      cell_born() = lowest_coord().cell;
   }
 
   // Write particle track.
@@ -234,10 +246,24 @@ void Particle::event_advance()
   }
 
   // Advance particle in space and time
+  // Short-term solution until the surface source is revised and we can use
+  // this->move_distance(distance)
   for (int j = 0; j < n_coord(); ++j) {
     coord(j).r += distance * coord(j).u;
   }
   this->time() += distance / this->speed();
+
+  // Kill particle if its time exceeds the cutoff
+  bool hit_time_boundary = false;
+  double time_cutoff = settings::time_cutoff[static_cast<int>(type())];
+  if (time() > time_cutoff) {
+    double dt = time() - time_cutoff;
+    time() = time_cutoff;
+
+    double push_back_distance = speed() * dt;
+    this->move_distance(-push_back_distance);
+    hit_time_boundary = true;
+  }
 
   // Score track-length tallies
   if (!model::active_tracklength_tallies.empty()) {
@@ -298,6 +324,10 @@ void Particle::event_advance()
   if (settings::alpha_mode) {
     wgt_last() = weight_time; // Also assign to the pre-collision weight
     wgt() = weight_time;
+
+  // Set particle weight to zero if it hit the time boundary
+  if (hit_time_boundary) {
+    wgt() = 0.0;
   }
 }
 
@@ -322,6 +352,9 @@ void Particle::event_cross_surface()
   } else {
     // Particle crosses surface
     cross_surface();
+    if (settings::weight_window_checkpoint_surface) {
+      apply_weight_windows(*this);
+    }
     event() = TallyEvent::SURFACE;
   }
   // Score cell to cell partial currents
@@ -372,6 +405,11 @@ void Particle::event_collide()
     }
   }
 
+  if (!model::active_pulse_height_tallies.empty() &&
+      type() == ParticleType::photon) {
+    pht_collision_energy();
+  }
+
   // Reset banked weight during collision
   n_bank() = 0;
   n_bank_second() = 0;
@@ -418,11 +456,16 @@ void Particle::event_revive_from_secondary()
   if (n_event() == MAX_EVENTS) {
     warning("Particle " + std::to_string(id()) +
             " underwent maximum number of events.");
-    alive() = false;
+    wgt() = 0.0;
   }
 
   // Check for secondary particles if this particle is dead
   if (!alive()) {
+    // Write final position for this particle
+    if (write_track()) {
+      write_particle_track(*this);
+    }
+
     // If no secondary particles, break out of event loop
     if (secondary_bank().empty())
       return;
@@ -430,6 +473,25 @@ void Particle::event_revive_from_secondary()
     from_source(&secondary_bank().back());
     secondary_bank().pop_back();
     n_event() = 0;
+
+    // Subtract secondary particle energy from interim pulse-height results
+    if (!model::active_pulse_height_tallies.empty() &&
+        this->type() == ParticleType::photon) {
+      // Since the birth cell of the particle has not been set we
+      // have to determine it before the energy of the secondary particle can be
+      // removed from the pulse-height of this cell.
+      if (lowest_coord().cell == C_NONE) {
+        if (!exhaustive_find_cell(*this)) {
+          mark_as_lost("Could not find the cell containing particle " +
+                       std::to_string(id()));
+          return;
+        }
+        // Set birth cell attribute
+        if (cell_born() == C_NONE)
+          cell_born() = lowest_coord().cell;
+      }
+      pht_secondary_particles();
+    }
 
     // Enter new particle in particle track file
     if (write_track())
@@ -445,7 +507,6 @@ void Particle::event_death()
 
   // Finish particle track output.
   if (write_track()) {
-    write_particle_track(*this);
     finalize_particle_track(*this);
   }
 
@@ -480,6 +541,9 @@ void Particle::event_death()
         alpha_tally_Cd(i,j) = 0.0;
       }
     }
+
+  if (!model::active_pulse_height_tallies.empty()) {
+    score_pulse_height_tally(*this, model::active_pulse_height_tallies);
   }
 
   // Record the number of progeny created by this particle.
@@ -487,6 +551,41 @@ void Particle::event_death()
   if (settings::run_mode == RunMode::EIGENVALUE) {
     int64_t offset = id() - 1 - simulation::work_index[mpi::rank];
     simulation::progeny_per_particle[offset] = n_progeny();
+  }
+}
+
+void Particle::pht_collision_energy()
+{
+  // Adds the energy particles lose in a collision to the pulse-height
+
+  // determine index of cell in pulse_height_cells
+  auto it = std::find(model::pulse_height_cells.begin(),
+    model::pulse_height_cells.end(), lowest_coord().cell);
+
+  if (it != model::pulse_height_cells.end()) {
+    int index = std::distance(model::pulse_height_cells.begin(), it);
+    pht_storage()[index] += E_last() - E();
+
+    // If the energy of the particle is below the cutoff, it will not be sampled
+    // so its energy is added to the pulse-height in the cell
+    int photon = static_cast<int>(ParticleType::photon);
+    if (E() < settings::energy_cutoff[photon]) {
+      pht_storage()[index] += E();
+    }
+  }
+}
+
+void Particle::pht_secondary_particles()
+{
+  // Removes the energy of secondary produced particles from the pulse-height
+
+  // determine index of cell in pulse_height_cells
+  auto it = std::find(model::pulse_height_cells.begin(),
+    model::pulse_height_cells.end(), cell_born());
+
+  if (it != model::pulse_height_cells.end()) {
+    int index = std::distance(model::pulse_height_cells.begin(), it);
+    pht_storage()[index] -= E();
   }
 }
 
@@ -499,7 +598,8 @@ void Particle::cross_surface()
     write_message(1, "    Crossing surface {}", surf->id_);
   }
 
-  if (surf->surf_source_ && simulation::current_batch == settings::n_batches) {
+  if (surf->surf_source_ && simulation::current_batch > settings::n_inactive &&
+      !simulation::surf_source_bank.full()) {
     SourceSite site;
     site.r = r();
     site.u = u();
@@ -532,18 +632,14 @@ void Particle::cross_surface()
 #ifdef DAGMC
   // in DAGMC, we know what the next cell should be
   if (surf->geom_type_ == GeometryType::DAG) {
-    auto surfp = dynamic_cast<DAGSurface*>(surf);
-    auto cellp =
-      dynamic_cast<DAGCell*>(model::cells[cell_last(n_coord() - 1)].get());
-    auto univp = static_cast<DAGUniverse*>(
-      model::universes[coord(n_coord() - 1).universe].get());
-    // determine the next cell for this crossing
-    int32_t i_cell = next_cell(univp, cellp, surfp) - 1;
+    int32_t i_cell =
+      next_cell(i_surface, cell_last(n_coord() - 1), lowest_coord().universe) -
+      1;
     // save material and temp
     material_last() = material();
     sqrtkT_last() = sqrtkT();
     // set new cell value
-    coord(n_coord() - 1).cell = i_cell;
+    lowest_coord().cell = i_cell;
     cell_instance() = 0;
     material() = model::cells[i_cell]->material_[0];
     sqrtkT() = model::cells[i_cell]->sqrtkT_[0];
@@ -557,8 +653,7 @@ void Particle::cross_surface()
   // ==========================================================================
   // COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS
 
-  // Remove lower coordinate levels and assignment of surface
-  surface() = 0;
+  // Remove lower coordinate levels
   n_coord() = 1;
   bool found = exhaustive_find_cell(*this);
 
@@ -568,6 +663,7 @@ void Particle::cross_surface()
     // the particle is really traveling tangent to a surface, if we move it
     // forward a tiny bit it should fix the problem.
 
+    surface() = 0;
     n_coord() = 1;
     r() += TINY_BIT * u();
 
@@ -585,9 +681,6 @@ void Particle::cross_surface()
 
 void Particle::cross_vacuum_bc(const Surface& surf)
 {
-  // Kill the particle
-  alive() = false;
-
   // Score any surface current tallies -- note that the particle is moved
   // forward slightly so that if the mesh boundary is on the surface, it is
   // still processed
@@ -602,6 +695,9 @@ void Particle::cross_vacuum_bc(const Surface& surf)
 
   // Score to global leakage tally
   keff_tally_leakage() += wgt();
+
+  // Kill the particle
+  wgt() = 0.0;
 
   // Display message
   if (settings::verbosity >= 10 || trace()) {
@@ -717,10 +813,12 @@ void Particle::mark_as_lost(const char* message)
 {
   // Print warning and write lost particle file
   warning(message);
-  write_restart();
-
+  if (settings::max_write_lost_particles < 0 ||
+      simulation::n_lost_particles < settings::max_write_lost_particles) {
+    write_restart();
+  }
   // Increment number of lost particles
-  alive() = false;
+  wgt() = 0.0;
 #pragma omp atomic
   simulation::n_lost_particles += 1;
 
@@ -807,6 +905,29 @@ void Particle::write_restart() const
     file_close(file_id);
   } // #pragma omp critical
 }
+
+void Particle::update_neutron_xs(
+  int i_nuclide, int i_grid, int i_sab, double sab_frac, double ncrystal_xs)
+{
+  // Get microscopic cross section cache
+  auto& micro = this->neutron_xs(i_nuclide);
+
+  // If the cache doesn't match, recalculate micro xs
+  if (this->E() != micro.last_E || this->sqrtkT() != micro.last_sqrtkT ||
+      i_sab != micro.index_sab || sab_frac != micro.sab_frac) {
+    data::nuclides[i_nuclide]->calculate_xs(i_sab, i_grid, sab_frac, *this);
+
+    // If NCrystal is being used, update micro cross section cache
+    if (ncrystal_xs >= 0.0) {
+      data::nuclides[i_nuclide]->calculate_elastic_xs(*this);
+      ncrystal_update_micro(ncrystal_xs, micro);
+    }
+  }
+}
+
+//==============================================================================
+// Non-method functions
+//==============================================================================
 
 std::string particle_type_to_str(ParticleType type)
 {

@@ -1,9 +1,11 @@
 import itertools
-from math import sqrt
+import json
 import os
 import re
+from pathlib import Path
+from math import sqrt, log
 from warnings import warn
-
+from typing import Dict
 
 # Isotopic abundances from Meija J, Coplen T B, et al, "Isotopic compositions
 # of the elements 2013 (IUPAC Technical Report)", Pure. Appl. Chem. 88 (3),
@@ -194,17 +196,20 @@ AVOGADRO = 6.02214076e23
 NEUTRON_MASS = 1.00866491595
 
 # Used in atomic_mass function as a cache
-_ATOMIC_MASS = {}
+_ATOMIC_MASS: Dict[str, float] = {}
 
-# Regex for GND nuclide names (used in zam function)
-_GND_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
+# Regex for GNDS nuclide names (used in zam function)
+_GNDS_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
 
+# Used in half_life function as a cache
+_HALF_LIFE: Dict[str, float] = {}
+_LOG_TWO = log(2.0)
 
 def atomic_mass(isotope):
     """Return atomic mass of isotope in atomic mass units.
 
-    Atomic mass data comes from the `Atomic Mass Evaluation 2016
-    <https://www-nds.iaea.org/amdc/ame2016/AME2016-a.pdf>`_.
+    Atomic mass data comes from the `Atomic Mass Evaluation 2020
+    <https://doi.org/10.1088/1674-1137/abddaf>`_.
 
     Parameters
     ----------
@@ -219,19 +224,19 @@ def atomic_mass(isotope):
     """
     if not _ATOMIC_MASS:
 
-        # Load data from AME2016 file
-        mass_file = os.path.join(os.path.dirname(__file__), 'mass16.txt')
+        # Load data from AME2020 file
+        mass_file = os.path.join(os.path.dirname(__file__), 'mass_1.mas20.txt')
         with open(mass_file, 'r') as ame:
-            # Read lines in file starting at line 40
-            for line in itertools.islice(ame, 39, None):
-                name = '{}{}'.format(line[20:22].strip(), int(line[16:19]))
-                mass = float(line[96:99]) + 1e-6*float(
-                    line[100:106] + '.' + line[107:112])
+            # Read lines in file starting at line 37
+            for line in itertools.islice(ame, 36, None):
+                name = f'{line[20:22].strip()}{int(line[16:19])}'
+                mass = float(line[106:109]) + 1e-6*float(
+                    line[110:116] + '.' + line[117:123])
                 _ATOMIC_MASS[name.lower()] = mass
 
         # For isotopes found in some libraries that represent all natural
         # isotopes of their element (e.g. C0), calculate the atomic mass as
-        # the sum of the atomic mass times the natural abudance of the isotopes
+        # the sum of the atomic mass times the natural abundance of the isotopes
         # that make up the element.
         for element in ['C', 'Zn', 'Pt', 'Os', 'Tl']:
             isotope_zero = element.lower() + '0'
@@ -269,8 +274,63 @@ def atomic_weight(element):
     if weight > 0.:
         return weight
     else:
-        raise ValueError("No naturally-occurring isotopes for element '{}'."
-                         .format(element))
+        raise ValueError(f"No naturally-occurring isotopes for element '{element}'.")
+
+
+def half_life(isotope):
+    """Return half-life of isotope in seconds or None if isotope is stable
+
+    Half-life values are from the `ENDF/B-VIII.0 decay sublibrary
+    <https://www.nndc.bnl.gov/endf-b8.0/download.html>`_.
+
+    .. versionadded:: 0.13.1
+
+    Parameters
+    ----------
+    isotope : str
+        Name of isotope, e.g., 'Pu239'
+
+    Returns
+    -------
+    float
+        Half-life of isotope in [s]
+
+    """
+    global _HALF_LIFE
+    if not _HALF_LIFE:
+        # Load ENDF/B-VIII.0 data from JSON file
+        half_life_path = Path(__file__).with_name('half_life.json')
+        _HALF_LIFE = json.loads(half_life_path.read_text())
+
+    return _HALF_LIFE.get(isotope.lower())
+
+
+def decay_constant(isotope):
+    """Return decay constant of isotope in [s^-1]
+
+    Decay constants are based on half-life values from the
+    :func:`~openmc.data.half_life` function. When the isotope is stable, a decay
+    constant of zero is returned.
+
+    .. versionadded:: 0.13.1
+
+    Parameters
+    ----------
+    isotope : str
+        Name of isotope, e.g., 'Pu239'
+
+    Returns
+    -------
+    float
+        Decay constant of isotope in [s^-1]
+
+    See also
+    --------
+    openmc.data.half_life
+
+    """
+    t = half_life(isotope)
+    return _LOG_TWO / t if t else 0.0
 
 
 def water_density(temperature, pressure=0.1013):
@@ -377,8 +437,11 @@ def water_density(temperature, pressure=0.1013):
     return coeff / pi / gamma1_pi
 
 
-def gnd_name(Z, A, m=0):
-    """Return nuclide name using GND convention
+def gnds_name(Z, A, m=0):
+    """Return nuclide name using GNDS convention
+
+    .. versionchanged:: 0.14.0
+        Function name changed from ``gnd_name`` to ``gnds_name``
 
     Parameters
     ----------
@@ -392,13 +455,12 @@ def gnd_name(Z, A, m=0):
     Returns
     -------
     str
-        Nuclide name in GND convention, e.g., 'Am242_m1'
+        Nuclide name in GNDS convention, e.g., 'Am242_m1'
 
     """
     if m > 0:
-        return '{}{}_m{}'.format(ATOMIC_SYMBOL[Z], A, m)
-    else:
-        return '{}{}'.format(ATOMIC_SYMBOL[Z], A)
+        return f'{ATOMIC_SYMBOL[Z]}{A}_m{m}'
+    return f'{ATOMIC_SYMBOL[Z]}{A}'
 
 
 def isotopes(element):
@@ -426,12 +488,12 @@ def isotopes(element):
     if len(element) > 2:
         symbol = ELEMENT_SYMBOL.get(element.lower())
         if symbol is None:
-            raise ValueError('Element name "{}" not recognised'.format(element))
+            raise ValueError(f'Element name "{element}" not recognised')
         element = symbol
 
     # Get the nuclides present in nature
     result = []
-    for kv in sorted(NATURAL_ABUNDANCE.items()):
+    for kv in NATURAL_ABUNDANCE.items():
         if re.match(r'{}\d+'.format(element), kv[0]):
             result.append(kv)
 
@@ -444,7 +506,7 @@ def zam(name):
     Parameters
     ----------
     name : str
-        Name of nuclide using GND convention, e.g., 'Am242_m1'
+        Name of nuclide using GNDS convention, e.g., 'Am242_m1'
 
     Returns
     -------
@@ -453,14 +515,13 @@ def zam(name):
 
     """
     try:
-        symbol, A, state = _GND_NAME_RE.match(name).groups()
+        symbol, A, state = _GNDS_NAME_RE.match(name).groups()
     except AttributeError:
-        raise ValueError("'{}' does not appear to be a nuclide name in GND "
-                         "format".format(name))
+        raise ValueError(f"'{name}' does not appear to be a nuclide name in "
+                         "GNDS format")
 
     if symbol not in ATOMIC_NUMBER:
-        raise ValueError("'{}' is not a recognized element symbol"
-                         .format(symbol))
+        raise ValueError(f"'{symbol}' is not a recognized element symbol")
 
     metastable = int(state[2:]) if state else 0
     return (ATOMIC_NUMBER[symbol], int(A), metastable)

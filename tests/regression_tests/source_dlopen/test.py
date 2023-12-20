@@ -61,8 +61,18 @@ def model():
     model.settings.particles = 1000
     model.settings.run_mode = 'fixed source'
 
+    tally = openmc.Tally()
+    mat_filter = openmc.MaterialFilter([natural_lead])
+    # energy filter with two bins 0 eV - 1 keV and 1 keV - 1 MeV the second bin
+    # of the energy filter (last two entries in the tally results) should be
+    # zero
+    energy_filter = openmc.EnergyFilter([0.0, 2e3, 1e6])
+    tally.filters = [mat_filter, energy_filter]
+    tally.scores = ['flux']
+    model.tallies = openmc.Tallies([tally])
+
     # custom source from shared library
-    source = openmc.Source()
+    source = openmc.CompiledSource()
     source.library = 'build/libsource.so'
     model.settings.source = source
 

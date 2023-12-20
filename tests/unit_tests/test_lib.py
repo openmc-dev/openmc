@@ -1,5 +1,4 @@
 from collections.abc import Mapping
-from ctypes import ArgumentError
 import os
 
 import numpy as np
@@ -67,7 +66,7 @@ def uo2_trigger_model():
     model.settings.batches = 10
     model.settings.inactive = 5
     model.settings.particles = 100
-    model.settings.source = openmc.Source(space=openmc.stats.Box(
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
         [-0.5, -0.5, -1], [0.5, 0.5, 1], only_fissionable=True))
     model.settings.verbosity = 1
     model.settings.keff_trigger = {'type': 'std_dev', 'threshold': 0.001}
@@ -284,6 +283,11 @@ def test_energy_function_filter(lib_init):
     assert len(efunc.y) == 2
     assert (efunc.y == [0.0, 2.0]).all()
 
+    # Default should be lin-lin
+    assert efunc.interpolation == 'linear-linear'
+    efunc.interpolation = 'histogram'
+    assert efunc.interpolation == 'histogram'
+
 
 def test_tally(lib_init):
     t = openmc.lib.tallies[1]
@@ -341,11 +345,38 @@ def test_new_tally(lib_init):
     assert len(openmc.lib.tallies) == 5
 
 
+def test_delete_tally(lib_init):
+    # delete tally 10 which was added in the above test
+    # check length is one less than before
+    del openmc.lib.tallies[10]
+    assert len(openmc.lib.tallies) == 4
+
+
+def test_invalid_tally_id(lib_init):
+    # attempt to access a tally that is guaranteed not to have a valid index
+    max_id = max(openmc.lib.tallies.keys())
+    with pytest.raises(KeyError):
+        openmc.lib.tallies[max_id+1]
+
+
 def test_tally_activate(lib_simulation_init):
     t = openmc.lib.tallies[1]
     assert not t.active
     t.active = True
     assert t.active
+
+
+def test_tally_multiply_density(lib_simulation_init):
+    # multiply_density is True by default
+    t = openmc.lib.tallies[1]
+    assert t.multiply_density
+
+    # Make sure setting multiply_density works
+    t.multiply_density = False
+    assert not t.multiply_density
+
+    # Reset to True
+    t.multiply_density = True
 
 
 def test_tally_writable(lib_simulation_init):
@@ -583,17 +614,17 @@ def test_rectilinear_mesh(lib_init):
 def test_cylindrical_mesh(lib_init):
     deg2rad = lambda deg: deg*np.pi/180
     mesh = openmc.lib.CylindricalMesh()
-    x_grid = [0., 5., 10.]
-    y_grid = [0., 10., 20.]
+    r_grid = [0., 5., 10.]
+    phi_grid = np.radians([0., 10., 20.])
     z_grid = [10., 20., 30.]
-    mesh.set_grid(x_grid, y_grid, z_grid)
+    mesh.set_grid(r_grid, phi_grid, z_grid)
     assert np.all(mesh.lower_left == (0., 0., 10.))
     assert np.all(mesh.upper_right == (10., deg2rad(20.), 30.))
     assert np.all(mesh.dimension == (2, 2, 2))
-    for i, diff_x in enumerate(np.diff(x_grid)):
-        for j, diff_y in enumerate(np.diff(y_grid)):
-            for k, diff_z in enumerate(np.diff(z_grid)):
-                assert np.all(mesh.width[i, j, k, :] == (5, deg2rad(10), 10))
+    for i, _ in enumerate(np.diff(r_grid)):
+        for j, _ in enumerate(np.diff(phi_grid)):
+            for k, _ in enumerate(np.diff(z_grid)):
+                assert np.allclose(mesh.width[i, j, k, :], (5, deg2rad(10), 10))
 
     with pytest.raises(exc.AllocationError):
         mesh2 = openmc.lib.CylindricalMesh(mesh.id)
@@ -614,17 +645,17 @@ def test_cylindrical_mesh(lib_init):
 def test_spherical_mesh(lib_init):
     deg2rad = lambda deg: deg*np.pi/180
     mesh = openmc.lib.SphericalMesh()
-    x_grid = [0., 5., 10.]
-    y_grid = [0., 10., 20.]
-    z_grid = [10., 20., 30.]
-    mesh.set_grid(x_grid, y_grid, z_grid)
+    r_grid = [0., 5., 10.]
+    theta_grid = np.radians([0., 10., 20.])
+    phi_grid = np.radians([10., 20., 30.])
+    mesh.set_grid(r_grid, theta_grid, phi_grid)
     assert np.all(mesh.lower_left == (0., 0., deg2rad(10.)))
     assert np.all(mesh.upper_right == (10., deg2rad(20.), deg2rad(30.)))
     assert np.all(mesh.dimension == (2, 2, 2))
-    for i, diff_x in enumerate(np.diff(x_grid)):
-        for j, diff_y in enumerate(np.diff(y_grid)):
-            for k, diff_z in enumerate(np.diff(z_grid)):
-                assert np.all(abs(mesh.width[i, j, k, :] - (5, deg2rad(10), deg2rad(10))) < 1e-16)
+    for i, _ in enumerate(np.diff(r_grid)):
+        for j, _ in enumerate(np.diff(theta_grid)):
+            for k, _ in enumerate(np.diff(phi_grid)):
+                assert np.allclose(mesh.width[i, j, k, :], (5, deg2rad(10), deg2rad(10)))
 
     with pytest.raises(exc.AllocationError):
         mesh2 = openmc.lib.SphericalMesh(mesh.id)
@@ -807,4 +838,47 @@ def test_cell_rotation(pincell_model_w_univ, mpi_intracomm):
     assert cell.rotation == pytest.approx([0., 0., 0.])
     cell.rotation = (180., 0., 0.)
     assert cell.rotation == pytest.approx([180., 0., 0.])
+    openmc.lib.finalize()
+
+
+def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
+    # Define a simple model and export
+    mat = openmc.Material()
+    mat.add_nuclide('U235', 1.0e-2)
+    sph = openmc.Sphere(r=100.0, boundary_type='vacuum')
+    cell = openmc.Cell(fill=mat, region=-sph)
+    model = openmc.Model()
+    model.geometry = openmc.Geometry([cell])
+    model.settings.source = openmc.IndependentSource(
+        space=openmc.stats.Box([-5., -5., -5.], [5., 5., 5.]),
+        angle=openmc.stats.Monodirectional((0., 0., 1.)),
+        energy=openmc.stats.Discrete([1.0e5], [1.0])
+    )
+    model.settings.particles = 1000
+    model.settings.batches = 10
+    model.export_to_xml()
+
+    # Sample some particles and make sure they match specified source
+    openmc.lib.init()
+    particles = openmc.lib.sample_external_source(10, prn_seed=3)
+    assert len(particles) == 10
+    for p in particles:
+        assert -5. < p.r[0] < 5.
+        assert -5. < p.r[1] < 5.
+        assert -5. < p.r[2] < 5.
+        assert p.u[0] == 0.0
+        assert p.u[1] == 0.0
+        assert p.u[2] == 1.0
+        assert p.E == 1.0e5
+
+    # Using the same seed should produce the same particles
+    other_particles = openmc.lib.sample_external_source(10, prn_seed=3)
+    assert len(other_particles) == 10
+    for p1, p2 in zip(particles, other_particles):
+        assert p1.r == p2.r
+        assert p1.u == p2.u
+        assert p1.E == p2.E
+        assert p1.time == p2.time
+        assert p1.wgt == p2.wgt
+
     openmc.lib.finalize()

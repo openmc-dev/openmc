@@ -1,5 +1,6 @@
 from numbers import Integral, Real
-from xml.etree import ElementTree as ET
+
+import lxml.etree as ET
 
 import openmc.checkvalue as cv
 from . import Filter
@@ -33,7 +34,7 @@ class ExpansionFilter(Filter):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing Legendre filter data
 
         """
@@ -45,6 +46,12 @@ class ExpansionFilter(Filter):
         subelement.text = str(self.order)
 
         return element
+
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        filter_id = int(elem.get('id'))
+        order = int(elem.find('order').text)
+        return cls(order, filter_id=filter_id)
 
 
 class LegendreFilter(ExpansionFilter):
@@ -212,7 +219,7 @@ class SpatialLegendreFilter(ExpansionFilter):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing Legendre filter data
 
         """
@@ -225,6 +232,15 @@ class SpatialLegendreFilter(ExpansionFilter):
         subelement.text = str(self.maximum)
 
         return element
+
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        filter_id = int(elem.get('id'))
+        order = int(elem.find('order').text)
+        axis = elem.find('axis').text
+        minimum = float(elem.find('min').text)
+        maximum = float(elem.find('max').text)
+        return cls(order, axis, minimum, maximum, filter_id=filter_id)
 
 
 class SphericalHarmonicsFilter(ExpansionFilter):
@@ -308,13 +324,21 @@ class SphericalHarmonicsFilter(ExpansionFilter):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing spherical harmonics filter data
 
         """
         element = super().to_xml_element()
         element.set('cosine', self.cosine)
         return element
+
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        filter_id = int(elem.get('id'))
+        order = int(elem.find('order').text)
+        filter = cls(order, filter_id=filter_id)
+        filter.cosine = elem.get('cosine')
+        return filter
 
 
 class ZernikeFilter(ExpansionFilter):
@@ -358,7 +382,7 @@ class ZernikeFilter(ExpansionFilter):
         x-coordinate of center of circle for normalization
     y : float
         y-coordinate of center of circle for normalization
-    r : int or None
+    r : float
         Radius of circle for normalization
 
     Attributes
@@ -369,7 +393,7 @@ class ZernikeFilter(ExpansionFilter):
         x-coordinate of center of circle for normalization
     y : float
         y-coordinate of center of circle for normalization
-    r : int or None
+    r : float
         Radius of circle for normalization
     id : int
         Unique identifier for the filter
@@ -450,7 +474,7 @@ class ZernikeFilter(ExpansionFilter):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing Zernike filter data
 
         """
@@ -463,6 +487,15 @@ class ZernikeFilter(ExpansionFilter):
         subelement.text = str(self.r)
 
         return element
+
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        filter_id = int(elem.get('id'))
+        order = int(elem.find('order').text)
+        x = float(elem.find('x').text)
+        y = float(elem.find('y').text)
+        r = float(elem.find('r').text)
+        return cls(order, x, y, r, filter_id=filter_id)
 
 
 class ZernikeRadialFilter(ZernikeFilter):
@@ -499,7 +532,7 @@ class ZernikeRadialFilter(ZernikeFilter):
         x-coordinate of center of circle for normalization
     y : float
         y-coordinate of center of circle for normalization
-    r : int or None
+    r : float
         Radius of circle for normalization
 
     Attributes
@@ -510,7 +543,7 @@ class ZernikeRadialFilter(ZernikeFilter):
         x-coordinate of center of circle for normalization
     y : float
         y-coordinate of center of circle for normalization
-    r : int or None
+    r : float
         Radius of circle for normalization
     id : int
         Unique identifier for the filter

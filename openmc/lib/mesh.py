@@ -11,7 +11,7 @@ from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler
 
-__all__ = ['RegularMesh', 'RectilinearMesh', 'CylindricalMesh', 'SphericalMesh', 'meshes']
+__all__ = ['RegularMesh', 'RectilinearMesh', 'CylindricalMesh', 'SphericalMesh', 'UnstructuredMesh', 'meshes']
 
 # Mesh functions
 _dll.openmc_extend_meshes.argtypes = [c_int32, c_char_p, POINTER(c_int32),
@@ -285,6 +285,18 @@ class RectilinearMesh(Mesh):
         return (lower_left, upper_right, dimension, width)
 
     def set_grid(self, x_grid, y_grid, z_grid):
+        """Set grid values
+
+        Parameters
+        ----------
+        x_grid : iterable of float
+            Mesh boundary points along the x-axis
+        y_grid : iterable of float
+            Mesh boundary points along the y-axis
+        z_grid : iterable of float
+            Mesh boundary points along the z-axis
+
+        """
         nx = len(x_grid)
         x_grid = (c_double*nx)(*x_grid)
         ny = len(y_grid)
@@ -371,15 +383,27 @@ class CylindricalMesh(Mesh):
 
         return (lower_left, upper_right, dimension, width)
 
-    def set_grid(self, x_grid, y_grid, z_grid):
-        nx = len(x_grid)
-        x_grid = (c_double*nx)(*x_grid)
-        ny = len(y_grid)
-        y_grid = (c_double*ny)(*y_grid)
+    def set_grid(self, r_grid, phi_grid, z_grid):
+        """Set grid values
+
+        Parameters
+        ----------
+        r_grid : iterable of float
+            Mesh boundary points along the r-axis
+        phi_grid : Iterable of float
+            Mesh boundary points along the phi-axis
+        z_grid : Iterable of float
+            Mesh boundary points along the z-axis
+
+        """
+        nr = len(r_grid)
+        r_grid = (c_double*nr)(*r_grid)
+        nphi = len(phi_grid)
+        phi_grid = (c_double*nphi)(*phi_grid)
         nz = len(z_grid)
         z_grid = (c_double*nz)(*z_grid)
-        _dll.openmc_cylindrical_mesh_set_grid(self._index, x_grid, nx, y_grid,
-                                              ny, z_grid, nz)                                              
+        _dll.openmc_cylindrical_mesh_set_grid(self._index, r_grid, nr, phi_grid,
+                                              nphi, z_grid, nz)
 
 class SphericalMesh(Mesh):
     """SphericalMesh stored internally.
@@ -457,22 +481,39 @@ class SphericalMesh(Mesh):
 
         return (lower_left, upper_right, dimension, width)
 
-    def set_grid(self, x_grid, y_grid, z_grid):
-        nx = len(x_grid)
-        x_grid = (c_double*nx)(*x_grid)
-        ny = len(y_grid)
-        y_grid = (c_double*ny)(*y_grid)
-        nz = len(z_grid)
-        z_grid = (c_double*nz)(*z_grid)
-        _dll.openmc_spherical_mesh_set_grid(self._index, x_grid, nx, y_grid,
-                                              ny, z_grid, nz)                                              
+    def set_grid(self, r_grid, theta_grid, phi_grid):
+        """Set grid values
+
+        Parameters
+        ----------
+        r_grid : iterable of float
+            Mesh boundary points along the r-axis
+        theta_grid : Iterable of float
+            Mesh boundary points along the theta-axis
+        phi_grid : Iterable of float
+            Mesh boundary points along the phi-axis
+
+        """
+        nr = len(r_grid)
+        r_grid = (c_double*nr)(*r_grid)
+        ntheta = len(theta_grid)
+        theta_grid = (c_double*ntheta)(*theta_grid)
+        nphi = len(phi_grid)
+        phi_grid = (c_double*nphi)(*phi_grid)
+        _dll.openmc_spherical_mesh_set_grid(self._index, r_grid, nr, theta_grid,
+                                              ntheta, phi_grid, nphi)
+
+
+class UnstructuredMesh(Mesh):
+    pass
 
 
 _MESH_TYPE_MAP = {
     'regular': RegularMesh,
     'rectilinear': RectilinearMesh,
     'cylindrical': CylindricalMesh,
-    'spherical': SphericalMesh
+    'spherical': SphericalMesh,
+    'unstructured': UnstructuredMesh
 }
 
 

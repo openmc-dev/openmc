@@ -28,7 +28,8 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override { return "cellinstance"; }
+  std::string type_str() const override { return "cellinstance"; }
+  FilterType type() const override { return FilterType::CELL_INSTANCE; }
 
   void from_xml(pugi::xml_node node) override;
 

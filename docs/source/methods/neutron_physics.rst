@@ -91,7 +91,7 @@ inelastic scattering reactions. The specific multi-group scattering
 implementation is discussed in the :ref:`multi-group-scatter` section.
 
 Elastic scattering refers to the process by which a neutron scatters off a
-nucleus and does not leave it in an excited. It is referred to as "elastic"
+nucleus and does not leave it in an excited state. It is referred to as "elastic"
 because in the center-of-mass system, the neutron does not actually lose
 energy. However, in lab coordinates, the neutron does indeed lose
 energy. Elastic scattering can be treated exactly in a Monte Carlo code thanks
@@ -182,7 +182,7 @@ Inelastic Scattering
 --------------------
 
 Note that the multi-group mode makes no distinction between elastic or
-inelastic scattering reactions. The spceific multi-group scattering
+inelastic scattering reactions. The specific multi-group scattering
 implementation is discussed in the :ref:`multi-group-scatter` section.
 
 The major algorithms for inelastic scattering were described in previous
@@ -359,7 +359,7 @@ secondary energy and angle sampling.
 For a reaction with secondary products, it is necessary to determine the
 outgoing angle and energy of the products. For any reaction other than elastic
 and level inelastic scattering, the outgoing energy must be determined based on
-tabulated or parameterized data. The `ENDF-6 Format <endf102>`_ specifies a
+tabulated or parameterized data. The `ENDF-6 Format`_ specifies a
 variety of ways that the secondary energy distribution can be represented. ENDF
 File 5 contains uncorrelated energy distribution whereas ENDF File 6 contains
 correlated energy-angle distributions. The ACE format specifies its own
@@ -1403,7 +1403,7 @@ given analytically by
 .. math::
     :label: coherent-elastic-angle
 
-    \mu = 1 - \frac{E_i}{E}
+    \mu = 1 - \frac{2E_i}{E}
 
 where :math:`E_i` is the energy of the Bragg edge that scattered the neutron.
 
@@ -1416,8 +1416,7 @@ For incoherent elastic scattering, OpenMC has two methods for calculating the
 cosine of the angle of scattering. The first method uses the Debye-Waller
 integral, :math:`W'`, and the characteristic bound cross section as given
 directly in an ENDF-6 formatted file. In this case, the cosine of the angle of
-scattering can be sampled by inverting equation 7.4 from the `ENDF-6 Format
-Manual <endf102>`_:
+scattering can be sampled by inverting equation 7.4 from the `ENDF-6 Format`_:
 
 .. math::
     :label: incoherent-elastic-mu-exact
@@ -1752,7 +1751,7 @@ types.
 
 .. _PREPRO: https://www-nds.iaea.org/ndspub/endf/prepro/
 
-.. _endf102: https://www.oecd-nea.org/dbdata/data/manual-endf/endf102.pdf
+.. _ENDF-6 Format: https://www.oecd-nea.org/dbdata/data/manual-endf/endf102.pdf
 
 .. _Monte Carlo Sampler: https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-09721-MS
 

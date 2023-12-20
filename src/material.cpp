@@ -60,6 +60,13 @@ Material::Material(pugi::xml_node node)
     name_ = get_node_value(node, "name");
   }
 
+  if (check_for_node(node, "cfg")) {
+    auto cfg = get_node_value(node, "cfg");
+    write_message(
+      5, "NCrystal config string for material #{}: '{}'", this->id(), cfg);
+    ncrystal_mat_ = NCrystalMat(cfg);
+  }
+
   if (check_for_node(node, "depletable")) {
     depletable_ = get_node_value_bool(node, "depletable");
   }
@@ -217,11 +224,13 @@ Material::Material(pugi::xml_node node)
 
     // Check that this nuclide is listed in the nuclear data library
     // (cross_sections.xml for CE and the MGXS HDF5 for MG)
-    LibraryKey key {Library::Type::neutron, name};
-    if (data::library_map.find(key) == data::library_map.end()) {
-      fatal_error("Could not find nuclide " + name +
-                  " in the "
-                  "nuclear data library.");
+    if (settings::run_mode != RunMode::PLOTTING) {
+      LibraryKey key {Library::Type::neutron, name};
+      if (data::library_map.find(key) == data::library_map.end()) {
+        fatal_error("Could not find nuclide " + name +
+                    " in the "
+                    "nuclear data library.");
+      }
     }
 
     // If this nuclide hasn't been encountered yet, we need to add its name
@@ -240,10 +249,12 @@ Material::Material(pugi::xml_node node)
       std::string element = to_element(name);
 
       // Make sure photon cross section data is available
-      LibraryKey key {Library::Type::photon, element};
-      if (data::library_map.find(key) == data::library_map.end()) {
-        fatal_error(
-          "Could not find element " + element + " in cross_sections.xml.");
+      if (settings::run_mode != RunMode::PLOTTING) {
+        LibraryKey key {Library::Type::photon, element};
+        if (data::library_map.find(key) == data::library_map.end()) {
+          fatal_error(
+            "Could not find element " + element + " in cross_sections.xml.");
+        }
       }
 
       if (data::element_map.find(element) == data::element_map.end()) {
@@ -317,10 +328,12 @@ Material::Material(pugi::xml_node node)
 
       // Check that the thermal scattering table is listed in the
       // cross_sections.xml file
-      LibraryKey key {Library::Type::thermal, name};
-      if (data::library_map.find(key) == data::library_map.end()) {
-        fatal_error("Could not find thermal scattering data " + name +
-                    " in cross_sections.xml file.");
+      if (settings::run_mode != RunMode::PLOTTING) {
+        LibraryKey key {Library::Type::thermal, name};
+        if (data::library_map.find(key) == data::library_map.end()) {
+          fatal_error("Could not find thermal scattering data " + name +
+                      " in cross_sections.xml file.");
+        }
       }
 
       // Determine index of thermal scattering data in global
@@ -346,6 +359,35 @@ Material::~Material()
   model::material_map.erase(id_);
 }
 
+Material& Material::clone()
+{
+  std::unique_ptr<Material> mat = std::make_unique<Material>();
+
+  // set all other parameters to whatever the calling Material has
+  mat->name_ = name_;
+  mat->nuclide_ = nuclide_;
+  mat->element_ = element_;
+  mat->ncrystal_mat_ = ncrystal_mat_;
+  mat->atom_density_ = atom_density_;
+  mat->density_ = density_;
+  mat->density_gpcc_ = density_gpcc_;
+  mat->volume_ = volume_;
+  mat->fissionable_ = fissionable_;
+  mat->depletable_ = depletable_;
+  mat->p0_ = p0_;
+  mat->mat_nuclide_index_ = mat_nuclide_index_;
+  mat->thermal_tables_ = thermal_tables_;
+  mat->temperature_ = temperature_;
+
+  if (ttb_)
+    mat->ttb_ = std::make_unique<Bremsstrahlung>(*ttb_);
+
+  mat->index_ = model::materials.size();
+  mat->set_id(C_NONE);
+  model::materials.push_back(std::move(mat));
+  return *model::materials.back();
+}
+
 void Material::finalize()
 {
   // Set fissionable if any nuclide is fissionable
@@ -367,8 +409,8 @@ void Material::finalize()
     this->init_thermal();
   }
 
-// Normalize density
-this->normalize_density();
+  // Normalize density
+  this->normalize_density();
 }
 
 void Material::normalize_density()
@@ -796,6 +838,12 @@ void Material::calculate_neutron_xs(Particle& p) const
   // Initialize position in i_sab_nuclides
   int j = 0;
 
+  // Calculate NCrystal cross section
+  double ncrystal_xs = -1.0;
+  if (ncrystal_mat_ && p.E() < NCRYSTAL_MAX_ENERGY) {
+    ncrystal_xs = ncrystal_mat_.xs(p);
+  }
+
   // Add contribution from each nuclide in material
   for (int i = 0; i < nuclide_.size(); ++i) {
     // ======================================================================
@@ -830,15 +878,12 @@ void Material::calculate_neutron_xs(Particle& p) const
     // ======================================================================
     // CALCULATE MICROSCOPIC CROSS SECTION
 
-    // Determine microscopic cross sections for this nuclide
+    // Get nuclide index
     int i_nuclide = nuclide_[i];
 
-    // Calculate microscopic cross section for this nuclide
-    const auto& micro {p.neutron_xs(i_nuclide)};
-    if (p.E() != micro.last_E || p.sqrtkT() != micro.last_sqrtkT ||
-        i_sab != micro.index_sab || sab_frac != micro.sab_frac) {
-      data::nuclides[i_nuclide]->calculate_xs(i_sab, i_grid, sab_frac, p);
-    }
+    // Update microscopic cross section for this nuclide
+    p.update_neutron_xs(i_nuclide, i_grid, i_sab, sab_frac, ncrystal_xs);
+    auto& micro = p.neutron_xs(i_nuclide);
 
     // ======================================================================
     // ADD TO MACROSCOPIC CROSS SECTION
@@ -1289,6 +1334,12 @@ void read_materials_xml()
 
   // Loop over XML material elements and populate the array.
   pugi::xml_node root = doc.document_element();
+
+  read_materials_xml(root);
+}
+
+void read_materials_xml(pugi::xml_node root)
+{
   for (pugi::xml_node material_node : root.children("material")) {
     model::materials.push_back(make_unique<Material>(material_node));
   }

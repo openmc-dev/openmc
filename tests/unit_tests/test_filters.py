@@ -1,5 +1,4 @@
-from math import sqrt, pi
-
+import numpy as np
 import openmc
 from pytest import fixture, approx
 
@@ -11,14 +10,14 @@ def box_model():
     m.add_nuclide('U235', 1.0)
     m.set_density('g/cm3', 1.0)
 
-    box = openmc.model.rectangular_prism(10., 10., boundary_type='vacuum')
-    c = openmc.Cell(fill=m, region=box)
+    box = openmc.model.RectangularPrism(10., 10., boundary_type='vacuum')
+    c = openmc.Cell(fill=m, region=-box)
     model.geometry.root_universe = openmc.Universe(cells=[c])
 
     model.settings.particles = 100
     model.settings.batches = 10
     model.settings.inactive = 0
-    model.settings.source = openmc.Source(space=openmc.stats.Point())
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Point())
     return model
 
 
@@ -37,6 +36,11 @@ def test_cell_instance():
     bins = [int(x) for x in elem.find('bins').text.split()]
     assert all(x == c1.id for x in bins[:6:2])
     assert all(x == c2.id for x in bins[6::2])
+
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem)
+    assert new_f.id == f.id
+    assert np.all(new_f.bins == f.bins)
 
     # get_pandas_dataframe()
     df = f.get_pandas_dataframe(f.num_bins, 1)
@@ -61,6 +65,11 @@ def test_collision():
     assert elem.tag == 'filter'
     assert elem.attrib['type'] == 'collision'
 
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem)
+    assert new_f.id == f.id
+    assert np.all(new_f.bins == f.bins)
+
 
 def test_legendre():
     n = 5
@@ -78,6 +87,11 @@ def test_legendre():
     assert elem.tag == 'filter'
     assert elem.attrib['type'] == 'legendre'
     assert elem.find('order').text == str(n)
+
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem)
+    assert new_f.id == f.id
+    assert new_f.bins, f.bins
 
 
 def test_spatial_legendre():
@@ -102,6 +116,12 @@ def test_spatial_legendre():
     assert elem.find('order').text == str(n)
     assert elem.find('axis').text == str(axis)
 
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem)
+    assert new_f.id == f.id
+    assert new_f.order == f.order
+    assert new_f.axis == f.axis
+
 
 def test_spherical_harmonics():
     n = 3
@@ -122,6 +142,12 @@ def test_spherical_harmonics():
     assert elem.attrib['cosine'] == f.cosine
     assert elem.find('order').text == str(n)
 
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem)
+    assert new_f.id == f.id
+    assert new_f.order == f.order
+    assert new_f.cosine == f.cosine
+
 
 def test_zernike():
     n = 4
@@ -140,6 +166,12 @@ def test_zernike():
     assert elem.attrib['type'] == 'zernike'
     assert elem.find('order').text == str(n)
 
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem)
+    for attr in ('id', 'order', 'x', 'y', 'r'):
+        assert getattr(new_f, attr) == getattr(f, attr)
+
+
 def test_zernike_radial():
     n = 4
     f = openmc.ZernikeRadialFilter(n, 0., 0., 1.)
@@ -156,6 +188,11 @@ def test_zernike_radial():
     assert elem.tag == 'filter'
     assert elem.attrib['type'] == 'zernikeradial'
     assert elem.find('order').text == str(n)
+
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem)
+    for attr in ('id', 'order', 'x', 'y', 'r'):
+        assert getattr(new_f, attr) == getattr(f, attr)
 
 
 def test_first_moment(run_in_tmpdir, box_model):
@@ -203,3 +240,52 @@ def test_first_moment(run_in_tmpdir, box_model):
         assert first_score(sph_scat_tally) == scatter
         assert first_score(sph_flux_tally) == approx(flux)
         assert first_score(zernike_tally) == approx(scatter)
+
+
+def test_energy():
+    f = openmc.EnergyFilter.from_group_structure('CCFE-709')
+    assert f.bins.shape == (709, 2)
+    assert len(f.values) == 710
+
+
+def test_lethargy_bin_width():
+    f = openmc.EnergyFilter.from_group_structure('VITAMIN-J-175')
+    assert len(f.lethargy_bin_width) == 175
+    energy_bins = openmc.mgxs.GROUP_STRUCTURES['VITAMIN-J-175']
+    assert f.lethargy_bin_width[0] == np.log10(energy_bins[1]/energy_bins[0])
+    assert f.lethargy_bin_width[-1] == np.log10(energy_bins[-1]/energy_bins[-2])
+
+
+def test_energyfunc():
+    f = openmc.EnergyFunctionFilter(
+        [0.0, 10.0, 2.0e3, 1.0e6, 20.0e6],
+        [1.0, 0.9, 0.8, 0.7, 0.6],
+        'histogram'
+    )
+
+    # Make sure XML roundtrip works
+    elem = f.to_xml_element()
+    new_f = openmc.EnergyFunctionFilter.from_xml_element(elem)
+    np.testing.assert_allclose(f.energy, new_f.energy)
+    np.testing.assert_allclose(f.y, new_f.y)
+    assert f.interpolation == new_f.interpolation
+
+
+def test_tabular_from_energyfilter():
+    efilter = openmc.EnergyFilter([0.0, 10.0, 20.0, 25.0])
+    tab = efilter.get_tabular(values=[5, 10, 10])
+
+    assert tab.x.tolist() == [0.0, 10.0, 20.0, 25.0]
+
+    # combination of different values passed into get_tabular and different
+    # width energy bins results in a doubling value for each p value
+    assert tab.p.tolist() == [0.02, 0.04, 0.08, 0.0]
+
+    # distribution should integrate to unity
+    assert tab.integral() == approx(1.0)
+
+    # 'histogram' is the default
+    assert tab.interpolation == 'histogram'
+
+    tab = efilter.get_tabular(values=np.array([10, 10, 5]), interpolation='linear-linear')
+    assert tab.interpolation == 'linear-linear'

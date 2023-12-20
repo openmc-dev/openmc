@@ -38,15 +38,15 @@ class UncorrelatedAngleEnergy(AngleEnergy):
     def angle(self):
         return self._angle
 
-    @property
-    def energy(self):
-        return self._energy
-
     @angle.setter
     def angle(self, angle):
         cv.check_type('uncorrelated angle distribution', angle,
                       AngleDistribution)
         self._angle = angle
+
+    @property
+    def energy(self):
+        return self._energy
 
     @energy.setter
     def energy(self, energy):

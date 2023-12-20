@@ -7,7 +7,7 @@ Heating and Energy Deposition
 As particles traverse a problem, some portion of their energy is deposited at
 collision sites. This energy is deposited when charged particles, including
 electrons and recoil nuclei, undergo electromagnetic interactions with
-surrounding electons and ions. The information describing how much energy
+surrounding electrons and ions. The information describing how much energy
 is deposited for a specific reaction is referred to as
 "heating numbers" and can be computed using a program like NJOY with the
 ``heatr`` module.

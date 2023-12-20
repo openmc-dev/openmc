@@ -10,10 +10,12 @@
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
 
+#include "openmc/error.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
 #include "openmc/position.h"
 #include "openmc/vector.h"
+#include "openmc/xml_interface.h"
 
 #ifdef DAGMC
 #include "moab/AdaptiveKDTree.hpp"
@@ -37,6 +39,12 @@
 namespace openmc {
 
 //==============================================================================
+// Constants
+//==============================================================================
+
+enum class ElementType { UNSUPPORTED = -1, LINEAR_TET, LINEAR_HEX };
+
+//==============================================================================
 // Global variables
 //==============================================================================
 
@@ -53,7 +61,7 @@ extern vector<unique_ptr<Mesh>> meshes;
 
 #ifdef LIBMESH
 namespace settings {
-// used when creating new libMesh::Mesh instances
+// used when creating new libMesh::MeshBase instances
 extern unique_ptr<libMesh::LibMeshInit> libmesh_init;
 extern const libMesh::Parallel::Communicator* libmesh_comm;
 } // namespace settings
@@ -67,6 +75,19 @@ public:
   virtual ~Mesh() = default;
 
   // Methods
+
+  //! Update a position to the local coordinates of the mesh
+  virtual void local_coords(Position& r) const {};
+
+  //! Return a position in the local coordinates of the mesh
+  virtual Position local_coords(const Position& r) const { return r; };
+
+  //! Sample a position within a mesh element
+  //
+  //! \param[in] bin Bin value of the mesh element sampled
+  //! \param[inout] seed Seed to use for random sampling
+  //! \return sampled position within mesh element
+  virtual Position sample_element(int32_t bin, uint64_t* seed) const = 0;
 
   //! Determine which bins were crossed by a particle
   //
@@ -99,6 +120,8 @@ public:
   //! Get the number of mesh cell surfaces.
   virtual int n_surface_bins() const = 0;
 
+  int32_t id() const { return id_; }
+
   //! Set the mesh ID
   void set_id(int32_t id = -1);
 
@@ -123,7 +146,15 @@ public:
   //! \param[in] bin Mesh bin to generate a label for
   virtual std::string bin_label(int bin) const = 0;
 
-  //! Return the mesh type
+  //! Get the volume of a mesh bin
+  //
+  //! \param[in] bin Bin to return the volume for
+  //! \return Volume of the bin
+  virtual double volume(int bin) const = 0;
+
+  //! Volumes of all elements in the mesh in bin ordering
+  vector<double> volumes() const;
+
   virtual std::string get_mesh_type() const = 0;
 
   // Data members
@@ -145,13 +176,20 @@ public:
       : next_index {_index}, max_surface {_max_surface}, distance {_distance}
     {}
     int next_index {-1};
-    double distance {INFTY};
     bool max_surface {true};
+    double distance {INFTY};
     bool operator<(const MeshDistance& o) const
     {
       return distance < o.distance;
     }
   };
+
+  Position sample_element(int32_t bin, uint64_t* seed) const override
+  {
+    return sample_element(get_indices_from_bin(bin), seed);
+  };
+
+  virtual Position sample_element(const MeshIndex& ijk, uint64_t* seed) const;
 
   int get_bin(Position r) const override;
 
@@ -208,6 +246,30 @@ public:
   //! \param[in] i Direction index
   virtual int get_index_in_direction(double r, int i) const = 0;
 
+  //! Get the coordinate for the mesh grid boundary in the positive direction
+  //!
+  //! \param[in] ijk Array of mesh indices
+  //! \param[in] i Direction index
+  virtual double positive_grid_boundary(const MeshIndex& ijk, int i) const
+  {
+    auto msg =
+      fmt::format("Attempting to call positive_grid_boundary on a {} mesh.",
+        get_mesh_type());
+    fatal_error(msg);
+  };
+
+  //! Get the coordinate for the mesh grid boundary in the negative direction
+  //!
+  //! \param[in] ijk Array of mesh indices
+  //! \param[in] i Direction index
+  virtual double negative_grid_boundary(const MeshIndex& ijk, int i) const
+  {
+    auto msg =
+      fmt::format("Attempting to call negative_grid_boundary on a {} mesh.",
+        get_mesh_type());
+    fatal_error(msg);
+  };
+
   //! Get the closest distance from the coordinate r to the grid surface
   //! in i direction  that bounds mesh cell ijk and that is larger than l
   //! The coordinate r does not have to be inside the mesh cell ijk. In
@@ -230,12 +292,39 @@ public:
   //! Get shape as xt::xtensor
   xt::xtensor<int, 1> get_x_shape() const;
 
+  double volume(int bin) const override
+  {
+    return this->volume(get_indices_from_bin(bin));
+  }
+
+  //! Get the volume of a specified element
+  //! \param[in] ijk Mesh index to return the volume for
+  //! \return Volume of the bin
+  virtual double volume(const MeshIndex& ijk) const = 0;
+
   // Data members
   xt::xtensor<double, 1> lower_left_;  //!< Lower-left coordinates of mesh
   xt::xtensor<double, 1> upper_right_; //!< Upper-right coordinates of mesh
   std::array<int, 3> shape_; //!< Number of mesh elements in each dimension
 
 protected:
+};
+
+class PeriodicStructuredMesh : public StructuredMesh {
+
+public:
+  PeriodicStructuredMesh() = default;
+  PeriodicStructuredMesh(pugi::xml_node node) : StructuredMesh {node} {};
+
+  void local_coords(Position& r) const override { r -= origin_; };
+
+  Position local_coords(const Position& r) const override
+  {
+    return r - origin_;
+  };
+
+  // Data members
+  Position origin_ {0.0, 0.0, 0.0}; //!< Origin of the mesh
 };
 
 //==============================================================================
@@ -263,18 +352,17 @@ public:
 
   void to_hdf5(hid_t group) const override;
 
-  // New methods
   //! Get the coordinate for the mesh grid boundary in the positive direction
   //!
   //! \param[in] ijk Array of mesh indices
   //! \param[in] i Direction index
-  double positive_grid_boundary(const MeshIndex& ijk, int i) const;
+  double positive_grid_boundary(const MeshIndex& ijk, int i) const override;
 
   //! Get the coordinate for the mesh grid boundary in the negative direction
   //!
   //! \param[in] ijk Array of mesh indices
   //! \param[in] i Direction index
-  double negative_grid_boundary(const MeshIndex& ijk, int i) const;
+  double negative_grid_boundary(const MeshIndex& ijk, int i) const override;
 
   //! Count number of bank sites in each mesh bin / energy bin
   //
@@ -284,8 +372,12 @@ public:
   xt::xtensor<double, 1> count_sites(
     const SourceSite* bank, int64_t length, bool* outside) const;
 
+  //! Return the volume for a given mesh index
+  double volume(const MeshIndex& ijk) const override;
+
   // Data members
   double volume_frac_;           //!< Volume fraction of each mesh element
+  double element_volume_;        //!< Volume of each mesh element
   xt::xtensor<double, 1> width_; //!< Width of each mesh element
 };
 
@@ -310,25 +402,28 @@ public:
 
   void to_hdf5(hid_t group) const override;
 
-  // New methods
   //! Get the coordinate for the mesh grid boundary in the positive direction
   //!
   //! \param[in] ijk Array of mesh indices
   //! \param[in] i Direction index
-  double positive_grid_boundary(const MeshIndex& ijk, int i) const;
+  double positive_grid_boundary(const MeshIndex& ijk, int i) const override;
 
   //! Get the coordinate for the mesh grid boundary in the negative direction
   //!
   //! \param[in] ijk Array of mesh indices
   //! \param[in] i Direction index
-  double negative_grid_boundary(const MeshIndex& ijk, int i) const;
+  double negative_grid_boundary(const MeshIndex& ijk, int i) const override;
 
-  array<vector<double>, 3> grid_;
+  //! Return the volume for a given mesh index
+  double volume(const MeshIndex& ijk) const override;
 
   int set_grid();
+
+  // Data members
+  array<vector<double>, 3> grid_;
 };
 
-class CylindricalMesh : public StructuredMesh {
+class CylindricalMesh : public PeriodicStructuredMesh {
 public:
   // Constructors
   CylindricalMesh() = default;
@@ -343,6 +438,8 @@ public:
 
   static const std::string mesh_type;
 
+  Position sample_element(const MeshIndex& ijk, uint64_t* seed) const override;
+
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
     const Position& r0, const Direction& u, double l) const override;
 
@@ -351,9 +448,17 @@ public:
 
   void to_hdf5(hid_t group) const override;
 
-  array<vector<double>, 3> grid_;
+  double volume(const MeshIndex& ijk) const override;
+
+  // grid accessors
+  double r(int i) const { return grid_[0][i]; }
+  double phi(int i) const { return grid_[1][i]; }
+  double z(int i) const { return grid_[2][i]; }
 
   int set_grid();
+
+  // Data members
+  array<vector<double>, 3> grid_;
 
 private:
   double find_r_crossing(
@@ -365,7 +470,7 @@ private:
 
   bool full_phi_ {false};
 
-  constexpr inline int sanitize_angular_index(int idx, bool full, int N) const
+  inline int sanitize_angular_index(int idx, bool full, int N) const
   {
     if ((idx > 0) and (idx <= N)) {
       return idx;
@@ -382,7 +487,7 @@ private:
   }
 };
 
-class SphericalMesh : public StructuredMesh {
+class SphericalMesh : public PeriodicStructuredMesh {
 public:
   // Constructors
   SphericalMesh() = default;
@@ -397,6 +502,8 @@ public:
 
   static const std::string mesh_type;
 
+  Position sample_element(const MeshIndex& ijk, uint64_t* seed) const override;
+
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
     const Position& r0, const Direction& u, double l) const override;
 
@@ -405,9 +512,14 @@ public:
 
   void to_hdf5(hid_t group) const override;
 
-  array<vector<double>, 3> grid_;
+  double r(int i) const { return grid_[0][i]; }
+  double theta(int i) const { return grid_[1][i]; }
+  double phi(int i) const { return grid_[2][i]; }
 
   int set_grid();
+
+  // Data members
+  array<vector<double>, 3> grid_;
 
 private:
   double find_r_crossing(
@@ -420,7 +532,7 @@ private:
   bool full_theta_ {false};
   bool full_phi_ {false};
 
-  constexpr inline int sanitize_angular_index(int idx, bool full, int N) const
+  inline int sanitize_angular_index(int idx, bool full, int N) const
   {
     if ((idx > 0) and (idx <= N)) {
       return idx;
@@ -430,6 +542,8 @@ private:
       return 0;
     }
   }
+
+  double volume(const MeshIndex& ijk) const override;
 
   inline int sanitize_theta(int idx) const
   {
@@ -454,6 +568,7 @@ public:
   virtual std::string get_mesh_type() const override;
 
   // Overridden Methods
+
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
 
@@ -485,11 +600,22 @@ public:
   //! \return The centroid of the bin
   virtual Position centroid(int bin) const = 0;
 
-  //! Get the volume of a mesh bin
+  //! Get the number of vertices in the mesh
   //
-  //! \param[in] bin Bin to return the volume for
-  //! \return Volume of the bin
-  virtual double volume(int bin) const = 0;
+  //! \return Number of vertices
+  virtual int n_vertices() const = 0;
+
+  //! Retrieve a vertex of the mesh
+  //
+  //! \param[in] vertex ID
+  //! \return vertex coordinates
+  virtual Position vertex(int id) const = 0;
+
+  //! Retrieve connectivity of a mesh element
+  //
+  //! \param[in] element ID
+  //! \return element connectivity as IDs of the vertices
+  virtual std::vector<int> connectivity(int id) const = 0;
 
   //! Get the library used for this unstructured mesh
   virtual std::string library() const = 0;
@@ -499,6 +625,8 @@ public:
     true}; //!< Write tallies onto the unstructured mesh at the end of a run
   std::string filename_; //!< Path to unstructured mesh file
 
+  ElementType element_type(int bin) const;
+
 protected:
   //! Set the length multiplier to apply to each point in the mesh
   void set_length_multiplier(const double length_multiplier);
@@ -507,6 +635,14 @@ protected:
   double length_multiplier_ {
     1.0}; //!< Constant multiplication factor to apply to mesh coordinates
   bool specified_length_multiplier_ {false};
+
+  //! Sample barycentric coordinates given a seed and the vertex positions and
+  //! return the sampled position
+  //
+  //! \param[in] coords Coordinates of the tetrahedron
+  //! \param[in] seed Random number generation seed
+  //! \return Sampled position within the tetrahedron
+  Position sample_tet(std::array<Position, 4> coords, uint64_t* seed) const;
 
 private:
   //! Setup method for the mesh. Builds data structures,
@@ -527,6 +663,8 @@ public:
   static const std::string mesh_lib_type;
 
   // Overridden Methods
+
+  Position sample_element(int32_t bin, uint64_t* seed) const override;
 
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
@@ -557,6 +695,16 @@ public:
 
   Position centroid(int bin) const override;
 
+  int n_vertices() const override;
+
+  Position vertex(int id) const override;
+
+  std::vector<int> connectivity(int id) const override;
+
+  //! Get the volume of a mesh bin
+  //
+  //! \param[in] bin Bin to return the volume for
+  //! \return Volume of the bin
   double volume(int bin) const override;
 
 private:
@@ -621,6 +769,9 @@ private:
   //! \return MOAB EntityHandle of tet
   moab::EntityHandle get_ent_handle_from_bin(int bin) const;
 
+  //! Get a vertex index into the global range from a handle
+  int get_vert_idx_from_handle(moab::EntityHandle vert) const;
+
   //! Get the bin for a given mesh cell index
   //
   //! \param[in] idx Index of the mesh cell.
@@ -654,7 +805,8 @@ private:
   std::pair<moab::Tag, moab::Tag> get_score_tags(std::string score) const;
 
   // Data members
-  moab::Range ehs_; //!< Range of tetrahedra EntityHandle's in the mesh
+  moab::Range ehs_;   //!< Range of tetrahedra EntityHandle's in the mesh
+  moab::Range verts_; //!< Range of vertex EntityHandle's in the mesh
   moab::EntityHandle tetset_;      //!< EntitySet containing all tetrahedra
   moab::EntityHandle kdtree_root_; //!< Root of the MOAB KDTree
   std::shared_ptr<moab::Interface> mbi_;    //!< MOAB instance
@@ -672,12 +824,15 @@ public:
   // Constructors
   LibMesh(pugi::xml_node node);
   LibMesh(const std::string& filename, double length_multiplier = 1.0);
+  LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier = 1.0);
 
   static const std::string mesh_lib_type;
 
   // Overridden Methods
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
+
+  Position sample_element(int32_t bin, uint64_t* seed) const override;
 
   int get_bin(Position r) const override;
 
@@ -701,10 +856,23 @@ public:
 
   Position centroid(int bin) const override;
 
+  int n_vertices() const override;
+
+  Position vertex(int id) const override;
+
+  std::vector<int> connectivity(int id) const override;
+
+  //! Get the volume of a mesh bin
+  //
+  //! \param[in] bin Bin to return the volume for
+  //! \return Volume of the bin
   double volume(int bin) const override;
+
+  libMesh::MeshBase* mesh_ptr() const { return m_; };
 
 private:
   void initialize() override;
+  void set_mesh_pointer_from_filename(const std::string& filename);
 
   // Methods
 
@@ -715,7 +883,11 @@ private:
   int get_bin_from_element(const libMesh::Elem* elem) const;
 
   // Data members
-  unique_ptr<libMesh::Mesh> m_; //!< pointer to the libMesh mesh instance
+  unique_ptr<libMesh::MeshBase> unique_m_ =
+    nullptr; //!< pointer to the libMesh MeshBase instance, only used if mesh is
+             //!< created inside OpenMC
+  libMesh::MeshBase* m_; //!< pointer to libMesh MeshBase instance, always set
+                         //!< during intialization
   vector<unique_ptr<libMesh::PointLocatorBase>>
     pl_; //!< per-thread point locators
   unique_ptr<libMesh::EquationSystems>

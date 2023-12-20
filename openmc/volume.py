@@ -1,16 +1,16 @@
-from collections import OrderedDict
 from collections.abc import Iterable, Mapping
 from numbers import Real, Integral
-from xml.etree import ElementTree as ET
 import warnings
 
+import h5py
+import lxml.etree as ET
 import numpy as np
 import pandas as pd
-import h5py
 from uncertainties import ufloat
 
 import openmc
 import openmc.checkvalue as cv
+from openmc._xml import get_text
 
 _VERSION_VOLUME = 1
 
@@ -55,7 +55,7 @@ class VolumeCalculation:
     volumes : dict
         Dictionary mapping unique IDs of domains to estimated volumes in cm^3.
     threshold : float
-        Threshold for the maxmimum standard deviation of volumes.
+        Threshold for the maximum standard deviation of volumes.
 
         .. versionadded:: 0.12
     trigger_type : {'variance', 'std_dev', 'rel_err'}
@@ -121,33 +121,82 @@ class VolumeCalculation:
                 raise ValueError('Could not automatically determine bounding box '
                                  'for stochastic volume calculation.')
 
+        if np.isinf(self.lower_left).any() or np.isinf(self.upper_right).any():
+            raise ValueError('Lower-left and upper-right bounding box '
+                             'coordinates must be finite.')
+
     @property
     def ids(self):
         return self._ids
+
+    @ids.setter
+    def ids(self, ids):
+        cv.check_type('domain IDs', ids, Iterable, Real)
+        self._ids = ids
 
     @property
     def samples(self):
         return self._samples
 
+    @samples.setter
+    def samples(self, samples):
+        cv.check_type('number of samples', samples, Integral)
+        cv.check_greater_than('number of samples', samples, 0)
+        self._samples = samples
+
     @property
     def lower_left(self):
         return self._lower_left
+
+    @lower_left.setter
+    def lower_left(self, lower_left):
+        name = 'lower-left bounding box coordinates',
+        cv.check_type(name, lower_left, Iterable, Real)
+        cv.check_length(name, lower_left, 3)
+        self._lower_left = lower_left
 
     @property
     def upper_right(self):
         return self._upper_right
 
+    @upper_right.setter
+    def upper_right(self, upper_right):
+        name = 'upper-right bounding box coordinates'
+        cv.check_type(name, upper_right, Iterable, Real)
+        cv.check_length(name, upper_right, 3)
+        self._upper_right = upper_right
+
     @property
     def threshold(self):
         return self._threshold
+
+    @threshold.setter
+    def threshold(self, threshold):
+        name = 'volume std. dev. threshold'
+        cv.check_type(name, threshold, Real)
+        cv.check_greater_than(name, threshold, 0.0)
+        self._threshold = threshold
 
     @property
     def trigger_type(self):
         return self._trigger_type
 
+    @trigger_type.setter
+    def trigger_type(self, trigger_type):
+        cv.check_value('tally trigger type', trigger_type,
+                       ('variance', 'std_dev', 'rel_err'))
+        self._trigger_type = trigger_type
+
     @property
     def iterations(self):
         return self._iterations
+
+    @iterations.setter
+    def iterations(self, iterations):
+        name = 'volume calculation iterations'
+        cv.check_type(name, iterations, Integral)
+        cv.check_greater_than(name, iterations, 0)
+        self._iterations = iterations
 
     @property
     def domain_type(self):
@@ -157,9 +206,19 @@ class VolumeCalculation:
     def atoms(self):
         return self._atoms
 
+    @atoms.setter
+    def atoms(self, atoms):
+        cv.check_type('atoms', atoms, Mapping)
+        self._atoms = atoms
+
     @property
     def volumes(self):
         return self._volumes
+
+    @volumes.setter
+    def volumes(self, volumes):
+        cv.check_type('volumes', volumes, Mapping)
+        self._volumes = volumes
 
     @property
     def atoms_dataframe(self):
@@ -171,70 +230,15 @@ class VolumeCalculation:
 
         return pd.DataFrame.from_records(items, columns=columns)
 
-    @ids.setter
-    def ids(self, ids):
-        cv.check_type('domain IDs', ids, Iterable, Real)
-        self._ids = ids
-
-    @samples.setter
-    def samples(self, samples):
-        cv.check_type('number of samples', samples, Integral)
-        cv.check_greater_than('number of samples', samples, 0)
-        self._samples = samples
-
-    @lower_left.setter
-    def lower_left(self, lower_left):
-        name = 'lower-left bounding box coordinates',
-        cv.check_type(name, lower_left, Iterable, Real)
-        cv.check_length(name, lower_left, 3)
-        self._lower_left = lower_left
-
-    @upper_right.setter
-    def upper_right(self, upper_right):
-        name = 'upper-right bounding box coordinates'
-        cv.check_type(name, upper_right, Iterable, Real)
-        cv.check_length(name, upper_right, 3)
-        self._upper_right = upper_right
-
-    @threshold.setter
-    def threshold(self, threshold):
-        name = 'volume std. dev. threshold'
-        cv.check_type(name, threshold, Real)
-        cv.check_greater_than(name, threshold, 0.0)
-        self._threshold = threshold
-
-    @trigger_type.setter
-    def trigger_type(self, trigger_type):
-        cv.check_value('tally trigger type', trigger_type,
-                       ('variance', 'std_dev', 'rel_err'))
-        self._trigger_type = trigger_type
-
-    @iterations.setter
-    def iterations(self, iterations):
-        name = 'volume calculation iterations'
-        cv.check_type(name, iterations, Integral)
-        cv.check_greater_than(name, iterations, 0)
-        self._iterations = iterations
-
-    @volumes.setter
-    def volumes(self, volumes):
-        cv.check_type('volumes', volumes, Mapping)
-        self._volumes = volumes
-
-    @atoms.setter
-    def atoms(self, atoms):
-        cv.check_type('atoms', atoms, Mapping)
-        self._atoms = atoms
-
     def set_trigger(self, threshold, trigger_type):
-        """Set a trigger on the voulme calculation
+        """Set a trigger on the volume calculation
 
         .. versionadded:: 0.12
 
         Parameters
         ----------
         threshold : float
-            Threshold for the maxmimum standard deviation of volumes
+            Threshold for the maximum standard deviation of volumes
         trigger_type : {'variance', 'std_dev', 'rel_err'}
             Value type used to halt volume calculation
         """
@@ -280,7 +284,7 @@ class VolumeCalculation:
                     volumes[domain_id] = volume
                     nucnames = group['nuclides'][()]
                     atoms_ = group['atoms'][()]
-                    atom_dict = OrderedDict()
+                    atom_dict = {}
                     for name_i, atoms_i in zip(nucnames, atoms_):
                         atom_dict[name_i.decode()] = ufloat(*atoms_i)
                     atoms[domain_id] = atom_dict
@@ -332,7 +336,7 @@ class VolumeCalculation:
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing volume calculation data
 
         """
@@ -352,3 +356,51 @@ class VolumeCalculation:
             trigger_elem.set("type", self.trigger_type)
             trigger_elem.set("threshold", str(self.threshold))
         return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate volume calculation object from an XML element
+
+        .. versionadded:: 0.13.0
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+
+        Returns
+        -------
+        openmc.VolumeCalculation
+            Volume calculation object
+
+        """
+        domain_type = get_text(elem, "domain_type")
+        domain_ids = get_text(elem, "domain_ids").split()
+        ids = [int(x) for x in domain_ids]
+        samples = int(get_text(elem, "samples"))
+        lower_left = get_text(elem, "lower_left").split()
+        lower_left = tuple([float(x) for x in lower_left])
+        upper_right = get_text(elem, "upper_right").split()
+        upper_right = tuple([float(x) for x in upper_right])
+
+        # Instantiate some throw-away domains that are used by the constructor
+        # to assign IDs
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', openmc.IDWarning)
+            if domain_type == 'cell':
+                domains = [openmc.Cell(uid) for uid in ids]
+            elif domain_type == 'material':
+                domains = [openmc.Material(uid) for uid in ids]
+            elif domain_type == 'universe':
+                domains = [openmc.Universe(uid) for uid in ids]
+
+        vol = cls(domains, samples, lower_left, upper_right)
+
+        # Check for trigger
+        trigger_elem = elem.find("threshold")
+        if trigger_elem is not None:
+            trigger_type = get_text(trigger_elem, "type")
+            threshold = float(get_text(trigger_elem, "threshold"))
+            vol.set_trigger(threshold, trigger_type)
+
+        return vol

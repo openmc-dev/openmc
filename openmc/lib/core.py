@@ -1,15 +1,19 @@
 from contextlib import contextmanager
 from ctypes import (c_bool, c_int, c_int32, c_int64, c_double, c_char_p,
-                    c_char, POINTER, Structure, c_void_p, create_string_buffer)
+                    c_char, POINTER, Structure, c_void_p, create_string_buffer,
+                    c_uint64, c_size_t)
 import sys
 import os
+from random import getrandbits
 
 import numpy as np
 from numpy.ctypeslib import as_array
 
 from . import _dll
 from .error import _error_handler
+from openmc.checkvalue import PathLike
 import openmc.lib
+import openmc
 
 
 class _SourceSite(Structure):
@@ -95,7 +99,9 @@ _dll.openmc_global_bounding_box.argtypes = [POINTER(c_double),
                                             POINTER(c_double)]
 _dll.openmc_global_bounding_box.restype = c_int
 _dll.openmc_global_bounding_box.errcheck = _error_handler
-
+_dll.openmc_sample_external_source.argtypes = [c_size_t, POINTER(c_uint64), POINTER(_SourceSite)]
+_dll.openmc_sample_external_source.restype = c_int
+_dll.openmc_sample_external_source.errcheck = _error_handler
 
 def global_bounding_box():
     """Calculate a global bounding box for the model"""
@@ -144,8 +150,7 @@ def current_batch():
 def export_properties(filename=None, output=True):
     """Export physical properties.
 
-    .. versionchanged:: 0.13.0
-        The *output* argument was added.
+    .. versionadded:: 0.13.0
 
     Parameters
     ----------
@@ -164,6 +169,54 @@ def export_properties(filename=None, output=True):
 
     with quiet_dll(output):
         _dll.openmc_properties_export(filename)
+
+
+def export_weight_windows(filename="weight_windows.h5", output=True):
+    """Export weight windows.
+
+    .. versionadded:: 0.14.0
+
+    Parameters
+    ----------
+    filename : PathLike or None
+        Filename to export weight windows to
+    output : bool, optional
+        Whether or not to show output.
+
+    See Also
+    --------
+    openmc.lib.import_weight_windows
+
+    """
+    if filename is not None:
+        filename = c_char_p(str(filename).encode())
+
+    with quiet_dll(output):
+        _dll.openmc_weight_windows_export(filename)
+
+
+def import_weight_windows(filename='weight_windows.h5', output=True):
+    """Import weight windows.
+
+    .. versionadded:: 0.14.0
+
+    Parameters
+    ----------
+    filename : PathLike or None
+        Filename to import weight windows from
+    output : bool, optional
+        Whether or not to show output.
+
+    See Also
+    --------
+    openmc.lib.export_weight_windows
+
+    """
+    if filename is not None:
+        filename = c_char_p(str(filename).encode())
+
+    with quiet_dll(output):
+        _dll.openmc_weight_windows_import(filename)
 
 
 def finalize():
@@ -227,6 +280,8 @@ def hard_reset():
 
 def import_properties(filename):
     """Import physical properties.
+
+    .. versionadded:: 0.13.0
 
     Parameters
     ----------
@@ -412,6 +467,45 @@ def run(output=True):
 
     with quiet_dll(output):
         _dll.openmc_run()
+
+
+def sample_external_source(n_samples=1, prn_seed=None):
+    """Sample external source
+
+    .. versionadded:: 0.13.1
+
+    Parameters
+    ----------
+    n_samples : int
+        Number of samples
+    prn_seed : int
+        Pseudorandom number generator (PRNG) seed; if None, one will be
+        generated randomly.
+
+    Returns
+    -------
+    list of openmc.SourceParticle
+        List of samples source particles
+
+    """
+    if n_samples <= 0:
+        raise ValueError("Number of samples must be positive")
+    if prn_seed is None:
+        prn_seed = getrandbits(63)
+
+    # Call into C API to sample source
+    sites_array = (_SourceSite * n_samples)()
+    _dll.openmc_sample_external_source(c_size_t(n_samples), c_uint64(prn_seed), sites_array)
+
+    # Convert to list of SourceParticle and return
+    return [
+        openmc.SourceParticle(
+            r=site.r, u=site.u, E=site.E, time=site.time, wgt=site.wgt,
+            delayed_group=site.delayed_group, surf_id=site.surf_id,
+            particle=openmc.ParticleType(site.particle)
+        )
+        for site in sites_array
+    ]
 
 
 def simulation_init():

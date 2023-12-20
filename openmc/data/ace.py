@@ -15,7 +15,6 @@ generates ACE-format cross sections.
 
 """
 
-from collections import OrderedDict
 import enum
 from pathlib import Path
 import struct
@@ -24,7 +23,7 @@ import numpy as np
 
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
-from .data import ATOMIC_SYMBOL, gnd_name, EV_PER_MEV, K_BOLTZMANN
+from .data import ATOMIC_SYMBOL, gnds_name, EV_PER_MEV, K_BOLTZMANN
 from .endf import ENDF_FLOAT_RE
 
 
@@ -88,7 +87,7 @@ def get_metadata(zaid, metastable_scheme='nndc'):
 
     # Determine name
     element = ATOMIC_SYMBOL[Z]
-    name = gnd_name(Z, mass_number, metastable)
+    name = gnds_name(Z, mass_number, metastable)
 
     return (name, element, Z, mass_number, metastable)
 
@@ -544,7 +543,7 @@ def get_libraries_from_xsdir(path):
 
     # Create list of ACE libraries -- we use an ordered dictionary while
     # building to get O(1) membership checks while retaining insertion order
-    libraries = OrderedDict()
+    libraries = {}
     for line in lines:
         words = line.split()
         if len(words) < 3:
@@ -573,11 +572,11 @@ def get_libraries_from_xsdata(path):
         List of paths to ACE libraries
     """
     xsdata = Path(path)
-    with open(xsdata, 'r') as xsdata:
+    with open(xsdata, 'r') as xsdata_file:
         # As in get_libraries_from_xsdir, we use a dict for O(1) membership
         # check while retaining insertion order
-        libraries = OrderedDict()
-        for line in xsdata:
+        libraries = {}
+        for line in xsdata_file:
             words = line.split()
             if len(words) >= 9:
                 lib = (xsdata.parent / words[8]).resolve()

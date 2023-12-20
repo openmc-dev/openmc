@@ -111,7 +111,7 @@ def test_cmfd_write_matrices():
     # Load flux vector from numpy output file
     flux_np = np.load('fluxvec.npy')
     # Load flux from data file
-    flux_dat = np.loadtxt("fluxvec.dat", delimiter='\n')
+    flux_dat = np.loadtxt("fluxvec.dat")
 
     # Compare flux from numpy file, .dat file, and from simulation
     assert(np.all(np.isclose(flux_np, cmfd_run._phi)))

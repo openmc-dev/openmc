@@ -2,9 +2,9 @@
 
 An ndarray to store atom densities with string, integer, or slice indexing.
 """
-from collections import OrderedDict
-
 import numpy as np
+
+from openmc import Material
 
 
 class AtomNumber:
@@ -45,8 +45,8 @@ class AtomNumber:
 
     """
     def __init__(self, local_mats, nuclides, volume, n_nuc_burn):
-        self.index_mat = OrderedDict((mat, i) for i, mat in enumerate(local_mats))
-        self.index_nuc = OrderedDict((nuc, i) for i, nuc in enumerate(nuclides))
+        self.index_mat = {mat: i for i, mat in enumerate(local_mats)}
+        self.index_nuc = {nuc: i for i, nuc in enumerate(nuclides)}
 
         self.volume = np.ones(len(local_mats))
         for mat, val in volume.items():
@@ -57,6 +57,12 @@ class AtomNumber:
         self.n_nuc_burn = n_nuc_burn
 
         self.number = np.zeros((len(local_mats), len(nuclides)))
+
+    def _get_mat_index(self, mat):
+        """Helper method for getting material index"""
+        if isinstance(mat, Material):
+            mat = str(mat.id)
+        return self.index_mat[mat] if isinstance(mat, str) else mat
 
     def __getitem__(self, pos):
         """Retrieves total atom number from AtomNumber.
@@ -75,8 +81,7 @@ class AtomNumber:
         """
 
         mat, nuc = pos
-        if isinstance(mat, str):
-            mat = self.index_mat[mat]
+        mat = self._get_mat_index(mat)
         if isinstance(nuc, str):
             nuc = self.index_nuc[nuc]
 
@@ -96,8 +101,7 @@ class AtomNumber:
 
         """
         mat, nuc = pos
-        if isinstance(mat, str):
-            mat = self.index_mat[mat]
+        mat = self._get_mat_index(mat)
         if isinstance(nuc, str):
             nuc = self.index_nuc[nuc]
 
@@ -120,12 +124,29 @@ class AtomNumber:
         return [nuc for nuc, ind in self.index_nuc.items()
                 if ind < self.n_nuc_burn]
 
-    def get_atom_density(self, mat, nuc):
-        """Accesses atom density instead of total number.
+    def get_mat_volume(self, mat):
+        """Return material volume
 
         Parameters
         ----------
-        mat : str, int or slice
+        mat : str, int, openmc.Material, or slice
+            Material index.
+
+        Returns
+        -------
+        float
+            Material volume in [cm^3]
+
+        """
+        mat = self._get_mat_index(mat)
+        return self.volume[mat]
+
+    def get_atom_density(self, mat, nuc):
+        """Return atom density of given material and nuclide
+
+        Parameters
+        ----------
+        mat : str, int, openmc.Material or slice
             Material index.
         nuc : str, int or slice
             Nuclide index.
@@ -136,19 +157,43 @@ class AtomNumber:
             Density in [atom/cm^3]
 
         """
-        if isinstance(mat, str):
-            mat = self.index_mat[mat]
+        mat = self._get_mat_index(mat)
         if isinstance(nuc, str):
             nuc = self.index_nuc[nuc]
 
         return self[mat, nuc] / self.volume[mat]
+
+    def get_atom_densities(self, mat, units='atom/b-cm'):
+        """Return atom densities for a given material
+
+        Parameters
+        ----------
+        mat : str, int, openmc.Material or slice
+            Material index.
+        units : {"atom/b-cm", "atom/cm3"}, optional
+            Units for the returned concentration. Default is ``"atom/b-cm"``
+
+            .. versionadded:: 0.13.1
+
+        Returns
+        -------
+        dict
+            Dictionary mapping nuclides to atom densities
+
+        """
+        mat = self._get_mat_index(mat)
+        normalization = (1.0e-24 if units == 'atom/b-cm' else 1.0) / self.volume[mat]
+        return {
+            name: normalization * self[mat, nuc]
+            for name, nuc in self.index_nuc.items()
+        }
 
     def set_atom_density(self, mat, nuc, val):
         """Sets atom density instead of total number.
 
         Parameters
         ----------
-        mat : str, int or slice
+        mat : str, int, openmc.Material or slice
             Material index.
         nuc : str, int or slice
             Nuclide index.
@@ -156,8 +201,7 @@ class AtomNumber:
             Array of densities to set in [atom/cm^3]
 
         """
-        if isinstance(mat, str):
-            mat = self.index_mat[mat]
+        mat = self._get_mat_index(mat)
         if isinstance(nuc, str):
             nuc = self.index_nuc[nuc]
 
@@ -168,7 +212,7 @@ class AtomNumber:
 
         Parameters
         ----------
-        mat : str, int or slice
+        mat : str, int, openmc.Material or slice
             Material index.
 
         Returns
@@ -177,9 +221,7 @@ class AtomNumber:
             The slice requested in [atom].
 
         """
-        if isinstance(mat, str):
-            mat = self.index_mat[mat]
-
+        mat = self._get_mat_index(mat)
         return self[mat, :self.n_nuc_burn]
 
     def set_mat_slice(self, mat, val):
@@ -187,15 +229,13 @@ class AtomNumber:
 
         Parameters
         ----------
-        mat : str, int or slice
+        mat : str, int, openmc.Material, or slice
             Material index.
         val : numpy.ndarray
             The slice to set in [atom]
 
         """
-        if isinstance(mat, str):
-            mat = self.index_mat[mat]
-
+        mat = self._get_mat_index(mat)
         self[mat, :self.n_nuc_burn] = val
 
     def set_density(self, total_density):

@@ -5,6 +5,7 @@
 #include <iostream>
 #include <stdexcept> // for out_of_range
 
+#include "fmt/format.h"
 #include "openmc/array.h"
 #include "openmc/vector.h"
 
@@ -82,6 +83,11 @@ struct Position {
     return x * other.x + y * other.y + z * other.z;
   }
   inline double norm() const { return std::sqrt(x * x + y * y + z * z); }
+  inline Position cross(Position other) const
+  {
+    return {y * other.z - z * other.y, z * other.x - x * other.z,
+      x * other.y - y * other.x};
+  }
 
   //! Reflect a direction across a normal vector
   //! \param[in] other Vector to reflect across
@@ -209,5 +215,19 @@ std::ostream& operator<<(std::ostream& os, Position a);
 using Direction = Position;
 
 } // namespace openmc
+
+namespace fmt {
+
+template<>
+struct formatter<openmc::Position> : formatter<std::string> {
+  template<typename FormatContext>
+  auto format(const openmc::Position& pos, FormatContext& ctx)
+  {
+    return formatter<std::string>::format(
+      fmt::format("({}, {}, {})", pos.x, pos.y, pos.z), ctx);
+  }
+};
+
+} // namespace fmt
 
 #endif // OPENMC_POSITION_H

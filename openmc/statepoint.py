@@ -11,7 +11,7 @@ from uncertainties import ufloat
 import openmc
 import openmc.checkvalue as cv
 
-_VERSION_STATEPOINT = 17
+_VERSION_STATEPOINT = 18
 
 
 class StatePoint:
@@ -63,6 +63,8 @@ class StatePoint:
         datatype has fields 'name', 'sum', 'sum_sq', 'mean', and 'std_dev'.
     k_combined : uncertainties.UFloat
         Combined estimator for k-effective
+
+        .. deprecated:: 0.13.1
     k_col_abs : float
         Cross-product of collision and absorption estimates of k-effective
     k_col_tra : float
@@ -71,10 +73,14 @@ class StatePoint:
         Cross-product of absorption and tracklength estimates of k-effective
     k_generation : numpy.ndarray
         Estimate of k-effective for each batch/generation
+    keff : uncertainties.UFloat
+        Combined estimator for k-effective
     alpha_final : numpy.ndarray
         Final alpha value
     alpha_generation : numpy.ndarray
         Estimate of alpha for each batch/generation
+
+        .. versionadded:: 0.13.1
     meshes : dict
         Dictionary whose keys are mesh IDs and whose values are MeshBase objects
     n_batches : int
@@ -266,18 +272,19 @@ class StatePoint:
             return None
 
     @property
-    def alpha_generation(self):
+    def keff(self):
         if self.run_mode == 'eigenvalue':
-            return self._f['alpha_generation'][()]
+            return ufloat(*self._f['k_combined'][()])
         else:
             return None
 
     @property
     def k_combined(self):
-        if self.run_mode == 'eigenvalue':
-            return ufloat(*self._f['k_combined'][()])
-        else:
-            return None
+        warnings.warn(
+            "The 'k_combined' property has been renamed to 'keff' and will be "
+            "removed in a future version of OpenMC.", FutureWarning
+        )
+        return self.keff
 
     @property
     def k_col_abs(self):
@@ -297,6 +304,13 @@ class StatePoint:
     def k_abs_tra(self):
         if self.run_mode == 'eigenvalue':
             return self._f['k_abs_tra'][()]
+        else:
+            return None
+
+    @property
+    def alpha_generation(self):
+        if self.run_mode == 'eigenvalue':
+            return self._f['alpha_generation'][()]
         else:
             return None
 
@@ -377,6 +391,26 @@ class StatePoint:
     def sparse(self):
         return self._sparse
 
+    @sparse.setter
+    def sparse(self, sparse):
+        """Convert tally data from NumPy arrays to SciPy list of lists (LIL)
+        sparse matrices, and vice versa.
+
+        This property may be used to reduce the amount of data in memory during
+        tally data processing. The tally data will be stored as SciPy LIL
+        matrices internally within each Tally object. All tally data access
+        properties and methods will return data as a dense NumPy array.
+
+        """
+
+        cv.check_type('sparse', sparse, bool)
+        self._sparse = sparse
+
+        # Update tally sparsities
+        if self._tallies_read:
+            for tally_id in self.tallies:
+                self.tallies[tally_id].sparse = self.sparse
+
     @property
     def tallies(self):
         if self.tallies_present and not self._tallies_read:
@@ -407,6 +441,10 @@ class StatePoint:
                     tally = openmc.Tally(tally_id)
                     tally._sp_filename = self._f.filename
                     tally.name = group['name'][()].decode() if 'name' in group else ''
+
+                    # Check if tally has multiply_density attribute
+                    if "multiply_density" in group.attrs:
+                        tally.multiply_density = group.attrs["multiply_density"].item() > 0
 
                     # Read the number of realizations
                     n_realizations = group['n_realizations'][()]
@@ -489,26 +527,6 @@ class StatePoint:
     @property
     def summary(self):
         return self._summary
-
-    @sparse.setter
-    def sparse(self, sparse):
-        """Convert tally data from NumPy arrays to SciPy list of lists (LIL)
-        sparse matrices, and vice versa.
-
-        This property may be used to reduce the amount of data in memory during
-        tally data processing. The tally data will be stored as SciPy LIL
-        matrices internally within each Tally object. All tally data access
-        properties and methods will return data as a dense NumPy array.
-
-        """
-
-        cv.check_type('sparse', sparse, bool)
-        self._sparse = sparse
-
-        # Update tally sparsities
-        if self._tallies_read:
-            for tally_id in self.tallies:
-                self.tallies[tally_id].sparse = self.sparse
 
     def close(self):
         """Close the statepoint HDF5 file and the corresponding

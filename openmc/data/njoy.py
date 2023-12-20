@@ -51,7 +51,7 @@ _THERMAL_DATA = {
     'c_Li_in_FLiBe': ThermalTuple('liflib', [3006, 3007], 1),
     'c_Mg24': ThermalTuple('mg24', [12024], 1),
     'c_N_in_UN': ThermalTuple('n-un', [7014, 7015], 1),
-    'c_O_in_Al2O3': ThermalTuple('osap00', [92238], 1),
+    'c_O_in_Al2O3': ThermalTuple('osap00', [8016, 8017, 8018], 1),
     'c_O_in_BeO': ThermalTuple('obeo', [8016, 8017, 8018], 1),
     'c_O_in_D2O': ThermalTuple('od2o', [8016, 8017, 8018], 1),
     'c_O_in_H2O_solid': ThermalTuple('oice', [8016, 8017, 8018], 1),
@@ -64,8 +64,8 @@ _THERMAL_DATA = {
     'c_Si_in_SiC': ThermalTuple('sisic', [14028, 14029, 14030], 1),
     'c_SiO2_alpha': ThermalTuple('sio2-a', [8016, 8017, 8018, 14028, 14029, 14030], 3),
     'c_SiO2_beta': ThermalTuple('sio2-b', [8016, 8017, 8018, 14028, 14029, 14030], 3),
-    'c_U_in_UN': ThermalTuple('u-un', [92238], 1),
-    'c_U_in_UO2': ThermalTuple('uuo2', [8016, 8017, 8018], 1),
+    'c_U_in_UN': ThermalTuple('u-un', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_in_UO2': ThermalTuple('uuo2', [92233, 92234, 92235, 92236, 92238], 1),
     'c_Y_in_YH2': ThermalTuple('yyh2', [39089], 1),
     'c_Zr_in_ZrH': ThermalTuple('zrzrh', [40000, 40090, 40091, 40092, 40094, 40096], 1),
     'c_Zr_in_ZrH2': ThermalTuple('zrzrh2', [40000, 40090, 40091, 40092, 40094, 40096], 1),
@@ -127,7 +127,7 @@ acer / %%%%%%%%%%%%%%%%%%%%%%%% Write out in ACE format %%%%%%%%%%%%%%%%%%%%%%%%
 1 0 1 .{ext} /
 '{library}: {zsymam} at {temperature}'/
 {mat} {temperature}
-1 1/
+1 1 {ismooth}/
 /
 """
 
@@ -248,7 +248,8 @@ def make_pendf(filename, pendf='pendf', error=0.001, stdout=False):
 
 def make_ace(filename, temperatures=None, acer=True, xsdir=None,
              output_dir=None, pendf=False, error=0.001, broadr=True,
-             heatr=True, gaspr=True, purr=True, evaluation=None, **kwargs):
+             heatr=True, gaspr=True, purr=True, evaluation=None,
+             smoothing=True, **kwargs):
     """Generate incident neutron ACE file from an ENDF file
 
     File names can be passed to
@@ -298,6 +299,8 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
     evaluation : openmc.data.endf.Evaluation, optional
         If the ENDF file contains multiple material evaluations, this argument
         indicates which evaluation should be used.
+    smoothing : bool, optional
+        If the smoothing option (ACER card 6) is on (True) or off (False).
     **kwargs
         Keyword arguments passed to :func:`openmc.data.njoy.run`
 
@@ -380,6 +383,7 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
 
     # acer
     if acer:
+        ismooth = int(smoothing)
         nacer_in = nlast
         for i, temperature in enumerate(temperatures):
             # Extend input with an ACER run for each temperature

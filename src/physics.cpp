@@ -10,6 +10,7 @@
 #include "openmc/material.h"
 #include "openmc/math_functions.h"
 #include "openmc/message_passing.h"
+#include "openmc/ncrystal_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
 #include "openmc/physics_common.h"
@@ -29,6 +30,7 @@
 
 #include <algorithm> // for max, min, max_element
 #include <cmath>     // for sqrt, exp, log, abs, copysign
+#include <xtensor/xview.hpp>
 
 namespace openmc {
 
@@ -45,15 +47,9 @@ void collision(Particle& p)
   switch (p.type()) {
   case ParticleType::neutron:
     sample_neutron_reaction(p);
-    if (settings::weight_windows_on) {
-      apply_weight_windows(p);
-    }
     break;
   case ParticleType::photon:
     sample_photon_reaction(p);
-    if (settings::weight_windows_on) {
-      apply_weight_windows(p);
-    }
     break;
   case ParticleType::electron:
     sample_electron_reaction(p);
@@ -63,10 +59,12 @@ void collision(Particle& p)
     break;
   }
 
+  if (settings::weight_window_checkpoint_collision)
+    apply_weight_windows(p);
+
   // Kill particle if energy falls below cutoff
   int type = static_cast<int>(p.type());
   if (p.E() < settings::energy_cutoff[type]) {
-    p.alive() = false;
     p.wgt() = 0.0;
   }
 
@@ -105,7 +103,7 @@ void sample_neutron_reaction(Particle& p)
 
   const auto& nuc {data::nuclides[i_nuclide]};
 
-  if (nuc->fissionable_) {
+  if (nuc->fissionable_ && p.neutron_xs(i_nuclide).fission > 0.0) {
     auto& rx = sample_fission(i_nuclide, p);
     if (settings::run_mode == RunMode::EIGENVALUE) {
       create_fission_sites(p, i_nuclide, rx);
@@ -134,28 +132,29 @@ void sample_neutron_reaction(Particle& p)
 
   if (p.neutron_xs(i_nuclide).absorption > 0.0) {
     absorption(p, i_nuclide);
-  } else {
-    p.wgt_absorb() = 0.0;
   }
   if (!p.alive())
     return;
 
   // Sample a scattering reaction and determine the secondary energy of the
   // exiting neutron
-  scatter(p, i_nuclide);
+  const auto& ncrystal_mat = model::materials[p.material()]->ncrystal_mat();
+  if (ncrystal_mat && p.E() < NCRYSTAL_MAX_ENERGY) {
+    ncrystal_mat.scatter(p);
+  } else {
+    scatter(p, i_nuclide);
+  }
 
   // Advance URR seed stream 'N' times after energy changes
   if (p.E() != p.E_last()) {
-    p.stream() = STREAM_URR_PTABLE;
-    advance_prn_seed(data::nuclides.size(), p.current_seed());
-    p.stream() = STREAM_TRACKING;
+    advance_prn_seed(data::nuclides.size(), &p.seeds(STREAM_URR_PTABLE));
   }
 
   // Play russian roulette if survival biasing is turned on
   if (settings::survival_biasing) {
-    russian_roulette(p);
-    if (!p.alive())
-      return;
+    if (p.wgt() < settings::weight_cutoff) {
+      russian_roulette(p, settings::weight_survive);
+    }
   }
 }
 
@@ -211,7 +210,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     site.surf_id = 0;
 
     // Sample delayed group and angle/energy for fission reaction
-    sample_fission_neutron(i_nuclide, rx, p.E(), &site, p.current_seed());
+    sample_fission_neutron(i_nuclide, rx, &site, p);
 
     // Store fission site in bank
     if (use_fission_bank) {
@@ -277,7 +276,7 @@ void sample_photon_reaction(Particle& p)
   int photon = static_cast<int>(ParticleType::photon);
   if (p.E() < settings::energy_cutoff[photon]) {
     p.E() = 0.0;
-    p.alive() = false;
+    p.wgt() = 0.0;
     return;
   }
 
@@ -350,27 +349,35 @@ void sample_photon_reaction(Particle& p)
 
   // Photoelectric effect
   double prob_after = prob + micro.photoelectric;
+
   if (prob_after > cutoff) {
+    // Get grid index, interpolation factor, and bounding subshell
+    // cross sections
+    int i_grid = micro.index_grid;
+    double f = micro.interp_factor;
+    const auto& xs_lower = xt::row(element.cross_sections_, i_grid);
+    const auto& xs_upper = xt::row(element.cross_sections_, i_grid + 1);
+
     for (int i_shell = 0; i_shell < element.shells_.size(); ++i_shell) {
       const auto& shell {element.shells_[i_shell]};
 
-      // Get grid index and interpolation factor
-      int i_grid = micro.index_grid;
-      double f = micro.interp_factor;
-
       // Check threshold of reaction
-      int i_start = shell.threshold;
-      if (i_grid < i_start)
+      if (xs_lower(i_shell) == 0)
         continue;
 
-      // Evaluation subshell photoionization cross section
-      double xs = std::exp(shell.cross_section(i_grid - i_start) +
-                           f * (shell.cross_section(i_grid + 1 - i_start) -
-                                 shell.cross_section(i_grid - i_start)));
+      //  Evaluation subshell photoionization cross section
+      prob += std::exp(
+        xs_lower(i_shell) + f * (xs_upper(i_shell) - xs_lower(i_shell)));
 
-      prob += xs;
       if (prob > cutoff) {
-        double E_electron = p.E() - shell.binding_energy;
+        // Determine binding energy based on whether atomic relaxation data is
+        // present (if not, use value from Compton profile data)
+        double binding_energy = element.has_atomic_relaxation_
+                                  ? shell.binding_energy
+                                  : element.binding_energy_[i_shell];
+
+        // Determine energy of secondary electron
+        double E_electron = p.E() - binding_energy;
 
         // Sample mu using non-relativistic Sauter distribution.
         // See Eqns 3.19 and 3.20 in "Implementing a photon physics
@@ -402,7 +409,7 @@ void sample_photon_reaction(Particle& p)
         element.atomic_relaxation(i_shell, p);
         p.event() = TallyEvent::ABSORB;
         p.event_mt() = 533 + shell.index_subshell;
-        p.alive() = false;
+        p.wgt() = 0.0;
         p.E() = 0.0;
         return;
       }
@@ -428,7 +435,7 @@ void sample_photon_reaction(Particle& p)
 
     p.event() = TallyEvent::ABSORB;
     p.event_mt() = PAIR_PROD;
-    p.alive() = false;
+    p.wgt() = 0.0;
     p.E() = 0.0;
   }
 }
@@ -443,7 +450,7 @@ void sample_electron_reaction(Particle& p)
   }
 
   p.E() = 0.0;
-  p.alive() = false;
+  p.wgt() = 0.0;
   p.event() = TallyEvent::ABSORB;
 }
 
@@ -464,7 +471,7 @@ void sample_positron_reaction(Particle& p)
   p.create_secondary(p.wgt(), -u, MASS_ELECTRON_EV, ParticleType::photon);
 
   p.E() = 0.0;
-  p.alive() = false;
+  p.wgt() = 0.0;
   p.event() = TallyEvent::ABSORB;
 }
 
@@ -546,23 +553,15 @@ Reaction& sample_fission(int i_nuclide, Particle& p)
     }
   }
 
-  // Get grid index and interpolatoin factor and sample fission cdf
-  int i_temp = p.neutron_xs(i_nuclide).index_temp;
-  int i_grid = p.neutron_xs(i_nuclide).index_grid;
-  double f = p.neutron_xs(i_nuclide).interp_factor;
+  // Get grid index and interpolation factor and sample fission cdf
+  const auto& micro = p.neutron_xs(i_nuclide);
   double cutoff = prn(p.current_seed()) * p.neutron_xs(i_nuclide).fission;
   double prob = 0.0;
 
   // Loop through each partial fission reaction type
   for (auto& rx : nuc->fission_rx_) {
-    // if energy is below threshold for this reaction, skip it
-    int threshold = rx->xs_[i_temp].threshold;
-    if (i_grid < threshold)
-      continue;
-
     // add to cumulative probability
-    prob += (1.0 - f) * rx->xs_[i_temp].value[i_grid - threshold] +
-            f * rx->xs_[i_temp].value[i_grid - threshold + 1];
+    prob += rx->xs(micro);
 
     // Create fission bank sites if fission occurs
     if (prob > cutoff)
@@ -578,25 +577,20 @@ void sample_photon_product(
   int i_nuclide, Particle& p, int* i_rx, int* i_product)
 {
   // Get grid index and interpolation factor and sample photon production cdf
-  int i_temp = p.neutron_xs(i_nuclide).index_temp;
-  int i_grid = p.neutron_xs(i_nuclide).index_grid;
-  double f = p.neutron_xs(i_nuclide).interp_factor;
-  double cutoff = prn(p.current_seed()) * p.neutron_xs(i_nuclide).photon_prod;
+  const auto& micro = p.neutron_xs(i_nuclide);
+  double cutoff = prn(p.current_seed()) * micro.photon_prod;
   double prob = 0.0;
 
   // Loop through each reaction type
   const auto& nuc {data::nuclides[i_nuclide]};
   for (int i = 0; i < nuc->reactions_.size(); ++i) {
-    const auto& rx = nuc->reactions_[i];
-    int threshold = rx->xs_[i_temp].threshold;
-
-    // if energy is below threshold for this reaction, skip it
-    if (i_grid < threshold)
-      continue;
-
     // Evaluate neutron cross section
-    double xs = ((1.0 - f) * rx->xs_[i_temp].value[i_grid - threshold] +
-                 f * (rx->xs_[i_temp].value[i_grid - threshold + 1]));
+    const auto& rx = nuc->reactions_[i];
+    double xs = rx->xs(micro);
+
+    // if cross section is zero for this reaction, skip it
+    if (xs == 0.0)
+      continue;
 
     for (int j = 0; j < rx->products_.size(); ++j) {
       if (rx->products_[j].particle_ == ParticleType::photon) {
@@ -629,20 +623,19 @@ void absorption(Particle& p, int i_nuclide)
 {
   if (settings::survival_biasing) {
     // Determine weight absorbed in survival biasing
-    p.wgt_absorb() = p.wgt() * p.neutron_xs(i_nuclide).absorption /
-                     p.neutron_xs(i_nuclide).total;
+    const double wgt_absorb = p.wgt() * p.neutron_xs(i_nuclide).absorption /
+                              p.neutron_xs(i_nuclide).total;
 
     // Adjust weight of particle by probability of absorption
-    p.wgt() -= p.wgt_absorb();
-    p.wgt_last() = p.wgt();
+    p.wgt() -= wgt_absorb;
 
     // Score implicit absorption estimate of keff
     if (settings::run_mode == RunMode::EIGENVALUE) {
       // Get the effective, time-corrected nu_fission if alpha_mode
-      double nu_fission_eff = (settings::alpha_mode) ? 
-                            p.neutron_xs(i_nuclide).nu_fission_alpha :
-                            p.neutron_xs(i_nuclide).nu_fission;
-      p.keff_tally_absorption() += p.wgt_absorb() * nu_fission_eff /
+      double nu_fission = (settings::alpha_mode) ? 
+                          p.neutron_xs(i_nuclide).nu_fission_alpha :
+                          p.neutron_xs(i_nuclide).nu_fission;
+      p.keff_tally_absorption() += wgt_absorb * nu_fission /
                                    p.neutron_xs(i_nuclide).absorption;
     }
   } else {
@@ -653,13 +646,13 @@ void absorption(Particle& p, int i_nuclide)
       if (settings::run_mode == RunMode::EIGENVALUE) {
         // Get the effective, time-corrected nu_fission if alpha_mode
         double nu_fission_eff = (settings::alpha_mode) ? 
-                              p.neutron_xs(i_nuclide).nu_fission_alpha :
-                              p.neutron_xs(i_nuclide).nu_fission;
+                                p.neutron_xs(i_nuclide).nu_fission_alpha :
+                                p.neutron_xs(i_nuclide).nu_fission;
         p.keff_tally_absorption() += p.wgt() * nu_fission_eff /
                                      p.neutron_xs(i_nuclide).absorption;
       }
 
-      p.alive() = false;
+      p.wgt() = 0.0;
       p.event() = TallyEvent::ABSORB;
       p.event_mt() = N_DISAPPEAR;
     }
@@ -675,8 +668,6 @@ void scatter(Particle& p, int i_nuclide)
   const auto& nuc {data::nuclides[i_nuclide]};
   const auto& micro {p.neutron_xs(i_nuclide)};
   int i_temp = micro.index_temp;
-  int i_grid = micro.index_grid;
-  double f = micro.interp_factor;
 
   // For tallying purposes, this routine might be called directly. In that
   // case, we need to sample a reaction via the cutoff variable
@@ -718,26 +709,13 @@ void scatter(Particle& p, int i_nuclide)
     // =======================================================================
     // INELASTIC SCATTERING
 
-    int j = 0;
+    int n = nuc->index_inelastic_scatter_.size();
     int i = 0;
-    while (prob < cutoff) {
+    for (int j = 0; j < n && prob < cutoff; ++j) {
       i = nuc->index_inelastic_scatter_[j];
-      ++j;
-
-      // Check to make sure inelastic scattering reaction sampled
-      if (i >= nuc->reactions_.size()) {
-        p.write_restart();
-        fatal_error("Did not sample any reaction for nuclide " + nuc->name_);
-      }
-
-      // if energy is below threshold for this reaction, skip it
-      const auto& xs {nuc->reactions_[i]->xs_[i_temp]};
-      if (i_grid < xs.threshold)
-        continue;
 
       // add to cumulative probability
-      prob += (1.0 - f) * xs.value[i_grid - xs.threshold] +
-              f * xs.value[i_grid - xs.threshold + 1];
+      prob += nuc->reactions_[i]->xs(micro);
     }
 
     // Perform collision physics for inelastic scattering
@@ -961,9 +939,8 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
 
       // cdf value at upper bound attainable energy
       double m = (nuc.xs_cdf_[i_E_up + 1] - nuc.xs_cdf_[i_E_up]) /
-          (nuc.energy_0K_[i_E_up + 1] - nuc.energy_0K_[i_E_up]);
-      double cdf_up =
-        nuc.xs_cdf_[i_E_up] + m * (E_up - nuc.energy_0K_[i_E_up]);
+                 (nuc.energy_0K_[i_E_up + 1] - nuc.energy_0K_[i_E_up]);
+      double cdf_up = nuc.xs_cdf_[i_E_up] + m * (E_up - nuc.energy_0K_[i_E_up]);
 
       while (true) {
         // directly sample Maxwellian
@@ -971,9 +948,8 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
 
         // sample a relative energy using the xs cdf
         double cdf_rel = cdf_low + prn(seed) * (cdf_up - cdf_low);
-        int i_E_rel = lower_bound_index(nuc.xs_cdf_.begin() + i_E_low, 
-                                        nuc.xs_cdf_.begin() + i_E_up+2, 
-                                        cdf_rel);
+        int i_E_rel = lower_bound_index(nuc.xs_cdf_.begin() + i_E_low,
+          nuc.xs_cdf_.begin() + i_E_up + 2, cdf_rel);
         double E_rel = nuc.energy_0K_[i_E_low + i_E_rel];
         double m = (nuc.xs_cdf_[i_E_low + i_E_rel + 1] -
                      nuc.xs_cdf_[i_E_low + i_E_rel]) /
@@ -1052,9 +1028,13 @@ Direction sample_cxs_target_velocity(
   return vt * rotate_angle(u, mu, nullptr, seed);
 }
 
-void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in,
-  SourceSite* site, uint64_t* seed)
+void sample_fission_neutron(
+  int i_nuclide, const Reaction& rx, SourceSite* site, Particle& p)
 {
+  // Get attributes of particle
+  double E_in = p.E();
+  uint64_t* seed = p.current_seed();
+
   // Determine total nu, delayed nu, and delayed neutron fraction
   const auto& nuc {data::nuclides[i_nuclide]};
   double nu_t, nu_d;
@@ -1128,9 +1108,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in,
   }
 
   // Sample azimuthal angle uniformly in [0, 2*pi) and assign angle
-  // TODO: account for dependence on incident neutron?
-  Direction ref(1., 0., 0.);
-  site->u = rotate_angle(ref, mu, nullptr, seed);
+  site->u = rotate_angle(p.u(), mu, nullptr, seed);
 }
 
 void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
@@ -1172,7 +1150,7 @@ void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
 
   // evaluate yield
   double yield = (*rx.products_[0].yield_)(E_in);
-  if (std::floor(yield) == yield) {
+  if (std::floor(yield) == yield && yield > 0) {
     // If yield is integral, create exactly that many secondary particles
     for (int i = 0; i < static_cast<int>(std::round(yield)) - 1; ++i) {
       p.create_secondary(p.wgt(), p.u(), p.E(), ParticleType::neutron);

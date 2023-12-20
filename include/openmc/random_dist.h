@@ -64,23 +64,6 @@ extern "C" double watt_spectrum(double a, double b, uint64_t* seed);
 
 extern "C" double normal_variate(double mean, double std_dev, uint64_t* seed);
 
-//==============================================================================
-//! Samples an energy from the Muir (Gaussian) energy-dependent distribution.
-//!
-//! This is another form of the Gaussian distribution but with more easily
-//! modifiable parameters
-//! https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
-//!
-//! \param e0 peak neutron energy [eV]
-//! \param m_rat ratio of the fusion reactants to AMU
-//! \param kt the ion temperature of the reactants [eV]
-//! \param seed A pointer to the pseudorandom seed
-//! \result The sampled outgoing energy
-//==============================================================================
-
-extern "C" double muir_spectrum(
-  double e0, double m_rat, double kt, uint64_t* seed);
-
 } // namespace openmc
 
 #endif // OPENMC_RANDOM_DIST_H

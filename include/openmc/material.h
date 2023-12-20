@@ -12,6 +12,7 @@
 #include "openmc/bremsstrahlung.h"
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
+#include "openmc/ncrystal_interface.h"
 #include "openmc/particle.h"
 #include "openmc/vector.h"
 
@@ -89,6 +90,12 @@ public:
   void set_densities(
     const vector<std::string>& name, const vector<double>& density);
 
+  //! Clone the material by deep-copying all members, except for the ID,
+  //  which will get auto-assigned to the next available ID. After creating
+  //  the new material, it is added to openmc::model::materials.
+  //! \return reference to the cloned material
+  Material & clone();
+
   //----------------------------------------------------------------------------
   // Accessors
 
@@ -112,6 +119,9 @@ public:
   //! \param[in] density Density value
   //! \param[in] units Units of density
   void set_density(double density, gsl::cstring_span units);
+
+  //! Set temperature of the material
+  void set_temperature(double temperature) { temperature_ = temperature; };
 
   //! Get nuclides in material
   //! \return Indices into the global nuclides vector
@@ -148,12 +158,17 @@ public:
   //! \return Temperature in [K]
   double temperature() const;
 
+  //! Get pointer to NCrystal material object
+  //! \return Pointer to NCrystal material object
+  const NCrystalMat& ncrystal_mat() const { return ncrystal_mat_; };
+
   //----------------------------------------------------------------------------
   // Data
   int32_t id_ {C_NONE};                 //!< Unique ID
   std::string name_;                    //!< Name of material
   vector<int> nuclide_;                 //!< Indices in nuclides vector
   vector<int> element_;                 //!< Indices in elements vector
+  NCrystalMat ncrystal_mat_;            //!< NCrystal material object
   xt::xtensor<double, 1> atom_density_; //!< Nuclide atom density in [atom/b-cm]
   double density_;                      //!< Total atom density in [atom/b-cm]
   double density_gpcc_;                 //!< Total atom density in [g/cm^3]
@@ -217,6 +232,10 @@ double density_effect(const vector<double>& f, const vector<double>& e_b_sq,
 
 //! Read material data from materials.xml
 void read_materials_xml();
+
+//! Read material data XML node
+//! \param[in] root node of materials XML element
+void read_materials_xml(pugi::xml_node root);
 
 void free_memory_material();
 

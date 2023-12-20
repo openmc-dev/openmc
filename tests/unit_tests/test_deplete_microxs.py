@@ -59,32 +59,29 @@ def test_csv():
     remove('temp_xs.csv')
 
 def test_from_multigroup_flux():
+    energies = [0., 6.25e-1, 5.53e3, 8.21e5, 2.e7]
+    flux = [1.1e-7, 1.2e-6, 1.3e-5, 1.4e-4]
+    chain_file = Path(__file__).parents[1] / 'chain_simple.xml'
+    kwargs = {'multigroup_flux': flux, 'chain_file': chain_file}
 
     # test with energy group structure from string
-    microxs = MicroXS.from_multigroup_flux(
-        energies='CASMO-4',
-        multigroup_flux=[1.1e-7, 1.2e-6, 1.3e-5, 1.4e-4],
-        temperature=293,
-        chain_file=Path(__file__).parents[1] / 'chain_simple.xml'
-    )
+    microxs = MicroXS.from_multigroup_flux(energies='CASMO-4', **kwargs)
     assert isinstance(microxs, MicroXS)
 
     # test with energy group structure as floats
-    microxs = MicroXS.from_multigroup_flux(
-        energies=[0., 6.25e-1, 5.53e3, 8.21e5, 2.e7],
-        multigroup_flux=[1.1e-7, 1.2e-6, 1.3e-5, 1.4e-4],
-        temperature=293,
-        chain_file=Path(__file__).parents[1] / 'chain_simple.xml'
-    )
+    microxs = MicroXS.from_multigroup_flux(energies=energies, **kwargs)
     assert isinstance(microxs, MicroXS)
 
     # test with nuclides provided
     microxs = MicroXS.from_multigroup_flux(
-        energies=[0., 6.25e-1, 5.53e3, 8.21e5, 2.e7],
-        multigroup_flux=[1.1e-7, 1.2e-6, 1.3e-5, 1.4e-4],
-        temperature=293,
-        chain_file=Path(__file__).parents[1] / 'chain_simple.xml',
-        nuclides=['Gd157']
+        energies=energies, nuclides=['Gd157', 'H1'], **kwargs
     )
-    assert microxs.nuclides == ['Gd157']
     assert isinstance(microxs, MicroXS)
+    assert microxs.nuclides == ['Gd157', 'H1']
+
+    # test with reactions provided
+    microxs = MicroXS.from_multigroup_flux(
+        energies=energies, reactions=['fission', '(n,2n)'], **kwargs
+    )
+    assert isinstance(microxs, MicroXS)
+    assert microxs.reactions == ['fission', '(n,2n)']

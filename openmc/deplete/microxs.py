@@ -15,6 +15,7 @@ from openmc.checkvalue import check_type, check_value, check_iterable_type, Path
 from openmc.exceptions import DataError
 from openmc import StatePoint
 from openmc.mgxs import GROUP_STRUCTURES
+from openmc.data import REACTION_MT
 import openmc
 from .abc import change_directory
 from .chain import Chain, REACTIONS
@@ -208,7 +209,8 @@ class MicroXS:
         multigroup_flux: Sequence[float],
         chain_file: Optional[PathLike] = None,
         temperature: float = 293.6,
-        nuclides: Optional[Iterable[str]] = None,
+        nuclides: Optional[Sequence[str]] = None,
+        reactions: Optional[Sequence[str]] = None,
         **init_kwargs: dict,
     ) -> MicroXS:
         """Generated microscopic cross sections from a known flux.
@@ -217,6 +219,8 @@ class MicroXS:
         sections available. MicroXS entry will be 0 if the nuclide cross section
         is not found.
 
+        .. versionadded:: 0.14.1
+
         Parameters
         ----------
         energies : iterable of float or str
@@ -224,13 +228,16 @@ class MicroXS:
         multi_group_flux : iterable of float
             Energy-dependent multigroup flux values
         chain_file : str, optional
-            Path to the depletion chain XML file that will be used in
-            depletion simulation.  Defaults to ``openmc.config['chain_file']``.
+            Path to the depletion chain XML file that will be used in depletion
+            simulation.  Defaults to ``openmc.config['chain_file']``.
         temperature : int, optional
             Temperature for cross section evaluation in [K].
-        nuclides : list of str
-                Nuclides to get cross sections for. If not specified, all burnable
-                nuclides from the depletion chain file are used.
+        nuclides : list of str, optional
+            Nuclides to get cross sections for. If not specified, all burnable
+            nuclides from the depletion chain file are used.
+        reactions : list of str, optional
+            Reactions to get cross sections for. If not specified, all neutron
+            reactions listed in the depletion chain file are used.
         **init_kwargs : dict
             Keyword arguments passed to :func:`openmc.lib.init`
 
@@ -264,18 +271,17 @@ class MicroXS:
             nuclides = chain.nuclides
             nuclides = [nuc.name for nuc in nuclides]
 
-        # get reactions and nuclides from chain file
-        reactions = chain.reactions
-        if 'fission' in reactions:
-            # send to back
-            reactions.append(reactions.pop(reactions.index('fission')))
-        # convert reactions to mt file
-        #! I feel like this zero indexing will backfire
-        #! There has to be a better way for this
-        mts = [list(REACTIONS[reaction].mts)[0] for reaction in reactions if reaction != 'fission']
-        if 'fission' in reactions:
-            mts.append(18) # fission is not in the REACTIONS
+        # Get reaction MT values. If no reactions specified, default to the
+        # reactions available in the chain file
+        if reactions is None:
+            reactions = chain.reactions
+        mts = [REACTION_MT[name] for name in reactions]
 
+        # Normalize multigroup flux
+        multigroup_flux = np.asarray(multigroup_flux)
+        multigroup_flux /= multigroup_flux.sum()
+
+        # Create 2D array for microscopic cross sections
         microxs_arr = np.zeros((len(nuclides), len(mts)))
 
         with TemporaryDirectory() as tmpdir:
@@ -295,12 +301,8 @@ class MicroXS:
                 particles=1, batches=1, output={'summary': False})
 
             with change_directory(tmpdir):
-                # Export model
+                # Export model within temporary directory
                 model.export_to_model_xml()
-
-                # Normalize multigroup flux
-                multigroup_flux = np.asarray(multigroup_flux)
-                norm_multigroup_flux = multigroup_flux / multigroup_flux.sum()
 
                 with openmc.lib.run_in_memory(**init_kwargs):
                     # For each nuclide and reaction, compute the flux-averaged
@@ -311,7 +313,7 @@ class MicroXS:
                         lib_nuc = openmc.lib.nuclides[nuc]
                         for mt_index, mt in enumerate(mts):
                             xs = lib_nuc.collapse_rate(
-                                mt, temperature, energies, norm_multigroup_flux
+                                mt, temperature, energies, multigroup_flux
                             )
                             microxs_arr[nuc_index, mt_index] = xs
 

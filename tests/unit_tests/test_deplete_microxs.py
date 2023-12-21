@@ -51,12 +51,14 @@ def test_from_array():
                        r'match dimensions of data array of shape \(\d*\, \d*\)'):
         MicroXS(data[:, 0], nuclides, reactions)
 
+
 def test_csv():
     ref_xs = MicroXS.from_csv(ONE_GROUP_XS)
     ref_xs.to_csv('temp_xs.csv')
     temp_xs = MicroXS.from_csv('temp_xs.csv')
     assert np.all(ref_xs.data == temp_xs.data)
     remove('temp_xs.csv')
+
 
 def test_from_multigroup_flux():
     energies = [0., 6.25e-1, 5.53e3, 8.21e5, 2.e7]
@@ -85,3 +87,25 @@ def test_from_multigroup_flux():
     )
     assert isinstance(microxs, MicroXS)
     assert microxs.reactions == ['fission', '(n,2n)']
+
+
+def test_multigroup_flux_same():
+    chain_file = Path(__file__).parents[1] / 'chain_simple.xml'
+
+    # Generate micro XS based on 4-group flux
+    energies = [0., 6.25e-1, 5.53e3, 8.21e5, 2.e7]
+    flux_per_ev = [0.3, 0.3, 1.0, 1.0]
+    flux = flux_per_ev * np.diff(energies)
+    microxs_4g = MicroXS.from_multigroup_flux(
+        energies=energies, multigroup_flux=flux, chain_file=chain_file)
+
+    # Generate micro XS based on 2-group flux, where the boundaries line up with
+    # the 4 group flux and have the same flux per eV across the full energy
+    # range
+    energies = [0., 5.53e3, 2.0e7]
+    flux_per_ev = [0.3, 1.0]
+    flux = flux_per_ev * np.diff(energies)
+    microxs_2g = MicroXS.from_multigroup_flux(
+        energies=energies, multigroup_flux=flux, chain_file=chain_file)
+
+    assert microxs_4g.data == pytest.approx(microxs_2g.data)

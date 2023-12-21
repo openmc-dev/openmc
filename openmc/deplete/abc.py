@@ -865,7 +865,7 @@ class Integrator(ABC):
 
         self.operator.finalize()
 
-    def integrate_adaptive(self, material_name, nuclides, final_step=True,
+    def integrate_adaptive(self, material_id, nuclides, final_step=True,
                     output=True, tol=2e-7, err=2e-4, rho1=0.5, rho2=5, f=0.8):
         """Perform the entire depletion process across all steps
 
@@ -884,9 +884,7 @@ class Integrator(ABC):
         with change_directory(self.operator.output_dir):
             n = self.operator.initial_condition()
             t, self._i_res = self._get_start_data()
-            mat_id = [mat.id for mat in self.operator.materials \
-                        if mat.name == material_name][0]
-            mat_idx = self.operator._mat_index_map[str(mat_id)]
+            
             nuc_ids = [id for nuc,id in self.chain.nuclide_dict.items() if nuc in nuclides]
 
             dt = self.timesteps[0]
@@ -937,9 +935,19 @@ class Integrator(ABC):
                 n = n_list.pop()
                 StepResult.save(self.operator, n_list, res_list, [t, t + dt],
                                 source_rate, self._i_res + i, proc_time, root)
+                
+                for rank in range(comm.size):
+                    number_i = comm.bcast(self.operator.number, root=rank)
+                    if material_id in number_i.materials:
+                        rank_mat = rank
 
-                dt *= self._adapt_timestep(n_list[1:][0], n, mat_idx, nuc_ids,
+                if material_id in self.operator.local_mats:
+                    mat_idx = self.operator.local_mats.index(material_id)
+                    dt *= self._adapt_timestep(n_list[1:][0], n, mat_idx, nuc_ids,
                                            tol, err, rho1, rho2, f)
+                comm.barrier()
+                dt = comm.bcast(dt, root=rank_mat)
+                
                 t += dt
                 i += 1
             # Final simulation -- in the case that final_step is False, a zero
@@ -961,6 +969,7 @@ class Integrator(ABC):
 
     def _adapt_timestep(self, n_pred, n_corr, mat_idx, nuc_ids, tol, err, rho1,
                         rho2, f ):
+                
         filt_pred = take(n_pred[mat_idx], nuc_ids)
         filt_corr = take(n_corr[mat_idx], nuc_ids)
 

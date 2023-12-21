@@ -28,9 +28,6 @@ void MeshFilter::from_xml(pugi::xml_node node)
       fmt::format("Could not find mesh {} specified on tally filter.", id));
   }
 
-  // perform any additional perparation for mesh tallies here
-  model::meshes[search->second]->prepare_for_tallies();
-
   if (check_for_node(node, "translation")) {
     set_translation(get_node_array<double>(node, "translation"));
   }
@@ -80,8 +77,10 @@ std::string MeshFilter::text_label(int bin) const
 
 void MeshFilter::set_mesh(int32_t mesh)
 {
+  // perform any additional perparation for mesh tallies here
   mesh_ = mesh;
   n_bins_ = model::meshes[mesh_]->n_bins();
+  model::meshes[mesh_]->prepare_for_tallies();
 }
 
 void MeshFilter::set_translation(const Position& translation)

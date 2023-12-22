@@ -71,8 +71,9 @@ def change_directory(output_dir):
         Directory to switch to.
     """
     orig_dir  = os.getcwd()
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
     try:
-        output_dir.mkdir(parents=True, exist_ok=True)
         os.chdir(output_dir)
         yield
     finally:

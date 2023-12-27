@@ -544,6 +544,15 @@ std::string distribcell_path_inner(int32_t target_cell, int32_t map,
     }
   }
 
+  // if we get through the loop without finding an appropriate entry, throw
+  // an error
+  if (cell_it == search_univ.cells_.crend()) {
+    fatal_error(
+      fmt::format("Failed to generate a text label for distribcell with ID {}."
+                  "The current label is: '{}'",
+        model::cells[target_cell]->id_, path.str()));
+  }
+
   // Add the cell to the path string.
   Cell& c = *model::cells[*cell_it];
   path << "c" << c.id_ << "->";

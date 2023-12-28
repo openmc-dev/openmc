@@ -159,7 +159,7 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         p.n_coord() = 1;
         Position xi {prn(&seed), prn(&seed), prn(&seed)};
         p.r() = lower_left_ + xi * (upper_right_ - lower_left_);
-        p.u() = {0.5, 0.5, 0.5};
+        p.u() = {1. / std::sqrt(3.), 1. / std::sqrt(3.), 1. / std::sqrt(3.)};
 
         // If this location is not in the geometry at all, move on to next block
         if (!exhaustive_find_cell(p))

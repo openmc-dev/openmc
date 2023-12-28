@@ -34,6 +34,9 @@ extern xt::xtensor<double, 1> source_frac; //!< Source fraction for UFS
 //==============================================================================
 
 //! Collect/normalize the tracklength keff from each process
+//! 
+//! In alpha_mode, also collect/normalize the tracklength neutron density (Cn), 
+//! prompt production (Cp), and delayed production (Cd)
 void calculate_generation_keff();
 
 //! Calculate mean/standard deviation of keff during active generations
@@ -41,6 +44,8 @@ void calculate_generation_keff();
 //! This function sets the global variables keff and keff_std which represent
 //! the mean and standard deviation of the mean of k-effective over active
 //! generations. It also broadcasts the value from the master process.
+//!
+//! In alpha_mode, also calculate the mean/standard deviation of alpha_eff
 void calculate_average_keff();
 
 //! Calculates a minimum variance estimate of k-effective

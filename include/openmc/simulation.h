@@ -49,8 +49,8 @@ extern vector<double> alpha_generation;
 extern vector<int64_t> work_index;
 
 // For alpha-eigenvalue mode
-extern "C" double alpha_eff;     //!< mean of alpha over batches
-extern "C" double alpha_eff_std; //!< mean standard deviation of alpha
+extern "C" double alpha_eff;     //!< average alpha over batches
+extern "C" double alpha_eff_std; //!< standard deviation of average alpha
 extern "C" double alpha_min;     //!< minimum possible value of alpha
                                  //!< (negative of the smallest precursor group 
                                  //!<  decay constant)

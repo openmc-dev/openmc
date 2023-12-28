@@ -80,8 +80,9 @@ int openmc_simulation_init()
     initialize_data();
   }
 
-  // Number of fissionables and precursors, and fissionable index
-  // TODO: better way to do this?
+  // Number of fissionables and precursors and fissionable index:
+  // n_fissionables, n_precursors, and fissionable_index
+  // (currently only used in alpha_mode)
   simulation::n_fissionables = 0;
   if (settings::run_CE) {
     simulation::fissionable_index.resize(data::nuclides.size(),-1);
@@ -103,8 +104,8 @@ int openmc_simulation_init()
     simulation::n_precursors = data::mg.num_delayed_groups_;
   }
 
-  // Precursor decay constant
-  // TODO: better way to do this?
+  // Precursor decay constant: preursor_decay
+  // (currently only used in alpha_mode)
   vector<size_t> shape {simulation::n_fissionables, simulation::n_precursors};
   simulation::precursor_decay = xt::zeros<double>(shape);
   if (settings::run_CE) {

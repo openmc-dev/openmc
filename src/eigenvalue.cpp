@@ -413,7 +413,7 @@ void calculate_average_keff()
   // a bisection one.
 
   if (settings::alpha_mode) {
-    // The constants (for easy referring)
+    // The constants (for convenience)
     const double Cn = global_tally_alpha_Cn;
     const double Cp = global_tally_alpha_Cp;
     const xt::xtensor<double, 2> Cd = global_tally_alpha_Cd;

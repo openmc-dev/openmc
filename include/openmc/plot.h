@@ -1,6 +1,7 @@
 #ifndef OPENMC_PLOT_H
 #define OPENMC_PLOT_H
 
+#include <cmath>
 #include <sstream>
 #include <unordered_map>
 
@@ -200,7 +201,7 @@ T SlicePlotBase::get_map() const
   xyz[out_i] = origin_[out_i] + width_[1] / 2. - out_pixel / 2.;
 
   // arbitrary direction
-  Direction dir = {0.7071, 0.7071, 0.0};
+  Direction dir = {1. / std::sqrt(2.), 1. / std::sqrt(2.), 0.0};
 
 #pragma omp parallel
   {

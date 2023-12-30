@@ -6,12 +6,14 @@
 #include <string>
 #include <vector>
 
+// Clean string to remove unrequired spaces
 std::string remove_space(std::string s)
 {
   s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
   return s;
 }
 
+// Read a line from atomic mass data and pull usesull content
 atomic_data get_atomic_data(std::string line)
 {
   atomic_data atom_data;

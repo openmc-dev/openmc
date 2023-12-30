@@ -17,7 +17,7 @@ const int line_in_header = 36;
 namespace openmc {
 
 //============================================================================
-//! Defines
+//! Stores all atomics masses (and mass excess and binding energy)
 //============================================================================
 
 /*

@@ -285,7 +285,7 @@ void Particle::event_advance()
     keff_tally_tracklength() += score * nu_fission_eff;
 
     // Integrals for alpha-eigenvalue update (see eigenvalue.cpp)
-    // TODO: currently only stack-length estimate
+    // TODO: currently only track-length estimate
     if (settings::alpha_mode) {
       // Neutron density
       alpha_tally_Cn() += score * 1.0/this->speed();

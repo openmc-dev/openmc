@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -11,9 +12,9 @@ std::string remove_space(std::string s)
   return s;
 }
 
-ZAI_data get_atomic_data(std::string line)
+atomic_data get_atomic_data(std::string line)
 {
-  ZAI_data atom_data;
+  atomic_data atom_data;
   atom_data.mass_excess =
     std::stod(line.substr(30, 35) + "." + line.substr(36, 36));
   atom_data.binding_energy =
@@ -35,6 +36,33 @@ AtomicData::AtomicData(std::string data_file)
     std::getline(myfile, line);
     std::string name = remove_space(line.substr(20, 22) + line.substr(16, 19));
     atomic_mass_data.insert(std::make_pair(name, get_atomic_data(line)));
+  }
+}
+
+double AtomicData::get_atomic_mass(std::string nuclide) const
+{
+  return get_atomic_data(nuclide).mass;
+}
+
+double AtomicData::get_atomic_mass_excess(std::string nuclide) const
+{
+  return get_atomic_data(nuclide).mass_excess;
+}
+
+double AtomicData::get_atomic_binding_energy(std::string nuclide) const
+{
+  return get_atomic_data(nuclide).binding_energy;
+}
+
+atomic_data AtomicData::get_atomic_data(std::string nuclide) const
+{
+  auto pos = std::as_const(atomic_mass_data).find(nuclide);
+
+  if (pos == atomic_mass_data.end()) {
+    throw std::out_of_range(
+      "Nuclide " + nuclide + " not in the atomic mass data.");
+  } else {
+    return pos->second;
   }
 }
 

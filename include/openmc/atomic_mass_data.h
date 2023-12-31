@@ -38,7 +38,7 @@ public:
 
     private :
     //==========================================================================
-    // Data members (accessor methods are below)
+    // Data members (accessor methods are above)
     std::map<std::string, atomic_data> atomic_mass_data;
 }
 } // namespace openmc

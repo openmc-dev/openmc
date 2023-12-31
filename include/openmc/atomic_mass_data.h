@@ -29,18 +29,17 @@ public:
   // Constructors
   AtomicData(std::string data_file = 'mass_1.mas20.txt');
 
-private:
-  //==========================================================================
-  // Data members (accessor methods are below)
-  std::map<std::string, atomic_data> atomic_mass_data;
-
-public:
   //==========================================================================
   // Methods and accessors
   double get_atomic_mass(std::string nuclide) const;
   double get_atomic_mass_excess(std::string nuclide) const;
   double get_atomic_binding_energy(std::string nuclide) const;
   atomic_data get_atomic_data(std::string nuclide) const
+
+    private :
+    //==========================================================================
+    // Data members (accessor methods are below)
+    std::map<std::string, atomic_data> atomic_mass_data;
 }
 } // namespace openmc
 

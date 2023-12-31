@@ -1,4 +1,4 @@
-#include "openmc/data.h"
+#include "openmc/atomic_mass_data.h"
 
 #include <fstream>
 #include <iostream>

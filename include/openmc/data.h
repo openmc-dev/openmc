@@ -20,16 +20,14 @@ namespace openmc {
 //! Stores all atomics masses (and mass excess and binding energy)
 //============================================================================
 
-/*
- *
- *
- *
+/* Reads the Atomic mass data comes from the `Atomic Mass Evaluation 2020
+    <https://doi.org/10.1088/1674-1137/abddaf>`_.
  */
 class AtomicData {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  AtomicData(std::string data_file);
+  AtomicData(std::string data_file = 'mass_1.mas20.txt');
 
 private:
   //==========================================================================

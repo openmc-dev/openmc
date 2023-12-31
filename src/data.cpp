@@ -34,8 +34,12 @@ AtomicData::AtomicData(std::string data_file)
   std::ifstream myfile(data_file);
   // Skip header
   for (i = 0; i < line_in_header; i++) {
+
     std::string line;
     std::getline(myfile, line);
+  }
+  // read the data
+  while (myfile.eof()) {
     std::string name = remove_space(line.substr(20, 22) + line.substr(16, 19));
     atomic_mass_data.insert(std::make_pair(name, get_atomic_data(line)));
   }

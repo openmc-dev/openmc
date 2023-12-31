@@ -615,13 +615,16 @@ void finalize_generation()
       print_generation();
     }
 
-    // TODO: Should we k_generation instead of the current running average
-    /*
-    int idx = overall_generation() - 1;
-    simulation::keff = simulation::k_generation[idx];
-    if (settings::alpha_mode)
+    // TODO: Should we use the last k_generation instead of 
+    // the current running average?
+    // It is done that way for alpha-eigenvalue mode, because
+    // it is found that, in some problems, k does not converge
+    // to 1 exactly if we use the running average.
+    if (settings::alpha_mode) {
+      int idx = overall_generation() - 1;
+      simulation::keff = simulation::k_generation[idx];
       simulation::alpha_eff = simulation::alpha_generation[idx];
-    */
+    }
   }
 }
 

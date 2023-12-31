@@ -14,7 +14,7 @@ struct atomic_data {
 
 const int line_in_header = 36;
 
-namespace openmc {
+namespace openmc::data {
 
 //============================================================================
 //! Stores all atomic masses (and mass excess and binding energy)
@@ -41,6 +41,6 @@ public:
     // Data members (accessor methods are above)
     std::map<std::string, atomic_data> atomic_mass_data;
 }
-} // namespace openmc
+} // namespace openmc::data
 
 #endif // OPENMC_ATOMIC_DATA_H

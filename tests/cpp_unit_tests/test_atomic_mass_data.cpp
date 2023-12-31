@@ -5,7 +5,7 @@
 
 #include "openmc/atomic_mass_data.h"
 
-using namespace openmc;
+using namespace openmc::data;
 
 TEST_CASE("Test read and storing atomic data")
 {

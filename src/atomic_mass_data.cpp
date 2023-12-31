@@ -26,7 +26,7 @@ atomic_data get_atomic_data(std::string line)
     1e-6 * std::stod(line.substr(110, 116) + '.' + line.substr(117, 123));
 }
 
-namespace openmc {
+namespace openmc::data {
 
 AtomicData::AtomicData(std::string data_file)
 {
@@ -72,4 +72,4 @@ atomic_data AtomicData::get_atomic_data(std::string nuclide) const
   }
 }
 
-} // namespace openmc
+} // namespace openmc::data

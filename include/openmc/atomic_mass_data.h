@@ -17,7 +17,7 @@ const int line_in_header = 36;
 namespace openmc {
 
 //============================================================================
-//! Stores all atomics masses (and mass excess and binding energy)
+//! Stores all atomic masses (and mass excess and binding energy)
 //============================================================================
 
 /* Reads the Atomic mass data comes from the `Atomic Mass Evaluation 2020

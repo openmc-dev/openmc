@@ -26,14 +26,15 @@ atomic_data get_atomic_data(std::string line)
     1e-6 * std::stod(line.substr(110, 116) + '.' + line.substr(117, 123));
 }
 
-namespace openmc::data {
+namespace openmc {
+namespace data {
 
 AtomicData::AtomicData(std::string data_file)
 {
   // Open Data file
   std::ifstream myfile(data_file);
   // Skip header
-  for (i = 0; i < line_in_header; i++) {
+  for (int i = 0; i < line_in_header; i++) {
 
     std::string line;
     std::getline(myfile, line);
@@ -71,5 +72,5 @@ atomic_data AtomicData::get_atomic_data(std::string nuclide) const
     return pos->second;
   }
 }
-
-} // namespace openmc::data
+} // namespace data
+} // namespace openmc

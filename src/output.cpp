@@ -104,7 +104,7 @@ std::string header(const char* msg)
 {
   // Determine how many times to repeat the '=' character.
   int n_prefix = (63 - strlen(msg)) / 2;
-  if (settings::alpha_mode) n_prefix = (88 - strlen(msg)) / 2;
+  if (settings::alpha_mode) n_prefix = (87 - strlen(msg)) / 2;
   int n_suffix = n_prefix;
   if ((strlen(msg) % 2) == 0)
     ++n_suffix;
@@ -384,12 +384,12 @@ void print_columns()
   } else {
     if (settings::entropy_on) {
       fmt::print(
-        "  Bat./Gen.      k          alpha      Entropy         Average k               Average alpha       \n"
-        "  =========   ========   ===========   ========   ====================   ==========================\n");
+        "  Bat./Gen.      k          alpha      Entropy         Average k               Average alpha      \n"
+        "  =========   ========   ===========   ========   ====================   =========================\n");
     } else {
       fmt::print(
-        "  Bat./Gen.      k          alpha           Average k               Average alpha       \n"
-        "  =========   ========   ===========   ====================   ==========================\n");
+        "  Bat./Gen.      k          alpha           Average k               Average alpha      \n"
+        "  =========   ========   ===========   ====================   =========================\n");
     }
   }
 }
@@ -423,7 +423,7 @@ void print_generation()
   if (n > 1) {
     fmt::print("   {:8.5f} +/-{:8.5f}", simulation::keff, simulation::keff_std);
     if (settings::alpha_mode)
-      fmt::print("   {:11.3e} +/-{:11.3e}", simulation::alpha_eff, 
+      fmt::print("   {:11.3e} +/-{:10.3e}", simulation::alpha_eff, 
           simulation::alpha_eff_std);
   }
   fmt::print("\n");

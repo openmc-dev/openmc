@@ -12,7 +12,7 @@ struct atomic_data {
   double mass;
 };
 
-const int line_in_header = 36;
+const int line_in_header = 37;
 
 namespace openmc {
 namespace data {

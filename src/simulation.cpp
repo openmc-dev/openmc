@@ -139,6 +139,18 @@ int openmc_simulation_init()
 
   // Preparation for alpha-eigenvalue mode
   if (settings::alpha_mode) {
+    // Check if any tally uses track-length estimator
+    // TODO: Add track-length tally support for alpha_mode
+    if (mpi::master) {
+      for (auto& t : model::tallies) {
+        if (t->estimator_ == TallyEstimator::TRACKLENGTH) {
+          warning("Alpha eigenvalue mode currently does not support "
+                  "track-length estimator: "
+                  "Set " + t->name_ + " with collision estimator instead.");
+        }
+      }
+    }
+
     // Determine minimum alpha-eigenvalue
     double decay_min = INFTY;
     for (int i = 0; i < simulation::n_fissionables; i++)

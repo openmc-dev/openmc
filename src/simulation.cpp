@@ -611,7 +611,7 @@ void finalize_generation()
     calculate_generation_keff();
     calculate_average_keff();
     
-    // reset global tallies of alpha-eigenvalue mode
+    // Reset global tallies of alpha-eigenvalue mode
     if (settings::alpha_mode) {
       global_tally_alpha_Cn = 0.0;
       global_tally_alpha_Cp = 0.0;

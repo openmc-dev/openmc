@@ -579,13 +579,49 @@ void print_results()
     fmt::print(
       " Leakage Fraction            = {:.5f} +/- {:.5f}\n", mean, t_n1 * stdev);
     if (settings::alpha_mode) {
-      std::array<double, 2> alpha_final;
-      double alpha, alpha_sd;
       const int n = simulation::k_generation.size() - settings::n_inactive;
+
+      // Alpha eigenvalue
+      double alpha, alpha_sd;
       alpha    = simulation::alpha_sum[0]/n;
-      alpha_sd = simulation::alpha_eff_std;
+      alpha_sd =  t_n1 * std::sqrt((simulation::alpha_sum[1]/n 
+                       - std::pow(alpha, 2)) / (n - 1));
+
+      // Multiplication factor
+      double k_alpha, k_alpha_sd;
+      k_alpha    = simulation::k_alpha_sum[0]/n;
+      k_alpha_sd =  t_n1 * std::sqrt((simulation::k_alpha_sum[1]/n 
+                       - std::pow(k_alpha, 2)) / (n - 1));
+
+      // Reactivity
+      double rho, rho_sd;
+      rho    = simulation::rho_sum[0]/n;
+      rho_sd =  t_n1 * std::sqrt((simulation::rho_sum[1]/n 
+                       - std::pow(rho, 2)) / (n - 1));
+
+      // Delayed fission fraction
+      double beta, beta_sd;
+      beta    = simulation::beta_sum[0]/n;
+      beta_sd =  t_n1 * std::sqrt((simulation::beta_sum[1]/n 
+                       - std::pow(beta, 2)) / (n - 1));
+
+      // Generation time
+      double Lambda, Lambda_sd;
+      Lambda    = simulation::Lambda_sum[0]/n;
+      Lambda_sd =  t_n1 * std::sqrt((simulation::Lambda_sum[1]/n 
+                       - std::pow(Lambda, 2)) / (n - 1));
+
+      // Print
       fmt::print(
-      "\n Alpha-effective = {:.3e} +/- {:.3e} /s\n", alpha, alpha_sd);
+      "\n Alpha-effective       = {:.3e} +/- {:.3e} /s\n", alpha, alpha_sd);
+      fmt::print(
+        " Multiplication factor = {:.5f} +/- {:.5f}\n", k_alpha, k_alpha_sd);
+      fmt::print(
+        " Reactivity            = {:.5f} +/- {:.5f}\n", rho, rho_sd);
+      fmt::print(
+        " Delayed fraction      = {:.5f} +/- {:.5f}\n", beta, beta_sd);
+      fmt::print(
+        " Generation time       = {:.3e} +/- {:.3e} s\n", Lambda, Lambda_sd);
     }
   } else {
     if (mpi::master)

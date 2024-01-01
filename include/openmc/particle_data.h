@@ -348,7 +348,7 @@ private:
   // For alpha-eigenvalue mode
   double alpha_tally_Cn_ {0.0}; // Neutron density (inverse-velocity)
   double alpha_tally_Cp_ {0.0}; // Prompt fission production
-  xt::xtensor<double, 2> alpha_tally_Cd_; // Effective delayed production for
+  xt::xtensor<double, 2> alpha_tally_Cd_; // Delayed fission production for
                                           // nuclide/material i & group j
   // Note: Precursor group j of different nuclides may be of different species
   //       e.g., decay contsant of group 1 of U235 is different to that of U238

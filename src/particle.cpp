@@ -289,10 +289,11 @@ void Particle::event_advance()
     if (settings::alpha_mode) {
       // Neutron density
       alpha_tally_Cn() += score * 1.0/this->speed();
-      // Prompt fission neutron
+
+      // Prompt fission production
       alpha_tally_Cp() += score * macro_xs().nu_fission_prompt;
 
-      // Precursor-wise delayed fission neutron
+      // Precursor-wise delayed neutron fission production
       if (settings::run_CE) {
         for (int i = 0; i < model::materials[material()]->nuclide_.size(); i++) {
           int nuc = model::materials[material()]->nuclide_[i];

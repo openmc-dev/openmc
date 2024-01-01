@@ -37,9 +37,14 @@ namespace simulation {
 
 double keff_generation;
 array<double, 2> k_sum;
-array<double, 2> alpha_sum;
 vector<double> entropy;
 xt::xtensor<double, 1> source_frac;
+
+array<double, 2> alpha_sum;
+array<double, 2> k_alpha_sum;
+array<double, 2> rho_sum;
+array<double, 2> beta_sum;
+array<double, 2> Lambda_sum;
 
 } // namespace simulation
 
@@ -421,15 +426,15 @@ void calculate_average_keff()
     const double alpha_min = simulation::alpha_min;
 
     // Newton raphson to update alpha [Goal: find x yielding f(x) = 0]
-    const double epsilon = 1E-8;                  // error tolerance 
-                                                  // (TODO: let user decide?)
-    const double alpha   = simulation::alpha_eff; // previous alpha
-    double error1        = 1.0;                   // iterate relative change
-    double error2        = 1.0;                   // residual
-    double x             = alpha;                 // updated alpha (solution)
+    const double epsilon   = 1E-8;                  // error tolerance 
+                                                    // (TODO: let user decide?)
+    const double alpha_old = simulation::alpha_eff; // previous alpha
+    double error1          = 1.0;                   // iterate relative change
+    double error2          = 1.0;                   // residual
+    double x               = alpha_old;             // updated alpha (solution)
     while (error1 > epsilon || error2 > epsilon) {
       // Evaluate f(x)
-      double f = (alpha - x)*Cn + Cp - 1.0;
+      double f = (alpha_old - x)*Cn + Cp - 1.0;
       // Accumulate delayed terms
       for (int i = 0; i < simulation::n_fissionables; i++) {
         // i is local
@@ -457,7 +462,7 @@ void calculate_average_keff()
 
       // Calculate errors
       error1 = std::abs((x_new - x)/x_new);
-      error2 = (alpha - x_new)*Cn + Cp - 1.0;
+      error2 = (alpha_old - x_new)*Cn + Cp - 1.0;
       for (int i = 0; i < simulation::n_fissionables; i++) { 
         // i is local
         for (int j = 0; j < simulation::n_precursors; j++) {
@@ -496,6 +501,37 @@ void calculate_average_keff()
           * std::sqrt((simulation::alpha_sum[1]/n 
                        - std::pow(simulation::alpha_eff, 2)) / (n - 1));
       }
+    
+      // Next, accumulate other global quantities
+
+      // Total delayed fission production
+      double Cd0 = 0.0;
+      for (int i = 0; i < simulation::n_fissionables; i++) { 
+        for (int j = 0; j < simulation::n_precursors; j++) {
+          Cd0 += Cd(i,j);
+        }
+      }
+
+      // Multiplication factor
+      double loss = (1.0 - alpha_old*Cn);
+      double k_alpha = (Cp + Cd0)/loss;
+      simulation::k_alpha_sum[0] += k_alpha;
+      simulation::k_alpha_sum[1] += std::pow(k_alpha, 2);
+      
+      // Reactivity
+      double rho = (k_alpha - 1.0)/k_alpha;
+      simulation::rho_sum[0] += rho;
+      simulation::rho_sum[1] += std::pow(rho, 2);
+      
+      // Delayed fission fraction
+      double beta = Cd0/(Cp + Cd0);
+      simulation::beta_sum[0] += beta;
+      simulation::beta_sum[1] += std::pow(beta, 2);
+      
+      // Generation time
+      double Lambda = (Cn/loss)/k_alpha;
+      simulation::Lambda_sum[0] += Lambda;
+      simulation::Lambda_sum[1] += std::pow(Lambda, 2);
     }
   }
 }

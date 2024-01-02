@@ -45,6 +45,7 @@ array<double, 2> k_alpha_sum;
 array<double, 2> rho_sum;
 array<double, 2> beta_sum;
 array<double, 2> tr_sum;
+array<double, 2> alpha_left_sum;
 
 } // namespace simulation
 
@@ -403,6 +404,8 @@ void calculate_average_keff()
     }
   }
   
+  if (!settings::alpha_mode) { return; }
+
   //============================================================================
   // Update alpha eigenvalue
   //============================================================================
@@ -411,128 +414,190 @@ void calculate_average_keff()
   // Cn (neutron density), Cp (prompt fission), and Cd (delayed fission).
   // [Eq. (49) of https://doi.org/10.1080/00295639.2020.1743578]
   // This non-linear equation has a form of the typical in-hour equation having
-  // (1 + n_precursor_groups) roots. alpha_min was set so that we aim for
-  // the right-most, fundamental root. The non-linear problem is iteratively
+  // (1 + n_precursor_groups) roots. The minimum alpha was set so that we aim
+  // for the right-most, fundamental root. The non-linear problem is iteratively
   // solved by using Newton-Raphson; however, whenever *in an iterate* we jump 
-  // over the alpha_min, the Newton-raphson iterate estimate is switched to 
+  // over the minimum alpha, the Newton-raphson iterate estimate is switched to 
   // a bisection one.
 
-  if (settings::alpha_mode) {
-    // The constants (for convenience)
-    const double Cn = global_tally_alpha_Cn;
-    const double Cp = global_tally_alpha_Cp;
-    const xt::xtensor<double, 2> Cd = global_tally_alpha_Cd;
-    const xt::xtensor<double, 2> lambda = simulation::precursor_decay;
-    const double alpha_min = simulation::alpha_min;
+  // The constants (for convenience)
+  const double Cn = global_tally_alpha_Cn;
+  const double Cp = global_tally_alpha_Cp;
+  const xt::xtensor<double, 2> Cd = global_tally_alpha_Cd;
+  const xt::xtensor<double, 2> lambda = simulation::precursor_decay;
+  const double decay_min = simulation::decay_min;
 
-    // Newton raphson to update alpha [Goal: find x yielding f(x) = 0]
-    const double epsilon   = 1E-8;                  // error tolerance 
-                                                    // (TODO: let user decide?)
-    const double alpha_old = simulation::alpha_eff; // previous alpha
-    double error1          = 1.0;                   // iterate relative change
-    double error2          = 1.0;                   // residual
-    double x               = alpha_old;             // updated alpha (solution)
-    while (error1 > epsilon || error2 > epsilon) {
-      // Evaluate f(x)
-      double f = (alpha_old - x)*Cn + Cp - 1.0;
-      // Accumulate delayed terms
-      for (int i = 0; i < simulation::n_fissionables; i++) {
-        // i is local
-        for (int j = 0; j < simulation::n_precursors; j++) {
-          f += lambda(i,j)/(x+lambda(i,j)) * Cd(i,j);
-        }
+  // Set the minimum alpha
+  double alpha_min = -decay_min;
+
+  // Newton raphson to update alpha [Goal: find x yielding f(x) = 0]
+  const double epsilon   = 1E-8;                  // error tolerance 
+                                                  // (TODO: let user decide?)
+  const double alpha_old = simulation::alpha_eff; // previous alpha
+  double error1          = 1.0;                   // iterate relative change
+  double error2          = 1.0;                   // residual
+  double x               = alpha_old;             // updated alpha (solution)
+  while (error1 > epsilon || error2 > epsilon) {
+    // Evaluate f(x)
+    double f = (alpha_old - x)*Cn + Cp - 1.0;
+    // Accumulate delayed terms
+    for (int i = 0; i < simulation::n_fissionables; i++) {
+      // i is local
+      for (int j = 0; j < simulation::n_precursors; j++) {
+        f += lambda(i,j)/(x+lambda(i,j)) * Cd(i,j);
       }
-
-      // Evaluate f'(x) function
-      double df = -Cn;
-      // Accumulate delayed terms
-      for (int i = 0; i < simulation::n_fissionables; i++) { 
-        // i is local
-        for (int j = 0; j < simulation::n_precursors; j++) {
-          double denom = (x+lambda(i,j)); denom *= denom;
-          df -= lambda(i,j)/denom * Cd(i,j);
-        }
-      }
-
-      // Next solution
-      double x_new = x - f/df;
-      
-      // Exceed minimum? --> update with bisection instead
-      if (x_new < alpha_min) { x_new = 0.5*(x + alpha_min); }
-
-      // Calculate errors
-      error1 = std::abs((x_new - x)/x_new);
-      error2 = (alpha_old - x_new)*Cn + Cp - 1.0;
-      for (int i = 0; i < simulation::n_fissionables; i++) { 
-        // i is local
-        for (int j = 0; j < simulation::n_precursors; j++) {
-          error2 += lambda(i,j)/(x_new+lambda(i,j)) * Cd(i,j);
-        }
-      }
-    
-      // Reset x
-      x = x_new;
     }
-    // Update alpha
-    simulation::alpha_eff = x;
-    simulation::alpha_generation.push_back(simulation::alpha_eff);
 
-    if (n > 0) {
-      // The following follows the procedure used for k eigenvalue
-      // Sample mean of alpha_eff
-      simulation::alpha_sum[0] += simulation::alpha_generation[i];
-      simulation::alpha_sum[1] += std::pow(simulation::alpha_generation[i], 2);
+    // Evaluate f'(x) function
+    double df = -Cn;
+    // Accumulate delayed terms
+    for (int i = 0; i < simulation::n_fissionables; i++) { 
+      // i is local
+      for (int j = 0; j < simulation::n_precursors; j++) {
+        double denom = (x+lambda(i,j)); denom *= denom;
+        df -= lambda(i,j)/denom * Cd(i,j);
+      }
+    }
 
-      // Determine mean
-      simulation::alpha_eff = simulation::alpha_sum[0] / n;
+    // Next solution
+    double x_new = x - f/df;
+    
+    // Exceed minimum? --> update with bisection instead
+    if (x_new < alpha_min) { x_new = 0.5*(x + alpha_min); }
 
-      if (n > 1) {
-        double t_value;
-        if (settings::confidence_intervals) {
-          // Calculate t-value for confidence intervals
-          double alpha = 1.0 - CONFIDENCE_LEVEL;
-          t_value = t_percentile(1.0 - alpha/2.0, n - 1);
-        } else {
-          t_value = 1.0;
-        }
+    // Calculate errors
+    error1 = std::abs((x_new - x)/x_new);
+    error2 = (alpha_old - x_new)*Cn + Cp - 1.0;
+    for (int i = 0; i < simulation::n_fissionables; i++) { 
+      // i is local
+      for (int j = 0; j < simulation::n_precursors; j++) {
+        error2 += lambda(i,j)/(x_new+lambda(i,j)) * Cd(i,j);
+      }
+    }
+  
+    // Reset x
+    x = x_new;
+  }
+  // Update alpha
+  simulation::alpha_eff = x;
+  simulation::alpha_generation.push_back(simulation::alpha_eff);
 
-        // Standard deviation of the sample mean of alpha
+  // Now, get the left-most mode
+  const double decay_max = simulation::decay_max;
+  double alpha_max = -decay_max;
+  error1 = 1.0;
+  error2 = 1.0;
+  x = -decay_max * 1.5; // Initial guess
+  while (error1 > epsilon || error2 > epsilon) {
+    // Evaluate f(x)
+    double f = (alpha_old - x)*Cn + Cp - 1.0;
+    // Accumulate delayed terms
+    for (int i = 0; i < simulation::n_fissionables; i++) {
+      // i is local
+      for (int j = 0; j < simulation::n_precursors; j++) {
+        f += lambda(i,j)/(x+lambda(i,j)) * Cd(i,j);
+      }
+    }
+
+    // Evaluate f'(x) function
+    double df = -Cn;
+    // Accumulate delayed terms
+    for (int i = 0; i < simulation::n_fissionables; i++) { 
+      // i is local
+      for (int j = 0; j < simulation::n_precursors; j++) {
+        double denom = (x+lambda(i,j)); denom *= denom;
+        df -= lambda(i,j)/denom * Cd(i,j);
+      }
+    }
+
+    // Next solution
+    double x_new = x - f/df;
+    
+    // Exceed maximum? --> update with bisection instead
+    if (x_new > alpha_max) { x_new = 0.5*(x + alpha_max); }
+
+    // Calculate errors
+    error1 = std::abs((x_new - x)/x_new);
+    error2 = (alpha_old - x_new)*Cn + Cp - 1.0;
+    for (int i = 0; i < simulation::n_fissionables; i++) { 
+      // i is local
+      for (int j = 0; j < simulation::n_precursors; j++) {
+        error2 += lambda(i,j)/(x_new+lambda(i,j)) * Cd(i,j);
+      }
+    }
+  
+    // Reset x
+    x = x_new;
+  }
+  double alpha_left = x;
+
+  // Finally, accumulate the sum and square sum of global tallies
+  if (n > 0) {
+    // The following follows the procedure used for k eigenvalue
+    // Sample mean of alpha_eff
+    simulation::alpha_sum[0] += simulation::alpha_generation[i];
+    simulation::alpha_sum[1] += std::pow(simulation::alpha_generation[i], 2);
+
+    // Determine mean
+    simulation::alpha_eff = simulation::alpha_sum[0] / n;
+
+    if (n > 1) {
+      double t_value;
+      if (settings::confidence_intervals) {
+        // Calculate t-value for confidence intervals
+        double alpha = 1.0 - CONFIDENCE_LEVEL;
+        t_value = t_percentile(1.0 - alpha/2.0, n - 1);
+      } else {
+        t_value = 1.0;
+      }
+
+      // Standard deviation of the sample mean of alpha
+      double alpha_var = (simulation::alpha_sum[1]/n 
+                         - std::pow(simulation::alpha_eff, 2)) / (n - 1);
+      if (alpha_var < 0.0) {
+        // This practically means the stdev is very close to zero
+        // (typically the case if the alpha approaches the -decay_rate 
+        //  singularitity)
+        simulation::alpha_eff_std = 0.0;
+      } else {
         simulation::alpha_eff_std = t_value 
           * std::sqrt((simulation::alpha_sum[1]/n 
-                       - std::pow(simulation::alpha_eff, 2)) / (n - 1));
+          - std::pow(simulation::alpha_eff, 2)) / (n - 1));
       }
-    
-      // Next, accumulate other global quantities
-
-      // Total delayed fission production
-      double Cd0 = 0.0;
-      for (int i = 0; i < simulation::n_fissionables; i++) { 
-        for (int j = 0; j < simulation::n_precursors; j++) {
-          Cd0 += Cd(i,j);
-        }
-      }
-
-      // Multiplication factor
-      double loss = (1.0 - alpha_old*Cn);
-      double k_alpha = (Cp + Cd0)/loss;
-      simulation::k_alpha_sum[0] += k_alpha;
-      simulation::k_alpha_sum[1] += std::pow(k_alpha, 2);
-      
-      // Reactivity
-      double rho = (k_alpha - 1.0)/k_alpha;
-      simulation::rho_sum[0] += rho;
-      simulation::rho_sum[1] += std::pow(rho, 2);
-      
-      // Delayed fission fraction
-      double beta = Cd0/(Cp + Cd0);
-      simulation::beta_sum[0] += beta;
-      simulation::beta_sum[1] += std::pow(beta, 2);
-      
-      // Removal time
-      double tr = (Cn/loss);
-      simulation::tr_sum[0] += tr;
-      simulation::tr_sum[1] += std::pow(tr, 2);
     }
+
+    // Total delayed fission production
+    double Cd0 = 0.0;
+    for (int i = 0; i < simulation::n_fissionables; i++) { 
+      for (int j = 0; j < simulation::n_precursors; j++) {
+        Cd0 += Cd(i,j);
+      }
+    }
+
+    // Multiplication factor
+    double loss = (1.0 - alpha_old*Cn);
+    double k_alpha = (Cp + Cd0)/loss;
+    simulation::k_alpha_sum[0] += k_alpha;
+    simulation::k_alpha_sum[1] += std::pow(k_alpha, 2);
+    
+    // Reactivity
+    double rho = (k_alpha - 1.0)/k_alpha;
+    simulation::rho_sum[0] += rho;
+    simulation::rho_sum[1] += std::pow(rho, 2);
+    
+    // Delayed fission fraction
+    double beta = Cd0/(Cp + Cd0);
+    simulation::beta_sum[0] += beta;
+    simulation::beta_sum[1] += std::pow(beta, 2);
+    
+    // Removal time
+    double tr = (Cn/loss);
+    simulation::tr_sum[0] += tr;
+    simulation::tr_sum[1] += std::pow(tr, 2);
+    
+    // Left-most alpha
+    simulation::alpha_left_sum[0] += alpha_left;
+    simulation::alpha_left_sum[1] += std::pow(alpha_left, 2);
   }
 }
 
@@ -845,6 +910,13 @@ void write_eigenvalue_hdf5(hid_t group)
     tr[1] =  t_n1 * std::sqrt((simulation::tr_sum[1]/n 
                     - std::pow(tr[0], 2)) / (n - 1));
     write_dataset(alpha_group, "removal_time", tr);
+    
+    // Left-most alpha
+    std::array<double, 2> alpha_left;
+    alpha_left[0] = simulation::alpha_left_sum[0]/n;
+    alpha_left[1] =  t_n1 * std::sqrt((simulation::alpha_left_sum[1]/n 
+                    - std::pow(alpha_left[0], 2)) / (n - 1));
+    write_dataset(alpha_group, "left-most alpha", alpha_left);
   }
 }
 

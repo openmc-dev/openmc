@@ -51,9 +51,9 @@ extern vector<int64_t> work_index;
 // For alpha-eigenvalue mode
 extern "C" double alpha_eff;     //!< average alpha over batches
 extern "C" double alpha_eff_std; //!< standard deviation of average alpha
-extern "C" double alpha_min;     //!< minimum possible value of alpha
-                                 //!< (negative of the smallest precursor group 
-                                 //!<  decay constant)
+extern "C" double decay_min;     //!< smallest precursor group decay constant
+                                 //!< (to determine minimum fundamental alpha
+extern "C" double decay_max;     //!< (to estimate the left-most alpha mode)
 
 // Fissionables and their precursors (currently only used in alpha_mode)
 // We assume equal number of precusor groups for all fissionables.

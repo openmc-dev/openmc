@@ -582,10 +582,19 @@ void print_results()
       const int n = simulation::k_generation.size() - settings::n_inactive;
 
       // Alpha eigenvalue
-      double alpha, alpha_sd;
+      double alpha, alpha_sd, alpha_var;
       alpha    = simulation::alpha_sum[0]/n;
-      alpha_sd =  t_n1 * std::sqrt((simulation::alpha_sum[1]/n 
-                       - std::pow(alpha, 2)) / (n - 1));
+      alpha_var = (simulation::alpha_sum[1]/n 
+                  - std::pow(alpha, 2)) / (n - 1);
+      if (alpha_var < 0.0) {
+        // This practically means the stdev is very close to zero
+        // (typically the case if the alpha approaches the -decay_rate 
+        //  singularitity)
+        alpha_sd = 0.0;
+      } else {
+        alpha_sd =  t_n1 * std::sqrt((simulation::alpha_sum[1]/n 
+                    - std::pow(alpha, 2)) / (n - 1));
+      }
 
       // Multiplication factor
       double k_alpha, k_alpha_sd;
@@ -611,18 +620,34 @@ void print_results()
       tr_sd =  t_n1 * std::sqrt((simulation::tr_sum[1]/n 
                        - std::pow(tr, 2)) / (n - 1));
 
+      // Left-most alpha
+      double alpha_left, alpha_left_sd, alpha_left_var;
+      alpha_left    = simulation::alpha_left_sum[0]/n;
+      alpha_left_var = (simulation::alpha_left_sum[1]/n 
+                       - std::pow(alpha_left, 2)) / (n - 1);
+      if (alpha_left_var < 0.0) {
+        // This practically means the stdev is very close to zero
+        // (typically the case if the alpha approaches the -decay_rate 
+        //  singularitity)
+        alpha_left_sd = 0.0;
+      } else {
+        alpha_left_sd = t_n1 * std::sqrt((simulation::alpha_left_sum[1]/n 
+                        - std::pow(alpha_left, 2)) / (n - 1));
+      }
+
       // Print
-      fmt::print("\n ALPHA MODE:\n");
       fmt::print(
-        "   Alpha-effective       = {:.3e} +/- {:.3e} /s\n", alpha, alpha_sd);
+        "\n Alpha-effective       = {:.3e} +/- {:.3e} /s\n", alpha, alpha_sd);
       fmt::print(
-        "   Multiplication factor = {:.5f} +/- {:.5f}\n", k_alpha, k_alpha_sd);
+          " Multiplication factor = {:.5f} +/- {:.5f}\n", k_alpha, k_alpha_sd);
       fmt::print(
-        "   Reactivity            = {:.5f} +/- {:.5f}\n", rho, rho_sd);
+          " Reactivity            = {:.5f} +/- {:.5f}\n", rho, rho_sd);
       fmt::print(
-        "   Delayed fraction      = {:.5f} +/- {:.5f}\n", beta, beta_sd);
+          " Delayed fraction      = {:.5f} +/- {:.5f}\n", beta, beta_sd);
       fmt::print(
-        "   Mean neutron lifetime = {:.3e} +/- {:.3e} s\n", tr, tr_sd);
+          " Mean neutron lifetime = {:.3e} +/- {:.3e} s\n", tr, tr_sd);
+      fmt::print(
+          " Left-most alpha       = {:.3e} +/- {:.3e} /s\n", alpha_left, alpha_left_sd);
     }
   } else {
     if (mpi::master)

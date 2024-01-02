@@ -153,11 +153,19 @@ int openmc_simulation_init()
 
     // Determine minimum alpha-eigenvalue
     double decay_min = INFTY;
-    for (int i = 0; i < simulation::n_fissionables; i++)
-      for (int j = 0; j < simulation::n_precursors; j++)
-        if (decay_min > simulation::precursor_decay(i,j))
+    double decay_max = -INFTY;
+    for (int i = 0; i < simulation::n_fissionables; i++) {
+      for (int j = 0; j < simulation::n_precursors; j++) {
+        if (decay_min > simulation::precursor_decay(i,j)) {
           decay_min = simulation::precursor_decay(i,j);
-    simulation::alpha_min = -decay_min;
+        }
+        if (decay_max < simulation::precursor_decay(i,j)) {
+          decay_max = simulation::precursor_decay(i,j);
+        }
+      }
+    }
+    simulation::decay_min = decay_min;
+    simulation::decay_max = decay_max;
   
     // Allocate global_tally_alpha_Cd
     global_tally_alpha_Cd = xt::zeros<double>(shape);
@@ -395,7 +403,8 @@ vector<int64_t> work_index;
 // For alpha-eigenvalue mode
 double alpha_eff {0.0};    
 double alpha_eff_std;
-double alpha_min {-INFTY};    
+double decay_min {INFTY};
+double decay_max {-INFTY};
 
 size_t n_fissionables;
 size_t n_precursors;

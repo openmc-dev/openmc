@@ -636,18 +636,19 @@ void print_results()
       }
 
       // Print
+      fmt::print("\n Alpha mode: Fundamental\n");
       fmt::print(
-        "\n Alpha-effective       = {:.3e} +/- {:.3e} /s\n", alpha, alpha_sd);
+          " Alpha-effective          = {:.3e} +/- {:.3e} /s\n", alpha, alpha_sd);
       fmt::print(
-          " Multiplication factor = {:.5f} +/- {:.5f}\n", k_alpha, k_alpha_sd);
+          " Multiplication factor    = {:.5f} +/- {:.5f}\n", k_alpha, k_alpha_sd);
       fmt::print(
-          " Reactivity            = {:.5f} +/- {:.5f}\n", rho, rho_sd);
+          " Reactivity               = {:.5f} +/- {:.5f}\n", rho, rho_sd);
       fmt::print(
-          " Delayed fraction      = {:.5f} +/- {:.5f}\n", beta, beta_sd);
+          " Delayed fraction         = {:.5f} +/- {:.5f}\n", beta, beta_sd);
       fmt::print(
-          " Mean neutron lifetime = {:.3e} +/- {:.3e} s\n", tr, tr_sd);
+          " Mean neutron lifetime    = {:.3e} +/- {:.3e} s\n", tr, tr_sd);
       fmt::print(
-          " Left-most alpha       = {:.3e} +/- {:.3e} /s\n", alpha_left, alpha_left_sd);
+          " Left-most alpha estimate = {:.3e} +/- {:.3e} /s\n", alpha_left, alpha_left_sd);
     }
   } else {
     if (mpi::master)

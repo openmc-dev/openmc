@@ -916,7 +916,7 @@ void write_eigenvalue_hdf5(hid_t group)
     alpha_left[0] = simulation::alpha_left_sum[0]/n;
     alpha_left[1] =  t_n1 * std::sqrt((simulation::alpha_left_sum[1]/n 
                     - std::pow(alpha_left[0], 2)) / (n - 1));
-    write_dataset(alpha_group, "left-most alpha", alpha_left);
+    write_dataset(alpha_group, "left_most_alpha_estimate", alpha_left);
   }
 }
 

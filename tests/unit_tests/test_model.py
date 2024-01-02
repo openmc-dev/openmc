@@ -472,6 +472,23 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
 
     op_kwargs["fluxes"] = flux_in_each_group
     op_kwargs["micros"] = micro_xs
+    # materials is not in the operator_kwargs but should be found automatically
+    test_model.deplete(
+        timesteps=[1e6],
+        method='predictor',
+        operator_class='IndependentOperator',
+        final_step=False,
+        operator_kwargs=op_kwargs,
+        power=1.,
+        output=False
+    )
+    # Get the new Xe136 and U235 atom densities
+    after_independent_xe = mats[0].get_nuclide_atom_densities()['Xe136']
+    after_independent_u = mats[0].get_nuclide_atom_densities()['U235']
+    assert after_independent_xe + after_independent_u == pytest.approx(initial_u, abs=1e-15)
+    assert test_model.is_initialized is False
+
+    # adding materials to the operator_kwargs
     op_kwargs["materials"] = openmc.Materials([mat for mat in mats if mat.depletable])
     test_model.deplete(
         timesteps=[1e6],

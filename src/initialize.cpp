@@ -23,6 +23,7 @@
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
+#include "openmc/openmp_interface.h"
 #include "openmc/output.h"
 #include "openmc/plot.h"
 #include "openmc/random_lcg.h"
@@ -63,13 +64,7 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
     return err;
 
 #ifdef LIBMESH
-
-#ifdef _OPENMP
-  int n_threads = omp_get_max_threads();
-#else
-  int n_threads = 1;
-#endif
-
+  const int n_threads = num_threads();
   // initialize libMesh if it hasn't been initialized already
   // (if initialized externally, the libmesh_init object needs to be provided
   // also)

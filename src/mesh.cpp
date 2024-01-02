@@ -8,9 +8,7 @@
 #ifdef OPENMC_MPI
 #include "mpi.h"
 #endif
-#ifdef _OPENMP
-#include <omp.h>
-#endif
+
 #include "xtensor/xbuilder.hpp"
 #include "xtensor/xeval.hpp"
 #include "xtensor/xmath.hpp"
@@ -27,6 +25,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/memory.h"
 #include "openmc/message_passing.h"
+#include "openmc/openmp_interface.h"
 #include "openmc/random_dist.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
@@ -2715,13 +2714,7 @@ void LibMesh::initialize()
   libMesh::ExplicitSystem& eq_sys =
     equation_systems_->add_system<libMesh::ExplicitSystem>(eq_system_name_);
 
-#ifdef _OPENMP
-  int n_threads = omp_get_max_threads();
-#else
-  int n_threads = 1;
-#endif
-
-  for (int i = 0; i < n_threads; i++) {
+  for (int i = 0; i < num_threads(); i++) {
     pl_.emplace_back(m_->sub_point_locator());
     pl_.back()->set_contains_point_tol(FP_COINCIDENT);
     pl_.back()->enable_out_of_mesh_mode();
@@ -2896,13 +2889,7 @@ int LibMesh::get_bin(Position r) const
     return -1;
   }
 
-#ifdef _OPENMP
-  int thread_num = omp_get_thread_num();
-#else
-  int thread_num = 0;
-#endif
-
-  const auto& point_locator = pl_.at(thread_num);
+  const auto& point_locator = pl_.at(thread_num());
 
   const auto elem_ptr = (*point_locator)(p);
   return elem_ptr ? get_bin_from_element(elem_ptr) : -1;

@@ -8,8 +8,8 @@ import re
 import typing  # imported separately as py3.8 requires typing.Iterable
 import warnings
 from typing import Optional, List, Union, Dict
-import lxml.etree as ET
 
+import lxml.etree as ET
 import numpy as np
 import h5py
 

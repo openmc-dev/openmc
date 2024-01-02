@@ -1,4 +1,5 @@
 import re
+
 import lxml.etree as ET
 
 import openmc.checkvalue as cv

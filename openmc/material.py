@@ -1140,12 +1140,15 @@ class Material(IDManagerMixin):
                 if nuc.name in nucs_in_mat:
                     if particle:
                         decay_const_dict[nuc.name] = 0.0
+                        # adds particles if they appear in the decay modes
                         for dt in nuc.decay_modes:
                             if particle in dt[0]:
                                 # multiplied by dt[2] which is the branching ratio
-                                decay_const_dict[nuc.name] = decay_const_dict[
-                                    nuc.name
-                                ] + (log(2.0) / nuc.half_life * dt[2])
+                                decay_const_dict[nuc.name] += (log(2.0) / nuc.half_life * dt[2])
+                        # adds particles if they appear in the sources
+                        if particle in nuc.sources.keys():
+                           decay_const_dict[nuc.name] += log(2.0) / nuc.half_life
+                    # if no particle filtering then any decay is considered
                     else:
                         if nuc.n_decay_modes == 0:
                             decay_const_dict[nuc.name] = 0.0

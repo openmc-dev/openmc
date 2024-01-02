@@ -606,22 +606,23 @@ void print_results()
                        - std::pow(beta, 2)) / (n - 1));
 
       // Generation time
-      double Lambda, Lambda_sd;
-      Lambda    = simulation::Lambda_sum[0]/n;
-      Lambda_sd =  t_n1 * std::sqrt((simulation::Lambda_sum[1]/n 
-                       - std::pow(Lambda, 2)) / (n - 1));
+      double tr, tr_sd;
+      tr    = simulation::tr_sum[0]/n;
+      tr_sd =  t_n1 * std::sqrt((simulation::tr_sum[1]/n 
+                       - std::pow(tr, 2)) / (n - 1));
 
       // Print
+      fmt::print("\n ALPHA MODE:\n");
       fmt::print(
-      "\n Alpha-effective       = {:.3e} +/- {:.3e} /s\n", alpha, alpha_sd);
+        "   Alpha-effective       = {:.3e} +/- {:.3e} /s\n", alpha, alpha_sd);
       fmt::print(
-        " Multiplication factor = {:.5f} +/- {:.5f}\n", k_alpha, k_alpha_sd);
+        "   Multiplication factor = {:.5f} +/- {:.5f}\n", k_alpha, k_alpha_sd);
       fmt::print(
-        " Reactivity            = {:.5f} +/- {:.5f}\n", rho, rho_sd);
+        "   Reactivity            = {:.5f} +/- {:.5f}\n", rho, rho_sd);
       fmt::print(
-        " Delayed fraction      = {:.5f} +/- {:.5f}\n", beta, beta_sd);
+        "   Delayed fraction      = {:.5f} +/- {:.5f}\n", beta, beta_sd);
       fmt::print(
-        " Generation time       = {:.3e} +/- {:.3e} s\n", Lambda, Lambda_sd);
+        "   Mean neutron lifetime = {:.3e} +/- {:.3e} s\n", tr, tr_sd);
     }
   } else {
     if (mpi::master)

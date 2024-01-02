@@ -44,7 +44,7 @@ array<double, 2> alpha_sum;
 array<double, 2> k_alpha_sum;
 array<double, 2> rho_sum;
 array<double, 2> beta_sum;
-array<double, 2> Lambda_sum;
+array<double, 2> tr_sum;
 
 } // namespace simulation
 
@@ -528,10 +528,10 @@ void calculate_average_keff()
       simulation::beta_sum[0] += beta;
       simulation::beta_sum[1] += std::pow(beta, 2);
       
-      // Generation time
-      double Lambda = (Cn/loss)/k_alpha;
-      simulation::Lambda_sum[0] += Lambda;
-      simulation::Lambda_sum[1] += std::pow(Lambda, 2);
+      // Removal time
+      double tr = (Cn/loss);
+      simulation::tr_sum[0] += tr;
+      simulation::tr_sum[1] += std::pow(tr, 2);
     }
   }
 }
@@ -839,12 +839,12 @@ void write_eigenvalue_hdf5(hid_t group)
                     - std::pow(beta[0], 2)) / (n - 1));
     write_dataset(alpha_group, "delayed_fraction", beta);
 
-    // Generation time
-    std::array<double, 2> Lambda;
-    Lambda[0] = simulation::Lambda_sum[0]/n;
-    Lambda[1] =  t_n1 * std::sqrt((simulation::Lambda_sum[1]/n 
-                    - std::pow(Lambda[0], 2)) / (n - 1));
-    write_dataset(alpha_group, "generation_time", Lambda);
+    // Removal time
+    std::array<double, 2> tr;
+    tr[0] = simulation::tr_sum[0]/n;
+    tr[1] =  t_n1 * std::sqrt((simulation::tr_sum[1]/n 
+                    - std::pow(tr[0], 2)) / (n - 1));
+    write_dataset(alpha_group, "removal_time", tr);
   }
 }
 

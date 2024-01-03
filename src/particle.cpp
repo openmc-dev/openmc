@@ -59,11 +59,20 @@ double Particle::speed() const
     break;
   }
 
-  // Calculate inverse of Lorentz factor
-  const double inv_gamma = mass / (this->E() + mass);
+  if (this->E() < 1.0e-9 * mass) {
+    // If the energy is much smaller than the mass, revert to non-relativistic
+    // formula. The 1e-9 criterion is specifically chosen as the point below
+    // which the error from using the non-relativistic formula is less than the
+    // round-off eror when using the relativistic formula (see analysis at
+    // https://gist.github.com/paulromano/da3b473fe3df33de94b265bdff0c7817)
+    return C_LIGHT * std::sqrt(2 * this->E() / mass);
+  } else {
+    // Calculate inverse of Lorentz factor
+    const double inv_gamma = mass / (this->E() + mass);
 
-  // Calculate speed via v = c * sqrt(1 - γ^-2)
-  return C_LIGHT * std::sqrt(1 - inv_gamma * inv_gamma);
+    // Calculate speed via v = c * sqrt(1 - γ^-2)
+    return C_LIGHT * std::sqrt(1 - inv_gamma * inv_gamma);
+  }
 }
 
 void Particle::move_distance(double length)

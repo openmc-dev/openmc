@@ -206,14 +206,8 @@ public:
   // reporting behavior that occurs in geometry.cpp. The explanation for
   // mark_as_lost is the same.
   virtual void mark_as_lost(const char* message);
-  void mark_as_lost(const std::string& message)
-  {
-    mark_as_lost(message.c_str());
-  }
-  void mark_as_lost(const std::stringstream& message)
-  {
-    mark_as_lost(message.c_str());
-  }
+  void mark_as_lost(const std::string& message);
+  void mark_as_lost(const std::stringstream& message);
 
   // resets all coordinate levels for the particle
   void clear()
@@ -310,6 +304,7 @@ public:
   int& material() { return material_; }
   const int& material() const { return material_; }
   int& material_last() { return material_last_; }
+  const int& material_last() const { return material_last_; }
 
   // temperature of current and last cell
   double& sqrtkT() { return sqrtkT_; }

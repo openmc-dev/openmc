@@ -5,7 +5,6 @@
 //! \brief Particle type
 
 #include <cstdint>
-#include <sstream>
 #include <string>
 
 #include "openmc/constants.h"

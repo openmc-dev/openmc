@@ -159,7 +159,7 @@ void Particle::event_calculate_xs()
   // beginning of the history and again for any secondary particles
   if (lowest_coord().cell == C_NONE) {
     if (!exhaustive_find_cell(*this)) {
-      mark_as_lost(
+      Geometron::mark_as_lost(
         "Could not find the cell containing particle " + std::to_string(id()));
       return;
     }
@@ -410,8 +410,13 @@ void Particle::event_revive_from_secondary()
       if (lowest_coord().cell == C_NONE) {
         bool verbose = settings::verbosity >= 10 || trace();
         if (!exhaustive_find_cell(*this, verbose)) {
-          mark_as_lost("Could not find the cell containing particle " +
-                       std::to_string(id()));
+          // Note: Geometron:: prefix is necessary here because it's ambiguous
+          // whether Particle::mark_as_lost(const char*) should be called with
+          // implicit argument conversion or Geometron::mark_as_lost(const
+          // std::string&) should be called.
+          Geometron::mark_as_lost(
+            "Could not find the cell containing particle " +
+            std::to_string(id()));
           return;
         }
         // Set birth cell attribute
@@ -584,9 +589,10 @@ void Particle::cross_surface()
     // undefined region in the geometry.
 
     if (!exhaustive_find_cell(*this, verbose)) {
-      mark_as_lost("After particle " + std::to_string(id()) +
-                   " crossed surface " + std::to_string(surf->id_) +
-                   " it could not be located in any cell and it did not leak.");
+      Geometron::mark_as_lost(
+        "After particle " + std::to_string(id()) + " crossed surface " +
+        std::to_string(surf->id_) +
+        " it could not be located in any cell and it did not leak.");
       return;
     }
   }
@@ -622,8 +628,8 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
 {
   // Do not handle reflective boundary conditions on lower universes
   if (n_coord() != 1) {
-    mark_as_lost("Cannot reflect particle " + std::to_string(id()) +
-                 " off surface in a lower universe.");
+    Geometron::mark_as_lost("Cannot reflect particle " + std::to_string(id()) +
+                            " off surface in a lower universe.");
     return;
   }
 
@@ -658,8 +664,9 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // (unless we're using a dagmc model, which has exactly one universe)
   n_coord() = 1;
   if (surf.geom_type_ != GeometryType::DAG && !neighbor_list_find_cell(*this)) {
-    this->mark_as_lost("Couldn't find particle after reflecting from surface " +
-                       std::to_string(surf.id_) + ".");
+    Geometron::mark_as_lost(
+      "Couldn't find particle after reflecting from surface " +
+      std::to_string(surf.id_) + ".");
     return;
   }
 
@@ -677,7 +684,7 @@ void Particle::cross_periodic_bc(
 {
   // Do not handle periodic boundary conditions on lower universes
   if (n_coord() != 1) {
-    mark_as_lost(
+    Geometron::mark_as_lost(
       "Cannot transfer particle " + std::to_string(id()) +
       " across surface in a lower universe. Boundary conditions must be "
       "applied to root universe.");
@@ -705,11 +712,11 @@ void Particle::cross_periodic_bc(
   n_coord() = 1;
 
   if (!neighbor_list_find_cell(*this)) {
-    mark_as_lost("Couldn't find particle after hitting periodic "
-                 "boundary on surface " +
-                 std::to_string(surf.id_) +
-                 ". The normal vector "
-                 "of one periodic surface may need to be reversed.");
+    Geometron::mark_as_lost("Couldn't find particle after hitting periodic "
+                            "boundary on surface " +
+                            std::to_string(surf.id_) +
+                            ". The normal vector "
+                            "of one periodic surface may need to be reversed.");
     return;
   }
 

@@ -54,11 +54,14 @@ Classes
    :template: myclass.rst
 
    Cell
+   CylindricalMesh
    EnergyFilter
    MaterialFilter
    Material
    MeshFilter
    MeshSurfaceFilter
    Nuclide
+   RectilinearMesh
    RegularMesh
+   SphericalMesh
    Tally

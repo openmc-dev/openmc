@@ -1268,9 +1268,10 @@ void ProjectionPlot::create_output() const
 
             double x_pix_coord = (static_cast<double>(horiz) - p0 / 2.0) / p0;
             double y_pix_coord = (static_cast<double>(vert) - p1 / 2.0) / p0;
-            p.u() = camera_position_ +
-                  cam_yaxis * x_pix_coord * orthographic_width_ +
-                  cam_zaxis * y_pix_coord * orthographic_width_;
+
+            p.u() = camera_position_;
+            p.u() += cam_yaxis * x_pix_coord * orthographic_width_;
+            p.u() += cam_zaxis * y_pix_coord * orthographic_width_;
           }
 
           bool hitsomething = false;

@@ -140,12 +140,14 @@ int openmc_simulation_init()
   // Preparation for alpha-eigenvalue mode
   if (settings::alpha_mode) {
     // Check if any tally uses track-length estimator
-    // TODO: Add track-length tally support for alpha_mode
+    // TODO: Add track-length tally support for alpha_mode. Significant work
+    //       may be needed in modifying the multi mesh filter scoring to
+    //       consider the continuously decreasing weight upon a single flight.
     if (mpi::master) {
       for (auto& t : model::tallies) {
         if (t->estimator_ == TallyEstimator::TRACKLENGTH) {
           warning("Alpha eigenvalue mode currently does not support "
-                  "track-length estimator: "
+                  "track-length estimator. "
                   "Set " + t->name_ + " with collision estimator instead.");
         }
       }

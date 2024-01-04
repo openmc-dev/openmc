@@ -620,35 +620,44 @@ void print_results()
       tr_sd =  t_n1 * std::sqrt((simulation::tr_sum[1]/n 
                        - std::pow(tr, 2)) / (n - 1));
 
-      // Left-most alpha
-      double alpha_left, alpha_left_sd, alpha_left_var;
-      alpha_left    = simulation::alpha_left_sum[0]/n;
-      alpha_left_var = (simulation::alpha_left_sum[1]/n 
-                       - std::pow(alpha_left, 2)) / (n - 1);
-      if (alpha_left_var < 0.0) {
+      // The other alpha
+      double alpha_other, alpha_other_sd, alpha_other_var;
+      alpha_other     = simulation::alpha_other_sum[0]/n;
+      alpha_other_var = (simulation::alpha_other_sum[1]/n 
+                       - std::pow(alpha_other, 2)) / (n - 1);
+      if (alpha_other_var < 0.0) {
         // This practically means the stdev is very close to zero
         // (typically the case if the alpha approaches the -decay_rate 
         //  singularitity)
-        alpha_left_sd = 0.0;
+        alpha_other_sd = 0.0;
       } else {
-        alpha_left_sd = t_n1 * std::sqrt((simulation::alpha_left_sum[1]/n 
-                        - std::pow(alpha_left, 2)) / (n - 1));
+        alpha_other_sd = t_n1 * std::sqrt((simulation::alpha_other_sum[1]/n 
+                        - std::pow(alpha_other, 2)) / (n - 1));
       }
 
       // Print
-      fmt::print("\n Alpha mode: Fundamental\n");
+      if (settings::alpha_mode_left) {
+        fmt::print("\n ALPHA MODE: LEFT-MOST\n");
+      } else {
+        fmt::print("\n ALPHA MODE: FUNDAMENTAL\n");
+      }
       fmt::print(
-          " Alpha-effective          = {:.3e} +/- {:.3e} /s\n", alpha, alpha_sd);
+          " Alpha-effective            = {:10.3e} +/- {:9.3e} /s\n", alpha, alpha_sd);
       fmt::print(
-          " Multiplication factor    = {:.5f} +/- {:.5f}\n", k_alpha, k_alpha_sd);
+          " Multiplication factor      = {:10.5f} +/- {:7.5f}\n", k_alpha, k_alpha_sd);
       fmt::print(
-          " Reactivity               = {:.5f} +/- {:.5f}\n", rho, rho_sd);
+          " Reactivity                 = {:10.5f} +/- {:7.5f}\n", rho, rho_sd);
       fmt::print(
-          " Delayed fraction         = {:.5f} +/- {:.5f}\n", beta, beta_sd);
+          " Delayed fraction           = {:10.5f} +/- {:7.5f}\n", beta, beta_sd);
       fmt::print(
-          " Mean neutron lifetime    = {:.3e} +/- {:.3e} s\n", tr, tr_sd);
-      fmt::print(
-          " Left-most alpha estimate = {:.3e} +/- {:.3e} /s\n", alpha_left, alpha_left_sd);
+          " Mean neutron lifetime      = {:10.3e} +/- {:9.3e} s\n", tr, tr_sd);
+      if (settings::alpha_mode_left) {
+        fmt::print(
+          " Fundamental alpha estimate = {:10.3e} +/- {:9.3e} /s\n", alpha_other, alpha_other_sd);
+      } else {
+        fmt::print(
+          " Left-most alpha estimate   = {:10.3e} +/- {:9.3e} /s\n", alpha_other, alpha_other_sd);
+      }
     }
   } else {
     if (mpi::master)

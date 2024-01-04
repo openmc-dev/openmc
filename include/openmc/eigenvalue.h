@@ -27,15 +27,18 @@ extern vector<double> entropy;     //!< Shannon entropy at each generation
 extern xt::xtensor<double, 1> source_frac; //!< Source fraction for UFS
 
 //! For alpha-eigenvalue simulation
-extern array<double, 2> alpha_sum;      //!< The alpha eigenvalue
-extern array<double, 2> k_alpha_sum;    //!< Multiplication factor
-extern array<double, 2> rho_sum;        //!< Reactivity
-extern array<double, 2> beta_sum;       //!< Delayed fission fraction
-extern array<double, 2> tr_sum;         //!< Removal time (or mean life time)
-extern array<double, 2> alpha_left_sum; //!< The left-most alpha in in-hour Eq.
-//! Note: In alpha-eigenvalue mode, keff_generation and k_sum converge to one,
-//!       while k_alpha_sum converge to the "actual" keff that is calculated
-//!       based on the alpha-eigenfunction flux.
+extern array<double, 2> alpha_sum;       //!< The alpha eigenvalue
+extern array<double, 2> k_alpha_sum;     //!< Multiplication factor
+extern array<double, 2> rho_sum;         //!< Reactivity
+extern array<double, 2> beta_sum;        //!< Delayed fission fraction
+extern array<double, 2> tr_sum;          //!< Removal time (or mean life time)
+extern array<double, 2> alpha_other_sum; //!< The other alpha in in-hour Eq.
+//! Note: In alpha-eigenvalue mode, keff_generation and mean of k_sum converge 
+//!       to one, while mean of k_alpha_sum converge to the "actual" keff that 
+//!       is calculated based on the alpha-eigenfunction flux.
+//!       If searching for the fundamental mode, the "other alpha" is an
+//!       estimate of the left-most mode. If searching for the left-most mode,
+//!       the "other alpha" is an estimate of the fundamental mode.
 
 } // namespace simulation
 

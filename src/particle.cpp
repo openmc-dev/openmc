@@ -223,14 +223,14 @@ void Particle::event_advance()
   // Select smaller of the two distances
   double distance = std::min(boundary().distance, collision_distance());
 
-  // Continuous weight time-absorption
+  // Continuous weight time-absorption [fundamental alpha mode]
   // We don't introduce the time-absorption XS (alpha/v) into the material;
   // instead, we continuously reduce particle weight as it moves in the medium.
   // Adapted from http://www.aesj.or.jp/publication/pnst002/data/826-835.pdf
   // See also https://doi.org/10.1080/00295639.2020.1743578
-  double weight_time; // Weight at the end of track
-  double weight_avg;  // Average weight, for tracklength tallies
-  if (settings::alpha_mode) {
+  double weight_time {wgt()}; // Weight at the end of track
+  double weight_avg;          // Average weight, for tracklength tallies
+  if (settings::alpha_mode && !settings::alpha_mode_left ) {
     // Time absorption/source cross-section
     double alpha_xs   = simulation::alpha_eff / this->speed();
     double d_alpha_xs = distance * alpha_xs;
@@ -278,11 +278,14 @@ void Particle::event_advance()
       type() == ParticleType::neutron) {
     // Get the effective, time-corrected nu_fission if alpha_mode
     // See Eqs. (48) and (49) of https://doi.org/10.1080/00295639.2020.1743578
-    double nu_fission_eff = (settings::alpha_mode) ? 
-                            macro_xs().nu_fission_alpha :
-                            macro_xs().nu_fission;
+    double nu_fission = (settings::alpha_mode) ? 
+                         macro_xs().nu_fission_alpha :
+                         macro_xs().nu_fission;
+    if (settings::alpha_mode_left) {
+      nu_fission -= simulation::alpha_eff/this->speed();
+    }
     const double score = wgt() * distance;
-    keff_tally_tracklength() += score * nu_fission_eff;
+    keff_tally_tracklength() += score * nu_fission;
 
     // Integrals for alpha-eigenvalue update (see eigenvalue.cpp)
     // TODO: currently only track-length estimate
@@ -329,7 +332,7 @@ void Particle::event_advance()
 
   // Assign the actual weight at the end of track since we are done with 
   // track-length tally scoring
-  if (settings::alpha_mode) {
+  if (settings::alpha_mode && !settings::alpha_mode_left) {
     wgt_last() = weight_time; // Also assign to the pre-collision weight
     wgt() = weight_time;
   }
@@ -379,10 +382,13 @@ void Particle::event_collide()
       type() == ParticleType::neutron) {
 
     // Get the effective, time-corrected nu_fission if alpha_mode
-    double nu_fission_eff = (settings::alpha_mode) ? 
-                            macro_xs().nu_fission_alpha :
-                            macro_xs().nu_fission;
-    keff_tally_collision() += wgt() * nu_fission_eff / macro_xs().total;
+    double nu_fission = (settings::alpha_mode) ? 
+                        macro_xs().nu_fission_alpha :
+                        macro_xs().nu_fission;
+    if (settings::alpha_mode_left) {
+      nu_fission -= simulation::alpha_eff/this->speed();
+    }
+    keff_tally_collision() += wgt() * nu_fission / macro_xs().total;
   }
 
   // Score surface current tallies -- this has to be done before the collision

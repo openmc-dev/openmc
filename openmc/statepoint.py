@@ -75,8 +75,8 @@ class StatePoint:
         Estimate of k-effective for each batch/generation
     keff : uncertainties.UFloat
         Combined estimator for k-effective
-    alpha_final : numpy.ndarray
-        Final alpha value
+    alpha_eff : float
+        Effective alpha eigenvalue
     alpha_generation : numpy.ndarray
         Estimate of alpha for each batch/generation
 
@@ -98,7 +98,9 @@ class StatePoint:
     run_mode : str
         Simulation run mode, e.g. 'eigenvalue'
     alpha_mode : bool
-        Running alpha mode?
+        Running fundamental alpha mode?
+    alpha_mode_left : bool
+        Running left-most alpha mode?
     runtime : dict
         Dictionary whose keys are strings describing various runtime metrics
         and whose values are time values in seconds.
@@ -315,9 +317,9 @@ class StatePoint:
             return None
 
     @property
-    def alpha_final(self):
-        if self.run_mode == 'eigenvalue':
-            return self._f['alpha_final'][()]
+    def alpha_eff(self):
+        if self.run_mode == 'eigenvalue' and self.alpha_mode:
+            return self._f['alpha_mode_tallies/alpha_effective'][()]
         else:
             return None
 
@@ -369,6 +371,10 @@ class StatePoint:
     @property
     def alpha_mode(self):
         return self._f.attrs['alpha_mode'] > 0
+
+    @property
+    def alpha_mode_left(self):
+        return self._f.attrs['alpha_mode_left'] > 0
 
     @property
     def runtime(self):

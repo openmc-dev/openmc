@@ -42,6 +42,7 @@ namespace settings {
 
 // Default values for boolean flags
 bool alpha_mode {false};
+bool alpha_mode_left {false};
 bool assume_separate {false};
 bool check_overlaps {false};
 bool cmfd_run {false};
@@ -143,11 +144,13 @@ void get_run_parameters(pugi::xml_node node_base)
   // alpha-eigenvalue mode?
   if (check_for_node(node_base, "alpha_mode")) {
     alpha_mode = get_node_value_bool(node_base, "alpha_mode");
-    if (alpha_mode) {
-      if (settings::run_mode != RunMode::EIGENVALUE) {
-        fatal_error("Alpha mode has to be run in eigenvalue run_mode.");
-      }
-    }
+  }
+  if (check_for_node(node_base, "alpha_mode_left")) {
+    alpha_mode_left = get_node_value_bool(node_base, "alpha_mode_left");
+    if (alpha_mode_left) { alpha_mode = true; }
+  }
+  if (alpha_mode && settings::run_mode != RunMode::EIGENVALUE) {
+    fatal_error("Alpha mode has to be run in eigenvalue run_mode.");
   }
 
   // Check number of particles

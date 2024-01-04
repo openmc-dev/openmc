@@ -40,7 +40,9 @@ class Settings:
     Attributes
     ----------
     alpha_mode : bool
-        Running alpha-eigenvalue mode?
+        Running fundamental alpha-eigenvalue mode?
+    alpha_mode_left : bool
+        Running left-most alpha-eigenvalue mode?
     batches : int
         Number of batches to simulate
     confidence_intervals : bool
@@ -267,6 +269,7 @@ class Settings:
     def __init__(self, **kwargs):
         self._run_mode = RunMode.EIGENVALUE
         self._alpha_mode = None
+        self._alpha_mode_left = None
         self._batches = None
         self._generations_per_batch = None
         self._inactive = None
@@ -368,6 +371,15 @@ class Settings:
     def alpha_mode(self, alpha_mode: bool):
         cv.check_type('alpha mode', alpha_mode, bool)
         self._alpha_mode = alpha_mode
+
+    @property
+    def alpha_mode_left(self) -> bool:
+        return self._alpha_mode_left
+
+    @alpha_mode_left.setter
+    def alpha_mode_left(self, alpha_mode_left: bool):
+        cv.check_type('alpha mode left', alpha_mode_left, bool)
+        self._alpha_mode_left = alpha_mode_left
 
     @property
     def batches(self) -> int:
@@ -1035,6 +1047,11 @@ class Settings:
         if self._alpha_mode is not None:
             element = ET.SubElement(root, "alpha_mode")
             element.text = str(self._alpha_mode).lower()
+
+    def _create_alpha_mode_left_subelement(self, root):
+        if self._alpha_mode_left is not None:
+            element = ET.SubElement(root, "alpha_mode_left")
+            element.text = str(self._alpha_mode_left).lower()
 
     def _create_batches_subelement(self, root):
         if self._batches is not None:
@@ -1798,6 +1815,7 @@ class Settings:
 
         self._create_run_mode_subelement(element)
         self._create_alpha_mode_subelement(element)
+        self._create_alpha_mode_left_subelement(element)
         self._create_particles_subelement(element)
         self._create_batches_subelement(element)
         self._create_inactive_subelement(element)

@@ -45,7 +45,7 @@ array<double, 2> k_alpha_sum;
 array<double, 2> rho_sum;
 array<double, 2> beta_sum;
 array<double, 2> tr_sum;
-array<double, 2> alpha_left_sum;
+array<double, 2> alpha_other_sum;
 
 } // namespace simulation
 
@@ -74,7 +74,6 @@ void calculate_generation_keff()
   // Normalize single batch estimate of k
   // TODO: This should be normalized by total_weight, not by n_particles
   keff_reduced /= settings::n_particles;
-  simulation::k_generation.push_back(keff_reduced);
 
   // Get and normalize global tallies for alpha-eigenvalue update
   if (settings::alpha_mode) {
@@ -110,6 +109,9 @@ void calculate_generation_keff()
       }
     }
   }
+  
+  // Push the keff
+  simulation::k_generation.push_back(keff_reduced);
 }
 
 void synchronize_bank()
@@ -414,29 +416,44 @@ void calculate_average_keff()
   // Cn (neutron density), Cp (prompt fission), and Cd (delayed fission).
   // [Eq. (49) of https://doi.org/10.1080/00295639.2020.1743578]
   // This non-linear equation has a form of the typical in-hour equation having
-  // (1 + n_precursor_groups) roots. The minimum alpha was set so that we aim
-  // for the right-most, fundamental root. The non-linear problem is iteratively
-  // solved by using Newton-Raphson; however, whenever *in an iterate* we jump 
-  // over the minimum alpha, the Newton-raphson iterate estimate is switched to 
-  // a bisection one.
+  // (1 + n_precursor_groups) roots. A combination of Newton-Raphson and 
+  // Bisection iterative methods is used to get the two desired modes: 
+  // the fundamental and the left-most modes.
 
   // The constants (for convenience)
   const double Cn = global_tally_alpha_Cn;
   const double Cp = global_tally_alpha_Cp;
   const xt::xtensor<double, 2> Cd = global_tally_alpha_Cd;
   const xt::xtensor<double, 2> lambda = simulation::precursor_decay;
-  const double decay_min = simulation::decay_min;
 
-  // Set the minimum alpha
-  double alpha_min = -decay_min;
+  // There is a difference on how the non-linear function (and loss rate) is 
+  // evaluated in fundamental and left-most mode alpha-eigenvalue simulation. 
+  // This is due to the different normalization conditions and is 
+  // effectively handled by the following:
+  double alpha_old = simulation::alpha_eff;
+  if (settings::alpha_mode_left) {
+    alpha_old = 0.0;
+  }
 
-  // Newton raphson to update alpha [Goal: find x yielding f(x) = 0]
-  const double epsilon   = 1E-8;                  // error tolerance 
-                                                  // (TODO: let user decide?)
-  const double alpha_old = simulation::alpha_eff; // previous alpha
-  double error1          = 1.0;                   // iterate relative change
-  double error2          = 1.0;                   // residual
-  double x               = alpha_old;             // updated alpha (solution)
+  // Newton-Raphson parameters
+  // [Find x yielding f(x) = 0]
+  const double epsilon = 1E-8; // error tolerance (Let users decide?)
+  double x, error1, error2;    // solution iterate, iterate relative change,
+                               // and residual
+
+  // First, getting the fundamental mode.
+  // The minimum alpha is set as we aim for the right-most root. By default,
+  // Newton-Raphson is used to get the next solution iterate. However, whenever,
+  // *in an iterate*, Newton-Raphson attempts to jump over the minimum alpha, 
+  // we switch to Bisection.
+
+  // Preparation
+  const double alpha_min = -simulation::decay_min;
+  error1 = 1.0;
+  error2 = 1.0;
+  x = 0.0; // Initial guess
+
+  // Start iterating
   while (error1 > epsilon || error2 > epsilon) {
     // Evaluate f(x)
     double f = (alpha_old - x)*Cn + Cp - 1.0;
@@ -447,7 +464,6 @@ void calculate_average_keff()
         f += lambda(i,j)/(x+lambda(i,j)) * Cd(i,j);
       }
     }
-
     // Evaluate f'(x) function
     double df = -Cn;
     // Accumulate delayed terms
@@ -459,7 +475,7 @@ void calculate_average_keff()
       }
     }
 
-    // Next solution
+    // Assign next solution
     double x_new = x - f/df;
     
     // Exceed minimum? --> update with bisection instead
@@ -478,16 +494,21 @@ void calculate_average_keff()
     // Reset x
     x = x_new;
   }
-  // Update alpha
-  simulation::alpha_eff = x;
-  simulation::alpha_generation.push_back(simulation::alpha_eff);
 
-  // Now, get the left-most mode
-  const double decay_max = simulation::decay_max;
-  double alpha_max = -decay_max;
+  // Assign the fundamental mode
+  const double alpha_fundamental = x;
+
+  // Now, getting the left-most mode.
+  // In this case, we need to set the maximum alpha. Similar 
+  // Newton-Raphson X Bisection iterative method is used.
+
+  // Preparation
+  const double alpha_max = -simulation::decay_max;
   error1 = 1.0;
   error2 = 1.0;
-  x = -decay_max * 1.5; // Initial guess
+  x = alpha_max * 1.5; // Initial guess
+
+  // Start iterating
   while (error1 > epsilon || error2 > epsilon) {
     // Evaluate f(x)
     double f = (alpha_old - x)*Cn + Cp - 1.0;
@@ -529,9 +550,21 @@ void calculate_average_keff()
     // Reset x
     x = x_new;
   }
-  double alpha_left = x;
+  
+  const double alpha_left = x;
+  
+  // Update alpha
+  double alpha_other;
+  if (settings::alpha_mode_left) {
+    simulation::alpha_eff = alpha_left;
+    alpha_other = alpha_fundamental;
+  } else {
+    simulation::alpha_eff = alpha_fundamental;
+    alpha_other = alpha_left;
+  }
+  simulation::alpha_generation.push_back(simulation::alpha_eff);
 
-  // Finally, accumulate the sum and square sum of global tallies
+  // Accumulate the sum and square sum of global tallies
   if (n > 0) {
     // The following follows the procedure used for k eigenvalue
     // Sample mean of alpha_eff
@@ -566,6 +599,9 @@ void calculate_average_keff()
       }
     }
 
+    // Get loss rate (without alpha absorption)
+    double loss = (1.0 - alpha_old*Cn);
+
     // Total delayed fission production
     double Cd0 = 0.0;
     for (int i = 0; i < simulation::n_fissionables; i++) { 
@@ -575,7 +611,6 @@ void calculate_average_keff()
     }
 
     // Multiplication factor
-    double loss = (1.0 - alpha_old*Cn);
     double k_alpha = (Cp + Cd0)/loss;
     simulation::k_alpha_sum[0] += k_alpha;
     simulation::k_alpha_sum[1] += std::pow(k_alpha, 2);
@@ -595,9 +630,9 @@ void calculate_average_keff()
     simulation::tr_sum[0] += tr;
     simulation::tr_sum[1] += std::pow(tr, 2);
     
-    // Left-most alpha
-    simulation::alpha_left_sum[0] += alpha_left;
-    simulation::alpha_left_sum[1] += std::pow(alpha_left, 2);
+    // Other alpha
+    simulation::alpha_other_sum[0] += alpha_other;
+    simulation::alpha_other_sum[1] += std::pow(alpha_other, 2);
   }
 }
 
@@ -911,12 +946,16 @@ void write_eigenvalue_hdf5(hid_t group)
                     - std::pow(tr[0], 2)) / (n - 1));
     write_dataset(alpha_group, "removal_time", tr);
     
-    // Left-most alpha
-    std::array<double, 2> alpha_left;
-    alpha_left[0] = simulation::alpha_left_sum[0]/n;
-    alpha_left[1] =  t_n1 * std::sqrt((simulation::alpha_left_sum[1]/n 
-                    - std::pow(alpha_left[0], 2)) / (n - 1));
-    write_dataset(alpha_group, "left_most_alpha_estimate", alpha_left);
+    // Other alpha
+    std::array<double, 2> alpha_other;
+    alpha_other[0] = simulation::alpha_other_sum[0]/n;
+    alpha_other[1] =  t_n1 * std::sqrt((simulation::alpha_other_sum[1]/n 
+                    - std::pow(alpha_other[0], 2)) / (n - 1));
+    if (settings::alpha_mode_left) {
+      write_dataset(alpha_group, "fundamental_alpha_estimate", alpha_other);
+    } else {
+      write_dataset(alpha_group, "left_most_alpha_estimate", alpha_other);
+    }
   }
 }
 

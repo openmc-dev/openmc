@@ -122,6 +122,11 @@ void sample_neutron_reaction(Particle& p)
     }
   }
 
+  // Create alpha time source sites [left-most alpha mode]
+  if (settings::alpha_mode_left) {
+    create_alpha_sites(p);
+  }
+
   // Create secondary photons
   if (settings::photon_transport) {
     sample_secondary_photons(p, i_nuclide);
@@ -166,10 +171,10 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 
   // Determine the expected number of neutrons produced
   // Get the effective, time-corrected nu_fission if alpha_mode
-  double nu_fission_eff = (settings::alpha_mode) ? 
-                          p.neutron_xs(i_nuclide).nu_fission_alpha :
-                          p.neutron_xs(i_nuclide).nu_fission;
-  double nu_t = p.wgt() / simulation::keff * weight * nu_fission_eff /
+  double nu_fission = (settings::alpha_mode) ? 
+                      p.neutron_xs(i_nuclide).nu_fission_alpha :
+                      p.neutron_xs(i_nuclide).nu_fission;
+  double nu_t = p.wgt() / simulation::keff * weight * nu_fission /
                 p.neutron_xs(i_nuclide).total;
 
   // Sample the number of neutrons produced
@@ -265,6 +270,47 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
   p.wgt_bank() = nu / weight;
   for (size_t d = 0; d < MAX_DELAYED_GROUPS; d++) {
     p.n_delayed_bank(d) = nu_d[d];
+  }
+}
+
+void create_alpha_sites(Particle& p)
+{
+  // Sample the number of productions
+  double nu_t = p.wgt() * -simulation::alpha_eff / p.speed() /
+                p.macro_xs().total / simulation::keff;
+  int nu = static_cast<int>(nu_t);
+  if (prn(p.current_seed()) <= (nu_t - nu))
+    ++nu;
+
+  // Create the sites and store to fission bank
+  for (int n = 0; n < nu; n++) {
+    SourceSite site;
+    site.r = p.r();
+    site.u = p.u();
+    site.E = p.E();
+    site.time = p.time();
+    site.wgt = 1.0;
+    site.delayed_group = 0;
+    site.surf_id = 0;
+    site.particle = ParticleType::neutron;
+    site.parent_id = p.id();
+    site.progeny_id = p.n_progeny()++;
+
+    int64_t idx = simulation::fission_bank.thread_safe_append(site);
+    if (idx == -1) {
+      warning(
+        "The shared fission bank is full. Additional fission sites created "
+        "in this generation will not be banked. Results may be "
+        "non-deterministic.");
+
+      // Decrement number of particle progeny as storage was unsuccessful.
+      // This step is needed so that the sum of all progeny is equal to the
+      // size of the shared fission bank.
+      p.n_progeny()--;
+
+      // Break out of loop as no more sites can be added to fission bank
+      break;
+    }
   }
 }
 
@@ -635,6 +681,10 @@ void absorption(Particle& p, int i_nuclide)
       double nu_fission = (settings::alpha_mode) ? 
                           p.neutron_xs(i_nuclide).nu_fission_alpha :
                           p.neutron_xs(i_nuclide).nu_fission;
+      if (settings::alpha_mode_left) {
+        nu_fission -= simulation::alpha_eff/p.speed() *
+                      p.neutron_xs(i_nuclide).total/p.macro_xs().total;
+      }
       p.keff_tally_absorption() += wgt_absorb * nu_fission /
                                    p.neutron_xs(i_nuclide).absorption;
     }
@@ -645,10 +695,14 @@ void absorption(Particle& p, int i_nuclide)
       // Score absorption estimate of keff
       if (settings::run_mode == RunMode::EIGENVALUE) {
         // Get the effective, time-corrected nu_fission if alpha_mode
-        double nu_fission_eff = (settings::alpha_mode) ? 
+        double nu_fission = (settings::alpha_mode) ? 
                                 p.neutron_xs(i_nuclide).nu_fission_alpha :
                                 p.neutron_xs(i_nuclide).nu_fission;
-        p.keff_tally_absorption() += p.wgt() * nu_fission_eff /
+        if (settings::alpha_mode_left) {
+          nu_fission -= simulation::alpha_eff/p.speed() *
+                        p.neutron_xs(i_nuclide).total/p.macro_xs().total;
+        }
+        p.keff_tally_absorption() += p.wgt() * nu_fission /
                                      p.neutron_xs(i_nuclide).absorption;
       }
 

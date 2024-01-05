@@ -167,6 +167,12 @@ void Particle::event_calculate_xs()
     // Set birth cell attribute
     if (cell_born() == C_NONE)
       cell_born() = lowest_coord().cell;
+
+    // Initialize last cells from current cell
+    for (int j = 0; j < n_coord(); ++j) {
+      cell_last(j) = coord(j).cell;
+    }
+    n_coord_last() = n_coord();
   }
 
   // Write particle track.
@@ -263,15 +269,15 @@ void Particle::event_advance()
 
 void Particle::event_cross_surface()
 {
-  // Set surface that particle is on and adjust coordinate levels
-  surface() = boundary().surface_index;
-  n_coord() = boundary().coord_level;
-
   // Saving previous cell data
   for (int j = 0; j < n_coord(); ++j) {
     cell_last(j) = coord(j).cell;
   }
   n_coord_last() = n_coord();
+
+  // Set surface that particle is on and adjust coordinate levels
+  surface() = boundary().surface_index;
+  n_coord() = boundary().coord_level;
 
   if (boundary().lattice_translation[0] != 0 ||
       boundary().lattice_translation[1] != 0 ||
@@ -417,6 +423,12 @@ void Particle::event_revive_from_secondary()
         // Set birth cell attribute
         if (cell_born() == C_NONE)
           cell_born() = lowest_coord().cell;
+
+        // Initialize last cells from current cell
+        for (int j = 0; j < n_coord(); ++j) {
+          cell_last(j) = coord(j).cell;
+        }
+        n_coord_last() = n_coord();
       }
       pht_secondary_particles();
     }
@@ -501,6 +513,139 @@ void Particle::pht_secondary_particles()
   }
 }
 
+void add_surf_source_to_bank(
+  Particle& p, const Surface& surf, bool vacuum_bc = false)
+{
+  if (surf.surf_source_ && simulation::current_batch > settings::n_inactive &&
+      !simulation::surf_source_bank.full()) {
+
+    // Retrieve the id of the user-defined cell
+    int cell_id_user = settings::source_write_cell_id;
+
+    // If a cell/cellfrom/cellto parameter is defined
+    if (cell_id_user > 0) {
+
+      // Retrieve cell index and storage type
+      int cell_idx = model::cell_map[cell_id_user];
+      std::string storage_type = settings::source_write_cell_type;
+
+      // Leave if cellto with vacuum boundary condition
+      if (vacuum_bc && storage_type == "cellto") {
+        return;
+      }
+
+      // If only one level of coordinate is present before and after crossing
+      // the surface use this simple check instead of creating sets
+      if (p.n_coord_last() == 1 && p.n_coord() == 1) {
+
+        // If vacuum boundary condition, return if cell before is not cell of
+        // interest
+        if (vacuum_bc) {
+          if (p.cell_last(p.n_coord_last() - 1) != cell_idx) {
+            return;
+          }
+        } else {
+
+          // If cell is the same before and after crossing
+          if (p.cell_last(p.n_coord_last() - 1) == p.lowest_coord().cell) {
+            return;
+          }
+
+          // If cell of interest is not in leaving and not in entering
+          if (p.cell_last(p.n_coord_last() - 1) != cell_idx &&
+              p.lowest_coord().cell != cell_idx) {
+            return;
+          }
+
+          // If cellfrom and the cell before crossing is not the cell of
+          // interest
+          if (storage_type == "cellfrom" &&
+              p.cell_last(p.n_coord_last() - 1) != cell_idx) {
+            return;
+          }
+
+          // If cellto and the cell after crossing is not the cell of interest
+          if (storage_type == "cellto" && p.lowest_coord().cell != cell_idx) {
+            return;
+          }
+        }
+
+        // If more than one level of coordinates, sets have to be created
+      } else {
+        std::unordered_set<int> leaving_cells;
+        for (int i = 0; i < p.n_coord(); ++i) {
+          leaving_cells.insert(p.coord(i).cell);
+        }
+        // If vacuum boundary conditions, only check if cell of interest is in
+        // the leaving lists
+        if (vacuum_bc) {
+          if (leaving_cells.find(cell_idx) == leaving_cells.end()) {
+            return;
+          }
+        } else {
+          std::unordered_set<int> entering_cells;
+          for (int i = 0; i < p.n_coord_last(); ++i) {
+            entering_cells.insert(p.cell_last(i));
+          }
+
+          // Determine intersection between entering and leaving sets
+          std::unordered_set<int> intersection_cells;
+          for (const auto& elem : entering_cells) {
+            if (leaving_cells.find(elem) != leaving_cells.end()) {
+              intersection_cells.insert(elem);
+            }
+          }
+
+          // Remove the intersection from the sets
+          for (const auto& elem : intersection_cells) {
+            entering_cells.erase(elem);
+            leaving_cells.erase(elem);
+          }
+
+          // No change between leaving and entering sets
+          if (entering_cells.size() == 0 && leaving_cells.size() == 0) {
+            return;
+          }
+
+          // If cell of interest is not in leaving and not in entering sets
+          if (entering_cells.find(cell_idx) == entering_cells.end()) {
+            if (leaving_cells.find(cell_idx) == leaving_cells.end()) {
+              return;
+            }
+          }
+
+          // If cellfrom and cells before crossing do not contain the cell of
+          // interest
+          if (storage_type == "cellfrom" &&
+              entering_cells.find(cell_idx) == entering_cells.end()) {
+            return;
+          }
+
+          // If cellto and cells after crossing do not contain the cell of
+          // interest
+          if (storage_type == "cellto" &&
+              leaving_cells.find(cell_idx) == leaving_cells.end()) {
+            return;
+          }
+        }
+      }
+    }
+
+    SourceSite site;
+    site.r = p.r();
+    site.u = p.u();
+    site.E = p.E();
+    site.time = p.time();
+    site.wgt = p.wgt();
+    site.delayed_group = p.delayed_group();
+    site.surf_id = surf.id_;
+    site.particle = p.type();
+    site.parent_id = p.id();
+    site.progeny_id = p.n_progeny();
+    int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
+  }
+}
+
 void Particle::cross_surface()
 {
   int i_surface = std::abs(surface());
@@ -508,22 +653,6 @@ void Particle::cross_surface()
   const auto& surf {model::surfaces[i_surface - 1].get()};
   if (settings::verbosity >= 10 || trace()) {
     write_message(1, "    Crossing surface {}", surf->id_);
-  }
-
-  if (surf->surf_source_ && simulation::current_batch > settings::n_inactive &&
-      !simulation::surf_source_bank.full()) {
-    SourceSite site;
-    site.r = r();
-    site.u = u();
-    site.E = E();
-    site.time = time();
-    site.wgt = wgt();
-    site.delayed_group = delayed_group();
-    site.surf_id = surf->id_;
-    site.particle = type();
-    site.parent_id = id();
-    site.progeny_id = n_progeny();
-    int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
   }
 
 // if we're crossing a CSG surface, make sure the DAG history is reset
@@ -534,6 +663,20 @@ void Particle::cross_surface()
 
   // Handle any applicable boundary conditions.
   if (surf->bc_ && settings::run_mode != RunMode::PLOTTING) {
+
+    if (surf->bc_->type() == "vacuum") {
+      // Store particle before vacuum boundary condition is applied
+      // otherwise, weight of the particle is zero
+      add_surf_source_to_bank(*this, *surf, true);
+    } else {
+      // Store particle with other boundary condition than vacuum
+      // only if no cell id is declared by the user for backward
+      // compatibility
+      if (settings::source_write_cell_id <= 0) {
+        add_surf_source_to_bank(*this, *surf);
+      }
+    }
+    // TODO: store particle for periodic and reflective boundary conditions
     surf->bc_->handle_particle(*this, *surf);
     return;
   }
@@ -560,8 +703,10 @@ void Particle::cross_surface()
 #endif
 
   bool verbose = settings::verbosity >= 10 || trace();
-  if (neighbor_list_find_cell(*this, verbose))
+  if (neighbor_list_find_cell(*this, verbose)) {
+    add_surf_source_to_bank(*this, *surf);
     return;
+  }
 
   // ==========================================================================
   // COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS
@@ -590,6 +735,7 @@ void Particle::cross_surface()
       return;
     }
   }
+  add_surf_source_to_bank(*this, *surf);
 }
 
 void Particle::cross_vacuum_bc(const Surface& surf)
@@ -649,7 +795,7 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   u() = new_u;
 
   // Reassign particle's cell and surface
-  coord(0).cell = cell_last(n_coord_last() - 1);
+  coord(0).cell = cell_last(n_coord() - 1);
   surface() = -surface();
 
   // If a reflective surface is coincident with a lattice or universe

@@ -217,6 +217,10 @@ public:
     for (auto& level : coord_)
       level.reset();
     n_coord_ = 1;
+
+    for (auto& cell : cell_last_)
+      cell = C_NONE;
+    n_coord_last_ = 1;
   }
 
   // Initialize all internal state from position and direction

@@ -116,6 +116,8 @@ std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
 std::unordered_set<int> source_write_surf_id;
 int64_t max_surface_particles;
+int64_t source_write_cell_id {0};
+std::string source_write_cell_type {""};
 TemperatureMethod temperature_method {TemperatureMethod::NEAREST};
 double temperature_tolerance {10.0};
 double temperature_default {293.6};
@@ -696,11 +698,15 @@ void read_settings_xml(pugi::xml_node root)
     // Get surface source write node
     xml_node node_ssw = root.child("surf_source_write");
 
-    // Determine surface ids at which crossing particles are to be banked
+    // Determine surface ids at which crossing particles are to be banked.
+    // If no surfaces are specified, all surfaces in the model will be used
+    // to bank source points.
     if (check_for_node(node_ssw, "surface_ids")) {
       auto temp = get_node_array<int>(node_ssw, "surface_ids");
-      for (const auto& b : temp) {
-        source_write_surf_id.insert(b);
+      if (!temp.empty()) {
+        for (const auto& b : temp) {
+          source_write_surf_id.insert(b);
+        }
       }
     }
 
@@ -708,7 +714,12 @@ void read_settings_xml(pugi::xml_node root)
     if (check_for_node(node_ssw, "max_particles")) {
       max_surface_particles =
         std::stoll(get_node_value(node_ssw, "max_particles"));
+    } else {
+      fatal_error("A maximum number of particles needs to be specified "
+                  "using the 'max_particles' parameter to store surface "
+                  "source points.");
     }
+
     if (check_for_node(node_ssw, "mcpl")) {
       surf_mcpl_write = get_node_value_bool(node_ssw, "mcpl");
 
@@ -717,6 +728,31 @@ void read_settings_xml(pugi::xml_node root)
         fatal_error("Your build of OpenMC does not support writing MCPL "
                     "surface source files.");
       }
+    }
+    // Get cell information
+    bool option_already_selected = false;
+    if (check_for_node(node_ssw, "cell")) {
+      source_write_cell_id = std::stoll(get_node_value(node_ssw, "cell"));
+      source_write_cell_type = "cell";
+      option_already_selected = true;
+    }
+    if (check_for_node(node_ssw, "cellfrom")) {
+      if (option_already_selected) {
+        fatal_error(
+          "'cell', 'cellfrom' and 'cellto' cannot be used at the same time.");
+      }
+      source_write_cell_id = std::stoll(get_node_value(node_ssw, "cellfrom"));
+      source_write_cell_type = "cellfrom";
+      option_already_selected = true;
+    }
+    if (check_for_node(node_ssw, "cellto")) {
+      if (option_already_selected) {
+        fatal_error(
+          "'cell', 'cellfrom' and 'cellto' cannot be used at the same time.");
+      }
+      source_write_cell_id = std::stoll(get_node_value(node_ssw, "cellto"));
+      source_write_cell_type = "cellto";
+      option_already_selected = true;
     }
   }
 

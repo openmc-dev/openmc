@@ -123,6 +123,10 @@ extern std::unordered_set<int>
 extern int max_splits; //!< maximum number of particle splits for weight windows
 extern int64_t max_surface_particles; //!< maximum number of particles to be
                                       //!< banked on surfaces per process
+extern int64_t source_write_cell_id;  //!< Cell id for the surface source
+                                      //!< write setting
+extern std::string source_write_cell_type; //!< Type of option for the cell
+                                           //!< argument of surface source write
 extern TemperatureMethod
   temperature_method; //!< method for choosing temperatures
 extern double

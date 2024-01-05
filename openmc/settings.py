@@ -184,6 +184,15 @@ class Settings:
         :max_particles: Maximum number of particles to be banked on
                    surfaces per process (int)
         :mcpl: Output in the form of an MCPL-file (bool)
+        :cell: Cell id used to determine if particles crossing identified surfaces
+               are to be banked. Particles coming from or going to this
+               declared cell will be banked (int)
+        :cellfrom: Cell id used to determine if particles crossing identified
+                   surfaces are to be banked. Particles coming from this
+                   declared cell will be banked (int)
+        :cellto: Cell id used to determine if particles crossing identified
+                 surfaces are to be banked. Particles going to this declared
+                 cell will be banked (int)
     survival_biasing : bool
         Indicate whether survival biasing is to be used
     tabular_legendre : dict
@@ -303,7 +312,7 @@ class Settings:
         self._sourcepoint = {}
 
         self._surf_source_read = {}
-        self._surf_source_write = {}
+        self._surf_source_write = None
 
         self._no_reduce = None
 
@@ -673,23 +682,46 @@ class Settings:
 
     @surf_source_write.setter
     def surf_source_write(self, surf_source_write: dict):
-        cv.check_type('surface source writing options', surf_source_write, Mapping)
+        cv.check_type("surface source writing options", surf_source_write, Mapping)
         for key, value in surf_source_write.items():
-            cv.check_value('surface source writing key', key,
-                           ('surface_ids', 'max_particles', 'mcpl'))
-            if key == 'surface_ids':
-                cv.check_type('surface ids for source banking', value,
-                              Iterable, Integral)
+            cv.check_value(
+                "surface source writing key",
+                key,
+                ("surface_ids", "max_particles", "mcpl", "cell", "cellfrom", "cellto"),
+            )
+            if key == "surface_ids":
+                cv.check_type(
+                    "surface ids for source banking", value, Iterable, Integral
+                )
                 for surf_id in value:
-                    cv.check_greater_than('surface id for source banking',
-                                          surf_id, 0)
-            elif key == 'max_particles':
-                cv.check_type('maximum particle banks on surfaces per process',
-                              value, Integral)
-                cv.check_greater_than('maximum particle banks on surfaces per process',
-                                      value, 0)
-            elif key == 'mcpl':
-                cv.check_type('write to an MCPL-format file', value, bool)
+                    cv.check_greater_than("surface id for source banking", surf_id, 0)
+            elif key == "max_particles":
+                cv.check_type(
+                    "maximum particle banks on surfaces per process", value, Integral
+                )
+                cv.check_greater_than(
+                    "maximum particle banks on surfaces per process", value, 0
+                )
+            elif key == "mcpl":
+                cv.check_type("write to an MCPL-format file", value, bool)
+
+            elif key == "cell":
+                cv.check_type(
+                    "Cell id for source banking (from or to)", value, Integral
+                )
+                cv.check_greater_than(
+                    "Cell id for source banking (from or to)", value, 0
+                )
+
+            elif key == "cellfrom":
+                cv.check_type("Cell id for source banking (from only)", value, Integral)
+                cv.check_greater_than(
+                    "Cell id for source banking (from only)", value, 0
+                )
+
+            elif key == "cellto":
+                cv.check_type("Cell id for source banking (to only)", value, Integral)
+                cv.check_greater_than("Cell id for source banking (to only)", value, 0)
 
         self._surf_source_write = surf_source_write
 
@@ -1146,18 +1178,28 @@ class Settings:
                 subelement.text = self._surf_source_read['path']
 
     def _create_surf_source_write_subelement(self, root):
-        if self._surf_source_write:
+        if self._surf_source_write is not None:
             element = ET.SubElement(root, "surf_source_write")
-            if 'surface_ids' in self._surf_source_write:
+            if "surface_ids" in self._surf_source_write:
                 subelement = ET.SubElement(element, "surface_ids")
-                subelement.text = ' '.join(
-                    str(x) for x in self._surf_source_write['surface_ids'])
-            if 'max_particles' in self._surf_source_write:
+                subelement.text = " ".join(
+                    str(x) for x in self._surf_source_write["surface_ids"]
+                )
+            if "max_particles" in self._surf_source_write:
                 subelement = ET.SubElement(element, "max_particles")
-                subelement.text = str(self._surf_source_write['max_particles'])
-            if 'mcpl' in self._surf_source_write:
+                subelement.text = str(self._surf_source_write["max_particles"])
+            if "mcpl" in self._surf_source_write:
                 subelement = ET.SubElement(element, "mcpl")
-                subelement.text = str(self._surf_source_write['mcpl']).lower()
+                subelement.text = str(self._surf_source_write["mcpl"]).lower()
+            if "cell" in self._surf_source_write:
+                subelement = ET.SubElement(element, "cell")
+                subelement.text = str(self._surf_source_write["cell"])
+            if "cellfrom" in self._surf_source_write:
+                subelement = ET.SubElement(element, "cellfrom")
+                subelement.text = str(self._surf_source_write["cellfrom"])
+            if "cellto" in self._surf_source_write:
+                subelement = ET.SubElement(element, "cellto")
+                subelement.text = str(self._surf_source_write["cellto"])
 
     def _create_confidence_intervals(self, root):
         if self._confidence_intervals is not None:
@@ -1322,9 +1364,9 @@ class Settings:
             elem.text = str(self._create_fission_neutrons).lower()
 
     def _create_create_delayed_neutrons_subelement(self, root):
-       if self._create_delayed_neutrons is not None:
-           elem = ET.SubElement(root, "create_delayed_neutrons")
-           elem.text = str(self._create_delayed_neutrons).lower()
+        if self._create_delayed_neutrons is not None:
+            elem = ET.SubElement(root, "create_delayed_neutrons")
+            elem.text = str(self._create_delayed_neutrons).lower()
 
     def _create_delayed_photon_scaling_subelement(self, root):
         if self._delayed_photon_scaling is not None:
@@ -1536,7 +1578,9 @@ class Settings:
     def _surf_source_write_from_xml_element(self, root):
         elem = root.find('surf_source_write')
         if elem is not None:
-            for key in ('surface_ids', 'max_particles','mcpl'):
+            if self.surf_source_write is None:
+                self.surf_source_write = {}
+            for key in ('surface_ids', 'max_particles', 'mcpl', 'cell', 'cellto', 'cellfrom'):
                 value = get_text(elem, key)
                 if value is not None:
                     if key == 'surface_ids':
@@ -1545,6 +1589,12 @@ class Settings:
                         value = int(value)
                     elif key == 'mcpl':
                         value = value in ('true', '1')
+                    elif key == 'cell':
+                        value = int(value)
+                    elif key == 'cellfrom':
+                        value = int(value)
+                    elif key == 'cellto':
+                        value = int(value)
                     self.surf_source_write[key] = value
 
     def _confidence_intervals_from_xml_element(self, root):

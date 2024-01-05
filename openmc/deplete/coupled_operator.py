@@ -428,6 +428,7 @@ class CoupledOperator(OpenMCOperator):
         """
         # Reset results in OpenMC
         openmc.lib.reset()
+        openmc.lib.reset_timers()
 
         self._update_materials_and_nuclides(vec)
 
@@ -507,8 +508,6 @@ class CoupledOperator(OpenMCOperator):
         openmc.lib.statepoint_write(
             "openmc_simulation_n{}.h5".format(step),
             write_source=False)
-
-        openmc.lib.reset_timers()
 
     def finalize(self):
         """Finalize a depletion simulation and release resources."""

@@ -1235,7 +1235,6 @@ void ProjectionPlot::create_output() const
     const int tid = thread_num();
 
     Geometron p;
-    p.r() = camera_position_;
     p.u() = {1.0, 0.0, 0.0};
 
     int vert = tid;
@@ -1252,6 +1251,10 @@ void ProjectionPlot::create_output() const
 
         for (int horiz = 0; horiz < pixels_[0]; ++horiz) {
 
+          // Projection mode below decides ray starting conditions
+          Position init_r;
+          Direction init_u;
+
           // Generate the starting position/direction of the ray
           if (orthographic_width_ == 0.0) { // perspective projection
             double this_phi =
@@ -1262,17 +1265,21 @@ void ProjectionPlot::create_output() const
             camera_local_vec.x = std::cos(this_phi) * std::sin(this_mu);
             camera_local_vec.y = std::sin(this_phi) * std::sin(this_mu);
             camera_local_vec.z = std::cos(this_mu);
-            p.u() = camera_local_vec.rotate(camera_to_model);
+            init_u = camera_local_vec.rotate(camera_to_model);
+            init_r = camera_position_;
           } else { // orthographic projection
-            p.u() = looking_direction;
+            init_u = looking_direction;
 
             double x_pix_coord = (static_cast<double>(horiz) - p0 / 2.0) / p0;
             double y_pix_coord = (static_cast<double>(vert) - p1 / 2.0) / p0;
 
-            p.u() = camera_position_;
-            p.u() += cam_yaxis * x_pix_coord * orthographic_width_;
-            p.u() += cam_zaxis * y_pix_coord * orthographic_width_;
+            init_r = camera_position_;
+            init_r += cam_yaxis * x_pix_coord * orthographic_width_;
+            init_r += cam_zaxis * y_pix_coord * orthographic_width_;
           }
+
+          // Resets internal geometry state of particle
+          p.init_from_r_u(init_r, init_u);
 
           bool hitsomething = false;
           bool intersection_found = true;

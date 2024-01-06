@@ -42,7 +42,7 @@ AtomicData::AtomicData(std::string data_file)
   }
   std::string line = "";
 
-  // Skip header
+  // Skip header and read the first line with data
   for (int i = 0; i < line_in_header + 1; i++) {
     std::getline(myfile, line);
   }

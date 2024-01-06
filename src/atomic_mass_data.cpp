@@ -1,4 +1,5 @@
 #include "openmc/atomic_mass_data.h"
+#include "openmc/error.h"
 
 #include <fstream>
 #include <iostream>
@@ -13,9 +14,14 @@ std::string remove_space(std::string s)
   return s;
 }
 
-// Read a line from atomic mass data and pull usesull content
-atomic_data read_atomic_data(std::string line)
+namespace openmc {
+namespace data {
+
+// Read a line from atomic mass data and pull usesull content and return a
+// pair<nuc_name, atomic_mass_data>
+std::pair<std::string, atomic_data> read(std::string line)
 {
+  std::string nuc_name = remove_space(line.substr(20, 2) + line.substr(16, 3));
   atomic_data atom_data;
   atom_data.mass_excess =
     std::stod(line.substr(29, 6) + "." + line.substr(36, 6));
@@ -24,31 +30,26 @@ atomic_data read_atomic_data(std::string line)
   atom_data.mass =
     std::stod(line.substr(106, 3)) +
     1e-6 * std::stod(line.substr(110, 6) + '.' + line.substr(117, 3));
-  return atom_data;
+  return std::make_pair(nuc_name, atom_data);
 }
-
-namespace openmc {
-namespace data {
 
 AtomicData::AtomicData(std::string data_file)
 {
   // Open Data file
   std::ifstream myfile(data_file);
   if (!myfile) {
-    std::cout << "NO file found in " << data_file << std::endl;
+    fatal_error("Atomic mass data file '" + data_file + "' does not exist.");
   }
+  std::string line = "";
+
   // Skip header
-  for (int i = 0; i < line_in_header; i++) {
-    std::string line;
+  for (int i = 0; i < line_in_header + 1; i++) {
     std::getline(myfile, line);
   }
-  std::string line;
-  std::getline(myfile, line);
-  // read the data
+
   do {
-    std::string name = remove_space(line.substr(20, 2) + line.substr(16, 3));
-    atomic_data read = read_atomic_data(line);
-    atomic_mass_data.insert(std::make_pair(name, read_atomic_data(line)));
+    using openmc::data::read;
+    atomic_mass_data.insert(read(line));
     std::getline(myfile, line);
   } while (!myfile.eof());
 }

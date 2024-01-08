@@ -33,12 +33,12 @@ int main(int argc, char* argv[])
   case RunMode::FIXED_SOURCE:
   case RunMode::EIGENVALUE:
     switch (settings::solver_type) {
-      case SolverType::MONTE_CARLO:
-        err = openmc_run();
-        break;
-      case SolverType::RANDOM_RAY:
-        err = openmc_run_random_ray();
-        break;
+    case SolverType::MONTE_CARLO:
+      err = openmc_run();
+      break;
+    case SolverType::RANDOM_RAY:
+      err = openmc_run_random_ray();
+      break;
     }
     break;
   case RunMode::PLOTTING:

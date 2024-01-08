@@ -235,18 +235,21 @@ void get_run_parameters(pugi::xml_node node_base)
   // Random ray variables
   if (solver_type == SolverType::RANDOM_RAY) {
     if (check_for_node(node_base, "random_ray_distance_active")) {
-     random_ray_distance_active = std::stod(get_node_value(node_base, "random_ray_distance_active"));
-     if (random_ray_distance_active <= 0.0 ) {
-      fatal_error("Random ray active distance must be greater than 0");
-     }
+      random_ray_distance_active =
+        std::stod(get_node_value(node_base, "random_ray_distance_active"));
+      if (random_ray_distance_active <= 0.0) {
+        fatal_error("Random ray active distance must be greater than 0");
+      }
     } else {
       fatal_error("Specify random ray active distance in settings XML");
     }
     if (check_for_node(node_base, "random_ray_distance_inactive")) {
-      random_ray_distance_inactive = std::stod(get_node_value(node_base, "random_ray_distance_inactive"));
-     if (random_ray_distance_inactive < 0 ) {
-      fatal_error("Random ray inactive distance must be greater than or equal to 0");
-     }
+      random_ray_distance_inactive =
+        std::stod(get_node_value(node_base, "random_ray_distance_inactive"));
+      if (random_ray_distance_inactive < 0) {
+        fatal_error(
+          "Random ray inactive distance must be greater than or equal to 0");
+      }
     } else {
       fatal_error("Specify random ray inactive distance in settings XML");
     }

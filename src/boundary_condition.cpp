@@ -21,8 +21,8 @@ void VacuumBC::handle_particle(Particle& p, const Surface& surf) const
   if (settings::solver_type == SolverType::RANDOM_RAY) {
     // Reflect ray off of the surface
     ReflectiveBC rbc;
-    rbc.handle_particle(p, surf); 
-    
+    rbc.handle_particle(p, surf);
+
     // Set ray's angular flux spectrum to vacuum conditions (zero)
     RandomRay* r = static_cast<RandomRay*>(&p);
     std::fill(r->angular_flux_.begin(), r->angular_flux_.end(), 0.0);

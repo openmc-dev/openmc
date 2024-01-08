@@ -16,10 +16,10 @@ void instability_check(int64_t n_hits, double k_eff, double& avg_miss_rate);
 void validate_random_ray_inputs();
 void all_reduce_random_ray_batch_results(bool mapped_all_tallies);
 
-template <typename T>
+template<typename T>
 void parallel_fill(std::vector<T>& arr, T value)
 {
-  #pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
   for (int i = 0; i < arr.size(); i++) {
     arr[i] = value;
   }

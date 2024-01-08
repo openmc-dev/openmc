@@ -1,11 +1,11 @@
 #include "openmc/random_ray/random_ray.h"
 #include "openmc/geometry.h"
-#include "openmc/settings.h"
+#include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/random_ray/source_region.h"
+#include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"
-#include "openmc/message_passing.h"
 
 namespace openmc {
 
@@ -49,13 +49,14 @@ void RandomRay::event_advance_ray()
 
   if (distance <= 0.0) {
     mark_as_lost("Negative transport distance detected for particle " +
-        std::to_string(id()));
+                 std::to_string(id()));
     return;
   }
 
   // Check for final termination
   if (is_active_) {
-    if (distance_travelled_ + distance >= settings::random_ray_distance_active) {
+    if (distance_travelled_ + distance >=
+        settings::random_ray_distance_active) {
       distance = settings::random_ray_distance_active - distance_travelled_;
       wgt() = 0.0;
     }
@@ -64,30 +65,27 @@ void RandomRay::event_advance_ray()
   }
 
   // Check for end of inactive region (dead zone)
-  if(!is_active_)
-  {
-    if(distance_travelled_ + distance >= settings::random_ray_distance_inactive)
-    {
+  if (!is_active_) {
+    if (distance_travelled_ + distance >=
+        settings::random_ray_distance_inactive) {
       is_active_ = true;
-      double distance_dead = settings::random_ray_distance_inactive - distance_travelled_;
-      attenuate_flux(distance_dead,  false);
+      double distance_dead =
+        settings::random_ray_distance_inactive - distance_travelled_;
+      attenuate_flux(distance_dead, false);
 
       double distance_alive = distance - distance_dead;
 
       // Ensure we haven't travelled past the active phase as well
-      if (distance_alive > settings::random_ray_distance_active)
-      {
+      if (distance_alive > settings::random_ray_distance_active) {
         distance_alive = settings::random_ray_distance_active;
         wgt() = 0.0;
       }
       attenuate_flux(distance_alive, true);
 
       distance_travelled_ = distance_alive;
-    }
-    else
-    {
+    } else {
       distance_travelled_ += distance;
-      attenuate_flux(distance,  false);
+      attenuate_flux(distance, false);
     }
   }
 
@@ -121,12 +119,13 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
   int i_cell = lowest_coord().cell;
 
   // The source region is the spatial region index
-  int64_t source_region = random_ray::source_region_offsets[i_cell] + cell_instance();
+  int64_t source_region =
+    random_ray::source_region_offsets[i_cell] + cell_instance();
 
   // The source element is the energy-specific region index
   int64_t source_element = source_region * negroups;
   int material = this->material();
-  
+
   // Temperature and angle indices, if using multiple temperature
   // data sets and/or anisotropic data sets.
   // TODO: Currently assumes we are only using single temp/single
@@ -136,10 +135,12 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
 
   // MOC incoming flux attenuation + source contribution/attenuation equation
   for (int e = 0; e < negroups; e++) {
-    float Sigma_t = data::mg.macro_xs_[material].get_xs(MgxsType::TOTAL, e, NULL, NULL, NULL, t, a);
+    float Sigma_t = data::mg.macro_xs_[material].get_xs(
+      MgxsType::TOTAL, e, NULL, NULL, NULL, t, a);
     float tau = Sigma_t * distance;
     float exponential = cjosey_exponential(tau); // exponential = 1 - exp(-tau)
-    float new_delta_psi = (angular_flux_[e] - random_ray::source[source_element + e]) * exponential;
+    float new_delta_psi =
+      (angular_flux_[e] - random_ray::source[source_element + e]) * exponential;
     delta_psi_[e] = new_delta_psi;
     angular_flux_[e] -= new_delta_psi;
   }
@@ -147,8 +148,8 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
   // If ray is in the active phase (not in dead zone), make contributions to
   // source region bookkeeping
   if (is_active) {
-    
-    // Aquire lock for source region 
+
+    // Aquire lock for source region
     random_ray::lock[source_region].lock();
 
     // Accumulate delta psi into new estimate of source region flux for
@@ -170,7 +171,7 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
     // Tally valid position inside the source region (e.g., midpoint of
     // the ray) if not done already
     if (!random_ray::position_recorded[source_region]) {
-      Position midpoint = r() + u() * (distance/2.0);
+      Position midpoint = r() + u() * (distance / 2.0);
       random_ray::position[source_region] = midpoint;
       random_ray::position_recorded[source_region] = 1;
     }
@@ -179,8 +180,6 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
     random_ray::lock[source_region].unlock();
   }
 }
-
-
 
 void RandomRay::initialize_ray(uint64_t index_source)
 {
@@ -198,7 +197,8 @@ void RandomRay::initialize_ray(uint64_t index_source)
   id() = simulation::work_index[mpi::rank] + index_source;
 
   // set random number seed
-  int64_t particle_seed = (simulation::current_batch-1) * settings::n_particles + id();
+  int64_t particle_seed =
+    (simulation::current_batch - 1) * settings::n_particles + id();
   init_particle_seeds(particle_seed, seeds());
   stream() = STREAM_TRACKING;
 
@@ -209,18 +209,21 @@ void RandomRay::initialize_ray(uint64_t index_source)
   // Locate ray
   if (lowest_coord().cell == C_NONE) {
     if (!exhaustive_find_cell(*this)) {
-      this->mark_as_lost("Could not find the cell containing particle "
-          + std::to_string(id()));
+      this->mark_as_lost(
+        "Could not find the cell containing particle " + std::to_string(id()));
     }
 
     // Set birth cell attribute
-    if (cell_born() == C_NONE) cell_born() = lowest_coord().cell;
+    if (cell_born() == C_NONE)
+      cell_born() = lowest_coord().cell;
   }
 
-  // Initialize ray's starting angular flux to starting location's isotropic source
+  // Initialize ray's starting angular flux to starting location's isotropic
+  // source
   int negroups = data::mg.num_energy_groups_;
   int i_cell = lowest_coord().cell;
-  int64_t source_region_idx = random_ray::source_region_offsets[i_cell] + cell_instance();
+  int64_t source_region_idx =
+    random_ray::source_region_offsets[i_cell] + cell_instance();
 
   for (int e = 0; e < negroups; e++) {
     angular_flux_[e] = random_ray::source[source_region_idx * negroups + e];

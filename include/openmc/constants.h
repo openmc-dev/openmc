@@ -340,10 +340,7 @@ enum class RunMode {
   VOLUME
 };
 
-enum class SolverType {
-  MONTE_CARLO,
-  RANDOM_RAY
-};
+enum class SolverType { MONTE_CARLO, RANDOM_RAY };
 
 //==============================================================================
 // Geometry Constants

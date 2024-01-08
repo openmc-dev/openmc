@@ -122,7 +122,8 @@ int openmc_simulation_init()
     write_message("Resuming simulation...", 6);
   } else {
     // Only initialize primary source bank for eigenvalue simulations
-    if (settings::run_mode == RunMode::EIGENVALUE && settings::solver_type == SolverType::MONTE_CARLO) {
+    if (settings::run_mode == RunMode::EIGENVALUE &&
+        settings::solver_type == SolverType::MONTE_CARLO) {
       initialize_source();
     }
   }
@@ -315,7 +316,8 @@ vector<int64_t> work_index;
 
 void allocate_banks()
 {
-  if (settings::run_mode == RunMode::EIGENVALUE && settings::solver_type == SolverType::MONTE_CARLO) {
+  if (settings::run_mode == RunMode::EIGENVALUE &&
+      settings::solver_type == SolverType::MONTE_CARLO) {
     // Allocate source bank
     simulation::source_bank.resize(simulation::work_per_rank);
 
@@ -499,7 +501,8 @@ void finalize_generation()
   }
   global_tally_leakage = 0.0;
 
-  if (settings::run_mode == RunMode::EIGENVALUE && settings::solver_type == SolverType::MONTE_CARLO) {
+  if (settings::run_mode == RunMode::EIGENVALUE &&
+      settings::solver_type == SolverType::MONTE_CARLO) {
     // If using shared memory, stable sort the fission bank (by parent IDs)
     // so as to allow for reproducibility regardless of which order particles
     // are run in.
@@ -508,7 +511,7 @@ void finalize_generation()
     // Distribute fission bank across processors evenly
     synchronize_bank();
   }
-  
+
   if (settings::run_mode == RunMode::EIGENVALUE) {
 
     // Calculate shannon entropy

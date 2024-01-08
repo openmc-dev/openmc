@@ -1,7 +1,7 @@
-#include "openmc/cell.h"
 #include "openmc/random_ray/source_region.h"
-#include "openmc/random_ray/tally_convert.h"
+#include "openmc/cell.h"
 #include "openmc/mgxs_interface.h"
+#include "openmc/random_ray/tally_convert.h"
 
 namespace openmc {
 
@@ -12,8 +12,9 @@ namespace openmc {
 namespace random_ray {
 
 // Scalars
-int64_t n_source_elements {0}; // Total number of source regions in the model times the number of energy groups
-int64_t n_source_regions {0}; // Total number of source regions in the model
+int64_t n_source_elements {0}; // Total number of source regions in the model
+                               // times the number of energy groups
+int64_t n_source_regions {0};  // Total number of source regions in the model
 
 // 1D arrays representing values for each OpenMC "Cell"
 std::vector<int64_t> source_region_offsets;
@@ -27,12 +28,12 @@ std::vector<double> volume;
 std::vector<double> volume_t;
 std::vector<int> was_hit;
 
-// 2D arrays stored in 1D representing values for all source regions x energy groups
+// 2D arrays stored in 1D representing values for all source regions x energy
+// groups
 std::vector<float> scalar_flux_new;
 std::vector<float> scalar_flux_old;
 std::vector<float> scalar_flux_final;
 std::vector<float> source;
-
 
 } // namespace random_ray
 
@@ -76,12 +77,13 @@ void initialize_source_regions()
 
   // Initialize material array
   int64_t source_region_id = 0;
-  for (int i =  0; i < model::cells.size(); i++) {
+  for (int i = 0; i < model::cells.size(); i++) {
     Cell& cell = *model::cells[i];
     if (cell.type_ == Fill::MATERIAL) {
       int material = cell.material_[0];
       for (int j = 0; j < cell.n_instances_; j++) {
-        random_ray::material[source_region_id++] = material;;
+        random_ray::material[source_region_id++] = material;
+        ;
       }
     }
   }

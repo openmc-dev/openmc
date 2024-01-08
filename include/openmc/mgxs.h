@@ -84,7 +84,8 @@ public:
   std::string name; // name of dataset, e.g., UO2
   double awr;       // atomic weight ratio
   bool fissionable; // Is this fissionable
-  bool is_isotropic {true}; // used to skip search for angle indices if isotropic
+  bool is_isotropic {
+    true}; // used to skip search for angle indices if isotropic
 
   Mgxs() = default;
 

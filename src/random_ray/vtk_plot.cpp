@@ -13,9 +13,10 @@ void plot_3D_vtk()
   // Rename .h5 plot filename(s) to .vtk filenames
   for (int p = 0; p < model::plots.size(); p++) {
     PlottableInterface* plot = model::plots[p].get();
-    plot->path_plot() = plot->path_plot().substr(0,plot->path_plot().find_last_of('.'))+".vtk";
+    plot->path_plot() =
+      plot->path_plot().substr(0, plot->path_plot().find_last_of('.')) + ".vtk";
   }
- 
+
   // Print header information
   print_plot();
 

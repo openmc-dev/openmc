@@ -85,30 +85,41 @@ materials_file.export_to_xml()
 ###############################################################################
 # Define problem geometry
 
-# Fuel/moderator boundary
-fuel_or =      openmc.ZCylinder(r=0.54, name='Fuel OR')
-
+# The geometry we will define a simplified pincell with fuel radius 0.54 cm
+# surrounded by moderator (same as in the multigroup example).
 # In random ray, we typically want several radial regions and azimuthal
 # sectors in both the fuel and moderator areas of the pincell. This is
 # due to the flat source approximation requiring that source regions are
-# small compared to the typical mean free path of a neutron.
+# small compared to the typical mean free path of a neutron. Below we
+# sudivide the basic pincell into 8 aziumthal sectors (pizza slices) and
+# 5 concentric rings in both the fuel and moderator.
 
-# We begin by generating a basic pincell with only concentric rings
+# TODO: When available in OpenMC, use cylindrical lattice instead to
+# simplify definition and improve runtime performance.
+
 pincell_base = openmc.Universe()
 
-inner_ring_a = openmc.ZCylinder(r=0.33, name='inner ring a')
-inner_ring_b = openmc.ZCylinder(r=0.45, name='inner ring b')
-outer_ring_a = openmc.ZCylinder(r=0.60, name='outer ring a')
-outer_ring_b = openmc.ZCylinder(r=0.69, name='outer ring b')
+# These are the subdivided radii (creating 5 concentric regions in the
+# fuel and moderator)
+ring_radii = [0.241, 0.341, 0.418, 0.482, 0.54, 0.572, 0.612, 0.694, 0.786]
+fills = [uo2, uo2, uo2, uo2, uo2, water, water, water, water, water]
 
-fuel_a = openmc.Cell(fill=uo2, region=-inner_ring_a, name='fuel inner a')
-fuel_b = openmc.Cell(fill=uo2, region=+inner_ring_a & -inner_ring_b, name='fuel inner b')
-fuel_c = openmc.Cell(fill=uo2, region=+inner_ring_b & -fuel_or, name='fuel inner c')
-moderator_a = openmc.Cell(fill=water, region=+fuel_or & -outer_ring_a, name='moderator inner a')
-moderator_b = openmc.Cell(fill=water, region=+outer_ring_a & -outer_ring_b, name='moderator outer b')
-moderator_c = openmc.Cell(fill=water, region=+outer_ring_b, name='moderator outer c')
-
-pincell_base.add_cells([fuel_a, fuel_b, fuel_c, moderator_a, moderator_b, moderator_c])
+# We then create cells representing the bounded rings, with special
+# treatment for both the innermost and outermost cells
+cells = []
+for r in range(10):
+    cell = []
+    if r == 0:
+        outer_bound = openmc.ZCylinder(r=ring_radii[r])
+        cell = openmc.Cell(fill=fills[r], region=-outer_bound) 
+    elif r == 9:
+        inner_bound = openmc.ZCylinder(r=ring_radii[r-1])
+        cell = openmc.Cell(fill=fills[r], region=+inner_bound) 
+    else:
+        inner_bound = openmc.ZCylinder(r=ring_radii[r-1])
+        outer_bound = openmc.ZCylinder(r=ring_radii[r])
+        cell = openmc.Cell(fill=fills[r], region=+inner_bound & -outer_bound) 
+    pincell_base.add_cell(cell)
 
 # We then generate 8 planes to bound 8 azimuthal sectors
 azimuthal_planes = []
@@ -130,11 +141,12 @@ pincell = openmc.Universe(cells=azimuthal_cells)
 
 # Create a region represented as the inside of a rectangular prism
 pitch = 1.26
-box = openmc.rectangular_prism(pitch, pitch, boundary_type='reflective')
-pincell_bounded = openmc.Cell(fill=pincell, region=box, name='pincell')
+box = openmc.model.RectangularPrism(pitch, pitch, boundary_type='reflective')
+pincell_bounded = openmc.Cell(fill=pincell, region=-box, name='pincell')
 
-# Create a geometry with the two cells and export to XML
-geometry = openmc.Geometry([pincell_bounded])
+# Create a geometry (specifying merge surfaces option to remove
+# all the redundant cylinder/plane surfaces) and export to XML
+geometry = openmc.Geometry([pincell_bounded], merge_surfaces=True)
 geometry.export_to_xml()
 
 ###############################################################################
@@ -150,7 +162,8 @@ settings.solver_type = 'random ray'
 settings.random_ray_distance_inactive = 40.0
 settings.random_ray_distance_active = 400.0
 
-# Create an initial uniform spatial source distribution over fissionable zones
+# Create an initial uniform spatial source distribution for sampling rays.
+# Note that this must be uniform in space and angle.
 lower_left = (-pitch/2, -pitch/2, -1)
 upper_right = (pitch/2, pitch/2, 1)
 uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=False)

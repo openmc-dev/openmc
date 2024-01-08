@@ -10,6 +10,12 @@ namespace openmc {
 // loaded and displayed by Paraview.
 void plot_3D_vtk()
 {
+  // Rename .h5 plot filename(s) to .vtk filenames
+  for (int p = 0; p < model::plots.size(); p++) {
+    PlottableInterface* plot = model::plots[p].get();
+    plot->path_plot() = plot->path_plot().substr(0,plot->path_plot().find_last_of('.'))+".vtk";
+  }
+ 
   // Print header information
   print_plot();
 
@@ -42,7 +48,6 @@ void plot_3D_vtk()
     double y_delta = width.y / Ny;
     double z_delta = width.z / Nz;
     std::string filename = openmc_plot->path_plot();
-    filename.replace(filename.size() - 3, 3, ".vtk");
 
     int negroups = data::mg.num_energy_groups_;
 

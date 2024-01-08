@@ -8,8 +8,8 @@ import re
 import typing  # imported separately as py3.8 requires typing.Iterable
 import warnings
 from typing import Optional, List, Union, Dict
-import lxml.etree as ET
 
+import lxml.etree as ET
 import numpy as np
 import h5py
 
@@ -289,7 +289,7 @@ class Material(IDManagerMixin):
         ) -> Optional[Univariate]:
         r"""Return energy distribution of decay photons from unstable nuclides.
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
 
         Parameters
         ----------
@@ -1713,7 +1713,7 @@ class Materials(cv.CheckedList):
             self._write_xml(fh, nuclides_to_ignore=nuclides_to_ignore)
 
     @classmethod
-    def from_xml_element(cls, elem) -> Material:
+    def from_xml_element(cls, elem) -> Materials:
         """Generate materials collection from XML file
 
         Parameters
@@ -1740,7 +1740,7 @@ class Materials(cv.CheckedList):
         return materials
 
     @classmethod
-    def from_xml(cls, path: PathLike = 'materials.xml') -> Material:
+    def from_xml(cls, path: PathLike = 'materials.xml') -> Materials:
         """Generate materials collection from XML file
 
         Parameters

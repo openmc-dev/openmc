@@ -8,9 +8,7 @@
 #ifdef OPENMC_MPI
 #include "mpi.h"
 #endif
-#ifdef _OPENMP
-#include <omp.h>
-#endif
+
 #include "xtensor/xbuilder.hpp"
 #include "xtensor/xeval.hpp"
 #include "xtensor/xmath.hpp"
@@ -27,6 +25,8 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/memory.h"
 #include "openmc/message_passing.h"
+#include "openmc/openmp_interface.h"
+#include "openmc/random_dist.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/tallies/filter.h"
@@ -163,6 +163,23 @@ xt::xtensor<int, 1> StructuredMesh::get_x_shape() const
   // because method is const, shape_ is const as well and can't be adapted
   auto tmp_shape = shape_;
   return xt::adapt(tmp_shape, {n_dimension_});
+}
+
+Position StructuredMesh::sample_element(
+  const MeshIndex& ijk, uint64_t* seed) const
+{
+  // lookup the lower/upper bounds for the mesh element
+  double x_min = negative_grid_boundary(ijk, 0);
+  double x_max = positive_grid_boundary(ijk, 0);
+
+  double y_min = (n_dimension_ >= 2) ? negative_grid_boundary(ijk, 1) : 0.0;
+  double y_max = (n_dimension_ >= 2) ? positive_grid_boundary(ijk, 1) : 0.0;
+
+  double z_min = (n_dimension_ == 3) ? negative_grid_boundary(ijk, 2) : 0.0;
+  double z_max = (n_dimension_ == 3) ? positive_grid_boundary(ijk, 2) : 0.0;
+
+  return {x_min + (x_max - x_min) * prn(seed),
+    y_min + (y_max - y_min) * prn(seed), z_min + (z_max - z_min) * prn(seed)};
 }
 
 //==============================================================================
@@ -379,11 +396,6 @@ StructuredMesh::MeshIndex StructuredMesh::get_indices_from_bin(int bin) const
     ijk[2] = bin / (shape_[0] * shape_[1]) + 1;
   }
   return ijk;
-}
-
-Position StructuredMesh::sample(uint64_t* seed, int32_t bin) const
-{
-  fatal_error("Position sampling on structured meshes is not yet implemented");
 }
 
 int StructuredMesh::get_bin(Position r) const
@@ -1077,6 +1089,30 @@ StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   return idx;
 }
 
+Position CylindricalMesh::sample_element(
+  const MeshIndex& ijk, uint64_t* seed) const
+{
+  double r_min = this->r(ijk[0] - 1);
+  double r_max = this->r(ijk[0]);
+
+  double phi_min = this->phi(ijk[1] - 1);
+  double phi_max = this->phi(ijk[1]);
+
+  double z_min = this->z(ijk[2] - 1);
+  double z_max = this->z(ijk[2]);
+
+  double r_min_sq = r_min * r_min;
+  double r_max_sq = r_max * r_max;
+  double r = std::sqrt(uniform_distribution(r_min_sq, r_max_sq, seed));
+  double phi = uniform_distribution(phi_min, phi_max, seed);
+  double z = uniform_distribution(z_min, z_max, seed);
+
+  double x = r * std::cos(phi);
+  double y = r * std::sin(phi);
+
+  return origin_ + Position(x, y, z);
+}
+
 double CylindricalMesh::find_r_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
@@ -1336,6 +1372,33 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(
   idx[2] = sanitize_phi(idx[2]);
 
   return idx;
+}
+
+Position SphericalMesh::sample_element(
+  const MeshIndex& ijk, uint64_t* seed) const
+{
+  double r_min = this->r(ijk[0] - 1);
+  double r_max = this->r(ijk[0]);
+
+  double theta_min = this->theta(ijk[1] - 1);
+  double theta_max = this->theta(ijk[1]);
+
+  double phi_min = this->phi(ijk[2] - 1);
+  double phi_max = this->phi(ijk[2]);
+
+  double cos_theta = uniform_distribution(theta_min, theta_max, seed);
+  double sin_theta = std::sin(std::acos(cos_theta));
+  double phi = uniform_distribution(phi_min, phi_max, seed);
+  double r_min_cub = std::pow(r_min, 3);
+  double r_max_cub = std::pow(r_max, 3);
+  // might be faster to do rejection here?
+  double r = std::cbrt(uniform_distribution(r_min_cub, r_max_cub, seed));
+
+  double x = r * std::cos(phi) * sin_theta;
+  double y = r * std::sin(phi) * sin_theta;
+  double z = r * cos_theta;
+
+  return origin_ + Position(x, y, z);
 }
 
 double SphericalMesh::find_r_crossing(
@@ -2185,7 +2248,7 @@ std::string MOABMesh::library() const
 }
 
 // Sample position within a tet for MOAB type tets
-Position MOABMesh::sample(uint64_t* seed, int32_t bin) const
+Position MOABMesh::sample_element(int32_t bin, uint64_t* seed) const
 {
 
   moab::EntityHandle tet_ent = get_ent_handle_from_bin(bin);
@@ -2651,13 +2714,7 @@ void LibMesh::initialize()
   libMesh::ExplicitSystem& eq_sys =
     equation_systems_->add_system<libMesh::ExplicitSystem>(eq_system_name_);
 
-#ifdef _OPENMP
-  int n_threads = omp_get_max_threads();
-#else
-  int n_threads = 1;
-#endif
-
-  for (int i = 0; i < n_threads; i++) {
+  for (int i = 0; i < num_threads(); i++) {
     pl_.emplace_back(m_->sub_point_locator());
     pl_.back()->set_contains_point_tol(FP_COINCIDENT);
     pl_.back()->enable_out_of_mesh_mode();
@@ -2672,7 +2729,7 @@ void LibMesh::initialize()
 }
 
 // Sample position within a tet for LibMesh type tets
-Position LibMesh::sample(uint64_t* seed, int32_t bin) const
+Position LibMesh::sample_element(int32_t bin, uint64_t* seed) const
 {
   const auto& elem = get_element_from_bin(bin);
   // Get tet vertex coordinates from LibMesh
@@ -2832,13 +2889,7 @@ int LibMesh::get_bin(Position r) const
     return -1;
   }
 
-#ifdef _OPENMP
-  int thread_num = omp_get_thread_num();
-#else
-  int thread_num = 0;
-#endif
-
-  const auto& point_locator = pl_.at(thread_num);
+  const auto& point_locator = pl_.at(thread_num());
 
   const auto elem_ptr = (*point_locator)(p);
   return elem_ptr ? get_bin_from_element(elem_ptr) : -1;

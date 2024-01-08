@@ -8,6 +8,27 @@
 namespace openmc {
 
 //==============================================================================
+//! Accessor functions related to number of threads and thread number
+//==============================================================================
+inline int num_threads()
+{
+#ifdef _OPENMP
+  return omp_get_max_threads();
+#else
+  return 1;
+#endif
+}
+
+inline int thread_num()
+{
+#ifdef _OPENMP
+  return omp_get_thread_num();
+#else
+  return 0;
+#endif
+}
+
+//==============================================================================
 //! An object used to prevent concurrent access to a piece of data.
 //==============================================================================
 
@@ -38,13 +59,12 @@ public:
   // copying of OpenMPMutex does not produce two handles to the same mutex,
   // rather, it produces two different mutexes.
 
-  // Copy constructor.
-  OpenMPMutex(const OpenMPMutex& other) {
-    OpenMPMutex();
-  }
+  // Copy constructor
+  OpenMPMutex(const OpenMPMutex& other) { OpenMPMutex(); }
 
   // Copy assignment operator
-  OpenMPMutex& operator=(const OpenMPMutex& other) {
+  OpenMPMutex& operator=(const OpenMPMutex& other)
+  {
     OpenMPMutex();
     return *this;
   }

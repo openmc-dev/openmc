@@ -41,6 +41,9 @@ void ReflectiveBC::handle_particle(Particle& p, const Surface& surf) const
   Direction u = surf.reflect(p.r(), p.u(), &p);
   u /= u.norm();
 
+  // Handle the effects of the surface albedo on the particle's weight.
+  BoundaryCondition::handle_albedo(p, surf);
+
   p.cross_reflective_bc(surf, u);
 }
 
@@ -52,6 +55,9 @@ void WhiteBC::handle_particle(Particle& p, const Surface& surf) const
 {
   Direction u = surf.diffuse_reflect(p.r(), p.u(), p.current_seed());
   u /= u.norm();
+
+  // Handle the effects of the surface albedo on the particle's weight.
+  BoundaryCondition::handle_albedo(p, surf);
 
   p.cross_reflective_bc(surf, u);
 }
@@ -142,6 +148,9 @@ void TranslationalPeriodicBC::handle_particle(
       "Called BoundaryCondition::handle_particle after "
       "hitting a surface, but that surface is not recognized by the BC.");
   }
+
+  // Handle the effects of the surface albedo on the particle's weight.
+  BoundaryCondition::handle_albedo(p, surf);
 
   // Pass the new location and surface to the particle.
   p.cross_periodic_bc(surf, new_r, p.u(), new_surface);
@@ -276,6 +285,9 @@ void RotationalPeriodicBC::handle_particle(
     cos_theta * r.x - sin_theta * r.y, sin_theta * r.x + cos_theta * r.y, r.z};
   Direction new_u = {
     cos_theta * u.x - sin_theta * u.y, sin_theta * u.x + cos_theta * u.y, u.z};
+
+  // Handle the effects of the surface albedo on the particle's weight.
+  BoundaryCondition::handle_albedo(p, surf);
 
   // Pass the new location, direction, and surface to the particle.
   p.cross_periodic_bc(surf, new_r, new_u, new_surface);

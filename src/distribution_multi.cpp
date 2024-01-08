@@ -12,6 +12,25 @@
 
 namespace openmc {
 
+unique_ptr<UnitSphereDistribution> UnitSphereDistribution::create(
+  pugi::xml_node node)
+{
+  // Check for type of angular distribution
+  std::string type;
+  if (check_for_node(node, "type"))
+    type = get_node_value(node, "type", true, true);
+  if (type == "isotropic") {
+    return UPtrAngle {new Isotropic()};
+  } else if (type == "monodirectional") {
+    return UPtrAngle {new Monodirectional(node)};
+  } else if (type == "mu-phi") {
+    return UPtrAngle {new PolarAzimuthal(node)};
+  } else {
+    fatal_error(fmt::format(
+      "Invalid angular distribution for external source: {}", type));
+  }
+}
+
 //==============================================================================
 // UnitSphereDistribution implementation
 //==============================================================================

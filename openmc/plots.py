@@ -1,10 +1,10 @@
 from collections.abc import Iterable, Mapping
 from numbers import Integral, Real
 from pathlib import Path
-import lxml.etree as ET
 from typing import Optional
 
 import h5py
+import lxml.etree as ET
 import numpy as np
 
 import openmc
@@ -184,7 +184,7 @@ def _get_plot_image(plot, cwd):
 def voxel_to_vtk(voxel_file: PathLike, output: PathLike = 'plot.vti'):
     """Converts a voxel HDF5 file to a VTK file
 
-    .. versionadded:: 0.13.4
+    .. versionadded:: 0.14.0
 
     Parameters
     ----------
@@ -943,7 +943,7 @@ class Plot(PlotBase):
 
         This method runs OpenMC in plotting mode to produce a .vti file.
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
 
         Parameters
         ----------
@@ -989,6 +989,8 @@ class ProjectionPlot(PlotBase):
     The camera projection may either by orthographic or perspective. Perspective
     projections are more similar to a pinhole camera, and orthographic projections
     preserve parallel lines and distances.
+
+    .. versionadded:: 0.14.0
 
     Parameters
     ----------

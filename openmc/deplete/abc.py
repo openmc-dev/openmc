@@ -18,7 +18,7 @@ from warnings import warn
 from numpy import nonzero, empty, asarray
 from uncertainties import ufloat
 
-from openmc.checkvalue import check_type, check_greater_than
+from openmc.checkvalue import check_type, check_greater_than, PathLike
 from openmc.mpi import comm
 from .stepresult import StepResult
 from .chain import Chain
@@ -68,8 +68,9 @@ def change_directory(output_dir):
         Directory to switch to.
     """
     orig_dir  = os.getcwd()
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
     try:
-        output_dir.mkdir(parents=True, exist_ok=True)
         os.chdir(output_dir)
         yield
     finally:
@@ -543,7 +544,7 @@ class Integrator(ABC):
         User-supplied functions are expected to have the following signature:
         ``solver(A, n0, t) -> n1`` where
 
-            * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
+            * ``A`` is a :class:`scipy.sparse.csc_matrix` making up the
               depletion matrix
             * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
               for a given material in atoms/cm3
@@ -554,7 +555,7 @@ class Integrator(ABC):
     transfer_rates : openmc.deplete.TransferRates
         Instance of TransferRates class to perform continuous transfer during depletion
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
 
     """
 
@@ -762,7 +763,12 @@ class Integrator(ABC):
         return (self.operator.prev_res[-1].time[-1],
                 len(self.operator.prev_res) - 1)
 
-    def integrate(self, final_step=True, output=True):
+    def integrate(
+            self,
+            final_step: bool = True,
+            output: bool = True,
+            path: PathLike = 'depletion_results.h5'
+        ):
         """Perform the entire depletion process across all steps
 
         Parameters
@@ -776,6 +782,10 @@ class Integrator(ABC):
             Indicate whether to display information about progress
 
             .. versionadded:: 0.13.1
+        path : PathLike
+            Path to file to write. Defaults to 'depletion_results.h5'.
+
+            .. versionadded:: 0.14.1
         """
         with change_directory(self.operator.output_dir):
             n = self.operator.initial_condition()
@@ -802,7 +812,7 @@ class Integrator(ABC):
                 n = n_list.pop()
 
                 StepResult.save(self.operator, n_list, res_list, [t, t + dt],
-                                source_rate, self._i_res + i, proc_time)
+                                source_rate, self._i_res + i, proc_time, path)
 
                 t += dt
 
@@ -921,7 +931,7 @@ class SIIntegrator(Integrator):
         User-supplied functions are expected to have the following signature:
         ``solver(A, n0, t) -> n1`` where
 
-            * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
+            * ``A`` is a :class:`scipy.sparse.csc_matrix` making up the
               depletion matrix
             * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
               for a given material in atoms/cm3
@@ -954,15 +964,21 @@ class SIIntegrator(Integrator):
             self.operator.settings.particles //= self.n_steps
         return inherited
 
-    def integrate(self, output=True):
+    def integrate(
+            self,
+            output: bool = True,
+            path: PathLike = "depletion_results.h5"
+        ):
         """Perform the entire depletion process across all steps
 
         Parameters
         ----------
         output : bool, optional
             Indicate whether to display information about progress
+        path : PathLike
+            Path to file to write. Defaults to 'depletion_results.h5'.
 
-            .. versionadded:: 0.13.1
+            .. versionadded:: 0.14.1
         """
         with change_directory(self.operator.output_dir):
             n = self.operator.initial_condition()
@@ -992,13 +1008,13 @@ class SIIntegrator(Integrator):
                 n = n_list.pop()
 
                 StepResult.save(self.operator, n_list, res_list, [t, t + dt],
-                             p, self._i_res + i, proc_time)
+                             p, self._i_res + i, proc_time, path)
 
                 t += dt
 
             # No final simulation for SIE, use last iteration results
             StepResult.save(self.operator, [n], [res_list[-1]], [t, t],
-                         p, self._i_res + len(self), proc_time)
+                         p, self._i_res + len(self), proc_time, path)
             self.operator.write_bos_data(self._i_res + len(self))
 
         self.operator.finalize()
@@ -1023,7 +1039,7 @@ class DepSystemSolver(ABC):
 
         Parameters
         ----------
-        A : scipy.sparse.csr_matrix
+        A : scipy.sparse.csc_matrix
             Sparse transmutation matrix ``A[j, i]`` describing rates at
             which isotope ``i`` transmutes to isotope ``j``
         n0 : numpy.ndarray

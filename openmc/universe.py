@@ -1,24 +1,20 @@
 import math
-import typing
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from copy import deepcopy
 from numbers import Integral, Real
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import lxml.etree as ET
 import warnings
 
 import h5py
+import lxml.etree as ET
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-
 from ._xml import get_text
 from .checkvalue import check_type, check_value
 from .mixin import IDManagerMixin
-from .plots import _SVG_COLORS
 from .surface import _BOUNDARY_TYPES
 
 
@@ -234,8 +230,7 @@ class Universe(UniverseBase):
         if regions:
             return openmc.Union(regions).bounding_box
         else:
-            # Infinite bounding box
-            return openmc.Intersection([]).bounding_box
+            return openmc.BoundingBox.infinite()
 
     @classmethod
     def from_hdf5(cls, group, cells):
@@ -350,19 +345,19 @@ class Universe(UniverseBase):
         legend : bool
             Whether a legend showing material or cell names should be drawn
 
-            .. versionadded:: 0.13.4
+            .. versionadded:: 0.14.0
         legend_kwargs : dict
             Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
 
-            .. versionadded:: 0.13.4
+            .. versionadded:: 0.14.0
         outline : bool
             Whether outlines between color boundaries should be drawn
 
-            .. versionadded:: 0.13.4
+            .. versionadded:: 0.14.0
         axis_units : {'km', 'm', 'cm', 'mm'}
             Units used on the plot axis
 
-            .. versionadded:: 0.13.4
+            .. versionadded:: 0.14.0
         **kwargs
             Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 
@@ -993,7 +988,7 @@ class DAGMCUniverse(UniverseBase):
         check_type('bounded type', bounded_type, str)
         check_value('bounded type', bounded_type, ('box', 'sphere'))
 
-        bbox = self.bounding_box.extend(padding_distance)
+        bbox = self.bounding_box.expand(padding_distance, True)
 
         if bounded_type == 'sphere':
             radius = np.linalg.norm(bbox.upper_right - bbox.center)

@@ -435,6 +435,7 @@ public:
   int& material() { return material_; }
   const int& material() const { return material_; }
   int& material_last() { return material_last_; }
+  const int& material_last() const { return material_last_; }
 
   BoundaryInfo& boundary() { return boundary_; }
 

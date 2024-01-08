@@ -104,6 +104,8 @@ class Results(list):
     ) -> Tuple[np.ndarray, typing.Union[np.ndarray, List[dict]]]:
         """Get activity of material over time.
 
+        .. versionadded:: 0.14.0
+
         Parameters
         ----------
         mat : openmc.Material, str
@@ -220,6 +222,8 @@ class Results(list):
     ) -> Tuple[np.ndarray, typing.Union[np.ndarray, List[dict]]]:
         """Get decay heat of material over time.
 
+        .. versionadded:: 0.14.0
+
         Parameters
         ----------
         mat : openmc.Material, str
@@ -273,7 +277,7 @@ class Results(list):
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Get mass of nuclides over time from a single material
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
 
         Parameters
         ----------
@@ -314,7 +318,7 @@ class Results(list):
             # Divide by volume to get density
             mass /= self[0].volume[mat_id]
         elif mass_units == "kg":
-            mass *= 1e3
+            mass /= 1e3
 
         return times, mass
 

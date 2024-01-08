@@ -106,19 +106,19 @@ class SurfaceTallyTestHarness(PyAPITestHarness):
 
         # Create partial current tallies from water to fuel
         # Filters
-        cell_from_filter = openmc.CellFromFilter(water)
+        mat_from_filter = openmc.MaterialFromFilter(borated_water)
         cell_filter = openmc.CellFilter(fuel)
 
         # Cell to cell filters for partial current
         cell_to_cell_tally = openmc.Tally(name=str('water_to_fuel_1'))
-        cell_to_cell_tally.filters = [cell_from_filter, cell_filter, \
+        cell_to_cell_tally.filters = [mat_from_filter, cell_filter, \
              energy_filter, polar_filter, azimuthal_filter]
         cell_to_cell_tally.scores = ['current']
         tallies_file.append(cell_to_cell_tally)
 
         # Cell from + surface filters for partial current
         cell_to_cell_tally = openmc.Tally(name=str('water_to_fuel_2'))
-        cell_to_cell_tally.filters = [cell_from_filter, surface_filter, \
+        cell_to_cell_tally.filters = [mat_from_filter, surface_filter, \
              energy_filter, polar_filter, azimuthal_filter]
         cell_to_cell_tally.scores = ['current']
         tallies_file.append(cell_to_cell_tally)

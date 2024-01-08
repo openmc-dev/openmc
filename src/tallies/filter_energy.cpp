@@ -63,7 +63,6 @@ void EnergyFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   if (p.g() != C_NONE && matches_transport_groups_) {
-  //printf("Getting bins for egroup = %d\n", p.g());
     if (estimator == TallyEstimator::TRACKLENGTH) {
       match.bins_.push_back(data::mg.num_energy_groups_ - p.g() - 1);
     } else {

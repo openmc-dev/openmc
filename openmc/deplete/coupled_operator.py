@@ -10,6 +10,7 @@ filesystem.
 
 import copy
 from warnings import warn
+from typing import Optional
 
 import numpy as np
 from uncertainties import ufloat
@@ -33,18 +34,19 @@ from .helpers import (
 __all__ = ["CoupledOperator", "Operator", "OperatorResult"]
 
 
-def _find_cross_sections(model):
+def _find_cross_sections(model: Optional[str] = None):
     """Determine cross sections to use for depletion
 
     Parameters
     ----------
-    model : openmc.model.Model
+    model : openmc.model.Model, optional
         Reactor model
 
     """
-    if model.materials and model.materials.cross_sections is not None:
-        # Prefer info from Model class if available
-        return model.materials.cross_sections
+    if model:
+        if model.materials and model.materials.cross_sections is not None:
+            # Prefer info from Model class if available
+            return model.materials.cross_sections
 
     # otherwise fallback to environment variable
     cross_sections = openmc.config.get("cross_sections")
@@ -67,7 +69,7 @@ def _get_nuclides_with_data(cross_sections):
     Returns
     -------
     nuclides : set of str
-        Set of nuclide names that have cross secton data
+        Set of nuclide names that have cross section data
 
     """
     nuclides = set()
@@ -170,7 +172,7 @@ class CoupledOperator(OpenMCOperator):
         equally between the new materials, 'match cell' sets the volume of the
         material to volume of the cell they fill.
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
 
     Attributes
     ----------
@@ -278,41 +280,8 @@ class CoupledOperator(OpenMCOperator):
     def _differentiate_burnable_mats(self):
         """Assign distribmats for each burnable material"""
 
-        # Count the number of instances for each cell and material
-        self.geometry.determine_paths(instances_only=True)
-
-        # Extract all burnable materials which have multiple instances
-        distribmats = set(
-            [mat for mat in self.materials
-             if mat.depletable and mat.num_instances > 1])
-
-        if self.diff_volume_method == 'divide equally':
-            for mat in distribmats:
-                if mat.volume is None:
-                    raise RuntimeError("Volume not specified for depletable "
-                                       f"material with ID={mat.id}.")
-                mat.volume /= mat.num_instances
-
-        if distribmats:
-            # Assign distribmats to cells
-            for cell in self.geometry.get_all_material_cells().values():
-                if cell.fill in distribmats:
-                    mat = cell.fill
-                    if self.diff_volume_method == 'divide equally':
-                        cell.fill = [mat.clone() for _ in range(cell.num_instances)]
-                    elif self.diff_volume_method == 'match cell':
-                        for _ in range(cell.num_instances):
-                            cell.fill = mat.clone()
-                            if not cell.volume:
-                                raise ValueError(
-                                    f"Volume of cell ID={cell.id} not specified. "
-                                    "Set volumes of cells prior to using "
-                                    "diff_volume_method='match cell'."
-                                )
-                            cell.fill.volume = cell.volume
-
-        self.materials = openmc.Materials(
-            self.model.geometry.get_all_materials().values()
+        self.model.differentiate_depletable_mats(
+            diff_volume_method=self.diff_volume_method
         )
 
     def _load_previous_results(self):

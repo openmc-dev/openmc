@@ -157,6 +157,7 @@ def test_material_color():
     uo2.color = "goldenrod"
 
     plots.colorize(model.geometry)
+    # When coloring by material, the cell should not be in color dict.
     assert plot.colors.get(fuel) is None
     assert plot.colors.get(uo2) == "goldenrod"
 
@@ -176,6 +177,7 @@ def test_cell_color():
     uo2.color = "goldenrod"
 
     plots.colorize(model.geometry)
+    # When coloring by cell, the material should not be in color dict.
     assert plot.colors.get(fuel) == "cornflowerblue"
     assert plot.colors.get(uo2) is None
 

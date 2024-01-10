@@ -283,6 +283,7 @@ class PlotBase(IDManagerMixin):
         This routine may be used to generate reproducible color schemes.
         The colors generated are based upon cell/material IDs in the geometry.
         If a color is already assigned in Plot.colors, that color will be used.
+        Else, if a cell/material has a color assigned, its color will be used.
         Otherwise, a random, reproducible color will be generated.
 
         Parameters
@@ -311,7 +312,10 @@ class PlotBase(IDManagerMixin):
         for domain in domains:
             if domain in self.colors or domain.id in self.colors:
                 continue
-            self.colors[domain] = np.random.randint(0, 256, (3,))
+            if domain.color:
+                self.colors[domain] = domain.color
+            else:
+                self.colors[domain] = np.random.randint(0, 256, (3,))
 
     def to_xml_element(self):
         """Save common plot attributes to XML element

@@ -47,8 +47,9 @@ class Cell(IDManagerMixin):
     region : openmc.Region or None
         Region of space that is assigned to the cell.
     color : {'str', 'tuple'}
-        Color of this Cell when 'color_by == cell'.
-        Can be a named color or an RGB tuple.
+        Color of this Cell when 'color_by == cell' during plotting.
+        Can be a named color or an RGB tuple containing
+        three integer values which are each between 0 and 255.
 
         .. versionadded:: 0.14.1
     rotation : Iterable of float

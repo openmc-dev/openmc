@@ -99,8 +99,9 @@ class Material(IDManagerMixin):
 
         .. versionadded:: 0.13.3
     color : {'str', 'tuple'}
-        Color of this Material when 'color_by == material'.
-        Can be a named color or an RGB tuple.
+        Color of this Material when 'color_by == material' during plotting.
+        Can be a named color or an RGB tuple containing
+        three integer values which are each between 0 and 255.
 
         .. versionadded:: 0.14.1
 

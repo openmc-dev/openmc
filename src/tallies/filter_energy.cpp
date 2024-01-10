@@ -47,16 +47,13 @@ void EnergyFilter::set_bins(gsl::span<const double> bins)
     if (n_bins_ == data::mg.num_energy_groups_) {
       matches_transport_groups_ = true;
       for (gsl::index i = 0; i < n_bins_ + 1; ++i) {
-        double delta = std::fabs(data::mg.rev_energy_bins_[i] - bins_[i]);
-        if ((delta / data::mg.rev_energy_bins_[i]) > 1e-3) {
-          // if (data::mg.rev_energy_bins_[i] != bins_[i]) {
+         if (data::mg.rev_energy_bins_[i] != bins_[i]) {
           matches_transport_groups_ = false;
           break;
         }
       }
     }
   }
-  // printf("Matches transport groups = %d\n", matches_transport_groups_);
 }
 
 void EnergyFilter::get_all_bins(

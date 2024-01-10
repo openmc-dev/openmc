@@ -154,14 +154,14 @@ SVG_COLORS = {
 }
 
 def check_color(err_string, color):
-	cv.check_type(err_string, color, Iterable)
-	if isinstance(color, str):
-		if color.lower() not in SVG_COLORS:
-			raise ValueError(f"'{color}' is not a valid color.")
-	else:
-		cv.check_length(err_string, color, 3)
-		for rgb in color:
-			cv.check_type(err_string, rgb, Real)
-			cv.check_greater_than('RGB component', rgb, 0, True)
-			cv.check_less_than('RGB component', rgb, 256)
+    cv.check_type(err_string, color, Iterable)
+    if isinstance(color, str):
+        if color.lower() not in SVG_COLORS:
+            raise ValueError(f"'{color}' is not a valid color.")
+        else:
+            cv.check_length(err_string, color, 3)
+            for rgb in color:
+                cv.check_type(err_string, rgb, Real)
+                cv.check_greater_than('RGB component', rgb, 0, True)
+                cv.check_less_than('RGB component', rgb, 256)
 

@@ -35,7 +35,7 @@ void all_reduce_random_ray_batch_results(bool mapped_all_tallies)
   MPI_Allreduce(MPI_IN_PLACE, random_ray::position_recorded.data(),
     random_ray::n_source_regions, MPI_INT, MPI_MAX, mpi::intracomm);
 
-  // The posiiton variable is more complicated to reduce than the others,
+  // The position variable is more complicated to reduce than the others,
   // as we do not want the sum of all positions in each cell, rather, we
   // want to just pick any single valid position. Thus, we perform a gather
   // and then pick the first valid position we find for all source regions

@@ -122,8 +122,8 @@ void sample_neutron_reaction(Particle& p)
     }
   }
 
-  // Create alpha time source sites [left-most alpha mode]
-  if (settings::alpha_mode_left) {
+  // Create alpha time source sites (alpha_mode only)
+  if (simulation::store_alpha_source) {
     create_alpha_sites(p);
   }
 
@@ -170,10 +170,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
-  // Get the effective, time-corrected nu_fission if alpha_mode
-  double nu_fission = (settings::alpha_mode) ? 
-                      p.neutron_xs(i_nuclide).nu_fission_alpha :
-                      p.neutron_xs(i_nuclide).nu_fission;
+  double nu_fission = p.nu_fission(i_nuclide);
   double nu_t = p.wgt() / simulation::keff * weight * nu_fission /
                 p.neutron_xs(i_nuclide).total;
 
@@ -677,13 +674,11 @@ void absorption(Particle& p, int i_nuclide)
 
     // Score implicit absorption estimate of keff
     if (settings::run_mode == RunMode::EIGENVALUE) {
-      // Get the effective, time-corrected nu_fission if alpha_mode
-      double nu_fission = (settings::alpha_mode) ? 
-                          p.neutron_xs(i_nuclide).nu_fission_alpha :
-                          p.neutron_xs(i_nuclide).nu_fission;
-      if (settings::alpha_mode_left) {
+      double nu_fission = p.nu_fission(i_nuclide);
+      if (simulation::store_alpha_source) {
         nu_fission -= simulation::alpha_eff/p.speed() *
-                      p.neutron_xs(i_nuclide).total/p.macro_xs().total;
+                      p.neutron_xs(i_nuclide).total /
+                      p.macro_xs().total;
       }
       p.keff_tally_absorption() += wgt_absorb * nu_fission /
                                    p.neutron_xs(i_nuclide).absorption;
@@ -694,13 +689,11 @@ void absorption(Particle& p, int i_nuclide)
         prn(p.current_seed()) * p.neutron_xs(i_nuclide).total) {
       // Score absorption estimate of keff
       if (settings::run_mode == RunMode::EIGENVALUE) {
-        // Get the effective, time-corrected nu_fission if alpha_mode
-        double nu_fission = (settings::alpha_mode) ? 
-                                p.neutron_xs(i_nuclide).nu_fission_alpha :
-                                p.neutron_xs(i_nuclide).nu_fission;
-        if (settings::alpha_mode_left) {
+        double nu_fission = p.nu_fission(i_nuclide);
+        if (simulation::store_alpha_source) {
           nu_fission -= simulation::alpha_eff/p.speed() *
-                        p.neutron_xs(i_nuclide).total/p.macro_xs().total;
+                        p.neutron_xs(i_nuclide).total /
+                        p.macro_xs().total;
         }
         p.keff_tally_absorption() += p.wgt() * nu_fission /
                                      p.neutron_xs(i_nuclide).absorption;
@@ -1092,7 +1085,10 @@ void sample_fission_neutron(
   // Determine total nu, delayed nu, and delayed neutron fraction
   const auto& nuc {data::nuclides[i_nuclide]};
   double nu_t, nu_d;
-  if (settings::alpha_mode) {
+  if (settings::prompt_only) {
+    nu_t = nuc->nu(E_in, Nuclide::EmissionMode::prompt);
+    nu_d = 0.0;
+  } else if (settings::alpha_mode) {
     nu_t = nuc->nu(E_in, Nuclide::EmissionMode::total_alpha);
     nu_d = nuc->nu(E_in, Nuclide::EmissionMode::delayed_alpha);
   } else {

@@ -98,9 +98,11 @@ class StatePoint:
     run_mode : str
         Simulation run mode, e.g. 'eigenvalue'
     alpha_mode : bool
-        Running fundamental alpha mode?
+        Running fundamental alpha mode (time eigenvalue) simulation?
     alpha_mode_left : bool
-        Running left-most alpha mode?
+        Running left-most alpha mode (time eigenvalue) simulation?
+    prompt_only : bool
+        Only consider prompt fission neutrons (neglect delayed neutrons)?
     runtime : dict
         Dictionary whose keys are strings describing various runtime metrics
         and whose values are time values in seconds.
@@ -375,6 +377,10 @@ class StatePoint:
     @property
     def alpha_mode_left(self):
         return self._f.attrs['alpha_mode_left'] > 0
+
+    @property
+    def prompt_only(self):
+        return self._f.attrs['prompt_only'] > 0
 
     @property
     def runtime(self):

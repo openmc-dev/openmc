@@ -51,8 +51,8 @@ void sample_reaction(Particle& p)
     }
   }
 
-  // Create alpha time source sites [left-most alpha mode]
-  if (settings::alpha_mode_left) {
+  // Create alpha time source sites (alpha_mode only)
+  if (simulation::store_alpha_source) {
     create_alpha_sites_mg(p);
   }
 
@@ -97,10 +97,7 @@ void create_fission_sites(Particle& p)
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
-  // Get the effective, time-corrected nu_fission if alpha_mode
-  double nu_fission = (settings::alpha_mode) ? 
-                      p.macro_xs().nu_fission_alpha :
-                      p.macro_xs().nu_fission;
+  double nu_fission = p.nu_fission();
   double nu_t = p.wgt() / simulation::keff * weight * nu_fission /
                 p.macro_xs().total;
 
@@ -270,28 +267,22 @@ void absorption(Particle& p)
     p.wgt() -= wgt_absorb;
 
     // Score implicit absorpion estimate of keff
-    // Get the effective, time-corrected nu_fission if alpha_mode
-    double nu_fission = (settings::alpha_mode) ? 
-                        p.macro_xs().nu_fission_alpha :
-                        p.macro_xs().nu_fission;
-    if (settings::alpha_mode_left) {
-      nu_fission -= simulation::alpha_eff/p.speed() *
-                    p.macro_xs().absorption/p.macro_xs().total;
+    double nu_fission = p.nu_fission();
+    if (simulation::store_alpha_source) {
+      nu_fission -= simulation::alpha_eff/p.speed();
     }
     p.keff_tally_absorption() +=
       wgt_absorb * nu_fission / p.macro_xs().absorption;
   } else {
     if (p.macro_xs().absorption > prn(p.current_seed()) * p.macro_xs().total) {
-    // Get the effective, time-corrected nu_fission if alpha_mode
-      double nu_fission = (settings::alpha_mode) ? 
-                          p.macro_xs().nu_fission_alpha :
-                          p.macro_xs().nu_fission;
-      if (settings::alpha_mode_left) {
-        nu_fission -= simulation::alpha_eff/p.speed() *
-                      p.macro_xs().absorption/p.macro_xs().total;
+      // Score implicit absorpion estimate of keff
+      double nu_fission = p.nu_fission();
+      if (simulation::store_alpha_source) {
+        nu_fission -= simulation::alpha_eff/p.speed();
       }
       p.keff_tally_absorption() +=
         p.wgt() * nu_fission / p.macro_xs().absorption;
+
       p.wgt() = 0.0;
       p.event() = TallyEvent::ABSORB;
     }

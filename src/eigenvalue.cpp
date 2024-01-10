@@ -426,12 +426,11 @@ void calculate_average_keff()
   const xt::xtensor<double, 2> Cd = global_tally_alpha_Cd;
   const xt::xtensor<double, 2> lambda = simulation::precursor_decay;
 
-  // There is a difference on how the non-linear function (and loss rate) is 
-  // evaluated in fundamental and left-most mode alpha-eigenvalue simulation. 
-  // This is due to the different normalization conditions and is 
-  // effectively handled by the following:
+  // If we store the alpha source, we end up with different normalization 
+  // condition and slightly different non-linear in-hour equation.
+  // The following effectively treats this effect:
   double alpha_old = simulation::alpha_eff;
-  if (settings::alpha_mode_left) {
+  if (simulation::store_alpha_source) {
     alpha_old = 0.0;
   }
 
@@ -498,60 +497,63 @@ void calculate_average_keff()
   // Assign the fundamental mode
   const double alpha_fundamental = x;
 
-  // Now, getting the left-most mode.
+  // Now, getting the left-most mode. (Skip if prompt only)
   // In this case, we need to set the maximum alpha. Similar 
   // Newton-Raphson X Bisection iterative method is used.
 
-  // Preparation
-  const double alpha_max = -simulation::decay_max;
-  error1 = 1.0;
-  error2 = 1.0;
-  x = alpha_max * 1.5; // Initial guess
+  double alpha_left;
+  if (!settings::prompt_only) {
+    // Preparation
+    const double alpha_max = -simulation::decay_max;
+    error1 = 1.0;
+    error2 = 1.0;
+    x = alpha_max * 1.5; // Initial guess
 
-  // Start iterating
-  while (error1 > epsilon || error2 > epsilon) {
-    // Evaluate f(x)
-    double f = (alpha_old - x)*Cn + Cp - 1.0;
-    // Accumulate delayed terms
-    for (int i = 0; i < simulation::n_fissionables; i++) {
-      // i is local
-      for (int j = 0; j < simulation::n_precursors; j++) {
-        f += lambda(i,j)/(x+lambda(i,j)) * Cd(i,j);
+    // Start iterating
+    while (error1 > epsilon || error2 > epsilon) {
+      // Evaluate f(x)
+      double f = (alpha_old - x)*Cn + Cp - 1.0;
+      // Accumulate delayed terms
+      for (int i = 0; i < simulation::n_fissionables; i++) {
+        // i is local
+        for (int j = 0; j < simulation::n_precursors; j++) {
+          f += lambda(i,j)/(x+lambda(i,j)) * Cd(i,j);
+        }
       }
-    }
 
-    // Evaluate f'(x) function
-    double df = -Cn;
-    // Accumulate delayed terms
-    for (int i = 0; i < simulation::n_fissionables; i++) { 
-      // i is local
-      for (int j = 0; j < simulation::n_precursors; j++) {
-        double denom = (x+lambda(i,j)); denom *= denom;
-        df -= lambda(i,j)/denom * Cd(i,j);
+      // Evaluate f'(x) function
+      double df = -Cn;
+      // Accumulate delayed terms
+      for (int i = 0; i < simulation::n_fissionables; i++) { 
+        // i is local
+        for (int j = 0; j < simulation::n_precursors; j++) {
+          double denom = (x+lambda(i,j)); denom *= denom;
+          df -= lambda(i,j)/denom * Cd(i,j);
+        }
       }
-    }
 
-    // Next solution
-    double x_new = x - f/df;
+      // Next solution
+      double x_new = x - f/df;
+      
+      // Exceed maximum? --> update with bisection instead
+      if (x_new > alpha_max) { x_new = 0.5*(x + alpha_max); }
+
+      // Calculate errors
+      error1 = std::abs((x_new - x)/x_new);
+      error2 = (alpha_old - x_new)*Cn + Cp - 1.0;
+      for (int i = 0; i < simulation::n_fissionables; i++) { 
+        // i is local
+        for (int j = 0; j < simulation::n_precursors; j++) {
+          error2 += lambda(i,j)/(x_new+lambda(i,j)) * Cd(i,j);
+        }
+      }
     
-    // Exceed maximum? --> update with bisection instead
-    if (x_new > alpha_max) { x_new = 0.5*(x + alpha_max); }
-
-    // Calculate errors
-    error1 = std::abs((x_new - x)/x_new);
-    error2 = (alpha_old - x_new)*Cn + Cp - 1.0;
-    for (int i = 0; i < simulation::n_fissionables; i++) { 
-      // i is local
-      for (int j = 0; j < simulation::n_precursors; j++) {
-        error2 += lambda(i,j)/(x_new+lambda(i,j)) * Cd(i,j);
-      }
+      // Reset x
+      x = x_new;
     }
-  
-    // Reset x
-    x = x_new;
+    
+    alpha_left = x;
   }
-  
-  const double alpha_left = x;
   
   // Update alpha
   double alpha_other;
@@ -563,6 +565,13 @@ void calculate_average_keff()
     alpha_other = alpha_left;
   }
   simulation::alpha_generation.push_back(simulation::alpha_eff);
+
+  // Determine if we need to store alpha source
+  if (simulation::alpha_eff < 0.0) {
+    simulation::store_alpha_source = true;
+  } else {
+    simulation::store_alpha_source = false;
+  }
 
   // Accumulate the sum and square sum of global tallies
   if (n > 0) {
@@ -599,9 +608,6 @@ void calculate_average_keff()
       }
     }
 
-    // Get loss rate (without alpha absorption)
-    double loss = (1.0 - alpha_old*Cn);
-
     // Total delayed fission production
     double Cd0 = 0.0;
     for (int i = 0; i < simulation::n_fissionables; i++) { 
@@ -609,6 +615,9 @@ void calculate_average_keff()
         Cd0 += Cd(i,j);
       }
     }
+
+    // Get the "loss rate" (without alpha absorption)
+    double loss = (1.0 - alpha_old*Cn);
 
     // Multiplication factor
     double k_alpha = (Cp + Cd0)/loss;
@@ -947,6 +956,7 @@ void write_eigenvalue_hdf5(hid_t group)
     write_dataset(alpha_group, "removal_time", tr);
     
     // Other alpha
+    if (settings::prompt_only) { return; }
     std::array<double, 2> alpha_other;
     alpha_other[0] = simulation::alpha_other_sum[0]/n;
     alpha_other[1] =  t_n1 * std::sqrt((simulation::alpha_other_sum[1]/n 

@@ -55,6 +55,8 @@ extern "C" double decay_min;     //!< smallest precursor group decay constant
                                  //!< (to determine minimum fundamental alpha)
 extern "C" double decay_max;     //!< (to estimate the left-most alpha mode)
 
+extern "C" bool store_alpha_source; //!< flag to store alpha source
+
 // Fissionables and their precursors (currently only used in alpha_mode)
 // We assume equal number of precusor groups for all fissionables.
 // However, decay constants of same precursor group from different 

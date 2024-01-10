@@ -153,16 +153,24 @@ int openmc_simulation_init()
       }
     }
 
-    // Determine minimum alpha-eigenvalue
+    // Set prompt only flag?
+    if (simulation::n_precursors == 0) {
+      settings::prompt_only = true;
+    }
+
+    // Get minimum and maximum precursor decay constants
+    // (needed to determine alpha eigenvalue thresholds)
     double decay_min = INFTY;
     double decay_max = -INFTY;
-    for (int i = 0; i < simulation::n_fissionables; i++) {
-      for (int j = 0; j < simulation::n_precursors; j++) {
-        if (decay_min > simulation::precursor_decay(i,j)) {
-          decay_min = simulation::precursor_decay(i,j);
-        }
-        if (decay_max < simulation::precursor_decay(i,j)) {
-          decay_max = simulation::precursor_decay(i,j);
+    if (!settings::prompt_only) {
+      for (int i = 0; i < simulation::n_fissionables; i++) {
+        for (int j = 0; j < simulation::n_precursors; j++) {
+          if (decay_min > simulation::precursor_decay(i,j)) {
+            decay_min = simulation::precursor_decay(i,j);
+          }
+          if (decay_max < simulation::precursor_decay(i,j)) {
+            decay_max = simulation::precursor_decay(i,j);
+          }
         }
       }
     }
@@ -407,6 +415,7 @@ double alpha_eff {0.0};
 double alpha_eff_std;
 double decay_min {INFTY};
 double decay_max {-INFTY};
+bool store_alpha_source {false};
 
 size_t n_fissionables;
 size_t n_precursors;
@@ -622,7 +631,43 @@ void finalize_generation()
     calculate_generation_keff();
     calculate_average_keff();
     
-    // Reset global tallies of alpha-eigenvalue mode
+    // Write generation output
+    if (mpi::master && settings::verbosity >= 7) {
+      print_generation();
+    }
+  }
+
+  if (!settings::alpha_mode) { return; }
+
+  // TODO: Should we use the last k_generation instead of 
+  // the current running average?
+  // It is done that way for alpha-eigenvalue mode, because
+  // it is found that, in some problems, k does not converge
+  // to 1 exactly if we use the running average.
+  if (settings::alpha_mode) {
+    int idx = overall_generation() - 1;
+    simulation::keff = simulation::k_generation[idx];
+    simulation::alpha_eff = simulation::alpha_generation[idx];
+
+    // If store_alpha_source, use the updated alpha to determine keff that
+    // compensates the extra source
+    if (simulation::store_alpha_source) {
+      const double Cn = global_tally_alpha_Cn;
+      const double Cp = global_tally_alpha_Cp;
+      const xt::xtensor<double, 2> Cd = global_tally_alpha_Cd;
+      const xt::xtensor<double, 2> lambda = simulation::precursor_decay;
+      const double alpha_eff = simulation::alpha_eff;
+      simulation::keff = Cp - alpha_eff*Cn;
+      // Accumulate delayed terms
+      for (int i = 0; i < simulation::n_fissionables; i++) {
+        // i is local
+        for (int j = 0; j < simulation::n_precursors; j++) {
+            simulation::keff += lambda(i,j)/(alpha_eff+lambda(i,j)) * Cd(i,j);
+        }
+      }
+    }
+  
+    // Reset global tallies
     if (settings::alpha_mode) {
       global_tally_alpha_Cn = 0.0;
       global_tally_alpha_Cp = 0.0;
@@ -631,22 +676,6 @@ void finalize_generation()
           global_tally_alpha_Cd(i,j) = 0.0;
         }
       }
-    }
-
-    // Write generation output
-    if (mpi::master && settings::verbosity >= 7) {
-      print_generation();
-    }
-
-    // TODO: Should we use the last k_generation instead of 
-    // the current running average?
-    // It is done that way for alpha-eigenvalue mode, because
-    // it is found that, in some problems, k does not converge
-    // to 1 exactly if we use the running average.
-    if (settings::alpha_mode) {
-      int idx = overall_generation() - 1;
-      simulation::keff = simulation::k_generation[idx];
-      simulation::alpha_eff = simulation::alpha_generation[idx];
     }
   }
 }

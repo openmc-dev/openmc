@@ -6,7 +6,8 @@ import openmc
 import openmc.model
 
 
-def pwr_pin_cell(alpha_mode=False, alpha_mode_left=False):
+def pwr_pin_cell(Np=100, alpha_mode=False, alpha_mode_left=False,
+                 prompt_only=False):
     """Create a PWR pin-cell model.
 
     This model is a single fuel pin with 2.4 w/o enriched UO2 corresponding to a
@@ -75,12 +76,13 @@ def pwr_pin_cell(alpha_mode=False, alpha_mode_left=False):
 
     model.settings.batches = 10
     model.settings.inactive = 5
-    model.settings.particles = 100
+    model.settings.particles = Np
     model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
         [-pitch/2, -pitch/2, -1], [pitch/2, pitch/2, 1], only_fissionable=True))
 
     model.settings.alpha_mode = alpha_mode
     model.settings.alpha_mode_left = alpha_mode_left
+    model.settings.prompt_only = prompt_only
 
     plot = openmc.Plot.from_geometry(model.geometry)
     plot.pixels = (300, 300)
@@ -544,7 +546,7 @@ def pwr_assembly():
 
 
 def slab_mg(num_regions=1, mat_names=None, mgxslib_name='2g.h5',
-            alpha_mode=False, alpha_mode_left=False):
+            alpha_mode=False, alpha_mode_left=False, prompt_only=False):
     """Create a 1D slab model.
 
     Parameters
@@ -631,6 +633,7 @@ def slab_mg(num_regions=1, mat_names=None, mgxslib_name='2g.h5',
 
     settings_file.alpha_mode = alpha_mode
     settings_file.alpha_mode_left = alpha_mode_left
+    settings_file.prompt_only = prompt_only
 
     # Build source distribution
     INF = 1000.

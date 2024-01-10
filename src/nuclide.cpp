@@ -847,6 +847,8 @@ void Nuclide::calculate_xs(
   if (settings::alpha_mode){
     micro.nu_fission_alpha  = micro.fission * nu(p.E(), EmissionMode::total_alpha);
     micro.nu_fission_prompt = micro.fission * nu(p.E(), EmissionMode::prompt);
+  } else if (settings::prompt_only) {
+    micro.nu_fission_prompt = micro.fission * nu(p.E(), EmissionMode::prompt);
   }
 }
 

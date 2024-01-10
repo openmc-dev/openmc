@@ -40,9 +40,11 @@ class Settings:
     Attributes
     ----------
     alpha_mode : bool
-        Running fundamental alpha-eigenvalue mode?
+        Running fundamental alpha mode (time eigenvalue) simulation?
     alpha_mode_left : bool
-        Running left-most alpha-eigenvalue mode?
+        Running left-most alpha mode (time eigenvalue) simulation?
+    prompt_only : bool
+        Only consider prompt fission neutrons (neglect delayed neutrons)?
     batches : int
         Number of batches to simulate
     confidence_intervals : bool
@@ -270,6 +272,7 @@ class Settings:
         self._run_mode = RunMode.EIGENVALUE
         self._alpha_mode = None
         self._alpha_mode_left = None
+        self._prompt_only = None
         self._batches = None
         self._generations_per_batch = None
         self._inactive = None
@@ -380,6 +383,15 @@ class Settings:
     def alpha_mode_left(self, alpha_mode_left: bool):
         cv.check_type('alpha mode left', alpha_mode_left, bool)
         self._alpha_mode_left = alpha_mode_left
+
+    @property
+    def prompt_only(self) -> bool:
+        return self._prompt_only
+
+    @prompt_only.setter
+    def prompt_only(self, prompt_only: bool):
+        cv.check_type('prompt only', prompt_only, bool)
+        self._prompt_only = prompt_only
 
     @property
     def batches(self) -> int:
@@ -1044,14 +1056,19 @@ class Settings:
         elem.text = self._run_mode.value
 
     def _create_alpha_mode_subelement(self, root):
-        if self._alpha_mode is not None:
+        if self._alpha_mode:
             element = ET.SubElement(root, "alpha_mode")
             element.text = str(self._alpha_mode).lower()
 
     def _create_alpha_mode_left_subelement(self, root):
-        if self._alpha_mode_left is not None:
+        if self._alpha_mode_left:
             element = ET.SubElement(root, "alpha_mode_left")
             element.text = str(self._alpha_mode_left).lower()
+
+    def _create_prompt_only_subelement(self, root):
+        if self._prompt_only:
+            element = ET.SubElement(root, "prompt_only")
+            element.text = str(self._prompt_only).lower()
 
     def _create_batches_subelement(self, root):
         if self._batches is not None:
@@ -1816,6 +1833,7 @@ class Settings:
         self._create_run_mode_subelement(element)
         self._create_alpha_mode_subelement(element)
         self._create_alpha_mode_left_subelement(element)
+        self._create_prompt_only_subelement(element)
         self._create_particles_subelement(element)
         self._create_batches_subelement(element)
         self._create_inactive_subelement(element)

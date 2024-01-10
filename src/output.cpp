@@ -555,6 +555,9 @@ void print_results()
   }
 
   // write global tallies
+  if (settings::prompt_only) {
+    fmt::print(" [PROMPT ONLY]\n");
+  }
   const auto& gt = simulation::global_tallies;
   double mean, stdev;
   if (n > 1) {
@@ -578,6 +581,7 @@ void print_results()
     std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::LEAKAGE, 0), n);
     fmt::print(
       " Leakage Fraction            = {:.5f} +/- {:.5f}\n", mean, t_n1 * stdev);
+
     if (settings::alpha_mode) {
       const int n = simulation::k_generation.size() - settings::n_inactive;
 
@@ -637,26 +641,28 @@ void print_results()
 
       // Print
       if (settings::alpha_mode_left) {
-        fmt::print("\n ALPHA MODE: LEFT-MOST\n");
+        fmt::print("\n [ALPHA MODE: LEFT-MOST]\n");
       } else {
-        fmt::print("\n ALPHA MODE: FUNDAMENTAL\n");
+        fmt::print("\n [ALPHA MODE: FUNDAMENTAL]\n");
       }
       fmt::print(
-          " Alpha-effective            = {:10.3e} +/- {:9.3e} /s\n", alpha, alpha_sd);
+          " Alpha-effective             = {:10.3e} +/- {:9.3e} /s\n", alpha, alpha_sd);
       fmt::print(
-          " Multiplication factor      = {:10.5f} +/- {:7.5f}\n", k_alpha, k_alpha_sd);
+          " Multiplication factor       = {:10.5f} +/- {:7.5f}\n", k_alpha, k_alpha_sd);
       fmt::print(
-          " Reactivity                 = {:10.5f} +/- {:7.5f}\n", rho, rho_sd);
+          " Reactivity                  = {:10.5f} +/- {:7.5f}\n", rho, rho_sd);
       fmt::print(
-          " Delayed fraction           = {:10.5f} +/- {:7.5f}\n", beta, beta_sd);
+          " Delayed fraction            = {:10.5f} +/- {:7.5f}\n", beta, beta_sd);
       fmt::print(
-          " Mean neutron lifetime      = {:10.3e} +/- {:9.3e} s\n", tr, tr_sd);
-      if (settings::alpha_mode_left) {
-        fmt::print(
-          " Fundamental alpha estimate = {:10.3e} +/- {:9.3e} /s\n", alpha_other, alpha_other_sd);
-      } else {
-        fmt::print(
-          " Left-most alpha estimate   = {:10.3e} +/- {:9.3e} /s\n", alpha_other, alpha_other_sd);
+          " Mean neutron lifetime       = {:10.3e} +/- {:9.3e} s\n", tr, tr_sd);
+      if (!settings::prompt_only) {
+        if (settings::alpha_mode_left) {
+          fmt::print(
+            " Fundamental alpha estimate  = {:10.3e} +/- {:9.3e} /s\n", alpha_other, alpha_other_sd);
+        } else {
+          fmt::print(
+            " Left-most alpha estimate    = {:10.3e} +/- {:9.3e} /s\n", alpha_other, alpha_other_sd);
+        }
       }
     }
   } else {

@@ -95,7 +95,7 @@ class TestHarness:
                     # Write out alphaa-eff
                     outstr += 'alpha-eff:\n'
                     form = '{0:12.6E} {1:12.6E}\n'
-                    mean, sdev = sp.alpha_final
+                    mean, sdev = sp.alpha_eff
                     outstr += form.format(mean, sdev)
                 else:
                     # Write out k-combined.

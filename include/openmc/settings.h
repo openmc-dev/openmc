@@ -116,6 +116,7 @@ extern vector<std::string>
 extern RunMode run_mode; //!< Run mode (eigenvalue, fixed src, etc.)
 extern "C" bool alpha_mode; //!< alpha-eigenvalue flag
 extern "C" bool alpha_mode_left; //!< flag to target left-most alpha mode
+extern "C" bool prompt_only; //!< flag to only consider prompt fission neutrons
 extern std::unordered_set<int>
   sourcepoint_batch; //!< Batches when source should be written
 extern std::unordered_set<int>

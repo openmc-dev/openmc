@@ -39,6 +39,8 @@ public:
   // Methods
 
   double speed() const;
+  double nu_fission() const;
+  double nu_fission(int i_nuclide) const;
 
   //! moves the particle by the distance length to its next location
   //! \param length the distance the particle is moved

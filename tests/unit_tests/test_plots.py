@@ -142,6 +142,44 @@ def test_highlight_domains():
     plots.highlight_domains(model.geometry, mats)
 
 
+def test_material_color():
+    plot = openmc.Plot()
+    plot.color_by = 'material'
+    plots = openmc.Plots([plot])
+
+    model = openmc.examples.pwr_pin_cell()
+    same_id = 1001
+    fuel = model.geometry.get_cells_by_name("fuel")[0]
+    fuel.id = same_id
+    fuel.color = "cornflowerblue"
+    uo2 = fuel.fill
+    uo2.id = same_id
+    uo2.color = "goldenrod"
+
+    plots.colorize(model.geometry)
+    assert plot.colors.get(fuel) is None
+    assert plot.colors.get(uo2) == "goldenrod"
+
+
+def test_cell_color():
+    plot = openmc.Plot()
+    plot.color_by = 'cell'
+    plots = openmc.Plots([plot])
+
+    model = openmc.examples.pwr_pin_cell()
+    same_id = 1002
+    fuel = model.geometry.get_cells_by_name("fuel")[0]
+    fuel.id = same_id
+    fuel.color = "cornflowerblue"
+    uo2 = fuel.fill
+    uo2.id = same_id
+    uo2.color = "goldenrod"
+
+    plots.colorize(model.geometry)
+    assert plot.colors.get(fuel) == "cornflowerblue"
+    assert plot.colors.get(uo2) is None
+
+
 def test_xml_element(myplot):
     elem = myplot.to_xml_element()
     assert 'id' in elem.attrib

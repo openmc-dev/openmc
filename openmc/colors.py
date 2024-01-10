@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+from numbers import Real
 import openmc.checkvalue as cv
 
 
@@ -154,7 +156,7 @@ SVG_COLORS = {
 def check_color(err_string, color):
 	cv.check_type(err_string, color, Iterable)
 	if isinstance(color, str):
-		if color.lower() not in openmc.colors.SVG_COLORS:
+		if color.lower() not in SVG_COLORS:
 			raise ValueError(f"'{color}' is not a valid color.")
 	else:
 		cv.check_length(err_string, color, 3)

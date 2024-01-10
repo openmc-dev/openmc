@@ -30,6 +30,8 @@ inline int thread_num()
 
 //==============================================================================
 //! An object used to prevent concurrent access to a piece of data.
+//
+//! This type meets the C++ "Lockable" requirements.
 //==============================================================================
 
 class OpenMPMutex {

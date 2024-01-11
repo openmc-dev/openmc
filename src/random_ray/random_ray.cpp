@@ -28,9 +28,7 @@ RandomRay::RandomRay(uint64_t index_source) : RandomRay::RandomRay()
 uint64_t RandomRay::transport_history_based_single_ray()
 {
   using namespace openmc;
-  while (true) {
-    if (!alive())
-      break;
+  while (alive()) {
     event_advance_ray();
     if (!alive())
       break;
@@ -135,9 +133,9 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
 
   // MOC incoming flux attenuation + source contribution/attenuation equation
   for (int e = 0; e < negroups; e++) {
-    float Sigma_t = data::mg.macro_xs_[material].get_xs(
+    float sigma_t = data::mg.macro_xs_[material].get_xs(
       MgxsType::TOTAL, e, NULL, NULL, NULL, t, a);
-    float tau = Sigma_t * distance;
+    float tau = sigma_t * distance;
     float exponential = cjosey_exponential(tau); // exponential = 1 - exp(-tau)
     float new_delta_psi =
       (angular_flux_[e] - random_ray::source[source_element + e]) * exponential;

@@ -134,7 +134,6 @@ int openmc_run_random_ray()
   bool mapped_all_tallies = false;
 
   // Random ray eigenvalue
-  // TODO: Use OpenMC native eigenvalue?
   double k_eff = 1.0;
 
   // Tracks the average FSR miss rate for analysis and reporting
@@ -274,7 +273,7 @@ void update_neutron_source(double k_eff)
 
     for (int energy_group_out = 0; energy_group_out < negroups;
          energy_group_out++) {
-      float Sigma_t = data::mg.macro_xs_[material].get_xs(
+      float sigma_t = data::mg.macro_xs_[material].get_xs(
         MgxsType::TOTAL, energy_group_out, nullptr, nullptr, nullptr, t, a);
       float scatter_source = 0.0f;
       float fission_source = 0.0f;
@@ -283,20 +282,20 @@ void update_neutron_source(double k_eff)
            energy_group_in++) {
         float scalar_flux =
           random_ray::scalar_flux_old[sr * negroups + energy_group_in];
-        float Sigma_s =
+        float sigma_s =
           data::mg.macro_xs_[material].get_xs(MgxsType::NU_SCATTER,
             energy_group_in, &energy_group_out, nullptr, nullptr, t, a);
-        float nu_Sigma_f =
+        float nu_sigma_f =
           data::mg.macro_xs_[material].get_xs(MgxsType::NU_FISSION,
             energy_group_in, nullptr, nullptr, nullptr, t, a);
-        float Chi = data::mg.macro_xs_[material].get_xs(MgxsType::CHI_PROMPT,
+        float chi = data::mg.macro_xs_[material].get_xs(MgxsType::CHI_PROMPT,
           energy_group_in, &energy_group_out, nullptr, nullptr, t, a);
-        scatter_source += Sigma_s * scalar_flux;
-        fission_source += nu_Sigma_f * scalar_flux * Chi;
+        scatter_source += sigma_s * scalar_flux;
+        fission_source += nu_sigma_f * scalar_flux * chi;
       }
 
       fission_source *= inverse_k_eff;
-      float new_isotropic_source = (scatter_source + fission_source) / Sigma_t;
+      float new_isotropic_source = (scatter_source + fission_source) / sigma_t;
       random_ray::source[sr * negroups + energy_group_out] =
         new_isotropic_source;
     }
@@ -368,9 +367,9 @@ int64_t add_source_to_scalar_flux()
         // the flat source from the previous iteration plus the contributions
         // from rays passing through the source region (computed during the
         // transport sweep)
-        float Sigma_t = data::mg.macro_xs_[material].get_xs(
+        float sigma_t = data::mg.macro_xs_[material].get_xs(
           MgxsType::TOTAL, e, nullptr, nullptr, nullptr, t, a);
-        random_ray::scalar_flux_new[idx] /= (Sigma_t * volume);
+        random_ray::scalar_flux_new[idx] /= (sigma_t * volume);
         random_ray::scalar_flux_new[idx] += random_ray::source[idx];
       } else if (volume > 0.0) {
         // 2. If the FSR was not hit this iteration, but has been hit some
@@ -421,10 +420,10 @@ double compute_k_eff(double k_eff_old)
 
     for (int e = 0; e < negroups; e++) {
       int64_t idx = (sr * negroups) + e;
-      double nu_Sigma_f = data::mg.macro_xs_[material].get_xs(
+      double nu_sigma_f = data::mg.macro_xs_[material].get_xs(
         MgxsType::NU_FISSION, e, nullptr, nullptr, nullptr, t, a);
-      sr_fission_source_old += nu_Sigma_f * random_ray::scalar_flux_old[idx];
-      sr_fission_source_new += nu_Sigma_f * random_ray::scalar_flux_new[idx];
+      sr_fission_source_old += nu_sigma_f * random_ray::scalar_flux_old[idx];
+      sr_fission_source_new += nu_sigma_f * random_ray::scalar_flux_new[idx];
     }
 
     fission_rate_old += sr_fission_source_old * volume;

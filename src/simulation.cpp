@@ -435,7 +435,11 @@ void allocate_banks()
     simulation::source_bank.resize(simulation::work_per_rank);
 
     // Allocate fission bank
-    init_fission_bank(3 * simulation::work_per_rank);
+    if (settings::alpha_mode) {
+      init_fission_bank(4 * simulation::work_per_rank);
+    } else {
+      init_fission_bank(3 * simulation::work_per_rank);
+    }
   }
 
   if (settings::surf_source_write) {
@@ -649,23 +653,25 @@ void finalize_generation()
     simulation::keff = simulation::k_generation[idx];
     simulation::alpha_eff = simulation::alpha_generation[idx];
 
-    // If store_alpha_source, use the updated alpha to determine keff that
-    // compensates the extra source
+    // Use the updated alpha to determine keff
+    const double Cn = global_tally_alpha_Cn;
+    const double Cp = global_tally_alpha_Cp;
+    const xt::xtensor<double, 2> Cd = global_tally_alpha_Cd;
+    const xt::xtensor<double, 2> lambda = simulation::precursor_decay;
+    const double alpha_eff = simulation::alpha_eff;
+    simulation::keff = Cp;
     if (simulation::store_alpha_source) {
-      const double Cn = global_tally_alpha_Cn;
-      const double Cp = global_tally_alpha_Cp;
-      const xt::xtensor<double, 2> Cd = global_tally_alpha_Cd;
-      const xt::xtensor<double, 2> lambda = simulation::precursor_decay;
-      const double alpha_eff = simulation::alpha_eff;
-      simulation::keff = Cp - alpha_eff*Cn;
-      // Accumulate delayed terms
-      for (int i = 0; i < simulation::n_fissionables; i++) {
-        // i is local
-        for (int j = 0; j < simulation::n_precursors; j++) {
-            simulation::keff += lambda(i,j)/(alpha_eff+lambda(i,j)) * Cd(i,j);
-        }
+      simulation::keff -= alpha_eff*Cn;
+    }
+    // Accumulate delayed terms
+    for (int i = 0; i < simulation::n_fissionables; i++) {
+      // i is local
+      for (int j = 0; j < simulation::n_precursors; j++) {
+        simulation::keff += lambda(i,j)/(alpha_eff+lambda(i,j)) * Cd(i,j);
       }
     }
+    //simulation::keff = 1.0;
+    std::cout<<simulation::keff<<"\n";
   
     // Reset global tallies
     if (settings::alpha_mode) {

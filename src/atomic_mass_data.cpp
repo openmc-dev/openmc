@@ -1,6 +1,7 @@
 #include "openmc/atomic_mass_data.h"
 #include "openmc/error.h"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <map>

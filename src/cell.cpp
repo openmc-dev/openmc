@@ -1020,19 +1020,41 @@ void read_cells(pugi::xml_node node)
 
 void populate_universes()
 {
+  // Used to map universe index to the index of an implicit complement cell for
+  // DAGMC universes
+  std::unordered_map<int, int> implicit_comp_cells;
+
   // Populate the Universe vector and map.
-  for (int i = 0; i < model::cells.size(); i++) {
-    int32_t uid = model::cells[i]->universe_;
+  for (int index_cell = 0; index_cell < model::cells.size(); index_cell++) {
+    int32_t uid = model::cells[index_cell]->universe_;
     auto it = model::universe_map.find(uid);
     if (it == model::universe_map.end()) {
       model::universes.push_back(make_unique<Universe>());
       model::universes.back()->id_ = uid;
-      model::universes.back()->cells_.push_back(i);
+      model::universes.back()->cells_.push_back(index_cell);
       model::universe_map[uid] = model::universes.size() - 1;
     } else {
-      model::universes[it->second]->cells_.push_back(i);
+#ifdef DAGMC
+      // Skip implicit complement cells for now
+      Universe* univ = model::universes[it->second].get();
+      DAGUniverse* dag_univ = dynamic_cast<DAGUniverse*>(univ);
+      if (dag_univ && (dag_univ->implicit_complement_idx() == index_cell)) {
+        implicit_comp_cells[it->second] = index_cell;
+        continue;
+      }
+#endif
+
+      model::universes[it->second]->cells_.push_back(index_cell);
     }
   }
+
+  // Add DAGUniverse implicit complement cells last
+  for (const auto& it : implicit_comp_cells) {
+    int index_univ = it.first;
+    int index_cell = it.second;
+    model::universes[index_univ]->cells_.push_back(index_cell);
+  }
+
   model::universes.shrink_to_fit();
 }
 

@@ -314,28 +314,30 @@ public:
   double& sqrtkT_last() { return sqrtkT_last_; }
 
 private:
-  int64_t id_ {-1};
+  int64_t id_ {-1}; //!< Unique ID
 
-  int n_coord_ {1};
-  int cell_instance_;
-  vector<LocalCoord> coord_;
+  int n_coord_ {1};          //!< number of current coordinate levels
+  int cell_instance_;        //!< offset for distributed properties
+  vector<LocalCoord> coord_; //!< coordinates for all levels
 
-  int n_coord_last_ {1};
-  vector<int> cell_last_;
+  int n_coord_last_ {1};  //!< number of current coordinates
+  vector<int> cell_last_; //!< coordinates for all levels
 
-  Position r_last_current_;
-  Position r_last_;
-  Direction u_last_;
+  Position r_last_current_; //!< coordinates of the last collision or
+                            //!< reflective/periodic surface crossing for
+                            //!< current tallies
+  Position r_last_;         //!< previous coordinates
+  Direction u_last_;        //!< previous direction coordinates
 
-  int surface_ {0};
+  int surface_ {0}; //!< index for surface particle is on
 
-  BoundaryInfo boundary_;
+  BoundaryInfo boundary_; //!< Info about the next intersection
 
-  int material_ {-1};
-  int material_last_ {-1};
+  int material_ {-1};      //!< index for current material
+  int material_last_ {-1}; //!< index for last material
 
-  double sqrtkT_ {-1.0};
-  double sqrtkT_last_ {0.0};
+  double sqrtkT_ {-1.0};     //!< sqrt(k_Boltzmann * temperature) in eV
+  double sqrtkT_last_ {0.0}; //!< last temperature
 
 #ifdef DAGMC
   moab::DagMC::RayHistory history_;

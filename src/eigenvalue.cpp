@@ -610,14 +610,16 @@ void calculate_average_keff()
 
     // Total delayed fission production
     double Cd0 = 0.0;
-    for (int i = 0; i < simulation::n_fissionables; i++) { 
-      for (int j = 0; j < simulation::n_precursors; j++) {
-        Cd0 += Cd(i,j);
+    if (!settings::prompt_only) {
+      for (int i = 0; i < simulation::n_fissionables; i++) { 
+        for (int j = 0; j < simulation::n_precursors; j++) {
+          Cd0 += Cd(i,j);
+        }
       }
     }
 
     // Get the "loss rate" (without alpha absorption)
-    double loss = (1.0 - alpha_old*Cn);
+    double loss = 1.0 - alpha_old*Cn;
 
     // Multiplication factor
     double k_alpha = (Cp + Cd0)/loss;

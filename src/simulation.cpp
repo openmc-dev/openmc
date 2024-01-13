@@ -670,8 +670,6 @@ void finalize_generation()
         simulation::keff += lambda(i,j)/(alpha_eff+lambda(i,j)) * Cd(i,j);
       }
     }
-    //simulation::keff = 1.0;
-    std::cout<<simulation::keff<<"\n";
   
     // Reset global tallies
     if (settings::alpha_mode) {

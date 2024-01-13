@@ -7,6 +7,9 @@ set(TEST_NAMES
   # Add additional unit test files here
 )
 
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/mass_1.mas20.txt
+        DESTINATION ${UNIT_TEST_BIN_OUTPUT_DIR}/mass_1.mas20.txt
+
 foreach(test ${TEST_NAMES})
   add_executable(${test} ${test}.cpp)
   target_link_libraries(${test} Catch2::Catch2WithMain libopenmc)

@@ -107,7 +107,6 @@ int openmc_finalize()
   settings::run_CE = true;
   settings::run_mode = RunMode::UNSET;
   settings::alpha_mode = false;
-  settings::alpha_mode_left = false;
   settings::source_latest = false;
   settings::source_separate = false;
   settings::source_write = true;

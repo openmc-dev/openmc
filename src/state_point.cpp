@@ -113,11 +113,6 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     if (settings::run_mode == RunMode::EIGENVALUE){
       if (settings::alpha_mode) {
         write_dataset(file_id, "alpha_mode", 1);
-        if (settings::alpha_mode_left) {
-          write_dataset(file_id, "alpha_mode_target", "left-most");
-        } else {
-          write_dataset(file_id, "alpha_mode_target", "fundamental");
-        }
       } else {
         write_dataset(file_id, "alpha_mode", 0);
       }
@@ -431,7 +426,6 @@ void load_state_point()
   }
   read_attribute(file_id, "photon_transport", settings::photon_transport);
   read_attribute(file_id, "alpha_mode", settings::alpha_mode);
-  read_attribute(file_id, "alpha_mode_left", settings::alpha_mode_left);
   read_attribute(file_id, "prompt_only", settings::prompt_only);
   read_dataset(file_id, "n_particles", settings::n_particles);
   int temp;

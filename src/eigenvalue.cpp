@@ -45,7 +45,6 @@ array<double, 2> k_alpha_sum;
 array<double, 2> rho_sum;
 array<double, 2> beta_sum;
 array<double, 2> tr_sum;
-array<double, 2> alpha_other_sum;
 
 } // namespace simulation
 
@@ -417,8 +416,7 @@ void calculate_average_keff()
   // [Eq. (49) of https://doi.org/10.1080/00295639.2020.1743578]
   // This non-linear equation has a form of the typical in-hour equation having
   // (1 + n_precursor_groups) roots. A combination of Newton-Raphson and 
-  // Bisection iterative methods is used to get the two desired modes: 
-  // the fundamental and the left-most modes.
+  // Bisection iterative methods is used to get the right-most root.
 
   // The constants (for convenience)
   const double Cn = global_tally_alpha_Cn;
@@ -494,76 +492,8 @@ void calculate_average_keff()
     x = x_new;
   }
 
-  // Assign the fundamental mode
-  const double alpha_fundamental = x;
-
-  // Now, getting the left-most mode. (Skip if prompt only)
-  // In this case, we need to set the maximum alpha. Similar 
-  // Newton-Raphson X Bisection iterative method is used.
-
-  double alpha_left;
-  if (!settings::prompt_only) {
-    // Preparation
-    const double alpha_max = -simulation::decay_max;
-    error1 = 1.0;
-    error2 = 1.0;
-    x = alpha_max * 1.5; // Initial guess
-
-    // Start iterating
-    while (error1 > epsilon || error2 > epsilon) {
-      // Evaluate f(x)
-      double f = (alpha_old - x)*Cn + Cp - 1.0;
-      // Accumulate delayed terms
-      for (int i = 0; i < simulation::n_fissionables; i++) {
-        // i is local
-        for (int j = 0; j < simulation::n_precursors; j++) {
-          f += lambda(i,j)/(x+lambda(i,j)) * Cd(i,j);
-        }
-      }
-
-      // Evaluate f'(x) function
-      double df = -Cn;
-      // Accumulate delayed terms
-      for (int i = 0; i < simulation::n_fissionables; i++) { 
-        // i is local
-        for (int j = 0; j < simulation::n_precursors; j++) {
-          double denom = (x+lambda(i,j)); denom *= denom;
-          df -= lambda(i,j)/denom * Cd(i,j);
-        }
-      }
-
-      // Next solution
-      double x_new = x - f/df;
-      
-      // Exceed maximum? --> update with bisection instead
-      if (x_new > alpha_max) { x_new = 0.5*(x + alpha_max); }
-
-      // Calculate errors
-      error1 = std::abs((x_new - x)/x_new);
-      error2 = (alpha_old - x_new)*Cn + Cp - 1.0;
-      for (int i = 0; i < simulation::n_fissionables; i++) { 
-        // i is local
-        for (int j = 0; j < simulation::n_precursors; j++) {
-          error2 += lambda(i,j)/(x_new+lambda(i,j)) * Cd(i,j);
-        }
-      }
-    
-      // Reset x
-      x = x_new;
-    }
-    
-    alpha_left = x;
-  }
-  
   // Update alpha
-  double alpha_other;
-  if (settings::alpha_mode_left) {
-    simulation::alpha_eff = alpha_left;
-    alpha_other = alpha_fundamental;
-  } else {
-    simulation::alpha_eff = alpha_fundamental;
-    alpha_other = alpha_left;
-  }
+  simulation::alpha_eff = x;
   simulation::alpha_generation.push_back(simulation::alpha_eff);
 
   // Determine if we need to store alpha source
@@ -640,10 +570,6 @@ void calculate_average_keff()
     double tr = (Cn/loss);
     simulation::tr_sum[0] += tr;
     simulation::tr_sum[1] += std::pow(tr, 2);
-    
-    // Other alpha
-    simulation::alpha_other_sum[0] += alpha_other;
-    simulation::alpha_other_sum[1] += std::pow(alpha_other, 2);
   }
 }
 
@@ -956,18 +882,6 @@ void write_eigenvalue_hdf5(hid_t group)
     tr[1] =  t_n1 * std::sqrt((simulation::tr_sum[1]/n 
                     - std::pow(tr[0], 2)) / (n - 1));
     write_dataset(alpha_group, "removal_time", tr);
-    
-    // Other alpha
-    if (settings::prompt_only) { return; }
-    std::array<double, 2> alpha_other;
-    alpha_other[0] = simulation::alpha_other_sum[0]/n;
-    alpha_other[1] =  t_n1 * std::sqrt((simulation::alpha_other_sum[1]/n 
-                    - std::pow(alpha_other[0], 2)) / (n - 1));
-    if (settings::alpha_mode_left) {
-      write_dataset(alpha_group, "fundamental_alpha_estimate", alpha_other);
-    } else {
-      write_dataset(alpha_group, "left_most_alpha_estimate", alpha_other);
-    }
   }
 }
 

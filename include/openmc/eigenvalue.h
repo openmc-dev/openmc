@@ -32,13 +32,9 @@ extern array<double, 2> k_alpha_sum;     //!< Multiplication factor
 extern array<double, 2> rho_sum;         //!< Reactivity
 extern array<double, 2> beta_sum;        //!< Delayed fission fraction
 extern array<double, 2> tr_sum;          //!< Removal time (or mean life time)
-extern array<double, 2> alpha_other_sum; //!< The other alpha in in-hour Eq.
 //! Note: In alpha-eigenvalue mode, keff_generation and mean of k_sum converge 
 //!       to one, while mean of k_alpha_sum converge to the "actual" keff that 
 //!       is calculated based on the alpha-eigenfunction flux.
-//!       If searching for the fundamental mode, the "other alpha" is an
-//!       estimate of the left-most mode. If searching for the left-most mode,
-//!       the "other alpha" is an estimate of the fundamental mode.
 
 } // namespace simulation
 

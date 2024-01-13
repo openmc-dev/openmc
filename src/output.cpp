@@ -626,7 +626,7 @@ void print_results()
 
       // Print
       fmt::print(
-          " Alpha-effective       = {:10.3e} +/- {:9.3e} /s\n", alpha, alpha_sd);
+        "\n Alpha-effective       = {:10.3e} +/- {:9.3e} /s\n", alpha, alpha_sd);
       fmt::print(
           " Multiplication factor = {:10.5f} +/- {:7.5f}\n", k_alpha, k_alpha_sd);
       fmt::print(

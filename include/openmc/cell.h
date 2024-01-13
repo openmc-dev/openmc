@@ -40,7 +40,7 @@ constexpr int32_t OP_UNION {std::numeric_limits<int32_t>::max() - 4};
 //==============================================================================
 
 class Cell;
-class Geometron;
+class GeometryState;
 class ParentCell;
 class CellInstance;
 class Universe;
@@ -184,7 +184,7 @@ public:
 
   //! Find the oncoming boundary of this cell.
   virtual std::pair<double, int32_t> distance(
-    Position r, Direction u, int32_t on_surface, Geometron* p) const = 0;
+    Position r, Direction u, int32_t on_surface, GeometryState* p) const = 0;
 
   //! Write all information needed to reconstruct the cell to an HDF5 group.
   //! \param group_id An HDF5 group id.
@@ -261,7 +261,8 @@ protected:
   //! \param[in] instance of the cell to find parent cells for
   //! \param[in] p particle used to do a fast search for parent cells
   //! \return parent cells
-  vector<ParentCell> find_parent_cells(int32_t instance, Geometron& p) const;
+  vector<ParentCell> find_parent_cells(
+    int32_t instance, GeometryState& p) const;
 
   //! Determine the path to this cell instance in the geometry hierarchy
   //! \param[in] instance of the cell to find parent cells for
@@ -333,8 +334,8 @@ public:
   // Methods
   vector<int32_t> surfaces() const override { return region_.surfaces(); }
 
-  std::pair<double, int32_t> distance(
-    Position r, Direction u, int32_t on_surface, Geometron* p) const override
+  std::pair<double, int32_t> distance(Position r, Direction u,
+    int32_t on_surface, GeometryState* p) const override
   {
     return region_.distance(r, u, on_surface);
   }

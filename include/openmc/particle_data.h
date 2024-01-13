@@ -197,12 +197,12 @@ struct BoundaryInfo {
 /*
  * Contains all geometry state information for a particle.
  */
-class Geometron {
+class GeometryState {
 public:
-  Geometron();
+  GeometryState();
 
   /*
-   * Geometron does not store any ID info, so give some reasonable behavior
+   * GeometryState does not store any ID info, so give some reasonable behavior
    * here. The Particle class redefines this. This is only here for the error
    * reporting behavior that occurs in geometry.cpp. The explanation for
    * mark_as_lost is the same.
@@ -380,7 +380,7 @@ private:
  *   Algorithms.” Annals of Nuclear Energy 113 (March 2018): 506–18.
  *   https://doi.org/10.1016/j.anucene.2017.11.032.
  */
-class ParticleData : public Geometron {
+class ParticleData : public GeometryState {
 private:
   //==========================================================================
   // Data members -- see public: below for descriptions

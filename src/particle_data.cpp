@@ -15,17 +15,17 @@
 
 namespace openmc {
 
-void Geometron::mark_as_lost(const std::string& message)
+void GeometryState::mark_as_lost(const std::string& message)
 {
   mark_as_lost(message.c_str());
 }
 
-void Geometron::mark_as_lost(const std::stringstream& message)
+void GeometryState::mark_as_lost(const std::stringstream& message)
 {
   mark_as_lost(message.str());
 }
 
-void Geometron::mark_as_lost(const char* message)
+void GeometryState::mark_as_lost(const char* message)
 {
   fatal_error(message);
 }
@@ -48,7 +48,7 @@ void LocalCoord::reset()
   rotated = false;
 }
 
-Geometron::Geometron()
+GeometryState::GeometryState()
 {
   // Create and clear coordinate levels
   coord_.resize(model::n_coord_levels);

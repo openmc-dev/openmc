@@ -9,7 +9,7 @@ namespace openmc {
 class DAGUniverse;
 #endif
 
-class Geometron;
+class GeometryState;
 class Universe;
 class UniversePartitioner;
 
@@ -33,7 +33,7 @@ public:
   //! \param group_id An HDF5 group id.
   virtual void to_hdf5(hid_t group_id) const;
 
-  virtual bool find_cell(Geometron& p) const;
+  virtual bool find_cell(GeometryState& p) const;
 
   BoundingBox bounding_box() const;
 

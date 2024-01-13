@@ -404,7 +404,7 @@ int32_t DAGUniverse::implicit_complement_idx() const
   return cell_idx_offset_ + dagmc_instance_->index_by_handle(ic) - 1;
 }
 
-bool DAGUniverse::find_cell(Geometron& p) const
+bool DAGUniverse::find_cell(GeometryState& p) const
 {
   // if the particle isn't in any of the other DagMC
   // cells, place it in the implicit complement
@@ -583,7 +583,7 @@ DAGCell::DAGCell(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx)
 };
 
 std::pair<double, int32_t> DAGCell::distance(
-  Position r, Direction u, int32_t on_surface, Geometron* p) const
+  Position r, Direction u, int32_t on_surface, GeometryState* p) const
 {
   // if we've changed direction or we're not on a surface,
   // reset the history and update last direction
@@ -721,7 +721,7 @@ Direction DAGSurface::normal(Position r) const
   return dir;
 }
 
-Direction DAGSurface::reflect(Position r, Direction u, Geometron* p) const
+Direction DAGSurface::reflect(Position r, Direction u, GeometryState* p) const
 {
   Expects(p);
   p->history().reset_to_last_intersection();

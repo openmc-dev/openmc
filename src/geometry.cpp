@@ -32,7 +32,7 @@ vector<int64_t> overlap_check_count;
 // Non-member functions
 //==============================================================================
 
-bool check_cell_overlap(Geometron& p, bool error)
+bool check_cell_overlap(GeometryState& p, bool error)
 {
   int n_coord = p.n_coord();
 
@@ -63,7 +63,7 @@ bool check_cell_overlap(Geometron& p, bool error)
 
 //==============================================================================
 
-int cell_instance_at_level(const Geometron& p, int level)
+int cell_instance_at_level(const GeometryState& p, int level)
 {
   // throw error if the requested level is too deep for the geometry
   if (level > model::n_coord_levels) {
@@ -100,7 +100,7 @@ int cell_instance_at_level(const Geometron& p, int level)
 //==============================================================================
 
 bool find_cell_inner(
-  Geometron& p, const NeighborList* neighbor_list, bool verbose)
+  GeometryState& p, const NeighborList* neighbor_list, bool verbose)
 {
   // Find which cell of this universe the particle is in.  Use the neighbor list
   // to shorten the search if one was provided.
@@ -259,7 +259,7 @@ bool find_cell_inner(
 
 //==============================================================================
 
-bool neighbor_list_find_cell(Geometron& p, bool verbose)
+bool neighbor_list_find_cell(GeometryState& p, bool verbose)
 {
 
   // Reset all the deeper coordinate levels.
@@ -287,7 +287,7 @@ bool neighbor_list_find_cell(Geometron& p, bool verbose)
   return found;
 }
 
-bool exhaustive_find_cell(Geometron& p, bool verbose)
+bool exhaustive_find_cell(GeometryState& p, bool verbose)
 {
   int i_universe = p.lowest_coord().universe;
   if (i_universe == C_NONE) {
@@ -304,7 +304,7 @@ bool exhaustive_find_cell(Geometron& p, bool verbose)
 
 //==============================================================================
 
-void cross_lattice(Geometron& p, const BoundaryInfo& boundary, bool verbose)
+void cross_lattice(GeometryState& p, const BoundaryInfo& boundary, bool verbose)
 {
   auto& coord {p.lowest_coord()};
   auto& lat {*model::lattices[coord.lattice]};
@@ -364,7 +364,7 @@ void cross_lattice(Geometron& p, const BoundaryInfo& boundary, bool verbose)
 
 //==============================================================================
 
-BoundaryInfo distance_to_boundary(Geometron& p)
+BoundaryInfo distance_to_boundary(GeometryState& p)
 {
   BoundaryInfo info;
   double d_lat = INFINITY;
@@ -465,7 +465,7 @@ BoundaryInfo distance_to_boundary(Geometron& p)
 extern "C" int openmc_find_cell(
   const double* xyz, int32_t* index, int32_t* instance)
 {
-  Geometron geom_state;
+  GeometryState geom_state;
 
   geom_state.r() = Position {xyz};
   geom_state.u() = {0.0, 0.0, 1.0};

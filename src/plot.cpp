@@ -45,7 +45,7 @@ constexpr int32_t OVERLAP {-3};
 IdData::IdData(size_t h_res, size_t v_res) : data_({v_res, h_res, 3}, NOT_FOUND)
 {}
 
-void IdData::set_value(size_t y, size_t x, const Geometron& p, int level)
+void IdData::set_value(size_t y, size_t x, const GeometryState& p, int level)
 {
   // set cell data
   if (p.n_coord() <= level) {
@@ -78,7 +78,8 @@ PropertyData::PropertyData(size_t h_res, size_t v_res)
   : data_({v_res, h_res, 2}, NOT_FOUND)
 {}
 
-void PropertyData::set_value(size_t y, size_t x, const Geometron& p, int level)
+void PropertyData::set_value(
+  size_t y, size_t x, const GeometryState& p, int level)
 {
   Cell* c = model::cells.at(p.lowest_coord().cell).get();
   data_(y, x, 0) = (p.sqrtkT() * p.sqrtkT()) / K_BOLTZMANN;
@@ -1084,7 +1085,7 @@ void ProjectionPlot::set_output_path(pugi::xml_node node)
 // Advances to the next boundary from outside the geometry
 // Returns -1 if no intersection found, and the surface index
 // if an intersection was found.
-int ProjectionPlot::advance_to_boundary_from_void(Geometron& p)
+int ProjectionPlot::advance_to_boundary_from_void(GeometryState& p)
 {
   constexpr double scoot = 1e-5;
   double min_dist = {INFINITY};
@@ -1234,7 +1235,7 @@ void ProjectionPlot::create_output() const
     const int n_threads = num_threads();
     const int tid = thread_num();
 
-    Geometron p;
+    GeometryState p;
     p.u() = {1.0, 0.0, 0.0};
 
     int vert = tid;

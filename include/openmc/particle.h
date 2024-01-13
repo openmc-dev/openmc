@@ -103,7 +103,7 @@ public:
   //! mark a particle as lost and create a particle restart file
   //! \param message A warning message to display
   virtual void mark_as_lost(const char* message) override;
-  using Geometron::mark_as_lost;
+  using GeometryState::mark_as_lost;
 
   //! create a particle restart HDF5 file
   void write_restart() const;

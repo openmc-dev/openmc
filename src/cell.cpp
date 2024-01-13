@@ -1279,14 +1279,15 @@ vector<ParentCell> Cell::find_parent_cells(
 {
 
   // create a temporary particle
-  Geometron dummy_particle {};
+  GeometryState dummy_particle {};
   dummy_particle.r() = r;
   dummy_particle.u() = {0., 0., 1.};
 
   return find_parent_cells(instance, dummy_particle);
 }
 
-vector<ParentCell> Cell::find_parent_cells(int32_t instance, Geometron& p) const
+vector<ParentCell> Cell::find_parent_cells(
+  int32_t instance, GeometryState& p) const
 {
   // look up the particle's location
   exhaustive_find_cell(p);

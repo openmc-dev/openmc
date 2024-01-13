@@ -108,10 +108,10 @@ public:
   //! \param[inout] p Pointer to the particle. Only DAGMC uses this.
   //! \return Outgoing direction of the ray
   virtual Direction reflect(
-    Position r, Direction u, Geometron* p = nullptr) const;
+    Position r, Direction u, GeometryState* p = nullptr) const;
 
   virtual Direction diffuse_reflect(
-    Position r, Direction u, uint64_t* seed, Geometron* p = nullptr) const;
+    Position r, Direction u, uint64_t* seed, GeometryState* p = nullptr) const;
 
   //! Evaluate the equation describing the surface.
   //!

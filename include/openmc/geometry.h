@@ -11,7 +11,7 @@
 namespace openmc {
 
 class BoundaryInfo;
-class Geometron;
+class GeometryState;
 
 //==============================================================================
 // Global variables
@@ -39,7 +39,7 @@ inline bool coincident(double d1, double d2)
 //! Check for overlapping cells at a particle's position.
 //==============================================================================
 
-bool check_cell_overlap(Geometron& p, bool error = true);
+bool check_cell_overlap(GeometryState& p, bool error = true);
 
 //==============================================================================
 //! Get the cell instance for a particle at the specified universe level
@@ -50,7 +50,7 @@ bool check_cell_overlap(Geometron& p, bool error = true);
 //! should be computed. \return The instance of the cell at the specified level.
 //==============================================================================
 
-int cell_instance_at_level(const Geometron& p, int level);
+int cell_instance_at_level(const GeometryState& p, int level);
 
 //==============================================================================
 //! Locate a particle in the geometry tree and set its geometry data fields.
@@ -60,22 +60,22 @@ int cell_instance_at_level(const Geometron& p, int level);
 //! \return True if the particle's location could be found and ascribed to a
 //!   valid geometry coordinate stack.
 //==============================================================================
-bool exhaustive_find_cell(Geometron& p, bool verbose = false);
+bool exhaustive_find_cell(GeometryState& p, bool verbose = false);
 bool neighbor_list_find_cell(
-  Geometron& p, bool verbose = false); // Only usable on surface crossings
+  GeometryState& p, bool verbose = false); // Only usable on surface crossings
 
 //==============================================================================
 //! Move a particle into a new lattice tile.
 //==============================================================================
 
 void cross_lattice(
-  Geometron& p, const BoundaryInfo& boundary, bool verbose = false);
+  GeometryState& p, const BoundaryInfo& boundary, bool verbose = false);
 
 //==============================================================================
 //! Find the next boundary a particle will intersect.
 //==============================================================================
 
-BoundaryInfo distance_to_boundary(Geometron& p);
+BoundaryInfo distance_to_boundary(GeometryState& p);
 
 } // namespace openmc
 

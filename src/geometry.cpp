@@ -465,18 +465,19 @@ BoundaryInfo distance_to_boundary(Geometron& p)
 extern "C" int openmc_find_cell(
   const double* xyz, int32_t* index, int32_t* instance)
 {
-  Geometron p;
+  Geometron geom_state;
 
-  p.r() = Position {xyz};
-  p.u() = {0.0, 0.0, 1.0};
+  geom_state.r() = Position {xyz};
+  geom_state.u() = {0.0, 0.0, 1.0};
 
-  if (!exhaustive_find_cell(p)) {
-    set_errmsg(fmt::format("Could not find cell at position {}.", p.r()));
+  if (!exhaustive_find_cell(geom_state)) {
+    set_errmsg(
+      fmt::format("Could not find cell at position {}.", geom_state.r()));
     return OPENMC_E_GEOMETRY;
   }
 
-  *index = p.lowest_coord().cell;
-  *instance = p.cell_instance();
+  *index = geom_state.lowest_coord().cell;
+  *instance = geom_state.cell_instance();
   return 0;
 }
 

@@ -242,8 +242,6 @@ class CoupledOperator(OpenMCOperator):
                 warn("Fission Q dictionary will not be used")
                 fission_q = None
         self.model = model
-        self.settings = model.settings
-        self.geometry = model.geometry
 
         # determine set of materials in the model
         if not model.materials:
@@ -358,7 +356,7 @@ class CoupledOperator(OpenMCOperator):
         if normalization_mode == "fission-q":
             self._normalization_helper = ChainFissionHelper()
         elif normalization_mode == "energy-deposition":
-            score = "heating" if self.settings.photon_transport else "heating-local"
+            score = "heating" if self.model.settings.photon_transport else "heating-local"
             self._normalization_helper = EnergyScoreHelper(score)
         else:
             self._normalization_helper = SourceRateHelper()
@@ -380,8 +378,12 @@ class CoupledOperator(OpenMCOperator):
 
         # Create XML files
         if comm.rank == 0:
-            self.geometry.export_to_xml()
-            self.settings.export_to_xml()
+            self.model.geometry.export_to_xml()
+            self.model.settings.export_to_xml()
+            if self.model.plots:
+                self.model.plots.export_to_xml()
+            if self.model.tallies:
+                self.model.tallies.export_to_xml()
             self._generate_materials_xml()
 
         # Initialize OpenMC library

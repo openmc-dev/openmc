@@ -63,6 +63,9 @@ _dll.openmc_material_set_volume.errcheck = _error_handler
 _dll.openmc_material_get_depletable.argtypes = [c_int32, POINTER(c_bool)]
 _dll.openmc_material_get_depletable.restype = c_int
 _dll.openmc_material_get_depletable.errcheck = _error_handler
+_dll.openmc_material_set_depletable.argtypes = [c_int32, c_bool]
+_dll.openmc_material_set_depletable.restype = c_int
+_dll.openmc_material_set_depletable.errcheck = _error_handler
 _dll.n_materials.argtypes = []
 _dll.n_materials.restype = c_size_t
 
@@ -177,6 +180,10 @@ class Material(_FortranObjectWithID):
         depletable = c_bool()
         _dll.openmc_material_get_depletable(self._index, depletable)
         return depletable.value
+
+    @depletable.setter
+    def depletable(self, depletable):
+        _dll.openmc_material_set_depletable(self._index, depletable)
 
     @property
     def nuclides(self):

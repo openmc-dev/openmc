@@ -207,6 +207,8 @@ def test_material(lib_init):
     assert m.name == "Not hot borated water"
 
     assert m.depletable == False
+    m.depletable = True
+    assert m.depletable == True
 
 
 def test_properties_density(lib_init):

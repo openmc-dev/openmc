@@ -158,6 +158,10 @@ public:
   //! \return Temperature in [K]
   double temperature() const;
 
+  //! Whether or not the material is depletable
+  bool depletable() const { return depletable_; }
+  bool& depletable() { return depletable_; }
+
   //! Get pointer to NCrystal material object
   //! \return Pointer to NCrystal material object
   const NCrystalMat& ncrystal_mat() const { return ncrystal_mat_; };

@@ -254,12 +254,14 @@ class Batchwise(ABC):
                     print("Search_for_keff returned values below or above "
                           "target. Trying to iteratively adapt bracket...")
 
-                    # if the retured keffs range ends up being smaller than the
-                    # max keff std deviation, set closest value and continue
-                    if all(abs(keff-self.target) <= max(keffs).s for keff in keffs):
+                    # if the difference between keffs is smaller than 1 pcm,
+                    # the grad calculation will be overshot, so let's set the root
+                    # to the closest guess value
+                    if abs(np.diff(keffs))*1e5 < 1:
                         arg_min = abs(self.target - np.array(keffs)).argmin()
-                        print("Search_for_keff returned keffs range smaller than"
-                              "max std dev. Set root to guess with "
+                        print("Difference between keff values is "
+                              "smaller than 1 pcm. "
+                              "Set root to guess value with "
                               "closest keff to target and continue...")
                         root = guesses[arg_min]
 

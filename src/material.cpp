@@ -68,7 +68,7 @@ Material::Material(pugi::xml_node node)
   }
 
   if (check_for_node(node, "depletable")) {
-    depletable_ = get_node_value_bool(node, "depletable");
+    depletable() = get_node_value_bool(node, "depletable");
   }
 
   bool sum_density {false};
@@ -373,7 +373,7 @@ Material& Material::clone()
   mat->density_gpcc_ = density_gpcc_;
   mat->volume_ = volume_;
   mat->fissionable_ = fissionable_;
-  mat->depletable_ = depletable_;
+  mat->depletable() = depletable();
   mat->p0_ = p0_;
   mat->mat_nuclide_index_ = mat_nuclide_index_;
   mat->thermal_tables_ = thermal_tables_;
@@ -1068,7 +1068,7 @@ void Material::to_hdf5(hid_t group) const
 {
   hid_t material_group = create_group(group, "material " + std::to_string(id_));
 
-  write_attribute(material_group, "depletable", static_cast<int>(depletable_));
+  write_attribute(material_group, "depletable", static_cast<int>(depletable()));
   if (volume_ > 0.0) {
     write_attribute(material_group, "volume", volume_);
   }
@@ -1550,8 +1550,9 @@ extern "C" int openmc_material_set_volume(int32_t index, double volume)
   }
 }
 
-extern "C" int openmc_material_get_depletable(int32_t index, bool* depletable) {
-   if (index < 0 || index >= model::materials.size()) {
+extern "C" int openmc_material_get_depletable(int32_t index, bool* depletable)
+{
+  if (index < 0 || index >= model::materials.size()) {
     set_errmsg("Index in materials array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
@@ -1562,8 +1563,9 @@ extern "C" int openmc_material_get_depletable(int32_t index, bool* depletable) {
   return 0;
 }
 
-extern "C" int openmc_material_set_depletable(int32_t index, bool depletable) {
-   if (index < 0 || index >= model::materials.size()) {
+extern "C" int openmc_material_set_depletable(int32_t index, bool depletable)
+{
+  if (index < 0 || index >= model::materials.size()) {
     set_errmsg("Index in materials array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }

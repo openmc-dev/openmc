@@ -591,6 +591,15 @@ def test_regular_mesh(lib_init):
     for elem_vols in vols:
         assert sum(f[1] for f in elem_vols) == pytest.approx(1.26 * 1.26 / 4)
 
+    # If the mesh extends beyond the boundaries of the model, the volumes should
+    # still be reported correctted
+    mesh.dimension = (1, 1, 1)
+    mesh.set_parameters(lower_left=(-1.0, -1.0, -0.5),
+                        upper_right=(1.0, 1.0, 0.5))
+    vols = mesh.material_volumes(100_000)
+    for elem_vols in vols:
+        assert sum(f[1] for f in elem_vols) == pytest.approx(1.26 * 1.26, 1e-2)
+
 
 def test_rectilinear_mesh(lib_init):
     mesh = openmc.lib.RectilinearMesh()
@@ -668,7 +677,7 @@ def test_cylindrical_mesh(lib_init):
 
     # Test material volumes
     mesh = openmc.lib.CylindricalMesh()
-    r_grid = (0., 0.5, 1.0)
+    r_grid = (0., 0.25, 0.5)
     phi_grid = np.linspace(0., 2.0*pi, 4)
     z_grid = (-0.5, 0.5)
     mesh.set_grid(r_grid, phi_grid, z_grid)
@@ -676,9 +685,9 @@ def test_cylindrical_mesh(lib_init):
     vols = mesh.material_volumes()
     assert len(vols) == 6
     for i in range(0, 6, 2):
-        assert sum(f[1] for f in vols[i]) == pytest.approx(pi * 0.5**2 / 3)
+        assert sum(f[1] for f in vols[i]) == pytest.approx(pi * 0.25**2 / 3)
     for i in range(1, 6, 2):
-        assert sum(f[1] for f in vols[i]) == pytest.approx(pi * (1.0**2 - 0.5**2) / 3)
+        assert sum(f[1] for f in vols[i]) == pytest.approx(pi * (0.5**2 - 0.25**2) / 3)
 
 
 def test_spherical_mesh(lib_init):
@@ -714,7 +723,7 @@ def test_spherical_mesh(lib_init):
 
     # Test material volumes
     mesh = openmc.lib.SphericalMesh()
-    r_grid = (0., 0.5, 1.0)
+    r_grid = (0., 0.25, 0.5)
     theta_grid = np.linspace(0., pi, 3)
     phi_grid = np.linspace(0., 2.0*pi, 4)
     mesh.set_grid(r_grid, theta_grid, phi_grid)
@@ -725,10 +734,10 @@ def test_spherical_mesh(lib_init):
     d_phi = phi_grid[1] - phi_grid[0]
     for i in range(0, 12, 2):
         assert sum(f[1] for f in vols[i]) == pytest.approx(
-            0.5**3 / 3 * d_theta * d_phi * 2/pi)
+            0.25**3 / 3 * d_theta * d_phi * 2/pi)
     for i in range(1, 12, 2):
         assert sum(f[1] for f in vols[i]) == pytest.approx(
-            (1.0**3 - 0.5**3) / 3 * d_theta * d_phi * 2/pi)
+            (0.5**3 - 0.25**3) / 3 * d_theta * d_phi * 2/pi)
 
 
 def test_restart(lib_init, mpi_intracomm):

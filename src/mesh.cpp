@@ -159,7 +159,11 @@ int Mesh::material_volumes(
 
 #pragma omp for
     for (int i = 0; i < n_sample; ++i) {
-      geom.r() = this->sample_element(bin, seed);
+      // Get seed for i-th sample
+      uint64_t seed_i = future_seed(3 * i, *seed);
+
+      // Sample position and set geometry state
+      geom.r() = this->sample_element(bin, &seed_i);
       geom.u() = {1., 0., 0.};
       geom.n_coord() = 1;
 
@@ -178,11 +182,14 @@ int Mesh::material_volumes(
       } else {
         local_hits[it - local_materials.begin()]++;
       }
-    }
+    } // omp for
 
     // Reduce index/hits lists from each thread into a single copy
     reduce_indices_hits(local_materials, local_hits, materials, hits);
-  }
+  } // omp parallel
+
+  // Advance RNG seed
+  advance_prn_seed(3 * n_sample, seed);
 
   // Make sure span passed in is large enough
   if (hits.size() > result.size()) {
@@ -190,9 +197,8 @@ int Mesh::material_volumes(
   }
 
   // Convert hits to fractions
-  int64_t total_hits = std::accumulate(hits.begin(), hits.end(), 0.0);
   for (int i_mat = 0; i_mat < hits.size(); ++i_mat) {
-    double fraction = double(hits[i_mat]) / total_hits;
+    double fraction = double(hits[i_mat]) / n_sample;
     result[i_mat].material = materials[i_mat];
     result[i_mat].volume = fraction * this->volume(bin);
   }

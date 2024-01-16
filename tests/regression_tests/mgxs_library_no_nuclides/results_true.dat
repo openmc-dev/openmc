@@ -143,7 +143,7 @@ chi-prompt
 inverse-velocity
    material  group in nuclide          mean     std. dev.
 1         1         1   total  5.956290e-08  2.255751e-09
-0         1         2   total  2.886630e-06  7.418455e-08
+0         1         2   total  2.886630e-06  7.418452e-08
 prompt-nu-fission
    material  group in nuclide      mean  std. dev.
 1         1         1   total  0.018067   0.000817
@@ -449,7 +449,7 @@ chi-prompt
 inverse-velocity
    material  group in nuclide          mean     std. dev.
 1         2         1   total  6.076563e-08  2.727519e-09
-0         2         2   total  2.996176e-06  1.110140e-07
+0         2         2   total  2.996176e-06  1.110139e-07
 prompt-nu-fission
    material  group in nuclide  mean  std. dev.
 1         2         1   total   0.0        0.0

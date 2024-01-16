@@ -26,6 +26,12 @@ bool file_exists(const std::string& filename)
   return s.good();
 }
 
+std::string dir_name(const std::string& filename)
+{
+  size_t pos = filename.find_last_of("\\/");
+  return (std::string::npos == pos) ? "" : filename.substr(0, pos + 1);
+}
+
 std::string get_file_extension(const std::string& filename)
 {
   // try our best to work on windows...

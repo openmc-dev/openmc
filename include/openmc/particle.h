@@ -5,7 +5,6 @@
 //! \brief Particle type
 
 #include <cstdint>
-#include <sstream>
 #include <string>
 
 #include "openmc/constants.h"
@@ -103,17 +102,8 @@ public:
 
   //! mark a particle as lost and create a particle restart file
   //! \param message A warning message to display
-  void mark_as_lost(const char* message);
-
-  void mark_as_lost(const std::string& message)
-  {
-    mark_as_lost(message.c_str());
-  }
-
-  void mark_as_lost(const std::stringstream& message)
-  {
-    mark_as_lost(message.str());
-  }
+  virtual void mark_as_lost(const char* message) override;
+  using GeometryState::mark_as_lost;
 
   //! create a particle restart HDF5 file
   void write_restart() const;

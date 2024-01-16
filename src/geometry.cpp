@@ -32,7 +32,7 @@ vector<int64_t> overlap_check_count;
 // Non-member functions
 //==============================================================================
 
-bool check_cell_overlap(Particle& p, bool error)
+bool check_cell_overlap(GeometryState& p, bool error)
 {
   int n_coord = p.n_coord();
 
@@ -63,7 +63,7 @@ bool check_cell_overlap(Particle& p, bool error)
 
 //==============================================================================
 
-int cell_instance_at_level(const Particle& p, int level)
+int cell_instance_at_level(const GeometryState& p, int level)
 {
   // throw error if the requested level is too deep for the geometry
   if (level > model::n_coord_levels) {
@@ -99,7 +99,8 @@ int cell_instance_at_level(const Particle& p, int level)
 
 //==============================================================================
 
-bool find_cell_inner(Particle& p, const NeighborList* neighbor_list)
+bool find_cell_inner(
+  GeometryState& p, const NeighborList* neighbor_list, bool verbose)
 {
   // Find which cell of this universe the particle is in.  Use the neighbor list
   // to shorten the search if one was provided.
@@ -156,7 +157,7 @@ bool find_cell_inner(Particle& p, const NeighborList* neighbor_list)
     i_cell = p.lowest_coord().cell;
 
     // Announce the cell that the particle is entering.
-    if (found && (settings::verbosity >= 10 || p.trace())) {
+    if (found && verbose) {
       auto msg = fmt::format("    Entering cell {}", model::cells[i_cell]->id_);
       write_message(msg, 1);
     }
@@ -243,10 +244,9 @@ bool find_cell_inner(Particle& p, const NeighborList* neighbor_list)
         if (lat.outer_ != NO_OUTER_UNIVERSE) {
           coord.universe = lat.outer_;
         } else {
-          warning(fmt::format("Particle {} is outside lattice {} but the "
-                              "lattice has no defined outer universe.",
+          p.mark_as_lost(fmt::format(
+            "Particle {} left lattice {}, but it has no outer definition.",
             p.id(), lat.id_));
-          return false;
         }
       }
     }
@@ -259,7 +259,7 @@ bool find_cell_inner(Particle& p, const NeighborList* neighbor_list)
 
 //==============================================================================
 
-bool neighbor_list_find_cell(Particle& p)
+bool neighbor_list_find_cell(GeometryState& p, bool verbose)
 {
 
   // Reset all the deeper coordinate levels.
@@ -274,20 +274,20 @@ bool neighbor_list_find_cell(Particle& p)
 
   // Search for the particle in that cell's neighbor list.  Return if we
   // found the particle.
-  bool found = find_cell_inner(p, &c.neighbors_);
+  bool found = find_cell_inner(p, &c.neighbors_, verbose);
   if (found)
     return found;
 
   // The particle could not be found in the neighbor list.  Try searching all
   // cells in this universe, and update the neighbor list if we find a new
   // neighboring cell.
-  found = find_cell_inner(p, nullptr);
+  found = find_cell_inner(p, nullptr, verbose);
   if (found)
     c.neighbors_.push_back(p.coord(coord_lvl).cell);
   return found;
 }
 
-bool exhaustive_find_cell(Particle& p)
+bool exhaustive_find_cell(GeometryState& p, bool verbose)
 {
   int i_universe = p.lowest_coord().universe;
   if (i_universe == C_NONE) {
@@ -299,17 +299,17 @@ bool exhaustive_find_cell(Particle& p)
   for (int i = p.n_coord(); i < model::n_coord_levels; i++) {
     p.coord(i).reset();
   }
-  return find_cell_inner(p, nullptr);
+  return find_cell_inner(p, nullptr, verbose);
 }
 
 //==============================================================================
 
-void cross_lattice(Particle& p, const BoundaryInfo& boundary)
+void cross_lattice(GeometryState& p, const BoundaryInfo& boundary, bool verbose)
 {
   auto& coord {p.lowest_coord()};
   auto& lat {*model::lattices[coord.lattice]};
 
-  if (settings::verbosity >= 10 || p.trace()) {
+  if (verbose) {
     write_message(
       fmt::format("    Crossing lattice {}. Current position ({},{},{}). r={}",
         lat.id_, coord.lattice_i[0], coord.lattice_i[1], coord.lattice_i[2],
@@ -336,10 +336,11 @@ void cross_lattice(Particle& p, const BoundaryInfo& boundary)
     // The particle is outside the lattice.  Search for it from the base coords.
     p.n_coord() = 1;
     bool found = exhaustive_find_cell(p);
-    if (!found && p.alive()) {
-      p.mark_as_lost(fmt::format("Could not locate particle {} after "
-                                 "crossing a lattice boundary",
-        p.id()));
+
+    if (!found) {
+      p.mark_as_lost(fmt::format("Particle {} could not be located after "
+                                 "crossing a boundary of lattice {}",
+        p.id(), lat.id_));
     }
 
   } else {
@@ -352,10 +353,10 @@ void cross_lattice(Particle& p, const BoundaryInfo& boundary)
       // this case, search for it from the base coords.
       p.n_coord() = 1;
       bool found = exhaustive_find_cell(p);
-      if (!found && p.alive()) {
-        p.mark_as_lost(fmt::format("Could not locate particle {} after "
-                                   "crossing a lattice boundary",
-          p.id()));
+      if (!found) {
+        p.mark_as_lost(fmt::format("Particle {} could not be located after "
+                                   "crossing a boundary of lattice {}",
+          p.id(), lat.id_));
       }
     }
   }
@@ -363,7 +364,7 @@ void cross_lattice(Particle& p, const BoundaryInfo& boundary)
 
 //==============================================================================
 
-BoundaryInfo distance_to_boundary(Particle& p)
+BoundaryInfo distance_to_boundary(GeometryState& p)
 {
   BoundaryInfo info;
   double d_lat = INFINITY;
@@ -408,8 +409,9 @@ BoundaryInfo distance_to_boundary(Particle& p)
       level_lat_trans = lattice_distance.second;
 
       if (d_lat < 0) {
-        p.mark_as_lost(fmt::format(
-          "Particle {} had a negative distance to a lattice boundary", p.id()));
+        p.mark_as_lost(fmt::format("Particle {} had a negative distance "
+                                   "to a lattice boundary.",
+          p.id()));
       }
     }
 
@@ -463,18 +465,19 @@ BoundaryInfo distance_to_boundary(Particle& p)
 extern "C" int openmc_find_cell(
   const double* xyz, int32_t* index, int32_t* instance)
 {
-  Particle p;
+  GeometryState geom_state;
 
-  p.r() = Position {xyz};
-  p.u() = {0.0, 0.0, 1.0};
+  geom_state.r() = Position {xyz};
+  geom_state.u() = {0.0, 0.0, 1.0};
 
-  if (!exhaustive_find_cell(p)) {
-    set_errmsg(fmt::format("Could not find cell at position {}.", p.r()));
+  if (!exhaustive_find_cell(geom_state)) {
+    set_errmsg(
+      fmt::format("Could not find cell at position {}.", geom_state.r()));
     return OPENMC_E_GEOMETRY;
   }
 
-  *index = p.lowest_coord().cell;
-  *instance = p.cell_instance();
+  *index = geom_state.lowest_coord().cell;
+  *instance = geom_state.cell_instance();
   return 0;
 }
 

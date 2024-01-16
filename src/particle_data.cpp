@@ -1,6 +1,9 @@
 #include "openmc/particle_data.h"
 
+#include <sstream>
+
 #include "openmc/cell.h"
+#include "openmc/error.h"
 #include "openmc/geometry.h"
 #include "openmc/material.h"
 #include "openmc/nuclide.h"
@@ -11,6 +14,21 @@
 #include "openmc/tallies/tally.h"
 
 namespace openmc {
+
+void GeometryState::mark_as_lost(const std::string& message)
+{
+  mark_as_lost(message.c_str());
+}
+
+void GeometryState::mark_as_lost(const std::stringstream& message)
+{
+  mark_as_lost(message.str());
+}
+
+void GeometryState::mark_as_lost(const char* message)
+{
+  fatal_error(message);
+}
 
 void LocalCoord::rotate(const vector<double>& rotation)
 {
@@ -30,13 +48,16 @@ void LocalCoord::reset()
   rotated = false;
 }
 
-ParticleData::ParticleData()
+GeometryState::GeometryState()
 {
   // Create and clear coordinate levels
   coord_.resize(model::n_coord_levels);
   cell_last_.resize(model::n_coord_levels);
   clear();
+}
 
+ParticleData::ParticleData()
+{
   zero_delayed_bank();
 
   // Every particle starts with no accumulated flux derivative.  Note that in

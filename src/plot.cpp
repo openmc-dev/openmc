@@ -45,7 +45,7 @@ constexpr int32_t OVERLAP {-3};
 IdData::IdData(size_t h_res, size_t v_res) : data_({v_res, h_res, 3}, NOT_FOUND)
 {}
 
-void IdData::set_value(size_t y, size_t x, const Particle& p, int level)
+void IdData::set_value(size_t y, size_t x, const GeometryState& p, int level)
 {
   // set cell data
   if (p.n_coord() <= level) {
@@ -78,7 +78,8 @@ PropertyData::PropertyData(size_t h_res, size_t v_res)
   : data_({v_res, h_res, 2}, NOT_FOUND)
 {}
 
-void PropertyData::set_value(size_t y, size_t x, const Particle& p, int level)
+void PropertyData::set_value(
+  size_t y, size_t x, const GeometryState& p, int level)
 {
   Cell* c = model::cells.at(p.lowest_coord().cell).get();
   data_(y, x, 0) = (p.sqrtkT() * p.sqrtkT()) / K_BOLTZMANN;
@@ -1084,7 +1085,7 @@ void ProjectionPlot::set_output_path(pugi::xml_node node)
 // Advances to the next boundary from outside the geometry
 // Returns -1 if no intersection found, and the surface index
 // if an intersection was found.
-int ProjectionPlot::advance_to_boundary_from_void(Particle& p)
+int ProjectionPlot::advance_to_boundary_from_void(GeometryState& p)
 {
   constexpr double scoot = 1e-5;
   double min_dist = {INFINITY};
@@ -1234,20 +1235,8 @@ void ProjectionPlot::create_output() const
     const int n_threads = num_threads();
     const int tid = thread_num();
 
-    SourceSite s; // Where particle starts from (camera)
-    s.E = 1;
-    s.wgt = 1;
-    s.delayed_group = 0;
-    s.particle = ParticleType::photon; // just has to be something reasonable
-    s.parent_id = 1;
-    s.progeny_id = 2;
-    s.r = camera_position_;
-
-    Particle p;
-    s.u.x = 1.0;
-    s.u.y = 0.0;
-    s.u.z = 0.0;
-    p.from_source(&s);
+    GeometryState p;
+    p.u() = {1.0, 0.0, 0.0};
 
     int vert = tid;
     for (int iter = 0; iter <= pixels_[1] / n_threads; iter++) {
@@ -1263,6 +1252,10 @@ void ProjectionPlot::create_output() const
 
         for (int horiz = 0; horiz < pixels_[0]; ++horiz) {
 
+          // Projection mode below decides ray starting conditions
+          Position init_r;
+          Direction init_u;
+
           // Generate the starting position/direction of the ray
           if (orthographic_width_ == 0.0) { // perspective projection
             double this_phi =
@@ -1273,18 +1266,22 @@ void ProjectionPlot::create_output() const
             camera_local_vec.x = std::cos(this_phi) * std::sin(this_mu);
             camera_local_vec.y = std::sin(this_phi) * std::sin(this_mu);
             camera_local_vec.z = std::cos(this_mu);
-            s.u = camera_local_vec.rotate(camera_to_model);
+            init_u = camera_local_vec.rotate(camera_to_model);
+            init_r = camera_position_;
           } else { // orthographic projection
-            s.u = looking_direction;
+            init_u = looking_direction;
 
             double x_pix_coord = (static_cast<double>(horiz) - p0 / 2.0) / p0;
             double y_pix_coord = (static_cast<double>(vert) - p1 / 2.0) / p0;
-            s.r = camera_position_ +
-                  cam_yaxis * x_pix_coord * orthographic_width_ +
-                  cam_zaxis * y_pix_coord * orthographic_width_;
+
+            init_r = camera_position_;
+            init_r += cam_yaxis * x_pix_coord * orthographic_width_;
+            init_r += cam_zaxis * y_pix_coord * orthographic_width_;
           }
 
-          p.from_source(&s); // put particle at camera
+          // Resets internal geometry state of particle
+          p.init_from_r_u(init_r, init_u);
+
           bool hitsomething = false;
           bool intersection_found = true;
           int loop_counter = 0;

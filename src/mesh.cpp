@@ -28,6 +28,7 @@
 #include "openmc/memory.h"
 #include "openmc/message_passing.h"
 #include "openmc/openmp_interface.h"
+#include "openmc/particle_data.h"
 #include "openmc/random_dist.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
@@ -154,19 +155,19 @@ int Mesh::material_volumes(
   {
     vector<int32_t> local_materials;
     vector<int64_t> local_hits;
-    Particle p;
+    GeometryState geom;
 
 #pragma omp for
     for (int i = 0; i < n_sample; ++i) {
-      p.r() = this->sample_element(bin, seed);
-      p.u() = {1., 0., 0.};
-      p.n_coord() = 1;
+      geom.r() = this->sample_element(bin, seed);
+      geom.u() = {1., 0., 0.};
+      geom.n_coord() = 1;
 
       // If this location is not in the geometry at all, move on to next block
-      if (!exhaustive_find_cell(p))
+      if (!exhaustive_find_cell(geom))
         continue;
 
-      int i_material = p.material();
+      int i_material = geom.material();
 
       // Check if this material was previously hit and if so, increment count
       auto it =

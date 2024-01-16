@@ -49,8 +49,8 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
 
   if (check_for_node(node, "filename")) {
     filename_ = get_node_value(node, "filename");
-    if (!file_exists(filename_)) {
-      fatal_error(fmt::format("DAGMC file '{}' could not be found", filename_));
+    if (!starts_with(filename_, "/")) {
+      filename_ = dir_name(settings::path_input) + filename_;
     }
   } else {
     fatal_error("Must specify a file for the DAGMC universe");
@@ -123,7 +123,6 @@ void DAGUniverse::init_dagmc()
   dagmc_instance_ = std::make_shared<moab::DagMC>();
 
   // load the DAGMC geometry
-  filename_ = settings::path_input + filename_;
   if (!file_exists(filename_)) {
     fatal_error("Geometry DAGMC file '" + filename_ + "' does not exist!");
   }

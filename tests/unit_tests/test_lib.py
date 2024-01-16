@@ -586,10 +586,10 @@ def test_regular_mesh(lib_init):
     mesh.dimension = (2, 2, 1)
     mesh.set_parameters(lower_left=(-0.63, -0.63, -0.5),
                         upper_right=(0.63, 0.63, 0.5))
-    vol_fracs = mesh.material_volumes()
-    assert len(vol_fracs) == 4
-    for elem_fracs in vol_fracs:
-        assert sum(f[1] for f in elem_fracs) == pytest.approx(1.26 * 1.26 / 4)
+    vols = mesh.material_volumes()
+    assert len(vols) == 4
+    for elem_vols in vols:
+        assert sum(f[1] for f in elem_vols) == pytest.approx(1.26 * 1.26 / 4)
 
 
 def test_rectilinear_mesh(lib_init):
@@ -627,12 +627,12 @@ def test_rectilinear_mesh(lib_init):
     w = 1.26
     mesh.set_grid([-w/2, -w/4, w/2], [-w/2, -w/4, w/2], [-0.5, 0.5])
 
-    vol_fracs = mesh.material_volumes()
-    assert len(vol_fracs) == 4
-    assert sum(f[1] for f in vol_fracs[0]) == pytest.approx(w/4 * w/4)
-    assert sum(f[1] for f in vol_fracs[1]) == pytest.approx(w/4 * 3*w/4)
-    assert sum(f[1] for f in vol_fracs[2]) == pytest.approx(3*w/4 * w/4)
-    assert sum(f[1] for f in vol_fracs[3]) == pytest.approx(3*w/4 * 3*w/4)
+    vols = mesh.material_volumes()
+    assert len(vols) == 4
+    assert sum(f[1] for f in vols[0]) == pytest.approx(w/4 * w/4)
+    assert sum(f[1] for f in vols[1]) == pytest.approx(w/4 * 3*w/4)
+    assert sum(f[1] for f in vols[2]) == pytest.approx(3*w/4 * w/4)
+    assert sum(f[1] for f in vols[3]) == pytest.approx(3*w/4 * 3*w/4)
 
 
 def test_cylindrical_mesh(lib_init):
@@ -673,12 +673,12 @@ def test_cylindrical_mesh(lib_init):
     z_grid = (-0.5, 0.5)
     mesh.set_grid(r_grid, phi_grid, z_grid)
 
-    vol_fracs = mesh.material_volumes()
-    assert len(vol_fracs) == 6
+    vols = mesh.material_volumes()
+    assert len(vols) == 6
     for i in range(0, 6, 2):
-        assert sum(f[1] for f in vol_fracs[i]) == pytest.approx(pi * 0.5**2 / 3)
+        assert sum(f[1] for f in vols[i]) == pytest.approx(pi * 0.5**2 / 3)
     for i in range(1, 6, 2):
-        assert sum(f[1] for f in vol_fracs[i]) == pytest.approx(pi * (1.0**2 - 0.5**2) / 3)
+        assert sum(f[1] for f in vols[i]) == pytest.approx(pi * (1.0**2 - 0.5**2) / 3)
 
 
 def test_spherical_mesh(lib_init):
@@ -719,15 +719,15 @@ def test_spherical_mesh(lib_init):
     phi_grid = np.linspace(0., 2.0*pi, 4)
     mesh.set_grid(r_grid, theta_grid, phi_grid)
 
-    vol_fracs = mesh.material_volumes()
-    assert len(vol_fracs) == 12
+    vols = mesh.material_volumes()
+    assert len(vols) == 12
     d_theta = theta_grid[1] - theta_grid[0]
     d_phi = phi_grid[1] - phi_grid[0]
     for i in range(0, 12, 2):
-        assert sum(f[1] for f in vol_fracs[i]) == pytest.approx(
+        assert sum(f[1] for f in vols[i]) == pytest.approx(
             0.5**3 / 3 * d_theta * d_phi * 2/pi)
     for i in range(1, 12, 2):
-        assert sum(f[1] for f in vol_fracs[i]) == pytest.approx(
+        assert sum(f[1] for f in vols[i]) == pytest.approx(
             (1.0**3 - 0.5**3) / 3 * d_theta * d_phi * 2/pi)
 
 

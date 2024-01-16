@@ -784,7 +784,7 @@ std::string Region::str() const
 //==============================================================================
 
 std::pair<double, int32_t> Region::distance(
-  Position r, Direction u, int32_t on_surface, Particle* p) const
+  Position r, Direction u, int32_t on_surface) const
 {
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
@@ -1301,14 +1301,15 @@ vector<ParentCell> Cell::find_parent_cells(
 {
 
   // create a temporary particle
-  Particle dummy_particle {};
+  GeometryState dummy_particle {};
   dummy_particle.r() = r;
   dummy_particle.u() = {0., 0., 1.};
 
   return find_parent_cells(instance, dummy_particle);
 }
 
-vector<ParentCell> Cell::find_parent_cells(int32_t instance, Particle& p) const
+vector<ParentCell> Cell::find_parent_cells(
+  int32_t instance, GeometryState& p) const
 {
   // look up the particle's location
   exhaustive_find_cell(p);

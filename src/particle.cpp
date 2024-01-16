@@ -277,7 +277,9 @@ void Particle::event_cross_surface()
       boundary().lattice_translation[1] != 0 ||
       boundary().lattice_translation[2] != 0) {
     // Particle crosses lattice boundary
-    cross_lattice(*this, boundary());
+
+    bool verbose = settings::verbosity >= 10 || trace();
+    cross_lattice(*this, boundary(), verbose);
     event() = TallyEvent::LATTICE;
   } else {
     // Particle crosses surface
@@ -406,7 +408,8 @@ void Particle::event_revive_from_secondary()
       // have to determine it before the energy of the secondary particle can be
       // removed from the pulse-height of this cell.
       if (lowest_coord().cell == C_NONE) {
-        if (!exhaustive_find_cell(*this)) {
+        bool verbose = settings::verbosity >= 10 || trace();
+        if (!exhaustive_find_cell(*this, verbose)) {
           mark_as_lost("Could not find the cell containing particle " +
                        std::to_string(id()));
           return;
@@ -556,7 +559,8 @@ void Particle::cross_surface()
   }
 #endif
 
-  if (neighbor_list_find_cell(*this))
+  bool verbose = settings::verbosity >= 10 || trace();
+  if (neighbor_list_find_cell(*this, verbose))
     return;
 
   // ==========================================================================
@@ -564,7 +568,7 @@ void Particle::cross_surface()
 
   // Remove lower coordinate levels
   n_coord() = 1;
-  bool found = exhaustive_find_cell(*this);
+  bool found = exhaustive_find_cell(*this, verbose);
 
   if (settings::run_mode != RunMode::PLOTTING && (!found)) {
     // If a cell is still not found, there are two possible causes: 1) there is
@@ -579,7 +583,7 @@ void Particle::cross_surface()
     // Couldn't find next cell anywhere! This probably means there is an actual
     // undefined region in the geometry.
 
-    if (!exhaustive_find_cell(*this)) {
+    if (!exhaustive_find_cell(*this, verbose)) {
       mark_as_lost("After particle " + std::to_string(id()) +
                    " crossed surface " + std::to_string(surf->id_) +
                    " it could not be located in any cell and it did not leak.");
@@ -654,8 +658,8 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // (unless we're using a dagmc model, which has exactly one universe)
   n_coord() = 1;
   if (surf.geom_type_ != GeometryType::DAG && !neighbor_list_find_cell(*this)) {
-    this->mark_as_lost("Couldn't find particle after reflecting from surface " +
-                       std::to_string(surf.id_) + ".");
+    mark_as_lost("Couldn't find particle after reflecting from surface " +
+                 std::to_string(surf.id_) + ".");
     return;
   }
 

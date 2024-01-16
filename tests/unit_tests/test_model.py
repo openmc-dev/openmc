@@ -468,6 +468,7 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
         model=test_model,
         domains=[mats[0]],
         energies='CCFE-709',
+        chain_file='test_chain.xml'
     )
 
     op_kwargs["fluxes"] = flux_in_each_group

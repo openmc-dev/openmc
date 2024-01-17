@@ -68,7 +68,7 @@ Material::Material(pugi::xml_node node)
   }
 
   if (check_for_node(node, "depletable")) {
-    depletable() = get_node_value_bool(node, "depletable");
+    depletable_ = get_node_value_bool(node, "depletable");
   }
 
   bool sum_density {false};
@@ -372,8 +372,8 @@ Material& Material::clone()
   mat->density_ = density_;
   mat->density_gpcc_ = density_gpcc_;
   mat->volume_ = volume_;
-  mat->fissionable_ = fissionable_;
-  mat->depletable() = depletable();
+  mat->fissionable() = fissionable_;
+  mat->depletable() = depletable_;
   mat->p0_ = p0_;
   mat->mat_nuclide_index_ = mat_nuclide_index_;
   mat->thermal_tables_ = thermal_tables_;
@@ -1557,8 +1557,7 @@ extern "C" int openmc_material_get_depletable(int32_t index, bool* depletable)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  const auto& mat = model::materials[index];
-  *depletable = mat->depletable();
+  *depletable = model::materials[index]->depletable();
 
   return 0;
 }

@@ -37,6 +37,19 @@ std::map<LibraryKey, std::size_t> library_map;
 vector<Library> libraries;
 } // namespace data
 
+
+//==============================================================================
+// Separator strings for Windows and Unix-like systems
+//==============================================================================
+
+namespace details {
+#if defined(_WIN32) || defined(_WIN64)
+  const char sep_char[] = "\\"; // Windows separator string
+#else
+  const char sep_char[] = "/"; // Unix-like separator string
+#endif
+}
+
 //==============================================================================
 // Library methods
 //==============================================================================
@@ -72,12 +85,12 @@ Library::Library(pugi::xml_node node, const std::string& directory)
   }
   std::string path = get_node_value(node, "path");
 
-  if (starts_with(path, "/")) {
+  if (starts_with(path, details::sep_char)) {
     path_ = path;
-  } else if (ends_with(directory, "/")) {
+  } else if (ends_with(directory, details::sep_char)) {
     path_ = directory + path;
   } else if (!directory.empty()) {
-    path_ = directory + "/" + path;
+    path_ = directory + details::sep_char + path;
   } else {
     path_ = path;
   }
@@ -144,10 +157,10 @@ void read_cross_sections_xml(pugi::xml_node root)
     settings::path_cross_sections = get_node_value(root, "cross_sections");
 
     // If no '/' found, the file is probably in the input directory
-    auto pos = settings::path_cross_sections.rfind("/");
+    auto pos = settings::path_cross_sections.rfind(details::sep_char);
     if (pos == std::string::npos && !settings::path_input.empty()) {
       settings::path_cross_sections =
-        settings::path_input + "/" + settings::path_cross_sections;
+        settings::path_input + details::sep_char + settings::path_cross_sections;
     }
   }
 
@@ -307,7 +320,7 @@ void read_ce_cross_sections_xml()
     // directory in which the cross_sections.xml file resides
 
     // TODO: Use std::filesystem functionality when C++17 is adopted
-    auto pos = filename.rfind("/");
+    auto pos = filename.rfind(details::sep_char);
     if (pos == std::string::npos) {
       // No '\\' found, so the file must be in the same directory as
       // materials.xml

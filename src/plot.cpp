@@ -1192,7 +1192,7 @@ void ProjectionPlot::create_output() const
   // Now we convert to the polar coordinate system with the polar angle
   // measuring the angle from the vector up_. Phi is the rotation about up_. For
   // now, up_ is hard-coded to be +z.
-  constexpr double DEGREE_TO_RADIAN = M_PI / 180.0;
+  constexpr double DEGREE_TO_RADIAN = PI / 180.0;
   double horiz_fov_radians = horizontal_field_of_view_ * DEGREE_TO_RADIAN;
   double p0 = static_cast<double>(pixels_[0]);
   double p1 = static_cast<double>(pixels_[1]);
@@ -1261,7 +1261,7 @@ void ProjectionPlot::create_output() const
             double this_phi =
               -horiz_fov_radians / 2.0 + dphi * horiz + 0.5 * dphi;
             double this_mu =
-              -vert_fov_radians / 2.0 + dmu * vert + M_PI / 2.0 + 0.5 * dmu;
+              -vert_fov_radians / 2.0 + dmu * vert + PI / 2.0 + 0.5 * dmu;
             Direction camera_local_vec;
             camera_local_vec.x = std::cos(this_phi) * std::sin(this_mu);
             camera_local_vec.y = std::sin(this_phi) * std::sin(this_mu);

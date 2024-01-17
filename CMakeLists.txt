@@ -189,9 +189,6 @@ endif()
 # Set compile/link flags based on which compiler is being used
 #===============================================================================
 
-# Skip for Visual Studio which has its own configurations through GUI
-if(NOT MSVC)
-
 if(OPENMC_USE_OPENMP)
   find_package(OpenMP)
   if(OPENMP_FOUND)
@@ -201,22 +198,23 @@ if(OPENMC_USE_OPENMP)
   endif()
 endif()
 
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+# Skip for Visual Studio which has its own configurations through GUI
+if(NOT MSVC)
+  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-if(OPENMC_ENABLE_PROFILE)
-  list(APPEND cxxflags -g -fno-omit-frame-pointer)
-endif()
+  if(OPENMC_ENABLE_PROFILE)
+    list(APPEND cxxflags -g -fno-omit-frame-pointer)
+  endif()
 
-if(OPENMC_ENABLE_COVERAGE)
-  list(APPEND cxxflags --coverage)
-  list(APPEND ldflags --coverage)
+  if(OPENMC_ENABLE_COVERAGE)
+    list(APPEND cxxflags --coverage)
+    list(APPEND ldflags --coverage)
+  endif()
 endif()
 
 # Show flags being used
 message(STATUS "OpenMC C++ flags: ${cxxflags}")
 message(STATUS "OpenMC Linker flags: ${ldflags}")
-
-endif()
 
 #===============================================================================
 # Update git submodules as needed
@@ -449,7 +447,9 @@ if(MSVC)
 
   # To use the shared HDF5 libraries on Windows, the H5_BUILT_AS_DYNAMIC_LIB
   # compile definition must be specified.
-  target_compile_definitions(libopenmc PRIVATE -DH5_BUILT_AS_DYNAMIC_LIB)
+  if (NOT HDF5_USE_STATIC_LIBRARIES)
+    target_compile_definitions(libopenmc PRIVATE -DH5_BUILT_AS_DYNAMIC_LIB)
+  endif()
 else()
   add_library(libopenmc SHARED ${libopenmc_SOURCES})
 endif()

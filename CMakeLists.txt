@@ -195,6 +195,11 @@ if(OPENMC_USE_OPENMP)
     # In CMake 3.9+, can use the OpenMP::OpenMP_CXX imported target
     list(APPEND cxxflags ${OpenMP_CXX_FLAGS})
     list(APPEND ldflags ${OpenMP_CXX_FLAGS})
+
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC") 
+      # Special flag to get OpenMP to work on Windows
+      list(APPEND cxxflags /openmp:llvm)
+    endif()
   endif()
 endif()
 

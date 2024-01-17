@@ -293,7 +293,8 @@ class Geometry:
         if isinstance(materials, (str, os.PathLike)):
             materials = openmc.Materials.from_xml(materials)
 
-        tree = ET.parse(path)
+        parser = ET.XMLParser(huge_tree=True)
+        tree = ET.parse(path, parser=parser)
         root = tree.getroot()
 
         return cls.from_xml_element(root, materials)

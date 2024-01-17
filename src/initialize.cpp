@@ -304,8 +304,9 @@ int parse_command_line(int argc, char* argv[])
         settings::path_input));
     }
 
-    // Add slash at end of directory if it isn't the
-    if (!ends_with(settings::path_input, "/")) {
+    // Add slash at end of directory if it isn't there
+    if (!ends_with(settings::path_input, "/") &&
+        dir_exists(settings::path_input)) {
       settings::path_input += "/";
     }
   }
@@ -315,18 +316,11 @@ int parse_command_line(int argc, char* argv[])
 
 bool read_model_xml()
 {
-  std::string model_filename =
-    settings::path_input.empty() ? "." : settings::path_input;
-
-  // some string cleanup
-  // a trailing "/" is applied to path_input if it's specified,
-  // remove it for the first attempt at reading the input file
-  if (ends_with(model_filename, "/"))
-    model_filename.pop_back();
+  std::string model_filename = settings::path_input;
 
   // if the current filename is a directory, append the default model filename
-  if (dir_exists(model_filename))
-    model_filename += "/model.xml";
+  if (model_filename.empty() || dir_exists(model_filename))
+    model_filename += "model.xml";
 
   // if this file doesn't exist, stop here
   if (!file_exists(model_filename))

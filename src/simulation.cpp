@@ -161,21 +161,16 @@ int openmc_simulation_init()
     // Get minimum and maximum precursor decay constants
     // (needed to determine alpha eigenvalue thresholds)
     double decay_min = INFTY;
-    double decay_max = -INFTY;
     if (!settings::prompt_only) {
       for (int i = 0; i < simulation::n_fissionables; i++) {
         for (int j = 0; j < simulation::n_precursors; j++) {
           if (decay_min > simulation::precursor_decay(i,j)) {
             decay_min = simulation::precursor_decay(i,j);
           }
-          if (decay_max < simulation::precursor_decay(i,j)) {
-            decay_max = simulation::precursor_decay(i,j);
-          }
         }
       }
     }
     simulation::decay_min = decay_min;
-    simulation::decay_max = decay_max;
   
     // Allocate global_tally_alpha_Cd
     global_tally_alpha_Cd = xt::zeros<double>(shape);
@@ -414,7 +409,6 @@ vector<int64_t> work_index;
 double alpha_eff {0.0};    
 double alpha_eff_std;
 double decay_min {INFTY};
-double decay_max {-INFTY};
 bool store_alpha_source {false};
 
 size_t n_fissionables;

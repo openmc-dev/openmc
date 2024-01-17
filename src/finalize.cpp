@@ -142,7 +142,6 @@ int openmc_finalize()
   simulation::keff = 1.0;
   simulation::alpha_eff = 0.0;
   simulation::decay_min = INFTY;
-  simulation::decay_max = -INFTY;
   simulation::need_depletion_rx = false;
   simulation::total_gen = 0;
 
@@ -216,7 +215,6 @@ int openmc_hard_reset()
   simulation::keff = 1.0;
   simulation::alpha_eff = 0.0;
   simulation::decay_min = INFTY;
-  simulation::decay_max = -INFTY;
   simulation::total_gen = 0;
 
   // Reset the random number generator state

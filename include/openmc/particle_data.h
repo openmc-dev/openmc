@@ -117,7 +117,7 @@ struct NuclideMicroXS {
   double thermal_elastic; //!< Bound thermal elastic scattering
   double photon_prod;     //!< microscopic photon production xs
 
-  // Cross sections needed to calculate alpha-eigenvalue (alpha_mode only)
+  // Cross sections needed to calculate alpha-eigenvalue
   double nu_fission_prompt; //!< prompt neutron production from fission
   double nu_fission_alpha;  //!< Effective, time-corrected nu_fission
                             //!< See Eq. (45) of [1].
@@ -171,7 +171,7 @@ struct MacroXS {
   double nu_fission;  //!< macroscopic production xs
   double photon_prod; //!< macroscopic photon production xs
 
-  // Cross sections for alpha-eigenvalue mode (see above)
+  // Cross sections for alpha-eigenvalue mode
   double nu_fission_prompt;
   double nu_fission_alpha;
 

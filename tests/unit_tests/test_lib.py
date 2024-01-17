@@ -592,7 +592,7 @@ def test_regular_mesh(lib_init):
         assert sum(f[1] for f in elem_vols) == pytest.approx(1.26 * 1.26 / 4)
 
     # If the mesh extends beyond the boundaries of the model, the volumes should
-    # still be reported correctted
+    # still be reported correctly
     mesh.dimension = (1, 1, 1)
     mesh.set_parameters(lower_left=(-1.0, -1.0, -0.5),
                         upper_right=(1.0, 1.0, 0.5))

@@ -28,8 +28,6 @@ class Particle:
         Type of simulation (criticality or fixed source)
     alpha_mode : bool
         Running fundamental alpha mode (time eigenvalue) simulation?
-    alpha_mode_left : bool
-        Running left-most alpha mode (time eigenvalue) simulation?
     prompt_only : bool
         Only consider prompt fission neutrons (neglect delayed neutrons)?
     id : long
@@ -62,7 +60,6 @@ class Particle:
             self.n_particles = f['n_particles'][()]
             self.run_mode = f['run_mode'][()].decode()
             self.alpha_mode = f['alpha_mode'][()].decode()
-            self.alpha_mode_left = f['alpha_mode_left'][()].decode()
             self.prompt_only = f['prompt_only'][()].decode()
             self.uvw = f['uvw'][()]
             self.weight = f['weight'][()]

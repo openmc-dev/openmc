@@ -54,6 +54,17 @@ extern "C" double alpha_eff_std; //!< standard deviation of average alpha
 extern "C" double decay_min;     //!< smallest precursor group decay constant
                                  //!< (to determine minimum fundamental alpha)
 extern "C" bool store_alpha_source; //!< flag to store alpha source
+// Note: store_alpha_source will switch to true if it is detected that
+//       we are dealing with a deep subcritical system (alpha << 0 and 
+//       -alpha/v > fission production, see eigenvalue.cpp). In this
+//       case we switch from the iteration scheme in 
+//       [https://doi.org/10.1080/00295639.2020.1743578], where we lag the
+//       fission production term (similar to k-eigenvalue mode),
+//       to the iteration scheme in [http://dx.doi.org/10.1155/2015/859242],
+//       in which we lag only the time source production term. This impacts
+//       the following: (1) time source neutrons into fission bank,
+//       (2) store fission neutrons into secondary bank, (3) different
+//       normalization condition, and thus the keff tallying.
 
 // Fissionables and their precursors (currently only used in alpha_mode)
 // We assume equal number of precusor groups for all fissionables.

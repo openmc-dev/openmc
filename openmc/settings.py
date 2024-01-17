@@ -41,8 +41,6 @@ class Settings:
     ----------
     alpha_mode : bool
         Running fundamental alpha mode (time eigenvalue) simulation?
-    alpha_mode_left : bool
-        Running left-most alpha mode (time eigenvalue) simulation?
     prompt_only : bool
         Only consider prompt fission neutrons (neglect delayed neutrons)?
     batches : int
@@ -271,7 +269,6 @@ class Settings:
     def __init__(self, **kwargs):
         self._run_mode = RunMode.EIGENVALUE
         self._alpha_mode = None
-        self._alpha_mode_left = None
         self._prompt_only = None
         self._batches = None
         self._generations_per_batch = None
@@ -374,15 +371,6 @@ class Settings:
     def alpha_mode(self, alpha_mode: bool):
         cv.check_type('alpha mode', alpha_mode, bool)
         self._alpha_mode = alpha_mode
-
-    @property
-    def alpha_mode_left(self) -> bool:
-        return self._alpha_mode_left
-
-    @alpha_mode_left.setter
-    def alpha_mode_left(self, alpha_mode_left: bool):
-        cv.check_type('alpha mode left', alpha_mode_left, bool)
-        self._alpha_mode_left = alpha_mode_left
 
     @property
     def prompt_only(self) -> bool:
@@ -1059,11 +1047,6 @@ class Settings:
         if self._alpha_mode:
             element = ET.SubElement(root, "alpha_mode")
             element.text = str(self._alpha_mode).lower()
-
-    def _create_alpha_mode_left_subelement(self, root):
-        if self._alpha_mode_left:
-            element = ET.SubElement(root, "alpha_mode_left")
-            element.text = str(self._alpha_mode_left).lower()
 
     def _create_prompt_only_subelement(self, root):
         if self._prompt_only:
@@ -1832,7 +1815,6 @@ class Settings:
 
         self._create_run_mode_subelement(element)
         self._create_alpha_mode_subelement(element)
-        self._create_alpha_mode_left_subelement(element)
         self._create_prompt_only_subelement(element)
         self._create_particles_subelement(element)
         self._create_batches_subelement(element)

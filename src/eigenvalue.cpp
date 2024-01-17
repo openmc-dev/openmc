@@ -423,11 +423,8 @@ void calculate_average_keff()
   const double Cp = global_tally_alpha_Cp;
   const xt::xtensor<double, 2> Cd = global_tally_alpha_Cd;
   const xt::xtensor<double, 2> lambda = simulation::precursor_decay;
-
-  // If we store the alpha source, we end up with different normalization 
-  // condition and slightly different non-linear in-hour equation.
-  // The following effectively treats this effect:
   double alpha_old = simulation::alpha_eff;
+  const double alpha_min = -simulation::decay_min; // The minimum root
 
   // Get the loss rate (absorption + leakage) based on the normalization
   double loss;
@@ -447,20 +444,9 @@ void calculate_average_keff()
   // Newton-Raphson parameters
   // [Find x yielding f(x) = 0]
   const double epsilon = 1E-8; // error tolerance (Let users decide?)
-  double x, error1, error2;    // solution iterate, iterate relative change,
-                               // and residual
-
-  // First, getting the fundamental mode.
-  // The minimum alpha is set as we aim for the right-most root. By default,
-  // Newton-Raphson is used to get the next solution iterate. However, whenever,
-  // *in an iterate*, Newton-Raphson attempts to jump over the minimum alpha, 
-  // we switch to Bisection.
-
-  // Preparation
-  const double alpha_min = -simulation::decay_min;
-  error1 = 1.0;
-  error2 = 1.0;
-  x = 0.0; // Initial guess
+  double x = 0.0; // Solution iterate (with initial guess)
+  double error1 = 1.0; // Iterate relative change
+  double error2 = 1.0; // Residual
 
   // Start iterating
   while (error1 > epsilon || error2 > epsilon) {
@@ -503,16 +489,6 @@ void calculate_average_keff()
 
   // Update alpha
   double alpha_new = x;
-  // Apply stochastic root-finding method?
-  if (simulation::store_alpha_source) {
-    const double a = 1.0;
-    const double beta = 0.75;
-    const double n0 = 15.0;
-    const double n = overall_generation();
-    const double s = a/std::pow((n+n0), beta);
-    //alpha_new = alpha_old + s*(alpha_new - alpha_old);
-  }
-
   simulation::alpha_eff = alpha_new;
   simulation::alpha_generation.push_back(simulation::alpha_eff);
 
@@ -526,7 +502,7 @@ void calculate_average_keff()
     }
   }
 
-  // Determine if we need to store alpha source
+  // Determine if we need to store alpha source in the next generations
   if (simulation::alpha_eff >= 0.0) {
     simulation::store_alpha_source = false;
   } else if (!simulation::store_alpha_source) {
@@ -534,7 +510,6 @@ void calculate_average_keff()
     bool dominant = -alpha_new*Cn > production;
     if (dominant) { simulation::store_alpha_source = true; }
   }
-
 
   // Accumulate the sum and square sum of global tallies
   if (n > 0) {

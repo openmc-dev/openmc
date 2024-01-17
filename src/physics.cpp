@@ -195,6 +195,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
   // Determine whether to place fission sites into the shared fission bank
   // or the secondary particle bank.
   bool use_fission_bank = (settings::run_mode == RunMode::EIGENVALUE);
+  if (simulation::store_alpha_source) { use_fission_bank = false; }
 
   // Counter for the number of fission sites successfully stored to the shared
   // fission bank or the secondary particle bank
@@ -232,6 +233,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
         break;
       }
     } else {
+      site.progeny_id = p.n_progeny()--;
       p.secondary_bank().push_back(site);
     }
 
@@ -676,7 +678,7 @@ void absorption(Particle& p, int i_nuclide)
     if (settings::run_mode == RunMode::EIGENVALUE) {
       double nu_fission = p.nu_fission(i_nuclide);
       if (simulation::store_alpha_source) {
-        nu_fission -= simulation::alpha_eff/p.speed() *
+        nu_fission = -simulation::alpha_eff/p.speed() *
                       p.neutron_xs(i_nuclide).total /
                       p.macro_xs().total;
       }
@@ -691,7 +693,7 @@ void absorption(Particle& p, int i_nuclide)
       if (settings::run_mode == RunMode::EIGENVALUE) {
         double nu_fission = p.nu_fission(i_nuclide);
         if (simulation::store_alpha_source) {
-          nu_fission -= simulation::alpha_eff/p.speed() *
+          nu_fission = -simulation::alpha_eff/p.speed() *
                         p.neutron_xs(i_nuclide).total /
                         p.macro_xs().total;
         }

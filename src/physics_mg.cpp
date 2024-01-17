@@ -123,6 +123,7 @@ void create_fission_sites(Particle& p)
   // Determine whether to place fission sites into the shared fission bank
   // or the secondary particle bank.
   bool use_fission_bank = (settings::run_mode == RunMode::EIGENVALUE);
+  if (simulation::store_alpha_source) { use_fission_bank = false; }
 
   // Counter for the number of fission sites successfully stored to the shared
   // fission bank or the secondary particle bank
@@ -179,6 +180,7 @@ void create_fission_sites(Particle& p)
       }
     } else {
       p.secondary_bank().push_back(site);
+      p.n_progeny()--;
     }
 
     // Set the delayed group on the particle as well
@@ -269,7 +271,7 @@ void absorption(Particle& p)
     // Score implicit absorpion estimate of keff
     double nu_fission = p.nu_fission();
     if (simulation::store_alpha_source) {
-      nu_fission -= simulation::alpha_eff/p.speed();
+      nu_fission = -simulation::alpha_eff/p.speed();
     }
     p.keff_tally_absorption() +=
       wgt_absorb * nu_fission / p.macro_xs().absorption;
@@ -278,7 +280,7 @@ void absorption(Particle& p)
       // Score implicit absorpion estimate of keff
       double nu_fission = p.nu_fission();
       if (simulation::store_alpha_source) {
-        nu_fission -= simulation::alpha_eff/p.speed();
+        nu_fission = -simulation::alpha_eff/p.speed();
       }
       p.keff_tally_absorption() +=
         p.wgt() * nu_fission / p.macro_xs().absorption;

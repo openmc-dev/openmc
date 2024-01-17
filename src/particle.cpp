@@ -242,6 +242,9 @@ void Particle::event_calculate_xs()
       macro_xs().nu_fission_prompt = 0.0;
       macro_xs().nu_fission_alpha  = 0.0;
     }
+    if (settings::prompt_only) {
+      macro_xs().nu_fission_prompt = 0.0;
+    }
   }
 }
 
@@ -318,7 +321,7 @@ void Particle::event_advance()
     const double score = wgt() * distance;
     double nu_fission = this->nu_fission();
     if (simulation::store_alpha_source) {
-      nu_fission -= simulation::alpha_eff/this->speed();
+      nu_fission = -simulation::alpha_eff/this->speed();
     }
     keff_tally_tracklength() += score * nu_fission;
 
@@ -419,7 +422,7 @@ void Particle::event_collide()
       type() == ParticleType::neutron) {
     double nu_fission = this->nu_fission();
     if (simulation::store_alpha_source) {
-      nu_fission -= simulation::alpha_eff/this->speed();
+      nu_fission = -simulation::alpha_eff/this->speed();
     }
     keff_tally_collision() += wgt() * nu_fission / macro_xs().total;
   }

@@ -435,11 +435,7 @@ void allocate_banks()
     simulation::source_bank.resize(simulation::work_per_rank);
 
     // Allocate fission bank
-    if (settings::alpha_mode) {
-      init_fission_bank(4 * simulation::work_per_rank);
-    } else {
-      init_fission_bank(3 * simulation::work_per_rank);
-    }
+    init_fission_bank(3 * simulation::work_per_rank);
   }
 
   if (settings::surf_source_write) {
@@ -641,36 +637,12 @@ void finalize_generation()
     }
   }
 
-  if (!settings::alpha_mode) { return; }
-
-  // TODO: Should we use the last k_generation instead of 
-  // the current running average?
-  // It is done that way for alpha-eigenvalue mode, because
-  // it is found that, in some problems, k does not converge
-  // to 1 exactly if we use the running average.
+  // Set effective k to one and use the previous alpha estimate
   if (settings::alpha_mode) {
     int idx = overall_generation() - 1;
-    simulation::keff = simulation::k_generation[idx];
+    simulation::keff = 1.0;
     simulation::alpha_eff = simulation::alpha_generation[idx];
 
-    // Use the updated alpha to determine keff
-    const double Cn = global_tally_alpha_Cn;
-    const double Cp = global_tally_alpha_Cp;
-    const xt::xtensor<double, 2> Cd = global_tally_alpha_Cd;
-    const xt::xtensor<double, 2> lambda = simulation::precursor_decay;
-    const double alpha_eff = simulation::alpha_eff;
-    simulation::keff = Cp;
-    if (simulation::store_alpha_source) {
-      simulation::keff -= alpha_eff*Cn;
-    }
-    // Accumulate delayed terms
-    for (int i = 0; i < simulation::n_fissionables; i++) {
-      // i is local
-      for (int j = 0; j < simulation::n_precursors; j++) {
-        simulation::keff += lambda(i,j)/(alpha_eff+lambda(i,j)) * Cd(i,j);
-      }
-    }
-  
     // Reset global tallies
     if (settings::alpha_mode) {
       global_tally_alpha_Cn = 0.0;

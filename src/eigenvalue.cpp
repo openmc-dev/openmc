@@ -428,8 +428,20 @@ void calculate_average_keff()
   // condition and slightly different non-linear in-hour equation.
   // The following effectively treats this effect:
   double alpha_old = simulation::alpha_eff;
-  if (simulation::store_alpha_source) {
-    alpha_old = 0.0;
+
+  // Get the loss rate (absorption + leakage) based on the normalization
+  double loss;
+  if (!simulation::store_alpha_source) {
+    loss = 1.0 - alpha_old*Cn;
+  } else {
+    loss = 1.0 + Cp;
+    if (!settings::prompt_only) {
+      for (int i = 0; i < simulation::n_fissionables; i++) {
+        for (int j = 0; j < simulation::n_precursors; j++) {
+          loss += lambda(i,j)/(alpha_old+lambda(i,j)) * Cd(i,j);
+        }
+      }
+    }
   }
 
   // Newton-Raphson parameters
@@ -453,10 +465,9 @@ void calculate_average_keff()
   // Start iterating
   while (error1 > epsilon || error2 > epsilon) {
     // Evaluate f(x)
-    double f = (alpha_old - x)*Cn + Cp - 1.0;
+    double f = -x*Cn + Cp - loss;
     // Accumulate delayed terms
     for (int i = 0; i < simulation::n_fissionables; i++) {
-      // i is local
       for (int j = 0; j < simulation::n_precursors; j++) {
         f += lambda(i,j)/(x+lambda(i,j)) * Cd(i,j);
       }
@@ -465,7 +476,6 @@ void calculate_average_keff()
     double df = -Cn;
     // Accumulate delayed terms
     for (int i = 0; i < simulation::n_fissionables; i++) { 
-      // i is local
       for (int j = 0; j < simulation::n_precursors; j++) {
         double denom = (x+lambda(i,j)); denom *= denom;
         df -= lambda(i,j)/denom * Cd(i,j);
@@ -480,9 +490,8 @@ void calculate_average_keff()
 
     // Calculate errors
     error1 = std::abs((x_new - x)/x_new);
-    error2 = (alpha_old - x_new)*Cn + Cp - 1.0;
+    error2 = -x_new*Cn + Cp - loss;
     for (int i = 0; i < simulation::n_fissionables; i++) { 
-      // i is local
       for (int j = 0; j < simulation::n_precursors; j++) {
         error2 += lambda(i,j)/(x_new+lambda(i,j)) * Cd(i,j);
       }
@@ -493,15 +502,39 @@ void calculate_average_keff()
   }
 
   // Update alpha
-  simulation::alpha_eff = x;
+  double alpha_new = x;
+  // Apply stochastic root-finding method?
+  if (simulation::store_alpha_source) {
+    const double a = 1.0;
+    const double beta = 0.75;
+    const double n0 = 15.0;
+    const double n = overall_generation();
+    const double s = a/std::pow((n+n0), beta);
+    //alpha_new = alpha_old + s*(alpha_new - alpha_old);
+  }
+
+  simulation::alpha_eff = alpha_new;
   simulation::alpha_generation.push_back(simulation::alpha_eff);
 
-  // Determine if we need to store alpha source
-  if (simulation::alpha_eff < 0.0) {
-    simulation::store_alpha_source = true;
-  } else {
-    simulation::store_alpha_source = false;
+  // Get the fission production
+  double production = Cp;
+  if (!settings::prompt_only) {
+    for (int i = 0; i < simulation::n_fissionables; i++) {
+      for (int j = 0; j < simulation::n_precursors; j++) {
+        production += lambda(i,j)/(alpha_new+lambda(i,j)) * Cd(i,j);
+      }
+    }
   }
+
+  // Determine if we need to store alpha source
+  if (simulation::alpha_eff >= 0.0) {
+    simulation::store_alpha_source = false;
+  } else if (!simulation::store_alpha_source) {
+    // Check if time source is more dominant than fission production
+    bool dominant = -alpha_new*Cn > production;
+    if (dominant) { simulation::store_alpha_source = true; }
+  }
+
 
   // Accumulate the sum and square sum of global tallies
   if (n > 0) {
@@ -547,9 +580,6 @@ void calculate_average_keff()
         }
       }
     }
-
-    // Get the "loss rate" (without alpha absorption)
-    double loss = 1.0 - alpha_old*Cn;
 
     // Multiplication factor
     double k_alpha = (Cp + Cd0)/loss;

@@ -95,6 +95,8 @@ class Material(_FortranObjectWithID):
         List of nuclides in the material
     densities : numpy.ndarray
         Array of densities in atom/b-cm
+    depletable : bool
+        Whether this material is marked as depletable
     name : str
         Name of the material
     temperature : float

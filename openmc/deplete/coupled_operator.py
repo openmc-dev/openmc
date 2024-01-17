@@ -265,6 +265,9 @@ class CoupledOperator(OpenMCOperator):
             'fission_yield_opts': fission_yield_opts
         }
 
+        # Records how many times the operator has been called
+        self._n_calls = 0
+
         super().__init__(
             materials=model.materials,
             cross_sections=cross_sections,
@@ -429,6 +432,16 @@ class CoupledOperator(OpenMCOperator):
         # Reset results in OpenMC
         openmc.lib.reset()
 
+        # The timers are reset only if the operator has been called before.
+        # This is because we call this method after loading cross sections, and
+        # no transport has taken place yet. As a result, we only reset the
+        # timers after the first step so as to correctly report the time spent
+        # reading cross sections in the first depletion step, and from there
+        # correctly report all particle tracking rates in multistep depletion
+        # solvers.
+        if self._n_calls > 0:
+            openmc.lib.reset_timers()
+
         self._update_materials_and_nuclides(vec)
 
         # If the source rate is zero, return zero reaction rates without running
@@ -448,6 +461,8 @@ class CoupledOperator(OpenMCOperator):
         keff = ufloat(*openmc.lib.keff())
 
         op_result = OperatorResult(keff, rates)
+
+        self._n_calls += 1
 
         return copy.deepcopy(op_result)
 
@@ -507,8 +522,6 @@ class CoupledOperator(OpenMCOperator):
         openmc.lib.statepoint_write(
             "openmc_simulation_n{}.h5".format(step),
             write_source=False)
-
-        openmc.lib.reset_timers()
 
     def finalize(self):
         """Finalize a depletion simulation and release resources."""

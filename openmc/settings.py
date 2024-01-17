@@ -2006,7 +2006,8 @@ class Settings:
             Settings object
 
         """
-        tree = ET.parse(path)
+        parser = ET.XMLParser(huge_tree=True)
+        tree = ET.parse(path, parser=parser)
         root = tree.getroot()
         meshes = _read_meshes(root)
         return cls.from_xml_element(root, meshes)

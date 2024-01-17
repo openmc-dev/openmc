@@ -1964,7 +1964,7 @@ class XSdata:
             grp.attrs['fissionable'] = self.fissionable
 
         if self.representation is not None:
-            grp.attrs['representation'] = np.string_(self.representation)
+            grp.attrs['representation'] = np.bytes_(self.representation)
             if self.representation == REPRESENTATION_ANGLE:
                 if self.num_azimuthal is not None:
                     grp.attrs['num_azimuthal'] = self.num_azimuthal
@@ -1972,9 +1972,9 @@ class XSdata:
                 if self.num_polar is not None:
                     grp.attrs['num_polar'] = self.num_polar
 
-        grp.attrs['scatter_shape'] = np.string_("[G][G'][Order]")
+        grp.attrs['scatter_shape'] = np.bytes_("[G][G'][Order]")
         if self.scatter_format is not None:
-            grp.attrs['scatter_format'] = np.string_(self.scatter_format)
+            grp.attrs['scatter_format'] = np.bytes_(self.scatter_format)
         if self.order is not None:
             grp.attrs['order'] = self.order
 
@@ -2516,7 +2516,7 @@ class MGXSLibrary:
 
         # Create and write to the HDF5 file
         file = h5py.File(filename, "w", libver=libver)
-        file.attrs['filetype'] = np.string_(_FILETYPE_MGXS_LIBRARY)
+        file.attrs['filetype'] = np.bytes_(_FILETYPE_MGXS_LIBRARY)
         file.attrs['version'] = [_VERSION_MGXS_LIBRARY, 0]
         file.attrs['energy_groups'] = self.energy_groups.num_groups
         file.attrs['delayed_groups'] = self.num_delayed_groups

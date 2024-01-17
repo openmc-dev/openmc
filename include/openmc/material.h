@@ -94,7 +94,7 @@ public:
   //  which will get auto-assigned to the next available ID. After creating
   //  the new material, it is added to openmc::model::materials.
   //! \return reference to the cloned material
-  Material & clone();
+  Material& clone();
 
   //----------------------------------------------------------------------------
   // Accessors

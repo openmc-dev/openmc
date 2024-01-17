@@ -553,21 +553,22 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
       if (group >= 1 && group < rx->products_.size()) {
         // If delayed group specified, determine yield immediately
         double lambda = rx->products_[group].decay_rate_;
-        return (*rx->products_[group].yield_)(E)
-               * lambda / (simulation::alpha_eff + lambda);
+        return (*rx->products_[group].yield_)(E)*lambda /
+               (simulation::alpha_eff + lambda);
       } else {
         double nu {0.0};
 
         for (int i = 1; i < rx->products_.size(); ++i) {
           // Skip any non-neutron products
           const auto& product = rx->products_[i];
-          if (product.particle_ != ParticleType::neutron) continue;
+          if (product.particle_ != ParticleType::neutron)
+            continue;
 
           // Evaluate yield
           if (product.emission_mode_ == EmissionMode::delayed) {
             double lambda = product.decay_rate_;
-            nu += (*product.yield_)(E) 
-                  * lambda / (simulation::alpha_eff + lambda);
+            nu +=
+              (*product.yield_)(E)*lambda / (simulation::alpha_eff + lambda);
           }
         }
         return nu;
@@ -844,8 +845,9 @@ void Nuclide::calculate_xs(
 
   // Calculate nu_fission_alpha
   // TODO: Is it good for multipole and interpolate as well?
-  if (settings::alpha_mode){
-    micro.nu_fission_alpha  = micro.fission * nu(p.E(), EmissionMode::total_alpha);
+  if (settings::alpha_mode) {
+    micro.nu_fission_alpha =
+      micro.fission * nu(p.E(), EmissionMode::total_alpha);
     micro.nu_fission_prompt = micro.fission * nu(p.E(), EmissionMode::prompt);
   } else if (settings::prompt_only) {
     micro.nu_fission_prompt = micro.fission * nu(p.E(), EmissionMode::prompt);

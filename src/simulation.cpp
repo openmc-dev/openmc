@@ -85,8 +85,8 @@ int openmc_simulation_init()
   // (currently only used in alpha_mode)
   simulation::n_fissionables = 0;
   if (settings::run_CE) {
-    simulation::fissionable_index.resize(data::nuclides.size(),-1);
-    for (int i = 0; i < data::nuclides.size(); i++){
+    simulation::fissionable_index.resize(data::nuclides.size(), -1);
+    for (int i = 0; i < data::nuclides.size(); i++) {
       if (data::nuclides[i]->fissionable_) {
         simulation::fissionable_index[i] = simulation::n_fissionables;
         simulation::n_fissionables++;
@@ -94,8 +94,8 @@ int openmc_simulation_init()
       }
     }
   } else {
-    simulation::fissionable_index.resize(data::mg.macro_xs_.size(),-1);
-    for (int i = 0; i < data::mg.macro_xs_.size(); i++){
+    simulation::fissionable_index.resize(data::mg.macro_xs_.size(), -1);
+    for (int i = 0; i < data::mg.macro_xs_.size(); i++) {
       if (data::mg.macro_xs_[i].fissionable) {
         simulation::fissionable_index[i] = simulation::n_fissionables;
         simulation::n_fissionables++;
@@ -109,29 +109,30 @@ int openmc_simulation_init()
   vector<size_t> shape {simulation::n_fissionables, simulation::n_precursors};
   simulation::precursor_decay = xt::zeros<double>(shape);
   if (settings::run_CE) {
-    for (int i = 0; i < data::nuclides.size(); i++){
+    for (int i = 0; i < data::nuclides.size(); i++) {
       if (data::nuclides[i]->fissionable_) {
-        int  idx1 = simulation::fissionable_index[i];
-        int  idx2 = 0;
-        auto rx   = data::nuclides[i]->fission_rx_[0];
+        int idx1 = simulation::fissionable_index[i];
+        int idx2 = 0;
+        auto rx = data::nuclides[i]->fission_rx_[0];
         for (int j = 1; j < rx->products_.size(); ++j) {
           const auto& product = rx->products_[j];
-          if (product.particle_ != ParticleType::neutron) continue;
+          if (product.particle_ != ParticleType::neutron)
+            continue;
           if (product.emission_mode_ == Nuclide::EmissionMode::delayed) {
-            simulation::precursor_decay(idx1,idx2) = product.decay_rate_;
+            simulation::precursor_decay(idx1, idx2) = product.decay_rate_;
             idx2++;
           }
         }
       }
     }
   } else {
-    for (int i = 0; i < data::mg.macro_xs_.size(); i++){
-        auto& macro_xs = data::mg.macro_xs_[i];
+    for (int i = 0; i < data::mg.macro_xs_.size(); i++) {
+      auto& macro_xs = data::mg.macro_xs_[i];
       if (macro_xs.fissionable) {
         int idx = simulation::fissionable_index[i];
         for (int j = 0; j < simulation::n_precursors; ++j) {
-          simulation::precursor_decay(idx,j) = 
-            macro_xs.get_xs(MgxsType::DECAY_RATE,0,nullptr,nullptr,&j,0,0);
+          simulation::precursor_decay(idx, j) = macro_xs.get_xs(
+            MgxsType::DECAY_RATE, 0, nullptr, nullptr, &j, 0, 0);
         }
       }
     }
@@ -148,7 +149,8 @@ int openmc_simulation_init()
         if (t->estimator_ == TallyEstimator::TRACKLENGTH) {
           warning("Alpha eigenvalue mode currently does not support "
                   "track-length estimator. "
-                  "Set " + t->name_ + " with collision estimator instead.");
+                  "Set " +
+                  t->name_ + " with collision estimator instead.");
         }
       }
     }
@@ -164,14 +166,14 @@ int openmc_simulation_init()
     if (!settings::prompt_only) {
       for (int i = 0; i < simulation::n_fissionables; i++) {
         for (int j = 0; j < simulation::n_precursors; j++) {
-          if (decay_min > simulation::precursor_decay(i,j)) {
-            decay_min = simulation::precursor_decay(i,j);
+          if (decay_min > simulation::precursor_decay(i, j)) {
+            decay_min = simulation::precursor_decay(i, j);
           }
         }
       }
     }
     simulation::decay_min = decay_min;
-  
+
     // Allocate global_tally_alpha_Cd
     global_tally_alpha_Cd = xt::zeros<double>(shape);
   }
@@ -406,7 +408,7 @@ vector<double> alpha_generation;
 vector<int64_t> work_index;
 
 // For alpha-eigenvalue mode
-double alpha_eff {0.0};    
+double alpha_eff {0.0};
 double alpha_eff_std;
 double decay_min {INFTY};
 bool store_alpha_source {false};
@@ -624,7 +626,7 @@ void finalize_generation()
     // Collect results and statistics
     calculate_generation_keff();
     calculate_average_keff();
-    
+
     // Write generation output
     if (mpi::master && settings::verbosity >= 7) {
       print_generation();
@@ -641,9 +643,9 @@ void finalize_generation()
     if (settings::alpha_mode) {
       global_tally_alpha_Cn = 0.0;
       global_tally_alpha_Cp = 0.0;
-      for (int i = 0; i < simulation::n_fissionables; i++) { 
+      for (int i = 0; i < simulation::n_fissionables; i++) {
         for (int j = 0; j < simulation::n_precursors; j++) {
-          global_tally_alpha_Cd(i,j) = 0.0;
+          global_tally_alpha_Cd(i, j) = 0.0;
         }
       }
     }

@@ -454,8 +454,8 @@ private:
   double keff_tally_tracklength_ {0.0};
   double keff_tally_leakage_ {0.0};
   // For alpha-eigenvalue mode
-  double alpha_tally_Cn_ {0.0}; // Neutron density (inverse-velocity)
-  double alpha_tally_Cp_ {0.0}; // Prompt fission production
+  double alpha_tally_Cn_ {0.0};           // Neutron density (inverse-velocity)
+  double alpha_tally_Cp_ {0.0};           // Prompt fission production
   xt::xtensor<double, 2> alpha_tally_Cd_; // Delayed fission production for
                                           // nuclide/material i & group j
   // Note: Precursor group j of different nuclides may be of different species
@@ -608,7 +608,7 @@ public:
   double& keff_tally_leakage() { return keff_tally_leakage_; }
   double& alpha_tally_Cn() { return alpha_tally_Cn_; }
   double& alpha_tally_Cp() { return alpha_tally_Cp_; }
-  double& alpha_tally_Cd(int i, int j) { return alpha_tally_Cd_(i,j); }
+  double& alpha_tally_Cd(int i, int j) { return alpha_tally_Cd_(i, j); }
 
   // Shows debug info
   bool& trace() { return trace_; }

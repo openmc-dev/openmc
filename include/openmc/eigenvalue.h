@@ -32,8 +32,8 @@ extern array<double, 2> k_alpha_sum; //!< Multiplication factor
 extern array<double, 2> rho_sum;     //!< Reactivity
 extern array<double, 2> beta_sum;    //!< Delayed fission fraction
 extern array<double, 2> tr_sum;      //!< Removal time (or mean life time)
-//! Note: In alpha-eigenvalue mode, keff_generation and mean of k_sum converge 
-//!       to one, while mean of k_alpha_sum converge to the "actual" keff that 
+//! Note: In alpha-eigenvalue mode, keff_generation and mean of k_sum converge
+//!       to one, while mean of k_alpha_sum converge to the "actual" keff that
 //!       is calculated based on the alpha-eigenfunction flux.
 
 } // namespace simulation
@@ -43,8 +43,8 @@ extern array<double, 2> tr_sum;      //!< Removal time (or mean life time)
 //==============================================================================
 
 //! Collect/normalize the tracklength keff from each process
-//! 
-//! In alpha_mode, also collect/normalize the tracklength neutron density (Cn), 
+//!
+//! In alpha_mode, also collect/normalize the tracklength neutron density (Cn),
 //! prompt production (Cp), and delayed production (Cd)
 void calculate_generation_keff();
 

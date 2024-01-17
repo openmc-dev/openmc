@@ -104,7 +104,8 @@ std::string header(const char* msg)
 {
   // Determine how many times to repeat the '=' character.
   int n_prefix = (63 - strlen(msg)) / 2;
-  if (settings::alpha_mode) n_prefix = (87 - strlen(msg)) / 2;
+  if (settings::alpha_mode)
+    n_prefix = (87 - strlen(msg)) / 2;
   int n_suffix = n_prefix;
   if ((strlen(msg) % 2) == 0)
     ++n_suffix;
@@ -373,23 +374,23 @@ void print_columns()
 {
   if (!settings::alpha_mode) {
     if (settings::entropy_on) {
-      fmt::print(
-        "  Bat./Gen.      k       Entropy         Average k \n"
-        "  =========   ========   ========   ====================\n");
+      fmt::print("  Bat./Gen.      k       Entropy         Average k \n"
+                 "  =========   ========   ========   ====================\n");
     } else {
-      fmt::print(
-        "  Bat./Gen.      k            Average k\n"
-        "  =========   ========   ====================\n");
+      fmt::print("  Bat./Gen.      k            Average k\n"
+                 "  =========   ========   ====================\n");
     }
   } else {
     if (settings::entropy_on) {
-      fmt::print(
-        "  Bat./Gen.      k          alpha      Entropy         Average k               Average alpha      \n"
-        "  =========   ========   ===========   ========   ====================   =========================\n");
+      fmt::print("  Bat./Gen.      k          alpha      Entropy         "
+                 "Average k               Average alpha      \n"
+                 "  =========   ========   ===========   ========   "
+                 "====================   =========================\n");
     } else {
-      fmt::print(
-        "  Bat./Gen.      k          alpha           Average k               Average alpha      \n"
-        "  =========   ========   ===========   ====================   =========================\n");
+      fmt::print("  Bat./Gen.      k          alpha           Average k        "
+                 "       Average alpha      \n"
+                 "  =========   ========   ===========   ====================  "
+                 " =========================\n");
     }
   }
 }
@@ -423,8 +424,8 @@ void print_generation()
   if (n > 1) {
     fmt::print("   {:8.5f} +/-{:8.5f}", simulation::keff, simulation::keff_std);
     if (settings::alpha_mode)
-      fmt::print("   {:11.3e} +/-{:10.3e}", simulation::alpha_eff, 
-          simulation::alpha_eff_std);
+      fmt::print("   {:11.3e} +/-{:10.3e}", simulation::alpha_eff,
+        simulation::alpha_eff_std);
   }
   fmt::print("\n");
   std::fflush(stdout);
@@ -587,54 +588,58 @@ void print_results()
 
       // Alpha eigenvalue
       double alpha, alpha_sd, alpha_var;
-      alpha    = simulation::alpha_sum[0]/n;
-      alpha_var = (simulation::alpha_sum[1]/n 
-                  - std::pow(alpha, 2)) / (n - 1);
+      alpha = simulation::alpha_sum[0] / n;
+      alpha_var = (simulation::alpha_sum[1] / n - std::pow(alpha, 2)) / (n - 1);
       if (alpha_var < 0.0) {
         // This practically means the stdev is very close to zero
-        // (typically the case if the alpha approaches the -decay_rate 
+        // (typically the case if the alpha approaches the -decay_rate
         //  singularitity)
         alpha_sd = 0.0;
       } else {
-        alpha_sd =  t_n1 * std::sqrt((simulation::alpha_sum[1]/n 
-                    - std::pow(alpha, 2)) / (n - 1));
+        alpha_sd =
+          t_n1 * std::sqrt((simulation::alpha_sum[1] / n - std::pow(alpha, 2)) /
+                           (n - 1));
       }
 
       // Multiplication factor
       double k_alpha, k_alpha_sd;
-      k_alpha    = simulation::k_alpha_sum[0]/n;
-      k_alpha_sd =  t_n1 * std::sqrt((simulation::k_alpha_sum[1]/n 
-                       - std::pow(k_alpha, 2)) / (n - 1));
+      k_alpha = simulation::k_alpha_sum[0] / n;
+      k_alpha_sd =
+        t_n1 *
+        std::sqrt(
+          (simulation::k_alpha_sum[1] / n - std::pow(k_alpha, 2)) / (n - 1));
 
       // Reactivity
       double rho, rho_sd;
-      rho    = simulation::rho_sum[0]/n;
-      rho_sd =  t_n1 * std::sqrt((simulation::rho_sum[1]/n 
-                       - std::pow(rho, 2)) / (n - 1));
+      rho = simulation::rho_sum[0] / n;
+      rho_sd =
+        t_n1 *
+        std::sqrt((simulation::rho_sum[1] / n - std::pow(rho, 2)) / (n - 1));
 
       // Delayed fission fraction
       double beta, beta_sd;
-      beta    = simulation::beta_sum[0]/n;
-      beta_sd =  t_n1 * std::sqrt((simulation::beta_sum[1]/n 
-                       - std::pow(beta, 2)) / (n - 1));
+      beta = simulation::beta_sum[0] / n;
+      beta_sd =
+        t_n1 *
+        std::sqrt((simulation::beta_sum[1] / n - std::pow(beta, 2)) / (n - 1));
 
       // Generation time
       double tr, tr_sd;
-      tr    = simulation::tr_sum[0]/n;
-      tr_sd =  t_n1 * std::sqrt((simulation::tr_sum[1]/n 
-                       - std::pow(tr, 2)) / (n - 1));
+      tr = simulation::tr_sum[0] / n;
+      tr_sd = t_n1 * std::sqrt(
+                       (simulation::tr_sum[1] / n - std::pow(tr, 2)) / (n - 1));
 
       // Print
+      fmt::print("\n Alpha-effective       = {:10.3e} +/- {:9.3e} /s\n", alpha,
+        alpha_sd);
       fmt::print(
-        "\n Alpha-effective       = {:10.3e} +/- {:9.3e} /s\n", alpha, alpha_sd);
+        " Multiplication factor = {:10.5f} +/- {:7.5f}\n", k_alpha, k_alpha_sd);
       fmt::print(
-          " Multiplication factor = {:10.5f} +/- {:7.5f}\n", k_alpha, k_alpha_sd);
+        " Reactivity            = {:10.5f} +/- {:7.5f}\n", rho, rho_sd);
       fmt::print(
-          " Reactivity            = {:10.5f} +/- {:7.5f}\n", rho, rho_sd);
+        " Delayed fraction      = {:10.5f} +/- {:7.5f}\n", beta, beta_sd);
       fmt::print(
-          " Delayed fraction      = {:10.5f} +/- {:7.5f}\n", beta, beta_sd);
-      fmt::print(
-          " Mean neutron lifetime = {:10.3e} +/- {:9.3e} s\n", tr, tr_sd);
+        " Mean neutron lifetime = {:10.3e} +/- {:9.3e} s\n", tr, tr_sd);
     }
   } else {
     if (mpi::master)

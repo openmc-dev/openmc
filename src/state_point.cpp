@@ -110,7 +110,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     }
 
     // Write alpha mode
-    if (settings::run_mode == RunMode::EIGENVALUE){
+    if (settings::run_mode == RunMode::EIGENVALUE) {
       if (settings::alpha_mode) {
         write_dataset(file_id, "alpha_mode", 1);
       } else {

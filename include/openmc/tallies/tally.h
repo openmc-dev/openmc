@@ -229,7 +229,7 @@ extern double global_tally_leakage;
 extern double global_tally_alpha_Cn; // inverse-speed (neutron density)
 extern double global_tally_alpha_Cp; // prompt fission production
 extern xt::xtensor<double, 2>
-  global_tally_alpha_Cd; // delayed fission production for 
+  global_tally_alpha_Cd; // delayed fission production for
                          // each fissionable nuclide i & delayed group j
 
 //==============================================================================

@@ -55,9 +55,9 @@ extern "C" double decay_min;     //!< smallest precursor group decay constant
                                  //!< (to determine minimum fundamental alpha)
 extern "C" bool store_alpha_source; //!< flag to store alpha source
 // Note: store_alpha_source will switch to true if it is detected that
-//       we are dealing with a deep subcritical system (alpha << 0 and 
+//       we are dealing with a deep subcritical system (alpha << 0 and
 //       -alpha/v > fission production, see eigenvalue.cpp). In this
-//       case we switch from the iteration scheme in 
+//       case we switch from the iteration scheme in
 //       [https://doi.org/10.1080/00295639.2020.1743578], where we lag the
 //       fission production term (similar to k-eigenvalue mode),
 //       to the iteration scheme in [http://dx.doi.org/10.1155/2015/859242],
@@ -68,11 +68,11 @@ extern "C" bool store_alpha_source; //!< flag to store alpha source
 
 // Fissionables and their precursors (currently only used in alpha_mode)
 // We assume equal number of precusor groups for all fissionables.
-// However, decay constants of same precursor group from different 
+// However, decay constants of same precursor group from different
 // nuclides/materials can be different. E.g, group 6 of U235 and U238 are
 // 2.853 and 3.0487 /s, respectively.
-extern size_t n_fissionables;  //!< # of fissionable nuclides/materials
-extern size_t n_precursors;    //!< # of delayed neutron precursor groups
+extern size_t n_fissionables;         //!< # of fissionable nuclides/materials
+extern size_t n_precursors;           //!< # of delayed neutron precursor groups
 extern vector<int> fissionable_index; //!< indexing for fissionable nucs/mats;
                                       //!< -1 for non-fissionable.
 extern xt::xtensor<double, 2> precursor_decay; //!< [nuclide/material][group]

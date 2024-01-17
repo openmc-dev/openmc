@@ -195,7 +195,9 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
   // Determine whether to place fission sites into the shared fission bank
   // or the secondary particle bank.
   bool use_fission_bank = (settings::run_mode == RunMode::EIGENVALUE);
-  if (simulation::store_alpha_source) { use_fission_bank = false; }
+  if (simulation::store_alpha_source) {
+    use_fission_bank = false;
+  }
 
   // Counter for the number of fission sites successfully stored to the shared
   // fission bank or the secondary particle bank
@@ -678,12 +680,11 @@ void absorption(Particle& p, int i_nuclide)
     if (settings::run_mode == RunMode::EIGENVALUE) {
       double nu_fission = p.nu_fission(i_nuclide);
       if (simulation::store_alpha_source) {
-        nu_fission = -simulation::alpha_eff/p.speed() *
-                      p.neutron_xs(i_nuclide).total /
-                      p.macro_xs().total;
+        nu_fission = -simulation::alpha_eff / p.speed() *
+                     p.neutron_xs(i_nuclide).total / p.macro_xs().total;
       }
-      p.keff_tally_absorption() += wgt_absorb * nu_fission /
-                                   p.neutron_xs(i_nuclide).absorption;
+      p.keff_tally_absorption() +=
+        wgt_absorb * nu_fission / p.neutron_xs(i_nuclide).absorption;
     }
   } else {
     // See if disappearance reaction happens
@@ -693,12 +694,11 @@ void absorption(Particle& p, int i_nuclide)
       if (settings::run_mode == RunMode::EIGENVALUE) {
         double nu_fission = p.nu_fission(i_nuclide);
         if (simulation::store_alpha_source) {
-          nu_fission = -simulation::alpha_eff/p.speed() *
-                        p.neutron_xs(i_nuclide).total /
-                        p.macro_xs().total;
+          nu_fission = -simulation::alpha_eff / p.speed() *
+                       p.neutron_xs(i_nuclide).total / p.macro_xs().total;
         }
-        p.keff_tally_absorption() += p.wgt() * nu_fission /
-                                     p.neutron_xs(i_nuclide).absorption;
+        p.keff_tally_absorption() +=
+          p.wgt() * nu_fission / p.neutron_xs(i_nuclide).absorption;
       }
 
       p.wgt() = 0.0;

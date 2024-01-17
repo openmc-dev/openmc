@@ -898,7 +898,7 @@ void Material::calculate_neutron_xs(Particle& p) const
     p.macro_xs().absorption += atom_density * micro.absorption;
     p.macro_xs().fission += atom_density * micro.fission;
     p.macro_xs().nu_fission += atom_density * micro.nu_fission;
-    if (settings::alpha_mode){
+    if (settings::alpha_mode) {
       p.macro_xs().nu_fission_alpha += atom_density * micro.nu_fission_alpha;
       p.macro_xs().nu_fission_prompt += atom_density * micro.nu_fission_prompt;
     } else if (settings::prompt_only) {

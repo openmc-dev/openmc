@@ -3304,6 +3304,7 @@ class Tallies(cv.CheckedList):
             Tallies object
 
         """
-        tree = ET.parse(path)
+        parser = ET.XMLParser(huge_tree=True)
+        tree = ET.parse(path, parser=parser)
         root = tree.getroot()
         return cls.from_xml_element(root)

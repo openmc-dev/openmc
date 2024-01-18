@@ -201,7 +201,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
           if (mat_index == MATERIAL_VOID) {
             found = false;
           } else {
-            found = model::materials[mat_index]->fissionable_;
+            found = model::materials[mat_index]->fissionable();
           }
         }
       }

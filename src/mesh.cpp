@@ -46,9 +46,9 @@ namespace openmc {
 //==============================================================================
 
 #ifdef LIBMESH
-const bool LIBMESH_ENABLED = true;
+const bool DllExport LIBMESH_ENABLED = true;
 #else
-const bool LIBMESH_ENABLED = false;
+const bool DllExport LIBMESH_ENABLED = false;
 #endif
 
 namespace model {

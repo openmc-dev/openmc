@@ -20,7 +20,9 @@ import pkg_resources
 
 
 # Determine shared-library suffix
-if sys.platform == 'darwin':
+if sys.platform == 'win32':
+    _suffix = 'dll'
+elif sys.platform == 'darwin':
     _suffix = 'dylib'
 else:
     _suffix = 'so'

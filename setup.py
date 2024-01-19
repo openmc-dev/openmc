@@ -9,7 +9,9 @@ from Cython.Build import cythonize
 
 
 # Determine shared library suffix
-if sys.platform == 'darwin':
+if sys.platform == 'win32':
+    suffix = 'dll'
+elif sys.platform == 'darwin':
     suffix = 'dylib'
 else:
     suffix = 'so'
@@ -73,10 +75,12 @@ kwargs = {
                  'sphinxcontrib-svg2pdfconverter', 'sphinx-rtd-theme'],
         'test': ['pytest', 'pytest-cov', 'colorama'],
         'vtk': ['vtk'],
-    },
-    # Cython is used to add resonance reconstruction and fast float_endf
-    'ext_modules': cythonize('openmc/data/*.pyx'),
-    'include_dirs': [np.get_include()]
+    }
 }
+
+if sys.platform != 'win32':
+    # Cython is used to add resonance reconstruction and fast float_endf
+    kwargs['ext_modules'] = cythonize('openmc/data/*.pyx')
+    kwargs['include_dirs'] = [np.get_include()]
 
 setup(**kwargs)

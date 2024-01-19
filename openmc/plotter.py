@@ -61,7 +61,7 @@ def _get_legend_label(this, type):
         if type in openmc.data.DADZ.keys():
             z, a, m = openmc.data.zam(this)
             da, dz = openmc.data.DADZ[type]
-            gnds_name = openmc.data.gnds_name(z-dz, a-da, m)
+            gnds_name = openmc.data.gnds_name(z+dz, a+da, m)
             return f'{this} {type} {gnds_name}'
         return f'{this} {type}'
     elif this.name == '':

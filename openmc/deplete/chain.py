@@ -51,7 +51,7 @@ REACTIONS = {
     '(n,3np)': ReactionInfo({42}, openmc.data.DADZ['(n,3np)'], ('H1',)),
     '(n,n2p)': ReactionInfo({44}, openmc.data.DADZ['(n,n2p)'], ('H1', 'H1')),
     '(n,npa)': ReactionInfo({45}, openmc.data.DADZ['(n,npa)'], ('H1', 'He4')),
-    '(n,gamma)': ReactionInfo({102}, openmc.data.DADZ['(n,gamma)']()),
+    '(n,gamma)': ReactionInfo({102}, openmc.data.DADZ['(n,gamma)'], ()),
     '(n,p)': ReactionInfo(set(chain([103], range(600, 650))), openmc.data.DADZ['(n,p)'], ('H1',)),
     '(n,d)': ReactionInfo(set(chain([104], range(650, 700))), openmc.data.DADZ['(n,d)'], ('H2',)),
     '(n,t)': ReactionInfo(set(chain([105], range(700, 750))), openmc.data.DADZ['(n,t)'], ('H3',)),

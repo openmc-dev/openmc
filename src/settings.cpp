@@ -111,7 +111,7 @@ ResScatMethod res_scat_method {ResScatMethod::rvs};
 double res_scat_energy_min {0.01};
 double res_scat_energy_max {1000.0};
 vector<std::string> res_scat_nuclides;
-RunMode run_mode {RunMode::UNSET};
+RunMode DllExport run_mode {RunMode::UNSET};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
 std::unordered_set<int> source_write_surf_id;

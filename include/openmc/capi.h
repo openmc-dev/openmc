@@ -273,7 +273,16 @@ extern int OPENMC_E_PHYSICS;
 extern int OPENMC_E_WARNING;
 
 // Global variables
-extern char openmc_err_msg[256];
+
+#if _MSC_VER && OPENMC_WIN_COMPILE
+#define DllExport   __declspec( dllexport ) 
+#elif _MSC_VER
+#define DllExport   __declspec( dllimport ) 
+#else
+#define DllExport
+#endif
+
+extern char DllExport openmc_err_msg[256];
 
 #ifdef __cplusplus
 }

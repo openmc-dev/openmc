@@ -45,7 +45,7 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
-std::unordered_map<int, int> filter_map;
+std::unordered_map<int, int> DllExport filter_map;
 vector<unique_ptr<Filter>> tally_filters;
 } // namespace model
 

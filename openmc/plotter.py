@@ -5,7 +5,6 @@ import numpy as np
 
 import openmc.checkvalue as cv
 import openmc.data
-from openmc.data import DADZ
 
 # Supported keywords for continuous-energy cross section plotting
 PLOT_TYPES = ['total', 'scatter', 'elastic', 'inelastic', 'fission',
@@ -59,9 +58,9 @@ ELEMENT_NAMES = list(openmc.data.ELEMENT_SYMBOL.values())[1:]
 def _get_legend_label(this, type):
     """Gets a label for the element or nuclide or material and reaction plotted"""
     if isinstance(this, str):
-        if type in DADZ.keys():
+        if type in openmc.data.DADZ.keys():
             z, a, m = openmc.data.zam(this)
-            da, dz = DADZ[type]
+            da, dz = openmc.data.DADZ[type]
             gnds_name = openmc.data.gnds_name(z-dz, a-da, m)
             return f'{this} {type} {gnds_name}'
         return f'{this} {type}'

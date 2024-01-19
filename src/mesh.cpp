@@ -22,15 +22,19 @@
 #include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/material.h"
 #include "openmc/memory.h"
 #include "openmc/message_passing.h"
 #include "openmc/openmp_interface.h"
+#include "openmc/particle_data.h"
 #include "openmc/random_dist.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/volume_calc.h"
 #include "openmc/xml_interface.h"
 
 #ifdef LIBMESH
@@ -139,6 +143,92 @@ vector<double> Mesh::volumes() const
     volumes[i] = this->volume(i);
   }
   return volumes;
+}
+
+int Mesh::material_volumes(
+  int n_sample, int bin, gsl::span<MaterialVolume> result, uint64_t* seed) const
+{
+  vector<int32_t> materials;
+  vector<int64_t> hits;
+
+#pragma omp parallel
+  {
+    vector<int32_t> local_materials;
+    vector<int64_t> local_hits;
+    GeometryState geom;
+
+#pragma omp for
+    for (int i = 0; i < n_sample; ++i) {
+      // Get seed for i-th sample
+      uint64_t seed_i = future_seed(3 * i, *seed);
+
+      // Sample position and set geometry state
+      geom.r() = this->sample_element(bin, &seed_i);
+      geom.u() = {1., 0., 0.};
+      geom.n_coord() = 1;
+
+      // If this location is not in the geometry at all, move on to next block
+      if (!exhaustive_find_cell(geom))
+        continue;
+
+      int i_material = geom.material();
+
+      // Check if this material was previously hit and if so, increment count
+      auto it =
+        std::find(local_materials.begin(), local_materials.end(), i_material);
+      if (it == local_materials.end()) {
+        local_materials.push_back(i_material);
+        local_hits.push_back(1);
+      } else {
+        local_hits[it - local_materials.begin()]++;
+      }
+    } // omp for
+
+    // Reduce index/hits lists from each thread into a single copy
+    reduce_indices_hits(local_materials, local_hits, materials, hits);
+  } // omp parallel
+
+  // Advance RNG seed
+  advance_prn_seed(3 * n_sample, seed);
+
+  // Make sure span passed in is large enough
+  if (hits.size() > result.size()) {
+    return -1;
+  }
+
+  // Convert hits to fractions
+  for (int i_mat = 0; i_mat < hits.size(); ++i_mat) {
+    double fraction = double(hits[i_mat]) / n_sample;
+    result[i_mat].material = materials[i_mat];
+    result[i_mat].volume = fraction * this->volume(bin);
+  }
+  return hits.size();
+}
+
+vector<Mesh::MaterialVolume> Mesh::material_volumes(
+  int n_sample, int bin, uint64_t* seed) const
+{
+  // Create result vector with space for 8 pairs
+  vector<Mesh::MaterialVolume> result;
+  result.reserve(8);
+
+  int size = -1;
+  while (true) {
+    // Get material volumes
+    size = this->material_volumes(
+      n_sample, bin, {result.data(), result.data() + result.capacity()}, seed);
+
+    // If capacity was sufficient, resize the vector and return
+    if (size >= 0) {
+      result.resize(size);
+      break;
+    }
+
+    // Otherwise, increase capacity of the vector
+    result.reserve(2 * result.capacity());
+  }
+
+  return result;
 }
 
 //==============================================================================
@@ -736,7 +826,7 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
     fatal_error("Must specify either <upper_right> or <width> on a mesh.");
   }
 
-  // Set volume fraction
+  // Set material volumes
   volume_frac_ = 1.0 / xt::prod(shape)();
 
   element_volume_ = 1.0;
@@ -1035,7 +1125,7 @@ double RectilinearMesh::volume(const MeshIndex& ijk) const
   double vol {1.0};
 
   for (int i = 0; i < n_dimension_; i++) {
-    vol *= grid_[i][ijk[i] + 1] - grid_[i][ijk[i]];
+    vol *= grid_[i][ijk[i]] - grid_[i][ijk[i] - 1];
   }
   return vol;
 }
@@ -1781,6 +1871,33 @@ extern "C" int openmc_mesh_set_id(int32_t index, int32_t id)
   return 0;
 }
 
+//! Get the number of elements in a mesh
+extern "C" int openmc_mesh_get_n_elements(int32_t index, size_t* n)
+{
+  if (int err = check_mesh(index))
+    return err;
+  *n = model::meshes[index]->n_bins();
+  return 0;
+}
+
+extern "C" int openmc_mesh_material_volumes(int32_t index, int n_sample,
+  int bin, int result_size, void* result, int* hits, uint64_t* seed)
+{
+  auto result_ = reinterpret_cast<Mesh::MaterialVolume*>(result);
+  if (!result_) {
+    set_errmsg("Invalid result pointer passed to openmc_mesh_material_volumes");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (int err = check_mesh(index))
+    return err;
+
+  int n = model::meshes[index]->material_volumes(
+    n_sample, bin, {result_, result_ + result_size}, seed);
+  *hits = n;
+  return (n == -1) ? OPENMC_E_ALLOCATE : 0;
+}
+
 //! Get the dimension of a regular mesh
 extern "C" int openmc_regular_mesh_get_dimension(
   int32_t index, int** dims, int* n)
@@ -1835,6 +1952,11 @@ extern "C" int openmc_regular_mesh_set_params(
     return err;
   RegularMesh* m = dynamic_cast<RegularMesh*>(model::meshes[index].get());
 
+  if (m->n_dimension_ == -1) {
+    set_errmsg("Need to set mesh dimension before setting parameters.");
+    return OPENMC_E_UNASSIGNED;
+  }
+
   vector<std::size_t> shape = {static_cast<std::size_t>(n)};
   if (ll && ur) {
     m->lower_left_ = xt::adapt(ll, n, xt::no_ownership(), shape);
@@ -1851,6 +1973,16 @@ extern "C" int openmc_regular_mesh_set_params(
   } else {
     set_errmsg("At least two parameters must be specified.");
     return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  // Set material volumes
+
+  // TODO: incorporate this into method in RegularMesh that can be called from
+  // here and from constructor
+  m->volume_frac_ = 1.0 / xt::prod(m->get_x_shape())();
+  m->element_volume_ = 1.0;
+  for (int i = 0; i < m->n_dimension_; i++) {
+    m->element_volume_ *= m->width_[i];
   }
 
   return 0;

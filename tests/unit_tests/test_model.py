@@ -467,11 +467,11 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     flux_in_each_group, micro_xs = openmc.deplete.get_microxs_and_flux(
         model=test_model,
         domains=[mats[0]],
-        energies='CCFE-709',
+        energies=[0, 30e6],
         chain_file='test_chain.xml'
     )
 
-    op_kwargs["fluxes"] = flux_in_each_group
+    op_kwargs["fluxes"] = [i[0] for i in flux_in_each_group]
     op_kwargs["micros"] = micro_xs
     # materials is not in the operator_kwargs but should be found automatically
     test_model.deplete(

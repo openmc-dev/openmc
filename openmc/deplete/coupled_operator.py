@@ -170,7 +170,9 @@ class CoupledOperator(OpenMCOperator):
         Specifies how the volumes of the new materials should be found. Default
         is to 'divide equally' which divides the original material volume
         equally between the new materials, 'match cell' sets the volume of the
-        material to volume of the cell they fill.
+        material to volume of the cell they fill. When the cell has multiple
+        instances, users should confirm the volumes of all the instances are
+        the same and set the cell volume as the volume of one instance.
 
         .. versionadded:: 0.14.0
 

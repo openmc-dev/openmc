@@ -1033,7 +1033,10 @@ class Model:
             Specifies how the volumes of the new materials should be found.
             Default is to 'divide equally' which divides the original material
             volume equally between the new materials, 'match cell' sets the
-            volume of the material to volume of the cell they fill.
+            volume of the material to volume of the cell they fill. When the
+            cell has multiple instances, users should confirm the volumes of
+            all the instances are the same and set the cell volume as the
+            volume of one instance.
         """
         # Count the number of instances for each cell and material
         self.geometry.determine_paths(instances_only=True)
@@ -1055,18 +1058,16 @@ class Model:
             for cell in self.geometry.get_all_material_cells().values():
                 if cell.fill in distribmats:
                     mat = cell.fill
-                    if diff_volume_method == 'divide equally':
-                        cell.fill = [mat.clone() for _ in range(cell.num_instances)]
-                    elif diff_volume_method == 'match cell':
-                        for _ in range(cell.num_instances):
-                            cell.fill = mat.clone()
-                            if not cell.volume:
-                                raise ValueError(
-                                    f"Volume of cell ID={cell.id} not specified. "
-                                    "Set volumes of cells prior to using "
-                                    "diff_volume_method='match cell'."
-                                )
-                            cell.fill.volume = cell.volume
+                    cell.fill = [mat.clone() for _ in range(cell.num_instances)]
+                    if self.diff_volume_method == "match cell":
+                        if not cell.volume:
+                            raise ValueError(
+                                f"Volume of cell ID={cell.id} not specified. "
+                                "Set volumes of cells prior to using "
+                                "diff_volume_method='match cell'."
+                            )
+                        for mat in cell.fill:
+                            mat.volume = cell.volume
 
         if self.materials is not None:
             self.materials = openmc.Materials(

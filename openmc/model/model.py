@@ -395,11 +395,7 @@ class Model:
 
         """
 
-        if operator_kwargs is None:
-            op_kwargs = {}
-        elif isinstance(operator_kwargs, dict):
-            op_kwargs = operator_kwargs
-        else:
+        if operator_kwargs is not None and not isinstance(operator_kwargs, dict):
             raise ValueError("operator_kwargs must be a dict or None")
 
         check_value('operator_class', operator_class, ('IndependentOperator', 'CoupledOperator'))
@@ -414,11 +410,22 @@ class Model:
         with _change_directory(Path(directory)):
             with openmc.lib.quiet_dll(output):
                 if operator_class == 'IndependentOperator':
-                    if 'materials' not in op_kwargs.keys():
-                        op_kwargs['materials'] = openmc.Materials([mat for mat in self.geometry.get_all_materials().values() if mat.depletable])
-                    depletion_operator = dep.IndependentOperator(self, **op_kwargs)
+                    if 'materials' not in operator_kwargs.keys():
+                        depletable_mats = [
+                            mat for mat in self.geometry.get_all_materials().values()
+                            if mat.depletable]
+                        operator_kwargs['materials'] = openmc.Materials(depletable_mats)
+                    # position args removed from dict to avoid got multiple args error
+                    materials = operator_kwargs.pop('materials')
+                    fluxes = operator_kwargs.pop('fluxes')
+                    micros = operator_kwargs.pop('micros')
+                    depletion_operator = dep.IndependentOperator(
+                        materials,
+                        fluxes,
+                        micros,
+                        **operator_kwargs)
                 else:  # operator is CoupledOperator
-                    depletion_operator = dep.CoupledOperator(self, **op_kwargs)
+                    depletion_operator = dep.CoupledOperator(self, **operator_kwargs)
 
             # Tell depletion_operator.finalize NOT to clear C API memory when
             # it is done

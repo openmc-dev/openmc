@@ -210,10 +210,10 @@ class OpenMCOperator(TransportOperator):
                 if nuclide in self.nuclides_with_data or self._decay_nucs:
                     model_nuclides.add(nuclide)
                 else:
-                    msg = (f"Nuclilde {nuclide} in material {mat.id} is not "
+                    msg = (f"Nuclide {nuclide} in material {mat.id} is not "
                            "present in the depletion chain and has no cross "
                            "section data.")
-                    raise warn(msg)
+                    warn(msg)
             if mat.depletable:
                 burnable_mats.add(str(mat.id))
                 if mat.volume is None:

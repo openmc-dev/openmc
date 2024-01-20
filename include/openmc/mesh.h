@@ -9,6 +9,7 @@
 #include "hdf5.h"
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
+#include <gsl/gsl-lite.hpp>
 
 #include "openmc/error.h"
 #include "openmc/memory.h" // for unique_ptr
@@ -69,12 +70,20 @@ extern const libMesh::Parallel::Communicator* libmesh_comm;
 
 class Mesh {
 public:
+  // Types, aliases
+  struct MaterialVolume {
+    int32_t material; //!< material index
+    double volume;    //!< volume in [cm^3]
+  };
+
   // Constructors and destructor
   Mesh() = default;
   Mesh(pugi::xml_node node);
   virtual ~Mesh() = default;
 
   // Methods
+  //! Perform any preparation needed to support use in mesh filters
+  virtual void prepare_for_tallies() {};
 
   //! Update a position to the local coordinates of the mesh
   virtual void local_coords(Position& r) const {};
@@ -157,9 +166,28 @@ public:
 
   virtual std::string get_mesh_type() const = 0;
 
+  //! Determine volume of materials within a single mesh elemenet
+  //
+  //! \param[in] n_sample Number of samples within each element
+  //! \param[in] bin Index of mesh element
+  //! \param[out] Array of (material index, volume) for desired element
+  //! \param[inout] seed Pseudorandom number seed
+  //! \return Number of materials within element
+  int material_volumes(int n_sample, int bin, gsl::span<MaterialVolume> volumes,
+    uint64_t* seed) const;
+
+  //! Determine volume of materials within a single mesh elemenet
+  //
+  //! \param[in] n_sample Number of samples within each element
+  //! \param[in] bin Index of mesh element
+  //! \param[inout] seed Pseudorandom number seed
+  //! \return Vector of (material index, volume) for desired element
+  vector<MaterialVolume> material_volumes(
+    int n_sample, int bin, uint64_t* seed) const;
+
   // Data members
-  int id_ {-1};     //!< User-specified ID
-  int n_dimension_; //!< Number of dimensions
+  int id_ {-1};          //!< User-specified ID
+  int n_dimension_ {-1}; //!< Number of dimensions
 };
 
 class StructuredMesh : public Mesh {
@@ -663,6 +691,9 @@ public:
   static const std::string mesh_lib_type;
 
   // Overridden Methods
+
+  //! Perform any preparation needed to support use in mesh filters
+  void prepare_for_tallies() override;
 
   Position sample_element(int32_t bin, uint64_t* seed) const override;
 

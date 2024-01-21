@@ -605,6 +605,31 @@ def test_regular_mesh(lib_init):
         assert sum(f[1] for f in elem_vols) == pytest.approx(1.26 * 1.26, 1e-2)
 
 
+def test_regular_mesh_get_plot_bins(lib_init):
+    mesh: openmc.lib.RegularMesh = openmc.lib.meshes[2]
+    mesh.dimension = (2, 2, 1)
+    mesh.set_parameters(lower_left=(-1.0, -1.0, -0.5),
+                        upper_right=(1.0, 1.0, 0.5))
+
+    # Get bins for a plot view covering only a single mesh bin
+    mesh_bins = mesh.get_plot_bins((-0.5, -0.5, 0.), (0.1, 0.1), 'xy', (20, 20))
+    assert (mesh_bins == 0).all()
+    mesh_bins = mesh.get_plot_bins((0.5, 0.5, 0.), (0.1, 0.1), 'xy', (20, 20))
+    assert (mesh_bins == 3).all()
+
+    # Get bins for a plot view covering all mesh bins. Note that the y direction
+    # (first dimension) is flipped for plotting purposes
+    mesh_bins = mesh.get_plot_bins((0., 0., 0.), (2., 2.), 'xy', (20, 20))
+    assert (mesh_bins[:10, :10] == 2).all()
+    assert (mesh_bins[:10, 10:] == 3).all()
+    assert (mesh_bins[10:, :10] == 0).all()
+    assert (mesh_bins[10:, 10:] == 1).all()
+
+    # Get bins for a plot view outside of the mesh
+    mesh_bins = mesh.get_plot_bins((100., 100., 0.), (2., 2.), 'xy', (20, 20))
+    assert (mesh_bins == -1).all()
+
+
 def test_rectilinear_mesh(lib_init):
     mesh = openmc.lib.RectilinearMesh()
     x_grid = [-10., 0., 10.]

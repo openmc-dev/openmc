@@ -29,6 +29,7 @@
 #include "openmc/message_passing.h"
 #include "openmc/openmp_interface.h"
 #include "openmc/particle_data.h"
+#include "openmc/plot.h"
 #include "openmc/random_dist.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
@@ -1896,6 +1897,63 @@ extern "C" int openmc_mesh_material_volumes(int32_t index, int n_sample,
     n_sample, bin, {result_, result_ + result_size}, seed);
   *hits = n;
   return (n == -1) ? OPENMC_E_ALLOCATE : 0;
+}
+
+extern "C" int openmc_mesh_get_plot_bins(int32_t index, Position origin,
+  Position width, int basis, int* pixels, int32_t* data)
+{
+  if (int err = check_mesh(index))
+    return err;
+  const auto& mesh = model::meshes[index].get();
+
+  int pixel_width = pixels[0];
+  int pixel_height = pixels[1];
+
+  // get pixel size
+  double in_pixel = (width[0]) / static_cast<double>(pixel_width);
+  double out_pixel = (width[1]) / static_cast<double>(pixel_height);
+
+  // setup basis indices and initial position centered on pixel
+  int in_i, out_i;
+  Position xyz = origin;
+  enum class PlotBasis { xy = 1, xz = 2, yz = 3 };
+  PlotBasis basis_enum = static_cast<PlotBasis>(basis);
+  switch (basis_enum) {
+  case PlotBasis::xy:
+    in_i = 0;
+    out_i = 1;
+    break;
+  case PlotBasis::xz:
+    in_i = 0;
+    out_i = 2;
+    break;
+  case PlotBasis::yz:
+    in_i = 1;
+    out_i = 2;
+    break;
+  default:
+    UNREACHABLE();
+  }
+
+  // set initial position
+  xyz[in_i] = origin[in_i] - width[0] / 2. + in_pixel / 2.;
+  xyz[out_i] = origin[out_i] + width[1] / 2. - out_pixel / 2.;
+
+#pragma omp parallel
+  {
+    Position r = xyz;
+
+#pragma omp for
+    for (int y = 0; y < pixel_height; y++) {
+      r[out_i] = xyz[out_i] - out_pixel * y;
+      for (int x = 0; x < pixel_width; x++) {
+        r[in_i] = xyz[in_i] + in_pixel * x;
+        data[pixel_width * y + x] = mesh->get_bin(r);
+      }
+    }
+  }
+
+  return 0;
 }
 
 //! Get the dimension of a regular mesh

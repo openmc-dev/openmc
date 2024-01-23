@@ -1,7 +1,9 @@
+from pathlib import Path
+
 import openmc
 import openmc.lib
 
-from pathlib import Path
+import h5py
 import pytest
 from tests.testing_harness import PyAPITestHarness
 
@@ -72,7 +74,19 @@ def test_missing_material_name(model):
     exp_error_msg = "Material with name/ID 'no-void fuel' not found for volume (cell) 1"
     assert exp_error_msg in str(exec_info.value)
 
+def test_surf_source(model):
+    # create a surface source read on this model to ensure
+    # particles are being generated correctly
+    surf_src_info = {'surface_ids' : [1, 2, 3], 'max_particles': 100}
+    model.settings.surf_source_write = surf_src_info
+    model.run()
+
+    with h5py.File('surface_source.h5') as fh:
+        assert fh.attrs['filetype'] == b'source'
+        arr = fh['source_bank'][...]
+    assert arr.size == 100
 
 def test_dagmc(model):
     harness = PyAPITestHarness('statepoint.5.h5', model)
     harness.main()
+

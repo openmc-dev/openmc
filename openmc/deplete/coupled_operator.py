@@ -178,10 +178,6 @@ class CoupledOperator(OpenMCOperator):
     ----------
     model : openmc.model.Model
         OpenMC model object
-    geometry : openmc.Geometry
-        OpenMC geometry object
-    settings : openmc.Settings
-        OpenMC settings object
     output_dir : pathlib.Path
         Path to output directory to save results.
     round_number : bool
@@ -242,8 +238,6 @@ class CoupledOperator(OpenMCOperator):
                 warn("Fission Q dictionary will not be used")
                 fission_q = None
         self.model = model
-        self.settings = model.settings
-        self.geometry = model.geometry
 
         # determine set of materials in the model
         if not model.materials:
@@ -358,7 +352,7 @@ class CoupledOperator(OpenMCOperator):
         if normalization_mode == "fission-q":
             self._normalization_helper = ChainFissionHelper()
         elif normalization_mode == "energy-deposition":
-            score = "heating" if self.settings.photon_transport else "heating-local"
+            score = "heating" if self.model.settings.photon_transport else "heating-local"
             self._normalization_helper = EnergyScoreHelper(score)
         else:
             self._normalization_helper = SourceRateHelper()
@@ -380,8 +374,12 @@ class CoupledOperator(OpenMCOperator):
 
         # Create XML files
         if comm.rank == 0:
-            self.geometry.export_to_xml()
-            self.settings.export_to_xml()
+            self.model.geometry.export_to_xml()
+            self.model.settings.export_to_xml()
+            if self.model.plots:
+                self.model.plots.export_to_xml()
+            if self.model.tallies:
+                self.model.tallies.export_to_xml()
             self._generate_materials_xml()
 
         # Initialize OpenMC library
@@ -527,6 +525,36 @@ class CoupledOperator(OpenMCOperator):
         """Finalize a depletion simulation and release resources."""
         if self.cleanup_when_done:
             openmc.lib.finalize()
+
+    # The next few class variables and methods should be removed after one
+    # release cycle or so. For now, we will provide compatibility to
+    # accessing CoupledOperator.settings and CoupledOperator.geometry. In
+    # the future these should stay on the Model class.
+
+    var_warning_msg = "The CoupledOperator.{0} variable should be \
+accessed through CoupledOperator.model.{0}."
+    geometry_warning_msg = var_warning_msg.format("geometry")
+    settings_warning_msg = var_warning_msg.format("settings")
+
+    @property
+    def settings(self):
+        warn(self.settings_warning_msg, FutureWarning)
+        return self.model.settings
+
+    @settings.setter
+    def settings(self, new_settings):
+        warn(self.settings_warning_msg, FutureWarning)
+        self.model.settings = new_settings
+
+    @property
+    def geometry(self):
+        warn(self.geometry_warning_msg, FutureWarning)
+        return self.model.geometry
+
+    @geometry.setter
+    def geometry(self, new_geometry):
+        warn(self.geometry_warning_msg, FutureWarning)
+        self.model.geometry = new_geometry
 
 
 # Retain deprecated name for the time being

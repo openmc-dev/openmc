@@ -457,6 +457,20 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     assert after_xe + after_u == pytest.approx(initial_u, abs=1e-15)
     assert test_model.is_initialized is False
 
+    # check the tally output
+    def check_tally_output():
+        with openmc.StatePoint('openmc_simulation_n0.h5') as sp:
+            flux = sp.get_tally(id=1).get_values(scores=['flux'])[0, 0, 0]
+            fission = sp.get_tally(id=1).get_values(
+                scores=['fission'])[0, 0, 0]
+
+            # we're mainly just checking that the result was produced,
+            # so a rough numerical comparison doesn't hurt to have.
+            assert flux == pytest.approx(13.1, abs=0.2)
+            assert fission == pytest.approx(0.47, abs=0.2)
+
+    check_tally_output()
+
     # Reset the initial material densities
     mats[0].nuclides.clear()
     densities = initial_mat.get_nuclide_atom_densities()
@@ -480,6 +494,8 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     # And end by comparing to the previous case
     assert after_xe == pytest.approx(after_lib_xe, abs=1e-15)
     assert after_u == pytest.approx(after_lib_u, abs=1e-15)
+
+    check_tally_output()
 
     test_model.finalize_lib()
 
@@ -531,6 +547,7 @@ def test_calc_volumes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
 
     test_model.finalize_lib()
 
+
 def test_model_xml(run_in_tmpdir):
 
     # load a model from examples
@@ -548,6 +565,7 @@ def test_model_xml(run_in_tmpdir):
     # make sure we can also export this again to separate
     # XML files
     new_model.export_to_xml()
+
 
 def test_single_xml_exec(run_in_tmpdir):
 

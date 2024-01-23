@@ -54,6 +54,11 @@ class MGXSTestHarness(PyAPITestHarness):
         # Export the MGXS Library to an HDF5 file
         self.mgxs_lib.build_hdf5_store(directory='.')
 
+        # Test export of the MGXS Library to an Excel spreadsheet
+        for mgxs in self.mgxs_lib.all_mgxs.values():
+            for xs in mgxs.values():
+                xs.export_xs_data('mgxs', xs_type='macro', format='excel')
+
         # Open the MGXS HDF5 file
         with h5py.File('mgxs.h5', 'r') as f:
 
@@ -76,9 +81,8 @@ class MGXSTestHarness(PyAPITestHarness):
 
     def _cleanup(self):
         super()._cleanup()
-        f = 'mgxs.h5'
-        if os.path.exists(f):
-            os.remove(f)
+        files = ['mgxs.h5', 'mgxs.xlsx']
+        (os.remove(f) for f in files if os.path.exists(f))
 
 
 def test_mgxs_library_hdf5():

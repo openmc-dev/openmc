@@ -1,18 +1,18 @@
 .. _methods_random_ray:
 
-===============
+==========
 Random Ray
-===============
+==========
 
------------------------------------
+-------------------
 What is Random Ray?
------------------------------------
+-------------------
 
 Random ray [`Tramm 2017a`_] is a stochastic transport method, closely related to the deterministic Method of Characteristics (MOC) [Askew]_. Rather than each ray representing a single neutron as in Monte Carlo, it represents a characteristic line through the reactor upon which the transport equation can be written as an ordinary differential equation that can be solved analytically (although with discretization required in energy space, making it a multigroup method). The behavior of the governing transport equation can be approximated by solving along many characteristic tracks (rays) through the reactor. Unlike particles in Monte Carlo, rays in random ray or MOC are not affected by the material characteristics of the simulated problem -- rays are selected so as to explore the full simulation problem with a statistically equal distribution in space and angle.
 
------------------------------------------------
+----------------------------------------------
 Why is a Random Ray Solver Included in OpenMC?
------------------------------------------------
+----------------------------------------------
 
 There are a few good reasons:
 
@@ -30,15 +30,15 @@ There are a few good reasons:
 
 * It amortizes the code complexity in OpenMC for representing multigroup cross sections. There is a significant amount of interface code, documentation, and complexity in allowing OpenMC to generate and use multigroup XS data in its MGMC mode. Random ray allows the same multigroup data to be used, making full reuse of these existing capabilities.
 
-------------------------------------------
+-------------------------------
 Random Ray Numerical Derivation
-------------------------------------------
+--------------------------------
 
 The derivation of Random Ray is discussed extensively in [`Tramm 2017a`_], but we will reproduce portions of this dissertation varbatim in this section for convenience.
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 Method of Characteristics
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The Boltzmann neutron transport equation is a partial differential equation (PDE) that describes the angular flux within a system. It is a balance equation, with the streaming and absorption terms typically appearing on the left hand side, which are balanced by the scattering source and fission source terms on the right hand side. 
 
@@ -98,17 +98,17 @@ The constructive solid geometry (CSG) definition of the reactor is used to creat
 
     \psi_g(s) = \psi_g(0) e^{-\Sigma_{t,g} s} + \frac{q_0}{\Sigma_{t,g}} \left( 1 - e^{-\Sigma_{t,g} s} \right)
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~
 Random Rays
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~
 
 In the previous subsection, the govering characteristic equation along a 1D line through the reactor was written, such that an analytical solution for the ODE can be computed. If enough characteristic tracks (ODEs) are solved, then the behavior of the governing PDE can be numerically approximated. In traditional deterministic MOC, the selection of tracks has historically been a deterministic one, where azimuthal and polar quadratures are defined along with even track spacing in 3 dimensions. This is the point at which random ray diverges from deterministic MOC numerically. In Random Ray, rays are randomly sampled from a uniform distribution in space and angle and tracked along a set distance through the geometry before terminating. Importantly, different rays are sampled each power iteration, leading to a fully stochastic convergence process. I.e., inactive and active batches must be used, just as in Monte Carlo. While Monte Carlo implicitly converges the scattering source fully within each iteration, random ray (and MOC) solvers are not typically written to fully converge the scattering source within a single iteration. Rather, both the fission and scattering sources are updated each power iteration, thus requiring enough outer iterations so as to reach a stationary distribution in both the fission source and scattering source. I.e., even in a low dominance ration problem like a 2D pincell, several hundred inactive batches may still be required with random ray so as to allow the scattering source to fully develop, as neutrons undergoing hundreds of scatters may constitue a non-trivial contribution to the fission source.
 
 Fundamentally, this distinction means that random ray typically requires more inactive iterations than are required in Monte Carlo, as the scattering source must also be developed. While a Monte Carlo simulation may only need 20-50 inactive iterations to reach a stationary source distribution for a full core light water reactor, a random ray solve will likely require 1,000 iterations or more. Source convergence metrics (e.g., Shannon Entropy) are thus highly useful tools when performing Random Ray simulations so as to help judge when the source has fully developed.
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
 Ray Starting Conditions
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
 
 Another key area of divergence between deterministic MOC and random ray is the starting conditions for rays. In deterministic MOC, the angular flux spectrum for rays are stored at any reflective or periodic boundaries so as to provide a starting condition for the next iteration. As there are many tracks, storage of angular fluxes can become costly in terms of memory consumption unless there are only vacuum boundaries present.
 
@@ -116,15 +116,15 @@ In random ray, as the starting locations of rays are sampled anew each iteration
 
 Thus, an on-the-fly approximation method was developed (known as the "dead zone"), where the first several mean free paths of a ray are considered to be "inactive" or "read only". In this sense, the angular flux is solved for using the MOC equation, but the ray does not "tally" any scalar flux back to the FSRs that it travels through. After several mean free paths have been traversed, the ray's angular flux spectrum typically becomes dominated by the accumulated source terms from the cells it has travelled through, while the (incorrect) starting conditions have been attenuated away. 
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 Ray Ending Conditions
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
 To ensure that a uniform density of rays is integrated in space and angle throughout the simulation domain, after exiting the initial inactive "dead zone" portion of the ray, the rays are run for a user-specified distance. Typically, a choice of at least several times the length of the inactive "dead zone" is made so as to amortize the cost of the dead zone. E.g., if a dead zone of 30 cm is selected, then an active length of 300 cm might be selected so as to ensure the cost of the dead zone is below 10% of the overall runtime. 
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 Power Iteration
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 
 A simplified set of functions that execute a single random ray power iteration are given below. Not all global variables are defined in this illustrative example, but the high level components of the algorithm are shown. A number of significant simplifications are made for clarity -- for example, no inactive "dead zone" length is shown, geometry operations are abstracted, no parallelism (or thread safety) is expressed, among other subtleties.
 
@@ -215,15 +215,11 @@ The final function below shows the logic for solving for the characteristic MOC 
         global::volume[fsr] += s;
     }
 
------------------------------
+------------------------
 How are Tallies Handled?
------------------------------
+------------------------
 
 Most tallies, filters, and scores that you would expect to work with a multigroup solver like random ray should work. E.g., you can define 3D mesh tallies with energy filters and flux, fission, and nu-fission scores, etc. There are some restrictions though. For starters, it is assumed that all filter mesh boundaries will conform to physical surface boundaries (or lattice boundaries) in the simulation geometry. It is acceptable for multiple cells (FSRs) to be contained within a filter mesh cell (e.g., pincell-level or assembly-level tallies should work), but it is currently left as undefined behavior if a single simulation cell is able to score to multiple filter mesh cells. In the future, we plan to add the capability to fully support mesh tallies, but for now this restriction needs to be respected.
-
------------------------------
-How is Plotting Handled?
------------------------------
 
 .. only:: html
 

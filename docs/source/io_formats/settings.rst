@@ -398,18 +398,18 @@ or sub-elements and can be set to either "false" or "true".
 
   .. note:: This element is not used in the multi-group :ref:`energy_mode`.
 
------------------------
+----------------------------------------
 ``<random_ray_distance_active>`` Element
------------------------
+----------------------------------------
 
 The ``<random_ray_distance_active>`` element is used to set the active distance
 each ray will travel in random ray mode.
 
   *Default*: None
 
------------------------
+------------------------------------------
 ``<random_ray_distance_inactive>`` Element
------------------------
+------------------------------------------
 
 The ``<random_ray_distance_inactive>`` element is used to set the inactive
 distance (dead zone length) each ray will travel in random ray mode.
@@ -493,9 +493,9 @@ pseudo-random number generator.
 
 .. _source_element:
 
---------------------
+-------------------------
 ``<solver_type>`` Element
---------------------
+-------------------------
 
 The ``solver_type`` element is used to select the transport method used by the
 simulation. This element has no attributes or sub-elements and can be set to

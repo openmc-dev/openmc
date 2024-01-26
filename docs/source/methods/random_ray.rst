@@ -10,6 +10,10 @@ What is Random Ray?
 
 Random ray [`Tramm 2017a`_] is a stochastic transport method, closely related to the deterministic Method of Characteristics (MOC) [Askew]_. Rather than each ray representing a single neutron as in Monte Carlo, it represents a characteristic line through the reactor upon which the transport equation can be written as an ordinary differential equation that can be solved analytically (although with discretization required in energy space, making it a multigroup method). The behavior of the governing transport equation can be approximated by solving along many characteristic tracks (rays) through the reactor. Unlike particles in Monte Carlo, rays in random ray or MOC are not affected by the material characteristics of the simulated problem -- rays are selected so as to explore the full simulation problem with a statistically equal distribution in space and angle.
 
+.. raw:: html
+
+    <iframe width="560" height="315" id="player" src="https://www.youtube.com/watch?v=9NrODC6pbLg" frameborder="0" allowfullscreen></iframe>
+
 ----------------------------------------------
 Why is a Random Ray Solver Included in OpenMC?
 ----------------------------------------------

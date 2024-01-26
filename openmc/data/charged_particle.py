@@ -91,11 +91,11 @@ class ChargedParticleReaction(EqualityMixin):
 
     def __repr__(self):
         if self.mt in _REACTION_NAME:
-            return "<Proton Reaction: MT={} {}>".format(
+            return "<charge particle Reaction: MT={} {}>".format(
                 self.mt, _REACTION_NAME[self.mt]
             )
         else:
-            return "<Proton Reaction: MT={}>".format(self.mt)
+            return "<charge particle Reaction: MT={}>".format(self.mt)
 
     @property
     def xs(self):
@@ -144,7 +144,7 @@ class ChargedParticleReaction(EqualityMixin):
         return rx
 
     def to_hdf5(self, group, energy):
-        """Write proton reaction to an HDF5 group
+        """Write charge particle reaction to an HDF5 group
 
         Parameters
         ----------
@@ -227,7 +227,7 @@ class ChargedParticleReaction(EqualityMixin):
 
     @classmethod
     def from_hdf5(cls, group, energy):
-        """Generate proton reaction from an HDF5 group
+        """Generate charge particle reaction from an HDF5 group
 
         Parameters
         ----------
@@ -257,7 +257,7 @@ class ChargedParticleReaction(EqualityMixin):
 class IncidentChargedParticle(EqualityMixin):
     """Charged particle interaction data.
 
-    This class stores data derived from an ENDF-6 format proton interaction
+    This class stores data derived from an ENDF-6 format charge particle interaction
     sublibrary. Instances of this class are not normally instantiated by the
     user but rather created using the factory methods
     :meth:`IncidentChargedParticle.from_hdf5`, :meth:`IncidentChargedParticle.from_ace`, and
@@ -268,9 +268,9 @@ class IncidentChargedParticle(EqualityMixin):
     name : str
         Name of the nuclide using the GND naming convention
     atomic_number : int
-        Number of protons in the target nucleus
+        Number of charge particles in the target nucleus
     atomic_number : int
-        Number of protons in the target nucleus
+        Number of charge particles in the target nucleus
     mass_number : int
         Number of nucleons in the target nucleus
     metastable : int
@@ -282,7 +282,7 @@ class IncidentChargedParticle(EqualityMixin):
     Attributes
     ----------
     atomic_number : int
-        Number of protons in the target nucleus
+        Number of charge particles in the target nucleus
     atomic_symbol : str
         Atomic symbol of the nuclide, e.g., 'Zr'
     atomic_weight_ratio : float
@@ -394,7 +394,7 @@ class IncidentChargedParticle(EqualityMixin):
         Returns
         -------
         openmc.data.IncidentChargedParticle
-            Proton interaction data
+            charge particle interaction data
 
         """
 
@@ -423,7 +423,7 @@ class IncidentChargedParticle(EqualityMixin):
 
     @classmethod
     def from_ace(cls, ace_or_filename, metastable_scheme="nndc"):
-        """Generate incident proton continuous-energy data from an ACE table
+        """Generate incident charge particle continuous-energy data from an ACE table
 
         Parameters
         ----------
@@ -442,7 +442,7 @@ class IncidentChargedParticle(EqualityMixin):
         Returns
         -------
         openmc.data.IncidentChargedParticle
-            Incident proton continuous-energy data
+            Incident charge particle continuous-energy data
 
         """
 
@@ -456,7 +456,7 @@ class IncidentChargedParticle(EqualityMixin):
         zaid, xs = ace.name.split(".")
         if not xs.endswith("h"):
             raise TypeError(
-                "{} is not a continuous-energy proton ACE table.".format(ace)
+                "{} is not a continuous-energy charge particle ACE table.".format(ace)
             )
         name, element, Z, mass_number, metastable = get_metadata(
             int(zaid), metastable_scheme
@@ -500,7 +500,7 @@ class IncidentChargedParticle(EqualityMixin):
         return data
 
     def export_to_hdf5(self, path, mode="a", libver="earliest"):
-        """Export incident proton data to an HDF5 file.
+        """Export incident charge particle data to an HDF5 file.
 
         Parameters
         ----------
@@ -524,7 +524,7 @@ class IncidentChargedParticle(EqualityMixin):
 
         # Open file and write version
         f = h5py.File(str(path), mode, libver=libver)
-        f.attrs["filetype"] = np.string_("data_proton")
+        f.attrs["filetype"] = np.string_("data_charge particle")
         if "version" not in f.attrs:
             f.attrs["version"] = np.array(HDF5_VERSION)
 
@@ -551,7 +551,7 @@ class IncidentChargedParticle(EqualityMixin):
 
     @classmethod
     def from_hdf5(cls, group_or_filename):
-        """Generate proton interaction data from HDF5 group
+        """Generate charge particle interaction data from HDF5 group
 
         Parameters
         ----------
@@ -563,7 +563,7 @@ class IncidentChargedParticle(EqualityMixin):
         Returns
         -------
         openmc.data.IncidentChargedParticle
-            Proton interaction data
+            charge particle interaction data
 
         """
         if isinstance(group_or_filename, h5py.Group):
@@ -607,7 +607,7 @@ class IncidentChargedParticle(EqualityMixin):
 
     @classmethod
     def from_njoy(cls, filename, evaluation=None, **kwargs):
-        """Generate incident proton data by running NJOY.
+        """Generate incident charge particle data by running NJOY.
 
         Parameters
         ----------
@@ -622,7 +622,7 @@ class IncidentChargedParticle(EqualityMixin):
         Returns
         -------
         data : openmc.data.IncidentChargedParticle
-            Incident proton continuous-energy data
+            Incident charge particle continuous-energy data
 
         """
         with tempfile.TemporaryDirectory() as tmpdir:

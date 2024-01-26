@@ -68,24 +68,39 @@ def _get_legend_label(this, type):
 def _get_yaxis_label(reactions, divisor_types):
     """Gets a y axis label for the type of data plotted"""
 
-    if all(isinstance(item, str) for item in reactions.keys()):
-        stem = 'Microscopic'
-        if divisor_types:
-            mid, units = 'Data', ''
-        else:
-            mid, units = 'Cross Section', '[b]'
+    heat_combos = {"heating"}, {"heating-local"}, {"heating", "heating-local"}
+
+    # if all the types are heating a different stem and unit is needed
+    if all(set(value) in heat_combos for value in reactions.values()):
+        stem = "Heating"
+    elif all(isinstance(item, str) for item in reactions.keys()):
+        print(reactions.values())
+        for nuc_reactions in reactions.values():
+            for reaction in nuc_reactions:
+                if reaction in ["heating", "heating-local"]:
+                    msg = (
+                        "Mixture of heating and Microscopic reactions. "
+                        "Invalid type for plotting"
+                    )
+                    raise TypeError(msg)
+        stem = "Microscopic"
     elif all(isinstance(item, openmc.Material) for item in reactions.keys()):
         stem = 'Macroscopic'
-        if divisor_types:
-            mid, units = 'Data', ''
-        else:
-            mid, units = 'Cross Section', '[1/cm]'
     else:
         msg = "Mixture of openmc.Material and elements/nuclides. Invalid type for plotting"
         raise TypeError(msg)
 
-    return f'{stem} {mid} {units}'
+    if divisor_types:
+        mid, units = "Data", ""
+    else:
+        mid = "Cross Section"
+        units = {
+            "Macroscopic": "[1/cm]",
+            "Microscopic": "[b]",
+            "Heating": "[eV/collision]",
+        }[stem]
 
+    return f'{stem} {mid} {units}'
 
 def _get_title(reactions):
     """Gets a title for the type of data plotted"""

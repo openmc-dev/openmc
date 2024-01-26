@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from ctypes import c_int, c_int32, c_double, c_char_p, POINTER, c_size_t
+from ctypes import c_bool, c_int, c_int32, c_double, c_char_p, POINTER, c_size_t
 from weakref import WeakValueDictionary
 
 import numpy as np
@@ -35,6 +35,9 @@ _dll.openmc_material_get_densities.errcheck = _error_handler
 _dll.openmc_material_get_density.argtypes = [c_int32, POINTER(c_double)]
 _dll.openmc_material_get_density.restype = c_int
 _dll.openmc_material_get_density.errcheck = _error_handler
+_dll.openmc_material_get_temperature.argtypes = [c_int32, POINTER(c_double)]
+_dll.openmc_material_get_temperature.restype = c_int
+_dll.openmc_material_get_temperature.errcheck = _error_handler
 _dll.openmc_material_get_volume.argtypes = [c_int32, POINTER(c_double)]
 _dll.openmc_material_get_volume.restype = c_int
 _dll.openmc_material_get_volume.errcheck = _error_handler
@@ -57,6 +60,12 @@ _dll.openmc_material_set_name.errcheck = _error_handler
 _dll.openmc_material_set_volume.argtypes = [c_int32, c_double]
 _dll.openmc_material_set_volume.restype = c_int
 _dll.openmc_material_set_volume.errcheck = _error_handler
+_dll.openmc_material_get_depletable.argtypes = [c_int32, POINTER(c_bool)]
+_dll.openmc_material_get_depletable.restype = c_int
+_dll.openmc_material_get_depletable.errcheck = _error_handler
+_dll.openmc_material_set_depletable.argtypes = [c_int32, c_bool]
+_dll.openmc_material_set_depletable.restype = c_int
+_dll.openmc_material_set_depletable.errcheck = _error_handler
 _dll.n_materials.argtypes = []
 _dll.n_materials.restype = c_size_t
 
@@ -71,7 +80,7 @@ class Material(_FortranObjectWithID):
     Parameters
     ----------
     uid : int or None
-        Unique ID of the tally
+        Unique ID of the material
     new : bool
         When `index` is None, this argument controls whether a new object is
         created or a view to an existing object is returned.
@@ -86,6 +95,14 @@ class Material(_FortranObjectWithID):
         List of nuclides in the material
     densities : numpy.ndarray
         Array of densities in atom/b-cm
+    depletable : bool
+        Whether this material is marked as depletable
+    name : str
+        Name of the material
+    temperature : float
+        Temperature of the material in [K]
+    volume : float
+        Volume of the material in [cm^3]
 
     """
     __instances = WeakValueDictionary()
@@ -142,6 +159,12 @@ class Material(_FortranObjectWithID):
         _dll.openmc_material_set_name(self._index, name_ptr)
 
     @property
+    def temperature(self):
+        temperature = c_double()
+        _dll.openmc_material_get_temperature(self._index, temperature)
+        return temperature.value
+
+    @property
     def volume(self):
         volume = c_double()
         try:
@@ -155,18 +178,18 @@ class Material(_FortranObjectWithID):
         _dll.openmc_material_set_volume(self._index, volume)
 
     @property
-    def nuclides(self):
-        return self._get_densities()[0]
-        return nuclides
+    def depletable(self):
+        depletable = c_bool()
+        _dll.openmc_material_get_depletable(self._index, depletable)
+        return depletable.value
+
+    @depletable.setter
+    def depletable(self, depletable):
+        _dll.openmc_material_set_depletable(self._index, depletable)
 
     @property
-    def density(self):
-      density = c_double()
-      try:
-          _dll.openmc_material_get_density(self._index, density)
-      except OpenMCError:
-          return None
-      return density.value
+    def nuclides(self):
+        return self._get_densities()[0]
 
     @property
     def densities(self):
@@ -208,6 +231,29 @@ class Material(_FortranObjectWithID):
 
         """
         _dll.openmc_material_add_nuclide(self._index, name.encode(), density)
+
+    def get_density(self, units='atom/b-cm'):
+        """Get density of a material.
+
+        Parameters
+        ----------
+        units : {'atom/b-cm', 'g/cm3'}
+            Units for density
+
+        Returns
+        -------
+        float
+            Density in requested units
+
+        """
+        if units == 'atom/b-cm':
+            return self.densities.sum()
+        elif units == 'g/cm3':
+            density = c_double()
+            _dll.openmc_material_get_density(self._index, density)
+            return density.value
+        else:
+            raise ValueError("Units must be 'atom/b-cm' or 'g/cm3'")
 
     def set_density(self, density, units='atom/b-cm'):
         """Set density of a material.

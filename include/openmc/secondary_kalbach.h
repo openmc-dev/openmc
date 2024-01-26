@@ -4,14 +4,13 @@
 #ifndef OPENMC_SECONDARY_KALBACH_H
 #define OPENMC_SECONDARY_KALBACH_H
 
-#include <vector>
-
 #include "hdf5.h"
 #include "xtensor/xtensor.hpp"
 
 #include "openmc/angle_energy.h"
 #include "openmc/constants.h"
 #include "openmc/endf.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -30,26 +29,27 @@ public:
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom seed pointer
-  void sample(double E_in, double& E_out, double& mu,
-    uint64_t* seed) const override;
+  void sample(
+    double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+
 private:
   //! Outgoing energy/angle at a single incoming energy
   struct KMTable {
-    int n_discrete; //!< Number of discrete lines
-    Interpolation interpolation; //!< Interpolation law
+    int n_discrete;               //!< Number of discrete lines
+    Interpolation interpolation;  //!< Interpolation law
     xt::xtensor<double, 1> e_out; //!< Outgoing energies [eV]
-    xt::xtensor<double, 1> p; //!< Probability density
-    xt::xtensor<double, 1> c; //!< Cumulative distribution
-    xt::xtensor<double, 1> r; //!< Pre-compound fraction
-    xt::xtensor<double, 1> a; //!< Parameterized function
+    xt::xtensor<double, 1> p;     //!< Probability density
+    xt::xtensor<double, 1> c;     //!< Cumulative distribution
+    xt::xtensor<double, 1> r;     //!< Pre-compound fraction
+    xt::xtensor<double, 1> a;     //!< Parameterized function
   };
 
-  int n_region_; //!< Number of interpolation regions
-  std::vector<int> breakpoints_; //!< Breakpoints between regions
-  std::vector<Interpolation> interpolation_; //!< Interpolation laws
-  std::vector<double> energy_; //!< Energies [eV] at which distributions
-                               //!< are tabulated
-  std::vector<KMTable> distribution_; //!< Distribution at each energy
+  int n_region_;                        //!< Number of interpolation regions
+  vector<int> breakpoints_;             //!< Breakpoints between regions
+  vector<Interpolation> interpolation_; //!< Interpolation laws
+  vector<double> energy_;        //!< Energies [eV] at which distributions
+                                 //!< are tabulated
+  vector<KMTable> distribution_; //!< Distribution at each energy
 };
 
 } // namespace openmc

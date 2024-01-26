@@ -1004,6 +1004,8 @@ direction of the incident charged particle, which is a reasonable approximation
 at higher energies when the bremsstrahlung radiation is emitted at small
 angles.
 
+.. _photon_production:
+
 -----------------
 Photon Production
 -----------------
@@ -1067,6 +1069,6 @@ emitted photon.
 
 .. _Kaltiaisenaho: https://aaltodoc.aalto.fi/bitstream/handle/123456789/21004/master_Kaltiaisenaho_Toni_2016.pdf
 
-.. _Salvat: http://www.oecd-nea.org/globalsearch/download.php?doc=77434
+.. _Salvat: https://www.oecd-nea.org/globalsearch/download.php?doc=77434
 
 .. _Sternheimer: https://doi.org/10.1103/PhysRevB.26.6067

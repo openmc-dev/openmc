@@ -1,4 +1,3 @@
-from collections import defaultdict
 from collections.abc import MutableSequence, Iterable
 import io
 
@@ -6,6 +5,7 @@ import numpy as np
 from numpy.polynomial import Polynomial
 import pandas as pd
 
+import openmc.checkvalue as cv
 from .data import NEUTRON_MASS
 from .endf import get_head_record, get_cont_record, get_tab1_record, get_list_record
 try:
@@ -14,10 +14,9 @@ try:
     _reconstruct = True
 except ImportError:
     _reconstruct = False
-import openmc.checkvalue as cv
 
 
-class Resonances(object):
+class Resonances:
     """Resolved and unresolved resonance data
 
     Parameters
@@ -47,6 +46,12 @@ class Resonances(object):
     def ranges(self):
         return self._ranges
 
+    @ranges.setter
+    def ranges(self, ranges):
+        cv.check_type('resonance ranges', ranges, MutableSequence)
+        self._ranges = cv.CheckedList(ResonanceRange, 'resonance ranges',
+                                      ranges)
+
     @property
     def resolved(self):
         resolved_ranges = [r for r in self.ranges
@@ -65,12 +70,6 @@ class Resonances(object):
                 return r
         else:
             return None
-
-    @ranges.setter
-    def ranges(self, ranges):
-        cv.check_type('resonance ranges', ranges, MutableSequence)
-        self._ranges = cv.CheckedList(ResonanceRange, 'resonance ranges',
-                                      ranges)
 
     @classmethod
     def from_endf(cls, ev):
@@ -94,9 +93,8 @@ class Resonances(object):
         n_isotope = items[4]  # Number of isotopes
 
         ranges = []
-        for iso in range(n_isotope):
+        for _ in range(n_isotope):
             items = get_cont_record(file_obj)
-            abundance = items[1]
             fission_widths = (items[3] == 1)  # fission widths are given?
             n_ranges = items[4]  # number of resonance energy ranges
 
@@ -119,7 +117,7 @@ class Resonances(object):
         return cls(ranges)
 
 
-class ResonanceRange(object):
+class ResonanceRange:
     """Resolved resonance range
 
     Parameters
@@ -425,14 +423,12 @@ class MultiLevelBreitWigner(ResonanceRange):
             # Determine penetration and shift corresponding to resonance energy
             k = wave_number(A, E)
             rho = k*self.channel_radius[l](E)
-            rhohat = k*self.scattering_radius[l](E)
             p[i], s[i] = penetration_shift(l, rho)
 
             # Determine penetration at modified energy for competitive reaction
             if gx > 0:
                 Ex = E + self.q_value[l]*(A + 1)/A
                 rho = k*self.channel_radius[l](Ex)
-                rhohat = k*self.scattering_radius[l](Ex)
                 px[i], sx[i] = penetration_shift(l, rho)
             else:
                 px[i] = sx[i] = 0.0
@@ -681,7 +677,6 @@ class ReichMoore(ResonanceRange):
             # Determine penetration and shift corresponding to resonance energy
             k = wave_number(A, E)
             rho = k*self.channel_radius[l](E)
-            rhohat = k*self.scattering_radius[l](E)
             p[i], s[i] = penetration_shift(l, rho)
 
         df['p'] = p
@@ -867,7 +862,7 @@ class RMatrixLimited(ResonanceRange):
         return rml
 
 
-class ParticlePair(object):
+class ParticlePair:
     def __init__(self, first, second, q_value, penetrability,
                  shift, mt):
         self.first = first
@@ -878,7 +873,7 @@ class ParticlePair(object):
         self.mt = mt
 
 
-class SpinGroup(object):
+class SpinGroup:
     """Resonance spin group
 
     Attributes

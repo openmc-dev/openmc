@@ -5,13 +5,13 @@ Basics of Using OpenMC
 ======================
 
 ----------------
-Creating a Model
+Running a Model
 ----------------
 
 When you build and install OpenMC, you will have an :ref:`scripts_openmc`
 executable on your system. When you run ``openmc``, the first thing it will do
 is look for a set of XML_ files that describe the model you want to
-simulation. Three of these files are required and another three are optional, as
+simulate. Three of these files are required and another three are optional, as
 described below.
 
 .. admonition:: Required
@@ -43,6 +43,10 @@ described below.
      This file gives specifications for producing slice or voxel plots of the
      geometry.
 
+.. warning::
+
+    OpenMC models should be treated as code, and it is important to be careful with code from untrusted sources.
+
 eXtensible Markup Language (XML)
 --------------------------------
 
@@ -71,10 +75,7 @@ person. The nested tags *firstname*, *lastname*, *age*, and *occupation*
 indicate characteristics about the person being described.
 
 In much the same way, OpenMC input uses XML tags to describe the geometry, the
-materials, and settings for a Monte Carlo simulation. Note that because the XML
-files have a well-defined structure, they can be validated using the
-:ref:`scripts_validate` script or using :ref:`Emacs nXML mode
-<usersguide_nxml>`.
+materials, and settings for a Monte Carlo simulation.
 
 Creating Input Files
 --------------------
@@ -82,12 +83,12 @@ Creating Input Files
 .. currentmodule:: openmc
 
 The most rudimentary option for creating input files is to simply write them
-from scratch using the :ref:`XML format specifications
-<io_file_formats_input>`. This approach will feel familiar to users of other
-Monte Carlo codes such as MCNP and Serpent, with the added bonus that the XML
-formats feel much more "readable". Alternatively, input files can be generated
-using OpenMC's :ref:`Python API <pythonapi>`, which is introduced in the
-following section.
+from scratch using the :ref:`XML format specifications <io_file_formats_input>`.
+This approach will feel familiar to users of other Monte Carlo codes such as
+MCNP and Serpent, with the added bonus that the XML formats feel much more
+"readable". However, it is strongly recommended to generate input files using
+OpenMC's :ref:`Python API <pythonapi>`, which is introduced in the following
+section.
 
 ----------
 Python API
@@ -177,14 +178,3 @@ energy  electronvolt eV
 time    second       s
 ======= ============ ======
 
-------------------------------------
-ERSN-OpenMC Graphical User Interface
-------------------------------------
-
-A third-party Java-based user-friendly graphical user interface for creating XML
-input files called ERSN-OpenMC_ is developed and maintained by members of the
-Radiation and Nuclear Systems Group at the Faculty of Sciences Tetouan, Morocco.
-The GUI also allows one to automatically download prerequisites for installing and
-running OpenMC.
-
-.. _ERSN-OpenMC: https://github.com/EL-Bakkali-Jaafar/ERSN-OpenMC

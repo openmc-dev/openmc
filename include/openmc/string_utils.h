@@ -2,7 +2,8 @@
 #define OPENMC_STRING_UTILS_H
 
 #include <string>
-#include <vector>
+
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -16,7 +17,7 @@ void to_lower(std::string& str);
 
 int word_count(std::string const& str);
 
-std::vector<std::string> split(const std::string& in);
+vector<std::string> split(const std::string& in);
 
 bool ends_with(const std::string& value, const std::string& ending);
 

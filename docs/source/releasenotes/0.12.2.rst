@@ -1,0 +1,57 @@
+====================
+What's New in 0.12.2
+====================
+
+.. currentmodule:: openmc
+
+-------
+Summary
+-------
+
+This release of OpenMC is primarily a hotfix release with numerous important bug
+fixes. Several tally-related enhancements have also been added.
+
+------------
+New Features
+------------
+
+Three tally-related enhancements were added to the code in this release:
+
+- A new :class:`~openmc.CollisionFilter` class that allows tallies to be filtered
+  by the number of collisions a particle has undergone.
+- A `translation` attribute has been added to :class:`~openmc.MeshFilter` that
+  allows a mesh to be translated from its original position before location
+  checks are performed.
+- The :class:`~openmc.UnstructuredMesh` class now supports libMesh unstructured
+  meshes to enable better ingration with MOOSE-based applications.
+
+---------
+Bug Fixes
+---------
+
+- `Reset particle coordinates during find cell operation <https://github.com/openmc-dev/openmc/pull/1809>`_
+- `Cover quadric edge case <https://github.com/openmc-dev/openmc/pull/1812>`_
+- `Prevent divide-by-zero in bins_crossed methods for meshes <https://github.com/openmc-dev/openmc/pull/1816>`_
+- `Fix for translational periodic boundary conditions <https://github.com/openmc-dev/openmc/pull/1820>`_
+- `Fix angle sampling in CorrelatedAngleEnergy <https://github.com/openmc-dev/openmc/pull/1821>`_
+- `Fix typo in fmt string for a lattice error <https://github.com/openmc-dev/openmc/pull/1824>`_
+- `Nu-fission tally and stochastic volume bug fixes <https://github.com/openmc-dev/openmc/pull/1828>`_
+- `Make sure failed neighbor list triggers exhaustic search <https://github.com/openmc-dev/openmc/pull/1830>`_
+- `Change element to element.title to catch lowercase entries <https://github.com/openmc-dev/openmc/pull/1839>`_
+- `Disallow non-current scores with a surface filter <https://github.com/openmc-dev/openmc/pull/1844>`_
+- `Depletion operator obeys Materials.cross_sections <https://github.com/openmc-dev/openmc/pull/1846>`_
+- `Fix for surface_bins_crossed override <https://github.com/openmc-dev/openmc/pull/1847>`_
+
+------------
+Contributors
+------------
+
+This release contains new contributions from the following people:
+
+- `Hunter Belanger <https://github.com/HunterBelanger>`_
+- `Isaac Griswold-Steiner <https://github.com/isaac-gs>`_
+- `Andrew Johnson <https://github.com/drewejohnson>`_
+- `Gavin Ridley <https://github.com/gridley>`_
+- `Paul Romano <https://github.com/paulromano>`_
+- `Patrick Shriwise <https://github.com/pshriwise>`_
+- `Jonathan Shimwell <https://github.com/Shimwell>`_

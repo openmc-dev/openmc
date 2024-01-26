@@ -22,8 +22,10 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib = openmc.mgxs.Library(self._model.geometry)
         self.mgxs_lib.by_nuclide = False
 
-        # Test all MGXS types
-        self.mgxs_lib.mgxs_types = openmc.mgxs.MGXS_TYPES + \
+        # Test all relevant MGXS types
+        relevant_MGXS_TYPES = [item for item in openmc.mgxs.MGXS_TYPES
+                               if item != 'current']
+        self.mgxs_lib.mgxs_types = tuple(relevant_MGXS_TYPES) + \
                                    openmc.mgxs.MDGXS_TYPES
         self.mgxs_lib.energy_groups = energy_groups
         self.mgxs_lib.num_delayed_groups = 6
@@ -66,8 +68,6 @@ class MGXSTestHarness(PyAPITestHarness):
         return outstr
 
 
-@pytest.mark.xfail(sys.version_info < (3, 6),
-                   reason="Pandas 1.0 API changed and requires Python 3.6+")
 def test_mgxs_library_distribcell():
     model = pwr_assembly()
     harness = MGXSTestHarness('statepoint.10.h5', model)

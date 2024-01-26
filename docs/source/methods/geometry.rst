@@ -118,7 +118,19 @@ to fully define the surface.
     +----------------------+------------+------------------------------+-------------------------+
     | General quadric      | quadric    | :math:`Ax^2 + By^2 + Cz^2 +  | :math:`A \; B \; C \; D |
     | surface              |            | Dxy + Eyz + Fxz + Gx + Hy +  | \; E \; F \; G \; H \;  |
-    |                      |            | Jz + K`                      | J \; K`                 |
+    |                      |            | Jz + K = 0`                  | J \; K`                 |
+    +----------------------+------------+------------------------------+-------------------------+
+    | Torus parallel to the| x-torus    | :math:`(x-x_0)^2/B^2+\frac{( | :math:`x_0 \; y_0 \;    |
+    | :math:`x`-axis       |            | \sqrt{(y-y_0)^2+(z-z_0)^2} - | z_0 \; A \; B \; C`     |
+    |                      |            | A)^2}{C^2} - 1 = 0`          |                         |
+    +----------------------+------------+------------------------------+-------------------------+
+    | Torus parallel to the| y-torus    | :math:`(y-y_0)^2/B^2+\frac{( | :math:`x_0 \; y_0 \;    |
+    | :math:`y`-axis       |            | \sqrt{(x-x_0)^2+(z-z_0)^2} - | z_0 \; A \; B \; C`     |
+    |                      |            | A)^2}{C^2} - 1 = 0`          |                         |
+    +----------------------+------------+------------------------------+-------------------------+
+    | Torus parallel to the| z-torus    | :math:`(z-z_0)^2/B^2+\frac{( | :math:`x_0 \; y_0 \;    |
+    | :math:`z`-axis       |            | \sqrt{(x-x_0)^2+(y-y_0)^2} - | z_0 \; A \; B \; C`     |
+    |                      |            | A)^2}{C^2} - 1 = 0`          |                         |
     +----------------------+------------+------------------------------+-------------------------+
 
 .. _universes:
@@ -437,6 +449,72 @@ Defining the terms
 we then have the simple quadratic equation :math:`ad^2 + 2kd + c = 0` which can
 be solved as described in :ref:`cylinder_distance`.
 
+Torus Parallel to an Axis
+-------------------------
+
+The equation for a torus parallel to, for example, the x-axis is
+
+.. math::
+    :label: dist-xtorus-sqrt
+
+    \frac{(x-x_0)^2}{B^2} + \frac{(\sqrt{(y-y_0)^2 + (z-z_0)^2} - A)^2}{C^2} -
+    1 = 0.
+
+First, it needs to be cast into a polynomial form. Rearranging terms,
+
+.. math::
+    :label: dist-xtorus-1
+
+     (D\bar{x}^2 + \bar{y}^2 + \bar{z}^2 + A^2 - C^2)^2 = 4A^2(\bar{y}^2 +
+     \bar{z}^2)
+
+where :math:`D = (C/B)^2`, :math:`\bar{x} = x - x_0`, :math:`\bar{y} = y - y_0`,
+and :math:`\bar{z} = z - z_0`. To find the distance to the surface, we thus need
+to solve
+
+.. math::
+    :label: dist-xtorus-2
+
+    (D(\bar{x} + du)^2 + (\bar{y} + dv)^2 + (\bar{z} + dw)^2 + A^2 - C^2)^2 =
+    4A^2((\bar{y} + dv)^2 + (\bar{z} + dw)^2).
+
+Expanding and collecting like powers of :math:`d` yields
+
+.. math::
+    :label: dist-xtorus-3
+
+    (c_2d^2 + c_1d + c_0)^2 = c_2'd^2 + c_1'd + c_0'
+
+where
+
+.. math::
+    :label: dist-xtorus-4
+
+    \begin{aligned}
+    c_2 &= Du^2 + v^2 + w^2 \\
+    c_1 &= 2(Du\bar{x} + v\bar{y} + w\bar{z}) \\
+    c_0 &= D\bar{x}^2 + \bar{y}^2 + \bar{z}^2 + A^2 - C^2 \\
+    c_2' &= 4A^2 (v^2 + w^2) \\
+    c_1' &= 8A^2 (v\bar{y} + w\bar{z}) \\
+    c_0' &= 4A^2(\bar{y}^2 + \bar{z}^2).
+    \end{aligned}
+
+Expanding the left-hand side and collecting like powers of :math:`d` on one
+side, we obtain
+
+.. math::
+    :label: dist-xtorus-5
+
+    (c_2^2)d^4 + (2c_1c_2)d^3 + (c_1^2 + 2c_0c_2 - c_2')d^2 + (2c_0c_1 - c_1')d
+    + (c_0^2 - c_0') = 0.
+
+The above equation is a fourth-order (quartic) polynomial equation. Although
+there is an analytical solution to the general quartic equation, it can be
+subject to roundoff errors when evaluated numerically. OpenMC uses an external
+`quartic equation solver <https://doi.org/10.1145/3386241>`_ developed by
+Orellana and De Michele that is based on the decomposition of the quartic
+polynomial into two quadratics.
+
 .. _find-cell:
 
 ----------------------------
@@ -637,16 +715,20 @@ unsuccessful, then a search is done over every cell in the base universe.
 Building Neighbor Lists
 -----------------------
 
-After the geometry has been loaded and stored in memory from an input file,
-OpenMC builds a list for each surface containing any cells that are bounded by
-that surface in order to speed up processing of surface crossings. The algorithm
-to build these lists is as follows. First, we loop over all cells in the
-geometry and count up how many times each surface appears in a specification as
-bounding a negative half-space and bounding a positive half-space. Two arrays
-are then allocated for each surface, one that lists each cell that contains the
-negative half-space of the surface and one that lists each cell that contains
-the positive half-space of the surface. Another loop is performed over all cells
-and the neighbor lists are populated for each surface.
+Neighbor lists are data structures that are used to accelerate geometry searches
+when a particle crosses a boundary. Namely, they are used to constrain the
+number of cells that must be searched in order to determine which cell a
+particle is crossing into. Earlier versions of OpenMC relied on "surface-based"
+neighbor lists, where the cells that are adjacent to each surface are stored in
+lists, one for each side of a surface. As of version 0.11, OpenMC switched to
+using "cell-based" neighbor lists. For each cell, a list of the adjacent cells
+is stored and then used to limit future searches. Unlike surface-based neighbor
+lists, cell-based neighbor lists cannot be computed prior to transport. Thus,
+cell-based neighbor lists in OpenMC grow dynamically as particles are
+transported through the geometry and cross surfaces. Special care must be taken
+to ensure that these dynamic neighbor lists are populated in a threadsafe
+manner. Full details of the implementation in OpenMC can be found in a paper by
+`Harper et al <https://doi.org/10.1080/00295639.2020.1719765>`_.
 
 .. _reflection:
 
@@ -895,6 +977,27 @@ Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0`. Thus, the gradient to the surface is
     \nabla f = \left ( \begin{array}{c} 2Ax + Dy + Fz + G \\ 2By + Dx + Ez + H
     \\ 2Cz + Ey + Fx + J \end{array} \right ).
 
+Torus Parallel to an Axis
+-------------------------
+
+A torus parallel to, for example, the x-axis has the form
+
+.. math::
+    :label: reflection-torus-1
+
+    f(x,y,z) = \frac{(x-x_0)^2}{B^2} + \frac{(\sqrt{(y-y_0)^2 + (z-z_0)^2} -
+    A)^2}{C^2} - 1.
+
+The gradient to the surface is therefore
+
+.. math::
+    :label: reflection-torus-grad
+
+    \nabla f = \left ( \begin{array}{c} 2\bar{x}/B^2 \\ 2\bar{y}(g - A)/(C^2g)
+    \\ 2\bar{z}(g - A)/(C^2g) \end{array} \right )
+
+where :math:`g = \sqrt{\bar{y}^2 + \bar{z}^2}` and, as always, :math:`\bar{x} =
+x - x_0`, :math:`\bar{y} = y - y_0`, and :math:`\bar{z} = z - z_0`.
 
 .. _white:
 
@@ -962,6 +1065,6 @@ surface is known as in :ref:`reflection`.
 
 .. _constructive solid geometry: https://en.wikipedia.org/wiki/Constructive_solid_geometry
 .. _surfaces: https://en.wikipedia.org/wiki/Surface
-.. _MCNP: http://mcnp.lanl.gov
+.. _MCNP: https://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi
 .. _Monte Carlo Performance benchmark: https://github.com/mit-crpg/benchmarks/tree/master/mc-performance/openmc

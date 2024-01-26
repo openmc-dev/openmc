@@ -1,10 +1,9 @@
 #ifndef OPENMC_TALLIES_FILTER_PARTICLE_H
 #define OPENMC_TALLIES_FILTER_PARTICLE_H
 
-#include <vector>
-
 #include "openmc/particle.h"
 #include "openmc/tallies/filter.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -12,8 +11,7 @@ namespace openmc {
 //! Bins by type of particle (e.g. neutron, photon).
 //==============================================================================
 
-class ParticleFilter : public Filter
-{
+class ParticleFilter : public Filter {
 public:
   //----------------------------------------------------------------------------
   // Constructors, destructors
@@ -23,12 +21,13 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override {return "particle";}
+  std::string type_str() const override { return "particle"; }
+  FilterType type() const override { return FilterType::PARTICLE; }
 
   void from_xml(pugi::xml_node node) override;
 
-  void get_all_bins(const Particle* p, TallyEstimator estimator, FilterMatch& match)
-  const override;
+  void get_all_bins(const Particle& p, TallyEstimator estimator,
+    FilterMatch& match) const override;
 
   void to_statepoint(hid_t filter_group) const override;
 
@@ -37,15 +36,15 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
-  const std::vector<Particle::Type>& particles() const { return particles_; }
+  const vector<ParticleType>& particles() const { return particles_; }
 
-  void set_particles(gsl::span<Particle::Type> particles);
+  void set_particles(gsl::span<ParticleType> particles);
 
 private:
   //----------------------------------------------------------------------------
   // Data members
 
-  std::vector<Particle::Type> particles_;
+  vector<ParticleType> particles_;
 };
 
 } // namespace openmc

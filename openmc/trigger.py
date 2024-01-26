@@ -1,13 +1,13 @@
-from numbers import Real
-from xml.etree import ElementTree as ET
-import sys
-import warnings
 from collections.abc import Iterable
+from numbers import Real
+
+import lxml.etree as ET
 
 import openmc.checkvalue as cv
+from .mixin import EqualityMixin
 
 
-class Trigger(object):
+class Trigger(EqualityMixin):
     """A criterion for when to finish a simulation based on tally uncertainties.
 
     Parameters
@@ -30,35 +30,21 @@ class Trigger(object):
 
     """
 
-    def __init__(self, trigger_type, threshold):
+    def __init__(self, trigger_type: str, threshold: float):
         self.trigger_type = trigger_type
         self.threshold = threshold
         self._scores = []
 
-    def __eq__(self, other):
-        return str(self) == str(other)
-
-    def __ne__(self, other):
-        return not self == other
-
     def __repr__(self):
         string = 'Trigger\n'
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._trigger_type)
-        string += '{0: <16}{1}{2}\n'.format('\tThreshold', '=\t', self._threshold)
-        string += '{0: <16}{1}{2}\n'.format('\tScores', '=\t', self._scores)
+        string += '{: <16}=\t{}\n'.format('\tType', self._trigger_type)
+        string += '{: <16}=\t{}\n'.format('\tThreshold', self._threshold)
+        string += '{: <16}=\t{}\n'.format('\tScores', self._scores)
         return string
 
     @property
     def trigger_type(self):
         return self._trigger_type
-
-    @property
-    def threshold(self):
-        return self._threshold
-
-    @property
-    def scores(self):
-        return self._scores
 
     @trigger_type.setter
     def trigger_type(self, trigger_type):
@@ -66,10 +52,18 @@ class Trigger(object):
                        ['variance', 'std_dev', 'rel_err'])
         self._trigger_type = trigger_type
 
+    @property
+    def threshold(self):
+        return self._threshold
+
     @threshold.setter
     def threshold(self, threshold):
         cv.check_type('tally trigger threshold', threshold, Real)
         self._threshold = threshold
+
+    @property
+    def scores(self):
+        return self._scores
 
     @scores.setter
     def scores(self, scores):
@@ -81,18 +75,46 @@ class Trigger(object):
             if score not in self._scores:
                 self._scores.append(score)
 
-    def get_trigger_xml(self, element):
+    def to_xml_element(self):
         """Return XML representation of the trigger
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing trigger data
 
         """
 
-        subelement = ET.SubElement(element, "trigger")
-        subelement.set("type", self._trigger_type)
-        subelement.set("threshold", str(self._threshold))
+        element = ET.Element("trigger")
+        element.set("type", self._trigger_type)
+        element.set("threshold", str(self._threshold))
         if len(self._scores) != 0:
-            subelement.set("scores", ' '.join(map(str, self._scores)))
+            element.set("scores", ' '.join(self._scores))
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem: ET.Element):
+        """Generate trigger object from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+
+        Returns
+        -------
+        openmc.Trigger
+            Trigger object
+
+        """
+        # Generate trigger object
+        trigger_type = elem.get("type")
+        threshold = float(elem.get("threshold"))
+        trigger = cls(trigger_type, threshold)
+
+        # Add scores if present
+        scores = elem.get("scores")
+        if scores is not None:
+            trigger.scores = scores.split()
+
+        return trigger

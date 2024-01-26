@@ -31,7 +31,7 @@ Each ``material`` element can have the following attributes or sub-elements:
 
   :name:
     An optional string name to identify the material in summary output
-    files. This string is limited to 52 characters for formatting purposes.
+    files.
 
     *Default*: ""
 

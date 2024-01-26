@@ -4,14 +4,14 @@
 #ifndef OPENMC_EIGENVALUE_H
 #define OPENMC_EIGENVALUE_H
 
-#include <array>
 #include <cstdint> // for int64_t
-#include <vector>
 
 #include "xtensor/xtensor.hpp"
 #include <hdf5.h>
 
+#include "openmc/array.h"
 #include "openmc/particle.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -22,8 +22,8 @@ namespace openmc {
 namespace simulation {
 
 extern double keff_generation; //!<  Single-generation k on each processor
-extern std::array<double, 2> k_sum; //!< Used to reduce sum and sum_sq
-extern std::vector<double> entropy; //!< Shannon entropy at each generation
+extern array<double, 2> k_sum; //!< Used to reduce sum and sum_sq
+extern vector<double> entropy; //!< Shannon entropy at each generation
 extern xt::xtensor<double, 1> source_frac; //!< Source fraction for UFS
 
 } // namespace simulation
@@ -69,7 +69,7 @@ void shannon_entropy();
 void ufs_count_sites();
 
 //! Get UFS weight corresponding to particle's location
-extern "C" double ufs_get_weight(const Particle* p);
+double ufs_get_weight(const Particle& p);
 
 //! Write data related to k-eigenvalue to statepoint
 //! \param[in] group HDF5 group

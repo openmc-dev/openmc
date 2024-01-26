@@ -21,7 +21,7 @@ nuclides or materials.
 
 The current version of the multi-group library file format is 1.0.
 
-.. _HDF5: http://www.hdfgroup.org/HDF5/
+.. _HDF5: https://www.hdfgroup.org/solutions/hdf5/
 
 .. _mgxs_lib_spec:
 

@@ -2,7 +2,7 @@
 #define OPENMC_CONTAINER_UTIL_H
 
 #include <algorithm> // for find
-#include <iterator> // for begin, end
+#include <iterator>  // for begin, end
 
 namespace openmc {
 
@@ -12,6 +12,6 @@ inline bool contains(const C& v, const T& x)
   return std::end(v) != std::find(std::begin(v), std::end(v), x);
 }
 
-}
+} // namespace openmc
 
 #endif // OPENMC_CONTAINER_UTIL_H

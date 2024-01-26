@@ -1,7 +1,7 @@
 #include "openmc/physics_common.h"
 
-#include "openmc/settings.h"
 #include "openmc/random_lcg.h"
+#include "openmc/settings.h"
 
 namespace openmc {
 
@@ -9,18 +9,13 @@ namespace openmc {
 // RUSSIAN_ROULETTE
 //==============================================================================
 
-void russian_roulette(Particle* p)
+void russian_roulette(Particle& p, double weight_survive)
 {
-  if (p->wgt_ < settings::weight_cutoff) {
-    if (prn(p->current_seed()) < p->wgt_ / settings::weight_survive) {
-      p->wgt_ = settings::weight_survive;
-      p->wgt_last_ = p->wgt_;
-    } else {
-      p->wgt_ = 0.;
-      p->wgt_last_ = 0.;
-      p->alive_ = false;
-    }
+  if (weight_survive * prn(p.current_seed()) < p.wgt()) {
+    p.wgt() = weight_survive;
+  } else {
+    p.wgt() = 0.;
   }
 }
 
-} //namespace openmc
+} // namespace openmc

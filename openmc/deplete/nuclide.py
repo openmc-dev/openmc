@@ -1,4 +1,4 @@
-"""Nuclide module.
+"""Nuclide module.xml.etree.Ele
 
 Contains the per-nuclide components of a depletion chain.
 """
@@ -8,14 +8,12 @@ from collections.abc import Mapping
 from collections import namedtuple, defaultdict
 from warnings import warn
 from numbers import Real
-try:
-    import lxml.etree as ET
-except ImportError:
-    import xml.etree.ElementTree as ET
 
-from numpy import empty
+import lxml.etree as ET
+import numpy as np
 
 from openmc.checkvalue import check_type
+from openmc.stats import Univariate
 
 __all__ = [
     "DecayTuple", "ReactionTuple", "Nuclide", "FissionYield",
@@ -30,8 +28,10 @@ Parameters
 ----------
 type : str
     Type of the decay mode, e.g., 'beta-'
-target : str
-    Nuclide resulting from decay
+target : str or None
+    Nuclide resulting from decay. A value of ``None`` implies the
+    target does not exist in the currently configured depletion
+    chain
 branching_ratio : float
     Branching ratio of the decay mode
 
@@ -53,8 +53,11 @@ Parameters
 ----------
 type : str
     Type of the reaction, e.g., 'fission'
-target : str
-    nuclide resulting from reaction
+target : str or None
+    Nuclide resulting from reaction. A value of ``None``
+    implies either no single target, e.g. from fission,
+    or that the target nuclide is not considered
+    in the current depletion chain
 Q : float
     Q value of the reaction in [eV]
 branching_ratio : float
@@ -70,13 +73,13 @@ except AttributeError:
     pass
 
 
-class Nuclide(object):
+class Nuclide:
     """Decay modes, reactions, and fission yields for a single nuclide.
 
     Parameters
     ----------
     name : str, optional
-        GND name of this nuclide, e.g. ``"He4"``, ``"Am242_m1"``
+        GNDS name of this nuclide, e.g. ``"He4"``, ``"Am242_m1"``
 
     Attributes
     ----------
@@ -96,6 +99,9 @@ class Nuclide(object):
     reactions : list of openmc.deplete.ReactionTuple
         Reaction information. Each element of the list is a named tuple with
         attribute 'type', 'target', 'Q', and 'branching_ratio'.
+    sources : dict
+        Dictionary mapping particle type as string to energy distribution of
+        decay source represented as :class:`openmc.stats.Univariate`
     yield_data : FissionYieldDistribution or None
         Fission product yields at tabulated energies for this nuclide. Can be
         treated as a nested dictionary ``{energy: {product: yield}}``
@@ -115,8 +121,15 @@ class Nuclide(object):
         # Reaction paths
         self.reactions = []
 
+        # Decay sources
+        self.sources = {}
+
         # Neutron fission yields, if present
         self._yield_data = None
+
+    def __repr__(self):
+        n_modes, n_rx = self.n_decay_modes, self.n_reaction_paths
+        return f"<Nuclide: {self.name} ({n_modes} modes, {n_rx} reactions)>"
 
     @property
     def n_decay_modes(self):
@@ -149,14 +162,58 @@ class Nuclide(object):
             return None
         return self.yield_data.energies
 
+    def add_decay_mode(self, type, target, branching_ratio):
+        """Add decay mode to the nuclide
+
+        Parameters
+        ----------
+        type : str
+            Type of the decay mode, e.g., 'beta-'
+        target : str or None
+            Nuclide resulting from decay. A value of ``None`` implies the
+            target does not exist in the currently configured depletion
+            chain
+        branching_ratio : float
+            Branching ratio of the decay mode
+
+        """
+        self.decay_modes.append(
+            DecayTuple(type, target, branching_ratio)
+        )
+
+    def add_reaction(self, type, target, Q, branching_ratio):
+        """Add transmutation reaction to the nuclide
+
+        Parameters
+        ----------
+        type : str
+            Type of the reaction, e.g., 'fission'
+        target : str or None
+            Nuclide resulting from reaction. A value of ``None``
+            implies either no single target, e.g. from fission,
+            or that the target nuclide is not considered
+            in the current depletion chain
+        Q : float
+            Q value of the reaction in [eV]
+        branching_ratio : float
+            Branching ratio of the reaction
+
+        """
+        self.reactions.append(
+            ReactionTuple(type, target, Q, branching_ratio)
+        )
+
     @classmethod
-    def from_xml(cls, element, fission_q=None):
+    def from_xml(cls, element, root=None, fission_q=None):
         """Read nuclide from an XML element.
 
         Parameters
         ----------
-        element : xml.etree.ElementTree.Element
-            XML element to write nuclide data to
+        element : lxml.etree._Element
+            XML element to read nuclide data from
+        root : lxml.etree._Element, optional
+            Root XML element for chain file (only used when fission product
+            yields are borrowed from another parent)
         fission_q : None or float
             User-supplied fission Q value [eV].
             Will be read from the element if not given
@@ -179,8 +236,16 @@ class Nuclide(object):
         for decay_elem in element.iter('decay'):
             d_type = decay_elem.get('type')
             target = decay_elem.get('target')
+            if target is not None and target.lower() == "nothing":
+                target = None
             branching_ratio = float(decay_elem.get('branching_ratio'))
             nuc.decay_modes.append(DecayTuple(d_type, target, branching_ratio))
+
+        # Check for sources
+        for src_elem in element.iter('source'):
+            particle = src_elem.get('particle')
+            distribution = Univariate.from_xml_element(src_elem)
+            nuc.sources[particle] = distribution
 
         # Check for reaction paths
         for reaction_elem in element.iter('reaction'):
@@ -192,6 +257,8 @@ class Nuclide(object):
             # just set null values
             if r_type != 'fission':
                 target = reaction_elem.get('target')
+                if target is not None and target.lower() == "nothing":
+                    target = None
             else:
                 target = None
                 if fission_q is not None:
@@ -203,6 +270,21 @@ class Nuclide(object):
 
         fpy_elem = element.find('neutron_fission_yields')
         if fpy_elem is not None:
+            # Check for use of FPY from other nuclide
+            parent = fpy_elem.get('parent')
+            if parent is not None:
+                assert root is not None
+                fpy_elem = root.find(
+                    './/nuclide[@name="{}"]/neutron_fission_yields'.format(parent)
+                )
+                if fpy_elem is None:
+                    raise ValueError(
+                        "Fission product yields for {0} borrow from {1}, but {1} is"
+                        " not present in the chain file or has no yields.".format(
+                            nuc.name, parent
+                        ))
+                nuc._fpy = parent
+
             nuc.yield_data = FissionYieldDistribution.from_xml_element(fpy_elem)
 
         return nuc
@@ -212,7 +294,7 @@ class Nuclide(object):
 
         Returns
         -------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element to write nuclide data to
 
         """
@@ -223,27 +305,40 @@ class Nuclide(object):
             elem.set('half_life', str(self.half_life))
             elem.set('decay_modes', str(len(self.decay_modes)))
             elem.set('decay_energy', str(self.decay_energy))
-            for mode, daughter, br in self.decay_modes:
+            for mode_type, daughter, br in self.decay_modes:
                 mode_elem = ET.SubElement(elem, 'decay')
-                mode_elem.set('type', mode)
-                mode_elem.set('target', daughter)
+                mode_elem.set('type', mode_type)
+                if daughter:
+                    mode_elem.set('target', daughter)
                 mode_elem.set('branching_ratio', str(br))
+
+        # Write decay sources
+        if self.sources:
+            for particle, source in self.sources.items():
+                src_elem = source.to_xml_element('source')
+                src_elem.set('particle', particle)
+                elem.append(src_elem)
 
         elem.set('reactions', str(len(self.reactions)))
         for rx, daughter, Q, br in self.reactions:
             rx_elem = ET.SubElement(elem, 'reaction')
             rx_elem.set('type', rx)
             rx_elem.set('Q', str(Q))
-            if rx != 'fission':
+            if daughter is not None:
                 rx_elem.set('target', daughter)
             if br != 1.0:
                 rx_elem.set('branching_ratio', str(br))
 
         if self.yield_data:
             fpy_elem = ET.SubElement(elem, 'neutron_fission_yields')
-            energy_elem = ET.SubElement(fpy_elem, 'energies')
-            energy_elem.text = ' '.join(str(E) for E in self.yield_energies)
-            self.yield_data.to_xml_element(fpy_elem)
+
+            if hasattr(self, '_fpy'):
+                # Check for link to other nuclide data
+                fpy_elem.set('parent', self._fpy)
+            else:
+                energy_elem = ET.SubElement(fpy_elem, 'energies')
+                energy_elem.text = ' '.join(str(E) for E in self.yield_energies)
+                self.yield_data.to_xml_element(fpy_elem)
 
         return elem
 
@@ -392,14 +487,12 @@ class FissionYieldDistribution(Mapping):
         shared_prod = set.union(*(set(x) for x in fission_yields.values()))
         ordered_prod = sorted(shared_prod)
 
-        yield_matrix = empty((len(energies), len(shared_prod)))
+        yield_matrix = np.empty((len(energies), len(shared_prod)))
 
         for g_index, energy in enumerate(energies):
             prod_map = fission_yields[energy]
             for prod_ix, product in enumerate(ordered_prod):
-                yield_val = prod_map.get(product)
-                yield_matrix[g_index, prod_ix] = (
-                    0.0 if yield_val is None else yield_val)
+                yield_matrix[g_index, prod_ix] = prod_map.get(product, 0.0)
         self.energies = tuple(energies)
         self.products = tuple(ordered_prod)
         self.yield_matrix = yield_matrix
@@ -427,7 +520,7 @@ class FissionYieldDistribution(Mapping):
 
         Parameters
         ----------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element to pull fission yield data from
 
         Returns
@@ -435,7 +528,7 @@ class FissionYieldDistribution(Mapping):
         FissionYieldDistribution
         """
         all_yields = {}
-        for elem_index, yield_elem in enumerate(element.iter("fission_yields")):
+        for yield_elem in element.iter("fission_yields"):
             energy = float(yield_elem.get("energy"))
             products = yield_elem.find("products").text.split()
             yields = map(float, yield_elem.find("data").text.split())
@@ -449,7 +542,7 @@ class FissionYieldDistribution(Mapping):
 
         Parameters
         ----------
-        root : xml.etree.ElementTree.Element
+        root : lxml.etree._Element
             Element to write distribution data to
         """
         for energy, yield_obj in self.items():
@@ -459,6 +552,39 @@ class FissionYieldDistribution(Mapping):
             product_elem.text = " ".join(map(str, yield_obj.products))
             data_elem = ET.SubElement(yield_element, "data")
             data_elem.text = " ".join(map(str, yield_obj.yields))
+
+    def restrict_products(self, possible_products):
+        """Return a new distribution with select products
+
+        .. versionadded:: 0.12
+
+        Parameters
+        ----------
+        possible_products : iterable of str
+            Candidate pool of fission products. Existing products
+            not contained here will not exist in the new instance
+
+        Returns
+        -------
+        FissionYieldDistribution or None
+            A value of None indicates no values in
+            ``possible_products`` exist in :attr:`products`
+
+        """
+
+        overlap = set(self.products).intersection(possible_products)
+        if not overlap:
+            return None
+
+        products = sorted(overlap)
+        indices = np.searchsorted(self.products, products)
+
+        # coerce back to dictionary to pass back to __init__
+        new_yields = {}
+        for ene, yields in zip(self.energies, self.yield_matrix.copy()):
+            new_yields[ene] = dict(zip(products, yields[indices]))
+
+        return type(self)(new_yields)
 
 
 class FissionYield(Mapping):
@@ -571,6 +697,11 @@ class FissionYield(Mapping):
     def __repr__(self):
         return "<{} containing {} products and yields>".format(
             self.__class__.__name__, len(self))
+
+    def __deepcopy__(self, memo):
+        result = FissionYield(self.products, self.yields.copy())
+        memo[id(self)] = result
+        return result
 
     # Avoid greedy numpy operations like np.float64 * fission_yield
     # converting this to an array on the fly. Force __rmul__ and

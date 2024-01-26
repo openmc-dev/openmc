@@ -1,11 +1,10 @@
 #ifndef OPENMC_TALLIES_FILTER_MU_H
 #define OPENMC_TALLIES_FILTER_MU_H
 
-#include <vector>
-
-#include <gsl/gsl>
+#include <gsl/gsl-lite.hpp>
 
 #include "openmc/tallies/filter.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -14,8 +13,7 @@ namespace openmc {
 //! reactions.
 //==============================================================================
 
-class MuFilter : public Filter
-{
+class MuFilter : public Filter {
 public:
   //----------------------------------------------------------------------------
   // Constructors, destructors
@@ -25,12 +23,13 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override {return "mu";}
+  std::string type_str() const override { return "mu"; }
+  FilterType type() const override { return FilterType::MU; }
 
   void from_xml(pugi::xml_node node) override;
 
-  void get_all_bins(const Particle* p, TallyEstimator estimator, FilterMatch& match)
-  const override;
+  void get_all_bins(const Particle& p, TallyEstimator estimator,
+    FilterMatch& match) const override;
 
   void to_statepoint(hid_t filter_group) const override;
 
@@ -45,7 +44,7 @@ private:
   //----------------------------------------------------------------------------
   // Data members
 
-  std::vector<double> bins_;
+  vector<double> bins_;
 };
 
 } // namespace openmc

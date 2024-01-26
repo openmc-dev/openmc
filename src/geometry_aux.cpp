@@ -1,6 +1,6 @@
 #include "openmc/geometry_aux.h"
 
-#include <algorithm>  // for std::max
+#include <algorithm> // for std::max
 #include <sstream>
 #include <unordered_set>
 
@@ -22,17 +22,17 @@
 #include "openmc/tallies/filter_cell_instance.h"
 #include "openmc/tallies/filter_distribcell.h"
 
-
 namespace openmc {
 
 namespace model {
-  std::unordered_map<int32_t, std::unordered_map<int32_t, int32_t>> universe_cell_counts;
-  std::unordered_map<int32_t, int32_t> universe_level_counts;
+std::unordered_map<int32_t, std::unordered_map<int32_t, int32_t>>
+  universe_cell_counts;
+std::unordered_map<int32_t, int32_t> universe_level_counts;
 } // namespace model
 
-
 // adds the cell counts of universe b to universe a
-void update_universe_cell_count(int32_t a, int32_t b) {
+void update_universe_cell_count(int32_t a, int32_t b)
+{
   auto& universe_a_counts = model::universe_cell_counts[a];
   const auto& universe_b_counts = model::universe_cell_counts[b];
   for (const auto& it : universe_b_counts) {
@@ -42,13 +42,6 @@ void update_universe_cell_count(int32_t a, int32_t b) {
 
 void read_geometry_xml()
 {
-#ifdef DAGMC
-  if (settings::dagmc) {
-    read_geometry_dagmc();
-    return;
-  }
-#endif
-
   // Display output message
   write_message("Reading geometry XML file...", 5);
 
@@ -68,19 +61,41 @@ void read_geometry_xml()
   // Get root element
   pugi::xml_node root = doc.document_element();
 
+  read_geometry_xml(root);
+}
+
+void read_geometry_xml(pugi::xml_node root)
+{
   // Read surfaces, cells, lattice
   read_surfaces(root);
   read_cells(root);
   read_lattices(root);
 
+  // Check to make sure a boundary condition was applied to at least one
+  // surface
+  bool boundary_exists = false;
+  for (const auto& surf : model::surfaces) {
+    if (surf->bc_) {
+      boundary_exists = true;
+      break;
+    }
+  }
+
+  if (settings::run_mode != RunMode::PLOTTING &&
+      settings::run_mode != RunMode::VOLUME && !boundary_exists) {
+    fatal_error("No boundary conditions were applied to any surfaces!");
+  }
+
   // Allocate universes, universe cell arrays, and assign base universe
   model::root_universe = find_root_universe();
+
+  // if the root universe is DAGMC geometry, make sure the model is well-formed
+  check_dagmc_root_univ();
 }
 
 //==============================================================================
 
-void
-adjust_indices()
+void adjust_indices()
 {
   // Adjust material/fill idices.
   for (auto& c : model::cells) {
@@ -96,7 +111,8 @@ adjust_indices()
         c->fill_ = search_lat->second;
       } else {
         fatal_error(fmt::format("Specified fill {} on cell {} is neither a "
-          "universe nor a lattice.", id, c->id_));
+                                "universe nor a lattice.",
+          id, c->id_));
       }
     } else {
       c->type_ = Fill::MATERIAL;
@@ -104,9 +120,9 @@ adjust_indices()
         if (mat_id != MATERIAL_VOID) {
           auto search = model::material_map.find(mat_id);
           if (search == model::material_map.end()) {
-            fatal_error(fmt::format(
-              "Could not find material {} specified on cell {}",
-              mat_id, c->id_));
+            fatal_error(
+              fmt::format("Could not find material {} specified on cell {}",
+                mat_id, c->id_));
           }
           // Change from ID to index
           mat_id = search->second;
@@ -135,8 +151,7 @@ adjust_indices()
 //==============================================================================
 //! Partition some universes with many z-planes for faster find_cell searches.
 
-void
-partition_universes()
+void partition_universes()
 {
   // Iterate over universes with more than 10 cells.  (Fewer than 10 is likely
   // not worth partitioning.)
@@ -145,8 +160,8 @@ partition_universes()
       // Collect the set of surfaces in this universe.
       std::unordered_set<int32_t> surf_inds;
       for (auto i_cell : univ->cells_) {
-        for (auto token : model::cells[i_cell]->rpn_) {
-          if (token < OP_UNION) surf_inds.insert(std::abs(token) - 1);
+        for (auto token : model::cells[i_cell]->surfaces()) {
+          surf_inds.insert(std::abs(token) - 1);
         }
       }
 
@@ -157,7 +172,7 @@ partition_universes()
         if (dynamic_cast<const SurfaceZPlane*>(model::surfaces[i_surf].get())) {
           ++n_zplanes;
           if (n_zplanes > 5) {
-            univ->partitioner_ = std::make_unique<UniversePartitioner>(*univ);
+            univ->partitioner_ = make_unique<UniversePartitioner>(*univ);
             break;
           }
         }
@@ -168,30 +183,23 @@ partition_universes()
 
 //==============================================================================
 
-void
-assign_temperatures()
+void assign_temperatures()
 {
   for (auto& c : model::cells) {
     // Ignore non-material cells and cells with defined temperature.
-    if (c->material_.size() == 0) continue;
-    if (c->sqrtkT_.size() > 0) continue;
+    if (c->material_.size() == 0)
+      continue;
+    if (c->sqrtkT_.size() > 0)
+      continue;
 
     c->sqrtkT_.reserve(c->material_.size());
     for (auto i_mat : c->material_) {
       if (i_mat == MATERIAL_VOID) {
         // Set void region to 0K.
         c->sqrtkT_.push_back(0);
-
       } else {
-        if (model::materials[i_mat]->temperature_ >= 0) {
-          // This material has a default temperature; use that value.
-          auto T = model::materials[i_mat]->temperature_;
-          c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * T));
-        } else {
-          // Use the global default temperature.
-          c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN *
-            settings::temperature_default));
-        }
+        const auto& mat {model::materials[i_mat]};
+        c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * mat->temperature()));
       }
     }
   }
@@ -199,30 +207,31 @@ assign_temperatures()
 
 //==============================================================================
 
-void
-get_temperatures(std::vector<std::vector<double>>& nuc_temps,
-  std::vector<std::vector<double>>& thermal_temps)
+void get_temperatures(
+  vector<vector<double>>& nuc_temps, vector<vector<double>>& thermal_temps)
 {
   for (const auto& cell : model::cells) {
     // Skip non-material cells.
-    if (cell->fill_ != C_NONE) continue;
+    if (cell->fill_ != C_NONE)
+      continue;
 
     for (int j = 0; j < cell->material_.size(); ++j) {
       // Skip void materials
       int i_material = cell->material_[j];
-      if (i_material == MATERIAL_VOID) continue;
+      if (i_material == MATERIAL_VOID)
+        continue;
 
       // Get temperature(s) of cell (rounding to nearest integer)
-      std::vector<double> cell_temps;
+      vector<double> cell_temps;
       if (cell->sqrtkT_.size() == 1) {
         double sqrtkT = cell->sqrtkT_[0];
-        cell_temps.push_back(sqrtkT*sqrtkT / K_BOLTZMANN);
+        cell_temps.push_back(sqrtkT * sqrtkT / K_BOLTZMANN);
       } else if (cell->sqrtkT_.size() == cell->material_.size()) {
         double sqrtkT = cell->sqrtkT_[j];
-        cell_temps.push_back(sqrtkT*sqrtkT / K_BOLTZMANN);
+        cell_temps.push_back(sqrtkT * sqrtkT / K_BOLTZMANN);
       } else {
         for (double sqrtkT : cell->sqrtkT_)
-          cell_temps.push_back(sqrtkT*sqrtkT / K_BOLTZMANN);
+          cell_temps.push_back(sqrtkT * sqrtkT / K_BOLTZMANN);
       }
 
       const auto& mat {model::materials[i_material]};
@@ -250,8 +259,7 @@ get_temperatures(std::vector<std::vector<double>>& nuc_temps,
 
 //==============================================================================
 
-void finalize_geometry(std::vector<std::vector<double>>& nuc_temps,
-  std::vector<std::vector<double>>& thermal_temps)
+void finalize_geometry()
 {
   // Perform some final operations to set up the geometry
   adjust_indices();
@@ -261,17 +269,13 @@ void finalize_geometry(std::vector<std::vector<double>>& nuc_temps,
   // Assign temperatures to cells that don't have temperatures already assigned
   assign_temperatures();
 
-  // Determine desired temperatures for each nuclide and S(a,b) table
-  get_temperatures(nuc_temps, thermal_temps);
-
   // Determine number of nested coordinate levels in the geometry
   model::n_coord_levels = maximum_levels(model::root_universe);
 }
 
 //==============================================================================
 
-int32_t
-find_root_universe()
+int32_t find_root_universe()
 {
   // Find all the universes listed as a cell fill.
   std::unordered_set<int32_t> fill_univ_ids;
@@ -305,32 +309,44 @@ find_root_universe()
       }
     }
   }
-  if (!root_found) fatal_error("Could not find a root universe.  Make sure "
-       "there are no circular dependencies in the geometry.");
+  if (!root_found)
+    fatal_error("Could not find a root universe.  Make sure "
+                "there are no circular dependencies in the geometry.");
 
   return root_univ;
 }
 
 //==============================================================================
 
-void
-prepare_distribcell()
+void prepare_distribcell(const std::vector<int32_t>* user_distribcells)
 {
   write_message("Preparing distributed cell instances...", 5);
 
-  // Find all cells listed in a DistribcellFilter or CellInstanceFilter
   std::unordered_set<int32_t> distribcells;
+
+  // start with any cells manually specified via the C++ API
+  if (user_distribcells) {
+    distribcells.insert(user_distribcells->begin(), user_distribcells->end());
+  }
+
+  // Find all cells listed in a DistribcellFilter or CellInstanceFilter
   for (auto& filt : model::tally_filters) {
     auto* distrib_filt = dynamic_cast<DistribcellFilter*>(filt.get());
+    auto* cell_inst_filt = dynamic_cast<CellInstanceFilter*>(filt.get());
     if (distrib_filt) {
       distribcells.insert(distrib_filt->cell());
+    }
+    if (cell_inst_filt) {
+      const auto& filter_cells = cell_inst_filt->cells();
+      distribcells.insert(filter_cells.begin(), filter_cells.end());
     }
   }
 
   // By default, add material cells to the list of distributed cells
   if (settings::material_cell_offsets) {
     for (gsl::index i = 0; i < model::cells.size(); ++i) {
-      if (model::cells[i]->type_ == Fill::MATERIAL) distribcells.insert(i);
+      if (model::cells[i]->type_ == Fill::MATERIAL)
+        distribcells.insert(i);
     }
   }
 
@@ -344,8 +360,8 @@ prepare_distribcell()
         fatal_error(fmt::format(
           "Cell {} was specified with {} materials but has {} distributed "
           "instances. The number of materials must equal one or the number "
-          "of instances.", c.id_, c.material_.size(), c.n_instances_
-        ));
+          "of instances.",
+          c.id_, c.material_.size(), c.n_instances_));
       }
     }
 
@@ -354,8 +370,8 @@ prepare_distribcell()
         fatal_error(fmt::format(
           "Cell {} was specified with {} temperatures but has {} distributed "
           "instances. The number of temperatures must equal one or the number "
-          "of instances.", c.id_, c.sqrtkT_.size(), c.n_instances_
-        ));
+          "of instances.",
+          c.id_, c.sqrtkT_.size(), c.n_instances_));
       }
     }
   }
@@ -363,7 +379,7 @@ prepare_distribcell()
   // Search through universes for material cells and assign each one a
   // unique distribcell array index.
   int distribcell_index = 0;
-  std::vector<int32_t> target_univ_ids;
+  vector<int32_t> target_univ_ids;
   for (const auto& u : model::universes) {
     for (auto idx : u->cells_) {
       if (distribcells.find(idx) != distribcells.end()) {
@@ -384,8 +400,8 @@ prepare_distribcell()
     lat->allocate_offset_table(n_maps);
   }
 
-  // Fill the cell and lattice offset tables.
-  #pragma omp parallel for
+// Fill the cell and lattice offset tables.
+#pragma omp parallel for
   for (int map = 0; map < target_univ_ids.size(); map++) {
     auto target_univ_id = target_univ_ids[map];
     std::unordered_map<int32_t, int32_t> univ_count_memo;
@@ -397,13 +413,14 @@ prepare_distribcell()
         if (c.type_ == Fill::UNIVERSE) {
           c.offset_[map] = offset;
           int32_t search_univ = c.fill_;
-          offset += count_universe_instances(search_univ, target_univ_id,
-                                             univ_count_memo);
+          offset += count_universe_instances(
+            search_univ, target_univ_id, univ_count_memo);
 
         } else if (c.type_ == Fill::LATTICE) {
+          c.offset_[map] = offset;
           Lattice& lat = *model::lattices[c.fill_];
-          offset = lat.fill_offset_table(offset, target_univ_id, map,
-                                         univ_count_memo);
+          offset +=
+            lat.fill_offset_table(offset, target_univ_id, map, univ_count_memo);
         }
       }
     }
@@ -412,8 +429,7 @@ prepare_distribcell()
 
 //==============================================================================
 
-void
-count_cell_instances(int32_t univ_indx)
+void count_cell_instances(int32_t univ_indx)
 {
   const auto univ_counts = model::universe_cell_counts.find(univ_indx);
   if (univ_counts != model::universe_cell_counts.end()) {
@@ -444,8 +460,7 @@ count_cell_instances(int32_t univ_indx)
 
 //==============================================================================
 
-int
-count_universe_instances(int32_t search_univ, int32_t target_univ_id,
+int count_universe_instances(int32_t search_univ, int32_t target_univ_id,
   std::unordered_map<int32_t, int32_t>& univ_count_memo)
 {
   // If this is the target, it can't contain itself.
@@ -465,15 +480,15 @@ count_universe_instances(int32_t search_univ, int32_t target_univ_id,
 
     if (c.type_ == Fill::UNIVERSE) {
       int32_t next_univ = c.fill_;
-      count += count_universe_instances(next_univ, target_univ_id,
-                                        univ_count_memo);
+      count +=
+        count_universe_instances(next_univ, target_univ_id, univ_count_memo);
 
     } else if (c.type_ == Fill::LATTICE) {
       Lattice& lat = *model::lattices[c.fill_];
       for (auto it = lat.begin(); it != lat.end(); ++it) {
         int32_t next_univ = *it;
-        count += count_universe_instances(next_univ, target_univ_id,
-                                          univ_count_memo);
+        count +=
+          count_universe_instances(next_univ, target_univ_id, univ_count_memo);
       }
     }
   }
@@ -486,9 +501,8 @@ count_universe_instances(int32_t search_univ, int32_t target_univ_id,
 
 //==============================================================================
 
-std::string
-distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
-                       const Universe& search_univ, int32_t offset)
+std::string distribcell_path_inner(int32_t target_cell, int32_t map,
+  int32_t target_offset, const Universe& search_univ, int32_t offset)
 {
   std::stringstream path;
 
@@ -507,8 +521,8 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
   // The target must be further down the geometry tree and contained in a fill
   // cell or lattice cell in this universe.  Find which cell contains the
   // target.
-  std::vector<std::int32_t>::const_reverse_iterator cell_it
-       {search_univ.cells_.crbegin()};
+  vector<std::int32_t>::const_reverse_iterator cell_it {
+    search_univ.cells_.crbegin()};
   for (; cell_it != search_univ.cells_.crend(); ++cell_it) {
     Cell& c = *model::cells[*cell_it];
 
@@ -519,14 +533,24 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
         temp_offset = offset + c.offset_[map];
       } else {
         Lattice& lat = *model::lattices[c.fill_];
-        int32_t indx = lat.universes_.size()*map + lat.begin().indx_;
+        int32_t indx = lat.universes_.size() * map + lat.begin().indx_;
         temp_offset = offset + lat.offsets_[indx];
       }
 
       // The desired cell is the first cell that gives an offset smaller or
       // equal to the target offset.
-      if (temp_offset <= target_offset) break;
+      if (temp_offset <= target_offset)
+        break;
     }
+  }
+
+  // if we get through the loop without finding an appropriate entry, throw
+  // an error
+  if (cell_it == search_univ.cells_.crend()) {
+    fatal_error(
+      fmt::format("Failed to generate a text label for distribcell with ID {}."
+                  "The current label is: '{}'",
+        model::cells[target_cell]->id_, path.str()));
   }
 
   // Add the cell to the path string.
@@ -536,30 +560,30 @@ distribcell_path_inner(int32_t target_cell, int32_t map, int32_t target_offset,
   if (c.type_ == Fill::UNIVERSE) {
     // Recurse into the fill cell.
     offset += c.offset_[map];
-    path << distribcell_path_inner(target_cell, map, target_offset,
-                                   *model::universes[c.fill_], offset);
+    path << distribcell_path_inner(
+      target_cell, map, target_offset, *model::universes[c.fill_], offset);
     return path.str();
   } else {
     // Recurse into the lattice cell.
     Lattice& lat = *model::lattices[c.fill_];
     path << "l" << lat.id_;
     for (ReverseLatticeIter it = lat.rbegin(); it != lat.rend(); ++it) {
-      int32_t indx = lat.universes_.size()*map + it.indx_;
+      int32_t indx = lat.universes_.size() * map + it.indx_;
       int32_t temp_offset = offset + lat.offsets_[indx];
       if (temp_offset <= target_offset) {
         offset = temp_offset;
         path << "(" << lat.index_to_string(it.indx_) << ")->";
-        path << distribcell_path_inner(target_cell, map, target_offset,
-                                       *model::universes[*it], offset);
+        path << distribcell_path_inner(
+          target_cell, map, target_offset, *model::universes[*it], offset);
         return path.str();
       }
     }
-    throw std::runtime_error{"Error determining distribcell path."};
+    throw std::runtime_error {"Error determining distribcell path."};
   }
 }
 
-std::string
-distribcell_path(int32_t target_cell, int32_t map, int32_t target_offset)
+std::string distribcell_path(
+  int32_t target_cell, int32_t map, int32_t target_offset)
 {
   auto& root_univ = *model::universes[model::root_universe];
   return distribcell_path_inner(target_cell, map, target_offset, root_univ, 0);
@@ -567,8 +591,7 @@ distribcell_path(int32_t target_cell, int32_t map, int32_t target_offset)
 
 //==============================================================================
 
-int
-maximum_levels(int32_t univ)
+int maximum_levels(int32_t univ)
 {
 
   const auto level_count = model::universe_level_counts.find(univ);
@@ -597,10 +620,14 @@ maximum_levels(int32_t univ)
   return levels_below;
 }
 
+bool is_root_universe(int32_t univ_id)
+{
+  return model::universe_map[univ_id] == model::root_universe;
+}
+
 //==============================================================================
 
-void
-free_memory_geometry()
+void free_memory_geometry()
 {
   model::cells.clear();
   model::cell_map.clear();

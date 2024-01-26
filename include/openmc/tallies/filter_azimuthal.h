@@ -1,10 +1,10 @@
 #ifndef OPENMC_TALLIES_FILTER_AZIMUTHAL_H
 #define OPENMC_TALLIES_FILTER_AZIMUTHAL_H
 
+#include "openmc/vector.h"
 #include <string>
-#include <vector>
 
-#include <gsl/gsl>
+#include <gsl/gsl-lite.hpp>
 
 #include "openmc/tallies/filter.h"
 
@@ -14,8 +14,7 @@ namespace openmc {
 //! Bins the incident neutron azimuthal angle (relative to the global xy-plane).
 //==============================================================================
 
-class AzimuthalFilter : public Filter
-{
+class AzimuthalFilter : public Filter {
 public:
   //----------------------------------------------------------------------------
   // Constructors, destructors
@@ -25,12 +24,13 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override {return "azimuthal";}
+  std::string type_str() const override { return "azimuthal"; }
+  FilterType type() const override { return FilterType::AZIMUTHAL; }
 
   void from_xml(pugi::xml_node node) override;
 
-  void get_all_bins(const Particle* p, TallyEstimator estimator, FilterMatch& match)
-  const override;
+  void get_all_bins(const Particle& p, TallyEstimator estimator,
+    FilterMatch& match) const override;
 
   void to_statepoint(hid_t filter_group) const override;
 
@@ -45,7 +45,7 @@ private:
   //----------------------------------------------------------------------------
   // Data members
 
-  std::vector<double> bins_;
+  vector<double> bins_;
 };
 
 } // namespace openmc

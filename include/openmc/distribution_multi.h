@@ -1,7 +1,7 @@
 #ifndef DISTRIBUTION_MULTI_H
 #define DISTRIBUTION_MULTI_H
 
-#include <memory>
+#include "openmc/memory.h"
 
 #include "pugixml.hpp"
 
@@ -17,17 +17,19 @@ namespace openmc {
 
 class UnitSphereDistribution {
 public:
-  UnitSphereDistribution() { };
-  explicit UnitSphereDistribution(Direction u) : u_ref_{u} { };
+  UnitSphereDistribution() {};
+  explicit UnitSphereDistribution(Direction u) : u_ref_ {u} {};
   explicit UnitSphereDistribution(pugi::xml_node node);
   virtual ~UnitSphereDistribution() = default;
+
+  static unique_ptr<UnitSphereDistribution> create(pugi::xml_node node);
 
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Direction sampled
   virtual Direction sample(uint64_t* seed) const = 0;
 
-  Direction u_ref_ {0.0, 0.0, 1.0};  //!< reference direction
+  Direction u_ref_ {0.0, 0.0, 1.0}; //!< reference direction
 };
 
 //==============================================================================
@@ -42,7 +44,12 @@ public:
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Direction sampled
-  Direction sample(uint64_t* seed) const;
+  Direction sample(uint64_t* seed) const override;
+
+  // Observing pointers
+  Distribution* mu() const { return mu_.get(); }
+  Distribution* phi() const { return phi_.get(); }
+
 private:
   UPtrDist mu_;  //!< Distribution of polar angle
   UPtrDist phi_; //!< Distribution of azimuthal angle
@@ -52,14 +59,16 @@ private:
 //! Uniform distribution on the unit sphere
 //==============================================================================
 
+Direction isotropic_direction(uint64_t* seed);
+
 class Isotropic : public UnitSphereDistribution {
 public:
-  Isotropic() { };
+  Isotropic() {};
 
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled direction
-  Direction sample(uint64_t* seed) const;
+  Direction sample(uint64_t* seed) const override;
 };
 
 //==============================================================================
@@ -68,16 +77,17 @@ public:
 
 class Monodirectional : public UnitSphereDistribution {
 public:
-  Monodirectional(Direction u) : UnitSphereDistribution{u} { };
-  explicit Monodirectional(pugi::xml_node node) : UnitSphereDistribution{node} { };
+  Monodirectional(Direction u) : UnitSphereDistribution {u} {};
+  explicit Monodirectional(pugi::xml_node node)
+    : UnitSphereDistribution {node} {};
 
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled direction
-  Direction sample(uint64_t* seed) const;
+  Direction sample(uint64_t* seed) const override;
 };
 
-using UPtrAngle = std::unique_ptr<UnitSphereDistribution>;
+using UPtrAngle = unique_ptr<UnitSphereDistribution>;
 
 } // namespace openmc
 

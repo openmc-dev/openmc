@@ -37,12 +37,18 @@ def linearize(x, f, tolerance=0.001):
         y_stack.insert(0, f(x[i + 1]))
 
         while True:
+            # Get the bounding points currently on the stack
             x_high, x_low = x_stack[-2:]
             y_high, y_low = y_stack[-2:]
+
+            # Evaluate the function at the midpoint
             x_mid = 0.5*(x_low + x_high)
             y_mid = f(x_mid)
 
+            # Linearly interpolate between the bounding points
             y_interp = y_low + (y_high - y_low)/(x_high - x_low)*(x_mid - x_low)
+
+            # Check the error on the interpolated point and compare to tolerance
             error = abs((y_interp - y_mid)/y_mid)
             if error > tolerance:
                 x_stack.insert(-1, x_mid)

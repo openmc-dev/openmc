@@ -42,15 +42,15 @@ class AngleDistribution(EqualityMixin):
     def energy(self):
         return self._energy
 
-    @property
-    def mu(self):
-        return self._mu
-
     @energy.setter
     def energy(self, energy):
         cv.check_type('angle distribution incoming energy', energy,
                       Iterable, Real)
         self._energy = energy
+
+    @property
+    def mu(self):
+        return self._mu
 
     @mu.setter
     def mu(self, mu):
@@ -179,11 +179,12 @@ class AngleDistribution(EqualityMixin):
         for i in range(n_energies):
             if lc[i] > 0:
                 # Equiprobable 32 bin distribution
+                n_bins = 32
                 idx = location_dist + abs(lc[i]) - 1
-                cos = ace.xss[idx:idx + 33]
-                pdf = np.zeros(33)
-                pdf[:32] = 1.0/(32.0*np.diff(cos))
-                cdf = np.linspace(0.0, 1.0, 33)
+                cos = ace.xss[idx:idx + n_bins + 1]
+                pdf = np.zeros(n_bins + 1)
+                pdf[:n_bins] = 1.0/(n_bins*np.diff(cos))
+                cdf = np.linspace(0.0, 1.0, n_bins + 1)
 
                 mu_i = Tabular(cos, pdf, 'histogram', ignore_negative=True)
                 mu_i.c = cdf
@@ -192,6 +193,7 @@ class AngleDistribution(EqualityMixin):
                 idx = location_dist + abs(lc[i]) - 1
                 intt = int(ace.xss[idx])
                 n_points = int(ace.xss[idx + 1])
+                # Data is given as rows of (values, PDF, CDF)
                 data = ace.xss[idx + 2:idx + 2 + 3*n_points]
                 data.shape = (3, n_points)
 
@@ -233,7 +235,6 @@ class AngleDistribution(EqualityMixin):
         items = get_cont_record(file_obj)
         li = items[2]
         nk = items[4]
-        center_of_mass = (items[3] == 2)
 
         # Check for obsolete energy transformation matrix. If present, just skip
         # it and keep reading
@@ -257,7 +258,6 @@ class AngleDistribution(EqualityMixin):
             mu = []
             for i in range(n_energy):
                 items, al = get_list_record(file_obj)
-                temperature = items[0]
                 energy[i] = items[1]
                 coefficients = np.asarray([1.0] + al)
                 mu.append(Legendre(coefficients))
@@ -271,7 +271,6 @@ class AngleDistribution(EqualityMixin):
             mu = []
             for i in range(n_energy):
                 params, f = get_tab1_record(file_obj)
-                temperature = params[0]
                 energy[i] = params[1]
                 if f.n_regions > 1:
                     raise NotImplementedError('Angular distribution with multiple '
@@ -287,7 +286,6 @@ class AngleDistribution(EqualityMixin):
             mu = []
             for i in range(n_energy_legendre):
                 items, al = get_list_record(file_obj)
-                temperature = items[0]
                 energy_legendre[i] = items[1]
                 coefficients = np.asarray([1.0] + al)
                 mu.append(Legendre(coefficients))
@@ -298,7 +296,6 @@ class AngleDistribution(EqualityMixin):
             energy_tabulated = np.zeros(n_energy_tabulated)
             for i in range(n_energy_tabulated):
                 params, f = get_tab1_record(file_obj)
-                temperature = params[0]
                 energy_tabulated[i] = params[1]
                 if f.n_regions > 1:
                     raise NotImplementedError('Angular distribution with multiple '

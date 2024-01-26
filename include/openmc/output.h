@@ -26,7 +26,7 @@ void header(const char* msg, int level);
 std::string time_stamp();
 
 //! Display the attributes of a particle.
-extern "C" void print_particle(Particle* p);
+void print_particle(Particle& p);
 
 //! Display plot information.
 void print_plot();
@@ -40,15 +40,14 @@ void print_usage();
 //! Display current version and copright/license information
 void print_version();
 
+//! Display compile flags employed, etc
+void print_build_info();
+
 //! Display header listing what physical values will displayed
 void print_columns();
 
 //! Display information about a generation of neutrons
 void print_generation();
-
-//! \brief Display last batch's tallied value of the neutron multiplication
-//! factor as well as the average value if we're in active batches
-void print_batch_keff();
 
 //! Display time elapsed for various stages of a run
 void print_runtime();
@@ -60,3 +59,25 @@ void write_tallies();
 
 } // namespace openmc
 #endif // OPENMC_OUTPUT_H
+
+//////////////////////////////////////
+// Custom formatters
+//////////////////////////////////////
+namespace fmt {
+
+template<typename T>
+struct formatter<std::array<T, 2>> {
+  template<typename ParseContext>
+  constexpr auto parse(ParseContext& ctx)
+  {
+    return ctx.begin();
+  }
+
+  template<typename FormatContext>
+  auto format(const std::array<T, 2>& arr, FormatContext& ctx)
+  {
+    return format_to(ctx.out(), "({}, {})", arr[0], arr[1]);
+  }
+};
+
+} // namespace fmt

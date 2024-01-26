@@ -3,22 +3,19 @@
 
 #include <string>
 
-#include <gsl/gsl>
+#include <gsl/gsl-lite.hpp>
 
 #include "openmc/tallies/filter.h"
 
 namespace openmc {
 
-enum class SphericalHarmonicsCosine {
-  scatter, particle
-};
+enum class SphericalHarmonicsCosine { scatter, particle };
 
 //==============================================================================
 //! Gives spherical harmonics expansion moments of a tally score
 //==============================================================================
 
-class SphericalHarmonicsFilter : public Filter
-{
+class SphericalHarmonicsFilter : public Filter {
 public:
   //----------------------------------------------------------------------------
   // Constructors, destructors
@@ -28,12 +25,13 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override {return "sphericalharmonics";}
+  std::string type_str() const override { return "sphericalharmonics"; }
+  FilterType type() const override { return FilterType::SPHERICAL_HARMONICS; }
 
   void from_xml(pugi::xml_node node) override;
 
-  void get_all_bins(const Particle* p, TallyEstimator estimator, FilterMatch& match)
-  const override;
+  void get_all_bins(const Particle& p, TallyEstimator estimator,
+    FilterMatch& match) const override;
 
   void to_statepoint(hid_t filter_group) const override;
 

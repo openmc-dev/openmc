@@ -60,7 +60,16 @@ Core Functions
     :template: myfunction.rst
 
     atomic_mass
-    gnd_name
+    atomic_weight
+    combine_distributions
+    decay_constant
+    decay_energy
+    decay_photon_energy
+    dose_coefficients
+    gnds_name
+    half_life
+    isotopes
+    kalbach_slope
     linearize
     thin
     water_density
@@ -111,6 +120,7 @@ Angle-Energy Distributions
     IncoherentElasticAE
     IncoherentElasticAEDiscrete
     IncoherentInelasticAEDiscrete
+    MixedElasticAE
 
 Resonance Data
 --------------

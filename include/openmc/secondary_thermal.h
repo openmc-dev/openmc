@@ -7,11 +7,10 @@
 #include "openmc/angle_energy.h"
 #include "openmc/endf.h"
 #include "openmc/secondary_correlated.h"
+#include "openmc/vector.h"
 
-#include <hdf5.h>
 #include "xtensor/xtensor.hpp"
-
-#include <vector>
+#include <hdf5.h>
 
 namespace openmc {
 
@@ -26,14 +25,14 @@ public:
   //! \param[in] xs Coherent elastic scattering cross section
   explicit CoherentElasticAE(const CoherentElasticXS& xs);
 
-
   //! Sample distribution for an angle and energy
   //! \param[in] E_in Incoming energy in [eV]
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom seed pointer
-  void sample(double E_in, double& E_out, double& mu,
-    uint64_t* seed) const override;
+  void sample(
+    double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+
 private:
   const CoherentElasticXS& xs_; //!< Coherent elastic scattering cross section
 };
@@ -54,8 +53,9 @@ public:
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom number seed pointer
-  void sample(double E_in, double& E_out, double& mu,
-    uint64_t* seed) const override;
+  void sample(
+    double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+
 private:
   double debye_waller_;
 };
@@ -70,17 +70,19 @@ public:
   //
   //! \param[in] group  HDF5 group
   //! \param[in] energy  Energies at which cosines are tabulated
-  explicit IncoherentElasticAEDiscrete(hid_t group, const std::vector<double>& energy);
+  explicit IncoherentElasticAEDiscrete(
+    hid_t group, const vector<double>& energy);
 
   //! Sample distribution for an angle and energy
   //! \param[in] E_in Incoming energy in [eV]
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom number seed pointer
-  void sample(double E_in, double& E_out, double& mu,
-    uint64_t* seed) const override;
+  void sample(
+    double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+
 private:
-  const std::vector<double>& energy_; //!< Energies at which cosines are tabulated
+  const vector<double>& energy_;  //!< Energies at which cosines are tabulated
   xt::xtensor<double, 2> mu_out_; //!< Cosines for each incident energy
 };
 
@@ -94,19 +96,23 @@ public:
   //
   //! \param[in] group  HDF5 group
   //! \param[in] energy  Incident energies at which distributions are tabulated
-  explicit IncoherentInelasticAEDiscrete(hid_t group, const std::vector<double>& energy);
+  explicit IncoherentInelasticAEDiscrete(
+    hid_t group, const vector<double>& energy);
 
   //! Sample distribution for an angle and energy
   //! \param[in] E_in Incoming energy in [eV]
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom number seed pointer
-  void sample(double E_in, double& E_out, double& mu,
-    uint64_t* seed) const override;
+  void sample(
+    double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+
 private:
-  const std::vector<double>& energy_; //!< Incident energies
-  xt::xtensor<double, 2> energy_out_; //!< Outgoing energies for each incident energy
-  xt::xtensor<double, 3> mu_out_; //!< Outgoing cosines for each incident/outgoing energy
+  const vector<double>& energy_; //!< Incident energies
+  xt::xtensor<double, 2>
+    energy_out_; //!< Outgoing energies for each incident energy
+  xt::xtensor<double, 3>
+    mu_out_;    //!< Outgoing cosines for each incident/outgoing energy
   bool skewed_; //!< Whether outgoing energy distribution is skewed
 };
 
@@ -126,23 +132,51 @@ public:
   //! \param[out] E_out Outgoing energy in [eV]
   //! \param[out] mu Outgoing cosine with respect to current direction
   //! \param[inout] seed Pseudorandom number seed pointer
-  void sample(double E_in, double& E_out, double& mu,
-    uint64_t* seed) const override;
+  void sample(
+    double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+
 private:
   //! Secondary energy/angle distribution
   struct DistEnergySab {
-    std::size_t n_e_out; //!< Number of outgoing energies
+    std::size_t n_e_out;              //!< Number of outgoing energies
     xt::xtensor<double, 1> e_out;     //!< Outgoing energies
     xt::xtensor<double, 1> e_out_pdf; //!< Probability density function
     xt::xtensor<double, 1> e_out_cdf; //!< Cumulative distribution function
     xt::xtensor<double, 2> mu; //!< Equiprobable angles at each outgoing energy
   };
 
-  std::vector<double> energy_; //!< Incident energies
-  std::vector<DistEnergySab> distribution_; //!< Secondary angle-energy at
-                                            //!< each incident energy
+  vector<double> energy_;              //!< Incident energies
+  vector<DistEnergySab> distribution_; //!< Secondary angle-energy at
+                                       //!< each incident energy
 };
 
+//==============================================================================
+//! Mixed coherent/incoherent elastic angle-energy distribution
+//==============================================================================
+
+class MixedElasticAE : public AngleEnergy {
+public:
+  //! Construct from HDF5 file
+  //
+  //! \param[in] group  HDF5 group
+  explicit MixedElasticAE(
+    hid_t group, const CoherentElasticXS& coh_xs, const Function1D& incoh_xs);
+
+  //! Sample distribution for an angle and energy
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[out] mu Outgoing cosine with respect to current direction
+  //! \param[inout] seed Pseudorandom number seed pointer
+  void sample(
+    double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+
+private:
+  CoherentElasticAE coherent_dist_;         //!< Coherent distribution
+  unique_ptr<AngleEnergy> incoherent_dist_; //!< Incoherent distribution
+
+  const CoherentElasticXS& coherent_xs_; //!< Ref. to coherent XS
+  const Function1D& incoherent_xs_;      //!< Polymorphic ref. to incoherent XS
+};
 
 } // namespace openmc
 

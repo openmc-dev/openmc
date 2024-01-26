@@ -1,20 +1,18 @@
-from collections import OrderedDict
 from collections.abc import Mapping, Callable
 from copy import deepcopy
 from io import StringIO
+from math import pi
 from numbers import Integral, Real
-from math import pi, sqrt
 import os
 
 import h5py
 import numpy as np
 import pandas as pd
 from scipy.interpolate import CubicSpline
-from scipy.integrate import quad
 
-from openmc.mixin import EqualityMixin
 import openmc.checkvalue as cv
-from . import HDF5_VERSION
+from openmc.mixin import EqualityMixin
+from . import HDF5_VERSION, HDF5_VERSION_MAJOR
 from .ace import Table, get_metadata, get_table
 from .data import ATOMIC_SYMBOL, EV_PER_MEV
 from .endf import Evaluation, get_head_record, get_tab1_record, get_list_record
@@ -144,6 +142,8 @@ class AtomicRelaxation(EqualityMixin):
         Dictionary indicating the number of electrons in a subshell when neutral
         (values) for given subshells (keys). The subshells should be given as
         strings, e.g., 'K', 'L1', 'L2', etc.
+    subshells : list
+        List of subshells as strings, e.g. ``['K', 'L1', ...]``
     transitions : pandas.DataFrame
         Dictionary indicating allowed transitions and their probabilities
         (values) for given subshells (keys). The subshells should be given as
@@ -167,18 +167,6 @@ class AtomicRelaxation(EqualityMixin):
     def binding_energy(self):
         return self._binding_energy
 
-    @property
-    def num_electrons(self):
-        return self._num_electrons
-
-    @property
-    def subshells(self):
-        return list(sorted(self.binding_energy.keys()))
-
-    @property
-    def transitions(self):
-        return self._transitions
-
     @binding_energy.setter
     def binding_energy(self, binding_energy):
         cv.check_type('binding energies', binding_energy, Mapping)
@@ -188,6 +176,10 @@ class AtomicRelaxation(EqualityMixin):
             cv.check_greater_than('binding energy', energy, 0.0, True)
         self._binding_energy = binding_energy
 
+    @property
+    def num_electrons(self):
+        return self._num_electrons
+
     @num_electrons.setter
     def num_electrons(self, num_electrons):
         cv.check_type('number of electrons', num_electrons, Mapping)
@@ -196,6 +188,14 @@ class AtomicRelaxation(EqualityMixin):
             cv.check_type('number of electrons', num, Real)
             cv.check_greater_than('number of electrons', num, 0.0, True)
         self._num_electrons = num_electrons
+
+    @property
+    def subshells(self):
+        return list(sorted(self.binding_energy.keys()))
+
+    @property
+    def transitions(self):
+        return self._transitions
 
     @transitions.setter
     def transitions(self, transitions):
@@ -431,7 +431,7 @@ class IncidentPhoton(EqualityMixin):
         the projection of the electron momentum on the scattering vector,
         :math:`p_z` for each subshell). Note that subshell occupancies may not
         match the atomic relaxation data.
-    reactions : collections.OrderedDict
+    reactions : dict
         Contains the cross sections for each photon reaction. The keys are MT
         values and the values are instances of :class:`PhotonReaction`.
 
@@ -440,7 +440,7 @@ class IncidentPhoton(EqualityMixin):
     def __init__(self, atomic_number):
         self.atomic_number = atomic_number
         self._atomic_relaxation = None
-        self.reactions = OrderedDict()
+        self.reactions = {}
         self.compton_profiles = {}
         self.bremsstrahlung = {}
 
@@ -463,25 +463,25 @@ class IncidentPhoton(EqualityMixin):
     def atomic_number(self):
         return self._atomic_number
 
-    @property
-    def atomic_relaxation(self):
-        return self._atomic_relaxation
-
-    @property
-    def name(self):
-        return ATOMIC_SYMBOL[self.atomic_number]
-
     @atomic_number.setter
     def atomic_number(self, atomic_number):
         cv.check_type('atomic number', atomic_number, Integral)
         cv.check_greater_than('atomic number', atomic_number, 0, True)
         self._atomic_number = atomic_number
 
+    @property
+    def atomic_relaxation(self):
+        return self._atomic_relaxation
+
     @atomic_relaxation.setter
     def atomic_relaxation(self, atomic_relaxation):
         cv.check_type('atomic relaxation data', atomic_relaxation,
                       AtomicRelaxation)
         self._atomic_relaxation = atomic_relaxation
+
+    @property
+    def name(self):
+        return ATOMIC_SYMBOL[self.atomic_number]
 
     @classmethod
     def from_ace(cls, ace_or_filename):
@@ -513,13 +513,13 @@ class IncidentPhoton(EqualityMixin):
 
         # Read each reaction
         data = cls(Z)
-        for mt in (502, 504, 515, 522, 525):
+        for mt in (502, 504, 517, 522, 525):
             data.reactions[mt] = PhotonReaction.from_ace(ace, mt)
 
         # Get heating cross sections [eV-barn] from factors [eV per collision]
         # by multiplying with total xs
         data.reactions[525].xs.y *= sum([data.reactions[mt].xs.y for mt in
-                                         (502, 504, 515, 522)])
+                                         (502, 504, 517, 522)])
 
         # Compton profiles
         n_shell = ace.nxs[5]
@@ -677,8 +677,10 @@ class IncidentPhoton(EqualityMixin):
         """
         if isinstance(group_or_filename, h5py.Group):
             group = group_or_filename
+            need_to_close = False
         else:
             h5file = h5py.File(str(group_or_filename), 'r')
+            need_to_close = True
 
             # Make sure version matches
             if 'version' in h5file.attrs:
@@ -739,6 +741,10 @@ class IncidentPhoton(EqualityMixin):
                         'num_electrons', 'photon_energy'):
                 data.bremsstrahlung[key] = rgroup[key][()]
 
+        # If HDF5 file was opened here, make sure it gets closed
+        if need_to_close:
+            h5file.close()
+
         return data
 
     def export_to_hdf5(self, path, mode='a', libver='earliest'):
@@ -748,7 +754,7 @@ class IncidentPhoton(EqualityMixin):
         ----------
         path : str
             Path to write HDF5 file to
-        mode : {'r', 'r+', 'w', 'x', 'a'}
+        mode : {'r+', 'w', 'x', 'a'}
             Mode that is used to open the HDF5 file. This is the second argument
             to the :class:`h5py.File` constructor.
         libver : {'earliest', 'latest'}
@@ -756,69 +762,69 @@ class IncidentPhoton(EqualityMixin):
             that are less backwards compatible but have performance benefits.
 
         """
-        # Open file and write version
-        f = h5py.File(str(path), mode, libver=libver)
-        f.attrs['filetype'] = np.string_('data_photon')
-        if 'version' not in f.attrs:
-            f.attrs['version'] = np.array(HDF5_VERSION)
+        with h5py.File(str(path), mode, libver=libver) as f:
+            # Write filetype and version
+            f.attrs['filetype'] = np.string_('data_photon')
+            if 'version' not in f.attrs:
+                f.attrs['version'] = np.array(HDF5_VERSION)
 
-        group = f.create_group(self.name)
-        group.attrs['Z'] = Z = self.atomic_number
+            group = f.create_group(self.name)
+            group.attrs['Z'] = Z = self.atomic_number
 
-        # Determine union energy grid
-        union_grid = np.array([])
-        for rx in self:
-            union_grid = np.union1d(union_grid, rx.xs.x)
-        group.create_dataset('energy', data=union_grid)
+            # Determine union energy grid
+            union_grid = np.array([])
+            for rx in self:
+                union_grid = np.union1d(union_grid, rx.xs.x)
+            group.create_dataset('energy', data=union_grid)
 
-        # Write cross sections
-        shell_group = group.create_group('subshells')
-        designators = []
-        for mt, rx in self.reactions.items():
-            name, key = _REACTION_NAME[mt]
-            if mt in (502, 504, 515, 517, 522, 525):
-                sub_group = group.create_group(key)
-            elif mt >= 534 and mt <= 572:
-                # Subshell
-                designators.append(key)
-                sub_group = shell_group.create_group(key)
+            # Write cross sections
+            shell_group = group.create_group('subshells')
+            designators = []
+            for mt, rx in self.reactions.items():
+                name, key = _REACTION_NAME[mt]
+                if mt in (502, 504, 515, 517, 522, 525):
+                    sub_group = group.create_group(key)
+                elif mt >= 534 and mt <= 572:
+                    # Subshell
+                    designators.append(key)
+                    sub_group = shell_group.create_group(key)
 
-                # Write atomic relaxation
-                if self.atomic_relaxation is not None:
-                    if key in self.atomic_relaxation.subshells:
-                        self.atomic_relaxation.to_hdf5(sub_group, key)
-            else:
-                continue
-
-            rx.to_hdf5(sub_group, union_grid, Z)
-
-        shell_group.attrs['designators'] = np.array(designators, dtype='S')
-
-        # Write Compton profiles
-        if self.compton_profiles:
-            compton_group = group.create_group('compton_profiles')
-
-            profile = self.compton_profiles
-            compton_group.create_dataset('num_electrons',
-                                         data=profile['num_electrons'])
-            compton_group.create_dataset('binding_energy',
-                                         data=profile['binding_energy'])
-
-            # Get electron momentum values
-            compton_group.create_dataset('pz', data=profile['J'][0].x)
-
-            # Create/write 2D array of profiles
-            J = np.array([Jk.y for Jk in profile['J']])
-            compton_group.create_dataset('J', data=J)
-
-        # Write bremsstrahlung
-        if self.bremsstrahlung:
-            brem_group = group.create_group('bremsstrahlung')
-            for key, value in self.bremsstrahlung.items():
-                if key == 'I':
-                    brem_group.attrs[key] = value
+                    # Write atomic relaxation
+                    if self.atomic_relaxation is not None:
+                        if key in self.atomic_relaxation.subshells:
+                            self.atomic_relaxation.to_hdf5(sub_group, key)
                 else:
-                    brem_group.create_dataset(key, data=value)
+                    continue
+
+                rx.to_hdf5(sub_group, union_grid, Z)
+
+            shell_group.attrs['designators'] = np.array(designators, dtype='S')
+
+            # Write Compton profiles
+            if self.compton_profiles:
+                compton_group = group.create_group('compton_profiles')
+
+                profile = self.compton_profiles
+                compton_group.create_dataset('num_electrons',
+                                            data=profile['num_electrons'])
+                compton_group.create_dataset('binding_energy',
+                                            data=profile['binding_energy'])
+
+                # Get electron momentum values
+                compton_group.create_dataset('pz', data=profile['J'][0].x)
+
+                # Create/write 2D array of profiles
+                J = np.array([Jk.y for Jk in profile['J']])
+                compton_group.create_dataset('J', data=J)
+
+            # Write bremsstrahlung
+            if self.bremsstrahlung:
+                brem_group = group.create_group('bremsstrahlung')
+                for key, value in self.bremsstrahlung.items():
+                    if key == 'I':
+                        brem_group.attrs[key] = value
+                    else:
+                        brem_group.create_dataset(key, data=value)
 
     def _add_bremsstrahlung(self):
         """Add the data used in the thick-target bremsstrahlung approximation
@@ -838,7 +844,8 @@ class IncidentPhoton(EqualityMixin):
                     }
 
             filename = os.path.join(os.path.dirname(__file__), 'BREMX.DAT')
-            brem = open(filename, 'r').read().split()
+            with open(filename, 'r') as fh:
+                brem = fh.read().split()
 
             # Incident electron kinetic energy grid in eV
             _BREMSSTRAHLUNG['electron_energy'] = np.logspace(3, 9, 200)
@@ -874,7 +881,7 @@ class IncidentPhoton(EqualityMixin):
                     # Cubic spline interpolation in log energy and linear DCS
                     cs = CubicSpline(logx, y[:, j])
 
-                    # Get scaled DCS values (millibarns) on new energy grid
+                    # Get scaled DCS values (barns) on new energy grid
                     dcs[:, j] = cs(log_energy)
 
                 _BREMSSTRAHLUNG[i]['dcs'] = dcs
@@ -926,23 +933,15 @@ class PhotonReaction(EqualityMixin):
     def anomalous_real(self):
         return self._anomalous_real
 
-    @property
-    def anomalous_imag(self):
-        return self._anomalous_imag
-
-    @property
-    def scattering_factor(self):
-        return self._scattering_factor
-
-    @property
-    def xs(self):
-        return self._xs
-
     @anomalous_real.setter
     def anomalous_real(self, anomalous_real):
         cv.check_type('real part of anomalous scattering factor',
                       anomalous_real, Callable)
         self._anomalous_real = anomalous_real
+
+    @property
+    def anomalous_imag(self):
+        return self._anomalous_imag
 
     @anomalous_imag.setter
     def anomalous_imag(self, anomalous_imag):
@@ -950,10 +949,18 @@ class PhotonReaction(EqualityMixin):
                       anomalous_imag, Callable)
         self._anomalous_imag = anomalous_imag
 
+    @property
+    def scattering_factor(self):
+        return self._scattering_factor
+
     @scattering_factor.setter
     def scattering_factor(self, scattering_factor):
         cv.check_type('scattering factor', scattering_factor, Callable)
         self._scattering_factor = scattering_factor
+
+    @property
+    def xs(self):
+        return self._xs
 
     @xs.setter
     def xs(self, xs):
@@ -992,7 +999,7 @@ class PhotonReaction(EqualityMixin):
         elif mt == 504:
             # Incoherent scattering
             idx = ace.jxs[1] + n
-        elif mt == 515:
+        elif mt == 517:
             # Pair production
             idx = ace.jxs[1] + 4*n
         elif mt == 522:
@@ -1013,6 +1020,9 @@ class PhotonReaction(EqualityMixin):
         else:
             nonzero = (xs != 0.0)
             xs[nonzero] = np.exp(xs[nonzero])
+
+            # Replace zero elements to small non-zero to enable log-log
+            xs[~nonzero] = np.exp(-500.0)
         rx.xs = Tabulated1D(energy, xs, [n], [5])
 
         # Get form factors for incoherent/coherent scattering

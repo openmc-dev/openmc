@@ -105,7 +105,7 @@ Functions
    :return: Return status (negative if an error occurred)
    :rtype: int
 
-.. c:function:: int openmc_cell_set_temperature(index index, double T, const int32_t* instance)
+.. c:function:: int openmc_cell_set_temperature(index index, double T, const int32_t* instance, bool set_contained)
 
    Set the temperature of a cell.
 
@@ -113,6 +113,8 @@ Functions
    :param double T: Temperature in Kelvin
    :param instance: Which instance of the cell. To set the temperature for all
                     instances, pass a null pointer.
+   :param set_contained: If the cell is not filled by a material, whether to set the temperatures
+                         of all filled cells
    :type instance: const int32_t*
    :return: Return status (negative if an error occurred)
    :rtype: int
@@ -266,6 +268,15 @@ Functions
    :return: Return status (negative if an error occurs)
    :rtype: int
 
+.. c:function:: int openmc_get_n_batches(int* n_batches, bool get_max_batches)
+
+   Get number of batches to simulate
+
+   :param int* n_batches: Number of batches to simulate
+   :param bool get_max_batches: Whether to return `n_batches` or `n_max_batches` (only relevant when triggers are used)
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
 .. c:function:: int openmc_get_nuclide_index(const char name[], int* index)
 
    Get the index in the nuclides array for a nuclide with a given name
@@ -304,11 +315,15 @@ Functions
    :return: Return status (negative if an error occurs)
    :rtype: int
 
-.. c:function:: int openmc_load_nuclide(char name[])
+.. c:function:: int openmc_load_nuclide(const char* name, const double* temps, int n)
 
    Load data for a nuclide from the HDF5 data library.
 
-   :param char[] name: Name of the nuclide.
+   :param name: Name of the nuclide.
+   :type name: const char*
+   :param temps: Temperatures in [K] to load data at
+   :type temps: const double*
+   :param int n: Number of temperatures
    :return: Return status (negative if an error occurs)
    :rtype: int
 
@@ -340,7 +355,7 @@ Functions
    Get density of a material.
 
    :param int32_t index: Index in the materials array
-   :param double* denity: Pointer to a density
+   :param double* density: Pointer to a density
    :return: Return status (negative if an error occurs)
    :rtype: int
 
@@ -364,7 +379,7 @@ Functions
    :return: Return status (negative if an error occurs)
    :rtype: int
 
-.. c:function:: int openmc_material_set_densities(int32_t index, int n, const char** name, const double density*)
+.. c:function:: int openmc_material_set_densities(int32_t index, int n, const char** name, const double* density)
 
    :param int32_t index: Index in the materials array
    :param int n: Length of name/density
@@ -445,11 +460,28 @@ Functions
    :return: Return status (negative if an error occurs)
    :rtype: int
 
+.. c:function:: int openmc_remove_tally(int32_t index);
+
+   Given an index of a tally, remove it from the tallies array
+   :param int index: Index in tallies array
+   :return: Return status (negative if an error occurs)
+   :rtype: int
+
 .. c:function:: int openmc_run()
 
    Run a simulation
 
    :return: Return status (negative if an error occurs)
+   :rtype: int
+
+.. c:function:: int openmc_set_n_batches(int32_t n_batches, bool set_max_batches, bool add_statepoint_batch)
+
+   Set number of batches and number of max batches
+
+   :param int32_t n_batches: Number of batches to simulate
+   :param bool set_max_batches: Whether to set `settings::n_max_batches` or `settings::n_batches` (only relevant when triggers are used)
+   :param bool add_statepoint_batch: Whether to add `n_batches` to `settings::statepoint_batch`
+   :return: Return status (negative if an error occurred)
    :rtype: int
 
 .. c:function:: int openmc_simulation_finalize()

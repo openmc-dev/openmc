@@ -76,7 +76,7 @@ def pwr_pin_cell():
     model.settings.batches = 10
     model.settings.inactive = 5
     model.settings.particles = 100
-    model.settings.source = openmc.Source(space=openmc.stats.Box(
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
         [-pitch/2, -pitch/2, -1], [pitch/2, pitch/2, 1], only_fissionable=True))
 
     plot = openmc.Plot.from_geometry(model.geometry)
@@ -415,7 +415,7 @@ def pwr_core():
     model.settings.batches = 10
     model.settings.inactive = 5
     model.settings.particles = 100
-    model.settings.source = openmc.Source(space=openmc.stats.Box(
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
         [-160, -160, -183], [160, 160, 183]))
 
     plot = openmc.Plot()
@@ -527,7 +527,7 @@ def pwr_assembly():
     model.settings.batches = 10
     model.settings.inactive = 5
     model.settings.particles = 100
-    model.settings.source = openmc.Source(space=openmc.stats.Box(
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
         [-pitch/2, -pitch/2, -1], [pitch/2, pitch/2, 1], only_fissionable=True))
 
     plot = openmc.Plot()
@@ -629,7 +629,7 @@ def slab_mg(num_regions=1, mat_names=None, mgxslib_name='2g.h5'):
     INF = 1000.
     bounds = [0., -INF, -INF, rads[0], INF, INF]
     uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:])
-    settings_file.source = openmc.source.Source(space=uniform_dist)
+    settings_file.source = openmc.IndependentSource(space=uniform_dist)
 
     settings_file.output = {'summary': False}
 

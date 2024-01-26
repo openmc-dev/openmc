@@ -2,9 +2,9 @@
 #define OPENMC_TALLIES_DERIVATIVE_H
 
 #include "openmc/particle.h"
+#include "openmc/vector.h"
 
 #include <unordered_map>
-#include <vector>
 
 #include "pugixml.hpp"
 
@@ -15,18 +15,14 @@
 namespace openmc {
 
 // Different independent variables
-enum class DerivativeVariable {
-  DENSITY,
-  NUCLIDE_DENSITY,
-  TEMPERATURE
-};
+enum class DerivativeVariable { DENSITY, NUCLIDE_DENSITY, TEMPERATURE };
 
 struct TallyDerivative {
 
-  DerivativeVariable variable;  //!< Independent variable (like temperature)
-  int id;  //!< User-defined identifier
-  int diff_material;  //!< Material this derivative is applied to
-  int diff_nuclide;  //!< Nuclide this material is applied to
+  DerivativeVariable variable; //!< Independent variable (like temperature)
+  int id;                      //!< User-defined identifier
+  int diff_material;           //!< Material this derivative is applied to
+  int diff_nuclide;            //!< Nuclide this material is applied to
 
   TallyDerivative() {}
   explicit TallyDerivative(pugi::xml_node node);
@@ -41,8 +37,7 @@ void read_tally_derivatives(pugi::xml_node node);
 
 //! Scale the given score by its logarithmic derivative
 
-void
-apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
+void apply_derivative_to_score(const Particle& p, int i_tally, int i_nuclide,
   double atom_density, int score_bin, double& score);
 
 //! Adjust diff tally flux derivatives for a particle scattering event.
@@ -53,13 +48,13 @@ apply_derivative_to_score(const Particle* p, int i_tally, int i_nuclide,
 //! further tallies are scored.
 //
 //! \param p The particle being tracked
-void score_collision_derivative(Particle* p);
+void score_collision_derivative(Particle& p);
 
 //! Adjust diff tally flux derivatives for a particle tracking event.
 //
 //! \param p The particle being tracked
 //! \param distance The distance in [cm] traveled by the particle
-void score_track_derivative(Particle* p, double distance);
+void score_track_derivative(Particle& p, double distance);
 
 } // namespace openmc
 
@@ -70,8 +65,8 @@ void score_track_derivative(Particle* p, double distance);
 namespace openmc {
 
 namespace model {
-extern std::vector<TallyDerivative> tally_derivs;
 extern std::unordered_map<int, int> tally_deriv_map;
+extern vector<TallyDerivative> tally_derivs;
 } // namespace model
 
 } // namespace openmc

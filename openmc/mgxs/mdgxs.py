@@ -1,27 +1,24 @@
-from collections import OrderedDict
-from collections.abc import Iterable
+import copy
 import itertools
 from numbers import Integral
-import warnings
 import os
-import sys
-import copy
-from abc import ABCMeta
 
 import numpy as np
 
 import openmc
-from openmc.mgxs import MGXS
-from openmc.mgxs.mgxs import _DOMAIN_TO_FILTER
 import openmc.checkvalue as cv
+from openmc.mgxs import MGXS
+from .mgxs import _DOMAIN_TO_FILTER
 
 
 # Supported cross section types
-MDGXS_TYPES = ['delayed-nu-fission',
-               'chi-delayed',
-               'beta',
-               'decay-rate',
-               'delayed-nu-fission matrix']
+MDGXS_TYPES = (
+    'delayed-nu-fission',
+    'chi-delayed',
+    'beta',
+    'decay-rate',
+    'delayed-nu-fission matrix'
+)
 
 # Maximum number of delayed groups, from src/constants.F90
 MAX_DELAYED_GROUPS = 8
@@ -51,7 +48,7 @@ class MDGXS(MGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
-    delayed_groups : list of int
+    delayed_groups : list of int, optional
         Delayed groups to filter out the xs
     num_polar : Integral, optional
         Number of equi-width polar angle bins for angle discretization;
@@ -74,7 +71,7 @@ class MDGXS(MGXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
-    delayed_groups : list of int
+    delayed_groups : list of int, optional
         Delayed groups to filter out the xs
     num_polar : Integral
         Number of equi-width polar angle bins for angle discretization
@@ -92,7 +89,7 @@ class MDGXS(MGXS):
         the multi-group cross section
     estimator : {'tracklength', 'analog'}
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section
     rxn_rate_tally : openmc.Tally
         Derived tally for the reaction rate tally used in the numerator to
@@ -112,7 +109,7 @@ class MDGXS(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -122,8 +119,11 @@ class MDGXS(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -160,7 +160,7 @@ class MDGXS(MGXS):
             clone._sparse = self.sparse
             clone._derived = self.derived
 
-            clone._tallies = OrderedDict()
+            clone._tallies = {}
             for tally_type, tally in self.tallies.items():
                 clone.tallies[tally_type] = copy.deepcopy(tally, memo)
 
@@ -186,13 +186,6 @@ class MDGXS(MGXS):
     def delayed_groups(self):
         return self._delayed_groups
 
-    @property
-    def num_delayed_groups(self):
-        if self.delayed_groups is None:
-            return 1
-        else:
-            return len(self.delayed_groups)
-
     @delayed_groups.setter
     def delayed_groups(self, delayed_groups):
 
@@ -210,13 +203,20 @@ class MDGXS(MGXS):
         self._delayed_groups = delayed_groups
 
     @property
+    def num_delayed_groups(self):
+        if self.delayed_groups is None:
+            return 1
+        else:
+            return len(self.delayed_groups)
+
+    @property
     def filters(self):
 
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.EnergyFilter(group_edges)
 
-        if self.delayed_groups != None:
+        if self.delayed_groups is not None:
             delayed_filter = openmc.DelayedGroupFilter(self.delayed_groups)
             filters = [[energy_filter], [delayed_filter, energy_filter]]
         else:
@@ -250,7 +250,7 @@ class MDGXS(MGXS):
         name : str, optional
             Name of the multi-group cross section. Used as a label to identify
             tallies in OpenMC 'tallies.xml' file. Defaults to the empty string.
-        delayed_groups : list of int
+        delayed_groups : list of int, optional
             Delayed groups to filter out the xs
         num_polar : Integral, optional
             Number of equi-width polar angle bins for angle discretization;
@@ -305,7 +305,7 @@ class MDGXS(MGXS):
         subdomains : Iterable of Integral or 'all'
             Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
-            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
+            A list of nuclide name strings (e.g., ['U235', 'U238']). The
             special string 'all' will return the cross sections for all nuclides
             in the spatial domain. The special string 'sum' will return the
             cross section summed over all nuclides. Defaults to 'all'.
@@ -328,7 +328,7 @@ class MDGXS(MGXS):
         -------
         numpy.ndarray
             A NumPy array of the multi-group cross section indexed in the order
-            each group, subdomain and nuclide is listed in the parameters.
+            each group, subdomain and nuclide as listed in the parameters.
 
         Raises
         ------
@@ -394,7 +394,7 @@ class MDGXS(MGXS):
                                           nuclides=query_nuclides, value=value)
 
         # Divide by atom number densities for microscopic cross sections
-        if xs_type == 'micro':
+        if xs_type == 'micro' and self._divide_by_density:
             if self.by_nuclide:
                 densities = self.get_nuclide_densities(nuclides)
             else:
@@ -455,7 +455,7 @@ class MDGXS(MGXS):
         ----------
         nuclides : list of str
             A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
         groups : list of int
             A list of energy group indices starting at 1 for the high energies
             (e.g., [1, 2, 3]; default is [])
@@ -567,7 +567,7 @@ class MDGXS(MGXS):
             Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the report. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will report the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will report
             the cross sections summed over all nuclides. Defaults to 'all'.
@@ -585,7 +585,7 @@ class MDGXS(MGXS):
         if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
-            subdomains = np.arange(self.num_subdomains, dtype=np.int)
+            subdomains = np.arange(self.num_subdomains, dtype=int)
         elif self.domain_type == 'mesh':
             xyz = [range(1, x + 1) for x in self.domain.dimension]
             subdomains = list(itertools.product(*xyz))
@@ -607,7 +607,7 @@ class MDGXS(MGXS):
 
         # Build header for string with type and domain info
         string = 'Multi-Delayed-Group XS\n'
-        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.rxn_type)
+        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.mgxs_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
@@ -743,9 +743,9 @@ class MDGXS(MGXS):
             df.to_csv(filename + '.csv', index=False)
         elif format == 'excel':
             if self.domain_type == 'mesh':
-                df.to_excel(filename + '.xls')
+                df.to_excel(filename + '.xlsx')
             else:
-                df.to_excel(filename + '.xls', index=False)
+                df.to_excel(filename + '.xlsx', index=False)
         elif format == 'pickle':
             df.to_pickle(filename + '.pkl')
         elif format == 'latex':
@@ -784,7 +784,7 @@ class MDGXS(MGXS):
             Energy groups of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
             The nuclides of the cross-sections to include in the dataframe. This
-            may be a list of nuclide name strings (e.g., ['U-235', 'U-238']).
+            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
             The special string 'all' will include the cross sections for all
             nuclides in the spatial domain. The special string 'sum' will
             include the cross sections summed over all nuclides. Defaults
@@ -862,7 +862,7 @@ class MDGXS(MGXS):
                 df = df[df['group out'].isin(groups)]
 
         # If user requested micro cross sections, divide out the atom densities
-        if xs_type == 'micro':
+        if xs_type == 'micro' and self._divide_by_density:
             if self.by_nuclide:
                 densities = self.get_nuclide_densities(nuclides)
             else:
@@ -971,7 +971,7 @@ class ChiDelayed(MDGXS):
         the multi-group cross section
     estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`ChiDelayed.tally_keys` property and
         values are instances of :class:`openmc.Tally`.
@@ -992,7 +992,7 @@ class ChiDelayed(MDGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -1002,10 +1002,18 @@ class ChiDelayed(MDGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
+
+    # Store whether or not the number density should be removed for microscopic
+    # values of this data; since this chi data is normalized to 1.0, the
+    # data should not be divided by the number density
+    _divide_by_density = False
 
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  delayed_groups=None, by_nuclide=False, name='',
@@ -1091,7 +1099,6 @@ class ChiDelayed(MDGXS):
 
         return self._get_homogenized_mgxs(other_mgxs, 'delayed-nu-fission-in')
 
-
     def get_slice(self, nuclides=[], groups=[], delayed_groups=[]):
         """Build a sliced ChiDelayed for the specified nuclides and energy
            groups.
@@ -1105,7 +1112,7 @@ class ChiDelayed(MDGXS):
         ----------
         nuclides : list of str
             A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
         groups : list of Integral
             A list of energy group indices starting at 1 for the high energies
             (e.g., [1, 2, 3]; default is [])
@@ -1239,7 +1246,7 @@ class ChiDelayed(MDGXS):
         subdomains : Iterable of Integral or 'all'
             Subdomain IDs of interest. Defaults to 'all'.
         nuclides : Iterable of str or 'all' or 'sum'
-            A list of nuclide name strings (e.g., ['U-235', 'U-238']). The
+            A list of nuclide name strings (e.g., ['U235', 'U238']). The
             special string 'all' will return the cross sections for all nuclides
             in the spatial domain. The special string 'sum' will return the
             cross section summed over all nuclides. Defaults to 'all'.
@@ -1320,10 +1327,10 @@ class ChiDelayed(MDGXS):
 
                 # Sum out all nuclides
                 nuclides = self.get_nuclides()
-                delayed_nu_fission_in = delayed_nu_fission_in.summation\
-                                        (nuclides=nuclides)
-                delayed_nu_fission_out = delayed_nu_fission_out.summation\
-                                         (nuclides=nuclides)
+                delayed_nu_fission_in = delayed_nu_fission_in.summation(
+                    nuclides=nuclides)
+                delayed_nu_fission_out = delayed_nu_fission_out.summation(
+                    nuclides=nuclides)
 
                 # Remove coarse energy filter to keep it out of tally arithmetic
                 energy_filter = delayed_nu_fission_in.find_filter(
@@ -1483,7 +1490,7 @@ class DelayedNuFissionXS(MDGXS):
         the multi-group cross section
     estimator : {'tracklength', 'analog'}
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`DelayedNuFissionXS.tally_keys` property
         and values are instances of :class:`openmc.Tally`.
@@ -1504,7 +1511,7 @@ class DelayedNuFissionXS(MDGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -1514,8 +1521,11 @@ class DelayedNuFissionXS(MDGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -1619,7 +1629,7 @@ class Beta(MDGXS):
         the multi-group cross section
     estimator : {'tracklength', 'analog'}
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`Beta.tally_keys` property and
         values are instances of :class:`openmc.Tally`.
@@ -1640,7 +1650,7 @@ class Beta(MDGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -1650,10 +1660,18 @@ class Beta(MDGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
+
+    # Store whether or not the number density should be removed for microscopic
+    # values of this data; since the beta is not a microscopic or macroscopic
+    # quantity, it should not be divided by the number density
+    _divide_by_density = False
 
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  delayed_groups=None, by_nuclide=False, name='',
@@ -1804,7 +1822,7 @@ class DecayRate(MDGXS):
         the multi-group cross section
     estimator : {'tracklength', 'analog'}
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`DecayRate.tally_keys` property and
         values are instances of :class:`openmc.Tally`.
@@ -1825,7 +1843,7 @@ class DecayRate(MDGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -1835,10 +1853,18 @@ class DecayRate(MDGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
+
+    # Store whether or not the number density should be removed for microscopic
+    # values of this data; since the decay rates are not microscopic or
+    # macroscopic quantities, it should not be divided by the number density.
+    _divide_by_density = False
 
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  delayed_groups=None, by_nuclide=False, name='',
@@ -1858,16 +1884,11 @@ class DecayRate(MDGXS):
     @property
     def filters(self):
 
-        # Create the non-domain specific Filters for the Tallies
-        group_edges = self.energy_groups.group_edges
-        energy_filter = openmc.EnergyFilter(group_edges)
-
         if self.delayed_groups is not None:
             delayed_filter = openmc.DelayedGroupFilter(self.delayed_groups)
-            filters = [[delayed_filter, energy_filter], [delayed_filter,
-                                                         energy_filter]]
+            filters = [[delayed_filter], [delayed_filter]]
         else:
-            filters = [[energy_filter], [energy_filter]]
+            filters = None
 
         return self._add_angle_filters(filters)
 
@@ -1909,6 +1930,139 @@ class DecayRate(MDGXS):
         """
 
         return self._get_homogenized_mgxs(other_mgxs, 'delayed-nu-fission')
+
+    def get_xs(self, subdomains='all', nuclides='all',
+               xs_type='macro', order_groups='increasing',
+               value='mean', delayed_groups='all', squeeze=True, **kwargs):
+        """Returns an array of multi-delayed-group cross sections.
+
+        This method constructs a 4D NumPy array for the requested
+        multi-delayed-group cross section data for one or more
+        subdomains (1st dimension), delayed groups (2nd demension),
+        energy groups (3rd dimension), and nuclides (4th dimension).
+
+        Parameters
+        ----------
+        subdomains : Iterable of Integral or 'all'
+            Subdomain IDs of interest. Defaults to 'all'.
+        nuclides : Iterable of str or 'all' or 'sum'
+            A list of nuclide name strings (e.g., ['U235', 'U238']). The
+            special string 'all' will return the cross sections for all nuclides
+            in the spatial domain. The special string 'sum' will return the
+            cross section summed over all nuclides. Defaults to 'all'.
+        xs_type: {'macro', 'micro'}
+            Return the macro or micro cross section in units of cm^-1 or barns.
+            Defaults to 'macro'.
+        order_groups: {'increasing', 'decreasing'}
+            Return the cross section indexed according to increasing or
+            decreasing energy groups (decreasing or increasing energies).
+            Defaults to 'increasing'.
+        value : {'mean', 'std_dev', 'rel_err'}
+            A string for the type of value to return. Defaults to 'mean'.
+        delayed_groups : list of int or 'all'
+            Delayed groups of interest. Defaults to 'all'.
+        squeeze : bool
+            A boolean representing whether to eliminate the extra dimensions
+            of the multi-dimensional array to be returned. Defaults to True.
+
+        Returns
+        -------
+        numpy.ndarray
+            A NumPy array of the multi-group cross section indexed in the order
+            each group, subdomain and nuclide as listed in the parameters.
+
+        Raises
+        ------
+        ValueError
+            When this method is called before the multi-delayed-group cross
+            section is computed from tally data.
+
+        """
+
+        cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+
+        # FIXME: Unable to get microscopic xs for mesh domain because the mesh
+        # cells do not know the nuclide densities in each mesh cell.
+        if self.domain_type == 'mesh' and xs_type == 'micro':
+            msg = 'Unable to get micro xs for mesh domain since the mesh ' \
+                  'cells do not know the nuclide densities in each mesh cell.'
+            raise ValueError(msg)
+
+        filters = []
+        filter_bins = []
+
+        # Construct a collection of the domain filter bins
+        if not isinstance(subdomains, str):
+            cv.check_iterable_type('subdomains', subdomains, Integral,
+                                   max_depth=3)
+            for subdomain in subdomains:
+                filters.append(_DOMAIN_TO_FILTER[self.domain_type])
+                filter_bins.append((subdomain,))
+
+        # Construct list of delayed group tuples for all requested groups
+        if not isinstance(delayed_groups, str):
+            cv.check_type('delayed groups', delayed_groups, list, int)
+            for delayed_group in delayed_groups:
+                filters.append(openmc.DelayedGroupFilter)
+                filter_bins.append((delayed_group,))
+
+        # Construct a collection of the nuclides to retrieve from the xs tally
+        if self.by_nuclide:
+            if nuclides == 'all' or nuclides == 'sum' or nuclides == ['sum']:
+                query_nuclides = self.get_nuclides()
+            else:
+                query_nuclides = nuclides
+        else:
+            query_nuclides = ['total']
+
+        # If user requested the sum for all nuclides, use tally summation
+        if nuclides == 'sum' or nuclides == ['sum']:
+            xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
+            xs = xs_tally.get_values(filters=filters,
+                                     filter_bins=filter_bins, value=value)
+        else:
+            xs = self.xs_tally.get_values(filters=filters,
+                                          filter_bins=filter_bins,
+                                          nuclides=query_nuclides, value=value)
+
+        # Divide by atom number densities for microscopic cross sections
+        if xs_type == 'micro' and self._divide_by_density:
+            if self.by_nuclide:
+                densities = self.get_nuclide_densities(nuclides)
+            else:
+                densities = self.get_nuclide_densities('sum')
+            if value == 'mean' or value == 'std_dev':
+                xs /= densities[np.newaxis, :, np.newaxis]
+
+        # Eliminate the trivial score dimension
+        xs = np.squeeze(xs, axis=len(xs.shape) - 1)
+        xs = np.nan_to_num(xs)
+
+        if delayed_groups == 'all':
+            num_delayed_groups = self.num_delayed_groups
+        else:
+            num_delayed_groups = len(delayed_groups)
+
+        # Reshape tally data array with separate axes for domain,
+        # energy groups, delayed groups, and nuclides
+        # Accommodate the polar and azimuthal bins if needed
+        num_subdomains = \
+            int(xs.shape[0] / (num_delayed_groups *
+                               self.num_polar * self.num_azimuthal))
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            new_shape = (self.num_polar, self.num_azimuthal, num_subdomains,
+                         num_delayed_groups)
+        else:
+            new_shape = (num_subdomains, num_delayed_groups)
+        xs = np.reshape(xs, new_shape)
+
+        if squeeze:
+            # We want to squeeze out everything but the polar, azimuthal,
+            # delayed group, and energy group data.
+            xs = self._squeeze_xs(xs)
+
+        return xs
 
 
 class MatrixMDGXS(MDGXS):
@@ -1979,7 +2133,7 @@ class MatrixMDGXS(MDGXS):
         the multi-group cross section
     estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section
     rxn_rate_tally : openmc.Tally
         Derived tally for the reaction rate tally used in the numerator to
@@ -2009,8 +2163,11 @@ class MatrixMDGXS(MDGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -2163,7 +2320,7 @@ class MatrixMDGXS(MDGXS):
                                           nuclides=query_nuclides, value=value)
 
         # Divide by atom number densities for microscopic cross sections
-        if xs_type == 'micro':
+        if xs_type == 'micro' and self._divide_by_density:
             if self.by_nuclide:
                 densities = self.get_nuclide_densities(nuclides)
             else:
@@ -2173,6 +2330,8 @@ class MatrixMDGXS(MDGXS):
 
         # Eliminate the trivial score dimension
         xs = np.squeeze(xs, axis=len(xs.shape) - 1)
+
+        # Eliminate NaNs which may have been produced by dividing by density
         xs = np.nan_to_num(xs)
 
         if in_groups == 'all':
@@ -2310,7 +2469,7 @@ class MatrixMDGXS(MDGXS):
         if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
-            subdomains = np.arange(self.num_subdomains, dtype=np.int)
+            subdomains = np.arange(self.num_subdomains, dtype=int)
         elif self.domain_type == 'mesh':
             xyz = [range(1, x + 1) for x in self.domain.dimension]
             subdomains = list(itertools.product(*xyz))
@@ -2332,7 +2491,7 @@ class MatrixMDGXS(MDGXS):
 
         # Build header for string with type and domain info
         string = 'Multi-Delayed-Group XS\n'
-        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.rxn_type)
+        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.mgxs_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
@@ -2572,7 +2731,7 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
         the multi-group cross section
     estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`DelayedNuFissionXS.tally_keys` property
         and values are instances of :class:`openmc.Tally`.
@@ -2593,7 +2752,7 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -2603,8 +2762,11 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -2614,6 +2776,6 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
         super().__init__(domain, domain_type, energy_groups, delayed_groups,
                          by_nuclide, name, num_polar, num_azimuthal)
         self._rxn_type = 'delayed-nu-fission'
-        self._hdf5_key = 'delayed-nu-fission matrix'
+        self._mgxs_type = 'delayed-nu-fission matrix'
         self._estimator = 'analog'
         self._valid_estimators = ['analog']

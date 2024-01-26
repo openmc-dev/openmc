@@ -25,12 +25,12 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
                               [water, water, water]]
 
         # Create bounding surfaces
-        min_x = openmc.XPlane(-32.13, 'reflective')
-        max_x = openmc.XPlane(+32.13, 'reflective')
-        min_y = openmc.YPlane(-32.13, 'reflective')
-        max_y = openmc.YPlane(+32.13, 'reflective')
-        min_z = openmc.ZPlane(0, 'reflective')
-        max_z = openmc.ZPlane(+32.13, 'reflective')
+        min_x = openmc.XPlane(-32.13, boundary_type='reflective')
+        max_x = openmc.XPlane(+32.13, boundary_type='reflective')
+        min_y = openmc.YPlane(-32.13, boundary_type='reflective')
+        max_y = openmc.YPlane(+32.13, boundary_type='reflective')
+        min_z = openmc.ZPlane(0, boundary_type='reflective')
+        max_z = openmc.ZPlane(+32.13, boundary_type='reflective')
 
         # Define root universe
         root_univ = openmc.Universe(universe_id=0, name='root universe')
@@ -54,7 +54,7 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         self._model.tallies.append(tally)
 
         # Specify summary output and correct source sampling box
-        self._model.settings.source = openmc.Source(space=openmc.stats.Box(
+        self._model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
             [-32, -32, 0], [32, 32, 32], only_fissionable = True))
 
     def _get_results(self, hash_output=True):

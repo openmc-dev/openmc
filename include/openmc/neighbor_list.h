@@ -18,8 +18,7 @@ namespace openmc {
 //! number of threads can safely read data without locks or reference counting.
 //==============================================================================
 
-class NeighborList
-{
+class NeighborList {
 public:
   using value_type = int32_t;
   using const_iterator = std::forward_list<value_type>::const_iterator;
@@ -43,7 +42,8 @@ public:
         if (!list_.empty()) {
           auto it1 = list_.cbegin();
           auto it2 = ++list_.cbegin();
-          while (it2 != list_.cend()) it1 = it2++;
+          while (it2 != list_.cend())
+            it1 = it2++;
           list_.insert_after(it1, new_elem);
         } else {
           list_.push_front(new_elem);
@@ -52,12 +52,9 @@ public:
     }
   }
 
-  const_iterator cbegin() const
-  {return list_.cbegin();}
+  const_iterator cbegin() const { return list_.cbegin(); }
 
-  const_iterator cend() const
-  {return list_.cend();}
-
+  const_iterator cend() const { return list_.cend(); }
 
 private:
   std::forward_list<value_type> list_;

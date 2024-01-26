@@ -1,0 +1,149 @@
+====================
+What's New in 0.12.0
+====================
+
+.. currentmodule:: openmc
+
+-------
+Summary
+-------
+
+This release of OpenMC includes an assortment of new features and many bug fixes.
+In particular, the :mod:`openmc.deplete` module has been heavily tested which
+has resulted in a number of usability improvements, bug fixes, and other
+enhancements. Energy deposition calculations, particularly for coupled
+neutron-photon simulations, have been improved as well.
+
+Improvements in modeling capabilities continue to be added to the code,
+including the ability to rotate surfaces in the Python API, several new
+"composite" surfaces, a variety of new methods on :class:`openmc.Material`,
+unstructured mesh tallies that leverage the existing DAGMC infrastructure,
+effective dose coefficients from ICRP-116, and a new cell instance tally
+filter.
+
+------------
+New Features
+------------
+
+- All surfaces now have a `rotate` method that allows them to be rotated.
+- Several "composite" surfaces, which are actually composed of multiple surfaces
+  but can be treated as a normal surface through the -/+ unary operators, have
+  been added. These include:
+
+  - :class:`openmc.model.RightCircularCylinder`
+  - :class:`openmc.model.RectangularParallelepiped`
+  - :class:`openmc.model.XConeOneSided` (and equivalent versions for y- and z-axes)
+
+- Various improvements related to depletion:
+
+  - The matrix exponential solver can now be configured through the `solver`
+    argument on depletion integrator classes.
+  - The :meth:`openmc.deplete.Chain.reduce` method can automatically reduce the
+    number of nuclides in a depletion chain.
+  - Depletion integrator classes now allow a user to specify timesteps in several
+    units (s, min, h, d, MWd/kg).
+  - :meth:`openmc.deplete.ResultsList.get_atoms` now allows a user to obtain
+    depleted material compositions in atom/b-cm.
+
+- Several new methods on :class:`openmc.Material`:
+
+  - The :meth:`openmc.Material.add_elements_from_formula` method allows a user
+    to create a material based on a chemical formula.
+  - :meth:`openmc.Material.add_element` now supports the `enrichment` argument for
+    non-uranium elements when only two isotopes are naturally occurring.
+  - :meth:`openmc.Material.add_element` now supports adding elements by name
+    rather than by symbol.
+  - The :meth:`openmc.Material.get_elements` method returns a list of elements
+    within a material.
+  - The :meth:`openmc.Material.mix_materials` method allows multiple materials to
+    be mixed together based on atom, weight, or volume fractions.
+
+- The acceptable number of lost particles can now be configured through
+  :attr:`openmc.Settings.max_lost_particles` and
+  :attr:`openmc.Settings.rel_max_lost_particles`.
+- Delayed photons produced from fission are now accounted for by default by
+  scaling the yield of prompt fission photons. This behavior can be modified
+  through the :attr:`openmc.Settings.delayed_photon_scaling` attribute.
+- A trigger can now be specified for a volume calculation via the
+  :meth:`openmc.VolumeCalculation.set_trigger` method.
+- The :class:`openmc.stats.SphericalIndependent` and
+  :class:`openmc.stats.CylindricalIndependent` classes allow a user to
+  specify source distributions based on spherical or cylindrical coordinates.
+- Custom external source distributions can be used via the
+  :attr:`openmc.Source.library` attribute.
+- Unstructured mesh class, :class:`openmc.UnstructuredMesh`, that can be used in
+  tallies.
+- The :class:`openmc.CellInstanceFilter` class allows one or more instances of a
+  repeated cell to be tallied. This is effectively a more flexible version of
+  the existing :class:`openmc.DistribcellFilter` class.
+- The :func:`openmc.data.dose_coefficients` function provides effective dose
+  coefficients from ICRP-116 and can be used in conjunction with
+  :class:`openmc.EnergyFunctionFilter` in a tally.
+
+---------
+Bug Fixes
+---------
+
+- `Keep user-supplied prev_results on operator <https://github.com/openmc-dev/openmc/pull/1605>`_
+- `Fix bug when S(a,b) tables appear in depletable material <https://github.com/openmc-dev/openmc/pull/1605>`_
+- `DAGMC fix for implicit complement material assignment <https://github.com/openmc-dev/openmc/pull/1604>`_
+- `Bug fix for tallying reaction rates in coupled n-p runs <https://github.com/openmc-dev/openmc/pull/1603>`_
+- `Corrected issue with multiplicity matrix <https://github.com/openmc-dev/openmc/pull/1598>`_
+- `Fix depletion with photon transport <https://github.com/openmc-dev/openmc/pull/1595>`_
+- `Fix secondary photon creation <https://github.com/openmc-dev/openmc/pull/1591>`_
+- `Bug fix for total xs plotting <https://github.com/openmc-dev/openmc/pull/1563>`_
+- `Account for light nuclide production in depletion <https://github.com/openmc-dev/openmc/pull/1555>`_
+- `Reset timer in depletion calculations <https://github.com/openmc-dev/openmc/pull/1539>`_
+- `Fix for Model.run <https://github.com/openmc-dev/openmc/pull/1536>`_
+- `Ensure NJOY output goes to specified directory <https://github.com/openmc-dev/openmc/pull/1522>`_
+- `Fix bug preventing creating photon data <https://github.com/openmc-dev/openmc/pull/1489>`_
+- `Fix bug when surface ID > 999999 <https://github.com/openmc-dev/openmc/pull/1486>`_
+- `Fix bug for reading output settings in Settings.from_xml <https://github.com/openmc-dev/openmc/pull/1478>`_
+- `Fix improve energy deposition for coupled neutron-photon <https://github.com/openmc-dev/openmc/pull/1449>`_
+- `Use number of particles for tally normalization <https://github.com/openmc-dev/openmc/pull/1442>`_
+- `Fix a number of problems related to photoatomic data <https://github.com/openmc-dev/openmc/pull/1425>`_
+- `Fix cosine smearing for S(a,b) <https://github.com/openmc-dev/openmc/pull/1420>`_
+- `Use relative distances for coincidence test in hex lattice <https://github.com/openmc-dev/openmc/pull/1414>`_
+- `Fix RPATH for non-Debian linux systems <https://github.com/openmc-dev/openmc/pull/1411>`_
+- `Fix mesh plotter energy filter bins <https://github.com/openmc-dev/openmc/pull/1409>`_
+- `Fix memory leak <https://github.com/openmc-dev/openmc/pull/1395>`_
+- `Fix volume allocation related to burnable materials <https://github.com/openmc-dev/openmc/pull/1392>`_
+- `Fix tally mesh bug for short tracks <https://github.com/openmc-dev/openmc/pull/1387>`_
+- `DAGMC void material assignment fix <https://github.com/openmc-dev/openmc/pull/1375>`_
+- `Fix for Mesh __repr__ methods <https://github.com/openmc-dev/openmc/pull/1385>`_
+
+------------
+Contributors
+------------
+
+This release contains new contributions from the following people:
+
+- `Paul Cosgrove <https://github.com/ChasingNeutrons>`_
+- `Steven Dargaville <https://github.com/stevendargaville>`_
+- `Andrew Davis <https://github.com/makeclean>`_
+- `Iurii Drobyshev <https://github.com/dryuri92>`_
+- `Guillaume Giudicelli <https://github.com/GiudGiud>`_
+- `Alec Golas <https://github.com/awgolas>`_
+- `Avery Grieve <https://github.com/NuclearEngideer>`_
+- `Sterling Harper <https://github.com/smharper>`_
+- `Yuan Hu <https://github.com/YuanHu-PKU-KIT>`_
+- `Yue Jin <https://github.com/kingyue737>`_
+- `Andrew Johnson <https://github.com/drewejohnson>`_
+- `Mikolaj Kowalski <https://github.com/Mikolaj-A-Kowalski>`_
+- `Shikhar Kumar <https://github.com/shikhar413>`_
+- `Jingang Liang <https://github.com/liangjg>`_
+- `David Long <https://github.com/davidjohnlong>`_
+- `Amanda Lund <https://github.com/amandalund>`_
+- `Alex Lyons <https://github.com/alex-lyons>`_
+- `Adam Nelson <https://github.com/nelsonag>`_
+- `Ethan Peterson <https://github.com/eepeterson>`_
+- `Sam Powell-Gill <https://github.com/sampug>`_
+- `Ariful Islam Pranto <https://github.com/AI-Pranto>`_
+- `Simon Richards <https://github.com/simondrichards>`_
+- `Gavin Ridley <https://github.com/gridley>`_
+- `Paul Romano <https://github.com/paulromano>`_
+- `Jonathan Shimwell <https://github.com/Shimwell>`_
+- `Patrick Shriwise <https://github.com/pshriwise>`_
+- `John Tramm <https://github.com/jtramm>`_
+- `Paul P.H. Wilson <https://github.com/gonuke>`_
+- `Jiankai Yu <https://github.com/rockfool>`_

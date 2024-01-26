@@ -18,31 +18,33 @@ namespace openmc {
 //! bins that are valid for the current tally event.
 //==============================================================================
 
-class FilterBinIter
-{
+class FilterBinIter {
 public:
-
   //! Construct an iterator over bins that match a given particle's state.
-  FilterBinIter(const Tally& tally, Particle* p);
+  FilterBinIter(const Tally& tally, Particle& p);
 
   //! Construct an iterator over all filter bin combinations.
   //
   //! \param end if true, the returned iterator indicates the end of a loop.
-  FilterBinIter(const Tally& tally, bool end,
-      std::vector<FilterMatch>* particle_filter_matches);
+  FilterBinIter(
+    const Tally& tally, bool end, vector<FilterMatch>* particle_filter_matches);
 
   bool operator==(const FilterBinIter& other) const
-  {return index_ == other.index_;}
+  {
+    return index_ == other.index_;
+  }
 
   bool operator!=(const FilterBinIter& other) const
-  {return !(*this == other);}
+  {
+    return !(*this == other);
+  }
 
   FilterBinIter& operator++();
 
   int index_ {1};
   double weight_ {1.};
-  
-  std::vector<FilterMatch>& filter_matches_;
+
+  vector<FilterMatch>& filter_matches_;
 
 private:
   void compute_index_weight();
@@ -63,21 +65,21 @@ private:
 //! since collisions do not occur in voids.
 //
 //! \param p The particle being tracked
-void score_collision_tally(Particle* p);
+void score_collision_tally(Particle& p);
 
 //! Score tallies based on a simple count of events (for continuous energy).
 //
 //! Analog tallies are triggered at every collision, not every event.
 //
 //! \param p The particle being tracked
-void score_analog_tally_ce(Particle* p);
+void score_analog_tally_ce(Particle& p);
 
 //! Score tallies based on a simple count of events (for multigroup).
 //
 //! Analog tallies are triggered at every collision, not every event.
 //
 //! \param p The particle being tracked
-void score_analog_tally_mg(Particle* p);
+void score_analog_tally_mg(Particle& p);
 
 //! Score tallies using a tracklength estimate of the flux.
 //
@@ -87,13 +89,20 @@ void score_analog_tally_mg(Particle* p);
 //
 //! \param p The particle being tracked
 //! \param distance The distance in [cm] traveled by the particle
-void score_tracklength_tally(Particle* p, double distance);
+void score_tracklength_tally(Particle& p, double distance);
 
 //! Score surface or mesh-surface tallies for particle currents.
 //
 //! \param p The particle being tracked
-//! \param tallies A vector of tallies to score to
-void score_surface_tally(Particle* p, const std::vector<int>& tallies);
+//! \param tallies A vector of the indices of the tallies to score to
+void score_surface_tally(Particle& p, const vector<int>& tallies);
+
+//! Score the pulse-height tally
+//! This is triggered at the end of every particle history
+//
+//! \param p The particle being tracked
+//! \param tallies A vector of the indices of the tallies to score to
+void score_pulse_height_tally(Particle& p, const vector<int>& tallies);
 
 } // namespace openmc
 

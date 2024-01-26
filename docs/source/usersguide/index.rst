@@ -13,7 +13,7 @@ essential aspects of using OpenMC to perform simulations.
 
     beginners
     install
-    cross_sections
+    data
     basics
     materials
     geometry

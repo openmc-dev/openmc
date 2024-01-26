@@ -31,7 +31,7 @@ The ``<tally>`` element accepts the following sub-elements:
 
   :name:
     An optional string name to identify the tally in summary output
-    files. This string is limited to 52 characters for formatting purposes.
+    files.
 
     *Default*: ""
 
@@ -40,15 +40,15 @@ The ``<tally>`` element accepts the following sub-elements:
 
   :nuclides:
     If specified, the scores listed will be for particular nuclides, not the
-    summation of reactions from all nuclides. The format for nuclides should be
-    [Atomic symbol]-[Mass number], e.g. "U-235". The reaction rate for all
+    summation of reactions from all nuclides. Nuclides are expressed using the
+    GNDS naming convention, e.g. "U235" or "Am242_m1". The reaction rate for all
     nuclides can be obtained with "total". For example, to obtain the reaction
-    rates for U-235, Pu-239, and all nuclides in a material, this element should
+    rates for U235, Pu239, and all nuclides in a material, this element should
     be:
 
     .. code-block:: xml
 
-        <nuclides>U-235 Pu-239 total</nuclides>
+        <nuclides>U235 Pu239 total</nuclides>
 
     *Default*: total
 
@@ -68,6 +68,12 @@ The ``<tally>`` element accepts the following sub-elements:
     A space-separated list of the desired responses to be accumulated. A full
     list of valid scores can be found in the :ref:`user's guide
     <usersguide_scores>`.
+
+  :multiply_density:
+    A boolean that indicates whether reaction rate scores should be computed by
+    multiplying by the atom density of a nuclide present in a material.
+
+    *Default*: true
 
   :trigger:
     Precision trigger applied to all filter bins and nuclides for this tally.
@@ -123,8 +129,8 @@ to the scored values. The ``filter`` element has the following
 attributes/sub-elements:
 
   :type:
-    The type of the filter. Accepted options are "cell", "cellfrom", 
-    "cellborn", "surface", "material", "universe", "energy", "energyout", "mu", 
+    The type of the filter. Accepted options are "cell", "cellfrom",
+    "cellborn", "surface", "material", "universe", "energy", "energyout", "mu",
     "polar", "azimuthal", "mesh", "distribcell", "delayedgroup",
     "energyfunction", and "particle".
 
@@ -154,27 +160,27 @@ For each filter type, the following table describes what the ``bins`` attribute
 should be set to:
 
 :cell:
-  A list of unique IDs for cells in which the tally should be 
+  A list of unique IDs for cells in which the tally should be
   accumulated.
 
 :surface:
-  This filter allows the tally to be scored when crossing a surface. A list of 
-  surface IDs should be given. By default, net currents are tallied, and to 
-  tally a partial current from one cell to another, this should be used in 
+  This filter allows the tally to be scored when crossing a surface. A list of
+  surface IDs should be given. By default, net currents are tallied, and to
+  tally a partial current from one cell to another, this should be used in
   combination with a cell or cell_from filter that defines the other cell.
   This filter should not be used in combination with a meshfilter.
 
 :cellfrom:
-  This filter allows the tally to be scored when crossing a surface and the 
-  particle came from a specified cell. A list of cell IDs should be 
+  This filter allows the tally to be scored when crossing a surface and the
+  particle came from a specified cell. A list of cell IDs should be
   given.
-  To tally a partial current from a cell to another, this filter should be 
+  To tally a partial current from a cell to another, this filter should be
   used in combination with a cell filter, to define the other cell.
   This filter should not be used in combination with a meshfilter.
 
 :cellborn:
   This filter allows the tally to be scored to only when particles were
-  originally born in a specified cell. A list of cell IDs should be 
+  originally born in a specified cell. A list of cell IDs should be
   given.
 
 :material:
@@ -276,7 +282,7 @@ should be set to:
       <filter type="azimuthal" bins="2" />
 
 :mesh:
-  The unique ID of a structured mesh to be tallied over.
+  The unique ID of a mesh to be tallied over.
 
 :distribcell:
   The single cell which should be tallied uniquely for all instances.
@@ -307,15 +313,20 @@ should be set to:
 ``<mesh>`` Element
 ------------------
 
-If a structured mesh is desired as a filter for a tally, it must be specified in
-a separate element with the tag name ``<mesh>``. This element has the following
+If a mesh is desired as a filter for a tally, it must be specified in a separate
+element with the tag name ``<mesh>``. This element has the following
 attributes/sub-elements:
 
   :type:
-    The type of structured mesh. This can be either "regular" or "rectilinear".
+    The type of mesh. This can be either "regular", "rectilinear",
+    "cylindrical", "spherical", or "unstructured".
 
   :dimension:
     The number of mesh cells in each direction. (For regular mesh only.)
+
+  :length_multiplier:
+    A multiplicative factor to apply to the mesh coordinates in all directions.
+    (For unstructured mesh only.)
 
   :lower_left:
     The lower-left corner of the structured mesh. If only two coordinates are
@@ -335,7 +346,27 @@ attributes/sub-elements:
     The mesh divisions along the y-axis. (For rectilinear mesh only.)
 
   :z_grid:
-    The mesh divisions along the z-axis. (For rectilinear mesh only.)
+    The mesh divisions along the z-axis. (For rectilinear and cylindrical meshes only.)
+
+  :r_grid:
+    The mesh divisions along the r-axis. (For cylindrical and spherical meshes only.)
+
+  :phi_grid:
+    The mesh divisions along the phi-axis. (For cylindrical and spherical meshes only.)
+
+  :theta_grid:
+    The mesh divisions along the theta-axis. (For spherical mesh only.)
+
+  :origin:
+    The origin in cartesian coordinates. (For cylindrical and spherical meshes only.)
+
+  :library:
+    The mesh library used to represent an unstructured mesh. This can be either
+    "moab" or "libmesh". (For unstructured mesh only.)
+
+  :filename:
+    The name of the mesh file to be loaded at runtime. (For unstructured mesh
+    only.)
 
   .. note::
       One of ``<upper_right>`` or ``<width>`` must be specified, but not both

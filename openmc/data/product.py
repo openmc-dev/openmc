@@ -1,7 +1,5 @@
 from collections.abc import Iterable
-from io import StringIO
 from numbers import Real
-import sys
 
 import numpy as np
 
@@ -33,25 +31,22 @@ class Product(EqualityMixin):
         delayed neutron precursor). A special value of 'total' is used when the
         yield represents particles from prompt and delayed sources.
     particle : str
-        What particle the reaction product is.
+        The particle type of the reaction product
     yield_ : openmc.data.Function1D
         Yield of secondary particle in the reaction.
 
     """
 
     def __init__(self, particle='neutron'):
-        self.particle = particle
-        self.decay_rate = 0.0
-        self.emission_mode = 'prompt'
-        self.distribution = []
         self.applicability = []
-        self.yield_ = Polynomial((1,))  # 0-order polynomial i.e. a constant
+        self.decay_rate = 0.0
+        self.distribution = []
+        self.emission_mode = 'prompt'
+        self.particle = particle
+        self.yield_ = Polynomial((1,))  # 0-order polynomial, i.e., a constant
 
     def __repr__(self):
-        if isinstance(self.yield_, Real):
-            return "<Product: {}, emission={}, yield={}>".format(
-                self.particle, self.emission_mode, self.yield_)
-        elif isinstance(self.yield_, Tabulated1D):
+        if isinstance(self.yield_, Tabulated1D):
             if np.all(self.yield_.y == self.yield_.y[0]):
                 return "<Product: {}, emission={}, yield={}>".format(
                     self.particle, self.emission_mode, self.yield_.y[0])
@@ -66,31 +61,15 @@ class Product(EqualityMixin):
     def applicability(self):
         return self._applicability
 
-    @property
-    def decay_rate(self):
-        return self._decay_rate
-
-    @property
-    def distribution(self):
-        return self._distribution
-
-    @property
-    def emission_mode(self):
-        return self._emission_mode
-
-    @property
-    def particle(self):
-        return self._particle
-
-    @property
-    def yield_(self):
-        return self._yield
-
     @applicability.setter
     def applicability(self, applicability):
         cv.check_type('product distribution applicability', applicability,
                       Iterable, Tabulated1D)
         self._applicability = applicability
+
+    @property
+    def decay_rate(self):
+        return self._decay_rate
 
     @decay_rate.setter
     def decay_rate(self, decay_rate):
@@ -98,11 +77,19 @@ class Product(EqualityMixin):
         cv.check_greater_than('product decay rate', decay_rate, 0.0, True)
         self._decay_rate = decay_rate
 
+    @property
+    def distribution(self):
+        return self._distribution
+
     @distribution.setter
     def distribution(self, distribution):
         cv.check_type('product angle-energy distribution', distribution,
                       Iterable, AngleEnergy)
         self._distribution = distribution
+
+    @property
+    def emission_mode(self):
+        return self._emission_mode
 
     @emission_mode.setter
     def emission_mode(self, emission_mode):
@@ -110,10 +97,18 @@ class Product(EqualityMixin):
                        ('prompt', 'delayed', 'total'))
         self._emission_mode = emission_mode
 
+    @property
+    def particle(self):
+        return self._particle
+
     @particle.setter
     def particle(self, particle):
         cv.check_type('product particle type', particle, str)
         self._particle = particle
+
+    @property
+    def yield_(self):
+        return self._yield
 
     @yield_.setter
     def yield_(self, yield_):

@@ -58,27 +58,15 @@ class CorrelatedAngleEnergy(AngleEnergy):
     def breakpoints(self):
         return self._breakpoints
 
-    @property
-    def interpolation(self):
-        return self._interpolation
-
-    @property
-    def energy(self):
-        return self._energy
-
-    @property
-    def energy_out(self):
-        return self._energy_out
-
-    @property
-    def mu(self):
-        return self._mu
-
     @breakpoints.setter
     def breakpoints(self, breakpoints):
         cv.check_type('correlated angle-energy breakpoints', breakpoints,
                       Iterable, Integral)
         self._breakpoints = breakpoints
+
+    @property
+    def interpolation(self):
+        return self._interpolation
 
     @interpolation.setter
     def interpolation(self, interpolation):
@@ -86,17 +74,29 @@ class CorrelatedAngleEnergy(AngleEnergy):
                       Iterable, Integral)
         self._interpolation = interpolation
 
+    @property
+    def energy(self):
+        return self._energy
+
     @energy.setter
     def energy(self, energy):
         cv.check_type('correlated angle-energy incoming energy', energy,
                       Iterable, Real)
         self._energy = energy
 
+    @property
+    def energy_out(self):
+        return self._energy_out
+
     @energy_out.setter
     def energy_out(self, energy_out):
         cv.check_type('correlated angle-energy outgoing energy', energy_out,
                       Iterable, Univariate)
         self._energy_out = energy_out
+
+    @property
+    def mu(self):
+        return self._mu
 
     @mu.setter
     def mu(self, mu):
@@ -120,7 +120,7 @@ class CorrelatedAngleEnergy(AngleEnergy):
                                                  self.interpolation))
 
         # Determine total number of (E,p) pairs and create array
-        n_tuple = sum(len(d.x) for d in self.energy_out)
+        n_tuple = sum(len(d) for d in self.energy_out)
         eout = np.empty((5, n_tuple))
 
         # Make sure all mu data is tabular
@@ -163,6 +163,10 @@ class CorrelatedAngleEnergy(AngleEnergy):
                 elif isinstance(d, Discrete):
                     n_discrete_lines[i] = n
                     interpolation[i] = 1
+                else:
+                    raise ValueError(
+                        'Invalid univariate energy distribution as part of '
+                        'correlated angle-energy: {}'.format(d))
                 eout[0, offset_e:offset_e+n] = d.x
                 eout[1, offset_e:offset_e+n] = d.p
                 eout[2, offset_e:offset_e+n] = d.c
@@ -345,10 +349,9 @@ class CorrelatedAngleEnergy(AngleEnergy):
         for i in range(n_energy_in):
             idx = ldis + loc_dist[i] - 1
 
-            # intt = interpolation scheme (1=hist, 2=lin-lin)
-            INTTp = int(ace.xss[idx])
-            intt = INTTp % 10
-            n_discrete_lines = (INTTp - intt)//10
+            # intt = interpolation scheme (1=hist, 2=lin-lin). When discrete
+            # lines are present, the value given is 10*n_discrete_lines + intt
+            n_discrete_lines, intt = divmod(int(ace.xss[idx]), 10)
             if intt not in (1, 2):
                 warn("Interpolation scheme for continuous tabular distribution "
                      "is not histogram or linear-linear.")

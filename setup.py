@@ -5,11 +5,7 @@ import sys
 import numpy as np
 
 from setuptools import setup, find_packages
-try:
-    from Cython.Build import cythonize
-    have_cython = True
-except ImportError:
-    have_cython = False
+from Cython.Build import cythonize
 
 
 # Determine shared library suffix
@@ -29,21 +25,22 @@ kwargs = {
     'packages': find_packages(exclude=['tests*']),
     'scripts': glob.glob('scripts/openmc-*'),
 
-    # Data files and librarries
+    # Data files and libraries
     'package_data': {
         'openmc.lib': ['libopenmc.{}'.format(suffix)],
-        'openmc.data': ['mass16.txt', 'BREMX.DAT', '*.h5']
+        'openmc.data': ['mass_1.mas20.txt', 'BREMX.DAT', 'half_life.json', '*.h5'],
+        'openmc.data.effective_dose': ['*.txt']
     },
 
     # Metadata
     'author': 'The OpenMC Development Team',
-    'author_email': 'openmc-dev@googlegroups.com',
+    'author_email': 'openmc@anl.gov',
     'description': 'OpenMC',
     'url': 'https://openmc.org',
     'download_url': 'https://github.com/openmc-dev/openmc/releases',
     'project_urls': {
         'Issue Tracker': 'https://github.com/openmc-dev/openmc/issues',
-        'Documentation': 'https://openmc.readthedocs.io',
+        'Documentation': 'https://docs.openmc.org',
         'Source Code': 'https://github.com/openmc-dev/openmc',
     },
     'classifiers': [
@@ -56,28 +53,30 @@ kwargs = {
         'Topic :: Scientific/Engineering'
         'Programming Language :: C++',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
     ],
 
     # Dependencies
-    'python_requires': '>=3.5',
+    'python_requires': '>=3.7',
     'install_requires': [
-        'numpy>=1.9', 'h5py', 'scipy', 'ipython', 'matplotlib',
+        'numpy>=1.9', 'h5py', 'scipy<1.12', 'ipython', 'matplotlib',
         'pandas', 'lxml', 'uncertainties'
     ],
     'extras_require': {
-        'test': ['pytest', 'pytest-cov', 'colorama'],
+        'depletion-mpi': ['mpi4py'],
+        'docs': ['sphinx', 'sphinxcontrib-katex', 'sphinx-numfig', 'jupyter',
+                 'sphinxcontrib-svg2pdfconverter', 'sphinx-rtd-theme'],
+        'test': ['pytest', 'pytest-cov', 'colorama', 'openpyxl'],
         'vtk': ['vtk'],
     },
+    # Cython is used to add resonance reconstruction and fast float_endf
+    'ext_modules': cythonize('openmc/data/*.pyx'),
+    'include_dirs': [np.get_include()]
 }
-
-# If Cython is present, add resonance reconstruction and fast float_endf
-if have_cython:
-    kwargs.update({
-        'ext_modules': cythonize('openmc/data/*.pyx'),
-        'include_dirs': [np.get_include()]
-    })
 
 setup(**kwargs)

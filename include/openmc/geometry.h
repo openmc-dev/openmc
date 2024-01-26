@@ -1,15 +1,17 @@
 #ifndef OPENMC_GEOMETRY_H
 #define OPENMC_GEOMETRY_H
 
-#include <array>
 #include <cmath>
 #include <cstdint>
-#include <vector>
 
-#include "openmc/particle.h"
-
+#include "openmc/array.h"
+#include "openmc/constants.h"
+#include "openmc/vector.h"
 
 namespace openmc {
+
+class BoundaryInfo;
+class GeometryState;
 
 //==============================================================================
 // Global variables
@@ -17,10 +19,10 @@ namespace openmc {
 
 namespace model {
 
-extern int root_universe;  //!< Index of root universe
-extern int n_coord_levels; //!< Number of CSG coordinate levels
+extern int root_universe;      //!< Index of root universe
+extern "C" int n_coord_levels; //!< Number of CSG coordinate levels
 
-extern std::vector<int64_t> overlap_check_count;
+extern vector<int64_t> overlap_check_count;
 
 } // namespace model
 
@@ -28,7 +30,8 @@ extern std::vector<int64_t> overlap_check_count;
 //! Check two distances by coincidence tolerance
 //==============================================================================
 
-inline bool coincident(double d1, double d2) {
+inline bool coincident(double d1, double d2)
+{
   return std::abs(d1 - d2) < FP_COINCIDENT;
 }
 
@@ -36,33 +39,43 @@ inline bool coincident(double d1, double d2) {
 //! Check for overlapping cells at a particle's position.
 //==============================================================================
 
-bool check_cell_overlap(Particle* p, bool error=true);
+bool check_cell_overlap(GeometryState& p, bool error = true);
+
+//==============================================================================
+//! Get the cell instance for a particle at the specified universe level
+//!
+//! \param p A particle for which to compute the instance using
+//!   its coordinates
+//! \param level The level (zero indexed) of the geometry where the instance
+//! should be computed. \return The instance of the cell at the specified level.
+//==============================================================================
+
+int cell_instance_at_level(const GeometryState& p, int level);
 
 //==============================================================================
 //! Locate a particle in the geometry tree and set its geometry data fields.
 //!
 //! \param p A particle to be located.  This function will populate the
 //!   geometry-dependent data fields of the particle.
-//! \param use_neighbor_lists If true, neighbor lists will be used to accelerate
-//!   the geometry search, but this only works if the cell attribute of the
-//!   particle's lowest coordinate level is valid and meaningful.
 //! \return True if the particle's location could be found and ascribed to a
 //!   valid geometry coordinate stack.
 //==============================================================================
-
-bool find_cell(Particle* p, bool use_neighbor_lists);
+bool exhaustive_find_cell(GeometryState& p, bool verbose = false);
+bool neighbor_list_find_cell(
+  GeometryState& p, bool verbose = false); // Only usable on surface crossings
 
 //==============================================================================
 //! Move a particle into a new lattice tile.
 //==============================================================================
 
-void cross_lattice(Particle* p, const BoundaryInfo& boundary);
+void cross_lattice(
+  GeometryState& p, const BoundaryInfo& boundary, bool verbose = false);
 
 //==============================================================================
 //! Find the next boundary a particle will intersect.
 //==============================================================================
 
-BoundaryInfo distance_to_boundary(Particle* p);
+BoundaryInfo distance_to_boundary(GeometryState& p);
 
 } // namespace openmc
 

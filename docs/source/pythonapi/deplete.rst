@@ -15,16 +15,18 @@ are:
     1) A transport operator
     2) A time-integration scheme
 
-The former is responsible for executing a transport code, like OpenMC,
-and retaining important information required for depletion. The most common examples
-are reaction rates and power normalization data. The latter is responsible for
-projecting reaction rates and compositions forward in calendar time across
-some step size :math:`\Delta t`, and obtaining new compositions given a power
-or power density. The :class:`Operator` is provided to handle communicating with
-OpenMC. Several classes are provided that implement different time-integration
-algorithms for depletion calculations, which are described in detail in Colin
-Josey's thesis, `Development and analysis of high order neutron
-transport-depletion coupling algorithms <http://hdl.handle.net/1721.1/113721>`_.
+The former is responsible for calculating and retaining important information
+required for depletion. The most common examples are reaction rates and power
+normalization data. The latter is responsible for projecting reaction rates and
+compositions forward in calendar time across some step size :math:`\Delta t`,
+and obtaining new compositions given a power or power density. The
+:class:`CoupledOperator` class is provided to obtain reaction rates via tallies
+through OpenMC's transport solver, and the :class:`IndependentOperator` class is
+provided to obtain reaction rates from cross-section data. Several classes are
+provided that implement different time-integration algorithms for depletion
+calculations, which are described in detail in Colin Josey's thesis,
+`Development and analysis of high order neutron transport-depletion coupling
+algorithms <http://hdl.handle.net/1721.1/113721>`_.
 
 .. autosummary::
     :toctree: generated
@@ -40,18 +42,30 @@ transport-depletion coupling algorithms <http://hdl.handle.net/1721.1/113721>`_.
     SICELIIntegrator
     SILEQIIntegrator
 
-Each of these classes expects a "transport operator" to be passed. An operator
-specific to OpenMC is available using the following class:
+Each of these classes expects a "transport operator" to be passed. OpenMC
+provides the following transport operator classes:
 
 .. autosummary::
    :toctree: generated
    :nosignatures:
    :template: mycallable.rst
 
-   Operator
+   CoupledOperator
+   IndependentOperator
 
-The :class:`Operator` must also have some knowledge of how nuclides transmute
-and decay. This is handled by the :class:`Chain`.
+The :class:`CoupledOperator` and :class:`IndependentOperator` classes must also
+have some knowledge of how nuclides transmute and decay. This is handled by the
+:class:`Chain` class.
+
+The :class:`IndependentOperator` class requires a set of fluxes and microscopic
+cross sections. The following function can be used to generate this information:
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myfunction.rst
+
+   get_microxs_and_flux
 
 Minimal Example
 ---------------
@@ -64,11 +78,12 @@ A minimal example for performing depletion would be:
     >>> import openmc.deplete
     >>> geometry = openmc.Geometry.from_xml()
     >>> settings = openmc.Settings.from_xml()
+    >>> model = openmc.model.Model(geometry, settings)
 
     # Representation of a depletion chain
     >>> chain_file = "chain_casl.xml"
-    >>> operator = openmc.deplete.Operator(
-    ...     geometry, settings, chain_file)
+    >>> operator = openmc.deplete.CoupledOperator(
+    ...     model, chain_file)
 
     # Set up 5 time steps of one day each
     >>> dt = [24 * 60 * 60] * 5
@@ -112,6 +127,16 @@ for a depletion chain:
    FissionYieldDistribution
    FissionYield
 
+The :class:`Chain` class uses information from the following module variable:
+
+.. data:: chain.REACTIONS
+
+   Dictionary that maps transmutation reaction names to information needed when
+   a chain is being generated: MT values, the change in atomic/mass numbers
+   resulting from the reaction, and what secondaries are produced.
+
+   :type: dict
+
 The following classes are used during a depletion simulation and store auxiliary
 data, such as number densities and reaction rates for each material.
 
@@ -121,10 +146,11 @@ data, such as number densities and reaction rates for each material.
    :template: myclass.rst
 
    AtomNumber
+   MicroXS
    OperatorResult
    ReactionRates
    Results
-   ResultsList
+   StepResult
 
 The following class and functions are used to solve the depletion equations,
 with :func:`cram.CRAM48` being the default.
@@ -143,10 +169,26 @@ with :func:`cram.CRAM48` being the default.
 
    cram.CRAM16
    cram.CRAM48
-   cram.deplete
-   cram.timed_deplete
+   pool.deplete
 
-The following classes are used to help the :class:`openmc.deplete.Operator`
+.. data:: pool.USE_MULTIPROCESSING
+
+   Boolean switch to enable or disable the use of :mod:`multiprocessing`
+   when solving the Bateman equations. The default is to use
+   :mod:`multiprocessing`, but can cause the simulation to hang in
+   some computing environments, namely due to MPI and networking
+   restrictions. Disabling this option will result in only a single
+   CPU core being used for depletion.
+
+   :type: bool
+
+.. data:: pool.NUM_PROCESSES
+
+   Number of worker processes used for depletion calculations, which rely on the
+   :class:`multiprocessing.pool.Pool` class. If set to ``None`` (default), the
+   number returned by :func:`os.cpu_count` is used.
+
+The following classes are used to help the :class:`openmc.deplete.CoupledOperator`
 compute quantities like effective fission yields, reaction rates, and
 total system energy.
 
@@ -161,6 +203,47 @@ total system energy.
    helpers.DirectReactionRateHelper
    helpers.EnergyScoreHelper
    helpers.FissionYieldCutoffHelper
+   helpers.FluxCollapseHelper
+
+The :class:`openmc.deplete.IndependentOperator` uses inner classes subclassed
+from those listed above to perform similar calculations.
+
+The following classes are used to define transfer rates to model continuous
+removal or feed of nuclides during depletion.
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   transfer_rates.TransferRates
+
+Intermediate Classes
+--------------------
+
+Specific implementations of abstract base classes may utilize some of
+the same methods and data structures. These methods and data are stored
+in intermediate classes.
+
+Methods common to tally-based implementation of :class:`FissionYieldHelper`
+are stored in :class:`helpers.TalliedFissionYieldHelper`
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   helpers.TalliedFissionYieldHelper
+
+Methods common to OpenMC-specific implementations of :class:`TransportOperator`
+are stored in :class:`openmc_operator.OpenMCOperator`
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: mycallable.rst
+
+   openmc_operator.OpenMCOperator
 
 
 Abstract Base Classes
@@ -169,8 +252,8 @@ Abstract Base Classes
 A good starting point for extending capabilities in :mod:`openmc.deplete` is
 to examine the following abstract base classes. Custom classes can
 inherit from :class:`abc.TransportOperator` to implement alternative
-schemes for collecting reaction rates and other data from a transport code
-prior to depleting materials
+schemes for collecting reaction rates and other data prior to depleting
+materials
 
 .. autosummary::
    :toctree: generated
@@ -180,17 +263,18 @@ prior to depleting materials
    abc.TransportOperator
 
 The following classes are abstract classes used to pass information from
-OpenMC simulations back on to the :class:`abc.TransportOperator`
+transport simulations (in the case of transport-coupled depletion) or to
+simply calculate these quantities directly (in the case of
+transport-independent depletion) back on to the :class:`abc.TransportOperator`
 
 .. autosummary::
    :toctree: generated
    :nosignatures:
    :template: myclass.rst
 
-   abc.EnergyHelper
+   abc.NormalizationHelper
    abc.FissionYieldHelper
    abc.ReactionRateHelper
-   abc.TalliedFissionYieldHelper
 
 Custom integrators or depletion solvers can be developed by subclassing from
 the following abstract base classes:

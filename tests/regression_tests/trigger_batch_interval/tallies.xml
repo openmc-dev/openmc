@@ -2,7 +2,7 @@
 <tallies>
 
   <tally id="1">
-    <nuclides>all</nuclides>
+    <nuclides>Pu239 total</nuclides>
     <scores>total absorption fission scatter</scores>
   </tally>
 

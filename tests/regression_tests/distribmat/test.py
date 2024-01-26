@@ -4,7 +4,8 @@ from tests.testing_harness import TestHarness, PyAPITestHarness
 
 
 class DistribmatTestHarness(PyAPITestHarness):
-    def _build_inputs(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         ####################
         # Materials
         ####################
@@ -22,8 +23,8 @@ class DistribmatTestHarness(PyAPITestHarness):
         light_fuel.set_density('g/cc', 2.0)
         light_fuel.add_nuclide('U235', 1.0)
 
-        mats_file = openmc.Materials([moderator, dense_fuel, light_fuel])
-        mats_file.export_to_xml()
+        self._model.materials = openmc.Materials([moderator, dense_fuel,
+                                                  light_fuel])
 
         ####################
         # Geometry
@@ -54,8 +55,7 @@ class DistribmatTestHarness(PyAPITestHarness):
         c101.region = +x0 & -x1 & +y0 & -y1
         root_univ = openmc.Universe(universe_id=0, cells=[c101])
 
-        geometry = openmc.Geometry(root_univ)
-        geometry.export_to_xml()
+        self._model.geometry = openmc.Geometry(root_univ)
 
         ####################
         # Settings
@@ -65,9 +65,9 @@ class DistribmatTestHarness(PyAPITestHarness):
         sets_file.batches = 5
         sets_file.inactive = 0
         sets_file.particles = 1000
-        sets_file.source = openmc.Source(space=openmc.stats.Box(
+        sets_file.source = openmc.IndependentSource(space=openmc.stats.Box(
             [-1, -1, -1], [1, 1, 1]))
-        sets_file.export_to_xml()
+        self._model.settings = sets_file
 
         ####################
         # Plots
@@ -89,8 +89,7 @@ class DistribmatTestHarness(PyAPITestHarness):
         plot2.width = (7, 7)
         plot2.pixels = (400, 400)
 
-        plots = openmc.Plots([plot1, plot2])
-        plots.export_to_xml()
+        self._model.plots = openmc.Plots([plot1, plot2])
 
     def _get_results(self):
         outstr = super()._get_results()
@@ -100,5 +99,5 @@ class DistribmatTestHarness(PyAPITestHarness):
 
 
 def test_distribmat():
-    harness = DistribmatTestHarness('statepoint.5.h5')
+    harness = DistribmatTestHarness('statepoint.5.h5', model=openmc.Model())
     harness.main()

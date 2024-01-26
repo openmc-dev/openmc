@@ -1,17 +1,18 @@
 import sys
 
 from collections.abc import Mapping, Iterable
-from ctypes import c_int, c_int32, c_double, c_char_p, POINTER
+from ctypes import c_int, c_int32, c_double, c_char_p, POINTER, c_bool, c_size_t
 from weakref import WeakValueDictionary
 
 import numpy as np
-from numpy.ctypeslib import as_array
 
-from openmc.exceptions import AllocationError, InvalidIDError
+from ..exceptions import AllocationError, InvalidIDError
 from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler
 from .material import Material
+from ..bounding_box import BoundingBox
+
 
 __all__ = ['Cell', 'cells']
 
@@ -26,6 +27,9 @@ _dll.openmc_cell_get_fill.argtypes = [
     c_int32, POINTER(c_int), POINTER(POINTER(c_int32)), POINTER(c_int32)]
 _dll.openmc_cell_get_fill.restype = c_int
 _dll.openmc_cell_get_fill.errcheck = _error_handler
+_dll.openmc_cell_get_num_instances.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_cell_get_num_instances.restype = c_int
+_dll.openmc_cell_get_num_instances.errcheck = _error_handler
 _dll.openmc_cell_get_temperature.argtypes = [
     c_int32, POINTER(c_int32), POINTER(c_double)]
 _dll.openmc_cell_get_temperature.restype = c_int
@@ -33,6 +37,13 @@ _dll.openmc_cell_get_temperature.errcheck = _error_handler
 _dll.openmc_cell_get_name.argtypes = [c_int32, POINTER(c_char_p)]
 _dll.openmc_cell_get_name.restype = c_int
 _dll.openmc_cell_get_name.errcheck = _error_handler
+_dll.openmc_cell_get_translation.argtypes = [c_int32, POINTER(c_double)]
+_dll.openmc_cell_get_translation.restype = c_int
+_dll.openmc_cell_get_translation.errcheck = _error_handler
+_dll.openmc_cell_get_rotation.argtypes = [c_int32, POINTER(c_double),
+    POINTER(c_size_t)]
+_dll.openmc_cell_get_rotation.restype = c_int
+_dll.openmc_cell_get_rotation.errcheck = _error_handler
 _dll.openmc_cell_set_name.argtypes = [c_int32, c_char_p]
 _dll.openmc_cell_set_name.restype = c_int
 _dll.openmc_cell_set_name.errcheck = _error_handler
@@ -44,9 +55,16 @@ _dll.openmc_cell_set_id.argtypes = [c_int32, c_int32]
 _dll.openmc_cell_set_id.restype = c_int
 _dll.openmc_cell_set_id.errcheck = _error_handler
 _dll.openmc_cell_set_temperature.argtypes = [
-    c_int32, c_double, POINTER(c_int32)]
+    c_int32, c_double, POINTER(c_int32), c_bool]
 _dll.openmc_cell_set_temperature.restype = c_int
 _dll.openmc_cell_set_temperature.errcheck = _error_handler
+_dll.openmc_cell_set_translation.argtypes = [c_int32, POINTER(c_double)]
+_dll.openmc_cell_set_translation.restype = c_int
+_dll.openmc_cell_set_translation.errcheck = _error_handler
+_dll.openmc_cell_set_rotation.argtypes = [
+    c_int32, POINTER(c_double), c_size_t]
+_dll.openmc_cell_set_rotation.restype = c_int
+_dll.openmc_cell_set_rotation.errcheck = _error_handler
 _dll.openmc_get_cell_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_cell_index.restype = c_int
 _dll.openmc_get_cell_index.errcheck = _error_handler
@@ -67,6 +85,11 @@ class Cell(_FortranObjectWithID):
 
     Parameters
     ----------
+    uid : int or None
+         Unique ID of the cell
+    new : bool
+         When `index` is None, this argument controls whether a new object is
+         created or a view to an existing object is returned.
     index : int
          Index in the `cells` array.
 
@@ -74,6 +97,21 @@ class Cell(_FortranObjectWithID):
     ----------
     id : int
         ID of the cell
+    fill : openmc.lib.Material or list of openmc.lib.Material
+        Indicates what the region of space is filled with
+    name : str
+        Name of the cell
+    num_instances : int
+        Number of unique cell instances
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the cell
+    translation : Iterable of float
+        3-D coordinates of the translation vector
+    rotation : Iterable of float
+        The rotation matrix or angles of the universe filling the cell. This
+        can either be a fully specified 3 x 3 rotation matrix or an Iterable
+        of length 3 with the angles in degrees about the x, y, and z axes,
+        respectively.
 
     """
     __instances = WeakValueDictionary()
@@ -155,6 +193,12 @@ class Cell(_FortranObjectWithID):
             indices = (c_int32*1)(-1)
             _dll.openmc_cell_set_fill(self._index, 0, 1, indices)
 
+    @property
+    def num_instances(self):
+        n = c_int32()
+        _dll.openmc_cell_get_num_instances(self._index, n)
+        return n.value
+
     def get_temperature(self, instance=None):
         """Get the temperature of a cell
 
@@ -172,7 +216,7 @@ class Cell(_FortranObjectWithID):
         _dll.openmc_cell_get_temperature(self._index, instance, T)
         return T.value
 
-    def set_temperature(self, T, instance=None):
+    def set_temperature(self, T, instance=None, set_contained=False):
         """Set the temperature of a cell
 
         Parameters
@@ -181,13 +225,58 @@ class Cell(_FortranObjectWithID):
             Temperature in K
         instance : int or None
             Which instance of the cell
+        set_contained: bool
+            If cell is not filled by a material, whether to set the temperature of
+            all filled cells
 
         """
 
         if instance is not None:
             instance = c_int32(instance)
 
-        _dll.openmc_cell_set_temperature(self._index, T, instance)
+        _dll.openmc_cell_set_temperature(self._index, T, instance, set_contained)
+
+    @property
+    def translation(self):
+        translation = np.zeros(3)
+        _dll.openmc_cell_get_translation(
+            self._index, translation.ctypes.data_as(POINTER(c_double)))
+        return translation
+
+    @translation.setter
+    def translation(self, translation_vec):
+        vector = np.asarray(translation_vec, dtype=float)
+        _dll.openmc_cell_set_translation(
+            self._index, vector.ctypes.data_as(POINTER(c_double)))
+
+    @property
+    def rotation(self):
+        rotation_data = np.zeros(12)
+        rot_size = c_size_t()
+
+        _dll.openmc_cell_get_rotation(
+            self._index, rotation_data.ctypes.data_as(POINTER(c_double)),
+            rot_size)
+        rot_size = rot_size.value
+
+        if rot_size == 9:
+            return rotation_data[:rot_size].shape(3, 3)
+        elif rot_size in (0, 12):
+            # If size is 0, rotation_data[9:] will be zeros. This indicates no
+            # rotation and is the most straightforward way to always return
+            # an iterable of floats
+            return rotation_data[9:]
+        else:
+            raise ValueError(
+                'Invalid size of rotation matrix: {}'.format(rot_size))
+
+    @rotation.setter
+    def rotation(self, rotation_data):
+        flat_rotation = np.asarray(rotation_data, dtype=float).flatten()
+
+        _dll.openmc_cell_set_rotation(
+            self._index, flat_rotation.ctypes.data_as(POINTER(c_double)),
+            c_size_t(len(flat_rotation)))
 
     @property
     def bounding_box(self):
@@ -202,7 +291,8 @@ class Cell(_FortranObjectWithID):
         llc[llc == -inf] = -np.inf
         urc[urc == -inf] = -np.inf
 
-        return llc, urc
+        return BoundingBox(llc, urc)
+
 
 class _CellMapping(Mapping):
     def __getitem__(self, key):

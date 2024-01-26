@@ -45,8 +45,10 @@ Output Files
    statepoint
    source
    summary
+   properties
    depletion_results
    particle_restart
    track
    voxel
    volume
+   weight_windows

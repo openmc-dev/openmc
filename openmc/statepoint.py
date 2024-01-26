@@ -1,27 +1,27 @@
 from datetime import datetime
+import glob
 import re
 import os
 import warnings
-import glob
 
-import numpy as np
 import h5py
+import numpy as np
 from uncertainties import ufloat
 
 import openmc
 import openmc.checkvalue as cv
 
-_VERSION_STATEPOINT = 17
+_VERSION_STATEPOINT = 18
 
 
-class StatePoint(object):
+class StatePoint:
     """State information on a simulation at a certain point in time (at the end
     of a given batch). Statepoints can be used to analyze tally results as well
     as restart a simulation.
 
     Parameters
     ----------
-    filename : str
+    filepath : str or Path
         Path to file to load
     autolink : bool, optional
         Whether to automatically link in metadata from a summary.h5 file and
@@ -63,6 +63,8 @@ class StatePoint(object):
         datatype has fields 'name', 'sum', 'sum_sq', 'mean', and 'std_dev'.
     k_combined : uncertainties.UFloat
         Combined estimator for k-effective
+
+        .. deprecated:: 0.13.1
     k_col_abs : float
         Cross-product of collision and absorption estimates of k-effective
     k_col_tra : float
@@ -71,6 +73,10 @@ class StatePoint(object):
         Cross-product of absorption and tracklength estimates of k-effective
     k_generation : numpy.ndarray
         Estimate of k-effective for each batch/generation
+    keff : uncertainties.UFloat
+        Combined estimator for k-effective
+
+        .. versionadded:: 0.13.1
     meshes : dict
         Dictionary whose keys are mesh IDs and whose values are MeshBase objects
     n_batches : int
@@ -93,9 +99,10 @@ class StatePoint(object):
     seed : int
         Pseudorandom number generator seed
     source : numpy.ndarray of compound datatype
-        Array of source sites. The compound datatype has fields 'wgt', 'xyz',
-        'uvw', and 'E' corresponding to the weight, position, direction, and
-        energy of the source site.
+        Array of source sites. The compound datatype has fields 'r', 'u',
+        'E', 'wgt', 'delayed_group', 'surf_id', and 'particle', corresponding to
+        the position, direction, energy, weight, delayed group, surface ID and
+        particle type of the source site, respectively.
     source_present : bool
         Indicate whether source sites are present
     sparse : bool
@@ -115,7 +122,8 @@ class StatePoint(object):
 
     """
 
-    def __init__(self, filename, autolink=True):
+    def __init__(self, filepath, autolink=True):
+        filename = str(filepath)  # in case it's a Path
         self._f = h5py.File(filename, 'r')
         self._meshes = {}
         self._filters = {}
@@ -151,9 +159,7 @@ class StatePoint(object):
         return self
 
     def __exit__(self, *exc):
-        self._f.close()
-        if self._summary is not None:
-            self._summary._f.close()
+        self.close()
 
     @property
     def cmfd_on(self):
@@ -260,11 +266,19 @@ class StatePoint(object):
             return None
 
     @property
-    def k_combined(self):
+    def keff(self):
         if self.run_mode == 'eigenvalue':
             return ufloat(*self._f['k_combined'][()])
         else:
             return None
+
+    @property
+    def k_combined(self):
+        warnings.warn(
+            "The 'k_combined' property has been renamed to 'keff' and will be "
+            "removed in a future version of OpenMC.", FutureWarning
+        )
+        return self.keff
 
     @property
     def k_col_abs(self):
@@ -310,7 +324,7 @@ class StatePoint(object):
         if self.run_mode == 'eigenvalue':
             return self._f['n_inactive'][()]
         else:
-            return None                  
+            return None
 
     @property
     def n_particles(self):
@@ -353,6 +367,26 @@ class StatePoint(object):
     def sparse(self):
         return self._sparse
 
+    @sparse.setter
+    def sparse(self, sparse):
+        """Convert tally data from NumPy arrays to SciPy list of lists (LIL)
+        sparse matrices, and vice versa.
+
+        This property may be used to reduce the amount of data in memory during
+        tally data processing. The tally data will be stored as SciPy LIL
+        matrices internally within each Tally object. All tally data access
+        properties and methods will return data as a dense NumPy array.
+
+        """
+
+        cv.check_type('sparse', sparse, bool)
+        self._sparse = sparse
+
+        # Update tally sparsities
+        if self._tallies_read:
+            for tally_id in self.tallies:
+                self.tallies[tally_id].sparse = self.sparse
+
     @property
     def tallies(self):
         if self.tallies_present and not self._tallies_read:
@@ -373,7 +407,7 @@ class StatePoint(object):
 
                 # Iterate over all tallies
                 for tally_id in tally_ids:
-                    group = tallies_group['tally {}'.format(tally_id)]
+                    group = tallies_group[f'tally {tally_id}']
 
                     # Check if tally is internal and therefore has no data
                     if group.attrs.get("internal"):
@@ -383,6 +417,10 @@ class StatePoint(object):
                     tally = openmc.Tally(tally_id)
                     tally._sp_filename = self._f.filename
                     tally.name = group['name'][()].decode() if 'name' in group else ''
+
+                    # Check if tally has multiply_density attribute
+                    if "multiply_density" in group.attrs:
+                        tally.multiply_density = group.attrs["multiply_density"].item() > 0
 
                     # Read the number of realizations
                     n_realizations = group['n_realizations'][()]
@@ -401,8 +439,7 @@ class StatePoint(object):
                         filter_ids = group['filters'][()]
                         filters_group = self._f['tallies/filters']
                         for filter_id in filter_ids:
-                            filter_group = filters_group['filter {}'.format(
-                                filter_id)]
+                            filter_group = filters_group[f'filter {filter_id}']
                             new_filter = openmc.Filter.from_hdf5(
                                 filter_group, meshes=self.meshes)
                             tally.filters.append(new_filter)
@@ -415,14 +452,10 @@ class StatePoint(object):
                         nuclide = openmc.Nuclide(name.decode().strip())
                         tally.nuclides.append(nuclide)
 
-                    scores = group['score_bins'][()]
-                    n_score_bins = group['n_score_bins'][()]
-
                     # Add the scores to the Tally
-                    for j, score in enumerate(scores):
-                        score = score.decode()
-
-                        tally.scores.append(score)
+                    scores = group['score_bins'][()]
+                    for score in scores:
+                        tally.scores.append(score.decode())
 
                     # Add Tally to the global dictionary of all Tallies
                     tally.sparse = self.sparse
@@ -447,8 +480,7 @@ class StatePoint(object):
 
                 # Create each derivative object and add it to the dictionary.
                 for d_id in deriv_ids:
-                    group = self._f['tallies/derivatives/derivative {}'
-                                    .format(d_id)]
+                    group = self._f[f'tallies/derivatives/derivative {d_id}']
                     deriv = openmc.TallyDerivative(derivative_id=d_id)
                     deriv.variable = group['independent variable'][()].decode()
                     if deriv.variable == 'density':
@@ -472,25 +504,13 @@ class StatePoint(object):
     def summary(self):
         return self._summary
 
-    @sparse.setter
-    def sparse(self, sparse):
-        """Convert tally data from NumPy arrays to SciPy list of lists (LIL)
-        sparse matrices, and vice versa.
-
-        This property may be used to reduce the amount of data in memory during
-        tally data processing. The tally data will be stored as SciPy LIL
-        matrices internally within each Tally object. All tally data access
-        properties and methods will return data as a dense NumPy array.
-
+    def close(self):
+        """Close the statepoint HDF5 file and the corresponding
+        summary HDF5 file if present.
         """
-
-        cv.check_type('sparse', sparse, bool)
-        self._sparse = sparse
-
-        # Update tally sparsities
-        if self._tallies_read:
-            for tally_id in self.tallies:
-                self.tallies[tally_id].sparse = self.sparse
+        self._f.close()
+        if self._summary is not None:
+            self._summary._f.close()
 
     def add_volume_information(self, volume_calc):
         """Add volume information to the geometry within the file
@@ -585,15 +605,7 @@ class StatePoint(object):
 
             # Determine if Tally has the queried score(s)
             if scores:
-                contains_scores = True
-
-                # Iterate over the scores requested by the user
-                for score in scores:
-                    if score not in test_tally.scores:
-                        contains_scores = False
-                        break
-
-                if not contains_scores:
+                if not all(score in test_tally.scores for score in scores):
                     continue
 
             # Determine if Tally has the queried Filter(s)
@@ -619,15 +631,7 @@ class StatePoint(object):
 
             # Determine if Tally has the queried Nuclide(s)
             if nuclides:
-                contains_nuclides = True
-
-                # Iterate over the Nuclides requested by the user
-                for nuclide in nuclides:
-                    if nuclide not in test_tally.nuclides:
-                        contains_nuclides = False
-                        break
-
-                if not contains_nuclides:
+                if not all(nuclide in test_tally.nuclides for nuclide in nuclides):
                     continue
 
             # If the current Tally met user's request, break loop and return it
@@ -669,13 +673,13 @@ class StatePoint(object):
             return
 
         if not isinstance(summary, openmc.Summary):
-            msg = 'Unable to link statepoint with "{0}" which ' \
-                  'is not a Summary object'.format(summary)
+            msg = f'Unable to link statepoint with "{summary}" which is not a' \
+                  'Summary object'
             raise ValueError(msg)
 
         cells = summary.geometry.get_all_cells()
 
-        for tally_id, tally in self.tallies.items():
+        for tally in self.tallies.values():
             tally.with_summary = True
 
             for tally_filter in tally.filters:

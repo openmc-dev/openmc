@@ -1,14 +1,14 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from collections.abc import Iterable, Callable
 from functools import reduce
 from itertools import zip_longest
-from numbers import Real, Integral
 from math import exp, log
+from numbers import Real, Integral
 
 import numpy as np
 
-import openmc.data
 import openmc.checkvalue as cv
+import openmc.data
 from openmc.mixin import EqualityMixin
 from .data import EV_PER_MEV
 
@@ -56,7 +56,7 @@ def sum_functions(funcs):
         return Polynomial(coeffs)
 
 
-class Function1D(EqualityMixin, metaclass=ABCMeta):
+class Function1D(EqualityMixin, ABC):
     """A function of one independent variable with HDF5 support."""
     @abstractmethod
     def __call__(self): pass
@@ -255,17 +255,37 @@ class Tabulated1D(Function1D):
     def x(self):
         return self._x
 
+    @x.setter
+    def x(self, x):
+        cv.check_type('x values', x, Iterable, Real)
+        self._x = x
+
     @property
     def y(self):
         return self._y
+
+    @y.setter
+    def y(self, y):
+        cv.check_type('y values', y, Iterable, Real)
+        self._y = y
 
     @property
     def breakpoints(self):
         return self._breakpoints
 
+    @breakpoints.setter
+    def breakpoints(self, breakpoints):
+        cv.check_type('breakpoints', breakpoints, Iterable, Integral)
+        self._breakpoints = breakpoints
+
     @property
     def interpolation(self):
         return self._interpolation
+
+    @interpolation.setter
+    def interpolation(self, interpolation):
+        cv.check_type('interpolation', interpolation, Iterable, Integral)
+        self._interpolation = interpolation
 
     @property
     def n_pairs(self):
@@ -274,26 +294,6 @@ class Tabulated1D(Function1D):
     @property
     def n_regions(self):
         return len(self.breakpoints)
-
-    @x.setter
-    def x(self, x):
-        cv.check_type('x values', x, Iterable, Real)
-        self._x = x
-
-    @y.setter
-    def y(self, y):
-        cv.check_type('y values', y, Iterable, Real)
-        self._y = y
-
-    @breakpoints.setter
-    def breakpoints(self, breakpoints):
-        cv.check_type('breakpoints', breakpoints, Iterable, Integral)
-        self._breakpoints = breakpoints
-
-    @interpolation.setter
-    def interpolation(self, interpolation):
-        cv.check_type('interpolation', interpolation, Iterable, Integral)
-        self._interpolation = interpolation
 
     def integral(self):
         """Integral of the tabulated function over its tabulated range.
@@ -544,7 +544,7 @@ class Combination(EqualityMixin):
         self._operations = operations
 
 
-class Sum(EqualityMixin):
+class Sum(Function1D):
     """Sum of multiple functions.
 
     This class allows you to create a callable object which represents the sum
@@ -578,9 +578,52 @@ class Sum(EqualityMixin):
         cv.check_type('functions', functions, Iterable, Callable)
         self._functions = functions
 
+    def to_hdf5(self, group, name='xy'):
+        """Write sum of functions to an HDF5 group
+
+        .. versionadded:: 0.13.1
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to write to
+        name : str
+            Name of the dataset to create
+
+        """
+        sum_group = group.create_group(name)
+        sum_group.attrs['type'] = np.string_(type(self).__name__)
+        sum_group.attrs['n'] = len(self.functions)
+        for i, f in enumerate(self.functions):
+            f.to_hdf5(sum_group, f'func_{i+1}')
+
+    @classmethod
+    def from_hdf5(cls, group):
+        """Generate sum of functions from an HDF5 group
+
+        .. versionadded:: 0.13.1
+
+        Parameters
+        ----------
+        group : h5py.Group
+            Group to read from
+
+        Returns
+        -------
+        openmc.data.Sum
+            Functions read from the group
+
+        """
+        n = group.attrs['n']
+        functions = [
+            Function1D.from_hdf5(group[f'func_{i+1}'])
+            for i in range(n)
+        ]
+        return cls(functions)
+
 
 class Regions1D(EqualityMixin):
-    """Piecewise composition of multiple functions.
+    r"""Piecewise composition of multiple functions.
 
     This class allows you to create a callable object which is composed
     of multiple other callable objects, each applying to a specific interval
@@ -621,14 +664,14 @@ class Regions1D(EqualityMixin):
     def functions(self):
         return self._functions
 
-    @property
-    def breakpoints(self):
-        return self._breakpoints
-
     @functions.setter
     def functions(self, functions):
         cv.check_type('functions', functions, Iterable, Callable)
         self._functions = functions
+
+    @property
+    def breakpoints(self):
+        return self._breakpoints
 
     @breakpoints.setter
     def breakpoints(self, breakpoints):
@@ -691,23 +734,23 @@ class ResonancesWithBackground(EqualityMixin):
     def background(self):
         return self._background
 
-    @property
-    def mt(self):
-        return self._mt
-
-    @property
-    def resonances(self):
-        return self._resonances
-
     @background.setter
     def background(self, background):
         cv.check_type('background cross section', background, Callable)
         self._background = background
 
+    @property
+    def mt(self):
+        return self._mt
+
     @mt.setter
     def mt(self, mt):
         cv.check_type('MT value', mt, Integral)
         self._mt = mt
+
+    @property
+    def resonances(self):
+        return self._resonances
 
     @resonances.setter
     def resonances(self, resonances):

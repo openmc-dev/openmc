@@ -1,12 +1,11 @@
 #include "openmc/cross_sections.h"
 
+#include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/container_util.h"
-#ifdef DAGMC
-#include "openmc/dagmc.h"
-#endif
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
@@ -17,8 +16,9 @@
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
 #include "openmc/thermal.h"
-#include "openmc/xml_interface.h"
+#include "openmc/timer.h"
 #include "openmc/wmp.h"
+#include "openmc/xml_interface.h"
 
 #include "pugixml.hpp"
 
@@ -33,10 +33,9 @@ namespace openmc {
 
 namespace data {
 
-std::vector<Library> libraries;
 std::map<LibraryKey, std::size_t> library_map;
-
-}
+vector<Library> libraries;
+} // namespace data
 
 //==============================================================================
 // Library methods
@@ -77,8 +76,10 @@ Library::Library(pugi::xml_node node, const std::string& directory)
     path_ = path;
   } else if (ends_with(directory, "/")) {
     path_ = directory + path;
-  } else {
+  } else if (!directory.empty()) {
     path_ = directory + "/" + path;
+  } else {
+    path_ = path;
   }
 
   if (!file_exists(path_)) {
@@ -94,30 +95,20 @@ void read_cross_sections_xml()
 {
   pugi::xml_document doc;
   std::string filename = settings::path_input + "materials.xml";
-#ifdef DAGMC
-  std::string s;
-  bool found_uwuw_mats = false;
-  if (settings::dagmc) {
-    found_uwuw_mats = get_uwuw_materials_xml(s);
-  }
-
-  if (found_uwuw_mats) {
-    // if we found uwuw materials, load those
-    doc.load_file(s.c_str());
-  } else {
-#endif
   // Check if materials.xml exists
   if (!file_exists(filename)) {
     fatal_error("Material XML file '" + filename + "' does not exist.");
   }
   // Parse materials.xml file
   doc.load_file(filename.c_str());
-#ifdef DAGMC
-  }
-#endif
 
   auto root = doc.document_element();
 
+  read_cross_sections_xml(root);
+}
+
+void read_cross_sections_xml(pugi::xml_node root)
+{
   // Find cross_sections.xml file -- the first place to look is the
   // materials.xml file. If no file is found there, then we check the
   // OPENMC_CROSS_SECTIONS environment variable
@@ -127,7 +118,8 @@ void read_cross_sections_xml()
     if (settings::run_CE) {
       char* envvar = std::getenv("OPENMC_CROSS_SECTIONS");
       if (!envvar) {
-        fatal_error("No cross_sections.xml file was specified in "
+        fatal_error(
+          "No cross_sections.xml file was specified in "
           "materials.xml or in the OPENMC_CROSS_SECTIONS"
           " environment variable. OpenMC needs such a file to identify "
           "where to find data libraries. Please consult the"
@@ -138,17 +130,25 @@ void read_cross_sections_xml()
     } else {
       char* envvar = std::getenv("OPENMC_MG_CROSS_SECTIONS");
       if (!envvar) {
-        fatal_error("No mgxs.h5 file was specified in "
-              "materials.xml or in the OPENMC_MG_CROSS_SECTIONS environment "
-              "variable. OpenMC needs such a file to identify where to "
-              "find MG cross section libraries. Please consult the user's "
-              "guide at http://openmc.readthedocs.io for information on "
-              "how to set up MG cross section libraries.");
+        fatal_error(
+          "No mgxs.h5 file was specified in "
+          "materials.xml or in the OPENMC_MG_CROSS_SECTIONS environment "
+          "variable. OpenMC needs such a file to identify where to "
+          "find MG cross section libraries. Please consult the user's "
+          "guide at https://docs.openmc.org for information on "
+          "how to set up MG cross section libraries.");
       }
       settings::path_cross_sections = envvar;
     }
   } else {
     settings::path_cross_sections = get_node_value(root, "cross_sections");
+
+    // If no '/' found, the file is probably in the input directory
+    auto pos = settings::path_cross_sections.rfind("/");
+    if (pos == std::string::npos && !settings::path_input.empty()) {
+      settings::path_cross_sections =
+        settings::path_input + "/" + settings::path_cross_sections;
+    }
   }
 
   // Now that the cross_sections.xml or mgxs.h5 has been located, read it in
@@ -173,22 +173,21 @@ void read_cross_sections_xml()
   for (const auto& name : settings::res_scat_nuclides) {
     LibraryKey key {Library::Type::neutron, name};
     if (data::library_map.find(key) == data::library_map.end()) {
-      fatal_error("Could not find resonant scatterer " +
-        name + " in cross_sections.xml file!");
+      fatal_error("Could not find resonant scatterer " + name +
+                  " in cross_sections.xml file!");
     }
   }
 }
 
-void
-read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
-  const std::vector<std::vector<double>>& thermal_temps)
+void read_ce_cross_sections(const vector<vector<double>>& nuc_temps,
+  const vector<vector<double>>& thermal_temps)
 {
   std::unordered_set<std::string> already_read;
 
   // Construct a vector of nuclide names because we haven't loaded nuclide data
   // yet, but we need to know the name of the i-th nuclide
-  std::vector<std::string> nuclide_names(data::nuclide_map.size());
-  std::vector<std::string> thermal_names(data::thermal_scatt_map.size());
+  vector<std::string> nuclide_names(data::nuclide_map.size());
+  vector<std::string> thermal_names(data::thermal_scatt_map.size());
   for (const auto& kv : data::nuclide_map) {
     nuclide_names[kv.second] = kv.first;
   }
@@ -205,83 +204,19 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
       std::string& name = nuclide_names[i_nuc];
 
       // If we've already read this nuclide, skip it
-      if (already_read.find(name) != already_read.end()) continue;
+      if (already_read.find(name) != already_read.end())
+        continue;
 
-      LibraryKey key {Library::Type::neutron, name};
-      int idx = data::library_map[key];
-      std::string& filename = data::libraries[idx].path_;
+      const auto& temps = nuc_temps[i_nuc];
+      int err = openmc_load_nuclide(name.c_str(), temps.data(), temps.size());
+      if (err < 0)
+        throw std::runtime_error {openmc_err_msg};
 
-      write_message("Reading " + name + " from " + filename, 6);
-
-      // Open file and make sure version is sufficient
-      hid_t file_id = file_open(filename, 'r');
-      check_data_version(file_id);
-
-      // Read nuclide data from HDF5
-      hid_t group = open_group(file_id, name.c_str());
-      int i_nuclide = data::nuclides.size();
-      data::nuclides.push_back(std::make_unique<Nuclide>(
-        group, nuc_temps[i_nuc], i_nuclide));
-
-      close_group(group);
-      file_close(file_id);
-
-      // Determine if minimum/maximum energy for this nuclide is greater/less
-      // than the previous
-      if (data::nuclides[i_nuclide]->grid_.size() >= 1) {
-        int neutron = static_cast<int>(Particle::Type::neutron);
-        data::energy_min[neutron] = std::max(data::energy_min[neutron],
-          data::nuclides[i_nuclide]->grid_[0].energy.front());
-        data::energy_max[neutron] = std::min(data::energy_max[neutron],
-          data::nuclides[i_nuclide]->grid_[0].energy.back());
-      }
-
-      // Add name and alias to dictionary
       already_read.insert(name);
-
-      // Check if elemental data has been read, if needed
-      std::string element = to_element(name);
-      if (settings::photon_transport) {
-        if (already_read.find(element) == already_read.end()) {
-          // Read photon interaction data from HDF5 photon library
-          LibraryKey key {Library::Type::photon, element};
-          int idx = data::library_map[key];
-          std::string& filename = data::libraries[idx].path_;
-          write_message("Reading " + element + " from " + filename, 6);
-
-          // Open file and make sure version is sufficient
-          hid_t file_id = file_open(filename, 'r');
-          check_data_version(file_id);
-
-          // Read element data from HDF5
-          hid_t group = open_group(file_id, element.c_str());
-          data::elements.emplace_back(group, data::elements.size());
-
-          // Determine if minimum/maximum energy for this element is greater/less than
-          // the previous
-          const auto& elem {data::elements.back()};
-          if (elem.energy_.size() >= 1) {
-            int photon = static_cast<int>(Particle::Type::photon);
-            int n = elem.energy_.size();
-            data::energy_min[photon] = std::max(data::energy_min[photon],
-              std::exp(elem.energy_(1)));
-            data::energy_max[photon] = std::min(data::energy_max[photon],
-              std::exp(elem.energy_(n - 1)));
-          }
-
-          close_group(group);
-          file_close(file_id);
-
-          // Add element to set
-          already_read.insert(element);
-        }
-      }
-
-      // Read multipole file into the appropriate entry on the nuclides array
-      if (settings::temperature_multipole) read_multipole_data(i_nuclide);
     }
   }
 
+  // Perform final tasks -- reading S(a,b) tables, normalizing densities
   for (auto& mat : model::materials) {
     for (const auto& table : mat->thermal_tables_) {
       // Get name of S(a,b) table
@@ -293,7 +228,7 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
         int idx = data::library_map[key];
         std::string& filename = data::libraries[idx].path_;
 
-        write_message("Reading " + name + " from " + filename, 6);
+        write_message(6, "Reading {} from {}", name, filename);
 
         // Open file and make sure version matches
         hid_t file_id = file_open(filename, 'r');
@@ -301,8 +236,8 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
 
         // Read thermal scattering data from HDF5
         hid_t group = open_group(file_id, name.c_str());
-        data::thermal_scatt.push_back(std::make_unique<ThermalScattering>(
-          group, thermal_temps[i_table]));
+        data::thermal_scatt.push_back(
+          make_unique<ThermalScattering>(group, thermal_temps[i_table]));
         close_group(group);
         file_close(file_id);
 
@@ -315,54 +250,17 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
     mat->finalize();
   } // materials
 
-
-  // Set up logarithmic grid for nuclides
-  for (auto& nuc : data::nuclides) {
-    nuc->init_grid();
-  }
-  int neutron = static_cast<int>(Particle::Type::neutron);
-  simulation::log_spacing = std::log(data::energy_max[neutron] /
-    data::energy_min[neutron]) / settings::n_log_bins;
-
-  if (settings::photon_transport && settings::electron_treatment == ElectronTreatment::TTB) {
-    // Determine if minimum/maximum energy for bremsstrahlung is greater/less
-    // than the current minimum/maximum
-    if (data::ttb_e_grid.size() >= 1) {
-      int photon = static_cast<int>(Particle::Type::photon);
-      int n_e = data::ttb_e_grid.size();
-      data::energy_min[photon] = std::max(data::energy_min[photon], data::ttb_e_grid(1));
-      data::energy_max[photon] = std::min(data::energy_max[photon], data::ttb_e_grid(n_e - 1));
-    }
-
+  if (settings::photon_transport &&
+      settings::electron_treatment == ElectronTreatment::TTB) {
     // Take logarithm of energies since they are log-log interpolated
     data::ttb_e_grid = xt::log(data::ttb_e_grid);
   }
 
-  // Show which nuclide results in lowest energy for neutron transport
-  for (const auto& nuc : data::nuclides) {
-    // If a nuclide is present in a material that's not used in the model, its
-    // grid has not been allocated
-    if (nuc->grid_.size() > 0) {
-      double max_E = nuc->grid_[0].energy.back();
-      int neutron = static_cast<int>(Particle::Type::neutron);
-      if (max_E == data::energy_max[neutron]) {
-        write_message("Maximum neutron transport energy: " +
-          std::to_string(data::energy_max[neutron]) + " eV for " +
-          nuc->name_, 7);
-        if (mpi::master && data::energy_max[neutron] < 20.0e6) {
-          warning("Maximum neutron energy is below 20 MeV. This may bias "
-            " the results.");
-        }
-        break;
-      }
-    }
-  }
-
   // Show minimum/maximum temperature
-  write_message("Minimum neutron data temperature: " +
-    std::to_string(data::temperature_min) + " K", 4);
-  write_message("Maximum neutron data temperature: " +
-    std::to_string(data::temperature_max) + " K", 4);
+  write_message(
+    4, "Minimum neutron data temperature: {} K", data::temperature_min);
+  write_message(
+    4, "Maximum neutron data temperature: {} K", data::temperature_max);
 
   // If the user wants multipole, make sure we found a multipole library.
   if (settings::temperature_multipole) {
@@ -375,8 +273,8 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
     }
     if (mpi::master && !mp_found) {
       warning("Windowed multipole functionality is turned on, but no multipole "
-        "libraries were found. Make sure that windowed multipole data is "
-        "present in your cross_sections.xml file.");
+              "libraries were found. Make sure that windowed multipole data is "
+              "present in your cross_sections.xml file.");
     }
   }
 }
@@ -387,8 +285,7 @@ void read_ce_cross_sections_xml()
   const auto& filename = settings::path_cross_sections;
   if (!file_exists(filename)) {
     // Could not find cross_sections.xml file
-    fatal_error("Cross sections XML file '" + filename +
-      "' does not exist.");
+    fatal_error("Cross sections XML file '" + filename + "' does not exist.");
   }
 
   write_message("Reading cross sections XML file...", 5);
@@ -408,12 +305,16 @@ void read_ce_cross_sections_xml()
   } else {
     // If no directory is listed in cross_sections.xml, by default select the
     // directory in which the cross_sections.xml file resides
+
+    // TODO: Use std::filesystem functionality when C++17 is adopted
     auto pos = filename.rfind("/");
     if (pos == std::string::npos) {
-      // no '/' found, probably a Windows directory
-      pos = filename.rfind("\\");
+      // No '\\' found, so the file must be in the same directory as
+      // materials.xml
+      directory = settings::path_input;
+    } else {
+      directory = filename.substr(0, pos);
     }
-    directory = filename.substr(0, pos);
   }
 
   for (const auto& node_library : root.children("library")) {
@@ -422,11 +323,35 @@ void read_ce_cross_sections_xml()
 
   // Make sure file was not empty
   if (data::libraries.empty()) {
-    fatal_error("No cross section libraries present in cross_sections.xml file.");
+    fatal_error(
+      "No cross section libraries present in cross_sections.xml file.");
   }
 }
 
-void library_clear() {
+void finalize_cross_sections()
+{
+  if (settings::run_mode != RunMode::PLOTTING) {
+    simulation::time_read_xs.start();
+    if (settings::run_CE) {
+      // Determine desired temperatures for each nuclide and S(a,b) table
+      double_2dvec nuc_temps(data::nuclide_map.size());
+      double_2dvec thermal_temps(data::thermal_scatt_map.size());
+      get_temperatures(nuc_temps, thermal_temps);
+
+      // Read continuous-energy cross sections from HDF5
+      read_ce_cross_sections(nuc_temps, thermal_temps);
+    } else {
+      // Create material macroscopic data for MGXS
+      set_mg_interface_nuclides_and_temps();
+      data::mg.init();
+      mark_fissionable_mgxs_materials();
+    }
+    simulation::time_read_xs.stop();
+  }
+}
+
+void library_clear()
+{
   data::libraries.clear();
   data::library_map.clear();
 }

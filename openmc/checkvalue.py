@@ -1,10 +1,15 @@
 import copy
+import os
+import typing  # required to prevent typing.Union namespace overwriting Union
 from collections.abc import Iterable
 
 import numpy as np
 
+# Type for arguments that accept file paths
+PathLike = typing.Union[str, os.PathLike]
 
-def check_type(name, value, expected_type, expected_iter_type=None):
+
+def check_type(name, value, expected_type, expected_iter_type=None, *, none_ok=False):
     """Ensure that an object is of an expected type. Optionally, if the object is
     iterable, check that each element is of a particular type.
 
@@ -19,39 +24,42 @@ def check_type(name, value, expected_type, expected_iter_type=None):
     expected_iter_type : type or Iterable of type or None, optional
         Expected type of each element in value, assuming it is iterable. If
         None, no check will be performed.
+    none_ok : bool, optional
+        Whether None is allowed as a value
 
     """
+    if none_ok and value is None:
+        return
 
     if not isinstance(value, expected_type):
         if isinstance(expected_type, Iterable):
-            msg = 'Unable to set "{0}" to "{1}" which is not one of the ' \
-                  'following types: "{2}"'.format(name, value, ', '.join(
+            msg = 'Unable to set "{}" to "{}" which is not one of the ' \
+                  'following types: "{}"'.format(name, value, ', '.join(
                       [t.__name__ for t in expected_type]))
         else:
-            msg = 'Unable to set "{0}" to "{1}" which is not of type "{2}"'.format(
-                name, value, expected_type.__name__)
+            msg = (f'Unable to set "{name}" to "{value}" which is not of type "'
+                   f'{expected_type.__name__}"')
         raise TypeError(msg)
 
     if expected_iter_type:
         if isinstance(value, np.ndarray):
             if not issubclass(value.dtype.type, expected_iter_type):
-                msg = 'Unable to set "{0}" to "{1}" since each item must be ' \
-                      'of type "{2}"'.format(name, value,
-                                             expected_iter_type.__name__)
+                msg = (f'Unable to set "{name}" to "{value}" since each item '
+                       f'must be of type "{expected_iter_type.__name__}"')
+                raise TypeError(msg)
             else:
                 return
 
         for item in value:
             if not isinstance(item, expected_iter_type):
                 if isinstance(expected_iter_type, Iterable):
-                    msg = 'Unable to set "{0}" to "{1}" since each item must be ' \
-                          'one of the following types: "{2}"'.format(
+                    msg = 'Unable to set "{}" to "{}" since each item must be ' \
+                          'one of the following types: "{}"'.format(
                               name, value, ', '.join([t.__name__ for t in
                                                       expected_iter_type]))
                 else:
-                    msg = 'Unable to set "{0}" to "{1}" since each item must be ' \
-                          'of type "{2}"'.format(name, value,
-                                                 expected_iter_type.__name__)
+                    msg = (f'Unable to set "{name}" to "{value}" since each '
+                           f'item must be of type "{expected_iter_type.__name__}"')
                 raise TypeError(msg)
 
 
@@ -101,8 +109,8 @@ def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
         if isinstance(current_item, expected_type):
             # Is this deep enough?
             if len(tree) < min_depth:
-                msg = 'Error setting "{0}": The item at {1} does not meet the '\
-                      'minimum depth of {2}'.format(name, ind_str, min_depth)
+                msg = (f'Error setting "{name}": The item at {ind_str} does not '
+                       f'meet the minimum depth of {min_depth}')
                 raise TypeError(msg)
 
             # This item is okay.  Move on to the next item.
@@ -118,17 +126,16 @@ def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
 
                 # But first, have we exceeded the max depth?
                 if len(tree) > max_depth:
-                    msg = 'Error setting {0}: Found an iterable at {1}, items '\
-                          'in that iterable exceed the maximum depth of {2}' \
-                          .format(name, ind_str, max_depth)
+                    msg = (f'Error setting {name}: Found an iterable at '
+                           f'{ind_str}, items in that iterable exceed the '
+                           f'maximum depth of {max_depth}')
                     raise TypeError(msg)
 
             else:
                 # This item is completely unexpected.
-                msg = "Error setting {0}: Items must be of type '{1}', but " \
-                      "item at {2} is of type '{3}'"\
-                      .format(name, expected_type.__name__, ind_str,
-                              type(current_item).__name__)
+                msg = (f'Error setting {name}: Items must be of type '
+                       f'"{expected_type.__name__}", but item at {ind_str} is '
+                       f'of type "{type(current_item).__name__}"')
                 raise TypeError(msg)
 
 
@@ -150,18 +157,17 @@ def check_length(name, value, length_min, length_max=None):
     """
 
     if length_max is None:
-        if len(value) != length_min:
-            msg = 'Unable to set "{0}" to "{1}" since it must be of ' \
-                  'length "{2}"'.format(name, value, length_min)
+        if len(value) < length_min:
+            msg = (f'Unable to set "{name}" to "{value}" since it must be at '
+                   f'least of length "{length_min}"')
             raise ValueError(msg)
     elif not length_min <= len(value) <= length_max:
         if length_min == length_max:
-            msg = 'Unable to set "{0}" to "{1}" since it must be of ' \
-                  'length "{2}"'.format(name, value, length_min)
+            msg = (f'Unable to set "{name}" to "{value}" since it must be of '
+                  f'length "{length_min}"')
         else:
-            msg = 'Unable to set "{0}" to "{1}" since it must have length ' \
-                  'between "{2}" and "{3}"'.format(name, value, length_min,
-                                                   length_max)
+            msg = (f'Unable to set "{name}" to "{value}" since it must have '
+                   f'length between "{length_min}" and "{length_max}"')
         raise ValueError(msg)
 
 
@@ -180,9 +186,10 @@ def check_value(name, value, accepted_values):
     """
 
     if value not in accepted_values:
-        msg = 'Unable to set "{0}" to "{1}" since it is not in "{2}"'.format(
-            name, value, accepted_values)
+        msg = (f'Unable to set "{name}" to "{value}" since it is not in '
+               f'"{accepted_values}"')
         raise ValueError(msg)
+
 
 def check_less_than(name, value, maximum, equality=False):
     """Ensure that an object's value is less than a given value.
@@ -202,14 +209,15 @@ def check_less_than(name, value, maximum, equality=False):
 
     if equality:
         if value > maximum:
-            msg = 'Unable to set "{0}" to "{1}" since it is greater than ' \
-                  '"{2}"'.format(name, value, maximum)
+            msg = (f'Unable to set "{name}" to "{value}" since it is greater '
+                   f'than "{maximum}"')
             raise ValueError(msg)
     else:
         if value >= maximum:
-            msg = 'Unable to set "{0}" to "{1}" since it is greater than ' \
-                  'or equal to "{2}"'.format(name, value, maximum)
+            msg = (f'Unable to set "{name}" to "{value}" since it is greater '
+                   f'than or equal to "{maximum}"')
             raise ValueError(msg)
+
 
 def check_greater_than(name, value, minimum, equality=False):
     """Ensure that an object's value is greater than a given value.
@@ -229,13 +237,13 @@ def check_greater_than(name, value, minimum, equality=False):
 
     if equality:
         if value < minimum:
-            msg = 'Unable to set "{0}" to "{1}" since it is less than ' \
-                  '"{2}"'.format(name, value, minimum)
+            msg = (f'Unable to set "{name}" to "{value}" since it is less than '
+                   f'"{minimum}"')
             raise ValueError(msg)
     else:
         if value <= minimum:
-            msg = 'Unable to set "{0}" to "{1}" since it is less than ' \
-                  'or equal to "{2}"'.format(name, value, minimum)
+            msg = (f'Unable to set "{name}" to "{value}" since it is less than '
+                   f'or equal to "{minimum}"')
             raise ValueError(msg)
 
 
@@ -258,20 +266,19 @@ def check_filetype_version(obj, expected_type, expected_version):
 
         # Check filetype
         if this_filetype != expected_type:
-            raise IOError('{} is not a {} file.'.format(
-                obj.filename, expected_type))
+            raise IOError(f'{obj.filename} is not a {expected_type} file.')
 
         # Check version
         if this_version[0] != expected_version:
             raise IOError('{} file has a version of {} which is not '
                           'consistent with the version expected by OpenMC, {}'
-                          .format(this_filetype, 
-                              '.'.join(str(v) for v in this_version),
-                              expected_version))
+                          .format(this_filetype,
+                                  '.'.join(str(v) for v in this_version),
+                                  expected_version))
     except AttributeError:
-        raise IOError('Could not read {} file. This most likely means the {} '
-                      'file was produced by a different version of OpenMC than '
-                      'the one you are using.'.format(expected_type))
+        raise IOError(f'Could not read {obj.filename} file. This most likely '
+                      'means the file was produced by a different version of '
+                      'OpenMC than the one you are using.')
 
 
 class CheckedList(list):
@@ -288,12 +295,13 @@ class CheckedList(list):
 
     """
 
-    def __init__(self, expected_type, name, items=[]):
+    def __init__(self, expected_type, name, items=None):
         super().__init__()
         self.expected_type = expected_type
         self.name = name
-        for item in items:
-            self.append(item)
+        if items is not None:
+            for item in items:
+                self.append(item)
 
     def __add__(self, other):
         new_instance = copy.copy(self)

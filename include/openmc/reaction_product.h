@@ -4,14 +4,13 @@
 #ifndef OPENMC_REACTION_PRODUCT_H
 #define OPENMC_REACTION_PRODUCT_H
 
-#include <memory> // for unique_ptr
-#include <vector> // for vector
-
 #include "hdf5.h"
 
 #include "openmc/angle_energy.h"
 #include "openmc/endf.h"
+#include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
+#include "openmc/vector.h" // for vector
 
 namespace openmc {
 
@@ -32,7 +31,7 @@ public:
     total    // Delayed emission of secondary particle
   };
 
-  using Secondary = std::unique_ptr<AngleEnergy>;
+  using Secondary = unique_ptr<AngleEnergy>;
 
   //! Construct reaction product from HDF5 data
   //! \param[in] group HDF5 group containing data
@@ -45,14 +44,14 @@ public:
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
 
-  Particle::Type particle_; //!< Particle type
+  ParticleType particle_;      //!< Particle type
   EmissionMode emission_mode_; //!< Emission mode
   double decay_rate_; //!< Decay rate (for delayed neutron precursors) in [1/s]
-  std::unique_ptr<Function1D> yield_; //!< Yield as a function of energy
-  std::vector<Tabulated1D> applicability_; //!< Applicability of distribution
-  std::vector<Secondary> distribution_; //!< Secondary angle-energy distribution
+  unique_ptr<Function1D> yield_;      //!< Yield as a function of energy
+  vector<Tabulated1D> applicability_; //!< Applicability of distribution
+  vector<Secondary> distribution_;    //!< Secondary angle-energy distribution
 };
 
-} // namespace opemc
+} // namespace openmc
 
 #endif // OPENMC_REACTION_PRODUCT_H

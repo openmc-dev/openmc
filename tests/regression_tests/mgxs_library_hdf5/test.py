@@ -28,7 +28,15 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.energy_groups = energy_groups
         self.mgxs_lib.num_delayed_groups = 6
         self.mgxs_lib.legendre_order = 3
-        self.mgxs_lib.domain_type = 'material'
+        self.mgxs_lib.domain_type = 'mesh'
+
+        # Instantiate a tally mesh
+        mesh = openmc.RegularMesh(mesh_id=1)
+        mesh.dimension = [2, 2]
+        mesh.lower_left = [-100., -100.]
+        mesh.width = [100., 100.]
+
+        self.mgxs_lib.domains = [mesh]
         self.mgxs_lib.build_library()
 
         # Add tallies
@@ -46,6 +54,11 @@ class MGXSTestHarness(PyAPITestHarness):
         # Export the MGXS Library to an HDF5 file
         self.mgxs_lib.build_hdf5_store(directory='.')
 
+        # Test export of the MGXS Library to an Excel spreadsheet
+        for mgxs in self.mgxs_lib.all_mgxs.values():
+            for xs in mgxs.values():
+                xs.export_xs_data('mgxs', xs_type='macro', format='excel')
+
         # Open the MGXS HDF5 file
         with h5py.File('mgxs.h5', 'r') as f:
 
@@ -54,8 +67,8 @@ class MGXSTestHarness(PyAPITestHarness):
             for domain in self.mgxs_lib.domains:
                 for mgxs_type in self.mgxs_lib.mgxs_types:
                     outstr += 'domain={0} type={1}\n'.format(domain.id, mgxs_type)
-                    avg_key = 'material/{0}/{1}/average'.format(domain.id, mgxs_type)
-                    std_key = 'material/{0}/{1}/std. dev.'.format(domain.id, mgxs_type)
+                    avg_key = 'mesh/{}/{}/average'.format(domain.id, mgxs_type)
+                    std_key = 'mesh/{}/{}/std. dev.'.format(domain.id, mgxs_type)
                     outstr += '{}\n{}\n'.format(f[avg_key][...], f[std_key][...])
 
         # Hash the results if necessary
@@ -68,9 +81,8 @@ class MGXSTestHarness(PyAPITestHarness):
 
     def _cleanup(self):
         super()._cleanup()
-        f = 'mgxs.h5'
-        if os.path.exists(f):
-            os.remove(f)
+        files = ['mgxs.h5', 'mgxs.xlsx']
+        (os.remove(f) for f in files if os.path.exists(f))
 
 
 def test_mgxs_library_hdf5():

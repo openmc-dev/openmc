@@ -3,17 +3,17 @@
 #include <algorithm> // for min, max, sort, fill
 #include <cmath>
 #include <iterator>
-#include <string>
 #include <sstream>
+#include <string>
+#include <unordered_set>
 
 #include "xtensor/xbuilder.hpp"
 #include "xtensor/xoperation.hpp"
 #include "xtensor/xview.hpp"
 
 #include "openmc/capi.h"
-#include "openmc/cross_sections.h"
 #include "openmc/container_util.h"
-#include "openmc/dagmc.h"
+#include "openmc/cross_sections.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
@@ -38,7 +38,7 @@ namespace openmc {
 namespace model {
 
 std::unordered_map<int32_t, int32_t> material_map;
-std::vector<std::unique_ptr<Material>> materials;
+vector<unique_ptr<Material>> materials;
 
 } // namespace model
 
@@ -58,6 +58,13 @@ Material::Material(pugi::xml_node node)
 
   if (check_for_node(node, "name")) {
     name_ = get_node_value(node, "name");
+  }
+
+  if (check_for_node(node, "cfg")) {
+    auto cfg = get_node_value(node, "cfg");
+    write_message(
+      5, "NCrystal config string for material #{}: '{}'", this->id(), cfg);
+    ncrystal_mat_ = NCrystalMat(cfg);
   }
 
   if (check_for_node(node, "depletable")) {
@@ -80,8 +87,8 @@ Material::Material(pugi::xml_node node)
     } else {
       double val = std::stod(get_node_value(density_node, "value"));
       if (val <= 0.0) {
-        fatal_error("Need to specify a positive density on material "
-          + std::to_string(id_) + ".");
+        fatal_error("Need to specify a positive density on material " +
+                    std::to_string(id_) + ".");
       }
 
       if (units == "g/cc" || units == "g/cm3") {
@@ -93,17 +100,18 @@ Material::Material(pugi::xml_node node)
       } else if (units == "atom/cc" || units == "atom/cm3") {
         density_ = 1.0e-24 * val;
       } else {
-        fatal_error("Unknown units '" + units + "' specified on material "
-          + std::to_string(id_) + ".");
+        fatal_error("Unknown units '" + units + "' specified on material " +
+                    std::to_string(id_) + ".");
       }
     }
   } else {
-    fatal_error("Must specify <density> element in material "
-      + std::to_string(id_) + ".");
+    fatal_error("Must specify <density> element in material " +
+                std::to_string(id_) + ".");
   }
 
   if (node.child("element")) {
-    fatal_error("Unable to add an element to material " + std::to_string(id_) +
+    fatal_error(
+      "Unable to add an element to material " + std::to_string(id_) +
       " since the element option has been removed from the xml input. "
       "Elements can only be added via the Python API, which will expand "
       "elements into their natural nuclides.");
@@ -113,9 +121,10 @@ Material::Material(pugi::xml_node node)
   // READ AND PARSE <nuclide> TAGS
 
   // Check to ensure material has at least one nuclide
-  if (!check_for_node(node, "nuclide") && !check_for_node(node, "macroscopic")) {
-    fatal_error("No macroscopic data or nuclides specified on material "
-      + std::to_string(id_));
+  if (!check_for_node(node, "nuclide") &&
+      !check_for_node(node, "macroscopic")) {
+    fatal_error("No macroscopic data or nuclides specified on material " +
+                std::to_string(id_));
   }
 
   // Create list of macroscopic x/s based on those specified, just treat
@@ -126,20 +135,20 @@ Material::Material(pugi::xml_node node)
   auto node_macros = node.children("macroscopic");
   int num_macros = std::distance(node_macros.begin(), node_macros.end());
 
-  std::vector<std::string> names;
-  std::vector<double> densities;
+  vector<std::string> names;
+  vector<double> densities;
   if (settings::run_CE && num_macros > 0) {
     fatal_error("Macroscopic can not be used in continuous-energy mode.");
   } else if (num_macros > 1) {
-    fatal_error("Only one macroscopic object permitted per material, "
-      + std::to_string(id_));
+    fatal_error("Only one macroscopic object permitted per material, " +
+                std::to_string(id_));
   } else if (num_macros == 1) {
     pugi::xml_node node_nuc = *node_macros.begin();
 
     // Check for empty name on nuclide
     if (!check_for_node(node_nuc, "name")) {
-      fatal_error("No name specified on macroscopic data in material "
-        + std::to_string(id_));
+      fatal_error("No name specified on macroscopic data in material " +
+                  std::to_string(id_));
     }
 
     // store nuclide name
@@ -148,7 +157,7 @@ Material::Material(pugi::xml_node node)
 
     // Set density for macroscopic data
     if (units == "macro") {
-      densities.push_back(1.0);
+      densities.push_back(density_);
     } else {
       fatal_error("Units can only be macro for macroscopic data " + name);
     }
@@ -157,8 +166,8 @@ Material::Material(pugi::xml_node node)
     for (auto node_nuc : node.children("nuclide")) {
       // Check for empty name on nuclide
       if (!check_for_node(node_nuc, "name")) {
-        fatal_error("No name specified on nuclide in material "
-          + std::to_string(id_));
+        fatal_error(
+          "No name specified on nuclide in material " + std::to_string(id_));
       }
 
       // store nuclide name
@@ -168,16 +177,18 @@ Material::Material(pugi::xml_node node)
       // Check if no atom/weight percents were specified or if both atom and
       // weight percents were specified
       if (units == "macro") {
-        densities.push_back(1.0);
+        densities.push_back(density_);
       } else {
         bool has_ao = check_for_node(node_nuc, "ao");
         bool has_wo = check_for_node(node_nuc, "wo");
 
         if (!has_ao && !has_wo) {
-          fatal_error("No atom or weight percent specified for nuclide: " + name);
+          fatal_error(
+            "No atom or weight percent specified for nuclide: " + name);
         } else if (has_ao && has_wo) {
           fatal_error("Cannot specify both atom and weight percents for a "
-            "nuclide: " + name);
+                      "nuclide: " +
+                      name);
         }
 
         // Copy atom/weight percents
@@ -193,7 +204,7 @@ Material::Material(pugi::xml_node node)
   // =======================================================================
   // READ AND PARSE <isotropic> element
 
-  std::vector<std::string> iso_lab;
+  vector<std::string> iso_lab;
   if (check_for_node(node, "isotropic")) {
     iso_lab = get_node_array<std::string>(node, "isotropic");
   }
@@ -205,15 +216,21 @@ Material::Material(pugi::xml_node node)
   auto n = names.size();
   nuclide_.reserve(n);
   atom_density_ = xt::empty<double>({n});
-  if (settings::photon_transport) element_.reserve(n);
+  if (settings::photon_transport)
+    element_.reserve(n);
 
   for (int i = 0; i < n; ++i) {
     const auto& name {names[i]};
 
-    // Check that this nuclide is listed in the cross_sections.xml file
-    LibraryKey key {Library::Type::neutron, name};
-    if (data::library_map.find(key) == data::library_map.end()) {
-      fatal_error("Could not find nuclide " + name + " in cross_sections.xml.");
+    // Check that this nuclide is listed in the nuclear data library
+    // (cross_sections.xml for CE and the MGXS HDF5 for MG)
+    if (settings::run_mode != RunMode::PLOTTING) {
+      LibraryKey key {Library::Type::neutron, name};
+      if (data::library_map.find(key) == data::library_map.end()) {
+        fatal_error("Could not find nuclide " + name +
+                    " in the "
+                    "nuclear data library.");
+      }
     }
 
     // If this nuclide hasn't been encountered yet, we need to add its name
@@ -232,10 +249,12 @@ Material::Material(pugi::xml_node node)
       std::string element = to_element(name);
 
       // Make sure photon cross section data is available
-      LibraryKey key {Library::Type::photon, element};
-      if (data::library_map.find(key) == data::library_map.end()) {
-        fatal_error("Could not find element " + element
-          + " in cross_sections.xml.");
+      if (settings::run_mode != RunMode::PLOTTING) {
+        LibraryKey key {Library::Type::photon, element};
+        if (data::library_map.find(key) == data::library_map.end()) {
+          fatal_error(
+            "Could not find element " + element + " in cross_sections.xml.");
+        }
       }
 
       if (data::element_map.find(element) == data::element_map.end()) {
@@ -271,13 +290,13 @@ Material::Material(pugi::xml_node node)
   // Check to make sure either all atom percents or all weight percents are
   // given
   if (!(xt::all(atom_density_ >= 0.0) || xt::all(atom_density_ <= 0.0))) {
-    fatal_error("Cannot mix atom and weight percents in material "
-      + std::to_string(id_));
+    fatal_error(
+      "Cannot mix atom and weight percents in material " + std::to_string(id_));
   }
 
   // Determine density if it is a sum value
-  if (sum_density) density_ = xt::sum(atom_density_)();
-
+  if (sum_density)
+    density_ = xt::sum(atom_density_)();
 
   if (check_for_node(node, "temperature")) {
     temperature_ = std::stod(get_node_value(node, "temperature"));
@@ -292,7 +311,7 @@ Material::Material(pugi::xml_node node)
   if (settings::run_CE) {
     // Loop over <sab> elements
 
-    std::vector<std::string> sab_names;
+    vector<std::string> sab_names;
     for (auto node_sab : node.children("sab")) {
       // Determine name of thermal scattering table
       if (!check_for_node(node_sab, "name")) {
@@ -309,10 +328,12 @@ Material::Material(pugi::xml_node node)
 
       // Check that the thermal scattering table is listed in the
       // cross_sections.xml file
-      LibraryKey key {Library::Type::thermal, name};
-      if (data::library_map.find(key) == data::library_map.end()) {
-        fatal_error("Could not find thermal scattering data " + name +
-          " in cross_sections.xml file.");
+      if (settings::run_mode != RunMode::PLOTTING) {
+        LibraryKey key {Library::Type::thermal, name};
+        if (data::library_map.find(key) == data::library_map.end()) {
+          fatal_error("Could not find thermal scattering data " + name +
+                      " in cross_sections.xml file.");
+        }
       }
 
       // Determine index of thermal scattering data in global
@@ -338,23 +359,55 @@ Material::~Material()
   model::material_map.erase(id_);
 }
 
+Material& Material::clone()
+{
+  std::unique_ptr<Material> mat = std::make_unique<Material>();
+
+  // set all other parameters to whatever the calling Material has
+  mat->name_ = name_;
+  mat->nuclide_ = nuclide_;
+  mat->element_ = element_;
+  mat->ncrystal_mat_ = ncrystal_mat_;
+  mat->atom_density_ = atom_density_;
+  mat->density_ = density_;
+  mat->density_gpcc_ = density_gpcc_;
+  mat->volume_ = volume_;
+  mat->fissionable() = fissionable_;
+  mat->depletable() = depletable_;
+  mat->p0_ = p0_;
+  mat->mat_nuclide_index_ = mat_nuclide_index_;
+  mat->thermal_tables_ = thermal_tables_;
+  mat->temperature_ = temperature_;
+
+  if (ttb_)
+    mat->ttb_ = std::make_unique<Bremsstrahlung>(*ttb_);
+
+  mat->index_ = model::materials.size();
+  mat->set_id(C_NONE);
+  model::materials.push_back(std::move(mat));
+  return *model::materials.back();
+}
+
 void Material::finalize()
 {
   // Set fissionable if any nuclide is fissionable
-  for (const auto& i_nuc : nuclide_) {
-    if (data::nuclides[i_nuc]->fissionable_) {
-      fissionable_ = true;
-      break;
+  if (settings::run_CE) {
+    for (const auto& i_nuc : nuclide_) {
+      if (data::nuclides[i_nuc]->fissionable_) {
+        fissionable_ = true;
+        break;
+      }
     }
-  }
 
-  // Generate material bremsstrahlung data for electrons and positrons
-  if (settings::photon_transport && settings::electron_treatment == ElectronTreatment::TTB) {
-    this->init_bremsstrahlung();
-  }
+    // Generate material bremsstrahlung data for electrons and positrons
+    if (settings::photon_transport &&
+        settings::electron_treatment == ElectronTreatment::TTB) {
+      this->init_bremsstrahlung();
+    }
 
-  // Assign thermal scattering tables
-  this->init_thermal();
+    // Assign thermal scattering tables
+    this->init_thermal();
+  }
 
   // Normalize density
   this->normalize_density();
@@ -368,13 +421,14 @@ void Material::normalize_density()
   for (int i = 0; i < nuclide_.size(); ++i) {
     // determine atomic weight ratio
     int i_nuc = nuclide_[i];
-    double awr = settings::run_CE ?
-      data::nuclides[i_nuc]->awr_ : data::mg.nuclides_[i_nuc].awr;
+    double awr = settings::run_CE ? data::nuclides[i_nuc]->awr_
+                                  : data::mg.nuclides_[i_nuc].awr;
 
     // if given weight percent, convert all values so that they are divided
     // by awr. thus, when a sum is done over the values, it's actually
     // sum(w/awr)
-    if (!percent_in_atom) atom_density_(i) = -atom_density_(i) / awr;
+    if (!percent_in_atom)
+      atom_density_(i) = -atom_density_(i) / awr;
   }
 
   // determine normalized atom percents. if given atom percents, this is
@@ -388,9 +442,9 @@ void Material::normalize_density()
     double sum_percent = 0.0;
     for (int i = 0; i < nuclide_.size(); ++i) {
       int i_nuc = nuclide_[i];
-      double awr = settings::run_CE ?
-        data::nuclides[i_nuc]->awr_ : data::mg.nuclides_[i_nuc].awr;
-      sum_percent += atom_density_(i)*awr;
+      double awr = settings::run_CE ? data::nuclides[i_nuc]->awr_
+                                    : data::mg.nuclides_[i_nuc].awr;
+      sum_percent += atom_density_(i) * awr;
     }
     sum_percent = 1.0 / sum_percent;
     density_ = -density_ * N_AVOGADRO / MASS_NEUTRON * sum_percent;
@@ -410,9 +464,16 @@ void Material::normalize_density()
 
 void Material::init_thermal()
 {
-  std::vector<ThermalTable> tables;
+  vector<ThermalTable> tables;
 
+  std::unordered_set<int> already_checked;
   for (const auto& table : thermal_tables_) {
+    // Make sure each S(a,b) table only gets checked once
+    if (already_checked.find(table.index_table) != already_checked.end()) {
+      continue;
+    }
+    already_checked.insert(table.index_table);
+
     // In order to know which nuclide the S(a,b) table applies to, we need
     // to search through the list of nuclides for one which has a matching
     // name
@@ -427,19 +488,22 @@ void Material::init_thermal()
 
     // Check to make sure thermal scattering table matched a nuclide
     if (!found) {
-      fatal_error("Thermal scattering table " + data::thermal_scatt[
-        table.index_table]->name_  + " did not match any nuclide on material "
-        + std::to_string(id_));
+      fatal_error("Thermal scattering table " +
+                  data::thermal_scatt[table.index_table]->name_ +
+                  " did not match any nuclide on material " +
+                  std::to_string(id_));
     }
   }
 
   // Make sure each nuclide only appears in one table.
   for (int j = 0; j < tables.size(); ++j) {
-    for (int k = j+1; k < tables.size(); ++k) {
+    for (int k = j + 1; k < tables.size(); ++k) {
       if (tables[j].index_nuclide == tables[k].index_nuclide) {
         int index = nuclide_[tables[j].index_nuclide];
         auto name = data::nuclides[index]->name_;
-        fatal_error(name + " in material " + std::to_string(id_) + " was found "
+        fatal_error(
+          name + " in material " + std::to_string(id_) +
+          " was found "
           "in multiple thermal scattering tables. Each nuclide can appear in "
           "only one table per material.");
       }
@@ -471,16 +535,16 @@ void Material::collision_stopping_power(double* s_col, bool positron)
 
   // Oscillator strength and square of the binding energy for each oscillator
   // in material
-  std::vector<double> f;
-  std::vector<double> e_b_sq;
+  vector<double> f;
+  vector<double> e_b_sq;
 
   for (int i = 0; i < element_.size(); ++i) {
-    const auto& elm = data::elements[element_[i]];
+    const auto& elm = *data::elements[element_[i]];
     double awr = data::nuclides[nuclide_[i]]->awr_;
 
     // Get atomic density of nuclide given atom/weight percent
-    double atom_density = (atom_density_[0] > 0.0) ?
-      atom_density_[i] : -atom_density_[i] / awr;
+    double atom_density =
+      (atom_density_[0] > 0.0) ? atom_density_[i] : -atom_density_[i] / awr;
 
     electron_density += atom_density * elm.Z_;
     mass_density += atom_density * awr * MASS_NEUTRON;
@@ -497,65 +561,67 @@ void Material::collision_stopping_power(double* s_col, bool positron)
   }
   log_I /= electron_density;
   n_conduction /= electron_density;
-  for (auto& f_i : f) f_i /= electron_density;
+  for (auto& f_i : f)
+    f_i /= electron_density;
 
   // Get density in g/cm^3 if it is given in atom/b-cm
   double density = (density_ < 0.0) ? -density_ : mass_density / N_AVOGADRO;
 
   // Calculate the square of the plasma energy
-  double e_p_sq = PLANCK_C * PLANCK_C * PLANCK_C * N_AVOGADRO *
-    electron_density * density / (2.0 * PI * PI * FINE_STRUCTURE *
-    MASS_ELECTRON_EV * mass_density);
+  double e_p_sq =
+    PLANCK_C * PLANCK_C * PLANCK_C * N_AVOGADRO * electron_density * density /
+    (2.0 * PI * PI * FINE_STRUCTURE * MASS_ELECTRON_EV * mass_density);
 
   // Get the Sternheimer adjustment factor
-  double rho = sternheimer_adjustment(f, e_b_sq, e_p_sq, n_conduction, log_I,
-    1.0e-6, 100);
+  double rho =
+    sternheimer_adjustment(f, e_b_sq, e_p_sq, n_conduction, log_I, 1.0e-6, 100);
 
   // Classical electron radius in cm
   constexpr double CM_PER_ANGSTROM {1.0e-8};
-  constexpr double r_e = CM_PER_ANGSTROM * PLANCK_C / (2.0 * PI *
-    FINE_STRUCTURE * MASS_ELECTRON_EV);
+  constexpr double r_e =
+    CM_PER_ANGSTROM * PLANCK_C / (2.0 * PI * FINE_STRUCTURE * MASS_ELECTRON_EV);
 
   // Constant in expression for collision stopping power
   constexpr double BARN_PER_CM_SQ {1.0e24};
-  double c = BARN_PER_CM_SQ * 2.0 * PI * r_e * r_e * MASS_ELECTRON_EV *
-    electron_density;
+  double c =
+    BARN_PER_CM_SQ * 2.0 * PI * r_e * r_e * MASS_ELECTRON_EV * electron_density;
 
   // Loop over incident charged particle energies
   for (int i = 0; i < data::ttb_e_grid.size(); ++i) {
     double E = data::ttb_e_grid(i);
 
     // Get the density effect correction
-    double delta = density_effect(f, e_b_sq, e_p_sq, n_conduction, rho, E,
-      1.0e-6, 100);
+    double delta =
+      density_effect(f, e_b_sq, e_p_sq, n_conduction, rho, E, 1.0e-6, 100);
 
     // Square of the ratio of the speed of light to the velocity of the charged
     // particle
-    double beta_sq = E * (E + 2.0 * MASS_ELECTRON_EV) / ((E + MASS_ELECTRON_EV)
-      * (E + MASS_ELECTRON_EV));
+    double beta_sq = E * (E + 2.0 * MASS_ELECTRON_EV) /
+                     ((E + MASS_ELECTRON_EV) * (E + MASS_ELECTRON_EV));
 
     double tau = E / MASS_ELECTRON_EV;
 
     double F;
     if (positron) {
       double t = tau + 2.0;
-      F = std::log(4.0) - (beta_sq / 12.0) * (23.0 + 14.0 / t + 10.0 / (t * t)
-        + 4.0 / (t * t * t));
+      F = std::log(4.0) - (beta_sq / 12.0) * (23.0 + 14.0 / t + 10.0 / (t * t) +
+                                               4.0 / (t * t * t));
     } else {
-      F = (1.0 - beta_sq) * (1.0 + tau * tau / 8.0 - (2.0 * tau + 1.0) *
-        std::log(2.0));
+      F = (1.0 - beta_sq) *
+          (1.0 + tau * tau / 8.0 - (2.0 * tau + 1.0) * std::log(2.0));
     }
 
     // Calculate the collision stopping power for this energy
-    s_col[i] = c / beta_sq * (2.0 * (std::log(E) - log_I) + std::log(1.0 + tau
-      / 2.0) + F - delta);
+    s_col[i] =
+      c / beta_sq *
+      (2.0 * (std::log(E) - log_I) + std::log(1.0 + tau / 2.0) + F - delta);
   }
 }
 
 void Material::init_bremsstrahlung()
 {
   // Create new object
-  ttb_ = std::make_unique<Bremsstrahlung>();
+  ttb_ = make_unique<Bremsstrahlung>();
 
   // Get the size of the energy grids
   auto n_k = data::ttb_k_grid.size();
@@ -566,7 +632,8 @@ void Material::init_bremsstrahlung()
 
   for (int particle = 0; particle < 2; ++particle) {
     // Loop over logic twice, once for electron, once for positron
-    BremsstrahlungData* ttb = (particle == 0) ? &ttb_->electron : &ttb_->positron;
+    BremsstrahlungData* ttb =
+      (particle == 0) ? &ttb_->electron : &ttb_->positron;
     bool positron = (particle == 1);
 
     // Allocate arrays for TTB data
@@ -585,16 +652,17 @@ void Material::init_bremsstrahlung()
     // Get the collision stopping power of the material
     this->collision_stopping_power(stopping_power_collision.data(), positron);
 
-    // Calculate the molecular DCS and the molecular radiative stopping power using
-    // Bragg's additivity rule.
+    // Calculate the molecular DCS and the molecular radiative stopping power
+    // using Bragg's additivity rule.
     for (int i = 0; i < n; ++i) {
       // Get pointer to current element
-      const auto& elm = data::elements[element_[i]];
+      const auto& elm = *data::elements[element_[i]];
       double awr = data::nuclides[nuclide_[i]]->awr_;
 
-      // Get atomic density and mass density of nuclide given atom/weight percent
-      double atom_density = (atom_density_[0] > 0.0) ?
-        atom_density_[i] : -atom_density_[i] / awr;
+      // Get atomic density and mass density of nuclide given atom/weight
+      // percent
+      double atom_density =
+        (atom_density_[0] > 0.0) ? atom_density_[i] : -atom_density_[i] / awr;
 
       // Calculate the "equivalent" atomic number Zeq of the material
       Z_eq_sq += atom_density * elm.Z_ * elm.Z_;
@@ -617,11 +685,14 @@ void Material::init_bremsstrahlung()
     // Issy-les-Moulineaux, France (2011).
     if (positron) {
       for (int i = 0; i < n_e; ++i) {
-        double t = std::log(1.0 + 1.0e6*data::ttb_e_grid(i)/(Z_eq_sq*MASS_ELECTRON_EV));
-        double r = 1.0 - std::exp(-1.2359e-1*t + 6.1274e-2*std::pow(t, 2)
-          - 3.1516e-2*std::pow(t, 3) + 7.7446e-3*std::pow(t, 4)
-          - 1.0595e-3*std::pow(t, 5) + 7.0568e-5*std::pow(t, 6)
-          - 1.808e-6*std::pow(t, 7));
+        double t = std::log(
+          1.0 + 1.0e6 * data::ttb_e_grid(i) / (Z_eq_sq * MASS_ELECTRON_EV));
+        double r =
+          1.0 -
+          std::exp(-1.2359e-1 * t + 6.1274e-2 * std::pow(t, 2) -
+                   3.1516e-2 * std::pow(t, 3) + 7.7446e-3 * std::pow(t, 4) -
+                   1.0595e-3 * std::pow(t, 5) + 7.0568e-5 * std::pow(t, 6) -
+                   1.808e-6 * std::pow(t, 7));
         stopping_power_radiative(i) *= r;
         auto dcs_i = xt::view(dcs, i, xt::all());
         dcs_i *= r;
@@ -629,8 +700,8 @@ void Material::init_bremsstrahlung()
     }
 
     // Total material stopping power
-    xt::xtensor<double, 1> stopping_power = stopping_power_collision +
-      stopping_power_radiative;
+    xt::xtensor<double, 1> stopping_power =
+      stopping_power_collision + stopping_power_radiative;
 
     // Loop over photon energies
     xt::xtensor<double, 1> f({n_e}, 0.0);
@@ -646,8 +717,8 @@ void Material::init_bremsstrahlung()
         double k = w / e;
 
         // Find the lower bounding index of the reduced photon energy
-        int i_k = lower_bound_index(data::ttb_k_grid.cbegin(),
-          data::ttb_k_grid.cend(), k);
+        int i_k = lower_bound_index(
+          data::ttb_k_grid.cbegin(), data::ttb_k_grid.cend(), k);
 
         // Get the interpolation bounds
         double k_l = data::ttb_k_grid(i_k);
@@ -657,12 +728,12 @@ void Material::init_bremsstrahlung()
 
         // Find the value of the DCS using linear interpolation in reduced
         // photon energy k
-        double x = x_l + (k - k_l)*(x_r - x_l)/(k_r - k_l);
+        double x = x_l + (k - k_l) * (x_r - x_l) / (k_r - k_l);
 
         // Square of the ratio of the speed of light to the velocity of the
         // charged particle
-        double beta_sq = e * (e + 2.0 * MASS_ELECTRON_EV) / ((e +
-          MASS_ELECTRON_EV) * (e + MASS_ELECTRON_EV));
+        double beta_sq = e * (e + 2.0 * MASS_ELECTRON_EV) /
+                         ((e + MASS_ELECTRON_EV) * (e + MASS_ELECTRON_EV));
 
         // Compute the integrand of the PDF
         f(j) = x / (beta_sq * stopping_power(j) * w);
@@ -679,19 +750,20 @@ void Material::init_bremsstrahlung()
         double c = 0.0;
         for (int j = i; j < n_e - 1; ++j) {
           c += spline_integrate(n, &data::ttb_e_grid(i), &f(i), &z(i),
-            data::ttb_e_grid(j), data::ttb_e_grid(j+1));
+            data::ttb_e_grid(j), data::ttb_e_grid(j + 1));
 
-          ttb->pdf(j+1,i) = c;
+          ttb->pdf(j + 1, i) = c;
         }
 
-      // Integrate the last two points using trapezoidal rule in log-log space
+        // Integrate the last two points using trapezoidal rule in log-log space
       } else {
         double e_l = std::log(data::ttb_e_grid(i));
-        double e_r = std::log(data::ttb_e_grid(i+1));
+        double e_r = std::log(data::ttb_e_grid(i + 1));
         double x_l = std::log(f(i));
-        double x_r = std::log(f(i+1));
+        double x_r = std::log(f(i + 1));
 
-        ttb->pdf(i+1,i) = 0.5*(e_r - e_l)*(std::exp(e_l + x_l) + std::exp(e_r + x_r));
+        ttb->pdf(i + 1, i) =
+          0.5 * (e_r - e_l) * (std::exp(e_l + x_l) + std::exp(e_r + x_r));
       }
     }
 
@@ -699,7 +771,7 @@ void Material::init_bremsstrahlung()
     for (int j = 1; j < n_e; ++j) {
       // Set last element of PDF to small non-zero value to enable log-log
       // interpolation
-      ttb->pdf(j,j) = std::exp(-500.0);
+      ttb->pdf(j, j) = std::exp(-500.0);
 
       // Loop over photon energies
       double c = 0.0;
@@ -707,12 +779,12 @@ void Material::init_bremsstrahlung()
         // Integrate the CDF from the PDF using the trapezoidal rule in log-log
         // space
         double w_l = std::log(data::ttb_e_grid(i));
-        double w_r = std::log(data::ttb_e_grid(i+1));
-        double x_l = std::log(ttb->pdf(j,i));
-        double x_r = std::log(ttb->pdf(j,i+1));
+        double w_r = std::log(data::ttb_e_grid(i + 1));
+        double x_l = std::log(ttb->pdf(j, i));
+        double x_r = std::log(ttb->pdf(j, i + 1));
 
-        c += 0.5*(w_r - w_l)*(std::exp(w_l + x_l) + std::exp(w_r + x_r));
-        ttb->cdf(j,i+1) = c;
+        c += 0.5 * (w_r - w_l) * (std::exp(w_l + x_l) + std::exp(w_r + x_r));
+        ttb->cdf(j, i + 1) = c;
       }
 
       // Set photon number yield
@@ -726,8 +798,7 @@ void Material::init_bremsstrahlung()
 
 void Material::init_nuclide_index()
 {
-  int n = settings::run_CE ?
-    data::nuclides.size() : data::mg.nuclides_.size();
+  int n = settings::run_CE ? data::nuclides.size() : data::mg.nuclides_.size();
   mat_nuclide_index_.resize(n);
   std::fill(mat_nuclide_index_.begin(), mat_nuclide_index_.end(), C_NONE);
   for (int i = 0; i < nuclide_.size(); ++i) {
@@ -738,14 +809,14 @@ void Material::init_nuclide_index()
 void Material::calculate_xs(Particle& p) const
 {
   // Set all material macroscopic cross sections to zero
-  p.macro_xs_.total = 0.0;
-  p.macro_xs_.absorption = 0.0;
-  p.macro_xs_.fission = 0.0;
-  p.macro_xs_.nu_fission = 0.0;
+  p.macro_xs().total = 0.0;
+  p.macro_xs().absorption = 0.0;
+  p.macro_xs().fission = 0.0;
+  p.macro_xs().nu_fission = 0.0;
 
-  if (p.type_ == Particle::Type::neutron) {
+  if (p.type() == ParticleType::neutron) {
     this->calculate_neutron_xs(p);
-  } else if (p.type_ == Particle::Type::photon) {
+  } else if (p.type() == ParticleType::photon) {
     this->calculate_photon_xs(p);
   }
 }
@@ -753,14 +824,21 @@ void Material::calculate_xs(Particle& p) const
 void Material::calculate_neutron_xs(Particle& p) const
 {
   // Find energy index on energy grid
-  int neutron = static_cast<int>(Particle::Type::neutron);
-  int i_grid = std::log(p.E_/data::energy_min[neutron])/simulation::log_spacing;
+  int neutron = static_cast<int>(ParticleType::neutron);
+  int i_grid =
+    std::log(p.E() / data::energy_min[neutron]) / simulation::log_spacing;
 
   // Determine if this material has S(a,b) tables
   bool check_sab = (thermal_tables_.size() > 0);
 
   // Initialize position in i_sab_nuclides
   int j = 0;
+
+  // Calculate NCrystal cross section
+  double ncrystal_xs = -1.0;
+  if (ncrystal_mat_ && p.E() < NCRYSTAL_MAX_ENERGY) {
+    ncrystal_xs = ncrystal_mat_.xs(p);
+  }
 
   // Add contribution from each nuclide in material
   for (int i = 0; i < nuclide_.size(); ++i) {
@@ -781,30 +859,27 @@ void Material::calculate_neutron_xs(Particle& p) const
 
         // If particle energy is greater than the highest energy for the
         // S(a,b) table, then don't use the S(a,b) table
-        if (p.E_ > data::thermal_scatt[i_sab]->energy_max_) i_sab = C_NONE;
+        if (p.E() > data::thermal_scatt[i_sab]->energy_max_)
+          i_sab = C_NONE;
 
         // Increment position in thermal_tables_
         ++j;
 
         // Don't check for S(a,b) tables if there are no more left
-        if (j == thermal_tables_.size()) check_sab = false;
+        if (j == thermal_tables_.size())
+          check_sab = false;
       }
     }
 
     // ======================================================================
     // CALCULATE MICROSCOPIC CROSS SECTION
 
-    // Determine microscopic cross sections for this nuclide
+    // Get nuclide index
     int i_nuclide = nuclide_[i];
 
-    // Calculate microscopic cross section for this nuclide
-    const auto& micro {p.neutron_xs_[i_nuclide]};
-    if (p.E_ != micro.last_E
-        || p.sqrtkT_ != micro.last_sqrtkT
-        || i_sab != micro.index_sab
-        || sab_frac != micro.sab_frac) {
-      data::nuclides[i_nuclide]->calculate_xs(i_sab, i_grid, sab_frac, p);
-    }
+    // Update microscopic cross section for this nuclide
+    p.update_neutron_xs(i_nuclide, i_grid, i_sab, sab_frac, ncrystal_xs);
+    auto& micro = p.neutron_xs(i_nuclide);
 
     // ======================================================================
     // ADD TO MACROSCOPIC CROSS SECTION
@@ -813,19 +888,19 @@ void Material::calculate_neutron_xs(Particle& p) const
     double atom_density = atom_density_(i);
 
     // Add contributions to cross sections
-    p.macro_xs_.total += atom_density * micro.total;
-    p.macro_xs_.absorption += atom_density * micro.absorption;
-    p.macro_xs_.fission += atom_density * micro.fission;
-    p.macro_xs_.nu_fission += atom_density * micro.nu_fission;
+    p.macro_xs().total += atom_density * micro.total;
+    p.macro_xs().absorption += atom_density * micro.absorption;
+    p.macro_xs().fission += atom_density * micro.fission;
+    p.macro_xs().nu_fission += atom_density * micro.nu_fission;
   }
 }
 
 void Material::calculate_photon_xs(Particle& p) const
 {
-  p.macro_xs_.coherent = 0.0;
-  p.macro_xs_.incoherent = 0.0;
-  p.macro_xs_.photoelectric = 0.0;
-  p.macro_xs_.pair_production = 0.0;
+  p.macro_xs().coherent = 0.0;
+  p.macro_xs().incoherent = 0.0;
+  p.macro_xs().photoelectric = 0.0;
+  p.macro_xs().pair_production = 0.0;
 
   // Add contribution from each nuclide in material
   for (int i = 0; i < nuclide_.size(); ++i) {
@@ -836,9 +911,9 @@ void Material::calculate_photon_xs(Particle& p) const
     int i_element = element_[i];
 
     // Calculate microscopic cross section for this nuclide
-    const auto& micro {p.photon_xs_[i_element]};
-    if (p.E_ != micro.last_E) {
-      data::elements[i_element].calculate_xs(p);
+    const auto& micro {p.photon_xs(i_element)};
+    if (p.E() != micro.last_E) {
+      data::elements[i_element]->calculate_xs(p);
     }
 
     // ========================================================================
@@ -848,11 +923,11 @@ void Material::calculate_photon_xs(Particle& p) const
     double atom_density = atom_density_(i);
 
     // Add contributions to material macroscopic cross sections
-    p.macro_xs_.total += atom_density * micro.total;
-    p.macro_xs_.coherent += atom_density * micro.coherent;
-    p.macro_xs_.incoherent += atom_density * micro.incoherent;
-    p.macro_xs_.photoelectric += atom_density * micro.photoelectric;
-    p.macro_xs_.pair_production += atom_density * micro.pair_production;
+    p.macro_xs().total += atom_density * micro.total;
+    p.macro_xs().coherent += atom_density * micro.coherent;
+    p.macro_xs().incoherent += atom_density * micro.incoherent;
+    p.macro_xs().photoelectric += atom_density * micro.photoelectric;
+    p.macro_xs().pair_production += atom_density * micro.pair_production;
   }
 }
 
@@ -868,7 +943,8 @@ void Material::set_id(int32_t id)
 
   // Make sure no other material has same ID
   if (model::material_map.find(id) != model::material_map.end()) {
-    throw std::runtime_error{"Two materials have the same ID: " + std::to_string(id)};
+    throw std::runtime_error {
+      "Two materials have the same ID: " + std::to_string(id)};
   }
 
   // If no ID specified, auto-assign next ID in sequence
@@ -890,7 +966,7 @@ void Material::set_density(double density, gsl::cstring_span units)
   Expects(density >= 0.0);
 
   if (nuclide_.empty()) {
-    throw std::runtime_error{"No nuclides exist in material yet."};
+    throw std::runtime_error {"No nuclides exist in material yet."};
   }
 
   if (units == "atom/b-cm") {
@@ -921,13 +997,13 @@ void Material::set_density(double density, gsl::cstring_span units)
     density_ *= f;
     atom_density_ *= f;
   } else {
-    throw std::invalid_argument{"Invalid units '" + std::string(units.data())
-      + "' specified."};
+    throw std::invalid_argument {
+      "Invalid units '" + std::string(units.data()) + "' specified."};
   }
 }
 
-void Material::set_densities(const std::vector<std::string>& name,
-  const std::vector<double>& density)
+void Material::set_densities(
+  const vector<std::string>& name, const vector<double>& density)
 {
   auto n = name.size();
   Expects(n > 0);
@@ -936,24 +1012,38 @@ void Material::set_densities(const std::vector<std::string>& name,
   if (n != nuclide_.size()) {
     nuclide_.resize(n);
     atom_density_ = xt::zeros<double>({n});
+    if (settings::photon_transport)
+      element_.resize(n);
   }
 
   double sum_density = 0.0;
   for (gsl::index i = 0; i < n; ++i) {
     const auto& nuc {name[i]};
     if (data::nuclide_map.find(nuc) == data::nuclide_map.end()) {
-      int err = openmc_load_nuclide(nuc.c_str());
-      if (err < 0) throw std::runtime_error{openmc_err_msg};
+      int err = openmc_load_nuclide(nuc.c_str(), nullptr, 0);
+      if (err < 0)
+        throw std::runtime_error {openmc_err_msg};
     }
 
     nuclide_[i] = data::nuclide_map.at(nuc);
     Expects(density[i] > 0.0);
     atom_density_(i) = density[i];
     sum_density += density[i];
+
+    if (settings::photon_transport) {
+      auto element_name = to_element(nuc);
+      element_[i] = data::element_map.at(element_name);
+    }
   }
 
   // Set total density to the sum of the vector
   this->set_density(sum_density, "atom/b-cm");
+
+  // Generate material bremsstrahlung data for electrons and positrons
+  if (settings::photon_transport &&
+      settings::electron_treatment == ElectronTreatment::TTB) {
+    this->init_bremsstrahlung();
+  }
 
   // Assign S(a,b) tables
   this->init_thermal();
@@ -962,17 +1052,23 @@ void Material::set_densities(const std::vector<std::string>& name,
 double Material::volume() const
 {
   if (volume_ < 0.0) {
-    throw std::runtime_error{"Volume for material with ID="
-      + std::to_string(id_) + " not set."};
+    throw std::runtime_error {
+      "Volume for material with ID=" + std::to_string(id_) + " not set."};
   }
   return volume_;
+}
+
+double Material::temperature() const
+{
+  // If material doesn't have an assigned temperature, use global default
+  return temperature_ >= 0 ? temperature_ : settings::temperature_default;
 }
 
 void Material::to_hdf5(hid_t group) const
 {
   hid_t material_group = create_group(group, "material " + std::to_string(id_));
 
-  write_attribute(material_group, "depletable", static_cast<int>(depletable_));
+  write_attribute(material_group, "depletable", static_cast<int>(depletable()));
   if (volume_ > 0.0) {
     write_attribute(material_group, "volume", volume_);
   }
@@ -983,9 +1079,9 @@ void Material::to_hdf5(hid_t group) const
   write_dataset(material_group, "atom_density", density_);
 
   // Copy nuclide/macro name for each nuclide to vector
-  std::vector<std::string> nuc_names;
-  std::vector<std::string> macro_names;
-  std::vector<double> nuc_densities;
+  vector<std::string> nuc_names;
+  vector<std::string> macro_names;
+  vector<double> nuc_densities;
   if (settings::run_CE) {
     for (int i = 0; i < nuclide_.size(); ++i) {
       int i_nuc = nuclide_[i];
@@ -1016,13 +1112,30 @@ void Material::to_hdf5(hid_t group) const
   }
 
   if (!thermal_tables_.empty()) {
-    std::vector<std::string> sab_names;
+    vector<std::string> sab_names;
     for (const auto& table : thermal_tables_) {
       sab_names.push_back(data::thermal_scatt[table.index_table]->name_);
     }
     write_dataset(material_group, "sab_names", sab_names);
   }
 
+  close_group(material_group);
+}
+
+void Material::export_properties_hdf5(hid_t group) const
+{
+  hid_t material_group = create_group(group, "material " + std::to_string(id_));
+  write_attribute(material_group, "atom_density", density_);
+  write_attribute(material_group, "mass_density", density_gpcc_);
+  close_group(material_group);
+}
+
+void Material::import_properties_hdf5(hid_t group)
+{
+  hid_t material_group = open_group(group, "material " + std::to_string(id_));
+  double density;
+  read_attribute(material_group, "atom_density", density);
+  this->set_density(density, "atom/b-cm");
   close_group(material_group);
 }
 
@@ -1034,41 +1147,48 @@ void Material::add_nuclide(const std::string& name, double density)
     if (data::nuclides[i_nuc]->name_ == name) {
       double awr = data::nuclides[i_nuc]->awr_;
       density_ += density - atom_density_(i);
-      density_gpcc_ += (density - atom_density_(i))
-        * awr * MASS_NEUTRON / N_AVOGADRO;
+      density_gpcc_ +=
+        (density - atom_density_(i)) * awr * MASS_NEUTRON / N_AVOGADRO;
       atom_density_(i) = density;
       return;
     }
   }
 
   // If nuclide wasn't found, extend nuclide/density arrays
-  int err = openmc_load_nuclide(name.c_str());
-  if (err < 0) throw std::runtime_error{openmc_err_msg};
+  int err = openmc_load_nuclide(name.c_str(), nullptr, 0);
+  if (err < 0)
+    throw std::runtime_error {openmc_err_msg};
 
   // Append new nuclide/density
   int i_nuc = data::nuclide_map[name];
   nuclide_.push_back(i_nuc);
 
+  // Append new element if photon transport is on
+  if (settings::photon_transport) {
+    int i_elem = data::element_map[to_element(name)];
+    element_.push_back(i_elem);
+  }
+
   auto n = nuclide_.size();
 
   // Create copy of atom_density_ array with one extra entry
   xt::xtensor<double, 1> atom_density = xt::zeros<double>({n});
-  xt::view(atom_density, xt::range(0, n-1)) = atom_density_;
-  atom_density(n-1) = density;
+  xt::view(atom_density, xt::range(0, n - 1)) = atom_density_;
+  atom_density(n - 1) = density;
   atom_density_ = atom_density;
 
   density_ += density;
-  density_gpcc_ += density * data::nuclides[i_nuc]->awr_
-    * MASS_NEUTRON / N_AVOGADRO;
+  density_gpcc_ +=
+    density * data::nuclides[i_nuc]->awr_ * MASS_NEUTRON / N_AVOGADRO;
 }
 
 //==============================================================================
 // Non-method functions
 //==============================================================================
 
-double sternheimer_adjustment(const std::vector<double>& f, const
-  std::vector<double>& e_b_sq, double e_p_sq, double n_conduction, double
-  log_I, double tol, int max_iter)
+double sternheimer_adjustment(const vector<double>& f,
+  const vector<double>& e_b_sq, double e_p_sq, double n_conduction,
+  double log_I, double tol, int max_iter)
 {
   // Get the total number of oscillators
   int n = f.size();
@@ -1098,10 +1218,12 @@ double sternheimer_adjustment(const std::vector<double>& f, const
     rho -= (g - 2.0 * log_I) / (2.0 * gp);
 
     // If the initial guess is too large, rho can be negative
-    if (rho < 0.0) rho = rho_0 / 2.0;
+    if (rho < 0.0)
+      rho = rho_0 / 2.0;
 
     // Check for convergence
-    if (std::abs(rho - rho_0) / rho_0 < tol) break;
+    if (std::abs(rho - rho_0) / rho_0 < tol)
+      break;
   }
   // Did not converge
   if (iter >= max_iter) {
@@ -1111,8 +1233,8 @@ double sternheimer_adjustment(const std::vector<double>& f, const
   return rho;
 }
 
-double density_effect(const std::vector<double>& f, const std::vector<double>&
-  e_b_sq, double e_p_sq, double n_conduction, double rho, double E, double tol,
+double density_effect(const vector<double>& f, const vector<double>& e_b_sq,
+  double e_p_sq, double n_conduction, double rho, double E, double tol,
   int max_iter)
 {
   // Get the total number of oscillators
@@ -1120,8 +1242,8 @@ double density_effect(const std::vector<double>& f, const std::vector<double>&
 
   // Square of the ratio of the speed of light to the velocity of the charged
   // particle
-  double beta_sq = E * (E + 2.0 * MASS_ELECTRON_EV) / ((E + MASS_ELECTRON_EV) *
-       (E + MASS_ELECTRON_EV));
+  double beta_sq = E * (E + 2.0 * MASS_ELECTRON_EV) /
+                   ((E + MASS_ELECTRON_EV) * (E + MASS_ELECTRON_EV));
 
   // For nonmetals, delta = 0 for beta < beta_0, where beta_0 is obtained by
   // setting the frequency w = 0.
@@ -1133,7 +1255,8 @@ double density_effect(const std::vector<double>& f, const std::vector<double>&
     beta_0_sq = 1.0 / (1.0 + beta_0_sq);
   }
   double delta = 0.0;
-  if (beta_sq < beta_0_sq) return delta;
+  if (beta_sq < beta_0_sq)
+    return delta;
 
   // Compute the square of the frequency w^2 using Newton's method, with the
   // initial guess of w^2 equal to beta^2 * gamma^2
@@ -1159,22 +1282,24 @@ double density_effect(const std::vector<double>& f, const std::vector<double>&
     w_sq -= (g + 1.0 - 1.0 / beta_sq) / gp;
 
     // If the initial guess is too large, w can be negative
-    if (w_sq < 0.0) w_sq = w_sq_0 / 2.0;
+    if (w_sq < 0.0)
+      w_sq = w_sq_0 / 2.0;
 
     // Check for convergence
-    if (std::abs(w_sq - w_sq_0) / w_sq_0 < tol) break;
+    if (std::abs(w_sq - w_sq_0) / w_sq_0 < tol)
+      break;
   }
   // Did not converge
   if (iter >= max_iter) {
     warning("Maximum Newton-Raphson iterations exceeded: setting density "
-        "effect correction to zero.");
+            "effect correction to zero.");
     return delta;
   }
 
   // Solve for the density effect correction
   for (int i = 0; i < n; ++i) {
     double l_sq = e_b_sq[i] * rho * rho / e_p_sq + 2.0 / 3.0 * f[i];
-    delta += f[i] * std::log((l_sq + w_sq)/l_sq);
+    delta += f[i] * std::log((l_sq + w_sq) / l_sq);
   }
   // Include conduction electrons
   if (n_conduction > 0.0) {
@@ -1190,29 +1315,25 @@ void read_materials_xml()
 
   pugi::xml_document doc;
 
-  bool using_dagmc_mats = false;
-#ifdef DAGMC
-  if (settings::dagmc) {
-    using_dagmc_mats = read_uwuw_materials(doc);
+  // Check if materials.xml exists
+  std::string filename = settings::path_input + "materials.xml";
+  if (!file_exists(filename)) {
+    fatal_error("Material XML file '" + filename + "' does not exist!");
   }
-#endif
 
-
-  if (!using_dagmc_mats) {
-    // Check if materials.xml exists
-    std::string filename = settings::path_input + "materials.xml";
-    if (!file_exists(filename)) {
-      fatal_error("Material XML file '" + filename + "' does not exist!");
-    }
-
-    // Parse materials.xml file and get root element
-    doc.load_file(filename.c_str());
-  }
+  // Parse materials.xml file and get root element
+  doc.load_file(filename.c_str());
 
   // Loop over XML material elements and populate the array.
   pugi::xml_node root = doc.document_element();
+
+  read_materials_xml(root);
+}
+
+void read_materials_xml(pugi::xml_node root)
+{
   for (pugi::xml_node material_node : root.children("material")) {
-    model::materials.push_back(std::make_unique<Material>(material_node));
+    model::materials.push_back(make_unique<Material>(material_node));
   }
   model::materials.shrink_to_fit();
 }
@@ -1227,8 +1348,7 @@ void free_memory_material()
 // C API
 //==============================================================================
 
-extern "C" int
-openmc_get_material_index(int32_t id, int32_t* index)
+extern "C" int openmc_get_material_index(int32_t id, int32_t* index)
 {
   auto it = model::material_map.find(id);
   if (it == model::material_map.end()) {
@@ -1240,8 +1360,8 @@ openmc_get_material_index(int32_t id, int32_t* index)
   }
 }
 
-extern "C" int
-openmc_material_add_nuclide(int32_t index, const char* name, double density)
+extern "C" int openmc_material_add_nuclide(
+  int32_t index, const char* name, double density)
 {
   int err = 0;
   if (index >= 0 && index < model::materials.size()) {
@@ -1257,8 +1377,8 @@ openmc_material_add_nuclide(int32_t index, const char* name, double density)
   return err;
 }
 
-extern "C" int
-openmc_material_get_densities(int32_t index, const int** nuclides, const double** densities, int* n)
+extern "C" int openmc_material_get_densities(
+  int32_t index, const int** nuclides, const double** densities, int* n)
 {
   if (index >= 0 && index < model::materials.size()) {
     auto& mat = model::materials[index];
@@ -1277,8 +1397,7 @@ openmc_material_get_densities(int32_t index, const int** nuclides, const double*
   }
 }
 
-extern "C" int
-openmc_material_get_density(int32_t index, double* density)
+extern "C" int openmc_material_get_density(int32_t index, double* density)
 {
   if (index >= 0 && index < model::materials.size()) {
     auto& mat = model::materials[index];
@@ -1290,8 +1409,7 @@ openmc_material_get_density(int32_t index, double* density)
   }
 }
 
-extern "C" int
-openmc_material_get_fissionable(int32_t index, bool* fissionable)
+extern "C" int openmc_material_get_fissionable(int32_t index, bool* fissionable)
 {
   if (index >= 0 && index < model::materials.size()) {
     *fissionable = model::materials[index]->fissionable();
@@ -1302,8 +1420,7 @@ openmc_material_get_fissionable(int32_t index, bool* fissionable)
   }
 }
 
-extern "C" int
-openmc_material_get_id(int32_t index, int32_t* id)
+extern "C" int openmc_material_get_id(int32_t index, int32_t* id)
 {
   if (index >= 0 && index < model::materials.size()) {
     *id = model::materials[index]->id();
@@ -1314,8 +1431,18 @@ openmc_material_get_id(int32_t index, int32_t* id)
   }
 }
 
-extern "C" int
-openmc_material_get_volume(int32_t index, double* volume)
+extern "C" int openmc_material_get_temperature(
+  int32_t index, double* temperature)
+{
+  if (index < 0 || index >= model::materials.size()) {
+    set_errmsg("Index in materials array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  *temperature = model::materials[index]->temperature();
+  return 0;
+}
+
+extern "C" int openmc_material_get_volume(int32_t index, double* volume)
 {
   if (index >= 0 && index < model::materials.size()) {
     try {
@@ -1331,8 +1458,8 @@ openmc_material_get_volume(int32_t index, double* volume)
   }
 }
 
-extern "C" int
-openmc_material_set_density(int32_t index, double density, const char* units)
+extern "C" int openmc_material_set_density(
+  int32_t index, double density, const char* units)
 {
   if (index >= 0 && index < model::materials.size()) {
     try {
@@ -1348,12 +1475,13 @@ openmc_material_set_density(int32_t index, double density, const char* units)
   return 0;
 }
 
-extern "C" int
-openmc_material_set_densities(int32_t index, int n, const char** name, const double* density)
+extern "C" int openmc_material_set_densities(
+  int32_t index, int n, const char** name, const double* density)
 {
   if (index >= 0 && index < model::materials.size()) {
     try {
-      model::materials[index]->set_densities({name, name + n}, {density, density + n});
+      model::materials[index]->set_densities(
+        {name, name + n}, {density, density + n});
     } catch (const std::exception& e) {
       set_errmsg(e.what());
       return OPENMC_E_UNASSIGNED;
@@ -1365,8 +1493,7 @@ openmc_material_set_densities(int32_t index, int n, const char** name, const dou
   return 0;
 }
 
-extern "C" int
-openmc_material_set_id(int32_t index, int32_t id)
+extern "C" int openmc_material_set_id(int32_t index, int32_t id)
 {
   if (index >= 0 && index < model::materials.size()) {
     try {
@@ -1382,8 +1509,8 @@ openmc_material_set_id(int32_t index, int32_t id)
   return 0;
 }
 
-extern "C" int
-openmc_material_get_name(int32_t index, const char** name) {
+extern "C" int openmc_material_get_name(int32_t index, const char** name)
+{
   if (index < 0 || index >= model::materials.size()) {
     set_errmsg("Index in materials array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
@@ -1394,8 +1521,8 @@ openmc_material_get_name(int32_t index, const char** name) {
   return 0;
 }
 
-extern "C" int
-openmc_material_set_name(int32_t index, const char* name) {
+extern "C" int openmc_material_set_name(int32_t index, const char* name)
+{
   if (index < 0 || index >= model::materials.size()) {
     set_errmsg("Index in materials array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
@@ -1406,8 +1533,7 @@ openmc_material_set_name(int32_t index, const char* name) {
   return 0;
 }
 
-extern "C" int
-openmc_material_set_volume(int32_t index, double volume)
+extern "C" int openmc_material_set_volume(int32_t index, double volume)
 {
   if (index >= 0 && index < model::materials.size()) {
     auto& m {model::materials[index]};
@@ -1424,17 +1550,46 @@ openmc_material_set_volume(int32_t index, double volume)
   }
 }
 
-extern "C" int
-openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end)
+extern "C" int openmc_material_get_depletable(int32_t index, bool* depletable)
 {
-  if (index_start) *index_start = model::materials.size();
-  if (index_end) *index_end = model::materials.size() + n - 1;
+  if (index < 0 || index >= model::materials.size()) {
+    set_errmsg("Index in materials array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  *depletable = model::materials[index]->depletable();
+
+  return 0;
+}
+
+extern "C" int openmc_material_set_depletable(int32_t index, bool depletable)
+{
+  if (index < 0 || index >= model::materials.size()) {
+    set_errmsg("Index in materials array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  model::materials[index]->depletable() = depletable;
+
+  return 0;
+}
+
+extern "C" int openmc_extend_materials(
+  int32_t n, int32_t* index_start, int32_t* index_end)
+{
+  if (index_start)
+    *index_start = model::materials.size();
+  if (index_end)
+    *index_end = model::materials.size() + n - 1;
   for (int32_t i = 0; i < n; i++) {
-    model::materials.push_back(std::make_unique<Material>());
+    model::materials.push_back(make_unique<Material>());
   }
   return 0;
 }
 
-extern "C" size_t n_materials() { return model::materials.size(); }
+extern "C" size_t n_materials()
+{
+  return model::materials.size();
+}
 
 } // namespace openmc

@@ -1,13 +1,12 @@
-import sys
-import copy
 from collections.abc import Iterable
+import copy
 
 import numpy as np
 import pandas as pd
 
 import openmc
-from openmc.filter import _FILTER_TYPES
 import openmc.checkvalue as cv
+from .filter import _FILTER_TYPES
 
 
 # Acceptable tally arithmetic binary operations
@@ -17,7 +16,7 @@ _TALLY_ARITHMETIC_OPS = ['+', '-', '*', '/', '^']
 _TALLY_AGGREGATE_OPS = ['sum', 'avg']
 
 
-class CrossScore(object):
+class CrossScore:
     """A special-purpose tally score used to encapsulate all combinations of two
     tally's scores as an outer product for tally arithmetic.
 
@@ -43,18 +42,10 @@ class CrossScore(object):
 
     """
 
-    def __init__(self, left_score=None, right_score=None, binary_op=None):
-
-        self._left_score = None
-        self._right_score = None
-        self._binary_op = None
-
-        if left_score is not None:
-            self.left_score = left_score
-        if right_score is not None:
-            self.right_score = right_score
-        if binary_op is not None:
-            self.binary_op = binary_op
+    def __init__(self, left_score, right_score, binary_op):
+        self.left_score = left_score
+        self.right_score = right_score
+        self.binary_op = binary_op
 
     def __hash__(self):
         return hash(repr(self))
@@ -62,25 +53,13 @@ class CrossScore(object):
     def __eq__(self, other):
         return str(other) == str(self)
 
-    def __ne__(self, other):
-        return not self == other
-
     def __repr__(self):
-        string = '({0} {1} {2})'.format(self.left_score,
-                                        self.binary_op, self.right_score)
-        return string
+        return '({} {} {})'.format(self.left_score, self.binary_op,
+                                   self.right_score)
 
     @property
     def left_score(self):
         return self._left_score
-
-    @property
-    def right_score(self):
-        return self._right_score
-
-    @property
-    def binary_op(self):
-        return self._binary_op
 
     @left_score.setter
     def left_score(self, left_score):
@@ -88,11 +67,19 @@ class CrossScore(object):
                       (str, CrossScore, AggregateScore))
         self._left_score = left_score
 
+    @property
+    def right_score(self):
+        return self._right_score
+
     @right_score.setter
     def right_score(self, right_score):
         cv.check_type('right_score', right_score,
                       (str, CrossScore, AggregateScore))
         self._right_score = right_score
+
+    @property
+    def binary_op(self):
+        return self._binary_op
 
     @binary_op.setter
     def binary_op(self, binary_op):
@@ -101,7 +88,7 @@ class CrossScore(object):
         self._binary_op = binary_op
 
 
-class CrossNuclide(object):
+class CrossNuclide:
     """A special-purpose nuclide used to encapsulate all combinations of two
     tally's nuclides as an outer product for tally arithmetic.
 
@@ -127,27 +114,16 @@ class CrossNuclide(object):
 
     """
 
-    def __init__(self, left_nuclide=None, right_nuclide=None, binary_op=None):
-
-        self._left_nuclide = None
-        self._right_nuclide = None
-        self._binary_op = None
-
-        if left_nuclide is not None:
-            self.left_nuclide = left_nuclide
-        if right_nuclide is not None:
-            self.right_nuclide = right_nuclide
-        if binary_op is not None:
-            self.binary_op = binary_op
+    def __init__(self, left_nuclide, right_nuclide, binary_op):
+        self.left_nuclide = left_nuclide
+        self.right_nuclide = right_nuclide
+        self.binary_op = binary_op
 
     def __hash__(self):
         return hash(repr(self))
 
     def __eq__(self, other):
         return str(other) == str(self)
-
-    def __ne__(self, other):
-        return not self == other
 
     def __repr__(self):
         return self.name
@@ -156,13 +132,31 @@ class CrossNuclide(object):
     def left_nuclide(self):
         return self._left_nuclide
 
+    @left_nuclide.setter
+    def left_nuclide(self, left_nuclide):
+        cv.check_type('left_nuclide', left_nuclide,
+                      (openmc.Nuclide, CrossNuclide, AggregateNuclide))
+        self._left_nuclide = left_nuclide
+
     @property
     def right_nuclide(self):
         return self._right_nuclide
 
+    @right_nuclide.setter
+    def right_nuclide(self, right_nuclide):
+        cv.check_type('right_nuclide', right_nuclide,
+                      (openmc.Nuclide, CrossNuclide, AggregateNuclide))
+        self._right_nuclide = right_nuclide
+
     @property
     def binary_op(self):
         return self._binary_op
+
+    @binary_op.setter
+    def binary_op(self, binary_op):
+        cv.check_type('binary_op', binary_op, str)
+        cv.check_value('binary_op', binary_op, _TALLY_ARITHMETIC_OPS)
+        self._binary_op = binary_op
 
     @property
     def name(self):
@@ -187,26 +181,8 @@ class CrossNuclide(object):
 
         return string
 
-    @left_nuclide.setter
-    def left_nuclide(self, left_nuclide):
-        cv.check_type('left_nuclide', left_nuclide,
-                      (openmc.Nuclide, CrossNuclide, AggregateNuclide))
-        self._left_nuclide = left_nuclide
 
-    @right_nuclide.setter
-    def right_nuclide(self, right_nuclide):
-        cv.check_type('right_nuclide', right_nuclide,
-                      (openmc.Nuclide, CrossNuclide, AggregateNuclide))
-        self._right_nuclide = right_nuclide
-
-    @binary_op.setter
-    def binary_op(self, binary_op):
-        cv.check_type('binary_op', binary_op, str)
-        cv.check_value('binary_op', binary_op, _TALLY_ARITHMETIC_OPS)
-        self._binary_op = binary_op
-
-
-class CrossFilter(object):
+class CrossFilter:
     """A special-purpose filter used to encapsulate all combinations of two
     tally's filter bins as an outer product for tally arithmetic.
 
@@ -239,26 +215,10 @@ class CrossFilter(object):
 
     """
 
-    def __init__(self, left_filter=None, right_filter=None, binary_op=None):
-
-        left_type = left_filter.type
-        right_type = right_filter.type
-        self._type = '({0} {1} {2})'.format(left_type, binary_op, right_type)
-
-        self._bins = {}
-
-        self._left_filter = None
-        self._right_filter = None
-        self._binary_op = None
-
-        if left_filter is not None:
-            self.left_filter = left_filter
-            self._bins['left'] = left_filter.bins
-        if right_filter is not None:
-            self.right_filter = right_filter
-            self._bins['right'] = right_filter.bins
-        if binary_op is not None:
-            self.binary_op = binary_op
+    def __init__(self, left_filter, right_filter, binary_op):
+        self.left_filter = left_filter
+        self.right_filter = right_filter
+        self.binary_op = binary_op
 
     def __hash__(self):
         return hash((self.left_filter, self.right_filter))
@@ -266,41 +226,56 @@ class CrossFilter(object):
     def __eq__(self, other):
         return str(other) == str(self)
 
-    def __ne__(self, other):
-        return not self == other
-
     def __repr__(self):
-
-        string = 'CrossFilter\n'
-        filter_type = '({0} {1} {2})'.format(self.left_filter.type,
-                                             self.binary_op,
-                                             self.right_filter.type)
-        filter_bins = '({0} {1} {2})'.format(self.left_filter.bins,
-                                             self.binary_op,
-                                             self.right_filter.bins)
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', filter_type)
-        string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', filter_bins)
-        return string
+        filter_bins = '({} {} {})'.format(self.left_filter.bins,
+                                          self.binary_op,
+                                          self.right_filter.bins)
+        parts = [
+            'CrossFilter',
+            '{: <16}=\t{}'.format('\tType', self.type),
+            '{: <16}=\t{}'.format('\tBins', filter_bins)
+        ]
+        return '\n'.join(parts)
 
     @property
     def left_filter(self):
         return self._left_filter
 
+    @left_filter.setter
+    def left_filter(self, left_filter):
+        cv.check_type('left_filter', left_filter,
+                      (openmc.Filter, CrossFilter, AggregateFilter))
+        self._left_filter = left_filter
+
     @property
     def right_filter(self):
         return self._right_filter
+
+    @right_filter.setter
+    def right_filter(self, right_filter):
+        cv.check_type('right_filter', right_filter,
+                      (openmc.Filter, CrossFilter, AggregateFilter))
+        self._right_filter = right_filter
 
     @property
     def binary_op(self):
         return self._binary_op
 
+    @binary_op.setter
+    def binary_op(self, binary_op):
+        cv.check_type('binary_op', binary_op, str)
+        cv.check_value('binary_op', binary_op, _TALLY_ARITHMETIC_OPS)
+        self._binary_op = binary_op
+
     @property
     def type(self):
-        return self._type
+        left_type = self.left_filter.type
+        right_type = self.right_filter.type
+        return '({} {} {})'.format(left_type, self.binary_op, right_type)
 
     @property
     def bins(self):
-        return self._bins['left'], self._bins['right']
+        return self._left_filter.bins, self._right_filter.bins
 
     @property
     def num_bins(self):
@@ -308,35 +283,6 @@ class CrossFilter(object):
             return self.left_filter.num_bins * self.right_filter.num_bins
         else:
             return 0
-
-    @type.setter
-    def type(self, filter_type):
-        if filter_type not in _FILTER_TYPES:
-            msg = 'Unable to set CrossFilter type to "{0}" since it ' \
-                  'is not one of the supported types'.format(filter_type)
-            raise ValueError(msg)
-
-        self._type = filter_type
-
-    @left_filter.setter
-    def left_filter(self, left_filter):
-        cv.check_type('left_filter', left_filter,
-                      (openmc.Filter, CrossFilter, AggregateFilter))
-        self._left_filter = left_filter
-        self._bins['left'] = left_filter.bins
-
-    @right_filter.setter
-    def right_filter(self, right_filter):
-        cv.check_type('right_filter', right_filter,
-                      (openmc.Filter, CrossFilter, AggregateFilter))
-        self._right_filter = right_filter
-        self._bins['right'] = right_filter.bins
-
-    @binary_op.setter
-    def binary_op(self, binary_op):
-        cv.check_type('binary_op', binary_op, str)
-        cv.check_value('binary_op', binary_op, _TALLY_ARITHMETIC_OPS)
-        self._binary_op = binary_op
 
     def get_bin_index(self, filter_bin):
         """Returns the index in the CrossFilter for some bin.
@@ -414,11 +360,12 @@ class CrossFilter(object):
             right_df = self.right_filter.get_pandas_dataframe(data_size, summary)
             left_df = left_df.astype(str)
             right_df = right_df.astype(str)
-            df = '(' + left_df + ' ' + self.binary_op + ' ' + right_df + ')'
+            df = f'({left_df} {self.binary_op} {right_df})'
 
         return df
 
-class AggregateScore(object):
+
+class AggregateScore:
     """A special-purpose tally score used to encapsulate an aggregate of a
     subset or all of tally's scores for tally aggregation.
 
@@ -456,21 +403,29 @@ class AggregateScore(object):
     def __eq__(self, other):
         return str(other) == str(self)
 
-    def __ne__(self, other):
-        return not self == other
-
     def __repr__(self):
         string = ', '.join(map(str, self.scores))
-        string = '{0}({1})'.format(self.aggregate_op, string)
+        string = f'{self.aggregate_op}({string})'
         return string
 
     @property
     def scores(self):
         return self._scores
 
+    @scores.setter
+    def scores(self, scores):
+        cv.check_iterable_type('scores', scores, str)
+        self._scores = scores
+
     @property
     def aggregate_op(self):
         return self._aggregate_op
+
+    @aggregate_op.setter
+    def aggregate_op(self, aggregate_op):
+        cv.check_type('aggregate_op', aggregate_op, (str, CrossScore))
+        cv.check_value('aggregate_op', aggregate_op, _TALLY_AGGREGATE_OPS)
+        self._aggregate_op = aggregate_op
 
     @property
     def name(self):
@@ -479,19 +434,8 @@ class AggregateScore(object):
         string = '(' + ', '.join(self.scores) + ')'
         return string
 
-    @scores.setter
-    def scores(self, scores):
-        cv.check_iterable_type('scores', scores, str)
-        self._scores = scores
 
-    @aggregate_op.setter
-    def aggregate_op(self, aggregate_op):
-        cv.check_type('aggregate_op', aggregate_op, (str, CrossScore))
-        cv.check_value('aggregate_op', aggregate_op, _TALLY_AGGREGATE_OPS)
-        self._aggregate_op = aggregate_op
-
-
-class AggregateNuclide(object):
+class AggregateNuclide:
     """A special-purpose tally nuclide used to encapsulate an aggregate of a
     subset or all of tally's nuclides for tally aggregation.
 
@@ -529,13 +473,10 @@ class AggregateNuclide(object):
     def __eq__(self, other):
         return str(other) == str(self)
 
-    def __ne__(self, other):
-        return not self == other
-
     def __repr__(self):
 
         # Append each nuclide in the aggregate to the string
-        string = '{0}('.format(self.aggregate_op)
+        string = f'{self.aggregate_op}('
         names = [nuclide.name if isinstance(nuclide, openmc.Nuclide)
                  else str(nuclide) for nuclide in self.nuclides]
         string += ', '.join(map(str, names)) + ')'
@@ -545,9 +486,20 @@ class AggregateNuclide(object):
     def nuclides(self):
         return self._nuclides
 
+    @nuclides.setter
+    def nuclides(self, nuclides):
+        cv.check_iterable_type('nuclides', nuclides, (str, CrossNuclide))
+        self._nuclides = nuclides
+
     @property
     def aggregate_op(self):
         return self._aggregate_op
+
+    @aggregate_op.setter
+    def aggregate_op(self, aggregate_op):
+        cv.check_type('aggregate_op', aggregate_op, str)
+        cv.check_value('aggregate_op', aggregate_op, _TALLY_AGGREGATE_OPS)
+        self._aggregate_op = aggregate_op
 
     @property
     def name(self):
@@ -558,19 +510,8 @@ class AggregateNuclide(object):
         string = '(' + ', '.join(map(str, names)) + ')'
         return string
 
-    @nuclides.setter
-    def nuclides(self, nuclides):
-        cv.check_iterable_type('nuclides', nuclides, (str, CrossNuclide))
-        self._nuclides = nuclides
 
-    @aggregate_op.setter
-    def aggregate_op(self, aggregate_op):
-        cv.check_type('aggregate_op', aggregate_op, str)
-        cv.check_value('aggregate_op', aggregate_op, _TALLY_AGGREGATE_OPS)
-        self._aggregate_op = aggregate_op
-
-
-class AggregateFilter(object):
+class AggregateFilter:
     """A special-purpose tally filter used to encapsulate an aggregate of a
     subset or all of a tally filter's bins for tally aggregation.
 
@@ -600,17 +541,15 @@ class AggregateFilter(object):
 
     """
 
-    def __init__(self, aggregate_filter=None, bins=None, aggregate_op=None):
+    def __init__(self, aggregate_filter, bins=None, aggregate_op=None):
 
-        self._type = '{0}({1})'.format(aggregate_op,
-                                       aggregate_filter.short_name.lower())
+        self._type = f'{aggregate_op}({aggregate_filter.short_name.lower()})'
         self._bins = None
 
         self._aggregate_filter = None
         self._aggregate_op = None
 
-        if aggregate_filter is not None:
-            self.aggregate_filter = aggregate_filter
+        self.aggregate_filter = aggregate_filter
         if bins is not None:
             self.bins = bins
         if aggregate_op is not None:
@@ -621,9 +560,6 @@ class AggregateFilter(object):
 
     def __eq__(self, other):
         return str(other) == str(self)
-
-    def __ne__(self, other):
-        return not self == other
 
     def __gt__(self, other):
         if self.type != other.type:
@@ -641,39 +577,16 @@ class AggregateFilter(object):
         return not self > other
 
     def __repr__(self):
-        string = 'AggregateFilter\n'
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self.type)
-        string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', self.bins)
-        return string
+        parts = [
+            'AggregateFilter',
+            '{: <16}=\t{}'.format('\tType', self.type),
+            '{: <16}=\t{}'.format('\tBins', self.bins)
+        ]
+        return '\n'.join(parts)
 
     @property
     def aggregate_filter(self):
         return self._aggregate_filter
-
-    @property
-    def aggregate_op(self):
-        return self._aggregate_op
-
-    @property
-    def type(self):
-        return self._type
-
-    @property
-    def bins(self):
-        return self._bins
-
-    @property
-    def num_bins(self):
-        return len(self.bins) if self.aggregate_filter else 0
-
-    @type.setter
-    def type(self, filter_type):
-        if filter_type not in _FILTER_TYPES:
-            msg = 'Unable to set AggregateFilter type to "{0}" since it ' \
-                  'is not one of the supported types'.format(filter_type)
-            raise ValueError(msg)
-
-        self._type = filter_type
 
     @aggregate_filter.setter
     def aggregate_filter(self, aggregate_filter):
@@ -681,16 +594,45 @@ class AggregateFilter(object):
                       (openmc.Filter, CrossFilter))
         self._aggregate_filter = aggregate_filter
 
-    @bins.setter
-    def bins(self, bins):
-        cv.check_iterable_type('bins', bins, Iterable)
-        self._bins = list(map(tuple, bins))
+    @property
+    def aggregate_op(self):
+        return self._aggregate_op
 
     @aggregate_op.setter
     def aggregate_op(self, aggregate_op):
         cv.check_type('aggregate_op', aggregate_op, str)
         cv.check_value('aggregate_op', aggregate_op, _TALLY_AGGREGATE_OPS)
         self._aggregate_op = aggregate_op
+
+    @property
+    def type(self):
+        return self._type
+
+    @type.setter
+    def type(self, filter_type):
+        if filter_type not in _FILTER_TYPES:
+            msg = f'Unable to set AggregateFilter type to "{filter_type}" ' \
+                  'since it is not one of the supported types'
+            raise ValueError(msg)
+
+        self._type = filter_type
+
+    @property
+    def bins(self):
+        return self._bins
+
+    @bins.setter
+    def bins(self, bins):
+        cv.check_iterable_type('bins', bins, Iterable)
+        self._bins = list(map(tuple, bins))
+
+    @property
+    def num_bins(self):
+        return len(self.bins) if self.aggregate_filter else 0
+
+    @property
+    def shape(self):
+        return (self.num_bins,)
 
     def get_bin_index(self, filter_bin):
         """Returns the index in the AggregateFilter for some bin.
@@ -721,8 +663,8 @@ class AggregateFilter(object):
         """
 
         if filter_bin not in self.bins:
-            msg = 'Unable to get the bin index for AggregateFilter since ' \
-                  '"{0}" is not one of the bins'.format(filter_bin)
+            msg = ('Unable to get the bin index for AggregateFilter since '
+                   f'"{filter_bin}" is not one of the bins')
             raise ValueError(msg)
         else:
             return self.bins.index(filter_bin)
@@ -800,12 +742,7 @@ class AggregateFilter(object):
             return False
 
         # None of the bins in this filter should match in the other filter
-        for bin in self.bins:
-            if bin in other.bins:
-                return False
-
-        # If all conditional checks passed then filters are mergeable
-        return True
+        return not any(b in other.bins for b in self.bins)
 
     def merge(self, other):
         """Merge this aggregatefilter with another.
@@ -823,8 +760,7 @@ class AggregateFilter(object):
         """
 
         if not self.can_merge(other):
-            msg = 'Unable to merge "{0}" with "{1}" ' \
-                  'filters'.format(self.type, other.type)
+            msg = f'Unable to merge "{self.type}" with "{other.type}" filters'
             raise ValueError(msg)
 
         # Create deep copy of filter to return as merged filter

@@ -219,6 +219,7 @@ def test_derived_products(am244):
     assert total_neutron.yield_(6e6) == pytest.approx(4.2558)
 
 
+@needs_njoy
 def test_kerma(run_in_tmpdir, am244, h2):
     # Make sure kerma w/ local photon is >= regular kerma
     for nuc in (am244, h2):
@@ -530,3 +531,12 @@ def test_ace_table_types():
     assert TT.from_suffix('20t') == TT.THERMAL_SCATTERING
     with pytest.raises(ValueError):
         TT.from_suffix('z')
+
+
+@needs_njoy
+def test_high_temperature():
+    endf_data = os.environ['OPENMC_ENDF_DATA']
+    endf_file = os.path.join(endf_data, 'neutrons', 'n-001_H_001.endf')
+
+    # Ensure that from_njoy works when given a high temperature
+    openmc.data.IncidentNeutron.from_njoy(endf_file, temperatures=[123_456.0])

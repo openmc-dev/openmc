@@ -1,24 +1,27 @@
 #include "openmc/tallies/filter.h"
 
 #include <algorithm> // for max
-#include <cstring> // for strcpy
+#include <cstring>   // for strcpy
 #include <string>
 
+#include <fmt/core.h>
+
 #include "openmc/capi.h"
-#include "openmc/constants.h"  // for MAX_LINE_LEN;
+#include "openmc/constants.h" // for MAX_LINE_LEN;
 #include "openmc/error.h"
-#include "openmc/xml_interface.h"
 #include "openmc/tallies/filter_azimuthal.h"
 #include "openmc/tallies/filter_cell.h"
+#include "openmc/tallies/filter_cell_instance.h"
 #include "openmc/tallies/filter_cellborn.h"
 #include "openmc/tallies/filter_cellfrom.h"
-#include "openmc/tallies/filter_cell_instance.h"
+#include "openmc/tallies/filter_collision.h"
 #include "openmc/tallies/filter_delayedgroup.h"
 #include "openmc/tallies/filter_distribcell.h"
-#include "openmc/tallies/filter_energyfunc.h"
 #include "openmc/tallies/filter_energy.h"
+#include "openmc/tallies/filter_energyfunc.h"
 #include "openmc/tallies/filter_legendre.h"
 #include "openmc/tallies/filter_material.h"
+#include "openmc/tallies/filter_materialfrom.h"
 #include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/filter_meshsurface.h"
 #include "openmc/tallies/filter_mu.h"
@@ -27,11 +30,13 @@
 #include "openmc/tallies/filter_sph_harm.h"
 #include "openmc/tallies/filter_sptl_legendre.h"
 #include "openmc/tallies/filter_surface.h"
+#include "openmc/tallies/filter_time.h"
 #include "openmc/tallies/filter_universe.h"
 #include "openmc/tallies/filter_zernike.h"
+#include "openmc/xml_interface.h"
 
 // explicit template instantiation definition
-template class std::vector<openmc::FilterMatch>;
+template class openmc::vector<openmc::FilterMatch>;
 
 namespace openmc {
 
@@ -40,9 +45,9 @@ namespace openmc {
 //==============================================================================
 
 namespace model {
-  std::unordered_map<int, int> filter_map;
-  std::vector<std::unique_ptr<Filter>> tally_filters;
-}
+std::unordered_map<int, int> filter_map;
+vector<unique_ptr<Filter>> tally_filters;
+} // namespace model
 
 //==============================================================================
 // Non-member functions
@@ -92,59 +97,61 @@ Filter* Filter::create(pugi::xml_node node)
 Filter* Filter::create(const std::string& type, int32_t id)
 {
   if (type == "azimuthal") {
-    model::tally_filters.push_back(std::make_unique<AzimuthalFilter>());
+    return Filter::create<AzimuthalFilter>(id);
   } else if (type == "cell") {
-    model::tally_filters.push_back(std::make_unique<CellFilter>());
+    return Filter::create<CellFilter>(id);
   } else if (type == "cellborn") {
-    model::tally_filters.push_back(std::make_unique<CellbornFilter>());
+    return Filter::create<CellBornFilter>(id);
   } else if (type == "cellfrom") {
-    model::tally_filters.push_back(std::make_unique<CellFromFilter>());
+    return Filter::create<CellFromFilter>(id);
   } else if (type == "cellinstance") {
-    model::tally_filters.push_back(std::make_unique<CellInstanceFilter>());
+    return Filter::create<CellInstanceFilter>(id);
   } else if (type == "distribcell") {
-    model::tally_filters.push_back(std::make_unique<DistribcellFilter>());
+    return Filter::create<DistribcellFilter>(id);
   } else if (type == "delayedgroup") {
-    model::tally_filters.push_back(std::make_unique<DelayedGroupFilter>());
+    return Filter::create<DelayedGroupFilter>(id);
   } else if (type == "energyfunction") {
-    model::tally_filters.push_back(std::make_unique<EnergyFunctionFilter>());
+    return Filter::create<EnergyFunctionFilter>(id);
   } else if (type == "energy") {
-    model::tally_filters.push_back(std::make_unique<EnergyFilter>());
+    return Filter::create<EnergyFilter>(id);
+  } else if (type == "collision") {
+    return Filter::create<CollisionFilter>(id);
   } else if (type == "energyout") {
-    model::tally_filters.push_back(std::make_unique<EnergyoutFilter>());
+    return Filter::create<EnergyoutFilter>(id);
   } else if (type == "legendre") {
-    model::tally_filters.push_back(std::make_unique<LegendreFilter>());
+    return Filter::create<LegendreFilter>(id);
   } else if (type == "material") {
-    model::tally_filters.push_back(std::make_unique<MaterialFilter>());
+    return Filter::create<MaterialFilter>(id);
+  } else if (type == "materialfrom") {
+    return Filter::create<MaterialFromFilter>(id);
   } else if (type == "mesh") {
-    model::tally_filters.push_back(std::make_unique<MeshFilter>());
+    return Filter::create<MeshFilter>(id);
   } else if (type == "meshsurface") {
-    model::tally_filters.push_back(std::make_unique<MeshSurfaceFilter>());
+    return Filter::create<MeshSurfaceFilter>(id);
   } else if (type == "mu") {
-    model::tally_filters.push_back(std::make_unique<MuFilter>());
+    return Filter::create<MuFilter>(id);
   } else if (type == "particle") {
-    model::tally_filters.push_back(std::make_unique<ParticleFilter>());
+    return Filter::create<ParticleFilter>(id);
   } else if (type == "polar") {
-    model::tally_filters.push_back(std::make_unique<PolarFilter>());
+    return Filter::create<PolarFilter>(id);
   } else if (type == "surface") {
-    model::tally_filters.push_back(std::make_unique<SurfaceFilter>());
+    return Filter::create<SurfaceFilter>(id);
   } else if (type == "spatiallegendre") {
-    model::tally_filters.push_back(std::make_unique<SpatialLegendreFilter>());
+    return Filter::create<SpatialLegendreFilter>(id);
   } else if (type == "sphericalharmonics") {
-    model::tally_filters.push_back(std::make_unique<SphericalHarmonicsFilter>());
+    return Filter::create<SphericalHarmonicsFilter>(id);
+  } else if (type == "time") {
+    return Filter::create<TimeFilter>(id);
   } else if (type == "universe") {
-    model::tally_filters.push_back(std::make_unique<UniverseFilter>());
+    return Filter::create<UniverseFilter>(id);
   } else if (type == "zernike") {
-    model::tally_filters.push_back(std::make_unique<ZernikeFilter>());
+    return Filter::create<ZernikeFilter>(id);
   } else if (type == "zernikeradial") {
-    model::tally_filters.push_back(std::make_unique<ZernikeRadialFilter>());
+    return Filter::create<ZernikeRadialFilter>(id);
   } else {
-    throw std::runtime_error{"Unknown filter type: " + type};
+    throw std::runtime_error {fmt::format("Unknown filter type: {}", type)};
   }
-
-  // Assign ID
-  model::tally_filters.back()->set_id(id);
-
-  return model::tally_filters.back().get();
+  return nullptr;
 }
 
 void Filter::set_id(int32_t id)
@@ -159,7 +166,8 @@ void Filter::set_id(int32_t id)
 
   // Make sure no other filter has same ID
   if (model::filter_map.find(id) != model::filter_map.end()) {
-    throw std::runtime_error{"Two filters have the same ID: " + std::to_string(id)};
+    throw std::runtime_error {
+      "Two filters have the same ID: " + std::to_string(id)};
   }
 
   // If no ID specified, auto-assign next ID in sequence
@@ -189,35 +197,43 @@ int verify_filter(int32_t index)
   return 0;
 }
 
-extern "C" int
-openmc_filter_get_id(int32_t index, int32_t* id)
+extern "C" int openmc_filter_get_id(int32_t index, int32_t* id)
 {
-  if (int err = verify_filter(index)) return err;
+  if (int err = verify_filter(index))
+    return err;
 
   *id = model::tally_filters[index]->id();
   return 0;
 }
 
-extern "C" int
-openmc_filter_set_id(int32_t index, int32_t id)
+extern "C" int openmc_filter_set_id(int32_t index, int32_t id)
 {
-  if (int err = verify_filter(index)) return err;
+  if (int err = verify_filter(index))
+    return err;
 
   model::tally_filters[index]->set_id(id);
   return 0;
 }
 
-extern "C" int
-openmc_filter_get_type(int32_t index, char* type)
+extern "C" int openmc_filter_get_type(int32_t index, char* type)
 {
-  if (int err = verify_filter(index)) return err;
+  if (int err = verify_filter(index))
+    return err;
 
-  std::strcpy(type, model::tally_filters[index]->type().c_str());
+  std::strcpy(type, model::tally_filters[index]->type_str().c_str());
   return 0;
 }
 
-extern "C" int
-openmc_get_filter_index(int32_t id, int32_t* index)
+extern "C" int openmc_filter_get_num_bins(int32_t index, int* n_bins)
+{
+  if (int err = verify_filter(index))
+    return err;
+
+  *n_bins = model::tally_filters[index]->n_bins();
+  return 0;
+}
+
+extern "C" int openmc_get_filter_index(int32_t id, int32_t* index)
 {
   auto it = model::filter_map.find(id);
   if (it == model::filter_map.end()) {
@@ -229,8 +245,7 @@ openmc_get_filter_index(int32_t id, int32_t* index)
   return 0;
 }
 
-extern "C" void
-openmc_get_filter_next_id(int32_t* id)
+extern "C" void openmc_get_filter_next_id(int32_t* id)
 {
   int32_t largest_filter_id = 0;
   for (const auto& t : model::tally_filters) {
@@ -239,8 +254,7 @@ openmc_get_filter_next_id(int32_t* id)
   *id = largest_filter_id + 1;
 }
 
-extern "C" int
-openmc_new_filter(const char* type, int32_t* index)
+extern "C" int openmc_new_filter(const char* type, int32_t* index)
 {
   *index = model::tally_filters.size();
   Filter::create(type);

@@ -11,16 +11,16 @@ namespace openmc {
 //! Specifies which cell the particle was born in.
 //==============================================================================
 
-class CellbornFilter : public CellFilter
-{
+class CellBornFilter : public CellFilter {
 public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override {return "cellborn";}
+  std::string type_str() const override { return "cellborn"; }
+  FilterType type() const override { return FilterType::CELLBORN; }
 
-  void get_all_bins(const Particle* p, TallyEstimator estimator, FilterMatch& match)
-  const override;
+  void get_all_bins(const Particle& p, TallyEstimator estimator,
+    FilterMatch& match) const override;
 
   std::string text_label(int bin) const override;
 };

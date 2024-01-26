@@ -1,11 +1,10 @@
-from abc import ABCMeta, abstractmethod
-from io import StringIO
+from abc import ABC, abstractmethod
 
 import openmc.data
 from openmc.mixin import EqualityMixin
 
 
-class AngleEnergy(EqualityMixin, metaclass=ABCMeta):
+class AngleEnergy(EqualityMixin, ABC):
     """Distribution in angle and energy of a secondary particle."""
     @abstractmethod
     def to_hdf5(self, group):
@@ -45,6 +44,8 @@ class AngleEnergy(EqualityMixin, metaclass=ABCMeta):
             return openmc.data.IncoherentInelasticAEDiscrete.from_hdf5(group)
         elif dist_type == 'incoherent_inelastic':
             return openmc.data.IncoherentInelasticAE.from_hdf5(group)
+        elif dist_type == 'mixed_elastic':
+            return openmc.data.MixedElasticAE.from_hdf5(group)
 
     @staticmethod
     def from_ace(ace, location_dist, location_start, rx=None):

@@ -78,10 +78,23 @@ classes are listed in the following table.
     | Cone parallel to the | :math:`(x-x_0)^2 + (y-y_0)^2 | :class:`openmc.ZCone`     |
     | :math:`z`-axis       | - R^2(z-z_0)^2 = 0`          |                           |
     +----------------------+------------------------------+---------------------------+
-    | General quadric      | :math:`Ax^2 + By^2 + Cz^2 +  |  :class:`openmc.Quadric`  |
+    | General quadric      | :math:`Ax^2 + By^2 + Cz^2 +  | :class:`openmc.Quadric`   |
     | surface              | Dxy + Eyz + Fxz + Gx + Hy +  |                           |
     |                      | Jz + K = 0`                  |                           |
     +----------------------+------------------------------+---------------------------+
+    | Torus parallel to the| :math:`(x-x_0)^2/B^2+\frac{( | :class:`openmc.XTorus`    |
+    | :math:`x`-axis       | \sqrt{(y-y_0)^2+(z-z_0)^2} - |                           |
+    |                      | A)^2}{C^2} - 1 = 0`          |                           |
+    +----------------------+------------------------------+---------------------------+
+    | Torus parallel to the| :math:`(y-y_0)^2/B^2+\frac{( | :class:`openmc.YTorus`    |
+    | :math:`y`-axis       | \sqrt{(x-x_0)^2+(z-z_0)^2} - |                           |
+    |                      | A)^2}{C^2} - 1 = 0`          |                           |
+    +----------------------+------------------------------+---------------------------+
+    | Torus parallel to the| :math:`(z-z_0)^2/B^2+\frac{( | :class:`openmc.ZTorus`    |
+    | :math:`z`-axis       | \sqrt{(x-x_0)^2+(y-y_0)^2} - |                           |
+    |                      | A)^2}{C^2} - 1 = 0`          |                           |
+    +----------------------+------------------------------+---------------------------+
+
 
 Each surface is characterized by several parameters. As one example, the
 parameters for a sphere are the :math:`x,y,z` coordinates of the center of the
@@ -113,6 +126,19 @@ Boolean operators ``&`` (intersection), ``|`` (union), and ``~`` (complement)::
   >>> type(northern_hemisphere)
   <class 'openmc.region.Intersection'>
 
+The ``&`` operator can be thought of as a logical AND, the ``|`` operator as a
+logical OR, and the ``~`` operator as a logical NOT. Thus, if you wanted to
+create a region that consists of the space for which :math:`-4 < z < -3` or
+:math:`3 < z < 4`, a union could be used::
+
+  >>> region_bottom = +openmc.ZPlane(-4) & -openmc.ZPlane(-3)
+  >>> region_top = +openmc.ZPlane(3) & -openmc.ZPlane(4)
+  >>> combined_region = region_bottom | region_top
+
+Half-spaces and the objects resulting from taking the intersection, union,
+and/or complement or half-spaces are all considered *regions* that can be
+assigned to :ref:`cells <usersguide_cells>`.
+
 For many regions, a bounding-box can be determined automatically::
 
   >>> northern_hemisphere.bounding_box
@@ -121,12 +147,13 @@ For many regions, a bounding-box can be determined automatically::
 While a bounding box can be determined for regions involving half-spaces of
 spheres, cylinders, and axis-aligned planes, it generally cannot be determined
 if the region involves cones, non-axis-aligned planes, or other exotic
-second-order surfaces. For example, the :func:`openmc.model.hexagonal_prism`
-function returns the interior region of a hexagonal prism; because it is bounded
-by a :class:`openmc.Plane`, trying to get its bounding box won't work::
+second-order surfaces. For example, the :class:`openmc.model.HexagonalPrism`
+class returns a hexagonal prism surface; because it utilizes a
+:class:`openmc.Plane`, trying to get the bounding box of its interior won't
+work::
 
-  >>> hex = openmc.model.hexagonal_prism()
-  >>> hex.bounding_box
+  >>> hex = openmc.model.HexagonalPrism()
+  >>> (-hex).bounding_box
   (array([-0.8660254,       -inf,       -inf]),
    array([ 0.8660254,        inf,        inf]))
 
@@ -146,25 +173,47 @@ surface. To specify a vacuum boundary condition, simply change the
    outer_surface = openmc.Sphere(r=100.0)
    outer_surface.boundary_type = 'vacuum'
 
-Reflective and periodic boundary conditions can be set with the strings
-'reflective' and 'periodic'. Vacuum and reflective boundary conditions can be
-applied to any type of surface. Periodic boundary conditions can be applied to
-pairs of planar surfaces. For axis-aligned planes, matching periodic surfaces
-can be determined automatically. For non-axis-aligned planes, it is necessary to
-specify pairs explicitly using the :attr:`Surface.periodic_surface` attribute as
-in the following example::
+Reflective, periodic, and white boundary conditions can be set with the
+strings 'reflective', 'periodic', and 'white' respectively.
+Vacuum, reflective and white boundary conditions can be applied to any
+type of surface. The 'white' boundary condition supports diffuse particle
+reflection in contrast to specular reflection provided by the 'reflective'
+boundary condition.
+
+Periodic boundary conditions can be applied to pairs of planar surfaces.
+If there are only two periodic surfaces they will be matched automatically.
+Otherwise it is necessary to specify pairs explicitly using the
+:attr:`Surface.periodic_surface` attribute as in the following example::
 
   p1 = openmc.Plane(a=0.3, b=5.0, d=1.0, boundary_type='periodic')
   p2 = openmc.Plane(a=0.3, b=5.0, d=-1.0, boundary_type='periodic')
   p1.periodic_surface = p2
 
-Rotationally-periodic boundary conditions can be specified for a pair of
-:class:`XPlane` and :class:`YPlane`; in that case, the
-:attr:`Surface.periodic_surface` attribute must be specified manually as well.
+Both rotational and translational periodic boundary conditions are specified in
+the same fashion. If both planes have the same normal vector, a translational
+periodicity is assumed; rotational periodicity is assumed otherwise. Currently,
+only rotations about the :math:`z`-axis are supported.
 
-.. caution:: When using rotationally-periodic boundary conditions, your geometry
-             must be defined in the first quadrant, i.e., above the y-plane and
-             to the right of the x-plane.
+For a rotational periodic BC, the normal vectors of each surface must point
+inwards---towards the valid geometry. For example, a :class:`XPlane` and
+:class:`YPlane` would be valid for a 90-degree periodic rotation if the geometry
+lies in the first quadrant of the Cartesian grid. If the geometry instead lies
+in the fourth quadrant, the :class:`YPlane` must be replaced by a
+:class:`Plane` with the normal vector pointing in the :math:`-y` direction.
+
+Additionally, 'reflective', 'periodic', and 'white' boundary conditions have
+an albedo parameter that can be used to modify the importance of particles
+that encounter the boundary. The albedo value specifies the ratio between
+the particle's importance after interaction with the boundary to its initial
+importance. The following example creates a reflective planar surface which
+reduces the reflected particles' importance by 33.3%::
+
+   x1 = openmc.XPlane(1.0, boundary_type='reflective', albedo=0.667)
+
+   # This is equivalent
+   x1 = openmc.XPlane(1.0)
+   x1.boundary_type = 'reflective'
+   x1.albedo = 0.667
 
 .. _usersguide_cells:
 
@@ -185,7 +234,13 @@ the :class:`openmc.Cell` class::
 
 In this example, an instance of :class:`openmc.Material` is assigned to the
 :attr:`Cell.fill` attribute. One can also fill a cell with a :ref:`universe
-<usersguide_universes>` or :ref:`lattice <usersguide_lattices>`.
+<usersguide_universes>` or :ref:`lattice <usersguide_lattices>`. If you provide
+no fill to a cell or assign a value of `None`, it will be treated as a "void"
+cell with no material within. Particles are allowed to stream through the cell but
+will undergo no collisions::
+
+  # This cell will be filled with void on export to XML
+  gap = openmc.Cell(region=pellet_gap)
 
 The classes :class:`Halfspace`, :class:`Intersection`, :class:`Union`, and
 :class:`Complement` and all instances of :class:`openmc.Region` and can be
@@ -238,7 +293,7 @@ lowest-level cell at that location::
 
 As you are building a geometry, it is also possible to display a plot of single
 universe using the :meth:`Universe.plot` method. This method requires that you
-have `matplotlib <http://matplotlib.org/>`_ installed.
+have `matplotlib <https://matplotlib.org/>`_ installed.
 
 .. _usersguide_lattices:
 
@@ -374,7 +429,7 @@ code would work::
   hexlat.universes = [outer_ring, middle_ring, inner_ring]
 
 If you need to create a hexagonal boundary (composed of six planar surfaces) for
-a hexagonal lattice, :func:`openmc.model.hexagonal_prism` can be used.
+a hexagonal lattice, :class:`openmc.model.HexagonalPrism` can be used.
 
 .. _usersguide_geom_export:
 
@@ -410,27 +465,88 @@ will handle creating the unverse::
 Using CAD-based Geometry
 --------------------------
 
-OpenMC relies on the Direct Accelerated Geometry Monte Carlo toolkit (`DAGMC
-<https://svalinn.github.io/DAGMC/>`_) to represent CAD-based geometry in a
-surface mesh format. A DAGMC run can be enabled in OpenMC by setting the
-``dagmc`` property to ``True`` in the model Settings either via the Python
-:class:`openmc.settings` Python class::
+Defining Geometry
+-----------------
 
-  settings = openmc.Settings()
-  settings.dagmc = True
+OpenMC relies on the `Direct Accelerated Geometry Monte Carlo`_ (DAGMC)
+to represent CAD-based geometry in a surface mesh format. DAGMC geometries are
+applied as universes in the OpenMC geometry file. A geometry represented
+entirely by a DAGMC geometry will contain only the DAGMC universe. Using a
+:class:`openmc.DAGMCUniverse` looks like the following::
 
-or in the :ref:`settings.xml <io_settings>` file::
+   dag_univ = openmc.DAGMCUniverse(filename='dagmc.h5m')
+   geometry = openmc.Geometry(dag_univ)
+   geometry.export_to_xml()
 
-  <dagmc>true</dagmc>
+The resulting ``geometry.xml`` file will be:
 
-With ``dagmc`` set to true, OpenMC will load the DAGMC model (from a local file
-named ``dagmc.h5m``) when initializing a simulation. If a `geometry.xml
-<../io_formats/geometry.html>`_ is present as well, it will be ignored.
+.. code-block:: xml
 
-  **Note:** DAGMC geometries used in OpenMC are currently required to be clean,
-  meaning that all surfaces have been `imprinted and merged
-  <https://svalinn.github.io/DAGMC/usersguide/trelis_workflow.html>`_
-  successfully and that the model is `watertight
-  <https://svalinn.github.io/DAGMC/usersguide/tools.html#make-watertight>`_. Future
-  implementations of DAGMC geometry will support small volume overlaps and
-  un-merged surfaces.
+   <?xml version='1.0' encoding='utf-8'?>
+   <geometry>
+     <dagmc auto_ids="false" filename="dagmc.h5m" id="1" name="" />
+   </geometry>
+
+DAGMC universes can also be used to fill CSG cells or lattice cells in a geometry::
+
+  cell.fill = dagmc_univ
+
+It is important in these cases to understand the DAGMC model's position
+with respect to the CSG geometry. DAGMC geometries can be plotted with
+OpenMC to verify that the model matches one's expectations.
+
+**Note:** DAGMC geometries used in OpenMC are currently required to be clean,
+meaning that all surfaces have been `imprinted and merged
+<https://svalinn.github.io/DAGMC/usersguide/cubit_basics.html>`_ successfully
+and that the model is `watertight
+<https://svalinn.github.io/DAGMC/usersguide/tools.html#make-watertight>`_.
+Future implementations of DAGMC geometry will support small volume overlaps and
+un-merged surfaces.
+
+Cell, Surface, and Material IDs
+-------------------------------
+
+By default, DAGMC applies cell and surface IDs defined by the CAD engine that
+the model originated in. If these IDs overlap with IDs in the CSG ID space,
+this will result in an error. However, the ``auto_ids`` property of a DAGMC
+universe can be set to set DAGMC cell and surface IDs by appending to the
+existing CSG cell ID space in the OpenMC model.
+
+Similar options exist for the material IDs of DAGMC models. If DAGMC material
+assignments are based on natively defined OpenMC materials, no further work is
+required. If DAGMC materials are assigned using the `University of Wisconsin
+Unified Workflow`_ (UWUW), however, material IDs in the UWUW material library
+may overlap with those used in the CSG geometry. In this case, overlaps in the
+UWUW and OpenMC material ID space will cause an error. To automatically resolve
+these ID overlaps, ``auto_ids`` can be set to ``True`` to append the UWUW
+material IDs to the OpenMC material ID space.
+
+.. _Direct Accelerated Geometry Monte Carlo: https://svalinn.github.io/DAGMC/
+.. _University of Wisconsin Unified Workflow: https://svalinn.github.io/DAGMC/usersguide/uw2.html
+
+-------------------------
+Calculating Atoms Content
+-------------------------
+
+If the total volume occupied by all instances of a cell in the geometry is known
+by the user, it is possible to assign this volume to a cell without performing a
+:ref:`stochastic volume <usersguide_volume>` calculation::
+
+  from uncertainties import ufloat
+
+  # Set known total volume in [cc]
+  cell = openmc.Cell()
+  cell.volume = 17.0
+
+  # Set volume if it is known with some uncertainty
+  cell.volume = ufloat(17.0, 0.1)
+
+Once a volume is set, and a cell is filled with a material or distributed
+materials, it is possible to use the :func:`~openmc.Cell.atoms` method to obtain
+a dictionary of nuclides and their total number of atoms in all instances
+of a cell (e.g. ``{'H1': 1.0e22, 'O16': 0.5e22, ...}``)::
+
+  cell = openmc.Cell(fill = u02)
+  cell.volume = 17.0
+
+  O16_atoms = cell.atoms['O16']

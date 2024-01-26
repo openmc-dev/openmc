@@ -3,7 +3,8 @@
 #include "openmc/message_passing.h"
 #include "openmc/settings.h"
 
-#if defined(__unix__) || defined(__unix) || (defined(__APPLE__) && defined(__MACH__))
+#if defined(__unix__) || defined(__unix) ||                                    \
+  (defined(__APPLE__) && defined(__MACH__))
 #include <unistd.h> // for isatty
 #endif
 
@@ -98,7 +99,8 @@ void warning(const std::string& message)
 void write_message(const std::string& message, int level)
 {
   // Only allow master to print to screen
-  if (!mpi::master) return;
+  if (!mpi::master)
+    return;
 
   if (level <= settings::verbosity) {
     std::cout << " ";

@@ -6,30 +6,30 @@ import numpy as np
 import openmc.checkvalue as cv
 
 
-class EqualityMixin(object):
-    """A Class which provides generic __eq__ and __ne__ functionality which
-    can easily be inherited by downstream classes.
+class EqualityMixin:
+    """A Class which provides a generic __eq__ method that can be inherited
+    by downstream classes.
     """
 
     def __eq__(self, other):
         if isinstance(other, type(self)):
             for key, value in self.__dict__.items():
-                if not np.array_equal(value, other.__dict__.get(key)):
-                    return False
+                if isinstance(value, np.ndarray):
+                    if not np.array_equal(value, other.__dict__.get(key)):
+                        return False
+                else:
+                    return value == other.__dict__.get(key)
         else:
             return False
 
         return True
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
 
 
 class IDWarning(UserWarning):
     pass
 
 
-class IDManagerMixin(object):
+class IDManagerMixin:
     """A Class which automatically manages unique IDs.
 
     This mixin gives any subclass the ability to assign unique IDs through an
@@ -63,11 +63,10 @@ class IDManagerMixin(object):
             cls.used_ids.add(cls.next_id)
         else:
             name = cls.__name__
-            cv.check_type('{} ID'.format(name), uid, Integral)
-            cv.check_greater_than('{} ID'.format(name), uid, 0, equality=True)
+            cv.check_type(f'{name} ID', uid, Integral)
+            cv.check_greater_than(f'{name} ID', uid, 0, equality=True)
             if uid in cls.used_ids:
-                msg = 'Another {} instance already exists with id={}.'.format(
-                    name, uid)
+                msg = f'Another {name} instance already exists with id={uid}.'
                 warn(msg, IDWarning)
             else:
                 cls.used_ids.add(uid)

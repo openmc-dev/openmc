@@ -1,18 +1,20 @@
-from abc import ABCMeta, abstractmethod
+from __future__ import annotations
+import typing
+from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from math import pi
+from math import cos, pi
 from numbers import Real
-import sys
-from xml.etree import ElementTree as ET
 
+import lxml.etree as ET
 import numpy as np
 
 import openmc.checkvalue as cv
-from openmc._xml import get_text
-from openmc.stats.univariate import Univariate, Uniform
+from .._xml import get_text
+from ..mesh import MeshBase
+from .univariate import PowerLaw, Uniform, Univariate
 
 
-class UnitSphere(metaclass=ABCMeta):
+class UnitSphere(ABC):
     """Distribution of points on the unit sphere.
 
     This abstract class is used for angular distributions, since a direction is
@@ -86,7 +88,7 @@ class PolarAzimuthal(UnitSphere):
 
     """
 
-    def __init__(self, mu=None, phi=None, reference_uvw=[0., 0., 1.]):
+    def __init__(self, mu=None, phi=None, reference_uvw=(0., 0., 1.)):
         super().__init__(reference_uvw)
         if mu is not None:
             self.mu = mu
@@ -102,14 +104,14 @@ class PolarAzimuthal(UnitSphere):
     def mu(self):
         return self._mu
 
-    @property
-    def phi(self):
-        return self._phi
-
     @mu.setter
     def mu(self, mu):
         cv.check_type('cosine of polar angle', mu, Univariate)
         self._mu = mu
+
+    @property
+    def phi(self):
+        return self._phi
 
     @phi.setter
     def phi(self, phi):
@@ -121,7 +123,7 @@ class PolarAzimuthal(UnitSphere):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing angular distribution data
 
         """
@@ -139,7 +141,7 @@ class PolarAzimuthal(UnitSphere):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -149,18 +151,16 @@ class PolarAzimuthal(UnitSphere):
 
         """
         mu_phi = cls()
-        params = get_text(elem, 'parameters')
-        if params is not None:
-            mu_phi.reference_uvw = [float(x) for x in params.split()]
+        uvw = get_text(elem, 'reference_uvw')
+        if uvw is not None:
+            mu_phi.reference_uvw = [float(x) for x in uvw.split()]
         mu_phi.mu = Univariate.from_xml_element(elem.find('mu'))
         mu_phi.phi = Univariate.from_xml_element(elem.find('phi'))
         return mu_phi
 
 
 class Isotropic(UnitSphere):
-    """Isotropic angular distribution.
-
-    """
+    """Isotropic angular distribution."""
 
     def __init__(self):
         super().__init__()
@@ -170,7 +170,7 @@ class Isotropic(UnitSphere):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing isotropic distribution data
 
         """
@@ -179,12 +179,12 @@ class Isotropic(UnitSphere):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate isotropic distribution from an XML element
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -211,8 +211,7 @@ class Monodirectional(UnitSphere):
 
     """
 
-
-    def __init__(self, reference_uvw=[1., 0., 0.]):
+    def __init__(self, reference_uvw: typing.Sequence[float] = [1., 0., 0.]):
         super().__init__(reference_uvw)
 
     def to_xml_element(self):
@@ -220,7 +219,7 @@ class Monodirectional(UnitSphere):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing monodirectional distribution data
 
         """
@@ -231,12 +230,12 @@ class Monodirectional(UnitSphere):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate monodirectional distribution from an XML element
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -246,29 +245,26 @@ class Monodirectional(UnitSphere):
 
         """
         monodirectional = cls()
-        params = get_text(elem, 'parameters')
-        if params is not None:
-            monodirectional.reference_uvw = [float(x) for x in params.split()]
+        uvw = get_text(elem, 'reference_uvw')
+        if uvw is not None:
+            monodirectional.reference_uvw = [float(x) for x in uvw.split()]
         return monodirectional
 
 
-class Spatial(metaclass=ABCMeta):
+class Spatial(ABC):
     """Distribution of locations in three-dimensional Euclidean space.
 
     Classes derived from this abstract class can be used for spatial
     distributions of source sites.
 
     """
-    def __init__(self):
-        pass
-
     @abstractmethod
     def to_xml_element(self):
         return ''
 
     @classmethod
     @abstractmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem, meshes=None):
         distribution = get_text(elem, 'type')
         if distribution == 'cartesian':
             return CartesianIndependent.from_xml_element(elem)
@@ -280,6 +276,8 @@ class Spatial(metaclass=ABCMeta):
             return Box.from_xml_element(elem)
         elif distribution == 'point':
             return Point.from_xml_element(elem)
+        elif distribution == 'mesh':
+            return MeshSpatial.from_xml_element(elem, meshes)
 
 
 class CartesianIndependent(Spatial):
@@ -308,8 +306,12 @@ class CartesianIndependent(Spatial):
 
     """
 
-    def __init__(self, x, y, z):
-        super().__init__()
+    def __init__(
+        self,
+        x: openmc.stats.Univariate,
+        y: openmc.stats.Univariate,
+        z: openmc.stats.Univariate
+    ):
         self.x = x
         self.y = y
         self.z = z
@@ -318,23 +320,23 @@ class CartesianIndependent(Spatial):
     def x(self):
         return self._x
 
-    @property
-    def y(self):
-        return self._y
-
-    @property
-    def z(self):
-        return self._z
-
     @x.setter
     def x(self, x):
         cv.check_type('x coordinate', x, Univariate)
         self._x = x
 
+    @property
+    def y(self):
+        return self._y
+
     @y.setter
     def y(self, y):
         cv.check_type('y coordinate', y, Univariate)
         self._y = y
+
+    @property
+    def z(self):
+        return self._z
 
     @z.setter
     def z(self, z):
@@ -346,7 +348,7 @@ class CartesianIndependent(Spatial):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing spatial distribution data
 
         """
@@ -358,12 +360,12 @@ class CartesianIndependent(Spatial):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate spatial distribution from an XML element
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -382,17 +384,22 @@ class SphericalIndependent(Spatial):
     r"""Spatial distribution represented in spherical coordinates.
 
     This distribution allows one to specify coordinates whose :math:`r`,
-    :math:`\theta`, and :math:`\phi` components are sampled independently from
-    one another and centered on the coordinates (x0, y0, z0).
+    :math:`\theta`, and :math:`\phi` components are sampled independently
+    from one another and centered on the coordinates (x0, y0, z0).
+
+    .. versionadded:: 0.12
+
+    .. versionchanged:: 0.13.1
+        Accepts ``cos_theta`` instead of ``theta``
 
     Parameters
     ----------
     r : openmc.stats.Univariate
         Distribution of r-coordinates in a reference frame specified by
         the origin parameter
-    theta : openmc.stats.Univariate
-        Distribution of theta-coordinates (angle relative to the z-axis) in a
-        reference frame specified by the origin parameter
+    cos_theta : openmc.stats.Univariate
+        Distribution of the cosine of the theta-coordinates (angle relative to
+        the z-axis) in a reference frame specified by the origin parameter
     phi : openmc.stats.Univariate
         Distribution of phi-coordinates (azimuthal angle) in a reference frame
         specified by the origin parameter
@@ -404,9 +411,9 @@ class SphericalIndependent(Spatial):
     ----------
     r : openmc.stats.Univariate
         Distribution of r-coordinates in the local reference frame
-    theta : openmc.stats.Univariate
-        Distribution of theta-coordinates (angle relative to the z-axis) in the
-        local reference frame
+    cos_theta : openmc.stats.Univariate
+        Distribution of the cosine of the theta-coordinates (angle relative to
+        the z-axis) in the local reference frame
     phi : openmc.stats.Univariate
         Distribution of phi-coordinates (azimuthal angle) in the local
         reference frame
@@ -416,10 +423,9 @@ class SphericalIndependent(Spatial):
 
     """
 
-    def __init__(self, r, theta, phi, origin=(0.0, 0.0, 0.0)):
-        super().__init__()
+    def __init__(self, r, cos_theta, phi, origin=(0.0, 0.0, 0.0)):
         self.r = r
-        self.theta = theta
+        self.cos_theta = cos_theta
         self.phi = phi
         self.origin = origin
 
@@ -427,32 +433,32 @@ class SphericalIndependent(Spatial):
     def r(self):
         return self._r
 
-    @property
-    def theta(self):
-        return self._theta
-
-    @property
-    def phi(self):
-        return self._phi
-
-    @property
-    def origin(self):
-        return self._origin
-
     @r.setter
     def r(self, r):
         cv.check_type('r coordinate', r, Univariate)
         self._r = r
 
-    @theta.setter
-    def theta(self, theta):
-        cv.check_type('theta coordinate', theta, Univariate)
-        self._theta = theta
+    @property
+    def cos_theta(self):
+        return self._cos_theta
+
+    @cos_theta.setter
+    def cos_theta(self, cos_theta):
+        cv.check_type('cos_theta coordinate', cos_theta, Univariate)
+        self._cos_theta = cos_theta
+
+    @property
+    def phi(self):
+        return self._phi
 
     @phi.setter
     def phi(self, phi):
         cv.check_type('phi coordinate', phi, Univariate)
         self._phi = phi
+
+    @property
+    def origin(self):
+        return self._origin
 
     @origin.setter
     def origin(self, origin):
@@ -465,25 +471,25 @@ class SphericalIndependent(Spatial):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing spatial distribution data
 
         """
         element = ET.Element('space')
         element.set('type', 'spherical')
         element.append(self.r.to_xml_element('r'))
-        element.append(self.theta.to_xml_element('theta'))
+        element.append(self.cos_theta.to_xml_element('cos_theta'))
         element.append(self.phi.to_xml_element('phi'))
         element.set("origin", ' '.join(map(str, self.origin)))
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate spatial distribution from an XML element
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -493,18 +499,21 @@ class SphericalIndependent(Spatial):
 
         """
         r = Univariate.from_xml_element(elem.find('r'))
-        theta = Univariate.from_xml_element(elem.find('theta'))
+        cos_theta = Univariate.from_xml_element(elem.find('cos_theta'))
         phi = Univariate.from_xml_element(elem.find('phi'))
         origin = [float(x) for x in elem.get('origin').split()]
-        return cls(r, theta, phi, origin=origin)
+        return cls(r, cos_theta, phi, origin=origin)
+
 
 class CylindricalIndependent(Spatial):
-    """Spatial distribution represented in cylindrical coordinates.
+    r"""Spatial distribution represented in cylindrical coordinates.
 
     This distribution allows one to specify coordinates whose :math:`r`,
     :math:`\phi`, and :math:`z` components are sampled independently from
     one another and in a reference frame whose origin is specified by the
     coordinates (x0, y0, z0).
+
+    .. versionadded:: 0.12
 
     Parameters
     ----------
@@ -537,7 +546,6 @@ class CylindricalIndependent(Spatial):
     """
 
     def __init__(self, r, phi, z, origin=(0.0, 0.0, 0.0)):
-        super().__init__()
         self.r = r
         self.phi = phi
         self.z = z
@@ -547,32 +555,32 @@ class CylindricalIndependent(Spatial):
     def r(self):
         return self._r
 
-    @property
-    def phi(self):
-        return self._phi
-
-    @property
-    def z(self):
-        return self._z
-
-    @property
-    def origin(self):
-        return self._origin
-
     @r.setter
     def r(self, r):
         cv.check_type('r coordinate', r, Univariate)
         self._r = r
+
+    @property
+    def phi(self):
+        return self._phi
 
     @phi.setter
     def phi(self, phi):
         cv.check_type('phi coordinate', phi, Univariate)
         self._phi = phi
 
+    @property
+    def z(self):
+        return self._z
+
     @z.setter
     def z(self, z):
         cv.check_type('z coordinate', z, Univariate)
         self._z = z
+
+    @property
+    def origin(self):
+        return self._origin
 
     @origin.setter
     def origin(self, origin):
@@ -585,7 +593,7 @@ class CylindricalIndependent(Spatial):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing spatial distribution data
 
         """
@@ -598,12 +606,12 @@ class CylindricalIndependent(Spatial):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate spatial distribution from an XML element
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -617,6 +625,134 @@ class CylindricalIndependent(Spatial):
         z = Univariate.from_xml_element(elem.find('z'))
         origin = [float(x) for x in elem.get('origin').split()]
         return cls(r, phi, z, origin=origin)
+
+
+class MeshSpatial(Spatial):
+    """Spatial distribution for a mesh.
+
+    This distribution specifies a mesh to sample over with source strengths
+    specified for each mesh element.
+
+    .. versionadded:: 0.13.3
+
+    Parameters
+    ----------
+    mesh : openmc.MeshBase
+        The mesh instance used for sampling
+    strengths : iterable of float, optional
+        An iterable of values that represents the weights of each element. If no
+        source strengths are specified, they will be equal for all mesh
+        elements.
+    volume_normalized : bool, optional
+        Whether or not the strengths will be multiplied by element volumes at
+        runtime. Default is True.
+
+    Attributes
+    ----------
+    mesh : openmc.MeshBase
+        The mesh instance used for sampling
+    strengths : numpy.ndarray or None
+        An array of source strengths for each mesh element
+    volume_normalized : bool
+        Whether or not the strengths will be multiplied by element volumes at
+        runtime.
+    """
+
+    def __init__(self, mesh, strengths=None, volume_normalized=True):
+        self.mesh = mesh
+        self.strengths = strengths
+        self.volume_normalized = volume_normalized
+
+    @property
+    def mesh(self):
+        return self._mesh
+
+    @mesh.setter
+    def mesh(self, mesh):
+        if mesh is not None:
+            cv.check_type('mesh instance', mesh, MeshBase)
+        self._mesh = mesh
+
+    @property
+    def volume_normalized(self):
+        return self._volume_normalized
+
+    @volume_normalized.setter
+    def volume_normalized(self, volume_normalized):
+        cv.check_type('Multiply strengths by element volumes', volume_normalized, bool)
+        self._volume_normalized = volume_normalized
+
+    @property
+    def strengths(self):
+        return self._strengths
+
+    @strengths.setter
+    def strengths(self, given_strengths):
+        if given_strengths is not None:
+            cv.check_type('strengths array passed in', given_strengths, Iterable, Real)
+            self._strengths = np.asarray(given_strengths, dtype=float).flatten()
+        else:
+            self._strengths = None
+
+    @property
+    def num_strength_bins(self):
+        if self.strengths is None:
+            raise ValueError('Strengths are not set')
+        return self.strengths.size
+
+    def to_xml_element(self):
+        """Return XML representation of the spatial distribution
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing spatial distribution data
+
+        """
+        element = ET.Element('space')
+
+        element.set('type', 'mesh')
+        element.set("mesh_id", str(self.mesh.id))
+        element.set("volume_normalized", str(self.volume_normalized))
+
+        if self.strengths is not None:
+            subelement = ET.SubElement(element, 'strengths')
+            subelement.text = ' '.join(str(e) for e in self.strengths)
+
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem, meshes):
+        """Generate spatial distribution from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+        meshes : dict
+            A dictionary with mesh IDs as keys and openmc.MeshBase instances as
+            values
+
+        Returns
+        -------
+        openmc.stats.MeshSpatial
+            Spatial distribution generated from XML element
+
+        """
+
+        mesh_id = int(elem.get('mesh_id'))
+
+        # check if this mesh has been read in from another location already
+        if mesh_id not in meshes:
+            raise ValueError(f'Could not locate mesh with ID "{mesh_id}"')
+
+        volume_normalized = elem.get("volume_normalized")
+        volume_normalized = get_text(elem, 'volume_normalized').lower() == 'true'
+        strengths = get_text(elem, 'strengths')
+        if strengths is not None:
+            strengths = [float(b) for b in get_text(elem, 'strengths').split()]
+
+        return cls(meshes[mesh_id], strengths, volume_normalized)
 
 
 class Box(Spatial):
@@ -644,9 +780,12 @@ class Box(Spatial):
 
     """
 
-
-    def __init__(self, lower_left, upper_right, only_fissionable=False):
-        super().__init__()
+    def __init__(
+        self,
+        lower_left: typing.Sequence[float],
+        upper_right: typing.Sequence[float],
+        only_fissionable: bool = False
+    ):
         self.lower_left = lower_left
         self.upper_right = upper_right
         self.only_fissionable = only_fissionable
@@ -655,25 +794,25 @@ class Box(Spatial):
     def lower_left(self):
         return self._lower_left
 
-    @property
-    def upper_right(self):
-        return self._upper_right
-
-    @property
-    def only_fissionable(self):
-        return self._only_fissionable
-
     @lower_left.setter
     def lower_left(self, lower_left):
         cv.check_type('lower left coordinate', lower_left, Iterable, Real)
         cv.check_length('lower left coordinate', lower_left, 3)
         self._lower_left = lower_left
 
+    @property
+    def upper_right(self):
+        return self._upper_right
+
     @upper_right.setter
     def upper_right(self, upper_right):
         cv.check_type('upper right coordinate', upper_right, Iterable, Real)
         cv.check_length('upper right coordinate', upper_right, 3)
         self._upper_right = upper_right
+
+    @property
+    def only_fissionable(self):
+        return self._only_fissionable
 
     @only_fissionable.setter
     def only_fissionable(self, only_fissionable):
@@ -685,7 +824,7 @@ class Box(Spatial):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing box distribution data
 
         """
@@ -700,12 +839,12 @@ class Box(Spatial):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate box distribution from an XML element
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -739,8 +878,7 @@ class Point(Spatial):
 
     """
 
-    def __init__(self, xyz=(0., 0., 0.)):
-        super().__init__()
+    def __init__(self, xyz: typing.Sequence[float] = (0., 0., 0.)):
         self.xyz = xyz
 
     @property
@@ -758,7 +896,7 @@ class Point(Spatial):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing point distribution location
 
         """
@@ -769,12 +907,12 @@ class Point(Spatial):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate point distribution from an XML element
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -785,3 +923,47 @@ class Point(Spatial):
         """
         xyz = [float(x) for x in get_text(elem, 'parameters').split()]
         return cls(xyz)
+
+
+def spherical_uniform(
+        r_outer: float,
+        r_inner: float = 0.0,
+        thetas: typing.Sequence[float] = (0., pi),
+        phis: typing.Sequence[float] = (0., 2*pi),
+        origin: typing.Sequence[float] = (0., 0., 0.)
+    ):
+    """Return a uniform spatial distribution over a spherical shell.
+
+    This function provides a uniform spatial distribution over a spherical
+    shell between `r_inner` and `r_outer`. Optionally, the range of angles
+    can be restricted by the `thetas` and `phis` arguments.
+
+    .. versionadded:: 0.13.1
+
+    Parameters
+    ----------
+    r_outer : float
+        Outer radius of the spherical shell in [cm]
+    r_inner : float
+        Inner radius of the spherical shell in [cm]
+    thetas : iterable of float
+        Starting and ending theta coordinates (angle relative to
+        the z-axis) in radius in a reference frame centered at `origin`
+    phis : iterable of float
+        Starting and ending phi coordinates (azimuthal angle) in
+        radians in a reference frame centered at `origin`
+    origin: iterable of float
+        Coordinates (x0, y0, z0) of the center of the spherical
+        reference frame for the distribution.
+
+    Returns
+    -------
+    openmc.stats.SphericalIndependent
+        Uniform distribution over the spherical shell
+    """
+
+    r_dist = PowerLaw(r_inner, r_outer, 2)
+    cos_thetas_dist = Uniform(cos(thetas[1]), cos(thetas[0]))
+    phis_dist = Uniform(phis[0], phis[1])
+
+    return SphericalIndependent(r_dist, cos_thetas_dist, phis_dist, origin)

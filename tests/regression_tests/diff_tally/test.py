@@ -16,7 +16,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
         self._model.settings.batches = 3
         self._model.settings.inactive = 0
         self._model.settings.particles = 100
-        self._model.settings.source = openmc.Source(space=openmc.stats.Box(
+        self._model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
             [-160, -160, -183], [160, 160, 183]))
         self._model.settings.temperature['multipole'] = True
 
@@ -103,9 +103,8 @@ class DiffTallyTestHarness(PyAPITestHarness):
         sp = openmc.StatePoint(statepoint)
 
         # Extract the tally data as a Pandas DataFrame.
-        df = pd.DataFrame()
-        for t in sp.tallies.values():
-            df = df.append(t.get_pandas_dataframe(), ignore_index=True)
+        tally_dfs = [t.get_pandas_dataframe() for t in sp.tallies.values()]
+        df = pd.concat(tally_dfs, ignore_index=True)
 
         # Extract the relevant data as a CSV string.
         cols = ('d_material', 'd_nuclide', 'd_variable', 'score', 'mean',

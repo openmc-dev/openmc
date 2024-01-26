@@ -1,11 +1,11 @@
 from collections.abc import Mapping
-from ctypes import c_int, c_char_p, POINTER, c_size_t
+from ctypes import c_int, c_double, c_char_p, POINTER, c_size_t
 from weakref import WeakValueDictionary
 
+from numpy.ctypeslib import ndpointer
 import numpy as np
-from numpy.ctypeslib import as_array
 
-from openmc.exceptions import DataError, AllocationError
+from ..exceptions import DataError, AllocationError
 from . import _dll
 from .core import _FortranObject
 from .error import _error_handler
@@ -13,16 +13,22 @@ from .error import _error_handler
 
 __all__ = ['Nuclide', 'nuclides', 'load_nuclide']
 
+_array_1d_dble = ndpointer(dtype=np.double, ndim=1, flags='CONTIGUOUS')
+
 # Nuclide functions
 _dll.openmc_get_nuclide_index.argtypes = [c_char_p, POINTER(c_int)]
 _dll.openmc_get_nuclide_index.restype = c_int
 _dll.openmc_get_nuclide_index.errcheck = _error_handler
-_dll.openmc_load_nuclide.argtypes = [c_char_p]
+_dll.openmc_load_nuclide.argtypes = [c_char_p, POINTER(c_double), c_int]
 _dll.openmc_load_nuclide.restype = c_int
 _dll.openmc_load_nuclide.errcheck = _error_handler
 _dll.openmc_nuclide_name.argtypes = [c_int, POINTER(c_char_p)]
 _dll.openmc_nuclide_name.restype = c_int
 _dll.openmc_nuclide_name.errcheck = _error_handler
+_dll.openmc_nuclide_collapse_rate.argtypes = [c_int, c_int, c_double,
+    _array_1d_dble, _array_1d_dble, c_int, POINTER(c_double)]
+_dll.openmc_nuclide_collapse_rate.restype = c_int
+_dll.openmc_nuclide_collapse_rate.errcheck = _error_handler
 _dll.nuclides_size.restype = c_size_t
 
 
@@ -35,7 +41,7 @@ def load_nuclide(name):
         Name of the nuclide, e.g. 'U235'
 
     """
-    _dll.openmc_load_nuclide(name.encode())
+    _dll.openmc_load_nuclide(name.encode(), None, 0)
 
 
 class Nuclide(_FortranObject):
@@ -72,6 +78,33 @@ class Nuclide(_FortranObject):
         name = c_char_p()
         _dll.openmc_nuclide_name(self._index, name)
         return name.value.decode()
+
+    def collapse_rate(self, MT, temperature, energy, flux):
+        """Calculate reaction rate based on group-wise flux distribution
+
+        Parameters
+        ----------
+        MT : int
+            ENDF MT value of the desired reaction
+        temperature : float
+            Temperature in [K] at which to evaluate cross sections
+        energy : iterable of float
+            Energy group boundaries in [eV]
+        flux : iterable of float
+            Flux in each energy group (not normalized per eV)
+
+        Returns
+        -------
+        float
+            Reaction rate
+
+        """
+        energy = np.asarray(energy, dtype=float)
+        flux = np.asarray(flux, dtype=float)
+        xs = c_double()
+        _dll.openmc_nuclide_collapse_rate(self._index, MT, temperature, energy,
+                                          flux, len(flux), xs)
+        return xs.value
 
 
 class _NuclideMapping(Mapping):

@@ -1,11 +1,10 @@
 #ifndef OPENMC_TALLIES_FILTER_DELAYEDGROUP_H
 #define OPENMC_TALLIES_FILTER_DELAYEDGROUP_H
 
-#include <vector>
-
-#include <gsl/gsl>
+#include <gsl/gsl-lite.hpp>
 
 #include "openmc/tallies/filter.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -16,8 +15,7 @@ namespace openmc {
 //! iterated over in the scoring subroutines.
 //==============================================================================
 
-class DelayedGroupFilter : public Filter
-{
+class DelayedGroupFilter : public Filter {
 public:
   //----------------------------------------------------------------------------
   // Constructors, destructors
@@ -27,12 +25,13 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override {return "delayedgroup";}
+  std::string type_str() const override { return "delayedgroup"; }
+  FilterType type() const override { return FilterType::DELAYED_GROUP; }
 
   void from_xml(pugi::xml_node node) override;
 
-  void get_all_bins(const Particle* p, TallyEstimator estimator, FilterMatch& match)
-  const override;
+  void get_all_bins(const Particle& p, TallyEstimator estimator,
+    FilterMatch& match) const override;
 
   void to_statepoint(hid_t filter_group) const override;
 
@@ -41,7 +40,7 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
-  const std::vector<int>& groups() const { return groups_; }
+  const vector<int>& groups() const { return groups_; }
 
   void set_groups(gsl::span<int> groups);
 
@@ -49,7 +48,7 @@ private:
   //----------------------------------------------------------------------------
   // Data members
 
-  std::vector<int> groups_;
+  vector<int> groups_;
 };
 
 } // namespace openmc

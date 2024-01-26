@@ -4,7 +4,8 @@ import openmc.checkvalue as cv
 
 _VERSION_PARTICLE_RESTART = 2
 
-class Particle(object):
+
+class Particle:
     """Information used to restart a specific particle that caused a simulation to
     fail.
 
@@ -41,52 +42,19 @@ class Particle(object):
     """
 
     def __init__(self, filename):
-        self._f = h5py.File(filename, 'r')
+        with h5py.File(filename, 'r') as f:
 
-        # Ensure filetype and version are correct
-        cv.check_filetype_version(self._f, 'particle restart',
-                                  _VERSION_PARTICLE_RESTART)
+            # Ensure filetype and version are correct
+            cv.check_filetype_version(f, 'particle restart', _VERSION_PARTICLE_RESTART)
 
-    @property
-    def current_batch(self):
-        return self._f['current_batch'][()]
-
-    @property
-    def current_generation(self):
-        return self._f['current_generation'][()]
-
-    @property
-    def energy(self):
-        return self._f['energy'][()]
-
-    @property
-    def generations_per_batch(self):
-        return self._f['generations_per_batch'][()]
-
-    @property
-    def id(self):
-        return self._f['id'][()]
-
-    @property
-    def type(self):
-        return self._f['type'][()]
-
-    @property
-    def n_particles(self):
-        return self._f['n_particles'][()]
-
-    @property
-    def run_mode(self):
-        return self._f['run_mode'][()].decode()
-
-    @property
-    def uvw(self):
-        return self._f['uvw'][()]
-
-    @property
-    def weight(self):
-        return self._f['weight'][()]
-
-    @property
-    def xyz(self):
-        return self._f['xyz'][()]
+            self.current_batch = f['current_batch'][()]
+            self.current_generation = f['current_generation'][()]
+            self.energy = f['energy'][()]
+            self.generations_per_batch = f['generations_per_batch'][()]
+            self.id = f['id'][()]
+            self.type = f['type'][()]
+            self.n_particles = f['n_particles'][()]
+            self.run_mode = f['run_mode'][()].decode()
+            self.uvw = f['uvw'][()]
+            self.weight = f['weight'][()]
+            self.xyz = f['xyz'][()]

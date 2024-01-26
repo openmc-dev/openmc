@@ -16,7 +16,7 @@ Timer time_finalize;
 Timer time_inactive;
 Timer time_initialize;
 Timer time_read_xs;
-Timer time_sample_source;
+Timer time_statepoint;
 Timer time_tallies;
 Timer time_total;
 Timer time_transport;
@@ -33,7 +33,7 @@ Timer time_event_death;
 // Timer implementation
 //==============================================================================
 
-void Timer::start ()
+void Timer::start()
 {
   running_ = true;
   start_ = clock::now();
@@ -75,7 +75,7 @@ void reset_timers()
   simulation::time_inactive.reset();
   simulation::time_initialize.reset();
   simulation::time_read_xs.reset();
-  simulation::time_sample_source.reset();
+  simulation::time_statepoint.reset();
   simulation::time_tallies.reset();
   simulation::time_total.reset();
   simulation::time_transport.reset();

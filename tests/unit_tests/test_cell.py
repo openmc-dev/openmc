@@ -1,10 +1,11 @@
-import xml.etree. ElementTree as ET
-
+import lxml.etree as ET
 import numpy as np
+from uncertainties import ufloat
 import openmc
 import pytest
 
 from tests.unit_tests import assert_unbounded
+from openmc.data import atomic_mass, AVOGADRO
 
 
 def test_contains():
@@ -29,6 +30,14 @@ def test_repr(cell_with_lattice):
     c = openmc.Cell()
     repr(c)
 
+    # Empty cell with volume
+    c.volume = 3.0
+    repr(c)
+
+    # Empty cell with uncertain volume
+    c.volume = ufloat(3.0, 0.2)
+    repr(c)
+
 
 def test_bounding_box():
     zcyl = openmc.ZCylinder()
@@ -46,25 +55,51 @@ def test_clone():
     m = openmc.Material()
     cyl = openmc.ZCylinder()
     c = openmc.Cell(fill=m, region=-cyl)
-    c.temperature = 650.
 
+    # Check cloning with all optional params as the defaults
     c2 = c.clone()
     assert c2.id != c.id
     assert c2.fill != c.fill
     assert c2.region != c.region
-    assert c2.temperature == c.temperature
 
     c3 = c.clone(clone_materials=False)
     assert c3.id != c.id
     assert c3.fill == c.fill
     assert c3.region != c.region
-    assert c3.temperature == c.temperature
 
     c4 = c.clone(clone_regions=False)
     assert c4.id != c.id
     assert c4.fill != c.fill
     assert c4.region == c.region
-    assert c4.temperature == c.temperature
+
+    # Add optional properties to the original cell to ensure they're cloned successfully
+    c.temperature = 650.
+    c.translation = (1., 2., 3.)
+    c.rotation = (4., 5., 6.)
+    c.volume = 100
+
+    c5 = c.clone(clone_materials=False, clone_regions=False)
+    assert c5.id != c.id
+    assert c5.fill == c.fill
+    assert c5.region == c.region
+    assert c5.temperature == c.temperature
+    assert c5.volume == c.volume
+    assert all(c5.translation == c.translation)
+    assert all(c5.rotation == c.rotation)
+
+    # Mutate the original to ensure the changes are not seen in the clones
+    c.fill = openmc.Material()
+    c.region = +openmc.ZCylinder()
+    c.translation = (-1., -2., -3.)
+    c.rotation = (-4., -5., -6.)
+    c.temperature = 1
+    c.volume = 1
+    assert c5.fill != c.fill
+    assert c5.region != c.region
+    assert c5.temperature != c.temperature
+    assert c5.volume != c.volume
+    assert all(c5.translation != c.translation)
+    assert all(c5.rotation != c.rotation)
 
 
 def test_temperature(cell_with_lattice):
@@ -81,6 +116,9 @@ def test_temperature(cell_with_lattice):
     assert c2.temperature == 400.0
     with pytest.raises(ValueError):
         c.temperature = -100.
+    c.temperature = None
+    assert c1.temperature == None
+    assert c2.temperature == None
 
     # distributed temperature
     cells, _, _, _ = cell_with_lattice
@@ -112,6 +150,114 @@ def test_get_nuclides(uo2):
     assert nucs == ['U235', 'O16']
 
 
+def test_volume_setting():
+    c = openmc.Cell()
+
+    # Test ordinary volume and uncertain volume
+    c.volume = 3
+    c.volume = ufloat(3, 0.7)
+
+    # Allow volume to be set to 0.0
+    c.volume = 0.0
+    c.volume = ufloat(0.0, 0.1)
+
+    # Test errors for negative volume
+    with pytest.raises(ValueError):
+        c.volume = -1.0
+    with pytest.raises(ValueError):
+        c.volume = ufloat(-0.05, 0.1)
+
+
+def test_atoms_material_cell(uo2, water):
+    """ Test if correct number of atoms is returned.
+    Also check if Cell.atoms still works after volume/material was changed
+    """
+    c = openmc.Cell(fill=uo2)
+    c.volume = 2.0
+    expected_nucs = ['U235', 'O16']
+
+    # Precalculate the expected number of atoms
+    M = (atomic_mass('U235') + 2 * atomic_mass('O16')) / 3
+    expected_atoms = [
+        1/3 * uo2.density/M * AVOGADRO * 2.0,  # U235
+        2/3 * uo2.density/M * AVOGADRO * 2.0   # O16
+    ]
+
+    tuples = c.atoms.items()
+    for nuc, atom_num, t in zip(expected_nucs, expected_atoms, tuples):
+        assert nuc == t[0]
+        assert atom_num == pytest.approx(t[1])
+
+    # Change volume and check if OK
+    c.volume = 3.0
+    expected_atoms = [
+        1/3 * uo2.density/M * AVOGADRO * 3.0,  # U235
+        2/3 * uo2.density/M * AVOGADRO * 3.0   # O16
+    ]
+
+    tuples = c.atoms.items()
+    for nuc, atom_num, t in zip(expected_nucs, expected_atoms, tuples):
+        assert nuc == t[0]
+        assert atom_num == pytest.approx(t[1])
+
+    # Change material and check if OK
+    c.fill = water
+    expected_nucs = ['H1', 'O16']
+    M = (2 * atomic_mass('H1') + atomic_mass('O16')) / 3
+    expected_atoms = [
+        2/3 * water.density/M * AVOGADRO * 3.0,  # H1
+        1/3 * water.density/M * AVOGADRO * 3.0   # O16
+    ]
+
+    tuples = c.atoms.items()
+    for nuc, atom_num, t in zip(expected_nucs, expected_atoms, tuples):
+        assert nuc == t[0]
+        assert atom_num == pytest.approx(t[1])
+
+
+def test_atoms_distribmat_cell(uo2, water):
+    """ Test if correct number of atoms is returned for a cell with
+    'distribmat' fill
+    """
+    c = openmc.Cell(fill=[uo2, water])
+    c.volume = 6.0
+
+    # Calculate the expected number of atoms
+    expected_nucs = ['U235', 'O16', 'H1']
+    M_uo2 = (atomic_mass('U235') + 2 * atomic_mass('O16')) / 3
+    M_water = (2 * atomic_mass('H1') + atomic_mass('O16')) / 3
+    expected_atoms = [
+        1/3 * uo2.density/M_uo2 * AVOGADRO * 3.0,        # U235
+        (2/3 * uo2.density/M_uo2 * AVOGADRO * 3.0 +
+         1/3 * water.density/M_water * AVOGADRO * 3.0),  # O16
+        2/3 * water.density/M_water * AVOGADRO * 3.0     # H1
+    ]
+
+    tuples = c.atoms.items()
+    for nuc, atom_num, t in zip(expected_nucs, expected_atoms, tuples):
+        assert nuc == t[0]
+        assert atom_num == pytest.approx(t[1])
+
+
+def test_atoms_errors(cell_with_lattice):
+    cells, mats, univ, lattice = cell_with_lattice
+
+    # Material Cell with no volume
+    with pytest.raises(ValueError):
+        cells[1].atoms
+
+    # Cell with lattice
+    cells[2].volume = 3
+    with pytest.raises(ValueError):
+        cells[2].atoms
+
+    # Cell with volume but with void fill
+    cells[1].volume = 2
+    cells[1].fill = None
+    with pytest.raises(ValueError):
+        cells[1].atoms
+
+
 def test_nuclide_densities(uo2):
     c = openmc.Cell(fill=uo2)
     expected_nucs = ['U235', 'O16']
@@ -119,7 +265,7 @@ def test_nuclide_densities(uo2):
     tuples = list(c.get_nuclide_densities().values())
     for nuc, density, t in zip(expected_nucs, expected_density, tuples):
         assert nuc == t[0]
-        assert density == t[1]
+        assert density == pytest.approx(t[1])
 
     # Empty cell
     c = openmc.Cell()
@@ -175,6 +321,43 @@ def test_to_xml_element(cell_with_lattice):
 
     c = cells[0]
     c.temperature = 900.0
+    c.volume = 1.0
     elem = c.create_xml_subelement(root)
     assert elem.get('region') == str(c.region)
     assert elem.get('temperature') == str(c.temperature)
+    assert elem.get('volume') == str(c.volume)
+
+
+@pytest.mark.parametrize("rotation", [
+    (90, 45, 0),
+    [[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0]]
+])
+def test_rotation_from_xml(rotation):
+    # Make sure rotation attribute (matrix) round trips through XML correctly
+    s = openmc.ZCylinder(r=10.0)
+    cell = openmc.Cell(region=-s)
+    cell.rotation = rotation
+    root = ET.Element('geometry')
+    elem = cell.create_xml_subelement(root)
+    new_cell = openmc.Cell.from_xml_element(
+        elem, {s.id: s}, {'void': None}, openmc.Universe
+    )
+    np.testing.assert_allclose(new_cell.rotation, cell.rotation)
+
+
+def test_plot(run_in_tmpdir):
+    zcyl = openmc.ZCylinder()
+    c = openmc.Cell(region=-zcyl)
+
+    # create a universe before the plot
+    u_before = openmc.Universe()
+
+    # create a plot of the cell
+    c.plot()
+
+    # create a universe after the plot
+    u_after = openmc.Universe()
+
+    # ensure that calling the plot method doesn't
+    # affect the universe ID space
+    assert u_before.id + 1 == u_after.id

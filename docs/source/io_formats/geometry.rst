@@ -19,14 +19,14 @@ Each ``<surface>`` element can have the following attributes or sub-elements:
 
   :name:
     An optional string name to identify the surface in summary output
-    files. This string is limited to 52 characters for formatting purposes.
+    files.
 
     *Default*: ""
 
   :type:
     The type of the surfaces. This can be "x-plane", "y-plane", "z-plane",
     "plane", "x-cylinder", "y-cylinder", "z-cylinder", "sphere", "x-cone",
-    "y-cone", "z-cone", or "quadric".
+    "y-cone", "z-cone", "quadric", "x-torus", "y-torus", or "z-torus".
 
     *Default*: None
 
@@ -48,7 +48,7 @@ Each ``<surface>`` element can have the following attributes or sub-elements:
 
   :periodic_surface_id:
      If a periodic boundary condition is applied, this attribute identifies the
-     ``id`` of the corresponding periodic sufrace.
+     ``id`` of the corresponding periodic surface.
 
 The following quadratic surfaces can be modeled:
 
@@ -122,7 +122,6 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
 
   :name:
     An optional string name to identify the cell in summary output files.
-    This string is limmited to 52 characters for formatting purposes.
 
     *Default*: ""
 
@@ -173,11 +172,11 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
     *Default*: A region filling all space.
 
   :temperature:
-    The temperature of the cell in Kelvin. If windowed-multipole data is
-    avalable, this temperature will be used to Doppler broaden some cross
-    sections in the resolved resonance region. A list of temperatures can be
-    specified for the "distributed temperature" feature. This will give each
-    unique instance of the cell its own temperature.
+    The temperature of the cell in Kelvin. The temperature may be used in
+    windowed multipole Doppler broadening or interpolation of pointwise cross
+    sections versus temperature. A list of temperatures can be specified for the
+    "distributed temperature" feature. This will give each unique instance of
+    the cell its own temperature.
 
     *Default*: If a material default temperature is supplied, it is used. In the
     absence of a material default temperature, the :ref:`global default
@@ -235,7 +234,7 @@ the following attributes or sub-elements:
 
   :name:
     An optional string name to identify the lattice in summary output
-    files. This string is limited to 52 characters for formatting purposes.
+    files.
 
     *Default*: ""
 
@@ -301,7 +300,7 @@ the following attributes or sub-elements:
 
   :name:
     An optional string name to identify the hex_lattice in summary output
-    files. This string is limited to 52 characters for formatting purposes.
+    files.
 
     *Default*: ""
 
@@ -370,3 +369,51 @@ Here is an example of a properly defined 2d hexagonal lattice:
                   202
         </universes>
     </hex_lattice>
+
+
+.. _dagmc_element:
+
+----------------------------
+``<dagmc_universe>`` Element
+----------------------------
+
+Each ``<dagmc_universe>`` element can have the following attributes or sub-elements:
+
+  :id:
+    A unique integer used to identify the universe.
+
+    *Default*: None
+
+  :name:
+    An optional string name to identify the surface in summary output
+    files.
+
+    *Default*: None
+
+  :auto_geom_ids:
+    Boolean value indicating whether the existing geometry IDs will be used or appended
+    to the existing ID space of natively defined OpenMC geometry entities.
+
+    *Default*: false
+
+  :auto_mat_ids:
+    Boolean value indicating whether the existing material IDs will be used or appended
+    to the existing ID space of natively defined OpenMC materials.
+
+    *Default*: false
+
+  :filename:
+    A required string indicating the file to be loaded representing the DAGMC universe.
+
+    *Default*: None
+
+
+  .. note:: A geometry.xml file containing only a DAGMC model for a file named `dagmc.h5m` (no CSG)
+            looks as follows
+
+            .. code-block:: xml
+
+              <?xml version='1.0' encoding='utf-8'?>
+              <geometry>
+                <dagmc_universe filename="dagmc.h5m" id="1" />
+              </geometry>

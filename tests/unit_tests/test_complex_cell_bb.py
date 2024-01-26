@@ -27,20 +27,20 @@ def complex_cell(run_in_tmpdir, mpi_intracomm):
 
     model.materials = (u235, u238, zr90, n14)
 
-    s1 = openmc.XPlane(-10.0, 'vacuum')
+    s1 = openmc.XPlane(-10.0, boundary_type='vacuum')
     s2 = openmc.XPlane(-7.0)
     s3 = openmc.XPlane(-4.0)
     s4 = openmc.XPlane(4.0)
     s5 = openmc.XPlane(7.0)
-    s6 = openmc.XPlane(10.0, 'vacuum')
+    s6 = openmc.XPlane(10.0, boundary_type='vacuum')
     s7 = openmc.XPlane(0.0)
 
-    s11 = openmc.YPlane(-10.0, 'vacuum')
+    s11 = openmc.YPlane(-10.0, boundary_type='vacuum')
     s12 = openmc.YPlane(-7.0)
     s13 = openmc.YPlane(-4.0)
     s14 = openmc.YPlane(4.0)
     s15 = openmc.YPlane(7.0)
-    s16 = openmc.YPlane(10.0, 'vacuum')
+    s16 = openmc.YPlane(10.0, boundary_type='vacuum')
     s17 = openmc.YPlane(0.0)
 
     c1 = openmc.Cell(fill=u235)
@@ -66,7 +66,7 @@ def complex_cell(run_in_tmpdir, mpi_intracomm):
     model.settings.batches = 10
     model.settings.inactive = 5
     model.settings.particles = 100
-    model.settings.source = openmc.Source(space=openmc.stats.Box(
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
         [-10., -10., -1.], [10., 10., 1.]))
 
     model.settings.verbosity = 1

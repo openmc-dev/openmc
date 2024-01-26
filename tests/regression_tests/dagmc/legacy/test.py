@@ -1,6 +1,7 @@
 import openmc
 import openmc.lib
 
+from pathlib import Path
 import pytest
 from tests.testing_harness import PyAPITestHarness
 
@@ -10,6 +11,7 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture
 def model():
+    openmc.reset_auto_ids()
 
     model = openmc.model.Model()
 
@@ -20,11 +22,13 @@ def model():
 
     source_box = openmc.stats.Box([-4, -4, -4],
                                   [ 4,  4,  4])
-    source = openmc.Source(space=source_box)
+    source = openmc.IndependentSource(space=source_box)
 
     model.settings.source = source
 
-    model.settings.dagmc = True
+    # geometry
+    dag_univ = openmc.DAGMCUniverse(Path("dagmc.h5m"))
+    model.geometry = openmc.Geometry(dag_univ)
 
     # tally
     tally = openmc.Tally()
@@ -49,6 +53,25 @@ def model():
     model.materials = mats
 
     return model
+
+
+def test_missing_material_id(model):
+    # remove the last material, which is identified by ID in the DAGMC file
+    model.materials = model.materials[:-1]
+    with pytest.raises(RuntimeError) as exec_info:
+        model.run()
+    exp_error_msg = "Material with name/ID '41' not found for volume (cell) 3"
+    assert exp_error_msg in str(exec_info.value)
+
+
+def test_missing_material_name(model):
+    # remove the first material, which is identified by name in the DAGMC file
+    model.materials = model.materials[1:]
+    with pytest.raises(RuntimeError) as exec_info:
+        model.run()
+    exp_error_msg = "Material with name/ID 'no-void fuel' not found for volume (cell) 1"
+    assert exp_error_msg in str(exec_info.value)
+
 
 def test_dagmc(model):
     harness = PyAPITestHarness('statepoint.5.h5', model)

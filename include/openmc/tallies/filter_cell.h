@@ -3,11 +3,11 @@
 
 #include <cstdint>
 #include <unordered_map>
-#include <vector>
 
-#include <gsl/gsl>
+#include <gsl/gsl-lite.hpp>
 
 #include "openmc/tallies/filter.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -15,8 +15,7 @@ namespace openmc {
 //! Specifies which geometric cells tally events reside in.
 //==============================================================================
 
-class CellFilter : public Filter
-{
+class CellFilter : public Filter {
 public:
   //----------------------------------------------------------------------------
   // Constructors, destructors
@@ -26,12 +25,13 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override {return "cell";}
+  std::string type_str() const override { return "cell"; }
+  FilterType type() const override { return FilterType::CELL; }
 
   void from_xml(pugi::xml_node node) override;
 
-  void get_all_bins(const Particle* p, TallyEstimator estimator, FilterMatch& match)
-  const override;
+  void get_all_bins(const Particle& p, TallyEstimator estimator,
+    FilterMatch& match) const override;
 
   void to_statepoint(hid_t filter_group) const override;
 
@@ -40,7 +40,7 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
-  const std::vector<int32_t>& cells() const { return cells_; }
+  const vector<int32_t>& cells() const { return cells_; }
 
   void set_cells(gsl::span<int32_t> cells);
 
@@ -49,7 +49,7 @@ protected:
   // Data members
 
   //! The indices of the cells binned by this filter.
-  std::vector<int32_t> cells_;
+  vector<int32_t> cells_;
 
   //! A map from cell indices to filter bin indices.
   std::unordered_map<int32_t, int> map_;

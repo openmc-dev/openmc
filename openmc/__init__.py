@@ -1,4 +1,5 @@
 from openmc.arithmetic import *
+from openmc.bounding_box import *
 from openmc.cell import *
 from openmc.checkvalue import *
 from openmc.mesh import *
@@ -10,10 +11,11 @@ from openmc.material import *
 from openmc.plots import *
 from openmc.region import *
 from openmc.volume import *
-from openmc.source import *
-from openmc.settings import *
+from openmc.weight_windows import *
 from openmc.surface import *
 from openmc.universe import *
+from openmc.source import *
+from openmc.settings import *
 from openmc.lattice import *
 from openmc.filter import *
 from openmc.filter_expansion import *
@@ -29,9 +31,12 @@ from openmc.mixin import *
 from openmc.plotter import *
 from openmc.search import *
 from openmc.polynomial import *
+from openmc.tracks import *
 from . import examples
+from .config import *
 
-# Import a few convencience functions that used to be here
-from openmc.model import rectangular_prism, hexagonal_prism
+# Import a few names from the model module
+from openmc.model import Model
 
-__version__ = '0.12.0-dev'
+
+__version__ = '0.14.1-dev'

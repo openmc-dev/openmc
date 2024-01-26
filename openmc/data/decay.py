@@ -1,17 +1,20 @@
-from collections import namedtuple
 from collections.abc import Iterable
 from io import StringIO
 from math import log
-from numbers import Real
 import re
+from typing import Optional
 from warnings import warn
 
 import numpy as np
-from uncertainties import ufloat, unumpy, UFloat
+from uncertainties import ufloat, UFloat
 
+import openmc
 import openmc.checkvalue as cv
+from openmc.exceptions import DataError
 from openmc.mixin import EqualityMixin
+from openmc.stats import Discrete, Tabular, Univariate, combine_distributions
 from .data import ATOMIC_SYMBOL, ATOMIC_NUMBER
+from .function import INTERPOLATION_SCHEME
 from .endf import Evaluation, get_head_record, get_list_record, get_tab1_record
 
 
@@ -59,8 +62,13 @@ def get_decay_modes(value):
         List of successive decays, e.g. ('beta-', 'neutron')
 
     """
-    return [_DECAY_MODES[int(x)][0] for x in
-            str(value).strip('0').replace('.', '')]
+    if int(value) == 10:
+        # The logic below would treat 10.0 as [1, 0] rather than [10] as it
+        # should, so we handle this case separately
+        return ['unknown']
+    else:
+        return [_DECAY_MODES[int(x)][0] for x in
+                str(value).strip('0').replace('.', '')]
 
 
 class FissionProductYields(EqualityMixin):
@@ -136,18 +144,18 @@ class FissionProductYields(EqualityMixin):
 
         # Assign basic nuclide properties
         self.nuclide = {
-            'name': ev.gnd_name,
+            'name': ev.gnds_name,
             'atomic_number': ev.target['atomic_number'],
             'mass_number': ev.target['mass_number'],
             'isomeric_state': ev.target['isomeric_state']
         }
 
-        # Read independent yields
+        # Read independent yields (MF=8, MT=454)
         if (8, 454) in ev.section:
             file_obj = StringIO(ev.section[8, 454])
             self.energies, self.independent = get_yields(file_obj)
 
-        # Read cumulative yields
+        # Read cumulative yields (MF=8, MT=459)
         if (8, 459) in ev.section:
             file_obj = StringIO(ev.section[8, 459])
             energies, self.cumulative = get_yields(file_obj)
@@ -220,6 +228,18 @@ class DecayMode(EqualityMixin):
     def branching_ratio(self):
         return self._branching_ratio
 
+    @branching_ratio.setter
+    def branching_ratio(self, branching_ratio):
+        cv.check_type('branching ratio', branching_ratio, UFloat)
+        cv.check_greater_than('branching ratio',
+                              branching_ratio.nominal_value, 0.0, True)
+        if branching_ratio.nominal_value == 0.0:
+            warn('Decay mode {} of parent {} has a zero branching ratio.'
+                 .format(self.modes, self.parent))
+        cv.check_greater_than('branching ratio uncertainty',
+                              branching_ratio.std_dev, 0.0, True)
+        self._branching_ratio = branching_ratio
+
     @property
     def daughter(self):
         # Determine atomic number and mass number of parent
@@ -242,28 +262,17 @@ class DecayMode(EqualityMixin):
             return '{}{}'.format(ATOMIC_SYMBOL[Z], A)
 
     @property
-    def energy(self):
-        return self._energy
-
-    @property
-    def modes(self):
-        return self._modes
-
-    @property
     def parent(self):
         return self._parent
 
-    @branching_ratio.setter
-    def branching_ratio(self, branching_ratio):
-        cv.check_type('branching ratio', branching_ratio, UFloat)
-        cv.check_greater_than('branching ratio',
-                              branching_ratio.nominal_value, 0.0, True)
-        if branching_ratio.nominal_value == 0.0:
-            warn('Decay mode {} of parent {} has a zero branching ratio.'
-                 .format(self.modes, self.parent))
-        cv.check_greater_than('branching ratio uncertainty',
-                              branching_ratio.std_dev, 0.0, True)
-        self._branching_ratio = branching_ratio
+    @parent.setter
+    def parent(self, parent):
+        cv.check_type('parent nuclide', parent, str)
+        self._parent = parent
+
+    @property
+    def energy(self):
+        return self._energy
 
     @energy.setter
     def energy(self, energy):
@@ -273,15 +282,14 @@ class DecayMode(EqualityMixin):
                               energy.std_dev, 0.0, True)
         self._energy = energy
 
+    @property
+    def modes(self):
+        return self._modes
+
     @modes.setter
     def modes(self, modes):
         cv.check_type('decay modes', modes, Iterable, str)
         self._modes = modes
-
-    @parent.setter
-    def parent(self, parent):
-        cv.check_type('parent nuclide', parent, str)
-        self._parent = parent
 
 
 class Decay(EqualityMixin):
@@ -300,6 +308,8 @@ class Decay(EqualityMixin):
         applications.
     decay_constant : uncertainties.UFloat
         Decay constant in inverse seconds.
+    decay_energy : uncertainties.UFloat
+        Average energy in [eV] per decay for decay heat applications
     half_life : uncertainties.UFloat
         Half-life of the decay in seconds.
     modes : list
@@ -309,6 +319,12 @@ class Decay(EqualityMixin):
         'excited_state', 'mass', 'stable', 'spin', and 'parity'.
     spectra : dict
         Resulting radiation spectra for each radiation type.
+    sources : dict
+        Radioactive decay source distributions represented as a dictionary
+        mapping particle types (e.g., 'photon') to instances of
+        :class:`openmc.stats.Univariate`.
+
+        .. versionadded:: 0.13.1
 
     """
     def __init__(self, ev_or_filename):
@@ -324,6 +340,7 @@ class Decay(EqualityMixin):
         self.modes = []
         self.spectra = {}
         self.average_energies = {}
+        self._sources = None
 
         # Get head record
         items = get_head_record(file_obj)
@@ -349,7 +366,7 @@ class Decay(EqualityMixin):
             items, values = get_list_record(file_obj)
             self.half_life = ufloat(items[0], items[1])
             NC = items[4]//2
-            pairs = [x for x in zip(values[::2], values[1::2])]
+            pairs = list(zip(values[::2], values[1::2]))
             ex = self.average_energies
             ex['light'] = ufloat(*pairs[0])
             ex['electromagnetic'] = ufloat(*pairs[1])
@@ -361,7 +378,7 @@ class Decay(EqualityMixin):
                 ex['conversion'] = ufloat(*pairs[6])
                 ex['gamma'] = ufloat(*pairs[7])
                 ex['xray'] = ufloat(*pairs[8])
-                ex['Bremsstrahlung'] = ufloat(*pairs[9])
+                ex['bremsstrahlung'] = ufloat(*pairs[9])
                 ex['annihilation'] = ufloat(*pairs[10])
                 ex['alpha'] = ufloat(*pairs[11])
                 ex['recoil'] = ufloat(*pairs[12])
@@ -372,6 +389,7 @@ class Decay(EqualityMixin):
 
             items, values = get_list_record(file_obj)
             spin = items[0]
+            # ENDF-102 specifies that unknown spin should be reported as -77.777
             if spin == -77.777:
                 self.nuclide['spin'] = None
             else:
@@ -436,7 +454,7 @@ class Decay(EqualityMixin):
                     # Read continuous spectrum
                     ci = {}
                     params, ci['probability'] = get_tab1_record(file_obj)
-                    ci['type'] = get_decay_modes(params[0])
+                    ci['from_mode'] = get_decay_modes(params[0])
 
                     # Read covariance (Ek, Fk) table
                     LCOV = params[3]
@@ -459,11 +477,18 @@ class Decay(EqualityMixin):
 
     @property
     def decay_constant(self):
-        if hasattr(self.half_life, 'n'):
-            return log(2.)/self.half_life
+        if self.half_life.n == 0.0:
+            name = self.nuclide['name']
+            raise ValueError(f"{name} is listed as unstable but has a zero half-life.")
+        return log(2.)/self.half_life
+
+    @property
+    def decay_energy(self):
+        energy = self.average_energies
+        if energy:
+            return energy['light'] + energy['electromagnetic'] + energy['heavy']
         else:
-            mu, sigma = self.half_life
-            return ufloat(log(2.)/mu, log(2.)/mu**2*sigma)
+            return ufloat(0, 0)
 
     @classmethod
     def from_endf(cls, ev_or_filename):
@@ -482,3 +507,163 @@ class Decay(EqualityMixin):
 
         """
         return cls(ev_or_filename)
+
+    @property
+    def sources(self):
+        """Radioactive decay source distributions"""
+        # If property has been computed already, return it
+        # TODO: Replace with functools.cached_property when support is Python 3.9+
+        if self._sources is not None:
+            return self._sources
+
+        sources = {}
+        name = self.nuclide['name']
+        decay_constant = self.decay_constant.n
+        for particle, spectra in self.spectra.items():
+            # Set particle type based on 'particle' above
+            particle_type = {
+                'gamma': 'photon',
+                'beta-': 'electron',
+                'ec/beta+': 'positron',
+                'alpha': 'alpha',
+                'n': 'neutron',
+                'sf': 'fragment',
+                'p': 'proton',
+                'e-': 'electron',
+                'xray': 'photon',
+                'anti-neutrino': 'anti-neutrino',
+                'neutrino': 'neutrino',
+            }[particle]
+
+            if particle_type not in sources:
+                sources[particle_type] = []
+
+            # Create distribution for discrete
+            if spectra['continuous_flag'] in ('discrete', 'both'):
+                energies = []
+                intensities = []
+                for discrete_data in spectra['discrete']:
+                    energies.append(discrete_data['energy'].n)
+                    intensities.append(discrete_data['intensity'].n)
+                energies = np.array(energies)
+                intensity = spectra['discrete_normalization'].n
+                rates = decay_constant * intensity * np.array(intensities)
+                dist_discrete = Discrete(energies, rates)
+                sources[particle_type].append(dist_discrete)
+
+            # Create distribution for continuous
+            if spectra['continuous_flag'] in ('continuous', 'both'):
+                f = spectra['continuous']['probability']
+                if len(f.interpolation) > 1:
+                    raise NotImplementedError("Multiple interpolation regions: {name}, {particle}")
+                interpolation = INTERPOLATION_SCHEME[f.interpolation[0]]
+                if interpolation not in ('histogram', 'linear-linear'):
+                    warn(
+                        f"Continuous spectra with {interpolation} interpolation "
+                        f"({name}, {particle}) encountered.")
+
+                intensity = spectra['continuous_normalization'].n
+                rates = decay_constant * intensity * f.y
+                dist_continuous = Tabular(f.x, rates, interpolation)
+                sources[particle_type].append(dist_continuous)
+
+        # Combine discrete distributions
+        merged_sources = {}
+        for particle_type, dist_list in sources.items():
+            merged_sources[particle_type] = combine_distributions(
+                dist_list, [1.0]*len(dist_list))
+
+        self._sources = merged_sources
+        return self._sources
+
+
+_DECAY_PHOTON_ENERGY = {}
+
+
+def decay_photon_energy(nuclide: str) -> Optional[Univariate]:
+    """Get photon energy distribution resulting from the decay of a nuclide
+
+    This function relies on data stored in a depletion chain. Before calling it
+    for the first time, you need to ensure that a depletion chain has been
+    specified in openmc.config['chain_file'].
+
+    .. versionadded:: 0.13.2
+
+    Parameters
+    ----------
+    nuclide : str
+        Name of nuclide, e.g., 'Co58'
+
+    Returns
+    -------
+    openmc.stats.Univariate or None
+        Distribution of energies in [eV] of photons emitted from decay, or None
+        if no photon source exists. Note that the probabilities represent
+        intensities, given as [Bq].
+    """
+    if not _DECAY_PHOTON_ENERGY:
+        chain_file = openmc.config.get('chain_file')
+        if chain_file is None:
+            raise DataError(
+                "A depletion chain file must be specified with "
+                "openmc.config['chain_file'] in order to load decay data."
+            )
+
+        from openmc.deplete import Chain
+        chain = Chain.from_xml(chain_file)
+        for nuc in chain.nuclides:
+            if 'photon' in nuc.sources:
+                _DECAY_PHOTON_ENERGY[nuc.name] = nuc.sources['photon']
+
+        # If the chain file contained no sources at all, warn the user
+        if not _DECAY_PHOTON_ENERGY:
+            warn(f"Chain file '{chain_file}' does not have any decay photon "
+                 "sources listed.")
+
+    return _DECAY_PHOTON_ENERGY.get(nuclide)
+
+
+_DECAY_ENERGY = {}
+
+
+def decay_energy(nuclide: str):
+    """Get decay energy value resulting from the decay of a nuclide
+
+    This function relies on data stored in a depletion chain. Before calling it
+    for the first time, you need to ensure that a depletion chain has been
+    specified in openmc.config['chain_file'].
+
+    .. versionadded:: 0.13.3
+
+    Parameters
+    ----------
+    nuclide : str
+        Name of nuclide, e.g., 'H3'
+
+    Returns
+    -------
+    float
+        Decay energy of nuclide in [eV]. If the nuclide is stable, a value of
+        0.0 is returned.
+    """
+    if not _DECAY_ENERGY:
+        chain_file = openmc.config.get('chain_file')
+        if chain_file is None:
+            raise DataError(
+                "A depletion chain file must be specified with "
+                "openmc.config['chain_file'] in order to load decay data."
+            )
+
+        from openmc.deplete import Chain
+        chain = Chain.from_xml(chain_file)
+        for nuc in chain.nuclides:
+            if nuc.decay_energy:
+                _DECAY_ENERGY[nuc.name] = nuc.decay_energy
+
+        # If the chain file contained no decay energy, warn the user
+        if not _DECAY_ENERGY:
+            warn(f"Chain file '{chain_file}' does not have any decay energy.")
+
+    return _DECAY_ENERGY.get(nuclide, 0.0)
+
+

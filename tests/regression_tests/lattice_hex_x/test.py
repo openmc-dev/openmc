@@ -4,8 +4,8 @@ import numpy as np
 
 
 class HexLatticeOXTestHarness(PyAPITestHarness):
-
-    def _build_inputs(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         materials = openmc.Materials()
 
         fuel_mat = openmc.Material(material_id=1, name="UO2")
@@ -35,7 +35,7 @@ class HexLatticeOXTestHarness(PyAPITestHarness):
         zirc.add_element('Zr', 4.23e-2)
         materials.append(zirc)
 
-        materials.export_to_xml()
+        self._model.materials = materials
 
         # Geometry #
 
@@ -139,11 +139,11 @@ class HexLatticeOXTestHarness(PyAPITestHarness):
 
         # a hex surface for the core to go inside of
 
-        hexprism = openmc.model.hexagonal_prism(edge_length=edge_length,
-                                                origin=(0.0,  0.0),
-                                                boundary_type='reflective',
-                                                orientation='x')
-        region = hexprism & +fuel_bottom & -fuel_top
+        hexprism = openmc.model.HexagonalPrism(edge_length=edge_length,
+                                               origin=(0.0,  0.0),
+                                               boundary_type='reflective',
+                                               orientation='x')
+        region = -hexprism & +fuel_bottom & -fuel_top
 
         inf_mat = openmc.Cell(cell_id=12)
         inf_mat.fill = coolant
@@ -165,7 +165,7 @@ class HexLatticeOXTestHarness(PyAPITestHarness):
                     (4, 21), (5, 20), (4, 27), (5, 25), (4, 33)]
         for i, j in channels:
             universes[i][j] = abs_ch_univ
-        lattice = openmc.HexLattice(name="regular fuel assembly")
+        lattice = openmc.HexLattice(lattice_id=6, name="regular fuel assembly")
         lattice.orientation = "x"
         lattice.center = (0., 0., length/2.0)
         lattice.pitch = (assembly_pitch, length/2.0)
@@ -180,15 +180,14 @@ class HexLatticeOXTestHarness(PyAPITestHarness):
         root_univ = openmc.Universe(universe_id=5, name="root universe",
                                     cells=[assembly_cell])
 
-        geom = openmc.Geometry(root_univ)
-        geom.export_to_xml()
+        self._model.geometry = openmc.Geometry(root_univ)
 
         # Settings #
 
         settings = openmc.Settings()
         settings.run_mode = 'eigenvalue'
 
-        source = openmc.Source()
+        source = openmc.IndependentSource()
         ll = [-edge_length, -edge_length, 0.0]
         ur = [edge_length, edge_length, 10.0]
         source.space = openmc.stats.Box(ll, ur)
@@ -198,9 +197,9 @@ class HexLatticeOXTestHarness(PyAPITestHarness):
         settings.inactive = 5
         settings.particles = 1000
         settings.seed = 22
-        settings.export_to_xml()
+        self._model.settings = settings
 
 
 def test_lattice_hex_ox_surf():
-    harness = HexLatticeOXTestHarness('statepoint.10.h5')
+    harness = HexLatticeOXTestHarness('statepoint.10.h5', model=openmc.Model())
     harness.main()

@@ -1,19 +1,23 @@
 from collections.abc import Iterable
-import re
 import warnings
 
-import numpy as np
 import h5py
+import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-from openmc.region import Region
+from .region import Region
 
 _VERSION_SUMMARY = 6
 
 
-class Summary(object):
-    """Summary of geometry, materials, and tallies used in a simulation.
+class Summary:
+    """Summary of model used in a simulation.
+
+    Parameters
+    ----------
+    filename : str or path-like
+        Path to file to load
 
     Attributes
     ----------
@@ -34,8 +38,9 @@ class Summary(object):
     """
 
     def __init__(self, filename):
+        filename = str(filename)
         if not filename.endswith(('.h5', '.hdf5')):
-            msg = 'Unable to open "{0}" which is not an HDF5 summary file'
+            msg = f'Unable to open "{filename}" which is not an HDF5 summary file'
             raise ValueError(msg)
 
         self._f = h5py.File(filename, 'r')
@@ -55,9 +60,7 @@ class Summary(object):
 
         self._read_nuclides()
         self._read_macroscopics()
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", openmc.IDWarning)
-            self._read_geometry()
+        self._read_geometry()
 
     @property
     def date_and_time(self):
@@ -93,21 +96,25 @@ class Summary(object):
     def _read_macroscopics(self):
         if 'macroscopics/names' in self._f:
             names = self._f['macroscopics/names'][()]
-            for name in names:
-                self._macroscopics = name.decode()
+            self._macroscopics = [name.decode() for name in names]
 
     def _read_geometry(self):
+        with warnings.catch_warnings():
+            # We expect that new objects will be created with the same IDs as
+            # objects that might already exist in the Python process (if it was
+            # also used to create the model), so silence ID warnings
+            warnings.simplefilter("ignore", openmc.IDWarning)
 
-        # Read in and initialize the Materials
-        self._read_materials()
+            # Read in and initialize the Materials
+            self._read_materials()
 
-        # Read native geometry only
-        if "dagmc" not in self._f['geometry'].attrs.keys():
-            self._read_surfaces()
-            cell_fills = self._read_cells()
-            self._read_universes()
-            self._read_lattices()
-            self._finalize_geometry(cell_fills)
+            # Read native geometry only
+            if "dagmc" not in self._f['geometry'].attrs.keys():
+                self._read_surfaces()
+                cell_fills = self._read_cells()
+                self._read_universes()
+                self._read_lattices()
+                self._finalize_geometry(cell_fills)
 
     def _read_materials(self):
         for group in self._f['materials'].values():
@@ -122,7 +129,9 @@ class Summary(object):
     def _read_surfaces(self):
         for group in self._f['geometry/surfaces'].values():
             surface = openmc.Surface.from_hdf5(group)
-            self._fast_surfaces[surface.id] = surface
+            # surface may be None for DAGMC surfaces
+            if surface:
+                self._fast_surfaces[surface.id] = surface
 
     def _read_cells(self):
 
@@ -135,11 +144,11 @@ class Summary(object):
             fill_type = group['fill_type'][()].decode()
 
             if fill_type == 'material':
-                fill = group['material'][()]
+                fill_id = group['material'][()]
             elif fill_type == 'universe':
-                fill = group['fill'][()]
+                fill_id = group['fill'][()]
             else:
-                fill = group['lattice'][()]
+                fill_id = group['lattice'][()]
 
             region = group['region'][()].decode() if 'region' in group else ''
 
@@ -162,7 +171,7 @@ class Summary(object):
                 cell.temperature = group['temperature'][()]
 
             # Store Cell fill information for after Universe/Lattice creation
-            cell_fills[cell.id] = (fill_type, fill)
+            cell_fills[cell.id] = (fill_type, fill_id)
 
             # Generate Region object given infix expression
             if region:
@@ -175,7 +184,11 @@ class Summary(object):
 
     def _read_universes(self):
         for group in self._f['geometry/universes'].values():
-            universe = openmc.Universe.from_hdf5(group, self._fast_cells)
+            geom_type = group.get('geom_type')
+            if geom_type and geom_type[()].decode() == 'dagmc':
+                universe = openmc.DAGMCUniverse.from_hdf5(group)
+            else:
+                universe = openmc.Universe.from_hdf5(group, self._fast_cells)
             self._fast_universes[universe.id] = universe
 
     def _read_lattices(self):
@@ -227,4 +240,9 @@ class Summary(object):
             Results from a stochastic volume calculation
 
         """
-        self.geometry.add_volume_information(volume_calc)
+        if volume_calc.domain_type == "material" and self.materials:
+            for material in self.materials:
+                if material.id in volume_calc.volumes:
+                    material.add_volume_information(volume_calc)
+        else:
+            self.geometry.add_volume_information(volume_calc)

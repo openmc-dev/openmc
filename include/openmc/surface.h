@@ -1,19 +1,19 @@
 #ifndef OPENMC_SURFACE_H
 #define OPENMC_SURFACE_H
 
-#include <memory>  // for unique_ptr
-#include <limits>  // For numeric_limits
+#include <limits> // For numeric_limits
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 #include "hdf5.h"
 #include "pugixml.hpp"
 
+#include "openmc/boundary_condition.h"
 #include "openmc/constants.h"
+#include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
 #include "openmc/position.h"
-#include "dagmc.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -24,16 +24,15 @@ namespace openmc {
 class Surface;
 
 namespace model {
-  extern std::vector<std::unique_ptr<Surface>> surfaces;
-  extern std::unordered_map<int, int> surface_map;
+extern std::unordered_map<int, int> surface_map;
+extern vector<unique_ptr<Surface>> surfaces;
 } // namespace model
 
 //==============================================================================
-//! Coordinates for an axis-aligned cube that bounds a geometric object.
+//! Coordinates for an axis-aligned cuboid that bounds a geometric object.
 //==============================================================================
 
-struct BoundingBox
-{
+struct BoundingBox {
   double xmin = -INFTY;
   double xmax = INFTY;
   double ymin = -INFTY;
@@ -41,19 +40,21 @@ struct BoundingBox
   double zmin = -INFTY;
   double zmax = INFTY;
 
-
-  inline BoundingBox operator &(const BoundingBox& other) {
+  inline BoundingBox operator&(const BoundingBox& other)
+  {
     BoundingBox result = *this;
     return result &= other;
   }
 
-  inline BoundingBox operator |(const BoundingBox& other) {
+  inline BoundingBox operator|(const BoundingBox& other)
+  {
     BoundingBox result = *this;
     return result |= other;
   }
 
   // intersect operator
-  inline BoundingBox& operator &=(const BoundingBox& other) {
+  inline BoundingBox& operator&=(const BoundingBox& other)
+  {
     xmin = std::max(xmin, other.xmin);
     xmax = std::min(xmax, other.xmax);
     ymin = std::max(ymin, other.ymin);
@@ -64,7 +65,8 @@ struct BoundingBox
   }
 
   // union operator
-  inline BoundingBox& operator |=(const BoundingBox& other) {
+  inline BoundingBox& operator|=(const BoundingBox& other)
+  {
     xmin = std::min(xmin, other.xmin);
     xmax = std::max(xmax, other.xmax);
     ymin = std::min(ymin, other.ymin);
@@ -73,29 +75,19 @@ struct BoundingBox
     zmax = std::max(zmax, other.zmax);
     return *this;
   }
-
 };
 
 //==============================================================================
 //! A geometry primitive used to define regions of 3D space.
 //==============================================================================
 
-class Surface
-{
+class Surface {
 public:
-
-  // Types of available boundary conditions on a surface
-  enum class BoundaryType {
-    TRANSMIT,
-    VACUUM,
-    REFLECT,
-    PERIODIC,
-    WHITE
-  };
-
-  int id_;                    //!< Unique ID
-  BoundaryType bc_;                    //!< Boundary condition
-  std::string name_;          //!< User-defined name
+  int id_;                           //!< Unique ID
+  std::string name_;                 //!< User-defined name
+  unique_ptr<BoundaryCondition> bc_; //!< Boundary condition
+  GeometryType geom_type_;           //!< Geometry type indicator (CSG or DAGMC)
+  bool surf_source_ {false}; //!< Activate source banking for the surface?
 
   explicit Surface(pugi::xml_node surf_node);
   Surface();
@@ -113,12 +105,13 @@ public:
   //! Determine the direction of a ray reflected from the surface.
   //! \param[in] r The point at which the ray is incident.
   //! \param[in] u Incident direction of the ray
-  //! \param[inout] p Pointer to the particle
+  //! \param[inout] p Pointer to the particle. Only DAGMC uses this.
   //! \return Outgoing direction of the ray
-  virtual Direction reflect(Position r, Direction u, Particle* p) const;
+  virtual Direction reflect(
+    Position r, Direction u, GeometryState* p = nullptr) const;
 
-  virtual Direction diffuse_reflect(Position r, Direction u,
-    uint64_t* seed) const;
+  virtual Direction diffuse_reflect(
+    Position r, Direction u, uint64_t* seed, GeometryState* p = nullptr) const;
 
   //! Evaluate the equation describing the surface.
   //!
@@ -141,71 +134,19 @@ public:
 
   //! Write all information needed to reconstruct the surface to an HDF5 group.
   //! \param group_id An HDF5 group id.
-  //TODO: this probably needs to include i_periodic for PeriodicSurface
-  virtual void to_hdf5(hid_t group_id) const = 0;
+  void to_hdf5(hid_t group_id) const;
 
   //! Get the BoundingBox for this surface.
-  virtual BoundingBox bounding_box(bool pos_side) const { return {}; }
-};
-
-class CSGSurface : public Surface
-{
-public:
-  explicit CSGSurface(pugi::xml_node surf_node);
-  CSGSurface();
-
-  void to_hdf5(hid_t group_id) const;
+  virtual BoundingBox bounding_box(bool /*pos_side*/) const { return {}; }
 
 protected:
   virtual void to_hdf5_inner(hid_t group_id) const = 0;
 };
 
-//==============================================================================
-//! A `Surface` representing a DAGMC-based surface in DAGMC.
-//==============================================================================
-#ifdef DAGMC
-class DAGSurface : public Surface
-{
+class CSGSurface : public Surface {
 public:
-  DAGSurface();
-
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  Direction reflect(Position r, Direction u, Particle* p) const;
-
-  void to_hdf5(hid_t group_id) const;
-
-  moab::DagMC* dagmc_ptr_; //!< Pointer to DagMC instance
-  int32_t dag_index_;      //!< DagMC index of surface
-};
-#endif
-//==============================================================================
-//! A `Surface` that supports periodic boundary conditions.
-//!
-//! Translational periodicity is supported for the `XPlane`, `YPlane`, `ZPlane`,
-//! and `Plane` types.  Rotational periodicity is supported for
-//! `XPlane`-`YPlane` pairs.
-//==============================================================================
-
-class PeriodicSurface : public CSGSurface
-{
-public:
-  int i_periodic_{C_NONE};    //!< Index of corresponding periodic surface
-
-  explicit PeriodicSurface(pugi::xml_node surf_node);
-
-  //! Translate a particle onto this surface from a periodic partner surface.
-  //! \param other A pointer to the partner surface in this periodic BC.
-  //! \param r A point on the partner surface that will be translated onto
-  //!   this surface.
-  //! \param u A direction that will be rotated for systems with rotational
-  //!   periodicity.
-  //! \return true if this surface and its partner make a rotationally-periodic
-  //!   boundary condition.
-  virtual bool periodic_translate(const PeriodicSurface* other, Position& r,
-                                  Direction& u) const = 0;
-
+  explicit CSGSurface(pugi::xml_node surf_node);
+  CSGSurface();
 };
 
 //==============================================================================
@@ -214,17 +155,14 @@ public:
 //! The plane is described by the equation \f$x - x_0 = 0\f$
 //==============================================================================
 
-class SurfaceXPlane : public PeriodicSurface
-{
+class SurfaceXPlane : public CSGSurface {
 public:
   explicit SurfaceXPlane(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
-  bool periodic_translate(const PeriodicSurface* other, Position& r,
-                          Direction& u) const;
-  BoundingBox bounding_box(bool pos_side) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
+  BoundingBox bounding_box(bool pos_side) const override;
 
   double x0_;
 };
@@ -235,17 +173,14 @@ public:
 //! The plane is described by the equation \f$y - y_0 = 0\f$
 //==============================================================================
 
-class SurfaceYPlane : public PeriodicSurface
-{
+class SurfaceYPlane : public CSGSurface {
 public:
   explicit SurfaceYPlane(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
-  bool periodic_translate(const PeriodicSurface* other, Position& r,
-                          Direction& u) const;
-  BoundingBox bounding_box(bool pos_side) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
+  BoundingBox bounding_box(bool pos_side) const override;
 
   double y0_;
 };
@@ -256,17 +191,14 @@ public:
 //! The plane is described by the equation \f$z - z_0 = 0\f$
 //==============================================================================
 
-class SurfaceZPlane : public PeriodicSurface
-{
+class SurfaceZPlane : public CSGSurface {
 public:
   explicit SurfaceZPlane(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
-  bool periodic_translate(const PeriodicSurface* other, Position& r,
-                          Direction& u) const;
-  BoundingBox bounding_box(bool pos_side) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
+  BoundingBox bounding_box(bool pos_side) const override;
 
   double z0_;
 };
@@ -277,16 +209,13 @@ public:
 //! The plane is described by the equation \f$A x + B y + C z - D = 0\f$
 //==============================================================================
 
-class SurfacePlane : public PeriodicSurface
-{
+class SurfacePlane : public CSGSurface {
 public:
   explicit SurfacePlane(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
-  bool periodic_translate(const PeriodicSurface* other, Position& r,
-                          Direction& u) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
 
   double A_, B_, C_, D_;
 };
@@ -298,15 +227,14 @@ public:
 //! \f$(y - y_0)^2 + (z - z_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceXCylinder : public CSGSurface
-{
+class SurfaceXCylinder : public CSGSurface {
 public:
   explicit SurfaceXCylinder(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
-  BoundingBox bounding_box(bool pos_side) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
+  BoundingBox bounding_box(bool pos_side) const override;
 
   double y0_, z0_, radius_;
 };
@@ -318,15 +246,14 @@ public:
 //! \f$(x - x_0)^2 + (z - z_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceYCylinder : public CSGSurface
-{
+class SurfaceYCylinder : public CSGSurface {
 public:
   explicit SurfaceYCylinder(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
-  BoundingBox bounding_box(bool pos_side) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
+  BoundingBox bounding_box(bool pos_side) const override;
 
   double x0_, z0_, radius_;
 };
@@ -338,15 +265,14 @@ public:
 //! \f$(x - x_0)^2 + (y - y_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceZCylinder : public CSGSurface
-{
+class SurfaceZCylinder : public CSGSurface {
 public:
   explicit SurfaceZCylinder(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
-  BoundingBox bounding_box(bool pos_side) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
+  BoundingBox bounding_box(bool pos_side) const override;
 
   double x0_, y0_, radius_;
 };
@@ -358,15 +284,14 @@ public:
 //! \f$(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceSphere : public CSGSurface
-{
+class SurfaceSphere : public CSGSurface {
 public:
   explicit SurfaceSphere(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
-  BoundingBox bounding_box(bool pos_side) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
+  BoundingBox bounding_box(bool pos_side) const override;
 
   double x0_, y0_, z0_, radius_;
 };
@@ -378,14 +303,13 @@ public:
 //! \f$(y - y_0)^2 + (z - z_0)^2 - R^2 (x - x_0)^2 = 0\f$
 //==============================================================================
 
-class SurfaceXCone : public CSGSurface
-{
+class SurfaceXCone : public CSGSurface {
 public:
   explicit SurfaceXCone(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
 
   double x0_, y0_, z0_, radius_sq_;
 };
@@ -397,14 +321,13 @@ public:
 //! \f$(x - x_0)^2 + (z - z_0)^2 - R^2 (y - y_0)^2 = 0\f$
 //==============================================================================
 
-class SurfaceYCone : public CSGSurface
-{
+class SurfaceYCone : public CSGSurface {
 public:
   explicit SurfaceYCone(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
 
   double x0_, y0_, z0_, radius_sq_;
 };
@@ -416,14 +339,13 @@ public:
 //! \f$(x - x_0)^2 + (y - y_0)^2 - R^2 (z - z_0)^2 = 0\f$
 //==============================================================================
 
-class SurfaceZCone : public CSGSurface
-{
+class SurfaceZCone : public CSGSurface {
 public:
   explicit SurfaceZCone(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
 
   double x0_, y0_, z0_, radius_sq_;
 };
@@ -431,20 +353,71 @@ public:
 //==============================================================================
 //! A general surface described by a quadratic equation.
 //
-//! \f$A x^2 + B y^2 + C z^2 + D x y + E y z + F x z + G x + H y + J z + K = 0\f$
+//! \f$A x^2 + B y^2 + C z^2 + D x y + E y z + F x z + G x + H y + J z + K =
+//! 0\f$
 //==============================================================================
 
-class SurfaceQuadric : public CSGSurface
-{
+class SurfaceQuadric : public CSGSurface {
 public:
   explicit SurfaceQuadric(pugi::xml_node surf_node);
-  double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
-  Direction normal(Position r) const;
-  void to_hdf5_inner(hid_t group_id) const;
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
 
   // Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0
   double A_, B_, C_, D_, E_, F_, G_, H_, J_, K_;
+};
+
+//==============================================================================
+//! A toroidal surface described by the quartic torus lies in the x direction
+//
+//! \f$(x-x_0)^2/B^2 + (\sqrt{(y-y_0)^2 + (z-z_0)^2} - A)^2/C^2 -1 \f$
+//==============================================================================
+
+class SurfaceXTorus : public CSGSurface {
+public:
+  explicit SurfaceXTorus(pugi::xml_node surf_node);
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
+
+  double x0_, y0_, z0_, A_, B_, C_;
+};
+
+//==============================================================================
+//! A toroidal surface described by the quartic torus lies in the y direction
+//
+//! \f$(y-y_0)^2/B^2 + (\sqrt{(x-x_0)^2 + (z-z_0)^2} - A)^2/C^2 -1 \f$
+//==============================================================================
+
+class SurfaceYTorus : public CSGSurface {
+public:
+  explicit SurfaceYTorus(pugi::xml_node surf_node);
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
+
+  double x0_, y0_, z0_, A_, B_, C_;
+};
+
+//==============================================================================
+//! A toroidal surface described by the quartic torus lies in the z direction
+//
+//! \f$(z-z_0)^2/B^2 + (\sqrt{(x-x_0)^2 + (y-y_0)^2} - A)^2/C^2 -1 \f$
+//==============================================================================
+
+class SurfaceZTorus : public CSGSurface {
+public:
+  explicit SurfaceZTorus(pugi::xml_node surf_node);
+  double evaluate(Position r) const override;
+  double distance(Position r, Direction u, bool coincident) const override;
+  Direction normal(Position r) const override;
+  void to_hdf5_inner(hid_t group_id) const override;
+
+  double x0_, y0_, z0_, A_, B_, C_;
 };
 
 //==============================================================================

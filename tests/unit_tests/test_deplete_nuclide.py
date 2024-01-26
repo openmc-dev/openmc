@@ -1,8 +1,9 @@
 """Tests for the openmc.deplete.Nuclide class."""
 
-import xml.etree.ElementTree as ET
+import copy
 
-import numpy
+import lxml.etree as ET
+import numpy as np
 import pytest
 from openmc.deplete import nuclide
 
@@ -81,6 +82,62 @@ def test_from_xml():
         u235.yield_energies = [0.0253, 5e5]
 
 
+def test_fpy_parent():
+    """Test reading nuclide data with FPY borrowed from another nuclide."""
+
+    data = """
+<depletion_chain>
+  <nuclide name="U235" reactions="1">
+    <reaction type="fission" Q="193405400.0"/>
+    <neutron_fission_yields>
+      <energies>0.0253</energies>
+      <fission_yields energy="0.0253">
+        <products>Te134 Zr100 Xe138</products>
+        <data>0.062155 0.0497641 0.0481413</data>
+      </fission_yields>
+    </neutron_fission_yields>
+  </nuclide>
+  <nuclide name="U238" reactions="1">
+    <reaction type="fission" Q="200.0e6"/>
+    <neutron_fission_yields parent="U235"/>
+  </nuclide>
+</depletion_chain>
+    """
+
+    root = ET.fromstring(data)
+    elems = root.findall('nuclide')
+    u235 = nuclide.Nuclide.from_xml(elems[0], root)
+    u238 = nuclide.Nuclide.from_xml(elems[1], root)
+
+    # Make sure U238 yield is same as U235
+    assert np.array_equal(u238.yield_data.energies, u235.yield_data.energies)
+    assert np.array_equal(u238.yield_data.yield_matrix, u235.yield_data.yield_matrix)
+
+    # Make sure XML element created has single attribute
+    elem = u238.to_xml_element()
+    fpy_elem = elem.find('neutron_fission_yields')
+    assert fpy_elem.get('parent') == 'U235'
+    assert len(fpy_elem) == 0
+
+    data = """
+<depletion_chain>
+  <nuclide name="U235" reactions="1">
+    <reaction type="fission" Q="193405400.0"/>
+  </nuclide>
+  <nuclide name="U238" reactions="1">
+    <reaction type="fission" Q="200.0e6"/>
+    <neutron_fission_yields parent="U235"/>
+  </nuclide>
+</depletion_chain>
+    """
+
+    # U235 yields are missing, so we should get an exception
+    root = ET.fromstring(data)
+    elems = root.findall('nuclide')
+    with pytest.raises(ValueError, match="yields"):
+        u238 = nuclide.Nuclide.from_xml(elems[1], root)
+
+
 def test_to_xml_element():
     """Test writing nuclide data to an XML element."""
 
@@ -134,11 +191,11 @@ def test_fission_yield_distribution():
         act_dist = yield_dict[exp_ene]
         for exp_prod, exp_yield in exp_dist.items():
             assert act_dist[exp_prod] == exp_yield
-    exp_yield = numpy.array([
+    exp_yield = np.array([
         [4.08e-12, 1.71e-12, 7.85e-4],
         [1.32e-12, 0.0, 1.12e-3],
         [5.83e-8, 2.69e-8, 4.54e-3]])
-    assert numpy.array_equal(yield_dist.yield_matrix, exp_yield)
+    assert np.array_equal(yield_dist.yield_matrix, exp_yield)
 
     # Test the operations / special methods for fission yield
     orig_yields = yield_dist[0.0253]
@@ -151,18 +208,18 @@ def test_fission_yield_distribution():
 
     # Scale and increment fission yields
     mod_yields = orig_yields * 2
-    assert numpy.array_equal(orig_yields.yields * 2, mod_yields.yields)
+    assert np.array_equal(orig_yields.yields * 2, mod_yields.yields)
     mod_yields += orig_yields
-    assert numpy.array_equal(orig_yields.yields * 3, mod_yields.yields)
+    assert np.array_equal(orig_yields.yields * 3, mod_yields.yields)
 
     mod_yields = 2.0 * orig_yields
-    assert numpy.array_equal(orig_yields.yields * 2, mod_yields.yields)
+    assert np.array_equal(orig_yields.yields * 2, mod_yields.yields)
 
-    mod_yields = numpy.float64(2.0) * orig_yields
-    assert numpy.array_equal(orig_yields.yields * 2, mod_yields.yields)
+    mod_yields = np.float64(2.0) * orig_yields
+    assert np.array_equal(orig_yields.yields * 2, mod_yields.yields)
 
     # Failure modes for adding, multiplying yields
-    similar = numpy.empty_like(orig_yields.yields)
+    similar = np.empty_like(orig_yields.yields)
     with pytest.raises(TypeError):
         orig_yields + similar
     with pytest.raises(TypeError):
@@ -176,6 +233,21 @@ def test_fission_yield_distribution():
     with pytest.raises(TypeError):
         orig_yields *= similar
 
+    # Test restriction of fission products
+    strict_restrict = yield_dist.restrict_products(["Xe135", "Sm149"])
+    with_extras = yield_dist.restrict_products(
+        ["Xe135", "Sm149", "H1", "U235"])
+
+    assert strict_restrict.products == ("Sm149", "Xe135")
+    assert strict_restrict.energies == yield_dist.energies
+    assert with_extras.products == ("Sm149", "Xe135")
+    assert with_extras.energies == yield_dist.energies
+    for ene, new_yields in strict_restrict.items():
+        for product in strict_restrict.products:
+            assert new_yields[product] == yield_dist[ene][product]
+            assert with_extras[ene][product] == yield_dist[ene][product]
+
+    assert yield_dist.restrict_products(["U235"]) is None
 
 def test_validate():
 
@@ -264,3 +336,14 @@ def test_validate():
     assert "decay mode" in record[0].message.args[0]
     assert "0 reaction" in record[1].message.args[0]
     assert "1.0" in record[2].message.args[0]
+
+
+def test_deepcopy():
+    """Test deepcopying a FissionYield object"""
+    nuc = nuclide.FissionYield(products=("I129", "Sm149", "Xe135"), yields=np.array((0.001, 0.0003, 0.002)))
+    copied_nuc = copy.deepcopy(nuc)
+    # Check the deepcopy equals the original
+    assert copied_nuc == nuc
+    # Mutate the original and verify the copy remains intact
+    nuc *= 2
+    assert copied_nuc != nuc

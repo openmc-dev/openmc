@@ -10,22 +10,21 @@ References
 
 """
 
-from contextlib import contextmanager
 from collections.abc import Iterable, Mapping
+from contextlib import contextmanager
 from numbers import Real, Integral
 import sys
 import time
-from ctypes import c_int
 import warnings
 
+import h5py
 import numpy as np
 from scipy import sparse
-import h5py
 
 import openmc.lib
-from openmc.checkvalue import (check_type, check_length, check_value,
-                               check_greater_than, check_less_than)
-from openmc.exceptions import OpenMCError
+from .checkvalue import (check_type, check_length, check_value,
+                         check_greater_than, check_less_than)
+from .exceptions import OpenMCError
 
 # See if mpi4py module can be imported, define have_mpi global variable
 try:
@@ -55,21 +54,23 @@ _CURRENTS = {
 }
 
 
-class CMFDMesh(object):
+class CMFDMesh:
     """A structured Cartesian mesh used for CMFD acceleration.
 
     Attributes
     ----------
     lower_left : Iterable of float
-        The lower-left corner of the structured mesh. If only two coordinates
-        are given, it is assumed that the mesh is an x-y mesh.
+        The lower-left corner of a regular structured mesh. If only two
+        coordinates are given, it is assumed that the mesh is an x-y mesh.
     upper_right : Iterable of float
-        The upper-right corner of the structured mesh. If only two coordinates
-        are given, it is assumed that the mesh is an x-y mesh.
+        The upper-right corner of a regular structured mesh. If only two
+        coordinates are given, it is assumed that the mesh is an x-y mesh.
     dimension : Iterable of int
-        The number of mesh cells in each direction.
+        The number of mesh cells in each direction for a regular structured
+        mesh.
     width : Iterable of float
-        The width of mesh cells in each direction.
+        The width of mesh cells in each direction for a regular structured
+        mesh
     energy : Iterable of float
         Energy bins in eV, listed in ascending order (e.g. [0.0, 0.625e-1,
         20.0e6]) for CMFD tallies and acceleration. If no energy bins are
@@ -97,6 +98,14 @@ class CMFDMesh(object):
         is extremely important to use in reflectors as neutrons will not
         contribute to any tallies far away from fission source neutron regions.
         A ``1`` must be used to identify any fission source region.
+    mesh_type : str
+        Type of structured mesh to use. Acceptable values are:
+        * "regular" - Use RegularMesh to define CMFD mesh
+        * "rectilinear" - Use RectilinearMesh to define CMFD
+    grid : Iterable of Iterable of float
+        Grid used to define RectilinearMesh. First dimension must have length
+        3 where grid[0], grid[1], and grid[2] correspond to the x-, y-, and
+        z-grids respectively
 
     """
 
@@ -108,6 +117,28 @@ class CMFDMesh(object):
         self._energy = None
         self._albedo = None
         self._map = None
+        self._mesh_type = 'regular'
+        self._grid = None
+
+    def __repr__(self):
+        outstr = type(self).__name__ + '\n'
+        if self._mesh_type == 'regular':
+            outstr += (self._get_repr(self._lower_left, "Lower left") + "\n" +
+                       self._get_repr(self._upper_right, "Upper right") + "\n" +
+                       self._get_repr(self._dimension, "Dimension") + "\n" +
+                       self._get_repr(self._width, "Width") + "\n" +
+                       self._get_repr(self._albedo, "Albedo"))
+        elif self._mesh_type == 'rectilinear':
+            outstr += (self._get_repr(self._grid[0], "X-grid") + "\n" +
+                       self._get_repr(self._grid[1], "Y-grid") + "\n" +
+                       self._get_repr(self._grid[2], "Z-grid"))
+        return outstr
+
+    def _get_repr(self, list_var, label):
+        outstr = "\t{:<11} = ".format(label)
+        if list(list_var):
+            outstr += ", ".join(str(i) for i in list_var)
+        return outstr
 
     @property
     def lower_left(self):
@@ -137,17 +168,27 @@ class CMFDMesh(object):
     def map(self):
         return self._map
 
+    @property
+    def mesh_type(self):
+        return self._mesh_type
+
+    @property
+    def grid(self):
+        return self._grid
+
     @lower_left.setter
     def lower_left(self, lower_left):
         check_type('CMFD mesh lower_left', lower_left, Iterable, Real)
         check_length('CMFD mesh lower_left', lower_left, 2, 3)
         self._lower_left = lower_left
+        self._display_mesh_warning('regular', 'CMFD mesh lower_left')
 
     @upper_right.setter
     def upper_right(self, upper_right):
         check_type('CMFD mesh upper_right', upper_right, Iterable, Real)
         check_length('CMFD mesh upper_right', upper_right, 2, 3)
         self._upper_right = upper_right
+        self._display_mesh_warning('regular', 'CMFD mesh upper_right')
 
     @dimension.setter
     def dimension(self, dimension):
@@ -164,6 +205,7 @@ class CMFDMesh(object):
         for w in width:
             check_greater_than('CMFD mesh width', w, 0)
         self._width = width
+        self._display_mesh_warning('regular', 'CMFD mesh width')
 
     @energy.setter
     def energy(self, energy):
@@ -182,20 +224,45 @@ class CMFDMesh(object):
         self._albedo = albedo
 
     @map.setter
-    def map(self, meshmap):
-        check_type('CMFD mesh map', meshmap, Iterable, Integral)
-        for m in meshmap:
+    def map(self, mesh_map):
+        check_type('CMFD mesh map', mesh_map, Iterable, Integral)
+        for m in mesh_map:
             check_value('CMFD mesh map', m, [0, 1])
-        self._map = meshmap
+        self._map = mesh_map
+
+    @mesh_type.setter
+    def mesh_type(self, mesh_type):
+        check_value('CMFD mesh type', mesh_type, ['regular', 'rectilinear'])
+        self._mesh_type = mesh_type
+
+    @grid.setter
+    def grid(self, grid):
+        grid_length = 3
+        dims = ['x', 'y', 'z']
+
+        check_length('CMFD mesh grid', grid, grid_length)
+        for i in range(grid_length):
+            check_type('CMFD mesh {}-grid'.format(dims[i]), grid[i], Iterable,
+                       Real)
+            check_greater_than('CMFD mesh {}-grid length'.format(dims[i]),
+                               len(grid[i]), 1)
+        self._grid = [np.array(g) for g in grid]
+        self._display_mesh_warning('rectilinear', 'CMFD mesh grid')
+
+    def _display_mesh_warning(self, mesh_type, variable_label):
+        if self._mesh_type != mesh_type:
+            warn_msg = (f'Setting {variable_label} if mesh type is not set to '
+                        f'{mesh_type} will have no effect')
+            warnings.warn(warn_msg, RuntimeWarning)
 
 
-class CMFDRun(object):
+class CMFDRun:
     r"""Class for running CMFD acceleration through the C API.
 
     Attributes
     ----------
     tally_begin : int
-        Batch number at which CMFD tallies should begin accummulating
+        Batch number at which CMFD tallies should begin accumulating
     solver_begin: int
         Batch number at which CMFD solver should start executing
     ref_d : list of floats
@@ -204,13 +271,13 @@ class CMFDRun(object):
         Dictionary indicating which CMFD results to output. Note that CMFD
         k-effective will always be outputted. Acceptable keys are:
 
-        * "balance" - Whether to output RMS [%] of the resdiual from the
+        * "balance" - Whether to output RMS [%] of the residual from the
           neutron balance equation on CMFD tallies (bool)
         * "dominance" - Whether to output the estimated dominance ratio from
           the CMFD iterations (bool)
         * "entropy" - Whether to output the *entropy* of the CMFD predicted
           fission source (bool)
-        * "source" - Whether to ouput the RMS [%] between the OpenMC fission
+        * "source" - Whether to output the RMS [%] between the OpenMC fission
           source and CMFD fission source (bool)
 
     downscatter : bool
@@ -248,7 +315,7 @@ class CMFDRun(object):
     adjoint_type : {'physical', 'math'}
         Stores type of adjoint calculation that should be performed.
         ``run_adjoint`` must be true for an adjoint calculation to be
-        perfomed. Options are:
+        performed. Options are:
 
         * "physical" - Create adjoint matrices from physical parameters of
           CMFD problem
@@ -367,8 +434,6 @@ class CMFDRun(object):
         self._current = None
         self._cmfd_src = None
         self._openmc_src = None
-        self._sourcecounts = None
-        self._weightfactors = None
         self._entropy = []
         self._balance = []
         self._src_cmp = []
@@ -535,7 +600,6 @@ class CMFDRun(object):
         check_greater_than('CMFD feedback begin batch', begin, 0)
         self._solver_begin = begin
 
-
     @ref_d.setter
     def ref_d(self, diff_params):
         check_type('Reference diffusion params', diff_params,
@@ -570,48 +634,56 @@ class CMFDRun(object):
     def mesh(self, cmfd_mesh):
         check_type('CMFD mesh', cmfd_mesh, CMFDMesh)
 
-        # Check dimension defined
-        if cmfd_mesh.dimension is None:
-            raise ValueError('CMFD mesh requires spatial '
-                             'dimensions to be specified')
+        if cmfd_mesh.mesh_type == 'regular':
+            # Check dimension defined
+            if cmfd_mesh.dimension is None:
+                raise ValueError('CMFD regular mesh requires spatial '
+                                 'dimensions to be specified')
 
-        # Check lower left defined
-        if cmfd_mesh.lower_left is None:
-            raise ValueError('CMFD mesh requires lower left coordinates '
-                             'to be specified')
+            # Check lower left defined
+            if cmfd_mesh.lower_left is None:
+                raise ValueError('CMFD regular mesh requires lower left '
+                                 'coordinates to be specified')
 
-        # Check that both upper right and width both not defined
-        if cmfd_mesh.upper_right is not None and cmfd_mesh.width is not None:
-            raise ValueError('Both upper right coordinates and width '
-                             'cannot be specified for CMFD mesh')
+            # Check that both upper right and width both not defined
+            if cmfd_mesh.upper_right is not None and cmfd_mesh.width is not None:
+                raise ValueError('Both upper right coordinates and width '
+                                 'cannot be specified for CMFD regular mesh')
 
-        # Check that at least one of width or upper right is defined
-        if cmfd_mesh.upper_right is None and cmfd_mesh.width is None:
-            raise ValueError('CMFD mesh requires either upper right '
-                             'coordinates or width to be specified')
+            # Check that at least one of width or upper right is defined
+            if cmfd_mesh.upper_right is None and cmfd_mesh.width is None:
+                raise ValueError('CMFD regular mesh requires either upper right '
+                                 'coordinates or width to be specified')
 
-        # Check width and lower length are same dimension and define
-        # upper_right
-        if cmfd_mesh.width is not None:
-            check_length('CMFD mesh width', cmfd_mesh.width,
-                         len(cmfd_mesh.lower_left))
-            cmfd_mesh.upper_right = np.array(cmfd_mesh.lower_left) + \
-                np.array(cmfd_mesh.width) * np.array(cmfd_mesh.dimension)
+            # Check width and lower length are same dimension and define
+            # upper_right
+            if cmfd_mesh.width is not None:
+                check_length('CMFD mesh width', cmfd_mesh.width,
+                             len(cmfd_mesh.lower_left))
+                cmfd_mesh.upper_right = np.array(cmfd_mesh.lower_left) + \
+                    np.array(cmfd_mesh.width) * np.array(cmfd_mesh.dimension)
 
-        # Check upper_right and lower length are same dimension and define
-        # width
-        elif cmfd_mesh.upper_right is not None:
-            check_length('CMFD mesh upper right', cmfd_mesh.upper_right,
-                         len(cmfd_mesh.lower_left))
-            # Check upper right coordinates are greater than lower left
-            if np.any(np.array(cmfd_mesh.upper_right) <=
-                      np.array(cmfd_mesh.lower_left)):
-                raise ValueError('CMFD mesh requires upper right '
-                                 'coordinates to be greater than lower '
-                                 'left coordinates')
-            cmfd_mesh.width = np.true_divide((np.array(cmfd_mesh.upper_right) -
-                                             np.array(cmfd_mesh.lower_left)),
-                                             np.array(cmfd_mesh.dimension))
+            # Check upper_right and lower length are same dimension and define
+            # width
+            elif cmfd_mesh.upper_right is not None:
+                check_length('CMFD mesh upper right', cmfd_mesh.upper_right,
+                             len(cmfd_mesh.lower_left))
+                # Check upper right coordinates are greater than lower left
+                if np.any(np.array(cmfd_mesh.upper_right) <=
+                          np.array(cmfd_mesh.lower_left)):
+                    raise ValueError('CMFD regular mesh requires upper right '
+                                     'coordinates to be greater than lower '
+                                     'left coordinates')
+                cmfd_mesh.width = np.true_divide((np.array(cmfd_mesh.upper_right) -
+                                                 np.array(cmfd_mesh.lower_left)),
+                                                 np.array(cmfd_mesh.dimension))
+        elif cmfd_mesh.mesh_type == 'rectilinear':
+            # Check dimension defined
+            if cmfd_mesh.grid is None:
+                raise ValueError('CMFD rectilinear mesh requires spatial '
+                                 'grid to be specified')
+            cmfd_mesh.dimension = [len(cmfd_mesh.grid[i]) - 1 for i in range(3)]
+
         self._mesh = cmfd_mesh
 
     @norm.setter
@@ -815,7 +887,7 @@ class CMFDRun(object):
         information.
 
         """
-        # Finalize simuation
+        # Finalize simulation
         openmc.lib.simulation_finalize()
 
         if openmc.lib.master():
@@ -832,9 +904,9 @@ class CMFDRun(object):
 
         """
         if filename is None:
-            batch_str_len = len(str(openmc.lib.settings.batches))
+            batch_str_len = len(str(openmc.lib.settings.get_batches()))
             batch_str = str(openmc.lib.current_batch()).zfill(batch_str_len)
-            filename = 'statepoint.{}.h5'.format(batch_str)
+            filename = f'statepoint.{batch_str}.h5'
 
         # Call C API statepoint_write to save source distribution with CMFD
         # feedback
@@ -896,9 +968,8 @@ class CMFDRun(object):
                     cmfd_group.create_dataset('total_rate',
                                               data=self._total_rate)
                 elif openmc.settings.verbosity >= 5:
-                    print('  CMFD data not written to statepoint file'
-                          'as it already exists in {}'.format(filename))
-                    sys.stdout.flush()
+                    print('  CMFD data not written to statepoint file as it '
+                          'already exists in {}'.format(filename), flush=True)
 
     def _initialize_linsolver(self):
         # Determine number of rows in CMFD matrix
@@ -917,7 +988,7 @@ class CMFDRun(object):
 
         args = temp_loss.indptr, len(temp_loss.indptr), \
             temp_loss.indices, len(temp_loss.indices), n, \
-            self._spectral, self._indices, coremap, self._use_all_threads
+            self._spectral, coremap, self._use_all_threads
         return openmc.lib._dll.openmc_initialize_linsolver(*args)
 
     def _write_cmfd_output(self):
@@ -1003,13 +1074,12 @@ class CMFDRun(object):
         # Get acceleration map, otherwise set all regions to be accelerated
         if self._mesh.map is not None:
             check_length('CMFD coremap', self._mesh.map,
-                         np.product(self._indices[0:3]))
+                         np.prod(self._indices[:3]))
             if openmc.lib.master():
                 self._coremap = np.array(self._mesh.map)
         else:
             if openmc.lib.master():
-                self._coremap = np.ones((np.product(self._indices[0:3])),
-                                        dtype=int)
+                self._coremap = np.ones(np.prod(self._indices[:3]), dtype=int)
 
         # Check CMFD tallies accummulated before feedback turned on
         if self._feedback and self._solver_begin < self._tally_begin:
@@ -1018,6 +1088,12 @@ class CMFDRun(object):
 
         # Initialize parameters for CMFD tally windows
         self._set_tally_window()
+
+        # Extract spatial and energy indices
+        nx, ny, nz, ng = self._indices
+
+        # Initialize CMFD source to all ones
+        self._cmfd_src = np.ones((nx, ny, nz, ng))
 
         # Define all variables that will exist only on master process
         if openmc.lib.master():
@@ -1029,9 +1105,6 @@ class CMFDRun(object):
 
             # Set up CMFD coremap
             self._set_coremap()
-
-            # Extract spatial and energy indices
-            nx, ny, nz, ng = self._indices
 
             # Allocate parameters that need to be stored for tally window
             self._openmc_src_rate = np.zeros((nx, ny, nz, ng, 0))
@@ -1093,10 +1166,17 @@ class CMFDRun(object):
                 # Overwrite CMFD mesh properties
                 cmfd_mesh_name = 'mesh ' + str(cmfd_group.attrs['mesh_id'])
                 cmfd_mesh = f['tallies']['meshes'][cmfd_mesh_name]
-                self._mesh.dimension = cmfd_mesh['dimension'][()]
-                self._mesh.lower_left = cmfd_mesh['lower_left'][()]
-                self._mesh.upper_right = cmfd_mesh['upper_right'][()]
-                self._mesh.width = cmfd_mesh['width'][()]
+                self._mesh.mesh_type = cmfd_mesh['type'][()].decode()
+                if self._mesh.mesh_type == 'regular':
+                    self._mesh.dimension = cmfd_mesh['dimension'][()]
+                    self._mesh.lower_left = cmfd_mesh['lower_left'][()]
+                    self._mesh.upper_right = cmfd_mesh['upper_right'][()]
+                    self._mesh.width = cmfd_mesh['width'][()]
+                elif self._mesh.mesh_type == 'rectilinear':
+                    x_grid = cmfd_mesh['x_grid'][()]
+                    y_grid = cmfd_mesh['y_grid'][()]
+                    z_grid = cmfd_mesh['z_grid'][()]
+                    self._mesh.grid = [x_grid, y_grid, z_grid]
 
                 # Define variables that exist only on master process
                 if openmc.lib.master():
@@ -1167,15 +1247,19 @@ class CMFDRun(object):
                 self._k_cmfd.append(self._keff)
 
                 # Check to perform adjoint on last batch
-                if (openmc.lib.current_batch() == openmc.lib.settings.batches
-                        and self._run_adjoint):
+                batches = openmc.lib.settings.get_batches()
+                if openmc.lib.current_batch() == batches and self._run_adjoint:
                     self._cmfd_solver_execute(adjoint=True)
 
                 # Calculate fission source
                 self._calc_fission_source()
 
-            # Calculate weight factors
-            self._cmfd_reweight()
+            # Calculate weight factors through C++ and manipulate CMFD
+            # source into a 1-D vector that matches C++ array ordering
+            src_flipped = np.flip(self._cmfd_src, axis=3)
+            src_swapped = np.swapaxes(src_flipped, 0, 2)
+            args = self._feedback, src_swapped.flatten()
+            openmc.lib._dll.openmc_cmfd_reweight(*args)
 
         # Stop CMFD timer
         if openmc.lib.master():
@@ -1184,7 +1268,6 @@ class CMFDRun(object):
             if self._cmfd_on:
                 # Write CMFD output if CMFD on for current batch
                 self._write_cmfd_output()
-
 
     def _cmfd_tally_reset(self):
         """Resets all CMFD tallies in memory"""
@@ -1225,9 +1308,6 @@ class CMFDRun(object):
             Whether or not to run an adjoint calculation
 
         """
-        # Check for physical adjoint
-        physical_adjoint = adjoint and self._adjoint_type == 'physical'
-
         # Start timer for build
         time_start_buildcmfd = time.time()
 
@@ -1298,9 +1378,7 @@ class CMFDRun(object):
 
         """
         # Write each element in vector to file
-        with open(base_filename+'.dat', 'w') as fh:
-            for val in vector:
-                fh.write('{:0.8f}\n'.format(val))
+        np.savetxt(f'{base_filename}.dat', vector, fmt='%.8f')
 
         # Save as numpy format
         np.save(base_filename, vector)
@@ -1347,12 +1425,9 @@ class CMFDRun(object):
         nx, ny, nz, ng = self._indices
         n = self._mat_dim
 
-        # Compute cmfd_src in a vecotorized manner by phi to the spatial
+        # Compute cmfd_src in a vectorized manner by phi to the spatial
         # indices of the actual problem so that cmfd_flux can be multiplied by
         # nfissxs
-
-        # Calculate volume
-        vol = np.product(self._hxyz, axis=3)
 
         # Reshape phi by number of groups
         phi = self._phi.reshape((n, ng))
@@ -1372,8 +1447,7 @@ class CMFDRun(object):
 
         # Compute fission source
         cmfd_src = (np.sum(self._nfissxs[:,:,:,:,:] *
-                    cmfd_flux[:,:,:,:,np.newaxis], axis=3) *
-                    vol[:,:,:,np.newaxis])
+                    cmfd_flux[:,:,:,:,np.newaxis], axis=3))
 
         # Normalize source such that it sums to 1.0
         self._cmfd_src = cmfd_src / np.sum(cmfd_src)
@@ -1393,151 +1467,6 @@ class CMFDRun(object):
         # Calculate differences between normalized sources
         self._src_cmp.append(np.sqrt(1.0 / self._norm
                              * np.sum((self._cmfd_src - self._openmc_src)**2)))
-
-    def _cmfd_reweight(self):
-        """Performs weighting of particles in source bank"""
-        # Get spatial dimensions and energy groups
-        nx, ny, nz, ng = self._indices
-
-        # Count bank site in mesh and reverse due to egrid structured
-        outside = self._count_bank_sites()
-
-        # Check and raise error if source sites exist outside of CMFD mesh
-        if openmc.lib.master() and outside:
-            raise OpenMCError('Source sites outside of the CMFD mesh')
-
-        # Have master compute weight factors, ignore any zeros in
-        # sourcecounts or cmfd_src
-        if openmc.lib.master():
-            # Compute normalization factor
-            norm = np.sum(self._sourcecounts) / np.sum(self._cmfd_src)
-
-            # Define target reshape dimensions for sourcecounts. This
-            # defines how self._sourcecounts is ordered by dimension
-            target_shape = [nz, ny, nx, ng]
-
-            # Reshape sourcecounts to target shape. Swap x and z axes so
-            # that the shape is now [nx, ny, nz, ng]
-            sourcecounts = np.swapaxes(
-                    self._sourcecounts.reshape(target_shape), 0, 2)
-
-            # Flip index of energy dimension
-            sourcecounts = np.flip(sourcecounts, axis=3)
-
-            # Compute weight factors
-            div_condition = np.logical_and(sourcecounts > 0,
-                                           self._cmfd_src > 0)
-            self._weightfactors = (np.divide(self._cmfd_src * norm,
-                                   sourcecounts, where=div_condition,
-                                   out=np.ones_like(self._cmfd_src),
-                                   dtype=np.float32))
-
-        if not self._feedback:
-            return
-
-        # Broadcast weight factors to all procs
-        if have_mpi:
-            self._weightfactors = self._intracomm.bcast(
-                                  self._weightfactors)
-
-        m = openmc.lib.meshes[self._mesh_id]
-        energy = self._egrid
-        ng = self._indices[3]
-
-        # Get locations and energies of all particles in source bank
-        source_xyz = openmc.lib.source_bank()['r']
-        source_energies = openmc.lib.source_bank()['E']
-
-        # Convert xyz location to the CMFD mesh index
-        mesh_ijk = np.floor((source_xyz - m.lower_left)/m.width).astype(int)
-
-        # Determine which energy bin each particle's energy belongs to
-        # Separate into cases bases on where source energies lies on egrid
-        energy_bins = np.zeros(len(source_energies), dtype=int)
-        idx = np.where(source_energies < energy[0])
-        energy_bins[idx] = ng - 1
-        idx = np.where(source_energies > energy[-1])
-        energy_bins[idx] = 0
-        idx = np.where((source_energies >= energy[0]) &
-                       (source_energies <= energy[-1]))
-        energy_bins[idx] = ng - np.digitize(source_energies[idx], energy)
-
-        # Determine weight factor of each particle based on its mesh index
-        # and energy bin and updates its weight
-        openmc.lib.source_bank()['wgt'] *= self._weightfactors[
-                mesh_ijk[:,0], mesh_ijk[:,1], mesh_ijk[:,2], energy_bins]
-
-        if openmc.lib.master() and np.any(source_energies < energy[0]):
-            print(' WARNING: Source point below energy grid')
-            sys.stdout.flush()
-        if openmc.lib.master() and np.any(source_energies > energy[-1]):
-            print(' WARNING: Source point above energy grid')
-            sys.stdout.flush()
-
-    def _count_bank_sites(self):
-        """Determines the number of fission bank sites in each cell of a given
-        mesh and energy group structure.
-        Returns
-        -------
-        bool
-            Wheter any source sites outside of CMFD mesh were found
-
-        """
-        # Initialize variables
-        m = openmc.lib.meshes[self._mesh_id]
-        bank = openmc.lib.source_bank()
-        energy = self._egrid
-        sites_outside = np.zeros(1, dtype=bool)
-        nxnynz = np.prod(self._indices[0:3])
-        ng = self._indices[3]
-
-        outside = np.zeros(1, dtype=bool)
-        self._sourcecounts = np.zeros((nxnynz, ng))
-        count = np.zeros(self._sourcecounts.shape)
-
-        # Get location and energy of each particle in source bank
-        source_xyz = openmc.lib.source_bank()['r']
-        source_energies = openmc.lib.source_bank()['E']
-
-        # Convert xyz location to mesh index and ravel index to scalar
-        mesh_locations = np.floor((source_xyz - m.lower_left) / m.width)
-        mesh_bins = mesh_locations[:,2] * m.dimension[1] * m.dimension[0] + \
-            mesh_locations[:,1] * m.dimension[0] + mesh_locations[:,0]
-
-        # Check if any source locations lie outside of defined CMFD mesh
-        if np.any(mesh_bins < 0) or np.any(mesh_bins >= np.prod(m.dimension)):
-            outside[0] = True
-
-        # Determine which energy bin each particle's energy belongs to
-        # Separate into cases bases on where source energies lies on egrid
-        energy_bins = np.zeros(len(source_energies), dtype=int)
-        idx = np.where(source_energies < energy[0])
-        energy_bins[idx] = 0
-        idx = np.where(source_energies > energy[-1])
-        energy_bins[idx] = ng - 1
-        idx = np.where((source_energies >= energy[0]) &
-                       (source_energies <= energy[-1]))
-        energy_bins[idx] = np.digitize(source_energies[idx], energy) - 1
-
-        # Determine all unique combinations of mesh bin and energy bin, and
-        # count number of particles that belong to these combinations
-        idx, counts = np.unique(np.array([mesh_bins, energy_bins]), axis=1,
-                                return_counts=True)
-
-        # Store counts to appropriate mesh-energy combination
-        count[idx[0].astype(int), idx[1].astype(int)] = counts
-
-        if have_mpi:
-            # Collect values of count from all processors
-            self._intracomm.Reduce(count, self._sourcecounts, MPI.SUM)
-            # Check if there were sites outside the mesh for any processor
-            self._intracomm.Reduce(outside, sites_outside, MPI.LOR)
-        # Deal with case if MPI not defined (only one proc)
-        else:
-            sites_outside = outside
-            self._sourcecounts = count
-
-        return sites_outside[0]
 
     def _build_loss_matrix(self, adjoint):
         # Extract spatial and energy indices and define matrix dimension
@@ -1753,7 +1682,7 @@ class CMFDRun(object):
 
             # Compute new flux with C++ solver
             innerits = openmc.lib._dll.openmc_run_linsolver(loss.data, s_o,
-                                                             phi_n, toli)
+                                                            phi_n, toli)
 
             # Compute new source vector
             s_n = prod.dot(phi_n)
@@ -1785,7 +1714,7 @@ class CMFDRun(object):
             # Update tolerance for inner iterations
             toli = max(atoli, rtoli*norm_n)
 
-    def _check_convergence(self, s_n, s_o, k_n, k_o, iter, innerits):
+    def _check_convergence(self, s_n, s_o, k_n, k_o, iteration, innerits):
         """Checks the convergence of the CMFD problem
 
         Parameters
@@ -1798,9 +1727,9 @@ class CMFDRun(object):
             K-effective  from current iteration
         k_o : float
             K-effective from previous iteration
-        iter: int
+        iteration : int
             Iteration number
-        innerits: int
+        innerits : int
             Number of iterations required for convergence in inner GS loop
 
         Returns
@@ -1825,14 +1754,13 @@ class CMFDRun(object):
 
         # Print out to user
         if self._power_monitor and openmc.lib.master():
-            str1 = ' {:d}:'.format(iter)
-            str2 = 'k-eff: {:0.8f}'.format(k_n)
-            str3 = 'k-error:  {:.5e}'.format(kerr)
-            str4 = 'src-error:  {:.5e}'.format(serr)
-            str5 = '  {:d}'.format(innerits)
-            print('{:8s}{:20s}{:25s}{:s}{:s}'.format(str1, str2, str3, str4,
-                                                     str5))
-            sys.stdout.flush()
+            print('{:8s}{:20s}{:25s}{:s}{:s}'.format(
+                ' {:d}:'.format(iteration),
+                'k-eff: {:0.8f}'.format(k_n),
+                'k-error:  {:.5e}'.format(kerr),
+                'src-error:  {:.5e}'.format(serr),
+                '  {:d}'.format(innerits)
+            ), flush=True)
 
         return iconv, serr
 
@@ -1850,7 +1778,7 @@ class CMFDRun(object):
         # Define coremap as cumulative sum over accelerated regions,
         # otherwise set value to _CMFD_NOACCEL
         self._coremap = np.where(self._coremap == 0, _CMFD_NOACCEL,
-                                 np.cumsum(self._coremap)-1)
+                                 np.cumsum(self._coremap) - 1)
 
         # Reshape coremap to three dimensional array
         # Indices of coremap in user input switched in x and z axes
@@ -1929,19 +1857,19 @@ class CMFDRun(object):
                           ') in group ' + str(ng-idx[-1])
             raise OpenMCError(err_message)
 
-        # Get total rr from CMFD tally 0
+        # Get total reaction rate (rr) from CMFD tally 0
         totalrr = tallies[tally_id].results[:,1,1]
 
-        # Reshape totalrr array to target shape. Swap x and z axes so that
-        # shape is now [nx, ny, nz, ng, 1]
+        # Reshape total reaction rate array to target shape. Swap x and z axes
+        # so that shape is now [nx, ny, nz, ng, 1]
         reshape_totalrr = np.swapaxes(totalrr.reshape(target_tally_shape),
                                       0, 2)
 
-        # Total rr is flipped in energy axis as tally results are given in
-        # reverse order of energy group
+        # Total reaction rate is flipped in energy axis as tally results are
+        # given in reverse order of energy group
         reshape_totalrr = np.flip(reshape_totalrr, axis=3)
 
-        # Bank total rr to total_rate
+        # Bank total reaction rate to total_rate
         self._total_rate = np.append(self._total_rate, reshape_totalrr,
                                      axis=4)
 
@@ -2047,7 +1975,7 @@ class CMFDRun(object):
                                        axis=5)
 
         # Compute current as aggregate of banked current_rate over tally window
-        self._current = np.where(is_accel[..., np.newaxis, np.newaxis], 
+        self._current = np.where(is_accel[..., np.newaxis, np.newaxis],
                                  np.sum(self._current_rate, axis=5), 0.0)
 
         # Get p1 scatter rr from CMFD tally 3
@@ -2214,7 +2142,6 @@ class CMFDRun(object):
         is_accel = self._coremap != _CMFD_NOACCEL
         # Logical for determining whether a zero flux "albedo" b.c. should be
         # applied
-        is_zero_flux_alb = abs(self._albedo - _ZERO_FLUX) < _TINY_BIT
         x_inds, y_inds, z_inds = np.indices((nx, ny, nz))
 
         # Define slice equivalent to is_accel[0,:,:]
@@ -2791,8 +2718,6 @@ class CMFDRun(object):
 
         # Define flux in each cell
         cell_flux = self._flux / dxdydz
-        # Extract indices of coremap that are accelerated
-        is_accel = self._coremap != _CMFD_NOACCEL
 
         # Define dhat at left surface for all mesh cells on left boundary
         boundary = self._first_x_accel
@@ -2952,15 +2877,22 @@ class CMFDRun(object):
 
     def _create_cmfd_tally(self):
         """Creates all tallies in-memory that are used to solve CMFD problem"""
-        # Create Mesh object based on CMFDMesh, stored internally
-        cmfd_mesh = openmc.lib.RegularMesh()
+        # Create Mesh object based on CMFDMesh mesh_type, stored internally
+        if self._mesh.mesh_type == 'regular':
+            cmfd_mesh = openmc.lib.RegularMesh()
+            # Set dimension and parameters of mesh object
+            cmfd_mesh.dimension = self._mesh.dimension
+            cmfd_mesh.set_parameters(lower_left=self._mesh.lower_left,
+                                     upper_right=self._mesh.upper_right,
+                                     width=self._mesh.width)
+        elif self._mesh.mesh_type == 'rectilinear':
+            cmfd_mesh = openmc.lib.RectilinearMesh()
+            # Set grid of mesh object
+            x_grid, y_grid, z_grid = self._mesh.grid
+            cmfd_mesh.set_grid(x_grid, y_grid, z_grid)
+
         # Store id of mesh object
         self._mesh_id = cmfd_mesh.id
-        # Set dimension and parameters of mesh object
-        cmfd_mesh.dimension = self._mesh.dimension
-        cmfd_mesh.set_parameters(lower_left=self._mesh.lower_left,
-                                 upper_right=self._mesh.upper_right,
-                                 width=self._mesh.width)
 
         # Create mesh Filter object, stored internally
         mesh_filter = openmc.lib.MeshFilter()
@@ -3050,3 +2982,7 @@ class CMFDRun(object):
 
             # Set all tallies to be active from beginning
             cmfd_tally.active = True
+
+        # Initialize CMFD mesh and energy grid in C++ for CMFD reweight
+        args = self._tally_ids[0], self._indices, self._norm
+        openmc.lib._dll.openmc_initialize_mesh_egrid(*args)

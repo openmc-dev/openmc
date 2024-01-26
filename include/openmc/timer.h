@@ -21,7 +21,7 @@ extern Timer time_finalize;
 extern Timer time_inactive;
 extern Timer time_initialize;
 extern Timer time_read_xs;
-extern Timer time_sample_source;
+extern Timer time_statepoint;
 extern Timer time_tallies;
 extern Timer time_total;
 extern Timer time_transport;
@@ -58,9 +58,9 @@ public:
   void reset();
 
 private:
-  bool running_ {false}; //!< is timer running?
+  bool running_ {false};                 //!< is timer running?
   std::chrono::time_point<clock> start_; //!< starting point for clock
-  double elapsed_ {0.0}; //!< elapsed time in [s]
+  double elapsed_ {0.0};                 //!< elapsed time in [s]
 };
 
 //==============================================================================

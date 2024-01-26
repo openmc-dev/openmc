@@ -1,0 +1,38 @@
+#!/bin/sh -e
+
+if [ -n "${SKIP_GCF}" ]; then
+  # Running inside of another git-clang-format hook
+  exit 0
+fi
+
+if ! command -v git-clang-format >/dev/null 2>&1 ; then
+  printf "\e[1;33mgit-clang-format is not installed!\e[0m
+  Install clang to enable auto-formatting.
+" >&2
+  exit 0
+fi
+
+if ! git diff-files --quiet ; then
+  printf "\e[1;33mWill not git-clang-format: repository is dirty\e[0m. \e[33m \
+Stage (with 'git add') or stash (with 'git stash') all files before committing \
+to apply formatting.\e[0m
+" >&2
+  exit 0
+fi
+
+printf "\e[2;37;40mRunning git-clang-format...\e[0m" >&2
+CLANG_FORMAT_RESULT="$(git-clang-format HEAD^)"
+
+if git diff-files --quiet ; then
+  printf "\r\e[2;32mAll code changes were properly formatted\e[0m\n" >&2
+else
+  BAD_COMMIT=$(git rev-parse --short HEAD)
+  printf "\r\e[0;33mCode formatting changes were required:\e[0m\n" >&2
+  printf "${CLANG_FORMAT_RESULT}\n" >&2
+  git add -u :/
+  SKIP_GCF=1 git commit --amend -C HEAD >/dev/null
+  GOOD_COMMIT=$(git rev-parse --short HEAD)
+  printf "\e[2;37mTo view formatting changes:
+    git diff ${BAD_COMMIT} ${GOOD_COMMIT}\e[0m
+" >&2
+fi

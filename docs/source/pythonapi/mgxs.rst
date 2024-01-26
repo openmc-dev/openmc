@@ -30,19 +30,26 @@ Multi-group Cross Sections
     :template: myclassinherit.rst
 
     openmc.mgxs.MGXS
+    openmc.mgxs.MatrixMGXS
     openmc.mgxs.AbsorptionXS
     openmc.mgxs.CaptureXS
     openmc.mgxs.Chi
+    openmc.mgxs.Current
+    openmc.mgxs.DiffusionCoefficient
     openmc.mgxs.FissionXS
     openmc.mgxs.InverseVelocity
     openmc.mgxs.KappaFissionXS
     openmc.mgxs.MultiplicityMatrixXS
     openmc.mgxs.NuFissionMatrixXS
+    openmc.mgxs.ReducedAbsorptionXS
     openmc.mgxs.ScatterXS
     openmc.mgxs.ScatterMatrixXS
     openmc.mgxs.ScatterProbabilityMatrix
     openmc.mgxs.TotalXS
     openmc.mgxs.TransportXS
+    openmc.mgxs.ArbitraryXS
+    openmc.mgxs.ArbitraryMatrixXS
+    openmc.mgxs.MeshSurfaceMGXS
 
 Multi-delayed-group Cross Sections
 ----------------------------------
@@ -53,6 +60,7 @@ Multi-delayed-group Cross Sections
     :template: myclassinherit.rst
 
     openmc.mgxs.MDGXS
+    openmc.mgxs.MatrixMDGXS
     openmc.mgxs.ChiDelayed
     openmc.mgxs.DelayedNuFissionXS
     openmc.mgxs.DelayedNuFissionMatrixXS

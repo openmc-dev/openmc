@@ -1,12 +1,20 @@
 .. _random_ray:
 
-======================================
-Random Ray User Guide
-======================================
+=================
+Random Ray Solver
+=================
 
 In general, the random ray solver mode uses most of the same settings and :ref:`run strategies <usersguide_particles>` as the standard Monte Carlo solver mode. For instance, random ray solves are also split up into :ref:`inactive and active batches <usersguide_batches>`.
 
 However, there are a couple of areas that the random ray run strategy differs from the Monte Carlo :ref:`run strategy <usersguide_particles>`.
+
+-----------
+Solver Type
+-----------
+
+To enable random ray, the ``settings.solver_type`` must be set to ``random_ray``, e.g.::
+
+    settings.solver_type = 'random ray'
 
 ----------------
 Inactive Batches

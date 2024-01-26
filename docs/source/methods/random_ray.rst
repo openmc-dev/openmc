@@ -4,6 +4,9 @@
 Random Ray
 ==========
 
+
+.. _usersguide_random_ray_intro:
+
 -------------------
 What is Random Ray?
 -------------------
@@ -12,7 +15,9 @@ Random ray [`Tramm 2017a`_] is a stochastic transport method, closely related to
 
 .. raw:: html
 
-    <iframe width="560" height="315" id="player" src="https://www.youtube.com/watch?v=9NrODC6pbLg" frameborder="0" allowfullscreen></iframe>
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/pHQq3FE4PDo?si=kPm9ngMBr95wLRGC" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+
+The above animation is an example of the random ray integration process at work, showing a series of random rays being sampled and transported through the geometry. In the following sections, we will discuss how the random ray solver works.
 
 ----------------------------------------------
 Why is a Random Ray Solver Included in OpenMC?
@@ -36,7 +41,7 @@ There are a few good reasons:
 
 -------------------------------
 Random Ray Numerical Derivation
---------------------------------
+-------------------------------
 
 The derivation of Random Ray is discussed extensively in [`Tramm 2017a`_], but we will reproduce portions of this dissertation varbatim in this section for convenience.
 
@@ -102,6 +107,43 @@ The constructive solid geometry (CSG) definition of the reactor is used to creat
 
     \psi_g(s) = \psi_g(0) e^{-\Sigma_{t,g} s} + \frac{q_0}{\Sigma_{t,g}} \left( 1 - e^{-\Sigma_{t,g} s} \right)
 
+For convenience, we can also write this equation in terms of the incoming and outgoing angular flux (:math:`\psi_g^{in}` and :math:`\psi_g^{out}`), as in:
+
+.. math::
+    :label: fsr_attenuation_in_out
+
+    \psi_g^{out} = \psi_g^{in} e^{-\Sigma_{t,i,g} \ell_r} + \frac{Q_{i,g}}{\Sigma_{t,i,g}} \left( 1 - e^{-\Sigma_{t,i,g} \ell_r} \right)
+
+We can then define the average anglux flux of a single ray passing through the cell as:
+
+.. math::
+    :label: average
+
+    \overline{\psi}_{r,i,g} = \frac{1}{\ell_r} \int_0^{\ell_r} \psi_{g}(s)ds
+
+We can then substitute in Equation :eq:`fsr_attenuation` and solve, resulting in:
+
+.. math::
+    :label: average_solved
+
+    \overline{\psi}_{r,i,g} = \frac{Q_{i,g}}{\Sigma_{t,i,g}} - \frac{\psi_{r,g}^{out} - \psi_{r,g}^{in}}{\ell_r \Sigma_{t,i,g}}
+
+By rearranging Equation :eq:`fsr_attenuation_in_out`, we can then define :math:`\Delta \psi_{r,g}`as the change in angular flux for ray :math:`r` passing through region :math:`i` as:
+
+.. math::
+    :label: delta_psi
+
+    \Delta \psi_{r,g} = \psi_{r,g}^{in} - \psi_{r,g}^{out} = \left(\psi_{r,g}^{in} - \frac{Q_{i,g}}{\Sigma_{t,i,g}} \right) \left( 1 - e^{-\Sigma_{t,i,g} \ell_r} \right)
+
+Equation :eq:`delta_psi` is a useful expression, as it is easily computed with the known inputs for a ray crossing through the region. 
+
+By substituting :eq:`delta_psi` into :eq:`average_solved`, we can arrive at a final expression for the average angular flux for a ray crossing a region as:
+
+.. math::
+    :label: average_psi_final
+
+    \overline{\psi}_{r,i,g} = \frac{Q_{i,g}}{\Sigma_{t,i,g}} + \frac{\Delta \psi_{r,g}}{\ell_r \Sigma_{t,i,g}}
+
 ~~~~~~~~~~~
 Random Rays
 ~~~~~~~~~~~
@@ -110,15 +152,165 @@ In the previous subsection, the govering characteristic equation along a 1D line
 
 Fundamentally, this distinction means that random ray typically requires more inactive iterations than are required in Monte Carlo, as the scattering source must also be developed. While a Monte Carlo simulation may only need 20-50 inactive iterations to reach a stationary source distribution for a full core light water reactor, a random ray solve will likely require 1,000 iterations or more. Source convergence metrics (e.g., Shannon Entropy) are thus highly useful tools when performing Random Ray simulations so as to help judge when the source has fully developed.
 
-~~~~~~~~~~~~~~~~~~~~~~~
-Ray Starting Conditions
-~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Converting Angular Flux to Scalar Flux
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Thus far in our derivation, we have been able to write analytical equations that solve for the change in angular flux of a ray crossing a flat source region as well as the ray's average angular flux through that region. To determine the source for the next power iteration, we will need to assemble our estimates of angular fluxes from all the sampled rays into scalar fluxes within each FSR.
+
+We can define the scalar flux in region :math:`i` as:
+
+.. math::
+    :label: integral
+
+    \phi_i = \frac{\int_{V_i} \int_{4\pi} \psi(r, \Omega) d\Omega dV}{\int_{V_i} dV}
+
+The integral in the numerator:
+
+.. math::
+    :label: numerator
+
+    \int_{V_i} \int_{4\pi} \psi(r, \Omega) d\Omega dV
+
+is not known analytically, but with random ray, we are going the numerically approximate it by discretizing over a finite number of tracks (with a finite number of locations and angles) crossing the domain. We can then use the characteristic method to determine the total angular flux along that line.
+
+Spiritually, this is akin to taking a volume-weighted sum of angular fluxes for all rays that happen to pass through the cell that iteration. When written in discretized form (with the discretization happening in terms of individual rays :math:`r` that pass through region :math:`i`), we arrive at:
+
+.. math::
+    :label: discretized
+
+    \phi_{i,g} = \frac{\int_{V_i} \int_{4\pi} \psi(r, \Omega) d\Omega dV}{\int_{V_i} dV} = \overline{\overline{\psi}}_{i,g} \approx \frac{\sum\limits_{r=1}^{N_i} \ell_r w_r \overline{\psi}_{r,i,g}}{\sum\limits_{r=1}^{N_i} \ell_r w_r}
+
+Here we introduce the term :math:`w_r`, which represents the "weight" of the ray (its 2D area), such that the volume that a ray is responsible for can be determined by multiplying its length :math:`\ell` by its weight :math:`w`. As the scalar flux vector is a shape function only, we are actually free to multiple all ray weights :math:`w` by any constant such that the overall shape is still maintained, even if the magnitude of the shape function changes. Thus, we can simply set :math:`w_r` to be unity for all rays, such that:
+
+.. math::
+    :label: weights
+
+    \text{Volume of cell } i = V_i \approx \sum\limits_{i} \ell_i w_i = \sum\limits_{i} \ell_i
+
+Thus, we can rewrite our discretized equation as:
+
+.. math::
+    :label: discretized_2
+
+    \phi_{i,g} \approx \frac{\sum\limits_{r=1}^{N_i} \ell_r w_r \overline{\psi}_{r,i,g}}{\sum\limits_{r=1}^{N_i} \ell_r w_r} = \frac{\sum\limits_{r=1}^{N_i} \ell_r \overline{\psi}_{r,i,g}}{\sum\limits_{r=1}^{N_i} \ell_r}
+
+Thus, the scalar flux can be inferred if we know the volume weighted sum of the average angular fluxes that pass through the cell. Substituting :eq:`average_psi_final` into :eq:`discretized_2`, we arrive at:
+
+.. math::
+    :label: scalar_full
+
+    \phi_{i,g} = \frac{\int_{V_i} \int_{4\pi} \psi(r, \Omega) d\Omega dV}{\int_{V_i} dV} = \overline{\overline{\psi}}_{i,g} = \frac{\sum\limits_{r=1}^{N_i} \ell_r \overline{\psi}_{r,i,g}}{\sum\limits_{r=1}^{N_i} \ell_r} = \frac{\sum\limits_{r=1}^{N_i} \ell_r \frac{Q_{i,g}}{\Sigma_{t,i,g}} + \frac{\Delta \psi_{r,g}}{\ell_r \Sigma_{t,i,g}}}{\sum\limits_{r=1}^{N_i} \ell_r}
+
+Which when simplified becomes:
+
+.. math::
+    :label: scalar_four_vols
+
+    \phi =  \frac{Q \sum\limits_{i} \ell_i}{\Sigma_t \sum\limits_{i} \ell_i} + \frac{\sum\limits_{i} \ell_i \frac{\Delta \psi_i}{\ell_i}}{\Sigma_t \sum\limits_{i} \ell_i}
+
+~~~~~~~~~~~~~~
+Volume Dilemma
+~~~~~~~~~~~~~~
+
+At first glance, Equation :eq:`scalar_four_vols` appears ripe for cancellation of terms. Mathematically, such cancellation allows us to arrive at the following "naive" estimator for the scalar flux (:math:`\phi_^{naive}`):
+
+.. math::
+    :label: phi_naive
+
+    \phi_{i,g}^{naive} = \frac{Q_{i,g} }{\Sigma_{t,i,g}} + \frac{\sum\limits_{r=1}^{N_i} \Delta \psi_{r,g}}{\Sigma_{t,i,g} \sum\limits_{r=1}^{N_i} \ell_r} 
+
+This derivation appears mathematically sound at first glance, but unfortunately raises a serious issue. Namely, the second term:
+
+.. math::
+    :label: ratio_estimator
+
+     \frac{\sum\limits_{r=1}^{N_i} \Delta \psi_{r,g}}{\Sigma_{t,i,g} \sum\limits_{r=1}^{N_i} \ell_r} 
+    
+features stochastic variables (the sums over random ray lengths and angular fluxes) in both the numerator and denominator, making it a stochastic ratio estimator, which is inherently biased. In practice, usage of the naive estimator does result in a biased, but "consistent"  estimator (i.e., it is biased, but the bias tends towards zero as the sample size increases). Experimentally, the right answer can be obtained with this estimator, though a very fine ray density is required to eliminate the bias. 
+
+How might we solve the biased ratio estimator problem?
+
+While there is no obvious way to alter the numerator term (which arises from the characteristic integration approach itself), there is potentially more flexibility in how we treat the stochastic term in the denominator, :math:`\sum\limits_{r=1}^{N_i} \ell_r` . From Equation :eq:`weights` we know that this term can be directly inferred from the volume of the problem, which does actually change between iterations. Thus, an alternative treatment for this "volume" term in the denominator is to replace the actual stochastically sampled total track length with the expected value of the total track length. For instance, if the true volume of the FSR is known, as is the total volume of the full simulation domain and the total tracklength used for integration that iteration, then we know the true expected value of the tracklength in that FSR. I.e., if a FSR accounts for 2% of the overall volume of a simulation domain, then we know that the expected value of tracklength in that FSR will be 2% of the total tracklength for all rays that iteration. This is a key insight, as it allows us to the replace the actual tracklength that was run inside that FSR each iteration with the expected value.
+
+If we know the analytical volumes, then those can be used to directly compute the expected value of the tracklength in each cell. However, as the analytical volumes are not typically known in OpenMC due to the usage of user-defined constructive solid geometry, we need to source this quantity from elsewhere. An obvious choice is to simply accumulate the total tracklength through each FSR across all iterations (batches) and to use that sum to compute the expected average length per iteration, as:
+
+.. math::
+    :label: sim_estimator
+
+       \sum\limits^{}_{i} \ell_i \approx \frac{\sum\limits^{B}_{b}\sum\limits^{N_i}_{r} \ell_{b,r} }{B}
+
+where :math:`b` is a single batch in :math:`B` total batches simulated so far.
+
+In this manner, the expected value of the tracklength will become more refined as iterations continue, until after many iterations the variance of the denominator term becomes trivial compared to the numerator term, essentially eliminating the presence of the stochastic ratio estimator. A "simulation averaged" estimator is therefore:
+
+.. math::
+    :label: phi_sim
+
+    \phi_{i,g}^{simulation} = \frac{Q_{i,g} }{\Sigma_{t,i,g}} + \frac{\sum\limits_{r=1}^{N_i} \Delta \psi_{r,g}}{\Sigma_{t,i,g} \frac{\sum\limits^{B}_{b}\sum\limits^{N_i}_{r} \ell_{b,r} }{B}} 
+
+In practical terms, the "simulation averaged" estimator is virtually indistinguishable numerically from use of the true analytical volume to estimate this term. 
+
+There are some drawbacks to this method. Recall, this denominator volume term originally stemmed from taking a volume weighted integral of the angular flux, in which case the denominator served as normalized term for the numerator integral in Equation :eq:`integral`. Essentially, we have now used a different term for the volume in the numerator as compared to the normalizing volume in the denominator. The inevitable mismatch (due to noise) between these two quantities results in a significant increase in variance. Notably, the same problem occurs if using a tracklength estimate based on the analytical volume, as again the numerator integral and the normalizing denominator integral no longer match on a per-iteration basis. 
+
+In practice, the simulation averaged method does completely remove the bias, though at the cost of a notable increase in variance. Empirical testing reveals that on most problems, the simulation averaged estimator does win out overall in numerical performance, as a much coarser quadrature can be used resulting in faster runtimes overall (due to the fixed cost of inactive batches). Thus, OpenMC uses the simulation averaged estimator in its random ray mode.
+
+~~~~~~~~~~~~~~~
+Power Iteration
+~~~~~~~~~~~~~~~
+
+Given a starting source term, we now have a way of computing an estimate of the scalar flux in each cell by way of transporting rays randomly through the domain, recording the change in angular flux for the rays into each cell as they make their traversals, and summing these contributions up as in Equation :eq:`phi_sim`. How then do we turn this into an iterative process such that we improve the estimate of the source and scalar flux over many iterations, given that our initial starting source will just be a guess?
+
+The source in random ray :math:`Q^{n}` for iteration :math:`n`` can be inferred from the scalar flux from the previous iteration :math:`n-1` as:
+
+.. math::
+    :label: source_update
+
+    Q^{n}(i, g) = \frac{\chi}{k_{eff}} \nu \Sigma_f(i, g) \phi^{n-1}(g) + \sum\limits^{G}_{g'} \Sigma_{s}(i,g,g') \phi^{n-1}(g')
+
+where :math:`Q^{n}(i, g)` is the total source (fission + scattering) in region :math:`i` and energy group :math:`g`. Notably, the in-scattering source in group :math:`g` must be computed by summing over the contributions from all groups :math:`g' \in G`.
+
+In a similar manner, the eigenvalue for iteration :math:`n` can be computed as:
+
+.. math::
+    :label: eigenvalue_update
+
+    k^{n}_{eff} = k^{n-1}_{eff} \frac{F^n}{F^{n-1}}
+
+Where the total spatial and energy integrated fission rate :math:`F^n` in iteration :math:`n` can be computed as:
+
+.. math::
+    :label: fission_source
+
+    F^n = \sum\limits^{F}_{i} \left( V_i \sum\limits^{G}_{g} \nu \Sigma_f(i, g) \phi^{n}(g) \right)
+
+where :math:`F`` is the total number of FSRs in the simulation. Similarly, the total spatial and energy integrated fission rate :math:`F^{n-1}` in iteration :math:`n-1` can be computed as:
+
+.. math::
+    :label: fission_source_prev
+
+    F^{n-1} = \sum\limits^{F}_{i} \left( V_i \sum\limits^{G}_{g} \nu \Sigma_f(i, g) \phi^{n-1}(g) \right)
+
+Notably, the volume term :math:`V_i` appears in the eigenvalue update equation. The same logic applies to the treatment of this term as was discussed earlier. In OpenMC, we use the "simulation averaged" volume derived from summing over all ray tracklength contributions to a FSR over all iterations and dividing by the total integration tracklength to date. Thus, Equation :eq:`fission_source` becomes:
+
+.. math::
+    :label: fission_source_volumed
+
+    F^n = \sum\limits^{F}_{i} \left( \frac{\sum\limits^{B}_{b}\sum\limits^{N_i}_{r} \ell_{b,r} }{B} \sum\limits^{G}_{g} \nu \Sigma_f(i, g) \phi^{n}(g) \right)
+
+and a similar substitution can be made to update Equation :eq:`fission_source_prev` .
+
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Ray Starting Conditions and Inactive Length
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Another key area of divergence between deterministic MOC and random ray is the starting conditions for rays. In deterministic MOC, the angular flux spectrum for rays are stored at any reflective or periodic boundaries so as to provide a starting condition for the next iteration. As there are many tracks, storage of angular fluxes can become costly in terms of memory consumption unless there are only vacuum boundaries present.
 
-In random ray, as the starting locations of rays are sampled anew each iteration, the initial angular flux spectrum for the ray is unknown. While a guess can be made by taking the isotropic source from the FSR the ray was sampled in, direct usage of this quantity would result in significant bias and error being imparted on the simulation. f
+In random ray, as the starting locations of rays are sampled anew each iteration, the initial angular flux spectrum for the ray is unknown. While a guess can be made by taking the isotropic source from the FSR the ray was sampled in, direct usage of this quantity would result in significant bias and error being imparted on the simulation.
 
-Thus, an on-the-fly approximation method was developed (known as the "dead zone"), where the first several mean free paths of a ray are considered to be "inactive" or "read only". In this sense, the angular flux is solved for using the MOC equation, but the ray does not "tally" any scalar flux back to the FSRs that it travels through. After several mean free paths have been traversed, the ray's angular flux spectrum typically becomes dominated by the accumulated source terms from the cells it has travelled through, while the (incorrect) starting conditions have been attenuated away. 
+Thus, an on-the-fly approximation method was developed (known as the "dead zone"), where the first several mean free paths of a ray are considered to be "inactive" or "read only". In this sense, the angular flux is solved for using the MOC equation, but the ray does not "tally" any scalar flux back to the FSRs that it travels through. After several mean free paths have been traversed, the ray's angular flux spectrum typically becomes dominated by the accumulated source terms from the cells it has travelled through, while the (incorrect) starting conditions have been attenuated away. In the animation in the :ref:`introductory section on this page <usersguide_random_ray_intro>` , the yellow portion of the ray lengths is the dead zone. As can be seen in this animation, the tallied :math:`\sum\limits_{r=1}^{N_i} \Delta \psi_{r,g}` term that is plotted does not get affected by the ray when the ray is within its inactive length. Only when the ray enters its active mode does the ray contribute to the :math:`\sum\limits_{r=1}^{N_i} \Delta \psi_{r,g}` sum for the iteration.
 
 ~~~~~~~~~~~~~~~~~~~~~
 Ray Ending Conditions
@@ -126,13 +318,13 @@ Ray Ending Conditions
 
 To ensure that a uniform density of rays is integrated in space and angle throughout the simulation domain, after exiting the initial inactive "dead zone" portion of the ray, the rays are run for a user-specified distance. Typically, a choice of at least several times the length of the inactive "dead zone" is made so as to amortize the cost of the dead zone. E.g., if a dead zone of 30 cm is selected, then an active length of 300 cm might be selected so as to ensure the cost of the dead zone is below 10% of the overall runtime. 
 
-~~~~~~~~~~~~~~~
-Power Iteration
-~~~~~~~~~~~~~~~
+--------------------
+Simplified Algorithm
+--------------------
 
-A simplified set of functions that execute a single random ray power iteration are given below. Not all global variables are defined in this illustrative example, but the high level components of the algorithm are shown. A number of significant simplifications are made for clarity -- for example, no inactive "dead zone" length is shown, geometry operations are abstracted, no parallelism (or thread safety) is expressed, among other subtleties.
+A simplified set of functions that execute a single random ray power iteration are given below. Not all global variables are defined in this illustrative example, but the high level components of the algorithm are shown. A number of significant simplifications are made for clarity -- for example, no inactive "dead zone" length is shown, geometry operations are abstracted, no parallelism (or thread safety) is expressed, and rays are not halted at their exact termination distances, among other subtleties. Nonetheless, the below algorithms may be useful for gaining intuition on the basic compontents of the random ray process. Rather than expressing the algorithm in abstract pseudocode, C++ is used to make the control flow easier to understand.
 
-The first block below shows the logic for the overall power iteration:
+The first block below shows the logic for single power iteration (batch):
 
 .. code-block:: C++
 
@@ -210,7 +402,7 @@ The final function below shows the logic for solving for the characteristic MOC 
          for (int e = 0; e < global::n_energy_groups; e++) {
             float sigma_t = global::macro_xs[material].total;
             float tau = sigma_t * s;
-            float delta_psi = (ray.angular_flux[e] - global::source[fsr][e]) * (1 - exp(-tau));
+            float delta_psi = (ray.angular_flux[e] - global::source[fsr][e] / sigma_t) * (1 - exp(-tau));
             ray.angular_flux_[e] -= delta_psi;
             global::scalar_flux_new[fsr][e] += delta_psi;
         }

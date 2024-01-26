@@ -10,6 +10,7 @@ from warnings import warn
 
 import lxml.etree as ET
 import numpy as np
+from scipy.integrate import trapezoid
 
 import openmc.checkvalue as cv
 from .._xml import get_text
@@ -1066,7 +1067,7 @@ class Tabular(Univariate):
         if self.interpolation == 'histogram':
             return np.sum(np.diff(self.x) * self.p[:-1])
         elif self.interpolation == 'linear-linear':
-            return np.trapz(self.p, self.x)
+            return trapezoid(self.p, self.x)
         else:
             raise NotImplementedError(
                 f'integral() not supported for {self.inteprolation} interpolation')

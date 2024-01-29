@@ -80,7 +80,8 @@ def test_missing_material_name(model):
 def test_surf_source(model):
     # create a surface source read on this model to ensure
     # particles are being generated correctly
-    model.settings.surf_source_write = {'surface_ids': [1], 'max_particles': 100}
+    n = 100
+    model.settings.surf_source_write = {'surface_ids': [1], 'max_particles': n}
 
     # If running in MPI mode, setup proper keyword arguments for run()
     kwargs = {'openmc_exec': config['exe']}
@@ -91,7 +92,8 @@ def test_surf_source(model):
     with h5py.File('surface_source.h5') as fh:
         assert fh.attrs['filetype'] == b'source'
         arr = fh['source_bank'][...]
-    assert arr.size == 100
+    expected_size = n * int(config['mpi_np']) if config['mpi'] else n
+    assert arr.size == expected_size
 
     # check that all particles are on surface 1 (radius = 7)
     xs = arr[:]['r']['x']

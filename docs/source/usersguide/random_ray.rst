@@ -6,9 +6,9 @@ Random Ray Solver
 
 In general, the random ray solver mode uses most of the same settings and :ref:`run strategies <usersguide_particles>` as the standard Monte Carlo solver mode. For instance, random ray solves are also split up into :ref:`inactive and active batches <usersguide_batches>`. However, there are a couple of settings that are unique to the random ray solver, and a few areas that the random ray run strategy differs, which will be described in this section.
 
------------
-Solver Type
------------
+---------------------
+Selecting Solver Type
+---------------------
 
 To utilize the random ray solver, the ``settings.solver_type`` must be set to ``random_ray``, and multigroup mode must be enabled, e.g.::
 
@@ -147,7 +147,7 @@ Plotting
 
 Visualization of geometry is handled in the same way as normal with OpenMC (see :ref:`plotting guide <usersguide_plots>` for more details). I.e., ``openmc --plot`` is handled without any modifications, as the random ray solver uses the same geometry definition as in Monte Carlo.
 
-In addition to OpenMC's standard geometry plotting mode, the random ray solver also features an additional method of data visualization. If a ``plots.xml`` file is present, any voxel plots that are defined will be output at the end of a random ray simulation. Rather than being stored in HDF5 file format, the random ray plotting will generate ``.vtk`` files that can be directly read and plotted with :ref:`Paraview <https://www.paraview.org/>` (a free application). 
+In addition to OpenMC's standard geometry plotting mode, the random ray solver also features an additional method of data visualization. If a ``plots.xml`` file is present, any voxel plots that are defined will be output at the end of a random ray simulation. Rather than being stored in HDF5 file format, the random ray plotting will generate ``.vtk`` files that can be directly read and plotted with `Paraview <https://www.paraview.org/>`_ (a free application). 
 
 In fixed source Monte Carlo (MC), by default the only thing we know after a simulation is the escape fraction. In a k-eigenvalue MC solve, by default all we know is the eigenvalue and escape fraction. Spatial flux information is left totally up to the user to record, and often fine-grained spatial meshes are considered costly/unnecessary, so it makes no sense in MC mode to try to attempt to plot any spatial flux or power info by default. Conversely, in random ray, the solver functions by estimating the multigroup source and flux spectrums in every fine-grained FSR each iteration. Thus, in random ray, in both fixed source and eigenvalue simulations, the simulation always finishes with a well converged flux estimate for all areas. As such, it is much more common in random ray, MOC, and other deterministic codes to plot in situ commonly as global spatial flux information is always available. In the future, all FSR data will be made available in the statepoint file, such that users will still have the ability to plot/manipulate it on the python end, although statepoint support is not yet available.
 

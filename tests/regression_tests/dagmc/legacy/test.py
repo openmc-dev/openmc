@@ -6,7 +6,8 @@ import openmc.lib
 import h5py
 import numpy as np
 import pytest
-from tests.testing_harness import PyAPITestHarness
+
+from tests.testing_harness import PyAPITestHarness, config
 
 pytestmark = pytest.mark.skipif(
     not openmc.lib._dagmc_enabled(),
@@ -16,7 +17,7 @@ pytestmark = pytest.mark.skipif(
 def model():
     openmc.reset_auto_ids()
 
-    model = openmc.model.Model()
+    model = openmc.Model()
 
     # settings
     model.settings.batches = 5
@@ -79,9 +80,13 @@ def test_missing_material_name(model):
 def test_surf_source(model):
     # create a surface source read on this model to ensure
     # particles are being generated correctly
-    surf_src_info = {'surface_ids' : [1], 'max_particles': 100}
-    model.settings.surf_source_write = surf_src_info
-    model.run()
+    model.settings.surf_source_write = {'surface_ids': [1], 'max_particles': 100}
+
+    # If running in MPI mode, setup proper keyword arguments for run()
+    kwargs = {'openmc_exec': config['exe']}
+    if config['mpi']:
+        kwargs['mpi_args'] = [config['mpiexec'], '-n', config['mpi_np']]
+    model.run(**kwargs)
 
     with h5py.File('surface_source.h5') as fh:
         assert fh.attrs['filetype'] == b'source'

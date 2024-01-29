@@ -82,6 +82,12 @@ While the inactive and active ray lengths can usually be intuited by simply exam
 
 To help the user set this parameter, OpenMC will report the average flat source region miss rate at the end of the simulation. Additionally, OpenMC will alert the user if very high miss rates are detected, so that they are aware that more rays and/or more active ray length might improve numerical performance. Thus, a "guess and check" approach to this parameter is recommended, where a very low guess is made, a few iterations are performed, and then the user restarts the simulation with a larger value until the "low ray density" messages go away.
 
+.. note::
+    In summary, the user should select an inactive length corresponding to many times the mean free path of a particle O(10 - 100cm) to ensure accuracy of the starting angular flux. The active length should be 10x the inactive length to amortize its cost. The number of rays should be enough so that nearly all FSRs are hit at least once each power iteration (the hit fraction is reported by OpenMC for empirical user adjustment).
+
+.. warning::
+    For simulations where long range uncollided flux estimates need to be accurately resolved (e.g., shielding, detector response, problems with significant void areas), make sure that selections for inactive and active ray lengths are sufficiently long to allow for transport to occur between source and target regions of interest. 
+
 ----------
 Ray Source
 ----------
@@ -158,6 +164,67 @@ Only voxel plots will be used to generate output -- other plot types present in 
     - flux spectrum (for each energy group)
     - total fission source (integrated across all energy groups)
 
+------------------------------------------
+Inputting Multigroup Cross Sections (MGXS) 
+------------------------------------------
+
+Multigroup cross sections for use with OpenMC's random ray solver are input the same way as with OpenMC's traditional multigroup Monte Carlo mode. There is more information on generating multigroup cross sections via OpenMC in the :ref:`multigroup materials <create_mgxs>` user guide. A user may also wish to use an existing multigroup library. An example of using OpenMC's python interface to generate a correctly formatted ``mgxs.h5`` input file is given below, which defines a seven group cross section dataset.
+
+::
+    
+    # Instantiate the energy group data
+    ebins = [1e-5, 0.0635, 10.0, 1.0e2, 1.0e3, 0.5e6, 1.0e6, 20.0e6]
+    groups = openmc.mgxs.EnergyGroups(group_edges=ebins)
+
+    # Instantiate the 7-group cross section data
+    uo2_xsdata = openmc.XSdata('UO2', groups)
+    uo2_xsdata.order = 0
+    uo2_xsdata.set_total(
+        [0.1779492, 0.3298048, 0.4803882, 0.5543674, 0.3118013, 0.3951678,
+         0.5644058])
+    uo2_xsdata.set_absorption([8.0248E-03, 3.7174E-03, 2.6769E-02, 9.6236E-02,
+                               3.0020E-02, 1.1126E-01, 2.8278E-01])
+    scatter_matrix = np.array(
+        [[[0.1275370, 0.0423780, 0.0000094, 0.0000000, 0.0000000, 0.0000000, 0.0000000],
+          [0.0000000, 0.3244560, 0.0016314, 0.0000000, 0.0000000, 0.0000000, 0.0000000],
+          [0.0000000, 0.0000000, 0.4509400, 0.0026792, 0.0000000, 0.0000000, 0.0000000],
+          [0.0000000, 0.0000000, 0.0000000, 0.4525650, 0.0055664, 0.0000000, 0.0000000],
+          [0.0000000, 0.0000000, 0.0000000, 0.0001253, 0.2714010, 0.0102550, 0.0000000],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0012968, 0.2658020, 0.0168090],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0085458, 0.2730800]]])
+    scatter_matrix = np.rollaxis(scatter_matrix, 0, 3)
+    uo2_xsdata.set_scatter_matrix(scatter_matrix)
+    uo2_xsdata.set_fission([7.21206E-03, 8.19301E-04, 6.45320E-03,
+                            1.85648E-02, 1.78084E-02, 8.30348E-02,
+                            2.16004E-01])
+    uo2_xsdata.set_nu_fission([2.005998E-02, 2.027303E-03, 1.570599E-02,
+                               4.518301E-02, 4.334208E-02, 2.020901E-01,
+                               5.257105E-01])
+    uo2_xsdata.set_chi([5.8791E-01, 4.1176E-01, 3.3906E-04, 1.1761E-07, 0.0000E+00,
+                        0.0000E+00, 0.0000E+00])
+
+    h2o_xsdata = openmc.XSdata('LWTR', groups)
+    h2o_xsdata.order = 0
+    h2o_xsdata.set_total([0.15920605, 0.412969593, 0.59030986, 0.58435,
+                          0.718, 1.2544497, 2.650379])
+    h2o_xsdata.set_absorption([6.0105E-04, 1.5793E-05, 3.3716E-04,
+                               1.9406E-03, 5.7416E-03, 1.5001E-02,
+                               3.7239E-02])
+    scatter_matrix = np.array(
+        [[[0.0444777, 0.1134000, 0.0007235, 0.0000037, 0.0000001, 0.0000000, 0.0000000],
+          [0.0000000, 0.2823340, 0.1299400, 0.0006234, 0.0000480, 0.0000074, 0.0000010],
+          [0.0000000, 0.0000000, 0.3452560, 0.2245700, 0.0169990, 0.0026443, 0.0005034],
+          [0.0000000, 0.0000000, 0.0000000, 0.0910284, 0.4155100, 0.0637320, 0.0121390],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000714, 0.1391380, 0.5118200, 0.0612290],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0022157, 0.6999130, 0.5373200],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.1324400, 2.4807000]]])
+    scatter_matrix = np.rollaxis(scatter_matrix, 0, 3)
+    h2o_xsdata.set_scatter_matrix(scatter_matrix)
+
+    mg_cross_sections_file = openmc.MGXSLibrary(groups)
+    mg_cross_sections_file.add_xsdatas([uo2_xsdata, h2o_xsdata])
+    mg_cross_sections_file.export_to_hdf5()
+
 ---------------------------------------
 Putting it All Together: Example Inputs
 ---------------------------------------
@@ -224,4 +291,4 @@ An example of a settings definition for random ray is given below:
 
 All other inputs (e.g., geometry, material) will be unchanged from a typical Monte Carlo run (see the :ref:`geometry <usersguide_geometry>` and :ref:`multigroup materials <create_mgxs>` user guides for more information).
 
-There is also a complete example of a pincell available in the ``openmc/examples/pincell_random_ray`` folder, which also demonstrates how to generate a multigroup cross section data file.
+There is also a complete example of a pincell available in the ``openmc/examples/pincell_random_ray`` folder.

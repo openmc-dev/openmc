@@ -4,14 +4,13 @@
 Random Ray
 ==========
 
-
 .. _usersguide_random_ray_intro:
 
 -------------------
 What is Random Ray?
 -------------------
 
-Random ray [`Tramm 2017a`_] is a stochastic transport method, closely related to the deterministic Method of Characteristics (MOC) [Askew]_. Rather than each ray representing a single neutron as in Monte Carlo, it represents a characteristic line through the simulation geometry upon which the transport equation can be written as an ordinary differential equation that can be solved analytically (although with discretization required in energy space, making it a multigroup method). The behavior of the governing transport equation can be approximated by solving along many characteristic tracks (rays) through the reactor. Unlike particles in Monte Carlo, rays in random ray or MOC are not affected by the material characteristics of the simulated problem -- rays are selected so as to explore the full simulation problem with a statistically equal distribution in space and angle.
+Random ray [Tramm-2017a]_ is a stochastic transport method, closely related to the deterministic Method of Characteristics (MOC) [Askew-1972]_. Rather than each ray representing a single neutron as in Monte Carlo, it represents a characteristic line through the simulation geometry upon which the transport equation can be written as an ordinary differential equation that can be solved analytically (although with discretization required in energy space, making it a multigroup method). The behavior of the governing transport equation can be approximated by solving along many characteristic tracks (rays) through the reactor. Unlike particles in Monte Carlo, rays in random ray or MOC are not affected by the material characteristics of the simulated problem -- rays are selected so as to explore the full simulation problem with a statistically equal distribution in space and angle.
 
 .. raw:: html
 
@@ -31,7 +30,7 @@ Why is a Random Ray Solver Included in OpenMC?
     
         "One of the features of the method proposed [MoC] is that ... the tracking process needed to perform this operation is common to the proposed method ... and to Monte Carlo methods. Thus a single tracking routine capable of recognizing a geometric arrangement could be utilized to service all types of solution, choice being made depending which was more appropriate to the problem size and required accuracy."
 
-        -- Askew
+        -- Askew [Askew-1972]_
 
     This prediction holds up -- the additional requirements needed in OpenMC to handle random ray transport turned out to be fairly small.
 
@@ -41,7 +40,7 @@ Why is a Random Ray Solver Included in OpenMC?
 Random Ray Numerical Derivation
 -------------------------------
 
-In this section, we will derive the numerical basis for the random ray solver mode in OpenMC. The derivation of Random Ray is also discussed in [`Tramm 2017a`_], and some of that derivation is reproduced here verbatim. Several extensions are also made to add clarity, particularly on the topic of OpenMC's treatment of cell volumes in the random ray solver.
+In this section, we will derive the numerical basis for the random ray solver mode in OpenMC. The derivation of Random Ray is also discussed in [Tramm-2017a]_, [Tramm-2017b]_, and [Tramm-2018]_, and some of those derivations are reproduced here verbatim. Several extensions are also made to add clarity, particularly on the topic of OpenMC's treatment of cell volumes in the random ray solver.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 Method of Characteristics
@@ -176,7 +175,7 @@ The integral in the numerator:
 
 is not known analytically, but with random ray, we are going the numerically approximate it by discretizing over a finite number of tracks (with a finite number of locations and angles) crossing the domain. We can then use the characteristic method to determine the total angular flux along that line.
 
-Spiritually, this is akin to taking a volume-weighted sum of angular fluxes for all rays that happen to pass through the cell that iteration. When written in discretized form (with the discretization happening in terms of individual rays :math:`r` that pass through region :math:`i`), we arrive at:
+Spiritually, this is akin to taking a volume-weighted sum of angular fluxes for all :math:`N_i` rays that happen to pass through cell :math:`i` that iteration. When written in discretized form (with the discretization happening in terms of individual ray segments :math:`r` that pass through region :math:`i`), we arrive at:
 
 .. math::
     :label: discretized
@@ -188,9 +187,9 @@ Here we introduce the term :math:`w_r`, which represents the "weight" of the ray
 .. math::
     :label: weights
 
-    \text{Volume of cell } i = V_i \approx \sum\limits_{i} \ell_i w_i = \sum\limits_{i} \ell_i .
+    \text{Volume of cell } i = V_i \approx \sum\limits_{r=1}^{N_i} \ell_r w_r = \sum\limits_{r=1}^{N_i} \ell_r .
 
-Thus, we can rewrite our discretized equation as:
+We can then rewrite our discretized equation as:
 
 .. math::
     :label: discretized_2
@@ -209,7 +208,9 @@ Which when partially simplified becomes:
 .. math::
     :label: scalar_four_vols
 
-    \phi =  \frac{Q \sum\limits_{i} \ell_i}{\Sigma_t \sum\limits_{i} \ell_i} + \frac{\sum\limits_{i} \ell_i \frac{\Delta \psi_i}{\ell_i}}{\Sigma_t \sum\limits_{i} \ell_i} .
+    \phi =  \frac{Q_{i,g} \sum\limits_{r=1}^{N_i} \ell_r}{\Sigma_{t,i,g} \sum\limits_{r=1}^{N_i} \ell_r} + \frac{\sum\limits_{r=1}^{N_i} \ell_r \frac{\Delta \psi_i}{\ell_r}}{\Sigma_{t,i,g} \sum\limits_{r=1}^{N_i} \ell_r} .
+
+Note that there are now four (seemingly identical) volume terms in this equation.
 
 ~~~~~~~~~~~~~~
 Volume Dilemma
@@ -222,7 +223,7 @@ At first glance, Equation :eq:`scalar_four_vols` appears ripe for cancellation o
 
     \phi_{i,g}^{naive} = \frac{Q_{i,g} }{\Sigma_{t,i,g}} + \frac{\sum\limits_{r=1}^{N_i} \Delta \psi_{r,g}}{\Sigma_{t,i,g} \sum\limits_{r=1}^{N_i} \ell_r} .
 
-This derivation appears mathematically sound at first glance, but unfortunately raises a serious issue. Namely, the second term:
+This derivation appears mathematically sound at first glance, but unfortunately raises a serious issue, as discussed in more depth in [Tramm-2020]_ and [Cosgrove-2023]_. Namely, the second term:
 
 .. math::
     :label: ratio_estimator
@@ -268,7 +269,7 @@ The source in random ray :math:`Q^{n}` for iteration :math:`n`` can be inferred 
 .. math::
     :label: source_update
 
-    Q^{n}(i, g) = \frac{\chi}{k_{eff}} \nu \Sigma_f(i, g) \phi^{n-1}(g) + \sum\limits^{G}_{g'} \Sigma_{s}(i,g,g') \phi^{n-1}(g')
+    Q^{n}(i, g) = \frac{\chi}{k^{n-1}_{eff}} \nu \Sigma_f(i, g) \phi^{n-1}(g) + \sum\limits^{G}_{g'} \Sigma_{s}(i,g,g') \phi^{n-1}(g')
 
 where :math:`Q^{n}(i, g)` is the total source (fission + scattering) in region :math:`i` and energy group :math:`g`. Notably, the in-scattering source in group :math:`g` must be computed by summing over the contributions from all groups :math:`g' \in G`.
 
@@ -300,9 +301,7 @@ Notably, the volume term :math:`V_i` appears in the eigenvalue update equation. 
 
     F^n = \sum\limits^{M}_{i} \left( \frac{\sum\limits^{B}_{b}\sum\limits^{N_i}_{r} \ell_{b,r} }{B} \sum\limits^{G}_{g} \nu \Sigma_f(i, g) \phi^{n}(g) \right)
 
-and a similar substitution can be made to update Equation :eq:`fission_source_prev` .
-
-
+and a similar substitution can be made to update Equation :eq:`fission_source_prev` . In OpenMC, the most up to date version of the volume estimate is used, such that the total fission source from the previous iteration (:math:`n-1`) is also recomputed each iteration.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Ray Starting Conditions and Inactive Length
@@ -312,7 +311,7 @@ Another key area of divergence between deterministic MOC and random ray is the s
 
 In random ray, as the starting locations of rays are sampled anew each iteration, the initial angular flux spectrum for the ray is unknown. While a guess can be made by taking the isotropic source from the FSR the ray was sampled in, direct usage of this quantity would result in significant bias and error being imparted on the simulation.
 
-Thus, an on-the-fly approximation method was developed (known as the "dead zone"), where the first several mean free paths of a ray are considered to be "inactive" or "read only". In this sense, the angular flux is solved for using the MOC equation, but the ray does not "tally" any scalar flux back to the FSRs that it travels through. After several mean free paths have been traversed, the ray's angular flux spectrum typically becomes dominated by the accumulated source terms from the cells it has traveled through, while the (incorrect) starting conditions have been attenuated away. In the animation in the :ref:`introductory section on this page <usersguide_random_ray_intro>` , the yellow portion of the ray lengths is the dead zone. As can be seen in this animation, the tallied :math:`\sum\limits_{r=1}^{N_i} \Delta \psi_{r,g}` term that is plotted does not get affected by the ray when the ray is within its inactive length. Only when the ray enters its active mode does the ray contribute to the :math:`\sum\limits_{r=1}^{N_i} \Delta \psi_{r,g}` sum for the iteration.
+Thus, an on-the-fly approximation method was developed (known as the "dead zone") in [Tramm-2017a]_, where the first several mean free paths of a ray are considered to be "inactive" or "read only". In this sense, the angular flux is solved for using the MOC equation, but the ray does not "tally" any scalar flux back to the FSRs that it travels through. After several mean free paths have been traversed, the ray's angular flux spectrum typically becomes dominated by the accumulated source terms from the cells it has traveled through, while the (incorrect) starting conditions have been attenuated away. In the animation in the :ref:`introductory section on this page <usersguide_random_ray_intro>` , the yellow portion of the ray lengths is the dead zone. As can be seen in this animation, the tallied :math:`\sum\limits_{r=1}^{N_i} \Delta \psi_{r,g}` term that is plotted does not get affected by the ray when the ray is within its inactive length. Only when the ray enters its active mode does the ray contribute to the :math:`\sum\limits_{r=1}^{N_i} \Delta \psi_{r,g}` sum for the iteration.
 
 ~~~~~~~~~~~~~~~~~~~~~
 Ray Ending Conditions
@@ -425,7 +424,7 @@ Fundamental Sources of Bias
 
 Compared to continuous energy Monte Carlo simulations, the known sources of bias in random ray particle transport are:
 
-    - **Multigroup Energy Discretization:** The multigroup treatment of flux and cross sections incurs a significant bias, as a reaction rate (:math:`R_g = V \phi_g \Sigma_g`) for an energy group :math:`g` can only be conserved for a given choice of multigroup cross section :math:`\Sigma_g` if the flux (:math:`\phi_g`) is known apriori. If the flux was already known, then there would be no point to the simulation, resulting in a fundamental need for approximating this quantity. There are numerous methods for generating relatively accurate multigroup cross section libraries that can each be applied to a narrow design area reliably, although there are always limitations and/or complexities that arise with a multigroup energy treatment. This is by far the most significant source of simulation bias between Monte Carlo and random ray for most problems. While the other areas typically have solutions that are highly effective at mitigating bias, error stemming from multigroup approximations is much harder to understand.
+    - **Multigroup Energy Discretization:** The multigroup treatment of flux and cross sections incurs a significant bias, as a reaction rate (:math:`R_g = V \phi_g \Sigma_g`) for an energy group :math:`g` can only be conserved for a given choice of multigroup cross section :math:`\Sigma_g` if the flux (:math:`\phi_g`) is known apriori. If the flux was already known, then there would be no point to the simulation, resulting in a fundamental need for approximating this quantity. There are numerous methods for generating relatively accurate multigroup cross section libraries that can each be applied to a narrow design area reliably, although there are always limitations and/or complexities that arise with a multigroup energy treatment. This is by far the most significant source of simulation bias between Monte Carlo and random ray for most problems. While the other areas typically have solutions that are highly effective at mitigating bias, error stemming from multigroup approximations is much harder to remedy.
     - **Flat Source Approximation:**. In OpenMC, the "flat" (0th order) source approximation is made, wherein the scattering and fission sources within a cell are assumed to be flat. As the source is in reality a continuous function, this leads to bias, although the bias can be reduced to acceptable levels if the flat source regions are made to be small. The bias can also be mitigated by assuming a higher order source (e.g., linear, quadratic), although OpenMC does not yet have this capability. In practical terms, this source of bias can become very large if cells are large (with dimensions beyond that of a typical particle mean free path), but the subdivision of cells can often reduce this bias to trivial levels.
     - **Anisotropic Source Approximation:** In OpenMC, the source is not only assumed to be flat, but also isotropic, leading to bias. It is possible for MOC (and likely random ray) to treat anisotropy explicitly, but this is not currently supported in OpenMC. This source of bias is not significant for some problems, but becomes more problematic for others. Even in the absence of explicit treatment of anistropy, use of transport corrected multigroup cross sections can often mitigate this bias, particularly for light water reactor simulation problems.
     - **Angular Flux Initial Conditions:** Each time a ray is sampled, its starting angular flux is unknown, so a guess must be made (typically the source term for the cell it starts in). Usage of an adequate inactive ray length (dead zone) mitigates this error. As the starting guess is attenuated at a rate of :math:`\exp(-\Sigma_t \ell)`, this bias can driven below machine precision in a low cost manner on many problems.
@@ -436,12 +435,14 @@ Compared to continuous energy Monte Carlo simulations, the known sources of bias
 
    .. rubric:: References
 
-.. [Askew] Askew, “A Characteristics Formulation of the Neutron Transport Equation in Complicated Geometries.” Technical Report AAEW-M 1108, UK Atomic Energy Establishment (1972).   
+.. [Askew-1972] Askew, “A Characteristics Formulation of the Neutron Transport Equation in Complicated Geometries.” Technical Report AAEW-M 1108, UK Atomic Energy Establishment (1972).   
 
-.. _Tramm 2017a: https://doi.org/10.1016/j.jcp.2017.04.038
+.. [Tramm-2017a] John R. Tramm, Kord S. Smith, Benoit Forget, Andrew R. Siegel, "The Random Ray Method for neutral particle transport." Journal of Computational Physics, Volume 342, 2017, Pages 229-252, ISSN 0021-9991. https://doi.org/10.1016/j.jcp.2017.04.038
 
-.. _Tramm 2017b: https://doi.org/10.1016/j.anucene.2017.10.015
+.. [Tramm-2017b] John R. Tramm, Kord S. Smith, Benoit Forget, Andrew R. Siegel, "ARRC: A random ray neutron transport code for nuclear reactor simulation." Annals of Nuclear Energy, Volume 112, 2018, Pages 693-714, ISSN 0306-4549. https://doi.org/10.1016/j.anucene.2017.10.015
 
-.. _Cosgrove 2023: https://doi.org/10.1080/00295639.2023.2270618
+.. [Tramm-2018] John R. Tramm, "Development of the random ray method of neutral particle transport for high-fidelity nuclear reactor simulation." Massachusetts Institute of Technology, Department of Nuclear Science and Engineering, Dissertation, 2023. https://dspace.mit.edu/handle/1721.1/119038
 
-.. _Tramm 2018: http://hdl.handle.net/1721.1/119038
+.. [Tramm-2020] John R. Tramm, Andrew R. Siegel, Amanda L. Lund, Paul K. Romano, "A comparison of stochastic mesh cell volume computation strategies for the random ray method of neutral particle transport." PHYSOR 2020 - International Conference on Physics of Reactors, Cambridge, UK, 2020. https://doi.org/10.1051/EPJCONF/202124703021
+
+.. [Cosgrove-2023]  Paul Cosgrove, John R. Tramm, "The Random Ray Method Versus Multigroup Monte Carlo: The Method of Characteristics in OpenMC and SCONE." Nuclear Science and Engineering, 2023. https://doi.org/10.1080/00295639.2023.2270618

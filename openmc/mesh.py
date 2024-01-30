@@ -37,7 +37,7 @@ class MeshBase(IDManagerMixin, ABC):
     name : str
         Name of the mesh
     bounding_box : openmc.BoundingBox
-        Axis-aligned bounding box of the cell defined by the upper-right and
+        Axis-aligned bounding box of the mesh as defined by the upper-right and
         lower-left coordinates.
 
     """
@@ -516,7 +516,7 @@ class RegularMesh(StructuredMesh):
         The upper-right corner of the structured mesh. If only two coordinate
         are given, it is assumed that the mesh is an x-y mesh.
     bounding_box : openmc.BoundingBox
-        Axis-aligned bounding box of the cell defined by the upper-right and
+        Axis-aligned bounding box of the mesh as defined by the upper-right and
         lower-left coordinates.
     width : Iterable of float
         The width of mesh cells in each direction.
@@ -1008,7 +1008,7 @@ class RectilinearMesh(StructuredMesh):
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]
     bounding_box : openmc.BoundingBox
-        Axis-aligned bounding box of the cell defined by the upper-right and
+        Axis-aligned bounding box of the mesh as defined by the upper-right and
         lower-left coordinates.
 
     """
@@ -1236,7 +1236,7 @@ class CylindricalMesh(StructuredMesh):
         The upper-right corner of the structured mesh. If only two coordinate
         are given, it is assumed that the mesh is an x-y mesh.
     bounding_box : openmc.BoundingBox
-        Axis-aligned bounding box of the cell defined by the upper-right and
+        Axis-aligned bounding box of the mesh as defined by the upper-right and
         lower-left coordinates.
 
     """
@@ -1675,7 +1675,7 @@ class SphericalMesh(StructuredMesh):
         The upper-right corner of the structured mesh. If only two coordinate
         are given, it is assumed that the mesh is an x-y mesh.
     bounding_box : openmc.BoundingBox
-        Axis-aligned bounding box of the cell defined by the upper-right and
+        Axis-aligned bounding box of the mesh as defined by the upper-right and
         lower-left coordinates.
 
     """
@@ -1970,7 +1970,7 @@ class UnstructuredMesh(MeshBase):
     total_volume : float
         Volume of the unstructured mesh in total
     bounding_box : openmc.BoundingBox
-        Axis-aligned bounding box of the cell defined by the upper-right and
+        Axis-aligned bounding box of the mesh as defined by the upper-right and
         lower-left coordinates.
 
     """

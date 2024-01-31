@@ -11,6 +11,7 @@ from typing import Optional, Dict
 
 import h5py
 import lxml.etree as ET
+import numpy as np
 
 import openmc
 import openmc._xml as xml
@@ -802,6 +803,133 @@ class Model:
                             openmc.lib.materials[domain_id].volume = \
                                 vol_calc.volumes[domain_id].n
 
+    def plot(
+            self,
+            source: dict = {'n_samples': 1, 'plane_tolerance': 1},
+            origin: Optional[Iterable[float]] = None,
+            basis: str = 'xy',
+            *args,
+            **kwargs
+        ):
+        """Display a slice plot of the geometry.
+
+        .. versionadded:: 0.14.1
+
+        Parameters
+        ----------
+        origin : iterable of float
+            Coordinates at the origin of the plot. If left as None then the
+            bounding box center will be used to attempt to ascertain the origin.
+            Defaults to (0, 0, 0) if the bounding box is not finite
+        width : iterable of float
+            Width of the plot in each basis direction. If left as none then the
+            bounding box width will be used to attempt to ascertain the plot
+            width. Defaults to (10, 10) if the bounding box is not finite
+        pixels : Iterable of int or int
+            If iterable of ints provided, then this directly sets the number of
+            pixels to use in each basis direction. If int provided, then this
+            sets the total number of pixels in the plot and the number of pixels
+            in each basis direction is calculated from this total and the image
+            aspect ratio.
+        basis : {'xy', 'xz', 'yz'}
+            The basis directions for the plot
+        color_by : {'cell', 'material'}
+            Indicate whether the plot should be colored by cell or by material
+        colors : dict
+            Assigns colors to specific materials or cells. Keys are instances of
+            :class:`Cell` or :class:`Material` and values are RGB 3-tuples, RGBA
+            4-tuples, or strings indicating SVG color names. Red, green, blue,
+            and alpha should all be floats in the range [0.0, 1.0], for
+            example::
+
+               # Make water blue
+               water = openmc.Cell(fill=h2o)
+               universe.plot(..., colors={water: (0., 0., 1.))
+        seed : int
+            Seed for the random number generator
+        openmc_exec : str
+            Path to OpenMC executable.
+        axes : matplotlib.Axes
+            Axes to draw to
+        legend : bool
+            Whether a legend showing material or cell names should be drawn
+        legend_kwargs : dict
+            Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
+        outline : bool
+            Whether outlines between color boundaries should be drawn
+        axis_units : {'km', 'm', 'cm', 'mm'}
+            Units used on the plot axis
+        source : dict
+            A dictionary containing details for plotting the source locations.
+            Acceptable keys are n_samples and  which is the number of source
+            particles to sample and add to plot. Defaults
+            to None which doesn't plot any particles on the plot. Note particles
+            are drawn
+        **kwargs
+            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
+        Returns
+        -------
+        matplotlib.axes.Axes
+            Axes containing resulting image
+        """
+
+        plot = self.geometry.plot(*args, **kwargs)
+        if source:
+            particles = self.sample_external_source(source['n_samples'])
+
+            particle_indices = {'xy': (0, 1), 'xz': (0, 2), 'yz': (1, 2)}[basis]
+
+            if np.isinf(self.geometry.bounding_box.extent[basis]).any():
+                if origin is None:
+                    origin = (0, 0, 0)
+            else:
+                if origin is None:
+                    # if nan values in the bb.center they get replaced with 0.0
+                    # this happens when the bounding_box contains inf values
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore", RuntimeWarning)
+                        origin = np.nan_to_num(self.geometry.bounding_box.center)
+
+            slice_axis_index = {'xy': 2, 'xz': 1, 'yz': 0}[basis]
+            slice_axis_value = origin[slice_axis_index]
+
+            x_positions = []
+            y_positions = []
+            for particle in particles:
+                if particle.r[slice_axis_index] < slice_axis_value + source['plane_tolerance']:# and particle.r[slice_axis_index] > slice_axis_value - source['plane_tolerance']:
+                    x_positions.append(particle.r[particle_indices[0]])
+                    y_positions.append(particle.r[particle_indices[1]])
+            plot.plot(x_positions, y_positions, marker='x', color='red', label='neutron source')
+        return plot
+
+    def sample_external_source(self, n_samples: int=1, prn_seed: Optional[int]=None):
+        """Sample external source
+
+        .. versionadded:: 0.14.1
+
+        Parameters
+        ----------
+        n_samples : int
+            Number of samples
+        prn_seed : int
+            Pseudorandom number generator (PRNG) seed; if None, one will be
+            generated randomly.
+
+        Returns
+        -------
+        list of openmc.SourceParticle
+            List of samples source particles
+        """
+        
+        self.export_to_xml()
+        import openmc.lib
+        with openmc.lib.run_in_memory(output=False):
+            particles = openmc.lib.sample_external_source(
+                n_samples=n_samples, prn_seed=prn_seed
+            )
+
+        return particles
+
     def plot_geometry(self, output=True, cwd='.', openmc_exec='openmc'):
         """Creates plot images as specified by the Model.plots attribute
 
@@ -819,6 +947,9 @@ class Model:
             This only applies to the case when not using the C API.
 
         """
+
+        # warnings.warn("plot_geometry method will be deprecated soon, please "
+        #               "make use of the plot method instead.")
 
         if len(self.plots) == 0:
             # Then there is no volume calculation specified

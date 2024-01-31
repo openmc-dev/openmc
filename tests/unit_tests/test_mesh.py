@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 import openmc
 
-from openmc import RegularMesh, RectilinearMesh, CylindricalMesh, SphericalMesh
 
 @pytest.mark.parametrize("val_left,val_right", [(0, 0), (-1., -1.), (2.0, 2)])
 def test_raises_error_when_flat(val_left, val_right):
@@ -47,6 +46,17 @@ def test_regular_mesh_bounding_box():
     assert isinstance(bb, openmc.BoundingBox)
     np.testing.assert_array_equal(bb.lower_left, (-2, -3 ,-5))
     np.testing.assert_array_equal(bb.upper_right, (2, 3, 5))
+
+
+def test_rectilinear_mesh_bounding_box():
+    mesh = openmc.RectilinearMesh()
+    mesh.x_grid = [0., 1., 5., 10.]
+    mesh.y_grid = [-10., -5., 0.]
+    mesh.z_grid = [-100., 0., 100.]
+    bb = mesh.bounding_box
+    assert isinstance(bb, openmc.BoundingBox)
+    np.testing.assert_array_equal(bb.lower_left, (0., -10. ,-100.))
+    np.testing.assert_array_equal(bb.upper_right, (10., 0., 100.))
 
 
 def test_cylindrical_mesh_bounding_box():

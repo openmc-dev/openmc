@@ -804,13 +804,13 @@ class Model:
                                 vol_calc.volumes[domain_id].n
 
     def plot(
-            self,
-            source: dict = {'n_samples': 1, 'plane_tolerance': 1},
-            origin: Optional[Iterable[float]] = None,
-            basis: str = 'xy',
-            *args,
-            **kwargs
-        ):
+        self,
+        source: dict = None,
+        origin: Optional[Iterable[float]] = None,
+        basis: str = "xy",
+        *args,
+        **kwargs,
+    ):
         """Display a slice plot of the geometry.
 
         .. versionadded:: 0.14.1
@@ -896,10 +896,15 @@ class Model:
             x_positions = []
             y_positions = []
             for particle in particles:
-                if particle.r[slice_axis_index] < slice_axis_value + source['plane_tolerance']:# and particle.r[slice_axis_index] > slice_axis_value - source['plane_tolerance']:
+                if (
+                    particle.r[slice_axis_index]
+                    < slice_axis_value + source["plane_tolerance"]
+                    and particle.r[slice_axis_index]
+                    > slice_axis_value - source["plane_tolerance"]
+                ):
                     x_positions.append(particle.r[particle_indices[0]])
                     y_positions.append(particle.r[particle_indices[1]])
-            plot.plot(x_positions, y_positions, marker='x', color='red', label='neutron source')
+            plot.scatter(x_positions, y_positions, marker="x", label="source")
         return plot
 
     def sample_external_source(self, n_samples: int=1, prn_seed: Optional[int]=None):

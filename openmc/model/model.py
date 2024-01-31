@@ -808,9 +808,10 @@ class Model:
 
     def plot(
         self,
-        source: dict = None,
         origin: Optional[Iterable[float]] = None,
         basis: str = "xy",
+        n_samples: Optional[int] = None,
+        plane_tolerance: float = 1.,
         source_kwargs: dict = _default_source_kwargs,
         *args,
         **kwargs,
@@ -859,20 +860,22 @@ class Model:
             Whether a legend showing material or cell names should be drawn
         legend_kwargs : dict
             Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
-        source_kwargs : dict
-            Keyword arguments passed to :func:`matplotlib.pyplot.scatter`.
         outline : bool
             Whether outlines between color boundaries should be drawn
         axis_units : {'km', 'm', 'cm', 'mm'}
             Units used on the plot axis
-        source : dict
-            A dictionary containing details for plotting the source locations.
-            Acceptable keys are n_samples and  which is the number of source
-            particles to sample and add to plot. Defaults
-            to None which doesn't plot any particles on the plot. Note particles
-            are drawn
+        n_samples : dict
+            The number of source particles to sample and add to plot. Defaults
+            to None which doesn't plot any particles on the plot.
+        plane_tolerance: float
+            When plotting a plane the source locations within the plane +/-
+            the plane_tolerance will be included and those outside of the
+            plane_tolerance will not be shown
+        source_kwargs : dict
+            Keyword arguments passed to :func:`matplotlib.pyplot.scatter`.
         **kwargs
             Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
+
         Returns
         -------
         matplotlib.axes.Axes
@@ -880,8 +883,8 @@ class Model:
         """
 
         plot = self.geometry.plot(basis=basis, origin=origin, *args, **kwargs)
-        if source:
-            particles = self.sample_external_source(source['n_samples'])
+        if n_samples:
+            particles = self.sample_external_source(n_samples)
 
             particle_indices = {'xy': (0, 1), 'xz': (0, 2), 'yz': (1, 2)}[basis]
 
@@ -904,9 +907,9 @@ class Model:
             for particle in particles:
                 if (
                     particle.r[slice_axis_index]
-                    < slice_axis_value + source["plane_tolerance"]
+                    < slice_axis_value + plane_tolerance
                     and particle.r[slice_axis_index]
-                    > slice_axis_value - source["plane_tolerance"]
+                    > slice_axis_value - plane_tolerance
                 ):
                     x_positions.append(particle.r[particle_indices[0]])
                     y_positions.append(particle.r[particle_indices[1]])

@@ -873,7 +873,7 @@ class Model:
             Axes containing resulting image
         """
 
-        plot = self.geometry.plot(*args, **kwargs)
+        plot = self.geometry.plot(basis=basis, origin=origin, *args, **kwargs)
         if source:
             particles = self.sample_external_source(source['n_samples'])
 
@@ -952,9 +952,6 @@ class Model:
             This only applies to the case when not using the C API.
 
         """
-
-        # warnings.warn("plot_geometry method will be deprecated soon, please "
-        #               "make use of the plot method instead.")
 
         if len(self.plots) == 0:
             # Then there is no volume calculation specified

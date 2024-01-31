@@ -803,11 +803,15 @@ class Model:
                             openmc.lib.materials[domain_id].volume = \
                                 vol_calc.volumes[domain_id].n
 
+    # default kwargs that are passed to plt.scatter in the plot method below.
+    _default_source_kwargs = {'marker': 'x'}
+
     def plot(
         self,
         source: dict = None,
         origin: Optional[Iterable[float]] = None,
         basis: str = "xy",
+        source_kwargs: dict = _default_source_kwargs,
         *args,
         **kwargs,
     ):
@@ -855,6 +859,8 @@ class Model:
             Whether a legend showing material or cell names should be drawn
         legend_kwargs : dict
             Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
+        source_kwargs : dict
+            Keyword arguments passed to :func:`matplotlib.pyplot.scatter`.
         outline : bool
             Whether outlines between color boundaries should be drawn
         axis_units : {'km', 'm', 'cm', 'mm'}
@@ -904,7 +910,7 @@ class Model:
                 ):
                     x_positions.append(particle.r[particle_indices[0]])
                     y_positions.append(particle.r[particle_indices[1]])
-            plot.scatter(x_positions, y_positions, marker="x", label="source")
+            plot.scatter(x_positions, y_positions, **source_kwargs)
         return plot
 
     def sample_external_source(self, n_samples: int=1, prn_seed: Optional[int]=None):

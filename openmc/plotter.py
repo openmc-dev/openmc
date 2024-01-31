@@ -97,7 +97,7 @@ def _get_yaxis_label(reactions, divisor_types):
         units = {
             "Macroscopic": "[1/cm]",
             "Microscopic": "[b]",
-            "Heating": "[eV/collision]",
+            "Heating": "[eV barn]",
         }[stem]
 
     return f'{stem} {mid} {units}'

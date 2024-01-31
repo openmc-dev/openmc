@@ -116,7 +116,7 @@ def test_plot_axes_labels():
         },
         divisor_types=False,
     )
-    assert axis_label == "Heating Cross Section [eV/collision]"
+    assert axis_label == "Heating Cross Section [eV barn]"
 
     with pytest.raises(TypeError):
         axis_label = openmc.plotter.plot_xs(

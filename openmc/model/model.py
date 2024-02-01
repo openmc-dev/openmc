@@ -882,7 +882,7 @@ class Model:
             Axes containing resulting image
         """
 
-        check_type('n_samples', n_samples, int)
+        check_type('n_samples', n_samples, (int, type(None)))
         check_type('plane_tolerance', plane_tolerance, float)
 
         plot = self.geometry.plot(basis=basis, origin=origin, *args, **kwargs)

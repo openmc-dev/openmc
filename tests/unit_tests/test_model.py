@@ -585,3 +585,34 @@ def test_single_xml_exec(run_in_tmpdir):
 
     with pytest.raises(RuntimeError, match='input_dir'):
         openmc.run(path_input='input_dir/pincell.xml')
+
+def test_model_plot():
+    # plots the geometry with source location and checks the resulting matplotlib
+    # includes the correct coordinates for the scatter plot for all basis.
+
+    surface = openmc.Sphere(r=600, boundary_type="vacuum")
+    cell = openmc.Cell(region=-surface)
+    geometry = openmc.Geometry([cell])
+    settings = openmc.Settings()
+    settings.particles = 1
+    settings.batches = 1
+    source = openmc.IndependentSource()
+    source.space = openmc.stats.Point((1, 2, 3))
+    settings.source = source
+    model = openmc.Model(geometry, None, settings)
+
+    plot = model.plot(n_samples=1, plane_tolerance=4.0, basis="xy")
+    coords = plot.axes.collections[0].get_offsets().data.flatten()
+    assert (coords == np.array([1.0, 2.0])).all()
+
+    plot = model.plot(n_samples=1, plane_tolerance=4.0, basis="xz")
+    coords = plot.axes.collections[0].get_offsets().data.flatten()
+    assert (coords == np.array([1.0, 3.0])).all()
+
+    plot = model.plot(n_samples=1, plane_tolerance=4.0, basis="yz")
+    coords = plot.axes.collections[0].get_offsets().data.flatten()
+    assert (coords == np.array([2.0, 3.0])).all()
+
+    plot = model.plot(n_samples=1, plane_tolerance=0.1, basis="xy")
+    coords = plot.axes.collections[0].get_offsets().data.flatten()
+    assert (coords == np.array([])).all()

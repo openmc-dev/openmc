@@ -26,7 +26,7 @@ class PredictorIntegrator(Integrator):
     """
     _num_stages = 1
 
-    def __call__(self, n, rates, dt, source_rate, _i=None):
+    def __call__(self, n, rates, dt, source_rate, _i=None, use_cache=False):
         """Perform the integration across one time step
 
         Parameters
@@ -54,7 +54,8 @@ class PredictorIntegrator(Integrator):
             with predictor
 
         """
-        proc_time, n_end = self._timed_deplete(n, rates, dt)
+        proc_time, n_end = self._timed_deplete(n, rates, dt,
+                                               use_cache=use_cache)
         return proc_time, [n_end], []
 
 
@@ -78,7 +79,7 @@ class CECMIntegrator(Integrator):
     """
     _num_stages = 2
 
-    def __call__(self, n, rates, dt, source_rate, _i=None):
+    def __call__(self, n, rates, dt, source_rate, _i=None, use_cache=False):
         """Integrate using CE/CM
 
         Parameters
@@ -142,7 +143,7 @@ class CF4Integrator(Integrator):
     """
     _num_stages = 4
 
-    def __call__(self, n_bos, bos_rates, dt, source_rate, _i=None):
+    def __call__(self, n_bos, bos_rates, dt, source_rate, _i=None, use_cache=False):
         """Perform the integration across one time step
 
         Parameters
@@ -220,7 +221,7 @@ class CELIIntegrator(Integrator):
     """
     _num_stages = 2
 
-    def __call__(self, n_bos, rates, dt, source_rate, _i=None):
+    def __call__(self, n_bos, rates, dt, source_rate, _i=None, use_cache=False):
         """Perform the integration across one time step
 
         Parameters
@@ -286,7 +287,7 @@ class EPCRK4Integrator(Integrator):
     """
     _num_stages = 4
 
-    def __call__(self, n, rates, dt, source_rate, _i=None):
+    def __call__(self, n, rates, dt, source_rate, _i=None, use_cache=False):
         """Perform the integration across one time step
 
         Parameters
@@ -368,7 +369,7 @@ class LEQIIntegrator(Integrator):
     """
     _num_stages = 2
 
-    def __call__(self, n_bos, bos_rates, dt, source_rate, i):
+    def __call__(self, n_bos, bos_rates, dt, source_rate, i, use_cache=False):
         """Perform the integration across one time step
 
         Parameters
@@ -450,7 +451,7 @@ class SICELIIntegrator(SIIntegrator):
     """
     _num_stages = 2
 
-    def __call__(self, n_bos, bos_rates, dt, source_rate, _i=None):
+    def __call__(self, n_bos, bos_rates, dt, source_rate, _i=None, use_cache=False):
         """Perform the integration across one time step
 
         Parameters
@@ -516,7 +517,7 @@ class SILEQIIntegrator(SIIntegrator):
     """
     _num_stages = 2
 
-    def __call__(self, n_bos, bos_rates, dt, source_rate, i):
+    def __call__(self, n_bos, bos_rates, dt, source_rate, i, use_cache=False):
         """Perform the integration across one time step
 
         Parameters

@@ -42,12 +42,6 @@ vector<unique_ptr<Nuclide>> nuclides;
 // Nuclide implementation
 //==============================================================================
 
-int Nuclide::XS_TOTAL {0};
-int Nuclide::XS_ABSORPTION {1};
-int Nuclide::XS_FISSION {2};
-int Nuclide::XS_NU_FISSION {3};
-int Nuclide::XS_PHOTON_PROD {4};
-
 Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
 {
   // Set index of nuclide in global vector
@@ -341,18 +335,38 @@ Nuclide::~Nuclide()
 void Nuclide::create_derived(
   const Function1D* prompt_photons, const Function1D* delayed_photons)
 {
-  for (const auto& grid : grid_) {
-    // Allocate and initialize cross section
-    array<size_t, 2> shape {grid.energy.size(), 5};
-    xs_.emplace_back(shape, 0.0);
-  }
-
+  // First we create the reaction index table
   reaction_index_.fill(C_NONE);
   for (int i = 0; i < reactions_.size(); ++i) {
     const auto& rx {reactions_[i]};
 
     // Set entry in direct address table for reaction
     reaction_index_[rx->mt_] = i;
+  }
+
+  // Count the number of depletion rx present. We add copies of this
+  // to the XS array. It's costs a bit of extra memory, but well worth
+  // it considering the improvements to cache hit rate in depletion
+  // calculations.
+  if (simulation::need_depletion_rx) {
+    for (int j = 0; j < DEPLETION_RX.size(); ++j) {
+      int i_rx = reaction_index_[DEPLETION_RX[j]];
+      if (i_rx >= 0)
+        present_depletion_rx_.push_back(j);
+    }
+  }
+
+  for (const auto& grid : grid_) {
+    // Allocate and initialize cross section
+    array<size_t, 2> shape {
+      grid.energy.size(), 5 + present_depletion_rx_.size()};
+    xs_.emplace_back(shape, 0.0);
+  }
+  std::cout << name_ << "has an extra " << present_depletion_rx_.size()
+            << " reactions" << std::endl;
+
+  for (int i = 0; i < reactions_.size(); ++i) {
+    const auto& rx {reactions_[i]};
 
     for (int t = 0; t < kTs_.size(); ++t) {
       int j = rx->xs_[t].threshold;
@@ -476,6 +490,22 @@ void Nuclide::create_derived(
           (std::sqrt(E[i]) * xs[i] + std::sqrt(E[i + 1]) * xs[i + 1]) / 2.0 *
           (E[i + 1] - E[i]);
         xs_cdf_[i + 1] = xs_cdf_sum;
+      }
+    }
+  }
+
+  // Cache reaction cross sections for depletion into the expanded grid
+  if (simulation::need_depletion_rx) {
+    for (int t = 0; t < kTs_.size(); ++t) {
+      for (int j = 0; j < present_depletion_rx_.size(); ++j) {
+        int i_rx = reaction_index_[DEPLETION_RX[present_depletion_rx_[j]]];
+        const auto& rx = reactions_[i_rx];
+        const auto& rx_xs = rx->xs_[t].value;
+        int threshold = rx->xs_[t].threshold;
+        for (int i_grid = threshold; i_grid < grid_[t].energy.size();
+             ++i_grid) {
+          xs_[t](i_grid, 5 + j) = rx_xs[i_grid - threshold];
+        }
       }
     }
   }
@@ -755,35 +785,9 @@ void Nuclide::calculate_xs(
       for (double& xs_i : micro.reaction) {
         xs_i = 0.0;
       }
-
-      for (int j = 0; j < DEPLETION_RX.size(); ++j) {
-        // If reaction is present and energy is greater than threshold, set the
-        // reaction xs appropriately
-        int i_rx = reaction_index_[DEPLETION_RX[j]];
-        if (i_rx >= 0) {
-          const auto& rx = reactions_[i_rx];
-          const auto& rx_xs = rx->xs_[i_temp].value;
-
-          // Physics says that (n,gamma) is not a threshold reaction, so we
-          // don't need to specifically check its threshold index
-          if (j == 0) {
-            micro.reaction[0] =
-              (1.0 - f) * rx_xs[i_grid] + f * rx_xs[i_grid + 1];
-            continue;
-          }
-
-          int threshold = rx->xs_[i_temp].threshold;
-          if (i_grid >= threshold) {
-            micro.reaction[j] = (1.0 - f) * rx_xs[i_grid - threshold] +
-                                f * rx_xs[i_grid - threshold + 1];
-          } else if (j >= 3) {
-            // One can show that the the threshold for (n,(x+1)n) is always
-            // higher than the threshold for (n,xn). Thus, if we are below
-            // the threshold for, e.g., (n,2n), there is no reason to check
-            // the threshold for (n,3n) and (n,4n).
-            break;
-          }
-        }
+      for (int j = 0; j < present_depletion_rx_.size(); ++j) {
+        micro.reaction[present_depletion_rx_[j]] =
+          (1.0 - f) * xs(i_grid, j + 5) + f * xs(i_grid + 1, j + 5);
       }
     }
   }

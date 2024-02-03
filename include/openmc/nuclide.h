@@ -130,6 +130,9 @@ public:
   array<size_t, 902> reaction_index_;      //!< Index of each reaction
   vector<int> index_inelastic_scatter_;
 
+  // Depletion rx index starting at XS_PHOTON_PROD+1 in xs_ arrays
+  vector<int> present_depletion_rx_;
+
 private:
   void create_derived(
     const Function1D* prompt_photons, const Function1D* delayed_photons);
@@ -140,11 +143,11 @@ private:
   //! \return Temperature index and interpolation factor
   std::pair<gsl::index, double> find_temperature(double T) const;
 
-  static int XS_TOTAL;
-  static int XS_ABSORPTION;
-  static int XS_FISSION;
-  static int XS_NU_FISSION;
-  static int XS_PHOTON_PROD;
+  static constexpr int XS_TOTAL = 0;
+  static constexpr int XS_ABSORPTION = 1;
+  static constexpr int XS_FISSION = 2;
+  static constexpr int XS_NU_FISSION = 3;
+  static constexpr int XS_PHOTON_PROD = 4;
 };
 
 //==============================================================================

@@ -362,8 +362,6 @@ void Nuclide::create_derived(
       grid.energy.size(), 5 + present_depletion_rx_.size()};
     xs_.emplace_back(shape, 0.0);
   }
-  std::cout << name_ << "has an extra " << present_depletion_rx_.size()
-            << " reactions" << std::endl;
 
   for (int i = 0; i < reactions_.size(); ++i) {
     const auto& rx {reactions_[i]};

@@ -56,6 +56,10 @@ void SphericalHarmonicsFilter::get_all_bins(
     }
   }
 
+  // TODO allocating on the fly is expensive. Find a way
+  // to use the recursively defined basis functions in
+  // the below loop.
+
   // Find the Rn,m values
   vector<double> rn(n_bins_);
   calc_rn(order_, p.u_last(), rn.data());
@@ -66,9 +70,9 @@ void SphericalHarmonicsFilter::get_all_bins(
     int num_nm = 2 * n + 1;
 
     // Append the matching (bin,weight) for each moment
+    auto& match_vector = match.vector_pairs();
     for (int i = 0; i < num_nm; i++) {
-      match.weights_.push_back(wgt[n] * rn[j]);
-      match.bins_.push_back(j);
+      match_vector.push_back({j, wgt[n] * rn[j]});
       ++j;
     }
   }

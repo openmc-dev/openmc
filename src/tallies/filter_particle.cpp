@@ -34,10 +34,11 @@ void ParticleFilter::set_particles(gsl::span<ParticleType> particles)
 void ParticleFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
+  // TODO improve this. Build a map with p.type() cast to int
+  // as array indices mapping to particles_ indices.
   for (auto i = 0; i < particles_.size(); i++) {
     if (particles_[i] == p.type()) {
-      match.bins_.push_back(i);
-      match.weights_.push_back(1.0);
+      match.set(i);
     }
   }
 }

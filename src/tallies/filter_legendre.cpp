@@ -24,11 +24,14 @@ void LegendreFilter::set_order(int order)
 void LegendreFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
+  // TODO use recursive formula. Allocating on the fly
+  // is expensive.
   vector<double> wgt(n_bins_);
   calc_pn_c(order_, p.mu(), wgt.data());
+
+  auto& match_vector = match.vector_pairs();
   for (int i = 0; i < n_bins_; i++) {
-    match.bins_.push_back(i);
-    match.weights_.push_back(wgt[i]);
+    match_vector.push_back({i, wgt[i]});
   }
 }
 

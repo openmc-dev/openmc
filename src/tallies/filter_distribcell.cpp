@@ -52,8 +52,7 @@ void DistribcellFilter::get_all_bins(
       }
     }
     if (cell_ == p.coord(i).cell) {
-      match.bins_.push_back(offset);
-      match.weights_.push_back(1.0);
+      match.set(offset);
       return;
     }
   }

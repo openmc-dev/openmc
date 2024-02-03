@@ -677,7 +677,7 @@ void write_tallies()
           const auto& filt {*model::tally_filters[i_filt]};
           auto& match {filter_matches[i_filt]};
           fmt::print(tallies_out, "{0:{1}}{2}\n", "", indent + 1,
-            filt.text_label(match.i_bin_));
+            filt.text_label(match.i_bin()));
         }
         indent += 2;
       }

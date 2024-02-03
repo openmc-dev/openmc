@@ -60,8 +60,7 @@ void AzimuthalFilter::get_all_bins(
 
   if (phi >= bins_.front() && phi <= bins_.back()) {
     auto bin = lower_bound_index(bins_.begin(), bins_.end(), phi);
-    match.bins_.push_back(bin);
-    match.weights_.push_back(1.0);
+    match.set(bin);
   }
 }
 

@@ -36,12 +36,16 @@ void ZernikeFilter::get_all_bins(
   double theta = std::atan2(y, x);
 
   if (r <= 1.0) {
+
     // Compute and return the Zernike weights.
+    // TODO this allocates on the fly and is thus slow.
+    // Find a recursive definition if possible.
     vector<double> zn(n_bins_);
     calc_zn(order_, r, theta, zn.data());
+
+    auto& match_vector = match.vector_pairs();
     for (int i = 0; i < n_bins_; i++) {
-      match.bins_.push_back(i);
-      match.weights_.push_back(zn[i]);
+      match_vector.push_back({i, zn[i]});
     }
   }
 }
@@ -94,9 +98,9 @@ void ZernikeRadialFilter::get_all_bins(
     // Compute and return the Zernike weights.
     vector<double> zn(n_bins_);
     calc_zn_rad(order_, r, zn.data());
+    auto& match_vector = match.vector_pairs();
     for (int i = 0; i < n_bins_; i++) {
-      match.bins_.push_back(i);
-      match.weights_.push_back(zn[i]);
+      match_vector.emplace_back(i, zn[i]);
     }
   }
 }

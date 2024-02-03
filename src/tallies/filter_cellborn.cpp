@@ -9,8 +9,7 @@ void CellBornFilter::get_all_bins(
 {
   auto search = map_.find(p.cell_born());
   if (search != map_.end()) {
-    match.bins_.push_back(search->second);
-    match.weights_.push_back(1.0);
+    match.set(search->second);
   }
 }
 

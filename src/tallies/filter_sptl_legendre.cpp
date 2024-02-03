@@ -77,12 +77,16 @@ void SpatialLegendreFilter::get_all_bins(
     // Compute the normalized coordinate value.
     double x_norm = 2.0 * (x - min_) / (max_ - min_) - 1.0;
 
+    // TODO implement recursively defined Legendre polynomials
+    // to avoid expensive on-the-fly memory allocations
+
     // Compute and return the Legendre weights.
     vector<double> wgt(order_ + 1);
+
     calc_pn_c(order_, x_norm, wgt.data());
+    auto& match_vector = match.vector_pairs();
     for (int i = 0; i < order_ + 1; i++) {
-      match.bins_.push_back(i);
-      match.weights_.push_back(wgt[i]);
+      match_vector.push_back({i, wgt[i]});
     }
   }
 }

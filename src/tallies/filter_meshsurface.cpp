@@ -18,9 +18,7 @@ void MeshSurfaceFilter::get_all_bins(
   }
 
   Direction u = p.u();
-  model::meshes[mesh_]->surface_bins_crossed(r0, r1, u, match.bins_);
-  for (auto b : match.bins_)
-    match.weights_.push_back(1.0);
+  model::meshes[mesh_]->surface_bins_crossed(r0, r1, u, match.vector_pairs());
 }
 
 std::string MeshSurfaceFilter::text_label(int bin) const

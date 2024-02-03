@@ -58,8 +58,7 @@ void PolarFilter::get_all_bins(
 
   if (theta >= bins_.front() && theta <= bins_.back()) {
     auto bin = lower_bound_index(bins_.begin(), bins_.end(), theta);
-    match.bins_.push_back(bin);
-    match.weights_.push_back(1.0);
+    match.set(bin);
   }
 }
 

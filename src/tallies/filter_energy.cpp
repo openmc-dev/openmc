@@ -61,11 +61,10 @@ void EnergyFilter::get_all_bins(
 {
   if (p.g() != C_NONE && matches_transport_groups_) {
     if (estimator == TallyEstimator::TRACKLENGTH) {
-      match.bins_.push_back(data::mg.num_energy_groups_ - p.g() - 1);
+      match.set(data::mg.num_energy_groups_ - p.g() - 1);
     } else {
-      match.bins_.push_back(data::mg.num_energy_groups_ - p.g_last() - 1);
+      match.set(data::mg.num_energy_groups_ - p.g_last() - 1);
     }
-    match.weights_.push_back(1.0);
 
   } else {
     // Get the pre-collision energy of the particle.
@@ -74,8 +73,7 @@ void EnergyFilter::get_all_bins(
     // Bin the energy.
     if (E >= bins_.front() && E <= bins_.back()) {
       auto bin = lower_bound_index(bins_.begin(), bins_.end(), E);
-      match.bins_.push_back(bin);
-      match.weights_.push_back(1.0);
+      match.set(bin);
     }
   }
 }
@@ -99,14 +97,12 @@ void EnergyoutFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   if (p.g() != C_NONE && matches_transport_groups_) {
-    match.bins_.push_back(data::mg.num_energy_groups_ - p.g() - 1);
-    match.weights_.push_back(1.0);
+    match.set(data::mg.num_energy_groups_ - p.g() - 1);
 
   } else {
     if (p.E() >= bins_.front() && p.E() <= bins_.back()) {
       auto bin = lower_bound_index(bins_.begin(), bins_.end(), p.E());
-      match.bins_.push_back(bin);
-      match.weights_.push_back(1.0);
+      match.set(bin);
     }
   }
 }

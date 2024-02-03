@@ -53,8 +53,7 @@ void MuFilter::get_all_bins(
 {
   if (p.mu() >= bins_.front() && p.mu() <= bins_.back()) {
     auto bin = lower_bound_index(bins_.begin(), bins_.end(), p.mu());
-    match.bins_.push_back(bin);
-    match.weights_.push_back(1.0);
+    match.set(bin);
   }
 }
 

@@ -49,8 +49,7 @@ void CellFilter::get_all_bins(
   for (int i = 0; i < p.n_coord(); i++) {
     auto search = map_.find(p.coord(i).cell);
     if (search != map_.end()) {
-      match.bins_.push_back(search->second);
-      match.weights_.push_back(1.0);
+      match.set(search->second);
     }
   }
 }

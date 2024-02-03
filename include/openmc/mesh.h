@@ -5,6 +5,7 @@
 #define OPENMC_MESH_H
 
 #include <unordered_map>
+#include <utility> // pair
 
 #include "hdf5.h"
 #include "pugixml.hpp"
@@ -35,6 +36,8 @@
 #include "libmesh/mesh.h"
 #include "libmesh/point.h"
 #endif
+
+using std::pair;
 
 namespace openmc {
 
@@ -94,19 +97,22 @@ public:
   //! \param[in] r0 Previous position of the particle
   //! \param[in] r1 Current position of the particle
   //! \param[in] u Particle direction
-  //! \param[out] bins Bins that were crossed
+  //! \param[out] bins Pairs of bin index and length in it
   //! \param[out] lengths Fraction of tracklength in each bin
   virtual void bins_crossed(Position r0, Position r1, const Direction& u,
-    vector<int>& bins, vector<double>& lengths) const = 0;
+    vector<pair<int, double>>& bins) const = 0;
 
   //! Determine which surface bins were crossed by a particle
   //
   //! \param[in] r0 Previous position of the particle
   //! \param[in] r1 Current position of the particle
   //! \param[in] u Particle direction
-  //! \param[out] bins Surface bins that were crossed
-  virtual void surface_bins_crossed(
-    Position r0, Position r1, const Direction& u, vector<int>& bins) const = 0;
+  //! \param[out] bins Surface bins that were crossed. The integers
+  //!             correspond to bin indices while the doubles are
+  //!             always one. These are present to maintain a simple
+  //!             interface with FilterMatch, where this is used.
+  virtual void surface_bins_crossed(Position r0, Position r1,
+    const Direction& u, vector<pair<int, double>>& bins) const = 0;
 
   //! Get bin at a given position in space
   //
@@ -198,10 +204,10 @@ public:
   int n_surface_bins() const override;
 
   void bins_crossed(Position r0, Position r1, const Direction& u,
-    vector<int>& bins, vector<double>& lengths) const override;
+    vector<pair<int, double>>& bins) const override;
 
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
-    vector<int>& bins) const override;
+    vector<pair<int, double>>& bins) const override;
 
   //! Determine which cell or surface bins were crossed by a particle
   //
@@ -570,7 +576,7 @@ public:
   // Overridden Methods
 
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
-    vector<int>& bins) const override;
+    vector<pair<int, double>>& bins) const override;
 
   void to_hdf5(hid_t group) const override;
 
@@ -667,7 +673,7 @@ public:
   Position sample_element(int32_t bin, uint64_t* seed) const override;
 
   void bins_crossed(Position r0, Position r1, const Direction& u,
-    vector<int>& bins, vector<double>& lengths) const override;
+    vector<pair<int, double>>& bins) const override;
 
   int get_bin(Position r) const override;
 
@@ -830,7 +836,7 @@ public:
 
   // Overridden Methods
   void bins_crossed(Position r0, Position r1, const Direction& u,
-    vector<int>& bins, vector<double>& lengths) const override;
+    vector<pair<int, double>>& bins) const override;
 
   Position sample_element(int32_t bin, uint64_t* seed) const override;
 

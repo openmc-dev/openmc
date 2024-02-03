@@ -98,8 +98,7 @@ void EnergyFunctionFilter::get_all_bins(
     double w = interpolate(energy_, y_, p.E_last(), interpolation_);
 
     // Interpolate on the lin-lin grid.
-    match.bins_.push_back(0);
-    match.weights_.push_back(w);
+    match.set(0, w);
   }
 }
 

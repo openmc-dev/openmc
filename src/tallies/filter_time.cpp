@@ -60,13 +60,26 @@ void TimeFilter::get_all_bins(
 
     // If time interval is zero, add a match corresponding to the starting time
     if (t_end == t_start) {
-      match.bins_.push_back(i_bin);
-      match.weights_.push_back(1.0);
+      match.set(i_bin);
       return;
     }
 
-    // Find matching bins
+    /* TODO: this is incorrect when used in conjunction with other
+     * vector-matching that have spatial information. The problem is
+     * that the spatial matches are correlated with time, so we
+     * are in fact dealing with correlated matches across multiple
+     * filters: something that OpenMC cannot and should not handle.
+     *
+     * With, for example, an energy functionaly expansion filter,
+     * this is correct, because the vector match to the energy is
+     * not changing over time (assuming we're dealing with neutral
+     * particles)
+     */
+
+    // Find matching bins. There are multiple matching bins here,
+    // so we use the vector interface on FilterMatch.
     double dt_total = t_end - t_start;
+    auto& match_vector = match.vector_pairs();
     for (; i_bin < bins_.size() - 1; ++i_bin) {
       double t_left = std::max(t_start, bins_[i_bin]);
       double t_right = std::min(t_end, bins_[i_bin + 1]);
@@ -74,8 +87,7 @@ void TimeFilter::get_all_bins(
       // Add match with weight equal to the fraction of the time interval within
       // the current time bin
       const double fraction = (t_right - t_left) / dt_total;
-      match.bins_.push_back(i_bin);
-      match.weights_.push_back(fraction);
+      match_vector.push_back({i_bin, fraction});
 
       if (t_end < bins_[i_bin + 1])
         break;
@@ -86,8 +98,7 @@ void TimeFilter::get_all_bins(
     // exact time of the particle
 
     const auto i_bin = lower_bound_index(bins_.begin(), bins_.end(), t_end);
-    match.bins_.push_back(i_bin);
-    match.weights_.push_back(1.0);
+    match.set(i_bin);
   }
 }
 

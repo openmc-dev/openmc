@@ -79,8 +79,7 @@ void CellInstanceFilter::get_all_bins(
     auto search = map_.find({index_cell, instance});
     if (search != map_.end()) {
       int index_bin = search->second;
-      match.bins_.push_back(index_bin);
-      match.weights_.push_back(1.0);
+      match.set(index_bin);
     }
   }
 
@@ -97,8 +96,7 @@ void CellInstanceFilter::get_all_bins(
     gsl::index instance = cell_instance_at_level(p, i);
     auto search = map_.find({index_cell, instance});
     if (search != map_.end()) {
-      match.bins_.push_back(search->second);
-      match.weights_.push_back(1.0);
+      match.set(search->second);
     }
   }
 }

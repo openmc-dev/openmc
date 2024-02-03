@@ -258,8 +258,8 @@ std::string UnstructuredMesh::get_mesh_type() const
   return mesh_type;
 }
 
-void UnstructuredMesh::surface_bins_crossed(
-  Position r0, Position r1, const Direction& u, vector<int>& bins) const
+void UnstructuredMesh::surface_bins_crossed(Position r0, Position r1,
+  const Direction& u, vector<pair<int, double>>& bins) const
 {
   fatal_error("Unstructured mesh surface tallies are not implemented.");
 }
@@ -595,42 +595,41 @@ void StructuredMesh::raytrace_mesh(
 }
 
 void StructuredMesh::bins_crossed(Position r0, Position r1, const Direction& u,
-  vector<int>& bins, vector<double>& lengths) const
+  vector<pair<int, double>>& bins) const
 {
 
   // Helper tally class.
-  // stores a pointer to the mesh class and references to bins and lengths
+  // stores a pointer to the mesh class and references to bin/length pair
   // parameters. Performs the actual tally through the track method.
   struct TrackAggregator {
     TrackAggregator(
-      const StructuredMesh* _mesh, vector<int>& _bins, vector<double>& _lengths)
-      : mesh(_mesh), bins(_bins), lengths(_lengths)
+      const StructuredMesh* _mesh, vector<pair<int, double>>& _bins)
+      : mesh(_mesh), bins(_bins)
     {}
     void surface(const MeshIndex& ijk, int k, bool max, bool inward) const {}
     void track(const MeshIndex& ijk, double l) const
     {
-      bins.push_back(mesh->get_bin_from_indices(ijk));
-      lengths.push_back(l);
+      bins.emplace_back(mesh->get_bin_from_indices(ijk), l);
     }
 
     const StructuredMesh* mesh;
-    vector<int>& bins;
-    vector<double>& lengths;
+    vector<pair<int, double>>& bins;
   };
 
   // Perform the mesh raytrace with the helper class.
-  raytrace_mesh(r0, r1, u, TrackAggregator(this, bins, lengths));
+  raytrace_mesh(r0, r1, u, TrackAggregator(this, bins));
 }
 
-void StructuredMesh::surface_bins_crossed(
-  Position r0, Position r1, const Direction& u, vector<int>& bins) const
+void StructuredMesh::surface_bins_crossed(Position r0, Position r1,
+  const Direction& u, vector<pair<int, double>>& bins) const
 {
 
   // Helper tally class.
   // stores a pointer to the mesh class and a reference to the bins parameter.
   // Performs the actual tally through the surface method.
   struct SurfaceAggregator {
-    SurfaceAggregator(const StructuredMesh* _mesh, vector<int>& _bins)
+    SurfaceAggregator(
+      const StructuredMesh* _mesh, vector<pair<int, double>>& _bins)
       : mesh(_mesh), bins(_bins)
     {}
     void surface(const MeshIndex& ijk, int k, bool max, bool inward) const
@@ -641,12 +640,12 @@ void StructuredMesh::surface_bins_crossed(
         i_bin += 2;
       if (inward)
         i_bin += 1;
-      bins.push_back(i_bin);
+      bins.emplace_back(i_bin, 1.0);
     }
     void track(const MeshIndex& idx, double l) const {}
 
     const StructuredMesh* mesh;
-    vector<int>& bins;
+    vector<pair<int, double>>& bins;
   };
 
   // Perform the mesh raytrace with the helper class.
@@ -2136,7 +2135,7 @@ void MOABMesh::intersect_track(const moab::CartVect& start,
 }
 
 void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
-  vector<int>& bins, vector<double>& lengths) const
+  vector<pair<int, double>>& bins) const
 {
   moab::CartVect start(r0.x, r0.y, r0.z);
   moab::CartVect end(r1.x, r1.y, r1.z);
@@ -2150,11 +2149,12 @@ void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   start -= TINY_BIT * dir;
   end += TINY_BIT * dir;
 
+  // TODO allocating on the fly is very slow,
+  // fix this
   vector<double> hits;
   intersect_track(start, dir, track_len, hits);
 
   bins.clear();
-  lengths.clear();
 
   // if there are no intersections the track may lie entirely
   // within a single tet. If this is the case, apply entire
@@ -2163,8 +2163,7 @@ void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
     Position midpoint = r0 + u * (track_len * 0.5);
     int bin = this->get_bin(midpoint);
     if (bin != -1) {
-      bins.push_back(bin);
-      lengths.push_back(1.0);
+      bins.push_back({bin, 1.0});
     }
     return;
   }
@@ -2189,8 +2188,7 @@ void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
       continue;
     }
 
-    bins.push_back(bin);
-    lengths.push_back(segment_length / track_len);
+    bins.push_back({bin, segment_length / track_len});
   }
 
   // tally remaining portion of track after last hit if
@@ -2202,8 +2200,7 @@ void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
     Position midpoint = segment_start + u * (segment_length * 0.5);
     int bin = this->get_bin(midpoint);
     if (bin != -1) {
-      bins.push_back(bin);
-      lengths.push_back(segment_length / track_len);
+      bins.push_back({bin, segment_length / track_len});
     }
   }
 };
@@ -2873,9 +2870,10 @@ void LibMesh::write(const std::string& filename) const
 }
 
 void LibMesh::bins_crossed(Position r0, Position r1, const Direction& u,
-  vector<int>& bins, vector<double>& lengths) const
+  vector<pair<int, double>>& bins) const
 {
   // TODO: Implement triangle crossings here
+  // abandon all hope ye who enter 💀
   fatal_error("Tracklength tallies on libMesh instances are not implemented.");
 }
 

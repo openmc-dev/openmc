@@ -19,6 +19,7 @@
 #include "openmc/tallies/filter_delayedgroup.h"
 #include "openmc/tallies/filter_energy.h"
 
+#include <cassert>
 #include <string>
 
 namespace openmc {
@@ -32,24 +33,23 @@ FilterBinIter::FilterBinIter(const Tally& tally, Particle& p)
 {
   // Find all valid bins in each relevant filter if they have not already been
   // found for this event.
+  // TODO is this actually necessary?
   for (auto i_filt : tally_.filters()) {
     auto& match {filter_matches_[i_filt]};
-    if (!match.bins_present_) {
-      match.bins_.clear();
-      match.weights_.clear();
+    if (!match.bins_present()) {
+      match.reset();
       model::tally_filters[i_filt]->get_all_bins(p, tally_.estimator_, match);
-      match.bins_present_ = true;
     }
 
     // If there are no valid bins for this filter, then there are no valid
     // filter bin combinations so all iterators are end iterators.
-    if (match.bins_.size() == 0) {
+    if (!match.bins_present()) {
       index_ = -1;
       return;
     }
 
     // Set the index of the bin used in the first filter combination
-    match.i_bin_ = 0;
+    match.i_bin() = 0;
   }
 
   // Compute the initial index and weight.
@@ -66,28 +66,9 @@ FilterBinIter::FilterBinIter(
     return;
   }
 
-  for (auto i_filt : tally_.filters()) {
-    auto& match {filter_matches_[i_filt]};
-    if (!match.bins_present_) {
-      match.bins_.clear();
-      match.weights_.clear();
-      for (auto i = 0; i < model::tally_filters[i_filt]->n_bins(); ++i) {
-        match.bins_.push_back(i);
-        match.weights_.push_back(1.0);
-      }
-      match.bins_present_ = true;
-    }
-
-    if (match.bins_.size() == 0) {
-      index_ = -1;
-      return;
-    }
-
-    match.i_bin_ = 0;
-  }
-
-  // Compute the initial index and weight.
-  this->compute_index_weight();
+  // Dead code removed. This constructor only called with
+  // end = true?
+  assert(false);
 }
 
 FilterBinIter& FilterBinIter::operator++()
@@ -99,16 +80,16 @@ FilterBinIter& FilterBinIter::operator++()
   for (int i = tally_.filters().size() - 1; i >= 0; --i) {
     auto i_filt = tally_.filters(i);
     auto& match {filter_matches_[i_filt]};
-    if (match.i_bin_ < match.bins_.size() - 1) {
+    if (match.i_bin() < match.size() - 1) {
       // The bin for this filter can be incremented.  Increment it and do not
       // touch any of the remaining filters.
-      ++match.i_bin_;
+      ++match.i_bin();
       visited_all_combinations = false;
       break;
     } else {
       // This bin cannot be incremented so reset it and continue to the next
       // filter.
-      match.i_bin_ = 0;
+      match.i_bin() = 0;
     }
   }
 
@@ -131,9 +112,8 @@ void FilterBinIter::compute_index_weight()
   for (auto i = 0; i < tally_.filters().size(); ++i) {
     auto i_filt = tally_.filters(i);
     auto& match {filter_matches_[i_filt]};
-    auto i_bin = match.i_bin_;
-    index_ += match.bins_[i_bin] * tally_.strides(i);
-    weight_ *= match.weights_[i_bin];
+    index_ += match.bin() * tally_.strides(i);
+    weight_ *= match.weight();
   }
 }
 
@@ -150,9 +130,8 @@ void score_fission_delayed_dg(int i_tally, int d_bin, double score,
   auto& tally {*model::tallies[i_tally]};
   auto i_filt = tally.filters(tally.delayedgroup_filter_);
   auto& dg_match {filter_matches[i_filt]};
-  auto i_bin = dg_match.i_bin_;
-  auto original_bin = dg_match.bins_[i_bin];
-  dg_match.bins_[i_bin] = d_bin;
+  auto i_bin = dg_match.i_bin();
+  dg_match.set(d_bin);
 
   // Determine the filter scoring index
   auto filter_index = 0;
@@ -160,9 +139,8 @@ void score_fission_delayed_dg(int i_tally, int d_bin, double score,
   for (auto i = 0; i < tally.filters().size(); ++i) {
     auto i_filt = tally.filters(i);
     auto& match {filter_matches[i_filt]};
-    auto i_bin = match.i_bin_;
-    filter_index += match.bins_[i_bin] * tally.strides(i);
-    filter_weight *= match.weights_[i_bin];
+    filter_index += match.bin() * tally.strides(i);
+    filter_weight *= match.weight();
   }
 
 // Update the tally result
@@ -171,7 +149,7 @@ void score_fission_delayed_dg(int i_tally, int d_bin, double score,
     score * filter_weight;
 
   // Reset the original delayed group bin
-  dg_match.bins_[i_bin] = original_bin;
+  dg_match.set(0);
 }
 
 //! Helper function to retrieve fission q value from a nuclide
@@ -333,8 +311,7 @@ void score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
 {
   auto& tally {*model::tallies[i_tally]};
   auto i_eout_filt = tally.filters()[tally.energyout_filter_];
-  auto i_bin = p.filter_matches(i_eout_filt).i_bin_;
-  auto bin_energyout = p.filter_matches(i_eout_filt).bins_[i_bin];
+  auto bin_energyout = p.filter_matches(i_eout_filt).bin();
 
   const EnergyoutFilter& eo_filt {
     *dynamic_cast<EnergyoutFilter*>(model::tally_filters[i_eout_filt].get())};
@@ -370,7 +347,7 @@ void score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
       g_out = eo_filt.n_bins() - g_out - 1;
 
       // change outgoing energy bin
-      p.filter_matches(i_eout_filt).bins_[i_bin] = g_out;
+      p.filter_matches(i_eout_filt).set(g_out);
 
     } else {
 
@@ -387,7 +364,7 @@ void score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
       } else {
         auto i_match = lower_bound_index(
           eo_filt.bins().begin(), eo_filt.bins().end(), E_out);
-        p.filter_matches(i_eout_filt).bins_[i_bin] = i_match;
+        p.filter_matches(i_eout_filt).set(i_match);
       }
     }
 
@@ -401,9 +378,8 @@ void score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
       for (auto j = 0; j < tally.filters().size(); ++j) {
         auto i_filt = tally.filters(j);
         auto& match {p.filter_matches(i_filt)};
-        auto i_bin = match.i_bin_;
-        filter_index += match.bins_[i_bin] * tally.strides(j);
-        filter_weight *= match.weights_[i_bin];
+        filter_index += match.bin() * tally.strides(j);
+        filter_weight *= match.weight();
       }
 
 // Update tally results
@@ -431,8 +407,7 @@ void score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
             for (auto j = 0; j < tally.filters().size(); ++j) {
               auto i_filt = tally.filters(j);
               auto& match {p.filter_matches(i_filt)};
-              auto i_bin = match.i_bin_;
-              filter_weight *= match.weights_[i_bin];
+              filter_weight *= match.weight();
             }
 
             score_fission_delayed_dg(i_tally, d_bin, score * filter_weight,
@@ -449,9 +424,8 @@ void score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
         for (auto j = 0; j < tally.filters().size(); ++j) {
           auto i_filt = tally.filters(j);
           auto& match {p.filter_matches(i_filt)};
-          auto i_bin = match.i_bin_;
-          filter_index += match.bins_[i_bin] * tally.strides(j);
-          filter_weight *= match.weights_[i_bin];
+          filter_index += match.bin() * tally.strides(j);
+          filter_weight *= match.weight();
         }
 
 // Update tally results
@@ -463,7 +437,7 @@ void score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
   }
 
   // Reset outgoing energy bin and score index
-  p.filter_matches(i_eout_filt).bins_[i_bin] = bin_energyout;
+  p.filter_matches(i_eout_filt).set(bin_energyout);
 }
 
 double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin)
@@ -2286,7 +2260,7 @@ void score_analog_tally_ce(Particle& p)
 
   // Reset all the filter matches for the next tally event.
   for (auto& match : p.filter_matches())
-    match.bins_present_ = false;
+    match.reset();
 }
 
 void score_analog_tally_mg(Particle& p)
@@ -2335,7 +2309,7 @@ void score_analog_tally_mg(Particle& p)
 
   // Reset all the filter matches for the next tally event.
   for (auto& match : p.filter_matches())
-    match.bins_present_ = false;
+    match.reset();
 }
 
 void score_tracklength_tally(Particle& p, double distance)
@@ -2412,7 +2386,7 @@ void score_tracklength_tally(Particle& p, double distance)
 
   // Reset all the filter matches for the next tally event.
   for (auto& match : p.filter_matches())
-    match.bins_present_ = false;
+    match.reset();
 }
 
 void score_collision_tally(Particle& p)
@@ -2490,7 +2464,7 @@ void score_collision_tally(Particle& p)
 
   // Reset all the filter matches for the next tally event.
   for (auto& match : p.filter_matches())
-    match.bins_present_ = false;
+    match.reset();
 }
 
 void score_surface_tally(Particle& p, const vector<int>& tallies)
@@ -2534,7 +2508,7 @@ void score_surface_tally(Particle& p, const vector<int>& tallies)
 
   // Reset all the filter matches for the next tally event.
   for (auto& match : p.filter_matches())
-    match.bins_present_ = false;
+    match.reset();
 }
 
 void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
@@ -2602,7 +2576,7 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
 
           // Reset all the filter matches for the next tally event.
           for (auto& match : p.filter_matches())
-            match.bins_present_ = false;
+            match.reset();
         }
       }
     }

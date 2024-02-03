@@ -50,12 +50,10 @@ void MeshFilter::get_all_bins(
   if (estimator != TallyEstimator::TRACKLENGTH) {
     auto bin = model::meshes[mesh_]->get_bin(r);
     if (bin >= 0) {
-      match.bins_.push_back(bin);
-      match.weights_.push_back(1.0);
+      match.set(bin);
     }
   } else {
-    model::meshes[mesh_]->bins_crossed(
-      last_r, r, u, match.bins_, match.weights_);
+    model::meshes[mesh_]->bins_crossed(last_r, r, u, match.vector_pairs());
   }
 }
 

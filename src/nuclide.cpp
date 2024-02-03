@@ -42,12 +42,6 @@ vector<unique_ptr<Nuclide>> nuclides;
 // Nuclide implementation
 //==============================================================================
 
-int Nuclide::XS_TOTAL {0};
-int Nuclide::XS_ABSORPTION {1};
-int Nuclide::XS_FISSION {2};
-int Nuclide::XS_NU_FISSION {3};
-int Nuclide::XS_PHOTON_PROD {4};
-
 Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
 {
   // Set index of nuclide in global vector

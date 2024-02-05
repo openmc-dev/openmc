@@ -24,8 +24,8 @@ class Batchwise(ABC):
     keff equal to one, while running transport-depletion caculations.
 
     Specific classes for running batch wise depletion calculations are
-    implemented as derived class of Batchwise
-    .
+    implemented as derived class of Batchwise.
+
     .. versionadded:: 0.13.4
 
     Parameters
@@ -71,7 +71,7 @@ class Batchwise(ABC):
         All burnable material IDs being managed by a single process
         List of burnable materials ids
     """
-    def __init__(self, operator, model, bracket, bracket_limit,
+    def __init__(self, operator, bracket, bracket_limit,
                  density_treatment = 'constant-volume', bracketed_method='brentq',
                  tol=0.01, target=1.0, print_iterations=True,
                  search_for_keff_output=True):
@@ -79,16 +79,12 @@ class Batchwise(ABC):
         self.operator = operator
         self.burn_mats = operator.burnable_mats
         self.local_mats = operator.local_mats
-        self.model = model
-        self.geometry = model.geometry
+        self.model = operator.model
+        self.geometry = operator.model.geometry
 
         check_value('density_treatment', density_treatment,
                                         ('constant-density','constant-volume'))
         self.density_treatment = density_treatment
-
-        check_iterable_type('bracket', bracket, Real)
-        check_length('bracket', bracket, 2)
-        check_less_than('bracket values', bracket[0], bracket[1])
         self.bracket = bracket
 
         check_iterable_type('bracket_limit', bracket_limit, Real)
@@ -97,14 +93,10 @@ class Batchwise(ABC):
                          bracket_limit[0], bracket_limit[1])
         self.bracket_limit = bracket_limit
 
-        check_value('bracketed_method', bracketed_method,
-                   _SCALAR_BRACKETED_METHODS)
         self.bracketed_method = bracketed_method
 
-        check_type('tol', tol, Real)
         self.tol = tol
 
-        check_type('target', target, Real)
         self.target = target
 
         self.print_iterations = print_iterations
@@ -140,8 +132,8 @@ class Batchwise(ABC):
         self._target = value
 
     @classmethod
-    def from_params(cls, obj, attr, operator, model, **kwargs):
-        return cls(obj, attr, operator, model, **kwargs)
+    def from_params(cls, obj, attr, operator, **kwargs):
+        return cls(obj, attr, operator, **kwargs)
 
     @abstractmethod
     def _model_builder(self, param):
@@ -185,19 +177,13 @@ class Batchwise(ABC):
         #make sure we don't modify original bracket and tol values
         bracket = deepcopy(self.bracket)
 
-        #search_for_keff tolerance should vary according to the first guess value
-        if abs(val) > 1.0:
-            tol = self.tol / abs(val)
-        else:
-            tol = self.tol
-
         # Run until a search_for_keff root is found or out of limits
         root = None
 
         while root == None:
             search = search_for_keff(self._model_builder,
                             bracket = np.array(bracket) + val,
-                            tol = tol,
+                            tol = self.tol,
                             bracketed_method = self.bracketed_method,
                             target = self.target,
                             print_iterations = self.print_iterations,
@@ -432,16 +418,19 @@ class BatchwiseCell(Batchwise):
         Directional axis for geometrical parametrization, where 0, 1 and 2 stand
         for 'x', 'y' and 'z', respectively.
     """
-    def __init__(self, cell, operator, model, bracket, bracket_limit, axis=None,
+    def __init__(self, cell, operator, bracket, bracket_limit, axis=None,
                  density_treatment='constant-volume', bracketed_method='brentq',
                  tol=0.01, target=1.0, print_iterations=True,
                  search_for_keff_output=True):
 
-        super().__init__(operator, model, bracket, bracket_limit, density_treatment,
+        super().__init__(operator, bracket, bracket_limit, density_treatment,
                          bracketed_method, tol, target, print_iterations,
                          search_for_keff_output)
 
         self.cell = self._get_cell(cell)
+
+        # Initialize to None, as openmc.lib is not initialized yet here
+        self._cell = None
 
         if axis is not None:
             #index of cell directional axis
@@ -471,6 +460,13 @@ class BatchwiseCell(Batchwise):
             cell coefficient to set
         """
 
+    def _set_cell(self):
+        """
+        Set _cell attribute to the corresponding openmc.lib.cell
+        """
+        self._cell = [cell for cell in openmc.lib.cells.values() \
+                                if cell.id == self.cell.id][0]
+
     def _get_cell(self, val):
         """Helper method for getting cell from cell instance or cell name or id.
         Parameters
@@ -481,31 +477,24 @@ class BatchwiseCell(Batchwise):
         val : openmc.Cell
             Openmc Cell
         """
+        all_cells = [(cell.id, cell.name, cell) for cell in \
+                                self.geometry.get_all_cells().values()]
+
         if isinstance(val, Cell):
-            check_value('Cell exists', val, [cell for cell in \
-                                self.geometry.get_all_cells().values()])
+            check_value('Cell exists', val, [cell[2] for cell in all_cells])
 
         elif isinstance(val, str):
             if val.isnumeric():
-                check_value('Cell id exists', int(val), [cell.id for cell in \
-                                self.geometry.get_all_cells().values()])
-                val = [cell for cell in \
-                       self.geometry.get_all_cells().values() \
-                       if cell.id == int(val)][0]
-            else:
-                check_value('Cell name exists', val, [cell.name for cell in \
-                                self.geometry.get_all_cells().values()])
+                check_value('Cell id exists', int(val), [cell[0] for cell in all_cells])
+                val = [cell[2] for cell in all_cells if cell[0] == int(val)][0]
 
-                val = [cell for cell in \
-                       self.geometry.get_all_cells().values() \
-                       if cell.name == val][0]
+            else:
+                check_value('Cell name exists', val, [cell[1] for cell in all_cells])
+                val = [cell[2] for cell in all_cells if cell[1] == val][0]
 
         elif isinstance(val, int):
-            check_value('Cell id exists', val, [cell.id for cell in \
-                                self.geometry.get_all_cells().values()])
-            val = [cell for cell in \
-                       self.geometry.get_all_cells().values() \
-                       if cell.id == val][0]
+            check_value('Cell id exists', val, [cell[0] for cell in all_cells])
+            val = [cell[2] for cell in all_cells if cell[0] == val][0]
         else:
             ValueError(f'Cell: {val} is not supported')
 
@@ -548,7 +537,13 @@ class BatchwiseCell(Batchwise):
         -------
         x : list of numpy.ndarray
             Updated total atoms concentrations
+        root : float
+             Search_for_keff returned root value
         """
+        # set _cell argument, once openmc.lib is intialized
+        if self._cell is None:
+            self._set_cell()
+
         # Get cell attribute from previous iteration
         val = self._get_cell_attrib()
         check_type('Cell coeff', val, Real)
@@ -556,10 +551,10 @@ class BatchwiseCell(Batchwise):
         # Update all material densities from concentration vectors
         #before performing the search_for_keff. This is needed before running
         # the  transport equations in the search_for_keff algorithm
-        super()._update_materials(x)
+        self._update_materials(x)
 
         # Calculate new cell attribute
-        root = super()._search_for_keff(val)
+        root = self._search_for_keff(val)
 
         # set results value as attribute in the geometry
         self._set_cell_attrib(root)
@@ -569,7 +564,7 @@ class BatchwiseCell(Batchwise):
         # new volume
         if self.cell_materials:
             volumes = self._calculate_volumes()
-            x = super()._update_x_and_set_volumes(x, volumes)
+            x = self._update_x_and_set_volumes(x, volumes)
 
         return x, root
 
@@ -640,12 +635,12 @@ class BatchwiseCellGeometrical(BatchwiseCell):
         Number of samples used to generate volume estimates for stochastic
         volume calculations.
     """
-    def __init__(self, cell, attrib_name, operator, model, bracket,
+    def __init__(self, cell, attrib_name, operator, bracket,
                  bracket_limit, axis, density_treatment='constant-volume',
                  bracketed_method='brentq', tol=0.01, target=1.0, samples=1000000,
                  print_iterations=True, search_for_keff_output=True):
 
-        super().__init__(cell, operator, model, bracket, bracket_limit, axis,
+        super().__init__(cell, operator, bracket, bracket_limit, axis,
                          density_treatment, bracketed_method, tol, target,
                          print_iterations, search_for_keff_output)
 
@@ -676,12 +671,10 @@ class BatchwiseCellGeometrical(BatchwiseCell):
         coeff : float
             cell coefficient
         """
-        for cell in openmc.lib.cells.values():
-            if cell.id == self.cell.id:
-                if self.attrib_name == 'translation':
-                    return cell.translation[self.axis]
-                elif self.attrib_name == 'rotation':
-                    return cell.rotation[self.axis]
+        if self.attrib_name == 'translation':
+            return self._cell.translation[self.axis]
+        elif self.attrib_name == 'rotation':
+            return self._cell.rotation[self.axis]
 
     def _set_cell_attrib(self, val):
         """
@@ -694,9 +687,7 @@ class BatchwiseCellGeometrical(BatchwiseCell):
             Cell coefficient to set, in cm for translation and deg for rotation
         """
         self.vector[self.axis] = val
-        for cell in openmc.lib.cells.values():
-            if cell.id == self.cell.id:
-                setattr(cell, self.attrib_name, self.vector)
+        setattr(self._cell, self.attrib_name, self.vector)
 
     def _initialize_volume_calc(self):
         """
@@ -782,18 +773,19 @@ class BatchwiseCellTemperature(BatchwiseCell):
     cell : openmc.Cell or int or str
         OpenMC Cell identifier to where apply batch wise scheme
     """
-    def __init__(self, cell, attrib_name, operator, model, bracket, bracket_limit,
+    def __init__(self, cell, attrib_name, operator, bracket, bracket_limit,
                  axis=None, density_treatment='constant-volume',
                  bracketed_method='brentq', tol=0.01, target=1.0,
                  print_iterations=True, search_for_keff_output=True):
 
-        super().__init__(cell, operator, model, bracket, bracket_limit, axis,
+        super().__init__(cell, operator, bracket, bracket_limit, axis,
                          density_treatment, bracketed_method, tol, target,
                          print_iterations, search_for_keff_output)
 
         # Not needed but used for consistency with other classes
         check_value('attrib_name', attrib_name, 'temperature')
         self.attrib_name = attrib_name
+
         # check if initial temperature has been set to right cell material
         if isinstance(self.cell.fill, openmc.Universe):
             cells = [cell for cell in self.cell.fill.cells.values()  \
@@ -811,9 +803,7 @@ class BatchwiseCellTemperature(BatchwiseCell):
         coeff : float
             cell temperature, in Kelvin
         """
-        for cell in openmc.lib.cells.values():
-            if cell.id == self.cell.id:
-                return cell.get_temperature()
+        return self._cell.get_temperature()
 
     def _set_cell_attrib(self, val):
         """
@@ -823,9 +813,7 @@ class BatchwiseCellTemperature(BatchwiseCell):
         val : float
             Cell temperature to set, in Kelvin
         """
-        for cell in openmc.lib.cells.values():
-            if cell.id == self.cell.id:
-                cell.set_temperature(val)
+        self._cell.set_temperature(val)
 
 class BatchwiseMaterial(Batchwise):
     """Abstract class holding batch wise material-based functions.
@@ -884,12 +872,12 @@ class BatchwiseMaterial(Batchwise):
         represents a nuclide and its weight fraction, respectively.
     """
 
-    def __init__(self, material, operator, model, mat_vector, bracket,
+    def __init__(self, material, operator, mat_vector, bracket,
                  bracket_limit, density_treatment='constant-volume',
                  bracketed_method='brentq', tol=0.01, target=1.0,
                  print_iterations=True, search_for_keff_output=True):
 
-        super().__init__(operator, model, bracket, bracket_limit,
+        super().__init__(operator, bracket, bracket_limit,
                          density_treatment, bracketed_method, tol, target,
                          print_iterations, search_for_keff_output)
 
@@ -972,17 +960,19 @@ class BatchwiseMaterial(Batchwise):
         -------
         x : list of numpy.ndarray
             Updated total atoms concentrations
+        root : float
+             Search_for_keff returned root value
         """
         # Update AtomNumber with new conc vectors x. Materials are also updated
         # even though they are also re-calculated when running the search_for_kef
-        super()._update_materials(x)
+        self._update_materials(x)
 
         # Solve search_for_keff and find new value
-        root = super()._search_for_keff(0)
+        root = self._search_for_keff(0)
 
         #Update concentration vector and volumes with new value
         volumes = self._calculate_volumes(root)
-        x = super()._update_x_and_set_volumes(x, volumes)
+        x = self._update_x_and_set_volumes(x, volumes)
 
         return  x, root
 
@@ -1048,12 +1038,12 @@ class BatchwiseMaterialRefuel(BatchwiseMaterial):
         represents a nuclide and its weight fraction, respectively.
     """
 
-    def __init__(self, material, attrib_name, operator, model, mat_vector, bracket,
+    def __init__(self, material, attrib_name, operator, mat_vector, bracket,
                  bracket_limit, density_treatment='constant-volume',
                  bracketed_method='brentq', tol=0.01, target=1.0,
                  print_iterations=True, search_for_keff_output=True):
 
-        super().__init__(material, operator, model, mat_vector, bracket,
+        super().__init__(material, operator, mat_vector, bracket,
                          bracket_limit, density_treatment, bracketed_method, tol,
                          target, print_iterations, search_for_keff_output)
 

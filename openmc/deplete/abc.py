@@ -759,13 +759,8 @@ class Integrator(ABC):
     def _get_start_data(self):
         if self.operator.prev_res is None:
             return 0.0, 0
-        else:
-            if comm.size != 1:
-                return (self.operator.prev_res[-1].time[-1],
-                        int(len(self.operator.prev_res)/2) - 1)
-            else:
-                return (self.operator.prev_res[-1].time[-1],
-                        len(self.operator.prev_res) - 1)
+        return (self.operator.prev_res[-1].time[-1],
+                len(self.operator.prev_res) - 1)
 
     def integrate(self, final_step=True, output=True):
         """Perform the entire depletion process across all steps

@@ -812,7 +812,7 @@ class Integrator(ABC):
                 # Solve transport equation (or obtain result from restart)
                 if i > 0 or self.operator.prev_res is None:
                     # Update geometry/material according to batchwise definition
-                    if self.batchwise and source_rate != 0.0:
+                    if self.batchwise is not None and source_rate != 0.0:
                         n, root = self._get_bos_from_batchwise(i, n)
                     else:
                         root = None
@@ -840,7 +840,7 @@ class Integrator(ABC):
             # solve)
             if output and final_step and comm.rank == 0:
                 print(f"[openmc.deplete] t={t} (final operator evaluation)")
-            if self.batchwise and source_rate != 0.0:
+            if self.batchwise is not None and source_rate != 0.0:
                 n, root = self._get_bos_from_batchwise(i+1, n)
             else:
                 root = None

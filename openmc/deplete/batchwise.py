@@ -58,11 +58,11 @@ class Batchwise(ABC):
         This is equivalent to the `target` parameter of the `search_for_keff`.
         Default to 1.0.
     print_iterations : Bool, Optional
-        Whether or not to print `search_for_keff` iterations.
+        Print a status message each iteration
         Default to True
     search_for_keff_output : Bool, Optional
-        Whether or not to print transport iterations during  `search_for_keff`.
-        Default to False
+        Print full transport logs during iterations (e.g., inactive generations, active
+        generations). Default to False
     Attributes
     ----------
     burn_mats : list of str

@@ -62,7 +62,7 @@ results = openmc.deplete.Results("depletion_results.h5")
 time, keff = results.get_keff(time_units='d')
 
 # Obtain U235 concentration as a function of time
-uo2 = geometry.get_all_material_cells()[1].fill
+uo2 = geometry.get_all_material_cells()[1]
 _, n_U235 = results.get_atoms(uo2, 'U235')
 
 # Obtain Xe135 capture reaction rate as a function of time

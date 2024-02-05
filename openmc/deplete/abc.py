@@ -641,7 +641,7 @@ class Integrator(ABC):
         self.source_rates = asarray(source_rates)
 
         self.transfer_rates = None
-        self.batchwise = None
+        self._batchwise = None
 
         if isinstance(solver, str):
             # Delay importing of cram module, which requires this file
@@ -774,7 +774,7 @@ class Integrator(ABC):
         """
         x = deepcopy(bos_conc)
         # Get new vector after keff criticality control
-        x, root = self.batchwise.search_for_keff(x, step_index)
+        x, root = self._batchwise.search_for_keff(x, step_index)
         return x, root
 
     def integrate(
@@ -812,7 +812,7 @@ class Integrator(ABC):
                 # Solve transport equation (or obtain result from restart)
                 if i > 0 or self.operator.prev_res is None:
                     # Update geometry/material according to batchwise definition
-                    if self.batchwise is not None and source_rate != 0.0:
+                    if self._batchwise is not None and source_rate != 0.0:
                         n, root = self._get_bos_from_batchwise(i, n)
                     else:
                         root = None
@@ -840,7 +840,7 @@ class Integrator(ABC):
             # solve)
             if output and final_step and comm.rank == 0:
                 print(f"[openmc.deplete] t={t} (final operator evaluation)")
-            if self.batchwise is not None and source_rate != 0.0:
+            if self._batchwise is not None and source_rate != 0.0:
                 n, root = self._get_bos_from_batchwise(i+1, n)
             else:
                 root = None
@@ -903,8 +903,7 @@ class Integrator(ABC):
         elif attr == 'refuel':
             batchwise = BatchwiseMaterialRefuel
 
-        self.batchwise = batchwise.from_params(obj, attr, self.operator,
-                                           self.operator.model, **kwargs)
+        self._batchwise = batchwise.from_params(obj, attr, self.operator,**kwargs)
 
 @add_params
 class SIIntegrator(Integrator):

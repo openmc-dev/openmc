@@ -352,8 +352,6 @@ class Material(IDManagerMixin):
             Material instance
 
         """
-        mat_id = int(group.name.split('/')[-1].lstrip('material '))
-
         name = group['name'][()].decode() if 'name' in group else ''
         density = group['atom_density'][()]
         if 'nuclide_densities' in group:
@@ -1514,7 +1512,6 @@ class Material(IDManagerMixin):
             Material generated from XML element
 
         """
-        mat_id = int(elem.get('id'))
         # Add NCrystal material from cfg string
         if "cfg" in elem.attrib:
             cfg = elem.get("cfg")

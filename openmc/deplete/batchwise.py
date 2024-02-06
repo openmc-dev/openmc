@@ -21,13 +21,13 @@ from openmc.checkvalue import (
 class Batchwise(ABC):
     """Abstract class defining a generalized batch wise scheme.
 
-    Batchwise schemes, such as control rod adjustment or material refueling to
+    Batchwise schemes, such as control rod adjustment or material refuelling to
     control reactivity and maintain keff constant and equal to one.
 
     A batch wise scheme can be added here to an integrator instance,
     such as  :class:`openmc.deplete.CECMIntegrator`, to parametrize one system
     variable with the aim of satisfy certain design criteria, such as keeping
-    keff equal to one, while running transport-depletion caculations.
+    keff equal to one, while running transport-depletion calculations.
 
     Specific classes for running batch wise depletion calculations are
     implemented as derived class of Batchwise.
@@ -607,7 +607,7 @@ class BatchwiseCell(Batchwise):
         root : float
              Search_for_keff returned root value
         """
-        # set _cell argument, once openmc.lib is intialized
+        # set _cell argument, once openmc.lib is initialized
         if self.lib_cell is None:
             self._set_lib_cell()
 

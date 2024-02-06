@@ -237,10 +237,17 @@ class Batchwise(ABC):
                         "target. Trying to iteratively adapt bracket..."
                     )
 
-                    # if the bracket ends up being smaller than the std of the
-                    # keff's closer value to target, no need to continue-
-                    if all(keff <= max(keffs).s for keff in keffs):
-                        arg_min = abs(self.target - np.array(guesses)).argmin()
+                    # if the difference between keffs is smaller than 1 pcm,
+                    # the grad calculation will be overshoot, so let's set the root
+                    # to the closest guess value
+                    if abs(np.diff(keffs)) < 1.0e-5:
+                        arg_min = abs(self.target - np.array(keffs)).argmin()
+                        print(
+                            "Difference between keff values is "
+                            "smaller than 1 pcm. "
+                            "Set root to guess value with "
+                            "closest keff to target and continue..."
+                        )
                         root = guesses[arg_min]
 
                     # Calculate gradient as ratio of delta bracket and delta keffs
@@ -267,6 +274,12 @@ class Batchwise(ABC):
                         bracket[np.argmin(keffs)] += (
                             grad * (min(keffs).n - self.target) * dir
                         )
+
+                    #check if adapted bracket are within bracketing limits
+                    if max(bracket) + val > self.bracket_limit[1]:
+                        bracket[np.argmax(bracket)] = self.bracket_limit[1] - val
+                    if min(bracket) + val < self.bracket_limit[0]:
+                        bracket[np.argmin(bracket)] = self.bracket_limit[0] - val
 
                 else:
                     # Set res with closest limit and continue

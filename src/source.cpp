@@ -108,7 +108,7 @@ IndependentSource::IndependentSource(pugi::xml_node node)
   if (check_for_node(node, "strength")) {
     strength_ = std::stod(get_node_value(node, "strength"));
   }
-  
+
   // Check for source strength
   if (check_for_node(node, "random_ray_source")) {
     random_ray_source_ = get_node_value_bool(node, "random_ray_source");

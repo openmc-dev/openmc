@@ -20,7 +20,8 @@ RandomRay::RandomRay()
   delta_psi_.resize(data::mg.num_energy_groups_);
 }
 
-RandomRay::RandomRay(uint64_t ray_id, int sampling_source) : RandomRay::RandomRay()
+RandomRay::RandomRay(uint64_t ray_id, int sampling_source)
+  : RandomRay::RandomRay()
 {
   initialize_ray(ray_id, sampling_source);
 }
@@ -202,9 +203,10 @@ void RandomRay::initialize_ray(uint64_t ray_id, int sampling_source)
   stream() = STREAM_TRACKING;
 
   // Sample from ray source distribution
-  SourceSite site {model::external_sources[sampling_source]->sample(current_seed())};
-  site.E = lower_bound_index(data::mg.rev_energy_bins_.begin(),
-    data::mg.rev_energy_bins_.end(), site.E);
+  SourceSite site {
+    model::external_sources[sampling_source]->sample(current_seed())};
+  site.E = lower_bound_index(
+    data::mg.rev_energy_bins_.begin(), data::mg.rev_energy_bins_.end(), site.E);
   site.E = data::mg.num_energy_groups_ - site.E - 1.;
   from_source(&site);
 

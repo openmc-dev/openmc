@@ -120,7 +120,7 @@ int openmc_run_random_ray()
 
   // Intialize Cell (Flat Source Region) data structures
   initialize_source_regions();
-  
+
   // Determine which source term should be used for ray sampling
   int sampling_source = get_random_ray_sampling_source_index();
 
@@ -553,12 +553,12 @@ void validate_random_ray_inputs()
     if (is == nullptr) {
       continue;
     }
-    
+
     // Skip source if this is not a random ray source
     if (!is->random_ray_source()) {
       continue;
     }
-    
+
     // Increment random ray source counter
     n_random_ray_sources++;
 
@@ -567,15 +567,17 @@ void validate_random_ray_inputs()
     SpatialBox* sb = dynamic_cast<SpatialBox*>(space_dist);
     if (sb == nullptr) {
       fatal_error(
-        "Invalid source definition -- only box sources are allowed in random ray "
+        "Invalid source definition -- only box sources are allowed in random "
+        "ray "
         "mode. If no source is specified, OpenMC default is an isotropic point "
         "source at the origin, which is invalid in random ray mode.");
     }
 
     // Check that box source is not restricted to fissionable areas
     if (sb->only_fissionable()) {
-      fatal_error("Invalid source definition -- fissionable spatial distribution "
-                  "not allowed for random ray source.");
+      fatal_error(
+        "Invalid source definition -- fissionable spatial distribution "
+        "not allowed for random ray source.");
     }
 
     // Check for isotropic source
@@ -589,7 +591,8 @@ void validate_random_ray_inputs()
 
   // Ensure that exactly one random ray source was defined
   if (n_random_ray_sources != 1) {
-      fatal_error("Invalid source definition -- a single random ray source type must be provided in random ray mode.");
+    fatal_error("Invalid source definition -- a single random ray source type "
+                "must be provided in random ray mode.");
   }
 
   // Validate plotting files
@@ -645,7 +648,7 @@ int get_random_ray_sampling_source_index()
     if (is == nullptr) {
       continue;
     }
-    
+
     // Return index when random ray source is found
     if (is->random_ray_source()) {
       break;

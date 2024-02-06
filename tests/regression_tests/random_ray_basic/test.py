@@ -89,7 +89,6 @@ def create_random_ray_model():
     # Instantiate a Materials collection and export to XML
     materials_file = openmc.Materials([uo2, water])
     materials_file.cross_sections = "mgxs.h5"
-    #materials_file.export_to_xml()
 
     ###############################################################################
     # Define problem geometry
@@ -188,7 +187,6 @@ def create_random_ray_model():
 
     # Create a geometry with the two cells and export to XML
     geometry = openmc.Geometry(root)
-    #geometry.export_to_xml()
 
     ###############################################################################
     # Define problem settings
@@ -208,7 +206,6 @@ def create_random_ray_model():
     upper_right = (pitch, pitch, 1)
     uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=False)
     settings.source = openmc.IndependentSource(space=uniform_dist, particle='random_ray')
-    #settings.export_to_xml()
 
     ###############################################################################
     # Define tallies
@@ -233,21 +230,10 @@ def create_random_ray_model():
 
     # Instantiate a Tallies collection and export to XML
     tallies = openmc.Tallies([tally])
-    #tallies.export_to_xml()
 
     ###############################################################################
-    #                   Exporting to OpenMC plots.xml file
+    #                   Exporting to OpenMC model
     ###############################################################################
-
-    #plot = openmc.Plot()
-    #plot.origin = [0, 0, 0]
-    #plot.width = [2*pitch, 2*pitch, 2*pitch]
-    #plot.pixels = [100, 100, 1]
-    #plot.type = 'voxel'
-
-    # Instantiate a Plots collection and export to XML
-    #plot_file = openmc.Plots([plot])
-    #plot_file.export_to_xml()
     
     model = openmc.model.Model()
     model.geometry = geometry
@@ -255,7 +241,6 @@ def create_random_ray_model():
     model.settings = settings
     model.xs_data = mg_cross_sections_file
     model.tallies = tallies
-    #model.plots = plot_file
 
     return model
 

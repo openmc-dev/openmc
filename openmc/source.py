@@ -379,7 +379,7 @@ class IndependentSource(SourceBase):
         time = elem.find('time')
         if time is not None:
             source.time = Univariate.from_xml_element(time)
-        
+
         return source
 
 

@@ -76,7 +76,7 @@
     <particles>100</particles>
     <batches>10</batches>
     <inactive>5</inactive>
-    <source particle="neutron" strength="1.0" type="independent">
+    <source particle="neutron" random_ray_source="True" strength="1.0" type="independent">
       <space type="box">
         <parameters>-1.26 -1.26 -1 1.26 1.26 1</parameters>
       </space>

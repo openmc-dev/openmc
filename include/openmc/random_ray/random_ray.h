@@ -15,13 +15,13 @@ public:
   //==========================================================================
   // Constructors
   RandomRay();
-  RandomRay(uint64_t index_source);
+  RandomRay(uint64_t ray_id, int sampling_source);
 
   //==========================================================================
   // Methods
   void event_advance_ray();
   void attenuate_flux(double distance, bool is_active);
-  void initialize_ray(uint64_t index_source);
+  void initialize_ray(uint64_t ray_id, int sampling_source);
   uint64_t transport_history_based_single_ray();
 
   //==========================================================================

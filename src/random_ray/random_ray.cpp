@@ -3,6 +3,7 @@
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/random_ray/source_region.h"
+#include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"
@@ -19,9 +20,9 @@ RandomRay::RandomRay()
   delta_psi_.resize(data::mg.num_energy_groups_);
 }
 
-RandomRay::RandomRay(uint64_t index_source) : RandomRay::RandomRay()
+RandomRay::RandomRay(uint64_t ray_id, int sampling_source) : RandomRay::RandomRay()
 {
-  initialize_ray(index_source);
+  initialize_ray(ray_id, sampling_source);
 }
 
 // Transports ray until termination criteria are met
@@ -179,7 +180,7 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
   }
 }
 
-void RandomRay::initialize_ray(uint64_t index_source)
+void RandomRay::initialize_ray(uint64_t ray_id, int sampling_source)
 {
   // Reset particle event counter
   n_event() = 0;
@@ -192,7 +193,7 @@ void RandomRay::initialize_ray(uint64_t index_source)
   wgt() = 1.0;
 
   // set identifier for particle
-  id() = simulation::work_index[mpi::rank] + index_source;
+  id() = simulation::work_index[mpi::rank] + ray_id;
 
   // set random number seed
   int64_t particle_seed =
@@ -200,8 +201,11 @@ void RandomRay::initialize_ray(uint64_t index_source)
   init_particle_seeds(particle_seed, seeds());
   stream() = STREAM_TRACKING;
 
-  // sample from external source distribution
-  auto site = sample_external_source(current_seed());
+  // Sample from ray source distribution
+  SourceSite site {model::external_sources[sampling_source]->sample(current_seed())};
+  site.E = lower_bound_index(data::mg.rev_energy_bins_.begin(),
+    data::mg.rev_energy_bins_.end(), site.E);
+  site.E = data::mg.num_energy_groups_ - site.E - 1.;
   from_source(&site);
 
   // Locate ray

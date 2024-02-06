@@ -120,6 +120,9 @@ int openmc_run_random_ray()
 
   // Intialize Cell (Flat Source Region) data structures
   initialize_source_regions();
+  
+  // Determine which source term should be used for ray sampling
+  int sampling_source = get_random_ray_sampling_source_index();
 
   // Random ray mode does not have an inner loop over generations within a
   // batch, so set the current gen to 1
@@ -172,9 +175,9 @@ int openmc_run_random_ray()
 #pragma omp parallel for schedule(runtime)                                     \
   reduction(+ : total_geometric_intersections)
     for (int i = 0; i < simulation::work_per_rank; i++) {
-      RandomRay r;
-      r.initialize_ray(i);
-      total_geometric_intersections += r.transport_history_based_single_ray();
+      RandomRay ray;
+      ray.initialize_ray(i, sampling_source);
+      total_geometric_intersections += ray.transport_history_based_single_ray();
     }
 
     simulation::time_transport.stop();
@@ -468,6 +471,7 @@ void instability_check(int64_t n_hits, double k_eff, double& avg_miss_rate)
 void validate_random_ray_inputs()
 {
   // Validate tallies
+  ///////////////////////////////////////////////////////////////////
   for (auto& tally : model::tallies) {
 
     // Validate score types
@@ -514,6 +518,7 @@ void validate_random_ray_inputs()
   }
 
   // Validate MGXS data
+  ///////////////////////////////////////////////////////////////////
   for (auto& material : data::mg.macro_xs_) {
     if (!material.is_isotropic) {
       fatal_error("Anisotropic MGXS detected. Only isotropic XS data sets "
@@ -526,53 +531,69 @@ void validate_random_ray_inputs()
   }
 
   // Validate solver mode
+  ///////////////////////////////////////////////////////////////////
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     fatal_error(
       "Invalid run mode. Fixed source not yet supported in random ray mode.");
   }
 
-  // Validate eigenvalue sources (must be single uniform isotropic box source)
+  // Validate sources
+  ///////////////////////////////////////////////////////////////////
 
-  // Ensure only a single source is present
-  if (model::external_sources.size() != 1) {
-    fatal_error("Invalid source definition -- only a single source is allowed "
-                "in random ray mode.");
+  int n_random_ray_sources = 0;
+
+  for (int i = 0; i < model::external_sources.size(); i++) {
+    Source* s = model::external_sources[i].get();
+
+    // Check for independent source
+    IndependentSource* is = dynamic_cast<IndependentSource*>(s);
+
+    // Skip source if it is not independent, as this implies it is not
+    // the random ray source
+    if (is == nullptr) {
+      continue;
+    }
+    
+    // Skip source if this is not a random ray source
+    if (!is->random_ray_source()) {
+      continue;
+    }
+    
+    // Increment random ray source counter
+    n_random_ray_sources++;
+
+    // Check for box source
+    SpatialDistribution* space_dist = is->space();
+    SpatialBox* sb = dynamic_cast<SpatialBox*>(space_dist);
+    if (sb == nullptr) {
+      fatal_error(
+        "Invalid source definition -- only box sources are allowed in random ray "
+        "mode. If no source is specified, OpenMC default is an isotropic point "
+        "source at the origin, which is invalid in random ray mode.");
+    }
+
+    // Check that box source is not restricted to fissionable areas
+    if (sb->only_fissionable()) {
+      fatal_error("Invalid source definition -- fissionable spatial distribution "
+                  "not allowed for random ray source.");
+    }
+
+    // Check for isotropic source
+    UnitSphereDistribution* angle_dist = is->angle();
+    Isotropic* id = dynamic_cast<Isotropic*>(angle_dist);
+    if (id == nullptr) {
+      fatal_error("Invalid source definition -- only isotropic sources are "
+                  "allowed for random ray source.");
+    }
   }
 
-  Source* s = model::external_sources[0].get();
-
-  // Check for independent source
-  IndependentSource* is = dynamic_cast<IndependentSource*>(s);
-  if (is == nullptr) {
-    fatal_error("Invalid source definition -- only independent sources are "
-                "allowed in random ray mode.");
+  // Ensure that exactly one random ray source was defined
+  if (n_random_ray_sources != 1) {
+      fatal_error("Invalid source definition -- a single random ray source type must be provided in random ray mode.");
   }
 
-  // Check for box source
-  SpatialDistribution* space_dist = is->space();
-  SpatialBox* sb = dynamic_cast<SpatialBox*>(space_dist);
-  if (sb == nullptr) {
-    fatal_error(
-      "Invalid source definition -- only box sources are allowed in random ray "
-      "mode. If no source is specified, OpenMC default is an isotropic point "
-      "source at the origin, which is invalid in random ray mode.");
-  }
-
-  // Check that box source is not restricted to fissionable areas
-  if (sb->only_fissionable()) {
-    fatal_error("Invalid source definition -- fissionable spatial distribution "
-                "not allowed in random ray mode.");
-  }
-
-  // Check for isotropic source
-  UnitSphereDistribution* angle_dist = is->angle();
-  Isotropic* id = dynamic_cast<Isotropic*>(angle_dist);
-  if (id == nullptr) {
-    fatal_error("Invalid source definition -- only isotropic sources are "
-                "allowed in random ray mode.");
-  }
-
-  // Check plotting files
+  // Validate plotting files
+  ///////////////////////////////////////////////////////////////////
   for (int p = 0; p < model::plots.size(); p++) {
 
     // Get handle to OpenMC plot object
@@ -594,7 +615,8 @@ void validate_random_ray_inputs()
     }
   }
 
-// Warn about slow MPI domain replication, if detected
+  // Warn about slow MPI domain replication, if detected
+  ///////////////////////////////////////////////////////////////////
 #ifdef OPENMC_MPI
   if (mpi::n_procs > 1) {
     warning(
@@ -604,6 +626,32 @@ void validate_random_ray_inputs()
       "implemented in the future to provide efficient scaling.");
   }
 #endif
+}
+
+// Determines which external source to use for sampling
+// ray starting locations/directions. Assumes sources have
+// already been validated.
+int get_random_ray_sampling_source_index()
+{
+  int i = 0;
+  for (; i < model::external_sources.size(); i++) {
+    Source* s = model::external_sources[i].get();
+
+    // Check for independent source
+    IndependentSource* is = dynamic_cast<IndependentSource*>(s);
+
+    // Skip source if it is not independent, as this implies it is not
+    // the random ray source
+    if (is == nullptr) {
+      continue;
+    }
+    
+    // Return index when random ray source is found
+    if (is->random_ray_source()) {
+      break;
+    }
+  }
+  return i;
 }
 
 } // namespace openmc

@@ -491,8 +491,6 @@ pseudo-random number generator.
 
   *Default*: 1
 
-.. _source_element:
-
 -------------------------
 ``<solver_type>`` Element
 -------------------------
@@ -502,6 +500,8 @@ simulation. This element has no attributes or sub-elements and can be set to
 "monte carlo" or "random ray".
 
   *Default*: monte carlo
+
+.. _source_element:
 
 --------------------
 ``<source>`` Element
@@ -702,6 +702,12 @@ attributes/sub-elements:
     For mesh sources, this sub-element specifies the source for an individual
     mesh element and follows the format for :ref:`source_element`. The number of
     ``<source>`` sub-elements should correspond to the number of mesh elements.
+  
+  :random_ray_source:
+    An element flagging this source as the sampling basis for ray starting
+    points and angles if using the random ray solver mode.
+
+    *Default*: false
 
 .. _univariate:
 

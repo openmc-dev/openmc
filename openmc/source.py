@@ -141,6 +141,8 @@ class IndependentSource(SourceBase):
     domains : iterable of openmc.Cell, openmc.Material, or openmc.Universe
         Domains to reject based on, i.e., if a sampled spatial location is not
         within one of these domains, it will be rejected.
+    random_ray_source : bool
+        Indicator of random ray starting source
 
     Attributes
     ----------
@@ -165,6 +167,8 @@ class IndependentSource(SourceBase):
         IDs of domains to use for rejection
     domain_type : {'cell', 'material', 'universe'}
         Type of domain to use for rejection
+    random_ray_source : bool
+        Indicator of random ray starting source
 
     """
 
@@ -176,7 +180,8 @@ class IndependentSource(SourceBase):
         time: Optional[openmc.stats.Univariate] = None,
         strength: float = 1.0,
         particle: str = 'neutron',
-        domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None
+        domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None,
+        random_ray_source: bool = False
     ):
         super().__init__(strength)
 
@@ -206,6 +211,8 @@ class IndependentSource(SourceBase):
             elif isinstance(domains[0], openmc.Universe):
                 self.domain_type = 'universe'
             self.domain_ids = [d.id for d in domains]
+        
+        self._random_ray_source = random_ray_source
 
     @property
     def type(self) -> str:
@@ -290,6 +297,15 @@ class IndependentSource(SourceBase):
     def domain_type(self, domain_type):
         cv.check_value('domain type', domain_type, ('cell', 'material', 'universe'))
         self._domain_type = domain_type
+    
+    @property
+    def random_ray_source(self):
+        return self._random_ray_source
+
+    @random_ray_source.setter
+    def random_ray_source(self, random_ray_source):
+        cv.check_type('random ray source', random_ray_source, bool)
+        self._random_ray_source = random_ray_source
 
     def populate_xml_element(self, element):
         """Add necessary source information to an XML element
@@ -314,6 +330,7 @@ class IndependentSource(SourceBase):
             dt_elem.text = self.domain_type
             id_elem = ET.SubElement(element, "domain_ids")
             id_elem.text = ' '.join(str(uid) for uid in self.domain_ids)
+        element.set("random_ray_source", str(self._random_ray_source))
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element, meshes=None) -> SourceBase:
@@ -379,6 +396,10 @@ class IndependentSource(SourceBase):
         time = elem.find('time')
         if time is not None:
             source.time = Univariate.from_xml_element(time)
+        
+        random_ray_source = get_text(elem, 'random_ray_source')
+        if random_ray_source is not None:
+            source.random_ray_source = bool(random_ray_source)
 
         return source
 

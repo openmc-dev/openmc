@@ -167,7 +167,7 @@ settings.random_ray_distance_active = 400.0
 lower_left = (-pitch/2, -pitch/2, -1)
 upper_right = (pitch/2, pitch/2, 1)
 uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=False)
-settings.source = openmc.IndependentSource(space=uniform_dist, random_ray_source=True)
+settings.source = openmc.IndependentSource(space=uniform_dist, particle="random_ray")
 settings.export_to_xml()
 
 ###############################################################################

@@ -207,7 +207,7 @@ def create_random_ray_model():
     lower_left = (-pitch, -pitch, -1)
     upper_right = (pitch, pitch, 1)
     uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=False)
-    settings.source = openmc.IndependentSource(space=uniform_dist, random_ray_source=True)
+    settings.source = openmc.IndependentSource(space=uniform_dist, particle='random_ray')
     #settings.export_to_xml()
 
     ###############################################################################

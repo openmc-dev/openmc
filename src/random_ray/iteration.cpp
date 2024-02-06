@@ -555,7 +555,7 @@ void validate_random_ray_inputs()
     }
 
     // Skip source if this is not a random ray source
-    if (!is->random_ray_source()) {
+    if (is->particle_type() != ParticleType::random_ray) {
       continue;
     }
 
@@ -650,7 +650,7 @@ int get_random_ray_sampling_source_index()
     }
 
     // Return index when random ray source is found
-    if (is->random_ray_source()) {
+    if (is->particle_type() == ParticleType::random_ray) {
       break;
     }
   }

@@ -136,13 +136,11 @@ class IndependentSource(SourceBase):
         time distribution of source sites
     strength : float
         Strength of the source
-    particle : {'neutron', 'photon'}
+    particle : {'neutron', 'photon', 'random_ray'}
         Source particle type
     domains : iterable of openmc.Cell, openmc.Material, or openmc.Universe
         Domains to reject based on, i.e., if a sampled spatial location is not
         within one of these domains, it will be rejected.
-    random_ray_source : bool
-        Indicator of random ray starting source
 
     Attributes
     ----------
@@ -161,14 +159,12 @@ class IndependentSource(SourceBase):
 
     .. versionadded:: 0.14.0
 
-    particle : {'neutron', 'photon'}
+    particle : {'neutron', 'photon', 'random_ray'}
         Source particle type
     ids : Iterable of int
         IDs of domains to use for rejection
     domain_type : {'cell', 'material', 'universe'}
         Type of domain to use for rejection
-    random_ray_source : bool
-        Indicator of random ray starting source
 
     """
 
@@ -180,8 +176,7 @@ class IndependentSource(SourceBase):
         time: Optional[openmc.stats.Univariate] = None,
         strength: float = 1.0,
         particle: str = 'neutron',
-        domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None,
-        random_ray_source: bool = False
+        domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None
     ):
         super().__init__(strength)
 
@@ -211,8 +206,6 @@ class IndependentSource(SourceBase):
             elif isinstance(domains[0], openmc.Universe):
                 self.domain_type = 'universe'
             self.domain_ids = [d.id for d in domains]
-        
-        self._random_ray_source = random_ray_source
 
     @property
     def type(self) -> str:
@@ -277,7 +270,7 @@ class IndependentSource(SourceBase):
 
     @particle.setter
     def particle(self, particle):
-        cv.check_value('source particle', particle, ['neutron', 'photon'])
+        cv.check_value('source particle', particle, ['neutron', 'photon', 'random_ray'])
         self._particle = particle
 
     @property
@@ -297,15 +290,6 @@ class IndependentSource(SourceBase):
     def domain_type(self, domain_type):
         cv.check_value('domain type', domain_type, ('cell', 'material', 'universe'))
         self._domain_type = domain_type
-    
-    @property
-    def random_ray_source(self):
-        return self._random_ray_source
-
-    @random_ray_source.setter
-    def random_ray_source(self, random_ray_source):
-        cv.check_type('random ray source', random_ray_source, bool)
-        self._random_ray_source = random_ray_source
 
     def populate_xml_element(self, element):
         """Add necessary source information to an XML element
@@ -330,7 +314,6 @@ class IndependentSource(SourceBase):
             dt_elem.text = self.domain_type
             id_elem = ET.SubElement(element, "domain_ids")
             id_elem.text = ' '.join(str(uid) for uid in self.domain_ids)
-        element.set("random_ray_source", str(self._random_ray_source))
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element, meshes=None) -> SourceBase:
@@ -397,10 +380,6 @@ class IndependentSource(SourceBase):
         if time is not None:
             source.time = Univariate.from_xml_element(time)
         
-        random_ray_source = get_text(elem, 'random_ray_source')
-        if random_ray_source is not None:
-            source.random_ray_source = bool(random_ray_source)
-
         return source
 
 
@@ -761,6 +740,7 @@ class ParticleType(IntEnum):
     PHOTON = 1
     ELECTRON = 2
     POSITRON = 3
+    RANDOM_RAY = 4
 
     @classmethod
     def from_string(cls, value: str):

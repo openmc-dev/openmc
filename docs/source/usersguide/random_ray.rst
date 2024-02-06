@@ -92,7 +92,7 @@ To help the user set this parameter, OpenMC will report the average flat source 
 Ray Source
 ----------
 
-Random ray requires that the ray source be uniform in space and angle, throughout the entire phase space of the simulation. To facilitate sampling, the user must specify a single source for sampling rays in eigenvalue solver mode.  Note that the source must be isotropic, and not limited to only fissionable regions. Additionally, the source box must be the same size as the simulation domain. While this source could be intuited from bounding box parameters internal to OpenMC for 3D solves, for 2D problems the geometry may be unbounded in a dimension, causing issues with sampling and floating point round off. Thus, for 2D problems (e.g., a 2D pincell) it is desireable to make the source bounded near the origin of the infinite dimension. An example of an acceptable rays source for a 2x2 lattice would look like:
+Random ray requires that the ray source be uniform in space and angle, throughout the entire phase space of the simulation. To facilitate sampling, the user must specify a single random ray source for sampling rays in both eigenvalue and fixed source solver modes. To tell OpenMC which source is to be used as the basis for sampling random integration rays vs. which sources are used to represent a physical particle source, the random ray integration source should be specified as "random_ray" via the ``particle`` field of the :class:`openmc.IndependentSource` Python class.  Note that the source must be isotropic, and not limited to only fissionable regions. Additionally, the source box must cover the entire simulation domain. In the case of a simulation domain that is not box shaped, a box source should still be used to bound the domain but with the source limited to rejection sampling the actual simulation universe (which can be specified via the ``domains`` field of the :class:`openmc.IndependentSource` Python class). Similar to Monte Carlo sources, for 2D problems (e.g., a 2D pincell) it is desireable to make the source bounded near the origin of the infinite dimension. An example of an acceptable ray source for a 2D 2x2 lattice would look like:
 
 ::
 
@@ -100,7 +100,7 @@ Random ray requires that the ray source be uniform in space and angle, throughou
     lower_left  = (-pitch, -pitch, -pitch)
     upper_right = ( pitch,  pitch,  pitch)
     uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=False)
-    settings.source = openmc.IndependentSource(space=uniform_dist)
+    settings.source = openmc.IndependentSource(space=uniform_dist, particle="random_ray")
 
 ----------------------------------
 Subdivision of Flat Source Regions
@@ -252,7 +252,7 @@ An example of a settings definition for random ray is given below:
     lower_left  = (-pitch, -pitch, -pitch)
     upper_right = ( pitch,  pitch,  pitch)
     uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=False)
-    settings.source = openmc.IndependentSource(space=uniform_dist)
+    settings.source = openmc.IndependentSource(space=uniform_dist, particle="random_ray")
 
     settings.export_to_xml()
 

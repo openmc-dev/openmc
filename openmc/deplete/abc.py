@@ -29,7 +29,7 @@ from .pool import deplete
 from .reaction_rates import ReactionRates
 from .transfer_rates import TransferRates
 from openmc import Material, Cell
-from .batchwise import (BatchwiseCellGeometrical, BatchwiseCellTemperature,
+from .batchwise import (BatchwisePure, BatchwiseCellGeometrical, BatchwiseCellTemperature,
     BatchwiseMaterialRefuel, BatchwiseMaterialDilute, BatchwiseMaterialAdd,
     BatchwiseSchemeStd, BatchwiseSchemeRefuel, BatchwiseSchemeFlex)
 
@@ -825,7 +825,7 @@ class Integrator(ABC):
                             n, root = self._get_bos_from_batchwise(i, n)
                         else:
                             # Store root at previous timestep
-                            root = self.batchwise._get_cell_attrib()
+                            root = self.batchwise.get_root()
                     else:
                         root = None
                     n, res = self._get_bos_data_from_operator(i, source_rate, n)
@@ -1089,6 +1089,8 @@ class Integrator(ABC):
         self.transfer_rates.set_redox(mat, buffer, oxidation_states)
 
     def add_material(self, mat, value, mat_vector, timestep, quantity='grams'):
+        if self.batchwise is None:
+            self.batchwise = BatchwisePure(self.operator, self.operator.model)
         self.batchwise.add_material(mat, value, mat_vector, timestep,
                                     quantity)
 @add_params

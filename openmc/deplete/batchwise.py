@@ -163,6 +163,11 @@ class Batchwise(ABC):
         return cls(obj, attr, operator, model, **kwargs)
 
     @abstractmethod
+    def get_root(self):
+        """
+        """
+
+    @abstractmethod
     def _model_builder(self, param):
         """
         Builds the parametric model to be passed to the
@@ -618,6 +623,61 @@ class Batchwise(ABC):
                         x[mat_idx][nuc_idx] += val
         return x
 
+class BatchwisePure(Batchwise):
+    def __init__(self, operator, model, density_treatment='constant-volume',
+                 redox_vec=None):
+        super().__init__(operator, model, [0,1], [-100,100])
+        self.cell_materials = None
+
+    def get_root(self):
+        return np.nan
+
+    def search_for_keff(self, x, step_index):
+        """
+        Perform the criticality search on the parametric cell coefficient and
+        update materials accordingly.
+        The :meth:`openmc.search.search_for_keff` solution is then set as the
+        new cell attribute.
+        Parameters
+        ----------
+        x : list of numpy.ndarray
+            Total atoms concentrations
+        Returns
+        -------
+        x : list of numpy.ndarray
+            Updated total atoms concentrations
+        """
+        x = super()._update_materials(x, step_index)
+        # if at least one of the cell materials is depletable, calculate new
+        # volume and update x and number accordingly.
+        # Alternatively, if material has been edded x needs to be updated
+        # TODO: improve this
+        if self.cell_materials:
+            volumes = self._calculate_volumes()
+            x = super()._update_x_and_set_volumes(x, volumes)
+
+        return x, np.nan
+
+    def _model_builder(self, param):
+        """
+        Builds the parametric model to be passed to the
+        :meth:`openmc.search.search_for_keff` method.
+        Callable function which builds a model according to a passed
+        parameter. This function must return an openmc.model.Model object.
+        Parameters
+        ----------
+        param : parameter
+            model function variable
+        Returns
+        -------
+        _model :  openmc.model.Model
+            OpenMC parametric model
+        """
+
+    def update_from_restart(self, step_index, x, root):
+        """
+        """
+
 class BatchwiseCell(Batchwise):
     """Abstract class holding batch wise cell-based functions.
 
@@ -712,6 +772,9 @@ class BatchwiseCell(Batchwise):
         val : float
             cell coefficient to set
         """
+
+    def get_root(self):
+        return self._get_cell_attrib()
 
     def _get_cell(self, val):
         """Helper method for getting cell from cell instance or cell name or id.
@@ -1171,6 +1234,11 @@ class BatchwiseMaterial(Batchwise):
         _model :  openmc.model.Model
             Openmc parametric model
         """
+
+    def get_root(self):
+        for mat in openmc.lib.materials.values():
+            if mat.id in [m.id for m in self.materials]:
+                return mat.get_density()
 
     def search_for_keff(self, x, step_index):
         """
@@ -1934,8 +2002,8 @@ class BatchwiseSchemeStd():
             self.dilute_interval = dilute_interval
         self.interrupt = interrupt
 
-    def _get_cell_attrib(self):
-        return self.bw_geom._get_cell_attrib()
+    def get_root(self):
+        return self.bw_geom.get_root()
 
     def set_density_function(self, mats, density_func, oxidation_states):
         for bw in self.bw_list:
@@ -2045,8 +2113,8 @@ class BatchwiseSchemeRefuel():
         else:
             self.restart_level = restart_level
 
-    def _get_cell_attrib(self):
-        return self.bw_geom._get_cell_attrib()
+    def get_root(self):
+        return self.bw_geom.get_root()
 
     def set_density_function(self, mats, density_func, oxidation_states):
         for bw in self.bw_list:
@@ -2175,8 +2243,8 @@ class BatchwiseSchemeFlex():
         #
         self.converged_flex = False
 
-    def _get_cell_attrib(self):
-        return self.bw_geom_trans._get_cell_attrib()
+    def get_root(self):
+        return self.bw_geom_trans.get_root()
 
     def set_density_function(self, mats, density_func, oxidation_states):
         for bw in self.bw_list:

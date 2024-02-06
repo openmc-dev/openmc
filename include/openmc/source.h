@@ -74,7 +74,6 @@ public:
   // Properties
   ParticleType particle_type() const { return particle_; }
   double strength() const override { return strength_; }
-  bool random_ray_source() const { return random_ray_source_; }
 
   // Make observing pointers available
   SpatialDistribution* space() const { return space_.get(); }
@@ -95,7 +94,6 @@ private:
   UPtrDist time_;                                 //!< Time distribution
   DomainType domain_type_;                        //!< Domain type for rejection
   std::unordered_set<int32_t> domain_ids_;        //!< Domains to reject from
-  bool random_ray_source_ {false};                //!< Is the RRM source
 };
 
 //==============================================================================

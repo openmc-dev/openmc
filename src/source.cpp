@@ -270,12 +270,13 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
       n_reject++;
       if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
           static_cast<double>(n_accept) / n_reject <= EXTSRC_REJECT_FRACTION) {
-        fatal_error("More than 95% of external source sites sampled were "
-                    "rejected. Please check your external source energy spectrum "
-                    "definition.");
+        fatal_error(
+          "More than 95% of external source sites sampled were "
+          "rejected. Please check your external source energy spectrum "
+          "definition.");
       }
     }
-  
+
     // Sample particle creation time
     site.time = time_->sample(seed);
   }

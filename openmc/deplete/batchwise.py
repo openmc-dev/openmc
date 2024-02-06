@@ -32,8 +32,6 @@ class Batchwise(ABC):
     ----------
     operator : openmc.deplete.Operator
         OpenMC operator object
-    model : openmc.model.Model
-        OpenMC model object
     bracket : list of float
         Bracketing interval to search for the solution, always relative to the
         solution at previous step.
@@ -92,13 +90,9 @@ class Batchwise(ABC):
         check_less_than('bracket limit values',
                          bracket_limit[0], bracket_limit[1])
         self.bracket_limit = bracket_limit
-
         self.bracketed_method = bracketed_method
-
         self.tol = tol
-
         self.target = target
-
         self.print_iterations = print_iterations
         self.search_for_keff_output = search_for_keff_output
 
@@ -179,7 +173,6 @@ class Batchwise(ABC):
 
         # Run until a search_for_keff root is found or out of limits
         root = None
-
         while root == None:
             search = search_for_keff(self._model_builder,
                             bracket = np.array(bracket) + val,
@@ -376,8 +369,6 @@ class BatchwiseCell(Batchwise):
         OpenMC Cell identifier to where apply batch wise scheme
     operator : openmc.deplete.Operator
         OpenMC operator object
-    model : openmc.model.Model
-        OpenMC model object
     bracket : list of float
         Bracketing interval to search for the solution, always relative to the
         solution at previous step.
@@ -407,6 +398,7 @@ class BatchwiseCell(Batchwise):
     search_for_keff_output : Bool, Optional
         Whether or not to print transport iterations during  `search_for_keff`.
         Default to False
+
     Attributes
     ----------
     cell : openmc.Cell or int or str
@@ -414,9 +406,12 @@ class BatchwiseCell(Batchwise):
     cell_materials : list of openmc.Material
         Depletable materials that fill the Cell Universe. Only valid for
         translation or rotation attributes
+    lib_cell : openmc.lib.Cell
+        Corresponding openmc.lib.Cell once openmc.lib is initialized
     axis : int {0,1,2}
         Directional axis for geometrical parametrization, where 0, 1 and 2 stand
         for 'x', 'y' and 'z', respectively.
+
     """
     def __init__(self, cell, operator, bracket, bracket_limit, axis=None,
                  density_treatment='constant-volume', bracketed_method='brentq',
@@ -430,7 +425,7 @@ class BatchwiseCell(Batchwise):
         self.cell = self._get_cell(cell)
 
         # Initialize to None, as openmc.lib is not initialized yet here
-        self._cell = None
+        self.lib_cell = None
 
         if axis is not None:
             #index of cell directional axis
@@ -460,11 +455,11 @@ class BatchwiseCell(Batchwise):
             cell coefficient to set
         """
 
-    def _set_cell(self):
+    def _set_lib_cell(self):
         """
-        Set _cell attribute to the corresponding openmc.lib.cell
+        Set openmc.lib.cell cell to self.lib_cell attribute
         """
-        self._cell = [cell for cell in openmc.lib.cells.values() \
+        self.lib_cell = [cell for cell in openmc.lib.cells.values() \
                                 if cell.id == self.cell.id][0]
 
     def _get_cell(self, val):
@@ -541,8 +536,8 @@ class BatchwiseCell(Batchwise):
              Search_for_keff returned root value
         """
         # set _cell argument, once openmc.lib is intialized
-        if self._cell is None:
-            self._set_cell()
+        if self.lib_cell is None:
+            self._set_lib_cell()
 
         # Get cell attribute from previous iteration
         val = self._get_cell_attrib()
@@ -588,8 +583,6 @@ class BatchwiseCellGeometrical(BatchwiseCell):
         Cell attribute type
     operator : openmc.deplete.Operator
         OpenMC operator object
-    model : openmc.model.Model
-        OpenMC model object
     axis : int {0,1,2}
         Directional axis for geometrical parametrization, where 0, 1 and 2 stand
         for 'x', 'y' and 'z', respectively.
@@ -622,18 +615,22 @@ class BatchwiseCellGeometrical(BatchwiseCell):
     search_for_keff_output : Bool, Optional
         Whether or not to print transport iterations during  `search_for_keff`.
         Default to False
+
     Attributes
     ----------
     cell : openmc.Cell or int or str
         OpenMC Cell identifier to where apply batch wise scheme
     attrib_name : str {'translation', 'rotation'}
         Cell attribute type
+    vector : numpy.ndarray
+        Array storing vector of translation or rotation
     axis : int {0,1,2}
         Directional axis for geometrical parametrization, where 0, 1 and 2 stand
         for 'x', 'y' and 'z', respectively.
     samples : int
         Number of samples used to generate volume estimates for stochastic
         volume calculations.
+
     """
     def __init__(self, cell, attrib_name, operator, bracket,
                  bracket_limit, axis, density_treatment='constant-volume',
@@ -672,9 +669,9 @@ class BatchwiseCellGeometrical(BatchwiseCell):
             cell coefficient
         """
         if self.attrib_name == 'translation':
-            return self._cell.translation[self.axis]
+            return self.lib_cell.translation[self.axis]
         elif self.attrib_name == 'rotation':
-            return self._cell.rotation[self.axis]
+            return self.lib_cell.rotation[self.axis]
 
     def _set_cell_attrib(self, val):
         """
@@ -687,7 +684,7 @@ class BatchwiseCellGeometrical(BatchwiseCell):
             Cell coefficient to set, in cm for translation and deg for rotation
         """
         self.vector[self.axis] = val
-        setattr(self._cell, self.attrib_name, self.vector)
+        setattr(self.lib_cell, self.attrib_name, self.vector)
 
     def _initialize_volume_calc(self):
         """
@@ -735,8 +732,6 @@ class BatchwiseCellTemperature(BatchwiseCell):
         OpenMC Cell identifier to where apply batch wise scheme
     operator : openmc.deplete.Operator
         OpenMC operator object
-    model : openmc.model.Model
-        OpenMC model object
     attrib_name : str
         Cell attribute type
     bracket : list of float
@@ -768,10 +763,14 @@ class BatchwiseCellTemperature(BatchwiseCell):
     search_for_keff_output : Bool, Optional
         Whether or not to print transport iterations during  `search_for_keff`.
         Default to False
+
     Attributes
     ----------
     cell : openmc.Cell or int or str
         OpenMC Cell identifier to where apply batch wise scheme
+    attrib_name : str {'temperature'}
+        Cell attribute type
+
     """
     def __init__(self, cell, attrib_name, operator, bracket, bracket_limit,
                  axis=None, density_treatment='constant-volume',
@@ -803,7 +802,7 @@ class BatchwiseCellTemperature(BatchwiseCell):
         coeff : float
             cell temperature, in Kelvin
         """
-        return self._cell.get_temperature()
+        return self.lib_cell.get_temperature()
 
     def _set_cell_attrib(self, val):
         """
@@ -813,7 +812,7 @@ class BatchwiseCellTemperature(BatchwiseCell):
         val : float
             Cell temperature to set, in Kelvin
         """
-        self._cell.set_temperature(val)
+        self.lib_cell.set_temperature(val)
 
 class BatchwiseMaterial(Batchwise):
     """Abstract class holding batch wise material-based functions.
@@ -829,8 +828,6 @@ class BatchwiseMaterial(Batchwise):
         OpenMC Material identifier to where apply batch wise scheme
     operator : openmc.deplete.Operator
         OpenMC operator object
-    model : openmc.model.Model
-        OpenMC model object
     mat_vector : dict
         Dictionary of material composition to parameterize, where a pair key value
         represents a nuclide and its weight fraction, respectively.
@@ -863,6 +860,7 @@ class BatchwiseMaterial(Batchwise):
     search_for_keff_output : Bool, Optional
         Whether or not to print transport iterations during  `search_for_keff`.
         Default to False
+
     Attributes
     ----------
     material : openmc.Material or int or str
@@ -870,6 +868,7 @@ class BatchwiseMaterial(Batchwise):
     mat_vector : dict
         Dictionary of material composition to parameterize, where a pair key value
         represents a nuclide and its weight fraction, respectively.
+
     """
 
     def __init__(self, material, operator, mat_vector, bracket,
@@ -994,9 +993,7 @@ class BatchwiseMaterialRefuel(BatchwiseMaterial):
     operator : openmc.deplete.Operator
         OpenMC operator object
     attrib_name : str
-        Material attribute
-    model : openmc.model.Model
-        OpenMC model object
+        Material attribute name
     mat_vector : dict
         Dictionary of material composition to parameterize, where a pair key value
         represents a nuclide and its weight fraction, respectively.
@@ -1029,6 +1026,7 @@ class BatchwiseMaterialRefuel(BatchwiseMaterial):
     search_for_keff_output : Bool, Optional
         Whether or not to print transport iterations during  `search_for_keff`.
         Default to False
+
     Attributes
     ----------
     material : openmc.Material or int or str
@@ -1036,6 +1034,9 @@ class BatchwiseMaterialRefuel(BatchwiseMaterial):
     mat_vector : dict
         Dictionary of material composition to parameterize, where a pair key value
         represents a nuclide and its weight fraction, respectively.
+    attrib_name : str
+        Material attribute name
+
     """
 
     def __init__(self, material, attrib_name, operator, mat_vector, bracket,

@@ -26,7 +26,7 @@ from .results import Results
 from .pool import deplete
 from .transfer_rates import TransferRates
 from openmc import Material, Cell
-from .batchwise import (BatchwiseCellGeometrical, BatchwiseCellTemperature,
+from .batchwise import (BatchwisePure, BatchwiseCellGeometrical, BatchwiseCellTemperature,
     BatchwiseMaterialRefuel, BatchwiseMaterialDilute, BatchwiseMaterialAdd,
     BatchwiseSchemeStd, BatchwiseSchemeRefuel, BatchwiseSchemeFlex)
 
@@ -814,7 +814,7 @@ class Integrator(ABC):
                             n, root = self._get_bos_from_batchwise(i, n)
                         else:
                             # Store root at previous timestep
-                            root = self.batchwise._get_cell_attrib()
+                            root = self.batchwise.get_root()
                     else:
                         root = None
                     n, res = self._get_bos_data_from_operator(i, source_rate, n)
@@ -884,7 +884,7 @@ class Integrator(ABC):
         with change_directory(self.operator.output_dir):
             n = self.operator.initial_condition()
             t, self._i_res = self._get_start_data()
-            
+
             nuc_ids = [id for nuc,id in self.chain.nuclide_dict.items() if nuc in nuclides]
 
             dt = self.timesteps[0]
@@ -935,7 +935,7 @@ class Integrator(ABC):
                 n = n_list.pop()
                 StepResult.save(self.operator, n_list, res_list, [t, t + dt],
                                 source_rate, self._i_res + i, proc_time, root)
-                
+
                 for rank in range(comm.size):
                     number_i = comm.bcast(self.operator.number, root=rank)
                     if material_id in number_i.materials:
@@ -947,7 +947,7 @@ class Integrator(ABC):
                                            tol, err, rho1, rho2, f)
                 comm.barrier()
                 dt = comm.bcast(dt, root=rank_mat)
-                
+
                 t += dt
                 i += 1
             # Final simulation -- in the case that final_step is False, a zero
@@ -969,7 +969,7 @@ class Integrator(ABC):
 
     def _adapt_timestep(self, n_pred, n_corr, mat_idx, nuc_ids, tol, err, rho1,
                         rho2, f ):
-                
+
         filt_pred = take(n_pred[mat_idx], nuc_ids)
         filt_corr = take(n_corr[mat_idx], nuc_ids)
 
@@ -1072,6 +1072,8 @@ class Integrator(ABC):
         self.transfer_rates.set_redox(mat, buffer, oxidation_states)
 
     def add_material(self, mat, value, mat_vector, timestep, quantity='grams'):
+        if self.batchwise is None:
+            self.batchwise = BatchwisePure(self.operator, self.operator.model)
         self.batchwise.add_material(mat, value, mat_vector, timestep,
                                     quantity)
 @add_params

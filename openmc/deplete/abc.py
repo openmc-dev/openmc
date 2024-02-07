@@ -18,7 +18,7 @@ from warnings import warn
 from numpy import nonzero, empty, asarray
 from uncertainties import ufloat
 
-from openmc.checkvalue import checkvalue, check_type, check_greater_than, PathLike
+from openmc.checkvalue import check_value, check_type, check_greater_than, PathLike
 from openmc.mpi import comm
 from .stepresult import StepResult
 from .chain import Chain

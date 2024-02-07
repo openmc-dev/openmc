@@ -57,7 +57,7 @@ class Tally(IDManagerMixin):
     multiply_density : bool
         Whether reaction rates should be multiplied by atom density
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
     filters : list of openmc.Filter
         List of specified filters for the tally
     nuclides : list of str
@@ -3304,6 +3304,7 @@ class Tallies(cv.CheckedList):
             Tallies object
 
         """
-        tree = ET.parse(path)
+        parser = ET.XMLParser(huge_tree=True)
+        tree = ET.parse(path, parser=parser)
         root = tree.getroot()
         return cls.from_xml_element(root)

@@ -599,7 +599,7 @@ def decay_photon_energy(nuclide: str) -> Optional[Univariate]:
     openmc.stats.Univariate or None
         Distribution of energies in [eV] of photons emitted from decay, or None
         if no photon source exists. Note that the probabilities represent
-        intensities, given as [decay/sec].
+        intensities, given as [Bq].
     """
     if not _DECAY_PHOTON_ENERGY:
         chain_file = openmc.config.get('chain_file')

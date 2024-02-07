@@ -3,8 +3,8 @@ project(openmc C CXX)
 
 # Set version numbers
 set(OPENMC_VERSION_MAJOR 0)
-set(OPENMC_VERSION_MINOR 13)
-set(OPENMC_VERSION_RELEASE 4)
+set(OPENMC_VERSION_MINOR 14)
+set(OPENMC_VERSION_RELEASE 1)
 set(OPENMC_VERSION ${OPENMC_VERSION_MAJOR}.${OPENMC_VERSION_MINOR}.${OPENMC_VERSION_RELEASE})
 configure_file(include/openmc/version.h.in "${CMAKE_BINARY_DIR}/include/openmc/version.h" @ONLY)
 
@@ -120,6 +120,7 @@ if(OPENMC_USE_DAGMC)
     message(FATAL_ERROR "Discovered DAGMC Version: ${DAGMC_VERSION}. \
     Please update DAGMC to version 3.2.0 or greater.")
   endif()
+  message(STATUS "Found DAGMC: ${DAGMC_DIR} (version ${DAGMC_VERSION})")
 endif()
 
 #===============================================================================
@@ -154,6 +155,11 @@ if(NOT DEFINED HDF5_PREFER_PARALLEL)
 endif()
 
 find_package(HDF5 REQUIRED COMPONENTS C HL)
+
+# Remove HDF5 transitive dependencies that are system libraries
+list(FILTER HDF5_LIBRARIES EXCLUDE REGEX ".*lib(pthread|dl|m).*")
+message(STATUS "HDF5 Libraries: ${HDF5_LIBRARIES}")
+
 if(HDF5_IS_PARALLEL)
   if(NOT OPENMC_USE_MPI)
     message(FATAL_ERROR "Parallel HDF5 was detected, but MPI was not enabled.\
@@ -405,6 +411,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_energyfunc.cpp
   src/tallies/filter_legendre.cpp
   src/tallies/filter_material.cpp
+  src/tallies/filter_materialfrom.cpp
   src/tallies/filter_mesh.cpp
   src/tallies/filter_meshsurface.cpp
   src/tallies/filter_mu.cpp
@@ -490,7 +497,7 @@ endif()
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
-                      xtensor gsl::gsl-lite-v1 fmt::fmt)
+                      xtensor gsl::gsl-lite-v1 fmt::fmt ${CMAKE_DL_LIBS})
 
 if(TARGET pugixml::pugixml)
   target_link_libraries(libopenmc pugixml::pugixml)

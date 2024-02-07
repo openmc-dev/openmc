@@ -1,5 +1,6 @@
 from collections.abc import Iterable
 from numbers import Real
+
 import lxml.etree as ET
 
 import openmc.checkvalue as cv

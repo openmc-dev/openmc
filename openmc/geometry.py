@@ -293,7 +293,8 @@ class Geometry:
         if isinstance(materials, (str, os.PathLike)):
             materials = openmc.Materials.from_xml(materials)
 
-        tree = ET.parse(path)
+        parser = ET.XMLParser(huge_tree=True)
+        tree = ET.parse(path, parser=parser)
         root = tree.getroot()
 
         return cls.from_xml_element(root, materials)
@@ -390,6 +391,20 @@ class Geometry:
         universes[self.root_universe.id] = self.root_universe
         universes.update(self.root_universe.get_all_universes())
         return universes
+
+    def get_all_nuclides(self) -> typing.List[str]:
+        """Return all nuclides within the geometry.
+
+        Returns
+        -------
+        list
+            Sorted list of all nuclides in materials appearing in the geometry
+
+        """
+        all_nuclides = set()
+        for material in self.get_all_materials().values():
+            all_nuclides |= set(material.get_nuclides())
+        return sorted(all_nuclides)
 
     def get_all_materials(self) -> typing.Dict[int, openmc.Material]:
         """Return all materials within the geometry.
@@ -738,7 +753,7 @@ class Geometry:
     def plot(self, *args, **kwargs):
         """Display a slice plot of the geometry.
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
 
         Parameters
         ----------
@@ -764,8 +779,9 @@ class Geometry:
             Assigns colors to specific materials or cells. Keys are instances of
             :class:`Cell` or :class:`Material` and values are RGB 3-tuples, RGBA
             4-tuples, or strings indicating SVG color names. Red, green, blue,
-            and alpha should all be floats in the range [0.0, 1.0], for example:
-            .. code-block:: python
+            and alpha should all be floats in the range [0.0, 1.0], for
+            example::
+
                # Make water blue
                water = openmc.Cell(fill=h2o)
                universe.plot(..., colors={water: (0., 0., 1.))

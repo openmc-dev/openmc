@@ -27,17 +27,17 @@ DiscreteIndex::DiscreteIndex(pugi::xml_node node)
   auto params = get_node_array<double>(node, "parameters");
   std::size_t n = params.size() / 2;
 
-  assign(params.data() + n, n);
+  assign({params.data() + n, n});
 }
 
-DiscreteIndex::DiscreteIndex(const double* p, int n)
+DiscreteIndex::DiscreteIndex(gsl::span<const double> p)
 {
-  assign(p, n);
+  assign(p);
 }
 
-void DiscreteIndex::assign(const double* p, int n)
+void DiscreteIndex::assign(gsl::span<const double> p)
 {
-  prob_.assign(p, p + n);
+  prob_.assign(p.begin(), p.end());
 
   this->init_alias();
 }
@@ -126,7 +126,7 @@ Discrete::Discrete(pugi::xml_node node) : di_(node)
   x_.assign(params.begin(), params.begin() + n);
 }
 
-Discrete::Discrete(const double* x, const double* p, int n) : di_(p, n)
+Discrete::Discrete(const double* x, const double* p, size_t n) : di_({p, n})
 {
 
   x_.assign(x, x + n);

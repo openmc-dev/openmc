@@ -1,8 +1,8 @@
 from collections.abc import Iterable
 from math import cos, sin, pi
 from numbers import Real
-import lxml.etree as ET
 
+import lxml.etree as ET
 import numpy as np
 from uncertainties import UFloat
 
@@ -562,7 +562,7 @@ class Cell(IDManagerMixin):
     def plot(self, *args, **kwargs):
         """Display a slice plot of the cell.
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
 
         Parameters
         ----------

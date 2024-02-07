@@ -25,6 +25,7 @@ Simulation Settings
    openmc.IndependentSource
    openmc.FileSource
    openmc.CompiledSource
+   openmc.MeshSource
    openmc.SourceParticle
    openmc.VolumeCalculation
    openmc.Settings
@@ -118,6 +119,7 @@ Constructing Tallies
    openmc.Filter
    openmc.UniverseFilter
    openmc.MaterialFilter
+   openmc.MaterialFromFilter
    openmc.CellFilter
    openmc.CellFromFilter
    openmc.CellBornFilter
@@ -160,6 +162,7 @@ Geometry Plotting
    :template: myclass.rst
 
    openmc.Plot
+   openmc.ProjectionPlot
    openmc.Plots
 
 Running OpenMC

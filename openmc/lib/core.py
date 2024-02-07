@@ -174,7 +174,7 @@ def export_properties(filename=None, output=True):
 def export_weight_windows(filename="weight_windows.h5", output=True):
     """Export weight windows.
 
-    .. versionadded:: 0.13.4
+    .. versionadded:: 0.14.0
 
     Parameters
     ----------
@@ -198,7 +198,7 @@ def export_weight_windows(filename="weight_windows.h5", output=True):
 def import_weight_windows(filename='weight_windows.h5', output=True):
     """Import weight windows.
 
-    .. versionadded:: 0.13.4
+    .. versionadded:: 0.14.0
 
     Parameters
     ----------
@@ -611,7 +611,7 @@ class _DLLGlobal:
 
 class _FortranObject:
     def __repr__(self):
-        return "{}[{}]".format(type(self).__name__, self._index)
+        return "<{}(index={})>".format(type(self).__name__, self._index)
 
 
 class _FortranObjectWithID(_FortranObject):
@@ -621,6 +621,9 @@ class _FortranObjectWithID(_FortranObject):
         # assigned. If the array index of the object is out of bounds, an
         # OutOfBoundsError will be raised here by virtue of referencing self.id
         self.id
+
+    def __repr__(self):
+        return "<{}(id={})>".format(type(self).__name__, self.id)
 
 
 @contextmanager

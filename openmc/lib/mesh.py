@@ -1,6 +1,8 @@
 from collections.abc import Mapping
-from ctypes import (c_int, c_int32, c_char_p, c_double, POINTER,
-                    create_string_buffer)
+from ctypes import (c_int, c_int32, c_char_p, c_double, POINTER, Structure,
+                    create_string_buffer, c_uint64, c_size_t)
+from random import getrandbits
+from typing import Optional, List, Tuple, Sequence
 from weakref import WeakValueDictionary
 
 import numpy as np
@@ -10,8 +12,18 @@ from ..exceptions import AllocationError, InvalidIDError
 from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler
+from .material import Material
+from .plot import _Position
 
 __all__ = ['RegularMesh', 'RectilinearMesh', 'CylindricalMesh', 'SphericalMesh', 'UnstructuredMesh', 'meshes']
+
+
+class _MaterialVolume(Structure):
+    _fields_ = [
+        ("material", c_int32),
+        ("volume", c_double)
+    ]
+
 
 # Mesh functions
 _dll.openmc_extend_meshes.argtypes = [c_int32, c_char_p, POINTER(c_int32),
@@ -24,6 +36,19 @@ _dll.openmc_mesh_get_id.errcheck = _error_handler
 _dll.openmc_mesh_set_id.argtypes = [c_int32, c_int32]
 _dll.openmc_mesh_set_id.restype = c_int
 _dll.openmc_mesh_set_id.errcheck = _error_handler
+_dll.openmc_mesh_get_n_elements.argtypes = [c_int32, POINTER(c_size_t)]
+_dll.openmc_mesh_get_n_elements.restype = c_int
+_dll.openmc_mesh_get_n_elements.errcheck = _error_handler
+_dll.openmc_mesh_material_volumes.argtypes = [
+    c_int32, c_int, c_int, c_int, POINTER(_MaterialVolume),
+    POINTER(c_int), POINTER(c_uint64)]
+_dll.openmc_mesh_material_volumes.restype = c_int
+_dll.openmc_mesh_material_volumes.errcheck = _error_handler
+_dll.openmc_mesh_get_plot_bins.argtypes = [
+    c_int32, _Position, _Position, c_int, POINTER(c_int), POINTER(c_int32)
+]
+_dll.openmc_mesh_get_plot_bins.restype = c_int
+_dll.openmc_mesh_get_plot_bins.errcheck = _error_handler
 _dll.openmc_get_mesh_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_mesh_index.restype = c_int
 _dll.openmc_get_mesh_index.errcheck = _error_handler
@@ -122,6 +147,107 @@ class Mesh(_FortranObjectWithID):
     @id.setter
     def id(self, mesh_id):
         _dll.openmc_mesh_set_id(self._index, mesh_id)
+
+    @property
+    def n_elements(self):
+        n = c_size_t()
+        _dll.openmc_mesh_get_n_elements(self._index, n)
+        return n.value
+
+    def material_volumes(
+            self,
+            n_samples: int = 10_000,
+            prn_seed: Optional[int] = None
+    ) -> List[List[Tuple[Material, float]]]:
+        """Determine volume of materials in each mesh element
+
+        .. versionadded:: 0.14.1
+
+        Parameters
+        ----------
+        n_samples : int
+            Number of samples in each mesh element
+        prn_seed : int
+            Pseudorandom number generator (PRNG) seed; if None, one will be
+            generated randomly.
+
+        Returns
+        -------
+        List of tuple of (material, volume) for each mesh element. Void volume
+        is represented by having a value of None in the first element of a
+        tuple.
+
+        """
+        if n_samples <= 0:
+            raise ValueError("Number of samples must be positive")
+        if prn_seed is None:
+            prn_seed = getrandbits(63)
+        prn_seed = c_uint64(prn_seed)
+
+        # Preallocate space for MaterialVolume results
+        size = 16
+        result = (_MaterialVolume * size)()
+
+        hits = c_int()  # Number of materials hit in a given element
+        volumes = []
+        for i_element in range(self.n_elements):
+            while True:
+                try:
+                    _dll.openmc_mesh_material_volumes(
+                        self._index, n_samples, i_element, size, result, hits, prn_seed)
+                except AllocationError:
+                    # Increase size of result array and try again
+                    size *= 2
+                    result = (_MaterialVolume * size)()
+                else:
+                    # If no error, break out of loop
+                    break
+
+            volumes.append([
+                (Material(index=r.material), r.volume)
+                for r in result[:hits.value]
+            ])
+        return volumes
+
+    def get_plot_bins(
+            self,
+            origin: Sequence[float],
+            width: Sequence[float],
+            basis: str,
+            pixels: Sequence[int]
+    ) -> np.ndarray:
+        """Get mesh bin indices for a rasterized plot.
+
+        .. versionadded:: 0.14.1
+
+        Parameters
+        ----------
+        origin : iterable of float
+            Origin of the plotting view. Should have length 3.
+        width : iterable of float
+            Width of the plotting view. Should have length 2.
+        basis : {'xy', 'xz', 'yz'}
+            Plotting basis.
+        pixels : iterable of int
+            Number of pixels in each direction. Should have length 2.
+
+        Returns
+        -------
+        2D numpy array with mesh bin indices corresponding to each pixel within
+        the plotting view.
+
+        """
+        origin = _Position(*origin)
+        width = _Position(*width)
+        basis = {'xy': 1, 'xz': 2, 'yz': 3}[basis]
+        pixel_array = (c_int*2)(*pixels)
+        img_data = np.zeros((pixels[1], pixels[0]), dtype=np.dtype('int32'))
+
+        _dll.openmc_mesh_get_plot_bins(
+            self._index, origin, width, basis, pixel_array,
+            img_data.ctypes.data_as(POINTER(c_int32))
+        )
+        return img_data
 
 
 class RegularMesh(Mesh):

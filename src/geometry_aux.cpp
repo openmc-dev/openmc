@@ -81,7 +81,8 @@ void read_geometry_xml(pugi::xml_node root)
     }
   }
 
-  if (settings::run_mode != RunMode::PLOTTING && !boundary_exists) {
+  if (settings::run_mode != RunMode::PLOTTING &&
+      settings::run_mode != RunMode::VOLUME && !boundary_exists) {
     fatal_error("No boundary conditions were applied to any surfaces!");
   }
 
@@ -541,6 +542,15 @@ std::string distribcell_path_inner(int32_t target_cell, int32_t map,
       if (temp_offset <= target_offset)
         break;
     }
+  }
+
+  // if we get through the loop without finding an appropriate entry, throw
+  // an error
+  if (cell_it == search_univ.cells_.crend()) {
+    fatal_error(
+      fmt::format("Failed to generate a text label for distribcell with ID {}."
+                  "The current label is: '{}'",
+        model::cells[target_cell]->id_, path.str()));
   }
 
   // Add the cell to the path string.

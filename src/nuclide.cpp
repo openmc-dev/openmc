@@ -62,6 +62,10 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
   read_attribute(group, "metastable", metastable_);
   read_attribute(group, "atomic_weight_ratio", awr_);
 
+  if (settings::run_mode == RunMode::VOLUME) {
+    return;
+  }
+
   // Determine temperatures available
   hid_t kT_group = open_group(group, "kTs");
   auto dset_names = dataset_names(kT_group);
@@ -176,14 +180,14 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
           if (!contains(temps_to_read, temps_available.front())) {
             temps_to_read.push_back(std::round(temps_available.front()));
           }
-          break;
+          continue;
         }
         if (std::abs(T_desired - temps_available.back()) <=
             settings::temperature_tolerance) {
           if (!contains(temps_to_read, temps_available.back())) {
             temps_to_read.push_back(std::round(temps_available.back()));
           }
-          break;
+          continue;
         }
         fatal_error(
           "Nuclear data library does not contain cross sections for " + name_ +

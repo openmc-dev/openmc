@@ -7,10 +7,10 @@ from pathlib import Path
 from numbers import Integral
 from tempfile import NamedTemporaryFile
 import warnings
-import lxml.etree as ET
 from typing import Optional, Dict
 
 import h5py
+import lxml.etree as ET
 
 import openmc
 import openmc._xml as xml
@@ -253,7 +253,8 @@ class Model:
         path : str or PathLike
             Path to model.xml file
         """
-        tree = ET.parse(path)
+        parser = ET.XMLParser(huge_tree=True)
+        tree = ET.parse(path, parser=parser)
         root = tree.getroot()
 
         model = cls()
@@ -499,8 +500,6 @@ class Model:
             warnings.warn("remove_surfs kwarg will be deprecated soon, please "
                           "set the Geometry.merge_surfaces attribute instead.")
             self.geometry.merge_surfaces = True
-            # Can be used to modify tallies in case any surfaces are redundant
-            redundant_surfaces = self.geometry.remove_redundant_surfaces()
 
         # provide a memo to track which meshes have been written
         mesh_memo = set()
@@ -611,6 +610,7 @@ class Model:
         this method creates the XML files and runs OpenMC via a system call. In
         both cases this method returns the path to the last statepoint file
         generated.
+
         .. versionchanged:: 0.12
             Instead of returning the final k-effective value, this function now
             returns the path to the final statepoint written.
@@ -788,7 +788,12 @@ class Model:
                 for i, vol_calc in enumerate(self.settings.volume_calculations):
                     vol_calc.load_results(f"volume_{i + 1}.h5")
                     # First add them to the Python side
-                    self.geometry.add_volume_information(vol_calc)
+                    if vol_calc.domain_type == "material" and self.materials:
+                        for material in self.materials:
+                            if material.id in vol_calc.volumes:
+                                material.add_volume_information(vol_calc)
+                    else:
+                        self.geometry.add_volume_information(vol_calc)
 
                     # And now repeat for the C API
                     if self.is_initialized and vol_calc.domain_type == 'material':
@@ -1016,3 +1021,54 @@ class Model:
         """
 
         self._change_py_lib_attribs(names_or_ids, volume, 'material', 'volume')
+
+    def differentiate_depletable_mats(self, diff_volume_method: str):
+        """Assign distribmats for each depletable material
+
+        .. versionadded:: 0.14.0
+
+        Parameters
+        ----------
+        diff_volume_method : str
+            Specifies how the volumes of the new materials should be found.
+            Default is to 'divide equally' which divides the original material
+            volume equally between the new materials, 'match cell' sets the
+            volume of the material to volume of the cell they fill.
+        """
+        # Count the number of instances for each cell and material
+        self.geometry.determine_paths(instances_only=True)
+
+        # Extract all depletable materials which have multiple instances
+        distribmats = set(
+            [mat for mat in self.materials
+                if mat.depletable and mat.num_instances > 1])
+
+        if diff_volume_method == 'divide equally':
+            for mat in distribmats:
+                if mat.volume is None:
+                    raise RuntimeError("Volume not specified for depletable "
+                                        f"material with ID={mat.id}.")
+                mat.volume /= mat.num_instances
+
+        if distribmats:
+            # Assign distribmats to cells
+            for cell in self.geometry.get_all_material_cells().values():
+                if cell.fill in distribmats:
+                    mat = cell.fill
+                    if diff_volume_method == 'divide equally':
+                        cell.fill = [mat.clone() for _ in range(cell.num_instances)]
+                    elif diff_volume_method == 'match cell':
+                        for _ in range(cell.num_instances):
+                            cell.fill = mat.clone()
+                            if not cell.volume:
+                                raise ValueError(
+                                    f"Volume of cell ID={cell.id} not specified. "
+                                    "Set volumes of cells prior to using "
+                                    "diff_volume_method='match cell'."
+                                )
+                            cell.fill.volume = cell.volume
+
+        if self.materials is not None:
+            self.materials = openmc.Materials(
+                self.geometry.get_all_materials().values()
+            )

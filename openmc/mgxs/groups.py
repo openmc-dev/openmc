@@ -17,7 +17,7 @@ class EnergyGroups:
         The energy group boundaries in [eV] or the name of the group structure
         (Must be a valid key in the openmc.mgxs.GROUP_STRUCTURES dictionary).
 
-        .. versionchanged:: 0.13.4
+        .. versionchanged:: 0.14.0
             Changed to allow a string specifying the group structure name.
 
     Attributes

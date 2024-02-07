@@ -64,14 +64,14 @@ kwargs = {
     # Dependencies
     'python_requires': '>=3.7',
     'install_requires': [
-        'numpy>=1.9', 'h5py', 'scipy', 'ipython', 'matplotlib',
+        'numpy>=1.9', 'h5py', 'scipy<1.12', 'ipython', 'matplotlib',
         'pandas', 'lxml', 'uncertainties'
     ],
     'extras_require': {
         'depletion-mpi': ['mpi4py'],
         'docs': ['sphinx', 'sphinxcontrib-katex', 'sphinx-numfig', 'jupyter',
                  'sphinxcontrib-svg2pdfconverter', 'sphinx-rtd-theme'],
-        'test': ['pytest', 'pytest-cov', 'colorama'],
+        'test': ['pytest', 'pytest-cov', 'colorama', 'openpyxl'],
         'vtk': ['vtk'],
     },
     # Cython is used to add resonance reconstruction and fast float_endf

@@ -710,6 +710,7 @@ class MeshSpatial(Spatial):
 
         """
         element = ET.Element('space')
+
         element.set('type', 'mesh')
         element.set("mesh_id", str(self.mesh.id))
         element.set("volume_normalized", str(self.volume_normalized))
@@ -743,7 +744,7 @@ class MeshSpatial(Spatial):
 
         # check if this mesh has been read in from another location already
         if mesh_id not in meshes:
-            raise RuntimeError(f'Could not locate mesh with ID "{mesh_id}"')
+            raise ValueError(f'Could not locate mesh with ID "{mesh_id}"')
 
         volume_normalized = elem.get("volume_normalized")
         volume_normalized = get_text(elem, 'volume_normalized').lower() == 'true'

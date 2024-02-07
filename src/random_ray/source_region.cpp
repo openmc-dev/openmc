@@ -80,10 +80,8 @@ void initialize_source_regions()
   for (int i = 0; i < model::cells.size(); i++) {
     Cell& cell = *model::cells[i];
     if (cell.type_ == Fill::MATERIAL) {
-      int material = cell.material_[0];
       for (int j = 0; j < cell.n_instances_; j++) {
-        random_ray::material[source_region_id++] = material;
-        ;
+        random_ray::material[source_region_id++] = cell.material(j);
       }
     }
   }

@@ -249,10 +249,12 @@ public:
   std::unordered_map<int32_t, vector<int32_t>> get_contained_cells(
     int32_t instance = 0, Position* hint = nullptr) const;
 
-  //! Determine the material index corresponding to a specific cell instance, taking into account presence of distribcell material
+  //! Determine the material index corresponding to a specific cell instance,
+  //! taking into account presence of distribcell material
   //! \param[in] instance of the cell
   //! \return material index
-  int32_t material(int32_t instance) const {
+  int32_t material(int32_t instance) const
+  {
     if (material_.size() > 1) {
       return material_[instance];
     } else {
@@ -260,10 +262,12 @@ public:
     }
   }
 
-  //! Determine the temperature index corresponding to a specific cell instance, taking into account presence of distribcell temperature
+  //! Determine the temperature index corresponding to a specific cell instance,
+  //! taking into account presence of distribcell temperature
   //! \param[in] instance of the cell
   //! \return temperature index
-  int32_t sqrtkT(int32_t instance) const {
+  int32_t sqrtkT(int32_t instance) const
+  {
     if (sqrtkT_.size() > 1) {
       return sqrtkT_[instance];
     } else {

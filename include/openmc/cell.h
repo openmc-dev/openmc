@@ -266,7 +266,7 @@ public:
   //! taking into account presence of distribcell temperature
   //! \param[in] instance of the cell
   //! \return temperature index
-  int32_t sqrtkT(int32_t instance) const
+  double sqrtkT(int32_t instance) const
   {
     if (sqrtkT_.size() > 1) {
       return sqrtkT_[instance];

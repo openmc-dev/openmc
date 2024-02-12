@@ -690,6 +690,10 @@ class Integrator(ABC):
 
         self._solver = func
 
+    @property
+    def get_batchwise(self):
+        return self._batchwise
+
     def _timed_deplete(self, n, rates, dt, matrix_func=None):
         start = time.time()
         results = deplete(

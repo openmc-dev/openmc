@@ -571,7 +571,7 @@ class Material(IDManagerMixin):
 
         for component, params in components.items():
             cv.check_type('component', component, str)
-            if isinstance(params, float):
+            if isinstance(params, Real):
                 params = {'percent': params}
 
             else:

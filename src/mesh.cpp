@@ -1881,6 +1881,17 @@ extern "C" int openmc_mesh_get_n_elements(int32_t index, size_t* n)
   return 0;
 }
 
+//! Get the volume of each element in the mesh
+extern "C" int openmc_mesh_get_volumes(int32_t index, double* volumes)
+{
+  if (int err = check_mesh(index))
+    return err;
+  for (int i = 0; i < model::meshes[index]->n_bins(); ++i) {
+    volumes[i] = model::meshes[index]->volume(i);
+  }
+  return 0;
+}
+
 extern "C" int openmc_mesh_material_volumes(int32_t index, int n_sample,
   int bin, int result_size, void* result, int* hits, uint64_t* seed)
 {

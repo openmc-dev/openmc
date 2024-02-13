@@ -16,139 +16,19 @@
 
 namespace openmc {
 
-void all_reduce_random_ray_batch_results(bool mapped_all_tallies)
+
+RandomRaySimulation::RandomRaySimulation()
 {
-#ifdef OPENMC_MPI
-
-  // If we only have 1 MPI rank, no need
-  // to reduce anything.
-  if (mpi::n_procs <= 1)
-    return;
-
-  simulation::time_bank_sendrecv.start();
-
-  // The "position_recorded" variable needs to be allreduced (and maxed),
-  // as whether or not a cell was hit will affect some decisions in how the
-  // source is calculated in the next iteration so as to avoid dividing
-  // by zero. We take the max rather than the sum as the hit values are
-  // expected to be zero or 1.
-  MPI_Allreduce(MPI_IN_PLACE, random_ray::position_recorded.data(),
-    random_ray::n_source_regions, MPI_INT, MPI_MAX, mpi::intracomm);
-
-  // The position variable is more complicated to reduce than the others,
-  // as we do not want the sum of all positions in each cell, rather, we
-  // want to just pick any single valid position. Thus, we perform a gather
-  // and then pick the first valid position we find for all source regions
-  // that have had a position recorded. This operation does not need to
-  // be broadcast back to other ranks, as this value is only used for the
-  // tally conversion operation, which is only performed on the master rank.
-  // While this is expensive, it only needs to be done for active batches,
-  // and only if we have not mapped all the tallies yet. Once tallies are
-  // fully mapped, then the position vector is fully populated, so this
-  // operation can be skipped.
-
-  // First, we broadcast the fully mapped tally status variable so that
-  // all ranks are on the same page
-  int mapped_all_tallies_i = static_cast<int>(mapped_all_tallies);
-  MPI_Bcast(&mapped_all_tallies_i, 1, MPI_INT, 0, mpi::intracomm);
-
-  // Then, we perform the gather of position data, if needed
-  if (simulation::current_batch > settings::n_inactive &&
-      !mapped_all_tallies_i) {
-
-    // Master rank will gather results and pick valid positions
-    if (mpi::master) {
-      // Initialize temporary vector for receiving positions
-      std::vector<std::vector<Position>> all_position;
-      all_position.resize(mpi::n_procs);
-      for (int i = 0; i < mpi::n_procs; i++) {
-        all_position[i].resize(random_ray::n_source_regions);
-      }
-
-      // Copy master rank data into gathered vector for convenience
-      all_position[0] = random_ray::position;
-
-      // Receive all data into gather vector
-      for (int i = 1; i < mpi::n_procs; i++) {
-        MPI_Recv(all_position[i].data(), random_ray::n_source_regions * 3,
-          MPI_DOUBLE, i, 0, mpi::intracomm, MPI_STATUS_IGNORE);
-      }
-
-      // Scan through gathered data and pick first valid cell posiiton
-      for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
-        if (random_ray::position_recorded[sr] == 1) {
-          for (int i = 0; i < mpi::n_procs; i++) {
-            if (all_position[i][sr].x != 0.0 || all_position[i][sr].y != 0.0 ||
-                all_position[i][sr].z != 0.0) {
-              random_ray::position[sr] = all_position[i][sr];
-              break;
-            }
-          }
-        }
-      }
-    } else {
-      // Other ranks just send in their data
-      MPI_Send(random_ray::position.data(), random_ray::n_source_regions * 3,
-        MPI_DOUBLE, 0, 0, mpi::intracomm);
-    }
-  }
-
-  // For the rest of the source region data, we simply perform an all reduce,
-  // as these values will be needed on all ranks for transport during the
-  // next iteration.
-  MPI_Allreduce(MPI_IN_PLACE, random_ray::volume.data(),
-    random_ray::n_source_regions, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
-
-  MPI_Allreduce(MPI_IN_PLACE, random_ray::was_hit.data(),
-    random_ray::n_source_regions, MPI_INT, MPI_SUM, mpi::intracomm);
-
-  MPI_Allreduce(MPI_IN_PLACE, random_ray::scalar_flux_new.data(),
-    random_ray::n_source_elements, MPI_FLOAT, MPI_SUM, mpi::intracomm);
-
-  simulation::time_bank_sendrecv.stop();
-#endif
-}
-
-void openmc_run_random_ray()
-{
-  // Initialize OpenMC general data structures
-  openmc_simulation_init();
-
-  // Validate that inputs meet requirements for random ray mode
-  if (mpi::master)
-    validate_random_ray_inputs();
-
-  // Intialize Cell (Flat Source Region) data structures
-  initialize_source_regions();
-
   // Determine which source term should be used for ray sampling
-  int sampling_source = get_random_ray_sampling_source_index();
-
-  // Random ray mode does not have an inner loop over generations within a
-  // batch, so set the current gen to 1
-  simulation::current_gen = 1;
-
+  find_random_ray_sampling_source_index();
+  
   // There are no source sites in random ray mode, so be sure to disable to
   // ensure we don't attempt to write source sites to statepoint
   settings::source_write = false;
+}
 
-  // If all source regions have been hit by a ray during transport, then we can
-  // skip the mapping process for future iterations.
-  bool mapped_all_tallies = false;
-
-  // Random ray eigenvalue
-  double k_eff = 1.0;
-
-  // Tracks the average FSR miss rate for analysis and reporting
-  double avg_miss_rate = 0.0;
-
-  // Tracks the total number of geometric intersections by all rays for
-  // reporting
-  uint64_t total_geometric_intersections = 0;
-
-  // Begin main simulation timer
-  simulation::time_total.start();
-
+void RandomRaySimulation::run_simulation()
+{
   // Random ray power iteration loop
   while (simulation::current_batch < settings::n_batches) {
 
@@ -160,13 +40,11 @@ void openmc_run_random_ray()
     simulation::total_weight = 1.0;
 
     // Update source term (scattering + fission)
-    update_neutron_source(k_eff);
+    domain_.update_neutron_source();
 
     // Reset scalar fluxes, iteration volume tallies, and region hit flags to
     // zero
-    parallel_fill<float>(random_ray::scalar_flux_new, 0.0f);
-    parallel_fill<double>(random_ray::volume, 0.0);
-    parallel_fill<int>(random_ray::was_hit, 0);
+    domain_.batch_reset();
 
     // Start timer for transport
     simulation::time_transport.start();
@@ -176,72 +54,70 @@ void openmc_run_random_ray()
   reduction(+ : total_geometric_intersections)
     for (int i = 0; i < simulation::work_per_rank; i++) {
       RandomRay ray;
-      ray.initialize_ray(i, sampling_source);
+      ray.initialize_ray(i, sampling_source_, domain_);
       total_geometric_intersections += ray.transport_history_based_single_ray();
     }
 
     simulation::time_transport.stop();
 
     // If using multiple MPI ranks, perform all reduce on all transport results
-    all_reduce_random_ray_batch_results(mapped_all_tallies);
+    domain_.all_reduce_random_ray_batch_results();
 
     // Normalize scalar flux and update volumes
-    normalize_scalar_flux_and_volumes();
+    domain_.normalize_scalar_flux_and_volumes();
 
     // Add source to scalar flux, compute number of FSR hits
-    int64_t n_hits = add_source_to_scalar_flux();
+    int64_t n_hits = domain_.add_source_to_scalar_flux();
 
     // Compute random ray k-eff
-    k_eff = compute_k_eff(k_eff);
+    k_eff_ = domain_.compute_k_eff(k_eff_);
 
     // Store random ray k-eff into OpenMC's native k-eff variable
-    global_tally_tracklength = k_eff;
+    global_tally_tracklength = k_eff_;
 
     // Execute all tallying tasks, if this is an active batch
     if (simulation::current_batch > settings::n_inactive && mpi::master) {
 
       // Generate mapping between source regions and tallies
-      if (!mapped_all_tallies) {
-        mapped_all_tallies = convert_source_regions_to_tallies();
+      if (!domain_.mapped_all_tallies) {
+        domain_.convert_source_regions_to_tallies();
       }
 
       // Use above mapping to contribute FSR flux data to appropriate tallies
-      random_ray_tally();
+      domain_.random_ray_tally();
 
-// Add this iteration's scalar flux estimate to final accumulated estimate
-#pragma omp parallel for
-      for (int64_t se = 0; se < random_ray::n_source_elements; se++) {
-        random_ray::scalar_flux_final[se] += random_ray::scalar_flux_new[se];
-      }
+      // Add this iteration's scalar flux estimate to final accumulated estimate
+      domain_.accumulate_iteration_flux();
     }
 
     // Set phi_old = phi_new
-    random_ray::scalar_flux_old.swap(random_ray::scalar_flux_new);
+    domain_.scalar_flux_old_.swap(domain_.scalar_flux_new_);
 
     // Check for any obvious insabilities/nans/infs
-    instability_check(n_hits, k_eff, avg_miss_rate);
+    instability_check(n_hits, k_eff_, avg_miss_rate_);
 
     // Finalize the current batch
     finalize_generation();
     finalize_batch();
   } // End random ray power iteration loop
+}
 
-  openmc::simulation::time_total.stop();
-
-  // Finalize OpenMC
-  openmc_simulation_finalize();
-
+void RandomRaySimulation::reduce_simulation_statistics()
+{
   // Reduce number of intersections
 #ifdef OPENMC_MPI
   if (mpi::n_procs > 1) {
     uint64_t total_geometric_intersections_reduced = 0;
-    MPI_Reduce(&total_geometric_intersections,
+    MPI_Reduce(&total_geometric_intersections_,
       &total_geometric_intersections_reduced, 1, MPI_UNSIGNED_LONG, MPI_SUM, 0,
       mpi::intracomm);
-    total_geometric_intersections = total_geometric_intersections_reduced;
+    total_geometric_intersections_ = total_geometric_intersections_reduced;
   }
 #endif
+}
 
+void RandomRaySimulation::output_simulation_data()
+{
   // Print random ray results
   if (mpi::master) {
     print_results_random_ray(
@@ -252,196 +128,42 @@ void openmc_run_random_ray()
   }
 }
 
-// Compute new estimate of scattering + fission sources in each source region
-// based on the flux estimate from the previous iteration.
-void update_neutron_source(double k_eff)
+void openmc_run_random_ray()
 {
-  simulation::time_update_src.start();
+  // Initialize OpenMC general data structures
+  openmc_simulation_init();
 
-  double inverse_k_eff = 1.0 / k_eff;
-  int negroups = data::mg.num_energy_groups_;
+  // Validate that inputs meet requirements for random ray mode
+  if (mpi::master)
+    validate_random_ray_inputs();
+  
+  // Initialize Random Ray Simulation Object
+  RandomRaySimulation sim;
 
-  // Temperature and angle indices, if using multiple temperature
-  // data sets and/or anisotropic data sets.
-  // TODO: Currently assumes we are only using single temp/single
-  // angle data.
-  const int t = 0;
-  const int a = 0;
+  // Random ray mode does not have an inner loop over generations within a
+  // batch, so set the current gen to 1
+  simulation::current_gen = 1;
 
-#pragma omp parallel for
-  for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
-    int material = random_ray::material[sr];
+  // Begin main simulation timer
+  simulation::time_total.start();
 
-    for (int energy_group_out = 0; energy_group_out < negroups;
-         energy_group_out++) {
-      float sigma_t = data::mg.macro_xs_[material].get_xs(
-        MgxsType::TOTAL, energy_group_out, nullptr, nullptr, nullptr, t, a);
-      float scatter_source = 0.0f;
-      float fission_source = 0.0f;
+  // Execute random ray simulation
+  sim.run_simulation();
 
-      for (int energy_group_in = 0; energy_group_in < negroups;
-           energy_group_in++) {
-        float scalar_flux =
-          random_ray::scalar_flux_old[sr * negroups + energy_group_in];
-        float sigma_s =
-          data::mg.macro_xs_[material].get_xs(MgxsType::NU_SCATTER,
-            energy_group_in, &energy_group_out, nullptr, nullptr, t, a);
-        float nu_sigma_f =
-          data::mg.macro_xs_[material].get_xs(MgxsType::NU_FISSION,
-            energy_group_in, nullptr, nullptr, nullptr, t, a);
-        float chi = data::mg.macro_xs_[material].get_xs(MgxsType::CHI_PROMPT,
-          energy_group_in, &energy_group_out, nullptr, nullptr, t, a);
-        scatter_source += sigma_s * scalar_flux;
-        fission_source += nu_sigma_f * scalar_flux * chi;
-      }
+  // End main simulation timer
+  openmc::simulation::time_total.stop();
 
-      fission_source *= inverse_k_eff;
-      float new_isotropic_source = (scatter_source + fission_source) / sigma_t;
-      random_ray::source[sr * negroups + energy_group_out] =
-        new_isotropic_source;
-    }
-  }
-
-  simulation::time_update_src.stop();
+  // Finalize OpenMC
+  openmc_simulation_finalize();
 }
 
-// Normalizes flux and updates simulation-averaged volume estimate
-void normalize_scalar_flux_and_volumes()
-{
-  int negroups = data::mg.num_energy_groups_;
-  double total_active_distance_per_iteration =
-    settings::random_ray_distance_active * settings::n_particles;
-
-  float normalization_factor = 1.0 / total_active_distance_per_iteration;
-  double volume_normalization_factor =
-    1.0 / (total_active_distance_per_iteration * simulation::current_batch);
-
-// Normalize Scalar flux to total distance travelled by all rays this iteration
-#pragma omp parallel for
-  for (int64_t e = 0; e < random_ray::scalar_flux_new.size(); e++) {
-    random_ray::scalar_flux_new[e] *= normalization_factor;
-  }
-
-// Accumulate cell-wise ray length tallies collected this iteration, then
-// update the simulation-averaged cell-wise volume estimates
-#pragma omp parallel for
-  for (int64_t sr = 0; sr < random_ray::n_source_regions; sr++) {
-    random_ray::volume_t[sr] += random_ray::volume[sr];
-    random_ray::volume[sr] =
-      random_ray::volume_t[sr] * volume_normalization_factor;
-  }
-}
-
-// Combines transport flux contributions and flat source contributions
-// from the previous iteration to generate this iteration's estimate of
-// scalar flux.
-int64_t add_source_to_scalar_flux()
-{
-  int negroups = data::mg.num_energy_groups_;
-
-  int64_t n_hits = 0;
-
-  // Temperature and angle indices, if using multiple temperature
-  // data sets and/or anisotropic data sets.
-  // TODO: Currently assumes we are only using single temp/single
-  // angle data.
-  const int t = 0;
-  const int a = 0;
-
-#pragma omp parallel for reduction(+ : n_hits)
-  for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
-
-    // Check if this cell was hit this iteration
-    int was_cell_hit = random_ray::was_hit[sr];
-    if (was_cell_hit) {
-      n_hits++;
-    }
-
-    double volume = random_ray::volume[sr];
-    int material = random_ray::material[sr];
-    for (int e = 0; e < negroups; e++) {
-      int64_t idx = (sr * negroups) + e;
-
-      // There are three scenarios we need to consider:
-      if (was_cell_hit) {
-        // 1. If the FSR was hit this iteration, then the new flux is equal to
-        // the flat source from the previous iteration plus the contributions
-        // from rays passing through the source region (computed during the
-        // transport sweep)
-        float sigma_t = data::mg.macro_xs_[material].get_xs(
-          MgxsType::TOTAL, e, nullptr, nullptr, nullptr, t, a);
-        random_ray::scalar_flux_new[idx] /= (sigma_t * volume);
-        random_ray::scalar_flux_new[idx] += random_ray::source[idx];
-      } else if (volume > 0.0) {
-        // 2. If the FSR was not hit this iteration, but has been hit some
-        // previous iteration, then we simply set the new scalar flux to be
-        // equal to the contribution from the flat source alone.
-        random_ray::scalar_flux_new[idx] = random_ray::source[idx];
-      } else {
-        // If the FSR was not hit this iteration, and it has never been hit in
-        // any iteration (i.e., volume is zero), then we want to set this to 0
-        // to avoid dividing anything by a zero volume.
-        random_ray::scalar_flux_new[idx] = 0.f;
-      }
-    }
-  }
-
-  // Return the number of source regions that were hit this iteration
-  return n_hits;
-}
-
-// Generates new estimate of k_eff based on the differences between this
-// iteration's estimate of the scalar flux and the last iteration's estimate.
-double compute_k_eff(double k_eff_old)
-{
-  int negroups = data::mg.num_energy_groups_;
-  double fission_rate_old = 0;
-  double fission_rate_new = 0;
-
-  // Temperature and angle indices, if using multiple temperature
-  // data sets and/or anisotropic data sets.
-  // TODO: Currently assumes we are only using single temp/single
-  // angle data.
-  const int t = 0;
-  const int a = 0;
-
-#pragma omp parallel for reduction(+ : fission_rate_old, fission_rate_new)
-  for (int sr = 0; sr < random_ray::n_source_regions; sr++) {
-
-    // If simulation averaged volume is zero, don't include this cell
-    double volume = random_ray::volume[sr];
-    if (volume == 0.0) {
-      continue;
-    }
-
-    int material = random_ray::material[sr];
-
-    double sr_fission_source_old = 0;
-    double sr_fission_source_new = 0;
-
-    for (int e = 0; e < negroups; e++) {
-      int64_t idx = (sr * negroups) + e;
-      double nu_sigma_f = data::mg.macro_xs_[material].get_xs(
-        MgxsType::NU_FISSION, e, nullptr, nullptr, nullptr, t, a);
-      sr_fission_source_old += nu_sigma_f * random_ray::scalar_flux_old[idx];
-      sr_fission_source_new += nu_sigma_f * random_ray::scalar_flux_new[idx];
-    }
-
-    fission_rate_old += sr_fission_source_old * volume;
-    fission_rate_new += sr_fission_source_new * volume;
-  }
-
-  double k_eff_new = k_eff_old * (fission_rate_new / fission_rate_old);
-
-  return k_eff_new;
-}
 
 // Apply a few sanity checks to catch obvious cases of numerical instability.
 // Instability typically only occurs if ray density is extremely low.
-void instability_check(int64_t n_hits, double k_eff, double& avg_miss_rate)
+void RandomRaySimulation::instability_check(int64_t n_hits, double k_eff, double& avg_miss_rate)
 {
-  double percent_missed = ((random_ray::n_source_regions - n_hits) /
-                            static_cast<double>(random_ray::n_source_regions)) *
+  double percent_missed = ((domain_.n_source_regions - n_hits) /
+                            static_cast<double>(domain_.n_source_regions)) *
                           100.0;
   avg_miss_rate += percent_missed;
 
@@ -632,7 +354,7 @@ void validate_random_ray_inputs()
 // Determines which external source to use for sampling
 // ray starting locations/directions. Assumes sources have
 // already been validated.
-int get_random_ray_sampling_source_index()
+void RandomRaySimulation::find_random_ray_sampling_source_index()
 {
   int i = 0;
   for (; i < model::external_sources.size(); i++) {
@@ -652,7 +374,7 @@ int get_random_ray_sampling_source_index()
       break;
     }
   }
-  return i;
+  sampling_source_ = i;;
 }
 
 } // namespace openmc

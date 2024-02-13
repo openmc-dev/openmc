@@ -8,31 +8,64 @@
 
 namespace openmc {
 
-namespace random_ray {
+/*
+ * The FlatSourceDomain class encompasses data and methods for storing
+ * scalar flux and source region for all flat source regions in a 
+ * random ray simulation domain.
+ */
 
-// Scalars
-extern int64_t n_source_elements;
-extern int64_t n_source_regions; // number of source regions (a.k.a. cells)
+class FlatSourceDomain {
+public:
+  //==========================================================================
+  // Constructors
+  FlatSourceDomain();
+  
+  
+  //==========================================================================
+  // Methods
+  void update_neutron_source(double k_eff);
+  double compute_k_eff(double k_eff_old);
+  void normalize_scalar_flux_and_volumes();
+  int64_t add_source_to_scalar_flux();
+  double calculate_miss_rate();
+  void batch_reset();
+  void convert_source_regions_to_tallies();
+  void random_ray_tally();
+  void accumulate_iteration_flux();
 
-// 1D arrays representing values for each OpenMC "Cell"
-extern std::vector<int64_t> source_region_offsets;
+  //==========================================================================
+  // Data
 
-// Cell-wise Data
-extern std::vector<OpenMPMutex> lock;
-extern std::vector<int> material;
-extern std::vector<int> position_recorded;
-extern std::vector<Position> position;
-extern std::vector<float> scalar_flux_new;
-extern std::vector<float> scalar_flux_old;
-extern std::vector<float> scalar_flux_final;
-extern std::vector<float> source;
-extern std::vector<double> volume;
-extern std::vector<double> volume_t;
-extern std::vector<int> was_hit;
+  // Scalars
+  int negroups_; // Number of energy groups in simulation
+  int64_t n_source_elements_; // Total number of source regions in the model
+                                // times the number of energy groups
+  int64_t n_source_regions_;  // Total number of source regions in the model
 
-} // namespace random_ray
+  bool mapped_all_tallies_;
 
-void initialize_source_regions();
+  std::vector<std::vector<TallyTask>> tally_task_;
+
+  // 1D arrays representing values for each OpenMC "Cell"
+  std::vector<int64_t> source_region_offsets_;
+
+  // 1D arrays reprenting values for all source regions
+  std::vector<OpenMPMutex> lock_;
+  std::vector<int> material_;
+  std::vector<int> position_recorded_;
+  std::vector<Position> position_;
+  std::vector<double> volume_;
+  std::vector<double> volume_t_;
+  std::vector<int> was_hit_;
+
+  // 2D arrays stored in 1D representing values for all source regions x energy
+  // groups
+  std::vector<float> scalar_flux_new_;
+  std::vector<float> scalar_flux_old_;
+  std::vector<float> scalar_flux_final_;
+  std::vector<float> source_;
+
+}; // class FlatSourceDomain
 
 } // namespace openmc
 

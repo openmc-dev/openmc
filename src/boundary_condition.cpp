@@ -20,8 +20,7 @@ void VacuumBC::handle_particle(Particle& p, const Surface& surf) const
   // Random ray and Monte Carlo need different treatments at vacuum BCs
   if (p.type() == ParticleType::random_ray) {
     // Reflect ray off of the surface
-    ReflectiveBC rbc;
-    rbc.handle_particle(p, surf);
+    ReflectiveBC().handle_particle(p, surf);
 
     // Set ray's angular flux spectrum to vacuum conditions (zero)
     RandomRay* r = static_cast<RandomRay*>(&p);

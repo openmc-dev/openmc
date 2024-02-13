@@ -255,6 +255,11 @@ public:
   //! \return material index
   int32_t material(int32_t instance) const
   {
+    // If distrbuted materials are used, then each instance has its own
+    // material definition. If distributed materials are not used, then
+    // all instances used the same material stored at material_[0]. The
+    // presence of distributed materials is inferred from the size of
+    // the material_ vector being greater than one.
     if (material_.size() > 1) {
       return material_[instance];
     } else {
@@ -268,6 +273,11 @@ public:
   //! \return temperature index
   double sqrtkT(int32_t instance) const
   {
+    // If distrbuted materials are used, then each instance has its own
+    // temperature definition. If distributed materials are not used, then
+    // all instances used the same temperature stored at sqrtkT_[0]. The
+    // presence of distributed materials is inferred from the size of
+    // the sqrtkT_ vector being greater than one.
     if (sqrtkT_.size() > 1) {
       return sqrtkT_[instance];
     } else {

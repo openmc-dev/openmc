@@ -37,7 +37,8 @@ int main(int argc, char* argv[])
       err = openmc_run();
       break;
     case SolverType::RANDOM_RAY:
-      err = openmc_run_random_ray();
+      openmc_run_random_ray();
+      err = 0;
       break;
     }
     break;

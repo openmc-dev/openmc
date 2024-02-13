@@ -34,11 +34,6 @@ public:
   bool is_alive_ {true};
 }; // class RandomRay
 
-//==============================================================================
-// Non-member functions
-//==============================================================================
-inline float cjosey_exponential(const float tau);
-
 } // namespace openmc
 
 #endif // OPENMC_RANDOM_RAY_RAY_H

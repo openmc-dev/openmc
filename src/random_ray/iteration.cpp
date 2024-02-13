@@ -109,7 +109,7 @@ void all_reduce_random_ray_batch_results(bool mapped_all_tallies)
 #endif
 }
 
-int openmc_run_random_ray()
+void openmc_run_random_ray()
 {
   // Initialize OpenMC general data structures
   openmc_simulation_init();
@@ -172,7 +172,7 @@ int openmc_run_random_ray()
     simulation::time_transport.start();
 
 // Transport sweep over all random rays for the iteration
-#pragma omp parallel for schedule(runtime)                                     \
+#pragma omp parallel for schedule(dynamic)                                     \
   reduction(+ : total_geometric_intersections)
     for (int i = 0; i < simulation::work_per_rank; i++) {
       RandomRay ray;
@@ -250,8 +250,6 @@ int openmc_run_random_ray()
       plot_3D_vtk();
     }
   }
-
-  return 0;
 }
 
 // Compute new estimate of scattering + fission sources in each source region

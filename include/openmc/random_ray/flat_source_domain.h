@@ -1,5 +1,5 @@
-#ifndef OPENMC_RANDOM_RAY_SOURCE_REGION_H
-#define OPENMC_RANDOM_RAY_SOURCE_REGION_H
+#ifndef OPENMC_RANDOM_RAY_FLAT_SOURCE_DOMAIN_H
+#define OPENMC_RANDOM_RAY_FLAT_SOURCE_DOMAIN_H
 
 #include <vector>
 
@@ -118,4 +118,4 @@ void parallel_fill(std::vector<T>& arr, T value)
 
 } // namespace openmc
 
-#endif // OPENMC_RANDOM_RAY_SOURCE_REGION_H
+#endif // OPENMC_RANDOM_RAY_FLAT_SOURCE_DOMAIN_H

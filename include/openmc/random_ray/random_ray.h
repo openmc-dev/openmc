@@ -28,14 +28,13 @@ public:
 
   //----------------------------------------------------------------------------
   // Data members
+  FlatSourceDomain* domain_ {nullptr}; // pointer to domain that has flat source data needed for ray transport
   std::vector<float> angular_flux_;
   std::vector<float> delta_psi_;
   double distance_travelled_ {0};
   int negroups_;
   bool is_active_ {false};
   bool is_alive_ {true};
-  FlatSourceDomain* domain_ {nullptr}; // pointer to domain that has flat source
-                                       // data needed for ray transport
 }; // class RandomRay
 
 } // namespace openmc

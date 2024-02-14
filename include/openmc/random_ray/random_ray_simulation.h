@@ -1,5 +1,5 @@
-#ifndef OPENMC_RANDOM_RAY_ITERATION_H
-#define OPENMC_RANDOM_RAY_ITERATION_H
+#ifndef OPENMC_RANDOM_RAY_SIMULATION_H
+#define OPENMC_RANDOM_RAY_SIMULATION_H
 
 #include "openmc/random_ray/flat_source_domain.h"
 
@@ -58,4 +58,4 @@ void validate_random_ray_inputs();
 
 } // namespace openmc
 
-#endif // OPENMC_RANDOM_RAY_ITERATION_H
+#endif // OPENMC_RANDOM_RAY_SIMULATION_H

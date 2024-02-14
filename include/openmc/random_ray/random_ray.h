@@ -28,7 +28,8 @@ public:
 
   //----------------------------------------------------------------------------
   // Data members
-  FlatSourceDomain* domain_ {nullptr}; // pointer to domain that has flat source data needed for ray transport
+  FlatSourceDomain* domain_ {nullptr}; // pointer to domain that has flat source
+                                       // data needed for ray transport
   std::vector<float> angular_flux_;
   std::vector<float> delta_psi_;
   double distance_travelled_ {0};

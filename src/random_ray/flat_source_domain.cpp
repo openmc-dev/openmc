@@ -1,11 +1,11 @@
-#include "openmc/random_ray/source_region.h"
+#include "openmc/random_ray/flat_source_domain.h"
+
 #include "openmc/cell.h"
 #include "openmc/geometry.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/output.h"
 #include "openmc/plot.h"
-#include "openmc/random_ray/tally_convert.h"
 #include "openmc/simulation.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"

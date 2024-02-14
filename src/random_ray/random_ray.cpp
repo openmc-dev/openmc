@@ -1,8 +1,9 @@
 #include "openmc/random_ray/random_ray.h"
+
 #include "openmc/geometry.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
-#include "openmc/random_ray/source_region.h"
+#include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"

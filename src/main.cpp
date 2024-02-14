@@ -6,7 +6,7 @@
 #include "openmc/error.h"
 #include "openmc/message_passing.h"
 #include "openmc/particle_restart.h"
-#include "openmc/random_ray/iteration.h"
+#include "openmc/random_ray/random_ray_simulation.h"
 #include "openmc/settings.h"
 
 int main(int argc, char* argv[])

@@ -2,7 +2,7 @@
 #define OPENMC_RANDOM_RAY_RAY_H
 
 #include "openmc/particle.h"
-#include "openmc/random_ray/source_region.h"
+#include "openmc/random_ray/flat_source_domain.h"
 
 namespace openmc {
 

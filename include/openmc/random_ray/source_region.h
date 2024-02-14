@@ -8,6 +8,10 @@
 
 namespace openmc {
 
+//============================================================================
+//! Class Declarations
+//============================================================================
+
 /*
  * The FlatSourceDomain class encompasses data and methods for storing
  * scalar flux and source region for all flat source regions in a 
@@ -17,9 +21,25 @@ namespace openmc {
 class FlatSourceDomain {
 public:
   //==========================================================================
+  // Structs
+  
+  // A mapping object that is used to map between a specific random ray
+  // source region and an OpenMC native tally bin that it should score to
+  // every iteration.
+  struct TallyTask {
+    int tally_idx;
+    int filter_idx;
+    int score_idx;
+    int score_type;
+    TallyTask(int tally_idx, int filter_idx, int score_idx, int score_type)
+      : tally_idx(tally_idx), filter_idx(filter_idx), score_idx(score_idx),
+      score_type(score_type)
+    {}
+  };
+
+  //==========================================================================
   // Constructors
   FlatSourceDomain();
-  
   
   //==========================================================================
   // Methods
@@ -32,17 +52,19 @@ public:
   void convert_source_regions_to_tallies();
   void random_ray_tally();
   void accumulate_iteration_flux();
+  void output_to_vtk();
+  void all_reduce_replicated_source_regions();
 
   //==========================================================================
   // Data
 
   // Scalars
   int negroups_; // Number of energy groups in simulation
-  int64_t n_source_elements_; // Total number of source regions in the model
+  int64_t n_source_elements_ {0}; // Total number of source regions in the model
                                 // times the number of energy groups
-  int64_t n_source_regions_;  // Total number of source regions in the model
+  int64_t n_source_regions_ {0};  // Total number of source regions in the model
 
-  bool mapped_all_tallies_;
+  bool mapped_all_tallies_ {false};
 
   std::vector<std::vector<TallyTask>> tally_task_;
 
@@ -67,6 +89,36 @@ public:
 
 }; // class FlatSourceDomain
 
+//============================================================================
+//! Non-Method Functions
+//============================================================================
+
+// Returns the inputted value with its
+// endianness reversed. This is useful
+// for conforming to the paraview VTK
+// binary file format.
+template<typename T>
+T flip_endianness(T in)
+{
+  char* orig = reinterpret_cast<char*>(&in);
+  char swapper[sizeof(T)];
+  for (int i = 0; i < sizeof(T); i++) {
+    swapper[i] = orig[sizeof(T) - i - 1];
+  }
+  T out = *reinterpret_cast<T*>(&swapper);
+  return out;
+}
+
+template<typename T>
+void parallel_fill(std::vector<T>& arr, T value)
+{
+#pragma omp parallel for schedule(static)
+  for (int i = 0; i < arr.size(); i++) {
+    arr[i] = value;
+  }
+}
+
 } // namespace openmc
 
 #endif // OPENMC_RANDOM_RAY_SOURCE_REGION_H
+

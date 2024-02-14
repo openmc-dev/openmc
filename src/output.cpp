@@ -579,12 +579,11 @@ void print_results()
 //==============================================================================
 
 void print_results_random_ray(
-  uint64_t total_geometric_intersections, double avg_miss_rate)
+  uint64_t total_geometric_intersections, double avg_miss_rate, int negroups, int64_t n_source_regions)
 {
   using namespace simulation;
 
   if (settings::verbosity >= 6) {
-    int negroups = data::mg.num_energy_groups_;
     double total_integrations = total_geometric_intersections * negroups;
     double TPI = simulation::time_transport.elapsed() / total_integrations;
     double misc_time = time_total.elapsed() - time_update_src.elapsed() -
@@ -595,15 +594,14 @@ void print_results_random_ray(
     fmt::print(
       " Total Iterations                  = {}\n", settings::n_batches);
     fmt::print(" Flat Source Regions (FSRs)        = {}\n",
-      random_ray::n_source_regions);
+      n_source_regions);
     fmt::print(" Total Geometric Intersections     = {:.4e}\n",
       static_cast<double>(total_geometric_intersections));
     fmt::print("   Avg per Iteration               = {:.4e}\n",
       static_cast<double>(total_geometric_intersections) / settings::n_batches);
     fmt::print("   Avg per Iteration per FSR       = {:.2f}\n",
       static_cast<double>(total_geometric_intersections) /
-        static_cast<double>(settings::n_batches) /
-        random_ray::n_source_regions);
+        static_cast<double>(settings::n_batches) / n_source_regions);
     fmt::print(" Avg FSR Miss Rate per Iteration   = {:.4f}%\n", avg_miss_rate);
     fmt::print(" Energy Groups                     = {}\n", negroups);
     fmt::print(

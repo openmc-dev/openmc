@@ -15,11 +15,13 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
+/*
 namespace random_ray {
 
 std::vector<std::vector<TallyTask>> tally_task;
 
 }
+*/
 
 //==============================================================================
 // Non-method functions

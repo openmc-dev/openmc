@@ -1,14 +1,21 @@
 #include "openmc/random_ray/source_region.h"
 #include "openmc/cell.h"
+#include "openmc/geometry.h"
+#include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
+#include "openmc/output.h"
+#include "openmc/plot.h"
 #include "openmc/random_ray/tally_convert.h"
+#include "openmc/simulation.h"
+#include "openmc/tallies/filter.h"
+#include "openmc/tallies/tally.h"
+#include "openmc/tallies/tally_scoring.h"
+#include "openmc/timer.h"
 
 namespace openmc {
   
-void FlatSourceDomain::FlatSourceDomain()
+FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
 {
-  negroups_ = data::mg.num_energy_groups_;
-
   // Count the number of source regions, compute the cell offset
   // indices, and store the material type The reason for the offsets is that
   // some cell types may not have material fills, and therefore do not
@@ -17,27 +24,27 @@ void FlatSourceDomain::FlatSourceDomain()
     if (c->type_ != Fill::MATERIAL) {
       source_region_offsets_.push_back(-1);
     } else {
-      source_region_offsets_.push_back(n_source_regions);
+      source_region_offsets_.push_back(n_source_regions_);
       n_source_regions_ += c->n_instances_;
-      n_source_elements_ += c->n_instances_ * negroups;
+      n_source_elements_ += c->n_instances_ * negroups_;
     }
   }
 
   // Initialize cell-wise arrays
-  lock_.resize(n_source_regions);
-  material_.resize(n_source_regions);
-  position_recorded_.assign(n_source_regions, 0);
-  position_.resize(n_source_regions);
-  volume_.assign(n_source_regions, 0.0);
-  volume_t_.assign(n_source_regions, 0.0);
-  was_hit_.assign(n_source_regions, 0);
+  lock_.resize(n_source_regions_);
+  material_.resize(n_source_regions_);
+  position_recorded_.assign(n_source_regions_, 0);
+  position_.resize(n_source_regions_);
+  volume_.assign(n_source_regions_, 0.0);
+  volume_t_.assign(n_source_regions_, 0.0);
+  was_hit_.assign(n_source_regions_, 0);
 
   // Initialize element-wise arrays
-  scalar_flux_new_.assign(n_source_elements, 0.0);
-  scalar_flux_old_.assign(n_source_elements, 1.0);
-  scalar_flux_final_.assign(n_source_elements, 0.0);
-  source_.resize(n_source_elements);
-  tally_task_.resize(n_source_elements);
+  scalar_flux_new_.assign(n_source_elements_, 0.0);
+  scalar_flux_old_.assign(n_source_elements_, 1.0);
+  scalar_flux_final_.assign(n_source_elements_, 0.0);
+  source_.resize(n_source_elements_);
+  tally_task_.resize(n_source_elements_);
 
   // Initialize material array
   int64_t source_region_id = 0;
@@ -137,14 +144,14 @@ void FlatSourceDomain::normalize_scalar_flux_and_volumes()
 
 // Normalize Scalar flux to total distance travelled by all rays this iteration
 #pragma omp parallel for
-  for (int64_t e = 0; e < scalar_flux_new.size(); e++) {
+  for (int64_t e = 0; e < scalar_flux_new_.size(); e++) {
     scalar_flux_new_[e] *= normalization_factor;
   }
 
 // Accumulate cell-wise ray length tallies collected this iteration, then
 // update the simulation-averaged cell-wise volume estimates
 #pragma omp parallel for
-  for (int64_t sr = 0; sr < n_source_regions; sr++) {
+  for (int64_t sr = 0; sr < n_source_regions_; sr++) {
     volume_t_[sr] += volume_[sr];
     volume_[sr] =
       volume_t_[sr] * volume_normalization_factor;
@@ -439,7 +446,7 @@ void FlatSourceDomain::random_ray_tally()
   }
 }
 
-void FlatSourceDomain::all_reduce_random_ray_batch_results()
+void FlatSourceDomain::all_reduce_replicated_source_regions()
 {
 #ifdef OPENMC_MPI
 
@@ -530,6 +537,150 @@ void FlatSourceDomain::all_reduce_random_ray_batch_results()
 
   simulation::time_bank_sendrecv.stop();
 #endif
+}
+
+// Outputs all basic material, FSR ID, multigroup flux, and
+// fission source data to .vtk file that can be directly
+// loaded and displayed by Paraview.
+void FlatSourceDomain::output_to_vtk()
+{
+  // Rename .h5 plot filename(s) to .vtk filenames
+  for (int p = 0; p < model::plots.size(); p++) {
+    PlottableInterface* plot = model::plots[p].get();
+    plot->path_plot() =
+      plot->path_plot().substr(0, plot->path_plot().find_last_of('.')) + ".vtk";
+  }
+
+  // Print header information
+  print_plot();
+
+  // Outer loop over plots
+  for (int p = 0; p < model::plots.size(); p++) {
+
+    // Get handle to OpenMC plot object and extract params
+    Plot* openmc_plot = dynamic_cast<Plot*>(model::plots[p].get());
+
+    // Random ray plots only support voxel plots
+    if (openmc_plot == nullptr) {
+      warning(fmt::format("Plot {} is invalid plot type -- only voxel plotting "
+                          "is allowed in random ray mode.",
+        p));
+      continue;
+    } else if (openmc_plot->type_ != Plot::PlotType::voxel) {
+      warning(fmt::format("Plot {} is invalid plot type -- only voxel plotting "
+                          "is allowed in random ray mode.",
+        p));
+      continue;
+    }
+
+    int Nx = openmc_plot->pixels_[0];
+    int Ny = openmc_plot->pixels_[1];
+    int Nz = openmc_plot->pixels_[2];
+    Position origin = openmc_plot->origin_;
+    Position width = openmc_plot->width_;
+    Position ll = origin - width / 2.0;
+    double x_delta = width.x / Nx;
+    double y_delta = width.y / Ny;
+    double z_delta = width.z / Nz;
+    std::string filename = openmc_plot->path_plot();
+
+    // Perform sanity checks on file size
+    uint64_t bytes = Nx * Ny * Nz * (negroups_ + 1 + 1 + 1) * sizeof(float);
+    write_message(5, "Processing plot {}: {}... (Estimated size is {} MB)",
+      openmc_plot->id(), filename, bytes / 1.0e6);
+    if (bytes / 1.0e9 > 1.0) {
+      warning("Voxel plot specification is very large (>1 GB). Plotting may be "
+              "slow.");
+    } else if (bytes / 1.0e9 > 100.0) {
+      fatal_error("Voxel plot specification is too large (>100 GB). Exiting.");
+    }
+
+    // Relate voxel spatial locations to random ray source regions
+    std::vector<int> voxel_indices(Nx * Ny * Nz);
+
+#pragma omp parallel for collapse(3)
+    for (int z = 0; z < Nz; z++) {
+      for (int y = 0; y < Ny; y++) {
+        for (int x = 0; x < Nx; x++) {
+          Position sample;
+          sample.z = ll.z + z_delta / 2.0 + z * z_delta;
+          sample.y = ll.y + y_delta / 2.0 + y * y_delta;
+          sample.x = ll.x + x_delta / 2.0 + x * x_delta;
+          Particle p;
+          p.r() = sample;
+          bool found = exhaustive_find_cell(p);
+          int i_cell = p.lowest_coord().cell;
+          int64_t source_region_idx =
+            source_region_offsets_[i_cell] + p.cell_instance();
+          voxel_indices[z * Ny * Nx + y * Nx + x] = source_region_idx;
+        }
+      }
+    }
+
+    // Open file for writing
+    FILE* plot = fopen(filename.c_str(), "w");
+
+    // Write vtk metadata
+    fprintf(plot, "# vtk DataFile Version 2.0\n");
+    fprintf(plot, "Dataset File\n");
+    fprintf(plot, "BINARY\n");
+    fprintf(plot, "DATASET STRUCTURED_POINTS\n");
+    fprintf(plot, "DIMENSIONS %d %d %d\n", Nx, Ny, Nz);
+    fprintf(plot, "ORIGIN 0 0 0\n");
+    fprintf(plot, "SPACING %lf %lf %lf\n", x_delta, y_delta, z_delta);
+    fprintf(plot, "POINT_DATA %d\n", Nx * Ny * Nz);
+
+    // Plot multigroup flux data
+    for (int g = 0; g < negroups_; g++) {
+      fprintf(plot, "SCALARS flux_group_%d float\n", g);
+      fprintf(plot, "LOOKUP_TABLE default\n");
+      for (int fsr : voxel_indices) {
+        int64_t source_element = fsr * negroups_ + g;
+        float flux = scalar_flux_final_[source_element];
+        flux /= (settings::n_batches - settings::n_inactive);
+        flux = flip_endianness<float>(flux);
+        fwrite(&flux, sizeof(float), 1, plot);
+      }
+    }
+
+    // Plot FSRs
+    fprintf(plot, "SCALARS FSRs float\n");
+    fprintf(plot, "LOOKUP_TABLE default\n");
+    for (int fsr : voxel_indices) {
+      float value = future_prn(10, fsr);
+      value = flip_endianness<float>(value);
+      fwrite(&value, sizeof(float), 1, plot);
+    }
+
+    // Plot Materials
+    fprintf(plot, "SCALARS Materials int\n");
+    fprintf(plot, "LOOKUP_TABLE default\n");
+    for (int fsr : voxel_indices) {
+      int mat = material_[fsr];
+      mat = flip_endianness<int>(mat);
+      fwrite(&mat, sizeof(int), 1, plot);
+    }
+
+    // Plot fission source
+    fprintf(plot, "SCALARS total_fission_source float\n");
+    fprintf(plot, "LOOKUP_TABLE default\n");
+    for (int fsr : voxel_indices) {
+      float total_fission = 0.0;
+      int mat = material_[fsr];
+      for (int g = 0; g < negroups_; g++) {
+        int64_t source_element = fsr * negroups_ + g;
+        float flux = scalar_flux_final_[source_element];
+        flux /= (settings::n_batches - settings::n_inactive);
+        float Sigma_f = data::mg.macro_xs_[mat].get_xs(
+          MgxsType::FISSION, g, nullptr, nullptr, nullptr, 0, 0);
+        total_fission += Sigma_f * flux;
+      }
+      total_fission = flip_endianness<float>(total_fission);
+      fwrite(&total_fission, sizeof(float), 1, plot);
+    }
+
+    fclose(plot);
+  }
 }
 
 } // namespace openmc

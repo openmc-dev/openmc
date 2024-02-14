@@ -5,6 +5,7 @@
 
 namespace openmc {
 
+/*
 // A mapping object that is used to map between a specific random ray
 // source region and an OpenMC native tally bin that it should score to
 // every iteration.
@@ -29,6 +30,7 @@ extern std::vector<std::vector<TallyTask>> tally_task;
 
 bool convert_source_regions_to_tallies();
 void random_ray_tally();
+*/
 
 } // namespace openmc
 

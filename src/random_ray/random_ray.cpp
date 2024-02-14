@@ -65,16 +65,11 @@ inline float cjosey_exponential(const float tau)
 // RandomRay implementation
 //==============================================================================
 
-RandomRay::RandomRay()
-{
-  angular_flux_.resize(data::mg.num_energy_groups_);
-  delta_psi_.resize(data::mg.num_energy_groups_);
-}
+RandomRay::RandomRay() : negroups_(data::mg.num_energy_groups_), angular_flux_(data::mg.num_energy_groups_), delta_psi_(data::mg.num_energy_groups_) {}
 
-RandomRay::RandomRay(uint64_t ray_id, int sampling_source)
-  : RandomRay::RandomRay()
+RandomRay::RandomRay(uint64_t ray_id, int sampling_source, FlatSourceDomain* domain) : RandomRay()
 {
-  initialize_ray(ray_id, sampling_source);
+  initialize_ray(ray_id, sampling_source, domain);
 }
 
 // Transports ray until termination criteria are met
@@ -161,8 +156,6 @@ void RandomRay::event_advance_ray()
 // performed when inside the lock.
 void RandomRay::attenuate_flux(double distance, bool is_active)
 {
-  int negroups = data::mg.num_energy_groups_;
-
   // The number of geometric intersections is counted for reporting purposes
   n_event()++;
 
@@ -171,10 +164,10 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
 
   // The source region is the spatial region index
   int64_t source_region =
-    random_ray::source_region_offsets[i_cell] + cell_instance();
+    domain_->source_region_offsets_[i_cell] + cell_instance();
 
   // The source element is the energy-specific region index
-  int64_t source_element = source_region * negroups;
+  int64_t source_element = source_region * negroups_;
   int material = this->material();
 
   // Temperature and angle indices, if using multiple temperature
@@ -185,13 +178,13 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
   const int a = 0;
 
   // MOC incoming flux attenuation + source contribution/attenuation equation
-  for (int e = 0; e < negroups; e++) {
+  for (int e = 0; e < negroups_; e++) {
     float sigma_t = data::mg.macro_xs_[material].get_xs(
       MgxsType::TOTAL, e, NULL, NULL, NULL, t, a);
     float tau = sigma_t * distance;
     float exponential = cjosey_exponential(tau); // exponential = 1 - exp(-tau)
     float new_delta_psi =
-      (angular_flux_[e] - random_ray::source[source_element + e]) * exponential;
+      (angular_flux_[e] - domain_->source_[source_element + e]) * exponential;
     delta_psi_[e] = new_delta_psi;
     angular_flux_[e] -= new_delta_psi;
   }
@@ -201,39 +194,41 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
   if (is_active) {
 
     // Aquire lock for source region
-    random_ray::lock[source_region].lock();
+    domain_->lock_[source_region].lock();
 
     // Accumulate delta psi into new estimate of source region flux for
     // this iteration
-    for (int e = 0; e < negroups; e++) {
-      random_ray::scalar_flux_new[source_element + e] += delta_psi_[e];
+    for (int e = 0; e < negroups_; e++) {
+      domain_->scalar_flux_new_[source_element + e] += delta_psi_[e];
     }
 
     // If the source region hasn't been hit yet this iteration,
     // indicate that it now has
-    if (random_ray::was_hit[source_region] == 0) {
-      random_ray::was_hit[source_region] = 1;
+    if (domain_->was_hit_[source_region] == 0) {
+      domain_->was_hit_[source_region] = 1;
     }
 
     // Accomulate volume (ray distance) into this iteration's estimate
     // of the source region's volume
-    random_ray::volume[source_region] += distance;
+    domain_->volume_[source_region] += distance;
 
     // Tally valid position inside the source region (e.g., midpoint of
     // the ray) if not done already
-    if (!random_ray::position_recorded[source_region]) {
+    if (!domain_->position_recorded_[source_region]) {
       Position midpoint = r() + u() * (distance / 2.0);
-      random_ray::position[source_region] = midpoint;
-      random_ray::position_recorded[source_region] = 1;
+      domain_->position_[source_region] = midpoint;
+      domain_->position_recorded_[source_region] = 1;
     }
 
     // Release lock
-    random_ray::lock[source_region].unlock();
+    domain_->lock_[source_region].unlock();
   }
 }
 
-void RandomRay::initialize_ray(uint64_t ray_id, int sampling_source)
+void RandomRay::initialize_ray(uint64_t ray_id, int sampling_source, FlatSourceDomain* domain)
 {
+  domain_ = domain;
+
   // Reset particle event counter
   n_event() = 0;
 
@@ -258,7 +253,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, int sampling_source)
     model::external_sources[sampling_source]->sample(current_seed())};
   site.E = lower_bound_index(
     data::mg.rev_energy_bins_.begin(), data::mg.rev_energy_bins_.end(), site.E);
-  site.E = data::mg.num_energy_groups_ - site.E - 1.;
+  site.E = negroups_ - site.E - 1.;
   from_source(&site);
 
   // Locate ray
@@ -275,13 +270,12 @@ void RandomRay::initialize_ray(uint64_t ray_id, int sampling_source)
 
   // Initialize ray's starting angular flux to starting location's isotropic
   // source
-  int negroups = data::mg.num_energy_groups_;
   int i_cell = lowest_coord().cell;
   int64_t source_region_idx =
-    random_ray::source_region_offsets[i_cell] + cell_instance();
+    domain_->source_region_offsets_[i_cell] + cell_instance();
 
-  for (int e = 0; e < negroups; e++) {
-    angular_flux_[e] = random_ray::source[source_region_idx * negroups + e];
+  for (int e = 0; e < negroups_; e++) {
+    angular_flux_[e] = domain_->source_[source_region_idx * negroups_ + e];
   }
 }
 

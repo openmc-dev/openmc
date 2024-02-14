@@ -9,13 +9,13 @@ namespace openmc {
  * The RandomRaySimulation class encompasses data and methods for running a
  * random ray simulation.
  */
-  
+
 class RandomRaySimulation {
 public:
   //----------------------------------------------------------------------------
   // Constructors
   RandomRaySimulation();
-  
+
   //----------------------------------------------------------------------------
   // Methods
   void simulate();
@@ -33,7 +33,7 @@ public:
 
   // Random ray eigenvalue
   double k_eff_ {1.0};
-  
+
   // Tracks the average FSR miss rate for analysis and reporting
   double avg_miss_rate_ {0.0};
 

@@ -56,8 +56,8 @@ void print_runtime();
 void print_results();
 
 //! Display timing results and global statistics for random ray simulations
-void print_results_random_ray(
-  uint64_t total_geometric_intersections, double avg_miss_rate, int negroups, int64_t n_source_regions);
+void print_results_random_ray(uint64_t total_geometric_intersections,
+  double avg_miss_rate, int negroups, int64_t n_source_regions);
 
 void write_tallies();
 

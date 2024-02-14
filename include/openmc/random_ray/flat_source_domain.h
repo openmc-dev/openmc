@@ -10,7 +10,7 @@ namespace openmc {
 
 /*
  * The FlatSourceDomain class encompasses data and methods for storing
- * scalar flux and source region for all flat source regions in a 
+ * scalar flux and source region for all flat source regions in a
  * random ray simulation domain.
  */
 
@@ -18,7 +18,7 @@ class FlatSourceDomain {
 public:
   //----------------------------------------------------------------------------
   // Helper Structs
-  
+
   // A mapping object that is used to map between a specific random ray
   // source region and an OpenMC native tally bin that it should score to
   // every iteration.
@@ -29,14 +29,14 @@ public:
     int score_type;
     TallyTask(int tally_idx, int filter_idx, int score_idx, int score_type)
       : tally_idx(tally_idx), filter_idx(filter_idx), score_idx(score_idx),
-      score_type(score_type)
+        score_type(score_type)
     {}
   };
 
   //----------------------------------------------------------------------------
   // Constructors
   FlatSourceDomain();
-  
+
   //----------------------------------------------------------------------------
   // Methods
   void update_neutron_source(double k_eff);
@@ -54,9 +54,9 @@ public:
   //----------------------------------------------------------------------------
   // Data members
 
-  int negroups_; // Number of energy groups in simulation
+  int negroups_;                  // Number of energy groups in simulation
   int64_t n_source_elements_ {0}; // Total number of source regions in the model
-                                // times the number of energy groups
+                                  // times the number of energy groups
   int64_t n_source_regions_ {0};  // Total number of source regions in the model
 
   bool mapped_all_tallies_ {false}; // If all source regions have been visited
@@ -119,4 +119,3 @@ void parallel_fill(std::vector<T>& arr, T value)
 } // namespace openmc
 
 #endif // OPENMC_RANDOM_RAY_SOURCE_REGION_H
-

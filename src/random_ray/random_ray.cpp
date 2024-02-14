@@ -66,9 +66,15 @@ inline float cjosey_exponential(const float tau)
 // RandomRay implementation
 //==============================================================================
 
-RandomRay::RandomRay() : negroups_(data::mg.num_energy_groups_), angular_flux_(data::mg.num_energy_groups_), delta_psi_(data::mg.num_energy_groups_) {}
+RandomRay::RandomRay()
+  : negroups_(data::mg.num_energy_groups_),
+    angular_flux_(data::mg.num_energy_groups_),
+    delta_psi_(data::mg.num_energy_groups_)
+{}
 
-RandomRay::RandomRay(uint64_t ray_id, int sampling_source, FlatSourceDomain* domain) : RandomRay()
+RandomRay::RandomRay(
+  uint64_t ray_id, int sampling_source, FlatSourceDomain* domain)
+  : RandomRay()
 {
   initialize_ray(ray_id, sampling_source, domain);
 }
@@ -226,7 +232,8 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
   }
 }
 
-void RandomRay::initialize_ray(uint64_t ray_id, int sampling_source, FlatSourceDomain* domain)
+void RandomRay::initialize_ray(
+  uint64_t ray_id, int sampling_source, FlatSourceDomain* domain)
 {
   domain_ = domain;
 
@@ -279,6 +286,5 @@ void RandomRay::initialize_ray(uint64_t ray_id, int sampling_source, FlatSourceD
     angular_flux_[e] = domain_->source_[source_region_idx * negroups_ + e];
   }
 }
-
 
 } // namespace openmc

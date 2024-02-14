@@ -17,7 +17,7 @@ namespace openmc {
 //==============================================================================
 // FlatSourceDomain implementation
 //==============================================================================
-  
+
 FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
 {
   // Count the number of source regions, compute the cell offset
@@ -75,7 +75,7 @@ void FlatSourceDomain::batch_reset()
   parallel_fill<double>(volume_, 0.0);
   parallel_fill<int>(was_hit_, 0);
 }
-  
+
 void FlatSourceDomain::accumulate_iteration_flux()
 {
 #pragma omp parallel for
@@ -103,33 +103,27 @@ void FlatSourceDomain::update_neutron_source(double k_eff)
   for (int sr = 0; sr < n_source_regions_; sr++) {
     int material = material_[sr];
 
-    for (int e_out = 0; e_out < negroups_;
-         e_out++) {
+    for (int e_out = 0; e_out < negroups_; e_out++) {
       float sigma_t = data::mg.macro_xs_[material].get_xs(
         MgxsType::TOTAL, e_out, nullptr, nullptr, nullptr, t, a);
       float scatter_source = 0.0f;
       float fission_source = 0.0f;
 
-      for (int e_in = 0; e_in < negroups_;
-           e_in++) {
-        float scalar_flux =
-          scalar_flux_old_[sr * negroups_ + e_in];
-        float sigma_s =
-          data::mg.macro_xs_[material].get_xs(MgxsType::NU_SCATTER,
-            e_in, &e_out, nullptr, nullptr, t, a);
-        float nu_sigma_f =
-          data::mg.macro_xs_[material].get_xs(MgxsType::NU_FISSION,
-            e_in, nullptr, nullptr, nullptr, t, a);
-        float chi = data::mg.macro_xs_[material].get_xs(MgxsType::CHI_PROMPT,
-          e_in, &e_out, nullptr, nullptr, t, a);
+      for (int e_in = 0; e_in < negroups_; e_in++) {
+        float scalar_flux = scalar_flux_old_[sr * negroups_ + e_in];
+        float sigma_s = data::mg.macro_xs_[material].get_xs(
+          MgxsType::NU_SCATTER, e_in, &e_out, nullptr, nullptr, t, a);
+        float nu_sigma_f = data::mg.macro_xs_[material].get_xs(
+          MgxsType::NU_FISSION, e_in, nullptr, nullptr, nullptr, t, a);
+        float chi = data::mg.macro_xs_[material].get_xs(
+          MgxsType::CHI_PROMPT, e_in, &e_out, nullptr, nullptr, t, a);
         scatter_source += sigma_s * scalar_flux;
         fission_source += nu_sigma_f * scalar_flux * chi;
       }
 
       fission_source *= inverse_k_eff;
       float new_isotropic_source = (scatter_source + fission_source) / sigma_t;
-      source_[sr * negroups_ + e_out] =
-        new_isotropic_source;
+      source_[sr * negroups_ + e_out] = new_isotropic_source;
     }
   }
 
@@ -157,8 +151,7 @@ void FlatSourceDomain::normalize_scalar_flux_and_volumes()
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions_; sr++) {
     volume_t_[sr] += volume_[sr];
-    volume_[sr] =
-      volume_t_[sr] * volume_normalization_factor;
+    volume_[sr] = volume_t_[sr] * volume_normalization_factor;
   }
 }
 
@@ -466,8 +459,8 @@ void FlatSourceDomain::all_reduce_replicated_source_regions()
   // source is calculated in the next iteration so as to avoid dividing
   // by zero. We take the max rather than the sum as the hit values are
   // expected to be zero or 1.
-  MPI_Allreduce(MPI_IN_PLACE, position_recorded_.data(),
-    n_source_regions_, MPI_INT, MPI_MAX, mpi::intracomm);
+  MPI_Allreduce(MPI_IN_PLACE, position_recorded_.data(), n_source_regions_,
+    MPI_INT, MPI_MAX, mpi::intracomm);
 
   // The position variable is more complicated to reduce than the others,
   // as we do not want the sum of all positions in each cell, rather, we
@@ -504,8 +497,8 @@ void FlatSourceDomain::all_reduce_replicated_source_regions()
 
       // Receive all data into gather vector
       for (int i = 1; i < mpi::n_procs; i++) {
-        MPI_Recv(all_position[i].data(), n_source_regions_ * 3,
-          MPI_DOUBLE, i, 0, mpi::intracomm, MPI_STATUS_IGNORE);
+        MPI_Recv(all_position[i].data(), n_source_regions_ * 3, MPI_DOUBLE, i,
+          0, mpi::intracomm, MPI_STATUS_IGNORE);
       }
 
       // Scan through gathered data and pick first valid cell posiiton
@@ -522,22 +515,22 @@ void FlatSourceDomain::all_reduce_replicated_source_regions()
       }
     } else {
       // Other ranks just send in their data
-      MPI_Send(position_.data(), n_source_regions_ * 3,
-        MPI_DOUBLE, 0, 0, mpi::intracomm);
+      MPI_Send(position_.data(), n_source_regions_ * 3, MPI_DOUBLE, 0, 0,
+        mpi::intracomm);
     }
   }
 
   // For the rest of the source region data, we simply perform an all reduce,
   // as these values will be needed on all ranks for transport during the
   // next iteration.
-  MPI_Allreduce(MPI_IN_PLACE, volume_.data(),
-    n_source_regions_, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+  MPI_Allreduce(MPI_IN_PLACE, volume_.data(), n_source_regions_, MPI_DOUBLE,
+    MPI_SUM, mpi::intracomm);
 
-  MPI_Allreduce(MPI_IN_PLACE, was_hit_.data(),
-    n_source_regions_, MPI_INT, MPI_SUM, mpi::intracomm);
+  MPI_Allreduce(MPI_IN_PLACE, was_hit_.data(), n_source_regions_, MPI_INT,
+    MPI_SUM, mpi::intracomm);
 
-  MPI_Allreduce(MPI_IN_PLACE, scalar_flux_new_.data(),
-    n_source_elements_, MPI_FLOAT, MPI_SUM, mpi::intracomm);
+  MPI_Allreduce(MPI_IN_PLACE, scalar_flux_new_.data(), n_source_elements_,
+    MPI_FLOAT, MPI_SUM, mpi::intracomm);
 
   simulation::time_bank_sendrecv.stop();
 #endif

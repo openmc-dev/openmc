@@ -28,7 +28,7 @@ void openmc_run_random_ray()
   // Validate that inputs meet requirements for random ray mode
   if (mpi::master)
     validate_random_ray_inputs();
-  
+
   // Initialize Random Ray Simulation Object
   RandomRaySimulation sim;
 
@@ -43,7 +43,7 @@ void openmc_run_random_ray()
 
   // Finalize OpenMC
   openmc_simulation_finalize();
-  
+
   // Reduce variables across MPI ranks
   sim.reduce_simulation_statistics();
 
@@ -222,15 +222,16 @@ void validate_random_ray_inputs()
 // RandomRaySimulation implementation
 //==============================================================================
 
-RandomRaySimulation::RandomRaySimulation() : negroups_(data::mg.num_energy_groups_)
+RandomRaySimulation::RandomRaySimulation()
+  : negroups_(data::mg.num_energy_groups_)
 {
   // Determine which source term should be used for ray sampling
   find_random_ray_sampling_source_index();
-  
+
   // There are no source sites in random ray mode, so be sure to disable to
   // ensure we don't attempt to write source sites to statepoint
   settings::source_write = false;
-  
+
   // Random ray mode does not have an inner loop over generations within a
   // batch, so set the current gen to 1
   simulation::current_gen = 1;
@@ -259,10 +260,12 @@ void RandomRaySimulation::simulate()
     simulation::time_transport.start();
 
 // Transport sweep over all random rays for the iteration
-#pragma omp parallel for schedule(dynamic) reduction(+ : total_geometric_intersections_)
+#pragma omp parallel for schedule(dynamic)                                     \
+  reduction(+ : total_geometric_intersections_)
     for (int i = 0; i < simulation::work_per_rank; i++) {
       RandomRay ray(i, sampling_source_, &domain_);
-      total_geometric_intersections_ += ray.transport_history_based_single_ray();
+      total_geometric_intersections_ +=
+        ray.transport_history_based_single_ray();
     }
 
     simulation::time_transport.stop();
@@ -307,7 +310,6 @@ void RandomRaySimulation::simulate()
     finalize_generation();
     finalize_batch();
   } // End random ray power iteration loop
-  
 }
 
 void RandomRaySimulation::reduce_simulation_statistics()
@@ -328,8 +330,9 @@ void RandomRaySimulation::output_simulation_results()
 {
   // Print random ray results
   if (mpi::master) {
-    print_results_random_ray(
-      total_geometric_intersections_, avg_miss_rate_ / settings::n_batches, negroups_, domain_.n_source_regions_);
+    print_results_random_ray(total_geometric_intersections_,
+      avg_miss_rate_ / settings::n_batches, negroups_,
+      domain_.n_source_regions_);
     if (model::plots.size() > 0) {
       domain_.output_to_vtk();
     }
@@ -338,7 +341,8 @@ void RandomRaySimulation::output_simulation_results()
 
 // Apply a few sanity checks to catch obvious cases of numerical instability.
 // Instability typically only occurs if ray density is extremely low.
-void RandomRaySimulation::instability_check(int64_t n_hits, double k_eff, double& avg_miss_rate)
+void RandomRaySimulation::instability_check(
+  int64_t n_hits, double k_eff, double& avg_miss_rate)
 {
   double percent_missed = ((domain_.n_source_regions_ - n_hits) /
                             static_cast<double>(domain_.n_source_regions_)) *
@@ -361,7 +365,6 @@ void RandomRaySimulation::instability_check(int64_t n_hits, double k_eff, double
     fatal_error("Instability detected");
   }
 }
-
 
 // Determines which external source to use for sampling
 // ray starting locations/directions. Assumes sources have

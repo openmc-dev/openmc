@@ -101,7 +101,8 @@ IndependentSource::IndependentSource(pugi::xml_node node)
       settings::photon_transport = true;
     } else if (temp_str == "random_ray") {
       if (settings::solver_type != SolverType::RANDOM_RAY) {
-        fatal_error("Random ray particle source type specified but random ray mode not set.");
+        fatal_error("Random ray particle source type specified but random ray "
+                    "mode not set.");
       }
       particle_ = ParticleType::random_ray;
     } else {

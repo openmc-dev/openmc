@@ -122,7 +122,7 @@ void FlatSourceDomain::update_neutron_source(double k_eff)
         float scalar_flux = scalar_flux_old_[sr * negroups_ + e_in];
 
         float sigma_s = data::mg.macro_xs_[material].get_xs(
-            MgxsType::NU_SCATTER, e_in, &e_out, nullptr, nullptr, t, a);
+          MgxsType::NU_SCATTER, e_in, &e_out, nullptr, nullptr, t, a);
         scatter_source += sigma_s * scalar_flux;
       }
 
@@ -131,32 +131,33 @@ void FlatSourceDomain::update_neutron_source(double k_eff)
   }
 
   if (settings::run_mode == RunMode::EIGENVALUE) {
-  // Add fission source if in eigenvalue mode
+    // Add fission source if in eigenvalue mode
 #pragma omp parallel for
     for (int sr = 0; sr < n_source_regions_; sr++) {
       int material = material_[sr];
 
       for (int e_out = 0; e_out < negroups_; e_out++) {
         float sigma_t = data::mg.macro_xs_[material].get_xs(
-            MgxsType::TOTAL, e_out, nullptr, nullptr, nullptr, t, a);
+          MgxsType::TOTAL, e_out, nullptr, nullptr, nullptr, t, a);
         float fission_source = 0.0f;
 
         for (int e_in = 0; e_in < negroups_; e_in++) {
           float scalar_flux = scalar_flux_old_[sr * negroups_ + e_in];
           float nu_sigma_f = data::mg.macro_xs_[material].get_xs(
-              MgxsType::NU_FISSION, e_in, nullptr, nullptr, nullptr, t, a);
+            MgxsType::NU_FISSION, e_in, nullptr, nullptr, nullptr, t, a);
           float chi = data::mg.macro_xs_[material].get_xs(
-              MgxsType::CHI_PROMPT, e_in, &e_out, nullptr, nullptr, t, a);
+            MgxsType::CHI_PROMPT, e_in, &e_out, nullptr, nullptr, t, a);
           fission_source += nu_sigma_f * scalar_flux * chi;
         }
-        source_[sr * negroups_ + e_out] += fission_source * inverse_k_eff / sigma_t;
+        source_[sr * negroups_ + e_out] +=
+          fission_source * inverse_k_eff / sigma_t;
       }
     }
   } else {
-    // Add fixed source source if in fixed source mode
-    #pragma omp parallel for
+// Add fixed source source if in fixed source mode
+#pragma omp parallel for
     for (int se = 0; se < n_source_elements_; se++) {
-        source_[se] += fixed_source_[se];
+      source_[se] += fixed_source_[se];
     }
   }
 
@@ -417,15 +418,16 @@ void FlatSourceDomain::random_ray_tally()
 {
   openmc::simulation::time_tallies.start();
 
-  // Compute the volume weighted total strength of fixed sources throughout the domain
-  // using up to date stochastic source region volumes. Note that this value
-  // is different than the sum of the user input IndependentSource object strengths,
-  // as the raw user input strengths do not account for the volumes of each source.
-  // Computing this quantity is useful for normalizing output in the same manner as would be expected
-  // in Monte Carlo mode.
+  // Compute the volume weighted total strength of fixed sources throughout the
+  // domain using up to date stochastic source region volumes. Note that this
+  // value is different than the sum of the user input IndependentSource object
+  // strengths, as the raw user input strengths do not account for the volumes
+  // of each source. Computing this quantity is useful for normalizing output in
+  // the same manner as would be expected in Monte Carlo mode.
   double inverse_source_strength = 1.0;
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    inverse_source_strength = 1.0 / calculate_total_volume_weighted_source_strength();
+    inverse_source_strength =
+      1.0 / calculate_total_volume_weighted_source_strength();
   }
 
   // Temperature and angle indices, if using multiple temperature
@@ -725,32 +727,39 @@ void FlatSourceDomain::output_to_vtk()
   }
 }
 
-void FlatSourceDomain::apply_fixed_source_to_source_region(Discrete* discrete, double strength_factor, int64_t source_region)
+void FlatSourceDomain::apply_fixed_source_to_source_region(
+  Discrete* discrete, double strength_factor, int64_t source_region)
 {
   const auto& discrete_energies = discrete->x();
-  const auto& discrete_probs    = discrete->prob();
+  const auto& discrete_probs = discrete->prob();
 
   for (int e = 0; e < discrete_energies.size(); e++) {
     int g = data::mg.get_group_index(discrete_energies[e]);
-    fixed_source_[source_region * negroups_ + g] += discrete_probs[e] * strength_factor;
+    fixed_source_[source_region * negroups_ + g] +=
+      discrete_probs[e] * strength_factor;
   }
 }
 
-void FlatSourceDomain::apply_fixed_source_to_cell_instances(int32_t i_cell, Discrete* discrete, double strength_factor, int target_material_id, const vector<int32_t>& instances)
+void FlatSourceDomain::apply_fixed_source_to_cell_instances(int32_t i_cell,
+  Discrete* discrete, double strength_factor, int target_material_id,
+  const vector<int32_t>& instances)
 {
   Cell& cell = *model::cells[i_cell];
 
   for (int j : instances) {
     int cell_material_idx = cell.material(j);
     int cell_material_id = model::materials[cell_material_idx]->id();
-    if (target_material_id == C_NONE || cell_material_id == target_material_id) {
+    if (target_material_id == C_NONE ||
+        cell_material_id == target_material_id) {
       int64_t source_region = source_region_offsets_[i_cell] + j;
-      apply_fixed_source_to_source_region(discrete, strength_factor, source_region);
+      apply_fixed_source_to_source_region(
+        discrete, strength_factor, source_region);
     }
   }
 }
 
-void FlatSourceDomain::apply_fixed_source_to_cell_and_children(int32_t i_cell, Discrete* discrete, double strength_factor, int32_t target_material_id)
+void FlatSourceDomain::apply_fixed_source_to_cell_and_children(int32_t i_cell,
+  Discrete* discrete, double strength_factor, int32_t target_material_id)
 {
   Cell& cell = *model::cells[i_cell];
 
@@ -759,23 +768,26 @@ void FlatSourceDomain::apply_fixed_source_to_cell_and_children(int32_t i_cell, D
     // This is done to allow for re-use of an interface
     vector<int> instances(cell.n_instances_);
     std::iota(instances.begin(), instances.end(), 0);
-    apply_fixed_source_to_cell_instances(i_cell, discrete, strength_factor, target_material_id, instances);
+    apply_fixed_source_to_cell_instances(
+      i_cell, discrete, strength_factor, target_material_id, instances);
   } else if (target_material_id == C_NONE) {
-    std::unordered_map<int32_t, vector<int32_t>> cell_instance_list = cell.get_contained_cells(0, nullptr);
+    std::unordered_map<int32_t, vector<int32_t>> cell_instance_list =
+      cell.get_contained_cells(0, nullptr);
     for (const auto& pair : cell_instance_list) {
       int32_t i_child_cell = pair.first;
-      apply_fixed_source_to_cell_instances(i_child_cell, discrete, strength_factor, target_material_id, pair.second);
+      apply_fixed_source_to_cell_instances(i_child_cell, discrete,
+        strength_factor, target_material_id, pair.second);
     }
   }
 }
 
 void FlatSourceDomain::count_fixed_source_regions()
 {
-  #pragma omp parallel for reduction(+:n_fixed_source_regions_)
+#pragma omp parallel for reduction(+ : n_fixed_source_regions_)
   for (int sr = 0; sr < n_source_regions_; sr++) {
-    float total = 0.f; 
+    float total = 0.f;
     for (int e = 0; e < negroups_; e++) {
-      int64_t se = sr*negroups_ + e;
+      int64_t se = sr * negroups_ + e;
       total += fixed_source_[se];
     }
     if (total != 0.f) {
@@ -787,7 +799,7 @@ void FlatSourceDomain::count_fixed_source_regions()
 double FlatSourceDomain::calculate_total_volume_weighted_source_strength()
 {
   double source_strength = 0.0;
-  #pragma omp parallel for reduction(+:source_strength)
+#pragma omp parallel for reduction(+ : source_strength)
   for (int sr = 0; sr < n_source_regions_; sr++) {
     double volume = volume_[sr];
     for (int e = 0; e < negroups_; e++) {
@@ -824,13 +836,15 @@ void FlatSourceDomain::convert_fixed_sources(int sampling_source)
     if (is->domain_type() == IndependentSource::DomainType::MATERIAL) {
       for (int32_t material_id : domain_ids) {
         for (int i_cell = 0; i_cell < model::cells.size(); i_cell++) {
-           apply_fixed_source_to_cell_and_children(i_cell, energy, strength_factor, material_id);
+          apply_fixed_source_to_cell_and_children(
+            i_cell, energy, strength_factor, material_id);
         }
       }
     } else if (is->domain_type() == IndependentSource::DomainType::CELL) {
       for (int32_t cell_id : domain_ids) {
         int32_t i_cell = model::cell_map[cell_id];
-        apply_fixed_source_to_cell_and_children(i_cell, energy, strength_factor, C_NONE);
+        apply_fixed_source_to_cell_and_children(
+          i_cell, energy, strength_factor, C_NONE);
       }
     } else if (is->domain_type() == IndependentSource::DomainType::UNIVERSE) {
       for (int32_t universe_id : domain_ids) {
@@ -838,30 +852,31 @@ void FlatSourceDomain::convert_fixed_sources(int sampling_source)
         Universe& universe = *model::universes[i_universe];
         for (int32_t cell_id : universe.cells_) {
           int32_t i_cell = model::cell_map[cell_id];
-          apply_fixed_source_to_cell_and_children(i_cell, energy, strength_factor, C_NONE);
+          apply_fixed_source_to_cell_and_children(
+            i_cell, energy, strength_factor, C_NONE);
         }
       }
     }
   } // End loop over external sources
-  
+
   // Temperature and angle indices, if using multiple temperature
   // data sets and/or anisotropic data sets.
   // TODO: Currently assumes we are only using single temp/single
   // angle data.
   const int t = 0;
   const int a = 0;
-  
-  // Divide the fixed source term by sigma t (to save time when applying each iteration)
-  #pragma omp parallel for
+
+// Divide the fixed source term by sigma t (to save time when applying each
+// iteration)
+#pragma omp parallel for
   for (int sr = 0; sr < n_source_regions_; sr++) {
     int material = material_[sr];
     for (int e = 0; e < negroups_; e++) {
       float sigma_t = data::mg.macro_xs_[material].get_xs(
-          MgxsType::TOTAL, e, nullptr, nullptr, nullptr, t, a);
+        MgxsType::TOTAL, e, nullptr, nullptr, nullptr, t, a);
       fixed_source_[sr * negroups_ + e] /= sigma_t;
     }
   }
-
 }
 
 } // namespace openmc

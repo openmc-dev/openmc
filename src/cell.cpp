@@ -1272,6 +1272,9 @@ struct ParentCellStack {
   //! compute an instance for the provided distribcell index
   int32_t compute_instance(int32_t distribcell_index) const
   {
+    if (distribcell_index == C_NONE)
+      return 0;
+
     int32_t instance = 0;
     for (const auto& parent_cell : this->parent_cells_) {
       auto& cell = model::cells[parent_cell.cell_index];

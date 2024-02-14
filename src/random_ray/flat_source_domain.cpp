@@ -46,11 +46,18 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
 
   // Initialize element-wise arrays
   scalar_flux_new_.assign(n_source_elements_, 0.0);
-  scalar_flux_old_.assign(n_source_elements_, 1.0);
   scalar_flux_final_.assign(n_source_elements_, 0.0);
   source_.resize(n_source_elements_);
   fixed_source_.assign(n_source_elements_, 0.0);
   tally_task_.resize(n_source_elements_);
+
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    // If in eigenvalue mode, set starting flux to guess of unity
+    scalar_flux_old_.assign(n_source_elements_, 1.0);
+  } else {
+    // If in fixed source mode, set starting flux to guess of zero
+    scalar_flux_old_.assign(n_source_elements_, 0.0);
+  }
 
   // Initialize material array
   int64_t source_region_id = 0;
@@ -101,6 +108,7 @@ void FlatSourceDomain::update_neutron_source(double k_eff)
   const int t = 0;
   const int a = 0;
 
+  // Add scattering source
 #pragma omp parallel for
   for (int sr = 0; sr < n_source_regions_; sr++) {
     int material = material_[sr];
@@ -109,23 +117,46 @@ void FlatSourceDomain::update_neutron_source(double k_eff)
       float sigma_t = data::mg.macro_xs_[material].get_xs(
         MgxsType::TOTAL, e_out, nullptr, nullptr, nullptr, t, a);
       float scatter_source = 0.0f;
-      float fission_source = 0.0f;
 
       for (int e_in = 0; e_in < negroups_; e_in++) {
         float scalar_flux = scalar_flux_old_[sr * negroups_ + e_in];
+
         float sigma_s = data::mg.macro_xs_[material].get_xs(
-          MgxsType::NU_SCATTER, e_in, &e_out, nullptr, nullptr, t, a);
-        float nu_sigma_f = data::mg.macro_xs_[material].get_xs(
-          MgxsType::NU_FISSION, e_in, nullptr, nullptr, nullptr, t, a);
-        float chi = data::mg.macro_xs_[material].get_xs(
-          MgxsType::CHI_PROMPT, e_in, &e_out, nullptr, nullptr, t, a);
+            MgxsType::NU_SCATTER, e_in, &e_out, nullptr, nullptr, t, a);
         scatter_source += sigma_s * scalar_flux;
-        fission_source += nu_sigma_f * scalar_flux * chi;
       }
 
-      fission_source *= inverse_k_eff;
-      float new_isotropic_source = (scatter_source + fission_source) / sigma_t;
-      source_[sr * negroups_ + e_out] = new_isotropic_source;
+      source_[sr * negroups_ + e_out] = scatter_source / sigma_t;
+    }
+  }
+
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+  // Add fission source if in eigenvalue mode
+#pragma omp parallel for
+    for (int sr = 0; sr < n_source_regions_; sr++) {
+      int material = material_[sr];
+
+      for (int e_out = 0; e_out < negroups_; e_out++) {
+        float sigma_t = data::mg.macro_xs_[material].get_xs(
+            MgxsType::TOTAL, e_out, nullptr, nullptr, nullptr, t, a);
+        float fission_source = 0.0f;
+
+        for (int e_in = 0; e_in < negroups_; e_in++) {
+          float scalar_flux = scalar_flux_old_[sr * negroups_ + e_in];
+          float nu_sigma_f = data::mg.macro_xs_[material].get_xs(
+              MgxsType::NU_FISSION, e_in, nullptr, nullptr, nullptr, t, a);
+          float chi = data::mg.macro_xs_[material].get_xs(
+              MgxsType::CHI_PROMPT, e_in, &e_out, nullptr, nullptr, t, a);
+          fission_source += nu_sigma_f * scalar_flux * chi;
+        }
+        source_[sr * negroups_ + e_out] += fission_source * inverse_k_eff / sigma_t;
+      }
+    }
+  } else {
+    // Add fixed source source if in fixed source mode
+    #pragma omp parallel for
+    for (int se = 0; se < n_source_elements_; se++) {
+        source_[se] += fixed_source_[se];
     }
   }
 
@@ -386,6 +417,17 @@ void FlatSourceDomain::random_ray_tally()
 {
   openmc::simulation::time_tallies.start();
 
+  // Compute the volume weighted total strength of fixed sources throughout the domain
+  // using up to date stochastic source region volumes. Note that this value
+  // is different than the sum of the user input IndependentSource object strengths,
+  // as the raw user input strengths do not account for the volumes of each source.
+  // Computing this quantity is useful for normalizing output in the same manner as would be expected
+  // in Monte Carlo mode.
+  double inverse_source_strength = 1.0;
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    inverse_source_strength = 1.0 / calculate_total_volume_weighted_source_strength();
+  }
+
   // Temperature and angle indices, if using multiple temperature
   // data sets and/or anisotropic data sets.
   // TODO: Currently assumes we are only using single temp/single
@@ -399,10 +441,11 @@ void FlatSourceDomain::random_ray_tally()
 #pragma omp parallel for
   for (int sr = 0; sr < n_source_regions_; sr++) {
     double volume = volume_[sr];
+    double factor = volume * inverse_source_strength;
     double material = material_[sr];
     for (int e = 0; e < negroups_; e++) {
       int idx = sr * negroups_ + e;
-      double flux = scalar_flux_new_[idx] * volume;
+      double flux = scalar_flux_new_[idx] * factor;
       for (auto& task : tally_task_[idx]) {
         double score;
         switch (task.score_type) {
@@ -741,6 +784,19 @@ void FlatSourceDomain::count_fixed_source_regions()
   }
 }
 
+double FlatSourceDomain::calculate_total_volume_weighted_source_strength()
+{
+  double source_strength = 0.0;
+  #pragma omp parallel for reduction(+:source_strength)
+  for (int sr = 0; sr < n_source_regions_; sr++) {
+    double volume = volume_[sr];
+    for (int e = 0; e < negroups_; e++) {
+      source_strength += fixed_source_[sr * negroups_ + e] * volume;
+    }
+  }
+  return source_strength;
+}
+
 void FlatSourceDomain::convert_fixed_sources(int sampling_source)
 {
   // Compute total combined strength of all neutron/photon sources
@@ -787,6 +843,25 @@ void FlatSourceDomain::convert_fixed_sources(int sampling_source)
       }
     }
   } // End loop over external sources
+  
+  // Temperature and angle indices, if using multiple temperature
+  // data sets and/or anisotropic data sets.
+  // TODO: Currently assumes we are only using single temp/single
+  // angle data.
+  const int t = 0;
+  const int a = 0;
+  
+  // Divide the fixed source term by sigma t (to save time when applying each iteration)
+  #pragma omp parallel for
+  for (int sr = 0; sr < n_source_regions_; sr++) {
+    int material = material_[sr];
+    for (int e = 0; e < negroups_; e++) {
+      float sigma_t = data::mg.macro_xs_[material].get_xs(
+          MgxsType::TOTAL, e, nullptr, nullptr, nullptr, t, a);
+      fixed_source_[sr * negroups_ + e] /= sigma_t;
+    }
+  }
+
 }
 
 } // namespace openmc

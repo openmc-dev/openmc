@@ -579,7 +579,7 @@ void print_results()
 //==============================================================================
 
 void print_results_random_ray(uint64_t total_geometric_intersections,
-  double avg_miss_rate, int negroups, int64_t n_source_regions)
+  double avg_miss_rate, int negroups, int64_t n_source_regions, int64_t n_fixed_source_regions)
 {
   using namespace simulation;
 
@@ -594,6 +594,7 @@ void print_results_random_ray(uint64_t total_geometric_intersections,
     fmt::print(
       " Total Iterations                  = {}\n", settings::n_batches);
     fmt::print(" Flat Source Regions (FSRs)        = {}\n", n_source_regions);
+    fmt::print(" FSRs with Fixed Source Terms      = {}\n", n_fixed_source_regions);
     fmt::print(" Total Geometric Intersections     = {:.4e}\n",
       static_cast<double>(total_geometric_intersections));
     fmt::print("   Avg per Iteration               = {:.4e}\n",
@@ -626,7 +627,7 @@ void print_results_random_ray(uint64_t total_geometric_intersections,
     show_time("Time per integration", TPI);
   }
 
-  if (settings::verbosity >= 4) {
+  if (settings::verbosity >= 4 && settings::run_mode == RunMode::EIGENVALUE) {
     header("Results", 4);
     fmt::print(" k-effective                       = {:.5f} +/- {:.5f}\n",
       simulation::keff, simulation::keff_std);

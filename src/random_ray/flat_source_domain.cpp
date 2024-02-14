@@ -2,6 +2,7 @@
 
 #include "openmc/cell.h"
 #include "openmc/geometry.h"
+#include "openmc/material.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/output.h"
@@ -48,6 +49,7 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
   scalar_flux_old_.assign(n_source_elements_, 1.0);
   scalar_flux_final_.assign(n_source_elements_, 0.0);
   source_.resize(n_source_elements_);
+  fixed_source_.assign(n_source_elements_, 0.0);
   tally_task_.resize(n_source_elements_);
 
   // Initialize material array
@@ -678,6 +680,113 @@ void FlatSourceDomain::output_to_vtk()
 
     fclose(plot);
   }
+}
+
+void FlatSourceDomain::apply_fixed_source_to_source_region(Discrete* discrete, double strength_factor, int64_t source_region)
+{
+  const auto& discrete_energies = discrete->x();
+  const auto& discrete_probs    = discrete->prob();
+
+  for (int e = 0; e < discrete_energies.size(); e++) {
+    int g = data::mg.get_group_index(discrete_energies[e]);
+    fixed_source_[source_region * negroups_ + g] += discrete_probs[e] * strength_factor;
+  }
+}
+
+void FlatSourceDomain::apply_fixed_source_to_cell_instances(int32_t i_cell, Discrete* discrete, double strength_factor, int target_material_id, const vector<int32_t>& instances)
+{
+  Cell& cell = *model::cells[i_cell];
+
+  for (int j : instances) {
+    int cell_material_idx = cell.material(j);
+    int cell_material_id = model::materials[cell_material_idx]->id();
+    if (target_material_id == C_NONE || cell_material_id == target_material_id) {
+      int64_t source_region = source_region_offsets_[i_cell] + j;
+      apply_fixed_source_to_source_region(discrete, strength_factor, source_region);
+    }
+  }
+}
+
+void FlatSourceDomain::apply_fixed_source_to_cell_and_children(int32_t i_cell, Discrete* discrete, double strength_factor, int32_t target_material_id)
+{
+  Cell& cell = *model::cells[i_cell];
+
+  if (cell.type_ == Fill::MATERIAL) {
+    // Create vector counting up from 0 ... n_instances-1
+    // This is done to allow for re-use of an interface
+    vector<int> instances(cell.n_instances_);
+    std::iota(instances.begin(), instances.end(), 0);
+    apply_fixed_source_to_cell_instances(i_cell, discrete, strength_factor, target_material_id, instances);
+  } else if (target_material_id == C_NONE) {
+    std::unordered_map<int32_t, vector<int32_t>> cell_instance_list = cell.get_contained_cells(0, nullptr);
+    for (const auto& pair : cell_instance_list) {
+      int32_t i_child_cell = pair.first;
+      apply_fixed_source_to_cell_instances(i_child_cell, discrete, strength_factor, target_material_id, pair.second);
+    }
+  }
+}
+
+void FlatSourceDomain::count_fixed_source_regions()
+{
+  #pragma omp parallel for reduction(+:n_fixed_source_regions_)
+  for (int sr = 0; sr < n_source_regions_; sr++) {
+    float total = 0.f; 
+    for (int e = 0; e < negroups_; e++) {
+      int64_t se = sr*negroups_ + e;
+      total += fixed_source_[se];
+    }
+    if (total != 0.f) {
+      n_fixed_source_regions_++;
+    }
+  }
+}
+
+void FlatSourceDomain::convert_fixed_sources(int sampling_source)
+{
+  // Compute total combined strength of all neutron/photon sources
+  double total_strength = 0;
+  for (int es = 0; es < model::external_sources.size(); es++) {
+    if (es != sampling_source)
+      total_strength += model::external_sources[es]->strength();
+  }
+
+  // Loop over external sources
+  for (int es = 0; es < model::external_sources.size(); es++) {
+
+    // Don't use the random ray sampling source for sampling neutrons
+    if (es == sampling_source) {
+      continue;
+    }
+
+    Source* s = model::external_sources[es].get();
+    IndependentSource* is = dynamic_cast<IndependentSource*>(s);
+    Discrete* energy = dynamic_cast<Discrete*>(is->energy());
+    const std::unordered_set<int32_t>& domain_ids = is->domain_ids();
+
+    double strength_factor = is->strength() / total_strength;
+
+    if (is->domain_type() == IndependentSource::DomainType::MATERIAL) {
+      for (int32_t material_id : domain_ids) {
+        for (int i_cell = 0; i_cell < model::cells.size(); i_cell++) {
+           apply_fixed_source_to_cell_and_children(i_cell, energy, strength_factor, material_id);
+        }
+      }
+    } else if (is->domain_type() == IndependentSource::DomainType::CELL) {
+      for (int32_t cell_id : domain_ids) {
+        int32_t i_cell = model::cell_map[cell_id];
+        apply_fixed_source_to_cell_and_children(i_cell, energy, strength_factor, C_NONE);
+      }
+    } else if (is->domain_type() == IndependentSource::DomainType::UNIVERSE) {
+      for (int32_t universe_id : domain_ids) {
+        int32_t i_universe = model::universe_map[universe_id];
+        Universe& universe = *model::universes[i_universe];
+        for (int32_t cell_id : universe.cells_) {
+          int32_t i_cell = model::cell_map[cell_id];
+          apply_fixed_source_to_cell_and_children(i_cell, energy, strength_factor, C_NONE);
+        }
+      }
+    }
+  } // End loop over external sources
 }
 
 } // namespace openmc

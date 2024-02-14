@@ -15,6 +15,7 @@
 #include "openmc/material.h"
 #include "openmc/math_functions.h"
 #include "openmc/nuclide.h"
+#include "openmc/search.h"
 #include "openmc/settings.h"
 
 namespace openmc {
@@ -179,6 +180,16 @@ vector<vector<double>> MgxsInterface::get_mat_kTs()
     }
   }
   return kTs;
+}
+
+//==============================================================================
+
+int MgxsInterface::get_group_index(double e)
+{
+  int g = lower_bound_index(rev_energy_bins_.begin(),
+      rev_energy_bins_.end(), e);
+  g = num_energy_groups_ - g - 1.;
+  return g;
 }
 
 //==============================================================================

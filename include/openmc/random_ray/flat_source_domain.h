@@ -5,6 +5,7 @@
 
 #include "openmc/openmp_interface.h"
 #include "openmc/position.h"
+#include "openmc/source.h"
 
 namespace openmc {
 
@@ -50,6 +51,11 @@ public:
   void accumulate_iteration_flux();
   void output_to_vtk();
   void all_reduce_replicated_source_regions();
+  void apply_fixed_source_to_source_region(Discrete* discrete, double strength_factor, int64_t source_region);
+  void apply_fixed_source_to_cell_instances(int32_t i_cell, Discrete* discrete, double strength_factor, int target_material_id, const vector<int32_t>& instances);
+  void apply_fixed_source_to_cell_and_children(int32_t i_cell, Discrete* discrete, double strength_factor, int32_t target_material_id);
+  void convert_fixed_sources(int sampling_source);
+  void count_fixed_source_regions();
 
   //----------------------------------------------------------------------------
   // Data members
@@ -58,6 +64,8 @@ public:
   int64_t n_source_elements_ {0}; // Total number of source regions in the model
                                   // times the number of energy groups
   int64_t n_source_regions_ {0};  // Total number of source regions in the model
+  int64_t n_fixed_source_regions_ {0}; // Total number of source regions with
+                                       // non-zero fixed source terms
 
   bool mapped_all_tallies_ {false}; // If all source regions have been visited
 
@@ -84,6 +92,7 @@ public:
   std::vector<float> scalar_flux_old_;
   std::vector<float> scalar_flux_final_;
   std::vector<float> source_;
+  std::vector<float> fixed_source_;
 
 }; // class FlatSourceDomain
 

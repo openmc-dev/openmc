@@ -13,6 +13,10 @@
 #include "openmc/timer.h"
 
 namespace openmc {
+
+//==============================================================================
+// FlatSourceDomain implementation
+//==============================================================================
   
 FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
 {

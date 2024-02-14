@@ -8,10 +8,6 @@
 
 namespace openmc {
 
-//============================================================================
-//! Class Declarations
-//============================================================================
-
 /*
  * The FlatSourceDomain class encompasses data and methods for storing
  * scalar flux and source region for all flat source regions in a 
@@ -20,8 +16,8 @@ namespace openmc {
 
 class FlatSourceDomain {
 public:
-  //==========================================================================
-  // Structs
+  //----------------------------------------------------------------------------
+  // Helper Structs
   
   // A mapping object that is used to map between a specific random ray
   // source region and an OpenMC native tally bin that it should score to
@@ -37,11 +33,11 @@ public:
     {}
   };
 
-  //==========================================================================
+  //----------------------------------------------------------------------------
   // Constructors
   FlatSourceDomain();
   
-  //==========================================================================
+  //----------------------------------------------------------------------------
   // Methods
   void update_neutron_source(double k_eff);
   double compute_k_eff(double k_eff_old);
@@ -55,20 +51,22 @@ public:
   void output_to_vtk();
   void all_reduce_replicated_source_regions();
 
-  //==========================================================================
-  // Data
+  //----------------------------------------------------------------------------
+  // Data members
 
-  // Scalars
   int negroups_; // Number of energy groups in simulation
   int64_t n_source_elements_ {0}; // Total number of source regions in the model
                                 // times the number of energy groups
   int64_t n_source_regions_ {0};  // Total number of source regions in the model
 
-  bool mapped_all_tallies_ {false};
+  bool mapped_all_tallies_ {false}; // If all source regions have been visited
 
+  // 2D array representing values for all source regions x energy groups x tally
+  // tasks
   std::vector<std::vector<TallyTask>> tally_task_;
 
-  // 1D arrays representing values for each OpenMC "Cell"
+  // 1D array representing source region starting offset for each OpenMC Cell
+  // in model::cells
   std::vector<int64_t> source_region_offsets_;
 
   // 1D arrays reprenting values for all source regions

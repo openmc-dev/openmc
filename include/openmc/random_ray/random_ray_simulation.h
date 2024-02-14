@@ -12,24 +12,23 @@ namespace openmc {
   
 class RandomRaySimulation {
 public:
-  //==========================================================================
+  //----------------------------------------------------------------------------
   // Constructors
   RandomRaySimulation();
   
-  //==========================================================================
+  //----------------------------------------------------------------------------
   // Methods
-  
   void simulate();
-
   void all_reduce_random_ray_batch_results(bool mapped_all_tallies);
   void find_random_ray_sampling_source_index();
   void reduce_simulation_statistics();
   void output_simulation_results();
   void instability_check(int64_t n_hits, double k_eff, double& avg_miss_rate);
 
-  //==========================================================================
-  // Data
+  //----------------------------------------------------------------------------
+  // Data members
 
+  // Contains all flat source region data
   FlatSourceDomain domain_;
 
   // Random ray eigenvalue
@@ -42,21 +41,20 @@ public:
   // reporting
   uint64_t total_geometric_intersections_ {0};
 
+  // Indicates which source index is to be used for sampling rays
   int sampling_source_;
 
-  bool mapped_all_tallies_ {false};
-
+  // Number of energy groups
   int negroups_;
 
 }; // class RandomRaySimulation
 
-
-//==========================================================================
-// Non-Method Functions
+//============================================================================
+//! Non-Method Functions
+//============================================================================
 
 void openmc_run_random_ray();
 void validate_random_ray_inputs();
-
 
 } // namespace openmc
 

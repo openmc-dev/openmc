@@ -16,120 +16,9 @@
 
 namespace openmc {
 
-
-RandomRaySimulation::RandomRaySimulation() : negroups_(data::mg.num_energy_groups_)
-{
-  // Determine which source term should be used for ray sampling
-  find_random_ray_sampling_source_index();
-  
-  // There are no source sites in random ray mode, so be sure to disable to
-  // ensure we don't attempt to write source sites to statepoint
-  settings::source_write = false;
-  
-  // Random ray mode does not have an inner loop over generations within a
-  // batch, so set the current gen to 1
-  simulation::current_gen = 1;
-}
-
-void RandomRaySimulation::simulate()
-{
-  // Random ray power iteration loop
-  while (simulation::current_batch < settings::n_batches) {
-
-    // Initialize the current batch
-    initialize_batch();
-    initialize_generation();
-
-    // Reset total starting particle weight used for normalizing tallies
-    simulation::total_weight = 1.0;
-
-    // Update source term (scattering + fission)
-    domain_.update_neutron_source(k_eff_);
-
-    // Reset scalar fluxes, iteration volume tallies, and region hit flags to
-    // zero
-    domain_.batch_reset();
-
-    // Start timer for transport
-    simulation::time_transport.start();
-
-// Transport sweep over all random rays for the iteration
-#pragma omp parallel for schedule(dynamic) reduction(+ : total_geometric_intersections_)
-    for (int i = 0; i < simulation::work_per_rank; i++) {
-      RandomRay ray(i, sampling_source_, &domain_);
-      total_geometric_intersections_ += ray.transport_history_based_single_ray();
-    }
-
-    simulation::time_transport.stop();
-
-    // If using multiple MPI ranks, perform all reduce on all transport results
-    domain_.all_reduce_replicated_source_regions();
-
-    // Normalize scalar flux and update volumes
-    domain_.normalize_scalar_flux_and_volumes();
-
-    // Add source to scalar flux, compute number of FSR hits
-    int64_t n_hits = domain_.add_source_to_scalar_flux();
-
-    // Compute random ray k-eff
-    k_eff_ = domain_.compute_k_eff(k_eff_);
-
-    // Store random ray k-eff into OpenMC's native k-eff variable
-    global_tally_tracklength = k_eff_;
-
-    // Execute all tallying tasks, if this is an active batch
-    if (simulation::current_batch > settings::n_inactive && mpi::master) {
-
-      // Generate mapping between source regions and tallies
-      if (!domain_.mapped_all_tallies_) {
-        domain_.convert_source_regions_to_tallies();
-      }
-
-      // Use above mapping to contribute FSR flux data to appropriate tallies
-      domain_.random_ray_tally();
-
-      // Add this iteration's scalar flux estimate to final accumulated estimate
-      domain_.accumulate_iteration_flux();
-    }
-
-    // Set phi_old = phi_new
-    domain_.scalar_flux_old_.swap(domain_.scalar_flux_new_);
-
-    // Check for any obvious insabilities/nans/infs
-    instability_check(n_hits, k_eff_, avg_miss_rate_);
-
-    // Finalize the current batch
-    finalize_generation();
-    finalize_batch();
-  } // End random ray power iteration loop
-  
-}
-
-void RandomRaySimulation::reduce_simulation_statistics()
-{
-  // Reduce number of intersections
-#ifdef OPENMC_MPI
-  if (mpi::n_procs > 1) {
-    uint64_t total_geometric_intersections_reduced = 0;
-    MPI_Reduce(&total_geometric_intersections_,
-      &total_geometric_intersections_reduced, 1, MPI_UNSIGNED_LONG, MPI_SUM, 0,
-      mpi::intracomm);
-    total_geometric_intersections_ = total_geometric_intersections_reduced;
-  }
-#endif
-}
-
-void RandomRaySimulation::output_simulation_results()
-{
-  // Print random ray results
-  if (mpi::master) {
-    print_results_random_ray(
-      total_geometric_intersections_, avg_miss_rate_ / settings::n_batches, negroups_, domain_.n_source_regions_);
-    if (model::plots.size() > 0) {
-      domain_.output_to_vtk();
-    }
-  }
-}
+//==============================================================================
+// Non-member functions
+//==============================================================================
 
 void openmc_run_random_ray()
 {
@@ -160,33 +49,6 @@ void openmc_run_random_ray()
 
   // Output all simulation results
   sim.output_simulation_results();
-}
-
-
-// Apply a few sanity checks to catch obvious cases of numerical instability.
-// Instability typically only occurs if ray density is extremely low.
-void RandomRaySimulation::instability_check(int64_t n_hits, double k_eff, double& avg_miss_rate)
-{
-  double percent_missed = ((domain_.n_source_regions_ - n_hits) /
-                            static_cast<double>(domain_.n_source_regions_)) *
-                          100.0;
-  avg_miss_rate += percent_missed;
-
-  if (percent_missed > 10.0) {
-    warning(fmt::format(
-      "Very high FSR miss rate detected ({:.3f}%). Instability may occur. "
-      "Increase ray density by adding more rays and/or active distance.",
-      percent_missed));
-  } else if (percent_missed > 0.01) {
-    warning(fmt::format("Elevated FSR miss rate detected ({:.3f}%). Increasing "
-                        "ray density by adding more rays and/or active "
-                        "distance may improve simulation efficiency.",
-      percent_missed));
-  }
-
-  if (k_eff > 10.0 || k_eff < 0.01 || !(std::isfinite(k_eff))) {
-    fatal_error("Instability detected");
-  }
 }
 
 // Enforces restrictions on inputs in random ray mode.  While there are
@@ -355,6 +217,151 @@ void validate_random_ray_inputs()
   }
 #endif
 }
+
+//==============================================================================
+// RandomRaySimulation implementation
+//==============================================================================
+
+RandomRaySimulation::RandomRaySimulation() : negroups_(data::mg.num_energy_groups_)
+{
+  // Determine which source term should be used for ray sampling
+  find_random_ray_sampling_source_index();
+  
+  // There are no source sites in random ray mode, so be sure to disable to
+  // ensure we don't attempt to write source sites to statepoint
+  settings::source_write = false;
+  
+  // Random ray mode does not have an inner loop over generations within a
+  // batch, so set the current gen to 1
+  simulation::current_gen = 1;
+}
+
+void RandomRaySimulation::simulate()
+{
+  // Random ray power iteration loop
+  while (simulation::current_batch < settings::n_batches) {
+
+    // Initialize the current batch
+    initialize_batch();
+    initialize_generation();
+
+    // Reset total starting particle weight used for normalizing tallies
+    simulation::total_weight = 1.0;
+
+    // Update source term (scattering + fission)
+    domain_.update_neutron_source(k_eff_);
+
+    // Reset scalar fluxes, iteration volume tallies, and region hit flags to
+    // zero
+    domain_.batch_reset();
+
+    // Start timer for transport
+    simulation::time_transport.start();
+
+// Transport sweep over all random rays for the iteration
+#pragma omp parallel for schedule(dynamic) reduction(+ : total_geometric_intersections_)
+    for (int i = 0; i < simulation::work_per_rank; i++) {
+      RandomRay ray(i, sampling_source_, &domain_);
+      total_geometric_intersections_ += ray.transport_history_based_single_ray();
+    }
+
+    simulation::time_transport.stop();
+
+    // If using multiple MPI ranks, perform all reduce on all transport results
+    domain_.all_reduce_replicated_source_regions();
+
+    // Normalize scalar flux and update volumes
+    domain_.normalize_scalar_flux_and_volumes();
+
+    // Add source to scalar flux, compute number of FSR hits
+    int64_t n_hits = domain_.add_source_to_scalar_flux();
+
+    // Compute random ray k-eff
+    k_eff_ = domain_.compute_k_eff(k_eff_);
+
+    // Store random ray k-eff into OpenMC's native k-eff variable
+    global_tally_tracklength = k_eff_;
+
+    // Execute all tallying tasks, if this is an active batch
+    if (simulation::current_batch > settings::n_inactive && mpi::master) {
+
+      // Generate mapping between source regions and tallies
+      if (!domain_.mapped_all_tallies_) {
+        domain_.convert_source_regions_to_tallies();
+      }
+
+      // Use above mapping to contribute FSR flux data to appropriate tallies
+      domain_.random_ray_tally();
+
+      // Add this iteration's scalar flux estimate to final accumulated estimate
+      domain_.accumulate_iteration_flux();
+    }
+
+    // Set phi_old = phi_new
+    domain_.scalar_flux_old_.swap(domain_.scalar_flux_new_);
+
+    // Check for any obvious insabilities/nans/infs
+    instability_check(n_hits, k_eff_, avg_miss_rate_);
+
+    // Finalize the current batch
+    finalize_generation();
+    finalize_batch();
+  } // End random ray power iteration loop
+  
+}
+
+void RandomRaySimulation::reduce_simulation_statistics()
+{
+  // Reduce number of intersections
+#ifdef OPENMC_MPI
+  if (mpi::n_procs > 1) {
+    uint64_t total_geometric_intersections_reduced = 0;
+    MPI_Reduce(&total_geometric_intersections_,
+      &total_geometric_intersections_reduced, 1, MPI_UNSIGNED_LONG, MPI_SUM, 0,
+      mpi::intracomm);
+    total_geometric_intersections_ = total_geometric_intersections_reduced;
+  }
+#endif
+}
+
+void RandomRaySimulation::output_simulation_results()
+{
+  // Print random ray results
+  if (mpi::master) {
+    print_results_random_ray(
+      total_geometric_intersections_, avg_miss_rate_ / settings::n_batches, negroups_, domain_.n_source_regions_);
+    if (model::plots.size() > 0) {
+      domain_.output_to_vtk();
+    }
+  }
+}
+
+// Apply a few sanity checks to catch obvious cases of numerical instability.
+// Instability typically only occurs if ray density is extremely low.
+void RandomRaySimulation::instability_check(int64_t n_hits, double k_eff, double& avg_miss_rate)
+{
+  double percent_missed = ((domain_.n_source_regions_ - n_hits) /
+                            static_cast<double>(domain_.n_source_regions_)) *
+                          100.0;
+  avg_miss_rate += percent_missed;
+
+  if (percent_missed > 10.0) {
+    warning(fmt::format(
+      "Very high FSR miss rate detected ({:.3f}%). Instability may occur. "
+      "Increase ray density by adding more rays and/or active distance.",
+      percent_missed));
+  } else if (percent_missed > 0.01) {
+    warning(fmt::format("Elevated FSR miss rate detected ({:.3f}%). Increasing "
+                        "ray density by adding more rays and/or active "
+                        "distance may improve simulation efficiency.",
+      percent_missed));
+  }
+
+  if (k_eff > 10.0 || k_eff < 0.01 || !(std::isfinite(k_eff))) {
+    fatal_error("Instability detected");
+  }
+}
+
 
 // Determines which external source to use for sampling
 // ray starting locations/directions. Assumes sources have

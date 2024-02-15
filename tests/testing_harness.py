@@ -384,7 +384,11 @@ class HashedPyAPITestHarness(PyAPITestHarness):
         return super()._get_results(True)
 
 class TolerantPyAPITestHarness(PyAPITestHarness):
+    """Specialized harness for running tests that involve significant levels
+    of floating point non-associativity when using shared memory parallelism
+    due to single precision usage (e.g., as in the random ray solver).
 
+    """
     def _are_files_equal(self, actual_path, expected_path, tolerance):
         def isfloat(value):
             try:

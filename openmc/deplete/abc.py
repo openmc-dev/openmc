@@ -3,6 +3,7 @@
 This module contains Abstract Base Classes for implementing operator, integrator, depletion system solver, and operator helper classes
 """
 
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import namedtuple, defaultdict
 from collections.abc import Iterable, Callable
@@ -16,15 +17,17 @@ import time
 from typing import Optional, Union, Sequence
 from warnings import warn
 
-from numpy import nonzero, empty, asarray
+import numpy as np
 from uncertainties import ufloat
 
 from openmc.checkvalue import check_type, check_greater_than, PathLike
 from openmc.mpi import comm
+from openmc import Material
 from .stepresult import StepResult
 from .chain import Chain
 from .results import Results
 from .pool import deplete
+from .reaction_rates import ReactionRates
 from .transfer_rates import TransferRates
 
 
@@ -216,7 +219,7 @@ class ReactionRateHelper(ABC):
 
     def __init__(self, n_nucs, n_react):
         self._nuclides = None
-        self._results_cache = empty((n_nucs, n_react))
+        self._results_cache = np.empty((n_nucs, n_react))
 
     @abstractmethod
     def generate_tallies(self, materials, scores):
@@ -268,7 +271,7 @@ class ReactionRateHelper(ABC):
             normalized by the number of nuclides
         """
 
-        mask = nonzero(number)
+        mask = np.nonzero(number)
         results = self._results_cache
         for col in range(results.shape[1]):
             results[mask, col] /= number[mask]
@@ -567,7 +570,7 @@ class Integrator(ABC):
 
     def __init__(
             self,
-            operator: 'openmc.deplete.abc.TransportOperator',
+            operator: TransportOperator,
             timesteps: Sequence[float],
             power: Optional[Union[float, Sequence[float]]] = None,
             power_density: Optional[Union[float, Sequence[float]]] = None,
@@ -646,8 +649,8 @@ class Integrator(ABC):
             else:
                 raise ValueError("Invalid timestep unit '{}'".format(unit))
 
-        self.timesteps = asarray(seconds)
-        self.source_rates = asarray(source_rates)
+        self.timesteps = np.asarray(seconds)
+        self.source_rates = np.asarray(source_rates)
 
         self.transfer_rates = None
 
@@ -708,8 +711,8 @@ class Integrator(ABC):
     @abstractmethod
     def __call__(
         self,
-        n: Sequence['numpy.ndarray'],
-        rates:'openmc.deplete.ReactionRates',
+        n: Sequence[np.ndarray],
+        rates: ReactionRates,
         dt: float,
         source_rate: float,
         i: int
@@ -852,11 +855,11 @@ class Integrator(ABC):
 
     def add_transfer_rate(
             self,
-            material: Union[str, int, 'openmc.Material'],
+            material: Union[str, int, Material],
             components: Sequence[str],
             transfer_rate: float,
             transfer_rate_units: str = '1/s',
-            destination_material: Optional[Union[str, int, 'openmc.Material']] = None
+            destination_material: Optional[Union[str, int, Material]] = None
         ):
         """Add transfer rates to depletable material.
 
@@ -969,10 +972,10 @@ class SIIntegrator(Integrator):
         .. versionadded:: 0.12
 
     """
-            
+
     def __init__(
             self,
-            operator: 'openmc.deplete.abc.TransportOperator',
+            operator: TransportOperator,
             timesteps: Sequence[float],
             power: Optional[Union[float, Sequence[float]]] = None,
             power_density: Optional[Union[float, Sequence[float]]] = None,

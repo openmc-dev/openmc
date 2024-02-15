@@ -606,10 +606,14 @@ void print_results()
 
       // Median
       std::vector<double> alpha_generation(n);
-      std::copy(simulation::alpha_generation.begin() + settings::n_inactive, simulation::alpha_generation.begin() + simulation::alpha_generation.size(), alpha_generation.begin());
+      std::copy(simulation::alpha_generation.begin() + settings::n_inactive,
+                simulation::alpha_generation.begin() + 
+                simulation::alpha_generation.size(), alpha_generation.begin());
       std::sort(alpha_generation.begin(), alpha_generation.begin()+n);
-      if (n % 2 == 0) { alpha_median = (alpha_generation[n/2 - 1] + alpha_generation[n/2]) / 2.0; }
-      else { alpha_median = alpha_generation[n/2]; }
+      if (n % 2 == 0) { 
+          alpha_median = (alpha_generation[n/2 - 1] + alpha_generation[n/2]) 
+                          / 2.0;
+      } else { alpha_median = alpha_generation[n/2]; }
 
       // Skewness
       if (alpha_sd > 0.0) {

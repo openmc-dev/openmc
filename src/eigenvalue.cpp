@@ -529,15 +529,6 @@ void calculate_average_keff()
     simulation::alpha_eff = simulation::alpha_sum[0] / n;
 
     if (n > 1) {
-      double t_value;
-      if (settings::confidence_intervals) {
-        // Calculate t-value for confidence intervals
-        double alpha = 1.0 - CONFIDENCE_LEVEL;
-        t_value = t_percentile(1.0 - alpha / 2.0, n - 1);
-      } else {
-        t_value = 1.0;
-      }
-
       // Standard deviation of the sample mean of alpha
       double alpha_var =
         (simulation::alpha_sum[1] / n - std::pow(simulation::alpha_eff, 2)) /
@@ -548,10 +539,9 @@ void calculate_average_keff()
         //  singularitity)
         simulation::alpha_eff_std = 0.0;
       } else {
-        simulation::alpha_eff_std =
-          t_value * std::sqrt((simulation::alpha_sum[1] / n -
-                                std::pow(simulation::alpha_eff, 2)) /
-                              (n - 1));
+        simulation::alpha_eff_std = std::sqrt(
+          (simulation::alpha_sum[1] / n - std::pow(simulation::alpha_eff, 2)) /
+          (n - 1));
       }
     }
 
@@ -857,35 +847,25 @@ void write_eigenvalue_hdf5(hid_t group)
       alpha_group, "alpha_generation", simulation::alpha_generation);
 
     const int n = simulation::k_generation.size() - settings::n_inactive;
-    double t_n1 = 1.0;
-    if (settings::confidence_intervals) {
-      double alpha = 1.0 - CONFIDENCE_LEVEL;
-      t_n1 = t_percentile(1.0 - alpha / 2.0, n - 1);
-    }
 
     // Alpha eigenvalue
     std::array<double, 2> alpha_eff;
     alpha_eff[0] = simulation::alpha_sum[0] / n;
-    alpha_eff[1] =
-      t_n1 *
-      std::sqrt(
-        (simulation::alpha_sum[1] / n - std::pow(alpha_eff[0], 2)) / (n - 1));
+    alpha_eff[1] = std::sqrt(
+      (simulation::alpha_sum[1] / n - std::pow(alpha_eff[0], 2)) / (n - 1));
     write_dataset(alpha_group, "alpha_effective", alpha_eff);
 
     // Multiplication factor
     std::array<double, 2> k_eff;
     k_eff[0] = simulation::k_alpha_sum[0] / n;
-    k_eff[1] =
-      t_n1 *
-      std::sqrt(
-        (simulation::k_alpha_sum[1] / n - std::pow(k_eff[0], 2)) / (n - 1));
+    k_eff[1] = std::sqrt(
+      (simulation::k_alpha_sum[1] / n - std::pow(k_eff[0], 2)) / (n - 1));
     write_dataset(alpha_group, "k_effective", k_eff);
 
     // Reactivity
     std::array<double, 2> rho;
     rho[0] = simulation::rho_sum[0] / n;
     rho[1] =
-      t_n1 *
       std::sqrt((simulation::rho_sum[1] / n - std::pow(rho[0], 2)) / (n - 1));
     write_dataset(alpha_group, "reactivity", rho);
 
@@ -893,15 +873,14 @@ void write_eigenvalue_hdf5(hid_t group)
     std::array<double, 2> beta;
     beta[0] = simulation::beta_sum[0] / n;
     beta[1] =
-      t_n1 *
       std::sqrt((simulation::beta_sum[1] / n - std::pow(beta[0], 2)) / (n - 1));
     write_dataset(alpha_group, "delayed_fraction", beta);
 
     // Removal time
     std::array<double, 2> tr;
     tr[0] = simulation::tr_sum[0] / n;
-    tr[1] = t_n1 * std::sqrt((simulation::tr_sum[1] / n - std::pow(tr[0], 2)) /
-                             (n - 1));
+    tr[1] =
+      std::sqrt((simulation::tr_sum[1] / n - std::pow(tr[0], 2)) / (n - 1));
     write_dataset(alpha_group, "removal_time", tr);
 
     close_group(alpha_group);

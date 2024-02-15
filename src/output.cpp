@@ -34,6 +34,7 @@
 #include "openmc/reaction.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/statistics.h"
 #include "openmc/surface.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
@@ -545,14 +546,12 @@ void print_results()
 
   // Calculate t-value for confidence intervals
   int n = simulation::n_realizations;
-  double alpha, t_n1, t_n3;
+  double alpha, t_n1;
   if (settings::confidence_intervals) {
     alpha = 1.0 - CONFIDENCE_LEVEL;
     t_n1 = t_percentile(1.0 - alpha / 2.0, n - 1);
-    t_n3 = t_percentile(1.0 - alpha / 2.0, n - 3);
   } else {
     t_n1 = 1.0;
-    t_n3 = 1.0;
   }
 
   // write global tallies
@@ -586,87 +585,68 @@ void print_results()
     if (settings::alpha_mode) {
       const int n = simulation::k_generation.size() - settings::n_inactive;
 
+      // Get the alpha samples
+      std::vector<double> alpha_samples(n);
+      std::copy(simulation::alpha_generation.begin() + settings::n_inactive,
+        simulation::alpha_generation.begin() +
+          simulation::alpha_generation.size(),
+        alpha_samples.begin());
+
       // Calculate mean, sdev, median, skewness, and excess kurtosis of alpha
       double alpha, alpha_sd, alpha_var, alpha_median, alpha_skewness,
         alpha_kurtosis;
 
-      // Mean and sdev
-      alpha = simulation::alpha_sum[0] / n;
-      alpha_var = (simulation::alpha_sum[1] / n - std::pow(alpha, 2)) / (n - 1);
+      // Mean, variance, and sdev
+      alpha = get_mean(alpha_samples);
+      alpha_var = get_variance(alpha_samples);
       if (alpha_var < 0.0) {
         // This practically means the stdev is very close to zero
         // (typically the case if the alpha approaches the -decay_rate
         //  singularitity)
         alpha_sd = 0.0;
       } else {
-        alpha_sd =
-          t_n1 * std::sqrt((simulation::alpha_sum[1] / n - std::pow(alpha, 2)) /
-                           (n - 1));
+        alpha_sd = std::sqrt(alpha_var);
       }
 
-      // Median
-      std::vector<double> alpha_generation(n);
-      std::copy(simulation::alpha_generation.begin() + settings::n_inactive,
-        simulation::alpha_generation.begin() +
-          simulation::alpha_generation.size(),
-        alpha_generation.begin());
-      std::sort(alpha_generation.begin(), alpha_generation.begin() + n);
-      if (n % 2 == 0) {
-        alpha_median =
-          (alpha_generation[n / 2 - 1] + alpha_generation[n / 2]) / 2.0;
-      } else {
-        alpha_median = alpha_generation[n / 2];
-      }
-
-      // Skewness
+      // Median, skewness, and kurtosis
+      alpha_median = get_median(alpha_samples);
       if (alpha_sd > 0.0) {
-        alpha_skewness = 3.0 * (alpha - alpha_median) / alpha_sd;
+        alpha_skewness = get_skewness(alpha_samples);
+      } else {
+        alpha_skewness = 0.0;
       }
       bool skewed = std::abs(alpha_skewness) > 0.5;
-
-      // Excess kurtosis
-      double num, denom;
-      for (const auto& val : alpha_generation) {
-        num += std::pow(val - alpha, 4);
-        denom += std::pow(val - alpha, 2);
-      }
-      num *= n * (n + 1) * (n - 1);
-      denom *= (n - 2) * (n - 3);
-      alpha_kurtosis = num / std::pow(denom, 2) - 3.0;
+      alpha_kurtosis = get_kurtosis(alpha_samples);
 
       // Multiplication factor
       double k_alpha, k_alpha_sd;
       k_alpha = simulation::k_alpha_sum[0] / n;
-      k_alpha_sd =
-        t_n1 *
-        std::sqrt(
-          (simulation::k_alpha_sum[1] / n - std::pow(k_alpha, 2)) / (n - 1));
+      k_alpha_sd = std::sqrt(
+        (simulation::k_alpha_sum[1] / n - std::pow(k_alpha, 2)) / (n - 1));
 
       // Reactivity
       double rho, rho_sd;
       rho = simulation::rho_sum[0] / n;
       rho_sd =
-        t_n1 *
         std::sqrt((simulation::rho_sum[1] / n - std::pow(rho, 2)) / (n - 1));
 
       // Delayed fission fraction
       double beta, beta_sd;
       beta = simulation::beta_sum[0] / n;
       beta_sd =
-        t_n1 *
         std::sqrt((simulation::beta_sum[1] / n - std::pow(beta, 2)) / (n - 1));
 
       // Generation time
       double tr, tr_sd;
       tr = simulation::tr_sum[0] / n;
-      tr_sd = t_n1 * std::sqrt(
-                       (simulation::tr_sum[1] / n - std::pow(tr, 2)) / (n - 1));
+      tr_sd =
+        std::sqrt((simulation::tr_sum[1] / n - std::pow(tr, 2)) / (n - 1));
 
       // Print
       fmt::print("\n Alpha-effective       = {:10.3e} +/- {:9.3e} /s\n", alpha,
         alpha_sd);
       if (skewed) {
-        fmt::print("   Median              = {:10.5f} /s\n", alpha_median);
+        fmt::print("   Median              = {:10.3e} /s\n", alpha_median);
         fmt::print("   Skewness            = {:10.5f}\n", alpha_skewness);
         fmt::print("   Kurtosis            = {:10.5f}\n", alpha_kurtosis);
       }

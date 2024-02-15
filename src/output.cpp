@@ -587,8 +587,8 @@ void print_results()
       const int n = simulation::k_generation.size() - settings::n_inactive;
 
       // Calculate mean, sdev, median, skewness, and excess kurtosis of alpha
-      double alpha, alpha_sd, alpha_var, alpha_median, alpha_skewness, 
-             alpha_kurtosis;
+      double alpha, alpha_sd, alpha_var, alpha_median, alpha_skewness,
+        alpha_kurtosis;
 
       // Mean and sdev
       alpha = simulation::alpha_sum[0] / n;
@@ -607,13 +607,16 @@ void print_results()
       // Median
       std::vector<double> alpha_generation(n);
       std::copy(simulation::alpha_generation.begin() + settings::n_inactive,
-                simulation::alpha_generation.begin() + 
-                simulation::alpha_generation.size(), alpha_generation.begin());
-      std::sort(alpha_generation.begin(), alpha_generation.begin()+n);
-      if (n % 2 == 0) { 
-          alpha_median = (alpha_generation[n/2 - 1] + alpha_generation[n/2]) 
-                          / 2.0;
-      } else { alpha_median = alpha_generation[n/2]; }
+        simulation::alpha_generation.begin() +
+          simulation::alpha_generation.size(),
+        alpha_generation.begin());
+      std::sort(alpha_generation.begin(), alpha_generation.begin() + n);
+      if (n % 2 == 0) {
+        alpha_median =
+          (alpha_generation[n / 2 - 1] + alpha_generation[n / 2]) / 2.0;
+      } else {
+        alpha_median = alpha_generation[n / 2];
+      }
 
       // Skewness
       if (alpha_sd > 0.0) {
@@ -623,7 +626,7 @@ void print_results()
 
       // Excess kurtosis
       double num, denom;
-      for (const auto& val: alpha_generation) {
+      for (const auto& val : alpha_generation) {
         num += std::pow(val - alpha, 4);
         denom += std::pow(val - alpha, 2);
       }

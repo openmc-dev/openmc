@@ -903,7 +903,7 @@ void write_eigenvalue_hdf5(hid_t group)
     tr[1] = t_n1 * std::sqrt((simulation::tr_sum[1] / n - std::pow(tr[0], 2)) /
                              (n - 1));
     write_dataset(alpha_group, "removal_time", tr);
-  
+
     close_group(alpha_group);
   }
 }

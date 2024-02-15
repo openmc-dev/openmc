@@ -3,6 +3,7 @@
 This module contains Abstract Base Classes for implementing operator, integrator, depletion system solver, and operator helper classes
 """
 
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import namedtuple, defaultdict
 from collections.abc import Iterable, Callable
@@ -13,17 +14,20 @@ from contextlib import contextmanager
 import os
 from pathlib import Path
 import time
+from typing import Optional, Union, Sequence
 from warnings import warn
 
-from numpy import nonzero, empty, asarray
+import numpy as np
 from uncertainties import ufloat
 
 from openmc.checkvalue import check_type, check_greater_than, PathLike
 from openmc.mpi import comm
+from openmc import Material
 from .stepresult import StepResult
 from .chain import Chain
 from .results import Results
 from .pool import deplete
+from .reaction_rates import ReactionRates
 from .transfer_rates import TransferRates
 
 
@@ -176,7 +180,7 @@ class TransportOperator(ABC):
         pass
 
     @abstractmethod
-    def write_bos_data(self, step):
+    def write_bos_data(self, step: int):
         """Document beginning of step data for a given step
 
         Called at the beginning of a depletion step and at
@@ -215,7 +219,7 @@ class ReactionRateHelper(ABC):
 
     def __init__(self, n_nucs, n_react):
         self._nuclides = None
-        self._results_cache = empty((n_nucs, n_react))
+        self._results_cache = np.empty((n_nucs, n_react))
 
     @abstractmethod
     def generate_tallies(self, materials, scores):
@@ -232,7 +236,12 @@ class ReactionRateHelper(ABC):
         self._nuclides = nuclides
 
     @abstractmethod
-    def get_material_rates(self, mat_id, nuc_index, react_index):
+    def get_material_rates(
+        self,
+        mat_id: int,
+        nuc_index: Sequence[str],
+        react_index: Sequence[str]
+    ):
         """Return 2D array of [nuclide, reaction] reaction rates
 
         Parameters
@@ -245,7 +254,7 @@ class ReactionRateHelper(ABC):
             Ordering of reactions
         """
 
-    def divide_by_atoms(self, number):
+    def divide_by_atoms(self, number: Sequence[float]):
         """Normalize reaction rates by number of atoms
 
         Acts on the current material examined by :meth:`get_material_rates`
@@ -262,7 +271,7 @@ class ReactionRateHelper(ABC):
             normalized by the number of nuclides
         """
 
-        mask = nonzero(number)
+        mask = np.nonzero(number)
         results = self._results_cache
         for col in range(results.shape[1]):
             results[mask, col] /= number[mask]
@@ -294,7 +303,7 @@ class NormalizationHelper(ABC):
         """Reset state for normalization"""
 
     @abstractmethod
-    def prepare(self, chain_nucs, rate_index):
+    def prepare(self, chain_nucs: Sequence[str], rate_index: dict):
         """Perform work needed to obtain energy produced
 
         This method is called prior to calculating the reaction rates
@@ -333,7 +342,7 @@ class NormalizationHelper(ABC):
         self._nuclides = nuclides
 
     @abstractmethod
-    def factor(self, source_rate):
+    def factor(self, source_rate: float):
         """Return normalization factor
 
         Parameters
@@ -436,7 +445,7 @@ class FissionYieldHelper(ABC):
             in parallel mode.
         """
 
-    def update_tally_nuclides(self, nuclides):
+    def update_tally_nuclides(self, nuclides: Sequence[str]) -> list:
         """Return nuclides with non-zero densities and yield data
 
         Parameters
@@ -559,8 +568,16 @@ class Integrator(ABC):
 
     """
 
-    def __init__(self, operator, timesteps, power=None, power_density=None,
-                 source_rates=None, timestep_units='s', solver="cram48"):
+    def __init__(
+            self,
+            operator: TransportOperator,
+            timesteps: Sequence[float],
+            power: Optional[Union[float, Sequence[float]]] = None,
+            power_density: Optional[Union[float, Sequence[float]]] = None,
+            source_rates: Optional[Sequence[float]] = None,
+            timestep_units: str = 's',
+            solver: str = "cram48"
+        ):
         # Check number of stages previously used
         if operator.prev_res is not None:
             res = operator.prev_res[-1]
@@ -632,8 +649,8 @@ class Integrator(ABC):
             else:
                 raise ValueError("Invalid timestep unit '{}'".format(unit))
 
-        self.timesteps = asarray(seconds)
-        self.source_rates = asarray(source_rates)
+        self.timesteps = np.asarray(seconds)
+        self.source_rates = np.asarray(source_rates)
 
         self.transfer_rates = None
 
@@ -692,7 +709,14 @@ class Integrator(ABC):
         return time.time() - start, results
 
     @abstractmethod
-    def __call__(self, n, rates, dt, source_rate, i):
+    def __call__(
+        self,
+        n: Sequence[np.ndarray],
+        rates: ReactionRates,
+        dt: float,
+        source_rate: float,
+        i: int
+    ):
         """Perform the integration across one time step
 
         Parameters
@@ -829,8 +853,14 @@ class Integrator(ABC):
 
         self.operator.finalize()
 
-    def add_transfer_rate(self, material, components, transfer_rate,
-                         transfer_rate_units='1/s', destination_material=None):
+    def add_transfer_rate(
+            self,
+            material: Union[str, int, Material],
+            components: Sequence[str],
+            transfer_rate: float,
+            transfer_rate_units: str = '1/s',
+            destination_material: Optional[Union[str, int, Material]] = None
+        ):
         """Add transfer rates to depletable material.
 
         Parameters
@@ -943,9 +973,17 @@ class SIIntegrator(Integrator):
 
     """
 
-    def __init__(self, operator, timesteps, power=None, power_density=None,
-                 source_rates=None, timestep_units='s', n_steps=10,
-                 solver="cram48"):
+    def __init__(
+            self,
+            operator: TransportOperator,
+            timesteps: Sequence[float],
+            power: Optional[Union[float, Sequence[float]]] = None,
+            power_density: Optional[Union[float, Sequence[float]]] = None,
+            source_rates: Optional[Sequence[float]] = None,
+            timestep_units: str = 's',
+            n_steps: int = 10,
+            solver: str = "cram48"
+        ):
         check_type("n_steps", n_steps, Integral)
         check_greater_than("n_steps", n_steps, 0)
         super().__init__(

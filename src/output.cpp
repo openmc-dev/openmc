@@ -586,8 +586,11 @@ void print_results()
     if (settings::alpha_mode) {
       const int n = simulation::k_generation.size() - settings::n_inactive;
 
-      // Alpha eigenvalue
-      double alpha, alpha_sd, alpha_var;
+      // Calculate mean, sdev, median, skewness, and excess kurtosis of alpha
+      double alpha, alpha_sd, alpha_var, alpha_median, alpha_skewness, 
+             alpha_kurtosis;
+
+      // Mean and sdev
       alpha = simulation::alpha_sum[0] / n;
       alpha_var = (simulation::alpha_sum[1] / n - std::pow(alpha, 2)) / (n - 1);
       if (alpha_var < 0.0) {
@@ -600,6 +603,29 @@ void print_results()
           t_n1 * std::sqrt((simulation::alpha_sum[1] / n - std::pow(alpha, 2)) /
                            (n - 1));
       }
+
+      // Median
+      std::vector<double> alpha_generation(n);
+      std::copy(simulation::alpha_generation.begin() + settings::n_inactive, simulation::alpha_generation.begin() + simulation::alpha_generation.size(), alpha_generation.begin());
+      std::sort(alpha_generation.begin(), alpha_generation.begin()+n);
+      if (n % 2 == 0) { alpha_median = (alpha_generation[n/2 - 1] + alpha_generation[n/2]) / 2.0; }
+      else { alpha_median = alpha_generation[n/2]; }
+
+      // Skewness
+      if (alpha_sd > 0.0) {
+        alpha_skewness = 3.0 * (alpha - alpha_median) / alpha_sd;
+      }
+      bool skewed = std::abs(alpha_skewness) > 0.5;
+
+      // Excess kurtosis
+      double num, denom;
+      for (const auto& val: alpha_generation) {
+        num += std::pow(val - alpha, 4);
+        denom += std::pow(val - alpha, 2);
+      }
+      num *= n * (n + 1) * (n - 1);
+      denom *= (n - 2) * (n - 3);
+      alpha_kurtosis = num / std::pow(denom, 2) - 3.0;
 
       // Multiplication factor
       double k_alpha, k_alpha_sd;
@@ -632,6 +658,11 @@ void print_results()
       // Print
       fmt::print("\n Alpha-effective       = {:10.3e} +/- {:9.3e} /s\n", alpha,
         alpha_sd);
+      if (skewed) {
+        fmt::print("   Median              = {:10.5f} /s\n", alpha_median);
+        fmt::print("   Skewness            = {:10.5f}\n", alpha_skewness);
+        fmt::print("   Kurtosis            = {:10.5f}\n", alpha_kurtosis);
+      }
       fmt::print(
         " Multiplication factor = {:10.5f} +/- {:7.5f}\n", k_alpha, k_alpha_sd);
       fmt::print(

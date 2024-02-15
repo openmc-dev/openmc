@@ -190,7 +190,6 @@ energy_filter = openmc.EnergyFilter(ebins)
 tally = openmc.Tally(name="Mesh and Energy tally")
 tally.filters = [mesh_filter, energy_filter]
 tally.scores = ['flux', 'fission', 'nu-fission']
-tally.estimator = 'analog'
 
 # Instantiate a Tallies collection and export to XML
 tallies = openmc.Tallies([tally])

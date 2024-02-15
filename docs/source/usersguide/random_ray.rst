@@ -137,6 +137,8 @@ Supported scores:
 
 Supported Estimators:
     - analog
+    - tracklength
+    - collision
 
 Supported Filters:
     - cell
@@ -146,6 +148,8 @@ Supported Filters:
     - material
     - mesh
     - universe
+
+Note that there is no difference between the analog, tracklength, and collision estimators in random ray mode as individual particles are not being simulated. Tracklength style tally estimation is inherent to the random ray method.
 
 --------
 Plotting
@@ -272,7 +276,6 @@ An example of a settings definition for random ray is given below:
     tally = openmc.Tally()
     tally.filters = [mesh_filter, energy_filter]
     tally.scores = ['flux', 'fission', 'nu-fission']
-    tally.estimator = 'analog'
 
     # Instantiate a Tallies collection and export to XML
     tallies = openmc.Tallies([tally])

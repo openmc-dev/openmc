@@ -418,6 +418,20 @@ How are Tallies Handled?
 
 Most tallies, filters, and scores that you would expect to work with a multigroup solver like random ray should work. E.g., you can define 3D mesh tallies with energy filters and flux, fission, and nu-fission scores, etc. There are some restrictions though. For starters, it is assumed that all filter mesh boundaries will conform to physical surface boundaries (or lattice boundaries) in the simulation geometry. It is acceptable for multiple cells (FSRs) to be contained within a filter mesh cell (e.g., pincell-level or assembly-level tallies should work), but it is currently left as undefined behavior if a single simulation cell is able to score to multiple filter mesh cells. In the future, the capability to fully support mesh tallies may be added to OpenMC, but for now this restriction needs to be respected.
 
+.. _usersguide_fixed_source_methods:
+
+------------
+Fixed Source
+------------
+
+The random ray solver in OpenMC can be used for both eigenvalue and fixed source problems. There are a few key differences between fixed source transport with random ray and Monte Carlo, however.
+
+- Source definition. In Monte Carlo, it is relatively easy to define various source distributions, including point sources, surface sources, volume sources, and even custom user sources -- all with varying angular and spatial statistical distributions. In random ray, the only natural way to include a fixed source term is by way of adding a fixed (flat) contribution to specific flat source regions. Thus, in random ray, typically sources are restricted to being volumetric and isotropic, although different energy spectrums are supported.
+
+- Inactive batches. In Monte Carlo, use of a fixed source implies that all batches are active batches, as there is no longer a need to develop a fission source distribution. However, in random ray mode, there is still need to develop the scattering source by way of inactive batches before beginning active batches. 
+
+
+
 ---------------------------
 Fundamental Sources of Bias
 ---------------------------

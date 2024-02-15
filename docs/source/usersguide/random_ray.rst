@@ -21,8 +21,11 @@ Inactive Batches
 
 In Monte Carlo, inactive batches are used to let the fission source develop into a stationary distribution before active batches are performed that actually accumulate statistics. While this is true of random ray as well, in the random ray mode the inactive batches are also used to let the scattering source develop. Monte Carlo fully represents the scattering source within each iteration (by its nature of fully simulating particles from birth to death through any number of physical scattering events), whereas the scattering source in random ray can only represent as many scattering events as batches have been completed. E.g., by iteration 10 in random ray, the scattering source only captures the behavior of neutrons through their 10th scatter. By iteration 500 in random ray, the scattering source only captures the behavior of neutrons through their 100th scatter. Thus, while inactive batches are only required in an eigenvalue solve in Monte Carlo, inactive batches are required for both eigenvalue and fixed source solves in random ray due to this additional need to converge the scattering source.
 
-The additional burden of converging the scattering source generally results in a higher requirement for the number of inactive batches - often by an order of magnitude or more. For instance, it may be reasonable to only use 50 inactive batches for a light water reactor simulation with Monte Carlo, but  random ray might require 500 or more inactive batches. Similar to Monte Carlo, :ref:`Shannon entropy
-<usersguide_entropy>` can be used to guage whether the combined scattering and fission source has fully developed.
+.. warning::
+    Unlike Monte Carlo, the random ray solver still requires usage of inactive batches when in fixed source mode so as to develop the scattering source.
+
+The additional burden of converging the scattering source generally results in a higher requirement for the number of inactive batches compared to Monte Carlo - often by an order of magnitude or more. For instance, it may be reasonable to only use 50 inactive batches for a light water reactor simulation with Monte Carlo, but random ray might require 500 or more inactive batches. Similar to Monte Carlo, :ref:`Shannon entropy
+<usersguide_entropy>` can be used to gauge whether the combined scattering and fission source has fully developed.
 
 -------------------------------
 Inactive Ray Length (Dead Zone)
@@ -87,6 +90,8 @@ To help the user set this parameter, OpenMC will report the average flat source 
 
 .. warning::
     For simulations where long range uncollided flux estimates need to be accurately resolved (e.g., shielding, detector response, problems with significant void areas), make sure that selections for inactive and active ray lengths are sufficiently long to allow for transport to occur between source and target regions of interest. 
+
+.. _usersguide_ray_source:
 
 ----------
 Ray Source
@@ -225,9 +230,49 @@ Multigroup cross sections for use with OpenMC's random ray solver are input the 
     mg_cross_sections_file.add_xsdatas([uo2_xsdata, h2o_xsdata])
     mg_cross_sections_file.export_to_hdf5()
 
+---------------------------------
+Fixed Source and Eigenvalue Modes 
+---------------------------------
+
+Both fixed source and eigenvalue modes are supported with the random ray solver in OpenMC. Modes can be selected as described in the :ref:`run modes section <usersguide_run_modes>`. In both modes, a ray source must be provided to let OpenMC know where to sample ray starting locations from, as discussed in the :ref:`ray source section <usersguide_ray_source>`. In fixed source mode, at least one regular source must be provided as well which represents the physical particle fixed source. As discussed in the :ref:`fixed source methodology section <usersguide_fixed_source_methods>`, the types of fixed sources supported in the random ray solver mode are much more limited as compared to what is possible with the Monte Carlo solver.
+
+Currently, all of the following conditions must be met for the source to be valid in random ray mode:
+
+- One or more domain ids must be specified that indicate which cells, universes, or materials the source applies to. This implicitly limits the source type to being volumetric. This is specified via the ``domains`` field of the :class:`openmc.IndependentSource` Python class.
+- The source must be isotropic (default for a source)
+- The source must use a discrete (i.e., multigroup) energy distribution. The discrete energy distribution is input by defining a :class:`openmc.stats.Discrete` Python class, and passed as the ``energy`` field of the :class:`openmc.IndependentSource` Python class.
+
+Any other spatial distribution information contained in a particle source will be ignored. Only the specified cell, material, or universe domains will be used to define the spatial location of the source, as the source will be applied during a pre-processing stage of OpenMC to all source regions that are contained within the inputted domains for the source.
+
+When defining a :class:`openmc.stats.Discrete` object, note that the ``x`` field will correspond to the discrete energy points, and the ``p`` field will correspond to the discrete probabilities. It is recommended to select energy points that fall within energy groups rather than on boundaries between the groups. I.e., if the problem contains two energy groups (with bin edges of 1.0e-5, 1.0e-1, 1.0e7), then a good selection for the ``x`` field might be points of 1.0e-2 and 1.0e1.
+
+::
+    
+    # Define physical neutron fixed source
+    ...
+    source_cell = openmc.Cell(fill=source_mat, name='infinite source region')
+    ...
+    energy_points = [1.0e-2, 1.0e1]
+    strengths = [0.25, 0.75]
+    energy_distribution = openmc.stats.Discrete(x=energy_points,p=strengths)
+
+    neutron_source = openmc.IndependentSource(energy=energy_distribution, domains=[source_cell], strength=1.0)
+
+    # Define random ray sampling source
+    ...
+    uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=False)
+    ray_source = openmc.IndependentSource(space=uniform_dist, particle="random_ray")
+
+    # Add fixed source and ray sampling source to settings file
+    settings.source = [neutron_source, ray_source]
+
 ---------------------------------------
 Putting it All Together: Example Inputs
 ---------------------------------------
+
+~~~~~~~~~~~~~~~~~~
+Eigenvalue Example
+~~~~~~~~~~~~~~~~~~
 
 An example of a settings definition for random ray is given below:
 
@@ -292,3 +337,80 @@ An example of a settings definition for random ray is given below:
 All other inputs (e.g., geometry, material) will be unchanged from a typical Monte Carlo run (see the :ref:`geometry <usersguide_geometry>` and :ref:`multigroup materials <create_mgxs>` user guides for more information).
 
 There is also a complete example of a pincell available in the ``openmc/examples/pincell_random_ray`` folder.
+
+~~~~~~~~~~~~~~~~~~~~
+Fixed Source Example
+~~~~~~~~~~~~~~~~~~~~
+
+An example of a settings definition for a fixed source random ray solve is given below:
+
+::
+
+    # Geometry and MGXS material definition of 2x2 lattice (not shown)
+    pitch = 1.26
+    source_cell = openmc.Cell(fill=source_mat, name='infinite source region')
+    ebins = [1e-5, 1e-1, 20.0e6]
+    ...
+
+    # Instantiate a settings object for a random ray solve
+    settings = openmc.Settings()
+    settings.energy_mode = "multi-group"
+    settings.batches = 1200
+    settings.inactive = 600
+    settings.particles = 2000
+    settings.solver_type = 'random ray'
+    settings.run_mode = 'fixed source'
+    settings.random_ray_distance_inactive = 40.0
+    settings.random_ray_distance_active = 400.0
+
+    # Create an initial uniform spatial source distribution for sampling rays
+    lower_left  = (-pitch, -pitch, -pitch)
+    upper_right = ( pitch,  pitch,  pitch)
+    uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=False)
+    ray_source = openmc.IndependentSource(space=uniform_dist, particle="random_ray")
+
+    # Define physical neutron fixed source
+    energy_points = [1.0e-2, 1.0e1]
+    strengths = [0.25, 0.75]
+    energy_distribution = openmc.stats.Discrete(x=energy_points,p=strengths)
+    neutron_source = openmc.IndependentSource(energy=energy_distribution, domains=[source_cell], strength=1.0)
+
+    # Add fixed source and ray sampling source to settings file
+    settings.source = [neutron_source, ray_source]
+
+    settings.export_to_xml()
+
+    # Define tallies
+
+    # Create a mesh filter
+    mesh = openmc.RegularMesh()
+    mesh.dimension = (2, 2)
+    mesh.lower_left = (-pitch/2, -pitch/2)
+    mesh.upper_right = (pitch/2, pitch/2)
+    mesh_filter = openmc.MeshFilter(mesh)
+
+    # Create a multigroup energy filter
+    energy_filter = openmc.EnergyFilter(ebins)
+
+    # Create tally using our two filters and add scores
+    tally = openmc.Tally()
+    tally.filters = [mesh_filter, energy_filter]
+    tally.scores = ['flux']
+    tally.estimator = 'analog'
+
+    # Instantiate a Tallies collection and export to XML
+    tallies = openmc.Tallies([tally])
+    tallies.export_to_xml()
+
+    # Create voxel plot
+    plot = openmc.Plot()
+    plot.origin = [0, 0, 0]
+    plot.width = [2*pitch, 2*pitch, 1]
+    plot.pixels = [1000, 1000, 1]
+    plot.type = 'voxel'
+
+    # Instantiate a Plots collection and export to XML
+    plot_file = openmc.Plots([plot])
+    plot_file.export_to_xml()
+
+All other inputs (e.g., geometry, material) will be unchanged from a typical Monte Carlo run (see the :ref:`geometry <usersguide_geometry>` and :ref:`multigroup materials <create_mgxs>` user guides for more information).

@@ -312,6 +312,7 @@ void FlatSourceDomain::convert_source_regions_to_tallies()
     // the spatial location of the source region
     Particle p;
     p.r() = position_[sr];
+    p.r_last() = position_[sr];
     bool found = exhaustive_find_cell(p);
 
     // Loop over energy groups (so as to support energy filters)

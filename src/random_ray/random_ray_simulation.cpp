@@ -77,12 +77,6 @@ void validate_random_ray_inputs()
       }
     }
 
-    // Validate estimator types
-    if (tally->estimator_ != TallyEstimator::ANALOG) {
-      fatal_error("Invalid estimator specified. Only analog estimators are "
-                  "supported in random ray mode.");
-    }
-
     // Validate filter types
     for (auto f : tally->filters()) {
       auto& filter = *model::tally_filters[f];

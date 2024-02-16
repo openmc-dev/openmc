@@ -1467,7 +1467,7 @@ class Settings:
             elem.text = str(self._max_tracks)
 
     def _create_random_ray_subelement(self, root):
-        if self._random_ray is not None:
+        if self._random_ray != {}:
             element = ET.SubElement(root, "random_ray")
             for key, value in self._random_ray.items():
                 if key == 'ray_source' and isinstance(value, SourceBase):

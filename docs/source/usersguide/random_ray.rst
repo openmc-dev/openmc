@@ -261,7 +261,7 @@ An example of a settings definition for random ray is given below:
     # Create an initial uniform spatial source distribution for sampling rays
     lower_left  = (-pitch, -pitch, -pitch)
     upper_right = ( pitch,  pitch,  pitch)
-    uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=False)
+    uniform_dist = openmc.stats.Box(lower_left, upper_right)
     settings.random_ray['ray_source'] = openmc.IndependentSource(space=uniform_dist)
 
     settings.export_to_xml()

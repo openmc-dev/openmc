@@ -702,12 +702,6 @@ attributes/sub-elements:
     For mesh sources, this sub-element specifies the source for an individual
     mesh element and follows the format for :ref:`source_element`. The number of
     ``<source>`` sub-elements should correspond to the number of mesh elements.
-  
-  :random_ray_source:
-    An element flagging this source as the sampling basis for ray starting
-    points and angles if using the random ray solver mode.
-
-    *Default*: false
 
 .. _univariate:
 

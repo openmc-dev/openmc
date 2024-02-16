@@ -888,7 +888,9 @@ def write_source_file(
 
 
 def read_source_file(filename: PathLike) -> typing.List[SourceParticle]:
-    """Read a source file and return a list of source particles
+    """Read a source file and return a list of source particles.
+
+    .. versionadded:: 0.14.1
 
     Parameters
     ----------
@@ -913,7 +915,7 @@ def read_source_file(filename: PathLike) -> typing.List[SourceParticle]:
         raise ValueError(f'File {filename} is not a source file')
 
     source_particles = []
-    for r, u, E, time, wgt, delayed_group, surf_id, particle in arr:
-        source_particles.append(SourceParticle(r, u, E, time, wgt, delayed_group, surf_id, ParticleType(particle)))
+    for *params, particle in arr:
+        source_particles.append(SourceParticle(*params, ParticleType(particle)))
 
     return source_particles

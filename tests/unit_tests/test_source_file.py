@@ -24,12 +24,10 @@ def test_source_file(run_in_tmpdir):
     # Create source file
     openmc.write_source_file(source, 'test_source.h5')
 
-
     # Get array of source particles from file
     with h5py.File('test_source.h5', 'r') as fh:
         filetype = fh.attrs['filetype']
         arr = fh['source_bank'][...]
-
 
     # Ensure data is consistent
     assert filetype == b'source'

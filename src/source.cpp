@@ -244,8 +244,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
   site.u = angle_->sample(seed);
 
   // Sample energy and time for neutron and photon sources
-  if (settings::solver_type != SolverType::RANDOM_RAY)
-  {
+  if (settings::solver_type != SolverType::RANDOM_RAY) {
     // Check for monoenergetic source above maximum particle energy
     auto p = static_cast<int>(particle_);
     auto energy_ptr = dynamic_cast<Discrete*>(energy_.get());

@@ -143,13 +143,17 @@ class Settings:
     ptables : bool
         Determine whether probability tables are used.
 
-        .. versionadded::0.14.0
-    random_ray_distance_active : float
-       Indicate the total active distance a ray should travel in random ray mode
+    random_ray : dict
+        Options for configuring the random ray solver. Acceptable keys are:
 
-        .. versionadded::0.14.0
-    random_ray_distance_inactive : float
-       Indicate the total inactive distance a ray should travel in random ray mode
+        :distance_inactive: float
+            Indicating the total active distance a ray should travel
+        :distance_active: float
+            Indicating the total active distance a ray should travel
+        :ray_source: openmc.SourceBase
+            Starting ray distribution (must be uniform in space and angle)
+        
+        .. versionadded::0.15.0
 
     resonance_scattering : dict
         Settings for resonance elastic scattering. Accepted keys are 'enable'
@@ -166,11 +170,6 @@ class Settings:
         The type of calculation to perform (default is 'eigenvalue')
     seed : int
         Seed for the linear congruential pseudorandom number generator
-
-        .. versionadded::0.14.0
-    solver_type : {'monte carlo', 'random ray'}
-        Set whether the simulation method should be 'monte carlo' or 'random ray'.
-        The default method is 'monte carlo'.
 
     source : Iterable of openmc.SourceBase
         Distribution of source sites in space, angle, and energy
@@ -358,9 +357,7 @@ class Settings:
         self._max_splits = None
         self._max_tracks = None
 
-        self._solver_type = None
-        self._random_ray_distance_active = None
-        self._random_ray_distance_inactive = None
+        self._random_ray = {}
 
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -1035,33 +1032,32 @@ class Settings:
         self._weight_window_generators = cv.CheckedList(WeightWindowGenerator, 'weight window generators', wwgs)
 
     @property
-    def solver_type(self) -> str:
-        return self._solver_type
+    def random_ray(self) -> dict:
+        return self._random_ray
 
-    @solver_type.setter
-    def solver_type(self, solver_type: str):
-        cv.check_value('solver type', solver_type, ['monte carlo', 'random ray'])
-        self._solver_type = solver_type
-    
-    @property
-    def random_ray_distance_active(self):
-         return self._random_ray_distance_active
+    @random_ray.setter
+    def random_ray(self, random_ray: dict):
+        if not isinstance(random_ray, Mapping):
+            msg = f'Unable to set random_ray from "{random_ray}" which is not a '\
+                  'Python dictionary'
+            raise ValueError(msg)
+        for key in random_ray:
+            if key == 'distance_active':
+                cv.check_type('active ray length', random_ray[key], Real)
+                cv.check_greater_than('active ray length', random_ray[key], 0.0)
+            elif key == 'distance_inactive':
+                cv.check_type('inactive ray length', random_ray[key], Real)
+                cv.check_greater_than('inactive ray length',
+                                      random_ray[key], 0.0, True)
+            elif key == 'ray_source':
+                print("Setting source field")
+                cv.check_type('random ray source', random_ray[key], SourceBase)
+            else:
+                msg = f'Unable to set random ray to "{key}" which is unsupported ' \
+                      'by OpenMC'
+                raise ValueError(msg)
 
-    @random_ray_distance_active.setter
-    def random_ray_distance_active(self, value):
-        cv.check_type('random ray distance active', value, Real)
-        cv.check_greater_than('random ray distance active', value, 0)
-        self._random_ray_distance_active = value
-    
-    @property
-    def random_ray_distance_inactive(self):
-         return self._random_ray_distance_inactive
-
-    @random_ray_distance_inactive.setter
-    def random_ray_distance_inactive(self, value):
-        cv.check_type('random ray distance inactive', value, Real)
-        cv.check_greater_than('random ray distance inactive', value, 0, True)
-        self._random_ray_distance_inactive = value
+        self._random_ray = random_ray
 
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
@@ -1469,21 +1465,17 @@ class Settings:
         if self._max_tracks is not None:
             elem = ET.SubElement(root, "max_tracks")
             elem.text = str(self._max_tracks)
-    
-    def _create_solver_type_subelement(self, root):
-        if self._solver_type is not None:
-            elem = ET.SubElement(root, "solver_type")
-            elem.text = str(self._solver_type).lower()
-    
-    def _create_random_ray_distance_active_subelement(self, root):
-        if self._random_ray_distance_active is not None:
-            elem = ET.SubElement(root, "random_ray_distance_active")
-            elem.text = str(self._random_ray_distance_active).lower()
-    
-    def _create_random_ray_distance_inactive_subelement(self, root):
-        if self._random_ray_distance_inactive is not None:
-            elem = ET.SubElement(root, "random_ray_distance_inactive")
-            elem.text = str(self._random_ray_distance_inactive).lower()
+
+    def _create_random_ray_subelement(self, root):
+        if self._random_ray is not None:
+            element = ET.SubElement(root, "random_ray")
+            for key, value in self._random_ray.items():
+                if key == 'ray_source' and isinstance(value, SourceBase):
+                    source_element = value.to_xml_element()
+                    element.append(source_element)
+                else:
+                    subelement = ET.SubElement(element, key)
+                    subelement.text = str(value)
 
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
@@ -1830,21 +1822,18 @@ class Settings:
         text = get_text(root, 'max_tracks')
         if text is not None:
             self.max_tracks = int(text)
-    
-    def _solver_type_from_xml_element(self, root):
-        text = get_text(root, 'solver_type')
-        if text is not None:
-            self.solver_type = text
 
-    def _random_ray_distance_active_from_xml_element(self, root):
-         text = get_text(root, 'random_ray_distance_active')
-         if text is not None:
-             self.random_ray_distance_active = float(text)
-    
-    def _random_ray_distance_inactive_from_xml_element(self, root):
-         text = get_text(root, 'random_ray_distance_inactive')
-         if text is not None:
-             self.random_ray_distance_inactive = float(text)
+    def _random_ray_from_xml_element(self, root):
+        elem = root.find('random_ray')
+        if elem is not None:
+            self.random_ray = {}
+            for child in elem:
+                if child.tag in ('distance_inactive', 'distance_active'):
+                    random_ray_dict[child.tag] = float(child.text)
+                elif child.tag == 'ray_source':
+                    source = SourceBase.from_xml_element(child)
+                    random_ray_dict['ray_source'] = source
+            self.random_ray = random_ray_dict
 
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.
@@ -1907,9 +1896,7 @@ class Settings:
         self._create_weight_window_checkpoints_subelement(element)
         self._create_max_splits_subelement(element)
         self._create_max_tracks_subelement(element)
-        self._create_solver_type_subelement(element)
-        self._create_random_ray_distance_active_subelement(element)
-        self._create_random_ray_distance_inactive_subelement(element)
+        self._create_random_ray_subelement(element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)
@@ -2012,9 +1999,7 @@ class Settings:
         settings._weight_window_checkpoints_from_xml_element(elem)
         settings._max_splits_from_xml_element(elem)
         settings._max_tracks_from_xml_element(elem)
-        settings._solver_type_from_xml_element(elem)
-        settings._random_ray_distance_active_from_xml_element(elem)
-        settings._random_ray_distance_inactive_from_xml_element(elem)
+        settings._random_ray_from_xml_element(elem)
 
         # TODO: Get volume calculations
         return settings

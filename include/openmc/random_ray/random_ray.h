@@ -1,5 +1,5 @@
-#ifndef OPENMC_RANDOM_RAY_RAY_H
-#define OPENMC_RANDOM_RAY_RAY_H
+#ifndef OPENMC_RANDOM_RAY_H
+#define OPENMC_RANDOM_RAY_H
 
 #include "openmc/particle.h"
 #include "openmc/random_ray/flat_source_domain.h"
@@ -11,6 +11,7 @@ namespace openmc {
  * through the model. It is a small extension of the Particle class.
  */
 
+// TODO: Inherit from GeometryState instead of Particle
 class RandomRay : public Particle {
 public:
   //----------------------------------------------------------------------------
@@ -40,4 +41,4 @@ public:
 
 } // namespace openmc
 
-#endif // OPENMC_RANDOM_RAY_RAY_H
+#endif // OPENMC_RANDOM_RAY_H

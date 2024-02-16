@@ -100,7 +100,7 @@ def _get_title(reactions):
 def plot_xs(reactions, divisor_types=None, temperature=294., axis=None,
             sab_name=None, ce_cross_sections=None, mg_cross_sections=None,
             enrichment=None, plot_CE=True, orders=None, divisor_orders=None,
-            **kwargs):
+            energy_axis_units="eV", **kwargs):
     """Creates a figure of continuous-energy cross sections for this item.
 
     Parameters
@@ -143,6 +143,10 @@ def plot_xs(reactions, divisor_types=None, temperature=294., axis=None,
     **kwargs :
         All keyword arguments are passed to
         :func:`matplotlib.pyplot.figure`.
+
+        .. versionadded:: 0.14.1
+    energy_axis_units : {'eV', 'KeV', 'MeV'}
+        Units used on the plot energy axis
 
     Returns
     -------
@@ -212,6 +216,9 @@ def plot_xs(reactions, divisor_types=None, temperature=294., axis=None,
                     if divisor_types[line] != 'unity':
                         types[line] += ' / ' + divisor_types[line]
 
+        axis_scaling_factor = {"eV": 1.0, "KeV": 1e-3, "MeV": 1e-6}
+        E = E * axis_scaling_factor[energy_axis_units]
+
         # Plot the data
         for i in range(len(data)):
             data[i, :] = np.nan_to_num(data[i, :])
@@ -227,9 +234,12 @@ def plot_xs(reactions, divisor_types=None, temperature=294., axis=None,
         ax.set_xscale('log')
         ax.set_yscale('log')
 
-    ax.set_xlabel('Energy [eV]')
+    ax.set_xlabel(f"Energy [{energy_axis_units}]")
     if plot_CE:
-        ax.set_xlim(_MIN_E, _MAX_E)
+        ax.set_xlim(
+            _MIN_E * axis_scaling_factor[energy_axis_units],
+            _MAX_E * axis_scaling_factor[energy_axis_units],
+        )
     else:
         ax.set_xlim(E[-1], E[0])
 

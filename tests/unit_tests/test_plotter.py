@@ -81,6 +81,12 @@ def test_plot_xs_mat(test_mat):
     from matplotlib.figure import Figure
     assert isinstance(openmc.plot_xs({test_mat: ['total']}), Figure)
 
+@pytest.mark.parametrize("this", ["eV", "KeV", "MeV"])
+def test_plot_xs_energy_axis(this):
+    plot=openmc.plot_xs({'Be9': ['(n,2n)']}, energy_axis_units=this)
+    axis_text = plot.get_axes()[0].get_xaxis().get_label().get_text()
+    assert axis_text == f'Energy [{this}]'
+
 def test_plot_axes_labels():
     # just nuclides
     axis_label = openmc.plotter._get_yaxis_label(

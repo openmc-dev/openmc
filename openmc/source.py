@@ -136,7 +136,7 @@ class IndependentSource(SourceBase):
         time distribution of source sites
     strength : float
         Strength of the source
-    particle : {'neutron', 'photon', 'random_ray'}
+    particle : {'neutron', 'photon'}
         Source particle type
     domains : iterable of openmc.Cell, openmc.Material, or openmc.Universe
         Domains to reject based on, i.e., if a sampled spatial location is not
@@ -159,7 +159,7 @@ class IndependentSource(SourceBase):
 
     .. versionadded:: 0.14.0
 
-    particle : {'neutron', 'photon', 'random_ray'}
+    particle : {'neutron', 'photon'}
         Source particle type
     ids : Iterable of int
         IDs of domains to use for rejection
@@ -270,7 +270,7 @@ class IndependentSource(SourceBase):
 
     @particle.setter
     def particle(self, particle):
-        cv.check_value('source particle', particle, ['neutron', 'photon', 'random_ray'])
+        cv.check_value('source particle', particle, ['neutron', 'photon'])
         self._particle = particle
 
     @property
@@ -740,7 +740,6 @@ class ParticleType(IntEnum):
     PHOTON = 1
     ELECTRON = 2
     POSITRON = 3
-    RANDOM_RAY = 4
 
     @classmethod
     def from_string(cls, value: str):

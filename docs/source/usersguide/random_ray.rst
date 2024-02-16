@@ -6,14 +6,11 @@ Random Ray Solver
 
 In general, the random ray solver mode uses most of the same settings and :ref:`run strategies <usersguide_particles>` as the standard Monte Carlo solver mode. For instance, random ray solves are also split up into :ref:`inactive and active batches <usersguide_batches>`. However, there are a couple of settings that are unique to the random ray solver, and a few areas that the random ray run strategy differs, which will be described in this section.
 
----------------------
-Selecting Solver Type
----------------------
+------------------------
+Enabling Random Ray Mode
+------------------------
 
-To utilize the random ray solver, the ``settings.solver_type`` must be set to ``random_ray``, and multigroup mode must be enabled, e.g.::
-
-    settings.solver_type = "random ray"
-    settings.energy_mode = "multi-group"
+To utilize the random ray solver, the ``settings.random_ray`` dictionary must be present in the :class:`openmc.Settings` Python class. There are a number of additional settings that must be specified within this dictionary that will be discussed below. Additionally, the multi-group energy mode must be specified. 
 
 ----------------
 Inactive Batches
@@ -32,7 +29,7 @@ A major issue with random ray is that the starting angular flux distribution for
 
 ::
 
-    settings.random_ray_distance_inactive = 40.0
+    settings.random_ray['distance_inactive'] = 40.0
 
 After several mean free paths are traversed, the angular flux spectrum of the ray becomes dominated by the in-scattering and fission source components that it picked up when travelling through the geometry, while its original (incorrect) starting angular flux is attenuated towards zero. Thus, longer selections of inactive ray length will asymptotically approach the true angular flux.
 
@@ -47,7 +44,7 @@ Once the inactive length of the ray has completed, the active region of the ray 
 
 ::
 
-    settings.random_ray_distance_active = 400.0
+    settings.random_ray['distance_active'] = 400.0
 
 Assuming that sufficient inactive ray length is used so that the starting angular flux is highly accurate, any selection of active length greater than zero is theoretically acceptable. However, in order to adequately sample the full integration domain, a selection of a very short track length would require a very high number of rays to be selected. Due to the static costs per ray of computing the starting angular flux in the dead zone, typically very short ray lengths are undesireable. Thus, to amortize the per-ray cost of the inactive region of the ray, it is desireable to select a very long inactive ray length. E.g., if the inactive length is set at 20cm, a selection of 200 cm of active ray length ensures that only about 10% of overall simulation runtime is spent in the inactive ray phase integration, making the dead zone a relatively inexpensive way of estimating the angular flux. 
 
@@ -92,15 +89,15 @@ To help the user set this parameter, OpenMC will report the average flat source 
 Ray Source
 ----------
 
-Random ray requires that the ray source be uniform in space and angle, throughout the entire phase space of the simulation. To facilitate sampling, the user must specify a single random ray source for sampling rays in both eigenvalue and fixed source solver modes. To tell OpenMC which source is to be used as the basis for sampling random integration rays vs. which sources are used to represent a physical particle source, the random ray integration source should be specified as "random_ray" via the ``particle`` field of the :class:`openmc.IndependentSource` Python class.  Note that the source must be isotropic, and not limited to only fissionable regions. Additionally, the source box must cover the entire simulation domain. In the case of a simulation domain that is not box shaped, a box source should still be used to bound the domain but with the source limited to rejection sampling the actual simulation universe (which can be specified via the ``domains`` field of the :class:`openmc.IndependentSource` Python class). Similar to Monte Carlo sources, for 2D problems (e.g., a 2D pincell) it is desireable to make the source bounded near the origin of the infinite dimension. An example of an acceptable ray source for a 2D 2x2 lattice would look like:
+Random ray requires that the ray source be uniform in space and angle, throughout the entire phase space of the simulation. To facilitate sampling, the user must specify a single random ray source for sampling rays in both eigenvalue and fixed source solver modes. The random ray integration source should be of type :class:`openmc.IndependentSource`, and is specified as part of the ``settings.random_ray`` dictionary. Note that the source must be isotropic, and not limited to only fissionable regions. Additionally, the source box must cover the entire simulation domain. In the case of a simulation domain that is not box shaped, a box source should still be used to bound the domain but with the source limited to rejection sampling the actual simulation universe (which can be specified via the ``domains`` field of the :class:`openmc.IndependentSource` Python class). Similar to Monte Carlo sources, for 2D problems (e.g., a 2D pincell) it is desireable to make the source bounded near the origin of the infinite dimension. An example of an acceptable ray source for a 2D 2x2 lattice would look like:
 
 ::
 
     pitch = 1.26
     lower_left  = (-pitch, -pitch, -pitch)
     upper_right = ( pitch,  pitch,  pitch)
-    uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=False)
-    settings.source = openmc.IndependentSource(space=uniform_dist, particle="random_ray")
+    uniform_dist = openmc.stats.Box(lower_left, upper_right)
+    settings.random_ray['ray_source'] = openmc.IndependentSource(space=uniform_dist)
 
 ----------------------------------
 Subdivision of Flat Source Regions
@@ -248,15 +245,15 @@ An example of a settings definition for random ray is given below:
     settings.batches = 1200
     settings.inactive = 600
     settings.particles = 2000
-    settings.solver_type = 'random ray'
-    settings.random_ray_distance_inactive = 40.0
-    settings.random_ray_distance_active = 400.0
+
+    settings.random_ray['distance_inactive'] = 40.0
+    settings.random_ray['distance_active'] = 400.0
 
     # Create an initial uniform spatial source distribution for sampling rays
     lower_left  = (-pitch, -pitch, -pitch)
     upper_right = ( pitch,  pitch,  pitch)
     uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=False)
-    settings.source = openmc.IndependentSource(space=uniform_dist, particle="random_ray")
+    settings.random_ray['ray_source'] = openmc.IndependentSource(space=uniform_dist)
 
     settings.export_to_xml()
 

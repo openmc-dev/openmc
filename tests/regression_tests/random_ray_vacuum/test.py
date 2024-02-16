@@ -178,7 +178,7 @@ def create_random_ray_model():
 
     ########################################
     # Define cell containing lattice and other stuff
-    box = openmc.model.RectangularPrism(pitch*2, pitch*2, boundary_type='reflective')
+    box = openmc.model.RectangularPrism(pitch*2, pitch*2, boundary_type='vacuum')
 
     assembly = openmc.Cell(fill=lattice2x2, region=-box, name='assembly')
 

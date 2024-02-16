@@ -418,6 +418,8 @@ void read_settings_xml(pugi::xml_node root)
   // Check solver type
   if (check_for_node(root, "random_ray")) {
     solver_type = SolverType::RANDOM_RAY;
+    if (run_CE)
+      fatal_error("multi-group energy mode must be specified in settings XML when using the random ray solver.");
   }
 
   if (run_mode == RunMode::EIGENVALUE || run_mode == RunMode::FIXED_SOURCE) {

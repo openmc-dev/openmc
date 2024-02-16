@@ -417,10 +417,11 @@ can be found in the :ref:`random ray user guide <random_ray>`.
     *Default*: None
 
   :source:
-    The ``<source>`` element used to sample starting ray locations. It must
-    be uniform in space and angle and cover the full domain. It does not
-    represent a physical neutron or photon source -- it is only used to
-    sample integrating ray starting locations and directions.
+    Specifies the starting ray distribution, and follows the format for
+    :ref:`source_element`. It must be uniform in space and angle and cover
+    the full domain. It does not represent a physical neutron or photon
+    source -- it is only used to sample integrating ray starting locations
+    and directions.
 
     *Default*: None
 
@@ -498,6 +499,8 @@ The ``seed`` element is used to set the seed used for the linear congruential
 pseudo-random number generator.
 
   *Default*: 1
+
+.. _source_element:
 
 --------------------
 ``<source>`` Element

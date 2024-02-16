@@ -12,14 +12,25 @@ Enabling Random Ray Mode
 
 To utilize the random ray solver, the ``settings.random_ray`` dictionary must be present in the :class:`openmc.Settings` Python class. There are a number of additional settings that must be specified within this dictionary that will be discussed below. Additionally, the multi-group energy mode must be specified. 
 
-----------------
-Inactive Batches
-----------------
+-------
+Batches
+-------
 
 In Monte Carlo, inactive batches are used to let the fission source develop into a stationary distribution before active batches are performed that actually accumulate statistics. While this is true of random ray as well, in the random ray mode the inactive batches are also used to let the scattering source develop. Monte Carlo fully represents the scattering source within each iteration (by its nature of fully simulating particles from birth to death through any number of physical scattering events), whereas the scattering source in random ray can only represent as many scattering events as batches have been completed. E.g., by iteration 10 in random ray, the scattering source only captures the behavior of neutrons through their 10th scatter. By iteration 500 in random ray, the scattering source only captures the behavior of neutrons through their 100th scatter. Thus, while inactive batches are only required in an eigenvalue solve in Monte Carlo, inactive batches are required for both eigenvalue and fixed source solves in random ray due to this additional need to converge the scattering source.
 
 The additional burden of converging the scattering source generally results in a higher requirement for the number of inactive batches - often by an order of magnitude or more. For instance, it may be reasonable to only use 50 inactive batches for a light water reactor simulation with Monte Carlo, but  random ray might require 500 or more inactive batches. Similar to Monte Carlo, :ref:`Shannon entropy
 <usersguide_entropy>` can be used to guage whether the combined scattering and fission source has fully developed.
+
+Similar to Monte Carlo, active batches are used in the random ray solver mode to accumulate and converge statistics on unknown quantities (i.e., the random ray sources, scalar fluxes, as well as any user-specified tallies).
+
+The batch parameters are set in the same manner as with the regular Monte Carlo solver:
+
+::
+
+    settings = openmc.Settings()
+    settings.energy_mode = "multi-group"
+    settings.batches = 1200
+    settings.inactive = 600
 
 -------------------------------
 Inactive Ray Length (Dead Zone)
@@ -133,9 +144,7 @@ Supported scores:
     - events
 
 Supported Estimators:
-    - analog
     - tracklength
-    - collision
 
 Supported Filters:
     - cell

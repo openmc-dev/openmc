@@ -253,7 +253,8 @@ void get_run_parameters(pugi::xml_node node_base)
     }
     if (check_for_node(random_ray_node, "source")) {
       xml_node source_node = random_ray_node.child("source");
-      // Get point to list of <source> elements and make sure there is at least one
+      // Get point to list of <source> elements and make sure there is at least
+      // one
       RandomRay::ray_source_ = Source::create(source_node);
     } else {
       fatal_error("Specify random ray source in settings XML");
@@ -419,7 +420,8 @@ void read_settings_xml(pugi::xml_node root)
   if (check_for_node(root, "random_ray")) {
     solver_type = SolverType::RANDOM_RAY;
     if (run_CE)
-      fatal_error("multi-group energy mode must be specified in settings XML when using the random ray solver.");
+      fatal_error("multi-group energy mode must be specified in settings XML "
+                  "when using the random ray solver.");
   }
 
   if (run_mode == RunMode::EIGENVALUE || run_mode == RunMode::FIXED_SOURCE) {

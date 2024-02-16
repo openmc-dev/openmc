@@ -132,7 +132,8 @@ void FlatSourceDomain::update_neutron_source(double k_eff)
 }
 
 // Normalizes flux and updates simulation-averaged volume estimate
-void FlatSourceDomain::normalize_scalar_flux_and_volumes(double total_active_distance_per_iteration)
+void FlatSourceDomain::normalize_scalar_flux_and_volumes(
+  double total_active_distance_per_iteration)
 {
   float normalization_factor = 1.0 / total_active_distance_per_iteration;
   double volume_normalization_factor =

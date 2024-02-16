@@ -2,8 +2,8 @@
 #define OPENMC_RANDOM_RAY_H
 
 #include "openmc/particle.h"
-#include "openmc/source.h"
 #include "openmc/random_ray/flat_source_domain.h"
+#include "openmc/source.h"
 
 namespace openmc {
 
@@ -24,14 +24,13 @@ public:
   // Methods
   void event_advance_ray();
   void attenuate_flux(double distance, bool is_active);
-  void initialize_ray(
-    uint64_t ray_id, FlatSourceDomain* domain);
+  void initialize_ray(uint64_t ray_id, FlatSourceDomain* domain);
   uint64_t transport_history_based_single_ray();
 
   //----------------------------------------------------------------------------
   // Static data members
-  static double distance_inactive_; // Inactive (dead zone) ray length
-  static double distance_active_; // Active ray length
+  static double distance_inactive_;      // Inactive (dead zone) ray length
+  static double distance_active_;        // Active ray length
   static unique_ptr<Source> ray_source_; // Starting source for ray sampling
 
   //----------------------------------------------------------------------------

@@ -122,7 +122,8 @@ void validate_random_ray_inputs()
   ///////////////////////////////////////////////////////////////////
 
   // Check for independent source
-  IndependentSource* is = dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get());
+  IndependentSource* is =
+    dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get());
   if (is == nullptr) {
     fatal_error(
       "Invalid ray source definition. Ray source must be IndependentSource.");
@@ -141,9 +142,8 @@ void validate_random_ray_inputs()
 
   // Check that box source is not restricted to fissionable areas
   if (sb->only_fissionable()) {
-    fatal_error(
-      "Invalid source definition -- fissionable spatial distribution "
-      "not allowed for random ray source.");
+    fatal_error("Invalid source definition -- fissionable spatial distribution "
+                "not allowed for random ray source.");
   }
 
   // Check for isotropic source
@@ -243,7 +243,8 @@ void RandomRaySimulation::simulate()
     domain_.all_reduce_replicated_source_regions();
 
     // Normalize scalar flux and update volumes
-    domain_.normalize_scalar_flux_and_volumes(settings::n_particles * RandomRay::distance_active_);
+    domain_.normalize_scalar_flux_and_volumes(
+      settings::n_particles * RandomRay::distance_active_);
 
     // Add source to scalar flux, compute number of FSR hits
     int64_t n_hits = domain_.add_source_to_scalar_flux();

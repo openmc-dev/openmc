@@ -41,7 +41,8 @@ public:
   // Methods
   void update_neutron_source(double k_eff);
   double compute_k_eff(double k_eff_old);
-  void normalize_scalar_flux_and_volumes(double total_active_distance_per_iteration);
+  void normalize_scalar_flux_and_volumes(
+    double total_active_distance_per_iteration);
   int64_t add_source_to_scalar_flux();
   double calculate_miss_rate();
   void batch_reset();

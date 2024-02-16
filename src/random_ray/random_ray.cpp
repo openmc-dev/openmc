@@ -11,8 +11,6 @@
 
 namespace openmc {
 
-
-
 //==============================================================================
 // Non-method functions
 //==============================================================================
@@ -79,9 +77,7 @@ RandomRay::RandomRay()
     delta_psi_(data::mg.num_energy_groups_)
 {}
 
-RandomRay::RandomRay(
-  uint64_t ray_id, FlatSourceDomain* domain)
-  : RandomRay()
+RandomRay::RandomRay(uint64_t ray_id, FlatSourceDomain* domain) : RandomRay()
 {
   initialize_ray(ray_id, domain);
 }
@@ -115,8 +111,7 @@ void RandomRay::event_advance_ray()
 
   // Check for final termination
   if (is_active_) {
-    if (distance_travelled_ + distance >=
-        distance_active_) {
+    if (distance_travelled_ + distance >= distance_active_) {
       distance_active_ - distance_travelled_;
       wgt() = 0.0;
     }
@@ -126,11 +121,9 @@ void RandomRay::event_advance_ray()
 
   // Check for end of inactive region (dead zone)
   if (!is_active_) {
-    if (distance_travelled_ + distance >=
-        distance_inactive_) {
+    if (distance_travelled_ + distance >= distance_inactive_) {
       is_active_ = true;
-      double distance_dead =
-        distance_inactive_ - distance_travelled_;
+      double distance_dead = distance_inactive_ - distance_travelled_;
       attenuate_flux(distance_dead, false);
 
       double distance_alive = distance - distance_dead;
@@ -239,8 +232,7 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
   }
 }
 
-void RandomRay::initialize_ray(
-  uint64_t ray_id, FlatSourceDomain* domain)
+void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
 {
   domain_ = domain;
 
@@ -264,8 +256,7 @@ void RandomRay::initialize_ray(
   stream() = STREAM_TRACKING;
 
   // Sample from ray source distribution
-  SourceSite site {
-    ray_source_->sample(current_seed())};
+  SourceSite site {ray_source_->sample(current_seed())};
   site.E = lower_bound_index(
     data::mg.rev_energy_bins_.begin(), data::mg.rev_energy_bins_.end(), site.E);
   site.E = negroups_ - site.E - 1.;

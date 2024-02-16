@@ -45,6 +45,30 @@ def test_source_file(run_in_tmpdir):
     assert np.all(arr['particle'] == 0)
 
 
+    # Ensure sites read in are consistent
+    sites = openmc.read_source_file('test_source.h5')
+
+    assert filetype == b'source'
+    xs = np.array([site.r[0] for site in sites])
+    ys = np.array([site.r[1] for site in sites])
+    zs = np.array([site.r[2] for site in sites])
+    assert np.all((xs > 0.0) & (xs < 1.0))
+    assert np.all(ys == np.arange(1000))
+    assert np.all(zs == 0.0)
+    u = np.array([s.u for s in sites])
+    assert np.all(u[..., 0] == 0.0)
+    assert np.all(u[..., 1] == 0.0)
+    assert np.all(u[..., 2] == 1.0)
+    E = np.array([s.E for s in sites])
+    assert np.all(E == n - np.arange(n))
+    wgt = np.array([s.wgt for s in sites])
+    assert np.all(wgt == 1.0)
+    dgs = np.array([s.delayed_group for s in sites])
+    assert np.all(dgs == 0)
+    p_types = np.array([s.particle for s in sites])
+    assert np.all(p_types == 0)
+
+
 def test_wrong_source_attributes(run_in_tmpdir):
     # Create a source file with animal attributes
     source_dtype = np.dtype([

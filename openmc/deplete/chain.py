@@ -7,114 +7,109 @@ loaded from an .xml file and all the nuclides are linked together.
 from io import StringIO
 from itertools import chain
 import math
-import os
 import re
 from collections import defaultdict, namedtuple
 from collections.abc import Mapping, Iterable
 from numbers import Real, Integral
 from warnings import warn
 
-from openmc.checkvalue import check_type, check_greater_than
-from openmc.data import gnds_name, zam, DataLibrary
-from openmc.exceptions import DataError
-from .nuclide import FissionYieldDistribution
-
 import lxml.etree as ET
 import scipy.sparse as sp
 
+from openmc.checkvalue import check_type, check_greater_than
+from openmc.data import gnds_name, zam
+from .nuclide import FissionYieldDistribution, Nuclide
 import openmc.data
-from openmc._xml import clean_indentation
-from .nuclide import Nuclide, DecayTuple, ReactionTuple
 
-# tuple of (possible MT values, (dA, dZ), secondaries) where dA is the change in
-# the mass number and dZ is the change in the atomic number
-ReactionInfo = namedtuple('ReactionInfo', ('mts', 'dadz', 'secondaries'))
+
+# tuple of (possible MT values, secondaries)
+ReactionInfo = namedtuple('ReactionInfo', ('mts', 'secondaries'))
 
 REACTIONS = {
-    '(n,2nd)': ReactionInfo({11}, openmc.data.DADZ['(n,2nd)'], ('H2',)),
-    '(n,2n)': ReactionInfo(set(chain([16], range(875, 892))), openmc.data.DADZ['(n,2n)'], ()),
-    '(n,3n)': ReactionInfo({17}, openmc.data.DADZ['(n,3n)'], ()),
-    '(n,na)': ReactionInfo({22}, openmc.data.DADZ['(n,na)'], ('He4',)),
-    '(n,n3a)': ReactionInfo({23}, openmc.data.DADZ['(n,n3a)'], ('He4', 'He4', 'He4')),
-    '(n,2na)': ReactionInfo({24}, openmc.data.DADZ['(n,2na)'], ('He4',)),
-    '(n,3na)': ReactionInfo({25}, openmc.data.DADZ['(n,3na)'], ('He4',)),
-    '(n,np)': ReactionInfo({28}, openmc.data.DADZ['(n,np)'], ('H1',)),
-    '(n,n2a)': ReactionInfo({29}, openmc.data.DADZ['(n,n2a)'], ('He4', 'He4')),
-    '(n,2n2a)': ReactionInfo({30}, openmc.data.DADZ['(n,2n2a)'], ('He4', 'He4')),
-    '(n,nd)': ReactionInfo({32}, openmc.data.DADZ['(n,nd)'], ('H2',)),
-    '(n,nt)': ReactionInfo({33}, openmc.data.DADZ['(n,nt)'], ('H3',)),
-    '(n,n3He)': ReactionInfo({34}, openmc.data.DADZ['(n,n3He)'], ('He3',)),
-    '(n,nd2a)': ReactionInfo({35}, openmc.data.DADZ['(n,nd2a)'], ('H2', 'He4', 'He4')),
-    '(n,nt2a)': ReactionInfo({36}, openmc.data.DADZ['(n,nt2a)'], ('H3', 'He4', 'He4')),
-    '(n,4n)': ReactionInfo({37}, openmc.data.DADZ['(n,4n)'], ()),
-    '(n,2np)': ReactionInfo({41}, openmc.data.DADZ['(n,2np)'], ('H1',)),
-    '(n,3np)': ReactionInfo({42}, openmc.data.DADZ['(n,3np)'], ('H1',)),
-    '(n,n2p)': ReactionInfo({44}, openmc.data.DADZ['(n,n2p)'], ('H1', 'H1')),
-    '(n,npa)': ReactionInfo({45}, openmc.data.DADZ['(n,npa)'], ('H1', 'He4')),
-    '(n,gamma)': ReactionInfo({102}, openmc.data.DADZ['(n,gamma)'], ()),
-    '(n,p)': ReactionInfo(set(chain([103], range(600, 650))), openmc.data.DADZ['(n,p)'], ('H1',)),
-    '(n,d)': ReactionInfo(set(chain([104], range(650, 700))), openmc.data.DADZ['(n,d)'], ('H2',)),
-    '(n,t)': ReactionInfo(set(chain([105], range(700, 750))), openmc.data.DADZ['(n,t)'], ('H3',)),
-    '(n,3He)': ReactionInfo(set(chain([106], range(750, 800))), openmc.data.DADZ['(n,3He)'], ('He3',)),
-    '(n,a)': ReactionInfo(set(chain([107], range(800, 850))), openmc.data.DADZ['(n,a)'], ('He4',)),
-    '(n,2a)': ReactionInfo({108}, openmc.data.DADZ['(n,2a)'], ('He4', 'He4')),
-    '(n,3a)': ReactionInfo({109}, openmc.data.DADZ['(n,3a)'], ('He4', 'He4', 'He4')),
-    '(n,2p)': ReactionInfo({111}, openmc.data.DADZ['(n,2p)'], ('H1', 'H1')),
-    '(n,pa)': ReactionInfo({112}, openmc.data.DADZ['(n,pa)'], ('H1', 'He4')),
-    '(n,t2a)': ReactionInfo({113}, openmc.data.DADZ['(n,t2a)'], ('H3', 'He4', 'He4')),
-    '(n,d2a)': ReactionInfo({114}, openmc.data.DADZ['(n,d2a)'], ('H2', 'He4', 'He4')),
-    '(n,pd)': ReactionInfo({115}, openmc.data.DADZ['(n,pd)'], ('H1', 'H2')),
-    '(n,pt)': ReactionInfo({116}, openmc.data.DADZ['(n,pt)'], ('H1', 'H3')),
-    '(n,da)': ReactionInfo({117}, openmc.data.DADZ['(n,da)'], ('H2', 'He4')),
-    '(n,5n)': ReactionInfo({152}, openmc.data.DADZ['(n,5n)'], ()),
-    '(n,6n)': ReactionInfo({153}, openmc.data.DADZ['(n,6n)'], ()),
-    '(n,2nt)': ReactionInfo({154}, openmc.data.DADZ['(n,2nt)'], ('H3',)),
-    '(n,ta)': ReactionInfo({155}, openmc.data.DADZ['(n,ta)'], ('H3', 'He4')),
-    '(n,4np)': ReactionInfo({156}, openmc.data.DADZ['(n,4np)'], ('H1',)),
-    '(n,3nd)': ReactionInfo({157}, openmc.data.DADZ['(n,3nd)'], ('H2',)),
-    '(n,nda)': ReactionInfo({158}, openmc.data.DADZ['(n,nda)'], ('H2', 'He4')),
-    '(n,2npa)': ReactionInfo({159}, openmc.data.DADZ['(n,2npa)'], ('H1', 'He4')),
-    '(n,7n)': ReactionInfo({160}, openmc.data.DADZ['(n,7n)'], ()),
-    '(n,8n)': ReactionInfo({161}, openmc.data.DADZ['(n,8n)'], ()),
-    '(n,5np)': ReactionInfo({162}, openmc.data.DADZ['(n,5np)'], ('H1',)),
-    '(n,6np)': ReactionInfo({163}, openmc.data.DADZ['(n,6np)'], ('H1',)),
-    '(n,7np)': ReactionInfo({164}, openmc.data.DADZ['(n,7np)'], ('H1',)),
-    '(n,4na)': ReactionInfo({165}, openmc.data.DADZ['(n,4na)'], ('He4',)),
-    '(n,5na)': ReactionInfo({166}, openmc.data.DADZ['(n,5na)'], ('He4',)),
-    '(n,6na)': ReactionInfo({167}, openmc.data.DADZ['(n,6na)'], ('He4',)),
-    '(n,7na)': ReactionInfo({168}, openmc.data.DADZ['(n,7na)'], ('He4',)),
-    '(n,4nd)': ReactionInfo({169}, openmc.data.DADZ['(n,4nd)'], ('H2',)),
-    '(n,5nd)': ReactionInfo({170}, openmc.data.DADZ['(n,5nd)'], ('H2',)),
-    '(n,6nd)': ReactionInfo({171}, openmc.data.DADZ['(n,6nd)'], ('H2',)),
-    '(n,3nt)': ReactionInfo({172}, openmc.data.DADZ['(n,3nt)'], ('H3',)),
-    '(n,4nt)': ReactionInfo({173}, openmc.data.DADZ['(n,4nt)'], ('H3',)),
-    '(n,5nt)': ReactionInfo({174}, openmc.data.DADZ['(n,5nt)'], ('H3',)),
-    '(n,6nt)': ReactionInfo({175}, openmc.data.DADZ['(n,6nt)'], ('H3',)),
-    '(n,2n3He)': ReactionInfo({176}, openmc.data.DADZ['(n,2n3He)'], ('He3',)),
-    '(n,3n3He)': ReactionInfo({177}, openmc.data.DADZ['(n,3n3He)'], ('He3',)),
-    '(n,4n3He)': ReactionInfo({178}, openmc.data.DADZ['(n,4n3He)'], ('He3',)),
-    '(n,3n2p)': ReactionInfo({179}, openmc.data.DADZ['(n,3n2p)'], ('H1', 'H1')),
-    '(n,3n2a)': ReactionInfo({180}, openmc.data.DADZ['(n,3n2a)'], ('He4', 'He4')),
-    '(n,3npa)': ReactionInfo({181}, openmc.data.DADZ['(n,3npa)'], ('H1', 'He4')),
-    '(n,dt)': ReactionInfo({182}, openmc.data.DADZ['(n,dt)'], ('H2', 'H3')),
-    '(n,npd)': ReactionInfo({183}, openmc.data.DADZ['(n,npd)'], ('H1', 'H2')),
-    '(n,npt)': ReactionInfo({184}, openmc.data.DADZ['(n,npt)'], ('H1', 'H3')),
-    '(n,ndt)': ReactionInfo({185}, openmc.data.DADZ['(n,ndt)'], ('H2', 'H3')),
-    '(n,np3He)': ReactionInfo({186}, openmc.data.DADZ['(n,np3He)'], ('H1', 'He3')),
-    '(n,nd3He)': ReactionInfo({187}, openmc.data.DADZ['(n,nd3He)'], ('H2', 'He3')),
-    '(n,nt3He)': ReactionInfo({188}, openmc.data.DADZ['(n,nt3He)'], ('H3', 'He3')),
-    '(n,nta)': ReactionInfo({189}, openmc.data.DADZ['(n,nta)'], ('H3', 'He4')),
-    '(n,2n2p)': ReactionInfo({190}, openmc.data.DADZ['(n,2n2p)'], ('H1', 'H1')),
-    '(n,p3He)': ReactionInfo({191}, openmc.data.DADZ['(n,p3He)'], ('H1', 'He3')),
-    '(n,d3He)': ReactionInfo({192}, openmc.data.DADZ['(n,d3He)'], ('H2', 'He3')),
-    '(n,3Hea)': ReactionInfo({193}, openmc.data.DADZ['(n,3Hea)'], ('He3', 'He4')),
-    '(n,4n2p)': ReactionInfo({194}, openmc.data.DADZ['(n,4n2p)'], ('H1', 'H1')),
-    '(n,4n2a)': ReactionInfo({195}, openmc.data.DADZ['(n,4n2a)'], ('He4', 'He4')),
-    '(n,4npa)': ReactionInfo({196}, openmc.data.DADZ['(n,4npa)'], ('H1', 'He4')),
-    '(n,3p)': ReactionInfo({197}, openmc.data.DADZ['(n,3p)'], ('H1', 'H1', 'H1')),
-    '(n,n3p)': ReactionInfo({198}, openmc.data.DADZ['(n,n3p)'], ('H1', 'H1', 'H1')),
-    '(n,3n2pa)': ReactionInfo({199}, openmc.data.DADZ['(n,3n2pa)'], ('H1', 'H1', 'He4')),
-    '(n,5n2p)': ReactionInfo({200}, openmc.data.DADZ['(n,5n2p)'], ('H1', 'H1')),
+    '(n,2nd)': ReactionInfo({11}, ('H2',)),
+    '(n,2n)': ReactionInfo(set(chain([16], range(875, 892))), ()),
+    '(n,3n)': ReactionInfo({17}, ()),
+    '(n,na)': ReactionInfo({22}, ('He4',)),
+    '(n,n3a)': ReactionInfo({23}, ('He4', 'He4', 'He4')),
+    '(n,2na)': ReactionInfo({24}, ('He4',)),
+    '(n,3na)': ReactionInfo({25}, ('He4',)),
+    '(n,np)': ReactionInfo({28}, ('H1',)),
+    '(n,n2a)': ReactionInfo({29}, ('He4', 'He4')),
+    '(n,2n2a)': ReactionInfo({30}, ('He4', 'He4')),
+    '(n,nd)': ReactionInfo({32}, ('H2',)),
+    '(n,nt)': ReactionInfo({33}, ('H3',)),
+    '(n,n3He)': ReactionInfo({34}, ('He3',)),
+    '(n,nd2a)': ReactionInfo({35}, ('H2', 'He4', 'He4')),
+    '(n,nt2a)': ReactionInfo({36}, ('H3', 'He4', 'He4')),
+    '(n,4n)': ReactionInfo({37}, ()),
+    '(n,2np)': ReactionInfo({41}, ('H1',)),
+    '(n,3np)': ReactionInfo({42}, ('H1',)),
+    '(n,n2p)': ReactionInfo({44}, ('H1', 'H1')),
+    '(n,npa)': ReactionInfo({45}, ('H1', 'He4')),
+    '(n,gamma)': ReactionInfo({102}, ()),
+    '(n,p)': ReactionInfo(set(chain([103], range(600, 650))), ('H1',)),
+    '(n,d)': ReactionInfo(set(chain([104], range(650, 700))), ('H2',)),
+    '(n,t)': ReactionInfo(set(chain([105], range(700, 750))), ('H3',)),
+    '(n,3He)': ReactionInfo(set(chain([106], range(750, 800))), ('He3',)),
+    '(n,a)': ReactionInfo(set(chain([107], range(800, 850))), ('He4',)),
+    '(n,2a)': ReactionInfo({108}, ('He4', 'He4')),
+    '(n,3a)': ReactionInfo({109}, ('He4', 'He4', 'He4')),
+    '(n,2p)': ReactionInfo({111}, ('H1', 'H1')),
+    '(n,pa)': ReactionInfo({112}, ('H1', 'He4')),
+    '(n,t2a)': ReactionInfo({113}, ('H3', 'He4', 'He4')),
+    '(n,d2a)': ReactionInfo({114}, ('H2', 'He4', 'He4')),
+    '(n,pd)': ReactionInfo({115}, ('H1', 'H2')),
+    '(n,pt)': ReactionInfo({116}, ('H1', 'H3')),
+    '(n,da)': ReactionInfo({117}, ('H2', 'He4')),
+    '(n,5n)': ReactionInfo({152}, ()),
+    '(n,6n)': ReactionInfo({153}, ()),
+    '(n,2nt)': ReactionInfo({154}, ('H3',)),
+    '(n,ta)': ReactionInfo({155}, ('H3', 'He4')),
+    '(n,4np)': ReactionInfo({156}, ('H1',)),
+    '(n,3nd)': ReactionInfo({157}, ('H2',)),
+    '(n,nda)': ReactionInfo({158}, ('H2', 'He4')),
+    '(n,2npa)': ReactionInfo({159}, ('H1', 'He4')),
+    '(n,7n)': ReactionInfo({160}, ()),
+    '(n,8n)': ReactionInfo({161}, ()),
+    '(n,5np)': ReactionInfo({162}, ('H1',)),
+    '(n,6np)': ReactionInfo({163}, ('H1',)),
+    '(n,7np)': ReactionInfo({164}, ('H1',)),
+    '(n,4na)': ReactionInfo({165}, ('He4',)),
+    '(n,5na)': ReactionInfo({166}, ('He4',)),
+    '(n,6na)': ReactionInfo({167}, ('He4',)),
+    '(n,7na)': ReactionInfo({168}, ('He4',)),
+    '(n,4nd)': ReactionInfo({169}, ('H2',)),
+    '(n,5nd)': ReactionInfo({170}, ('H2',)),
+    '(n,6nd)': ReactionInfo({171}, ('H2',)),
+    '(n,3nt)': ReactionInfo({172}, ('H3',)),
+    '(n,4nt)': ReactionInfo({173}, ('H3',)),
+    '(n,5nt)': ReactionInfo({174}, ('H3',)),
+    '(n,6nt)': ReactionInfo({175}, ('H3',)),
+    '(n,2n3He)': ReactionInfo({176}, ('He3',)),
+    '(n,3n3He)': ReactionInfo({177}, ('He3',)),
+    '(n,4n3He)': ReactionInfo({178}, ('He3',)),
+    '(n,3n2p)': ReactionInfo({179}, ('H1', 'H1')),
+    '(n,3n2a)': ReactionInfo({180}, ('He4', 'He4')),
+    '(n,3npa)': ReactionInfo({181}, ('H1', 'He4')),
+    '(n,dt)': ReactionInfo({182}, ('H2', 'H3')),
+    '(n,npd)': ReactionInfo({183}, ('H1', 'H2')),
+    '(n,npt)': ReactionInfo({184}, ('H1', 'H3')),
+    '(n,ndt)': ReactionInfo({185}, ('H2', 'H3')),
+    '(n,np3He)': ReactionInfo({186}, ('H1', 'He3')),
+    '(n,nd3He)': ReactionInfo({187}, ('H2', 'He3')),
+    '(n,nt3He)': ReactionInfo({188}, ('H3', 'He3')),
+    '(n,nta)': ReactionInfo({189}, ('H3', 'He4')),
+    '(n,2n2p)': ReactionInfo({190}, ('H1', 'H1')),
+    '(n,p3He)': ReactionInfo({191}, ('H1', 'He3')),
+    '(n,d3He)': ReactionInfo({192}, ('H2', 'He3')),
+    '(n,3Hea)': ReactionInfo({193}, ('He3', 'He4')),
+    '(n,4n2p)': ReactionInfo({194}, ('H1', 'H1')),
+    '(n,4n2a)': ReactionInfo({195}, ('He4', 'He4')),
+    '(n,4npa)': ReactionInfo({196}, ('H1', 'He4')),
+    '(n,3p)': ReactionInfo({197}, ('H1', 'H1', 'H1')),
+    '(n,n3p)': ReactionInfo({198}, ('H1', 'H1', 'H1')),
+    '(n,3n2pa)': ReactionInfo({199}, ('H1', 'H1', 'He4')),
+    '(n,5n2p)': ReactionInfo({200}, ('H1', 'H1')),
 }
 
 __all__ = ["Chain", "REACTIONS"]
@@ -417,9 +412,9 @@ class Chain:
             if parent in reactions:
                 reactions_available = set(reactions[parent].keys())
                 for name in transmutation_reactions:
-                    mts, changes, _ = REACTIONS[name]
+                    mts = REACTIONS[name].mts
+                    delta_A, delta_Z = openmc.data.DADZ[name]
                     if mts & reactions_available:
-                        delta_A, delta_Z = changes
                         A = data.nuclide['mass_number'] + delta_A
                         Z = data.nuclide['atomic_number'] + delta_Z
                         daughter = '{}{}'.format(openmc.data.ATOMIC_SYMBOL[Z], A)

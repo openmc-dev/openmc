@@ -8,114 +8,109 @@ from io import StringIO
 from itertools import chain
 import math
 import numpy as np
-import os
 import re
 from collections import defaultdict, namedtuple
 from collections.abc import Mapping, Iterable
 from numbers import Real, Integral
 from warnings import warn
 
-from openmc.checkvalue import check_type, check_greater_than
-from openmc.data import gnds_name, zam, DataLibrary
-from openmc.exceptions import DataError
-from .nuclide import FissionYieldDistribution
-
 import lxml.etree as ET
 import scipy.sparse as sp
 
+from openmc.checkvalue import check_type, check_greater_than
+from openmc.data import gnds_name, zam
+from .nuclide import FissionYieldDistribution, Nuclide
 import openmc.data
-from openmc._xml import clean_indentation
-from .nuclide import Nuclide, DecayTuple, ReactionTuple
 
-# tuple of (possible MT values, (dA, dZ), secondaries) where dA is the change in
-# the mass number and dZ is the change in the atomic number
-ReactionInfo = namedtuple('ReactionInfo', ('mts', 'dadz', 'secondaries'))
+
+# tuple of (possible MT values, secondaries)
+ReactionInfo = namedtuple('ReactionInfo', ('mts', 'secondaries'))
 
 REACTIONS = {
-    '(n,2nd)': ReactionInfo({11}, (-3, -1), ('H2',)),
-    '(n,2n)': ReactionInfo(set(chain([16], range(875, 892))), (-1, 0), ()),
-    '(n,3n)': ReactionInfo({17}, (-2, 0), ()),
-    '(n,na)': ReactionInfo({22}, (-4, -2), ('He4',)),
-    '(n,n3a)': ReactionInfo({23}, (-12, -6), ('He4', 'He4', 'He4')),
-    '(n,2na)': ReactionInfo({24}, (-5, -2), ('He4',)),
-    '(n,3na)': ReactionInfo({25}, (-6, -2), ('He4',)),
-    '(n,np)': ReactionInfo({28}, (-1, -1), ('H1',)),
-    '(n,n2a)': ReactionInfo({29}, (-8, -4), ('He4', 'He4')),
-    '(n,2n2a)': ReactionInfo({30}, (-9, -4), ('He4', 'He4')),
-    '(n,nd)': ReactionInfo({32}, (-2, -1), ('H2',)),
-    '(n,nt)': ReactionInfo({33}, (-3, -1), ('H3',)),
-    '(n,n3He)': ReactionInfo({34}, (-3, -2), ('He3',)),
-    '(n,nd2a)': ReactionInfo({35}, (-10, -5), ('H2', 'He4', 'He4')),
-    '(n,nt2a)': ReactionInfo({36}, (-11, -5), ('H3', 'He4', 'He4')),
-    '(n,4n)': ReactionInfo({37}, (-3, 0), ()),
-    '(n,2np)': ReactionInfo({41}, (-2, -1), ('H1',)),
-    '(n,3np)': ReactionInfo({42}, (-3, -1), ('H1',)),
-    '(n,n2p)': ReactionInfo({44}, (-2, -2), ('H1', 'H1')),
-    '(n,npa)': ReactionInfo({45}, (-5, -3), ('H1', 'He4')),
-    '(n,gamma)': ReactionInfo({102}, (1, 0), ()),
-    '(n,p)': ReactionInfo(set(chain([103], range(600, 650))), (0, -1), ('H1',)),
-    '(n,d)': ReactionInfo(set(chain([104], range(650, 700))), (-1, -1), ('H2',)),
-    '(n,t)': ReactionInfo(set(chain([105], range(700, 750))), (-2, -1), ('H3',)),
-    '(n,3He)': ReactionInfo(set(chain([106], range(750, 800))), (-2, -2), ('He3',)),
-    '(n,a)': ReactionInfo(set(chain([107], range(800, 850))), (-3, -2), ('He4',)),
-    '(n,2a)': ReactionInfo({108}, (-7, -4), ('He4', 'He4')),
-    '(n,3a)': ReactionInfo({109}, (-11, -6), ('He4', 'He4', 'He4')),
-    '(n,2p)': ReactionInfo({111}, (-1, -2), ('H1', 'H1')),
-    '(n,pa)': ReactionInfo({112}, (-4, -3), ('H1', 'He4')),
-    '(n,t2a)': ReactionInfo({113}, (-10, -5), ('H3', 'He4', 'He4')),
-    '(n,d2a)': ReactionInfo({114}, (-9, -5), ('H2', 'He4', 'He4')),
-    '(n,pd)': ReactionInfo({115}, (-2, -2), ('H1', 'H2')),
-    '(n,pt)': ReactionInfo({116}, (-3, -2), ('H1', 'H3')),
-    '(n,da)': ReactionInfo({117}, (-5, -3), ('H2', 'He4')),
-    '(n,5n)': ReactionInfo({152}, (-4, 0), ()),
-    '(n,6n)': ReactionInfo({153}, (-5, 0), ()),
-    '(n,2nt)': ReactionInfo({154}, (-4, -1), ('H3',)),
-    '(n,ta)': ReactionInfo({155}, (-6, -3), ('H3', 'He4')),
-    '(n,4np)': ReactionInfo({156}, (-4, -1), ('H1',)),
-    '(n,3nd)': ReactionInfo({157}, (-4, -1), ('H2',)),
-    '(n,nda)': ReactionInfo({158}, (-6, -3), ('H2', 'He4')),
-    '(n,2npa)': ReactionInfo({159}, (-6, -3), ('H1', 'He4')),
-    '(n,7n)': ReactionInfo({160}, (-6, 0), ()),
-    '(n,8n)': ReactionInfo({161}, (-7, 0), ()),
-    '(n,5np)': ReactionInfo({162}, (-5, -1), ('H1',)),
-    '(n,6np)': ReactionInfo({163}, (-6, -1), ('H1',)),
-    '(n,7np)': ReactionInfo({164}, (-7, -1), ('H1',)),
-    '(n,4na)': ReactionInfo({165}, (-7, -2), ('He4',)),
-    '(n,5na)': ReactionInfo({166}, (-8, -2), ('He4',)),
-    '(n,6na)': ReactionInfo({167}, (-9, -2), ('He4',)),
-    '(n,7na)': ReactionInfo({168}, (-10, -2), ('He4',)),
-    '(n,4nd)': ReactionInfo({169}, (-5, -1), ('H2',)),
-    '(n,5nd)': ReactionInfo({170}, (-6, -1), ('H2',)),
-    '(n,6nd)': ReactionInfo({171}, (-7, -1), ('H2',)),
-    '(n,3nt)': ReactionInfo({172}, (-5, -1), ('H3',)),
-    '(n,4nt)': ReactionInfo({173}, (-6, -1), ('H3',)),
-    '(n,5nt)': ReactionInfo({174}, (-7, -1), ('H3',)),
-    '(n,6nt)': ReactionInfo({175}, (-8, -1), ('H3',)),
-    '(n,2n3He)': ReactionInfo({176}, (-4, -2), ('He3',)),
-    '(n,3n3He)': ReactionInfo({177}, (-5, -2), ('He3',)),
-    '(n,4n3He)': ReactionInfo({178}, (-6, -2), ('He3',)),
-    '(n,3n2p)': ReactionInfo({179}, (-4, -2), ('H1', 'H1')),
-    '(n,3n2a)': ReactionInfo({180}, (-10, -4), ('He4', 'He4')),
-    '(n,3npa)': ReactionInfo({181}, (-7, -3), ('H1', 'He4')),
-    '(n,dt)': ReactionInfo({182}, (-4, -2), ('H2', 'H3')),
-    '(n,npd)': ReactionInfo({183}, (-3, -2), ('H1', 'H2')),
-    '(n,npt)': ReactionInfo({184}, (-4, -2), ('H1', 'H3')),
-    '(n,ndt)': ReactionInfo({185}, (-5, -2), ('H2', 'H3')),
-    '(n,np3He)': ReactionInfo({186}, (-4, -3), ('H1', 'He3')),
-    '(n,nd3He)': ReactionInfo({187}, (-5, -3), ('H2', 'He3')),
-    '(n,nt3He)': ReactionInfo({188}, (-6, -3), ('H3', 'He3')),
-    '(n,nta)': ReactionInfo({189}, (-7, -3), ('H3', 'He4')),
-    '(n,2n2p)': ReactionInfo({190}, (-3, -2), ('H1', 'H1')),
-    '(n,p3He)': ReactionInfo({191}, (-4, -3), ('H1', 'He3')),
-    '(n,d3He)': ReactionInfo({192}, (-5, -3), ('H2', 'He3')),
-    '(n,3Hea)': ReactionInfo({193}, (-6, -4), ('He3', 'He4')),
-    '(n,4n2p)': ReactionInfo({194}, (-5, -2), ('H1', 'H1')),
-    '(n,4n2a)': ReactionInfo({195}, (-11, -4), ('He4', 'He4')),
-    '(n,4npa)': ReactionInfo({196}, (-8, -3), ('H1', 'He4')),
-    '(n,3p)': ReactionInfo({197}, (-2, -3), ('H1', 'H1', 'H1')),
-    '(n,n3p)': ReactionInfo({198}, (-3, -3), ('H1', 'H1', 'H1')),
-    '(n,3n2pa)': ReactionInfo({199}, (-8, -4), ('H1', 'H1', 'He4')),
-    '(n,5n2p)': ReactionInfo({200}, (-6, -2), ('H1', 'H1')),
+    '(n,2nd)': ReactionInfo({11}, ('H2',)),
+    '(n,2n)': ReactionInfo(set(chain([16], range(875, 892))), ()),
+    '(n,3n)': ReactionInfo({17}, ()),
+    '(n,na)': ReactionInfo({22}, ('He4',)),
+    '(n,n3a)': ReactionInfo({23}, ('He4', 'He4', 'He4')),
+    '(n,2na)': ReactionInfo({24}, ('He4',)),
+    '(n,3na)': ReactionInfo({25}, ('He4',)),
+    '(n,np)': ReactionInfo({28}, ('H1',)),
+    '(n,n2a)': ReactionInfo({29}, ('He4', 'He4')),
+    '(n,2n2a)': ReactionInfo({30}, ('He4', 'He4')),
+    '(n,nd)': ReactionInfo({32}, ('H2',)),
+    '(n,nt)': ReactionInfo({33}, ('H3',)),
+    '(n,n3He)': ReactionInfo({34}, ('He3',)),
+    '(n,nd2a)': ReactionInfo({35}, ('H2', 'He4', 'He4')),
+    '(n,nt2a)': ReactionInfo({36}, ('H3', 'He4', 'He4')),
+    '(n,4n)': ReactionInfo({37}, ()),
+    '(n,2np)': ReactionInfo({41}, ('H1',)),
+    '(n,3np)': ReactionInfo({42}, ('H1',)),
+    '(n,n2p)': ReactionInfo({44}, ('H1', 'H1')),
+    '(n,npa)': ReactionInfo({45}, ('H1', 'He4')),
+    '(n,gamma)': ReactionInfo({102}, ()),
+    '(n,p)': ReactionInfo(set(chain([103], range(600, 650))), ('H1',)),
+    '(n,d)': ReactionInfo(set(chain([104], range(650, 700))), ('H2',)),
+    '(n,t)': ReactionInfo(set(chain([105], range(700, 750))), ('H3',)),
+    '(n,3He)': ReactionInfo(set(chain([106], range(750, 800))), ('He3',)),
+    '(n,a)': ReactionInfo(set(chain([107], range(800, 850))), ('He4',)),
+    '(n,2a)': ReactionInfo({108}, ('He4', 'He4')),
+    '(n,3a)': ReactionInfo({109}, ('He4', 'He4', 'He4')),
+    '(n,2p)': ReactionInfo({111}, ('H1', 'H1')),
+    '(n,pa)': ReactionInfo({112}, ('H1', 'He4')),
+    '(n,t2a)': ReactionInfo({113}, ('H3', 'He4', 'He4')),
+    '(n,d2a)': ReactionInfo({114}, ('H2', 'He4', 'He4')),
+    '(n,pd)': ReactionInfo({115}, ('H1', 'H2')),
+    '(n,pt)': ReactionInfo({116}, ('H1', 'H3')),
+    '(n,da)': ReactionInfo({117}, ('H2', 'He4')),
+    '(n,5n)': ReactionInfo({152}, ()),
+    '(n,6n)': ReactionInfo({153}, ()),
+    '(n,2nt)': ReactionInfo({154}, ('H3',)),
+    '(n,ta)': ReactionInfo({155}, ('H3', 'He4')),
+    '(n,4np)': ReactionInfo({156}, ('H1',)),
+    '(n,3nd)': ReactionInfo({157}, ('H2',)),
+    '(n,nda)': ReactionInfo({158}, ('H2', 'He4')),
+    '(n,2npa)': ReactionInfo({159}, ('H1', 'He4')),
+    '(n,7n)': ReactionInfo({160}, ()),
+    '(n,8n)': ReactionInfo({161}, ()),
+    '(n,5np)': ReactionInfo({162}, ('H1',)),
+    '(n,6np)': ReactionInfo({163}, ('H1',)),
+    '(n,7np)': ReactionInfo({164}, ('H1',)),
+    '(n,4na)': ReactionInfo({165}, ('He4',)),
+    '(n,5na)': ReactionInfo({166}, ('He4',)),
+    '(n,6na)': ReactionInfo({167}, ('He4',)),
+    '(n,7na)': ReactionInfo({168}, ('He4',)),
+    '(n,4nd)': ReactionInfo({169}, ('H2',)),
+    '(n,5nd)': ReactionInfo({170}, ('H2',)),
+    '(n,6nd)': ReactionInfo({171}, ('H2',)),
+    '(n,3nt)': ReactionInfo({172}, ('H3',)),
+    '(n,4nt)': ReactionInfo({173}, ('H3',)),
+    '(n,5nt)': ReactionInfo({174}, ('H3',)),
+    '(n,6nt)': ReactionInfo({175}, ('H3',)),
+    '(n,2n3He)': ReactionInfo({176}, ('He3',)),
+    '(n,3n3He)': ReactionInfo({177}, ('He3',)),
+    '(n,4n3He)': ReactionInfo({178}, ('He3',)),
+    '(n,3n2p)': ReactionInfo({179}, ('H1', 'H1')),
+    '(n,3n2a)': ReactionInfo({180}, ('He4', 'He4')),
+    '(n,3npa)': ReactionInfo({181}, ('H1', 'He4')),
+    '(n,dt)': ReactionInfo({182}, ('H2', 'H3')),
+    '(n,npd)': ReactionInfo({183}, ('H1', 'H2')),
+    '(n,npt)': ReactionInfo({184}, ('H1', 'H3')),
+    '(n,ndt)': ReactionInfo({185}, ('H2', 'H3')),
+    '(n,np3He)': ReactionInfo({186}, ('H1', 'He3')),
+    '(n,nd3He)': ReactionInfo({187}, ('H2', 'He3')),
+    '(n,nt3He)': ReactionInfo({188}, ('H3', 'He3')),
+    '(n,nta)': ReactionInfo({189}, ('H3', 'He4')),
+    '(n,2n2p)': ReactionInfo({190}, ('H1', 'H1')),
+    '(n,p3He)': ReactionInfo({191}, ('H1', 'He3')),
+    '(n,d3He)': ReactionInfo({192}, ('H2', 'He3')),
+    '(n,3Hea)': ReactionInfo({193}, ('He3', 'He4')),
+    '(n,4n2p)': ReactionInfo({194}, ('H1', 'H1')),
+    '(n,4n2a)': ReactionInfo({195}, ('He4', 'He4')),
+    '(n,4npa)': ReactionInfo({196}, ('H1', 'He4')),
+    '(n,3p)': ReactionInfo({197}, ('H1', 'H1', 'H1')),
+    '(n,n3p)': ReactionInfo({198}, ('H1', 'H1', 'H1')),
+    '(n,3n2pa)': ReactionInfo({199}, ('H1', 'H1', 'He4')),
+    '(n,5n2p)': ReactionInfo({200}, ('H1', 'H1')),
 }
 
 __all__ = ["Chain", "REACTIONS"]
@@ -418,9 +413,9 @@ class Chain:
             if parent in reactions:
                 reactions_available = set(reactions[parent].keys())
                 for name in transmutation_reactions:
-                    mts, changes, _ = REACTIONS[name]
+                    mts = REACTIONS[name].mts
+                    delta_A, delta_Z = openmc.data.DADZ[name]
                     if mts & reactions_available:
-                        delta_A, delta_Z = changes
                         A = data.nuclide['mass_number'] + delta_A
                         Z = data.nuclide['atomic_number'] + delta_Z
                         daughter = '{}{}'.format(openmc.data.ATOMIC_SYMBOL[Z], A)

@@ -142,6 +142,7 @@ class OpenMCOperator(TransportOperator):
 
         if diff_burnable_mats:
             self._differentiate_burnable_mats()
+            self.materials = self.model.materials
 
         # Determine which nuclides have cross section data
         # This nuclides variables contains every nuclides

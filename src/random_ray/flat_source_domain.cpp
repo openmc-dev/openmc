@@ -809,23 +809,16 @@ double FlatSourceDomain::calculate_total_volume_weighted_source_strength()
   return source_strength;
 }
 
-void FlatSourceDomain::convert_fixed_sources(int sampling_source)
+void FlatSourceDomain::convert_fixed_sources()
 {
   // Compute total combined strength of all neutron/photon sources
   double total_strength = 0;
   for (int es = 0; es < model::external_sources.size(); es++) {
-    if (es != sampling_source)
       total_strength += model::external_sources[es]->strength();
   }
 
   // Loop over external sources
   for (int es = 0; es < model::external_sources.size(); es++) {
-
-    // Don't use the random ray sampling source for sampling neutrons
-    if (es == sampling_source) {
-      continue;
-    }
-
     Source* s = model::external_sources[es].get();
     IndependentSource* is = dynamic_cast<IndependentSource*>(s);
     Discrete* energy = dynamic_cast<Discrete*>(is->energy());

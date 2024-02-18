@@ -111,13 +111,6 @@ void validate_random_ray_inputs()
     }
   }
 
-  // Validate solver mode
-  ///////////////////////////////////////////////////////////////////
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    fatal_error(
-      "Invalid run mode. Fixed source not yet supported in random ray mode.");
-  }
-
   // Validate ray source
   ///////////////////////////////////////////////////////////////////
 
@@ -149,6 +142,7 @@ void validate_random_ray_inputs()
   if (id == nullptr) {
     fatal_error("Invalid ray source definition -- only isotropic sources are "
                 "allowed.");
+  }
 
    // Validate fixed sources
   ///////////////////////////////////////////////////////////////////
@@ -244,7 +238,7 @@ void RandomRaySimulation::simulate()
 {
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     // Transfer fixed source user inputs onto random ray source regions
-    domain_.convert_fixed_sources(sampling_source_);
+    domain_.convert_fixed_sources();
     domain_.count_fixed_source_regions();
   }
 

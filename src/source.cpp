@@ -99,15 +99,6 @@ IndependentSource::IndependentSource(pugi::xml_node node)
     } else if (temp_str == "photon") {
       particle_ = ParticleType::photon;
       settings::photon_transport = true;
-<<<<<<< HEAD
-    } else if (temp_str == "random_ray") {
-      if (settings::solver_type != SolverType::RANDOM_RAY) {
-        fatal_error("Random ray particle source type specified but random ray "
-                    "mode not set.");
-      }
-      particle_ = ParticleType::random_ray;
-=======
->>>>>>> random_ray_merge
     } else {
       fatal_error(std::string("Unknown source particle type: ") + temp_str);
     }

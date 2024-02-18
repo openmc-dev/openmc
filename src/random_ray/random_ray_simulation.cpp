@@ -118,8 +118,8 @@ void validate_random_ray_inputs()
   IndependentSource* is =
     dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get());
   if (is == nullptr) {
-    fatal_error(
-      "Invalid ray source definition. Ray source must provided and be of type IndependentSource.");
+    fatal_error("Invalid ray source definition. Ray source must provided and "
+                "be of type IndependentSource.");
   }
 
   // Check for box source
@@ -132,8 +132,9 @@ void validate_random_ray_inputs()
 
   // Check that box source is not restricted to fissionable areas
   if (sb->only_fissionable()) {
-    fatal_error("Invalid ray source definition -- fissionable spatial distribution "
-                "not allowed.");
+    fatal_error(
+      "Invalid ray source definition -- fissionable spatial distribution "
+      "not allowed.");
   }
 
   // Check for isotropic source
@@ -148,8 +149,8 @@ void validate_random_ray_inputs()
   ///////////////////////////////////////////////////////////////////
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     if (model::external_sources.size() < 1) {
-      fatal_error(
-        "Must provide a particle source (in addition to ray source) in fixed source random ray mode.");
+      fatal_error("Must provide a particle source (in addition to ray source) "
+                  "in fixed source random ray mode.");
     }
 
     for (int i = 0; i < model::external_sources.size(); i++) {
@@ -159,16 +160,17 @@ void validate_random_ray_inputs()
       IndependentSource* is = dynamic_cast<IndependentSource*>(s);
 
       if (is == nullptr) {
-        fatal_error(
-          "Only IndependentSource fixed source types are allowed in random ray mode");
+        fatal_error("Only IndependentSource fixed source types are allowed in "
+                    "random ray mode");
       }
 
       // Check for isotropic source
       UnitSphereDistribution* angle_dist = is->angle();
       Isotropic* id = dynamic_cast<Isotropic*>(angle_dist);
       if (id == nullptr) {
-        fatal_error("Invalid source definition -- only isotropic fixed sources are "
-                    "allowed in random ray mode.");
+        fatal_error(
+          "Invalid source definition -- only isotropic fixed sources are "
+          "allowed in random ray mode.");
       }
 
       // Validate that a domain ID was specified

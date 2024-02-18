@@ -814,7 +814,7 @@ void FlatSourceDomain::convert_fixed_sources()
   // Compute total combined strength of all neutron/photon sources
   double total_strength = 0;
   for (int es = 0; es < model::external_sources.size(); es++) {
-      total_strength += model::external_sources[es]->strength();
+    total_strength += model::external_sources[es]->strength();
   }
 
   // Loop over external sources

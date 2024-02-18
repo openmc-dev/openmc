@@ -258,23 +258,18 @@ When defining a :class:`openmc.stats.Discrete` object, note that the ``x`` field
 
 ::
     
+    # Define geometry, etc.
+    ...
+    source_cell = openmc.Cell(fill=source_mat, name='cell where fixed source will be')
+    ...
     # Define physical neutron fixed source
-    ...
-    source_cell = openmc.Cell(fill=source_mat, name='infinite source region')
-    ...
     energy_points = [1.0e-2, 1.0e1]
     strengths = [0.25, 0.75]
     energy_distribution = openmc.stats.Discrete(x=energy_points,p=strengths)
-
     neutron_source = openmc.IndependentSource(energy=energy_distribution, domains=[source_cell], strength=1.0)
 
-    # Define random ray sampling source
-    ...
-    uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=False)
-    ray_source = openmc.IndependentSource(space=uniform_dist, particle="random_ray")
-
     # Add fixed source and ray sampling source to settings file
-    settings.source = [neutron_source, ray_source]
+    settings.source = [neutron_source]
 
 ---------------------------------------
 Putting it All Together: Example Inputs
@@ -357,7 +352,7 @@ An example of a settings definition for a fixed source random ray solve is given
 
     # Geometry and MGXS material definition of 2x2 lattice (not shown)
     pitch = 1.26
-    source_cell = openmc.Cell(fill=source_mat, name='infinite source region')
+    source_cell = openmc.Cell(fill=source_mat, name='cell where fixed source will be')
     ebins = [1e-5, 1e-1, 20.0e6]
     ...
 
@@ -367,16 +362,15 @@ An example of a settings definition for a fixed source random ray solve is given
     settings.batches = 1200
     settings.inactive = 600
     settings.particles = 2000
-    settings.solver_type = 'random ray'
     settings.run_mode = 'fixed source'
-    settings.random_ray_distance_inactive = 40.0
-    settings.random_ray_distance_active = 400.0
+    settings.random_ray['distance_inactive'] = 40.0
+    settings.random_ray['distance_active'] = 400.0
 
     # Create an initial uniform spatial source distribution for sampling rays
     lower_left  = (-pitch, -pitch, -pitch)
     upper_right = ( pitch,  pitch,  pitch)
-    uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=False)
-    ray_source = openmc.IndependentSource(space=uniform_dist, particle="random_ray")
+    uniform_dist = openmc.stats.Box(lower_left, upper_right)
+    settings.random_ray['ray_source'] = openmc.IndependentSource(space=uniform_dist)
 
     # Define physical neutron fixed source
     energy_points = [1.0e-2, 1.0e1]
@@ -385,7 +379,7 @@ An example of a settings definition for a fixed source random ray solve is given
     neutron_source = openmc.IndependentSource(energy=energy_distribution, domains=[source_cell], strength=1.0)
 
     # Add fixed source and ray sampling source to settings file
-    settings.source = [neutron_source, ray_source]
+    settings.source = [neutron_source]
 
     settings.export_to_xml()
 
@@ -405,7 +399,6 @@ An example of a settings definition for a fixed source random ray solve is given
     tally = openmc.Tally()
     tally.filters = [mesh_filter, energy_filter]
     tally.scores = ['flux']
-    tally.estimator = 'analog'
 
     # Instantiate a Tallies collection and export to XML
     tallies = openmc.Tallies([tally])

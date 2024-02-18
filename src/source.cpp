@@ -99,12 +99,15 @@ IndependentSource::IndependentSource(pugi::xml_node node)
     } else if (temp_str == "photon") {
       particle_ = ParticleType::photon;
       settings::photon_transport = true;
+<<<<<<< HEAD
     } else if (temp_str == "random_ray") {
       if (settings::solver_type != SolverType::RANDOM_RAY) {
         fatal_error("Random ray particle source type specified but random ray "
                     "mode not set.");
       }
       particle_ = ParticleType::random_ray;
+=======
+>>>>>>> random_ray_merge
     } else {
       fatal_error(std::string("Unknown source particle type: ") + temp_str);
     }
@@ -250,8 +253,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
   site.u = angle_->sample(seed);
 
   // Sample energy and time for neutron and photon sources
-  if (particle_ != ParticleType::random_ray) {
-
+  if (settings::solver_type != SolverType::RANDOM_RAY) {
     // Check for monoenergetic source above maximum particle energy
     auto p = static_cast<int>(particle_);
     auto energy_ptr = dynamic_cast<Discrete*>(energy_.get());

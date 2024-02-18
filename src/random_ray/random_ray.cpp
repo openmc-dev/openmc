@@ -66,17 +66,20 @@ inline float cjosey_exponential(const float tau)
 // RandomRay implementation
 //==============================================================================
 
+// Static Variable Declarations
+double RandomRay::distance_inactive_;
+double RandomRay::distance_active_;
+unique_ptr<Source> RandomRay::ray_source_;
+
 RandomRay::RandomRay()
   : negroups_(data::mg.num_energy_groups_),
     angular_flux_(data::mg.num_energy_groups_),
     delta_psi_(data::mg.num_energy_groups_)
 {}
 
-RandomRay::RandomRay(
-  uint64_t ray_id, int sampling_source, FlatSourceDomain* domain)
-  : RandomRay()
+RandomRay::RandomRay(uint64_t ray_id, FlatSourceDomain* domain) : RandomRay()
 {
-  initialize_ray(ray_id, sampling_source, domain);
+  initialize_ray(ray_id, domain);
 }
 
 // Transports ray until termination criteria are met
@@ -108,9 +111,8 @@ void RandomRay::event_advance_ray()
 
   // Check for final termination
   if (is_active_) {
-    if (distance_travelled_ + distance >=
-        settings::random_ray_distance_active) {
-      distance = settings::random_ray_distance_active - distance_travelled_;
+    if (distance_travelled_ + distance >= distance_active_) {
+      distance_active_ - distance_travelled_;
       wgt() = 0.0;
     }
     distance_travelled_ += distance;
@@ -119,18 +121,16 @@ void RandomRay::event_advance_ray()
 
   // Check for end of inactive region (dead zone)
   if (!is_active_) {
-    if (distance_travelled_ + distance >=
-        settings::random_ray_distance_inactive) {
+    if (distance_travelled_ + distance >= distance_inactive_) {
       is_active_ = true;
-      double distance_dead =
-        settings::random_ray_distance_inactive - distance_travelled_;
+      double distance_dead = distance_inactive_ - distance_travelled_;
       attenuate_flux(distance_dead, false);
 
       double distance_alive = distance - distance_dead;
 
       // Ensure we haven't travelled past the active phase as well
-      if (distance_alive > settings::random_ray_distance_active) {
-        distance_alive = settings::random_ray_distance_active;
+      if (distance_alive > distance_active_) {
+        distance_alive = distance_active_;
         wgt() = 0.0;
       }
       attenuate_flux(distance_alive, true);
@@ -232,15 +232,14 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
   }
 }
 
-void RandomRay::initialize_ray(
-  uint64_t ray_id, int sampling_source, FlatSourceDomain* domain)
+void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
 {
   domain_ = domain;
 
   // Reset particle event counter
   n_event() = 0;
 
-  if (settings::random_ray_distance_inactive <= 0.0)
+  if (distance_inactive_ <= 0.0)
     is_active_ = true;
   else
     is_active_ = false;
@@ -257,8 +256,7 @@ void RandomRay::initialize_ray(
   stream() = STREAM_TRACKING;
 
   // Sample from ray source distribution
-  SourceSite site {
-    model::external_sources[sampling_source]->sample(current_seed())};
+  SourceSite site {ray_source_->sample(current_seed())};
   site.E = lower_bound_index(
     data::mg.rev_energy_bins_.begin(), data::mg.rev_energy_bins_.end(), site.E);
   site.E = negroups_ - site.E - 1.;

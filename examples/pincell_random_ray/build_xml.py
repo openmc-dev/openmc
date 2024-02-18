@@ -158,16 +158,16 @@ settings.energy_mode = "multi-group"
 settings.batches = 600
 settings.inactive = 300
 settings.particles = 50
-settings.solver_type = 'random ray'
-settings.random_ray_distance_inactive = 40.0
-settings.random_ray_distance_active = 400.0
 
 # Create an initial uniform spatial source distribution for sampling rays.
 # Note that this must be uniform in space and angle.
 lower_left = (-pitch/2, -pitch/2, -1)
 upper_right = (pitch/2, pitch/2, 1)
-uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=False)
-settings.source = openmc.IndependentSource(space=uniform_dist, particle="random_ray")
+uniform_dist = openmc.stats.Box(lower_left, upper_right)
+settings.random_ray['ray_source'] = openmc.IndependentSource(space=uniform_dist)
+settings.random_ray['distance_inactive'] = 40.0
+settings.random_ray['distance_active'] = 400.0
+
 settings.export_to_xml()
 
 ###############################################################################
@@ -190,7 +190,6 @@ energy_filter = openmc.EnergyFilter(ebins)
 tally = openmc.Tally(name="Mesh and Energy tally")
 tally.filters = [mesh_filter, energy_filter]
 tally.scores = ['flux', 'fission', 'nu-fission']
-tally.estimator = 'analog'
 
 # Instantiate a Tallies collection and export to XML
 tallies = openmc.Tallies([tally])

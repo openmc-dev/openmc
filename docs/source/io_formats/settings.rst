@@ -398,23 +398,32 @@ or sub-elements and can be set to either "false" or "true".
 
   .. note:: This element is not used in the multi-group :ref:`energy_mode`.
 
-----------------------------------------
-``<random_ray_distance_active>`` Element
-----------------------------------------
+------------------------
+``<random_ray>`` Element
+------------------------
 
-The ``<random_ray_distance_active>`` element is used to set the active distance
-each ray will travel in random ray mode.
+The ``<random_ray>`` element enables random ray mode and contains
+a number of settings relevant to the solver. Tips for selecting these parameters
+can be found in the :ref:`random ray user guide <random_ray>`.
 
-  *Default*: None
+  :distance_inactive:
+    The inactive ray length (dead zone length).
 
-------------------------------------------
-``<random_ray_distance_inactive>`` Element
-------------------------------------------
+    *Default*: None
 
-The ``<random_ray_distance_inactive>`` element is used to set the inactive
-distance (dead zone length) each ray will travel in random ray mode.
+  :distance_active:
+    The active ray length.
 
-  *Default*: None
+    *Default*: None
+
+  :source:
+    Specifies the starting ray distribution, and follows the format for
+    :ref:`source_element`. It must be uniform in space and angle and cover
+    the full domain. It does not represent a physical neutron or photon
+    source -- it is only used to sample integrating ray starting locations
+    and directions.
+
+    *Default*: None
 
 ----------------------------------
 ``<resonance_scattering>`` Element
@@ -490,16 +499,6 @@ The ``seed`` element is used to set the seed used for the linear congruential
 pseudo-random number generator.
 
   *Default*: 1
-
--------------------------
-``<solver_type>`` Element
--------------------------
-
-The ``solver_type`` element is used to select the transport method used by the
-simulation. This element has no attributes or sub-elements and can be set to
-"monte carlo" or "random ray".
-
-  *Default*: monte carlo
 
 .. _source_element:
 
@@ -702,12 +701,6 @@ attributes/sub-elements:
     For mesh sources, this sub-element specifies the source for an individual
     mesh element and follows the format for :ref:`source_element`. The number of
     ``<source>`` sub-elements should correspond to the number of mesh elements.
-  
-  :random_ray_source:
-    An element flagging this source as the sampling basis for ray starting
-    points and angles if using the random ray solver mode.
-
-    *Default*: false
 
 .. _univariate:
 

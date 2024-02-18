@@ -853,8 +853,6 @@ std::string particle_type_to_str(ParticleType type)
     return "electron";
   case ParticleType::positron:
     return "positron";
-  case ParticleType::random_ray:
-    return "random_ray";
   }
   UNREACHABLE();
 }
@@ -869,8 +867,6 @@ ParticleType str_to_particle_type(std::string str)
     return ParticleType::electron;
   } else if (str == "positron") {
     return ParticleType::positron;
-  } else if (str == "random_ray") {
-    return ParticleType::random_ray;
   } else {
     throw std::invalid_argument {fmt::format("Invalid particle name: {}", str)};
   }

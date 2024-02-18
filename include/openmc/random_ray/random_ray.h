@@ -1,8 +1,9 @@
-#ifndef OPENMC_RANDOM_RAY_RAY_H
-#define OPENMC_RANDOM_RAY_RAY_H
+#ifndef OPENMC_RANDOM_RAY_H
+#define OPENMC_RANDOM_RAY_H
 
 #include "openmc/particle.h"
 #include "openmc/random_ray/flat_source_domain.h"
+#include "openmc/source.h"
 
 namespace openmc {
 
@@ -11,20 +12,26 @@ namespace openmc {
  * through the model. It is a small extension of the Particle class.
  */
 
+// TODO: Inherit from GeometryState instead of Particle
 class RandomRay : public Particle {
 public:
   //----------------------------------------------------------------------------
   // Constructors
   RandomRay();
-  RandomRay(uint64_t ray_id, int sampling_source, FlatSourceDomain* domain);
+  RandomRay(uint64_t ray_id, FlatSourceDomain* domain);
 
   //----------------------------------------------------------------------------
   // Methods
   void event_advance_ray();
   void attenuate_flux(double distance, bool is_active);
-  void initialize_ray(
-    uint64_t ray_id, int sampling_source, FlatSourceDomain* domain);
+  void initialize_ray(uint64_t ray_id, FlatSourceDomain* domain);
   uint64_t transport_history_based_single_ray();
+
+  //----------------------------------------------------------------------------
+  // Static data members
+  static double distance_inactive_;      // Inactive (dead zone) ray length
+  static double distance_active_;        // Active ray length
+  static unique_ptr<Source> ray_source_; // Starting source for ray sampling
 
   //----------------------------------------------------------------------------
   // Data members
@@ -40,4 +47,4 @@ public:
 
 } // namespace openmc
 
-#endif // OPENMC_RANDOM_RAY_RAY_H
+#endif // OPENMC_RANDOM_RAY_H

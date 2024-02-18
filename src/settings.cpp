@@ -24,6 +24,7 @@
 #include "openmc/output.h"
 #include "openmc/plot.h"
 #include "openmc/random_lcg.h"
+#include "openmc/random_ray/random_ray.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"
 #include "openmc/string_utils.h"
@@ -130,10 +131,6 @@ int verbosity {7};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
 
-// Random Ray variables
-double random_ray_distance_active;
-double random_ray_distance_inactive;
-
 } // namespace settings
 
 //==============================================================================
@@ -234,24 +231,33 @@ void get_run_parameters(pugi::xml_node node_base)
 
   // Random ray variables
   if (solver_type == SolverType::RANDOM_RAY) {
-    if (check_for_node(node_base, "random_ray_distance_active")) {
-      random_ray_distance_active =
-        std::stod(get_node_value(node_base, "random_ray_distance_active"));
-      if (random_ray_distance_active <= 0.0) {
+    xml_node random_ray_node = node_base.child("random_ray");
+    if (check_for_node(random_ray_node, "distance_active")) {
+      RandomRay::distance_active_ =
+        std::stod(get_node_value(random_ray_node, "distance_active"));
+      if (RandomRay::distance_active_ <= 0.0) {
         fatal_error("Random ray active distance must be greater than 0");
       }
     } else {
       fatal_error("Specify random ray active distance in settings XML");
     }
-    if (check_for_node(node_base, "random_ray_distance_inactive")) {
-      random_ray_distance_inactive =
-        std::stod(get_node_value(node_base, "random_ray_distance_inactive"));
-      if (random_ray_distance_inactive < 0) {
+    if (check_for_node(random_ray_node, "distance_inactive")) {
+      RandomRay::distance_inactive_ =
+        std::stod(get_node_value(random_ray_node, "distance_inactive"));
+      if (RandomRay::distance_inactive_ < 0) {
         fatal_error(
           "Random ray inactive distance must be greater than or equal to 0");
       }
     } else {
       fatal_error("Specify random ray inactive distance in settings XML");
+    }
+    if (check_for_node(random_ray_node, "source")) {
+      xml_node source_node = random_ray_node.child("source");
+      // Get point to list of <source> elements and make sure there is at least
+      // one
+      RandomRay::ray_source_ = Source::create(source_node);
+    } else {
+      fatal_error("Specify random ray source in settings XML");
     }
   }
 }
@@ -411,15 +417,11 @@ void read_settings_xml(pugi::xml_node root)
   }
 
   // Check solver type
-  if (check_for_node(root, "solver_type")) {
-    std::string temp_str = get_node_value(root, "solver_type", true, true);
-    if (temp_str == "monte carlo") {
-      solver_type = SolverType::MONTE_CARLO;
-    } else if (temp_str == "random ray") {
-      solver_type = SolverType::RANDOM_RAY;
-    } else {
-      fatal_error("Unrecognized solver type: " + temp_str + ".");
-    }
+  if (check_for_node(root, "random_ray")) {
+    solver_type = SolverType::RANDOM_RAY;
+    if (run_CE)
+      fatal_error("multi-group energy mode must be specified in settings XML "
+                  "when using the random ray solver.");
   }
 
   if (run_mode == RunMode::EIGENVALUE || run_mode == RunMode::FIXED_SOURCE) {

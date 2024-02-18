@@ -1,3 +1,4 @@
+from __future__ import annotations
 import typing
 import warnings
 from abc import ABC, abstractmethod
@@ -35,6 +36,9 @@ class MeshBase(IDManagerMixin, ABC):
         Unique identifier for the mesh
     name : str
         Name of the mesh
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh as defined by the upper-right and
+        lower-left coordinates.
 
     """
 
@@ -57,6 +61,10 @@ class MeshBase(IDManagerMixin, ABC):
             self._name = name
         else:
             self._name = ''
+
+    @property
+    def bounding_box(self) -> openmc.BoundingBox:
+        return openmc.BoundingBox(self.lower_left, self.upper_right)
 
     def __repr__(self):
         string = type(self).__name__ + '\n'
@@ -507,9 +515,9 @@ class RegularMesh(StructuredMesh):
     upper_right : Iterable of float
         The upper-right corner of the structured mesh. If only two coordinate
         are given, it is assumed that the mesh is an x-y mesh.
-    bounding_box: openmc.BoundingBox
-        Axis-aligned bounding box of the cell defined by the upper-right and lower-
-        left coordinates
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh as defined by the upper-right and
+        lower-left coordinates.
     width : Iterable of float
         The width of mesh cells in each direction.
     indices : Iterable of tuple
@@ -659,12 +667,6 @@ class RegularMesh(StructuredMesh):
             x0, = self.lower_left
             x1, = self.upper_right
             return (np.linspace(x0, x1, nx + 1),)
-
-    @property
-    def bounding_box(self):
-        return openmc.BoundingBox(
-            np.array(self.lower_left), np.array(self.upper_right)
-        )
 
     def __repr__(self):
         string = super().__repr__()
@@ -1005,6 +1007,9 @@ class RectilinearMesh(StructuredMesh):
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh as defined by the upper-right and
+        lower-left coordinates.
 
     """
 
@@ -1055,6 +1060,14 @@ class RectilinearMesh(StructuredMesh):
     @property
     def _grids(self):
         return (self.x_grid, self.y_grid, self.z_grid)
+
+    @property
+    def lower_left(self):
+        return np.array([self.x_grid[0], self.y_grid[0], self.z_grid[0]])
+
+    @property
+    def upper_right(self):
+        return np.array([self.x_grid[-1], self.y_grid[-1], self.z_grid[-1]])
 
     @property
     def volumes(self):
@@ -1222,9 +1235,9 @@ class CylindricalMesh(StructuredMesh):
     upper_right : Iterable of float
         The upper-right corner of the structured mesh. If only two coordinate
         are given, it is assumed that the mesh is an x-y mesh.
-    bounding_box: openmc.OpenMC
-        Axis-aligned cartesian bounding box of cell defined by upper-right and lower-
-        left coordinates
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh as defined by the upper-right and
+        lower-left coordinates.
 
     """
 
@@ -1320,10 +1333,6 @@ class CylindricalMesh(StructuredMesh):
             self.origin[1] + self.r_grid[-1],
             self.origin[2] + self.z_grid[-1]
         ))
-
-    @property
-    def bounding_box(self):
-        return openmc.BoundingBox(self.lower_left, self.upper_right)
 
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'
@@ -1666,8 +1675,8 @@ class SphericalMesh(StructuredMesh):
         The upper-right corner of the structured mesh. If only two coordinate
         are given, it is assumed that the mesh is an x-y mesh.
     bounding_box : openmc.BoundingBox
-        Axis-aligned bounding box of the cell defined by the upper-right and lower-
-        left coordinates
+        Axis-aligned bounding box of the mesh as defined by the upper-right and
+        lower-left coordinates.
 
     """
 
@@ -1757,10 +1766,6 @@ class SphericalMesh(StructuredMesh):
     def upper_right(self):
         r = self.r_grid[-1]
         return np.array((self.origin[0] + r, self.origin[1] + r, self.origin[2] + r))
-
-    @property
-    def bounding_box(self):
-        return openmc.BoundingBox(self.lower_left, self.upper_right)
 
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'
@@ -1943,8 +1948,8 @@ class UnstructuredMesh(MeshBase):
     library : {'moab', 'libmesh'}
         Mesh library used for the unstructured mesh tally
     output : bool
-        Indicates whether or not automatic tally output should
-        be generated for this mesh
+        Indicates whether or not automatic tally output should be generated for
+        this mesh
     volumes : Iterable of float
         Volumes of the unstructured mesh elements
     centroids : numpy.ndarray
@@ -1964,6 +1969,10 @@ class UnstructuredMesh(MeshBase):
         .. versionadded:: 0.13.1
     total_volume : float
         Volume of the unstructured mesh in total
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh as defined by the upper-right and
+        lower-left coordinates.
+
     """
 
     _UNSUPPORTED_ELEM = -1
@@ -2095,6 +2104,14 @@ class UnstructuredMesh(MeshBase):
             string += '{: <16}=\t{}\n'.format('\tLength multiplier',
                                               self.length_multiplier)
         return string
+
+    @property
+    def lower_left(self):
+        return self.vertices.min(axis=0)
+
+    @property
+    def upper_right(self):
+        return self.vertices.max(axis=0)
 
     def centroid(self, bin: int):
         """Return the vertex averaged centroid of an element

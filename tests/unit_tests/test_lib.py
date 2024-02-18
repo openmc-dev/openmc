@@ -566,6 +566,8 @@ def test_regular_mesh(lib_init):
     assert mesh.upper_right == pytest.approx(ur)
     assert mesh.width == pytest.approx(width)
 
+    np.testing.assert_allclose(mesh.volumes, 1.0)
+
     meshes = openmc.lib.meshes
     assert isinstance(meshes, Mapping)
     assert len(meshes) == 1
@@ -605,6 +607,31 @@ def test_regular_mesh(lib_init):
         assert sum(f[1] for f in elem_vols) == pytest.approx(1.26 * 1.26, 1e-2)
 
 
+def test_regular_mesh_get_plot_bins(lib_init):
+    mesh: openmc.lib.RegularMesh = openmc.lib.meshes[2]
+    mesh.dimension = (2, 2, 1)
+    mesh.set_parameters(lower_left=(-1.0, -1.0, -0.5),
+                        upper_right=(1.0, 1.0, 0.5))
+
+    # Get bins for a plot view covering only a single mesh bin
+    mesh_bins = mesh.get_plot_bins((-0.5, -0.5, 0.), (0.1, 0.1), 'xy', (20, 20))
+    assert (mesh_bins == 0).all()
+    mesh_bins = mesh.get_plot_bins((0.5, 0.5, 0.), (0.1, 0.1), 'xy', (20, 20))
+    assert (mesh_bins == 3).all()
+
+    # Get bins for a plot view covering all mesh bins. Note that the y direction
+    # (first dimension) is flipped for plotting purposes
+    mesh_bins = mesh.get_plot_bins((0., 0., 0.), (2., 2.), 'xy', (20, 20))
+    assert (mesh_bins[:10, :10] == 2).all()
+    assert (mesh_bins[:10, 10:] == 3).all()
+    assert (mesh_bins[10:, :10] == 0).all()
+    assert (mesh_bins[10:, 10:] == 1).all()
+
+    # Get bins for a plot view outside of the mesh
+    mesh_bins = mesh.get_plot_bins((100., 100., 0.), (2., 2.), 'xy', (20, 20))
+    assert (mesh_bins == -1).all()
+
+
 def test_rectilinear_mesh(lib_init):
     mesh = openmc.lib.RectilinearMesh()
     x_grid = [-10., 0., 10.]
@@ -618,6 +645,8 @@ def test_rectilinear_mesh(lib_init):
         for j, diff_y in enumerate(np.diff(y_grid)):
             for k, diff_z in enumerate(np.diff(z_grid)):
                 assert np.all(mesh.width[i, j, k, :] == (10, 10, 10))
+
+    np.testing.assert_allclose(mesh.volumes, 1000.0)
 
     with pytest.raises(exc.AllocationError):
         mesh2 = openmc.lib.RectilinearMesh(mesh.id)
@@ -662,6 +691,9 @@ def test_cylindrical_mesh(lib_init):
         for j, _ in enumerate(np.diff(phi_grid)):
             for k, _ in enumerate(np.diff(z_grid)):
                 assert np.allclose(mesh.width[i, j, k, :], (5, deg2rad(10), 10))
+
+    np.testing.assert_allclose(mesh.volumes[::2], 10/360 * pi * 5**2 * 10)
+    np.testing.assert_allclose(mesh.volumes[1::2], 10/360 * pi * (10**2 - 5**2) * 10)
 
     with pytest.raises(exc.AllocationError):
         mesh2 = openmc.lib.CylindricalMesh(mesh.id)
@@ -708,6 +740,13 @@ def test_spherical_mesh(lib_init):
         for j, _ in enumerate(np.diff(theta_grid)):
             for k, _ in enumerate(np.diff(phi_grid)):
                 assert np.allclose(mesh.width[i, j, k, :], (5, deg2rad(10), deg2rad(10)))
+
+    dtheta = lambda d1, d2: np.cos(deg2rad(d1)) - np.cos(deg2rad(d2))
+    f = 1/3 * deg2rad(10.)
+    np.testing.assert_allclose(mesh.volumes[::4],  f * 5**3 * dtheta(0., 10.))
+    np.testing.assert_allclose(mesh.volumes[1::4], f * (10**3 - 5**3) * dtheta(0., 10.))
+    np.testing.assert_allclose(mesh.volumes[2::4], f * 5**3 * dtheta(10., 20.))
+    np.testing.assert_allclose(mesh.volumes[3::4], f * (10**3 - 5**3) * dtheta(10., 20.))
 
     with pytest.raises(exc.AllocationError):
         mesh2 = openmc.lib.SphericalMesh(mesh.id)

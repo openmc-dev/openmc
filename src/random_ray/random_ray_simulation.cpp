@@ -119,7 +119,7 @@ void validate_random_ray_inputs()
     dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get());
   if (is == nullptr) {
     fatal_error(
-      "Invalid ray source definition. Ray source must be IndependentSource.");
+      "Invalid ray source definition. Ray source must provided and be of type IndependentSource.");
   }
 
   // Check for box source
@@ -144,41 +144,47 @@ void validate_random_ray_inputs()
                 "allowed.");
   }
 
-   // Validate fixed sources
+  // Validate fixed sources
   ///////////////////////////////////////////////////////////////////
-
-  for (int i = 0; i < model::external_sources.size(); i++) {
-    Source* s = model::external_sources[i].get();
-
-    // Check for independent source
-    IndependentSource* is = dynamic_cast<IndependentSource*>(s);
-
-    if (is == nullptr) {
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    if (model::external_sources.size() < 1) {
       fatal_error(
-        "Only IndependentSource fixed source types are allowed in random ray mode");
+        "Must provide a particle source (in addition to ray source) in fixed source random ray mode.");
     }
 
-    // Check for isotropic source
-    UnitSphereDistribution* angle_dist = is->angle();
-    Isotropic* id = dynamic_cast<Isotropic*>(angle_dist);
-    if (id == nullptr) {
-      fatal_error("Invalid source definition -- only isotropic fixed sources are "
-                  "allowed in random ray mode.");
-    }
+    for (int i = 0; i < model::external_sources.size(); i++) {
+      Source* s = model::external_sources[i].get();
 
-    // Validate that a domain ID was specified
-    if (is->domain_ids().size() == 0) {
-      fatal_error("Fixed sources must be specified by domain "
-                  "id (cell, material, or universe) in random ray mode.");
-    }
+      // Check for independent source
+      IndependentSource* is = dynamic_cast<IndependentSource*>(s);
 
-    // Check that a discrete energy distribution was used
-    Distribution* d = is->energy();
-    Discrete* dd = dynamic_cast<Discrete*>(d);
-    if (dd == nullptr) {
-      fatal_error(
-        "Only discrete (multigroup) energy distributions are allowed for "
-        "fixed sources in random ray mode.");
+      if (is == nullptr) {
+        fatal_error(
+          "Only IndependentSource fixed source types are allowed in random ray mode");
+      }
+
+      // Check for isotropic source
+      UnitSphereDistribution* angle_dist = is->angle();
+      Isotropic* id = dynamic_cast<Isotropic*>(angle_dist);
+      if (id == nullptr) {
+        fatal_error("Invalid source definition -- only isotropic fixed sources are "
+                    "allowed in random ray mode.");
+      }
+
+      // Validate that a domain ID was specified
+      if (is->domain_ids().size() == 0) {
+        fatal_error("Fixed sources must be specified by domain "
+                    "id (cell, material, or universe) in random ray mode.");
+      }
+
+      // Check that a discrete energy distribution was used
+      Distribution* d = is->energy();
+      Discrete* dd = dynamic_cast<Discrete*>(d);
+      if (dd == nullptr) {
+        fatal_error(
+          "Only discrete (multigroup) energy distributions are allowed for "
+          "fixed sources in random ray mode.");
+      }
     }
   }
 

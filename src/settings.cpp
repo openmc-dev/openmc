@@ -517,8 +517,8 @@ void read_settings_xml(pugi::xml_node root)
   }
 
   // If no source specified, default to isotropic point source at origin with
-  // Watt spectrum
-  if (model::external_sources.empty()) {
+  // Watt spectrum. No default source is needed in random ray mode.
+  if (model::external_sources.empty() && settings::solver_type != SolverType::RANDOM_RAY) {
     double T[] {0.0};
     double p[] {1.0};
     model::external_sources.push_back(make_unique<IndependentSource>(

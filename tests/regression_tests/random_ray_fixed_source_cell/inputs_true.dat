@@ -147,15 +147,16 @@
       <domain_type>cell</domain_type>
       <domain_ids>4</domain_ids>
     </source>
-    <source particle="random_ray" strength="1.0" type="independent">
-      <space type="box">
-        <parameters>0.0 0.0 0.0 60.0 100.0 60.0</parameters>
-      </space>
-    </source>
     <energy_mode>multi-group</energy_mode>
-    <solver_type>random ray</solver_type>
-    <random_ray_distance_active>400.0</random_ray_distance_active>
-    <random_ray_distance_inactive>100.0</random_ray_distance_inactive>
+    <random_ray>
+      <distance_active>400.0</distance_active>
+      <distance_inactive>100.0</distance_inactive>
+      <source particle="neutron" strength="1.0" type="independent">
+        <space type="box">
+          <parameters>0.0 0.0 0.0 60.0 100.0 60.0</parameters>
+        </space>
+      </source>
+    </random_ray>
   </settings>
   <tallies>
     <mesh id="1">

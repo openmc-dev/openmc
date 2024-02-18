@@ -16,7 +16,7 @@ To utilize the random ray solver, the ``settings.random_ray`` dictionary must be
 Batches
 -------
 
-In Monte Carlo, inactive batches are used to let the fission source develop into a stationary distribution before active batches are performed that actually accumulate statistics. While this is true of random ray as well, in the random ray mode the inactive batches are also used to let the scattering source develop. Monte Carlo fully represents the scattering source within each iteration (by its nature of fully simulating particles from birth to death through any number of physical scattering events), whereas the scattering source in random ray can only represent as many scattering events as batches have been completed. E.g., by iteration 10 in random ray, the scattering source only captures the behavior of neutrons through their 10th scatter. By iteration 500 in random ray, the scattering source only captures the behavior of neutrons through their 100th scatter. Thus, while inactive batches are only required in an eigenvalue solve in Monte Carlo, inactive batches are required for both eigenvalue and fixed source solves in random ray due to this additional need to converge the scattering source.
+In Monte Carlo, inactive batches are used to let the fission source develop into a stationary distribution before active batches are performed that actually accumulate statistics. While this is true of random ray as well, in the random ray mode the inactive batches are also used to let the scattering source develop. Monte Carlo fully represents the scattering source within each iteration (by its nature of fully simulating particles from birth to death through any number of physical scattering events), whereas the scattering source in random ray can only represent as many scattering events as batches have been completed. E.g., by iteration 10 in random ray, the scattering source only captures the behavior of neutrons through their 10th scatter. By iteration 500 in random ray, the scattering source only captures the behavior of neutrons through their 100th scatter. Thus, while inactive batches are only required in an eigenvalue solve in Monte Carlo, **inactive batches are required for both eigenvalue and fixed source solves in random ray mode** due to this additional need to converge the scattering source.
 
 The additional burden of converging the scattering source generally results in a higher requirement for the number of inactive batches - often by an order of magnitude or more. For instance, it may be reasonable to only use 50 inactive batches for a light water reactor simulation with Monte Carlo, but  random ray might require 500 or more inactive batches. Similar to Monte Carlo, :ref:`Shannon entropy
 <usersguide_entropy>` can be used to guage whether the combined scattering and fission source has fully developed.
@@ -59,7 +59,7 @@ Once the inactive length of the ray has completed, the active region of the ray 
 
 Assuming that sufficient inactive ray length is used so that the starting angular flux is highly accurate, any selection of active length greater than zero is theoretically acceptable. However, in order to adequately sample the full integration domain, a selection of a very short track length would require a very high number of rays to be selected. Due to the static costs per ray of computing the starting angular flux in the dead zone, typically very short ray lengths are undesireable. Thus, to amortize the per-ray cost of the inactive region of the ray, it is desireable to select a very long inactive ray length. E.g., if the inactive length is set at 20cm, a selection of 200 cm of active ray length ensures that only about 10% of overall simulation runtime is spent in the inactive ray phase integration, making the dead zone a relatively inexpensive way of estimating the angular flux. 
 
-Thus, to fully amortize the cost of the dead zone integration, one might ask why not simply run a single ray per iteration with an extremely long active length? While this is also theoretically possible, this results in two issues. The first problem is that each ray only represents a single angular sample. As we want to sample the angular phase space of the simulation with similar fidelity to the spatial phase space, we naturally want a lot of angles. This means in practice, we want to balance the need to amortize the cost of the inactive region of the ray with the need to sample lots of angles. The second problem is that parallelism in OpenMC is expressed in terms of rays, with each being processes by an independent MPI rank and/or OpenMP thread, thus we want to ensure each thread has many rays to process.
+Thus, to fully amortize the cost of the dead zone integration, one might ask why not simply run a single ray per iteration with an extremely long active length? While this is also theoretically possible, this results in two issues. The first problem is that each ray only represents a single angular sample. As we want to sample the angular phase space of the simulation with similar fidelity to the spatial phase space, we naturally want a lot of angles. This means in practice, we want to balance the need to amortize the cost of the inactive region of the ray with the need to sample lots of angles. The second problem is that parallelism in OpenMC is expressed in terms of rays, with each being processed by an independent MPI rank and/or OpenMP thread, thus we want to ensure each thread has many rays to process.
 
 In practical terms, the best strategy is typically to set an active ray length that is about 10 times that of the inactive ray length. This is often the right balance between ensuring not too much time is spent in the dead zone, while still adequately sampling the angular phase space. However, as discussed in the previous section, some types of simulation may demand additional thought be applied to this parameter. For instance, in the same example where we have a detector region far outside a reactor core, we want to make sure that there is enough active ray length that rays exiting the core can reach the detector region. E.g., if the detector were to be 30 cm outside of the core, then we would need to ensure that at least a few hundred cm of active length were used so as to ensure even rays with indirect angles will be able to reach the target region.
 
@@ -110,6 +110,9 @@ Random ray requires that the ray source be uniform in space and angle, throughou
     uniform_dist = openmc.stats.Box(lower_left, upper_right)
     settings.random_ray['ray_source'] = openmc.IndependentSource(space=uniform_dist)
 
+.. note::
+    The random ray source is not related to the underlying particle flux or source distribution of the simulation problem. It is akin to the selection of an integration quadrature. Thus, in fixed source mode, the ray source still needs to be provided and still needs to be uniform in space and angle throughout the simulation domain. In fixed source mode, the user will provide physical particle fixed sources in addition to the random ray source.
+
 ----------------------------------
 Subdivision of Flat Source Regions
 ----------------------------------
@@ -155,7 +158,7 @@ Supported Filters:
     - mesh
     - universe
 
-Note that there is no difference between the analog, tracklength, and collision estimators in random ray mode as individual particles are not being simulated. Tracklength style tally estimation is inherent to the random ray method.
+Note that there is no difference between the analog, tracklength, and collision estimators in random ray mode as individual particles are not being simulated. Tracklength-style tally estimation is inherent to the random ray method.
 
 --------
 Plotting
@@ -234,6 +237,9 @@ Multigroup cross sections for use with OpenMC's random ray solver are input the 
     mg_cross_sections_file = openmc.MGXSLibrary(groups)
     mg_cross_sections_file.add_xsdatas([uo2_xsdata, h2o_xsdata])
     mg_cross_sections_file.export_to_hdf5()
+
+.. note::
+    Currently only isotropic and isothermal multigroup cross sections are supported in random ray mode. To represent multiple material temperatures, separate materials can be defined each with a separate multigroup dataset corresponding to a given temperature.
 
 ---------------------------------------
 Putting it All Together: Example Inputs

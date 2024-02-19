@@ -841,8 +841,7 @@ void FlatSourceDomain::convert_fixed_sources()
       for (int32_t universe_id : domain_ids) {
         int32_t i_universe = model::universe_map[universe_id];
         Universe& universe = *model::universes[i_universe];
-        for (int32_t cell_id : universe.cells_) {
-          int32_t i_cell = model::cell_map[cell_id];
+        for (int32_t i_cell : universe.cells_) {
           apply_fixed_source_to_cell_and_children(
             i_cell, energy, strength_factor, C_NONE);
         }

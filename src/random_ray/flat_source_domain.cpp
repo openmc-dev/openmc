@@ -741,12 +741,14 @@ void FlatSourceDomain::apply_fixed_source_to_source_region(
 }
 
 void FlatSourceDomain::apply_fixed_source_to_cell_instances(int32_t i_cell,
-  Discrete* discrete, double strength_factor, int target_material_id,
-  const vector<int32_t>& instances)
+  Discrete* discrete, double strength_factor, int target_material_id)
 {
   Cell& cell = *model::cells[i_cell];
 
-  for (int j : instances) {
+  if (cell.type_ != Fill::MATERIAL)
+    return;
+
+  for (int j = 0; j < cell.n_instances_; j++) {
     int cell_material_idx = cell.material(j);
     int cell_material_id = model::materials[cell_material_idx]->id();
     if (target_material_id == C_NONE ||
@@ -764,19 +766,15 @@ void FlatSourceDomain::apply_fixed_source_to_cell_and_children(int32_t i_cell,
   Cell& cell = *model::cells[i_cell];
 
   if (cell.type_ == Fill::MATERIAL) {
-    // Create vector counting up from 0 ... n_instances-1
-    // This is done to allow for re-use of an interface
-    vector<int> instances(cell.n_instances_);
-    std::iota(instances.begin(), instances.end(), 0);
     apply_fixed_source_to_cell_instances(
-      i_cell, discrete, strength_factor, target_material_id, instances);
+      i_cell, discrete, strength_factor, target_material_id);
   } else if (target_material_id == C_NONE) {
     std::unordered_map<int32_t, vector<int32_t>> cell_instance_list =
       cell.get_contained_cells(0, nullptr);
     for (const auto& pair : cell_instance_list) {
       int32_t i_child_cell = pair.first;
       apply_fixed_source_to_cell_instances(i_child_cell, discrete,
-        strength_factor, target_material_id, pair.second);
+        strength_factor, target_material_id);
     }
   }
 }

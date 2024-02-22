@@ -75,12 +75,18 @@ class StatePoint:
         Estimate of k-effective for each batch/generation
     keff : uncertainties.UFloat
         Combined estimator for k-effective
-    alpha_eff : float
+
+        .. versionadded:: 0.13.1
+    alpha_eff : uncertainties.UFloat
         Effective alpha eigenvalue
     alpha_generation : numpy.ndarray
         Estimate of alpha for each batch/generation
-
-        .. versionadded:: 0.13.1
+    alpha_median : float 
+        Median of alpha_generation
+    alpha_skewness : float 
+        Skewness of alpha_generation
+    alpha_kurtosis : float 
+        Kurtosis of alpha_generation
     meshes : dict
         Dictionary whose keys are mesh IDs and whose values are MeshBase objects
     n_batches : int
@@ -319,7 +325,28 @@ class StatePoint:
     @property
     def alpha_eff(self):
         if self.run_mode == 'eigenvalue' and self.alpha_mode:
-            return self._f['alpha_mode_tallies/alpha_effective'][()]
+            return ufloat(*self._f['alpha_mode_tallies/alpha_effective'][()])
+        else:
+            return None
+
+    @property
+    def alpha_median(self):
+        if self.run_mode == 'eigenvalue' and self.alpha_mode:
+            return self._f['alpha_mode_tallies/alpha_median'][()]
+        else:
+            return None
+
+    @property
+    def alpha_skewness(self):
+        if self.run_mode == 'eigenvalue' and self.alpha_mode:
+            return self._f['alpha_mode_tallies/alpha_skewness'][()]
+        else:
+            return None
+
+    @property
+    def alpha_kurtosis(self):
+        if self.run_mode == 'eigenvalue' and self.alpha_mode:
+            return self._f['alpha_mode_tallies/alpha_kurtosis'][()]
         else:
             return None
 

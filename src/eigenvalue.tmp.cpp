@@ -53,20 +53,19 @@ array<double, 2> tr_sum;
 // Non-member functions
 //==============================================================================
 
-void calculate_generation_keff()
-{
-  const auto& gt = simulation::global_tallies;
+void calculate_generation_keff() {
+  const auto &gt = simulation::global_tallies;
 
   // Get keff for this generation by subtracting off the starting value
   simulation::keff_generation =
-    gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) -
-    simulation::keff_generation;
+      gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) -
+      simulation::keff_generation;
 
   double keff_reduced;
 #ifdef OPENMC_MPI
   // Combine values across all processors
   MPI_Allreduce(&simulation::keff_generation, &keff_reduced, 1, MPI_DOUBLE,
-    MPI_SUM, mpi::intracomm);
+                MPI_SUM, mpi::intracomm);
 #else
   keff_reduced = simulation::keff_generation;
 #endif
@@ -83,19 +82,19 @@ void calculate_generation_keff()
 
     // Cn
     MPI_Allreduce(&global_tally_alpha_Cn, &Cn_reduced, 1, MPI_DOUBLE, MPI_SUM,
-      mpi::intracomm);
+                  mpi::intracomm);
     global_tally_alpha_Cn = Cn_reduced;
 
     // Cp
     MPI_Allreduce(&global_tally_alpha_Cp, &Cp_reduced, 1, MPI_DOUBLE, MPI_SUM,
-      mpi::intracomm);
+                  mpi::intracomm);
     global_tally_alpha_Cp = Cp_reduced;
 
     // Cd
     for (int i = 0; i < simulation::n_fissionables; i++) {
       for (int j = 0; j < simulation::n_precursors; j++) {
         MPI_Allreduce(&global_tally_alpha_Cd(i, j), &Cd_reduced, 1, MPI_DOUBLE,
-          MPI_SUM, mpi::intracomm);
+                      MPI_SUM, mpi::intracomm);
         global_tally_alpha_Cd(i, j) = Cd_reduced;
       }
     }
@@ -114,18 +113,17 @@ void calculate_generation_keff()
   simulation::k_generation.push_back(keff_reduced);
 }
 
-void synchronize_bank()
-{
+void synchronize_bank() {
   simulation::time_bank.start();
 
-  // In order to properly understand the fission bank algorithm, you need to
-  // think of the fission and source bank as being one global array divided
-  // over multiple processors. At the start, each processor has a random amount
-  // of fission bank sites -- each processor needs to know the total number of
-  // sites in order to figure out the probability for selecting
-  // sites. Furthermore, each proc also needs to know where in the 'global'
-  // fission bank its own sites starts in order to ensure reproducibility by
-  // skipping ahead to the proper seed.
+// In order to properly understand the fission bank algorithm, you need to
+// think of the fission and source bank as being one global array divided
+// over multiple processors. At the start, each processor has a random amount
+// of fission bank sites -- each processor needs to know the total number of
+// sites in order to figure out the probability for selecting
+// sites. Furthermore, each proc also needs to know where in the 'global'
+// fission bank its own sites starts in order to ensure reproducibility by
+// skipping ahead to the proper seed.
 
 #ifdef OPENMC_MPI
   int64_t start = 0;
@@ -154,8 +152,8 @@ void synchronize_bank()
   // runs enough particles to avoid this in the first place.
 
   if (simulation::fission_bank.size() == 0) {
-    fatal_error(
-      "No fission sites banked on MPI rank " + std::to_string(mpi::rank));
+    fatal_error("No fission sites banked on MPI rank " +
+                std::to_string(mpi::rank));
   }
 
   // Make sure all processors start at the same point for random sampling. Then
@@ -188,7 +186,7 @@ void synchronize_bank()
   vector<SourceSite> temp_sites(3 * simulation::work_per_rank);
 
   for (int64_t i = 0; i < simulation::fission_bank.size(); i++) {
-    const auto& site = simulation::fission_bank[i];
+    const auto &site = simulation::fission_bank[i];
 
     // If there are less than n_particles particles banked, automatically add
     // int(n_particles/total) sites to temp_sites. For example, if you need
@@ -208,11 +206,11 @@ void synchronize_bank()
     }
   }
 
-  // At this point, the sampling of source sites is done and now we need to
-  // figure out where to send source sites. Since it is possible that one
-  // processor's share of the source bank spans more than just the immediate
-  // neighboring processors, we have to perform an ALLGATHER to determine the
-  // indices for all processors
+// At this point, the sampling of source sites is done and now we need to
+// figure out where to send source sites. Since it is possible that one
+// processor's share of the source bank spans more than just the immediate
+// neighboring processors, we have to perform an ALLGATHER to determine the
+// indices for all processors
 
 #ifdef OPENMC_MPI
   // First do an exclusive scan to get the starting indices for
@@ -222,8 +220,8 @@ void synchronize_bank()
 
   // Allocate space for bank_position if this hasn't been done yet
   int64_t bank_position[mpi::n_procs];
-  MPI_Allgather(
-    &start, 1, MPI_INT64_T, bank_position, 1, MPI_INT64_T, mpi::intracomm);
+  MPI_Allgather(&start, 1, MPI_INT64_T, bank_position, 1, MPI_INT64_T,
+                mpi::intracomm);
 #else
   start = 0;
   finish = index_temp;
@@ -267,21 +265,21 @@ void synchronize_bank()
   if (start < settings::n_particles) {
     // Determine the index of the processor which has the first part of the
     // source_bank for the local processor
-    int neighbor = upper_bound_index(
-      simulation::work_index.begin(), simulation::work_index.end(), start);
+    int neighbor = upper_bound_index(simulation::work_index.begin(),
+                                     simulation::work_index.end(), start);
 
     while (start < finish) {
       // Determine the number of sites to send
       int64_t n =
-        std::min(simulation::work_index[neighbor + 1], finish) - start;
+          std::min(simulation::work_index[neighbor + 1], finish) - start;
 
       // Initiate an asynchronous send of source sites to the neighboring
       // process
       if (neighbor != mpi::rank) {
         requests.emplace_back();
         MPI_Isend(&temp_sites[index_local], static_cast<int>(n),
-          mpi::source_site, neighbor, mpi::rank, mpi::intracomm,
-          &requests.back());
+                  mpi::source_site, neighbor, mpi::rank, mpi::intracomm,
+                  &requests.back());
       }
 
       // Increment all indices
@@ -311,7 +309,7 @@ void synchronize_bank()
     neighbor = mpi::n_procs - 1;
   } else {
     neighbor =
-      upper_bound_index(bank_position, bank_position + mpi::n_procs, start);
+        upper_bound_index(bank_position, bank_position + mpi::n_procs, start);
   }
 
   while (start < simulation::work_index[mpi::rank + 1]) {
@@ -321,7 +319,7 @@ void synchronize_bank()
       n = simulation::work_index[mpi::rank + 1] - start;
     } else {
       n = std::min(bank_position[neighbor + 1],
-            simulation::work_index[mpi::rank + 1]) -
+                   simulation::work_index[mpi::rank + 1]) -
           start;
     }
 
@@ -331,7 +329,8 @@ void synchronize_bank()
 
       requests.emplace_back();
       MPI_Irecv(&simulation::source_bank[index_local], static_cast<int>(n),
-        mpi::source_site, neighbor, neighbor, mpi::intracomm, &requests.back());
+                mpi::source_site, neighbor, neighbor, mpi::intracomm,
+                &requests.back());
 
     } else {
       // If the source sites are on this procesor, we can simply copy them
@@ -339,7 +338,7 @@ void synchronize_bank()
 
       index_temp = start - bank_position[mpi::rank];
       std::copy(&temp_sites[index_temp], &temp_sites[index_temp + n],
-        &simulation::source_bank[index_local]);
+                &simulation::source_bank[index_local]);
     }
 
     // Increment all indices
@@ -357,15 +356,14 @@ void synchronize_bank()
 
 #else
   std::copy(temp_sites.data(), temp_sites.data() + settings::n_particles,
-    simulation::source_bank.begin());
+            simulation::source_bank.begin());
 #endif
 
   simulation::time_bank_sendrecv.stop();
   simulation::time_bank.stop();
 }
 
-void calculate_average_keff()
-{
+void calculate_average_keff() {
   // Determine overall generation and number of active generations
   int i = overall_generation() - 1;
   int n;
@@ -400,9 +398,9 @@ void calculate_average_keff()
 
       // Standard deviation of the sample mean of k
       simulation::keff_std =
-        t_value *
-        std::sqrt(
-          (simulation::k_sum[1] / n - std::pow(simulation::keff, 2)) / (n - 1));
+          t_value *
+          std::sqrt((simulation::k_sum[1] / n - std::pow(simulation::keff, 2)) /
+                    (n - 1));
     }
   }
 
@@ -532,17 +530,18 @@ void calculate_average_keff()
     if (n > 1) {
       // Standard deviation of the sample mean of alpha
       double alpha_var =
-        (simulation::alpha_sum[1] / n - std::pow(simulation::alpha_eff, 2)) /
-        (n - 1);
+          (simulation::alpha_sum[1] / n - std::pow(simulation::alpha_eff, 2)) /
+          (n - 1);
       if (alpha_var < 0.0) {
         // This practically means the stdev is very close to zero
         // (typically the case if the alpha approaches the -decay_rate
         //  singularitity)
         simulation::alpha_eff_std = 0.0;
       } else {
-        simulation::alpha_eff_std = std::sqrt(
-          (simulation::alpha_sum[1] / n - std::pow(simulation::alpha_eff, 2)) /
-          (n - 1));
+        simulation::alpha_eff_std =
+            std::sqrt((simulation::alpha_sum[1] / n -
+                       std::pow(simulation::alpha_eff, 2)) /
+                      (n - 1));
       }
     }
 
@@ -578,8 +577,7 @@ void calculate_average_keff()
   }
 }
 
-int openmc_get_keff(double* k_combined)
-{
+int openmc_get_keff(double *k_combined) {
   k_combined[0] = 0.0;
   k_combined[1] = 0.0;
 
@@ -598,22 +596,22 @@ int openmc_get_keff(double* k_combined)
   int64_t n = simulation::n_realizations;
 
   // Copy estimates of k-effective and its variance (not variance of the mean)
-  const auto& gt = simulation::global_tallies;
+  const auto &gt = simulation::global_tallies;
 
-  array<double, 3> kv {};
-  xt::xtensor<double, 2> cov = xt::zeros<double>({3, 3});
+  array<double, 3> kv{};
+  xt::xtensor<double, 2> cov = xt::zeros<double>({ 3, 3 });
   kv[0] = gt(GlobalTally::K_COLLISION, TallyResult::SUM) / n;
   kv[1] = gt(GlobalTally::K_ABSORPTION, TallyResult::SUM) / n;
   kv[2] = gt(GlobalTally::K_TRACKLENGTH, TallyResult::SUM) / n;
   cov(0, 0) =
-    (gt(GlobalTally::K_COLLISION, TallyResult::SUM_SQ) - n * kv[0] * kv[0]) /
-    (n - 1);
+      (gt(GlobalTally::K_COLLISION, TallyResult::SUM_SQ) - n * kv[0] * kv[0]) /
+      (n - 1);
   cov(1, 1) =
-    (gt(GlobalTally::K_ABSORPTION, TallyResult::SUM_SQ) - n * kv[1] * kv[1]) /
-    (n - 1);
-  cov(2, 2) =
-    (gt(GlobalTally::K_TRACKLENGTH, TallyResult::SUM_SQ) - n * kv[2] * kv[2]) /
-    (n - 1);
+      (gt(GlobalTally::K_ABSORPTION, TallyResult::SUM_SQ) - n * kv[1] * kv[1]) /
+      (n - 1);
+  cov(2, 2) = (gt(GlobalTally::K_TRACKLENGTH, TallyResult::SUM_SQ) -
+               n * kv[2] * kv[2]) /
+              (n - 1);
 
   // Calculate covariances based on sums with Bessel's correction
   cov(0, 1) = (simulation::k_col_abs - n * kv[0] * kv[1]) / (n - 1);
@@ -661,7 +659,7 @@ int openmc_get_keff(double* k_combined)
 
     // Initialize variables
     double g = 0.0;
-    array<double, 3> S {};
+    array<double, 3> S{};
 
     for (int l = 0; l < 3; ++l) {
       // Permutations of estimates
@@ -702,7 +700,7 @@ int openmc_get_keff(double* k_combined)
     }
 
     // Complete calculations of S sums
-    for (auto& S_i : S) {
+    for (auto &S_i : S) {
       S_i *= (n - 1);
     }
     S[0] *= (n - 1) * (n - 1);
@@ -713,7 +711,7 @@ int openmc_get_keff(double* k_combined)
     // Calculate standard deviation of combined estimate
     g *= (n - 1) * (n - 1);
     k_combined[1] =
-      std::sqrt(S[0] / (g * n * (n - 3)) * (1 + n * ((S[1] - 2 * S[2]) / g)));
+        std::sqrt(S[0] / (g * n * (n - 3)) * (1 + n * ((S[1] - 2 * S[2]) / g)));
 
   } else {
     // Use only two estimators
@@ -736,13 +734,12 @@ int openmc_get_keff(double* k_combined)
   return 0;
 }
 
-void shannon_entropy()
-{
+void shannon_entropy() {
   // Get source weight in each mesh bin
   bool sites_outside;
-  xt::xtensor<double, 1> p =
-    simulation::entropy_mesh->count_sites(simulation::fission_bank.data(),
-      simulation::fission_bank.size(), &sites_outside);
+  xt::xtensor<double, 1> p = simulation::entropy_mesh->count_sites(
+      simulation::fission_bank.data(), simulation::fission_bank.size(),
+      &sites_outside);
 
   // display warning message if there were sites outside entropy box
   if (sites_outside) {
@@ -767,8 +764,7 @@ void shannon_entropy()
   }
 }
 
-void ufs_count_sites()
-{
+void ufs_count_sites() {
   if (simulation::current_batch == 1 && simulation::current_gen == 1) {
     // On the first generation, just assume that the source is already evenly
     // distributed so that effectively the production of fission sites is not
@@ -776,14 +772,14 @@ void ufs_count_sites()
 
     std::size_t n = simulation::ufs_mesh->n_bins();
     double vol_frac = simulation::ufs_mesh->volume_frac_;
-    simulation::source_frac = xt::xtensor<double, 1>({n}, vol_frac);
+    simulation::source_frac = xt::xtensor<double, 1>({ n }, vol_frac);
 
   } else {
     // count number of source sites in each ufs mesh cell
     bool sites_outside;
-    simulation::source_frac =
-      simulation::ufs_mesh->count_sites(simulation::source_bank.data(),
-        simulation::source_bank.size(), &sites_outside);
+    simulation::source_frac = simulation::ufs_mesh->count_sites(
+        simulation::source_bank.data(), simulation::source_bank.size(),
+        &sites_outside);
 
     // Check for sites outside of the mesh
     if (mpi::master && sites_outside) {
@@ -793,8 +789,8 @@ void ufs_count_sites()
 #ifdef OPENMC_MPI
     // Send source fraction to all processors
     int n_bins = simulation::ufs_mesh->n_bins();
-    MPI_Bcast(
-      simulation::source_frac.data(), n_bins, MPI_DOUBLE, 0, mpi::intracomm);
+    MPI_Bcast(simulation::source_frac.data(), n_bins, MPI_DOUBLE, 0,
+              mpi::intracomm);
 #endif
 
     // Normalize to total weight to get fraction of source in each cell
@@ -809,8 +805,7 @@ void ufs_count_sites()
   }
 }
 
-double ufs_get_weight(const Particle& p)
-{
+double ufs_get_weight(const Particle &p) {
   // Determine indices on ufs mesh for current location
   int mesh_bin = simulation::ufs_mesh->get_bin(p.r());
   if (mesh_bin < 0) {
@@ -826,8 +821,7 @@ double ufs_get_weight(const Particle& p)
   }
 }
 
-void write_eigenvalue_hdf5(hid_t group)
-{
+void write_eigenvalue_hdf5(hid_t group) {
   write_dataset(group, "n_inactive", settings::n_inactive);
   write_dataset(group, "generations_per_batch", settings::gen_per_batch);
   write_dataset(group, "k_generation", simulation::k_generation);
@@ -844,8 +838,8 @@ void write_eigenvalue_hdf5(hid_t group)
   // alpha-eigenvalue mode
   if (settings::alpha_mode) {
     hid_t alpha_group = create_group(group, "alpha_mode_tallies");
-    write_dataset(
-      alpha_group, "alpha_generation", simulation::alpha_generation);
+    write_dataset(alpha_group, "alpha_generation",
+                  simulation::alpha_generation);
 
     const int n = simulation::k_generation.size() - settings::n_inactive;
 
@@ -853,7 +847,7 @@ void write_eigenvalue_hdf5(hid_t group)
     std::array<double, 2> alpha_eff;
     alpha_eff[0] = simulation::alpha_sum[0] / n;
     alpha_eff[1] = std::sqrt(
-      (simulation::alpha_sum[1] / n - std::pow(alpha_eff[0], 2)) / (n - 1));
+        (simulation::alpha_sum[1] / n - std::pow(alpha_eff[0], 2)) / (n - 1));
     write_dataset(alpha_group, "alpha_effective", alpha_eff);
 
     // Get the alpha samples
@@ -875,36 +869,35 @@ void write_eigenvalue_hdf5(hid_t group)
     std::array<double, 2> k_eff;
     k_eff[0] = simulation::k_alpha_sum[0] / n;
     k_eff[1] = std::sqrt(
-      (simulation::k_alpha_sum[1] / n - std::pow(k_eff[0], 2)) / (n - 1));
+        (simulation::k_alpha_sum[1] / n - std::pow(k_eff[0], 2)) / (n - 1));
     write_dataset(alpha_group, "k_effective", k_eff);
 
     // Reactivity
     std::array<double, 2> rho;
     rho[0] = simulation::rho_sum[0] / n;
     rho[1] =
-      std::sqrt((simulation::rho_sum[1] / n - std::pow(rho[0], 2)) / (n - 1));
+        std::sqrt((simulation::rho_sum[1] / n - std::pow(rho[0], 2)) / (n - 1));
     write_dataset(alpha_group, "reactivity", rho);
 
     // Delayed fission fraction
     std::array<double, 2> beta;
     beta[0] = simulation::beta_sum[0] / n;
-    beta[1] =
-      std::sqrt((simulation::beta_sum[1] / n - std::pow(beta[0], 2)) / (n - 1));
+    beta[1] = std::sqrt((simulation::beta_sum[1] / n - std::pow(beta[0], 2)) /
+                        (n - 1));
     write_dataset(alpha_group, "delayed_fraction", beta);
 
     // Removal time
     std::array<double, 2> tr;
     tr[0] = simulation::tr_sum[0] / n;
     tr[1] =
-      std::sqrt((simulation::tr_sum[1] / n - std::pow(tr[0], 2)) / (n - 1));
+        std::sqrt((simulation::tr_sum[1] / n - std::pow(tr[0], 2)) / (n - 1));
     write_dataset(alpha_group, "removal_time", tr);
 
     close_group(alpha_group);
   }
 }
 
-void read_eigenvalue_hdf5(hid_t group)
-{
+void read_eigenvalue_hdf5(hid_t group) {
   read_dataset(group, "generations_per_batch", settings::gen_per_batch);
   int n = simulation::restart_batch * settings::gen_per_batch;
   simulation::k_generation.resize(n);

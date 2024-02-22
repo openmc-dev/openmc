@@ -859,9 +859,9 @@ void write_eigenvalue_hdf5(hid_t group)
     // Get the alpha samples
     std::vector<double> alpha_samples(n);
     std::copy(simulation::alpha_generation.begin() + settings::n_inactive,
-              simulation::alpha_generation.begin() +
-                  simulation::alpha_generation.size(),
-              alpha_samples.begin());
+      simulation::alpha_generation.begin() +
+        simulation::alpha_generation.size(),
+      alpha_samples.begin());
 
     // Alpha median, skewness, kurtosis
     double alpha_median = get_median(alpha_samples);

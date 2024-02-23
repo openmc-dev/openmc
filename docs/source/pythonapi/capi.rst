@@ -59,6 +59,7 @@ Classes
    MaterialFilter
    Material
    MeshFilter
+   MeshBornFilter
    MeshSurfaceFilter
    Nuclide
    RectilinearMesh

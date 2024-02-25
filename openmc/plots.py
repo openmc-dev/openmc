@@ -476,6 +476,15 @@ class PlotBase(IDManagerMixin):
         for domain in domains:
             self.colors[domain] = rng.randint(0, 256, (3,))
 
+    def _colors_to_xml(self, element):
+        for domain, color in sorted(self._colors.items(),
+                                    key=lambda x: self._get_id(x[0])):
+            subelement = ET.SubElement(element, "color")
+            subelement.set("id", str(self._get_id(domain)))
+            if isinstance(color, str):
+                color = _SVG_COLORS[color.lower()]
+            subelement.set("rgb", ' '.join(str(x) for x in color))
+
     def to_xml_element(self):
         """Save common plot attributes to XML element
 
@@ -801,13 +810,7 @@ class Plot(PlotBase):
         subelement.text = ' '.join(map(str, self._width))
 
         if self._colors:
-            for domain, color in sorted(self._colors.items(),
-                                        key=lambda x: PlotBase._get_id(x[0])):
-                subelement = ET.SubElement(element, "color")
-                subelement.set("id", str(PlotBase._get_id(domain)))
-                if isinstance(color, str):
-                    color = _SVG_COLORS[color.lower()]
-                subelement.set("rgb", ' '.join(str(x) for x in color))
+            self._colors_to_xml(element)
 
         if self._show_overlaps:
             subelement = ET.SubElement(element, "show_overlaps")
@@ -965,7 +968,8 @@ class Plot(PlotBase):
 
         """
         if self.type != 'voxel':
-            raise ValueError('Generating a VTK file only works for voxel plots')
+            raise ValueError(
+                'Generating a VTK file only works for voxel plots')
 
         # Create plots.xml
         Plots([self]).export_to_xml(cwd)
@@ -986,18 +990,15 @@ class Plot(PlotBase):
         return voxel_to_vtk(h5_voxel_file, output)
 
 
-class ProjectionPlot(PlotBase):
+class RayTracePlot(PlotBase):
     """Definition of a camera's view of OpenMC geometry
-
-    Colors are defined in the same manner as the Plot class, but with the addition
-    of a coloring parameter resembling a macroscopic cross section in units of inverse
-    centimeters. The volume rendering technique is used to color regions of the model.
-    An infinite cross section denotes a fully opaque region, and zero represents a
-    transparent region which will expose the color of the regions behind it.
 
     The camera projection may either by orthographic or perspective. Perspective
     projections are more similar to a pinhole camera, and orthographic projections
     preserve parallel lines and distances.
+
+    This is an abstract base class that ProjectionPlot and PhongPlot finish
+    the implementation of.
 
     .. versionadded:: 0.14.0
 
@@ -1027,21 +1028,6 @@ class ProjectionPlot(PlotBase):
         unlike with the default perspective projection. The height of the
         array is deduced from the ratio of pixel dimensions for the image.
         Defaults to zero, i.e. using perspective projection.
-    wireframe_thickness : int
-        Line thickness employed for drawing wireframes around cells or
-        material regions. Can be set to zero for no wireframes at all.
-        Defaults to one pixel.
-    wireframe_color : tuple of ints
-        RGB color of the wireframe lines. Defaults to black.
-    wireframe_domains : iterable of either Material or Cells
-        If provided, the wireframe is only drawn around these.
-        If color_by is by material, it must be a list of materials, else cells.
-    xs : dict
-        A mapping from cell/material IDs to floats. The floating point values
-        are macroscopic cross sections influencing the volume rendering opacity
-        of each geometric region. Zero corresponds to perfect transparency, and
-        infinity equivalent to opaque. These must be set by the user, but default
-        values can be obtained using the set_transparent method.
     """
 
     def __init__(self, plot_id=None, name=''):
@@ -1052,10 +1038,6 @@ class ProjectionPlot(PlotBase):
         self._look_at = (0.0, 0.0, 0.0)
         self._up = (0.0, 0.0, 1.0)
         self._orthographic_width = 0.0
-        self._wireframe_thickness = 1
-        self._wireframe_color = _SVG_COLORS['black']
-        self._wireframe_domains = []
-        self._xs = {}
 
     @property
     def horizontal_field_of_view(self):
@@ -1109,6 +1091,151 @@ class ProjectionPlot(PlotBase):
         assert orthographic_width >= 0.0
         self._orthographic_width = orthographic_width
 
+    def _check_domains_consistent_with_color_by(self, domains):
+        """Check domains are the same as the type we are coloring by
+        """
+
+        for region in domains:
+
+            # if an integer is passed, we have to assume
+            # it was a valid ID
+            if isinstance(region, int):
+                continue
+
+            if self._color_by == 'material':
+                if not isinstance(region, openmc.Material):
+                    raise Exception('Domain list must be materials if '
+                                    'color_by=material')
+            else:
+                if not isinstance(region, openmc.Cell):
+                    raise Exception('Domain list must be materials if '
+                                    'color_by=cell')
+
+    def to_xml_element(self):
+        """Return XML representation of the ray trace plot
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing plot data
+
+        """
+
+        element = super().to_xml_element()
+        element.set("id", str(self._id))
+
+        subelement = ET.SubElement(element, "camera_position")
+        subelement.text = ' '.join(map(str, self._camera_position))
+
+        subelement = ET.SubElement(element, "look_at")
+        subelement.text = ' '.join(map(str, self._look_at))
+
+        subelement = ET.SubElement(element, "horizontal_field_of_view")
+        subelement.text = str(self._horizontal_field_of_view)
+
+        # do not need to write if orthographic_width == 0.0
+        if self._orthographic_width > 0.0:
+            subelement = ET.SubElement(element, "orthographic_width")
+            subelement.text = str(self._orthographic_width)
+
+        return element
+
+    def __repr__(self):
+        string = ''
+        string += '{: <16}=\t{}\n'.format('\tID', self._id)
+        string += '{: <16}=\t{}\n'.format('\tName', self._name)
+        string += '{: <16}=\t{}\n'.format('\tFilename', self._filename)
+        string += '{: <16}=\t{}\n'.format('\tHorizontal FOV',
+                                          self._horizontal_field_of_view)
+        string += '{: <16}=\t{}\n'.format('\tOrthographic width',
+                                          self._orthographic_width)
+        string += '{: <16}=\t{}\n'.format('\tCamera position',
+                                          self._camera_position)
+        string += '{: <16}=\t{}\n'.format('\tLook at', self._look_at)
+        string += '{: <16}=\t{}\n'.format('\tUp', self._up)
+        string += '{: <16}=\t{}\n'.format('\tPixels', self._pixels)
+        string += '{: <16}=\t{}\n'.format('\tColor by', self._color_by)
+        string += '{: <16}=\t{}\n'.format('\tBackground', self._background)
+        string += '{: <16}=\t{}\n'.format('\tColors', self._colors)
+        string += '{: <16}=\t{}\n'.format('\tLevel', self._level)
+        return string
+
+    def _read_xml_attributes(self, elem):
+        """Helper function called by from_xml_element
+        of child classes. These are common vaues to be
+        read by any ray traced plot.
+
+        Returns
+        -------
+        None
+        """
+
+        if "filename" in elem.keys():
+            self.filename = elem.get("filename")
+        self.color_by = elem.get("color_by")
+
+        horizontal_fov = elem.find("horizontal_field_of_view")
+        if horizontal_fov is not None:
+            self.horizontal_field_of_view = float(horizontal_fov.text)
+
+        tmp = elem.find("orthographic_width")
+        if tmp is not None:
+            self.orthographic_width = float(tmp)
+
+        self.pixels = get_elem_tuple(elem, "pixels")
+        self.camera_position = get_elem_tuple(elem, "camera_position", float)
+        self.look_at = get_elem_tuple(elem, "look_at", float)
+
+        # Set masking information
+        mask_elem = elem.find("mask")
+        if mask_elem is not None:
+            mask_components = [int(x)
+                               for x in mask_elem.get("components").split()]
+            # TODO: set mask components (needs geometry information)
+            background = mask_elem.get("background")
+            if background is not None:
+                self.mask_background = tuple(
+                    [int(x) for x in background.split()])
+
+        # Set universe level
+        level = elem.find("level")
+        if level is not None:
+            self.level = int(level.text)
+
+
+class ProjectionPlot(RayTracePlot):
+    """Plots wireframes of geometry with volume rendered colors
+
+    Colors are defined in the same manner as the Plot class, but with the addition
+    of a coloring parameter resembling a macroscopic cross section in units of inverse
+    centimeters. The volume rendering technique is used to color regions of the model.
+    An infinite cross section denotes a fully opaque region, and zero represents a
+    transparent region which will expose the color of the regions behind it.
+
+    wireframe_thickness : int
+        Line thickness employed for drawing wireframes around cells or
+        material regions. Can be set to zero for no wireframes at all.
+        Defaults to one pixel.
+    wireframe_color : tuple of ints
+        RGB color of the wireframe lines. Defaults to black.
+    wireframe_domains : iterable of either Material or Cells
+        If provided, the wireframe is only drawn around these.
+        If color_by is by material, it must be a list of materials, else cells.
+    xs : dict
+        A mapping from cell/material IDs to floats. The floating point values
+        are macroscopic cross sections influencing the volume rendering opacity
+        of each geometric region. Zero corresponds to perfect transparency, and
+        infinity equivalent to opaque. These must be set by the user, but default
+        values can be obtained using the set_transparent method.
+    """
+
+    def __init__(self, plot_id=None, name=''):
+        super().__init__(plot_id, name)
+        self._wireframe_thickness = 1
+        self._wireframe_color = _SVG_COLORS['black']
+        self._wireframe_domains = []
+        self._xs = {}
+
     @property
     def wireframe_thickness(self):
         return self._wireframe_thickness
@@ -1135,15 +1262,6 @@ class ProjectionPlot(PlotBase):
 
     @wireframe_domains.setter
     def wireframe_domains(self, wireframe_domains):
-        for region in wireframe_domains:
-            if self._color_by == 'material':
-                if not isinstance(region, openmc.Material):
-                    raise Exception('Must provide a list of materials for \
-                            wireframe_region if color_by=Material')
-            else:
-                if not isinstance(region, openmc.Cell):
-                    raise Exception('Must provide a list of cells for \
-                            wireframe_region if color_by=cell')
         self._wireframe_domains = wireframe_domains
 
     @property
@@ -1180,6 +1298,18 @@ class ProjectionPlot(PlotBase):
         for domain in domains:
             self.xs[domain] = 0.0
 
+    def __repr__(self):
+        string = 'Projection Plot\n'
+        string += super().__repr__()
+        string += '{: <16}=\t{}\n'.format('\tWireframe thickness',
+                                          self._wireframe_thickness)
+        string += '{: <16}=\t{}\n'.format('\tWireframe color',
+                                          self._wireframe_color)
+        string += '{: <16}=\t{}\n'.format('\tWireframe domains',
+                                          self._wireframe_domains)
+        string += '{: <16}=\t{}\n'.format('\tTransparencies', self._xs)
+        return string
+
     def to_xml_element(self):
         """Return XML representation of the projection plot
 
@@ -1189,15 +1319,8 @@ class ProjectionPlot(PlotBase):
             XML element containing plot data
 
         """
-
         element = super().to_xml_element()
         element.set("type", "projection")
-
-        subelement = ET.SubElement(element, "camera_position")
-        subelement.text = ' '.join(map(str, self._camera_position))
-
-        subelement = ET.SubElement(element, "look_at")
-        subelement.text = ' '.join(map(str, self._look_at))
 
         subelement = ET.SubElement(element, "wireframe_thickness")
         subelement.text = str(self._wireframe_thickness)
@@ -1207,6 +1330,8 @@ class ProjectionPlot(PlotBase):
         if isinstance(color, str):
             color = _SVG_COLORS[color.lower()]
         subelement.text = ' '.join(str(x) for x in color)
+
+        self._check_domains_consistent_with_color_by(self._wireframe_domains)
 
         if self._wireframe_domains:
             id_list = [x.id for x in self._wireframe_domains]
@@ -1225,42 +1350,7 @@ class ProjectionPlot(PlotBase):
                 subelement.set("rgb", ' '.join(str(x) for x in color))
                 subelement.set("xs", str(self._xs[domain]))
 
-        subelement = ET.SubElement(element, "horizontal_field_of_view")
-        subelement.text = str(self._horizontal_field_of_view)
-
-        # do not need to write if orthographic_width == 0.0
-        if self._orthographic_width > 0.0:
-            subelement = ET.SubElement(element, "orthographic_width")
-            subelement.text = str(self._orthographic_width)
-
         return element
-
-    def __repr__(self):
-        string = 'Projection Plot\n'
-        string += '{: <16}=\t{}\n'.format('\tID', self._id)
-        string += '{: <16}=\t{}\n'.format('\tName', self._name)
-        string += '{: <16}=\t{}\n'.format('\tFilename', self._filename)
-        string += '{: <16}=\t{}\n'.format('\tHorizontal FOV',
-                                          self._horizontal_field_of_view)
-        string += '{: <16}=\t{}\n'.format('\tOrthographic width',
-                                          self._orthographic_width)
-        string += '{: <16}=\t{}\n'.format('\tWireframe thickness',
-                                          self._wireframe_thickness)
-        string += '{: <16}=\t{}\n'.format('\tWireframe color',
-                                          self._wireframe_color)
-        string += '{: <16}=\t{}\n'.format('\tWireframe domains',
-                                          self._wireframe_domains)
-        string += '{: <16}=\t{}\n'.format('\tCamera position',
-                                          self._camera_position)
-        string += '{: <16}=\t{}\n'.format('\tLook at', self._look_at)
-        string += '{: <16}=\t{}\n'.format('\tUp', self._up)
-        string += '{: <16}=\t{}\n'.format('\tPixels', self._pixels)
-        string += '{: <16}=\t{}\n'.format('\tColor by', self._color_by)
-        string += '{: <16}=\t{}\n'.format('\tBackground', self._background)
-        string += '{: <16}=\t{}\n'.format('\tColors', self._colors)
-        string += '{: <16}=\t{}\n'.format('\tTransparencies', self._xs)
-        string += '{: <16}=\t{}\n'.format('\tLevel', self._level)
-        return string
 
     @classmethod
     def from_xml_element(cls, elem):
@@ -1277,24 +1367,12 @@ class ProjectionPlot(PlotBase):
             ProjectionPlot object
 
         """
+
         plot_id = int(elem.get("id"))
         plot = cls(plot_id)
-        if "filename" in elem.keys():
-            plot.filename = elem.get("filename")
-        plot.color_by = elem.get("color_by")
         plot.type = "projection"
 
-        horizontal_fov = elem.find("horizontal_field_of_view")
-        if horizontal_fov is not None:
-            plot.horizontal_field_of_view = float(horizontal_fov.text)
-
-        tmp = elem.find("orthographic_width")
-        if tmp is not None:
-            plot.orthographic_width = float(tmp)
-
-        plot.pixels = get_elem_tuple(elem, "pixels")
-        plot.camera_position = get_elem_tuple(elem, "camera_position", float)
-        plot.look_at = get_elem_tuple(elem, "look_at", float)
+        plot._read_xml_attributes(elem)
 
         # Attempt to get wireframe thickness. May not be present
         wireframe_thickness = elem.get("wireframe_thickness")
@@ -1305,30 +1383,128 @@ class ProjectionPlot(PlotBase):
             plot.wireframe_color = [int(item) for item in wireframe_color]
 
         # Set plot colors
-        colors = {}
-        xs = {}
+        plot._colors = {}
+        plot._xs = {}
         for color_elem in elem.findall("color"):
             uid = color_elem.get("id")
-            colors[uid] = get_elem_tuple(color_elem, "rgb")
-            xs[uid] = float(color_elem.get("xs"))
-
-        # Set masking information
-        mask_elem = elem.find("mask")
-        if mask_elem is not None:
-            mask_components = [int(x)
-                               for x in mask_elem.get("components").split()]
-            # TODO: set mask components (needs geometry information)
-            background = mask_elem.get("background")
-            if background is not None:
-                plot.mask_background = tuple(
-                    [int(x) for x in background.split()])
-
-        # Set universe level
-        level = elem.find("level")
-        if level is not None:
-            plot.level = int(level.text)
+            plot._colors[uid] = get_elem_tuple(color_elem, "rgb")
+            plot._xs[uid] = float(color_elem.get("xs"))
 
         return plot
+
+
+class PhongPlot(RayTracePlot):
+
+    def __init__(self, plot_id=None, name=''):
+        super().__init__(plot_id, name)
+        self._light_position = None
+        self._diffuse_fraction = 0.1
+        self._opaque_domains = []
+
+    @property
+    def light_position(self):
+        return self._light_position
+
+    @light_position.setter
+    def light_position(self, x):
+        cv.check_type('plot light position', x, Iterable, Real)
+        cv.check_length('plot light position', x, 3)
+        self._light_position = x
+
+    @property
+    def diffuse_fraction(self):
+        return self._diffuse_fraction
+
+    @diffuse_fraction.setter
+    def diffuse_fraction(self, x):
+        cv.check_type('diffuse fraction', x, Real)
+        cv.check_greater_than('diffuse fraction', x, 0.0, equality=True)
+        cv.check_less_than('diffuse fraction', x, 1.0, equality=True)
+        self._diffuse_fraction = x
+
+    @property
+    def opaque_domains(self):
+        return self._opaque_domains
+
+    @opaque_domains.setter
+    def opaque_domains(self, x):
+        cv.check_type('opaque domains', x, Iterable)
+        self._opaque_domains = x
+
+    def __repr__(self):
+        string = 'Phong Plot\n'
+        string += super().__repr__()
+        string += '{: <16}=\t{}\n'.format('\tDiffuse Fraction',
+                                          self._diffuse_fraction)
+        string += '{: <16}=\t{}\n'.format('\tLight position',
+                                          self._light_position)
+        string += '{: <16}=\t{}\n'.format('\tOpaque domains',
+                                          self._opaque_domains)
+        return string
+
+    def to_xml_element(self):
+        """Return XML representation of the Phong plot
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing plot data
+
+        """
+        element = super().to_xml_element()
+        element.set("type", "phong")
+
+        # no light position means put it at the camera
+        if self._light_position:
+            subelement = ET.SubElement(element, "light_position")
+            subelement.text = ' '.join(map(str, self._light_position))
+
+        # no diffuse fraction defaults to 0.1
+        if self._diffuse_fraction:
+            subelement = ET.SubElement(element, "diffuse_fraction")
+            subelement.text = str(self._diffuse_fraction)
+
+        self._check_domains_consistent_with_color_by(self._opaque_domains)
+        subelement = ET.SubElement(element, "opaque_ids")
+
+        # Extract all IDs, or use the integer value passed in
+        # explicitly if that was given
+        subelement.text = ' '.join(
+            [str(domain) if isinstance(domain, int) else 
+             str(domain.id) for domain in self._opaque_domains])
+
+        if self._colors:
+            self._colors_to_xml(element)
+
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate plot object from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+
+        Returns
+        -------
+        openmc.ProjectionPlot
+            ProjectionPlot object
+
+        """
+
+        plot_id = int(elem.get("id"))
+        plot = cls(plot_id)
+        plot.type = "phong"
+
+        plot._read_xml_attributes(elem)
+
+        # Set plot colors
+        plot._colors = {}
+        for color_elem in elem.findall("color"):
+            uid = color_elem.get("id")
+            plot._colors[uid] = get_elem_tuple(color_elem, "rgb")
 
 
 class Plots(cv.CheckedList):
@@ -1348,13 +1524,14 @@ class Plots(cv.CheckedList):
 
     Parameters
     ----------
-    plots : Iterable of openmc.Plot or openmc.ProjectionPlot
+    plots : Iterable of openmc.Plot, openmc.ProjectionPlot,
+              or openmc.PhongPlot
         plots to add to the collection
 
     """
 
     def __init__(self, plots=None):
-        super().__init__((Plot, ProjectionPlot), 'plots collection')
+        super().__init__((Plot, ProjectionPlot, PhongPlot), 'plots collection')
         self._plots_file = ET.Element("plots")
         if plots is not None:
             self += plots
@@ -1364,7 +1541,8 @@ class Plots(cv.CheckedList):
 
         Parameters
         ----------
-        plot : openmc.Plot or openmc.ProjectionPlot
+        plot : openmc.Plot, openmc.ProjectionPlot, or
+                 openmc.PhongPlot
             Plot to append
 
         """
@@ -1498,8 +1676,14 @@ class Plots(cv.CheckedList):
             plot_type = e.get('type')
             if plot_type == 'projection':
                 plots.append(ProjectionPlot.from_xml_element(e))
-            else:
+            elif plot_type == 'phong':
+                plots.append(PhongPlot.from_xml_element(e))
+            elif plot_type == 'voxel':
                 plots.append(Plot.from_xml_element(e))
+            elif plot_type == 'slice':
+                plots.append(Plot.from_xml_element(e))
+            else:
+                raise ValueError("Unknown plot type: {}".format(plot_type))
         return plots
 
     @classmethod

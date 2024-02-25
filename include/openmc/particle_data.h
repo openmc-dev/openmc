@@ -551,7 +551,6 @@ public:
   int& cell_born() { return cell_born_; }
   const int& cell_born() const { return cell_born_; }
 
-  // index of the current and last material
   // Total number of collisions suffered by particle
   int& n_collision() { return n_collision_; }
   const int& n_collision() const { return n_collision_; }

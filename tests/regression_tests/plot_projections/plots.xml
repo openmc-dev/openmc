@@ -52,4 +52,39 @@
     <color id="3" rgb="255 0 0" xs="1.0"/>
   </plot>
 
+  <plot id="6" color_by="material" type="phong">
+    <look_at>0. 0. 0.</look_at>
+    <camera_position>10. 10. 10.</camera_position>
+    <pixels>200 200</pixels>
+    <filename>phong.png</filename>
+    <opaque_ids>1 3</opaque_ids>
+    <color id="1" rgb="0 0 255"/>
+    <color id="2" rgb="0 255 0"/>
+    <color id="3" rgb="255 0 100"/>
+  </plot>
+
+  <plot id="7" color_by="material" type="phong">
+    <look_at>0. 0. 0.</look_at>
+    <camera_position>10. 10. 10.</camera_position>
+    <diffuse_fraction>0.5</diffuse_fraction>
+    <pixels>200 200</pixels>
+    <filename>phong_diffuse.png</filename>
+    <opaque_ids>1 3</opaque_ids>
+    <color id="1" rgb="0 0 255"/>
+    <color id="2" rgb="0 255 0"/>
+    <color id="3" rgb="255 0 100"/>
+  </plot>
+
+  <plot id="8" color_by="material" type="phong">
+    <look_at>0. 0. 0.</look_at>
+    <camera_position>10. 10. 10.</camera_position>
+    <light_position>0. 10. 10.</light_position>
+    <pixels>200 200</pixels>
+    <filename>phong_move_light.png</filename>
+    <opaque_ids>1 3</opaque_ids>
+    <color id="1" rgb="0 0 255"/>
+    <color id="2" rgb="0 255 0"/>
+    <color id="3" rgb="255 0 100"/>
+  </plot>
+
 </plots>

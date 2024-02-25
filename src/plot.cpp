@@ -210,6 +210,8 @@ void read_plots_xml(pugi::xml_node root)
           std::make_unique<Plot>(node, Plot::PlotType::voxel));
       else if (type_str == "projection")
         model::plots.emplace_back(std::make_unique<ProjectionPlot>(node));
+      else if (type_str == "phong")
+        model::plots.emplace_back(std::make_unique<PhongPlot>(node));
       else
         fatal_error(
           fmt::format("Unsupported plot type '{}' in plot {}", type_str, id));
@@ -1034,23 +1036,45 @@ RGBColor random_color(void)
     int(prn(&model::plotter_seed) * 255), int(prn(&model::plotter_seed) * 255)};
 }
 
-ProjectionPlot::ProjectionPlot(pugi::xml_node node) : PlottableInterface(node)
+RayTracePlot::RayTracePlot(pugi::xml_node node) : PlottableInterface(node)
 {
-  set_output_path(node);
   set_look_at(node);
   set_camera_position(node);
   set_field_of_view(node);
   set_pixels(node);
-  set_opacities(node);
   set_orthographic_width(node);
-  set_wireframe_thickness(node);
-  set_wireframe_ids(node);
-  set_wireframe_color(node);
+  set_output_path(node);
 
   if (check_for_node(node, "orthographic_width") &&
       check_for_node(node, "field_of_view"))
     fatal_error("orthographic_width and field_of_view are mutually exclusive "
                 "parameters.");
+
+  // Get centerline vector for camera-to-model. We create vectors around this
+  // that form a pixel array, and then trace rays along that.
+  auto up = up_ / up_.norm();
+  Direction looking_direction = look_at_ - camera_position_;
+  looking_direction /= looking_direction.norm();
+  if (std::abs(std::abs(looking_direction.dot(up)) - 1.0) < 1e-9)
+    fatal_error("Up vector cannot align with vector between camera position "
+                "and look_at!");
+  Direction cam_yaxis = looking_direction.cross(up);
+  cam_yaxis /= cam_yaxis.norm();
+  Direction cam_zaxis = cam_yaxis.cross(looking_direction);
+  cam_zaxis /= cam_zaxis.norm();
+
+  // Cache the camera-to-model matrix
+  camera_to_model_ = {looking_direction.x, cam_yaxis.x, cam_zaxis.x,
+    looking_direction.y, cam_yaxis.y, cam_zaxis.y, looking_direction.z,
+    cam_yaxis.z, cam_zaxis.z};
+}
+
+ProjectionPlot::ProjectionPlot(pugi::xml_node node) : RayTracePlot(node)
+{
+  set_opacities(node);
+  set_wireframe_thickness(node);
+  set_wireframe_ids(node);
+  set_wireframe_color(node);
 }
 
 void ProjectionPlot::set_wireframe_color(pugi::xml_node plot_node)
@@ -1066,7 +1090,7 @@ void ProjectionPlot::set_wireframe_color(pugi::xml_node plot_node)
   }
 }
 
-void ProjectionPlot::set_output_path(pugi::xml_node node)
+void RayTracePlot::set_output_path(pugi::xml_node node)
 {
   // Set output file path
   std::string filename;
@@ -1090,10 +1114,9 @@ void ProjectionPlot::set_output_path(pugi::xml_node node)
 // Advances to the next boundary from outside the geometry
 // Returns -1 if no intersection found, and the surface index
 // if an intersection was found.
-int ProjectionPlot::advance_to_boundary_from_void(GeometryState& p)
+int RayTracePlot::advance_to_boundary_from_void(GeometryState& p)
 {
-  constexpr double scoot = 1e-5;
-  double min_dist = {INFINITY};
+  double min_dist {INFINITY};
   auto coord = p.coord(0);
   Universe* uni = model::universes[model::root_universe].get();
   int intersected_surface = -1;
@@ -1108,7 +1131,7 @@ int ProjectionPlot::advance_to_boundary_from_void(GeometryState& p)
     return -1;
   else { // advance the particle
     for (int j = 0; j < p.n_coord(); ++j)
-      p.coord(j).r += (min_dist + scoot) * p.coord(j).u;
+      p.coord(j).r += (min_dist + TINY_BIT) * p.coord(j).u;
     return std::abs(intersected_surface);
   }
 }
@@ -1174,26 +1197,9 @@ bool ProjectionPlot::trackstack_equivalent(
   }
 }
 
-void ProjectionPlot::create_output() const
+std::pair<Position, Direction> RayTracePlot::get_pixel_ray(
+  int horiz, int vert) const
 {
-  // Get centerline vector for camera-to-model. We create vectors around this
-  // that form a pixel array, and then trace rays along that.
-  auto up = up_ / up_.norm();
-  Direction looking_direction = look_at_ - camera_position_;
-  looking_direction /= looking_direction.norm();
-  if (std::abs(std::abs(looking_direction.dot(up)) - 1.0) < 1e-9)
-    fatal_error("Up vector cannot align with vector between camera position "
-                "and look_at!");
-  Direction cam_yaxis = looking_direction.cross(up);
-  cam_yaxis /= cam_yaxis.norm();
-  Direction cam_zaxis = cam_yaxis.cross(looking_direction);
-  cam_zaxis /= cam_zaxis.norm();
-
-  // Transformation matrix for directions
-  std::vector<double> camera_to_model = {looking_direction.x, cam_yaxis.x,
-    cam_zaxis.x, looking_direction.y, cam_yaxis.y, cam_zaxis.y,
-    looking_direction.z, cam_yaxis.z, cam_zaxis.z};
-
   // Now we convert to the polar coordinate system with the polar angle
   // measuring the angle from the vector up_. Phi is the rotation about up_. For
   // now, up_ is hard-coded to be +z.
@@ -1202,9 +1208,47 @@ void ProjectionPlot::create_output() const
   double p0 = static_cast<double>(pixels_[0]);
   double p1 = static_cast<double>(pixels_[1]);
   double vert_fov_radians = horiz_fov_radians * p1 / p0;
-  double dphi = horiz_fov_radians / p0;
-  double dmu = vert_fov_radians / p1;
 
+  // focal_plane_dist can be changed to alter the perspective distortion
+  // effect. This is in units of cm. This seems to look good most of the
+  // time. TODO let this variable be set through XML.
+  constexpr double focal_plane_dist = 10.0;
+  const double dx = 2.0 * focal_plane_dist * std::tan(0.5 * horiz_fov_radians);
+  const double dy = p1 / p0 * dx;
+
+  std::pair<Position, Direction> result;
+
+  // Generate the starting position/direction of the ray
+  if (orthographic_width_ == 0.0) { // perspective projection
+    Direction camera_local_vec;
+    camera_local_vec.x = focal_plane_dist;
+    camera_local_vec.y = -0.5 * dx + horiz * dx / p0;
+    camera_local_vec.z = 0.5 * dy - vert * dy / p1;
+    camera_local_vec /= camera_local_vec.norm();
+
+    result.first = camera_position_;
+    result.second = camera_local_vec.rotate(camera_to_model_);
+  } else { // orthographic projection
+
+    double x_pix_coord = (static_cast<double>(horiz) - p0 / 2.0) / p0;
+    double y_pix_coord = (static_cast<double>(vert) - p1 / 2.0) / p1;
+
+    Direction yaxis = {
+      camera_to_model_[1], camera_to_model_[4], camera_to_model_[7]};
+    Direction zaxis = {
+      camera_to_model_[2], camera_to_model_[5], camera_to_model_[8]};
+    result.first = camera_position_ +
+                   yaxis * x_pix_coord * orthographic_width_ +
+                   zaxis * y_pix_coord * orthographic_width_;
+    result.second = {
+      camera_to_model_[0], camera_to_model_[3], camera_to_model_[6]};
+  }
+
+  return result;
+}
+
+void ProjectionPlot::create_output() const
+{
   size_t width = pixels_[0];
   size_t height = pixels_[1];
   ImageData data({width, height}, not_found_);
@@ -1240,9 +1284,6 @@ void ProjectionPlot::create_output() const
     const int n_threads = num_threads();
     const int tid = thread_num();
 
-    GeometryState p;
-    p.u() = {1.0, 0.0, 0.0};
-
     int vert = tid;
     for (int iter = 0; iter <= pixels_[1] / n_threads; iter++) {
 
@@ -1257,105 +1298,14 @@ void ProjectionPlot::create_output() const
 
         for (int horiz = 0; horiz < pixels_[0]; ++horiz) {
 
-          // Projection mode below decides ray starting conditions
-          Position init_r;
-          Direction init_u;
-
-          // Generate the starting position/direction of the ray
-          if (orthographic_width_ == 0.0) { // perspective projection
-            double this_phi =
-              -horiz_fov_radians / 2.0 + dphi * horiz + 0.5 * dphi;
-            double this_mu =
-              -vert_fov_radians / 2.0 + dmu * vert + M_PI / 2.0 + 0.5 * dmu;
-            Direction camera_local_vec;
-            camera_local_vec.x = std::cos(this_phi) * std::sin(this_mu);
-            camera_local_vec.y = std::sin(this_phi) * std::sin(this_mu);
-            camera_local_vec.z = std::cos(this_mu);
-            init_u = camera_local_vec.rotate(camera_to_model);
-            init_r = camera_position_;
-          } else { // orthographic projection
-            init_u = looking_direction;
-
-            double x_pix_coord = (static_cast<double>(horiz) - p0 / 2.0) / p0;
-            double y_pix_coord = (static_cast<double>(vert) - p1 / 2.0) / p0;
-
-            init_r = camera_position_;
-            init_r += cam_yaxis * x_pix_coord * orthographic_width_;
-            init_r += cam_zaxis * y_pix_coord * orthographic_width_;
-          }
-
-          // Resets internal geometry state of particle
-          p.init_from_r_u(init_r, init_u);
-
-          bool hitsomething = false;
-          bool intersection_found = true;
-          int loop_counter = 0;
+          // RayTracePlot implements camera ray generation
+          std::pair<Position, Direction> ru = get_pixel_ray(horiz, vert);
 
           this_line_segments[tid][horiz].clear();
+          ProjectionRay ray(
+            ru.first, ru.second, *this, this_line_segments[tid][horiz]);
 
-          int first_surface =
-            -1; // surface first passed when entering the model
-          bool first_inside_model = true; // false after entering the model
-          while (intersection_found) {
-            bool inside_cell = false;
-
-            int32_t i_surface = std::abs(p.surface()) - 1;
-            if (i_surface > 0 &&
-                model::surfaces[i_surface]->geom_type_ == GeometryType::DAG) {
-#ifdef DAGMC
-              int32_t i_cell = next_cell(i_surface,
-                p.cell_last(p.n_coord() - 1), p.lowest_coord().universe);
-              inside_cell = i_cell >= 0;
-#else
-              fatal_error(
-                "Not compiled for DAGMC, but somehow you have a DAGCell!");
-#endif
-            } else {
-              inside_cell = exhaustive_find_cell(p);
-            }
-
-            if (inside_cell) {
-
-              // This allows drawing wireframes with surface intersection
-              // edges on the model boundary for the same cell.
-              if (first_inside_model) {
-                this_line_segments[tid][horiz].emplace_back(
-                  color_by_ == PlotColorBy::mats ? p.material()
-                                                 : p.lowest_coord().cell,
-                  0.0, first_surface);
-                first_inside_model = false;
-              }
-
-              hitsomething = true;
-              intersection_found = true;
-              auto dist = distance_to_boundary(p);
-              this_line_segments[tid][horiz].emplace_back(
-                color_by_ == PlotColorBy::mats ? p.material()
-                                               : p.lowest_coord().cell,
-                dist.distance, std::abs(dist.surface_index));
-
-              // Advance particle
-              for (int lev = 0; lev < p.n_coord(); ++lev) {
-                p.coord(lev).r += dist.distance * p.coord(lev).u;
-              }
-              p.surface() = dist.surface_index;
-              p.n_coord_last() = p.n_coord();
-              p.n_coord() = dist.coord_level;
-              if (dist.lattice_translation[0] != 0 ||
-                  dist.lattice_translation[1] != 0 ||
-                  dist.lattice_translation[2] != 0) {
-                cross_lattice(p, dist);
-              }
-
-            } else {
-              first_surface = advance_to_boundary_from_void(p);
-              intersection_found =
-                first_surface != -1; // -1 if no surface found
-            }
-            loop_counter++;
-            if (loop_counter > MAX_INTERSECTIONS)
-              fatal_error("Infinite loop in projection plot");
-          }
+          ray.trace();
 
           // Now color the pixel based on what we have intersected...
           // Loops backwards over intersections.
@@ -1449,15 +1399,20 @@ void ProjectionPlot::create_output() const
 #endif
 }
 
-void ProjectionPlot::print_info() const
+void RayTracePlot::print_info() const
 {
-  fmt::print("Plot Type: Projection\n");
   fmt::print("Camera position: {} {} {}\n", camera_position_.x,
     camera_position_.y, camera_position_.z);
   fmt::print("Look at: {} {} {}\n", look_at_.x, look_at_.y, look_at_.z);
   fmt::print(
     "Horizontal field of view: {} degrees\n", horizontal_field_of_view_);
   fmt::print("Pixels: {} {}\n", pixels_[0], pixels_[1]);
+}
+
+void ProjectionPlot::print_info() const
+{
+  fmt::print("Plot Type: Projection\n");
+  RayTracePlot::print_info();
 }
 
 void ProjectionPlot::set_opacities(pugi::xml_node node)
@@ -1490,7 +1445,7 @@ void ProjectionPlot::set_opacities(pugi::xml_node node)
   }
 }
 
-void ProjectionPlot::set_orthographic_width(pugi::xml_node node)
+void RayTracePlot::set_orthographic_width(pugi::xml_node node)
 {
   if (check_for_node(node, "orthographic_width")) {
     double orthographic_width =
@@ -1527,7 +1482,7 @@ void ProjectionPlot::set_wireframe_ids(pugi::xml_node node)
   std::sort(wireframe_ids_.begin(), wireframe_ids_.end());
 }
 
-void ProjectionPlot::set_pixels(pugi::xml_node node)
+void RayTracePlot::set_pixels(pugi::xml_node node)
 {
   vector<int> pxls = get_node_array<int>(node, "pixels");
   if (pxls.size() != 2)
@@ -1537,19 +1492,19 @@ void ProjectionPlot::set_pixels(pugi::xml_node node)
   pixels_[1] = pxls[1];
 }
 
-void ProjectionPlot::set_camera_position(pugi::xml_node node)
+void RayTracePlot::set_camera_position(pugi::xml_node node)
 {
   vector<double> camera_pos = get_node_array<double>(node, "camera_position");
   if (camera_pos.size() != 3) {
-    fatal_error(
-      fmt::format("look_at element must have three floating point values"));
+    fatal_error(fmt::format(
+      "camera_position element must have three floating point values"));
   }
   camera_position_.x = camera_pos[0];
   camera_position_.y = camera_pos[1];
   camera_position_.z = camera_pos[2];
 }
 
-void ProjectionPlot::set_look_at(pugi::xml_node node)
+void RayTracePlot::set_look_at(pugi::xml_node node)
 {
   vector<double> look_at = get_node_array<double>(node, "look_at");
   if (look_at.size() != 3) {
@@ -1560,7 +1515,7 @@ void ProjectionPlot::set_look_at(pugi::xml_node node)
   look_at_.z = look_at[2];
 }
 
-void ProjectionPlot::set_field_of_view(pugi::xml_node node)
+void RayTracePlot::set_field_of_view(pugi::xml_node node)
 {
   // Defaults to 70 degree horizontal field of view (see .h file)
   if (check_for_node(node, "field_of_view")) {
@@ -1571,6 +1526,303 @@ void ProjectionPlot::set_field_of_view(pugi::xml_node node)
       fatal_error(fmt::format(
         "Field of view for plot {} out-of-range. Must be in (0, 180).", id()));
     }
+  }
+}
+
+PhongPlot::PhongPlot(pugi::xml_node node) : RayTracePlot(node)
+{
+  set_opaque_ids(node);
+  set_diffuse_fraction(node);
+  set_light_position(node);
+}
+
+void PhongPlot::print_info() const
+{
+  fmt::print("Plot Type: Phong\n");
+  RayTracePlot::print_info();
+}
+
+void PhongPlot::create_output() const
+{
+  size_t width = pixels_[0];
+  size_t height = pixels_[1];
+  ImageData data({width, height}, not_found_);
+
+#pragma omp parallel for schedule(dynamic) collapse(2)
+  for (int horiz = 0; horiz < pixels_[0]; ++horiz) {
+    for (int vert = 0; vert < pixels_[1]; ++vert) {
+
+      // RayTracePlot implements camera ray generation
+      std::pair<Position, Direction> ru = get_pixel_ray(horiz, vert);
+      PhongRay ray(ru.first, ru.second, *this);
+
+      ray.trace();
+      data(horiz, vert) = ray.result_color();
+    }
+  }
+
+#ifdef USE_LIBPNG
+  output_png(path_plot(), data);
+#else
+  output_ppm(path_plot(), data);
+#endif
+}
+
+void PhongPlot::set_opaque_ids(pugi::xml_node node)
+{
+  if (check_for_node(node, "opaque_ids")) {
+    opaque_ids_ = get_node_array<int>(node, "opaque_ids");
+    // It is read in as actual ID values, but we have to convert to indices in
+    // mat/cell array
+    for (auto& x : opaque_ids_)
+      x = color_by_ == PlotColorBy::mats ? model::material_map[x]
+                                         : model::cell_map[x];
+  }
+  // We make sure the list is sorted in order to later use
+  // std::binary_search.
+  std::sort(opaque_ids_.begin(), opaque_ids_.end());
+}
+
+bool PhongPlot::is_id_opaque(int id) const
+{
+  return std::binary_search(opaque_ids_.begin(), opaque_ids_.end(), id);
+}
+
+void PhongPlot::set_light_position(pugi::xml_node node)
+{
+  if (check_for_node(node, "light_position")) {
+    auto light_pos_tmp = get_node_array<double>(node, "light_position");
+
+    if (light_pos_tmp.size() != 3)
+      fatal_error("Light position must be given as 3D coordinates");
+
+    light_location_.x = light_pos_tmp[0];
+    light_location_.y = light_pos_tmp[1];
+    light_location_.z = light_pos_tmp[2];
+  } else {
+    light_location_ = camera_position();
+  }
+}
+
+void PhongPlot::set_diffuse_fraction(pugi::xml_node node)
+{
+  if (check_for_node(node, "diffuse_fraction")) {
+    diffuse_fraction_ = std::stod(get_node_value(node, "diffuse_fraction"));
+    if (diffuse_fraction_ < 0.0 || diffuse_fraction_ > 1.0) {
+      fatal_error("Must have 0<=diffuse fraction<= 1");
+    }
+  }
+}
+
+void Ray::compute_distance()
+{
+  dist_ = distance_to_boundary(*this);
+}
+
+void Ray::trace()
+{
+  int first_surface_ = -1;    // surface first passed when entering the model
+  first_inside_model_ = true; // false after entering the model
+  while (intersection_found_) {
+    bool inside_cell = false;
+
+    i_surface_ = std::abs(surface()) - 1;
+
+    // This means no surface was intersected. See cell.cpp
+    // and search for numeric_limits to see where we return it.
+    if (surface() == std::numeric_limits<int>::max()) {
+      warning(fmt::format("Lost a ray, r = {}, u = {}", r(), u()));
+      return;
+    }
+
+    if (i_surface_ > 0 &&
+        model::surfaces[i_surface_]->geom_type_ == GeometryType::DAG) {
+#ifdef DAGMC
+      int32_t i_cell = next_cell(
+        i_surface_, cell_last(n_coord() - 1), lowest_coord().universe);
+      inside_cell = i_cell >= 0;
+#else
+      fatal_error("Not compiled for DAGMC, but somehow you have a DAGCell!");
+#endif
+    } else {
+      inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
+    }
+
+    if (inside_cell) {
+
+      hit_something_ = true;
+      intersection_found_ = true;
+
+      compute_distance();
+
+      if (first_inside_model_) {
+        i_surface_ = first_surface_ - 1;
+        first_inside_model_ = false;
+      }
+
+      // Call the specialized logic for this type of ray
+      on_intersection();
+      if (stop_)
+        return;
+
+      // There are no more intersections to process
+      // if we hit the edge of the model, so stop
+      // the particle in that case:
+      if (dist_.distance == INFTY || dist_.distance == INFINITY) {
+        return;
+      }
+
+      // Advance particle, prepare for next intersection
+      for (int lev = 0; lev < n_coord(); ++lev) {
+        coord(lev).r += dist_.distance * coord(lev).u;
+      }
+      surface() = dist_.surface_index;
+      n_coord_last() = n_coord();
+      n_coord() = dist_.coord_level;
+      if (dist_.lattice_translation[0] != 0 ||
+          dist_.lattice_translation[1] != 0 ||
+          dist_.lattice_translation[2] != 0) {
+        cross_lattice(*this, dist_, settings::verbosity >= 10);
+      }
+
+    } else {
+      first_surface_ = RayTracePlot::advance_to_boundary_from_void(*this);
+      intersection_found_ = first_surface_ != -1; // -1 if no surface found
+    }
+    event_counter_++;
+    if (event_counter_ > MAX_INTERSECTIONS)
+      fatal_error("Infinite loop in ray traced plot");
+  }
+}
+
+void ProjectionRay::on_intersection()
+{
+  // This allows drawing wireframes with surface intersection
+  // edges on the model boundary for the same cell.
+  if (first_inside_model()) {
+    line_segments_.emplace_back(
+      plot_.color_by_ == PlottableInterface::PlotColorBy::mats
+        ? material()
+        : lowest_coord().cell,
+      0.0, first_surface());
+  }
+
+  // This records a tuple with the following info
+  //
+  // 1) ID (material or cell depending on color_by_)
+  // 2) Distance traveled by the ray through that ID
+  // 3) Index of the intersected surface (starting from 1)
+  line_segments_.emplace_back(
+    plot_.color_by_ == PlottableInterface::PlotColorBy::mats
+      ? material()
+      : lowest_coord().cell,
+    dist().distance, std::abs(dist().surface_index));
+}
+
+void PhongRay::on_intersection()
+{
+  // Check if we hit an opaque material or cell
+  int hit_id = plot_.color_by_ == PlottableInterface::PlotColorBy::mats
+                 ? material()
+                 : lowest_coord().cell;
+
+  // If we are reflected and have advanced beyond the camera,
+  // the ray is done. This is checked here because we should
+  // kill the ray even if the material is not opaque.
+  if (reflected_ && (r() - plot_.camera_position()).dot(u()) >= 0.0) {
+    stop();
+    return;
+  }
+
+  // Anything that's not opaque has zero impact on the plot.
+  if (!plot_.is_id_opaque(hit_id))
+    return;
+
+  if (!reflected_) {
+
+    // reflect the particle and set the color to be colored by
+    // the normal or the diffuse lighting contribution
+    reflected_ = true;
+    result_color_ = plot_.colors_[hit_id];
+    Direction to_light = plot_.light_location_ - r();
+    to_light /= to_light.norm();
+
+    // Not sure what can cause this error. Color as an error and proceed
+    // from there. It seems to happen only for a few pixels on the outer
+    // boundary of a hex lattice. TODO
+    //
+    // We cannot detect it in the outer loop, and it only matters here, so
+    // that's why the error handling is a little different than for a lost
+    // ray.
+    if (i_surface() == -1) {
+      result_color_ = plot_.overlap_color_;
+      stop();
+      return;
+    }
+
+    Direction normal = model::surfaces.at(i_surface())->normal(r_local());
+    normal /= normal.norm();
+
+    // Need to apply translations to find the normal vector in
+    // the base level universe's coordinate system. Uses fact
+    // that rotation matrices are orthonormal.
+    auto inverse_rotate = [](const Direction u,
+                            const std::vector<double>& rotation) {
+      return Direction {
+        u.x * rotation[0] + u.y * rotation[3] + u.z * rotation[6],
+        u.x * rotation[1] + u.y * rotation[4] + u.z * rotation[7],
+        u.x * rotation[2] + u.y * rotation[5] + u.z * rotation[8]};
+    };
+    for (int lev = n_coord() - 2; lev >= 0; --lev) {
+      if (coord(lev + 1).rotated) {
+        const Cell& c {*model::cells[coord(lev).cell]};
+        normal = inverse_rotate(normal, c.rotation_);
+      }
+    }
+
+    if (surface() > 0) {
+      normal *= -1.0;
+    }
+
+    // Facing away from the light means no lighting
+    double dotprod = normal.dot(to_light);
+    dotprod = dotprod >= 0.0 ? dotprod : 0.0;
+
+    double modulation =
+      plot_.diffuse_fraction_ + (1.0 - plot_.diffuse_fraction_) * dotprod;
+    result_color_ *= modulation;
+
+    // Now point the particle to the camera. We now begin
+    // checking to see if it's occluded by another surface
+    u() = to_light;
+
+    orig_hit_id_ = hit_id;
+
+    surface() = -surface(); // go to other side
+
+    // Must fully restart coordinate search. Why? Not sure.
+    clear();
+
+    bool found = exhaustive_find_cell(*this);
+    if (!found) {
+      fatal_error("Lost particle after reflection.");
+    }
+
+    // Must recalculate distance to boundary due to the
+    // direction change
+    compute_distance();
+
+  } else {
+    // If it's not facing the light, we color with the diffuse contribution, so
+    // next we check if we're going to occlude the last reflected surface. if
+    // so, color by the diffuse contribution instead
+
+    if (orig_hit_id_ == -1)
+      fatal_error("somehow a ray got reflected but not original ID set?");
+
+    result_color_ = plot_.colors_[orig_hit_id_];
+    result_color_ *= plot_.diffuse_fraction_;
+    stop();
   }
 }
 

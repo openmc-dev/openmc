@@ -89,6 +89,12 @@ def test_clip_discrete():
     d_same = d.clip(1e-6, inplace=True)
     assert d_same is d
 
+    with pytest.raises(ValueError):
+        d.clip(-1.)
+    
+    with pytest.raises(ValueError):
+        d.clip(5)
+
 
 def test_uniform():
     a, b = 10.0, 20.0

@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 from openmc.mpi import comm
 from openmc.deplete import Chain, reaction_rates, nuclide, cram, pool
+from openmc.data import zam, REACTION_MT
 from openmc.stats import Discrete
 import pytest
 
@@ -581,14 +582,14 @@ def test_reduce(gnd_simple_chain, endf_chain):
     assert 'H1' in reduced_chain
     assert 'H2' in reduced_chain
 
-def test_chain_sources(endf_chain):
-    pathways = endf_chain.get_reaction_pathways_to_target()
+def test_chain_sources(gnd_simple_chain):
+    pathways = gnd_simple_chain.get_reaction_pathways_to_target()
     assert isinstance(pathways, dict)
-    assert isinstance(pathways['Au197'], list)
-    assert isinstance(pathways['Au197'][0], tuple)
-    assert isinstance(pathways['Au197'][0][0], str)
-    assert isinstance(pathways['Au197'][0][1], str)
-    for nuc, reaction in pathways['Au197']:
+    assert isinstance(pathways['Xe136'], list)
+    assert isinstance(pathways['Xe136'][0], tuple)
+    assert isinstance(pathways['Xe136'][0][0], str)
+    assert isinstance(pathways['Xe136'][0][1], str)
+    for nuc, reaction in pathways['Xe136']:
         # checks nuclide is acceptable ZAM
-        _ = openmc.data.zam(nuc)
-        assert reaction in openmc.data.REACTION_MT.keys()
+        _ = zam(nuc)
+        assert reaction in REACTION_MT.keys()

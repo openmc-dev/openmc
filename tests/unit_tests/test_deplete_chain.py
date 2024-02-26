@@ -580,3 +580,15 @@ def test_reduce(gnd_simple_chain, endf_chain):
     reduced_chain = endf_chain.reduce(['U235'])
     assert 'H1' in reduced_chain
     assert 'H2' in reduced_chain
+
+def test_chain_sources(endf_chain):
+    pathways = endf_chain.get_reaction_pathways_to_target()
+    assert isinstance(pathways, dict)
+    assert isinstance(pathways['Au197'], list)
+    assert isinstance(pathways['Au197'][0], tuple)
+    assert isinstance(pathways['Au197'][0][0], str)
+    assert isinstance(pathways['Au197'][0][1], str)
+    for nuc, reaction in pathways['Au197']:
+        # checks nuclide is acceptable ZAM
+        _ = openmc.data.zam(nuc)
+        assert reaction in openmc.data.REACTION_MT.keys()

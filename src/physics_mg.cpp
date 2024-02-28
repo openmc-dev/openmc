@@ -130,6 +130,7 @@ void create_fission_sites(Particle& p)
     site.wgt = 1. / weight;
     site.parent_id = p.id();
     site.progeny_id = p.n_progeny()++;
+    site.time = p.time();
 
     // Sample the cosine of the angle, assuming fission neutrons are emitted
     // isotropically
@@ -153,6 +154,21 @@ void create_fission_sites(Particle& p)
     // We add 1 to the delayed_group bc in MG, -1 is prompt, but in the rest
     // of the code, 0 is prompt.
     site.delayed_group = dg + 1;
+
+    // If delayed product production, sample time of emission
+    if (dg != -1) {
+      auto& macro_xs = data::mg.macro_xs_[p.material()];
+      double decay_rate = macro_xs.get_xs(
+              MgxsType::DECAY_RATE, 0, nullptr, nullptr, &dg, 0, 0);
+      site.time -= std::log(prn(p.current_seed())) / decay_rate;
+
+      // Reject site if it exceeds time cutoff
+      double time_cutoff = settings::time_cutoff[static_cast<int>(site.particle)];
+      if (site.time > time_cutoff) {
+        p.n_progeny()--;
+        continue;
+      }
+    }
 
     // Store fission site in bank
     if (use_fission_bank) {

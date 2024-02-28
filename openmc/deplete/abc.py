@@ -777,7 +777,7 @@ class Integrator(ABC):
         self.operator.write_bos_data(step_index + self._i_res)
         return x, res
 
-    def _get_bos_data_from_restart(self, step_index, source_rate, bos_conc):
+    def _get_bos_data_from_restart(self, source_rate, bos_conc):
         """Get beginning of step concentrations, reaction rates from restart"""
         res = self.operator.prev_res[-1]
         # Depletion methods expect list of arrays
@@ -1260,7 +1260,7 @@ class SIIntegrator(Integrator):
                     if self.operator.prev_res is None:
                         n, res = self._get_bos_data_from_operator(i, p, n)
                     else:
-                        n, res = self._get_bos_data_from_restart(i, p, n)
+                        n, res = self._get_bos_data_from_restart(p, n)
                 else:
                     # Pull rates, k from previous iteration w/o
                     # re-running transport

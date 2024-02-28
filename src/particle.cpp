@@ -246,6 +246,9 @@ void Particle::event_advance()
     double push_back_distance = speed() * dt;
     this->move_distance(-push_back_distance);
     hit_time_boundary = true;
+
+    // Reduce the distance traveled for tallying
+    distance -= push_back_distance;
   }
 
   // Score track-length tallies

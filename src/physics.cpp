@@ -209,6 +209,20 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     // Sample delayed group and angle/energy for fission reaction
     sample_fission_neutron(i_nuclide, rx, &site, p);
 
+    // If delayed product production, sample time of emission
+    if (site.delayed_group > 0) {
+      double decay_rate = rx.products_[site.delayed_group].decay_rate_;
+      site.time -= std::log(prn(p.current_seed())) / decay_rate;
+
+      // Reject site if it exceeds time cutoff
+      double time_cutoff =
+        settings::time_cutoff[static_cast<int>(site.particle)];
+      if (site.time > time_cutoff) {
+        p.n_progeny()--;
+        continue;
+      }
+    }
+
     // Store fission site in bank
     if (use_fission_bank) {
       int64_t idx = simulation::fission_bank.thread_safe_append(site);

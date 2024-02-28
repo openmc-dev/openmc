@@ -61,19 +61,27 @@ def test_statepoint_restart():
     harness.main()
 
 
-def test_batch_check(request):
+def test_batch_check(request, capsys):
     xmls = list(request.path.parent.glob('*.xml'))
 
     with cdtemp(xmls):
         model = openmc.Model.from_xml()
         model.settings.particles = 100
+
         # run the model
         sp_file = model.run()
 
+
         # run a restart with the resulting statepoint
         # and the settings unchanged
-        with pytest.raises(RuntimeError, match='is smaller than the number of batches'):
-            model.run(restart_file=sp_file)
+        model.settings.batches = 9
+        # ensure we capture output only from the next run
+        capsys.readouterr()
+        model.run(restart_file=sp_file)
+        output = capsys.readouterr()
+        assert "WARNING" in output.out
+        assert "the restart statepoint file" in output.out.replace('\n',' ')
+
 
         # update the number of batches and run again
         model.settings.batches = 15

@@ -56,13 +56,11 @@ class ExpansionFilter(Filter):
     def merge(self, other):
         """Merge this filter with another.
 
-        This overrides the behavior of the
-        parent Filter class, since its merging
-        technique is to take the union of the set
-        of bins of each filter. That technique does
-        not apply to expansion filters, since the
-        argument should be the maximum filter order
-        rather than the list of all bins.
+        This overrides the behavior of the parent Filter class, since its
+        merging technique is to take the union of the set of bins of each
+        filter. That technique does not apply to expansion filters, since the
+        argument should be the maximum filter order rather than the list of all
+        bins.
 
         Parameters
         ----------

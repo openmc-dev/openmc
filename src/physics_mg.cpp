@@ -158,12 +158,13 @@ void create_fission_sites(Particle& p)
     // If delayed product production, sample time of emission
     if (dg != -1) {
       auto& macro_xs = data::mg.macro_xs_[p.material()];
-      double decay_rate = macro_xs.get_xs(
-              MgxsType::DECAY_RATE, 0, nullptr, nullptr, &dg, 0, 0);
+      double decay_rate =
+        macro_xs.get_xs(MgxsType::DECAY_RATE, 0, nullptr, nullptr, &dg, 0, 0);
       site.time -= std::log(prn(p.current_seed())) / decay_rate;
 
       // Reject site if it exceeds time cutoff
-      double time_cutoff = settings::time_cutoff[static_cast<int>(site.particle)];
+      double time_cutoff =
+        settings::time_cutoff[static_cast<int>(site.particle)];
       if (site.time > time_cutoff) {
         p.n_progeny()--;
         continue;

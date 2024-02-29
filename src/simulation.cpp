@@ -215,7 +215,8 @@ int openmc_next_batch(int* status)
   using openmc::simulation::current_gen;
 
   if (simulation::current_batch >= settings::n_max_batches) {
-    if (status) *status = STATUS_EXIT_MAX_BATCH;
+    if (status)
+      *status = STATUS_EXIT_MAX_BATCH;
     return 0;
   }
 

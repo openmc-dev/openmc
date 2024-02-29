@@ -364,7 +364,8 @@ void restart_set_keff()
 
 void load_state_point()
 {
-  write_message(fmt::format("Loading state point {}...", settings::path_statepoint_c), 5);
+  write_message(
+    fmt::format("Loading state point {}...", settings::path_statepoint_c), 5);
   openmc_statepoint_load(settings::path_statepoint.c_str());
 }
 
@@ -431,7 +432,8 @@ extern "C" int openmc_statepoint_load(const char* filename)
   if (simulation::restart_batch >= settings::n_max_batches) {
     warning(fmt::format(
       "The number of batches specified for simulation ({}) is smaller "
-      "than or equal to the number of batches in the restart statepoint file ({})",
+      "than or equal to the number of batches in the restart statepoint file "
+      "({})",
       settings::n_max_batches, simulation::restart_batch));
   }
 

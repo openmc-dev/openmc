@@ -1,7 +1,7 @@
 from pathlib import Path
+import re
 
 import openmc
-import pytest
 
 from tests.testing_harness import TestHarness
 from tests.regression_tests import config
@@ -69,24 +69,29 @@ def test_batch_check(request, capsys):
         model.settings.particles = 100
 
         # run the model
-        sp_file = model.run()
-
+        sp_file = model.run(export_model_xml=False)
+        assert sp_file is not None
 
         # run a restart with the resulting statepoint
         # and the settings unchanged
-        model.settings.batches = 9
+        model.settings.batches = 6
         # ensure we capture output only from the next run
         capsys.readouterr()
-        model.run(restart_file=sp_file)
-        output = capsys.readouterr()
-        assert "WARNING" in output.out
-        assert "the restart statepoint file" in output.out.replace('\n',' ')
+        sp_file = model.run(export_model_xml=False, restart_file=sp_file)
+        # indicates that a new statepoint file was not created
+        assert sp_file is None
 
+        output = capsys.readouterr().out
+        output = re.sub(' +', ' ', output.replace('\n',' '))
+        print(output)
+        assert "WARNING" in output
+        assert "The number of batches specified for simulation" in output
 
-        # update the number of batches and run again
+        # update the number of batches and run again,
+        # this restart run should be successful
         model.settings.batches = 15
         model.settings.statepoint = {}
-        sp_file = model.run(restart_file=sp_file)
+        sp_file = model.run(export_model_xml=False, restart_file=sp_file)
 
         sp = openmc.StatePoint(sp_file)
         assert sp.n_batches == 15

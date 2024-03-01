@@ -128,7 +128,6 @@ def test_exceptions(parameter, error, run_in_tmpdir, geometry):
     settings = openmc.Settings(run_mode="fixed source", batches=5, particles=100)
     settings.surf_source_write = parameter
     model = openmc.Model(geometry=geometry, settings=settings)
-    model.tallies.export_to_xml()
     with pytest.raises(RuntimeError, match=error):
         model.run()
     return

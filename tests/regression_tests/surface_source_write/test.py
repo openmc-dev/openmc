@@ -491,7 +491,10 @@ def return_surface_source_data(filepath):
     """Read a surface source file and return a sorted array composed
     of flatten arrays of source data for each surface source point.
 
-    TODO: use read_source_file from source.py instead.
+    TODO:
+    
+    - use read_source_file from source.py instead. Or a dedicated function
+      to produce sorted list of source points for a given file.
 
     Parameters
     ----------

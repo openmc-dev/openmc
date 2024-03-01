@@ -3,7 +3,7 @@ import openmc
 import pytest
 
 
-def test_micro_macro_compare():
+def test_micro_macro_compare(run_in_tmpdir):
     # Create simple sphere model with H1 and H2
     mat = openmc.Material()
     mat.add_components({'H1': 1.0, 'H2': 1.0})

@@ -51,8 +51,14 @@
 
 int openmc_run()
 {
+  using namespace openmc;
+
   openmc::simulation::time_total.start();
   openmc_simulation_init();
+
+  if (simulation::current_batch >= settings::n_max_batches) {
+    return 0;
+  }
 
   int err = 0;
   int status = 0;
@@ -213,12 +219,6 @@ int openmc_next_batch(int* status)
 {
   using namespace openmc;
   using openmc::simulation::current_gen;
-
-  if (simulation::current_batch >= settings::n_max_batches) {
-    if (status)
-      *status = STATUS_EXIT_MAX_BATCH;
-    return 0;
-  }
 
   // Make sure simulation has been initialized
   if (!simulation::initialized) {

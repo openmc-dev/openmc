@@ -2,7 +2,7 @@
 coordinates (number of encapsulated universes) is different in the cell from
 where the particle originates compared to the cell where the particle is going.
 
-A matrice of reaction rates based on where the particle is coming from and
+A matrix of reaction rates based on where the particle is coming from and
 where it goes to is calculated and compared to the total reaction rate of the problem.
 The components of this matrix are also compared to other components using symmetric
 properties.

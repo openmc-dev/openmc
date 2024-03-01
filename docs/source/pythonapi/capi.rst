@@ -12,11 +12,19 @@ Functions
    :nosignatures:
    :template: myfunction.rst
 
+   broaden_wmp_polynomials
+   calc_pn
+   calc_rn
+   calc_zn_rad
    calculate_volumes
+   cell
+   cells
    current_batch
+   evaluate_legendre
    export_properties
    export_weight_windows
-   import_weight_windows
+   filter
+   filters
    finalize
    find_cell
    find_material
@@ -25,25 +33,42 @@ Functions
    hard_reset
    id_map
    import_properties
+   import_weight_windows
    init
+   is_initialized
    is_statepoint_batch
    iter_batches
    keff
    load_nuclide
    master
+   material
+   materials
+   maxwell_spectrum
+   mesh
+   meshes
    next_batch
+   normal_variate
+   nuclide
+   nuclides
    num_realizations
+   plot
    plot_geometry
    property_map
    reset
    reset_timers
+   rotate_angle
    run
    run_in_memory
    sample_external_source
-   simulation_init
+   settings
    simulation_finalize
+   simulation_init
    source_bank
    statepoint_write
+   tallies
+   tally
+   watt_spectrum
+   weight_windows
 
 Classes
 -------
@@ -53,15 +78,43 @@ Classes
    :nosignatures:
    :template: myclass.rst
 
+   AzimuthalFilter
+   CDLL
    Cell
+   CellFilter
+   CellInstanceFilter
+   CellbornFilter
+   CellfromFilter
+   CollisionFilter
    CylindricalMesh
+   DelayedGroupFilter
+   DistribcellFilter
    EnergyFilter
-   MaterialFilter
+   EnergyFunctionFilter
+   EnergyoutFilter
+   Filter
+   LegendreFilter
    Material
+   MaterialFilter
+   MaterialFromFilter
    MeshFilter
    MeshSurfaceFilter
+   MuFilter
    Nuclide
+   POINTER
+   ParticleFilter
+   PathLike
+   PolarFilter
    RectilinearMesh
    RegularMesh
+   SpatialLegendreFilter
+   SphericalHarmonicsFilter
    SphericalMesh
+   Structure
+   SurfaceFilter
    Tally
+   UniverseFilter
+   UnstructuredMesh
+   WeightWindows
+   ZernikeFilter
+   ZernikeRadialFilter

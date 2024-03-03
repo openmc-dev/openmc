@@ -24,7 +24,7 @@ ARG compile_cores=1
 ARG build_dagmc=off
 ARG build_libmesh=off
 
-FROM debian:bullseye-slim AS dependencies
+FROM debian:bookworm-slim AS dependencies
 
 ARG compile_cores
 ARG build_dagmc

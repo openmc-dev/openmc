@@ -488,8 +488,11 @@ class Model:
         # if the provided path doesn't end with the XML extension, assume the
         # input path is meant to be a directory. If the directory does not
         # exist, create it and place a 'model.xml' file there.
-        if not str(xml_path).endswith('.xml') and not xml_path.exists():
-            os.mkdir(xml_path)
+        if not str(xml_path).endswith('.xml'):
+            if not xml_path.exists():
+                os.mkdir(xml_path)
+            elif not xml_path.is_dir():
+                raise FileExistsError(f"File exists and is not a directory: '{xml_path}'")
             xml_path /= 'model.xml'
         # if this is an XML file location and the file's parent directory does
         # not exist, create it before continuing

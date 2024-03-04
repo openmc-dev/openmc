@@ -588,3 +588,6 @@ def test_single_xml_exec(run_in_tmpdir):
 
     # Make sure path can be specified with run
     pincell_model.run(path='my_model.xml')
+
+    os.mkdir('subdir')
+    pincell_model.run(path='subdir')

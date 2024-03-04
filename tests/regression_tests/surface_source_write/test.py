@@ -93,25 +93,21 @@ from tests.regression_tests import config
 
 
 @pytest.fixture(scope="function")
-def single_thread():
-    """Set the number of OMP threads to 1 for the test.
+def single_thread(monkeypatch):
+    """Set the number of OMP threads to 1 for the test."""
+    monkeypatch.setenv("OMP_NUM_THREADS", "1")
 
-    If OMP_NUM_THREADS is set in the environment, it will reset the value to 1
-    and restore the original value once the test is finished.
 
-    If OMP_NUM_THREADS is not set in the environment, it will create the variable
-    and set it to 1. Once the test is done, the environment variable is deleted."""
-    try:
-        current_omp_num_threads = os.environ["OMP_NUM_THREADS"]
-    except KeyError:
-        current_omp_num_threads = None
+@pytest.fixture(scope="function")
+def two_threads(monkeypatch):
+    """Set the number of OMP threads to 2 for the test."""
+    monkeypatch.setenv("OMP_NUM_THREADS", "2")
 
-    os.environ["OMP_NUM_THREADS"] = "1"
-    yield
-    if current_omp_num_threads is not None:
-        os.environ["OMP_NUM_THREADS"] = current_omp_num_threads
-    else:
-        del os.environ["OMP_NUM_THREADS"]
+
+@pytest.fixture(scope="function")
+def single_process(monkeypatch):
+    """Set the number of MPI process to 1 for the test."""
+    monkeypatch.setitem(config, "mpi_np", "1")
 
 
 @pytest.fixture(scope="module")
@@ -494,7 +490,7 @@ def return_surface_source_data(filepath):
     of flatten arrays of source data for each surface source point.
 
     TODO:
-    
+
     - use read_source_file from source.py instead. Or a dedicated function
       to produce sorted list of source points for a given file.
 
@@ -620,19 +616,6 @@ class SurfaceSourceWriteTestHarness(PyAPITestHarness):
             self._cleanup()
             os.chdir(base_dir)
 
-    def _run_openmc(self):
-        """Force the number of MPI process to 1."""
-        if config["mpi"]:
-            mpi_np = "1"
-            mpi_args = [config["mpiexec"], "-n", mpi_np]
-            openmc.run(
-                openmc_exec=config["exe"],
-                mpi_args=mpi_args,
-                event_based=config["event"],
-            )
-        else:
-            openmc.run(openmc_exec=config["exe"], event_based=config["event"])
-
     def _overwrite_results(self):
         """Also add the 'surface_source.h5' file during overwriting."""
         super()._overwrite_results()
@@ -669,9 +652,12 @@ class SurfaceSourceWriteTestHarness(PyAPITestHarness):
         ("case-11", {"max_particles": 3000, "cellto": 3}),
     ],
 )
-def test_surface_source_cell_model_1(folder, parameter, model_1, single_thread):
+def test_surface_source_cell_model_1(
+    folder, parameter, model_1, single_thread, single_process
+):
     """Test on a generic model with vacuum and transmission boundary conditions."""
     assert os.environ["OMP_NUM_THREADS"] == "1"
+    assert config["mpi_np"] == "1"
     model_1.settings.surf_source_write = parameter
     harness = SurfaceSourceWriteTestHarness(
         "statepoint.5.h5", model=model_1, workdir=folder
@@ -697,9 +683,12 @@ def test_surface_source_cell_model_1(folder, parameter, model_1, single_thread):
         ),
     ],
 )
-def test_surface_source_cell_model_2(folder, parameter, model_2, single_thread):
+def test_surface_source_cell_model_2(
+    folder, parameter, model_2, single_thread, single_process
+):
     """Test specifically on vacuum surfaces."""
     assert os.environ["OMP_NUM_THREADS"] == "1"
+    assert config["mpi_np"] == "1"
     model_2.settings.surf_source_write = parameter
     harness = SurfaceSourceWriteTestHarness(
         "statepoint.5.h5", model=model_2, workdir=folder
@@ -725,9 +714,12 @@ def test_surface_source_cell_model_2(folder, parameter, model_2, single_thread):
         ),
     ],
 )
-def test_surface_source_cell_model_3(folder, parameter, model_3, single_thread):
+def test_surface_source_cell_model_3(
+    folder, parameter, model_3, single_thread, single_process
+):
     """Test specifically on reflective surfaces."""
     assert os.environ["OMP_NUM_THREADS"] == "1"
+    assert config["mpi_np"] == "1"
     model_3.settings.surf_source_write = parameter
     harness = SurfaceSourceWriteTestHarness(
         "statepoint.5.h5", model=model_3, workdir=folder
@@ -735,31 +727,7 @@ def test_surface_source_cell_model_3(folder, parameter, model_3, single_thread):
     harness.main()
 
 
-@pytest.fixture(scope="function")
-def two_threads():
-    """Set the number of OMP threads to 2 for the test.
-
-    If OMP_NUM_THREADS is set in the environment, it will reset the value to 2
-    and restore the original value once the test is finished.
-
-    If OMP_NUM_THREADS is not set in the environment, it will create the variable
-    and set it to 2. Once the test is done, the environment variable is deleted.
-
-    """
-    try:
-        current_omp_num_threads = os.environ["OMP_NUM_THREADS"]
-    except KeyError:
-        current_omp_num_threads = None
-
-    os.environ["OMP_NUM_THREADS"] = "2"
-    yield
-    if current_omp_num_threads is not None:
-        os.environ["OMP_NUM_THREADS"] = current_omp_num_threads
-    else:
-        del os.environ["OMP_NUM_THREADS"]
-
-
-def test_consistency_low_realization_number(model_1, two_threads):
+def test_consistency_low_realization_number(model_1, two_threads, single_process):
     """The objective is to test that the results produced, in a case where
     the number of potential realization (particle storage) is low
     compared to the capacity of storage, are still consistent.
@@ -769,6 +737,7 @@ def test_consistency_low_realization_number(model_1, two_threads):
 
     """
     assert os.environ["OMP_NUM_THREADS"] == "2"
+    assert config["mpi_np"] == "1"
     model_1.settings.surf_source_write = {
         "max_particles": 200,
         "surface_ids": [2],

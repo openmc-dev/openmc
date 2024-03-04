@@ -5,6 +5,8 @@ to a single thread via the fixture single_thread. Without this configuration, th
 that source files can be different for the same inputs if the number of realization (i.e., point
 being candidate to be stored) is higher than the capacity.
 
+Results are generated using only 1 MPI process.
+
 Three OpenMC models are used to cover the transmission, vacuum and reflective boundary conditions:
 
 - model_1: complete model with a cylindrical core in 2 boxes,
@@ -617,6 +619,19 @@ class SurfaceSourceWriteTestHarness(PyAPITestHarness):
         finally:
             self._cleanup()
             os.chdir(base_dir)
+
+    def _run_openmc(self):
+        """Force the number of MPI process to 1."""
+        if config["mpi"]:
+            mpi_np = "1"
+            mpi_args = [config["mpiexec"], "-n", mpi_np]
+            openmc.run(
+                openmc_exec=config["exe"],
+                mpi_args=mpi_args,
+                event_based=config["event"],
+            )
+        else:
+            openmc.run(openmc_exec=config["exe"], event_based=config["event"])
 
     def _overwrite_results(self):
         """Also add the 'surface_source.h5' file during overwriting."""

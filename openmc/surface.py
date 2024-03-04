@@ -1748,6 +1748,11 @@ class Sphere(QuadricMixin, Surface):
 class Cone(QuadricMixin, Surface):
     """A conical surface parallel to the x-, y-, or z-axis.
 
+    .. Note::
+        This creates a double cone, which is two "traditional" cones that meet at their apex.
+        For a "traditional" cone see :class:`~openmc.model.XConeSided`,
+        :class:`~openmc.model.YConeSided`, and :class:`~openmc.model.ZConeSided`.
+
     Parameters
     ----------
     x0 : float, optional
@@ -1902,6 +1907,10 @@ class XCone(QuadricMixin, Surface):
     """A cone parallel to the x-axis of the form :math:`(y - y_0)^2 + (z - z_0)^2 =
     r^2 (x - x_0)^2`.
 
+    .. Note::
+        This creates a double cone, which is two "traditional" cones that meet at their apex.
+        For a "traditional" cone see :class:`~openmc.model.XConeSided`.
+
     Parameters
     ----------
     x0 : float, optional
@@ -1999,6 +2008,10 @@ class YCone(QuadricMixin, Surface):
     """A cone parallel to the y-axis of the form :math:`(x - x_0)^2 + (z - z_0)^2 =
     r^2 (y - y_0)^2`.
 
+    .. Note::
+        This creates a double cone, which is two "traditional" cones that meet at their apex.
+        For a "traditional" cone see :class:`~openmc.model.YConeSided`.
+
     Parameters
     ----------
     x0 : float, optional
@@ -2095,6 +2108,10 @@ class YCone(QuadricMixin, Surface):
 class ZCone(QuadricMixin, Surface):
     """A cone parallel to the z-axis of the form :math:`(x - x_0)^2 + (y - y_0)^2 =
     r^2 (z - z_0)^2`.
+
+    .. Note::
+        This creates a double cone, which is two "traditional" cones that meet at their apex.
+        For a "traditional" cone see :class:`~openmc.model.ZConeSided`.
 
     Parameters
     ----------

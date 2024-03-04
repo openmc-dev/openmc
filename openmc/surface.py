@@ -1757,7 +1757,9 @@ class Cone(QuadricMixin, Surface):
     z0 : float, optional
         z-coordinate of the apex in [cm]. Defaults to 0.
     r2 : float, optional
-        Parameter related to the aperature. Defaults to 1.
+        Parameter related to the aperature [cm^2]
+        This is the square of the radius of the cone 1 cm from.
+        This can also be treated as the square of the slope of the cone relative to its axis.
     dx : float, optional
         x-component of the vector representing the axis of the cone.
         Defaults to 0.
@@ -1791,7 +1793,7 @@ class Cone(QuadricMixin, Surface):
     z0 : float
         z-coordinate of the apex in [cm]
     r2 : float
-        Parameter related to the aperature
+        Parameter related to the aperature [cm^2]
     dx : float
         x-component of the vector representing the axis of the cone.
     dy : float
@@ -1909,7 +1911,9 @@ class XCone(QuadricMixin, Surface):
     z0 : float, optional
         z-coordinate of the apex in [cm]. Defaults to 0.
     r2 : float, optional
-        Parameter related to the aperature. Defaults to 1.
+        Parameter related to the aperature [cm^2].
+        This is the square of the radius of the cone 1 cm from.
+        This can also be treated as the square of the slope of the cone relative to its axis.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -2004,7 +2008,9 @@ class YCone(QuadricMixin, Surface):
     z0 : float, optional
         z-coordinate of the apex in [cm]. Defaults to 0.
     r2 : float, optional
-        Parameter related to the aperature. Defaults to 1.
+        Parameter related to the aperature [cm^2].
+        This is the square of the radius of the cone 1 cm from.
+        This can also be treated as the square of the slope of the cone relative to its axis.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -2099,7 +2105,9 @@ class ZCone(QuadricMixin, Surface):
     z0 : float, optional
         z-coordinate of the apex in [cm]. Defaults to 0.
     r2 : float, optional
-        Parameter related to the aperature. Defaults to 1.
+        Parameter related to the aperature [cm^2].
+        This is the square of the radius of the cone 1 cm from.
+        This can also be treated as the square of the slope of the cone relative to its axis.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles

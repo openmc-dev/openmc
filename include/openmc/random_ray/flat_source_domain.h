@@ -89,7 +89,7 @@ public:
 }; // class FlatSourceDomain
 
 //============================================================================
-//! Non-Method Functions
+//! Non-member functions
 //============================================================================
 
 // Returns the inputted value with its

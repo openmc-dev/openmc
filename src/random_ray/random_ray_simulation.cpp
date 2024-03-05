@@ -124,7 +124,7 @@ void validate_random_ray_inputs()
   // Check for independent source
   IndependentSource* is =
     dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get());
-  if (is == nullptr) {
+  if (!is) {
     fatal_error(
       "Invalid ray source definition. Ray source must be IndependentSource.");
   }
@@ -132,7 +132,7 @@ void validate_random_ray_inputs()
   // Check for box source
   SpatialDistribution* space_dist = is->space();
   SpatialBox* sb = dynamic_cast<SpatialBox*>(space_dist);
-  if (sb == nullptr) {
+  if (!sb) {
     fatal_error(
       "Invalid source definition -- only box sources are allowed in random "
       "ray "
@@ -149,7 +149,7 @@ void validate_random_ray_inputs()
   // Check for isotropic source
   UnitSphereDistribution* angle_dist = is->angle();
   Isotropic* id = dynamic_cast<Isotropic*>(angle_dist);
-  if (id == nullptr) {
+  if (!id) {
     fatal_error("Invalid source definition -- only isotropic sources are "
                 "allowed for random ray source.");
   }
@@ -162,7 +162,7 @@ void validate_random_ray_inputs()
     Plot* openmc_plot = dynamic_cast<Plot*>(model::plots[p].get());
 
     // Random ray plots only support voxel plots
-    if (openmc_plot == nullptr) {
+    if (!openmc_plot) {
       warning(fmt::format(
         "Plot {} will not be used for end of simulation data plotting -- only "
         "voxel plotting is allowed in random ray mode.",

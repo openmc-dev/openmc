@@ -407,8 +407,8 @@ below, which defines a seven group cross section dataset.
 ::
 
     # Instantiate the energy group data
-    ebins = [1e-5, 0.0635, 10.0, 1.0e2, 1.0e3, 0.5e6, 1.0e6, 20.0e6]
-    groups = openmc.mgxs.EnergyGroups(group_edges=ebins)
+    group_edges = [1e-5, 0.0635, 10.0, 1.0e2, 1.0e3, 0.5e6, 1.0e6, 20.0e6]
+    groups = openmc.mgxs.EnergyGroups(group_edges)
 
     # Instantiate the 7-group cross section data
     uo2_xsdata = openmc.XSdata('UO2', groups)
@@ -416,8 +416,8 @@ below, which defines a seven group cross section dataset.
     uo2_xsdata.set_total(
         [0.1779492, 0.3298048, 0.4803882, 0.5543674, 0.3118013, 0.3951678,
          0.5644058])
-    uo2_xsdata.set_absorption([8.0248E-03, 3.7174E-03, 2.6769E-02, 9.6236E-02,
-                               3.0020E-02, 1.1126E-01, 2.8278E-01])
+    uo2_xsdata.set_absorption([8.0248e-03, 3.7174e-03, 2.6769e-02, 9.6236e-02,
+                               3.0020e-02, 1.1126e-01, 2.8278e-01])
     scatter_matrix = np.array(
         [[[0.1275370, 0.0423780, 0.0000094, 0.0000000, 0.0000000, 0.0000000, 0.0000000],
           [0.0000000, 0.3244560, 0.0016314, 0.0000000, 0.0000000, 0.0000000, 0.0000000],
@@ -428,22 +428,22 @@ below, which defines a seven group cross section dataset.
           [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0085458, 0.2730800]]])
     scatter_matrix = np.rollaxis(scatter_matrix, 0, 3)
     uo2_xsdata.set_scatter_matrix(scatter_matrix)
-    uo2_xsdata.set_fission([7.21206E-03, 8.19301E-04, 6.45320E-03,
-                            1.85648E-02, 1.78084E-02, 8.30348E-02,
-                            2.16004E-01])
-    uo2_xsdata.set_nu_fission([2.005998E-02, 2.027303E-03, 1.570599E-02,
-                               4.518301E-02, 4.334208E-02, 2.020901E-01,
-                               5.257105E-01])
-    uo2_xsdata.set_chi([5.8791E-01, 4.1176E-01, 3.3906E-04, 1.1761E-07, 0.0000E+00,
-                        0.0000E+00, 0.0000E+00])
+    uo2_xsdata.set_fission([7.21206e-03, 8.19301e-04, 6.45320e-03,
+                            1.85648e-02, 1.78084e-02, 8.30348e-02,
+                            2.16004e-01])
+    uo2_xsdata.set_nu_fission([2.005998e-02, 2.027303e-03, 1.570599e-02,
+                               4.518301e-02, 4.334208e-02, 2.020901e-01,
+                               5.257105e-01])
+    uo2_xsdata.set_chi([5.8791e-01, 4.1176e-01, 3.3906e-04, 1.1761e-07, 0.0000e+00,
+                        0.0000e+00, 0.0000e+00])
 
     h2o_xsdata = openmc.XSdata('LWTR', groups)
     h2o_xsdata.order = 0
     h2o_xsdata.set_total([0.15920605, 0.412969593, 0.59030986, 0.58435,
                           0.718, 1.2544497, 2.650379])
-    h2o_xsdata.set_absorption([6.0105E-04, 1.5793E-05, 3.3716E-04,
-                               1.9406E-03, 5.7416E-03, 1.5001E-02,
-                               3.7239E-02])
+    h2o_xsdata.set_absorption([6.0105e-04, 1.5793e-05, 3.3716e-04,
+                               1.9406e-03, 5.7416e-03, 1.5001e-02,
+                               3.7239e-02])
     scatter_matrix = np.array(
         [[[0.0444777, 0.1134000, 0.0007235, 0.0000037, 0.0000001, 0.0000000, 0.0000000],
           [0.0000000, 0.2823340, 0.1299400, 0.0006234, 0.0000480, 0.0000074, 0.0000010],
@@ -473,7 +473,7 @@ An example of a settings definition for random ray is given below::
 
     # Geometry and MGXS material definition of 2x2 lattice (not shown)
     pitch = 1.26
-    ebins = [1e-5, 0.0635, 10.0, 1.0e2, 1.0e3, 0.5e6, 1.0e6, 20.0e6]
+    group_edges = [1e-5, 0.0635, 10.0, 1.0e2, 1.0e3, 0.5e6, 1.0e6, 20.0e6]
     ...
 
     # Instantiate a settings object for a random ray solve
@@ -504,7 +504,7 @@ An example of a settings definition for random ray is given below::
     mesh_filter = openmc.MeshFilter(mesh)
 
     # Create a multigroup energy filter
-    energy_filter = openmc.EnergyFilter(ebins)
+    energy_filter = openmc.EnergyFilter(group_edges)
 
     # Create tally using our two filters and add scores
     tally = openmc.Tally()

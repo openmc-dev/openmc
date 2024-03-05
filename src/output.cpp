@@ -585,7 +585,8 @@ void print_results_random_ray(uint64_t total_geometric_intersections,
 
   if (settings::verbosity >= 6) {
     double total_integrations = total_geometric_intersections * negroups;
-    double TPI = simulation::time_transport.elapsed() / total_integrations;
+    double time_per_integration =
+      simulation::time_transport.elapsed() / total_integrations;
     double misc_time = time_total.elapsed() - time_update_src.elapsed() -
                        time_transport.elapsed() - time_tallies.elapsed() -
                        time_bank_sendrecv.elapsed();
@@ -623,7 +624,7 @@ void print_results_random_ray(uint64_t total_geometric_intersections,
     show_time("Time in active batches", time_active.elapsed());
     show_time("Time writing statepoints", time_statepoint.elapsed());
     show_time("Total time for finalization", time_finalize.elapsed());
-    show_time("Time per integration", TPI);
+    show_time("Time per integration", time_per_integration);
   }
 
   if (settings::verbosity >= 4) {

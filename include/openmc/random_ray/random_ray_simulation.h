@@ -46,7 +46,7 @@ public:
 }; // class RandomRaySimulation
 
 //============================================================================
-//! Non-Method Functions
+//! Non-member functions
 //============================================================================
 
 void openmc_run_random_ray();

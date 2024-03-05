@@ -1,6 +1,7 @@
 #ifndef OPENMC_RANDOM_RAY_H
 #define OPENMC_RANDOM_RAY_H
 
+#include "openmc/memory.h"
 #include "openmc/particle.h"
 #include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/source.h"

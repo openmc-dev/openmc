@@ -1050,7 +1050,6 @@ class Settings:
                 cv.check_greater_than('inactive ray length',
                                       random_ray[key], 0.0, True)
             elif key == 'ray_source':
-                print("Setting source field")
                 cv.check_type('random ray source', random_ray[key], SourceBase)
             else:
                 raise ValueError(f'Unable to set random ray to "{key}" which is '
@@ -1829,7 +1828,7 @@ class Settings:
             for child in elem:
                 if child.tag in ('distance_inactive', 'distance_active'):
                     self.random_ray[child.tag] = float(child.text)
-                elif child.tag == 'ray_source':
+                elif child.tag == 'source':
                     source = SourceBase.from_xml_element(child)
                     self.random_ray['ray_source'] = source
 

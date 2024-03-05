@@ -4,28 +4,56 @@
 Random Ray Solver
 =================
 
-In general, the random ray solver mode uses most of the same settings and :ref:`run strategies <usersguide_particles>` as the standard Monte Carlo solver mode. For instance, random ray solves are also split up into :ref:`inactive and active batches <usersguide_batches>`. However, there are a couple of settings that are unique to the random ray solver, and a few areas that the random ray run strategy differs, which will be described in this section.
+In general, the random ray solver mode uses most of the same settings and
+:ref:`run strategies <usersguide_particles>` as the standard Monte Carlo solver
+mode. For instance, random ray solves are also split up into :ref:`inactive and
+active batches <usersguide_batches>`. However, there are a couple of settings
+that are unique to the random ray solver, and a few areas that the random ray
+run strategy differs, which will be described in this section.
 
 ------------------------
 Enabling Random Ray Mode
 ------------------------
 
-To utilize the random ray solver, the ``settings.random_ray`` dictionary must be present in the :class:`openmc.Settings` Python class. There are a number of additional settings that must be specified within this dictionary that will be discussed below. Additionally, the multi-group energy mode must be specified. 
+To utilize the random ray solver, the ``settings.random_ray`` dictionary must be
+present in the :class:`openmc.Settings` Python class. There are a number of
+additional settings that must be specified within this dictionary that will be
+discussed below. Additionally, the multi-group energy mode must be specified.
 
 -------
 Batches
 -------
 
-In Monte Carlo, inactive batches are used to let the fission source develop into a stationary distribution before active batches are performed that actually accumulate statistics. While this is true of random ray as well, in the random ray mode the inactive batches are also used to let the scattering source develop. Monte Carlo fully represents the scattering source within each iteration (by its nature of fully simulating particles from birth to death through any number of physical scattering events), whereas the scattering source in random ray can only represent as many scattering events as batches have been completed. E.g., by iteration 10 in random ray, the scattering source only captures the behavior of neutrons through their 10th scatter. By iteration 500 in random ray, the scattering source only captures the behavior of neutrons through their 100th scatter. Thus, while inactive batches are only required in an eigenvalue solve in Monte Carlo, **inactive batches are required for both eigenvalue and fixed source solves in random ray mode** due to this additional need to converge the scattering source.
+In Monte Carlo, inactive batches are used to let the fission source develop into
+a stationary distribution before active batches are performed that actually
+accumulate statistics. While this is true of random ray as well, in the random
+ray mode the inactive batches are also used to let the scattering source
+develop. Monte Carlo fully represents the scattering source within each
+iteration (by its nature of fully simulating particles from birth to death
+through any number of physical scattering events), whereas the scattering source
+in random ray can only represent as many scattering events as batches have been
+completed. E.g., by iteration 10 in random ray, the scattering source only
+captures the behavior of neutrons through their 10th scatter. By iteration 500
+in random ray, the scattering source only captures the behavior of neutrons
+through their 100th scatter. Thus, while inactive batches are only required in
+an eigenvalue solve in Monte Carlo, **inactive batches are required for both
+eigenvalue and fixed source solves in random ray mode** due to this additional
+need to converge the scattering source.
 
-The additional burden of converging the scattering source generally results in a higher requirement for the number of inactive batches - often by an order of magnitude or more. For instance, it may be reasonable to only use 50 inactive batches for a light water reactor simulation with Monte Carlo, but  random ray might require 500 or more inactive batches. Similar to Monte Carlo, :ref:`Shannon entropy
-<usersguide_entropy>` can be used to guage whether the combined scattering and fission source has fully developed.
+The additional burden of converging the scattering source generally results in a
+higher requirement for the number of inactive batches - often by an order of
+magnitude or more. For instance, it may be reasonable to only use 50 inactive
+batches for a light water reactor simulation with Monte Carlo, but  random ray
+might require 500 or more inactive batches. Similar to Monte Carlo,
+:ref:`Shannon entropy <usersguide_entropy>` can be used to guage whether the
+combined scattering and fission source has fully developed.
 
-Similar to Monte Carlo, active batches are used in the random ray solver mode to accumulate and converge statistics on unknown quantities (i.e., the random ray sources, scalar fluxes, as well as any user-specified tallies).
+Similar to Monte Carlo, active batches are used in the random ray solver mode to
+accumulate and converge statistics on unknown quantities (i.e., the random ray
+sources, scalar fluxes, as well as any user-specified tallies).
 
-The batch parameters are set in the same manner as with the regular Monte Carlo solver:
-
-::
+The batch parameters are set in the same manner as with the regular Monte Carlo
+solver::
 
     settings = openmc.Settings()
     settings.energy_mode = "multi-group"
@@ -36,36 +64,100 @@ The batch parameters are set in the same manner as with the regular Monte Carlo 
 Inactive Ray Length (Dead Zone)
 -------------------------------
 
-A major issue with random ray is that the starting angular flux distribution for each sampled ray is unknown. Thus, an on-the-fly method is used to build a high quality approximation of the angular flux of the ray each iteration. This is accomplished by running the ray through an inactive length (also known as a dead zone length), where the ray is moved through the geometry and its angular flux is solved for via the normal MOC equation, but no information is written back to the system. Thus, the ray is run in a "read only" mode for the set inactive length. This parameter can be adjusted, in units of cm, as:
-
-::
+A major issue with random ray is that the starting angular flux distribution for
+each sampled ray is unknown. Thus, an on-the-fly method is used to build a high
+quality approximation of the angular flux of the ray each iteration. This is
+accomplished by running the ray through an inactive length (also known as a dead
+zone length), where the ray is moved through the geometry and its angular flux
+is solved for via the normal MOC equation, but no information is written back to
+the system. Thus, the ray is run in a "read only" mode for the set inactive
+length. This parameter can be adjusted, in units of cm, as::
 
     settings.random_ray['distance_inactive'] = 40.0
 
-After several mean free paths are traversed, the angular flux spectrum of the ray becomes dominated by the in-scattering and fission source components that it picked up when travelling through the geometry, while its original (incorrect) starting angular flux is attenuated towards zero. Thus, longer selections of inactive ray length will asymptotically approach the true angular flux.
+After several mean free paths are traversed, the angular flux spectrum of the
+ray becomes dominated by the in-scattering and fission source components that it
+picked up when travelling through the geometry, while its original (incorrect)
+starting angular flux is attenuated towards zero. Thus, longer selections of
+inactive ray length will asymptotically approach the true angular flux.
 
-In practice, 10 mean free paths is sufficient (with light water reactors often requiring only about 10-50cm of inactive ray length for the error to become undetectable). However, we caution that certain types of simulations with large quantities of void regions (even if just limited to a few streaming channels) may require significantly longer inactive ray lengths to ensure that the angular flux is accurate before the conclusion of the inactive ray length. Additionally, simulation problems where a sensitive estimate of the uncollided flux is required (e.g., the detector response to fast neutrons is required, and the detected is located far away from the source in a moderator region) may require the user to specify an inactive length that is derived from the pyhsical geometry of the simulation problem rather than its material properties. For instance, consider a detector placed 30 cm outside of a reactor core, with a moderator region separating the detector from the core. In this case, rays sampled in the moderator region and heading towards the detector will begin life with a highly scattered thermal spectrum, and will have an inaccurate fast spectrum. If the dead zone length is only 20 cm, we might imagine such rays writing to the detector tally within their active lengths, despite their innaccurate estimate of the uncollided fast angular flux. Thus, an inactive length of 100-200cm would ensure that any rays such sampled would still be within their inactive regions, and that only rays that have actually traversed through the core (and thus have an accurate representation of the core's emitted fast flux) will score to the detector region while in their active phase.
+In practice, 10 mean free paths is sufficient (with light water reactors often
+requiring only about 10-50cm of inactive ray length for the error to become
+undetectable). However, we caution that certain types of simulations with large
+quantities of void regions (even if just limited to a few streaming channels)
+may require significantly longer inactive ray lengths to ensure that the angular
+flux is accurate before the conclusion of the inactive ray length. Additionally,
+simulation problems where a sensitive estimate of the uncollided flux is
+required (e.g., the detector response to fast neutrons is required, and the
+detected is located far away from the source in a moderator region) may require
+the user to specify an inactive length that is derived from the pyhsical
+geometry of the simulation problem rather than its material properties. For
+instance, consider a detector placed 30 cm outside of a reactor core, with a
+moderator region separating the detector from the core. In this case, rays
+sampled in the moderator region and heading towards the detector will begin life
+with a highly scattered thermal spectrum, and will have an inaccurate fast
+spectrum. If the dead zone length is only 20 cm, we might imagine such rays
+writing to the detector tally within their active lengths, despite their
+innaccurate estimate of the uncollided fast angular flux. Thus, an inactive
+length of 100-200cm would ensure that any rays such sampled would still be
+within their inactive regions, and that only rays that have actually traversed
+through the core (and thus have an accurate representation of the core's emitted
+fast flux) will score to the detector region while in their active phase.
 
 
 ------------------------------------
 Active Ray Length and Number of Rays
 ------------------------------------
 
-Once the inactive length of the ray has completed, the active region of the ray begins. The ray is now run in regular mode, where changes in angular flux as it traverses through each flat source region are written back to the system, so as to contribute to the esimtate for the iteration scalar flux (which is used to compute the source for the next iteration). The active ray length can be adjusted, in units of cm, as:
-
-::
+Once the inactive length of the ray has completed, the active region of the ray
+begins. The ray is now run in regular mode, where changes in angular flux as it
+traverses through each flat source region are written back to the system, so as
+to contribute to the esimtate for the iteration scalar flux (which is used to
+compute the source for the next iteration). The active ray length can be
+adjusted, in units of cm, as::
 
     settings.random_ray['distance_active'] = 400.0
 
-Assuming that sufficient inactive ray length is used so that the starting angular flux is highly accurate, any selection of active length greater than zero is theoretically acceptable. However, in order to adequately sample the full integration domain, a selection of a very short track length would require a very high number of rays to be selected. Due to the static costs per ray of computing the starting angular flux in the dead zone, typically very short ray lengths are undesireable. Thus, to amortize the per-ray cost of the inactive region of the ray, it is desireable to select a very long inactive ray length. E.g., if the inactive length is set at 20cm, a selection of 200 cm of active ray length ensures that only about 10% of overall simulation runtime is spent in the inactive ray phase integration, making the dead zone a relatively inexpensive way of estimating the angular flux. 
+Assuming that sufficient inactive ray length is used so that the starting
+angular flux is highly accurate, any selection of active length greater than
+zero is theoretically acceptable. However, in order to adequately sample the
+full integration domain, a selection of a very short track length would require
+a very high number of rays to be selected. Due to the static costs per ray of
+computing the starting angular flux in the dead zone, typically very short ray
+lengths are undesireable. Thus, to amortize the per-ray cost of the inactive
+region of the ray, it is desireable to select a very long inactive ray length.
+E.g., if the inactive length is set at 20cm, a selection of 200 cm of active ray
+length ensures that only about 10% of overall simulation runtime is spent in the
+inactive ray phase integration, making the dead zone a relatively inexpensive
+way of estimating the angular flux.
 
-Thus, to fully amortize the cost of the dead zone integration, one might ask why not simply run a single ray per iteration with an extremely long active length? While this is also theoretically possible, this results in two issues. The first problem is that each ray only represents a single angular sample. As we want to sample the angular phase space of the simulation with similar fidelity to the spatial phase space, we naturally want a lot of angles. This means in practice, we want to balance the need to amortize the cost of the inactive region of the ray with the need to sample lots of angles. The second problem is that parallelism in OpenMC is expressed in terms of rays, with each being processed by an independent MPI rank and/or OpenMP thread, thus we want to ensure each thread has many rays to process.
+Thus, to fully amortize the cost of the dead zone integration, one might ask why
+not simply run a single ray per iteration with an extremely long active length?
+While this is also theoretically possible, this results in two issues. The first
+problem is that each ray only represents a single angular sample. As we want to
+sample the angular phase space of the simulation with similar fidelity to the
+spatial phase space, we naturally want a lot of angles. This means in practice,
+we want to balance the need to amortize the cost of the inactive region of the
+ray with the need to sample lots of angles. The second problem is that
+parallelism in OpenMC is expressed in terms of rays, with each being processed
+by an independent MPI rank and/or OpenMP thread, thus we want to ensure each
+thread has many rays to process.
 
-In practical terms, the best strategy is typically to set an active ray length that is about 10 times that of the inactive ray length. This is often the right balance between ensuring not too much time is spent in the dead zone, while still adequately sampling the angular phase space. However, as discussed in the previous section, some types of simulation may demand additional thought be applied to this parameter. For instance, in the same example where we have a detector region far outside a reactor core, we want to make sure that there is enough active ray length that rays exiting the core can reach the detector region. E.g., if the detector were to be 30 cm outside of the core, then we would need to ensure that at least a few hundred cm of active length were used so as to ensure even rays with indirect angles will be able to reach the target region.
+In practical terms, the best strategy is typically to set an active ray length
+that is about 10 times that of the inactive ray length. This is often the right
+balance between ensuring not too much time is spent in the dead zone, while
+still adequately sampling the angular phase space. However, as discussed in the
+previous section, some types of simulation may demand additional thought be
+applied to this parameter. For instance, in the same example where we have a
+detector region far outside a reactor core, we want to make sure that there is
+enough active ray length that rays exiting the core can reach the detector
+region. E.g., if the detector were to be 30 cm outside of the core, then we
+would need to ensure that at least a few hundred cm of active length were used
+so as to ensure even rays with indirect angles will be able to reach the target
+region.
 
-The number of rays each iteration can be set by re-using the normal Monte Carlo particle count selection parameter, as:
-
-::
+The number of rays each iteration can be set by re-using the normal Monte Carlo
+particle count selection parameter, as::
 
     settings.particles = 2000
 
@@ -73,34 +165,106 @@ The number of rays each iteration can be set by re-using the normal Monte Carlo 
 Ray Density
 -----------
 
-In the preceeding sections, we found that in most use cases, the inactive length for a ray could be determined by taking a multiple of the mean free path for the limiting energy group. The active ray length could then be set by taking a multiple of the inactive length. With these parameters set, how many rays per iteration should be run?
+In the preceeding sections, we found that in most use cases, the inactive length
+for a ray could be determined by taking a multiple of the mean free path for the
+limiting energy group. The active ray length could then be set by taking a
+multiple of the inactive length. With these parameters set, how many rays per
+iteration should be run?
 
-There are three basic settings that control the density of the stochastic quadrature being used to integrate the domain each iteration. These three variables are:
+There are three basic settings that control the density of the stochastic
+quadrature being used to integrate the domain each iteration. These three
+variables are:
 
 - The number of rays (in OpenMC settings parlance, "particles")
 - The inactive distance per ray
 - The active distance per ray
 
-While the inactive and active ray lengths can usually be intuited by simply examining the geometry, tallies, and cross section data, the user has much more flexibility in choice of the number of rays to run. Consider a few scenarios:
+While the inactive and active ray lengths can usually be intuited by simply
+examining the geometry, tallies, and cross section data, the user has much more
+flexibility in choice of the number of rays to run. Consider a few scenarios:
 
-- If a choice of zero rays is made, then no information is gained by the system after each batch.
-- If a choice of rays close to zero is made, then some information is gained after each batch, but many source regions may not have been visited that iteration, which is not ideal numerically and can result in instability. Empirically, we have found that the simulation can remain stable and produce accurate results even when on average 20% or more of the cells have zero rays passing through them each iteration. However, besides the cost of transporting rays, a new neutron source must be computed based on the scalar flux each iteration. This is cost is dictated only by the number of source regions and energy groups -- it is independent to the number of rays. Thus, in practical terms, if too few rays are run, then the simulation runtime becomes dominated by the static costs of source updates, making it inefficient overall, given that a huge number of active batches will likely be required to converge statistics to acceptable levels. Additionally, if a high number of cells are missed each iteration, then the fission and scattering sources may not develop very quickly, resulting in a need for far more inactive batches than might otherwise be required.
-- If a choice of running a very large number of rays is made such that you guarantee that all cells are hit each iteration, this avoids any issues with numerical instability. As even more rays are run, then this reduces the number of active batches that must be used to converge statistics, and therefore minimizes the fixed per-iteration source update costs. While this seems advantageous, it has the same practical downside as with Monte Carlo -- namely, that the inactive batches tend to be overly well integrated, resulting in a lot of wasted time. This issue is actually much more serious than in Monte Carlo (where typically only tens of inactive batches are needed), as random ray often requires hundreds or even thousands of inactive batches. Thus, minimizing the cost of the source updates in the active phase need to be balance against the increased costs of the inactive phase of the simulation.
-- A choice of rays is made such that relatively few (e.g., around 0.1%) of cells are missed each iteration, then the cost of the inactive batches of the simulation are minimized. In this "golidlocks" regime, there is not typically any chance of numerical instability, and enough information is gained by each cell to progress the fission and scattering sources forward at their maximum rate. However, the inactive batches can proceed with a minumum of cost. While this will result in the active phase of the simulation requiring more batches, and resulting in more source update costs, the added cost is typically far less than the savings by making the inactive phase much cheaper.
+- If a choice of zero rays is made, then no information is gained by the system
+  after each batch.
+- If a choice of rays close to zero is made, then some information is gained
+  after each batch, but many source regions may not have been visited that
+  iteration, which is not ideal numerically and can result in instability.
+  Empirically, we have found that the simulation can remain stable and produce
+  accurate results even when on average 20% or more of the cells have zero rays
+  passing through them each iteration. However, besides the cost of transporting
+  rays, a new neutron source must be computed based on the scalar flux each
+  iteration. This is cost is dictated only by the number of source regions and
+  energy groups -- it is independent to the number of rays. Thus, in practical
+  terms, if too few rays are run, then the simulation runtime becomes dominated
+  by the static costs of source updates, making it inefficient overall, given
+  that a huge number of active batches will likely be required to converge
+  statistics to acceptable levels. Additionally, if a high number of cells are
+  missed each iteration, then the fission and scattering sources may not develop
+  very quickly, resulting in a need for far more inactive batches than might
+  otherwise be required.
+- If a choice of running a very large number of rays is made such that you
+  guarantee that all cells are hit each iteration, this avoids any issues with
+  numerical instability. As even more rays are run, then this reduces the number
+  of active batches that must be used to converge statistics, and therefore
+  minimizes the fixed per-iteration source update costs. While this seems
+  advantageous, it has the same practical downside as with Monte Carlo --
+  namely, that the inactive batches tend to be overly well integrated, resulting
+  in a lot of wasted time. This issue is actually much more serious than in
+  Monte Carlo (where typically only tens of inactive batches are needed), as
+  random ray often requires hundreds or even thousands of inactive batches.
+  Thus, minimizing the cost of the source updates in the active phase need to be
+  balance against the increased costs of the inactive phase of the simulation.
+- A choice of rays is made such that relatively few (e.g., around 0.1%) of cells
+  are missed each iteration, then the cost of the inactive batches of the
+  simulation are minimized. In this "golidlocks" regime, there is not typically
+  any chance of numerical instability, and enough information is gained by each
+  cell to progress the fission and scattering sources forward at their maximum
+  rate. However, the inactive batches can proceed with a minumum of cost. While
+  this will result in the active phase of the simulation requiring more batches,
+  and resulting in more source update costs, the added cost is typically far
+  less than the savings by making the inactive phase much cheaper.
 
-To help the user set this parameter, OpenMC will report the average flat source region miss rate at the end of the simulation. Additionally, OpenMC will alert the user if very high miss rates are detected, so that they are aware that more rays and/or more active ray length might improve numerical performance. Thus, a "guess and check" approach to this parameter is recommended, where a very low guess is made, a few iterations are performed, and then the user restarts the simulation with a larger value until the "low ray density" messages go away.
+To help the user set this parameter, OpenMC will report the average flat source
+region miss rate at the end of the simulation. Additionally, OpenMC will alert
+the user if very high miss rates are detected, so that they are aware that more
+rays and/or more active ray length might improve numerical performance. Thus, a
+"guess and check" approach to this parameter is recommended, where a very low
+guess is made, a few iterations are performed, and then the user restarts the
+simulation with a larger value until the "low ray density" messages go away.
 
 .. note::
-    In summary, the user should select an inactive length corresponding to many times the mean free path of a particle O(10 - 100cm) to ensure accuracy of the starting angular flux. The active length should be 10x the inactive length to amortize its cost. The number of rays should be enough so that nearly all FSRs are hit at least once each power iteration (the hit fraction is reported by OpenMC for empirical user adjustment).
+    In summary, the user should select an inactive length corresponding to many
+    times the mean free path of a particle O(10 - 100cm) to ensure accuracy of
+    the starting angular flux. The active length should be 10x the inactive
+    length to amortize its cost. The number of rays should be enough so that
+    nearly all FSRs are hit at least once each power iteration (the hit fraction
+    is reported by OpenMC for empirical user adjustment).
 
 .. warning::
-    For simulations where long range uncollided flux estimates need to be accurately resolved (e.g., shielding, detector response, problems with significant void areas), make sure that selections for inactive and active ray lengths are sufficiently long to allow for transport to occur between source and target regions of interest. 
+    For simulations where long range uncollided flux estimates need to be
+    accurately resolved (e.g., shielding, detector response, problems with
+    significant void areas), make sure that selections for inactive and active
+    ray lengths are sufficiently long to allow for transport to occur between
+    source and target regions of interest.
 
 ----------
 Ray Source
 ----------
 
-Random ray requires that the ray source be uniform in space and angle, throughout the entire phase space of the simulation. To facilitate sampling, the user must specify a single random ray source for sampling rays in both eigenvalue and fixed source solver modes. The random ray integration source should be of type :class:`openmc.IndependentSource`, and is specified as part of the ``settings.random_ray`` dictionary. Note that the source must be isotropic, and not limited to only fissionable regions. Additionally, the source box must cover the entire simulation domain. In the case of a simulation domain that is not box shaped, a box source should still be used to bound the domain but with the source limited to rejection sampling the actual simulation universe (which can be specified via the ``domains`` field of the :class:`openmc.IndependentSource` Python class). Similar to Monte Carlo sources, for 2D problems (e.g., a 2D pincell) it is desireable to make the source bounded near the origin of the infinite dimension. An example of an acceptable ray source for a 2D 2x2 lattice would look like:
+Random ray requires that the ray source be uniform in space and angle,
+throughout the entire phase space of the simulation. To facilitate sampling, the
+user must specify a single random ray source for sampling rays in both
+eigenvalue and fixed source solver modes. The random ray integration source
+should be of type :class:`openmc.IndependentSource`, and is specified as part of
+the ``settings.random_ray`` dictionary. Note that the source must be isotropic,
+and not limited to only fissionable regions. Additionally, the source box must
+cover the entire simulation domain. In the case of a simulation domain that is
+not box shaped, a box source should still be used to bound the domain but with
+the source limited to rejection sampling the actual simulation universe (which
+can be specified via the ``domains`` field of the
+:class:`openmc.IndependentSource` Python class). Similar to Monte Carlo sources,
+for 2D problems (e.g., a 2D pincell) it is desireable to make the source bounded
+near the origin of the infinite dimension. An example of an acceptable ray
+source for a 2D 2x2 lattice would look like:
 
 ::
 
@@ -117,9 +281,17 @@ Random ray requires that the ray source be uniform in space and angle, throughou
 Subdivision of Flat Source Regions
 ----------------------------------
 
-A "Cell" in OpenMC is analogous to a "Flat Source Region" (FSR) in flat source MOC and random ray. While the scattering and fission sources within an OpenMC cell are treated continuously, they are assumed to be invariant (flat) within a MOC or random ray FSR. This introduces bias into the simulation, which can be remedied by reducing the physical size of the FSR to dimensions below that of typical mean free paths of particles. 
+A "Cell" in OpenMC is analogous to a "Flat Source Region" (FSR) in flat source
+MOC and random ray. While the scattering and fission sources within an OpenMC
+cell are treated continuously, they are assumed to be invariant (flat) within a
+MOC or random ray FSR. This introduces bias into the simulation, which can be
+remedied by reducing the physical size of the FSR to dimensions below that of
+typical mean free paths of particles.
 
-In OpenMC, this subdivision currently must be done manually by the user. The level of subdivision needed will be dependent on the fidelity the user requires. For typical light water reactor analysis, consider the following example subdivision of a 2D 2x2 reflective pincell lattice:
+In OpenMC, this subdivision currently must be done manually by the user. The
+level of subdivision needed will be dependent on the fidelity the user requires.
+For typical light water reactor analysis, consider the following example
+subdivision of a 2D 2x2 reflective pincell lattice:
 
 .. figure:: ../_images/2x2_materials.jpeg
     :class: with-border
@@ -131,13 +303,24 @@ In OpenMC, this subdivision currently must be done manually by the user. The lev
     :class: with-border
     :width: 400
 
-    Flat Source Region (FSR) decomposition for an asymmetrical 2x2 lattice (1.26 cm pitch)
+    Flat Source Region (FSR) decomposition for an asymmetrical 2x2 lattice (1.26
+    cm pitch)
 
 -------
 Tallies
 -------
 
-Most tallies, filters, and scores that you would expect to work with a multigroup solver like random ray are supported. E.g., you can define 3D mesh tallies with energy filters and flux, fission, and nu-fission scores, etc. There are some restrictions though. For starters, it is assumed that all filter mesh boundaries will conform to physical surface boundaries (or lattice boundaries) in the simulation geometry. It is acceptable for multiple cells (FSRs) to be contained within a filter mesh cell (e.g., pincell-level or assembly-level tallies should work), but it is currently left as undefined behavior if a single simulation cell is able to score to multiple filter mesh cells. In the future, the capability to fully support mesh tallies may be added to OpenMC, but for now this restriction needs to be respected.
+Most tallies, filters, and scores that you would expect to work with a
+multigroup solver like random ray are supported. E.g., you can define 3D mesh
+tallies with energy filters and flux, fission, and nu-fission scores, etc. There
+are some restrictions though. For starters, it is assumed that all filter mesh
+boundaries will conform to physical surface boundaries (or lattice boundaries)
+in the simulation geometry. It is acceptable for multiple cells (FSRs) to be
+contained within a filter mesh cell (e.g., pincell-level or assembly-level
+tallies should work), but it is currently left as undefined behavior if a single
+simulation cell is able to score to multiple filter mesh cells. In the future,
+the capability to fully support mesh tallies may be added to OpenMC, but for now
+this restriction needs to be respected.
 
 Supported scores:
     - flux
@@ -158,19 +341,45 @@ Supported Filters:
     - mesh
     - universe
 
-Note that there is no difference between the analog, tracklength, and collision estimators in random ray mode as individual particles are not being simulated. Tracklength-style tally estimation is inherent to the random ray method.
+Note that there is no difference between the analog, tracklength, and collision
+estimators in random ray mode as individual particles are not being simulated.
+Tracklength-style tally estimation is inherent to the random ray method.
 
 --------
 Plotting
 --------
 
-Visualization of geometry is handled in the same way as normal with OpenMC (see :ref:`plotting guide <usersguide_plots>` for more details). I.e., ``openmc --plot`` is handled without any modifications, as the random ray solver uses the same geometry definition as in Monte Carlo.
+Visualization of geometry is handled in the same way as normal with OpenMC (see
+:ref:`plotting guide <usersguide_plots>` for more details). I.e., ``openmc
+--plot`` is handled without any modifications, as the random ray solver uses the
+same geometry definition as in Monte Carlo.
 
-In addition to OpenMC's standard geometry plotting mode, the random ray solver also features an additional method of data visualization. If a ``plots.xml`` file is present, any voxel plots that are defined will be output at the end of a random ray simulation. Rather than being stored in HDF5 file format, the random ray plotting will generate ``.vtk`` files that can be directly read and plotted with `Paraview <https://www.paraview.org/>`_ (a free application). 
+In addition to OpenMC's standard geometry plotting mode, the random ray solver
+also features an additional method of data visualization. If a ``plots.xml``
+file is present, any voxel plots that are defined will be output at the end of a
+random ray simulation. Rather than being stored in HDF5 file format, the random
+ray plotting will generate ``.vtk`` files that can be directly read and plotted
+with `Paraview <https://www.paraview.org/>`_ (a free application).
 
-In fixed source Monte Carlo (MC), by default the only thing we know after a simulation is the escape fraction. In a k-eigenvalue MC solve, by default all we know is the eigenvalue and escape fraction. Spatial flux information is left totally up to the user to record, and often fine-grained spatial meshes are considered costly/unnecessary, so it makes no sense in MC mode to try to attempt to plot any spatial flux or power info by default. Conversely, in random ray, the solver functions by estimating the multigroup source and flux spectrums in every fine-grained FSR each iteration. Thus, in random ray, in both fixed source and eigenvalue simulations, the simulation always finishes with a well converged flux estimate for all areas. As such, it is much more common in random ray, MOC, and other deterministic codes to plot in situ commonly as global spatial flux information is always available. In the future, all FSR data will be made available in the statepoint file, such that users will still have the ability to plot/manipulate it on the python end, although statepoint support is not yet available.
+In fixed source Monte Carlo (MC), by default the only thing we know after a
+simulation is the escape fraction. In a k-eigenvalue MC solve, by default all we
+know is the eigenvalue and escape fraction. Spatial flux information is left
+totally up to the user to record, and often fine-grained spatial meshes are
+considered costly/unnecessary, so it makes no sense in MC mode to try to attempt
+to plot any spatial flux or power info by default. Conversely, in random ray,
+the solver functions by estimating the multigroup source and flux spectrums in
+every fine-grained FSR each iteration. Thus, in random ray, in both fixed source
+and eigenvalue simulations, the simulation always finishes with a well converged
+flux estimate for all areas. As such, it is much more common in random ray, MOC,
+and other deterministic codes to plot in situ commonly as global spatial flux
+information is always available. In the future, all FSR data will be made
+available in the statepoint file, such that users will still have the ability to
+plot/manipulate it on the python end, although statepoint support is not yet
+available.
 
-Only voxel plots will be used to generate output -- other plot types present in the ``plots.xml`` file will be ignored. The following fields will be written to the VTK structured grid file:
+Only voxel plots will be used to generate output -- other plot types present in
+the ``plots.xml`` file will be ignored. The following fields will be written to
+the VTK structured grid file:
 
     - material
     - FSR index
@@ -178,13 +387,19 @@ Only voxel plots will be used to generate output -- other plot types present in 
     - total fission source (integrated across all energy groups)
 
 ------------------------------------------
-Inputting Multigroup Cross Sections (MGXS) 
+Inputting Multigroup Cross Sections (MGXS)
 ------------------------------------------
 
-Multigroup cross sections for use with OpenMC's random ray solver are input the same way as with OpenMC's traditional multigroup Monte Carlo mode. There is more information on generating multigroup cross sections via OpenMC in the :ref:`multigroup materials <create_mgxs>` user guide. A user may also wish to use an existing multigroup library. An example of using OpenMC's python interface to generate a correctly formatted ``mgxs.h5`` input file is given below, which defines a seven group cross section dataset.
+Multigroup cross sections for use with OpenMC's random ray solver are input the
+same way as with OpenMC's traditional multigroup Monte Carlo mode. There is more
+information on generating multigroup cross sections via OpenMC in the
+:ref:`multigroup materials <create_mgxs>` user guide. A user may also wish to
+use an existing multigroup library. An example of using OpenMC's python
+interface to generate a correctly formatted ``mgxs.h5`` input file is given
+below, which defines a seven group cross section dataset.
 
 ::
-    
+
     # Instantiate the energy group data
     ebins = [1e-5, 0.0635, 10.0, 1.0e2, 1.0e3, 0.5e6, 1.0e6, 20.0e6]
     groups = openmc.mgxs.EnergyGroups(group_edges=ebins)
@@ -245,9 +460,7 @@ Multigroup cross sections for use with OpenMC's random ray solver are input the 
 Putting it All Together: Example Inputs
 ---------------------------------------
 
-An example of a settings definition for random ray is given below:
-
-::
+An example of a settings definition for random ray is given below::
 
     # Geometry and MGXS material definition of 2x2 lattice (not shown)
     pitch = 1.26
@@ -304,6 +517,9 @@ An example of a settings definition for random ray is given below:
     plot_file = openmc.Plots([plot])
     plot_file.export_to_xml()
 
-All other inputs (e.g., geometry, material) will be unchanged from a typical Monte Carlo run (see the :ref:`geometry <usersguide_geometry>` and :ref:`multigroup materials <create_mgxs>` user guides for more information).
+All other inputs (e.g., geometry, material) will be unchanged from a typical
+Monte Carlo run (see the :ref:`geometry <usersguide_geometry>` and
+:ref:`multigroup materials <create_mgxs>` user guides for more information).
 
-There is also a complete example of a pincell available in the ``openmc/examples/pincell_random_ray`` folder.
+There is also a complete example of a pincell available in the
+``openmc/examples/pincell_random_ray`` folder.

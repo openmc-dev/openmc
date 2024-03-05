@@ -5,7 +5,11 @@ to a single thread via the fixture single_thread. Without this configuration, th
 that source files can be different for the same inputs if the number of realization (i.e., point
 being candidate to be stored) is higher than the capacity.
 
-Results are generated using only 1 MPI process.
+All results are generated using only 1 MPI process.
+
+Results for cases 1 to 20 are generated using the history-based mode. Tests relying on these cases
+are skipped if event-based mode is requested. Conversely, results for cases 21 to 23 are generated
+from event-based mode and will be skipped in history-based mode.
 
 Three OpenMC models are used to cover the transmission, vacuum and reflective boundary conditions:
 
@@ -13,7 +17,7 @@ Three OpenMC models are used to cover the transmission, vacuum and reflective bo
 - model_2: simplified model with a cylindrical core in 1 box (vacuum boundary conditions),
 - model_3: simplified model with a cylindrical core in 1 box (reflective boundary conditions).
 
-Results are visually verified using the '_visualize.py' script in the regression test folder.
+All results are visually verified using the '_visualize.py' script in the regression test folder.
 
 Test cases:
 
@@ -62,6 +66,9 @@ case-19   model_3  Multiple   cellto (root universe)     R      None
 
 An additional case, called 'case-20', is used to check that the results are comparable when
 the number of threads is set to 2 if the number of realization is lower than the capacity.
+
+Cases 21 to 23 are the event-based cases corresponding to the history-based cases 4, 7 and 13,
+respectively.
 
 Notes:
 
@@ -630,6 +637,7 @@ class SurfaceSourceWriteTestHarness(PyAPITestHarness):
             os.remove(fs)
 
 
+@pytest.mark.skipif(config["event"] is True, reason="Results from history-based mode.")
 @pytest.mark.parametrize(
     "folder, parameter",
     [
@@ -665,6 +673,7 @@ def test_surface_source_cell_model_1(
     harness.main()
 
 
+@pytest.mark.skipif(config["event"] is True, reason="Results from history-based mode.")
 @pytest.mark.parametrize(
     "folder, parameter",
     [
@@ -696,6 +705,7 @@ def test_surface_source_cell_model_2(
     harness.main()
 
 
+@pytest.mark.skipif(config["event"] is True, reason="Results from history-based mode.")
 @pytest.mark.parametrize(
     "folder, parameter",
     [
@@ -727,6 +737,7 @@ def test_surface_source_cell_model_3(
     harness.main()
 
 
+@pytest.mark.skipif(config["event"] is True, reason="Results from history-based mode.")
 def test_consistency_low_realization_number(model_1, two_threads, single_process):
     """The objective is to test that the results produced, in a case where
     the number of potential realization (particle storage) is low
@@ -745,5 +756,36 @@ def test_consistency_low_realization_number(model_1, two_threads, single_process
     }
     harness = SurfaceSourceWriteTestHarness(
         "statepoint.5.h5", model=model_1, workdir="case-20"
+    )
+    harness.main()
+
+
+@pytest.mark.skipif(config["event"] is False, reason="Results from event-based mode.")
+@pytest.mark.parametrize(
+    "folder, model_name, parameter",
+    [
+        (
+            "case-21",
+            "model_1",
+            {"max_particles": 3000, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": 2},
+        ),
+        ("case-22", "model_1", {"max_particles": 3000, "cell": 3}),
+        (
+            "case-23",
+            "model_2",
+            {"max_particles": 3000, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": 3},
+        ),
+    ],
+)
+def test_surface_source_cell_event_based(
+    folder, model_name, parameter, single_thread, single_process, request
+):
+    """Test on event-based results."""
+    assert os.environ["OMP_NUM_THREADS"] == "1"
+    assert config["mpi_np"] == "1"
+    model = request.getfixturevalue(model_name)
+    model.settings.surf_source_write = parameter
+    harness = SurfaceSourceWriteTestHarness(
+        "statepoint.5.h5", model=model, workdir=folder
     )
     harness.main()

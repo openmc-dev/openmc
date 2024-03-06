@@ -639,100 +639,83 @@ class SurfaceSourceWriteTestHarness(PyAPITestHarness):
 
 @pytest.mark.skipif(config["event"] is True, reason="Results from history-based mode.")
 @pytest.mark.parametrize(
-    "folder, parameter",
+    "folder, model_name, parameter",
     [
-        ("case-1", {"max_particles": 3000}),
-        ("case-2", {"max_particles": 3000, "surface_ids": [4]}),
-        ("case-3", {"max_particles": 3000, "surface_ids": [4, 5, 6, 7, 8, 9]}),
+        ("case-1", "model_1", {"max_particles": 3000}),
+        ("case-2", "model_1", {"max_particles": 3000, "surface_ids": [4]}),
+        (
+            "case-3",
+            "model_1",
+            {"max_particles": 3000, "surface_ids": [4, 5, 6, 7, 8, 9]},
+        ),
         (
             "case-4",
+            "model_1",
             {"max_particles": 3000, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": 2},
         ),
         (
             "case-5",
+            "model_1",
             {"max_particles": 3000, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": 3},
         ),
-        ("case-6", {"max_particles": 3000, "cell": 2}),
-        ("case-7", {"max_particles": 3000, "cell": 3}),
-        ("case-8", {"max_particles": 3000, "cellfrom": 2}),
-        ("case-9", {"max_particles": 3000, "cellto": 2}),
-        ("case-10", {"max_particles": 3000, "cellfrom": 3}),
-        ("case-11", {"max_particles": 3000, "cellto": 3}),
-    ],
-)
-def test_surface_source_cell_model_1(
-    folder, parameter, model_1, single_thread, single_process
-):
-    """Test on a generic model with vacuum and transmission boundary conditions."""
-    assert os.environ["OMP_NUM_THREADS"] == "1"
-    assert config["mpi_np"] == "1"
-    model_1.settings.surf_source_write = parameter
-    harness = SurfaceSourceWriteTestHarness(
-        "statepoint.5.h5", model=model_1, workdir=folder
-    )
-    harness.main()
-
-
-@pytest.mark.skipif(config["event"] is True, reason="Results from history-based mode.")
-@pytest.mark.parametrize(
-    "folder, parameter",
-    [
-        ("case-12", {"max_particles": 3000, "surface_ids": [4, 5, 6, 7, 8, 9]}),
+        ("case-6", "model_1", {"max_particles": 3000, "cell": 2}),
+        ("case-7", "model_1", {"max_particles": 3000, "cell": 3}),
+        ("case-8", "model_1", {"max_particles": 3000, "cellfrom": 2}),
+        ("case-9", "model_1", {"max_particles": 3000, "cellto": 2}),
+        ("case-10", "model_1", {"max_particles": 3000, "cellfrom": 3}),
+        ("case-11", "model_1", {"max_particles": 3000, "cellto": 3}),
+        (
+            "case-12",
+            "model_2",
+            {"max_particles": 3000, "surface_ids": [4, 5, 6, 7, 8, 9]},
+        ),
         (
             "case-13",
+            "model_2",
             {"max_particles": 3000, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": 3},
         ),
         (
             "case-14",
+            "model_2",
             {"max_particles": 3000, "surface_ids": [4, 5, 6, 7, 8, 9], "cellfrom": 3},
         ),
         (
             "case-15",
+            "model_2",
             {"max_particles": 3000, "surface_ids": [4, 5, 6, 7, 8, 9], "cellto": 3},
         ),
-    ],
-)
-def test_surface_source_cell_model_2(
-    folder, parameter, model_2, single_thread, single_process
-):
-    """Test specifically on vacuum surfaces."""
-    assert os.environ["OMP_NUM_THREADS"] == "1"
-    assert config["mpi_np"] == "1"
-    model_2.settings.surf_source_write = parameter
-    harness = SurfaceSourceWriteTestHarness(
-        "statepoint.5.h5", model=model_2, workdir=folder
-    )
-    harness.main()
-
-
-@pytest.mark.skipif(config["event"] is True, reason="Results from history-based mode.")
-@pytest.mark.parametrize(
-    "folder, parameter",
-    [
-        ("case-16", {"max_particles": 3000, "surface_ids": [4, 5, 6, 7, 8, 9]}),
+        (
+            "case-16",
+            "model_3",
+            {"max_particles": 3000, "surface_ids": [4, 5, 6, 7, 8, 9]},
+        ),
         (
             "case-17",
+            "model_3",
             {"max_particles": 3000, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": 3},
         ),
         (
             "case-18",
+            "model_3",
             {"max_particles": 3000, "surface_ids": [4, 5, 6, 7, 8, 9], "cellfrom": 3},
         ),
         (
             "case-19",
+            "model_3",
             {"max_particles": 3000, "surface_ids": [4, 5, 6, 7, 8, 9], "cellto": 3},
         ),
     ],
 )
-def test_surface_source_cell_model_3(
-    folder, parameter, model_3, single_thread, single_process
+def test_surface_source_cell_history_based(
+    folder, model_name, parameter, single_thread, single_process, request
 ):
-    """Test specifically on reflective surfaces."""
+    """Test on a generic model with vacuum and transmission boundary conditions."""
     assert os.environ["OMP_NUM_THREADS"] == "1"
     assert config["mpi_np"] == "1"
-    model_3.settings.surf_source_write = parameter
+    model = request.getfixturevalue(model_name)
+    model.settings.surf_source_write = parameter
     harness = SurfaceSourceWriteTestHarness(
-        "statepoint.5.h5", model=model_3, workdir=folder
+        "statepoint.5.h5", model=model, workdir=folder
     )
     harness.main()
 

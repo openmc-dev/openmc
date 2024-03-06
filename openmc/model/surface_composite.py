@@ -634,7 +634,9 @@ class XConeOneSided(CompositeSurface):
     z0 : float, optional
         z-coordinate of the apex. Defaults to 0.
     r2 : float, optional
-        Parameter related to the aperature. Defaults to 1.
+        Parameter related to the aperture [:math:`\\rm cm^2`].
+        It can be interpreted as the increase in the radius squared per cm along 
+        the cone's axis of revolution.
     up : bool
         Whether to select the side of the cone that extends to infinity in the
         positive direction of the coordinate axis (the positive half-space of
@@ -692,7 +694,9 @@ class YConeOneSided(CompositeSurface):
     z0 : float, optional
         z-coordinate of the apex. Defaults to 0.
     r2 : float, optional
-        Parameter related to the aperature. Defaults to 1.
+        Parameter related to the aperture [:math:`\\rm cm^2`].
+        It can be interpreted as the increase in the radius squared per cm along 
+        the cone's axis of revolution.
     up : bool
         Whether to select the side of the cone that extends to infinity in the
         positive direction of the coordinate axis (the positive half-space of
@@ -744,7 +748,9 @@ class ZConeOneSided(CompositeSurface):
     z0 : float, optional
         z-coordinate of the apex. Defaults to 0.
     r2 : float, optional
-        Parameter related to the aperature. Defaults to 1.
+        Parameter related to the aperture [:math:`\\rm cm^2`].
+        It can be interpreted as the increase in the radius squared per cm along 
+        the cone's axis of revolution.
     up : bool
         Whether to select the side of the cone that extends to infinity in the
         positive direction of the coordinate axis (the positive half-space of

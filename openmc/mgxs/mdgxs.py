@@ -20,7 +20,7 @@ MDGXS_TYPES = (
     'delayed-nu-fission matrix'
 )
 
-# Maximum number of delayed groups, from src/constants.F90
+# Maximum number of delayed groups, from include/openmc/constants.h
 MAX_DELAYED_GROUPS = 8
 
 

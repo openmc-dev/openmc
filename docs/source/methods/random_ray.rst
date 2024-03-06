@@ -100,7 +100,7 @@ the right hand side.
 .. math::
     :label: transport
 
-    \vec{\Omega} \cdot \vec{\nabla} \psi(\vec{r},\vec{\Omega},E) + \Sigma_t(\vec{r},E) \psi(\vec{r},\vec{\Omega},E) = \int_0^\infty d E^\prime \int_{4\pi} d \Omega^{\prime} \Sigma_s(\vec{r},\vec{\Omega}^\prime \rightarrow \vec{\Omega}, E^\prime \rightarrow E) \psi(\vec{r},\vec{\Omega}^\prime, E^\prime) + \frac{\chi(\vec{r}, E)}{4\pi k_{eff}} \int_0^\infty dE^\prime \nu \Sigma_f(\vec{r},E^\prime) \int_{4\pi}d \Omega^\prime \psi(\vec{r},\vec{\Omega}^\prime,E^\prime)
+    \mathbf{\Omega} \cdot \mathbf{\nabla} \psi(\mathbf{r},\mathbf{\Omega},E) + \Sigma_t(\mathbf{r},E) \psi(\mathbf{r},\mathbf{\Omega},E) = \int_0^\infty d E^\prime \int_{4\pi} d \Omega^{\prime} \Sigma_s(\mathbf{r},\mathbf{\Omega}^\prime \rightarrow \mathbf{\Omega}, E^\prime \rightarrow E) \psi(\mathbf{r},\mathbf{\Omega}^\prime, E^\prime) + \frac{\chi(\mathbf{r}, E)}{4\pi k_{eff}} \int_0^\infty dE^\prime \nu \Sigma_f(\mathbf{r},E^\prime) \int_{4\pi}d \Omega^\prime \psi(\mathbf{r},\mathbf{\Omega}^\prime,E^\prime)
 
 In Equation :eq:`transport`, :math:`\psi` is the angular neutron flux. This
 parameter represents the total distance traveled by all neutrons in a particular
@@ -108,8 +108,8 @@ direction inside of a control volume per second, and is often given in units of
 :math:`1/(\text{cm}^{2} \text{s})`. As OpenMC does not support time dependence
 in the random ray solver mode, we consider the steady state equation, where the
 units of flux become :math:`1/\text{cm}^{2}`. The angular direction unit vector,
-:math:`\vec{\Omega}`, represents the direction of travel for the neutron. The
-spatial position vector, :math:`\vec{r}`,  represents the location within the
+:math:`\mathbf{\Omega}`, represents the direction of travel for the neutron. The
+spatial position vector, :math:`\mathbf{r}`,  represents the location within the
 simulation. The neutron energy, :math:`E`, or speed in continuous space, is
 often given in units of electron volts. The total macroscopic neutron cross
 section is :math:`\Sigma_t`. This value represents the total probability of
@@ -134,13 +134,13 @@ which is taken as input data to a computation. The average number of neutrons
 born per fission is :math:`\nu`. The eigenvalue of the equation,
 :math:`k_{eff}`, represents the effective neutron multiplication factor. If the
 right hand side of Equation :eq:`transport` is condensed into a single term,
-represented by the total neutron source term :math:`Q(\vec{r}, \vec{\Omega},E)`,
+represented by the total neutron source term :math:`Q(\mathbf{r}, \mathbf{\Omega},E)`,
 the form given in Equation :eq:`transport_simple` is reached.
 
 .. math::
     :label: transport_simple
 
-    \overbrace{\vec{\Omega} \cdot \vec{\nabla} \psi(\vec{r},\vec{\Omega},E)}^{\text{streaming term}} + \overbrace{\Sigma_t(\vec{r},E) \psi(\vec{r},\vec{\Omega},E)}^{\text{absorption term}} = \overbrace{Q(\vec{r}, \vec{\Omega},E)}^{\text{total neutron source term}}
+    \overbrace{\mathbf{\Omega} \cdot \mathbf{\nabla} \psi(\mathbf{r},\mathbf{\Omega},E)}^{\text{streaming term}} + \overbrace{\Sigma_t(\mathbf{r},E) \psi(\mathbf{r},\mathbf{\Omega},E)}^{\text{absorption term}} = \overbrace{Q(\mathbf{r}, \mathbf{\Omega},E)}^{\text{total neutron source term}}
 
 Fundamentally, MOC works by solving Equation :eq:`transport_simple` along a
 single characteristic line, thus altering the full spatial and angular scope of
@@ -148,20 +148,20 @@ the transport equation into something that holds true only for a particular
 linear path (or track) through the reactor. These tracks are linear for neutral
 particles that are not subject to field effects. With our transport equation in
 hand, we will now derive the solution along a track. To accomplish this, we
-parameterize :math:`\vec{r}` with respect to some reference location
-:math:`\vec{r}_0` such that :math:`\vec{r} = \vec{r}_0 + s\vec{\Omega}`. In this
+parameterize :math:`\mathbf{r}` with respect to some reference location
+:math:`\mathbf{r}_0` such that :math:`\mathbf{r} = \mathbf{r}_0 + s\mathbf{\Omega}`. In this
 manner, Equation :eq:`transport_simple` can be rewritten for a specific segment
-length :math:`s` at a specific angle :math:`\vec{\Omega}` through a constant
+length :math:`s` at a specific angle :math:`\mathbf{\Omega}` through a constant
 cross section region of the reactor geometry as in Equation :eq:`char_long`.
 
 .. math::
     :label: char_long
 
-    \vec{\Omega} \cdot \vec{\nabla} \psi(\vec{r}_0 + s\vec{\Omega},\vec{\Omega},E) + \Sigma_t(\vec{r}_0 + s\vec{\Omega},E) \psi(\vec{r}_0 + s\vec{\Omega},\vec{\Omega},E) = Q(\vec{r}_0 + s\vec{\Omega}, \vec{\Omega},E)
+    \mathbf{\Omega} \cdot \mathbf{\nabla} \psi(\mathbf{r}_0 + s\mathbf{\Omega},\mathbf{\Omega},E) + \Sigma_t(\mathbf{r}_0 + s\mathbf{\Omega},E) \psi(\mathbf{r}_0 + s\mathbf{\Omega},\mathbf{\Omega},E) = Q(\mathbf{r}_0 + s\mathbf{\Omega}, \mathbf{\Omega},E)
 
 As this equation holds along a one dimensional path, we can assume the
-dependence of :math:`s` on :math:`\vec{r}_0` and :math:`\vec{\Omega}` such that
-:math:`\vec{r}_0 + s\vec{\Omega}` simplifies to :math:`s`. When the differential
+dependence of :math:`s` on :math:`\mathbf{r}_0` and :math:`\mathbf{\Omega}` such that
+:math:`\mathbf{r}_0 + s\mathbf{\Omega}` simplifies to :math:`s`. When the differential
 operator is also applied to the angular flux :math:`\psi`, we arrive at the
 characteristic form of the Boltzmann Neutron Transport Equation given in
 Equation :eq:`char`.
@@ -169,7 +169,7 @@ Equation :eq:`char`.
 .. math::
     :label: char
 
-    \frac{d}{ds} \psi(s,\vec{\Omega},E) + \Sigma_t(s,E) \psi(s,\vec{\Omega},E) = Q(s, \vec{\Omega},E)
+    \frac{d}{ds} \psi(s,\mathbf{\Omega},E) + \Sigma_t(s,E) \psi(s,\mathbf{\Omega},E) = Q(s, \mathbf{\Omega},E)
 
 An analytical solution to this characteristic equation can be achieved with the
 use of an integrating factor:
@@ -185,7 +185,7 @@ to arrive at the final form of the characteristic equation shown in Equation
 .. math::
     :label: full_char
 
-    \psi(s,\vec{\Omega},E) = \psi(\vec{r}_0,\vec{\Omega},E) e^{-\int_0^s ds^\prime \Sigma_t(s^\prime,E)} + \int_0^s ds^{\prime\prime} Q(s^{\prime\prime},\vec{\Omega}, E) e^{-\int_{s^{\prime\prime}}^s ds^\prime \Sigma_t(s^\prime,E)}
+    \psi(s,\mathbf{\Omega},E) = \psi(\mathbf{r}_0,\mathbf{\Omega},E) e^{-\int_0^s ds^\prime \Sigma_t(s^\prime,E)} + \int_0^s ds^{\prime\prime} Q(s^{\prime\prime},\mathbf{\Omega}, E) e^{-\int_{s^{\prime\prime}}^s ds^\prime \Sigma_t(s^\prime,E)}
 
 With this characteristic form of the transport equation, we now have an
 analytical solution along a linear path through any constant cross section
@@ -221,7 +221,7 @@ transport equation can be written as in Equation :eq:`moc_final`.
 .. math::
     :label: moc_final
 
-    \psi_g(s, \vec{\Omega}) = \psi_g(\vec{r_0}, \vec{\Omega}) e^{-\int_0^s ds^\prime \Sigma_{t_g}(s^\prime)} + \int_0^s ds^{\prime\prime} Q_g(s^{\prime\prime},\vec{\Omega}) e^{-\int_{s^{\prime\prime}}^s ds^\prime \Sigma_{t_g}(s^\prime)}
+    \psi_g(s, \mathbf{\Omega}) = \psi_g(\mathbf{r_0}, \mathbf{\Omega}) e^{-\int_0^s ds^\prime \Sigma_{t_g}(s^\prime)} + \int_0^s ds^{\prime\prime} Q_g(s^{\prime\prime},\mathbf{\Omega}) e^{-\int_{s^{\prime\prime}}^s ds^\prime \Sigma_{t_g}(s^\prime)}
 
 The CSG definition of the system is used to create spatially defined source
 regions. These neutron source regions are often approximated as being constant

@@ -1749,7 +1749,7 @@ class Cone(QuadricMixin, Surface):
     """A conical surface parallel to the x-, y-, or z-axis.
 
     .. Note::
-        This creates a double cone, which is two one-sides cones that meet at their apex.
+        This creates a double cone, which is two one-sided cones that meet at their apex.
         For a one-sided cone see :class:`~openmc.model.XConeOneSided`,
         :class:`~openmc.model.YConeOneSided`, and :class:`~openmc.model.ZConeOneSided`.
 

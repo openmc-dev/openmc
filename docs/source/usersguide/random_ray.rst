@@ -34,12 +34,11 @@ iteration (by its nature of fully simulating particles from birth to death
 through any number of physical scattering events), whereas the scattering source
 in random ray can only represent as many scattering events as batches have been
 completed. For example, by iteration 10 in random ray, the scattering source
-only captures the behavior of neutrons through their 10th scattering event. By
-iteration 500 in random ray, the scattering source only captures the behavior of
-neutrons through their 100th scatter. Thus, while inactive batches are only
-required in an eigenvalue solve in Monte Carlo, **inactive batches are required
-for both eigenvalue and fixed source solves in random ray mode** due to this
-additional need to converge the scattering source.
+only captures the behavior of neutrons through their 10th scattering event.
+Thus, while inactive batches are only required in an eigenvalue solve in Monte
+Carlo, **inactive batches are required for both eigenvalue and fixed source
+solves in random ray mode** due to this additional need to converge the
+scattering source.
 
 The additional burden of converging the scattering source generally results in a
 higher requirement for the number of inactive batches---often by an order of
@@ -291,12 +290,11 @@ acceptable ray source for a two-dimensional 2x2 lattice would look like:
 Subdivision of Flat Source Regions
 ----------------------------------
 
-A "cell" in OpenMC is analogous to a "flat source region" (FSR) in flat source
-MOC and random ray. While the scattering and fission sources within an OpenMC
-cell are treated continuously, they are assumed to be invariant (flat) within a
-MOC or random ray FSR. This introduces bias into the simulation, which can be
-remedied by reducing the physical size of the FSR to dimensions below that of
-typical mean free paths of particles.
+While the scattering and fission sources in Monte Carlo
+are treated continuously, they are assumed to be invariant (flat) within a
+MOC or random ray flat source region (FSR). This introduces bias into the
+simulation, which can be remedied by reducing the physical size of the FSR
+to dimensions below that of typical mean free paths of particles.
 
 In OpenMC, this subdivision currently must be done manually. The level of
 subdivision needed will be dependent on the fidelity the user requires. For
@@ -314,6 +312,8 @@ of a two-dimensional 2x2 reflective pincell lattice:
     :width: 400
 
     FSR decomposition for an asymmetrical 2x2 lattice (1.26 cm pitch)
+
+In the future, automated subdivision of FSRs via mesh overlay may be supported.
 
 -------
 Tallies
@@ -402,62 +402,7 @@ information on generating multigroup cross sections via OpenMC in the
 :ref:`multigroup materials <create_mgxs>` user guide. You may also wish to
 use an existing multigroup library. An example of using OpenMC's Python
 interface to generate a correctly formatted ``mgxs.h5`` input file is given
-below, which defines a seven group cross section dataset.
-
-::
-
-    # Instantiate the energy group data
-    group_edges = [1e-5, 0.0635, 10.0, 1.0e2, 1.0e3, 0.5e6, 1.0e6, 20.0e6]
-    groups = openmc.mgxs.EnergyGroups(group_edges)
-
-    # Instantiate the 7-group cross section data
-    uo2_xsdata = openmc.XSdata('UO2', groups)
-    uo2_xsdata.order = 0
-    uo2_xsdata.set_total(
-        [0.1779492, 0.3298048, 0.4803882, 0.5543674, 0.3118013, 0.3951678,
-         0.5644058])
-    uo2_xsdata.set_absorption([8.0248e-03, 3.7174e-03, 2.6769e-02, 9.6236e-02,
-                               3.0020e-02, 1.1126e-01, 2.8278e-01])
-    scatter_matrix = np.array(
-        [[[0.1275370, 0.0423780, 0.0000094, 0.0000000, 0.0000000, 0.0000000, 0.0000000],
-          [0.0000000, 0.3244560, 0.0016314, 0.0000000, 0.0000000, 0.0000000, 0.0000000],
-          [0.0000000, 0.0000000, 0.4509400, 0.0026792, 0.0000000, 0.0000000, 0.0000000],
-          [0.0000000, 0.0000000, 0.0000000, 0.4525650, 0.0055664, 0.0000000, 0.0000000],
-          [0.0000000, 0.0000000, 0.0000000, 0.0001253, 0.2714010, 0.0102550, 0.0000000],
-          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0012968, 0.2658020, 0.0168090],
-          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0085458, 0.2730800]]])
-    scatter_matrix = np.rollaxis(scatter_matrix, 0, 3)
-    uo2_xsdata.set_scatter_matrix(scatter_matrix)
-    uo2_xsdata.set_fission([7.21206e-03, 8.19301e-04, 6.45320e-03,
-                            1.85648e-02, 1.78084e-02, 8.30348e-02,
-                            2.16004e-01])
-    uo2_xsdata.set_nu_fission([2.005998e-02, 2.027303e-03, 1.570599e-02,
-                               4.518301e-02, 4.334208e-02, 2.020901e-01,
-                               5.257105e-01])
-    uo2_xsdata.set_chi([5.8791e-01, 4.1176e-01, 3.3906e-04, 1.1761e-07, 0.0000e+00,
-                        0.0000e+00, 0.0000e+00])
-
-    h2o_xsdata = openmc.XSdata('LWTR', groups)
-    h2o_xsdata.order = 0
-    h2o_xsdata.set_total([0.15920605, 0.412969593, 0.59030986, 0.58435,
-                          0.718, 1.2544497, 2.650379])
-    h2o_xsdata.set_absorption([6.0105e-04, 1.5793e-05, 3.3716e-04,
-                               1.9406e-03, 5.7416e-03, 1.5001e-02,
-                               3.7239e-02])
-    scatter_matrix = np.array(
-        [[[0.0444777, 0.1134000, 0.0007235, 0.0000037, 0.0000001, 0.0000000, 0.0000000],
-          [0.0000000, 0.2823340, 0.1299400, 0.0006234, 0.0000480, 0.0000074, 0.0000010],
-          [0.0000000, 0.0000000, 0.3452560, 0.2245700, 0.0169990, 0.0026443, 0.0005034],
-          [0.0000000, 0.0000000, 0.0000000, 0.0910284, 0.4155100, 0.0637320, 0.0121390],
-          [0.0000000, 0.0000000, 0.0000000, 0.0000714, 0.1391380, 0.5118200, 0.0612290],
-          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0022157, 0.6999130, 0.5373200],
-          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.1324400, 2.4807000]]])
-    scatter_matrix = np.rollaxis(scatter_matrix, 0, 3)
-    h2o_xsdata.set_scatter_matrix(scatter_matrix)
-
-    mg_cross_sections_file = openmc.MGXSLibrary(groups)
-    mg_cross_sections_file.add_xsdatas([uo2_xsdata, h2o_xsdata])
-    mg_cross_sections_file.export_to_hdf5()
+in the `OpenMC Jupyter notebook collection <https://nbviewer.org/github/openmc-dev/openmc-notebooks/blob/main/mg-mode-part-i.ipynb>`_.
 
 .. note::
     Currently only isotropic and isothermal multigroup cross sections are

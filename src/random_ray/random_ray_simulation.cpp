@@ -296,7 +296,7 @@ void RandomRaySimulation::reduce_simulation_statistics()
 #endif
 }
 
-void RandomRaySimulation::output_simulation_results()
+void RandomRaySimulation::output_simulation_results() const
 {
   // Print random ray results
   if (mpi::master) {
@@ -312,7 +312,7 @@ void RandomRaySimulation::output_simulation_results()
 // Apply a few sanity checks to catch obvious cases of numerical instability.
 // Instability typically only occurs if ray density is extremely low.
 void RandomRaySimulation::instability_check(
-  int64_t n_hits, double k_eff, double& avg_miss_rate)
+  int64_t n_hits, double k_eff, double& avg_miss_rate) const
 {
   double percent_missed = ((domain_.n_source_regions_ - n_hits) /
                             static_cast<double>(domain_.n_source_regions_)) *
@@ -333,6 +333,64 @@ void RandomRaySimulation::instability_check(
 
   if (k_eff > 10.0 || k_eff < 0.01 || !(std::isfinite(k_eff))) {
     fatal_error("Instability detected");
+  }
+}
+
+// Print random ray simulation results
+void RandomRaySimulation::print_results_random_ray(
+  uint64_t total_geometric_intersections, double avg_miss_rate, int negroups,
+  int64_t n_source_regions) const
+{
+  using namespace simulation;
+
+  if (settings::verbosity >= 6) {
+    double total_integrations = total_geometric_intersections * negroups;
+    double time_per_integration =
+      simulation::time_transport.elapsed() / total_integrations;
+    double misc_time = time_total.elapsed() - time_update_src.elapsed() -
+                       time_transport.elapsed() - time_tallies.elapsed() -
+                       time_bank_sendrecv.elapsed();
+
+    header("Simulation Statistics", 4);
+    fmt::print(
+      " Total Iterations                  = {}\n", settings::n_batches);
+    fmt::print(" Flat Source Regions (FSRs)        = {}\n", n_source_regions);
+    fmt::print(" Total Geometric Intersections     = {:.4e}\n",
+      static_cast<double>(total_geometric_intersections));
+    fmt::print("   Avg per Iteration               = {:.4e}\n",
+      static_cast<double>(total_geometric_intersections) / settings::n_batches);
+    fmt::print("   Avg per Iteration per FSR       = {:.2f}\n",
+      static_cast<double>(total_geometric_intersections) /
+        static_cast<double>(settings::n_batches) / n_source_regions);
+    fmt::print(" Avg FSR Miss Rate per Iteration   = {:.4f}%\n", avg_miss_rate);
+    fmt::print(" Energy Groups                     = {}\n", negroups);
+    fmt::print(
+      " Total Integrations                = {:.4e}\n", total_integrations);
+    fmt::print("   Avg per Iteration               = {:.4e}\n",
+      total_integrations / settings::n_batches);
+
+    header("Timing Statistics", 4);
+    show_time("Total time for initialization", time_initialize.elapsed());
+    show_time("Reading cross sections", time_read_xs.elapsed(), 1);
+    show_time("Total simulation time", time_total.elapsed());
+    show_time("Transport sweep only", time_transport.elapsed(), 1);
+    show_time("Source update only", time_update_src.elapsed(), 1);
+    show_time("Tally conversion only", time_tallies.elapsed(), 1);
+    show_time("MPI source reductions only", time_bank_sendrecv.elapsed(), 1);
+    show_time("Other iteration routines", misc_time, 1);
+    if (settings::run_mode == RunMode::EIGENVALUE) {
+      show_time("Time in inactive batches", time_inactive.elapsed());
+    }
+    show_time("Time in active batches", time_active.elapsed());
+    show_time("Time writing statepoints", time_statepoint.elapsed());
+    show_time("Total time for finalization", time_finalize.elapsed());
+    show_time("Time per integration", time_per_integration);
+  }
+
+  if (settings::verbosity >= 4) {
+    header("Results", 4);
+    fmt::print(" k-effective                       = {:.5f} +/- {:.5f}\n",
+      simulation::keff, simulation::keff_std);
   }
 }
 

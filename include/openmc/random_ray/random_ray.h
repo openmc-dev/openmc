@@ -35,11 +35,15 @@ public:
   static unique_ptr<Source> ray_source_; // Starting source for ray sampling
 
   //----------------------------------------------------------------------------
-  // Data members
+  // Public data members
+  vector<float> angular_flux_;
+
+  //----------------------------------------------------------------------------
+  // Private data members
+  private:
   FlatSourceDomain* domain_ {nullptr}; // pointer to domain that has flat source
                                        // data needed for ray transport
-  std::vector<float> angular_flux_;
-  std::vector<float> delta_psi_;
+  vector<float> delta_psi_;
   double distance_travelled_ {0};
   int negroups_;
   bool is_active_ {false};

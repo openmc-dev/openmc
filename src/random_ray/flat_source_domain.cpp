@@ -27,7 +27,7 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
   // indices, and store the material type The reason for the offsets is that
   // some cell types may not have material fills, and therefore do not
   // produce FSRs. Thus, we cannot index into the global arrays directly
-  for (auto&& c : model::cells) {
+  for (const auto& c : model::cells) {
     if (c->type_ != Fill::MATERIAL) {
       source_region_offsets_.push_back(-1);
     } else {
@@ -213,7 +213,7 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
 
 // Generates new estimate of k_eff based on the differences between this
 // iteration's estimate of the scalar flux and the last iteration's estimate.
-double FlatSourceDomain::compute_k_eff(double k_eff_old)
+double FlatSourceDomain::compute_k_eff(double k_eff_old) const
 {
   double fission_rate_old = 0;
   double fission_rate_new = 0;
@@ -487,7 +487,7 @@ void FlatSourceDomain::all_reduce_replicated_source_regions()
     // Master rank will gather results and pick valid positions
     if (mpi::master) {
       // Initialize temporary vector for receiving positions
-      std::vector<std::vector<Position>> all_position;
+      vector<vector<Position>> all_position;
       all_position.resize(mpi::n_procs);
       for (int i = 0; i < mpi::n_procs; i++) {
         all_position[i].resize(n_source_regions_);
@@ -539,8 +539,10 @@ void FlatSourceDomain::all_reduce_replicated_source_regions()
 
 // Outputs all basic material, FSR ID, multigroup flux, and
 // fission source data to .vtk file that can be directly
-// loaded and displayed by Paraview.
-void FlatSourceDomain::output_to_vtk()
+// loaded and displayed by Paraview. Note that .vtk binary
+// files require big endian byte ordering, so endianness
+// is checked and flipped if necessary.
+void FlatSourceDomain::output_to_vtk() const
 {
   // Rename .h5 plot filename(s) to .vtk filenames
   for (int p = 0; p < model::plots.size(); p++) {
@@ -594,7 +596,7 @@ void FlatSourceDomain::output_to_vtk()
     }
 
     // Relate voxel spatial locations to random ray source regions
-    std::vector<int> voxel_indices(Nx * Ny * Nz);
+    vector<int> voxel_indices(Nx * Ny * Nz);
 
 #pragma omp parallel for collapse(3)
     for (int z = 0; z < Nz; z++) {
@@ -636,7 +638,7 @@ void FlatSourceDomain::output_to_vtk()
         int64_t source_element = fsr * negroups_ + g;
         float flux = scalar_flux_final_[source_element];
         flux /= (settings::n_batches - settings::n_inactive);
-        flux = flip_endianness<float>(flux);
+        flux = convert_to_big_endian<float>(flux);
         std::fwrite(&flux, sizeof(float), 1, plot);
       }
     }
@@ -646,7 +648,7 @@ void FlatSourceDomain::output_to_vtk()
     std::fprintf(plot, "LOOKUP_TABLE default\n");
     for (int fsr : voxel_indices) {
       float value = future_prn(10, fsr);
-      value = flip_endianness<float>(value);
+      value = convert_to_big_endian<float>(value);
       std::fwrite(&value, sizeof(float), 1, plot);
     }
 
@@ -655,7 +657,7 @@ void FlatSourceDomain::output_to_vtk()
     std::fprintf(plot, "LOOKUP_TABLE default\n");
     for (int fsr : voxel_indices) {
       int mat = material_[fsr];
-      mat = flip_endianness<int>(mat);
+      mat = convert_to_big_endian<int>(mat);
       std::fwrite(&mat, sizeof(int), 1, plot);
     }
 
@@ -673,7 +675,7 @@ void FlatSourceDomain::output_to_vtk()
           MgxsType::FISSION, g, nullptr, nullptr, nullptr, 0, 0);
         total_fission += Sigma_f * flux;
       }
-      total_fission = flip_endianness<float>(total_fission);
+      total_fission = convert_to_big_endian<float>(total_fission);
       std::fwrite(&total_fission, sizeof(float), 1, plot);
     }
 

@@ -107,18 +107,24 @@ void RandomRay::event_advance_ray()
     return;
   }
 
-  // Check for final termination
   if (is_active_) {
+    // If the ray is in the active length, need to check if it has
+    // reached its maximum termination distance. If so, reduce
+    // the ray traced length so that the ray does not overrun the
+    // maximum numerical length (so as to avoid numerical bias).
     if (distance_travelled_ + distance >= distance_active_) {
-      distance_active_ - distance_travelled_;
+      distance = distance_active_ - distance_travelled_;
       wgt() = 0.0;
     }
+
     distance_travelled_ += distance;
     attenuate_flux(distance, true);
-  }
-
-  // Check for end of inactive region (dead zone)
-  if (!is_active_) {
+  } else {
+    // If the ray is still in the dead zone, need to check if it
+    // has entered the active phase. If so, split into two segments (one
+    // representing the final part of the dead zone, the other representing the
+    // first part of the active length) and attenuate each. Otherwise, if the
+    // full length of the segment is within the dead zone, attenuate as normal.
     if (distance_travelled_ + distance >= distance_inactive_) {
       is_active_ = true;
       double distance_dead = distance_inactive_ - distance_travelled_;
@@ -131,8 +137,8 @@ void RandomRay::event_advance_ray()
         distance_alive = distance_active_;
         wgt() = 0.0;
       }
-      attenuate_flux(distance_alive, true);
 
+      attenuate_flux(distance_alive, true);
       distance_travelled_ = distance_alive;
     } else {
       distance_travelled_ += distance;

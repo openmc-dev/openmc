@@ -55,11 +55,9 @@ void print_runtime();
 //! Display results for global tallies including k-effective estimators
 void print_results();
 
-//! Display timing results and global statistics for random ray simulations
-void print_results_random_ray(uint64_t total_geometric_intersections,
-  double avg_miss_rate, int negroups, int64_t n_source_regions);
-
 void write_tallies();
+
+void show_time(const char* label, double secs, int indent_level = 0);
 
 } // namespace openmc
 #endif // OPENMC_OUTPUT_H

@@ -618,7 +618,7 @@ void FlatSourceDomain::output_to_vtk() const
     }
 
     // Open file for writing
-    std::FILE* plot = std::fopen(filename.c_str(), "w");
+    std::FILE* plot = std::fopen(filename.c_str(), "wb");
 
     // Write vtk metadata
     std::fprintf(plot, "# vtk DataFile Version 2.0\n");

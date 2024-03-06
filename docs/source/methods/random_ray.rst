@@ -224,11 +224,13 @@ transport equation can be written as in Equation :eq:`moc_final`.
     \psi_g(s, \mathbf{\Omega}) = \psi_g(\mathbf{r_0}, \mathbf{\Omega}) e^{-\int_0^s ds^\prime \Sigma_{t_g}(s^\prime)} + \int_0^s ds^{\prime\prime} Q_g(s^{\prime\prime},\mathbf{\Omega}) e^{-\int_{s^{\prime\prime}}^s ds^\prime \Sigma_{t_g}(s^\prime)}
 
 The CSG definition of the system is used to create spatially defined source
-regions. These neutron source regions are often approximated as being constant
+regions (each region being denoted as :math:`i`). These neutron source regions
+are often approximated as being constant
 (flat) in source intensity but can also be defined using a higher order source
 (linear, quadratic, etc.) that allows for fewer source regions to be required to
 achieve a specified solution fidelity. In OpenMC, the approximation of a
-spatially constant isotropic fission and scattering source :math:`Q_{i,g}` leads
+spatially constant isotropic fission and scattering source :math:`Q_{i,g}` in
+cell :math:`i` leads
 to simple exponential attenuation along an individual characteristic of length
 :math:`s` given by Equation :eq:`fsr_attenuation`.
 

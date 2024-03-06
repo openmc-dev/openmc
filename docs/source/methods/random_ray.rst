@@ -490,7 +490,7 @@ each iteration.
 
 There are some drawbacks to this method. Recall, this denominator volume term
 originally stemmed from taking a volume weighted integral of the angular flux,
-in which case the denominator served as normalized term for the numerator
+in which case the denominator served as normalization term for the numerator
 integral in Equation :eq:`integral`. Essentially, we have now used a different
 term for the volume in the numerator as compared to the normalizing volume in
 the denominator. The inevitable mismatch (due to noise) between these two
@@ -503,8 +503,8 @@ In practice, the simulation averaged method does completely remove the bias,
 though at the cost of a notable increase in variance. Empirical testing reveals
 that on most problems, the simulation averaged estimator does win out overall in
 numerical performance, as a much coarser quadrature can be used resulting in
-faster runtimes overall (due to the need to run many inactive batches). Thus,
-OpenMC uses the simulation averaged estimator in its random ray mode.
+faster runtimes overall. Thus, OpenMC uses the simulation averaged estimator in
+its random ray mode.
 
 ~~~~~~~~~~~~~~~
 Power Iteration
@@ -518,7 +518,7 @@ make their traversals, and summing these contributions up as in Equation
 improve the estimate of the source and scalar flux over many iterations, given
 that our initial starting source will just be a guess?
 
-The source in random ray :math:`Q^{n}` for iteration :math:`n` can be inferred
+The source :math:`Q^{n}` for iteration :math:`n` can be inferred
 from the scalar flux from the previous iteration :math:`n-1` as:
 
 .. math::

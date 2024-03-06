@@ -402,7 +402,8 @@ information on generating multigroup cross sections via OpenMC in the
 :ref:`multigroup materials <create_mgxs>` user guide. You may also wish to
 use an existing multigroup library. An example of using OpenMC's Python
 interface to generate a correctly formatted ``mgxs.h5`` input file is given
-in the `OpenMC Jupyter notebook collection <https://nbviewer.org/github/openmc-dev/openmc-notebooks/blob/main/mg-mode-part-i.ipynb>`_.
+in the `OpenMC Jupyter notebook collection
+<https://nbviewer.org/github/openmc-dev/openmc-notebooks/blob/main/mg-mode-part-i.ipynb>`_.
 
 .. note::
     Currently only isotropic and isothermal multigroup cross sections are

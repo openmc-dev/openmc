@@ -21,7 +21,8 @@ public:
   void simulate();
   void reduce_simulation_statistics();
   void output_simulation_results() const;
-  void instability_check(int64_t n_hits, double k_eff, double& avg_miss_rate) const;
+  void instability_check(
+    int64_t n_hits, double k_eff, double& avg_miss_rate) const;
   void print_results_random_ray(uint64_t total_geometric_intersections,
     double avg_miss_rate, int negroups, int64_t n_source_regions) const;
 

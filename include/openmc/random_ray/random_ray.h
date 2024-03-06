@@ -40,7 +40,7 @@ public:
 
   //----------------------------------------------------------------------------
   // Private data members
-  private:
+private:
   FlatSourceDomain* domain_ {nullptr}; // pointer to domain that has flat source
                                        // data needed for ray transport
   vector<float> delta_psi_;

@@ -344,14 +344,14 @@ We can define the scalar flux in region :math:`i` as:
 .. math::
     :label: integral
 
-    \phi_i = \frac{\int_{V_i} \int_{4\pi} \psi(r, \Omega) d\Omega dV}{\int_{V_i} dV} .
+    \phi_i = \frac{\int_{V_i} \int_{4\pi} \psi(r, \Omega) d\Omega d\mathbf{r}}{\int_{V_i} d\mathbf{r}} .
 
 The integral in the numerator:
 
 .. math::
     :label: numerator
 
-    \int_{V_i} \int_{4\pi} \psi(r, \Omega) d\Omega dV .
+    \int_{V_i} \int_{4\pi} \psi(r, \Omega) d\Omega d\mathbf{r} .
 
 is not known analytically, but with random ray, we are going the numerically
 approximate it by discretizing over a finite number of tracks (with a finite
@@ -367,7 +367,7 @@ in terms of individual ray segments :math:`r` that pass through region
 .. math::
     :label: discretized
 
-    \phi_{i,g} = \frac{\int_{V_i} \int_{4\pi} \psi(r, \Omega) d\Omega dV}{\int_{V_i} dV} = \overline{\overline{\psi}}_{i,g} \approx \frac{\sum\limits_{r=1}^{N_i} \ell_r w_r \overline{\psi}_{r,i,g}}{\sum\limits_{r=1}^{N_i} \ell_r w_r} .
+    \phi_{i,g} = \frac{\int_{V_i} \int_{4\pi} \psi(r, \Omega) d\Omega d\mathbf{r}}{\int_{V_i} d\mathbf{r}} = \overline{\overline{\psi}}_{i,g} \approx \frac{\sum\limits_{r=1}^{N_i} \ell_r w_r \overline{\psi}_{r,i,g}}{\sum\limits_{r=1}^{N_i} \ell_r w_r} .
 
 Here we introduce the term :math:`w_r`, which represents the "weight" of the ray
 (its 2D area), such that the volume that a ray is responsible for can be
@@ -396,7 +396,7 @@ average angular fluxes that pass through the cell. Substituting
 .. math::
     :label: scalar_full
 
-    \phi_{i,g} = \frac{\int_{V_i} \int_{4\pi} \psi(r, \Omega) d\Omega dV}{\int_{V_i} dV} = \overline{\overline{\psi}}_{i,g} = \frac{\sum\limits_{r=1}^{N_i} \ell_r \overline{\psi}_{r,i,g}}{\sum\limits_{r=1}^{N_i} \ell_r} = \frac{\sum\limits_{r=1}^{N_i} \ell_r \frac{Q_{i,g}}{\Sigma_{t,i,g}} + \frac{\Delta \psi_{r,g}}{\ell_r \Sigma_{t,i,g}}}{\sum\limits_{r=1}^{N_i} \ell_r},
+    \phi_{i,g} = \frac{\int_{V_i} \int_{4\pi} \psi(r, \Omega) d\Omega d\mathbf{r}}{\int_{V_i} d\mathbf{r}} = \overline{\overline{\psi}}_{i,g} = \frac{\sum\limits_{r=1}^{N_i} \ell_r \overline{\psi}_{r,i,g}}{\sum\limits_{r=1}^{N_i} \ell_r} = \frac{\sum\limits_{r=1}^{N_i} \ell_r \frac{Q_{i,g}}{\Sigma_{t,i,g}} + \frac{\Delta \psi_{r,g}}{\ell_r \Sigma_{t,i,g}}}{\sum\limits_{r=1}^{N_i} \ell_r},
 
 which when partially simplified becomes:
 

@@ -339,7 +339,7 @@ class Region(ABC):
     def plot(self, *args, **kwargs):
         """Display a slice plot of the region.
 
-        .. versionadded:: 0.14.0
+        .. versionadded:: 0.14.1
 
         Parameters
         ----------
@@ -365,10 +365,6 @@ class Region(ABC):
             Path to OpenMC executable.
         axes : matplotlib.Axes
             Axes to draw to
-        legend : bool
-            Whether a legend showing material or cell names should be drawn
-        legend_kwargs : dict
-            Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
         outline : bool
             Whether outlines between color boundaries should be drawn
         axis_units : {'km', 'm', 'cm', 'mm'}
@@ -386,7 +382,10 @@ class Region(ABC):
             warnings.warn("The 'color_by' argument is present but won't be applied in a region plot")
         if 'colors' in kwargs:
             warnings.warn("The 'colors' argument is present but won't be applied in a region plot")
-
+        if 'legend' in kwargs:
+            warnings.warn("The 'legend' argument is present but won't be applied in a region plot")
+        if 'legend_kwargs' in kwargs:
+            warnings.warn("The 'legend_kwargs' argument is present but won't be applied in a region plot")
         c = openmc.Cell(region=self)
         openmc.Cell.used_ids.remove(c.id)
         return c.plot(*args, **kwargs)

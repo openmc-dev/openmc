@@ -193,12 +193,10 @@ endif()
 if(NOT MSVC)
 
 if(OPENMC_USE_OPENMP)
-  find_package(OpenMP)
-  if(OPENMP_FOUND)
-    # In CMake 3.9+, can use the OpenMP::OpenMP_CXX imported target
-    list(APPEND cxxflags ${OpenMP_CXX_FLAGS})
-    list(APPEND ldflags ${OpenMP_CXX_FLAGS})
-  endif()
+  find_package(OpenMP REQUIRED)
+  # In CMake 3.9+, can use the OpenMP::OpenMP_CXX imported target
+  list(APPEND cxxflags ${OpenMP_CXX_FLAGS})
+  list(APPEND ldflags ${OpenMP_CXX_FLAGS})
 endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)

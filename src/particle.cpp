@@ -698,6 +698,7 @@ void Particle::cross_surface()
     cell_instance() = 0;
     material() = model::cells[i_cell]->material_[0];
     sqrtkT() = model::cells[i_cell]->sqrtkT_[0];
+    add_surf_source_to_bank(*this, *surf);
     return;
   }
 #endif

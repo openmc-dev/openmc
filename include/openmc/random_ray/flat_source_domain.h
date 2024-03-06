@@ -1,8 +1,6 @@
 #ifndef OPENMC_RANDOM_RAY_FLAT_SOURCE_DOMAIN_H
 #define OPENMC_RANDOM_RAY_FLAT_SOURCE_DOMAIN_H
 
-#include <vector>
-
 #include "openmc/openmp_interface.h"
 #include "openmc/position.h"
 

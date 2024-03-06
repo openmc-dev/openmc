@@ -634,16 +634,23 @@ void Nuclide::calculate_xs(
       }
     }
 
-    // Ensure these values are set
-    // Note, the only time either is used is in one of 4 places:
-    // 1. physics.cpp - scatter - For inelastic scatter.
-    // 2. physics.cpp - sample_fission - For partial fissions.
-    // 3. tally.F90 - score_general - For tallying on MTxxx reactions.
-    // 4. nuclide.cpp - calculate_urr_xs - For unresolved purposes.
-    // It is worth noting that none of these occur in the resolved
-    // resonance range, so the value here does not matter.  index_temp is
-    // set to -1 to force a segfault in case a developer messes up and tries
-    // to use it with multipole.
+    /*
+     * index_temp, index_grid, and interp_factor are used only in the
+     * following places:
+     *   1. physics.cpp - scatter - For inelastic scatter.
+     *   2. physics.cpp - sample_fission - For partial fissions.
+     *   3. tallies/tally_scoring.cpp - score_general -
+     *        For tallying on MTxxx reactions.
+     *   4. nuclide.cpp - calculate_urr_xs - For unresolved purposes.
+     * It is worth noting that none of these occur in the resolved resonance
+     * range, so the value here does not matter.  index_temp is set to -1 to
+     * force a segfault in case a developer messes up and tries to use it with
+     * multipole.
+     *
+     * However, a segfault is not necessarily guaranteed with an out-of-bounds
+     * access, so this technique should be replaced by something more robust
+     * in the future.
+     */
     micro.index_temp = -1;
     micro.index_grid = -1;
     micro.interp_factor = 0.0;

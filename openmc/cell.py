@@ -594,7 +594,7 @@ class Cell(IDManagerMixin):
 
                # Make water blue
                water = openmc.Cell(fill=h2o)
-               universe.plot(..., colors={water: (0., 0., 1.))
+               water.plot(colors={water: (0., 0., 1.)})
         seed : int
             Seed for the random number generator
         openmc_exec : str

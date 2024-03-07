@@ -246,8 +246,8 @@ T SlicePlotBase::get_map() const
           data.set_overlap(y, x);
         }
       } // inner for
-    } // outer for
-  } // omp parallel
+    }
+  }
 
   return data;
 }

@@ -264,8 +264,8 @@ void Plot::create_image() const
         }
         data(x, y) = colors_[model::material_map[id]];
       } // color_by if-else
-    }   // x for loop
-  }     // y for loop
+    } // x for loop
+  } // y for loop
 
   // draw mesh lines if present
   if (index_meshlines_mesh_ >= 0) {

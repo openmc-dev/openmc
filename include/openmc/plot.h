@@ -320,8 +320,6 @@ protected:
    */
   std::pair<Position, Direction> get_pixel_ray(int horiz, int vert) const;
 
-  // Max intersections before we assume ray tracing is caught in an infinite
-  // loop:
   std::array<int, 2> pixels_; // pixel dimension of resulting image
 
 private:
@@ -474,6 +472,8 @@ public:
   void compute_distance();
 
 private:
+  // Max intersections before we assume ray tracing is caught in an infinite
+  // loop:
   static const int MAX_INTERSECTIONS = 1000000;
 
   bool hit_something_ {false};

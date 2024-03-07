@@ -94,8 +94,12 @@ struct Position {
   //! \result Reflected vector
   Position reflect(Position n) const;
 
-  //! Rotate the position based on a rotation matrix
+  //! Rotate the position by applying a rotation matrix
   Position rotate(const vector<double>& rotation) const;
+
+  //! Rotate the position by aplpying the inverse of a rotation matrix
+  //! using the fact that rotation matrices are orthonormal.
+  Position inverse_rotate(const vector<double>& rotation) const;
 
   // Data members
   double x = 0.;

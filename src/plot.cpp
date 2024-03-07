@@ -1775,7 +1775,7 @@ void PhongRay::on_intersection()
 
     // Facing away from the light means no lighting
     double dotprod = normal.dot(to_light);
-    dotprod = dotprod >= 0.0 ? dotprod : 0.0;
+    dotprod = std::max(0.0, dotprod);
 
     double modulation =
       plot_.diffuse_fraction_ + (1.0 - plot_.diffuse_fraction_) * dotprod;

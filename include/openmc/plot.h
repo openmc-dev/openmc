@@ -289,7 +289,8 @@ public:
  * This class serves as a base for plots that create their visuals by tracing
  * rays from a camera through the problem geometry. It inherits from
  * PlottableInterface, ensuring that it provides an implementation for
- * generating output specific to ray-traced visualization.
+ * generating output specific to ray-traced visualization. ProjectionPlot
+ * and PhongPlot provide concrete implementations of this class.
  */
 class RayTracePlot : public PlottableInterface {
 public:

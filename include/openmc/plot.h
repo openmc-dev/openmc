@@ -324,7 +324,6 @@ private:
   Position camera_position_;               // where camera is
   Position look_at_; // point camera is centered looking at
 
-  // TODO let up_ be set through XML
   Direction up_ {0.0, 0.0, 1.0}; // which way is up
 
   /* The horizontal thickness, if using an orthographic projection.

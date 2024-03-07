@@ -286,10 +286,10 @@ public:
  * @class RaytracePlot
  * @brief Base class for plots that generate images through ray tracing.
  *
- * This class serves as a base for plots that create their visuals by tracing rays
- * from a camera through the problem geometry. It inherits from PlottableInterface,
- * ensuring that it provides an implementation for generating output specific to
- * ray-traced visualization.
+ * This class serves as a base for plots that create their visuals by tracing
+ * rays from a camera through the problem geometry. It inherits from
+ * PlottableInterface, ensuring that it provides an implementation for
+ * generating output specific to ray-traced visualization.
  */
 class RayTracePlot : public PlottableInterface {
 public:
@@ -353,9 +353,9 @@ class ProjectionRay;
  * @brief Creates plots that are like colorful x-ray imaging
  *
  * ProjectionPlot is a specialized form of RayTracePlot designed for creating
- * projection plots. This involves tracing rays from a camera through the problem
- * geometry and rendering the results based on depth of penetration through materials
- * or cells and their colors.
+ * projection plots. This involves tracing rays from a camera through the
+ * problem geometry and rendering the results based on depth of penetration
+ * through materials or cells and their colors.
  */
 class ProjectionPlot : public RayTracePlot {
 
@@ -408,7 +408,6 @@ private:
   RGBColor wireframe_color_ {BLACK}; // wireframe color
   vector<double> xs_; // macro cross section values for cell volume rendering
 };
-
 
 /**
  * @class PhongPlot

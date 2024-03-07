@@ -79,9 +79,14 @@ const RGBColor WHITE {255, 255, 255};
 const RGBColor RED {255, 0, 0};
 const RGBColor BLACK {0, 0, 0};
 
-/*
- * PlottableInterface classes just have to have a unique ID in the plots.xml
- * file, and guarantee being able to create output in some way.
+/**
+ * @class PlottableInterface
+ * @brief Interface for plottable objects.
+ *
+ * PlottableInterface classes must have a unique ID in the plots.xml file.
+ * They guarantee the ability to create output in some form. This interface
+ * is designed to be implemented by classes that produce plot-relevant data
+ * which can be visualized.
  */
 class PlottableInterface {
 private:
@@ -241,8 +246,8 @@ T SlicePlotBase::get_map() const
           data.set_overlap(y, x);
         }
       } // inner for
-    }   // outer for
-  }     // omp parallel
+    } // outer for
+  } // omp parallel
 
   return data;
 }
@@ -277,9 +282,14 @@ public:
   RGBColor meshlines_color_;      //!< Color of meshlines on the plot
 };
 
-/*
- * Base class for plots which create their image by tracing
- * images from a camera through the problem geometry.
+/**
+ * @class RaytracePlot
+ * @brief Base class for plots that generate images through ray tracing.
+ *
+ * This class serves as a base for plots that create their visuals by tracing rays
+ * from a camera through the problem geometry. It inherits from PlottableInterface,
+ * ensuring that it provides an implementation for generating output specific to
+ * ray-traced visualization.
  */
 class RayTracePlot : public PlottableInterface {
 public:
@@ -337,6 +347,16 @@ private:
 };
 
 class ProjectionRay;
+
+/**
+ * @class ProjectionPlot
+ * @brief Creates plots that are like colorful x-ray imaging
+ *
+ * ProjectionPlot is a specialized form of RayTracePlot designed for creating
+ * projection plots. This involves tracing rays from a camera through the problem
+ * geometry and rendering the results based on depth of penetration through materials
+ * or cells and their colors.
+ */
 class ProjectionPlot : public RayTracePlot {
 
   friend class ProjectionRay;
@@ -389,10 +409,14 @@ private:
   vector<double> xs_; // macro cross section values for cell volume rendering
 };
 
-/*
+
+/**
+ * @class PhongPlot
+ * @brief Plots 3D objects as the eye might see them.
+ *
  * Plots a geometry with single-scattered Phong lighting
- * plus a diffuse lighting contribution. Makes for a visually
- * appealing 3D view of a geometry
+ * plus a diffuse lighting contribution. The result is a
+ * physically reasonable, aesthetic 3D view of a geometry.
  */
 class PhongPlot : public RayTracePlot {
   friend class PhongRay;
@@ -408,7 +432,7 @@ private:
   void set_light_position(pugi::xml_node node);
   void set_diffuse_fraction(pugi::xml_node node);
 
-      std::set<int> opaque_ids_;
+  std::set<int> opaque_ids_;
 
   double diffuse_fraction_ {0.1};
 

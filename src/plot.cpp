@@ -1551,11 +1551,9 @@ void PhongPlot::create_output() const
 #pragma omp parallel for schedule(dynamic) collapse(2)
   for (int horiz = 0; horiz < pixels_[0]; ++horiz) {
     for (int vert = 0; vert < pixels_[1]; ++vert) {
-
       // RayTracePlot implements camera ray generation
       std::pair<Position, Direction> ru = get_pixel_ray(horiz, vert);
       PhongRay ray(ru.first, ru.second, *this);
-
       ray.trace();
       data(horiz, vert) = ray.result_color();
     }
@@ -1685,8 +1683,10 @@ void Ray::trace()
       intersection_found_ = first_surface_ != -1; // -1 if no surface found
     }
     event_counter_++;
-    if (event_counter_ > MAX_INTERSECTIONS)
-      fatal_error("Infinite loop in ray traced plot");
+    if (event_counter_ > MAX_INTERSECTIONS) {
+      warning("Likely infinite loop in ray traced plot");
+      return;
+    }
   }
 }
 
@@ -1742,9 +1742,11 @@ void PhongRay::on_intersection()
     Direction to_light = plot_.light_location_ - r();
     to_light /= to_light.norm();
 
-    // Not sure what can cause this error. Color as an error and proceed
-    // from there. It seems to happen only for a few pixels on the outer
-    // boundary of a hex lattice. TODO
+    // TODO
+    // Not sure what can cause i_surface()==-1, although it sometimes happens
+    // for a few pixels. It's very very rare, so proceed by coloring the pixel
+    // with the overlap color. It seems to happen only for a few pixels on the
+    // outer boundary of a hex lattice.
     //
     // We cannot detect it in the outer loop, and it only matters here, so
     // that's why the error handling is a little different than for a lost
@@ -1759,19 +1761,11 @@ void PhongRay::on_intersection()
     normal /= normal.norm();
 
     // Need to apply translations to find the normal vector in
-    // the base level universe's coordinate system. Uses fact
-    // that rotation matrices are orthonormal.
-    auto inverse_rotate = [](const Direction u,
-                            const std::vector<double>& rotation) {
-      return Direction {
-        u.x * rotation[0] + u.y * rotation[3] + u.z * rotation[6],
-        u.x * rotation[1] + u.y * rotation[4] + u.z * rotation[7],
-        u.x * rotation[2] + u.y * rotation[5] + u.z * rotation[8]};
-    };
+    // the base level universe's coordinate system.
     for (int lev = n_coord() - 2; lev >= 0; --lev) {
       if (coord(lev + 1).rotated) {
         const Cell& c {*model::cells[coord(lev).cell]};
-        normal = inverse_rotate(normal, c.rotation_);
+        normal = normal.inverse_rotate(c.rotation_);
       }
     }
 

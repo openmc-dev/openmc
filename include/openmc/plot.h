@@ -2,6 +2,7 @@
 #define OPENMC_PLOT_H
 
 #include <cmath>
+#include <set>
 #include <sstream>
 #include <unordered_map>
 
@@ -402,21 +403,12 @@ public:
   virtual void create_output() const;
   virtual void print_info() const;
 
-  /* All materials are completely transparent unless explicitly listed
-   * to be otherwise
-   */
-  bool is_id_opaque(int id) const;
-
 private:
   void set_opaque_ids(pugi::xml_node node);
   void set_light_position(pugi::xml_node node);
   void set_diffuse_fraction(pugi::xml_node node);
 
-  // TODO
-  // Right now we use a sorted vector and do binary search,
-  // but it might be worth trying std::unordered_set, which
-  // uses a hash function.
-  std::vector<int> opaque_ids_;
+      std::set<int> opaque_ids_;
 
   double diffuse_fraction_ {0.1};
 

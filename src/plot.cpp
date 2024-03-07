@@ -1571,21 +1571,16 @@ void PhongPlot::create_output() const
 void PhongPlot::set_opaque_ids(pugi::xml_node node)
 {
   if (check_for_node(node, "opaque_ids")) {
-    opaque_ids_ = get_node_array<int>(node, "opaque_ids");
+    auto opaque_ids_tmp = get_node_array<int>(node, "opaque_ids");
+
     // It is read in as actual ID values, but we have to convert to indices in
     // mat/cell array
-    for (auto& x : opaque_ids_)
+    for (auto& x : opaque_ids_tmp)
       x = color_by_ == PlotColorBy::mats ? model::material_map[x]
                                          : model::cell_map[x];
-  }
-  // We make sure the list is sorted in order to later use
-  // std::binary_search.
-  std::sort(opaque_ids_.begin(), opaque_ids_.end());
-}
 
-bool PhongPlot::is_id_opaque(int id) const
-{
-  return std::binary_search(opaque_ids_.begin(), opaque_ids_.end(), id);
+    opaque_ids_.insert(opaque_ids_tmp.begin(), opaque_ids_tmp.end());
+  }
 }
 
 void PhongPlot::set_light_position(pugi::xml_node node)
@@ -1735,7 +1730,7 @@ void PhongRay::on_intersection()
   }
 
   // Anything that's not opaque has zero impact on the plot.
-  if (!plot_.is_id_opaque(hit_id))
+  if (plot_.opaque_ids_.find(hit_id) == plot_.opaque_ids_.end())
     return;
 
   if (!reflected_) {

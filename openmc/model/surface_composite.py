@@ -617,7 +617,7 @@ class RectangularParallelepiped(CompositeSurface):
 class XConeOneSided(CompositeSurface):
     """One-sided cone parallel the x-axis
 
-    A one-sided cone is composed of a normal cone surface and an "ambiguity"
+    A one-sided cone is composed of a normal cone surface and a "disambiguation"
     surface that eliminates the ambiguity as to which region of space is
     included. This class acts as a proper surface, meaning that unary `+` and
     `-` operators applied to it will produce a half-space. The negative side is
@@ -649,7 +649,7 @@ class XConeOneSided(CompositeSurface):
     cone : openmc.XCone
         Regular two-sided cone
     plane : openmc.XPlane
-        Ambiguity surface
+        Disambiguation surface
     up : bool
         Whether to select the side of the cone that extends to infinity in the
         positive direction of the coordinate axis (the positive half-space of
@@ -677,7 +677,7 @@ class XConeOneSided(CompositeSurface):
 class YConeOneSided(CompositeSurface):
     """One-sided cone parallel the y-axis
 
-    A one-sided cone is composed of a normal cone surface and an "ambiguity"
+    A one-sided cone is composed of a normal cone surface and a "disambiguation"
     surface that eliminates the ambiguity as to which region of space is
     included. This class acts as a proper surface, meaning that unary `+` and
     `-` operators applied to it will produce a half-space. The negative side is
@@ -709,7 +709,7 @@ class YConeOneSided(CompositeSurface):
     cone : openmc.YCone
         Regular two-sided cone
     plane : openmc.YPlane
-        Ambiguity surface
+        Disambiguation surface
     up : bool
         Whether to select the side of the cone that extends to infinity in the
         positive direction of the coordinate axis (the positive half-space of
@@ -731,7 +731,7 @@ class YConeOneSided(CompositeSurface):
 class ZConeOneSided(CompositeSurface):
     """One-sided cone parallel the z-axis
 
-    A one-sided cone is composed of a normal cone surface and an "ambiguity"
+    A one-sided cone is composed of a normal cone surface and a "disambiguation"
     surface that eliminates the ambiguity as to which region of space is
     included. This class acts as a proper surface, meaning that unary `+` and
     `-` operators applied to it will produce a half-space. The negative side is
@@ -763,7 +763,7 @@ class ZConeOneSided(CompositeSurface):
     cone : openmc.ZCone
         Regular two-sided cone
     plane : openmc.ZPlane
-        Ambiguity surface
+        Disambiguation surface
     up : bool
         Whether to select the side of the cone that extends to infinity in the
         positive direction of the coordinate axis (the positive half-space of

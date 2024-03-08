@@ -1,25 +1,40 @@
 """Test the 'surface_source_write' setting.
 
-To avoid the impact of thread competition during the source point storage, this test is limited
-to a single thread via the fixture single_thread. Without this configuration, there is a chance
-that source files can be different for the same inputs if the number of realization (i.e., point
-being candidate to be stored) is higher than the capacity.
+Results
+-------
 
 All results are generated using only 1 MPI process.
 
-Results for cases 1 to 20 are generated using the history-based mode. Tests relying on these cases
-are skipped if event-based mode is requested. Conversely, results for cases 21 to 23 are generated
-from event-based mode and will be skipped in history-based mode.
+All results are generated using 1 thread except for "test_consistency_low_realization_number".
+This specific test verifies that when the number of realization (i.e., point being candidate
+to be stored) is higher than the capacity, results are repoducible even with multiple
+threads (i.e., there is no potential thread competition that would produce different 
+results).
 
-Three OpenMC models are used to cover the transmission, vacuum and reflective boundary conditions:
-
-- model_1: complete model with a cylindrical core in 2 boxes,
-- model_2: simplified model with a cylindrical core in 1 box (vacuum boundary conditions),
-- model_3: simplified model with a cylindrical core in 1 box (reflective boundary conditions).
+All results are generated using the history-based mode except cases 21 to 23.
 
 All results are visually verified using the '_visualize.py' script in the regression test folder.
 
-Test cases:
+OpenMC models
+-------------
+
+Three OpenMC models with CSG geometries only are used to cover the transmission, vacuum and
+reflective Boundary Conditions (BC):
+
+- model_1: complete model with a cylindrical core in 2 boxes (vacuum and transmission BC),
+- model_2: simplified model with a cylindrical core in 1 box (vacuum BC),
+- model_3: simplified model with a cylindrical core in 1 box (reflective BC).
+
+Two models including DAGMC geometries are also used, based on the mesh file 'dagmc.h5m'
+available from tests/regression_tests/dagmc/legacy:
+
+- model_dagmc_1: model adapted from tests/regression_tests/dagmc/legacy,
+- model_dagmc_2: model_dagmc_1 contained in two boxes to introduce multiple level of coordinates.
+
+Test cases
+----------
+
+Test cases for CSG geometries only:
 
 ========  =======  =========  =========================  =====  ===================================
 Folder    Model    Surface    Cell                       BC*    Expected particles
@@ -70,30 +85,62 @@ the number of threads is set to 2 if the number of realization is lower than the
 Cases 21 to 23 are the event-based cases corresponding to the history-based cases 4, 7 and 13,
 respectively.
 
+Test cases including DAGMC geometries:
+
+========  =============  =========  =====================  =====  ===================================
+Folder    Model          Surface    Cell                   BC*    Expected particles
+========  =============  =========  =====================  =====  ===================================
+case-24   model_dagmc_1  No         No                     T+V    Particles crossing any surface in
+                                                                  the model
+case-25   model_dagmc_1  1          No                     T      Particles crossing this surface
+                                                                  only
+case-26   model_dagmc_1  No         cell                   T      Particles crossing any surface that
+                                                                  come from or are coming to the cell
+case-27   model_dagmc_1  1          cell                   T      Particles crossing the declared
+                                                                  surface that come from or are
+                                                                  coming to the cell
+case-28   model_dagmc_1  No         cellfrom               T      Particles crossing any surface that
+                                                                  come from the cell
+case-29   model_dagmc_1  No         cellto                 T      Particles crossing any surface that
+                                                                  are coming to the cell
+case-30   model_dagmc_2  Multiple   cell (lower universe)  T      Particles crossing the declared
+                                                                  surfaces that come from or are
+                                                                  coming to the cell
+case-31   model_dagmc_2  Multiple   cell (root universe)   T      Particles crossing the declared
+                                                                  surfaces that come from or are
+                                                                  coming to the cell
+========  =============  =========  =====================  =====  ===================================
+
+*: BC stands for Boundary Conditions, T for Transmission, and V for Vacuum.
+
 Notes:
 
 - The test cases list is non-exhaustive compared to the number of possible combinations.
   Test cases have been selected based on use and internal code logic.
 - Cases 8 to 11 are testing that the feature still works even if the level of coordinates
   before and after crossing a surface is different,
+- Tests on boundary conditions are not performed on DAGMC models as the logic is shared
+  with CSG only models,
 - Cases that should return an error are tested in the 'test_exceptions' unit test
   from 'test_surf_source_write.py'.
 
 TODO:
 
 - Test with a lattice,
-- Test with mesh,
 - Test with periodic boundary conditions.
 
 """
 
 import os
 import shutil
+from pathlib import Path
+
+import openmc
+import openmc.lib
 
 import h5py
 import numpy as np
 import pytest
-import openmc
 
 from tests.testing_harness import PyAPITestHarness
 from tests.regression_tests import config
@@ -764,6 +811,225 @@ def test_surface_source_cell_event_based(
     folder, model_name, parameter, single_thread, single_process, request
 ):
     """Test on event-based results."""
+    assert os.environ["OMP_NUM_THREADS"] == "1"
+    assert config["mpi_np"] == "1"
+    model = request.getfixturevalue(model_name)
+    model.settings.surf_source_write = parameter
+    harness = SurfaceSourceWriteTestHarness(
+        "statepoint.5.h5", model=model, workdir=folder
+    )
+    harness.main()
+
+
+@pytest.fixture(scope="module")
+def model_dagmc_1():
+    """Model based on the mesh file 'dagmc.h5m' available from
+    tests/regression_tests/dagmc/legacy.
+
+    """
+    openmc.reset_auto_ids()
+    model = openmc.Model()
+
+    # =============================================================================
+    # Materials
+    # =============================================================================
+
+    u235 = openmc.Material(name="no-void fuel")
+    u235.add_nuclide('U235', 1.0, 'ao')
+    u235.set_density('g/cc', 11)
+    u235.id = 40
+
+    water = openmc.Material(name="water")
+    water.add_nuclide('H1', 2.0, 'ao')
+    water.add_nuclide('O16', 1.0, 'ao')
+    water.set_density('g/cc', 1.0)
+    water.add_s_alpha_beta('c_H_in_H2O')
+    water.id = 41
+
+    materials = openmc.Materials([u235, water])
+    model.materials = materials
+
+    # =============================================================================
+    # Geometry
+    # =============================================================================
+
+    dagmc_univ = openmc.DAGMCUniverse(Path("../dagmc.h5m"))
+    model.geometry = openmc.Geometry(dagmc_univ)
+
+    # =============================================================================
+    # Settings
+    # =============================================================================
+
+    model.settings = openmc.Settings()
+    model.settings.run_mode = "eigenvalue"
+    model.settings.particles = 100
+    model.settings.batches = 5
+    model.settings.inactive = 1
+    model.settings.seed = 1
+
+    source_box = openmc.stats.Box([-4, -4, -20], [4, 4, 20], only_fissionable=True)
+    model.settings.source = openmc.IndependentSource(space=source_box)
+
+    return model
+
+
+@pytest.fixture(scope="module")
+def model_dagmc_2():
+    """Model based on the mesh file 'dagmc.h5m' available from
+    tests/regression_tests/dagmc/legacy.
+
+    This model corresponds to the model_dagmc_1 contained in two boxes to introduce
+    multiple level of coordinates from CSG geometry.
+
+    """
+    openmc.reset_auto_ids()
+    model = openmc.Model()
+
+    # =============================================================================
+    # Materials
+    # =============================================================================
+
+    u235 = openmc.Material(name="no-void fuel")
+    u235.add_nuclide('U235', 1.0, 'ao')
+    u235.set_density('g/cc', 11)
+    u235.id = 40
+
+    water = openmc.Material(name="water")
+    water.add_nuclide('H1', 2.0, 'ao')
+    water.add_nuclide('O16', 1.0, 'ao')
+    water.set_density('g/cc', 1.0)
+    water.add_s_alpha_beta('c_H_in_H2O')
+    water.id = 41
+
+    materials = openmc.Materials([u235, water])
+    model.materials = materials
+
+    # =============================================================================
+    # Geometry
+    # =============================================================================
+
+    dagmc_univ = openmc.DAGMCUniverse(Path("../dagmc.h5m"))
+
+    # -----------------------------------------------------------------------------
+    # Box 1
+    # -----------------------------------------------------------------------------
+
+    # Parameters
+    box1_size = 44
+
+    # Surfaces
+    box1_lower_plane = openmc.ZPlane(z0=-box1_size / 2.0, surface_id=101)
+    box1_upper_plane = openmc.ZPlane(z0=box1_size / 2.0, surface_id=102)
+    box1_left_plane = openmc.XPlane(x0=-box1_size / 2.0, surface_id=103)
+    box1_right_plane = openmc.XPlane(x0=box1_size / 2.0, surface_id=104)
+    box1_rear_plane = openmc.YPlane(y0=-box1_size / 2.0, surface_id=105)
+    box1_front_plane = openmc.YPlane(y0=box1_size / 2.0, surface_id=106)
+
+    # Region
+    box1_region = (
+        +box1_lower_plane
+        & -box1_upper_plane
+        & +box1_left_plane
+        & -box1_right_plane
+        & +box1_rear_plane
+        & -box1_front_plane
+    )
+
+    # Cell
+    box1 = openmc.Cell(fill=dagmc_univ, region=box1_region, cell_id=8)
+
+    # -----------------------------------------------------------------------------
+    # Box 2
+    # -----------------------------------------------------------------------------
+
+    # Parameters
+    box2_size = 48
+
+    # Surfaces
+    box2_lower_plane = openmc.ZPlane(
+        z0=-box2_size / 2.0, boundary_type="vacuum", surface_id=107
+    )
+    box2_upper_plane = openmc.ZPlane(
+        z0=box2_size / 2.0, boundary_type="vacuum", surface_id=108
+    )
+    box2_left_plane = openmc.XPlane(
+        x0=-box2_size / 2.0, boundary_type="vacuum", surface_id=109
+    )
+    box2_right_plane = openmc.XPlane(
+        x0=box2_size / 2.0, boundary_type="vacuum", surface_id=110
+    )
+    box2_rear_plane = openmc.YPlane(
+        y0=-box2_size / 2.0, boundary_type="vacuum", surface_id=111
+    )
+    box2_front_plane = openmc.YPlane(
+        y0=box2_size / 2.0, boundary_type="vacuum", surface_id=112
+    )
+
+    # Region
+    inside_box2 = (
+        +box2_lower_plane
+        & -box2_upper_plane
+        & +box2_left_plane
+        & -box2_right_plane
+        & +box2_rear_plane
+        & -box2_front_plane
+    )
+    outside_box1 = (
+        -box1_lower_plane
+        | +box1_upper_plane
+        | -box1_left_plane
+        | +box1_right_plane
+        | -box1_rear_plane
+        | +box1_front_plane
+    )
+
+    box2_region = inside_box2 & outside_box1
+
+    # Cell
+    box2 = openmc.Cell(fill=water, region=box2_region, cell_id=9)
+
+    # Root universe
+    root = openmc.Universe(cells=[box1, box2])
+
+    # Register geometry
+    model.geometry = openmc.Geometry(root)
+
+    # =============================================================================
+    # Settings
+    # =============================================================================
+
+    model.settings = openmc.Settings()
+    model.settings.run_mode = "eigenvalue"
+    model.settings.particles = 100
+    model.settings.batches = 5
+    model.settings.inactive = 1
+    model.settings.seed = 1
+
+    source_box = openmc.stats.Box([-4, -4, -20], [4, 4, 20], only_fissionable=True)
+    model.settings.source = openmc.IndependentSource(space=source_box)
+
+    return model
+
+
+@pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC CAD geometry is not enabled.")
+@pytest.mark.skipif(config["event"] is True, reason="Results from history-based mode.")
+@pytest.mark.parametrize(
+    "folder, model_name, parameter",
+    [
+        ("case-24", "model_dagmc_1", {"max_particles": 300}),
+        ("case-25", "model_dagmc_1", {"max_particles": 300, "surface_ids": [1]}),
+        ("case-26", "model_dagmc_1", {"max_particles": 300, "cell": 2}),
+        ("case-27", "model_dagmc_1", {"max_particles": 300, "surface_ids": [1], "cell": 2}),
+        ("case-28", "model_dagmc_1", {"max_particles": 300, "cellfrom": 2}),
+        ("case-29", "model_dagmc_1", {"max_particles": 300, "cellto": 2}),
+        ("case-30", "model_dagmc_2", {"max_particles": 300, "surface_ids": [101, 102, 103, 104, 105, 106], "cell": 7}),
+        ("case-31", "model_dagmc_2", {"max_particles": 300, "surface_ids": [101, 102, 103, 104, 105, 106], "cell": 8}),
+    ],
+)
+def test_surface_source_cell_dagmc(
+    folder, model_name, parameter, single_thread, single_process, request
+):
+    """Test on a generic model with vacuum and transmission boundary conditions."""
     assert os.environ["OMP_NUM_THREADS"] == "1"
     assert config["mpi_np"] == "1"
     model = request.getfixturevalue(model_name)

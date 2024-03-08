@@ -7,9 +7,9 @@ All results are generated using only 1 MPI process.
 
 All results are generated using 1 thread except for "test_consistency_low_realization_number".
 This specific test verifies that when the number of realization (i.e., point being candidate
-to be stored) is higher than the capacity, results are repoducible even with multiple
+to be stored) is lower than the capacity, results are reproducible even with multiple
 threads (i.e., there is no potential thread competition that would produce different 
-results).
+results in that case).
 
 All results are generated using the history-based mode except cases 21 to 23.
 
@@ -18,23 +18,23 @@ All results are visually verified using the '_visualize.py' script in the regres
 OpenMC models
 -------------
 
-Three OpenMC models with CSG geometries only are used to cover the transmission, vacuum and
+Three OpenMC models with CSG-only geometries are used to cover the transmission, vacuum and
 reflective Boundary Conditions (BC):
 
-- model_1: complete model with a cylindrical core in 2 boxes (vacuum and transmission BC),
-- model_2: simplified model with a cylindrical core in 1 box (vacuum BC),
-- model_3: simplified model with a cylindrical core in 1 box (reflective BC).
+- model_1: cylindrical core in 2 boxes (vacuum and transmission BC),
+- model_2: cylindrical core in 1 box (vacuum BC),
+- model_3: cylindrical core in 1 box (reflective BC).
 
 Two models including DAGMC geometries are also used, based on the mesh file 'dagmc.h5m'
 available from tests/regression_tests/dagmc/legacy:
 
 - model_dagmc_1: model adapted from tests/regression_tests/dagmc/legacy,
-- model_dagmc_2: model_dagmc_1 contained in two boxes to introduce multiple level of coordinates.
+- model_dagmc_2: model_dagmc_1 contained in two CSG boxes to introduce multiple level of coordinates.
 
 Test cases
 ----------
 
-Test cases for CSG geometries only:
+Test cases using CSG-only geometries:
 
 ========  =======  =========  =========================  =====  ===================================
 Folder    Model    Surface    Cell                       BC*    Expected particles
@@ -85,7 +85,7 @@ the number of threads is set to 2 if the number of realization is lower than the
 Cases 21 to 23 are the event-based cases corresponding to the history-based cases 4, 7 and 13,
 respectively.
 
-Test cases including DAGMC geometries:
+Test cases using DAGMC geometries:
 
 ========  =============  =========  =====================  =====  ===================================
 Folder    Model          Surface    Cell                   BC*    Expected particles
@@ -120,9 +120,9 @@ Notes:
 - Cases 8 to 11 are testing that the feature still works even if the level of coordinates
   before and after crossing a surface is different,
 - Tests on boundary conditions are not performed on DAGMC models as the logic is shared
-  with CSG only models,
+  with CSG-only models,
 - Cases that should return an error are tested in the 'test_exceptions' unit test
-  from 'test_surf_source_write.py'.
+  from 'unit_tests/surface_source_write/test.py'.
 
 TODO:
 
@@ -756,7 +756,7 @@ class SurfaceSourceWriteTestHarness(PyAPITestHarness):
 def test_surface_source_cell_history_based(
     folder, model_name, parameter, single_thread, single_process, request
 ):
-    """Test on a generic model with vacuum and transmission boundary conditions."""
+    """Test on history-based results for CSG-only geometries."""
     assert os.environ["OMP_NUM_THREADS"] == "1"
     assert config["mpi_np"] == "1"
     model = request.getfixturevalue(model_name)
@@ -810,7 +810,7 @@ def test_consistency_low_realization_number(model_1, two_threads, single_process
 def test_surface_source_cell_event_based(
     folder, model_name, parameter, single_thread, single_process, request
 ):
-    """Test on event-based results."""
+    """Test on event-based results for CSG-only geometries."""
     assert os.environ["OMP_NUM_THREADS"] == "1"
     assert config["mpi_np"] == "1"
     model = request.getfixturevalue(model_name)
@@ -1051,7 +1051,7 @@ def model_dagmc_2():
 def test_surface_source_cell_dagmc(
     folder, model_name, parameter, single_thread, single_process, request
 ):
-    """Test on a generic model with vacuum and transmission boundary conditions."""
+    """Test on models with DAGMC geometries."""
     assert os.environ["OMP_NUM_THREADS"] == "1"
     assert config["mpi_np"] == "1"
     model = request.getfixturevalue(model_name)

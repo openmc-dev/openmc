@@ -204,7 +204,7 @@ def model_dagmc(request):
 )
 def test_particle_direction_dagmc(parameter, run_in_tmpdir, model_dagmc):
     """Test the direction of particles with the 'cellfrom' and 'cellto' parameters
-    on a DAGMC model with one surface of interest."""
+    on a DAGMC model."""
     model_dagmc.settings.surf_source_write = parameter
     model_dagmc.run()
 

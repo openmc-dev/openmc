@@ -835,15 +835,15 @@ def model_dagmc_1():
     # =============================================================================
 
     u235 = openmc.Material(name="no-void fuel")
-    u235.add_nuclide('U235', 1.0, 'ao')
-    u235.set_density('g/cc', 11)
+    u235.add_nuclide("U235", 1.0, "ao")
+    u235.set_density("g/cc", 11)
     u235.id = 40
 
     water = openmc.Material(name="water")
-    water.add_nuclide('H1', 2.0, 'ao')
-    water.add_nuclide('O16', 1.0, 'ao')
-    water.set_density('g/cc', 1.0)
-    water.add_s_alpha_beta('c_H_in_H2O')
+    water.add_nuclide("H1", 2.0, "ao")
+    water.add_nuclide("O16", 1.0, "ao")
+    water.set_density("g/cc", 1.0)
+    water.add_s_alpha_beta("c_H_in_H2O")
     water.id = 41
 
     materials = openmc.Materials([u235, water])
@@ -890,15 +890,15 @@ def model_dagmc_2():
     # =============================================================================
 
     u235 = openmc.Material(name="no-void fuel")
-    u235.add_nuclide('U235', 1.0, 'ao')
-    u235.set_density('g/cc', 11)
+    u235.add_nuclide("U235", 1.0, "ao")
+    u235.set_density("g/cc", 11)
     u235.id = 40
 
     water = openmc.Material(name="water")
-    water.add_nuclide('H1', 2.0, 'ao')
-    water.add_nuclide('O16', 1.0, 'ao')
-    water.set_density('g/cc', 1.0)
-    water.add_s_alpha_beta('c_H_in_H2O')
+    water.add_nuclide("H1", 2.0, "ao")
+    water.add_nuclide("O16", 1.0, "ao")
+    water.set_density("g/cc", 1.0)
+    water.add_s_alpha_beta("c_H_in_H2O")
     water.id = 41
 
     materials = openmc.Materials([u235, water])
@@ -1011,7 +1011,9 @@ def model_dagmc_2():
     return model
 
 
-@pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC CAD geometry is not enabled.")
+@pytest.mark.skipif(
+    not openmc.lib._dagmc_enabled(), reason="DAGMC CAD geometry is not enabled."
+)
 @pytest.mark.skipif(config["event"] is True, reason="Results from history-based mode.")
 @pytest.mark.parametrize(
     "folder, model_name, parameter",
@@ -1019,11 +1021,31 @@ def model_dagmc_2():
         ("case-24", "model_dagmc_1", {"max_particles": 300}),
         ("case-25", "model_dagmc_1", {"max_particles": 300, "surface_ids": [1]}),
         ("case-26", "model_dagmc_1", {"max_particles": 300, "cell": 2}),
-        ("case-27", "model_dagmc_1", {"max_particles": 300, "surface_ids": [1], "cell": 2}),
+        (
+            "case-27",
+            "model_dagmc_1",
+            {"max_particles": 300, "surface_ids": [1], "cell": 2},
+        ),
         ("case-28", "model_dagmc_1", {"max_particles": 300, "cellfrom": 2}),
         ("case-29", "model_dagmc_1", {"max_particles": 300, "cellto": 2}),
-        ("case-30", "model_dagmc_2", {"max_particles": 300, "surface_ids": [101, 102, 103, 104, 105, 106], "cell": 7}),
-        ("case-31", "model_dagmc_2", {"max_particles": 300, "surface_ids": [101, 102, 103, 104, 105, 106], "cell": 8}),
+        (
+            "case-30",
+            "model_dagmc_2",
+            {
+                "max_particles": 300,
+                "surface_ids": [101, 102, 103, 104, 105, 106],
+                "cell": 7,
+            },
+        ),
+        (
+            "case-31",
+            "model_dagmc_2",
+            {
+                "max_particles": 300,
+                "surface_ids": [101, 102, 103, 104, 105, 106],
+                "cell": 8,
+            },
+        ),
     ],
 )
 def test_surface_source_cell_dagmc(

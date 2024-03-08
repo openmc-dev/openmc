@@ -114,7 +114,12 @@ def model():
 )
 def test_particle_direction(parameter, run_in_tmpdir, model):
     """Test the direction of particles with the 'cellfrom' and 'cellto' parameters
-    on a simple model with only one surface of interest."""
+    on a simple model with only one surface of interest.
+
+    Cell 2 is the upper hemisphere and surface 2 is the plane dividing the sphere
+    into two hemispheres.
+
+    """
     model.settings.surf_source_write = parameter
     model.run()
     with h5py.File("surface_source.h5", "r") as f:
@@ -149,15 +154,15 @@ def model_dagmc(request):
     # =============================================================================
 
     u235 = openmc.Material(name="no-void fuel")
-    u235.add_nuclide('U235', 1.0, 'ao')
-    u235.set_density('g/cc', 11)
+    u235.add_nuclide("U235", 1.0, "ao")
+    u235.set_density("g/cc", 11)
     u235.id = 40
 
     water = openmc.Material(name="water")
-    water.add_nuclide('H1', 2.0, 'ao')
-    water.add_nuclide('O16', 1.0, 'ao')
-    water.set_density('g/cc', 1.0)
-    water.add_s_alpha_beta('c_H_in_H2O')
+    water.add_nuclide("H1", 2.0, "ao")
+    water.add_nuclide("O16", 1.0, "ao")
+    water.set_density("g/cc", 1.0)
+    water.add_s_alpha_beta("c_H_in_H2O")
     water.id = 41
 
     materials = openmc.Materials([u235, water])
@@ -187,7 +192,9 @@ def model_dagmc(request):
     return model
 
 
-@pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC CAD geometry is not enabled.")
+@pytest.mark.skipif(
+    not openmc.lib._dagmc_enabled(), reason="DAGMC CAD geometry is not enabled."
+)
 @pytest.mark.parametrize(
     "parameter",
     [
@@ -219,25 +226,25 @@ def test_particle_direction_dagmc(parameter, run_in_tmpdir, model_dagmc):
                 # If the point is also on the cylindrical surface
                 if np.allclose(np.sqrt(x**2 + y**2), r):
                     if "cellfrom" in parameter.keys():
-                        assert ((uz * z > 0) or (ux * x + uy * y > 0))
+                        assert (uz * z > 0) or (ux * x + uy * y > 0)
                     elif "cellto" in parameter.keys():
-                        assert ((uz * z < 0) or (ux * x + uy * y < 0))
+                        assert (uz * z < 0) or (ux * x + uy * y < 0)
                     else:
                         assert False
                 # If the point is not on the cylindrical surface
                 else:
                     if "cellfrom" in parameter.keys():
-                        assert (uz * z > 0)
+                        assert uz * z > 0
                     elif "cellto" in parameter.keys():
-                        assert (uz * z < 0)
+                        assert uz * z < 0
                     else:
                         assert False
             # If the point is not on the upper or lower circle,
             # meaning it is on the cylindrical surface
             else:
                 if "cellfrom" in parameter.keys():
-                    assert (ux * x + uy * y > 0)
+                    assert ux * x + uy * y > 0
                 elif "cellto" in parameter.keys():
-                    assert (ux * x + uy * y < 0)
+                    assert ux * x + uy * y < 0
                 else:
                     assert False

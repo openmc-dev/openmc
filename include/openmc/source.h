@@ -111,7 +111,12 @@ public:
   void load_sites_from_file(
     const std::string& path); //!< Load source sites from file
 private:
+  // Domain types
+  enum class DomainType { UNIVERSE, MATERIAL, CELL };
+
   vector<SourceSite> sites_; //!< Source sites from a file
+  DomainType domain_type_;                        //!< Domain type for rejection
+  std::unordered_set<int32_t> domain_ids_;        //!< Domains to reject from
 };
 
 //==============================================================================

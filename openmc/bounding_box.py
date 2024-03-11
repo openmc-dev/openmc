@@ -103,20 +103,12 @@ class BoundingBox:
 
         """
         # test for a single point
-        if isinstance(other, (tuple, list)):
+        if isinstance(other, (tuple, list, np.ndarray)):
             point = other
             check_length("Point", point, 3, 3)
             return all(point > self.lower_left) and all(point < self.upper_right)
         elif isinstance(other, BoundingBox):
-            return all(
-                [
-                    all(other_p > self_p) and all(other_p < self_p)
-                    for other_p, self_p in zip(
-                        [other.lower_left, other.upper_right],
-                        [self.lower_left, self.upper_right],
-                    )
-                ]
-            )
+            return all([p in self for p in [other.lower_left, other.upper_right]])
         else:
             raise TypeError(
                 f"Unable to test if {other} is in the bounding box."

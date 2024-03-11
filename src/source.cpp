@@ -360,7 +360,7 @@ SourceSite FileSource::sample(uint64_t* seed) const
 
     if (found) {
       // Rejection based on cells/materials/universes
-      if (domain_ids_.empty()) {
+      if (!domain_ids_.empty()) {
         if (domain_type_ == DomainType::MATERIAL) {
           auto mat_index = p.material();
           if (mat_index != MATERIAL_VOID) {

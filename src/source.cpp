@@ -309,7 +309,6 @@ FileSource::FileSource(pugi::xml_node node)
     auto ids = get_node_array<int>(node, "domain_ids");
     domain_ids_.insert(ids.begin(), ids.end());
   }
-
 }
 
 FileSource::FileSource(const std::string& path)
@@ -347,15 +346,20 @@ void FileSource::load_sites_from_file(const std::string& path)
 
 SourceSite FileSource::sample(uint64_t* seed) const
 {
-  //_sites contains the full set of particles  - loop through to reject
   bool found = false;
   size_t i_site;
+
   while (!found) {
+    // Sample a particle randomly from list
     i_site = sites_.size() * prn(seed);
     Particle p;
     p.r() = sites_[i_site].r;
+
+    // Reject particle if it's not in the geometry at all
     found = exhaustive_find_cell(p);
-    if (found){
+
+    if (found) {
+      // Rejection based on cells/materials/universes
       if (domain_ids_.empty()) {
         if (domain_type_ == DomainType::MATERIAL) {
           auto mat_index = p.material();
@@ -365,8 +369,8 @@ SourceSite FileSource::sample(uint64_t* seed) const
         } else {
           for (int i = 0; i < p.n_coord(); i++) {
             auto id = (domain_type_ == DomainType::CELL)
-              ? model::cells[p.coord(i).cell]->id_
-              : model::universes[p.coord(i).universe]->id_;
+                        ? model::cells[p.coord(i).cell]->id_
+                        : model::universes[p.coord(i).universe]->id_;
             if ((found = contains(domain_ids_, id)))
               break;
           }

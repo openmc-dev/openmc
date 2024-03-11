@@ -45,7 +45,7 @@ def test_bounding_upper_right(bb, expected):
 
 
 @pytest.mark.parametrize(
-    "bb, expected",
+    "bb, expected", 
     [
         (test_bb_1, np.array([-4.5, -9.0, -13.5])),
         (test_bb_2, np.array([6.0, 12.0, 18.0])),
@@ -156,3 +156,27 @@ def test_bounding_box_methods():
 
     assert all(test_bb[0] == [-50.1, -50.1, -12.1])
     assert all(test_bb[1] == [50.1, 14.1, 50.1])
+
+@pytest.mark.parametrize(
+    "bb, other, expected",
+    [
+        (test_bb_1, (0, 0, 0), True),
+        (test_bb_2, (3, 3, 3), False),
+        (test_bb_1, test_bb_2, False),
+        (test_bb_1, openmc.BoundingBox((-9, -19, -29), (0, 0, 0)), True)
+    ],
+)
+def test_bounding_box_contains(bb, other, expected):
+    assert (other in bb) == expected
+
+@pytest.mark.parametrize(
+    "invalid, ex",
+    [
+        ((1,0), ValueError),
+        ((1,2,3,4), ValueError),
+        ("foo", TypeError),
+    ]
+)
+def test_bounding_box_contains_checking(invalid, ex):
+    with pytest.raises(ex):
+        invalid in test_bb_1

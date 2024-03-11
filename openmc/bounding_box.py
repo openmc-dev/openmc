@@ -95,9 +95,33 @@ class BoundingBox:
         new |= other
         return new
 
-    def __contains__(self, point):
-        """Check whether or not a point is in the bounding box"""
-        return all(point > self.lower_left) and all(point < self.upper_right)
+    def __contains__(self, other):
+        """Check whether or not a point or another bounding box is in the bounding box.
+
+        For another bounding box to be in the parent it must lie fully inside of it,
+        with no overlap.
+
+        """
+        # test for a single point
+        if isinstance(other, (tuple, list)):
+            point = other
+            check_length("Point", point, 3, 3)
+            return all(point > self.lower_left) and all(point < self.upper_right)
+        elif isinstance(other, BoundingBox):
+            return all(
+                [
+                    all(other_p > self_p) and all(other_p < self_p)
+                    for other_p, self_p in zip(
+                        [other.lower_left, other.upper_right],
+                        [self.lower_left, self.upper_right],
+                    )
+                ]
+            )
+        else:
+            raise TypeError(
+                f"Unable to test if {other} is in the bounding box."
+                f" Expected a tuple or a bounding box, but {type(other)} given"
+            )
 
     @property
     def center(self) -> np.ndarray:

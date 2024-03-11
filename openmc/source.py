@@ -657,6 +657,9 @@ class FileSource(SourceBase):
         Path to the source file from which sites should be sampled
     strength : float
         Strength of the source (default is 1.0)
+    domains : iterable of openmc.Cell, openmc.Material, or openmc.Universe
+        Domains to reject based on, i.e., if a sampled spatial location is not
+        within one of these domains, it will be rejected.
 
     Attributes
     ----------
@@ -667,14 +670,33 @@ class FileSource(SourceBase):
     type : str
         Indicator of source type: 'file'
 
+    .. versionadded:: x.y.z
+
+    ids : Iterable of int
+        IDs of domains to use for rejection
+    domain_type : {'cell', 'material', 'universe'}
+        Type of domain to use for rejection
+
     """
-    def __init__(self, path: Optional[PathLike] = None, strength=1.0) -> None:
+
+    def __init__(self, path: Optional[PathLike] = None, strength=1.0, domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None) -> None:
         super().__init__(strength=strength)
 
         self._path = None
 
         if path is not None:
             self.path = path
+
+        self._domain_ids = []
+        self._domain_type = None
+        if domains is not None:
+            if isinstance(domains[0], openmc.Cell):
+                self.domain_type = 'cell'
+            elif isinstance(domains[0], openmc.Material):
+                self.domain_type = 'material'
+            elif isinstance(domains[0], openmc.Universe):
+                self.domain_type = 'universe'
+            self.domain_ids = [d.id for d in domains]
 
     @property
     def type(self) -> str:
@@ -689,6 +711,24 @@ class FileSource(SourceBase):
         cv.check_type('source file', p, str)
         self._path = p
 
+    @property
+    def domain_ids(self):
+        return self._domain_ids
+
+    @domain_ids.setter
+    def domain_ids(self, ids):
+        cv.check_type('domain IDs', ids, Iterable, Real)
+        self._domain_ids = ids
+
+    @property
+    def domain_type(self):
+        return self._domain_type
+
+    @domain_type.setter
+    def domain_type(self, domain_type):
+        cv.check_value('domain type', domain_type, ('cell', 'material', 'universe'))
+        self._domain_type = domain_type
+
     def populate_xml_element(self, element):
         """Add necessary file source information to an XML element
 
@@ -700,6 +740,11 @@ class FileSource(SourceBase):
         """
         if self.path is not None:
             element.set("file", self.path)
+        if self.domain_ids:
+            dt_elem = ET.SubElement(element, "domain_type")
+            dt_elem.text = self.domain_type
+            id_elem = ET.SubElement(element, "domain_ids")
+            id_elem.text = ' '.join(str(uid) for uid in self.domain_ids)
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element) -> openmc.FileSource:
@@ -727,6 +772,25 @@ class FileSource(SourceBase):
         strength = get_text(elem, 'strength')
         if strength is not None:
             source.strength = float(strength)
+
+        domain_type = get_text(elem, "domain_type")
+        if domain_type is not None:
+            domain_ids = [int(x) for x in get_text(elem, "domain_ids").split()]
+
+            # Instantiate some throw-away domains that are used by the
+            # constructor to assign IDs
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', openmc.IDWarning)
+                if domain_type == 'cell':
+                    domains = [openmc.Cell(uid) for uid in domain_ids]
+                elif domain_type == 'material':
+                    domains = [openmc.Material(uid) for uid in domain_ids]
+                elif domain_type == 'universe':
+                    domains = [openmc.Universe(uid) for uid in domain_ids]
+        else:
+            domains = None
+
+        source = cls(domains=domains)
 
         return source
 

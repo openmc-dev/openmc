@@ -310,36 +310,6 @@ FileSource::FileSource(pugi::xml_node node)
     domain_ids_.insert(ids.begin(), ids.end());
   }
 
-  //_sites contains the full set of particles  - loop through to reject
-
-  if (!domain_ids_.empty()) {
-    bool found = false;
-    for (auto site = sites_.begin(); site!=sites_.end();) {
-      found = false;
-      Particle p;
-      p.r() = site->r;
-      if (domain_type_ == DomainType::MATERIAL) {
-        auto mat_index = p.material();
-        if (mat_index != MATERIAL_VOID) {
-          found = contains(domain_ids_, model::materials[mat_index]->id());
-        }
-      } else {
-        for (int i = 0; i < p.n_coord(); i++) {
-          auto id = (domain_type_ == DomainType::CELL)
-            ? model::cells[p.coord(i).cell]->id_
-            : model::universes[p.coord(i).universe]->id_;
-          if ((found = contains(domain_ids_, id)))
-            break;
-        }
-      }
-
-      if (found) {
-        site=sites_.erase(site);
-      } else {
-        ++site;
-      }
-    }
-  }
 }
 
 FileSource::FileSource(const std::string& path)
@@ -377,7 +347,33 @@ void FileSource::load_sites_from_file(const std::string& path)
 
 SourceSite FileSource::sample(uint64_t* seed) const
 {
-  size_t i_site = sites_.size() * prn(seed);
+  //_sites contains the full set of particles  - loop through to reject
+  bool found = false;
+  size_t i_site;
+  while (!found) {
+    i_site = sites_.size() * prn(seed);
+    Particle p;
+    p.r() = sites_[i_site].r;
+    found = exhaustive_find_cell(p);
+    if (found){
+      if (domain_ids_.empty()) {
+        if (domain_type_ == DomainType::MATERIAL) {
+          auto mat_index = p.material();
+          if (mat_index != MATERIAL_VOID) {
+            found = contains(domain_ids_, model::materials[mat_index]->id());
+          }
+        } else {
+          for (int i = 0; i < p.n_coord(); i++) {
+            auto id = (domain_type_ == DomainType::CELL)
+              ? model::cells[p.coord(i).cell]->id_
+              : model::universes[p.coord(i).universe]->id_;
+            if ((found = contains(domain_ids_, id)))
+              break;
+          }
+        }
+      }
+    }
+  }
   return sites_[i_site];
 }
 

@@ -1,6 +1,7 @@
 """Tests for the openmc.deplete.Nuclide class."""
 
 import copy
+import warnings
 
 import lxml.etree as ET
 import numpy as np
@@ -277,9 +278,9 @@ def test_validate():
     }
 
     # nuclide is good and should have no warnings raise
-    with pytest.warns(None) as record:
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         assert nuc.validate(strict=True, quiet=False, tolerance=0.0)
-    assert len(record) == 0
 
     # invalidate decay modes
     decay = nuc.decay_modes.pop()

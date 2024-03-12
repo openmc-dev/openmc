@@ -309,6 +309,22 @@ FileSource::FileSource(pugi::xml_node node)
     auto ids = get_node_array<int>(node, "domain_ids");
     domain_ids_.insert(ids.begin(), ids.end());
   }
+
+  // Check for how to handle rejected particles
+  if (check_for_node(node, "rejection_strategy")) {
+    std::string rejection_strategy=get_node_value(node, "rejection_strategy");
+    if (rejection_strategy=="kill") {
+      rejection_strategy_ = RejectionStrategy::KILL;
+    } else if (rejection_strategy=="resample") {
+      rejection_strategy_ = RejectionStrategy::RESAMPLE;
+    } else {
+      fatal_error(std::string(
+            "Unrecognized strategy source rejection: " + rejection_strategy));
+    }
+  } else {
+    // Default to kill rejected particles
+    rejection_strategy_ = RejectionStrategy::KILL;
+  }
 }
 
 FileSource::FileSource(const std::string& path)
@@ -348,12 +364,14 @@ SourceSite FileSource::sample(uint64_t* seed) const
 {
   bool found = false;
   size_t i_site;
+  SourceSite site;
 
   while (!found) {
     // Sample a particle randomly from list
     i_site = sites_.size() * prn(seed);
+    site = sites_[i_site];
     Particle p;
-    p.r() = sites_[i_site].r;
+    p.r() = site.r;
 
     // Reject particle if it's not in the geometry at all
     found = exhaustive_find_cell(p);
@@ -377,8 +395,13 @@ SourceSite FileSource::sample(uint64_t* seed) const
         }
       }
     }
+    if (!found && rejection_strategy_==RejectionStrategy::KILL){
+      // Accept particle regardless but set wgt=0 to trigger garbage collection
+      found = true;
+      site.wgt=0.0;
+    }
   }
-  return sites_[i_site];
+  return site;
 }
 
 //==============================================================================

@@ -118,7 +118,11 @@ private:
   vector<SourceSite> sites_; //!< Source sites from a file
   DomainType domain_type_;                        //!< Domain type for rejection
   std::unordered_set<int32_t> domain_ids_;        //!< Domains to reject from
+  vector<double> lower_left_;                 //!< Lower left corner cds of filter hypercube
+  vector<double> upper_right_;                //!< Upper right corner cds of filter hypercube
   RejectionStrategy rejection_strategy_;          //!< Procedure for rejected
+
+  bool inside_hypercube(SourceSite& s) const;
 };
 
 //==============================================================================

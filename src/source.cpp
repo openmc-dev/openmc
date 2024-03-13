@@ -301,6 +301,8 @@ FileSource::FileSource(pugi::xml_node node)
       domain_type_ = DomainType::MATERIAL;
     } else if (domain_type == "universe") {
       domain_type_ = DomainType::UNIVERSE;
+    } else if (domain_type == "filter") {
+      domain_type_ = DomainType::FILTER;
     } else {
       fatal_error(std::string(
             "Unrecognized domain type for source rejection: " + domain_type));
@@ -309,17 +311,29 @@ FileSource::FileSource(pugi::xml_node node)
     auto ids = get_node_array<int>(node, "domain_ids");
     domain_ids_.insert(ids.begin(), ids.end());
   }
+  if (check_for_node(node, "lower_left")) {
+    auto ids = get_node_array<double>(node, "lower_left");
+    for (auto id : ids){
+      lower_left_.push_back(id);
+    }
+  }
+  if (check_for_node(node, "upper_right")) {
+    auto ids = get_node_array<double>(node, "upper_right");
+    for (auto id : ids){
+      upper_right_.push_back(id);
+    }
+  }
 
   // Check for how to handle rejected particles
   if (check_for_node(node, "rejection_strategy")) {
-    std::string rejection_strategy=get_node_value(node, "rejection_strategy");
-    if (rejection_strategy=="kill") {
+    std::string rejection_strategy = get_node_value(node, "rejection_strategy");
+    if (rejection_strategy == "kill") {
       rejection_strategy_ = RejectionStrategy::KILL;
-    } else if (rejection_strategy=="resample") {
+    } else if (rejection_strategy == "resample") {
       rejection_strategy_ = RejectionStrategy::RESAMPLE;
     } else {
       fatal_error(std::string(
-            "Unrecognized strategy source rejection: " + rejection_strategy));
+        "Unrecognized strategy source rejection: " + rejection_strategy));
     }
   } else {
     // Default to kill rejected particles
@@ -360,6 +374,17 @@ void FileSource::load_sites_from_file(const std::string& path)
   file_close(file_id);
 }
 
+bool FileSource::inside_hypercube(SourceSite& s) const
+{
+  std::vector<double> cds { s.r[0], s.r[1], s.r[2], s.u[0], s.u[1], s.u[2], s.E, s.time };
+  for (int i = 0; i < std::max(lower_left_.size(),upper_right_.size()); i++ ){
+    if ( ( i < lower_left_.size() && cds[i] < lower_left_[i] ) ||
+        ( i>upper_right_.size() && cds[i] > upper_right_[i] ) )
+      return false;
+  }
+  return true;
+}
+
 SourceSite FileSource::sample(uint64_t* seed) const
 {
   bool found = false;
@@ -376,8 +401,13 @@ SourceSite FileSource::sample(uint64_t* seed) const
     // Reject particle if it's not in the geometry at all
     found = exhaustive_find_cell(p);
 
+    // If not geometry rejected possibly reject by hypercube
+    if (found && ( !lower_left_.empty() || !upper_right_.empty() ) ) {
+      found = inside_hypercube(site);
+    }
+
+    // Rejection based on cells/materials/universes
     if (found) {
-      // Rejection based on cells/materials/universes
       if (!domain_ids_.empty()) {
         if (domain_type_ == DomainType::MATERIAL) {
           auto mat_index = p.material();
@@ -395,10 +425,11 @@ SourceSite FileSource::sample(uint64_t* seed) const
         }
       }
     }
-    if (!found && rejection_strategy_==RejectionStrategy::KILL){
+
+    if (!found && rejection_strategy_ == RejectionStrategy::KILL) {
       // Accept particle regardless but set wgt=0 to trigger garbage collection
       found = true;
-      site.wgt=0.0;
+      site.wgt = 0.0;
     }
   }
   return site;

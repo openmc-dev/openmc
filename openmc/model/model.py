@@ -497,7 +497,7 @@ class Model:
         # if this is an XML file location and the file's parent directory does
         # not exist, create it before continuing
         elif not xml_path.parent.exists():
-            xml_path.mkdir(parents=True, exist_ok=True)
+            xml_path.parent.mkdir(parents=True, exist_ok=True)
 
         if remove_surfs:
             warnings.warn("remove_surfs kwarg will be deprecated soon, please "

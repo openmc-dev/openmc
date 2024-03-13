@@ -163,8 +163,14 @@ def test_bounding_box_methods():
     [
         (test_bb_1, (0, 0, 0), True),
         (test_bb_2, (3, 3, 3), False),
+        # completely disjoint
         (test_bb_1, test_bb_2, False),
+        # contained but touching border
+        (test_bb_1, test_bb_3, False),
+        # Fully contained
         (test_bb_1, openmc.BoundingBox((-9, -19, -29), (0, 0, 0)), True),
+        # intersecting boxes
+        (test_bb_1, openmc.BoundingBox((-9, -19, -29), (1, 2, 5)), False),
     ],
 )
 def test_bounding_box_contains(bb, other, expected):

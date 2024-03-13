@@ -45,7 +45,7 @@ def test_bounding_upper_right(bb, expected):
 
 
 @pytest.mark.parametrize(
-    "bb, expected", 
+    "bb, expected",
     [
         (test_bb_1, np.array([-4.5, -9.0, -13.5])),
         (test_bb_2, np.array([6.0, 12.0, 18.0])),

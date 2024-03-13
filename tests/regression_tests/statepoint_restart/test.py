@@ -82,8 +82,6 @@ def test_batch_check(request, capsys):
         assert sp_file is None
 
         output = capsys.readouterr().out
-        output = re.sub(' +', ' ', output.replace('\n',' '))
-        print(output)
         assert "WARNING" in output
         assert "The number of batches specified for simulation" in output
 

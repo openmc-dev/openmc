@@ -373,9 +373,9 @@ void statepoint_version_check(hid_t file_id)
 {
   // Read revision number for state point file and make sure it matches with
   // current version
-  array<int, 2> array;
-  read_attribute(file_id, "version", array);
-  if (array != VERSION_STATEPOINT) {
+  array<int, 2> version_array;
+  read_attribute(file_id, "version", version_array);
+  if (version_array != VERSION_STATEPOINT) {
     fatal_error(
       "State point version does not match current version in OpenMC.");
   }

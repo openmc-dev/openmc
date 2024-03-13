@@ -769,7 +769,7 @@ class Integrator(ABC):
         self.operator.write_bos_data(step_index + self._i_res)
         return x, res
 
-    def _get_bos_data_from_restart(self, step_index, source_rate, bos_conc):
+    def _get_bos_data_from_restart(self, source_rate, bos_conc):
         """Get beginning of step concentrations, reaction rates from restart"""
         res = self.operator.prev_res[-1]
         # Depletion methods expect list of arrays
@@ -823,7 +823,7 @@ class Integrator(ABC):
                 if i > 0 or self.operator.prev_res is None:
                     n, res = self._get_bos_data_from_operator(i, source_rate, n)
                 else:
-                    n, res = self._get_bos_data_from_restart(i, source_rate, n)
+                    n, res = self._get_bos_data_from_restart(source_rate, n)
 
                 # Solve Bateman equations over time interval
                 proc_time, n_list, res_list = self(n, res.rates, dt, source_rate, i)
@@ -1030,7 +1030,7 @@ class SIIntegrator(Integrator):
                     if self.operator.prev_res is None:
                         n, res = self._get_bos_data_from_operator(i, p, n)
                     else:
-                        n, res = self._get_bos_data_from_restart(i, p, n)
+                        n, res = self._get_bos_data_from_restart(p, n)
                 else:
                     # Pull rates, k from previous iteration w/o
                     # re-running transport

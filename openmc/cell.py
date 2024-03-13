@@ -722,7 +722,7 @@ class Cell(IDManagerMixin):
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
         materials : dict
             Dictionary mapping material ID strings to :class:`openmc.Material`
-            instances (defined in :math:`openmc.Geometry.from_xml`)
+            instances (defined in :meth:`openmc.Geometry.from_xml`)
         get_universe : function
             Function returning universe (defined in
             :meth:`openmc.Geometry.from_xml`)

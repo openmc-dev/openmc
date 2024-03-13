@@ -93,7 +93,7 @@ jobs:
       RDMAV_FORK_SAFE: 1
 
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -128,7 +128,7 @@ jobs:
           $GITHUB_WORKSPACE/tools/ci/gha-install.sh
 
       - name: cache-xs
-        uses: actions/cache@v4.0.1
+        uses: actions/cache@v4
         with:
           path: |
             ~/nndc_hdf5

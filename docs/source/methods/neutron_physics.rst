@@ -310,7 +310,7 @@ interpolation law. The number of prompt neutrons released per fission event
 specified in a polynomial or tabular format. The number of delayed neutrons
 released per fission event :math:`\nu_d` can only be specified in a tabular
 format. In practice, we only need to determine :math:`\nu_t` and
-:math:`\nu_d`. Once these have been determined, we can calculated the delayed
+:math:`\nu_d`. Once these have been determined, we can calculate the delayed
 neutron fraction
 
 .. math::

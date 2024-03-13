@@ -280,6 +280,9 @@ class Discrete(Univariate):
         Discrete distribution with low-importance points removed
 
         """
+        cv.check_less_than("tolerance", tolerance, 1.0, equality=True)
+        cv.check_greater_than("tolerance", tolerance, 0.0, equality=True)
+
         # Determine (reversed) sorted order of probabilities
         intensity = self.p * self.x
         index_sort = np.argsort(intensity)[::-1]

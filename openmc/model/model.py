@@ -432,7 +432,7 @@ class Model:
                 depletion_operator.cleanup_when_done = True
                 depletion_operator.finalize()
 
-    def export_to_xml(self, directory='.', remove_surfs=False):
+    def export_to_xml(self, directory='.', remove_surfs=False, ignore_phantom_nuclides=False):
         """Export model to separate XML files.
 
         Parameters
@@ -443,6 +443,9 @@ class Model:
         remove_surfs : bool
             Whether or not to remove redundant surfaces from the geometry when
             exporting.
+        ignore_phantom_nuclides: bool
+            If True, nuclides present in the materials but with no available cross-sections
+            will be ignored when writing to xml.
 
             .. versionadded:: 0.13.1
         """
@@ -458,18 +461,18 @@ class Model:
         # for all materials in the geometry and use that to automatically build
         # a collection.
         if self.materials:
-            self.materials.export_to_xml(d)
+            self.materials.export_to_xml(d, ignore_phantom_nuclides=ignore_phantom_nuclides)
         else:
             materials = openmc.Materials(self.geometry.get_all_materials()
                                          .values())
-            materials.export_to_xml(d)
+            materials.export_to_xml(d, ignore_phantom_nuclides=ignore_phantom_nuclides)
 
         if self.tallies:
             self.tallies.export_to_xml(d)
         if self.plots:
             self.plots.export_to_xml(d)
 
-    def export_to_model_xml(self, path='model.xml', remove_surfs=False):
+    def export_to_model_xml(self, path='model.xml', remove_surfs=False, ignore_phantom_nuclides=False):
         """Export model to a single XML file.
 
         .. versionadded:: 0.13.3
@@ -482,6 +485,9 @@ class Model:
         remove_surfs : bool
             Whether or not to remove redundant surfaces from the geometry when
             exporting.
+        ignore_phantom_nuclides: bool
+            If True, nuclides present in the materials but with no available cross-sections
+            will be ignored when writing to xml.
 
         """
         xml_path = Path(path)
@@ -527,7 +533,7 @@ class Model:
             fh.write("<model>\n")
             # Write the materials collection to the open XML file first.
             # This will write the XML header also
-            materials._write_xml(fh, False, level=1)
+            materials._write_xml(fh, False, level=1, ignore_phantom_nuclides=ignore_phantom_nuclides)
             # Write remaining elements as a tree
             fh.write(ET.tostring(geometry_element, encoding="unicode"))
             fh.write(ET.tostring(settings_element, encoding="unicode"))

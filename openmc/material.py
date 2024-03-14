@@ -16,6 +16,7 @@ import h5py
 import openmc
 import openmc.data
 import openmc.checkvalue as cv
+from openmc.data import DataLibrary
 from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
 from openmc.checkvalue import PathLike
@@ -1314,7 +1315,7 @@ class Material(IDManagerMixin):
 
     def _get_nuclides_xml(
             self, nuclides: typing.Iterable[NuclideTuple],
-            nuclides_to_ignore: Optional[typing.Iterable[str]] = None)-> List[ET.Element]:
+            nuclides_to_ignore: Optional[typing.Iterable[str]] = None) -> List[ET.Element]:
         xml_elements = []
 
         # Remove any nuclides to ignore from the XML export
@@ -1340,6 +1341,16 @@ class Material(IDManagerMixin):
             XML element containing material data
 
         """
+        if nuclides_to_ignore is not None:
+            nuclides = [nuc.name for nuc in self.nuclides]
+            phantoms = [nuc for nuc in nuclides_to_ignore if nuc in nuclides]
+            phantom_masses = sum([self.get_mass_density(nuc) for nuc in phantoms])
+            mass_loss_ratio = phantom_masses / self.get_mass_density()
+            msg = f"By ignoring {phantoms} in material {self.id} for transport calculation, " \
+                  f"{mass_loss_ratio:.2%} of the material total mass density in lost."
+            openmc.warnings.warn(msg)
+        else:
+            phantoms = None
 
         # Create Material XML element
         element = ET.Element("material")
@@ -1379,7 +1390,7 @@ class Material(IDManagerMixin):
         if self._macroscopic is None:
             # Create nuclide XML subelements
             subelements = self._get_nuclides_xml(self._nuclides,
-                                                 nuclides_to_ignore=nuclides_to_ignore)
+                                                 nuclides_to_ignore=phantoms)
             for subelement in subelements:
                 element.append(subelement)
         else:
@@ -1636,7 +1647,7 @@ class Materials(cv.CheckedList):
             material.make_isotropic_in_lab()
 
     def _write_xml(self, file, header=True, level=0, spaces_per_level=2,
-                   trailing_indent=True, nuclides_to_ignore=None):
+                   trailing_indent=True, nuclides_to_ignore=None, ignore_phantom_nuclides=False):
         """Writes XML content of the materials to an open file handle.
 
         Parameters
@@ -1653,8 +1664,23 @@ class Materials(cv.CheckedList):
             Whether or not to write a trailing indentation for the materials element
         nuclides_to_ignore : list of str
             Nuclides to ignore when exporting to XML.
+        ignore_phantom_nuclides: bool
+            If True, nuclides present in the materials but with no available cross-sections
+            will be ignored when writing to xml.
 
         """
+        if ignore_phantom_nuclides:
+            xml_path = openmc.config.get("cross_sections", None)
+            if xml_path is None:
+                raise ValueError("A cross_sections.xml file must be set to identify phantom nuclides.")
+            available = get_nuclides_with_data(xml_path)
+            candidates = list(set([nuc.name for m in self for nuc in m.nuclides]))
+            phantoms = [nuc for nuc in candidates if nuc not in available]
+            if nuclides_to_ignore is None:
+                nuclides_to_ignore = phantoms
+            else:
+                nuclides_to_ignore += phantoms
+
         indentation = level*spaces_per_level*' '
         # Write the header and the opening tag for the root element.
         if header:
@@ -1689,7 +1715,8 @@ class Materials(cv.CheckedList):
             file.write(indentation)
 
     def export_to_xml(self, path: PathLike = 'materials.xml',
-                      nuclides_to_ignore: Optional[typing.Iterable[str]] = None):
+                      nuclides_to_ignore: Optional[typing.Iterable[str]] = None,
+                      ignore_phantom_nuclides: bool = False):
         """Export material collection to an XML file.
 
         Parameters
@@ -1698,6 +1725,9 @@ class Materials(cv.CheckedList):
             Path to file to write. Defaults to 'materials.xml'.
         nuclides_to_ignore : list of str
             Nuclides to ignore when exporting to XML.
+        ignore_phantom_nuclides: bool
+            If True, nuclides present in the materials but with no available cross-sections
+            will be ignored when writing to xml.
 
         """
         # Check if path is a directory
@@ -1710,7 +1740,9 @@ class Materials(cv.CheckedList):
         # one go.
         with open(str(p), 'w', encoding='utf-8',
                   errors='xmlcharrefreplace') as fh:
-            self._write_xml(fh, nuclides_to_ignore=nuclides_to_ignore)
+            self._write_xml(fh,
+                            ignore_phantom_nuclides=ignore_phantom_nuclides,
+                            nuclides_to_ignore=nuclides_to_ignore)
 
     @classmethod
     def from_xml_element(cls, elem) -> Materials:
@@ -1759,3 +1791,32 @@ class Materials(cv.CheckedList):
         root = tree.getroot()
 
         return cls.from_xml_element(root)
+
+
+def get_nuclides_with_data(cross_sections):
+    """Loads cross_sections.xml file to find nuclides with neutron data or
+    finds nuclides with cross section data from iterable of MicroXs objects.
+
+    Parameters
+    ----------
+    cross_sections : patlib.Path or iterable of MicroXs
+        Path to cross_sections.xml file or iterable of MicroXs objects.
+
+    Returns
+    -------
+    nuclides : set of str
+        Set of nuclide names that have cross secton data
+
+    """
+    if isinstance(cross_sections, Path):
+        nuclides = set()
+        data_lib = DataLibrary.from_xml(cross_sections)
+        for library in data_lib.libraries:
+            if library['type'] != 'neutron':
+                continue
+            for name in library['materials']:
+                if name not in nuclides:
+                    nuclides.add(name)
+        return nuclides
+    else:
+        return set(cross_sections[0].nuclides)

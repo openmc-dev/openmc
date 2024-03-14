@@ -791,10 +791,10 @@ class FileSource(SourceBase):
             dt_elem.text = self.domain_type
             id_elem = ET.SubElement(element, "domain_ids")
             id_elem.text = ' '.join(str(uid) for uid in self.domain_ids)
-        if self._lower_left is not None:
+        if self.lower_left is not None:
             dt_elem = ET.SubElement(element, "lower_left")
             dt_elem.text = ' '.join(str(cd) for cd in self.lower_left)
-        if self._upper_right is not None:
+        if self.upper_right is not None:
             dt_elem = ET.SubElement(element, "upper_right")
             dt_elem.text = ' '.join(str(cd) for cd in self.upper_right)
         if self.rejection_strategy is not None:

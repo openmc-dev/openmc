@@ -660,11 +660,11 @@ class FileSource(SourceBase):
     domains : iterable of openmc.Cell, openmc.Material, or openmc.Universe
         Domains to reject based on, i.e., if a sampled spatial location is not
         within one of these domains, it will be rejected.
-    lower_left : Iterable of double
-        Coordinates of the lower left corner of a phase space hypercube from which to
+    lower_left : Iterable of float
+        Lower-left corner coordinates of a phase space hypercube from which to
         accept particles. The dimensions are: x [cm],y [cm],z [cm], ux [ ],uy [ ],uz[ ], E [eV], t [s]
-    upper_right : Iterable of double
-        Coordinates of the upper right corner of a phase space hypercube from which to
+    upper_right : Iterable of float
+        Upper-right corner coordinates of a phase space hypercube from which to
         accept particles. The dimensions are: x [cm],y [cm],z [cm], ux [ ],uy [ ],uz[ ], E [eV], t [s]
 
     Attributes
@@ -683,13 +683,13 @@ class FileSource(SourceBase):
     domain_type : {'cell', 'material', 'universe'}
         Type of domain to use for rejection
     lower_left : Iterable of double
-        Coordinates of the lower left corner of hypercube
+        Lower-left corner hypercube coordinates
     upper_right : Iterable of double
-        Coordinates of the upper right corner of hypercube
+        Upper-right corner hypercube coordinates
 
     """
 
-    def __init__(self, path: Optional[PathLike] = None, strength=1.0, domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None, lower_left: Optional[Sequence[Double]] = None, upper_right: Optional[Sequence[Double]] = None) -> None:
+    def __init__(self, path: Optional[PathLike] = None, strength=1.0, rejection_strategy = None, domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None, lower_left: Optional[Sequence[Double]] = None, upper_right: Optional[Sequence[Double]] = None) -> None:
         super().__init__(strength=strength)
 
         self._path = None
@@ -711,6 +711,8 @@ class FileSource(SourceBase):
             self.lower_left = lower_left
         if upper_right is not None:
             self.upper_right = upper_right
+        if rejection_strategy is not None:
+            self.rejection_strategy = rejection_strategy
 
     @property
     def type(self) -> str:
@@ -735,11 +737,22 @@ class FileSource(SourceBase):
         self._domain_ids = ids
 
     @property
+    def domain_type(self):
+        return self._domain_type
+
+    @domain_type.setter
+    def domain_type(self, domain_type):
+        cv.check_value('domain type', domain_type, ('cell', 'material', 'universe'))
+        self._domain_type = domain_type
+
+    @property
     def lower_left(self):
         return self._lower_left
 
     @lower_left.setter
     def lower_left(self, lower_left):
+        name = 'lower-left hypercube coordinates'
+        cv.check_type(name, lower_left, Iterable, Real)
         self._lower_left = lower_left
 
     @property
@@ -747,9 +760,20 @@ class FileSource(SourceBase):
         return self._upper_right
 
     @upper_right.setter
-    def domain_type(self, upper_right):
+    def upper_right(self, upper_right):
+        name = 'upper-right hypercube coordinates'
+        cv.check_type(name, upper_right, Iterable, Real)
         self._upper_right = upper_right
 
+    @property
+    def rejection_strategy(self):
+        return self._rejection_strategy
+
+    @rejection_strategy.setter
+    def rejection_strategy(self, rejection_strategy):
+        name = 'rejection strategy'
+        cv.check_value('rejection strategy', rejection_strategy, ('resample','kill'))
+        self._rejection_strategy = rejection_strategy
 
     def populate_xml_element(self, element):
         """Add necessary file source information to an XML element
@@ -767,12 +791,15 @@ class FileSource(SourceBase):
             dt_elem.text = self.domain_type
             id_elem = ET.SubElement(element, "domain_ids")
             id_elem.text = ' '.join(str(uid) for uid in self.domain_ids)
-        if self.lower_left_ is not none:
-            dt_elem = et.subelement(element, "lower_left")
-            dt_elem.text = self.lower_left
-        if self.upper_right_ is not none:
-            dt_elem = et.subelement(element, "upper_right")
-            dt_elem.text = self.upper_right
+        if self._lower_left is not None:
+            dt_elem = ET.SubElement(element, "lower_left")
+            dt_elem.text = ' '.join(str(cd) for cd in self.lower_left)
+        if self._upper_right is not None:
+            dt_elem = ET.SubElement(element, "upper_right")
+            dt_elem.text = ' '.join(str(cd) for cd in self.upper_right)
+        if self.rejection_strategy is not None:
+            dt_elem = ET.SubElement(element, "rejection_strategy")
+            dt_elem.text = self.rejection_strategy
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element) -> openmc.FileSource:

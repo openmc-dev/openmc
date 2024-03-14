@@ -313,13 +313,13 @@ FileSource::FileSource(pugi::xml_node node)
   }
   if (check_for_node(node, "lower_left")) {
     auto ids = get_node_array<double>(node, "lower_left");
-    for (auto id : ids){
+    for (auto id : ids) {
       lower_left_.push_back(id);
     }
   }
   if (check_for_node(node, "upper_right")) {
     auto ids = get_node_array<double>(node, "upper_right");
-    for (auto id : ids){
+    for (auto id : ids) {
       upper_right_.push_back(id);
     }
   }
@@ -376,10 +376,11 @@ void FileSource::load_sites_from_file(const std::string& path)
 
 bool FileSource::inside_hypercube(SourceSite& s) const
 {
-  std::vector<double> cds { s.r[0], s.r[1], s.r[2], s.u[0], s.u[1], s.u[2], s.E, s.time };
-  for (int i = 0; i < std::max(lower_left_.size(),upper_right_.size()); i++ ){
-    if ( ( i < lower_left_.size() && cds[i] < lower_left_[i] ) ||
-        ( i>upper_right_.size() && cds[i] > upper_right_[i] ) )
+  std::vector<double> cds {
+    s.r[0], s.r[1], s.r[2], s.u[0], s.u[1], s.u[2], s.E, s.time};
+  for (int i = 0; i < std::max(lower_left_.size(), upper_right_.size()); i++) {
+    if ((i < lower_left_.size() && cds[i] < lower_left_[i]) ||
+        (i > upper_right_.size() && cds[i] > upper_right_[i]))
       return false;
   }
   return true;
@@ -402,7 +403,7 @@ SourceSite FileSource::sample(uint64_t* seed) const
     found = exhaustive_find_cell(p);
 
     // If not geometry rejected possibly reject by hypercube
-    if (found && ( !lower_left_.empty() || !upper_right_.empty() ) ) {
+    if (found && (!lower_left_.empty() || !upper_right_.empty())) {
       found = inside_hypercube(site);
     }
 

@@ -22,7 +22,8 @@ class Batchwise(ABC):
     """Abstract class defining a generalized batch wise scheme.
 
     Batchwise schemes, such as control rod adjustment or material refuelling to
-    control reactivity and maintain keff constant and equal to one.
+    control reactivity and maintain keff constant and equal to a desired value,
+    usually one.
 
     A batch wise scheme can be added here to an integrator instance,
     such as  :class:`openmc.deplete.CECMIntegrator`, to parametrize one system
@@ -32,7 +33,7 @@ class Batchwise(ABC):
     Specific classes for running batch wise depletion calculations are
     implemented as derived class of Batchwise.
 
-    .. versionadded:: 0.13.4
+    .. versionadded:: 0.14.1
 
     Parameters
     ----------
@@ -45,7 +46,7 @@ class Batchwise(ABC):
         Absolute bracketing interval lower and upper; if during the adaptive
         algorithm the search_for_keff solution lies off these limits the closest
         limit will be set as new result.
-    density_treatment : str
+    density_treatment : str, optional
         Whether or not to keep constant volume or density after a depletion step
         before the next one.
         Default to 'constant-volume'
@@ -148,8 +149,8 @@ class Batchwise(ABC):
 
     @abstractmethod
     def _model_builder(self, param):
-        """Builds the parametric model to be passed to the
-        :meth:`openmc.search.search_for_keff` method.
+        """Build the parametric model to be solved.
+
         Callable function which builds a model according to a passed
         parameter. This function must return an openmc.model.Model object.
 
@@ -160,12 +161,13 @@ class Batchwise(ABC):
 
         Returns
         -------
-        _model :  openmc.model.Model
+        openmc.model.Model
             OpenMC parametric model
         """
 
     def _search_for_keff(self, val):
         """Perform the criticality search for a given parametric model.
+
         If the solution lies off the initial bracket, this method iteratively
         adapt it until :meth:`openmc.search.search_for_keff` return a valid
         solution.
@@ -187,7 +189,7 @@ class Batchwise(ABC):
             Estimated value of the variable parameter where keff is the
             targeted value
         """
-        # make sure we don't modify original bracket and tol values
+        # make sure we don't modify original bracket
         bracket = deepcopy(self.bracket)
 
         # Run until a search_for_keff root is found or out of limits
@@ -299,6 +301,7 @@ class Batchwise(ABC):
 
     def _update_volumes(self):
         """Update volumes stored in AtomNumber.
+
         After a depletion step, both material volume and density change, due to
         changes in nuclides composition.
         At present we lack an implementation to calculate density and volume
@@ -320,6 +323,7 @@ class Batchwise(ABC):
 
     def _update_materials(self, x):
         """Update number density and material compositions in OpenMC on all processes.
+
         If density_treatment is set to 'constant-density'
         :meth:`openmc.deplete.batchwise._update_volumes` is called to update
         material volumes in AtomNumber, keeping the material total density
@@ -769,6 +773,7 @@ class BatchwiseCellGeometrical(BatchwiseCell):
 
     def _set_cell_attrib(self, val):
         """Set cell attribute to the cell instance.
+
         Attributes are only applied to a cell filled with a universe containing
         two cells itself.
 
@@ -1017,7 +1022,7 @@ class BatchwiseMaterial(Batchwise):
         self.material = self._get_material(material)
 
         check_type("material vector", mat_vector, dict, str)
-        for nuc in mat_vector.keys():
+        for nuc in mat_vector:
             check_value("check nuclide exists", nuc, self.operator.nuclides_with_data)
 
         if round(sum(mat_vector.values()), 2) != 1.0:
@@ -1085,6 +1090,7 @@ class BatchwiseMaterial(Batchwise):
 
     def search_for_keff(self, x, step_index):
         """Perform the criticality search on parametric material variable.
+
         The :meth:`openmc.search.search_for_keff` solution is then used to
         calculate the new material volume and update the atoms concentrations.
 

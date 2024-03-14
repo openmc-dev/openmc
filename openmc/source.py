@@ -710,7 +710,7 @@ class FileSource(SourceBase):
         if lower_left is not None:
             self.lower_left = lower_left
         if upper_right is not None:
-            self.upper_right = lower_left
+            self.upper_right = upper_right
 
     @property
     def type(self) -> str:

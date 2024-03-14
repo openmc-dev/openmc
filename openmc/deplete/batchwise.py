@@ -3,6 +3,7 @@ from copy import deepcopy
 from numbers import Real
 from warnings import warn
 import numpy as np
+from math import isclose
 
 import openmc.lib
 from openmc.mpi import comm
@@ -40,7 +41,7 @@ class Batchwise(ABC):
     operator : openmc.deplete.Operator
         OpenMC operator object
     bracket : list of float
-        Bracketing interval to search for the solution, always relative to the
+        Initial bracketing interval to search for the solution, relative to the
         solution at previous step.
     bracket_limit : list of float
         Absolute bracketing interval lower and upper; if during the adaptive
@@ -68,6 +69,7 @@ class Batchwise(ABC):
     search_for_keff_output : Bool, Optional
         Print full transport logs during iterations (e.g., inactive generations, active
         generations). Default to False
+
     Attributes
     ----------
     burn_mats : list of str
@@ -75,6 +77,7 @@ class Batchwise(ABC):
     local_mats : list of str
         All burnable material IDs being managed by a single process
         List of burnable materials ids
+
     """
 
     def __init__(
@@ -165,15 +168,34 @@ class Batchwise(ABC):
             OpenMC parametric model
         """
 
+    @abstractmethod
+    def search_for_keff(self, x, step_index):
+        """Perform the criticality search on parametric material variable.
+
+        The :meth:`openmc.search.search_for_keff` solution is then used to
+        calculate the new material volume and update the atoms concentrations.
+
+        Parameters
+        ----------
+        x : list of numpy.ndarray
+            Total atoms concentrations
+
+        Returns
+        -------
+        x : list of numpy.ndarray
+            Updated total atoms concentrations
+        root : float
+             Search_for_keff returned root value
+        """
+
     def _search_for_keff(self, val):
         """Perform the criticality search for a given parametric model.
 
         If the solution lies off the initial bracket, this method iteratively
         adapt it until :meth:`openmc.search.search_for_keff` return a valid
         solution.
-        The adapting bracket algorithm takes the ratio between the bracket and
-        the returned keffs values to scale the bracket until a valid solution
-        is found.
+        It calculates the ratio between guessed and corresponding keffs values
+        as the proportional term to move the bracket towards the target.
         A bracket limit pose the upper and lower boundaries to the adapting
         bracket. If one limit is hit, the algorithm will stop and the closest
         limit value will be used.
@@ -190,7 +212,7 @@ class Batchwise(ABC):
             targeted value
         """
         # make sure we don't modify original bracket
-        bracket = deepcopy(self.bracket)
+        bracket = deepcopy(self.brack½et)
 
         # Run until a search_for_keff root is found or out of limits
         root = None
@@ -240,7 +262,7 @@ class Batchwise(ABC):
                     )
 
                     # if the difference between keffs is smaller than 1 pcm,
-                    # the grad calculation will be overshoot, so let's set the root
+                    # the slope calculation will be overshoot, so let's set the root
                     # to the closest guess value
                     if abs(np.diff(keffs)) < 1.0e-5:
                         arg_min = abs(self.target - np.array(keffs)).argmin()
@@ -252,9 +274,10 @@ class Batchwise(ABC):
                         )
                         root = guesses[arg_min]
 
-                    # Calculate gradient as ratio of delta bracket and delta keffs
-                    grad = abs(np.diff(bracket) / np.diff(keffs))[0].n
-                    # Move the bracket closer to presumed keff root.
+                    # Calculate slope as ratio of delta bracket and delta keffs
+                    slope = abs(np.diff(bracket) / np.diff(keffs))[0].n
+                    # Move the bracket closer to presumed keff root by using the
+                    # slope
 
                     # Two cases: both keffs are below or above target
                     if np.mean(keffs) < self.target:
@@ -265,7 +288,7 @@ class Batchwise(ABC):
                             dir = -1
                         bracket[np.argmin(keffs)] = bracket[np.argmax(keffs)]
                         bracket[np.argmax(keffs)] += (
-                            grad * (self.target - max(keffs).n) * dir
+                            slope * (self.target - max(keffs).n) * dir
                         )
                     else:
                         if guesses[np.argmax(keffs)] > guesses[np.argmin(keffs)]:
@@ -274,14 +297,14 @@ class Batchwise(ABC):
                             dir = 1
                         bracket[np.argmax(keffs)] = bracket[np.argmin(keffs)]
                         bracket[np.argmin(keffs)] += (
-                            grad * (min(keffs).n - self.target) * dir
+                            slope * (min(keffs).n - self.target) * dir
                         )
 
                     #check if adapted bracket are within bracketing limits
-                    if max(bracket) + val > self.bracket_limit[1]:
-                        bracket[np.argmax(bracket)] = self.bracket_limit[1] - val
-                    if min(bracket) + val < self.bracket_limit[0]:
-                        bracket[np.argmin(bracket)] = self.bracket_limit[0] - val
+                    if bracket[1] + val > self.bracket_limit[1]:
+                        bracket[1] = self.bracket_limit[1] - val
+                    if bracket[0] + val < self.bracket_limit[0]:
+                        bracket[0] = self.bracket_limit[0] - val
 
                 else:
                     # Set res with closest limit and continue
@@ -413,7 +436,7 @@ class BatchwiseCell(Batchwise):
     Specific classes for running batch wise depletion calculations are
     implemented as derived class of BatchwiseCell.
 
-    .. versionadded:: 0.13.4
+    .. versionadded:: 0.14.1
 
     Parameters
     ----------
@@ -422,7 +445,7 @@ class BatchwiseCell(Batchwise):
     operator : openmc.deplete.Operator
         OpenMC operator object
     bracket : list of float
-        Bracketing interval to search for the solution, always relative to the
+        Initial bracketing interval to search for the solution, relative to the
         solution at previous step.
     bracket_limit : list of float
         Absolute bracketing interval lower and upper; if during the adaptive
@@ -455,9 +478,10 @@ class BatchwiseCell(Batchwise):
     ----------
     cell : openmc.Cell or int or str
         OpenMC Cell identifier to where apply batch wise scheme
-    cell_materials : list of openmc.Material
-        Depletable materials that fill the Cell Universe. Only valid for
-        translation or rotation attributes
+    universe_cells : list of openmc.Cell
+        Cells that fill the openmc.Universe that fills the main cell
+        to where apply batch wise scheme, if cell materials are set as
+        depletable.
     lib_cell : openmc.lib.Cell
         Corresponding openmc.lib.Cell once openmc.lib is initialized
     axis : int {0,1,2}
@@ -503,8 +527,9 @@ class BatchwiseCell(Batchwise):
             check_value("axis", axis, (0, 1, 2))
         self.axis = axis
 
-        # list of material fill the attribute cell, if depletables
-        self.cell_materials = None
+        # Initialize container of universe cells, to populate only if materials
+        # are set as depletables
+        self.universe_cells = None
 
     @abstractmethod
     def _get_cell_attrib(self):
@@ -544,26 +569,37 @@ class BatchwiseCell(Batchwise):
         val : openmc.Cell
             Openmc Cell
         """
-        all_cells = [
+        cell_bundles = [
             (cell.id, cell.name, cell)
             for cell in self.geometry.get_all_cells().values()
         ]
 
         if isinstance(val, Cell):
-            check_value("Cell exists", val, [cell[2] for cell in all_cells])
+            check_value("Cell exists", val,
+                        [cell_bundle[2] for cell_bundle in cell_bundles])
 
         elif isinstance(val, str):
             if val.isnumeric():
-                check_value("Cell id exists", int(val), [cell[0] for cell in all_cells])
-                val = [cell[2] for cell in all_cells if cell[0] == int(val)][0]
+                check_value("Cell id exists", int(val),
+                            [cell_bundle[0] for cell_bundle in cell_bundles])
+
+                val = [cell_bundle[2] for cell_bundle in cell_bundles \
+                        if cell_bundle[0] == int(val)][0]
 
             else:
-                check_value("Cell name exists", val, [cell[1] for cell in all_cells])
-                val = [cell[2] for cell in all_cells if cell[1] == val][0]
+                check_value("Cell name exists", val,
+                            [cell_bundle[1] for cell_bundle in cell_bundles])
+
+                val = [cell_bundle[2] for cell_bundle in cell_bundles \
+                        if cell_bundle[1] == val][0]
 
         elif isinstance(val, int):
-            check_value("Cell id exists", val, [cell[0] for cell in all_cells])
-            val = [cell[2] for cell in all_cells if cell[0] == val][0]
+            check_value("Cell id exists", val,
+                        [cell_bundle[0] for cell_bundle in cell_bundles])
+
+            val = [cell_bundle[2] for cell_bundle in cell_bundles \
+                    if cell_bundle[0] == val][0]
+
         else:
             ValueError(f"Cell: {val} is not supported")
 
@@ -572,6 +608,7 @@ class BatchwiseCell(Batchwise):
     def _model_builder(self, param):
         """Builds the parametric model to be passed to the
         :meth:`openmc.search.search_for_keff` method.
+
         Callable function which builds a model according to a passed
         parameter. This function must return an openmc.model.Model object.
 
@@ -586,16 +623,13 @@ class BatchwiseCell(Batchwise):
             Openmc parametric model
         """
         self._set_cell_attrib(param)
-        # At this stage it not important to reassign the new volume, as the
-        # nuclide densities remain constant. However, if at least one of the cell
-        # materials is set as depletable, the volume change needs to be accounted for
-        # as an increase or reduction of number of atoms, i.e. vector x, before
-        # solving the depletion equations
+
         return self.model
 
     def search_for_keff(self, x, step_index):
         """Perform the criticality search on the parametric cell coefficient and
         update materials accordingly.
+
         The :meth:`openmc.search.search_for_keff` solution is then set as the
         new cell attribute.
 
@@ -633,7 +667,7 @@ class BatchwiseCell(Batchwise):
         # if at least one of the cell materials is depletable, calculate new
         # volume and update x and number accordingly
         # new volume
-        if self.cell_materials:
+        if self.universe_cells:
             volumes = self._calculate_volumes()
             x = self._update_x_and_set_volumes(x, volumes)
 
@@ -648,7 +682,7 @@ class BatchwiseCellGeometrical(BatchwiseCell):
     :meth:`openmc.deplete.Integrator.add_batchwise` method from an integrator
     class, such as  :class:`openmc.deplete.CECMIntegrator`.
 
-    .. versionadded:: 0.13.4
+    .. versionadded:: 0.14.1
 
     Parameters
     ----------
@@ -662,7 +696,7 @@ class BatchwiseCellGeometrical(BatchwiseCell):
         Directional axis for geometrical parametrization, where 0, 1 and 2 stand
         for 'x', 'y' and 'z', respectively.
     bracket : list of float
-        Bracketing interval to search for the solution, always relative to the
+        Initial bracketing interval to search for the solution, relative to the
         solution at previous step.
     bracket_limit : list of float
         Absolute bracketing interval lower and upper; if during the adaptive
@@ -742,20 +776,22 @@ class BatchwiseCellGeometrical(BatchwiseCell):
         check_value("attrib_name", attrib_name, ("rotation", "translation"))
         self.attrib_name = attrib_name
 
-        # check if cell is filled with 2 cells
-        check_length("fill materials", self.cell.fill.cells, 2)
+        # check if cell is filled with a universe containing 2 cells
+        check_type("fill universe", self.cell.fill, openmc.Universe)
+        # check if universe contains 2 cells
+        check_length("universe cells", self.cell.fill.cells, 2)
 
         # Initialize vector
         self.vector = np.zeros(3)
 
-        self.cell_materials = [
-            cell.fill for cell in self.cell.fill.cells.values() if cell.fill.depletable
+        self.universe_cells = [
+            cell for cell in self.cell.fill.cells.values() if cell.fill.depletable
         ]
 
         check_type("samples", samples, int)
         self.samples = samples
 
-        if self.cell_materials:
+        if self.universe_cells:
             self._initialize_volume_calc()
 
     def _get_cell_attrib(self):
@@ -788,9 +824,10 @@ class BatchwiseCellGeometrical(BatchwiseCell):
     def _initialize_volume_calc(self):
         """Set volume calculation model settings of depletable materials filling
         the parametric Cell.
+
         """
         ll, ur = self.geometry.bounding_box
-        mat_vol = openmc.VolumeCalculation(self.cell_materials, self.samples, ll, ur)
+        mat_vol = openmc.VolumeCalculation(self.universe_cells, self.samples, ll, ur)
         self.model.settings.volume_calculations = mat_vol
 
     def _calculate_volumes(self):
@@ -806,9 +843,9 @@ class BatchwiseCellGeometrical(BatchwiseCell):
         volumes = {}
         if comm.rank == 0:
             res = openmc.VolumeCalculation.from_hdf5("volume_1.h5")
-            for mat_idx, mat in enumerate(self.local_mats):
-                if int(mat) in [mat.id for mat in self.cell_materials]:
-                    volumes[mat] = res.volumes[int(mat)].n
+            for cell in self.universe_cells:
+                mat_id = cell.fill.id
+                volumes[mat_id] = res.volumes[mat_id].n
         volumes = comm.bcast(volumes)
         return volumes
 
@@ -821,7 +858,7 @@ class BatchwiseCellTemperature(BatchwiseCell):
     :meth:`openmc.deplete.Integrator.add_batchwise` method from an integrator
     class, such as  :class:`openmc.deplete.CECMIntegrator`.
 
-    .. versionadded:: 0.13.4
+    .. versionadded:: 0.14.1
 
     Parameters
     ----------
@@ -832,7 +869,7 @@ class BatchwiseCellTemperature(BatchwiseCell):
     attrib_name : str
         Cell attribute type
     bracket : list of float
-        Bracketing interval to search for the solution, always relative to the
+        Initial bracketing interval to search for the solution, relative to the
         solution at previous step.
     bracket_limit : list of float
         Absolute bracketing interval lower and upper; if during the adaptive
@@ -941,7 +978,7 @@ class BatchwiseMaterial(Batchwise):
     Specific classes for running batch wise depletion calculations are
     implemented as derived class of BatchwiseMaterial.
 
-    .. versionadded:: 0.13.4
+    .. versionadded:: 0.14.1
 
     Parameters
     ----------
@@ -953,7 +990,7 @@ class BatchwiseMaterial(Batchwise):
         Dictionary of material composition to parameterize, where a pair key value
         represents a nuclide and its weight fraction, respectively.
     bracket : list of float
-        Bracketing interval to search for the solution, always relative to the
+        Initial bracketing interval to search for the solution, relative to the
         solution at previous step.
     bracket_limit : list of float
         Absolute bracketing interval lower and upper; if during the adaptive
@@ -1025,7 +1062,7 @@ class BatchwiseMaterial(Batchwise):
         for nuc in mat_vector:
             check_value("check nuclide exists", nuc, self.operator.nuclides_with_data)
 
-        if round(sum(mat_vector.values()), 2) != 1.0:
+        if not isclose(sum(mat_vector.values()), 1.0, abs_tol=0.01):
             # Normalize material elements vector
             sum_values = sum(mat_vector.values())
             for elm in mat_vector:
@@ -1070,24 +1107,6 @@ class BatchwiseMaterial(Batchwise):
 
         return val
 
-    @abstractmethod
-    def _model_builder(self, param):
-        """Builds the parametric model to be passed to the
-        :meth:`openmc.search.search_for_keff` method.
-        Callable function which builds a model according to a passed
-        parameter. This function must return an openmc.model.Model object.
-
-        Parameters
-        ----------
-        param :
-            Model material function variable
-
-        Returns
-        -------
-        _model :  openmc.model.Model
-            Openmc parametric model
-        """
-
     def search_for_keff(self, x, step_index):
         """Perform the criticality search on parametric material variable.
 
@@ -1110,7 +1129,8 @@ class BatchwiseMaterial(Batchwise):
         # even though they are also re-calculated when running the search_for_kef
         self._update_materials(x)
 
-        # Solve search_for_keff and find new value
+        # Set initial material addition to 0 and let program calculate the
+        # right amount
         root = self._search_for_keff(0)
 
         # Update concentration vector and volumes with new value
@@ -1128,7 +1148,7 @@ class BatchwiseMaterialRefuel(BatchwiseMaterial):
     :meth:`openmc.deplete.Integrator.add_batchwise` method from an integrator
     class, such as  :class:`openmc.deplete.CECMIntegrator`.
 
-    .. versionadded:: 0.13.4
+    .. versionadded:: 0.14.1
 
     Parameters
     ----------
@@ -1142,7 +1162,7 @@ class BatchwiseMaterialRefuel(BatchwiseMaterial):
         Dictionary of material composition to parameterize, where a pair key value
         represents a nuclide and its weight fraction, respectively.
     bracket : list of float
-        Bracketing interval to search for the solution, always relative to the
+        Initial bracketing interval to search for the solution, relative to the
         solution at previous step.
     bracket_limit : list of float
         Absolute bracketing interval lower and upper; if during the adaptive
@@ -1220,8 +1240,10 @@ class BatchwiseMaterialRefuel(BatchwiseMaterial):
     def _model_builder(self, param):
         """Callable function which builds a model according to a passed
         parameter. This function must return an openmc.model.Model object.
+
         Builds the parametric model to be passed to the
         :meth:`openmc.search.search_for_keff` method.
+
         The parametrization can either be at constant volume or constant
         density, according to user input.
         Default is constant volume.

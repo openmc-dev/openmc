@@ -686,6 +686,8 @@ class FileSource(SourceBase):
         Lower-left corner hypercube coordinates
     upper_right : Iterable of double
         Upper-right corner hypercube coordinates
+    rejection_strategy: {'resample','kill'}
+        Strategy when a particle is rejected. Pick a new particle or accept and terminate.
 
     """
 
@@ -695,6 +697,7 @@ class FileSource(SourceBase):
         self._path = None
         self._lower_left = None
         self._upper_right = None
+        self._rejection_strategy = None
 
         if path is not None:
             self.path = path

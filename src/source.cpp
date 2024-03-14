@@ -301,8 +301,6 @@ FileSource::FileSource(pugi::xml_node node)
       domain_type_ = DomainType::MATERIAL;
     } else if (domain_type == "universe") {
       domain_type_ = DomainType::UNIVERSE;
-    } else if (domain_type == "filter") {
-      domain_type_ = DomainType::FILTER;
     } else {
       fatal_error(std::string(
         "Unrecognized domain type for source rejection: " + domain_type));

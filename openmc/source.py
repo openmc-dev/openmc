@@ -689,7 +689,7 @@ class FileSource(SourceBase):
 
     """
 
-    def __init__(self, path: Optional[PathLike] = None, strength=1.0, domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None, lower_left: Optional[Sequence[Double]] = None, upper_right: Optional{Sequence{Double]] = None) -> None:
+    def __init__(self, path: Optional[PathLike] = None, strength=1.0, domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None, lower_left: Optional[Sequence[Double]] = None, upper_right: Optional[Sequence[Double]] = None) -> None:
         super().__init__(strength=strength)
 
         self._path = None

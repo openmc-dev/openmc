@@ -305,7 +305,7 @@ FileSource::FileSource(pugi::xml_node node)
       domain_type_ = DomainType::FILTER;
     } else {
       fatal_error(std::string(
-            "Unrecognized domain type for source rejection: " + domain_type));
+        "Unrecognized domain type for source rejection: " + domain_type));
     }
 
     auto ids = get_node_array<int>(node, "domain_ids");

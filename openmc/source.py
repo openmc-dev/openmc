@@ -693,6 +693,8 @@ class FileSource(SourceBase):
         super().__init__(strength=strength)
 
         self._path = None
+        self._lower_left = None
+        self._upper_right = None
 
         if path is not None:
             self.path = path

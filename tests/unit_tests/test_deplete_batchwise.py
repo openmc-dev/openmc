@@ -62,6 +62,15 @@ def model():
 
     return openmc.Model(geometry, materials, settings)
 
+@pytest.fixture
+def operator(model):
+    return CoupledOperator(model, CHAIN_PATH)
+
+@pytest.fixture
+def integrator(operator):
+    return openmc.deplete.PredictorIntegrator(
+            operator, [1,1], 0.0, timestep_units = 'd')
+
 @pytest.mark.parametrize("case_name, obj, attribute, bracket, limit, axis, vec", [
     ('cell translation','universe_cell', 'translation', [-1,1], [-10,10], 2, None),
     ('cell rotation', 'universe_cell', 'rotation', [-1,1], [-10,10], 2, None),
@@ -72,14 +81,11 @@ def model():
     ('invalid_2', 'fuel', 'temperature',  [-1,1], [-10,10], 2, None ),
     ('invalid_3', 'fuel', 'translation', [-1,1], [-10,10], 2, None),
     ])
-def test_attributes(case_name, model, obj, attribute, bracket, limit, axis, vec):
+def test_attributes(case_name, model, operator, integrator, obj, attribute,
+                    bracket, limit, axis, vec):
     """
     Test classes attributes are set correctly
     """
-    op = CoupledOperator(model, CHAIN_PATH)
-
-    int = openmc.deplete.PredictorIntegrator(
-        op, [1,1], 0.0, timestep_units = 'd')
 
     kwargs = {'bracket': bracket, 'bracket_limit':limit, 'tol': 0.1,}
 
@@ -91,59 +97,57 @@ def test_attributes(case_name, model, obj, attribute, bracket, limit, axis, vec)
 
     if case_name == "invalid_1":
         with pytest.raises(ValueError) as e:
-            int.add_batchwise(obj, attribute, **kwargs)
+            integrator.add_batchwise(obj, attribute, **kwargs)
         assert str(e.value) == 'Unable to set "Material name" to "universe_cell" '\
                                'since it is not in "[\'fuel\', \'water\']"'
     elif case_name == "invalid_2":
         with pytest.raises(ValueError) as e:
-            int.add_batchwise(obj, attribute, **kwargs)
+            integrator.add_batchwise(obj, attribute, **kwargs)
         assert str(e.value) == 'Unable to set "Cell name exists" to "fuel" since '\
                    'it is not in "[\'fuel_cell\', \'universe_cell\', \'\', \'\']"'
 
     elif case_name == "invalid_3":
         with pytest.raises(ValueError) as e:
-            int.add_batchwise(obj, attribute, **kwargs)
+            integrator.add_batchwise(obj, attribute, **kwargs)
         assert str(e.value) == 'Unable to set "Cell name exists" to "fuel" since '\
                    'it is not in "[\'fuel_cell\', \'universe_cell\', \'\', \'\']"'
     else:
-        int.add_batchwise(obj, attribute, **kwargs)
+        integrator.add_batchwise(obj, attribute, **kwargs)
         if attribute in ('translation','rotation'):
-            assert int.get_batchwise.cell_materials == [cell.fill for cell in  \
+            assert integrator.batchwise.universe_cells == [cell for cell in  \
                     model.geometry.get_cells_by_name(obj)[0].fill.cells.values() \
                     if cell.fill.depletable]
-            assert int.get_batchwise.axis == axis
+            assert integrator.batchwise.axis == axis
 
         elif attribute == 'refuel':
-            assert int.get_batchwise.mat_vector == vec
+            assert integrator.batchwise.mat_vector == vec
 
-        assert int.get_batchwise.attrib_name == attribute
-        assert int.get_batchwise.bracket == bracket
-        assert int.get_batchwise.bracket_limit == limit
-        assert int.get_batchwise.burn_mats == op.burnable_mats
-        assert int.get_batchwise.local_mats == op.local_mats
+        assert integrator.batchwise.attrib_name == attribute
+        assert integrator.batchwise.bracket == bracket
+        assert integrator.batchwise.bracket_limit == limit
+        assert integrator.batchwise.burn_mats == operator.burnable_mats
+        assert integrator.batchwise.local_mats == operator.local_mats
 
 @pytest.mark.parametrize("obj, attribute, value_to_set", [
     ('universe_cell', 'translation', 0),
     ('universe_cell', 'rotation',    0)
     ])
-def test_cell_methods(run_in_tmpdir, model, obj, attribute, value_to_set):
+def test_cell_methods(run_in_tmpdir, model, operator, integrator, obj, attribute,
+                      value_to_set):
     """
     Test cell base class internal method
     """
     kwargs = {'bracket':[-1,1], 'bracket_limit':[-10,10], 'axis':2, 'tol':0.1}
 
-    op = CoupledOperator(model, CHAIN_PATH)
-    integrator = openmc.deplete.PredictorIntegrator(
-        op, [1,1], 0.0, timestep_units = 'd')
     integrator.add_batchwise(obj, attribute, **kwargs)
 
     model.export_to_xml()
     openmc.lib.init()
-    integrator.get_batchwise._set_cell_attrib(value_to_set)
-    assert integrator.get_batchwise._get_cell_attrib() == value_to_set
+    integrator.batchwise._set_cell_attrib(value_to_set)
+    assert integrator.batchwise._get_cell_attrib() == value_to_set
 
-    vol = integrator.get_batchwise._calculate_volumes()
-    for cell in integrator.get_batchwise.cell_materials:
+    vol = integrator.batchwise._calculate_volumes()
+    for cell in integrator.batchwise.universe_cells:
         assert vol[str(cell.id)] == pytest.approx([
                                     mat.volume for mat in model.materials \
                                     if mat.id == cell.id][0], rel=tolerance)
@@ -154,7 +158,8 @@ def test_cell_methods(run_in_tmpdir, model, obj, attribute, value_to_set):
     ('U238', 1.0e22),
     ('Xe135', 1.0e21)
     ])
-def test_internal_methods(run_in_tmpdir, model, nuclide, atoms_to_add):
+def test_internal_methods(run_in_tmpdir, model, operator, integrator, nuclide,
+                          atoms_to_add):
     """
     Method to update volume in AtomNumber after depletion step.
     Method inheritated by all derived classes so one check is enough.
@@ -162,9 +167,6 @@ def test_internal_methods(run_in_tmpdir, model, nuclide, atoms_to_add):
 
     kwargs = {'bracket':[-1,1], 'bracket_limit':[-10,10], 'mat_vector':{}}
 
-    op = CoupledOperator(model, CHAIN_PATH)
-    integrator = openmc.deplete.PredictorIntegrator(op, [1,1], 0.0,
-                                                    timestep_units = 'd')
     integrator.add_batchwise('fuel', 'refuel', **kwargs)
 
     model.export_to_xml()
@@ -173,32 +175,32 @@ def test_internal_methods(run_in_tmpdir, model, nuclide, atoms_to_add):
     #Increase  number of atoms of U238 in fuel by fix amount and check the
     # volume increase at constant-density
     #extract fuel material from model materials
-    mat = integrator.get_batchwise.material
-    mat_index = op.number.index_mat[str(mat.id)]
-    nuc_index = op.number.index_nuc[nuclide]
-    vol = op.number.get_mat_volume(str(mat.id))
-    op.number.number[mat_index][nuc_index] += atoms_to_add
-    integrator.get_batchwise._update_volumes()
+    mat = integrator.batchwise.material
+    mat_index = operator.number.index_mat[str(mat.id)]
+    nuc_index = operator.number.index_nuc[nuclide]
+    vol = operator.number.get_mat_volume(str(mat.id))
+    operator.number.number[mat_index][nuc_index] += atoms_to_add
+    integrator.batchwise._update_volumes()
 
     vol_to_compare = vol + (atoms_to_add * openmc.data.atomic_mass(nuclide) /\
                             openmc.data.AVOGADRO / mat.density)
 
-    assert op.number.get_mat_volume(str(mat.id)) == pytest.approx(vol_to_compare)
+    assert operator.number.get_mat_volume(str(mat.id)) == pytest.approx(vol_to_compare)
 
-    x = [i[:op.number.n_nuc_burn] for i in op.number.number]
-    integrator.get_batchwise._update_materials(x)
+    x = [i[:operator.number.n_nuc_burn] for i in operator.number.number]
+    integrator.batchwise._update_materials(x)
     nuc_index_lib = openmc.lib.materials[mat.id].nuclides.index(nuclide)
-    dens_to_compare = 1.0e-24 * op.number.get_atom_density(str(mat.id), nuclide)
+    dens_to_compare = 1.0e-24 * operator.number.get_atom_density(str(mat.id), nuclide)
 
     assert openmc.lib.materials[mat.id].densities[nuc_index_lib] == pytest.approx(dens_to_compare)
 
     volumes = {str(mat.id): vol + 1}
-    new_x = integrator.get_batchwise._update_x_and_set_volumes(x, volumes)
+    new_x = integrator.batchwise._update_x_and_set_volumes(x, volumes)
     dens_to_compare = 1.0e24 *  volumes[str(mat.id)] *\
                       openmc.lib.materials[mat.id].densities[nuc_index_lib]
     assert new_x[mat_index][nuc_index] == pytest.approx(dens_to_compare)
 
     # assert volume in AtomNumber is set correctly
-    assert op.number.get_mat_volume(str(mat.id)) == volumes[str(mat.id)]
+    assert operator.number.get_mat_volume(str(mat.id)) == volumes[str(mat.id)]
 
     openmc.lib.finalize()

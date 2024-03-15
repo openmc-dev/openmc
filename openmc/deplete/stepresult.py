@@ -56,6 +56,8 @@ class StepResult:
         Number of stages in simulation.
     data : numpy.ndarray
         Atom quantity, stored by stage, mat, then by nuclide.
+    batchwise : float
+        The root returned by the reactivity controller.
     proc_time : int
         Average time spent depleting a material across all
         materials and processes
@@ -75,6 +77,7 @@ class StepResult:
 
         self.data = None
         self.batchwise = None
+
     def __repr__(self):
         t = self.time[0]
         dt = self.time[1] - self.time[0]
@@ -544,7 +547,8 @@ class StepResult:
             Total process time spent depleting materials. This may
             be process-dependent and will be reduced across MPI
             processes.
-
+        root : float
+            The root returned by the reactivity controller.
         path : PathLike
             Path to file to write. Defaults to 'depletion_results.h5'.
 

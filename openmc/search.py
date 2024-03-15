@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from numbers import Real
+from warnings import warn
 
 import scipy.optimize as sopt
 
@@ -39,7 +40,8 @@ def _search_keff(guess, target, model_builder, model_args, print_iterations,
     results : Iterable of Real
         Running list of results thus far, to be updated during the execution of
         this function.
-
+    run_in_memory : bool
+        Whether or not to run the openmc model in memory.
     Returns
     -------
     float
@@ -109,6 +111,9 @@ def search_for_keff(model_builder, initial_guess=None, target=1.0,
     run_args : dict, optional
         Keyword arguments to pass to :meth:`openmc.Model.run`. Defaults to no
         arguments.
+    run_in_memory : bool
+        Whether or not to run the openmc model in memory.
+        Defaults to False.
 
         .. versionadded:: 0.13.1
     **kwargs
@@ -214,9 +219,9 @@ def search_for_keff(model_builder, initial_guess=None, target=1.0,
                 return zero_value, guesses, results
 
             else:
-                print(f'WARNING: {root_res.flag}')
+                warn(f'{root_res.flag}')
                 return guesses, results
         # In case the root finder is not successful
         except Exception as e:
-            print(f'WARNING: {e}')
+            warn(f'{e})
             return guesses, results

@@ -125,7 +125,7 @@ class Batchwise(ABC):
     def bracketed_method(self, value):
         check_value("bracketed_method", value, _SCALAR_BRACKETED_METHODS)
         if value != "brentq":
-            warn("WARNING: brentq bracketed method is recommended")
+            warn("brentq bracketed method is recommended")
         self._bracketed_method = value
 
     @property
@@ -212,7 +212,7 @@ class Batchwise(ABC):
             targeted value
         """
         # make sure we don't modify original bracket
-        bracket = deepcopy(self.brack½et)
+        bracket = deepcopy(self.bracket)
 
         # Run until a search_for_keff root is found or out of limits
         root = None
@@ -240,7 +240,7 @@ class Batchwise(ABC):
                     # Set res with the closest limit and continue
                     arg_min = abs(np.array(self.bracket_limit) - res).argmin()
                     warn(
-                        "WARNING: Search_for_keff returned root out of "
+                        "Search_for_keff returned root out of "
                         "bracket limit. Set root to {:.2f} and continue.".format(
                             self.bracket_limit[arg_min]
                         )
@@ -310,7 +310,7 @@ class Batchwise(ABC):
                     # Set res with closest limit and continue
                     arg_min = abs(np.array(self.bracket_limit) - guesses).argmin()
                     warn(
-                        "WARNING: Adaptive iterative bracket went off "
+                        "Adaptive iterative bracket went off "
                         "bracket limits. Set root to {:.2f} and continue.".format(
                             self.bracket_limit[arg_min]
                         )

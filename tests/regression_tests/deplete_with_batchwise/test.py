@@ -78,7 +78,6 @@ def model():
 
     return openmc.Model(geometry, materials, settings)
 
-@pytest.mark.skipif(sys.version_info < (3, 9), reason="Requires Python 3.9+")
 @pytest.mark.parametrize("obj, attribute, bracket_limit, axis, vec, ref_result", [
     ('trans_cell', 'translation', [-40,40], 2, None, 'depletion_with_translation'),
     ('rot_cell', 'rotation', [-90,90], 2, None, 'depletion_with_rotation'),

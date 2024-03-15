@@ -56,7 +56,7 @@ class StepResult:
         Number of stages in simulation.
     data : numpy.ndarray
         Atom quantity, stored by stage, mat, then by nuclide.
-    batchwise : float
+    reac_cont : float
         The root returned by the reactivity controller.
     proc_time : int
         Average time spent depleting a material across all
@@ -76,7 +76,7 @@ class StepResult:
         self.mat_to_hdf5_ind = None
 
         self.data = None
-        self.batchwise = None
+        self.reac_cont = None
 
     def __repr__(self):
         t = self.time[0]
@@ -353,7 +353,7 @@ class StepResult:
             dtype="float64")
 
         handle.create_dataset(
-            "batchwise_root", (1,), maxshape=(None,),
+            "reac_cont_root", (1,), maxshape=(None,),
             dtype="float64")
 
     def _to_hdf5(self, handle, index, parallel=False):
@@ -386,7 +386,7 @@ class StepResult:
         time_dset = handle["/time"]
         source_rate_dset = handle["/source_rate"]
         proc_time_dset = handle["/depletion time"]
-        root_dset = handle["/batchwise_root"]
+        root_dset = handle["/reac_cont_root"]
 
         # Get number of results stored
         number_shape = list(number_dset.shape)
@@ -447,7 +447,7 @@ class StepResult:
                 proc_time_dset[index] = (
                     self.proc_time / (comm.size * self.n_hdf5_mats)
                 )
-            root_dset[index] = self.batchwise
+            root_dset[index] = self.reac_cont
 
     @classmethod
     def from_hdf5(cls, handle, step):
@@ -482,9 +482,9 @@ class StepResult:
             if step < proc_time_dset.shape[0]:
                 results.proc_time = proc_time_dset[step]
 
-        if "batchwise_root" in handle:
-            root_dset = handle["/batchwise_root"]
-            results.batchwise = root_dset[step]
+        if "reac_cont_root" in handle:
+            root_dset = handle["/reac_cont_root"]
+            results.reac_cont = root_dset[step]
 
         if results.proc_time is None:
             results.proc_time = np.array([np.nan])
@@ -582,7 +582,7 @@ class StepResult:
         results.proc_time = proc_time
         if results.proc_time is not None:
             results.proc_time = comm.reduce(proc_time, op=MPI.SUM)
-        results.batchwise = root
+        results.reac_cont = root
 
         if not Path(path).is_file():
             Path(path).parent.mkdir(parents=True, exist_ok=True)

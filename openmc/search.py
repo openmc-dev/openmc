@@ -223,5 +223,5 @@ def search_for_keff(model_builder, initial_guess=None, target=1.0,
                 return guesses, results
         # In case the root finder is not successful
         except Exception as e:
-            warn(f'{e})
+            warn(f'{e}')
             return guesses, results

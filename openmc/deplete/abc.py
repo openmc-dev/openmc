@@ -26,8 +26,11 @@ from .results import Results
 from .pool import deplete
 from .transfer_rates import TransferRates
 from openmc import Material, Cell
-from .batchwise import (BatchwiseCellGeometrical, BatchwiseCellTemperature,
-    BatchwiseMaterialRefuel)
+from .reactivity_control import (
+    GeometricalCellReactivityController,
+    TemperatureCellReactivityController,
+    RefuelMaterialReactivityController
+)
 
 __all__ = [
     "OperatorResult", "TransportOperator",
@@ -556,8 +559,8 @@ class Integrator(ABC):
 
     transfer_rates : openmc.deplete.TransferRates
         Instance of TransferRates class to perform continuous transfer during depletion
-    batchwise : openmc.deplete.Batchwise
-        Instance of Batchwise class to perform batch-wise scheme during
+    reactivity_control : openmc.deplete.ReactivityController
+        Instance of ReactivityController class to perform reactivity control during
         transport-depletion simulation.
 
         .. versionadded:: 0.14.0
@@ -641,7 +644,7 @@ class Integrator(ABC):
         self.source_rates = asarray(source_rates)
 
         self.transfer_rates = None
-        self._batchwise = None
+        self._reactivity_control = None
 
         if isinstance(solver, str):
             # Delay importing of cram module, which requires this file
@@ -691,8 +694,8 @@ class Integrator(ABC):
         self._solver = func
 
     @property
-    def batchwise(self):
-        return self._batchwise
+    def reactivity_control(self):
+        return self._reactivity_control
 
     def _timed_deplete(self, n, rates, dt, matrix_func=None):
         start = time.time()
@@ -773,11 +776,11 @@ class Integrator(ABC):
         return (self.operator.prev_res[-1].time[-1],
                 len(self.operator.prev_res) - 1)
 
-    def _get_bos_from_batchwise(self, step_index, bos_conc):
-        """Get BOS from criticality batch-wise control."""
+    def _get_bos_from_reactivity_control(self, step_index, bos_conc):
+        """Get BOS from reactivity control."""
         x = deepcopy(bos_conc)
         # Get new vector after keff criticality control
-        x, root = self._batchwise.search_for_keff(x, step_index)
+        x, root = self._reactivity_control.search_for_keff(x, step_index)
         return x, root
 
     def integrate(
@@ -814,9 +817,9 @@ class Integrator(ABC):
 
                 # Solve transport equation (or obtain result from restart)
                 if i > 0 or self.operator.prev_res is None:
-                    # Update geometry/material according to batchwise definition
-                    if self._batchwise is not None and source_rate != 0.0:
-                        n, root = self._get_bos_from_batchwise(i, n)
+                    # Update geometry/material according to reactivity control
+                    if self._reactivity_control is not None and source_rate != 0.0:
+                        n, root = self._get_bos_from_reactivity_control(i, n)
                     else:
                         root = None
                     n, res = self._get_bos_data_from_operator(i, source_rate, n)
@@ -843,8 +846,8 @@ class Integrator(ABC):
             # solve)
             if output and final_step and comm.rank == 0:
                 print(f"[openmc.deplete] t={t} (final operator evaluation)")
-            if self._batchwise is not None and source_rate != 0.0:
-                n, root = self._get_bos_from_batchwise(i+1, n)
+            if self._reactivity_control is not None and source_rate != 0.0:
+                n, root = self._get_bos_from_reactivity_control(i+1, n)
             else:
                 root = None
             res_list = [self.operator(n, source_rate if final_step else 0.0)]
@@ -882,31 +885,32 @@ class Integrator(ABC):
         self.transfer_rates.set_transfer_rate(material, components, transfer_rate,
                                       transfer_rate_units, destination_material)
 
-    def add_batchwise(self, obj, attr, **kwargs):
-        """Add batchwise operation to integrator scheme.
+    def add_reactivity_control(self, obj, attr, **kwargs):
+        """Add reactivity control to integrator scheme.
 
         Parameters
         ----------
         obj : openmc.Cell or openmc.Material object or id or str name
-            Cell or Materials identifier to where add batchwise scheme
+            Cell or Materials identifier to where add reactivity control
         attr : str
-            Attribute to specify the type of batchwise scheme. Accepted values
+            Attribute to specify the type of reactivity control. Accepted values
             are: 'translation', 'rotation', 'temperature' for an openmc.Cell
             object; 'refuel' for an openmc.Material object.
         **kwargs
-            keyword arguments that are passed to the batchwise class.
+            keyword arguments that are passed to ReactivityController.
 
         """
         check_value('attribute', attr, ('translation', 'rotation',
                                         'temperature', 'refuel'))
         if attr in ('translation', 'rotation'):
-            batchwise = BatchwiseCellGeometrical
+            reactivity_control = GeometricalCellReactivityController
         elif attr == 'temperature':
-            batchwise = BatchwiseCellTemperature
+            reactivity_control = TemperatureCellReactivityController
         elif attr == 'refuel':
-            batchwise = BatchwiseMaterialRefuel
+            reactivity_control = RefuelMaterialReactivityController
 
-        self._batchwise = batchwise.from_params(obj, attr, self.operator,**kwargs)
+        self._reactivity_control = reactivity_control.from_params(obj, attr,
+                                                        self.operator,**kwargs)
 
 @add_params
 class SIIntegrator(Integrator):

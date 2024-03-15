@@ -1,4 +1,4 @@
-""" Tests for Batchwise class """
+""" Tests for ReactivityController class """
 
 from pathlib import Path
 import shutil
@@ -83,8 +83,9 @@ def model():
     ('rot_cell', 'rotation', [-90,90], 2, None, 'depletion_with_rotation'),
     ('f', 'refuel', [-100,100], None, {'U235':1}, 'depletion_with_refuel')
     ])
-def test_batchwise(run_in_tmpdir, model, obj, attribute, bracket_limit, axis,
-                   vec, ref_result):
+def test_reactivity_control(run_in_tmpdir, model, obj, attribute, bracket_limit,
+                    axis, vec, ref_result):
+
     chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
     op = CoupledOperator(model, chain_file)
 
@@ -100,7 +101,7 @@ def test_batchwise(run_in_tmpdir, model, obj, attribute, bracket_limit, axis,
     if axis is not None:
         kwargs['axis'] = axis
 
-    integrator.add_batchwise(obj, attribute, **kwargs)
+    integrator.add_reactivity_control(obj, attribute, **kwargs)
     integrator.integrate()
 
     # Get path to test and reference results
@@ -117,5 +118,5 @@ def test_batchwise(run_in_tmpdir, model, obj, attribute, bracket_limit, axis,
     res_ref = openmc.deplete.Results(path_reference)
 
     # Use high tolerance here
-    assert [res.batchwise for res in res_test] == pytest.approx(
-           [res.batchwise for res in res_ref], rel=2)
+    assert [res.reac_cont for res in res_test] == pytest.approx(
+           [res.reac_cont for res in res_ref], rel=2)

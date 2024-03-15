@@ -17,7 +17,7 @@ from .stepresult import *
 from .results import *
 from .integrators import *
 from .transfer_rates import *
-from .batchwise import *
+from .reactivity_control import *
 from . import abc
 from . import cram
 from . import helpers

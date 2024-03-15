@@ -19,20 +19,20 @@ from openmc.checkvalue import (
 )
 
 
-class Batchwise(ABC):
-    """Abstract class defining a generalized batch wise scheme.
+class ReactivityController(ABC):
+    """Abstract class defining a generalized reactivity control.
 
-    Batchwise schemes, such as control rod adjustment or material refuelling to
-    control reactivity and maintain keff constant and equal to a desired value,
-    usually one.
+    Reactivity control schemes, such as control rod adjustment or material
+    refuelling to control reactivity and maintain keff constant and equal to a
+    desired value, usually one.
 
-    A batch wise scheme can be added here to an integrator instance,
+    A reactivity control scheme can be added here to an integrator instance,
     such as  :class:`openmc.deplete.CECMIntegrator`, to parametrize one system
     variable with the aim of satisfy certain design criteria, such as keeping
     keff equal to one, while running transport-depletion calculations.
 
-    Specific classes for running batch wise depletion calculations are
-    implemented as derived class of Batchwise.
+    Specific classes for running reactivity control depletion calculations are
+    implemented as derived class of ReactivityController.
 
     .. versionadded:: 0.14.1
 
@@ -348,7 +348,7 @@ class Batchwise(ABC):
         """Update number density and material compositions in OpenMC on all processes.
 
         If density_treatment is set to 'constant-density'
-        :meth:`openmc.deplete.batchwise._update_volumes` is called to update
+        :meth:`openmc.deplete.reactivity_control._update_volumes` is called to update
         material volumes in AtomNumber, keeping the material total density
         constant, before re-normalizing the atom densities and assigning them
         to the model in memory.
@@ -430,11 +430,11 @@ class Batchwise(ABC):
         return x
 
 
-class BatchwiseCell(Batchwise):
-    """Abstract class holding batch wise cell-based functions.
+class CellReactivityController(ReactivityController):
+    """Abstract class holding reactivity control cell-based functions.
 
-    Specific classes for running batch wise depletion calculations are
-    implemented as derived class of BatchwiseCell.
+    Specific classes for running reactivity control depletion calculations are
+    implemented as derived class of CellReactivityController.
 
     .. versionadded:: 0.14.1
 
@@ -674,13 +674,13 @@ class BatchwiseCell(Batchwise):
         return x, root
 
 
-class BatchwiseCellGeometrical(BatchwiseCell):
-    """Batch wise cell-based with geometrical-attribute class.
+class GeometricalCellReactivityController(CellReactivityController):
+    """Reactivity control cell-based with geometrical-attribute class.
 
     A user doesn't need to call this class directly.
     Instead an instance of this class is automatically created by calling
-    :meth:`openmc.deplete.Integrator.add_batchwise` method from an integrator
-    class, such as  :class:`openmc.deplete.CECMIntegrator`.
+    :meth:`openmc.deplete.Integrator.add_reactivity_control` method from an
+    integrator class, such as  :class:`openmc.deplete.CECMIntegrator`.
 
     .. versionadded:: 0.14.1
 
@@ -850,13 +850,13 @@ class BatchwiseCellGeometrical(BatchwiseCell):
         return volumes
 
 
-class BatchwiseCellTemperature(BatchwiseCell):
-    """Batch wise cell-based with temperature-attribute class.
+class TemperatureCellReactivityController(CellReactivityController):
+    """Reactivity control cell-based with temperature-attribute class.
 
     A user doesn't need to call this class directly.
     Instead an instance of this class is automatically created by calling
-    :meth:`openmc.deplete.Integrator.add_batchwise` method from an integrator
-    class, such as  :class:`openmc.deplete.CECMIntegrator`.
+    :meth:`openmc.deplete.Integrator.add_reactivity_control` method from an
+    integrator class, such as  :class:`openmc.deplete.CECMIntegrator`.
 
     .. versionadded:: 0.14.1
 
@@ -972,11 +972,11 @@ class BatchwiseCellTemperature(BatchwiseCell):
         self.lib_cell.set_temperature(val)
 
 
-class BatchwiseMaterial(Batchwise):
-    """Abstract class holding batch wise material-based functions.
+class MaterialReactivityController(ReactivityController):
+    """Abstract class holding reactivity control material-based functions.
 
-    Specific classes for running batch wise depletion calculations are
-    implemented as derived class of BatchwiseMaterial.
+    Specific classes for running reactivity control depletion calculations are
+    implemented as derived class of MaterialReactivityController.
 
     .. versionadded:: 0.14.1
 
@@ -1140,13 +1140,14 @@ class BatchwiseMaterial(Batchwise):
         return x, root
 
 
-class BatchwiseMaterialRefuel(BatchwiseMaterial):
-    """Batch wise material-based class for refuelling (addition or removal) scheme.
+class RefuelMaterialReactivityController(MaterialReactivityController):
+    """Reactivity control material-based class for refuelling (addition or
+    removal) scheme.
 
     A user doesn't need to call this class directly.
     Instead an instance of this class is automatically created by calling
-    :meth:`openmc.deplete.Integrator.add_batchwise` method from an integrator
-    class, such as  :class:`openmc.deplete.CECMIntegrator`.
+    :meth:`openmc.deplete.Integrator.add_reactivity_control` method from an
+    integrator class, such as  :class:`openmc.deplete.CECMIntegrator`.
 
     .. versionadded:: 0.14.1
 
@@ -1315,14 +1316,15 @@ class BatchwiseMaterialRefuel(BatchwiseMaterial):
         return self.model
 
     def _calculate_volumes(self, res):
-        """Uses :meth:`openmc.batchwise._search_for_keff` solution as grams of
-        material to add or remove to calculate new material volume.
+        """Uses :meth:`openmc.deplete.reactivity_control._search_for_keff`
+        solution as grams of material to add or remove to calculate new material
+        volume.
 
         Parameters
         ----------
         res : float
             Solution in grams of material, coming from
-            :meth:`openmc.batchwise._search_for_keff`
+            :meth:`openmc.deplete.reactivity_control._search_for_keff`
 
         Returns
         -------

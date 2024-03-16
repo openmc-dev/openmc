@@ -1200,9 +1200,7 @@ bool ProjectionPlot::trackstack_equivalent(
 std::pair<Position, Direction> RayTracePlot::get_pixel_ray(
   int horiz, int vert) const
 {
-  // Now we convert to the polar coordinate system with the polar angle
-  // measuring the angle from the vector up_. Phi is the rotation about up_. For
-  // now, up_ is hard-coded to be +z.
+  // Compute field of view in radians
   constexpr double DEGREE_TO_RADIAN = M_PI / 180.0;
   double horiz_fov_radians = horizontal_field_of_view_ * DEGREE_TO_RADIAN;
   double p0 = static_cast<double>(pixels_[0]);

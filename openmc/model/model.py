@@ -449,7 +449,7 @@ class Model:
         # Create directory if required
         d = Path(directory)
         if not d.is_dir():
-            d.mkdir(parents=True)
+            d.mkdir(parents=True, exist_ok=True)
 
         self.settings.export_to_xml(d)
         self.geometry.export_to_xml(d, remove_surfs=remove_surfs)
@@ -490,14 +490,14 @@ class Model:
         # exist, create it and place a 'model.xml' file there.
         if not str(xml_path).endswith('.xml'):
             if not xml_path.exists():
-                os.mkdir(xml_path)
+                xml_path.mkdir(parents=True, exist_ok=True)
             elif not xml_path.is_dir():
                 raise FileExistsError(f"File exists and is not a directory: '{xml_path}'")
             xml_path /= 'model.xml'
         # if this is an XML file location and the file's parent directory does
         # not exist, create it before continuing
         elif not xml_path.parent.exists():
-            os.mkdir(xml_path.parent)
+            xml_path.parent.mkdir(parents=True, exist_ok=True)
 
         if remove_surfs:
             warnings.warn("remove_surfs kwarg will be deprecated soon, please "

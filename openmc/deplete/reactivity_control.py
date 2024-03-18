@@ -251,12 +251,9 @@ class ReactivityController(ABC):
                 guesses, keffs = search
 
                 # Check if all guesses are within bracket limits
-                if all(
-                    self.bracket_limit[0] < guess < self.bracket_limit[1]
-                    for guess in guesses
-                ):
+                if self.bracket_limit[0] < all(guesses) < self.bracket_limit[1]:
                     # Simple method to iteratively adapt the bracket
-                    print(
+                    warn(
                         "Search_for_keff returned values below or above "
                         "target. Trying to iteratively adapt bracket..."
                     )
@@ -266,7 +263,7 @@ class ReactivityController(ABC):
                     # to the closest guess value
                     if abs(np.diff(keffs)) < 1.0e-5:
                         arg_min = abs(self.target - np.array(keffs)).argmin()
-                        print(
+                        warn(
                             "Difference between keff values is "
                             "smaller than 1 pcm. "
                             "Set root to guess value with "
@@ -300,7 +297,21 @@ class ReactivityController(ABC):
                             slope * (min(keffs).n - self.target) * dir
                         )
 
-                    #check if adapted bracket are within bracketing limits
+                    #check if adapted bracket lies completely outside of limits
+                    if not (
+                        self.bracket_limit[0] < all(bracket+val) < self.bracket_limit[1]
+                    ):
+                        # Set res with closest limit and continue
+                        arg_min = abs(np.array(self.bracket_limit) - bracket).argmin()
+                        warn(
+                            "Adaptive iterative bracket went off "
+                            "bracket limits. Set root to {:.2f} and continue."
+                            .format(self.bracket_limit[arg_min]
+                            )
+                        )
+                        root = self.bracket_limit[arg_min]
+
+                    #check if adapted bracket ends are outside bracketing limits
                     if bracket[1] + val > self.bracket_limit[1]:
                         bracket[1] = self.bracket_limit[1] - val
                     if bracket[0] + val < self.bracket_limit[0]:
@@ -845,7 +856,7 @@ class GeometricalCellReactivityController(CellReactivityController):
             res = openmc.VolumeCalculation.from_hdf5("volume_1.h5")
             for cell in self.universe_cells:
                 mat_id = cell.fill.id
-                volumes[mat_id] = res.volumes[mat_id].n
+                volumes[str(mat_id)] = res.volumes[cell.id].n
         volumes = comm.bcast(volumes)
         return volumes
 

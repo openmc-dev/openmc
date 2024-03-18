@@ -28,7 +28,7 @@ def model():
     w.add_element("O", 1)
     w.add_element("H", 2)
     w.set_density("g/cc", 1.0)
-    w.temperature = 273.15
+    w.temperature = 293.15
     w.depletable = True
 
     h = openmc.Material(name='helium')
@@ -146,14 +146,17 @@ def test_cell_methods(run_in_tmpdir, model, operator, integrator, obj, attribute
 
     model.export_to_xml()
     openmc.lib.init()
+    integrator.reactivity_control._set_lib_cell()
     integrator.reactivity_control._set_cell_attrib(value_to_set)
     assert integrator.reactivity_control._get_cell_attrib() == value_to_set
 
     vol = integrator.reactivity_control._calculate_volumes()
+    integrator.reactivity_control._update_x_and_set_volumes(operator.number.number, vol)
+
     for cell in integrator.reactivity_control.universe_cells:
-        assert vol[str(cell.id)] == pytest.approx([
-                                    mat.volume for mat in model.materials \
-                                    if mat.id == cell.id][0], rel=tolerance)
+        mat_id = str(cell.fill.id)
+        index_mat = operator.number.index_mat[mat_id]
+        assert vol[mat_id] == operator.number.volume[index_mat]
 
     openmc.lib.finalize()
 

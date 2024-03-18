@@ -17,6 +17,8 @@ class Trigger(EqualityMixin):
         relative error of scores.
     threshold : float
         The threshold for the trigger type.
+    allow_zero : bool
+        Whether to allow zero tally bins to be ignored.
 
     Attributes
     ----------
@@ -27,18 +29,22 @@ class Trigger(EqualityMixin):
         The threshold for the trigger type.
     scores : list of str
         Scores which should be checked against the trigger
+    allow_zero : bool
+        Whether to allow zero tally bins to be ignored.
 
     """
 
-    def __init__(self, trigger_type: str, threshold: float):
+    def __init__(self, trigger_type: str, threshold: float, allow_zero: bool=False):
         self.trigger_type = trigger_type
         self.threshold = threshold
+        self.allow_zero = allow_zero
         self._scores = []
 
     def __repr__(self):
         string = 'Trigger\n'
         string += '{: <16}=\t{}\n'.format('\tType', self._trigger_type)
         string += '{: <16}=\t{}\n'.format('\tThreshold', self._threshold)
+        string += '{: <16}=\t{}\n'.format('\tAllow Zero', self._allow_zero)
         string += '{: <16}=\t{}\n'.format('\tScores', self._scores)
         return string
 
@@ -60,6 +66,15 @@ class Trigger(EqualityMixin):
     def threshold(self, threshold):
         cv.check_type('tally trigger threshold', threshold, Real)
         self._threshold = threshold
+    
+    @property
+    def allow_zero(self):
+        return self._allow_zero
+    
+    @allow_zero.setter
+    def allow_zero(self, allow_zero):
+        cv.check_type('tally trigger allows zeroes', allow_zero, bool)
+        self._allow_zero = allow_zero
 
     @property
     def scores(self):
@@ -88,6 +103,8 @@ class Trigger(EqualityMixin):
         element = ET.Element("trigger")
         element.set("type", self._trigger_type)
         element.set("threshold", str(self._threshold))
+        if self._allow_zero:
+            element.set("allow_zero", "true")
         if len(self._scores) != 0:
             element.set("scores", ' '.join(self._scores))
         return element
@@ -110,7 +127,13 @@ class Trigger(EqualityMixin):
         # Generate trigger object
         trigger_type = elem.get("type")
         threshold = float(elem.get("threshold"))
-        trigger = cls(trigger_type, threshold)
+        allow_zero = str(elem.get("allow_zero", "false")).lower()
+        # Try to convert to bool. Let Trigger error out on instantiation.
+        if allow_zero == "true":
+            allow_zero = True
+        elif allow_zero == "false":
+            allow_zero = False
+        trigger = cls(trigger_type, threshold, allow_zero)
 
         # Add scores if present
         scores = elem.get("scores")

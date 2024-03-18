@@ -24,7 +24,7 @@ ARG compile_cores=1
 ARG build_dagmc=off
 ARG build_libmesh=off
 
-FROM debian:bullseye-slim AS dependencies
+FROM debian:bookworm-slim AS dependencies
 
 ARG compile_cores
 ARG build_dagmc
@@ -71,8 +71,12 @@ RUN apt-get update -y && \
     apt-get install -y \
         python3-pip python-is-python3 wget git build-essential cmake \
         mpich libmpich-dev libhdf5-serial-dev libhdf5-mpich-dev \
-        libpng-dev && \
+        libpng-dev python3-venv && \
     apt-get autoremove
+
+# create virtual enviroment to avoid externally managed environment error
+RUN python3 -m venv openmc_venv
+ENV PATH=/openmc_venv/bin:$PATH
 
 # Update system-provided pip
 RUN pip install --upgrade pip

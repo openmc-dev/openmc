@@ -1,5 +1,3 @@
-#! coding:utf-8
-
 """Helper script to visualize the surface_source.h5 files created with this test.
 """
 
@@ -20,15 +18,10 @@ if __name__ == "__main__":
 
     # Reading the surface source file
     with h5py.File(f"{folder}/surface_source_true.h5", "r") as fp:
-        source_bank = fp["source_bank"]
-        r_xs = []
-        r_ys = []
-        r_zs = []
-        for item in source_bank[:3000]:
-            r_x, r_y, r_z = item[0]
-            r_xs.append(r_x)
-            r_ys.append(r_y)
-            r_zs.append(r_z)
+        source_bank = fp["source_bank"][()]
+        r_xs = source_bank['r']['x']
+        r_ys = source_bank['r']['y']
+        r_zs = source_bank['r']['z']
 
     print("Size of the source bank: ", len(source_bank))
 

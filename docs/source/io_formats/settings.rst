@@ -864,7 +864,7 @@ attributes/sub-elements:
     from or going to this declared cell will be banked if they cross
     the identified surfaces.
 
-    *Default* 0
+    *Default*: None
 
   :cellfrom:
     An integer representing the cell ID used to determine if particles
@@ -872,14 +872,14 @@ attributes/sub-elements:
     from this declared cell will be banked if they cross the identified
     surfaces.
 
-    *Default* 0
+    *Default*: None
 
-  :cellto: 
+  :cellto:
     An integer representing the cell ID used to determine if particles
     crossing identified surfaces are to be banked. Particles going to this
     declared cell will be banked if they cross the identified surfaces.
 
-    *Default* 0
+    *Default*: None
 
 .. note:: The ``cell``, ``cellfrom`` and ``cellto`` attributes cannot be
           used simultaneously.

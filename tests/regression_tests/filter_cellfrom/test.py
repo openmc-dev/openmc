@@ -34,7 +34,7 @@ def model():
     A lower universe is used to describe the interior of the first box which
     contains the core and its surrounding space."""
     openmc.reset_auto_ids()
-    model = openmc.model.Model()
+    model = openmc.Model()
 
     # =============================================================================
     # Materials
@@ -91,25 +91,14 @@ def model():
     box1_size = 4.1
 
     # Surfaces
-    box1_lower_plane = openmc.ZPlane(z0=-box1_size / 2.0)
-    box1_upper_plane = openmc.ZPlane(z0=box1_size / 2.0)
-    box1_left_plane = openmc.XPlane(x0=-box1_size / 2.0)
-    box1_right_plane = openmc.XPlane(x0=box1_size / 2.0)
-    box1_rear_plane = openmc.YPlane(y0=-box1_size / 2.0)
-    box1_front_plane = openmc.YPlane(y0=box1_size / 2.0)
-
-    # Region
-    box1_region = (
-        +box1_lower_plane
-        & -box1_upper_plane
-        & +box1_left_plane
-        & -box1_right_plane
-        & +box1_rear_plane
-        & -box1_front_plane
+    box1_rpp = openmc.model.RectangularParallelepiped(
+        -box1_size / 2.0, box1_size/2.0,
+        -box1_size / 2.0, box1_size/2.0,
+        -box1_size / 2.0, box1_size/2.0,
     )
 
     # Cell
-    box1 = openmc.Cell(fill=inside_box1_universe, region=box1_region)
+    box1 = openmc.Cell(fill=inside_box1_universe, region=-box1_rpp)
 
     # -----------------------------------------------------------------------------
     # Box 2
@@ -119,48 +108,24 @@ def model():
     box2_size = 12
 
     # Surfaces
-    box2_lower_plane = openmc.ZPlane(z0=-box2_size / 2.0, boundary_type="vacuum")
-    box2_upper_plane = openmc.ZPlane(z0=box2_size / 2.0, boundary_type="vacuum")
-    box2_left_plane = openmc.XPlane(x0=-box2_size / 2.0, boundary_type="vacuum")
-    box2_right_plane = openmc.XPlane(x0=box2_size / 2.0, boundary_type="vacuum")
-    box2_rear_plane = openmc.YPlane(y0=-box2_size / 2.0, boundary_type="vacuum")
-    box2_front_plane = openmc.YPlane(y0=box2_size / 2.0, boundary_type="vacuum")
-
-    # Region
-    inside_box2 = (
-        +box2_lower_plane
-        & -box2_upper_plane
-        & +box2_left_plane
-        & -box2_right_plane
-        & +box2_rear_plane
-        & -box2_front_plane
+    box2_rpp = openmc.model.RectangularParallelepiped(
+        -box2_size / 2.0, box2_size/2.0,
+        -box2_size / 2.0, box2_size/2.0,
+        -box2_size / 2.0, box2_size/2.0,
+        boundary_type="vacuum"
     )
-    outside_box1 = (
-        -box1_lower_plane
-        | +box1_upper_plane
-        | -box1_left_plane
-        | +box1_right_plane
-        | -box1_rear_plane
-        | +box1_front_plane
-    )
-
-    box2_region = inside_box2 & outside_box1
 
     # Cell
-    box2 = openmc.Cell(fill=water, region=box2_region)
-
-    # Root universe
-    root = openmc.Universe(cells=[box1, box2])
+    box2 = openmc.Cell(fill=water, region=-box2_rpp & +box1_rpp)
 
     # Register geometry
-    model.geometry = openmc.Geometry(root)
+    model.geometry = openmc.Geometry([box1, box2])
 
     # =============================================================================
     # Settings
     # =============================================================================
 
     model.settings = openmc.Settings()
-    model.settings.run_mode = "eigenvalue"
     model.settings.particles = 2000
     model.settings.batches = 15
     model.settings.inactive = 5
@@ -175,7 +140,7 @@ def model():
         core_height / 2.0,
     ]
     distribution = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=True)
-    model.settings.source = openmc.source.IndependentSource(space=distribution)
+    model.settings.source = openmc.IndependentSource(space=distribution)
 
     # =============================================================================
     # Tallies

@@ -8,7 +8,7 @@ All results are generated using only 1 MPI process.
 All results are generated using 1 thread except for "test_consistency_low_realization_number".
 This specific test verifies that when the number of realization (i.e., point being candidate
 to be stored) is lower than the capacity, results are reproducible even with multiple
-threads (i.e., there is no potential thread competition that would produce different 
+threads (i.e., there is no potential thread competition that would produce different
 results in that case).
 
 All results are generated using the history-based mode except cases 21 to 23.
@@ -135,11 +135,10 @@ import os
 import shutil
 from pathlib import Path
 
-import openmc
-import openmc.lib
-
 import h5py
 import numpy as np
+import openmc
+import openmc.lib
 import pytest
 
 from tests.testing_harness import PyAPITestHarness
@@ -172,7 +171,7 @@ def model_1():
 
     """
     openmc.reset_auto_ids()
-    model = openmc.model.Model()
+    model = openmc.Model()
 
     # =============================================================================
     # Materials
@@ -224,25 +223,14 @@ def model_1():
     box1_size = 6.0
 
     # Surfaces
-    box1_lower_plane = openmc.ZPlane(z0=-box1_size / 2.0)
-    box1_upper_plane = openmc.ZPlane(z0=box1_size / 2.0)
-    box1_left_plane = openmc.XPlane(x0=-box1_size / 2.0)
-    box1_right_plane = openmc.XPlane(x0=box1_size / 2.0)
-    box1_rear_plane = openmc.YPlane(y0=-box1_size / 2.0)
-    box1_front_plane = openmc.YPlane(y0=box1_size / 2.0)
-
-    # Region
-    box1_region = (
-        +box1_lower_plane
-        & -box1_upper_plane
-        & +box1_left_plane
-        & -box1_right_plane
-        & +box1_rear_plane
-        & -box1_front_plane
+    box1_rpp = openmc.model.RectangularParallelepiped(
+        -box1_size / 2.0, box1_size/2.0,
+        -box1_size / 2.0, box1_size/2.0,
+        -box1_size / 2.0, box1_size/2.0,
     )
 
     # Cell
-    box1 = openmc.Cell(fill=inside_box1_universe, region=box1_region)
+    box1 = openmc.Cell(fill=inside_box1_universe, region=-box1_rpp)
 
     # -----------------------------------------------------------------------------
     # Box 2
@@ -252,48 +240,24 @@ def model_1():
     box2_size = 8
 
     # Surfaces
-    box2_lower_plane = openmc.ZPlane(z0=-box2_size / 2.0, boundary_type="vacuum")
-    box2_upper_plane = openmc.ZPlane(z0=box2_size / 2.0, boundary_type="vacuum")
-    box2_left_plane = openmc.XPlane(x0=-box2_size / 2.0, boundary_type="vacuum")
-    box2_right_plane = openmc.XPlane(x0=box2_size / 2.0, boundary_type="vacuum")
-    box2_rear_plane = openmc.YPlane(y0=-box2_size / 2.0, boundary_type="vacuum")
-    box2_front_plane = openmc.YPlane(y0=box2_size / 2.0, boundary_type="vacuum")
-
-    # Region
-    inside_box2 = (
-        +box2_lower_plane
-        & -box2_upper_plane
-        & +box2_left_plane
-        & -box2_right_plane
-        & +box2_rear_plane
-        & -box2_front_plane
+    box2_rpp = openmc.model.RectangularParallelepiped(
+        -box2_size / 2.0, box2_size/2.0,
+        -box2_size / 2.0, box2_size/2.0,
+        -box2_size / 2.0, box2_size/2.0,
+        boundary_type="vacuum"
     )
-    outside_box1 = (
-        -box1_lower_plane
-        | +box1_upper_plane
-        | -box1_left_plane
-        | +box1_right_plane
-        | -box1_rear_plane
-        | +box1_front_plane
-    )
-
-    box2_region = inside_box2 & outside_box1
 
     # Cell
-    box2 = openmc.Cell(fill=water, region=box2_region)
-
-    # Root universe
-    root = openmc.Universe(cells=[box1, box2])
+    box2 = openmc.Cell(fill=water, region=-box2_rpp & +box1_rpp)
 
     # Register geometry
-    model.geometry = openmc.Geometry(root)
+    model.geometry = openmc.Geometry([box1, box2])
 
     # =============================================================================
     # Settings
     # =============================================================================
 
     model.settings = openmc.Settings()
-    model.settings.run_mode = "eigenvalue"
     model.settings.particles = 1000
     model.settings.batches = 5
     model.settings.inactive = 1
@@ -308,7 +272,7 @@ def model_1():
         core_height / 2.0,
     ]
     distribution = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=True)
-    model.settings.source = openmc.source.IndependentSource(space=distribution)
+    model.settings.source = openmc.IndependentSource(space=distribution)
 
     return model
 
@@ -323,7 +287,7 @@ def model_2():
 
     """
     openmc.reset_auto_ids()
-    model = openmc.model.Model()
+    model = openmc.Model()
 
     # =============================================================================
     # Materials
@@ -375,38 +339,24 @@ def model_2():
     box1_size = 6.0
 
     # Surfaces
-    box1_lower_plane = openmc.ZPlane(z0=-box1_size / 2.0, boundary_type="vacuum")
-    box1_upper_plane = openmc.ZPlane(z0=box1_size / 2.0, boundary_type="vacuum")
-    box1_left_plane = openmc.XPlane(x0=-box1_size / 2.0, boundary_type="vacuum")
-    box1_right_plane = openmc.XPlane(x0=box1_size / 2.0, boundary_type="vacuum")
-    box1_rear_plane = openmc.YPlane(y0=-box1_size / 2.0, boundary_type="vacuum")
-    box1_front_plane = openmc.YPlane(y0=box1_size / 2.0, boundary_type="vacuum")
-
-    # Region
-    box1_region = (
-        +box1_lower_plane
-        & -box1_upper_plane
-        & +box1_left_plane
-        & -box1_right_plane
-        & +box1_rear_plane
-        & -box1_front_plane
+    box1_rpp = openmc.model.RectangularParallelepiped(
+        -box1_size / 2.0, box1_size/2.0,
+        -box1_size / 2.0, box1_size/2.0,
+        -box1_size / 2.0, box1_size/2.0,
+        boundary_type="vacuum"
     )
 
     # Cell
-    box1 = openmc.Cell(fill=inside_box1_universe, region=box1_region)
-
-    # Root universe
-    root = openmc.Universe(cells=[box1])
+    box1 = openmc.Cell(fill=inside_box1_universe, region=-box1_rpp)
 
     # Register geometry
-    model.geometry = openmc.Geometry(root)
+    model.geometry = openmc.Geometry([box1])
 
     # =============================================================================
     # Settings
     # =============================================================================
 
     model.settings = openmc.Settings()
-    model.settings.run_mode = "eigenvalue"
     model.settings.particles = 1000
     model.settings.batches = 5
     model.settings.inactive = 1
@@ -421,7 +371,7 @@ def model_2():
         core_height / 2.0,
     ]
     distribution = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=True)
-    model.settings.source = openmc.source.IndependentSource(space=distribution)
+    model.settings.source = openmc.IndependentSource(space=distribution)
 
     return model
 
@@ -436,7 +386,7 @@ def model_3():
 
     """
     openmc.reset_auto_ids()
-    model = openmc.model.Model()
+    model = openmc.Model()
 
     # =============================================================================
     # Materials
@@ -488,38 +438,24 @@ def model_3():
     box1_size = 6.0
 
     # Surfaces
-    box1_lower_plane = openmc.ZPlane(z0=-box1_size / 2.0, boundary_type="reflective")
-    box1_upper_plane = openmc.ZPlane(z0=box1_size / 2.0, boundary_type="reflective")
-    box1_left_plane = openmc.XPlane(x0=-box1_size / 2.0, boundary_type="reflective")
-    box1_right_plane = openmc.XPlane(x0=box1_size / 2.0, boundary_type="reflective")
-    box1_rear_plane = openmc.YPlane(y0=-box1_size / 2.0, boundary_type="reflective")
-    box1_front_plane = openmc.YPlane(y0=box1_size / 2.0, boundary_type="reflective")
-
-    # Region
-    box1_region = (
-        +box1_lower_plane
-        & -box1_upper_plane
-        & +box1_left_plane
-        & -box1_right_plane
-        & +box1_rear_plane
-        & -box1_front_plane
+    box1_rpp = openmc.model.RectangularParallelepiped(
+        -box1_size / 2.0, box1_size/2.0,
+        -box1_size / 2.0, box1_size/2.0,
+        -box1_size / 2.0, box1_size/2.0,
+        boundary_type="reflective"
     )
 
     # Cell
-    box1 = openmc.Cell(fill=inside_box1_universe, region=box1_region)
-
-    # Root universe
-    root = openmc.Universe(cells=[box1])
+    box1 = openmc.Cell(fill=inside_box1_universe, region=-box1_rpp)
 
     # Register geometry
-    model.geometry = openmc.Geometry(root)
+    model.geometry = openmc.Geometry([box1])
 
     # =============================================================================
     # Settings
     # =============================================================================
 
     model.settings = openmc.Settings()
-    model.settings.run_mode = "eigenvalue"
     model.settings.particles = 1000
     model.settings.batches = 5
     model.settings.inactive = 1
@@ -534,7 +470,7 @@ def model_3():
         core_height / 2.0,
     ]
     distribution = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=True)
-    model.settings.source = openmc.source.IndependentSource(space=distribution)
+    model.settings.source = openmc.IndependentSource(space=distribution)
 
     return model
 
@@ -590,9 +526,7 @@ def return_surface_source_data(filepath):
     keys = np.array(keys)
     sorted_idx = np.argsort(keys)
 
-    data = data[sorted_idx]
-
-    return data
+    return data[sorted_idx]
 
 
 class SurfaceSourceWriteTestHarness(PyAPITestHarness):
@@ -861,7 +795,6 @@ def model_dagmc_1():
     # =============================================================================
 
     model.settings = openmc.Settings()
-    model.settings.run_mode = "eigenvalue"
     model.settings.particles = 100
     model.settings.batches = 5
     model.settings.inactive = 1
@@ -988,18 +921,14 @@ def model_dagmc_2():
     # Cell
     box2 = openmc.Cell(fill=water, region=box2_region, cell_id=9)
 
-    # Root universe
-    root = openmc.Universe(cells=[box1, box2])
-
     # Register geometry
-    model.geometry = openmc.Geometry(root)
+    model.geometry = openmc.Geometry([box1, box2])
 
     # =============================================================================
     # Settings
     # =============================================================================
 
     model.settings = openmc.Settings()
-    model.settings.run_mode = "eigenvalue"
     model.settings.particles = 100
     model.settings.batches = 5
     model.settings.inactive = 1

@@ -76,7 +76,7 @@ def model():
     """Simple hydrogen sphere divided in two hemispheres
     by a z-plane to form 2 cells."""
     openmc.reset_auto_ids()
-    model = openmc.model.Model()
+    model = openmc.Model()
 
     # Material
     material = openmc.Material(name="H1")
@@ -100,7 +100,7 @@ def model():
 
     bounds = [-radius, -radius, -radius, radius, radius, radius]
     distribution = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=False)
-    model.settings.source = openmc.source.IndependentSource(space=distribution)
+    model.settings.source = openmc.IndependentSource(space=distribution)
 
     return model
 
@@ -165,8 +165,7 @@ def model_dagmc(request):
     water.add_s_alpha_beta("c_H_in_H2O")
     water.id = 41
 
-    materials = openmc.Materials([u235, water])
-    model.materials = materials
+    model.materials = openmc.Materials([u235, water])
 
     # =============================================================================
     # Geometry
@@ -180,7 +179,6 @@ def model_dagmc(request):
     # =============================================================================
 
     model.settings = openmc.Settings()
-    model.settings.run_mode = "eigenvalue"
     model.settings.particles = 300
     model.settings.batches = 5
     model.settings.inactive = 1

@@ -184,13 +184,13 @@ class Settings:
         :max_particles: Maximum number of particles to be banked on
                    surfaces per process (int)
         :mcpl: Output in the form of an MCPL-file (bool)
-        :cell: Cell id used to determine if particles crossing identified surfaces
-               are to be banked. Particles coming from or going to this
+        :cell: Cell ID used to determine if particles crossing identified
+               surfaces are to be banked. Particles coming from or going to this
                declared cell will be banked (int)
-        :cellfrom: Cell id used to determine if particles crossing identified
+        :cellfrom: Cell ID used to determine if particles crossing identified
                    surfaces are to be banked. Particles coming from this
                    declared cell will be banked (int)
-        :cellto: Cell id used to determine if particles crossing identified
+        :cellto: Cell ID used to determine if particles crossing identified
                  surfaces are to be banked. Particles going to this declared
                  cell will be banked (int)
     survival_biasing : bool
@@ -312,7 +312,7 @@ class Settings:
         self._sourcepoint = {}
 
         self._surf_source_read = {}
-        self._surf_source_write = None
+        self._surf_source_write = {}
 
         self._no_reduce = None
 
@@ -695,33 +695,17 @@ class Settings:
                 )
                 for surf_id in value:
                     cv.check_greater_than("surface id for source banking", surf_id, 0)
-            elif key == "max_particles":
-                cv.check_type(
-                    "maximum particle banks on surfaces per process", value, Integral
-                )
-                cv.check_greater_than(
-                    "maximum particle banks on surfaces per process", value, 0
-                )
             elif key == "mcpl":
                 cv.check_type("write to an MCPL-format file", value, bool)
-
-            elif key == "cell":
-                cv.check_type(
-                    "Cell id for source banking (from or to)", value, Integral
-                )
-                cv.check_greater_than(
-                    "Cell id for source banking (from or to)", value, 0
-                )
-
-            elif key == "cellfrom":
-                cv.check_type("Cell id for source banking (from only)", value, Integral)
-                cv.check_greater_than(
-                    "Cell id for source banking (from only)", value, 0
-                )
-
-            elif key == "cellto":
-                cv.check_type("Cell id for source banking (to only)", value, Integral)
-                cv.check_greater_than("Cell id for source banking (to only)", value, 0)
+            elif key in ("max_particles", "cell", "cellfrom", "cellto"):
+                name = {
+                    "max_particles": "maximum particle banks on surfaces per process",
+                    "cell": "Cell ID for source banking (from or to)",
+                    "cellfrom": "Cell ID for source banking (from only)",
+                    "cellto": "Cell ID for source banking (to only)",
+                }[key]
+                cv.check_type(name, value, Integral)
+                cv.check_greater_than(name, value, 0)
 
         self._surf_source_write = surf_source_write
 
@@ -1178,28 +1162,20 @@ class Settings:
                 subelement.text = self._surf_source_read['path']
 
     def _create_surf_source_write_subelement(self, root):
-        if self._surf_source_write is not None:
+        if self._surf_source_write:
             element = ET.SubElement(root, "surf_source_write")
             if "surface_ids" in self._surf_source_write:
                 subelement = ET.SubElement(element, "surface_ids")
                 subelement.text = " ".join(
                     str(x) for x in self._surf_source_write["surface_ids"]
                 )
-            if "max_particles" in self._surf_source_write:
-                subelement = ET.SubElement(element, "max_particles")
-                subelement.text = str(self._surf_source_write["max_particles"])
             if "mcpl" in self._surf_source_write:
                 subelement = ET.SubElement(element, "mcpl")
                 subelement.text = str(self._surf_source_write["mcpl"]).lower()
-            if "cell" in self._surf_source_write:
-                subelement = ET.SubElement(element, "cell")
-                subelement.text = str(self._surf_source_write["cell"])
-            if "cellfrom" in self._surf_source_write:
-                subelement = ET.SubElement(element, "cellfrom")
-                subelement.text = str(self._surf_source_write["cellfrom"])
-            if "cellto" in self._surf_source_write:
-                subelement = ET.SubElement(element, "cellto")
-                subelement.text = str(self._surf_source_write["cellto"])
+            for key in ("max_particles", "cell", "cellfrom", "cellto"):
+                if key in self._surf_source_write:
+                    subelement = ET.SubElement(element, key)
+                    subelement.text = str(self._surf_source_write[key])
 
     def _create_confidence_intervals(self, root):
         if self._confidence_intervals is not None:
@@ -1577,25 +1553,18 @@ class Settings:
 
     def _surf_source_write_from_xml_element(self, root):
         elem = root.find('surf_source_write')
-        if elem is not None:
-            if self.surf_source_write is None:
-                self.surf_source_write = {}
-            for key in ('surface_ids', 'max_particles', 'mcpl', 'cell', 'cellto', 'cellfrom'):
-                value = get_text(elem, key)
-                if value is not None:
-                    if key == 'surface_ids':
-                        value = [int(x) for x in value.split()]
-                    elif key in ('max_particles'):
-                        value = int(value)
-                    elif key == 'mcpl':
-                        value = value in ('true', '1')
-                    elif key == 'cell':
-                        value = int(value)
-                    elif key == 'cellfrom':
-                        value = int(value)
-                    elif key == 'cellto':
-                        value = int(value)
-                    self.surf_source_write[key] = value
+        if elem is None:
+            return
+        for key in ('surface_ids', 'max_particles', 'mcpl', 'cell', 'cellto', 'cellfrom'):
+            value = get_text(elem, key)
+            if value is not None:
+                if key == 'surface_ids':
+                    value = [int(x) for x in value.split()]
+                elif key == 'mcpl':
+                    value = value in ('true', '1')
+                elif key in ('max_particles', 'cell', 'cellfrom', 'cellto'):
+                    value = int(value)
+                self.surf_source_write[key] = value
 
     def _confidence_intervals_from_xml_element(self, root):
         text = get_text(root, 'confidence_intervals')

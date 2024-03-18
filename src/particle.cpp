@@ -519,18 +519,14 @@ void add_surf_source_to_bank(
   if (surf.surf_source_ && simulation::current_batch > settings::n_inactive &&
       !simulation::surf_source_bank.full()) {
 
-    // Retrieve the id of the user-defined cell
-    int cell_id_user = settings::source_write_cell_id;
-
     // If a cell/cellfrom/cellto parameter is defined
-    if (cell_id_user > 0) {
+    if (settings::ssw_cell_id != C_NONE) {
 
       // Retrieve cell index and storage type
-      int cell_idx = model::cell_map[cell_id_user];
-      std::string storage_type = settings::source_write_cell_type;
+      int cell_idx = model::cell_map[settings::ssw_cell_id];
 
       // Leave if cellto with vacuum boundary condition
-      if (vacuum_bc && storage_type == "cellto") {
+      if (vacuum_bc && settings::ssw_cell_type == SSWCellType::To) {
         return;
       }
 
@@ -559,13 +555,14 @@ void add_surf_source_to_bank(
 
           // If cellfrom and the cell before crossing is not the cell of
           // interest
-          if (storage_type == "cellfrom" &&
+          if (settings::ssw_cell_type == SSWCellType::From &&
               p.cell_last(p.n_coord_last() - 1) != cell_idx) {
             return;
           }
 
           // If cellto and the cell after crossing is not the cell of interest
-          if (storage_type == "cellto" && p.lowest_coord().cell != cell_idx) {
+          if (settings::ssw_cell_type == SSWCellType::To &&
+              p.lowest_coord().cell != cell_idx) {
             return;
           }
         }
@@ -616,14 +613,14 @@ void add_surf_source_to_bank(
 
           // If cellfrom and cells before crossing do not contain the cell of
           // interest
-          if (storage_type == "cellfrom" &&
+          if (settings::ssw_cell_type == SSWCellType::From &&
               entering_cells.find(cell_idx) == entering_cells.end()) {
             return;
           }
 
           // If cellto and cells after crossing do not contain the cell of
           // interest
-          if (storage_type == "cellto" &&
+          if (settings::ssw_cell_type == SSWCellType::To &&
               leaving_cells.find(cell_idx) == leaving_cells.end()) {
             return;
           }
@@ -672,7 +669,7 @@ void Particle::cross_surface()
       // Store particle with other boundary condition than vacuum
       // only if no cell id is declared by the user for backward
       // compatibility
-      if (settings::source_write_cell_id <= 0) {
+      if (settings::ssw_cell_id == C_NONE) {
         add_surf_source_to_bank(*this, *surf);
       }
     }
@@ -796,7 +793,7 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   u() = new_u;
 
   // Reassign particle's cell and surface
-  coord(0).cell = cell_last(n_coord() - 1);
+  coord(0).cell = cell_last(0);
   surface() = -surface();
 
   // If a reflective surface is coincident with a lattice or universe

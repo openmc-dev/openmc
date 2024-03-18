@@ -214,12 +214,14 @@ public:
   // resets all coordinate levels for the particle
   void clear()
   {
-    for (auto& level : coord_)
+    for (auto& level : coord_) {
       level.reset();
+    }
     n_coord_ = 1;
 
-    for (auto& cell : cell_last_)
+    for (auto& cell : cell_last_) {
       cell = C_NONE;
+    }
     n_coord_last_ = 1;
   }
 

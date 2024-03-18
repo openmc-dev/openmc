@@ -25,23 +25,23 @@
   <geometry>
     <cell id="1" material="1" region="-1 2 -3" universe="1"/>
     <cell id="2" material="3" region="1 | -2 | 3" universe="1"/>
-    <cell fill="1" id="3" region="4 -5 6 -7 8 -9" universe="2"/>
-    <cell id="4" material="2" region="10 -11 12 -13 14 -15 (-4 | 5 | -6 | 7 | -8 | 9)" universe="2"/>
+    <cell fill="1" id="3" region="-5 4 -7 6 -9 8" universe="2"/>
+    <cell id="4" material="2" region="-11 10 -13 12 -15 14 (5 | -4 | 7 | -6 | 9 | -8)" universe="2"/>
     <surface coeffs="0.0 0.0 2.0" id="1" type="z-cylinder"/>
     <surface coeffs="-2.0" id="2" type="z-plane"/>
     <surface coeffs="2.0" id="3" type="z-plane"/>
-    <surface coeffs="-2.05" id="4" type="z-plane"/>
-    <surface coeffs="2.05" id="5" type="z-plane"/>
-    <surface coeffs="-2.05" id="6" type="x-plane"/>
-    <surface coeffs="2.05" id="7" type="x-plane"/>
-    <surface coeffs="-2.05" id="8" type="y-plane"/>
-    <surface coeffs="2.05" id="9" type="y-plane"/>
-    <surface boundary="vacuum" coeffs="-6.0" id="10" type="z-plane"/>
-    <surface boundary="vacuum" coeffs="6.0" id="11" type="z-plane"/>
-    <surface boundary="vacuum" coeffs="-6.0" id="12" type="x-plane"/>
-    <surface boundary="vacuum" coeffs="6.0" id="13" type="x-plane"/>
-    <surface boundary="vacuum" coeffs="-6.0" id="14" type="y-plane"/>
-    <surface boundary="vacuum" coeffs="6.0" id="15" type="y-plane"/>
+    <surface coeffs="-2.05" id="4" type="x-plane"/>
+    <surface coeffs="2.05" id="5" type="x-plane"/>
+    <surface coeffs="-2.05" id="6" type="y-plane"/>
+    <surface coeffs="2.05" id="7" type="y-plane"/>
+    <surface coeffs="-2.05" id="8" type="z-plane"/>
+    <surface coeffs="2.05" id="9" type="z-plane"/>
+    <surface boundary="vacuum" coeffs="-6.0" id="10" type="x-plane"/>
+    <surface boundary="vacuum" coeffs="6.0" id="11" type="x-plane"/>
+    <surface boundary="vacuum" coeffs="-6.0" id="12" type="y-plane"/>
+    <surface boundary="vacuum" coeffs="6.0" id="13" type="y-plane"/>
+    <surface boundary="vacuum" coeffs="-6.0" id="14" type="z-plane"/>
+    <surface boundary="vacuum" coeffs="6.0" id="15" type="z-plane"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>

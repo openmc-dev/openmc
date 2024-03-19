@@ -1063,13 +1063,13 @@ class SIIntegrator(Integrator):
                 n = n_list.pop()
 
                 StepResult.save(self.operator, n_list, res_list, [t, t + dt],
-                             p, self._i_res + i, proc_time, path)
+                             p, self._i_res + i, proc_time, path=path)
 
                 t += dt
 
             # No final simulation for SIE, use last iteration results
             StepResult.save(self.operator, [n], [res_list[-1]], [t, t],
-                         p, self._i_res + len(self), proc_time, path)
+                         p, self._i_res + len(self), proc_time, path=path)
             self.operator.write_bos_data(self._i_res + len(self))
 
         self.operator.finalize()

@@ -278,7 +278,7 @@ channel. Other absorption reactions like :math:`(n,\gamma)` or
 :math:`(n,\alpha)`, on the contrary, produce no neutrons. There are a few other
 idiosyncrasies in treating fission. In an eigenvalue calculation, secondary
 neutrons from fission are only "banked" for use in the next generation rather
-than being tracked as secondary neutrons from elastic and inelastic scattering
+than being tracked as secondary neutrons as elastic and inelastic scattering
 would be. On top of this, fission is sometimes broken into first-chance fission,
 second-chance fission, etc. The nuclear data file either lists the partial
 fission reactions with secondary energy distributions for each one, or a total
@@ -306,8 +306,8 @@ interpolation law. The number of prompt neutrons released per fission event
 :math:`\nu_p` is also given as a function of incident energy and can be
 specified in a polynomial or tabular format. The number of delayed neutrons
 released per fission event :math:`\nu_d` can only be specified in a tabular
-format. In practice, we only need to determine :math:`nu_t` and
-:math:`nu_d`. Once these have been determined, we can calculated the delayed
+format. In practice, we only need to determine :math:`\nu_t` and
+:math:`\nu_d`. Once these have been determined, we can calculate the delayed
 neutron fraction
 
 .. math::

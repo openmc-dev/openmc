@@ -190,16 +190,14 @@ endif()
 #===============================================================================
 
 if(OPENMC_USE_OPENMP)
-  find_package(OpenMP)
-  if(OPENMP_FOUND)
-    # In CMake 3.9+, can use the OpenMP::OpenMP_CXX imported target
-    list(APPEND cxxflags ${OpenMP_CXX_FLAGS})
-    list(APPEND ldflags ${OpenMP_CXX_FLAGS})
+  find_package(OpenMP REQUIRED)
+  # In CMake 3.9+, can use the OpenMP::OpenMP_CXX imported target
+  list(APPEND cxxflags ${OpenMP_CXX_FLAGS})
+  list(APPEND ldflags ${OpenMP_CXX_FLAGS})
 
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC") 
-      # Special flag to get OpenMP to work on Windows
-      list(APPEND cxxflags /openmp:llvm)
-    endif()
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC") 
+    # Special flag to get OpenMP to work on Windows with MSVC
+    list(APPEND cxxflags /openmp:llvm)
   endif()
 endif()
 
@@ -532,7 +530,7 @@ endif()
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
-                      xtensor gsl::gsl-lite-v1 fmt::fmt)
+                      xtensor gsl::gsl-lite-v1 fmt::fmt ${CMAKE_DL_LIBS})
 
 if(TARGET pugixml::pugixml)
   target_link_libraries(libopenmc pugixml::pugixml)

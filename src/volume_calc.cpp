@@ -203,32 +203,9 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       // At this point, each thread has its own pair of index/hits lists and we
       // now need to reduce them. OpenMP is not nearly smart enough to do this
       // on its own, so we have to manually reduce them
-      const int n_threads = num_threads();
-
-#pragma omp for ordered schedule(static)
-      for (int i = 0; i < n_threads; ++i) {
-#pragma omp ordered
-        for (int i_domain = 0; i_domain < n; ++i_domain) {
-          for (int j = 0; j < indices[i_domain].size(); ++j) {
-            // Check if this material has been added to the master list and if
-            // so, accumulate the number of hits
-            bool already_added = false;
-            for (int k = 0; k < master_indices[i_domain].size(); k++) {
-              if (indices[i_domain][j] == master_indices[i_domain][k]) {
-                master_hits[i_domain][k] += hits[i_domain][j];
-                already_added = true;
-                break;
-              }
-            }
-            if (!already_added) {
-              // If we made it here, the material hasn't yet been added to the
-              // master list, so add entries to the master indices and master
-              // hits lists
-              master_indices[i_domain].push_back(indices[i_domain][j]);
-              master_hits[i_domain].push_back(hits[i_domain][j]);
-            }
-          }
-        }
+      for (int i_domain = 0; i_domain < n; ++i_domain) {
+        reduce_indices_hits(indices[i_domain], hits[i_domain],
+          master_indices[i_domain], master_hits[i_domain]);
       }
     } // omp parallel
 

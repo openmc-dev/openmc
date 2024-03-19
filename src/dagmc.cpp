@@ -280,6 +280,10 @@ void DAGUniverse::init_geometry()
     s->id_ = adjust_geometry_ids_ ? next_surf_id++
                                   : dagmc_instance_->id_by_index(2, i + 1);
 
+    // set surface source attribute if needed
+    if (contains(settings::source_write_surf_id, s->id_))
+      s->surf_source_ = true;
+
     // set BCs
     std::string bc_value =
       dmd_ptr->get_surface_property("boundary", surf_handle);

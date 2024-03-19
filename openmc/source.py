@@ -885,3 +885,37 @@ def write_source_file(
     with h5py.File(filename, **kwargs) as fh:
         fh.attrs['filetype'] = np.string_("source")
         fh.create_dataset('source_bank', data=arr, dtype=source_dtype)
+
+
+def read_source_file(filename: PathLike) -> typing.List[SourceParticle]:
+    """Read a source file and return a list of source particles.
+
+    .. versionadded:: 0.14.1
+
+    Parameters
+    ----------
+    filename : str or path-like
+        Path to source file to read
+
+    Returns
+    -------
+    list of SourceParticle
+        Source particles read from file
+
+    See Also
+    --------
+    openmc.SourceParticle
+
+    """
+    with h5py.File(filename, 'r') as fh:
+        filetype = fh.attrs['filetype']
+        arr = fh['source_bank'][...]
+
+    if filetype != b'source':
+        raise ValueError(f'File {filename} is not a source file')
+
+    source_particles = []
+    for *params, particle in arr:
+        source_particles.append(SourceParticle(*params, ParticleType(particle)))
+
+    return source_particles

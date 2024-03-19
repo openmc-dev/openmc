@@ -167,7 +167,7 @@ void check_triggers()
   // See if the current batch is one for which the triggers must be checked.
   if (!settings::trigger_on)
     return;
-  if (current_batch < n_batches)
+  if (current_batch <= n_batches)
     return;
   if (((current_batch - n_batches) % interval) != 0)
     return;

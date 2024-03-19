@@ -59,7 +59,7 @@ void EnergyFilter::set_bins(gsl::span<const double> bins)
 void EnergyFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
-  if (p.g() != F90_NONE && matches_transport_groups_) {
+  if (p.g() != C_NONE && matches_transport_groups_) {
     if (estimator == TallyEstimator::TRACKLENGTH) {
       match.bins_.push_back(data::mg.num_energy_groups_ - p.g() - 1);
     } else {
@@ -98,7 +98,7 @@ std::string EnergyFilter::text_label(int bin) const
 void EnergyoutFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
-  if (p.g() != F90_NONE && matches_transport_groups_) {
+  if (p.g() != C_NONE && matches_transport_groups_) {
     match.bins_.push_back(data::mg.num_energy_groups_ - p.g() - 1);
     match.weights_.push_back(1.0);
 

@@ -25,6 +25,7 @@ Simulation Settings
    openmc.IndependentSource
    openmc.FileSource
    openmc.CompiledSource
+   openmc.MeshSource
    openmc.SourceParticle
    openmc.VolumeCalculation
    openmc.Settings
@@ -34,6 +35,7 @@ Simulation Settings
    :nosignatures:
    :template: myfunction.rst
 
+   openmc.read_source_file
    openmc.write_source_file
    openmc.wwinp_to_wws
 
@@ -118,6 +120,7 @@ Constructing Tallies
    openmc.Filter
    openmc.UniverseFilter
    openmc.MaterialFilter
+   openmc.MaterialFromFilter
    openmc.CellFilter
    openmc.CellFromFilter
    openmc.CellBornFilter

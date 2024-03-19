@@ -1,8 +1,9 @@
+from __future__ import annotations
 import typing
 import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from math import pi
+from math import pi, sqrt, atan2
 from numbers import Integral, Real
 from pathlib import Path
 from typing import Optional, Sequence, Tuple
@@ -35,6 +36,9 @@ class MeshBase(IDManagerMixin, ABC):
         Unique identifier for the mesh
     name : str
         Name of the mesh
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh as defined by the upper-right and
+        lower-left coordinates.
 
     """
 
@@ -57,6 +61,10 @@ class MeshBase(IDManagerMixin, ABC):
             self._name = name
         else:
             self._name = ''
+
+    @property
+    def bounding_box(self) -> openmc.BoundingBox:
+        return openmc.BoundingBox(self.lower_left, self.upper_right)
 
     def __repr__(self):
         string = type(self).__name__ + '\n'
@@ -507,9 +515,9 @@ class RegularMesh(StructuredMesh):
     upper_right : Iterable of float
         The upper-right corner of the structured mesh. If only two coordinate
         are given, it is assumed that the mesh is an x-y mesh.
-    bounding_box: openmc.BoundingBox
-        Axis-aligned bounding box of the cell defined by the upper-right and lower-
-        left coordinates
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh as defined by the upper-right and
+        lower-left coordinates.
     width : Iterable of float
         The width of mesh cells in each direction.
     indices : Iterable of tuple
@@ -659,12 +667,6 @@ class RegularMesh(StructuredMesh):
             x0, = self.lower_left
             x1, = self.upper_right
             return (np.linspace(x0, x1, nx + 1),)
-
-    @property
-    def bounding_box(self):
-        return openmc.BoundingBox(
-            np.array(self.lower_left), np.array(self.upper_right)
-        )
 
     def __repr__(self):
         string = super().__repr__()
@@ -1005,6 +1007,9 @@ class RectilinearMesh(StructuredMesh):
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh as defined by the upper-right and
+        lower-left coordinates.
 
     """
 
@@ -1055,6 +1060,14 @@ class RectilinearMesh(StructuredMesh):
     @property
     def _grids(self):
         return (self.x_grid, self.y_grid, self.z_grid)
+
+    @property
+    def lower_left(self):
+        return np.array([self.x_grid[0], self.y_grid[0], self.z_grid[0]])
+
+    @property
+    def upper_right(self):
+        return np.array([self.x_grid[-1], self.y_grid[-1], self.z_grid[-1]])
 
     @property
     def volumes(self):
@@ -1222,9 +1235,9 @@ class CylindricalMesh(StructuredMesh):
     upper_right : Iterable of float
         The upper-right corner of the structured mesh. If only two coordinate
         are given, it is assumed that the mesh is an x-y mesh.
-    bounding_box: openmc.OpenMC
-        Axis-aligned cartesian bounding box of cell defined by upper-right and lower-
-        left coordinates
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh as defined by the upper-right and
+        lower-left coordinates.
 
     """
 
@@ -1321,10 +1334,6 @@ class CylindricalMesh(StructuredMesh):
             self.origin[2] + self.z_grid[-1]
         ))
 
-    @property
-    def bounding_box(self):
-        return openmc.BoundingBox(self.lower_left, self.upper_right)
-
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'
         string = super().__repr__()
@@ -1346,6 +1355,66 @@ class CylindricalMesh(StructuredMesh):
             string += fmt.format('\tZ Min:', '=\t', self._z_grid[0])
             string += fmt.format('\tZ Max:', '=\t', self._z_grid[-1])
         return string
+
+    def get_indices_at_coords(
+            self,
+            coords: Sequence[float]
+        ) -> Tuple[int, int, int]:
+        """Finds the index of the mesh voxel at the specified x,y,z coordinates.
+
+        Parameters
+        ----------
+        coords : Sequence[float]
+            The x, y, z axis coordinates
+
+        Returns
+        -------
+        Tuple[int, int, int]
+            The r, phi, z indices
+
+        """
+        r_value_from_origin = sqrt((coords[0]-self.origin[0])**2 + (coords[1]-self.origin[1])**2)
+
+        if r_value_from_origin < self.r_grid[0] or r_value_from_origin > self.r_grid[-1]:
+            raise ValueError(
+                f'The specified x, y ({coords[0]}, {coords[1]}) combine to give an r value of '
+                f'{r_value_from_origin} from the origin of {self.origin}.which '
+                f'is outside the origin absolute r grid values {self.r_grid}.'
+            )
+
+        r_index = np.searchsorted(self.r_grid, r_value_from_origin) - 1
+
+        z_grid_values = np.array(self.z_grid) + self.origin[2]
+
+        if coords[2] < z_grid_values[0] or coords[2] > z_grid_values[-1]:
+            raise ValueError(
+                f'The specified z value ({coords[2]}) from the z origin of '
+                f'{self.origin[-1]} is outside of the absolute z grid range {z_grid_values}.'
+            )
+
+        z_index = np.argmax(z_grid_values > coords[2]) - 1
+
+        delta_x = coords[0] - self.origin[0]
+        delta_y = coords[1] - self.origin[1]
+        # atan2 returns values in -pi to +pi range
+        phi_value = atan2(delta_y, delta_x)
+        if delta_x < 0 and delta_y < 0:
+            # returned phi_value anticlockwise and negative
+            phi_value += 2 * pi
+        if delta_x > 0 and delta_y < 0:
+            # returned phi_value anticlockwise and negative
+            phi_value += 2 * pi
+
+        phi_grid_values = np.array(self.phi_grid)
+
+        if phi_value < phi_grid_values[0] or phi_value > phi_grid_values[-1]:
+            raise ValueError(
+                f'The phi value ({phi_value}) resulting from the specified x, y '
+                f'values is outside of the absolute  phi grid range {phi_grid_values}.'
+            )
+        phi_index = np.argmax(phi_grid_values > phi_value) - 1
+
+        return (r_index, phi_index, z_index)
 
     @classmethod
     def from_hdf5(cls, group: h5py.Group):
@@ -1606,8 +1675,8 @@ class SphericalMesh(StructuredMesh):
         The upper-right corner of the structured mesh. If only two coordinate
         are given, it is assumed that the mesh is an x-y mesh.
     bounding_box : openmc.BoundingBox
-        Axis-aligned bounding box of the cell defined by the upper-right and lower-
-        left coordinates
+        Axis-aligned bounding box of the mesh as defined by the upper-right and
+        lower-left coordinates.
 
     """
 
@@ -1697,10 +1766,6 @@ class SphericalMesh(StructuredMesh):
     def upper_right(self):
         r = self.r_grid[-1]
         return np.array((self.origin[0] + r, self.origin[1] + r, self.origin[2] + r))
-
-    @property
-    def bounding_box(self):
-        return openmc.BoundingBox(self.lower_left, self.upper_right)
 
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'
@@ -1883,8 +1948,8 @@ class UnstructuredMesh(MeshBase):
     library : {'moab', 'libmesh'}
         Mesh library used for the unstructured mesh tally
     output : bool
-        Indicates whether or not automatic tally output should
-        be generated for this mesh
+        Indicates whether or not automatic tally output should be generated for
+        this mesh
     volumes : Iterable of float
         Volumes of the unstructured mesh elements
     centroids : numpy.ndarray
@@ -1904,6 +1969,10 @@ class UnstructuredMesh(MeshBase):
         .. versionadded:: 0.13.1
     total_volume : float
         Volume of the unstructured mesh in total
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh as defined by the upper-right and
+        lower-left coordinates.
+
     """
 
     _UNSUPPORTED_ELEM = -1
@@ -2036,6 +2105,14 @@ class UnstructuredMesh(MeshBase):
                                               self.length_multiplier)
         return string
 
+    @property
+    def lower_left(self):
+        return self.vertices.min(axis=0)
+
+    @property
+    def upper_right(self):
+        return self.vertices.max(axis=0)
+
     def centroid(self, bin: int):
         """Return the vertex averaged centroid of an element
 
@@ -2121,7 +2198,6 @@ class UnstructuredMesh(MeshBase):
         grid.SetPoints(vtk_pnts)
 
         n_skipped = 0
-        elems = []
         for elem_type, conn in zip(self.element_types, self.connectivity):
             if elem_type == self._LINEAR_TET:
                 elem = vtk.vtkTetra()
@@ -2135,14 +2211,12 @@ class UnstructuredMesh(MeshBase):
                 if c == -1:
                     break
                 elem.GetPointIds().SetId(i, c)
-            elems.append(elem)
+
+            grid.InsertNextCell(elem.GetCellType(), elem.GetPointIds())
 
         if n_skipped > 0:
             warnings.warn(f'{n_skipped} elements were not written because '
                           'they are not of type linear tet/hex')
-
-        for elem in elems:
-            grid.InsertNextCell(elem.GetCellType(), elem.GetPointIds())
 
         # check that datasets are the correct size
         datasets_out = []
@@ -2256,7 +2330,7 @@ def _read_meshes(elem):
         A dictionary with mesh IDs as keys and openmc.MeshBase
         instanaces as values
     """
-    out = dict()
+    out = {}
     for mesh_elem in elem.findall('mesh'):
         mesh = MeshBase.from_xml_element(mesh_elem)
         out[mesh.id] = mesh

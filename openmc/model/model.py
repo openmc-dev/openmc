@@ -7,10 +7,10 @@ from pathlib import Path
 from numbers import Integral
 from tempfile import NamedTemporaryFile
 import warnings
-import lxml.etree as ET
 from typing import Optional, Dict
 
 import h5py
+import lxml.etree as ET
 
 import openmc
 import openmc._xml as xml
@@ -253,7 +253,8 @@ class Model:
         path : str or PathLike
             Path to model.xml file
         """
-        tree = ET.parse(path)
+        parser = ET.XMLParser(huge_tree=True)
+        tree = ET.parse(path, parser=parser)
         root = tree.getroot()
 
         model = cls()
@@ -448,7 +449,7 @@ class Model:
         # Create directory if required
         d = Path(directory)
         if not d.is_dir():
-            d.mkdir(parents=True)
+            d.mkdir(parents=True, exist_ok=True)
 
         self.settings.export_to_xml(d)
         self.geometry.export_to_xml(d, remove_surfs=remove_surfs)
@@ -487,13 +488,16 @@ class Model:
         # if the provided path doesn't end with the XML extension, assume the
         # input path is meant to be a directory. If the directory does not
         # exist, create it and place a 'model.xml' file there.
-        if not str(xml_path).endswith('.xml') and not xml_path.exists():
-            os.mkdir(xml_path)
+        if not str(xml_path).endswith('.xml'):
+            if not xml_path.exists():
+                xml_path.mkdir(parents=True, exist_ok=True)
+            elif not xml_path.is_dir():
+                raise FileExistsError(f"File exists and is not a directory: '{xml_path}'")
             xml_path /= 'model.xml'
         # if this is an XML file location and the file's parent directory does
         # not exist, create it before continuing
         elif not xml_path.parent.exists():
-            os.mkdir(xml_path.parent)
+            xml_path.parent.mkdir(parents=True, exist_ok=True)
 
         if remove_surfs:
             warnings.warn("remove_surfs kwarg will be deprecated soon, please "
@@ -708,9 +712,10 @@ class Model:
                     self.export_to_model_xml(**export_kwargs)
                 else:
                     self.export_to_xml(**export_kwargs)
+                path_input = export_kwargs.get("path", None)
                 openmc.run(particles, threads, geometry_debug, restart_file,
                            tracks, output, Path('.'), openmc_exec, mpi_args,
-                           event_based)
+                           event_based, path_input)
 
             # Get output directory and return the last statepoint written
             if self.settings.output and 'path' in self.settings.output:
@@ -787,7 +792,12 @@ class Model:
                 for i, vol_calc in enumerate(self.settings.volume_calculations):
                     vol_calc.load_results(f"volume_{i + 1}.h5")
                     # First add them to the Python side
-                    self.geometry.add_volume_information(vol_calc)
+                    if vol_calc.domain_type == "material" and self.materials:
+                        for material in self.materials:
+                            if material.id in vol_calc.volumes:
+                                material.add_volume_information(vol_calc)
+                    else:
+                        self.geometry.add_volume_information(vol_calc)
 
                     # And now repeat for the C API
                     if self.is_initialized and vol_calc.domain_type == 'material':

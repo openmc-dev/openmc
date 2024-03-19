@@ -293,7 +293,8 @@ class Geometry:
         if isinstance(materials, (str, os.PathLike)):
             materials = openmc.Materials.from_xml(materials)
 
-        tree = ET.parse(path)
+        parser = ET.XMLParser(huge_tree=True)
+        tree = ET.parse(path, parser=parser)
         root = tree.getroot()
 
         return cls.from_xml_element(root, materials)
@@ -390,6 +391,20 @@ class Geometry:
         universes[self.root_universe.id] = self.root_universe
         universes.update(self.root_universe.get_all_universes())
         return universes
+
+    def get_all_nuclides(self) -> typing.List[str]:
+        """Return all nuclides within the geometry.
+
+        Returns
+        -------
+        list
+            Sorted list of all nuclides in materials appearing in the geometry
+
+        """
+        all_nuclides = set()
+        for material in self.get_all_materials().values():
+            all_nuclides |= set(material.get_nuclides())
+        return sorted(all_nuclides)
 
     def get_all_materials(self) -> typing.Dict[int, openmc.Material]:
         """Return all materials within the geometry.

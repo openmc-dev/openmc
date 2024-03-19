@@ -1,4 +1,3 @@
-import os
 from collections.abc import Iterable, Mapping, MutableSequence
 from enum import Enum
 import itertools
@@ -7,12 +6,12 @@ from numbers import Integral, Real
 from pathlib import Path
 import typing  # required to prevent typing.Union namespace overwriting Union
 from typing import Optional
+
 import lxml.etree as ET
 
 import openmc.checkvalue as cv
 from openmc.stats.multivariate import MeshSpatial
-
-from . import (RegularMesh, SourceBase, IndependentSource,
+from . import (RegularMesh, SourceBase, MeshSource, IndependentSource,
                VolumeCalculation, WeightWindows, WeightWindowGenerator)
 from ._xml import clean_indentation, get_text, reorder_attributes
 from openmc.checkvalue import PathLike
@@ -1072,13 +1071,19 @@ class Settings:
             element = ET.SubElement(root, "max_order")
             element.text = str(self._max_order)
 
-    def _create_source_subelement(self, root):
+    def _create_source_subelement(self, root, mesh_memo=None):
         for source in self.source:
             root.append(source.to_xml_element())
             if isinstance(source, IndependentSource) and isinstance(source.space, MeshSpatial):
                 path = f"./mesh[@id='{source.space.mesh.id}']"
                 if root.find(path) is None:
                     root.append(source.space.mesh.to_xml_element())
+            if isinstance(source, MeshSource):
+                path = f"./mesh[@id='{source.mesh.id}']"
+                if root.find(path) is None:
+                    root.append(source.mesh.to_xml_element())
+                    if mesh_memo is not None:
+                        mesh_memo.add(source.mesh.id)
 
     def _create_volume_calcs_subelement(self, root):
         for calc in self.volume_calculations:
@@ -1365,7 +1370,8 @@ class Settings:
             path = f"./mesh[@id='{ww.mesh.id}']"
             if root.find(path) is None:
                 root.append(ww.mesh.to_xml_element())
-                if mesh_memo is not None: mesh_memo.add(ww.mesh.id)
+                if mesh_memo is not None:
+                    mesh_memo.add(ww.mesh.id)
 
         if self._weight_windows_on is not None:
             elem = ET.SubElement(root, "weight_windows_on")
@@ -1597,15 +1603,14 @@ class Settings:
                 if value is not None:
                     self.cutoff[key] = float(value)
 
-    def _entropy_mesh_from_xml_element(self, root, meshes=None):
+    def _entropy_mesh_from_xml_element(self, root, meshes):
         text = get_text(root, 'entropy_mesh')
-        if text is not None:
-            path = f"./mesh[@id='{int(text)}']"
-            elem = root.find(path)
-            if elem is not None:
-                self.entropy_mesh = RegularMesh.from_xml_element(elem)
-        if meshes is not None and self.entropy_mesh is not None:
-            meshes[self.entropy_mesh.id] = self.entropy_mesh
+        if text is None:
+            return
+        mesh_id = int(text)
+        if mesh_id not in meshes:
+            raise ValueError(f'Could not locate mesh with ID "{mesh_id}"')
+        self.entropy_mesh = meshes[mesh_id]
 
     def _trigger_from_xml_element(self, root):
         elem = root.find('trigger')
@@ -1665,15 +1670,14 @@ class Settings:
             values = [int(x) for x in text.split()]
             self.track = list(zip(values[::3], values[1::3], values[2::3]))
 
-    def _ufs_mesh_from_xml_element(self, root, meshes=None):
+    def _ufs_mesh_from_xml_element(self, root, meshes):
         text = get_text(root, 'ufs_mesh')
-        if text is not None:
-            path = f"./mesh[@id='{int(text)}']"
-            elem = root.find(path)
-            if elem is not None:
-                self.ufs_mesh = RegularMesh.from_xml_element(elem)
-        if meshes is not None and self.ufs_mesh is not None:
-            meshes[self.ufs_mesh.id] = self.ufs_mesh
+        if text is None:
+            return
+        mesh_id = int(text)
+        if mesh_id not in meshes:
+            raise ValueError(f'Could not locate mesh with ID "{mesh_id}"')
+        self.ufs_mesh = meshes[mesh_id]
 
     def _resonance_scattering_from_xml_element(self, root):
         elem = root.find('resonance_scattering')
@@ -1737,15 +1741,12 @@ class Settings:
 
     def _weight_windows_from_xml_element(self, root, meshes=None):
         for elem in root.findall('weight_windows'):
-            ww = WeightWindows.from_xml_element(elem, root)
+            ww = WeightWindows.from_xml_element(elem, meshes)
             self.weight_windows.append(ww)
 
         text = get_text(root, 'weight_windows_on')
         if text is not None:
             self.weight_windows_on = text in ('true', '1')
-
-        if meshes is not None and self.weight_windows:
-            meshes.update({ww.mesh.id: ww.mesh for ww in self.weight_windows})
 
     def _weight_window_checkpoints_from_xml_element(self, root):
         elem = root.find('weight_window_checkpoints')
@@ -1787,7 +1788,7 @@ class Settings:
         self._create_max_write_lost_particles_subelement(element)
         self._create_generations_per_batch_subelement(element)
         self._create_keff_trigger_subelement(element)
-        self._create_source_subelement(element)
+        self._create_source_subelement(element, mesh_memo)
         self._create_output_subelement(element)
         self._create_statepoint_subelement(element)
         self._create_sourcepoint_subelement(element)
@@ -1874,6 +1875,11 @@ class Settings:
             Settings object
 
         """
+        # read all meshes under the settings node and update
+        settings_meshes = _read_meshes(elem)
+        meshes = {} if meshes is None else meshes
+        meshes.update(settings_meshes)
+
         settings = cls()
         settings._eigenvalue_from_xml_element(elem)
         settings._run_mode_from_xml_element(elem)
@@ -1946,7 +1952,8 @@ class Settings:
             Settings object
 
         """
-        tree = ET.parse(path)
+        parser = ET.XMLParser(huge_tree=True)
+        tree = ET.parse(path, parser=parser)
         root = tree.getroot()
         meshes = _read_meshes(root)
         return cls.from_xml_element(root, meshes)

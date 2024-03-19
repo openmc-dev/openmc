@@ -49,8 +49,8 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
 
   if (check_for_node(node, "filename")) {
     filename_ = get_node_value(node, "filename");
-    if (!file_exists(filename_)) {
-      fatal_error(fmt::format("DAGMC file '{}' could not be found", filename_));
+    if (!starts_with(filename_, "/")) {
+      filename_ = dir_name(settings::path_input) + filename_;
     }
   } else {
     fatal_error("Must specify a file for the DAGMC universe");
@@ -123,7 +123,6 @@ void DAGUniverse::init_dagmc()
   dagmc_instance_ = std::make_shared<moab::DagMC>();
 
   // load the DAGMC geometry
-  filename_ = settings::path_input + filename_;
   if (!file_exists(filename_)) {
     fatal_error("Geometry DAGMC file '" + filename_ + "' does not exist!");
   }
@@ -281,6 +280,10 @@ void DAGUniverse::init_geometry()
     s->id_ = adjust_geometry_ids_ ? next_surf_id++
                                   : dagmc_instance_->id_by_index(2, i + 1);
 
+    // set surface source attribute if needed
+    if (contains(settings::source_write_surf_id, s->id_))
+      s->surf_source_ = true;
+
     // set BCs
     std::string bc_value =
       dmd_ptr->get_surface_property("boundary", surf_handle);
@@ -404,7 +407,7 @@ int32_t DAGUniverse::implicit_complement_idx() const
   return cell_idx_offset_ + dagmc_instance_->index_by_handle(ic) - 1;
 }
 
-bool DAGUniverse::find_cell(Particle& p) const
+bool DAGUniverse::find_cell(GeometryState& p) const
 {
   // if the particle isn't in any of the other DagMC
   // cells, place it in the implicit complement
@@ -583,9 +586,8 @@ DAGCell::DAGCell(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx)
 };
 
 std::pair<double, int32_t> DAGCell::distance(
-  Position r, Direction u, int32_t on_surface, Particle* p) const
+  Position r, Direction u, int32_t on_surface, GeometryState* p) const
 {
-  Expects(p);
   // if we've changed direction or we're not on a surface,
   // reset the history and update last direction
   if (u != p->last_dir()) {
@@ -635,10 +637,9 @@ std::pair<double, int32_t> DAGCell::distance(
       p->material() == MATERIAL_VOID
         ? "-1 (VOID)"
         : std::to_string(model::materials[p->material()]->id());
-    auto lost_particle_msg = fmt::format(
+    p->mark_as_lost(fmt::format(
       "No intersection found with DAGMC cell {}, filled with material {}", id_,
-      material_id);
-    p->mark_as_lost(lost_particle_msg);
+      material_id));
   }
 
   return {dist, surf_idx};
@@ -723,7 +724,7 @@ Direction DAGSurface::normal(Position r) const
   return dir;
 }
 
-Direction DAGSurface::reflect(Position r, Direction u, Particle* p) const
+Direction DAGSurface::reflect(Position r, Direction u, GeometryState* p) const
 {
   Expects(p);
   p->history().reset_to_last_intersection();

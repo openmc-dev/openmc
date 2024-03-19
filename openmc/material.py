@@ -8,8 +8,8 @@ import re
 import typing  # imported separately as py3.8 requires typing.Iterable
 import warnings
 from typing import Optional, List, Union, Dict
-import lxml.etree as ET
 
+import lxml.etree as ET
 import numpy as np
 import h5py
 
@@ -571,7 +571,7 @@ class Material(IDManagerMixin):
 
         for component, params in components.items():
             cv.check_type('component', component, str)
-            if isinstance(params, float):
+            if isinstance(params, Real):
                 params = {'percent': params}
 
             else:
@@ -1754,7 +1754,8 @@ class Materials(cv.CheckedList):
             Materials collection
 
         """
-        tree = ET.parse(path)
+        parser = ET.XMLParser(huge_tree=True)
+        tree = ET.parse(path, parser=parser)
         root = tree.getroot()
 
         return cls.from_xml_element(root)

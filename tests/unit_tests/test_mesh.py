@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 import openmc
 
-from openmc import RegularMesh, RectilinearMesh, CylindricalMesh, SphericalMesh
 
 @pytest.mark.parametrize("val_left,val_right", [(0, 0), (-1., -1.), (2.0, 2)])
 def test_raises_error_when_flat(val_left, val_right):
@@ -49,6 +48,17 @@ def test_regular_mesh_bounding_box():
     np.testing.assert_array_equal(bb.upper_right, (2, 3, 5))
 
 
+def test_rectilinear_mesh_bounding_box():
+    mesh = openmc.RectilinearMesh()
+    mesh.x_grid = [0., 1., 5., 10.]
+    mesh.y_grid = [-10., -5., 0.]
+    mesh.z_grid = [-100., 0., 100.]
+    bb = mesh.bounding_box
+    assert isinstance(bb, openmc.BoundingBox)
+    np.testing.assert_array_equal(bb.lower_left, (0., -10. ,-100.))
+    np.testing.assert_array_equal(bb.upper_right, (10., 0., 100.))
+
+
 def test_cylindrical_mesh_bounding_box():
     # test with mesh at origin (0, 0, 0)
     mesh = openmc.CylindricalMesh(
@@ -76,6 +86,7 @@ def test_cylindrical_mesh_bounding_box():
     mesh.z_grid = [-10, 0, 10]
     np.testing.assert_array_equal(mesh.lower_left, (2, 4, -3))
     np.testing.assert_array_equal(mesh.upper_right, (4, 6, 17))
+
 
 def test_spherical_mesh_bounding_box():
     # test with mesh at origin (0, 0, 0)
@@ -239,4 +250,51 @@ def test_mesh_vertices(mesh_type):
         np.testing.assert_equal(mesh.vertices_spherical[ijk], exp_vert)
 
 
+def test_CylindricalMesh_get_indices_at_coords():
+    # default origin (0, 0, 0) and default phi grid (0, 2*pi)
+    mesh = openmc.CylindricalMesh(r_grid=(0, 5, 10), z_grid=(0, 5, 10))
+    assert mesh.get_indices_at_coords([1, 0, 1]) == (0, 0, 0)
+    assert mesh.get_indices_at_coords([6, 0, 1]) == (1, 0, 0)
+    assert mesh.get_indices_at_coords([9, 0, 1]) == (1, 0, 0)
+    assert mesh.get_indices_at_coords([0, 6, 0]) == (1, 0, 0)
+    assert mesh.get_indices_at_coords([0, 9, 6]) == (1, 0, 1)
+    assert mesh.get_indices_at_coords([-2, -2, 9]) == (0, 0, 1)
 
+    with pytest.raises(ValueError):
+        assert mesh.get_indices_at_coords([8, 8, 1])  # resulting r value to large
+    with pytest.raises(ValueError):
+        assert mesh.get_indices_at_coords([-8, -8, 1])  # resulting r value to large
+    with pytest.raises(ValueError):
+        assert mesh.get_indices_at_coords([1, 0, -1])  # z value below range
+    with pytest.raises(ValueError):
+        assert mesh.get_indices_at_coords([1, 0, 11])  # z value above range
+
+    assert mesh.get_indices_at_coords([1, 1, 1]) == (0, 0, 0)
+
+    # negative range on z grid
+    mesh = openmc.CylindricalMesh(
+        r_grid=(0, 5, 10),
+        phi_grid=(0, 0.5 * pi, pi, 1.5 * pi, 1.9 * pi),
+        z_grid=(-5, 0, 5, 10),
+    )
+    assert mesh.get_indices_at_coords([1, 1, 1]) == (0, 0, 1)  # first angle quadrant
+    assert mesh.get_indices_at_coords([2, 2, 6]) == (0, 0, 2)  # first angle quadrant
+    assert mesh.get_indices_at_coords([-2, 0.1, -1]) == (0, 1, 0)  # second angle quadrant
+    assert mesh.get_indices_at_coords([-2, -0.1, -1]) == (0, 2, 0)  # third angle quadrant
+    assert mesh.get_indices_at_coords([2, -0.9, -1]) == (0, 3, 0)  # forth angle quadrant
+
+    with pytest.raises(ValueError):
+        assert mesh.get_indices_at_coords([2, -0.1, 1])  # outside of phi range
+
+    # origin of mesh not default
+    mesh = openmc.CylindricalMesh(
+        r_grid=(0, 5, 10),
+        phi_grid=(0, 0.5 * pi, pi, 1.5 * pi, 1.9 * pi),
+        z_grid=(-5, 0, 5, 10),
+        origin=(100, 200, 300),
+    )
+    assert mesh.get_indices_at_coords([101, 201, 301]) == (0, 0, 1)  # first angle quadrant
+    assert mesh.get_indices_at_coords([102, 202, 306]) == (0, 0, 2)  # first angle quadrant
+    assert mesh.get_indices_at_coords([98, 200.1, 299]) == (0, 1, 0)  # second angle quadrant
+    assert mesh.get_indices_at_coords([98, 199.9, 299]) == (0, 2, 0)  # third angle quadrant
+    assert mesh.get_indices_at_coords([102, 199.1, 299]) == (0, 3, 0)  # forth angle quadrant

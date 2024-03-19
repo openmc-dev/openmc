@@ -55,7 +55,7 @@ ERROR_MSG_2 = "'cell', 'cellfrom' and 'cellto' cannot be used at the same time."
 @pytest.mark.parametrize(
     "parameter, error",
     [
-        ({}, ERROR_MSG_1),
+        ({"cell": 1}, ERROR_MSG_1),
         ({"max_particles": 200, "cell": 1, "cellto": 1}, ERROR_MSG_2),
         ({"max_particles": 200, "cell": 1, "cellfrom": 1}, ERROR_MSG_2),
         ({"max_particles": 200, "cellto": 1, "cellfrom": 1}, ERROR_MSG_2),

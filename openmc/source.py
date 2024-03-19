@@ -660,12 +660,14 @@ class FileSource(SourceBase):
     domains : iterable of openmc.Cell, openmc.Material, or openmc.Universe
         Domains to reject based on, i.e., if a sampled spatial location is not
         within one of these domains, it will be rejected.
+    time_bounds : Iterable of float
+        lower, upper bounds in time [s] of accepted particles
+    energy_bounds : Iterable of float
+        lower, upper bounds in energy [eV] of accepted particles
     lower_left : Iterable of float
-        Lower-left corner coordinates of a phase space hypercube from which to
-        accept particles. The dimensions are: x [cm],y [cm],z [cm], ux [ ],uy [ ],uz[ ], E [eV], t [s]
+        Lower-left corner coordinates from which to accept particles
     upper_right : Iterable of float
-        Upper-right corner coordinates of a phase space hypercube from which to
-        accept particles. The dimensions are: x [cm],y [cm],z [cm], ux [ ],uy [ ],uz[ ], E [eV], t [s]
+        Upper-right corner coordinates from which to accept particles
 
     Attributes
     ----------
@@ -675,26 +677,31 @@ class FileSource(SourceBase):
         Strength of the source
     type : str
         Indicator of source type: 'file'
-
-    .. versionadded:: x.y.z
-
     ids : Iterable of int
         IDs of domains to use for rejection
     domain_type : {'cell', 'material', 'universe'}
         Type of domain to use for rejection
+    domain_ids : iterable of int
+        Ids of domains to reject based on.
+    time_bounds : Iterable of float
+        lower, upper bounds in time of accepted particles
+    energy_bounds : Iterable of float
+        lower, upper bounds in energy of accepted particles
     lower_left : Iterable of double
-        Lower-left corner hypercube coordinates
+        Lower-left corner coordinates
     upper_right : Iterable of double
-        Upper-right corner hypercube coordinates
+        Upper-right corner coordinates
     rejection_strategy: {'resample','kill'}
         Strategy when a particle is rejected. Pick a new particle or accept and terminate.
 
     """
 
-    def __init__(self, path: Optional[PathLike] = None, strength=1.0, rejection_strategy = None, domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None, lower_left: Optional[Sequence[Double]] = None, upper_right: Optional[Sequence[Double]] = None) -> None:
+    def __init__(self, path: Optional[PathLike] = None, strength=1.0, rejection_strategy = None, domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None, lower_left: Optional[Sequence[Double]] = None, upper_right: Optional[Sequence[Double]] = None, time_bounds: Optional[Sequence[Double]] = None, energy_bounds: Optional[Sequence[Double]] = None) -> None:
         super().__init__(strength=strength)
 
         self._path = None
+        self._time_bounds = None
+        self._energy_bounds = None
         self._lower_left = None
         self._upper_right = None
         self._rejection_strategy = None
@@ -712,6 +719,10 @@ class FileSource(SourceBase):
             elif isinstance(domains[0], openmc.Universe):
                 self.domain_type = 'universe'
             self.domain_ids = [d.id for d in domains]
+        if time_bounds is not None:
+            self.time_bounds = time_bounds
+        if energy_bounds is not None:
+            self.energy_bounds = energy_bounds
         if lower_left is not None:
             self.lower_left = lower_left
         if upper_right is not None:
@@ -751,12 +762,32 @@ class FileSource(SourceBase):
         self._domain_type = domain_type
 
     @property
+    def time_bounds(self):
+        return self._time_bounds
+
+    @time_bounds.setter
+    def time_bounds(self, time_bounds):
+        name = 'time bounds'
+        cv.check_type(name, time_bounds, Iterable, Real)
+        self._time_bounds = time_bounds
+
+    @property
+    def energy_bounds(self):
+        return self._energy_bounds
+
+    @energy_bounds.setter
+    def energy_bounds(self, energy_bounds):
+        name = 'energy bounds'
+        cv.check_type(name, energy_bounds, Iterable, Real)
+        self._energy_bounds = energy_bounds
+
+    @property
     def lower_left(self):
         return self._lower_left
 
     @lower_left.setter
     def lower_left(self, lower_left):
-        name = 'lower-left hypercube coordinates'
+        name = 'lower-left coordinates'
         cv.check_type(name, lower_left, Iterable, Real)
         self._lower_left = lower_left
 
@@ -766,7 +797,7 @@ class FileSource(SourceBase):
 
     @upper_right.setter
     def upper_right(self, upper_right):
-        name = 'upper-right hypercube coordinates'
+        name = 'upper-right coordinates'
         cv.check_type(name, upper_right, Iterable, Real)
         self._upper_right = upper_right
 
@@ -796,6 +827,12 @@ class FileSource(SourceBase):
             dt_elem.text = self.domain_type
             id_elem = ET.SubElement(element, "domain_ids")
             id_elem.text = ' '.join(str(uid) for uid in self.domain_ids)
+        if self.time_bounds is not None:
+            dt_elem = ET.SubElement(element, "time_bounds")
+            dt_elem.text = ' '.join(str(t) for t in self.time_bounds)
+        if self.energy_bounds is not None:
+            dt_elem = ET.SubElement(element, "energy_bounds")
+            dt_elem.text = ' '.join(str(E) for E in self.energy_bounds)
         if self.lower_left is not None:
             dt_elem = ET.SubElement(element, "lower_left")
             dt_elem.text = ' '.join(str(cd) for cd in self.lower_left)

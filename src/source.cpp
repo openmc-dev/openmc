@@ -309,6 +309,15 @@ FileSource::FileSource(pugi::xml_node node)
     auto ids = get_node_array<int>(node, "domain_ids");
     domain_ids_.insert(ids.begin(), ids.end());
   }
+
+  if (check_for_node(node, "time_bounds")) {
+    auto ids = get_node_array<double>(node, "time_bounds");
+    time_bounds_=std::make_pair(ids[0],ids[1]);
+  }
+  if (check_for_node(node, "energy_bounds")) {
+    auto ids = get_node_array<double>(node, "energy_bounds");
+    energy_bounds_=std::make_pair(ids[0],ids[1]);
+  }
   if (check_for_node(node, "lower_left")) {
     auto ids = get_node_array<double>(node, "lower_left");
     for (auto id : ids) {
@@ -372,15 +381,18 @@ void FileSource::load_sites_from_file(const std::string& path)
   file_close(file_id);
 }
 
-bool FileSource::inside_hypercube(SourceSite& s) const
+bool FileSource::inside_bounds(SourceSite& s) const
 {
-  std::vector<double> cds {
-    s.r[0], s.r[1], s.r[2], s.u[0], s.u[1], s.u[2], s.E, s.time};
-  for (int i = 0; i < std::max(lower_left_.size(), upper_right_.size()); i++) {
-    if ((cds[i] < lower_left_[i]) || (cds[i] > upper_right_[i]))
+  if (s.E < energy_bounds_.first || s.E >energy_bounds_.second) {
+    return false;
+  } else if (s.time < time_bounds_.first || s.time > time_bounds_.second) {
+    return false;
+  } else {
+    if (!lower_left_.empty() && (s.r[0] < lower_left_[0] || s.r[1] < lower_left_[1] || s.r[2] < lower_left_[2]))
+      return false;
+    if (!upper_right_.empty() && (s.r[0] > upper_right_[0] || s.r[1] > upper_right_[1] || s.r[2] > upper_right_[2]))
       return false;
   }
-
   return true;
 }
 
@@ -401,8 +413,8 @@ SourceSite FileSource::sample(uint64_t* seed) const
     found = exhaustive_find_cell(p);
 
     // If not geometry rejected possibly reject by hypercube
-    if (found && (!lower_left_.empty() || !upper_right_.empty())) {
-      found = inside_hypercube(site);
+    if (found) {
+      found = inside_bounds(site);
     }
 
     // Rejection based on cells/materials/universes

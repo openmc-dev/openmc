@@ -5,6 +5,7 @@
 #define OPENMC_SOURCE_H
 
 #include <unordered_set>
+#include <cfloat>
 
 #include "pugixml.hpp"
 
@@ -118,11 +119,13 @@ private:
   vector<SourceSite> sites_;               //!< Source sites from a file
   DomainType domain_type_;                 //!< Domain type for rejection
   std::unordered_set<int32_t> domain_ids_; //!< Domains to reject from
-  vector<double> lower_left_;  //!< Lower left corner cds of filter hypercube
-  vector<double> upper_right_; //!< Upper right corner cds of filter hypercube
+  std::pair<double,double> time_bounds_ {-DBL_MAX,DBL_MAX}; //!< time limits
+  std::pair<double,double> energy_bounds_ {0,DBL_MAX};      //!< energy limits
+  vector<double> lower_left_;  //!< Lower left corner cds of filter
+  vector<double> upper_right_; //!< Upper right corner cds of filter
   RejectionStrategy rejection_strategy_; //!< Procedure for rejected
 
-  bool inside_hypercube(SourceSite& s) const;
+  bool inside_bounds(SourceSite& s) const;
 };
 
 //==============================================================================

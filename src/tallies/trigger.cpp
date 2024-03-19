@@ -79,7 +79,7 @@ void check_tally_triggers(double& ratio, int& tally_id, int& score)
 
         // If there is a score without contributions, set ratio to inf and
         // exit early, unless zero score is allowed for this trigger.
-        if (uncert_pair.first == -1 && ! trigger.allow_zero) {
+        if (uncert_pair.first == -1 && !trigger.allow_zero) {
           ratio = INFINITY;
           score = t.scores_[trigger.score_index];
           tally_id = t.id_;

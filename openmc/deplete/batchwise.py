@@ -253,8 +253,7 @@ class Batchwise(ABC):
                 guesses, keffs = search
 
                 #Check if all guesses are within bracket limits
-                if all(self.bracket_limit[0] < guess < self.bracket_limit[1] \
-                    for guess in guesses):
+                if self.bracket_limit[0] < all(guesses) < self.bracket_limit[1]:
                     #Simple method to iteratively adapt the bracket
                     print("Search_for_keff returned values below or above "
                           "target. Trying to iteratively adapt bracket...")
@@ -292,7 +291,18 @@ class Batchwise(ABC):
                         bracket[np.argmax(keffs)] = bracket[np.argmin(keffs)]
                         bracket[np.argmin(keffs)] += grad * (min(keffs).n - \
                                                   self.target) * dir
-                    #check if adapted bracket are within bracketing limits
+
+                    #check if new bracket lies outside of limit and in that case
+                    # set root to closest limit and continue 
+                    if not self.bracket_limit[0] < all(bracket+val) < self.bracket_limit[1]:
+                        # Set res with closest limit and continue
+                        arg_min = abs(np.array(self.bracket_limit) - bracket).argmin()
+                        warn("WARNING: Adaptive iterative bracket went off "
+                            "bracket limits. Set root to {:.2f} and continue."
+                            .format(self.bracket_limit[arg_min]))
+                        root = self.bracket_limit[arg_min]
+
+                    #check if one bracket is outside of limit
                     if max(bracket) + val > self.bracket_limit[1]:
                         bracket[np.argmax(bracket)] = self.bracket_limit[1] - val
                     if min(bracket) + val < self.bracket_limit[0]:

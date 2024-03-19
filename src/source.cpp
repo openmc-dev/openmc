@@ -377,10 +377,10 @@ bool FileSource::inside_hypercube(SourceSite& s) const
   std::vector<double> cds {
     s.r[0], s.r[1], s.r[2], s.u[0], s.u[1], s.u[2], s.E, s.time};
   for (int i = 0; i < std::max(lower_left_.size(), upper_right_.size()); i++) {
-    if ((i < lower_left_.size() && cds[i] < lower_left_[i]) ||
-        (i > upper_right_.size() && cds[i] > upper_right_[i]))
+    if ((cds[i] < lower_left_[i]) || (cds[i] > upper_right_[i]))
       return false;
   }
+
   return true;
 }
 

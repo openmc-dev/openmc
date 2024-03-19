@@ -2253,7 +2253,7 @@ void score_analog_tally_ce(Particle& p)
     // Save the original incident energy, in case we change it with Gaussian
     // energy broadening.
     const double orig_E_last = p.E_last();
-    
+
     // Do Gaussian Energy Broadening
     tally.gaussian_energy_broadening_.apply(p);
 
@@ -2369,7 +2369,7 @@ void score_tracklength_tally(Particle& p, double distance)
     // Save the original incident energy, in case we change it with Gaussian
     // energy broadening.
     const double orig_E_last = p.E_last();
-    
+
     // Do Gaussian Energy Broadening
     tally.gaussian_energy_broadening_.apply(p);
 
@@ -2464,7 +2464,7 @@ void score_collision_tally(Particle& p)
     // Save the original incident energy, in case we change it with Gaussian
     // energy broadening.
     const double orig_E_last = p.E_last();
-    
+
     // Do Gaussian Energy Broadening
     tally.gaussian_energy_broadening_.apply(p);
 
@@ -2550,7 +2550,7 @@ void score_surface_tally(Particle& p, const vector<int>& tallies)
     // Save the original incident energy, in case we change it with Gaussian
     // energy broadening.
     const double orig_E_last = p.E_last();
-    
+
     // Do Gaussian Energy Broadening
     tally.gaussian_energy_broadening_.apply(p);
 

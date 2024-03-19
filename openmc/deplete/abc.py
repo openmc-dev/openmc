@@ -825,7 +825,10 @@ class Integrator(ABC):
                     n, res = self._get_bos_data_from_operator(i, source_rate, n)
                 else:
                     n, res = self._get_bos_data_from_restart(i, source_rate, n)
-
+                    if self._reactivity_control:
+                        root = self.operator.prev_res[-1].reac_cont
+                    else:
+                        root = None
                 # Solve Bateman equations over time interval
                 proc_time, n_list, res_list = self(n, res.rates, dt, source_rate, i)
 

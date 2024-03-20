@@ -585,3 +585,9 @@ def test_single_xml_exec(run_in_tmpdir):
 
     with pytest.raises(RuntimeError, match='input_dir'):
         openmc.run(path_input='input_dir/pincell.xml')
+
+    # Make sure path can be specified with run
+    pincell_model.run(path='my_model.xml')
+
+    os.mkdir('subdir')
+    pincell_model.run(path='subdir')

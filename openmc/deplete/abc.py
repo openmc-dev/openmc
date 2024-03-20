@@ -848,7 +848,7 @@ class Integrator(ABC):
                         root = None
                     n, res = self._get_bos_data_from_operator(i, source_rate, n)
                 else:
-                    n, res = self._get_bos_data_from_restart(i, source_rate, n)
+                    n, res = self._get_bos_data_from_restart(source_rate, n)
                     if self._reactivity_control:
                         root = self.operator.prev_res[-1].reac_cont
                     else:

@@ -20,9 +20,10 @@ __all__ = [
     'Filter', 'AzimuthalFilter', 'CellFilter', 'CellbornFilter', 'CellfromFilter',
     'CellInstanceFilter', 'CollisionFilter', 'DistribcellFilter', 'DelayedGroupFilter',
     'EnergyFilter', 'EnergyoutFilter', 'EnergyFunctionFilter', 'LegendreFilter',
-    'MaterialFilter', 'MaterialFromFilter', 'MeshFilter', 'MeshSurfaceFilter', 'MuFilter', 'ParticleFilter',
-    'PolarFilter', 'SphericalHarmonicsFilter', 'SpatialLegendreFilter', 'SurfaceFilter',
-    'UniverseFilter', 'ZernikeFilter', 'ZernikeRadialFilter', 'filters'
+    'MaterialFilter', 'MaterialFromFilter', 'MeshFilter', 'MeshSurfaceFilter', 'MuFilter', 
+    'MuSurfaceFilter', 'ParticleFilter', 'PolarFilter', 'SphericalHarmonicsFilter', 
+    'SpatialLegendreFilter', 'SurfaceFilter', 'UniverseFilter', 'ZernikeFilter', 
+    'ZernikeRadialFilter', 'filters'
 ]
 
 # Tally functions
@@ -407,6 +408,9 @@ class MeshSurfaceFilter(Filter):
 class MuFilter(Filter):
     filter_type = 'mu'
 
+class MuSurfaceFilter(Filter):
+    filter_type = 'musurface'
+
 
 class ParticleFilter(Filter):
     filter_type = 'particle'
@@ -509,6 +513,7 @@ _FILTER_TYPE_MAP = {
     'mesh': MeshFilter,
     'meshsurface': MeshSurfaceFilter,
     'mu': MuFilter,
+    'musurface': MuSurfaceFilter,
     'particle': ParticleFilter,
     'polar': PolarFilter,
     'sphericalharmonics': SphericalHarmonicsFilter,

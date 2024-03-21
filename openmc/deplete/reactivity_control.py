@@ -742,8 +742,6 @@ class GeometricalCellReactivityController(CellReactivityController):
         OpenMC Cell identifier to where apply batch wise scheme
     attrib_name : str {'translation', 'rotation'}
         Cell attribute type
-    vector : numpy.ndarray
-        Array storing vector of translation or rotation
     axis : int {0,1,2}
         Directional axis for geometrical parametrization, where 0, 1 and 2 stand
         for 'x', 'y' and 'z', respectively.
@@ -792,9 +790,6 @@ class GeometricalCellReactivityController(CellReactivityController):
         # check if universe contains 2 cells
         check_length("universe cells", self.cell.fill.cells, 2)
 
-        # Initialize vector
-        self.vector = np.zeros(3)
-
         self.universe_cells = [
             cell for cell in self.cell.fill.cells.values() if cell.fill.depletable
         ]
@@ -829,8 +824,13 @@ class GeometricalCellReactivityController(CellReactivityController):
         val : float
             Cell coefficient to set, in cm for translation and deg for rotation
         """
-        self.vector[self.axis] = val
-        setattr(self.lib_cell, self.attrib_name, self.vector)
+        if self.attrib_name == "translation":
+            vector = self.lib_cell.translation
+        elif self.attrib_name == "rotation":
+            vector = self.lib_cell.rotation
+
+        vector[self.axis] = val
+        setattr(self.lib_cell, self.attrib_name, vector)
 
     def _initialize_volume_calc(self):
         """Set volume calculation model settings of depletable materials filling

@@ -293,7 +293,7 @@ class Batchwise(ABC):
                                                   self.target) * dir
 
                     #check if new bracket lies outside of limit and in that case
-                    # set root to closest limit and continue 
+                    # set root to closest limit and continue
                     if not self.bracket_limit[0] < all(bracket+val) < self.bracket_limit[1]:
                         # Set res with closest limit and continue
                         arg_min = abs(np.array(self.bracket_limit) - bracket).argmin()
@@ -303,10 +303,10 @@ class Batchwise(ABC):
                         root = self.bracket_limit[arg_min]
 
                     #check if one bracket is outside of limit
-                    if max(bracket) + val > self.bracket_limit[1]:
-                        bracket[np.argmax(bracket)] = self.bracket_limit[1] - val
-                    if min(bracket) + val < self.bracket_limit[0]:
-                        bracket[np.argmin(bracket)] = self.bracket_limit[0] - val
+                    if bracket[1] + val > self.bracket_limit[1]:
+                        bracket[1] = self.bracket_limit[1] - val
+                    if bracket[0] + val < self.bracket_limit[0]:
+                        bracket[0] = self.bracket_limit[0] - val
 
                 else:
                     # Set res with closest limit and continue
@@ -981,9 +981,6 @@ class BatchwiseCellGeometrical(BatchwiseCell):
         else:
             self.cell_materials = None
 
-        # Initialize vector
-        self.vector = np.zeros(3)
-
         check_type('samples', samples, int)
         self.samples = samples
 
@@ -1015,10 +1012,14 @@ class BatchwiseCellGeometrical(BatchwiseCell):
         val : float
             Cell coefficient to set, in cm for translation and deg for rotation
         """
-        self.vector[self.axis] = val
         for cell in openmc.lib.cells.values():
             if cell.id == self.cell.id:
-                setattr(cell, self.attrib_name, self.vector)
+                if self.attrib_name == "translation":
+                    vector = cell.translation
+                elif self.attrib_name == "rotation":
+                    vector = cell.rotation
+                vector[self.axis] = val
+                setattr(cell, self.attrib_name, vector)
 
     def _initialize_volume_calc(self):
         """

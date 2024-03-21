@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 import openmc
+import openmc.deplete
 import openmc.lib
 
 
@@ -448,13 +449,61 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     # In this test we first run without pre-initializing the shared library
     # data and then compare. Then we repeat with the C API already initialized
     # and make sure we get the same answer
-    test_model.deplete([1e6], 'predictor', final_step=False,
-                       operator_kwargs=op_kwargs,
-                       power=1., output=False)
+    test_model.deplete(
+        timesteps=[1e6],
+        method='predictor',
+        operator_class='CoupledOperator',
+        final_step=False,
+        operator_kwargs=op_kwargs,
+        power=1.,
+        output=False
+    )
     # Get the new Xe136 and U235 atom densities
-    after_xe = mats[0].get_nuclide_atom_densities()['Xe136']
-    after_u = mats[0].get_nuclide_atom_densities()['U235']
-    assert after_xe + after_u == pytest.approx(initial_u, abs=1e-15)
+    after_coupled_xe = mats[0].get_nuclide_atom_densities()['Xe136']
+    after_coupled_u = mats[0].get_nuclide_atom_densities()['U235']
+    assert after_coupled_xe + after_coupled_u == pytest.approx(initial_u, abs=1e-15)
+    assert test_model.is_initialized is False
+
+    flux_in_each_group, micro_xs = openmc.deplete.get_microxs_and_flux(
+        model=test_model,
+        domains=[mats[0]],
+        energies=[0, 30e6],
+        chain_file='test_chain.xml'
+    )
+
+    op_kwargs["fluxes"] = [i[0] for i in flux_in_each_group]
+    op_kwargs["micros"] = micro_xs
+    # materials is not in the operator_kwargs but should be found automatically
+    test_model.deplete(
+        timesteps=[1e6],
+        method='predictor',
+        operator_class='IndependentOperator',
+        final_step=False,
+        operator_kwargs=op_kwargs,
+        power=1.,
+        output=False
+    )
+    # Get the new Xe136 and U235 atom densities
+    after_independent_xe = mats[0].get_nuclide_atom_densities()['Xe136']
+    after_independent_u = mats[0].get_nuclide_atom_densities()['U235']
+    assert after_independent_xe + after_independent_u == pytest.approx(initial_u, abs=1e-15)
+    assert test_model.is_initialized is False
+
+    # adding materials to the operator_kwargs
+    op_kwargs["materials"] = openmc.Materials([mat for mat in mats if mat.depletable])
+    test_model.deplete(
+        timesteps=[1e6],
+        method='predictor',
+        operator_class='IndependentOperator',
+        final_step=False,
+        operator_kwargs=op_kwargs,
+        power=1.,
+        output=False
+    )
+    # Get the new Xe136 and U235 atom densities
+    after_independent_xe = mats[0].get_nuclide_atom_densities()['Xe136']
+    after_independent_u = mats[0].get_nuclide_atom_densities()['U235']
+    assert after_independent_xe + after_independent_u == pytest.approx(initial_u, abs=1e-15)
     assert test_model.is_initialized is False
 
     # check the tally output
@@ -492,8 +541,10 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     assert test_model.is_initialized is True
 
     # And end by comparing to the previous case
-    assert after_xe == pytest.approx(after_lib_xe, abs=1e-15)
-    assert after_u == pytest.approx(after_lib_u, abs=1e-15)
+    assert after_coupled_xe == pytest.approx(after_lib_xe, abs=1e-15)
+    assert after_coupled_u == pytest.approx(after_lib_u, abs=1e-15)
+    assert after_independent_xe == pytest.approx(after_lib_xe, abs=1e-15)
+    assert after_independent_u == pytest.approx(after_lib_u, abs=1e-15)
 
     check_tally_output()
 

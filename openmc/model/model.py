@@ -7,7 +7,7 @@ from pathlib import Path
 from numbers import Integral
 from tempfile import NamedTemporaryFile
 import warnings
-from typing import Optional, Dict
+from typing import Optional, Dict, Sequence
 
 import h5py
 import lxml.etree as ET
@@ -347,9 +347,17 @@ class Model:
 
         openmc.lib.finalize()
 
-    def deplete(self, timesteps, method='cecm', final_step=True,
-                operator_kwargs=None, directory='.', output=True,
-                **integrator_kwargs):
+    def deplete(
+            self,
+            timesteps: Sequence[float],
+            method: str = 'cecm',
+            operator_class: str = 'CoupledOperator',
+            final_step: bool = True,
+            operator_kwargs: Optional[Dict] = None,
+            directory: PathLike = '.',
+            output:bool = True,
+            **integrator_kwargs
+        ):
         """Deplete model using specified timesteps/power
 
         .. versionchanged:: 0.13.0
@@ -362,8 +370,14 @@ class Model:
             Array of timesteps in units of [s]. Note that values are not
             cumulative.
         method : str, optional
-             Integration method used for depletion (e.g., 'cecm', 'predictor').
-             Defaults to 'cecm'.
+            Integration method used for depletion (e.g., 'cecm', 'predictor').
+            Defaults to 'cecm'.
+        operator_class : str, optional
+            Operator class used for depletion (e.g., 'CoupledOperator' or
+            'IndependentOperator'). Defaults to 'CoupledOperator'. If
+            IndependentOperator is selected then all depletable materials
+            in the model will be used and fluxes and micros will need passing
+            in via the operator_kwargs.
         final_step : bool, optional
             Indicate whether or not a transport solve should be run at the end
             of the last timestep. Defaults to running this transport solve.
@@ -381,12 +395,10 @@ class Model:
 
         """
 
-        if operator_kwargs is None:
-            op_kwargs = {}
-        elif isinstance(operator_kwargs, dict):
-            op_kwargs = operator_kwargs
-        else:
+        if operator_kwargs is not None and not isinstance(operator_kwargs, dict):
             raise ValueError("operator_kwargs must be a dict or None")
+
+        check_value('operator_class', operator_class, ('IndependentOperator', 'CoupledOperator'))
 
         # Import openmc.deplete here so the Model can be used even if the
         # shared library is unavailable.
@@ -397,8 +409,23 @@ class Model:
 
         with _change_directory(Path(directory)):
             with openmc.lib.quiet_dll(output):
-                # TODO: Support use of IndependentOperator too
-                depletion_operator = dep.CoupledOperator(self, **op_kwargs)
+                if operator_class == 'IndependentOperator':
+                    if 'materials' not in operator_kwargs.keys():
+                        depletable_mats = [
+                            mat for mat in self.geometry.get_all_materials().values()
+                            if mat.depletable]
+                        operator_kwargs['materials'] = openmc.Materials(depletable_mats)
+                    # position args removed from dict to avoid got multiple args error
+                    materials = operator_kwargs.pop('materials')
+                    fluxes = operator_kwargs.pop('fluxes')
+                    micros = operator_kwargs.pop('micros')
+                    depletion_operator = dep.IndependentOperator(
+                        materials,
+                        fluxes,
+                        micros,
+                        **operator_kwargs)
+                else:  # operator is CoupledOperator
+                    depletion_operator = dep.CoupledOperator(self, **operator_kwargs)
 
             # Tell depletion_operator.finalize NOT to clear C API memory when
             # it is done
@@ -415,11 +442,19 @@ class Model:
             with openmc.lib.quiet_dll(output):
                 integrator.integrate(final_step)
 
+            if operator_class == 'IndependentOperator':
+                # loading depletion results from HDF5 and updating materials to match
+                results = openmc.deplete.Results(Path(directory) / 'depletion_results.h5')
+                step = results[-1] # TODO not sure which timestep to use here
+
             # Now make the python Materials match the C API material data
             for mat_id, mat in self._materials_by_id.items():
                 if mat.depletable:
                     # Get the C data
-                    c_mat = openmc.lib.materials[mat_id]
+                    if operator_class == 'IndependentOperator':
+                        c_mat = step.get_material(str(mat_id))
+                    else:  # operator is CoupledOperator
+                        c_mat = openmc.lib.materials[mat_id]
                     nuclides, densities = c_mat._get_densities()
                     # And now we can remove isotopes and add these ones in
                     mat.nuclides.clear()

@@ -297,21 +297,23 @@ class ReactivityController(ABC):
                             slope * (min(keffs).n - self.target) * dir
                         )
 
-                    #check if adapted bracket lies completely outside of limits
+                    # check if adapted bracket lies completely outside of limits
                     if not (
-                        self.bracket_limit[0] < all(bracket+val) < self.bracket_limit[1]
+                        self.bracket_limit[0]
+                        < all(np.array(bracket) + val)
+                        < self.bracket_limit[1]
                     ):
                         # Set res with closest limit and continue
                         arg_min = abs(np.array(self.bracket_limit) - bracket).argmin()
                         warn(
                             "Adaptive iterative bracket went off "
-                            "bracket limits. Set root to {:.2f} and continue."
-                            .format(self.bracket_limit[arg_min]
+                            "bracket limits. Set root to {:.2f} and continue.".format(
+                                self.bracket_limit[arg_min]
                             )
                         )
                         root = self.bracket_limit[arg_min]
 
-                    #check if adapted bracket ends are outside bracketing limits
+                    # check if adapted bracket ends are outside bracketing limits
                     if bracket[1] + val > self.bracket_limit[1]:
                         bracket[1] = self.bracket_limit[1] - val
                     if bracket[0] + val < self.bracket_limit[0]:
@@ -586,30 +588,45 @@ class CellReactivityController(ReactivityController):
         ]
 
         if isinstance(val, Cell):
-            check_value("Cell exists", val,
-                        [cell_bundle[2] for cell_bundle in cell_bundles])
+            check_value(
+                "Cell exists", val, [cell_bundle[2] for cell_bundle in cell_bundles]
+            )
 
         elif isinstance(val, str):
             if val.isnumeric():
-                check_value("Cell id exists", int(val),
-                            [cell_bundle[0] for cell_bundle in cell_bundles])
+                check_value(
+                    "Cell id exists",
+                    int(val),
+                    [cell_bundle[0] for cell_bundle in cell_bundles],
+                )
 
-                val = [cell_bundle[2] for cell_bundle in cell_bundles \
-                        if cell_bundle[0] == int(val)][0]
+                val = [
+                    cell_bundle[2]
+                    for cell_bundle in cell_bundles
+                    if cell_bundle[0] == int(val)
+                ][0]
 
             else:
-                check_value("Cell name exists", val,
-                            [cell_bundle[1] for cell_bundle in cell_bundles])
+                check_value(
+                    "Cell name exists",
+                    val,
+                    [cell_bundle[1] for cell_bundle in cell_bundles],
+                )
 
-                val = [cell_bundle[2] for cell_bundle in cell_bundles \
-                        if cell_bundle[1] == val][0]
+                val = [
+                    cell_bundle[2]
+                    for cell_bundle in cell_bundles
+                    if cell_bundle[1] == val
+                ][0]
 
         elif isinstance(val, int):
-            check_value("Cell id exists", val,
-                        [cell_bundle[0] for cell_bundle in cell_bundles])
+            check_value(
+                "Cell id exists", val, [cell_bundle[0] for cell_bundle in cell_bundles]
+            )
 
-            val = [cell_bundle[2] for cell_bundle in cell_bundles \
-                    if cell_bundle[0] == val][0]
+            val = [
+                cell_bundle[2] for cell_bundle in cell_bundles if cell_bundle[0] == val
+            ][0]
 
         else:
             ValueError(f"Cell: {val} is not supported")

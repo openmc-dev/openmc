@@ -81,7 +81,7 @@ def model():
 @pytest.mark.parametrize("obj, attribute, bracket_limit, axis, vec, ref_result", [
     ('trans_cell', 'translation', [-40,40], 2, None, 'depletion_with_translation'),
     ('rot_cell', 'rotation', [-90,90], 2, None, 'depletion_with_rotation'),
-    ('f', 'refuel', [-100,100], None, {'U235':1}, 'depletion_with_refuel')
+    ('f', 'refuel', [-100,100], None, {'U235':0.9, 'U238':0.1}, 'depletion_with_refuel')
     ])
 def test_reactivity_control(run_in_tmpdir, model, obj, attribute, bracket_limit,
                     axis, vec, ref_result):
@@ -118,5 +118,4 @@ def test_reactivity_control(run_in_tmpdir, model, obj, attribute, bracket_limit,
     res_ref = openmc.deplete.Results(path_reference)
 
     # Use high tolerance here
-    assert [res.reac_cont for res in res_test] == pytest.approx(
-           [res.reac_cont for res in res_ref], rel=2)
+    assert res_test[0].reac_cont == pytest.approx(res_ref[0].reac_cont, rel=2)

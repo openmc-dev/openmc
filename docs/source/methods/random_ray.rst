@@ -490,7 +490,7 @@ each iteration.
 
 There are some drawbacks to this method. Recall, this denominator volume term
 originally stemmed from taking a volume weighted integral of the angular flux,
-in which case the denominator served as normalization term for the numerator
+in which case the denominator served as a normalization term for the numerator
 integral in Equation :eq:`integral`. Essentially, we have now used a different
 term for the volume in the numerator as compared to the normalizing volume in
 the denominator. The inevitable mismatch (due to noise) between these two

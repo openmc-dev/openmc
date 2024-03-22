@@ -1,0 +1,63 @@
+name: Build Wheels
+
+on: [push, workflow_dispatch]
+
+jobs:
+  build_wheels:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runs-on: ubuntu-20.04
+            cibw-arch: manylinux_x86_64
+          - runs-on: macos-latest
+            cibw-arch: macosx_x86_64
+          - runs-on: macos-latest
+            cibw-arch: macosx_arm64
+
+    name: Build wheels on ${{ matrix.cibw-arch }}
+    runs-on: ${{ matrix.runs-on }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.16.2
+        env:
+          CIBW_BUILD: "cp311-${{ matrix.cibw-arch }}"
+          CIBW_ARCHS_MACOS: x86_64 arm64
+          CIBW_ARCHS_LINUX: x86_64
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
+          CIBW_ENVIRONMENT_LINUX: LD_LIBRARY_PATH="/usr/local/lib64:${LD_LIBRARY_PATH}" PIP_ONLY_BINARY="numpy"
+          CIBW_BEFORE_ALL_LINUX: |
+            set -eu
+            dnf install -y epel-release
+            dnf config-manager --enable epel
+            dnf install -y sudo cmake eigen3-devel gcc gcc-c++ wget hdf5-devel
+            bash build-deps.sh
+            echo "LD_LIBRARY_PATH: ${LD_LIBRARY_PATH}"
+
+          CIBW_ENVIRONMENT_MACOS: MACOS_DEPLOYMENT_TARGET=10.9 CMAKE_OSX_ARCHITECTURES=${{ matrix.cibw-arch == 'macosx_x86_64' && 'x86_64' || matrix.cibw-arch == 'macosx_arm64' && 'arm64' || '' }} PIP_ONLY_BINARY="numpy"
+          CIBW_BEFORE_ALL_MACOS: |
+            set -eu
+            if [ "$CMAKE_OSX_ARCHITECTURES" == "arm64" ]; then
+              # Uninstall libpng so we can get the correct version
+              dependent_packages=$(brew uses --installed libpng)
+              brew uninstall --ignore-dependencies $dependent_packages libpng
+              PACKAGES=(libpng libaec eigen hdf5)
+              for PACKAGE in "${PACKAGES[@]}"
+              do
+                  brew fetch --force --bottle-tag=arm64_big_sur $PACKAGE
+                  brew install $(brew --cache --bottle-tag=arm64_big_sur $PACKAGE)
+              done
+            else
+              brew install eigen hdf5
+            fi
+            bash build-deps.sh
+
+      - uses: actions/upload-artifact@v3
+        with:
+          path: ./wheelhouse/*.whl

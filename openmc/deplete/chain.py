@@ -598,8 +598,11 @@ class Chain:
         --------
         :meth:`get_default_fission_yields`
         """
-        matrix = defaultdict(float)
         reactions = set()
+
+        # Use DOK matrix as intermediate representation for matrix
+        n = len(self)
+        matrix = sp.dok_matrix((n, n))
 
         if fission_yields is None:
             fission_yields = self.get_default_fission_yields()
@@ -675,11 +678,8 @@ class Chain:
                 # Clear set of reactions
                 reactions.clear()
 
-        # Use DOK matrix as intermediate representation, then convert to CSC and return
-        n = len(self)
-        matrix_dok = sp.dok_matrix((n, n))
-        dict.update(matrix_dok, matrix)
-        return matrix_dok.tocsc()
+        # Return CSC representation instead of DOK
+        return matrix.tocsc()
 
     def add_redox_term(self, matrix, buffer, oxidation_states):
 
@@ -731,7 +731,9 @@ class Chain:
             Sparse matrix representing transfer term.
 
         """
-        matrix = defaultdict(float)
+        # Use DOK as intermediate representation
+        n = len(self)
+        matrix = sp.dok_matrix((n, n))
 
         for i, nuc in enumerate(self.nuclides):
             elm = re.split(r'\d+', nuc.name)[0]
@@ -757,10 +759,9 @@ class Chain:
                 else:
                     matrix[i, i] = 0.0
             #Nothing else is allowed
-        n = len(self)
-        matrix_dok = sp.dok_matrix((n, n))
-        dict.update(matrix_dok, matrix)
-        return matrix_dok.tocsc()
+
+        # Return CSC instead of DOK
+        return matrix.tocsc()
 
     def get_branch_ratios(self, reaction="(n,gamma)"):
         """Return a dictionary with reaction branching ratios

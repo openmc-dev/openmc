@@ -118,15 +118,13 @@ class SurfaceSourceTestHarness(PyAPITestHarness):
 
 
 @pytest.mark.surf_source_op('write')
-def test_surface_source_write(model):
+def test_surface_source_write(model, monkeypatch):
     # Test result is based on 1 MPI process
-    np = config['mpi_np']
-    config['mpi_np'] = '1'
+    monkeypatch.setitem(config, "mpi_np", "1")
     harness = SurfaceSourceTestHarness('statepoint.10.h5',
                                        model,
                                        'inputs_true_write.dat')
     harness.main()
-    config['mpi_np'] = np
 
 
 @pytest.mark.surf_source_op('read')

@@ -2648,8 +2648,6 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
           // we skip the assume_separate break below.
           auto filter_iter = FilterBinIter(tally, p);
           auto end = FilterBinIter(tally, true, &p.filter_matches());
-          if (filter_iter == end)
-            continue;
 
           // Loop over filter bins.
           for (; filter_iter != end; ++filter_iter) {

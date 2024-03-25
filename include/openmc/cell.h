@@ -115,7 +115,7 @@ private:
   //!
   //! Uses the comobination of half-spaces and binary operators to determine
   //! if short circuiting can be used. Short cicuiting uses the relative and
-  //! absolute depth of parenthases in the expression.
+  //! absolute depth of parentheses in the expression.
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
 
   //! BoundingBox if the paritcle is in a simple cell.

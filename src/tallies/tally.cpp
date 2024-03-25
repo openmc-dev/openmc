@@ -876,6 +876,11 @@ void Tally::GaussianEnergyBroadening::apply(Particle& p) const
   if (active == false)
     return;
 
+  // If the particle has a zero energy or (more likely) its contribution to a
+  // pulse height tally was 0, we don't perform GEB
+  if (p.E_last() <= 0.)
+    return;
+
   // Calculate the FWHM
   const double FWHM =
     a + b * std::sqrt(p.E_last() + c * p.E_last() * p.E_last());

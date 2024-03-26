@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
 from collections.abc import MutableSequence
 from copy import deepcopy
+import warnings
 
 import numpy as np
 
+import openmc
 from .bounding_box import BoundingBox
 
 
@@ -333,6 +335,60 @@ class Region(ABC):
             memo = {}
         return type(self)(n.rotate(rotation, pivot=pivot, order=order,
                                    inplace=inplace, memo=memo) for n in self)
+
+    def plot(self, *args, **kwargs):
+        """Display a slice plot of the region.
+
+        .. versionadded:: 0.14.1
+
+        Parameters
+        ----------
+        origin : iterable of float
+            Coordinates at the origin of the plot. If left as None then the
+            bounding box center will be used to attempt to ascertain the origin.
+            Defaults to (0, 0, 0) if the bounding box is not finite
+        width : iterable of float
+            Width of the plot in each basis direction. If left as none then the
+            bounding box width will be used to attempt to ascertain the plot
+            width. Defaults to (10, 10) if the bounding box is not finite
+        pixels : Iterable of int or int
+            If iterable of ints provided, then this directly sets the number of
+            pixels to use in each basis direction. If int provided, then this
+            sets the total number of pixels in the plot and the number of pixels
+            in each basis direction is calculated from this total and the image
+            aspect ratio.
+        basis : {'xy', 'xz', 'yz'}
+            The basis directions for the plot
+        seed : int
+            Seed for the random number generator
+        openmc_exec : str
+            Path to OpenMC executable.
+        axes : matplotlib.Axes
+            Axes to draw to
+        outline : bool
+            Whether outlines between color boundaries should be drawn
+        axis_units : {'km', 'm', 'cm', 'mm'}
+            Units used on the plot axis
+        **kwargs
+            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            Axes containing resulting image
+
+        """
+        if 'color_by' in kwargs:
+            warnings.warn("The 'color_by' argument is present but won't be applied in a region plot")
+        if 'colors' in kwargs:
+            warnings.warn("The 'colors' argument is present but won't be applied in a region plot")
+        if 'legend' in kwargs:
+            warnings.warn("The 'legend' argument is present but won't be applied in a region plot")
+        if 'legend_kwargs' in kwargs:
+            warnings.warn("The 'legend_kwargs' argument is present but won't be applied in a region plot")
+        c = openmc.Cell(region=self)
+        openmc.Cell.used_ids.remove(c.id)
+        return c.plot(*args, **kwargs)
 
 
 class Intersection(Region, MutableSequence):

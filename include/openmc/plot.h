@@ -100,6 +100,7 @@ public:
   virtual void print_info() const = 0;
 
   const std::string& path_plot() const { return path_plot_; }
+  std::string& path_plot() { return path_plot_; }
   int id() const { return id_; }
   int level() const { return level_; }
 

@@ -6,6 +6,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/error.h"
+#include "openmc/random_ray/random_ray.h"
 #include "openmc/surface.h"
 
 namespace openmc {
@@ -16,7 +17,18 @@ namespace openmc {
 
 void VacuumBC::handle_particle(Particle& p, const Surface& surf) const
 {
-  p.cross_vacuum_bc(surf);
+  // Random ray and Monte Carlo need different treatments at vacuum BCs
+  if (settings::solver_type == SolverType::RANDOM_RAY) {
+    // Reflect ray off of the surface
+    ReflectiveBC().handle_particle(p, surf);
+
+    // Set ray's angular flux spectrum to vacuum conditions (zero)
+    RandomRay* r = static_cast<RandomRay*>(&p);
+    std::fill(r->angular_flux_.begin(), r->angular_flux_.end(), 0.0);
+
+  } else {
+    p.cross_vacuum_bc(surf);
+  }
 }
 
 //==============================================================================

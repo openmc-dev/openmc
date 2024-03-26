@@ -57,6 +57,8 @@ void print_results();
 
 void write_tallies();
 
+void show_time(const char* label, double secs, int indent_level = 0);
+
 } // namespace openmc
 #endif // OPENMC_OUTPUT_H
 

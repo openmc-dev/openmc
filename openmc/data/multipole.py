@@ -1273,7 +1273,7 @@ class WindowedMultipole(EqualityMixin):
 
         # Open file and write version.
         with h5py.File(str(path), mode, libver=libver) as f:
-            f.attrs['filetype'] = np.string_('data_wmp')
+            f.attrs['filetype'] = np.bytes_('data_wmp')
             f.attrs['version'] = np.array(WMP_VERSION)
 
             g = f.create_group(self.name)

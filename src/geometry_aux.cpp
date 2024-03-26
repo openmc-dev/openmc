@@ -539,7 +539,7 @@ std::string distribcell_path_inner(int32_t target_cell, int32_t map,
 
       // The desired cell is the first cell that gives an offset smaller or
       // equal to the target offset.
-      if (temp_offset <= target_offset)
+      if (temp_offset <= target_offset - c.offset_[map])
         break;
     }
   }
@@ -570,11 +570,11 @@ std::string distribcell_path_inner(int32_t target_cell, int32_t map,
     for (ReverseLatticeIter it = lat.rbegin(); it != lat.rend(); ++it) {
       int32_t indx = lat.universes_.size() * map + it.indx_;
       int32_t temp_offset = offset + lat.offsets_[indx];
-      if (temp_offset <= target_offset) {
+      if (temp_offset <= target_offset - c.offset_[map]) {
         offset = temp_offset;
         path << "(" << lat.index_to_string(it.indx_) << ")->";
-        path << distribcell_path_inner(
-          target_cell, map, target_offset, *model::universes[*it], offset);
+        path << distribcell_path_inner(target_cell, map, target_offset,
+          *model::universes[*it], offset + c.offset_[map]);
         return path.str();
       }
     }

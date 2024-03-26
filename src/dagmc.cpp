@@ -24,9 +24,9 @@
 namespace openmc {
 
 #ifdef DAGMC
-const bool DAGMC_ENABLED = true;
+const bool DllExport DAGMC_ENABLED = true;
 #else
-const bool DAGMC_ENABLED = false;
+const bool DllExport DAGMC_ENABLED = false;
 #endif
 
 } // namespace openmc

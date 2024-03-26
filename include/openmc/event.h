@@ -7,6 +7,8 @@
 #include "openmc/particle.h"
 #include "openmc/shared_array.h"
 
+#include <tuple>
+
 namespace openmc {
 
 //==============================================================================

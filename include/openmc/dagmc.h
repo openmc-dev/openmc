@@ -1,8 +1,10 @@
 #ifndef OPENMC_DAGMC_H
 #define OPENMC_DAGMC_H
 
+#include "openmc/constants.h" // Needed for DllExport
+
 namespace openmc {
-extern "C" const bool DAGMC_ENABLED;
+extern "C" const bool DllExport DAGMC_ENABLED;
 }
 
 // always include the XML interface header

@@ -382,6 +382,64 @@ class IndependentSource(SourceBase):
 
         return source
 
+    @classmethod
+    def from_cell_with_material(
+        cls,
+        cell: openmc.Cell,
+        material: Optional[openmc.Material] = None
+    ) -> Optional['openmc.Source']:
+        """Generate an isotropic photon source from an openmc.Cell object. By
+        default the cells material is used to generate the source. If the
+        material used to fill the cell has no photon emission then None is
+        returned.
+
+        Parameters
+        ----------
+        cell : openmc.Cell
+            OpenMC cell object to use for the source creation. Source domain is
+            set to the cell.
+        material : openmc.Material, optional
+            OpenMC material object to use for the source creation. If set then
+            this material is used preferentially over the cell.fill material.
+
+        Returns
+        -------
+        Optional[openmc.Source, None]
+            Source generated from an openmc.Material or None
+
+        """
+
+        if material is None:
+            material = cell.fill
+
+        if material is None:
+            msg = (
+                "Either a material must be provided or the cell must be "
+                "filled with an openmc.Material object as this method make "
+                "use of a material and the Material.decay_photon_energy method"
+            )
+            raise ValueError(msg)
+        if material.volume is None:
+            msg = (
+                "The openmc.Material object used must have the volume "
+                "property set"
+            )
+            raise ValueError(msg)
+
+        photon_spec = material.decay_photon_energy
+
+        if photon_spec is None:
+            return None
+
+        source = cls(domains=[cell])
+        source.particle = 'photon'
+        source.energy = photon_spec
+        source.strength = photon_spec.integral()
+        source.space = openmc.stats.Box(*cell.bounding_box)
+        source.angle = openmc.stats.multivariate.Isotropic()
+
+        return source
+
 
 class MeshSource(SourceBase):
     """A source with a spatial distribution over mesh elements

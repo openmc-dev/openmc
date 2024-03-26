@@ -323,7 +323,7 @@ class ReactivityController(ABC):
                     # Set res with closest limit and continue
                     arg_min = abs(np.array(self.bracket_limit) - guesses).argmin()
                     warn(
-                        "Adaptive iterative bracket went off "
+                        "Search_for_keff returned values off "
                         "bracket limits. Set root to {:.2f} and continue.".format(
                             self.bracket_limit[arg_min]
                         )

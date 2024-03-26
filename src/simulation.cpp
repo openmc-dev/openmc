@@ -51,8 +51,16 @@
 
 int openmc_run()
 {
+
   openmc::simulation::time_total.start();
   openmc_simulation_init();
+
+  // this check ensures that a batch isn't executed in the case that
+  // the maximum number of batches has already been run in the
+  // statepoint file specified for use in the restart run
+  if (openmc::simulation::current_batch >= openmc::settings::n_max_batches) {
+    return 0;
+  }
 
   int err = 0;
   int status = 0;

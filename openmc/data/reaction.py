@@ -920,9 +920,9 @@ class Reaction(EqualityMixin):
 
         group.attrs['mt'] = self.mt
         if self.mt in REACTION_NAME:
-            group.attrs['label'] = np.string_(REACTION_NAME[self.mt])
+            group.attrs['label'] = np.bytes_(REACTION_NAME[self.mt])
         else:
-            group.attrs['label'] = np.string_(self.mt)
+            group.attrs['label'] = np.bytes_(self.mt)
         group.attrs['Q_value'] = self.q_value
         group.attrs['center_of_mass'] = 1 if self.center_of_mass else 0
         group.attrs['redundant'] = 1 if self.redundant else 0

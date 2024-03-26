@@ -277,7 +277,7 @@ class MaxwellEnergy(EnergyDistribution):
 
         """
 
-        group.attrs['type'] = np.string_('maxwell')
+        group.attrs['type'] = np.bytes_('maxwell')
         group.attrs['u'] = self.u
         self.theta.to_hdf5(group, 'theta')
 
@@ -410,7 +410,7 @@ class Evaporation(EnergyDistribution):
 
         """
 
-        group.attrs['type'] = np.string_('evaporation')
+        group.attrs['type'] = np.bytes_('evaporation')
         group.attrs['u'] = self.u
         self.theta.to_hdf5(group, 'theta')
 
@@ -556,7 +556,7 @@ class WattEnergy(EnergyDistribution):
 
         """
 
-        group.attrs['type'] = np.string_('watt')
+        group.attrs['type'] = np.bytes_('watt')
         group.attrs['u'] = self.u
         self.a.to_hdf5(group, 'a')
         self.b.to_hdf5(group, 'b')
@@ -728,7 +728,7 @@ class MadlandNix(EnergyDistribution):
 
         """
 
-        group.attrs['type'] = np.string_('madland-nix')
+        group.attrs['type'] = np.bytes_('madland-nix')
         group.attrs['efl'] = self.efl
         group.attrs['efh'] = self.efh
         self.tm.to_hdf5(group)
@@ -846,7 +846,7 @@ class DiscretePhoton(EnergyDistribution):
 
         """
 
-        group.attrs['type'] = np.string_('discrete_photon')
+        group.attrs['type'] = np.bytes_('discrete_photon')
         group.attrs['primary_flag'] = self.primary_flag
         group.attrs['energy'] = self.energy
         group.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio
@@ -945,7 +945,7 @@ class LevelInelastic(EnergyDistribution):
 
         """
 
-        group.attrs['type'] = np.string_('level')
+        group.attrs['type'] = np.bytes_('level')
         group.attrs['threshold'] = self.threshold
         group.attrs['mass_ratio'] = self.mass_ratio
 
@@ -1074,7 +1074,7 @@ class ContinuousTabular(EnergyDistribution):
 
         """
 
-        group.attrs['type'] = np.string_('continuous')
+        group.attrs['type'] = np.bytes_('continuous')
 
         dset = group.create_dataset('energy', data=self.energy)
         dset.attrs['interpolation'] = np.vstack((self.breakpoints,

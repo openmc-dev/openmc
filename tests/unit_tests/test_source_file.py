@@ -78,7 +78,7 @@ def test_wrong_source_attributes(run_in_tmpdir):
     ])
     arr = np.array([(1.0, 2.0, 3), (4.0, 5.0, 6), (7.0, 8.0, 9)], dtype=source_dtype)
     with h5py.File('animal_source.h5', 'w') as fh:
-        fh.attrs['filetype'] = np.string_("source")
+        fh.attrs['filetype'] = np.bytes_("source")
         fh.create_dataset('source_bank', data=arr)
 
     # Create a simple model that uses this lovely animal source

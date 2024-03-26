@@ -221,7 +221,7 @@ class CoherentElastic(Function1D):
         """
         dataset = group.create_dataset(name, data=np.vstack(
             [self.bragg_edges, self.factors]))
-        dataset.attrs['type'] = np.string_(type(self).__name__)
+        dataset.attrs['type'] = np.bytes_(type(self).__name__)
 
     @classmethod
     def from_hdf5(cls, dataset):
@@ -294,7 +294,7 @@ class IncoherentElastic(Function1D):
         """
         data = np.array([self.bound_xs, self.debye_waller])
         dataset = group.create_dataset(name, data=data)
-        dataset.attrs['type'] = np.string_(type(self).__name__)
+        dataset.attrs['type'] = np.bytes_(type(self).__name__)
 
     @classmethod
     def from_hdf5(cls, dataset):
@@ -464,7 +464,7 @@ class ThermalScattering(EqualityMixin):
         """
         # Open file and write version
         with h5py.File(str(path), mode, libver=libver) as f:
-            f.attrs['filetype'] = np.string_('data_thermal')
+            f.attrs['filetype'] = np.bytes_('data_thermal')
             f.attrs['version'] = np.array(HDF5_VERSION)
 
             # Write basic data

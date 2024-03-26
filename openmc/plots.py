@@ -465,11 +465,11 @@ class PlotBase(IDManagerMixin):
             domains = geometry.get_all_cells().values()
 
         # Set the seed for the random number generator
-        np.random.seed(seed)
+        rng = np.random.RandomState(seed)
 
         # Generate random colors for each feature
         for domain in domains:
-            self.colors[domain] = np.random.randint(0, 256, (3,))
+            self.colors[domain] = rng.randint(0, 256, (3,))
 
     def to_xml_element(self):
         """Save common plot attributes to XML element

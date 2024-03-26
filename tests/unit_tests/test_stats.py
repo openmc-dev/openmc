@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 import openmc
 import openmc.stats
+from scipy.integrate import trapezoid
 
 
 def assert_sample_mean(samples, expected_mean):
@@ -226,7 +227,7 @@ def test_legendre():
 
     # Integrating distribution should yield one
     mu = np.linspace(-1., 1., 1000)
-    assert np.trapz(d(mu), mu) == pytest.approx(1.0, rel=1e-4)
+    assert trapezoid(d(mu), mu) == pytest.approx(1.0, rel=1e-4)
 
     with pytest.raises(NotImplementedError):
         d.to_xml_element('distribution')

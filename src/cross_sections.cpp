@@ -37,18 +37,17 @@ std::map<LibraryKey, std::size_t> library_map;
 vector<Library> libraries;
 } // namespace data
 
-
 //==============================================================================
 // Separator strings for Windows and Unix-like systems
 //==============================================================================
 
 namespace details {
 #if defined(_WIN32) || defined(_WIN64)
-  const char sep_char[] = "\\"; // Windows separator string
+const char sep_char[] = "\\"; // Windows separator string
 #else
-  const char sep_char[] = "/"; // Unix-like separator string
+const char sep_char[] = "/"; // Unix-like separator string
 #endif
-}
+} // namespace details
 
 //==============================================================================
 // Library methods
@@ -159,8 +158,8 @@ void read_cross_sections_xml(pugi::xml_node root)
     // If no '/' found, the file is probably in the input directory
     auto pos = settings::path_cross_sections.rfind(details::sep_char);
     if (pos == std::string::npos && !settings::path_input.empty()) {
-      settings::path_cross_sections =
-        settings::path_input + details::sep_char + settings::path_cross_sections;
+      settings::path_cross_sections = settings::path_input + details::sep_char +
+                                      settings::path_cross_sections;
     }
   }
 

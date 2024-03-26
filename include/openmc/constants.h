@@ -351,9 +351,9 @@ enum class GeometryType { CSG, DAG };
 // We use a macro for this, so that it is only exported on Windows.
 
 #if _MSC_VER && OPENMC_WIN_COMPILE
-#define DllExport   __declspec( dllexport ) 
+#define DllExport __declspec(dllexport)
 #elif _MSC_VER
-#define DllExport   __declspec( dllimport ) 
+#define DllExport __declspec(dllimport)
 #else
 #define DllExport
 #endif

@@ -30,7 +30,7 @@ TEST_CASE("Test get_file_extension")
 }
 
 TEST_CASE("Test dir_exists")
-{ 
+{
 #if defined(_WIN32) || defined(_WIN64)
   // If this doesn't exist on a Windows system, I have no clue what is happening
   REQUIRE(dir_exists("C:\\"));

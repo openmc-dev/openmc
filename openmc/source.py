@@ -657,6 +657,15 @@ class FileSource(SourceBase):
         Path to the source file from which sites should be sampled
     strength : float
         Strength of the source (default is 1.0)
+    domains : iterable of openmc.Cell, openmc.Material, or openmc.Universe
+        Domains to reject based on, i.e., if a sampled spatial location is not
+        within one of these domains, it will be rejected.
+    lower_left : Iterable of float
+        Lower-left corner coordinates of a phase space hypercube from which to
+        accept particles. The dimensions are: x [cm],y [cm],z [cm], ux [ ],uy [ ],uz[ ], E [eV], t [s]
+    upper_right : Iterable of float
+        Upper-right corner coordinates of a phase space hypercube from which to
+        accept particles. The dimensions are: x [cm],y [cm],z [cm], ux [ ],uy [ ],uz[ ], E [eV], t [s]
 
     Attributes
     ----------
@@ -667,14 +676,48 @@ class FileSource(SourceBase):
     type : str
         Indicator of source type: 'file'
 
+    .. versionadded:: x.y.z
+
+    ids : Iterable of int
+        IDs of domains to use for rejection
+    domain_type : {'cell', 'material', 'universe'}
+        Type of domain to use for rejection
+    lower_left : Iterable of double
+        Lower-left corner hypercube coordinates
+    upper_right : Iterable of double
+        Upper-right corner hypercube coordinates
+    rejection_strategy: {'resample','kill'}
+        Strategy when a particle is rejected. Pick a new particle or accept and terminate.
+
     """
-    def __init__(self, path: Optional[PathLike] = None, strength=1.0) -> None:
+
+    def __init__(self, path: Optional[PathLike] = None, strength=1.0, rejection_strategy = None, domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None, lower_left: Optional[Sequence[Double]] = None, upper_right: Optional[Sequence[Double]] = None) -> None:
         super().__init__(strength=strength)
 
         self._path = None
+        self._lower_left = None
+        self._upper_right = None
+        self._rejection_strategy = None
 
         if path is not None:
             self.path = path
+
+        self._domain_ids = []
+        self._domain_type = None
+        if domains is not None:
+            if isinstance(domains[0], openmc.Cell):
+                self.domain_type = 'cell'
+            elif isinstance(domains[0], openmc.Material):
+                self.domain_type = 'material'
+            elif isinstance(domains[0], openmc.Universe):
+                self.domain_type = 'universe'
+            self.domain_ids = [d.id for d in domains]
+        if lower_left is not None:
+            self.lower_left = lower_left
+        if upper_right is not None:
+            self.upper_right = upper_right
+        if rejection_strategy is not None:
+            self.rejection_strategy = rejection_strategy
 
     @property
     def type(self) -> str:
@@ -689,6 +732,54 @@ class FileSource(SourceBase):
         cv.check_type('source file', p, str)
         self._path = p
 
+    @property
+    def domain_ids(self):
+        return self._domain_ids
+
+    @domain_ids.setter
+    def domain_ids(self, ids):
+        cv.check_type('domain IDs', ids, Iterable, Real)
+        self._domain_ids = ids
+
+    @property
+    def domain_type(self):
+        return self._domain_type
+
+    @domain_type.setter
+    def domain_type(self, domain_type):
+        cv.check_value('domain type', domain_type, ('cell', 'material', 'universe'))
+        self._domain_type = domain_type
+
+    @property
+    def lower_left(self):
+        return self._lower_left
+
+    @lower_left.setter
+    def lower_left(self, lower_left):
+        name = 'lower-left hypercube coordinates'
+        cv.check_type(name, lower_left, Iterable, Real)
+        self._lower_left = lower_left
+
+    @property
+    def upper_right(self):
+        return self._upper_right
+
+    @upper_right.setter
+    def upper_right(self, upper_right):
+        name = 'upper-right hypercube coordinates'
+        cv.check_type(name, upper_right, Iterable, Real)
+        self._upper_right = upper_right
+
+    @property
+    def rejection_strategy(self):
+        return self._rejection_strategy
+
+    @rejection_strategy.setter
+    def rejection_strategy(self, rejection_strategy):
+        name = 'rejection strategy'
+        cv.check_value('rejection strategy', rejection_strategy, ('resample','kill'))
+        self._rejection_strategy = rejection_strategy
+
     def populate_xml_element(self, element):
         """Add necessary file source information to an XML element
 
@@ -700,6 +791,20 @@ class FileSource(SourceBase):
         """
         if self.path is not None:
             element.set("file", self.path)
+        if self.domain_ids:
+            dt_elem = ET.SubElement(element, "domain_type")
+            dt_elem.text = self.domain_type
+            id_elem = ET.SubElement(element, "domain_ids")
+            id_elem.text = ' '.join(str(uid) for uid in self.domain_ids)
+        if self.lower_left is not None:
+            dt_elem = ET.SubElement(element, "lower_left")
+            dt_elem.text = ' '.join(str(cd) for cd in self.lower_left)
+        if self.upper_right is not None:
+            dt_elem = ET.SubElement(element, "upper_right")
+            dt_elem.text = ' '.join(str(cd) for cd in self.upper_right)
+        if self.rejection_strategy is not None:
+            dt_elem = ET.SubElement(element, "rejection_strategy")
+            dt_elem.text = self.rejection_strategy
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element) -> openmc.FileSource:
@@ -727,6 +832,25 @@ class FileSource(SourceBase):
         strength = get_text(elem, 'strength')
         if strength is not None:
             source.strength = float(strength)
+
+        domain_type = get_text(elem, "domain_type")
+        if domain_type is not None:
+            domain_ids = [int(x) for x in get_text(elem, "domain_ids").split()]
+
+            # Instantiate some throw-away domains that are used by the
+            # constructor to assign IDs
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', openmc.IDWarning)
+                if domain_type == 'cell':
+                    domains = [openmc.Cell(uid) for uid in domain_ids]
+                elif domain_type == 'material':
+                    domains = [openmc.Material(uid) for uid in domain_ids]
+                elif domain_type == 'universe':
+                    domains = [openmc.Universe(uid) for uid in domain_ids]
+        else:
+            domains = None
+
+        source = cls(domains=domains)
 
         return source
 

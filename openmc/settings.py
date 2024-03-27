@@ -114,6 +114,10 @@ class Settings:
     max_splits : int
         Maximum number of times a particle can split during a history
 
+        .. versionadded:: 0.15
+    max_secondaries : int
+        Maximum secondary bank size
+
         .. versionadded:: 0.13
     max_tracks : int
         Maximum number of tracks written to a track file (per MPI process).
@@ -341,6 +345,7 @@ class Settings:
         self._weight_windows_file = None
         self._weight_window_checkpoints = {}
         self._max_splits = None
+        self._max_secondaries = None
         self._max_tracks = None
 
         for key, value in kwargs.items():
@@ -987,6 +992,16 @@ class Settings:
         self._max_splits = value
 
     @property
+    def max_secondaries(self) -> int:
+        return self._max_secondaries
+
+    @max_secondaries.setter
+    def max_secondaries(self, value: int):
+        cv.check_type('maximum secondary bank size', value, Integral)
+        cv.check_greater_than('max secondary bank size', value, 0)
+        self._max_secondaries = value
+
+    @property
     def max_tracks(self) -> int:
         return self._max_tracks
 
@@ -1417,6 +1432,11 @@ class Settings:
             elem = ET.SubElement(root, "max_splits")
             elem.text = str(self._max_splits)
 
+    def _create_max_secondaries_subelement(self, root):
+        if self._max_secondaries is not None:
+            elem = ET.SubElement(root, "max_secondaries")
+            elem.text = str(self._max_secondaries)
+
     def _create_max_tracks_subelement(self, root):
         if self._max_tracks is not None:
             elem = ET.SubElement(root, "max_tracks")
@@ -1763,6 +1783,11 @@ class Settings:
         if text is not None:
             self.max_splits = int(text)
 
+    def _max_secondaries_from_xml_element(self, root):
+        text = get_text(root, 'max_secondaries')
+        if text is not None:
+            self.max_secondaries = int(text)
+
     def _max_tracks_from_xml_element(self, root):
         text = get_text(root, 'max_tracks')
         if text is not None:
@@ -1828,6 +1853,7 @@ class Settings:
         self._create_weight_windows_file_element(element)
         self._create_weight_window_checkpoints_subelement(element)
         self._create_max_splits_subelement(element)
+        self._create_max_secondaries_subelement(element)
         self._create_max_tracks_subelement(element)
 
         # Clean the indentation in the file to be user-readable
@@ -1930,6 +1956,7 @@ class Settings:
         settings._weight_window_generators_from_xml_element(elem, meshes)
         settings._weight_window_checkpoints_from_xml_element(elem)
         settings._max_splits_from_xml_element(elem)
+        settings._max_secondaries_from_xml_element(elem)
         settings._max_tracks_from_xml_element(elem)
 
         # TODO: Get volume calculations

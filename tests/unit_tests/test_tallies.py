@@ -10,8 +10,9 @@ def test_xml_roundtrip(run_in_tmpdir):
     mesh.upper_right = (10., 10., 10.,)
     mesh.dimension = (5, 5, 5)
     mesh_filter = openmc.MeshFilter(mesh)
+    meshborn_filter = openmc.MeshBornFilter(mesh)
     tally = openmc.Tally()
-    tally.filters = [mesh_filter]
+    tally.filters = [mesh_filter, meshborn_filter]
     tally.nuclides = ['U235', 'I135', 'Li6']
     tally.scores = ['total', 'fission', 'heating']
     tally.derivative = openmc.TallyDerivative(
@@ -27,9 +28,11 @@ def test_xml_roundtrip(run_in_tmpdir):
     assert len(new_tallies) == 1
     new_tally = new_tallies[0]
     assert new_tally.id == tally.id
-    assert len(new_tally.filters) == 1
+    assert len(new_tally.filters) == 2
     assert isinstance(new_tally.filters[0], openmc.MeshFilter)
     assert np.allclose(new_tally.filters[0].mesh.lower_left, mesh.lower_left)
+    assert isinstance(new_tally.filters[1], openmc.MeshBornFilter)
+    assert np.allclose(new_tally.filters[1].mesh.lower_left, mesh.lower_left)
     assert new_tally.nuclides == tally.nuclides
     assert new_tally.scores == tally.scores
     assert new_tally.derivative.variable == tally.derivative.variable

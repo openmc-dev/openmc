@@ -19,6 +19,18 @@ from openmc.checkvalue import PathLike
 __all__ = ["Results", "ResultsList"]
 
 
+def _list_to_dict(list_of_dicts):
+    result_dict = {}
+
+    for i, d in enumerate(list_of_dicts):
+        for k, v in d.items():
+            if k not in result_dict:
+                result_dict[k] = np.zeros(len(list_of_dicts))
+            result_dict[k][i] = v
+
+    return result_dict
+
+
 def _get_time_as(seconds: float, units: str) -> float:
     """Converts the time in seconds to time in different units
 
@@ -59,11 +71,13 @@ class Results(list):
         Path to depletion result file
 
     """
+
     def __init__(self, filename='depletion_results.h5'):
         data = []
         if filename is not None:
             with h5py.File(str(filename), "r") as fh:
-                cv.check_filetype_version(fh, 'depletion results', VERSION_RESULTS[0])
+                cv.check_filetype_version(
+                    fh, 'depletion results', VERSION_RESULTS[0])
 
                 # Get number of results stored
                 n = fh["number"][...].shape[0]
@@ -71,7 +85,6 @@ class Results(list):
                 for i in range(n):
                     data.append(StepResult.from_hdf5(fh, i))
         super().__init__(data)
-
 
     @classmethod
     def from_hdf5(cls, filename: PathLike):
@@ -146,7 +159,11 @@ class Results(list):
         # Evaluate activity for each depletion time
         for i, result in enumerate(self):
             times[i] = result.time[0]
-            activities[i] = result.get_material(mat_id).get_activity(units, by_nuclide, volume)
+            activities[i] = result.get_material(
+                mat_id).get_activity(units, by_nuclide, volume)
+
+        if by_nuclide:
+            activities = _list_to_dict(activities)
 
         return times, activities
 
@@ -186,7 +203,7 @@ class Results(list):
         """
         cv.check_value("time_units", time_units, {"s", "d", "min", "h", "a"})
         cv.check_value("nuc_units", nuc_units,
-                    {"atoms", "atom/b-cm", "atom/cm3"})
+                       {"atoms", "atom/b-cm", "atom/cm3"})
 
         if isinstance(mat, Material):
             mat_id = str(mat.id)
@@ -267,14 +284,17 @@ class Results(list):
             decay_heat[i] = result.get_material(mat_id).get_decay_heat(
                 units, by_nuclide, volume)
 
+        if by_nuclide:
+            decay_heat = _list_to_dict(decay_heat)
+
         return times, decay_heat
 
     def get_mass(self,
-        mat: typing.Union[Material, str],
-        nuc: str,
-        mass_units: str = "g",
-        time_units: str = "s"
-    ) -> Tuple[np.ndarray, np.ndarray]:
+                 mat: typing.Union[Material, str],
+                 nuc: str,
+                 mass_units: str = "g",
+                 time_units: str = "s"
+                 ) -> Tuple[np.ndarray, np.ndarray]:
         """Get mass of nuclides over time from a single material
 
         .. versionadded:: 0.14.0
@@ -360,7 +380,8 @@ class Results(list):
         # Evaluate value in each region
         for i, result in enumerate(self):
             times[i] = result.time[0]
-            rates[i] = result.rates[0].get(mat_id, nuc, rx) * result[0, mat, nuc]
+            rates[i] = result.rates[0].get(
+                mat_id, nuc, rx) * result[0, mat, nuc]
 
         return times, rates
 
@@ -576,7 +597,8 @@ class Results(list):
         else:
             # select cross_sections.xml file to use
             if mat_file.cross_sections:
-                this_library = DataLibrary.from_xml(path=mat_file.cross_sections)
+                this_library = DataLibrary.from_xml(
+                    path=mat_file.cross_sections)
             else:
                 this_library = DataLibrary.from_xml()
 
@@ -586,7 +608,8 @@ class Results(list):
                 if lib['type'] == 'neutron':
                     available_cross_sections.update(lib['materials'])
             if not available_cross_sections:
-                raise DataError('No neutron libraries found in cross_sections.xml')
+                raise DataError(
+                    'No neutron libraries found in cross_sections.xml')
 
         # Overwrite material definitions, if they can be found in the depletion
         # results, and save them to the new depleted xml file.
@@ -610,7 +633,7 @@ class Results(list):
                     atoms = result[0, mat_id, nuc]
                     if atoms > 0.0:
                         atoms_per_barn_cm = 1e-24 * atoms / mat.volume
-                        mat.remove_nuclide(nuc) # Replace if it's there
+                        mat.remove_nuclide(nuc)  # Replace if it's there
                         mat.add_nuclide(nuc, atoms_per_barn_cm)
 
         return mat_file

@@ -26,6 +26,16 @@ extern array<double, 2> k_sum; //!< Used to reduce sum and sum_sq
 extern vector<double> entropy; //!< Shannon entropy at each generation
 extern xt::xtensor<double, 1> source_frac; //!< Source fraction for UFS
 
+//! For alpha-eigenvalue simulation
+extern array<double, 2> alpha_sum;   //!< The alpha eigenvalue
+extern array<double, 2> k_alpha_sum; //!< Multiplication factor
+extern array<double, 2> rho_sum;     //!< Reactivity
+extern array<double, 2> beta_sum;    //!< Delayed fission fraction
+extern array<double, 2> tr_sum;      //!< Removal time (or mean life time)
+//! Note: In alpha-eigenvalue mode, keff_generation and mean of k_sum converge
+//!       to one, while mean of k_alpha_sum converge to the "actual" keff that
+//!       is calculated based on the alpha-eigenfunction flux.
+
 } // namespace simulation
 
 //==============================================================================
@@ -33,6 +43,9 @@ extern xt::xtensor<double, 1> source_frac; //!< Source fraction for UFS
 //==============================================================================
 
 //! Collect/normalize the tracklength keff from each process
+//!
+//! In alpha_mode, also collect/normalize the tracklength neutron density (Cn),
+//! prompt production (Cp), and delayed production (Cd)
 void calculate_generation_keff();
 
 //! Calculate mean/standard deviation of keff during active generations
@@ -40,6 +53,8 @@ void calculate_generation_keff();
 //! This function sets the global variables keff and keff_std which represent
 //! the mean and standard deviation of the mean of k-effective over active
 //! generations. It also broadcasts the value from the master process.
+//!
+//! In alpha_mode, also calculate the mean/standard deviation of alpha_eff
 void calculate_average_keff();
 
 //! Calculates a minimum variance estimate of k-effective

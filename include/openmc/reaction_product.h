@@ -26,9 +26,11 @@ class ReactionProduct {
 public:
   //! Emission mode for product
   enum class EmissionMode {
-    prompt,  // Prompt emission of secondary particle
-    delayed, // Yield represents total emission (prompt + delayed)
-    total    // Delayed emission of secondary particle
+    prompt,        // Prompt emission of secondary particle
+    delayed,       // Delayed emission of secondary particle
+    delayed_alpha, //   with time correction (for alpha-eigenvalue mode)
+    total,         // Yield represents total emission (prompt + delayed)
+    total_alpha    //   with time correction
   };
 
   using Secondary = unique_ptr<AngleEnergy>;

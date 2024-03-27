@@ -122,6 +122,11 @@ void sample_neutron_reaction(Particle& p)
     }
   }
 
+  // Create alpha time source sites (alpha_mode only)
+  if (simulation::store_alpha_source) {
+    create_alpha_sites(p);
+  }
+
   // Create secondary photons
   if (settings::photon_transport) {
     sample_secondary_photons(p, i_nuclide);
@@ -165,8 +170,8 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
-  double nu_t = p.wgt() / simulation::keff * weight *
-                p.neutron_xs(i_nuclide).nu_fission /
+  double nu_fission = p.nu_fission(i_nuclide);
+  double nu_t = p.wgt() / simulation::keff * weight * nu_fission /
                 p.neutron_xs(i_nuclide).total;
 
   // Sample the number of neutrons produced
@@ -190,6 +195,9 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
   // Determine whether to place fission sites into the shared fission bank
   // or the secondary particle bank.
   bool use_fission_bank = (settings::run_mode == RunMode::EIGENVALUE);
+  if (simulation::store_alpha_source) {
+    use_fission_bank = false;
+  }
 
   // Counter for the number of fission sites successfully stored to the shared
   // fission bank or the secondary particle bank
@@ -227,6 +235,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
         break;
       }
     } else {
+      site.progeny_id = p.n_progeny()--;
       p.secondary_bank().push_back(site);
     }
 
@@ -262,6 +271,47 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
   p.wgt_bank() = nu / weight;
   for (size_t d = 0; d < MAX_DELAYED_GROUPS; d++) {
     p.n_delayed_bank(d) = nu_d[d];
+  }
+}
+
+void create_alpha_sites(Particle& p)
+{
+  // Sample the number of productions
+  double nu_t = p.wgt() * -simulation::alpha_eff / p.speed() /
+                p.macro_xs().total / simulation::keff;
+  int nu = static_cast<int>(nu_t);
+  if (prn(p.current_seed()) <= (nu_t - nu))
+    ++nu;
+
+  // Create the sites and store to fission bank
+  for (int n = 0; n < nu; n++) {
+    SourceSite site;
+    site.r = p.r();
+    site.u = p.u();
+    site.E = p.E();
+    site.time = p.time();
+    site.wgt = 1.0;
+    site.delayed_group = 0;
+    site.surf_id = 0;
+    site.particle = ParticleType::neutron;
+    site.parent_id = p.id();
+    site.progeny_id = p.n_progeny()++;
+
+    int64_t idx = simulation::fission_bank.thread_safe_append(site);
+    if (idx == -1) {
+      warning(
+        "The shared fission bank is full. Additional fission sites created "
+        "in this generation will not be banked. Results may be "
+        "non-deterministic.");
+
+      // Decrement number of particle progeny as storage was unsuccessful.
+      // This step is needed so that the sum of all progeny is equal to the
+      // size of the shared fission bank.
+      p.n_progeny()--;
+
+      // Break out of loop as no more sites can be added to fission bank
+      break;
+    }
   }
 }
 
@@ -628,9 +678,13 @@ void absorption(Particle& p, int i_nuclide)
 
     // Score implicit absorption estimate of keff
     if (settings::run_mode == RunMode::EIGENVALUE) {
-      p.keff_tally_absorption() += wgt_absorb *
-                                   p.neutron_xs(i_nuclide).nu_fission /
-                                   p.neutron_xs(i_nuclide).absorption;
+      double nu_fission = p.nu_fission(i_nuclide);
+      if (simulation::store_alpha_source) {
+        nu_fission = -simulation::alpha_eff / p.speed() *
+                     p.neutron_xs(i_nuclide).total / p.macro_xs().total;
+      }
+      p.keff_tally_absorption() +=
+        wgt_absorb * nu_fission / p.neutron_xs(i_nuclide).absorption;
     }
   } else {
     // See if disappearance reaction happens
@@ -638,9 +692,13 @@ void absorption(Particle& p, int i_nuclide)
         prn(p.current_seed()) * p.neutron_xs(i_nuclide).total) {
       // Score absorption estimate of keff
       if (settings::run_mode == RunMode::EIGENVALUE) {
-        p.keff_tally_absorption() += p.wgt() *
-                                     p.neutron_xs(i_nuclide).nu_fission /
-                                     p.neutron_xs(i_nuclide).absorption;
+        double nu_fission = p.nu_fission(i_nuclide);
+        if (simulation::store_alpha_source) {
+          nu_fission = -simulation::alpha_eff / p.speed() *
+                       p.neutron_xs(i_nuclide).total / p.macro_xs().total;
+        }
+        p.keff_tally_absorption() +=
+          p.wgt() * nu_fission / p.neutron_xs(i_nuclide).absorption;
       }
 
       p.wgt() = 0.0;
@@ -1028,8 +1086,17 @@ void sample_fission_neutron(
 
   // Determine total nu, delayed nu, and delayed neutron fraction
   const auto& nuc {data::nuclides[i_nuclide]};
-  double nu_t = nuc->nu(E_in, Nuclide::EmissionMode::total);
-  double nu_d = nuc->nu(E_in, Nuclide::EmissionMode::delayed);
+  double nu_t, nu_d;
+  if (settings::prompt_only) {
+    nu_t = nuc->nu(E_in, Nuclide::EmissionMode::prompt);
+    nu_d = 0.0;
+  } else if (settings::alpha_mode) {
+    nu_t = nuc->nu(E_in, Nuclide::EmissionMode::total_alpha);
+    nu_d = nuc->nu(E_in, Nuclide::EmissionMode::delayed_alpha);
+  } else {
+    nu_t = nuc->nu(E_in, Nuclide::EmissionMode::total);
+    nu_d = nuc->nu(E_in, Nuclide::EmissionMode::delayed);
+  }
   double beta = nu_d / nu_t;
 
   if (prn(seed) < beta) {
@@ -1042,7 +1109,12 @@ void sample_fission_neutron(
     int group;
     for (group = 1; group < nuc->n_precursor_; ++group) {
       // determine delayed neutron precursor yield for group j
-      double yield = (*rx.products_[group].yield_)(E_in);
+      double yield;
+      if (settings::alpha_mode) {
+        yield = nuc->nu(E_in, Nuclide::EmissionMode::delayed_alpha, group);
+      } else {
+        yield = nuc->nu(E_in, Nuclide::EmissionMode::delayed, group);
+      }
 
       // Check if this group is sampled
       prob += yield;

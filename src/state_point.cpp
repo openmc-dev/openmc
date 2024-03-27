@@ -103,7 +103,22 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     default:
       break;
     }
+    if (settings::prompt_only) {
+      write_dataset(file_id, "prompt_only", 1);
+    } else {
+      write_dataset(file_id, "prompt_only", 0);
+    }
+
+    // Write alpha mode
+    if (settings::run_mode == RunMode::EIGENVALUE) {
+      if (settings::alpha_mode) {
+        write_dataset(file_id, "alpha_mode", 1);
+      } else {
+        write_dataset(file_id, "alpha_mode", 0);
+      }
+    }
     write_attribute(file_id, "photon_transport", settings::photon_transport);
+    write_attribute(file_id, "alpha_mode", settings::alpha_mode);
     write_dataset(file_id, "n_particles", settings::n_particles);
     write_dataset(file_id, "n_batches", settings::n_batches);
 
@@ -410,6 +425,8 @@ void load_state_point()
     settings::run_mode = RunMode::EIGENVALUE;
   }
   read_attribute(file_id, "photon_transport", settings::photon_transport);
+  read_attribute(file_id, "alpha_mode", settings::alpha_mode);
+  read_attribute(file_id, "prompt_only", settings::prompt_only);
   read_dataset(file_id, "n_particles", settings::n_particles);
   int temp;
   read_dataset(file_id, "n_batches", temp);

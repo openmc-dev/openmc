@@ -30,6 +30,9 @@ void scatter(Particle& p);
 //! \param p Particle to operate on
 void create_fission_sites(Particle& p);
 
+//! [alpha_mode] Create neutrons from time source (alpha/v)
+void create_alpha_sites_mg(Particle& p);
+
 //! \brief Handles an absorption event
 //! \param p Particle to operate on
 void absorption(Particle& p);

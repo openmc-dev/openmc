@@ -16,6 +16,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/string_utils.h"
 
 namespace openmc {
@@ -521,10 +522,23 @@ void Mgxs::sample_fission_energy(
   int gin, int& dg, int& gout, uint64_t* seed, int t, int a)
 {
   XsData* xs_t = &xs[t];
-  double nu_fission = xs_t->nu_fission(a, gin);
 
-  // Find the probability of having a prompt neutron
+  // Get the nu_fission
   double prob_prompt = xs_t->prompt_nu_fission(a, gin);
+  double nu_fission = prob_prompt;
+  if (!settings::prompt_only) {
+    if (settings::alpha_mode) {
+      // Add delayed nu
+      int J = data::mg.num_delayed_groups_;
+      for (int j = 0; j < J; j++) {
+        double nu_d = xs_t->delayed_nu_fission(a, j, gin);
+        double lam = xs_t->decay_rate(a, j);
+        nu_fission += lam / (lam + simulation::alpha_eff) * nu_d;
+      }
+    } else {
+      nu_fission = xs_t->nu_fission(a, gin);
+    }
+  }
 
   // sample random numbers
   double xi_pd = prn(seed) * nu_fission;
@@ -549,10 +563,20 @@ void Mgxs::sample_fission_energy(
     // the neutron is delayed
 
     // get the delayed group
-    for (dg = 0; dg < num_delayed_groups; ++dg) {
-      prob_prompt += xs_t->delayed_nu_fission(a, dg, gin);
-      if (xi_pd < prob_prompt)
-        break;
+    if (settings::alpha_mode) {
+      for (dg = 0; dg < num_delayed_groups; ++dg) {
+        double lam = xs_t->decay_rate(a, dg);
+        prob_prompt += lam / (lam + simulation::alpha_eff) *
+                       xs_t->delayed_nu_fission(a, dg, gin);
+        if (xi_pd < prob_prompt)
+          break;
+      }
+    } else {
+      for (dg = 0; dg < num_delayed_groups; ++dg) {
+        prob_prompt += xs_t->delayed_nu_fission(a, dg, gin);
+        if (xi_pd < prob_prompt)
+          break;
+      }
     }
 
     // adjust dg in case of round-off error
@@ -604,6 +628,31 @@ void Mgxs::calculate_xs(Particle& p)
   p.macro_xs().absorption = xs[temperature].absorption(angle, p.g());
   p.macro_xs().nu_fission =
     fissionable ? xs[temperature].nu_fission(angle, p.g()) : 0.;
+
+  if (settings::alpha_mode) {
+    if (fissionable) {
+      p.macro_xs().nu_fission_prompt =
+        xs[temperature].prompt_nu_fission(angle, p.g());
+      p.macro_xs().nu_fission_alpha =
+        xs[temperature].prompt_nu_fission(angle, p.g());
+      // Add delayed nu
+      int J = data::mg.num_delayed_groups_;
+      for (int j = 0; j < J; j++) {
+        double nu_d = xs[temperature].delayed_nu_fission(angle, j, p.g());
+        double lam = xs[temperature].decay_rate(angle, j);
+        p.macro_xs().nu_fission_alpha +=
+          lam / (lam + simulation::alpha_eff) * nu_d;
+      }
+    } else {
+      p.macro_xs().nu_fission_alpha = 0.0;
+      p.macro_xs().nu_fission_prompt = 0.0;
+    }
+  } else if (settings::prompt_only) {
+    if (fissionable) {
+      p.macro_xs().nu_fission_prompt =
+        xs[temperature].prompt_nu_fission(angle, p.g());
+    }
+  }
 }
 
 //==============================================================================

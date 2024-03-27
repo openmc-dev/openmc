@@ -547,12 +547,43 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
     } else {
       return 0.0;
     }
+  case EmissionMode::delayed_alpha:
+    if (n_precursor_ > 0) {
+      auto rx = fission_rx_[0];
+      if (group >= 1 && group < rx->products_.size()) {
+        // If delayed group specified, determine yield immediately
+        double lambda = rx->products_[group].decay_rate_;
+        return (*rx->products_[group].yield_)(E)*lambda /
+               (simulation::alpha_eff + lambda);
+      } else {
+        double nu {0.0};
+
+        for (int i = 1; i < rx->products_.size(); ++i) {
+          // Skip any non-neutron products
+          const auto& product = rx->products_[i];
+          if (product.particle_ != ParticleType::neutron)
+            continue;
+
+          // Evaluate yield
+          if (product.emission_mode_ == EmissionMode::delayed) {
+            double lambda = product.decay_rate_;
+            nu +=
+              (*product.yield_)(E)*lambda / (simulation::alpha_eff + lambda);
+          }
+        }
+        return nu;
+      }
+    } else {
+      return 0.0;
+    }
   case EmissionMode::total:
     if (total_nu_ && settings::create_delayed_neutrons) {
       return (*total_nu_)(E);
     } else {
       return (*fission_rx_[0]->products_[0].yield_)(E);
     }
+  case EmissionMode::total_alpha:
+    return nu(E, EmissionMode::prompt) + nu(E, EmissionMode::delayed_alpha);
   }
   UNREACHABLE();
 }
@@ -811,6 +842,16 @@ void Nuclide::calculate_xs(
 
   micro.last_E = p.E();
   micro.last_sqrtkT = p.sqrtkT();
+
+  // Calculate nu_fission_alpha
+  // TODO: Is it good for multipole and interpolate as well?
+  if (settings::alpha_mode) {
+    micro.nu_fission_alpha =
+      micro.fission * nu(p.E(), EmissionMode::total_alpha);
+    micro.nu_fission_prompt = micro.fission * nu(p.E(), EmissionMode::prompt);
+  } else if (settings::prompt_only) {
+    micro.nu_fission_prompt = micro.fission * nu(p.E(), EmissionMode::prompt);
+  }
 }
 
 void Nuclide::calculate_sab_xs(int i_sab, double sab_frac, Particle& p)

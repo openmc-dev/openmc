@@ -77,6 +77,16 @@ class StatePoint:
         Combined estimator for k-effective
 
         .. versionadded:: 0.13.1
+    alpha_eff : uncertainties.UFloat
+        Effective alpha eigenvalue
+    alpha_generation : numpy.ndarray
+        Estimate of alpha for each batch/generation
+    alpha_median : float 
+        Median of alpha_generation
+    alpha_skewness : float 
+        Skewness of alpha_generation
+    alpha_kurtosis : float 
+        Kurtosis of alpha_generation
     meshes : dict
         Dictionary whose keys are mesh IDs and whose values are MeshBase objects
     n_batches : int
@@ -93,6 +103,10 @@ class StatePoint:
         Indicate whether photon transport is active
     run_mode : str
         Simulation run mode, e.g. 'eigenvalue'
+    alpha_mode : bool
+        Running fundamental alpha mode (time eigenvalue) simulation?
+    prompt_only : bool
+        Only consider prompt fission neutrons (neglect delayed neutrons)?
     runtime : dict
         Dictionary whose keys are strings describing various runtime metrics
         and whose values are time values in seconds.
@@ -302,6 +316,41 @@ class StatePoint:
             return None
 
     @property
+    def alpha_generation(self):
+        if self.run_mode == 'eigenvalue':
+            return self._f['alpha_generation'][()]
+        else:
+            return None
+
+    @property
+    def alpha_eff(self):
+        if self.run_mode == 'eigenvalue' and self.alpha_mode:
+            return ufloat(*self._f['alpha_mode_tallies/alpha_effective'][()])
+        else:
+            return None
+
+    @property
+    def alpha_median(self):
+        if self.run_mode == 'eigenvalue' and self.alpha_mode:
+            return self._f['alpha_mode_tallies/alpha_median'][()]
+        else:
+            return None
+
+    @property
+    def alpha_skewness(self):
+        if self.run_mode == 'eigenvalue' and self.alpha_mode:
+            return self._f['alpha_mode_tallies/alpha_skewness'][()]
+        else:
+            return None
+
+    @property
+    def alpha_kurtosis(self):
+        if self.run_mode == 'eigenvalue' and self.alpha_mode:
+            return self._f['alpha_mode_tallies/alpha_kurtosis'][()]
+        else:
+            return None
+
+    @property
     def meshes(self):
         if not self._meshes_read:
             mesh_group = self._f['tallies/meshes']
@@ -345,6 +394,14 @@ class StatePoint:
     @property
     def run_mode(self):
         return self._f['run_mode'][()].decode()
+
+    @property
+    def alpha_mode(self):
+        return self._f.attrs['alpha_mode'] > 0
+
+    @property
+    def prompt_only(self):
+        return self._f.attrs['prompt_only'] > 0
 
     @property
     def runtime(self):

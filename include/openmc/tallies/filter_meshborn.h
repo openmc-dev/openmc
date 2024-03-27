@@ -20,7 +20,6 @@ public:
     FilterMatch& match) const override;
 
   std::string text_label(int bin) const override;
-
 };
 
 } // namespace openmc

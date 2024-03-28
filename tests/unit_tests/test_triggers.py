@@ -95,6 +95,7 @@ def test_tally_trigger_zero_allowed(run_in_tmpdir):
 
     pincell.tallies = [tally]
 
+    pincell.settings.particles = 1000  # we need a few more particles for this
     pincell.settings.trigger_active = True
     pincell.settings.trigger_max_batches = 50
     pincell.settings.trigger_batch_interval = 20

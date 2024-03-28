@@ -129,9 +129,9 @@ class Trigger(EqualityMixin):
         threshold = float(elem.get("threshold"))
         allow_zero = str(elem.get("allow_zero", "false")).lower()
         # Try to convert to bool. Let Trigger error out on instantiation.
-        if allow_zero == "true":
+        if allow_zero in ("true", "1"):
             allow_zero = True
-        elif allow_zero == "false":
+        elif allow_zero in ("false", "0"):
             allow_zero = False
         trigger = cls(trigger_type, threshold, allow_zero)
 

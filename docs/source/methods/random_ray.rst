@@ -673,7 +673,7 @@ transport loop:
 
     void transport_single_ray(RandomRay& ray) {
 
-        // Update source term (scattering + fission)
+        // Reset distance to zero
         double distance = 0.0;
 
         // Continue transport of ray until active length is reached

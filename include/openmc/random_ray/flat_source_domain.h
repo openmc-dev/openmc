@@ -42,10 +42,9 @@ public:
   void normalize_scalar_flux_and_volumes(
     double total_active_distance_per_iteration);
   int64_t add_source_to_scalar_flux();
-  double calculate_miss_rate() const;
   void batch_reset();
   void convert_source_regions_to_tallies();
-  void random_ray_tally();
+  void random_ray_tally() const;
   void accumulate_iteration_flux();
   void output_to_vtk() const;
   void all_reduce_replicated_source_regions();

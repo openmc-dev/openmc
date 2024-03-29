@@ -381,7 +381,7 @@ void FlatSourceDomain::convert_source_regions_to_tallies()
 // tally function simply traverses the mapping data structure and executes
 // the scoring operations to OpenMC's native tally result arrays.
 
-void FlatSourceDomain::random_ray_tally()
+void FlatSourceDomain::random_ray_tally() const
 {
   openmc::simulation::time_tallies.start();
 

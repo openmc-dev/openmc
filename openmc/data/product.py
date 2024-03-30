@@ -124,8 +124,8 @@ class Product(EqualityMixin):
             HDF5 group to write to
 
         """
-        group.attrs['particle'] = np.string_(self.particle)
-        group.attrs['emission_mode'] = np.string_(self.emission_mode)
+        group.attrs['particle'] = np.bytes_(self.particle)
+        group.attrs['emission_mode'] = np.bytes_(self.emission_mode)
         if self.decay_rate > 0.0:
             group.attrs['decay_rate'] = self.decay_rate
 

@@ -17,7 +17,7 @@ import sys
 USE_MULTIPROCESSING = True
 
 # Not sure why, but using multiprocessing on Windows leads to many transport
-# simualtions being run over eachother and leads to catastrophe.
+# simulations being run over eachother and leads to catastrophe.
 if sys.platform == 'win32':
     USE_MULTIPROCESSING = False
 

@@ -74,7 +74,6 @@ def _get_yaxis_label(reactions, divisor_types):
     if all(set(value) in heat_combos for value in reactions.values()):
         stem = "Heating"
     elif all(isinstance(item, str) for item in reactions.keys()):
-        print(reactions.values())
         for nuc_reactions in reactions.values():
             for reaction in nuc_reactions:
                 if reaction in ["heating", "heating-local"]:

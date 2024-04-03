@@ -883,7 +883,7 @@ def write_source_file(
     # Write array to file
     kwargs.setdefault('mode', 'w')
     with h5py.File(filename, **kwargs) as fh:
-        fh.attrs['filetype'] = np.string_("source")
+        fh.attrs['filetype'] = np.bytes_("source")
         fh.create_dataset('source_bank', data=arr, dtype=source_dtype)
 
 

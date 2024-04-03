@@ -982,14 +982,16 @@ class CMFDRun:
         temp_data = np.ones(len(loss_row))
         temp_loss = sparse.csr_matrix((temp_data, (loss_row, loss_col)),
                                       shape=(n, n))
+        temp_loss.sort_indices()
 
         # Pass coremap as 1-d array of 32-bit integers
         coremap = np.swapaxes(self._coremap, 0, 2).flatten().astype(np.int32)
 
-        args = temp_loss.indptr, len(temp_loss.indptr), \
-            temp_loss.indices, len(temp_loss.indices), n, \
+        return openmc.lib._dll.openmc_initialize_linsolver(
+            temp_loss.indptr.astype(np.int32), len(temp_loss.indptr),
+            temp_loss.indices.astype(np.int32), len(temp_loss.indices), n,
             self._spectral, coremap, self._use_all_threads
-        return openmc.lib._dll.openmc_initialize_linsolver(*args)
+        )
 
     def _write_cmfd_output(self):
         """Write CMFD output to buffer at the end of each batch"""
@@ -1585,6 +1587,7 @@ class CMFDRun:
         loss_row = self._loss_row
         loss_col = self._loss_col
         loss = sparse.csr_matrix((data, (loss_row, loss_col)), shape=(n, n))
+        loss.sort_indices()
         return loss
 
     def _build_prod_matrix(self, adjoint):
@@ -1611,6 +1614,7 @@ class CMFDRun:
         prod_row = self._prod_row
         prod_col = self._prod_col
         prod = sparse.csr_matrix((data, (prod_row, prod_col)), shape=(n, n))
+        prod.sort_indices()
         return prod
 
     def _execute_power_iter(self, loss, prod):
@@ -2307,8 +2311,8 @@ class CMFDRun:
                                    constant_values=_CMFD_NOACCEL)[:,:,1:]
 
         # Create empty row and column vectors to store for loss matrix
-        row = np.array([])
-        col = np.array([])
+        row = np.array([], dtype=int)
+        col = np.array([], dtype=int)
 
         # Store all indices used to populate production and loss matrix
         is_accel = self._coremap != _CMFD_NOACCEL

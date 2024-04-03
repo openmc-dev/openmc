@@ -1029,9 +1029,9 @@ class Polygon(CompositeSurface):
         -------
         None
         """
-        # Only attempt the triangulation up to 3 times.
-        if depth > 2:
-            raise RuntimeError('Could not create a valid triangulation after 3'
+        # Only attempt the triangulation up to 5 times.
+        if depth > 4:
+            raise RuntimeError('Could not create a valid triangulation after 5'
                                ' attempts')
 
         tri = Delaunay(points, qhull_options='QJ')
@@ -1077,7 +1077,8 @@ class Polygon(CompositeSurface):
             return group
         # If group is empty, grab the next simplex in the dictionary and recurse
         if group is None:
-            sidx = next(iter(neighbor_map))
+            # Start with smallest neighbor lists
+            sidx = sorted(neighbor_map.items(), key=lambda item:len(item[1]))[0][0]
             return self._group_simplices(neighbor_map, group=[sidx])
         # Otherwise use the last simplex in the group
         else:
@@ -1087,13 +1088,16 @@ class Polygon(CompositeSurface):
             # For each neighbor check if it is part of the same convex
             # hull as the rest of the group. If yes, recurse. If no, continue on.
             for n in neighbors:
-                if n in group or neighbor_map.get(n, None) is None:
+                if n in group or neighbor_map.get(n) is None:
                     continue
                 test_group = group + [n]
                 test_point_idx = np.unique(self._tri.simplices[test_group, :])
                 test_points = self.points[test_point_idx]
-                # If test_points are convex keep adding to this group
-                if len(test_points) == len(ConvexHull(test_points).vertices):
+                test_hull = ConvexHull(test_points, qhull_options='Qc')
+                pts_on_hull = len(test_hull.vertices) + len(test_hull.coplanar)
+                # If test_points are convex (including coplanar) keep adding to
+                # this group
+                if len(test_points) == pts_on_hull:
                     group = self._group_simplices(neighbor_map, group=test_group)
             return group
 

@@ -2008,9 +2008,9 @@ class UnstructuredMesh(MeshBase):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
             if not self._statepoint_data:
-                raise RuntimeError(f'The "{func.__name__}" property requires '
-                                   'information about this mesh to be loaded '
-                                   'using "UnstructuredMesh.add_library_data".')
+                raise AttributeError(f'The "{func.__name__}" property requires '
+                                     'information about this mesh to be loaded '
+                                     'using "UnstructuredMesh.add_library_data".')
             return func(self, *args, **kwargs)
         return wrapper
 
@@ -2186,6 +2186,11 @@ class UnstructuredMesh(MeshBase):
         Populate the volumes, vertices, connectivity, and element types of the mesh using the mesh library via OpenMC
         """
         import openmc.lib
+
+        if self.library == 'moab' and not openmc.lib._dagmc_enabled():
+            raise RuntimeError('This OpenMC installation was not compiled with support for MOAB meshes.')
+        if self.library == 'libmesh' and not openmc.lib._libmesh_enabled():
+            raise RuntimeError('This OpenMC installation was not compiled with support for libMesh meshes.')
 
         # ensure that the filename is a resolved absolute path
         orig_filename = self.filename

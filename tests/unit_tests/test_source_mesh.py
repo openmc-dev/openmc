@@ -226,7 +226,7 @@ def void_model():
 
 
 @pytest.mark.parametrize('mesh_type', ('rectangular', 'cylindrical'))
-def test_mesh_source_independent(run_in_tmpdir, void_mdoel, mesh_type):
+def test_mesh_source_independent(run_in_tmpdir, void_model, mesh_type):
     """
     A void model containing a single box
     """

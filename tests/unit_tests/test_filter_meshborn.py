@@ -15,77 +15,49 @@ def model():
 
     """
     openmc.reset_auto_ids()
-    model = openmc.model.Model()
+    model = openmc.Model()
 
-    # =============================================================================
     # Materials
-    # =============================================================================
-
     h1 = openmc.Material()
     h1.add_nuclide("H1", 1.0)
     h1.set_density("g/cm3", 1.0)
-
     model.materials = openmc.Materials([h1])
 
-    # =============================================================================
-    # Geometry
-    # =============================================================================
-
     # Core geometry
-    radius = 10.0
-    sphere = openmc.Sphere(r=radius, boundary_type="reflective")
-    core_region = -sphere
-    core = openmc.Cell(fill=h1, region=core_region)
+    r = 10.0
+    sphere = openmc.Sphere(r=r, boundary_type="reflective")
+    core = openmc.Cell(fill=h1, region=-sphere)
+    model.geometry = openmc.Geometry([core])
 
-    # Root universe
-    root = openmc.Universe(cells=[core])
-
-    # Register geometry
-    model.geometry = openmc.Geometry(root)
-
-    # =============================================================================
     # Settings
-    # =============================================================================
-
-    model.settings = openmc.Settings()
     model.settings.run_mode = 'fixed source'
     model.settings.particles = 2000
     model.settings.batches = 8
-    model.settings.photon_transport = False
 
-    bounds = [0., -radius, -radius, radius, radius, radius]
-    distribution = openmc.stats.Box(bounds[:3], bounds[3:])
-    model.settings.source = openmc.source.IndependentSource(space=distribution)
+    distribution = openmc.stats.Box((0., -r, -r), (r, r, r))
+    model.settings.source = openmc.IndependentSource(space=distribution)
 
     # =============================================================================
     # Tallies
     # =============================================================================
 
-    mesh_1 = openmc.RegularMesh()
-    mesh_1.dimension = [2,2,1]
-    mesh_1.lower_left = [-radius, -radius, -radius]
-    mesh_1.upper_right = [radius, radius, radius]
+    mesh = openmc.RegularMesh()
+    mesh.dimension = (2, 2, 1)
+    mesh.lower_left = (-r, -r, -r)
+    mesh.upper_right = (r, r, r)
 
-    f_1 = openmc.MeshBornFilter(mesh_1)
-
+    f = openmc.MeshBornFilter(mesh)
     t_1 = openmc.Tally(name="scatter-collision")
-    t_1.filters = [f_1]
+    t_1.filters = [f]
     t_1.scores = ["scatter"]
     t_1.estimator = "collision"
 
-    mesh_2 = openmc.RegularMesh()
-    mesh_2.dimension = [2,2,1]
-    mesh_2.lower_left = [-radius, -radius, -radius]
-    mesh_2.upper_right = [radius, radius, radius]
-
-    f_2 = openmc.MeshBornFilter(mesh_2)
-
     t_2 = openmc.Tally(name="scatter-tracklength")
-    t_2.filters = [f_2]
+    t_2.filters = [f]
     t_2.scores = ["scatter"]
     t_2.estimator = "tracklength"
 
-    model.tallies += [t_1, t_2]
+    model.tallies = [t_1, t_2]
 
     return model
 
@@ -119,16 +91,16 @@ def test_xml_serialization():
     openmc.reset_auto_ids()
 
     mesh = openmc.RegularMesh()
-    mesh.dimension = [1, 1, 1]
-    mesh.lower_left = [0.0, 0.0, 0.0]
-    mesh.upper_right = [1.0, 1.0, 1.0]
+    mesh.dimension = (1, 1, 1)
+    mesh.lower_left = (0.0, 0.0, 0.0)
+    mesh.upper_right = (1.0, 1.0, 1.0)
 
     filter = openmc.MeshBornFilter(mesh)
-    filter.translation = [2.0 ,2.0 ,2.0]
+    filter.translation = (2.0, 2.0, 2.0)
     assert filter.mesh.id == 1
-    assert filter.mesh.dimension == (1, 1 ,1)
-    assert filter.mesh.lower_left == [0.0, 0.0, 0.0]
-    assert filter.mesh.upper_right == [1.0 ,1.0 ,1.0]
+    assert filter.mesh.dimension == (1, 1, 1)
+    assert filter.mesh.lower_left == (0.0, 0.0, 0.0)
+    assert filter.mesh.upper_right == (1.0, 1.0, 1.0)
 
     repr(filter)
 

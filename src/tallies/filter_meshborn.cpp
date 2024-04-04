@@ -1,8 +1,5 @@
 #include "openmc/tallies/filter_meshborn.h"
 
-#include <fmt/core.h>
-#include <gsl/gsl-lite.hpp>
-
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
@@ -30,9 +27,7 @@ void MeshBornFilter::get_all_bins(
 std::string MeshBornFilter::text_label(int bin) const
 {
   auto& mesh = *model::meshes.at(mesh_);
-  std::string label = mesh.bin_label(bin);
-  label += " (" + type_str() + ")";
-  return label;
+  return mesh.bin_label(bin) + " (born)";
 }
 
 //==============================================================================

@@ -368,8 +368,9 @@ class MaterialFromFilter(Filter):
 class MeshFilter(Filter):
     """Mesh filter stored internally.
 
-    This class exposes a Mesh filter that is stored internally in the OpenMC library.
-    To obtain a view of a Mesh filter with a given ID, use the :data:`openmc.lib.filters` mapping.
+    This class exposes a Mesh filter that is stored internally in the OpenMC
+    library. To obtain a view of a Mesh filter with a given ID, use the
+    :data:`openmc.lib.filters` mapping.
 
     Parameters
     ----------
@@ -424,8 +425,9 @@ class MeshFilter(Filter):
 class MeshBornFilter(Filter):
     """MeshBorn filter stored internally.
 
-    This class exposes a MeshBorn filter that is stored internally in the OpenMC library.
-    To obtain a view of a MeshBorn filter with a given ID, use the :data:`openmc.lib.filters` mapping.
+    This class exposes a MeshBorn filter that is stored internally in the OpenMC
+    library. To obtain a view of a MeshBorn filter with a given ID, use the
+    :data:`openmc.lib.filters` mapping.
 
     Parameters
     ----------
@@ -480,8 +482,9 @@ class MeshBornFilter(Filter):
 class MeshSurfaceFilter(Filter):
     """MeshSurface filter stored internally.
 
-    This class exposes a MeshSurface filter that is stored internally in the OpenMC library.
-    To obtain a view of a MeshSurface filter with a given ID, use the :data:`openmc.lib.filters` mapping.
+    This class exposes a MeshSurface filter that is stored internally in the
+    OpenMC library. To obtain a view of a MeshSurface filter with a given ID,
+    use the :data:`openmc.lib.filters` mapping.
 
     Parameters
     ----------

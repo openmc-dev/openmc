@@ -1,4 +1,5 @@
 import re
+import warnings
 
 import lxml.etree as ET
 
@@ -122,6 +123,10 @@ class Element(str):
 
         # Get the nuclides present in nature
         natural_nuclides = {name for name, abundance in natural_isotopes(self)}
+
+        # Issue warning if no existing nuclides
+        if len(natural_nuclides) == 0:
+            warnings.warn(f"No natural isotopes found for {self}.", NoNaturalIsotopesWarning)
 
         # Create dict to store the expanded nuclides and abundances
         abundances = {}
@@ -319,3 +324,8 @@ class Element(str):
             isotopes.append((nuclide, percent * abundance, percent_type))
 
         return isotopes
+
+
+class NoNaturalIsotopesWarning(Warning):
+    """Custom warning to indicate the absence of natural isotopes."""
+    pass

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from functools import wraps
 import typing
 import warnings
 from abc import ABC, abstractmethod
@@ -6,6 +7,7 @@ from collections.abc import Iterable
 from math import pi, sqrt, atan2
 from numbers import Integral, Real
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Optional, Sequence, Tuple
 
 import h5py
@@ -15,6 +17,7 @@ import numpy as np
 import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
+from openmc.util import _change_directory
 from ._xml import get_text
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
@@ -39,7 +42,10 @@ class MeshBase(IDManagerMixin, ABC):
     bounding_box : openmc.BoundingBox
         Axis-aligned bounding box of the mesh as defined by the upper-right and
         lower-left coordinates.
-
+    indices : Iterable of tuple
+        An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1), (2, 1, 1), ...]
+    num_mesh_cells : int
+        The total number of cells/elements in the mesh
     """
 
     next_id = 1
@@ -77,6 +83,22 @@ class MeshBase(IDManagerMixin, ABC):
            any([d == 0 for d in self.dimension]):
             raise RuntimeError(f'Mesh {self.id} is not 3D. '
                                'Volumes cannot be provided.')
+
+    @property
+    @abstractmethod
+    def indices(self):
+        """
+        Iterable of mesh indices for each mesh element, e.g. [(1, 1, 1), (2, 1, 1), ...]
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def num_mesh_cells(self):
+        """
+        The total number of cells/elements in the mesh
+        """
+        pass
 
     @classmethod
     def from_hdf5(cls, group: h5py.Group):
@@ -1954,7 +1976,10 @@ class UnstructuredMesh(MeshBase):
         Volumes of the unstructured mesh elements
     centroids : numpy.ndarray
         Centroids of the mesh elements with array shape (n_elements, 3)
+    indices : Iterable of tuple
+        An iterable of mesh indices for each mesh element, e.g. [(1,), (2,), ...]
 
+        .. versionadded:: 0.14.1
     vertices : numpy.ndarray
         Coordinates of the mesh vertices with array shape (n_elements, 3)
 
@@ -1979,6 +2004,16 @@ class UnstructuredMesh(MeshBase):
     _LINEAR_TET = 0
     _LINEAR_HEX = 1
 
+    def statepointcheck(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            if not self._statepoint_data:
+                raise RuntimeError(f'The "{func.__name__}" property requires '
+                                   'information about this mesh to be loaded '
+                                   'using "UnstructuredMesh.add_library_data".')
+            return func(self, *args, **kwargs)
+        return wrapper
+
     def __init__(self, filename: PathLike, library: str, mesh_id: Optional[int] = None,
                  name: str = '', length_multiplier: float = 1.0):
         super().__init__(mesh_id, name)
@@ -1990,6 +2025,9 @@ class UnstructuredMesh(MeshBase):
         self.library = library
         self._output = False
         self.length_multiplier = length_multiplier
+
+        # indicates whether or not statepoint information has been loaded
+        self._statepoint_data = False
 
     @property
     def filename(self):
@@ -2010,15 +2048,6 @@ class UnstructuredMesh(MeshBase):
         self._library = lib
 
     @property
-    def size(self):
-        return self._size
-
-    @size.setter
-    def size(self, size: int):
-        cv.check_type("Unstructured mesh size", size, Integral)
-        self._size = size
-
-    @property
     def output(self):
         return self._output
 
@@ -2028,6 +2057,7 @@ class UnstructuredMesh(MeshBase):
         self._output = val
 
     @property
+    @statepointcheck
     def volumes(self):
         """Return Volumes for every mesh cell if
         populated by a StatePoint file
@@ -2046,36 +2076,45 @@ class UnstructuredMesh(MeshBase):
         self._volumes = volumes
 
     @property
+    @statepointcheck
     def total_volume(self):
         return np.sum(self.volumes)
 
     @property
+    @statepointcheck
     def vertices(self):
+        self.n_elements
         return self._vertices
 
     @property
+    @statepointcheck
     def connectivity(self):
         return self._connectivity
 
     @property
+    @statepointcheck
     def element_types(self):
         return self._element_types
 
     @property
+    @statepointcheck
     def centroids(self):
         return np.array([self.centroid(i) for i in range(self.n_elements)])
 
     @property
+    @statepointcheck
     def n_elements(self):
-        if self._n_elements is None:
-            raise RuntimeError("No information about this mesh has "
-                               "been loaded from a statepoint file.")
         return self._n_elements
 
     @n_elements.setter
     def n_elements(self, val: int):
         cv.check_type('Number of elements', val, Integral)
         self._n_elements = val
+
+    @property
+    @statepointcheck
+    def num_mesh_cells(self):
+        return self.n_elements
 
     @property
     def length_multiplier(self):
@@ -2089,6 +2128,7 @@ class UnstructuredMesh(MeshBase):
         self._length_multiplier = length_multiplier
 
     @property
+    @statepointcheck
     def dimension(self):
         return (self.n_elements,)
 
@@ -2106,13 +2146,21 @@ class UnstructuredMesh(MeshBase):
         return string
 
     @property
+    @statepointcheck
     def lower_left(self):
         return self.vertices.min(axis=0)
 
     @property
+    @statepointcheck
     def upper_right(self):
         return self.vertices.max(axis=0)
 
+    @property
+    @statepointcheck
+    def indices(self):
+        return [(i+1,) for i in range(self.n_elements)]
+
+    @statepointcheck
     def centroid(self, bin: int):
         """Return the vertex averaged centroid of an element
 
@@ -2133,6 +2181,65 @@ class UnstructuredMesh(MeshBase):
         coords = self.vertices[conn]
         return coords.mean(axis=0)
 
+    def add_lbrary_data(self):
+        """
+        Populate the volumes, vertices, connectivity, and element types of the mesh using the mesh library via OpenMC
+        """
+        import openmc.lib
+
+        # ensure that the filename is a resolved absolute path
+        orig_filename = self.filename
+        self.filename = Path(self.filename).resolve()
+
+        # build an meaningless, but working, model
+        model = openmc.model.Model()
+        surf = openmc.Sphere(r=1.0, boundary_type='vacuum')
+        cell = openmc.Cell(region=-surf)
+        model.geometry = openmc.Geometry([cell])
+        model.settings = openmc.Settings()
+        model.settings.particles = 100
+        model.settings.batches = 1
+        model.settings.run_mode = 'fixed source'
+
+        # apply mesh as a source (not a tally so we don't build spatial trees or extra data)
+        source = openmc.IndependentSource(space=openmc.MeshSpatial(self))
+        model.settings.source = source
+
+        # remove this object's ID from the used IDs of meshes to suppress the ID warning
+        # on stateponit load
+        openmc.MeshBase.used_ids.discard(self.id)
+
+        with TemporaryDirectory() as tmpdir:
+            sp_filename = str(Path(tmpdir) / 'statepoint.h5')
+
+            with _change_directory(Path(tmpdir)):
+                try:
+                    model.init_lib(output=False)
+                    openmc.lib.settings.verbosity = 0
+                    openmc.lib.simulation_init()
+                    openmc.lib.statepoint_write(sp_filename)
+                finally:
+
+                    model.finalize_lib()
+                    openmc.Surface.used_ids.discard(surf.id)
+                    openmc.Cell.used_ids.discard(cell.id)
+                    openmc.Universe.used_ids.discard(model.geometry.root_universe.id)
+
+            with openmc.StatePoint(sp_filename) as sp:
+                mesh = sp.meshes[self.id]
+
+        # add information to this mesh instance
+        self._volumes = mesh.volumes
+        self._n_elements = self._volumes.size
+        self._vertices = mesh.vertices
+        self._connectivity = mesh.connectivity
+        self._element_types = mesh.element_types
+        self._statepoint_data = True
+
+        # reset original filename value
+        self.filename = orig_filename
+
+    @statepointcheck
     def write_vtk_mesh(self, **kwargs):
         """Map data to unstructured VTK mesh elements.
 
@@ -2157,6 +2264,7 @@ class UnstructuredMesh(MeshBase):
         )
         self.write_data_to_vtk(**kwargs)
 
+    @statepointcheck
     def write_data_to_vtk(
             self,
             filename: Optional[PathLike] = None,
@@ -2258,9 +2366,8 @@ class UnstructuredMesh(MeshBase):
 
         mesh = cls(filename=filename, library=library, mesh_id=mesh_id)
         vol_data = group['volumes'][()]
-        mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
-        mesh.n_elements = mesh.volumes.size
-
+        mesh._volumes = np.reshape(vol_data, (vol_data.shape[0],))
+        mesh._n_elements = vol_data.size
         vertices = group['vertices'][()]
         mesh._vertices = vertices.reshape((-1, 3))
         connectivity = group['connectivity'][()]
@@ -2270,6 +2377,7 @@ class UnstructuredMesh(MeshBase):
         if 'length_multiplier' in group:
             mesh.length_multiplier = group['length_multiplier'][()]
 
+        mesh._statepoint_data = True
         return mesh
 
     def to_xml_element(self):
@@ -2286,6 +2394,7 @@ class UnstructuredMesh(MeshBase):
         element.set("id", str(self._id))
         element.set("type", "unstructured")
         element.set("library", self._library)
+        element.set("output", str(self._output).lower())
         subelement = ET.SubElement(element, "filename")
         subelement.text = str(self.filename)
 
@@ -2311,9 +2420,12 @@ class UnstructuredMesh(MeshBase):
         mesh_id = int(get_text(elem, 'id'))
         filename = get_text(elem, 'filename')
         library = get_text(elem, 'library')
+        output = get_text(elem, 'output', 'false').lower() == 'true'
         length_multiplier = float(get_text(elem, 'length_multiplier', 1.0))
 
-        return cls(filename, library, mesh_id, '', length_multiplier)
+        mesh = cls(filename, library, mesh_id, '', length_multiplier)
+        mesh.output = output
+        return mesh
 
 
 def _read_meshes(elem):

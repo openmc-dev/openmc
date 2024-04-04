@@ -298,3 +298,42 @@ def test_CylindricalMesh_get_indices_at_coords():
     assert mesh.get_indices_at_coords([98, 200.1, 299]) == (0, 1, 0)  # second angle quadrant
     assert mesh.get_indices_at_coords([98, 199.9, 299]) == (0, 2, 0)  # third angle quadrant
     assert mesh.get_indices_at_coords([102, 199.1, 299]) == (0, 3, 0)  # forth angle quadrant
+
+def test_umesh_roundtrip(run_in_tmpdir, request):
+    umesh = openmc.UnstructuredMesh(request.path.parent / 'test_mesh_tets.e', 'moab')
+    umesh.output = True
+
+    # create a tally using this mesh
+    mf = openmc.MeshFilter(umesh)
+    tally = openmc.Tally()
+    tally.filters = [mf]
+    tally.scores = ['flux']
+
+    tallies = openmc.Tallies([tally])
+    tallies.export_to_xml()
+
+    xml_tallies = openmc.Tallies.from_xml()
+    xml_tally = xml_tallies[0]
+    xml_mesh = xml_tally.filters[0].mesh
+
+    assert umesh.id == xml_mesh.id
+    assert umesh.output == xml_mesh.output
+
+@pytest.mark.parametrize("library", ('moab', 'libmesh'))
+def test_umesh_properties(request, library):
+    import openmc.lib
+    # skip the test if the library is not enabled
+    if library == 'moab' and not openmc.lib._dagmc_enabled():
+        pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
+
+    if library == 'libmesh' and not openmc.lib._libmesh_enabled():
+        pytest.skip("LibMesh is not enabled in this build.")
+
+    umesh = openmc.UnstructuredMesh(request.path.parent / 'test_mesh_tets.e', library=library)
+    umesh.add_lbrary_data()
+
+    assert umesh.vertices.size > 0
+    assert umesh.volumes == pytest.approx(0.66666667)
+    assert umesh.centroids.size > 0
+    assert umesh.n_elements == 12000
+    assert all(umesh.element_types == umesh._LINEAR_TET)

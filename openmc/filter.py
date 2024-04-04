@@ -864,12 +864,8 @@ class MeshFilter(Filter):
         cv.check_type('filter mesh', mesh, openmc.MeshBase)
         self._mesh = mesh
         if isinstance(mesh, openmc.UnstructuredMesh):
-            if mesh.volumes is None:
-                self.bins = []
-            else:
-                self.bins = list(range(len(mesh.volumes)))
-        else:
-            self.bins = list(mesh.indices)
+            mesh.add_lbrary_data()
+        self.bins = list(mesh.indices)
 
     @property
     def shape(self):

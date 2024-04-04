@@ -276,6 +276,13 @@ then, OpenMC will only use up to the :math:`P_1` data.
   .. note:: This element is not used in the continuous-energy
     :ref:`energy_mode`.
 
+---------------------------
+``<max_splits>`` Element
+---------------------------
+
+The ``<max_splits>`` element indicates the number of times a particle can split during a history. 
+
+  *Default*: 1000
 
 --------------------------------------
 ``<max_write_lost_particles>`` Element

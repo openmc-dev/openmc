@@ -5,6 +5,7 @@ from itertools import product
 from math import log
 import os
 from pathlib import Path
+import warnings
 
 import numpy as np
 from openmc.mpi import comm
@@ -438,9 +439,9 @@ def test_validate(simple_chain):
     simple_chain["C"].yield_data = {0.0253: {"A": 1.4, "B": 0.6}}
 
     assert simple_chain.validate(strict=True, tolerance=0.0)
-    with pytest.warns(None) as record:
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         assert simple_chain.validate(strict=False, quiet=False, tolerance=0.0)
-    assert len(record) == 0
 
     # Mess up "earlier" nuclide's reactions
     decay_mode = simple_chain["A"].decay_modes.pop()

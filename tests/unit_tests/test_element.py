@@ -1,5 +1,5 @@
 import openmc
-from pytest import approx, raises
+from pytest import approx, raises, warns
 
 from openmc.data import NATURAL_ABUNDANCE, atomic_mass
 
@@ -37,9 +37,15 @@ def test_expand_enrichment():
         assert isotope[1] == approx(ref[isotope[0]])
 
 
+def test_expand_no_isotopes():
+    """ Test that correct warning is raised for elements with no isotopes """
+    with warns(openmc.NoNaturalIsotopesWarning):
+        element = openmc.Element('Tc')
+        element.expand(100.0, 'ao')
+
+
 def test_expand_exceptions():
     """ Test that correct exceptions are raised for invalid input """
-
     # 1 Isotope Element
     with raises(ValueError):
         element = openmc.Element('Be')

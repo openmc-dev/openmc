@@ -262,6 +262,10 @@ public:
   int& cell_last(int i) { return cell_last_[i]; }
   const int& cell_last(int i) const { return cell_last_[i]; }
 
+  // Coordinates at birth
+  Position& r_born() { return r_born_; }
+  const Position& r_born() const { return r_born_; }
+
   // Coordinates of last collision or reflective/periodic surface
   // crossing for current tallies
   Position& r_last_current() { return r_last_current_; }
@@ -323,6 +327,7 @@ private:
   int n_coord_last_ {1};  //!< number of current coordinates
   vector<int> cell_last_; //!< coordinates for all levels
 
+  Position r_born_;         //!< coordinates at birth
   Position r_last_current_; //!< coordinates of the last collision or
                             //!< reflective/periodic surface crossing for
                             //!< current tallies

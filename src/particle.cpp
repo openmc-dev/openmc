@@ -121,6 +121,7 @@ void Particle::from_source(const SourceSite* src)
   wgt_last() = src->wgt;
   r() = src->r;
   u() = src->u;
+  r_born() = src->r;
   r_last_current() = src->r;
   r_last() = src->r;
   u_last() = src->u;

@@ -68,20 +68,19 @@ def _get_legend_label(this, type):
 def _get_yaxis_label(reactions, divisor_types):
     """Gets a y axis label for the type of data plotted"""
 
-    heat_combos = {"heating"}, {"heating-local"}, {"heating", "heating-local"}
+    heat_values = {"heating", "heating-local", "damage-energy"}
 
     # if all the types are heating a different stem and unit is needed
-    if all(set(value) in heat_combos for value in reactions.values()):
+    if all(set(value).issubset(heat_values) for value in reactions.values()):
         stem = "Heating"
     elif all(isinstance(item, str) for item in reactions.keys()):
         for nuc_reactions in reactions.values():
             for reaction in nuc_reactions:
-                if reaction in ["heating", "heating-local"]:
-                    msg = (
+                if reaction in heat_values:
+                    raise TypeError(
                         "Mixture of heating and Microscopic reactions. "
                         "Invalid type for plotting"
                     )
-                    raise TypeError(msg)
         stem = "Microscopic"
     elif all(isinstance(item, openmc.Material) for item in reactions.keys()):
         stem = 'Macroscopic'
@@ -96,7 +95,7 @@ def _get_yaxis_label(reactions, divisor_types):
         units = {
             "Macroscopic": "[1/cm]",
             "Microscopic": "[b]",
-            "Heating": "[eV barn]",
+            "Heating": "[eV-barn]",
         }[stem]
 
     return f'{stem} {mid} {units}'

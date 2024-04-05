@@ -635,7 +635,7 @@ class XConeOneSided(CompositeSurface):
         z-coordinate of the apex. Defaults to 0.
     r2 : float, optional
         Parameter related to the aperture [:math:`\\rm cm^2`].
-        It can be interpreted as the increase in the radius squared per cm along 
+        It can be interpreted as the increase in the radius squared per cm along
         the cone's axis of revolution.
     up : bool
         Whether to select the side of the cone that extends to infinity in the
@@ -695,7 +695,7 @@ class YConeOneSided(CompositeSurface):
         z-coordinate of the apex. Defaults to 0.
     r2 : float, optional
         Parameter related to the aperture [:math:`\\rm cm^2`].
-        It can be interpreted as the increase in the radius squared per cm along 
+        It can be interpreted as the increase in the radius squared per cm along
         the cone's axis of revolution.
     up : bool
         Whether to select the side of the cone that extends to infinity in the
@@ -749,7 +749,7 @@ class ZConeOneSided(CompositeSurface):
         z-coordinate of the apex. Defaults to 0.
     r2 : float, optional
         Parameter related to the aperture [:math:`\\rm cm^2`].
-        It can be interpreted as the increase in the radius squared per cm along 
+        It can be interpreted as the increase in the radius squared per cm along
         the cone's axis of revolution.
     up : bool
         Whether to select the side of the cone that extends to infinity in the
@@ -1039,7 +1039,7 @@ class Polygon(CompositeSurface):
         # included in the triangulation, break it into two line segments.
         n = len(points)
         new_pts = []
-        for i, j in zip(range(n), range(1, n +1)):
+        for i, j in zip(range(n), range(1, n + 1)):
             # If both vertices of any edge are not found in any simplex, insert
             # a new point between them.
             if not any([i in s and j % n in s for s in tri.simplices]):
@@ -1078,7 +1078,7 @@ class Polygon(CompositeSurface):
         # If group is empty, grab the next simplex in the dictionary and recurse
         if group is None:
             # Start with smallest neighbor lists
-            sidx = sorted(neighbor_map.items(), key=lambda item:len(item[1]))[0][0]
+            sidx = sorted(neighbor_map.items(), key=lambda item: len(item[1]))[0][0]
             return self._group_simplices(neighbor_map, group=[sidx])
         # Otherwise use the last simplex in the group
         else:

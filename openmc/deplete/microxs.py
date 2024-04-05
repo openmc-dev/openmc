@@ -27,10 +27,9 @@ _valid_rxns.append('fission')
 
 
 def _resolve_chain_file_path(chain_file: str):
-    # Determine what reactions and nuclides are available in chain
     if chain_file is None:
         chain_file = openmc.config.get('chain_file')
-        if 'chain_file' in openmc.config:
+        if 'chain_file' not in openmc.config:
             raise DataError(
                 "No depletion chain specified and could not find depletion "
                 "chain in openmc.config['chain_file']"

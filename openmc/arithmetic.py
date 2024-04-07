@@ -188,9 +188,9 @@ class CrossFilter:
 
     Parameters
     ----------
-    left_filter : Filter or CrossFilter
+    left_filter : openmc.Filter or CrossFilter
         The left filter in the outer product
-    right_filter : Filter or CrossFilter
+    right_filter : openmc.Filter or CrossFilter
         The right filter in the outer product
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
@@ -200,9 +200,9 @@ class CrossFilter:
     ----------
     type : str
         The type of the crossfilter (e.g., 'energy / energy')
-    left_filter : Filter or CrossFilter
+    left_filter : openmc.Filter or CrossFilter
         The left filter in the outer product
-    right_filter : Filter or CrossFilter
+    right_filter : openmc.Filter or CrossFilter
         The right filter in the outer product
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
@@ -517,7 +517,7 @@ class AggregateFilter:
 
     Parameters
     ----------
-    aggregate_filter : Filter or CrossFilter
+    aggregate_filter : openmc.Filter or CrossFilter
         The filter included in the aggregation
     bins : Iterable of tuple
         The filter bins included in the aggregation
@@ -529,7 +529,7 @@ class AggregateFilter:
     ----------
     type : str
         The type of the aggregatefilter (e.g., 'sum(energy)', 'sum(cell)')
-    aggregate_filter : filter
+    aggregate_filter : openmc.Filter
         The filter included in the aggregation
     aggregate_op : str
         The tally aggregation operator (e.g., 'sum', 'avg', etc.) used

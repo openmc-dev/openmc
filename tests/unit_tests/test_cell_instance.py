@@ -40,8 +40,7 @@ def double_lattice_model():
     model.geometry = openmc.Geometry([cell_with_lattice1, cell_with_lattice2])
 
     tally = openmc.Tally()
-    dcell_filter = openmc.DistribcellFilter(c)
-    tally.filters = [dcell_filter]
+    tally.filters = [openmc.DistribcellFilter(c)]
     tally.scores = ['flux']
     model.tallies = [tally]
 
@@ -50,8 +49,7 @@ def double_lattice_model():
     bbox[0][2] = -0.5
     bbox[1][2] = 0.5
     space = openmc.stats.Box(*bbox)
-    source = openmc.IndependentSource(space=space)
-    model.settings.source = source
+    model.settings.source = openmc.IndependentSource(space=space)
 
     # Add necessary settings and export
     model.settings.batches = 10
@@ -88,7 +86,6 @@ def test_cell_instance_multilattice(r, expected_cell_instance):
 
 
 def test_cell_instance_multilattice_results():
-    openmc.run()
     openmc.lib.run()
     tally_results = openmc.lib.tallies[1].mean
     assert (tally_results != 0.0).all()

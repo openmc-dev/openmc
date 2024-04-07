@@ -12,19 +12,10 @@ Functions
    :nosignatures:
    :template: myfunction.rst
 
-   broaden_wmp_polynomials
-   calc_pn
-   calc_rn
-   calc_zn_rad
    calculate_volumes
-   cell
-   cells
    current_batch
-   evaluate_legendre
    export_properties
    export_weight_windows
-   filter
-   filters
    finalize
    find_cell
    find_material
@@ -35,40 +26,24 @@ Functions
    import_properties
    import_weight_windows
    init
-   is_initialized
    is_statepoint_batch
    iter_batches
    keff
    load_nuclide
    master
-   material
-   materials
-   maxwell_spectrum
-   mesh
-   meshes
    next_batch
-   normal_variate
-   nuclide
-   nuclides
    num_realizations
-   plot
    plot_geometry
    property_map
    reset
    reset_timers
-   rotate_angle
    run
    run_in_memory
    sample_external_source
-   settings
    simulation_finalize
    simulation_init
    source_bank
    statepoint_write
-   tallies
-   tally
-   watt_spectrum
-   weight_windows
 
 Classes
 -------
@@ -79,7 +54,6 @@ Classes
    :template: myclass.rst
 
    AzimuthalFilter
-   CDLL
    Cell
    CellFilter
    CellInstanceFilter
@@ -97,20 +71,18 @@ Classes
    Material
    MaterialFilter
    MaterialFromFilter
+   Mesh
    MeshFilter
    MeshSurfaceFilter
    MuFilter
    Nuclide
-   POINTER
    ParticleFilter
-   PathLike
    PolarFilter
    RectilinearMesh
    RegularMesh
    SpatialLegendreFilter
    SphericalHarmonicsFilter
    SphericalMesh
-   Structure
    SurfaceFilter
    Tally
    UniverseFilter
@@ -118,3 +90,48 @@ Classes
    WeightWindows
    ZernikeFilter
    ZernikeRadialFilter
+
+Data
+----
+
+.. data:: cells
+
+   Mapping of cell ID to :class:`openmc.lib.Cell` instances.
+
+   :type: dict
+
+.. data:: filters
+
+   Mapping of filter ID to :class:`openmc.lib.Filter` instances.
+
+   :type: dict
+
+.. data:: materials
+
+   Mapping of material ID to :class:`openmc.lib.Material` instances.
+
+   :type: dict
+
+.. data:: meshes
+
+   Mapping of mesh ID to :class:`openmc.lib.Mesh` instances.
+
+   :type: dict
+
+.. data:: nuclides
+
+   Mapping of nuclide name to :class:`openmc.lib.Nuclide` instances.
+
+   :type: dict
+
+.. data:: tallies
+
+   Mapping of tally ID to :class:`openmc.lib.Tally` instances.
+
+   :type: dict
+
+.. data:: weight_windows
+
+   Mapping of weight window ID to :class:`openmc.lib.WeightWindows` instances.
+
+   :type: dict

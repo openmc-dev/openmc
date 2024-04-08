@@ -53,12 +53,7 @@ public:
   virtual double strength() const { return 1.0; }
 
   static unique_ptr<Source> create(pugi::xml_node node);
-};
 
-//==============================================================================
-//! Abstract middle layer class providing source restrictions
-//==============================================================================
-class RestrictedSource : public Source {
 protected:
   // Domain types
   enum class DomainType { UNIVERSE, MATERIAL, CELL };
@@ -88,7 +83,7 @@ protected:
 //! distributions
 //==============================================================================
 
-class IndependentSource : public RestrictedSource {
+class IndependentSource : public Source {
 public:
   // Constructors
   IndependentSource(
@@ -124,7 +119,7 @@ private:
 //! Source composed of particles read from a file
 //==============================================================================
 
-class FileSource : public RestrictedSource {
+class FileSource : public Source {
 public:
   // Constructors
   explicit FileSource(pugi::xml_node node);

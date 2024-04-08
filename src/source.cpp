@@ -79,10 +79,7 @@ unique_ptr<Source> Source::create(pugi::xml_node node)
   }
 }
 
-//==============================================================================
-// RestrictedSource functionality
-//==============================================================================
-void RestrictedSource::check_for_restriction_nodes(pugi::xml_node node)
+void Source::check_for_restriction_nodes(pugi::xml_node node)
 {
   // Check for domains to reject from
   if (check_for_node(node, "domain_type")) {
@@ -142,23 +139,23 @@ void RestrictedSource::check_for_restriction_nodes(pugi::xml_node node)
   }
 }
 
-bool RestrictedSource::inside_bounds(SourceSite& s) const
+bool Source::inside_bounds(SourceSite& s) const
 {
   return inside_spatial_bounds(s) && inside_energy_bounds(s.E) &&
          inside_time_bounds(s.time);
 }
 
-bool RestrictedSource::inside_energy_bounds(double E) const
+bool Source::inside_energy_bounds(double E) const
 {
   return E > energy_bounds_.first && E < energy_bounds_.second;
 }
 
-bool RestrictedSource::inside_time_bounds(const double time) const
+bool Source::inside_time_bounds(const double time) const
 {
   return time > time_bounds_.first && time < time_bounds_.second;
 }
 
-bool RestrictedSource::inside_spatial_bounds(SourceSite& s) const
+bool Source::inside_spatial_bounds(SourceSite& s) const
 {
   bool found = false;
   Particle p;

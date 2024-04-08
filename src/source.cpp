@@ -80,6 +80,123 @@ unique_ptr<Source> Source::create(pugi::xml_node node)
 }
 
 //==============================================================================
+// RestrictedSource functionality
+//==============================================================================
+void RestrictedSource::check_for_restriction_nodes(pugi::xml_node node) {
+  // Check for domains to reject from
+  if (check_for_node(node, "domain_type")) {
+    std::string domain_type = get_node_value(node, "domain_type");
+    if (domain_type == "cell") {
+      domain_type_ = DomainType::CELL;
+    } else if (domain_type == "material") {
+      domain_type_ = DomainType::MATERIAL;
+    } else if (domain_type == "universe") {
+      domain_type_ = DomainType::UNIVERSE;
+    } else {
+      fatal_error(std::string(
+        "Unrecognized domain type for source rejection: " + domain_type));
+    }
+
+    auto ids = get_node_array<int>(node, "domain_ids");
+    domain_ids_.insert(ids.begin(), ids.end());
+  }
+
+  if (check_for_node(node, "time_bounds")) {
+    auto ids = get_node_array<double>(node, "time_bounds");
+    time_bounds_=std::make_pair(ids[0],ids[1]);
+  }
+  if (check_for_node(node, "energy_bounds")) {
+    auto ids = get_node_array<double>(node, "energy_bounds");
+    energy_bounds_=std::make_pair(ids[0],ids[1]);
+  }
+  if (check_for_node(node, "lower_left")) {
+    auto ids = get_node_array<double>(node, "lower_left");
+    for (auto id : ids) {
+      lower_left_.push_back(id);
+    }
+  }
+  if (check_for_node(node, "upper_right")) {
+    auto ids = get_node_array<double>(node, "upper_right");
+    for (auto id : ids) {
+      upper_right_.push_back(id);
+    }
+  }
+
+  // Check for how to handle rejected particles
+  if (check_for_node(node, "rejection_strategy")) {
+    std::string rejection_strategy = get_node_value(node, "rejection_strategy");
+    if (rejection_strategy == "kill") {
+      rejection_strategy_ = RejectionStrategy::KILL;
+    } else if (rejection_strategy == "resample") {
+      rejection_strategy_ = RejectionStrategy::RESAMPLE;
+    } else {
+      fatal_error(std::string(
+        "Unrecognized strategy source rejection: " + rejection_strategy));
+    }
+  } else {
+    // Default to kill rejected particles
+    rejection_strategy_ = RejectionStrategy::RESAMPLE;
+  }
+}
+
+bool RestrictedSource::inside_bounds(SourceSite& s) const
+{
+  if ( inside_spatial_bounds(s) and inside_energy_bounds(s.E) and inside_time_bounds(s.time) )
+    return true;
+  return false;
+}
+
+bool RestrictedSource::inside_energy_bounds(double E) const
+{
+  if (E < energy_bounds_.first || E >energy_bounds_.second)
+    return false;
+  return true;
+}
+
+bool RestrictedSource::inside_time_bounds(const double time) const
+{
+  if (time < time_bounds_.first || time > time_bounds_.second)
+    return false;
+  return true;
+}
+
+bool RestrictedSource::inside_spatial_bounds(SourceSite& s) const
+{
+  bool found = false;
+  Particle p;
+  p.r() = s.r;
+
+  // Reject particle if it's not in the geometry at all
+  if (not (found = exhaustive_find_cell(p)) )
+    return false;
+
+  if (!lower_left_.empty() && (s.r[0] < lower_left_[0] || s.r[1] < lower_left_[1] || s.r[2] < lower_left_[2]))
+    return false;
+  if (!upper_right_.empty() && (s.r[0] > upper_right_[0] || s.r[1] > upper_right_[1] || s.r[2] > upper_right_[2]))
+    return false;
+
+  if (!domain_ids_.empty()) {
+    if (domain_type_ == DomainType::MATERIAL) {
+      auto mat_index = p.material();
+      if (mat_index != MATERIAL_VOID) {
+        found = contains(domain_ids_, model::materials[mat_index]->id());
+      }
+    } else {
+      for (int i = 0; i < p.n_coord(); i++) {
+        auto id = (domain_type_ == DomainType::CELL)
+                    ? model::cells[p.coord(i).cell]->id_
+                    : model::universes[p.coord(i).universe]->id_;
+        if ((found = contains(domain_ids_, id)))
+          break;
+      }
+    }
+  }
+
+  //particle is inside all spatial bounds
+  return true;
+}
+
+//==============================================================================
 // IndependentSource implementation
 //==============================================================================
 
@@ -149,23 +266,8 @@ IndependentSource::IndependentSource(pugi::xml_node node)
       time_ = UPtrDist {new Discrete {T, p, 1}};
     }
 
-    // Check for domains to reject from
-    if (check_for_node(node, "domain_type")) {
-      std::string domain_type = get_node_value(node, "domain_type");
-      if (domain_type == "cell") {
-        domain_type_ = DomainType::CELL;
-      } else if (domain_type == "material") {
-        domain_type_ = DomainType::MATERIAL;
-      } else if (domain_type == "universe") {
-        domain_type_ = DomainType::UNIVERSE;
-      } else {
-        fatal_error(std::string(
-          "Unrecognized domain type for source rejection: " + domain_type));
-      }
-
-      auto ids = get_node_array<int>(node, "domain_ids");
-      domain_ids_.insert(ids.begin(), ids.end());
-    }
+    // Check for additional defined restrictions (from RestrictedSource)
+    check_for_restriction_nodes(node);
   }
 }
 
@@ -188,8 +290,8 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     // Sample spatial distribution
     p.r() = space_->sample(seed);
 
-    // Now search to see if location exists in geometry
-    found = exhaustive_find_cell(p);
+    // Check if otherwise outside defined restriction bounds
+    found=inside_spatial_bounds(site);
 
     // Check if spatial site is in fissionable material
     if (found) {
@@ -202,25 +304,6 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
             found = false;
           } else {
             found = model::materials[mat_index]->fissionable();
-          }
-        }
-      }
-
-      // Rejection based on cells/materials/universes
-      if (!domain_ids_.empty()) {
-        found = false;
-        if (domain_type_ == DomainType::MATERIAL) {
-          auto mat_index = p.material();
-          if (mat_index != MATERIAL_VOID) {
-            found = contains(domain_ids_, model::materials[mat_index]->id());
-          }
-        } else {
-          for (int i = 0; i < p.n_coord(); i++) {
-            auto id = (domain_type_ == DomainType::CELL)
-                        ? model::cells[p.coord(i).cell]->id_
-                        : model::universes[p.coord(i).universe]->id_;
-            if ((found = contains(domain_ids_, id)))
-              break;
           }
         }
       }
@@ -259,7 +342,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     site.E = energy_->sample(seed);
 
     // Resample if energy falls above maximum particle energy
-    if (site.E < data::energy_max[p])
+    if (site.E < data::energy_max[p] or (inside_energy_bounds(site.E)))
       break;
 
     n_reject++;
@@ -291,61 +374,7 @@ FileSource::FileSource(pugi::xml_node node)
   } else {
     this->load_sites_from_file(path);
   }
-
-  // Check for domains to reject from
-  if (check_for_node(node, "domain_type")) {
-    std::string domain_type = get_node_value(node, "domain_type");
-    if (domain_type == "cell") {
-      domain_type_ = DomainType::CELL;
-    } else if (domain_type == "material") {
-      domain_type_ = DomainType::MATERIAL;
-    } else if (domain_type == "universe") {
-      domain_type_ = DomainType::UNIVERSE;
-    } else {
-      fatal_error(std::string(
-        "Unrecognized domain type for source rejection: " + domain_type));
-    }
-
-    auto ids = get_node_array<int>(node, "domain_ids");
-    domain_ids_.insert(ids.begin(), ids.end());
-  }
-
-  if (check_for_node(node, "time_bounds")) {
-    auto ids = get_node_array<double>(node, "time_bounds");
-    time_bounds_=std::make_pair(ids[0],ids[1]);
-  }
-  if (check_for_node(node, "energy_bounds")) {
-    auto ids = get_node_array<double>(node, "energy_bounds");
-    energy_bounds_=std::make_pair(ids[0],ids[1]);
-  }
-  if (check_for_node(node, "lower_left")) {
-    auto ids = get_node_array<double>(node, "lower_left");
-    for (auto id : ids) {
-      lower_left_.push_back(id);
-    }
-  }
-  if (check_for_node(node, "upper_right")) {
-    auto ids = get_node_array<double>(node, "upper_right");
-    for (auto id : ids) {
-      upper_right_.push_back(id);
-    }
-  }
-
-  // Check for how to handle rejected particles
-  if (check_for_node(node, "rejection_strategy")) {
-    std::string rejection_strategy = get_node_value(node, "rejection_strategy");
-    if (rejection_strategy == "kill") {
-      rejection_strategy_ = RejectionStrategy::KILL;
-    } else if (rejection_strategy == "resample") {
-      rejection_strategy_ = RejectionStrategy::RESAMPLE;
-    } else {
-      fatal_error(std::string(
-        "Unrecognized strategy source rejection: " + rejection_strategy));
-    }
-  } else {
-    // Default to kill rejected particles
-    rejection_strategy_ = RejectionStrategy::KILL;
-  }
+  check_for_restriction_nodes(node);
 }
 
 FileSource::FileSource(const std::string& path)
@@ -381,21 +410,6 @@ void FileSource::load_sites_from_file(const std::string& path)
   file_close(file_id);
 }
 
-bool FileSource::inside_bounds(SourceSite& s) const
-{
-  if (s.E < energy_bounds_.first || s.E >energy_bounds_.second) {
-    return false;
-  } else if (s.time < time_bounds_.first || s.time > time_bounds_.second) {
-    return false;
-  } else {
-    if (!lower_left_.empty() && (s.r[0] < lower_left_[0] || s.r[1] < lower_left_[1] || s.r[2] < lower_left_[2]))
-      return false;
-    if (!upper_right_.empty() && (s.r[0] > upper_right_[0] || s.r[1] > upper_right_[1] || s.r[2] > upper_right_[2]))
-      return false;
-  }
-  return true;
-}
-
 SourceSite FileSource::sample(uint64_t* seed) const
 {
   bool found = false;
@@ -409,36 +423,11 @@ SourceSite FileSource::sample(uint64_t* seed) const
     Particle p;
     p.r() = site.r;
 
-    // Reject particle if it's not in the geometry at all
-    found = exhaustive_find_cell(p);
-
-    // If not geometry rejected possibly reject by hypercube
-    if (found) {
-      found = inside_bounds(site);
-    }
-
-    // Rejection based on cells/materials/universes
-    if (found) {
-      if (!domain_ids_.empty()) {
-        if (domain_type_ == DomainType::MATERIAL) {
-          auto mat_index = p.material();
-          if (mat_index != MATERIAL_VOID) {
-            found = contains(domain_ids_, model::materials[mat_index]->id());
-          }
-        } else {
-          for (int i = 0; i < p.n_coord(); i++) {
-            auto id = (domain_type_ == DomainType::CELL)
-                        ? model::cells[p.coord(i).cell]->id_
-                        : model::universes[p.coord(i).universe]->id_;
-            if ((found = contains(domain_ids_, id)))
-              break;
-          }
-        }
-      }
-    }
+    found = inside_bounds(site);
 
     if (!found && rejection_strategy_ == RejectionStrategy::KILL) {
       // Accept particle regardless but set wgt=0 to trigger garbage collection
+      // I.e. kill this particle immediately and pick the next
       found = true;
       site.wgt = 0.0;
     }

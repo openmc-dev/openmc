@@ -56,11 +56,37 @@ public:
 };
 
 //==============================================================================
+//! Abstract middle layer class providing source restrictions
+//==============================================================================
+class RestrictedSource : public Source {
+protected:
+  // Domain types
+  enum class DomainType { UNIVERSE, MATERIAL, CELL };
+  enum class RejectionStrategy { KILL, RESAMPLE };
+
+  // members
+  std::unordered_set<int32_t> domain_ids_; //!< Domains to reject from
+  DomainType domain_type_;                 //!< Domain type for rejection
+  std::pair<double,double> time_bounds_ {-DBL_MAX,DBL_MAX}; //!< time limits
+  std::pair<double,double> energy_bounds_ {0,DBL_MAX};      //!< energy limits
+  vector<double> lower_left_;  //!< Lower left corner cds of filter
+  vector<double> upper_right_; //!< Upper right corner cds of filter
+  RejectionStrategy rejection_strategy_; //!< Procedure for rejected
+
+  //methods
+  void check_for_restriction_nodes(pugi::xml_node node);
+  bool inside_bounds(SourceSite& s) const;
+  bool inside_spatial_bounds(SourceSite& s) const;
+  bool inside_energy_bounds(const double E) const;
+  bool inside_time_bounds(const double time) const;
+};
+
+//==============================================================================
 //! Source composed of independent spatial, angle, energy, and time
 //! distributions
 //==============================================================================
 
-class IndependentSource : public Source {
+class IndependentSource : public RestrictedSource {
 public:
   // Constructors
   IndependentSource(
@@ -83,9 +109,6 @@ public:
   Distribution* time() const { return time_.get(); }
 
 private:
-  // Domain types
-  enum class DomainType { UNIVERSE, MATERIAL, CELL };
-
   // Data members
   ParticleType particle_ {ParticleType::neutron}; //!< Type of particle emitted
   double strength_ {1.0};                         //!< Source strength
@@ -93,15 +116,13 @@ private:
   UPtrAngle angle_;                               //!< Angular distribution
   UPtrDist energy_;                               //!< Energy distribution
   UPtrDist time_;                                 //!< Time distribution
-  DomainType domain_type_;                        //!< Domain type for rejection
-  std::unordered_set<int32_t> domain_ids_;        //!< Domains to reject from
 };
 
 //==============================================================================
 //! Source composed of particles read from a file
 //==============================================================================
 
-class FileSource : public Source {
+class FileSource : public RestrictedSource {
 public:
   // Constructors
   explicit FileSource(pugi::xml_node node);
@@ -112,20 +133,7 @@ public:
   void load_sites_from_file(
     const std::string& path); //!< Load source sites from file
 private:
-  // Domain types
-  enum class DomainType { UNIVERSE, MATERIAL, CELL };
-  enum class RejectionStrategy { KILL, RESAMPLE };
-
   vector<SourceSite> sites_;               //!< Source sites from a file
-  DomainType domain_type_;                 //!< Domain type for rejection
-  std::unordered_set<int32_t> domain_ids_; //!< Domains to reject from
-  std::pair<double,double> time_bounds_ {-DBL_MAX,DBL_MAX}; //!< time limits
-  std::pair<double,double> energy_bounds_ {0,DBL_MAX};      //!< energy limits
-  vector<double> lower_left_;  //!< Lower left corner cds of filter
-  vector<double> upper_right_; //!< Upper right corner cds of filter
-  RejectionStrategy rejection_strategy_; //!< Procedure for rejected
-
-  bool inside_bounds(SourceSite& s) const;
 };
 
 //==============================================================================

@@ -262,6 +262,14 @@ may be more efficient computationally.
 
   *Default*: 100000
 
+----------------------------------------
+``<max_particle_events>`` Element
+----------------------------------------
+
+This element indicates the maximum number of events a particle can undergo.
+
+  *Default*: 100000
+
 ---------------------------
 ``<max_order>`` Element
 ---------------------------
@@ -280,7 +288,7 @@ then, OpenMC will only use up to the :math:`P_1` data.
 ``<max_splits>`` Element
 ---------------------------
 
-The ``<max_splits>`` element indicates the number of times a particle can split during a history. 
+The ``<max_splits>`` element indicates the number of times a particle can split during a history.
 
   *Default*: 1000
 

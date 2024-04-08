@@ -169,7 +169,7 @@ bool RestrictedSource::inside_spatial_bounds(SourceSite& s) const
   p.r() = s.r;
 
   // Reject particle if it's not in the geometry at all
-  if (not(found = exhaustive_find_cell(p)))
+  if (!(found = exhaustive_find_cell(p)))
     return false;
 
   if (!lower_left_.empty() &&

@@ -2121,6 +2121,7 @@ class UnstructuredMesh(MeshBase):
     def n_dimension(self):
         return 3
 
+    @property
     @statepointcheck
     def indices(self):
         return [(i,) for i in range(self.n_elements)]
@@ -2293,6 +2294,7 @@ class UnstructuredMesh(MeshBase):
         library = group['library'][()].decode()
 
         mesh = cls(filename=filename, library=library, mesh_id=mesh_id)
+        mesh._statepoint_data = True
         vol_data = group['volumes'][()]
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
         mesh.n_elements = mesh.volumes.size

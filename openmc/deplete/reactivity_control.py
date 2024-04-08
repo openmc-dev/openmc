@@ -251,7 +251,8 @@ class ReactivityController(ABC):
                 guesses, keffs = search
 
                 # Check if all guesses are within bracket limits
-                if self.bracket_limit[0] < all(guesses) < self.bracket_limit[1]:
+                if all(self.bracket_limit[0] <= guess <= self.bracket_limit[1] \
+                    for guess in guesses):
                     # Simple method to iteratively adapt the bracket
                     warn(
                         "Search_for_keff returned values below or above "
@@ -298,24 +299,21 @@ class ReactivityController(ABC):
                         )
 
                     # check if adapted bracket lies completely outside of limits
-                    if not (
-                        self.bracket_limit[0]
-                        < all(np.array(bracket) + val)
-                        < self.bracket_limit[1]
-                    ):
-                        # Set res with closest limit and continue
-                        arg_min = abs(np.array(self.bracket_limit) - bracket).argmin()
-                        warn(
-                            "Adaptive iterative bracket went off "
-                            "bracket limits. Set root to {:.2f} and continue.".format(
-                                self.bracket_limit[arg_min]
-                            )
-                        )
-                        root = self.bracket_limit[arg_min]
+                    msg = ("WARNING: Adaptive iterative bracket {} went off "
+                           "bracket limits. Set root to {:.2f} and continue."
+                           )
+                    if all(np.array(bracket)+val <= self.bracket_limit[0]):
+                        warn(msg.format(bracket, self.bracket_limit[0]))
+                        root = self.bracket_limit[0]
+
+                    if all(np.array(bracket)+val >= self.bracket_limit[1]):
+                        warn(msg.format(bracket, self.bracket_limit[1]))
+                        root = self.bracket_limit[1]
 
                     # check if adapted bracket ends are outside bracketing limits
                     if bracket[1] + val > self.bracket_limit[1]:
                         bracket[1] = self.bracket_limit[1] - val
+
                     if bracket[0] + val < self.bracket_limit[0]:
                         bracket[0] = self.bracket_limit[0] - val
 

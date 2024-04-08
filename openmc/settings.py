@@ -338,6 +338,7 @@ class Settings:
 
         self._event_based = None
         self._max_particles_in_flight = None
+        self._max_particle_events = None
         self._write_initial_source = None
         self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows')
         self._weight_window_generators = cv.CheckedList(WeightWindowGenerator, 'weight window generators')
@@ -1738,6 +1739,11 @@ class Settings:
         if text is not None:
             self.max_particles_in_flight = int(text)
 
+    def _max_particle_events_from_xml_element(self, root):
+        text = get_text(root, 'max_particle_events')
+        if text is not None:
+            self.max_particle_events = int(text)
+
     def _material_cell_offsets_from_xml_element(self, root):
         text = get_text(root, 'material_cell_offsets')
         if text is not None:
@@ -1943,6 +1949,7 @@ class Settings:
         settings._delayed_photon_scaling_from_xml_element(elem)
         settings._event_based_from_xml_element(elem)
         settings._max_particles_in_flight_from_xml_element(elem)
+        settings._max_particle_events_from_xml_element(elem)
         settings._material_cell_offsets_from_xml_element(elem)
         settings._log_grid_bins_from_xml_element(elem)
         settings._write_initial_source_from_xml_element(elem)

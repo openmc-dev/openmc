@@ -157,6 +157,12 @@ void get_run_parameters(pugi::xml_node node_base)
       std::stoll(get_node_value(node_base, "max_particles_in_flight"));
   }
 
+  // Get maximum number of events allowed per particle
+  if (check_for_node(node_base, "max_particle_events")) {
+    max_particle_events =
+      std::stoll(get_node_value(node_base, "max_particle_events"));
+  }
+
   // Get number of basic batches
   if (check_for_node(node_base, "batches")) {
     n_batches = std::stoi(get_node_value(node_base, "batches"));

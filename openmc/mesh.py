@@ -2125,6 +2125,10 @@ class UnstructuredMesh(MeshBase):
     def indices(self):
         return [(i,) for i in range(self.n_elements)]
 
+    @property
+    def statepoint_data(self):
+        return self._statepoint_data
+
     def __repr__(self):
         string = super().__repr__()
         string += '{: <16}=\t{}\n'.format('\tFilename', self.filename)

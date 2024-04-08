@@ -82,7 +82,8 @@ unique_ptr<Source> Source::create(pugi::xml_node node)
 //==============================================================================
 // RestrictedSource functionality
 //==============================================================================
-void RestrictedSource::check_for_restriction_nodes(pugi::xml_node node) {
+void RestrictedSource::check_for_restriction_nodes(pugi::xml_node node)
+{
   // Check for domains to reject from
   if (check_for_node(node, "domain_type")) {
     std::string domain_type = get_node_value(node, "domain_type");
@@ -103,11 +104,11 @@ void RestrictedSource::check_for_restriction_nodes(pugi::xml_node node) {
 
   if (check_for_node(node, "time_bounds")) {
     auto ids = get_node_array<double>(node, "time_bounds");
-    time_bounds_=std::make_pair(ids[0],ids[1]);
+    time_bounds_ = std::make_pair(ids[0], ids[1]);
   }
   if (check_for_node(node, "energy_bounds")) {
     auto ids = get_node_array<double>(node, "energy_bounds");
-    energy_bounds_=std::make_pair(ids[0],ids[1]);
+    energy_bounds_ = std::make_pair(ids[0], ids[1]);
   }
   if (check_for_node(node, "lower_left")) {
     auto ids = get_node_array<double>(node, "lower_left");
@@ -141,14 +142,15 @@ void RestrictedSource::check_for_restriction_nodes(pugi::xml_node node) {
 
 bool RestrictedSource::inside_bounds(SourceSite& s) const
 {
-  if ( inside_spatial_bounds(s) and inside_energy_bounds(s.E) and inside_time_bounds(s.time) )
+  if (inside_spatial_bounds(s) and inside_energy_bounds(s.E) and
+      inside_time_bounds(s.time))
     return true;
   return false;
 }
 
 bool RestrictedSource::inside_energy_bounds(double E) const
 {
-  if (E < energy_bounds_.first || E >energy_bounds_.second)
+  if (E < energy_bounds_.first || E > energy_bounds_.second)
     return false;
   return true;
 }
@@ -167,12 +169,16 @@ bool RestrictedSource::inside_spatial_bounds(SourceSite& s) const
   p.r() = s.r;
 
   // Reject particle if it's not in the geometry at all
-  if (not (found = exhaustive_find_cell(p)) )
+  if (not(found = exhaustive_find_cell(p)))
     return false;
 
-  if (!lower_left_.empty() && (s.r[0] < lower_left_[0] || s.r[1] < lower_left_[1] || s.r[2] < lower_left_[2]))
+  if (!lower_left_.empty() &&
+      (s.r[0] < lower_left_[0] || s.r[1] < lower_left_[1] ||
+        s.r[2] < lower_left_[2]))
     return false;
-  if (!upper_right_.empty() && (s.r[0] > upper_right_[0] || s.r[1] > upper_right_[1] || s.r[2] > upper_right_[2]))
+  if (!upper_right_.empty() &&
+      (s.r[0] > upper_right_[0] || s.r[1] > upper_right_[1] ||
+        s.r[2] > upper_right_[2]))
     return false;
 
   if (!domain_ids_.empty()) {
@@ -192,7 +198,7 @@ bool RestrictedSource::inside_spatial_bounds(SourceSite& s) const
     }
   }
 
-  //particle is inside all spatial bounds
+  // particle is inside all spatial bounds
   return true;
 }
 
@@ -291,7 +297,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     p.r() = space_->sample(seed);
 
     // Check if otherwise outside defined restriction bounds
-    found=inside_spatial_bounds(site);
+    found = inside_spatial_bounds(site);
 
     // Check if spatial site is in fissionable material
     if (found) {

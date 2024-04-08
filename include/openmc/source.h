@@ -4,8 +4,8 @@
 #ifndef OPENMC_SOURCE_H
 #define OPENMC_SOURCE_H
 
-#include <unordered_set>
 #include <cfloat>
+#include <unordered_set>
 
 #include "pugixml.hpp"
 
@@ -67,13 +67,13 @@ protected:
   // members
   std::unordered_set<int32_t> domain_ids_; //!< Domains to reject from
   DomainType domain_type_;                 //!< Domain type for rejection
-  std::pair<double,double> time_bounds_ {-DBL_MAX,DBL_MAX}; //!< time limits
-  std::pair<double,double> energy_bounds_ {0,DBL_MAX};      //!< energy limits
-  vector<double> lower_left_;  //!< Lower left corner cds of filter
-  vector<double> upper_right_; //!< Upper right corner cds of filter
+  std::pair<double, double> time_bounds_ {-DBL_MAX, DBL_MAX}; //!< time limits
+  std::pair<double, double> energy_bounds_ {0, DBL_MAX};      //!< energy limits
+  vector<double> lower_left_;            //!< Lower left corner cds of filter
+  vector<double> upper_right_;           //!< Upper right corner cds of filter
   RejectionStrategy rejection_strategy_; //!< Procedure for rejected
 
-  //methods
+  // methods
   void check_for_restriction_nodes(pugi::xml_node node);
   bool inside_bounds(SourceSite& s) const;
   bool inside_spatial_bounds(SourceSite& s) const;
@@ -133,7 +133,7 @@ public:
   void load_sites_from_file(
     const std::string& path); //!< Load source sites from file
 private:
-  vector<SourceSite> sites_;               //!< Source sites from a file
+  vector<SourceSite> sites_; //!< Source sites from a file
 };
 
 //==============================================================================

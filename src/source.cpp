@@ -150,16 +150,12 @@ bool RestrictedSource::inside_bounds(SourceSite& s) const
 
 bool RestrictedSource::inside_energy_bounds(double E) const
 {
-  if (E < energy_bounds_.first || E > energy_bounds_.second)
-    return false;
-  return true;
+  return E > energy_bounds_.first && E < energy_bounds_.second;
 }
 
 bool RestrictedSource::inside_time_bounds(const double time) const
 {
-  if (time < time_bounds_.first || time > time_bounds_.second)
-    return false;
-  return true;
+  return time > time_bounds_.first && time < time_bounds_.second;
 }
 
 bool RestrictedSource::inside_spatial_bounds(SourceSite& s) const

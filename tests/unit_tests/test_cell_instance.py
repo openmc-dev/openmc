@@ -9,6 +9,7 @@ from tests import cdtemp
 
 @pytest.fixture(scope='module', autouse=True)
 def double_lattice_model():
+    openmc.reset_auto_ids()
     model = openmc.Model()
 
     # Create a single material

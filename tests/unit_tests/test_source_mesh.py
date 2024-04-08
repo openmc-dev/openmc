@@ -330,9 +330,9 @@ def test_umesh_source_independent(run_in_tmpdir, request, void_model, library):
 
     mesh_filename = Path(request.fspath).parent / "test_mesh_tets.e"
     uscd_mesh = openmc.UnstructuredMesh(mesh_filename, library)
-    uscd_mesh.add_lbrary_data()
     ind_source = openmc.IndependentSource()
-    model.settings.source = openmc.MeshSource(uscd_mesh, uscd_mesh.n_elements*[ind_source])
+    n_elements = 12_000
+    model.settings.source = openmc.MeshSource(uscd_mesh, n_elements*[ind_source])
     model.export_to_model_xml()
     print(open('model.xml', 'r').read())
     try:

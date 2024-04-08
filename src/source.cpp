@@ -144,10 +144,8 @@ void RestrictedSource::check_for_restriction_nodes(pugi::xml_node node)
 
 bool RestrictedSource::inside_bounds(SourceSite& s) const
 {
-  if (inside_spatial_bounds(s) and inside_energy_bounds(s.E) and
-      inside_time_bounds(s.time))
-    return true;
-  return false;
+  return inside_spatial_bounds(s) && inside_energy_bounds(s.E) &&
+      inside_time_bounds(s.time);
 }
 
 bool RestrictedSource::inside_energy_bounds(double E) const

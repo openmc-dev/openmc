@@ -34,21 +34,21 @@ ARG build_libmesh
 ENV HOME=/root
 
 # Embree variables
-ENV EMBREE_TAG='v3.12.2'
+ENV EMBREE_TAG='v4.3.1'
 ENV EMBREE_REPO='https://github.com/embree/embree'
 ENV EMBREE_INSTALL_DIR=$HOME/EMBREE/
 
 # MOAB variables
-ENV MOAB_TAG='5.3.0'
+ENV MOAB_TAG='5.5.1'
 ENV MOAB_REPO='https://bitbucket.org/fathomteam/moab/'
 
 # Double-Down variables
-ENV DD_TAG='v1.0.0'
+ENV DD_TAG='v1.1.0'
 ENV DD_REPO='https://github.com/pshriwise/double-down'
 ENV DD_INSTALL_DIR=$HOME/Double_down
 
 # DAGMC variables
-ENV DAGMC_BRANCH='v3.2.1'
+ENV DAGMC_BRANCH='v3.2.3'
 ENV DAGMC_REPO='https://github.com/svalinn/DAGMC'
 ENV DAGMC_INSTALL_DIR=$HOME/DAGMC/
 

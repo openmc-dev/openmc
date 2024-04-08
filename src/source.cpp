@@ -104,12 +104,12 @@ void RestrictedSource::check_for_restriction_nodes(pugi::xml_node node)
 
   if (check_for_node(node, "time_bounds")) {
     auto ids = get_node_array<double>(node, "time_bounds");
-    if (id.size() == 2)
+    if (ids.size() == 2)
       time_bounds_ = std::make_pair(ids[0], ids[1]);
   }
   if (check_for_node(node, "energy_bounds")) {
     auto ids = get_node_array<double>(node, "energy_bounds");
-    if (id.size() == 2)
+    if (ids.size() == 2)
       energy_bounds_ = std::make_pair(ids[0], ids[1]);
   }
   if (check_for_node(node, "lower_left")) {

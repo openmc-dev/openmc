@@ -138,7 +138,7 @@ void RestrictedSource::check_for_restriction_nodes(pugi::xml_node node)
     }
   } else {
     // Default to kill rejected particles
-    rejection_strategy_ = RejectionStrategy::RESAMPLE;
+    rejection_strategy_ = RejectionStrategy::KILL;
   }
 }
 

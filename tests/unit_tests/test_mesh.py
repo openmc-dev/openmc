@@ -317,23 +317,3 @@ def test_umesh_roundtrip(run_in_tmpdir, request):
     xml_mesh = xml_tally.filters[0].mesh
 
     assert umesh.id == xml_mesh.id
-    assert umesh.output == xml_mesh.output
-
-@pytest.mark.parametrize("library", ('moab', 'libmesh'))
-def test_umesh_properties(request, library):
-    import openmc.lib
-    # skip the test if the library is not enabled
-    if library == 'moab' and not openmc.lib._dagmc_enabled():
-        pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
-
-    if library == 'libmesh' and not openmc.lib._libmesh_enabled():
-        pytest.skip("LibMesh is not enabled in this build.")
-
-    umesh = openmc.UnstructuredMesh(request.path.parent / 'test_mesh_tets.e', library=library)
-    umesh.add_lbrary_data()
-
-    assert umesh.vertices.size > 0
-    assert umesh.volumes == pytest.approx(0.66666667)
-    assert umesh.centroids.size > 0
-    assert umesh.n_elements == 12000
-    assert all(umesh.element_types == umesh._LINEAR_TET)

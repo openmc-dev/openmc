@@ -68,6 +68,7 @@ class MeshBase(IDManagerMixin, ABC):
     def bounding_box(self) -> openmc.BoundingBox:
         return openmc.BoundingBox(self.lower_left, self.upper_right)
 
+    @property
     @abstractmethod
     def indices(self):
         pass

@@ -346,7 +346,6 @@ def test_umesh_source_independent(run_in_tmpdir, request, void_model, library):
     with openmc.StatePoint('statepoint.h5') as sp:
         uscd_mesh = sp.meshes[uscd_mesh.id]
 
-    uscd_mesh
     # ensure at least that all sites are inside the mesh
     bounding_box = uscd_mesh.bounding_box
     for site in sites:

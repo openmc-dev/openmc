@@ -5,8 +5,8 @@
 #include "openmc/geometry.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/material.h"
-#include "openmc/nuclide.h"
 #include "openmc/message_passing.h"
+#include "openmc/nuclide.h"
 #include <iostream>
 
 int main(int argc, char* argv[])

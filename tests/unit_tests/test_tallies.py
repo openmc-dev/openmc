@@ -42,3 +42,34 @@ def test_xml_roundtrip(run_in_tmpdir):
     assert new_tally.triggers[0].trigger_type == tally.triggers[0].trigger_type
     assert new_tally.triggers[0].threshold == tally.triggers[0].threshold
     assert new_tally.triggers[0].scores == tally.triggers[0].scores
+    assert new_tally.multiply_density == tally.multiply_density
+
+def test_tally_application(run_in_tmpdir):
+
+    model = openmc.examples.pwr_pin_cell()
+
+    # Create a tally with most possible gizmos
+    tally = openmc.Tally()
+    tally.name = 'test tally'
+    ef = openmc.EnergyFilter.from_group_structure('CASMO-40')
+    bbox = model.geometry.bounding_box
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = bbox[0][:2]
+    mesh.upper_right = bbox[1][:2]
+    mesh.dimension = (10, 10)
+    mf = openmc.MeshFilter(mesh)
+    tally.filters = [ef, mf]
+    tally.scores = ['flux', 'absorption', 'fission', 'scatter']
+    model.tallies = [tally]
+
+    # run the simulation and apply retsults
+    sp_file = model.run(apply_tally_results=True)
+
+    with openmc.StatePoint(sp_file) as sp:
+        sp_tally = sp.tallies[tally.id]
+
+    # at this point the tally information regarding results should be the same
+    assert (sp_tally.mean == tally.mean).all()
+    assert (sp_tally.std_dev == tally.std_dev).all()
+    assert sp_tally.nuclides == tally.nuclides
+

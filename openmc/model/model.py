@@ -648,7 +648,7 @@ class Model:
             Whether or not to apply results of the final statepoint file to the
             model's tally objects.
 
-            .. versionadded:: 0.13.4
+            .. versionadded:: 0.14.1
         **export_kwargs
             Keyword arguments passed to either :meth:`Model.export_to_model_xml`
             or :meth:`Model.export_to_xml`.
@@ -722,7 +722,8 @@ class Model:
                     last_statepoint = sp
 
         if apply_tally_results:
-            self.tallies.add_results(last_statepoint)
+            self.apply_tally_results(last_statepoint)
+
         return last_statepoint
 
     def calculate_volumes(self, threads=None, output=True, cwd='.',
@@ -917,8 +918,8 @@ class Model:
                     n_samples=n_samples, prn_seed=prn_seed
                 )
 
-    def add_tally_results(self, statepoint):
-        """Add results from simulation to tally objects on the Model
+    def apply_tally_results(self, statepoint):
+        """Apply results from a statepoint to tally objects on the Model
 
         Parameters
         ----------

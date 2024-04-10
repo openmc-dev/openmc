@@ -395,6 +395,7 @@ class StatePoint:
         if self.tallies_present and not self._tallies_read:
             # Read the number of tallies
             tallies_group = self._f['tallies']
+
             n_tallies = tallies_group.attrs['n_tallies']
 
             # Read a list of the IDs for each Tally
@@ -590,8 +591,6 @@ class StatePoint:
         """
         sp_tally = self.match_tally(tally)
         return sp_tally is not None
-
-
 
     def get_tally(self, scores=[], filters=[], nuclides=[],
                   name=None, id=None, estimator=None, exact_filters=False,

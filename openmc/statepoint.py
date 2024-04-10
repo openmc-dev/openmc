@@ -456,6 +456,7 @@ class StatePoint:
         if n_filters > 0:
             filter_ids = group['filters'][()]
             filters_group = self._f['tallies/filters']
+            tally.filters = []
             for filter_id in filter_ids:
                 filter_group = filters_group[f'filter {filter_id}']
                 new_filter = openmc.Filter.from_hdf5(
@@ -466,14 +467,11 @@ class StatePoint:
         nuclide_names = group['nuclides'][()]
 
         # Add all nuclides to the Tally
-        for name in nuclide_names:
-            nuclide = openmc.Nuclide(name.decode().strip())
-            tally.nuclides.append(nuclide)
+        tally.nuclides = [openmc.Nuclide(name.decode().strip()) for name in nuclide_names]
 
         # Add the scores to the Tally
         scores = group['score_bins'][()]
-        for score in scores:
-            tally.scores.append(score.decode())
+        tally.scores = [score.decode() for score in scores]
 
         # Add Tally to the global dictionary of all Tallies
         tally.sparse = self.sparse

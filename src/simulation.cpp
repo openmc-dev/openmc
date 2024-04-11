@@ -732,7 +732,7 @@ void free_memory_simulation()
 
 void transport_history_based_single_particle(Particle& p)
 {
-  while (true) {
+  while (p.alive()) {
     p.event_calculate_xs();
     if (!p.alive())
       break;

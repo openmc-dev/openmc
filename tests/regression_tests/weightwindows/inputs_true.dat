@@ -70,7 +70,7 @@
       <max_split>10</max_split>
       <weight_cutoff>1e-38</weight_cutoff>
     </weight_windows>
-    <max_splits>200</max_splits>
+    <max_history_splits>200</max_history_splits>
   </settings>
   <tallies>
     <mesh id="1">

@@ -22,7 +22,7 @@ def test_ww_generator(run_in_tmpdir):
     model.settings.particles = 500
     model.settings.batches = 5
     model.settings.run_mode = 'fixed source'
-    model.settings.max_splits = 100
+    model.settings.max_history_splits = 100
 
     mesh = openmc.RegularMesh.from_domain(model.geometry.root_universe)
     energy_bounds = np.linspace(0.0, 1e6, 70)

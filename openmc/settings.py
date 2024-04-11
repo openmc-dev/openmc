@@ -110,7 +110,7 @@ class Settings:
 
         .. versionadded:: 0.12
     max_particle_events : int
-        Maximum number of allowed particle events per particle history.
+        Maximum number of allowed particle events per source particle.
 
         .. versionadded:: 0.14.1
     max_order : None or int

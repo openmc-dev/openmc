@@ -112,7 +112,7 @@ class Tally(IDManagerMixin):
         self._filters = cv.CheckedList(_FILTER_CLASSES, 'tally filters')
         self._nuclides = cv.CheckedList(_NUCLIDE_CLASSES, 'tally nuclides')
         self._scores = cv.CheckedList(_SCORE_CLASSES, 'tally scores')
-        self._estimator = None
+        self._estimator = 'tracklength'
         self._triggers = cv.CheckedList(openmc.Trigger, 'tally triggers')
         self._derivative = None
         self._multiply_density = True
@@ -131,6 +131,35 @@ class Tally(IDManagerMixin):
         self._sp_filename = None
         self._results_read = False
 
+    def __eq__(self, other):
+        if other.id != self.id:
+            return False
+        if other.name != self.name:
+            return False
+        if other.estimator != self.estimator:
+            return False
+        if other.filters != self.filters:
+            return False
+        # adjust nuclides to remove 'total' if present,
+        # accounting for tallies with data from statepoint files
+        other_nuclides = other.nuclides.copy()
+        self_nuclides = self.nuclides.copy()
+        if 'total' in other_nuclides:
+            other_nuclides.remove('total')
+        if 'total' in self_nuclides:
+            self_nuclides.remove('total')
+        if other_nuclides != self_nuclides:
+            return False
+        if other.scores != self.scores:
+            return False
+        if other.triggers != self.triggers:
+            return False
+        if other.derivative != self.derivative:
+            return False
+        if other.multiply_density != self.multiply_density:
+            return False
+        return True
+
     def __repr__(self):
         parts = ['Tally']
         parts.append('{: <15}=\t{}'.format('ID', self.id))
@@ -145,6 +174,8 @@ class Tally(IDManagerMixin):
         parts.append('{: <15}=\t{}'.format('Estimator', self.estimator))
         parts.append('{: <15}=\t{}'.format('Multiply dens.', self.multiply_density))
         return '\n\t'.join(parts)
+
+
 
     @property
     def name(self):
@@ -893,10 +924,13 @@ class Tally(IDManagerMixin):
         statepoint : openmc.PathLike or openmc.StatePoint instance
             StatePoint used to update tally results
         """
-        sp = statepoint if isinstance(statepoint, openmc.StatePoint) else openmc.StatePoint(statepoint)
+        if isinstance(statepoint, openmc.StatePoint):
+            sp = statepoint
+        else:
+            sp = openmc.StatePoint(statepoint)
         # check for an exact tally match in the sp file
-        sp.match_tally(self)
-        sp._populate_tally(self)
+        if self in statepoint.tallies.values():
+            sp._populate_tally(self)
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):

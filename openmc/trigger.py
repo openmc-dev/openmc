@@ -20,6 +20,8 @@ class Trigger(EqualityMixin):
     allow_zero : bool
         Whether to allow zero tally bins to be ignored.
 
+        .. versionadded:: 0.14.1
+
     Attributes
     ----------
     trigger_type : {'variance', 'std_dev', 'rel_err'}

@@ -18,8 +18,12 @@ void MeshFilter::from_xml(pugi::xml_node node)
     fatal_error(
       "Only one mesh can be specified per " + type_str() + " mesh filter.");
   }
-
   auto id = bins_[0];
+
+  if (check_for_node(node, "options")) {
+    options_ = get_node_value(node, "options");
+  }
+
   auto search = model::mesh_map.find(id);
   if (search != model::mesh_map.end()) {
     set_mesh(search->second);
@@ -63,6 +67,9 @@ void MeshFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
   write_dataset(filter_group, "bins", model::meshes[mesh_]->id_);
+  if (!options_.empty()) {
+    write_attribute(filter_group, "options", options_);
+  }
   if (translated_) {
     write_dataset(filter_group, "translation", translation_);
   }
@@ -80,7 +87,7 @@ void MeshFilter::set_mesh(int32_t mesh)
   // perform any additional perparation for mesh tallies here
   mesh_ = mesh;
   n_bins_ = model::meshes[mesh_]->n_bins();
-  model::meshes[mesh_]->prepare_for_tallies();
+  model::meshes[mesh_]->prepare_for_tallies(options_);
 }
 
 void MeshFilter::set_translation(const Position& translation)

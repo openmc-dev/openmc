@@ -1,8 +1,10 @@
+from __future__ import annotations
 from abc import ABCMeta
 from collections.abc import Iterable
 import hashlib
 from itertools import product
 from numbers import Real, Integral
+from typing import Optional
 import warnings
 
 import lxml.etree as ET
@@ -794,6 +796,9 @@ class MeshFilter(Filter):
     ----------
     mesh : openmc.MeshBase
         The mesh object that events will be tallied onto
+    options : str, optional
+        Special options that control spatial search data structures used. This
+        is currently only used to set parameters for MOAB's AdaptiveKDTree.
     filter_id : int
         Unique identifier for the filter
 
@@ -801,11 +806,14 @@ class MeshFilter(Filter):
     ----------
     mesh : openmc.MeshBase
         The mesh object that events will be tallied onto
+    options : str
+        Special options that control spatial search data structures used. This
+        is currently only used to set parameters for MOAB's AdaptiveKDTree.
     id : int
         Unique identifier for the filter
     translation : Iterable of float
-        This array specifies a vector that is used to translate (shift)
-        the mesh for this filter
+        This array specifies a vector that is used to translate (shift) the mesh
+        for this filter
     bins : list of tuple
         A list of mesh indices for each filter bin, e.g. [(1, 1, 1), (2, 1, 1),
         ...]
@@ -814,8 +822,9 @@ class MeshFilter(Filter):
 
     """
 
-    def __init__(self, mesh, filter_id=None):
+    def __init__(self, mesh, options=None, filter_id=None):
         self.mesh = mesh
+        self.options = options
         self.id = filter_id
         self._translation = None
 
@@ -845,9 +854,12 @@ class MeshFilter(Filter):
         mesh_id = group['bins'][()]
         mesh_obj = kwargs['meshes'][mesh_id]
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+        if 'options' in group.attrs:
+            options = group.attrs['options'].decode()
+        else:
+            options = None
 
-
-        out = cls(mesh_obj, filter_id=filter_id)
+        out = cls(mesh_obj, options=options, filter_id=filter_id)
 
         translation = group.get('translation')
         if translation:
@@ -870,6 +882,15 @@ class MeshFilter(Filter):
                 self.bins = []
         else:
             self.bins = list(mesh.indices)
+
+    @property
+    def options(self) -> Optional[str]:
+        return self._options
+
+    @options.setter
+    def options(self, options: Optional[str]):
+        cv.check_type('filter options', options, (str, type(None)))
+        self._options = options
 
     @property
     def shape(self):
@@ -967,16 +988,19 @@ class MeshFilter(Filter):
         """
         element = super().to_xml_element()
         element[0].text = str(self.mesh.id)
+        if self.options is not None:
+            element.set('options', self.options)
         if self.translation is not None:
             element.set('translation', ' '.join(map(str, self.translation)))
         return element
 
     @classmethod
-    def from_xml_element(cls, elem, **kwargs):
+    def from_xml_element(cls, elem: ET.Element, **kwargs) -> MeshFilter:
         mesh_id = int(get_text(elem, 'bins'))
         mesh_obj = kwargs['meshes'][mesh_id]
         filter_id = int(elem.get('id'))
-        out = cls(mesh_obj, filter_id=filter_id)
+        options = elem.get('options')
+        out = cls(mesh_obj, options=options, filter_id=filter_id)
 
         translation = elem.get('translation')
         if translation:

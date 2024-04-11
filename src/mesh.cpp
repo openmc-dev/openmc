@@ -44,6 +44,10 @@
 #include "libmesh/numeric_vector.h"
 #endif
 
+#ifdef DAGMC
+#include "moab/FileOptions.hpp"
+#endif
+
 namespace openmc {
 
 //==============================================================================
@@ -2260,7 +2264,7 @@ void MOABMesh::initialize()
   }
 }
 
-void MOABMesh::prepare_for_tallies()
+void MOABMesh::prepare_for_tallies(const std::string& options)
 {
   // if the KDTree has already been constructed, do nothing
   if (kdtree_)
@@ -2268,7 +2272,7 @@ void MOABMesh::prepare_for_tallies()
 
   // build acceleration data structures
   compute_barycentric_data(ehs_);
-  build_kdtree(ehs_);
+  build_kdtree(ehs_, options);
 }
 
 void MOABMesh::create_interface()
@@ -2287,10 +2291,12 @@ void MOABMesh::create_interface()
   }
 }
 
-void MOABMesh::build_kdtree(const moab::Range& all_tets)
+void MOABMesh::build_kdtree(
+  const moab::Range& all_tets, const std::string& options)
 {
   moab::Range all_tris;
   int adj_dim = 2;
+  write_message("Getting tet adjacencies...", 7);
   moab::ErrorCode rval = mbi_->get_adjacencies(
     all_tets, adj_dim, true, all_tris, moab::Interface::UNION);
   if (rval != moab::MB_SUCCESS) {
@@ -2309,10 +2315,20 @@ void MOABMesh::build_kdtree(const moab::Range& all_tets)
   all_tets_and_tris.merge(all_tris);
 
   // create a kd-tree instance
+  write_message("Building adaptive k-d tree for tet mesh...", 7);
   kdtree_ = make_unique<moab::AdaptiveKDTree>(mbi_.get());
 
-  // build the tree
-  rval = kdtree_->build_tree(all_tets_and_tris, &kdtree_root_);
+  // Determine what options to use
+  std::ostringstream options_stream;
+  if (options.empty()) {
+    options_stream << "MAX_DEPTH=20;PLANE_SET=2;";
+  } else {
+    options_stream << options;
+  }
+  moab::FileOptions file_opts(options_stream.str().c_str());
+
+  // Build the k-d tree
+  rval = kdtree_->build_tree(all_tets_and_tris, &kdtree_root_, &file_opts);
   if (rval != moab::MB_SUCCESS) {
     fatal_error("Failed to construct KDTree for the "
                 "unstructured mesh file: " +

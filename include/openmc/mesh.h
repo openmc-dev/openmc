@@ -83,7 +83,7 @@ public:
 
   // Methods
   //! Perform any preparation needed to support use in mesh filters
-  virtual void prepare_for_tallies() {};
+  virtual void prepare_for_tallies(const std::string& options) {};
 
   //! Update a position to the local coordinates of the mesh
   virtual void local_coords(Position& r) const {};
@@ -693,7 +693,7 @@ public:
   // Overridden Methods
 
   //! Perform any preparation needed to support use in mesh filters
-  void prepare_for_tallies() override;
+  void prepare_for_tallies(const std::string& options) override;
 
   Position sample_element(int32_t bin, uint64_t* seed) const override;
 
@@ -826,7 +826,8 @@ private:
   //! added to the tree as well.
   //
   //! \param[in] all_tets MOAB Range of tetrahedra for the tree
-  void build_kdtree(const moab::Range& all_tets);
+  //! \param[in] options Options passed when building k-d tree
+  void build_kdtree(const moab::Range& all_tets, const std::string& options);
 
   //! Get the tags for a score from the mesh instance
   //! or create them if they are not there

@@ -419,8 +419,6 @@ SourceSite FileSource::sample(uint64_t* seed) const
     // Sample a particle randomly from list
     i_site = sites_.size() * prn(seed);
     site = sites_[i_site];
-    Particle p;
-    p.r() = site.r;
 
     found = inside_bounds(site);
 

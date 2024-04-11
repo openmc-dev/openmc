@@ -1377,6 +1377,10 @@ class EnergyFilter(RealFilter):
     """
     units = 'eV'
 
+    def __init__(self, values, filter_id=None):
+        cv.check_length('values', values, 2)
+        super().__init__(values, filter_id)
+
     def get_bin_index(self, filter_bin):
         # Use lower energy bound to find index for RealFilters
         deltas = np.abs(self.bins[:, 1] - filter_bin[1]) / filter_bin[1]

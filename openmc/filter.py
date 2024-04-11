@@ -864,7 +864,7 @@ class MeshFilter(Filter):
         cv.check_type('filter mesh', mesh, openmc.MeshBase)
         self._mesh = mesh
         if isinstance(mesh, openmc.UnstructuredMesh):
-            if mesh.statepoint_data:
+            if mesh.has_statepoint_data:
                 self.bins = list(range(len(mesh.volumes)))
             else:
                 self.bins = []
@@ -982,7 +982,7 @@ class MeshFilter(Filter):
         if translation:
             out.translation = [float(x) for x in translation.split()]
         return out
-    
+
 
 class MeshBornFilter(MeshFilter):
     """Filter events by the mesh cell a particle originated from.

@@ -252,9 +252,9 @@ to false.
 
   *Default*: true
 
-----------------------------------------
+-------------------------------------
 ``<max_particles_in_flight>`` Element
-----------------------------------------
+-------------------------------------
 
 This element indicates the number of neutrons to run in flight concurrently
 when using event-based parallelism. A higher value uses more memory, but
@@ -262,9 +262,17 @@ may be more efficient computationally.
 
   *Default*: 100000
 
----------------------------
+---------------------------------
+``<max_particle_events>`` Element
+---------------------------------
+
+This element indicates the maximum number of events a particle can undergo.
+
+  *Default*: 1000000
+
+-----------------------
 ``<max_order>`` Element
----------------------------
+-----------------------
 
 The ``<max_order>`` element allows the user to set a maximum scattering order
 to apply to every nuclide/material in the problem.  That is, if the data
@@ -276,11 +284,11 @@ then, OpenMC will only use up to the :math:`P_1` data.
   .. note:: This element is not used in the continuous-energy
     :ref:`energy_mode`.
 
----------------------------
+------------------------
 ``<max_splits>`` Element
----------------------------
+------------------------
 
-The ``<max_splits>`` element indicates the number of times a particle can split during a history. 
+The ``<max_splits>`` element indicates the number of times a particle can split during a history.
 
   *Default*: 1000
 

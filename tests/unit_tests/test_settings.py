@@ -27,8 +27,8 @@ def test_export_to_xml(run_in_tmpdir):
     s.survival_biasing = True
     s.cutoff = {'weight': 0.25, 'weight_avg': 0.5, 'energy_neutron': 1.0e-5,
                 'energy_photon': 1000.0, 'energy_electron': 1.0e-5,
-                'energy_positron': 1.0e-5, 'time_neutron': 1.0e-5, 
-                'time_photon': 1.0e-5, 'time_electron': 1.0e-5, 
+                'energy_positron': 1.0e-5, 'time_neutron': 1.0e-5,
+                'time_photon': 1.0e-5, 'time_electron': 1.0e-5,
                 'time_positron': 1.0e-5}
     mesh = openmc.RegularMesh()
     mesh.lower_left = (-10., -10., -10.)
@@ -58,6 +58,8 @@ def test_export_to_xml(run_in_tmpdir):
     s.electron_treatment = 'led'
     s.write_initial_source = True
     s.weight_window_checkpoints = {'surface': True, 'collision': False}
+
+    s.max_particle_events = 100
 
     # Make sure exporting XML works
     s.export_to_xml()
@@ -92,7 +94,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.cutoff == {'weight': 0.25, 'weight_avg': 0.5,
                         'energy_neutron': 1.0e-5, 'energy_photon': 1000.0,
                         'energy_electron': 1.0e-5, 'energy_positron': 1.0e-5,
-                        'time_neutron': 1.0e-5, 'time_photon': 1.0e-5, 
+                        'time_neutron': 1.0e-5, 'time_photon': 1.0e-5,
                         'time_electron': 1.0e-5, 'time_positron': 1.0e-5}
     assert isinstance(s.entropy_mesh, openmc.RegularMesh)
     assert s.entropy_mesh.lower_left == [-10., -10., -10.]
@@ -128,3 +130,4 @@ def test_export_to_xml(run_in_tmpdir):
     assert vol.lower_left == (-10., -10., -10.)
     assert vol.upper_right == (10., 10., 10.)
     assert s.weight_window_checkpoints == {'surface': True, 'collision': False}
+    assert s.max_particle_events == 100

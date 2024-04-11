@@ -27,9 +27,6 @@ constexpr int MAX_DELAYED_GROUPS {8};
 
 constexpr double CACHE_INVALID {-1.0};
 
-// Maximum number of collisions/crossings
-constexpr int MAX_EVENTS {1000000};
-
 //==========================================================================
 // Aliases and type definitions
 

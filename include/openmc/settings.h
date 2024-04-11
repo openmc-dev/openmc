@@ -93,8 +93,8 @@ extern "C" int32_t gen_per_batch; //!< number of generations per batch
 extern "C" int64_t n_particles;   //!< number of particles per generation
 
 extern int64_t
-  max_particles_in_flight; //!< Max num. event-based particles in flight
-
+  max_particles_in_flight;      //!< Max num. event-based particles in flight
+extern int max_particle_events; //!< Maximum number of particle events
 extern ElectronTreatment
   electron_treatment; //!< how to treat secondary electrons
 extern array<double, 4>

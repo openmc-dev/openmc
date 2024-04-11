@@ -334,7 +334,6 @@ def test_umesh_source_independent(run_in_tmpdir, request, void_model, library):
     n_elements = 12_000
     model.settings.source = openmc.MeshSource(uscd_mesh, n_elements*[ind_source])
     model.export_to_model_xml()
-    print(open('model.xml', 'r').read())
     try:
         openmc.lib.init()
         openmc.lib.simulation_init()

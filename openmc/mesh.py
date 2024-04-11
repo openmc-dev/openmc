@@ -1921,6 +1921,17 @@ class SphericalMesh(StructuredMesh):
         return arr
 
 
+def require_statepoint_data(func):
+    @wraps(func)
+    def wrapper(self: UnstructuredMesh, *args, **kwargs):
+        if not self._has_statepoint_data:
+            raise AttributeError(f'The "{func.__name__}" property requires '
+                                 'information about this mesh to be loaded '
+                                 'using "UnstructuredMesh.add_library_data".')
+        return func(self, *args, **kwargs)
+    return wrapper
+
+
 class UnstructuredMesh(MeshBase):
     """A 3D unstructured mesh
 
@@ -1986,16 +1997,6 @@ class UnstructuredMesh(MeshBase):
     _LINEAR_TET = 0
     _LINEAR_HEX = 1
 
-    def statepointcheck(func):
-        @wraps(func)
-        def wrapper(self, *args, **kwargs):
-            if not self._statepoint_data:
-                raise AttributeError(f'The "{func.__name__}" property requires '
-                                     'information about this mesh to be loaded '
-                                     'using "UnstructuredMesh.add_library_data".')
-            return func(self, *args, **kwargs)
-        return wrapper
-
     def __init__(self, filename: PathLike, library: str, mesh_id: Optional[int] = None,
                  name: str = '', length_multiplier: float = 1.0):
         super().__init__(mesh_id, name)
@@ -2007,7 +2008,7 @@ class UnstructuredMesh(MeshBase):
         self.library = library
         self._output = False
         self.length_multiplier = length_multiplier
-        self._statepoint_data = False
+        self._has_statepoint_data = False
 
     @property
     def filename(self):
@@ -2028,7 +2029,7 @@ class UnstructuredMesh(MeshBase):
         self._library = lib
 
     @property
-    @statepointcheck
+    @require_statepoint_data
     def size(self):
         return self._size
 
@@ -2047,7 +2048,7 @@ class UnstructuredMesh(MeshBase):
         self._output = val
 
     @property
-    @statepointcheck
+    @require_statepoint_data
     def volumes(self):
         """Return Volumes for every mesh cell if
         populated by a StatePoint file
@@ -2066,32 +2067,32 @@ class UnstructuredMesh(MeshBase):
         self._volumes = volumes
 
     @property
-    @statepointcheck
+    @require_statepoint_data
     def total_volume(self):
         return np.sum(self.volumes)
 
     @property
-    @statepointcheck
+    @require_statepoint_data
     def vertices(self):
         return self._vertices
 
     @property
-    @statepointcheck
+    @require_statepoint_data
     def connectivity(self):
         return self._connectivity
 
     @property
-    @statepointcheck
+    @require_statepoint_data
     def element_types(self):
         return self._element_types
 
     @property
-    @statepointcheck
+    @require_statepoint_data
     def centroids(self):
         return np.array([self.centroid(i) for i in range(self.n_elements)])
 
     @property
-    @statepointcheck
+    @require_statepoint_data
     def n_elements(self):
         if self._n_elements is None:
             raise RuntimeError("No information about this mesh has "
@@ -2123,13 +2124,13 @@ class UnstructuredMesh(MeshBase):
         return 3
 
     @property
-    @statepointcheck
+    @require_statepoint_data
     def indices(self):
         return [(i,) for i in range(self.n_elements)]
 
     @property
-    def statepoint_data(self):
-        return self._statepoint_data
+    def has_statepoint_data(self) -> bool:
+        return self._has_statepoint_data
 
     def __repr__(self):
         string = super().__repr__()
@@ -2141,16 +2142,16 @@ class UnstructuredMesh(MeshBase):
         return string
 
     @property
-    @statepointcheck
+    @require_statepoint_data
     def lower_left(self):
         return self.vertices.min(axis=0)
 
     @property
-    @statepointcheck
+    @require_statepoint_data
     def upper_right(self):
         return self.vertices.max(axis=0)
 
-    @statepointcheck
+    @require_statepoint_data
     def centroid(self, bin: int):
         """Return the vertex averaged centroid of an element
 
@@ -2295,7 +2296,7 @@ class UnstructuredMesh(MeshBase):
         library = group['library'][()].decode()
 
         mesh = cls(filename=filename, library=library, mesh_id=mesh_id)
-        mesh._statepoint_data = True
+        mesh._has_statepoint_data = True
         vol_data = group['volumes'][()]
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
         mesh.n_elements = mesh.volumes.size

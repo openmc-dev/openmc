@@ -75,11 +75,13 @@ class ZernikeRadial(Polynomial):
 
     def __call__(self, r):
         import openmc.lib as lib
+        num_bins = self.order // 2 + 1
+        zn_rad = np.zeros(num_bins, dtype=np.float64)
         if isinstance(r, Iterable):
-            return [np.sum(self._norm_coef * lib.calc_zn_rad(self.order, r_i / self.radius))
+            return [np.sum(self._norm_coef * lib._dll.calc_zn_rad(self.order, r_i / self.radius, zn_rad))
                     for r_i in r]
         else:
-            return np.sum(self._norm_coef * lib.calc_zn_rad(self.order, r / self.radius))
+            return np.sum(self._norm_coef * lib._dll.calc_zn_rad(self.order, r / self.radius, zn_rad))
 
 
 class Zernike(Polynomial):
@@ -131,14 +133,16 @@ class Zernike(Polynomial):
 
     def __call__(self, r, theta=0.0):
         import openmc.lib as lib
+        num_bins = ((self.order + 1) * (self.order + 2)) // 2
+        zn = np.zeros(num_bins, dtype=np.float64)
         if isinstance(r, Iterable) and isinstance(theta, Iterable):
-            return [[np.sum(self._norm_coef * lib.calc_zn(self.order, r_i / self.radius, theta_i))
+            return [[np.sum(self._norm_coef * lib._dll.calc_zn(self.order, r_i / self.radius, theta_i, zn))
                     for r_i in r] for theta_i in theta]
         elif isinstance(r, Iterable) and not isinstance(theta, Iterable):
-            return [np.sum(self._norm_coef * lib.calc_zn(self.order, r_i / self.radius, theta))
+            return [np.sum(self._norm_coef * lib._dll.calc_zn(self.order, r_i / self.radius, theta, zn))
                     for r_i in r]
         elif not isinstance(r, Iterable) and isinstance(theta, Iterable):
-            return [np.sum(self._norm_coef * lib.calc_zn(self.order, r / self.radius, theta_i))
+            return [np.sum(self._norm_coef * lib._dll.calc_zn(self.order, r / self.radius, theta_i, zn))
                     for theta_i in theta]
         else:
-            return np.sum(self._norm_coef * lib.calc_zn(self.order, r / self.radius, theta))
+            return np.sum(self._norm_coef * lib._dll.calc_zn(self.order, r / self.radius, theta))

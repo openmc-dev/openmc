@@ -3,7 +3,7 @@ from numbers import Real, Integral
 
 import h5py
 import numpy as np
-from scipy.integrate import simps
+import scipy.integrate
 from scipy.interpolate import interp1d
 from scipy.special import eval_legendre
 
@@ -1823,6 +1823,12 @@ class XSdata:
         # Reset and re-generate XSdata.xs_shapes with the new scattering format
         xsdata._xs_shapes = None
 
+        # scipy 1.11+ prefers 'simpson', whereas older versions use 'simps'
+        if hasattr(scipy.integrate, 'simpson'):
+            integrate = scipy.integrate.simpson
+        else:
+            integrate = scipy.integrate.simps
+
         for i, temp in enumerate(xsdata.temperatures):
             orig_data = self._scatter_matrix[i]
             new_shape = orig_data.shape[:-1] + (xsdata.num_orders,)
@@ -1860,7 +1866,7 @@ class XSdata:
                                 table_fine[..., imu] += ((l + 0.5)
                                      * eval_legendre(l, mu_fine[imu]) *
                                      orig_data[..., l])
-                        new_data[..., h_bin] = simps(table_fine, mu_fine)
+                        new_data[..., h_bin] = integrate(table_fine, mu_fine)
 
             elif self.scatter_format == SCATTER_TABULAR:
                 # Calculate the mu points of the current data
@@ -1874,7 +1880,7 @@ class XSdata:
                     for l in range(xsdata.num_orders):
                         y = (interp1d(mu_self, orig_data)(mu_fine) *
                              eval_legendre(l, mu_fine))
-                        new_data[..., l] = simps(y, mu_fine)
+                        new_data[..., l] = integrate(y, mu_fine)
 
                 elif target_format == SCATTER_TABULAR:
                     # Simply use an interpolating function to get the new data
@@ -1893,7 +1899,7 @@ class XSdata:
                     interp = interp1d(mu_self, orig_data)
                     for h_bin in range(xsdata.num_orders):
                         mu_fine = np.linspace(mu[h_bin], mu[h_bin + 1], _NMU)
-                        new_data[..., h_bin] = simps(interp(mu_fine), mu_fine)
+                        new_data[..., h_bin] = integrate(interp(mu_fine), mu_fine)
 
             elif self.scatter_format == SCATTER_HISTOGRAM:
                 # The histogram format does not have enough information to
@@ -1919,7 +1925,7 @@ class XSdata:
                     mu_fine = np.linspace(-1, 1, _NMU)
                     for l in range(xsdata.num_orders):
                         y = interp(mu_fine) * norm * eval_legendre(l, mu_fine)
-                        new_data[..., l] = simps(y, mu_fine)
+                        new_data[..., l] = integrate(y, mu_fine)
 
                 elif target_format == SCATTER_TABULAR:
                     # Simply use an interpolating function to get the new data
@@ -1938,7 +1944,7 @@ class XSdata:
                     for h_bin in range(xsdata.num_orders):
                         mu_fine = np.linspace(mu[h_bin], mu[h_bin + 1], _NMU)
                         new_data[..., h_bin] = \
-                            norm * simps(interp(mu_fine), mu_fine)
+                            norm * integrate(interp(mu_fine), mu_fine)
 
             # Remove small values resulting from numerical precision issues
             new_data[..., np.abs(new_data) < 1.E-10] = 0.

@@ -539,7 +539,7 @@ class StatePoint:
         """
         Find a tally with an exact specification match.
 
-            .. versionadded 0.13.4
+            .. versionadded:: 0.14.1
 
         Parameters
         ----------
@@ -571,24 +571,6 @@ class StatePoint:
             sp_tally = None
 
         return sp_tally
-
-    def contains_tally(self, tally):
-        """
-        Determine whether or not the statepoint contains an exact match for this tally.
-
-            .. versionadded 0.13.4
-
-        Parameters
-        ----------
-        tally : openmc.Tally instance
-            The Tally object to check for.
-
-        Returns
-        -------
-        True if the tally was matched. False if not.
-        """
-        sp_tally = self.match_tally(tally)
-        return sp_tally is not None
 
     def get_tally(self, scores=[], filters=[], nuclides=[],
                   name=None, id=None, estimator=None, exact_filters=False,

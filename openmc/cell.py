@@ -619,8 +619,10 @@ class Cell(IDManagerMixin):
 
         """
         # Create dummy universe but preserve used_ids
-        u = openmc.Universe(cells=[self], universe_id=openmc.Universe.next_id + 1)
+        next_id = openmc.Universe.next_id
+        u = openmc.Universe(cells=[self])
         openmc.Universe.used_ids.remove(u.id)
+        openmc.Universe.next_id = next_id
         return u.plot(*args, **kwargs)
 
     def create_xml_subelement(self, xml_element, memo=None):

@@ -1927,7 +1927,7 @@ def require_statepoint_data(func):
         if not self._has_statepoint_data:
             raise AttributeError(f'The "{func.__name__}" property requires '
                                  'information about this mesh to be loaded '
-                                 'using "UnstructuredMesh.add_library_data".')
+                                 'from a statepoint file.')
         return func(self, *args, **kwargs)
     return wrapper
 

@@ -127,7 +127,13 @@ void DAGUniverse::init_metadata()
   MB_CHK_ERR_CONT(rval);
 }
 
+} // namespace openmc
+
 #ifdef UWUW
+
+
+namespace openmc {
+
 void DAGUniverse::init_geometry()
 {
   moab::ErrorCode rval;
@@ -626,6 +632,12 @@ void DAGUniverse::initialize()
   init_geometry();
 }
 
+} // namespace openmc
+
+#endif 
+
+namespace openmc {
+
 int32_t DAGUniverse::cell_index(moab::EntityHandle vol) const
 {
   // return the index of the volume in the DAGMC instance and then
@@ -788,7 +800,6 @@ void DAGUniverse::legacy_assign_material(
     write_message(msg.str(), 10);
   }
 }
-
 
 //==============================================================================
 // DAGMC Cell implementation

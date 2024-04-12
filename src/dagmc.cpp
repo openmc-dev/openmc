@@ -310,13 +310,13 @@ void DAGUniverse::init_geometry()
   } // end surface loop
 }
 
-bool DAGUniverse::uses_uwuw() const
-{
-  if (UWUW) return uwuw_ && !uwuw_->material_library.empty();
-  else return false; 
-}
 
 #ifdef UWUW
+bool DAGUniverse::uses_uwuw() const
+{
+  return uwuw_ && !uwuw_->material_library.empty();
+}
+
 DAGUniverse::DAGUniverse(std::shared_ptr<moab::DagMC> dagmc_ptr,
   const std::string& filename, bool auto_geom_ids, bool auto_mat_ids)
   : dagmc_instance_(dagmc_ptr), filename_(filename),
@@ -417,6 +417,11 @@ void DAGUniverse::read_uwuw_materials()
   }
 }
 #else
+bool DAGUniverse::uses_uwuw() const
+{
+  return false;
+}
+
 DAGUniverse::DAGUniverse(std::shared_ptr<moab::DagMC> dagmc_ptr,
   const std::string& filename, bool auto_geom_ids, bool auto_mat_ids)
   : dagmc_instance_(dagmc_ptr), filename_(filename),

@@ -127,6 +127,7 @@ void DAGUniverse::init_metadata()
   MB_CHK_ERR_CONT(rval);
 }
 
+#ifdef UWUW
 void DAGUniverse::init_geometry()
 {
   moab::ErrorCode rval;
@@ -309,9 +310,6 @@ void DAGUniverse::init_geometry()
     model::surfaces.emplace_back(std::move(s));
   } // end surface loop
 }
-
-
-#ifdef UWUW
 bool DAGUniverse::uses_uwuw() const
 {
   return uwuw_ && !uwuw_->material_library.empty();
@@ -417,9 +415,171 @@ void DAGUniverse::read_uwuw_materials()
   }
 }
 #else
-bool DAGUniverse::uses_uwuw() const
+void DAGUniverse::init_geometry()
 {
-  return false;
+  moab::ErrorCode rval;
+
+  // determine the next cell id
+  int32_t next_cell_id = 0;
+  for (const auto& c : model::cells) {
+    if (c->id_ > next_cell_id)
+      next_cell_id = c->id_;
+  }
+  cell_idx_offset_ = model::cells.size();
+  next_cell_id++;
+
+  // initialize cell objects
+  int n_cells = dagmc_instance_->num_entities(3);
+  moab::EntityHandle graveyard = 0;
+  for (int i = 0; i < n_cells; i++) {
+    moab::EntityHandle vol_handle = dagmc_instance_->entity_by_index(3, i + 1);
+
+    // set cell ids using global IDs
+    auto c = std::make_unique<DAGCell>(dagmc_instance_, i + 1);
+    c->id_ = adjust_geometry_ids_
+               ? next_cell_id++
+               : dagmc_instance_->id_by_index(3, c->dag_index());
+    c->universe_ = this->id_;
+    c->fill_ = C_NONE; // no fill, single universe
+
+    auto in_map = model::cell_map.find(c->id_);
+    if (in_map == model::cell_map.end()) {
+      model::cell_map[c->id_] = model::cells.size();
+    } else {
+      warning(fmt::format("DAGMC Cell IDs: {}", dagmc_ids_for_dim(3)));
+      fatal_error(fmt::format(
+        "DAGMC Universe {} contains a cell with ID {}, which "
+        "already exists elsewhere in the geometry. Setting auto_geom_ids "
+        "to True when initiating the DAGMC Universe may "
+        "resolve this issue",
+        this->id_, c->id_));
+    }
+
+    // --- Materials ---
+
+    // determine volume material assignment
+    std::string mat_str = dmd_ptr->get_volume_property("material", vol_handle);
+
+    if (mat_str.empty()) {
+      fatal_error(fmt::format("Volume {} has no material assignment.", c->id_));
+    }
+
+    to_lower(mat_str);
+
+    if (mat_str == "graveyard") {
+      graveyard = vol_handle;
+    }
+
+    // material void checks
+    if (mat_str == "void" || mat_str == "vacuum" || mat_str == "graveyard") {
+      c->material_.push_back(MATERIAL_VOID);
+    } else {
+        legacy_assign_material(mat_str, c);
+      }
+    }
+
+    // check for temperature assignment
+    std::string temp_value;
+
+    // no temperature if void
+    if (c->material_[0] == MATERIAL_VOID) {
+      model::cells.emplace_back(std::move(c));
+      continue;
+    }
+
+    // assign cell temperature
+    const auto& mat = model::materials[model::material_map.at(c->material_[0])];
+    if (dagmc_instance_->has_prop(vol_handle, "temp")) {
+      rval = dagmc_instance_->prop_value(vol_handle, "temp", temp_value);
+      MB_CHK_ERR_CONT(rval);
+      double temp = std::stod(temp_value);
+      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * temp));
+    } else if (mat->temperature() > 0.0) {
+      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * mat->temperature()));
+    } else {
+      c->sqrtkT_.push_back(
+        std::sqrt(K_BOLTZMANN * settings::temperature_default));
+    }
+
+    model::cells.emplace_back(std::move(c));
+  }
+
+  // allocate the cell overlap count if necessary
+  if (settings::check_overlaps) {
+    model::overlap_check_count.resize(model::cells.size(), 0);
+  }
+
+  has_graveyard_ = graveyard;
+
+  // determine the next surface id
+  int32_t next_surf_id = 0;
+  for (const auto& s : model::surfaces) {
+    if (s->id_ > next_surf_id)
+      next_surf_id = s->id_;
+  }
+  surf_idx_offset_ = model::surfaces.size();
+  next_surf_id++;
+
+  // initialize surface objects
+  int n_surfaces = dagmc_instance_->num_entities(2);
+  for (int i = 0; i < n_surfaces; i++) {
+    moab::EntityHandle surf_handle = dagmc_instance_->entity_by_index(2, i + 1);
+
+    // set cell ids using global IDs
+    auto s = std::make_unique<DAGSurface>(dagmc_instance_, i + 1);
+    s->id_ = adjust_geometry_ids_ ? next_surf_id++
+                                  : dagmc_instance_->id_by_index(2, i + 1);
+
+    // set surface source attribute if needed
+    if (contains(settings::source_write_surf_id, s->id_))
+      s->surf_source_ = true;
+
+    // set BCs
+    std::string bc_value =
+      dmd_ptr->get_surface_property("boundary", surf_handle);
+    to_lower(bc_value);
+    if (bc_value.empty() || bc_value == "transmit" ||
+        bc_value == "transmission") {
+      // set to transmission by default (nullptr)
+    } else if (bc_value == "vacuum") {
+      s->bc_ = make_unique<VacuumBC>();
+    } else if (bc_value == "reflective" || bc_value == "reflect" ||
+               bc_value == "reflecting") {
+      s->bc_ = make_unique<ReflectiveBC>();
+    } else if (bc_value == "periodic") {
+      fatal_error("Periodic boundary condition not supported in DAGMC.");
+    } else {
+      fatal_error(fmt::format("Unknown boundary condition \"{}\" specified "
+                              "on surface {}",
+        bc_value, s->id_));
+    }
+
+    // graveyard check
+    moab::Range parent_vols;
+    rval = dagmc_instance_->moab_instance()->get_parent_meshsets(
+      surf_handle, parent_vols);
+    MB_CHK_ERR_CONT(rval);
+
+    // if this surface belongs to the graveyard
+    if (graveyard && parent_vols.find(graveyard) != parent_vols.end()) {
+      // set graveyard surface BC's to vacuum
+      s->bc_ = make_unique<VacuumBC>();
+    }
+
+    // add to global array and map
+
+    auto in_map = model::surface_map.find(s->id_);
+    if (in_map == model::surface_map.end()) {
+      model::surface_map[s->id_] = model::surfaces.size();
+    } else {
+      warning(fmt::format("DAGMC Surface IDs: {}", dagmc_ids_for_dim(2)));
+      fatal_error(fmt::format("Surface ID {} exists in both Universe {} "
+                              "and the CSG geometry.",
+        s->id_, this->id_));
+    }
+
+    model::surfaces.emplace_back(std::move(s));
+  } // end surface loop
 }
 
 DAGUniverse::DAGUniverse(std::shared_ptr<moab::DagMC> dagmc_ptr,

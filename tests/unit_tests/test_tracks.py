@@ -1,3 +1,5 @@
+import glob
+import h5py
 from pathlib import Path
 
 import numpy as np
@@ -157,3 +159,34 @@ def test_write_to_vtk(sphere_model):
 
     assert isinstance(polydata, vtk.vtkPolyData)
     assert Path('tracks.vtp').is_file()
+
+def test_restart_track(run_in_tmpdir, sphere_model):
+    # cut the sphere model in half with an improper boundary condition
+    plane = openmc.XPlane(x0=-1.0)
+    for cell in sphere_model.geometry.get_all_cells().values():
+        cell.region &= +plane
+
+    # generate lost particle files
+    with pytest.raises(RuntimeError, match='Maximum number of lost particles has been reached.'):
+        sphere_model.run(output=False)
+
+    lost_particle_files = glob.glob('particle_*.h5')
+    assert len(lost_particle_files) > 0
+    particle_file = Path(lost_particle_files[0]).resolve()
+     # restart the lost particle with tracks enabled
+    sphere_model.run(tracks=True, restart_file=particle_file)
+    tracks_file = Path('tracks.h5')
+    assert tracks_file.is_file()
+
+    # check that the last track of the file matches the lost particle file
+    tracks = openmc.Tracks(tracks_file)
+    initial_state = tracks[0].particle_tracks[0].states[0]
+    restart_r = np.array(initial_state['r'])
+    restart_u = np.array(initial_state['u'])
+
+    with h5py.File(particle_file, 'r') as lost_particle_file:
+        lost_r = np.array(lost_particle_file['xyz'][()])
+        lost_u = np.array(lost_particle_file['uvw'][()])
+
+    pytest.approx(restart_r, lost_r)
+    pytest.approx(restart_u, lost_u)

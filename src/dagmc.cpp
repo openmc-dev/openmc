@@ -310,6 +310,7 @@ void DAGUniverse::init_geometry()
     model::surfaces.emplace_back(std::move(s));
   } // end surface loop
 }
+
 bool DAGUniverse::uses_uwuw() const
 {
   return uwuw_ && !uwuw_->material_library.empty();
@@ -414,7 +415,13 @@ void DAGUniverse::read_uwuw_materials()
     model::materials.push_back(std::make_unique<Material>(material_node));
   }
 }
+
+} // namespace openmc
+
 #else
+
+namespace openmc {
+
 void DAGUniverse::init_geometry()
 {
   moab::ErrorCode rval;
@@ -474,6 +481,22 @@ void DAGUniverse::init_geometry()
     if (mat_str == "void" || mat_str == "vacuum" || mat_str == "graveyard") {
       c->material_.push_back(MATERIAL_VOID);
     } else {
+      if (uses_uwuw()) {
+        // lookup material in uwuw if present
+        std::string uwuw_mat =
+          dmd_ptr->volume_material_property_data_eh[vol_handle];
+        if (uwuw_->material_library.count(uwuw_mat) != 0) {
+          // Note: material numbers are set by UWUW
+          int mat_number = uwuw_->material_library.get_material(uwuw_mat)
+                             .metadata["mat_number"]
+                             .asInt();
+          c->material_.push_back(mat_number);
+        } else {
+          fatal_error(fmt::format("Material with value '{}' not found in the "
+                                  "UWUW material library",
+            mat_str));
+        }
+      } else {
         legacy_assign_material(mat_str, c);
       }
     }
@@ -602,7 +625,6 @@ void DAGUniverse::initialize()
 
   init_geometry();
 }
-#endif 
 
 int32_t DAGUniverse::cell_index(moab::EntityHandle vol) const
 {

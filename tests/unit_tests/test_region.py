@@ -250,4 +250,4 @@ def test_plot():
 
     # Ensure that calling plot doesn't affect cell ID space
     c_after = openmc.Cell()
-    assert c_after.id + 1 == c_before.id
+    assert c_after.id - 1 == c_before.id

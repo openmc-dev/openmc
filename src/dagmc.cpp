@@ -131,7 +131,6 @@ void DAGUniverse::init_metadata()
 
 #ifdef UWUW
 
-
 namespace openmc {
 
 void DAGUniverse::init_geometry()
@@ -424,7 +423,7 @@ void DAGUniverse::read_uwuw_materials()
 
 } // namespace openmc
 
-#else
+#else // not using UWUW
 
 namespace openmc {
 
@@ -486,27 +485,9 @@ void DAGUniverse::init_geometry()
     // material void checks
     if (mat_str == "void" || mat_str == "vacuum" || mat_str == "graveyard") {
       c->material_.push_back(MATERIAL_VOID);
-    } else {
-      if (uses_uwuw()) {
-        // lookup material in uwuw if present
-        std::string uwuw_mat =
-          dmd_ptr->volume_material_property_data_eh[vol_handle];
-        if (uwuw_->material_library.count(uwuw_mat) != 0) {
-          // Note: material numbers are set by UWUW
-          int mat_number = uwuw_->material_library.get_material(uwuw_mat)
-                             .metadata["mat_number"]
-                             .asInt();
-          c->material_.push_back(mat_number);
-        } else {
-          fatal_error(fmt::format("Material with value '{}' not found in the "
-                                  "UWUW material library",
-            mat_str));
-        }
-      } else {
-        legacy_assign_material(mat_str, c);
-      }
-    }
-
+    } else 
+      legacy_assign_material(mat_str, c);
+  
     // check for temperature assignment
     std::string temp_value;
 
@@ -634,7 +615,7 @@ void DAGUniverse::initialize()
 
 } // namespace openmc
 
-#endif 
+#endif // UWUW 
 
 namespace openmc {
 

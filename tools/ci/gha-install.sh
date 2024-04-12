@@ -35,6 +35,8 @@ fi
 # For MPI configurations, make sure mpi4py and h5py are built against the
 # correct version of MPI
 if [[ $MPI == 'y' ]]; then
+    # setuptools 69.4.0 causes problems with mpi4py installation
+    pip install "setuptools<69.4.0"
     pip install --no-binary=mpi4py mpi4py
 
     export CC=mpicc

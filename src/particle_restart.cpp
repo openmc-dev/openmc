@@ -123,7 +123,6 @@ void run_particle_restart()
   // Transport neutron
   transport_history_based_single_particle(p);
 
-
   // Write output if particle made it
   print_particle(p);
 

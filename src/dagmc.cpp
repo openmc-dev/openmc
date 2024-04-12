@@ -11,7 +11,7 @@
 #include "openmc/settings.h"
 #include "openmc/string_utils.h"
 
-#ifdef DAGMC
+#ifdef UWUW
 #include "uwuw.hpp"
 #endif
 #include <fmt/core.h>
@@ -78,16 +78,6 @@ DAGUniverse::DAGUniverse(
   initialize();
 }
 
-DAGUniverse::DAGUniverse(std::shared_ptr<moab::DagMC> dagmc_ptr,
-  const std::string& filename, bool auto_geom_ids, bool auto_mat_ids)
-  : dagmc_instance_(dagmc_ptr), filename_(filename),
-    adjust_geometry_ids_(auto_geom_ids), adjust_material_ids_(auto_mat_ids)
-{
-  set_id();
-  init_metadata();
-  read_uwuw_materials();
-  init_geometry();
-}
 
 void DAGUniverse::set_id()
 {
@@ -103,18 +93,6 @@ void DAGUniverse::set_id()
   id_ = next_univ_id;
 }
 
-void DAGUniverse::initialize()
-{
-  geom_type() = GeometryType::DAG;
-
-  init_dagmc();
-
-  init_metadata();
-
-  read_uwuw_materials();
-
-  init_geometry();
-}
 
 void DAGUniverse::init_dagmc()
 {
@@ -332,6 +310,135 @@ void DAGUniverse::init_geometry()
   } // end surface loop
 }
 
+bool DAGUniverse::uses_uwuw() const
+{
+  if (UWUW) return uwuw_ && !uwuw_->material_library.empty();
+  else return false; 
+}
+
+#ifdef UWUW
+DAGUniverse::DAGUniverse(std::shared_ptr<moab::DagMC> dagmc_ptr,
+  const std::string& filename, bool auto_geom_ids, bool auto_mat_ids)
+  : dagmc_instance_(dagmc_ptr), filename_(filename),
+    adjust_geometry_ids_(auto_geom_ids), adjust_material_ids_(auto_mat_ids)
+{
+  set_id();
+  init_metadata();
+  read_uwuw_materials();
+  init_geometry();
+}
+
+void DAGUniverse::initialize()
+{
+  geom_type() = GeometryType::DAG;
+
+  init_dagmc();
+
+  init_metadata();
+
+  read_uwuw_materials();
+
+  init_geometry();
+}
+
+std::string DAGUniverse::get_uwuw_materials_xml() const
+{
+  if (!uses_uwuw()) {
+    throw std::runtime_error("This DAGMC Universe does not use UWUW materials");
+  }
+
+  std::stringstream ss;
+  // write header
+  ss << "<?xml version=\"1.0\"?>\n";
+  ss << "<materials>\n";
+  const auto& mat_lib = uwuw_->material_library;
+  // write materials
+  for (auto mat : mat_lib) {
+    ss << mat.second->openmc("atom");
+  }
+  // write footer
+  ss << "</materials>";
+
+  return ss.str();
+}
+
+void DAGUniverse::write_uwuw_materials_xml(const std::string& outfile) const
+{
+  if (!uses_uwuw()) {
+    throw std::runtime_error(
+      "This DAGMC universe does not use UWUW materials.");
+  }
+
+  std::string xml_str = get_uwuw_materials_xml();
+  // if there is a material library in the file
+  std::ofstream mats_xml(outfile);
+  mats_xml << xml_str;
+  mats_xml.close();
+}
+
+void DAGUniverse::read_uwuw_materials()
+{
+  // If no filename was provided, don't read UWUW materials
+  if (filename_ == "")
+    return;
+
+  uwuw_ = std::make_shared<UWUW>(filename_.c_str());
+
+  if (!uses_uwuw())
+    return;
+
+  // Notify user if UWUW materials are going to be used
+  write_message("Found UWUW Materials in the DAGMC geometry file.", 6);
+
+  // if we're using automatic IDs, update the UWUW material metadata
+  if (adjust_material_ids_) {
+    int32_t next_material_id = 0;
+    for (const auto& m : model::materials) {
+      next_material_id = std::max(m->id_, next_material_id);
+    }
+    next_material_id++;
+
+    for (auto& mat : uwuw_->material_library) {
+      mat.second->metadata["mat_number"] = next_material_id++;
+    }
+  }
+
+  std::string mat_xml_string = get_uwuw_materials_xml();
+
+  // create a pugi XML document from this string
+  pugi::xml_document doc;
+  auto result = doc.load_string(mat_xml_string.c_str());
+  if (!result) {
+    fatal_error("Error processing XML created using DAGMC UWUW materials.");
+  }
+  pugi::xml_node root = doc.document_element();
+  for (pugi::xml_node material_node : root.children("material")) {
+    model::materials.push_back(std::make_unique<Material>(material_node));
+  }
+}
+#else
+DAGUniverse::DAGUniverse(std::shared_ptr<moab::DagMC> dagmc_ptr,
+  const std::string& filename, bool auto_geom_ids, bool auto_mat_ids)
+  : dagmc_instance_(dagmc_ptr), filename_(filename),
+    adjust_geometry_ids_(auto_geom_ids), adjust_material_ids_(auto_mat_ids)
+{
+  set_id();
+  init_metadata();
+  init_geometry();
+}
+
+void DAGUniverse::initialize()
+{
+  geom_type() = GeometryType::DAG;
+
+  init_dagmc();
+
+  init_metadata();
+
+  init_geometry();
+}
+#endif 
+
 int32_t DAGUniverse::cell_index(moab::EntityHandle vol) const
 {
   // return the index of the volume in the DAGMC instance and then
@@ -437,45 +544,6 @@ void DAGUniverse::to_hdf5(hid_t universes_group) const
   close_group(group);
 }
 
-bool DAGUniverse::uses_uwuw() const
-{
-  return uwuw_ && !uwuw_->material_library.empty();
-}
-
-std::string DAGUniverse::get_uwuw_materials_xml() const
-{
-  if (!uses_uwuw()) {
-    throw std::runtime_error("This DAGMC Universe does not use UWUW materials");
-  }
-
-  std::stringstream ss;
-  // write header
-  ss << "<?xml version=\"1.0\"?>\n";
-  ss << "<materials>\n";
-  const auto& mat_lib = uwuw_->material_library;
-  // write materials
-  for (auto mat : mat_lib) {
-    ss << mat.second->openmc("atom");
-  }
-  // write footer
-  ss << "</materials>";
-
-  return ss.str();
-}
-
-void DAGUniverse::write_uwuw_materials_xml(const std::string& outfile) const
-{
-  if (!uses_uwuw()) {
-    throw std::runtime_error(
-      "This DAGMC universe does not use UWUW materials.");
-  }
-
-  std::string xml_str = get_uwuw_materials_xml();
-  // if there is a material library in the file
-  std::ofstream mats_xml(outfile);
-  mats_xml << xml_str;
-  mats_xml.close();
-}
 
 void DAGUniverse::legacy_assign_material(
   std::string mat_string, std::unique_ptr<DAGCell>& c) const
@@ -534,46 +602,6 @@ void DAGUniverse::legacy_assign_material(
   }
 }
 
-void DAGUniverse::read_uwuw_materials()
-{
-  // If no filename was provided, don't read UWUW materials
-  if (filename_ == "")
-    return;
-
-  uwuw_ = std::make_shared<UWUW>(filename_.c_str());
-
-  if (!uses_uwuw())
-    return;
-
-  // Notify user if UWUW materials are going to be used
-  write_message("Found UWUW Materials in the DAGMC geometry file.", 6);
-
-  // if we're using automatic IDs, update the UWUW material metadata
-  if (adjust_material_ids_) {
-    int32_t next_material_id = 0;
-    for (const auto& m : model::materials) {
-      next_material_id = std::max(m->id_, next_material_id);
-    }
-    next_material_id++;
-
-    for (auto& mat : uwuw_->material_library) {
-      mat.second->metadata["mat_number"] = next_material_id++;
-    }
-  }
-
-  std::string mat_xml_string = get_uwuw_materials_xml();
-
-  // create a pugi XML document from this string
-  pugi::xml_document doc;
-  auto result = doc.load_string(mat_xml_string.c_str());
-  if (!result) {
-    fatal_error("Error processing XML created using DAGMC UWUW materials.");
-  }
-  pugi::xml_node root = doc.document_element();
-  for (pugi::xml_node material_node : root.children("material")) {
-    model::materials.push_back(std::make_unique<Material>(material_node));
-  }
-}
 
 //==============================================================================
 // DAGMC Cell implementation

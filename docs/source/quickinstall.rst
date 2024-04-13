@@ -125,8 +125,8 @@ below.
 Obtaining prerequisites on Mac OS X
 -----------------------------------
 
-For an OpenMC build with multithreading enabled, `Homebrew <https://brew.sh>`_
-should first be installed. Then, the following packages should be installed:
+For an OpenMC build with multithreading enabled, a package manager like `Homebrew <https://brew.sh>`_
+should first be installed. Then, the following packages should be installed, for example in Homebrew via:
 
 .. code-block:: sh
 

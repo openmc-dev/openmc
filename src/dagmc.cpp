@@ -11,15 +11,16 @@
 #include "openmc/settings.h"
 #include "openmc/string_utils.h"
 
-#ifdef UWUW
-#include "uwuw.hpp"
-#endif
 #include <fmt/core.h>
 
 #include <algorithm>
 #include <fstream>
 #include <sstream>
 #include <string>
+
+#ifdef UWUW
+#include "uwuw.h"
+#endif
 
 namespace openmc {
 
@@ -78,6 +79,16 @@ DAGUniverse::DAGUniverse(
   initialize();
 }
 
+DAGUniverse::DAGUniverse(std::shared_ptr<moab::DagMC> dagmc_ptr,
+  const std::string& filename, bool auto_geom_ids, bool auto_mat_ids)
+  : dagmc_instance_(dagmc_ptr), filename_(filename),
+    adjust_geometry_ids_(auto_geom_ids), adjust_material_ids_(auto_mat_ids)
+{
+  set_id();
+  init_metadata();
+  read_uwuw_materials();
+  init_geometry();
+}
 
 void DAGUniverse::set_id()
 {
@@ -93,6 +104,18 @@ void DAGUniverse::set_id()
   id_ = next_univ_id;
 }
 
+void DAGUniverse::initialize()
+{
+  geom_type() = GeometryType::DAG;
+
+  init_dagmc();
+
+  init_metadata();
+
+  read_uwuw_materials();
+
+  init_geometry();
+}
 
 void DAGUniverse::init_dagmc()
 {
@@ -126,12 +149,6 @@ void DAGUniverse::init_metadata()
   rval = dagmc_instance_->parse_properties(keywords, dum, delimiters.c_str());
   MB_CHK_ERR_CONT(rval);
 }
-
-} // namespace openmc
-
-#ifdef UWUW
-
-namespace openmc {
 
 void DAGUniverse::init_geometry()
 {
@@ -316,309 +333,6 @@ void DAGUniverse::init_geometry()
   } // end surface loop
 }
 
-bool DAGUniverse::uses_uwuw() const
-{
-  return uwuw_ && !uwuw_->material_library.empty();
-}
-
-DAGUniverse::DAGUniverse(std::shared_ptr<moab::DagMC> dagmc_ptr,
-  const std::string& filename, bool auto_geom_ids, bool auto_mat_ids)
-  : dagmc_instance_(dagmc_ptr), filename_(filename),
-    adjust_geometry_ids_(auto_geom_ids), adjust_material_ids_(auto_mat_ids)
-{
-  set_id();
-  init_metadata();
-  read_uwuw_materials();
-  init_geometry();
-}
-
-void DAGUniverse::initialize()
-{
-  geom_type() = GeometryType::DAG;
-
-  init_dagmc();
-
-  init_metadata();
-
-  read_uwuw_materials();
-
-  init_geometry();
-}
-
-std::string DAGUniverse::get_uwuw_materials_xml() const
-{
-  if (!uses_uwuw()) {
-    throw std::runtime_error("This DAGMC Universe does not use UWUW materials");
-  }
-
-  std::stringstream ss;
-  // write header
-  ss << "<?xml version=\"1.0\"?>\n";
-  ss << "<materials>\n";
-  const auto& mat_lib = uwuw_->material_library;
-  // write materials
-  for (auto mat : mat_lib) {
-    ss << mat.second->openmc("atom");
-  }
-  // write footer
-  ss << "</materials>";
-
-  return ss.str();
-}
-
-void DAGUniverse::write_uwuw_materials_xml(const std::string& outfile) const
-{
-  if (!uses_uwuw()) {
-    throw std::runtime_error(
-      "This DAGMC universe does not use UWUW materials.");
-  }
-
-  std::string xml_str = get_uwuw_materials_xml();
-  // if there is a material library in the file
-  std::ofstream mats_xml(outfile);
-  mats_xml << xml_str;
-  mats_xml.close();
-}
-
-void DAGUniverse::read_uwuw_materials()
-{
-  // If no filename was provided, don't read UWUW materials
-  if (filename_ == "")
-    return;
-
-  uwuw_ = std::make_shared<UWUW>(filename_.c_str());
-
-  if (!uses_uwuw())
-    return;
-
-  // Notify user if UWUW materials are going to be used
-  write_message("Found UWUW Materials in the DAGMC geometry file.", 6);
-
-  // if we're using automatic IDs, update the UWUW material metadata
-  if (adjust_material_ids_) {
-    int32_t next_material_id = 0;
-    for (const auto& m : model::materials) {
-      next_material_id = std::max(m->id_, next_material_id);
-    }
-    next_material_id++;
-
-    for (auto& mat : uwuw_->material_library) {
-      mat.second->metadata["mat_number"] = next_material_id++;
-    }
-  }
-
-  std::string mat_xml_string = get_uwuw_materials_xml();
-
-  // create a pugi XML document from this string
-  pugi::xml_document doc;
-  auto result = doc.load_string(mat_xml_string.c_str());
-  if (!result) {
-    fatal_error("Error processing XML created using DAGMC UWUW materials.");
-  }
-  pugi::xml_node root = doc.document_element();
-  for (pugi::xml_node material_node : root.children("material")) {
-    model::materials.push_back(std::make_unique<Material>(material_node));
-  }
-}
-
-} // namespace openmc
-
-#else // not using UWUW
-
-namespace openmc {
-
-void DAGUniverse::init_geometry()
-{
-  moab::ErrorCode rval;
-
-  // determine the next cell id
-  int32_t next_cell_id = 0;
-  for (const auto& c : model::cells) {
-    if (c->id_ > next_cell_id)
-      next_cell_id = c->id_;
-  }
-  cell_idx_offset_ = model::cells.size();
-  next_cell_id++;
-
-  // initialize cell objects
-  int n_cells = dagmc_instance_->num_entities(3);
-  moab::EntityHandle graveyard = 0;
-  for (int i = 0; i < n_cells; i++) {
-    moab::EntityHandle vol_handle = dagmc_instance_->entity_by_index(3, i + 1);
-
-    // set cell ids using global IDs
-    auto c = std::make_unique<DAGCell>(dagmc_instance_, i + 1);
-    c->id_ = adjust_geometry_ids_
-               ? next_cell_id++
-               : dagmc_instance_->id_by_index(3, c->dag_index());
-    c->universe_ = this->id_;
-    c->fill_ = C_NONE; // no fill, single universe
-
-    auto in_map = model::cell_map.find(c->id_);
-    if (in_map == model::cell_map.end()) {
-      model::cell_map[c->id_] = model::cells.size();
-    } else {
-      warning(fmt::format("DAGMC Cell IDs: {}", dagmc_ids_for_dim(3)));
-      fatal_error(fmt::format(
-        "DAGMC Universe {} contains a cell with ID {}, which "
-        "already exists elsewhere in the geometry. Setting auto_geom_ids "
-        "to True when initiating the DAGMC Universe may "
-        "resolve this issue",
-        this->id_, c->id_));
-    }
-
-    // --- Materials ---
-
-    // determine volume material assignment
-    std::string mat_str = dmd_ptr->get_volume_property("material", vol_handle);
-
-    if (mat_str.empty()) {
-      fatal_error(fmt::format("Volume {} has no material assignment.", c->id_));
-    }
-
-    to_lower(mat_str);
-
-    if (mat_str == "graveyard") {
-      graveyard = vol_handle;
-    }
-
-    // material void checks
-    if (mat_str == "void" || mat_str == "vacuum" || mat_str == "graveyard") {
-      c->material_.push_back(MATERIAL_VOID);
-    } else 
-      legacy_assign_material(mat_str, c);
-  
-    // check for temperature assignment
-    std::string temp_value;
-
-    // no temperature if void
-    if (c->material_[0] == MATERIAL_VOID) {
-      model::cells.emplace_back(std::move(c));
-      continue;
-    }
-
-    // assign cell temperature
-    const auto& mat = model::materials[model::material_map.at(c->material_[0])];
-    if (dagmc_instance_->has_prop(vol_handle, "temp")) {
-      rval = dagmc_instance_->prop_value(vol_handle, "temp", temp_value);
-      MB_CHK_ERR_CONT(rval);
-      double temp = std::stod(temp_value);
-      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * temp));
-    } else if (mat->temperature() > 0.0) {
-      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * mat->temperature()));
-    } else {
-      c->sqrtkT_.push_back(
-        std::sqrt(K_BOLTZMANN * settings::temperature_default));
-    }
-
-    model::cells.emplace_back(std::move(c));
-  }
-
-  // allocate the cell overlap count if necessary
-  if (settings::check_overlaps) {
-    model::overlap_check_count.resize(model::cells.size(), 0);
-  }
-
-  has_graveyard_ = graveyard;
-
-  // determine the next surface id
-  int32_t next_surf_id = 0;
-  for (const auto& s : model::surfaces) {
-    if (s->id_ > next_surf_id)
-      next_surf_id = s->id_;
-  }
-  surf_idx_offset_ = model::surfaces.size();
-  next_surf_id++;
-
-  // initialize surface objects
-  int n_surfaces = dagmc_instance_->num_entities(2);
-  for (int i = 0; i < n_surfaces; i++) {
-    moab::EntityHandle surf_handle = dagmc_instance_->entity_by_index(2, i + 1);
-
-    // set cell ids using global IDs
-    auto s = std::make_unique<DAGSurface>(dagmc_instance_, i + 1);
-    s->id_ = adjust_geometry_ids_ ? next_surf_id++
-                                  : dagmc_instance_->id_by_index(2, i + 1);
-
-    // set surface source attribute if needed
-    if (contains(settings::source_write_surf_id, s->id_))
-      s->surf_source_ = true;
-
-    // set BCs
-    std::string bc_value =
-      dmd_ptr->get_surface_property("boundary", surf_handle);
-    to_lower(bc_value);
-    if (bc_value.empty() || bc_value == "transmit" ||
-        bc_value == "transmission") {
-      // set to transmission by default (nullptr)
-    } else if (bc_value == "vacuum") {
-      s->bc_ = make_unique<VacuumBC>();
-    } else if (bc_value == "reflective" || bc_value == "reflect" ||
-               bc_value == "reflecting") {
-      s->bc_ = make_unique<ReflectiveBC>();
-    } else if (bc_value == "periodic") {
-      fatal_error("Periodic boundary condition not supported in DAGMC.");
-    } else {
-      fatal_error(fmt::format("Unknown boundary condition \"{}\" specified "
-                              "on surface {}",
-        bc_value, s->id_));
-    }
-
-    // graveyard check
-    moab::Range parent_vols;
-    rval = dagmc_instance_->moab_instance()->get_parent_meshsets(
-      surf_handle, parent_vols);
-    MB_CHK_ERR_CONT(rval);
-
-    // if this surface belongs to the graveyard
-    if (graveyard && parent_vols.find(graveyard) != parent_vols.end()) {
-      // set graveyard surface BC's to vacuum
-      s->bc_ = make_unique<VacuumBC>();
-    }
-
-    // add to global array and map
-
-    auto in_map = model::surface_map.find(s->id_);
-    if (in_map == model::surface_map.end()) {
-      model::surface_map[s->id_] = model::surfaces.size();
-    } else {
-      warning(fmt::format("DAGMC Surface IDs: {}", dagmc_ids_for_dim(2)));
-      fatal_error(fmt::format("Surface ID {} exists in both Universe {} "
-                              "and the CSG geometry.",
-        s->id_, this->id_));
-    }
-
-    model::surfaces.emplace_back(std::move(s));
-  } // end surface loop
-}
-
-DAGUniverse::DAGUniverse(std::shared_ptr<moab::DagMC> dagmc_ptr,
-  const std::string& filename, bool auto_geom_ids, bool auto_mat_ids)
-  : dagmc_instance_(dagmc_ptr), filename_(filename),
-    adjust_geometry_ids_(auto_geom_ids), adjust_material_ids_(auto_mat_ids)
-{
-  set_id();
-  init_metadata();
-  init_geometry();
-}
-
-void DAGUniverse::initialize()
-{
-  geom_type() = GeometryType::DAG;
-
-  init_dagmc();
-
-  init_metadata();
-
-  init_geometry();
-}
-
-} // namespace openmc
-
-#endif // UWUW 
-
-namespace openmc {
-
 int32_t DAGUniverse::cell_index(moab::EntityHandle vol) const
 {
   // return the index of the volume in the DAGMC instance and then
@@ -724,6 +438,45 @@ void DAGUniverse::to_hdf5(hid_t universes_group) const
   close_group(group);
 }
 
+bool DAGUniverse::uses_uwuw() const
+{
+  return uwuw_ && !uwuw_->material_library.empty();
+}
+
+std::string DAGUniverse::get_uwuw_materials_xml() const
+{
+  if (!uses_uwuw()) {
+    throw std::runtime_error("This DAGMC Universe does not use UWUW materials");
+  }
+
+  std::stringstream ss;
+  // write header
+  ss << "<?xml version=\"1.0\"?>\n";
+  ss << "<materials>\n";
+  const auto& mat_lib = uwuw_->material_library;
+  // write materials
+  for (auto mat : mat_lib) {
+    ss << mat.second->openmc("atom");
+  }
+  // write footer
+  ss << "</materials>";
+
+  return ss.str();
+}
+
+void DAGUniverse::write_uwuw_materials_xml(const std::string& outfile) const
+{
+  if (!uses_uwuw()) {
+    throw std::runtime_error(
+      "This DAGMC universe does not use UWUW materials.");
+  }
+
+  std::string xml_str = get_uwuw_materials_xml();
+  // if there is a material library in the file
+  std::ofstream mats_xml(outfile);
+  mats_xml << xml_str;
+  mats_xml.close();
+}
 
 void DAGUniverse::legacy_assign_material(
   std::string mat_string, std::unique_ptr<DAGCell>& c) const
@@ -779,6 +532,47 @@ void DAGUniverse::legacy_assign_material(
       msg << " using material id: " << m->id_;
     }
     write_message(msg.str(), 10);
+  }
+}
+
+void DAGUniverse::read_uwuw_materials()
+{
+  // If no filename was provided, don't read UWUW materials
+  if (filename_ == "")
+    return;
+
+  uwuw_ = std::make_shared<UWUW>(filename_.c_str());
+
+  if (!uses_uwuw())
+    return;
+
+  // Notify user if UWUW materials are going to be used
+  write_message("Found UWUW Materials in the DAGMC geometry file.", 6);
+
+  // if we're using automatic IDs, update the UWUW material metadata
+  if (adjust_material_ids_) {
+    int32_t next_material_id = 0;
+    for (const auto& m : model::materials) {
+      next_material_id = std::max(m->id_, next_material_id);
+    }
+    next_material_id++;
+
+    for (auto& mat : uwuw_->material_library) {
+      mat.second->metadata["mat_number"] = next_material_id++;
+    }
+  }
+
+  std::string mat_xml_string = get_uwuw_materials_xml();
+
+  // create a pugi XML document from this string
+  pugi::xml_document doc;
+  auto result = doc.load_string(mat_xml_string.c_str());
+  if (!result) {
+    fatal_error("Error processing XML created using DAGMC UWUW materials.");
+  }
+  pugi::xml_node root = doc.document_element();
+  for (pugi::xml_node material_node : root.children("material")) {
+    model::materials.push_back(std::make_unique<Material>(material_node));
   }
 }
 

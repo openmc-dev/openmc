@@ -540,7 +540,7 @@ to install the Python package in :ref:`"editable" mode <devguide_editable>`.
 Prerequisites
 -------------
 
-The Python API works with Python 3.7+. In addition to Python itself, the API
+The Python API works with Python 3.8+. In addition to Python itself, the API
 relies on a number of third-party packages. All prerequisites can be installed
 using Conda_ (recommended), pip_, or through the package manager in most Linux
 distributions.

@@ -146,7 +146,7 @@ Style for Python code should follow PEP8_.
 
 Docstrings for functions and methods should follow numpydoc_ style.
 
-Python code should work with Python 3.7+.
+Python code should work with Python 3.8+.
 
 Use of third-party Python packages should be limited to numpy_, scipy_,
 matplotlib_, pandas_, and h5py_. Use of other third-party packages must be

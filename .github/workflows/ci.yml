@@ -35,9 +35,6 @@ jobs:
         vectfit: [n]
 
         include:
-          - python-version: "3.7"
-            omp: n
-            mpi: n
           - python-version: "3.8"
             omp: n
             mpi: n
@@ -45,6 +42,9 @@ jobs:
             omp: n
             mpi: n
           - python-version: "3.11"
+            omp: n
+            mpi: n
+          - python-version: "3.12"
             omp: n
             mpi: n
           - dagmc: y

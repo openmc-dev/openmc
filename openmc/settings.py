@@ -109,6 +109,10 @@ class Settings:
         parallelism.
 
         .. versionadded:: 0.12
+    max_particle_events : int
+        Maximum number of allowed particle events per source particle.
+
+        .. versionadded:: 0.14.1
     max_order : None or int
         Maximum scattering order to apply globally when in multi-group mode.
     max_splits : int
@@ -334,6 +338,7 @@ class Settings:
 
         self._event_based = None
         self._max_particles_in_flight = None
+        self._max_particle_events = None
         self._write_initial_source = None
         self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows')
         self._weight_window_generators = cv.CheckedList(WeightWindowGenerator, 'weight window generators')
@@ -939,6 +944,16 @@ class Settings:
         self._max_particles_in_flight = value
 
     @property
+    def max_particle_events(self) -> int:
+        return self._max_particle_events
+
+    @max_particle_events.setter
+    def max_particle_events(self, value: int):
+        cv.check_type('max particle events', value, Integral)
+        cv.check_greater_than('max particle events', value, 0)
+        self._max_particle_events = value
+
+    @property
     def write_initial_source(self) -> bool:
         return self._write_initial_source
 
@@ -1341,6 +1356,11 @@ class Settings:
             elem = ET.SubElement(root, "max_particles_in_flight")
             elem.text = str(self._max_particles_in_flight).lower()
 
+    def _create_max_events_subelement(self, root):
+        if self._max_particle_events is not None:
+            elem = ET.SubElement(root, "max_particle_events")
+            elem.text = str(self._max_particle_events).lower()
+
     def _create_material_cell_offsets_subelement(self, root):
         if self._material_cell_offsets is not None:
             elem = ET.SubElement(root, "material_cell_offsets")
@@ -1719,6 +1739,11 @@ class Settings:
         if text is not None:
             self.max_particles_in_flight = int(text)
 
+    def _max_particle_events_from_xml_element(self, root):
+        text = get_text(root, 'max_particle_events')
+        if text is not None:
+            self.max_particle_events = int(text)
+
     def _material_cell_offsets_from_xml_element(self, root):
         text = get_text(root, 'material_cell_offsets')
         if text is not None:
@@ -1820,6 +1845,7 @@ class Settings:
         self._create_delayed_photon_scaling_subelement(element)
         self._create_event_based_subelement(element)
         self._create_max_particles_in_flight_subelement(element)
+        self._create_max_events_subelement(element)
         self._create_material_cell_offsets_subelement(element)
         self._create_log_grid_bins_subelement(element)
         self._create_write_initial_source_subelement(element)
@@ -1923,6 +1949,7 @@ class Settings:
         settings._delayed_photon_scaling_from_xml_element(elem)
         settings._event_based_from_xml_element(elem)
         settings._max_particles_in_flight_from_xml_element(elem)
+        settings._max_particle_events_from_xml_element(elem)
         settings._material_cell_offsets_from_xml_element(elem)
         settings._log_grid_bins_from_xml_element(elem)
         settings._write_initial_source_from_xml_element(elem)

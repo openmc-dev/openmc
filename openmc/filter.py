@@ -864,10 +864,10 @@ class MeshFilter(Filter):
         cv.check_type('filter mesh', mesh, openmc.MeshBase)
         self._mesh = mesh
         if isinstance(mesh, openmc.UnstructuredMesh):
-            if mesh.volumes is None:
-                self.bins = []
-            else:
+            if mesh.has_statepoint_data:
                 self.bins = list(range(len(mesh.volumes)))
+            else:
+                self.bins = []
         else:
             self.bins = list(mesh.indices)
 
@@ -982,7 +982,7 @@ class MeshFilter(Filter):
         if translation:
             out.translation = [float(x) for x in translation.split()]
         return out
-    
+
 
 class MeshBornFilter(MeshFilter):
     """Filter events by the mesh cell a particle originated from.
@@ -1376,6 +1376,10 @@ class EnergyFilter(RealFilter):
 
     """
     units = 'eV'
+
+    def __init__(self, values, filter_id=None):
+        cv.check_length('values', values, 2)
+        super().__init__(values, filter_id)
 
     def get_bin_index(self, filter_bin):
         # Use lower energy bound to find index for RealFilters

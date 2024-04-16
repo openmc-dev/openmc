@@ -281,19 +281,20 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
   static int n_accept = 0;
 
   while (!found) {
-    // Set particle type
-    Particle p;
-    p.type() = particle_;
-    p.u() = {0.0, 0.0, 1.0};
 
     // Sample spatial distribution
-    p.r() = space_->sample(seed);
+    site.r = space_->sample(seed);
 
     // Check if otherwise outside defined restriction bounds
     found = inside_spatial_bounds(site);
 
     // Check if spatial site is in fissionable material
     if (found) {
+      // Create a temporary particle and search for material at the site
+      Particle p;
+      p.r() = site.r;
+      exhaustive_find_cell(p);
+
       auto space_box = dynamic_cast<SpatialBox*>(space_.get());
       if (space_box) {
         if (space_box->only_fissionable()) {
@@ -318,8 +319,6 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
                     "definition.");
       }
     }
-
-    site.r = p.r();
   }
 
   // Sample angle

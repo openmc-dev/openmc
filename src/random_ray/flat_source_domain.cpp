@@ -880,19 +880,6 @@ void FlatSourceDomain::count_fixed_source_regions()
   }
 }
 
-double FlatSourceDomain::calculate_total_volume_weighted_source_strength() const
-{
-  double source_strength = 0.0;
-#pragma omp parallel for reduction(+ : source_strength)
-  for (int sr = 0; sr < n_source_regions_; sr++) {
-    double volume = volume_[sr];
-    for (int e = 0; e < negroups_; e++) {
-      source_strength += fixed_source_[sr * negroups_ + e] * volume;
-    }
-  }
-  return source_strength;
-}
-
 void FlatSourceDomain::convert_fixed_sources()
 {
   // Loop over external sources

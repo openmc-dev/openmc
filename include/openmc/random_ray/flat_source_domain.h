@@ -105,7 +105,6 @@ public:
     Discrete* discrete, double strength_factor, int32_t target_material_id);
   void convert_fixed_sources();
   void count_fixed_source_regions();
-  double calculate_total_volume_weighted_source_strength() const;
 
   //----------------------------------------------------------------------------
   // Public Data members

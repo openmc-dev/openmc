@@ -11,16 +11,15 @@
 #include "openmc/settings.h"
 #include "openmc/string_utils.h"
 
+#ifdef UWUW
+#include "uwuw.h"
+#endif
 #include <fmt/core.h>
 
 #include <algorithm>
 #include <fstream>
 #include <sstream>
 #include <string>
-
-#ifdef UWUW
-#include "uwuw.h"
-#endif
 
 namespace openmc {
 
@@ -580,7 +579,7 @@ void DAGUniverse::read_uwuw_materials()
   }
 }
 } // namespace openmc
-#else // dummy dummy methods for when UWUW is not enabled
+#else  // dummy dummy methods for when UWUW is not enabled
 namespace openmc {
 bool DAGUniverse::uses_uwuw() const
 {
@@ -605,7 +604,7 @@ void DAGUniverse::read_uwuw_materials()
   return;
 }
 } // namespace openmc
-#endif
+#endif // UWUW
 
 //==============================================================================
 // DAGMC Cell implementation

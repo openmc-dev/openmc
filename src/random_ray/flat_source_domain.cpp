@@ -428,9 +428,12 @@ void FlatSourceDomain::reset_tally_volumes()
 // tally function simply traverses the mapping data structure and executes
 // the scoring operations to OpenMC's native tally result arrays.
 
-void FlatSourceDomain::random_ray_tally() const
+void FlatSourceDomain::random_ray_tally()
 {
   openmc::simulation::time_tallies.start();
+
+  // Reset our tally volumes to zero
+  reset_tally_volumes();
 
   // Compute the volume weighted total strength of fixed sources throughout the
   // domain using up to date stochastic source region volumes. Note that this

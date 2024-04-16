@@ -93,7 +93,7 @@ public:
   void batch_reset();
   void convert_source_regions_to_tallies();
   void reset_tally_volumes();
-  void random_ray_tally() const;
+  void random_ray_tally();
   void accumulate_iteration_flux();
   void output_to_vtk() const;
   void all_reduce_replicated_source_regions();

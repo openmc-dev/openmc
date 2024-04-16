@@ -210,20 +210,7 @@ void DAGUniverse::init_geometry()
       c->material_.push_back(MATERIAL_VOID);
     } else {
       if (uses_uwuw()) {
-        // lookup material in uwuw if present
-        std::string uwuw_mat =
-          dmd_ptr->volume_material_property_data_eh[vol_handle];
-        if (uwuw_->material_library.count(uwuw_mat) != 0) {
-          // Note: material numbers are set by UWUW
-          int mat_number = uwuw_->material_library.get_material(uwuw_mat)
-                             .metadata["mat_number"]
-                             .asInt();
-          c->material_.push_back(mat_number);
-        } else {
-          fatal_error(fmt::format("Material with value '{}' not found in the "
-                                  "UWUW material library",
-            mat_str));
-        }
+        uwuw_assign_material(vol_handle, c);
       } else {
         legacy_assign_material(mat_str, c);
       }
@@ -535,6 +522,26 @@ void DAGUniverse::legacy_assign_material(
   }
 }
 
+void DAGUniverse::uwuw_assign_material(
+  moab::EntityHandle vol_handle, std::unique_ptr<DAGCell>& c) const
+{
+#ifdef UWUW
+  // lookup material in uwuw if present
+  std::string uwuw_mat = dmd_ptr->volume_material_property_data_eh[vol_handle];
+  if (uwuw_->material_library.count(uwuw_mat) != 0) {
+    // Note: material numbers are set by UWUW
+    int mat_number = uwuw_->material_library.get_material(uwuw_mat)
+                       .metadata["mat_number"]
+                       .asInt();
+    c->material_.push_back(mat_number);
+  } else {
+    fatal_error(fmt::format("Material with value '{}' not found in the "
+                            "UWUW material library",
+      mat_str));
+  }
+#endif
+}
+
 void DAGUniverse::read_uwuw_materials()
 {
   // If no filename was provided, don't read UWUW materials
@@ -622,18 +629,20 @@ std::pair<double, int32_t> DAGCell::distance(
       dag_univ->surf_idx_offset_ + dagmc_ptr_->index_by_handle(hit_surf);
   } else if (!dagmc_ptr_->is_implicit_complement(vol) ||
              is_root_universe(dag_univ->id_)) {
-    // surface boundary conditions are ignored for projection plotting, meaning
-    // that the particle may move through the graveyard (bounding) volume and
-    // into the implicit complement on the other side where no intersection will
-    // be found. Treating this as a lost particle is problematic when plotting.
-    // Instead, the infinite distance and invalid surface index are returned.
+    // surface boundary conditions are ignored for projection plotting,
+    // meaning that the particle may move through the graveyard (bounding)
+    // volume and into the implicit complement on the other side where no
+    // intersection will be found. Treating this as a lost particle is
+    // problematic when plotting. Instead, the infinite distance and invalid
+    // surface index are returned.
     if (settings::run_mode == RunMode::PLOTTING)
       return {INFTY, -1};
 
     // the particle should be marked as lost immediately if an intersection
-    // isn't found in a volume that is not the implicit complement. In the case
-    // that the DAGMC model is the root universe of the geometry, even a missing
-    // intersection in the implicit complement should trigger this condition.
+    // isn't found in a volume that is not the implicit complement. In the
+    // case that the DAGMC model is the root universe of the geometry, even a
+    // missing intersection in the implicit complement should trigger this
+    // condition.
     std::string material_id =
       p->material() == MATERIAL_VOID
         ? "-1 (VOID)"

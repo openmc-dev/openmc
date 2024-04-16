@@ -120,6 +120,9 @@ public:
   void write_uwuw_materials_xml(
     const std::string& outfile = "uwuw_materials.xml") const;
 
+  void uwuw_assign_material(
+    moab::EntityHandle vol_handle, std::unique_ptr<DAGCell>& c) const;
+
   //! Assign a material to a cell based
   //! \param[in] mat_string The DAGMC material assignment string
   //! \param[in] c The OpenMC cell to which the material is assigned

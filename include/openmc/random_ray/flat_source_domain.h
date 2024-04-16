@@ -100,7 +100,8 @@ public:
   void apply_fixed_source_to_source_region(
     Discrete* discrete, double strength_factor, int64_t source_region);
   void apply_fixed_source_to_cell_instances(int32_t i_cell, Discrete* discrete,
-    double strength_factor, int target_material_id);
+    double strength_factor, int target_material_id,
+    const vector<int32_t>& instances);
   void apply_fixed_source_to_cell_and_children(int32_t i_cell,
     Discrete* discrete, double strength_factor, int32_t target_material_id);
   void convert_fixed_sources();

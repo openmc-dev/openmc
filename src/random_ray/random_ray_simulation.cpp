@@ -400,7 +400,7 @@ void RandomRaySimulation::print_results_random_ray(
       " Total Iterations                  = {}\n", settings::n_batches);
     fmt::print(" Flat Source Regions (FSRs)        = {}\n", n_source_regions);
     fmt::print(
-      " Fixed Source FSRs                 = {}\n", n_fixed_source_regions);
+      " FSRs Containing Fixed Sources     = {}\n", n_fixed_source_regions);
     fmt::print(" Total Geometric Intersections     = {:.4e}\n",
       static_cast<double>(total_geometric_intersections));
     fmt::print("   Avg per Iteration               = {:.4e}\n",
@@ -433,7 +433,7 @@ void RandomRaySimulation::print_results_random_ray(
     show_time("Time per integration", time_per_integration);
   }
 
-  if (settings::verbosity >= 4) {
+  if (settings::verbosity >= 4 && settings::run_mode == RunMode::EIGENVALUE) {
     header("Results", 4);
     fmt::print(" k-effective                       = {:.5f} +/- {:.5f}\n",
       simulation::keff, simulation::keff_std);

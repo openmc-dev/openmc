@@ -134,8 +134,8 @@ void Source::check_for_restriction_nodes(pugi::xml_node node)
         "Unrecognized strategy source rejection: " + rejection_strategy));
     }
   } else {
-    // Default to kill rejected particles
-    rejection_strategy_ = RejectionStrategy::KILL;
+    // Default to resample rejected particles
+    rejection_strategy_ = RejectionStrategy::RESAMPLE;
   }
 }
 

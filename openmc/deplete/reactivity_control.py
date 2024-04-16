@@ -31,9 +31,14 @@ class ReactivityController(ABC):
     variable with the aim of satisfy certain design criteria, such as keeping
     keff equal to one, while running transport-depletion calculations.
 
-    Specific classes for running reactivity control depletion calculations are
-    implemented as derived class of ReactivityController.
-
+    This abstract class sets the requirements
+    for the reactivity control set. Users should instantiate
+    :class:`openmc.deplete.reactivity_control.GeometricalCellReactivityController`
+    or
+    :class:`openmc.deplete.reactivity_control.TemperatureCellReactivityController`
+    or
+    :class:`openmc.deplete.reactivity_control.RefuelMaterialReactivityController`
+    rather than this class.
     .. versionadded:: 0.14.1
 
     Parameters
@@ -446,7 +451,12 @@ class CellReactivityController(ReactivityController):
 
     Specific classes for running reactivity control depletion calculations are
     implemented as derived class of CellReactivityController.
-
+    Users should instantiate
+    :class:`openmc.deplete.reactivity_control.GeometricalCellReactivityController`
+    or
+    :class:`openmc.deplete.reactivity_control.TemperatureCellReactivityController`
+    rather than this class.
+    
     .. versionadded:: 0.14.1
 
     Parameters
@@ -1003,6 +1013,9 @@ class MaterialReactivityController(ReactivityController):
 
     Specific classes for running reactivity control depletion calculations are
     implemented as derived class of MaterialReactivityController.
+    Users should instantiate
+    :class:`openmc.deplete.reactivity_control.RefuelMaterialReactivityController`
+    rather than this class.
 
     .. versionadded:: 0.14.1
 

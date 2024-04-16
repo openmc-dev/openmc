@@ -62,6 +62,11 @@ void calculate_generation_keff()
     MPI_Allreduce(&simulation::keff_generation, &keff_reduced, 1, MPI_DOUBLE,
       MPI_SUM, mpi::intracomm);
   } else {
+    // If using random ray, MPI parallelism is provided by domain replication.
+    // As such, all fluxes will be reduced at the end of each transport sweep,
+    // such that all ranks have identical scalar flux vectors, and will all
+    // independently compute the same value of k. Thus, there is no need to
+    // perform any additional MPI reduction here.
     keff_reduced = simulation::keff_generation;
   }
 #else

@@ -566,6 +566,8 @@ def test_regular_mesh(lib_init):
     assert mesh.upper_right == pytest.approx(ur)
     assert mesh.width == pytest.approx(width)
 
+    np.testing.assert_allclose(mesh.volumes, 1.0)
+
     meshes = openmc.lib.meshes
     assert isinstance(meshes, Mapping)
     assert len(meshes) == 1
@@ -644,6 +646,8 @@ def test_rectilinear_mesh(lib_init):
             for k, diff_z in enumerate(np.diff(z_grid)):
                 assert np.all(mesh.width[i, j, k, :] == (10, 10, 10))
 
+    np.testing.assert_allclose(mesh.volumes, 1000.0)
+
     with pytest.raises(exc.AllocationError):
         mesh2 = openmc.lib.RectilinearMesh(mesh.id)
 
@@ -687,6 +691,9 @@ def test_cylindrical_mesh(lib_init):
         for j, _ in enumerate(np.diff(phi_grid)):
             for k, _ in enumerate(np.diff(z_grid)):
                 assert np.allclose(mesh.width[i, j, k, :], (5, deg2rad(10), 10))
+
+    np.testing.assert_allclose(mesh.volumes[::2], 10/360 * pi * 5**2 * 10)
+    np.testing.assert_allclose(mesh.volumes[1::2], 10/360 * pi * (10**2 - 5**2) * 10)
 
     with pytest.raises(exc.AllocationError):
         mesh2 = openmc.lib.CylindricalMesh(mesh.id)
@@ -733,6 +740,13 @@ def test_spherical_mesh(lib_init):
         for j, _ in enumerate(np.diff(theta_grid)):
             for k, _ in enumerate(np.diff(phi_grid)):
                 assert np.allclose(mesh.width[i, j, k, :], (5, deg2rad(10), deg2rad(10)))
+
+    dtheta = lambda d1, d2: np.cos(deg2rad(d1)) - np.cos(deg2rad(d2))
+    f = 1/3 * deg2rad(10.)
+    np.testing.assert_allclose(mesh.volumes[::4],  f * 5**3 * dtheta(0., 10.))
+    np.testing.assert_allclose(mesh.volumes[1::4], f * (10**3 - 5**3) * dtheta(0., 10.))
+    np.testing.assert_allclose(mesh.volumes[2::4], f * 5**3 * dtheta(10., 20.))
+    np.testing.assert_allclose(mesh.volumes[3::4], f * (10**3 - 5**3) * dtheta(10., 20.))
 
     with pytest.raises(exc.AllocationError):
         mesh2 = openmc.lib.SphericalMesh(mesh.id)

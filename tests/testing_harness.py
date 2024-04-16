@@ -383,6 +383,7 @@ class HashedPyAPITestHarness(PyAPITestHarness):
         """Digest info in the statepoint and return as a string."""
         return super()._get_results(True)
 
+
 class TolerantPyAPITestHarness(PyAPITestHarness):
     """Specialized harness for running tests that involve significant levels
     of floating point non-associativity when using shared memory parallelism

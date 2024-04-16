@@ -410,7 +410,7 @@ void print_generation()
 
 //==============================================================================
 
-void show_time(const char* label, double secs, int indent_level = 0)
+void show_time(const char* label, double secs, int indent_level)
 {
   int width = 33 - indent_level * 2;
   fmt::print("{0:{1}} {2:<{3}} = {4:>10.4e} seconds\n", "", 2 * indent_level,
@@ -574,66 +574,6 @@ void print_results()
   }
   fmt::print("\n");
   std::fflush(stdout);
-}
-
-//==============================================================================
-
-void print_results_random_ray(uint64_t total_geometric_intersections,
-  double avg_miss_rate, int negroups, int64_t n_source_regions,
-  int64_t n_fixed_source_regions)
-{
-  using namespace simulation;
-
-  if (settings::verbosity >= 6) {
-    double total_integrations = total_geometric_intersections * negroups;
-    double TPI = simulation::time_transport.elapsed() / total_integrations;
-    double misc_time = time_total.elapsed() - time_update_src.elapsed() -
-                       time_transport.elapsed() - time_tallies.elapsed() -
-                       time_bank_sendrecv.elapsed();
-
-    header("Simulation Statistics", 4);
-    fmt::print(
-      " Total Iterations                  = {}\n", settings::n_batches);
-    fmt::print(" Flat Source Regions (FSRs)        = {}\n", n_source_regions);
-    fmt::print(
-      " FSRs with Fixed Source Terms      = {}\n", n_fixed_source_regions);
-    fmt::print(" Total Geometric Intersections     = {:.4e}\n",
-      static_cast<double>(total_geometric_intersections));
-    fmt::print("   Avg per Iteration               = {:.4e}\n",
-      static_cast<double>(total_geometric_intersections) / settings::n_batches);
-    fmt::print("   Avg per Iteration per FSR       = {:.2f}\n",
-      static_cast<double>(total_geometric_intersections) /
-        static_cast<double>(settings::n_batches) / n_source_regions);
-    fmt::print(" Avg FSR Miss Rate per Iteration   = {:.4f}%\n", avg_miss_rate);
-    fmt::print(" Energy Groups                     = {}\n", negroups);
-    fmt::print(
-      " Total Integrations                = {:.4e}\n", total_integrations);
-    fmt::print("   Avg per Iteration               = {:.4e}\n",
-      total_integrations / settings::n_batches);
-
-    header("Timing Statistics", 4);
-    show_time("Total time for initialization", time_initialize.elapsed());
-    show_time("Reading cross sections", time_read_xs.elapsed(), 1);
-    show_time("Total simulation time", time_total.elapsed());
-    show_time("Transport sweep only", time_transport.elapsed(), 1);
-    show_time("Source update only", time_update_src.elapsed(), 1);
-    show_time("Tally conversion only", time_tallies.elapsed(), 1);
-    show_time("MPI source reductions only", time_bank_sendrecv.elapsed(), 1);
-    show_time("Other iteration routines", misc_time, 1);
-    if (settings::run_mode == RunMode::EIGENVALUE) {
-      show_time("Time in inactive batches", time_inactive.elapsed());
-    }
-    show_time("Time in active batches", time_active.elapsed());
-    show_time("Time writing statepoints", time_statepoint.elapsed());
-    show_time("Total time for finalization", time_finalize.elapsed());
-    show_time("Time per integration", TPI);
-  }
-
-  if (settings::verbosity >= 4 && settings::run_mode == RunMode::EIGENVALUE) {
-    header("Results", 4);
-    fmt::print(" k-effective                       = {:.5f} +/- {:.5f}\n",
-      simulation::keff, simulation::keff_std);
-  }
 }
 
 //==============================================================================

@@ -18,29 +18,28 @@ namespace openmc {
 // returns 1 - exp(-tau)
 // Equivalent to -(_expm1f(-tau)), but faster
 // Written by Colin Josey.
-inline float cjosey_exponential(const float tau)
+float cjosey_exponential(float tau)
 {
-  const float c1n = -1.0000013559236386308f;
-  const float c2n = 0.23151368626911062025f;
-  const float c3n = -0.061481916409314966140f;
-  const float c4n = 0.0098619906458127653020f;
-  const float c5n = -0.0012629460503540849940f;
-  const float c6n = 0.00010360973791574984608f;
-  const float c7n = -0.000013276571933735820960f;
+  constexpr float c1n = -1.0000013559236386308f;
+  constexpr float c2n = 0.23151368626911062025f;
+  constexpr float c3n = -0.061481916409314966140f;
+  constexpr float c4n = 0.0098619906458127653020f;
+  constexpr float c5n = -0.0012629460503540849940f;
+  constexpr float c6n = 0.00010360973791574984608f;
+  constexpr float c7n = -0.000013276571933735820960f;
 
-  const float c0d = 1.0f;
-  const float c1d = -0.73151337729389001396f;
-  const float c2d = 0.26058381273536471371f;
-  const float c3d = -0.059892419041316836940f;
-  const float c4d = 0.0099070188241094279067f;
-  const float c5d = -0.0012623388962473160860f;
-  const float c6d = 0.00010361277635498731388f;
-  const float c7d = -0.000013276569500666698498f;
+  constexpr float c0d = 1.0f;
+  constexpr float c1d = -0.73151337729389001396f;
+  constexpr float c2d = 0.26058381273536471371f;
+  constexpr float c3d = -0.059892419041316836940f;
+  constexpr float c4d = 0.0099070188241094279067f;
+  constexpr float c5d = -0.0012623388962473160860f;
+  constexpr float c6d = 0.00010361277635498731388f;
+  constexpr float c7d = -0.000013276569500666698498f;
 
   float x = -tau;
-  float num, den;
 
-  den = c7d;
+  float den = c7d;
   den = den * x + c6d;
   den = den * x + c5d;
   den = den * x + c4d;
@@ -49,7 +48,7 @@ inline float cjosey_exponential(const float tau)
   den = den * x + c1d;
   den = den * x + c0d;
 
-  num = c7n;
+  float num = c7n;
   num = num * x + c6n;
   num = num * x + c5n;
   num = num * x + c4n;
@@ -58,8 +57,7 @@ inline float cjosey_exponential(const float tau)
   num = num * x + c1n;
   num = num * x;
 
-  const float exponential = num / den;
-  return exponential;
+  return num / den;
 }
 
 //==============================================================================
@@ -109,18 +107,24 @@ void RandomRay::event_advance_ray()
     return;
   }
 
-  // Check for final termination
   if (is_active_) {
+    // If the ray is in the active length, need to check if it has
+    // reached its maximum termination distance. If so, reduce
+    // the ray traced length so that the ray does not overrun the
+    // maximum numerical length (so as to avoid numerical bias).
     if (distance_travelled_ + distance >= distance_active_) {
-      distance_active_ - distance_travelled_;
+      distance = distance_active_ - distance_travelled_;
       wgt() = 0.0;
     }
+
     distance_travelled_ += distance;
     attenuate_flux(distance, true);
-  }
-
-  // Check for end of inactive region (dead zone)
-  if (!is_active_) {
+  } else {
+    // If the ray is still in the dead zone, need to check if it
+    // has entered the active phase. If so, split into two segments (one
+    // representing the final part of the dead zone, the other representing the
+    // first part of the active length) and attenuate each. Otherwise, if the
+    // full length of the segment is within the dead zone, attenuate as normal.
     if (distance_travelled_ + distance >= distance_inactive_) {
       is_active_ = true;
       double distance_dead = distance_inactive_ - distance_travelled_;
@@ -133,8 +137,8 @@ void RandomRay::event_advance_ray()
         distance_alive = distance_active_;
         wgt() = 0.0;
       }
-      attenuate_flux(distance_alive, true);
 
+      attenuate_flux(distance_alive, true);
       distance_travelled_ = distance_alive;
     } else {
       distance_travelled_ += distance;
@@ -159,7 +163,7 @@ void RandomRay::event_advance_ray()
 // source region.  Locks are used instead of atomics as all energy groups
 // must be written, such that locking once is typically much more efficient
 // than use of many atomic operations corresponding to each energy group
-// individually (at least on CPU). Several other bookeeping tasks are also
+// individually (at least on CPU). Several other bookkeeping tasks are also
 // performed when inside the lock.
 void RandomRay::attenuate_flux(double distance, bool is_active)
 {
@@ -185,15 +189,15 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
   const int a = 0;
 
   // MOC incoming flux attenuation + source contribution/attenuation equation
-  for (int e = 0; e < negroups_; e++) {
+  for (int g = 0; g < negroups_; g++) {
     float sigma_t = data::mg.macro_xs_[material].get_xs(
-      MgxsType::TOTAL, e, NULL, NULL, NULL, t, a);
+      MgxsType::TOTAL, g, NULL, NULL, NULL, t, a);
     float tau = sigma_t * distance;
     float exponential = cjosey_exponential(tau); // exponential = 1 - exp(-tau)
     float new_delta_psi =
-      (angular_flux_[e] - domain_->source_[source_element + e]) * exponential;
-    delta_psi_[e] = new_delta_psi;
-    angular_flux_[e] -= new_delta_psi;
+      (angular_flux_[g] - domain_->source_[source_element + g]) * exponential;
+    delta_psi_[g] = new_delta_psi;
+    angular_flux_[g] -= new_delta_psi;
   }
 
   // If ray is in the active phase (not in dead zone), make contributions to
@@ -205,8 +209,8 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
 
     // Accumulate delta psi into new estimate of source region flux for
     // this iteration
-    for (int e = 0; e < negroups_; e++) {
-      domain_->scalar_flux_new_[source_element + e] += delta_psi_[e];
+    for (int g = 0; g < negroups_; g++) {
+      domain_->scalar_flux_new_[source_element + g] += delta_psi_[g];
     }
 
     // If the source region hasn't been hit yet this iteration,
@@ -239,10 +243,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   // Reset particle event counter
   n_event() = 0;
 
-  if (distance_inactive_ <= 0.0)
-    is_active_ = true;
-  else
-    is_active_ = false;
+  is_active_ = (distance_inactive_ <= 0.0);
 
   wgt() = 1.0;
 
@@ -260,7 +261,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   site.E = lower_bound_index(
     data::mg.rev_energy_bins_.begin(), data::mg.rev_energy_bins_.end(), site.E);
   site.E = negroups_ - site.E - 1.;
-  from_source(&site);
+  this->from_source(&site);
 
   // Locate ray
   if (lowest_coord().cell == C_NONE) {
@@ -280,8 +281,8 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   int64_t source_region_idx =
     domain_->source_region_offsets_[i_cell] + cell_instance();
 
-  for (int e = 0; e < negroups_; e++) {
-    angular_flux_[e] = domain_->source_[source_region_idx * negroups_ + e];
+  for (int g = 0; g < negroups_; g++) {
+    angular_flux_[g] = domain_->source_[source_region_idx * negroups_ + g];
   }
 }
 

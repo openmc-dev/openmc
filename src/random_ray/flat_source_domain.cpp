@@ -895,12 +895,6 @@ double FlatSourceDomain::calculate_total_volume_weighted_source_strength() const
 
 void FlatSourceDomain::convert_fixed_sources()
 {
-  // Compute total combined strength of all neutron/photon sources
-  double total_strength = 0;
-  for (int es = 0; es < model::external_sources.size(); es++) {
-    total_strength += model::external_sources[es]->strength();
-  }
-
   // Loop over external sources
   for (int es = 0; es < model::external_sources.size(); es++) {
     Source* s = model::external_sources[es].get();
@@ -908,7 +902,7 @@ void FlatSourceDomain::convert_fixed_sources()
     Discrete* energy = dynamic_cast<Discrete*>(is->energy());
     const std::unordered_set<int32_t>& domain_ids = is->domain_ids();
 
-    double strength_factor = is->strength() / total_strength;
+    double strength_factor = is->strength();
 
     if (is->domain_type() == IndependentSource::DomainType::MATERIAL) {
       for (int32_t material_id : domain_ids) {

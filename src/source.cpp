@@ -190,9 +190,8 @@ bool Source::inside_spatial_bounds(SourceSite& s) const
       }
     }
   }
-
-  // particle is inside all spatial bounds
-  return true;
+  // If at this point found is false, part. is outside all cells/materials
+  return found;
 }
 
 //==============================================================================

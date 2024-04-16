@@ -53,6 +53,7 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
   source_.resize(n_source_elements_);
   fixed_source_.assign(n_source_elements_, 0.0);
   tally_task_.resize(n_source_elements_);
+  volume_task_.resize(n_source_regions_);
 
   if (settings::run_mode == RunMode::EIGENVALUE) {
     // If in eigenvalue mode, set starting flux to guess of unity
@@ -77,6 +78,25 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
   if (source_region_id != n_source_regions_) {
     fatal_error("Unexpected number of source regions");
   }
+
+  // Initialize tally volumes
+  tally_volumes_.resize(model::tallies.size());
+  for (int i = 0; i < model::tallies.size(); i++) {
+    tally_volumes_[i] = model::tallies[i]->results();
+  }
+  // Initialize tally volumes
+  tally_.resize(model::tallies.size());
+  for (int i = 0; i < model::tallies.size(); i++) {
+    tally_[i] = model::tallies[i]->results();
+  }
+
+  // Compute simulation domain volume based on ray source
+  IndependentSource* is =
+    dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get());
+  SpatialDistribution* space_dist = is->space();
+  SpatialBox* sb = dynamic_cast<SpatialBox*>(space_dist);
+  Position dims = sb->upper_right() - sb->lower_left();
+  simulation_volume_ = dims.x * dims.y * dims.z;
 }
 
 void FlatSourceDomain::batch_reset()
@@ -389,10 +409,14 @@ void FlatSourceDomain::convert_source_regions_to_tallies()
           for (auto score_index = 0; score_index < tally.scores_.size();
                score_index++) {
             auto score_bin = tally.scores_[score_index];
-            // If a valid tally, filter, and score cobination has been found,
+            // If a valid tally, filter, and score combination has been found,
             // then add it to the list of tally tasks for this source element.
-            tally_task_[source_element].emplace_back(
-              i_tally, filter_index, score_index, score_bin);
+            TallyTask task(i_tally, filter_index, score_index, score_bin);
+            tally_task_[source_element].push_back(task);
+
+            // Also add this task to the list of volume tasks for this source
+            // region.
+            volume_task_[sr].insert(task);
           }
         }
       }
@@ -435,18 +459,6 @@ void FlatSourceDomain::random_ray_tally()
   // Reset our tally volumes to zero
   reset_tally_volumes();
 
-  // Compute the volume weighted total strength of fixed sources throughout the
-  // domain using up to date stochastic source region volumes. Note that this
-  // value is different than the sum of the user input IndependentSource object
-  // strengths, as the raw user input strengths do not account for the volumes
-  // of each source. Computing this quantity is useful for normalizing output in
-  // the same manner as would be expected in Monte Carlo mode.
-  double inverse_source_strength = 1.0;
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    inverse_source_strength =
-      1.0 / calculate_total_volume_weighted_source_strength();
-  }
-
   // Temperature and angle indices, if using multiple temperature
   // data sets and/or anisotropic data sets.
   // TODO: Currently assumes we are only using single temp/single
@@ -459,33 +471,46 @@ void FlatSourceDomain::random_ray_tally()
 // them.
 #pragma omp parallel for
   for (int sr = 0; sr < n_source_regions_; sr++) {
-    double volume = volume_[sr];
-    double factor = volume * inverse_source_strength;
+    // The fsr.volume_ is the unitless fractional simulation averaged volume
+    // (i.e., it is the FSR's fraction of the overall simulation volume). The
+    // simulation_volume_ is the total 3D physical volume in cm^3 of the entire
+    // global simulation domain (as defined by the ray source box). Thus, the
+    // FSR's true 3D spatial volume in cm^3 is found by multiplying its fraction
+    // of the total volume by the total volume. Not important in eigenvalue
+    // solves, but useful in fixed source solves for returning the flux shape
+    // with a magnitude that makes sense relative to the fixed source strength.
+    double volume = volume_[sr] * simulation_volume_;
+
     double material = material_[sr];
     for (int g = 0; g < negroups_; g++) {
       int idx = sr * negroups_ + g;
-      double flux = scalar_flux_new_[idx] * factor;
+      double flux = scalar_flux_new_[idx];
+
+      // Determine numerical score value
       for (auto& task : tally_task_[idx]) {
         double score;
         switch (task.score_type) {
 
         case SCORE_FLUX:
-          score = flux;
+          score = flux * volume;
           break;
 
         case SCORE_TOTAL:
-          score = flux * data::mg.macro_xs_[material].get_xs(
-                           MgxsType::TOTAL, g, NULL, NULL, NULL, t, a);
+          score = flux * volume *
+                  data::mg.macro_xs_[material].get_xs(
+                    MgxsType::TOTAL, g, NULL, NULL, NULL, t, a);
           break;
 
         case SCORE_FISSION:
-          score = flux * data::mg.macro_xs_[material].get_xs(
-                           MgxsType::FISSION, g, NULL, NULL, NULL, t, a);
+          score = flux * volume *
+                  data::mg.macro_xs_[material].get_xs(
+                    MgxsType::FISSION, g, NULL, NULL, NULL, t, a);
           break;
 
         case SCORE_NU_FISSION:
-          score = flux * data::mg.macro_xs_[material].get_xs(
-                           MgxsType::NU_FISSION, g, NULL, NULL, NULL, t, a);
+          score = flux * volume *
+                  data::mg.macro_xs_[material].get_xs(
+                    MgxsType::NU_FISSION, g, NULL, NULL, NULL, t, a);
           break;
 
         case SCORE_EVENTS:
@@ -498,10 +523,52 @@ void FlatSourceDomain::random_ray_tally()
                       "random ray mode.");
           break;
         }
+
+        // Apply score to the appropriate tally bin
+        // If this is a flux score, we store it in an intermediate data
+        // structure so that it can be properly normalized once the total volume
+        // of the bin is determined.
         Tally& tally {*model::tallies[task.tally_idx]};
+        if (task.score_type == SCORE_FLUX) {
 #pragma omp atomic
-        tally.results_(task.filter_idx, task.score_idx, TallyResult::VALUE) +=
-          score;
+          tally_[task.tally_idx](
+            task.filter_idx, task.score_idx, TallyResult::VALUE) += score;
+        } else {
+#pragma omp atomic
+          tally.results_(task.filter_idx, task.score_idx, TallyResult::VALUE) +=
+            score;
+        }
+      } // end tally task loop
+    }   // end energy group loop
+
+    // Accumulate intermediate volume contributions for flux tallies
+    for (const auto& task : volume_task_[sr]) {
+      if (task.score_type == SCORE_FLUX) {
+#pragma omp atomic
+        tally_volumes_[task.tally_idx](
+          task.filter_idx, task.score_idx, TallyResult::VALUE) += volume;
+      }
+    }
+  } // end FSR loop
+
+// Normalize flux scores by total bin volume
+#pragma omp parallel for
+  for (int sr = 0; sr < n_source_regions_; sr++) {
+    for (int g = 0; g < negroups_; g++) {
+      int idx = sr * negroups_ + g;
+      for (auto& task : tally_task_[idx]) {
+        if (task.score_type == SCORE_FLUX) {
+          Tally& tally {*model::tallies[task.tally_idx]};
+          double vol_times_flux = tally_[task.tally_idx](
+            task.filter_idx, task.score_idx, TallyResult::VALUE);
+          double vol = tally_volumes_[task.tally_idx](
+            task.filter_idx, task.score_idx, TallyResult::VALUE);
+          if (vol > 0.0) {
+#pragma omp atomic
+            tally.results_(task.filter_idx, task.score_idx,
+              TallyResult::VALUE) += vol_times_flux / vol;
+          }
+        }
       }
     }
   }
@@ -792,8 +859,8 @@ void FlatSourceDomain::apply_fixed_source_to_cell_and_children(int32_t i_cell,
       cell.get_contained_cells(0, nullptr);
     for (const auto& pair : cell_instance_list) {
       int32_t i_child_cell = pair.first;
-      apply_fixed_source_to_cell_instances(i_child_cell, discrete,
-        strength_factor, target_material_id);
+      apply_fixed_source_to_cell_instances(
+        i_child_cell, discrete, strength_factor, target_material_id);
     }
   }
 }

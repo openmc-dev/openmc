@@ -141,6 +141,10 @@ private:
   int64_t n_source_elements_ {0}; // Total number of source regions in the model
                                   // times the number of energy groups
 
+  double
+    simulation_volume_; // Total physical volume of the simulation domain, as
+                        // defined by the 3D box of the random ray source
+
   // 2D array representing values for all source elements x tally
   // tasks
   vector<vector<TallyTask>> tally_task_;

@@ -92,6 +92,7 @@ public:
   int64_t add_source_to_scalar_flux();
   void batch_reset();
   void convert_source_regions_to_tallies();
+  void reset_tally_volumes();
   void random_ray_tally() const;
   void accumulate_iteration_flux();
   void output_to_vtk() const;
@@ -140,9 +141,15 @@ private:
   int64_t n_source_elements_ {0}; // Total number of source regions in the model
                                   // times the number of energy groups
 
-  // 2D array representing values for all source regions x energy groups x tally
+  // 2D array representing values for all source elements x tally
   // tasks
   vector<vector<TallyTask>> tally_task_;
+
+  // 1D array representing values for all source regions, with each region
+  // containing a set of volume tally tasks. This more complicated data
+  // structure is convenient for ensuring that volumes are only tallied once per
+  // source region, regardless of how many energy groups are used for tallying.
+  vector<std::unordered_set<TallyTask, TallyTask::HashFunctor>> volume_task_;
 
   // 1D arrays representing values for all source regions
   vector<int> material_;
@@ -152,10 +159,12 @@ private:
   // groups
   vector<float> scalar_flux_final_;
 
-  // Results for each bin -- the first dimension of the array is for the
-  // combination of filters (e.g. specific cell, specific energy group, etc.)
-  // and the second dimension of the array is for scores (e.g. flux, total
-  // reaction rate, fission reaction rate, etc.)
+  // Intermediate tally results for each bin -- the first dimension of the array
+  // is for the combination of filters (e.g. specific cell, specific energy
+  // group, etc.) and the second dimension of the array is for scores (e.g.
+  // flux, total reaction rate, fission reaction rate, etc.). This intermediate
+  // data structure is used when tallying flux quantities that must be
+  // normalized by volume.
   vector<xt::xtensor<double, 3>> tally_volumes_;
   vector<xt::xtensor<double, 3>> tally_;
 

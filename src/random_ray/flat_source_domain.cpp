@@ -406,6 +406,19 @@ void FlatSourceDomain::convert_source_regions_to_tallies()
   mapped_all_tallies_ = all_source_regions_mapped;
 }
 
+// Set the 3D xtensor to zero for all tallies
+void FlatSourceDomain::reset_tally_volumes()
+{
+#pragma omp parallel for
+  for (auto& tensor : tally_volumes_) {
+    tensor.fill(0.0); // Set all elements of the tensor to 0.0
+  }
+#pragma omp parallel for
+  for (auto& tensor : tally_) {
+    tensor.fill(0.0); // Set all elements of the tensor to 0.0
+  }
+}
+
 // Tallying in random ray is not done directly during transport, rather,
 // it is done only once after each power iteration. This is made possible
 // by way of a mapping data structure that relates spatial source regions

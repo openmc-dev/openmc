@@ -12,7 +12,10 @@
 #include "openmc/string_utils.h"
 
 #ifdef UWUW
-#include "uwuw.h"
+#include "uwuw.hpp"
+const bool UWUW_ENABLED = true;
+#else
+const bool UWUW_ENABLED = false;
 #endif
 #include <fmt/core.h>
 
@@ -424,6 +427,59 @@ void DAGUniverse::to_hdf5(hid_t universes_group) const
   close_group(group);
 }
 
+bool DAGUniverse::uses_uwuw() const
+{
+#ifdef UWUW
+  return uwuw_ && !uwuw_->material_library.empty();
+#else
+  return false;
+#endif // UWUW
+}
+
+std::string DAGUniverse::get_uwuw_materials_xml() const
+{
+#ifdef UWUW
+  if (!uses_uwuw()) {
+    throw std::runtime_error("This DAGMC Universe does not use UWUW materials");
+  }
+
+  std::stringstream ss;
+  // write header
+  ss << "<?xml version=\"1.0\"?>\n";
+  ss << "<materials>\n";
+  const auto& mat_lib = uwuw_->material_library;
+  // write materials
+  for (auto mat : mat_lib) {
+    ss << mat.second->openmc("atom");
+  }
+  // write footer
+  ss << "</materials>";
+
+  return ss.str();
+#else
+  throw std::runtime_error("DAGMC was not configured with UWUW.");
+#endif // UWUW
+}
+
+void DAGUniverse::write_uwuw_materials_xml(const std::string& outfile) const
+{
+#ifdef UWUW
+  if (!uses_uwuw()) {
+    throw std::runtime_error(
+      "This DAGMC universe does not use UWUW materials.");
+  }
+
+  std::string xml_str = get_uwuw_materials_xml();
+  // if there is a material library in the file
+  std::ofstream mats_xml(outfile);
+  mats_xml << xml_str;
+  mats_xml.close();
+#else
+  throw std::runtime_error("DAGMC was not configured with UWUW.");
+#endif
+}
+}
+
 void DAGUniverse::legacy_assign_material(
   std::string mat_string, std::unique_ptr<DAGCell>& c) const
 {
@@ -480,66 +536,10 @@ void DAGUniverse::legacy_assign_material(
     write_message(msg.str(), 10);
   }
 }
-} // namespace openmc
 
-#ifdef UWUW // define methods for when UWUW is enabled
-namespace openmc {
-bool DAGUniverse::uses_uwuw() const
-{
-  return uwuw_ && !uwuw_->material_library.empty();
-}
-std::string DAGUniverse::get_uwuw_materials_xml() const
-{
-  if (!uses_uwuw()) {
-    throw std::runtime_error("This DAGMC Universe does not use UWUW materials");
-  }
-
-  std::stringstream ss;
-  // write header
-  ss << "<?xml version=\"1.0\"?>\n";
-  ss << "<materials>\n";
-  const auto& mat_lib = uwuw_->material_library;
-  // write materials
-  for (auto mat : mat_lib) {
-    ss << mat.second->openmc("atom");
-  }
-  // write footer
-  ss << "</materials>";
-
-  return ss.str();
-}
-void DAGUniverse::write_uwuw_materials_xml(const std::string& outfile) const
-{
-  if (!uses_uwuw()) {
-    throw std::runtime_error(
-      "This DAGMC universe does not use UWUW materials.");
-  }
-
-  std::string xml_str = get_uwuw_materials_xml();
-  // if there is a material library in the file
-  std::ofstream mats_xml(outfile);
-  mats_xml << xml_str;
-  mats_xml.close();
-}
-void DAGUniverse::uwuw_assign_material(
-  moab::EntityHandle vol_handle, std::unique_ptr<DAGCell>& c) const
-{
-  // lookup material in uwuw if present
-  std::string uwuw_mat = dmd_ptr->volume_material_property_data_eh[vol_handle];
-  if (HAVE_UWUW && uwuw_->material_library.count(uwuw_mat) != 0) {
-    // Note: material numbers are set by UWUW
-    int mat_number = uwuw_->material_library.get_material(uwuw_mat)
-                       .metadata["mat_number"]
-                       .asInt();
-    c->material_.push_back(mat_number);
-  } else {
-    fatal_error(fmt::format("Material with value '{}' not found in the "
-                            "UWUW material library",
-      mat_str));
-  }
-}
 void DAGUniverse::read_uwuw_materials()
 {
+#ifdef UWUW
   // If no filename was provided, don't read UWUW materials
   if (filename_ == "")
     return;
@@ -577,40 +577,31 @@ void DAGUniverse::read_uwuw_materials()
   for (pugi::xml_node material_node : root.children("material")) {
     model::materials.push_back(std::make_unique<Material>(material_node));
   }
+#else
+  throw std::runtime_error("DAGMC was not configured with UWUW.");
+#endif
 }
-} // namespace openmc
-#else  // dummy dummy methods for when UWUW is not enabled
-namespace openmc {
-bool DAGUniverse::uses_uwuw() const
-{
-  return false;
-}
-std::string DAGUniverse::get_uwuw_materials_xml() const
-{
-  std::string s;
-  return s;
-}
-void DAGUniverse::write_uwuw_materials_xml(const std::string& outfile) const
-{
-  return;
-}
+
 void DAGUniverse::uwuw_assign_material(
   moab::EntityHandle vol_handle, std::unique_ptr<DAGCell>& c) const
 {
-  return;
+  // lookup material in uwuw if present
+  std::string uwuw_mat = dmd_ptr->volume_material_property_data_eh[vol_handle];
+  if (uwuw_->material_library.count(uwuw_mat) != 0) {
+    // Note: material numbers are set by UWUW
+    int mat_number = uwuw_->material_library.get_material(uwuw_mat)
+                       .metadata["mat_number"]
+                       .asInt();
+    c->material_.push_back(mat_number);
+  } else {
+    fatal_error(fmt::format("Material with value '{}' not found in the "
+                            "UWUW material library",
+      mat_str));
+  }
 }
-void DAGUniverse::read_uwuw_materials()
-{
-  return;
-}
-} // namespace openmc
-#endif // UWUW
-
 //==============================================================================
 // DAGMC Cell implementation
 //==============================================================================
-
-namespace openmc {
 
 DAGCell::DAGCell(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx)
   : Cell {}, dagmc_ptr_(dag_ptr), dag_index_(dag_idx)
@@ -654,20 +645,18 @@ std::pair<double, int32_t> DAGCell::distance(
       dag_univ->surf_idx_offset_ + dagmc_ptr_->index_by_handle(hit_surf);
   } else if (!dagmc_ptr_->is_implicit_complement(vol) ||
              is_root_universe(dag_univ->id_)) {
-    // surface boundary conditions are ignored for projection plotting,
-    // meaning that the particle may move through the graveyard (bounding)
-    // volume and into the implicit complement on the other side where no
-    // intersection will be found. Treating this as a lost particle is
-    // problematic when plotting. Instead, the infinite distance and invalid
-    // surface index are returned.
+    // surface boundary conditions are ignored for projection plotting, meaning
+    // that the particle may move through the graveyard (bounding) volume and
+    // into the implicit complement on the other side where no intersection will
+    // be found. Treating this as a lost particle is problematic when plotting.
+    // Instead, the infinite distance and invalid surface index are returned.
     if (settings::run_mode == RunMode::PLOTTING)
       return {INFTY, -1};
 
     // the particle should be marked as lost immediately if an intersection
-    // isn't found in a volume that is not the implicit complement. In the
-    // case that the DAGMC model is the root universe of the geometry, even a
-    // missing intersection in the implicit complement should trigger this
-    // condition.
+    // isn't found in a volume that is not the implicit complement. In the case
+    // that the DAGMC model is the root universe of the geometry, even a missing
+    // intersection in the implicit complement should trigger this condition.
     std::string material_id =
       p->material() == MATERIAL_VOID
         ? "-1 (VOID)"

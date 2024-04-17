@@ -347,7 +347,7 @@ void print_build_info()
   coverage = y;
 #endif
 #ifdef UWUW
-  coverage = y;
+  uwuw = y;
 #endif
 
   // Wraps macro variables in quotes
@@ -367,7 +367,7 @@ void print_build_info()
     fmt::print("NCrystal support:      {}\n", ncrystal);
     fmt::print("Coverage testing:      {}\n", coverage);
     fmt::print("Profiling flags:       {}\n", profiling);
-    fmt::print("UWUW support:          {}\n", mcpl);
+    fmt::print("UWUW support:          {}\n", uwuw);
   }
 }
 

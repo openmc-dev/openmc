@@ -13,9 +13,6 @@
 
 #ifdef UWUW
 #include "uwuw.hpp"
-const bool UWUW_ENABLED = true;
-#else
-const bool UWUW_ENABLED = false;
 #endif
 #include <fmt/core.h>
 
@@ -30,6 +27,12 @@ namespace openmc {
 const bool DAGMC_ENABLED = true;
 #else
 const bool DAGMC_ENABLED = false;
+#endif
+
+#ifdef UWUW
+const bool UWUW_ENABLED = true;
+#else
+const bool UWUW_ENABLED = false;
 #endif
 
 } // namespace openmc
@@ -478,7 +481,6 @@ void DAGUniverse::write_uwuw_materials_xml(const std::string& outfile) const
   throw std::runtime_error("DAGMC was not configured with UWUW.");
 #endif
 }
-}
 
 void DAGUniverse::legacy_assign_material(
   std::string mat_string, std::unique_ptr<DAGCell>& c) const
@@ -585,6 +587,7 @@ void DAGUniverse::read_uwuw_materials()
 void DAGUniverse::uwuw_assign_material(
   moab::EntityHandle vol_handle, std::unique_ptr<DAGCell>& c) const
 {
+#ifdef UWUW
   // lookup material in uwuw if present
   std::string uwuw_mat = dmd_ptr->volume_material_property_data_eh[vol_handle];
   if (uwuw_->material_library.count(uwuw_mat) != 0) {
@@ -598,6 +601,9 @@ void DAGUniverse::uwuw_assign_material(
                             "UWUW material library",
       mat_str));
   }
+#else
+  throw std::runtime_error("DAGMC was not configured with UWUW.");
+#endif
 }
 //==============================================================================
 // DAGMC Cell implementation

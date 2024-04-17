@@ -10,6 +10,7 @@
 #include "openmc/material.h"
 #include "openmc/mcpl_interface.h"
 #include "openmc/message_passing.h"
+#include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
 #include "openmc/particle.h"
@@ -40,6 +41,7 @@
 #include <algorithm>
 #include <cmath>
 #include <string>
+#include <vector>
 
 //==============================================================================
 // C API functions
@@ -78,6 +80,104 @@ int openmc_simulation_init()
     initialize_data();
   }
 
+  // Number of fissionables and precursors and fissionable index:
+  // n_fissionables, n_precursors, and fissionable_index
+  // (currently only used in alpha_mode)
+  simulation::n_fissionables = 0;
+  if (settings::run_CE) {
+    simulation::fissionable_index.resize(data::nuclides.size(), -1);
+    for (int i = 0; i < data::nuclides.size(); i++) {
+      if (data::nuclides[i]->fissionable_) {
+        simulation::fissionable_index[i] = simulation::n_fissionables;
+        simulation::n_fissionables++;
+        simulation::n_precursors = data::nuclides[i]->n_precursor_;
+      }
+    }
+  } else {
+    simulation::fissionable_index.resize(data::mg.macro_xs_.size(), -1);
+    for (int i = 0; i < data::mg.macro_xs_.size(); i++) {
+      if (data::mg.macro_xs_[i].fissionable) {
+        simulation::fissionable_index[i] = simulation::n_fissionables;
+        simulation::n_fissionables++;
+      }
+    }
+    simulation::n_precursors = data::mg.num_delayed_groups_;
+  }
+
+  // Precursor decay constant: preursor_decay
+  // (currently only used in alpha_mode)
+  vector<size_t> shape {simulation::n_fissionables, simulation::n_precursors};
+  simulation::precursor_decay = xt::zeros<double>(shape);
+  if (settings::run_CE) {
+    for (int i = 0; i < data::nuclides.size(); i++) {
+      if (data::nuclides[i]->fissionable_) {
+        int idx1 = simulation::fissionable_index[i];
+        int idx2 = 0;
+        auto rx = data::nuclides[i]->fission_rx_[0];
+        for (int j = 1; j < rx->products_.size(); ++j) {
+          const auto& product = rx->products_[j];
+          if (product.particle_ != ParticleType::neutron)
+            continue;
+          if (product.emission_mode_ == Nuclide::EmissionMode::delayed) {
+            simulation::precursor_decay(idx1, idx2) = product.decay_rate_;
+            idx2++;
+          }
+        }
+      }
+    }
+  } else {
+    for (int i = 0; i < data::mg.macro_xs_.size(); i++) {
+      auto& macro_xs = data::mg.macro_xs_[i];
+      if (macro_xs.fissionable) {
+        int idx = simulation::fissionable_index[i];
+        for (int j = 0; j < simulation::n_precursors; ++j) {
+          simulation::precursor_decay(idx, j) = macro_xs.get_xs(
+            MgxsType::DECAY_RATE, 0, nullptr, nullptr, &j, 0, 0);
+        }
+      }
+    }
+  }
+
+  // Preparation for alpha-eigenvalue mode
+  if (settings::alpha_mode) {
+    // Check if any tally uses track-length estimator
+    // TODO: Add track-length tally support for alpha_mode. Significant work
+    //       may be needed in modifying the multi mesh filter scoring to
+    //       consider the continuously decreasing weight upon a single flight.
+    if (mpi::master) {
+      for (auto& t : model::tallies) {
+        if (t->estimator_ == TallyEstimator::TRACKLENGTH) {
+          warning("Alpha eigenvalue mode currently does not support "
+                  "track-length estimator. "
+                  "Set " +
+                  t->name_ + " with collision estimator instead.");
+        }
+      }
+    }
+
+    // Set prompt only flag?
+    if (simulation::n_precursors == 0) {
+      settings::prompt_only = true;
+    }
+
+    // Get minimum and maximum precursor decay constants
+    // (needed to determine alpha eigenvalue thresholds)
+    double decay_min = INFTY;
+    if (!settings::prompt_only) {
+      for (int i = 0; i < simulation::n_fissionables; i++) {
+        for (int j = 0; j < simulation::n_precursors; j++) {
+          if (decay_min > simulation::precursor_decay(i, j)) {
+            decay_min = simulation::precursor_decay(i, j);
+          }
+        }
+      }
+    }
+    simulation::decay_min = decay_min;
+
+    // Allocate global_tally_alpha_Cd
+    global_tally_alpha_Cd = xt::zeros<double>(shape);
+  }
+
   // Determine how much work each process should do
   calculate_work();
 
@@ -112,6 +212,7 @@ int openmc_simulation_init()
   // will potentially populate k_generation and entropy)
   simulation::current_batch = 0;
   simulation::k_generation.clear();
+  simulation::alpha_generation.clear();
   simulation::entropy.clear();
   openmc_reset();
 
@@ -132,7 +233,11 @@ int openmc_simulation_init()
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
       header("FIXED SOURCE TRANSPORT SIMULATION", 3);
     } else if (settings::run_mode == RunMode::EIGENVALUE) {
-      header("K EIGENVALUE SIMULATION", 3);
+      if (settings::alpha_mode) {
+        header("ALPHA EIGENVALUE SIMULATION", 3);
+      } else {
+        header("K EIGENVALUE SIMULATION", 3);
+      }
       if (settings::verbosity >= 7)
         print_columns();
     }
@@ -299,7 +404,19 @@ const RegularMesh* entropy_mesh {nullptr};
 const RegularMesh* ufs_mesh {nullptr};
 
 vector<double> k_generation;
+vector<double> alpha_generation;
 vector<int64_t> work_index;
+
+// For alpha-eigenvalue mode
+double alpha_eff {0.0};
+double alpha_eff_std;
+double decay_min {INFTY};
+bool store_alpha_source {false};
+
+size_t n_fissionables;
+size_t n_precursors;
+vector<int> fissionable_index;
+xt::xtensor<double, 2> precursor_decay;
 
 } // namespace simulation
 
@@ -485,7 +602,7 @@ void finalize_generation()
   }
   gt(GlobalTally::LEAKAGE, TallyResult::VALUE) += global_tally_leakage;
 
-  // reset tallies
+  // reset global tallies
   if (settings::run_mode == RunMode::EIGENVALUE) {
     global_tally_collision = 0.0;
     global_tally_absorption = 0.0;
@@ -513,6 +630,24 @@ void finalize_generation()
     // Write generation output
     if (mpi::master && settings::verbosity >= 7) {
       print_generation();
+    }
+  }
+
+  // Set effective k to one and use the previous alpha estimate
+  if (settings::alpha_mode) {
+    int idx = overall_generation() - 1;
+    simulation::keff = 1.0;
+    simulation::alpha_eff = simulation::alpha_generation[idx];
+
+    // Reset global tallies
+    if (settings::alpha_mode) {
+      global_tally_alpha_Cn = 0.0;
+      global_tally_alpha_Cp = 0.0;
+      for (int i = 0; i < simulation::n_fissionables; i++) {
+        for (int j = 0; j < simulation::n_precursors; j++) {
+          global_tally_alpha_Cd(i, j) = 0.0;
+        }
+      }
     }
   }
 }
@@ -727,6 +862,7 @@ void broadcast_results()
 void free_memory_simulation()
 {
   simulation::k_generation.clear();
+  simulation::alpha_generation.clear();
   simulation::entropy.clear();
 }
 

@@ -1,6 +1,8 @@
 #ifndef OPENMC_PARTICLE_DATA_H
 #define OPENMC_PARTICLE_DATA_H
 
+#include "xtensor/xtensor.hpp"
+
 #include "openmc/array.h"
 #include "openmc/constants.h"
 #include "openmc/position.h"
@@ -112,6 +114,12 @@ struct NuclideMicroXS {
   double thermal_elastic; //!< Bound thermal elastic scattering
   double photon_prod;     //!< microscopic photon production xs
 
+  // Cross sections needed to calculate alpha-eigenvalue
+  double nu_fission_prompt; //!< prompt neutron production from fission
+  double nu_fission_alpha;  //!< Effective, time-corrected nu_fission
+                            //!< See Eq. (45) of [1].
+  // [1] I Variansyah et al. NSE 2020. DOI:10.1080/00295639.2020.1743578
+
   // Cross sections for depletion reactions (note that these are not stored in
   // macroscopic cache)
   double reaction[DEPLETION_RX.size()];
@@ -159,6 +167,10 @@ struct MacroXS {
   double fission;     //!< macroscopic fission xs
   double nu_fission;  //!< macroscopic production xs
   double photon_prod; //!< macroscopic photon production xs
+
+  // Cross sections for alpha-eigenvalue mode
+  double nu_fission_prompt;
+  double nu_fission_alpha;
 
   // Photon cross sections
   double coherent;        //!< macroscopic coherent xs
@@ -443,6 +455,13 @@ private:
   double keff_tally_collision_ {0.0};
   double keff_tally_tracklength_ {0.0};
   double keff_tally_leakage_ {0.0};
+  // For alpha-eigenvalue mode
+  double alpha_tally_Cn_ {0.0};           // Neutron density (inverse-velocity)
+  double alpha_tally_Cp_ {0.0};           // Prompt fission production
+  xt::xtensor<double, 2> alpha_tally_Cd_; // Delayed fission production for
+                                          // nuclide/material i & group j
+  // Note: Precursor group j of different nuclides may be of different species
+  //       e.g., decay contsant of group 1 of U235 is different to that of U238
 
   bool trace_ {false};
 
@@ -589,6 +608,9 @@ public:
   double& keff_tally_collision() { return keff_tally_collision_; }
   double& keff_tally_tracklength() { return keff_tally_tracklength_; }
   double& keff_tally_leakage() { return keff_tally_leakage_; }
+  double& alpha_tally_Cn() { return alpha_tally_Cn_; }
+  double& alpha_tally_Cp() { return alpha_tally_Cp_; }
+  double& alpha_tally_Cd(int i, int j) { return alpha_tally_Cd_(i, j); }
 
   // Shows debug info
   bool& trace() { return trace_; }

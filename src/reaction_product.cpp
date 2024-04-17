@@ -34,8 +34,12 @@ ReactionProduct::ReactionProduct(hid_t group)
     emission_mode_ = EmissionMode::prompt;
   } else if (temp == "delayed") {
     emission_mode_ = EmissionMode::delayed;
+  } else if (temp == "delayed_alpha") {
+    emission_mode_ = EmissionMode::delayed_alpha;
   } else if (temp == "total") {
     emission_mode_ = EmissionMode::total;
+  } else if (temp == "total_alpha") {
+    emission_mode_ = EmissionMode::total_alpha;
   }
 
   // Read decay rate for delayed emission

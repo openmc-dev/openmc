@@ -9,6 +9,7 @@
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
@@ -74,6 +75,10 @@ ParticleData::ParticleData()
   // Create microscopic cross section caches
   neutron_xs_.resize(data::nuclides.size());
   photon_xs_.resize(data::elements.size());
+
+  // Allocate alpha_tally_Cd_
+  vector<size_t> shape {simulation::n_fissionables, simulation::n_precursors};
+  alpha_tally_Cd_ = xt::zeros<double>(shape);
 
   // Creates the pulse-height storage for the particle
   if (!model::pulse_height_cells.empty()) {

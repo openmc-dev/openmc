@@ -39,6 +39,10 @@ class Settings:
 
     Attributes
     ----------
+    alpha_mode : bool
+        Running fundamental alpha mode (time eigenvalue) simulation?
+    prompt_only : bool
+        Only consider prompt fission neutrons (neglect delayed neutrons)?
     batches : int
         Number of batches to simulate
     confidence_intervals : bool
@@ -268,6 +272,8 @@ class Settings:
 
     def __init__(self, **kwargs):
         self._run_mode = RunMode.EIGENVALUE
+        self._alpha_mode = None
+        self._prompt_only = None
         self._batches = None
         self._generations_per_batch = None
         self._inactive = None
@@ -361,6 +367,24 @@ class Settings:
         for mode in RunMode:
             if mode.value == run_mode:
                 self._run_mode = mode
+
+    @property
+    def alpha_mode(self) -> bool:
+        return self._alpha_mode
+
+    @alpha_mode.setter
+    def alpha_mode(self, alpha_mode: bool):
+        cv.check_type('alpha mode', alpha_mode, bool)
+        self._alpha_mode = alpha_mode
+
+    @property
+    def prompt_only(self) -> bool:
+        return self._prompt_only
+
+    @prompt_only.setter
+    def prompt_only(self, prompt_only: bool):
+        cv.check_type('prompt only', prompt_only, bool)
+        self._prompt_only = prompt_only
 
     @property
     def batches(self) -> int:
@@ -1033,6 +1057,16 @@ class Settings:
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
         elem.text = self._run_mode.value
+
+    def _create_alpha_mode_subelement(self, root):
+        if self._alpha_mode:
+            element = ET.SubElement(root, "alpha_mode")
+            element.text = str(self._alpha_mode).lower()
+
+    def _create_prompt_only_subelement(self, root):
+        if self._prompt_only:
+            element = ET.SubElement(root, "prompt_only")
+            element.text = str(self._prompt_only).lower()
 
     def _create_batches_subelement(self, root):
         if self._batches is not None:
@@ -1805,6 +1839,8 @@ class Settings:
         element = ET.Element("settings")
 
         self._create_run_mode_subelement(element)
+        self._create_alpha_mode_subelement(element)
+        self._create_prompt_only_subelement(element)
         self._create_particles_subelement(element)
         self._create_batches_subelement(element)
         self._create_inactive_subelement(element)

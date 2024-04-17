@@ -51,6 +51,11 @@ void sample_reaction(Particle& p)
     }
   }
 
+  // Create alpha time source sites (alpha_mode only)
+  if (simulation::store_alpha_source) {
+    create_alpha_sites_mg(p);
+  }
+
   // If survival biasing is being used, the following subroutine adjusts the
   // weight of the particle. Otherwise, it checks to see if absorption occurs.
   if (p.macro_xs().absorption > 0.) {
@@ -92,8 +97,9 @@ void create_fission_sites(Particle& p)
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
-  double nu_t = p.wgt() / simulation::keff * weight * p.macro_xs().nu_fission /
-                p.macro_xs().total;
+  double nu_fission = p.nu_fission();
+  double nu_t =
+    p.wgt() / simulation::keff * weight * nu_fission / p.macro_xs().total;
 
   // Sample the number of neutrons produced
   int nu = static_cast<int>(nu_t);
@@ -117,6 +123,9 @@ void create_fission_sites(Particle& p)
   // Determine whether to place fission sites into the shared fission bank
   // or the secondary particle bank.
   bool use_fission_bank = (settings::run_mode == RunMode::EIGENVALUE);
+  if (simulation::store_alpha_source) {
+    use_fission_bank = false;
+  }
 
   // Counter for the number of fission sites successfully stored to the shared
   // fission bank or the secondary particle bank
@@ -173,6 +182,7 @@ void create_fission_sites(Particle& p)
       }
     } else {
       p.secondary_bank().push_back(site);
+      p.n_progeny()--;
     }
 
     // Set the delayed group on the particle as well
@@ -210,6 +220,47 @@ void create_fission_sites(Particle& p)
   }
 }
 
+void create_alpha_sites_mg(Particle& p)
+{
+  // Sample the number of productions
+  double nu_t = p.wgt() * -simulation::alpha_eff / p.speed() /
+                p.macro_xs().total / simulation::keff;
+  int nu = static_cast<int>(nu_t);
+  if (prn(p.current_seed()) <= (nu_t - nu))
+    ++nu;
+
+  // Create the sites and store to fission bank
+  for (int n = 0; n < nu; n++) {
+    SourceSite site;
+    site.r = p.r();
+    site.u = p.u();
+    site.E = p.g();
+    site.time = p.time();
+    site.wgt = 1.0;
+    site.delayed_group = 0;
+    site.surf_id = 0;
+    site.particle = ParticleType::neutron;
+    site.parent_id = p.id();
+    site.progeny_id = p.n_progeny()++;
+
+    int64_t idx = simulation::fission_bank.thread_safe_append(site);
+    if (idx == -1) {
+      warning(
+        "The shared fission bank is full. Additional fission sites created "
+        "in this generation will not be banked. Results may be "
+        "non-deterministic.");
+
+      // Decrement number of particle progeny as storage was unsuccessful.
+      // This step is needed so that the sum of all progeny is equal to the
+      // size of the shared fission bank.
+      p.n_progeny()--;
+
+      // Break out of loop as no more sites can be added to fission bank
+      break;
+    }
+  }
+}
+
 void absorption(Particle& p)
 {
   if (settings::survival_biasing) {
@@ -220,12 +271,22 @@ void absorption(Particle& p)
     p.wgt() -= wgt_absorb;
 
     // Score implicit absorpion estimate of keff
+    double nu_fission = p.nu_fission();
+    if (simulation::store_alpha_source) {
+      nu_fission = -simulation::alpha_eff / p.speed();
+    }
     p.keff_tally_absorption() +=
-      wgt_absorb * p.macro_xs().nu_fission / p.macro_xs().absorption;
+      wgt_absorb * nu_fission / p.macro_xs().absorption;
   } else {
     if (p.macro_xs().absorption > prn(p.current_seed()) * p.macro_xs().total) {
+      // Score implicit absorpion estimate of keff
+      double nu_fission = p.nu_fission();
+      if (simulation::store_alpha_source) {
+        nu_fission = -simulation::alpha_eff / p.speed();
+      }
       p.keff_tally_absorption() +=
-        p.wgt() * p.macro_xs().nu_fission / p.macro_xs().absorption;
+        p.wgt() * nu_fission / p.macro_xs().absorption;
+
       p.wgt() = 0.0;
       p.event() = TallyEvent::ABSORB;
     }

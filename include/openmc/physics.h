@@ -57,6 +57,9 @@ int sample_nuclide(Particle& p);
 //! fission and creates appropriate bank sites.
 void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx);
 
+//! [alpha_mode] Create neutrons from time source (alpha/v)
+void create_alpha_sites(Particle& p);
+
 int sample_element(Particle& p);
 
 Reaction& sample_fission(int i_nuclide, Particle& p);

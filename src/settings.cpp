@@ -41,6 +41,8 @@ namespace openmc {
 namespace settings {
 
 // Default values for boolean flags
+bool alpha_mode {false};
+bool prompt_only {false};
 bool assume_separate {false};
 bool check_overlaps {false};
 bool cmfd_run {false};
@@ -129,7 +131,6 @@ int trigger_batch_interval {1};
 int verbosity {7};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
-
 } // namespace settings
 
 //==============================================================================
@@ -140,6 +141,18 @@ void get_run_parameters(pugi::xml_node node_base)
 {
   using namespace settings;
   using namespace pugi;
+
+  // prompt only?
+  if (check_for_node(node_base, "prompt_only")) {
+    prompt_only = get_node_value_bool(node_base, "prompt_only");
+  }
+  // alpha-eigenvalue mode?
+  if (check_for_node(node_base, "alpha_mode")) {
+    alpha_mode = get_node_value_bool(node_base, "alpha_mode");
+  }
+  if (alpha_mode && settings::run_mode != RunMode::EIGENVALUE) {
+    fatal_error("Alpha mode has to be run in eigenvalue run_mode.");
+  }
 
   // Check number of particles
   if (!check_for_node(node_base, "particles")) {
@@ -201,6 +214,7 @@ void get_run_parameters(pugi::xml_node node_base)
     // Preallocate space for keff and entropy by generation
     int m = settings::n_max_batches * settings::gen_per_batch;
     simulation::k_generation.reserve(m);
+    simulation::alpha_generation.reserve(m);
     simulation::entropy.reserve(m);
 
     // Get the trigger information for keff

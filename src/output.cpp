@@ -34,6 +34,7 @@
 #include "openmc/reaction.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/statistics.h"
 #include "openmc/surface.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
@@ -104,6 +105,8 @@ std::string header(const char* msg)
 {
   // Determine how many times to repeat the '=' character.
   int n_prefix = (63 - strlen(msg)) / 2;
+  if (settings::alpha_mode)
+    n_prefix = (87 - strlen(msg)) / 2;
   int n_suffix = n_prefix;
   if ((strlen(msg) % 2) == 0)
     ++n_suffix;
@@ -370,12 +373,26 @@ void print_build_info()
 
 void print_columns()
 {
-  if (settings::entropy_on) {
-    fmt::print("  Bat./Gen.      k       Entropy         Average k \n"
-               "  =========   ========   ========   ====================\n");
+  if (!settings::alpha_mode) {
+    if (settings::entropy_on) {
+      fmt::print("  Bat./Gen.      k       Entropy         Average k \n"
+                 "  =========   ========   ========   ====================\n");
+    } else {
+      fmt::print("  Bat./Gen.      k            Average k\n"
+                 "  =========   ========   ====================\n");
+    }
   } else {
-    fmt::print("  Bat./Gen.      k            Average k\n"
-               "  =========   ========   ====================\n");
+    if (settings::entropy_on) {
+      fmt::print("  Bat./Gen.      k          alpha      Entropy         "
+                 "Average k               Average alpha      \n"
+                 "  =========   ========   ===========   ========   "
+                 "====================   =========================\n");
+    } else {
+      fmt::print("  Bat./Gen.      k          alpha           Average k        "
+                 "       Average alpha      \n"
+                 "  =========   ========   ===========   ====================  "
+                 " =========================\n");
+    }
   }
 }
 
@@ -395,6 +412,11 @@ void print_generation()
                        std::to_string(simulation::current_gen);
   fmt::print("  {:>9}   {:8.5f}", batch_and_gen, simulation::k_generation[idx]);
 
+  // write out batch/generation and generation alpha (time) eigenvalue
+  if (settings::alpha_mode) {
+    fmt::print("   {:11.3e}", simulation::alpha_generation[idx]);
+  }
+
   // write out entropy info
   if (settings::entropy_on) {
     fmt::print("   {:8.5f}", simulation::entropy[idx]);
@@ -402,6 +424,9 @@ void print_generation()
 
   if (n > 1) {
     fmt::print("   {:8.5f} +/-{:8.5f}", simulation::keff, simulation::keff_std);
+    if (settings::alpha_mode)
+      fmt::print("   {:11.3e} +/-{:10.3e}", simulation::alpha_eff,
+        simulation::alpha_eff_std);
   }
   fmt::print("\n");
   std::fflush(stdout);
@@ -521,17 +546,18 @@ void print_results()
 
   // Calculate t-value for confidence intervals
   int n = simulation::n_realizations;
-  double alpha, t_n1, t_n3;
+  double alpha, t_n1;
   if (settings::confidence_intervals) {
     alpha = 1.0 - CONFIDENCE_LEVEL;
     t_n1 = t_percentile(1.0 - alpha / 2.0, n - 1);
-    t_n3 = t_percentile(1.0 - alpha / 2.0, n - 3);
   } else {
     t_n1 = 1.0;
-    t_n3 = 1.0;
   }
 
   // write global tallies
+  if (settings::prompt_only) {
+    fmt::print(" ==> PROMPT ONLY <==\n");
+  }
   const auto& gt = simulation::global_tallies;
   double mean, stdev;
   if (n > 1) {
@@ -555,6 +581,84 @@ void print_results()
     std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::LEAKAGE, 0), n);
     fmt::print(
       " Leakage Fraction            = {:.5f} +/- {:.5f}\n", mean, t_n1 * stdev);
+
+    if (settings::alpha_mode) {
+      const int n = simulation::k_generation.size() - settings::n_inactive;
+
+      // Get the alpha samples
+      std::vector<double> alpha_samples(n);
+      std::copy(simulation::alpha_generation.begin() + settings::n_inactive,
+        simulation::alpha_generation.begin() +
+          simulation::alpha_generation.size(),
+        alpha_samples.begin());
+
+      // Calculate mean, sdev, median, skewness, and excess kurtosis of alpha
+      double alpha, alpha_sd, alpha_var, alpha_median, alpha_skewness,
+        alpha_kurtosis;
+
+      // Mean, variance, and sdev
+      alpha = get_mean(alpha_samples);
+      alpha_var = get_variance(alpha_samples);
+      if (alpha_var < 0.0) {
+        // This practically means the stdev is very close to zero
+        // (typically the case if the alpha approaches the -decay_rate
+        //  singularitity)
+        alpha_sd = 0.0;
+      } else {
+        alpha_sd = std::sqrt(alpha_var);
+      }
+
+      // Median, skewness, and kurtosis
+      alpha_median = get_median(alpha_samples);
+      if (alpha_sd > 0.0) {
+        alpha_skewness = get_skewness(alpha_samples);
+      } else {
+        alpha_skewness = 0.0;
+      }
+      bool skewed = std::abs(alpha_skewness) > 0.5;
+      alpha_kurtosis = get_kurtosis(alpha_samples);
+
+      // Multiplication factor
+      double k_alpha, k_alpha_sd;
+      k_alpha = simulation::k_alpha_sum[0] / n;
+      k_alpha_sd = std::sqrt(
+        (simulation::k_alpha_sum[1] / n - std::pow(k_alpha, 2)) / (n - 1));
+
+      // Reactivity
+      double rho, rho_sd;
+      rho = simulation::rho_sum[0] / n;
+      rho_sd =
+        std::sqrt((simulation::rho_sum[1] / n - std::pow(rho, 2)) / (n - 1));
+
+      // Delayed fission fraction
+      double beta, beta_sd;
+      beta = simulation::beta_sum[0] / n;
+      beta_sd =
+        std::sqrt((simulation::beta_sum[1] / n - std::pow(beta, 2)) / (n - 1));
+
+      // Generation time
+      double tr, tr_sd;
+      tr = simulation::tr_sum[0] / n;
+      tr_sd =
+        std::sqrt((simulation::tr_sum[1] / n - std::pow(tr, 2)) / (n - 1));
+
+      // Print
+      fmt::print("\n Alpha-effective       = {:10.3e} +/- {:9.3e} /s\n", alpha,
+        alpha_sd);
+      if (skewed) {
+        fmt::print("   Median              = {:10.3e} /s\n", alpha_median);
+        fmt::print("   Skewness            = {:10.5f}\n", alpha_skewness);
+        fmt::print("   Kurtosis            = {:10.5f}\n", alpha_kurtosis);
+      }
+      fmt::print(
+        " Multiplication factor = {:10.5f} +/- {:7.5f}\n", k_alpha, k_alpha_sd);
+      fmt::print(
+        " Reactivity            = {:10.5f} +/- {:7.5f}\n", rho, rho_sd);
+      fmt::print(
+        " Delayed fraction      = {:10.5f} +/- {:7.5f}\n", beta, beta_sd);
+      fmt::print(
+        " Mean neutron lifetime = {:10.3e} +/- {:9.3e} s\n", tr, tr_sd);
+    }
   } else {
     if (mpi::master)
       warning("Could not compute uncertainties -- only one "

@@ -18,6 +18,7 @@
 #include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/statistics.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/timer.h"
 
@@ -39,6 +40,12 @@ double keff_generation;
 array<double, 2> k_sum;
 vector<double> entropy;
 xt::xtensor<double, 1> source_frac;
+
+array<double, 2> alpha_sum;
+array<double, 2> k_alpha_sum;
+array<double, 2> rho_sum;
+array<double, 2> beta_sum;
+array<double, 2> tr_sum;
 
 } // namespace simulation
 
@@ -67,6 +74,43 @@ void calculate_generation_keff()
   // Normalize single batch estimate of k
   // TODO: This should be normalized by total_weight, not by n_particles
   keff_reduced /= settings::n_particles;
+
+  // Get and normalize global tallies for alpha-eigenvalue update
+  if (settings::alpha_mode) {
+#ifdef OPENMC_MPI
+    // Combine values across all processors (TODO: group it as one reduce)
+    double Cn_reduced, Cp_reduced, Cd_reduced;
+
+    // Cn
+    MPI_Allreduce(&global_tally_alpha_Cn, &Cn_reduced, 1, MPI_DOUBLE, MPI_SUM,
+      mpi::intracomm);
+    global_tally_alpha_Cn = Cn_reduced;
+
+    // Cp
+    MPI_Allreduce(&global_tally_alpha_Cp, &Cp_reduced, 1, MPI_DOUBLE, MPI_SUM,
+      mpi::intracomm);
+    global_tally_alpha_Cp = Cp_reduced;
+
+    // Cd
+    for (int i = 0; i < simulation::n_fissionables; i++) {
+      for (int j = 0; j < simulation::n_precursors; j++) {
+        MPI_Allreduce(&global_tally_alpha_Cd(i, j), &Cd_reduced, 1, MPI_DOUBLE,
+          MPI_SUM, mpi::intracomm);
+        global_tally_alpha_Cd(i, j) = Cd_reduced;
+      }
+    }
+#endif
+    // TODO: This should be normalized by total_weight, not by n_particles
+    global_tally_alpha_Cn /= settings::n_particles;
+    global_tally_alpha_Cp /= settings::n_particles;
+    for (int i = 0; i < simulation::n_fissionables; i++) {
+      for (int j = 0; j < simulation::n_precursors; j++) {
+        global_tally_alpha_Cd(i, j) /= settings::n_particles;
+      }
+    }
+  }
+
+  // Push the keff
   simulation::k_generation.push_back(keff_reduced);
 }
 
@@ -361,6 +405,177 @@ void calculate_average_keff()
           (simulation::k_sum[1] / n - std::pow(simulation::keff, 2)) / (n - 1));
     }
   }
+
+  if (!settings::alpha_mode) {
+    return;
+  }
+
+  //============================================================================
+  // Update alpha eigenvalue
+  //============================================================================
+
+  // Here we solve the non-linear equation based on the global integral tallies
+  // Cn (neutron density), Cp (prompt fission), and Cd (delayed fission).
+  // [Eq. (49) of https://doi.org/10.1080/00295639.2020.1743578]
+  // This non-linear equation has a form of the typical in-hour equation having
+  // (1 + n_precursor_groups) roots. A combination of Newton-Raphson and
+  // Bisection iterative methods is used to get the right-most root.
+
+  // The constants (for convenience)
+  const double Cn = global_tally_alpha_Cn;
+  const double Cp = global_tally_alpha_Cp;
+  const xt::xtensor<double, 2> Cd = global_tally_alpha_Cd;
+  const xt::xtensor<double, 2> lambda = simulation::precursor_decay;
+  double alpha_old = simulation::alpha_eff;
+  const double alpha_min = -simulation::decay_min; // The minimum root
+
+  // Get the loss rate (absorption + leakage) based on the normalization
+  double loss;
+  if (!simulation::store_alpha_source) {
+    loss = 1.0 - alpha_old * Cn;
+  } else {
+    loss = 1.0 + Cp;
+    if (!settings::prompt_only) {
+      for (int i = 0; i < simulation::n_fissionables; i++) {
+        for (int j = 0; j < simulation::n_precursors; j++) {
+          loss += lambda(i, j) / (alpha_old + lambda(i, j)) * Cd(i, j);
+        }
+      }
+    }
+  }
+
+  // Newton-Raphson parameters
+  // [Find x yielding f(x) = 0]
+  const double epsilon = 1E-8; // error tolerance (Let users decide?)
+  double x = 0.0;              // Solution iterate (with initial guess)
+  double error1 = 1.0;         // Iterate relative change
+  double error2 = 1.0;         // Residual
+
+  // Start iterating
+  while (error1 > epsilon || error2 > epsilon) {
+    // Evaluate f(x)
+    double f = -x * Cn + Cp - loss;
+    // Accumulate delayed terms
+    for (int i = 0; i < simulation::n_fissionables; i++) {
+      for (int j = 0; j < simulation::n_precursors; j++) {
+        f += lambda(i, j) / (x + lambda(i, j)) * Cd(i, j);
+      }
+    }
+    // Evaluate f'(x) function
+    double df = -Cn;
+    // Accumulate delayed terms
+    for (int i = 0; i < simulation::n_fissionables; i++) {
+      for (int j = 0; j < simulation::n_precursors; j++) {
+        double denom = (x + lambda(i, j));
+        denom *= denom;
+        df -= lambda(i, j) / denom * Cd(i, j);
+      }
+    }
+
+    // Assign next solution
+    double x_new = x - f / df;
+
+    // Exceed minimum? --> update with bisection instead
+    if (x_new < alpha_min) {
+      x_new = 0.5 * (x + alpha_min);
+    }
+
+    // Calculate errors
+    error1 = std::abs((x_new - x) / x_new);
+    error2 = -x_new * Cn + Cp - loss;
+    for (int i = 0; i < simulation::n_fissionables; i++) {
+      for (int j = 0; j < simulation::n_precursors; j++) {
+        error2 += lambda(i, j) / (x_new + lambda(i, j)) * Cd(i, j);
+      }
+    }
+
+    // Reset x
+    x = x_new;
+  }
+
+  // Update alpha
+  double alpha_new = x;
+  simulation::alpha_eff = alpha_new;
+  simulation::alpha_generation.push_back(simulation::alpha_eff);
+
+  // Get the fission production
+  double production = Cp;
+  if (!settings::prompt_only) {
+    for (int i = 0; i < simulation::n_fissionables; i++) {
+      for (int j = 0; j < simulation::n_precursors; j++) {
+        production += lambda(i, j) / (alpha_new + lambda(i, j)) * Cd(i, j);
+      }
+    }
+  }
+
+  // Determine if we need to store alpha source in the next generations
+  if (simulation::alpha_eff >= 0.0) {
+    simulation::store_alpha_source = false;
+  } else if (!simulation::store_alpha_source) {
+    // Check if time source is more dominant than fission production
+    bool dominant = -alpha_new * Cn > production;
+    if (dominant) {
+      simulation::store_alpha_source = true;
+    }
+  }
+
+  // Accumulate the sum and square sum of global tallies
+  if (n > 0) {
+    // The following follows the procedure used for k eigenvalue
+    // Sample mean of alpha_eff
+    simulation::alpha_sum[0] += simulation::alpha_generation[i];
+    simulation::alpha_sum[1] += std::pow(simulation::alpha_generation[i], 2);
+
+    // Determine mean
+    simulation::alpha_eff = simulation::alpha_sum[0] / n;
+
+    if (n > 1) {
+      // Standard deviation of the sample mean of alpha
+      double alpha_var =
+        (simulation::alpha_sum[1] / n - std::pow(simulation::alpha_eff, 2)) /
+        (n - 1);
+      if (alpha_var < 0.0) {
+        // This practically means the stdev is very close to zero
+        // (typically the case if the alpha approaches the -decay_rate
+        //  singularitity)
+        simulation::alpha_eff_std = 0.0;
+      } else {
+        simulation::alpha_eff_std = std::sqrt(
+          (simulation::alpha_sum[1] / n - std::pow(simulation::alpha_eff, 2)) /
+          (n - 1));
+      }
+    }
+
+    // Total delayed fission production
+    double Cd0 = 0.0;
+    if (!settings::prompt_only) {
+      for (int i = 0; i < simulation::n_fissionables; i++) {
+        for (int j = 0; j < simulation::n_precursors; j++) {
+          Cd0 += Cd(i, j);
+        }
+      }
+    }
+
+    // Multiplication factor
+    double k_alpha = (Cp + Cd0) / loss;
+    simulation::k_alpha_sum[0] += k_alpha;
+    simulation::k_alpha_sum[1] += std::pow(k_alpha, 2);
+
+    // Reactivity
+    double rho = (k_alpha - 1.0) / k_alpha;
+    simulation::rho_sum[0] += rho;
+    simulation::rho_sum[1] += std::pow(rho, 2);
+
+    // Delayed fission fraction
+    double beta = Cd0 / (Cp + Cd0);
+    simulation::beta_sum[0] += beta;
+    simulation::beta_sum[1] += std::pow(beta, 2);
+
+    // Removal time
+    double tr = (Cn / loss);
+    simulation::tr_sum[0] += tr;
+    simulation::tr_sum[1] += std::pow(tr, 2);
+  }
 }
 
 int openmc_get_keff(double* k_combined)
@@ -625,6 +840,67 @@ void write_eigenvalue_hdf5(hid_t group)
   array<double, 2> k_combined;
   openmc_get_keff(k_combined.data());
   write_dataset(group, "k_combined", k_combined);
+
+  // alpha-eigenvalue mode
+  if (settings::alpha_mode) {
+    hid_t alpha_group = create_group(group, "alpha_mode_tallies");
+    write_dataset(
+      alpha_group, "alpha_generation", simulation::alpha_generation);
+
+    const int n = simulation::k_generation.size() - settings::n_inactive;
+
+    // Alpha eigenvalue
+    std::array<double, 2> alpha_eff;
+    alpha_eff[0] = simulation::alpha_sum[0] / n;
+    alpha_eff[1] = std::sqrt(
+      (simulation::alpha_sum[1] / n - std::pow(alpha_eff[0], 2)) / (n - 1));
+    write_dataset(alpha_group, "alpha_effective", alpha_eff);
+
+    // Get the alpha samples
+    std::vector<double> alpha_samples(n);
+    std::copy(simulation::alpha_generation.begin() + settings::n_inactive,
+      simulation::alpha_generation.begin() +
+        simulation::alpha_generation.size(),
+      alpha_samples.begin());
+
+    // Alpha median, skewness, kurtosis
+    double alpha_median = get_median(alpha_samples);
+    double alpha_skewness = get_skewness(alpha_samples);
+    double alpha_kurtosis = get_kurtosis(alpha_samples);
+    write_dataset(alpha_group, "alpha_median", alpha_median);
+    write_dataset(alpha_group, "alpha_skewness", alpha_skewness);
+    write_dataset(alpha_group, "alpha_kurtosis", alpha_kurtosis);
+
+    // Multiplication factor
+    std::array<double, 2> k_eff;
+    k_eff[0] = simulation::k_alpha_sum[0] / n;
+    k_eff[1] = std::sqrt(
+      (simulation::k_alpha_sum[1] / n - std::pow(k_eff[0], 2)) / (n - 1));
+    write_dataset(alpha_group, "k_effective", k_eff);
+
+    // Reactivity
+    std::array<double, 2> rho;
+    rho[0] = simulation::rho_sum[0] / n;
+    rho[1] =
+      std::sqrt((simulation::rho_sum[1] / n - std::pow(rho[0], 2)) / (n - 1));
+    write_dataset(alpha_group, "reactivity", rho);
+
+    // Delayed fission fraction
+    std::array<double, 2> beta;
+    beta[0] = simulation::beta_sum[0] / n;
+    beta[1] =
+      std::sqrt((simulation::beta_sum[1] / n - std::pow(beta[0], 2)) / (n - 1));
+    write_dataset(alpha_group, "delayed_fraction", beta);
+
+    // Removal time
+    std::array<double, 2> tr;
+    tr[0] = simulation::tr_sum[0] / n;
+    tr[1] =
+      std::sqrt((simulation::tr_sum[1] / n - std::pow(tr[0], 2)) / (n - 1));
+    write_dataset(alpha_group, "removal_time", tr);
+
+    close_group(alpha_group);
+  }
 }
 
 void read_eigenvalue_hdf5(hid_t group)
@@ -639,6 +915,10 @@ void read_eigenvalue_hdf5(hid_t group)
   read_dataset(group, "k_col_abs", simulation::k_col_abs);
   read_dataset(group, "k_col_tra", simulation::k_col_tra);
   read_dataset(group, "k_abs_tra", simulation::k_abs_tra);
+  if (settings::alpha_mode) {
+    simulation::alpha_generation.resize(n);
+    read_dataset(group, "alpha_generation", simulation::alpha_generation);
+  }
 }
 
 } // namespace openmc

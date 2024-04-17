@@ -91,10 +91,17 @@ class TestHarness:
         with openmc.StatePoint(statepoint) as sp:
             outstr = ''
             if sp.run_mode == 'eigenvalue':
-                # Write out k-combined.
-                outstr += 'k-combined:\n'
-                form = '{0:12.6E} {1:12.6E}\n'
-                outstr += form.format(sp.keff.n, sp.keff.s)
+                if sp.alpha_mode:
+                    # Write out alphaa-eff
+                    outstr += 'alpha-eff:\n'
+                    form = '{0:12.6E} {1:12.6E}\n'
+                    mean, sdev = sp.alpha_eff
+                    outstr += form.format(mean, sdev)
+                else:
+                    # Write out k-combined.
+                    outstr += 'k-combined:\n'
+                    form = '{0:12.6E} {1:12.6E}\n'
+                    outstr += form.format(sp.keff.n, sp.keff.s)
 
             # Write out tally data.
             for i, tally_ind in enumerate(sp.tallies):

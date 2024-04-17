@@ -117,6 +117,7 @@ int openmc_finalize()
   settings::restart_run = false;
   settings::run_CE = true;
   settings::run_mode = RunMode::UNSET;
+  settings::alpha_mode = false;
   settings::source_latest = false;
   settings::source_separate = false;
   settings::source_write = true;
@@ -140,6 +141,8 @@ int openmc_finalize()
   settings::write_initial_source = false;
 
   simulation::keff = 1.0;
+  simulation::alpha_eff = 0.0;
+  simulation::decay_min = INFTY;
   simulation::need_depletion_rx = false;
   simulation::total_gen = 0;
 
@@ -211,6 +214,8 @@ int openmc_hard_reset()
 
   // Reset total generations and keff guess
   simulation::keff = 1.0;
+  simulation::alpha_eff = 0.0;
+  simulation::decay_min = INFTY;
   simulation::total_gen = 0;
 
   // Reset the random number generator state

@@ -226,7 +226,8 @@ class IndependentOperator(OpenMCOperator):
 
         """
         check_type('nuclides', nuclides, dict, str)
-        materials = cls._consolidate_nuclides_to_material(nuclides, nuc_units, volume)
+        materials = cls._consolidate_nuclides_to_material(
+            nuclides, nuc_units, volume)
         fluxes = [flux]
         micros = [micro_xs]
         return cls(materials,
@@ -240,7 +241,6 @@ class IndependentOperator(OpenMCOperator):
                    reduce_chain=reduce_chain,
                    reduce_chain_level=reduce_chain_level,
                    fission_yield_opts=fission_yield_opts)
-
 
     @staticmethod
     def _consolidate_nuclides_to_material(nuclides, nuc_units, volume):
@@ -270,7 +270,6 @@ class IndependentOperator(OpenMCOperator):
         self.prev_res[-1].transfer_volumes(model)
         self.materials = model.materials
 
-
         # Store previous results in operator
         # Distribute reaction rates according to those tracked
         # on this process
@@ -281,7 +280,6 @@ class IndependentOperator(OpenMCOperator):
             for res_obj in prev_results:
                 new_res = res_obj.distribute(self.local_mats, mat_indexes)
                 self.prev_res.append(new_res)
-
 
     def _get_nuclides_with_data(self, cross_sections: List[MicroXS]) -> Set[str]:
         """Finds nuclides with cross section data"""
@@ -316,7 +314,8 @@ class IndependentOperator(OpenMCOperator):
             rates = op.reaction_rates
             super().__init__(rates.n_nuc, rates.n_react)
 
-            self.nuc_ind_map = {ind: nuc for nuc, ind in rates.index_nuc.items()}
+            self.nuc_ind_map = {ind: nuc for nuc,
+                                ind in rates.index_nuc.items()}
             self.rx_ind_map = {ind: rxn for rxn, ind in rates.index_rx.items()}
             self._op = op
 
@@ -353,7 +352,8 @@ class IndependentOperator(OpenMCOperator):
 
                     # Determine reaction rate by multiplying xs in [b] by flux
                     # in [n-cm/src] to give [(reactions/src)*b-cm/atom]
-                    self._results_cache[i_nuc, i_rx] = (xs[nuc, rx] * flux).sum()
+                    self._results_cache[i_nuc, i_rx] = (
+                        xs[nuc, rx] * flux).sum()
 
             return self._results_cache
 
@@ -411,6 +411,12 @@ class IndependentOperator(OpenMCOperator):
         """
 
         self._update_materials_and_nuclides(vec)
+
+        # If the source rate is zero, return zero reaction rates
+        if source_rate == 0.0:
+            rates = self.reaction_rates.copy()
+            rates.fill(0.0)
+            return OperatorResult(ufloat(0.0, 0.0), rates)
 
         rates = self._calculate_reaction_rates(source_rate)
         keff = self._keff

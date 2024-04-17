@@ -125,7 +125,7 @@ if(OPENMC_USE_DAGMC)
 
   # Check if UWUW is needed and available
   if(OPENMC_USE_UWUW AND NOT DAGMC_BUILD_UWUW)
-    message(FATAL_ERROR "UWUW is enabled but DAGMC was built without UWUW support.")
+    message(FATAL_ERROR "UWUW is enabled but DAGMC was not configured with UWUW.")
   endif()
 endif()
 

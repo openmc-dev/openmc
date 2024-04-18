@@ -243,36 +243,40 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
   // Sample angle
   site.u = angle_->sample(seed);
 
-  // Check for monoenergetic source above maximum particle energy
-  auto p = static_cast<int>(particle_);
-  auto energy_ptr = dynamic_cast<Discrete*>(energy_.get());
-  if (energy_ptr) {
-    auto energies = xt::adapt(energy_ptr->x());
-    if (xt::any(energies > data::energy_max[p])) {
-      fatal_error("Source energy above range of energies of at least "
-                  "one cross section table");
+  // Sample energy and time for neutron and photon sources
+  if (settings::solver_type != SolverType::RANDOM_RAY) {
+    // Check for monoenergetic source above maximum particle energy
+    auto p = static_cast<int>(particle_);
+    auto energy_ptr = dynamic_cast<Discrete*>(energy_.get());
+    if (energy_ptr) {
+      auto energies = xt::adapt(energy_ptr->x());
+      if (xt::any(energies > data::energy_max[p])) {
+        fatal_error("Source energy above range of energies of at least "
+                    "one cross section table");
+      }
     }
-  }
 
-  while (true) {
-    // Sample energy spectrum
-    site.E = energy_->sample(seed);
+    while (true) {
+      // Sample energy spectrum
+      site.E = energy_->sample(seed);
 
-    // Resample if energy falls above maximum particle energy
-    if (site.E < data::energy_max[p])
-      break;
+      // Resample if energy falls above maximum particle energy
+      if (site.E < data::energy_max[p])
+        break;
 
-    n_reject++;
-    if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
-        static_cast<double>(n_accept) / n_reject <= EXTSRC_REJECT_FRACTION) {
-      fatal_error("More than 95% of external source sites sampled were "
-                  "rejected. Please check your external source energy spectrum "
-                  "definition.");
+      n_reject++;
+      if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
+          static_cast<double>(n_accept) / n_reject <= EXTSRC_REJECT_FRACTION) {
+        fatal_error(
+          "More than 95% of external source sites sampled were "
+          "rejected. Please check your external source energy spectrum "
+          "definition.");
+      }
     }
-  }
 
-  // Sample particle creation time
-  site.time = time_->sample(seed);
+    // Sample particle creation time
+    site.time = time_->sample(seed);
+  }
 
   // Increment number of accepted samples
   ++n_accept;

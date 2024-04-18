@@ -86,7 +86,8 @@ class Settings:
 
         .. versionadded:: 0.12
     rel_max_lost_particles : float
-        Maximum number of lost particles, relative to the total number of particles
+        Maximum number of lost particles, relative to the total number of
+        particles
 
         .. versionadded:: 0.12
     inactive : int
@@ -146,6 +147,18 @@ class Settings:
        Initial seed for randomly generated plot colors.
     ptables : bool
         Determine whether probability tables are used.
+    random_ray : dict
+        Options for configuring the random ray solver. Acceptable keys are:
+
+        :distance_inactive:
+            Indicates the total active distance in [cm] a ray should travel
+        :distance_active:
+            Indicates the total active distance in [cm] a ray should travel
+        :ray_source:
+            Starting ray distribution (must be uniform in space and angle) as
+            specified by a :class:`openmc.SourceBase` object.
+
+        .. versionadded:: 0.14.1
     resonance_scattering : dict
         Settings for resonance elastic scattering. Accepted keys are 'enable'
         (bool), 'method' (str), 'energy_min' (float), 'energy_max' (float), and
@@ -153,10 +166,10 @@ class Settings:
         rejection correction) or 'rvs' (relative velocity sampling). If not
         specified, 'rvs' is the default method. The 'energy_min' and
         'energy_max' values indicate the minimum and maximum energies above and
-        below which the resonance elastic scattering method is to be
-        applied. The 'nuclides' list indicates what nuclides the method should
-        be applied to. In its absence, the method will be applied to all
-        nuclides with 0 K elastic scattering data present.
+        below which the resonance elastic scattering method is to be applied.
+        The 'nuclides' list indicates what nuclides the method should be applied
+        to. In its absence, the method will be applied to all nuclides with 0 K
+        elastic scattering data present.
     run_mode : {'eigenvalue', 'fixed source', 'plot', 'volume', 'particle restart'}
         The type of calculation to perform (default is 'eigenvalue')
     seed : int
@@ -185,26 +198,26 @@ class Settings:
 
         :surface_ids: List of surface ids at which crossing particles are to be
                    banked (int)
-        :max_particles: Maximum number of particles to be banked on
-                   surfaces per process (int)
+        :max_particles: Maximum number of particles to be banked on surfaces per
+                   process (int)
         :mcpl: Output in the form of an MCPL-file (bool)
     survival_biasing : bool
         Indicate whether survival biasing is to be used
     tabular_legendre : dict
         Determines if a multi-group scattering moment kernel expanded via
         Legendre polynomials is to be converted to a tabular distribution or
-        not. Accepted keys are 'enable' and 'num_points'. The value for
-        'enable' is a bool stating whether the conversion to tabular is
-        performed; the value for 'num_points' sets the number of points to use
-        in the tabular distribution, should 'enable' be True.
+        not. Accepted keys are 'enable' and 'num_points'. The value for 'enable'
+        is a bool stating whether the conversion to tabular is performed; the
+        value for 'num_points' sets the number of points to use in the tabular
+        distribution, should 'enable' be True.
     temperature : dict
         Defines a default temperature and method for treating intermediate
         temperatures at which nuclear data doesn't exist. Accepted keys are
         'default', 'method', 'range', 'tolerance', and 'multipole'. The value
         for 'default' should be a float representing the default temperature in
         Kelvin. The value for 'method' should be 'nearest' or 'interpolation'.
-        If the method is 'nearest', 'tolerance' indicates a range of
-        temperature within which cross sections may be used. If the method is
+        If the method is 'nearest', 'tolerance' indicates a range of temperature
+        within which cross sections may be used. If the method is
         'interpolation', 'tolerance' indicates the range of temperatures outside
         of the available cross section temperatures where cross sections will
         evaluate to the nearer bound. The value for 'range' should be a pair of
@@ -347,6 +360,8 @@ class Settings:
         self._weight_window_checkpoints = {}
         self._max_splits = None
         self._max_tracks = None
+
+        self._random_ray = {}
 
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -1030,6 +1045,31 @@ class Settings:
             wwgs = [wwgs]
         self._weight_window_generators = cv.CheckedList(WeightWindowGenerator, 'weight window generators', wwgs)
 
+    @property
+    def random_ray(self) -> dict:
+        return self._random_ray
+
+    @random_ray.setter
+    def random_ray(self, random_ray: dict):
+        if not isinstance(random_ray, Mapping):
+            raise ValueError(f'Unable to set random_ray from "{random_ray}" '
+                             'which is not a dict.')
+        for key in random_ray:
+            if key == 'distance_active':
+                cv.check_type('active ray length', random_ray[key], Real)
+                cv.check_greater_than('active ray length', random_ray[key], 0.0)
+            elif key == 'distance_inactive':
+                cv.check_type('inactive ray length', random_ray[key], Real)
+                cv.check_greater_than('inactive ray length',
+                                      random_ray[key], 0.0, True)
+            elif key == 'ray_source':
+                cv.check_type('random ray source', random_ray[key], SourceBase)
+            else:
+                raise ValueError(f'Unable to set random ray to "{key}" which is '
+                                 'unsupported by OpenMC')
+
+        self._random_ray = random_ray
+
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
         elem.text = self._run_mode.value
@@ -1442,6 +1482,17 @@ class Settings:
             elem = ET.SubElement(root, "max_tracks")
             elem.text = str(self._max_tracks)
 
+    def _create_random_ray_subelement(self, root):
+        if self._random_ray:
+            element = ET.SubElement(root, "random_ray")
+            for key, value in self._random_ray.items():
+                if key == 'ray_source' and isinstance(value, SourceBase):
+                    source_element = value.to_xml_element()
+                    element.append(source_element)
+                else:
+                    subelement = ET.SubElement(element, key)
+                    subelement.text = str(value)
+
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
         if elem is not None:
@@ -1793,6 +1844,17 @@ class Settings:
         if text is not None:
             self.max_tracks = int(text)
 
+    def _random_ray_from_xml_element(self, root):
+        elem = root.find('random_ray')
+        if elem is not None:
+            self.random_ray = {}
+            for child in elem:
+                if child.tag in ('distance_inactive', 'distance_active'):
+                    self.random_ray[child.tag] = float(child.text)
+                elif child.tag == 'source':
+                    source = SourceBase.from_xml_element(child)
+                    self.random_ray['ray_source'] = source
+
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.
 
@@ -1855,6 +1917,7 @@ class Settings:
         self._create_weight_window_checkpoints_subelement(element)
         self._create_max_splits_subelement(element)
         self._create_max_tracks_subelement(element)
+        self._create_random_ray_subelement(element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)
@@ -1958,6 +2021,7 @@ class Settings:
         settings._weight_window_checkpoints_from_xml_element(elem)
         settings._max_splits_from_xml_element(elem)
         settings._max_tracks_from_xml_element(elem)
+        settings._random_ray_from_xml_element(elem)
 
         # TODO: Get volume calculations
         return settings

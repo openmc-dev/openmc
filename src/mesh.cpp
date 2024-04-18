@@ -582,7 +582,7 @@ void StructuredMesh::raytrace_mesh(
 
   // Compute the length of the entire track.
   double total_distance = (r1 - r0).norm();
-  if (total_distance == 0.0)
+  if (total_distance == 0.0 && settings::solver_type != SolverType::RANDOM_RAY)
     return;
 
   const int n = n_dimension_;

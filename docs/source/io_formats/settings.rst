@@ -413,6 +413,32 @@ or sub-elements and can be set to either "false" or "true".
 
   .. note:: This element is not used in the multi-group :ref:`energy_mode`.
 
+------------------------
+``<random_ray>`` Element
+------------------------
+
+The ``<random_ray>`` element enables random ray mode and contains a number of
+settings relevant to the solver. Tips for selecting these parameters can be
+found in the :ref:`random ray user guide <random_ray>`.
+
+  :distance_inactive:
+    The inactive ray length (dead zone length) in [cm].
+
+    *Default*: None
+
+  :distance_active:
+    The active ray length in [cm].
+
+    *Default*: None
+
+  :source:
+    Specifies the starting ray distribution, and follows the format for
+    :ref:`source_element`. It must be uniform in space and angle and cover the
+    full domain. It does not represent a physical neutron or photon source -- it
+    is only used to sample integrating ray starting locations and directions.
+
+    *Default*: None
+
 ----------------------------------
 ``<resonance_scattering>`` Element
 ----------------------------------

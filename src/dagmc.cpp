@@ -460,7 +460,7 @@ std::string DAGUniverse::get_uwuw_materials_xml() const
 
   return ss.str();
 #else
-  throw std::runtime_error("DAGMC was not configured with UWUW.");
+  fatal_error("DAGMC was not configured with UWUW.");
 #endif // UWUW
 }
 
@@ -478,7 +478,7 @@ void DAGUniverse::write_uwuw_materials_xml(const std::string& outfile) const
   mats_xml << xml_str;
   mats_xml.close();
 #else
-  throw std::runtime_error("DAGMC was not configured with UWUW.");
+  fatal_error("DAGMC was not configured with UWUW.");
 #endif
 }
 
@@ -580,7 +580,7 @@ void DAGUniverse::read_uwuw_materials()
     model::materials.push_back(std::make_unique<Material>(material_node));
   }
 #else
-  throw std::runtime_error("DAGMC was not configured with UWUW.");
+  fatal_error("DAGMC was not configured with UWUW.");
 #endif
 }
 
@@ -602,7 +602,7 @@ void DAGUniverse::uwuw_assign_material(
       mat_str));
   }
 #else
-  throw std::runtime_error("DAGMC was not configured with UWUW.");
+  fatal_error("DAGMC was not configured with UWUW.");
 #endif
 }
 //==============================================================================

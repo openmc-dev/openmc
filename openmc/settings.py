@@ -170,8 +170,7 @@ class Settings:
         The 'nuclides' list indicates what nuclides the method should be applied
         to. In its absence, the method will be applied to all nuclides with 0 K
         elastic scattering data present.
-    run_mode : {'eigenvalue', 'fixed source', 'plot', 'volume', 'particle
-    restart'}
+    run_mode : {'eigenvalue', 'fixed source', 'plot', 'volume', 'particle restart'}
         The type of calculation to perform (default is 'eigenvalue')
     seed : int
         Seed for the linear congruential pseudorandom number generator
@@ -258,8 +257,7 @@ class Settings:
         include "collision" and "surface". Values must be of type bool.
 
         .. versionadded:: 0.14.0
-    weight_window_generators : WeightWindowGenerator or iterable of
-    WeightWindowGenerator
+    weight_window_generators : WeightWindowGenerator or iterable of WeightWindowGenerator
         Weight windows generation parameters to apply during simulation
 
         .. versionadded:: 0.14.0

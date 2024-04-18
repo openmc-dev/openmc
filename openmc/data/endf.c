@@ -14,7 +14,7 @@
 
 double cfloat_endf(const char* buffer, int n)
 {
-  char arr[12]; // 11 characters plus a null terminator
+  char arr[13]; // 11 characters plus e and a null terminator
   int j = 0; // current position in arr
   int found_significand = 0;
   int found_exponent = 0;

@@ -91,7 +91,6 @@ DAGUniverse::DAGUniverse(std::shared_ptr<moab::DagMC> dagmc_ptr,
 {
   set_id();
   init_metadata();
-  read_uwuw_materials();
   init_geometry();
 }
 
@@ -116,8 +115,6 @@ void DAGUniverse::initialize()
   init_dagmc();
 
   init_metadata();
-
-  read_uwuw_materials();
 
   init_geometry();
 }
@@ -588,6 +585,9 @@ void DAGUniverse::uwuw_assign_material(
   moab::EntityHandle vol_handle, std::unique_ptr<DAGCell>& c) const
 {
 #ifdef UWUW
+  // read materials from uwuw material file
+  read_uwuw_materials();
+
   // lookup material in uwuw if present
   std::string uwuw_mat = dmd_ptr->volume_material_property_data_eh[vol_handle];
   if (uwuw_->material_library.count(uwuw_mat) != 0) {

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
-project(openmc C CXX)
+project(openmc CXX)
 
 # Set version numbers
 set(OPENMC_VERSION_MAJOR 0)
@@ -78,6 +78,14 @@ endforeach()
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "No build type selected, defaulting to RelWithDebInfo")
     set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Choose the type of build" FORCE)
+endif()
+
+#===============================================================================
+# OpenMP for shared-memory parallelism (and GPU support some day!)
+#===============================================================================
+
+if(OPENMC_USE_OPENMP)
+  find_package(OpenMP REQUIRED)
 endif()
 
 #===============================================================================
@@ -191,13 +199,6 @@ endif()
 
 # Skip for Visual Studio which has its own configurations through GUI
 if(NOT MSVC)
-
-if(OPENMC_USE_OPENMP)
-  find_package(OpenMP REQUIRED)
-  # In CMake 3.9+, can use the OpenMP::OpenMP_CXX imported target
-  list(APPEND cxxflags ${OpenMP_CXX_FLAGS})
-  list(APPEND ldflags ${OpenMP_CXX_FLAGS})
-endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
@@ -520,6 +521,10 @@ endif()
 if (PNG_FOUND)
   target_compile_definitions(libopenmc PRIVATE USE_LIBPNG)
   target_link_libraries(libopenmc PNG::PNG)
+endif()
+
+if (OPENMC_USE_OPENMP)
+  target_link_libraries(libopenmc OpenMP::OpenMP_CXX)
 endif()
 
 if (OPENMC_USE_MPI)

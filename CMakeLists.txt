@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
-project(openmc CXX)
+project(openmc C CXX)
 
 # Set version numbers
 set(OPENMC_VERSION_MAJOR 0)

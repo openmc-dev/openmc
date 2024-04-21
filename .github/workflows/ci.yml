@@ -114,10 +114,11 @@ jobs:
                               libnetcdf-dev \
                               libpnetcdf-dev \
                               libhdf5-serial-dev \
-                              libeigen3-dev \
+                              libeigen3-dev
 
       - name: Optional apt dependencies for mpi
         shell: bash
+        if: ${{ matrix.mpi == 'y' }}
         run: |
           sudo apt install -y libhdf5-mpich-dev \
                               libmpich-dev

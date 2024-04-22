@@ -60,7 +60,7 @@ def test_deplete_decay_step_fissionable(run_in_tmpdir):
     # Set up a pure decay operator
     micro_xs = openmc.deplete.MicroXS(np.empty((0, 0)), [], [])
     mat = openmc.Material()
-    mat.name = 'I decay slowly!'
+    mat.name = 'I do not decay.'
     mat.add_nuclide('U238', 1.0, 'ao')
     mat.volume = 10.0
     mat.set_density('g/cc', 1.0)

@@ -20,7 +20,7 @@ def cpp_driver(request):
     openmc_dir = Path(str(request.config.rootdir)) / 'build'
     with open('CMakeLists.txt', 'w') as f:
         f.write(textwrap.dedent("""
-            cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
+            cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
             project(openmc_cpp_driver CXX)
             add_executable(cpp_driver driver.cpp)
             find_package(OpenMC REQUIRED HINTS {})

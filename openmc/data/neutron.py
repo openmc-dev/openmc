@@ -425,7 +425,7 @@ class IncidentNeutron(EqualityMixin):
 
         # Open file and write version
         with h5py.File(str(path), mode, libver=libver) as f:
-            f.attrs['filetype'] = np.string_('data_neutron')
+            f.attrs['filetype'] = np.bytes_('data_neutron')
             f.attrs['version'] = np.array(HDF5_VERSION)
 
             # Write basic data

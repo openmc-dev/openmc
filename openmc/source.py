@@ -500,9 +500,13 @@ class MeshSource(SourceBase):
         elem.set("mesh", str(self.mesh.id))
 
         # write in the order of mesh indices
-        for idx in self.mesh.indices:
-            idx = tuple(i - 1 for i in idx)
-            elem.append(self.sources[idx].to_xml_element())
+        if isinstance(self.mesh, openmc.UnstructuredMesh):
+            for s in self.sources:
+                elem.append(s.to_xml_element())
+        else:
+            for idx in self.mesh.indices:
+                idx = tuple(i - 1 for i in idx)
+                elem.append(self.sources[idx].to_xml_element())
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element, meshes) -> openmc.MeshSource:
@@ -1044,7 +1048,7 @@ def write_source_file(
     # Write array to file
     kwargs.setdefault('mode', 'w')
     with h5py.File(filename, **kwargs) as fh:
-        fh.attrs['filetype'] = np.string_("source")
+        fh.attrs['filetype'] = np.bytes_("source")
         fh.create_dataset('source_bank', data=arr, dtype=source_dtype)
 
 

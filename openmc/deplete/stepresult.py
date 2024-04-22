@@ -291,7 +291,7 @@ class StepResult:
         # Store concentration mat and nuclide dictionaries (along with volumes)
 
         handle.attrs['version'] = np.array(VERSION_RESULTS)
-        handle.attrs['filetype'] = np.string_('depletion results')
+        handle.attrs['filetype'] = np.bytes_('depletion results')
 
         mat_list = sorted(self.mat_to_hdf5_ind, key=int)
         nuc_list = sorted(self.index_nuc)

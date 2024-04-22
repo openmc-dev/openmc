@@ -122,7 +122,8 @@ int openmc_simulation_init()
     write_message("Resuming simulation...", 6);
   } else {
     // Only initialize primary source bank for eigenvalue simulations
-    if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (settings::run_mode == RunMode::EIGENVALUE &&
+        settings::solver_type == SolverType::MONTE_CARLO) {
       initialize_source();
     }
   }
@@ -132,7 +133,11 @@ int openmc_simulation_init()
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
       header("FIXED SOURCE TRANSPORT SIMULATION", 3);
     } else if (settings::run_mode == RunMode::EIGENVALUE) {
-      header("K EIGENVALUE SIMULATION", 3);
+      if (settings::solver_type == SolverType::MONTE_CARLO) {
+        header("K EIGENVALUE SIMULATION", 3);
+      } else if (settings::solver_type == SolverType::RANDOM_RAY) {
+        header("K EIGENVALUE SIMULATION (RANDOM RAY SOLVER)", 3);
+      }
       if (settings::verbosity >= 7)
         print_columns();
     }
@@ -196,10 +201,12 @@ int openmc_simulation_finalize()
   simulation::time_finalize.stop();
   simulation::time_total.stop();
   if (mpi::master) {
-    if (settings::verbosity >= 6)
-      print_runtime();
-    if (settings::verbosity >= 4)
-      print_results();
+    if (settings::solver_type != SolverType::RANDOM_RAY) {
+      if (settings::verbosity >= 6)
+        print_runtime();
+      if (settings::verbosity >= 4)
+        print_results();
+    }
   }
   if (settings::check_overlaps)
     print_overlap_check();
@@ -309,7 +316,8 @@ vector<int64_t> work_index;
 
 void allocate_banks()
 {
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE &&
+      settings::solver_type == SolverType::MONTE_CARLO) {
     // Allocate source bank
     simulation::source_bank.resize(simulation::work_per_rank);
 
@@ -493,7 +501,8 @@ void finalize_generation()
   }
   global_tally_leakage = 0.0;
 
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE &&
+      settings::solver_type == SolverType::MONTE_CARLO) {
     // If using shared memory, stable sort the fission bank (by parent IDs)
     // so as to allow for reproducibility regardless of which order particles
     // are run in.
@@ -501,6 +510,9 @@ void finalize_generation()
 
     // Distribute fission bank across processors evenly
     synchronize_bank();
+  }
+
+  if (settings::run_mode == RunMode::EIGENVALUE) {
 
     // Calculate shannon entropy
     if (settings::entropy_on)

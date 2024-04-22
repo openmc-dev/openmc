@@ -464,11 +464,11 @@ can typically be set for a single command, i.e.
 
 .. _compile_linux:
 
-Compiling on Linux and Mac OS X
--------------------------------
+Compiling on Linux and macOS
+----------------------------
 
-To compile OpenMC on Linux or Max OS X, run the following commands from within
-the root directory of the source code:
+To compile OpenMC on Linux or macOS, run the following commands from within the
+root directory of the source code:
 
 .. code-block:: sh
 
@@ -540,7 +540,7 @@ to install the Python package in :ref:`"editable" mode <devguide_editable>`.
 Prerequisites
 -------------
 
-The Python API works with Python 3.7+. In addition to Python itself, the API
+The Python API works with Python 3.8+. In addition to Python itself, the API
 relies on a number of third-party packages. All prerequisites can be installed
 using Conda_ (recommended), pip_, or through the package manager in most Linux
 distributions.

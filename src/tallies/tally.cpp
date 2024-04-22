@@ -26,6 +26,7 @@
 #include "openmc/tallies/filter_energy.h"
 #include "openmc/tallies/filter_legendre.h"
 #include "openmc/tallies/filter_mesh.h"
+#include "openmc/tallies/filter_meshborn.h"
 #include "openmc/tallies/filter_meshsurface.h"
 #include "openmc/tallies/filter_particle.h"
 #include "openmc/tallies/filter_sph_harm.h"
@@ -756,6 +757,10 @@ void Tally::accumulate()
     double norm =
       total_source / (settings::n_particles * settings::gen_per_batch);
 
+    if (settings::solver_type == SolverType::RANDOM_RAY) {
+      norm = 1.0;
+    }
+
 // Accumulate each result
 #pragma omp parallel for
     for (int i = 0; i < results_.shape()[0]; ++i) {
@@ -952,8 +957,9 @@ void accumulate_tallies()
 {
 #ifdef OPENMC_MPI
   // Combine tally results onto master process
-  if (mpi::n_procs > 1)
+  if (mpi::n_procs > 1 && settings::solver_type == SolverType::MONTE_CARLO) {
     reduce_tally_results();
+  }
 #endif
 
   // Increase number of realizations (only used for global tallies)

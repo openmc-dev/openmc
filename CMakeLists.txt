@@ -81,6 +81,14 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 #===============================================================================
+# OpenMP for shared-memory parallelism (and GPU support some day!)
+#===============================================================================
+
+if(OPENMC_USE_OPENMP)
+  find_package(OpenMP REQUIRED)
+endif()
+
+#===============================================================================
 # MPI for distributed-memory parallelism
 #===============================================================================
 
@@ -191,13 +199,6 @@ endif()
 
 # Skip for Visual Studio which has its own configurations through GUI
 if(NOT MSVC)
-
-if(OPENMC_USE_OPENMP)
-  find_package(OpenMP REQUIRED)
-  # In CMake 3.9+, can use the OpenMP::OpenMP_CXX imported target
-  list(APPEND cxxflags ${OpenMP_CXX_FLAGS})
-  list(APPEND ldflags ${OpenMP_CXX_FLAGS})
-endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
@@ -380,6 +381,9 @@ list(APPEND libopenmc_SOURCES
   src/progress_bar.cpp
   src/random_dist.cpp
   src/random_lcg.cpp
+  src/random_ray/random_ray_simulation.cpp
+  src/random_ray/random_ray.cpp
+  src/random_ray/flat_source_domain.cpp
   src/reaction.cpp
   src/reaction_product.cpp
   src/scattdata.cpp
@@ -411,6 +415,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_material.cpp
   src/tallies/filter_materialfrom.cpp
   src/tallies/filter_mesh.cpp
+  src/tallies/filter_meshborn.cpp
   src/tallies/filter_meshsurface.cpp
   src/tallies/filter_mu.cpp
   src/tallies/filter_particle.cpp
@@ -516,6 +521,10 @@ endif()
 if (PNG_FOUND)
   target_compile_definitions(libopenmc PRIVATE USE_LIBPNG)
   target_link_libraries(libopenmc PNG::PNG)
+endif()
+
+if (OPENMC_USE_OPENMP)
+  target_link_libraries(libopenmc OpenMP::OpenMP_CXX)
 endif()
 
 if (OPENMC_USE_MPI)

@@ -74,7 +74,7 @@ def test_deplete_decay_step_fissionable(run_in_tmpdir):
     )
     integrator.integrate()
 
-    # Get concentration of H1 and He4
+    # Get concentration of U238. It should be unchanged since this chain has no U238 decay.
     results = openmc.deplete.Results('depletion_results.h5')
     _, u238 = results.get_atoms("1", "U238")
 

@@ -17,6 +17,7 @@ import numpy as np
 import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
+from openmc.utility_funcs import change_directory
 from ._xml import get_text
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
@@ -154,6 +155,8 @@ class MeshBase(IDManagerMixin, ABC):
     ) -> List[openmc.Material]:
         """Generate homogenized materials over each element in a mesh.
 
+        .. versionadded:: 0.14.1
+
         Parameters
         ----------
         model : openmc.Model
@@ -172,7 +175,7 @@ class MeshBase(IDManagerMixin, ABC):
         """
         import openmc.lib
 
-        with tempfile.TemporaryDirectory() as temp_dir:
+        with change_directory(tmpdir=True):
             # In order to get mesh into model, we temporarily replace the
             # tallies with a single mesh tally using the current mesh
             original_tallies = model.tallies

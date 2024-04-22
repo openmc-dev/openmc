@@ -68,7 +68,7 @@ def test_deplete_decay_step_fissionable(run_in_tmpdir):
     op = openmc.deplete.IndependentOperator(
         mats, [1.0], [micro_xs], Path(__file__).parents[1] / "chain_simple.xml")
 
-    # Create time-integrator and integrate
+    # Create time integrator and integrate
     integrator = openmc.deplete.PredictorIntegrator(
         op, [1.0], power=[0.0], timestep_units='s'
     )

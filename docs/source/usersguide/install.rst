@@ -464,11 +464,11 @@ can typically be set for a single command, i.e.
 
 .. _compile_linux:
 
-Compiling on Linux and Mac OS X
--------------------------------
+Compiling on Linux and macOS
+----------------------------
 
-To compile OpenMC on Linux or Max OS X, run the following commands from within
-the root directory of the source code:
+To compile OpenMC on Linux or macOS, run the following commands from within the
+root directory of the source code:
 
 .. code-block:: sh
 

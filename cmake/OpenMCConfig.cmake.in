@@ -31,6 +31,10 @@ if(@OPENMC_USE_MPI@)
   find_package(MPI REQUIRED)
 endif()
 
+if(@OPENMC_USE_OPENMP@)
+  find_package(OpenMP REQUIRED)
+endif()
+
 if(@OPENMC_USE_MCPL@)
   find_package(MCPL REQUIRED)
 endif()

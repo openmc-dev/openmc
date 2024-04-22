@@ -29,7 +29,6 @@ private:
   int num_delayed_groups; // number of delayed neutron groups
   vector<XsData> xs;      // Cross section data
   // MGXS Incoming Flux Angular grid information
-  bool is_isotropic; // used to skip search for angle indices if isotropic
   int n_pol;
   int n_azi;
   vector<double> polar;
@@ -85,6 +84,8 @@ public:
   std::string name; // name of dataset, e.g., UO2
   double awr;       // atomic weight ratio
   bool fissionable; // Is this fissionable
+  bool is_isotropic {
+    true}; // used to skip search for angle indices if isotropic
 
   Mgxs() = default;
 

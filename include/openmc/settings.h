@@ -112,8 +112,9 @@ extern ResScatMethod res_scat_method; //!< resonance upscattering method
 extern double res_scat_energy_min; //!< Min energy in [eV] for res. upscattering
 extern double res_scat_energy_max; //!< Max energy in [eV] for res. upscattering
 extern vector<std::string>
-  res_scat_nuclides;     //!< Nuclides using res. upscattering treatment
-extern RunMode run_mode; //!< Run mode (eigenvalue, fixed src, etc.)
+  res_scat_nuclides;           //!< Nuclides using res. upscattering treatment
+extern RunMode run_mode;       //!< Run mode (eigenvalue, fixed src, etc.)
+extern SolverType solver_type; //!< Solver Type (Monte Carlo or Random Ray)
 extern std::unordered_set<int>
   sourcepoint_batch; //!< Batches when source should be written
 extern std::unordered_set<int>
@@ -139,6 +140,7 @@ extern int trigger_batch_interval; //!< Batch interval for triggers
 extern "C" int verbosity;          //!< How verbose to make output
 extern double weight_cutoff;       //!< Weight cutoff for Russian roulette
 extern double weight_survive;      //!< Survival weight after Russian roulette
+
 } // namespace settings
 
 //==============================================================================

@@ -151,6 +151,7 @@ class MeshBase(IDManagerMixin, ABC):
             self,
             model: openmc.Model,
             n_samples: int = 10_000,
+            prn_seed: Optional[int] = None,
             **kwargs
     ) -> List[openmc.Material]:
         """Generate homogenized materials over each element in a mesh.
@@ -164,6 +165,9 @@ class MeshBase(IDManagerMixin, ABC):
             geometry.
         n_samples : int
             Number of samples in each mesh element.
+        prn_seed : int, optional
+            Pseudorandom number generator (PRNG) seed; if None, one will be
+            generated randomly.
         **kwargs
             Keyword-arguments passed to :func:`openmc.lib.init`.
 
@@ -195,7 +199,7 @@ class MeshBase(IDManagerMixin, ABC):
                     (mat.id if mat is not None else None, volume)
                     for mat, volume in mat_volume_list
                 ]
-                for mat_volume_list in mesh.material_volumes(n_samples)
+                for mat_volume_list in mesh.material_volumes(n_samples, prn_seed)
             ]
             openmc.lib.finalize()
 
@@ -206,7 +210,7 @@ class MeshBase(IDManagerMixin, ABC):
         materials = model.geometry.get_all_materials()
         homogenized_materials = []
         for mat_volume_list in mat_volume_by_element:
-            material_ids, volumes = zip(*mat_volume_list)
+            material_ids, volumes = [list(x) for x in zip(*mat_volume_list)]
             total_volume = sum(volumes)
 
             # Check for void material and remove

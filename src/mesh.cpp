@@ -309,6 +309,10 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
       "No filename supplied for unstructured mesh with ID: {}", id_));
   }
 
+  if (check_for_node(node, "options")) {
+    options_ = get_node_value(node, "options");
+  }
+
   // check if mesh tally data should be written with
   // statepoint files
   if (check_for_node(node, "output")) {
@@ -371,6 +375,9 @@ void UnstructuredMesh::to_hdf5(hid_t group) const
   write_dataset(mesh_group, "type", mesh_type);
   write_dataset(mesh_group, "filename", filename_);
   write_dataset(mesh_group, "library", this->library());
+  if (!options_.empty()) {
+    write_attribute(mesh_group, "options", options_);
+  }
 
   if (specified_length_multiplier_)
     write_dataset(mesh_group, "length_multiplier", length_multiplier_);
@@ -2264,7 +2271,7 @@ void MOABMesh::initialize()
   }
 }
 
-void MOABMesh::prepare_for_tallies(const std::string& options)
+void MOABMesh::prepare_for_tallies()
 {
   // if the KDTree has already been constructed, do nothing
   if (kdtree_)
@@ -2272,7 +2279,7 @@ void MOABMesh::prepare_for_tallies(const std::string& options)
 
   // build acceleration data structures
   compute_barycentric_data(ehs_);
-  build_kdtree(ehs_, options);
+  build_kdtree(ehs_);
 }
 
 void MOABMesh::create_interface()
@@ -2291,8 +2298,7 @@ void MOABMesh::create_interface()
   }
 }
 
-void MOABMesh::build_kdtree(
-  const moab::Range& all_tets, const std::string& options)
+void MOABMesh::build_kdtree(const moab::Range& all_tets)
 {
   moab::Range all_tris;
   int adj_dim = 2;
@@ -2320,10 +2326,10 @@ void MOABMesh::build_kdtree(
 
   // Determine what options to use
   std::ostringstream options_stream;
-  if (options.empty()) {
+  if (options_.empty()) {
     options_stream << "MAX_DEPTH=20;PLANE_SET=2;";
   } else {
-    options_stream << options;
+    options_stream << options_;
   }
   moab::FileOptions file_opts(options_stream.str().c_str());
 

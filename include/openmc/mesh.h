@@ -83,7 +83,7 @@ public:
 
   // Methods
   //! Perform any preparation needed to support use in mesh filters
-  virtual void prepare_for_tallies(const std::string& options) {};
+  virtual void prepare_for_tallies() {};
 
   //! Update a position to the local coordinates of the mesh
   virtual void local_coords(Position& r) const {};
@@ -659,11 +659,6 @@ protected:
   //! Set the length multiplier to apply to each point in the mesh
   void set_length_multiplier(const double length_multiplier);
 
-  // Data members
-  double length_multiplier_ {
-    1.0}; //!< Constant multiplication factor to apply to mesh coordinates
-  bool specified_length_multiplier_ {false};
-
   //! Sample barycentric coordinates given a seed and the vertex positions and
   //! return the sampled position
   //
@@ -671,6 +666,12 @@ protected:
   //! \param[in] seed Random number generation seed
   //! \return Sampled position within the tetrahedron
   Position sample_tet(std::array<Position, 4> coords, uint64_t* seed) const;
+
+  // Data members
+  double length_multiplier_ {
+    1.0}; //!< Constant multiplication factor to apply to mesh coordinates
+  bool specified_length_multiplier_ {false};
+  std::string options_; //!< Options for search data structures
 
 private:
   //! Setup method for the mesh. Builds data structures,
@@ -693,7 +694,7 @@ public:
   // Overridden Methods
 
   //! Perform any preparation needed to support use in mesh filters
-  void prepare_for_tallies(const std::string& options) override;
+  void prepare_for_tallies() override;
 
   Position sample_element(int32_t bin, uint64_t* seed) const override;
 
@@ -826,8 +827,7 @@ private:
   //! added to the tree as well.
   //
   //! \param[in] all_tets MOAB Range of tetrahedra for the tree
-  //! \param[in] options Options passed when building k-d tree
-  void build_kdtree(const moab::Range& all_tets, const std::string& options);
+  void build_kdtree(const moab::Range& all_tets);
 
   //! Get the tags for a score from the mesh instance
   //! or create them if they are not there

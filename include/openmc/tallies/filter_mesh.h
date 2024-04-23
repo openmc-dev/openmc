@@ -56,7 +56,6 @@ protected:
   // Data members
 
   int32_t mesh_;            //!< Index of the mesh
-  std::string options_;     //!< Options for search data structures
   bool translated_ {false}; //!< Whether or not the filter is translated
   Position translation_ {0.0, 0.0, 0.0}; //!< Filter translation
 };

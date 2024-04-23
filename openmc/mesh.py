@@ -1952,6 +1952,9 @@ class UnstructuredMesh(MeshBase):
         Name of the mesh
     length_multiplier: float
         Constant multiplier to apply to mesh coordinates
+    options : str, optional
+        Special options that control spatial search data structures used. This
+        is currently only used to set parameters for MOAB's AdaptiveKDTree.
 
     Attributes
     ----------
@@ -1965,6 +1968,9 @@ class UnstructuredMesh(MeshBase):
         Multiplicative factor to apply to mesh coordinates
     library : {'moab', 'libmesh'}
         Mesh library used for the unstructured mesh tally
+    options : str
+        Special options that control spatial search data structures used. This
+        is currently only used to set parameters for MOAB's AdaptiveKDTree.
     output : bool
         Indicates whether or not automatic tally output should be generated for
         this mesh
@@ -1998,7 +2004,8 @@ class UnstructuredMesh(MeshBase):
     _LINEAR_HEX = 1
 
     def __init__(self, filename: PathLike, library: str, mesh_id: Optional[int] = None,
-                 name: str = '', length_multiplier: float = 1.0):
+                 name: str = '', length_multiplier: float = 1.0,
+                 options: Optional[str] = None):
         super().__init__(mesh_id, name)
         self.filename = filename
         self._volumes = None
@@ -2008,6 +2015,7 @@ class UnstructuredMesh(MeshBase):
         self.library = library
         self._output = False
         self.length_multiplier = length_multiplier
+        self.options = options
         self._has_statepoint_data = False
 
     @property
@@ -2027,6 +2035,15 @@ class UnstructuredMesh(MeshBase):
     def library(self, lib: str):
         cv.check_value('Unstructured mesh library', lib, ('moab', 'libmesh'))
         self._library = lib
+
+    @property
+    def options(self) -> Optional[str]:
+        return self._options
+
+    @options.setter
+    def options(self, options: Optional[str]):
+        cv.check_type('options', options, (str, type(None)))
+        self._options = options
 
     @property
     @require_statepoint_data
@@ -2139,6 +2156,8 @@ class UnstructuredMesh(MeshBase):
         if self.length_multiplier != 1.0:
             string += '{: <16}=\t{}\n'.format('\tLength multiplier',
                                               self.length_multiplier)
+        if self.options is not None:
+            string += '{: <16}=\t{}\n'.format('\tOptions', self.options)
         return string
 
     @property
@@ -2294,8 +2313,12 @@ class UnstructuredMesh(MeshBase):
         mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
         filename = group['filename'][()].decode()
         library = group['library'][()].decode()
+        if 'options' in group.attrs:
+            options = group.attrs['options'].decode()
+        else:
+            options = None
 
-        mesh = cls(filename=filename, library=library, mesh_id=mesh_id)
+        mesh = cls(filename=filename, library=library, mesh_id=mesh_id, options=options)
         mesh._has_statepoint_data = True
         vol_data = group['volumes'][()]
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
@@ -2326,6 +2349,8 @@ class UnstructuredMesh(MeshBase):
         element.set("id", str(self._id))
         element.set("type", "unstructured")
         element.set("library", self._library)
+        if self.options is not None:
+            element.set('options', self.options)
         subelement = ET.SubElement(element, "filename")
         subelement.text = str(self.filename)
 
@@ -2352,8 +2377,9 @@ class UnstructuredMesh(MeshBase):
         filename = get_text(elem, 'filename')
         library = get_text(elem, 'library')
         length_multiplier = float(get_text(elem, 'length_multiplier', 1.0))
+        options = elem.get('options')
 
-        return cls(filename, library, mesh_id, '', length_multiplier)
+        return cls(filename, library, mesh_id, '', length_multiplier, options)
 
 
 def _read_meshes(elem):

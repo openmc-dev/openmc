@@ -124,7 +124,6 @@ class Element(str):
             cv.check_greater_than('enrichment', enrichment, 0., equality=True)
 
         # Get the nuclides present in nature
-        print(natural_isotopes(self))
         natural_nuclides = {name for name, abundance in natural_isotopes(self)}
 
         # Issue warning if no existing nuclides

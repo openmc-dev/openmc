@@ -895,7 +895,7 @@ class Integrator(ABC):
                 root = None
             res_list = [self.operator(n, source_rate if final_step else 0.0)]
             StepResult.save(self.operator, [n], res_list, [t, t],
-                         source_rate, self._i_res + len(self), proc_time, root)
+                         source_rate, self._i_res + len(self), proc_time, root, path)
             self.operator.write_bos_data(len(self) + self._i_res)
 
         self.operator.finalize()

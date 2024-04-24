@@ -15,6 +15,7 @@ import openmc
 from openmc.checkvalue import check_value
 from openmc.exceptions import DataError
 from openmc.mpi import comm
+from openmc import get_nuclides_with_data
 from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
 from .reaction_rates import ReactionRates
@@ -148,16 +149,12 @@ class OpenMCOperator(TransportOperator):
         # for which there is an entry in the micro_xs parameter
         openmc.reset_auto_ids()
 
-        self.nuclides_with_data = self._get_nuclides_with_data(
-            self.cross_sections)
+        self.nuclides_with_data = get_nuclides_with_data(self.cross_sections)
 
         # Select nuclides with data that are also in the chain
         self._burnable_nucs = [nuc.name for nuc in self.chain.nuclides
                                if nuc.name in self.nuclides_with_data]
 
-        # Select nuclides without data that are also in the chain
-        self._decay_nucs = [nuc.name for nuc in self.chain.nuclides
-                            if nuc.name not in self.nuclides_with_data]
 
         self.burnable_mats, volumes, all_nuclides = self._get_burnable_mats()
         self.local_mats = _distribute(self.burnable_mats)
@@ -207,10 +204,10 @@ class OpenMCOperator(TransportOperator):
         # Iterate once through the geometry to get dictionaries
         for mat in self.materials:
             for nuclide in mat.get_nuclides():
-                if nuclide in self.nuclides_with_data or self._decay_nucs:
+                if nuclide in self.nuclides_with_data or self.chain.nuclides:
                     model_nuclides.add(nuclide)
                 else:
-                    msg = (f"Nuclilde {nuclide} in material {mat.id} is not "
+                    msg = (f"Nuclide {nuclide} in material {mat.id} is not "
                            "present in the depletion chain and has no cross "
                            "section data.")
                     warn(msg)
@@ -246,23 +243,6 @@ class OpenMCOperator(TransportOperator):
     def _load_previous_results(self):
         """Load results from a previous depletion simulation"""
         pass
-
-    @abstractmethod
-    def _get_nuclides_with_data(self, cross_sections):
-        """Find nuclides with cross section data
-
-        Parameters
-        ----------
-        cross_sections : str or pandas.DataFrame
-            Path to continuous energy cross section library, or object
-            containing one-group cross-sections.
-
-        Returns
-        -------
-        nuclides : set of str
-            Set of nuclide names that have cross secton data
-
-        """
 
     def _extract_number(self, local_mats, volume, all_nuclides, prev_res=None):
         """Construct AtomNumber using geometry

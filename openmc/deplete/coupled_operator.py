@@ -83,7 +83,6 @@ def _get_nuclides_with_data(cross_sections):
 
     return nuclides
 
-
 class CoupledOperator(OpenMCOperator):
     """Transport-coupled transport operator.
 
@@ -297,22 +296,6 @@ class CoupledOperator(OpenMCOperator):
                 new_res = res_obj.distribute(self.local_mats, mat_indexes)
                 self.prev_res.append(new_res)
 
-    def _get_nuclides_with_data(self, cross_sections):
-        """Loads cross_sections.xml file to find nuclides with neutron data
-
-        Parameters
-        ----------
-        cross_sections : str
-            Path to cross_sections.xml file
-
-        Returns
-        -------
-        nuclides : set of str
-            Set of nuclide names that have cross secton data
-
-        """
-        return _get_nuclides_with_data(cross_sections)
-
     def _get_helper_classes(self, helper_kwargs):
         """Create the ``_rate_helper``, ``_normalization_helper``, and
         ``_yield_helper`` objects.
@@ -405,7 +388,7 @@ class CoupledOperator(OpenMCOperator):
         for mat in self.materials:
             mat._nuclides.sort(key=lambda x: nuclides.index(x[0]))
 
-        self.materials.export_to_xml(nuclides_to_ignore=self._decay_nucs)
+        self.materials.export_to_xml(ignore_phantom_nuclides=True)
 
     def __call__(self, vec, source_rate):
         """Runs a simulation.

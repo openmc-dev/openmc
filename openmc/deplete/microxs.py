@@ -13,12 +13,12 @@ import numpy as np
 
 from openmc.checkvalue import check_type, check_value, check_iterable_type, PathLike
 from openmc.exceptions import DataError
-from openmc import StatePoint
 from openmc.mgxs import GROUP_STRUCTURES
 from openmc.data import REACTION_MT
 import openmc
 from .abc import change_directory
 from .chain import Chain, REACTIONS
+from .coupled_operator import _find_cross_sections
 from .coupled_operator import _find_cross_sections, _get_nuclides_with_data
 import openmc.lib
 
@@ -90,7 +90,7 @@ def get_microxs_and_flux(
         reactions = chain.reactions
     if not nuclides:
         cross_sections = _find_cross_sections(model)
-        nuclides_with_data = _get_nuclides_with_data(cross_sections)
+        nuclides_with_data = get_nuclides_with_data(cross_sections)
         nuclides = [nuc.name for nuc in chain.nuclides
                     if nuc.name in nuclides_with_data]
 

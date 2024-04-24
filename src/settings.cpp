@@ -981,7 +981,8 @@ void read_settings_xml(pugi::xml_node root)
   }
 
   if (check_for_node(root, "max_secondaries")) {
-    settings::max_secondaries = std::stoi(get_node_value(root, "max_secondaries"));
+    settings::max_secondaries =
+      std::stoi(get_node_value(root, "max_secondaries"));
   }
 
   if (check_for_node(root, "max_splits")) {

@@ -24,6 +24,7 @@ import openmc.lib
 
 _valid_rxns = list(REACTIONS)
 _valid_rxns.append('fission')
+_valid_rxns.append('damage-energy')
 
 
 def _resolve_chain_file_path(chain_file: str):

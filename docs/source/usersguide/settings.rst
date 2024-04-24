@@ -628,3 +628,37 @@ instance, whereas the :meth:`openmc.Track.filter` method returns a new
           .. code-block:: sh
 
             openmc-track-combine tracks_p*.h5 --out tracks.h5
+
+-----------------------
+Restarting a Simulation
+-----------------------
+
+OpenMC can be run in a mode where it reads in a statepoint file and continues a
+simulation from the ending point of the statepoint file. A restart simulation
+can be performed by passing the path to the statepoint file to the OpenMC
+executable:
+
+.. code-block:: sh
+
+    openmc -r statepoint.100.h5
+
+From the Python API, the `restart_file` argument provides the same behavior:
+
+.. code-block:: python
+
+    openmc.run(restart_file='statepoint.100.h5')
+
+or if using the :class:`~openmc.Model` class:
+
+.. code-block:: python
+
+    model.run(restart_file='statepoint.100.h5')
+
+The restart simulation will execute until the number of batches specified in the
+:class:`~openmc.Settings` object on a model (or in the :ref:`settings XML file
+<io_settings>`) is satisfied. Note that if the number of batches in the
+statepoint file is the same as that specified in the settings object (i.e., if
+the inputs were not modified before the restart run), no particles will be
+transported and OpenMC will exit immediately.
+
+.. note:: A statepoint file must match the input model to be successfully used in a restart simulation.

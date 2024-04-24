@@ -573,12 +573,12 @@ def statepoint_write(filename=None, write_source=True):
     _dll.openmc_statepoint_write(filename, c_bool(write_source))
 
 
-def statepoint_load(filename):
+def statepoint_load(filename: PathLike):
     """Load a statepoint file.
 
     Parameters
     ----------
-    filename : str
+    filename : path-like
         Path to the statepoint to load.
 
     """

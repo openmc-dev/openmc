@@ -1,7 +1,6 @@
-import glob
-import h5py
 from pathlib import Path
 
+import h5py
 import numpy as np
 import openmc
 import pytest
@@ -160,6 +159,7 @@ def test_write_to_vtk(sphere_model):
     assert isinstance(polydata, vtk.vtkPolyData)
     assert Path('tracks.vtp').is_file()
 
+
 def test_restart_track(run_in_tmpdir, sphere_model):
     # cut the sphere model in half with an improper boundary condition
     plane = openmc.XPlane(x0=-1.0)
@@ -170,9 +170,9 @@ def test_restart_track(run_in_tmpdir, sphere_model):
     with pytest.raises(RuntimeError, match='Maximum number of lost particles has been reached.'):
         sphere_model.run(output=False)
 
-    lost_particle_files = glob.glob('particle_*.h5')
+    lost_particle_files = list(Path.cwd().glob('particle_*.h5'))
     assert len(lost_particle_files) > 0
-    particle_file = Path(lost_particle_files[0]).resolve()
+    particle_file = lost_particle_files[0]
      # restart the lost particle with tracks enabled
     sphere_model.run(tracks=True, restart_file=particle_file)
     tracks_file = Path('tracks.h5')

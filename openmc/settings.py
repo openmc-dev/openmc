@@ -114,11 +114,11 @@ class Settings:
     max_splits : int
         Maximum number of times a particle can split during a history
 
-        .. versionadded:: 0.15
+        .. versionadded:: 0.13
     max_secondaries : int
         Maximum secondary bank size
 
-        .. versionadded:: 0.13
+        .. versionadded:: 0.14.1
     max_tracks : int
         Maximum number of tracks written to a track file (per MPI process).
 

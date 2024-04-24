@@ -1,5 +1,3 @@
-from math import log10
-
 import numpy as np
 import openmc
 
@@ -29,10 +27,6 @@ borated_water.add_element("H", 5.0e-2)
 borated_water.add_element("O", 2.4e-2)
 borated_water.add_s_alpha_beta("c_H_in_H2O")
 
-# Collect the materials together and export to XML
-materials = openmc.Materials([uo2, helium, zircaloy, borated_water])
-materials.export_to_xml()
-
 ###############################################################################
 # Define problem geometry
 
@@ -51,33 +45,29 @@ gap = openmc.Cell(fill=helium, region=+fuel_or & -clad_ir)
 clad = openmc.Cell(fill=zircaloy, region=+clad_ir & -clad_or)
 water = openmc.Cell(fill=borated_water, region=+clad_or & -box)
 
-# Create a geometry and export to XML
-geometry = openmc.Geometry([fuel, gap, clad, water])
-geometry.export_to_xml()
+# Create a model and assign geometry
+model = openmc.Model()
+model.geometry = openmc.Geometry([fuel, gap, clad, water])
 
 ###############################################################################
 # Define problem settings
 
 # Set the mode
-settings = openmc.Settings()
-settings.run_mode = "fixed source"
+model.settings.run_mode = "fixed source"
 
 # Indicate how many batches and particles to run
-settings.batches = 10
-settings.particles = 10000
+model.settings.batches = 10
+model.settings.particles = 10000
 
 # Set time cutoff
 # (because we only care about solutions in t < 100 seconds, see tally below)
-settings.cutoff = {"time_neutron": 100}
+model.settings.cutoff = {"time_neutron": 100}
 
 # Create the neutron pulse source
 # (by default, isotropic direction, at t = 0 s)
 space = openmc.stats.Point()  # At the origin (0, 0, 0)
 energy = openmc.stats.Discrete([1.41e7], [1.0])  # At 14.1 MeV
-settings.source = openmc.IndependentSource(space=space, energy=energy)
-
-# Export to XML
-settings.export_to_xml()
+model.settings.source = openmc.IndependentSource(space=space, energy=energy)
 
 ###############################################################################
 # Define tallies
@@ -91,6 +81,6 @@ density_tally = openmc.Tally(name="Density")
 density_tally.filters = [time_filter]
 density_tally.scores = ["inverse-velocity"]
 
-# Instantiate a Tallies collection and export to XML
-tallies = openmc.Tallies([density_tally])
-tallies.export_to_xml()
+# Add tallies to model
+model.tallies = openmc.Tallies([density_tally])
+model.export_to_model_xml()

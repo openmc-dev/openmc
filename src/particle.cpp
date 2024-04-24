@@ -46,10 +46,10 @@ double Particle::speed() const
 {
   // Multigroup speed?
   if (!settings::run_CE) {
-    auto& macro_xs = data::mg.macro_xs_[material()];
-    int macro_t = mg_xs_cache().t;
-    int macro_a = macro_xs.get_angle_index(u());
-    return 1.0 / macro_xs.get_xs(MgxsType::INVERSE_VELOCITY, g(), nullptr,
+    auto& macro_xs = data::mg.macro_xs_[this->material()];
+    int macro_t = this->mg_xs_cache().t;
+    int macro_a = macro_xs.get_angle_index(this->u());
+    return 1.0 / macro_xs.get_xs(MgxsType::INVERSE_VELOCITY, this->g(), nullptr,
                    nullptr, nullptr, macro_t, macro_a);
   }
 

@@ -129,8 +129,6 @@ void create_fission_sites(Particle& p)
     site.particle = ParticleType::neutron;
     site.time = p.time();
     site.wgt = 1. / weight;
-    site.parent_id = p.id();
-    site.progeny_id = p.n_progeny()++;
 
     // Sample the cosine of the angle, assuming fission neutrons are emitted
     // isotropically
@@ -163,10 +161,8 @@ void create_fission_sites(Particle& p)
       site.time -= std::log(prn(p.current_seed())) / decay_rate;
 
       // Reject site if it exceeds time cutoff
-      double time_cutoff =
-        settings::time_cutoff[static_cast<int>(site.particle)];
-      if (site.time > time_cutoff) {
-        p.n_progeny()--;
+      double t_cutoff = settings::time_cutoff[static_cast<int>(site.particle)];
+      if (site.time > t_cutoff) {
         continue;
       }
     }
@@ -180,17 +176,16 @@ void create_fission_sites(Particle& p)
           "in this generation will not be banked. Results may be "
           "non-deterministic.");
 
-        // Decrement number of particle progeny as storage was unsuccessful.
-        // This step is needed so that the sum of all progeny is equal to the
-        // size of the shared fission bank.
-        p.n_progeny()--;
-
         // Break out of loop as no more sites can be added to fission bank
         break;
       }
     } else {
       p.secondary_bank().push_back(site);
     }
+
+    // Set parent and progeny ID
+    site.parent_id = p.id();
+    site.progeny_id = p.n_progeny()++;
 
     // Set the delayed group on the particle as well
     p.delayed_group() = dg + 1;

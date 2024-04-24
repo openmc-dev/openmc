@@ -226,8 +226,7 @@ class IndependentOperator(OpenMCOperator):
 
         """
         check_type('nuclides', nuclides, dict, str)
-        materials = cls._consolidate_nuclides_to_material(
-            nuclides, nuc_units, volume)
+        materials = cls._consolidate_nuclides_to_material(nuclides, nuc_units, volume)
         fluxes = [flux]
         micros = [micro_xs]
         return cls(materials,
@@ -314,8 +313,7 @@ class IndependentOperator(OpenMCOperator):
             rates = op.reaction_rates
             super().__init__(rates.n_nuc, rates.n_react)
 
-            self.nuc_ind_map = {ind: nuc for nuc,
-                                ind in rates.index_nuc.items()}
+            self.nuc_ind_map = {ind: nuc for nuc, ind in rates.index_nuc.items()}
             self.rx_ind_map = {ind: rxn for rxn, ind in rates.index_rx.items()}
             self._op = op
 
@@ -352,8 +350,7 @@ class IndependentOperator(OpenMCOperator):
 
                     # Determine reaction rate by multiplying xs in [b] by flux
                     # in [n-cm/src] to give [(reactions/src)*b-cm/atom]
-                    self._results_cache[i_nuc, i_rx] = (
-                        xs[nuc, rx] * flux).sum()
+                    self._results_cache[i_nuc, i_rx] = (xs[nuc, rx] * flux).sum()
 
             return self._results_cache
 

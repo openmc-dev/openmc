@@ -64,6 +64,8 @@ def test_deplete_decay_step_fissionable(run_in_tmpdir):
     mat.add_nuclide('U238', 1.0, 'ao')
     mat.volume = 10.0
     mat.set_density('g/cc', 1.0)
+    original_atoms = mat.get_nuclide_atoms()['U238']
+
     mats = openmc.Materials([mat])
     op = openmc.deplete.IndependentOperator(
         mats, [1.0], [micro_xs], Path(__file__).parents[1] / "chain_simple.xml")
@@ -78,4 +80,4 @@ def test_deplete_decay_step_fissionable(run_in_tmpdir):
     results = openmc.deplete.Results('depletion_results.h5')
     _, u238 = results.get_atoms("1", "U238")
 
-    assert u238[1] == pytest.approx(2.52977141e+22)
+    assert u238[1] == pytest.approx(original_atoms)

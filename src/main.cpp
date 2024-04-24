@@ -6,6 +6,7 @@
 #include "openmc/error.h"
 #include "openmc/message_passing.h"
 #include "openmc/particle_restart.h"
+#include "openmc/random_ray/random_ray_simulation.h"
 #include "openmc/settings.h"
 
 int main(int argc, char* argv[])
@@ -31,7 +32,15 @@ int main(int argc, char* argv[])
   switch (settings::run_mode) {
   case RunMode::FIXED_SOURCE:
   case RunMode::EIGENVALUE:
-    err = openmc_run();
+    switch (settings::solver_type) {
+    case SolverType::MONTE_CARLO:
+      err = openmc_run();
+      break;
+    case SolverType::RANDOM_RAY:
+      openmc_run_random_ray();
+      err = 0;
+      break;
+    }
     break;
   case RunMode::PLOTTING:
     err = openmc_plot_geometry();

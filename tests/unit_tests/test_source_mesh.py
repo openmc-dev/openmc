@@ -208,23 +208,29 @@ def test_roundtrip(run_in_tmpdir, model, request):
 ###################
 # MeshSource tests
 ###################
-@pytest.mark.parametrize('mesh_type', ('rectangular', 'cylindrical'))
-def test_mesh_source_independent(run_in_tmpdir, mesh_type):
+@pytest.fixture
+def void_model():
     """
     A void model containing a single box
     """
-    min, max = -10, 10
-    box = openmc.model.RectangularParallelepiped(
-        min, max, min, max, min, max, boundary_type='vacuum')
+    model = openmc.Model()
 
-    geometry = openmc.Geometry([openmc.Cell(region=-box)])
+    box = openmc.model.RectangularParallelepiped(*[-10, 10]*3, boundary_type='vacuum')
+    model.geometry = openmc.Geometry([openmc.Cell(region=-box)])
 
-    settings = openmc.Settings()
-    settings.particles = 100
-    settings.batches = 10
-    settings.run_mode = 'fixed source'
+    model.settings.particles = 100
+    model.settings.batches = 10
+    model.settings.run_mode = 'fixed source'
 
-    model = openmc.Model(geometry=geometry, settings=settings)
+    return model
+
+
+@pytest.mark.parametrize('mesh_type', ('rectangular', 'cylindrical'))
+def test_mesh_source_independent(run_in_tmpdir, void_model, mesh_type):
+    """
+    A void model containing a single box
+    """
+    model = void_model
 
     # define a 2 x 2 x 2 mesh
     if mesh_type == 'rectangular':
@@ -308,6 +314,41 @@ def test_mesh_source_independent(run_in_tmpdir, mesh_type):
 
     mesh_source.normalize_source_strengths()
     assert mesh_source.strength == 1.0
+
+
+@pytest.mark.parametrize("library", ('moab', 'libmesh'))
+def test_umesh_source_independent(run_in_tmpdir, request, void_model, library):
+    import openmc.lib
+    # skip the test if the library is not enabled
+    if library == 'moab' and not openmc.lib._dagmc_enabled():
+        pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
+
+    if library == 'libmesh' and not openmc.lib._libmesh_enabled():
+        pytest.skip("LibMesh is not enabled in this build.")
+
+    model = void_model
+
+    mesh_filename = Path(request.fspath).parent / "test_mesh_tets.e"
+    uscd_mesh = openmc.UnstructuredMesh(mesh_filename, library)
+    ind_source = openmc.IndependentSource()
+    n_elements = 12_000
+    model.settings.source = openmc.MeshSource(uscd_mesh, n_elements*[ind_source])
+    model.export_to_model_xml()
+    try:
+        openmc.lib.init()
+        openmc.lib.simulation_init()
+        sites = openmc.lib.sample_external_source(10)
+        openmc.lib.statepoint_write('statepoint.h5')
+    finally:
+        openmc.lib.finalize()
+
+    with openmc.StatePoint('statepoint.h5') as sp:
+        uscd_mesh = sp.meshes[uscd_mesh.id]
+
+    # ensure at least that all sites are inside the mesh
+    bounding_box = uscd_mesh.bounding_box
+    for site in sites:
+        assert site.r in bounding_box
 
 
 def test_mesh_source_file(run_in_tmpdir):

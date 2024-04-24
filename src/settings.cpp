@@ -24,6 +24,7 @@
 #include "openmc/output.h"
 #include "openmc/plot.h"
 #include "openmc/random_lcg.h"
+#include "openmc/random_ray/random_ray.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"
 #include "openmc/string_utils.h"
@@ -96,6 +97,7 @@ int32_t gen_per_batch {1};
 int64_t n_particles {-1};
 
 int64_t max_particles_in_flight {100000};
+int max_particle_events {1000000};
 
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
@@ -113,6 +115,7 @@ double res_scat_energy_min {0.01};
 double res_scat_energy_max {1000.0};
 vector<std::string> res_scat_nuclides;
 RunMode run_mode {RunMode::UNSET};
+SolverType solver_type {SolverType::MONTE_CARLO};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
 std::unordered_set<int> source_write_surf_id;
@@ -155,6 +158,12 @@ void get_run_parameters(pugi::xml_node node_base)
   if (check_for_node(node_base, "max_particles_in_flight")) {
     max_particles_in_flight =
       std::stoll(get_node_value(node_base, "max_particles_in_flight"));
+  }
+
+  // Get maximum number of events allowed per particle
+  if (check_for_node(node_base, "max_particle_events")) {
+    max_particle_events =
+      std::stoll(get_node_value(node_base, "max_particle_events"));
   }
 
   // Get number of basic batches
@@ -225,6 +234,38 @@ void get_run_parameters(pugi::xml_node node_base)
       } else {
         fatal_error("Specify keff trigger threshold in settings XML");
       }
+    }
+  }
+
+  // Random ray variables
+  if (solver_type == SolverType::RANDOM_RAY) {
+    xml_node random_ray_node = node_base.child("random_ray");
+    if (check_for_node(random_ray_node, "distance_active")) {
+      RandomRay::distance_active_ =
+        std::stod(get_node_value(random_ray_node, "distance_active"));
+      if (RandomRay::distance_active_ <= 0.0) {
+        fatal_error("Random ray active distance must be greater than 0");
+      }
+    } else {
+      fatal_error("Specify random ray active distance in settings XML");
+    }
+    if (check_for_node(random_ray_node, "distance_inactive")) {
+      RandomRay::distance_inactive_ =
+        std::stod(get_node_value(random_ray_node, "distance_inactive"));
+      if (RandomRay::distance_inactive_ < 0) {
+        fatal_error(
+          "Random ray inactive distance must be greater than or equal to 0");
+      }
+    } else {
+      fatal_error("Specify random ray inactive distance in settings XML");
+    }
+    if (check_for_node(random_ray_node, "source")) {
+      xml_node source_node = random_ray_node.child("source");
+      // Get point to list of <source> elements and make sure there is at least
+      // one
+      RandomRay::ray_source_ = Source::create(source_node);
+    } else {
+      fatal_error("Specify random ray source in settings XML");
     }
   }
 }
@@ -381,6 +422,14 @@ void read_settings_xml(pugi::xml_node root)
         }
       }
     }
+  }
+
+  // Check solver type
+  if (check_for_node(root, "random_ray")) {
+    solver_type = SolverType::RANDOM_RAY;
+    if (run_CE)
+      fatal_error("multi-group energy mode must be specified in settings XML "
+                  "when using the random ray solver.");
   }
 
   if (run_mode == RunMode::EIGENVALUE || run_mode == RunMode::FIXED_SOURCE) {

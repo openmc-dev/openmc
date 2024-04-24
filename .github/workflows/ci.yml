@@ -116,7 +116,7 @@ jobs:
                               libhdf5-serial-dev \
                               libeigen3-dev
 
-      - name: Optional apt dependencies for mpi
+      - name: Optional apt dependencies for MPI
         shell: bash
         if: ${{ matrix.mpi == 'y' }}
         run: |
@@ -129,7 +129,7 @@ jobs:
       - name: Optional apt dependencies for vectfit
         shell: bash
         if: ${{ matrix.vectfit == 'y' }}
-        run: sudo apt-get install -y libblas-dev liblapack-dev
+        run: sudo apt install -y libblas-dev liblapack-dev
 
       - name: install
         shell: bash

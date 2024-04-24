@@ -54,6 +54,9 @@ def _libmesh_enabled():
 def _mcpl_enabled():
     return c_bool.in_dll(_dll, "MCPL_ENABLED").value
 
+def _uwuw_enabled():
+    return c_bool.in_dll(_dll, "UWUW_ENABLED").value
+
 
 from .error import *
 from .core import *

@@ -38,3 +38,7 @@ endif()
 if(@OPENMC_USE_MCPL@)
   find_package(MCPL REQUIRED)
 endif()
+
+if(@OPENMC_USE_UWUW@)
+  find_package(UWUW REQUIRED)
+endif()

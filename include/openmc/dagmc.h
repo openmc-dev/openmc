@@ -3,7 +3,8 @@
 
 namespace openmc {
 extern "C" const bool DAGMC_ENABLED;
-}
+extern "C" const bool UWUW_ENABLED;
+} // namespace openmc
 
 // always include the XML interface header
 #include "openmc/xml_interface.h"
@@ -119,6 +120,12 @@ public:
   //! Writes the UWUW material file to XML (for debugging purposes)
   void write_uwuw_materials_xml(
     const std::string& outfile = "uwuw_materials.xml") const;
+
+  //! Assign a material to a cell from uwuw material library
+  //! \param[in] vol_handle The DAGMC material assignment string
+  //! \param[in] c The OpenMC cell to which the material is assigned
+  void uwuw_assign_material(
+    moab::EntityHandle vol_handle, std::unique_ptr<DAGCell>& c) const;
 
   //! Assign a material to a cell based
   //! \param[in] mat_string The DAGMC material assignment string

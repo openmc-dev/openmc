@@ -1291,9 +1291,10 @@ class CylindricalMesh(StructuredMesh):
     @r_grid.setter
     def r_grid(self, grid):
         cv.check_type('mesh r_grid', grid, Iterable, Real)
-        if len(grid) < 2 or grid[0] >= grid[-1]:
-            raise ValueError("The r_grid must have at least two points "
-                             "and must be increasing.")
+        if len(grid) < 2:
+            raise ValueError("The r_grid must have at least two points.")
+        if any(grid[i] >= grid[i + 1] for i in range(len(grid) - 1)):
+            raise ValueError("The r_grid must be strictly increasing.")
         self._r_grid = np.asarray(grid, dtype=float)
 
     @property
@@ -1321,9 +1322,10 @@ class CylindricalMesh(StructuredMesh):
     @z_grid.setter
     def z_grid(self, grid):
         cv.check_type('mesh z_grid', grid, Iterable, Real)
-        if len(grid) < 2 or grid[0] >= grid[-1]:
-            raise ValueError("The z_grid must have at least two points "
-                             "and must be increasing.")
+        if len(grid) < 2:
+            raise ValueError("The z_grid must have at least two points.")
+        if any(grid[i] >= grid[i + 1] for i in range(len(grid) - 1)):
+            raise ValueError("The z_grid must be strictly increasing.")
         self._z_grid = np.asarray(grid, dtype=float)
 
     @property

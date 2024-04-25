@@ -295,7 +295,6 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
   // check if a length unit multiplier was specified
   if (check_for_node(node, "length_multiplier")) {
     length_multiplier_ = std::stod(get_node_value(node, "length_multiplier"));
-    specified_length_multiplier_ = true;
   }
 
   // get the filename of the unstructured mesh to load
@@ -379,7 +378,7 @@ void UnstructuredMesh::to_hdf5(hid_t group) const
     write_attribute(mesh_group, "options", options_);
   }
 
-  if (specified_length_multiplier_)
+  if (length_multiplier_ > 0.0)
     write_dataset(mesh_group, "length_multiplier", length_multiplier_);
 
   // write vertex coordinates
@@ -439,9 +438,6 @@ void UnstructuredMesh::to_hdf5(hid_t group) const
 void UnstructuredMesh::set_length_multiplier(double length_multiplier)
 {
   length_multiplier_ = length_multiplier;
-
-  if (length_multiplier_ != 1.0)
-    specified_length_multiplier_ = true;
 }
 
 ElementType UnstructuredMesh::element_type(int bin) const
@@ -2242,7 +2238,7 @@ void MOABMesh::initialize()
     fatal_error("Failed to add tetrahedra to an entity set.");
   }
 
-  if (specified_length_multiplier_) {
+  if (length_multiplier_ > 0.0) {
     // get the connectivity of all tets
     moab::Range adj;
     rval = mbi_->get_adjacencies(ehs_, 0, true, adj, moab::Interface::UNION);
@@ -2921,7 +2917,7 @@ void LibMesh::initialize()
   // assuming that unstructured meshes used in OpenMC are 3D
   n_dimension_ = 3;
 
-  if (specified_length_multiplier_) {
+  if (length_multiplier_ > 0.0) {
     libMesh::MeshTools::Modification::scale(*m_, length_multiplier_);
   }
   // if OpenMC is managing the libMesh::MeshBase instance, prepare the mesh.

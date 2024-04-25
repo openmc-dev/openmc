@@ -669,8 +669,7 @@ protected:
 
   // Data members
   double length_multiplier_ {
-    1.0}; //!< Constant multiplication factor to apply to mesh coordinates
-  bool specified_length_multiplier_ {false};
+    -1.0};              //!< Multiplicative factor applied to mesh coordinates
   std::string options_; //!< Options for search data structures
 
 private:

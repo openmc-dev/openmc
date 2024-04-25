@@ -114,7 +114,6 @@ def test_cell_instance_hex_multilattice(r, expected_cell_instance):
 
 
 def test_cell_instance_multilattice_results():
-    with openmc.lib.run_in_memory():
-        openmc.lib.run()
-        tally_results = openmc.lib.tallies[1].mean
-        assert (tally_results != 0.0).all()
+    openmc.lib.run()
+    tally_results = openmc.lib.tallies[1].mean
+    assert (tally_results != 0.0).all()

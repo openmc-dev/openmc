@@ -134,15 +134,24 @@ def test_SphericalMesh_initiation():
 
     # test invalid r_grid values
     with pytest.raises(ValueError):
-        mesh.r_grid = (1, 1)
+        openmc.SphericalMesh(r_grid=[1, 1])
+
+    with pytest.raises(ValueError):
+        openmc.SphericalMesh(r_grid=[0])
 
     # test invalid theta_grid values
     with pytest.raises(ValueError):
-        mesh.theta_grid = (2, 1)
+        openmc.SphericalMesh(r_grid=[1, 2], theta_grid=[1, 1])
+
+    with pytest.raises(ValueError):
+        openmc.SphericalMesh(r_grid=[1, 2], theta_grid=[0])
 
     # test invalid phi_grid values
     with pytest.raises(ValueError):
-        mesh.phi_grid = (2, 1)
+        openmc.SphericalMesh(r_grid=[1, 2], phi_grid=[1, 1])
+
+    with pytest.raises(ValueError):
+        openmc.SphericalMesh(r_grid=[1, 2], phi_grid=[0])
 
     # waffles and pancakes are unfortunately not valid radii
     with pytest.raises(TypeError):

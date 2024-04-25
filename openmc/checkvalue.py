@@ -171,6 +171,34 @@ def check_length(name, value, length_min, length_max=None):
         raise ValueError(msg)
 
 
+def check_increasing(name, value, equality=False):
+    """Ensure that a list's elements are strictly or loosely increasing.
+
+    Parameters
+    ----------
+    name : str
+        Description of value being checked
+    value : collections.Sized
+        Object to check if increasing
+    equality : bool, optional
+        Whether equality is allowed. Defaults to False.
+
+    """
+
+    if equality:
+        for i in range(1, len(value)):
+            if value[i] < value[i-1]:
+                msg = (f'Unable to set "{name}" to "{value}" since its elements must '
+                   f'be loosely increasing"')
+                raise ValueError(msg)
+    elif not equality:
+        for i in range(1, len(value)):
+            if value[i] <= value[i-1]:
+                msg = (f'Unable to set "{name}" to "{value}" since its elements must '
+                   f'be strictly increasing"')
+                raise ValueError(msg)
+
+
 def check_value(name, value, accepted_values):
     """Ensure that an object's value is contained in a set of acceptable values.
 

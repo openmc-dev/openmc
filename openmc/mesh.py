@@ -1954,7 +1954,9 @@ class UnstructuredMesh(MeshBase):
         Constant multiplier to apply to mesh coordinates
     options : str, optional
         Special options that control spatial search data structures used. This
-        is currently only used to set parameters for MOAB's AdaptiveKDTree.
+        is currently only used to set `parameters
+        <https://tinyurl.com/kdtree-params>`_ for MOAB's AdaptiveKDTree. If
+        None, OpenMC internally uses a default of "MAX_DEPTH=20;PLANE_SET=2;".
 
     Attributes
     ----------
@@ -1970,7 +1972,9 @@ class UnstructuredMesh(MeshBase):
         Mesh library used for the unstructured mesh tally
     options : str
         Special options that control spatial search data structures used. This
-        is currently only used to set parameters for MOAB's AdaptiveKDTree.
+        is currently only used to set `parameters
+        <https://tinyurl.com/kdtree-params>`_ for MOAB's AdaptiveKDTree. If
+        None, OpenMC internally uses a default of "MAX_DEPTH=20;PLANE_SET=2;".
     output : bool
         Indicates whether or not automatic tally output should be generated for
         this mesh

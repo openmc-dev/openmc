@@ -92,7 +92,7 @@ def test_clip_discrete():
 
     with pytest.raises(ValueError):
         d.clip(-1.)
-    
+
     with pytest.raises(ValueError):
         d.clip(5)
 
@@ -188,8 +188,8 @@ def test_watt():
 
 
 def test_tabular():
-    x = np.array([0.0, 5.0, 7.0])
-    p = np.array([10.0, 20.0, 5.0])
+    x = np.array([0.0, 5.0, 7.0, 10.0])
+    p = np.array([10.0, 20.0, 5.0, 6.0])
     d = openmc.stats.Tabular(x, p, 'linear-linear')
     elem = d.to_xml_element('distribution')
 
@@ -210,12 +210,33 @@ def test_tabular():
     assert d.integral() == pytest.approx(1.0)
 
     # test histogram sampling
-    d = openmc.stats.Tabular(x, p, interpolation='histogram')
+    with pytest.warns():
+        d = openmc.stats.Tabular(x, p, interpolation='histogram')
     samples = d.sample(n_samples)
     assert_sample_mean(samples, d.mean())
 
     d.normalize()
     assert d.integral() == pytest.approx(1.0)
+
+    # ensure that passing a set of probabilities shorter than x works
+    # for histogram interpolation
+    d = openmc.stats.Tabular(x, p[:-1], interpolation='histogram')
+    d.cdf()
+    d.mean()
+    assert_sample_mean(d.sample(n_samples), d.mean())
+
+    # passing a shorter probability set should raise an error for linear-linear
+    with pytest.raises(ValueError):
+        d = openmc.stats.Tabular(x, p[:-1], interpolation='linear-linear')
+        d.cdf()
+
+    # update with probabilities of corrcet length for linear-linear
+    # interpolation and call the CDF method again
+    d.p = p
+    d.cdf()
+
+    with pytest.warns():
+        d.p = p[:-1]
 
 
 def test_legendre():

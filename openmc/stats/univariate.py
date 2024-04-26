@@ -864,9 +864,13 @@ class Tabular(Univariate):
             ignore_negative: bool = False
         ):
         self._ignore_negative = ignore_negative
+        self.interpolation = interpolation
+
+        self._x = None
+        self._p = None
+
         self.x = x
         self.p = p
-        self.interpolation = interpolation
 
     def __len__(self):
         return len(self.x)
@@ -886,11 +890,32 @@ class Tabular(Univariate):
 
     @p.setter
     def p(self, p):
+        p = np.array(p, dtype=float)
         cv.check_type('tabulated probabilities', p, Iterable, Real)
+
+        # if x has not been set yet, skip all of the subsequent checking below
+        # and set the probabilities attribute
+        if self.x is None:
+            self._p = p
+            return
+
+        if len(p) > len(self.x):
+            warn('Number of probabilities exceeds number of table values. '
+                 'Additional probabilities will be ignored.')
+
+        if self.interpolation != 'histogram' and self.x.size != p.size:
+            warn(f'Tabulated values ({self.x.size}) and probabilities '
+                 f'({p.size}) should have the same length')
+
+        if self.interpolation == 'histogram' and len(p) > len(self.x) - 1:
+            warn(f'Number of probabilities ({p.size}) for histogram interpolation '
+                 f'exceeds the number of table values minus one ({self.x.size-1}). '
+                 'Additional probabilities will be ignored.')
+
         if not self._ignore_negative:
             for pk in p:
                 cv.check_greater_than('tabulated probability', pk, 0.0, True)
-        self._p = np.array(p, dtype=float)
+        self._p = p
 
     @property
     def interpolation(self):
@@ -907,7 +932,7 @@ class Tabular(Univariate):
         p = self.p
 
         if self.interpolation == 'histogram':
-            c[1:] = p[:-1] * np.diff(x)
+            c[1:] = p[:x.size-1] * np.diff(x)
         elif self.interpolation == 'linear-linear':
             c[1:] = 0.5 * (p[:-1] + p[1:]) * np.diff(x)
         else:
@@ -938,7 +963,7 @@ class Tabular(Univariate):
         elif self.interpolation == 'histogram':
             x_l = self.x[:-1]
             x_r = self.x[1:]
-            p_l = self.p[:-1]
+            p_l = self.p[:self.x.size-1]
             mean = (0.5 * (x_l + x_r) * (x_r - x_l) * p_l).sum()
         else:
             raise NotImplementedError('Can only compute mean for tabular '
@@ -1070,7 +1095,7 @@ class Tabular(Univariate):
             Integral of tabular distrbution
         """
         if self.interpolation == 'histogram':
-            return np.sum(np.diff(self.x) * self.p[:-1])
+            return np.sum(np.diff(self.x) * self.p[:self.x.size-1])
         elif self.interpolation == 'linear-linear':
             return trapezoid(self.p, self.x)
         else:

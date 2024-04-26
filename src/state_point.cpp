@@ -29,6 +29,9 @@
 #include "openmc/timer.h"
 #include "openmc/vector.h"
 
+#include <filesystem>
+namespace fs = std::filesystem;
+
 namespace openmc {
 
 extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
@@ -61,8 +64,13 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
   // Determine whether or not to write the source bank
   bool write_source_ = write_source ? *write_source : true;
 
-  // Write message
-  write_message("Creating state point " + filename_ + "...", 5);
+  // // Write message
+  // write_message("Creating state point " + filename_ + "...", 5);
+
+  // Function that handles the file creation and messaging
+  fs::path rel_path = fs::relative(filename, cwd);
+  std::string message = "Creating state point " + rel_path.string() + "...";
+  std::cout << message << std::endl;
 
   hid_t file_id;
   if (mpi::master) {
@@ -364,11 +372,27 @@ void restart_set_keff()
 
 void load_state_point()
 {
-  // Write message
-  write_message("Loading state point " + settings::path_statepoint + "...", 5);
+  write_message(
+    fmt::format("Loading state point {}...", settings::path_statepoint_c), 5);
+  openmc_statepoint_load(settings::path_statepoint.c_str());
+}
 
+void statepoint_version_check(hid_t file_id)
+{
+  // Read revision number for state point file and make sure it matches with
+  // current version
+  array<int, 2> version_array;
+  read_attribute(file_id, "version", version_array);
+  if (version_array != VERSION_STATEPOINT) {
+    fatal_error(
+      "State point version does not match current version in OpenMC.");
+  }
+}
+
+extern "C" int openmc_statepoint_load(const char* filename)
+{
   // Open file for reading
-  hid_t file_id = file_open(settings::path_statepoint.c_str(), 'r', true);
+  hid_t file_id = file_open(filename, 'r', true);
 
   // Read filetype
   std::string word;
@@ -377,14 +401,7 @@ void load_state_point()
     fatal_error("OpenMC tried to restart from a non-statepoint file.");
   }
 
-  // Read revision number for state point file and make sure it matches with
-  // current version
-  array<int, 2> array;
-  read_attribute(file_id, "version", array);
-  if (array != VERSION_STATEPOINT) {
-    fatal_error(
-      "State point version does not match current version in OpenMC.");
-  }
+  statepoint_version_check(file_id);
 
   // Read and overwrite random number seed
   int64_t seed;
@@ -421,9 +438,10 @@ void load_state_point()
   read_dataset(file_id, "current_batch", simulation::restart_batch);
 
   if (simulation::restart_batch >= settings::n_max_batches) {
-    fatal_error(fmt::format(
-      "The number of batches specified for simulation ({}) is smaller"
-      " than the number of batches in the restart statepoint file ({})",
+    warning(fmt::format(
+      "The number of batches specified for simulation ({}) is smaller "
+      "than or equal to the number of batches in the restart statepoint file "
+      "({})",
       settings::n_max_batches, simulation::restart_batch));
   }
 
@@ -489,7 +507,6 @@ void load_state_point()
         if (internal) {
           tally->writable_ = false;
         } else {
-
           auto& results = tally->results_;
           read_tally_results(tally_group, results.shape()[0],
             results.shape()[1], results.data());
@@ -497,7 +514,6 @@ void load_state_point()
           close_group(tally_group);
         }
       }
-
       close_group(tallies_group);
     }
   }
@@ -525,6 +541,8 @@ void load_state_point()
 
   // Close file
   file_close(file_id);
+
+  return 0;
 }
 
 hid_t h5banktype()

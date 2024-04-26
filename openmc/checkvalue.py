@@ -189,13 +189,13 @@ def check_increasing(name, value, equality=False):
         for i in range(1, len(value)):
             if value[i] < value[i-1]:
                 msg = (f'Unable to set "{name}" to "{value}" since its elements must '
-                   f'be loosely increasing"')
+                   'be loosely increasing"')
                 raise ValueError(msg)
     elif not equality:
         for i in range(1, len(value)):
             if value[i] <= value[i-1]:
                 msg = (f'Unable to set "{name}" to "{value}" since its elements must '
-                   f'be strictly increasing"')
+                   'be strictly increasing"')
                 raise ValueError(msg)
 
 

@@ -877,6 +877,9 @@ class RectLattice(Lattice):
 
         # Export Lattice lower left
         lower_left = ET.SubElement(lattice_subelement, "lower_left")
+        # Make sure lower_left has been specified
+        if lower_left.text is None:
+            raise ValueError(f"Lattice {self.id} <lower_left> has not been specified.")
         lower_left.text = ' '.join(map(str, self._lower_left))
 
         # Export the Lattice nested Universe IDs

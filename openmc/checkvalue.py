@@ -186,17 +186,15 @@ def check_increasing(name, value, equality=False):
     """
 
     if equality:
-        for i in range(1, len(value)):
-            if value[i] < value[i-1]:
-                msg = (f'Unable to set "{name}" to "{value}" since its elements must '
+        if not np.all(np.diff(value) >= 0.0):
+            msg = (f'Unable to set "{name}" to "{value}" since its elements must '
                    'be loosely increasing"')
-                raise ValueError(msg)
+            raise ValueError(msg)
     elif not equality:
-        for i in range(1, len(value)):
-            if value[i] <= value[i-1]:
-                msg = (f'Unable to set "{name}" to "{value}" since its elements must '
+        if not np.all(np.diff(value) > 0.0):
+            msg = (f'Unable to set "{name}" to "{value}" since its elements must '
                    'be strictly increasing"')
-                raise ValueError(msg)
+            raise ValueError(msg)
 
 
 def check_value(name, value, accepted_values):

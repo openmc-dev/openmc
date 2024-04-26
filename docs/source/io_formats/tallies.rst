@@ -364,6 +364,10 @@ attributes/sub-elements:
     The mesh library used to represent an unstructured mesh. This can be either
     "moab" or "libmesh". (For unstructured mesh only.)
 
+  :options:
+    Special options that control spatial search data structures used. (For
+    unstructured mesh using MOAB only)
+
   :filename:
     The name of the mesh file to be loaded at runtime. (For unstructured mesh
     only.)

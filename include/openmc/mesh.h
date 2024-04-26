@@ -659,11 +659,6 @@ protected:
   //! Set the length multiplier to apply to each point in the mesh
   void set_length_multiplier(const double length_multiplier);
 
-  // Data members
-  double length_multiplier_ {
-    1.0}; //!< Constant multiplication factor to apply to mesh coordinates
-  bool specified_length_multiplier_ {false};
-
   //! Sample barycentric coordinates given a seed and the vertex positions and
   //! return the sampled position
   //
@@ -671,6 +666,11 @@ protected:
   //! \param[in] seed Random number generation seed
   //! \return Sampled position within the tetrahedron
   Position sample_tet(std::array<Position, 4> coords, uint64_t* seed) const;
+
+  // Data members
+  double length_multiplier_ {
+    -1.0};              //!< Multiplicative factor applied to mesh coordinates
+  std::string options_; //!< Options for search data structures
 
 private:
   //! Setup method for the mesh. Builds data structures,

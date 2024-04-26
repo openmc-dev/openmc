@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import ABCMeta
 from collections.abc import Iterable
 import hashlib
@@ -804,8 +805,8 @@ class MeshFilter(Filter):
     id : int
         Unique identifier for the filter
     translation : Iterable of float
-        This array specifies a vector that is used to translate (shift)
-        the mesh for this filter
+        This array specifies a vector that is used to translate (shift) the mesh
+        for this filter
     bins : list of tuple
         A list of mesh indices for each filter bin, e.g. [(1, 1, 1), (2, 1, 1),
         ...]
@@ -845,7 +846,6 @@ class MeshFilter(Filter):
         mesh_id = group['bins'][()]
         mesh_obj = kwargs['meshes'][mesh_id]
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
-
 
         out = cls(mesh_obj, filter_id=filter_id)
 
@@ -972,7 +972,7 @@ class MeshFilter(Filter):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem, **kwargs):
+    def from_xml_element(cls, elem: ET.Element, **kwargs) -> MeshFilter:
         mesh_id = int(get_text(elem, 'bins'))
         mesh_obj = kwargs['meshes'][mesh_id]
         filter_id = int(elem.get('id'))

@@ -96,6 +96,8 @@ The current version of the statepoint file format is 18.1.
               - **library** (*char[]*) -- Mesh library used to represent the
                                           mesh ("moab" or "libmesh").
               - **length_multiplier** (*double*) Scaling factor applied to the mesh.
+              - **options** (*char[]*) -- Special options that control spatial
+                                          search data structures used.
               - **volumes** (*double[]*) -- Volume of each mesh cell.
               - **vertices** (*double[]*) -- x, y, z values of the mesh vertices.
               - **connectivity** (*int[]*) -- Connectivity array for the mesh

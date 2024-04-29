@@ -90,7 +90,7 @@ _THERMAL_NAMES = {
 def _temperature_str(T):
     # round() normally returns an int when called with a single argument, but
     # numpy floats overload rounding to return another float
-    return "{}K".format(int(round(T)))
+    return f"{int(round(T))}K"
 
 
 def get_thermal_name(name):
@@ -439,7 +439,7 @@ class ThermalScattering(EqualityMixin):
 
     def __repr__(self):
         if hasattr(self, 'name'):
-            return "<Thermal Scattering Data: {}>".format(self.name)
+            return f"<Thermal Scattering Data: {self.name}>"
         else:
             return "<Thermal Scattering Data>"
 
@@ -506,7 +506,7 @@ class ThermalScattering(EqualityMixin):
         # Check if temprature already exists
         strT = data.temperatures[0]
         if strT in self.temperatures:
-            warn('S(a,b) data at T={} already exists.'.format(strT))
+            warn(f'S(a,b) data at T={strT} already exists.')
             return
 
         # Check that name matches
@@ -614,7 +614,7 @@ class ThermalScattering(EqualityMixin):
         # Get new name that is GND-consistent
         ace_name, xs = ace.name.split('.')
         if not xs.endswith('t'):
-            raise TypeError("{} is not a thermal scattering ACE table.".format(ace))
+            raise TypeError(f"{ace} is not a thermal scattering ACE table.")
         if name is None:
             name = get_thermal_name(ace_name)
 

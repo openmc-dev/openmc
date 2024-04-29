@@ -46,7 +46,7 @@ class CompositeSurface(ABC):
                 getattr(self, name).boundary_type = boundary_type
 
     def __repr__(self):
-        return "<{} at 0x{:x}>".format(type(self).__name__, id(self))
+        return f"<{type(self).__name__} at 0x{id(self):x}>"
 
     @property
     @abstractmethod

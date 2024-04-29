@@ -268,7 +268,7 @@ class Cell(_FortranObjectWithID):
             return rotation_data[9:]
         else:
             raise ValueError(
-                'Invalid size of rotation matrix: {}'.format(rot_size))
+                f'Invalid size of rotation matrix: {rot_size}')
 
     @rotation.setter
     def rotation(self, rotation_data):

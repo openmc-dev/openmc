@@ -188,7 +188,7 @@ def run(commands, tapein, tapeout, input_filename=None, stdout=False,
     with tempfile.TemporaryDirectory() as tmpdir:
         # Copy evaluations to appropriates 'tapes'
         for tape_num, filename in tapein.items():
-            tmpfilename = os.path.join(tmpdir, 'tape{}'.format(tape_num))
+            tmpfilename = os.path.join(tmpdir, f'tape{tape_num}')
             shutil.copy(str(filename), tmpfilename)
 
         # Start up NJOY process
@@ -216,7 +216,7 @@ def run(commands, tapein, tapeout, input_filename=None, stdout=False,
 
         # Copy output files back to original directory
         for tape_num, filename in tapeout.items():
-            tmpfilename = os.path.join(tmpdir, 'tape{}'.format(tape_num))
+            tmpfilename = os.path.join(tmpdir, f'tape{tape_num}')
             if os.path.isfile(tmpfilename):
                 shutil.move(tmpfilename, str(filename))
 
@@ -317,7 +317,7 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
     else:
         output_dir = Path(output_dir)
         if not output_dir.is_dir():
-            raise IOError("{} is not a directory".format(output_dir))
+            raise IOError(f"{output_dir} is not a directory")
 
     ev = evaluation if evaluation is not None else endf.Evaluation(filename)
     mat = ev.material
@@ -389,12 +389,12 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
             # Extend input with an ACER run for each temperature
             nace = nacer_in + 1 + 2*i
             ndir = nace + 1
-            ext = '{:02}'.format(i + 1)
+            ext = f'{i + 1:02}'
             commands += _TEMPLATE_ACER.format(**locals())
 
             # Indicate tapes to save for each ACER run
-            tapeout[nace] = output_dir / "ace_{:.1f}".format(temperature)
-            tapeout[ndir] = output_dir / "xsdir_{:.1f}".format(temperature)
+            tapeout[nace] = output_dir / f"ace_{temperature:.1f}"
+            tapeout[ndir] = output_dir / f"xsdir_{temperature:.1f}"
     commands += 'stop\n'
     run(commands, tapein, tapeout, **kwargs)
 
@@ -404,7 +404,7 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
         with ace.open('w') as ace_file, xsdir.open('w') as xsdir_file:
             for temperature in temperatures:
                 # Get contents of ACE file
-                text = (output_dir / "ace_{:.1f}".format(temperature)).read_text()
+                text = (output_dir / f"ace_{temperature:.1f}").read_text()
 
                 # If the target is metastable, make sure that ZAID in the ACE
                 # file reflects this by adding 400
@@ -417,13 +417,13 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
                 ace_file.write(text)
 
                 # Concatenate into destination xsdir file
-                xsdir_in = output_dir / "xsdir_{:.1f}".format(temperature)
+                xsdir_in = output_dir / f"xsdir_{temperature:.1f}"
                 xsdir_file.write(xsdir_in.read_text())
 
         # Remove ACE/xsdir files for each temperature
         for temperature in temperatures:
-            (output_dir / "ace_{:.1f}".format(temperature)).unlink()
-            (output_dir / "xsdir_{:.1f}".format(temperature)).unlink()
+            (output_dir / f"ace_{temperature:.1f}").unlink()
+            (output_dir / f"xsdir_{temperature:.1f}").unlink()
 
 
 def make_ace_thermal(filename, filename_thermal, temperatures=None,
@@ -480,7 +480,7 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
     else:
         output_dir = Path(output_dir)
         if not output_dir.is_dir():
-            raise IOError("{} is not a directory".format(output_dir))
+            raise IOError(f"{output_dir} is not a directory")
 
     ev = evaluation if evaluation is not None else endf.Evaluation(filename)
     mat = ev.material
@@ -581,12 +581,12 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
         # Extend input with an ACER run for each temperature
         nace = nthermal_acer_in + 1 + 2*i
         ndir = nace + 1
-        ext = '{:02}'.format(i + 1)
+        ext = f'{i + 1:02}'
         commands += _THERMAL_TEMPLATE_ACER.format(**locals())
 
         # Indicate tapes to save for each ACER run
-        tapeout[nace] = output_dir / "ace_{:.1f}".format(temperature)
-        tapeout[ndir] = output_dir / "xsdir_{:.1f}".format(temperature)
+        tapeout[nace] = output_dir / f"ace_{temperature:.1f}"
+        tapeout[ndir] = output_dir / f"xsdir_{temperature:.1f}"
     commands += 'stop\n'
     run(commands, tapein, tapeout, **kwargs)
 
@@ -595,13 +595,13 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
     with ace.open('w') as ace_file, xsdir.open('w') as xsdir_file:
         # Concatenate ACE and xsdir files together
         for temperature in temperatures:
-            ace_in = output_dir / "ace_{:.1f}".format(temperature)
+            ace_in = output_dir / f"ace_{temperature:.1f}"
             ace_file.write(ace_in.read_text())
 
-            xsdir_in = output_dir / "xsdir_{:.1f}".format(temperature)
+            xsdir_in = output_dir / f"xsdir_{temperature:.1f}"
             xsdir_file.write(xsdir_in.read_text())
 
     # Remove ACE/xsdir files for each temperature
     for temperature in temperatures:
-        (output_dir / "ace_{:.1f}".format(temperature)).unlink()
-        (output_dir / "xsdir_{:.1f}".format(temperature)).unlink()
+        (output_dir / f"ace_{temperature:.1f}").unlink()
+        (output_dir / f"xsdir_{temperature:.1f}").unlink()

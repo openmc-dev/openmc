@@ -1851,7 +1851,7 @@ class HexLattice(Lattice):
         largest_index = 6*(num_rings - 1)
         n_digits_index = len(str(largest_index))
         n_digits_ring = len(str(num_rings - 1))
-        str_form = '({{:{}}},{{:{}}})'.format(n_digits_ring, n_digits_index)
+        str_form = f'({{:{n_digits_ring}}},{{:{n_digits_index}}})'
         pad = ' '*(n_digits_index + n_digits_ring + 3)
 
         # Initialize the list for each row.
@@ -1956,7 +1956,7 @@ class HexLattice(Lattice):
         largest_index = 6*(num_rings - 1)
         n_digits_index = len(str(largest_index))
         n_digits_ring = len(str(num_rings - 1))
-        str_form = '({{:{}}},{{:{}}})'.format(n_digits_ring, n_digits_index)
+        str_form = f'({{:{n_digits_ring}}},{{:{n_digits_index}}})'
         pad = ' '*(n_digits_index + n_digits_ring + 3)
 
         # Initialize the list for each row.

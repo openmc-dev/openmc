@@ -135,7 +135,7 @@ class CMFDMesh:
         return outstr
 
     def _get_repr(self, list_var, label):
-        outstr = "\t{:<11} = ".format(label)
+        outstr = f"\t{label:<11} = "
         if list(list_var):
             outstr += ", ".join(str(i) for i in list_var)
         return outstr
@@ -242,9 +242,9 @@ class CMFDMesh:
 
         check_length('CMFD mesh grid', grid, grid_length)
         for i in range(grid_length):
-            check_type('CMFD mesh {}-grid'.format(dims[i]), grid[i], Iterable,
+            check_type(f'CMFD mesh {dims[i]}-grid', grid[i], Iterable,
                        Real)
-            check_greater_than('CMFD mesh {}-grid length'.format(dims[i]),
+            check_greater_than(f'CMFD mesh {dims[i]}-grid length',
                                len(grid[i]), 1)
         self._grid = [np.array(g) for g in grid]
         self._display_mesh_warning('rectilinear', 'CMFD mesh grid')
@@ -612,7 +612,7 @@ class CMFDRun:
         for key, value in display.items():
             check_value('display key', key,
                         ('balance', 'entropy', 'dominance', 'source'))
-            check_type("display['{}']".format(key), value, bool)
+            check_type(f"display['{key}']", value, bool)
             self._display[key] = value
 
     @downscatter.setter
@@ -928,7 +928,7 @@ class CMFDRun:
             with h5py.File(filename, 'a') as f:
                 if 'cmfd' not in f:
                     if openmc.lib.settings.verbosity >= 5:
-                        print(' Writing CMFD data to {}...'.format(filename))
+                        print(f' Writing CMFD data to {filename}...')
                         sys.stdout.flush()
                     cmfd_group = f.create_group("cmfd")
                     cmfd_group.attrs['cmfd_on'] = self._cmfd_on
@@ -1134,12 +1134,12 @@ class CMFDRun:
         with h5py.File(filename, 'r') as f:
             if 'cmfd' not in f:
                 raise OpenMCError('Could not find CMFD parameters in ',
-                                  'file {}'.format(filename))
+                                  f'file {filename}')
             else:
                 # Overwrite CMFD values from statepoint
                 if (openmc.lib.master() and
                         openmc.lib.settings.verbosity >= 5):
-                    print(' Loading CMFD data from {}...'.format(filename))
+                    print(f' Loading CMFD data from {filename}...')
                     sys.stdout.flush()
                 cmfd_group = f['cmfd']
 
@@ -1409,8 +1409,7 @@ class CMFDRun:
                 # Get all data entries for particular row in matrix
                 data = matrix.data[matrix.indptr[row]:matrix.indptr[row+1]]
                 for i in range(len(cols)):
-                    fh.write('{:3d}, {:3d}, {:0.8f}\n'.format(
-                        row, cols[i], data[i]))
+                    fh.write(f'{row:3d}, {cols[i]:3d}, {data[i]:0.8f}\n')
 
         # Save matrix in scipy format
         sparse.save_npz(base_filename, matrix)

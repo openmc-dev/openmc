@@ -654,7 +654,7 @@ class Integrator(ABC):
                 days = watt_days_per_kg * kilograms / rate
                 seconds.append(days*_SECONDS_PER_DAY)
             else:
-                raise ValueError("Invalid timestep unit '{}'".format(unit))
+                raise ValueError(f"Invalid timestep unit '{unit}'")
 
         self.timesteps = np.asarray(seconds)
         self.source_rates = np.asarray(source_rates)
@@ -672,8 +672,7 @@ class Integrator(ABC):
                 self._solver = CRAM16
             else:
                 raise ValueError(
-                    "Solver {} not understood. Expected 'cram48' or "
-                    "'cram16'".format(solver))
+                    f"Solver {solver} not understood. Expected 'cram48' or 'cram16'")
         else:
             self.solver = solver
 
@@ -685,14 +684,13 @@ class Integrator(ABC):
     def solver(self, func):
         if not isinstance(func, Callable):
             raise TypeError(
-                "Solver must be callable, not {}".format(type(func)))
+                f"Solver must be callable, not {type(func)}")
         try:
             sig = signature(func)
         except ValueError:
             # Guard against callables that aren't introspectable, e.g.
             # fortran functions wrapped by F2PY
-            warn("Could not determine arguments to {}. Proceeding "
-                 "anyways".format(func))
+            warn(f"Could not determine arguments to {func}. Proceeding anyways")
             self._solver = func
             return
 
@@ -704,8 +702,7 @@ class Integrator(ABC):
         for ix, param in enumerate(sig.parameters.values()):
             if param.kind in {param.KEYWORD_ONLY, param.VAR_KEYWORD}:
                 raise ValueError(
-                    "Keyword arguments like {} at position {} are not "
-                    "allowed".format(ix, param))
+                    f"Keyword arguments like {ix} at position {param} are not allowed")
 
         self._solver = func
 

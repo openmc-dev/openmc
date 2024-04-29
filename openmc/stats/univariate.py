@@ -383,7 +383,7 @@ class Uniform(Univariate):
         """
         element = ET.Element(element_name)
         element.set("type", "uniform")
-        element.set("parameters", '{} {}'.format(self.a, self.b))
+        element.set("parameters", f'{self.a} {self.b}')
         return element
 
     @classmethod
@@ -672,7 +672,7 @@ class Watt(Univariate):
         """
         element = ET.Element(element_name)
         element.set("type", "watt")
-        element.set("parameters", '{} {}'.format(self.a, self.b))
+        element.set("parameters", f'{self.a} {self.b}')
         return element
 
     @classmethod
@@ -762,7 +762,7 @@ class Normal(Univariate):
         """
         element = ET.Element(element_name)
         element.set("type", "normal")
-        element.set("parameters", '{} {}'.format(self.mean_value, self.std_dev))
+        element.set("parameters", f'{self.mean_value} {self.std_dev}')
         return element
 
     @classmethod

@@ -629,7 +629,7 @@ class _DLLGlobal:
 
 class _FortranObject:
     def __repr__(self):
-        return "<{}(index={})>".format(type(self).__name__, self._index)
+        return f"<{type(self).__name__}(index={self._index})>"
 
 
 class _FortranObjectWithID(_FortranObject):
@@ -641,7 +641,7 @@ class _FortranObjectWithID(_FortranObject):
         self.id
 
     def __repr__(self):
-        return "<{}(id={})>".format(type(self).__name__, self.id)
+        return f"<{type(self).__name__}(id={self.id})>"
 
 
 @contextmanager

@@ -54,8 +54,7 @@ class CrossScore:
         return str(other) == str(self)
 
     def __repr__(self):
-        return '({} {} {})'.format(self.left_score, self.binary_op,
-                                   self.right_score)
+        return f'({self.left_score} {self.binary_op} {self.right_score})'
 
     @property
     def left_score(self):
@@ -271,7 +270,7 @@ class CrossFilter:
     def type(self):
         left_type = self.left_filter.type
         right_type = self.right_filter.type
-        return '({} {} {})'.format(left_type, self.binary_op, right_type)
+        return f'({left_type} {self.binary_op} {right_type})'
 
     @property
     def bins(self):

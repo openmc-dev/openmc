@@ -221,8 +221,7 @@ def pin(surfaces, items, subdivisions=None, divide_vols=True,
         center_getter = attrgetter("z0", "y0")
     else:
         raise TypeError(
-            "Not configured to interpret {} surfaces".format(
-                surf_type.__name__))
+            f"Not configured to interpret {surf_type.__name__} surfaces")
 
     centers = set()
     prev_rad = 0

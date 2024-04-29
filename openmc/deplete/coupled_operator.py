@@ -518,7 +518,7 @@ class CoupledOperator(OpenMCOperator):
 
         """
         openmc.lib.statepoint_write(
-            "openmc_simulation_n{}.h5".format(step),
+            f"openmc_simulation_n{step}.h5",
             write_source=False)
 
     def finalize(self):

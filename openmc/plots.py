@@ -634,8 +634,7 @@ class Plot(PlotBase):
             raise ValueError(msg)
 
         elif meshlines['type'] not in ['tally', 'entropy', 'ufs', 'cmfd']:
-            msg = 'Unable to set the meshlines with ' \
-                  'type "{}"'.format(meshlines['type'])
+            msg = f"Unable to set the meshlines with type \"{meshlines['type']}\""
             raise ValueError(msg)
 
         if 'id' in meshlines:

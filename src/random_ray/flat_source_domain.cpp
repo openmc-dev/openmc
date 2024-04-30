@@ -522,9 +522,6 @@ void FlatSourceDomain::random_ray_tally()
         }
 
         // Apply score to the appropriate tally bin
-        // If this is a flux score, we store it in an intermediate data
-        // structure so that it can be properly normalized once the total volume
-        // of the bin is determined.
         Tally& tally {*model::tallies[task.tally_idx]};
 #pragma omp atomic
         tally.results_(task.filter_idx, task.score_idx, TallyResult::VALUE) +=
@@ -532,7 +529,9 @@ void FlatSourceDomain::random_ray_tally()
       } // end tally task loop
     }   // end energy group loop
 
-    // Accumulate intermediate volume contributions for flux tallies
+    // For flux tallies, the total volume of the spatial region is needed
+    // for normalizing the flux. We store this volume in a separate tensor.
+    // We only contribute to each volume tally bin once per FSR.
     for (const auto& task : volume_task_[sr]) {
       if (task.score_type == SCORE_FLUX) {
 #pragma omp atomic

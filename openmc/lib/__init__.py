@@ -28,7 +28,7 @@ else:
 if os.environ.get('READTHEDOCS', None) != 'True':
     # Open shared library
     _filename = pkg_resources.resource_filename(
-        __name__, 'libopenmc.{}'.format(_suffix))
+        __name__, f'libopenmc.{_suffix}')
     _dll = CDLL(_filename)
 else:
     # For documentation builds, we don't actually have the shared library
@@ -53,6 +53,9 @@ def _libmesh_enabled():
 
 def _mcpl_enabled():
     return c_bool.in_dll(_dll, "MCPL_ENABLED").value
+
+def _uwuw_enabled():
+    return c_bool.in_dll(_dll, "UWUW_ENABLED").value
 
 
 from .error import *

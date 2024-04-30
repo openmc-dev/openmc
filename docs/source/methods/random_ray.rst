@@ -754,8 +754,6 @@ The random ray solver in OpenMC can be used for both eigenvalue and fixed source
 
 - Inactive batches. In Monte Carlo, use of a fixed source implies that all batches are active batches, as there is no longer a need to develop a fission source distribution. However, in random ray mode, there is still need to develop the scattering source by way of inactive batches before beginning active batches. 
 
-
-
 ---------------------------
 Fundamental Sources of Bias
 ---------------------------

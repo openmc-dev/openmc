@@ -701,7 +701,7 @@ class Geometry:
             coeffs = tuple(round(surf._coefficients[k],
                                  self.surface_precision)
                            for k in surf._coeff_keys)
-            key = (surf._type,) + coeffs
+            key = (surf._type, surf._boundary_type) + coeffs
             redundancies[key].append(surf)
 
         redundant_surfaces = {replace.id: keep

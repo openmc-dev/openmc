@@ -66,6 +66,8 @@ def test_export_to_xml(run_in_tmpdir):
         )
     }
 
+    s.max_particle_events = 100
+
     # Make sure exporting XML works
     s.export_to_xml()
 
@@ -134,6 +136,8 @@ def test_export_to_xml(run_in_tmpdir):
     assert vol.samples == 1000
     assert vol.lower_left == (-10., -10., -10.)
     assert vol.upper_right == (10., 10., 10.)
+    assert s.weight_window_checkpoints == {'surface': True, 'collision': False}
+    assert s.max_particle_events == 100
     assert s.random_ray['distance_inactive'] == 10.0
     assert s.random_ray['distance_active'] == 100.0
     assert s.random_ray['ray_source'].space.lower_left == [-1., -1., -1.]

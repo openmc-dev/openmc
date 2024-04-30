@@ -41,12 +41,15 @@ solves in random ray mode** due to this additional need to converge the
 scattering source.
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 .. warning::
     Unlike Monte Carlo, the random ray solver still requires usage of inactive batches when in fixed source mode so as to develop the scattering source.
 
 The additional burden of converging the scattering source generally results in a higher requirement for the number of inactive batches compared to Monte Carlo - often by an order of magnitude or more. For instance, it may be reasonable to only use 50 inactive batches for a light water reactor simulation with Monte Carlo, but random ray might require 500 or more inactive batches. Similar to Monte Carlo, :ref:`Shannon entropy
 <usersguide_entropy>` can be used to gauge whether the combined scattering and fission source has fully developed.
 =======
+=======
+>>>>>>> develop
 The additional burden of converging the scattering source generally results in a
 higher requirement for the number of inactive batches---often by an order of
 magnitude or more. For instance, it may be reasonable to only use 50 inactive
@@ -54,7 +57,10 @@ batches for a light water reactor simulation with Monte Carlo, but random ray
 might require 500 or more inactive batches. Similar to Monte Carlo,
 :ref:`Shannon entropy <usersguide_entropy>` can be used to gauge whether the
 combined scattering and fission source has fully developed.
+<<<<<<< HEAD
 >>>>>>> random_ray_merge
+=======
+>>>>>>> develop
 
 Similar to Monte Carlo, active batches are used in the random ray solver mode to
 accumulate and converge statistics on unknown quantities (i.e., the random ray
@@ -256,8 +262,11 @@ a larger value until the "low ray density" messages go away.
     ray lengths are sufficiently long to allow for transport to occur between
     source and target regions of interest.
 
+<<<<<<< HEAD
 .. _usersguide_ray_source:
 
+=======
+>>>>>>> develop
 ----------
 Ray Source
 ----------
@@ -421,6 +430,7 @@ in the `OpenMC Jupyter notebook collection
     separate materials can be defined each with a separate multigroup dataset
     corresponding to a given temperature.
 
+<<<<<<< HEAD
 ---------------------------------
 Fixed Source and Eigenvalue Modes 
 ---------------------------------
@@ -452,10 +462,13 @@ When defining a :class:`openmc.stats.Discrete` object, note that the ``x`` field
     # Add fixed source and ray sampling source to settings file
     settings.source = [neutron_source]
 
+=======
+>>>>>>> develop
 ---------------------------------------
 Putting it All Together: Example Inputs
 ---------------------------------------
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 ~~~~~~~~~~~~~~~~~~
 Eigenvalue Example
@@ -467,6 +480,9 @@ An example of a settings definition for random ray is given below:
 =======
 An example of a settings definition for random ray is given below::
 >>>>>>> random_ray_merge
+=======
+An example of a settings definition for random ray is given below::
+>>>>>>> develop
 
     # Geometry and MGXS material definition of 2x2 lattice (not shown)
     pitch = 1.26
@@ -527,6 +543,7 @@ All other inputs (e.g., geometry, materials) will be unchanged from a typical
 Monte Carlo run (see the :ref:`geometry <usersguide_geometry>` and
 :ref:`multigroup materials <create_mgxs>` user guides for more information).
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 There is also a complete example of a pincell available in the ``openmc/examples/pincell_random_ray`` folder.
 
@@ -608,3 +625,7 @@ All other inputs (e.g., geometry, material) will be unchanged from a typical Mon
 There is also a complete example of a pincell available in the
 ``openmc/examples/pincell_random_ray`` folder.
 >>>>>>> random_ray_merge
+=======
+There is also a complete example of a pincell available in the
+``openmc/examples/pincell_random_ray`` folder.
+>>>>>>> develop

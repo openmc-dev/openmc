@@ -53,7 +53,7 @@ class _Settings:
                 current_idx.value = idx
                 break
         else:
-            raise ValueError('Invalid run mode: {}'.format(mode))
+            raise ValueError(f'Invalid run mode: {mode}')
 
     @property
     def path_statepoint(self):

@@ -399,6 +399,32 @@ def test_polygon():
     with pytest.raises(ValueError):
         openmc.model.Polygon(rz_points)
 
+    # Test "M" shaped polygon 
+    points = np.array([[8.5151581, -17.988337],
+                       [10.381711000000001, -17.988337],
+                       [12.744357, -24.288728000000003],
+                       [15.119406000000001, -17.988337],
+                       [16.985959, -17.988337],
+                       [16.985959, -27.246687],
+                       [15.764328, -27.246687],
+                       [15.764328, -19.116951],
+                       [13.376877, -25.466951],
+                       [12.118039, -25.466951],
+                       [9.7305877, -19.116951],
+                       [9.7305877, -27.246687],
+                       [8.5151581, -27.246687]])
+
+    # Test points inside and outside by using offset method
+    m_polygon = openmc.model.Polygon(points, basis='xz')
+    inner_pts = m_polygon.offset(-0.1).points
+    assert all([(pt[0], 0, pt[1]) in -m_polygon for pt in inner_pts])
+    outer_pts = m_polygon.offset(0.1).points
+    assert all([(pt[0], 0, pt[1]) in +m_polygon for pt in outer_pts])
+
+    # Offset of -0.2 will cause self-intersection
+    with pytest.raises(ValueError):
+        m_polygon.offset(-0.2)
+
 
 @pytest.mark.parametrize("axis", ["x", "y", "z"])
 def test_cruciform_prism(axis):

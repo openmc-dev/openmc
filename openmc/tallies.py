@@ -33,7 +33,7 @@ _NUCLIDE_CLASSES = (str, openmc.CrossNuclide, openmc.AggregateNuclide)
 _FILTER_CLASSES = (openmc.Filter, openmc.CrossFilter, openmc.AggregateFilter)
 
 # Valid types of estimators
-ESTIMATOR_TYPES = ['tracklength', 'collision', 'analog']
+ESTIMATOR_TYPES = ('tracklength', 'collision', 'analog')
 
 
 class Tally(IDManagerMixin):
@@ -140,8 +140,8 @@ class Tally(IDManagerMixin):
             return False
         if other.filters != self.filters:
             return False
-        # adjust nuclides to remove 'total' if present,
-        # accounting for tallies with data from statepoint files
+        # for tallies are loaded from statpoint files
+        # an empty nuclide list is equivalent to a list with 'total'
         other_nuclides = other.nuclides.copy()
         self_nuclides = self.nuclides.copy()
         if 'total' in other_nuclides:
@@ -899,7 +899,7 @@ class Tally(IDManagerMixin):
         subelement.text = ' '.join(str(x) for x in self.scores)
 
         # Tally estimator type
-        if self.estimator is not None:
+        if self.estimator is not None and self.estimator != 'tracklength':
             subelement = ET.SubElement(element, "estimator")
             subelement.text = self.estimator
 
@@ -917,7 +917,7 @@ class Tally(IDManagerMixin):
     def add_results(self, statepoint):
         """Add results from the provided statepoint file to this tally instance
 
-            .. versionadded: 0.13.4
+            .. versionadded: 0.14.1
 
         Parameters
         ----------
@@ -3217,8 +3217,8 @@ class Tallies(cv.CheckedList):
 
     def add_results(self, statepoint):
         """Add results from the provided statepoint file the tally objects in this collection
-
-            .. versionadded: 0.13.4
+0
+            .. versionadded: 0.14.1
 
         Parameters
         ----------

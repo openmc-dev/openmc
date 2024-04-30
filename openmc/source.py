@@ -668,10 +668,6 @@ class FileSource(SourceBase):
         lower, upper bounds in time [s] of accepted particles
     energy_bounds : Iterable of float
         lower, upper bounds in energy [eV] of accepted particles
-    lower_left : Iterable of float
-        Lower-left corner coordinates from which to accept particles
-    upper_right : Iterable of float
-        Upper-right corner coordinates from which to accept particles
 
     Attributes
     ----------
@@ -691,23 +687,25 @@ class FileSource(SourceBase):
         lower, upper bounds in time of accepted particles
     energy_bounds : Iterable of float
         lower, upper bounds in energy of accepted particles
-    lower_left : Iterable of double
-        Lower-left corner coordinates
-    upper_right : Iterable of double
-        Upper-right corner coordinates
     rejection_strategy: {'resample','kill'}
         Strategy when a particle is rejected. Pick a new particle or accept and terminate.
 
     """
 
-    def __init__(self, path: Optional[PathLike] = None, strength=1.0, rejection_strategy = None, domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None, lower_left: Optional[Sequence[Double]] = None, upper_right: Optional[Sequence[Double]] = None, time_bounds: Optional[Sequence[Double]] = None, energy_bounds: Optional[Sequence[Double]] = None) -> None:
+    def __init__(
+            self,
+            path: Optional[PathLike] = None,
+            strength=1.0,
+            rejection_strategy = None,
+            domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None,
+            time_bounds: Optional[Sequence[float]] = None,
+            energy_bounds: Optional[Sequence[float]] = None
+    ) -> None:
         super().__init__(strength=strength)
 
         self._path = None
         self._time_bounds = None
         self._energy_bounds = None
-        self._lower_left = None
-        self._upper_right = None
         self._rejection_strategy = None
 
         if path is not None:
@@ -727,10 +725,6 @@ class FileSource(SourceBase):
             self.time_bounds = time_bounds
         if energy_bounds is not None:
             self.energy_bounds = energy_bounds
-        if lower_left is not None:
-            self.lower_left = lower_left
-        if upper_right is not None:
-            self.upper_right = upper_right
         if rejection_strategy is not None:
             self.rejection_strategy = rejection_strategy
 
@@ -786,26 +780,6 @@ class FileSource(SourceBase):
         self._energy_bounds = energy_bounds
 
     @property
-    def lower_left(self):
-        return self._lower_left
-
-    @lower_left.setter
-    def lower_left(self, lower_left):
-        name = 'lower-left coordinates'
-        cv.check_type(name, lower_left, Iterable, Real)
-        self._lower_left = lower_left
-
-    @property
-    def upper_right(self):
-        return self._upper_right
-
-    @upper_right.setter
-    def upper_right(self, upper_right):
-        name = 'upper-right coordinates'
-        cv.check_type(name, upper_right, Iterable, Real)
-        self._upper_right = upper_right
-
-    @property
     def rejection_strategy(self):
         return self._rejection_strategy
 
@@ -837,12 +811,6 @@ class FileSource(SourceBase):
         if self.energy_bounds is not None:
             dt_elem = ET.SubElement(element, "energy_bounds")
             dt_elem.text = ' '.join(str(E) for E in self.energy_bounds)
-        if self.lower_left is not None:
-            dt_elem = ET.SubElement(element, "lower_left")
-            dt_elem.text = ' '.join(str(cd) for cd in self.lower_left)
-        if self.upper_right is not None:
-            dt_elem = ET.SubElement(element, "upper_right")
-            dt_elem.text = ' '.join(str(cd) for cd in self.upper_right)
         if self.rejection_strategy is not None:
             dt_elem = ET.SubElement(element, "rejection_strategy")
             dt_elem.text = self.rejection_strategy

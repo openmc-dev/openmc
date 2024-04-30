@@ -73,9 +73,7 @@ protected:
     std::numeric_limits<double>::max()}; //!< time limits
   std::pair<double, double> energy_bounds_ {
     0, std::numeric_limits<double>::max()}; //!< energy limits
-  vector<double> lower_left_;               //!< Lower left corner cds of filter
-  vector<double> upper_right_;           //!< Upper right corner cds of filter
-  RejectionStrategy rejection_strategy_; //!< Procedure for rejected
+  RejectionStrategy rejection_strategy_;    //!< Procedure for rejected
 };
 
 //==============================================================================

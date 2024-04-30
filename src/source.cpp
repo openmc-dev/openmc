@@ -109,18 +109,6 @@ void Source::check_for_restriction_nodes(pugi::xml_node node)
     if (ids.size() == 2)
       energy_bounds_ = std::make_pair(ids[0], ids[1]);
   }
-  if (check_for_node(node, "lower_left")) {
-    auto ids = get_node_array<double>(node, "lower_left");
-    for (auto id : ids) {
-      lower_left_.push_back(id);
-    }
-  }
-  if (check_for_node(node, "upper_right")) {
-    auto ids = get_node_array<double>(node, "upper_right");
-    for (auto id : ids) {
-      upper_right_.push_back(id);
-    }
-  }
 
   // Check for how to handle rejected particles
   if (check_for_node(node, "rejection_strategy")) {
@@ -158,33 +146,24 @@ bool Source::inside_time_bounds(const double time) const
 bool Source::inside_spatial_bounds(SourceSite& s) const
 {
   bool found = false;
-  Particle p;
-  p.r() = s.r;
+  GeometryState geom_state;
+  geom_state.r() = s.r;
 
   // Reject particle if it's not in the geometry at all
-  if (!(found = exhaustive_find_cell(p)))
-    return false;
-
-  if (!lower_left_.empty() &&
-      (s.r[0] < lower_left_[0] || s.r[1] < lower_left_[1] ||
-        s.r[2] < lower_left_[2]))
-    return false;
-  if (!upper_right_.empty() &&
-      (s.r[0] > upper_right_[0] || s.r[1] > upper_right_[1] ||
-        s.r[2] > upper_right_[2]))
+  if (!(found = exhaustive_find_cell(geom_state)))
     return false;
 
   if (!domain_ids_.empty()) {
     if (domain_type_ == DomainType::MATERIAL) {
-      auto mat_index = p.material();
+      auto mat_index = geom_state.material();
       if (mat_index != MATERIAL_VOID) {
         found = contains(domain_ids_, model::materials[mat_index]->id());
       }
     } else {
-      for (int i = 0; i < p.n_coord(); i++) {
+      for (int i = 0; i < geom_state.n_coord(); i++) {
         auto id = (domain_type_ == DomainType::CELL)
-                    ? model::cells[p.coord(i).cell]->id_
-                    : model::universes[p.coord(i).universe]->id_;
+                    ? model::cells[geom_state.coord(i).cell]->id_
+                    : model::universes[geom_state.coord(i).universe]->id_;
         if ((found = contains(domain_ids_, id)))
           break;
       }

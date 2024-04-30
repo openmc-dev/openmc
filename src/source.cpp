@@ -264,7 +264,7 @@ IndependentSource::IndependentSource(pugi::xml_node node)
       time_ = UPtrDist {new Discrete {T, p, 1}};
     }
 
-    // Check for additional defined restrictions (from RestrictedSource)
+    // Check for additional defined restrictions
     check_for_restriction_nodes(node);
   }
 }
@@ -524,6 +524,9 @@ MeshSource::MeshSource(pugi::xml_node node)
   }
 
   space_ = std::make_unique<MeshSpatial>(mesh_idx, strengths);
+
+  // Check for additional defined restrictions
+  check_for_restriction_nodes(node);
 }
 
 SourceSite MeshSource::sample(uint64_t* seed) const

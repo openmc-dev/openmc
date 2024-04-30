@@ -82,12 +82,13 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
   // Initialize tally volumes
   tally_volumes_.resize(model::tallies.size());
   for (int i = 0; i < model::tallies.size(); i++) {
-    tally_volumes_[i] = model::tallies[i]->results();
-  }
-  // Initialize tally volumes
-  tally_.resize(model::tallies.size());
-  for (int i = 0; i < model::tallies.size(); i++) {
-    tally_[i] = model::tallies[i]->results();
+    //  Get the shape of the 3D result tensor
+    auto shape = model::tallies[i]->results().shape();
+
+    // Create a new 2D tensor with the same size as the first
+    // two dimensions of the 3D tensor
+    tally_volumes_[i] =
+      xt::xtensor<double, 2>::from_shape({shape[0], shape[1]});
   }
 
   // Compute simulation domain volume based on ray source
@@ -437,10 +438,6 @@ void FlatSourceDomain::reset_tally_volumes()
   for (auto& tensor : tally_volumes_) {
     tensor.fill(0.0); // Set all elements of the tensor to 0.0
   }
-#pragma omp parallel for
-  for (auto& tensor : tally_) {
-    tensor.fill(0.0); // Set all elements of the tensor to 0.0
-  }
 }
 
 // Tallying in random ray is not done directly during transport, rather,
@@ -539,8 +536,8 @@ void FlatSourceDomain::random_ray_tally()
     for (const auto& task : volume_task_[sr]) {
       if (task.score_type == SCORE_FLUX) {
 #pragma omp atomic
-        tally_volumes_[task.tally_idx](
-          task.filter_idx, task.score_idx, TallyResult::VALUE) += volume;
+        tally_volumes_[task.tally_idx](task.filter_idx, task.score_idx) +=
+          volume;
       }
     }
   } // end FSR loop
@@ -557,7 +554,7 @@ void FlatSourceDomain::random_ray_tally()
       for (int score_idx = 0; score_idx < tally.n_scores(); score_idx++) {
         auto score_type = tally.scores_[score_idx];
         if (score_type == SCORE_FLUX) {
-          double vol = tally_volumes_[i](bin, score_idx, TallyResult::VALUE);
+          double vol = tally_volumes_[i](bin, score_idx);
           if (vol > 0.0) {
             tally.results_(bin, score_idx, TallyResult::VALUE) /= vol;
           }

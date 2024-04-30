@@ -169,8 +169,7 @@ private:
   // flux, total reaction rate, fission reaction rate, etc.). This intermediate
   // data structure is used when tallying flux quantities that must be
   // normalized by volume.
-  vector<xt::xtensor<double, 3>> tally_volumes_;
-  vector<xt::xtensor<double, 3>> tally_;
+  vector<xt::xtensor<double, 2>> tally_volumes_;
 
 }; // class FlatSourceDomain
 

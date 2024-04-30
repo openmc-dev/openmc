@@ -7,9 +7,16 @@
 
 namespace openmc {
 
+//----------------------------------------------------------------------------
+// Helper Functions
+
 // The hash_combine function is the standard hash combine function from boost
+// that is typically used for combining multiple hash values into a single hash
+// as is needed for larger objects being stored in a hash map. The function is
+// taken from:
 // https://www.boost.org/doc/libs/1_55_0/doc/html/hash/reference.html#boost.hash_combine
 // which carries the following license:
+//
 // Boost Software License - Version 1.0 - August 17th, 2003
 // Permission is hereby granted, free of charge, to any person or organization
 // obtaining a copy of the software and accompanying documentation covered by
@@ -52,6 +59,8 @@ struct TallyTask {
   {}
   TallyTask() = default;
 
+  // Comparison and Hash operators are defined to allow usage of the
+  // TallyTask struct as a key in an unordered_set
   bool operator==(const TallyTask& other) const
   {
     return tally_idx == other.tally_idx && filter_idx == other.filter_idx &&

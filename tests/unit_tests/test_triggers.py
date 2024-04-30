@@ -74,7 +74,7 @@ def test_tally_trigger_null_score(run_in_tmpdir):
         assert total_batches == pincell.settings.trigger_max_batches
 
 
-def test_tally_trigger_zero_allowed(run_in_tmpdir):
+def test_tally_trigger_zero_ignored(run_in_tmpdir):
     pincell = openmc.examples.pwr_pin_cell()
  
     # create an energy filter below and around the O-16(n,p) threshold
@@ -89,7 +89,7 @@ def test_tally_trigger_zero_allowed(run_in_tmpdir):
     # 100% relative error: should be immediately satisfied in nonzero bin
     trigger = openmc.Trigger('rel_err', 1.0)
     trigger.scores = ['(n,p)']
-    trigger.allow_zero = True
+    trigger.ignore_zeros = True
 
     tally.triggers = [trigger]
 

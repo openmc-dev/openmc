@@ -100,7 +100,7 @@ The ``<tally>`` element accepts the following sub-elements:
 
      *Default*: None
 
-   :allow_zero:
+   :ignore_zeros:
      Whether to allow zero tally bins to be ignored when assessing the
      convergece of the precision trigger. If True, only nonzero tally scores
      will be compared to the trigger's threshold.

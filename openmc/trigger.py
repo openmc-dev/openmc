@@ -18,7 +18,9 @@ class Trigger(EqualityMixin):
     threshold : float
         The threshold for the trigger type.
     ignore_zeros : bool
-        Whether to allow zero tally bins to be ignored.
+        Whether to allow zero tally bins to be ignored. Note that this option
+        can cause the trigger to fire prematurely if there are zero scores in
+        any bin at the first evaluation.
 
         .. versionadded:: 0.14.1
 

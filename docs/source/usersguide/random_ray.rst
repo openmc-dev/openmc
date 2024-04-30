@@ -40,27 +40,15 @@ Carlo, **inactive batches are required for both eigenvalue and fixed source
 solves in random ray mode** due to this additional need to converge the
 scattering source.
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 .. warning::
-    Unlike Monte Carlo, the random ray solver still requires usage of inactive batches when in fixed source mode so as to develop the scattering source.
+    Unlike Monte Carlo, the random ray solver still requires usage of inactive
+    batches when in fixed source mode so as to develop the scattering source.
 
-The additional burden of converging the scattering source generally results in a higher requirement for the number of inactive batches compared to Monte Carlo - often by an order of magnitude or more. For instance, it may be reasonable to only use 50 inactive batches for a light water reactor simulation with Monte Carlo, but random ray might require 500 or more inactive batches. Similar to Monte Carlo, :ref:`Shannon entropy
-<usersguide_entropy>` can be used to gauge whether the combined scattering and fission source has fully developed.
-=======
-=======
->>>>>>> develop
 The additional burden of converging the scattering source generally results in a
 higher requirement for the number of inactive batches---often by an order of
 magnitude or more. For instance, it may be reasonable to only use 50 inactive
 batches for a light water reactor simulation with Monte Carlo, but random ray
-might require 500 or more inactive batches. Similar to Monte Carlo,
-:ref:`Shannon entropy <usersguide_entropy>` can be used to gauge whether the
-combined scattering and fission source has fully developed.
-<<<<<<< HEAD
->>>>>>> random_ray_merge
-=======
->>>>>>> develop
+might require 500 or more inactive batches.
 
 Similar to Monte Carlo, active batches are used in the random ray solver mode to
 accumulate and converge statistics on unknown quantities (i.e., the random ray
@@ -262,11 +250,8 @@ a larger value until the "low ray density" messages go away.
     ray lengths are sufficiently long to allow for transport to occur between
     source and target regions of interest.
 
-<<<<<<< HEAD
 .. _usersguide_ray_source:
 
-=======
->>>>>>> develop
 ----------
 Ray Source
 ----------
@@ -430,22 +415,47 @@ in the `OpenMC Jupyter notebook collection
     separate materials can be defined each with a separate multigroup dataset
     corresponding to a given temperature.
 
-<<<<<<< HEAD
 ---------------------------------
 Fixed Source and Eigenvalue Modes 
 ---------------------------------
 
-Both fixed source and eigenvalue modes are supported with the random ray solver in OpenMC. Modes can be selected as described in the :ref:`run modes section <usersguide_run_modes>`. In both modes, a ray source must be provided to let OpenMC know where to sample ray starting locations from, as discussed in the :ref:`ray source section <usersguide_ray_source>`. In fixed source mode, at least one regular source must be provided as well which represents the physical particle fixed source. As discussed in the :ref:`fixed source methodology section <usersguide_fixed_source_methods>`, the types of fixed sources supported in the random ray solver mode are much more limited as compared to what is possible with the Monte Carlo solver.
+Both fixed source and eigenvalue modes are supported with the random ray solver
+in OpenMC. Modes can be selected as described in the :ref:`run modes section
+<usersguide_run_modes>`. In both modes, a ray source must be provided to let
+OpenMC know where to sample ray starting locations from, as discussed in the
+:ref:`ray source section <usersguide_ray_source>`. In fixed source mode, at
+least one regular source must be provided as well which represents the physical
+particle fixed source. As discussed in the :ref:`fixed source methodology
+section <usersguide_fixed_source_methods>`, the types of fixed sources supported
+in the random ray solver mode are much more limited as compared to what is
+possible with the Monte Carlo solver.
 
-Currently, all of the following conditions must be met for the source to be valid in random ray mode:
+Currently, all of the following conditions must be met for the source to be
+valid in random ray mode:
 
-- One or more domain ids must be specified that indicate which cells, universes, or materials the source applies to. This implicitly limits the source type to being volumetric. This is specified via the ``domains`` field of the :class:`openmc.IndependentSource` Python class.
+- One or more domain ids must be specified that indicate which cells, universes,
+  or materials the source applies to. This implicitly limits the source type to
+  being volumetric. This is specified via the ``domains`` field of the
+  :class:`openmc.IndependentSource` Python class.
 - The source must be isotropic (default for a source)
-- The source must use a discrete (i.e., multigroup) energy distribution. The discrete energy distribution is input by defining a :class:`openmc.stats.Discrete` Python class, and passed as the ``energy`` field of the :class:`openmc.IndependentSource` Python class.
+- The source must use a discrete (i.e., multigroup) energy distribution. The
+  discrete energy distribution is input by defining a
+  :class:`openmc.stats.Discrete` Python class, and passed as the ``energy``
+  field of the :class:`openmc.IndependentSource` Python class.
 
-Any other spatial distribution information contained in a particle source will be ignored. Only the specified cell, material, or universe domains will be used to define the spatial location of the source, as the source will be applied during a pre-processing stage of OpenMC to all source regions that are contained within the inputted domains for the source.
+Any other spatial distribution information contained in a particle source will
+be ignored. Only the specified cell, material, or universe domains will be used
+to define the spatial location of the source, as the source will be applied
+during a pre-processing stage of OpenMC to all source regions that are contained
+within the inputted domains for the source.
 
-When defining a :class:`openmc.stats.Discrete` object, note that the ``x`` field will correspond to the discrete energy points, and the ``p`` field will correspond to the discrete probabilities. It is recommended to select energy points that fall within energy groups rather than on boundaries between the groups. I.e., if the problem contains two energy groups (with bin edges of 1.0e-5, 1.0e-1, 1.0e7), then a good selection for the ``x`` field might be points of 1.0e-2 and 1.0e1.
+When defining a :class:`openmc.stats.Discrete` object, note that the ``x`` field
+will correspond to the discrete energy points, and the ``p`` field will
+correspond to the discrete probabilities. It is recommended to select energy
+points that fall within energy groups rather than on boundaries between the
+groups. I.e., if the problem contains two energy groups (with bin edges of
+1.0e-5, 1.0e-1, 1.0e7), then a good selection for the ``x`` field might be
+points of 1.0e-2 and 1.0e1.
 
 ::
     
@@ -462,28 +472,19 @@ When defining a :class:`openmc.stats.Discrete` object, note that the ``x`` field
     # Add fixed source and ray sampling source to settings file
     settings.source = [neutron_source]
 
-=======
->>>>>>> develop
 ---------------------------------------
 Putting it All Together: Example Inputs
 ---------------------------------------
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 ~~~~~~~~~~~~~~~~~~
 Eigenvalue Example
 ~~~~~~~~~~~~~~~~~~
 
-An example of a settings definition for random ray is given below:
+An example of a settings definition for an eigenvalue random ray simulation is
+given below:
 
 ::
-=======
-An example of a settings definition for random ray is given below::
->>>>>>> random_ray_merge
-=======
-An example of a settings definition for random ray is given below::
->>>>>>> develop
-
+    
     # Geometry and MGXS material definition of 2x2 lattice (not shown)
     pitch = 1.26
     group_edges = [1e-5, 0.0635, 10.0, 1.0e2, 1.0e3, 0.5e6, 1.0e6, 20.0e6]
@@ -543,15 +544,15 @@ All other inputs (e.g., geometry, materials) will be unchanged from a typical
 Monte Carlo run (see the :ref:`geometry <usersguide_geometry>` and
 :ref:`multigroup materials <create_mgxs>` user guides for more information).
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-There is also a complete example of a pincell available in the ``openmc/examples/pincell_random_ray`` folder.
+There is also a complete example of a pincell available in the
+``openmc/examples/pincell_random_ray`` folder.
 
 ~~~~~~~~~~~~~~~~~~~~
 Fixed Source Example
 ~~~~~~~~~~~~~~~~~~~~
 
-An example of a settings definition for a fixed source random ray solve is given below:
+An example of a settings definition for a fixed source random ray simulation is
+given below:
 
 ::
 
@@ -620,12 +621,6 @@ An example of a settings definition for a fixed source random ray solve is given
     plot_file = openmc.Plots([plot])
     plot_file.export_to_xml()
 
-All other inputs (e.g., geometry, material) will be unchanged from a typical Monte Carlo run (see the :ref:`geometry <usersguide_geometry>` and :ref:`multigroup materials <create_mgxs>` user guides for more information).
-=======
-There is also a complete example of a pincell available in the
-``openmc/examples/pincell_random_ray`` folder.
->>>>>>> random_ray_merge
-=======
-There is also a complete example of a pincell available in the
-``openmc/examples/pincell_random_ray`` folder.
->>>>>>> develop
+All other inputs (e.g., geometry, material) will be unchanged from a typical
+Monte Carlo run (see the :ref:`geometry <usersguide_geometry>` and
+:ref:`multigroup materials <create_mgxs>` user guides for more information).

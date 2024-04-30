@@ -431,7 +431,7 @@ void FlatSourceDomain::convert_source_regions_to_tallies()
   mapped_all_tallies_ = all_source_regions_mapped;
 }
 
-// Set the 3D xtensor to zero for all tallies
+// Set the volume accumulators to zero for all tallies
 void FlatSourceDomain::reset_tally_volumes()
 {
 #pragma omp parallel for

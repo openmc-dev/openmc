@@ -257,8 +257,7 @@ class Settings:
         include "collision" and "surface". Values must be of type bool.
 
         .. versionadded:: 0.14.0
-    weight_window_generators : WeightWindowGenerator or iterable of
-    WeightWindowGenerator
+    weight_window_generators : WeightWindowGenerator or iterable of WeightWindowGenerator
         Weight windows generation parameters to apply during simulation
 
         .. versionadded:: 0.14.0

@@ -172,12 +172,12 @@ private:
   // groups
   vector<float> scalar_flux_final_;
 
-  // Intermediate tally results for each bin -- the first dimension of the array
-  // is for the combination of filters (e.g. specific cell, specific energy
-  // group, etc.) and the second dimension of the array is for scores (e.g.
-  // flux, total reaction rate, fission reaction rate, etc.). This intermediate
-  // data structure is used when tallying flux quantities that must be
-  // normalized by volume.
+  // Volumes for each tally and bin/score combination. This intermediate data
+  // structure is used when tallying quantities that must be normalized by
+  // volume (i.e., flux). The vector is index by tally index, while the inner 2D
+  // xtensor is indexed by bin index and score index in a similar manner to the
+  // results tensor in the Tally class, though without the third dimension, as
+  // SUM and SUM_SQ do not need to be tracked.
   vector<xt::xtensor<double, 2>> tally_volumes_;
 
 }; // class FlatSourceDomain

@@ -529,15 +529,9 @@ void FlatSourceDomain::random_ray_tally()
         // structure so that it can be properly normalized once the total volume
         // of the bin is determined.
         Tally& tally {*model::tallies[task.tally_idx]};
-        if (task.score_type == SCORE_FLUX) {
 #pragma omp atomic
-          tally_[task.tally_idx](
-            task.filter_idx, task.score_idx, TallyResult::VALUE) += score;
-        } else {
-#pragma omp atomic
-          tally.results_(task.filter_idx, task.score_idx, TallyResult::VALUE) +=
-            score;
-        }
+        tally.results_(task.filter_idx, task.score_idx, TallyResult::VALUE) +=
+          score;
       } // end tally task loop
     }   // end energy group loop
 
@@ -551,27 +545,28 @@ void FlatSourceDomain::random_ray_tally()
     }
   } // end FSR loop
 
-// Normalize flux scores by total bin volume
+  // Normalize any flux scores by the total volume of the FSRs scoring to that
+  // bin. To do this, we loop over all tallies, and then all filter bins,
+  // and then scores. For each score, we check the tally data structure to
+  // see what index that score corresponds to. If that score is a flux score,
+  // then we divide it by volume.
+  for (int i = 0; i < model::tallies.size(); i++) {
+    Tally& tally {*model::tallies[i]};
 #pragma omp parallel for
-  for (int sr = 0; sr < n_source_regions_; sr++) {
-    for (int g = 0; g < negroups_; g++) {
-      int idx = sr * negroups_ + g;
-      for (auto& task : tally_task_[idx]) {
-        if (task.score_type == SCORE_FLUX) {
-          Tally& tally {*model::tallies[task.tally_idx]};
-          double vol_times_flux = tally_[task.tally_idx](
-            task.filter_idx, task.score_idx, TallyResult::VALUE);
-          double vol = tally_volumes_[task.tally_idx](
-            task.filter_idx, task.score_idx, TallyResult::VALUE);
+    for (int bin = 0; bin < tally.n_filter_bins(); bin++) {
+      for (int score_idx = 0; score_idx < tally.n_scores(); score_idx++) {
+        auto score_type = tally.scores_[score_idx];
+        if (score_type == SCORE_FLUX) {
+          double vol = tally_volumes_[i](bin, score_idx, TallyResult::VALUE);
           if (vol > 0.0) {
-#pragma omp atomic
-            tally.results_(task.filter_idx, task.score_idx,
-              TallyResult::VALUE) += vol_times_flux / vol;
+            tally.results_(bin, score_idx, TallyResult::VALUE) /= vol;
           }
         }
       }
     }
   }
+
+  openmc::simulation::time_tallies.stop();
 }
 
 void FlatSourceDomain::all_reduce_replicated_source_regions()

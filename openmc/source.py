@@ -28,6 +28,16 @@ class SourceBase(ABC):
     ----------
     strength : float
         Strength of the source
+    domains : iterable of openmc.Cell, openmc.Material, or openmc.Universe
+        Domains to reject based on, i.e., if a sampled spatial location is not
+        within one of these domains, it will be rejected.
+    time_bounds : sequence of float
+        lower, upper bounds in time [s] of accepted particles
+    energy_bounds : sequence of float
+        lower, upper bounds in energy [eV] of accepted particles
+    rejection_strategy : {'resample', 'kill'}
+        Strategy when a particle is rejected. Pick a new particle ('resample')
+        or accept and terminate ('kill').
 
     Attributes
     ----------
@@ -35,11 +45,50 @@ class SourceBase(ABC):
         Indicator of source type.
     strength : float
         Strength of the source
+    domain_type : {'cell', 'material', 'universe'}
+        Type of domain to use for rejection
+    domain_ids : iterable of int
+        Ids of domains to reject based on.
+    time_bounds : Iterable of float
+        lower, upper bounds in time [s] of accepted particles
+    energy_bounds : Iterable of float
+        lower, upper bounds in energy [eV] of accepted particles
+    rejection_strategy : {'resample', 'kill'}
+        Strategy when a particle is rejected. Pick a new particle ('resample')
+        or accept and terminate ('kill').
 
     """
 
-    def __init__(self, strength=1.0):
+    def __init__(
+            self,
+            strength: Optional[float] = 1.0,
+            domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None,
+            time_bounds: Optional[Sequence[float]] = None,
+            energy_bounds: Optional[Sequence[float]] = None,
+            rejection_strategy: Optional[str] = None,
+    ):
         self.strength = strength
+        self._time_bounds = None
+        self._energy_bounds = None
+        self._rejection_strategy = None
+        self._domain_ids = []
+        self._domain_type = None
+
+        if domains is not None:
+            if isinstance(domains[0], openmc.Cell):
+                self.domain_type = 'cell'
+            elif isinstance(domains[0], openmc.Material):
+                self.domain_type = 'material'
+            elif isinstance(domains[0], openmc.Universe):
+                self.domain_type = 'universe'
+            self.domain_ids = [d.id for d in domains]
+
+        if time_bounds is not None:
+            self.time_bounds = time_bounds
+        if energy_bounds is not None:
+            self.energy_bounds = energy_bounds
+        if rejection_strategy is not None:
+            self.rejection_strategy = rejection_strategy
 
     @property
     def strength(self):
@@ -47,9 +96,57 @@ class SourceBase(ABC):
 
     @strength.setter
     def strength(self, strength):
-        cv.check_type('source strength', strength, Real)
-        cv.check_greater_than('source strength', strength, 0.0, True)
+        cv.check_type('source strength', strength, Real, none_ok=True)
+        if strength is not None:
+            cv.check_greater_than('source strength', strength, 0.0, True)
         self._strength = strength
+
+    @property
+    def domain_ids(self):
+        return self._domain_ids
+
+    @domain_ids.setter
+    def domain_ids(self, ids):
+        cv.check_type('domain IDs', ids, Iterable, Real)
+        self._domain_ids = ids
+
+    @property
+    def domain_type(self):
+        return self._domain_type
+
+    @domain_type.setter
+    def domain_type(self, domain_type):
+        cv.check_value('domain type', domain_type, ('cell', 'material', 'universe'))
+        self._domain_type = domain_type
+
+    @property
+    def time_bounds(self):
+        return self._time_bounds
+
+    @time_bounds.setter
+    def time_bounds(self, time_bounds):
+        name = 'time bounds'
+        cv.check_type(name, time_bounds, Iterable, Real)
+        self._time_bounds = tuple(time_bounds)
+
+    @property
+    def energy_bounds(self):
+        return self._energy_bounds
+
+    @energy_bounds.setter
+    def energy_bounds(self, energy_bounds):
+        name = 'energy bounds'
+        cv.check_type(name, energy_bounds, Iterable, Real)
+        self._energy_bounds = tuple(energy_bounds)
+
+    @property
+    def rejection_strategy(self):
+        return self._rejection_strategy
+
+    @rejection_strategy.setter
+    def rejection_strategy(self, rejection_strategy):
+        cv.check_value('rejection strategy', rejection_strategy, ('resample', 'kill'))
+        self._rejection_strategy = rejection_strategy
 
     @abstractmethod
     def populate_xml_element(self, element):
@@ -73,8 +170,24 @@ class SourceBase(ABC):
         """
         element = ET.Element("source")
         element.set("type", self.type)
-        element.set("strength", str(self.strength))
+        if self.strength is not None:
+            element.set("strength", str(self.strength))
         self.populate_xml_element(element)
+        if self.domain_ids:
+            dt_elem = ET.SubElement(element, "domain_type")
+            dt_elem.text = self.domain_type
+            id_elem = ET.SubElement(element, "domain_ids")
+            id_elem.text = ' '.join(str(uid) for uid in self.domain_ids)
+        if self.time_bounds is not None:
+            dt_elem = ET.SubElement(element, "time_bounds")
+            dt_elem.text = ' '.join(str(t) for t in self.time_bounds)
+        if self.energy_bounds is not None:
+            dt_elem = ET.SubElement(element, "energy_bounds")
+            dt_elem.text = ' '.join(str(E) for E in self.energy_bounds)
+        if self.rejection_strategy is not None:
+            dt_elem = ET.SubElement(element, "rejection_strategy")
+            dt_elem.text = self.rejection_strategy
+
         return element
 
     @classmethod
@@ -118,6 +231,42 @@ class SourceBase(ABC):
             else:
                 raise ValueError(f'Source type {source_type} is not recognized')
 
+    @staticmethod
+    def _get_common_arguments(elem: ET.Element) -> dict:
+        domain_type = get_text(elem, "domain_type")
+        if domain_type is not None:
+            domain_ids = [int(x) for x in get_text(elem, "domain_ids").split()]
+
+            # Instantiate some throw-away domains that are used by the
+            # constructor to assign IDs
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', openmc.IDWarning)
+                if domain_type == 'cell':
+                    domains = [openmc.Cell(uid) for uid in domain_ids]
+                elif domain_type == 'material':
+                    domains = [openmc.Material(uid) for uid in domain_ids]
+                elif domain_type == 'universe':
+                    domains = [openmc.Universe(uid) for uid in domain_ids]
+        else:
+            domains = None
+
+        time_bounds = get_text(elem, "time_bounds")
+        if time_bounds is not None:
+            time_bounds = [float(x) for x in time_bounds.split()]
+
+        energy_bounds = get_text(elem, "energy_bounds")
+        if energy_bounds is not None:
+            energy_bounds = [float(x) for x in energy_bounds.split()]
+
+        rejection_strategy = get_text(elem, "rejection_strategy")
+
+        return {
+            'domains': domains,
+            'time_bounds': time_bounds,
+            'energy_bounds': energy_bounds,
+            'rejection_strategy': rejection_strategy
+        }
+
 
 class IndependentSource(SourceBase):
     """Distribution of phase space coordinates for source sites.
@@ -141,6 +290,13 @@ class IndependentSource(SourceBase):
     domains : iterable of openmc.Cell, openmc.Material, or openmc.Universe
         Domains to reject based on, i.e., if a sampled spatial location is not
         within one of these domains, it will be rejected.
+    time_bounds : sequence of float
+        lower, upper bounds in time [s] of accepted particles
+    energy_bounds : sequence of float
+        lower, upper bounds in energy [eV] of accepted particles
+    rejection_strategy : {'resample', 'kill'}
+        Strategy when a particle is rejected. Pick a new particle ('resample')
+        or accept and terminate ('kill').
 
     Attributes
     ----------
@@ -176,9 +332,15 @@ class IndependentSource(SourceBase):
         time: Optional[openmc.stats.Univariate] = None,
         strength: float = 1.0,
         particle: str = 'neutron',
-        domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None
+        domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None,
+        time_bounds: Optional[Sequence[float]] = None,
+        energy_bounds: Optional[Sequence[float]] = None,
+        rejection_strategy: Optional[str] = None,
     ):
-        super().__init__(strength)
+        super().__init__(
+            strength=strength, domains=domains, time_bounds=time_bounds,
+            energy_bounds=energy_bounds, rejection_strategy=rejection_strategy
+        )
 
         self._space = None
         self._angle = None
@@ -193,19 +355,7 @@ class IndependentSource(SourceBase):
             self.energy = energy
         if time is not None:
             self.time = time
-        self.strength = strength
         self.particle = particle
-
-        self._domain_ids = []
-        self._domain_type = None
-        if domains is not None:
-            if isinstance(domains[0], openmc.Cell):
-                self.domain_type = 'cell'
-            elif isinstance(domains[0], openmc.Material):
-                self.domain_type = 'material'
-            elif isinstance(domains[0], openmc.Universe):
-                self.domain_type = 'universe'
-            self.domain_ids = [d.id for d in domains]
 
     @property
     def type(self) -> str:
@@ -273,24 +423,6 @@ class IndependentSource(SourceBase):
         cv.check_value('source particle', particle, ['neutron', 'photon'])
         self._particle = particle
 
-    @property
-    def domain_ids(self):
-        return self._domain_ids
-
-    @domain_ids.setter
-    def domain_ids(self, ids):
-        cv.check_type('domain IDs', ids, Iterable, Real)
-        self._domain_ids = ids
-
-    @property
-    def domain_type(self):
-        return self._domain_type
-
-    @domain_type.setter
-    def domain_type(self, domain_type):
-        cv.check_value('domain type', domain_type, ('cell', 'material', 'universe'))
-        self._domain_type = domain_type
-
     def populate_xml_element(self, element):
         """Add necessary source information to an XML element
 
@@ -309,11 +441,6 @@ class IndependentSource(SourceBase):
             element.append(self.energy.to_xml_element('energy'))
         if self.time is not None:
             element.append(self.time.to_xml_element('time'))
-        if self.domain_ids:
-            dt_elem = ET.SubElement(element, "domain_type")
-            dt_elem.text = self.domain_type
-            id_elem = ET.SubElement(element, "domain_ids")
-            id_elem.text = ' '.join(str(uid) for uid in self.domain_ids)
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element, meshes=None) -> SourceBase:
@@ -333,24 +460,8 @@ class IndependentSource(SourceBase):
             Source generated from XML element
 
         """
-        domain_type = get_text(elem, "domain_type")
-        if domain_type is not None:
-            domain_ids = [int(x) for x in get_text(elem, "domain_ids").split()]
-
-            # Instantiate some throw-away domains that are used by the
-            # constructor to assign IDs
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', openmc.IDWarning)
-                if domain_type == 'cell':
-                    domains = [openmc.Cell(uid) for uid in domain_ids]
-                elif domain_type == 'material':
-                    domains = [openmc.Material(uid) for uid in domain_ids]
-                elif domain_type == 'universe':
-                    domains = [openmc.Universe(uid) for uid in domain_ids]
-        else:
-            domains = None
-
-        source = cls(domains=domains)
+        kwargs = cls._get_common_arguments(elem)
+        source = cls(**kwargs)
 
         strength = get_text(elem, 'strength')
         if strength is not None:
@@ -359,10 +470,6 @@ class IndependentSource(SourceBase):
         particle = get_text(elem, 'particle')
         if particle is not None:
             source.particle = particle
-
-        filename = get_text(elem, 'file')
-        if filename is not None:
-            source.file = filename
 
         space = elem.find('space')
         if space is not None:
@@ -403,6 +510,16 @@ class MeshSource(SourceBase):
         Sources for each element in the mesh. If spatial distributions are set
         on any of the source objects, they will be ignored during source site
         sampling.
+    domains : iterable of openmc.Cell, openmc.Material, or openmc.Universe
+        Domains to reject based on, i.e., if a sampled spatial location is not
+        within one of these domains, it will be rejected.
+    time_bounds : sequence of float
+        lower, upper bounds in time [s] of accepted particles
+    energy_bounds : sequence of float
+        lower, upper bounds in energy [eV] of accepted particles
+    rejection_strategy : {'resample', 'kill'}
+        Strategy when a particle is rejected. Pick a new particle ('resample')
+        or accept and terminate ('kill').
 
     Attributes
     ----------
@@ -417,9 +534,32 @@ class MeshSource(SourceBase):
         Strength of the source
     type : str
         Indicator of source type: 'mesh'
+    domain_type : {'cell', 'material', 'universe'}
+        Type of domain to use for rejection
+    domain_ids : iterable of int
+        Ids of domains to reject based on.
+    time_bounds : Iterable of float
+        lower, upper bounds in time [s] of accepted particles
+    energy_bounds : Iterable of float
+        lower, upper bounds in energy [eV] of accepted particles
+    rejection_strategy : {'resample', 'kill'}
+        Strategy when a particle is rejected. Pick a new particle ('resample')
+        or accept and terminate ('kill').
 
     """
-    def __init__(self, mesh: MeshBase, sources: Sequence[SourceBase]):
+    def __init__(
+            self,
+            mesh: MeshBase,
+            sources: Sequence[SourceBase],
+            domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None,
+            time_bounds: Optional[Sequence[float]] = None,
+            energy_bounds: Optional[Sequence[float]] = None,
+            rejection_strategy: Optional[str] = None,
+    ):
+        super().__init__(
+            strength=None, domains=domains, time_bounds=time_bounds,
+            energy_bounds=energy_bounds, rejection_strategy=rejection_strategy
+        )
         self.mesh = mesh
         self.sources = sources
 
@@ -467,8 +607,9 @@ class MeshSource(SourceBase):
 
     @strength.setter
     def strength(self, val):
-        cv.check_type('mesh source strength', val, Real)
-        self.set_total_strength(val)
+        if val is not None:
+            cv.check_type('mesh source strength', val, Real)
+            self.set_total_strength(val)
 
     def set_total_strength(self, strength: float):
         """Scales the element source strengths based on a desired total strength.
@@ -532,7 +673,8 @@ class MeshSource(SourceBase):
 
         sources = [SourceBase.from_xml_element(e) for e in elem.iterchildren('source')]
         sources = np.asarray(sources).reshape(mesh.dimension, order='F')
-        return cls(mesh, sources)
+        kwargs = cls._get_common_arguments(elem)
+        return cls(mesh, sources, **kwargs)
 
 
 def Source(*args, **kwargs):
@@ -557,6 +699,16 @@ class CompiledSource(SourceBase):
         Parameters to be provided to the compiled shared library function
     strength : float
         Strength of the source
+    domains : iterable of openmc.Cell, openmc.Material, or openmc.Universe
+        Domains to reject based on, i.e., if a sampled spatial location is not
+        within one of these domains, it will be rejected.
+    time_bounds : sequence of float
+        lower, upper bounds in time [s] of accepted particles
+    energy_bounds : sequence of float
+        lower, upper bounds in energy [eV] of accepted particles
+    rejection_strategy : {'resample', 'kill'}
+        Strategy when a particle is rejected. Pick a new particle ('resample')
+        or accept and terminate ('kill').
 
     Attributes
     ----------
@@ -568,10 +720,33 @@ class CompiledSource(SourceBase):
         Strength of the source
     type : str
         Indicator of source type: 'compiled'
+    domain_type : {'cell', 'material', 'universe'}
+        Type of domain to use for rejection
+    domain_ids : iterable of int
+        Ids of domains to reject based on.
+    time_bounds : Iterable of float
+        lower, upper bounds in time [s] of accepted particles
+    energy_bounds : Iterable of float
+        lower, upper bounds in energy [eV] of accepted particles
+    rejection_strategy : {'resample', 'kill'}
+        Strategy when a particle is rejected. Pick a new particle ('resample')
+        or accept and terminate ('kill').
 
     """
-    def __init__(self, library: Optional[str] = None, parameters: Optional[str] = None, strength=1.0) -> None:
-        super().__init__(strength=strength)
+    def __init__(
+            self,
+            library: Optional[str] = None,
+            parameters: Optional[str] = None,
+            strength: float = 1.0,
+            domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None,
+            time_bounds: Optional[Sequence[float]] = None,
+            energy_bounds: Optional[Sequence[float]] = None,
+            rejection_strategy: Optional[str] = None,
+    ) -> None:
+        super().__init__(
+            strength=strength, domains=domains, time_bounds=time_bounds,
+            energy_bounds=energy_bounds, rejection_strategy=rejection_strategy
+        )
 
         self._library = None
         if library is not None:
@@ -635,9 +810,10 @@ class CompiledSource(SourceBase):
             Source generated from XML element
 
         """
-        library = get_text(elem, 'library')
+        kwargs = cls._get_common_arguments(elem)
+        kwargs['library'] = get_text(elem, 'library')
 
-        source = cls(library)
+        source = cls(**kwargs)
 
         strength = get_text(elem, 'strength')
         if strength is not None:
@@ -684,49 +860,30 @@ class FileSource(SourceBase):
     domain_ids : iterable of int
         Ids of domains to reject based on.
     time_bounds : Iterable of float
-        lower, upper bounds in time of accepted particles
+        lower, upper bounds in time [s] of accepted particles
     energy_bounds : Iterable of float
-        lower, upper bounds in energy of accepted particles
-    rejection_strategy: {'resample','kill'}
-        Strategy when a particle is rejected. Pick a new particle or accept and terminate.
-
+        lower, upper bounds in energy [eV] of accepted particles
+    rejection_strategy : {'resample', 'kill'}
+        Strategy when a particle is rejected. Pick a new particle ('resample')
+        or accept and terminate ('kill').
     """
 
     def __init__(
             self,
             path: Optional[PathLike] = None,
-            strength=1.0,
-            rejection_strategy = None,
+            strength: float = 1.0,
             domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None,
             time_bounds: Optional[Sequence[float]] = None,
-            energy_bounds: Optional[Sequence[float]] = None
+            energy_bounds: Optional[Sequence[float]] = None,
+            rejection_strategy = None,
     ) -> None:
-        super().__init__(strength=strength)
-
+        super().__init__(
+            strength=strength, domains=domains, time_bounds=time_bounds,
+            energy_bounds=energy_bounds, rejection_strategy=rejection_strategy
+        )
         self._path = None
-        self._time_bounds = None
-        self._energy_bounds = None
-        self._rejection_strategy = None
-
         if path is not None:
             self.path = path
-
-        self._domain_ids = []
-        self._domain_type = None
-        if domains is not None:
-            if isinstance(domains[0], openmc.Cell):
-                self.domain_type = 'cell'
-            elif isinstance(domains[0], openmc.Material):
-                self.domain_type = 'material'
-            elif isinstance(domains[0], openmc.Universe):
-                self.domain_type = 'universe'
-            self.domain_ids = [d.id for d in domains]
-        if time_bounds is not None:
-            self.time_bounds = time_bounds
-        if energy_bounds is not None:
-            self.energy_bounds = energy_bounds
-        if rejection_strategy is not None:
-            self.rejection_strategy = rejection_strategy
 
     @property
     def type(self) -> str:
@@ -741,54 +898,6 @@ class FileSource(SourceBase):
         cv.check_type('source file', p, str)
         self._path = p
 
-    @property
-    def domain_ids(self):
-        return self._domain_ids
-
-    @domain_ids.setter
-    def domain_ids(self, ids):
-        cv.check_type('domain IDs', ids, Iterable, Real)
-        self._domain_ids = ids
-
-    @property
-    def domain_type(self):
-        return self._domain_type
-
-    @domain_type.setter
-    def domain_type(self, domain_type):
-        cv.check_value('domain type', domain_type, ('cell', 'material', 'universe'))
-        self._domain_type = domain_type
-
-    @property
-    def time_bounds(self):
-        return self._time_bounds
-
-    @time_bounds.setter
-    def time_bounds(self, time_bounds):
-        name = 'time bounds'
-        cv.check_type(name, time_bounds, Iterable, Real)
-        self._time_bounds = time_bounds
-
-    @property
-    def energy_bounds(self):
-        return self._energy_bounds
-
-    @energy_bounds.setter
-    def energy_bounds(self, energy_bounds):
-        name = 'energy bounds'
-        cv.check_type(name, energy_bounds, Iterable, Real)
-        self._energy_bounds = energy_bounds
-
-    @property
-    def rejection_strategy(self):
-        return self._rejection_strategy
-
-    @rejection_strategy.setter
-    def rejection_strategy(self, rejection_strategy):
-        name = 'rejection strategy'
-        cv.check_value('rejection strategy', rejection_strategy, ('resample','kill'))
-        self._rejection_strategy = rejection_strategy
-
     def populate_xml_element(self, element):
         """Add necessary file source information to an XML element
 
@@ -800,20 +909,6 @@ class FileSource(SourceBase):
         """
         if self.path is not None:
             element.set("file", self.path)
-        if self.domain_ids:
-            dt_elem = ET.SubElement(element, "domain_type")
-            dt_elem.text = self.domain_type
-            id_elem = ET.SubElement(element, "domain_ids")
-            id_elem.text = ' '.join(str(uid) for uid in self.domain_ids)
-        if self.time_bounds is not None:
-            dt_elem = ET.SubElement(element, "time_bounds")
-            dt_elem.text = ' '.join(str(t) for t in self.time_bounds)
-        if self.energy_bounds is not None:
-            dt_elem = ET.SubElement(element, "energy_bounds")
-            dt_elem.text = ' '.join(str(E) for E in self.energy_bounds)
-        if self.rejection_strategy is not None:
-            dt_elem = ET.SubElement(element, "rejection_strategy")
-            dt_elem.text = self.rejection_strategy
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element) -> openmc.FileSource:
@@ -833,35 +928,13 @@ class FileSource(SourceBase):
             Source generated from XML element
 
         """
-
-        filename = get_text(elem, 'file')
-
-        source = cls(filename)
-
+        kwargs = cls._get_common_arguments(elem)
+        kwargs['path'] = get_text(elem, 'file')
         strength = get_text(elem, 'strength')
         if strength is not None:
-            source.strength = float(strength)
+            kwargs['strength'] = float(strength)
 
-        domain_type = get_text(elem, "domain_type")
-        if domain_type is not None:
-            domain_ids = [int(x) for x in get_text(elem, "domain_ids").split()]
-
-            # Instantiate some throw-away domains that are used by the
-            # constructor to assign IDs
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', openmc.IDWarning)
-                if domain_type == 'cell':
-                    domains = [openmc.Cell(uid) for uid in domain_ids]
-                elif domain_type == 'material':
-                    domains = [openmc.Material(uid) for uid in domain_ids]
-                elif domain_type == 'universe':
-                    domains = [openmc.Universe(uid) for uid in domain_ids]
-        else:
-            domains = None
-
-        source = cls(domains=domains)
-
-        return source
+        return cls(**kwargs)
 
 
 class ParticleType(IntEnum):

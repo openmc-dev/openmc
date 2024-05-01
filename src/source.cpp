@@ -127,9 +127,29 @@ void Source::check_for_restriction_nodes(pugi::xml_node node)
   }
 }
 
+SourceSite Source::sample(uint64_t* seed) const
+{
+  bool found = false;
+  SourceSite site;
+
+  while (!found) {
+    // Sample a particle randomly from list
+    site = this->sample_no_rejection(seed);
+
+    found = inside_bounds(site);
+    if (!found && rejection_strategy_ == RejectionStrategy::KILL) {
+      // Accept particle regardless but set wgt=0 to trigger garbage collection
+      // I.e. kill this particle immediately and pick the next
+      found = true;
+      site.wgt = 0.0;
+    }
+  }
+  return site;
+}
+
 bool Source::inside_bounds(SourceSite& s) const
 {
-  return inside_spatial_bounds(s) && inside_energy_bounds(s.E) &&
+  return inside_spatial_bounds(s.r) && inside_energy_bounds(s.E) &&
          inside_time_bounds(s.time);
 }
 
@@ -143,11 +163,11 @@ bool Source::inside_time_bounds(const double time) const
   return time > time_bounds_.first && time < time_bounds_.second;
 }
 
-bool Source::inside_spatial_bounds(SourceSite& s) const
+bool Source::inside_spatial_bounds(Position r) const
 {
   bool found = false;
   GeometryState geom_state;
-  geom_state.r() = s.r;
+  geom_state.r() = r;
 
   // Reject particle if it's not in the geometry at all
   if (!(found = exhaustive_find_cell(geom_state)))
@@ -264,7 +284,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     site.r = space_->sample(seed);
 
     // Check if otherwise outside defined restriction bounds
-    found = inside_spatial_bounds(site);
+    found = inside_spatial_bounds(site.r);
 
     // Check if spatial site is in fissionable material
     if (found) {
@@ -390,27 +410,11 @@ void FileSource::load_sites_from_file(const std::string& path)
   file_close(file_id);
 }
 
-SourceSite FileSource::sample(uint64_t* seed) const
+SourceSite FileSource::sample_no_rejection(uint64_t* seed) const
 {
-  bool found = false;
-  size_t i_site;
-  SourceSite site;
-
-  while (!found) {
-    // Sample a particle randomly from list
-    i_site = sites_.size() * prn(seed);
-    site = sites_[i_site];
-
-    found = inside_bounds(site);
-
-    if (!found && rejection_strategy_ == RejectionStrategy::KILL) {
-      // Accept particle regardless but set wgt=0 to trigger garbage collection
-      // I.e. kill this particle immediately and pick the next
-      found = true;
-      site.wgt = 0.0;
-    }
-  }
-  return site;
+  // Sample a particle randomly from list
+  size_t i_site = sites_.size() * prn(seed);
+  return sites_[i_site];
 }
 
 //==============================================================================
@@ -508,7 +512,7 @@ MeshSource::MeshSource(pugi::xml_node node)
   check_for_restriction_nodes(node);
 }
 
-SourceSite MeshSource::sample(uint64_t* seed) const
+SourceSite MeshSource::sample_no_rejection(uint64_t* seed) const
 {
   // sample location and element from mesh
   auto mesh_location = space_->sample_mesh(seed);

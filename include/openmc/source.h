@@ -46,10 +46,8 @@ class Source {
 public:
   virtual ~Source() = default;
 
-  // Methods that must be implemented
-  virtual SourceSite sample(uint64_t* seed) const = 0;
-
   // Methods that can be overridden
+  virtual SourceSite sample(uint64_t* seed) const;
   virtual double strength() const { return 1.0; }
 
   static unique_ptr<Source> create(pugi::xml_node node);
@@ -59,10 +57,13 @@ protected:
   enum class DomainType { UNIVERSE, MATERIAL, CELL };
   enum class RejectionStrategy { KILL, RESAMPLE };
 
+  // Methods that can be overridden
+  virtual SourceSite sample_no_rejection(uint64_t* seed) const = 0;
+
   // Methods
   void check_for_restriction_nodes(pugi::xml_node node);
   bool inside_bounds(SourceSite& s) const;
-  bool inside_spatial_bounds(SourceSite& s) const;
+  bool inside_spatial_bounds(Position r) const;
   bool inside_energy_bounds(const double E) const;
   bool inside_time_bounds(const double time) const;
 
@@ -103,6 +104,11 @@ public:
   Distribution* energy() const { return energy_.get(); }
   Distribution* time() const { return time_.get(); }
 
+protected:
+  // Note that this method is not used since IndependentSource directly
+  // overrides the sample method
+  SourceSite sample_no_rejection(uint64_t* seed) const override { return {}; }
+
 private:
   // Data members
   ParticleType particle_ {ParticleType::neutron}; //!< Type of particle emitted
@@ -124,9 +130,12 @@ public:
   explicit FileSource(const std::string& path);
 
   // Methods
-  SourceSite sample(uint64_t* seed) const override;
   void load_sites_from_file(
     const std::string& path); //!< Load source sites from file
+
+protected:
+  SourceSite sample_no_rejection(uint64_t* seed) const override;
+
 private:
   vector<SourceSite> sites_; //!< Source sites from a file
 };
@@ -141,15 +150,16 @@ public:
   CompiledSourceWrapper(pugi::xml_node node);
   ~CompiledSourceWrapper();
 
-  // Defer implementation to custom source library
-  SourceSite sample(uint64_t* seed) const override
-  {
-    return compiled_source_->sample(seed);
-  }
-
   double strength() const override { return compiled_source_->strength(); }
 
   void setup(const std::string& path, const std::string& parameters);
+
+protected:
+  // Defer implementation to custom source library
+  SourceSite sample_no_rejection(uint64_t* seed) const override
+  {
+    return compiled_source_->sample(seed);
+  }
 
 private:
   void* shared_library_; //!< library from dlopen
@@ -167,11 +177,6 @@ public:
   // Constructors
   explicit MeshSource(pugi::xml_node node);
 
-  //! Sample from the external source distribution
-  //! \param[inout] seed Pseudorandom seed pointer
-  //! \return Sampled site
-  SourceSite sample(uint64_t* seed) const override;
-
   // Properties
   double strength() const override { return space_->total_strength(); }
 
@@ -180,6 +185,12 @@ public:
   {
     return sources_.size() == 1 ? sources_[0] : sources_[i];
   }
+
+protected:
+  //! Sample from the external source distribution
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Sampled site
+  SourceSite sample_no_rejection(uint64_t* seed) const override;
 
 private:
   // Data members

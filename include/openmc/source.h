@@ -191,6 +191,11 @@ public:
     return sources_.size() == 1 ? sources_[0] : sources_[i];
   }
 
+protected:
+  // Note that this method is not used since MeshSource directly overrides the
+  // sample method
+  SourceSite sample_no_rejection(uint64_t* seed) const override { return {}; }
+
 private:
   // Data members
   unique_ptr<MeshSpatial> space_;           //!< Mesh spatial

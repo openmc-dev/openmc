@@ -177,6 +177,11 @@ public:
   // Constructors
   explicit MeshSource(pugi::xml_node node);
 
+  //! Sample from the external source distribution
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Sampled site
+  SourceSite sample(uint64_t* seed) const override;
+
   // Properties
   double strength() const override { return space_->total_strength(); }
 
@@ -185,12 +190,6 @@ public:
   {
     return sources_.size() == 1 ? sources_[0] : sources_[i];
   }
-
-protected:
-  //! Sample from the external source distribution
-  //! \param[inout] seed Pseudorandom seed pointer
-  //! \return Sampled site
-  SourceSite sample_no_rejection(uint64_t* seed) const override;
 
 private:
   // Data members

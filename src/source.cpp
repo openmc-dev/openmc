@@ -512,17 +512,31 @@ MeshSource::MeshSource(pugi::xml_node node)
   check_for_restriction_nodes(node);
 }
 
-SourceSite MeshSource::sample_no_rejection(uint64_t* seed) const
+SourceSite MeshSource::sample(uint64_t* seed) const
 {
-  // sample location and element from mesh
-  auto mesh_location = space_->sample_mesh(seed);
+  // Sample the CDF defined in initialization above
+  int32_t element = space_->sample_element_index(seed);
 
-  // Sample source for the chosen element
-  int32_t element = mesh_location.first;
-  SourceSite site = source(element)->sample(seed);
+  // Sample position and apply rejection on spatial domains
+  Position r;
+  while (true) {
+    r = space_->mesh()->sample_element(element, seed);
+    if (this->inside_spatial_bounds(r)) {
+      break;
+    }
+  }
 
-  // Replace spatial position with the one already sampled
-  site.r = mesh_location.second;
+  SourceSite site;
+  while (true) {
+    // Sample source for the chosen element and replace the position
+    site = source(element)->sample(seed);
+    site.r = r;
+
+    // Apply other rejections
+    if (inside_energy_bounds(site.E) && inside_time_bounds(site.time)) {
+      break;
+    }
+  }
 
   return site;
 }

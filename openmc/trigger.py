@@ -38,7 +38,7 @@ class Trigger(EqualityMixin):
 
     """
 
-    def __init__(self, trigger_type: str, threshold: float, ignore_zeros: bool=False):
+    def __init__(self, trigger_type: str, threshold: float, ignore_zeros: bool = False):
         self.trigger_type = trigger_type
         self.threshold = threshold
         self.ignore_zeros = ignore_zeros
@@ -70,11 +70,11 @@ class Trigger(EqualityMixin):
     def threshold(self, threshold):
         cv.check_type('tally trigger threshold', threshold, Real)
         self._threshold = threshold
-    
+
     @property
     def ignore_zeros(self):
         return self._ignore_zeros
-    
+
     @ignore_zeros.setter
     def ignore_zeros(self, ignore_zeros):
         cv.check_type('tally trigger ignores zeros', ignore_zeros, bool)
@@ -133,10 +133,7 @@ class Trigger(EqualityMixin):
         threshold = float(elem.get("threshold"))
         ignore_zeros = str(elem.get("ignore_zeros", "false")).lower()
         # Try to convert to bool. Let Trigger error out on instantiation.
-        if ignore_zeros in ("true", "1"):
-            ignore_zeros = True
-        elif ignore_zeros in ("false", "0"):
-            ignore_zeros = False
+        ignore_zeros = ignore_zeros in ('true', '1')
         trigger = cls(trigger_type, threshold, ignore_zeros)
 
         # Add scores if present

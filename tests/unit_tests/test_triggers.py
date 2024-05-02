@@ -76,8 +76,8 @@ def test_tally_trigger_null_score(run_in_tmpdir):
 
 def test_tally_trigger_zero_ignored(run_in_tmpdir):
     pincell = openmc.examples.pwr_pin_cell()
- 
-    # create an energy filter below and around the O-16(n,p) threshold
+
+    # create an energy filter below and around the O-16(n,p) threshold (1.02e7 eV)
     e_filter = openmc.EnergyFilter([0.0, 1e7, 2e7])
 
     # create a tally with triggers applied

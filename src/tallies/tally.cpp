@@ -690,6 +690,12 @@ void Tally::init_triggers(pugi::xml_node node)
         "Must specify trigger threshold for tally {} in tally XML file", id_));
     }
 
+    // Read whether to allow zero-tally bins to be ignored.
+    bool ignore_zeros = false;
+    if (check_for_node(trigger_node, "ignore_zeros")) {
+      ignore_zeros = get_node_value_bool(trigger_node, "ignore_zeros");
+    }
+
     // Read the trigger scores.
     vector<std::string> trigger_scores;
     if (check_for_node(trigger_node, "scores")) {
@@ -703,7 +709,7 @@ void Tally::init_triggers(pugi::xml_node node)
       if (score_str == "all") {
         triggers_.reserve(triggers_.size() + this->scores_.size());
         for (auto i_score = 0; i_score < this->scores_.size(); ++i_score) {
-          triggers_.push_back({metric, threshold, i_score});
+          triggers_.push_back({metric, threshold, ignore_zeros, i_score});
         }
       } else {
         int i_score = 0;
@@ -717,7 +723,7 @@ void Tally::init_triggers(pugi::xml_node node)
                         "{} but it was listed in a trigger on that tally",
               score_str, id_));
         }
-        triggers_.push_back({metric, threshold, i_score});
+        triggers_.push_back({metric, threshold, ignore_zeros, i_score});
       }
     }
   }

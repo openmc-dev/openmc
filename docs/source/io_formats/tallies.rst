@@ -100,6 +100,18 @@ The ``<tally>`` element accepts the following sub-elements:
 
      *Default*: None
 
+   :ignore_zeros:
+     Whether to allow zero tally bins to be ignored when assessing the
+     convergece of the precision trigger. If True, only nonzero tally scores
+     will be compared to the trigger's threshold.
+
+     .. note:: The ``ignore_zeros`` option can cause the tally trigger to fire
+               prematurely if there are no hits in any bins at the first
+               evalulation. It is the user's responsibility to specify enough
+               particles per batch to get a nonzero score in at least one bin.
+     
+     *Default*: False
+
    :scores:
      The score(s) in this tally to which the trigger should be applied.
 

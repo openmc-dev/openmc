@@ -13,11 +13,11 @@ import numpy as np
 
 from openmc.checkvalue import check_type, check_value, check_iterable_type, PathLike
 from openmc.exceptions import DataError
+from openmc.utility_funcs import change_directory
 from openmc import StatePoint
 from openmc.mgxs import GROUP_STRUCTURES
 from openmc.data import REACTION_MT
 import openmc
-from .abc import change_directory
 from .chain import Chain, REACTIONS
 from .coupled_operator import _find_cross_sections, _get_nuclides_with_data
 import openmc.lib
@@ -284,38 +284,37 @@ class MicroXS:
         # Create 2D array for microscopic cross sections
         microxs_arr = np.zeros((len(nuclides), len(mts)))
 
-        with TemporaryDirectory() as tmpdir:
-            # Create a material with all nuclides
-            mat_all_nucs = openmc.Material()
-            for nuc in nuclides:
-                if nuc in nuclides_with_data:
-                    mat_all_nucs.add_nuclide(nuc, 1.0)
-            mat_all_nucs.set_density("atom/b-cm", 1.0)
+        # Create a material with all nuclides
+        mat_all_nucs = openmc.Material()
+        for nuc in nuclides:
+            if nuc in nuclides_with_data:
+                mat_all_nucs.add_nuclide(nuc, 1.0)
+        mat_all_nucs.set_density("atom/b-cm", 1.0)
 
-            # Create simple model containing the above material
-            surf1 = openmc.Sphere(boundary_type="vacuum")
-            surf1_cell = openmc.Cell(fill=mat_all_nucs, region=-surf1)
-            model = openmc.Model()
-            model.geometry = openmc.Geometry([surf1_cell])
-            model.settings = openmc.Settings(
-                particles=1, batches=1, output={'summary': False})
+        # Create simple model containing the above material
+        surf1 = openmc.Sphere(boundary_type="vacuum")
+        surf1_cell = openmc.Cell(fill=mat_all_nucs, region=-surf1)
+        model = openmc.Model()
+        model.geometry = openmc.Geometry([surf1_cell])
+        model.settings = openmc.Settings(
+            particles=1, batches=1, output={'summary': False})
 
-            with change_directory(tmpdir):
-                # Export model within temporary directory
-                model.export_to_model_xml()
+        with change_directory(tmpdir=True):
+            # Export model within temporary directory
+            model.export_to_model_xml()
 
-                with openmc.lib.run_in_memory(**init_kwargs):
-                    # For each nuclide and reaction, compute the flux-averaged
-                    # cross section
-                    for nuc_index, nuc in enumerate(nuclides):
-                        if nuc not in nuclides_with_data:
-                            continue
-                        lib_nuc = openmc.lib.nuclides[nuc]
-                        for mt_index, mt in enumerate(mts):
-                            xs = lib_nuc.collapse_rate(
-                                mt, temperature, energies, multigroup_flux
-                            )
-                            microxs_arr[nuc_index, mt_index] = xs
+            with openmc.lib.run_in_memory(**init_kwargs):
+                # For each nuclide and reaction, compute the flux-averaged
+                # cross section
+                for nuc_index, nuc in enumerate(nuclides):
+                    if nuc not in nuclides_with_data:
+                        continue
+                    lib_nuc = openmc.lib.nuclides[nuc]
+                    for mt_index, mt in enumerate(mts):
+                        xs = lib_nuc.collapse_rate(
+                            mt, temperature, energies, multigroup_flux
+                        )
+                        microxs_arr[nuc_index, mt_index] = xs
 
         return cls(microxs_arr, nuclides, reactions)
 

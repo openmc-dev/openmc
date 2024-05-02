@@ -1,0 +1,38 @@
+from contextlib import contextmanager
+import os
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from typing import Optional
+
+from .checkvalue import PathLike
+
+@contextmanager
+def change_directory(working_dir: Optional[PathLike] = None, *, tmpdir: bool = False):
+    """Context manager for executing in a provided working directory
+
+    Parameters
+    ----------
+    working_dir : path-like
+        Directory to switch to.
+    tmpdir : bool
+        Whether to use a temporary directory instead of a specific working directory
+
+    """
+    orig_dir = Path.cwd()
+
+    # Set up temporary directory if requested
+    if tmpdir:
+        tmp = TemporaryDirectory()
+        working_dir = tmp.name
+    elif working_dir is None:
+        raise ValueError('Must pass working_dir argument or specify tmpdir=True.')
+
+    working_dir = Path(working_dir)
+    working_dir.mkdir(parents=True, exist_ok=True)
+    os.chdir(working_dir)
+    try:
+        yield
+    finally:
+        os.chdir(orig_dir)
+        if tmpdir:
+            tmp.cleanup()

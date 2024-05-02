@@ -130,7 +130,6 @@ class IndependentOperator(OpenMCOperator):
         # Validate micro-xs parameters
         check_type('materials', materials, openmc.Materials)
         check_type('micros', micros, Iterable, MicroXS)
-        check_type('fluxes', fluxes, Iterable, float)
 
         if not (len(fluxes) == len(micros) == len(materials)):
             msg = (f'The length of fluxes ({len(fluxes)}) should be equal to '

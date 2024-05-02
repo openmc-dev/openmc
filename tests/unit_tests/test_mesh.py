@@ -299,6 +299,7 @@ def test_CylindricalMesh_get_indices_at_coords():
     assert mesh.get_indices_at_coords([98, 199.9, 299]) == (0, 2, 0)  # third angle quadrant
     assert mesh.get_indices_at_coords([102, 199.1, 299]) == (0, 3, 0)  # forth angle quadrant
 
+
 def test_umesh_roundtrip(run_in_tmpdir, request):
     umesh = openmc.UnstructuredMesh(request.path.parent / 'test_mesh_tets.e', 'moab')
     umesh.output = True
@@ -317,3 +318,50 @@ def test_umesh_roundtrip(run_in_tmpdir, request):
     xml_mesh = xml_tally.filters[0].mesh
 
     assert umesh.id == xml_mesh.id
+
+
+def test_mesh_get_homogenized_materials():
+    """Test the get_homogenized_materials method"""
+    # Simple model with 1 cm of Fe56 next to 1 cm of H1
+    fe = openmc.Material()
+    fe.add_nuclide('Fe56', 1.0)
+    fe.set_density('g/cm3', 5.0)
+    h = openmc.Material()
+    h.add_nuclide('H1', 1.0)
+    h.set_density('g/cm3', 1.0)
+
+    x0 = openmc.XPlane(-1.0, boundary_type='vacuum')
+    x1 = openmc.XPlane(0.0)
+    x2 = openmc.XPlane(1.0)
+    x3 = openmc.XPlane(2.0, boundary_type='vacuum')
+    cell1 = openmc.Cell(fill=fe, region=+x0 & -x1)
+    cell2 = openmc.Cell(fill=h, region=+x1 & -x2)
+    cell_empty = openmc.Cell(region=+x2 & -x3)
+    model = openmc.Model(geometry=openmc.Geometry([cell1, cell2, cell_empty]))
+    model.settings.particles = 1000
+    model.settings.batches = 10
+
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = (-1., -1., -1.)
+    mesh.upper_right = (1., 1., 1.)
+    mesh.dimension = (3, 1, 1)
+    m1, m2, m3 = mesh.get_homogenized_materials(model, n_samples=1_000_000)
+
+    # Left mesh element should be only Fe56
+    assert m1.get_mass_density('Fe56') == pytest.approx(5.0)
+
+    # Middle mesh element should be 50% Fe56 and 50% H1
+    assert m2.get_mass_density('Fe56') == pytest.approx(2.5, rel=1e-2)
+    assert m2.get_mass_density('H1') == pytest.approx(0.5, rel=1e-2)
+
+    # Right mesh element should be only H1
+    assert m3.get_mass_density('H1') == pytest.approx(1.0)
+
+    mesh_void = openmc.RegularMesh()
+    mesh_void.lower_left = (0.5, 0.5, -1.)
+    mesh_void.upper_right = (1.5, 1.5, 1.)
+    mesh_void.dimension = (1, 1, 1)
+    m4, = mesh_void.get_homogenized_materials(model, n_samples=1_000_000)
+
+    # Mesh element that overlaps void should have half density
+    assert m4.get_mass_density('H1') == pytest.approx(0.5, rel=1e-2)

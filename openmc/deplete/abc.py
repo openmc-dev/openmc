@@ -10,8 +10,6 @@ from collections.abc import Iterable, Callable
 from copy import deepcopy
 from inspect import signature
 from numbers import Real, Integral
-from contextlib import contextmanager
-import os
 from pathlib import Path
 import time
 from typing import Optional, Union, Sequence
@@ -23,6 +21,7 @@ from uncertainties import ufloat
 
 from openmc.checkvalue import check_type, check_greater_than, PathLike, check_value
 from openmc.mpi import comm
+from openmc.utility_funcs import change_directory
 from openmc import Material
 from .stepresult import StepResult
 from .chain import Chain
@@ -64,25 +63,6 @@ try:
 except AttributeError:
     # Can't set __doc__ on properties on Python 3.4
     pass
-
-@contextmanager
-def change_directory(output_dir):
-    """
-    Helper function for managing the current directory.
-
-    Parameters
-    ----------
-    output_dir : pathlib.Path
-        Directory to switch to.
-    """
-    orig_dir  = os.getcwd()
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    try:
-        os.chdir(output_dir)
-        yield
-    finally:
-        os.chdir(orig_dir)
 
 
 class TransportOperator(ABC):

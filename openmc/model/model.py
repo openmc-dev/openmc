@@ -1,6 +1,5 @@
 from __future__ import annotations
 from collections.abc import Iterable
-from contextlib import contextmanager
 from functools import lru_cache
 import os
 from pathlib import Path
@@ -18,18 +17,7 @@ from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import check_type, check_value, PathLike
 from openmc.exceptions import InvalidIDError
-
-
-@contextmanager
-def _change_directory(working_dir):
-    """A context manager for executing in a provided working directory"""
-    start_dir = Path.cwd()
-    Path.mkdir(working_dir, parents=True, exist_ok=True)
-    os.chdir(working_dir)
-    try:
-        yield
-    finally:
-        os.chdir(start_dir)
+from openmc.utility_funcs import change_directory
 
 
 class Model:
@@ -395,7 +383,7 @@ class Model:
         # Store whether or not the library was initialized when we started
         started_initialized = self.is_initialized
 
-        with _change_directory(Path(directory)):
+        with change_directory(directory):
             with openmc.lib.quiet_dll(output):
                 # TODO: Support use of IndependentOperator too
                 depletion_operator = dep.CoupledOperator(self, **op_kwargs)
@@ -677,7 +665,7 @@ class Model:
         last_statepoint = None
 
         # Operate in the provided working directory
-        with _change_directory(Path(cwd)):
+        with change_directory(cwd):
             if self.is_initialized:
                 # Handle the run options as applicable
                 # First dont allow ones that must be set via init
@@ -767,7 +755,7 @@ class Model:
             raise ValueError("The Settings.volume_calculations attribute must"
                              " be specified before executing this method!")
 
-        with _change_directory(Path(cwd)):
+        with change_directory(cwd):
             if self.is_initialized:
                 if threads is not None:
                     msg = "Threads must be set via Model.is_initialized(...)"
@@ -829,7 +817,7 @@ class Model:
             raise ValueError("The Model.plots attribute must be specified "
                              "before executing this method!")
 
-        with _change_directory(Path(cwd)):
+        with change_directory(cwd):
             if self.is_initialized:
                 # Compute the volumes
                 openmc.lib.plot_geometry(output)

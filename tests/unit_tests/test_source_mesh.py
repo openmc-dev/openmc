@@ -276,12 +276,12 @@ def test_mesh_source_independent(run_in_tmpdir, void_model, mesh_type):
     # for each element, set a single-non zero source with particles
     # traveling out of the mesh (and geometry) w/o crossing any other
     # mesh elements
-    for i, j, k in mesh.indices:
+    for flat_index, (i, j, k) in enumerate(mesh.indices):
         ijk = (i-1, j-1, k-1)
         # zero-out all source strengths and set the strength
         # on the element of interest
         mesh_source.strength = 0.0
-        mesh_source.sources[ijk].strength = 1.0
+        mesh_source.sources[flat_index].strength = 1.0
 
         sp_file = model.run()
 
@@ -375,10 +375,7 @@ def test_mesh_source_file(run_in_tmpdir):
     mesh.upper_right = (2, 3, 4)
     mesh.dimension = (1, 1, 1)
 
-    mesh_source_arr = np.asarray([file_source]).reshape(mesh.dimension)
-    source = openmc.MeshSource(mesh, mesh_source_arr)
-
-    model.settings.source = source
+    model.settings.source = openmc.MeshSource(mesh, [file_source])
 
     model.export_to_model_xml()
 

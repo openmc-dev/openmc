@@ -61,11 +61,11 @@ protected:
   virtual SourceSite sample_no_rejection(uint64_t* seed) const = 0;
 
   // Methods
-  void check_for_restriction_nodes(pugi::xml_node node);
-  bool inside_bounds(SourceSite& s) const;
-  bool inside_spatial_bounds(Position r) const;
-  bool inside_energy_bounds(const double E) const;
-  bool inside_time_bounds(const double time) const;
+  void check_for_constraints(pugi::xml_node node);
+  bool satisfies_constraints(SourceSite& s) const;
+  bool satisfies_spatial_constraints(Position r) const;
+  bool satisfies_energy_constraints(const double E) const;
+  bool satisfies_time_constraints(const double time) const;
 
   // Data members
   std::unordered_set<int32_t> domain_ids_; //!< Domains to reject from

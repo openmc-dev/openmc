@@ -79,7 +79,7 @@ unique_ptr<Source> Source::create(pugi::xml_node node)
   }
 }
 
-void Source::check_for_restriction_nodes(pugi::xml_node node)
+void Source::check_for_constraints(pugi::xml_node node)
 {
   // Check for domains to reject from
   if (check_for_node(node, "domain_type")) {
@@ -91,8 +91,8 @@ void Source::check_for_restriction_nodes(pugi::xml_node node)
     } else if (domain_type == "universe") {
       domain_type_ = DomainType::UNIVERSE;
     } else {
-      fatal_error(std::string(
-        "Unrecognized domain type for source rejection: " + domain_type));
+      fatal_error(
+        std::string("Unrecognized domain type for constraint: " + domain_type));
     }
 
     auto ids = get_node_array<int>(node, "domain_ids");
@@ -136,7 +136,7 @@ SourceSite Source::sample(uint64_t* seed) const
     // Sample a particle randomly from list
     site = this->sample_no_rejection(seed);
 
-    found = inside_bounds(site);
+    found = satisfies_constraints(site);
     if (!found && rejection_strategy_ == RejectionStrategy::KILL) {
       // Accept particle regardless but set wgt=0 to trigger garbage collection
       // I.e. kill this particle immediately and pick the next
@@ -147,23 +147,24 @@ SourceSite Source::sample(uint64_t* seed) const
   return site;
 }
 
-bool Source::inside_bounds(SourceSite& s) const
+bool Source::satisfies_constraints(SourceSite& s) const
 {
-  return inside_spatial_bounds(s.r) && inside_energy_bounds(s.E) &&
-         inside_time_bounds(s.time);
+  return satisfies_spatial_constraints(s.r) &&
+         satisfies_energy_constraints(s.E) &&
+         satisfies_time_constraints(s.time);
 }
 
-bool Source::inside_energy_bounds(double E) const
+bool Source::satisfies_energy_constraints(double E) const
 {
   return E > energy_bounds_.first && E < energy_bounds_.second;
 }
 
-bool Source::inside_time_bounds(const double time) const
+bool Source::satisfies_time_constraints(const double time) const
 {
   return time > time_bounds_.first && time < time_bounds_.second;
 }
 
-bool Source::inside_spatial_bounds(Position r) const
+bool Source::satisfies_spatial_constraints(Position r) const
 {
   bool found = false;
   GeometryState geom_state;
@@ -264,7 +265,7 @@ IndependentSource::IndependentSource(pugi::xml_node node)
     }
 
     // Check for additional defined restrictions
-    check_for_restriction_nodes(node);
+    check_for_constraints(node);
   }
 }
 
@@ -284,7 +285,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     site.r = space_->sample(seed);
 
     // Check if otherwise outside defined restriction bounds
-    found = inside_spatial_bounds(site.r);
+    found = satisfies_spatial_constraints(site.r);
 
     // Check if spatial site is in fissionable material
     if (found) {
@@ -340,7 +341,8 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
       site.E = energy_->sample(seed);
 
       // Resample if energy falls above maximum particle energy
-      if (site.E < data::energy_max[p] and (inside_energy_bounds(site.E)))
+      if (site.E < data::energy_max[p] and
+          (satisfies_energy_constraints(site.E)))
         break;
 
       n_reject++;
@@ -374,7 +376,7 @@ FileSource::FileSource(pugi::xml_node node)
   } else {
     this->load_sites_from_file(path);
   }
-  check_for_restriction_nodes(node);
+  check_for_constraints(node);
 }
 
 FileSource::FileSource(const std::string& path)
@@ -509,7 +511,7 @@ MeshSource::MeshSource(pugi::xml_node node)
   space_ = std::make_unique<MeshSpatial>(mesh_idx, strengths);
 
   // Check for additional defined restrictions
-  check_for_restriction_nodes(node);
+  check_for_constraints(node);
 }
 
 SourceSite MeshSource::sample(uint64_t* seed) const
@@ -521,7 +523,7 @@ SourceSite MeshSource::sample(uint64_t* seed) const
   Position r;
   while (true) {
     r = space_->mesh()->sample_element(element, seed);
-    if (this->inside_spatial_bounds(r)) {
+    if (this->satisfies_spatial_constraints(r)) {
       break;
     }
   }
@@ -533,7 +535,8 @@ SourceSite MeshSource::sample(uint64_t* seed) const
     site.r = r;
 
     // Apply other rejections
-    if (inside_energy_bounds(site.E) && inside_time_bounds(site.time)) {
+    if (satisfies_energy_constraints(site.E) &&
+        satisfies_time_constraints(site.time)) {
       break;
     }
   }

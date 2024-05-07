@@ -44,30 +44,35 @@ extern vector<unique_ptr<Source>> external_sources;
 
 class Source {
 public:
+  // Constructors, destructors
+  Source() = default;
+  explicit Source(pugi::xml_node node);
   virtual ~Source() = default;
 
   // Methods that can be overridden
   virtual SourceSite sample(uint64_t* seed) const;
-  virtual double strength() const { return 1.0; }
+  virtual double strength() const { return strength_; }
 
   static unique_ptr<Source> create(pugi::xml_node node);
 
 protected:
-  // Domain types
-  enum class DomainType { UNIVERSE, MATERIAL, CELL };
-  enum class RejectionStrategy { KILL, RESAMPLE };
-
   // Methods that can be overridden
   virtual SourceSite sample_no_rejection(uint64_t* seed) const = 0;
 
-  // Methods
+  // Methods for constraints
   void check_for_constraints(pugi::xml_node node);
   bool satisfies_constraints(SourceSite& s) const;
   bool satisfies_spatial_constraints(Position r) const;
   bool satisfies_energy_constraints(const double E) const;
   bool satisfies_time_constraints(const double time) const;
 
+private:
+  // Domain types
+  enum class DomainType { UNIVERSE, MATERIAL, CELL };
+  enum class RejectionStrategy { KILL, RESAMPLE };
+
   // Data members
+  double strength_ {1.0};                  //!< Source strength
   std::unordered_set<int32_t> domain_ids_; //!< Domains to reject from
   DomainType domain_type_;                 //!< Domain type for rejection
   std::pair<double, double> time_bounds_ {-std::numeric_limits<double>::max(),
@@ -96,7 +101,6 @@ public:
 
   // Properties
   ParticleType particle_type() const { return particle_; }
-  double strength() const override { return strength_; }
 
   // Make observing pointers available
   SpatialDistribution* space() const { return space_.get(); }
@@ -112,7 +116,6 @@ protected:
 private:
   // Data members
   ParticleType particle_ {ParticleType::neutron}; //!< Type of particle emitted
-  double strength_ {1.0};                         //!< Source strength
   UPtrSpace space_;                               //!< Spatial distribution
   UPtrAngle angle_;                               //!< Angular distribution
   UPtrDist energy_;                               //!< Energy distribution

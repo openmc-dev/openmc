@@ -47,8 +47,19 @@ vector<unique_ptr<Source>> external_sources;
 }
 
 //==============================================================================
-// Source create implementation
+// Source implementation
 //==============================================================================
+
+Source::Source(pugi::xml_node node)
+{
+  // Check for source strength
+  if (check_for_node(node, "strength")) {
+    strength_ = std::stod(get_node_value(node, "strength"));
+  }
+
+  // Check for additional defined constraints
+  check_for_constraints(node);
+}
 
 unique_ptr<Source> Source::create(pugi::xml_node node)
 {
@@ -204,7 +215,7 @@ IndependentSource::IndependentSource(
     energy_ {std::move(energy)}, time_ {std::move(time)}
 {}
 
-IndependentSource::IndependentSource(pugi::xml_node node)
+IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
 {
   // Check for particle type
   if (check_for_node(node, "particle")) {
@@ -217,11 +228,6 @@ IndependentSource::IndependentSource(pugi::xml_node node)
     } else {
       fatal_error(std::string("Unknown source particle type: ") + temp_str);
     }
-  }
-
-  // Check for source strength
-  if (check_for_node(node, "strength")) {
-    strength_ = std::stod(get_node_value(node, "strength"));
   }
 
   // Check for external source file
@@ -263,9 +269,6 @@ IndependentSource::IndependentSource(pugi::xml_node node)
       double p[] {1.0};
       time_ = UPtrDist {new Discrete {T, p, 1}};
     }
-
-    // Check for additional defined restrictions
-    check_for_constraints(node);
   }
 }
 
@@ -284,7 +287,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     // Sample spatial distribution
     site.r = space_->sample(seed);
 
-    // Check if otherwise outside defined restriction bounds
+    // Check if sampled position satisfies spatial constraints
     found = satisfies_spatial_constraints(site.r);
 
     // Check if spatial site is in fissionable material
@@ -368,7 +371,8 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 //==============================================================================
 // FileSource implementation
 //==============================================================================
-FileSource::FileSource(pugi::xml_node node)
+
+FileSource::FileSource(pugi::xml_node node) : Source(node)
 {
   auto path = get_node_value(node, "file", false, true);
   if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
@@ -376,7 +380,6 @@ FileSource::FileSource(pugi::xml_node node)
   } else {
     this->load_sites_from_file(path);
   }
-  check_for_constraints(node);
 }
 
 FileSource::FileSource(const std::string& path)
@@ -422,7 +425,8 @@ SourceSite FileSource::sample_no_rejection(uint64_t* seed) const
 //==============================================================================
 // CompiledSourceWrapper implementation
 //==============================================================================
-CompiledSourceWrapper::CompiledSourceWrapper(pugi::xml_node node)
+
+CompiledSourceWrapper::CompiledSourceWrapper(pugi::xml_node node) : Source(node)
 {
   // Get shared library path and parameters
   auto path = get_node_value(node, "library", false, true);
@@ -486,7 +490,7 @@ CompiledSourceWrapper::~CompiledSourceWrapper()
 // MeshSource implementation
 //==============================================================================
 
-MeshSource::MeshSource(pugi::xml_node node)
+MeshSource::MeshSource(pugi::xml_node node) : Source(node)
 {
   int32_t mesh_id = stoi(get_node_value(node, "mesh"));
   int32_t mesh_idx = model::mesh_map.at(mesh_id);
@@ -509,9 +513,6 @@ MeshSource::MeshSource(pugi::xml_node node)
   }
 
   space_ = std::make_unique<MeshSpatial>(mesh_idx, strengths);
-
-  // Check for additional defined restrictions
-  check_for_constraints(node);
 }
 
 SourceSite MeshSource::sample(uint64_t* seed) const

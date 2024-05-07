@@ -343,8 +343,7 @@ class Cell(IDManagerMixin):
         if self.region is not None:
             return self.region.bounding_box
         else:
-            return BoundingBox(np.array([-np.inf, -np.inf, -np.inf]),
-                               np.array([np.inf, np.inf, np.inf]))
+            return BoundingBox.infinite()
 
     @property
     def num_instances(self):

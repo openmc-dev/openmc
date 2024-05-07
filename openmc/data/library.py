@@ -93,8 +93,7 @@ class DataLibrary(list):
                 materials = list(h5file)
         else:
             raise ValueError(
-                "File type {} not supported by {}"
-                .format(path.name, self.__class__.__name__))
+                f"File type {path.name} not supported by {self.__class__.__name__}")
 
         library = {'path': str(path), 'type': filetype, 'materials': materials}
         self.append(library)

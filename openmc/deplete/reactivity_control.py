@@ -256,8 +256,10 @@ class ReactivityController(ABC):
                 guesses, keffs = search
 
                 # Check if all guesses are within bracket limits
-                if all(self.bracket_limit[0] <= guess <= self.bracket_limit[1] \
-                    for guess in guesses):
+                if all(
+                    self.bracket_limit[0] <= guess <= self.bracket_limit[1]
+                    for guess in guesses
+                ):
                     # Simple method to iteratively adapt the bracket
                     warn(
                         "Search_for_keff returned values below or above "
@@ -304,14 +306,15 @@ class ReactivityController(ABC):
                         )
 
                     # check if adapted bracket lies completely outside of limits
-                    msg = ("WARNING: Adaptive iterative bracket {} went off "
-                           "bracket limits. Set root to {:.2f} and continue."
-                           )
-                    if all(np.array(bracket)+val <= self.bracket_limit[0]):
+                    msg = (
+                        "WARNING: Adaptive iterative bracket {} went off "
+                        "bracket limits. Set root to {:.2f} and continue."
+                    )
+                    if all(np.array(bracket) + val <= self.bracket_limit[0]):
                         warn(msg.format(bracket, self.bracket_limit[0]))
                         root = self.bracket_limit[0]
 
-                    if all(np.array(bracket)+val >= self.bracket_limit[1]):
+                    if all(np.array(bracket) + val >= self.bracket_limit[1]):
                         warn(msg.format(bracket, self.bracket_limit[1]))
                         root = self.bracket_limit[1]
 
@@ -456,7 +459,7 @@ class CellReactivityController(ReactivityController):
     or
     :class:`openmc.deplete.reactivity_control.TemperatureCellReactivityController`
     rather than this class.
-    
+
     .. versionadded:: 0.14.1
 
     Parameters
@@ -810,14 +813,27 @@ class GeometricalCellReactivityController(CellReactivityController):
         check_value("attrib_name", attrib_name, ("rotation", "translation"))
         self.attrib_name = attrib_name
 
-        # check if cell is filled with a universe containing 2 cells
-        check_type("fill universe", self.cell.fill, openmc.Universe)
-        # check if universe contains 2 cells
-        check_length("universe cells", self.cell.fill.cells, 2)
-
-        self.universe_cells = [
-            cell for cell in self.cell.fill.cells.values() if cell.fill.depletable
-        ]
+        if isinstance(self.cell.fill, openmc.Universe):
+            # check if universe contains 2 cells
+            check_length("universe cells", self.cell.fill.cells, 2)
+            self.universe_cells = [
+                cell for cell in self.cell.fill.cells.values() if cell.fill.depletable
+            ]
+        elif isinstance(self.cell.fill, openmc.Lattice):
+            # check if lattice contains 2 universes
+            check_length("lattice universes", self.cell.fill.get_unique_universes(), 2)
+            self.universe_cells = [
+                cell
+                for cell in self.cell.fill.get_all_cells().values()
+                if cell.fill.depletable
+            ]
+        else:
+            raise ValueError(
+                "{} s not a valid instance of "
+                " should be a {} or {} instance".format(
+                    self.cell.fill, openmc.Universe, openmc.Lattice
+                )
+            )
 
         check_type("samples", samples, int)
         self.samples = samples

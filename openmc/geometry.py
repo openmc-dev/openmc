@@ -389,7 +389,7 @@ class Geometry:
         """
         universes = {}
         universes[self.root_universe.id] = self.root_universe
-        universes.update(self.root_universe.get_all_universes())
+        universes.update(self.root_universe.get_all_universes(memo=set()))
         return universes
 
     def get_all_nuclides(self) -> typing.List[str]:

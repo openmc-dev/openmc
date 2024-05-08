@@ -465,7 +465,7 @@ class Cell(IDManagerMixin):
 
         return materials
 
-    def get_all_universes(self):
+    def get_all_universes(self, memo=None):
         """Return all universes that are contained within this one if any of
         its cells are filled with a universe or lattice.
 
@@ -481,9 +481,9 @@ class Cell(IDManagerMixin):
 
         if self.fill_type == 'universe':
             universes[self.fill.id] = self.fill
-            universes.update(self.fill.get_all_universes())
+            universes.update(self.fill.get_all_universes(memo))
         elif self.fill_type == 'lattice':
-            universes.update(self.fill.get_all_universes())
+            universes.update(self.fill.get_all_universes(memo))
 
         return universes
 

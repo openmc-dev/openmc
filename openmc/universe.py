@@ -90,7 +90,7 @@ class UniverseBase(ABC, IDManagerMixin):
         else:
             raise ValueError('No volume information found for this universe.')
 
-    def get_all_universes(self):
+    def get_all_universes(self, memo=None):
         """Return all universes that are contained within this one.
 
         Returns
@@ -102,8 +102,8 @@ class UniverseBase(ABC, IDManagerMixin):
         """
         # Append all Universes within each Cell to the dictionary
         universes = {}
-        for cell in self.get_all_cells().values():
-            universes.update(cell.get_all_universes())
+        for cell in self.get_all_cells(memo).values():
+            universes.update(cell.get_all_universes(memo))
 
         return universes
 

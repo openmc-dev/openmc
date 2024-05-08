@@ -105,7 +105,12 @@ int32_t Lattice::fill_offset_table(int32_t offset, int32_t target_univ_id,
   // recalculating all of them and just return the total offset. Note that the
   // offsets_ array doesn't actually include the offset accounting for the last
   // universe, so we get the before-last offset for the given map and then
-  // explicitly add the count for the last universe.
+  // explicitly add the count for the outer universe or the last universe if no
+  // outer universe is present
+  if (outer_ != NO_OUTER_UNIVERSE && outer_offsets_[map] != C_NONE) {
+    return outer_offsets_[map] +
+           count_universe_instances(outer_, target_univ_id, univ_count_memo);
+  }
   if (offsets_[map * universes_.size()] != C_NONE) {
     int last_offset = offsets_[(map + 1) * universes_.size() - 1];
     int last_univ = universes_.back();
@@ -113,12 +118,18 @@ int32_t Lattice::fill_offset_table(int32_t offset, int32_t target_univ_id,
            count_universe_instances(last_univ, target_univ_id, univ_count_memo);
   }
 
+  // compute offsets for this map on the lattice if this hasn't been done yet
   for (LatticeIter it = begin(); it != end(); ++it) {
     offsets_[map * universes_.size() + it.indx_] = offset;
     offset += count_universe_instances(*it, target_univ_id, univ_count_memo);
   }
+  if (outer_ != NO_OUTER_UNIVERSE) {
+    outer_offsets_[map] = offset;
+    offset += count_universe_instances(outer_, target_univ_id, univ_count_memo);
+  }
   return offset;
 }
+
 
 //==============================================================================
 

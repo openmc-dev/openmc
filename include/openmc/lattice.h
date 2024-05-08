@@ -51,6 +51,7 @@ public:
   vector<int32_t> universes_;         //!< Universes filling each lattice tile
   int32_t outer_ {NO_OUTER_UNIVERSE}; //!< Universe tiled outside the lattice
   vector<int32_t> offsets_;           //!< Distribcell offset table
+  vector<int32_t> outer_offsets_;     //!< Distribcell offset table for outer universe
 
   explicit Lattice(pugi::xml_node lat_node);
 
@@ -71,6 +72,8 @@ public:
   void allocate_offset_table(int n_maps)
   {
     offsets_.resize(n_maps * universes_.size(), C_NONE);
+    if (outer_ != NO_OUTER_UNIVERSE)
+      outer_offsets_.resize(n_maps, C_NONE);
   }
 
   //! Populate the distribcell offset tables.

@@ -453,6 +453,10 @@ void count_cell_instances(int32_t univ_indx)
           count_cell_instances(*it);
           update_universe_cell_count(univ_indx, *it);
         }
+        if (lat.outer_ != NO_OUTER_UNIVERSE) {
+          count_cell_instances(lat.outer_);
+          update_universe_cell_count(univ_indx, lat.outer_);
+        }
       }
     }
   }
@@ -533,6 +537,7 @@ std::string distribcell_path_inner(int32_t target_cell, int32_t map,
         temp_offset = offset + c.offset_[map];
       } else {
         Lattice& lat = *model::lattices[c.fill_];
+
         int32_t indx = lat.universes_.size() * map + lat.begin().indx_;
         temp_offset = offset + lat.offsets_[indx];
       }
@@ -567,6 +572,12 @@ std::string distribcell_path_inner(int32_t target_cell, int32_t map,
     // Recurse into the lattice cell.
     Lattice& lat = *model::lattices[c.fill_];
     path << "l" << lat.id_;
+    if (lat.outer_ != NO_OUTER_UNIVERSE && offset + lat.outer_offsets_[map] <= target_offset - c.offset_[map]) {
+        path << "(outer)->";
+        path << distribcell_path_inner(
+          target_cell, map, target_offset, *model::universes[lat.outer_], offset);
+        return path.str();
+    }
     for (ReverseLatticeIter it = lat.rbegin(); it != lat.rend(); ++it) {
       int32_t indx = lat.universes_.size() * map + it.indx_;
       int32_t temp_offset = offset + lat.offsets_[indx];
@@ -575,6 +586,17 @@ std::string distribcell_path_inner(int32_t target_cell, int32_t map,
         path << "(" << lat.index_to_string(it.indx_) << ")->";
         path << distribcell_path_inner(target_cell, map, target_offset,
           *model::universes[*it], offset + c.offset_[map]);
+        return path.str();
+      }
+    }
+    // if none of the lattice cell universes are a match, try the outer universe
+    if (lat.outer_ != NO_OUTER_UNIVERSE) {
+      int32_t temp_offset = offset + lat.outer_offsets_[map];
+      if (temp_offset <= target_offset - c.offset_[map]) {
+        offset = temp_offset;
+        path << "(outer)->";
+        path << distribcell_path_inner(
+          target_cell, map, target_offset, *model::universes[lat.outer_], offset);
         return path.str();
       }
     }

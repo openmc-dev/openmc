@@ -531,22 +531,21 @@ std::string distribcell_path_inner(int32_t target_cell, int32_t map,
     Cell& c = *model::cells[*cell_it];
 
     // Material cells don't contain other cells so ignore them.
-    if (c.type_ != Fill::MATERIAL) {
-      int32_t temp_offset;
-      if (c.type_ == Fill::UNIVERSE) {
-        temp_offset = offset + c.offset_[map];
-      } else {
-        Lattice& lat = *model::lattices[c.fill_];
+    if (c.type_ == Fill::MATERIAL) continue;
 
-        int32_t indx = lat.universes_.size() * map + lat.begin().indx_;
-        temp_offset = offset + lat.offsets_[indx];
-      }
-
-      // The desired cell is the first cell that gives an offset smaller or
-      // equal to the target offset.
-      if (temp_offset <= target_offset - c.offset_[map])
-        break;
+    int32_t temp_offset;
+    if (c.type_ == Fill::UNIVERSE) {
+      temp_offset = offset + c.offset_[map];
+    } else {
+      Lattice& lat = *model::lattices[c.fill_];
+      int32_t indx = lat.universes_.size() * map + lat.begin().indx_;
+      temp_offset = offset + lat.offsets_[indx];
     }
+
+    // The desired cell is the first cell that gives an offset smaller or
+    // equal to the target offset.
+    if (temp_offset <= target_offset - c.offset_[map])
+      break;
   }
 
   // if we get through the loop without finding an appropriate entry, throw

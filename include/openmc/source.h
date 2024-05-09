@@ -56,19 +56,30 @@ public:
   static unique_ptr<Source> create(pugi::xml_node node);
 
 protected:
-  // Methods that can be overridden
-  virtual SourceSite sample_no_rejection(uint64_t* seed) const = 0;
+  //! Sample a source site (without applying constraints)
+  //
+  //! Sample from the external source distribution
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Sampled site
+  virtual SourceSite sample_without_constraints(uint64_t* seed) const
+  {
+    return {};
+  }
 
   // Methods for constraints
-  void check_for_constraints(pugi::xml_node node);
-  bool satisfies_constraints(SourceSite& s) const;
+  void read_constraints(pugi::xml_node node);
   bool satisfies_spatial_constraints(Position r) const;
-  bool satisfies_energy_constraints(const double E) const;
-  bool satisfies_time_constraints(const double time) const;
+  bool satisfies_energy_constraints(double E) const;
+  bool satisfies_time_constraints(double time) const;
 
 private:
   // Domain types
   enum class DomainType { UNIVERSE, MATERIAL, CELL };
+
+  // Strategy used for rejecting sites when constraints are applied. KILL means
+  // that sites are always accepted but if they don't satisfy constraints, they
+  // are given weight 0. RESAMPLE means that a new source site will be sampled
+  // until constraints are met.
   enum class RejectionStrategy { KILL, RESAMPLE };
 
   // Data members
@@ -79,7 +90,8 @@ private:
     std::numeric_limits<double>::max()}; //!< time limits
   std::pair<double, double> energy_bounds_ {
     0, std::numeric_limits<double>::max()}; //!< energy limits
-  RejectionStrategy rejection_strategy_;    //!< Procedure for rejected
+  RejectionStrategy rejection_strategy_ {
+    RejectionStrategy::RESAMPLE}; //!< Procedure for rejecting
 };
 
 //==============================================================================
@@ -108,11 +120,6 @@ public:
   Distribution* energy() const { return energy_.get(); }
   Distribution* time() const { return time_.get(); }
 
-protected:
-  // Note that this method is not used since IndependentSource directly
-  // overrides the sample method
-  SourceSite sample_no_rejection(uint64_t* seed) const override { return {}; }
-
 private:
   // Data members
   ParticleType particle_ {ParticleType::neutron}; //!< Type of particle emitted
@@ -137,7 +144,7 @@ public:
     const std::string& path); //!< Load source sites from file
 
 protected:
-  SourceSite sample_no_rejection(uint64_t* seed) const override;
+  SourceSite sample_without_constraints(uint64_t* seed) const override;
 
 private:
   vector<SourceSite> sites_; //!< Source sites from a file
@@ -159,7 +166,7 @@ public:
 
 protected:
   // Defer implementation to custom source library
-  SourceSite sample_no_rejection(uint64_t* seed) const override
+  SourceSite sample_without_constraints(uint64_t* seed) const override
   {
     return compiled_source_->sample(seed);
   }
@@ -193,11 +200,6 @@ public:
   {
     return sources_.size() == 1 ? sources_[0] : sources_[i];
   }
-
-protected:
-  // Note that this method is not used since MeshSource directly overrides the
-  // sample method
-  SourceSite sample_no_rejection(uint64_t* seed) const override { return {}; }
 
 private:
   // Data members

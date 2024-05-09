@@ -130,7 +130,6 @@ int32_t Lattice::fill_offset_table(int32_t offset, int32_t target_univ_id,
   return offset;
 }
 
-
 //==============================================================================
 
 void Lattice::to_hdf5(hid_t lattices_group) const
@@ -236,14 +235,14 @@ RectLattice::RectLattice(pugi::xml_node lat_node) : Lattice {lat_node}
 
 //==============================================================================
 
-int32_t const& RectLattice::operator[](array<int, 3> const& i_xyz)
+const int32_t& RectLattice::operator[](const array<int, 3>& i_xyz)
 {
   return universes_[get_flat_index(i_xyz)];
 }
 
 //==============================================================================
 
-bool RectLattice::are_valid_indices(array<int, 3> const& i_xyz) const
+bool RectLattice::are_valid_indices(const array<int, 3>& i_xyz) const
 {
   return ((i_xyz[0] >= 0) && (i_xyz[0] < n_cells_[0]) && (i_xyz[1] >= 0) &&
           (i_xyz[1] < n_cells_[1]) && (i_xyz[2] >= 0) &&
@@ -365,7 +364,7 @@ Position RectLattice::get_local_position(
 
 //==============================================================================
 
-int32_t& RectLattice::offset(int map, array<int, 3> const& i_xyz)
+int32_t& RectLattice::offset(int map, const array<int, 3>& i_xyz)
 {
   return offsets_[n_cells_[0] * n_cells_[1] * n_cells_[2] * map +
                   n_cells_[0] * n_cells_[1] * i_xyz[2] +
@@ -687,7 +686,7 @@ void HexLattice::fill_lattice_y(const vector<std::string>& univ_words)
 
 //==============================================================================
 
-int32_t const& HexLattice::operator[](array<int, 3> const& i_xyz)
+const int32_t& HexLattice::operator[](const array<int, 3>& i_xyz)
 {
   return universes_[get_flat_index(i_xyz)];
 }
@@ -706,7 +705,7 @@ ReverseLatticeIter HexLattice::rbegin()
 
 //==============================================================================
 
-bool HexLattice::are_valid_indices(array<int, 3> const& i_xyz) const
+bool HexLattice::are_valid_indices(const array<int, 3>& i_xyz) const
 {
   // Check if (x, alpha, z) indices are valid, accounting for number of rings
   return ((i_xyz[0] >= 0) && (i_xyz[1] >= 0) && (i_xyz[2] >= 0) &&
@@ -1003,7 +1002,7 @@ bool HexLattice::is_valid_index(int indx) const
 
 //==============================================================================
 
-int32_t& HexLattice::offset(int map, array<int, 3> const& i_xyz)
+int32_t& HexLattice::offset(int map, const array<int, 3>& i_xyz)
 {
   int nx {2 * n_rings_ - 1};
   int ny {2 * n_rings_ - 1};

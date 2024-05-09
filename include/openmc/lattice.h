@@ -51,13 +51,14 @@ public:
   vector<int32_t> universes_;         //!< Universes filling each lattice tile
   int32_t outer_ {NO_OUTER_UNIVERSE}; //!< Universe tiled outside the lattice
   vector<int32_t> offsets_;           //!< Distribcell offset table
-  vector<int32_t> outer_offsets_;     //!< Distribcell offset table for outer universe
+  vector<int32_t>
+    outer_offsets_; //!< Distribcell offset table for outer universe
 
   explicit Lattice(pugi::xml_node lat_node);
 
   virtual ~Lattice() {}
 
-  virtual int32_t const& operator[](array<int, 3> const& i_xyz) = 0;
+  virtual const int32_t& operator[](const array<int, 3>& i_xyz) = 0;
 
   virtual LatticeIter begin();
   LatticeIter end();
@@ -84,7 +85,7 @@ public:
   //! \param i_xyz[3] The indices for a lattice tile.
   //! \return true if the given indices fit within the lattice bounds.  False
   //!   otherwise.
-  virtual bool are_valid_indices(array<int, 3> const& i_xyz) const = 0;
+  virtual bool are_valid_indices(const array<int, 3>& i_xyz) const = 0;
 
   //! \brief Find the next lattice surface crossing
   //! \param r A 3D Cartesian coordinate.
@@ -128,7 +129,7 @@ public:
   //! \param i_xyz[3] The indices for a lattice tile.
   //! \return Distribcell offset i.e. the largest instance number for the target
   //!  cell found in the geometry tree under this lattice tile.
-  virtual int32_t& offset(int map, array<int, 3> const& i_xyz) = 0;
+  virtual int32_t& offset(int map, const array<int, 3>& i_xyz) = 0;
 
   //! \brief Get the distribcell offset for a lattice tile.
   //! \param The map index for the target cell.
@@ -209,9 +210,9 @@ class RectLattice : public Lattice {
 public:
   explicit RectLattice(pugi::xml_node lat_node);
 
-  int32_t const& operator[](array<int, 3> const& i_xyz) override;
+  const int32_t& operator[](const array<int, 3>& i_xyz) override;
 
-  bool are_valid_indices(array<int, 3> const& i_xyz) const override;
+  bool are_valid_indices(const array<int, 3>& i_xyz) const override;
 
   std::pair<double, array<int, 3>> distance(
     Position r, Direction u, const array<int, 3>& i_xyz) const override;
@@ -224,7 +225,7 @@ public:
   Position get_local_position(
     Position r, const array<int, 3>& i_xyz) const override;
 
-  int32_t& offset(int map, array<int, 3> const& i_xyz) override;
+  int32_t& offset(int map, const array<int, 3>& i_xyz) override;
 
   int32_t offset(int map, int indx) const override;
 
@@ -244,13 +245,13 @@ class HexLattice : public Lattice {
 public:
   explicit HexLattice(pugi::xml_node lat_node);
 
-  int32_t const& operator[](array<int, 3> const& i_xyz) override;
+  const int32_t& operator[](const array<int, 3>& i_xyz) override;
 
   LatticeIter begin() override;
 
   ReverseLatticeIter rbegin() override;
 
-  bool are_valid_indices(array<int, 3> const& i_xyz) const override;
+  bool are_valid_indices(const array<int, 3>& i_xyz) const override;
 
   std::pair<double, array<int, 3>> distance(
     Position r, Direction u, const array<int, 3>& i_xyz) const override;
@@ -265,7 +266,7 @@ public:
 
   bool is_valid_index(int indx) const override;
 
-  int32_t& offset(int map, array<int, 3> const& i_xyz) override;
+  int32_t& offset(int map, const array<int, 3>& i_xyz) override;
 
   int32_t offset(int map, int indx) const override;
 

@@ -531,7 +531,8 @@ std::string distribcell_path_inner(int32_t target_cell, int32_t map,
     Cell& c = *model::cells[*cell_it];
 
     // Material cells don't contain other cells so ignore them.
-    if (c.type_ == Fill::MATERIAL) continue;
+    if (c.type_ == Fill::MATERIAL)
+      continue;
 
     int32_t temp_offset;
     if (c.type_ == Fill::UNIVERSE) {
@@ -571,12 +572,13 @@ std::string distribcell_path_inner(int32_t target_cell, int32_t map,
     // Recurse into the lattice cell.
     Lattice& lat = *model::lattices[c.fill_];
     path << "l" << lat.id_;
-    if (lat.outer_ != NO_OUTER_UNIVERSE && offset + lat.outer_offsets_[map] <= target_offset - c.offset_[map]) {
-        offset = offset + lat.outer_offsets_[map];
-        path << "(outer)->";
-        path << distribcell_path_inner(
-          target_cell, map, target_offset, *model::universes[lat.outer_], offset);
-        return path.str();
+    if (lat.outer_ != NO_OUTER_UNIVERSE &&
+        offset + lat.outer_offsets_[map] <= target_offset - c.offset_[map]) {
+      offset = offset + lat.outer_offsets_[map];
+      path << "(outer)->";
+      path << distribcell_path_inner(
+        target_cell, map, target_offset, *model::universes[lat.outer_], offset);
+      return path.str();
     }
     for (ReverseLatticeIter it = lat.rbegin(); it != lat.rend(); ++it) {
       int32_t indx = lat.universes_.size() * map + it.indx_;
@@ -595,8 +597,8 @@ std::string distribcell_path_inner(int32_t target_cell, int32_t map,
       if (temp_offset <= target_offset - c.offset_[map]) {
         offset = temp_offset;
         path << "(outer)->";
-        path << distribcell_path_inner(
-          target_cell, map, target_offset, *model::universes[lat.outer_], offset);
+        path << distribcell_path_inner(target_cell, map, target_offset,
+          *model::universes[lat.outer_], offset);
         return path.str();
       }
     }

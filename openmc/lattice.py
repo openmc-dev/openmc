@@ -203,7 +203,7 @@ class Lattice(IDManagerMixin, ABC):
 
         return materials
 
-    def get_all_universes(self, memo):
+    def get_all_universes(self, memo=None):
         """Return all universes that are contained within the lattice
 
         Returns
@@ -232,7 +232,7 @@ class Lattice(IDManagerMixin, ABC):
 
         # Append all Universes containing each cell to the dictionary
         for universe in unique_universes.values():
-            all_universes.update(universe.get_all_universes())
+            all_universes.update(universe.get_all_universes(memo))
 
         return all_universes
 

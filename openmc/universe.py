@@ -100,9 +100,16 @@ class UniverseBase(ABC, IDManagerMixin):
             :class:`Universe` instances
 
         """
+
+        if memo and self in memo:
+            return {}
+
+        if memo is not None:
+            memo.add(self)
+
         # Append all Universes within each Cell to the dictionary
         universes = {}
-        for cell in self.get_all_cells(memo).values():
+        for cell in self.get_all_cells(memo=set()).values():
             universes.update(cell.get_all_universes(memo))
 
         return universes

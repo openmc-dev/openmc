@@ -573,6 +573,7 @@ std::string distribcell_path_inner(int32_t target_cell, int32_t map,
     Lattice& lat = *model::lattices[c.fill_];
     path << "l" << lat.id_;
     if (lat.outer_ != NO_OUTER_UNIVERSE && offset + lat.outer_offsets_[map] <= target_offset - c.offset_[map]) {
+        offset = offset + lat.outer_offsets_[map];
         path << "(outer)->";
         path << distribcell_path_inner(
           target_cell, map, target_offset, *model::universes[lat.outer_], offset);

@@ -476,8 +476,13 @@ class Cell(IDManagerMixin):
             :class:`Universe` instances
 
         """
-
         universes = {}
+
+        if memo and self in memo:
+            return universes
+
+        if memo is not None:
+            memo.add(self)
 
         if self.fill_type == 'universe':
             universes[self.fill.id] = self.fill

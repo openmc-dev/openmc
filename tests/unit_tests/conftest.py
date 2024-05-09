@@ -54,7 +54,7 @@ def sphere_model():
 
 @pytest.fixture
 def cell_with_lattice():
-    m_inside = [openmc.Material(), openmc.Material(), None, openmc.Material()]
+    m_inside = [openmc.Material(), openmc.Material(), None, openmc.Material(), None]
     m_outside = openmc.Material()
 
     cyl = openmc.ZCylinder(r=1.0)
@@ -66,6 +66,7 @@ def cell_with_lattice():
     lattice.lower_left = (-4.0, -4.0)
     lattice.pitch = (4.0, 4.0)
     lattice.universes = [[univ, univ], [univ, univ]]
+    lattice.outer = univ
     main_cell = openmc.Cell(fill=lattice)
 
     return ([inside_cyl, outside_cyl, main_cell],

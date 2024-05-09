@@ -267,14 +267,14 @@ def test_determine_paths(cell_with_lattice):
     geom = openmc.Geometry(u)
 
     geom.determine_paths()
-    assert len(cells[0].paths) == 4
-    assert len(cells[1].paths) == 4
+    assert len(cells[0].paths) == 5
+    assert len(cells[1].paths) == 5
     assert len(cells[2].paths) == 1
     assert len(mats[0].paths) == 1
-    assert len(mats[-1].paths) == 4
+    assert len(mats[-1].paths) == 5
 
     # Test get_instances
-    for i in range(4):
+    for i in range(5):
         assert geom.get_instances(cells[0].paths[i]) == i
         assert geom.get_instances(mats[-1].paths[i]) == i
 

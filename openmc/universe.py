@@ -715,11 +715,12 @@ class Universe(UniverseBase):
 
                 # Count instances in each universe in the lattice
                 for index in latt._natural_indices:
-                    latt_path = '{}->l{}({})->'.format(
-                        cell_path, latt.id, ",".join(str(x) for x in index))
+                    latt_path = f'{cell_path}->l{latt.id}({",".join(str(x) for x in index)})->'
                     univ = latt.get_universe(index)
                     univ._determine_paths(latt_path, instances_only)
-
+                if latt.outer is not None:
+                    latt_path = f'{cell_path}->l{latt.id}(outer)->'
+                    latt.outer._determine_paths(latt_path, instances_only)
             else:
                 if fill_type == 'material':
                     mat = fill

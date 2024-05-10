@@ -155,14 +155,18 @@ SourceSite Source::sample_with_constraints(uint64_t* seed) const
     // Sample a source site without considering constraints yet
     site = this->sample(seed);
 
-    // Check whether sampled site satisfies constraints
-    accepted = satisfies_spatial_constraints(site.r) &&
-               satisfies_energy_constraints(site.E) &&
-               satisfies_time_constraints(site.time);
-    if (!accepted && rejection_strategy_ == RejectionStrategy::KILL) {
-      // Accept particle but set weight to 0 so that it is killed immediately
+    if (constraints_applied()) {
       accepted = true;
-      site.wgt = 0.0;
+    } else {
+      // Check whether sampled site satisfies constraints
+      accepted = satisfies_spatial_constraints(site.r) &&
+                 satisfies_energy_constraints(site.E) &&
+                 satisfies_time_constraints(site.time);
+      if (!accepted && rejection_strategy_ == RejectionStrategy::KILL) {
+        // Accept particle but set weight to 0 so that it is killed immediately
+        accepted = true;
+        site.wgt = 0.0;
+      }
     }
   }
   return site;
@@ -297,7 +301,7 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
   }
 }
 
-SourceSite IndependentSource::sample_with_constraints(uint64_t* seed) const
+SourceSite IndependentSource::sample(uint64_t* seed) const
 {
   SourceSite site;
   site.particle = particle_;
@@ -519,7 +523,7 @@ MeshSource::MeshSource(pugi::xml_node node) : Source(node)
   space_ = std::make_unique<MeshSpatial>(mesh_idx, strengths);
 }
 
-SourceSite MeshSource::sample_with_constraints(uint64_t* seed) const
+SourceSite MeshSource::sample(uint64_t* seed) const
 {
   // Sample the CDF defined in initialization above
   int32_t element = space_->sample_element_index(seed);

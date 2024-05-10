@@ -56,7 +56,7 @@ public:
   //
   //! \param[inout] seed Pseudorandom seed pointer
   //! \return Sampled site
-  virtual SourceSite sample_with_constraints(uint64_t* seed) const;
+  SourceSite sample_with_constraints(uint64_t* seed) const;
 
   //! Sample a source site (without applying constraints)
   //
@@ -68,13 +68,6 @@ public:
   static unique_ptr<Source> create(pugi::xml_node node);
 
 protected:
-  // Methods for constraints
-  void read_constraints(pugi::xml_node node);
-  bool satisfies_spatial_constraints(Position r) const;
-  bool satisfies_energy_constraints(double E) const;
-  bool satisfies_time_constraints(double time) const;
-
-protected:
   // Domain types
   enum class DomainType { UNIVERSE, MATERIAL, CELL };
 
@@ -83,6 +76,15 @@ protected:
   // are given weight 0. RESAMPLE means that a new source site will be sampled
   // until constraints are met.
   enum class RejectionStrategy { KILL, RESAMPLE };
+
+  // Indicates whether derived class already handles constraints
+  virtual bool constraints_applied() const { return false; }
+
+  // Methods for constraints
+  void read_constraints(pugi::xml_node node);
+  bool satisfies_spatial_constraints(Position r) const;
+  bool satisfies_energy_constraints(double E) const;
+  bool satisfies_time_constraints(double time) const;
 
   // Data members
   double strength_ {1.0};                  //!< Source strength
@@ -113,7 +115,7 @@ public:
   //! Sample from the external source distribution
   //! \param[inout] seed Pseudorandom seed pointer
   //! \return Sampled site
-  SourceSite sample_with_constraints(uint64_t* seed) const override;
+  SourceSite sample(uint64_t* seed) const override;
 
   // Properties
   ParticleType particle_type() const { return particle_; }
@@ -123,6 +125,10 @@ public:
   UnitSphereDistribution* angle() const { return angle_.get(); }
   Distribution* energy() const { return energy_.get(); }
   Distribution* time() const { return time_.get(); }
+
+protected:
+  // Indicates whether derived class already handles constraints
+  bool constraints_applied() const override { return true; }
 
 private:
   // Data members
@@ -194,7 +200,7 @@ public:
   //! Sample from the external source distribution
   //! \param[inout] seed Pseudorandom seed pointer
   //! \return Sampled site
-  SourceSite sample_with_constraints(uint64_t* seed) const override;
+  SourceSite sample(uint64_t* seed) const override;
 
   // Properties
   double strength() const override { return space_->total_strength(); }
@@ -204,6 +210,9 @@ public:
   {
     return sources_.size() == 1 ? sources_[0] : sources_[i];
   }
+
+protected:
+  bool constraints_applied() const override { return true; }
 
 private:
   // Data members

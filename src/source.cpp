@@ -146,14 +146,14 @@ void Source::read_constraints(pugi::xml_node node)
   }
 }
 
-SourceSite Source::sample(uint64_t* seed) const
+SourceSite Source::sample_with_constraints(uint64_t* seed) const
 {
   bool accepted = false;
   SourceSite site;
 
   while (!accepted) {
     // Sample a source site without considering constraints yet
-    site = this->sample_without_constraints(seed);
+    site = this->sample(seed);
 
     // Check whether sampled site satisfies constraints
     accepted = satisfies_spatial_constraints(site.r) &&
@@ -297,7 +297,7 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
   }
 }
 
-SourceSite IndependentSource::sample(uint64_t* seed) const
+SourceSite IndependentSource::sample_with_constraints(uint64_t* seed) const
 {
   SourceSite site;
   site.particle = particle_;
@@ -419,7 +419,7 @@ void FileSource::load_sites_from_file(const std::string& path)
   file_close(file_id);
 }
 
-SourceSite FileSource::sample_without_constraints(uint64_t* seed) const
+SourceSite FileSource::sample(uint64_t* seed) const
 {
   // Sample a particle randomly from list
   size_t i_site = sites_.size() * prn(seed);
@@ -519,7 +519,7 @@ MeshSource::MeshSource(pugi::xml_node node) : Source(node)
   space_ = std::make_unique<MeshSpatial>(mesh_idx, strengths);
 }
 
-SourceSite MeshSource::sample(uint64_t* seed) const
+SourceSite MeshSource::sample_with_constraints(uint64_t* seed) const
 {
   // Sample the CDF defined in initialization above
   int32_t element = space_->sample_element_index(seed);
@@ -533,7 +533,7 @@ SourceSite MeshSource::sample(uint64_t* seed) const
   SourceSite site;
   while (true) {
     // Sample source for the chosen element and replace the position
-    site = source(element)->sample(seed);
+    site = source(element)->sample_with_constraints(seed);
     site.r = r;
 
     // Apply other rejections
@@ -596,7 +596,7 @@ SourceSite sample_external_source(uint64_t* seed)
   }
 
   // Sample source site from i-th source distribution
-  SourceSite site {model::external_sources[i]->sample(seed)};
+  SourceSite site {model::external_sources[i]->sample_with_constraints(seed)};
 
   // If running in MG, convert site.E to group
   if (!settings::run_CE) {

@@ -50,22 +50,24 @@ public:
   virtual ~Source() = default;
 
   // Methods that can be overridden
-  virtual SourceSite sample(uint64_t* seed) const;
   virtual double strength() const { return strength_; }
 
-  static unique_ptr<Source> create(pugi::xml_node node);
+  //! Sample a source site and apply constraints
+  //
+  //! \param[inout] seed Pseudorandom seed pointer
+  //! \return Sampled site
+  virtual SourceSite sample_with_constraints(uint64_t* seed) const;
 
-protected:
   //! Sample a source site (without applying constraints)
   //
   //! Sample from the external source distribution
   //! \param[inout] seed Pseudorandom seed pointer
   //! \return Sampled site
-  virtual SourceSite sample_without_constraints(uint64_t* seed) const
-  {
-    return {};
-  }
+  virtual SourceSite sample(uint64_t* seed) const { return {}; }
 
+  static unique_ptr<Source> create(pugi::xml_node node);
+
+protected:
   // Methods for constraints
   void read_constraints(pugi::xml_node node);
   bool satisfies_spatial_constraints(Position r) const;
@@ -111,7 +113,7 @@ public:
   //! Sample from the external source distribution
   //! \param[inout] seed Pseudorandom seed pointer
   //! \return Sampled site
-  SourceSite sample(uint64_t* seed) const override;
+  SourceSite sample_with_constraints(uint64_t* seed) const override;
 
   // Properties
   ParticleType particle_type() const { return particle_; }
@@ -146,7 +148,7 @@ public:
     const std::string& path); //!< Load source sites from file
 
 protected:
-  SourceSite sample_without_constraints(uint64_t* seed) const override;
+  SourceSite sample(uint64_t* seed) const override;
 
 private:
   vector<SourceSite> sites_; //!< Source sites from a file
@@ -168,7 +170,7 @@ public:
 
 protected:
   // Defer implementation to custom source library
-  SourceSite sample_without_constraints(uint64_t* seed) const override
+  SourceSite sample(uint64_t* seed) const override
   {
     return compiled_source_->sample(seed);
   }
@@ -192,7 +194,7 @@ public:
   //! Sample from the external source distribution
   //! \param[inout] seed Pseudorandom seed pointer
   //! \return Sampled site
-  SourceSite sample(uint64_t* seed) const override;
+  SourceSite sample_with_constraints(uint64_t* seed) const override;
 
   // Properties
   double strength() const override { return space_->total_strength(); }

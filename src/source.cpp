@@ -128,6 +128,10 @@ void Source::read_constraints(pugi::xml_node node)
     energy_bounds_ = std::make_pair(ids[0], ids[1]);
   }
 
+  if (check_for_node(node, "fissionable")) {
+    only_fissionable_ = get_node_value_bool(node, "fissionable");
+  }
+
   // Check for how to handle rejected particles
   if (check_for_node(node, "rejection_strategy")) {
     std::string rejection_strategy = get_node_value(node, "rejection_strategy");
@@ -184,7 +188,7 @@ bool Source::satisfies_spatial_constraints(Position r) const
   if (!found)
     return false;
 
-  // Check the geometry state against the specified constraints
+  // Check the geometry state against specified domains
   bool accepted = true;
   if (!domain_ids_.empty()) {
     if (domain_type_ == DomainType::MATERIAL) {
@@ -202,6 +206,18 @@ bool Source::satisfies_spatial_constraints(Position r) const
       }
     }
   }
+
+  // Check if spatial site is in fissionable material
+  if (accepted && only_fissionable_) {
+    // Determine material
+    auto mat_index = geom_state.material();
+    if (mat_index == MATERIAL_VOID) {
+      accepted = false;
+    } else {
+      accepted = model::materials[mat_index]->fissionable();
+    }
+  }
+
   return accepted;
 }
 
@@ -241,6 +257,15 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
     } else {
       // If no spatial distribution specified, make it a point source
       space_ = UPtrSpace {new SpatialPoint()};
+    }
+
+    // For backwards compatibility, check for only fissionable setting on box
+    // source
+    auto space_box = dynamic_cast<SpatialBox*>(space_.get());
+    if (space_box) {
+      if (!only_fissionable_) {
+        only_fissionable_ = space_box->only_fissionable();
+      }
     }
 
     // Determine external source angular distribution
@@ -289,27 +314,6 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 
     // Check if sampled position satisfies spatial constraints
     accepted = satisfies_spatial_constraints(site.r);
-
-    // Check if spatial site is in fissionable material
-    if (accepted) {
-      // Create a temporary particle and search for material at the site
-      Particle p;
-      p.r() = site.r;
-      exhaustive_find_cell(p);
-
-      auto space_box = dynamic_cast<SpatialBox*>(space_.get());
-      if (space_box) {
-        if (space_box->only_fissionable()) {
-          // Determine material
-          auto mat_index = p.material();
-          if (mat_index == MATERIAL_VOID) {
-            accepted = false;
-          } else {
-            accepted = model::materials[mat_index]->fissionable();
-          }
-        }
-      }
-    }
 
     // Check for rejection
     if (!accepted) {

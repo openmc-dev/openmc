@@ -72,7 +72,7 @@ protected:
   bool satisfies_energy_constraints(double E) const;
   bool satisfies_time_constraints(double time) const;
 
-private:
+protected:
   // Domain types
   enum class DomainType { UNIVERSE, MATERIAL, CELL };
 
@@ -90,6 +90,8 @@ private:
     std::numeric_limits<double>::max()}; //!< time limits
   std::pair<double, double> energy_bounds_ {
     0, std::numeric_limits<double>::max()}; //!< energy limits
+  bool only_fissionable_ {
+    false}; //!< Whether site must be in fissionable material
   RejectionStrategy rejection_strategy_ {
     RejectionStrategy::RESAMPLE}; //!< Procedure for rejecting
 };

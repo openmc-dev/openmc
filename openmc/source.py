@@ -30,15 +30,17 @@ class SourceBase(ABC):
         Strength of the source
     constraints : dict
         Constraints on sampled source particles. Valid keys include 'domains',
-        'time_bounds', 'energy_bounds', and 'rejection_strategy'. For 'domains',
-        the corresponding value is an iterable of :class:`openmc.Cell`,
-        :class:`openmc.Material`, or :class:`openmc.Universe` for which sampled
-        sites must be within. For 'time_bounds' and 'energy_bounds', the
-        corresponding value is a sequence of floats giving the lower and upper
-        bounds on time in [s] or energy in [eV] that the sampled particle must
-        be within. The 'rejection_strategy' indicates what should happen when a
-        source particle is rejected: either 'resample' (pick a new particle) or
-        'kill' (accept and terminate).
+        'time_bounds', 'energy_bounds', 'fissionable', and 'rejection_strategy'.
+        For 'domains', the corresponding value is an iterable of
+        :class:`openmc.Cell`, :class:`openmc.Material`, or
+        :class:`openmc.Universe` for which sampled sites must be within. For
+        'time_bounds' and 'energy_bounds', the corresponding value is a sequence
+        of floats giving the lower and upper bounds on time in [s] or energy in
+        [eV] that the sampled particle must be within. For 'fissionable', the
+        value is a bool indicating that only sites in fissionable material
+        should be accepted. The 'rejection_strategy' indicates what should
+        happen when a source particle is rejected: either 'resample' (pick a new
+        particle) or 'kill' (accept and terminate).
 
     Attributes
     ----------
@@ -48,8 +50,8 @@ class SourceBase(ABC):
         Strength of the source
     constraints : dict
         Constraints on sampled source particles. Valid keys include
-        'domain_type', 'domain_ids', 'time_bounds', 'energy_bounds', and
-        'rejection_strategy'.
+        'domain_type', 'domain_ids', 'time_bounds', 'energy_bounds',
+        'fissionable', and 'rejection_strategy'.
 
     """
 
@@ -99,6 +101,9 @@ class SourceBase(ABC):
             elif key == 'energy_bounds':
                 cv.check_type('energy bounds', value, Iterable, Real)
                 self._constraints['energy_bounds'] = tuple(value)
+            elif key == 'fissionable':
+                cv.check_type('fissionable', value, bool)
+                self._constraints['fissionable'] = value
             elif key == 'rejection_strategy':
                 cv.check_value('rejection strategy', value, ('resample', 'kill'))
                 self._constraints['rejection_strategy'] = value
@@ -142,6 +147,9 @@ class SourceBase(ABC):
         if "energy_bounds" in constraints:
             dt_elem = ET.SubElement(element, "energy_bounds")
             dt_elem.text = ' '.join(str(E) for E in constraints["energy_bounds"])
+        if "fissionable" in constraints:
+            dt_elem = ET.SubElement(element, "fissionable")
+            dt_elem.text = str(constraints["fissionable"]).lower()
         if "rejection_strategy" in constraints:
             dt_elem = ET.SubElement(element, "rejection_strategy")
             dt_elem.text = constraints["rejection_strategy"]
@@ -216,6 +224,10 @@ class SourceBase(ABC):
         if energy_bounds is not None:
             constraints['energy_bounds'] = [float(x) for x in energy_bounds.split()]
 
+        fissionable = get_text(elem, "fissionable")
+        if fissionable is not None:
+            constraints['fissionable'] = fissionable in ('true', '1')
+
         rejection_strategy = get_text(elem, "rejection_strategy")
         if rejection_strategy is not None:
             constraints['rejection_strategy'] = rejection_strategy
@@ -250,15 +262,17 @@ class IndependentSource(SourceBase):
             Use the `constraints` argument instead.
     constraints : dict
         Constraints on sampled source particles. Valid keys include 'domains',
-        'time_bounds', 'energy_bounds', and 'rejection_strategy'. For 'domains',
-        the corresponding value is an iterable of :class:`openmc.Cell`,
-        :class:`openmc.Material`, or :class:`openmc.Universe` for which sampled
-        sites must be within. For 'time_bounds' and 'energy_bounds', the
-        corresponding value is a sequence of floats giving the lower and upper
-        bounds on time in [s] or energy in [eV] that the sampled particle must
-        be within. The 'rejection_strategy' indicates what should happen when a
-        source particle is rejected: either 'resample' (pick a new particle) or
-        'kill' (accept and terminate).
+        'time_bounds', 'energy_bounds', 'fissionable', and 'rejection_strategy'.
+        For 'domains', the corresponding value is an iterable of
+        :class:`openmc.Cell`, :class:`openmc.Material`, or
+        :class:`openmc.Universe` for which sampled sites must be within. For
+        'time_bounds' and 'energy_bounds', the corresponding value is a sequence
+        of floats giving the lower and upper bounds on time in [s] or energy in
+        [eV] that the sampled particle must be within. For 'fissionable', the
+        value is a bool indicating that only sites in fissionable material
+        should be accepted. The 'rejection_strategy' indicates what should
+        happen when a source particle is rejected: either 'resample' (pick a new
+        particle) or 'kill' (accept and terminate).
 
     Attributes
     ----------
@@ -281,8 +295,8 @@ class IndependentSource(SourceBase):
         Source particle type
     constraints : dict
         Constraints on sampled source particles. Valid keys include
-        'domain_type', 'domain_ids', 'time_bounds', 'energy_bounds', and
-        'rejection_strategy'.
+        'domain_type', 'domain_ids', 'time_bounds', 'energy_bounds',
+        'fissionable', and 'rejection_strategy'.
 
     """
 
@@ -476,15 +490,17 @@ class MeshSource(SourceBase):
         during source site sampling.
     constraints : dict
         Constraints on sampled source particles. Valid keys include 'domains',
-        'time_bounds', 'energy_bounds', and 'rejection_strategy'. For 'domains',
-        the corresponding value is an iterable of :class:`openmc.Cell`,
-        :class:`openmc.Material`, or :class:`openmc.Universe` for which sampled
-        sites must be within. For 'time_bounds' and 'energy_bounds', the
-        corresponding value is a sequence of floats giving the lower and upper
-        bounds on time in [s] or energy in [eV] that the sampled particle must
-        be within. The 'rejection_strategy' indicates what should happen when a
-        source particle is rejected: either 'resample' (pick a new particle) or
-        'kill' (accept and terminate).
+        'time_bounds', 'energy_bounds', 'fissionable', and 'rejection_strategy'.
+        For 'domains', the corresponding value is an iterable of
+        :class:`openmc.Cell`, :class:`openmc.Material`, or
+        :class:`openmc.Universe` for which sampled sites must be within. For
+        'time_bounds' and 'energy_bounds', the corresponding value is a sequence
+        of floats giving the lower and upper bounds on time in [s] or energy in
+        [eV] that the sampled particle must be within. For 'fissionable', the
+        value is a bool indicating that only sites in fissionable material
+        should be accepted. The 'rejection_strategy' indicates what should
+        happen when a source particle is rejected: either 'resample' (pick a new
+        particle) or 'kill' (accept and terminate).
 
     Attributes
     ----------
@@ -498,8 +514,8 @@ class MeshSource(SourceBase):
         Indicator of source type: 'mesh'
     constraints : dict
         Constraints on sampled source particles. Valid keys include
-        'domain_type', 'domain_ids', 'time_bounds', 'energy_bounds', and
-        'rejection_strategy'.
+        'domain_type', 'domain_ids', 'time_bounds', 'energy_bounds',
+        'fissionable', and 'rejection_strategy'.
 
     """
     def __init__(
@@ -650,15 +666,17 @@ class CompiledSource(SourceBase):
         Strength of the source
     constraints : dict
         Constraints on sampled source particles. Valid keys include 'domains',
-        'time_bounds', 'energy_bounds', and 'rejection_strategy'. For 'domains',
-        the corresponding value is an iterable of :class:`openmc.Cell`,
-        :class:`openmc.Material`, or :class:`openmc.Universe` for which sampled
-        sites must be within. For 'time_bounds' and 'energy_bounds', the
-        corresponding value is a sequence of floats giving the lower and upper
-        bounds on time in [s] or energy in [eV] that the sampled particle must
-        be within. The 'rejection_strategy' indicates what should happen when a
-        source particle is rejected: either 'resample' (pick a new particle) or
-        'kill' (accept and terminate).
+        'time_bounds', 'energy_bounds', 'fissionable', and 'rejection_strategy'.
+        For 'domains', the corresponding value is an iterable of
+        :class:`openmc.Cell`, :class:`openmc.Material`, or
+        :class:`openmc.Universe` for which sampled sites must be within. For
+        'time_bounds' and 'energy_bounds', the corresponding value is a sequence
+        of floats giving the lower and upper bounds on time in [s] or energy in
+        [eV] that the sampled particle must be within. For 'fissionable', the
+        value is a bool indicating that only sites in fissionable material
+        should be accepted. The 'rejection_strategy' indicates what should
+        happen when a source particle is rejected: either 'resample' (pick a new
+        particle) or 'kill' (accept and terminate).
 
     Attributes
     ----------
@@ -672,8 +690,8 @@ class CompiledSource(SourceBase):
         Indicator of source type: 'compiled'
     constraints : dict
         Constraints on sampled source particles. Valid keys include
-        'domain_type', 'domain_ids', 'time_bounds', 'energy_bounds', and
-        'rejection_strategy'.
+        'domain_type', 'domain_ids', 'time_bounds', 'energy_bounds',
+        'fissionable', and 'rejection_strategy'.
 
     """
     def __init__(
@@ -776,15 +794,17 @@ class FileSource(SourceBase):
         Strength of the source (default is 1.0)
     constraints : dict
         Constraints on sampled source particles. Valid keys include 'domains',
-        'time_bounds', 'energy_bounds', and 'rejection_strategy'. For 'domains',
-        the corresponding value is an iterable of :class:`openmc.Cell`,
-        :class:`openmc.Material`, or :class:`openmc.Universe` for which sampled
-        sites must be within. For 'time_bounds' and 'energy_bounds', the
-        corresponding value is a sequence of floats giving the lower and upper
-        bounds on time in [s] or energy in [eV] that the sampled particle must
-        be within. The 'rejection_strategy' indicates what should happen when a
-        source particle is rejected: either 'resample' (pick a new particle) or
-        'kill' (accept and terminate).
+        'time_bounds', 'energy_bounds', 'fissionable', and 'rejection_strategy'.
+        For 'domains', the corresponding value is an iterable of
+        :class:`openmc.Cell`, :class:`openmc.Material`, or
+        :class:`openmc.Universe` for which sampled sites must be within. For
+        'time_bounds' and 'energy_bounds', the corresponding value is a sequence
+        of floats giving the lower and upper bounds on time in [s] or energy in
+        [eV] that the sampled particle must be within. For 'fissionable', the
+        value is a bool indicating that only sites in fissionable material
+        should be accepted. The 'rejection_strategy' indicates what should
+        happen when a source particle is rejected: either 'resample' (pick a new
+        particle) or 'kill' (accept and terminate).
 
     Attributes
     ----------
@@ -796,8 +816,8 @@ class FileSource(SourceBase):
         Indicator of source type: 'file'
     constraints : dict
         Constraints on sampled source particles. Valid keys include
-        'domain_type', 'domain_ids', 'time_bounds', 'energy_bounds', and
-        'rejection_strategy'.
+        'domain_type', 'domain_ids', 'time_bounds', 'energy_bounds',
+        'fissionable', and 'rejection_strategy'.
 
     """
 

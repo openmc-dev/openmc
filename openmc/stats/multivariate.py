@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from math import cos, pi
 from numbers import Real
+from warnings import warn
 
 import lxml.etree as ET
 import numpy as np
@@ -768,6 +769,9 @@ class Box(Spatial):
         Whether spatial sites should only be accepted if they occur in
         fissionable materials
 
+        .. deprecated:: 0.14.1
+            Use the `constraints` argument when defining a source object instead.
+
     Attributes
     ----------
     lower_left : Iterable of float
@@ -777,6 +781,9 @@ class Box(Spatial):
     only_fissionable : bool, optional
         Whether spatial sites should only be accepted if they occur in
         fissionable materials
+
+        .. deprecated:: 0.14.1
+            Use the `constraints` argument when defining a source object instead.
 
     """
 
@@ -818,6 +825,10 @@ class Box(Spatial):
     def only_fissionable(self, only_fissionable):
         cv.check_type('only fissionable', only_fissionable, bool)
         self._only_fissionable = only_fissionable
+        if only_fissionable:
+            warn("The 'only_fissionable' has been deprecated. Use the "
+                 "'constraints' argument when defining a source instead.",
+                 FutureWarning)
 
     def to_xml_element(self):
         """Return XML representation of the box distribution

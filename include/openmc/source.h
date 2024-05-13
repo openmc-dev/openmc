@@ -40,6 +40,14 @@ extern vector<unique_ptr<Source>> external_sources;
 
 //==============================================================================
 //! Abstract source interface
+//
+//! The Source class provides the interface that must be implemented by derived
+//! classes, namely the sample() method that returns a sampled source site. From
+//! this base class, source rejection is handled within the
+//! sample_with_constraints() method. However, note that some classes directly
+//! check for constraints for efficiency reasons (like IndependentSource), in
+//! which case the constraints_applied() method indicates that constraints
+//! should not be checked a second time from the base class.
 //==============================================================================
 
 class Source {

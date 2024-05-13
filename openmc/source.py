@@ -136,23 +136,25 @@ class SourceBase(ABC):
             element.set("strength", str(self.strength))
         self.populate_xml_element(element)
         constraints = self.constraints
-        if "domain_ids" in constraints:
-            dt_elem = ET.SubElement(element, "domain_type")
-            dt_elem.text = constraints["domain_type"]
-            id_elem = ET.SubElement(element, "domain_ids")
-            id_elem.text = ' '.join(str(uid) for uid in constraints["domain_ids"])
-        if "time_bounds" in constraints:
-            dt_elem = ET.SubElement(element, "time_bounds")
-            dt_elem.text = ' '.join(str(t) for t in constraints["time_bounds"])
-        if "energy_bounds" in constraints:
-            dt_elem = ET.SubElement(element, "energy_bounds")
-            dt_elem.text = ' '.join(str(E) for E in constraints["energy_bounds"])
-        if "fissionable" in constraints:
-            dt_elem = ET.SubElement(element, "fissionable")
-            dt_elem.text = str(constraints["fissionable"]).lower()
-        if "rejection_strategy" in constraints:
-            dt_elem = ET.SubElement(element, "rejection_strategy")
-            dt_elem.text = constraints["rejection_strategy"]
+        if constraints:
+            constraints_elem = ET.SubElement(element, "constraints")
+            if "domain_ids" in constraints:
+                dt_elem = ET.SubElement(constraints_elem, "domain_type")
+                dt_elem.text = constraints["domain_type"]
+                id_elem = ET.SubElement(constraints_elem, "domain_ids")
+                id_elem.text = ' '.join(str(uid) for uid in constraints["domain_ids"])
+            if "time_bounds" in constraints:
+                dt_elem = ET.SubElement(constraints_elem, "time_bounds")
+                dt_elem.text = ' '.join(str(t) for t in constraints["time_bounds"])
+            if "energy_bounds" in constraints:
+                dt_elem = ET.SubElement(constraints_elem, "energy_bounds")
+                dt_elem.text = ' '.join(str(E) for E in constraints["energy_bounds"])
+            if "fissionable" in constraints:
+                dt_elem = ET.SubElement(constraints_elem, "fissionable")
+                dt_elem.text = str(constraints["fissionable"]).lower()
+            if "rejection_strategy" in constraints:
+                dt_elem = ET.SubElement(constraints_elem, "rejection_strategy")
+                dt_elem.text = constraints["rejection_strategy"]
 
         return element
 
@@ -199,6 +201,10 @@ class SourceBase(ABC):
 
     @staticmethod
     def _get_constraints(elem: ET.Element) -> Dict[str, Any]:
+        # Find element containing constraints
+        constraints_elem = elem.find("constraints")
+        elem = constraints_elem if constraints_elem is not None else elem
+
         constraints = {}
         domain_type = get_text(elem, "domain_type")
         if domain_type is not None:

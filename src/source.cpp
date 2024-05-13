@@ -95,6 +95,14 @@ unique_ptr<Source> Source::create(pugi::xml_node node)
 
 void Source::read_constraints(pugi::xml_node node)
 {
+  // Check for constraints node. For backwards compatibility, if no constraints
+  // node is given, still try searching for domain constraints from top-level
+  // node.
+  pugi::xml_node constraints_node = node.child("constraints");
+  if (constraints_node) {
+    node = constraints_node;
+  }
+
   // Check for domains to reject from
   if (check_for_node(node, "domain_type")) {
     std::string domain_type = get_node_value(node, "domain_type");

@@ -420,6 +420,8 @@ string, which gets passed down to the ``openmc_create_source()`` function::
 
   settings.source = openmc.CompiledSource('libsource.so', '3.5e6')
 
+.. _usersguide_source_constraints:
+
 Source Constraints
 ------------------
 

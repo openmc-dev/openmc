@@ -1,5 +1,7 @@
 from math import sqrt
 
+from pathlib import Path
+
 import lxml.etree as ET
 import openmc
 import pytest
@@ -377,3 +379,35 @@ def test_unset_universes():
     hex_lattice.pitch = (1.,)
     with pytest.raises(ValueError):
         hex_lattice.create_xml_subelement(elem)
+
+@pytest.mark.parametrize("orientation", ['x', 'y'])
+def test_hex_lattice_roundtrip(request, orientation):
+    openmc.reset_auto_ids()
+
+    path = Path(request.fspath).parent
+
+    latt = openmc.HexLattice(lattice_id=100)
+    latt.pitch = (1.0, 1.0)
+    latt.center = (0.0, 0.0, 0.0)
+    latt.orientation = orientation
+
+    # fill the lattice with universes in increasing order for two axial levels
+    lvl_one_univs = [openmc.Universe(cells=[openmc.Cell()]) for i in range(19)]
+    lvl_two_univs = [openmc.Universe(cells=[openmc.Cell()]) for i in range(19)]
+
+    latt.universes = [[lvl_one_univs[-12:], lvl_one_univs[1:7], lvl_one_univs[0:1]],
+                      [lvl_two_univs[-12:], lvl_two_univs[1:7], lvl_two_univs[0:1]]]
+
+    outer_univ = openmc.Universe(cells=[openmc.Cell(fill=latt)])
+    geom = openmc.Geometry(root=outer_univ)
+    geom.export_to_xml()
+
+    geom2 = openmc.Geometry.from_xml(materials=openmc.Materials())
+
+    print(geom2.get_all_lattices())
+    rt_latt = geom2.get_all_lattices()[latt.id]
+
+    # ensure that the lattice universes are the same on all axial levels
+    for aixal_og, axial_rt in zip(latt.universes, rt_latt.universes):
+        for ring_og, ring_rt in zip(aixal_og, axial_rt):
+            assert [u.id for u in ring_og] == [u.id for u in ring_rt]

@@ -70,9 +70,9 @@ double RandomRay::distance_active_;
 unique_ptr<Source> RandomRay::ray_source_;
 
 RandomRay::RandomRay()
-  : negroups_(data::mg.num_energy_groups_),
-    angular_flux_(data::mg.num_energy_groups_),
-    delta_psi_(data::mg.num_energy_groups_)
+  : angular_flux_(data::mg.num_energy_groups_),
+    delta_psi_(data::mg.num_energy_groups_),
+    negroups_(data::mg.num_energy_groups_)
 {}
 
 RandomRay::RandomRay(uint64_t ray_id, FlatSourceDomain* domain) : RandomRay()

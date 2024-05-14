@@ -157,6 +157,8 @@ void Source::read_constraints(pugi::xml_node node)
 SourceSite Source::sample_with_constraints(uint64_t* seed) const
 {
   bool accepted = false;
+  static int n_reject = 0;
+  static int n_accept = 0;
   SourceSite site;
 
   while (!accepted) {
@@ -170,10 +172,21 @@ SourceSite Source::sample_with_constraints(uint64_t* seed) const
       accepted = satisfies_spatial_constraints(site.r) &&
                  satisfies_energy_constraints(site.E) &&
                  satisfies_time_constraints(site.time);
-      if (!accepted && rejection_strategy_ == RejectionStrategy::KILL) {
-        // Accept particle but set weight to 0 so that it is killed immediately
-        accepted = true;
-        site.wgt = 0.0;
+      if (!accepted) {
+        ++n_reject;
+        if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
+            static_cast<double>(n_accept) / n_reject <=
+              EXTSRC_REJECT_FRACTION) {
+          fatal_error("More than 95% of external source sites sampled were "
+                      "rejected. Please check your source definition.");
+        }
+
+        // For the "kill" strategy, accept particle but set weight to 0 so that
+        // it is terminated immediately
+        if (rejection_strategy_ == RejectionStrategy::KILL) {
+          accepted = true;
+          site.wgt = 0.0;
+        }
       }
     }
   }
@@ -316,7 +329,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 
   // Repeat sampling source location until a good site has been accepted
   bool accepted = false;
-  int n_reject = 0;
+  static int n_reject = 0;
   static int n_accept = 0;
 
   while (!accepted) {

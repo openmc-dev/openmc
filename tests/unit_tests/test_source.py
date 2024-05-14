@@ -205,6 +205,20 @@ def test_constraints_file(sphere_box_model, run_in_tmpdir):
     openmc.lib.finalize()
 
 
+def test_rejection_limit(sphere_box_model, run_in_tmpdir):
+    model, cell1 = sphere_box_model[:2]
+
+    # Define a point source that will get rejected 100% of the time
+    model.settings.source = openmc.IndependentSource(
+        space=openmc.stats.Point((-3., 0., 0.)),
+        constraints={'domains': [cell1]}
+    )
+
+    # Confirm that OpenMC doesn't run in an infinite loop
+    with pytest.raises(RuntimeError, match="rejected"):
+        model.run()
+
+
 def test_exceptions():
 
     with pytest.raises(AttributeError, match=r'Please use the FileSource class'):

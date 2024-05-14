@@ -71,7 +71,7 @@ public:
   //! Sample from the external source distribution
   //! \param[inout] seed Pseudorandom seed pointer
   //! \return Sampled site
-  virtual SourceSite sample(uint64_t* seed) const { return {}; }
+  virtual SourceSite sample(uint64_t* seed) const = 0;
 
   static unique_ptr<Source> create(pugi::xml_node node);
 

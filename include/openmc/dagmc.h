@@ -3,7 +3,8 @@
 
 namespace openmc {
 extern "C" const bool DAGMC_ENABLED;
-}
+extern "C" const bool UWUW_ENABLED;
+} // namespace openmc
 
 // always include the XML interface header
 #include "openmc/xml_interface.h"
@@ -42,7 +43,7 @@ public:
   double evaluate(Position r) const override;
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
-  Direction reflect(Position r, Direction u, Particle* p) const override;
+  Direction reflect(Position r, Direction u, GeometryState* p) const override;
 
   inline void to_hdf5_inner(hid_t group_id) const override {};
 
@@ -63,8 +64,8 @@ public:
 
   bool contains(Position r, Direction u, int32_t on_surface) const override;
 
-  std::pair<double, int32_t> distance(
-    Position r, Direction u, int32_t on_surface, Particle* p) const override;
+  std::pair<double, int32_t> distance(Position r, Direction u,
+    int32_t on_surface, GeometryState* p) const override;
 
   BoundingBox bounding_box() const override;
 
@@ -120,6 +121,12 @@ public:
   void write_uwuw_materials_xml(
     const std::string& outfile = "uwuw_materials.xml") const;
 
+  //! Assign a material to a cell from uwuw material library
+  //! \param[in] vol_handle The DAGMC material assignment string
+  //! \param[in] c The OpenMC cell to which the material is assigned
+  void uwuw_assign_material(
+    moab::EntityHandle vol_handle, std::unique_ptr<DAGCell>& c) const;
+
   //! Assign a material to a cell based
   //! \param[in] mat_string The DAGMC material assignment string
   //! \param[in] c The OpenMC cell to which the material is assigned
@@ -143,7 +150,7 @@ public:
   //! string of the ID ranges for entities of dimension \p dim
   std::string dagmc_ids_for_dim(int dim) const;
 
-  bool find_cell(Particle& p) const override;
+  bool find_cell(GeometryState& p) const override;
 
   void to_hdf5(hid_t universes_group) const override;
 

@@ -54,25 +54,24 @@ kwargs = {
         'Topic :: Scientific/Engineering'
         'Programming Language :: C++',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
     ],
 
     # Dependencies
-    'python_requires': '>=3.7',
+    'python_requires': '>=3.8',
     'install_requires': [
         'numpy>=1.9', 'h5py', 'scipy', 'ipython', 'matplotlib',
-        'pandas', 'lxml', 'uncertainties'
+        'pandas', 'lxml', 'uncertainties', 'setuptools'
     ],
     'extras_require': {
         'depletion-mpi': ['mpi4py'],
         'docs': ['sphinx', 'sphinxcontrib-katex', 'sphinx-numfig', 'jupyter',
                  'sphinxcontrib-svg2pdfconverter', 'sphinx-rtd-theme'],
-        'test': ['pytest', 'pytest-cov', 'colorama'],
+        'test': ['pytest', 'pytest-cov', 'colorama', 'openpyxl'],
         'vtk': ['vtk'],
     },
     # Cython is used to add resonance reconstruction and fast float_endf

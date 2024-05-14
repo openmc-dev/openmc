@@ -83,10 +83,10 @@ struct BoundingBox {
 
 class Surface {
 public:
-  int id_;                                          //!< Unique ID
-  std::string name_;                                //!< User-defined name
-  std::shared_ptr<BoundaryCondition> bc_ {nullptr}; //!< Boundary condition
-  GeometryType geom_type_;   //!< Geometry type indicator (CSG or DAGMC)
+  int id_;                           //!< Unique ID
+  std::string name_;                 //!< User-defined name
+  unique_ptr<BoundaryCondition> bc_; //!< Boundary condition
+  GeometryType geom_type_;           //!< Geometry type indicator (CSG or DAGMC)
   bool surf_source_ {false}; //!< Activate source banking for the surface?
 
   explicit Surface(pugi::xml_node surf_node);
@@ -105,12 +105,13 @@ public:
   //! Determine the direction of a ray reflected from the surface.
   //! \param[in] r The point at which the ray is incident.
   //! \param[in] u Incident direction of the ray
-  //! \param[inout] p Pointer to the particle
+  //! \param[inout] p Pointer to the particle. Only DAGMC uses this.
   //! \return Outgoing direction of the ray
-  virtual Direction reflect(Position r, Direction u, Particle* p) const;
+  virtual Direction reflect(
+    Position r, Direction u, GeometryState* p = nullptr) const;
 
   virtual Direction diffuse_reflect(
-    Position r, Direction u, uint64_t* seed) const;
+    Position r, Direction u, uint64_t* seed, GeometryState* p = nullptr) const;
 
   //! Evaluate the equation describing the surface.
   //!

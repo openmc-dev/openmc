@@ -291,7 +291,7 @@ class StepResult:
         # Store concentration mat and nuclide dictionaries (along with volumes)
 
         handle.attrs['version'] = np.array(VERSION_RESULTS)
-        handle.attrs['filetype'] = np.string_('depletion results')
+        handle.attrs['filetype'] = np.bytes_('depletion results')
 
         mat_list = sorted(self.mat_to_hdf5_ind, key=int)
         nuc_list = sorted(self.index_nuc)
@@ -534,7 +534,7 @@ class StepResult:
         path : PathLike
             Path to file to write. Defaults to 'depletion_results.h5'.
 
-            .. versionadded:: 0.13.4
+            .. versionadded:: 0.14.0
         """
         # Get indexing terms
         vol_dict, nuc_list, burn_list, full_burn_list = op.get_results_info()

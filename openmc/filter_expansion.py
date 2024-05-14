@@ -1,4 +1,5 @@
 from numbers import Integral, Real
+
 import lxml.etree as ET
 
 import openmc.checkvalue as cv
@@ -51,6 +52,34 @@ class ExpansionFilter(Filter):
         filter_id = int(elem.get('id'))
         order = int(elem.find('order').text)
         return cls(order, filter_id=filter_id)
+
+    def merge(self, other):
+        """Merge this filter with another.
+
+        This overrides the behavior of the parent Filter class, since its
+        merging technique is to take the union of the set of bins of each
+        filter. That technique does not apply to expansion filters, since the
+        argument should be the maximum filter order rather than the list of all
+        bins.
+
+        Parameters
+        ----------
+        other : openmc.Filter
+            Filter to merge with
+
+        Returns
+        -------
+        merged_filter : openmc.Filter
+            Filter resulting from the merge
+
+        """
+
+        if not self.can_merge(other):
+            msg = f'Unable to merge "{type(self)}" with "{type(other)}"'
+            raise ValueError(msg)
+
+        # Create a new filter with these bins and a new auto-generated ID
+        return type(self)(max(self.order, other.order))
 
 
 class LegendreFilter(ExpansionFilter):

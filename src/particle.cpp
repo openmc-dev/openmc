@@ -59,11 +59,20 @@ double Particle::speed() const
     break;
   }
 
-  // Calculate inverse of Lorentz factor
-  const double inv_gamma = mass / (this->E() + mass);
+  if (this->E() < 1.0e-9 * mass) {
+    // If the energy is much smaller than the mass, revert to non-relativistic
+    // formula. The 1e-9 criterion is specifically chosen as the point below
+    // which the error from using the non-relativistic formula is less than the
+    // round-off eror when using the relativistic formula (see analysis at
+    // https://gist.github.com/paulromano/da3b473fe3df33de94b265bdff0c7817)
+    return C_LIGHT * std::sqrt(2 * this->E() / mass);
+  } else {
+    // Calculate inverse of Lorentz factor
+    const double inv_gamma = mass / (this->E() + mass);
 
-  // Calculate speed via v = c * sqrt(1 - γ^-2)
-  return C_LIGHT * std::sqrt(1 - inv_gamma * inv_gamma);
+    // Calculate speed via v = c * sqrt(1 - γ^-2)
+    return C_LIGHT * std::sqrt(1 - inv_gamma * inv_gamma);
+  }
 }
 
 void Particle::move_distance(double length)
@@ -112,6 +121,7 @@ void Particle::from_source(const SourceSite* src)
   wgt_last() = src->wgt;
   r() = src->r;
   u() = src->u;
+  r_born() = src->r;
   r_last_current() = src->r;
   r_last() = src->r;
   u_last() = src->u;
@@ -268,7 +278,9 @@ void Particle::event_cross_surface()
       boundary().lattice_translation[1] != 0 ||
       boundary().lattice_translation[2] != 0) {
     // Particle crosses lattice boundary
-    cross_lattice(*this, boundary());
+
+    bool verbose = settings::verbosity >= 10 || trace();
+    cross_lattice(*this, boundary(), verbose);
     event() = TallyEvent::LATTICE;
   } else {
     // Particle crosses surface
@@ -369,7 +381,7 @@ void Particle::event_revive_from_secondary()
 {
   // If particle has too many events, display warning and kill it
   ++n_event();
-  if (n_event() == MAX_EVENTS) {
+  if (n_event() == settings::max_particle_events) {
     warning("Particle " + std::to_string(id()) +
             " underwent maximum number of events.");
     wgt() = 0.0;
@@ -397,7 +409,8 @@ void Particle::event_revive_from_secondary()
       // have to determine it before the energy of the secondary particle can be
       // removed from the pulse-height of this cell.
       if (lowest_coord().cell == C_NONE) {
-        if (!exhaustive_find_cell(*this)) {
+        bool verbose = settings::verbosity >= 10 || trace();
+        if (!exhaustive_find_cell(*this, verbose)) {
           mark_as_lost("Could not find the cell containing particle " +
                        std::to_string(id()));
           return;
@@ -547,7 +560,8 @@ void Particle::cross_surface()
   }
 #endif
 
-  if (neighbor_list_find_cell(*this))
+  bool verbose = settings::verbosity >= 10 || trace();
+  if (neighbor_list_find_cell(*this, verbose))
     return;
 
   // ==========================================================================
@@ -555,7 +569,7 @@ void Particle::cross_surface()
 
   // Remove lower coordinate levels
   n_coord() = 1;
-  bool found = exhaustive_find_cell(*this);
+  bool found = exhaustive_find_cell(*this, verbose);
 
   if (settings::run_mode != RunMode::PLOTTING && (!found)) {
     // If a cell is still not found, there are two possible causes: 1) there is
@@ -570,7 +584,7 @@ void Particle::cross_surface()
     // Couldn't find next cell anywhere! This probably means there is an actual
     // undefined region in the geometry.
 
-    if (!exhaustive_find_cell(*this)) {
+    if (!exhaustive_find_cell(*this, verbose)) {
       mark_as_lost("After particle " + std::to_string(id()) +
                    " crossed surface " + std::to_string(surf->id_) +
                    " it could not be located in any cell and it did not leak.");
@@ -645,8 +659,8 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // (unless we're using a dagmc model, which has exactly one universe)
   n_coord() = 1;
   if (surf.geom_type_ != GeometryType::DAG && !neighbor_list_find_cell(*this)) {
-    this->mark_as_lost("Couldn't find particle after reflecting from surface " +
-                       std::to_string(surf.id_) + ".");
+    mark_as_lost("Couldn't find particle after reflecting from surface " +
+                 std::to_string(surf.id_) + ".");
     return;
   }
 

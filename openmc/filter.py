@@ -1,11 +1,12 @@
+from __future__ import annotations
 from abc import ABCMeta
 from collections.abc import Iterable
 import hashlib
 from itertools import product
 from numbers import Real, Integral
-import lxml.etree as ET
 import warnings
 
+import lxml.etree as ET
 import numpy as np
 import pandas as pd
 
@@ -22,7 +23,7 @@ from ._xml import get_text
 _FILTER_TYPES = (
     'universe', 'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
     'energyout', 'mu', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
-    'energyfunction', 'cellfrom', 'legendre', 'spatiallegendre',
+    'energyfunction', 'cellfrom', 'materialfrom', 'legendre', 'spatiallegendre',
     'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance',
     'collision', 'time'
 )
@@ -451,7 +452,7 @@ class UniverseFilter(WithIDFilter):
     Parameters
     ----------
     bins : openmc.UniverseBase, int, or iterable thereof
-        The Universes to tally. Either openmc.UniverseBase objects or their
+        The Universes to tally. Either :class:`openmc.UniverseBase` objects or their
         Integral ID numbers can be used.
     filter_id : int
         Unique identifier for the filter
@@ -475,7 +476,31 @@ class MaterialFilter(WithIDFilter):
     Parameters
     ----------
     bins : openmc.Material, Integral, or iterable thereof
-        The Materials to tally. Either openmc.Material objects or their
+        The material(s) to tally. Either :class:`openmc.Material` objects or their
+        Integral ID numbers can be used.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : Iterable of Integral
+        openmc.Material IDs.
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins
+
+    """
+    expected_type = Material
+
+
+class MaterialFromFilter(WithIDFilter):
+    """Bins tally event locations based on the Material they occurred in.
+
+    Parameters
+    ----------
+    bins : openmc.Material, Integral, or iterable thereof
+        The material(s) to tally. Either :class:`openmc.Material` objects or their
         Integral ID numbers can be used.
     filter_id : int
         Unique identifier for the filter
@@ -499,7 +524,7 @@ class CellFilter(WithIDFilter):
     Parameters
     ----------
     bins : openmc.Cell, int, or iterable thereof
-        The cells to tally. Either openmc.Cell objects or their ID numbers can
+        The cells to tally. Either :class:`openmc.Cell` objects or their ID numbers can
         be used.
     filter_id : int
         Unique identifier for the filter
@@ -780,8 +805,8 @@ class MeshFilter(Filter):
     id : int
         Unique identifier for the filter
     translation : Iterable of float
-        This array specifies a vector that is used to translate (shift)
-        the mesh for this filter
+        This array specifies a vector that is used to translate (shift) the mesh
+        for this filter
     bins : list of tuple
         A list of mesh indices for each filter bin, e.g. [(1, 1, 1), (2, 1, 1),
         ...]
@@ -822,7 +847,6 @@ class MeshFilter(Filter):
         mesh_obj = kwargs['meshes'][mesh_id]
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 
-
         out = cls(mesh_obj, filter_id=filter_id)
 
         translation = group.get('translation')
@@ -840,10 +864,10 @@ class MeshFilter(Filter):
         cv.check_type('filter mesh', mesh, openmc.MeshBase)
         self._mesh = mesh
         if isinstance(mesh, openmc.UnstructuredMesh):
-            if mesh.volumes is None:
-                self.bins = []
-            else:
+            if mesh.has_statepoint_data:
                 self.bins = list(range(len(mesh.volumes)))
+            else:
+                self.bins = []
         else:
             self.bins = list(mesh.indices)
 
@@ -948,7 +972,7 @@ class MeshFilter(Filter):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem, **kwargs):
+    def from_xml_element(cls, elem: ET.Element, **kwargs) -> MeshFilter:
         mesh_id = int(get_text(elem, 'bins'))
         mesh_obj = kwargs['meshes'][mesh_id]
         filter_id = int(elem.get('id'))
@@ -958,6 +982,34 @@ class MeshFilter(Filter):
         if translation:
             out.translation = [float(x) for x in translation.split()]
         return out
+
+
+class MeshBornFilter(MeshFilter):
+    """Filter events by the mesh cell a particle originated from.
+
+    Parameters
+    ----------
+    mesh : openmc.MeshBase
+        The mesh object that events will be tallied onto
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    mesh : openmc.MeshBase
+        The mesh object that events will be tallied onto
+    id : int
+        Unique identifier for the filter
+    translation : Iterable of float
+        This array specifies a vector that is used to translate (shift)
+        the mesh for this filter
+    bins : list of tuple
+        A list of mesh indices for each filter bin, e.g. [(1, 1, 1), (2, 1, 1),
+        ...]
+    num_bins : Integral
+        The number of filter bins
+
+    """
 
 
 class MeshSurfaceFilter(MeshFilter):
@@ -1325,6 +1377,10 @@ class EnergyFilter(RealFilter):
     """
     units = 'eV'
 
+    def __init__(self, values, filter_id=None):
+        cv.check_length('values', values, 2)
+        super().__init__(values, filter_id)
+
     def get_bin_index(self, filter_bin):
         # Use lower energy bound to find index for RealFilters
         deltas = np.abs(self.bins[:, 1] - filter_bin[1]) / filter_bin[1]
@@ -1400,6 +1456,7 @@ class EnergyFilter(RealFilter):
 
         """
 
+        cv.check_value('group_structure', group_structure, openmc.mgxs.GROUP_STRUCTURES.keys())
         return cls(openmc.mgxs.GROUP_STRUCTURES[group_structure.upper()])
 
 

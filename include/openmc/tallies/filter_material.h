@@ -46,7 +46,7 @@ public:
 
   void set_materials(gsl::span<const int32_t> materials);
 
-private:
+protected:
   //----------------------------------------------------------------------------
   // Data members
 

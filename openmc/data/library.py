@@ -1,8 +1,8 @@
 import os
-import lxml.etree as ET
 import pathlib
 
 import h5py
+import lxml.etree as ET
 
 import openmc
 from openmc._xml import clean_indentation, reorder_attributes
@@ -15,7 +15,7 @@ class DataLibrary(list):
     cross section data from a single file. The dictionary has keys 'path',
     'type', and 'materials'.
 
-    .. versionchanged:: 0.13.4
+    .. versionchanged:: 0.14.0
         This class now behaves like a list rather than requiring you to access
         the list of libraries through a special attribute.
 
@@ -93,8 +93,7 @@ class DataLibrary(list):
                 materials = list(h5file)
         else:
             raise ValueError(
-                "File type {} not supported by {}"
-                .format(path.name, self.__class__.__name__))
+                f"File type {path.name} not supported by {self.__class__.__name__}")
 
         library = {'path': str(path), 'type': filetype, 'materials': materials}
         self.append(library)

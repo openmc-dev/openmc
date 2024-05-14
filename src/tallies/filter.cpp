@@ -21,7 +21,9 @@
 #include "openmc/tallies/filter_energyfunc.h"
 #include "openmc/tallies/filter_legendre.h"
 #include "openmc/tallies/filter_material.h"
+#include "openmc/tallies/filter_materialfrom.h"
 #include "openmc/tallies/filter_mesh.h"
+#include "openmc/tallies/filter_meshborn.h"
 #include "openmc/tallies/filter_meshsurface.h"
 #include "openmc/tallies/filter_mu.h"
 #include "openmc/tallies/filter_particle.h"
@@ -121,8 +123,12 @@ Filter* Filter::create(const std::string& type, int32_t id)
     return Filter::create<LegendreFilter>(id);
   } else if (type == "material") {
     return Filter::create<MaterialFilter>(id);
+  } else if (type == "materialfrom") {
+    return Filter::create<MaterialFromFilter>(id);
   } else if (type == "mesh") {
     return Filter::create<MeshFilter>(id);
+  } else if (type == "meshborn") {
+    return Filter::create<MeshBornFilter>(id);
   } else if (type == "meshsurface") {
     return Filter::create<MeshSurfaceFilter>(id);
   } else if (type == "mu") {

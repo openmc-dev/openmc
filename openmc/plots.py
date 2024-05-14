@@ -1,10 +1,10 @@
 from collections.abc import Iterable, Mapping
 from numbers import Integral, Real
 from pathlib import Path
-import lxml.etree as ET
 from typing import Optional
 
 import h5py
+import lxml.etree as ET
 import numpy as np
 
 import openmc
@@ -184,7 +184,7 @@ def _get_plot_image(plot, cwd):
 def voxel_to_vtk(voxel_file: PathLike, output: PathLike = 'plot.vti'):
     """Converts a voxel HDF5 file to a VTK file
 
-    .. versionadded:: 0.13.4
+    .. versionadded:: 0.14.0
 
     Parameters
     ----------
@@ -465,11 +465,11 @@ class PlotBase(IDManagerMixin):
             domains = geometry.get_all_cells().values()
 
         # Set the seed for the random number generator
-        np.random.seed(seed)
+        rng = np.random.RandomState(seed)
 
         # Generate random colors for each feature
         for domain in domains:
-            self.colors[domain] = np.random.randint(0, 256, (3,))
+            self.colors[domain] = rng.randint(0, 256, (3,))
 
     def to_xml_element(self):
         """Save common plot attributes to XML element
@@ -634,8 +634,7 @@ class Plot(PlotBase):
             raise ValueError(msg)
 
         elif meshlines['type'] not in ['tally', 'entropy', 'ufs', 'cmfd']:
-            msg = 'Unable to set the meshlines with ' \
-                  'type "{}"'.format(meshlines['type'])
+            msg = f"Unable to set the meshlines with type \"{meshlines['type']}\""
             raise ValueError(msg)
 
         if 'id' in meshlines:
@@ -943,7 +942,7 @@ class Plot(PlotBase):
 
         This method runs OpenMC in plotting mode to produce a .vti file.
 
-        .. versionadded:: 0.13.4
+        .. versionadded:: 0.14.0
 
         Parameters
         ----------
@@ -989,6 +988,8 @@ class ProjectionPlot(PlotBase):
     The camera projection may either by orthographic or perspective. Perspective
     projections are more similar to a pinhole camera, and orthographic projections
     preserve parallel lines and distances.
+
+    .. versionadded:: 0.14.0
 
     Parameters
     ----------
@@ -1506,6 +1507,7 @@ class Plots(cv.CheckedList):
             Plots collection
 
         """
-        tree = ET.parse(path)
+        parser = ET.XMLParser(huge_tree=True)
+        tree = ET.parse(path, parser=parser)
         root = tree.getroot()
         return cls.from_xml_element(root)

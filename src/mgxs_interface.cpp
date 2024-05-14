@@ -284,7 +284,7 @@ void mark_fissionable_mgxs_materials()
   for (const auto& mat : model::materials) {
     for (int i_nuc : mat->nuclide_) {
       if (data::mg.nuclides_[i_nuc].fissionable) {
-        mat->fissionable_ = true;
+        mat->fissionable() = true;
       }
     }
   }

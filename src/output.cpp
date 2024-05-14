@@ -31,6 +31,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/plot.h"
+#include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/reaction.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
@@ -74,7 +75,7 @@ void title()
   // Write version information
   fmt::print(
     "                 | The OpenMC Monte Carlo Code\n"
-    "       Copyright | 2011-2023 MIT, UChicago Argonne LLC, and contributors\n"
+    "       Copyright | 2011-2024 MIT, UChicago Argonne LLC, and contributors\n"
     "         License | https://docs.openmc.org/en/latest/license.html\n"
     "         Version | {}.{}.{}{}\n",
     VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE, VERSION_DEV ? "-dev" : "");
@@ -295,7 +296,7 @@ void print_version()
 #ifdef GIT_SHA1
     fmt::print("Git SHA1: {}\n", GIT_SHA1);
 #endif
-    fmt::print("Copyright (c) 2011-2023 MIT, UChicago Argonne LLC, and "
+    fmt::print("Copyright (c) 2011-2024 MIT, UChicago Argonne LLC, and "
                "contributors\nMIT/X license at "
                "<https://docs.openmc.org/en/latest/license.html>\n");
   }
@@ -317,6 +318,7 @@ void print_build_info()
   std::string coverage(n);
   std::string mcpl(n);
   std::string ncrystal(n);
+  std::string uwuw(n);
 
 #ifdef PHDF5
   phdf5 = y;
@@ -345,6 +347,9 @@ void print_build_info()
 #ifdef COVERAGEBUILD
   coverage = y;
 #endif
+#ifdef UWUW
+  uwuw = y;
+#endif
 
   // Wraps macro variables in quotes
 #define STRINGIFY(x) STRINGIFY2(x)
@@ -363,6 +368,7 @@ void print_build_info()
     fmt::print("NCrystal support:      {}\n", ncrystal);
     fmt::print("Coverage testing:      {}\n", coverage);
     fmt::print("Profiling flags:       {}\n", profiling);
+    fmt::print("UWUW support:          {}\n", uwuw);
   }
 }
 
@@ -409,7 +415,7 @@ void print_generation()
 
 //==============================================================================
 
-void show_time(const char* label, double secs, int indent_level = 0)
+void show_time(const char* label, double secs, int indent_level)
 {
   int width = 33 - indent_level * 2;
   fmt::print("{0:{1}} {2:<{3}} = {4:>10.4e} seconds\n", "", 2 * indent_level,

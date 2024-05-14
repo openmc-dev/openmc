@@ -294,16 +294,6 @@ BoundingBox SurfaceYPlane::bounding_box(bool pos_side) const
   }
 }
 
-BoundingBox SurfaceYPlane::smart_bounding_box(bool pos_side) const
-{
-  if (pos_side) {
-    return {-INFTY, INFTY, y0_, INFTY, -INFTY, INFTY};
-  }
-  else {
-    return {-INFTY, INFTY, -INFTY, y0_, -INFTY, INFTY};
-  }
-}
-
 //==============================================================================
 // SurfaceZPlane implementation
 //==============================================================================

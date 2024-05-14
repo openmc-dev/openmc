@@ -212,7 +212,9 @@
       <space type="box">
         <parameters>-32 -32 0 32 32 32</parameters>
       </space>
-      <fissionable>true</fissionable>
+      <constraints>
+        <fissionable>true</fissionable>
+      </constraints>
     </source>
   </settings>
   <tallies>

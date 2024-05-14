@@ -141,7 +141,6 @@ def test_yplane():
     # Make sure repr works
     repr(s)
 
-    
 def test_zplane():
     s = openmc.ZPlane(z0=3.)
     assert s.z0 == 3.

@@ -46,9 +46,6 @@ def test_contains_cell():
     assert(c2 in u)
     assert not (c4 in u)
 
-
-
-
 def test_bounding_box():
     cyl1 = openmc.ZCylinder(r=1.0)
     cyl2 = openmc.ZCylinder(r=2.0)

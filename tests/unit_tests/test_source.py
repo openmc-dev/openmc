@@ -127,7 +127,7 @@ def test_constraints_independent(sphere_box_model, run_in_tmpdir):
     model, cell1, cell2, cell3 = sphere_box_model
 
     # Set up a box source with rejection on the spherical cell
-    space = openmc.stats.Box(*cell3.bounding_box)
+    space = openmc.stats.Box((-4., -1., -1.), (4., 1., 1.))
     model.settings.source = openmc.IndependentSource(
         space=space, constraints={'domains': [cell1, cell2]}
     )

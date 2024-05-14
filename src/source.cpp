@@ -190,6 +190,10 @@ SourceSite Source::sample_with_constraints(uint64_t* seed) const
       }
     }
   }
+
+  // Increment number of accepted samples
+  ++n_accept;
+
   return site;
 }
 

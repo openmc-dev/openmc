@@ -38,14 +38,14 @@ public:
   // Public data members
   vector<float> angular_flux_;
 
+private:
   //----------------------------------------------------------------------------
   // Private data members
-private:
+  vector<float> delta_psi_;
+  int negroups_;
   FlatSourceDomain* domain_ {nullptr}; // pointer to domain that has flat source
                                        // data needed for ray transport
-  vector<float> delta_psi_;
   double distance_travelled_ {0};
-  int negroups_;
   bool is_active_ {false};
   bool is_alive_ {true};
 }; // class RandomRay

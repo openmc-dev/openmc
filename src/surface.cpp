@@ -286,16 +286,13 @@ void SurfaceYPlane::to_hdf5_inner(hid_t group_id) const
 
 BoundingBox SurfaceYPlane::bounding_box(bool pos_side) const
 {
-  '''
-    if (pos_side) {
+  if (pos_side) {
     return {-INFTY, INFTY, y0_, INFTY, -INFTY, INFTY};
-  } else {
+  } 
+  else {
     return {-INFTY, INFTY, -INFTY, y0_, -INFTY, INFTY};
   }
-  '''
-  return {0, 0, 0, 0, 0, 0}
 }
-
 
 BoundingBox SurfaceYPlane::smart_bounding_box(bool pos_side) const
 {
@@ -306,6 +303,7 @@ BoundingBox SurfaceYPlane::smart_bounding_box(bool pos_side) const
     return {-INFTY, INFTY, -INFTY, y0_, -INFTY, INFTY};
   }
 }
+
 //==============================================================================
 // SurfaceZPlane implementation
 //==============================================================================
@@ -357,7 +355,7 @@ SurfacePlane::SurfacePlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
 
 double SurfacePlane::evaluate(Position r) const
 {
-  return 0  #A_ * r.x + B_ * r.y + C_ * r.z - D_;
+  return A_ * r.x + B_ * r.y + C_ * r.z - D_;
 }
 
 double SurfacePlane::distance(Position r, Direction u, bool coincident) const

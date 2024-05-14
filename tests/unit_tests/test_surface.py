@@ -5,8 +5,6 @@ import numpy as np
 import math
 import openmc
 import pytest
-#chrisb 
-import openmc.lib
 
 
 def assert_infinite_bb(s):
@@ -143,71 +141,7 @@ def test_yplane():
     # Make sure repr works
     repr(s)
 
-
-def test_wildcard():
-    assert(1 == 1)
-
-
-def test_boundingbox_inconsistency():
-
-    s19 = openmc.YCylinder(0, 0, 17.7)
-    s48 = openmc.Plane(0.7071067811865476, 6.123233995736766e-17, 0.7071067811865476, 11.45)
-    s58 = openmc.Plane(0.7071067811865476, 6.123233995736766e-17, 0.7071067811865476, 14.35)
-    s62 = openmc.Plane(6.123233995736766e-17, 1.0, 6.123233995736766e-17, 1.5999999999999999)
-    s64 = openmc.Plane(6.123233995736766e-17, 1.0, 6.123233995736766e-17, -1.3)
-    s65 = openmc.Plane(-0.7071067811865475, 6.123233995736766e-17, 0.7071067811865476, 1.45)
-    s68 = openmc.Plane(-0.7071067811865475, 6.123233995736766e-17, 0.7071067811865476, -1.45)
-    s101 = openmc.YPlane(5.6, boundary_type='vacuum')
-
-    region = +s64 & -s101 #& -s19 & +s48 & (+s58 | +s62 | -s64 | +s65 | -s68)
-    cell = openmc.Cell(region=region)
-
-
-    univ = openmc.Universe(cells=[cell])
-    geometry = openmc.Geometry(root=univ)
-    settings = openmc.Settings(particles=100, batches=100)
-    model = openmc.model.Model(geometry=geometry, settings=settings)
-    model.export_to_model_xml()
-
-    openmc.lib.init()
-    ll1, ur1 = cell.bounding_box
-
-    ll1_x, ll1_y, ll1_z = ll1
-
-    assert(ll1_x == -17.7)
-    assert(ll1_y == -1.3)
-    assert(ll1_z == -17.7)
-
-    ur1_x, ur1_y, ur1_z = ur1
-    assert(ur1_x == 17.7)
-    assert(ur1_y == 5.6)
-    assert(ur1_z == 17.7)
-
-    ll2, ur2 = openmc.lib.cells[1].bounding_box
-
-    ll2_x, ll2_y, ll2_z = ll2 
-
-    assert(ll2_x == -17.7)
-    assert(ll2_y == -inf)
-    assert(ll2_z == -17.7)
-
-    ur2_x, ur2_y, ur2_z = ur2
-
-    assert(ur2_x == 17.7)
-    assert(ur2_y == 5.6)
-    assert(ur2_z == 17.7)
-
-
     
-    openmc.lib.finalize()
-
-
-
-    
-    
-
-
-
 def test_zplane():
     s = openmc.ZPlane(z0=3.)
     assert s.z0 == 3.

@@ -219,6 +219,12 @@ class Universe(UniverseBase):
         string += '{: <16}=\t{}\n'.format('\tCells', list(self._cells.keys()))
         return string
 
+    def __contains__(self, cell):
+        if self._cells is None:
+            return False
+        else:
+            return cell.id in list(self._cells.keys())
+
     @property
     def cells(self):
         return self._cells

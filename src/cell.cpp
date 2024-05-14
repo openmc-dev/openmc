@@ -908,12 +908,14 @@ bool Region::contains_complex(Position r, Direction u, int32_t on_surface) const
 
 BoundingBox Region::bounding_box(int32_t cell_id) const
 {
+  
   if (simple_) {
     return bounding_box_simple();
   } else {
     auto postfix = generate_postfix(cell_id);
     return bounding_box_complex(postfix);
   }
+  
 }
 
 //==============================================================================

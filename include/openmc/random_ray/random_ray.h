@@ -34,19 +34,15 @@ public:
   static double distance_active_;        // Active ray length
   static unique_ptr<Source> ray_source_; // Starting source for ray sampling
 
-private:
-  int negroups_;
-
-public:
-
   //----------------------------------------------------------------------------
   // Public data members
   vector<float> angular_flux_;
 
+private:
   //----------------------------------------------------------------------------
   // Private data members
-private:
   vector<float> delta_psi_;
+  int negroups_;
   FlatSourceDomain* domain_ {nullptr}; // pointer to domain that has flat source
                                        // data needed for ray transport
   double distance_travelled_ {0};

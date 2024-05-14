@@ -134,7 +134,7 @@ class Geometry:
 
         # Create XML representation
         element = ET.Element("geometry")
-        self.root_universe.create_xml_subelement(element, memo=set())
+        self.root_universe.create_xml_subelement(element)
 
         # Sort the elements in the file
         element[:] = sorted(element, key=lambda x: (
@@ -373,7 +373,7 @@ class Geometry:
 
         """
         if self.root_universe is not None:
-            return self.root_universe.get_all_cells(memo=set())
+            return self.root_universe.get_all_cells()
         else:
             return {}
 
@@ -389,7 +389,7 @@ class Geometry:
         """
         universes = {}
         universes[self.root_universe.id] = self.root_universe
-        universes.update(self.root_universe.get_all_universes(memo=set()))
+        universes.update(self.root_universe.get_all_universes())
         return universes
 
     def get_all_nuclides(self) -> typing.List[str]:
@@ -417,7 +417,7 @@ class Geometry:
 
         """
         if self.root_universe is not None:
-            return self.root_universe.get_all_materials(memo=set())
+            return self.root_universe.get_all_materials()
         else:
             return {}
 

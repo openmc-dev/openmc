@@ -170,11 +170,13 @@ class Lattice(IDManagerMixin, ABC):
         """
         cells = {}
 
-        if memo and self in memo:
+        if memo is None:
+            memo = set()
+
+        if self in memo:
             return cells
 
-        if memo is not None:
-            memo.add(self)
+        memo.add(self)
 
         unique_universes = self.get_unique_universes()
 
@@ -193,6 +195,9 @@ class Lattice(IDManagerMixin, ABC):
             :class:`Material` instances
 
         """
+
+        if memo is None:
+            memo = set()
 
         materials = {}
 
@@ -213,16 +218,17 @@ class Lattice(IDManagerMixin, ABC):
             :class:`Universe` instances
 
         """
-
         # Initialize a dictionary of all Universes contained by the Lattice
         # in each nested Universe level
         all_universes = {}
 
-        if memo and self in memo:
+        if memo is None:
+            memo = set()
+
+        if self in memo:
             return all_universes
 
-        if memo is not None:
-            memo.add(self)
+        memo.add(self)
 
         # Get all unique Universes contained in each of the lattice cells
         unique_universes = self.get_unique_universes()
@@ -852,10 +858,13 @@ class RectLattice(Lattice):
 
         """
         # If the element already contains the Lattice subelement, then return
-        if memo and self in memo:
+        if memo is None:
+            memo = set()
+
+        if self in memo:
             return
-        if memo is not None:
-            memo.add(self)
+
+        memo.add(self)
 
         # Make sure universes have been assigned
         if self.universes is None:
@@ -1423,10 +1432,11 @@ class HexLattice(Lattice):
 
     def create_xml_subelement(self, xml_element, memo=None):
         # If this subelement has already been written, return
-        if memo and self in memo:
+        if memo is None:
+            memo = set()
+        if self in memo:
             return
-        if memo is not None:
-            memo.add(self)
+        memo.add(self)
 
         lattice_subelement = ET.Element("hex_lattice")
         lattice_subelement.set("id", str(self._id))

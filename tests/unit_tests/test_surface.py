@@ -116,6 +116,7 @@ def test_yplane():
     assert ur == pytest.approx((np.inf, 3., np.inf))
     assert np.all(np.isinf(ll))
 
+
     # __contains__ on associated half-spaces
     assert (0, 5, 0) in +s
     assert (0, 5, 0) not in -s
@@ -139,7 +140,6 @@ def test_yplane():
 
     # Make sure repr works
     repr(s)
-
 
 def test_zplane():
     s = openmc.ZPlane(z0=3.)

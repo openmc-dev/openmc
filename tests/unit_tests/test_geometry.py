@@ -6,6 +6,33 @@ import openmc
 import pytest
 
 
+def test_contains_cell():
+
+    c1 = openmc.Cell()
+    c2 = openmc.Cell()
+    c3 = openmc.Cell()
+    c3 = openmc.Cell()
+    c4 = openmc.Cell()
+
+    
+    geom1= openmc.Geometry([c1, c2, c3])
+
+    assert (c1 in geom1)
+    assert (c2 in geom1)
+    assert (c3 in geom1)
+    assert not (c4 in geom1)
+
+    
+    univ = openmc.Universe(name='coldplay', cells=[c1, c2, c3])
+    geom2 = openmc.Geometry(univ)
+
+    assert (c1 in geom2) 
+    assert (c2 in geom2)
+    assert (c3 in geom2)
+    assert not (c4 in geom2)
+
+
+
 def test_volume(run_in_tmpdir, uo2):
     """Test adding volume information from a volume calculation."""
     # Create model with nested spheres
@@ -42,6 +69,10 @@ def test_volume(run_in_tmpdir, uo2):
         # get_nuclide_densities relies on volume information
         nucs = set(domain.get_nuclide_densities())
         assert not nucs ^ {'U235', 'O16'}
+
+
+
+
 
 
 def test_export_xml(run_in_tmpdir, uo2):

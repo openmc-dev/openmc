@@ -31,6 +31,20 @@ def test_basic():
     u.clear_cells()
     assert not set(u.cells)
 
+def test_contains_cell():
+
+    c1 = openmc.Cell()
+    c2 = openmc.Cell()
+    c3 = openmc.Cell()
+    c3 = openmc.Cell()
+    c4 = openmc.Cell()
+
+    u = openmc.Universe(name='coldplay', cells=(c1, c2, c3))
+
+    assert(c1 in u)
+    assert(c2 in u)
+    assert(c2 in u)
+    assert not (c4 in u)
 
 def test_bounding_box():
     cyl1 = openmc.ZCylinder(r=1.0)

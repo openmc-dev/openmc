@@ -7,6 +7,8 @@ import numpy as np
 import pytest
 from pytest import approx
 
+from tests.regression_tests import config
+
 
 def test_source():
     space = openmc.stats.Point()
@@ -205,6 +207,7 @@ def test_constraints_file(sphere_box_model, run_in_tmpdir):
     openmc.lib.finalize()
 
 
+@pytest.mark.skipif(config['mpi'], reason='Not compatible with MPI')
 def test_rejection_limit(sphere_box_model, run_in_tmpdir):
     model, cell1 = sphere_box_model[:2]
 
@@ -214,9 +217,11 @@ def test_rejection_limit(sphere_box_model, run_in_tmpdir):
         constraints={'domains': [cell1]}
     )
 
-    # Confirm that OpenMC doesn't run in an infinite loop
+    # Confirm that OpenMC doesn't run in an infinite loop. Note that this may
+    # work when running with MPI since it won't necessarily capture the error
+    # message correctly
     with pytest.raises(RuntimeError, match="rejected"):
-        model.run()
+        model.run(openmc_exec=config['exe'])
 
 
 def test_exceptions():

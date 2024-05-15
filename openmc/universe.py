@@ -223,7 +223,8 @@ class Universe(UniverseBase):
         if self._cells is None:
             return False
         else:
-            return cell.id in list(self._cells.keys())
+            return cell.id self.cells.keys()
+                
 
     @property
     def cells(self):

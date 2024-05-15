@@ -60,9 +60,9 @@ class Geometry:
 
     def __contains__(self, cell):
         if self._root_universe is None:
-            return True
+            return False
         else: 
-            return cell in self._root_universe
+            return cell in self.root_universe()
 
 
     @property

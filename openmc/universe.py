@@ -220,12 +220,11 @@ class Universe(UniverseBase):
         return string
 
     def __contains__(self, cell):
-        if self._cells is None:
+        if self.cells is None:
             return False
         else:
-            return cell.id self.cells.keys()
+            return cell.id in self.cells.keys()
                 
-
     @property
     def cells(self):
         return self._cells

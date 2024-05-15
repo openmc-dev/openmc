@@ -76,8 +76,10 @@ def pwr_pin_cell():
     model.settings.batches = 10
     model.settings.inactive = 5
     model.settings.particles = 100
-    model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
-        [-pitch/2, -pitch/2, -1], [pitch/2, pitch/2, 1], only_fissionable=True))
+    model.settings.source = openmc.IndependentSource(
+        space=openmc.stats.Box([-pitch/2, -pitch/2, -1], [pitch/2, pitch/2, 1]),
+        constraints={'fissionable': True}
+    )
 
     plot = openmc.Plot.from_geometry(model.geometry)
     plot.pixels = (300, 300)
@@ -527,8 +529,10 @@ def pwr_assembly():
     model.settings.batches = 10
     model.settings.inactive = 5
     model.settings.particles = 100
-    model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
-        [-pitch/2, -pitch/2, -1], [pitch/2, pitch/2, 1], only_fissionable=True))
+    model.settings.source = openmc.IndependentSource(
+        space=openmc.stats.Box([-pitch/2, -pitch/2, -1], [pitch/2, pitch/2, 1]),
+        constraints={'fissionable': True}
+    )
 
     plot = openmc.Plot()
     plot.origin = (0.0, 0.0, 0)

@@ -534,8 +534,9 @@ attributes/sub-elements:
     *Default*: 1.0
 
   :type:
-    Indicator of source type. One of ``independent``, ``file``, ``compiled``, or ``mesh``.
-    The type of the source will be determined by this attribute if it is present.
+    Indicator of source type. One of ``independent``, ``file``, ``compiled``, or
+    ``mesh``. The type of the source will be determined by this attribute if it
+    is present.
 
   :particle:
     The source particle type, either ``neutron`` or ``photon``.
@@ -715,6 +716,39 @@ attributes/sub-elements:
     For mesh sources, this sub-element specifies the source for an individual
     mesh element and follows the format for :ref:`source_element`. The number of
     ``<source>`` sub-elements should correspond to the number of mesh elements.
+
+  :constraints:
+    This sub-element indicates the presence of constraints on sampled source
+    sites (see :ref:`usersguide_source_constraints` for details). It may have
+    the following sub-elements:
+
+    :domain_ids:
+      The unique IDs of domains for which source sites must be within.
+
+      *Default*: None
+
+    :domain_type:
+      The type of each domain for source rejection ("cell", "material", or
+      "universe").
+
+      *Default*: None
+
+    :fissionable:
+      A boolean indicating whether source sites must be sampled within a
+      material that is fissionable in order to be accepted.
+
+    :time_bounds:
+      A pair of times in [s] indicating the lower and upper bound for a time
+      interval that source particles must be within.
+
+    :energy_bounds:
+      A pair of energies in [eV] indicating the lower and upper bound for an
+      energy interval that source particles must be within.
+
+    :rejection_strategy:
+      Either "resample", indicating that source sites should be resampled when
+      one is rejected, or "kill", indicating that a rejected source site is
+      assigned zero weight.
 
 .. _univariate:
 

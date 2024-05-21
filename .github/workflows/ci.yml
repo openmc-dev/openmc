@@ -155,6 +155,26 @@ jobs:
           CTEST_OUTPUT_ON_FAILURE=1 make test -C $GITHUB_WORKSPACE/build/
           $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
+      - name: Install OpenMOC for notebook testing
+        if: github.base_ref == 'master'
+        shell: bash -l {0}
+        run: |
+          cd ~
+          git clone https://github.com/mit-crpg/openmoc &&
+          cd openmoc
+          # OpenMOC has some custom commands that rely on setuptools/distutils
+          python setup.py install
+          # install twice to make sure openmoc.py is copied into the installation location
+          python setup.py install
+
+      - name: Execute all Notebooks
+        if: github.base_ref == 'master'
+        shell: bash -l {0}
+        run: |
+          git clone https://github.com/mit-crpg/openmoc
+          cd openmoc
+          pytest -v .test
+
       - name: after_success
         shell: bash
         run: |

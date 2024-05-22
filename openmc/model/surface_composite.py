@@ -133,13 +133,13 @@ class CylinderSector(CompositeSurface):
         phi2 = pi / 180 * theta2
 
         # Coords for axis-perpendicular planes
-        p1 = np.array([0., 0., 1.])
+        p1 = np.array([center[0], center[1], 1.])
 
-        p2_plane1 = np.array([r1 * cos(phi1), r1 * sin(phi1), 0.])
-        p3_plane1 = np.array([r2 * cos(phi1), r2 * sin(phi1), 0.])
+        p2_plane1 = np.array([r1 * cos(phi1) + center[0], r1 * sin(phi1) + center[1], 0.])
+        p3_plane1 = np.array([r2 * cos(phi1) + center[0], r2 * sin(phi1) + center[1], 0.])
 
-        p2_plane2 = np.array([r1 * cos(phi2), r1 * sin(phi2), 0.])
-        p3_plane2 = np.array([r2 * cos(phi2), r2 * sin(phi2), 0.])
+        p2_plane2 = np.array([r1 * cos(phi2) + center[0], r1 * sin(phi2)+ center[1], 0.])
+        p3_plane2 = np.array([r2 * cos(phi2) + center[0], r2 * sin(phi2)+ center[1], 0.])
 
         points = [p1, p2_plane1, p3_plane1, p2_plane2, p3_plane2]
         if axis == 'z':
@@ -155,6 +155,7 @@ class CylinderSector(CompositeSurface):
             self.inner_cyl = openmc.XCylinder(*center, r1, **kwargs)
             self.outer_cyl = openmc.XCylinder(*center, r2, **kwargs)
 
+        # Reorder the points to correspond to the correct central axis
         for p in points:
             p[:] = p[coord_map]
 

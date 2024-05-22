@@ -310,7 +310,16 @@ class IsogonalOctagon(CompositeSurface):
         p2_lr = np.array([L_basis_ax, -r1, 0.])
         p3_lr = np.array([L_basis_ax, -r1, 1.])
 
-        points = [p1_ur, p2_ur, p3_ur, p1_lr, p2_lr, p3_lr]
+        p1_ll = -p1_ur
+        p2_ll = -p2_ur
+        p3_ll = -p3_ur
+
+        p1_ul = -p1_lr
+        p2_ul = -p2_lr
+        p3_ul = -p3_lr
+
+        points = [p1_ur, p2_ur, p3_ur, p1_lr, p2_lr, p3_lr,
+                  p1_ll, p2_ll, p3_ll, p1_ul, p2_ul, p3_ul]
 
         # Orientation specific variables
         if axis == 'z':
@@ -332,17 +341,19 @@ class IsogonalOctagon(CompositeSurface):
             self.right = openmc.YPlane(cright, **kwargs)
             self.left = openmc.YPlane(cleft, **kwargs)
 
-        # Put our coordinates in (x,y,z) order
+        # Put our coordinates in (x,y,z) order and add the offset
         for p in points:
+            p[0] += c1
+            p[1] += c2
             p[:] = p[coord_map]
 
         self.upper_right = openmc.Plane.from_points(p1_ur, p2_ur, p3_ur,
                                                     **kwargs)
         self.lower_right = openmc.Plane.from_points(p1_lr, p2_lr, p3_lr,
                                                     **kwargs)
-        self.lower_left = openmc.Plane.from_points(-p1_ur, -p2_ur, -p3_ur,
+        self.lower_left = openmc.Plane.from_points(p1_ll, p2_ll, p3_ll,
                                                    **kwargs)
-        self.upper_left = openmc.Plane.from_points(-p1_lr, -p2_lr, -p3_lr,
+        self.upper_left = openmc.Plane.from_points(p1_ul, p2_ul, p3_ul,
                                                    **kwargs)
 
     def __neg__(self):

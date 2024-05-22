@@ -90,7 +90,7 @@ class CylinderSector(CompositeSurface):
         counterclockwise direction with respect to the first basis axis
         (+y, +z, or +x). Must be greater than :attr:`theta1`.
     center : iterable of float
-       Coordinate for central axes of cylinders in the (y, z), (z, x), or (x, y)
+       Coordinate for central axes of cylinders in the (y, z), (x, z), or (x, y)
        basis. Defaults to (0,0).
     axis : {'x', 'y', 'z'}
         Central axis of the cylinders defining the inner and outer surfaces of
@@ -147,13 +147,14 @@ class CylinderSector(CompositeSurface):
             self.inner_cyl = openmc.ZCylinder(*center, r1, **kwargs)
             self.outer_cyl = openmc.ZCylinder(*center, r2, **kwargs)
         elif axis == 'y':
-            coord_map = [1, 2, 0]
+            coord_map = [0, 2, 1]
             self.inner_cyl = openmc.YCylinder(*center, r1, **kwargs)
             self.outer_cyl = openmc.YCylinder(*center, r2, **kwargs)
         elif axis == 'x':
             coord_map = [2, 0, 1]
             self.inner_cyl = openmc.XCylinder(*center, r1, **kwargs)
             self.outer_cyl = openmc.XCylinder(*center, r2, **kwargs)
+        self.axis = axis
 
         # Reorder the points to correspond to the correct central axis
         for p in points:
@@ -193,7 +194,7 @@ class CylinderSector(CompositeSurface):
             with respect to the first basis axis (+y, +z, or +x). Note that
             negative values translate to an offset in the clockwise direction.
         center : iterable of float
-            Coordinate for central axes of cylinders in the (y, z), (z, x), or (x, y)
+            Coordinate for central axes of cylinders in the (y, z), (x, z), or (x, y)
             basis. Defaults to (0,0).
         axis : {'x', 'y', 'z'}
             Central axis of the cylinders defining the inner and outer surfaces
@@ -217,10 +218,18 @@ class CylinderSector(CompositeSurface):
         return cls(r1, r2, theta1, theta2, center=center, axis=axis, **kwargs)
 
     def __neg__(self):
-        return -self.outer_cyl & +self.inner_cyl & -self.plane1 & +self.plane2
+        if self.axis == 'y':
+            region = -self.outer_cyl & +self.inner_cyl & +self.plane1 & -self.plane2
+        else:
+            region = -self.outer_cyl & +self.inner_cyl & -self.plane1 & +self.plane2
+        return region
 
     def __pos__(self):
-        return +self.outer_cyl | -self.inner_cyl | +self.plane1 | -self.plane2
+        if self.axis == 'y':
+            region = +self.outer_cyl | -self.inner_cyl | -self.plane1 | +self.plane2
+        else:
+            region = +self.outer_cyl | -self.inner_cyl | +self.plane1 | -self.plane2
+        return region
 
 
 class IsogonalOctagon(CompositeSurface):

@@ -285,11 +285,11 @@ class IsogonalOctagon(CompositeSurface):
         c1, c2 = center
 
         # Coords for axis-perpendicular planes
-        ctop = c1 + r1
-        cbottom = c1 - r1
+        cright= c1 + r1
+        cleft = c1 - r1
 
-        cright = c2 + r1
-        cleft = c2 - r1
+        ctop = c2 + r1
+        cbottom = c2 - r1
 
         # Side lengths
         if r2 > r1 * sqrt(2):

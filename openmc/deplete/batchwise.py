@@ -252,8 +252,8 @@ class Batchwise(ABC):
             elif len(search) == 2:
                 guesses, keffs = search
 
-                #Check if all guesses are within bracket limits
-                if all(self.bracket_limit[0] <= guess <= self.bracket_limit[1] \
+                #Check if all guesses are within bracket limits + bracket dimensions
+                if all(self.bracket_limit[0]-self.bracket[0] <= guess <= self.bracket_limit[1]+self.bracket[1] \
                     for guess in guesses):
                     #Simple method to iteratively adapt the bracket
                     print("Search_for_keff returned values below or above "

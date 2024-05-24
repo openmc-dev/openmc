@@ -172,10 +172,8 @@ class Lattice(IDManagerMixin, ABC):
 
         if memo is None:
             memo = set()
-
-        if self in memo:
+        elif self in memo:
             return cells
-
         memo.add(self)
 
         unique_universes = self.get_unique_universes()
@@ -224,10 +222,8 @@ class Lattice(IDManagerMixin, ABC):
 
         if memo is None:
             memo = set()
-
-        if self in memo:
+        elif self in memo:
             return all_universes
-
         memo.add(self)
 
         # Get all unique Universes contained in each of the lattice cells
@@ -860,10 +856,8 @@ class RectLattice(Lattice):
         # If the element already contains the Lattice subelement, then return
         if memo is None:
             memo = set()
-
-        if self in memo:
+        elif self in memo:
             return
-
         memo.add(self)
 
         # Make sure universes have been assigned
@@ -1434,7 +1428,7 @@ class HexLattice(Lattice):
         # If this subelement has already been written, return
         if memo is None:
             memo = set()
-        if self in memo:
+        elif self in memo:
             return
         memo.add(self)
 

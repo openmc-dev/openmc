@@ -102,10 +102,8 @@ class UniverseBase(ABC, IDManagerMixin):
         """
         if memo is None:
             memo = set()
-
-        if self in memo:
+        elif self in memo:
             return {}
-
         memo.add(self)
 
         # Append all Universes within each Cell to the dictionary
@@ -649,10 +647,8 @@ class Universe(UniverseBase):
 
         if memo is None:
             memo = set()
-
-        if self in memo:
+        elif self in memo:
             return {}
-
         memo.add(self)
 
         # Add this Universe's cells to the dictionary

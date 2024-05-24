@@ -428,10 +428,8 @@ class Cell(IDManagerMixin):
         """
         if memo is None:
             memo = set()
-
-        if self in memo:
+        elif self in memo:
             return {}
-
         memo.add(self)
 
         cells = {}
@@ -491,7 +489,7 @@ class Cell(IDManagerMixin):
 
         return universes
 
-    def clone(self, clone_materials=True, clone_regions=True,  memo=None):
+    def clone(self, clone_materials=True, clone_regions=True, memo=None):
         """Create a copy of this cell with a new unique ID, and clones
         the cell's region and fill.
 
@@ -684,7 +682,7 @@ class Cell(IDManagerMixin):
                 if isinstance(node, Halfspace):
                     if memo is None:
                         memo = set()
-                    if node.surface in memo:
+                    elif node.surface in memo:
                         return
                     memo.add(node.surface)
                     xml_element.append(node.surface.to_xml_element())

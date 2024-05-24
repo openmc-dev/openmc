@@ -46,7 +46,7 @@ class CompositeSurface(ABC):
                 getattr(self, name).boundary_type = boundary_type
 
     def __repr__(self):
-        return "<{} at 0x{:x}>".format(type(self).__name__, id(self))
+        return f"<{type(self).__name__} at 0x{id(self):x}>"
 
     @property
     @abstractmethod
@@ -617,7 +617,7 @@ class RectangularParallelepiped(CompositeSurface):
 class XConeOneSided(CompositeSurface):
     """One-sided cone parallel the x-axis
 
-    A one-sided cone is composed of a normal cone surface and an "ambiguity"
+    A one-sided cone is composed of a normal cone surface and a "disambiguation"
     surface that eliminates the ambiguity as to which region of space is
     included. This class acts as a proper surface, meaning that unary `+` and
     `-` operators applied to it will produce a half-space. The negative side is
@@ -634,7 +634,9 @@ class XConeOneSided(CompositeSurface):
     z0 : float, optional
         z-coordinate of the apex. Defaults to 0.
     r2 : float, optional
-        Parameter related to the aperature. Defaults to 1.
+        Parameter related to the aperture [:math:`\\rm cm^2`].
+        It can be interpreted as the increase in the radius squared per cm along
+        the cone's axis of revolution.
     up : bool
         Whether to select the side of the cone that extends to infinity in the
         positive direction of the coordinate axis (the positive half-space of
@@ -647,7 +649,7 @@ class XConeOneSided(CompositeSurface):
     cone : openmc.XCone
         Regular two-sided cone
     plane : openmc.XPlane
-        Ambiguity surface
+        Disambiguation surface
     up : bool
         Whether to select the side of the cone that extends to infinity in the
         positive direction of the coordinate axis (the positive half-space of
@@ -675,7 +677,7 @@ class XConeOneSided(CompositeSurface):
 class YConeOneSided(CompositeSurface):
     """One-sided cone parallel the y-axis
 
-    A one-sided cone is composed of a normal cone surface and an "ambiguity"
+    A one-sided cone is composed of a normal cone surface and a "disambiguation"
     surface that eliminates the ambiguity as to which region of space is
     included. This class acts as a proper surface, meaning that unary `+` and
     `-` operators applied to it will produce a half-space. The negative side is
@@ -692,7 +694,9 @@ class YConeOneSided(CompositeSurface):
     z0 : float, optional
         z-coordinate of the apex. Defaults to 0.
     r2 : float, optional
-        Parameter related to the aperature. Defaults to 1.
+        Parameter related to the aperture [:math:`\\rm cm^2`].
+        It can be interpreted as the increase in the radius squared per cm along
+        the cone's axis of revolution.
     up : bool
         Whether to select the side of the cone that extends to infinity in the
         positive direction of the coordinate axis (the positive half-space of
@@ -705,7 +709,7 @@ class YConeOneSided(CompositeSurface):
     cone : openmc.YCone
         Regular two-sided cone
     plane : openmc.YPlane
-        Ambiguity surface
+        Disambiguation surface
     up : bool
         Whether to select the side of the cone that extends to infinity in the
         positive direction of the coordinate axis (the positive half-space of
@@ -727,7 +731,7 @@ class YConeOneSided(CompositeSurface):
 class ZConeOneSided(CompositeSurface):
     """One-sided cone parallel the z-axis
 
-    A one-sided cone is composed of a normal cone surface and an "ambiguity"
+    A one-sided cone is composed of a normal cone surface and a "disambiguation"
     surface that eliminates the ambiguity as to which region of space is
     included. This class acts as a proper surface, meaning that unary `+` and
     `-` operators applied to it will produce a half-space. The negative side is
@@ -744,7 +748,9 @@ class ZConeOneSided(CompositeSurface):
     z0 : float, optional
         z-coordinate of the apex. Defaults to 0.
     r2 : float, optional
-        Parameter related to the aperature. Defaults to 1.
+        Parameter related to the aperture [:math:`\\rm cm^2`].
+        It can be interpreted as the increase in the radius squared per cm along
+        the cone's axis of revolution.
     up : bool
         Whether to select the side of the cone that extends to infinity in the
         positive direction of the coordinate axis (the positive half-space of
@@ -757,7 +763,7 @@ class ZConeOneSided(CompositeSurface):
     cone : openmc.ZCone
         Regular two-sided cone
     plane : openmc.ZPlane
-        Ambiguity surface
+        Disambiguation surface
     up : bool
         Whether to select the side of the cone that extends to infinity in the
         positive direction of the coordinate axis (the positive half-space of
@@ -1023,9 +1029,9 @@ class Polygon(CompositeSurface):
         -------
         None
         """
-        # Only attempt the triangulation up to 3 times.
-        if depth > 2:
-            raise RuntimeError('Could not create a valid triangulation after 3'
+        # Only attempt the triangulation up to 5 times.
+        if depth > 4:
+            raise RuntimeError('Could not create a valid triangulation after 5'
                                ' attempts')
 
         tri = Delaunay(points, qhull_options='QJ')
@@ -1033,7 +1039,7 @@ class Polygon(CompositeSurface):
         # included in the triangulation, break it into two line segments.
         n = len(points)
         new_pts = []
-        for i, j in zip(range(n), range(1, n +1)):
+        for i, j in zip(range(n), range(1, n + 1)):
             # If both vertices of any edge are not found in any simplex, insert
             # a new point between them.
             if not any([i in s and j % n in s for s in tri.simplices]):
@@ -1071,7 +1077,8 @@ class Polygon(CompositeSurface):
             return group
         # If group is empty, grab the next simplex in the dictionary and recurse
         if group is None:
-            sidx = next(iter(neighbor_map))
+            # Start with smallest neighbor lists
+            sidx = sorted(neighbor_map.items(), key=lambda item: len(item[1]))[0][0]
             return self._group_simplices(neighbor_map, group=[sidx])
         # Otherwise use the last simplex in the group
         else:
@@ -1081,13 +1088,16 @@ class Polygon(CompositeSurface):
             # For each neighbor check if it is part of the same convex
             # hull as the rest of the group. If yes, recurse. If no, continue on.
             for n in neighbors:
-                if n in group or neighbor_map.get(n, None) is None:
+                if n in group or neighbor_map.get(n) is None:
                     continue
                 test_group = group + [n]
                 test_point_idx = np.unique(self._tri.simplices[test_group, :])
                 test_points = self.points[test_point_idx]
-                # If test_points are convex keep adding to this group
-                if len(test_points) == len(ConvexHull(test_points).vertices):
+                test_hull = ConvexHull(test_points, qhull_options='Qc')
+                pts_on_hull = len(test_hull.vertices) + len(test_hull.coplanar)
+                # If test_points are convex (including coplanar) keep adding to
+                # this group
+                if len(test_points) == pts_on_hull:
                     group = self._group_simplices(neighbor_map, group=test_group)
             return group
 

@@ -343,8 +343,7 @@ class Cell(IDManagerMixin):
         if self.region is not None:
             return self.region.bounding_box
         else:
-            return BoundingBox(np.array([-np.inf, -np.inf, -np.inf]),
-                               np.array([np.inf, np.inf, np.inf]))
+            return BoundingBox.infinite()
 
     @property
     def num_instances(self):
@@ -594,7 +593,7 @@ class Cell(IDManagerMixin):
 
                # Make water blue
                water = openmc.Cell(fill=h2o)
-               universe.plot(..., colors={water: (0., 0., 1.))
+               water.plot(colors={water: (0., 0., 1.)})
         seed : int
             Seed for the random number generator
         openmc_exec : str
@@ -619,8 +618,10 @@ class Cell(IDManagerMixin):
 
         """
         # Create dummy universe but preserve used_ids
-        u = openmc.Universe(cells=[self], universe_id=openmc.Universe.next_id + 1)
+        next_id = openmc.Universe.next_id
+        u = openmc.Universe(cells=[self])
         openmc.Universe.used_ids.remove(u.id)
+        openmc.Universe.next_id = next_id
         return u.plot(*args, **kwargs)
 
     def create_xml_subelement(self, xml_element, memo=None):
@@ -722,7 +723,7 @@ class Cell(IDManagerMixin):
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
         materials : dict
             Dictionary mapping material ID strings to :class:`openmc.Material`
-            instances (defined in :math:`openmc.Geometry.from_xml`)
+            instances (defined in :meth:`openmc.Geometry.from_xml`)
         get_universe : function
             Function returning universe (defined in
             :meth:`openmc.Geometry.from_xml`)

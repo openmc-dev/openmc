@@ -10,6 +10,7 @@ from warnings import warn
 
 import lxml.etree as ET
 import numpy as np
+from scipy.integrate import trapezoid
 
 import openmc.checkvalue as cv
 from .._xml import get_text
@@ -155,9 +156,9 @@ class Discrete(Univariate):
         return np.insert(np.cumsum(self.p), 0, 0.0)
 
     def sample(self, n_samples=1, seed=None):
-        np.random.seed(seed)
+        rng = np.random.RandomState(seed)
         p = self.p / self.p.sum()
-        return np.random.choice(self.x, n_samples, p=p)
+        return rng.choice(self.x, n_samples, p=p)
 
     def normalize(self):
         """Normalize the probabilities stored on the distribution"""
@@ -280,6 +281,9 @@ class Discrete(Univariate):
         Discrete distribution with low-importance points removed
 
         """
+        cv.check_less_than("tolerance", tolerance, 1.0, equality=True)
+        cv.check_greater_than("tolerance", tolerance, 0.0, equality=True)
+
         # Determine (reversed) sorted order of probabilities
         intensity = self.p * self.x
         index_sort = np.argsort(intensity)[::-1]
@@ -360,8 +364,8 @@ class Uniform(Univariate):
         return t
 
     def sample(self, n_samples=1, seed=None):
-        np.random.seed(seed)
-        return np.random.uniform(self.a, self.b, n_samples)
+        rng = np.random.RandomState(seed)
+        return rng.uniform(self.a, self.b, n_samples)
 
     def to_xml_element(self, element_name: str):
         """Return XML representation of the uniform distribution
@@ -379,7 +383,7 @@ class Uniform(Univariate):
         """
         element = ET.Element(element_name)
         element.set("type", "uniform")
-        element.set("parameters", '{} {}'.format(self.a, self.b))
+        element.set("parameters", f'{self.a} {self.b}')
         return element
 
     @classmethod
@@ -465,8 +469,8 @@ class PowerLaw(Univariate):
         self._n = n
 
     def sample(self, n_samples=1, seed=None):
-        np.random.seed(seed)
-        xi = np.random.rand(n_samples)
+        rng = np.random.RandomState(seed)
+        xi = rng.random(n_samples)
         pwr = self.n + 1
         offset = self.a**pwr
         span = self.b**pwr - offset
@@ -546,12 +550,14 @@ class Maxwell(Univariate):
         self._theta = theta
 
     def sample(self, n_samples=1, seed=None):
-        np.random.seed(seed)
-        return self.sample_maxwell(self.theta, n_samples)
+        rng = np.random.RandomState(seed)
+        return self.sample_maxwell(self.theta, n_samples, rng=rng)
 
     @staticmethod
-    def sample_maxwell(t, n_samples: int):
-        r1, r2, r3 = np.random.rand(3, n_samples)
+    def sample_maxwell(t, n_samples: int, rng=None):
+        if rng is None:
+            rng = np.random.default_rng()
+        r1, r2, r3 = rng.random((3, n_samples))
         c = np.cos(0.5 * np.pi * r3)
         return -t * (np.log(r1) + np.log(r2) * c * c)
 
@@ -644,9 +650,9 @@ class Watt(Univariate):
         self._b = b
 
     def sample(self, n_samples=1, seed=None):
-        np.random.seed(seed)
-        w = Maxwell.sample_maxwell(self.a, n_samples)
-        u = np.random.uniform(-1., 1., n_samples)
+        rng = np.random.RandomState(seed)
+        w = Maxwell.sample_maxwell(self.a, n_samples, rng=rng)
+        u = rng.uniform(-1., 1., n_samples)
         aab = self.a * self.a * self.b
         return w + 0.25*aab + u*np.sqrt(aab*w)
 
@@ -666,7 +672,7 @@ class Watt(Univariate):
         """
         element = ET.Element(element_name)
         element.set("type", "watt")
-        element.set("parameters", '{} {}'.format(self.a, self.b))
+        element.set("parameters", f'{self.a} {self.b}')
         return element
 
     @classmethod
@@ -737,8 +743,8 @@ class Normal(Univariate):
         self._std_dev = std_dev
 
     def sample(self, n_samples=1, seed=None):
-        np.random.seed(seed)
-        return np.random.normal(self.mean_value, self.std_dev, n_samples)
+        rng = np.random.RandomState(seed)
+        return rng.normal(self.mean_value, self.std_dev, n_samples)
 
     def to_xml_element(self, element_name: str):
         """Return XML representation of the Normal distribution
@@ -756,7 +762,7 @@ class Normal(Univariate):
         """
         element = ET.Element(element_name)
         element.set("type", "normal")
-        element.set("parameters", '{} {}'.format(self.mean_value, self.std_dev))
+        element.set("parameters", f'{self.mean_value} {self.std_dev}')
         return element
 
     @classmethod
@@ -949,8 +955,8 @@ class Tabular(Univariate):
         self.p /= self.cdf().max()
 
     def sample(self, n_samples: int = 1, seed: typing.Optional[int] = None):
-        np.random.seed(seed)
-        xi = np.random.rand(n_samples)
+        rng = np.random.RandomState(seed)
+        xi = rng.random(n_samples)
 
         # always use normalized probabilities when sampling
         cdf = self.cdf()
@@ -1066,7 +1072,7 @@ class Tabular(Univariate):
         if self.interpolation == 'histogram':
             return np.sum(np.diff(self.x) * self.p[:-1])
         elif self.interpolation == 'linear-linear':
-            return np.trapz(self.p, self.x)
+            return trapezoid(self.p, self.x)
         else:
             raise NotImplementedError(
                 f'integral() not supported for {self.inteprolation} interpolation')
@@ -1182,7 +1188,7 @@ class Mixture(Univariate):
         return np.insert(np.cumsum(self.probability), 0, 0.0)
 
     def sample(self, n_samples=1, seed=None):
-        np.random.seed(seed)
+        rng = np.random.RandomState(seed)
 
         # Get probability of each distribution accounting for its intensity
         p = np.array([prob*dist.integral() for prob, dist in
@@ -1190,8 +1196,7 @@ class Mixture(Univariate):
         p /= p.sum()
 
         # Sample from the distributions
-        idx = np.random.choice(range(len(self.distribution)),
-                               n_samples, p=p)
+        idx = rng.choice(range(len(self.distribution)), n_samples, p=p)
 
         # Draw samples from the distributions sampled above
         out = np.empty_like(idx, dtype=float)

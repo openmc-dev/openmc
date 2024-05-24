@@ -15,7 +15,10 @@ from .error import _error_handler
 from .material import Material
 from .plot import _Position
 
-__all__ = ['RegularMesh', 'RectilinearMesh', 'CylindricalMesh', 'SphericalMesh', 'UnstructuredMesh', 'meshes']
+__all__ = [
+    'Mesh', 'RegularMesh', 'RectilinearMesh', 'CylindricalMesh',
+    'SphericalMesh', 'UnstructuredMesh', 'meshes'
+]
 
 
 class _MaterialVolume(Structure):
@@ -39,6 +42,9 @@ _dll.openmc_mesh_set_id.errcheck = _error_handler
 _dll.openmc_mesh_get_n_elements.argtypes = [c_int32, POINTER(c_size_t)]
 _dll.openmc_mesh_get_n_elements.restype = c_int
 _dll.openmc_mesh_get_n_elements.errcheck = _error_handler
+_dll.openmc_mesh_get_volumes.argtypes = [c_int32, POINTER(c_double)]
+_dll.openmc_mesh_get_volumes.restype = c_int
+_dll.openmc_mesh_get_volumes.errcheck = _error_handler
 _dll.openmc_mesh_material_volumes.argtypes = [
     c_int32, c_int, c_int, c_int, POINTER(_MaterialVolume),
     POINTER(c_int), POINTER(c_uint64)]
@@ -149,10 +155,17 @@ class Mesh(_FortranObjectWithID):
         _dll.openmc_mesh_set_id(self._index, mesh_id)
 
     @property
-    def n_elements(self):
+    def n_elements(self) -> int:
         n = c_size_t()
         _dll.openmc_mesh_get_n_elements(self._index, n)
         return n.value
+
+    @property
+    def volumes(self) -> np.ndarray:
+        volumes = np.empty((self.n_elements,))
+        _dll.openmc_mesh_get_volumes(
+            self._index, volumes.ctypes.data_as(POINTER(c_double)))
+        return volumes
 
     def material_volumes(
             self,
@@ -276,6 +289,10 @@ class RegularMesh(Mesh):
         are given, it is assumed that the mesh is an x-y mesh.
     width : numpy.ndarray
         The width of mesh cells in each direction.
+    n_elements : int
+        Total number of mesh elements.
+    volumes : numpy.ndarray
+        Volume of each mesh element in [cm^3]
 
     """
     mesh_type = 'regular'
@@ -358,6 +375,10 @@ class RectilinearMesh(Mesh):
         The upper-right corner of the structrued mesh.
     width : numpy.ndarray
         The width of mesh cells in each direction.
+    n_elements : int
+        Total number of mesh elements.
+    volumes : numpy.ndarray
+        Volume of each mesh element in [cm^3]
 
     """
     mesh_type = 'rectilinear'
@@ -457,6 +478,10 @@ class CylindricalMesh(Mesh):
         The upper-right corner of the structrued mesh.
     width : numpy.ndarray
         The width of mesh cells in each direction.
+    n_elements : int
+        Total number of mesh elements.
+    volumes : numpy.ndarray
+        Volume of each mesh element in [cm^3]
 
     """
     mesh_type = 'cylindrical'
@@ -531,6 +556,7 @@ class CylindricalMesh(Mesh):
         _dll.openmc_cylindrical_mesh_set_grid(self._index, r_grid, nr, phi_grid,
                                               nphi, z_grid, nz)
 
+
 class SphericalMesh(Mesh):
     """SphericalMesh stored internally.
 
@@ -555,6 +581,10 @@ class SphericalMesh(Mesh):
         The upper-right corner of the structrued mesh.
     width : numpy.ndarray
         The width of mesh cells in each direction.
+    n_elements : int
+        Total number of mesh elements.
+    volumes : numpy.ndarray
+        Volume of each mesh element in [cm^3]
 
     """
     mesh_type = 'spherical'

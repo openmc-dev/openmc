@@ -7,6 +7,8 @@ import numpy as np
 import pytest
 from pytest import approx
 
+from tests.regression_tests import config
+
 
 def test_source():
     space = openmc.stats.Point()
@@ -100,7 +102,8 @@ def test_source_xml_roundtrip():
     assert new_src.strength == approx(src.strength)
 
 
-def test_rejection(run_in_tmpdir):
+@pytest.fixture
+def sphere_box_model():
     # Model with two spheres inside a box
     mat = openmc.Material()
     mat.add_nuclide('H1', 1.0)
@@ -119,22 +122,106 @@ def test_rejection(run_in_tmpdir):
     model.settings.batches = 10
     model.settings.run_mode = 'fixed source'
 
+    return model, cell1, cell2, cell3
+
+
+def test_constraints_independent(sphere_box_model, run_in_tmpdir):
+    model, cell1, cell2, cell3 = sphere_box_model
+
     # Set up a box source with rejection on the spherical cell
-    space = openmc.stats.Box(*cell3.bounding_box)
-    model.settings.source = openmc.IndependentSource(space=space, domains=[cell1, cell2])
+    space = openmc.stats.Box((-4., -1., -1.), (4., 1., 1.))
+    model.settings.source = openmc.IndependentSource(
+        space=space, constraints={'domains': [cell1, cell2]}
+    )
 
     # Load up model via openmc.lib and sample source
-    model.export_to_xml()
+    model.export_to_model_xml()
     openmc.lib.init()
     particles = openmc.lib.sample_external_source(1000)
 
     # Make sure that all sampled sources are within one of the spheres
-    joint_region = cell1.region | cell2.region
     for p in particles:
-        assert p.r in joint_region
-        assert p.r not in non_source_region
+        assert p.r in (cell1.region | cell2.region)
+        assert p.r not in cell3.region
 
     openmc.lib.finalize()
+
+
+def test_constraints_mesh(sphere_box_model, run_in_tmpdir):
+    model, cell1, cell2, cell3 = sphere_box_model
+
+    bbox = cell3.bounding_box
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = bbox.lower_left
+    mesh.upper_right = bbox.upper_right
+    mesh.dimension = (2, 1, 1)
+
+    left_source = openmc.IndependentSource()
+    right_source = openmc.IndependentSource()
+    model.settings.source = openmc.MeshSource(
+        mesh, [left_source, right_source], constraints={'domains': [cell1, cell2]}
+    )
+
+    # Load up model via openmc.lib and sample source
+    model.export_to_model_xml()
+    openmc.lib.init()
+    particles = openmc.lib.sample_external_source(1000)
+
+    # Make sure that all sampled sources are within one of the spheres
+    for p in particles:
+        assert p.r in (cell1.region | cell2.region)
+        assert p.r not in cell3.region
+
+    openmc.lib.finalize()
+
+
+def test_constraints_file(sphere_box_model, run_in_tmpdir):
+    model = sphere_box_model[0]
+
+    # Create source file with randomly sampled source sites
+    rng = np.random.default_rng()
+    energy = rng.uniform(0., 1e6, 10_000)
+    time = rng.uniform(0., 1., 10_000)
+    particles = [openmc.SourceParticle(E=e, time=t) for e, t in zip(energy, time)]
+    openmc.write_source_file(particles, 'uniform_source.h5')
+
+    # Use source file
+    model.settings.source = openmc.FileSource(
+        'uniform_source.h5',
+        constraints={
+            'time_bounds': [0.25, 0.75],
+            'energy_bounds': [500.e3, 1.0e6],
+        }
+    )
+
+    # Load up model via openmc.lib and sample source
+    model.export_to_model_xml()
+    openmc.lib.init()
+    particles = openmc.lib.sample_external_source(1000)
+
+    # Make sure that all sampled sources are within energy/time bounds
+    for p in particles:
+        assert 0.25 <= p.time <= 0.75
+        assert 500.e3 <= p.E <= 1.0e6
+
+    openmc.lib.finalize()
+
+
+@pytest.mark.skipif(config['mpi'], reason='Not compatible with MPI')
+def test_rejection_limit(sphere_box_model, run_in_tmpdir):
+    model, cell1 = sphere_box_model[:2]
+
+    # Define a point source that will get rejected 100% of the time
+    model.settings.source = openmc.IndependentSource(
+        space=openmc.stats.Point((-3., 0., 0.)),
+        constraints={'domains': [cell1]}
+    )
+
+    # Confirm that OpenMC doesn't run in an infinite loop. Note that this may
+    # work when running with MPI since it won't necessarily capture the error
+    # message correctly
+    with pytest.raises(RuntimeError, match="rejected"):
+        model.run(openmc_exec=config['exe'])
 
 
 def test_exceptions():

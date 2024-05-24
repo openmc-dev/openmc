@@ -750,7 +750,7 @@ void free_memory_simulation()
 
 void transport_history_based_single_particle(Particle& p)
 {
-  while (true) {
+  while (p.alive()) {
     p.event_calculate_xs();
     if (!p.alive())
       break;
@@ -761,8 +761,6 @@ void transport_history_based_single_particle(Particle& p)
       p.event_collide();
     }
     p.event_revive_from_secondary();
-    if (!p.alive())
-      break;
   }
   p.event_death();
 }

@@ -112,11 +112,10 @@ def assembly_model():
     model.settings.batches = 150
     model.settings.inactive = 50
     model.settings.particles = 1000
-    model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
-        (-pitch/2, -pitch/2, -1),
-        (pitch/2, pitch/2, 1),
-        only_fissionable=True
-    ))
+    model.settings.source = openmc.IndependentSource(
+        space=openmc.stats.Box((-pitch/2, -pitch/2, -1), (pitch/2, pitch/2, 1)),
+        constraints={'fissionable': True}
+    )
 
     # NOTE: We never actually created a Materials object. When you export/run
     # using the Model object, if no materials were assigned it will look through

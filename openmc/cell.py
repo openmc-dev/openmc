@@ -426,15 +426,13 @@ class Cell(IDManagerMixin):
             instances
 
         """
+        if memo is None:
+            memo = set()
+        elif self in memo:
+            return {}
+        memo.add(self)
 
         cells = {}
-
-        if memo and self in memo:
-            return cells
-
-        if memo is not None:
-            memo.add(self)
-
         if self.fill_type in ('universe', 'lattice'):
             cells.update(self.fill.get_all_cells(memo))
 
@@ -465,7 +463,7 @@ class Cell(IDManagerMixin):
 
         return materials
 
-    def get_all_universes(self):
+    def get_all_universes(self, memo=None):
         """Return all universes that are contained within this one if any of
         its cells are filled with a universe or lattice.
 
@@ -476,18 +474,22 @@ class Cell(IDManagerMixin):
             :class:`Universe` instances
 
         """
+        if memo is None:
+            memo = set()
+        if self in memo:
+            return {}
+        memo.add(self)
 
         universes = {}
-
         if self.fill_type == 'universe':
             universes[self.fill.id] = self.fill
-            universes.update(self.fill.get_all_universes())
+            universes.update(self.fill.get_all_universes(memo))
         elif self.fill_type == 'lattice':
-            universes.update(self.fill.get_all_universes())
+            universes.update(self.fill.get_all_universes(memo))
 
         return universes
 
-    def clone(self, clone_materials=True, clone_regions=True,  memo=None):
+    def clone(self, clone_materials=True, clone_regions=True, memo=None):
         """Create a copy of this cell with a new unique ID, and clones
         the cell's region and fill.
 
@@ -678,10 +680,11 @@ class Cell(IDManagerMixin):
             # thus far.
             def create_surface_elements(node, element, memo=None):
                 if isinstance(node, Halfspace):
-                    if memo and node.surface in memo:
+                    if memo is None:
+                        memo = set()
+                    elif node.surface in memo:
                         return
-                    if memo is not None:
-                        memo.add(node.surface)
+                    memo.add(node.surface)
                     xml_element.append(node.surface.to_xml_element())
 
                 elif isinstance(node, Complement):

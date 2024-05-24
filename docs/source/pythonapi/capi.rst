@@ -43,6 +43,7 @@ Functions
    simulation_finalize
    simulation_init
    source_bank
+   statepoint_load
    statepoint_write
 
 Classes

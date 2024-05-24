@@ -451,10 +451,10 @@ class IncidentPhoton(EqualityMixin):
         if mt in self.reactions:
             return self.reactions[mt]
         else:
-            raise KeyError('No reaction with MT={}.'.format(mt))
+            raise KeyError(f'No reaction with MT={mt}.')
 
     def __repr__(self):
-        return "<IncidentPhoton: {}>".format(self.name)
+        return f"<IncidentPhoton: {self.name}>"
 
     def __iter__(self):
         return iter(self.reactions.values())
@@ -508,7 +508,7 @@ class IncidentPhoton(EqualityMixin):
         # Get atomic number based on name of ACE table
         zaid, xs = ace.name.split('.')
         if not xs.endswith('p'):
-            raise TypeError("{} is not a photoatomic transport ACE table.".format(ace))
+            raise TypeError(f"{ace} is not a photoatomic transport ACE table.")
         Z = get_metadata(int(zaid))[2]
 
         # Read each reaction
@@ -638,7 +638,7 @@ class IncidentPhoton(EqualityMixin):
             with h5py.File(filename, 'r') as f:
                 _COMPTON_PROFILES['pz'] = f['pz'][()]
                 for i in range(1, 101):
-                    group = f['{:03}'.format(i)]
+                    group = f[f'{i:03}']
                     num_electrons = group['num_electrons'][()]
                     binding_energy = group['binding_energy'][()]*EV_PER_MEV
                     J = group['J'][()]
@@ -713,7 +713,7 @@ class IncidentPhoton(EqualityMixin):
 
         # Check for necessary reactions
         for mt in (502, 504, 522):
-            assert mt in data, "Reaction {} not found".format(mt)
+            assert mt in data, f"Reaction {mt} not found"
 
         # Read atomic relaxation
         data.atomic_relaxation = AtomicRelaxation.from_hdf5(group['subshells'])
@@ -836,7 +836,7 @@ class IncidentPhoton(EqualityMixin):
             filename = os.path.join(os.path.dirname(__file__), 'density_effect.h5')
             with h5py.File(filename, 'r') as f:
                 for i in range(1, 101):
-                    group = f['{:03}'.format(i)]
+                    group = f[f'{i:03}']
                     _BREMSSTRAHLUNG[i] = {
                         'I': group.attrs['I'],
                         'num_electrons': group['num_electrons'][()],
@@ -924,10 +924,9 @@ class PhotonReaction(EqualityMixin):
 
     def __repr__(self):
         if self.mt in _REACTION_NAME:
-            return "<Photon Reaction: MT={} {}>".format(
-                self.mt, _REACTION_NAME[self.mt][0])
+            return f"<Photon Reaction: MT={self.mt} {_REACTION_NAME[self.mt][0]}>"
         else:
-            return "<Photon Reaction: MT={}>".format(self.mt)
+            return f"<Photon Reaction: MT={self.mt}>"
 
     @property
     def anomalous_real(self):

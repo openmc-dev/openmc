@@ -53,8 +53,7 @@ class EnergyDistribution(EqualityMixin, ABC):
         elif energy_type == 'continuous':
             return ContinuousTabular.from_hdf5(group)
         else:
-            raise ValueError("Unknown energy distribution type: {}"
-                             .format(energy_type))
+            raise ValueError(f"Unknown energy distribution type: {energy_type}")
 
     @staticmethod
     def from_endf(file_obj, params):

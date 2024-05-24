@@ -1,7 +1,5 @@
 from math import sqrt
 
-from pathlib import Path
-
 import lxml.etree as ET
 import openmc
 import pytest
@@ -380,31 +378,29 @@ def test_unset_universes():
     with pytest.raises(ValueError):
         hex_lattice.create_xml_subelement(elem)
 
+
 @pytest.mark.parametrize("orientation", ['x', 'y'])
-def test_hex_lattice_roundtrip(request, orientation):
+def test_hex_lattice_roundtrip(orientation):
     openmc.reset_auto_ids()
 
     # ensure that the lattice universes are the same on all axial levels
     def check_lattice_universes(og_lattice, xml_lattice):
-        for aixal_og, axial_rt in zip(og_lattice.universes, xml_lattice.universes):
-            for ring_og, ring_rt in zip(aixal_og, axial_rt):
+        for axial_og, axial_rt in zip(og_lattice.universes, xml_lattice.universes):
+            for ring_og, ring_rt in zip(axial_og, axial_rt):
                 assert [u.id for u in ring_og] == [u.id for u in ring_rt]
 
-    path = Path(request.fspath).parent
-
-    latt = openmc.HexLattice(lattice_id=100)
+    latt = openmc.HexLattice()
     latt.pitch = (1.0, 1.0)
     latt.center = (0.0, 0.0, 0.0)
     latt.orientation = orientation
 
     # fill the lattice with universes in increasing order and repeat for
     # the second actial level
-    lvl_one_univs = [openmc.Universe(cells=[openmc.Cell()]) for i in range(19)]
-    lvl_one_univs = [lvl_one_univs[-12:], lvl_one_univs[1:7], lvl_one_univs[0:1]]
+    lvl_one_univs = [openmc.Universe(cells=[openmc.Cell()]) for _ in range(19)]
+    lvl_one_univs = [lvl_one_univs[-12:], lvl_one_univs[1:7], lvl_one_univs[:1]]
     latt.universes = [lvl_one_univs, lvl_one_univs]
 
-    outer_univ = openmc.Universe(cells=[openmc.Cell(fill=latt)])
-    geom = openmc.Geometry(root=outer_univ)
+    geom = openmc.Geometry([openmc.Cell(fill=latt)])
     geom.export_to_xml()
 
     xml_geom = openmc.Geometry.from_xml(materials=openmc.Materials())
@@ -414,8 +410,8 @@ def test_hex_lattice_roundtrip(request, orientation):
     check_lattice_universes(latt, xml_latt)
 
     # same test but with unique universes for each axial level
-    lvl_two_univs = [openmc.Universe(cells=[openmc.Cell()]) for i in range(19)]
-    lvl_two_univs = [lvl_two_univs[-12:], lvl_two_univs[1:7], lvl_two_univs[0:1]]
+    lvl_two_univs = [openmc.Universe(cells=[openmc.Cell()]) for _ in range(19)]
+    lvl_two_univs = [lvl_two_univs[-12:], lvl_two_univs[1:7], lvl_two_univs[:1]]
     latt.universes = [lvl_one_univs, lvl_two_univs]
 
     geom.export_to_xml()

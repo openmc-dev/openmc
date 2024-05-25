@@ -171,6 +171,29 @@ def check_length(name, value, length_min, length_max=None):
         raise ValueError(msg)
 
 
+def check_increasing(name: str, value, equality: bool = False):
+    """Ensure that a list's elements are strictly or loosely increasing.
+
+    Parameters
+    ----------
+    name : str
+        Description of value being checked
+    value : iterable
+        Object to check if increasing
+    equality : bool, optional
+        Whether equality is allowed. Defaults to False.
+
+    """
+    if equality:
+        if not np.all(np.diff(value) >= 0.0):
+            raise ValueError(f'Unable to set "{name}" to "{value}" since its '
+                             'elements must be increasing.')
+    elif not equality:
+        if not np.all(np.diff(value) > 0.0):
+            raise ValueError(f'Unable to set "{name}" to "{value}" since its '
+                             'elements must be strictly increasing.')
+
+
 def check_value(name, value, accepted_values):
     """Ensure that an object's value is contained in a set of acceptable values.
 

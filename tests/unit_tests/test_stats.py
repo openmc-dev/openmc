@@ -210,8 +210,7 @@ def test_tabular():
     assert d.integral() == pytest.approx(1.0)
 
     # test histogram sampling
-    with pytest.warns():
-        d = openmc.stats.Tabular(x, p, interpolation='histogram')
+    d = openmc.stats.Tabular(x, p, interpolation='histogram')
     samples = d.sample(n_samples)
     assert_sample_mean(samples, d.mean())
 

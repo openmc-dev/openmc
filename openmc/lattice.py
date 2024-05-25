@@ -1574,6 +1574,7 @@ class HexLattice(Lattice):
                             alpha -= 1
                             if not lat.is_valid_index((x, alpha, z)):
                                 # Reached the bottom
+                                j += 1
                                 break
                     j += 1
             else:
@@ -1593,6 +1594,7 @@ class HexLattice(Lattice):
 
                         # Check if we've reached the bottom
                         if y == -n_rings:
+                            j += 1
                             break
 
                         while not lat.is_valid_index((alpha, y, z)):

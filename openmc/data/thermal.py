@@ -698,8 +698,8 @@ class ThermalScattering(EqualityMixin):
                 # add an outgoing energy 0 eV that has a PDF of 0 (and of
                 # course, a CDF of 0 as well).
                 if eout_i.c[0] > 0.:
-                    eout_i.x = np.insert(eout_i.x, 0, 0.)
-                    eout_i.p = np.insert(eout_i.p, 0, 0.)
+                    eout_i._x = np.insert(eout_i.x, 0, 0.)
+                    eout_i._p = np.insert(eout_i.p, 0, 0.)
                     eout_i.c = np.insert(eout_i.c, 0, 0.)
 
                     # For this added outgoing energy (of 0 eV) we add a set of

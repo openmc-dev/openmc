@@ -837,10 +837,11 @@ class Tabular(Univariate):
     x : Iterable of float
         Tabulated values of the random variable
     p : Iterable of float
-        Tabulated probabilities
+        Tabulated probabilities. For histogram interpolation, if the length of
+        `p` is the same as `x`, the last value is ignored.
     interpolation : {'histogram', 'linear-linear', 'linear-log', 'log-linear', 'log-log'}, optional
-        Indicate whether the density function is constant between tabulated
-        points or linearly-interpolated. Defaults to 'linear-linear'.
+        Indicates how the density function is interpolated between tabulated
+        points. Defaults to 'linear-linear'.
     ignore_negative : bool
         Ignore negative probabilities
 
@@ -850,9 +851,9 @@ class Tabular(Univariate):
         Tabulated values of the random variable
     p : numpy.ndarray
         Tabulated probabilities
-    interpolation : {'histogram', 'linear-linear', 'linear-log', 'log-linear', 'log-log'}, optional
-        Indicate whether the density function is constant between tabulated
-        points or linearly-interpolated.
+    interpolation : {'histogram', 'linear-linear', 'linear-log', 'log-linear', 'log-log'}
+        Indicates how the density function is interpolated between tabulated
+        points. Defaults to 'linear-linear'.
 
     """
 
@@ -863,59 +864,37 @@ class Tabular(Univariate):
             interpolation: str = 'linear-linear',
             ignore_negative: bool = False
         ):
-        self._ignore_negative = ignore_negative
         self.interpolation = interpolation
 
-        self._x = None
-        self._p = None
+        cv.check_type('tabulated values', x, Iterable, Real)
+        cv.check_type('tabulated probabilities', p, Iterable, Real)
 
-        self.x = x
-        self.p = p
+        x = np.array(x, dtype=float)
+        p = np.array(p, dtype=float)
+
+        if p.size > x.size:
+            raise ValueError('Number of probabilities exceeds number of table values.')
+        if self.interpolation != 'histogram' and x.size != p.size:
+            raise ValueError(f'Tabulated values ({x.size}) and probabilities '
+                             f'({p.size}) should have the same length')
+
+        if not ignore_negative:
+            for pk in p:
+                cv.check_greater_than('tabulated probability', pk, 0.0, True)
+
+        self._x = x
+        self._p = p
 
     def __len__(self):
-        return len(self.x)
+        return self.p.size
 
     @property
     def x(self):
         return self._x
 
-    @x.setter
-    def x(self, x):
-        cv.check_type('tabulated values', x, Iterable, Real)
-        self._x = np.array(x, dtype=float)
-
     @property
     def p(self):
         return self._p
-
-    @p.setter
-    def p(self, p):
-        p = np.array(p, dtype=float)
-        cv.check_type('tabulated probabilities', p, Iterable, Real)
-
-        # if x has not been set yet, skip all of the subsequent checking below
-        # and set the probabilities attribute
-        if self.x is None:
-            self._p = p
-            return
-
-        if len(p) > len(self.x):
-            warn('Number of probabilities exceeds number of table values. '
-                 'Additional probabilities will be ignored.')
-
-        if self.interpolation != 'histogram' and self.x.size != p.size:
-            warn(f'Tabulated values ({self.x.size}) and probabilities '
-                 f'({p.size}) should have the same length')
-
-        if self.interpolation == 'histogram' and len(p) > len(self.x) - 1:
-            warn(f'Number of probabilities ({p.size}) for histogram interpolation '
-                 f'exceeds the number of table values minus one ({self.x.size-1}). '
-                 'Additional probabilities will be ignored.')
-
-        if not self._ignore_negative:
-            for pk in p:
-                cv.check_greater_than('tabulated probability', pk, 0.0, True)
-        self._p = p
 
     @property
     def interpolation(self):
@@ -977,7 +956,7 @@ class Tabular(Univariate):
 
     def normalize(self):
         """Normalize the probabilities stored on the distribution"""
-        self.p /= self.cdf().max()
+        self._p /= self.cdf().max()
 
     def sample(self, n_samples: int = 1, seed: typing.Optional[int] = None):
         rng = np.random.RandomState(seed)
@@ -1371,7 +1350,7 @@ def combine_distributions(
     # Apply probabilites to continuous distributions
     for i in cont_index:
         dist = dist_list[i]
-        dist.p *= probs[i]
+        dist._p *= probs[i]
 
     if discrete_index:
         # Create combined discrete distribution

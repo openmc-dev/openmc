@@ -230,13 +230,10 @@ def test_tabular():
         d = openmc.stats.Tabular(x, p[:-1], interpolation='linear-linear')
         d.cdf()
 
-    # update with probabilities of corrcet length for linear-linear
-    # interpolation and call the CDF method again
-    d.p = p
+    # Use probabilities of correct length for linear-linear interpolation and
+    # call the CDF method
+    d = openmc.stats.Tabular(x, p, interpolation='linear-linear')
     d.cdf()
-
-    with pytest.warns():
-        d.p = p[:-1]
 
 
 def test_legendre():

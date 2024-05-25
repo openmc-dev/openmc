@@ -154,7 +154,6 @@ class CylinderSector(CompositeSurface):
             coord_map = [2, 0, 1]
             self.inner_cyl = openmc.XCylinder(*center, r1, **kwargs)
             self.outer_cyl = openmc.XCylinder(*center, r2, **kwargs)
-        self.axis = axis
 
         # Reorder the points to correspond to the correct central axis
         for p in points:
@@ -194,8 +193,8 @@ class CylinderSector(CompositeSurface):
             with respect to the first basis axis (+y, +z, or +x). Note that
             negative values translate to an offset in the clockwise direction.
         center : iterable of float
-            Coordinate for central axes of cylinders in the (y, z), (x, z), or (x, y)
-            basis. Defaults to (0,0).
+            Coordinate for central axes of cylinders in the (y, z), (x, z), or
+            (x, y) basis. Defaults to (0,0).
         axis : {'x', 'y', 'z'}
             Central axis of the cylinders defining the inner and outer surfaces
             of the sector. Defaults to 'z'.
@@ -218,18 +217,16 @@ class CylinderSector(CompositeSurface):
         return cls(r1, r2, theta1, theta2, center=center, axis=axis, **kwargs)
 
     def __neg__(self):
-        if self.axis == 'y':
-            region = -self.outer_cyl & +self.inner_cyl & +self.plane1 & -self.plane2
+        if isinstance(self.inner_cyl, openmc.YCylinder):
+            return -self.outer_cyl & +self.inner_cyl & +self.plane1 & -self.plane2
         else:
-            region = -self.outer_cyl & +self.inner_cyl & -self.plane1 & +self.plane2
-        return region
+            return -self.outer_cyl & +self.inner_cyl & -self.plane1 & +self.plane2
 
     def __pos__(self):
-        if self.axis == 'y':
-            region = +self.outer_cyl | -self.inner_cyl | -self.plane1 | +self.plane2
+        if isinstance(self.inner_cyl, openmc.YCylinder):
+            return +self.outer_cyl | -self.inner_cyl | -self.plane1 | +self.plane2
         else:
-            region = +self.outer_cyl | -self.inner_cyl | +self.plane1 | -self.plane2
-        return region
+            return +self.outer_cyl | -self.inner_cyl | +self.plane1 | -self.plane2
 
 
 class IsogonalOctagon(CompositeSurface):
@@ -294,7 +291,7 @@ class IsogonalOctagon(CompositeSurface):
         c1, c2 = center
 
         # Coords for axis-perpendicular planes
-        cright= c1 + r1
+        cright = c1 + r1
         cleft = c1 - r1
 
         ctop = c2 + r1

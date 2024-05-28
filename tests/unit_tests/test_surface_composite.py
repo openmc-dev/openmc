@@ -158,18 +158,23 @@ def test_cone_one_sided(axis, point_pos, point_neg, ll_true):
 
 
 @pytest.mark.parametrize(
-    "axis, indices", [
-        ("X", [0, 1, 2]),
-        ("Y", [1, 2, 0]),
-        ("Z", [2, 0, 1]),
+    "axis, indices, center", [
+        ("X", [2, 0, 1], (0., 0.)),
+        ("Y", [0, 2, 1], (0., 0.)),
+        ("Z", [0, 1, 2], (0., 0.)),
+        ("X", [2, 0, 1], (10., 5.)),
+        ("Y", [0, 2, 1], (10., 5.)),
+        ("Z", [0, 1, 2], (10., 5.)),
+
     ]
 )
-def test_cylinder_sector(axis, indices):
+def test_cylinder_sector(axis, indices, center):
+    c1, c2 = center
     r1, r2 = 0.5, 1.5
     d = (r2 - r1) / 2
     phi1 = -60.
     phi2 = 60
-    s = openmc.model.CylinderSector(r1, r2, phi1, phi2,
+    s = openmc.model.CylinderSector(r1, r2, phi1, phi2, center=center,
                                     axis=axis.lower())
     assert isinstance(s.outer_cyl, getattr(openmc, axis + "Cylinder"))
     assert isinstance(s.inner_cyl, getattr(openmc, axis + "Cylinder"))
@@ -189,16 +194,18 @@ def test_cylinder_sector(axis, indices):
     assert np.all(np.isinf(ll))
     assert np.all(np.isinf(ur))
     ll, ur = (-s).bounding_box
-    assert ll == pytest.approx(np.roll([-np.inf, -r2, -r2], indices[0]))
-    assert ur == pytest.approx(np.roll([np.inf, r2, r2], indices[0]))
+    test_point_ll = np.array([-r2 + c1, -r2 + c2, -np.inf])
+    assert ll == pytest.approx(test_point_ll[indices])
+    test_point_ur = np.array([r2 + c1, r2 + c2, np.inf])
+    assert ur == pytest.approx(test_point_ur[indices])
 
     # __contains__ on associated half-spaces
-    point_pos = np.roll([0, r2 + 1, 0], indices[0])
-    assert point_pos in +s
-    assert point_pos not in -s
-    point_neg = np.roll([0, r1 + d, r1 + d], indices[0])
-    assert point_neg in -s
-    assert point_neg not in +s
+    point_pos = np.array([0 + c1, r2 + 1 + c2, 0])
+    assert point_pos[indices] in +s
+    assert point_pos[indices] not in -s
+    point_neg = np.array([r1 + d + c1, r1 + d + c2, 0])
+    assert point_neg[indices] in -s
+    assert point_neg[indices] not in +s
 
     # translate method
     t = uniform(-5.0, 5.0)
@@ -399,7 +406,7 @@ def test_polygon():
     with pytest.raises(ValueError):
         openmc.model.Polygon(rz_points)
 
-    # Test "M" shaped polygon 
+    # Test "M" shaped polygon
     points = np.array([[8.5151581, -17.988337],
                        [10.381711000000001, -17.988337],
                        [12.744357, -24.288728000000003],

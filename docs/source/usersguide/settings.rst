@@ -420,6 +420,54 @@ string, which gets passed down to the ``openmc_create_source()`` function::
 
   settings.source = openmc.CompiledSource('libsource.so', '3.5e6')
 
+.. _usersguide_source_constraints:
+
+Source Constraints
+------------------
+
+All source classes in OpenMC have the ability to apply a set of "constraints"
+that limit which sampled source sites are actually used for transport. The most
+common use case is to sample source sites over some simple spatial distribution
+(e.g., uniform over a box) and then only accept those that appear in a given
+cell or material. This can be done with a domain constraint, which can be
+specified as follows::
+
+  source_cell = openmc.Cell(...)
+  ...
+
+  spatial_dist = openmc.stats.Box((-10., -10., -10.), (10., 10., 10.))
+  source = openmc.IndependentSource(
+      space=spatial_dist,
+      constraints={'domains': [source_cell]}
+  )
+
+For k-eigenvalue problems, a convenient constraint is available that limits
+source sites to those sampled in a fissionable material::
+
+  source = openmc.IndependentSource(
+      space=spatial_dist, constraints={'fissionable': True}
+  )
+
+Constraints can also be placed on a range of energies or times::
+
+  # Only use source sites between 500 keV and 1 MeV and with times under 1 sec
+  source = openmc.FileSource(
+      'source.h5',
+      constraints={'energy_bounds': [500.0e3, 1.0e6], 'time_bounds': [0.0, 1.0]}
+  )
+
+Normally, when a source site is rejected, a new one will be resampled until one
+is found that meets the constraints. However, the rejection strategy can be
+changed so that a rejected site will just not be simulated by specifying::
+
+  source = openmc.IndependentSource(
+      space=spatial_dist,
+      constraints={'domains': [cell], 'rejection_strategy': 'kill'}
+  )
+
+In this case, the actual number of particles simulated may be less than what you
+specified in :attr:`Settings.particles`.
+
 .. _usersguide_entropy:
 
 ---------------

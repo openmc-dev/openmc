@@ -211,6 +211,7 @@ bool Source::satisfies_spatial_constraints(Position r) const
 {
   GeometryState geom_state;
   geom_state.r() = r;
+  geom_state.u() = {0.0, 0.0, 1.0};
 
   // Reject particle if it's not in the geometry at all
   bool found = exhaustive_find_cell(geom_state);

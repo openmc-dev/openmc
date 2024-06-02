@@ -1626,18 +1626,7 @@ void Ray::trace()
       return;
     }
 
-    if (i_surface_ > 0 &&
-        model::surfaces[i_surface_]->geom_type_ == GeometryType::DAG) {
-#ifdef DAGMC
-      int32_t i_cell = next_cell(
-        i_surface_, cell_last(n_coord() - 1), lowest_coord().universe);
-      inside_cell = i_cell >= 0;
-#else
-      fatal_error("Not compiled for DAGMC, but somehow you have a DAGCell!");
-#endif
-    } else {
-      inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
-    }
+    inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
 
     if (inside_cell) {
 
@@ -1755,7 +1744,10 @@ void PhongRay::on_intersection()
       return;
     }
 
-    Direction normal = model::surfaces.at(i_surface())->normal(r_local());
+    // Get surface pointer
+    const auto& surf = model::surfaces.at(i_surface());
+
+    Direction normal = surf->normal(r_local());
     normal /= normal.norm();
 
     // Need to apply translations to find the normal vector in
@@ -1767,7 +1759,7 @@ void PhongRay::on_intersection()
       }
     }
 
-    if (surface() > 0) {
+    if (surf->geom_type_ != GeometryType::DAG && surface() > 0) {
       normal *= -1.0;
     }
 

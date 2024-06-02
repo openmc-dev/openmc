@@ -1107,7 +1107,7 @@ class RayTracePlot(PlotBase):
                                     'color_by=material')
             else:
                 if not isinstance(region, openmc.Cell):
-                    raise Exception('Domain list must be materials if '
+                    raise Exception('Domain list must be cells if '
                                     'color_by=cell')
 
     def to_xml_element(self):

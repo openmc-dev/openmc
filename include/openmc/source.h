@@ -51,7 +51,9 @@ extern vector<unique_ptr<Source>> external_sources;
 //==============================================================================
 
 class Source {
-public:
+public:  
+  // Domain types
+  enum class DomainType { UNIVERSE, MATERIAL, CELL };
   // Constructors, destructors
   Source() = default;
   explicit Source(pugi::xml_node node);
@@ -76,9 +78,6 @@ public:
   static unique_ptr<Source> create(pugi::xml_node node);
 
 protected:
-  // Domain types
-  enum class DomainType { UNIVERSE, MATERIAL, CELL };
-
   // Strategy used for rejecting sites when constraints are applied. KILL means
   // that sites are always accepted but if they don't satisfy constraints, they
   // are given weight 0. RESAMPLE means that a new source site will be sampled
@@ -115,9 +114,6 @@ protected:
 
 class IndependentSource : public Source {
 public:
-  // Domain types
-  enum class DomainType { UNIVERSE, MATERIAL, CELL };
-
   // Constructors
   IndependentSource(
     UPtrSpace space, UPtrAngle angle, UPtrDist energy, UPtrDist time);

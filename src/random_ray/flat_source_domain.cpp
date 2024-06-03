@@ -435,7 +435,8 @@ void FlatSourceDomain::convert_source_regions_to_tallies()
 void FlatSourceDomain::reset_tally_volumes()
 {
 #pragma omp parallel for
-  for (auto& tensor : tally_volumes_) {
+  for (int i = 0; i < tally_volumes_.size(); i++) {
+    auto& tensor = tally_volumes_[i];
     tensor.fill(0.0); // Set all elements of the tensor to 0.0
   }
 }
@@ -885,20 +886,20 @@ void FlatSourceDomain::convert_fixed_sources()
 
     double strength_factor = is->strength();
 
-    if (is->domain_type() == IndependentSource::DomainType::MATERIAL) {
+    if (is->domain_type() == Source::DomainType::MATERIAL) {
       for (int32_t material_id : domain_ids) {
         for (int i_cell = 0; i_cell < model::cells.size(); i_cell++) {
           apply_fixed_source_to_cell_and_children(
             i_cell, energy, strength_factor, material_id);
         }
       }
-    } else if (is->domain_type() == IndependentSource::DomainType::CELL) {
+    } else if (is->domain_type() == Source::DomainType::CELL) {
       for (int32_t cell_id : domain_ids) {
         int32_t i_cell = model::cell_map[cell_id];
         apply_fixed_source_to_cell_and_children(
           i_cell, energy, strength_factor, C_NONE);
       }
-    } else if (is->domain_type() == IndependentSource::DomainType::UNIVERSE) {
+    } else if (is->domain_type() == Source::DomainType::UNIVERSE) {
       for (int32_t universe_id : domain_ids) {
         int32_t i_universe = model::universe_map[universe_id];
         Universe& universe = *model::universes[i_universe];

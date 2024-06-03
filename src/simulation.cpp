@@ -521,7 +521,7 @@ void finalize_generation()
   if (settings::run_mode == RunMode::EIGENVALUE) {
 
     // Calculate shannon entropy
-    if (settings::entropy_on)
+    if (settings::entropy_on && settings::solver_type == SolverType::MONTE_CARLO)
       shannon_entropy();
 
     // Collect results and statistics

@@ -1,6 +1,7 @@
 #include "openmc/random_ray/flat_source_domain.h"
 
 #include "openmc/cell.h"
+#include "openmc/eigenvalue.h"
 #include "openmc/geometry.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
@@ -225,6 +226,9 @@ double FlatSourceDomain::compute_k_eff(double k_eff_old) const
   const int t = 0;
   const int a = 0;
 
+  // Vector for gathering fission source terms for Shannon entropy calculation
+  vector<float> p(n_source_regions_, 0.0f);
+
 #pragma omp parallel for reduction(+ : fission_rate_old, fission_rate_new)
   for (int sr = 0; sr < n_source_regions_; sr++) {
 
@@ -249,9 +253,32 @@ double FlatSourceDomain::compute_k_eff(double k_eff_old) const
 
     fission_rate_old += sr_fission_source_old * volume;
     fission_rate_new += sr_fission_source_new * volume;
+
+    // Assigning the fission source to the vector for entropy calculation.
+    p[sr] = sr_fission_source_new;
   }
 
   double k_eff_new = k_eff_old * (fission_rate_new / fission_rate_old);
+
+  // Calculating sum for entropy normalization.
+  double sum = 0.0;
+  for (float num : p) {
+    sum += num;
+  }
+ 
+  // Normalize to total weight of bank sites.
+  for (float& num : p) {
+    num /= sum;
+  }
+
+  // Sum values to obtain Shannon entropy.
+  double H = 0.0;
+  for (int i = 0; i < n_source_regions_; i++) {
+    H -= p[i] * std::log(p[i]) / std::log(2.0);
+  }
+
+  // Adds entropy value to shared entropy vector in openmc namespace.
+  simulation::entropy.push_back(H);
 
   return k_eff_new;
 }

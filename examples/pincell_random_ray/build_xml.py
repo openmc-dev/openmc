@@ -161,6 +161,14 @@ settings.random_ray['ray_source'] = openmc.IndependentSource(space=uniform_dist)
 settings.random_ray['distance_inactive'] = 40.0
 settings.random_ray['distance_active'] = 400.0
 
+entropy_mesh = openmc.RegularMesh()
+entropy_mesh.lower_left = (-pitch/2, -pitch/2, -pitch/2)
+entropy_mesh.upper_right = (pitch/2, pitch/2, pitch/2)
+entropy_mesh.dimension = (8, 8, 8)
+settings.entropy_mesh = entropy_mesh
+
+settings.entropy_on = True
+
 settings.export_to_xml()
 
 ###############################################################################

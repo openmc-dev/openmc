@@ -90,7 +90,7 @@ fuel_or = openmc.ZCylinder(r=0.54, name='Fuel OR')
 
 # Create a region represented as the inside of a rectangular prism
 pitch = 1.26
-box = openmc.model.RectangularPrism(pitch/2, pitch/2, boundary_type='reflective')
+box = openmc.model.RectangularPrism(pitch, pitch, boundary_type='reflective')
 
 # Instantiate Cells
 fuel = openmc.Cell(fill=uo2, region=-fuel_or, name='fuel')

@@ -51,7 +51,7 @@ extern vector<unique_ptr<Source>> external_sources;
 //==============================================================================
 
 class Source {
-public:  
+public:
   // Domain types
   enum class DomainType { UNIVERSE, MATERIAL, CELL };
   // Constructors, destructors

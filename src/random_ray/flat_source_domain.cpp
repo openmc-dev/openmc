@@ -262,25 +262,24 @@ double FlatSourceDomain::compute_k_eff(double k_eff_old) const
     sum += sr_fission_source_new;
   }
 
-  double k_eff_new = k_eff_old * (fission_rate_new / fission_rate_old);
+  double k_eff_new = k_eff_old * (fission_rate_new / fission_rate_old); 
 
-  if (settings::entropy_on) {    
-    double H = 0.0;
-
+  double H = 0.0;
   // defining an inverse sum for better performance
-  double inverse_sum = 1.0/sum;  
-  
-  #pragma omp parallel for reduction(+ : H)
-    for (int i = 0; i < n_source_regions_; i++) {
-      // Normalize to total weight of bank sites.
-      p[i] *= inverse_sum;
-      // Sum values to obtain Shannon entropy.
-      H -= p[i] * std::log(p[i]) / std::log(2.0);
-    }
+  double inverse_sum = 1.0/sum; 
+  // defining inverse log(2) for better performance
+  const double inv_log2 = 1.0/std::log(2.0);
 
-    // Adds entropy value to shared entropy vector in openmc namespace.
-    simulation::entropy.push_back(H);
+#pragma omp parallel for reduction(+ : H)
+  for (int i = 0; i < n_source_regions_; i++) {
+    // Normalize to total weight of bank sites.
+    p[i] *= inverse_sum;
+    // Sum values to obtain Shannon entropy.
+    H -= p[i] * std::log(p[i]) * inv_log2;
   }
+
+  // Adds entropy value to shared entropy vector in openmc namespace.
+  simulation::entropy.push_back(H);
 
   return k_eff_new;
 }

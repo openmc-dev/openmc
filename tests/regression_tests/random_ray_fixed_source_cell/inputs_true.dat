@@ -144,8 +144,10 @@
       <energy type="discrete">
         <parameters>100.0 1.0</parameters>
       </energy>
-      <domain_type>cell</domain_type>
-      <domain_ids>4</domain_ids>
+      <constraints>
+        <domain_type>cell</domain_type>
+        <domain_ids>4</domain_ids>
+      </constraints>
     </source>
     <energy_mode>multi-group</energy_mode>
     <random_ray>

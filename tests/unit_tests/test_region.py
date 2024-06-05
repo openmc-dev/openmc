@@ -241,3 +241,13 @@ def test_invalid_operands():
     with pytest.raises(ValueError, match='must be of type Region'):
         openmc.Complement(z)
 
+
+def test_plot():
+    # Create region and plot
+    region = -openmc.Sphere() & +openmc.XPlane()
+    c_before = openmc.Cell()
+    region.plot()
+
+    # Ensure that calling plot doesn't affect cell ID space
+    c_after = openmc.Cell()
+    assert c_after.id - 1 == c_before.id

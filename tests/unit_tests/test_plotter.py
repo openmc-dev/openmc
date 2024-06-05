@@ -118,6 +118,21 @@ def test_plot_axes_labels():
     )
     assert axis_label == 'Microscopic Cross Section [b]'
 
+    axis_label = openmc.plotter._get_yaxis_label(
+        reactions={
+            "Li": ["heating", "heating-local"],
+            "Li7": ["heating"],
+            "Be": ["damage-energy"],
+        },
+        divisor_types=False,
+    )
+    assert axis_label == "Heating Cross Section [eV-barn]"
+
+    with pytest.raises(TypeError):
+        axis_label = openmc.plotter.plot_xs(
+            reactions={"Li": ["heating", "heating-local"], "Be9": ["(n,2n)"]}
+        )
+
     # just materials
     mat1 = openmc.Material()
     mat1.add_nuclide('Fe56', 1)

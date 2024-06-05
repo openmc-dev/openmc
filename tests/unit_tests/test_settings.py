@@ -27,8 +27,8 @@ def test_export_to_xml(run_in_tmpdir):
     s.survival_biasing = True
     s.cutoff = {'weight': 0.25, 'weight_avg': 0.5, 'energy_neutron': 1.0e-5,
                 'energy_photon': 1000.0, 'energy_electron': 1.0e-5,
-                'energy_positron': 1.0e-5, 'time_neutron': 1.0e-5, 
-                'time_photon': 1.0e-5, 'time_electron': 1.0e-5, 
+                'energy_positron': 1.0e-5, 'time_neutron': 1.0e-5,
+                'time_photon': 1.0e-5, 'time_electron': 1.0e-5,
                 'time_positron': 1.0e-5}
     mesh = openmc.RegularMesh()
     mesh.lower_left = (-10., -10., -10.)
@@ -58,6 +58,15 @@ def test_export_to_xml(run_in_tmpdir):
     s.electron_treatment = 'led'
     s.write_initial_source = True
     s.weight_window_checkpoints = {'surface': True, 'collision': False}
+    s.random_ray = {
+        'distance_inactive': 10.0,
+        'distance_active': 100.0,
+        'ray_source': openmc.IndependentSource(
+            space=openmc.stats.Box((-1., -1., -1.), (1., 1., 1.))
+        )
+    }
+
+    s.max_particle_events = 100
 
     # Make sure exporting XML works
     s.export_to_xml()
@@ -92,7 +101,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.cutoff == {'weight': 0.25, 'weight_avg': 0.5,
                         'energy_neutron': 1.0e-5, 'energy_photon': 1000.0,
                         'energy_electron': 1.0e-5, 'energy_positron': 1.0e-5,
-                        'time_neutron': 1.0e-5, 'time_photon': 1.0e-5, 
+                        'time_neutron': 1.0e-5, 'time_photon': 1.0e-5,
                         'time_electron': 1.0e-5, 'time_positron': 1.0e-5}
     assert isinstance(s.entropy_mesh, openmc.RegularMesh)
     assert s.entropy_mesh.lower_left == [-10., -10., -10.]
@@ -128,3 +137,8 @@ def test_export_to_xml(run_in_tmpdir):
     assert vol.lower_left == (-10., -10., -10.)
     assert vol.upper_right == (10., 10., 10.)
     assert s.weight_window_checkpoints == {'surface': True, 'collision': False}
+    assert s.max_particle_events == 100
+    assert s.random_ray['distance_inactive'] == 10.0
+    assert s.random_ray['distance_active'] == 100.0
+    assert s.random_ray['ray_source'].space.lower_left == [-1., -1., -1.]
+    assert s.random_ray['ray_source'].space.upper_right == [1., 1., 1.]

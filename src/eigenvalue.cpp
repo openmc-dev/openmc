@@ -57,16 +57,28 @@ void calculate_generation_keff()
 
   double keff_reduced;
 #ifdef OPENMC_MPI
-  // Combine values across all processors
-  MPI_Allreduce(&simulation::keff_generation, &keff_reduced, 1, MPI_DOUBLE,
-    MPI_SUM, mpi::intracomm);
+  if (settings::solver_type != SolverType::RANDOM_RAY) {
+    // Combine values across all processors
+    MPI_Allreduce(&simulation::keff_generation, &keff_reduced, 1, MPI_DOUBLE,
+      MPI_SUM, mpi::intracomm);
+  } else {
+    // If using random ray, MPI parallelism is provided by domain replication.
+    // As such, all fluxes will be reduced at the end of each transport sweep,
+    // such that all ranks have identical scalar flux vectors, and will all
+    // independently compute the same value of k. Thus, there is no need to
+    // perform any additional MPI reduction here.
+    keff_reduced = simulation::keff_generation;
+  }
 #else
   keff_reduced = simulation::keff_generation;
 #endif
 
   // Normalize single batch estimate of k
   // TODO: This should be normalized by total_weight, not by n_particles
-  keff_reduced /= settings::n_particles;
+  if (settings::solver_type != SolverType::RANDOM_RAY) {
+    keff_reduced /= settings::n_particles;
+  }
+
   simulation::k_generation.push_back(keff_reduced);
 }
 
@@ -370,7 +382,8 @@ int openmc_get_keff(double* k_combined)
 
   // Special case for n <=3. Notice that at the end,
   // there is a N-3 term in a denominator.
-  if (simulation::n_realizations <= 3) {
+  if (simulation::n_realizations <= 3 ||
+      settings::solver_type == SolverType::RANDOM_RAY) {
     k_combined[0] = simulation::keff;
     k_combined[1] = simulation::keff_std;
     if (simulation::n_realizations <= 1) {

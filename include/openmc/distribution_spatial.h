@@ -116,6 +116,11 @@ public:
   //! \return Sampled element index and position within that element
   std::pair<int32_t, Position> sample_mesh(uint64_t* seed) const;
 
+  //! Sample a mesh element
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled element index
+  int32_t sample_element_index(uint64_t* seed) const;
+
   //! For unstructured meshes, ensure that elements are all linear tetrahedra
   void check_element_types() const;
 

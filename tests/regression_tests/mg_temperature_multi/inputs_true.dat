@@ -28,9 +28,12 @@
     <batches>10</batches>
     <inactive>5</inactive>
     <source particle="neutron" strength="1.0" type="independent">
-      <space type="fission">
+      <space type="box">
         <parameters>-0.63 -0.63 -1 0.63 0.63 1</parameters>
       </space>
+      <constraints>
+        <fissionable>true</fissionable>
+      </constraints>
     </source>
     <energy_mode>multi-group</energy_mode>
   </settings>

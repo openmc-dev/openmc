@@ -121,6 +121,7 @@ void Particle::from_source(const SourceSite* src)
   wgt_last() = src->wgt;
   r() = src->r;
   u() = src->u;
+  r_born() = src->r;
   r_last_current() = src->r;
   r_last() = src->r;
   u_last() = src->u;
@@ -380,7 +381,7 @@ void Particle::event_revive_from_secondary()
 {
   // If particle has too many events, display warning and kill it
   ++n_event();
-  if (n_event() == MAX_EVENTS) {
+  if (n_event() == settings::max_particle_events) {
     warning("Particle " + std::to_string(id()) +
             " underwent maximum number of events.");
     wgt() = 0.0;

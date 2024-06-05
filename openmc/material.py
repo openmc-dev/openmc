@@ -152,7 +152,7 @@ class Material(IDManagerMixin):
 
         for nuclide, percent, percent_type in self._nuclides:
             string += '{: <16}'.format('\t{}'.format(nuclide))
-            string += '=\t{: <12} [{}]\n'.format(percent, percent_type)
+            string += f'=\t{percent: <12} [{percent_type}]\n'
 
         if self._macroscopic is not None:
             string += '{: <16}\n'.format('\tMacroscopic Data')
@@ -469,8 +469,7 @@ class Material(IDManagerMixin):
                 raise ValueError('No volume information found for material ID={}.'
                                  .format(self.id))
         else:
-            raise ValueError('No volume information found for material ID={}.'
-                             .format(self.id))
+            raise ValueError(f'No volume information found for material ID={self.id}.')
 
     def set_density(self, units: str, density: Optional[float] = None):
         """Set the density of the material
@@ -500,7 +499,7 @@ class Material(IDManagerMixin):
                       '"sum" unit'.format(self.id)
                 raise ValueError(msg)
 
-            cv.check_type('the density for Material ID="{}"'.format(self.id),
+            cv.check_type(f'the density for Material ID="{self.id}"',
                           density, Real)
             self._density = density
 
@@ -743,20 +742,18 @@ class Material(IDManagerMixin):
             el = element.lower()
             element = openmc.data.ELEMENT_SYMBOL.get(el)
             if element is None:
-                msg = 'Element name "{}" not recognised'.format(el)
+                msg = f'Element name "{el}" not recognised'
                 raise ValueError(msg)
         else:
             if element[0].islower():
-                msg = 'Element name "{}" should start with an uppercase ' \
-                      'letter'.format(element)
+                msg = f'Element name "{element}" should start with an uppercase letter'
                 raise ValueError(msg)
             if len(element) == 2 and element[1].isupper():
-                msg = 'Element name "{}" should end with a lowercase ' \
-                      'letter'.format(element)
+                msg = f'Element name "{element}" should end with a lowercase letter'
                 raise ValueError(msg)
             # skips the first entry of ATOMIC_SYMBOL which is n for neutron
             if element not in list(openmc.data.ATOMIC_SYMBOL.values())[1:]:
-                msg = 'Element name "{}" not recognised'.format(element)
+                msg = f'Element name "{element}" not recognised'
                 raise ValueError(msg)
 
         if self._macroscopic is not None:
@@ -847,8 +844,7 @@ class Material(IDManagerMixin):
             for token in row:
                 if token.isalpha():
                     if token == "n" or token not in openmc.data.ATOMIC_NUMBER:
-                        msg = 'Formula entry {} not an element symbol.' \
-                              .format(token)
+                        msg = f'Formula entry {token} not an element symbol.'
                         raise ValueError(msg)
                 elif token not in ['(', ')', ''] and not token.isdigit():
                         msg = 'Formula must be made from a sequence of ' \
@@ -1373,8 +1369,7 @@ class Material(IDManagerMixin):
                 subelement.set("value", str(self._density))
             subelement.set("units", self._density_units)
         else:
-            raise ValueError('Density has not been set for material {}!'
-                             .format(self.id))
+            raise ValueError(f'Density has not been set for material {self.id}!')
 
         if self._macroscopic is None:
             # Create nuclide XML subelements
@@ -1480,7 +1475,7 @@ class Material(IDManagerMixin):
 
         # Create the new material with the desired name
         if name is None:
-            name = '-'.join(['{}({})'.format(m.name, f) for m, f in
+            name = '-'.join([f'{m.name}({f})' for m, f in
                              zip(materials, fracs)])
         new_mat = openmc.Material(name=name)
 

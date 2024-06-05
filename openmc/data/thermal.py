@@ -90,7 +90,7 @@ _THERMAL_NAMES = {
 def _temperature_str(T):
     # round() normally returns an int when called with a single argument, but
     # numpy floats overload rounding to return another float
-    return "{}K".format(int(round(T)))
+    return f"{int(round(T))}K"
 
 
 def get_thermal_name(name):
@@ -221,7 +221,7 @@ class CoherentElastic(Function1D):
         """
         dataset = group.create_dataset(name, data=np.vstack(
             [self.bragg_edges, self.factors]))
-        dataset.attrs['type'] = np.string_(type(self).__name__)
+        dataset.attrs['type'] = np.bytes_(type(self).__name__)
 
     @classmethod
     def from_hdf5(cls, dataset):
@@ -294,7 +294,7 @@ class IncoherentElastic(Function1D):
         """
         data = np.array([self.bound_xs, self.debye_waller])
         dataset = group.create_dataset(name, data=data)
-        dataset.attrs['type'] = np.string_(type(self).__name__)
+        dataset.attrs['type'] = np.bytes_(type(self).__name__)
 
     @classmethod
     def from_hdf5(cls, dataset):
@@ -439,7 +439,7 @@ class ThermalScattering(EqualityMixin):
 
     def __repr__(self):
         if hasattr(self, 'name'):
-            return "<Thermal Scattering Data: {}>".format(self.name)
+            return f"<Thermal Scattering Data: {self.name}>"
         else:
             return "<Thermal Scattering Data>"
 
@@ -464,7 +464,7 @@ class ThermalScattering(EqualityMixin):
         """
         # Open file and write version
         with h5py.File(str(path), mode, libver=libver) as f:
-            f.attrs['filetype'] = np.string_('data_thermal')
+            f.attrs['filetype'] = np.bytes_('data_thermal')
             f.attrs['version'] = np.array(HDF5_VERSION)
 
             # Write basic data
@@ -506,7 +506,7 @@ class ThermalScattering(EqualityMixin):
         # Check if temprature already exists
         strT = data.temperatures[0]
         if strT in self.temperatures:
-            warn('S(a,b) data at T={} already exists.'.format(strT))
+            warn(f'S(a,b) data at T={strT} already exists.')
             return
 
         # Check that name matches
@@ -614,7 +614,7 @@ class ThermalScattering(EqualityMixin):
         # Get new name that is GND-consistent
         ace_name, xs = ace.name.split('.')
         if not xs.endswith('t'):
-            raise TypeError("{} is not a thermal scattering ACE table.".format(ace))
+            raise TypeError(f"{ace} is not a thermal scattering ACE table.")
         if name is None:
             name = get_thermal_name(ace_name)
 
@@ -698,8 +698,8 @@ class ThermalScattering(EqualityMixin):
                 # add an outgoing energy 0 eV that has a PDF of 0 (and of
                 # course, a CDF of 0 as well).
                 if eout_i.c[0] > 0.:
-                    eout_i.x = np.insert(eout_i.x, 0, 0.)
-                    eout_i.p = np.insert(eout_i.p, 0, 0.)
+                    eout_i._x = np.insert(eout_i.x, 0, 0.)
+                    eout_i._p = np.insert(eout_i.p, 0, 0.)
                     eout_i.c = np.insert(eout_i.c, 0, 0.)
 
                     # For this added outgoing energy (of 0 eV) we add a set of

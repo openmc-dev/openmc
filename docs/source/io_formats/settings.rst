@@ -252,9 +252,9 @@ to false.
 
   *Default*: true
 
-----------------------------------------
+-------------------------------------
 ``<max_particles_in_flight>`` Element
-----------------------------------------
+-------------------------------------
 
 This element indicates the number of neutrons to run in flight concurrently
 when using event-based parallelism. A higher value uses more memory, but
@@ -262,9 +262,17 @@ may be more efficient computationally.
 
   *Default*: 100000
 
----------------------------
+---------------------------------
+``<max_particle_events>`` Element
+---------------------------------
+
+This element indicates the maximum number of events a particle can undergo.
+
+  *Default*: 1000000
+
+-----------------------
 ``<max_order>`` Element
----------------------------
+-----------------------
 
 The ``<max_order>`` element allows the user to set a maximum scattering order
 to apply to every nuclide/material in the problem.  That is, if the data
@@ -276,11 +284,11 @@ then, OpenMC will only use up to the :math:`P_1` data.
   .. note:: This element is not used in the continuous-energy
     :ref:`energy_mode`.
 
----------------------------
+------------------------
 ``<max_splits>`` Element
----------------------------
+------------------------
 
-The ``<max_splits>`` element indicates the number of times a particle can split during a history. 
+The ``<max_splits>`` element indicates the number of times a particle can split during a history.
 
   *Default*: 1000
 
@@ -405,6 +413,32 @@ or sub-elements and can be set to either "false" or "true".
 
   .. note:: This element is not used in the multi-group :ref:`energy_mode`.
 
+------------------------
+``<random_ray>`` Element
+------------------------
+
+The ``<random_ray>`` element enables random ray mode and contains a number of
+settings relevant to the solver. Tips for selecting these parameters can be
+found in the :ref:`random ray user guide <random_ray>`.
+
+  :distance_inactive:
+    The inactive ray length (dead zone length) in [cm].
+
+    *Default*: None
+
+  :distance_active:
+    The active ray length in [cm].
+
+    *Default*: None
+
+  :source:
+    Specifies the starting ray distribution, and follows the format for
+    :ref:`source_element`. It must be uniform in space and angle and cover the
+    full domain. It does not represent a physical neutron or photon source -- it
+    is only used to sample integrating ray starting locations and directions.
+
+    *Default*: None
+
 ----------------------------------
 ``<resonance_scattering>`` Element
 ----------------------------------
@@ -500,8 +534,9 @@ attributes/sub-elements:
     *Default*: 1.0
 
   :type:
-    Indicator of source type. One of ``independent``, ``file``, ``compiled``, or ``mesh``.
-    The type of the source will be determined by this attribute if it is present.
+    Indicator of source type. One of ``independent``, ``file``, ``compiled``, or
+    ``mesh``. The type of the source will be determined by this attribute if it
+    is present.
 
   :particle:
     The source particle type, either ``neutron`` or ``photon``.
@@ -681,6 +716,39 @@ attributes/sub-elements:
     For mesh sources, this sub-element specifies the source for an individual
     mesh element and follows the format for :ref:`source_element`. The number of
     ``<source>`` sub-elements should correspond to the number of mesh elements.
+
+  :constraints:
+    This sub-element indicates the presence of constraints on sampled source
+    sites (see :ref:`usersguide_source_constraints` for details). It may have
+    the following sub-elements:
+
+    :domain_ids:
+      The unique IDs of domains for which source sites must be within.
+
+      *Default*: None
+
+    :domain_type:
+      The type of each domain for source rejection ("cell", "material", or
+      "universe").
+
+      *Default*: None
+
+    :fissionable:
+      A boolean indicating whether source sites must be sampled within a
+      material that is fissionable in order to be accepted.
+
+    :time_bounds:
+      A pair of times in [s] indicating the lower and upper bound for a time
+      interval that source particles must be within.
+
+    :energy_bounds:
+      A pair of energies in [eV] indicating the lower and upper bound for an
+      energy interval that source particles must be within.
+
+    :rejection_strategy:
+      Either "resample", indicating that source sites should be resampled when
+      one is rejected, or "kill", indicating that a rejected source site is
+      assigned zero weight.
 
 .. _univariate:
 

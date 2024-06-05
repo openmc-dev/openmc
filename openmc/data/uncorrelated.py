@@ -63,7 +63,7 @@ class UncorrelatedAngleEnergy(AngleEnergy):
             HDF5 group to write to
 
         """
-        group.attrs['type'] = np.string_('uncorrelated')
+        group.attrs['type'] = np.bytes_('uncorrelated')
         if self.angle is not None:
             angle_group = group.create_group('angle')
             self.angle.to_hdf5(angle_group)

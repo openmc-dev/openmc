@@ -187,8 +187,7 @@ class Surface(IDManagerMixin, ABC):
         coefficients = '{0: <20}'.format('\tCoefficients') + '\n'
 
         for coeff in self._coefficients:
-            coefficients += '{0: <20}{1}{2}\n'.format(
-                coeff, '=\t', self._coefficients[coeff])
+            coefficients += f'{coeff: <20}=\t{self._coefficients[coeff]}\n'
 
         string += coefficients
 

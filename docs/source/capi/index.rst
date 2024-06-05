@@ -420,12 +420,114 @@ Functions
    :return: Return status (negative if an error occurred)
    :rtype: int
 
+.. c:function:: int openmc_mesh_filter_get_mesh(int32_t index, int32_t* index_mesh)
+
+   Get the mesh for a mesh filter
+
+   :param int32_t index: Index in the filters array
+   :param index_mesh: Index in the meshes array
+   :type index_mesh: int32_t*
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
 .. c:function:: int openmc_mesh_filter_set_mesh(int32_t index, int32_t index_mesh)
 
    Set the mesh for a mesh filter
 
    :param int32_t index: Index in the filters array
    :param int32_t index_mesh: Index in the meshes array
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_mesh_filter_get_translation(int32_t index, double translation[3])
+
+   Get the 3-D translation coordinates for a mesh filter
+
+   :param int32_t index: Index in the filters array
+   :param double[3] translation: 3-D translation coordinates
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_mesh_filter_set_translation(int32_t index, double translation[3])
+
+   Set the 3-D translation coordinates for a mesh filter
+
+   :param int32_t index: Index in the filters array
+   :param double[3] translation: 3-D translation coordinates
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_meshborn_filter_get_mesh(int32_t index, int32_t* index_mesh)
+
+   Get the mesh for a meshborn filter
+
+   :param int32_t index: Index in the filters array
+   :param index_mesh: Index in the meshes array
+   :type index_mesh: int32_t*
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_meshborn_filter_set_mesh(int32_t index, int32_t index_mesh)
+
+   Set the mesh for a meshborn filter
+
+   :param int32_t index: Index in the filters array
+   :param int32_t index_mesh: Index in the meshes array
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_meshborn_filter_get_translation(int32_t index, double translation[3])
+
+   Get the 3-D translation coordinates for a meshborn filter
+
+   :param int32_t index: Index in the filters array
+   :param double[3] translation: 3-D translation coordinates
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_meshborn_filter_set_translation(int32_t index, double translation[3])
+
+   Set the 3-D translation coordinates for a meshborn filter
+
+   :param int32_t index: Index in the filters array
+   :param double[3] translation: 3-D translation coordinates
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_meshsurface_filter_get_mesh(int32_t index, int32_t* index_mesh)
+
+   Get the mesh for a mesh surface filter
+
+   :param int32_t index: Index in the filters array
+   :param index_mesh: Index in the meshes array
+   :type index_mesh: int32_t*
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh)
+
+   Set the mesh for a mesh surface filter
+
+   :param int32_t index: Index in the filters array
+   :param int32_t index_mesh: Index in the meshes array
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_meshsurface_filter_get_translation(int32_t index, double translation[3])
+
+   Get the 3-D translation coordinates for a mesh surface filter
+
+   :param int32_t index: Index in the filters array
+   :param double[3] translation: 3-D translation coordinates
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_meshsurface_filter_set_translation(int32_t index, double translation[3])
+
+   Set the 3-D translation coordinates for a mesh surface filter
+
+   :param int32_t index: Index in the filters array
+   :param double[3] translation: 3-D translation coordinates
    :return: Return status (negative if an error occurred)
    :rtype: int
 

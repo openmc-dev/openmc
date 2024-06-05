@@ -1,6 +1,6 @@
 import numpy as np
 import openmc
-from pytest import fixture, approx
+from pytest import fixture, approx, raises
 
 
 @fixture(scope='module')
@@ -246,6 +246,11 @@ def test_energy():
     f = openmc.EnergyFilter.from_group_structure('CCFE-709')
     assert f.bins.shape == (709, 2)
     assert len(f.values) == 710
+
+
+def test_energyfilter_error_handling():
+    with raises(ValueError):
+        openmc.EnergyFilter([1e6])
 
 
 def test_lethargy_bin_width():

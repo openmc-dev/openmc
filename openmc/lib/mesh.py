@@ -15,7 +15,10 @@ from .error import _error_handler
 from .material import Material
 from .plot import _Position
 
-__all__ = ['RegularMesh', 'RectilinearMesh', 'CylindricalMesh', 'SphericalMesh', 'UnstructuredMesh', 'meshes']
+__all__ = [
+    'Mesh', 'RegularMesh', 'RectilinearMesh', 'CylindricalMesh',
+    'SphericalMesh', 'UnstructuredMesh', 'meshes'
+]
 
 
 class _MaterialVolume(Structure):
@@ -552,6 +555,7 @@ class CylindricalMesh(Mesh):
         z_grid = (c_double*nz)(*z_grid)
         _dll.openmc_cylindrical_mesh_set_grid(self._index, r_grid, nr, phi_grid,
                                               nphi, z_grid, nz)
+
 
 class SphericalMesh(Mesh):
     """SphericalMesh stored internally.

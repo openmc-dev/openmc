@@ -60,7 +60,7 @@ def dose_coefficients(particle, geometry='AP'):
     # Get all data for selected particle
     data = _DOSE_ICRP116.get(particle)
     if data is None:
-        raise ValueError("{} has no effective dose data".format(particle))
+        raise ValueError(f"{particle} has no effective dose data")
 
     # Determine index for selected geometry
     if particle in ('neutron', 'photon', 'proton', 'photon kerma'):

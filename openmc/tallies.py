@@ -2183,7 +2183,7 @@ class Tally(IDManagerMixin):
             new_tally.sparse = self.sparse
 
         else:
-            msg = 'Unable to add "{}" to Tally ID="{}"'.format(other, self.id)
+            msg = f'Unable to add "{other}" to Tally ID="{self.id}"'
             raise ValueError(msg)
 
         return new_tally
@@ -2254,7 +2254,7 @@ class Tally(IDManagerMixin):
             new_tally.sparse = self.sparse
 
         else:
-            msg = 'Unable to subtract "{}" from Tally ID="{}"'.format(other, self.id)
+            msg = f'Unable to subtract "{other}" from Tally ID="{self.id}"'
             raise ValueError(msg)
 
         return new_tally
@@ -2325,7 +2325,7 @@ class Tally(IDManagerMixin):
             new_tally.sparse = self.sparse
 
         else:
-            msg = 'Unable to multiply Tally ID="{}" by "{}"'.format(self.id, other)
+            msg = f'Unable to multiply Tally ID="{self.id}" by "{other}"'
             raise ValueError(msg)
 
         return new_tally
@@ -2396,7 +2396,7 @@ class Tally(IDManagerMixin):
             new_tally.sparse = self.sparse
 
         else:
-            msg = 'Unable to divide Tally ID="{}" by "{}"'.format(self.id, other)
+            msg = f'Unable to divide Tally ID="{self.id}" by "{other}"'
             raise ValueError(msg)
 
         return new_tally
@@ -2471,7 +2471,7 @@ class Tally(IDManagerMixin):
             new_tally.sparse = self.sparse
 
         else:
-            msg = 'Unable to raise Tally ID="{}" to power "{}"'.format(self.id, power)
+            msg = f'Unable to raise Tally ID="{self.id}" to power "{power}"'
             raise ValueError(msg)
 
         return new_tally
@@ -3139,8 +3139,7 @@ class Tallies(cv.CheckedList):
 
         """
         if not isinstance(tally, Tally):
-            msg = 'Unable to add a non-Tally "{}" to the ' \
-                  'Tallies instance'.format(tally)
+            msg = f'Unable to add a non-Tally "{tally}" to the Tallies instance'
             raise TypeError(msg)
 
         if merge:
@@ -3244,6 +3243,7 @@ class Tallies(cv.CheckedList):
     def to_xml_element(self, memo=None):
         """Creates a 'tallies' element to be written to an XML file.
         """
+        memo = memo if memo is not None else set()
         element = ET.Element("tallies")
         self._create_mesh_subelements(element, memo)
         self._create_filter_subelements(element)

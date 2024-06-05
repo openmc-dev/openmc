@@ -279,6 +279,8 @@ The `official ENDF/B-VII.1 HDF5 library
 multipole library, so if you are using this library, the windowed multipole data
 will already be available to you.
 
+.. _create_mgxs:
+
 -------------------------
 Multigroup Cross Sections
 -------------------------

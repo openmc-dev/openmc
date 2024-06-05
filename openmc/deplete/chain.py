@@ -141,7 +141,7 @@ def replace_missing(product, decay_data):
 
     # First check if ground state is available
     if state:
-        product = '{}{}'.format(symbol, A)
+        product = f'{symbol}{A}'
 
     # Find isotope with longest half-life
     half_life = 0.0
@@ -172,7 +172,7 @@ def replace_missing(product, decay_data):
                 Z += 1
             else:
                 Z -= 1
-        product = '{}{}'.format(openmc.data.ATOMIC_SYMBOL[Z], A)
+        product = f'{openmc.data.ATOMIC_SYMBOL[Z]}{A}'
 
     return product
 
@@ -417,7 +417,7 @@ class Chain:
                     if mts & reactions_available:
                         A = data.nuclide['mass_number'] + delta_A
                         Z = data.nuclide['atomic_number'] + delta_Z
-                        daughter = '{}{}'.format(openmc.data.ATOMIC_SYMBOL[Z], A)
+                        daughter = f'{openmc.data.ATOMIC_SYMBOL[Z]}{A}'
 
                         if daughter not in decay_data:
                             daughter = replace_missing(daughter, decay_data)
@@ -483,7 +483,7 @@ class Chain:
         if missing_daughter:
             print('The following decay modes have daughters with no decay data:')
             for mode in missing_daughter:
-                print('  {}'.format(mode))
+                print(f'  {mode}')
             print('')
 
         if missing_rx_product:
@@ -495,7 +495,7 @@ class Chain:
         if missing_fpy:
             print('The following fissionable nuclides have no fission product yields:')
             for parent, replacement in missing_fpy:
-                print('  {}, replaced with {}'.format(parent, replacement))
+                print(f'  {parent}, replaced with {replacement}')
             print('')
 
         if missing_fp:
@@ -597,8 +597,11 @@ class Chain:
         --------
         :meth:`get_default_fission_yields`
         """
-        matrix = defaultdict(float)
         reactions = set()
+
+        # Use DOK matrix as intermediate representation for matrix
+        n = len(self)
+        matrix = sp.dok_matrix((n, n))
 
         if fission_yields is None:
             fission_yields = self.get_default_fission_yields()
@@ -674,11 +677,8 @@ class Chain:
                 # Clear set of reactions
                 reactions.clear()
 
-        # Use DOK matrix as intermediate representation, then convert to CSC and return
-        n = len(self)
-        matrix_dok = sp.dok_matrix((n, n))
-        dict.update(matrix_dok, matrix)
-        return matrix_dok.tocsc()
+        # Return CSC representation instead of DOK
+        return matrix.tocsc()
 
     def form_rr_term(self, tr_rates, mats):
         """Function to form the transfer rate term matrices.
@@ -711,7 +711,9 @@ class Chain:
             Sparse matrix representing transfer term.
 
         """
-        matrix = defaultdict(float)
+        # Use DOK as intermediate representation
+        n = len(self)
+        matrix = sp.dok_matrix((n, n))
 
         for i, nuc in enumerate(self.nuclides):
             elm = re.split(r'\d+', nuc.name)[0]
@@ -737,10 +739,9 @@ class Chain:
                 else:
                     matrix[i, i] = 0.0
             #Nothing else is allowed
-        n = len(self)
-        matrix_dok = sp.dok_matrix((n, n))
-        dict.update(matrix_dok, matrix)
-        return matrix_dok.tocsc()
+
+        # Return CSC instead of DOK
+        return matrix.tocsc()
 
     def get_branch_ratios(self, reaction="(n,gamma)"):
         """Return a dictionary with reaction branching ratios
@@ -872,8 +873,7 @@ class Chain:
             if len(indexes) == 0:
                 if strict:
                     raise AttributeError(
-                        "Nuclide {} does not have {} reactions".format(
-                            parent, reaction))
+                        f"Nuclide {parent} does not have {reaction} reactions")
                 missing_reaction.add(parent)
                 continue
 
@@ -895,8 +895,7 @@ class Chain:
 
         if len(rxn_ix_map) == 0:
             raise IndexError(
-                "No {} reactions found in this {}".format(
-                    reaction, self.__class__.__name__))
+                f"No {reaction} reactions found in this {self.__class__.__name__}")
 
         if len(missing_parents) > 0:
             warn("The following nuclides were not found in {}: {}".format(
@@ -907,14 +906,14 @@ class Chain:
                  "{}".format(reaction, ", ".join(sorted(missing_reaction))))
 
         if len(missing_products) > 0:
-            tail = ("{} -> {}".format(k, v)
+            tail = (f"{k} -> {v}"
                     for k, v in sorted(missing_products.items()))
             warn("The following products were not found in the {} and "
                  "parents were unmodified: \n{}".format(
                      self.__class__.__name__, ", ".join(tail)))
 
         if len(bad_sums) > 0:
-            tail = ("{}: {:5.3f}".format(k, s)
+            tail = (f"{k}: {s:5.3f}"
                     for k, s in sorted(bad_sums.items()))
             warn("The following parent nuclides were given {} branch ratios "
                  "with a sum outside tolerance of 1 +/- {:5.3e}:\n{}".format(

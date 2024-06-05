@@ -272,10 +272,13 @@ double FlatSourceDomain::compute_k_eff(double k_eff_old) const
 
 #pragma omp parallel for reduction(+ : H)
   for (int i = 0; i < n_source_regions_; i++) {
-    // Normalize to total weight of bank sites.
-    p[i] *= inverse_sum;
-    // Sum values to obtain Shannon entropy.
-    H -= p[i] * std::log(p[i]) * inv_log2;
+    // Only if FSR has fission source
+    if (p[i] != 0.0f) {
+      // Normalize to total weight of bank sites.
+      p[i] *= inverse_sum;
+      // Sum values to obtain Shannon entropy.
+      H -= p[i] * std::log(p[i]) * inv_log2;
+    }
   }
 
   // Adds entropy value to shared entropy vector in openmc namespace.

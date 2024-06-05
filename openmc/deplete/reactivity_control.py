@@ -14,6 +14,7 @@ from openmc.checkvalue import (
     check_type,
     check_value,
     check_less_than,
+    check_greater_than,
     check_iterable_type,
     check_length,
 )
@@ -33,11 +34,9 @@ class ReactivityController(ABC):
 
     This abstract class sets the requirements
     for the reactivity control set. Users should instantiate
-    :class:`openmc.deplete.reactivity_control.GeometricalCellReactivityController`
+    :class:`openmc.deplete.reactivity_control.CellReactivityController`
     or
-    :class:`openmc.deplete.reactivity_control.TemperatureCellReactivityController`
-    or
-    :class:`openmc.deplete.reactivity_control.RefuelMaterialReactivityController`
+    :class:`openmc.deplete.reactivity_control.MaterialReactivityController`
     rather than this class.
     .. versionadded:: 0.14.1
 
@@ -52,10 +51,6 @@ class ReactivityController(ABC):
         Absolute bracketing interval lower and upper; if during the adaptive
         algorithm the search_for_keff solution lies off these limits the closest
         limit will be set as new result.
-    density_treatment : str, optional
-        Whether or not to keep constant volume or density after a depletion step
-        before the next one.
-        Default to 'constant-volume'
     bracketed_method : {'brentq', 'brenth', 'ridder', 'bisect'}, optional
         Solution method to use.
         This is equivalent to the `bracket_method` parameter of the
@@ -90,7 +85,6 @@ class ReactivityController(ABC):
         operator,
         bracket,
         bracket_limit,
-        density_treatment="constant-volume",
         bracketed_method="brentq",
         tol=0.01,
         target=1.0,
@@ -103,18 +97,12 @@ class ReactivityController(ABC):
         self.local_mats = operator.local_mats
         self.model = operator.model
         self.geometry = operator.model.geometry
-
-        check_value(
-            "density_treatment",
-            density_treatment,
-            ("constant-density", "constant-volume"),
-        )
-        self.density_treatment = density_treatment
         self.bracket = bracket
 
         check_iterable_type("bracket_limit", bracket_limit, Real)
         check_length("bracket_limit", bracket_limit, 2)
         check_less_than("bracket limit values", bracket_limit[0], bracket_limit[1])
+
         self.bracket_limit = bracket_limit
         self.bracketed_method = bracketed_method
         self.tol = tol
@@ -130,7 +118,8 @@ class ReactivityController(ABC):
     def bracketed_method(self, value):
         check_value("bracketed_method", value, _SCALAR_BRACKETED_METHODS)
         if value != "brentq":
-            warn("brentq bracketed method is recommended")
+            warn("""brentq bracketed method is recommended to ensure
+                    convergence of the method""")
         self._bracketed_method = value
 
     @property
@@ -152,8 +141,8 @@ class ReactivityController(ABC):
         self._target = value
 
     @classmethod
-    def from_params(cls, obj, attr, operator, **kwargs):
-        return cls(obj, attr, operator, **kwargs)
+    def from_params(cls, obj, operator, **kwargs):
+        return cls(obj, operator, **kwargs)
 
     @abstractmethod
     def _model_builder(self, param):
@@ -193,17 +182,36 @@ class ReactivityController(ABC):
              Search_for_keff returned root value
         """
 
+    @abstractmethod
+    def _adjust_volumes(self, root=None):
+        """Adjust volumes after criticality search when cell or material are
+        modified.
+
+        Parameters
+        ----------
+        root : float, Optional
+            :meth:`openmc.search.search_for_keff` volume root for
+            :class:`openmc.deplete.reactivity_control.CellReactivityController`
+            instances, in cm3
+        Returns
+        -------
+        volumes : dict
+            Dictionary of calculated volume, where key mat id and value
+            material volume, in cm3
+        """
+
     def _search_for_keff(self, val):
         """Perform the criticality search for a given parametric model.
 
         If the solution lies off the initial bracket, this method iteratively
-        adapt it until :meth:`openmc.search.search_for_keff` return a valid
+        adapts it until :meth:`openmc.search.search_for_keff` return a valid
         solution.
         It calculates the ratio between guessed and corresponding keffs values
-        as the proportional term to move the bracket towards the target.
-        A bracket limit pose the upper and lower boundaries to the adapting
-        bracket. If one limit is hit, the algorithm will stop and the closest
-        limit value will be used.
+        as the proportional term, so that the bracket can be moved towards the
+        target.
+        A bracket limit poses the upper and lower boundaries to the adapting
+        bracket. If one limit is hit, the algoritm will stop and the closest
+        limit value will be set.
 
         Parameters
         ----------
@@ -341,36 +349,9 @@ class ReactivityController(ABC):
 
         return root
 
-    def _update_volumes(self):
-        """Update volumes stored in AtomNumber.
-
-        After a depletion step, both material volume and density change, due to
-        changes in nuclides composition.
-        At present we lack an implementation to calculate density and volume
-        changes due to the different molecules speciation. Therefore, OpenMC
-        assumes by default that the depletable volume does not change and only
-        updates the nuclide densities and consequently the total material density.
-        This method, vice-versa, assumes that the total material density does not
-        change and update the material volumes instead.
-        """
-        number_i = self.operator.number
-        for mat_idx, mat in enumerate(self.local_mats):
-            # Total number of atoms-gram per mol
-            agpm = 0
-            for nuc in number_i.nuclides:
-                agpm += number_i[mat, nuc] * atomic_mass(nuc)
-            # Get mass dens from beginning, intended to be held constant
-            density = openmc.lib.materials[int(mat)].get_density("g/cm3")
-            number_i.volume[mat_idx] = agpm / AVOGADRO / density
-
     def _update_materials(self, x):
-        """Update number density and material compositions in OpenMC on all processes.
-
-        If density_treatment is set to 'constant-density'
-        :meth:`openmc.deplete.reactivity_control._update_volumes` is called to update
-        material volumes in AtomNumber, keeping the material total density
-        constant, before re-normalizing the atom densities and assigning them
-        to the model in memory.
+        """Update number density and material compositions in OpenMC on all
+        processes.
 
         Parameters
         ----------
@@ -378,9 +359,6 @@ class ReactivityController(ABC):
             Total atom concentrations
         """
         self.operator.number.set_density(x)
-
-        if self.density_treatment == "constant-density":
-            self._update_volumes()
 
         for rank in range(comm.size):
             number_i = comm.bcast(self.operator.number, root=rank)
@@ -448,26 +426,19 @@ class ReactivityController(ABC):
                 number_i.volume[mat_idx] = res_vol
         return x
 
-
 class CellReactivityController(ReactivityController):
     """Abstract class holding reactivity control cell-based functions.
-
-    Specific classes for running reactivity control depletion calculations are
-    implemented as derived class of CellReactivityController.
-    Users should instantiate
-    :class:`openmc.deplete.reactivity_control.GeometricalCellReactivityController`
-    or
-    :class:`openmc.deplete.reactivity_control.TemperatureCellReactivityController`
-    rather than this class.
 
     .. versionadded:: 0.14.1
 
     Parameters
     ----------
     cell : openmc.Cell or int or str
-        OpenMC Cell identifier to where apply batch wise scheme
+        OpenMC Cell identifier to where apply a reactivty control
     operator : openmc.deplete.Operator
         OpenMC operator object
+    attribute : str
+        openmc.lib.cell attribute. Only support 'translation' and 'rotation'
     bracket : list of float
         Initial bracketing interval to search for the solution, relative to the
         solution at previous step.
@@ -475,10 +446,6 @@ class CellReactivityController(ReactivityController):
         Absolute bracketing interval lower and upper; if during the adaptive
         algorithm the search_for_keff solution lies off these limits the closest
         limit will be set as new result.
-    density_treatment : str
-        Whether or not to keep constant volume or density after a depletion step
-        before the next one.
-        Default to 'constant-volume'
     bracketed_method : {'brentq', 'brenth', 'ridder', 'bisect'}, optional
         Solution method to use.
         This is equivalent to the `bracket_method` parameter of the
@@ -502,7 +469,9 @@ class CellReactivityController(ReactivityController):
     ----------
     cell : openmc.Cell or int or str
         OpenMC Cell identifier to where apply batch wise scheme
-    universe_cells : list of openmc.Cell
+    attribute : str
+        openmc.lib.cell attribute. Only support 'translation' and 'rotation'
+    depletable_cells : list of openmc.Cell
         Cells that fill the openmc.Universe that fills the main cell
         to where apply batch wise scheme, if cell materials are set as
         depletable.
@@ -518,13 +487,14 @@ class CellReactivityController(ReactivityController):
         self,
         cell,
         operator,
+        attribute,
         bracket,
         bracket_limit,
-        axis=None,
-        density_treatment="constant-volume",
+        axis,
         bracketed_method="brentq",
         tol=0.01,
         target=1.0,
+        samples=1000000,
         print_iterations=True,
         search_for_keff_output=True,
     ):
@@ -533,7 +503,6 @@ class CellReactivityController(ReactivityController):
             operator,
             bracket,
             bracket_limit,
-            density_treatment,
             bracketed_method,
             tol,
             target,
@@ -543,19 +512,41 @@ class CellReactivityController(ReactivityController):
 
         self.cell = self._get_cell(cell)
 
+        # Only lib cell attributes are valid
+        check_value("attribute", attribute, ('translation', 'rotation'))
+        self.attribute = attribute
+
         # Initialize to None, as openmc.lib is not initialized yet here
         self.lib_cell = None
 
-        if axis is not None:
-            # index of cell directional axis
-            check_value("axis", axis, (0, 1, 2))
+        # A cell translation or roation must correspond to a geometrical
+        # variation of its filled materials, thus at least 2 are necessary
+        if isinstance(self.cell.fill, openmc.Universe):
+            # check if cell fill universe contains at least 2 cells
+            check_greater_than("universe cells",
+                len(self.cell.fill.cells), 2, True)
+
+        if isinstance(self.cell.fill, openmc.Lattice):
+            # check if cell fill lattice contains at least 2 universes
+            check_greater_than("lattice universes",
+                len(self.cell.fill.get_unique_universes()), 2, True)
+
+        self.depletable_cells = [
+                cell
+                for cell in self.cell.fill.cells.values()
+                if cell.fill.depletable
+            ]
+
+        # index of cell directional axis
+        check_value("axis", axis, (0, 1, 2))
         self.axis = axis
 
-        # Initialize container of universe cells, to populate only if materials
-        # are set as depletables
-        self.universe_cells = None
+        check_type("samples", samples, int)
+        self.samples = samples
 
-    @abstractmethod
+        if self.depletable_cells:
+            self._initialize_volume_calc()
+
     def _get_cell_attrib(self):
         """Get cell attribute coefficient.
 
@@ -564,8 +555,8 @@ class CellReactivityController(ReactivityController):
         coeff : float
             cell coefficient
         """
+        return getattr(self.lib_cell, self.attribute)[self.axis]
 
-    @abstractmethod
     def _set_cell_attrib(self, val):
         """Set cell attribute to the cell instance.
 
@@ -574,9 +565,13 @@ class CellReactivityController(ReactivityController):
         val : float
             cell coefficient to set
         """
+        attr = getattr(self.lib_cell, self.attribute)
+        attr[self.axis] = val
+        setattr(self.lib_cell, self.attribute, attr)
 
     def _set_lib_cell(self):
-        """Set openmc.lib.cell cell to self.lib_cell attribute"""
+        """Set openmc.lib.cell cell to self.lib_cell attribute
+        """
         self.lib_cell = [
             cell for cell in openmc.lib.cells.values() if cell.id == self.cell.id
         ][0]
@@ -644,6 +639,33 @@ class CellReactivityController(ReactivityController):
 
         return val
 
+    def _initialize_volume_calc(self):
+        """Set volume calculation model settings of depletable materials filling
+        the parametric Cell.
+        """
+        ll, ur = self.geometry.bounding_box
+        mat_vol = openmc.VolumeCalculation(self.depletable_cells, self.samples, ll, ur)
+        self.model.settings.volume_calculations = mat_vol
+
+    def _adjust_volumes(self):
+        """Perform stochastic volume calculation and return new volumes.
+
+        Returns
+        -------
+        volumes : dict
+            Dictionary of calculated volumes, where key is mat id and value
+            material volume, in cm3
+        """
+        openmc.lib.calculate_volumes()
+        volumes = {}
+        if comm.rank == 0:
+            res = openmc.VolumeCalculation.from_hdf5("volume_1.h5")
+            for cell in self.depletable_cells:
+                mat_id = cell.fill.id
+                volumes[str(mat_id)] = res.volumes[cell.id].n
+        volumes = comm.bcast(volumes)
+        return volumes
+
     def _model_builder(self, param):
         """Builds the parametric model to be passed to the
         :meth:`openmc.search.search_for_keff` method.
@@ -703,347 +725,28 @@ class CellReactivityController(ReactivityController):
         # set results value as attribute in the geometry
         self._set_cell_attrib(root)
 
-        # if at least one of the cell materials is depletable, calculate new
-        # volume and update x and number accordingly
+        # if at least one of the cell fill materials is depletable, assign new
+        # volume to the material and update x and number accordingly
         # new volume
-        if self.universe_cells:
-            volumes = self._calculate_volumes()
+        if self.depletable_cells:
+            volumes = self._adjust_volumes()
             x = self._update_x_and_set_volumes(x, volumes)
 
         return x, root
 
-
-class GeometricalCellReactivityController(CellReactivityController):
-    """Reactivity control cell-based with geometrical-attribute class.
-
-    A user doesn't need to call this class directly.
-    Instead an instance of this class is automatically created by calling
-    :meth:`openmc.deplete.Integrator.add_reactivity_control` method from an
-    integrator class, such as  :class:`openmc.deplete.CECMIntegrator`.
-
-    .. versionadded:: 0.14.1
-
-    Parameters
-    ----------
-    cell : openmc.Cell or int or str
-        OpenMC Cell identifier to where apply batch wise scheme
-    attrib_name : str
-        Cell attribute type
-    operator : openmc.deplete.Operator
-        OpenMC operator object
-    axis : int {0,1,2}
-        Directional axis for geometrical parametrization, where 0, 1 and 2 stand
-        for 'x', 'y' and 'z', respectively.
-    bracket : list of float
-        Initial bracketing interval to search for the solution, relative to the
-        solution at previous step.
-    bracket_limit : list of float
-        Absolute bracketing interval lower and upper; if during the adaptive
-        algorithm the search_for_keff solution lies off these limits the closest
-        limit will be set as new result.
-    density_treatment : str
-        Whether or not to keep constant volume or density after a depletion step
-        before the next one.
-        Default to 'constant-volume'
-    bracketed_method : {'brentq', 'brenth', 'ridder', 'bisect'}, optional
-        Solution method to use.
-        This is equivalent to the `bracket_method` parameter of the
-        `search_for_keff`.
-        Defaults to 'brentq'.
-    tol : float
-        Tolerance for search_for_keff method.
-        This is equivalent to the `tol` parameter of the `search_for_keff`.
-        Default to 0.01
-    target : Real, optional
-        This is equivalent to the `target` parameter of the `search_for_keff`.
-        Default to 1.0.
-    print_iterations : Bool, Optional
-        Whether or not to print `search_for_keff` iterations.
-        Default to True
-    search_for_keff_output : Bool, Optional
-        Whether or not to print transport iterations during  `search_for_keff`.
-        Default to False
-
-    Attributes
-    ----------
-    cell : openmc.Cell or int or str
-        OpenMC Cell identifier to where apply batch wise scheme
-    attrib_name : str {'translation', 'rotation'}
-        Cell attribute type
-    axis : int {0,1,2}
-        Directional axis for geometrical parametrization, where 0, 1 and 2 stand
-        for 'x', 'y' and 'z', respectively.
-    samples : int
-        Number of samples used to generate volume estimates for stochastic
-        volume calculations.
-
-    """
-
-    def __init__(
-        self,
-        cell,
-        attrib_name,
-        operator,
-        bracket,
-        bracket_limit,
-        axis,
-        density_treatment="constant-volume",
-        bracketed_method="brentq",
-        tol=0.01,
-        target=1.0,
-        samples=1000000,
-        print_iterations=True,
-        search_for_keff_output=True,
-    ):
-
-        super().__init__(
-            cell,
-            operator,
-            bracket,
-            bracket_limit,
-            axis,
-            density_treatment,
-            bracketed_method,
-            tol,
-            target,
-            print_iterations,
-            search_for_keff_output,
-        )
-
-        check_value("attrib_name", attrib_name, ("rotation", "translation"))
-        self.attrib_name = attrib_name
-
-        if isinstance(self.cell.fill, openmc.Universe):
-            # check if universe contains 2 cells
-            check_length("universe cells", self.cell.fill.cells, 2)
-            self.universe_cells = [
-                cell for cell in self.cell.fill.cells.values() if cell.fill.depletable
-            ]
-        elif isinstance(self.cell.fill, openmc.Lattice):
-            # check if lattice contains 2 universes
-            check_length("lattice universes", self.cell.fill.get_unique_universes(), 2)
-            self.universe_cells = [
-                cell
-                for cell in self.cell.fill.get_all_cells().values()
-                if cell.fill.depletable
-            ]
-        else:
-            raise ValueError(
-                "{} s not a valid instance of "
-                " should be a {} or {} instance".format(
-                    self.cell.fill, openmc.Universe, openmc.Lattice
-                )
-            )
-
-        check_type("samples", samples, int)
-        self.samples = samples
-
-        if self.universe_cells:
-            self._initialize_volume_calc()
-
-    def _get_cell_attrib(self):
-        """Get cell attribute coefficient.
-
-        Returns
-        -------
-        coeff : float
-            cell coefficient
-        """
-        if self.attrib_name == "translation":
-            return self.lib_cell.translation[self.axis]
-        elif self.attrib_name == "rotation":
-            return self.lib_cell.rotation[self.axis]
-
-    def _set_cell_attrib(self, val):
-        """Set cell attribute to the cell instance.
-
-        Attributes are only applied to a cell filled with a universe containing
-        two cells itself.
-
-        Parameters
-        ----------
-        val : float
-            Cell coefficient to set, in cm for translation and deg for rotation
-        """
-        if self.attrib_name == "translation":
-            vector = self.lib_cell.translation
-        elif self.attrib_name == "rotation":
-            vector = self.lib_cell.rotation
-
-        vector[self.axis] = val
-        setattr(self.lib_cell, self.attrib_name, vector)
-
-    def _initialize_volume_calc(self):
-        """Set volume calculation model settings of depletable materials filling
-        the parametric Cell.
-
-        """
-        ll, ur = self.geometry.bounding_box
-        mat_vol = openmc.VolumeCalculation(self.universe_cells, self.samples, ll, ur)
-        self.model.settings.volume_calculations = mat_vol
-
-    def _calculate_volumes(self):
-        """Perform stochastic volume calculation
-
-        Returns
-        -------
-        volumes : dict
-            Dictionary of calculated volumes, where key is mat id and value
-            material volume, in cm3
-        """
-        openmc.lib.calculate_volumes()
-        volumes = {}
-        if comm.rank == 0:
-            res = openmc.VolumeCalculation.from_hdf5("volume_1.h5")
-            for cell in self.universe_cells:
-                mat_id = cell.fill.id
-                volumes[str(mat_id)] = res.volumes[cell.id].n
-        volumes = comm.bcast(volumes)
-        return volumes
-
-
-class TemperatureCellReactivityController(CellReactivityController):
-    """Reactivity control cell-based with temperature-attribute class.
-
-    A user doesn't need to call this class directly.
-    Instead an instance of this class is automatically created by calling
-    :meth:`openmc.deplete.Integrator.add_reactivity_control` method from an
-    integrator class, such as  :class:`openmc.deplete.CECMIntegrator`.
-
-    .. versionadded:: 0.14.1
-
-    Parameters
-    ----------
-    cell : openmc.Cell or int or str
-        OpenMC Cell identifier to where apply batch wise scheme
-    operator : openmc.deplete.Operator
-        OpenMC operator object
-    attrib_name : str
-        Cell attribute type
-    bracket : list of float
-        Initial bracketing interval to search for the solution, relative to the
-        solution at previous step.
-    bracket_limit : list of float
-        Absolute bracketing interval lower and upper; if during the adaptive
-        algorithm the search_for_keff solution lies off these limits the closest
-        limit will be set as new result.
-    density_treatment : str
-        Whether or not to keep constant volume or density after a depletion step
-        before the next one.
-        Default to 'constant-volume'
-    bracketed_method : {'brentq', 'brenth', 'ridder', 'bisect'}, optional
-        Solution method to use.
-        This is equivalent to the `bracket_method` parameter of the
-        `search_for_keff`.
-        Defaults to 'brentq'.
-    tol : float
-        Tolerance for search_for_keff method.
-        This is equivalent to the `tol` parameter of the `search_for_keff`.
-        Default to 0.01
-    target : Real, optional
-        This is equivalent to the `target` parameter of the `search_for_keff`.
-        Default to 1.0.
-    print_iterations : Bool, Optional
-        Whether or not to print `search_for_keff` iterations.
-        Default to True
-    search_for_keff_output : Bool, Optional
-        Whether or not to print transport iterations during  `search_for_keff`.
-        Default to False
-
-    Attributes
-    ----------
-    cell : openmc.Cell or int or str
-        OpenMC Cell identifier to where apply batch wise scheme
-    attrib_name : str {'temperature'}
-        Cell attribute type
-
-    """
-
-    def __init__(
-        self,
-        cell,
-        attrib_name,
-        operator,
-        bracket,
-        bracket_limit,
-        axis=None,
-        density_treatment="constant-volume",
-        bracketed_method="brentq",
-        tol=0.01,
-        target=1.0,
-        print_iterations=True,
-        search_for_keff_output=True,
-    ):
-
-        super().__init__(
-            cell,
-            operator,
-            bracket,
-            bracket_limit,
-            axis,
-            density_treatment,
-            bracketed_method,
-            tol,
-            target,
-            print_iterations,
-            search_for_keff_output,
-        )
-
-        # Not needed but used for consistency with other classes
-        check_value("attrib_name", attrib_name, "temperature")
-        self.attrib_name = attrib_name
-
-        # check if initial temperature has been set to right cell material
-        if isinstance(self.cell.fill, openmc.Universe):
-            cells = [
-                cell for cell in self.cell.fill.cells.values() if cell.fill.temperature
-            ]
-            check_length("Only one cell with temperature", cells, 1)
-            self.cell = cells[0]
-
-        check_type("temperature cell real", self.cell.fill.temperature, Real)
-
-    def _get_cell_attrib(self):
-        """Get cell temperature.
-
-        Returns
-        -------
-        coeff : float
-            cell temperature, in Kelvin
-        """
-        return self.lib_cell.get_temperature()
-
-    def _set_cell_attrib(self, val):
-        """Set temperature value to the cell instance.
-
-        Parameters
-        ----------
-        val : float
-            Cell temperature to set, in Kelvin
-        """
-        self.lib_cell.set_temperature(val)
-
-
 class MaterialReactivityController(ReactivityController):
     """Abstract class holding reactivity control material-based functions.
 
-    Specific classes for running reactivity control depletion calculations are
-    implemented as derived class of MaterialReactivityController.
-    Users should instantiate
-    :class:`openmc.deplete.reactivity_control.RefuelMaterialReactivityController`
-    rather than this class.
-
     .. versionadded:: 0.14.1
 
     Parameters
     ----------
     material : openmc.Material or int or str
-        OpenMC Material identifier to where apply batch wise scheme
+        OpenMC Material identifier to where apply reactivity control
     operator : openmc.deplete.Operator
         OpenMC operator object
-    mat_vector : dict
-        Dictionary of material composition to parameterize, where a pair key value
-        represents a nuclide and its weight fraction, respectively.
+    material_to_mix : openmc.Material
+        OpenMC Material to mix with main material for reactivity control.
     bracket : list of float
         Initial bracketing interval to search for the solution, relative to the
         solution at previous step.
@@ -1051,10 +754,12 @@ class MaterialReactivityController(ReactivityController):
         Absolute bracketing interval lower and upper; if during the adaptive
         algorithm the search_for_keff solution lies off these limits the closest
         limit will be set as new result.
-    density_treatment : str
-        Whether or not to keep constant volume or density after a depletion step
-        before the next one.
-        Default to 'constant-volume'
+    units : {'grams', 'atoms', 'cc', 'cm3'} str
+        Units of material parameter to be mixed.
+        Default to 'cc'
+    dilute : bool
+        Whether or not to update material volume after a material mix.
+        Default to False
     bracketed_method : {'brentq', 'brenth', 'ridder', 'bisect'}, optional
         Solution method to use.
         This is equivalent to the `bracket_method` parameter of the
@@ -1078,9 +783,14 @@ class MaterialReactivityController(ReactivityController):
     ----------
     material : openmc.Material or int or str
         OpenMC Material identifier to where apply batch wise scheme
-    mat_vector : dict
-        Dictionary of material composition to parameterize, where a pair key value
-        represents a nuclide and its weight fraction, respectively.
+    material_to_mix : openmc.Material
+        OpenMC Material to mix with main material for reactivity control.
+    units : {'grams', 'atoms', 'cc', 'cm3'} str
+        Units of material parameter to be mixed.
+        Default to 'cc'
+    dilute : bool
+        Whether or not to update material volume after a material mix.
+        Default to False
 
     """
 
@@ -1088,10 +798,11 @@ class MaterialReactivityController(ReactivityController):
         self,
         material,
         operator,
-        mat_vector,
+        material_to_mix,
         bracket,
         bracket_limit,
-        density_treatment="constant-volume",
+        units='cc',
+        dilute=False,
         bracketed_method="brentq",
         tol=0.01,
         target=1.0,
@@ -1103,7 +814,6 @@ class MaterialReactivityController(ReactivityController):
             operator,
             bracket,
             bracket_limit,
-            density_treatment,
             bracketed_method,
             tol,
             target,
@@ -1113,16 +823,16 @@ class MaterialReactivityController(ReactivityController):
 
         self.material = self._get_material(material)
 
-        check_type("material vector", mat_vector, dict, str)
-        for nuc in mat_vector:
+        check_type("material to mix", material_to_mix, openmc.Material)
+        for nuc in material_to_mix.get_nuclides():
             check_value("check nuclide exists", nuc, self.operator.nuclides_with_data)
+        self.material_to_mix = material_to_mix
 
-        if not isclose(sum(mat_vector.values()), 1.0, abs_tol=0.01):
-            # Normalize material elements vector
-            sum_values = sum(mat_vector.values())
-            for elm in mat_vector:
-                mat_vector[elm] /= sum_values
-        self.mat_vector = mat_vector
+        check_value('units', units, ('grams', 'atoms', 'cc', 'cm3'))
+        self.units = units
+
+        check_type("dilute", dilute, bool)
+        self.dilute = dilute
 
     def _get_material(self, val):
         """Helper method for getting openmc material from Material instance or
@@ -1188,110 +898,36 @@ class MaterialReactivityController(ReactivityController):
         # right amount
         root = self._search_for_keff(0)
 
-        # Update concentration vector and volumes with new value
-        volumes = self._calculate_volumes(root)
+        # Update concentration vector and volumes with new value for depletion
+        volumes = self._adjust_volumes(root)
         x = self._update_x_and_set_volumes(x, volumes)
 
         return x, root
 
+    def _set_mix_material_volume(self, param):
+        """
+        Set volume in cc to `self.material_to_mix` as a function of `param` after
+        converion, based on `self.units` attribute.
 
-class RefuelMaterialReactivityController(MaterialReactivityController):
-    """Reactivity control material-based class for refuelling (addition or
-    removal) scheme.
+        Parameters
+        ----------
+        param : float
+            grams or atoms or cc of material_to_mix to convert to cc
 
-    A user doesn't need to call this class directly.
-    Instead an instance of this class is automatically created by calling
-    :meth:`openmc.deplete.Integrator.add_reactivity_control` method from an
-    integrator class, such as  :class:`openmc.deplete.CECMIntegrator`.
+        """
+        if self.units == 'grams':
+            multiplier = 1 / self.material_to_mix.get_mass_density()
+        elif self.units == 'atoms':
+            multiplier = (
+                self.material_to_mix.average_molar_mass
+                / AVOGADRO
+                / self.material_to_mix.get_mass_density()
+            )
+        elif self.units == 'cc' or self.units == 'cm3':
+            multiplier = 1
 
-    .. versionadded:: 0.14.1
+        self.material_to_mix.volume = param * multiplier
 
-    Parameters
-    ----------
-    material : openmc.Material or int or str
-        OpenMC Material identifier to where apply batch wise scheme
-    operator : openmc.deplete.Operator
-        OpenMC operator object
-    attrib_name : str
-        Material attribute name
-    mat_vector : dict
-        Dictionary of material composition to parameterize, where a pair key value
-        represents a nuclide and its weight fraction, respectively.
-    bracket : list of float
-        Initial bracketing interval to search for the solution, relative to the
-        solution at previous step.
-    bracket_limit : list of float
-        Absolute bracketing interval lower and upper; if during the adaptive
-        algorithm the search_for_keff solution lies off these limits the closest
-        limit will be set as new result.
-    density_treatment : str
-        Whether or not to keep constant volume or density after a depletion step
-        before the next one.
-        Default to 'constant-volume'
-    bracketed_method : {'brentq', 'brenth', 'ridder', 'bisect'}, optional
-        Solution method to use.
-        This is equivalent to the `bracket_method` parameter of the
-        `search_for_keff`.
-        Defaults to 'brentq'.
-    tol : float
-        Tolerance for search_for_keff method.
-        This is equivalent to the `tol` parameter of the `search_for_keff`.
-        Default to 0.01
-    target : Real, optional
-        This is equivalent to the `target` parameter of the `search_for_keff`.
-        Default to 1.0.
-    print_iterations : Bool, Optional
-        Whether or not to print `search_for_keff` iterations.
-        Default to True
-    search_for_keff_output : Bool, Optional
-        Whether or not to print transport iterations during  `search_for_keff`.
-        Default to False
-
-    Attributes
-    ----------
-    material : openmc.Material or int or str
-        OpenMC Material identifier to where apply batch wise scheme
-    mat_vector : dict
-        Dictionary of material composition to parameterize, where a pair key value
-        represents a nuclide and its weight fraction, respectively.
-    attrib_name : str
-        Material attribute name
-
-    """
-
-    def __init__(
-        self,
-        material,
-        attrib_name,
-        operator,
-        mat_vector,
-        bracket,
-        bracket_limit,
-        density_treatment="constant-volume",
-        bracketed_method="brentq",
-        tol=0.01,
-        target=1.0,
-        print_iterations=True,
-        search_for_keff_output=True,
-    ):
-
-        super().__init__(
-            material,
-            operator,
-            mat_vector,
-            bracket,
-            bracket_limit,
-            density_treatment,
-            bracketed_method,
-            tol,
-            target,
-            print_iterations,
-            search_for_keff_output,
-        )
-
-        # Not needed but used for consistency with other classes
-        check_value("attrib_name", attrib_name, "refuel")
-        self.attrib_name = attrib_name
 
     def _model_builder(self, param):
         """Callable function which builds a model according to a passed
@@ -1300,14 +936,10 @@ class RefuelMaterialReactivityController(MaterialReactivityController):
         Builds the parametric model to be passed to the
         :meth:`openmc.search.search_for_keff` method.
 
-        The parametrization can either be at constant volume or constant
-        density, according to user input.
-        Default is constant volume.
-
         Parameters
         ----------
         param : float
-            Model function variable, total grams of material to add or remove
+            Model function variable, cc of material_to_mix
 
         Returns
         -------
@@ -1317,68 +949,68 @@ class RefuelMaterialReactivityController(MaterialReactivityController):
         for rank in range(comm.size):
             number_i = comm.bcast(self.operator.number, root=rank)
 
-            for mat in number_i.materials:
+            for mat_id in number_i.materials:
                 nuclides = []
                 densities = []
 
-                if int(mat) == self.material.id:
+                if int(mat_id) == self.material.id:
+                    self._set_mix_material_volume(param)
 
-                    if self.density_treatment == "constant-density":
-                        vol = number_i.get_mat_volume(mat) + (
-                            param / self.material.get_mass_density()
+                    if self.dilute:
+                        # increase the total volume of the material
+                        # assuming ideal materials mixing
+                        vol = (
+                            number_i.get_mat_volume(mat_id)
+                            + self.material_to_mix.volume
                         )
+                    else:
+                        # we assume the volume after mix won't change
+                        vol = number_i.get_mat_volume(mat_id)
 
-                    elif self.density_treatment == "constant-volume":
-                        vol = number_i.get_mat_volume(mat)
+                    # Total atom concentration in [#atoms/cm-b]
+                    #mat_index = number_i.index_mat[mat_id]
+                    #tot_conc = 1.0e-24 * sum(number_i.number[mat_index]) / vol
 
                     for nuc in number_i.index_nuc:
                         # check only nuclides with cross sections data
                         if nuc in self.operator.nuclides_with_data:
-                            if nuc in self.mat_vector:
-                                # units [#atoms/cm-b]
-                                val = 1.0e-24 * (
-                                    number_i.get_atom_density(mat, nuc)
-                                    + param
-                                    / atomic_mass(nuc)
-                                    * AVOGADRO
-                                    * self.mat_vector[nuc]
-                                    / vol
-                                )
+                            atoms = number_i[mat_id, nuc]
+                            if nuc in self.material_to_mix.get_nuclides():
+                                # update atoms number
+                                atoms += self.material_to_mix.get_nuclide_atoms()[nuc]
 
-                            else:
-                                # get normalized atoms density in [atoms/b-cm]
-                                val = 1.0e-24 * number_i[mat, nuc] / vol
+                            atoms_per_bcm = 1.0e-24 * atoms / vol
 
-                            if val > 0.0:
+                            if atoms_per_bcm > 0.0:
                                 nuclides.append(nuc)
-                                densities.append(val)
+                                densities.append(atoms_per_bcm)
 
                 else:
                     # for all other materials, still check atom density limits
                     for nuc in number_i.nuclides:
                         if nuc in self.operator.nuclides_with_data:
                             # get normalized atoms density in [atoms/b-cm]
-                            val = 1.0e-24 * number_i.get_atom_density(mat, nuc)
+                            atoms_per_bcm = 1.0e-24 * number_i.get_atom_density(mat_id, nuc)
 
-                            if val > 0.0:
+                            if atoms_per_bcm > 0.0:
                                 nuclides.append(nuc)
-                                densities.append(val)
+                                densities.append(atoms_per_bcm)
 
-                # set nuclides and densities to the in-memory model
-                openmc.lib.materials[int(mat)].set_densities(nuclides, densities)
+                # assign nuclides and densities to the in-memory model
+                openmc.lib.materials[int(mat_id)].set_densities(nuclides, densities)
 
         # always need to return a model
         return self.model
 
-    def _calculate_volumes(self, res):
+    def _adjust_volumes(self, res):
         """Uses :meth:`openmc.deplete.reactivity_control._search_for_keff`
-        solution as grams of material to add or remove to calculate new material
-        volume.
+        solution as cc to update depletable volume if `self.dilute` attribute
+        is set to True.
 
         Parameters
         ----------
         res : float
-            Solution in grams of material, coming from
+            Solution in cc of material_to_mix, coming from
             :meth:`openmc.deplete.reactivity_control._search_for_keff`
 
         Returns
@@ -1390,12 +1022,10 @@ class RefuelMaterialReactivityController(MaterialReactivityController):
         number_i = self.operator.number
         volumes = {}
 
-        for mat in self.local_mats:
-            if int(mat) == self.material.id:
-                if self.density_treatment == "constant-density":
-                    volumes[mat] = number_i.get_mat_volume(mat) + (
-                        res / self.material.get_mass_density()
-                    )
-                elif self.density_treatment == "constant-volume":
-                    volumes[mat] = number_i.get_mat_volume(mat)
+        for mat_id in self.local_mats:
+            if int(mat_id) == self.material.id:
+                if self.dilute:
+                    volumes[mat_id] = number_i.get_mat_volume(mat_id) + res
+                else:
+                    volumes[mat_id] = number_i.get_mat_volume(mat_id)
         return volumes

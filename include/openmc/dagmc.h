@@ -6,7 +6,7 @@
 namespace openmc {
 extern "C" const bool DllExport DAGMC_ENABLED;
 extern "C" const bool DllExport UWUW_ENABLED;
-}
+} // namespace openmc
 
 // always include the XML interface header
 #include "openmc/xml_interface.h"

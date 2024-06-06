@@ -55,6 +55,8 @@ in :ref:`fission-bank-algorithms`.
 Source Convergence Issues
 -------------------------
 
+.. _methods-shannon-entropy:
+
 Diagnosing Convergence with Shannon Entropy
 -------------------------------------------
 

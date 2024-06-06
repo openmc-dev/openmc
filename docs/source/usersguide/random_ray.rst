@@ -46,7 +46,9 @@ magnitude or more. For instance, it may be reasonable to only use 50 inactive
 batches for a light water reactor simulation with Monte Carlo, but random ray
 might require 500 or more inactive batches. Similar to Monte Carlo,
 :ref:`Shannon entropy <usersguide_entropy>` can be used to gauge whether the
-combined scattering and fission source has fully developed.
+combined scattering and fission source has fully developed. The Shannon entropy
+is calculated automatically near the end of each batch and is printed to the 
+statepoint file.
 
 Similar to Monte Carlo, active batches are used in the random ray solver mode to
 accumulate and converge statistics on unknown quantities (i.e., the random ray

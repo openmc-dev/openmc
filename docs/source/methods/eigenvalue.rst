@@ -62,10 +62,10 @@ Diagnosing Convergence with Shannon Entropy
 
 As discussed earlier, it is necessary to converge both :math:`k_{eff}` and the
 source distribution before any tallies can begin. Moreover, the convergence rate
-of the source distribution is in general slower than that of
-:math:`k_{eff}`. One should thus examine not only the convergence of
-:math:`k_{eff}` but also the convergence of the source distribution in order to
-make decisions on when to start active batches.
+of the source distribution is in general slower than that of :math:`k_{eff}`.
+One should thus examine not only the convergence of :math:`k_{eff}` but also the
+convergence of the source distribution in order to make decisions on when to
+start active batches.
 
 However, the representation of the source distribution makes it a bit more
 difficult to analyze its convergence. Since :math:`k_{eff}` is a scalar

@@ -736,9 +736,9 @@ mesh tallies with energy filters and flux, fission, and nu-fission scores, etc.
 
 Additionally, as :math:`k_{eff}` is updated at each generation, the fission
 source at each FSR is used to compute the Shannon entropy. This follows the
-:ref:`same procedure for computing Shannon entropy in continuous-energy or 
-multigroup Monte Carlo simulations <methods-shannon-entropy>`, except that 
-fission sites at FSRs are considered, rather than fission sites of user-defined 
+:ref:`same procedure for computing Shannon entropy in continuous-energy or
+multigroup Monte Carlo simulations <methods-shannon-entropy>`, except that
+fission sites at FSRs are considered, rather than fission sites of user-defined
 regular meshes.
 
 There are some restrictions though. For starters, it is assumed that all filter

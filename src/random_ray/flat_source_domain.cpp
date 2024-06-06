@@ -257,18 +257,18 @@ double FlatSourceDomain::compute_k_eff(double k_eff_old) const
 
     // Assigning the fission source to the vector for entropy calculation.
     p[sr] = sr_fission_source_new;
-    
+
     // Calculating sum for entropy normalization.
     sum += sr_fission_source_new;
   }
 
-  double k_eff_new = k_eff_old * (fission_rate_new / fission_rate_old); 
+  double k_eff_new = k_eff_old * (fission_rate_new / fission_rate_old);
 
   double H = 0.0;
   // defining an inverse sum for better performance
-  double inverse_sum = 1.0/sum; 
+  double inverse_sum = 1.0 / sum;
   // defining inverse log(2) for better performance
-  const double inv_log2 = 1.0/std::log(2.0);
+  const double inv_log2 = 1.0 / std::log(2.0);
 
 #pragma omp parallel for reduction(+ : H)
   for (int i = 0; i < n_source_regions_; i++) {

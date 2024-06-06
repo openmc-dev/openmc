@@ -626,9 +626,8 @@ void read_settings_xml(pugi::xml_node root)
   // Shannon Entropy mesh
   if (solver_type == SolverType::RANDOM_RAY) {
     if (check_for_node(root, "entropy_mesh")) {
-      fatal_error(
-        "Random ray uses FSRs to compute the Shannon entropy. "
-        "No user-defined entropy mesh is supported.");
+      fatal_error("Random ray uses FSRs to compute the Shannon entropy. "
+                  "No user-defined entropy mesh is supported.");
     }
     entropy_on = true;
   } else if (solver_type == SolverType::MONTE_CARLO) {
@@ -639,8 +638,8 @@ void read_settings_xml(pugi::xml_node root)
           "Mesh {} specified for Shannon entropy does not exist.", temp));
       }
 
-      auto* m =
-        dynamic_cast<RegularMesh*>(model::meshes[model::mesh_map.at(temp)].get());
+      auto* m = dynamic_cast<RegularMesh*>(
+        model::meshes[model::mesh_map.at(temp)].get());
       if (!m)
         fatal_error("Only regular meshes can be used as an entropy mesh");
       simulation::entropy_mesh = m;

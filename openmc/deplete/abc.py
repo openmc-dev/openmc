@@ -31,7 +31,7 @@ from .reaction_rates import ReactionRates
 from .transfer_rates import TransferRates
 from openmc import Material, Cell
 from .reactivity_control import (
-    ReactivityController,   
+    ReactivityController,
     CellReactivityController,
     MaterialReactivityController
 )
@@ -868,7 +868,7 @@ class Integrator(ABC):
                 # Remove actual EOS concentration for next step
                 n = n_list.pop()
                 StepResult.save(self.operator, n_list, res_list, [t, t + dt],
-                                source_rate, self._i_res + i, proc_time, root, path)
+                            source_rate, self._i_res + i, proc_time, root, path)
 
                 t += dt
 
@@ -884,7 +884,7 @@ class Integrator(ABC):
                 root = None
             res_list = [self.operator(n, source_rate if final_step else 0.0)]
             StepResult.save(self.operator, [n], res_list, [t, t],
-                         source_rate, self._i_res + len(self), proc_time, root)
+                    source_rate, self._i_res + len(self), proc_time, root, path)
             self.operator.write_bos_data(len(self) + self._i_res)
 
         self.operator.finalize()

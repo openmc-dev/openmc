@@ -1,542 +1,88 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <geometry>
-  <cell id="1" material="1" name="cell_000" region="1 -4 2 -5 3 -6" universe="1"/>
-  <cell id="2" material="1" name="cell_001" region="1 -4 2 -5 6 -9" universe="1"/>
-  <cell id="3" material="1" name="cell_002" region="1 -4 2 -5 9 -12" universe="1"/>
-  <cell id="4" material="1" name="cell_003" region="1 -4 2 -5 12 -15" universe="1"/>
-  <cell id="5" material="1" name="cell_004" region="1 -4 2 -5 15 -18" universe="1"/>
-  <cell id="6" material="1" name="cell_005" region="1 -4 2 -5 18 -21" universe="1"/>
-  <cell id="7" material="1" name="cell_006" region="1 -4 2 -5 21 -24" universe="1"/>
-  <cell id="8" material="1" name="cell_007" region="1 -4 2 -5 24 -27" universe="1"/>
-  <cell id="9" material="1" name="cell_010" region="1 -4 5 -8 3 -6" universe="1"/>
-  <cell id="10" material="1" name="cell_011" region="1 -4 5 -8 6 -9" universe="1"/>
-  <cell id="11" material="1" name="cell_012" region="1 -4 5 -8 9 -12" universe="1"/>
-  <cell id="12" material="1" name="cell_013" region="1 -4 5 -8 12 -15" universe="1"/>
-  <cell id="13" material="1" name="cell_014" region="1 -4 5 -8 15 -18" universe="1"/>
-  <cell id="14" material="1" name="cell_015" region="1 -4 5 -8 18 -21" universe="1"/>
-  <cell id="15" material="1" name="cell_016" region="1 -4 5 -8 21 -24" universe="1"/>
-  <cell id="16" material="1" name="cell_017" region="1 -4 5 -8 24 -27" universe="1"/>
-  <cell id="17" material="1" name="cell_020" region="1 -4 8 -11 3 -6" universe="1"/>
-  <cell id="18" material="1" name="cell_021" region="1 -4 8 -11 6 -9" universe="1"/>
-  <cell id="19" material="1" name="cell_022" region="1 -4 8 -11 9 -12" universe="1"/>
-  <cell id="20" material="1" name="cell_023" region="1 -4 8 -11 12 -15" universe="1"/>
-  <cell id="21" material="1" name="cell_024" region="1 -4 8 -11 15 -18" universe="1"/>
-  <cell id="22" material="1" name="cell_025" region="1 -4 8 -11 18 -21" universe="1"/>
-  <cell id="23" material="1" name="cell_026" region="1 -4 8 -11 21 -24" universe="1"/>
-  <cell id="24" material="1" name="cell_027" region="1 -4 8 -11 24 -27" universe="1"/>
-  <cell id="25" material="1" name="cell_030" region="1 -4 11 -14 3 -6" universe="1"/>
-  <cell id="26" material="1" name="cell_031" region="1 -4 11 -14 6 -9" universe="1"/>
-  <cell id="27" material="1" name="cell_032" region="1 -4 11 -14 9 -12" universe="1"/>
-  <cell id="28" material="1" name="cell_033" region="1 -4 11 -14 12 -15" universe="1"/>
-  <cell id="29" material="1" name="cell_034" region="1 -4 11 -14 15 -18" universe="1"/>
-  <cell id="30" material="1" name="cell_035" region="1 -4 11 -14 18 -21" universe="1"/>
-  <cell id="31" material="1" name="cell_036" region="1 -4 11 -14 21 -24" universe="1"/>
-  <cell id="32" material="1" name="cell_037" region="1 -4 11 -14 24 -27" universe="1"/>
-  <cell id="33" material="1" name="cell_040" region="1 -4 14 -17 3 -6" universe="1"/>
-  <cell id="34" material="1" name="cell_041" region="1 -4 14 -17 6 -9" universe="1"/>
-  <cell id="35" material="1" name="cell_042" region="1 -4 14 -17 9 -12" universe="1"/>
-  <cell id="36" material="1" name="cell_043" region="1 -4 14 -17 12 -15" universe="1"/>
-  <cell id="37" material="1" name="cell_044" region="1 -4 14 -17 15 -18" universe="1"/>
-  <cell id="38" material="1" name="cell_045" region="1 -4 14 -17 18 -21" universe="1"/>
-  <cell id="39" material="1" name="cell_046" region="1 -4 14 -17 21 -24" universe="1"/>
-  <cell id="40" material="1" name="cell_047" region="1 -4 14 -17 24 -27" universe="1"/>
-  <cell id="41" material="1" name="cell_050" region="1 -4 17 -20 3 -6" universe="1"/>
-  <cell id="42" material="1" name="cell_051" region="1 -4 17 -20 6 -9" universe="1"/>
-  <cell id="43" material="1" name="cell_052" region="1 -4 17 -20 9 -12" universe="1"/>
-  <cell id="44" material="1" name="cell_053" region="1 -4 17 -20 12 -15" universe="1"/>
-  <cell id="45" material="1" name="cell_054" region="1 -4 17 -20 15 -18" universe="1"/>
-  <cell id="46" material="1" name="cell_055" region="1 -4 17 -20 18 -21" universe="1"/>
-  <cell id="47" material="1" name="cell_056" region="1 -4 17 -20 21 -24" universe="1"/>
-  <cell id="48" material="1" name="cell_057" region="1 -4 17 -20 24 -27" universe="1"/>
-  <cell id="49" material="1" name="cell_060" region="1 -4 20 -23 3 -6" universe="1"/>
-  <cell id="50" material="1" name="cell_061" region="1 -4 20 -23 6 -9" universe="1"/>
-  <cell id="51" material="1" name="cell_062" region="1 -4 20 -23 9 -12" universe="1"/>
-  <cell id="52" material="1" name="cell_063" region="1 -4 20 -23 12 -15" universe="1"/>
-  <cell id="53" material="1" name="cell_064" region="1 -4 20 -23 15 -18" universe="1"/>
-  <cell id="54" material="1" name="cell_065" region="1 -4 20 -23 18 -21" universe="1"/>
-  <cell id="55" material="1" name="cell_066" region="1 -4 20 -23 21 -24" universe="1"/>
-  <cell id="56" material="1" name="cell_067" region="1 -4 20 -23 24 -27" universe="1"/>
-  <cell id="57" material="1" name="cell_070" region="1 -4 23 -26 3 -6" universe="1"/>
-  <cell id="58" material="1" name="cell_071" region="1 -4 23 -26 6 -9" universe="1"/>
-  <cell id="59" material="1" name="cell_072" region="1 -4 23 -26 9 -12" universe="1"/>
-  <cell id="60" material="1" name="cell_073" region="1 -4 23 -26 12 -15" universe="1"/>
-  <cell id="61" material="1" name="cell_074" region="1 -4 23 -26 15 -18" universe="1"/>
-  <cell id="62" material="1" name="cell_075" region="1 -4 23 -26 18 -21" universe="1"/>
-  <cell id="63" material="1" name="cell_076" region="1 -4 23 -26 21 -24" universe="1"/>
-  <cell id="64" material="1" name="cell_077" region="1 -4 23 -26 24 -27" universe="1"/>
-  <cell id="65" material="1" name="cell_100" region="4 -7 2 -5 3 -6" universe="1"/>
-  <cell id="66" material="1" name="cell_101" region="4 -7 2 -5 6 -9" universe="1"/>
-  <cell id="67" material="1" name="cell_102" region="4 -7 2 -5 9 -12" universe="1"/>
-  <cell id="68" material="1" name="cell_103" region="4 -7 2 -5 12 -15" universe="1"/>
-  <cell id="69" material="1" name="cell_104" region="4 -7 2 -5 15 -18" universe="1"/>
-  <cell id="70" material="1" name="cell_105" region="4 -7 2 -5 18 -21" universe="1"/>
-  <cell id="71" material="1" name="cell_106" region="4 -7 2 -5 21 -24" universe="1"/>
-  <cell id="72" material="1" name="cell_107" region="4 -7 2 -5 24 -27" universe="1"/>
-  <cell id="73" material="1" name="cell_110" region="4 -7 5 -8 3 -6" universe="1"/>
-  <cell id="74" material="1" name="cell_111" region="4 -7 5 -8 6 -9" universe="1"/>
-  <cell id="75" material="1" name="cell_112" region="4 -7 5 -8 9 -12" universe="1"/>
-  <cell id="76" material="1" name="cell_113" region="4 -7 5 -8 12 -15" universe="1"/>
-  <cell id="77" material="1" name="cell_114" region="4 -7 5 -8 15 -18" universe="1"/>
-  <cell id="78" material="1" name="cell_115" region="4 -7 5 -8 18 -21" universe="1"/>
-  <cell id="79" material="1" name="cell_116" region="4 -7 5 -8 21 -24" universe="1"/>
-  <cell id="80" material="1" name="cell_117" region="4 -7 5 -8 24 -27" universe="1"/>
-  <cell id="81" material="1" name="cell_120" region="4 -7 8 -11 3 -6" universe="1"/>
-  <cell id="82" material="1" name="cell_121" region="4 -7 8 -11 6 -9" universe="1"/>
-  <cell id="83" material="1" name="cell_122" region="4 -7 8 -11 9 -12" universe="1"/>
-  <cell id="84" material="1" name="cell_123" region="4 -7 8 -11 12 -15" universe="1"/>
-  <cell id="85" material="1" name="cell_124" region="4 -7 8 -11 15 -18" universe="1"/>
-  <cell id="86" material="1" name="cell_125" region="4 -7 8 -11 18 -21" universe="1"/>
-  <cell id="87" material="1" name="cell_126" region="4 -7 8 -11 21 -24" universe="1"/>
-  <cell id="88" material="1" name="cell_127" region="4 -7 8 -11 24 -27" universe="1"/>
-  <cell id="89" material="1" name="cell_130" region="4 -7 11 -14 3 -6" universe="1"/>
-  <cell id="90" material="1" name="cell_131" region="4 -7 11 -14 6 -9" universe="1"/>
-  <cell id="91" material="1" name="cell_132" region="4 -7 11 -14 9 -12" universe="1"/>
-  <cell id="92" material="1" name="cell_133" region="4 -7 11 -14 12 -15" universe="1"/>
-  <cell id="93" material="1" name="cell_134" region="4 -7 11 -14 15 -18" universe="1"/>
-  <cell id="94" material="1" name="cell_135" region="4 -7 11 -14 18 -21" universe="1"/>
-  <cell id="95" material="1" name="cell_136" region="4 -7 11 -14 21 -24" universe="1"/>
-  <cell id="96" material="1" name="cell_137" region="4 -7 11 -14 24 -27" universe="1"/>
-  <cell id="97" material="1" name="cell_140" region="4 -7 14 -17 3 -6" universe="1"/>
-  <cell id="98" material="1" name="cell_141" region="4 -7 14 -17 6 -9" universe="1"/>
-  <cell id="99" material="1" name="cell_142" region="4 -7 14 -17 9 -12" universe="1"/>
-  <cell id="100" material="1" name="cell_143" region="4 -7 14 -17 12 -15" universe="1"/>
-  <cell id="101" material="1" name="cell_144" region="4 -7 14 -17 15 -18" universe="1"/>
-  <cell id="102" material="1" name="cell_145" region="4 -7 14 -17 18 -21" universe="1"/>
-  <cell id="103" material="1" name="cell_146" region="4 -7 14 -17 21 -24" universe="1"/>
-  <cell id="104" material="1" name="cell_147" region="4 -7 14 -17 24 -27" universe="1"/>
-  <cell id="105" material="1" name="cell_150" region="4 -7 17 -20 3 -6" universe="1"/>
-  <cell id="106" material="1" name="cell_151" region="4 -7 17 -20 6 -9" universe="1"/>
-  <cell id="107" material="1" name="cell_152" region="4 -7 17 -20 9 -12" universe="1"/>
-  <cell id="108" material="1" name="cell_153" region="4 -7 17 -20 12 -15" universe="1"/>
-  <cell id="109" material="1" name="cell_154" region="4 -7 17 -20 15 -18" universe="1"/>
-  <cell id="110" material="1" name="cell_155" region="4 -7 17 -20 18 -21" universe="1"/>
-  <cell id="111" material="1" name="cell_156" region="4 -7 17 -20 21 -24" universe="1"/>
-  <cell id="112" material="1" name="cell_157" region="4 -7 17 -20 24 -27" universe="1"/>
-  <cell id="113" material="1" name="cell_160" region="4 -7 20 -23 3 -6" universe="1"/>
-  <cell id="114" material="1" name="cell_161" region="4 -7 20 -23 6 -9" universe="1"/>
-  <cell id="115" material="1" name="cell_162" region="4 -7 20 -23 9 -12" universe="1"/>
-  <cell id="116" material="1" name="cell_163" region="4 -7 20 -23 12 -15" universe="1"/>
-  <cell id="117" material="1" name="cell_164" region="4 -7 20 -23 15 -18" universe="1"/>
-  <cell id="118" material="1" name="cell_165" region="4 -7 20 -23 18 -21" universe="1"/>
-  <cell id="119" material="1" name="cell_166" region="4 -7 20 -23 21 -24" universe="1"/>
-  <cell id="120" material="1" name="cell_167" region="4 -7 20 -23 24 -27" universe="1"/>
-  <cell id="121" material="1" name="cell_170" region="4 -7 23 -26 3 -6" universe="1"/>
-  <cell id="122" material="1" name="cell_171" region="4 -7 23 -26 6 -9" universe="1"/>
-  <cell id="123" material="1" name="cell_172" region="4 -7 23 -26 9 -12" universe="1"/>
-  <cell id="124" material="1" name="cell_173" region="4 -7 23 -26 12 -15" universe="1"/>
-  <cell id="125" material="1" name="cell_174" region="4 -7 23 -26 15 -18" universe="1"/>
-  <cell id="126" material="1" name="cell_175" region="4 -7 23 -26 18 -21" universe="1"/>
-  <cell id="127" material="1" name="cell_176" region="4 -7 23 -26 21 -24" universe="1"/>
-  <cell id="128" material="1" name="cell_177" region="4 -7 23 -26 24 -27" universe="1"/>
-  <cell id="129" material="1" name="cell_200" region="7 -10 2 -5 3 -6" universe="1"/>
-  <cell id="130" material="1" name="cell_201" region="7 -10 2 -5 6 -9" universe="1"/>
-  <cell id="131" material="1" name="cell_202" region="7 -10 2 -5 9 -12" universe="1"/>
-  <cell id="132" material="1" name="cell_203" region="7 -10 2 -5 12 -15" universe="1"/>
-  <cell id="133" material="1" name="cell_204" region="7 -10 2 -5 15 -18" universe="1"/>
-  <cell id="134" material="1" name="cell_205" region="7 -10 2 -5 18 -21" universe="1"/>
-  <cell id="135" material="1" name="cell_206" region="7 -10 2 -5 21 -24" universe="1"/>
-  <cell id="136" material="1" name="cell_207" region="7 -10 2 -5 24 -27" universe="1"/>
-  <cell id="137" material="1" name="cell_210" region="7 -10 5 -8 3 -6" universe="1"/>
-  <cell id="138" material="1" name="cell_211" region="7 -10 5 -8 6 -9" universe="1"/>
-  <cell id="139" material="1" name="cell_212" region="7 -10 5 -8 9 -12" universe="1"/>
-  <cell id="140" material="1" name="cell_213" region="7 -10 5 -8 12 -15" universe="1"/>
-  <cell id="141" material="1" name="cell_214" region="7 -10 5 -8 15 -18" universe="1"/>
-  <cell id="142" material="1" name="cell_215" region="7 -10 5 -8 18 -21" universe="1"/>
-  <cell id="143" material="1" name="cell_216" region="7 -10 5 -8 21 -24" universe="1"/>
-  <cell id="144" material="1" name="cell_217" region="7 -10 5 -8 24 -27" universe="1"/>
-  <cell id="145" material="1" name="cell_220" region="7 -10 8 -11 3 -6" universe="1"/>
-  <cell id="146" material="1" name="cell_221" region="7 -10 8 -11 6 -9" universe="1"/>
-  <cell id="147" material="1" name="cell_222" region="7 -10 8 -11 9 -12" universe="1"/>
-  <cell id="148" material="1" name="cell_223" region="7 -10 8 -11 12 -15" universe="1"/>
-  <cell id="149" material="1" name="cell_224" region="7 -10 8 -11 15 -18" universe="1"/>
-  <cell id="150" material="1" name="cell_225" region="7 -10 8 -11 18 -21" universe="1"/>
-  <cell id="151" material="1" name="cell_226" region="7 -10 8 -11 21 -24" universe="1"/>
-  <cell id="152" material="1" name="cell_227" region="7 -10 8 -11 24 -27" universe="1"/>
-  <cell id="153" material="1" name="cell_230" region="7 -10 11 -14 3 -6" universe="1"/>
-  <cell id="154" material="1" name="cell_231" region="7 -10 11 -14 6 -9" universe="1"/>
-  <cell id="155" material="1" name="cell_232" region="7 -10 11 -14 9 -12" universe="1"/>
-  <cell id="156" material="1" name="cell_233" region="7 -10 11 -14 12 -15" universe="1"/>
-  <cell id="157" material="1" name="cell_234" region="7 -10 11 -14 15 -18" universe="1"/>
-  <cell id="158" material="1" name="cell_235" region="7 -10 11 -14 18 -21" universe="1"/>
-  <cell id="159" material="1" name="cell_236" region="7 -10 11 -14 21 -24" universe="1"/>
-  <cell id="160" material="1" name="cell_237" region="7 -10 11 -14 24 -27" universe="1"/>
-  <cell id="161" material="1" name="cell_240" region="7 -10 14 -17 3 -6" universe="1"/>
-  <cell id="162" material="1" name="cell_241" region="7 -10 14 -17 6 -9" universe="1"/>
-  <cell id="163" material="1" name="cell_242" region="7 -10 14 -17 9 -12" universe="1"/>
-  <cell id="164" material="1" name="cell_243" region="7 -10 14 -17 12 -15" universe="1"/>
-  <cell id="165" material="1" name="cell_244" region="7 -10 14 -17 15 -18" universe="1"/>
-  <cell id="166" material="1" name="cell_245" region="7 -10 14 -17 18 -21" universe="1"/>
-  <cell id="167" material="1" name="cell_246" region="7 -10 14 -17 21 -24" universe="1"/>
-  <cell id="168" material="1" name="cell_247" region="7 -10 14 -17 24 -27" universe="1"/>
-  <cell id="169" material="1" name="cell_250" region="7 -10 17 -20 3 -6" universe="1"/>
-  <cell id="170" material="1" name="cell_251" region="7 -10 17 -20 6 -9" universe="1"/>
-  <cell id="171" material="1" name="cell_252" region="7 -10 17 -20 9 -12" universe="1"/>
-  <cell id="172" material="1" name="cell_253" region="7 -10 17 -20 12 -15" universe="1"/>
-  <cell id="173" material="1" name="cell_254" region="7 -10 17 -20 15 -18" universe="1"/>
-  <cell id="174" material="1" name="cell_255" region="7 -10 17 -20 18 -21" universe="1"/>
-  <cell id="175" material="1" name="cell_256" region="7 -10 17 -20 21 -24" universe="1"/>
-  <cell id="176" material="1" name="cell_257" region="7 -10 17 -20 24 -27" universe="1"/>
-  <cell id="177" material="1" name="cell_260" region="7 -10 20 -23 3 -6" universe="1"/>
-  <cell id="178" material="1" name="cell_261" region="7 -10 20 -23 6 -9" universe="1"/>
-  <cell id="179" material="1" name="cell_262" region="7 -10 20 -23 9 -12" universe="1"/>
-  <cell id="180" material="1" name="cell_263" region="7 -10 20 -23 12 -15" universe="1"/>
-  <cell id="181" material="1" name="cell_264" region="7 -10 20 -23 15 -18" universe="1"/>
-  <cell id="182" material="1" name="cell_265" region="7 -10 20 -23 18 -21" universe="1"/>
-  <cell id="183" material="1" name="cell_266" region="7 -10 20 -23 21 -24" universe="1"/>
-  <cell id="184" material="1" name="cell_267" region="7 -10 20 -23 24 -27" universe="1"/>
-  <cell id="185" material="1" name="cell_270" region="7 -10 23 -26 3 -6" universe="1"/>
-  <cell id="186" material="1" name="cell_271" region="7 -10 23 -26 6 -9" universe="1"/>
-  <cell id="187" material="1" name="cell_272" region="7 -10 23 -26 9 -12" universe="1"/>
-  <cell id="188" material="1" name="cell_273" region="7 -10 23 -26 12 -15" universe="1"/>
-  <cell id="189" material="1" name="cell_274" region="7 -10 23 -26 15 -18" universe="1"/>
-  <cell id="190" material="1" name="cell_275" region="7 -10 23 -26 18 -21" universe="1"/>
-  <cell id="191" material="1" name="cell_276" region="7 -10 23 -26 21 -24" universe="1"/>
-  <cell id="192" material="1" name="cell_277" region="7 -10 23 -26 24 -27" universe="1"/>
-  <cell id="193" material="1" name="cell_300" region="10 -13 2 -5 3 -6" universe="1"/>
-  <cell id="194" material="1" name="cell_301" region="10 -13 2 -5 6 -9" universe="1"/>
-  <cell id="195" material="1" name="cell_302" region="10 -13 2 -5 9 -12" universe="1"/>
-  <cell id="196" material="1" name="cell_303" region="10 -13 2 -5 12 -15" universe="1"/>
-  <cell id="197" material="1" name="cell_304" region="10 -13 2 -5 15 -18" universe="1"/>
-  <cell id="198" material="1" name="cell_305" region="10 -13 2 -5 18 -21" universe="1"/>
-  <cell id="199" material="1" name="cell_306" region="10 -13 2 -5 21 -24" universe="1"/>
-  <cell id="200" material="1" name="cell_307" region="10 -13 2 -5 24 -27" universe="1"/>
-  <cell id="201" material="1" name="cell_310" region="10 -13 5 -8 3 -6" universe="1"/>
-  <cell id="202" material="1" name="cell_311" region="10 -13 5 -8 6 -9" universe="1"/>
-  <cell id="203" material="1" name="cell_312" region="10 -13 5 -8 9 -12" universe="1"/>
-  <cell id="204" material="1" name="cell_313" region="10 -13 5 -8 12 -15" universe="1"/>
-  <cell id="205" material="1" name="cell_314" region="10 -13 5 -8 15 -18" universe="1"/>
-  <cell id="206" material="1" name="cell_315" region="10 -13 5 -8 18 -21" universe="1"/>
-  <cell id="207" material="1" name="cell_316" region="10 -13 5 -8 21 -24" universe="1"/>
-  <cell id="208" material="1" name="cell_317" region="10 -13 5 -8 24 -27" universe="1"/>
-  <cell id="209" material="1" name="cell_320" region="10 -13 8 -11 3 -6" universe="1"/>
-  <cell id="210" material="1" name="cell_321" region="10 -13 8 -11 6 -9" universe="1"/>
-  <cell id="211" material="1" name="cell_322" region="10 -13 8 -11 9 -12" universe="1"/>
-  <cell id="212" material="1" name="cell_323" region="10 -13 8 -11 12 -15" universe="1"/>
-  <cell id="213" material="1" name="cell_324" region="10 -13 8 -11 15 -18" universe="1"/>
-  <cell id="214" material="1" name="cell_325" region="10 -13 8 -11 18 -21" universe="1"/>
-  <cell id="215" material="1" name="cell_326" region="10 -13 8 -11 21 -24" universe="1"/>
-  <cell id="216" material="1" name="cell_327" region="10 -13 8 -11 24 -27" universe="1"/>
-  <cell id="217" material="1" name="cell_330" region="10 -13 11 -14 3 -6" universe="1"/>
-  <cell id="218" material="1" name="cell_331" region="10 -13 11 -14 6 -9" universe="1"/>
-  <cell id="219" material="1" name="cell_332" region="10 -13 11 -14 9 -12" universe="1"/>
-  <cell id="220" material="1" name="cell_333" region="10 -13 11 -14 12 -15" universe="1"/>
-  <cell id="221" material="1" name="cell_334" region="10 -13 11 -14 15 -18" universe="1"/>
-  <cell id="222" material="1" name="cell_335" region="10 -13 11 -14 18 -21" universe="1"/>
-  <cell id="223" material="1" name="cell_336" region="10 -13 11 -14 21 -24" universe="1"/>
-  <cell id="224" material="1" name="cell_337" region="10 -13 11 -14 24 -27" universe="1"/>
-  <cell id="225" material="1" name="cell_340" region="10 -13 14 -17 3 -6" universe="1"/>
-  <cell id="226" material="1" name="cell_341" region="10 -13 14 -17 6 -9" universe="1"/>
-  <cell id="227" material="1" name="cell_342" region="10 -13 14 -17 9 -12" universe="1"/>
-  <cell id="228" material="1" name="cell_343" region="10 -13 14 -17 12 -15" universe="1"/>
-  <cell id="229" material="1" name="cell_344" region="10 -13 14 -17 15 -18" universe="1"/>
-  <cell id="230" material="1" name="cell_345" region="10 -13 14 -17 18 -21" universe="1"/>
-  <cell id="231" material="1" name="cell_346" region="10 -13 14 -17 21 -24" universe="1"/>
-  <cell id="232" material="1" name="cell_347" region="10 -13 14 -17 24 -27" universe="1"/>
-  <cell id="233" material="1" name="cell_350" region="10 -13 17 -20 3 -6" universe="1"/>
-  <cell id="234" material="1" name="cell_351" region="10 -13 17 -20 6 -9" universe="1"/>
-  <cell id="235" material="1" name="cell_352" region="10 -13 17 -20 9 -12" universe="1"/>
-  <cell id="236" material="1" name="cell_353" region="10 -13 17 -20 12 -15" universe="1"/>
-  <cell id="237" material="1" name="cell_354" region="10 -13 17 -20 15 -18" universe="1"/>
-  <cell id="238" material="1" name="cell_355" region="10 -13 17 -20 18 -21" universe="1"/>
-  <cell id="239" material="1" name="cell_356" region="10 -13 17 -20 21 -24" universe="1"/>
-  <cell id="240" material="1" name="cell_357" region="10 -13 17 -20 24 -27" universe="1"/>
-  <cell id="241" material="1" name="cell_360" region="10 -13 20 -23 3 -6" universe="1"/>
-  <cell id="242" material="1" name="cell_361" region="10 -13 20 -23 6 -9" universe="1"/>
-  <cell id="243" material="1" name="cell_362" region="10 -13 20 -23 9 -12" universe="1"/>
-  <cell id="244" material="1" name="cell_363" region="10 -13 20 -23 12 -15" universe="1"/>
-  <cell id="245" material="1" name="cell_364" region="10 -13 20 -23 15 -18" universe="1"/>
-  <cell id="246" material="1" name="cell_365" region="10 -13 20 -23 18 -21" universe="1"/>
-  <cell id="247" material="1" name="cell_366" region="10 -13 20 -23 21 -24" universe="1"/>
-  <cell id="248" material="1" name="cell_367" region="10 -13 20 -23 24 -27" universe="1"/>
-  <cell id="249" material="1" name="cell_370" region="10 -13 23 -26 3 -6" universe="1"/>
-  <cell id="250" material="1" name="cell_371" region="10 -13 23 -26 6 -9" universe="1"/>
-  <cell id="251" material="1" name="cell_372" region="10 -13 23 -26 9 -12" universe="1"/>
-  <cell id="252" material="1" name="cell_373" region="10 -13 23 -26 12 -15" universe="1"/>
-  <cell id="253" material="1" name="cell_374" region="10 -13 23 -26 15 -18" universe="1"/>
-  <cell id="254" material="1" name="cell_375" region="10 -13 23 -26 18 -21" universe="1"/>
-  <cell id="255" material="1" name="cell_376" region="10 -13 23 -26 21 -24" universe="1"/>
-  <cell id="256" material="1" name="cell_377" region="10 -13 23 -26 24 -27" universe="1"/>
-  <cell id="257" material="1" name="cell_400" region="13 -16 2 -5 3 -6" universe="1"/>
-  <cell id="258" material="1" name="cell_401" region="13 -16 2 -5 6 -9" universe="1"/>
-  <cell id="259" material="1" name="cell_402" region="13 -16 2 -5 9 -12" universe="1"/>
-  <cell id="260" material="1" name="cell_403" region="13 -16 2 -5 12 -15" universe="1"/>
-  <cell id="261" material="1" name="cell_404" region="13 -16 2 -5 15 -18" universe="1"/>
-  <cell id="262" material="1" name="cell_405" region="13 -16 2 -5 18 -21" universe="1"/>
-  <cell id="263" material="1" name="cell_406" region="13 -16 2 -5 21 -24" universe="1"/>
-  <cell id="264" material="1" name="cell_407" region="13 -16 2 -5 24 -27" universe="1"/>
-  <cell id="265" material="1" name="cell_410" region="13 -16 5 -8 3 -6" universe="1"/>
-  <cell id="266" material="1" name="cell_411" region="13 -16 5 -8 6 -9" universe="1"/>
-  <cell id="267" material="1" name="cell_412" region="13 -16 5 -8 9 -12" universe="1"/>
-  <cell id="268" material="1" name="cell_413" region="13 -16 5 -8 12 -15" universe="1"/>
-  <cell id="269" material="1" name="cell_414" region="13 -16 5 -8 15 -18" universe="1"/>
-  <cell id="270" material="1" name="cell_415" region="13 -16 5 -8 18 -21" universe="1"/>
-  <cell id="271" material="1" name="cell_416" region="13 -16 5 -8 21 -24" universe="1"/>
-  <cell id="272" material="1" name="cell_417" region="13 -16 5 -8 24 -27" universe="1"/>
-  <cell id="273" material="1" name="cell_420" region="13 -16 8 -11 3 -6" universe="1"/>
-  <cell id="274" material="1" name="cell_421" region="13 -16 8 -11 6 -9" universe="1"/>
-  <cell id="275" material="1" name="cell_422" region="13 -16 8 -11 9 -12" universe="1"/>
-  <cell id="276" material="1" name="cell_423" region="13 -16 8 -11 12 -15" universe="1"/>
-  <cell id="277" material="1" name="cell_424" region="13 -16 8 -11 15 -18" universe="1"/>
-  <cell id="278" material="1" name="cell_425" region="13 -16 8 -11 18 -21" universe="1"/>
-  <cell id="279" material="1" name="cell_426" region="13 -16 8 -11 21 -24" universe="1"/>
-  <cell id="280" material="1" name="cell_427" region="13 -16 8 -11 24 -27" universe="1"/>
-  <cell id="281" material="1" name="cell_430" region="13 -16 11 -14 3 -6" universe="1"/>
-  <cell id="282" material="1" name="cell_431" region="13 -16 11 -14 6 -9" universe="1"/>
-  <cell id="283" material="1" name="cell_432" region="13 -16 11 -14 9 -12" universe="1"/>
-  <cell id="284" material="1" name="cell_433" region="13 -16 11 -14 12 -15" universe="1"/>
-  <cell id="285" material="1" name="cell_434" region="13 -16 11 -14 15 -18" universe="1"/>
-  <cell id="286" material="1" name="cell_435" region="13 -16 11 -14 18 -21" universe="1"/>
-  <cell id="287" material="1" name="cell_436" region="13 -16 11 -14 21 -24" universe="1"/>
-  <cell id="288" material="1" name="cell_437" region="13 -16 11 -14 24 -27" universe="1"/>
-  <cell id="289" material="1" name="cell_440" region="13 -16 14 -17 3 -6" universe="1"/>
-  <cell id="290" material="1" name="cell_441" region="13 -16 14 -17 6 -9" universe="1"/>
-  <cell id="291" material="1" name="cell_442" region="13 -16 14 -17 9 -12" universe="1"/>
-  <cell id="292" material="1" name="cell_443" region="13 -16 14 -17 12 -15" universe="1"/>
-  <cell id="293" material="1" name="cell_444" region="13 -16 14 -17 15 -18" universe="1"/>
-  <cell id="294" material="1" name="cell_445" region="13 -16 14 -17 18 -21" universe="1"/>
-  <cell id="295" material="1" name="cell_446" region="13 -16 14 -17 21 -24" universe="1"/>
-  <cell id="296" material="1" name="cell_447" region="13 -16 14 -17 24 -27" universe="1"/>
-  <cell id="297" material="1" name="cell_450" region="13 -16 17 -20 3 -6" universe="1"/>
-  <cell id="298" material="1" name="cell_451" region="13 -16 17 -20 6 -9" universe="1"/>
-  <cell id="299" material="1" name="cell_452" region="13 -16 17 -20 9 -12" universe="1"/>
-  <cell id="300" material="1" name="cell_453" region="13 -16 17 -20 12 -15" universe="1"/>
-  <cell id="301" material="1" name="cell_454" region="13 -16 17 -20 15 -18" universe="1"/>
-  <cell id="302" material="1" name="cell_455" region="13 -16 17 -20 18 -21" universe="1"/>
-  <cell id="303" material="1" name="cell_456" region="13 -16 17 -20 21 -24" universe="1"/>
-  <cell id="304" material="1" name="cell_457" region="13 -16 17 -20 24 -27" universe="1"/>
-  <cell id="305" material="1" name="cell_460" region="13 -16 20 -23 3 -6" universe="1"/>
-  <cell id="306" material="1" name="cell_461" region="13 -16 20 -23 6 -9" universe="1"/>
-  <cell id="307" material="1" name="cell_462" region="13 -16 20 -23 9 -12" universe="1"/>
-  <cell id="308" material="1" name="cell_463" region="13 -16 20 -23 12 -15" universe="1"/>
-  <cell id="309" material="1" name="cell_464" region="13 -16 20 -23 15 -18" universe="1"/>
-  <cell id="310" material="1" name="cell_465" region="13 -16 20 -23 18 -21" universe="1"/>
-  <cell id="311" material="1" name="cell_466" region="13 -16 20 -23 21 -24" universe="1"/>
-  <cell id="312" material="1" name="cell_467" region="13 -16 20 -23 24 -27" universe="1"/>
-  <cell id="313" material="1" name="cell_470" region="13 -16 23 -26 3 -6" universe="1"/>
-  <cell id="314" material="1" name="cell_471" region="13 -16 23 -26 6 -9" universe="1"/>
-  <cell id="315" material="1" name="cell_472" region="13 -16 23 -26 9 -12" universe="1"/>
-  <cell id="316" material="1" name="cell_473" region="13 -16 23 -26 12 -15" universe="1"/>
-  <cell id="317" material="1" name="cell_474" region="13 -16 23 -26 15 -18" universe="1"/>
-  <cell id="318" material="1" name="cell_475" region="13 -16 23 -26 18 -21" universe="1"/>
-  <cell id="319" material="1" name="cell_476" region="13 -16 23 -26 21 -24" universe="1"/>
-  <cell id="320" material="1" name="cell_477" region="13 -16 23 -26 24 -27" universe="1"/>
-  <cell id="321" material="1" name="cell_500" region="16 -19 2 -5 3 -6" universe="1"/>
-  <cell id="322" material="1" name="cell_501" region="16 -19 2 -5 6 -9" universe="1"/>
-  <cell id="323" material="1" name="cell_502" region="16 -19 2 -5 9 -12" universe="1"/>
-  <cell id="324" material="1" name="cell_503" region="16 -19 2 -5 12 -15" universe="1"/>
-  <cell id="325" material="1" name="cell_504" region="16 -19 2 -5 15 -18" universe="1"/>
-  <cell id="326" material="1" name="cell_505" region="16 -19 2 -5 18 -21" universe="1"/>
-  <cell id="327" material="1" name="cell_506" region="16 -19 2 -5 21 -24" universe="1"/>
-  <cell id="328" material="1" name="cell_507" region="16 -19 2 -5 24 -27" universe="1"/>
-  <cell id="329" material="1" name="cell_510" region="16 -19 5 -8 3 -6" universe="1"/>
-  <cell id="330" material="1" name="cell_511" region="16 -19 5 -8 6 -9" universe="1"/>
-  <cell id="331" material="1" name="cell_512" region="16 -19 5 -8 9 -12" universe="1"/>
-  <cell id="332" material="1" name="cell_513" region="16 -19 5 -8 12 -15" universe="1"/>
-  <cell id="333" material="1" name="cell_514" region="16 -19 5 -8 15 -18" universe="1"/>
-  <cell id="334" material="1" name="cell_515" region="16 -19 5 -8 18 -21" universe="1"/>
-  <cell id="335" material="1" name="cell_516" region="16 -19 5 -8 21 -24" universe="1"/>
-  <cell id="336" material="1" name="cell_517" region="16 -19 5 -8 24 -27" universe="1"/>
-  <cell id="337" material="1" name="cell_520" region="16 -19 8 -11 3 -6" universe="1"/>
-  <cell id="338" material="1" name="cell_521" region="16 -19 8 -11 6 -9" universe="1"/>
-  <cell id="339" material="1" name="cell_522" region="16 -19 8 -11 9 -12" universe="1"/>
-  <cell id="340" material="1" name="cell_523" region="16 -19 8 -11 12 -15" universe="1"/>
-  <cell id="341" material="1" name="cell_524" region="16 -19 8 -11 15 -18" universe="1"/>
-  <cell id="342" material="1" name="cell_525" region="16 -19 8 -11 18 -21" universe="1"/>
-  <cell id="343" material="1" name="cell_526" region="16 -19 8 -11 21 -24" universe="1"/>
-  <cell id="344" material="1" name="cell_527" region="16 -19 8 -11 24 -27" universe="1"/>
-  <cell id="345" material="1" name="cell_530" region="16 -19 11 -14 3 -6" universe="1"/>
-  <cell id="346" material="1" name="cell_531" region="16 -19 11 -14 6 -9" universe="1"/>
-  <cell id="347" material="1" name="cell_532" region="16 -19 11 -14 9 -12" universe="1"/>
-  <cell id="348" material="1" name="cell_533" region="16 -19 11 -14 12 -15" universe="1"/>
-  <cell id="349" material="1" name="cell_534" region="16 -19 11 -14 15 -18" universe="1"/>
-  <cell id="350" material="1" name="cell_535" region="16 -19 11 -14 18 -21" universe="1"/>
-  <cell id="351" material="1" name="cell_536" region="16 -19 11 -14 21 -24" universe="1"/>
-  <cell id="352" material="1" name="cell_537" region="16 -19 11 -14 24 -27" universe="1"/>
-  <cell id="353" material="1" name="cell_540" region="16 -19 14 -17 3 -6" universe="1"/>
-  <cell id="354" material="1" name="cell_541" region="16 -19 14 -17 6 -9" universe="1"/>
-  <cell id="355" material="1" name="cell_542" region="16 -19 14 -17 9 -12" universe="1"/>
-  <cell id="356" material="1" name="cell_543" region="16 -19 14 -17 12 -15" universe="1"/>
-  <cell id="357" material="1" name="cell_544" region="16 -19 14 -17 15 -18" universe="1"/>
-  <cell id="358" material="1" name="cell_545" region="16 -19 14 -17 18 -21" universe="1"/>
-  <cell id="359" material="1" name="cell_546" region="16 -19 14 -17 21 -24" universe="1"/>
-  <cell id="360" material="1" name="cell_547" region="16 -19 14 -17 24 -27" universe="1"/>
-  <cell id="361" material="1" name="cell_550" region="16 -19 17 -20 3 -6" universe="1"/>
-  <cell id="362" material="1" name="cell_551" region="16 -19 17 -20 6 -9" universe="1"/>
-  <cell id="363" material="1" name="cell_552" region="16 -19 17 -20 9 -12" universe="1"/>
-  <cell id="364" material="1" name="cell_553" region="16 -19 17 -20 12 -15" universe="1"/>
-  <cell id="365" material="1" name="cell_554" region="16 -19 17 -20 15 -18" universe="1"/>
-  <cell id="366" material="1" name="cell_555" region="16 -19 17 -20 18 -21" universe="1"/>
-  <cell id="367" material="1" name="cell_556" region="16 -19 17 -20 21 -24" universe="1"/>
-  <cell id="368" material="1" name="cell_557" region="16 -19 17 -20 24 -27" universe="1"/>
-  <cell id="369" material="1" name="cell_560" region="16 -19 20 -23 3 -6" universe="1"/>
-  <cell id="370" material="1" name="cell_561" region="16 -19 20 -23 6 -9" universe="1"/>
-  <cell id="371" material="1" name="cell_562" region="16 -19 20 -23 9 -12" universe="1"/>
-  <cell id="372" material="1" name="cell_563" region="16 -19 20 -23 12 -15" universe="1"/>
-  <cell id="373" material="1" name="cell_564" region="16 -19 20 -23 15 -18" universe="1"/>
-  <cell id="374" material="1" name="cell_565" region="16 -19 20 -23 18 -21" universe="1"/>
-  <cell id="375" material="1" name="cell_566" region="16 -19 20 -23 21 -24" universe="1"/>
-  <cell id="376" material="1" name="cell_567" region="16 -19 20 -23 24 -27" universe="1"/>
-  <cell id="377" material="1" name="cell_570" region="16 -19 23 -26 3 -6" universe="1"/>
-  <cell id="378" material="1" name="cell_571" region="16 -19 23 -26 6 -9" universe="1"/>
-  <cell id="379" material="1" name="cell_572" region="16 -19 23 -26 9 -12" universe="1"/>
-  <cell id="380" material="1" name="cell_573" region="16 -19 23 -26 12 -15" universe="1"/>
-  <cell id="381" material="1" name="cell_574" region="16 -19 23 -26 15 -18" universe="1"/>
-  <cell id="382" material="1" name="cell_575" region="16 -19 23 -26 18 -21" universe="1"/>
-  <cell id="383" material="1" name="cell_576" region="16 -19 23 -26 21 -24" universe="1"/>
-  <cell id="384" material="1" name="cell_577" region="16 -19 23 -26 24 -27" universe="1"/>
-  <cell id="385" material="1" name="cell_600" region="19 -22 2 -5 3 -6" universe="1"/>
-  <cell id="386" material="1" name="cell_601" region="19 -22 2 -5 6 -9" universe="1"/>
-  <cell id="387" material="1" name="cell_602" region="19 -22 2 -5 9 -12" universe="1"/>
-  <cell id="388" material="1" name="cell_603" region="19 -22 2 -5 12 -15" universe="1"/>
-  <cell id="389" material="1" name="cell_604" region="19 -22 2 -5 15 -18" universe="1"/>
-  <cell id="390" material="1" name="cell_605" region="19 -22 2 -5 18 -21" universe="1"/>
-  <cell id="391" material="1" name="cell_606" region="19 -22 2 -5 21 -24" universe="1"/>
-  <cell id="392" material="1" name="cell_607" region="19 -22 2 -5 24 -27" universe="1"/>
-  <cell id="393" material="1" name="cell_610" region="19 -22 5 -8 3 -6" universe="1"/>
-  <cell id="394" material="1" name="cell_611" region="19 -22 5 -8 6 -9" universe="1"/>
-  <cell id="395" material="1" name="cell_612" region="19 -22 5 -8 9 -12" universe="1"/>
-  <cell id="396" material="1" name="cell_613" region="19 -22 5 -8 12 -15" universe="1"/>
-  <cell id="397" material="1" name="cell_614" region="19 -22 5 -8 15 -18" universe="1"/>
-  <cell id="398" material="1" name="cell_615" region="19 -22 5 -8 18 -21" universe="1"/>
-  <cell id="399" material="1" name="cell_616" region="19 -22 5 -8 21 -24" universe="1"/>
-  <cell id="400" material="1" name="cell_617" region="19 -22 5 -8 24 -27" universe="1"/>
-  <cell id="401" material="1" name="cell_620" region="19 -22 8 -11 3 -6" universe="1"/>
-  <cell id="402" material="1" name="cell_621" region="19 -22 8 -11 6 -9" universe="1"/>
-  <cell id="403" material="1" name="cell_622" region="19 -22 8 -11 9 -12" universe="1"/>
-  <cell id="404" material="1" name="cell_623" region="19 -22 8 -11 12 -15" universe="1"/>
-  <cell id="405" material="1" name="cell_624" region="19 -22 8 -11 15 -18" universe="1"/>
-  <cell id="406" material="1" name="cell_625" region="19 -22 8 -11 18 -21" universe="1"/>
-  <cell id="407" material="1" name="cell_626" region="19 -22 8 -11 21 -24" universe="1"/>
-  <cell id="408" material="1" name="cell_627" region="19 -22 8 -11 24 -27" universe="1"/>
-  <cell id="409" material="1" name="cell_630" region="19 -22 11 -14 3 -6" universe="1"/>
-  <cell id="410" material="1" name="cell_631" region="19 -22 11 -14 6 -9" universe="1"/>
-  <cell id="411" material="1" name="cell_632" region="19 -22 11 -14 9 -12" universe="1"/>
-  <cell id="412" material="1" name="cell_633" region="19 -22 11 -14 12 -15" universe="1"/>
-  <cell id="413" material="1" name="cell_634" region="19 -22 11 -14 15 -18" universe="1"/>
-  <cell id="414" material="1" name="cell_635" region="19 -22 11 -14 18 -21" universe="1"/>
-  <cell id="415" material="1" name="cell_636" region="19 -22 11 -14 21 -24" universe="1"/>
-  <cell id="416" material="1" name="cell_637" region="19 -22 11 -14 24 -27" universe="1"/>
-  <cell id="417" material="1" name="cell_640" region="19 -22 14 -17 3 -6" universe="1"/>
-  <cell id="418" material="1" name="cell_641" region="19 -22 14 -17 6 -9" universe="1"/>
-  <cell id="419" material="1" name="cell_642" region="19 -22 14 -17 9 -12" universe="1"/>
-  <cell id="420" material="1" name="cell_643" region="19 -22 14 -17 12 -15" universe="1"/>
-  <cell id="421" material="1" name="cell_644" region="19 -22 14 -17 15 -18" universe="1"/>
-  <cell id="422" material="1" name="cell_645" region="19 -22 14 -17 18 -21" universe="1"/>
-  <cell id="423" material="1" name="cell_646" region="19 -22 14 -17 21 -24" universe="1"/>
-  <cell id="424" material="1" name="cell_647" region="19 -22 14 -17 24 -27" universe="1"/>
-  <cell id="425" material="1" name="cell_650" region="19 -22 17 -20 3 -6" universe="1"/>
-  <cell id="426" material="1" name="cell_651" region="19 -22 17 -20 6 -9" universe="1"/>
-  <cell id="427" material="1" name="cell_652" region="19 -22 17 -20 9 -12" universe="1"/>
-  <cell id="428" material="1" name="cell_653" region="19 -22 17 -20 12 -15" universe="1"/>
-  <cell id="429" material="1" name="cell_654" region="19 -22 17 -20 15 -18" universe="1"/>
-  <cell id="430" material="1" name="cell_655" region="19 -22 17 -20 18 -21" universe="1"/>
-  <cell id="431" material="1" name="cell_656" region="19 -22 17 -20 21 -24" universe="1"/>
-  <cell id="432" material="1" name="cell_657" region="19 -22 17 -20 24 -27" universe="1"/>
-  <cell id="433" material="1" name="cell_660" region="19 -22 20 -23 3 -6" universe="1"/>
-  <cell id="434" material="1" name="cell_661" region="19 -22 20 -23 6 -9" universe="1"/>
-  <cell id="435" material="1" name="cell_662" region="19 -22 20 -23 9 -12" universe="1"/>
-  <cell id="436" material="1" name="cell_663" region="19 -22 20 -23 12 -15" universe="1"/>
-  <cell id="437" material="1" name="cell_664" region="19 -22 20 -23 15 -18" universe="1"/>
-  <cell id="438" material="1" name="cell_665" region="19 -22 20 -23 18 -21" universe="1"/>
-  <cell id="439" material="1" name="cell_666" region="19 -22 20 -23 21 -24" universe="1"/>
-  <cell id="440" material="1" name="cell_667" region="19 -22 20 -23 24 -27" universe="1"/>
-  <cell id="441" material="1" name="cell_670" region="19 -22 23 -26 3 -6" universe="1"/>
-  <cell id="442" material="1" name="cell_671" region="19 -22 23 -26 6 -9" universe="1"/>
-  <cell id="443" material="1" name="cell_672" region="19 -22 23 -26 9 -12" universe="1"/>
-  <cell id="444" material="1" name="cell_673" region="19 -22 23 -26 12 -15" universe="1"/>
-  <cell id="445" material="1" name="cell_674" region="19 -22 23 -26 15 -18" universe="1"/>
-  <cell id="446" material="1" name="cell_675" region="19 -22 23 -26 18 -21" universe="1"/>
-  <cell id="447" material="1" name="cell_676" region="19 -22 23 -26 21 -24" universe="1"/>
-  <cell id="448" material="1" name="cell_677" region="19 -22 23 -26 24 -27" universe="1"/>
-  <cell id="449" material="1" name="cell_700" region="22 -25 2 -5 3 -6" universe="1"/>
-  <cell id="450" material="1" name="cell_701" region="22 -25 2 -5 6 -9" universe="1"/>
-  <cell id="451" material="1" name="cell_702" region="22 -25 2 -5 9 -12" universe="1"/>
-  <cell id="452" material="1" name="cell_703" region="22 -25 2 -5 12 -15" universe="1"/>
-  <cell id="453" material="1" name="cell_704" region="22 -25 2 -5 15 -18" universe="1"/>
-  <cell id="454" material="1" name="cell_705" region="22 -25 2 -5 18 -21" universe="1"/>
-  <cell id="455" material="1" name="cell_706" region="22 -25 2 -5 21 -24" universe="1"/>
-  <cell id="456" material="1" name="cell_707" region="22 -25 2 -5 24 -27" universe="1"/>
-  <cell id="457" material="1" name="cell_710" region="22 -25 5 -8 3 -6" universe="1"/>
-  <cell id="458" material="1" name="cell_711" region="22 -25 5 -8 6 -9" universe="1"/>
-  <cell id="459" material="1" name="cell_712" region="22 -25 5 -8 9 -12" universe="1"/>
-  <cell id="460" material="1" name="cell_713" region="22 -25 5 -8 12 -15" universe="1"/>
-  <cell id="461" material="1" name="cell_714" region="22 -25 5 -8 15 -18" universe="1"/>
-  <cell id="462" material="1" name="cell_715" region="22 -25 5 -8 18 -21" universe="1"/>
-  <cell id="463" material="1" name="cell_716" region="22 -25 5 -8 21 -24" universe="1"/>
-  <cell id="464" material="1" name="cell_717" region="22 -25 5 -8 24 -27" universe="1"/>
-  <cell id="465" material="1" name="cell_720" region="22 -25 8 -11 3 -6" universe="1"/>
-  <cell id="466" material="1" name="cell_721" region="22 -25 8 -11 6 -9" universe="1"/>
-  <cell id="467" material="1" name="cell_722" region="22 -25 8 -11 9 -12" universe="1"/>
-  <cell id="468" material="1" name="cell_723" region="22 -25 8 -11 12 -15" universe="1"/>
-  <cell id="469" material="1" name="cell_724" region="22 -25 8 -11 15 -18" universe="1"/>
-  <cell id="470" material="1" name="cell_725" region="22 -25 8 -11 18 -21" universe="1"/>
-  <cell id="471" material="1" name="cell_726" region="22 -25 8 -11 21 -24" universe="1"/>
-  <cell id="472" material="1" name="cell_727" region="22 -25 8 -11 24 -27" universe="1"/>
-  <cell id="473" material="1" name="cell_730" region="22 -25 11 -14 3 -6" universe="1"/>
-  <cell id="474" material="1" name="cell_731" region="22 -25 11 -14 6 -9" universe="1"/>
-  <cell id="475" material="1" name="cell_732" region="22 -25 11 -14 9 -12" universe="1"/>
-  <cell id="476" material="1" name="cell_733" region="22 -25 11 -14 12 -15" universe="1"/>
-  <cell id="477" material="1" name="cell_734" region="22 -25 11 -14 15 -18" universe="1"/>
-  <cell id="478" material="1" name="cell_735" region="22 -25 11 -14 18 -21" universe="1"/>
-  <cell id="479" material="1" name="cell_736" region="22 -25 11 -14 21 -24" universe="1"/>
-  <cell id="480" material="1" name="cell_737" region="22 -25 11 -14 24 -27" universe="1"/>
-  <cell id="481" material="1" name="cell_740" region="22 -25 14 -17 3 -6" universe="1"/>
-  <cell id="482" material="1" name="cell_741" region="22 -25 14 -17 6 -9" universe="1"/>
-  <cell id="483" material="1" name="cell_742" region="22 -25 14 -17 9 -12" universe="1"/>
-  <cell id="484" material="1" name="cell_743" region="22 -25 14 -17 12 -15" universe="1"/>
-  <cell id="485" material="1" name="cell_744" region="22 -25 14 -17 15 -18" universe="1"/>
-  <cell id="486" material="1" name="cell_745" region="22 -25 14 -17 18 -21" universe="1"/>
-  <cell id="487" material="1" name="cell_746" region="22 -25 14 -17 21 -24" universe="1"/>
-  <cell id="488" material="1" name="cell_747" region="22 -25 14 -17 24 -27" universe="1"/>
-  <cell id="489" material="1" name="cell_750" region="22 -25 17 -20 3 -6" universe="1"/>
-  <cell id="490" material="1" name="cell_751" region="22 -25 17 -20 6 -9" universe="1"/>
-  <cell id="491" material="1" name="cell_752" region="22 -25 17 -20 9 -12" universe="1"/>
-  <cell id="492" material="1" name="cell_753" region="22 -25 17 -20 12 -15" universe="1"/>
-  <cell id="493" material="1" name="cell_754" region="22 -25 17 -20 15 -18" universe="1"/>
-  <cell id="494" material="1" name="cell_755" region="22 -25 17 -20 18 -21" universe="1"/>
-  <cell id="495" material="1" name="cell_756" region="22 -25 17 -20 21 -24" universe="1"/>
-  <cell id="496" material="1" name="cell_757" region="22 -25 17 -20 24 -27" universe="1"/>
-  <cell id="497" material="1" name="cell_760" region="22 -25 20 -23 3 -6" universe="1"/>
-  <cell id="498" material="1" name="cell_761" region="22 -25 20 -23 6 -9" universe="1"/>
-  <cell id="499" material="1" name="cell_762" region="22 -25 20 -23 9 -12" universe="1"/>
-  <cell id="500" material="1" name="cell_763" region="22 -25 20 -23 12 -15" universe="1"/>
-  <cell id="501" material="1" name="cell_764" region="22 -25 20 -23 15 -18" universe="1"/>
-  <cell id="502" material="1" name="cell_765" region="22 -25 20 -23 18 -21" universe="1"/>
-  <cell id="503" material="1" name="cell_766" region="22 -25 20 -23 21 -24" universe="1"/>
-  <cell id="504" material="1" name="cell_767" region="22 -25 20 -23 24 -27" universe="1"/>
-  <cell id="505" material="1" name="cell_770" region="22 -25 23 -26 3 -6" universe="1"/>
-  <cell id="506" material="1" name="cell_771" region="22 -25 23 -26 6 -9" universe="1"/>
-  <cell id="507" material="1" name="cell_772" region="22 -25 23 -26 9 -12" universe="1"/>
-  <cell id="508" material="1" name="cell_773" region="22 -25 23 -26 12 -15" universe="1"/>
-  <cell id="509" material="1" name="cell_774" region="22 -25 23 -26 15 -18" universe="1"/>
-  <cell id="510" material="1" name="cell_775" region="22 -25 23 -26 18 -21" universe="1"/>
-  <cell id="511" material="1" name="cell_776" region="22 -25 23 -26 21 -24" universe="1"/>
-  <cell id="512" material="1" name="cell_777" region="22 -25 23 -26 24 -27" universe="1"/>
-  <surface boundary="reflective" coeffs="-50.0" id="1" type="x-plane"/>
-  <surface boundary="reflective" coeffs="-50.0" id="2" type="y-plane"/>
-  <surface boundary="reflective" coeffs="-50.0" id="3" type="z-plane"/>
-  <surface coeffs="-37.5" id="4" type="x-plane"/>
-  <surface coeffs="-37.5" id="5" type="y-plane"/>
-  <surface coeffs="-37.5" id="6" type="z-plane"/>
-  <surface coeffs="-25.0" id="7" type="x-plane"/>
-  <surface coeffs="-25.0" id="8" type="y-plane"/>
-  <surface coeffs="-25.0" id="9" type="z-plane"/>
-  <surface coeffs="-12.5" id="10" type="x-plane"/>
-  <surface coeffs="-12.5" id="11" type="y-plane"/>
-  <surface coeffs="-12.5" id="12" type="z-plane"/>
-  <surface coeffs="0.0" id="13" type="x-plane"/>
-  <surface coeffs="0.0" id="14" type="y-plane"/>
-  <surface coeffs="0.0" id="15" type="z-plane"/>
-  <surface coeffs="12.5" id="16" type="x-plane"/>
-  <surface coeffs="12.5" id="17" type="y-plane"/>
-  <surface coeffs="12.5" id="18" type="z-plane"/>
-  <surface coeffs="25.0" id="19" type="x-plane"/>
-  <surface coeffs="25.0" id="20" type="y-plane"/>
-  <surface coeffs="25.0" id="21" type="z-plane"/>
-  <surface coeffs="37.5" id="22" type="x-plane"/>
-  <surface coeffs="37.5" id="23" type="y-plane"/>
-  <surface coeffs="37.5" id="24" type="z-plane"/>
-  <surface boundary="reflective" coeffs="50.0" id="25" type="x-plane"/>
-  <surface boundary="reflective" coeffs="50.0" id="26" type="y-plane"/>
-  <surface boundary="reflective" coeffs="50.0" id="27" type="z-plane"/>
+  <cell id="1" material="1" universe="1"/>
+  <cell fill="2" id="2" name="assembly" region="-2 1 -4 3 -6 5" universe="3"/>
+  <lattice id="2">
+    <pitch>12.5 12.5 12.5</pitch>
+    <dimension>8 8 8</dimension>
+    <lower_left>0.0 0.0 0.0</lower_left>
+    <universes>
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 </universes>
+  </lattice>
+  <surface boundary="reflective" coeffs="0.0" id="1" type="x-plane"/>
+  <surface boundary="reflective" coeffs="100.0" id="2" type="x-plane"/>
+  <surface boundary="reflective" coeffs="0.0" id="3" type="y-plane"/>
+  <surface boundary="reflective" coeffs="100.0" id="4" type="y-plane"/>
+  <surface boundary="reflective" coeffs="0.0" id="5" type="z-plane"/>
+  <surface boundary="reflective" coeffs="100.0" id="6" type="z-plane"/>
 </geometry>

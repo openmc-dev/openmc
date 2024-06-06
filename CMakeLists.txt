@@ -39,6 +39,7 @@ option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tall
 option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
 option(OPENMC_USE_MCPL        "Enable MCPL"                                          OFF)
 option(OPENMC_USE_NCRYSTAL    "Enable support for NCrystal scattering"               OFF)
+option(OPENMC_USE_UWUW        "Enable UWUW"                                          OFF)
 
 # Warnings for deprecated options
 foreach(OLD_OPT IN ITEMS "openmp" "profile" "coverage" "dagmc" "libmesh")
@@ -81,6 +82,14 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 #===============================================================================
+# OpenMP for shared-memory parallelism (and GPU support some day!)
+#===============================================================================
+
+if(OPENMC_USE_OPENMP)
+  find_package(OpenMP REQUIRED)
+endif()
+
+#===============================================================================
 # MPI for distributed-memory parallelism
 #===============================================================================
 
@@ -117,10 +126,15 @@ endif()
 if(OPENMC_USE_DAGMC)
   find_package(DAGMC REQUIRED PATH_SUFFIXES lib/cmake)
   if (${DAGMC_VERSION} VERSION_LESS 3.2.0)
-    message(FATAL_ERROR "Discovered DAGMC Version: ${DAGMC_VERSION}. \
-    Please update DAGMC to version 3.2.0 or greater.")
+    message(FATAL_ERROR "Discovered DAGMC Version: ${DAGMC_VERSION}."
+      "Please update DAGMC to version 3.2.0 or greater.")
   endif()
   message(STATUS "Found DAGMC: ${DAGMC_DIR} (version ${DAGMC_VERSION})")
+
+  # Check if UWUW is needed and available
+  if(OPENMC_USE_UWUW AND NOT DAGMC_BUILD_UWUW)
+    message(FATAL_ERROR "UWUW is enabled but DAGMC was not configured with UWUW.")
+  endif()
 endif()
 
 #===============================================================================
@@ -191,13 +205,6 @@ endif()
 
 # Skip for Visual Studio which has its own configurations through GUI
 if(NOT MSVC)
-
-if(OPENMC_USE_OPENMP)
-  find_package(OpenMP REQUIRED)
-  # In CMake 3.9+, can use the OpenMP::OpenMP_CXX imported target
-  list(APPEND cxxflags ${OpenMP_CXX_FLAGS})
-  list(APPEND ldflags ${OpenMP_CXX_FLAGS})
-endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
@@ -380,6 +387,9 @@ list(APPEND libopenmc_SOURCES
   src/progress_bar.cpp
   src/random_dist.cpp
   src/random_lcg.cpp
+  src/random_ray/random_ray_simulation.cpp
+  src/random_ray/random_ray.cpp
+  src/random_ray/flat_source_domain.cpp
   src/reaction.cpp
   src/reaction_product.cpp
   src/scattdata.cpp
@@ -411,6 +421,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_material.cpp
   src/tallies/filter_materialfrom.cpp
   src/tallies/filter_mesh.cpp
+  src/tallies/filter_meshborn.cpp
   src/tallies/filter_meshsurface.cpp
   src/tallies/filter_mu.cpp
   src/tallies/filter_particle.cpp
@@ -505,7 +516,7 @@ endif()
 
 if(OPENMC_USE_DAGMC)
   target_compile_definitions(libopenmc PRIVATE DAGMC)
-  target_link_libraries(libopenmc dagmc-shared uwuw-shared)
+  target_link_libraries(libopenmc dagmc-shared)
 endif()
 
 if(OPENMC_USE_LIBMESH)
@@ -516,6 +527,10 @@ endif()
 if (PNG_FOUND)
   target_compile_definitions(libopenmc PRIVATE USE_LIBPNG)
   target_link_libraries(libopenmc PNG::PNG)
+endif()
+
+if (OPENMC_USE_OPENMP)
+  target_link_libraries(libopenmc OpenMP::OpenMP_CXX)
 endif()
 
 if (OPENMC_USE_MPI)
@@ -536,6 +551,11 @@ endif()
 if(OPENMC_USE_NCRYSTAL)
   target_compile_definitions(libopenmc PRIVATE NCRYSTAL)
   target_link_libraries(libopenmc NCrystal::NCrystal)
+endif()
+
+if (OPENMC_USE_UWUW)
+  target_compile_definitions(libopenmc PRIVATE UWUW)
+  target_link_libraries(libopenmc uwuw-shared)
 endif()
 
 #===============================================================================

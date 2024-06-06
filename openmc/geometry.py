@@ -134,7 +134,7 @@ class Geometry:
 
         # Create XML representation
         element = ET.Element("geometry")
-        self.root_universe.create_xml_subelement(element, memo=set())
+        self.root_universe.create_xml_subelement(element)
 
         # Sort the elements in the file
         element[:] = sorted(element, key=lambda x: (
@@ -373,7 +373,7 @@ class Geometry:
 
         """
         if self.root_universe is not None:
-            return self.root_universe.get_all_cells(memo=set())
+            return self.root_universe.get_all_cells()
         else:
             return {}
 
@@ -417,7 +417,7 @@ class Geometry:
 
         """
         if self.root_universe is not None:
-            return self.root_universe.get_all_materials(memo=set())
+            return self.root_universe.get_all_materials()
         else:
             return {}
 
@@ -701,7 +701,7 @@ class Geometry:
             coeffs = tuple(round(surf._coefficients[k],
                                  self.surface_precision)
                            for k in surf._coeff_keys)
-            key = (surf._type,) + coeffs
+            key = (surf._type, surf._boundary_type) + coeffs
             redundancies[key].append(surf)
 
         redundant_surfaces = {replace.id: keep

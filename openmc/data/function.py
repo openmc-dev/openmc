@@ -364,7 +364,7 @@ class Tabulated1D(Function1D):
         """
         dataset = group.create_dataset(name, data=np.vstack(
             [self.x, self.y]))
-        dataset.attrs['type'] = np.string_(type(self).__name__)
+        dataset.attrs['type'] = np.bytes_(type(self).__name__)
         dataset.attrs['breakpoints'] = self.breakpoints
         dataset.attrs['interpolation'] = self.interpolation
 
@@ -460,7 +460,7 @@ class Polynomial(np.polynomial.Polynomial, Function1D):
 
         """
         dataset = group.create_dataset(name, data=self.coef)
-        dataset.attrs['type'] = np.string_(type(self).__name__)
+        dataset.attrs['type'] = np.bytes_(type(self).__name__)
 
     @classmethod
     def from_hdf5(cls, dataset):
@@ -592,7 +592,7 @@ class Sum(Function1D):
 
         """
         sum_group = group.create_group(name)
-        sum_group.attrs['type'] = np.string_(type(self).__name__)
+        sum_group.attrs['type'] = np.bytes_(type(self).__name__)
         sum_group.attrs['n'] = len(self.functions)
         for i, f in enumerate(self.functions):
             f.to_hdf5(sum_group, f'func_{i+1}')

@@ -3,7 +3,7 @@
 #include <fmt/core.h>
 
 #include "openmc/capi.h"
-#include "openmc/constants.h" // For F90_NONE
+#include "openmc/constants.h" // For C_NONE
 #include "openmc/mgxs_interface.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"

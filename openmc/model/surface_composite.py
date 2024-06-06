@@ -46,7 +46,7 @@ class CompositeSurface(ABC):
                 getattr(self, name).boundary_type = boundary_type
 
     def __repr__(self):
-        return "<{} at 0x{:x}>".format(type(self).__name__, id(self))
+        return f"<{type(self).__name__} at 0x{id(self):x}>"
 
     @property
     @abstractmethod
@@ -90,7 +90,7 @@ class CylinderSector(CompositeSurface):
         counterclockwise direction with respect to the first basis axis
         (+y, +z, or +x). Must be greater than :attr:`theta1`.
     center : iterable of float
-       Coordinate for central axes of cylinders in the (y, z), (z, x), or (x, y)
+       Coordinate for central axes of cylinders in the (y, z), (x, z), or (x, y)
        basis. Defaults to (0,0).
     axis : {'x', 'y', 'z'}
         Central axis of the cylinders defining the inner and outer surfaces of
@@ -133,13 +133,13 @@ class CylinderSector(CompositeSurface):
         phi2 = pi / 180 * theta2
 
         # Coords for axis-perpendicular planes
-        p1 = np.array([0., 0., 1.])
+        p1 = np.array([center[0], center[1], 1.])
 
-        p2_plane1 = np.array([r1 * cos(phi1), r1 * sin(phi1), 0.])
-        p3_plane1 = np.array([r2 * cos(phi1), r2 * sin(phi1), 0.])
+        p2_plane1 = np.array([r1 * cos(phi1) + center[0], r1 * sin(phi1) + center[1], 0.])
+        p3_plane1 = np.array([r2 * cos(phi1) + center[0], r2 * sin(phi1) + center[1], 0.])
 
-        p2_plane2 = np.array([r1 * cos(phi2), r1 * sin(phi2), 0.])
-        p3_plane2 = np.array([r2 * cos(phi2), r2 * sin(phi2), 0.])
+        p2_plane2 = np.array([r1 * cos(phi2) + center[0], r1 * sin(phi2)+ center[1], 0.])
+        p3_plane2 = np.array([r2 * cos(phi2) + center[0], r2 * sin(phi2)+ center[1], 0.])
 
         points = [p1, p2_plane1, p3_plane1, p2_plane2, p3_plane2]
         if axis == 'z':
@@ -147,7 +147,7 @@ class CylinderSector(CompositeSurface):
             self.inner_cyl = openmc.ZCylinder(*center, r1, **kwargs)
             self.outer_cyl = openmc.ZCylinder(*center, r2, **kwargs)
         elif axis == 'y':
-            coord_map = [1, 2, 0]
+            coord_map = [0, 2, 1]
             self.inner_cyl = openmc.YCylinder(*center, r1, **kwargs)
             self.outer_cyl = openmc.YCylinder(*center, r2, **kwargs)
         elif axis == 'x':
@@ -155,6 +155,7 @@ class CylinderSector(CompositeSurface):
             self.inner_cyl = openmc.XCylinder(*center, r1, **kwargs)
             self.outer_cyl = openmc.XCylinder(*center, r2, **kwargs)
 
+        # Reorder the points to correspond to the correct central axis
         for p in points:
             p[:] = p[coord_map]
 
@@ -192,8 +193,8 @@ class CylinderSector(CompositeSurface):
             with respect to the first basis axis (+y, +z, or +x). Note that
             negative values translate to an offset in the clockwise direction.
         center : iterable of float
-            Coordinate for central axes of cylinders in the (y, z), (z, x), or (x, y)
-            basis. Defaults to (0,0).
+            Coordinate for central axes of cylinders in the (y, z), (x, z), or
+            (x, y) basis. Defaults to (0,0).
         axis : {'x', 'y', 'z'}
             Central axis of the cylinders defining the inner and outer surfaces
             of the sector. Defaults to 'z'.
@@ -216,10 +217,16 @@ class CylinderSector(CompositeSurface):
         return cls(r1, r2, theta1, theta2, center=center, axis=axis, **kwargs)
 
     def __neg__(self):
-        return -self.outer_cyl & +self.inner_cyl & -self.plane1 & +self.plane2
+        if isinstance(self.inner_cyl, openmc.YCylinder):
+            return -self.outer_cyl & +self.inner_cyl & +self.plane1 & -self.plane2
+        else:
+            return -self.outer_cyl & +self.inner_cyl & -self.plane1 & +self.plane2
 
     def __pos__(self):
-        return +self.outer_cyl | -self.inner_cyl | +self.plane1 | -self.plane2
+        if isinstance(self.inner_cyl, openmc.YCylinder):
+            return +self.outer_cyl | -self.inner_cyl | -self.plane1 | +self.plane2
+        else:
+            return +self.outer_cyl | -self.inner_cyl | +self.plane1 | -self.plane2
 
 
 class IsogonalOctagon(CompositeSurface):
@@ -284,11 +291,11 @@ class IsogonalOctagon(CompositeSurface):
         c1, c2 = center
 
         # Coords for axis-perpendicular planes
-        ctop = c1 + r1
-        cbottom = c1 - r1
+        cright = c1 + r1
+        cleft = c1 - r1
 
-        cright = c2 + r1
-        cleft = c2 - r1
+        ctop = c2 + r1
+        cbottom = c2 - r1
 
         # Side lengths
         if r2 > r1 * sqrt(2):
@@ -309,7 +316,16 @@ class IsogonalOctagon(CompositeSurface):
         p2_lr = np.array([L_basis_ax, -r1, 0.])
         p3_lr = np.array([L_basis_ax, -r1, 1.])
 
-        points = [p1_ur, p2_ur, p3_ur, p1_lr, p2_lr, p3_lr]
+        p1_ll = -p1_ur
+        p2_ll = -p2_ur
+        p3_ll = -p3_ur
+
+        p1_ul = -p1_lr
+        p2_ul = -p2_lr
+        p3_ul = -p3_lr
+
+        points = [p1_ur, p2_ur, p3_ur, p1_lr, p2_lr, p3_lr,
+                  p1_ll, p2_ll, p3_ll, p1_ul, p2_ul, p3_ul]
 
         # Orientation specific variables
         if axis == 'z':
@@ -331,17 +347,19 @@ class IsogonalOctagon(CompositeSurface):
             self.right = openmc.YPlane(cright, **kwargs)
             self.left = openmc.YPlane(cleft, **kwargs)
 
-        # Put our coordinates in (x,y,z) order
+        # Put our coordinates in (x,y,z) order and add the offset
         for p in points:
+            p[0] += c1
+            p[1] += c2
             p[:] = p[coord_map]
 
         self.upper_right = openmc.Plane.from_points(p1_ur, p2_ur, p3_ur,
                                                     **kwargs)
         self.lower_right = openmc.Plane.from_points(p1_lr, p2_lr, p3_lr,
                                                     **kwargs)
-        self.lower_left = openmc.Plane.from_points(-p1_ur, -p2_ur, -p3_ur,
+        self.lower_left = openmc.Plane.from_points(p1_ll, p2_ll, p3_ll,
                                                    **kwargs)
-        self.upper_left = openmc.Plane.from_points(-p1_lr, -p2_lr, -p3_lr,
+        self.upper_left = openmc.Plane.from_points(p1_ul, p2_ul, p3_ul,
                                                    **kwargs)
 
     def __neg__(self):
@@ -635,7 +653,7 @@ class XConeOneSided(CompositeSurface):
         z-coordinate of the apex. Defaults to 0.
     r2 : float, optional
         Parameter related to the aperture [:math:`\\rm cm^2`].
-        It can be interpreted as the increase in the radius squared per cm along 
+        It can be interpreted as the increase in the radius squared per cm along
         the cone's axis of revolution.
     up : bool
         Whether to select the side of the cone that extends to infinity in the
@@ -695,7 +713,7 @@ class YConeOneSided(CompositeSurface):
         z-coordinate of the apex. Defaults to 0.
     r2 : float, optional
         Parameter related to the aperture [:math:`\\rm cm^2`].
-        It can be interpreted as the increase in the radius squared per cm along 
+        It can be interpreted as the increase in the radius squared per cm along
         the cone's axis of revolution.
     up : bool
         Whether to select the side of the cone that extends to infinity in the
@@ -749,7 +767,7 @@ class ZConeOneSided(CompositeSurface):
         z-coordinate of the apex. Defaults to 0.
     r2 : float, optional
         Parameter related to the aperture [:math:`\\rm cm^2`].
-        It can be interpreted as the increase in the radius squared per cm along 
+        It can be interpreted as the increase in the radius squared per cm along
         the cone's axis of revolution.
     up : bool
         Whether to select the side of the cone that extends to infinity in the
@@ -1029,9 +1047,9 @@ class Polygon(CompositeSurface):
         -------
         None
         """
-        # Only attempt the triangulation up to 3 times.
-        if depth > 2:
-            raise RuntimeError('Could not create a valid triangulation after 3'
+        # Only attempt the triangulation up to 5 times.
+        if depth > 4:
+            raise RuntimeError('Could not create a valid triangulation after 5'
                                ' attempts')
 
         tri = Delaunay(points, qhull_options='QJ')
@@ -1039,7 +1057,7 @@ class Polygon(CompositeSurface):
         # included in the triangulation, break it into two line segments.
         n = len(points)
         new_pts = []
-        for i, j in zip(range(n), range(1, n +1)):
+        for i, j in zip(range(n), range(1, n + 1)):
             # If both vertices of any edge are not found in any simplex, insert
             # a new point between them.
             if not any([i in s and j % n in s for s in tri.simplices]):
@@ -1077,7 +1095,8 @@ class Polygon(CompositeSurface):
             return group
         # If group is empty, grab the next simplex in the dictionary and recurse
         if group is None:
-            sidx = next(iter(neighbor_map))
+            # Start with smallest neighbor lists
+            sidx = sorted(neighbor_map.items(), key=lambda item: len(item[1]))[0][0]
             return self._group_simplices(neighbor_map, group=[sidx])
         # Otherwise use the last simplex in the group
         else:
@@ -1087,13 +1106,16 @@ class Polygon(CompositeSurface):
             # For each neighbor check if it is part of the same convex
             # hull as the rest of the group. If yes, recurse. If no, continue on.
             for n in neighbors:
-                if n in group or neighbor_map.get(n, None) is None:
+                if n in group or neighbor_map.get(n) is None:
                     continue
                 test_group = group + [n]
                 test_point_idx = np.unique(self._tri.simplices[test_group, :])
                 test_points = self.points[test_point_idx]
-                # If test_points are convex keep adding to this group
-                if len(test_points) == len(ConvexHull(test_points).vertices):
+                test_hull = ConvexHull(test_points, qhull_options='Qc')
+                pts_on_hull = len(test_hull.vertices) + len(test_hull.coplanar)
+                # If test_points are convex (including coplanar) keep adding to
+                # this group
+                if len(test_points) == pts_on_hull:
                     group = self._group_simplices(neighbor_map, group=test_group)
             return group
 

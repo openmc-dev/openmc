@@ -733,6 +733,14 @@ How are Tallies Handled?
 Most tallies, filters, and scores that you would expect to work with a
 multigroup solver like random ray should work. For example, you can define 3D
 mesh tallies with energy filters and flux, fission, and nu-fission scores, etc.
+
+Additionally, as :math:`k_{eff}` is updated at each generation, the fission
+source at each FSR is used to compute the Shannon entropy. This follows the
+:ref:`same procedure for computing Shannon entropy in continuous-energy or 
+multigroup Monte Carlo simulations <_method-shannon-entropy>`, except that 
+fission sites at FSRs are considered, rather than fission sites of user-defined 
+regular meshes.
+
 There are some restrictions though. For starters, it is assumed that all filter
 mesh boundaries will conform to physical surface boundaries (or lattice
 boundaries) in the simulation geometry. It is acceptable for multiple cells

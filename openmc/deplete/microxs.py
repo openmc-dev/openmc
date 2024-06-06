@@ -21,6 +21,7 @@ import openmc
 from .chain import Chain, REACTIONS
 from .coupled_operator import _find_cross_sections, _get_nuclides_with_data
 import openmc.lib
+from openmc.mpi import comm
 
 _valid_rxns = list(REACTIONS)
 _valid_rxns.append('fission')
@@ -133,12 +134,15 @@ def get_microxs_and_flux(
         run_kwargs.setdefault('cwd', temp_dir)
         statepoint_path = model.run(**run_kwargs)
 
-        with StatePoint(statepoint_path) as sp:
-            rr_tally = sp.tallies[rr_tally.id]
-            rr_tally._read_results()
-            flux_tally = sp.tallies[flux_tally.id]
-            flux_tally._read_results()
+        if comm.rank == 0
+            with StatePoint(statepoint_path) as sp:
+                rr_tally = sp.tallies[rr_tally.id]
+                rr_tally._read_results()
+                flux_tally = sp.tallies[flux_tally.id]
+                flux_tally._read_results()
 
+    rr_tally = comm.bcast(rr_tally)
+    flux_tally = comm.bcast(flux_tally)
     # Get reaction rates and flux values
     reaction_rates = rr_tally.get_reshaped_data()  # (domains, groups, nuclides, reactions)
     flux = flux_tally.get_reshaped_data()  # (domains, groups, 1, 1)
@@ -372,3 +376,4 @@ class MicroXS:
         df = pd.DataFrame({'xs': self.data.flatten()}, index=multi_index)
         df.to_csv(*args, **kwargs)
 
+                                                                                                                                                                                                                                       

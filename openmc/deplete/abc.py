@@ -31,11 +31,9 @@ from .reaction_rates import ReactionRates
 from .transfer_rates import TransferRates
 from openmc import Material, Cell
 from .reactivity_control import (
+    ReactivityController,   
     CellReactivityController,
-    GeometricalCellReactivityController,
-    TemperatureCellReactivityController,
-    MaterialReactivityController,
-    RefuelMaterialReactivityController
+    MaterialReactivityController
 )
 
 __all__ = [
@@ -718,25 +716,7 @@ class Integrator(ABC):
 
     @reactivity_control.setter
     def reactivity_control(self, reactivity_control):
-        if isinstance(reactivity_control, CellReactivityController):
-            if not isinstance(reactivity_control.cell, Cell):
-                raise TypeError(
-                    "Reactivity control attribute must be Cell "
-                    "not {}".format(type(reactivity_control.cell)))
-        elif isinstance(reactivity_control, MaterialReactivityController):
-            if not isinstance(reactivity_control.material, Material):
-                raise TypeError(
-                    "Reactivity control attribute must be Material "
-                    "not {}".format(type(reactivity_control.material)))
-        else:
-            raise TypeError(
-                "Reactivity Control must either be "
-                "CellReactivityController, or MaterialReactivityController, "
-                "not {}".format(type(reactivity_control)))
-
-        check_value('attribute', reactivity_control.attrib_name,
-                    ('translation', 'rotation', 'temperature', 'refuel'))
-
+        check_type('reactivity control', reactivity_control, ReactivityController)
         self._reactivity_control = reactivity_control
 
     def _timed_deplete(self, n, rates, dt, matrix_func=None):
@@ -945,34 +925,26 @@ class Integrator(ABC):
 
     def add_reactivity_control(
             self,
-            obj: Union[Cell, Material, int, str],
-            attr: str,
+            obj: Union[Cell, Material],
             **kwargs):
-        """Add reactivity control to integrator scheme.
+        """Add pre-defined Cell based or Material bases reactivity control to
+        integrator scheme.
 
         Parameters
         ----------
-        obj : openmc.Cell or openmc.Material object or id or str name
-            Cell or Materials identifier to where add reactivity control
-        attr : str
-            Attribute to specify the type of reactivity control. Accepted values
-            are: 'translation', 'rotation', 'temperature' for an openmc.Cell
-            object; 'refuel' for an openmc.Material object.
+        obj : openmc.Cell or openmc.Material
+            Cell or Material identifier to where add reactivity control
         **kwargs
-            keyword arguments that are passed to the ReactivityController class.
+            keyword arguments that are passed to the specific ReactivityController
+            class.
 
         """
-        check_value('attribute', attr, ('translation', 'rotation',
-                                        'temperature', 'refuel'))
-        if attr in ('translation', 'rotation'):
-            reactivity_control = GeometricalCellReactivityController
-        elif attr == 'temperature':
-            reactivity_control = TemperatureCellReactivityController
-        elif attr == 'refuel':
-            reactivity_control = RefuelMaterialReactivityController
-
-        self._reactivity_control = reactivity_control.from_params(obj, attr,
-                                        self.operator,  **kwargs)
+        if isinstance(obj, Cell):
+            reactivity_control = CellReactivityController
+        elif isinstance(obj, Material):
+            reactivity_control = MaterialReactivityController
+        self._reactivity_control = reactivity_control.from_params(obj,
+                                        self.operator, **kwargs)
 
 @add_params
 class SIIntegrator(Integrator):

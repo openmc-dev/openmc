@@ -9,9 +9,8 @@ import openmc
 import openmc.lib
 from openmc.deplete import CoupledOperator
 from openmc.deplete import (
-    GeometricalCellReactivityController,
-    TemperatureCellReactivityController,
-    RefuelMaterialReactivityController
+    CellReactivityController,
+    MaterialReactivityController
 )
 
 CHAIN_PATH = Path(__file__).parents[1] / "chain_simple.xml"
@@ -74,62 +73,52 @@ def integrator(operator):
     return openmc.deplete.PredictorIntegrator(
             operator, [1,1], 0.0, timestep_units = 'd')
 
-@pytest.mark.parametrize("case_name, obj, attribute, bracket, limit, axis, vec", [
-    ('cell translation','universe_cell', 'translation', [-1,1], [-10,10], 2, None),
-    ('cell rotation', 'universe_cell', 'rotation', [-1,1], [-10,10], 2, None),
-    ('single cell temperature', 'fuel_cell', 'temperature', [-1,1], [-10,10], 2, None ),
-    ('multi cell', 'universe_cell', 'temperature',  [-1,1], [-10,10], 2, None ),
-    ('material refuel', 'fuel', 'refuel', [-1,1], [-10,10], None, {'U235':0.1, 'U238':0.9}),
-    ('invalid_1', 'universe_cell', 'refuel', [-1,1], [-10,10], None, {'U235':0.1, 'U238':0.9}),
-    ('invalid_2', 'fuel', 'temperature',  [-1,1], [-10,10], 2, None ),
-    ('invalid_3', 'fuel', 'translation', [-1,1], [-10,10], 2, None),
+@pytest.fixture
+def mix_mat():
+    mix_mat = openmc.Material()
+    mix_mat.add_element("U", 1, percent_type="ao", enrichment=90)
+    mix_mat.add_element("O", 2)
+    mix_mat.set_density("g/cc", 10.4)
+    return mix_mat
+
+@pytest.mark.parametrize("case_name, obj, attribute, bracket, limit, axis", [
+    ('cell translation','universe_cell', 'translation', [-1,1], [-10,10], 2),
+    ('cell rotation', 'universe_cell', 'rotation', [-1,1], [-10,10], 2),
+    ('material mix', 'fuel', None, [0,5], [-10,10], None),
     ])
 def test_attributes(case_name, model, operator, integrator, obj, attribute,
-                    bracket, limit, axis, vec):
+                    bracket, limit, axis, mix_mat):
     """
     Test classes attributes are set correctly
     """
+    if attribute:
+        integrator.reactivity_control = CellReactivityController(
+                cell=obj,
+                operator=operator,
+                attribute=attribute,
+                bracket=bracket,
+                bracket_limit=limit,
+                axis=axis
+        )
+        assert integrator.reactivity_control.depletable_cells == [cell for cell in  \
+                model.geometry.get_cells_by_name(obj)[0].fill.cells.values() \
+                if cell.fill.depletable]
+        assert integrator.reactivity_control.axis == axis
 
-    kwargs = {'bracket': bracket, 'bracket_limit':limit, 'tol': 0.1,}
-
-    if vec is not None:
-        kwargs['mat_vector']=vec
-
-    if axis is not None:
-        kwargs['axis'] = axis
-
-    if case_name == "invalid_1":
-        with pytest.raises(ValueError) as e:
-            integrator.add_reactivity_control(obj, attribute, **kwargs)
-        assert str(e.value) == 'Unable to set "Material name" to "universe_cell" '\
-                               'since it is not in "[\'fuel\', \'water\']"'
-    elif case_name == "invalid_2":
-        with pytest.raises(ValueError) as e:
-            integrator.add_reactivity_control(obj, attribute, **kwargs)
-        assert str(e.value) == 'Unable to set "Cell name exists" to "fuel" since '\
-                   'it is not in "[\'fuel_cell\', \'universe_cell\', \'\', \'\']"'
-
-    elif case_name == "invalid_3":
-        with pytest.raises(ValueError) as e:
-            integrator.add_reactivity_control(obj, attribute, **kwargs)
-        assert str(e.value) == 'Unable to set "Cell name exists" to "fuel" since '\
-                   'it is not in "[\'fuel_cell\', \'universe_cell\', \'\', \'\']"'
     else:
-        integrator.add_reactivity_control(obj, attribute, **kwargs)
-        if attribute in ('translation','rotation'):
-            assert integrator.reactivity_control.universe_cells == [cell for cell in  \
-                    model.geometry.get_cells_by_name(obj)[0].fill.cells.values() \
-                    if cell.fill.depletable]
-            assert integrator.reactivity_control.axis == axis
+        integrator.reactivity_control = MaterialReactivityController(
+                material=obj,
+                operator=operator,
+                material_to_mix=mix_mat,
+                bracket=bracket,
+                bracket_limit=limit
+        )
+        assert integrator.reactivity_control.material_to_mix == mix_mat
 
-        elif attribute == 'refuel':
-            assert integrator.reactivity_control.mat_vector == vec
-
-        assert integrator.reactivity_control.attrib_name == attribute
-        assert integrator.reactivity_control.bracket == bracket
-        assert integrator.reactivity_control.bracket_limit == limit
-        assert integrator.reactivity_control.burn_mats == operator.burnable_mats
-        assert integrator.reactivity_control.local_mats == operator.local_mats
+    assert integrator.reactivity_control.bracket == bracket
+    assert integrator.reactivity_control.bracket_limit == limit
+    assert integrator.reactivity_control.burn_mats == operator.burnable_mats
+    assert integrator.reactivity_control.local_mats == operator.local_mats
 
 @pytest.mark.parametrize("obj, attribute, value_to_set", [
     ('universe_cell', 'translation', 0),
@@ -140,9 +129,14 @@ def test_cell_methods(run_in_tmpdir, model, operator, integrator, obj, attribute
     """
     Test cell base class internal method
     """
-    kwargs = {'bracket':[-1,1], 'bracket_limit':[-10,10], 'axis':2, 'tol':0.1}
-
-    integrator.add_reactivity_control(obj, attribute, **kwargs)
+    integrator.reactivity_control = CellReactivityController(
+                    cell=obj,
+                    operator=operator,
+                    attribute=attribute,
+                    bracket=[-1,1],
+                    bracket_limit=[-10,10],
+                    axis=2
+            )
 
     model.export_to_xml()
     openmc.lib.init()
@@ -150,63 +144,79 @@ def test_cell_methods(run_in_tmpdir, model, operator, integrator, obj, attribute
     integrator.reactivity_control._set_cell_attrib(value_to_set)
     assert integrator.reactivity_control._get_cell_attrib() == value_to_set
 
-    vol = integrator.reactivity_control._calculate_volumes()
+    vol = integrator.reactivity_control._adjust_volumes()
     integrator.reactivity_control._update_x_and_set_volumes(operator.number.number, vol)
 
-    for cell in integrator.reactivity_control.universe_cells:
+    for cell in integrator.reactivity_control.depletable_cells:
         mat_id = str(cell.fill.id)
         index_mat = operator.number.index_mat[mat_id]
         assert vol[mat_id] == operator.number.volume[index_mat]
 
     openmc.lib.finalize()
 
-@pytest.mark.parametrize("nuclide, atoms_to_add", [
-    ('U238', 1.0e22),
-    ('Xe135', 1.0e21)
+@pytest.mark.parametrize("units, value, dilute", [
+    ('cc', 1.0, True),
+    ('cm3', 1.0, False),
+    ('grams', 1.0, True),
+    ('grams', 1.0, False),
+    ('atoms', 1.0, True),
+    ('atoms', 1.0, False),
     ])
-def test_internal_methods(run_in_tmpdir, model, operator, integrator, nuclide,
-                          atoms_to_add):
+def test_internal_methods(run_in_tmpdir, model, operator, integrator, mix_mat,
+                          units, value, dilute):
     """
     Method to update volume in AtomNumber after depletion step.
     Method inheritated by all derived classes so one check is enough.
     """
 
-    kwargs = {'bracket':[-1,1], 'bracket_limit':[-10,10], 'mat_vector':{}}
-
-    integrator.add_reactivity_control('fuel', 'refuel', **kwargs)
+    integrator.reactivity_control = MaterialReactivityController(
+            material='fuel',
+            operator=operator,
+            material_to_mix=mix_mat,
+            bracket=[-1,1],
+            bracket_limit=[-10,10],
+            units=units,
+            dilute=dilute
+    )
 
     model.export_to_xml()
     openmc.lib.init()
 
-    #Increase  number of atoms of U238 in fuel by fix amount and check the
-    # volume increase at constant-density
-    #extract fuel material from model materials
+    # check material volume are adjusted correctly
     mat = integrator.reactivity_control.material
     mat_index = operator.number.index_mat[str(mat.id)]
-    nuc_index = operator.number.index_nuc[nuclide]
-    vol = operator.number.get_mat_volume(str(mat.id))
-    operator.number.number[mat_index][nuc_index] += atoms_to_add
-    integrator.reactivity_control._update_volumes()
+    nuc_index = operator.number.index_nuc['U235']
+    vol_before_mix = operator.number.get_mat_volume(str(mat.id))
 
-    vol_to_compare = vol + (atoms_to_add * openmc.data.atomic_mass(nuclide) /\
-                            openmc.data.AVOGADRO / mat.density)
+    # set mix_mat volume
+    integrator.reactivity_control._set_mix_material_volume(value)
+    mix_mat_vol = mix_mat.volume
+    #extract nuclide in atoms
+    mix_nuc_atoms = mix_mat.get_nuclide_atoms()['U235']
+    operator.number.number[mat_index][nuc_index] += mix_nuc_atoms
+    #update volume
+    vol_after_mix = integrator.reactivity_control._adjust_volumes(mix_mat_vol)
 
-    assert operator.number.get_mat_volume(str(mat.id)) == pytest.approx(vol_to_compare)
+    if dilute:
+        assert vol_before_mix + mix_mat_vol == vol_after_mix[str(mat.id)]
+    else:
+        assert vol_before_mix == vol_after_mix[str(mat.id)]
 
+    #check nuclide densities get assigned correctly in memory
     x = [i[:operator.number.n_nuc_burn] for i in operator.number.number]
     integrator.reactivity_control._update_materials(x)
-    nuc_index_lib = openmc.lib.materials[mat.id].nuclides.index(nuclide)
-    dens_to_compare = 1.0e-24 * operator.number.get_atom_density(str(mat.id), nuclide)
+    nuc_index_lib = openmc.lib.materials[mat.id].nuclides.index('U235')
+    dens_to_compare = 1.0e-24 * operator.number.get_atom_density(str(mat.id), 'U235')
 
     assert openmc.lib.materials[mat.id].densities[nuc_index_lib] == pytest.approx(dens_to_compare)
 
-    volumes = {str(mat.id): vol + 1}
-    new_x = integrator.reactivity_control._update_x_and_set_volumes(x, volumes)
-    dens_to_compare = 1.0e24 *  volumes[str(mat.id)] *\
+    # check volumes get assigned correctly in AtomNumber
+    new_x = integrator.reactivity_control._update_x_and_set_volumes(x, vol_after_mix)
+    dens_to_compare = 1.0e24 *  vol_after_mix[str(mat.id)] *\
                       openmc.lib.materials[mat.id].densities[nuc_index_lib]
     assert new_x[mat_index][nuc_index] == pytest.approx(dens_to_compare)
 
     # assert volume in AtomNumber is set correctly
-    assert operator.number.get_mat_volume(str(mat.id)) == volumes[str(mat.id)]
+    assert operator.number.get_mat_volume(str(mat.id)) == vol_after_mix[str(mat.id)]
 
     openmc.lib.finalize()

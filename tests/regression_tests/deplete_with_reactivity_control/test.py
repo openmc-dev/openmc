@@ -10,6 +10,10 @@ import numpy as np
 import openmc
 import openmc.lib
 from openmc.deplete import CoupledOperator
+from openmc.deplete import (
+    CellReactivityController,
+    MaterialReactivityController
+)
 
 from tests.regression_tests import config
 
@@ -78,13 +82,21 @@ def model():
 
     return openmc.Model(geometry, materials, settings)
 
-@pytest.mark.parametrize("obj, attribute, bracket_limit, axis, vec, ref_result", [
-    ('trans_cell', 'translation', [-40,40], 2, None, 'depletion_with_translation'),
-    ('rot_cell', 'rotation', [-90,90], 2, None, 'depletion_with_rotation'),
-    ('f', 'refuel', [-100,100], None, {'U235':0.9, 'U238':0.1}, 'depletion_with_refuel')
+@pytest.fixture
+def mix_mat():
+    mix_mat = openmc.Material()
+    mix_mat.add_element("U", 1, percent_type="ao", enrichment=90)
+    mix_mat.add_element("O", 2)
+    mix_mat.set_density("g/cc", 10.4)
+    return mix_mat
+
+@pytest.mark.parametrize("obj, attribute, bracket, bracket_limit, axis, ref_result", [
+    ('trans_cell', 'translation', [-5,5], [-40,40], 2, 'depletion_with_translation'),
+    ('rot_cell', 'rotation', [-5,5], [-90,90], 2, 'depletion_with_rotation'),
+    ('f', None, [-1,2], [-100,100], None, 'depletion_with_refuel')
     ])
-def test_reactivity_control(run_in_tmpdir, model, obj, attribute, bracket_limit,
-                    axis, vec, ref_result):
+def test_reactivity_control(run_in_tmpdir, model, obj, attribute, bracket,
+                    bracket_limit, axis, ref_result, mix_mat):
 
     chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
     op = CoupledOperator(model, chain_file)
@@ -92,16 +104,23 @@ def test_reactivity_control(run_in_tmpdir, model, obj, attribute, bracket_limit,
     integrator = openmc.deplete.PredictorIntegrator(
         op, [1], 174., timestep_units = 'd')
 
-    kwargs = {'bracket': [-4,4], 'bracket_limit':bracket_limit,
-              'tol': 0.1,}
-
-    if vec is not None:
-        kwargs['mat_vector']=vec
-
-    if axis is not None:
-        kwargs['axis'] = axis
-
-    integrator.add_reactivity_control(obj, attribute, **kwargs)
+    if attribute:
+        integrator.reactivity_control = CellReactivityController(
+                cell=obj,
+                operator=op,
+                attribute=attribute,
+                bracket=bracket,
+                bracket_limit=bracket_limit,
+                axis=axis
+        )
+    else:
+        integrator.reactivity_control = MaterialReactivityController(
+                material=obj,
+                operator=op,
+                material_to_mix=mix_mat,
+                bracket=bracket,
+                bracket_limit=bracket_limit,
+        )
     integrator.integrate()
 
     # Get path to test and reference results

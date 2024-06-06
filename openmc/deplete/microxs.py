@@ -134,7 +134,7 @@ def get_microxs_and_flux(
         run_kwargs.setdefault('cwd', temp_dir)
         statepoint_path = model.run(**run_kwargs)
 
-        if comm.rank == 0
+        if comm.rank == 0:
             with StatePoint(statepoint_path) as sp:
                 rr_tally = sp.tallies[rr_tally.id]
                 rr_tally._read_results()
@@ -376,4 +376,3 @@ class MicroXS:
         df = pd.DataFrame({'xs': self.data.flatten()}, index=multi_index)
         df.to_csv(*args, **kwargs)
 
-                                                                                                                                                                                                                                       

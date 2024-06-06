@@ -124,15 +124,6 @@ def get_microxs_and_flux(
     flux_tally.scores = ['flux']
     model.tallies = openmc.Tallies([rr_tally, flux_tally])
 
-    if openmc.lib.is_initialized:
-        openmc.lib.finalize()
-
-        if comm.rank == 0:
-            model.export_to_model_xml()
-        comm.barrier()
-        # Reinitialize with tallies
-        openmc.lib.init(intracomm=comm)
-
     # create temporary run
     with TemporaryDirectory() as temp_dir:
         if run_kwargs is None:
@@ -380,3 +371,4 @@ class MicroXS:
         )
         df = pd.DataFrame({'xs': self.data.flatten()}, index=multi_index)
         df.to_csv(*args, **kwargs)
+

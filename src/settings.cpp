@@ -703,10 +703,8 @@ void read_settings_xml(pugi::xml_node root)
     // to bank source points.
     if (check_for_node(node_ssw, "surface_ids")) {
       auto temp = get_node_array<int>(node_ssw, "surface_ids");
-      if (!temp.empty()) {
-        for (const auto& b : temp) {
-          source_write_surf_id.insert(b);
-        }
+      for (const auto& b : temp) {
+        source_write_surf_id.insert(b);
       }
     }
 

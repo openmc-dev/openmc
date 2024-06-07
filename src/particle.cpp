@@ -886,8 +886,7 @@ ParticleType str_to_particle_type(std::string str)
   }
 }
 
-void add_surf_source_to_bank(
-  Particle& p, const Surface& surf, bool vacuum_bc)
+void add_surf_source_to_bank(Particle& p, const Surface& surf, bool vacuum_bc)
 {
   if (surf.surf_source_ && simulation::current_batch > settings::n_inactive &&
       !simulation::surf_source_bank.full()) {

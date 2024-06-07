@@ -623,7 +623,7 @@ class SurfaceSourceWriteTestHarness(PyAPITestHarness):
     "folder, model_name, parameter",
     [
         ("case-1", "model_1", {"max_particles": 3000}),
-        ("case-2", "model_1", {"max_particles": 3000, "surface_ids": [4]}),
+        ("case-2", "model_1", {"max_particles": 3000, "surface_ids": [8]}),
         (
             "case-3",
             "model_1",

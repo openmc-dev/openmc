@@ -21,6 +21,7 @@ import openmc
 from .chain import Chain, REACTIONS
 from .coupled_operator import _find_cross_sections, _get_nuclides_with_data
 import openmc.lib
+from openmc.mpi import comm
 
 _valid_rxns = list(REACTIONS)
 _valid_rxns.append('fission')

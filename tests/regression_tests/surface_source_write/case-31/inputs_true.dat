@@ -15,7 +15,7 @@
   <geometry>
     <cell fill="1" id="8" region="101 -102 103 -104 105 -106" universe="2"/>
     <cell id="9" material="41" region="107 -108 109 -110 111 -112 (-101 | 102 | -103 | 104 | -105 | 106)" universe="2"/>
-    <dagmc_universe filename="../dagmc.h5m" id="1"/>
+    <dagmc_universe filename="../../dagmc/legacy/dagmc.h5m" id="1"/>
     <surface coeffs="-22.0" id="101" type="z-plane"/>
     <surface coeffs="22.0" id="102" type="z-plane"/>
     <surface coeffs="-22.0" id="103" type="x-plane"/>

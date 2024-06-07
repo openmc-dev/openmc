@@ -787,7 +787,7 @@ def model_dagmc_1():
     # Geometry
     # =============================================================================
 
-    dagmc_univ = openmc.DAGMCUniverse(Path("../dagmc.h5m"))
+    dagmc_univ = openmc.DAGMCUniverse(Path("../../dagmc/legacy/dagmc.h5m"))
     model.geometry = openmc.Geometry(dagmc_univ)
 
     # =============================================================================
@@ -841,7 +841,7 @@ def model_dagmc_2():
     # Geometry
     # =============================================================================
 
-    dagmc_univ = openmc.DAGMCUniverse(Path("../dagmc.h5m"))
+    dagmc_univ = openmc.DAGMCUniverse(Path("../../dagmc/legacy/dagmc.h5m"))
 
     # -----------------------------------------------------------------------------
     # Box 1

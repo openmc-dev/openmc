@@ -530,100 +530,48 @@ void add_surf_source_to_bank(
         return;
       }
 
-      // If only one level of coordinate is present before and after crossing
-      // the surface use this simple check instead of creating sets
-      if (p.n_coord_last() == 1 && p.n_coord() == 1) {
-
-        // If vacuum boundary condition, return if cell before is not cell of
-        // interest
-        if (vacuum_bc) {
-          if (p.cell_last(p.n_coord_last() - 1) != cell_idx) {
-            return;
-          }
-        } else {
-
-          // If cell is the same before and after crossing
-          if (p.cell_last(p.n_coord_last() - 1) == p.lowest_coord().cell) {
-            return;
-          }
-
-          // If cell of interest is not in leaving and not in entering
-          if (p.cell_last(p.n_coord_last() - 1) != cell_idx &&
-              p.lowest_coord().cell != cell_idx) {
-            return;
-          }
-
-          // If cellfrom and the cell before crossing is not the cell of
-          // interest
-          if (settings::ssw_cell_type == SSWCellType::From &&
-              p.cell_last(p.n_coord_last() - 1) != cell_idx) {
-            return;
-          }
-
-          // If cellto and the cell after crossing is not the cell of interest
-          if (settings::ssw_cell_type == SSWCellType::To &&
-              p.lowest_coord().cell != cell_idx) {
-            return;
-          }
+      // Check if the cell of interest has been left
+      bool left = false;
+      for (int i = 0; i < p.n_coord_last(); ++i) {
+        if (p.cell_last(i) == cell_idx) {
+          left = true;
         }
+      }
 
-        // If more than one level of coordinates, sets have to be created
+      // Check if the cell of interest has been entered
+      bool entered = false;
+      for (int i = 0; i < p.n_coord(); ++i) {
+        if (p.coord(i).cell == cell_idx) {
+          entered = true;
+        }
+      }
+
+      // Vacuum boundary conditions: return if cell is not left
+      if (vacuum_bc) {
+        if (!left) {
+          return;
+        }
       } else {
-        std::unordered_set<int> leaving_cells;
-        for (int i = 0; i < p.n_coord(); ++i) {
-          leaving_cells.insert(p.coord(i).cell);
+
+        // If we both enter and leave the cell of interest
+        if (entered && left) {
+          return;
         }
-        // If vacuum boundary conditions, only check if cell of interest is in
-        // the leaving lists
-        if (vacuum_bc) {
-          if (leaving_cells.find(cell_idx) == leaving_cells.end()) {
-            return;
-          }
-        } else {
-          std::unordered_set<int> entering_cells;
-          for (int i = 0; i < p.n_coord_last(); ++i) {
-            entering_cells.insert(p.cell_last(i));
-          }
 
-          // Determine intersection between entering and leaving sets
-          std::unordered_set<int> intersection_cells;
-          for (const auto& elem : entering_cells) {
-            if (leaving_cells.find(elem) != leaving_cells.end()) {
-              intersection_cells.insert(elem);
-            }
-          }
+        // If we did not enter nor leave the cell of interest
+        if (!entered && !left) {
+          return;
+        }
 
-          // Remove the intersection from the sets
-          for (const auto& elem : intersection_cells) {
-            entering_cells.erase(elem);
-            leaving_cells.erase(elem);
-          }
+        // If cellfrom and the cell before crossing is not the cell of
+        // interest
+        if (settings::ssw_cell_type == SSWCellType::From && !left) {
+          return;
+        }
 
-          // No change between leaving and entering sets
-          if (entering_cells.size() == 0 && leaving_cells.size() == 0) {
-            return;
-          }
-
-          // If cell of interest is not in leaving and not in entering sets
-          if (entering_cells.find(cell_idx) == entering_cells.end()) {
-            if (leaving_cells.find(cell_idx) == leaving_cells.end()) {
-              return;
-            }
-          }
-
-          // If cellfrom and cells before crossing do not contain the cell of
-          // interest
-          if (settings::ssw_cell_type == SSWCellType::From &&
-              entering_cells.find(cell_idx) == entering_cells.end()) {
-            return;
-          }
-
-          // If cellto and cells after crossing do not contain the cell of
-          // interest
-          if (settings::ssw_cell_type == SSWCellType::To &&
-              leaving_cells.find(cell_idx) == leaving_cells.end()) {
-            return;
-          }
+        // If cellto and the cell after crossing is not the cell of interest
+        if (settings::ssw_cell_type == SSWCellType::To && !entered) {
+          return;
         }
       }
     }

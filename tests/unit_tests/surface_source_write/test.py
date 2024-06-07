@@ -170,7 +170,7 @@ def model_dagmc(request):
     # =============================================================================
     # Geometry
     # =============================================================================
-    dagmc_path = Path(request.fspath).parent / "dagmc.h5m"
+    dagmc_path = Path(request.fspath).parent / "../../regression_tests/dagmc/legacy/dagmc.h5m"
     dagmc_univ = openmc.DAGMCUniverse(dagmc_path)
     model.geometry = openmc.Geometry(dagmc_univ)
 

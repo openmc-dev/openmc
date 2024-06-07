@@ -513,84 +513,6 @@ void Particle::pht_secondary_particles()
   }
 }
 
-void add_surf_source_to_bank(
-  Particle& p, const Surface& surf, bool vacuum_bc = false)
-{
-  if (surf.surf_source_ && simulation::current_batch > settings::n_inactive &&
-      !simulation::surf_source_bank.full()) {
-
-    // If a cell/cellfrom/cellto parameter is defined
-    if (settings::ssw_cell_id != C_NONE) {
-
-      // Retrieve cell index and storage type
-      int cell_idx = model::cell_map[settings::ssw_cell_id];
-
-      // Leave if cellto with vacuum boundary condition
-      if (vacuum_bc && settings::ssw_cell_type == SSWCellType::To) {
-        return;
-      }
-
-      // Check if the cell of interest has been left
-      bool left = false;
-      for (int i = 0; i < p.n_coord_last(); ++i) {
-        if (p.cell_last(i) == cell_idx) {
-          left = true;
-        }
-      }
-
-      // Check if the cell of interest has been entered
-      bool entered = false;
-      for (int i = 0; i < p.n_coord(); ++i) {
-        if (p.coord(i).cell == cell_idx) {
-          entered = true;
-        }
-      }
-
-      // Vacuum boundary conditions: return if cell is not left
-      if (vacuum_bc) {
-        if (!left) {
-          return;
-        }
-      } else {
-
-        // If we both enter and leave the cell of interest
-        if (entered && left) {
-          return;
-        }
-
-        // If we did not enter nor leave the cell of interest
-        if (!entered && !left) {
-          return;
-        }
-
-        // If cellfrom and the cell before crossing is not the cell of
-        // interest
-        if (settings::ssw_cell_type == SSWCellType::From && !left) {
-          return;
-        }
-
-        // If cellto and the cell after crossing is not the cell of interest
-        if (settings::ssw_cell_type == SSWCellType::To && !entered) {
-          return;
-        }
-      }
-    }
-
-    SourceSite site;
-    site.r = p.r();
-    site.u = p.u();
-    site.E = p.E();
-    site.time = p.time();
-    site.wgt = p.wgt();
-    site.delayed_group = p.delayed_group();
-    site.surf_id = surf.id_;
-    site.particle = p.type();
-    site.parent_id = p.id();
-    site.progeny_id = p.n_progeny();
-    int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
-  }
-}
-
 void Particle::cross_surface()
 {
   int i_surface = std::abs(surface());
@@ -961,6 +883,84 @@ ParticleType str_to_particle_type(std::string str)
     return ParticleType::positron;
   } else {
     throw std::invalid_argument {fmt::format("Invalid particle name: {}", str)};
+  }
+}
+
+void add_surf_source_to_bank(
+  Particle& p, const Surface& surf, bool vacuum_bc)
+{
+  if (surf.surf_source_ && simulation::current_batch > settings::n_inactive &&
+      !simulation::surf_source_bank.full()) {
+
+    // If a cell/cellfrom/cellto parameter is defined
+    if (settings::ssw_cell_id != C_NONE) {
+
+      // Retrieve cell index and storage type
+      int cell_idx = model::cell_map[settings::ssw_cell_id];
+
+      // Leave if cellto with vacuum boundary condition
+      if (vacuum_bc && settings::ssw_cell_type == SSWCellType::To) {
+        return;
+      }
+
+      // Check if the cell of interest has been left
+      bool left = false;
+      for (int i = 0; i < p.n_coord_last(); ++i) {
+        if (p.cell_last(i) == cell_idx) {
+          left = true;
+        }
+      }
+
+      // Check if the cell of interest has been entered
+      bool entered = false;
+      for (int i = 0; i < p.n_coord(); ++i) {
+        if (p.coord(i).cell == cell_idx) {
+          entered = true;
+        }
+      }
+
+      // Vacuum boundary conditions: return if cell is not left
+      if (vacuum_bc) {
+        if (!left) {
+          return;
+        }
+      } else {
+
+        // If we both enter and leave the cell of interest
+        if (entered && left) {
+          return;
+        }
+
+        // If we did not enter nor leave the cell of interest
+        if (!entered && !left) {
+          return;
+        }
+
+        // If cellfrom and the cell before crossing is not the cell of
+        // interest
+        if (settings::ssw_cell_type == SSWCellType::From && !left) {
+          return;
+        }
+
+        // If cellto and the cell after crossing is not the cell of interest
+        if (settings::ssw_cell_type == SSWCellType::To && !entered) {
+          return;
+        }
+      }
+    }
+
+    SourceSite site;
+    site.r = p.r();
+    site.u = p.u();
+    site.E = p.E();
+    site.time = p.time();
+    site.wgt = p.wgt();
+    site.delayed_group = p.delayed_group();
+    site.surf_id = surf.id_;
+    site.particle = p.type();
+    site.parent_id = p.id();
+    site.progeny_id = p.n_progeny();
+    int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
   }
 }
 

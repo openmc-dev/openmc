@@ -14,6 +14,8 @@ int parse_command_line(int argc, char* argv[]);
 void initialize_mpi(MPI_Comm intracomm);
 #endif
 
+//! Setup locale and initialize model in memory
+void init_model_in_memory();
 //! Read material, geometry, settings, and tallies from a single XML file
 bool read_model_xml();
 //! Read inputs from separate XML files

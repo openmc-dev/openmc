@@ -25,6 +25,7 @@ namespace simulation {
 extern "C" int current_batch; //!< current batch
 extern "C" int current_gen;   //!< current fission generation
 extern "C" bool initialized;  //!< has simulation been initialized?
+extern "C" bool reloading;    //!< is the model being reloaded?
 extern "C" double keff;       //!< average k over batches
 extern "C" double keff_std;   //!< standard deviation of average k
 extern "C" double k_col_abs; //!< sum over batches of k_collision * k_absorption

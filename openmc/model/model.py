@@ -1,7 +1,6 @@
 from __future__ import annotations
-from collections.abc import Iterable
+from collections.abc import Iterable, Callable
 from functools import lru_cache
-import os
 from pathlib import Path
 from numbers import Integral
 from tempfile import NamedTemporaryFile
@@ -15,7 +14,7 @@ import openmc
 import openmc._xml as xml
 from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
-from openmc.checkvalue import check_type, check_value, PathLike
+from openmc.checkvalue import check_type, check_value, check_iterable_type
 from openmc.exceptions import InvalidIDError
 from openmc.utility_funcs import change_directory
 
@@ -835,7 +834,7 @@ class Model:
         check_value('obj_type', obj_type, ('material', 'cell'))
         check_value('attrib_name', attrib_name,
                     ('temperature', 'volume', 'density', 'rotation',
-                     'translation'))
+                     'translation', 'composition'))
         # The C API only allows setting density units of atom/b-cm and g/cm3
         check_value('density_units', density_units, ('atom/b-cm', 'g/cm3'))
         # The C API has no way to set cell volume or material temperature
@@ -850,11 +849,13 @@ class Model:
         # And some items just dont make sense
         if obj_type == 'cell' and attrib_name == 'density':
             raise ValueError('Cannot set a Cell density!')
+        if obj_type == 'cell' and attrib_name == 'composition':
+            raise ValueError('Cannot set a Cell composition!')
         if obj_type == 'material' and attrib_name in ('rotation',
                                                       'translation'):
             raise ValueError('Cannot set a material rotation/translation!')
 
-        # Set the
+        # Load cell and material data
         if obj_type == 'cell':
             by_name = self._cells_by_name
             by_id = self._cells_by_id
@@ -865,6 +866,7 @@ class Model:
             by_id = self._materials_by_id
             if self.is_initialized:
                 obj_by_id = openmc.lib.materials
+
         # Get the list of ids to use if converting from names and accepting
         # only values that have actual ids
         ids = []
@@ -893,8 +895,12 @@ class Model:
             obj = by_id[id_]
             if attrib_name == 'density':
                 obj.set_density(density_units, value)
+            elif attrib_name == 'composition':
+                obj.set_density(value.density_units, value.density)
+                obj.nuclides = value.nuclides
             else:
                 setattr(obj, attrib_name, value)
+
             # Next lets keep what is in C API memory up to date as well
             if self.is_initialized:
                 lib_obj = obj_by_id[id_]
@@ -902,6 +908,23 @@ class Model:
                     lib_obj.set_density(value, density_units)
                 elif attrib_name == 'temperature':
                     lib_obj.set_temperature(value)
+                elif attrib_name == 'composition':
+                    # Retrieve composition data from input material
+                    comp_data = value.get_nuclide_atom_densities()
+                    nuclides = list(comp_data.keys())
+                    densities = list(comp_data.values())
+
+                    # Compile a set of previously loaded nuclides
+                    loaded_nuclides = set(openmc.lib.nuclides.keys())
+                    # Find set of nuclides that need to be loaded
+                    new_nuclides = set(nuclides) - loaded_nuclides
+                    # Load missing nuclides through the C API
+                    for nuclide in new_nuclides:
+                        openmc.lib.load_nuclide(nuclide)
+
+                    # Update target material density and composition in memory
+                    lib_obj.set_density(value.density, value.density_units)
+                    lib_obj.set_densities(nuclides, densities)
                 else:
                     setattr(lib_obj, attrib_name, value)
 
@@ -950,13 +973,14 @@ class Model:
         self._change_py_lib_attribs(names_or_ids, vector, 'cell',
                                     'translation')
 
-    def update_densities(self, names_or_ids, density, density_units='atom/b-cm'):
+    def update_material_densities(self, names_or_ids, density,
+                                  density_units='atom/b-cm'):
         """Update the density of a given set of materials to a new value
 
         .. note:: If applying this change to a name that is not unique, then
                   the change will be applied to all objects of that name.
 
-        .. versionadded:: 0.13.0
+        .. versionadded:: 0.14.1
 
         Parameters
         ----------
@@ -972,6 +996,14 @@ class Model:
 
         self._change_py_lib_attribs(names_or_ids, density, 'material',
                                     'density', density_units)
+
+    def update_densities(self, names_or_ids, density, density_units='atom/b-cm'):
+        warnings.warn("update_densities(...) has been renamed " + \
+                "update_material_densities(...). " + \
+                "Future versions of OpenMC will not accept update_densities.",
+            FutureWarning)
+
+        self.update_material_densities(names_or_ids, density, density_units)
 
     def update_cell_temperatures(self, names_or_ids, temperature):
         """Update the temperature of a set of cells to the given value
@@ -993,6 +1025,32 @@ class Model:
 
         self._change_py_lib_attribs(names_or_ids, temperature, 'cell',
                                     'temperature')
+
+    def update_material_compositions(self, names_or_ids, reference):
+        """Update the composition of a given set of materials to match
+        the reference material. The material density is also updated
+        along with the composition.
+
+        .. note:: If applying this change to a name that is not unique, then
+                  the change will be applied to all objects of that name.
+
+        .. versionadded:: 0.14.1
+
+        Parameters
+        ----------
+        names_or_ids : Iterable of str or int
+            The material names (if str) or id (if int) that are to be updated.
+            This parameter can include a mix of names and ids.
+        reference : openmc.Material
+            The reference material whose composition and density is assigned to the
+            target materials.
+
+        """
+
+        check_type('reference', reference, openmc.Material)
+        self._change_py_lib_attribs(names_or_ids, reference,
+                                    'material', 'composition',
+                                    density_units=reference.density_units)
 
     def update_material_volumes(self, names_or_ids, volume):
         """Update the volume of a set of materials to the given value

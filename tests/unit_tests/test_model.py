@@ -465,6 +465,57 @@ def test_py_lib_attributes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     test_model.finalize_lib()
 
 
+def test_geometry_reload(run_in_tmpdir, mpi_intracomm):
+    # Reset object id numbers
+    openmc.reset_auto_ids()
+
+    # Load initial model definition from examples and initialize C API
+    test_model = openmc.examples.pwr_pin_cell()
+    test_model.init_lib(output=False, intracomm=mpi_intracomm)
+
+    # First check that the API is advertised as initialized
+    assert openmc.lib.is_initialized is True
+    assert test_model.is_initialized is True
+
+    # Check that the geometry in memory is as expected
+    assert len(openmc.lib.cells) == 3
+
+    # Try to update model definition and reload.
+    # It should fail as the example redefines materials
+    # with new ids.
+    with pytest.raises(IndexError):
+        test_model = openmc.examples.pwr_assembly()
+        test_model.reload_geometry(export_xml=True)
+
+    # Reset id tracking, then update and reload model
+    openmc.reset_auto_ids()
+    test_model = openmc.examples.pwr_assembly()
+    test_model.reload_geometry(export_xml=True)
+
+    # Check again that we have a more detailed assembly in memory
+    assert len(openmc.lib.cells) == 7
+
+    # Run the model and save the keff
+    sp_filepath = test_model.run(output=False, intracomm=mpi_intracomm)
+    first_keff = None
+    with openmc.StatePoint(sp_filepath) as sp:
+        first_keff = sp.keff.n
+
+    # Close out simulation and model definition in memory and verify
+    test_model.finalize_lib()
+    assert openmc.lib.is_initialized is False
+    assert test_model.is_initialized is False
+
+    # Now rerun the same model without the C API and save the keff
+    sp_filepath = test_model.run(output=False)
+    second_keff = None
+    with openmc.StatePoint(sp_filepath) as sp:
+        second_keff = sp.keff.n
+
+    # Make sure that the keff values are equal to within tolerance
+    assert (first_keff - second_keff) == pytest.approx(0.0, abs=1e-8)
+
+
 def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     mats, geom, settings, tals, plots, op_kwargs, chain_file_xml = \
         pin_model_attributes

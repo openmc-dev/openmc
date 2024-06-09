@@ -534,6 +534,67 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     test_model.finalize_lib()
 
 
+def test_search_for_keff(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
+    # Load data and build test model
+    mats, geom, settings, tals, plots, _, _ = pin_model_attributes
+    test_model = openmc.Model(geom, mats, settings, tals, plots)
+
+    # Define function to introduce lithium in the borated water of
+    # the model and then vary the lithium content
+    def model_updater(model: openmc.Model, conc):
+        ref = openmc.Material()
+        ref.set_density('g/cm3', 0.740582)
+        ref.add_element('Li', conc)
+        ref.add_element('B', 4.0e-5)
+        ref.add_element('H', 5.0e-2)
+        ref.add_element('O', 2.4e-2 - conc)
+        ref.add_s_alpha_beta('c_H_in_H2O')
+        ref.depletable = False
+        model.update_material_compositions(['Borated water'], ref)
+
+    # Find minimum lithium concentration that makes model subcritical
+    zero_value, _, _ = test_model.search_for_keff(model_updater,
+                                    bracket=[1e-5, 1e-3], tol=1e-3,
+                                    init_args={'output': False, \
+                                        'intracomm': mpi_intracomm},
+                                    run_args={'output': False, \
+                                        'intracomm': mpi_intracomm})
+    # Check the result
+    assert zero_value == pytest.approx(0.0005982958984375, abs=1e-8)
+
+
+def test_calc_reactivity_coeffs(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
+    # Load data and build test model
+    mats, geom, settings, tals, plots, _, _ = pin_model_attributes
+    test_model = openmc.Model(geom, mats, settings, tals, plots)
+
+    # Define density deltas from nominal to find reactivity coefficients
+    deltas = [(float(i)/1000) for i in range(-500, 501, 250)]
+    nominal_dens = test_model.materials.get_materials_by_name(
+                        'Borated water')[0].density
+
+    # Define function that updates the density of the borated water
+    # in the model
+    def model_updater(model: openmc.Model, parameter):
+        new_density = nominal_dens + parameter
+        model.update_material_densities(['Borated water'], new_density, 'g/cm3')
+        return new_density
+
+    # Calculate the reactivity coefficients vs the borated water density
+    values, coefficients = test_model.calculate_reactivity_coeffs(
+                                    deltas, model_updater,
+                                    init_args={'output': False, \
+                                        'intracomm': mpi_intracomm},
+                                    output=False, intracomm=mpi_intracomm)
+
+    # Check the model updater outputs and reactivity coefficients
+    assert (values[0] - deltas[0]) == pytest.approx(nominal_dens, abs=1e-8)
+    assert coefficients[0].n == pytest.approx(0.3786709587781213, abs=1e-8)
+    assert coefficients[1].n == pytest.approx(0.0134753161500282, abs=1e-8)
+    assert coefficients[2].n == pytest.approx(-0.088076331536546, abs=1e-8)
+    assert coefficients[3].n == pytest.approx(-0.126272822945334, abs=1e-8)
+
+
 def test_calc_volumes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     mats, geom, settings, tals, plots, _, _ = pin_model_attributes
 

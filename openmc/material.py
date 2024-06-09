@@ -220,6 +220,15 @@ class Material(IDManagerMixin):
     def nuclides(self) -> List[namedtuple]:
         return self._nuclides
 
+    @nuclides.setter
+    def nuclides(self, nuclides: List[namedtuple]):
+        for nuclide in nuclides:
+            cv.check_type('Name', nuclide.name, str)
+            cv.check_type('Percent', nuclide.percent, Real)
+            cv.check_value('Percent type',
+                           nuclide.percent_type, ['ao', 'wo'])
+        self._nuclides = nuclides
+
     @property
     def isotropic(self) -> List[str]:
         return self._isotropic

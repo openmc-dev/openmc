@@ -1047,6 +1047,55 @@ class Model:
                 self.export_to_xml()
                 openmc.plot_geometry(output=output, openmc_exec=openmc_exec)
 
+    def reload_geometry(self, output=False, export_xml=False,\
+                        export_model_xml=False):
+        """Reloads geometry and simulation settings in the C API memory
+        from the xml input files.
+
+        .. versionadded:: 0.14.1
+
+        Parameters
+        ----------
+        output : bool, optional
+            Capture OpenMC output from standard out
+        export_xml : bool, optional
+            Export this model as separate xml input files before
+            loading them into memory. Defaults to not updating
+            the xml files.
+        export_model_xml : bool, optional
+            Export this model as a model xml input file before
+            loading them it into memory. Defaults to not updating
+            the model xml file.
+
+        """
+
+        import openmc.lib
+
+        if self.is_initialized:
+            # Ensure the materials in the current model are
+            # already loaded in the C API's memory.
+            for id in openmc.lib.materials:
+                try:
+                    self.materials.get_material_by_id(id)
+                except IndexError:
+                    msg = "New model geometry " + \
+                          "contains materials not " + \
+                          "already initialized by the " + \
+                          "C API!"
+                    raise IndexError(msg)
+
+            # Update xml input files if it was requested
+            if export_xml is True:
+                self.export_to_xml()
+            if export_model_xml is True:
+                self.export_to_model_xml()
+
+            openmc.lib.reload_model_geometry(output)
+        else:
+            msg = "Model not initialized in memory! " + \
+                  "Ignoring reload request."
+            warnings.warn(msg, UserWarning)
+
     def _change_py_lib_attribs(self, names_or_ids, value, obj_type,
                                attrib_name, density_units='atom/b-cm'):
         # Method to do the same work whether it is a cell or material and

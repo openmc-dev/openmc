@@ -352,7 +352,7 @@ def test_py_lib_attributes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
 
     test_model.init_lib(output=False, intracomm=mpi_intracomm)
 
-    # Now we can call rotate_cells, translate_cells, update_densities,
+    # Now we can call rotate_cells, translate_cells, update_material_densities,
     # and update_cell_temperatures and make sure the changes have taken hold.
     # For each we will first try bad inputs to make sure we get the right
     # errors and then we do a good one which calls the material by name and
@@ -395,12 +395,45 @@ def test_py_lib_attributes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
         list(test_model.materials[0].get_nuclide_atom_densities().values()))
     assert mat_a_dens == pytest.approx(0.06891296988603757, abs=1e-8)
     # Change the density
-    test_model.update_densities(['UO2'], 2.)
+    test_model.update_material_densities(['UO2'], 2.)
     assert openmc.lib.materials[1].get_density('atom/b-cm') == \
         pytest.approx(2., abs=1e-13)
     mat_a_dens = np.sum(
         list(test_model.materials[0].get_nuclide_atom_densities().values()))
     assert mat_a_dens == pytest.approx(2., abs=1e-8)
+    # Undo density update
+    test_model.update_material_densities(['UO2'], 0.06891296988603757)
+
+    # Now lets do the composition updates.
+    # Check initial conditions and loaded nuclides
+    assert sorted(openmc.lib.materials[1].nuclides) == \
+        sorted(['U234', 'U235', 'U238', 'U236', 'O16', 'O17'])
+    mat_a_dens = np.sum(
+        list(test_model.materials[0].get_nuclide_atom_densities().values()))
+    assert mat_a_dens == pytest.approx(0.06891296988603757, abs=1e-5)
+    assert sorted(set(openmc.lib.nuclides.keys())) == \
+        sorted(['B10', 'B11', 'H1', 'H2', 'O16', 'O17', 'U234', \
+        'U235', 'U236', 'U238', 'Zr90', 'Zr91', 'Zr92', 'Zr94', \
+        'Zr96'])
+    # Change the material to thorium dioxide and verify the changes
+    tho2 = openmc.Material(name='ThO2')
+    tho2.set_density('atom/b-cm', 4.)
+    tho2.add_element('Th', 1.)
+    tho2.add_element('O', 2.)
+    tho2.depletable = True
+    test_model.update_material_compositions(['UO2'], tho2)
+    assert sorted(openmc.lib.materials[1].nuclides) == \
+        sorted(['Th230', 'Th232', 'O16', 'O17'])
+    mat_a_dens = np.sum(
+        list(test_model.materials[0].get_nuclide_atom_densities().values()))
+    assert mat_a_dens == pytest.approx(4., abs=1e-13)
+    assert sorted(set(openmc.lib.nuclides.keys())) == \
+        sorted(['B10', 'B11', 'H1', 'H2', 'O16', 'O17','Th230', \
+        'Th232', 'U234', 'U235', 'U236', 'U238', 'Zr90', 'Zr91', \
+        'Zr92', 'Zr94', 'Zr96'])
+    # Undo material composition update
+    test_model.update_material_compositions(['UO2'],
+        mats.get_materials_by_name('UO2')[0])
 
     # Now lets do the cell temperature updates.
     # Check initial conditions
@@ -448,6 +481,7 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     # In this test we first run without pre-initializing the shared library
     # data and then compare. Then we repeat with the C API already initialized
     # and make sure we get the same answer
+    test_model.finalize_lib()
     test_model.deplete([1e6], 'predictor', final_step=False,
                        operator_kwargs=op_kwargs,
                        power=1., output=False)

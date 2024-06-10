@@ -291,8 +291,15 @@ void Particle::event_cross_surface()
     // Particle crosses surface
     // TODO: off-by-one
     const auto& surf {model::surfaces[std::abs(surface()) - 1].get()};
+    // If boundary condition, add particle to surface source before crossing surface
+    if (surf->bc_) {
+      add_surf_source_to_bank(*this, *surf);
+    }
     cross_surface(*surf);
-    add_surf_source_to_bank(*this, *surf);
+    // If no boundary condition, add particle to surface source after crossing surface
+    if (!surf->bc_) {
+      add_surf_source_to_bank(*this, *surf);
+    }
     if (settings::weight_window_checkpoint_surface) {
       apply_weight_windows(*this);
     }
@@ -887,8 +894,8 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
           return;
         }
 
-        // Store particle with other boundary condition than vacuum only if no cell id is declared by the user for backward compatibility
-        if (surf.bc_->type() != "vacuum" && settings::ssw_cell_id != C_NONE) {
+        // Leave if other boundary condition than vacuum
+        if (surf.bc_->type() != "vacuum") {
             return;
         }
       }
@@ -940,30 +947,11 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
     }
 
     SourceSite site;
-    if (surf.bc_) {
-      if (surf.bc_->type() == "vacuum") {
-        site.r = p.r();
-        site.u = p.u();
-        site.wgt = p.wgt_last();
-      } else if (surf.bc_->type() == "reflective" || surf.bc_->type() == "white") {
-        site.r = p.r();
-        site.u = p.u_last();
-        site.wgt = p.wgt();
-      } else if (surf.bc_->type() == "periodic") {
-        site.r = p.r_last();
-        site.u = p.u_last();
-        site.wgt = p.wgt();
-      } else {
-        fatal_error(fmt::format("Surface source write logic for '{}' boundary condition not implemented", surf.bc_->type()));
-      }
-    } else {
-      site.r = p.r();
-      site.u = p.u();
-      site.wgt = p.wgt();
-    }
-
+    site.r = p.r();
+    site.u = p.u();
     site.E = p.E();
     site.time = p.time();
+    site.wgt = p.wgt();
     site.delayed_group = p.delayed_group();
     site.surf_id = surf.id_;
     site.particle = p.type();

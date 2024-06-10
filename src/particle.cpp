@@ -534,7 +534,7 @@ void Particle::cross_surface(const Surface& surf)
     if (surf.bc_->type() == "vacuum") {
       // Store particle before vacuum boundary condition is applied
       // otherwise, weight of the particle is zero
-      add_surf_source_to_bank(*this, surf, true);
+      add_surf_source_to_bank(*this, surf);
     } else {
       // Store particle with other boundary condition than vacuum
       // only if no cell id is declared by the user for backward
@@ -886,7 +886,7 @@ ParticleType str_to_particle_type(std::string str)
   }
 }
 
-void add_surf_source_to_bank(Particle& p, const Surface& surf, bool vacuum_bc)
+void add_surf_source_to_bank(Particle& p, const Surface& surf)
 {
   if (surf.surf_source_ && simulation::current_batch > settings::n_inactive &&
       !simulation::surf_source_bank.full()) {
@@ -898,8 +898,10 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf, bool vacuum_bc)
       int cell_idx = model::cell_map[settings::ssw_cell_id];
 
       // Leave if cellto with vacuum boundary condition
-      if (vacuum_bc && settings::ssw_cell_type == SSWCellType::To) {
-        return;
+      if (surf.bc_) {
+        if (surf.bc_->type() == "vacuum" && settings::ssw_cell_type == SSWCellType::To) {
+          return;
+        }
       }
 
       // Check if the cell of interest has been left
@@ -919,8 +921,8 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf, bool vacuum_bc)
       }
 
       // Vacuum boundary conditions: return if cell is not left
-      if (vacuum_bc) {
-        if (!left) {
+      if (surf.bc_) {
+        if (surf.bc_->type() == "vacuum" && !left) {
           return;
         }
       } else {

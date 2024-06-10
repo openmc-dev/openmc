@@ -59,10 +59,15 @@ def _get_legend_label(this, type):
     """Gets a label for the element or nuclide or material and reaction plotted"""
     if isinstance(this, str):
         if type in openmc.data.DADZ:
-            z, a, m = openmc.data.zam(this)
-            da, dz = openmc.data.DADZ[type]
-            gnds_name = openmc.data.gnds_name(z + dz, a + da, m)
-            return f'{this} {type} {gnds_name}'
+            if this in ELEMENT_NAMES:
+                return f'{this} {type}'
+            else:  # this is a nuclide so the legend can contain more information
+                z, a, m = openmc.data.zam(this)
+                da, dz = openmc.data.DADZ[type]
+                gnds_name = openmc.data.gnds_name(z + dz, a + da, m)
+                # makes a string with nuclide reaction and new nuclide
+                # For example "Be9 (n,2n) Be8"
+                return f'{this} {type} {gnds_name}'
         return f'{this} {type}'
     elif this.name == '':
         return f'Material {this.id} {type}'

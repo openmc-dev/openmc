@@ -74,7 +74,7 @@ public:
   void pht_secondary_particles();
 
   //! Cross a surface and handle boundary conditions
-  void cross_surface();
+  void cross_surface(const Surface& surf);
 
   //! Cross a vacuum boundary condition.
   //

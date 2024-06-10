@@ -289,7 +289,9 @@ void Particle::event_cross_surface()
     event() = TallyEvent::LATTICE;
   } else {
     // Particle crosses surface
-    cross_surface();
+    // TODO: off-by-one
+    const auto& surf {model::surfaces[std::abs(surface()) - 1].get()};
+    cross_surface(*surf);
     if (settings::weight_window_checkpoint_surface) {
       apply_weight_windows(*this);
     }
@@ -513,38 +515,36 @@ void Particle::pht_secondary_particles()
   }
 }
 
-void Particle::cross_surface()
+void Particle::cross_surface(const Surface& surf)
 {
-  int i_surface = std::abs(surface());
-  // TODO: off-by-one
-  const auto& surf {model::surfaces[i_surface - 1].get()};
+  
   if (settings::verbosity >= 10 || trace()) {
-    write_message(1, "    Crossing surface {}", surf->id_);
+    write_message(1, "    Crossing surface {}", surf.id_);
   }
 
 // if we're crossing a CSG surface, make sure the DAG history is reset
 #ifdef DAGMC
-  if (surf->geom_type_ == GeometryType::CSG)
+  if (surf.geom_type_ == GeometryType::CSG)
     history().reset();
 #endif
 
   // Handle any applicable boundary conditions.
-  if (surf->bc_ && settings::run_mode != RunMode::PLOTTING) {
+  if (surf.bc_ && settings::run_mode != RunMode::PLOTTING) {
 
-    if (surf->bc_->type() == "vacuum") {
+    if (surf.bc_->type() == "vacuum") {
       // Store particle before vacuum boundary condition is applied
       // otherwise, weight of the particle is zero
-      add_surf_source_to_bank(*this, *surf, true);
+      add_surf_source_to_bank(*this, surf, true);
     } else {
       // Store particle with other boundary condition than vacuum
       // only if no cell id is declared by the user for backward
       // compatibility
       if (settings::ssw_cell_id == C_NONE) {
-        add_surf_source_to_bank(*this, *surf);
+        add_surf_source_to_bank(*this, surf);
       }
     }
     // TODO: store particle for periodic and reflective boundary conditions
-    surf->bc_->handle_particle(*this, *surf);
+    surf.bc_->handle_particle(*this, surf);
     return;
   }
 
@@ -553,9 +553,9 @@ void Particle::cross_surface()
 
 #ifdef DAGMC
   // in DAGMC, we know what the next cell should be
-  if (surf->geom_type_ == GeometryType::DAG) {
+  if (surf.geom_type_ == GeometryType::DAG) {
     int32_t i_cell =
-      next_cell(i_surface, cell_last(n_coord() - 1), lowest_coord().universe) -
+      next_cell(std::abs(surface()), cell_last(n_coord() - 1), lowest_coord().universe) -
       1;
     // save material and temp
     material_last() = material();
@@ -565,14 +565,14 @@ void Particle::cross_surface()
     cell_instance() = 0;
     material() = model::cells[i_cell]->material_[0];
     sqrtkT() = model::cells[i_cell]->sqrtkT_[0];
-    add_surf_source_to_bank(*this, *surf);
+    add_surf_source_to_bank(*this, surf);
     return;
   }
 #endif
 
   bool verbose = settings::verbosity >= 10 || trace();
   if (neighbor_list_find_cell(*this, verbose)) {
-    add_surf_source_to_bank(*this, *surf);
+    add_surf_source_to_bank(*this, surf);
     return;
   }
 
@@ -598,12 +598,12 @@ void Particle::cross_surface()
 
     if (!exhaustive_find_cell(*this, verbose)) {
       mark_as_lost("After particle " + std::to_string(id()) +
-                   " crossed surface " + std::to_string(surf->id_) +
+                   " crossed surface " + std::to_string(surf.id_) +
                    " it could not be located in any cell and it did not leak.");
       return;
     }
   }
-  add_surf_source_to_bank(*this, *surf);
+  add_surf_source_to_bank(*this, surf);
 }
 
 void Particle::cross_vacuum_bc(const Surface& surf)

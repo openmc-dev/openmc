@@ -152,6 +152,7 @@ class MeshBase(IDManagerMixin, ABC):
             model: openmc.Model,
             n_samples: int = 10_000,
             prn_seed: Optional[int] = None,
+            include_void: bool = True,
             **kwargs
     ) -> List[openmc.Material]:
         """Generate homogenized materials over each element in a mesh.
@@ -168,6 +169,8 @@ class MeshBase(IDManagerMixin, ABC):
         prn_seed : int, optional
             Pseudorandom number generator (PRNG) seed; if None, one will be
             generated randomly.
+        include_void : bool, optional
+            Whether homogenization should include voids.
         **kwargs
             Keyword-arguments passed to :func:`openmc.lib.init`.
 
@@ -221,6 +224,10 @@ class MeshBase(IDManagerMixin, ABC):
             else:
                 material_ids.pop(index_void)
                 volumes.pop(index_void)
+
+            # If void should be excluded, adjust total volume
+            if not include_void:
+                total_volume = sum(volumes)
 
             # Compute volume fractions
             volume_fracs = np.array(volumes) / total_volume

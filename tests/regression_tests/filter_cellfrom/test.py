@@ -41,7 +41,10 @@ def model():
     # =============================================================================
 
     fuel = openmc.Material()
-    fuel.add_element("U", 1.0, enrichment=5.0)
+    fuel.add_nuclide("U234", 0.0004524)
+    fuel.add_nuclide("U235", 0.0506068)
+    fuel.add_nuclide("U238", 0.9487090)
+    fuel.add_nuclide("U236", 0.0002318)
     fuel.add_nuclide("O16", 2.0)
     fuel.set_density("g/cm3", 10.97)
 
@@ -92,9 +95,9 @@ def model():
 
     # Surfaces
     box1_rpp = openmc.model.RectangularParallelepiped(
-        -box1_size / 2.0, box1_size/2.0,
-        -box1_size / 2.0, box1_size/2.0,
-        -box1_size / 2.0, box1_size/2.0,
+        -box1_size / 2.0, box1_size / 2.0,
+        -box1_size / 2.0, box1_size / 2.0,
+        -box1_size / 2.0, box1_size / 2.0,
     )
 
     # Cell
@@ -109,9 +112,9 @@ def model():
 
     # Surfaces
     box2_rpp = openmc.model.RectangularParallelepiped(
-        -box2_size / 2.0, box2_size/2.0,
-        -box2_size / 2.0, box2_size/2.0,
-        -box2_size / 2.0, box2_size/2.0,
+        -box2_size / 2.0, box2_size / 2.0,
+        -box2_size / 2.0, box2_size / 2.0,
+        -box2_size / 2.0, box2_size / 2.0,
         boundary_type="vacuum"
     )
 

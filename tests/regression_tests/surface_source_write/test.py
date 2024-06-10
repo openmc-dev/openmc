@@ -484,6 +484,119 @@ def model_3():
     return model
 
 
+@pytest.fixture
+def model_4():
+    """Cylindrical core contained in a box.
+    A lower universe is used to describe the interior of the box which
+    contains the core and its surrounding space.
+
+    The box is defined with a pair of periodic boundary with reflective
+    boundaries.
+
+    """
+    openmc.reset_auto_ids()
+    model = openmc.Model()
+
+    # =============================================================================
+    # Materials
+    # =============================================================================
+
+    fuel = openmc.Material()
+    fuel.add_nuclide("U234", 0.0004524)
+    fuel.add_nuclide("U235", 0.0506068)
+    fuel.add_nuclide("U238", 0.9487090)
+    fuel.add_nuclide("U236", 0.0002318)
+    fuel.add_nuclide("O16", 2.0)
+    fuel.set_density("g/cm3", 11.0)
+
+    water = openmc.Material()
+    water.add_nuclide("H1", 2.0)
+    water.add_nuclide("O16", 1.0)
+    water.set_density("g/cm3", 1.0)
+
+    # =============================================================================
+    # Geometry
+    # =============================================================================
+
+    # -----------------------------------------------------------------------------
+    # Cylindrical core
+    # -----------------------------------------------------------------------------
+
+    # Parameters
+    core_radius = 2.0
+    core_height = 4.0
+
+    # Surfaces
+    core_cylinder = openmc.ZCylinder(r=core_radius)
+    core_lower_plane = openmc.ZPlane(z0=-core_height / 2.0)
+    core_upper_plane = openmc.ZPlane(z0=core_height / 2.0)
+
+    # Region
+    core_region = -core_cylinder & +core_lower_plane & -core_upper_plane
+
+    # Cells
+    core = openmc.Cell(fill=fuel, region=core_region)
+    outside_core_region = +core_cylinder | -core_lower_plane | +core_upper_plane
+    outside_core = openmc.Cell(fill=water, region=outside_core_region)
+
+    # Universe
+    inside_box1_universe = openmc.Universe(cells=[core, outside_core])
+
+    # -----------------------------------------------------------------------------
+    # Box 1
+    # -----------------------------------------------------------------------------
+
+    # Parameters
+    box1_size = 6.0
+
+    # Surfaces
+    box1_lower_plane = openmc.ZPlane(z0=-box1_size / 2.0, boundary_type="periodic")
+    box1_upper_plane = openmc.ZPlane(z0=box1_size / 2.0, boundary_type="periodic")
+    box1_left_plane = openmc.XPlane(x0=-box1_size / 2.0, boundary_type="reflective")
+    box1_right_plane = openmc.XPlane(x0=box1_size / 2.0, boundary_type="reflective")
+    box1_rear_plane = openmc.YPlane(y0=-box1_size / 2.0, boundary_type="reflective")
+    box1_front_plane = openmc.YPlane(y0=box1_size / 2.0, boundary_type="reflective")
+
+    # Region
+    box1_region = (
+        +box1_lower_plane
+        & -box1_upper_plane
+        & +box1_left_plane
+        & -box1_right_plane
+        & +box1_rear_plane
+        & -box1_front_plane
+    )
+
+    # Cell
+    box1 = openmc.Cell(fill=inside_box1_universe, region=box1_region)
+
+    # Register geometry
+    model.geometry = openmc.Geometry([box1])
+
+    # =============================================================================
+    # Settings
+    # =============================================================================
+
+    model.settings = openmc.Settings()
+    model.settings.particles = 1000
+    model.settings.batches = 5
+    model.settings.inactive = 1
+    model.settings.seed = 1
+
+    bounds = [
+        -core_radius,
+        -core_radius,
+        -core_height / 2.0,
+        core_radius,
+        core_radius,
+        core_height / 2.0,
+    ]
+    distribution = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=True)
+    model.settings.source = openmc.IndependentSource(space=distribution)
+
+    return model
+
+
 def return_surface_source_data(filepath):
     """Read a surface source file and return a sorted array composed
     of flatten arrays of source data for each surface source point.
@@ -693,6 +806,16 @@ class SurfaceSourceWriteTestHarness(PyAPITestHarness):
             "case-19",
             "model_3",
             {"max_particles": 3000, "surface_ids": [4, 5, 6, 7, 8, 9], "cellto": 3},
+        ),
+        (
+            "case-32",
+            "model_4",
+            {"max_particles": 3000, "surface_ids": [4]},
+        ),
+        (
+            "case-33",
+            "model_4",
+            {"max_particles": 3000, "surface_ids": [4], "cell": 3},
         ),
     ],
 )

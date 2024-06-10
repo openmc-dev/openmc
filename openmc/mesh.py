@@ -7,7 +7,8 @@ from functools import wraps
 from math import pi, sqrt, atan2
 from numbers import Integral, Real
 from pathlib import Path
-from typing import Optional, Sequence, Tuple
+import tempfile
+from typing import Optional, Sequence, Tuple, List
 
 import h5py
 import lxml.etree as ET
@@ -16,6 +17,7 @@ import numpy as np
 import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
+from openmc.utility_funcs import change_directory
 from ._xml import get_text
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
@@ -144,6 +146,94 @@ class MeshBase(IDManagerMixin, ABC):
             return UnstructuredMesh.from_xml_element(elem)
         else:
             raise ValueError(f'Unrecognized mesh type "{mesh_type}" found.')
+
+    def get_homogenized_materials(
+            self,
+            model: openmc.Model,
+            n_samples: int = 10_000,
+            prn_seed: Optional[int] = None,
+            **kwargs
+    ) -> List[openmc.Material]:
+        """Generate homogenized materials over each element in a mesh.
+
+        .. versionadded:: 0.14.1
+
+        Parameters
+        ----------
+        model : openmc.Model
+            Model containing materials to be homogenized and the associated
+            geometry.
+        n_samples : int
+            Number of samples in each mesh element.
+        prn_seed : int, optional
+            Pseudorandom number generator (PRNG) seed; if None, one will be
+            generated randomly.
+        **kwargs
+            Keyword-arguments passed to :func:`openmc.lib.init`.
+
+        Returns
+        -------
+        list of openmc.Material
+            Homogenized material in each mesh element
+
+        """
+        import openmc.lib
+
+        with change_directory(tmpdir=True):
+            # In order to get mesh into model, we temporarily replace the
+            # tallies with a single mesh tally using the current mesh
+            original_tallies = model.tallies
+            new_tally = openmc.Tally()
+            new_tally.filters = [openmc.MeshFilter(self)]
+            new_tally.scores = ['flux']
+            model.tallies = [new_tally]
+
+            # Export model to XML
+            model.export_to_model_xml()
+
+            # Get material volume fractions
+            openmc.lib.init(**kwargs)
+            mesh = openmc.lib.tallies[new_tally.id].filters[0].mesh
+            mat_volume_by_element = [
+                [
+                    (mat.id if mat is not None else None, volume)
+                    for mat, volume in mat_volume_list
+                ]
+                for mat_volume_list in mesh.material_volumes(n_samples, prn_seed)
+            ]
+            openmc.lib.finalize()
+
+            # Restore original tallies
+            model.tallies = original_tallies
+
+        # Create homogenized material for each element
+        materials = model.geometry.get_all_materials()
+        homogenized_materials = []
+        for mat_volume_list in mat_volume_by_element:
+            material_ids, volumes = [list(x) for x in zip(*mat_volume_list)]
+            total_volume = sum(volumes)
+
+            # Check for void material and remove
+            try:
+                index_void = material_ids.index(None)
+            except ValueError:
+                pass
+            else:
+                material_ids.pop(index_void)
+                volumes.pop(index_void)
+
+            # Compute volume fractions
+            volume_fracs = np.array(volumes) / total_volume
+
+            # Get list of materials and mix 'em up!
+            mats = [materials[uid] for uid in material_ids]
+            homogenized_mat = openmc.Material.mix_materials(
+                mats, volume_fracs, 'vo'
+            )
+            homogenized_mat.volume = total_volume
+            homogenized_materials.append(homogenized_mat)
+
+        return homogenized_materials
 
 
 class StructuredMesh(MeshBase):
@@ -1747,6 +1837,8 @@ class SphericalMesh(StructuredMesh):
     @r_grid.setter
     def r_grid(self, grid):
         cv.check_type('mesh r_grid', grid, Iterable, Real)
+        cv.check_length('mesh r_grid', grid, 2)
+        cv.check_increasing('mesh r_grid', grid)
         self._r_grid = np.asarray(grid, dtype=float)
 
     @property
@@ -1756,6 +1848,8 @@ class SphericalMesh(StructuredMesh):
     @theta_grid.setter
     def theta_grid(self, grid):
         cv.check_type('mesh theta_grid', grid, Iterable, Real)
+        cv.check_length('mesh theta_grid', grid, 2)
+        cv.check_increasing('mesh theta_grid', grid)
         self._theta_grid = np.asarray(grid, dtype=float)
 
     @property
@@ -1765,6 +1859,8 @@ class SphericalMesh(StructuredMesh):
     @phi_grid.setter
     def phi_grid(self, grid):
         cv.check_type('mesh phi_grid', grid, Iterable, Real)
+        cv.check_length('mesh phi_grid', grid, 2)
+        cv.check_increasing('mesh phi_grid', grid)
         self._phi_grid = np.asarray(grid, dtype=float)
 
     @property
@@ -1969,6 +2065,11 @@ class UnstructuredMesh(MeshBase):
         Name of the mesh
     length_multiplier: float
         Constant multiplier to apply to mesh coordinates
+    options : str, optional
+        Special options that control spatial search data structures used. This
+        is currently only used to set `parameters
+        <https://tinyurl.com/kdtree-params>`_ for MOAB's AdaptiveKDTree. If
+        None, OpenMC internally uses a default of "MAX_DEPTH=20;PLANE_SET=2;".
 
     Attributes
     ----------
@@ -1982,6 +2083,11 @@ class UnstructuredMesh(MeshBase):
         Multiplicative factor to apply to mesh coordinates
     library : {'moab', 'libmesh'}
         Mesh library used for the unstructured mesh tally
+    options : str
+        Special options that control spatial search data structures used. This
+        is currently only used to set `parameters
+        <https://tinyurl.com/kdtree-params>`_ for MOAB's AdaptiveKDTree. If
+        None, OpenMC internally uses a default of "MAX_DEPTH=20;PLANE_SET=2;".
     output : bool
         Indicates whether or not automatic tally output should be generated for
         this mesh
@@ -2015,7 +2121,8 @@ class UnstructuredMesh(MeshBase):
     _LINEAR_HEX = 1
 
     def __init__(self, filename: PathLike, library: str, mesh_id: Optional[int] = None,
-                 name: str = '', length_multiplier: float = 1.0):
+                 name: str = '', length_multiplier: float = 1.0,
+                 options: Optional[str] = None):
         super().__init__(mesh_id, name)
         self.filename = filename
         self._volumes = None
@@ -2025,6 +2132,7 @@ class UnstructuredMesh(MeshBase):
         self.library = library
         self._output = False
         self.length_multiplier = length_multiplier
+        self.options = options
         self._has_statepoint_data = False
 
     @property
@@ -2044,6 +2152,15 @@ class UnstructuredMesh(MeshBase):
     def library(self, lib: str):
         cv.check_value('Unstructured mesh library', lib, ('moab', 'libmesh'))
         self._library = lib
+
+    @property
+    def options(self) -> Optional[str]:
+        return self._options
+
+    @options.setter
+    def options(self, options: Optional[str]):
+        cv.check_type('options', options, (str, type(None)))
+        self._options = options
 
     @property
     @require_statepoint_data
@@ -2156,6 +2273,8 @@ class UnstructuredMesh(MeshBase):
         if self.length_multiplier != 1.0:
             string += '{: <16}=\t{}\n'.format('\tLength multiplier',
                                               self.length_multiplier)
+        if self.options is not None:
+            string += '{: <16}=\t{}\n'.format('\tOptions', self.options)
         return string
 
     @property
@@ -2311,8 +2430,12 @@ class UnstructuredMesh(MeshBase):
         mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
         filename = group['filename'][()].decode()
         library = group['library'][()].decode()
+        if 'options' in group.attrs:
+            options = group.attrs['options'].decode()
+        else:
+            options = None
 
-        mesh = cls(filename=filename, library=library, mesh_id=mesh_id)
+        mesh = cls(filename=filename, library=library, mesh_id=mesh_id, options=options)
         mesh._has_statepoint_data = True
         vol_data = group['volumes'][()]
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
@@ -2343,6 +2466,8 @@ class UnstructuredMesh(MeshBase):
         element.set("id", str(self._id))
         element.set("type", "unstructured")
         element.set("library", self._library)
+        if self.options is not None:
+            element.set('options', self.options)
         subelement = ET.SubElement(element, "filename")
         subelement.text = str(self.filename)
 
@@ -2369,8 +2494,9 @@ class UnstructuredMesh(MeshBase):
         filename = get_text(elem, 'filename')
         library = get_text(elem, 'library')
         length_multiplier = float(get_text(elem, 'length_multiplier', 1.0))
+        options = elem.get('options')
 
-        return cls(filename, library, mesh_id, '', length_multiplier)
+        return cls(filename, library, mesh_id, '', length_multiplier, options)
 
 
 def _read_meshes(elem):

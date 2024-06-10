@@ -54,8 +54,14 @@ int openmc_run()
   openmc::simulation::time_total.start();
   openmc_simulation_init();
 
-  int err = 0;
+  // Ensure that a batch isn't executed in the case that the maximum number of
+  // batches has already been run in a restart statepoint file
   int status = 0;
+  if (openmc::simulation::current_batch >= openmc::settings::n_max_batches) {
+    status = openmc::STATUS_EXIT_MAX_BATCH;
+  }
+
+  int err = 0;
   while (status == 0 && err == 0) {
     err = openmc_next_batch(&status);
   }
@@ -744,7 +750,7 @@ void free_memory_simulation()
 
 void transport_history_based_single_particle(Particle& p)
 {
-  while (true) {
+  while (p.alive()) {
     p.event_calculate_xs();
     if (!p.alive())
       break;
@@ -755,8 +761,6 @@ void transport_history_based_single_particle(Particle& p)
       p.event_collide();
     }
     p.event_revive_from_secondary();
-    if (!p.alive())
-      break;
   }
   p.event_death();
 }

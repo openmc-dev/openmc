@@ -318,6 +318,7 @@ void print_build_info()
   std::string coverage(n);
   std::string mcpl(n);
   std::string ncrystal(n);
+  std::string uwuw(n);
 
 #ifdef PHDF5
   phdf5 = y;
@@ -346,6 +347,9 @@ void print_build_info()
 #ifdef COVERAGEBUILD
   coverage = y;
 #endif
+#ifdef UWUW
+  uwuw = y;
+#endif
 
   // Wraps macro variables in quotes
 #define STRINGIFY(x) STRINGIFY2(x)
@@ -364,6 +368,7 @@ void print_build_info()
     fmt::print("NCrystal support:      {}\n", ncrystal);
     fmt::print("Coverage testing:      {}\n", coverage);
     fmt::print("Profiling flags:       {}\n", profiling);
+    fmt::print("UWUW support:          {}\n", uwuw);
   }
 }
 

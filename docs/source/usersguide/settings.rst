@@ -420,6 +420,54 @@ string, which gets passed down to the ``openmc_create_source()`` function::
 
   settings.source = openmc.CompiledSource('libsource.so', '3.5e6')
 
+.. _usersguide_source_constraints:
+
+Source Constraints
+------------------
+
+All source classes in OpenMC have the ability to apply a set of "constraints"
+that limit which sampled source sites are actually used for transport. The most
+common use case is to sample source sites over some simple spatial distribution
+(e.g., uniform over a box) and then only accept those that appear in a given
+cell or material. This can be done with a domain constraint, which can be
+specified as follows::
+
+  source_cell = openmc.Cell(...)
+  ...
+
+  spatial_dist = openmc.stats.Box((-10., -10., -10.), (10., 10., 10.))
+  source = openmc.IndependentSource(
+      space=spatial_dist,
+      constraints={'domains': [source_cell]}
+  )
+
+For k-eigenvalue problems, a convenient constraint is available that limits
+source sites to those sampled in a fissionable material::
+
+  source = openmc.IndependentSource(
+      space=spatial_dist, constraints={'fissionable': True}
+  )
+
+Constraints can also be placed on a range of energies or times::
+
+  # Only use source sites between 500 keV and 1 MeV and with times under 1 sec
+  source = openmc.FileSource(
+      'source.h5',
+      constraints={'energy_bounds': [500.0e3, 1.0e6], 'time_bounds': [0.0, 1.0]}
+  )
+
+Normally, when a source site is rejected, a new one will be resampled until one
+is found that meets the constraints. However, the rejection strategy can be
+changed so that a rejected site will just not be simulated by specifying::
+
+  source = openmc.IndependentSource(
+      space=spatial_dist,
+      constraints={'domains': [cell], 'rejection_strategy': 'kill'}
+  )
+
+In this case, the actual number of particles simulated may be less than what you
+specified in :attr:`Settings.particles`.
+
 .. _usersguide_entropy:
 
 ---------------
@@ -628,3 +676,37 @@ instance, whereas the :meth:`openmc.Track.filter` method returns a new
           .. code-block:: sh
 
             openmc-track-combine tracks_p*.h5 --out tracks.h5
+
+-----------------------
+Restarting a Simulation
+-----------------------
+
+OpenMC can be run in a mode where it reads in a statepoint file and continues a
+simulation from the ending point of the statepoint file. A restart simulation
+can be performed by passing the path to the statepoint file to the OpenMC
+executable:
+
+.. code-block:: sh
+
+    openmc -r statepoint.100.h5
+
+From the Python API, the `restart_file` argument provides the same behavior:
+
+.. code-block:: python
+
+    openmc.run(restart_file='statepoint.100.h5')
+
+or if using the :class:`~openmc.Model` class:
+
+.. code-block:: python
+
+    model.run(restart_file='statepoint.100.h5')
+
+The restart simulation will execute until the number of batches specified in the
+:class:`~openmc.Settings` object on a model (or in the :ref:`settings XML file
+<io_settings>`) is satisfied. Note that if the number of batches in the
+statepoint file is the same as that specified in the settings object (i.e., if
+the inputs were not modified before the restart run), no particles will be
+transported and OpenMC will exit immediately.
+
+.. note:: A statepoint file must match the input model to be successfully used in a restart simulation.

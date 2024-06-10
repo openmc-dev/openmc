@@ -18,6 +18,11 @@ class Region(ABC):
     respective classes are typically not instantiated directly but rather are
     created through operators of the Surface and Region classes.
 
+    Attributes
+    ----------
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the region
+
     """
     def __and__(self, other):
         return Intersection((self, other))
@@ -415,7 +420,7 @@ class Intersection(Region, MutableSequence):
     Attributes
     ----------
     bounding_box : openmc.BoundingBox
-        Lower-left and upper-right coordinates of an axis-aligned bounding box
+        Axis-aligned bounding box of the region
 
     """
 
@@ -503,7 +508,7 @@ class Union(Region, MutableSequence):
     Attributes
     ----------
     bounding_box : openmc.BoundingBox
-        Lower-left and upper-right coordinates of an axis-aligned bounding box
+        Axis-aligned bounding box of the region
 
     """
 
@@ -594,7 +599,7 @@ class Complement(Region):
     node : openmc.Region
         Regions to take the complement of
     bounding_box : openmc.BoundingBox
-        Lower-left and upper-right coordinates of an axis-aligned bounding box
+        Axis-aligned bounding box of the region
 
     """
 

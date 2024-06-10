@@ -67,8 +67,10 @@ def uo2_trigger_model():
     model.settings.batches = 10
     model.settings.inactive = 5
     model.settings.particles = 100
-    model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
-        [-0.5, -0.5, -1], [0.5, 0.5, 1], only_fissionable=True))
+    model.settings.source = openmc.IndependentSource(
+        space=openmc.stats.Box([-0.5, -0.5, -1], [0.5, 0.5, 1]),
+        constraints={'fissionable': True},
+    )
     model.settings.verbosity = 1
     model.settings.keff_trigger = {'type': 'std_dev', 'threshold': 0.001}
     model.settings.trigger_active = True

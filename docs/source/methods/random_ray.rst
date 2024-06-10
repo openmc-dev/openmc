@@ -739,7 +739,23 @@ source at each FSR is used to compute the Shannon entropy. This follows the
 :ref:`same procedure for computing Shannon entropy in continuous-energy or
 multigroup Monte Carlo simulations <methods-shannon-entropy>`, except that
 fission sites at FSRs are considered, rather than fission sites of user-defined
-regular meshes.
+regular meshes. Thus, the volume-weighted fission rate is considered instead,
+and the fraction of source sites is adjusted such that:
+
+.. math::
+    :label: fraction-source-random-ray
+
+    S_i = \frac{\text{Source sites in $i$-th FSR $*$ Volume of $i$-th FSR}}{\text{Total number of FSRs}} 
+
+The Shannon entropy is then computed normally as
+
+.. math::
+    :label: shannon-entropy-random-ray
+
+    H = - \sum_{i=1}^N S_i \log_2 S_i
+
+where :math:`N` is the number of FSRs. FSRs with no fission source sites are skipped
+to avoid taking the logarithm of zero in :eq:`shannon-entropy-random-ray`.
 
 There are some restrictions though. For starters, it is assumed that all filter
 mesh boundaries will conform to physical surface boundaries (or lattice

@@ -48,7 +48,8 @@ might require 500 or more inactive batches. Similar to Monte Carlo,
 :ref:`Shannon entropy <usersguide_entropy>` can be used to gauge whether the
 combined scattering and fission source has fully developed. The Shannon entropy
 is calculated automatically near the end of each batch and is printed to the 
-statepoint file.
+statepoint file. Unlike Monte Carlo, an entropy mesh does not need to be defined,
+as the Shannon entropy is calculated over FSRs using a volume-weighted approach.
 
 Similar to Monte Carlo, active batches are used in the random ray solver mode to
 accumulate and converge statistics on unknown quantities (i.e., the random ray

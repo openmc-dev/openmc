@@ -188,6 +188,7 @@ def test_CylindricalMesh_initiation():
     with pytest.raises(TypeError):
         openmc.SphericalMesh(('🧇', '🥞'))
 
+
 def test_invalid_cylindrical_mesh_errors():
     # Test invalid r_grid values
     with pytest.raises(ValueError):
@@ -202,7 +203,7 @@ def test_invalid_cylindrical_mesh_errors():
     # Test invalid phi_grid values
     with pytest.raises(ValueError):
         openmc.CylindricalMesh(r_grid=[0, 1, 2], phi_grid=[-1, 3], z_grid=[0, 10])
-    
+
     with pytest.raises(ValueError):
         openmc.CylindricalMesh(
             r_grid=[0, 1, 2],
@@ -216,12 +217,13 @@ def test_invalid_cylindrical_mesh_errors():
     # Test invalid z_grid values
     with pytest.raises(ValueError):
         openmc.CylindricalMesh(r_grid=[0, 1, 2], phi_grid=[0, pi], z_grid=[5])
-    
+
     with pytest.raises(ValueError):
         openmc.CylindricalMesh(r_grid=[0, 1, 2], phi_grid=[0, pi], z_grid=[5, 1])
 
     with pytest.raises(ValueError):
         openmc.CylindricalMesh(r_grid=[1, 2, 4, 3], phi_grid=[0, pi], z_grid=[0, 10, 5])
+
 
 def test_centroids():
     # regular mesh

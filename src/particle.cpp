@@ -292,6 +292,7 @@ void Particle::event_cross_surface()
     // TODO: off-by-one
     const auto& surf {model::surfaces[std::abs(surface()) - 1].get()};
     cross_surface(*surf);
+    add_surf_source_to_bank(*this, *surf);
     if (settings::weight_window_checkpoint_surface) {
       apply_weight_windows(*this);
     }
@@ -530,20 +531,6 @@ void Particle::cross_surface(const Surface& surf)
 
   // Handle any applicable boundary conditions.
   if (surf.bc_ && settings::run_mode != RunMode::PLOTTING) {
-
-    if (surf.bc_->type() == "vacuum") {
-      // Store particle before vacuum boundary condition is applied
-      // otherwise, weight of the particle is zero
-      add_surf_source_to_bank(*this, surf);
-    } else {
-      // Store particle with other boundary condition than vacuum
-      // only if no cell id is declared by the user for backward
-      // compatibility
-      if (settings::ssw_cell_id == C_NONE) {
-        add_surf_source_to_bank(*this, surf);
-      }
-    }
-    // TODO: store particle for periodic and reflective boundary conditions
     surf.bc_->handle_particle(*this, surf);
     return;
   }
@@ -565,14 +552,12 @@ void Particle::cross_surface(const Surface& surf)
     cell_instance() = 0;
     material() = model::cells[i_cell]->material_[0];
     sqrtkT() = model::cells[i_cell]->sqrtkT_[0];
-    add_surf_source_to_bank(*this, surf);
     return;
   }
 #endif
 
   bool verbose = settings::verbosity >= 10 || trace();
   if (neighbor_list_find_cell(*this, verbose)) {
-    add_surf_source_to_bank(*this, surf);
     return;
   }
 
@@ -603,7 +588,6 @@ void Particle::cross_surface(const Surface& surf)
       return;
     }
   }
-  add_surf_source_to_bank(*this, surf);
 }
 
 void Particle::cross_vacuum_bc(const Surface& surf)
@@ -897,10 +881,15 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
       // Retrieve cell index and storage type
       int cell_idx = model::cell_map[settings::ssw_cell_id];
 
-      // Leave if cellto with vacuum boundary condition
       if (surf.bc_) {
+        // Leave if cellto with vacuum boundary condition
         if (surf.bc_->type() == "vacuum" && settings::ssw_cell_type == SSWCellType::To) {
           return;
+        }
+
+        // Store particle with other boundary condition than vacuum only if no cell id is declared by the user for backward compatibility
+        if (surf.bc_->type() != "vacuum" && settings::ssw_cell_id != C_NONE) {
+            return;
         }
       }
 
@@ -951,11 +940,30 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
     }
 
     SourceSite site;
-    site.r = p.r();
-    site.u = p.u();
+    if (surf.bc_) {
+      if (surf.bc_->type() == "vacuum") {
+        site.r = p.r();
+        site.u = p.u();
+        site.wgt = p.wgt_last();
+      } else if (surf.bc_->type() == "reflective" || surf.bc_->type() == "white") {
+        site.r = p.r();
+        site.u = p.u_last();
+        site.wgt = p.wgt();
+      } else if (surf.bc_->type() == "periodic") {
+        site.r = p.r_last();
+        site.u = p.u_last();
+        site.wgt = p.wgt();
+      } else {
+        fatal_error(fmt::format("Surface source write logic for '{}' boundary condition not implemented", surf.bc_->type()));
+      }
+    } else {
+      site.r = p.r();
+      site.u = p.u();
+      site.wgt = p.wgt();
+    }
+
     site.E = p.E();
     site.time = p.time();
-    site.wgt = p.wgt();
     site.delayed_group = p.delayed_group();
     site.surf_id = surf.id_;
     site.particle = p.type();

@@ -386,3 +386,9 @@ def test_mesh_get_homogenized_materials():
 
     # Mesh element that overlaps void should have half density
     assert m4.get_mass_density('H1') == pytest.approx(0.5, rel=1e-2)
+
+    # If not including void, density of homogenized material should be same as
+    # original material
+    m5, = mesh_void.get_homogenized_materials(
+        model, n_samples=1000, include_void=False)
+    assert m5.get_mass_density('H1') == pytest.approx(1.0)

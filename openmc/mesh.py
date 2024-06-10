@@ -1388,6 +1388,8 @@ class CylindricalMesh(StructuredMesh):
     @r_grid.setter
     def r_grid(self, grid):
         cv.check_type('mesh r_grid', grid, Iterable, Real)
+        cv.check_length('mesh r_grid', grid, 2)
+        cv.check_increasing('mesh r_grid', grid)
         self._r_grid = np.asarray(grid, dtype=float)
 
     @property
@@ -1397,7 +1399,12 @@ class CylindricalMesh(StructuredMesh):
     @phi_grid.setter
     def phi_grid(self, grid):
         cv.check_type('mesh phi_grid', grid, Iterable, Real)
-        self._phi_grid = np.asarray(grid, dtype=float)
+        cv.check_length('mesh phi_grid', grid, 2)
+        cv.check_increasing('mesh phi_grid', grid)
+        grid = np.asarray(grid, dtype=float)
+        if np.any((grid < 0.0) | (grid > 2*pi)):
+            raise ValueError("phi_grid values must be in [0, 2π].")
+        self._phi_grid = grid
 
     @property
     def z_grid(self):
@@ -1406,6 +1413,8 @@ class CylindricalMesh(StructuredMesh):
     @z_grid.setter
     def z_grid(self, grid):
         cv.check_type('mesh z_grid', grid, Iterable, Real)
+        cv.check_length('mesh z_grid', grid, 2)
+        cv.check_increasing('mesh z_grid', grid)
         self._z_grid = np.asarray(grid, dtype=float)
 
     @property
@@ -1840,7 +1849,10 @@ class SphericalMesh(StructuredMesh):
         cv.check_type('mesh theta_grid', grid, Iterable, Real)
         cv.check_length('mesh theta_grid', grid, 2)
         cv.check_increasing('mesh theta_grid', grid)
-        self._theta_grid = np.asarray(grid, dtype=float)
+        grid = np.asarray(grid, dtype=float)
+        if np.any((grid < 0.0) | (grid > pi)):
+            raise ValueError("theta_grid values must be in [0, π].")
+        self._theta_grid = grid
 
     @property
     def phi_grid(self):
@@ -1851,7 +1863,10 @@ class SphericalMesh(StructuredMesh):
         cv.check_type('mesh phi_grid', grid, Iterable, Real)
         cv.check_length('mesh phi_grid', grid, 2)
         cv.check_increasing('mesh phi_grid', grid)
-        self._phi_grid = np.asarray(grid, dtype=float)
+        grid = np.asarray(grid, dtype=float)
+        if np.any((grid < 0.0) | (grid > 2*pi)):
+            raise ValueError("phi_grid values must be in [0, 2π].")
+        self._phi_grid = grid
 
     @property
     def _grids(self):

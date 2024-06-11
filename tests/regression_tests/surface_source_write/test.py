@@ -83,7 +83,7 @@ case-33   model_4  1          cell (root universe)       P+R    None
 
 *: BC stands for Boundary Conditions, T for Transmission, R for Reflective, and V for Vacuum.
 
-An additional case, called 'case-20', is used to check that the results are comparable when
+An additional case, called 'case-a01', is used to check that the results are comparable when
 the number of threads is set to 2 if the number of realization is lower than the capacity.
 
 Cases 21 to 23 are the event-based cases corresponding to the history-based cases 04, 07 and 13,
@@ -854,7 +854,7 @@ def test_consistency_low_realization_number(model_1, two_threads, single_process
         "cellfrom": 2,
     }
     harness = SurfaceSourceWriteTestHarness(
-        "statepoint.5.h5", model=model_1, workdir="case-20"
+        "statepoint.5.h5", model=model_1, workdir="case-a01"
     )
     harness.main()
 

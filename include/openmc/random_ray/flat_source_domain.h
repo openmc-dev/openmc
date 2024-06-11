@@ -37,7 +37,7 @@ namespace openmc {
 // FOR ANY DAMAGES OR OTHER LIABILITY, WHETHER IN CONTRACT, TORT OR OTHERWISE,
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
-inline void hash_combine(size_t& seed, const size_t& v)
+inline void hash_combine(size_t& seed, const size_t v)
 {
   seed ^= (v + 0x9e3779b9 + (seed << 6) + (seed >> 2));
 }

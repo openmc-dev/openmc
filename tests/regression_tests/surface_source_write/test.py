@@ -850,7 +850,7 @@ def test_consistency_low_realization_number(model_1, two_threads, single_process
     assert config["mpi_np"] == "1"
     model_1.settings.surf_source_write = {
         "max_particles": 200,
-        "surface_ids": [2],
+        "surface_ids": [1, 2, 3],
         "cellfrom": 2,
     }
     harness = SurfaceSourceWriteTestHarness(

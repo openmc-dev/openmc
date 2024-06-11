@@ -47,7 +47,7 @@
       </space>
     </source>
     <surf_source_write>
-      <surface_ids>2</surface_ids>
+      <surface_ids>1 2 3</surface_ids>
       <max_particles>200</max_particles>
       <cellfrom>2</cellfrom>
     </surf_source_write>

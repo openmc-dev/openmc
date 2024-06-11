@@ -140,7 +140,7 @@ void validate_random_ray_inputs()
   // Check for isotropic source
   UnitSphereDistribution* angle_dist = is->angle();
   Isotropic* id = dynamic_cast<Isotropic*>(angle_dist);
-  if (id == nullptr) {
+  if (!id) {
     fatal_error("Invalid ray source definition -- only isotropic sources are "
                 "allowed.");
   }
@@ -167,7 +167,7 @@ void validate_random_ray_inputs()
       // Check for isotropic source
       UnitSphereDistribution* angle_dist = is->angle();
       Isotropic* id = dynamic_cast<Isotropic*>(angle_dist);
-      if (id == nullptr) {
+      if (!id) {
         fatal_error(
           "Invalid source definition -- only isotropic fixed sources are "
           "allowed in random ray mode.");
@@ -182,7 +182,7 @@ void validate_random_ray_inputs()
       // Check that a discrete energy distribution was used
       Distribution* d = is->energy();
       Discrete* dd = dynamic_cast<Discrete*>(d);
-      if (dd == nullptr) {
+      if (!dd) {
         fatal_error(
           "Only discrete (multigroup) energy distributions are allowed for "
           "fixed sources in random ray mode.");

@@ -106,13 +106,6 @@ public:
   void accumulate_iteration_flux();
   void output_to_vtk() const;
   void all_reduce_replicated_source_regions();
-  void apply_fixed_source_to_source_region(
-    Discrete* discrete, double strength_factor, int64_t source_region);
-  void apply_fixed_source_to_cell_instances(int32_t i_cell, Discrete* discrete,
-    double strength_factor, int target_material_id,
-    const vector<int32_t>& instances);
-  void apply_fixed_source_to_cell_and_children(int32_t i_cell,
-    Discrete* discrete, double strength_factor, int32_t target_material_id);
   void convert_fixed_sources();
   void count_fixed_source_regions();
 
@@ -143,9 +136,19 @@ public:
   vector<float> source_;
   vector<float> fixed_source_;
 
+private:
+  //----------------------------------------------------------------------------
+  // Methods
+  void apply_fixed_source_to_source_region(
+    Discrete* discrete, double strength_factor, int64_t source_region);
+  void apply_fixed_source_to_cell_instances(int32_t i_cell, Discrete* discrete,
+    double strength_factor, int target_material_id,
+    const vector<int32_t>& instances);
+  void apply_fixed_source_to_cell_and_children(int32_t i_cell,
+    Discrete* discrete, double strength_factor, int32_t target_material_id);
+
   //----------------------------------------------------------------------------
   // Private data members
-private:
   int negroups_;                  // Number of energy groups in simulation
   int64_t n_source_elements_ {0}; // Total number of source regions in the model
                                   // times the number of energy groups

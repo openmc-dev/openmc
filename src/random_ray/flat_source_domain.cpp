@@ -92,8 +92,7 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
   }
 
   // Compute simulation domain volume based on ray source
-  IndependentSource* is =
-    dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get());
+  auto* is = dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get());
   SpatialDistribution* space_dist = is->space();
   SpatialBox* sb = dynamic_cast<SpatialBox*>(space_dist);
   Position dims = sb->upper_right() - sb->lower_left();
@@ -127,8 +126,7 @@ void FlatSourceDomain::update_neutron_source(double k_eff)
 
   // Temperature and angle indices, if using multiple temperature
   // data sets and/or anisotropic data sets.
-  // TODO: Currently assumes we are only using single temp/single
-  // angle data.
+  // TODO: Currently assumes we are only using single temp/single angle data.
   const int t = 0;
   const int a = 0;
 
@@ -178,7 +176,7 @@ void FlatSourceDomain::update_neutron_source(double k_eff)
       }
     }
   } else {
-// Add fixed source source if in fixed source mode
+// Add external source if in fixed source mode
 #pragma omp parallel for
     for (int se = 0; se < n_source_elements_; se++) {
       source_[se] += fixed_source_[se];
@@ -913,8 +911,7 @@ void FlatSourceDomain::convert_fixed_sources()
 
   // Temperature and angle indices, if using multiple temperature
   // data sets and/or anisotropic data sets.
-  // TODO: Currently assumes we are only using single temp/single
-  // angle data.
+  // TODO: Currently assumes we are only using single temp/single angle data.
   const int t = 0;
   const int a = 0;
 

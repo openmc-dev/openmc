@@ -416,7 +416,7 @@ in the `OpenMC Jupyter notebook collection
     corresponding to a given temperature.
 
 ---------------------------------
-Fixed Source and Eigenvalue Modes 
+Fixed Source and Eigenvalue Modes
 ---------------------------------
 
 Both fixed source and eigenvalue modes are supported with the random ray solver
@@ -424,11 +424,11 @@ in OpenMC. Modes can be selected as described in the :ref:`run modes section
 <usersguide_run_modes>`. In both modes, a ray source must be provided to let
 OpenMC know where to sample ray starting locations from, as discussed in the
 :ref:`ray source section <usersguide_ray_source>`. In fixed source mode, at
-least one regular source must be provided as well which represents the physical
+least one regular source must be provided as well that represents the physical
 particle fixed source. As discussed in the :ref:`fixed source methodology
 section <usersguide_fixed_source_methods>`, the types of fixed sources supported
-in the random ray solver mode are much more limited as compared to what is
-possible with the Monte Carlo solver.
+in the random ray solver mode are limited compared to what is possible with the
+Monte Carlo solver.
 
 Currently, all of the following conditions must be met for the source to be
 valid in random ray mode:
@@ -447,18 +447,18 @@ Any other spatial distribution information contained in a particle source will
 be ignored. Only the specified cell, material, or universe domains will be used
 to define the spatial location of the source, as the source will be applied
 during a pre-processing stage of OpenMC to all source regions that are contained
-within the inputted domains for the source.
+within the specified domains for the source.
 
 When defining a :class:`openmc.stats.Discrete` object, note that the ``x`` field
 will correspond to the discrete energy points, and the ``p`` field will
 correspond to the discrete probabilities. It is recommended to select energy
 points that fall within energy groups rather than on boundaries between the
-groups. I.e., if the problem contains two energy groups (with bin edges of
+groups. That is, if the problem contains two energy groups (with bin edges of
 1.0e-5, 1.0e-1, 1.0e7), then a good selection for the ``x`` field might be
 points of 1.0e-2 and 1.0e1.
 
 ::
-    
+
     # Define geometry, etc.
     ...
     source_cell = openmc.Cell(fill=source_mat, name='cell where fixed source will be')
@@ -466,7 +466,7 @@ points of 1.0e-2 and 1.0e1.
     # Define physical neutron fixed source
     energy_points = [1.0e-2, 1.0e1]
     strengths = [0.25, 0.75]
-    energy_distribution = openmc.stats.Discrete(x=energy_points,p=strengths)
+    energy_distribution = openmc.stats.Discrete(x=energy_points, p=strengths)
     neutron_source = openmc.IndependentSource(energy=energy_distribution, domains=[source_cell], strength=1.0)
 
     # Add fixed source and ray sampling source to settings file
@@ -484,7 +484,7 @@ An example of a settings definition for an eigenvalue random ray simulation is
 given below:
 
 ::
-    
+
     # Geometry and MGXS material definition of 2x2 lattice (not shown)
     pitch = 1.26
     group_edges = [1e-5, 0.0635, 10.0, 1.0e2, 1.0e3, 0.5e6, 1.0e6, 20.0e6]
@@ -581,7 +581,7 @@ given below:
     # Define physical neutron fixed source
     energy_points = [1.0e-2, 1.0e1]
     strengths = [0.25, 0.75]
-    energy_distribution = openmc.stats.Discrete(x=energy_points,p=strengths)
+    energy_distribution = openmc.stats.Discrete(x=energy_points, p=strengths)
     neutron_source = openmc.IndependentSource(energy=energy_distribution, domains=[source_cell], strength=1.0)
 
     # Add fixed source and ray sampling source to settings file
@@ -618,8 +618,8 @@ given below:
     plot.type = 'voxel'
 
     # Instantiate a Plots collection and export to XML
-    plot_file = openmc.Plots([plot])
-    plot_file.export_to_xml()
+    plots = openmc.Plots([plot])
+    plots.export_to_xml()
 
 All other inputs (e.g., geometry, material) will be unchanged from a typical
 Monte Carlo run (see the :ref:`geometry <usersguide_geometry>` and

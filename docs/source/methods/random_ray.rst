@@ -94,8 +94,8 @@ Method of Characteristics
 The Boltzmann neutron transport equation is a partial differential equation
 (PDE) that describes the angular flux within a system. It is a balance equation,
 with the streaming and absorption terms typically appearing on the left hand
-side, which are balanced by the scattering source, fission, and fixed source terms on
-the right hand side.
+side, which are balanced by the scattering source, fission, and fixed source
+terms on the right hand side.
 
 .. math::
     :label: transport
@@ -576,15 +576,15 @@ and a similar substitution can be made to update Equation
 estimate is used, such that the total fission source from the previous iteration
 (:math:`n-1`) is also recomputed each iteration.
 
-In a fixed source simulation, the fission source is replaced
-by a user specified fixed source term :math:`Q_{fixed}(i,E)`, which is defined
-for each FSR and energy group. This additional source term is applied at this
-stage for generating the next iteration's source estimate as:
+In a fixed source simulation, the fission source is replaced by a user specified
+fixed source term :math:`Q_\text{fixed}(i,E)`, which is defined for each FSR and
+energy group. This additional source term is applied at this stage for
+generating the next iteration's source estimate as:
 
 .. math::
     :label: fixed_source_update
 
-    Q^{n}(i, g) = Q_{fixed}(i,g) + \sum\limits^{G}_{g'} \Sigma_{s}(i,g,g') \phi^{n-1}(g')
+    Q^{n}(i, g) = Q_\text{fixed}(i,g) + \sum\limits^{G}_{g'} \Sigma_{s}(i,g,g') \phi^{n-1}(g')
 
 and no eigenvalue is computed.
 
@@ -776,9 +776,9 @@ random ray and Monte Carlo, however.
 
 - **Inactive batches:** In Monte Carlo, use of a fixed source implies that all
   batches are active batches, as there is no longer a need to develop a fission
-  source distribution. However, in random ray mode, there is still need to
+  source distribution. However, in random ray mode, there is still a need to
   develop the scattering source by way of inactive batches before beginning
-  active batches. 
+  active batches.
 
 ---------------------------
 Fundamental Sources of Bias

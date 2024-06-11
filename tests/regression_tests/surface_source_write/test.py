@@ -264,7 +264,7 @@ def model_1():
     # =============================================================================
 
     model.settings = openmc.Settings()
-    model.settings.particles = 1000
+    model.settings.particles = 100
     model.settings.batches = 5
     model.settings.inactive = 1
     model.settings.seed = 1
@@ -366,7 +366,7 @@ def model_2():
     # =============================================================================
 
     model.settings = openmc.Settings()
-    model.settings.particles = 1000
+    model.settings.particles = 100
     model.settings.batches = 5
     model.settings.inactive = 1
     model.settings.seed = 1
@@ -468,7 +468,7 @@ def model_3():
     # =============================================================================
 
     model.settings = openmc.Settings()
-    model.settings.particles = 1000
+    model.settings.particles = 100
     model.settings.batches = 5
     model.settings.inactive = 1
     model.settings.seed = 1
@@ -581,7 +581,7 @@ def model_4():
     # =============================================================================
 
     model.settings = openmc.Settings()
-    model.settings.particles = 1000
+    model.settings.particles = 100
     model.settings.batches = 5
     model.settings.inactive = 1
     model.settings.seed = 1

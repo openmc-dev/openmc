@@ -51,7 +51,7 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
   scalar_flux_new_.assign(n_source_elements_, 0.0);
   scalar_flux_final_.assign(n_source_elements_, 0.0);
   source_.resize(n_source_elements_);
-  fixed_source_.assign(n_source_elements_, 0.0);
+  external_source_.assign(n_source_elements_, 0.0);
   tally_task_.resize(n_source_elements_);
   volume_task_.resize(n_source_regions_);
 
@@ -179,7 +179,7 @@ void FlatSourceDomain::update_neutron_source(double k_eff)
 // Add external source if in fixed source mode
 #pragma omp parallel for
     for (int se = 0; se < n_source_elements_; se++) {
-      source_[se] += fixed_source_[se];
+      source_[se] += external_source_[se];
     }
   }
 
@@ -803,7 +803,7 @@ void FlatSourceDomain::output_to_vtk() const
   }
 }
 
-void FlatSourceDomain::apply_fixed_source_to_source_region(
+void FlatSourceDomain::apply_external_source_to_source_region(
   Discrete* discrete, double strength_factor, int64_t source_region)
 {
   const auto& discrete_energies = discrete->x();
@@ -811,12 +811,12 @@ void FlatSourceDomain::apply_fixed_source_to_source_region(
 
   for (int e = 0; e < discrete_energies.size(); e++) {
     int g = data::mg.get_group_index(discrete_energies[e]);
-    fixed_source_[source_region * negroups_ + g] +=
+    external_source_[source_region * negroups_ + g] +=
       discrete_probs[e] * strength_factor;
   }
 }
 
-void FlatSourceDomain::apply_fixed_source_to_cell_instances(int32_t i_cell,
+void FlatSourceDomain::apply_external_source_to_cell_instances(int32_t i_cell,
   Discrete* discrete, double strength_factor, int target_material_id,
   const vector<int32_t>& instances)
 {
@@ -831,13 +831,13 @@ void FlatSourceDomain::apply_fixed_source_to_cell_instances(int32_t i_cell,
     if (target_material_id == C_NONE ||
         cell_material_id == target_material_id) {
       int64_t source_region = source_region_offsets_[i_cell] + j;
-      apply_fixed_source_to_source_region(
+      apply_external_source_to_source_region(
         discrete, strength_factor, source_region);
     }
   }
 }
 
-void FlatSourceDomain::apply_fixed_source_to_cell_and_children(int32_t i_cell,
+void FlatSourceDomain::apply_external_source_to_cell_and_children(int32_t i_cell,
   Discrete* discrete, double strength_factor, int32_t target_material_id)
 {
   Cell& cell = *model::cells[i_cell];
@@ -845,35 +845,35 @@ void FlatSourceDomain::apply_fixed_source_to_cell_and_children(int32_t i_cell,
   if (cell.type_ == Fill::MATERIAL) {
     vector<int> instances(cell.n_instances_);
     std::iota(instances.begin(), instances.end(), 0);
-    apply_fixed_source_to_cell_instances(
+    apply_external_source_to_cell_instances(
       i_cell, discrete, strength_factor, target_material_id, instances);
   } else if (target_material_id == C_NONE) {
     std::unordered_map<int32_t, vector<int32_t>> cell_instance_list =
       cell.get_contained_cells(0, nullptr);
     for (const auto& pair : cell_instance_list) {
       int32_t i_child_cell = pair.first;
-      apply_fixed_source_to_cell_instances(i_child_cell, discrete,
+      apply_external_source_to_cell_instances(i_child_cell, discrete,
         strength_factor, target_material_id, pair.second);
     }
   }
 }
 
-void FlatSourceDomain::count_fixed_source_regions()
+void FlatSourceDomain::count_external_source_regions()
 {
-#pragma omp parallel for reduction(+ : n_fixed_source_regions_)
+#pragma omp parallel for reduction(+ : n_external_source_regions_)
   for (int sr = 0; sr < n_source_regions_; sr++) {
     float total = 0.f;
     for (int e = 0; e < negroups_; e++) {
       int64_t se = sr * negroups_ + e;
-      total += fixed_source_[se];
+      total += external_source_[se];
     }
     if (total != 0.f) {
-      n_fixed_source_regions_++;
+      n_external_source_regions_++;
     }
   }
 }
 
-void FlatSourceDomain::convert_fixed_sources()
+void FlatSourceDomain::convert_external_sources()
 {
   // Loop over external sources
   for (int es = 0; es < model::external_sources.size(); es++) {
@@ -887,14 +887,14 @@ void FlatSourceDomain::convert_fixed_sources()
     if (is->domain_type() == Source::DomainType::MATERIAL) {
       for (int32_t material_id : domain_ids) {
         for (int i_cell = 0; i_cell < model::cells.size(); i_cell++) {
-          apply_fixed_source_to_cell_and_children(
+          apply_external_source_to_cell_and_children(
             i_cell, energy, strength_factor, material_id);
         }
       }
     } else if (is->domain_type() == Source::DomainType::CELL) {
       for (int32_t cell_id : domain_ids) {
         int32_t i_cell = model::cell_map[cell_id];
-        apply_fixed_source_to_cell_and_children(
+        apply_external_source_to_cell_and_children(
           i_cell, energy, strength_factor, C_NONE);
       }
     } else if (is->domain_type() == Source::DomainType::UNIVERSE) {
@@ -902,7 +902,7 @@ void FlatSourceDomain::convert_fixed_sources()
         int32_t i_universe = model::universe_map[universe_id];
         Universe& universe = *model::universes[i_universe];
         for (int32_t i_cell : universe.cells_) {
-          apply_fixed_source_to_cell_and_children(
+          apply_external_source_to_cell_and_children(
             i_cell, energy, strength_factor, C_NONE);
         }
       }
@@ -923,7 +923,7 @@ void FlatSourceDomain::convert_fixed_sources()
     for (int e = 0; e < negroups_; e++) {
       float sigma_t = data::mg.macro_xs_[material].get_xs(
         MgxsType::TOTAL, e, nullptr, nullptr, nullptr, t, a);
-      fixed_source_[sr * negroups_ + e] /= sigma_t;
+      external_source_[sr * negroups_ + e] /= sigma_t;
     }
   }
 }

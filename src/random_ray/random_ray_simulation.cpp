@@ -145,7 +145,7 @@ void validate_random_ray_inputs()
                 "allowed.");
   }
 
-  // Validate fixed sources
+  // Validate external sources
   ///////////////////////////////////////////////////////////////////
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     if (model::external_sources.size() < 1) {
@@ -160,7 +160,7 @@ void validate_random_ray_inputs()
       IndependentSource* is = dynamic_cast<IndependentSource*>(s);
 
       if (!is) {
-        fatal_error("Only IndependentSource fixed source types are allowed in "
+        fatal_error("Only IndependentSource external source types are allowed in "
                     "random ray mode");
       }
 
@@ -169,7 +169,7 @@ void validate_random_ray_inputs()
       Isotropic* id = dynamic_cast<Isotropic*>(angle_dist);
       if (!id) {
         fatal_error(
-          "Invalid source definition -- only isotropic fixed sources are "
+          "Invalid source definition -- only isotropic external sources are "
           "allowed in random ray mode.");
       }
 
@@ -185,7 +185,7 @@ void validate_random_ray_inputs()
       if (!dd) {
         fatal_error(
           "Only discrete (multigroup) energy distributions are allowed for "
-          "fixed sources in random ray mode.");
+          "external sources in random ray mode.");
       }
     }
   }
@@ -245,9 +245,9 @@ RandomRaySimulation::RandomRaySimulation()
 void RandomRaySimulation::simulate()
 {
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    // Transfer fixed source user inputs onto random ray source regions
-    domain_.convert_fixed_sources();
-    domain_.count_fixed_source_regions();
+    // Transfer external source user inputs onto random ray source regions
+    domain_.convert_external_sources();
+    domain_.count_external_source_regions();
   }
 
   // Random ray power iteration loop
@@ -346,7 +346,7 @@ void RandomRaySimulation::output_simulation_results() const
   if (mpi::master) {
     print_results_random_ray(total_geometric_intersections_,
       avg_miss_rate_ / settings::n_batches, negroups_,
-      domain_.n_source_regions_, domain_.n_fixed_source_regions_);
+      domain_.n_source_regions_, domain_.n_external_source_regions_);
     if (model::plots.size() > 0) {
       domain_.output_to_vtk();
     }
@@ -383,7 +383,7 @@ void RandomRaySimulation::instability_check(
 // Print random ray simulation results
 void RandomRaySimulation::print_results_random_ray(
   uint64_t total_geometric_intersections, double avg_miss_rate, int negroups,
-  int64_t n_source_regions, int64_t n_fixed_source_regions) const
+  int64_t n_source_regions, int64_t n_external_source_regions) const
 {
   using namespace simulation;
 
@@ -400,7 +400,7 @@ void RandomRaySimulation::print_results_random_ray(
       " Total Iterations                  = {}\n", settings::n_batches);
     fmt::print(" Flat Source Regions (FSRs)        = {}\n", n_source_regions);
     fmt::print(
-      " FSRs Containing Fixed Sources     = {}\n", n_fixed_source_regions);
+      " FSRs Containing External Sources  = {}\n", n_external_source_regions);
     fmt::print(" Total Geometric Intersections     = {:.4e}\n",
       static_cast<double>(total_geometric_intersections));
     fmt::print("   Avg per Iteration               = {:.4e}\n",

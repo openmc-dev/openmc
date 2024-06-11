@@ -47,7 +47,7 @@
       </space>
     </source>
     <surf_source_write>
-      <max_particles>3000</max_particles>
+      <max_particles>300</max_particles>
     </surf_source_write>
     <seed>1</seed>
   </settings>

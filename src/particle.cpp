@@ -291,12 +291,14 @@ void Particle::event_cross_surface()
     // Particle crosses surface
     // TODO: off-by-one
     const auto& surf {model::surfaces[std::abs(surface()) - 1].get()};
-    // If boundary condition, add particle to surface source before crossing surface
+    // If boundary condition, add particle to surface source before crossing
+    // surface
     if (surf->bc_) {
       add_surf_source_to_bank(*this, *surf);
     }
     cross_surface(*surf);
-    // If no boundary condition, add particle to surface source after crossing surface
+    // If no boundary condition, add particle to surface source after crossing
+    // surface
     if (!surf->bc_) {
       add_surf_source_to_bank(*this, *surf);
     }
@@ -525,7 +527,7 @@ void Particle::pht_secondary_particles()
 
 void Particle::cross_surface(const Surface& surf)
 {
-  
+
   if (settings::verbosity >= 10 || trace()) {
     write_message(1, "    Crossing surface {}", surf.id_);
   }
@@ -548,9 +550,9 @@ void Particle::cross_surface(const Surface& surf)
 #ifdef DAGMC
   // in DAGMC, we know what the next cell should be
   if (surf.geom_type_ == GeometryType::DAG) {
-    int32_t i_cell =
-      next_cell(std::abs(surface()), cell_last(n_coord() - 1), lowest_coord().universe) -
-      1;
+    int32_t i_cell = next_cell(std::abs(surface()), cell_last(n_coord() - 1),
+                       lowest_coord().universe) -
+                     1;
     // save material and temp
     material_last() = material();
     sqrtkT_last() = sqrtkT();
@@ -890,13 +892,14 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
 
       if (surf.bc_) {
         // Leave if cellto with vacuum boundary condition
-        if (surf.bc_->type() == "vacuum" && settings::ssw_cell_type == SSWCellType::To) {
+        if (surf.bc_->type() == "vacuum" &&
+            settings::ssw_cell_type == SSWCellType::To) {
           return;
         }
 
         // Leave if other boundary condition than vacuum
         if (surf.bc_->type() != "vacuum") {
-            return;
+          return;
         }
       }
 

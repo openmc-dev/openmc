@@ -526,7 +526,7 @@ void FlatSourceDomain::random_ray_tally()
         tally.results_(task.filter_idx, task.score_idx, TallyResult::VALUE) +=
           score;
       } // end tally task loop
-    }   // end energy group loop
+    } // end energy group loop
 
     // For flux tallies, the total volume of the spatial region is needed
     // for normalizing the flux. We store this volume in a separate tensor.
@@ -837,8 +837,9 @@ void FlatSourceDomain::apply_external_source_to_cell_instances(int32_t i_cell,
   }
 }
 
-void FlatSourceDomain::apply_external_source_to_cell_and_children(int32_t i_cell,
-  Discrete* discrete, double strength_factor, int32_t target_material_id)
+void FlatSourceDomain::apply_external_source_to_cell_and_children(
+  int32_t i_cell, Discrete* discrete, double strength_factor,
+  int32_t target_material_id)
 {
   Cell& cell = *model::cells[i_cell];
 

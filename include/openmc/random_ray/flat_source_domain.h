@@ -116,7 +116,7 @@ public:
 
   int64_t n_source_regions_ {0}; // Total number of source regions in the model
   int64_t n_external_source_regions_ {0}; // Total number of source regions with
-                                       // non-zero external source terms
+                                          // non-zero external source terms
 
   // 1D array representing source region starting offset for each OpenMC Cell
   // in model::cells
@@ -141,8 +141,8 @@ private:
   // Methods
   void apply_external_source_to_source_region(
     Discrete* discrete, double strength_factor, int64_t source_region);
-  void apply_external_source_to_cell_instances(int32_t i_cell, Discrete* discrete,
-    double strength_factor, int target_material_id,
+  void apply_external_source_to_cell_instances(int32_t i_cell,
+    Discrete* discrete, double strength_factor, int target_material_id,
     const vector<int32_t>& instances);
   void apply_external_source_to_cell_and_children(int32_t i_cell,
     Discrete* discrete, double strength_factor, int32_t target_material_id);

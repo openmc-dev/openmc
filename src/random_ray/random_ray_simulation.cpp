@@ -160,8 +160,9 @@ void validate_random_ray_inputs()
       IndependentSource* is = dynamic_cast<IndependentSource*>(s);
 
       if (!is) {
-        fatal_error("Only IndependentSource external source types are allowed in "
-                    "random ray mode");
+        fatal_error(
+          "Only IndependentSource external source types are allowed in "
+          "random ray mode");
       }
 
       // Check for isotropic source

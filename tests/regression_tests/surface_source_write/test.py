@@ -39,25 +39,25 @@ Test cases using CSG-only geometries:
 ========  =======  =========  =========================  =====  ===================================
 Folder    Model    Surface    Cell                       BC*    Expected particles
 ========  =======  =========  =========================  =====  ===================================
-case-1    model_1  No         No                         T+V    Particles crossing any surface in
+case-01   model_1  No         No                         T+V    Particles crossing any surface in
                                                                 the model
-case-2    model_1  1          No                         T      Particles crossing this surface
+case-02   model_1  1          No                         T      Particles crossing this surface
                                                                 only
-case-3    model_1  Multiple   No                         T      Particles crossing the declared
+case-03   model_1  Multiple   No                         T      Particles crossing the declared
                                                                 surfaces
-case-4    model_1  Multiple   cell (lower universe)      T      Particles crossing the declared
+case-04   model_1  Multiple   cell (lower universe)      T      Particles crossing the declared
                                                                 surfaces that come from or are
                                                                 coming to the cell
-case-5    model_1  Multiple   cell (root universe)       T      Particles crossing the declared
+case-05   model_1  Multiple   cell (root universe)       T      Particles crossing the declared
                                                                 surfaces that come from or are
                                                                 coming to the cell
-case-6    model_1  No         cell (lower universe)      T      Particles crossing any surface that
+case-06   model_1  No         cell (lower universe)      T      Particles crossing any surface that
                                                                 come from or are coming to the cell
-case-7    model_1  No         cell (root universe)       T      Particles crossing any surface that
+case-07   model_1  No         cell (root universe)       T      Particles crossing any surface that
                                                                 come from or are coming to the cell
-case-8    model_1  No         cellfrom (lower universe)  T      Particles crossing any surface that
+case-08   model_1  No         cellfrom (lower universe)  T      Particles crossing any surface that
                                                                 come from the cell
-case-9    model_1  No         cellto (lower universe)    T      Particles crossing any surface that
+case-09   model_1  No         cellto (lower universe)    T      Particles crossing any surface that
                                                                 are coming to the cell
 case-10   model_1  No         cellfrom (root universe)   T      Particles crossing any surface that
                                                                 come from the cell
@@ -82,7 +82,7 @@ case-19   model_3  Multiple   cellto (root universe)     R      None
 An additional case, called 'case-20', is used to check that the results are comparable when
 the number of threads is set to 2 if the number of realization is lower than the capacity.
 
-Cases 21 to 23 are the event-based cases corresponding to the history-based cases 4, 7 and 13,
+Cases 21 to 23 are the event-based cases corresponding to the history-based cases 04, 07 and 13,
 respectively.
 
 Test cases using DAGMC geometries:
@@ -117,7 +117,7 @@ Notes:
 
 - The test cases list is non-exhaustive compared to the number of possible combinations.
   Test cases have been selected based on use and internal code logic.
-- Cases 8 to 11 are testing that the feature still works even if the level of coordinates
+- Cases 08 to 11 are testing that the feature still works even if the level of coordinates
   before and after crossing a surface is different,
 - Tests on boundary conditions are not performed on DAGMC models as the logic is shared
   with CSG-only models,
@@ -744,27 +744,27 @@ class SurfaceSourceWriteTestHarness(PyAPITestHarness):
 @pytest.mark.parametrize(
     "folder, model_name, parameter",
     [
-        ("case-1", "model_1", {"max_particles": 3000}),
-        ("case-2", "model_1", {"max_particles": 3000, "surface_ids": [8]}),
+        ("case-01", "model_1", {"max_particles": 3000}),
+        ("case-02", "model_1", {"max_particles": 3000, "surface_ids": [8]}),
         (
-            "case-3",
+            "case-03",
             "model_1",
             {"max_particles": 3000, "surface_ids": [4, 5, 6, 7, 8, 9]},
         ),
         (
-            "case-4",
+            "case-04",
             "model_1",
             {"max_particles": 3000, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": 2},
         ),
         (
-            "case-5",
+            "case-05",
             "model_1",
             {"max_particles": 3000, "surface_ids": [4, 5, 6, 7, 8, 9], "cell": 3},
         ),
-        ("case-6", "model_1", {"max_particles": 3000, "cell": 2}),
-        ("case-7", "model_1", {"max_particles": 3000, "cell": 3}),
-        ("case-8", "model_1", {"max_particles": 3000, "cellfrom": 2}),
-        ("case-9", "model_1", {"max_particles": 3000, "cellto": 2}),
+        ("case-06", "model_1", {"max_particles": 3000, "cell": 2}),
+        ("case-07", "model_1", {"max_particles": 3000, "cell": 3}),
+        ("case-08", "model_1", {"max_particles": 3000, "cellfrom": 2}),
+        ("case-09", "model_1", {"max_particles": 3000, "cellto": 2}),
         ("case-10", "model_1", {"max_particles": 3000, "cellfrom": 3}),
         ("case-11", "model_1", {"max_particles": 3000, "cellto": 3}),
         (

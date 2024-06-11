@@ -94,23 +94,23 @@ Test cases using DAGMC geometries:
 ========  =============  =========  =====================  =====  ===================================
 Folder    Model          Surface    Cell                   BC*    Expected particles
 ========  =============  =========  =====================  =====  ===================================
-case-24   model_dagmc_1  No         No                     T+V    Particles crossing any surface in
+case-d01  model_dagmc_1  No         No                     T+V    Particles crossing any surface in
                                                                   the model
-case-25   model_dagmc_1  1          No                     T      Particles crossing this surface
+case-d02  model_dagmc_1  1          No                     T      Particles crossing this surface
                                                                   only
-case-26   model_dagmc_1  No         cell                   T      Particles crossing any surface that
+case-d03  model_dagmc_1  No         cell                   T      Particles crossing any surface that
                                                                   come from or are coming to the cell
-case-27   model_dagmc_1  1          cell                   T      Particles crossing the declared
+case-d04  model_dagmc_1  1          cell                   T      Particles crossing the declared
                                                                   surface that come from or are
                                                                   coming to the cell
-case-28   model_dagmc_1  No         cellfrom               T      Particles crossing any surface that
+case-d05  model_dagmc_1  No         cellfrom               T      Particles crossing any surface that
                                                                   come from the cell
-case-29   model_dagmc_1  No         cellto                 T      Particles crossing any surface that
+case-d06  model_dagmc_1  No         cellto                 T      Particles crossing any surface that
                                                                   are coming to the cell
-case-30   model_dagmc_2  Multiple   cell (lower universe)  T      Particles crossing the declared
+case-d07  model_dagmc_2  Multiple   cell (lower universe)  T      Particles crossing the declared
                                                                   surfaces that come from or are
                                                                   coming to the cell
-case-31   model_dagmc_2  Multiple   cell (root universe)   T      Particles crossing the declared
+case-d08  model_dagmc_2  Multiple   cell (root universe)   T      Particles crossing the declared
                                                                   surfaces that come from or are
                                                                   coming to the cell
 ========  =============  =========  =====================  =====  ===================================
@@ -1082,18 +1082,18 @@ def model_dagmc_2():
 @pytest.mark.parametrize(
     "folder, model_name, parameter",
     [
-        ("case-24", "model_dagmc_1", {"max_particles": 300}),
-        ("case-25", "model_dagmc_1", {"max_particles": 300, "surface_ids": [1]}),
-        ("case-26", "model_dagmc_1", {"max_particles": 300, "cell": 2}),
+        ("case-d01", "model_dagmc_1", {"max_particles": 300}),
+        ("case-d02", "model_dagmc_1", {"max_particles": 300, "surface_ids": [1]}),
+        ("case-d03", "model_dagmc_1", {"max_particles": 300, "cell": 2}),
         (
-            "case-27",
+            "case-d04",
             "model_dagmc_1",
             {"max_particles": 300, "surface_ids": [1], "cell": 2},
         ),
-        ("case-28", "model_dagmc_1", {"max_particles": 300, "cellfrom": 2}),
-        ("case-29", "model_dagmc_1", {"max_particles": 300, "cellto": 2}),
+        ("case-d05", "model_dagmc_1", {"max_particles": 300, "cellfrom": 2}),
+        ("case-d06", "model_dagmc_1", {"max_particles": 300, "cellto": 2}),
         (
-            "case-30",
+            "case-d07",
             "model_dagmc_2",
             {
                 "max_particles": 300,
@@ -1102,7 +1102,7 @@ def model_dagmc_2():
             },
         ),
         (
-            "case-31",
+            "case-d08",
             "model_dagmc_2",
             {
                 "max_particles": 300,

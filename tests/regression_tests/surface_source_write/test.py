@@ -18,12 +18,13 @@ All results are visually verified using the '_visualize.py' script in the regres
 OpenMC models
 -------------
 
-Three OpenMC models with CSG-only geometries are used to cover the transmission, vacuum and
-reflective Boundary Conditions (BC):
+Four OpenMC models with CSG-only geometries are used to cover the transmission, vacuum,
+reflective and periodic Boundary Conditions (BC):
 
 - model_1: cylindrical core in 2 boxes (vacuum and transmission BC),
 - model_2: cylindrical core in 1 box (vacuum BC),
-- model_3: cylindrical core in 1 box (reflective BC).
+- model_3: cylindrical core in 1 box (reflective BC),
+- model_4: cylindrical core in 1 box (periodic BC).
 
 Two models including DAGMC geometries are also used, based on the mesh file 'dagmc.h5m'
 available from tests/regression_tests/dagmc/legacy:
@@ -75,6 +76,9 @@ case-16   model_3  Multiple   No                         R      Particles crossi
 case-17   model_3  Multiple   cell (root universe)       R      None
 case-18   model_3  Multiple   cellfrom (root universe)   R      None
 case-19   model_3  Multiple   cellto (root universe)     R      None
+case-32   model_4  1          No                         P+R    Particles crossing the declared
+                                                                periodic surface
+case-33   model_4  1          cell (root universe)       P+R    None
 ========  =======  =========  =========================  =====  ===================================
 
 *: BC stands for Boundary Conditions, T for Transmission, R for Reflective, and V for Vacuum.
@@ -126,8 +130,7 @@ Notes:
 
 TODO:
 
-- Test with a lattice,
-- Test with periodic boundary conditions.
+- Test with a lattice.
 
 """
 

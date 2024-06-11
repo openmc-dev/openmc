@@ -76,9 +76,9 @@ case-16   model_3  Multiple   No                         R      Particles crossi
 case-17   model_3  Multiple   cell (root universe)       R      None
 case-18   model_3  Multiple   cellfrom (root universe)   R      None
 case-19   model_3  Multiple   cellto (root universe)     R      None
-case-32   model_4  1          No                         P+R    Particles crossing the declared
+case-20   model_4  1          No                         P+R    Particles crossing the declared
                                                                 periodic surface
-case-33   model_4  1          cell (root universe)       P+R    None
+case-21   model_4  1          cell (root universe)       P+R    None
 ========  =======  =========  =========================  =====  ===================================
 
 *: BC stands for Boundary Conditions, T for Transmission, R for Reflective, and V for Vacuum.
@@ -811,12 +811,12 @@ class SurfaceSourceWriteTestHarness(PyAPITestHarness):
             {"max_particles": 3000, "surface_ids": [4, 5, 6, 7, 8, 9], "cellto": 3},
         ),
         (
-            "case-32",
+            "case-20",
             "model_4",
             {"max_particles": 3000, "surface_ids": [4]},
         ),
         (
-            "case-33",
+            "case-21",
             "model_4",
             {"max_particles": 3000, "surface_ids": [4], "cell": 3},
         ),

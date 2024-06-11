@@ -260,7 +260,7 @@ def create_random_ray_model():
     strengths = [1.0] # Good - fast group appears largest (besides most thermal)
     midpoints = [100.0]
     energy_distribution = openmc.stats.Discrete(x=midpoints,p=strengths)
-    source = openmc.IndependentSource(energy=energy_distribution, domains=[source_lattice_cell], strength=1.0)
+    source = openmc.IndependentSource(energy=energy_distribution, constraints={'domains':[source_lattice_cell]}, strength=1.0)
     settings.source = [source]
 
     ###############################################################################

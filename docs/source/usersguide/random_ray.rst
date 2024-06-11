@@ -265,7 +265,7 @@ that the source must not be limited to only fissionable regions. Additionally,
 the source box must cover the entire simulation domain. In the case of a
 simulation domain that is not box shaped, a box source should still be used to
 bound the domain but with the source limited to rejection sampling the actual
-simulation universe (which can be specified via the ``domains`` field of the
+simulation universe (which can be specified via the ``domains`` constraint of the
 :class:`openmc.IndependentSource` Python class). Similar to Monte Carlo sources,
 for two-dimensional problems (e.g., a 2D pincell) it is desirable to make the
 source bounded near the origin of the infinite dimension. An example of an
@@ -430,12 +430,12 @@ section <usersguide_fixed_source_methods>`, the types of fixed sources supported
 in the random ray solver mode are limited compared to what is possible with the
 Monte Carlo solver.
 
-Currently, all of the following conditions must be met for the source to be
-valid in random ray mode:
+Currently, all of the following conditions must be met for the particle source
+to be valid in random ray mode:
 
 - One or more domain ids must be specified that indicate which cells, universes,
   or materials the source applies to. This implicitly limits the source type to
-  being volumetric. This is specified via the ``domains`` field of the
+  being volumetric. This is specified via the ``domains`` constraint placed on the
   :class:`openmc.IndependentSource` Python class.
 - The source must be isotropic (default for a source)
 - The source must use a discrete (i.e., multigroup) energy distribution. The
@@ -467,7 +467,7 @@ points of 1.0e-2 and 1.0e1.
     energy_points = [1.0e-2, 1.0e1]
     strengths = [0.25, 0.75]
     energy_distribution = openmc.stats.Discrete(x=energy_points, p=strengths)
-    neutron_source = openmc.IndependentSource(energy=energy_distribution, domains=[source_cell], strength=1.0)
+    neutron_source = openmc.IndependentSource(energy=energy_distribution, constraints={'domains':[source_cell]}, strength=1.0)
 
     # Add fixed source and ray sampling source to settings file
     settings.source = [neutron_source]
@@ -582,7 +582,7 @@ given below:
     energy_points = [1.0e-2, 1.0e1]
     strengths = [0.25, 0.75]
     energy_distribution = openmc.stats.Discrete(x=energy_points, p=strengths)
-    neutron_source = openmc.IndependentSource(energy=energy_distribution, domains=[source_cell], strength=1.0)
+    neutron_source = openmc.IndependentSource(energy=energy_distribution, constraints={'domains':[source_cell]}, strength=1.0)
 
     # Add fixed source and ray sampling source to settings file
     settings.source = [neutron_source]

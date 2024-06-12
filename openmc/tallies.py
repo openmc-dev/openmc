@@ -33,7 +33,7 @@ _NUCLIDE_CLASSES = (str, openmc.CrossNuclide, openmc.AggregateNuclide)
 _FILTER_CLASSES = (openmc.Filter, openmc.CrossFilter, openmc.AggregateFilter)
 
 # Valid types of estimators
-ESTIMATOR_TYPES = ['tracklength', 'collision', 'analog']
+ESTIMATOR_TYPES = ('tracklength', 'collision', 'analog')
 
 
 class Tally(IDManagerMixin):
@@ -112,7 +112,7 @@ class Tally(IDManagerMixin):
         self._filters = cv.CheckedList(_FILTER_CLASSES, 'tally filters')
         self._nuclides = cv.CheckedList(_NUCLIDE_CLASSES, 'tally nuclides')
         self._scores = cv.CheckedList(_SCORE_CLASSES, 'tally scores')
-        self._estimator = None
+        self._estimator = 'tracklength'
         self._triggers = cv.CheckedList(openmc.Trigger, 'tally triggers')
         self._derivative = None
         self._multiply_density = True
@@ -131,6 +131,35 @@ class Tally(IDManagerMixin):
         self._sp_filename = None
         self._results_read = False
 
+    def __eq__(self, other):
+        if other.id != self.id:
+            return False
+        if other.name != self.name:
+            return False
+        if other.estimator != self.estimator:
+            return False
+        if other.filters != self.filters:
+            return False
+        # for tallies are loaded from statpoint files
+        # an empty nuclide list is equivalent to a list with 'total'
+        other_nuclides = other.nuclides.copy()
+        self_nuclides = self.nuclides.copy()
+        if 'total' in other_nuclides:
+            other_nuclides.remove('total')
+        if 'total' in self_nuclides:
+            self_nuclides.remove('total')
+        if other_nuclides != self_nuclides:
+            return False
+        if other.scores != self.scores:
+            return False
+        if other.triggers != self.triggers:
+            return False
+        if other.derivative != self.derivative:
+            return False
+        if other.multiply_density != self.multiply_density:
+            return False
+        return True
+
     def __repr__(self):
         parts = ['Tally']
         parts.append('{: <15}=\t{}'.format('ID', self.id))
@@ -145,6 +174,8 @@ class Tally(IDManagerMixin):
         parts.append('{: <15}=\t{}'.format('Estimator', self.estimator))
         parts.append('{: <15}=\t{}'.format('Multiply dens.', self.multiply_density))
         return '\n\t'.join(parts)
+
+
 
     @property
     def name(self):
@@ -868,7 +899,7 @@ class Tally(IDManagerMixin):
         subelement.text = ' '.join(str(x) for x in self.scores)
 
         # Tally estimator type
-        if self.estimator is not None:
+        if self.estimator is not None and self.estimator != 'tracklength':
             subelement = ET.SubElement(element, "estimator")
             subelement.text = self.estimator
 
@@ -882,6 +913,24 @@ class Tally(IDManagerMixin):
             subelement.text = str(self.derivative.id)
 
         return element
+
+    def add_results(self, statepoint):
+        """Add results from the provided statepoint file to this tally instance
+
+            .. versionadded: 0.14.1
+
+        Parameters
+        ----------
+        statepoint : openmc.PathLike or openmc.StatePoint instance
+            StatePoint used to update tally results
+        """
+        if isinstance(statepoint, openmc.StatePoint):
+            sp = statepoint
+        else:
+            sp = openmc.StatePoint(statepoint)
+        # check for an exact tally match in the sp file
+        if self in statepoint.tallies.values():
+            sp._populate_tally(self)
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
@@ -3165,6 +3214,22 @@ class Tallies(cv.CheckedList):
 
                     # Continue iterating from the first loop
                     break
+
+    def add_results(self, statepoint):
+        """Add results from the provided statepoint file the tally objects in this collection
+0
+            .. versionadded: 0.14.1
+
+        Parameters
+        ----------
+        statepoint : openmc.PathLike or openmc.StatePoint instance
+            StatePoint used to update tally results
+        """
+        if not self:
+            return
+        sp = statepoint if isinstance(statepoint, openmc.StatePoint) else openmc.StatePoint(statepoint)
+        for tally in self:
+            tally.add_results(sp)
 
     def _create_tally_subelements(self, root_element):
         for tally in self:

@@ -467,7 +467,10 @@ points of 1.0e-2 and 1.0e1.
     energy_points = [1.0e-2, 1.0e1]
     strengths = [0.25, 0.75]
     energy_distribution = openmc.stats.Discrete(x=energy_points, p=strengths)
-    neutron_source = openmc.IndependentSource(energy=energy_distribution, constraints={'domains':[source_cell]}, strength=1.0)
+    neutron_source = openmc.IndependentSource(
+        energy=energy_distribution,
+        constraints={'domains': [source_cell]}
+    )
 
     # Add fixed source and ray sampling source to settings file
     settings.source = [neutron_source]
@@ -582,7 +585,10 @@ given below:
     energy_points = [1.0e-2, 1.0e1]
     strengths = [0.25, 0.75]
     energy_distribution = openmc.stats.Discrete(x=energy_points, p=strengths)
-    neutron_source = openmc.IndependentSource(energy=energy_distribution, constraints={'domains':[source_cell]}, strength=1.0)
+    neutron_source = openmc.IndependentSource(
+        energy=energy_distribution,
+        constraints={'domains': [source_cell]}
+    )
 
     # Add fixed source and ray sampling source to settings file
     settings.source = [neutron_source]

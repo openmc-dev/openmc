@@ -142,7 +142,7 @@ than unity. By ensuring that the expected number of fission sites in each mesh
 cell is constant, the collision density across all cells, and hence the variance
 of tallies, is more uniform than it would be otherwise.
 
-.. _Shannon entropy: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-06-3737.pdf
+.. _Shannon entropy: https://mcnp.lanl.gov/pdf_files/TechReport_2006_LANL_LA-UR-06-3737_Brown.pdf
 
 .. [Lieberoth] J. Lieberoth, "A Monte Carlo Technique to Solve the Static
    Eigenvalue Problem of the Boltzmann Transport Equation," *Nukleonik*, **11**,

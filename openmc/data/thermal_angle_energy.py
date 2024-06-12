@@ -225,7 +225,7 @@ class IncoherentInelasticAEDiscrete(AngleEnergy):
         """
         energy_out = group['energy_out'][()]
         mu_out = group['mu_out'][()]
-        skewed = bool(group['skewed'])
+        skewed = bool(group['skewed'][()])
         return cls(energy_out, mu_out, skewed)
 
 

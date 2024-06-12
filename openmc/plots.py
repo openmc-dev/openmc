@@ -2,7 +2,6 @@ from collections.abc import Iterable, Mapping
 from numbers import Integral, Real
 from pathlib import Path
 from typing import Optional
-from os.path import splitext
 
 import h5py
 import lxml.etree as ET
@@ -174,9 +173,9 @@ def _get_plot_image(plot, cwd):
     # Make sure .png file was created
     png_filename = plot.filename if plot.filename is not None else f'plot_{plot.id}'
 
-    # add file extension if not already present. The C++ code
-    # added it automatically if it wasn't present.
-    if splitext(png_filename)[1] != ".png":
+    # Add file extension if not already present. The C++ code added it
+    # automatically if it wasn't present.
+    if Path(png_filename).suffix != ".png":
         png_filename += ".png"
 
     png_file = Path(cwd) / png_filename
@@ -967,8 +966,7 @@ class Plot(PlotBase):
 
         """
         if self.type != 'voxel':
-            raise ValueError(
-                'Generating a VTK file only works for voxel plots')
+            raise ValueError('Generating a VTK file only works for voxel plots')
 
         # Create plots.xml
         Plots([self]).export_to_xml(cwd)
@@ -979,7 +977,7 @@ class Plot(PlotBase):
         h5_voxel_filename = self.filename if self.filename is not None else f'plot_{self.id}'
 
         # Add file extension if not already present
-        if splitext(h5_voxel_filename)[1] != ".h5":
+        if Path(h5_voxel_filename).suffix != ".h5":
             h5_voxel_filename += ".h5"
 
         h5_voxel_file = Path(cwd) / h5_voxel_filename

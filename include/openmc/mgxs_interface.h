@@ -47,7 +47,7 @@ public:
   vector<vector<double>> get_mat_kTs();
 
   // Get the group index corresponding to a continuous energy
-  int get_group_index(double e);
+  int get_group_index(double E);
 
   int num_energy_groups_;
   int num_delayed_groups_;

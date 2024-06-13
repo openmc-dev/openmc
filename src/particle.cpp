@@ -291,15 +291,13 @@ void Particle::event_cross_surface()
     // Particle crosses surface
     // TODO: off-by-one
     const auto& surf {model::surfaces[std::abs(surface()) - 1].get()};
-    // If boundary condition, add particle to surface source before crossing
-    // surface
-    if (surf->bc_) {
+    // If BC, add particle to surface source before crossing surface
+    if (surf->surf_source_ && surf->bc_) {
       add_surf_source_to_bank(*this, *surf);
     }
     cross_surface(*surf);
-    // If no boundary condition, add particle to surface source after crossing
-    // surface
-    if (!surf->bc_) {
+    // If no BC, add particle to surface source after crossing surface
+    if (surf->surf_source_ && !surf->bc_) {
       add_surf_source_to_bank(*this, *surf);
     }
     if (settings::weight_window_checkpoint_surface) {
@@ -881,7 +879,7 @@ ParticleType str_to_particle_type(std::string str)
 
 void add_surf_source_to_bank(Particle& p, const Surface& surf)
 {
-  if (surf.surf_source_ && simulation::current_batch > settings::n_inactive &&
+  if (simulation::current_batch > settings::n_inactive &&
       !simulation::surf_source_bank.full()) {
 
     // If a cell/cellfrom/cellto parameter is defined
@@ -903,11 +901,11 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
         }
       }
 
-      // Check if the cell of interest has been left
-      bool left = false;
+      // Check if the cell of interest has been exited
+      bool exited = false;
       for (int i = 0; i < p.n_coord_last(); ++i) {
         if (p.cell_last(i) == cell_idx) {
-          left = true;
+          exited = true;
         }
       }
 
@@ -919,26 +917,26 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
         }
       }
 
-      // Vacuum boundary conditions: return if cell is not left
+      // Vacuum boundary conditions: return if cell is not exited
       if (surf.bc_) {
-        if (surf.bc_->type() == "vacuum" && !left) {
+        if (surf.bc_->type() == "vacuum" && !exited) {
           return;
         }
       } else {
 
-        // If we both enter and leave the cell of interest
-        if (entered && left) {
+        // If we both enter and exit the cell of interest
+        if (entered && exited) {
           return;
         }
 
-        // If we did not enter nor leave the cell of interest
-        if (!entered && !left) {
+        // If we did not enter nor exit the cell of interest
+        if (!entered && !exited) {
           return;
         }
 
         // If cellfrom and the cell before crossing is not the cell of
         // interest
-        if (settings::ssw_cell_type == SSWCellType::From && !left) {
+        if (settings::ssw_cell_type == SSWCellType::From && !exited) {
           return;
         }
 

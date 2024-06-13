@@ -18,17 +18,17 @@ ROOM_TEMPERATURE_KELVIN = 294.0
 # Supported incoming particle MGXS angular treatment representations
 REPRESENTATION_ISOTROPIC = 'isotropic'
 REPRESENTATION_ANGLE = 'angle'
-_REPRESENTATIONS = (
+_REPRESENTATIONS = {
     REPRESENTATION_ISOTROPIC,
     REPRESENTATION_ANGLE
-)
+}
 
 # Supported scattering angular distribution representations
-_SCATTER_TYPES = (
+_SCATTER_TYPES = {
     SCATTER_TABULAR,
     SCATTER_LEGENDRE,
     SCATTER_HISTOGRAM
-)
+}
 
 # Number of mu points for conversion between scattering formats
 _NMU = 257

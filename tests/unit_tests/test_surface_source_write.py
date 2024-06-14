@@ -85,7 +85,7 @@ def model():
     # Geometry
     radius = 1.0
     sphere = openmc.Sphere(r=radius, boundary_type="reflective")
-    plane = openmc.ZPlane(z0=0.0)
+    plane = openmc.ZPlane(0.0)
     cell_1 = openmc.Cell(region=-sphere & -plane, fill=material)
     cell_2 = openmc.Cell(region=-sphere & +plane, fill=material)
     root = openmc.Universe(cells=[cell_1, cell_2])
@@ -99,7 +99,7 @@ def model():
     model.settings.seed = 1
 
     bounds = [-radius, -radius, -radius, radius, radius, radius]
-    distribution = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=False)
+    distribution = openmc.stats.Box(bounds[:3], bounds[3:])
     model.settings.source = openmc.IndependentSource(space=distribution)
 
     return model
@@ -184,7 +184,7 @@ def model_dagmc(request):
     model.settings.inactive = 1
     model.settings.seed = 1
 
-    source_box = openmc.stats.Box([-4, -4, -20], [4, 4, 20], only_fissionable=True)
+    source_box = openmc.stats.Box([-4, -4, -20], [4, 4, 20])
     model.settings.source = openmc.IndependentSource(space=source_box)
 
     return model

@@ -859,25 +859,23 @@ attributes/sub-elements:
     .. _MCPL: https://mctools.github.io/mcpl/mcpl.pdf
 
   :cell:
-    An integer representing the cell ID used to determine if particles
-    crossing identified surfaces are to be banked. Particles coming
-    from or going to this declared cell will be banked if they cross
-    the identified surfaces.
+    An integer representing the cell ID used to determine if particles crossing
+    identified surfaces are to be banked. Particles coming from or going to this
+    declared cell will be banked if they cross the identified surfaces.
 
     *Default*: None
 
   :cellfrom:
-    An integer representing the cell ID used to determine if particles
-    crossing identified surfaces are to be banked. Particles coming
-    from this declared cell will be banked if they cross the identified
-    surfaces.
+    An integer representing the cell ID used to determine if particles crossing
+    identified surfaces are to be banked. Particles coming from this declared
+    cell will be banked if they cross the identified surfaces.
 
     *Default*: None
 
   :cellto:
-    An integer representing the cell ID used to determine if particles
-    crossing identified surfaces are to be banked. Particles going to this
-    declared cell will be banked if they cross the identified surfaces.
+    An integer representing the cell ID used to determine if particles crossing
+    identified surfaces are to be banked. Particles going to this declared cell
+    will be banked if they cross the identified surfaces.
 
     *Default*: None
 

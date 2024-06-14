@@ -207,8 +207,8 @@ def model_1():
 
     # Surfaces
     core_cylinder = openmc.ZCylinder(r=core_radius)
-    core_lower_plane = openmc.ZPlane(z0=-core_height / 2.0)
-    core_upper_plane = openmc.ZPlane(z0=core_height / 2.0)
+    core_lower_plane = openmc.ZPlane(-core_height / 2.0)
+    core_upper_plane = openmc.ZPlane(core_height / 2.0)
 
     # Region
     core_region = -core_cylinder & +core_lower_plane & -core_upper_plane
@@ -326,8 +326,8 @@ def model_2():
 
     # Surfaces
     core_cylinder = openmc.ZCylinder(r=core_radius)
-    core_lower_plane = openmc.ZPlane(z0=-core_height / 2.0)
-    core_upper_plane = openmc.ZPlane(z0=core_height / 2.0)
+    core_lower_plane = openmc.ZPlane(-core_height / 2.0)
+    core_upper_plane = openmc.ZPlane(core_height / 2.0)
 
     # Region
     core_region = -core_cylinder & +core_lower_plane & -core_upper_plane
@@ -428,8 +428,8 @@ def model_3():
 
     # Surfaces
     core_cylinder = openmc.ZCylinder(r=core_radius)
-    core_lower_plane = openmc.ZPlane(z0=-core_height / 2.0)
-    core_upper_plane = openmc.ZPlane(z0=core_height / 2.0)
+    core_lower_plane = openmc.ZPlane(-core_height / 2.0)
+    core_upper_plane = openmc.ZPlane(core_height / 2.0)
 
     # Region
     core_region = -core_cylinder & +core_lower_plane & -core_upper_plane
@@ -531,8 +531,8 @@ def model_4():
 
     # Surfaces
     core_cylinder = openmc.ZCylinder(r=core_radius)
-    core_lower_plane = openmc.ZPlane(z0=-core_height / 2.0)
-    core_upper_plane = openmc.ZPlane(z0=core_height / 2.0)
+    core_lower_plane = openmc.ZPlane(-core_height / 2.0)
+    core_upper_plane = openmc.ZPlane(core_height / 2.0)
 
     # Region
     core_region = -core_cylinder & +core_lower_plane & -core_upper_plane
@@ -553,12 +553,12 @@ def model_4():
     box1_size = 6.0
 
     # Surfaces
-    box1_lower_plane = openmc.ZPlane(z0=-box1_size / 2.0, boundary_type="periodic")
-    box1_upper_plane = openmc.ZPlane(z0=box1_size / 2.0, boundary_type="periodic")
-    box1_left_plane = openmc.XPlane(x0=-box1_size / 2.0, boundary_type="reflective")
-    box1_right_plane = openmc.XPlane(x0=box1_size / 2.0, boundary_type="reflective")
-    box1_rear_plane = openmc.YPlane(y0=-box1_size / 2.0, boundary_type="reflective")
-    box1_front_plane = openmc.YPlane(y0=box1_size / 2.0, boundary_type="reflective")
+    box1_lower_plane = openmc.ZPlane(-box1_size / 2.0, boundary_type="periodic")
+    box1_upper_plane = openmc.ZPlane(box1_size / 2.0, boundary_type="periodic")
+    box1_left_plane = openmc.XPlane(-box1_size / 2.0, boundary_type="reflective")
+    box1_right_plane = openmc.XPlane(box1_size / 2.0, boundary_type="reflective")
+    box1_rear_plane = openmc.YPlane(-box1_size / 2.0, boundary_type="reflective")
+    box1_front_plane = openmc.YPlane(box1_size / 2.0, boundary_type="reflective")
 
     # Region
     box1_region = (
@@ -986,12 +986,12 @@ def model_dagmc_2():
     box1_size = 44
 
     # Surfaces
-    box1_lower_plane = openmc.ZPlane(z0=-box1_size / 2.0, surface_id=101)
-    box1_upper_plane = openmc.ZPlane(z0=box1_size / 2.0, surface_id=102)
-    box1_left_plane = openmc.XPlane(x0=-box1_size / 2.0, surface_id=103)
-    box1_right_plane = openmc.XPlane(x0=box1_size / 2.0, surface_id=104)
-    box1_rear_plane = openmc.YPlane(y0=-box1_size / 2.0, surface_id=105)
-    box1_front_plane = openmc.YPlane(y0=box1_size / 2.0, surface_id=106)
+    box1_lower_plane = openmc.ZPlane(-box1_size / 2.0, surface_id=101)
+    box1_upper_plane = openmc.ZPlane(box1_size / 2.0, surface_id=102)
+    box1_left_plane = openmc.XPlane(-box1_size / 2.0, surface_id=103)
+    box1_right_plane = openmc.XPlane(box1_size / 2.0, surface_id=104)
+    box1_rear_plane = openmc.YPlane(-box1_size / 2.0, surface_id=105)
+    box1_front_plane = openmc.YPlane(box1_size / 2.0, surface_id=106)
 
     # Region
     box1_region = (
@@ -1015,22 +1015,22 @@ def model_dagmc_2():
 
     # Surfaces
     box2_lower_plane = openmc.ZPlane(
-        z0=-box2_size / 2.0, boundary_type="vacuum", surface_id=107
+        -box2_size / 2.0, boundary_type="vacuum", surface_id=107
     )
     box2_upper_plane = openmc.ZPlane(
-        z0=box2_size / 2.0, boundary_type="vacuum", surface_id=108
+        box2_size / 2.0, boundary_type="vacuum", surface_id=108
     )
     box2_left_plane = openmc.XPlane(
-        x0=-box2_size / 2.0, boundary_type="vacuum", surface_id=109
+        -box2_size / 2.0, boundary_type="vacuum", surface_id=109
     )
     box2_right_plane = openmc.XPlane(
-        x0=box2_size / 2.0, boundary_type="vacuum", surface_id=110
+        box2_size / 2.0, boundary_type="vacuum", surface_id=110
     )
     box2_rear_plane = openmc.YPlane(
-        y0=-box2_size / 2.0, boundary_type="vacuum", surface_id=111
+        -box2_size / 2.0, boundary_type="vacuum", surface_id=111
     )
     box2_front_plane = openmc.YPlane(
-        y0=box2_size / 2.0, boundary_type="vacuum", surface_id=112
+        box2_size / 2.0, boundary_type="vacuum", surface_id=112
     )
 
     # Region

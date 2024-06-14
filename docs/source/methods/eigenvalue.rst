@@ -110,6 +110,11 @@ at plots of :math:`k_{eff}` and the Shannon entropy. A number of methods have
 been proposed (see e.g. [Romano]_, [Ueki]_), but each of these is not without
 problems.
 
+Shannon entropy is calculated differently for the random ray solver, as
+described :ref:`in the random ray theory section
+<methods-shannon-entropy-random-ray>`, as the Shannon entropy does not serve as
+a diagnostic tool for convergence of the scattering source.
+
 ---------------------------
 Uniform Fission Site Method
 ---------------------------

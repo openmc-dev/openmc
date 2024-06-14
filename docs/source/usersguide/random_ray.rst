@@ -44,12 +44,7 @@ The additional burden of converging the scattering source generally results in a
 higher requirement for the number of inactive batches---often by an order of
 magnitude or more. For instance, it may be reasonable to only use 50 inactive
 batches for a light water reactor simulation with Monte Carlo, but random ray
-might require 500 or more inactive batches. Similar to Monte Carlo,
-:ref:`Shannon entropy <usersguide_entropy>` can be used to gauge whether the
-combined scattering and fission source has fully developed. The Shannon entropy
-is calculated automatically near the end of each batch and is printed to the 
-statepoint file. Unlike Monte Carlo, an entropy mesh does not need to be defined,
-as the Shannon entropy is calculated over FSRs using a volume-weighted approach.
+might require 500 or more inactive batches. 
 
 Similar to Monte Carlo, active batches are used in the random ray solver mode to
 accumulate and converge statistics on unknown quantities (i.e., the random ray
@@ -62,6 +57,19 @@ solver::
     settings.energy_mode = "multi-group"
     settings.batches = 1200
     settings.inactive = 600
+
+---------------
+Shannon Entropy
+---------------
+
+Similar to Monte Carlo, :ref:`Shannon entropy
+<methods-shannon-entropy-random-ray>` can be used to gauge whether the fission
+source has fully developed. However, unlike Monte Carlo, the Shannon entropy
+computed for random ray does not show convergence of the scattering source. The
+Shannon entropy is calculated automatically after each batch and is printed to
+the statepoint file. Unlike Monte Carlo, an entropy mesh does not need to be
+defined, as the Shannon entropy is calculated over FSRs using a volume-weighted
+approach.
 
 -------------------------------
 Inactive Ray Length (Dead Zone)

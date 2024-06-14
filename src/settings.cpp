@@ -623,7 +623,7 @@ void read_settings_xml(pugi::xml_node root)
     }
   }
 
-  // Shannon Entropy mesh
+  // Shannon entropy
   if (solver_type == SolverType::RANDOM_RAY) {
     if (check_for_node(root, "entropy_mesh")) {
       fatal_error("Random ray uses FSRs to compute the Shannon entropy. "

@@ -411,6 +411,8 @@ which when partially simplified becomes:
 
 Note that there are now four (seemingly identical) volume terms in this equation.
 
+.. _methods-volume-dilemma:
+
 ~~~~~~~~~~~~~~
 Volume Dilemma
 ~~~~~~~~~~~~~~
@@ -734,29 +736,6 @@ Most tallies, filters, and scores that you would expect to work with a
 multigroup solver like random ray should work. For example, you can define 3D
 mesh tallies with energy filters and flux, fission, and nu-fission scores, etc.
 
-Additionally, as :math:`k_{eff}` is updated at each generation, the fission
-source at each FSR is used to compute the Shannon entropy. This follows the
-:ref:`same procedure for computing Shannon entropy in continuous-energy or
-multigroup Monte Carlo simulations <methods-shannon-entropy>`, except that
-fission sites at FSRs are considered, rather than fission sites of user-defined
-regular meshes. Thus, the volume-weighted fission rate is considered instead,
-and the fraction of source sites is adjusted such that:
-
-.. math::
-    :label: fraction-source-random-ray
-
-    S_i = \frac{\text{Source sites in $i$-th FSR $*$ Volume of $i$-th FSR}}{\text{Total number of FSRs}} 
-
-The Shannon entropy is then computed normally as
-
-.. math::
-    :label: shannon-entropy-random-ray
-
-    H = - \sum_{i=1}^N S_i \log_2 S_i
-
-where :math:`N` is the number of FSRs. FSRs with no fission source sites are skipped
-to avoid taking the logarithm of zero in :eq:`shannon-entropy-random-ray`.
-
 There are some restrictions though. For starters, it is assumed that all filter
 mesh boundaries will conform to physical surface boundaries (or lattice
 boundaries) in the simulation geometry. It is acceptable for multiple cells
@@ -765,6 +744,39 @@ assembly-level tallies should work), but it is currently left as undefined
 behavior if a single simulation cell is able to score to multiple filter mesh
 cells. In the future, the capability to fully support mesh tallies may be added
 to OpenMC, but for now this restriction needs to be respected.
+
+.. _methods-shannon-entropy-random-ray:
+
+-----------------------------
+Shannon Entropy in Random Ray
+-----------------------------
+
+As :math:`k_{eff}` is updated at each generation, the fission source at each FSR
+is used to compute the Shannon entropy. This follows the :ref:`same procedure
+for computing Shannon entropy in continuous-energy or multigroup Monte Carlo
+simulations <methods-shannon-entropy>`, except that fission sources at FSRs are
+considered, rather than fission sites of user-defined regular meshes. Thus, the
+volume-weighted fission rate is considered instead, and the fraction of fission
+sources is adjusted such that:
+
+.. math::
+    :label: fraction-source-random-ray
+
+    S_i = \frac{\text{Fission source in FSR $i \times$ Volume of FSR
+    $i$}}{\text{Total fission source}} = \frac{Q_{i,g} \times
+    V_{i}}{\sum_{i=1}^{g} Q_{i,g}}
+
+The Shannon entropy is then computed normally as
+
+.. math::
+    :label: shannon-entropy-random-ray
+
+    H = - \sum_{i=1}^N S_i \log_2 S_i
+
+where :math:`N` is the number of FSRs. FSRs with no fission source (or,
+occassionally, negative fission source, :ref:`due to the volume estimator
+problem <methods-volume-dilemma>`) are skipped to avoid taking an undefined
+logarithm in :eq:`shannon-entropy-random-ray`.
 
 ---------------------------
 Fundamental Sources of Bias

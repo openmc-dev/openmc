@@ -228,7 +228,6 @@ double FlatSourceDomain::compute_k_eff(double k_eff_old) const
 
   // Vector for gathering fission source terms for Shannon entropy calculation
   vector<float> p(n_source_regions_, 0.0f);
-  double sum = 0.0;
 
 #pragma omp parallel for reduction(+ : fission_rate_old, fission_rate_new)
   for (int sr = 0; sr < n_source_regions_; sr++) {
@@ -252,15 +251,16 @@ double FlatSourceDomain::compute_k_eff(double k_eff_old) const
       sr_fission_source_new += nu_sigma_f * scalar_flux_new_[idx];
     }
 
-    // Temporary FSR fission rate for performance.
-    double temp_sr_fission_rate = sr_fission_source_new * volume;
+    // Compute total fission rates in FSR
+    sr_fission_source_old *= volume;
+    sr_fission_source_new *= volume;
 
-    // Calculating old and new fission rates.
-    fission_rate_old += sr_fission_source_old * volume;
-    fission_rate_new += temp_sr_fission_rate;
+    // Accumulate totals
+    fission_rate_old += sr_fission_source_old;
+    fission_rate_new += sr_fission_source_new;
 
-    // Assigning the fission source to the vector for entropy calculation.
-    p[sr] = temp_sr_fission_rate;
+    // Store total fission rate in the FSR for Shannon calculation
+    p[sr] = sr_fission_source_new;
   }
 
   double k_eff_new = k_eff_old * (fission_rate_new / fission_rate_old);
@@ -268,17 +268,15 @@ double FlatSourceDomain::compute_k_eff(double k_eff_old) const
   double H = 0.0;
   // defining an inverse sum for better performance
   double inverse_sum = 1 / fission_rate_new;
-  // defining inverse log(2) for better performance
-  const double inv_log2 = 1.0 / std::log(2.0);
 
 #pragma omp parallel for reduction(+ : H)
   for (int i = 0; i < n_source_regions_; i++) {
-    // Only if FSR has fission source
-    if (p[i] != 0.0f) {
+    // Only if FSR has non-negative and non-zero fission source
+    if (p[i] > 0.0f) {
       // Normalize to total weight of bank sites. p_i for better performance
       float p_i = p[i] * inverse_sum;
       // Sum values to obtain Shannon entropy.
-      H -= p_i * std::log(p_i) * inv_log2;
+      H -= p_i * std::log2(p_i);
     }
   }
 

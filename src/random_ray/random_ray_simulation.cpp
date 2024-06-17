@@ -111,13 +111,6 @@ void validate_random_ray_inputs()
     }
   }
 
-  // Validate solver mode
-  ///////////////////////////////////////////////////////////////////
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    fatal_error(
-      "Invalid run mode. Fixed source not yet supported in random ray mode.");
-  }
-
   // Validate ray source
   ///////////////////////////////////////////////////////////////////
 
@@ -125,8 +118,8 @@ void validate_random_ray_inputs()
   IndependentSource* is =
     dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get());
   if (!is) {
-    fatal_error(
-      "Invalid ray source definition. Ray source must be IndependentSource.");
+    fatal_error("Invalid ray source definition. Ray source must provided and "
+                "be of type IndependentSource.");
   }
 
   // Check for box source
@@ -134,24 +127,68 @@ void validate_random_ray_inputs()
   SpatialBox* sb = dynamic_cast<SpatialBox*>(space_dist);
   if (!sb) {
     fatal_error(
-      "Invalid source definition -- only box sources are allowed in random "
-      "ray "
-      "mode. If no source is specified, OpenMC default is an isotropic point "
-      "source at the origin, which is invalid in random ray mode.");
+      "Invalid ray source definition -- only box sources are allowed.");
   }
 
   // Check that box source is not restricted to fissionable areas
   if (sb->only_fissionable()) {
-    fatal_error("Invalid source definition -- fissionable spatial distribution "
-                "not allowed for random ray source.");
+    fatal_error(
+      "Invalid ray source definition -- fissionable spatial distribution "
+      "not allowed.");
   }
 
   // Check for isotropic source
   UnitSphereDistribution* angle_dist = is->angle();
   Isotropic* id = dynamic_cast<Isotropic*>(angle_dist);
   if (!id) {
-    fatal_error("Invalid source definition -- only isotropic sources are "
-                "allowed for random ray source.");
+    fatal_error("Invalid ray source definition -- only isotropic sources are "
+                "allowed.");
+  }
+
+  // Validate external sources
+  ///////////////////////////////////////////////////////////////////
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    if (model::external_sources.size() < 1) {
+      fatal_error("Must provide a particle source (in addition to ray source) "
+                  "in fixed source random ray mode.");
+    }
+
+    for (int i = 0; i < model::external_sources.size(); i++) {
+      Source* s = model::external_sources[i].get();
+
+      // Check for independent source
+      IndependentSource* is = dynamic_cast<IndependentSource*>(s);
+
+      if (!is) {
+        fatal_error(
+          "Only IndependentSource external source types are allowed in "
+          "random ray mode");
+      }
+
+      // Check for isotropic source
+      UnitSphereDistribution* angle_dist = is->angle();
+      Isotropic* id = dynamic_cast<Isotropic*>(angle_dist);
+      if (!id) {
+        fatal_error(
+          "Invalid source definition -- only isotropic external sources are "
+          "allowed in random ray mode.");
+      }
+
+      // Validate that a domain ID was specified
+      if (is->domain_ids().size() == 0) {
+        fatal_error("Fixed sources must be specified by domain "
+                    "id (cell, material, or universe) in random ray mode.");
+      }
+
+      // Check that a discrete energy distribution was used
+      Distribution* d = is->energy();
+      Discrete* dd = dynamic_cast<Discrete*>(d);
+      if (!dd) {
+        fatal_error(
+          "Only discrete (multigroup) energy distributions are allowed for "
+          "external sources in random ray mode.");
+      }
+    }
   }
 
   // Validate plotting files
@@ -208,6 +245,12 @@ RandomRaySimulation::RandomRaySimulation()
 
 void RandomRaySimulation::simulate()
 {
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    // Transfer external source user inputs onto random ray source regions
+    domain_.convert_external_sources();
+    domain_.count_external_source_regions();
+  }
+
   // Random ray power iteration loop
   while (simulation::current_batch < settings::n_batches) {
 
@@ -249,11 +292,13 @@ void RandomRaySimulation::simulate()
     // Add source to scalar flux, compute number of FSR hits
     int64_t n_hits = domain_.add_source_to_scalar_flux();
 
-    // Compute random ray k-eff
-    k_eff_ = domain_.compute_k_eff(k_eff_);
+    if (settings::run_mode == RunMode::EIGENVALUE) {
+      // Compute random ray k-eff
+      k_eff_ = domain_.compute_k_eff(k_eff_);
 
-    // Store random ray k-eff into OpenMC's native k-eff variable
-    global_tally_tracklength = k_eff_;
+      // Store random ray k-eff into OpenMC's native k-eff variable
+      global_tally_tracklength = k_eff_;
+    }
 
     // Execute all tallying tasks, if this is an active batch
     if (simulation::current_batch > settings::n_inactive && mpi::master) {
@@ -302,7 +347,7 @@ void RandomRaySimulation::output_simulation_results() const
   if (mpi::master) {
     print_results_random_ray(total_geometric_intersections_,
       avg_miss_rate_ / settings::n_batches, negroups_,
-      domain_.n_source_regions_);
+      domain_.n_source_regions_, domain_.n_external_source_regions_);
     if (model::plots.size() > 0) {
       domain_.output_to_vtk();
     }
@@ -339,7 +384,7 @@ void RandomRaySimulation::instability_check(
 // Print random ray simulation results
 void RandomRaySimulation::print_results_random_ray(
   uint64_t total_geometric_intersections, double avg_miss_rate, int negroups,
-  int64_t n_source_regions) const
+  int64_t n_source_regions, int64_t n_external_source_regions) const
 {
   using namespace simulation;
 
@@ -355,6 +400,8 @@ void RandomRaySimulation::print_results_random_ray(
     fmt::print(
       " Total Iterations                  = {}\n", settings::n_batches);
     fmt::print(" Flat Source Regions (FSRs)        = {}\n", n_source_regions);
+    fmt::print(
+      " FSRs Containing External Sources  = {}\n", n_external_source_regions);
     fmt::print(" Total Geometric Intersections     = {:.4e}\n",
       static_cast<double>(total_geometric_intersections));
     fmt::print("   Avg per Iteration               = {:.4e}\n",
@@ -387,7 +434,7 @@ void RandomRaySimulation::print_results_random_ray(
     show_time("Time per integration", time_per_integration);
   }
 
-  if (settings::verbosity >= 4) {
+  if (settings::verbosity >= 4 && settings::run_mode == RunMode::EIGENVALUE) {
     header("Results", 4);
     fmt::print(" k-effective                       = {:.5f} +/- {:.5f}\n",
       simulation::keff, simulation::keff_std);

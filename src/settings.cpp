@@ -191,7 +191,8 @@ void get_run_parameters(pugi::xml_node node_base)
   }
 
   // Get number of inactive batches
-  if (run_mode == RunMode::EIGENVALUE) {
+  if (run_mode == RunMode::EIGENVALUE ||
+      solver_type == SolverType::RANDOM_RAY) {
     if (check_for_node(node_base, "inactive")) {
       n_inactive = std::stoi(get_node_value(node_base, "inactive"));
     }
@@ -524,8 +525,9 @@ void read_settings_xml(pugi::xml_node root)
   }
 
   // If no source specified, default to isotropic point source at origin with
-  // Watt spectrum
-  if (model::external_sources.empty()) {
+  // Watt spectrum. No default source is needed in random ray mode.
+  if (model::external_sources.empty() &&
+      settings::solver_type != SolverType::RANDOM_RAY) {
     double T[] {0.0};
     double p[] {1.0};
     model::external_sources.push_back(make_unique<IndependentSource>(

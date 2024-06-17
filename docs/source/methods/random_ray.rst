@@ -94,8 +94,8 @@ Method of Characteristics
 The Boltzmann neutron transport equation is a partial differential equation
 (PDE) that describes the angular flux within a system. It is a balance equation,
 with the streaming and absorption terms typically appearing on the left hand
-side, which are balanced by the scattering source and fission source terms on
-the right hand side.
+side, which are balanced by the scattering source, fission, and fixed source
+terms on the right hand side.
 
 .. math::
     :label: transport
@@ -522,8 +522,8 @@ make their traversals, and summing these contributions up as in Equation
 improve the estimate of the source and scalar flux over many iterations, given
 that our initial starting source will just be a guess?
 
-The source :math:`Q^{n}` for iteration :math:`n` can be inferred
-from the scalar flux from the previous iteration :math:`n-1` as:
+In an eigenvalue simulation, the source :math:`Q^{n}` for iteration :math:`n`
+can be inferred from the scalar flux from the previous iteration :math:`n-1` as:
 
 .. math::
     :label: source_update
@@ -535,7 +535,7 @@ where :math:`Q^{n}(i, g)` is the total source (fission + scattering) in region
 :math:`g` must be computed by summing over the contributions from all groups
 :math:`g' \in G`.
 
-In a similar manner, the eigenvalue for iteration :math:`n` can be computed as:
+The eigenvalue for iteration :math:`n` can be computed as:
 
 .. math::
     :label: eigenvalue_update
@@ -575,6 +575,18 @@ and a similar substitution can be made to update Equation
 :eq:`fission_source_prev` . In OpenMC, the most up-to-date version of the volume
 estimate is used, such that the total fission source from the previous iteration
 (:math:`n-1`) is also recomputed each iteration.
+
+In a fixed source simulation, the fission source is replaced by a user specified
+fixed source term :math:`Q_\text{fixed}(i,E)`, which is defined for each FSR and
+energy group. This additional source term is applied at this stage for
+generating the next iteration's source estimate as:
+
+.. math::
+    :label: fixed_source_update
+
+    Q^{n}(i, g) = Q_\text{fixed}(i,g) + \sum\limits^{G}_{g'} \Sigma_{s}(i,g,g') \phi^{n-1}(g')
+
+and no eigenvalue is computed.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Ray Starting Conditions and Inactive Length
@@ -741,6 +753,32 @@ assembly-level tallies should work), but it is currently left as undefined
 behavior if a single simulation cell is able to score to multiple filter mesh
 cells. In the future, the capability to fully support mesh tallies may be added
 to OpenMC, but for now this restriction needs to be respected.
+
+.. _usersguide_fixed_source_methods:
+
+------------
+Fixed Source
+------------
+
+The random ray solver in OpenMC can be used for both eigenvalue and fixed source
+problems. There are a few key differences between fixed source transport with
+random ray and Monte Carlo, however.
+
+- **Source definition:** In Monte Carlo, it is relatively easy to define various
+  source distributions, including point sources, surface sources, volume
+  sources, and even custom user sources -- all with varying angular and spatial
+  statistical distributions. In random ray, the natural way to include a fixed
+  source term is by adding a fixed (flat) contribution to specific flat source
+  regions. Thus, in the OpenMC implementation of random ray, particle sources
+  are restricted to being volumetric and isotropic, although different energy
+  spectrums are supported. Fixed sources can be applied to specific materials,
+  cells, or universes.
+
+- **Inactive batches:** In Monte Carlo, use of a fixed source implies that all
+  batches are active batches, as there is no longer a need to develop a fission
+  source distribution. However, in random ray mode, there is still a need to
+  develop the scattering source by way of inactive batches before beginning
+  active batches.
 
 ---------------------------
 Fundamental Sources of Bias

@@ -24,7 +24,8 @@ public:
   void instability_check(
     int64_t n_hits, double k_eff, double& avg_miss_rate) const;
   void print_results_random_ray(uint64_t total_geometric_intersections,
-    double avg_miss_rate, int negroups, int64_t n_source_regions) const;
+    double avg_miss_rate, int negroups, int64_t n_source_regions,
+    int64_t n_external_source_regions) const;
 
   //----------------------------------------------------------------------------
   // Data members

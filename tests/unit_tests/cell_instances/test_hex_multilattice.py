@@ -1,6 +1,7 @@
+from math import sqrt
+
 import pytest
 import numpy as np
-
 import openmc
 import openmc.lib
 
@@ -28,10 +29,11 @@ def double_hex_lattice_model():
     graphite.add_element('C', 1.0)
 
     # zplanes to define lower and upper region
-    z_low = openmc.ZPlane(z0=-10, boundary_type='vacuum')
-    z_mid = openmc.ZPlane(z0=0)
-    z_high = openmc.ZPlane(z0=10, boundary_type='vacuum')
-    hex_prism = openmc.model.HexagonalPrism(edge_length=1.2*pin_lattice_pitch, boundary_type='reflective')
+    z_low = openmc.ZPlane(-10, boundary_type='vacuum')
+    z_mid = openmc.ZPlane(0)
+    z_high = openmc.ZPlane(10, boundary_type='vacuum')
+    hex_prism = openmc.model.HexagonalPrism(
+        edge_length=hex_prism_edge, boundary_type='reflective')
 
     # geometry
     cyl = openmc.ZCylinder(r=radius)
@@ -59,23 +61,21 @@ def double_hex_lattice_model():
     model.tallies = [tally]
 
     # settings
-    settings = openmc.Settings()
     # source definition. fission source given bounding box of graphite active region
-    system_LL = (-pin_lattice_pitch*np.sqrt(3)/2, -pin_lattice_pitch, -5)
-    system_UR = (pin_lattice_pitch*np.sqrt(3)/2, pin_lattice_pitch, 5)
+    system_LL = (-pin_lattice_pitch*sqrt(3)/2, -pin_lattice_pitch, -5)
+    system_UR = (pin_lattice_pitch*sqrt(3)/2, pin_lattice_pitch, 5)
     source_dist = openmc.stats.Box(system_LL, system_UR)
-    source = openmc.IndependentSource(space=source_dist)
-    settings.source = source
-    settings.particles = 100
-    settings.inactive = 2
-    settings.batches = 10
-    model.settings = settings
+    model.settings.source = openmc.IndependentSource(space=source_dist)
+    model.settings.particles = 100
+    model.settings.inactive = 2
+    model.settings.batches = 10
 
     with cdtemp():
         model.export_to_xml()
         openmc.lib.init()
         yield
         openmc.lib.finalize()
+
 
 # Lower cell instances
 #          6
@@ -89,7 +89,6 @@ def double_hex_lattice_model():
 #          10
 #     9         8
 #          7
-
 hex_expected_results = [
     ((0.0, -2.0, -5.0), 0),
     ((1.732, -1.0, -5.0), 1),
@@ -106,9 +105,10 @@ hex_expected_results = [
     ((-1.732, 1.0, 5.0), 12),
     ((0.0, 2.0, 5.0), 13),
 ]
-@pytest.mark.parametrize("r,expected_cell_instance", hex_expected_results, ids=lambda p : f'{p}')
+
+
+@pytest.mark.parametrize("r,expected_cell_instance", hex_expected_results, ids=str)
 def test_cell_instance_hex_multilattice(r, expected_cell_instance):
-    print(r)
     _, cell_instance = openmc.lib.find_cell(r)
     assert cell_instance == expected_cell_instance
 

@@ -992,6 +992,10 @@ class Settings:
         self._weight_window_checkpoints = weight_window_checkpoints
 
     @property
+    def max_splits(self):
+        raise AttributeError('max_splits has been replaced by max_history_splits')
+
+    @property
     def max_history_splits(self) -> int:
         return self._max_history_splits
 

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 project(openmc C CXX)
 
 # Set version numbers
@@ -15,11 +15,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # Set module path
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
-
-# Allow user to specify <project>_ROOT variables
-if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.12)
-  cmake_policy(SET CMP0074 NEW)
-endif()
 
 # Enable correct usage of CXX_EXTENSIONS
 if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.22)
@@ -271,11 +266,6 @@ endif()
 #===============================================================================
 # xtensor header-only library
 #===============================================================================
-
-# CMake 3.13+ will complain about policy CMP0079 unless it is set explicitly
-if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.13)
-  cmake_policy(SET CMP0079 NEW)
-endif()
 
 find_package_write_status(xtensor)
 if (NOT xtensor_FOUND)
@@ -580,9 +570,9 @@ target_compile_options(openmc PRIVATE ${cxxflags})
 target_include_directories(openmc PRIVATE ${CMAKE_BINARY_DIR}/include)
 target_link_libraries(openmc libopenmc)
 
-# Ensure C++14 standard is used and turn off GNU extensions
-target_compile_features(openmc PUBLIC cxx_std_14)
-target_compile_features(libopenmc PUBLIC cxx_std_14)
+# Ensure C++17 standard is used and turn off GNU extensions
+target_compile_features(openmc PUBLIC cxx_std_17)
+target_compile_features(libopenmc PUBLIC cxx_std_17)
 set_target_properties(openmc libopenmc PROPERTIES CXX_EXTENSIONS OFF)
 
 #===============================================================================

@@ -15,6 +15,7 @@ other related topics.
     contributing
     workflow
     styleguide
+    policies
     tests
     user-input
     docbuild

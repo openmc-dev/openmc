@@ -128,8 +128,7 @@ private:
   void add_precedence();
 
   //! Add parenthesis to enforce precedence
-  std::vector<int32_t>::iterator add_parentheses(
-    std::vector<int32_t>::iterator start);
+  gsl::index add_parentheses(gsl::index start);
 
   //! Remove complement operators from the expression
   void remove_complement_ops();

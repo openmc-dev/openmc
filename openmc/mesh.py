@@ -157,7 +157,7 @@ class MeshBase(IDManagerMixin, ABC):
     ) -> List[openmc.Material]:
         """Generate homogenized materials over each element in a mesh.
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.0
 
         Parameters
         ----------
@@ -1486,6 +1486,8 @@ class CylindricalMesh(StructuredMesh):
             coords: Sequence[float]
         ) -> Tuple[int, int, int]:
         """Finds the index of the mesh voxel at the specified x,y,z coordinates.
+
+        .. versionadded:: 0.15.0
 
         Parameters
         ----------

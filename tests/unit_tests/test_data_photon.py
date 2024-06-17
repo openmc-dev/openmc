@@ -121,8 +121,6 @@ def test_reactions(element, reaction):
         reactions[18]
 
 
-# TODO: Remove skip when support is Python 3.9+
-@pytest.mark.skipif(not hasattr(pd.options, 'future'), reason='pandas version too old')
 @pytest.mark.parametrize('element', ['Pu'], indirect=True)
 def test_export_to_hdf5(tmpdir, element):
     filename = str(tmpdir.join('tmp.h5'))

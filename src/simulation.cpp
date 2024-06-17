@@ -137,7 +137,11 @@ int openmc_simulation_init()
   // Display header
   if (mpi::master) {
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
-      header("FIXED SOURCE TRANSPORT SIMULATION", 3);
+      if (settings::solver_type == SolverType::MONTE_CARLO) {
+        header("FIXED SOURCE TRANSPORT SIMULATION", 3);
+      } else if (settings::solver_type == SolverType::RANDOM_RAY) {
+        header("FIXED SOURCE TRANSPORT SIMULATION (RANDOM RAY SOLVER)", 3);
+      }
     } else if (settings::run_mode == RunMode::EIGENVALUE) {
       if (settings::solver_type == SolverType::MONTE_CARLO) {
         header("K EIGENVALUE SIMULATION", 3);
@@ -343,7 +347,13 @@ void initialize_batch()
   ++simulation::current_batch;
 
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    write_message(6, "Simulating batch {}", simulation::current_batch);
+    if (settings::solver_type == SolverType::RANDOM_RAY &&
+        simulation::current_batch < settings::n_inactive + 1) {
+      write_message(
+        6, "Simulating batch {:<4} (inactive)", simulation::current_batch);
+    } else {
+      write_message(6, "Simulating batch {}", simulation::current_batch);
+    }
   }
 
   // Reset total starting particle weight used for normalizing tallies

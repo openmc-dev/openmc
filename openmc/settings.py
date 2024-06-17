@@ -993,7 +993,7 @@ class Settings:
 
     @property
     def max_splits(self):
-        raise AttributeError('max_splits has been replaced by max_history_splits')
+        raise AttributeError('max_splits has been deprecated. Please use max_history_splits instead')
 
     @property
     def max_history_splits(self) -> int:

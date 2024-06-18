@@ -32,7 +32,7 @@ std::string get_file_extension(const std::string& filename)
 {
   std::filesystem::path p(filename);
   auto ext = p.extension();
-  if (!p.empty()) {
+  if (!ext.empty()) {
     // path::extension includes the period
     return ext.string().substr(1);
   }

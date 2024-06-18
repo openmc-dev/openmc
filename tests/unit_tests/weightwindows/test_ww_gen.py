@@ -55,7 +55,7 @@ def model():
         run_mode='fixed source',
         particles=100,
         batches=10,
-        max_splits=10,
+        max_history_splits=10,
         survival_biasing=False
     )
 

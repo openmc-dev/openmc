@@ -285,10 +285,10 @@ then, OpenMC will only use up to the :math:`P_1` data.
     :ref:`energy_mode`.
 
 ------------------------
-``<max_splits>`` Element
+``<max_history_splits>`` Element
 ------------------------
 
-The ``<max_splits>`` element indicates the number of times a particle can split during a history.
+The ``<max_history_splits>`` element indicates the number of times a particle can split during a history.
 
   *Default*: 1000
 

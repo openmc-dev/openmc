@@ -233,7 +233,7 @@ class IsogonalOctagon(CompositeSurface):
     r"""Infinite isogonal octagon composite surface
 
     An isogonal octagon is composed of eight planar surfaces. The prism is
-    parallel to the x, y, or z axis. The remaining two axes (y and z, z and x,
+    parallel to the x, y, or z axis. The remaining two axes (y and z, x and z,
     or x and y) serve as a basis for constructing the surfaces. Two surfaces
     are parallel to the first basis axis, two surfaces are parallel
     to the second basis axis, and the remaining four surfaces intersect both
@@ -241,7 +241,7 @@ class IsogonalOctagon(CompositeSurface):
 
     This class acts as a proper surface, meaning that unary `+` and `-`
     operators applied to it will produce a half-space. The negative side is
-    defined to be the region inside of the octogonal prism.
+    defined to be the region inside of the octagonal prism.
 
     .. versionadded:: 0.13.1
 
@@ -249,7 +249,7 @@ class IsogonalOctagon(CompositeSurface):
     ----------
     center : iterable of float
         Coordinate for the central axis of the octagon in the
-        (y, z), (z, x), or (x, y) basis.
+        (y, z), (x, z), or (x, y) basis depending on the axis parameter.
     r1 : float
         Half-width of octagon across its basis axis-parallel sides in units
         of cm. Must be less than :math:`r_2\sqrt{2}`.
@@ -290,7 +290,7 @@ class IsogonalOctagon(CompositeSurface):
     def __init__(self, center, r1, r2, axis='z', **kwargs):
         c1, c2 = center
 
-        # Coords for axis-perpendicular planes
+        # Coordinates for axis-perpendicular planes
         cright = c1 + r1
         cleft = c1 - r1
 
@@ -307,7 +307,7 @@ class IsogonalOctagon(CompositeSurface):
 
         L_basis_ax = (r2 * sqrt(2) - r1)
 
-        # Coords for quadrant planes
+        # Coordinates for quadrant planes
         p1_ur = np.array([L_basis_ax, r1, 0.])
         p2_ur = np.array([r1, L_basis_ax, 0.])
         p3_ur = np.array([r1, L_basis_ax, 1.])
@@ -335,17 +335,18 @@ class IsogonalOctagon(CompositeSurface):
             self.right = openmc.XPlane(cright, **kwargs)
             self.left = openmc.XPlane(cleft, **kwargs)
         elif axis == 'y':
-            coord_map = [1, 2, 0]
-            self.top = openmc.XPlane(ctop, **kwargs)
-            self.bottom = openmc.XPlane(cbottom, **kwargs)
-            self.right = openmc.ZPlane(cright, **kwargs)
-            self.left = openmc.ZPlane(cleft, **kwargs)
+            coord_map = [0, 2, 1]
+            self.top = openmc.ZPlane(ctop, **kwargs)
+            self.bottom = openmc.ZPlane(cbottom, **kwargs)
+            self.right = openmc.XPlane(cright, **kwargs)
+            self.left = openmc.XPlane(cleft, **kwargs)
         elif axis == 'x':
             coord_map = [2, 0, 1]
             self.top = openmc.ZPlane(ctop, **kwargs)
             self.bottom = openmc.ZPlane(cbottom, **kwargs)
             self.right = openmc.YPlane(cright, **kwargs)
             self.left = openmc.YPlane(cleft, **kwargs)
+        self.axis = axis
 
         # Put our coordinates in (x,y,z) order and add the offset
         for p in points:
@@ -363,14 +364,27 @@ class IsogonalOctagon(CompositeSurface):
                                                    **kwargs)
 
     def __neg__(self):
-        return -self.top & +self.bottom & -self.right & +self.left & \
-            +self.upper_right & +self.lower_right & -self.lower_left & \
-            -self.upper_left
+        if self.axis == 'y':
+            region = -self.top & +self.bottom & -self.right & +self.left & \
+                -self.upper_right & -self.lower_right & +self.lower_left & \
+                +self.upper_left
+        else:
+            region = -self.top & +self.bottom & -self.right & +self.left & \
+                +self.upper_right & +self.lower_right & -self.lower_left & \
+                -self.upper_left
+
+        return region
 
     def __pos__(self):
-        return +self.top | -self.bottom | +self.right | -self.left | \
-            -self.upper_right | -self.lower_right | +self.lower_left | \
-            +self.upper_left
+        if self.axis == 'y':
+            region = +self.top | -self.bottom | +self.right | -self.left | \
+                +self.upper_right | +self.lower_right | -self.lower_left | \
+                -self.upper_left
+        else:
+            region = +self.top | -self.bottom | +self.right | -self.left | \
+                -self.upper_right | -self.lower_right | +self.lower_left | \
+                +self.upper_left
+        return region
 
 
 class RightCircularCylinder(CompositeSurface):

@@ -116,7 +116,7 @@ class Settings:
         .. versionadded:: 0.14.1
     max_order : None or int
         Maximum scattering order to apply globally when in multi-group mode.
-    max_splits : int
+    max_history_splits : int
         Maximum number of times a particle can split during a history
 
         .. versionadded:: 0.13
@@ -358,7 +358,7 @@ class Settings:
         self._weight_windows_on = None
         self._weight_windows_file = None
         self._weight_window_checkpoints = {}
-        self._max_splits = None
+        self._max_history_splits = None
         self._max_tracks = None
 
         self._random_ray = {}
@@ -1007,14 +1007,18 @@ class Settings:
         self._weight_window_checkpoints = weight_window_checkpoints
 
     @property
-    def max_splits(self) -> int:
-        return self._max_splits
+    def max_splits(self):
+        raise AttributeError('max_splits has been deprecated. Please use max_history_splits instead')
 
-    @max_splits.setter
-    def max_splits(self, value: int):
+    @property
+    def max_history_splits(self) -> int:
+        return self._max_history_splits
+
+    @max_history_splits.setter
+    def max_history_splits(self, value: int):
         cv.check_type('maximum particle splits', value, Integral)
         cv.check_greater_than('max particle splits', value, 0)
-        self._max_splits = value
+        self._max_history_splits = value
 
     @property
     def max_tracks(self) -> int:
@@ -1472,10 +1476,10 @@ class Settings:
             subelement = ET.SubElement(element, "surface")
             subelement.text = str(self._weight_window_checkpoints['surface']).lower()
 
-    def _create_max_splits_subelement(self, root):
-        if self._max_splits is not None:
-            elem = ET.SubElement(root, "max_splits")
-            elem.text = str(self._max_splits)
+    def _create_max_history_splits_subelement(self, root):
+        if self._max_history_splits is not None:
+            elem = ET.SubElement(root, "max_history_splits")
+            elem.text = str(self._max_history_splits)
 
     def _create_max_tracks_subelement(self, root):
         if self._max_tracks is not None:
@@ -1834,10 +1838,10 @@ class Settings:
                 value = value in ('true', '1')
                 self.weight_window_checkpoints[key] = value
 
-    def _max_splits_from_xml_element(self, root):
-        text = get_text(root, 'max_splits')
+    def _max_history_splits_from_xml_element(self, root):
+        text = get_text(root, 'max_history_splits')
         if text is not None:
-            self.max_splits = int(text)
+            self.max_history_splits = int(text)
 
     def _max_tracks_from_xml_element(self, root):
         text = get_text(root, 'max_tracks')
@@ -1915,7 +1919,7 @@ class Settings:
         self._create_weight_window_generators_subelement(element, mesh_memo)
         self._create_weight_windows_file_element(element)
         self._create_weight_window_checkpoints_subelement(element)
-        self._create_max_splits_subelement(element)
+        self._create_max_history_splits_subelement(element)
         self._create_max_tracks_subelement(element)
         self._create_random_ray_subelement(element)
 
@@ -2019,7 +2023,7 @@ class Settings:
         settings._weight_windows_from_xml_element(elem, meshes)
         settings._weight_window_generators_from_xml_element(elem, meshes)
         settings._weight_window_checkpoints_from_xml_element(elem)
-        settings._max_splits_from_xml_element(elem)
+        settings._max_history_splits_from_xml_element(elem)
         settings._max_tracks_from_xml_element(elem)
         settings._random_ray_from_xml_element(elem)
 

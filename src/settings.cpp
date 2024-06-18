@@ -106,7 +106,7 @@ int max_order {0};
 int n_log_bins {8000};
 int n_batches;
 int n_max_batches;
-int max_history_splits {10000000};
+int max_history_splits {10'000'000};
 int max_tracks {1000};
 ResScatMethod res_scat_method {ResScatMethod::rvs};
 double res_scat_energy_min {0.01};

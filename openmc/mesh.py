@@ -209,13 +209,16 @@ class MeshBase(IDManagerMixin, ABC):
         # Create homogenized material for each element
         materials = model.geometry.get_all_materials()
 
-        for cell_id,cell in model.geometry.get_all_cells().items():
+        # Account for materials in DAGMC universes
+        # TODO: This should really get incorporated in lower-level calls to
+        # get_all_materials, but right now it requires information from the
+        # Model object
+        for cell in model.geometry.get_all_cells().values():
             if isinstance(cell.fill, openmc.DAGMCUniverse):
-                dagmc_materials = {
-                        mat.id:mat for mat in model.materials
-                         if mat.name in cell.fill.material_names
-                 }
-                materials.update(dagmc_materials)
+                names = cell.fill.material_names
+                materials.update({
+                    mat.id: mat for mat in model.materials if mat.name in names
+                })
 
         homogenized_materials = []
         for mat_volume_list in mat_volume_by_element:

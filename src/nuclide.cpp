@@ -72,6 +72,7 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
         read_attribute(rx_group, "mt", mt);
         if (is_fission(mt)) {
           fissionable_ = true;
+          break;
         }
       }
     }

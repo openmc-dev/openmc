@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material depletable="true" id="1">
+      <density units="g/cm3" value="11.0"/>
+      <nuclide ao="0.0004524" name="U234"/>
+      <nuclide ao="0.0506068" name="U235"/>
+      <nuclide ao="0.948709" name="U238"/>
+      <nuclide ao="0.0002318" name="U236"/>
+      <nuclide ao="2.0" name="O16"/>
+    </material>
+    <material id="2">
+      <density units="g/cm3" value="1.0"/>
+      <nuclide ao="2.0" name="H1"/>
+      <nuclide ao="1.0" name="O16"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" region="-1 2 -3" universe="1"/>
+    <cell id="2" material="2" region="1 | -2 | 3" universe="1"/>
+    <cell fill="1" id="3" region="-5 4 -7 6 -9 8" universe="2"/>
+    <cell id="4" material="2" region="-11 10 -13 12 -15 14 (5 | -4 | 7 | -6 | 9 | -8)" universe="2"/>
+    <surface coeffs="0.0 0.0 2.0" id="1" type="z-cylinder"/>
+    <surface coeffs="-2.0" id="2" type="z-plane"/>
+    <surface coeffs="2.0" id="3" type="z-plane"/>
+    <surface coeffs="-3.0" id="4" type="x-plane"/>
+    <surface coeffs="3.0" id="5" type="x-plane"/>
+    <surface coeffs="-3.0" id="6" type="y-plane"/>
+    <surface coeffs="3.0" id="7" type="y-plane"/>
+    <surface coeffs="-3.0" id="8" type="z-plane"/>
+    <surface coeffs="3.0" id="9" type="z-plane"/>
+    <surface boundary="vacuum" coeffs="-4.0" id="10" type="x-plane"/>
+    <surface boundary="vacuum" coeffs="4.0" id="11" type="x-plane"/>
+    <surface boundary="vacuum" coeffs="-4.0" id="12" type="y-plane"/>
+    <surface boundary="vacuum" coeffs="4.0" id="13" type="y-plane"/>
+    <surface boundary="vacuum" coeffs="-4.0" id="14" type="z-plane"/>
+    <surface boundary="vacuum" coeffs="4.0" id="15" type="z-plane"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>100</particles>
+    <batches>5</batches>
+    <inactive>1</inactive>
+    <source particle="neutron" strength="1.0" type="independent">
+      <space type="fission">
+        <parameters>-2.0 -2.0 -2.0 2.0 2.0 2.0</parameters>
+      </space>
+    </source>
+    <surf_source_write>
+      <surface_ids>4 5 6 7 8 9</surface_ids>
+      <max_particles>300</max_particles>
+      <cell>2</cell>
+    </surf_source_write>
+    <seed>1</seed>
+  </settings>
+  </model>

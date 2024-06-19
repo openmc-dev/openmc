@@ -902,7 +902,12 @@ attributes/sub-elements:
 
 The ``<surf_source_write>`` element triggers OpenMC to bank particles crossing
 certain surfaces and write out the source bank in a separate file called
-``surface_source.h5``. This element has the following attributes/sub-elements:
+``surface_source.h5``. One or multiple surface IDs and one cell ID can be used
+to select the surfaces of interest. If no surface IDs are declared, every surface
+of the model is eligible to bank particles. In that case, a cell ID (using
+either the ``cell``, ``cellfrom`` or ``cellto`` attributes) can be used to select
+every surface of a specific cell. This element has the following
+attributes/sub-elements:
 
   :surface_ids:
     A list of integers separated by spaces indicating the unique IDs of surfaces
@@ -927,6 +932,34 @@ certain surfaces and write out the source bank in a separate file called
     *Default*: false
 
     .. _MCPL: https://mctools.github.io/mcpl/mcpl.pdf
+
+  :cell:
+    An integer representing the cell ID used to determine if particles crossing
+    identified surfaces are to be banked. Particles coming from or going to this
+    declared cell will be banked if they cross the identified surfaces.
+
+    *Default*: None
+
+  :cellfrom:
+    An integer representing the cell ID used to determine if particles crossing
+    identified surfaces are to be banked. Particles coming from this declared
+    cell will be banked if they cross the identified surfaces.
+
+    *Default*: None
+
+  :cellto:
+    An integer representing the cell ID used to determine if particles crossing
+    identified surfaces are to be banked. Particles going to this declared cell
+    will be banked if they cross the identified surfaces.
+
+    *Default*: None
+
+.. note:: The ``cell``, ``cellfrom`` and ``cellto`` attributes cannot be
+          used simultaneously.
+
+.. note:: Surfaces with boundary conditions that are not "transmission" or "vacuum"
+          are not eligible to store any particles when using ``cell``, ``cellfrom``
+          or ``cellto`` attributes. It is recommended to use surface IDs instead.
 
 ------------------------------
 ``<survival_biasing>`` Element

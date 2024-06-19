@@ -1862,7 +1862,7 @@ class XSdata:
                                 table_fine[..., imu] += ((l + 0.5)
                                      * eval_legendre(l, mu_fine[imu]) *
                                      orig_data[..., l])
-                        new_data[..., h_bin] = integrate(table_fine, mu_fine)
+                        new_data[..., h_bin] = integrate(table_fine, x=mu_fine)
 
             elif self.scatter_format == SCATTER_TABULAR:
                 # Calculate the mu points of the current data
@@ -1876,7 +1876,7 @@ class XSdata:
                     for l in range(xsdata.num_orders):
                         y = (interp1d(mu_self, orig_data)(mu_fine) *
                              eval_legendre(l, mu_fine))
-                        new_data[..., l] = integrate(y, mu_fine)
+                        new_data[..., l] = integrate(y, x=mu_fine)
 
                 elif target_format == SCATTER_TABULAR:
                     # Simply use an interpolating function to get the new data
@@ -1895,7 +1895,7 @@ class XSdata:
                     interp = interp1d(mu_self, orig_data)
                     for h_bin in range(xsdata.num_orders):
                         mu_fine = np.linspace(mu[h_bin], mu[h_bin + 1], _NMU)
-                        new_data[..., h_bin] = integrate(interp(mu_fine), mu_fine)
+                        new_data[..., h_bin] = integrate(interp(mu_fine), x=mu_fine)
 
             elif self.scatter_format == SCATTER_HISTOGRAM:
                 # The histogram format does not have enough information to
@@ -1921,7 +1921,7 @@ class XSdata:
                     mu_fine = np.linspace(-1, 1, _NMU)
                     for l in range(xsdata.num_orders):
                         y = interp(mu_fine) * norm * eval_legendre(l, mu_fine)
-                        new_data[..., l] = integrate(y, mu_fine)
+                        new_data[..., l] = integrate(y, x=mu_fine)
 
                 elif target_format == SCATTER_TABULAR:
                     # Simply use an interpolating function to get the new data
@@ -1940,7 +1940,7 @@ class XSdata:
                     for h_bin in range(xsdata.num_orders):
                         mu_fine = np.linspace(mu[h_bin], mu[h_bin + 1], _NMU)
                         new_data[..., h_bin] = \
-                            norm * integrate(interp(mu_fine), mu_fine)
+                            norm * integrate(interp(mu_fine), x=mu_fine)
 
             # Remove small values resulting from numerical precision issues
             new_data[..., np.abs(new_data) < 1.E-10] = 0.

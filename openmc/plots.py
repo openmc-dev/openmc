@@ -14,7 +14,7 @@ from openmc.checkvalue import PathLike
 from ._xml import clean_indentation, get_elem_tuple, reorder_attributes, get_text
 from .mixin import IDManagerMixin
 
-_BASES = ['xy', 'xz', 'yz']
+_BASES = {'xy', 'xz', 'yz'}
 
 _SVG_COLORS = {
     'aliceblue': (240, 248, 255),

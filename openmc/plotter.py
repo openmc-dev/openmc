@@ -7,15 +7,15 @@ import openmc.checkvalue as cv
 import openmc.data
 
 # Supported keywords for continuous-energy cross section plotting
-PLOT_TYPES = ['total', 'scatter', 'elastic', 'inelastic', 'fission',
+PLOT_TYPES = {'total', 'scatter', 'elastic', 'inelastic', 'fission',
               'absorption', 'capture', 'nu-fission', 'nu-scatter', 'unity',
-              'slowing-down power', 'damage']
+              'slowing-down power', 'damage'}
 
 # Supported keywords for multi-group cross section plotting
-PLOT_TYPES_MGXS = ['total', 'absorption', 'scatter', 'fission',
+PLOT_TYPES_MGXS = {'total', 'absorption', 'scatter', 'fission',
                    'kappa-fission', 'nu-fission', 'prompt-nu-fission',
                    'deleyed-nu-fission', 'chi', 'chi-prompt', 'chi-delayed',
-                   'inverse-velocity', 'beta', 'decay-rate', 'unity']
+                   'inverse-velocity', 'beta', 'decay-rate', 'unity'}
 # Create a dictionary which can be used to convert PLOT_TYPES_MGXS to the
 # openmc.XSdata attribute name needed to access the data
 _PLOT_MGXS_ATTR = {line: line.replace(' ', '_').replace('-', '_')

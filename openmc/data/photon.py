@@ -28,10 +28,10 @@ CM_PER_ANGSTROM = 1.0e-8
 R0 = CM_PER_ANGSTROM * PLANCK_C / (2.0 * pi * FINE_STRUCTURE * MASS_ELECTRON_EV)
 
 # Electron subshell labels
-_SUBSHELLS = [None, 'K', 'L1', 'L2', 'L3', 'M1', 'M2', 'M3', 'M4', 'M5',
+_SUBSHELLS = (None, 'K', 'L1', 'L2', 'L3', 'M1', 'M2', 'M3', 'M4', 'M5',
               'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 'O1', 'O2', 'O3',
               'O4', 'O5', 'O6', 'O7', 'O8', 'O9', 'P1', 'P2', 'P3', 'P4',
-              'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11', 'Q1', 'Q2', 'Q3']
+              'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11', 'Q1', 'Q2', 'Q3')
 
 _REACTION_NAME = {
     501: ('Total photon interaction', 'total'),

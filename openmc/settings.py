@@ -26,7 +26,7 @@ class RunMode(Enum):
     PARTICLE_RESTART = 'particle restart'
 
 
-_RES_SCAT_METHODS = ['dbrc', 'rvs']
+_RES_SCAT_METHODS = {'dbrc', 'rvs'}
 
 
 class Settings:

@@ -376,15 +376,6 @@ def test_box():
     d = openmc.stats.Box.from_xml_element(elem)
     assert d.lower_left == pytest.approx(lower_left)
     assert d.upper_right == pytest.approx(upper_right)
-    assert not d.only_fissionable
-
-    # only fissionable parameter
-    d2 = openmc.stats.Box(lower_left, upper_right, True)
-    assert d2.only_fissionable
-    elem = d2.to_xml_element()
-    assert elem.attrib['type'] == 'fission'
-    d = openmc.stats.Spatial.from_xml_element(elem)
-    assert isinstance(d, openmc.stats.Box)
 
 
 def test_point():

@@ -717,8 +717,10 @@ class Universe(UniverseBase):
 
             # If universe-filled, recursively count cells in filling universe
             if fill_type == 'universe':
-                fill._determine_paths(cell_path + '->', instances_only)
-
+                if isinstance(fill, openmc.DAGMCUniverse):
+                    print("DAGUNIVERSE determine", fill._num_instances) 
+                else:
+                    fill._determine_paths(cell_path + '->', instances_only)
             # If lattice-filled, recursively call for all universes in lattice
             elif fill_type == 'lattice':
                 latt = fill
@@ -823,12 +825,15 @@ class DAGMCUniverse(UniverseBase):
                  universe_id=None,
                  name='',
                  auto_geom_ids=False,
-                 auto_mat_ids=False):
+                 auto_mat_ids=False, 
+                 mat_assignment={}):
         super().__init__(universe_id, name)
         # Initialize class attributes
         self.filename = filename
         self.auto_geom_ids = auto_geom_ids
         self.auto_mat_ids = auto_mat_ids
+        self.mat_assignment = mat_assignment
+        self._num_instances = 0
 
     def __repr__(self):
         string = super().__repr__()
@@ -930,6 +935,14 @@ class DAGMCUniverse(UniverseBase):
         return n
 
     @property
+    def num_instances(self):
+        if self._num_instances is None:
+            raise ValueError(
+                'Number of dagmc instances have not been determined. Call the '
+                'Geometry.determine_paths() method.')
+        return self._num_instances
+
+    @property
     def n_cells(self):
         return self._n_geom_elements('volume')
 
@@ -955,6 +968,12 @@ class DAGMCUniverse(UniverseBase):
         if self.auto_mat_ids:
             dagmc_element.set('auto_mat_ids', 'true')
         dagmc_element.set('filename', str(self.filename))
+        if self.mat_assignment :
+            mat_element = ET.Element('mat_assignment')
+            for key in self.mat_assignment:
+                mat_element.set(key, ' '.join(
+                        t for t in self.mat_assignment[key]))
+            dagmc_element.append(mat_element)
         xml_element.append(dagmc_element)
 
     def bounding_region(

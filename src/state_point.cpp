@@ -51,9 +51,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
 
   // If a file name was specified, ensure it has .h5 file extension
   const auto extension = get_file_extension(filename_);
-  if (extension == "") {
-    filename_.append(".h5");
-  } else if (extension != "h5") {
+  if (extension != "h5") {
     warning("openmc_statepoint_write was passed a file extension differing "
             "from .h5, but an hdf5 file will be written.");
   }

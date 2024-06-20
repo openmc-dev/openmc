@@ -972,11 +972,12 @@ class Polygon(CompositeSurface):
         # Check if polygon is self-intersecting by comparing edges pairwise
         n = len(points)
         for i in range(n):
-            p0 = points[i, :]
-            p1 = points[(i + 1) % n, :]
+            # Append 0 to make vectors 3 dimensional for np.cross
+            p0 = np.append(points[i, :], 0)
+            p1 = np.append(points[(i + 1) % n, :], 0)
             for j in range(i + 1, n):
-                p2 = points[j, :]
-                p3 = points[(j + 1) % n, :]
+                p2 = np.append(points[j, :], 0)
+                p3 = np.append(points[(j + 1) % n, :], 0)
                 # Compute orientation of p0 wrt p2->p3 line segment
                 cp0 = np.cross(p3-p0, p2-p0)
                 # Compute orientation of p1 wrt p2->p3 line segment

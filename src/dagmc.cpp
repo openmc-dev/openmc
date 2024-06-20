@@ -235,13 +235,15 @@ void DAGUniverse::init_geometry()
       if (uses_uwuw()) {
         uwuw_assign_material(vol_handle, c);
       } else {
-        if (instance_mat_assignment.size() > 0 and instance_mat_assignment.find(mat_str) != instance_mat_assignment.end()){
-          
-          for (auto mat_str_instance: instance_mat_assignment.at(mat_str)){
+        if (instance_mat_assignment.size() > 0 and
+            instance_mat_assignment.find(mat_str) !=
+              instance_mat_assignment.end()) {
+
+          for (auto mat_str_instance : instance_mat_assignment.at(mat_str)) {
             legacy_assign_material(mat_str_instance, c);
             std::cout << mat_str_instance << std::endl;
           }
-        } else { 
+        } else {
           std::cout << mat_str << std::endl;
           legacy_assign_material(mat_str, c);
         }

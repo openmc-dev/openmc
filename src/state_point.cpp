@@ -584,9 +584,7 @@ void write_source_point(const char* filename, gsl::span<SourceSite> source_bank,
 
   std::string filename_(filename);
   const auto extension = get_file_extension(filename_);
-  if (extension == "") {
-    filename_.append(".h5");
-  } else if (extension != "h5") {
+  if (extension != "h5") {
     warning("write_source_point was passed a file extension differing "
             "from .h5, but an hdf5 file will be written.");
   }

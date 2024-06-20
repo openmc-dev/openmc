@@ -17,6 +17,7 @@
 #include <fmt/core.h>
 
 #include <algorithm>
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -56,7 +57,8 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
   if (check_for_node(node, "filename")) {
     filename_ = get_node_value(node, "filename");
     if (!starts_with(filename_, "/")) {
-      filename_ = dir_name(settings::path_input) + filename_;
+      std::filesystem::path d(dir_name(settings::path_input));
+      filename_ = (d / filename_).string();
     }
   } else {
     fatal_error("Must specify a file for the DAGMC universe");

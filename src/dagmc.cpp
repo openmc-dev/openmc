@@ -72,6 +72,28 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
     adjust_material_ids_ = get_node_value_bool(node, "auto_mat_ids");
   }
 
+  // get material assignment overloading
+  if (check_for_node(node, "mat_assignment")) {
+    auto mat_node = node.child("mat_assignment");
+    // loop over all attributes (each attribute corresponds to a material)
+    for (pugi::xml_attribute attr = mat_node.first_attribute(); attr;
+         attr = attr.next_attribute()) {
+      // Store assignment reference name
+      std::string mat_ref_assignment = attr.name();
+
+      // Get mat name for each assignement instances
+      std::stringstream iss {attr.value()};
+      vector<std::string> instance_mats;
+      std::string value;
+      while (iss >> value)
+        instance_mats.push_back(value);
+
+      // Store mat name for each instances
+      instance_mat_assignment.insert(
+        std::make_pair(mat_ref_assignment, instance_mats));
+    }
+  }
+
   initialize();
 }
 
@@ -206,7 +228,6 @@ void DAGUniverse::init_geometry()
     if (mat_str == "graveyard") {
       graveyard = vol_handle;
     }
-
     // material void checks
     if (mat_str == "void" || mat_str == "vacuum" || mat_str == "graveyard") {
       c->material_.push_back(MATERIAL_VOID);
@@ -214,7 +235,16 @@ void DAGUniverse::init_geometry()
       if (uses_uwuw()) {
         uwuw_assign_material(vol_handle, c);
       } else {
-        legacy_assign_material(mat_str, c);
+        if (instance_mat_assignment.size() > 0 and instance_mat_assignment.find(mat_str) != instance_mat_assignment.end()){
+          
+          for (auto mat_str_instance: instance_mat_assignment.at(mat_str)){
+            legacy_assign_material(mat_str_instance, c);
+            std::cout << mat_str_instance << std::endl;
+          }
+        } else { 
+          std::cout << mat_str << std::endl;
+          legacy_assign_material(mat_str, c);
+        }
       }
     }
 
@@ -495,6 +525,7 @@ void DAGUniverse::legacy_assign_material(
       if (!mat_found_by_name) {
         mat_found_by_name = true;
         c->material_.push_back(m->id_);
+        std::cout << mat_string << " " << c->material_.size() << std::endl;
         // report error if more than one material is found
       } else {
         fatal_error(fmt::format(

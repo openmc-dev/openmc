@@ -404,6 +404,25 @@ class Geometry:
         for material in self.get_all_materials().values():
             all_nuclides |= set(material.get_nuclides())
         return sorted(all_nuclides)
+    
+    def get_all_dag_universes(self) -> typing.Dict[int, openmc.Universe]:
+        """Return all universes in the geometry.
+
+        Returns
+        -------
+        dict
+            Dictionary mapping universe IDs to :class:`openmc.Universe`
+            instances
+
+        """
+        universes = {}
+        universes[self.root_universe.id] = self.root_universe
+        universes.update(self.root_universe.get_all_universes())
+        dag_universes = {}
+        for id, uni in dag_universes.items():
+            if isinstance(uni, openmc.DAGMCUniverse):
+                dag_universes[id] = uni
+        return dag_universes
 
     def get_all_materials(self) -> dict[int, openmc.Material]:
         """Return all materials within the geometry.
@@ -737,6 +756,9 @@ class Geometry:
         for material in self.get_all_materials().values():
             material._paths = []
             material._num_instances = 0
+        for dag_uni in self.get_all_dag_universes().values():
+            dag_uni._paths = []
+            dag_uni._num_instances = 0
 
         # Recursively traverse the CSG tree to count all cell instances
         self.root_universe._determine_paths(instances_only=instances_only)

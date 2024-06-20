@@ -435,11 +435,13 @@ void count_cell_instances(int32_t univ_indx)
   if (univ_counts != model::universe_cell_counts.end()) {
     for (const auto& it : univ_counts->second) {
       model::cells[it.first]->n_instances_ += it.second;
+      std::cout << model::cells[it.first]->n_instances_ << std::endl;
     }
   } else {
     for (int32_t cell_indx : model::universes[univ_indx]->cells_) {
       Cell& c = *model::cells[cell_indx];
       ++c.n_instances_;
+      std::cout << c.n_instances_ << std::endl;
       model::universe_cell_counts[univ_indx][cell_indx] += 1;
 
       if (c.type_ == Fill::UNIVERSE) {

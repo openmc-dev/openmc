@@ -1041,6 +1041,9 @@ class Model:
                                         f"material with ID={mat.id}.")
                 mat.volume /= mat.num_instances
 
+        for dag_uni in self.geometry.get_all_dag_universes().values():
+            print(dag_uni.num_instances())
+
         if distribmats:
             # Assign distribmats to cells
             for cell in self.geometry.get_all_material_cells().values():

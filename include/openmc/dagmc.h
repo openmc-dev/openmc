@@ -184,6 +184,7 @@ private:
                              //!< generate new material IDs for the universe
   bool has_graveyard_; //!< Indicates if the DAGMC geometry has a "graveyard"
                        //!< volume
+  std::map<std::string, vector<std::string>> instance_mat_assignment;
 };
 
 //==============================================================================

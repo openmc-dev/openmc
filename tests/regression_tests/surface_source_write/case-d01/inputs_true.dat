@@ -21,9 +21,12 @@
     <batches>5</batches>
     <inactive>1</inactive>
     <source particle="neutron" strength="1.0" type="independent">
-      <space type="fission">
+      <space type="box">
         <parameters>-4 -4 -20 4 4 20</parameters>
       </space>
+      <constraints>
+        <fissionable>true</fissionable>
+      </constraints>
     </source>
     <surf_source_write>
       <max_particles>300</max_particles>

@@ -142,8 +142,9 @@ def model():
         core_radius,
         core_height / 2.0,
     ]
-    distribution = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=True)
-    model.settings.source = openmc.IndependentSource(space=distribution)
+    distribution = openmc.stats.Box(bounds[:3], bounds[3:])
+    model.settings.source = openmc.IndependentSource(
+        space=distribution, constraints={'fissionable': True})
 
     # =============================================================================
     # Tallies

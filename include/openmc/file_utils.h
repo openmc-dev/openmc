@@ -21,7 +21,8 @@ bool file_exists(const std::string& filename);
 
 //! Determine directory containing given file
 //! \param[in] filename Path to file
-//! \return Name of directory containing file
+//! \return Name of directory containing file excluding the final directory
+//! separator
 std::string dir_name(const std::string& filename);
 
 // Gets the file extension of whatever string is passed in. This is defined as

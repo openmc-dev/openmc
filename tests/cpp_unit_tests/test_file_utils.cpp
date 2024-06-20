@@ -36,6 +36,6 @@ TEST_CASE("Test dir_name")
   REQUIRE(dir_name("") == "");
   REQUIRE(dir_name("/") == "/");
   REQUIRE(dir_name("hello") == "");
-  REQUIRE(dir_name("hello/world") == "hello/");
-  REQUIRE(dir_name("/path/to/dir/") == "/path/to/dir/");
+  REQUIRE(dir_name("hello/world") == "hello");
+  REQUIRE(dir_name("/path/to/dir/") == "/path/to/dir");
 }

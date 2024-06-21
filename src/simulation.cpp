@@ -440,9 +440,11 @@ void finalize_batch()
         settings::path_output, simulation::current_batch, w);
       gsl::span<SourceSite> bankspan(simulation::source_bank);
       if (settings::source_mcpl_write) {
+        source_point_filename.append(".mcpl");
         write_mcpl_source_point(
           source_point_filename.c_str(), bankspan, simulation::work_index);
       } else {
+        source_point_filename.append(".h5");
         write_source_point(
           source_point_filename.c_str(), bankspan, simulation::work_index);
       }
@@ -451,13 +453,14 @@ void finalize_batch()
     // Write a continously-overwritten source point if requested.
     if (settings::source_latest) {
 
-      // note: correct file extension appended automatically
       auto filename = settings::path_output + "source";
       gsl::span<SourceSite> bankspan(simulation::source_bank);
       if (settings::source_mcpl_write) {
+        filename.append(".mcpl");
         write_mcpl_source_point(
           filename.c_str(), bankspan, simulation::work_index);
       } else {
+        filename.append(".h5");
         write_source_point(filename.c_str(), bankspan, simulation::work_index);
       }
     }
@@ -472,8 +475,10 @@ void finalize_batch()
     gsl::span<SourceSite> surfbankspan(simulation::surf_source_bank.begin(),
       simulation::surf_source_bank.size());
     if (settings::surf_mcpl_write) {
+      filename.append(".mcpl");
       write_mcpl_source_point(filename.c_str(), surfbankspan, surf_work_index);
     } else {
+      filename.append(".h5");
       write_source_point(filename.c_str(), surfbankspan, surf_work_index);
     }
   }

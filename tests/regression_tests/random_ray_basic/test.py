@@ -190,6 +190,7 @@ def random_ray_model() -> openmc.Model:
     settings.random_ray['distance_active'] = 100.0
     settings.random_ray['distance_inactive'] = 20.0
     settings.random_ray['ray_source'] = rr_source
+    settings.random_ray['volume_normalized_flux_tallies'] = True
 
     ###############################################################################
     # Define tallies

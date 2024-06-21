@@ -251,6 +251,7 @@ def create_random_ray_model(domain_type):
 
     settings.random_ray['distance_active'] = 400.0
     settings.random_ray['distance_inactive'] = 100.0
+    settings.random_ray['volume_normalized_flux_tallies'] = False
 
     # Create an initial uniform spatial source for ray integration
     lower_left = (0.0, 0.0, 0.0)

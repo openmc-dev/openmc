@@ -475,6 +475,68 @@ points of 1.0e-2 and 1.0e1.
     # Add fixed source and ray sampling source to settings file
     settings.source = [neutron_source]
 
+.. _usersguide_vol_estimators:
+
+-----------------------------
+Alternative Volume Estimators
+-----------------------------
+
+As discussed in the random ray theory section on :ref:`volume estimators
+<methods_random_ray_vol>`, there are several possible derivations for the scalar
+flux estimate. These options deal with different ways of treating the
+accumulation over ray lengths crossing each FSR (a quantity directly
+proportional to volume), which can be computed using several methods. The
+following methods are currently available in OpenMC:
+
+.. list-table:: Comparison of Estimators
+   :widths: 25 25 25 25
+   :header-rows: 1
+
+   * - Estimator
+     - Description
+     - Pros
+     - Cons
+   * - ``simulation_averaged``
+     - Accumulates total active ray lengths in each FSR over all iterations, improving
+       the estimate of the volume in each cell each iteration. 
+     - * Virtually unbiased after several iterations
+       * Asymptotically approaches the true analytical volume
+       * Typically most efficient in terms of speed vs. accuracy
+     - * Higher variance
+       * Can lead to negative fluxes and numerical instability in pathological cases
+   * - ``naive``
+     - Treats the volume as composed only of the active ray length through each
+       FSR per iteration, being a biased but numerically consistent ratio
+       estimator.
+     - * Low variance
+       * Unlikely to result in negative fluxes
+       * Recommended in cases where ``simulation_averaged`` is unstable
+     - * Biased estimator
+       * Requires more rays or longer active ray length to mitigate bias
+   * - ``hybrid`` (default)
+     - Applies the ``naive`` estimator to all cells that contain an external (fixed) source
+       contribution. Applies the ``simulation_avearged`` estimator to all other cells.
+     - * Best of both worlds, with the high accuracy/low bias of ``simulation_averaged`` in most
+         cells and the stability of ``naive`` in cells with fixed sources
+     - * Can lead to slightly negative fluxes in cells where the ``simulation_averaged`` estimator
+         is used
+   * - ``segment_corrected``
+     - Similar to the ``simulation_averaged`` estimator, but also adjusts segment lengths such that
+       the total tracklength through an FSR each iteration is
+       equal to the expected value derived from the simulation-averaged quantity.
+     - * Similar numerical performance to ``simulation_averaged``
+       * Unlikely to result in negative fluxes
+       * Recommended in cases where ``simulation_averaged`` is unstable
+     - * More expensive due to need to ray trace through the geometry twice
+
+These estimators can be selected by setting the ``volume_estimator`` field in the
+:attr:`openmc.Settings.random_ray` dictionary. For example, to use the naive
+estimator, the following code would be used:
+
+::
+
+    settings.random_ray['volume_estimator'] = 'naive'
+
 ---------------------------------------
 Putting it All Together: Example Inputs
 ---------------------------------------

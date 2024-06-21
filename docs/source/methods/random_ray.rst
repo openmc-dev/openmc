@@ -438,9 +438,11 @@ features stochastic variables (the sums over random ray lengths and angular
 fluxes) in both the numerator and denominator, making it a stochastic ratio
 estimator, which is inherently biased. In practice, usage of the naive estimator
 does result in a biased, but "consistent"  estimator (i.e., it is biased, but
-the bias tends towards zero as the sample size increases). Experimentally, the
-right answer can be obtained with this estimator, though a very fine ray density
-is required to eliminate the bias.
+the bias tends towards zero as the sample size increases). Empirically, this
+bias tends to effect eigenvalue calculations much more significantly than in
+fixed source simulations. Experimentally, the right answer can be obtained with
+this estimator, though for eigenvalue simulations a very fine ray density is
+required to eliminate the bias.
 
 How might we solve the biased ratio estimator problem? While there is no obvious
 way to alter the numerator term (which arises from the characteristic
@@ -461,7 +463,7 @@ replace the actual tracklength that was accumulated inside that FSR each
 iteration with the expected value.
 
 If we know the analytical volumes, then those can be used to directly compute
-the expected value of the tracklength in each cell. However, as the analytical
+the expected value of the tracklength in each cell, :math:`L_{avg}`. However, as the analytical
 volumes are not typically known in OpenMC due to the usage of user-defined
 constructive solid geometry, we need to source this quantity from elsewhere. An
 obvious choice is to simply accumulate the total tracklength through each FSR
@@ -471,7 +473,7 @@ average length per iteration, as:
 .. math::
     :label: sim_estimator
 
-       \sum\limits^{}_{i} \ell_i \approx \frac{\sum\limits^{B}_{b}\sum\limits^{N_i}_{r} \ell_{b,r} }{B}
+    \sum\limits^{}_{i} \ell_i \approx L_{avg} = \frac{\sum\limits^{B}_{b}\sum\limits^{N_i}_{r=1} \ell_{b,r} }{B}
 
 where :math:`b` is a single batch in :math:`B` total batches simulated so far.
 
@@ -484,7 +486,7 @@ averaged" estimator is therefore:
 .. math::
     :label: phi_sim
 
-    \phi_{i,g}^{simulation} = \frac{Q_{i,g} }{\Sigma_{t,i,g}} + \frac{\sum\limits_{r=1}^{N_i} \Delta \psi_{r,g}}{\Sigma_{t,i,g} \frac{\sum\limits^{B}_{b}\sum\limits^{N_i}_{r} \ell_{b,r} }{B}}
+    \phi_{i,g}^{simulation} = \frac{Q_{i,g} }{\Sigma_{t,i,g}} + \frac{\sum\limits_{r=1}^{N_i} \Delta \psi_{r,g}}{\Sigma_{t,i,g} L_{avg}}
 
 In practical terms, the "simulation averaged" estimator is virtually
 indistinguishable numerically from use of the true analytical volume to estimate
@@ -498,17 +500,114 @@ in which case the denominator served as a normalization term for the numerator
 integral in Equation :eq:`integral`. Essentially, we have now used a different
 term for the volume in the numerator as compared to the normalizing volume in
 the denominator. The inevitable mismatch (due to noise) between these two
-quantities results in a significant increase in variance. Notably, the same
-problem occurs if using a tracklength estimate based on the analytical volume,
-as again the numerator integral and the normalizing denominator integral no
-longer match on a per-iteration basis.
+quantities results in a significant increase in variance, and can even result in
+the generation of negative fluxes. Notably, the same problem occurs if using a
+tracklength estimate based on the analytical volume, as again the numerator
+integral and the normalizing denominator integral no longer match on a
+per-iteration basis.
 
-In practice, the simulation averaged method does completely remove the bias,
-though at the cost of a notable increase in variance. Empirical testing reveals
-that on most problems, the simulation averaged estimator does win out overall in
-numerical performance, as a much coarser quadrature can be used resulting in
-faster runtimes overall. Thus, OpenMC uses the simulation averaged estimator in
-its random ray mode.
+In practice, the simulation averaged method does completely remove the bias seen
+when using the naive estimator, though at the cost of a notable increase in
+variance. Empirical testing reveals that on most eigenvalue problems, the
+simulation averaged estimator does win out overall in numerical performance, as
+a much coarser quadrature can be used resulting in faster runtimes overall.
+Thus, OpenMC uses the simulation averaged estimator as default in its random ray
+mode for eigenvalue solves.
+
+There is a third estimator that may be used which is a variant of the simulation
+averaged estimator. This variant is known as the "segment corrected" estimator,
+which adjusts individual segment lengths within each source region such that the
+total sum of ray lengths inside each source region in any given iteration is
+equal to :math:`L_{avg}`. As the ray lengths each iteration are stochastic, ray
+tracing must therefore be separated from the flux attenuation process, as the
+correction factors must be computed before :math:`\Delta \psi_{r,g}` is
+calculated for each segment as:
+
+.. math::
+    :label: phi_segment_cor
+
+    C_i = \frac{L_{avg, i}}{\sum\limits_{r=1}^{N_i} \ell_r} .
+
+Which is then applied to computation of :math:`\Delta \psi_{r,g}` terms as:
+
+.. math::
+    :label: delta_psi_cor
+
+    \Delta \psi_{r,g}^{\text{segment corrected}} = \left(\psi_{r,g}^{in} - \frac{Q_{i,g}}{\Sigma_{t,i,g}} \right) \left( 1 - e^{-\Sigma_{t,i,g} \ell_r C_i} \right) .
+
+In practical terms, the segment corrected method generaly behaves similary to
+the simulation averaged estimator, with the additional advantage of ensuring
+that negative fluxes cannot occur. The downside of this method is the increased
+implementation complexity, as all ray tracing must be performed up front each
+iteration so that correction factors can be computed and applied during the
+transport sweep of that iteration. In OpenMC, this is accomplished simply by
+performing two identical full ray tracing sweeps each iteration. The first sweep
+is used to calculate correction factors, and the second sweep is used to
+actually perform transport. While different rays are still used between
+different iterations, within the same iteration the random number generation
+stream is controlled such that identical rays are generated and ray traced for
+both stages.
+
+OpenMC also features a "hybrid" volume estimator that uses the naive estimator
+for all regions containing an external (fixed) source term. For all other
+source regions, the "simulation averaged" estimator is used. This typically achieves
+a best of both worlds result, with the benefits of the low bias simulation averaged
+estimator in most regions, while preventing instability and/or large biases in regions
+with external source terms via use of the naive estimator. In general, it is
+recommended to use the "hybrid" estimator, which is the default method used
+in OpenMC. If instability is encountered despite high ray densities, then
+the segment corrected volume estimator or naive estimators may be preferable.
+
+A table that summarizes the pros and cons, as well as recommendations for
+different use cases, is given in the :ref:`volume
+estimators<usersguide_vol_estimators>` section of the user guide.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+What Happens When a Source Region is Missed?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Given the stochastic nature of random ray, when low ray densities are used it is
+common for small source regions to occasionally not be hit by any rays in a
+particular power iteration :math:`n`. This naturally collapses the flux estimate
+in that cell for the iteration from Equation :eq:`phi_naive` to:
+
+.. math::
+    :label: phi_missed_one
+
+    \phi_{i,g,n}^{missed} = \frac{Q_{i,g,n} }{\Sigma_{t,i,g}} 
+
+as the streaming operator has gone to zero. While this is obviously innacurate
+as it ignores transport, for most problems where the region is only occasionally
+missed this estimator does not tend to introduce any significant bias.
+
+However, in cases where the total cross section in the region is very small
+(e.g., a void-like material) and where a strong external fixed source has been
+placed, then this treatment causes major issues. In this pathological case, the
+lack of transport forces the entiretty of the fixed source to effectively be
+contained and collided within the cell, which for a low cross section region is
+highly unphysical. The net effect is that a very high estimate of the flux
+(often orders of magnitude higher than is expected) is generated that iteration,
+which cannot be washed out even with hundreds or thousands of iterations. Thus,
+huge biases are often seen in spatial tallies containing void-like regions with
+external sources unless a high enough ray density is used such that all source
+regions are always hit each iteration. This is particularly problematic as
+external sources placed in void-like regions are very common in many types of
+fixed source analysis.
+
+For regions where external sources are present, to eliminate this bias it is
+therefore preferable to simply use the previous iteration's estimate of the flux
+in that cell, as:
+
+.. math::
+    :label: phi_missed_two
+
+    \phi_{i,g,n}^{missed} = \phi_{i,g,n-1} .
+    
+While this introduces some small degree of correlation to the simulation, for
+miss rates on the order of a few percent the correlations are trivial and the
+bias is eliminated. Thus, in OpenMC the previous iteration's scalar flux estimate
+is applied to cells that are missed where there is an external source term present
+within the cell.
 
 ~~~~~~~~~~~~~~~
 Power Iteration

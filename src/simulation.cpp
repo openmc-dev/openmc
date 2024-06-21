@@ -436,7 +436,7 @@ void finalize_batch()
 
       // Determine width for zero padding
       int w = std::to_string(settings::n_max_batches).size();
-      std::string source_point_filename = fmt::format("{0}source.{1:0{2}}.h5",
+      std::string source_point_filename = fmt::format("{0}source.{1:0{2}}",
         settings::path_output, simulation::current_batch, w);
       gsl::span<SourceSite> bankspan(simulation::source_bank);
       if (settings::source_mcpl_write) {

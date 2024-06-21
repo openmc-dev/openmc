@@ -72,11 +72,33 @@ class DAGMCUniverseTest(PyAPITestHarness):
 
         self._model.geometry = openmc.Geometry([bounding_cell])
 
+        # add a cell instance tally
+        tally = openmc.Tally(name='cell instance tally')
+        # using scattering
+        cell_instance_filter = openmc.CellInstanceFilter(((4, 0), (4, 1), (4, 2), (4, 3), (4, 4)))
+        tally.filters = [cell_instance_filter]
+        tally.scores = ['scatter']
+        self._model.tallies = [tally]
+
         # settings
         self._model.settings.particles = 100
         self._model.settings.batches = 10
-        self._model.settings.inactive = 2
+        self._model.settings.inactive = 5
         self._model.settings.output = {'summary' : False}
+
+    def _compare_results(self):
+        # ensure that all of the cell instance tally results are different, but nominally equal
+        with openmc.StatePoint(self.statepoint_name) as sp:
+            tally = sp.get_tally(name='cell instance tally')
+            mean = tally.get_values(scores=['scatter'])
+            std_dev = tally.get_values(scores=['scatter'], value='std_dev')
+            assert np.unique(mean).size == mean.size
+            # there should be no entry for cell instance 4
+            assert mean[-1] == 0.0
+            for result in mean[:-1]:
+                assert np.allclose(result, mean[0], rtol=0.5)
+
+        super()._compare_results()
 
 
 def test_univ():

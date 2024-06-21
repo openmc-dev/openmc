@@ -110,6 +110,10 @@ public:
   void count_external_source_regions();
 
   //----------------------------------------------------------------------------
+  // Static Data members
+  static bool volume_normalized_flux_tallies_;
+
+  //----------------------------------------------------------------------------
   // Public Data members
 
   bool mapped_all_tallies_ {false}; // If all source regions have been visited

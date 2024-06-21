@@ -30,7 +30,17 @@ expanded as well; specifying a domain to reject on should now be done with the
     source = openmc.IndependentSource(..., constraints={'domains': [cell]})
 
 The `domains` argument is deprecated and will be removed in a future version of
-OpenMC.
+OpenMC. Similarly, the ``only_fissionable`` argument to
+:class:`openmc.stats.Box` has been replaced by a `'fissionable'` constraint.
+That is, instead of specifying::
+
+    space = openmc.stats.Box(lower_left, upper_right, only_fissionable=True)
+    source = openmc.IndependentSource(space=space)
+
+You should now provide the constraint as::
+
+    space = openmc.stats.Box(lower_left, upper_right)
+    source = openmc.IndependentSource(space=space, constraints={'fissionable': True})
 
 The :attr:`openmc.Settings.max_splits` attribute was renamed to
 ``max_history_splits`` and its default value has been changed to 1e7 (`#2954
@@ -237,7 +247,7 @@ Contributors
 - `Sigfrid Stjärnholm <https://github.com/Kladdy>`_
 - `Kimberly Meagher <https://github.com/kmeag>`_
 - `lhchg <https://github.com/lhchg>`_
-- `Luke Labrie-Cleary <https://github.com/LukeLabie>`_
+- `Luke Labrie-Cleary <https://github.com/LukeLabrie>`_
 - `Micah Gale <https://github.com/MicahGale>`_
 - `Nicholas Linden <https://github.com/nplinden>`_
 - `pitkajuh <https://github.com/pitkajuh>`_

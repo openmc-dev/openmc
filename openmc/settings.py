@@ -157,6 +157,10 @@ class Settings:
         :ray_source:
             Starting ray distribution (must be uniform in space and angle) as
             specified by a :class:`openmc.SourceBase` object.
+        :volume_estimator:
+            Choice of volume estimator for the random ray solver. Options are
+            'naive', 'simulation_averaged', 'segment_corrected', 'hybrid'.
+            The default is 'hybrid'.
 
         .. versionadded:: 0.14.1
     resonance_scattering : dict
@@ -1084,6 +1088,10 @@ class Settings:
                                       random_ray[key], 0.0, True)
             elif key == 'ray_source':
                 cv.check_type('random ray source', random_ray[key], SourceBase)
+            elif key == 'volume_estimator':
+                cv.check_value('volume estimator', random_ray[key],
+                               ('naive', 'simulation_averaged',
+                                'segment_corrected', 'hybrid'))
             else:
                 raise ValueError(f'Unable to set random ray to "{key}" which is '
                                  'unsupported by OpenMC')
@@ -1877,6 +1885,8 @@ class Settings:
                 elif child.tag == 'source':
                     source = SourceBase.from_xml_element(child)
                     self.random_ray['ray_source'] = source
+                elif child.tag == 'volume_estimator':
+                    self.random_ray['volume_estimator'] = child.text
 
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.

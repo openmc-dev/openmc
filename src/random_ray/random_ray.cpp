@@ -177,6 +177,25 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
   int64_t source_region =
     domain_->source_region_offsets_[i_cell] + cell_instance();
 
+  // If the segment corrected flux estimator is selected and we are
+  // currently in the ray tracing phase of the iteration to compute correction
+  // factors, then we only need to record the volume contribution.
+  if (ray_trace_only_) {
+    if (is_active) {
+#pragma omp atomic
+      domain_->volume_[source_region] += distance;
+    }
+    return;
+  }
+  // If the segment corrected flux estimator is selected, check if the
+  // ray is active and apply the correction factor if necessary.
+  double segment_correction = 1.0;
+  if (domain_->volume_estimator_ ==
+        RandomRayVolumeEstimator::SEGMENT_CORRECTED &&
+      is_active) {
+    segment_correction = domain_->segment_correction_[source_region];
+  }
+
   // The source element is the energy-specific region index
   int64_t source_element = source_region * negroups_;
   int material = this->material();
@@ -192,7 +211,7 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
   for (int g = 0; g < negroups_; g++) {
     float sigma_t = data::mg.macro_xs_[material].get_xs(
       MgxsType::TOTAL, g, NULL, NULL, NULL, t, a);
-    float tau = sigma_t * distance;
+    float tau = sigma_t * distance * segment_correction;
     float exponential = cjosey_exponential(tau); // exponential = 1 - exp(-tau)
     float new_delta_psi =
       (angular_flux_[g] - domain_->source_[source_element + g]) * exponential;
@@ -211,12 +230,6 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
     // this iteration
     for (int g = 0; g < negroups_; g++) {
       domain_->scalar_flux_new_[source_element + g] += delta_psi_[g];
-    }
-
-    // If the source region hasn't been hit yet this iteration,
-    // indicate that it now has
-    if (domain_->was_hit_[source_region] == 0) {
-      domain_->was_hit_[source_region] = 1;
     }
 
     // Accomulate volume (ray distance) into this iteration's estimate

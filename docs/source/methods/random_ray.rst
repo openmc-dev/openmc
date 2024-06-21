@@ -411,6 +411,8 @@ which when partially simplified becomes:
 
 Note that there are now four (seemingly identical) volume terms in this equation.
 
+.. _methods_random_ray_vol:
+
 ~~~~~~~~~~~~~~
 Volume Dilemma
 ~~~~~~~~~~~~~~
@@ -602,7 +604,7 @@ in that cell, as:
     :label: phi_missed_two
 
     \phi_{i,g,n}^{missed} = \phi_{i,g,n-1} .
-    
+
 While this introduces some small degree of correlation to the simulation, for
 miss rates on the order of a few percent the correlations are trivial and the
 bias is eliminated. Thus, in OpenMC the previous iteration's scalar flux estimate

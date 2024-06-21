@@ -699,9 +699,6 @@ void FlatSourceDomain::all_reduce_replicated_source_regions()
   MPI_Allreduce(MPI_IN_PLACE, volume_.data(), n_source_regions_, MPI_DOUBLE,
     MPI_SUM, mpi::intracomm);
 
-  MPI_Allreduce(MPI_IN_PLACE, was_hit_.data(), n_source_regions_, MPI_INT,
-    MPI_SUM, mpi::intracomm);
-
   MPI_Allreduce(MPI_IN_PLACE, scalar_flux_new_.data(), n_source_elements_,
     MPI_FLOAT, MPI_SUM, mpi::intracomm);
 

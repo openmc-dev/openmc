@@ -446,6 +446,54 @@ void FlatSourceDomain::reset_tally_volumes()
   }
 }
 
+// In fixed source mode, due to the way that volumetric fixed sources are
+// converted and applied as volumetric sources in one or more source regions,
+// we need to perform an additional normalization step to ensure that the
+// reported scalar fluxes are in units per source neutron. This allows for
+// direct comparison of reported tallies to Monte Carlo flux results.
+double FlatSourceDomain::compute_fixed_source_normalization_factor() const
+{
+  // If we are not in fixed source mode, then there are no external sources
+  // so no normalization is needed.
+  if (settings::run_mode != RunMode::FIXED_SOURCE) {
+    return 1.0;
+  }
+
+  // Step 1 is to sum over all source regions and energy groups to get the
+  // total external source strength in the simulation.
+  double simulation_external_source_strength = 0.0;
+#pragma omp parallel for reduction(+ : simulation_external_source_strength)
+  for (int sr = 0; sr < n_source_regions_; sr++) {
+    int material = material_[sr];
+    double volume = volume_[sr] * simulation_volume_;
+    for (int e = 0; e < negroups_; e++) {
+      // Temperature and angle indices, if using multiple temperature
+      // data sets and/or anisotropic data sets.
+      // TODO: Currently assumes we are only using single temp/single
+      // angle data.
+      const int t = 0;
+      const int a = 0;
+      float sigma_t = data::mg.macro_xs_[material].get_xs(
+        MgxsType::TOTAL, e, nullptr, nullptr, nullptr, t, a);
+      simulation_external_source_strength +=
+        external_source_[sr * negroups_ + e] * sigma_t * volume;
+    }
+  }
+
+  // Step 2 is to determine the total user-specified external source strength
+  double user_external_source_strength = 0.0;
+  for (auto& ext_source : model::external_sources) {
+    user_external_source_strength += ext_source->strength();
+  }
+
+  // The correction factor is the ratio of the user-specified external source
+  // strength to the simulation external source strength.
+  double source_normalization_factor =
+    user_external_source_strength / simulation_external_source_strength;
+
+  return source_normalization_factor;
+}
+
 // Tallying in random ray is not done directly during transport, rather,
 // it is done only once after each power iteration. This is made possible
 // by way of a mapping data structure that relates spatial source regions
@@ -469,40 +517,8 @@ void FlatSourceDomain::random_ray_tally()
   const int t = 0;
   const int a = 0;
 
-  // In fixed source mode, due to the way that volumetric fixed sources are
-  // converted and applied as volumetric sources in one or more source regions,
-  // we need to perform an additional normalization step to ensure that the
-  // reported scalar fluxes are in units per source neutron. This allows for
-  // direct comparison of reported tallies to Monte Carlo flux results.
-  double source_normalization_factor = 1.0;
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
-
-    // Step 1 is to sum over all source regions and energy groups to get the
-    // total external source strength in the simulation.
-    double simulation_external_source_strength = 0.0;
-#pragma omp parallel for reduction(+ : simulation_external_source_strength)
-    for (int sr = 0; sr < n_source_regions_; sr++) {
-      int material = material_[sr];
-      double volume = volume_[sr] * simulation_volume_;
-      for (int e = 0; e < negroups_; e++) {
-        float sigma_t = data::mg.macro_xs_[material].get_xs(
-          MgxsType::TOTAL, e, nullptr, nullptr, nullptr, t, a);
-        simulation_external_source_strength +=
-          external_source_[sr * negroups_ + e] * sigma_t * volume;
-      }
-    }
-
-    // Step 2 is to determine the total user-specified external source strength
-    double user_external_source_strength = 0.0;
-    for (auto& ext_source : model::external_sources) {
-      user_external_source_strength += ext_source->strength();
-    }
-
-    // The correction factor is the ratio of the user-specified external source
-    // strength to the simulation external source strength.
-    source_normalization_factor =
-      user_external_source_strength / simulation_external_source_strength;
-  }
+  double source_normalization_factor =
+    compute_fixed_source_normalization_factor();
 
 // We loop over all source regions and energy groups. For each
 // element, we check if there are any scores needed and apply
@@ -783,6 +799,9 @@ void FlatSourceDomain::output_to_vtk() const
       }
     }
 
+    double source_normalization_factor =
+      compute_fixed_source_normalization_factor();
+
     // Open file for writing
     std::FILE* plot = std::fopen(filename.c_str(), "wb");
 
@@ -802,7 +821,8 @@ void FlatSourceDomain::output_to_vtk() const
       std::fprintf(plot, "LOOKUP_TABLE default\n");
       for (int fsr : voxel_indices) {
         int64_t source_element = fsr * negroups_ + g;
-        float flux = scalar_flux_final_[source_element];
+        float flux =
+          scalar_flux_final_[source_element] * source_normalization_factor;
         flux /= (settings::n_batches - settings::n_inactive);
         flux = convert_to_big_endian<float>(flux);
         std::fwrite(&flux, sizeof(float), 1, plot);
@@ -835,7 +855,8 @@ void FlatSourceDomain::output_to_vtk() const
       int mat = material_[fsr];
       for (int g = 0; g < negroups_; g++) {
         int64_t source_element = fsr * negroups_ + g;
-        float flux = scalar_flux_final_[source_element];
+        float flux =
+          scalar_flux_final_[source_element] * source_normalization_factor;
         flux /= (settings::n_batches - settings::n_inactive);
         float Sigma_f = data::mg.macro_xs_[mat].get_xs(
           MgxsType::FISSION, g, nullptr, nullptr, nullptr, 0, 0);

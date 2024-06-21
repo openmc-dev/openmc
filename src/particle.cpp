@@ -557,9 +557,14 @@ void Particle::cross_surface(const Surface& surf)
     sqrtkT_last() = sqrtkT();
     // set new cell value
     lowest_coord().cell = i_cell;
+    auto& cell = model::cells[i_cell];
+
     cell_instance() = 0;
-    material() = model::cells[i_cell]->material_[0];
-    sqrtkT() = model::cells[i_cell]->sqrtkT_[0];
+    if (cell->distribcell_index_ >= 0)
+      cell_instance() = cell_instance_at_level(*this, n_coord() - 1);
+
+    material() = cell->material(cell_instance());
+    sqrtkT() = cell->sqrtkT(cell_instance());
     return;
   }
 #endif

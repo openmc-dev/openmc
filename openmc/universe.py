@@ -886,12 +886,11 @@ class DAGMCUniverse(UniverseBase):
             candidate_tag = tag.tobytes().decode().replace('\x00', '')
             # tags might be for temperature or reflective surfaces
             if candidate_tag.startswith('mat:'):
+                # if name ends with _comp remove it, it is not parsed
+                if candidate_tag.endswith('_comp'):
+                   candidate_tag = candidate_tag[:-5]
                 # removes first 4 characters as openmc.Material name should be
                 # set without the 'mat:' part of the tag
-                if candidate_tag.endswith('_comp'):
-                    print(candidate_tag)
-                    candidate_tag = candidate_tag[:-5]
-                    print(candidate_tag)
                 material_tags_ascii.append(candidate_tag[4:])
 
         return sorted(set(material_tags_ascii))

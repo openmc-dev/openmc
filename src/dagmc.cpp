@@ -235,21 +235,14 @@ void DAGUniverse::init_geometry()
       if (uses_uwuw()) {
         uwuw_assign_material(vol_handle, c);
       } else {
-        std::cout << "assignement " << instance_mat_assignment.size()
-                  << std::endl;
-        for (auto mat_inst : instance_mat_assignment) {
-          std::cout << mat_inst.first << std::endl;
-        }
         if (instance_mat_assignment.size() > 0 and
             instance_mat_assignment.find(mat_str) !=
               instance_mat_assignment.end()) {
 
           for (auto mat_str_instance : instance_mat_assignment.at(mat_str)) {
             legacy_assign_material(mat_str_instance, c);
-            std::cout << mat_str_instance << std::endl;
           }
         } else {
-          std::cout << "NOT ASSIGNMENT DETECTED" << mat_str << std::endl;
           legacy_assign_material(mat_str, c);
         }
       }
@@ -532,7 +525,6 @@ void DAGUniverse::legacy_assign_material(
       if (!mat_found_by_name) {
         mat_found_by_name = true;
         c->material_.push_back(m->id_);
-        std::cout << mat_string << " " << c->material_.size() << std::endl;
         // report error if more than one material is found
       } else {
         fatal_error(fmt::format(

@@ -223,7 +223,6 @@ void DAGUniverse::init_geometry()
       fatal_error(fmt::format("Volume {} has no material assignment.", c->id_));
     }
 
-    
     to_lower(mat_str);
 
     if (mat_str == "graveyard") {
@@ -238,7 +237,7 @@ void DAGUniverse::init_geometry()
       } else {
         std::cout << "assignement " << instance_mat_assignment.size()
                   << std::endl;
-        for (auto mat_inst: instance_mat_assignment){
+        for (auto mat_inst : instance_mat_assignment) {
           std::cout << mat_inst.first << std::endl;
         }
         if (instance_mat_assignment.size() > 0 and

@@ -23,6 +23,7 @@
 #include "pugixml.hpp"
 
 #include <cstdlib> // for getenv
+#include <sys/stat.h>
 #include <unordered_set>
 
 namespace openmc {
@@ -90,6 +91,15 @@ Library::Library(pugi::xml_node node, const std::string& directory)
 //==============================================================================
 // Non-member functions
 //==============================================================================
+
+bool is_directory(const std::string& path)
+{
+  struct stat statbuf;
+  if (stat(path.c_str(), &statbuf) != 0) {
+    return false;
+  }
+  return S_ISDIR(statbuf.st_mode);
+}
 
 void read_cross_sections_xml()
 {
@@ -283,6 +293,11 @@ void read_ce_cross_sections_xml()
 {
   // Check if cross_sections.xml exists
   const auto& filename = settings::path_cross_sections;
+  if (is_directory(settings::path_cross_sections)) {
+    settings::path_cross_sections += "/cross_sections.xml";
+    warning("OPENMC_CROSS_SECTIONS is set to a directory. "
+            "Automatically looking for 'cross_sections.xml' in the directory.");
+  }
   if (!file_exists(filename)) {
     // Could not find cross_sections.xml file
     fatal_error("Cross sections XML file '" + filename + "' does not exist.");

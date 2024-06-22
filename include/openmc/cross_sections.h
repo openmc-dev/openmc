@@ -58,6 +58,9 @@ extern vector<Library> libraries;
 // Non-member functions
 //==============================================================================
 
+// Determine if directory is folder or file
+bool is_directory(const std::string& path);
+
 //! Read cross sections file (either XML or multigroup H5) and populate data
 //! libraries
 void read_cross_sections_xml();

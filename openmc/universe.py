@@ -1129,7 +1129,6 @@ class DAGMCUniverse(UniverseBase):
 
         return out
 
-    # Need to change this to enable coppy of hte ids... 
     def _partial_deepcopy(self):
         """Clone all of the openmc.DAGMCUniverse object's attributes except for
         its cells, as they are copied within the clone function. This should

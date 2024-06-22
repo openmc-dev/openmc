@@ -10,7 +10,7 @@ namespace openmc {
 constexpr int VERSION_MAJOR {@OPENMC_VERSION_MAJOR@};
 constexpr int VERSION_MINOR {@OPENMC_VERSION_MINOR@};
 constexpr int VERSION_RELEASE {@OPENMC_VERSION_RELEASE@};
-constexpr bool VERSION_DEV {true};
+constexpr bool VERSION_DEV {false};
 constexpr std::array<int, 3> VERSION {VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE};
 // clang-format on
 

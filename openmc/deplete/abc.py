@@ -808,7 +808,7 @@ class Integrator(ABC):
         path : PathLike
             Path to file to write. Defaults to 'depletion_results.h5'.
 
-            .. versionadded:: 0.14.1
+            .. versionadded:: 0.15.0
         """
         with change_directory(self.operator.output_dir):
             n = self.operator.initial_condition()
@@ -1223,7 +1223,7 @@ class SIIntegrator(Integrator):
         path : PathLike
             Path to file to write. Defaults to 'depletion_results.h5'.
 
-            .. versionadded:: 0.14.1
+            .. versionadded:: 0.15.0
         """
         with change_directory(self.operator.output_dir):
             n = self.operator.initial_condition()

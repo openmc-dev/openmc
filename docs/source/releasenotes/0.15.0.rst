@@ -222,6 +222,7 @@ Bug Fixes
 - Update IsogonalOctagon to use xz basis (`#3045 <https://github.com/openmc-dev/openmc/pull/3045>`_)
 - Determine whether nuclides are fissionable in volume calc mode (`#3047 <https://github.com/openmc-dev/openmc/pull/3047>`_)
 - Avoiding more numpy 2.0 deprecation warnings (`#3049 <https://github.com/openmc-dev/openmc/pull/3049>`_)
+- Set DAGMC cell instances on surface crossing (`#3052 <https://github.com/openmc-dev/openmc/pull/3052>`_)
 
 ------------
 Contributors

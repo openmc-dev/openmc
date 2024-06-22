@@ -22,7 +22,7 @@ class Trigger(EqualityMixin):
         can cause the trigger to fire prematurely if there are zero scores in
         any bin at the first evaluation.
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.0
 
     Attributes
     ----------

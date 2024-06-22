@@ -100,11 +100,11 @@ terms on the right hand side.
 .. math::
     :label: transport
 
-    \begin{align*}
+    \begin{aligned}
     \mathbf{\Omega} \cdot \mathbf{\nabla} \psi(\mathbf{r},\mathbf{\Omega},E) & + \Sigma_t(\mathbf{r},E) \psi(\mathbf{r},\mathbf{\Omega},E) = \\
     & \int_0^\infty d E^\prime \int_{4\pi} d \Omega^{\prime} \Sigma_s(\mathbf{r},\mathbf{\Omega}^\prime \rightarrow \mathbf{\Omega}, E^\prime \rightarrow E) \psi(\mathbf{r},\mathbf{\Omega}^\prime, E^\prime) \\
     & + \frac{\chi(\mathbf{r}, E)}{4\pi k_{eff}} \int_0^\infty dE^\prime \nu \Sigma_f(\mathbf{r},E^\prime) \int_{4\pi}d \Omega^\prime \psi(\mathbf{r},\mathbf{\Omega}^\prime,E^\prime)
-    \end{align*}
+    \end{aligned}
 
 In Equation :eq:`transport`, :math:`\psi` is the angular neutron flux. This
 parameter represents the total distance traveled by all neutrons in a particular

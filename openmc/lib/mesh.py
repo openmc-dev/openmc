@@ -174,7 +174,7 @@ class Mesh(_FortranObjectWithID):
     ) -> List[List[Tuple[Material, float]]]:
         """Determine volume of materials in each mesh element
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.0
 
         Parameters
         ----------
@@ -231,7 +231,7 @@ class Mesh(_FortranObjectWithID):
     ) -> np.ndarray:
         """Get mesh bin indices for a rasterized plot.
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.0
 
         Parameters
         ----------

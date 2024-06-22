@@ -405,13 +405,13 @@ class Geometry:
             all_nuclides |= set(material.get_nuclides())
         return sorted(all_nuclides)
     
-    def get_all_dag_universes(self) -> typing.Dict[int, openmc.Universe]:
+    def get_all_dag_universes(self) -> typing.Dict[int, openmc.DAGMCUniverse]:
         """Return all universes in the geometry.
 
         Returns
         -------
         dict
-            Dictionary mapping universe IDs to :class:`openmc.Universe`
+            Dictionary mapping universe IDs to :class:`openmc.DAGMCUniverse`
             instances
 
         """

@@ -1037,7 +1037,7 @@ class Model:
         # Count the number of instances for each cell and material
         self.geometry.determine_paths(instances_only=True)
 
-        # Check if there is some DAGMC universe
+        # Get mat instances from the different dag-verses
         dag_mats_n_inst = {}
         if len(self.geometry.get_all_dag_universes()) > 0:
             # Get material in the DAG-verses

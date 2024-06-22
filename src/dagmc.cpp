@@ -223,6 +223,7 @@ void DAGUniverse::init_geometry()
       fatal_error(fmt::format("Volume {} has no material assignment.", c->id_));
     }
 
+    
     to_lower(mat_str);
 
     if (mat_str == "graveyard") {
@@ -235,6 +236,11 @@ void DAGUniverse::init_geometry()
       if (uses_uwuw()) {
         uwuw_assign_material(vol_handle, c);
       } else {
+        std::cout << "assignement " << instance_mat_assignment.size()
+                  << std::endl;
+        for (auto mat_inst: instance_mat_assignment){
+          std::cout << mat_inst.first << std::endl;
+        }
         if (instance_mat_assignment.size() > 0 and
             instance_mat_assignment.find(mat_str) !=
               instance_mat_assignment.end()) {
@@ -244,7 +250,7 @@ void DAGUniverse::init_geometry()
             std::cout << mat_str_instance << std::endl;
           }
         } else {
-          std::cout << mat_str << std::endl;
+          std::cout << "NOT ASSIGNMENT DETECTED" << mat_str << std::endl;
           legacy_assign_material(mat_str, c);
         }
       }

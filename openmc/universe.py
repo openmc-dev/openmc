@@ -718,7 +718,7 @@ class Universe(UniverseBase):
             # If universe-filled, recursively count cells in filling universe
             if fill_type == 'universe':
                 if isinstance(fill, openmc.DAGMCUniverse):
-                    print("DAGUNIVERSE determine", fill._num_instances) 
+                    fill._num_instances += 1
                 else:
                     fill._determine_paths(cell_path + '->', instances_only)
             # If lattice-filled, recursively call for all universes in lattice
@@ -888,6 +888,10 @@ class DAGMCUniverse(UniverseBase):
             if candidate_tag.startswith('mat:'):
                 # removes first 4 characters as openmc.Material name should be
                 # set without the 'mat:' part of the tag
+                if candidate_tag.endswith('_comp'):
+                    print(candidate_tag)
+                    candidate_tag = candidate_tag[:-5]
+                    print(candidate_tag)
                 material_tags_ascii.append(candidate_tag[4:])
 
         return sorted(set(material_tags_ascii))

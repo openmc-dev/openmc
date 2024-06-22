@@ -1026,13 +1026,33 @@ class Model:
             volume equally between the new materials, 'match cell' sets the
             volume of the material to volume of the cell they fill.
         """
+
+        # Check if there is some DAGMC universe
+        if len(self.geometry.get_all_dag_universes()) > 0:
+            # Reset num_instances of models.materials
+            # (Updated from dag-verses appearance or from CSG presences...)
+            for mat in self._materials:
+                mat._num_instances = 0
+
         # Count the number of instances for each cell and material
         self.geometry.determine_paths(instances_only=True)
 
+        # Check if there is some DAGMC universe
+        dag_mats_n_inst = {}
+        if len(self.geometry.get_all_dag_universes()) > 0:
+            # Get material in the DAG-verses
+            for dag_verse in self.geometry.get_all_dag_universes().values():
+                for mat_name in dag_verse.material_names:
+                    dag_mats_n_inst[mat] = dag_mats_n_inst.get(mat, 0) + dag_verse.num_instances
         # Extract all depletable materials which have multiple instances
         distribmats = set(
             [mat for mat in self.materials
                 if mat.depletable and mat.num_instances > 1])
+
+        # Account for the multiplicity of the dag-verses materials
+        for mat in self.materials:
+            if mat.name in dag_mats_n_inst:
+                mat._num_instances += dag_mats_n_inst[mat.name]
 
         if diff_volume_method == 'divide equally':
             for mat in distribmats:
@@ -1040,9 +1060,6 @@ class Model:
                     raise RuntimeError("Volume not specified for depletable "
                                         f"material with ID={mat.id}.")
                 mat.volume /= mat.num_instances
-
-        for dag_uni in self.geometry.get_all_dag_universes().values():
-            print(dag_uni.num_instances())
 
         if distribmats:
             # Assign distribmats to cells
@@ -1062,7 +1079,38 @@ class Model:
                                 )
                             cell.fill.volume = cell.volume
 
+        dag_verse_mats = []
+        for dag_verse in self.geometry.get_all_dag_universes().values():
+            if dag_verse.num_instances > 1:
+                deplete_mat_dict = {}
+                for mat_name in dag_verse.material_names:
+                    mat_found = False
+                    for mat in self.materials:
+                        if mat.name == mat_name:
+                            mat_found = True
+                            if mat.depletable:
+                                mats_clones = [mat.clone() for _ in range(
+                                    dag_verse.num_instances)]
+                                for i, mat_clone in enumerate(mats_clones):
+                                    mat_clone.name += "_" + str(dag_verse.id) + "_" + str(i)
+                                    dag_verse_mats.append(mat_clone)
+                                deplete_mat_dict[mat_name.lower()] = [
+                                    mat.name for mat in mats_clones]
+                            else:
+                                dag_verse_mats.append(mat)
+                    if not mat_found:
+                        raise ValueError(
+                            f"Material {mat_name} referenced in the dagmc "
+                             "Universe {dag_verse.filename} not found in the "
+                             "Model. Please add it to the Model. Please not "
+                             "that uwuw formalism is not compatible with "
+                             "differentiate_depletable_mats yet."
+                        )
+            dag_verse.mat_assignment = deplete_mat_dict
+                            
         if self.materials is not None:
             self.materials = openmc.Materials(
                 self.geometry.get_all_materials().values()
             )
+        if dag_verse_mats:
+            self.materials.extend(dag_verse_mats)

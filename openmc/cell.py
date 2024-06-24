@@ -175,6 +175,8 @@ class Cell(IDManagerMixin):
                        f'non-Material or Universe fill "{fill}"')
                 raise ValueError(msg)
         self._fill = fill
+        if isinstance(self.fill, openmc.DAGMCUniverse):
+            self.fill._num_instances += 1
 
         # Info about atom content can now be invalid
         # (since fill has just changed)

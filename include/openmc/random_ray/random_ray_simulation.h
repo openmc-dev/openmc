@@ -2,6 +2,7 @@
 #define OPENMC_RANDOM_RAY_SIMULATION_H
 
 #include "openmc/random_ray/flat_source_domain.h"
+#include "openmc/random_ray/linear_source_domain.h"
 
 namespace openmc {
 
@@ -31,7 +32,7 @@ public:
   // Data members
 private:
   // Contains all flat source region data
-  FlatSourceDomain domain_;
+  unique_ptr<FlatSourceDomain> domain_;
 
   // Random ray eigenvalue
   double k_eff_ {1.0};

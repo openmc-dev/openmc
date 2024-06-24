@@ -1,5 +1,6 @@
 #include "openmc/random_ray/random_ray.h"
 
+#include "openmc/constants.h"
 #include "openmc/geometry.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
@@ -68,6 +69,7 @@ float cjosey_exponential(float tau)
 double RandomRay::distance_inactive_;
 double RandomRay::distance_active_;
 unique_ptr<Source> RandomRay::ray_source_;
+RandomRaySourceShape RandomRay::source_shape_ {RandomRaySourceShape::FLAT};
 
 RandomRay::RandomRay()
   : angular_flux_(data::mg.num_energy_groups_),
@@ -152,6 +154,20 @@ void RandomRay::event_advance_ray()
   }
 }
 
+void RandomRay::attenuate_flux(double distance, bool is_active)
+{
+  switch (source_shape_) {
+  case RandomRaySourceShape::FLAT:
+    attenuate_flux_flat_source(distance, is_active);
+    break;
+  case RandomRaySourceShape::LINEAR:
+    attenuate_flux_linear_source(distance, is_active);
+    break;
+  default:
+    fatal_error("Unknown source shape for random ray transport.");
+  }
+}
+
 // This function forms the inner loop of the random ray transport process.
 // It is responsible for several tasks. Based on the incoming angular flux
 // of the ray and the source term in the region, the outgoing angular flux
@@ -165,7 +181,7 @@ void RandomRay::event_advance_ray()
 // than use of many atomic operations corresponding to each energy group
 // individually (at least on CPU). Several other bookkeeping tasks are also
 // performed when inside the lock.
-void RandomRay::attenuate_flux(double distance, bool is_active)
+void RandomRay::attenuate_flux_flat_source(double distance, bool is_active)
 {
   // The number of geometric intersections is counted for reporting purposes
   n_event()++;
@@ -234,6 +250,12 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
     // Release lock
     domain_->lock_[source_region].unlock();
   }
+}
+
+void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
+{
+  // Reimplement for linear source
+  // ...
 }
 
 void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)

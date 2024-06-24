@@ -157,6 +157,9 @@ class Settings:
         :ray_source:
             Starting ray distribution (must be uniform in space and angle) as
             specified by a :class:`openmc.SourceBase` object.
+        :source_shape:
+            Assumed shape of the source distribution within each source
+            region. Options are 'flat' (default) or 'linear'.
 
         .. versionadded:: 0.15.0
     resonance_scattering : dict
@@ -1084,6 +1087,9 @@ class Settings:
                                       random_ray[key], 0.0, True)
             elif key == 'ray_source':
                 cv.check_type('random ray source', random_ray[key], SourceBase)
+            elif key == 'source_shape':
+                cv.check_value('source shape', random_ray[key],
+                               ('flat', 'linear'))
             else:
                 raise ValueError(f'Unable to set random ray to "{key}" which is '
                                  'unsupported by OpenMC')
@@ -1877,6 +1883,11 @@ class Settings:
                 elif child.tag == 'source':
                     source = SourceBase.from_xml_element(child)
                     self.random_ray['ray_source'] = source
+                elif child.tag == 'source_shape':
+                    source = SourceBase.from_xml_element(child)
+                    self.random_ray['ray_source'] = source
+                elif child.tag == 'source_shape':
+                    self.random_ray['source_shape'] = child.text
 
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.

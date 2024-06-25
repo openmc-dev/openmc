@@ -96,7 +96,7 @@ public:
   //----------------------------------------------------------------------------
   // Methods
   virtual void update_neutron_source(double k_eff);
-  virtual double compute_k_eff(double k_eff_old) const;
+  double compute_k_eff(double k_eff_old) const;
   virtual void normalize_scalar_flux_and_volumes(
     double total_active_distance_per_iteration);
   virtual int64_t add_source_to_scalar_flux();
@@ -106,7 +106,7 @@ public:
   void random_ray_tally();
   void accumulate_iteration_flux();
   void output_to_vtk() const;
-  virtual void all_reduce_replicated_source_regions();
+  void all_reduce_replicated_source_regions();
   void convert_external_sources();
   void count_external_source_regions();
 

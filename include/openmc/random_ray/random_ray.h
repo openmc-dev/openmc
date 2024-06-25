@@ -46,6 +46,11 @@ private:
   //----------------------------------------------------------------------------
   // Private data members
   vector<float> delta_psi_;
+  vector<float> delta_x_;
+  vector<float> delta_y_;
+  vector<float> delta_z_;
+  vector<double> mat_score_;
+  
   int negroups_;
   FlatSourceDomain* domain_ {nullptr}; // pointer to domain that has flat source
                                        // data needed for ray transport

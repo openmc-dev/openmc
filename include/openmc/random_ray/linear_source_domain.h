@@ -9,7 +9,7 @@
 
 namespace openmc {
 
-  /*
+/*
  * The LinearSourceDomain class encompasses data and methods for storing
  * scalar flux and source region for all flat source regions in a
  * random ray simulation domain.
@@ -24,7 +24,7 @@ public:
   //----------------------------------------------------------------------------
   // Methods
   void update_neutron_source(double k_eff) override;
-  double compute_k_eff(double k_eff_old) const override;
+  double compute_k_eff(double k_eff_old) const; // override
   void normalize_scalar_flux_and_volumes(
     double total_active_distance_per_iteration) override;
   int64_t add_source_to_scalar_flux() override;
@@ -34,14 +34,26 @@ public:
   void random_ray_tally();
   void accumulate_iteration_flux();
   void output_to_vtk() const;
-  void all_reduce_replicated_source_regions() override;
+  void all_reduce_replicated_source_regions(); //override
   void convert_external_sources();
   void count_external_source_regions();
 
   //----------------------------------------------------------------------------
   // Public Data members
 
-  // ...
+  vector<float> flux_x_new_;
+  vector<float> flux_x_old_;
+  vector<float> source_x_;
+  vector<float> flux_y_new_;
+  vector<float> flux_y_old_;
+  vector<float> source_y_;
+  vector<float> flux_z_new_;
+  vector<float> flux_z_old_;
+  vector<float> source_z_;
+  vector<double> centroid_;
+  vector<double> centroid_t_;
+  vector<double> mom_matrix_;
+  vector<double> mom_matrix_t_;
 
 private:
   //----------------------------------------------------------------------------

@@ -33,7 +33,6 @@ public:
 private:
   // Contains all flat source region data
   unique_ptr<FlatSourceDomain> domain_;
-  //unique_ptr<LinearSourceDomain> domain_ls_;
 
   // Random ray eigenvalue
   double k_eff_ {1.0};

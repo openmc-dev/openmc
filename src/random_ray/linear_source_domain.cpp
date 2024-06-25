@@ -301,4 +301,13 @@ int64_t LinearSourceDomain::add_source_to_scalar_flux()
 //     ...
 // }
 
+void LinearSourceDomain::flux_swap()
+{
+  FlatSourceDomain::flux_swap();
+  flux_x_old_.swap(flux_x_new_);
+  flux_y_old_.swap(flux_y_new_);
+  flux_z_old_.swap(flux_z_new_);
+}
+
+
 } // namespace openmc

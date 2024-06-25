@@ -928,5 +928,9 @@ void FlatSourceDomain::convert_external_sources()
     }
   }
 }
+void FlatSourceDomain::flux_swap()
+{
+scalar_flux_old_.swap(scalar_flux_new_);
+}
 
 } // namespace openmc

@@ -329,12 +329,7 @@ void RandomRaySimulation::simulate()
     }
 
     // Set phi_old = phi_new
-
-    //LinearSourceDomain* domain = static_cast<LinearSourceDomain*>(domain_);
-    domain_->scalar_flux_old_.swap(domain_->scalar_flux_new_);
-    domain_->flux_x_old_.swap(domain_->flux_x_new_);
-    domain_->flux_y_old_.swap(domain_->flux_y_new_);
-    domain_->flux_z_old_.swap(domain_->flux_z_new_);
+    domain_->flux_swap();
 
     // Check for any obvious insabilities/nans/infs
     instability_check(n_hits, k_eff_, avg_miss_rate_);

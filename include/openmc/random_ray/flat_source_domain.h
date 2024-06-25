@@ -109,6 +109,7 @@ public:
   void all_reduce_replicated_source_regions();
   void convert_external_sources();
   void count_external_source_regions();
+  virtual void flux_swap();
 
   //----------------------------------------------------------------------------
   // Public Data members

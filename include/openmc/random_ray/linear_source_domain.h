@@ -37,6 +37,7 @@ public:
   void all_reduce_replicated_source_regions(); //override
   void convert_external_sources();
   void count_external_source_regions();
+  void flux_swap() override;
 
   //----------------------------------------------------------------------------
   // Public Data members

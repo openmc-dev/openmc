@@ -152,11 +152,12 @@ class MeshBase(IDManagerMixin, ABC):
             model: openmc.Model,
             n_samples: int = 10_000,
             prn_seed: Optional[int] = None,
+            include_void: bool = True,
             **kwargs
     ) -> List[openmc.Material]:
         """Generate homogenized materials over each element in a mesh.
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.0
 
         Parameters
         ----------
@@ -168,6 +169,8 @@ class MeshBase(IDManagerMixin, ABC):
         prn_seed : int, optional
             Pseudorandom number generator (PRNG) seed; if None, one will be
             generated randomly.
+        include_void : bool, optional
+            Whether homogenization should include voids.
         **kwargs
             Keyword-arguments passed to :func:`openmc.lib.init`.
 
@@ -208,6 +211,18 @@ class MeshBase(IDManagerMixin, ABC):
 
         # Create homogenized material for each element
         materials = model.geometry.get_all_materials()
+
+        # Account for materials in DAGMC universes
+        # TODO: This should really get incorporated in lower-level calls to
+        # get_all_materials, but right now it requires information from the
+        # Model object
+        for cell in model.geometry.get_all_cells().values():
+            if isinstance(cell.fill, openmc.DAGMCUniverse):
+                names = cell.fill.material_names
+                materials.update({
+                    mat.id: mat for mat in model.materials if mat.name in names
+                })
+
         homogenized_materials = []
         for mat_volume_list in mat_volume_by_element:
             material_ids, volumes = [list(x) for x in zip(*mat_volume_list)]
@@ -221,6 +236,10 @@ class MeshBase(IDManagerMixin, ABC):
             else:
                 material_ids.pop(index_void)
                 volumes.pop(index_void)
+
+            # If void should be excluded, adjust total volume
+            if not include_void:
+                total_volume = sum(volumes)
 
             # Compute volume fractions
             volume_fracs = np.array(volumes) / total_volume
@@ -1381,6 +1400,8 @@ class CylindricalMesh(StructuredMesh):
     @r_grid.setter
     def r_grid(self, grid):
         cv.check_type('mesh r_grid', grid, Iterable, Real)
+        cv.check_length('mesh r_grid', grid, 2)
+        cv.check_increasing('mesh r_grid', grid)
         self._r_grid = np.asarray(grid, dtype=float)
 
     @property
@@ -1390,7 +1411,12 @@ class CylindricalMesh(StructuredMesh):
     @phi_grid.setter
     def phi_grid(self, grid):
         cv.check_type('mesh phi_grid', grid, Iterable, Real)
-        self._phi_grid = np.asarray(grid, dtype=float)
+        cv.check_length('mesh phi_grid', grid, 2)
+        cv.check_increasing('mesh phi_grid', grid)
+        grid = np.asarray(grid, dtype=float)
+        if np.any((grid < 0.0) | (grid > 2*pi)):
+            raise ValueError("phi_grid values must be in [0, 2π].")
+        self._phi_grid = grid
 
     @property
     def z_grid(self):
@@ -1399,6 +1425,8 @@ class CylindricalMesh(StructuredMesh):
     @z_grid.setter
     def z_grid(self, grid):
         cv.check_type('mesh z_grid', grid, Iterable, Real)
+        cv.check_length('mesh z_grid', grid, 2)
+        cv.check_increasing('mesh z_grid', grid)
         self._z_grid = np.asarray(grid, dtype=float)
 
     @property
@@ -1458,6 +1486,8 @@ class CylindricalMesh(StructuredMesh):
             coords: Sequence[float]
         ) -> Tuple[int, int, int]:
         """Finds the index of the mesh voxel at the specified x,y,z coordinates.
+
+        .. versionadded:: 0.15.0
 
         Parameters
         ----------
@@ -1833,7 +1863,10 @@ class SphericalMesh(StructuredMesh):
         cv.check_type('mesh theta_grid', grid, Iterable, Real)
         cv.check_length('mesh theta_grid', grid, 2)
         cv.check_increasing('mesh theta_grid', grid)
-        self._theta_grid = np.asarray(grid, dtype=float)
+        grid = np.asarray(grid, dtype=float)
+        if np.any((grid < 0.0) | (grid > pi)):
+            raise ValueError("theta_grid values must be in [0, π].")
+        self._theta_grid = grid
 
     @property
     def phi_grid(self):
@@ -1844,7 +1877,10 @@ class SphericalMesh(StructuredMesh):
         cv.check_type('mesh phi_grid', grid, Iterable, Real)
         cv.check_length('mesh phi_grid', grid, 2)
         cv.check_increasing('mesh phi_grid', grid)
-        self._phi_grid = np.asarray(grid, dtype=float)
+        grid = np.asarray(grid, dtype=float)
+        if np.any((grid < 0.0) | (grid > 2*pi)):
+            raise ValueError("phi_grid values must be in [0, 2π].")
+        self._phi_grid = grid
 
     @property
     def _grids(self):

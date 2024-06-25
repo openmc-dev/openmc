@@ -530,7 +530,8 @@ std::string distribcell_path_inner(int32_t target_cell, int32_t map,
     if (c.type_ != Fill::MATERIAL) {
       int32_t temp_offset;
       if (c.type_ == Fill::UNIVERSE) {
-        temp_offset = offset + c.offset_[map];
+        temp_offset =
+          offset + c.offset_[map]; // TODO: should also apply to lattice fills?
       } else {
         Lattice& lat = *model::lattices[c.fill_];
         int32_t indx = lat.universes_.size() * map + lat.begin().indx_;

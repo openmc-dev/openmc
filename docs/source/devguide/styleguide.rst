@@ -40,7 +40,7 @@ Follow the `C++ Core Guidelines`_ except when they conflict with another
 guideline listed here. For convenience, many important guidelines from that
 list are repeated here.
 
-Conform to the C++14 standard.
+Conform to the C++17 standard.
 
 Always use C++-style comments (``//``) as opposed to C-style (``/**/``). (It
 is more difficult to comment out a large section of code that uses C-style

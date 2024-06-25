@@ -315,6 +315,11 @@ void Plot::set_output_path(pugi::xml_node plot_node)
   } else {
     filename = fmt::format("plot_{}", id());
   }
+  const std::string dir_if_present =
+    filename.substr(0, filename.find_last_of("/") + 1);
+  if (dir_if_present.size() > 0 && !dir_exists(dir_if_present)) {
+    fatal_error(fmt::format("Directory '{}' does not exist!", dir_if_present));
+  }
   // add appropriate file extension to name
   switch (type_) {
   case PlotType::slice:

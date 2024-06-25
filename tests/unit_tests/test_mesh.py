@@ -189,6 +189,42 @@ def test_CylindricalMesh_initiation():
         openmc.SphericalMesh(('🧇', '🥞'))
 
 
+def test_invalid_cylindrical_mesh_errors():
+    # Test invalid r_grid values
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[5, 1], phi_grid=[0, pi], z_grid=[0, 10])
+
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[1, 2, 4, 3], phi_grid=[0, pi], z_grid=[0, 10])
+
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[1], phi_grid=[0, pi], z_grid=[0, 10])
+
+    # Test invalid phi_grid values
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[0, 1, 2], phi_grid=[-1, 3], z_grid=[0, 10])
+
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(
+            r_grid=[0, 1, 2],
+            phi_grid=[0, 2*pi + 0.1],
+            z_grid=[0, 10]
+        )
+
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[0, 1, 2], phi_grid=[pi], z_grid=[0, 10])
+
+    # Test invalid z_grid values
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[0, 1, 2], phi_grid=[0, pi], z_grid=[5])
+
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[0, 1, 2], phi_grid=[0, pi], z_grid=[5, 1])
+
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[1, 2, 4, 3], phi_grid=[0, pi], z_grid=[0, 10, 5])
+
+
 def test_centroids():
     # regular mesh
     mesh = openmc.RegularMesh()
@@ -386,3 +422,9 @@ def test_mesh_get_homogenized_materials():
 
     # Mesh element that overlaps void should have half density
     assert m4.get_mass_density('H1') == pytest.approx(0.5, rel=1e-2)
+
+    # If not including void, density of homogenized material should be same as
+    # original material
+    m5, = mesh_void.get_homogenized_materials(
+        model, n_samples=1000, include_void=False)
+    assert m5.get_mass_density('H1') == pytest.approx(1.0)

@@ -16,13 +16,13 @@ import openmc.checkvalue as cv
 from .._xml import get_text
 from ..mixin import EqualityMixin
 
-_INTERPOLATION_SCHEMES = [
+_INTERPOLATION_SCHEMES = {
     'histogram',
     'linear-linear',
     'linear-log',
     'log-linear',
     'log-log'
-]
+}
 
 
 class Univariate(EqualityMixin, ABC):

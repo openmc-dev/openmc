@@ -74,7 +74,7 @@ public:
   void pht_secondary_particles();
 
   //! Cross a surface and handle boundary conditions
-  void cross_surface();
+  void cross_surface(const Surface& surf);
 
   //! Cross a vacuum boundary condition.
   //
@@ -126,6 +126,8 @@ public:
 std::string particle_type_to_str(ParticleType type);
 
 ParticleType str_to_particle_type(std::string str);
+
+void add_surf_source_to_bank(Particle& p, const Surface& surf);
 
 } // namespace openmc
 

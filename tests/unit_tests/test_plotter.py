@@ -75,7 +75,7 @@ def test_calculate_cexs_with_materials(test_mat):
 @pytest.mark.parametrize("this", ["Be", "Be9"])
 def test_plot_xs(this):
     from matplotlib.figure import Figure
-    assert isinstance(openmc.plot_xs({this: ['total', 'elastic']}), Figure)
+    assert isinstance(openmc.plot_xs({this: ['total', 'elastic', 16, '(n,2n)']}), Figure)
 
 
 def test_plot_xs_mat(test_mat):

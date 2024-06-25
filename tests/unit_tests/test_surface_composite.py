@@ -255,7 +255,7 @@ def test_cylinder_sector_from_theta_alpha():
 @pytest.mark.parametrize(
     "axis, plane_tb, plane_lr, axis_idx", [
         ("x", "Z", "Y", 0),
-        ("y", "X", "Z", 1),
+        ("y", "Z", "X", 1),
         ("z", "Y", "X", 2),
     ]
 )

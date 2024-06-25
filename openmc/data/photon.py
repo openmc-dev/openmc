@@ -28,10 +28,10 @@ CM_PER_ANGSTROM = 1.0e-8
 R0 = CM_PER_ANGSTROM * PLANCK_C / (2.0 * pi * FINE_STRUCTURE * MASS_ELECTRON_EV)
 
 # Electron subshell labels
-_SUBSHELLS = [None, 'K', 'L1', 'L2', 'L3', 'M1', 'M2', 'M3', 'M4', 'M5',
+_SUBSHELLS = (None, 'K', 'L1', 'L2', 'L3', 'M1', 'M2', 'M3', 'M4', 'M5',
               'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 'O1', 'O2', 'O3',
               'O4', 'O5', 'O6', 'O7', 'O8', 'O9', 'P1', 'P2', 'P3', 'P4',
-              'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11', 'Q1', 'Q2', 'Q3']
+              'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11', 'Q1', 'Q2', 'Q3')
 
 _REACTION_NAME = {
     501: ('Total photon interaction', 'total'),
@@ -124,7 +124,7 @@ class AtomicRelaxation(EqualityMixin):
         Dictionary indicating the number of electrons in a subshell when neutral
         (values) for given subshells (keys). The subshells should be given as
         strings, e.g., 'K', 'L1', 'L2', etc.
-    transitions : pandas.DataFrame
+    transitions : dict of str to pandas.DataFrame
         Dictionary indicating allowed transitions and their probabilities
         (values) for given subshells (keys). The subshells should be given as
         strings, e.g., 'K', 'L1', 'L2', etc. The transitions are represented as
@@ -363,8 +363,9 @@ class AtomicRelaxation(EqualityMixin):
                 df = pd.DataFrame(sub_group['transitions'][()],
                                   columns=columns)
                 # Replace float indexes back to subshell strings
-                df[columns[:2]] = df[columns[:2]].replace(
-                              np.arange(float(len(_SUBSHELLS))), _SUBSHELLS)
+                with pd.option_context('future.no_silent_downcasting', True):
+                    df[columns[:2]] = df[columns[:2]].replace(
+                                np.arange(float(len(_SUBSHELLS))), _SUBSHELLS)
                 transitions[shell] = df
 
         return cls(binding_energy, num_electrons, transitions)
@@ -387,8 +388,9 @@ class AtomicRelaxation(EqualityMixin):
 
         # Write transition data with replacements
         if shell in self.transitions:
-            df = self.transitions[shell].replace(
-                 _SUBSHELLS, range(len(_SUBSHELLS)))
+            with pd.option_context('future.no_silent_downcasting', True):
+                df = self.transitions[shell].replace(
+                    _SUBSHELLS, range(len(_SUBSHELLS)))
             group.create_dataset('transitions', data=df.values.astype(float))
 
 

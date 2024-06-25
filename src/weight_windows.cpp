@@ -102,7 +102,7 @@ void apply_weight_windows(Particle& p)
   // the window
   if (weight > weight_window.upper_weight) {
     // do not further split the particle if above the limit
-    if (p.n_split() >= settings::max_splits)
+    if (p.n_split() >= settings::max_history_splits)
       return;
 
     double n_split = std::ceil(weight / weight_window.upper_weight);

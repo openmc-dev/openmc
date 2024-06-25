@@ -153,6 +153,7 @@ int openmc_finalize()
   model::root_universe = -1;
   model::plotter_seed = 1;
   openmc::openmc_set_seed(DEFAULT_SEED);
+  openmc::openmc_set_stride(DEFAULT_STRIDE);
 
   // Deallocate arrays
   free_memory();
@@ -215,5 +216,6 @@ int openmc_hard_reset()
 
   // Reset the random number generator state
   openmc::openmc_set_seed(DEFAULT_SEED);
+  openmc::openmc_set_stride(DEFAULT_STRIDE);
   return 0;
 }

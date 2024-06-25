@@ -465,15 +465,15 @@ replace the actual tracklength that was accumulated inside that FSR each
 iteration with the expected value.
 
 If we know the analytical volumes, then those can be used to directly compute
-the expected value of the tracklength in each cell, :math:`L_{avg}`. However, as the analytical
-volumes are not typically known in OpenMC due to the usage of user-defined
-constructive solid geometry, we need to source this quantity from elsewhere. An
-obvious choice is to simply accumulate the total tracklength through each FSR
-across all iterations (batches) and to use that sum to compute the expected
-average length per iteration, as:
+the expected value of the tracklength in each cell, :math:`L_{avg}`. However, as
+the analytical volumes are not typically known in OpenMC due to the usage of
+user-defined constructive solid geometry, we need to source this quantity from
+elsewhere. An obvious choice is to simply accumulate the total tracklength
+through each FSR across all iterations (batches) and to use that sum to compute
+the expected average length per iteration, as:
 
 .. math::
-    :label: sim_estimator
+    :label: L_avg
 
     \sum\limits^{}_{i} \ell_i \approx L_{avg} = \frac{\sum\limits^{B}_{b}\sum\limits^{N_i}_{r=1} \ell_{b,r} }{B}
 
@@ -662,15 +662,15 @@ total spatial- and energy-integrated fission rate :math:`F^{n-1}` in iteration
 
 Notably, the volume term :math:`V_i` appears in the eigenvalue update equation.
 The same logic applies to the treatment of this term as was discussed earlier.
-In OpenMC, we use the "simulation averaged" volume derived from summing over all
-ray tracklength contributions to a FSR over all iterations and dividing by the
-total integration tracklength to date. Thus, Equation :eq:`fission_source`
-becomes:
+In OpenMC, we use the "simulation averaged" volume (Equation :eq:`L_avg`)
+derived from summing over all ray tracklength contributions to a FSR over all
+iterations and dividing by the total integration tracklength to date. Thus,
+Equation :eq:`fission_source` becomes:
 
 .. math::
     :label: fission_source_volumed
 
-    F^n = \sum\limits^{M}_{i} \left( \frac{\sum\limits^{B}_{b}\sum\limits^{N_i}_{r} \ell_{b,r} }{B} \sum\limits^{G}_{g} \nu \Sigma_f(i, g) \phi^{n}(g) \right)
+    F^n = \sum\limits^{M}_{i} \left( L_avg \sum\limits^{G}_{g} \nu \Sigma_f(i, g) \phi^{n}(g) \right)
 
 and a similar substitution can be made to update Equation
 :eq:`fission_source_prev` . In OpenMC, the most up-to-date version of the volume

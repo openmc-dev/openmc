@@ -264,7 +264,7 @@ private:
 
   // Other physical data
   double wgt_ {1.0};       //!< particle weight
-  double wgt0_ {1.0};      //!< particle start weight
+  double wgt0_ {1.0};      //!< initial particle weight
   double mu_;              //!< angle of scatter
   double time_ {0.0};      //!< time in [s]
   double time_last_ {0.0}; //!< previous time in [s]

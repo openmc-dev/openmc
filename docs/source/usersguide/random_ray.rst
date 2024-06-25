@@ -415,6 +415,14 @@ in the `OpenMC Jupyter notebook collection
     separate materials can be defined each with a separate multigroup dataset
     corresponding to a given temperature.
 
+---------------
+Linear Sources
+---------------
+Linear Sources (LS), are supported with the eigenvalue and fixed source random ray solvers. 
+LS can be toggled on with::
+
+    settings.random_ray['source_shape'] = 'linear' 
+
 ---------------------------------
 Fixed Source and Eigenvalue Modes
 ---------------------------------

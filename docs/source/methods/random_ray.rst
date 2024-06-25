@@ -755,10 +755,10 @@ to OpenMC, but for now this restriction needs to be respected.
 
 .. _usersguide_fixed_source_methods:
 
---------------------------
-Random Ray Linear Sources
---------------------------
-Instead of making the flat source approximation, that was used in the previous section, a Linear Source (LS) approximation can be used. Different LS approximations 
+---------------
+Linear Sources
+---------------
+Instead of making a flat source approximation, as in the previous section, a Linear Source (LS) approximation can be used. Different LS approximations 
 have been developed, the OpenMC implementation follows the scheme described by `Ferrer <Ferrer-2016>`_. The LS source along a characterstic is given by:
 
 .. math::
@@ -766,8 +766,8 @@ have been developed, the OpenMC implementation follows the scheme described by `
 
     Q_{r,i,g}(s) = \bar{Q}_{r,i,g} + \hat{Q}_{r,i,g}(s-\ell_{r}/2),
 
-where the source, :math:`Q_{i,g,r}(s)`, varies linearly along the track and :math:`\bar{Q}_{i,g,r}` and :math:`\hat{Q}_{i,g,r}` are track specific source terms we will define shortly.
-Integrating the source, following :eq:`moc_final`, leads to 
+where the source, :math:`Q_{i,g,r}(s)`, varies linearly along the track and :math:`\bar{Q}_{i,g,r}` and :math:`\hat{Q}_{i,g,r}` are track specific source terms to define shortly.
+Integrating the source, as done in Equation :eq:`moc_final`, leads to 
 
 .. math::
     :label: lsr_attenuation
@@ -775,7 +775,7 @@ Integrating the source, following :eq:`moc_final`, leads to
     \psi^{out}_{r,g}=\psi^{in}_{r,g} + \left(\frac{\bar{Q}_{i, g, r}}{\Sigma_{\mathrm{t}, i, g}}-\psi^{in}_{r,g}\right) 
     F_{1}\left(\tau_{i,g}\right)+\frac{\hat{Q}_{i, g, r}^{g}}{2\left(\Sigma_{\mathrm{t}, i,g}\right)^{2}} F_{2}\left(\tau_{i,g}\right),
 
-where for simplicity we have introduced :math:`\tau_{i,g}` and the expoential terms :math:`F1` and :math:`F2`, given by:
+where for simplicity the term :math:`\tau_{i,g}` and the expoentials :math:`F1` and :math:`F2` are introduced, given by:
 
 .. math::
     :label: tau
@@ -795,15 +795,15 @@ and
     F_{2}\left(\tau\right) = 2\left[\tau-F_{1}\left(\tau\right)\right]-\tau F_{1}\left(\tau\right).
 
 
-To solve for the track specific terms we start by defining a local reference frame. If we now refer to :math:`\mathbf{r}` 
-as our global coordinate and introduce the source region specific coordinate :math:`\mathbf{u}` such that,
+To solve for the track specific source terms in Equation :eq:`linear_source` we first define a local reference frame. If we now refer to :math:`\mathbf{r}` 
+as the global coordinate and introduce the source region specific coordinate :math:`\mathbf{u}` such that,
 
 .. math::
     :label: local_coord
 
     \mathbf{u}_{r} = \mathbf{r}-\mathbf{r}_{\mathrm{c}},
 
-where :math:`\mathbf{r}_{\mathrm{c}}` is the centroid of the source region of interest and in turn 
+where :math:`\mathbf{r}_{\mathrm{c}}` is the centroid of the source region of interest. In turn 
 :math:`\mathbf{u}_{r,\mathrm{c}}` and :math:`\mathbf{u}_{r,0}` are the local centroid and entry positions of a ray.
 The computation of the local and global centroids are described further by `Gunow <Gunow-2018>`_.
 
@@ -833,7 +833,7 @@ can be derived, `4 <Ferrer-2016>`_, `5 <Gunow-2018>`_:
 .. math::
     :label: m_equation
 
-    \boldsymbol{\vec{q}}_{i,g} = \mathbf{M}_{i} \boldsymbol{\vec{Q}}_{i,g}\;\mathrm{,} 
+    \boldsymbol{\vec{q}}_{i,g} = \mathbf{M}_{i} \boldsymbol{\vec{Q}}_{i,g}\;\mathrm{.} 
 
 The LS source vector can be solved for by the inversion of the M matrix, a geometrical quantity specific to the particular 
 source region REF, if the source moments can be solved for. Fortunately, the source moments are also defined by the definiton
@@ -842,20 +842,21 @@ of the source:
 .. math::
     :label: source_moments
 
-    q_{v, i, g}= \frac{\chi_{i,g}}{k_{eff}} \sum_{g^{\prime}=1}^{G} \bar{\nu} 
+    q_{v, i, g}= \frac{\chi_{i,g}}{k_{eff}} \sum_{g^{\prime}=1}^{G} \nu 
     \Sigma_{\mathrm{f},i, g^{\prime}} \hat{\phi}_{v, i, g^{\prime}} + \sum_{g^{\prime}=1}^{G} 
-    \Sigma_{\mathrm{s}, i, g^{\prime}\rightarrow g} \hat{\phi}_{v, i, g^{\prime}}\quad \forall v \in(x, y, z)
+    \Sigma_{\mathrm{s}, i, g^{\prime}\rightarrow g} \hat{\phi}_{v, i, g^{\prime}}\quad \forall v \in(x, y, z)\;\mathrm{,} 
 
 where we have introduced the scalar flux moments :math:`\hat{\phi}`.
-Finally, the scalar flux moments can be solved for by taking the integral definition, resulting in: 
+The scalar flux moments can be solved for by taking the `integral definition <Gunow-2018>`_ of a spatial moment, allowing us 
+to derive a "simulation averaged" estimator for the scalar moment, as in Equation :eq:`phi_sim`, 
 
 .. math::
-    :label: scalar_moments
+    :label: scalar_moments_sim
 
     \hat{\phi}_{v,i,g}^{simulation} = \frac{\sum\limits_{r=1}^{N_i}
     \ell_{r} \left[\Omega_{v} \hat{\psi}_{r,i,g} + u_{r,v,0} \bar{\psi}_{r,i,g}\right]}
     {\Sigma_{t,i,g} \frac{\sum\limits^{B}_{b}\sum\limits^{N_i}_{r} \ell_{b,r} }{B}}
-    \quad \forall v \in(x, y, z),
+    \quad \forall v \in(x, y, z)\;\mathrm{,} 
 
 
 where the average angular flux is given by Equation :eq:`average_psi_final`, 
@@ -882,8 +883,6 @@ The new exponentials introduced, again for simplicity, are simply:
     :label: G2
 
     G_{2}(\tau) = \frac{2}{3} \tau-\left(1+\frac{2}{\tau}\right) G_{1}(\tau)
-
-
 
 
 ------------
@@ -932,13 +931,13 @@ in random ray particle transport are:
       areas typically have solutions that are highly effective at mitigating
       bias, error stemming from multigroup energy discretization is much harder
       to remedy.
-    - **Flat Source Approximation:**. In OpenMC, a "flat" (0th order) source
-      approximation is made, wherein the scattering and fission sources within a
+    - **Source Approximation:**. In OpenMC, a "flat" (0th order) source
+      approximation is often made, wherein the scattering and fission sources within a
       cell are assumed to be spatially uniform. As the source in reality is a
       continuous function, this leads to bias, although the bias can be reduced
       to acceptable levels if the flat source regions are sufficiently small.
-      The bias can also be mitigated by assuming a higher-order source (e.g.,
-      linear or quadratic), although OpenMC does not yet have this capability.
+      The bias can also be mitigated by assuming a higher-order source such as the 
+      linear source approximation currently implemented into OpenMC.
       In practical terms, this source of bias can become very large if cells are
       large (with dimensions beyond that of a typical particle mean free path),
       but the subdivision of cells can often reduce this bias to trivial levels.

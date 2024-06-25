@@ -451,6 +451,8 @@ void FlatSourceDomain::reset_tally_volumes()
 // we need to perform an additional normalization step to ensure that the
 // reported scalar fluxes are in units per source neutron. This allows for
 // direct comparison of reported tallies to Monte Carlo flux results.
+// This factor needs to be computed at each iteration, as it is based on the volume
+// estimate of each FSR, which improves over the course of the simulation
 double FlatSourceDomain::compute_fixed_source_normalization_factor() const
 {
   // If we are not in fixed source mode, then there are no external sources

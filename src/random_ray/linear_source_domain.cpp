@@ -85,7 +85,6 @@ void moment_matrix_inversion(const std::vector<double>& mom_matrix_, int sr, dou
 
 void LinearSourceDomain::update_neutron_source(double k_eff)
 {
-std::cout << "new" << std::endl;
 simulation::time_update_src.start();
 
   double inverse_k_eff = 1.0 / k_eff;

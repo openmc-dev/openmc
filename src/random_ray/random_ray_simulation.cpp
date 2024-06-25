@@ -14,7 +14,6 @@
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/timer.h"
 #include "openmc/random_ray/flat_source_domain.h"
-#include "openmc/random_ray/linear_source_domain.h"
 
 namespace openmc {
 

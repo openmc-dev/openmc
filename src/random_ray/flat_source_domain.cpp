@@ -323,11 +323,11 @@ double FlatSourceDomain::compute_k_eff(double k_eff_old) const
   double inverse_sum = 1 / fission_rate_new;
 
 #pragma omp parallel for reduction(+ : H)
-  for (int i = 0; i < n_source_regions_; i++) {
+  for (int sr = 0; sr < n_source_regions_; sr++) {
     // Only if FSR has non-negative and non-zero fission source
-    if (p[i] > 0.0f) {
+    if (p[sr] > 0.0f) {
       // Normalize to total weight of bank sites. p_i for better performance
-      float p_i = p[i] * inverse_sum;
+      float p_i = p[sr] * inverse_sum;
       // Sum values to obtain Shannon entropy.
       H -= p_i * std::log2(p_i);
     }

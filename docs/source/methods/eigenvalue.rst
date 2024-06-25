@@ -112,8 +112,10 @@ problems.
 
 Shannon entropy is calculated differently for the random ray solver, as
 described :ref:`in the random ray theory section
-<methods-shannon-entropy-random-ray>`, as the Shannon entropy does not serve as
-a diagnostic tool for convergence of the scattering source.
+<methods-shannon-entropy-random-ray>`. Additionally, as the Shannon entropy only
+serves as a diagnostic tool for convergence of the fission source distribution,
+there is currently no diagnostic to determine if the scattering source
+distribution in random ray is converged.
 
 ---------------------------
 Uniform Fission Site Method

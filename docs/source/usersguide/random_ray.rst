@@ -68,12 +68,10 @@ Shannon Entropy
 
 Similar to Monte Carlo, :ref:`Shannon entropy
 <methods-shannon-entropy-random-ray>` can be used to gauge whether the fission
-source has fully developed. However, unlike Monte Carlo, the Shannon entropy
-computed for random ray does not show convergence of the scattering source. The
-Shannon entropy is calculated automatically after each batch and is printed to
-the statepoint file. Unlike Monte Carlo, an entropy mesh does not need to be
-defined, as the Shannon entropy is calculated over FSRs using a volume-weighted
-approach.
+source has fully developed. The Shannon entropy is calculated automatically
+after each batch and is printed to the statepoint file. Unlike Monte Carlo, an
+entropy mesh does not need to be defined, as the Shannon entropy is calculated
+over FSRs using a volume-weighted approach.
 
 -------------------------------
 Inactive Ray Length (Dead Zone)

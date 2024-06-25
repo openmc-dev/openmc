@@ -423,6 +423,9 @@ LS can be toggled on with::
 
     settings.random_ray['source_shape'] = 'linear' 
 
+LS enables the use of coarser discretisations and lower ray populations, offsetting
+the increased computation.
+
 ---------------------------------
 Fixed Source and Eigenvalue Modes
 ---------------------------------

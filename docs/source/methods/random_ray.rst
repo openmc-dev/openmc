@@ -218,8 +218,7 @@ Following the multigroup discretization, another assumption made is that a large
 and complex problem can be broken up into small constant cross section regions,
 and that these regions have group dependent, flat, isotropic sources (fission
 and scattering), :math:`Q_g`. Anisotropic as well as higher order sources are
-also possible with MOC-based methods but are not used yet in OpenMC for
-simplicity. With these key assumptions, the multigroup MOC form of the neutron
+also possible with MOC-based methods. With these key assumptions, the multigroup MOC form of the neutron
 transport equation can be written as in Equation :eq:`moc_final`.
 
 .. math::
@@ -287,7 +286,7 @@ final expression for the average angular flux for a ray crossing a region as:
 .. math::
     :label: average_psi_final
 
-    \overline{\psi}_{r,i,g} = \frac{Q_{i,g}}{\Sigma_{t,i,g}} + \frac{\Delta \psi_{r,g}}{\ell_r \Sigma_{t,i,g}}
+    \overline{\psi}_{r,i,g} = \frac{Q_{i,g}}{\Sigma_{t,i,g}} + \frac{\Delta \psi_{r,g}}{\ell_r \Sigma_{t,i,g}}.
 
 ~~~~~~~~~~~
 Random Rays
@@ -756,6 +755,137 @@ to OpenMC, but for now this restriction needs to be respected.
 
 .. _usersguide_fixed_source_methods:
 
+--------------------------
+Random Ray Linear Sources
+--------------------------
+Instead of making the flat source approximation, that was used in the previous section, a Linear Source (LS) approximation can be used. Different LS approximations 
+have been developed, the OpenMC implementation follows the scheme described by `Ferrer <Ferrer-2016>`_. The LS source along a characterstic is given by:
+
+.. math::
+    :label: linear_source
+
+    Q_{r,i,g}(s) = \bar{Q}_{r,i,g} + \hat{Q}_{r,i,g}(s-\ell_{r}/2),
+
+where the source, :math:`Q_{i,g,r}(s)`, varies linearly along the track and :math:`\bar{Q}_{i,g,r}` and :math:`\hat{Q}_{i,g,r}` are track specific source terms we will define shortly.
+Integrating the source, following :eq:`moc_final`, leads to 
+
+.. math::
+    :label: lsr_attenuation
+
+    \psi^{out}_{r,g}=\psi^{in}_{r,g} + \left(\frac{\bar{Q}_{i, g, r}}{\Sigma_{\mathrm{t}, i, g}}-\psi^{in}_{r,g}\right) 
+    F_{1}\left(\tau_{i,g}\right)+\frac{\hat{Q}_{i, g, r}^{g}}{2\left(\Sigma_{\mathrm{t}, i,g}\right)^{2}} F_{2}\left(\tau_{i,g}\right),
+
+where for simplicity we have introduced :math:`\tau_{i,g}` and the expoential terms :math:`F1` and :math:`F2`, given by:
+
+.. math::
+    :label: tau
+
+    \tau_{i,g} = \Sigma_{\mathrm{t,i,g}} \ell_{r}
+
+.. math::
+    :label: f1
+
+    F_1(\tau) = 1 - e^{-\tau},
+
+and
+
+.. math::
+    :label: f2
+
+    F_{2}\left(\tau\right) = 2\left[\tau-F_{1}\left(\tau\right)\right]-\tau F_{1}\left(\tau\right).
+
+
+To solve for the track specific terms we start by defining a local reference frame. If we now refer to :math:`\mathbf{r}` 
+as our global coordinate and introduce the source region specific coordinate :math:`\mathbf{u}` such that,
+
+.. math::
+    :label: local_coord
+
+    \mathbf{u}_{r} = \mathbf{r}-\mathbf{r}_{\mathrm{c}},
+
+where :math:`\mathbf{r}_{\mathrm{c}}` is the centroid of the source region of interest and in turn 
+:math:`\mathbf{u}_{r,\mathrm{c}}` and :math:`\mathbf{u}_{r,0}` are the local centroid and entry positions of a ray.
+The computation of the local and global centroids are described further by `Gunow <Gunow-2018>`_.
+
+Using the local position the source in a source region is given by:
+
+.. math::
+    :label: region_source
+
+    \tilde{Q}(\boldsymbol{x}) ={Q}_{i,g}+ \boldsymbol{\vec{Q}}_{i,g} \cdot \mathbf{u}_{r}\;\mathrm{,} 
+
+This definition allows us to solve for our characteric source terms resulting in: 
+
+.. math::
+    :label: source_term_1
+
+    \bar{Q}_{r, i, g} = Q_{i,g} + \left[\mathbf{u}_{r,\mathrm{c}} \cdot \boldsymbol{\vec{Q}}_{i,g}\right], 
+
+.. math::
+    :label: source_term_2
+
+    \hat{Q}_{r, i, g} = \left[\boldsymbol{\Omega} \cdot \boldsymbol{\vec{Q}}_{i,g}\right]\;\mathrm{.}
+
+The next step is to solve for the LS source vector :math:`\boldsymbol{\vec{Q}}_{i,g}`.
+A relationship between the LS source vector and the source moments, :math:`\boldsymbol{\vec{q}}_{i,g}`
+can be derived, `4 <Ferrer-2016>`_, `5 <Gunow-2018>`_:
+
+.. math::
+    :label: m_equation
+
+    \boldsymbol{\vec{q}}_{i,g} = \mathbf{M}_{i} \boldsymbol{\vec{Q}}_{i,g}\;\mathrm{,} 
+
+The LS source vector can be solved for by the inversion of the M matrix, a geometrical quantity specific to the particular 
+source region REF, if the source moments can be solved for. Fortunately, the source moments are also defined by the definiton
+of the source: 
+
+.. math::
+    :label: source_moments
+
+    q_{v, i, g}= \frac{\chi_{i,g}}{k_{eff}} \sum_{g^{\prime}=1}^{G} \bar{\nu} 
+    \Sigma_{\mathrm{f},i, g^{\prime}} \hat{\phi}_{v, i, g^{\prime}} + \sum_{g^{\prime}=1}^{G} 
+    \Sigma_{\mathrm{s}, i, g^{\prime}\rightarrow g} \hat{\phi}_{v, i, g^{\prime}}\quad \forall v \in(x, y, z)
+
+where we have introduced the scalar flux moments :math:`\hat{\phi}`.
+Finally, the scalar flux moments can be solved for by taking the integral definition, resulting in: 
+
+.. math::
+    :label: scalar_moments
+
+    \hat{\phi}_{v,i,g}^{simulation} = \frac{\sum\limits_{r=1}^{N_i}
+    \ell_{r} \left[\Omega_{v} \hat{\psi}_{r,i,g} + u_{r,v,0} \bar{\psi}_{r,i,g}\right]}
+    {\Sigma_{t,i,g} \frac{\sum\limits^{B}_{b}\sum\limits^{N_i}_{r} \ell_{b,r} }{B}}
+    \quad \forall v \in(x, y, z),
+
+
+where the average angular flux is given by Equation :eq:`average_psi_final`, 
+and the angular flux spatial moments :math:`\hat{\psi}_{r,i,g}` by:
+
+.. math::
+    :label: angular_moments
+
+    \hat{\psi}_{r, i, g} = \frac{\ell_{r}\psi^{in}_{r,g}}{2} + 
+    \left(\frac{\bar{Q}_{r,i, g}}{\Sigma_{\mathrm{t}, i, g}}-\psi^{in}_{r,g}\right) 
+    \frac{G_{1}\left(\tau_{i,g}\right)}{\Sigma_{\mathrm{t}, i, g}} + \frac{\ell_{r}\hat{Q}_{r,i,g}}
+    {2\left(\Sigma_{\mathrm{t}, i, g}\right)^{2}}G_{2}\left(\tau_{i,g}\right)\;\mathrm{,}
+
+
+The new exponentials introduced, again for simplicity, are simply:
+
+
+.. math::
+    :label: G1
+
+    G_{1}(\tau) = 1+\frac{\tau}{2}-\left(1+\frac{1}{\tau}\right) F_{1}(\tau),
+
+.. math::
+    :label: G2
+
+    G_{2}(\tau) = \frac{2}{3} \tau-\left(1+\frac{2}{\tau}\right) G_{1}(\tau)
+
+
+
+
 ------------
 Fixed Source
 ------------
@@ -832,6 +962,8 @@ in random ray particle transport are:
 .. _Tramm-2018: https://dspace.mit.edu/handle/1721.1/119038
 .. _Tramm-2020: https://doi.org/10.1051/EPJCONF/202124703021
 .. _Cosgrove-2023: https://doi.org/10.1080/00295639.2023.2270618
+.. _Ferrer-2016: https://doi.org/10.13182/NSE15-6
+.. _Gunow-2018: https://dspace.mit.edu/handle/1721.1/119030
 
 .. only:: html
 
@@ -840,3 +972,5 @@ in random ray particle transport are:
 .. [Askew-1972] Askew, “A Characteristics Formulation of the Neutron Transport
     Equation in Complicated Geometries.” Technical Report AAEW-M 1108, UK Atomic
     Energy Establishment (1972).
+
+

@@ -670,7 +670,7 @@ Equation :eq:`fission_source` becomes:
 .. math::
     :label: fission_source_volumed
 
-    F^n = \sum\limits^{M}_{i} \left( L_avg \sum\limits^{G}_{g} \nu \Sigma_f(i, g) \phi^{n}(g) \right)
+    F^n = \sum\limits^{M}_{i} \left( L_{avg} \sum\limits^{G}_{g} \nu \Sigma_f(i, g) \phi^{n}(g) \right)
 
 and a similar substitution can be made to update Equation
 :eq:`fission_source_prev` . In OpenMC, the most up-to-date version of the volume

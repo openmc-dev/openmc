@@ -108,7 +108,6 @@ simulation::time_update_src.start();
           MgxsType::TOTAL, e_out, nullptr, nullptr, nullptr, t, a);
 
         float scatter_source = 0.0f;
-        float fission_source = 0.0f;
         float x_scatter = 0.0f;
         float y_scatter = 0.0f;
         float z_scatter = 0.0f;
@@ -128,7 +127,6 @@ simulation::time_update_src.start();
           float chi = data::mg.macro_xs_[material].get_xs(
             MgxsType::CHI_PROMPT, e_in, &e_out, nullptr, nullptr, t, a);
           scatter_source += sigma_s * scalar_flux;
-          fission_source += nu_sigma_f * scalar_flux * chi;
           // Calculate scattering source for higher order scattering
           x_scatter += sigma_s * flux_x ;
           y_scatter += sigma_s * flux_y ;
@@ -138,8 +136,9 @@ simulation::time_update_src.start();
           z_fission += nu_sigma_f * flux_z * chi;
         }
 
-        fission_source *= inverse_k_eff;
-        float new_isotropic_source = (scatter_source + fission_source) / sigma_t;
+
+        // fission_source *= inverse_k_eff;
+        float new_isotropic_source = (scatter_source) / sigma_t;
         source_[sr * negroups_ + e_out] = new_isotropic_source;
 
         if (simulation::current_batch > 2) {
@@ -162,6 +161,37 @@ simulation::time_update_src.start();
         } 
       }
   }
+
+   if (settings::run_mode == RunMode::EIGENVALUE) {
+          #pragma omp parallel for
+            for (int sr = 0; sr < n_source_regions_; sr++) {
+              int material = material_[sr];
+
+              for (int e_out = 0; e_out < negroups_; e_out++) {
+                float sigma_t = data::mg.macro_xs_[material].get_xs(
+                  MgxsType::TOTAL, e_out, nullptr, nullptr, nullptr, t, a);
+                float fission_source = 0.0f;
+
+                for (int e_in = 0; e_in < negroups_; e_in++) {
+                  float scalar_flux = scalar_flux_old_[sr * negroups_ + e_in];
+                  float nu_sigma_f = data::mg.macro_xs_[material].get_xs(
+                    MgxsType::NU_FISSION, e_in, nullptr, nullptr, nullptr, t, a);
+                  float chi = data::mg.macro_xs_[material].get_xs(
+                    MgxsType::CHI_PROMPT, e_in, &e_out, nullptr, nullptr, t, a);
+                  fission_source += nu_sigma_f * scalar_flux * chi;
+                }
+                source_[sr * negroups_ + e_out] +=
+                  fission_source * inverse_k_eff / sigma_t;
+              }
+            } 
+            }
+            else {
+                // Add external source if in fixed source mode
+                #pragma omp parallel for
+                    for (int se = 0; se < n_source_elements_; se++) {
+                      source_[se] += external_source_[se];
+                    }
+            }
 
   simulation::time_update_src.stop();
 }

@@ -1686,12 +1686,6 @@ Survival Normalization
 This parameter can be used to make the adjustable parameters of survival biasing,
 :math:`w_c` and :math:`w_s`, relative to the starting weight of a source particle.
 
-It is currently only implemented for phase-space sources (MCPL file sources
-and HDF5 surface sources). For these, the normalization of the parameters
-is done per source particle. That is, for each history, the parameters
-:math:`w_c` and :math:`w_s`, are multiplied by the start weight of the current
-history.
-
 This normalization is recommended for problems where numerous source particles are
 initialized below the survival biasing weight cutoff :math:`w_c`; to prevent them
 from being immediately rouletted. This can notably be the case for biased sources.

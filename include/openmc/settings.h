@@ -61,6 +61,7 @@ extern bool surf_source_write;       //!< write surface source file?
 extern bool surf_mcpl_write;         //!< write surface mcpl file?
 extern bool surf_source_read;        //!< read surface source file?
 extern bool survival_biasing;        //!< use survival biasing?
+extern bool survival_normalization;//!< use survival normalization?
 extern bool temperature_multipole;   //!< use multipole data?
 extern "C" bool trigger_on;          //!< tally triggers enabled?
 extern bool trigger_predict;         //!< predict batches for triggers?

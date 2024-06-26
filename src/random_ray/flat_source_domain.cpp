@@ -555,8 +555,8 @@ void FlatSourceDomain::random_ray_tally()
 #pragma omp atomic
         tally.results_(task.filter_idx, task.score_idx, TallyResult::VALUE) +=
           score;
-      } // end tally task loop
-    } // end energy group loop
+      }
+    }
 
     // For flux tallies, the total volume of the spatial region is needed
     // for normalizing the flux. We store this volume in a separate tensor.

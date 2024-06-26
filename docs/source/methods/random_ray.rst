@@ -753,27 +753,25 @@ behavior if a single simulation cell is able to score to multiple filter mesh
 cells. In the future, the capability to fully support mesh tallies may be added
 to OpenMC, but for now this restriction needs to be respected.
 
-.. _usersguide_fixed_source_methods:
-
 ---------------
 Linear Sources
 ---------------
 Instead of making a flat source approximation, as in the previous section, a Linear Source (LS) approximation can be used. Different LS approximations 
-have been developed, the OpenMC implementation follows the scheme described by `Ferrer <Ferrer-2016>`_. The LS source along a characterstic is given by:
+have been developed, the OpenMC implementation follows the MOC LS scheme described by `Ferrer <Ferrer-2016>`_. The LS source along a characterstic is given by:
 
 .. math::
     :label: linear_source
 
-    Q_{r,i,g}(s) = \bar{Q}_{r,i,g} + \hat{Q}_{r,i,g}(s-\ell_{r}/2),
+    Q_{i,g}(s) = \bar{Q}_{r,i,g} + \hat{Q}_{r,i,g}(s-\ell_{r}/2),
 
-where the source, :math:`Q_{i,g,r}(s)`, varies linearly along the track and :math:`\bar{Q}_{i,g,r}` and :math:`\hat{Q}_{i,g,r}` are track specific source terms to define shortly.
+where the source, :math:`Q_{i,g}(s)`, varies linearly along the track and :math:`\bar{Q}_{r,i,g}` and :math:`\hat{Q}_{r,i,g}` are track specific source terms to define shortly.
 Integrating the source, as done in Equation :eq:`moc_final`, leads to 
 
 .. math::
     :label: lsr_attenuation
 
-    \psi^{out}_{r,g}=\psi^{in}_{r,g} + \left(\frac{\bar{Q}_{i, g, r}}{\Sigma_{\mathrm{t}, i, g}}-\psi^{in}_{r,g}\right) 
-    F_{1}\left(\tau_{i,g}\right)+\frac{\hat{Q}_{i, g, r}^{g}}{2\left(\Sigma_{\mathrm{t}, i,g}\right)^{2}} F_{2}\left(\tau_{i,g}\right),
+    \psi^{out}_{r,g}=\psi^{in}_{r,g} + \left(\frac{\bar{Q}_{r, i, g}}{\Sigma_{\mathrm{t}, i, g}}-\psi^{in}_{r,g}\right) 
+    F_{1}\left(\tau_{i,g}\right)+\frac{\hat{Q}_{r, i, g}^{g}}{2\left(\Sigma_{\mathrm{t}, i,g}\right)^{2}} F_{2}\left(\tau_{i,g}\right),
 
 where for simplicity the term :math:`\tau_{i,g}` and the expoentials :math:`F1` and :math:`F2` are introduced, given by:
 
@@ -807,7 +805,7 @@ where :math:`\mathbf{r}_{\mathrm{c}}` is the centroid of the source region of in
 :math:`\mathbf{u}_{r,\mathrm{c}}` and :math:`\mathbf{u}_{r,0}` are the local centroid and entry positions of a ray.
 The computation of the local and global centroids are described further by `Gunow <Gunow-2018>`_.
 
-Using the local position the source in a source region is given by:
+Using the local position, the source in a source region is given by:
 
 .. math::
     :label: region_source
@@ -824,8 +822,9 @@ This definition allows us to solve for our characteric source terms resulting in
 .. math::
     :label: source_term_2
 
-    \hat{Q}_{r, i, g} = \left[\boldsymbol{\Omega} \cdot \boldsymbol{\vec{Q}}_{i,g}\right]\;\mathrm{.}
-
+    \hat{Q}_{r, i, g} = \left[\boldsymbol{\Omega} \cdot \boldsymbol{\vec{Q}}_{i,g}\right]\;\mathrm{,}
+    
+:math:`\boldsymbol{\Omega}` being the direction vector of the ray.
 The next step is to solve for the LS source vector :math:`\boldsymbol{\vec{Q}}_{i,g}`.
 A relationship between the LS source vector and the source moments, :math:`\boldsymbol{\vec{q}}_{i,g}`
 can be derived, `4 <Ferrer-2016>`_, `5 <Gunow-2018>`_:
@@ -836,7 +835,7 @@ can be derived, `4 <Ferrer-2016>`_, `5 <Gunow-2018>`_:
     \boldsymbol{\vec{q}}_{i,g} = \mathbf{M}_{i} \boldsymbol{\vec{Q}}_{i,g}\;\mathrm{.} 
 
 The LS source vector can be solved for by the inversion of the M matrix, a geometrical quantity specific to the particular 
-source region REF, if the source moments can be solved for. Fortunately, the source moments are also defined by the definiton
+`source region <Gunow-2018>`_, provided that the source moments can be calculated. Fortunately, the source moments are also defined by the definiton
 of the source: 
 
 .. math::
@@ -845,6 +844,13 @@ of the source:
     q_{v, i, g}= \frac{\chi_{i,g}}{k_{eff}} \sum_{g^{\prime}=1}^{G} \nu 
     \Sigma_{\mathrm{f},i, g^{\prime}} \hat{\phi}_{v, i, g^{\prime}} + \sum_{g^{\prime}=1}^{G} 
     \Sigma_{\mathrm{s}, i, g^{\prime}\rightarrow g} \hat{\phi}_{v, i, g^{\prime}}\quad \forall v \in(x, y, z)\;\mathrm{,} 
+
+(John:Alternatively the below can be used with some edits---- )
+
+.. math::
+    :label: source_moments_update
+
+    q^{n}(v,i) = \frac{\chi}{k^{n-1}_{eff}} \nu \Sigma_f(i, g) \hat{\phi}^{n-1}_{v, i}(g) + \sum\limits^{G}_{g\prime} \Sigma_{s}({i,g,g^{\prime}}) \hat{\phi}^{n-1}_{v, i}({g^{\prime}})
 
 where we have introduced the scalar flux moments :math:`\hat{\phi}`.
 The scalar flux moments can be solved for by taking the `integral definition <Gunow-2018>`_ of a spatial moment, allowing us 
@@ -868,7 +874,7 @@ and the angular flux spatial moments :math:`\hat{\psi}_{r,i,g}` by:
     \hat{\psi}_{r, i, g} = \frac{\ell_{r}\psi^{in}_{r,g}}{2} + 
     \left(\frac{\bar{Q}_{r,i, g}}{\Sigma_{\mathrm{t}, i, g}}-\psi^{in}_{r,g}\right) 
     \frac{G_{1}\left(\tau_{i,g}\right)}{\Sigma_{\mathrm{t}, i, g}} + \frac{\ell_{r}\hat{Q}_{r,i,g}}
-    {2\left(\Sigma_{\mathrm{t}, i, g}\right)^{2}}G_{2}\left(\tau_{i,g}\right)\;\mathrm{,}
+    {2\left(\Sigma_{\mathrm{t}, i, g}\right)^{2}}G_{2}\left(\tau_{i,g}\right)\;\mathrm{.}
 
 
 The new exponentials introduced, again for simplicity, are simply:
@@ -884,6 +890,10 @@ The new exponentials introduced, again for simplicity, are simply:
 
     G_{2}(\tau) = \frac{2}{3} \tau-\left(1+\frac{2}{\tau}\right) G_{1}(\tau)
 
+The contents of this section, alongside the equations for the flat source and scalar flux, Equations :eq:`source_update` and :eq:`phi_sim` respectively, 
+completes the set of equations for LS. 
+
+.. _usersguide_fixed_source_methods:
 
 ------------
 Fixed Source

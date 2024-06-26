@@ -2,7 +2,7 @@ import os
 
 import numpy as np
 import openmc
-from openmc.examples import random_ray_lattice_mgxs, random_ray_lattice
+from openmc.examples import random_ray_lattice
 
 from tests.testing_harness import TolerantPyAPITestHarness
 
@@ -14,8 +14,6 @@ class MGXSTestHarness(TolerantPyAPITestHarness):
             os.remove(f)
 
 def test_random_ray_basic():
-    mgxs = random_ray_lattice_mgxs()
-    mgxs.export_to_hdf5('mgxs.h5')
     model = random_ray_lattice()
     harness = MGXSTestHarness('statepoint.10.h5', model)
     harness.main()

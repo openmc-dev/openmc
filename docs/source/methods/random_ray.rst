@@ -775,8 +775,8 @@ sources is adjusted such that:
     :label: fraction-source-random-ray
 
     S_i = \frac{\text{Fission source in FSR $i \times$ Volume of FSR
-    $i$}}{\text{Total fission source}} = \frac{Q_{i} V_{i}}{\sum_{i=1}^{i} Q_{i}
-    V_{i}}
+    $i$}}{\text{Total fission source}} = \frac{Q_{i} V_{i}}{\sum_{i=1}^{i=N} 
+    Q_{i} V_{i}}
 
 The Shannon entropy is then computed normally as
 

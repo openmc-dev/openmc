@@ -77,7 +77,8 @@ def pwr_pin_cell():
     model.settings.inactive = 5
     model.settings.particles = 100
     model.settings.source = openmc.IndependentSource(
-        space=openmc.stats.Box([-pitch/2, -pitch/2, -1], [pitch/2, pitch/2, 1]),
+        space=openmc.stats.Box([-pitch/2, -pitch/2, -1],
+                               [pitch/2, pitch/2, 1]),
         constraints={'fissionable': True}
     )
 
@@ -166,7 +167,8 @@ def pwr_core():
     lower_rad_ref.add_nuclide('Cr52', 0.145407678031, 'wo')
     lower_rad_ref.add_s_alpha_beta('c_H_in_H2O')
 
-    upper_rad_ref = openmc.Material(7, name='Upper radial reflector / Top plate region')
+    upper_rad_ref = openmc.Material(
+        7, name='Upper radial reflector / Top plate region')
     upper_rad_ref.set_density('g/cm3', 4.28)
     upper_rad_ref.add_nuclide('H1', 0.0086117, 'wo')
     upper_rad_ref.add_nuclide('O16', 0.0683369, 'wo')
@@ -313,13 +315,15 @@ def pwr_core():
                        11, 11, 11, 11, 11, 13, 13, 14, 14, 14])
 
     # Define fuel lattices.
-    l100 = openmc.RectLattice(name='Fuel assembly (lower half)', lattice_id=100)
+    l100 = openmc.RectLattice(
+        name='Fuel assembly (lower half)', lattice_id=100)
     l100.lower_left = (-10.71, -10.71)
     l100.pitch = (1.26, 1.26)
     l100.universes = np.tile(fuel_cold, (17, 17))
     l100.universes[tube_x, tube_y] = tube_cold
 
-    l101 = openmc.RectLattice(name='Fuel assembly (upper half)', lattice_id=101)
+    l101 = openmc.RectLattice(
+        name='Fuel assembly (upper half)', lattice_id=101)
     l101.lower_left = (-10.71, -10.71)
     l101.pitch = (1.26, 1.26)
     l101.universes = np.tile(fuel_hot, (17, 17))
@@ -405,10 +409,14 @@ def pwr_core():
     c6 = openmc.Cell(cell_id=6, fill=top_fa, region=-s5 & +s36 & -s37)
     c7 = openmc.Cell(cell_id=7, fill=top_nozzle, region=-s5 & +s37 & -s38)
     c8 = openmc.Cell(cell_id=8, fill=upper_rad_ref, region=-s7 & +s38 & -s39)
-    c9 = openmc.Cell(cell_id=9, fill=bot_nozzle, region=+s6 & -s7 & +s32 & -s38)
-    c10 = openmc.Cell(cell_id=10, fill=rpv_steel, region=+s7 & -s8 & +s31 & -s39)
-    c11 = openmc.Cell(cell_id=11, fill=lower_rad_ref, region=+s5 & -s6 & +s32 & -s34)
-    c12 = openmc.Cell(cell_id=12, fill=upper_rad_ref, region=+s5 & -s6 & +s36 & -s38)
+    c9 = openmc.Cell(cell_id=9, fill=bot_nozzle,
+                     region=+s6 & -s7 & +s32 & -s38)
+    c10 = openmc.Cell(cell_id=10, fill=rpv_steel,
+                      region=+s7 & -s8 & +s31 & -s39)
+    c11 = openmc.Cell(cell_id=11, fill=lower_rad_ref,
+                      region=+s5 & -s6 & +s32 & -s34)
+    c12 = openmc.Cell(cell_id=12, fill=upper_rad_ref,
+                      region=+s5 & -s6 & +s36 & -s38)
     root.add_cells((c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12))
 
     # Assign root universe to geometry
@@ -489,9 +497,9 @@ def pwr_assembly():
     fuel_pin_universe = openmc.Universe(name='Fuel Pin')
     fuel_cell = openmc.Cell(name='fuel', fill=fuel, region=-fuel_or)
     clad_cell = openmc.Cell(name='clad', fill=clad, region=+fuel_or & -clad_or)
-    hot_water_cell = openmc.Cell(name='hot water', fill=hot_water, region=+clad_or)
+    hot_water_cell = openmc.Cell(
+        name='hot water', fill=hot_water, region=+clad_or)
     fuel_pin_universe.add_cells([fuel_cell, clad_cell, hot_water_cell])
-
 
     # Create a control rod guide tube universe
     guide_tube_universe = openmc.Universe(name='Guide Tube')
@@ -530,7 +538,8 @@ def pwr_assembly():
     model.settings.inactive = 5
     model.settings.particles = 100
     model.settings.source = openmc.IndependentSource(
-        space=openmc.stats.Box([-pitch/2, -pitch/2, -1], [pitch/2, pitch/2, 1]),
+        space=openmc.stats.Box([-pitch/2, -pitch/2, -1],
+                               [pitch/2, pitch/2, 1]),
         constraints={'fissionable': True}
     )
 
@@ -645,6 +654,7 @@ def slab_mg(num_regions=1, mat_names=None, mgxslib_name='2g.h5'):
 
     return model
 
+
 def random_ray_lattice():
     """Create a 2x2 PWR pincell asymmetrical lattic eexample.
 
@@ -677,11 +687,16 @@ def random_ray_lattice():
                                3.0020e-02, 1.1126e-01, 2.8278e-01])
     scatter_matrix = np.array(
         [[[0.1275370, 0.0423780, 0.0000094, 0.0000000, 0.0000000, 0.0000000, 0.0000000],
-          [0.0000000, 0.3244560, 0.0016314, 0.0000000, 0.0000000, 0.0000000, 0.0000000],
-          [0.0000000, 0.0000000, 0.4509400, 0.0026792, 0.0000000, 0.0000000, 0.0000000],
-          [0.0000000, 0.0000000, 0.0000000, 0.4525650, 0.0055664, 0.0000000, 0.0000000],
-          [0.0000000, 0.0000000, 0.0000000, 0.0001253, 0.2714010, 0.0102550, 0.0000000],
-          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0012968, 0.2658020, 0.0168090],
+          [0.0000000, 0.3244560, 0.0016314, 0.0000000,
+              0.0000000, 0.0000000, 0.0000000],
+          [0.0000000, 0.0000000, 0.4509400, 0.0026792,
+              0.0000000, 0.0000000, 0.0000000],
+          [0.0000000, 0.0000000, 0.0000000, 0.4525650,
+              0.0055664, 0.0000000, 0.0000000],
+          [0.0000000, 0.0000000, 0.0000000, 0.0001253,
+              0.2714010, 0.0102550, 0.0000000],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000000,
+              0.0012968, 0.2658020, 0.0168090],
           [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0085458, 0.2730800]]])
     scatter_matrix = np.rollaxis(scatter_matrix, 0, 3)
     uo2_xsdata.set_scatter_matrix(scatter_matrix)
@@ -703,11 +718,16 @@ def random_ray_lattice():
                                3.7239e-02])
     scatter_matrix = np.array(
         [[[0.0444777, 0.1134000, 0.0007235, 0.0000037, 0.0000001, 0.0000000, 0.0000000],
-          [0.0000000, 0.2823340, 0.1299400, 0.0006234, 0.0000480, 0.0000074, 0.0000010],
-          [0.0000000, 0.0000000, 0.3452560, 0.2245700, 0.0169990, 0.0026443, 0.0005034],
-          [0.0000000, 0.0000000, 0.0000000, 0.0910284, 0.4155100, 0.0637320, 0.0121390],
-          [0.0000000, 0.0000000, 0.0000000, 0.0000714, 0.1391380, 0.5118200, 0.0612290],
-          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0022157, 0.6999130, 0.5373200],
+          [0.0000000, 0.2823340, 0.1299400, 0.0006234,
+              0.0000480, 0.0000074, 0.0000010],
+          [0.0000000, 0.0000000, 0.3452560, 0.2245700,
+              0.0169990, 0.0026443, 0.0005034],
+          [0.0000000, 0.0000000, 0.0000000, 0.0910284,
+              0.4155100, 0.0637320, 0.0121390],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000714,
+              0.1391380, 0.5118200, 0.0612290],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000000,
+              0.0022157, 0.6999130, 0.5373200],
           [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.1324400, 2.4807000]]])
     scatter_matrix = np.rollaxis(scatter_matrix, 0, 3)
     h2o_xsdata.set_scatter_matrix(scatter_matrix)
@@ -749,31 +769,39 @@ def random_ray_lattice():
 
     # Instantiate Cells
     fuel_a = openmc.Cell(fill=uo2, region=-inner_ring_a, name='fuel inner a')
-    fuel_b = openmc.Cell(fill=uo2, region=+inner_ring_a & -inner_ring_b, name='fuel inner b')
-    fuel_c = openmc.Cell(fill=uo2, region=+inner_ring_b & -fuel_or, name='fuel inner c')
-    moderator_a = openmc.Cell(fill=water, region=+fuel_or & -outer_ring_a, name='moderator inner a')
-    moderator_b = openmc.Cell(fill=water, region=+outer_ring_a & -outer_ring_b, name='moderator outer b')
-    moderator_c = openmc.Cell(fill=water, region=+outer_ring_b, name='moderator outer c')
+    fuel_b = openmc.Cell(fill=uo2, region=+inner_ring_a & -
+                         inner_ring_b, name='fuel inner b')
+    fuel_c = openmc.Cell(fill=uo2, region=+inner_ring_b & -
+                         fuel_or, name='fuel inner c')
+    moderator_a = openmc.Cell(
+        fill=water, region=+fuel_or & -outer_ring_a, name='moderator inner a')
+    moderator_b = openmc.Cell(
+        fill=water, region=+outer_ring_a & -outer_ring_b, name='moderator outer b')
+    moderator_c = openmc.Cell(
+        fill=water, region=+outer_ring_b, name='moderator outer c')
 
     # Create pincell universe
     pincell_base = openmc.Universe()
 
     # Register Cells with Universe
-    pincell_base.add_cells([fuel_a, fuel_b, fuel_c, moderator_a, moderator_b, moderator_c])
+    pincell_base.add_cells(
+        [fuel_a, fuel_b, fuel_c, moderator_a, moderator_b, moderator_c])
 
     # Create planes for azimuthal sectors
     azimuthal_planes = []
     for i in range(8):
         angle = 2 * i * openmc.pi / 8
         normal_vector = (-openmc.sin(angle), openmc.cos(angle), 0)
-        azimuthal_planes.append(openmc.Plane(a=normal_vector[0], b=normal_vector[1], c=normal_vector[2], d=0))
+        azimuthal_planes.append(openmc.Plane(
+            a=normal_vector[0], b=normal_vector[1], c=normal_vector[2], d=0))
 
     # Create a cell for each azimuthal sector
     azimuthal_cells = []
     for i in range(8):
         azimuthal_cell = openmc.Cell(name=f'azimuthal_cell_{i}')
         azimuthal_cell.fill = pincell_base
-        azimuthal_cell.region = +azimuthal_planes[i] & -azimuthal_planes[(i+1) % 8]
+        azimuthal_cell.region = + \
+            azimuthal_planes[i] & -azimuthal_planes[(i+1) % 8]
         azimuthal_cells.append(azimuthal_cell)
 
     # Create a geometry with the azimuthal universes
@@ -809,7 +837,8 @@ def random_ray_lattice():
 
     ########################################
     # Define cell containing lattice and other stuff
-    box = openmc.model.RectangularPrism(pitch*2, pitch*2, boundary_type='reflective')
+    box = openmc.model.RectangularPrism(
+        pitch*2, pitch*2, boundary_type='reflective')
 
     assembly = openmc.Cell(fill=lattice2x2, region=-box, name='assembly')
 
@@ -871,6 +900,7 @@ def random_ray_lattice():
     model.tallies = tallies
     return model
 
+
 def random_ray_three_region_cube():
     """Create a three region cube model.
 
@@ -917,7 +947,8 @@ def random_ray_three_region_cube():
     void_mat_data.order = 0
     void_mat_data.set_total([void_sigma_a + void_sigma_s])
     void_mat_data.set_absorption([void_sigma_a])
-    void_mat_data.set_scatter_matrix(np.rollaxis(np.array([[[void_sigma_s]]]),0,3))
+    void_mat_data.set_scatter_matrix(
+        np.rollaxis(np.array([[[void_sigma_s]]]), 0, 3))
 
     absorber_sigma_a = 0.75
     absorber_sigma_s = 0.25
@@ -925,7 +956,8 @@ def random_ray_three_region_cube():
     absorber_mat_data.order = 0
     absorber_mat_data.set_total([absorber_sigma_a + absorber_sigma_s])
     absorber_mat_data.set_absorption([absorber_sigma_a])
-    absorber_mat_data.set_scatter_matrix(np.rollaxis(np.array([[[absorber_sigma_s]]]),0,3))
+    absorber_mat_data.set_scatter_matrix(
+        np.rollaxis(np.array([[[absorber_sigma_s]]]), 0, 3))
 
     multiplier = 0.1
     source_sigma_a = void_sigma_a * multiplier
@@ -934,10 +966,12 @@ def random_ray_three_region_cube():
     source_mat_data.order = 0
     source_mat_data.set_total([source_sigma_a + source_sigma_s])
     source_mat_data.set_absorption([source_sigma_a])
-    source_mat_data.set_scatter_matrix(np.rollaxis(np.array([[[source_sigma_s]]]),0,3))
+    source_mat_data.set_scatter_matrix(
+        np.rollaxis(np.array([[[source_sigma_s]]]), 0, 3))
 
     mg_cross_sections_file = openmc.MGXSLibrary(groups)
-    mg_cross_sections_file.add_xsdatas([source_mat_data, void_mat_data, absorber_mat_data])
+    mg_cross_sections_file.add_xsdatas(
+        [source_mat_data, void_mat_data, absorber_mat_data])
     mg_cross_sections_file.export_to_hdf5()
 
     ###########################################################################
@@ -945,7 +979,7 @@ def random_ray_three_region_cube():
 
     # Instantiate some Macroscopic Data
     source_data = openmc.Macroscopic('source')
-    void_data   = openmc.Macroscopic('void')
+    void_data = openmc.Macroscopic('void')
     absorber_data = openmc.Macroscopic('absorber')
 
     # Instantiate some Materials and register the appropriate Macroscopic objects
@@ -970,9 +1004,10 @@ def random_ray_three_region_cube():
 
     source_cell = openmc.Cell(fill=source_mat, name='infinite source region')
     void_cell = openmc.Cell(fill=void_mat, name='infinite void region')
-    absorber_cell = openmc.Cell(fill=absorber_mat, name='infinite absorber region')
+    absorber_cell = openmc.Cell(
+        fill=absorber_mat, name='infinite absorber region')
 
-    source_universe = openmc.Universe(name = 'source universe')
+    source_universe = openmc.Universe(name='source universe')
     source_universe.add_cells([source_cell])
 
     void_universe = openmc.Universe()
@@ -990,7 +1025,8 @@ def random_ray_three_region_cube():
     n = n_base * refinement_level
     pitch = absorber_width / n
 
-    pattern = fill_cube(n, 1*refinement_level, 5*refinement_level, source_universe, void_universe, absorber_universe)
+    pattern = fill_cube(n, 1*refinement_level, 5*refinement_level,
+                        source_universe, void_universe, absorber_universe)
 
     lattice = openmc.RectLattice()
     lattice.lower_left = [0.0, 0.0, 0.0]
@@ -1002,16 +1038,17 @@ def random_ray_three_region_cube():
     lattice_uni = openmc.Universe()
     lattice_uni.add_cells([lattice_cell])
 
-    x_low  = openmc.XPlane(x0=0.0,boundary_type='reflective') 
-    x_high = openmc.XPlane(x0=absorber_width,boundary_type='vacuum') 
+    x_low = openmc.XPlane(x0=0.0, boundary_type='reflective')
+    x_high = openmc.XPlane(x0=absorber_width, boundary_type='vacuum')
 
-    y_low  = openmc.YPlane(y0=0.0,boundary_type='reflective') 
-    y_high = openmc.YPlane(y0=absorber_width,boundary_type='vacuum') 
+    y_low = openmc.YPlane(y0=0.0, boundary_type='reflective')
+    y_high = openmc.YPlane(y0=absorber_width, boundary_type='vacuum')
 
-    z_low  = openmc.ZPlane(z0=0.0,boundary_type='reflective') 
-    z_high = openmc.ZPlane(z0=absorber_width,boundary_type='vacuum') 
+    z_low = openmc.ZPlane(z0=0.0, boundary_type='reflective')
+    z_high = openmc.ZPlane(z0=absorber_width, boundary_type='vacuum')
 
-    full_domain = openmc.Cell(fill=lattice_uni, region=+x_low & -x_high & +y_low & -y_high & +z_low & -z_high, name='full domain')
+    full_domain = openmc.Cell(fill=lattice_uni, region=+x_low & -
+                              x_high & +y_low & -y_high & +z_low & -z_high, name='full domain')
 
     root = openmc.Universe(name='root universe')
     root.add_cell(full_domain)
@@ -1033,7 +1070,8 @@ def random_ray_three_region_cube():
     # Create an initial uniform spatial source for ray integration
     lower_left_ray = [0.0, 0.0, 0.0]
     upper_right_ray = [absorber_width, absorber_width, absorber_width]
-    uniform_dist_ray = openmc.stats.Box(lower_left_ray, upper_right_ray, only_fissionable=False)
+    uniform_dist_ray = openmc.stats.Box(
+        lower_left_ray, upper_right_ray, only_fissionable=False)
     rr_source = openmc.IndependentSource(space=uniform_dist_ray)
 
     settings.random_ray['distance_active'] = 500.0
@@ -1041,11 +1079,13 @@ def random_ray_three_region_cube():
     settings.random_ray['ray_source'] = rr_source
 
     # Create the neutron source in the bottom right of the moderator
-    strengths = [1.0] # Good - fast group appears largest (besides most thermal)
+    # Good - fast group appears largest (besides most thermal)
+    strengths = [1.0]
     midpoints = [100.0]
-    energy_distribution = openmc.stats.Discrete(x=midpoints,p=strengths)
+    energy_distribution = openmc.stats.Discrete(x=midpoints, p=strengths)
 
-    source = openmc.IndependentSource(energy=energy_distribution, constraints={'domains':[source_universe]}, strength=3.14)
+    source = openmc.IndependentSource(energy=energy_distribution, constraints={
+                                      'domains': [source_universe]}, strength=3.14)
 
     settings.source = [source]
 

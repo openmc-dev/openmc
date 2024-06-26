@@ -20,12 +20,13 @@ def test_random_ray_fixed_source(domain_type):
     with change_directory(domain_type):
         openmc.reset_auto_ids()
         model = random_ray_three_region_cube()
+
+        # Based on the parameter, we need to adjust
+        # the particle source constraints
         source = model.settings.source[0]
         constraints = source.constraints
-        print(constraints)
-                
+        
         if domain_type == 'cell':
-            # Convert reflective surfaces to vacuum   
             cells = model.geometry.get_all_cells()
             for key, cell in cells.items():
                 print(cell.name)
@@ -33,7 +34,6 @@ def test_random_ray_fixed_source(domain_type):
                     constraints['domain_type'] = 'cell'
                     constraints['domain_ids'] = [cell.id]
         elif domain_type == 'material':
-            # Convert reflective surfaces to vacuum   
             materials = model.materials
             for material in materials:
                 if material.name == 'source':
@@ -45,9 +45,6 @@ def test_random_ray_fixed_source(domain_type):
                 if universe.name == 'source universe':
                     constraints['domain_type'] = 'universe'
                     constraints['domain_ids'] = [universe.id]   
-        
-        print(constraints)
-
 
         harness = MGXSTestHarness('statepoint.10.h5', model)
         harness.main()

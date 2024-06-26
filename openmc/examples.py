@@ -872,16 +872,18 @@ def random_ray_lattice():
     return model
 
 def random_ray_three_region_cube():
-    """Create a 2x2 PWR pincell asymmetrical lattic eexample.
+    """Create a three region cube model.
 
-    This model is a 2x2 reflective lattice of fuel pins with one of the lattice
-    locations have just moderator instead of a fuel pin. It uses 7 group
-    cross section data
+    This is a simple monoenergetic problem of a cube with three concentric cubic
+    regions. The innermost region is near void (with Sigma_t around 10^-5) and
+    contains an external isotropic source term, the middle region is void (with
+    Sigma_t around 10^-4), and the outer region of the cube is an absorber
+    (with Sigma_t around 1).
 
     Returns
     -------
     model : openmc.model.Model
-        A PWR pin-cell model
+        A three region cube model
 
     """
 
@@ -930,7 +932,6 @@ def random_ray_three_region_cube():
     source_sigma_s = void_sigma_s * multiplier
     source_mat_data = openmc.XSdata('source', groups)
     source_mat_data.order = 0
-    print(source_sigma_a + source_sigma_s)
     source_mat_data.set_total([source_sigma_a + source_sigma_s])
     source_mat_data.set_absorption([source_sigma_a])
     source_mat_data.set_scatter_matrix(np.rollaxis(np.array([[[source_sigma_s]]]),0,3))
@@ -995,7 +996,6 @@ def random_ray_three_region_cube():
     lattice.lower_left = [0.0, 0.0, 0.0]
     lattice.pitch = [pitch, pitch, pitch]
     lattice.universes = pattern
-    #print(lattice)
 
     lattice_cell = openmc.Cell(fill=lattice)
 

@@ -660,7 +660,7 @@ def random_ray_lattice():
     """
     model = openmc.model.Model()
 
-    ###############################################################################
+    ###########################################################################
     # Create MGXS data for the problem
 
     # Instantiate the energy group data
@@ -716,7 +716,7 @@ def random_ray_lattice():
     mg_cross_sections.add_xsdatas([uo2_xsdata, h2o_xsdata])
     mg_cross_sections.export_to_hdf5('mgxs.h5')
 
-    ###############################################################################
+    ###########################################################################
     # Create materials for the problem
 
     # Instantiate some Materials and register the appropriate macroscopic data
@@ -732,7 +732,7 @@ def random_ray_lattice():
     materials = openmc.Materials([uo2, water])
     materials.cross_sections = "mgxs.h5"
 
-    ###############################################################################
+    ###########################################################################
     # Define problem geometry
 
     ########################################
@@ -816,7 +816,7 @@ def random_ray_lattice():
     # Create a geometry with the top-level cell
     geometry = openmc.Geometry([assembly])
 
-    ###############################################################################
+    ###########################################################################
     # Define problem settings
 
     # Instantiate a Settings object, set all runtime parameters, and export to XML
@@ -836,7 +836,7 @@ def random_ray_lattice():
     settings.random_ray['distance_inactive'] = 20.0
     settings.random_ray['ray_source'] = rr_source
 
-    ###############################################################################
+    ###########################################################################
     # Define tallies
 
     # Create a mesh that will be used for tallying
@@ -861,9 +861,9 @@ def random_ray_lattice():
     # Instantiate a Tallies collection and export to XML
     tallies = openmc.Tallies([tally])
 
-    ###############################################################################
+    ###########################################################################
     #                   Exporting to OpenMC model
-    ###############################################################################
+    ###########################################################################
 
     model.geometry = geometry
     model.materials = materials
@@ -889,7 +889,7 @@ def random_ray_three_region_cube():
 
     model = openmc.model.Model()
 
-    ###############################################################################
+    ###########################################################################
     # Helper function creates a 3 region cube with different fills in each region
     def fill_cube(N, n_1, n_2, fill_1, fill_2, fill_3):
         cube = [[[0 for _ in range(N)] for _ in range(N)] for _ in range(N)]
@@ -904,7 +904,7 @@ def random_ray_three_region_cube():
                         cube[i][j][k] = fill_3
         return cube
 
-    ###############################################################################
+    ###########################################################################
     # Create multigroup data
 
     # Instantiate the energy group data
@@ -940,7 +940,7 @@ def random_ray_three_region_cube():
     mg_cross_sections_file.add_xsdatas([source_mat_data, void_mat_data, absorber_mat_data])
     mg_cross_sections_file.export_to_hdf5()
 
-    ###############################################################################
+    ###########################################################################
     # Create materials for the problem
 
     # Instantiate some Macroscopic Data
@@ -965,7 +965,7 @@ def random_ray_three_region_cube():
     materials_file = openmc.Materials([source_mat, void_mat, absorber_mat])
     materials_file.cross_sections = "mgxs.h5"
 
-    ###############################################################################
+    ###########################################################################
     # Define problem geometry
 
     source_cell = openmc.Cell(fill=source_mat, name='infinite source region')
@@ -1019,7 +1019,7 @@ def random_ray_three_region_cube():
     # Create a geometry with the two cells and export to XML
     geometry = openmc.Geometry(root)
 
-    ###############################################################################
+    ###########################################################################
     # Define problem settings
 
     # Instantiate a Settings object, set all runtime parameters, and export to XML
@@ -1049,7 +1049,7 @@ def random_ray_three_region_cube():
 
     settings.source = [source]
 
-    ###############################################################################
+    ###########################################################################
     # Define tallies
 
     estimator = 'tracklength'
@@ -1075,7 +1075,7 @@ def random_ray_three_region_cube():
     # Instantiate a Tallies collection and export to XML
     tallies = openmc.Tallies([source_tally, void_tally, absorber_tally])
 
-    ###############################################################################
+    ###########################################################################
     # Assmble Model
 
     model.geometry = geometry

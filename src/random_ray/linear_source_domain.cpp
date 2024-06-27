@@ -55,32 +55,25 @@ void LinearSourceDomain::batch_reset()
 // }
 
 // Calculate source gradients by inverting the moment matrix
-void moment_matrix_inversion(const std::vector<double>& mom_matrix_, int sr, double& invM1, double& invM2, 
-                        double& invM3, double& invM4, double& invM5, double& invM6)
+std::array<double, 6> moment_matrix_inversion(const std::vector<double>& mom_matrix_, int sr)
 {
       int64_t midx = sr * 6;
+      std::array<double, 6> invM;
       double det = mom_matrix_[midx + 0] * (mom_matrix_[midx + 3] * mom_matrix_[midx + 5] - mom_matrix_[midx + 4] * mom_matrix_[midx + 4]) -
                   mom_matrix_[midx + 3] * mom_matrix_[midx + 2] * mom_matrix_[midx + 2] -
                   mom_matrix_[midx + 5] * mom_matrix_[midx + 1] * mom_matrix_[midx + 1] +
                   2 * mom_matrix_[midx + 1] * mom_matrix_[midx + 2] * mom_matrix_[midx + 4];
       if ( abs(det) > 0.0 ) {  //1E-10
         double one_det = 1.0 / det;
-        invM1 = one_det * (mom_matrix_[midx + 3] * mom_matrix_[midx + 5] - mom_matrix_[midx + 4] * mom_matrix_[midx + 4]);
-        invM2 = one_det * (mom_matrix_[midx + 2] * mom_matrix_[midx + 4] - mom_matrix_[midx + 1] * mom_matrix_[midx + 5]);
-        invM3 = one_det * (mom_matrix_[midx + 1] * mom_matrix_[midx + 4] - mom_matrix_[midx + 3] * mom_matrix_[midx + 2]);
-        invM4 = one_det * (mom_matrix_[midx + 0] * mom_matrix_[midx + 5] - mom_matrix_[midx + 2] * mom_matrix_[midx + 2]);
-        invM5 = one_det * (mom_matrix_[midx + 1] * mom_matrix_[midx + 2] - mom_matrix_[midx + 0] * mom_matrix_[midx + 4]);
-        invM6 = one_det * (mom_matrix_[midx + 0] * mom_matrix_[midx + 3] - mom_matrix_[midx + 1] * mom_matrix_[midx + 1]);
+        invM[0] = one_det * (mom_matrix_[midx + 3] * mom_matrix_[midx + 5] - mom_matrix_[midx + 4] * mom_matrix_[midx + 4]);
+        invM[1] = one_det * (mom_matrix_[midx + 2] * mom_matrix_[midx + 4] - mom_matrix_[midx + 1] * mom_matrix_[midx + 5]);
+        invM[2] = one_det * (mom_matrix_[midx + 1] * mom_matrix_[midx + 4] - mom_matrix_[midx + 3] * mom_matrix_[midx + 2]);
+        invM[3] = one_det * (mom_matrix_[midx + 0] * mom_matrix_[midx + 5] - mom_matrix_[midx + 2] * mom_matrix_[midx + 2]);
+        invM[4] = one_det * (mom_matrix_[midx + 1] * mom_matrix_[midx + 2] - mom_matrix_[midx + 0] * mom_matrix_[midx + 4]);
+        invM[5] = one_det * (mom_matrix_[midx + 0] * mom_matrix_[midx + 3] - mom_matrix_[midx + 1] * mom_matrix_[midx + 1]);
       } else {
-        invM1 = 0.0;
-        invM2 = 0.0;
-        invM3 = 0.0;
-        invM4 = 0.0;
-        invM5 = 0.0;
-        invM6 = 0.0;
-        det = 1.0;
+        invM = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
       }
-
 }
 
 void LinearSourceDomain::update_neutron_source(double k_eff)
@@ -100,8 +93,7 @@ simulation::time_update_src.start();
   #pragma omp parallel for
     for (int sr = 0; sr < n_source_regions_; sr++) {
       int material = material_[sr];
-      double invM1, invM2, invM3, invM4, invM5, invM6; 
-      moment_matrix_inversion(mom_matrix_, sr, invM1, invM2, invM3, invM4, invM5, invM6);
+      std::array<double, 6> invM = moment_matrix_inversion(mom_matrix_, sr);
       
       for (int e_out = 0; e_out < negroups_; e_out++) {
         float sigma_t = data::mg.macro_xs_[material].get_xs(
@@ -151,9 +143,9 @@ simulation::time_update_src.start();
           float y_source = (y_scatter + y_fission) / sigma_t;
           float z_source = (z_scatter + z_fission) / sigma_t;
 
-          float new_source_x = invM1 * x_source + invM2 * y_source + invM3 * z_source;
-          float new_source_y = invM2 * x_source + invM4 * y_source + invM5 * z_source;
-          float new_source_z = invM3 * x_source + invM5 * y_source + invM6 * z_source;
+          float new_source_x = invM[0] * x_source + invM[1] * y_source + invM[2] * z_source;
+          float new_source_y = invM[1] * x_source + invM[3] * y_source + invM[4] * z_source;
+          float new_source_z = invM[2] * x_source + invM[4] * y_source + invM[5] * z_source;
           source_x_[sr * negroups_ + e_out] = new_source_x;
           source_y_[sr * negroups_ + e_out] = new_source_y;
           source_z_[sr * negroups_ + e_out] = new_source_z;

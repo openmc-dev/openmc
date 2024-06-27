@@ -464,14 +464,15 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
 
   // If ray is in the active phase (not in dead zone), make contributions to
   // source region bookkeeping
+  SymmetricMatrix mat_score;
   if (is_active) {
     double distance2_12 = distance * distance / 12.0;
-    mat_score_[0] = distance * (rm_local[0] * rm_local[0] + u()[0] * u()[0] * distance2_12);
-    mat_score_[1] = distance * (rm_local[0] * rm_local[1] + u()[0] * u()[1] * distance2_12);
-    mat_score_[2] = distance * (rm_local[0] * rm_local[2] + u()[0] * u()[2] * distance2_12);
-    mat_score_[3] = distance * (rm_local[1] * rm_local[1] + u()[1] * u()[1] * distance2_12);
-    mat_score_[4] = distance * (rm_local[1] * rm_local[2] + u()[1] * u()[2] * distance2_12);
-    mat_score_[5] = distance * (rm_local[2] * rm_local[2] + u()[2] * u()[2] * distance2_12);
+    mat_score.a = distance * (rm_local[0] * rm_local[0] + u()[0] * u()[0] * distance2_12);
+    mat_score.b = distance * (rm_local[0] * rm_local[1] + u()[0] * u()[1] * distance2_12);
+    mat_score.c = distance * (rm_local[0] * rm_local[2] + u()[0] * u()[2] * distance2_12);
+    mat_score.d = distance * (rm_local[1] * rm_local[1] + u()[1] * u()[1] * distance2_12);
+    mat_score.e = distance * (rm_local[1] * rm_local[2] + u()[1] * u()[2] * distance2_12);
+    mat_score.f = distance * (rm_local[2] * rm_local[2] + u()[2] * u()[2] * distance2_12);
 
     // for (int g = 0; g < negroups_; g++) {
     //   float h1 = exp_f1_[g] - exp_gn_[g];
@@ -502,9 +503,9 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
       domain->flux_y_new_[source_element + g] += delta_y_[g];
       domain->flux_z_new_[source_element + g] += delta_z_[g];      
     }
-    for (int i = 0; i < 6; i++) {
-      domain->mom_matrix_t_[midx + i] += mat_score_[i];
-    }
+
+    domain->mom_matrix_t_[source_region] += mat_score;
+    
     for (int i = 0; i < 3; i++) {
       domain->centroid_t_[didx + i] += midpoint[i] * distance ;
     }

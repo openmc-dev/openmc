@@ -1,6 +1,7 @@
 #include "openmc/random_ray/flat_source_domain.h"
 
 #include "openmc/cell.h"
+#include "openmc/eigenvalue.h"
 #include "openmc/geometry.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
@@ -278,6 +279,9 @@ double FlatSourceDomain::compute_k_eff(double k_eff_old) const
   const int t = 0;
   const int a = 0;
 
+  // Vector for gathering fission source terms for Shannon entropy calculation
+  vector<float> p(n_source_regions_, 0.0f);
+
 #pragma omp parallel for reduction(+ : fission_rate_old, fission_rate_new)
   for (int sr = 0; sr < n_source_regions_; sr++) {
 
@@ -300,11 +304,37 @@ double FlatSourceDomain::compute_k_eff(double k_eff_old) const
       sr_fission_source_new += nu_sigma_f * scalar_flux_new_[idx];
     }
 
-    fission_rate_old += sr_fission_source_old * volume;
-    fission_rate_new += sr_fission_source_new * volume;
+    // Compute total fission rates in FSR
+    sr_fission_source_old *= volume;
+    sr_fission_source_new *= volume;
+
+    // Accumulate totals
+    fission_rate_old += sr_fission_source_old;
+    fission_rate_new += sr_fission_source_new;
+
+    // Store total fission rate in the FSR for Shannon calculation
+    p[sr] = sr_fission_source_new;
   }
 
   double k_eff_new = k_eff_old * (fission_rate_new / fission_rate_old);
+
+  double H = 0.0;
+  // defining an inverse sum for better performance
+  double inverse_sum = 1 / fission_rate_new;
+
+#pragma omp parallel for reduction(+ : H)
+  for (int sr = 0; sr < n_source_regions_; sr++) {
+    // Only if FSR has non-negative and non-zero fission source
+    if (p[sr] > 0.0f) {
+      // Normalize to total weight of bank sites. p_i for better performance
+      float p_i = p[sr] * inverse_sum;
+      // Sum values to obtain Shannon entropy.
+      H -= p_i * std::log2(p_i);
+    }
+  }
+
+  // Adds entropy value to shared entropy vector in openmc namespace.
+  simulation::entropy.push_back(H);
 
   return k_eff_new;
 }
@@ -525,8 +555,8 @@ void FlatSourceDomain::random_ray_tally()
 #pragma omp atomic
         tally.results_(task.filter_idx, task.score_idx, TallyResult::VALUE) +=
           score;
-      } // end tally task loop
-    }   // end energy group loop
+      }
+    }
 
     // For flux tallies, the total volume of the spatial region is needed
     // for normalizing the flux. We store this volume in a separate tensor.

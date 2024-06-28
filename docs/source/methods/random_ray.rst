@@ -740,6 +740,8 @@ scalar flux value for the FSR).
         global::volume[fsr] += s;
     }
 
+.. _methods_random_tallies:
+
 ------------------------
 How are Tallies Handled?
 ------------------------
@@ -756,6 +758,18 @@ assembly-level tallies should work), but it is currently left as undefined
 behavior if a single simulation cell is able to score to multiple filter mesh
 cells. In the future, the capability to fully support mesh tallies may be added
 to OpenMC, but for now this restriction needs to be respected.
+
+Flux tallies are handled slightly differently than in Monte Carlo. By default,
+in MC, flux tallies are reported in units of tracklength (cm), so must be
+manually normalized by volume by the user to produce an estimate of flux in
+units of cm\ :sup:`-2`\. Alternatively, MC flux tallies can be normalized via a
+separated volume calculation process as discussed in the :ref:`Volume
+Calculation Section<usersguide_volume>`. In random ray, as the volumes are
+computed on-the-fly as part of the transport process, the flux tallies can
+easily be reported either in units of flux (cm\ :sup:`-2`\) or tracklength (cm).
+By default, the unnormalized flux values (units of cm) will be reported. If the
+user wishes to received volume normalized flux tallies, then an option for this
+is available, as described in the :ref:`User Guide<usersguide_flux_norm>`.
 
 .. _methods-shannon-entropy-random-ray:
 

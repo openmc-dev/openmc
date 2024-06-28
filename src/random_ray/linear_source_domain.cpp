@@ -26,12 +26,18 @@ LinearSourceDomain::LinearSourceDomain() : FlatSourceDomain()
 {
   flux_x_new_.assign(n_source_elements_, 0.0);
   flux_x_old_.assign(n_source_elements_, 0.0);
+    flux_x_t_.assign(n_source_elements_, 0.0);
+
   source_x_.assign(n_source_elements_, 0.0);
   flux_y_new_.assign(n_source_elements_, 0.0);
   flux_y_old_.assign(n_source_elements_, 0.0);
+    flux_y_t_.assign(n_source_elements_, 0.0);
+
   source_y_.assign(n_source_elements_, 0.0);
   flux_z_new_.assign(n_source_elements_, 0.0);
   flux_z_old_.assign(n_source_elements_, 0.0);
+    flux_z_t_.assign(n_source_elements_, 0.0);
+
   source_z_.assign(n_source_elements_, 0.0);
 
   centroid_.assign(n_source_regions_ * 3, nan(""));
@@ -69,7 +75,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
   for (int sr = 0; sr < n_source_regions_; sr++) {
 
     int material = material_[sr];
-    SymmetricMatrix invM = mom_matrix_[sr].inverse();
+    //SymmetricMatrix invM = mom_matrix_[sr].inverse();
 
     for (int e_out = 0; e_out < negroups_; e_out++) {
       float sigma_t = data::mg.macro_xs_[material].get_xs(
@@ -118,6 +124,9 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
         float y_source = (y_scatter + y_fission) / sigma_t;
         float z_source = (z_scatter + z_fission) / sigma_t;
 
+        // Using Inverse
+        
+        /*
         float new_source_x =
           invM.a * x_source + invM.b * y_source + invM.c * z_source;
         float new_source_y =
@@ -127,6 +136,13 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
         source_x_[sr * negroups_ + e_out] = new_source_x;
         source_y_[sr * negroups_ + e_out] = new_source_y;
         source_z_[sr * negroups_ + e_out] = new_source_z;
+        */
+          
+        std::array<double, 3> source_vec = mom_matrix_[sr].solve({x_source, y_source, z_source});
+        source_x_[sr * negroups_ + e_out] = source_vec[0];
+        source_y_[sr * negroups_ + e_out] = source_vec[1];
+        source_z_[sr * negroups_ + e_out] = source_vec[2];
+
       }
     }
   }
@@ -303,6 +319,49 @@ void LinearSourceDomain::flux_swap()
   flux_x_old_.swap(flux_x_new_);
   flux_y_old_.swap(flux_y_new_);
   flux_z_old_.swap(flux_z_new_);
+}
+
+void LinearSourceDomain::accumulate_iteration_flux()
+{
+  // Accumulate scalar flux
+  FlatSourceDomain::accumulate_iteration_flux();
+
+  // Accumulate scalar flux moments
+#pragma omp parallel for
+  for (int64_t se = 0; se < n_source_elements_; se++) {
+    flux_x_t_[se] += flux_x_new_[se];
+    flux_y_t_[se] += flux_y_new_[se];
+    flux_z_t_[se] += flux_z_new_[se];
+  }
+}
+
+double LinearSourceDomain::evaluate_flux_at_point(const Position r, const int64_t sr, const int g) const
+{
+  float phi_flat = FlatSourceDomain::evaluate_flux_at_point(r, sr, g);
+
+  Position centroid(centroid_[sr * 3], centroid_[sr * 3 + 1], centroid_[sr * 3 + 2]);
+  Position local_r = r - centroid;
+
+  float phi_x = flux_x_t_[sr * negroups_ + g] / (settings::n_batches - settings::n_inactive);
+  float phi_y = flux_y_t_[sr * negroups_ + g] / (settings::n_batches - settings::n_inactive);
+  float phi_z = flux_z_t_[sr * negroups_ + g] / (settings::n_batches - settings::n_inactive);
+
+  // This gets sort of the right order of magnitude, but is not correct
+  //phi_x *= volume_[sr] * simulation_volume_;
+  //phi_y *= volume_[sr] * simulation_volume_;
+  //phi_z *= volume_[sr] * simulation_volume_;
+
+  std::array<double, 3> phi_solved = mom_matrix_[sr].solve({phi_x, phi_y, phi_z});
+  
+  if( sr == 1337 && g == 6)
+  {
+  //printf("phi_flat: %.3le phi_x: %.3le phi_y: %.3le phi_z: %.3le total_phi: %.3le x: %.3le y: %.3le z: %.3le\n",
+  //       phi_flat, phi_x, phi_y, phi_z, phi_flat + phi_solved[0] * local_r.x + phi_solved[1] * local_r.y + phi_solved[2] * local_r.z,
+  //       phi_solved[0] * local_r.x, phi_solved[1] * local_r.y, phi_solved[2] * local_r.z);
+  }
+
+  //return phi_flat + phi_x * local_r.x + phi_y * local_r.y + phi_z * local_r.z;
+  return phi_flat + phi_solved[0] * local_r.x + phi_solved[1] * local_r.y + phi_solved[2] * local_r.z;
 }
 
 } // namespace openmc

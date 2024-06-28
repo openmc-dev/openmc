@@ -1,6 +1,8 @@
 #ifndef OPENMC_SYMMETRIC_MATRIX_H
 #define OPENMC_SYMMETRIC_MATRIX_H
 
+#include <array>
+
 namespace openmc {
 
 // The SymmetricMatrix class is a sparese representation a 3x3 symmetric
@@ -52,6 +54,8 @@ public:
     f += rhs.f;
     return *this;
   }
+
+  std::array<double, 3> solve(const std::array<double, 3>& y) const;
 };
 
 } // namespace openmc

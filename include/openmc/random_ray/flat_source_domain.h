@@ -104,12 +104,14 @@ public:
   void convert_source_regions_to_tallies();
   void reset_tally_volumes();
   void random_ray_tally();
-  void accumulate_iteration_flux();
+  virtual void accumulate_iteration_flux();
   void output_to_vtk() const;
   void all_reduce_replicated_source_regions();
   void convert_external_sources();
   void count_external_source_regions();
   virtual void flux_swap();
+  virtual double evaluate_flux_at_point(const Position r, const int64_t sr, const int g) const;
+
 
   //----------------------------------------------------------------------------
   // Public Data members

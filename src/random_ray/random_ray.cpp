@@ -205,6 +205,8 @@ void RandomRay::event_advance_ray()
     return;
   }
 
+  double distance_to_boundary = distance;
+
   if (is_active_) {
     // If the ray is in the active length, need to check if it has
     // reached its maximum termination distance. If so, reduce
@@ -216,7 +218,7 @@ void RandomRay::event_advance_ray()
     }
 
     distance_travelled_ += distance;
-    attenuate_flux(distance, true);
+    attenuate_flux(distance, true, distance_to_boundary);
   } else {
     // If the ray is still in the dead zone, need to check if it
     // has entered the active phase. If so, split into two segments (one
@@ -226,7 +228,7 @@ void RandomRay::event_advance_ray()
     if (distance_travelled_ + distance >= distance_inactive_) {
       is_active_ = true;
       double distance_dead = distance_inactive_ - distance_travelled_;
-      attenuate_flux(distance_dead, false);
+      attenuate_flux(distance_dead, false, distance_to_boundary);
 
       double distance_alive = distance - distance_dead;
 
@@ -236,11 +238,11 @@ void RandomRay::event_advance_ray()
         wgt() = 0.0;
       }
 
-      attenuate_flux(distance_alive, true);
+      attenuate_flux(distance_alive, true, distance_to_boundary);
       distance_travelled_ = distance_alive;
     } else {
       distance_travelled_ += distance;
-      attenuate_flux(distance, false);
+      attenuate_flux(distance, false, distance_to_boundary);
     }
   }
 
@@ -250,7 +252,7 @@ void RandomRay::event_advance_ray()
   }
 }
 
-void RandomRay::attenuate_flux(double distance, bool is_active)
+void RandomRay::attenuate_flux(double distance, bool is_active, double distance_to_boundary)
 {
   switch (source_shape_) {
   case RandomRaySourceShape::FLAT:
@@ -348,9 +350,8 @@ void RandomRay::attenuate_flux_flat_source(double distance, bool is_active)
   }
 }
 
-void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
+void RandomRay::attenuate_flux_linear_source(double distance, bool is_active, double distance_to_boundary)
 {
-
   LinearSourceDomain* domain = static_cast<LinearSourceDomain*>(domain_);
   // The number of geometric intersections is counted for reporting purposes
   n_event()++;
@@ -441,7 +442,8 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
     float new_delta_y = r0_local[1] * flat_source + u()[1] * h1;
     delta_y_[g] = new_delta_y;
     float new_delta_z = r0_local[2] * flat_source + u()[2] * h1;
-    delta_z_[g] = new_delta_y;
+    new_delta_z = 0.0f;
+    delta_z_[g] = new_delta_z;
     angular_flux_[g] -= new_delta_psi * sigma_t;
   }
   // for (int g = 0; g < negroups_; g++) {

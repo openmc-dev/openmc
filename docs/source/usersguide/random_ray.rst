@@ -330,6 +330,8 @@ of a two-dimensional 2x2 reflective pincell lattice:
 
 In the future, automated subdivision of FSRs via mesh overlay may be supported.
 
+.. _usersguide_flux_norm:
+
 -------
 Tallies
 -------
@@ -366,6 +368,25 @@ Supported Filters:
 Note that there is no difference between the analog, tracklength, and collision
 estimators in random ray mode as individual particles are not being simulated.
 Tracklength-style tally estimation is inherent to the random ray method.
+
+As discussed in the random ray theory section on :ref:`Random Ray
+Tallies<methods_random_tallies>`, by default flux tallies in the random ray mode
+are not normalized by the spatial tally volumes such that flux tallies are in
+units of cm. While the volume information is readily available as a byproduct of
+random ray integration, the flux value is reported in unnormalized units of cm
+so that the user will be able to compare "apples to apples" with the default
+flux tallies from the Monte Carlo solver (also reported by default in units of
+cm). If volume normalized flux tallies (in units of cm\ :sup:`-2`) are desired,
+then the user can set the ``volume_normalized_flux_tallies`` field in the
+:attr:`openmc.Settings.random_ray` dictionary to ``True``. An example is given
+below:
+
+::
+
+    settings.random_ray['volume_normalized_flux_tallies'] = True
+
+Note that MC mode flux tallies can also be normalized by volume, as discussed in
+the :ref:`Volume Calculation Section<usersguide_volume>` of the user guide.
 
 --------
 Plotting

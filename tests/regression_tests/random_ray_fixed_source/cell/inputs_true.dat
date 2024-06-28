@@ -153,6 +153,7 @@
     <random_ray>
       <distance_active>400.0</distance_active>
       <distance_inactive>100.0</distance_inactive>
+      <volume_normalized_flux_tallies>False</volume_normalized_flux_tallies>
       <source particle="neutron" strength="1.0" type="independent">
         <space type="box">
           <parameters>0.0 0.0 0.0 60.0 100.0 60.0</parameters>

@@ -269,6 +269,10 @@ void get_run_parameters(pugi::xml_node node_base)
     } else {
       fatal_error("Specify random ray source in settings XML");
     }
+    if (check_for_node(random_ray_node, "volume_normalized_flux_tallies")) {
+      FlatSourceDomain::volume_normalized_flux_tallies_ =
+        get_node_value_bool(random_ray_node, "volume_normalized_flux_tallies");
+    }
   }
 }
 

@@ -219,7 +219,7 @@ class MicroXS:
         sections available. MicroXS entry will be 0 if the nuclide cross section
         is not found.
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.0
 
         Parameters
         ----------

@@ -47,9 +47,18 @@
     <run_mode>eigenvalue</run_mode>
     <particles>100</particles>
     <batches>10</batches>
-    <inactive>2</inactive>
+    <inactive>5</inactive>
     <output>
       <summary>false</summary>
     </output>
   </settings>
-  </model>
+  <tallies>
+    <filter id="1" type="cellinstance">
+      <bins>4 0 4 1 4 2 4 3 4 4</bins>
+    </filter>
+    <tally id="1" name="cell instance tally">
+      <filters>1</filters>
+      <scores>scatter</scores>
+    </tally>
+  </tallies>
+</model>

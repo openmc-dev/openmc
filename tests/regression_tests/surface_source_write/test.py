@@ -277,8 +277,9 @@ def model_1():
         core_radius,
         core_height / 2.0,
     ]
-    distribution = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=True)
-    model.settings.source = openmc.IndependentSource(space=distribution)
+    distribution = openmc.stats.Box(bounds[:3], bounds[3:])
+    model.settings.source = openmc.IndependentSource(
+        space=distribution, constraints={'fissionable': True})
 
     return model
 
@@ -379,8 +380,9 @@ def model_2():
         core_radius,
         core_height / 2.0,
     ]
-    distribution = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=True)
-    model.settings.source = openmc.IndependentSource(space=distribution)
+    distribution = openmc.stats.Box(bounds[:3], bounds[3:])
+    model.settings.source = openmc.IndependentSource(
+        space=distribution, constraints={'fissionable': True})
 
     return model
 
@@ -481,8 +483,9 @@ def model_3():
         core_radius,
         core_height / 2.0,
     ]
-    distribution = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=True)
-    model.settings.source = openmc.IndependentSource(space=distribution)
+    distribution = openmc.stats.Box(bounds[:3], bounds[3:])
+    model.settings.source = openmc.IndependentSource(
+        space=distribution, constraints={'fissionable': True})
 
     return model
 
@@ -594,8 +597,9 @@ def model_4():
         core_radius,
         core_height / 2.0,
     ]
-    distribution = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=True)
-    model.settings.source = openmc.IndependentSource(space=distribution)
+    distribution = openmc.stats.Box(bounds[:3], bounds[3:])
+    model.settings.source = openmc.IndependentSource(
+        space=distribution, constraints={'fissionable': True})
 
     return model
 
@@ -935,8 +939,9 @@ def model_dagmc_1():
     model.settings.inactive = 1
     model.settings.seed = 1
 
-    source_box = openmc.stats.Box([-4, -4, -20], [4, 4, 20], only_fissionable=True)
-    model.settings.source = openmc.IndependentSource(space=source_box)
+    source_box = openmc.stats.Box([-4, -4, -20], [4, 4, 20])
+    model.settings.source = openmc.IndependentSource(
+        space=source_box, constraints={'fissionable': True})
 
     return model
 
@@ -1069,8 +1074,9 @@ def model_dagmc_2():
     model.settings.inactive = 1
     model.settings.seed = 1
 
-    source_box = openmc.stats.Box([-4, -4, -20], [4, 4, 20], only_fissionable=True)
-    model.settings.source = openmc.IndependentSource(space=source_box)
+    source_box = openmc.stats.Box([-4, -4, -20], [4, 4, 20])
+    model.settings.source = openmc.IndependentSource(
+        space=source_box, constraints={'fissionable': True})
 
     return model
 

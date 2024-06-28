@@ -264,7 +264,7 @@ class IndependentSource(SourceBase):
         Domains to reject based on, i.e., if a sampled spatial location is not
         within one of these domains, it will be rejected.
 
-        .. deprecated:: 0.14.1
+        .. deprecated:: 0.15.0
             Use the `constraints` argument instead.
     constraints : dict
         Constraints on sampled source particles. Valid keys include 'domains',
@@ -482,7 +482,7 @@ class MeshSource(SourceBase):
     strength of the mesh source as a whole is the sum of all source strengths
     applied to the elements.
 
-    .. versionadded:: 0.14.1
+    .. versionadded:: 0.15.0
 
     Parameters
     ----------
@@ -1049,7 +1049,7 @@ def write_source_file(
 def read_source_file(filename: PathLike) -> typing.List[SourceParticle]:
     """Read a source file and return a list of source particles.
 
-    .. versionadded:: 0.14.1
+    .. versionadded:: 0.15.0
 
     Parameters
     ----------

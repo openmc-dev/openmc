@@ -113,7 +113,7 @@ class Settings:
     max_particle_events : int
         Maximum number of allowed particle events per source particle.
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.0
     max_order : None or int
         Maximum scattering order to apply globally when in multi-group mode.
     max_history_splits : int
@@ -164,7 +164,7 @@ class Settings:
             of cm (i.e., total distance traveled by neutrons in the spatial
             tally region).
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.0
     resonance_scattering : dict
         Settings for resonance elastic scattering. Accepted keys are 'enable'
         (bool), 'method' (str), 'energy_min' (float), 'energy_max' (float), and

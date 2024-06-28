@@ -10,7 +10,7 @@ Random Ray
 What is Random Ray?
 -------------------
 
-`Random ray <Tramm-2017a>`_ is a stochastic transport method, closely related to
+`Random ray <Tramm-2017a_>`_ is a stochastic transport method, closely related to
 the deterministic Method of Characteristics (MOC) [Askew-1972]_. Rather than
 each ray representing a single neutron as in Monte Carlo, it represents a
 characteristic line through the simulation geometry upon which the transport
@@ -82,7 +82,7 @@ Random Ray Numerical Derivation
 
 In this section, we will derive the numerical basis for the random ray solver
 mode in OpenMC. The derivation of random ray is also discussed in several papers
-(`1 <Tramm-2017a>`_, `2 <Tramm-2017b>`_, `3 <Tramm-2018>`_), and some of those
+(`1 <Tramm-2017a_>`_, `2 <Tramm-2017b_>`_, `3 <Tramm-2018_>`_), and some of those
 derivations are reproduced here verbatim. Several extensions are also made to
 add clarity, particularly on the topic of OpenMC's treatment of cell volumes in
 the random ray solver.
@@ -428,7 +428,7 @@ of terms. Mathematically, such cancellation allows us to arrive at the following
 
 This derivation appears mathematically sound at first glance but unfortunately
 raises a serious issue as discussed in more depth by `Tramm et al.
-<Tramm-2020>`_ and `Cosgrove and Tramm <Cosgrove-2023>`_. Namely, the second
+<Tramm-2020_>`_ and `Cosgrove and Tramm <Cosgrove-2023_>`_. Namely, the second
 term:
 
 .. math::
@@ -607,7 +607,7 @@ guess can be made by taking the isotropic source from the FSR the ray was
 sampled in, direct usage of this quantity would result in significant bias and
 error being imparted on the simulation.
 
-Thus, an `on-the-fly approximation method <Tramm-2017a>`_ was developed (known
+Thus, an `on-the-fly approximation method <Tramm-2017a_>`_ was developed (known
 as the "dead zone"), where the first several mean free paths of a ray are
 considered to be "inactive" or "read only". In this sense, the angular flux is
 solved for using the MOC equation, but the ray does not "tally" any scalar flux

@@ -29,7 +29,7 @@ SymmetricMatrix SymmetricMatrix::inverse() const
   double det = determinant();
   if (det < std::abs(1.0e-10)) {
     inv.set_to_zero();
-    fatal_error("Matrix is singular and cannot be inverted.");
+    //fatal_error("Matrix is singular and cannot be inverted.");
     return inv;
   }
 

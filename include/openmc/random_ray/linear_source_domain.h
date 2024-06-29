@@ -45,21 +45,12 @@ public:
   //----------------------------------------------------------------------------
   // Public Data members
 
-  vector<float> flux_x_new_;
-  vector<float> flux_x_old_;
-    vector<float> flux_x_t_;
-
-  vector<float> source_x_;
-  vector<float> flux_y_new_;
-    vector<float> flux_y_t_;
-  vector<float> flux_y_old_;
-  vector<float> source_y_;
-  vector<float> flux_z_new_;
-  vector<float> flux_z_t_;
-  vector<float> flux_z_old_;
-  vector<float> source_z_;
-  vector<double> centroid_;
-  vector<double> centroid_t_;
+  vector<Position> source_moments_;
+  vector<Position> flux_moments_old_;
+  vector<Position> flux_moments_new_;
+  vector<Position> flux_moments_t_;
+  vector<Position> centroid_;
+  vector<Position> centroid_t_;
   vector<SymmetricMatrix> mom_matrix_;
   vector<SymmetricMatrix> mom_matrix_t_;
 

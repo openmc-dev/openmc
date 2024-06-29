@@ -44,6 +44,18 @@ public:
     e *= x;
     f *= x;
   }
+
+  SymmetricMatrix& operator*= (double x)
+  {
+    a *= x;
+    b *= x;
+    c *= x;
+    d *= x;
+    e *= x;
+    f *= x;
+    return *this;
+  }
+
   SymmetricMatrix& operator+=(const SymmetricMatrix& rhs)
   {
     a += rhs.a;
@@ -55,7 +67,20 @@ public:
     return *this;
   }
 
+  Position operator*(const Position& rhs) const
+  {
+    return {a * rhs.x + b * rhs.y + c * rhs.z,
+            b * rhs.x + d * rhs.y + e * rhs.z,
+            c * rhs.x + e * rhs.y + f * rhs.z};
+  }
+
   std::array<double, 3> solve(const std::array<double, 3>& y) const;
+  Position solve( const Position& y) const
+  {
+    std::array<double, 3> y_array = {y.x, y.y, y.z};
+    std::array<double, 3> x_array = solve(y_array);
+    return {x_array[0], x_array[1], x_array[2]};
+  }
 };
 
 } // namespace openmc

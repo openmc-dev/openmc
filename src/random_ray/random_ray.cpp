@@ -259,7 +259,7 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double distance_
     attenuate_flux_flat_source(distance, is_active);
     break;
   case RandomRaySourceShape::LINEAR:
-    attenuate_flux_linear_source(distance, is_active);
+    attenuate_flux_linear_source(distance, is_active, distance_to_boundary);
     break;
   default:
     fatal_error("Unknown source shape for random ray transport.");

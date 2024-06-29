@@ -3,6 +3,8 @@
 
 #include <array>
 
+#include "openmc/position.h"
+
 namespace openmc {
 
 // The SymmetricMatrix class is a sparese representation a 3x3 symmetric

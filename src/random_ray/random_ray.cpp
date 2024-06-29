@@ -161,16 +161,7 @@ RandomRay::RandomRay()
   : angular_flux_(data::mg.num_energy_groups_),
     delta_psi_(data::mg.num_energy_groups_),
     negroups_(data::mg.num_energy_groups_),
-    delta_x_(data::mg.num_energy_groups_),
-    delta_y_(data::mg.num_energy_groups_),
-    delta_z_(data::mg.num_energy_groups_),
-    mat_score_(6) 
-    // prev_angular_flux_(data::mg.num_energy_groups_),
-    // flat_source_(data::mg.num_energy_groups_),
-    // dir_source_(data::mg.num_energy_groups_),
-    // exp_gn_(data::mg.num_energy_groups_),
-    // exp_f1_(data::mg.num_energy_groups_),
-    // tau_(data::mg.num_energy_groups_),
+    delta_moments_(data::mg.num_energy_groups_)
 {}
 
 RandomRay::RandomRay(uint64_t ray_id, FlatSourceDomain* domain) : RandomRay()
@@ -375,10 +366,8 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active, do
   // angle data.
   const int t = 0;
   const int a = 0; 
-  
-  Position centroid_pos(domain->centroid_[didx + 0], 
-                        domain->centroid_[didx + 1],
-                        domain->centroid_[didx + 2]);     
+   
+  Position& centroid_pos = domain->centroid_[source_region];  
   Position midpoint = r() + u() * (distance / 2.0);
   Position rm_local;
   Position r0_local;
@@ -389,33 +378,15 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active, do
   } else{
     r0_local = -u() * 0.5 * distance;
   }
-  // linear source terms
-  // for (int g = 0; g < negroups_; g++) {
-  //   flat_source_[g] = rm_local[0] * domain->source_x_[source_element + g];
-  //   flat_source_[g] = flat_source_[g] + rm_local[1] * domain->source_y_[source_element + g];
-  //   flat_source_[g] = flat_source_[g] + rm_local[2] * domain->source_z_[source_element + g];
-  //   flat_source_[g] = flat_source_[g] + domain->source_[source_element + g];
-  //   dir_source_[g] = u()[0] * domain->source_x_[source_element + g];
-  //   dir_source_[g] = dir_source_[g] + u()[1] * domain->source_y_[source_element + g]; //u()[1]
-  //   dir_source_[g] = dir_source_[g] + u()[2] * domain->source_z_[source_element + g];
-
-  //   prev_angular_flux_[g] = angular_flux_[g];
-  // }
-
-//everything in one loop, wastes LS comp calculation that might not be needed (dead length)
-//less arrays to store 
+  
 
   // MOC incoming flux attenuation + source contribution/attenuation equation
   for (int g = 0; g < negroups_; g++) {
     float sigma_t = data::mg.macro_xs_[material].get_xs(
       MgxsType::TOTAL, g, NULL, NULL, NULL, t, a);
     float tau = sigma_t * distance;
-    float flat_source = rm_local[0] * domain->source_x_[source_element + g] + 
-            rm_local[1] * domain->source_y_[source_element + g] + rm_local[2] * 
-              domain->source_z_[source_element + g] + domain_->source_[source_element + g];
-    float dir_source = u()[0] * domain->source_x_[source_element + g] + 
-            u()[1] * domain->source_y_[source_element + g] + 
-              u()[2] * domain->source_z_[source_element + g];
+    float flat_source = domain_->source_[source_element + g] + rm_local.dot(domain->source_moments_[source_element + g]);
+    float dir_source = u().dot(domain->source_moments_[source_element + g]);
 
     if (tau < 1E-8f) {
       tau = 0.0f;
@@ -435,34 +406,13 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active, do
     g2 = g2 * dir_source * distance * distance * 0.5f;
     h1 = h1 * angular_flux_[g] * distance;
     h1 = (g1 + g2 + h1) * distance;
-    float new_flat_source = flat_source * distance + new_delta_psi;
-    flat_source = new_flat_source;
-    float new_delta_x = r0_local[0] * flat_source + u()[0] * h1;
-    delta_x_[g] = new_delta_x;
-    float new_delta_y = r0_local[1] * flat_source + u()[1] * h1;
-    delta_y_[g] = new_delta_y;
-    float new_delta_z = r0_local[2] * flat_source + u()[2] * h1;
-    new_delta_z = 0.0f;
-    delta_z_[g] = new_delta_z;
+    flat_source = flat_source * distance + new_delta_psi;
+    delta_moments_[g] = r0_local * flat_source + u() * h1;
+
+    delta_moments_[g].z = 0.0f;
+    
     angular_flux_[g] -= new_delta_psi * sigma_t;
   }
-  // for (int g = 0; g < negroups_; g++) {
-  //   float sigma_t = data::mg.macro_xs_[material].get_xs(
-  //     MgxsType::TOTAL, g, NULL, NULL, NULL, t, a);
-  //   float tau = sigma_t * distance;
-  //   if (tau < 1E-8f) {
-  //     tau = 0.0f;
-  //   }
-  //   tau_[g] = tau;
-  //   exp_gn_[g] = exponentialG(tau); 
-  //   exp_f1_[g]  = 1.0f - tau * exp_gn_[g];
-  //   float f2 = (2.0f * exp_gn_[g] - exp_f1_[g]) * distance * distance;
-  //   float new_delta_psi =
-  //     (angular_flux_[g] - flat_source_[g]) * exp_f1_[g] * distance
-  //                       - 0.5 * dir_source_[g] * f2;
-  //   delta_psi_[g] = new_delta_psi;
-  //   angular_flux_[g] -= new_delta_psi * sigma_t;
-  // }
 
   // If ray is in the active phase (not in dead zone), make contributions to
   // source region bookkeeping
@@ -478,41 +428,18 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active, do
 
     mat_score.scale(distance);
 
-    // for (int g = 0; g < negroups_; g++) {
-    //   float h1 = exp_f1_[g] - exp_gn_[g];
-    //   float g1 = 0.5f - h1;
-    //   float g2 = exponentialG2(tau_[g]);
-    //   g1 = g1 * flat_source_[g] * distance;
-    //   g2 = g2 * dir_source_[g] * distance * distance * 0.5f;
-    //   float new_h1 = h1 * prev_angular_flux_[g] * distance;
-    //   h1 = new_h1;
-    //   h1 = (g1 + g2 + h1) * distance;
-    //   float new_flat_source = flat_source_[g] * distance + delta_psi_[g];
-    //   flat_source_[g] = new_flat_source;
-    //   float new_delta_x = r0_local[0] * flat_source_[g] + u()[0] * h1;
-    //   delta_x_[g] = new_delta_x;
-    //   float new_delta_y = r0_local[1] * flat_source_[g] + u()[1] * h1;
-    //   delta_y_[g] = new_delta_y;
-    //   float new_delta_z = r0_local[2] * flat_source_[g] + u()[2] * h1;
-    //   delta_z_[g] = new_delta_y;
-    // }
-
     // Aquire lock for source region
     domain_->lock_[source_region].lock();
+
     // Accumulate delta psi into new estimate of source region flux for
     // this iteration
     for (int g = 0; g < negroups_; g++) {
       domain_->scalar_flux_new_[source_element + g] += delta_psi_[g];
-      domain->flux_x_new_[source_element + g] += delta_x_[g];
-      domain->flux_y_new_[source_element + g] += delta_y_[g];
-      domain->flux_z_new_[source_element + g] += delta_z_[g];      
+      domain->flux_moments_new_[source_element + g] += delta_moments_[g];  
     }
 
     domain->mom_matrix_t_[source_region] += mat_score;
-
-    for (int i = 0; i < 3; i++) {
-      domain->centroid_t_[didx + i] += midpoint[i] * distance ;
-    }
+    domain->centroid_t_[source_region] += midpoint * distance;
 
     // If the source region hasn't been hit yet this iteration,
     // indicate that it now has

@@ -585,6 +585,12 @@ add_custom_command(TARGET libopenmc POST_BUILD
   ${CMAKE_CURRENT_SOURCE_DIR}/openmc/lib/$<TARGET_FILE_NAME:libopenmc>
   COMMENT "Copying libopenmc to Python module directory")
 
+add_custom_command(TARGET openmc POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy
+  $<TARGET_FILE:openmc>
+  ${CMAKE_CURRENT_SOURCE_DIR}/openmc/lib/$<TARGET_FILE_NAME:openmc>
+  COMMENT "Copying openmc binary to Python module directory")
+
 #===============================================================================
 # Install executable, scripts, manpage, license
 #===============================================================================

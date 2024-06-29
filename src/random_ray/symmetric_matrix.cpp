@@ -96,4 +96,31 @@ std::array<double, 3> SymmetricMatrix::solve(const std::array<double, 3>& y) con
     return {x1, x2, x3};
 }
 
+void compute_moments_matrix(const Position& m, const Position& u, const double& distance)
+{
+    constexpr double one_over_twelve = 1.0 / 12.0;
+    double distance2_12 = distance * distance * one_over_twelve;
+    mat_score.a = m[0] * m[0] + u[0] * u[0] * distance2_12;
+    mat_score.b = m[0] * m[1] + u[0] * u[1] * distance2_12;
+    mat_score.c = m[0] * m[2] + u[0] * u[2] * distance2_12;
+    mat_score.d = m[1] * m[1] + u[1] * u[1] * distance2_12;
+    mat_score.e = m[1] * m[2] + u[1] * u[2] * distance2_12;
+    mat_score.f = m[2] * m[2] + u[2] * u[2] * distance2_12;
+
+    mat_score.scale(distance);
+
+    a = 
+}
+{
+    double distance2_12 = distance * distance / 12.0;
+    mat_score.a = rm_local[0] * rm_local[0] + u()[0] * u()[0] * distance2_12;
+    mat_score.b = rm_local[0] * rm_local[1] + u()[0] * u()[1] * distance2_12;
+    mat_score.c = rm_local[0] * rm_local[2] + u()[0] * u()[2] * distance2_12;
+    mat_score.d = rm_local[1] * rm_local[1] + u()[1] * u()[1] * distance2_12;
+    mat_score.e = rm_local[1] * rm_local[2] + u()[1] * u()[2] * distance2_12;
+    mat_score.f = rm_local[2] * rm_local[2] + u()[2] * u()[2] * distance2_12;
+
+    mat_score.scale(distance);
+}
+
 } // namespace openmc

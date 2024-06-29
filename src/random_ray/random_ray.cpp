@@ -419,12 +419,12 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active, do
   if (is_active) {
     SymmetricMatrix mat_score;
     double distance2_12 = distance * distance / 12.0;
-    mat_score.a = rm_local[0] * rm_local[0] * u()[0] * u()[0] * distance2_12;
-    mat_score.b = rm_local[0] * rm_local[1] * u()[0] * u()[1] * distance2_12;
-    mat_score.c = rm_local[0] * rm_local[2] * u()[0] * u()[2] * distance2_12;
-    mat_score.d = rm_local[1] * rm_local[1] * u()[1] * u()[1] * distance2_12;
-    mat_score.e = rm_local[1] * rm_local[2] * u()[1] * u()[2] * distance2_12;
-    mat_score.f = rm_local[2] * rm_local[2] * u()[2] * u()[2] * distance2_12;
+    mat_score.a = rm_local[0] * rm_local[0] + u()[0] * u()[0] * distance2_12;
+    mat_score.b = rm_local[0] * rm_local[1] + u()[0] * u()[1] * distance2_12;
+    mat_score.c = rm_local[0] * rm_local[2] + u()[0] * u()[2] * distance2_12;
+    mat_score.d = rm_local[1] * rm_local[1] + u()[1] * u()[1] * distance2_12;
+    mat_score.e = rm_local[1] * rm_local[2] + u()[1] * u()[2] * distance2_12;
+    mat_score.f = rm_local[2] * rm_local[2] + u()[2] * u()[2] * distance2_12;
 
     mat_score.scale(distance);
 

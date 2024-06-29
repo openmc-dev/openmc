@@ -6,6 +6,7 @@
 #include "NCrystal/NCrystal.hh"
 #endif
 
+#include "openmc/constants.h" // Needed for DllExport
 #include "openmc/particle.h"
 
 #include <cstdint> // for uint64_t
@@ -18,7 +19,7 @@ namespace openmc {
 // Constants
 //==============================================================================
 
-extern "C" const bool NCRYSTAL_ENABLED;
+extern "C" const bool DllExport NCRYSTAL_ENABLED;
 
 //! Energy in [eV] to switch between NCrystal and ENDF
 constexpr double NCRYSTAL_MAX_ENERGY {5.0};
@@ -58,19 +59,10 @@ public:
 
   //----------------------------------------------------------------------------
   // Trivial methods when compiling without NCRYSTAL
-  std::string cfg() const
-  {
-    return "";
-  }
-  double xs(const Particle& p) const
-  {
-    return -1.0;
-  }
+  std::string cfg() const { return ""; }
+  double xs(const Particle& p) const { return -1.0; }
   void scatter(Particle& p) const {}
-  operator bool() const
-  {
-    return false;
-  }
+  operator bool() const { return false; }
 #endif
 
 private:

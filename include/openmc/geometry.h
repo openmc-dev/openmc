@@ -10,7 +10,7 @@
 
 namespace openmc {
 
-class BoundaryInfo;
+struct BoundaryInfo;
 class GeometryState;
 
 //==============================================================================

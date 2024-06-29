@@ -10,9 +10,16 @@ import numpy as np
 
 from openmc.mpi import comm
 
+import sys
+
 # Configurable switch that enables / disables the use of
 # multiprocessing routines during depletion
 USE_MULTIPROCESSING = True
+
+# Not sure why, but using multiprocessing on Windows leads to many transport
+# simulations being run over eachother and leads to catastrophe.
+if sys.platform == 'win32':
+    USE_MULTIPROCESSING = False
 
 # Allow user to override the number of worker processes to use for depletion
 # calculations

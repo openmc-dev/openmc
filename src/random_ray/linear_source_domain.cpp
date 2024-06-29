@@ -84,7 +84,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
         scatter_flat += sigma_s * flux_flat;
         fission_flat += nu_sigma_f * flux_flat * chi;
         // Calculate scattering source for higher order scattering
-        scatter_linear += sigma_s * flux_flat;
+        scatter_linear += sigma_s * flux_linear;
         fission_linear += nu_sigma_f * flux_linear * chi;
       }
 

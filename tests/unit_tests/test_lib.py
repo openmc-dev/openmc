@@ -999,3 +999,4 @@ def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
     openmc.lib.init(["-c"])
     openmc.lib.sample_external_source(100)
     openmc.lib.finalize()
+    

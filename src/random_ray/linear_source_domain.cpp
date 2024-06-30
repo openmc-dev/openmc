@@ -156,13 +156,12 @@ int64_t LinearSourceDomain::add_source_to_scalar_flux()
     double volume_tracks = volume_t_[sr];
     double invvol = 1.0 / volume_tracks;
     int material = material_[sr];
-    int64_t didx = sr * 3;
-    int64_t midx = sr * 6;
 
     // Check if this cell was hit this iteration
     int was_cell_hit = was_hit_[sr];
     if (was_cell_hit) {
       n_hits++;
+      centroid_[sr] = centroid_t_[sr];
       centroid_[sr] *= invvol;
       mom_matrix_[sr] = mom_matrix_t_[sr];
       mom_matrix_[sr] *= invvol;

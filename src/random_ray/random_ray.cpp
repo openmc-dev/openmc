@@ -357,8 +357,6 @@ void RandomRay::attenuate_flux_linear_source(
 
   // The source element is the energy-specific region index
   int64_t source_element = source_region * negroups_;
-  int64_t midx = source_region * 6;
-  int64_t didx = source_region * 3;
   int material = this->material();
 
   // Temperature and angle indices, if using multiple temperature
@@ -372,11 +370,13 @@ void RandomRay::attenuate_flux_linear_source(
   Position midpoint = r() + u() * (distance / 2.0);
   Position rm_local;
   Position r0_local;
+
   // if (simulation::current_batch > 2) {
   if (centroid_pos[0] == centroid_pos[0]) {
     rm_local = midpoint - centroid_pos;
     r0_local = r() - centroid_pos;
   } else {
+    rm_local = {0.0, 0.0, 0.0};
     r0_local = -u() * 0.5 * distance;
   }
 
@@ -446,9 +446,6 @@ void RandomRay::attenuate_flux_linear_source(
     domain_->volume_[source_region] += distance;
     domain->centroid_t_[source_region] += midpoint * distance;
     domain->mom_matrix_t_[source_region] += mat_score;
-
-    // Accomulate volume (ray distance) into this iteration's estimate
-    // of the source region's volume
 
     // If the source region hasn't been hit yet this iteration,
     // indicate that it now has

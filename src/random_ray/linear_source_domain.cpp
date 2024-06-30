@@ -38,7 +38,7 @@ LinearSourceDomain::LinearSourceDomain() : FlatSourceDomain()
 void LinearSourceDomain::batch_reset()
 {
   FlatSourceDomain::batch_reset();
-  #pragma omp parallel for
+#pragma omp parallel for
   for (auto& m : flux_moments_new_) {
     m = {0.0, 0.0, 0.0};
   }
@@ -67,37 +67,45 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
       float sigma_t = data::mg.macro_xs_[material].get_xs(
         MgxsType::TOTAL, e_out, nullptr, nullptr, nullptr, t, a);
 
-      float scatter_flat= 0.0f;
+      float scatter_flat = 0.0f;
       float fission_flat = 0.0f;
       Position scatter_linear = {0.0, 0.0, 0.0};
       Position fission_linear = {0.0, 0.0, 0.0};
 
       for (int e_in = 0; e_in < negroups_; e_in++) {
+        // Handles for the flat and linear components of the flux
         float flux_flat = scalar_flux_old_[sr * negroups_ + e_in];
         Position flux_linear = flux_moments_old_[sr * negroups_ + e_in];
+
+        // Handles for cross sections
         float sigma_s = data::mg.macro_xs_[material].get_xs(
           MgxsType::NU_SCATTER, e_in, &e_out, nullptr, nullptr, t, a);
         float nu_sigma_f = data::mg.macro_xs_[material].get_xs(
           MgxsType::NU_FISSION, e_in, nullptr, nullptr, nullptr, t, a);
         float chi = data::mg.macro_xs_[material].get_xs(
           MgxsType::CHI_PROMPT, e_in, &e_out, nullptr, nullptr, t, a);
+
+        // Compute source terms for flat and linear components of the flux
         scatter_flat += sigma_s * flux_flat;
         fission_flat += nu_sigma_f * flux_flat * chi;
-        // Calculate scattering source for higher order scattering
         scatter_linear += sigma_s * flux_linear;
         fission_linear += nu_sigma_f * flux_linear * chi;
       }
 
-      source_[sr * negroups_ + e_out] = (scatter_flat + fission_flat * inverse_k_eff) / sigma_t;
+      // Compute the flat source term
+      source_[sr * negroups_ + e_out] =
+        (scatter_flat + fission_flat * inverse_k_eff) / sigma_t;
 
+      // Compute the linear source terms
       if (simulation::current_batch > 2) {
-        source_moments_[sr * negroups_ + e_out] = invM * ((scatter_linear + fission_linear * inverse_k_eff) / sigma_t);
+        source_moments_[sr * negroups_ + e_out] =
+          invM * ((scatter_linear + fission_linear * inverse_k_eff) / sigma_t);
       }
     }
   }
 
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
-// Add external source if in fixed source mode
+// Add external source to flat source term if in fixed source mode
 #pragma omp parallel for
     for (int se = 0; se < n_source_elements_; se++) {
       source_[se] += external_source_[se];
@@ -146,7 +154,7 @@ int64_t LinearSourceDomain::add_source_to_scalar_flux()
 
     double volume = volume_[sr];
     double volume_tracks = volume_t_[sr];
-    double invvol = 1.0f / volume_tracks;
+    double invvol = 1.0 / volume_tracks;
     int material = material_[sr];
     int64_t didx = sr * 3;
     int64_t midx = sr * 6;
@@ -170,13 +178,13 @@ int64_t LinearSourceDomain::add_source_to_scalar_flux()
         // transport sweep)
         scalar_flux_new_[idx] /= volume;
         scalar_flux_new_[idx] += source_[idx];
-        flux_moments_new_[idx] *= (1.0/volume);
+        flux_moments_new_[idx] *= (1.0 / volume);
       } else if (volume > 0.0) {
         // 2. If the FSR was not hit this iteration, but has been hit some
         // previous iteration, then we simply set the new scalar flux to be
         // equal to the contribution from the flat source alone.
         scalar_flux_new_[idx] = source_[idx];
-        flux_moments_new_[idx] *= (1.0/volume);
+        flux_moments_new_[idx] *= (1.0 / volume);
       } else {
         // If the FSR was not hit this iteration, and it has never been hit in
         // any iteration (i.e., volume is zero), then we want to set this to 0
@@ -196,7 +204,6 @@ void LinearSourceDomain::flux_swap()
   flux_moments_old_.swap(flux_moments_new_);
 }
 
-
 void LinearSourceDomain::accumulate_iteration_flux()
 {
   // Accumulate scalar flux
@@ -209,7 +216,8 @@ void LinearSourceDomain::accumulate_iteration_flux()
   }
 }
 
-double LinearSourceDomain::evaluate_flux_at_point(const Position r, const int64_t sr, const int g) const
+double LinearSourceDomain::evaluate_flux_at_point(
+  const Position r, const int64_t sr, const int g) const
 {
   float phi_flat = FlatSourceDomain::evaluate_flux_at_point(r, sr, g);
 
@@ -217,15 +225,18 @@ double LinearSourceDomain::evaluate_flux_at_point(const Position r, const int64_
   Position phi_linear = flux_moments_t_[sr * negroups_ + g];
   phi_linear *= 1.0 / (settings::n_batches - settings::n_inactive);
   Position phi_solved = mom_matrix_[sr].solve(phi_linear);
-  
-  if( sr == 1337 && g == 6)
-  {
-  //printf("phi_flat: %.3le phi_x: %.3le phi_y: %.3le phi_z: %.3le total_phi: %.3le x: %.3le y: %.3le z: %.3le\n",
-  //       phi_flat, phi_x, phi_y, phi_z, phi_flat + phi_solved[0] * local_r.x + phi_solved[1] * local_r.y + phi_solved[2] * local_r.z,
-  //       phi_solved[0] * local_r.x, phi_solved[1] * local_r.y, phi_solved[2] * local_r.z);
+
+  if (sr == 1337 && g == 6) {
+    // printf("phi_flat: %.3le phi_x: %.3le phi_y: %.3le phi_z: %.3le total_phi:
+    // %.3le x: %.3le y: %.3le z: %.3le\n",
+    //        phi_flat, phi_x, phi_y, phi_z, phi_flat + phi_solved[0] *
+    //        local_r.x + phi_solved[1] * local_r.y + phi_solved[2] * local_r.z,
+    //        phi_solved[0] * local_r.x, phi_solved[1] * local_r.y,
+    //        phi_solved[2] * local_r.z);
   }
 
-  //return phi_flat + phi_x * local_r.x + phi_y * local_r.y + phi_z * local_r.z;
+  // return phi_flat + phi_x * local_r.x + phi_y * local_r.y + phi_z *
+  // local_r.z;
   return phi_flat + phi_solved.dot(local_r);
 }
 

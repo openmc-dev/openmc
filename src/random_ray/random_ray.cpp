@@ -61,12 +61,14 @@ float cjosey_exponential(float tau)
 
   return num / den;
 }
-//  Computes y = 1/x-(1-exp(-x))/x**2 using a 5/6th order rational approximation.
-//  OpenMoC https://github.com/mit-crpg/OpenMOC/blob/7c8c9460c1c95f68dae102a402a39afa233a0b8c/src/exponentials.h#L9
+//  Computes y = 1/x-(1-exp(-x))/x**2 using a 5/6th order rational
+//  approximation. OpenMoC
+//  https://github.com/mit-crpg/OpenMOC/blob/7c8c9460c1c95f68dae102a402a39afa233a0b8c/src/exponentials.h#L9
 
 float exponentialG(float tau)
 {
-  // Numerator coefficients in rational approximation for 1/x - (1 - exp(-x)) / x^2
+  // Numerator coefficients in rational approximation for 1/x - (1 - exp(-x)) /
+  // x^2
   constexpr float d0n = 0.5f;
   constexpr float d1n = 0.176558112351595f;
   constexpr float d2n = 0.04041584305811143f;
@@ -74,7 +76,8 @@ float exponentialG(float tau)
   constexpr float d4n = 0.0006429894635552992f;
   constexpr float d5n = 0.00006064409107557148f;
 
-  // Denominator coefficients in rational approximation for 1/x - (1 - exp(-x)) / x^2
+  // Denominator coefficients in rational approximation for 1/x - (1 - exp(-x))
+  // / x^2
   constexpr float d0d = 1.0f;
   constexpr float d1d = 0.6864462055546078f;
   constexpr float d2d = 0.2263358514260129f;
@@ -85,7 +88,7 @@ float exponentialG(float tau)
 
   float x = tau;
 
-  float num = d5n; 
+  float num = d5n;
   num = num * x + d4n;
   num = num * x + d3n;
   num = num * x + d2n;
@@ -100,14 +103,12 @@ float exponentialG(float tau)
   den = den * x + d1d;
   den = den * x + d0d;
 
-
   return num / den;
 }
 
-//  Computes G2 : y = 2/3 - (1 + 2/x) * (1/x + 0.5 - (1 + 1/x) * (1-exp(-x)) / x) 
-//  using a 5/5th order rational approximation,
-//  FROM: OpenMoC https://github.com/mit-crpg/OpenMOC/blob/7c8c9460c1c95f68dae102a402a39afa233a0b8c/src/exponentials.h#L9
-
+//  Computes G2 : y = 2/3 - (1 + 2/x) * (1/x + 0.5 - (1 + 1/x) * (1-exp(-x)) /
+//  x) using a 5/5th order rational approximation, FROM: OpenMoC
+//  https://github.com/mit-crpg/OpenMOC/blob/7c8c9460c1c95f68dae102a402a39afa233a0b8c/src/exponentials.h#L9
 
 float exponentialG2(float tau)
 {
@@ -126,7 +127,7 @@ float exponentialG2(float tau)
   constexpr float g4d = 0.006125197988351906f;
   constexpr float g5d = 0.0010102514456857377f;
 
-  float x = tau; 
+  float x = tau;
 
   float num = g5n;
   num = num * x + g4n;
@@ -141,8 +142,6 @@ float exponentialG2(float tau)
   den = den * x + g2d;
   den = den * x + g1d;
   den = den * x + 1.0f;
-
-
 
   return num / den;
 }
@@ -243,7 +242,8 @@ void RandomRay::event_advance_ray()
   }
 }
 
-void RandomRay::attenuate_flux(double distance, bool is_active, double distance_to_boundary)
+void RandomRay::attenuate_flux(
+  double distance, bool is_active, double distance_to_boundary)
 {
   switch (source_shape_) {
   case RandomRaySourceShape::FLAT:
@@ -341,7 +341,8 @@ void RandomRay::attenuate_flux_flat_source(double distance, bool is_active)
   }
 }
 
-void RandomRay::attenuate_flux_linear_source(double distance, bool is_active, double distance_to_boundary)
+void RandomRay::attenuate_flux_linear_source(
+  double distance, bool is_active, double distance_to_boundary)
 {
   LinearSourceDomain* domain = static_cast<LinearSourceDomain*>(domain_);
   // The number of geometric intersections is counted for reporting purposes
@@ -356,8 +357,8 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active, do
 
   // The source element is the energy-specific region index
   int64_t source_element = source_region * negroups_;
-  int64_t midx = source_region * 6 ;
-  int64_t didx = source_region * 3 ;
+  int64_t midx = source_region * 6;
+  int64_t didx = source_region * 3;
   int material = this->material();
 
   // Temperature and angle indices, if using multiple temperature
@@ -365,38 +366,38 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active, do
   // TODO: Currently assumes we are only using single temp/single
   // angle data.
   const int t = 0;
-  const int a = 0; 
-   
-  Position& centroid_pos = domain->centroid_[source_region];  
+  const int a = 0;
+
+  Position& centroid_pos = domain->centroid_[source_region];
   Position midpoint = r() + u() * (distance / 2.0);
   Position rm_local;
   Position r0_local;
-  //if (simulation::current_batch > 2) {
+  // if (simulation::current_batch > 2) {
   if (centroid_pos[0] == centroid_pos[0]) {
-    rm_local = midpoint - centroid_pos; 
+    rm_local = midpoint - centroid_pos;
     r0_local = r() - centroid_pos;
-  } else{
+  } else {
     r0_local = -u() * 0.5 * distance;
   }
-  
 
   // MOC incoming flux attenuation + source contribution/attenuation equation
   for (int g = 0; g < negroups_; g++) {
     float sigma_t = data::mg.macro_xs_[material].get_xs(
       MgxsType::TOTAL, g, NULL, NULL, NULL, t, a);
     float tau = sigma_t * distance;
-    float flat_source = domain_->source_[source_element + g] + rm_local.dot(domain->source_moments_[source_element + g]);
+    float flat_source =
+      domain_->source_[source_element + g] +
+      rm_local.dot(domain->source_moments_[source_element + g]);
     float dir_source = u().dot(domain->source_moments_[source_element + g]);
 
     if (tau < 1E-8f) {
       tau = 0.0f;
     }
-    float gn = exponentialG(tau); 
+    float gn = exponentialG(tau);
     float f1 = 1.0f - tau * gn;
     float f2 = (2.0f * gn - f1) * distance * distance;
     float new_delta_psi =
-      (angular_flux_[g] - flat_source) * f1 * distance
-                        - 0.5 * dir_source * f2;
+      (angular_flux_[g] - flat_source) * f1 * distance - 0.5 * dir_source * f2;
     delta_psi_[g] = new_delta_psi;
     // prev_angular_flux_[g] = angular_flux_[g];
     float h1 = f1 - gn;
@@ -410,22 +411,19 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active, do
     delta_moments_[g] = r0_local * flat_source + u() * h1;
 
     delta_moments_[g].z = 0.0f;
-    
+
     angular_flux_[g] -= new_delta_psi * sigma_t;
   }
 
   // If ray is in the active phase (not in dead zone), make contributions to
   // source region bookkeeping
   if (is_active) {
+    // Compute an estimate of the spatial moments matric for the source
+    // region based on this ray's crossing.
     SymmetricMatrix mat_score;
-    double distance2_12 = distance * distance / 12.0;
-    mat_score.a = rm_local[0] * rm_local[0] + u()[0] * u()[0] * distance2_12;
-    mat_score.b = rm_local[0] * rm_local[1] + u()[0] * u()[1] * distance2_12;
-    mat_score.c = rm_local[0] * rm_local[2] + u()[0] * u()[2] * distance2_12;
-    mat_score.d = rm_local[1] * rm_local[1] + u()[1] * u()[1] * distance2_12;
-    mat_score.e = rm_local[1] * rm_local[2] + u()[1] * u()[2] * distance2_12;
-    mat_score.f = rm_local[2] * rm_local[2] + u()[2] * u()[2] * distance2_12;
+    mat_score.compute_spatial_moments_matrix(rm_local, u(), distance);
 
+    // Scale the moment matrix by the length of the ray segment
     mat_score.scale(distance);
 
     // Aquire lock for source region
@@ -435,21 +433,28 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active, do
     // this iteration
     for (int g = 0; g < negroups_; g++) {
       domain_->scalar_flux_new_[source_element + g] += delta_psi_[g];
-      domain->flux_moments_new_[source_element + g] += delta_moments_[g];  
+      domain->flux_moments_new_[source_element + g] += delta_moments_[g];
     }
 
-    domain->mom_matrix_t_[source_region] += mat_score;
+    // Accumulate the volume (ray segment distance),
+    // centroid, and spatial momement estimates into the running totals
+    // for the iteration for this source region. These three parameters
+    // form the 0th order (volume), 1st order (centroid), and 2nd order
+    // (spatial moments matrix) spatial moments of the source region.
+    // The centroid and spatial momements estimates are scaled
+    // by the ray segment length.
+    domain_->volume_[source_region] += distance;
     domain->centroid_t_[source_region] += midpoint * distance;
+    domain->mom_matrix_t_[source_region] += mat_score;
+
+    // Accomulate volume (ray distance) into this iteration's estimate
+    // of the source region's volume
 
     // If the source region hasn't been hit yet this iteration,
     // indicate that it now has
     if (domain_->was_hit_[source_region] == 0) {
       domain_->was_hit_[source_region] = 1;
     }
-
-    // Accomulate volume (ray distance) into this iteration's estimate
-    // of the source region's volume
-    domain_->volume_[source_region] += distance;
 
     // Tally valid position inside the source region (e.g., midpoint of
     // the ray) if not done already

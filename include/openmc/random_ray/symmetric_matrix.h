@@ -83,6 +83,8 @@ public:
     std::array<double, 3> x_array = solve(y_array);
     return {x_array[0], x_array[1], x_array[2]};
   }
+
+  void compute_spatial_moments_matrix(const Position& r, const Direction& u, const double& distance);
 };
 
 } // namespace openmc

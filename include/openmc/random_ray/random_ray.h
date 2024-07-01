@@ -24,9 +24,9 @@ public:
   //----------------------------------------------------------------------------
   // Methods
   void event_advance_ray();
-  void attenuate_flux(double distance, bool is_active, double distance_to_boundary);
+  void attenuate_flux(double distance, bool is_active);
   void attenuate_flux_flat_source(double distance, bool is_active);
-  void attenuate_flux_linear_source(double distance, bool is_active, double distance_to_boundary);
+  void attenuate_flux_linear_source(double distance, bool is_active);
 
   void initialize_ray(uint64_t ray_id, FlatSourceDomain* domain);
   uint64_t transport_history_based_single_ray();

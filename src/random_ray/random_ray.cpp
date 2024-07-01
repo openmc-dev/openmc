@@ -208,7 +208,7 @@ void RandomRay::event_advance_ray()
     }
 
     distance_travelled_ += distance;
-    attenuate_flux(distance, true, distance_to_boundary);
+    attenuate_flux(distance, true);
   } else {
     // If the ray is still in the dead zone, need to check if it
     // has entered the active phase. If so, split into two segments (one
@@ -218,7 +218,7 @@ void RandomRay::event_advance_ray()
     if (distance_travelled_ + distance >= distance_inactive_) {
       is_active_ = true;
       double distance_dead = distance_inactive_ - distance_travelled_;
-      attenuate_flux(distance_dead, false, distance_to_boundary);
+      attenuate_flux(distance_dead, false);
 
       double distance_alive = distance - distance_dead;
 
@@ -228,11 +228,11 @@ void RandomRay::event_advance_ray()
         wgt() = 0.0;
       }
 
-      attenuate_flux(distance_alive, true, distance_to_boundary);
+      attenuate_flux(distance_alive, true);
       distance_travelled_ = distance_alive;
     } else {
       distance_travelled_ += distance;
-      attenuate_flux(distance, false, distance_to_boundary);
+      attenuate_flux(distance, false);
     }
   }
 
@@ -243,14 +243,14 @@ void RandomRay::event_advance_ray()
 }
 
 void RandomRay::attenuate_flux(
-  double distance, bool is_active, double distance_to_boundary)
+  double distance, bool is_active)
 {
   switch (source_shape_) {
   case RandomRaySourceShape::FLAT:
     attenuate_flux_flat_source(distance, is_active);
     break;
   case RandomRaySourceShape::LINEAR:
-    attenuate_flux_linear_source(distance, is_active, distance_to_boundary);
+    attenuate_flux_linear_source(distance, is_active);
     break;
   default:
     fatal_error("Unknown source shape for random ray transport.");
@@ -341,8 +341,7 @@ void RandomRay::attenuate_flux_flat_source(double distance, bool is_active)
   }
 }
 
-void RandomRay::attenuate_flux_linear_source(
-  double distance, bool is_active, double distance_to_boundary)
+void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
 {
   LinearSourceDomain* domain = static_cast<LinearSourceDomain*>(domain_);
   // The number of geometric intersections is counted for reporting purposes
@@ -399,7 +398,6 @@ void RandomRay::attenuate_flux_linear_source(
     float new_delta_psi =
       (angular_flux_[g] - flat_source) * f1 * distance - 0.5 * dir_source * f2;
     delta_psi_[g] = new_delta_psi;
-    // prev_angular_flux_[g] = angular_flux_[g];
     float h1 = f1 - gn;
     float g1 = 0.5f - h1;
     float g2 = exponentialG2(tau);
@@ -410,6 +408,10 @@ void RandomRay::attenuate_flux_linear_source(
     flat_source = flat_source * distance + new_delta_psi;
     delta_moments_[g] = r0_local * flat_source + u() * h1;
 
+    // In 2D, the z-moment is going to blow up, because r_0_local in z
+    // is going to be huge (i.e., the ray's starting point is going
+    // to be very far from the centroid given that the cell is infinite
+    // in length.
     delta_moments_[g].z = 0.0f;
 
     angular_flux_[g] -= new_delta_psi * sigma_t;
@@ -422,9 +424,6 @@ void RandomRay::attenuate_flux_linear_source(
     // region based on this ray's crossing.
     SymmetricMatrix mat_score;
     mat_score.compute_spatial_moments_matrix(rm_local, u(), distance);
-
-    // Scale the moment matrix by the length of the ray segment
-    mat_score.scale(distance);
 
     // Aquire lock for source region
     domain_->lock_[source_region].lock();
@@ -445,6 +444,7 @@ void RandomRay::attenuate_flux_linear_source(
     // by the ray segment length.
     domain_->volume_[source_region] += distance;
     domain->centroid_t_[source_region] += midpoint * distance;
+    mat_score.scale(distance);
     domain->mom_matrix_t_[source_region] += mat_score;
 
     // If the source region hasn't been hit yet this iteration,

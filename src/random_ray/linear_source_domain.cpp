@@ -183,7 +183,6 @@ int64_t LinearSourceDomain::add_source_to_scalar_flux()
         // previous iteration, then we simply set the new scalar flux to be
         // equal to the contribution from the flat source alone.
         scalar_flux_new_[idx] = source_[idx];
-        flux_moments_new_[idx] *= (1.0 / volume);
       } else {
         // If the FSR was not hit this iteration, and it has never been hit in
         // any iteration (i.e., volume is zero), then we want to set this to 0

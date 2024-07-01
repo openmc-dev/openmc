@@ -4,7 +4,7 @@
 #include "openmc/memory.h"
 #include "openmc/particle.h"
 #include "openmc/random_ray/flat_source_domain.h"
-#include "openmc/random_ray/symmetric_matrix.h"
+#include "openmc/random_ray/moment_matrix.h"
 #include "openmc/source.h"
 
 namespace openmc {

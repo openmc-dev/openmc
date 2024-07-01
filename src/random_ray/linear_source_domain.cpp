@@ -61,7 +61,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
   for (int sr = 0; sr < n_source_regions_; sr++) {
 
     int material = material_[sr];
-    SymmetricMatrix invM = mom_matrix_[sr].inverse();
+    MomentMatrix invM = mom_matrix_[sr].inverse();
 
     for (int e_out = 0; e_out < negroups_; e_out++) {
       float sigma_t = data::mg.macro_xs_[material].get_xs(
@@ -223,7 +223,7 @@ double LinearSourceDomain::evaluate_flux_at_point(
   MomentArray phi_linear = flux_moments_t_[sr * negroups_ + g];
   phi_linear *= 1.0 / (settings::n_batches - settings::n_inactive);
   MomentArray phi_solved = mom_matrix_[sr].solve(phi_linear);
-  
+
   return phi_flat + phi_solved.dot(local_r);
 }
 

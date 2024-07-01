@@ -381,7 +381,7 @@ list(APPEND libopenmc_SOURCES
   src/random_ray/random_ray.cpp
   src/random_ray/flat_source_domain.cpp
   src/random_ray/linear_source_domain.cpp
-  src/random_ray/symmetric_matrix.cpp
+  src/random_ray/moment_matrix.cpp
   src/reaction.cpp
   src/reaction_product.cpp
   src/scattdata.cpp

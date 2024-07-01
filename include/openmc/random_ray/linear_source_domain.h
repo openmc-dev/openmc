@@ -2,7 +2,7 @@
 #define OPENMC_RANDOM_RAY_LINEAR_SOURCE_DOMAIN_H
 
 #include "openmc/random_ray/flat_source_domain.h"
-#include "openmc/random_ray/symmetric_matrix.h"
+#include "openmc/random_ray/moment_matrix.h"
 
 #include "openmc/openmp_interface.h"
 #include "openmc/position.h"
@@ -51,8 +51,8 @@ public:
   vector<MomentArray> flux_moments_t_;
   vector<Position> centroid_;
   vector<Position> centroid_t_;
-  vector<SymmetricMatrix> mom_matrix_;
-  vector<SymmetricMatrix> mom_matrix_t_;
+  vector<MomentMatrix> mom_matrix_;
+  vector<MomentMatrix> mom_matrix_t_;
 
 private:
   //----------------------------------------------------------------------------

@@ -1,5 +1,5 @@
-#include "openmc/random_ray/symmetric_matrix.h"
 #include "openmc/error.h"
+#include "openmc/random_ray/moment_matrix.h"
 
 #include <cmath>
 
@@ -21,15 +21,14 @@ namespace openmc {
 // Inversion is calculated by computing the adjoint matrix
 // first, and then the inverse can be computed as:
 // A^-1  = 1/det(A) * adj(A)
-SymmetricMatrix SymmetricMatrix::inverse() const
+MomentMatrix MomentMatrix::inverse() const
 {
-  SymmetricMatrix inv;
+  MomentMatrix inv;
 
   // Check if the determinant is zero
   double det = determinant();
   if (det < std::abs(1.0e-10)) {
     inv.set_to_zero();
-    // fatal_error("Matrix is singular and cannot be inverted.");
     return inv;
   }
 
@@ -42,7 +41,7 @@ SymmetricMatrix SymmetricMatrix::inverse() const
   inv.f = a * d - b * b;
 
   // A^-1 = 1/det(A) * adj(A)
-  inv.scale(1.0 / det);
+  inv *= 1.0 / det;
 
   return inv;
 }
@@ -53,13 +52,12 @@ SymmetricMatrix SymmetricMatrix::inverse() const
 // | a b c |
 // | b d e |
 // | c e f |
-double SymmetricMatrix::determinant() const
+double MomentMatrix::determinant() const
 {
   return a * (d * f - e * e) - b * (b * f - c * e) + c * (b * e - c * d);
 }
 
-std::array<double, 3> SymmetricMatrix::solve(
-  const std::array<double, 3>& y) const
+MomentArray MomentMatrix::solve(const MomentArray& y) const
 {
   // Check for positive definiteness and calculate Cholesky decomposition
   if (a <= 1e-10) {
@@ -107,7 +105,7 @@ std::array<double, 3> SymmetricMatrix::solve(
 // The estimate of the obect's spatial moments matrix is computed based on the
 // midpoint of the ray's crossing, the direction of the ray, and the distance
 // the ray traveled through the 3D object.
-void SymmetricMatrix::compute_spatial_moments_matrix(
+void MomentMatrix::compute_spatial_moments_matrix(
   const Position& r, const Direction& u, const double& distance)
 {
   constexpr double one_over_twelve = 1.0 / 12.0;

@@ -864,6 +864,7 @@ def random_ray_lattice():
     settings.random_ray['distance_active'] = 100.0
     settings.random_ray['distance_inactive'] = 20.0
     settings.random_ray['ray_source'] = rr_source
+    settings.random_ray['volume_normalized_flux_tallies'] = True
 
     ###########################################################################
     # Define tallies
@@ -1077,6 +1078,7 @@ def random_ray_three_region_cube():
     settings.random_ray['distance_active'] = 500.0
     settings.random_ray['distance_inactive'] = 100.0
     settings.random_ray['ray_source'] = rr_source
+    settings.random_ray['volume_normalized_flux_tallies'] = True
 
     # Create the neutron source in the bottom right of the moderator
     # Good - fast group appears largest (besides most thermal)

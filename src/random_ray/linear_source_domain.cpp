@@ -69,13 +69,13 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
 
       float scatter_flat = 0.0f;
       float fission_flat = 0.0f;
-      Position scatter_linear = {0.0, 0.0, 0.0};
-      Position fission_linear = {0.0, 0.0, 0.0};
+      MomentArray scatter_linear = {0.0, 0.0, 0.0};
+      MomentArray fission_linear = {0.0, 0.0, 0.0};
 
       for (int e_in = 0; e_in < negroups_; e_in++) {
         // Handles for the flat and linear components of the flux
         float flux_flat = scalar_flux_old_[sr * negroups_ + e_in];
-        Position flux_linear = flux_moments_old_[sr * negroups_ + e_in];
+        MomentArray flux_linear = flux_moments_old_[sr * negroups_ + e_in];
 
         // Handles for cross sections
         float sigma_s = data::mg.macro_xs_[material].get_xs(
@@ -220,21 +220,10 @@ double LinearSourceDomain::evaluate_flux_at_point(
   float phi_flat = FlatSourceDomain::evaluate_flux_at_point(r, sr, g);
 
   Position local_r = r - centroid_[sr];
-  Position phi_linear = flux_moments_t_[sr * negroups_ + g];
+  MomentArray phi_linear = flux_moments_t_[sr * negroups_ + g];
   phi_linear *= 1.0 / (settings::n_batches - settings::n_inactive);
-  Position phi_solved = mom_matrix_[sr].solve(phi_linear);
-
-  if (sr == 1337 && g == 6) {
-    // printf("phi_flat: %.3le phi_x: %.3le phi_y: %.3le phi_z: %.3le total_phi:
-    // %.3le x: %.3le y: %.3le z: %.3le\n",
-    //        phi_flat, phi_x, phi_y, phi_z, phi_flat + phi_solved[0] *
-    //        local_r.x + phi_solved[1] * local_r.y + phi_solved[2] * local_r.z,
-    //        phi_solved[0] * local_r.x, phi_solved[1] * local_r.y,
-    //        phi_solved[2] * local_r.z);
-  }
-
-  // return phi_flat + phi_x * local_r.x + phi_y * local_r.y + phi_z *
-  // local_r.z;
+  MomentArray phi_solved = mom_matrix_[sr].solve(phi_linear);
+  
   return phi_flat + phi_solved.dot(local_r);
 }
 

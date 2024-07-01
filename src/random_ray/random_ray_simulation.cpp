@@ -248,6 +248,7 @@ RandomRaySimulation::RandomRaySimulation()
     domain_ = make_unique<FlatSourceDomain>();
     break;
   case RandomRaySourceShape::LINEAR:
+  case RandomRaySourceShape::LINEAR_XY:
     domain_ = make_unique<LinearSourceDomain>();
     break;
   default:

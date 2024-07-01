@@ -130,6 +130,7 @@ public:
   vector<OpenMPMutex> lock_;
   vector<int> was_hit_;
   vector<double> volume_;
+  vector<double> volume_t_;
   vector<int> position_recorded_;
   vector<Position> position_;
 
@@ -173,7 +174,6 @@ protected:
 
   // 1D arrays representing values for all source regions
   vector<int> material_;
-  vector<double> volume_t_;
 
   // 2D arrays stored in 1D representing values for all source regions x energy
   // groups

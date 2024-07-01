@@ -7,6 +7,9 @@
 
 namespace openmc {
 
+// We make a typedef for the MomentArray type, which is a 3D vector of doubles.
+using MomentArray = Position;
+
 // The SymmetricMatrix class is a sparese representation a 3x3 symmetric
 // matrix, with elements labeled as follows:
 //

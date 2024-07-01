@@ -276,6 +276,8 @@ void get_run_parameters(pugi::xml_node node_base)
         RandomRay::source_shape_ = RandomRaySourceShape::FLAT;
       } else if (temp_str == "linear") {
         RandomRay::source_shape_ = RandomRaySourceShape::LINEAR;
+      } else if (temp_str == "linear_xy") {
+        RandomRay::source_shape_ = RandomRaySourceShape::LINEAR_XY;
       } else {
         fatal_error("Unrecognized source shape: " + temp_str);
       }

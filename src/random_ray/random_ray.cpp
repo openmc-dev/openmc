@@ -159,9 +159,13 @@ RandomRaySourceShape RandomRay::source_shape_ {RandomRaySourceShape::FLAT};
 RandomRay::RandomRay()
   : angular_flux_(data::mg.num_energy_groups_),
     delta_psi_(data::mg.num_energy_groups_),
-    negroups_(data::mg.num_energy_groups_),
-    delta_moments_(data::mg.num_energy_groups_)
-{}
+    negroups_(data::mg.num_energy_groups_)
+{
+  if (source_shape_ == RandomRaySourceShape::LINEAR ||
+      source_shape_ == RandomRaySourceShape::LINEAR_XY) {
+    delta_moments_.resize(negroups_);
+  }
+}
 
 RandomRay::RandomRay(uint64_t ray_id, FlatSourceDomain* domain) : RandomRay()
 {
@@ -242,14 +246,14 @@ void RandomRay::event_advance_ray()
   }
 }
 
-void RandomRay::attenuate_flux(
-  double distance, bool is_active)
+void RandomRay::attenuate_flux(double distance, bool is_active)
 {
   switch (source_shape_) {
   case RandomRaySourceShape::FLAT:
     attenuate_flux_flat_source(distance, is_active);
     break;
   case RandomRaySourceShape::LINEAR:
+  case RandomRaySourceShape::LINEAR_XY:
     attenuate_flux_linear_source(distance, is_active);
     break;
   default:
@@ -343,7 +347,13 @@ void RandomRay::attenuate_flux_flat_source(double distance, bool is_active)
 
 void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
 {
-  LinearSourceDomain* domain = static_cast<LinearSourceDomain*>(domain_);
+  // Cast domain to LinearSourceDomain
+  LinearSourceDomain* domain = dynamic_cast<LinearSourceDomain*>(domain_);
+  if (!domain) {
+    fatal_error("RandomRay::attenuate_flux_linear_source() called with "
+                "non-LinearSourceDomain domain.");
+  }
+
   // The number of geometric intersections is counted for reporting purposes
   n_event()++;
 
@@ -365,62 +375,84 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
   const int t = 0;
   const int a = 0;
 
-  Position& centroid_pos = domain->centroid_[source_region];
+  Position& centroid = domain->centroid_[source_region];
   Position midpoint = r() + u() * (distance / 2.0);
+
+  // Determine the local position of the midpoint and the ray origin
+  // relative to the source region's centroid
   Position rm_local;
   Position r0_local;
 
-  // if (simulation::current_batch > 2) {
-  if (centroid_pos[0] == centroid_pos[0]) {
-    rm_local = midpoint - centroid_pos;
-    r0_local = r() - centroid_pos;
+  // In the first few iterations of the simulation, the source region
+  // may not yet have had any ray crossings, in which case there will
+  // be no estimate of its centroid. We detect this by checking if it has
+  // any accumulated volume. If its volume is zero, just use the midpoint
+  // of the ray as the region's centroid.
+  if (domain->volume_t_[source_region]) {
+    rm_local = midpoint - centroid;
+    r0_local = r() - centroid;
   } else {
     rm_local = {0.0, 0.0, 0.0};
     r0_local = -u() * 0.5 * distance;
   }
 
-  // MOC incoming flux attenuation + source contribution/attenuation equation
+  // Linear Source MOC incoming flux attenuation + source
+  // contribution/attenuation equation
   for (int g = 0; g < negroups_; g++) {
+
+    // Compute tau, the optical thickness of the ray segment
     float sigma_t = data::mg.macro_xs_[material].get_xs(
       MgxsType::TOTAL, g, NULL, NULL, NULL, t, a);
     float tau = sigma_t * distance;
+
+    // If tau is very small, set it to zero to avoid numerical issues.
+    // The following computations will still work with tau = 0.
+    if (tau < 1.0e-8f) {
+      tau = 0.0f;
+    }
+
+    // Compute the linear source angular flux attenuation and source
+    // contribution quantities
     float flat_source =
       domain_->source_[source_element + g] +
       rm_local.dot(domain->source_moments_[source_element + g]);
-    float dir_source = u().dot(domain->source_moments_[source_element + g]);
+    float linear_source = u().dot(domain->source_moments_[source_element + g]);
 
-    if (tau < 1E-8f) {
-      tau = 0.0f;
-    }
     float gn = exponentialG(tau);
     float f1 = 1.0f - tau * gn;
     float f2 = (2.0f * gn - f1) * distance * distance;
-    float new_delta_psi =
-      (angular_flux_[g] - flat_source) * f1 * distance - 0.5 * dir_source * f2;
-    delta_psi_[g] = new_delta_psi;
+    float new_delta_psi = (angular_flux_[g] - flat_source) * f1 * distance -
+                          0.5 * linear_source * f2;
+
     float h1 = f1 - gn;
     float g1 = 0.5f - h1;
     float g2 = exponentialG2(tau);
     g1 = g1 * flat_source * distance;
-    g2 = g2 * dir_source * distance * distance * 0.5f;
+    g2 = g2 * linear_source * distance * distance * 0.5f;
     h1 = h1 * angular_flux_[g] * distance;
     h1 = (g1 + g2 + h1) * distance;
     flat_source = flat_source * distance + new_delta_psi;
+
+    // Store contributions for this group into arrays, so that they can
+    // be accumulated into the source region's estimates inside of the locked
+    // region.
+    delta_psi_[g] = new_delta_psi;
     delta_moments_[g] = r0_local * flat_source + u() * h1;
 
-    // In 2D, the z-moment is going to blow up, because r_0_local in z
-    // is going to be huge (i.e., the ray's starting point is going
-    // to be very far from the centroid given that the cell is infinite
-    // in length.
-    delta_moments_[g].z = 0.0f;
-
+    // Update the angular flux for this group
     angular_flux_[g] -= new_delta_psi * sigma_t;
+
+    // If 2D mode is enabled, the z-component of the flux moments is forced
+    // to zero
+    if (source_shape_ == RandomRaySourceShape::LINEAR_XY) {
+      delta_moments_[g].z = 0.0;
+    }
   }
 
   // If ray is in the active phase (not in dead zone), make contributions to
   // source region bookkeeping
   if (is_active) {
-    // Compute an estimate of the spatial moments matric for the source
+    // Compute an estimate of the spatial moments matrix for the source
     // region based on this ray's crossing.
     SymmetricMatrix mat_score;
     mat_score.compute_spatial_moments_matrix(rm_local, u(), distance);
@@ -428,20 +460,17 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
     // Aquire lock for source region
     domain_->lock_[source_region].lock();
 
-    // Accumulate delta psi into new estimate of source region flux for
-    // this iteration
+    // Accumulate deltas into the new estimate of source region flux for this
+    // iteration
     for (int g = 0; g < negroups_; g++) {
       domain_->scalar_flux_new_[source_element + g] += delta_psi_[g];
       domain->flux_moments_new_[source_element + g] += delta_moments_[g];
     }
 
-    // Accumulate the volume (ray segment distance),
-    // centroid, and spatial momement estimates into the running totals
-    // for the iteration for this source region. These three parameters
-    // form the 0th order (volume), 1st order (centroid), and 2nd order
-    // (spatial moments matrix) spatial moments of the source region.
-    // The centroid and spatial momements estimates are scaled
-    // by the ray segment length.
+    // Accumulate the volume (ray segment distance), centroid, and spatial
+    // momement estimates into the running totals for the iteration for this
+    // source region. The centroid and spatial momements estimates are scaled by
+    // the ray segment length as part of length averaging of the estimates.
     domain_->volume_[source_region] += distance;
     domain->centroid_t_[source_region] += midpoint * distance;
     mat_score.scale(distance);

@@ -4,6 +4,7 @@
 #include "openmc/memory.h"
 #include "openmc/particle.h"
 #include "openmc/random_ray/flat_source_domain.h"
+#include "openmc/random_ray/symmetric_matrix.h"
 #include "openmc/source.h"
 
 namespace openmc {
@@ -46,7 +47,7 @@ private:
   //----------------------------------------------------------------------------
   // Private data members
   vector<float> delta_psi_;
-  vector<Position> delta_moments_;
+  vector<MomentArray> delta_moments_;
   
   int negroups_;
   FlatSourceDomain* domain_ {nullptr}; // pointer to domain that has flat source

@@ -159,7 +159,7 @@ class Settings:
             specified by a :class:`openmc.SourceBase` object.
         :source_shape:
             Assumed shape of the source distribution within each source
-            region. Options are 'flat' (default) or 'linear'.
+            region. Options are 'flat' (default), 'linear', or 'linear_xy'.
 
         .. versionadded:: 0.15.0
     resonance_scattering : dict
@@ -1089,7 +1089,7 @@ class Settings:
                 cv.check_type('random ray source', random_ray[key], SourceBase)
             elif key == 'source_shape':
                 cv.check_value('source shape', random_ray[key],
-                               ('flat', 'linear'))
+                               ('flat', 'linear', 'linear_xy'))
             else:
                 raise ValueError(f'Unable to set random ray to "{key}" which is '
                                  'unsupported by OpenMC')

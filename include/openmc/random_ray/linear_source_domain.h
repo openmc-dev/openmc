@@ -45,10 +45,10 @@ public:
   //----------------------------------------------------------------------------
   // Public Data members
 
-  vector<Position> source_moments_;
-  vector<Position> flux_moments_old_;
-  vector<Position> flux_moments_new_;
-  vector<Position> flux_moments_t_;
+  vector<MomentArray> source_moments_;
+  vector<MomentArray> flux_moments_old_;
+  vector<MomentArray> flux_moments_new_;
+  vector<MomentArray> flux_moments_t_;
   vector<Position> centroid_;
   vector<Position> centroid_t_;
   vector<SymmetricMatrix> mom_matrix_;

@@ -10,7 +10,7 @@ Random Ray
 What is Random Ray?
 -------------------
 
-`Random ray <Tramm-2017a>`_ is a stochastic transport method, closely related to
+`Random ray <Tramm-2017a_>`_ is a stochastic transport method, closely related to
 the deterministic Method of Characteristics (MOC) [Askew-1972]_. Rather than
 each ray representing a single neutron as in Monte Carlo, it represents a
 characteristic line through the simulation geometry upon which the transport
@@ -82,7 +82,7 @@ Random Ray Numerical Derivation
 
 In this section, we will derive the numerical basis for the random ray solver
 mode in OpenMC. The derivation of random ray is also discussed in several papers
-(`1 <Tramm-2017a>`_, `2 <Tramm-2017b>`_, `3 <Tramm-2018>`_), and some of those
+(`1 <Tramm-2017a_>`_, `2 <Tramm-2017b_>`_, `3 <Tramm-2018_>`_), and some of those
 derivations are reproduced here verbatim. Several extensions are also made to
 add clarity, particularly on the topic of OpenMC's treatment of cell volumes in
 the random ray solver.
@@ -411,6 +411,8 @@ which when partially simplified becomes:
 
 Note that there are now four (seemingly identical) volume terms in this equation.
 
+.. _methods-volume-dilemma:
+
 ~~~~~~~~~~~~~~
 Volume Dilemma
 ~~~~~~~~~~~~~~
@@ -426,7 +428,7 @@ of terms. Mathematically, such cancellation allows us to arrive at the following
 
 This derivation appears mathematically sound at first glance but unfortunately
 raises a serious issue as discussed in more depth by `Tramm et al.
-<Tramm-2020>`_ and `Cosgrove and Tramm <Cosgrove-2023>`_. Namely, the second
+<Tramm-2020_>`_ and `Cosgrove and Tramm <Cosgrove-2023_>`_. Namely, the second
 term:
 
 .. math::
@@ -605,7 +607,7 @@ guess can be made by taking the isotropic source from the FSR the ray was
 sampled in, direct usage of this quantity would result in significant bias and
 error being imparted on the simulation.
 
-Thus, an `on-the-fly approximation method <Tramm-2017a>`_ was developed (known
+Thus, an `on-the-fly approximation method <Tramm-2017a_>`_ was developed (known
 as the "dead zone"), where the first several mean free paths of a ray are
 considered to be "inactive" or "read only". In this sense, the angular flux is
 solved for using the MOC equation, but the ray does not "tally" any scalar flux
@@ -738,6 +740,8 @@ scalar flux value for the FSR).
         global::volume[fsr] += s;
     }
 
+.. _methods_random_tallies:
+
 ------------------------
 How are Tallies Handled?
 ------------------------
@@ -745,6 +749,7 @@ How are Tallies Handled?
 Most tallies, filters, and scores that you would expect to work with a
 multigroup solver like random ray should work. For example, you can define 3D
 mesh tallies with energy filters and flux, fission, and nu-fission scores, etc.
+
 There are some restrictions though. For starters, it is assumed that all filter
 mesh boundaries will conform to physical surface boundaries (or lattice
 boundaries) in the simulation geometry. It is acceptable for multiple cells
@@ -753,6 +758,51 @@ assembly-level tallies should work), but it is currently left as undefined
 behavior if a single simulation cell is able to score to multiple filter mesh
 cells. In the future, the capability to fully support mesh tallies may be added
 to OpenMC, but for now this restriction needs to be respected.
+
+Flux tallies are handled slightly differently than in Monte Carlo. By default,
+in MC, flux tallies are reported in units of tracklength (cm), so must be
+manually normalized by volume by the user to produce an estimate of flux in
+units of cm\ :sup:`-2`\. Alternatively, MC flux tallies can be normalized via a
+separated volume calculation process as discussed in the :ref:`Volume
+Calculation Section<usersguide_volume>`. In random ray, as the volumes are
+computed on-the-fly as part of the transport process, the flux tallies can
+easily be reported either in units of flux (cm\ :sup:`-2`\) or tracklength (cm).
+By default, the unnormalized flux values (units of cm) will be reported. If the
+user wishes to received volume normalized flux tallies, then an option for this
+is available, as described in the :ref:`User Guide<usersguide_flux_norm>`.
+
+.. _methods-shannon-entropy-random-ray:
+
+-----------------------------
+Shannon Entropy in Random Ray
+-----------------------------
+
+As :math:`k_{eff}` is updated at each generation, the fission source at each FSR
+is used to compute the Shannon entropy. This follows the :ref:`same procedure
+for computing Shannon entropy in continuous-energy or multigroup Monte Carlo
+simulations <methods-shannon-entropy>`, except that fission sources at FSRs are
+considered, rather than fission sites of user-defined regular meshes. Thus, the
+volume-weighted fission rate is considered instead, and the fraction of fission
+sources is adjusted such that:
+
+.. math::
+    :label: fraction-source-random-ray
+
+    S_i = \frac{\text{Fission source in FSR $i \times$ Volume of FSR
+    $i$}}{\text{Total fission source}} = \frac{Q_{i} V_{i}}{\sum_{i=1}^{i=N} 
+    Q_{i} V_{i}}
+
+The Shannon entropy is then computed normally as
+
+.. math::
+    :label: shannon-entropy-random-ray
+
+    H = - \sum_{i=1}^N S_i \log_2 S_i
+
+where :math:`N` is the number of FSRs. FSRs with no fission source (or,
+occassionally, negative fission source, :ref:`due to the volume estimator
+problem <methods-volume-dilemma>`) are skipped to avoid taking an undefined
+logarithm in :eq:`shannon-entropy-random-ray`.
 
 .. _usersguide_fixed_source_methods:
 

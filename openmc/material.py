@@ -277,7 +277,7 @@ class Material(IDManagerMixin):
     def decay_photon_energy(self) -> Optional[Univariate]:
         warnings.warn(
             "The 'decay_photon_energy' property has been replaced by the "
-            "get_decay_photon_energy() method and will be removed in a future "
+            "get_decay_energy_distribution() method and will be removed in a future "
             "version.", FutureWarning)
         return self.get_decay_photon_energy(0.0)
 
@@ -287,12 +287,33 @@ class Material(IDManagerMixin):
             units: str = 'Bq',
             volume: Optional[float] = None
         ) -> Optional[Univariate]:
-        r"""Return energy distribution of decay photons from unstable nuclides.
+        warnings.warn(
+            "The 'get_decay_photon_energy' property has been replaced by the "
+            "get_decay_energy_distribution() method and will be removed in a future "
+            "version.", FutureWarning)
+        return self.get_decay_energy_distribution(
+            radiation_type = 'photon', # FIND DICTIONARY ENTRIES
+            clip_tolerance = clip_tolerance,
+            units = units,
+            volume = volume
+        )
+
+    def get_decay_energy_distribution(
+            self,
+            radiation_type: str = 'photon', # FIND DICTIONARY ENTRIES
+            clip_tolerance: float = 1e-6,
+            units: str = 'Bq',
+            volume: Optional[float] = None
+        ) -> Optional[Univariate]:
+        r"""Return energy distribution of decay from unstable nuclides.
 
         .. versionadded:: 0.14.0
 
         Parameters
         ----------
+        radiation_type: str
+            Radiation type emitted by decay of interest. If not passed, 
+            defaults to 'photon'.
         clip_tolerance : float
             Maximum fraction of :math:`\sum_i x_i p_i` for discrete
             distributions that will be discarded.
@@ -321,7 +342,7 @@ class Material(IDManagerMixin):
         dists = []
         probs = []
         for nuc, atoms_per_bcm in self.get_nuclide_atom_densities().items():
-            source_per_atom = openmc.data.decay_photon_energy(nuc)
+            source_per_atom = openmc.data.decay_energy_distribution(nuc, radiation_type)
             if source_per_atom is not None:
                 dists.append(source_per_atom)
                 probs.append(1e24 * atoms_per_bcm * multiplier)

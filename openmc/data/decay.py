@@ -47,6 +47,10 @@ _RADIATION_TYPES = {
     11: 'neutrino'
 }
 
+_DECAY_ENERGY_DISTRIBUTION = {}
+
+_DECAY_ENERGY = {}
+
 
 def get_decay_modes(value):
     """Return sequence of decay modes given an ENDF RTYP value.
@@ -576,10 +580,7 @@ class Decay(EqualityMixin):
         return self._sources
 
 
-_DECAY_PHOTON_ENERGY = {}
-
-
-def decay_photon_energy(nuclide: str) -> Optional[Univariate]:
+def decay_energy_distribution(nuclide: str, radiation_type: str = 'photon') -> Optional[Univariate]:
     """Get photon energy distribution resulting from the decay of a nuclide
 
     This function relies on data stored in a depletion chain. Before calling it
@@ -600,7 +601,7 @@ def decay_photon_energy(nuclide: str) -> Optional[Univariate]:
         if no photon source exists. Note that the probabilities represent
         intensities, given as [Bq].
     """
-    if not _DECAY_PHOTON_ENERGY:
+    if not _DECAY_ENERGY_SPECTRUM:
         chain_file = openmc.config.get('chain_file')
         if chain_file is None:
             raise DataError(
@@ -612,17 +613,15 @@ def decay_photon_energy(nuclide: str) -> Optional[Univariate]:
         chain = Chain.from_xml(chain_file)
         for nuc in chain.nuclides:
             if 'photon' in nuc.sources:
-                _DECAY_PHOTON_ENERGY[nuc.name] = nuc.sources['photon']
+                _DECAY_ENERGY_SPECTRUM[nuc.name] = nuc.sources[radiation_type]
 
         # If the chain file contained no sources at all, warn the user
-        if not _DECAY_PHOTON_ENERGY:
-            warn(f"Chain file '{chain_file}' does not have any decay photon "
-                 "sources listed.")
+        if not _DECAY_ENERGY_SPECTRUM:
+            warn(f"Chain file '{chain_file}' does not have any decay "
+                + radiation_type 
+                + " sources listed.")
 
-    return _DECAY_PHOTON_ENERGY.get(nuclide)
-
-
-_DECAY_ENERGY = {}
+    return _DECAY_ENERGY_SPECTRUM.get(nuclide)
 
 
 def decay_energy(nuclide: str):

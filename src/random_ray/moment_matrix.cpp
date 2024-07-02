@@ -28,6 +28,9 @@ MomentMatrix MomentMatrix::inverse() const
   // Check if the determinant is zero
   double det = determinant();
   if (det < std::abs(1.0e-10)) {
+    // Set the inverse to zero. In effect, this will
+    // result in all the linear terms of the source becoming
+    // zero, leaving just the flat source. 
     inv.set_to_zero();
     return inv;
   }

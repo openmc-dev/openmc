@@ -29,7 +29,7 @@ LinearSourceDomain::LinearSourceDomain() : FlatSourceDomain()
   flux_moments_t_.assign(n_source_elements_, {0.0, 0.0, 0.0});
   source_moments_.assign(n_source_elements_, {0.0, 0.0, 0.0});
 
-  centroid_.assign(n_source_regions_, {nan(""), nan(""), nan("")});
+  centroid_.assign(n_source_regions_, {0.0, 0.0, 0.0});
   centroid_t_.assign(n_source_regions_, {0.0, 0.0, 0.0});
   mom_matrix_.assign(n_source_regions_, {0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   mom_matrix_t_.assign(n_source_regions_, {0.0, 0.0, 0.0, 0.0, 0.0, 0.0});

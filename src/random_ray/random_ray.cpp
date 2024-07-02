@@ -453,9 +453,10 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
   // source region bookkeeping
   if (is_active) {
     // Compute an estimate of the spatial moments matrix for the source
-    // region based on this ray's crossing.
-    MomentMatrix mat_score;
-    mat_score.compute_spatial_moments_matrix(rm_local, u(), distance);
+    // region based on parameters from this ray's crossing
+    MomentMatrix moment_matrix_estimate;
+    moment_matrix_estimate.compute_spatial_moments_matrix(
+      rm_local, u(), distance);
 
     // Aquire lock for source region
     domain_->lock_[source_region].lock();
@@ -473,8 +474,8 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
     // the ray segment length as part of length averaging of the estimates.
     domain_->volume_[source_region] += distance;
     domain->centroid_t_[source_region] += midpoint * distance;
-    mat_score *= distance;
-    domain->mom_matrix_t_[source_region] += mat_score;
+    moment_matrix_estimate *= distance;
+    domain->mom_matrix_t_[source_region] += moment_matrix_estimate;
 
     // If the source region hasn't been hit yet this iteration,
     // indicate that it now has

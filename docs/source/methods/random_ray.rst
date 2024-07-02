@@ -873,8 +873,8 @@ computed by using the midpoint of the ray as an estimate of the centroid, and
 the distance and direction of the ray can be used to inform the other spatial
 moments within the matrix. As this information is purely geometric, the
 stochastic estimate of the centroid and spatial moments matrix can be
-accumulated and improved over the entire duration of the simulation, approaching
-their true quantities. 
+accumulated and improved over the entire duration of the simulation, converging
+towards their true quantities. 
 
 With an estimate of the spatial moments matrix :math:`M_i` resulting from the
 ray tracing process naturally, the LS source vector

@@ -447,16 +447,33 @@ in the `OpenMC Jupyter notebook collection
     separate materials can be defined each with a separate multigroup dataset
     corresponding to a given temperature.
 
----------------
+--------------
 Linear Sources
----------------
-Linear Sources (LS), are supported with the eigenvalue and fixed source random ray solvers. 
-LS can be toggled on with::
+--------------
+
+Linear Sources (LS), are supported with the eigenvalue and fixed source random
+ray solvers. General 3D LS can be toggled by setting the ``source_shape`` field
+in the :attr:`openmc.Settings.random_ray` dictionary to ``'linear'`` as::
 
     settings.random_ray['source_shape'] = 'linear' 
 
-LS enables the use of coarser discretisations and lower ray populations, offsetting
-the increased computation per ray.
+LS enables the use of coarser mesh discretisations and lower ray populations,
+offsetting the increased computation per ray.
+
+While OpenMC has no specific mode for 2D simulations, such simulations can be
+performed implicitly by leaving one of the dimensions of the geometry unbounded
+or by imposing reflective boundary conditions with no variation in between them
+in that dimension. When 3D linear sources are used in a 2D random ray
+simulation, the extremely long (or potentially infinite) spatial dimension along
+one of the axes can cause the linear source to become noisy, leading to
+potentially large increases in variance. To mitigate this, the user can force
+the z-terms of the linear source to zero by setting the ``source_shape`` field
+as::
+
+    settings.random_ray['source_shape'] = 'linear_xy'
+
+which will greatly improve the quality of the linear source term in 2D
+simulations.
 
 ---------------------------------
 Fixed Source and Eigenvalue Modes

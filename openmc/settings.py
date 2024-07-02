@@ -160,6 +160,12 @@ class Settings:
         :source_shape:
             Assumed shape of the source distribution within each source
             region. Options are 'flat' (default), 'linear', or 'linear_xy'.
+        :volume_normalized_flux_tallies:
+            Whether to normalize flux tallies by volume (bool). The default
+            is 'False'. When enabled, flux tallies will be reported in units of
+            cm/cm^3. When disabled, flux tallies will be reported in units
+            of cm (i.e., total distance traveled by neutrons in the spatial
+            tally region).
 
         .. versionadded:: 0.15.0
     resonance_scattering : dict
@@ -1090,6 +1096,8 @@ class Settings:
             elif key == 'source_shape':
                 cv.check_value('source shape', random_ray[key],
                                ('flat', 'linear', 'linear_xy'))
+            elif key == 'volume_normalized_flux_tallies':
+                cv.check_type('volume normalized flux tallies', random_ray[key], bool)
             else:
                 raise ValueError(f'Unable to set random ray to "{key}" which is '
                                  'unsupported by OpenMC')
@@ -1884,10 +1892,11 @@ class Settings:
                     source = SourceBase.from_xml_element(child)
                     self.random_ray['ray_source'] = source
                 elif child.tag == 'source_shape':
-                    source = SourceBase.from_xml_element(child)
-                    self.random_ray['ray_source'] = source
-                elif child.tag == 'source_shape':
                     self.random_ray['source_shape'] = child.text
+                elif child.tag == 'volume_normalized_flux_tallies':
+                    self.random_ray['volume_normalized_flux_tallies'] = (
+                        child.text in ('true', '1')
+                    )
 
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.

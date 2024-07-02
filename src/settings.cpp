@@ -282,6 +282,10 @@ void get_run_parameters(pugi::xml_node node_base)
         fatal_error("Unrecognized source shape: " + temp_str);
       }
     }
+    if (check_for_node(random_ray_node, "volume_normalized_flux_tallies")) {
+      FlatSourceDomain::volume_normalized_flux_tallies_ =
+        get_node_value_bool(random_ray_node, "volume_normalized_flux_tallies");
+    }
   }
 }
 
@@ -640,30 +644,37 @@ void read_settings_xml(pugi::xml_node root)
     }
   }
 
-  // Shannon Entropy mesh
-  if (check_for_node(root, "entropy_mesh")) {
-    int temp = std::stoi(get_node_value(root, "entropy_mesh"));
-    if (model::mesh_map.find(temp) == model::mesh_map.end()) {
-      fatal_error(fmt::format(
-        "Mesh {} specified for Shannon entropy does not exist.", temp));
+  // Shannon entropy
+  if (solver_type == SolverType::RANDOM_RAY) {
+    if (check_for_node(root, "entropy_mesh")) {
+      fatal_error("Random ray uses FSRs to compute the Shannon entropy. "
+                  "No user-defined entropy mesh is supported.");
     }
-
-    auto* m =
-      dynamic_cast<RegularMesh*>(model::meshes[model::mesh_map.at(temp)].get());
-    if (!m)
-      fatal_error("Only regular meshes can be used as an entropy mesh");
-    simulation::entropy_mesh = m;
-
-    // Turn on Shannon entropy calculation
     entropy_on = true;
+  } else if (solver_type == SolverType::MONTE_CARLO) {
+    if (check_for_node(root, "entropy_mesh")) {
+      int temp = std::stoi(get_node_value(root, "entropy_mesh"));
+      if (model::mesh_map.find(temp) == model::mesh_map.end()) {
+        fatal_error(fmt::format(
+          "Mesh {} specified for Shannon entropy does not exist.", temp));
+      }
 
-  } else if (check_for_node(root, "entropy")) {
-    fatal_error(
-      "Specifying a Shannon entropy mesh via the <entropy> element "
-      "is deprecated. Please create a mesh using <mesh> and then reference "
-      "it by specifying its ID in an <entropy_mesh> element.");
+      auto* m = dynamic_cast<RegularMesh*>(
+        model::meshes[model::mesh_map.at(temp)].get());
+      if (!m)
+        fatal_error("Only regular meshes can be used as an entropy mesh");
+      simulation::entropy_mesh = m;
+
+      // Turn on Shannon entropy calculation
+      entropy_on = true;
+
+    } else if (check_for_node(root, "entropy")) {
+      fatal_error(
+        "Specifying a Shannon entropy mesh via the <entropy> element "
+        "is deprecated. Please create a mesh using <mesh> and then reference "
+        "it by specifying its ID in an <entropy_mesh> element.");
+    }
   }
-
   // Uniform fission source weighting mesh
   if (check_for_node(root, "ufs_mesh")) {
     auto temp = std::stoi(get_node_value(root, "ufs_mesh"));

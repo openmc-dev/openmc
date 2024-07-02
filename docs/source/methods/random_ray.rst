@@ -10,7 +10,7 @@ Random Ray
 What is Random Ray?
 -------------------
 
-`Random ray <Tramm-2017a>`_ is a stochastic transport method, closely related to
+`Random ray <Tramm-2017a_>`_ is a stochastic transport method, closely related to
 the deterministic Method of Characteristics (MOC) [Askew-1972]_. Rather than
 each ray representing a single neutron as in Monte Carlo, it represents a
 characteristic line through the simulation geometry upon which the transport
@@ -82,7 +82,7 @@ Random Ray Numerical Derivation
 
 In this section, we will derive the numerical basis for the random ray solver
 mode in OpenMC. The derivation of random ray is also discussed in several papers
-(`1 <Tramm-2017a>`_, `2 <Tramm-2017b>`_, `3 <Tramm-2018>`_), and some of those
+(`1 <Tramm-2017a_>`_, `2 <Tramm-2017b_>`_, `3 <Tramm-2018_>`_), and some of those
 derivations are reproduced here verbatim. Several extensions are also made to
 add clarity, particularly on the topic of OpenMC's treatment of cell volumes in
 the random ray solver.
@@ -410,6 +410,8 @@ which when partially simplified becomes:
 
 Note that there are now four (seemingly identical) volume terms in this equation.
 
+.. _methods-volume-dilemma:
+
 ~~~~~~~~~~~~~~
 Volume Dilemma
 ~~~~~~~~~~~~~~
@@ -425,7 +427,7 @@ of terms. Mathematically, such cancellation allows us to arrive at the following
 
 This derivation appears mathematically sound at first glance but unfortunately
 raises a serious issue as discussed in more depth by `Tramm et al.
-<Tramm-2020>`_ and `Cosgrove and Tramm <Cosgrove-2023>`_. Namely, the second
+<Tramm-2020_>`_ and `Cosgrove and Tramm <Cosgrove-2023_>`_. Namely, the second
 term:
 
 .. math::
@@ -604,7 +606,7 @@ guess can be made by taking the isotropic source from the FSR the ray was
 sampled in, direct usage of this quantity would result in significant bias and
 error being imparted on the simulation.
 
-Thus, an `on-the-fly approximation method <Tramm-2017a>`_ was developed (known
+Thus, an `on-the-fly approximation method <Tramm-2017a_>`_ was developed (known
 as the "dead zone"), where the first several mean free paths of a ray are
 considered to be "inactive" or "read only". In this sense, the angular flux is
 solved for using the MOC equation, but the ray does not "tally" any scalar flux
@@ -737,6 +739,8 @@ scalar flux value for the FSR).
         global::volume[fsr] += s;
     }
 
+.. _methods_random_tallies:
+
 ------------------------
 How are Tallies Handled?
 ------------------------
@@ -744,6 +748,7 @@ How are Tallies Handled?
 Most tallies, filters, and scores that you would expect to work with a
 multigroup solver like random ray should work. For example, you can define 3D
 mesh tallies with energy filters and flux, fission, and nu-fission scores, etc.
+
 There are some restrictions though. For starters, it is assumed that all filter
 mesh boundaries will conform to physical surface boundaries (or lattice
 boundaries) in the simulation geometry. It is acceptable for multiple cells
@@ -753,19 +758,24 @@ behavior if a single simulation cell is able to score to multiple filter mesh
 cells. In the future, the capability to fully support mesh tallies may be added
 to OpenMC, but for now this restriction needs to be respected.
 
----------------
+--------------
 Linear Sources
----------------
-Instead of making a flat source approximation, as in the previous section, a Linear Source (LS) approximation can be used. Different LS approximations 
-have been developed, the OpenMC implementation follows the MOC LS scheme described by `Ferrer <Ferrer-2016>`_. The LS source along a characterstic is given by:
+--------------
+
+Instead of making a flat source approximation, as in the previous section, a
+Linear Source (LS) approximation can be used. Different LS approximations have
+been developed, the OpenMC implementation follows the MOC LS scheme described by
+`Ferrer <Ferrer-2016>`_. The LS source along a characterstic is given by:
 
 .. math::
     :label: linear_source
 
     Q_{i,g}(s) = \bar{Q}_{r,i,g} + \hat{Q}_{r,i,g}(s-\ell_{r}/2),
 
-where the source, :math:`Q_{i,g}(s)`, varies linearly along the track and :math:`\bar{Q}_{r,i,g}` and :math:`\hat{Q}_{r,i,g}` are track specific source terms to define shortly.
-Integrating the source, as done in Equation :eq:`moc_final`, leads to 
+where the source, :math:`Q_{i,g}(s)`, varies linearly along the track and
+:math:`\bar{Q}_{r,i,g}` and :math:`\hat{Q}_{r,i,g}` are track specific source
+terms to define shortly. Integrating the source, as done in Equation
+:eq:`moc_final`, leads to 
 
 .. math::
     :label: lsr_attenuation
@@ -773,7 +783,8 @@ Integrating the source, as done in Equation :eq:`moc_final`, leads to
     \psi^{out}_{r,g}=\psi^{in}_{r,g} + \left(\frac{\bar{Q}_{r, i, g}}{\Sigma_{\mathrm{t}, i, g}}-\psi^{in}_{r,g}\right) 
     F_{1}\left(\tau_{i,g}\right)+\frac{\hat{Q}_{r, i, g}^{g}}{2\left(\Sigma_{\mathrm{t}, i,g}\right)^{2}} F_{2}\left(\tau_{i,g}\right),
 
-where for simplicity the term :math:`\tau_{i,g}` and the expoentials :math:`F1` and :math:`F2` are introduced, given by:
+where for simplicity the term :math:`\tau_{i,g}` and the expoentials :math:`F1`
+and :math:`F2` are introduced, given by:
 
 .. math::
     :label: tau
@@ -793,17 +804,20 @@ and
     F_{2}\left(\tau\right) = 2\left[\tau-F_{1}\left(\tau\right)\right]-\tau F_{1}\left(\tau\right).
 
 
-To solve for the track specific source terms in Equation :eq:`linear_source` we first define a local reference frame. If we now refer to :math:`\mathbf{r}` 
-as the global coordinate and introduce the source region specific coordinate :math:`\mathbf{u}` such that,
+To solve for the track specific source terms in Equation :eq:`linear_source` we
+first define a local reference frame. If we now refer to :math:`\mathbf{r}` as
+the global coordinate and introduce the source region specific coordinate
+:math:`\mathbf{u}` such that,
 
 .. math::
     :label: local_coord
 
     \mathbf{u}_{r} = \mathbf{r}-\mathbf{r}_{\mathrm{c}},
 
-where :math:`\mathbf{r}_{\mathrm{c}}` is the centroid of the source region of interest. In turn 
-:math:`\mathbf{u}_{r,\mathrm{c}}` and :math:`\mathbf{u}_{r,0}` are the local centroid and entry positions of a ray.
-The computation of the local and global centroids are described further by `Gunow <Gunow-2018>`_.
+where :math:`\mathbf{r}_{\mathrm{c}}` is the centroid of the source region of
+interest. In turn :math:`\mathbf{u}_{r,\mathrm{c}}` and :math:`\mathbf{u}_{r,0}`
+are the local centroid and entry positions of a ray. The computation of the
+local and global centroids are described further by `Gunow <Gunow-2018>`_.
 
 Using the local position, the source in a source region is given by:
 
@@ -824,19 +838,21 @@ This definition allows us to solve for our characteric source terms resulting in
 
     \hat{Q}_{r, i, g} = \left[\boldsymbol{\Omega} \cdot \boldsymbol{\vec{Q}}_{i,g}\right]\;\mathrm{,}
     
-:math:`\boldsymbol{\Omega}` being the direction vector of the ray.
-The next step is to solve for the LS source vector :math:`\boldsymbol{\vec{Q}}_{i,g}`.
-A relationship between the LS source vector and the source moments, :math:`\boldsymbol{\vec{q}}_{i,g}`
-can be derived, `4 <Ferrer-2016>`_, `5 <Gunow-2018>`_:
+:math:`\boldsymbol{\Omega}` being the direction vector of the ray. The next step
+is to solve for the LS source vector :math:`\boldsymbol{\vec{Q}}_{i,g}`. A
+relationship between the LS source vector and the source moments,
+:math:`\boldsymbol{\vec{q}}_{i,g}` can be derived, `4 <Ferrer-2016>`_, `5
+<Gunow-2018>`_:
 
 .. math::
     :label: m_equation
 
     \boldsymbol{\vec{q}}_{i,g} = \mathbf{M}_{i} \boldsymbol{\vec{Q}}_{i,g}\;\mathrm{.} 
 
-The LS source vector can be solved for by the inversion of the M matrix, a geometrical quantity specific to the particular 
-`source region <Gunow-2018>`_, provided that the source moments can be calculated. Fortunately, the source moments are also defined by the definiton
-of the source: 
+The LS source vector can be solved for by the inversion of the M matrix, a
+geometrical quantity specific to the particular `source region <Gunow-2018>`_,
+provided that the source moments can be calculated. Fortunately, the source
+moments are also defined by the definiton of the source: 
 
 .. math::
     :label: source_moments
@@ -852,9 +868,10 @@ of the source:
 
     q^{n}(v,i) = \frac{\chi}{k^{n-1}_{eff}} \nu \Sigma_f(i, g) \hat{\phi}^{n-1}_{v, i}(g) + \sum\limits^{G}_{g\prime} \Sigma_{s}({i,g,g^{\prime}}) \hat{\phi}^{n-1}_{v, i}({g^{\prime}})
 
-where we have introduced the scalar flux moments :math:`\hat{\phi}`.
-The scalar flux moments can be solved for by taking the `integral definition <Gunow-2018>`_ of a spatial moment, allowing us 
-to derive a "simulation averaged" estimator for the scalar moment, as in Equation :eq:`phi_sim`, 
+where we have introduced the scalar flux moments :math:`\hat{\phi}`. The scalar
+flux moments can be solved for by taking the `integral definition <Gunow-2018>`_
+of a spatial moment, allowing us to derive a "simulation averaged" estimator for
+the scalar moment, as in Equation :eq:`phi_sim`, 
 
 .. math::
     :label: scalar_moments_sim
@@ -865,8 +882,8 @@ to derive a "simulation averaged" estimator for the scalar moment, as in Equatio
     \quad \forall v \in(x, y, z)\;\mathrm{,} 
 
 
-where the average angular flux is given by Equation :eq:`average_psi_final`, 
-and the angular flux spatial moments :math:`\hat{\psi}_{r,i,g}` by:
+where the average angular flux is given by Equation :eq:`average_psi_final`, and
+the angular flux spatial moments :math:`\hat{\psi}_{r,i,g}` by:
 
 .. math::
     :label: angular_moments
@@ -890,8 +907,54 @@ The new exponentials introduced, again for simplicity, are simply:
 
     G_{2}(\tau) = \frac{2}{3} \tau-\left(1+\frac{2}{\tau}\right) G_{1}(\tau)
 
-The contents of this section, alongside the equations for the flat source and scalar flux, Equations :eq:`source_update` and :eq:`phi_sim` respectively, 
+The contents of this section, alongside the equations for the flat source and
+scalar flux, Equations :eq:`source_update` and :eq:`phi_sim` respectively,
 completes the set of equations for LS. 
+
+Flux tallies are handled slightly differently than in Monte Carlo. By default,
+in MC, flux tallies are reported in units of tracklength (cm), so must be
+manually normalized by volume by the user to produce an estimate of flux in
+units of cm\ :sup:`-2`\. Alternatively, MC flux tallies can be normalized via a
+separated volume calculation process as discussed in the :ref:`Volume
+Calculation Section<usersguide_volume>`. In random ray, as the volumes are
+computed on-the-fly as part of the transport process, the flux tallies can
+easily be reported either in units of flux (cm\ :sup:`-2`\) or tracklength (cm).
+By default, the unnormalized flux values (units of cm) will be reported. If the
+user wishes to received volume normalized flux tallies, then an option for this
+is available, as described in the :ref:`User Guide<usersguide_flux_norm>`.
+
+.. _methods-shannon-entropy-random-ray:
+
+-----------------------------
+Shannon Entropy in Random Ray
+-----------------------------
+
+As :math:`k_{eff}` is updated at each generation, the fission source at each FSR
+is used to compute the Shannon entropy. This follows the :ref:`same procedure
+for computing Shannon entropy in continuous-energy or multigroup Monte Carlo
+simulations <methods-shannon-entropy>`, except that fission sources at FSRs are
+considered, rather than fission sites of user-defined regular meshes. Thus, the
+volume-weighted fission rate is considered instead, and the fraction of fission
+sources is adjusted such that:
+
+.. math::
+    :label: fraction-source-random-ray
+
+    S_i = \frac{\text{Fission source in FSR $i \times$ Volume of FSR
+    $i$}}{\text{Total fission source}} = \frac{Q_{i} V_{i}}{\sum_{i=1}^{i=N} 
+    Q_{i} V_{i}}
+
+The Shannon entropy is then computed normally as
+
+.. math::
+    :label: shannon-entropy-random-ray
+
+    H = - \sum_{i=1}^N S_i \log_2 S_i
+
+where :math:`N` is the number of FSRs. FSRs with no fission source (or,
+occassionally, negative fission source, :ref:`due to the volume estimator
+problem <methods-volume-dilemma>`) are skipped to avoid taking an undefined
+logarithm in :eq:`shannon-entropy-random-ray`.
 
 .. _usersguide_fixed_source_methods:
 

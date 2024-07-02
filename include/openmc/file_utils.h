@@ -5,7 +5,10 @@
 
 namespace openmc {
 
-// TODO: replace with std::filesystem when switch to C++17 is made
+// NOTE: This is a thin wrapper over std::filesystem because we
+// pass strings around a lot. Objects like settings::path_input
+// are extern std::string to play with other libraries and languages
+
 //! Determine if a path is a directory
 //! \param[in] path Path to check
 //! \return Whether the path is a directory
@@ -18,7 +21,8 @@ bool file_exists(const std::string& filename);
 
 //! Determine directory containing given file
 //! \param[in] filename Path to file
-//! \return Name of directory containing file
+//! \return Name of directory containing file excluding the final directory
+//! separator
 std::string dir_name(const std::string& filename);
 
 // Gets the file extension of whatever string is passed in. This is defined as

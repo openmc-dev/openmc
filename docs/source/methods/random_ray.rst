@@ -859,15 +859,32 @@ relationship between the LS source vector and the source moments,
 .. math::
     :label: m_equation
 
-     \mathbf{M}_{i} \boldsymbol{\vec{Q}}_{i,g}\;\mathrm{.} = \boldsymbol{\vec{q}}_{i,g}
+     \mathbf{M}_{i} \boldsymbol{\vec{Q}}_{i,g}\;\mathrm{.} = \boldsymbol{\vec{q}}_{i,g} .
 
-The LS source vector :math:`\boldsymbol{\vec{Q}}_{i,g}` can be obtained via a
-linear solve of :eq:`m_equation`, or by the direct inversion of the spatial
-momemnts matrix :math:`M_i`, a :math:`3\times3` symmetric matrix that is defined
-by purely geometrical aspects specific to the particular `source region
-<Gunow-2018_>`_ :math:`i`. However, to accomplish this, we must first know the
-source moments :math:`\boldsymbol{\vec{q}}_{i,g}`. Fortunately, the source
-moments are also defined by the definiton of the source: 
+The spatial moments matrix :math:`M_i` in region :math:`i` represents the
+spatial distribution of the 3D object composing the source region. This matrix
+is independent of the material of the source region, fluxes, and any transport
+effects -- it is a purely geometric quantity. It is a symmetric :math:`3\times3`
+matrix. While :math:`M_i` is not known apriori to the simulation, similar to the
+source region volume, it can be computed "on-the-fly" as a byproduct of the
+random ray integration process. Each time a ray randomly crosses the region
+within its active length, an estimate of the spatial moments matrix can be
+computed by using the midpoint of the ray as an estimate of the centroid, and
+the distance and direction of the ray can be used to inform the other spatial
+moments within the matrix. As this information is purely geometric, the
+stochastic estimate of the centroid and spatial moments matrix can be
+accumulated and improved over the entire duration of the simulation, approaching
+their true quantities. 
+
+With an estimate of the spatial moments matrix :math:`M_i` resulting from the
+ray tracing process naturally, the LS source vector
+:math:`\boldsymbol{\vec{Q}}_{i,g}` can be obtained via a linear solve of
+:eq:`m_equation`, or by the direct inversion of the spatial momemnts matrix
+:math:`M_i`, a :math:`3\times3` symmetric matrix that is defined by purely
+geometrical aspects specific to the particular `source region <Gunow-2018_>`_
+:math:`i`. However, to accomplish this, we must first know the source moments
+:math:`\boldsymbol{\vec{q}}_{i,g}`. Fortunately, the source moments are also
+defined by the definiton of the source: 
 
 .. math::
     :label: source_moments

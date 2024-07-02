@@ -758,6 +758,18 @@ behavior if a single simulation cell is able to score to multiple filter mesh
 cells. In the future, the capability to fully support mesh tallies may be added
 to OpenMC, but for now this restriction needs to be respected.
 
+Flux tallies are handled slightly differently than in Monte Carlo. By default,
+in MC, flux tallies are reported in units of tracklength (cm), so must be
+manually normalized by volume by the user to produce an estimate of flux in
+units of cm\ :sup:`-2`\. Alternatively, MC flux tallies can be normalized via a
+separated volume calculation process as discussed in the :ref:`Volume
+Calculation Section<usersguide_volume>`. In random ray, as the volumes are
+computed on-the-fly as part of the transport process, the flux tallies can
+easily be reported either in units of flux (cm\ :sup:`-2`\) or tracklength (cm).
+By default, the unnormalized flux values (units of cm) will be reported. If the
+user wishes to received volume normalized flux tallies, then an option for this
+is available, as described in the :ref:`User Guide<usersguide_flux_norm>`.
+
 --------------
 Linear Sources
 --------------
@@ -765,7 +777,7 @@ Linear Sources
 Instead of making a flat source approximation, as in the previous section, a
 Linear Source (LS) approximation can be used. Different LS approximations have
 been developed, the OpenMC implementation follows the MOC LS scheme described by
-`Ferrer <Ferrer-2016>`_. The LS source along a characterstic is given by:
+`Ferrer <Ferrer-2016_>`_. The LS source along a characterstic is given by:
 
 .. math::
     :label: linear_source
@@ -817,7 +829,7 @@ the global coordinate and introduce the source region specific coordinate
 where :math:`\mathbf{r}_{\mathrm{c}}` is the centroid of the source region of
 interest. In turn :math:`\mathbf{u}_{r,\mathrm{c}}` and :math:`\mathbf{u}_{r,0}`
 are the local centroid and entry positions of a ray. The computation of the
-local and global centroids are described further by `Gunow <Gunow-2018>`_.
+local and global centroids are described further by `Gunow <Gunow-2018_>`_.
 
 Using the local position, the source in a source region is given by:
 
@@ -841,17 +853,20 @@ This definition allows us to solve for our characteric source terms resulting in
 :math:`\boldsymbol{\Omega}` being the direction vector of the ray. The next step
 is to solve for the LS source vector :math:`\boldsymbol{\vec{Q}}_{i,g}`. A
 relationship between the LS source vector and the source moments,
-:math:`\boldsymbol{\vec{q}}_{i,g}` can be derived, `4 <Ferrer-2016>`_, `5
-<Gunow-2018>`_:
+:math:`\boldsymbol{\vec{q}}_{i,g}` can be derived, as in `Ferrer
+<Ferrer-2016_>`_ and `Gunow <Gunow-2018_>`_:
 
 .. math::
     :label: m_equation
 
-    \boldsymbol{\vec{q}}_{i,g} = \mathbf{M}_{i} \boldsymbol{\vec{Q}}_{i,g}\;\mathrm{.} 
+     \mathbf{M}_{i} \boldsymbol{\vec{Q}}_{i,g}\;\mathrm{.} = \boldsymbol{\vec{q}}_{i,g}
 
-The LS source vector can be solved for by the inversion of the M matrix, a
-geometrical quantity specific to the particular `source region <Gunow-2018>`_,
-provided that the source moments can be calculated. Fortunately, the source
+The LS source vector :math:`\boldsymbol{\vec{Q}}_{i,g}` can be obtained via a
+linear solve of :eq:`m_equation`, or by the direct inversion of the spatial
+momemnts matrix :math:`M_i`, a :math:`3\times3` symmetric matrix that is defined
+by purely geometrical aspects specific to the particular `source region
+<Gunow-2018_>`_ :math:`i`. However, to accomplish this, we must first know the
+source moments :math:`\boldsymbol{\vec{q}}_{i,g}`. Fortunately, the source
 moments are also defined by the definiton of the source: 
 
 .. math::
@@ -861,17 +876,11 @@ moments are also defined by the definiton of the source:
     \Sigma_{\mathrm{f},i, g^{\prime}} \hat{\phi}_{v, i, g^{\prime}} + \sum_{g^{\prime}=1}^{G} 
     \Sigma_{\mathrm{s}, i, g^{\prime}\rightarrow g} \hat{\phi}_{v, i, g^{\prime}}\quad \forall v \in(x, y, z)\;\mathrm{,} 
 
-(John:Alternatively the below can be used with some edits---- )
-
-.. math::
-    :label: source_moments_update
-
-    q^{n}(v,i) = \frac{\chi}{k^{n-1}_{eff}} \nu \Sigma_f(i, g) \hat{\phi}^{n-1}_{v, i}(g) + \sum\limits^{G}_{g\prime} \Sigma_{s}({i,g,g^{\prime}}) \hat{\phi}^{n-1}_{v, i}({g^{\prime}})
-
-where we have introduced the scalar flux moments :math:`\hat{\phi}`. The scalar
-flux moments can be solved for by taking the `integral definition <Gunow-2018>`_
-of a spatial moment, allowing us to derive a "simulation averaged" estimator for
-the scalar moment, as in Equation :eq:`phi_sim`, 
+where :math:`v` indicates the direction vector component, and we have introduced
+the scalar flux moments :math:`\hat{\phi}`. The scalar flux moments can be
+solved for by taking the `integral definition <Gunow-2018_>`_ of a spatial
+moment, allowing us to derive a "simulation averaged" estimator for the scalar
+moment, as in Equation :eq:`phi_sim`, 
 
 .. math::
     :label: scalar_moments_sim
@@ -896,7 +905,6 @@ the angular flux spatial moments :math:`\hat{\psi}_{r,i,g}` by:
 
 The new exponentials introduced, again for simplicity, are simply:
 
-
 .. math::
     :label: G1
 
@@ -910,18 +918,6 @@ The new exponentials introduced, again for simplicity, are simply:
 The contents of this section, alongside the equations for the flat source and
 scalar flux, Equations :eq:`source_update` and :eq:`phi_sim` respectively,
 completes the set of equations for LS. 
-
-Flux tallies are handled slightly differently than in Monte Carlo. By default,
-in MC, flux tallies are reported in units of tracklength (cm), so must be
-manually normalized by volume by the user to produce an estimate of flux in
-units of cm\ :sup:`-2`\. Alternatively, MC flux tallies can be normalized via a
-separated volume calculation process as discussed in the :ref:`Volume
-Calculation Section<usersguide_volume>`. In random ray, as the volumes are
-computed on-the-fly as part of the transport process, the flux tallies can
-easily be reported either in units of flux (cm\ :sup:`-2`\) or tracklength (cm).
-By default, the unnormalized flux values (units of cm) will be reported. If the
-user wishes to received volume normalized flux tallies, then an option for this
-is available, as described in the :ref:`User Guide<usersguide_flux_norm>`.
 
 .. _methods-shannon-entropy-random-ray:
 

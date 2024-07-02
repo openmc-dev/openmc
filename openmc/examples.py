@@ -659,13 +659,13 @@ def random_ray_lattice():
     """Create a 2x2 PWR pincell asymmetrical lattic eexample.
 
     This model is a 2x2 reflective lattice of fuel pins with one of the lattice
-    locations have just moderator instead of a fuel pin. It uses 7 group
-    cross section data
+    locations having just moderator instead of a fuel pin. It uses 7 group
+    cross section data.
 
     Returns
     -------
     model : openmc.model.Model
-        A PWR pin-cell model
+        A PWR 2x2 lattice model
 
     """
     model = openmc.model.Model()

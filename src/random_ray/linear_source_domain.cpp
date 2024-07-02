@@ -188,7 +188,7 @@ int64_t LinearSourceDomain::add_source_to_scalar_flux()
         // any iteration (i.e., volume is zero), then we want to set this to 0
         // to avoid dividing anything by a zero volume.
         scalar_flux_new_[idx] = 0.0f;
-        flux_moments_new_[idx] *= 0.0f;
+        flux_moments_new_[idx] *= 0.0;
       }
     }
   }
@@ -222,8 +222,10 @@ double LinearSourceDomain::evaluate_flux_at_point(
   Position local_r = r - centroid_[sr];
   MomentArray phi_linear = flux_moments_t_[sr * negroups_ + g];
   phi_linear *= 1.0 / (settings::n_batches - settings::n_inactive);
-  MomentArray phi_solved = mom_matrix_[sr].solve(phi_linear);
 
+  MomentMatrix invM = mom_matrix_[sr].inverse();
+  MomentArray phi_solved = invM * phi_linear;
+  
   return phi_flat + phi_solved.dot(local_r);
 }
 

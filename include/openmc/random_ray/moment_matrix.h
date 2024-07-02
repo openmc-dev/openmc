@@ -44,7 +44,10 @@ public:
   // Methods
   MomentMatrix inverse() const;
   double determinant() const;
-  void set_to_zero() { a = b = c = d = e = f = 0; }
+  void compute_spatial_moments_matrix(
+    const Position& r, const Direction& u, const double& distance);
+
+  inline void set_to_zero() { a = b = c = d = e = f = 0; }
 
   inline MomentMatrix& operator*=(double x)
   {
@@ -80,11 +83,6 @@ public:
     return {a * rhs.x + b * rhs.y + c * rhs.z,
       b * rhs.x + d * rhs.y + e * rhs.z, c * rhs.x + e * rhs.y + f * rhs.z};
   }
-
-  MomentArray solve(const MomentArray& y) const;
-
-  void compute_spatial_moments_matrix(
-    const Position& r, const Direction& u, const double& distance);
 };
 
 } // namespace openmc

@@ -57,44 +57,6 @@ double MomentMatrix::determinant() const
   return a * (d * f - e * e) - b * (b * f - c * e) + c * (b * e - c * d);
 }
 
-MomentArray MomentMatrix::solve(const MomentArray& y) const
-{
-  // Check for positive definiteness and calculate Cholesky decomposition
-  if (a <= 1e-10) {
-    fatal_error("Matrix is not positive definite (element 'a' non-positive).");
-  }
-
-  double L11 = std::sqrt(a);
-  double L21 = b / L11; // Using matrix element 'b' directly
-  double L31 = c / L11;
-
-  double tmp = d - L21 * L21;
-  if (tmp <= 1e-10) {
-    fatal_error("Matrix is not positive definite at second diagonal element.");
-  }
-  double L22 = std::sqrt(tmp);
-
-  double L32 = (e - L21 * L31) / L22;
-
-  tmp = f - L31 * L31 - L32 * L32;
-  if (tmp <= 1e-10) {
-    fatal_error("Matrix is not positive definite at third diagonal element.");
-  }
-  double L33 = std::sqrt(tmp);
-
-  // Solving Ly = y (forward substitution)
-  double y1 = y[0] / L11;
-  double y2 = (y[1] - L21 * y1) / L22;
-  double y3 = (y[2] - L31 * y1 - L32 * y2) / L33;
-
-  // Solving L^T x = y (backward substitution)
-  double x3 = y3 / L33;
-  double x2 = (y2 - L32 * x3) / L22;
-  double x1 = (y1 - L21 * x2 - L31 * x3) / L11;
-
-  return {x1, x2, x3};
-}
-
 // Compute a 3x3 spatial moment matrix based on a single ray crossing.
 // The matrix is symmetric, and is defined as:
 //

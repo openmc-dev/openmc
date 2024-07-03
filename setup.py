@@ -68,7 +68,7 @@ kwargs = {
         'depletion-mpi': ['mpi4py'],
         'docs': ['sphinx', 'sphinxcontrib-katex', 'sphinx-numfig', 'jupyter',
                  'sphinxcontrib-svg2pdfconverter', 'sphinx-rtd-theme'],
-        'test': ['pytest', 'pytest-cov', 'colorama', 'openpyxl'],
+        'test': ['packaging', 'pytest', 'pytest-cov', 'colorama', 'openpyxl'],
         'vtk': ['vtk'],
     },
     # Cython is used to add resonance reconstruction and fast float_endf

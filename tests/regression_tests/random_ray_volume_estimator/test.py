@@ -21,7 +21,7 @@ class MGXSTestHarness(TolerantPyAPITestHarness):
                                        "naive",
                                        "segment_corrected"
                                        ])
-def test_random_ray_fixed_source(estimator):
+def test_random_ray_volume_estimator(estimator):
     with change_directory(estimator):
         openmc.reset_auto_ids()
         model = random_ray_three_region_cube()

@@ -168,7 +168,7 @@ def test_restart_track(run_in_tmpdir, sphere_model):
 
     # generate lost particle files
     with pytest.raises(RuntimeError, match='Maximum number of lost particles has been reached.'):
-        sphere_model.run(output=False)
+        sphere_model.run(output=False, threads=1)
 
     lost_particle_files = list(Path.cwd().glob('particle_*.h5'))
     assert len(lost_particle_files) > 0

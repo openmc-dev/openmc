@@ -1,6 +1,7 @@
 #include "openmc/random_ray/flat_source_domain.h"
 
 #include "openmc/cell.h"
+#include "openmc/eigenvalue.h"
 #include "openmc/geometry.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
@@ -25,6 +26,7 @@ namespace openmc {
 // Static Variable Declarations
 RandomRayVolumeEstimator FlatSourceDomain::volume_estimator_ {
   RandomRayVolumeEstimator::HYBRID};
+bool FlatSourceDomain::volume_normalized_flux_tallies_ {false};
 
 FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
 {
@@ -88,15 +90,17 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
   }
 
   // Initialize tally volumes
-  tally_volumes_.resize(model::tallies.size());
-  for (int i = 0; i < model::tallies.size(); i++) {
-    //  Get the shape of the 3D result tensor
-    auto shape = model::tallies[i]->results().shape();
+  if (volume_normalized_flux_tallies_) {
+    tally_volumes_.resize(model::tallies.size());
+    for (int i = 0; i < model::tallies.size(); i++) {
+      //  Get the shape of the 3D result tensor
+      auto shape = model::tallies[i]->results().shape();
 
-    // Create a new 2D tensor with the same size as the first
-    // two dimensions of the 3D tensor
-    tally_volumes_[i] =
-      xt::xtensor<double, 2>::from_shape({shape[0], shape[1]});
+      // Create a new 2D tensor with the same size as the first
+      // two dimensions of the 3D tensor
+      tally_volumes_[i] =
+        xt::xtensor<double, 2>::from_shape({shape[0], shape[1]});
+    }
   }
 
   // Compute simulation domain volume based on ray source
@@ -330,6 +334,9 @@ double FlatSourceDomain::compute_k_eff(double k_eff_old) const
   const int t = 0;
   const int a = 0;
 
+  // Vector for gathering fission source terms for Shannon entropy calculation
+  vector<float> p(n_source_regions_, 0.0f);
+
 #pragma omp parallel for reduction(+ : fission_rate_old, fission_rate_new)
   for (int sr = 0; sr < n_source_regions_; sr++) {
 
@@ -352,11 +359,37 @@ double FlatSourceDomain::compute_k_eff(double k_eff_old) const
       sr_fission_source_new += nu_sigma_f * scalar_flux_new_[idx];
     }
 
-    fission_rate_old += sr_fission_source_old * volume;
-    fission_rate_new += sr_fission_source_new * volume;
+    // Compute total fission rates in FSR
+    sr_fission_source_old *= volume;
+    sr_fission_source_new *= volume;
+
+    // Accumulate totals
+    fission_rate_old += sr_fission_source_old;
+    fission_rate_new += sr_fission_source_new;
+
+    // Store total fission rate in the FSR for Shannon calculation
+    p[sr] = sr_fission_source_new;
   }
 
   double k_eff_new = k_eff_old * (fission_rate_new / fission_rate_old);
+
+  double H = 0.0;
+  // defining an inverse sum for better performance
+  double inverse_sum = 1 / fission_rate_new;
+
+#pragma omp parallel for reduction(+ : H)
+  for (int sr = 0; sr < n_source_regions_; sr++) {
+    // Only if FSR has non-negative and non-zero fission source
+    if (p[sr] > 0.0f) {
+      // Normalize to total weight of bank sites. p_i for better performance
+      float p_i = p[sr] * inverse_sum;
+      // Sum values to obtain Shannon entropy.
+      H -= p_i * std::log2(p_i);
+    }
+  }
+
+  // Adds entropy value to shared entropy vector in openmc namespace.
+  simulation::entropy.push_back(H);
 
   return k_eff_new;
 }
@@ -484,11 +517,63 @@ void FlatSourceDomain::convert_source_regions_to_tallies()
 // Set the volume accumulators to zero for all tallies
 void FlatSourceDomain::reset_tally_volumes()
 {
+  if (volume_normalized_flux_tallies_) {
 #pragma omp parallel for
-  for (int i = 0; i < tally_volumes_.size(); i++) {
-    auto& tensor = tally_volumes_[i];
-    tensor.fill(0.0); // Set all elements of the tensor to 0.0
+    for (int i = 0; i < tally_volumes_.size(); i++) {
+      auto& tensor = tally_volumes_[i];
+      tensor.fill(0.0); // Set all elements of the tensor to 0.0
+    }
   }
+}
+
+// In fixed source mode, due to the way that volumetric fixed sources are
+// converted and applied as volumetric sources in one or more source regions,
+// we need to perform an additional normalization step to ensure that the
+// reported scalar fluxes are in units per source neutron. This allows for
+// direct comparison of reported tallies to Monte Carlo flux results.
+// This factor needs to be computed at each iteration, as it is based on the
+// volume estimate of each FSR, which improves over the course of the simulation
+double FlatSourceDomain::compute_fixed_source_normalization_factor() const
+{
+  // If we are not in fixed source mode, then there are no external sources
+  // so no normalization is needed.
+  if (settings::run_mode != RunMode::FIXED_SOURCE) {
+    return 1.0;
+  }
+
+  // Step 1 is to sum over all source regions and energy groups to get the
+  // total external source strength in the simulation.
+  double simulation_external_source_strength = 0.0;
+#pragma omp parallel for reduction(+ : simulation_external_source_strength)
+  for (int sr = 0; sr < n_source_regions_; sr++) {
+    int material = material_[sr];
+    double volume = volume_[sr] * simulation_volume_;
+    for (int e = 0; e < negroups_; e++) {
+      // Temperature and angle indices, if using multiple temperature
+      // data sets and/or anisotropic data sets.
+      // TODO: Currently assumes we are only using single temp/single
+      // angle data.
+      const int t = 0;
+      const int a = 0;
+      float sigma_t = data::mg.macro_xs_[material].get_xs(
+        MgxsType::TOTAL, e, nullptr, nullptr, nullptr, t, a);
+      simulation_external_source_strength +=
+        external_source_[sr * negroups_ + e] * sigma_t * volume;
+    }
+  }
+
+  // Step 2 is to determine the total user-specified external source strength
+  double user_external_source_strength = 0.0;
+  for (auto& ext_source : model::external_sources) {
+    user_external_source_strength += ext_source->strength();
+  }
+
+  // The correction factor is the ratio of the user-specified external source
+  // strength to the simulation external source strength.
+  double source_normalization_factor =
+    user_external_source_strength / simulation_external_source_strength;
+
+  return source_normalization_factor;
 }
 
 // Tallying in random ray is not done directly during transport, rather,
@@ -514,6 +599,9 @@ void FlatSourceDomain::random_ray_tally()
   const int t = 0;
   const int a = 0;
 
+  double source_normalization_factor =
+    compute_fixed_source_normalization_factor();
+
 // We loop over all source regions and energy groups. For each
 // element, we check if there are any scores needed and apply
 // them.
@@ -532,7 +620,7 @@ void FlatSourceDomain::random_ray_tally()
     double material = material_[sr];
     for (int g = 0; g < negroups_; g++) {
       int idx = sr * negroups_ + g;
-      double flux = scalar_flux_new_[idx];
+      double flux = scalar_flux_new_[idx] * source_normalization_factor;
 
       // Determine numerical score value
       for (auto& task : tally_task_[idx]) {
@@ -577,17 +665,19 @@ void FlatSourceDomain::random_ray_tally()
 #pragma omp atomic
         tally.results_(task.filter_idx, task.score_idx, TallyResult::VALUE) +=
           score;
-      } // end tally task loop
-    }   // end energy group loop
+      }
+    }
 
     // For flux tallies, the total volume of the spatial region is needed
     // for normalizing the flux. We store this volume in a separate tensor.
     // We only contribute to each volume tally bin once per FSR.
-    for (const auto& task : volume_task_[sr]) {
-      if (task.score_type == SCORE_FLUX) {
+    if (volume_normalized_flux_tallies_) {
+      for (const auto& task : volume_task_[sr]) {
+        if (task.score_type == SCORE_FLUX) {
 #pragma omp atomic
-        tally_volumes_[task.tally_idx](task.filter_idx, task.score_idx) +=
-          volume;
+          tally_volumes_[task.tally_idx](task.filter_idx, task.score_idx) +=
+            volume;
+        }
       }
     }
   } // end FSR loop
@@ -597,16 +687,18 @@ void FlatSourceDomain::random_ray_tally()
   // and then scores. For each score, we check the tally data structure to
   // see what index that score corresponds to. If that score is a flux score,
   // then we divide it by volume.
-  for (int i = 0; i < model::tallies.size(); i++) {
-    Tally& tally {*model::tallies[i]};
+  if (volume_normalized_flux_tallies_) {
+    for (int i = 0; i < model::tallies.size(); i++) {
+      Tally& tally {*model::tallies[i]};
 #pragma omp parallel for
-    for (int bin = 0; bin < tally.n_filter_bins(); bin++) {
-      for (int score_idx = 0; score_idx < tally.n_scores(); score_idx++) {
-        auto score_type = tally.scores_[score_idx];
-        if (score_type == SCORE_FLUX) {
-          double vol = tally_volumes_[i](bin, score_idx);
-          if (vol > 0.0) {
-            tally.results_(bin, score_idx, TallyResult::VALUE) /= vol;
+      for (int bin = 0; bin < tally.n_filter_bins(); bin++) {
+        for (int score_idx = 0; score_idx < tally.n_scores(); score_idx++) {
+          auto score_type = tally.scores_[score_idx];
+          if (score_type == SCORE_FLUX) {
+            double vol = tally_volumes_[i](bin, score_idx);
+            if (vol > 0.0) {
+              tally.results_(bin, score_idx, TallyResult::VALUE) /= vol;
+            }
           }
         }
       }
@@ -786,6 +878,9 @@ void FlatSourceDomain::output_to_vtk() const
       }
     }
 
+    double source_normalization_factor =
+      compute_fixed_source_normalization_factor();
+
     // Open file for writing
     std::FILE* plot = std::fopen(filename.c_str(), "wb");
 
@@ -805,7 +900,8 @@ void FlatSourceDomain::output_to_vtk() const
       std::fprintf(plot, "LOOKUP_TABLE default\n");
       for (int fsr : voxel_indices) {
         int64_t source_element = fsr * negroups_ + g;
-        float flux = scalar_flux_final_[source_element];
+        float flux =
+          scalar_flux_final_[source_element] * source_normalization_factor;
         flux /= (settings::n_batches - settings::n_inactive);
         flux = convert_to_big_endian<float>(flux);
         std::fwrite(&flux, sizeof(float), 1, plot);
@@ -838,7 +934,8 @@ void FlatSourceDomain::output_to_vtk() const
       int mat = material_[fsr];
       for (int g = 0; g < negroups_; g++) {
         int64_t source_element = fsr * negroups_ + g;
-        float flux = scalar_flux_final_[source_element];
+        float flux =
+          scalar_flux_final_[source_element] * source_normalization_factor;
         flux /= (settings::n_batches - settings::n_inactive);
         float Sigma_f = data::mg.macro_xs_[mat].get_xs(
           MgxsType::FISSION, g, nullptr, nullptr, nullptr, 0, 0);

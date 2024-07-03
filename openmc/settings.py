@@ -113,7 +113,7 @@ class Settings:
     max_particle_events : int
         Maximum number of allowed particle events per source particle.
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.0
     max_order : None or int
         Maximum scattering order to apply globally when in multi-group mode.
     max_history_splits : int
@@ -161,8 +161,14 @@ class Settings:
             Choice of volume estimator for the random ray solver. Options are
             'naive', 'simulation_averaged', 'segment_corrected', 'hybrid'.
             The default is 'hybrid'.
+        :volume_normalized_flux_tallies:
+            Whether to normalize flux tallies by volume (bool). The default
+            is 'False'. When enabled, flux tallies will be reported in units of
+            cm/cm^3. When disabled, flux tallies will be reported in units
+            of cm (i.e., total distance traveled by neutrons in the spatial
+            tally region).
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.0
     resonance_scattering : dict
         Settings for resonance elastic scattering. Accepted keys are 'enable'
         (bool), 'method' (str), 'energy_min' (float), 'energy_max' (float), and
@@ -1092,6 +1098,8 @@ class Settings:
                 cv.check_value('volume estimator', random_ray[key],
                                ('naive', 'simulation_averaged',
                                 'segment_corrected', 'hybrid'))
+            elif key == 'volume_normalized_flux_tallies':
+                cv.check_type('volume normalized flux tallies', random_ray[key], bool)
             else:
                 raise ValueError(f'Unable to set random ray to "{key}" which is '
                                  'unsupported by OpenMC')
@@ -1887,6 +1895,10 @@ class Settings:
                     self.random_ray['ray_source'] = source
                 elif child.tag == 'volume_estimator':
                     self.random_ray['volume_estimator'] = child.text
+                elif child.tag == 'volume_normalized_flux_tallies':
+                    self.random_ray['volume_normalized_flux_tallies'] = (
+                        child.text in ('true', '1')
+                    )
 
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.

@@ -109,6 +109,11 @@ public:
   void all_reduce_replicated_source_regions();
   void convert_external_sources();
   void count_external_source_regions();
+  double compute_fixed_source_normalization_factor() const;
+
+  //----------------------------------------------------------------------------
+  // Static Data members
+  static bool volume_normalized_flux_tallies_;
 
   //----------------------------------------------------------------------------
   // Static data members

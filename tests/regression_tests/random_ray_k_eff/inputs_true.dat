@@ -66,10 +66,10 @@
     <surface coeffs="0.7071067811865475 -0.7071067811865477 0 0" id="11" type="plane"/>
     <surface coeffs="1.0 -1.8369701987210297e-16 0 0" id="12" type="plane"/>
     <surface coeffs="0.7071067811865477 0.7071067811865474 0 0" id="13" type="plane"/>
-    <surface boundary="vacuum" coeffs="-1.26" id="14" name="minimum x" type="x-plane"/>
-    <surface boundary="vacuum" coeffs="1.26" id="15" name="maximum x" type="x-plane"/>
-    <surface boundary="vacuum" coeffs="-1.26" id="16" name="minimum y" type="y-plane"/>
-    <surface boundary="vacuum" coeffs="1.26" id="17" name="maximum y" type="y-plane"/>
+    <surface boundary="reflective" coeffs="-1.26" id="14" name="minimum x" type="x-plane"/>
+    <surface boundary="reflective" coeffs="1.26" id="15" name="maximum x" type="x-plane"/>
+    <surface boundary="reflective" coeffs="-1.26" id="16" name="minimum y" type="y-plane"/>
+    <surface boundary="reflective" coeffs="1.26" id="17" name="maximum y" type="y-plane"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>
@@ -85,6 +85,7 @@
           <parameters>-1.26 -1.26 -1 1.26 1.26 1</parameters>
         </space>
       </source>
+      <volume_normalized_flux_tallies>True</volume_normalized_flux_tallies>
     </random_ray>
   </settings>
   <tallies>

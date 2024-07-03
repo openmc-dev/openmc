@@ -169,7 +169,7 @@ def plot_xs(reactions, divisor_types=None, temperature=294., axis=None,
     energy_axis_units : {'eV', 'keV', 'MeV'}
         Units used on the plot energy axis
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.0
 
     Returns
     -------

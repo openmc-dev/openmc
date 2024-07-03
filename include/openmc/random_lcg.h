@@ -15,7 +15,7 @@ constexpr int STREAM_SOURCE {1};
 constexpr int STREAM_URR_PTABLE {2};
 constexpr int STREAM_VOLUME {3};
 constexpr int64_t DEFAULT_SEED {1};
-constexpr int64_t DEFAULT_STRIDE {152917};
+constexpr uint64_t DEFAULT_STRIDE {152917};
 
 //==============================================================================
 //! Generate a pseudo-random number using a linear congruential generator.
@@ -103,14 +103,14 @@ extern "C" void openmc_set_seed(int64_t new_seed);
 //! Get OpenMC's stride.
 //==============================================================================
 
-extern "C" int64_t openmc_get_stride();
+extern "C" uint64_t openmc_get_stride();
 
 //==============================================================================
 //! Set OpenMC's stride.
 //! @param new_stride Stride.
 //==============================================================================
 
-extern "C" void openmc_set_stride(int64_t new_stride);
+extern "C" void openmc_set_stride(uint64_t new_stride);
 
 } // namespace openmc
 #endif // OPENMC_RANDOM_LCG_H

@@ -10,7 +10,7 @@ int64_t master_seed {1};
 // LCG parameters
 constexpr uint64_t prn_mult {6364136223846793005ULL}; // multiplication
 constexpr uint64_t prn_add {1442695040888963407ULL};  // additive factor, c
-int64_t prn_stride {152917LL};
+uint64_t prn_stride {152917LL};
 
 //==============================================================================
 // PRN
@@ -132,12 +132,12 @@ extern "C" void openmc_set_seed(int64_t new_seed)
   master_seed = new_seed;
 }
 
-extern "C" int64_t openmc_get_stride()
+extern "C" uint64_t openmc_get_stride()
 {
   return prn_stride;
 }
 
-extern "C" void openmc_set_stride(int64_t new_stride)
+extern "C" void openmc_set_stride(uint64_t new_stride)
 {
   prn_stride = new_stride;
 }

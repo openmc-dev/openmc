@@ -467,7 +467,7 @@ void read_settings_xml(pugi::xml_node root)
 
   // Copy random number stride if specified
   if (check_for_node(root, "stride")) {
-    auto stride = std::stoll(get_node_value(root, "stride"));
+    auto stride = std::stoull(get_node_value(root, "stride"));
     openmc_set_stride(stride);
   }
 

@@ -32,11 +32,12 @@ from openmc.plotter import *
 from openmc.search import *
 from openmc.polynomial import *
 from openmc.tracks import *
-from . import examples
 from .config import *
 
 # Import a few names from the model module
 from openmc.model import Model
+
+from . import examples
 
 
 __version__ = '0.15.1-dev'

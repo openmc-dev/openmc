@@ -3,10 +3,10 @@ from numbers import Integral
 import numpy as np
 
 import openmc
-import openmc.model
 
 
-def pwr_pin_cell():
+
+def pwr_pin_cell() -> openmc.Model:
     """Create a PWR pin-cell model.
 
     This model is a single fuel pin with 2.4 w/o enriched UO2 corresponding to a
@@ -16,11 +16,11 @@ def pwr_pin_cell():
 
     Returns
     -------
-    model : openmc.model.Model
+    model : openmc.Model
         A PWR pin-cell model
 
     """
-    model = openmc.model.Model()
+    model = openmc.Model()
 
     # Define materials.
     fuel = openmc.Material(name='UO2 (2.4%)')
@@ -90,7 +90,7 @@ def pwr_pin_cell():
     return model
 
 
-def pwr_core():
+def pwr_core() -> openmc.Model:
     """Create a PWR full-core model.
 
     This model is the OECD/NEA Monte Carlo Performance benchmark which is a
@@ -100,11 +100,11 @@ def pwr_core():
 
     Returns
     -------
-    model : openmc.model.Model
+    model : openmc.Model
         Full-core PWR model
 
     """
-    model = openmc.model.Model()
+    model = openmc.Model()
 
     # Define materials.
     fuel = openmc.Material(1, name='UOX fuel')
@@ -438,7 +438,7 @@ def pwr_core():
     return model
 
 
-def pwr_assembly():
+def pwr_assembly() -> openmc.Model:
     """Create a PWR assembly model.
 
     This model is a reflected 17x17 fuel assembly from the the `BEAVRS
@@ -448,12 +448,12 @@ def pwr_assembly():
 
     Returns
     -------
-    model : openmc.model.Model
+    model : openmc.Model
         A PWR assembly model
 
     """
 
-    model = openmc.model.Model()
+    model = openmc.Model()
 
     # Define materials.
     fuel = openmc.Material(name='Fuel')
@@ -553,7 +553,7 @@ def pwr_assembly():
     return model
 
 
-def slab_mg(num_regions=1, mat_names=None, mgxslib_name='2g.h5'):
+def slab_mg(num_regions=1, mat_names=None, mgxslib_name='2g.h5') -> openmc.Model:
     """Create a 1D slab model.
 
     Parameters
@@ -570,7 +570,7 @@ def slab_mg(num_regions=1, mat_names=None, mgxslib_name='2g.h5'):
 
     Returns
     -------
-    model : openmc.model.Model
+    model : openmc.Model
         One-group, 1D slab model
 
     """
@@ -646,7 +646,7 @@ def slab_mg(num_regions=1, mat_names=None, mgxslib_name='2g.h5'):
 
     settings_file.output = {'summary': False}
 
-    model = openmc.model.Model()
+    model = openmc.Model()
     model.geometry = geometry_file
     model.materials = materials_file
     model.settings = settings_file
@@ -655,7 +655,7 @@ def slab_mg(num_regions=1, mat_names=None, mgxslib_name='2g.h5'):
     return model
 
 
-def random_ray_lattice():
+def random_ray_lattice() -> openmc.Model:
     """Create a 2x2 PWR pincell asymmetrical lattic eexample.
 
     This model is a 2x2 reflective lattice of fuel pins with one of the lattice
@@ -664,11 +664,11 @@ def random_ray_lattice():
 
     Returns
     -------
-    model : openmc.model.Model
+    model : openmc.Model
         A PWR 2x2 lattice model
 
     """
-    model = openmc.model.Model()
+    model = openmc.Model()
 
     ###########################################################################
     # Create MGXS data for the problem
@@ -800,8 +800,7 @@ def random_ray_lattice():
     for i in range(8):
         azimuthal_cell = openmc.Cell(name=f'azimuthal_cell_{i}')
         azimuthal_cell.fill = pincell_base
-        azimuthal_cell.region = + \
-            azimuthal_planes[i] & -azimuthal_planes[(i+1) % 8]
+        azimuthal_cell.region = +azimuthal_planes[i] & -azimuthal_planes[(i+1) % 8]
         azimuthal_cells.append(azimuthal_cell)
 
     # Create a geometry with the azimuthal universes
@@ -902,7 +901,7 @@ def random_ray_lattice():
     return model
 
 
-def random_ray_three_region_cube():
+def random_ray_three_region_cube() -> openmc.Model:
     """Create a three region cube model.
 
     This is a simple monoenergetic problem of a cube with three concentric cubic
@@ -913,12 +912,12 @@ def random_ray_three_region_cube():
 
     Returns
     -------
-    model : openmc.model.Model
+    model : openmc.Model
         A three region cube model
 
     """
 
-    model = openmc.model.Model()
+    model = openmc.Model()
 
     ###########################################################################
     # Helper function creates a 3 region cube with different fills in each region

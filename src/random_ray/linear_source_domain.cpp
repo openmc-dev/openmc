@@ -225,7 +225,7 @@ double LinearSourceDomain::evaluate_flux_at_point(
 
   MomentMatrix invM = mom_matrix_[sr].inverse();
   MomentArray phi_solved = invM * phi_linear;
-  
+
   return phi_flat + phi_solved.dot(local_r);
 }
 

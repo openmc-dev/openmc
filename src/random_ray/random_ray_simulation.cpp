@@ -6,6 +6,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/output.h"
 #include "openmc/plot.h"
+#include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/random_ray/random_ray.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"
@@ -13,7 +14,6 @@
 #include "openmc/tallies/tally.h"
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/timer.h"
-#include "openmc/random_ray/flat_source_domain.h"
 
 namespace openmc {
 

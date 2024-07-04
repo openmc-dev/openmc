@@ -35,12 +35,12 @@ public:
   void random_ray_tally();
   void accumulate_iteration_flux() override;
   void output_to_vtk() const;
-  void all_reduce_replicated_source_regions(); //override
+  void all_reduce_replicated_source_regions(); // override
   void convert_external_sources();
   void count_external_source_regions();
   void flux_swap() override;
-  double evaluate_flux_at_point(const Position r, const int64_t sr, const int g) const override;
-
+  double evaluate_flux_at_point(
+    const Position r, const int64_t sr, const int g) const override;
 
   //----------------------------------------------------------------------------
   // Public Data members
@@ -62,7 +62,7 @@ private:
 
   //----------------------------------------------------------------------------
   // Private data members
-  
+
   // ...
 
 }; // class LinearSourceDomain

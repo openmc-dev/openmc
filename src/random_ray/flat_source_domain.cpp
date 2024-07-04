@@ -751,9 +751,11 @@ void FlatSourceDomain::all_reduce_replicated_source_regions()
 #endif
 }
 
-double FlatSourceDomain::evaluate_flux_at_point(const Position r, const int64_t sr, const int g) const
+double FlatSourceDomain::evaluate_flux_at_point(
+  const Position r, const int64_t sr, const int g) const
 {
-  return scalar_flux_final_[sr * negroups_ + g] / (settings::n_batches - settings::n_inactive);
+  return scalar_flux_final_[sr * negroups_ + g] /
+         (settings::n_batches - settings::n_inactive);
 }
 
 // Outputs all basic material, FSR ID, multigroup flux, and
@@ -888,8 +890,8 @@ void FlatSourceDomain::output_to_vtk() const
     // Plot fission source
     std::fprintf(plot, "SCALARS total_fission_source float\n");
     std::fprintf(plot, "LOOKUP_TABLE default\n");
-      for (int i = 0; i < Nx * Ny * Nz; i++) {
-                int64_t fsr = voxel_indices[i];
+    for (int i = 0; i < Nx * Ny * Nz; i++) {
+      int64_t fsr = voxel_indices[i];
 
       float total_fission = 0.0;
       int mat = material_[fsr];
@@ -1035,7 +1037,7 @@ void FlatSourceDomain::convert_external_sources()
 }
 void FlatSourceDomain::flux_swap()
 {
-scalar_flux_old_.swap(scalar_flux_new_);
+  scalar_flux_old_.swap(scalar_flux_new_);
 }
 
 } // namespace openmc

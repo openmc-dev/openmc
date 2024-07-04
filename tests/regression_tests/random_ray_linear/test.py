@@ -1,6 +1,5 @@
 import os
 
-import numpy as np
 import openmc
 from openmc.examples import random_ray_lattice
 from openmc.utility_funcs import change_directory
@@ -14,6 +13,7 @@ class MGXSTestHarness(TolerantPyAPITestHarness):
         f = 'mgxs.h5'
         if os.path.exists(f):
             os.remove(f)
+
 
 @pytest.mark.parametrize("shape", ["linear", "linear_xy"])
 def test_random_ray_source(shape):

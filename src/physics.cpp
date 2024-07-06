@@ -1165,57 +1165,49 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
   // Sample the number of photons produced
   double y_t =
     p.neutron_xs(i_nuclide).photon_prod / p.neutron_xs(i_nuclide).total;
-  int y = static_cast<int>(y_t);
-  if (prn(p.current_seed()) <= y_t - y)
-    ++y;
 
-  // Sample each secondary photon
-  for (int i = 0; i < y; ++i) {
-    // Sample the reaction and product
-    int i_rx;
-    int i_product;
-    sample_photon_product(i_nuclide, p, &i_rx, &i_product);
+  // Sample the reaction and product
+  int i_rx;
+  int i_product;
+  sample_photon_product(i_nuclide, p, &i_rx, &i_product);
 
-    // Sample the outgoing energy and angle
-    auto& rx = data::nuclides[i_nuclide]->reactions_[i_rx];
-    double E;
-    double mu;
-    int i_chain_nuc;
-    if (settings::use_decay_photons) {
-      // For D1S method, sample photon from decay of
-      const auto& target = rx->decay_product_;
-      if (target.empty())
-        continue;
-      i_chain_nuc = data::chain_nuclide_map[target];
-      E = data::chain_nuclides[i_chain_nuc]->photon_energy()->sample(
-        p.current_seed());
-      mu = Uniform(-1., 1.).sample(p.current_seed());
-    } else {
-      rx->products_[i_product].sample(p.E(), E, mu, p.current_seed());
-    }
+  // Sample the outgoing energy and angle
+  auto& rx = data::nuclides[i_nuclide]->reactions_[i_rx];
+  double E;
+  double mu;
+  int i_chain_nuc;
+  if (settings::use_decay_photons) {
+    // For D1S method, sample photon from decay of
+    const auto& target = rx->decay_product_;
+    if (target.empty())
+      return;
+    i_chain_nuc = data::chain_nuclide_map[target];
+    E = data::chain_nuclides[i_chain_nuc]->photon_energy()->sample(
+      p.current_seed());
+    mu = Uniform(-1., 1.).sample(p.current_seed());
+  } else {
+    rx->products_[i_product].sample(p.E(), E, mu, p.current_seed());
+  }
 
-    // Sample the new direction
-    Direction u = rotate_angle(p.u(), mu, nullptr, p.current_seed());
+  // Sample the new direction
+  Direction u = rotate_angle(p.u(), mu, nullptr, p.current_seed());
 
-    // In a k-eigenvalue simulation, it's necessary to provide higher weight to
-    // secondary photons from non-fission reactions to properly balance energy
-    // release and deposition. See D. P. Griesheimer, S. J. Douglass, and M. H.
-    // Stedry, "Self-consistent energy normalization for quasistatic reactor
-    // calculations", Proc. PHYSOR, Cambridge, UK, Mar 29-Apr 2, 2020.
-    double wgt;
-    if (settings::run_mode == RunMode::EIGENVALUE && !is_fission(rx->mt_)) {
-      wgt = simulation::keff * p.wgt();
-    } else {
-      wgt = p.wgt();
-    }
+  // In a k-eigenvalue simulation, it's necessary to provide higher weight to
+  // secondary photons from non-fission reactions to properly balance energy
+  // release and deposition. See D. P. Griesheimer, S. J. Douglass, and M. H.
+  // Stedry, "Self-consistent energy normalization for quasistatic reactor
+  // calculations", Proc. PHYSOR, Cambridge, UK, Mar 29-Apr 2, 2020.
+  double wgt = y_t * p.wgt();
+  if (settings::run_mode == RunMode::EIGENVALUE && !is_fission(rx->mt_)) {
+    wgt = simulation::keff * p.wgt();
+  }
 
-    // Create the secondary photon
-    bool created_photon = p.create_secondary(wgt, u, E, ParticleType::photon);
+  // Create the secondary photon
+  bool created_photon = p.create_secondary(wgt, u, E, ParticleType::photon);
 
-    // Tag secondary particle with parent nuclide
-    if (created_photon && settings::use_decay_photons) {
-      p.secondary_bank().back().parent_nuclide = i_chain_nuc;
-    }
+  // Tag secondary particle with parent nuclide
+  if (created_photon && settings::use_decay_photons) {
+    p.secondary_bank().back().parent_nuclide = i_chain_nuc;
   }
 }
 

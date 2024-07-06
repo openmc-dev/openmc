@@ -48,6 +48,7 @@ struct SourceSite {
   double wgt {1.0};
   int delayed_group {0};
   int surf_id {0};
+  int parent_nuclide {-1};
   ParticleType particle;
   int64_t parent_id;
   int64_t progeny_id;
@@ -416,6 +417,7 @@ private:
   int event_nuclide_;
   int event_mt_;
   int delayed_group_ {0};
+  int parent_nuclide_ {-1};
 
   int n_bank_ {0};
   int n_bank_second_ {0};
@@ -530,6 +532,8 @@ public:
   const int& event_nuclide() const { return event_nuclide_; }
   int& event_mt() { return event_mt_; }           // MT number of collision
   int& delayed_group() { return delayed_group_; } // delayed group
+  const int& parent_nuclide() const { return parent_nuclide_; }
+  int& parent_nuclide() { return parent_nuclide_; } // Parent nuclide
 
   // Post-collision data
   int& n_bank() { return n_bank_; } // number of banked fission sites

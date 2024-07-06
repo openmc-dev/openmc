@@ -25,7 +25,7 @@ _FILTER_TYPES = (
     'energyout', 'mu', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
     'energyfunction', 'cellfrom', 'materialfrom', 'legendre', 'spatiallegendre',
     'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance',
-    'collision', 'time'
+    'collision', 'time', 'parentnuclide'
 )
 
 _CURRENT_NAMES = (
@@ -729,6 +729,61 @@ class SurfaceFilter(WithIDFilter):
 
     """
     expected_type = Surface
+
+
+# TODO: Create base class for this and ParticleFilter
+class ParentNuclideFilter(Filter):
+    """Bins tally events based on the parent nuclide
+
+    Parameters
+    ----------
+    bins : str, or iterable of str
+        Names of nuclides (e.g., 'Ni65')
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : iterable of str
+        Names of nuclides
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins
+
+    """
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        elif len(self.bins) != len(other.bins):
+            return False
+        else:
+            return np.all(self.bins == other.bins)
+
+    __hash__ = Filter.__hash__
+
+    @Filter.bins.setter
+    def bins(self, bins):
+        bins = np.atleast_1d(bins)
+        cv.check_iterable_type('filter bins', bins, str)
+        self._bins = bins
+
+    @classmethod
+    def from_hdf5(cls, group, **kwargs):
+        if group['type'][()].decode() != cls.short_name.lower():
+            raise ValueError("Expected HDF5 data for filter type '"
+                             + cls.short_name.lower() + "' but got '"
+                             + group['type'][()].decode() + " instead")
+
+        particles = [b.decode() for b in group['bins'][()]]
+        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+        return cls(particles, filter_id=filter_id)
+
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        filter_id = int(elem.get('id'))
+        bins = get_text(elem, 'bins').split()
+        return cls(bins, filter_id=filter_id)
 
 
 class ParticleFilter(Filter):

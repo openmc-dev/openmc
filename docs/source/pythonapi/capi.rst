@@ -78,6 +78,7 @@ Classes
    MeshSurfaceFilter
    MuFilter
    Nuclide
+   ParentNuclideFilter
    ParticleFilter
    PolarFilter
    RectilinearMesh

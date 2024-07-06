@@ -1180,13 +1180,15 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
     auto& rx = data::nuclides[i_nuclide]->reactions_[i_rx];
     double E;
     double mu;
+    int i_chain_nuc;
     if (settings::use_decay_photons) {
       // For D1S method, sample photon from decay of
       const auto& target = rx->decay_product_;
       if (target.empty())
         continue;
-      int idx = data::chain_nuclide_map[target];
-      E = data::chain_nuclides[idx]->photon_energy()->sample(p.current_seed());
+      i_chain_nuc = data::chain_nuclide_map[target];
+      E = data::chain_nuclides[i_chain_nuc]->photon_energy()->sample(
+        p.current_seed());
       mu = Uniform(-1., 1.).sample(p.current_seed());
     } else {
       rx->products_[i_product].sample(p.E(), E, mu, p.current_seed());
@@ -1207,10 +1209,13 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
       wgt = p.wgt();
     }
 
-    // TODO: Modify weight of decay photons for D1S
-
     // Create the secondary photon
-    p.create_secondary(wgt, u, E, ParticleType::photon);
+    bool created_photon = p.create_secondary(wgt, u, E, ParticleType::photon);
+
+    // Tag secondary particle with parent nuclide
+    if (created_photon && settings::use_decay_photons) {
+      p.secondary_bank().back().parent_nuclide = i_chain_nuc;
+    }
   }
 }
 

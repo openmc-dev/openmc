@@ -540,6 +540,10 @@ class MuFilter(Filter):
     filter_type = 'mu'
 
 
+class ParentNuclideFilter(Filter):
+    filter_type = 'parentnuclide'
+
+
 class ParticleFilter(Filter):
     filter_type = 'particle'
 
@@ -642,6 +646,7 @@ _FILTER_TYPE_MAP = {
     'meshborn': MeshBornFilter,
     'meshsurface': MeshSurfaceFilter,
     'mu': MuFilter,
+    'parentnuclide': ParentNuclideFilter,
     'particle': ParticleFilter,
     'polar': PolarFilter,
     'sphericalharmonics': SphericalHarmonicsFilter,

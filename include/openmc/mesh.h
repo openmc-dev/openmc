@@ -77,6 +77,55 @@ public:
     double volume;    //!< volume in [cm^3]
   };
 
+  using shape_type = std::vector<size_t>;
+
+  class MaterialVolumeRT {
+  public:
+    MaterialVolumeRT(int32_t* mats, double* vols, int max_materials)
+      : materials_(mats), volumes_(vols), n_mats_(max_materials)
+    {}
+
+    void add_volume(int index_mesh, int index_material, double volume)
+    {
+      int i;
+      for (i = 0; i < n_mats_; ++i) {
+        if (materials(index_mesh, i) == index_material)
+          break;
+
+        if (materials(index_mesh, i) == -2) {
+          materials(index_mesh, i) = index_material;
+          break;
+        }
+      }
+
+      if (i >= n_mats_) {
+        fatal_error(
+          "Number of materials for mesh matvol raytrace insufficient.");
+      }
+
+      // Accumulate volume
+#pragma omp atomic
+      volumes(index_mesh, i) += volume;
+    }
+
+    int32_t& materials(int i, int j) { return materials_[i * n_mats_ + j]; }
+    const int32_t& materials(int i, int j) const
+    {
+      return materials_[i * n_mats_ + j];
+    }
+
+    double& volumes(int i, int j) { return volumes_[i * n_mats_ + j]; }
+    const double& volumes(int i, int j) const
+    {
+      return volumes_[i * n_mats_ + j];
+    }
+
+  private:
+    int32_t* materials_; //!< material index (bins, max_mats)
+    double* volumes_;    //!< volume in [cm^3] (bins, max_mats)
+    int n_mats_;
+  };
+
   // Constructors and destructor
   Mesh() = default;
   Mesh(pugi::xml_node node);
@@ -185,6 +234,17 @@ public:
   //! \return Vector of (material index, volume) for desired element
   vector<MaterialVolume> material_volumes(
     int n_sample, int bin, uint64_t* seed) const;
+
+  //! Determine volume of materials within each mesh elemenet by raytracing
+  //
+  //! \param[in] ny Number of samples in y direction
+  //! \param[in] nz Number of samples in z direction
+  //! \param[in] max_materials Maximum number of materials in a single mesh
+  //!                          element
+  //! \param[inout] materials Array storing material indices
+  //! \param[inout] volumes Array storing volumes
+  void material_volumes_raytrace(int ny, int nz, int max_materials,
+    int32_t* materials, double* volumes) const;
 
   //! Determine bounding box of mesh
   //

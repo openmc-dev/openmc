@@ -9,6 +9,7 @@
 #include "mpi.h"
 #endif
 
+#include "xtensor/xadapt.hpp"
 #include "xtensor/xbuilder.hpp"
 #include "xtensor/xeval.hpp"
 #include "xtensor/xmath.hpp"
@@ -234,6 +235,131 @@ vector<Mesh::MaterialVolume> Mesh::material_volumes(
   }
 
   return result;
+}
+
+void Mesh::material_volumes_raytrace(
+  int ny, int nz, int max_materials, int32_t* materials, double* volumes) const
+{
+  // Create object for keeping track of materials/volumes
+  MaterialVolumeRT result(materials, volumes, max_materials);
+
+  // Determine bounding box
+  auto bbox = this->bounding_box();
+
+  // Loop over rays on left face of bounding box
+  double dy = (bbox.ymax - bbox.ymin) / ny;
+  double dz = (bbox.zmax - bbox.zmin) / nz;
+
+#pragma omp parallel
+  {
+    // Preallocate vector for mesh indices and lenght fractions and p
+    std::vector<int> bins;
+    std::vector<double> length_fractions;
+    Particle p;
+
+    SourceSite site;
+    site.r = {bbox.xmin, 0.0, 0.0};
+    site.u = {1.0, 0.0, 0.0};
+    site.E = 1.0;
+    site.particle = ParticleType::neutron;
+
+#pragma omp for
+    for (int iy = 0; iy < ny; ++iy) {
+      site.r.y = bbox.ymin + (iy + 0.5) * dy;
+      for (int iz = 0; iz < nz; ++iz) {
+        site.r.z = bbox.zmin + (iz + 0.5) * dz;
+
+        p.from_source(&site);
+
+        // Determine particle's location
+        if (!exhaustive_find_cell(p)) {
+          fatal_error("Mesh is not fully contained in geometry.");
+        }
+
+        // Set birth cell attribute
+        if (p.cell_born() == C_NONE)
+          p.cell_born() = p.lowest_coord().cell;
+
+        // Initialize last cells from current cell
+        for (int j = 0; j < p.n_coord(); ++j) {
+          p.cell_last(j) = p.coord(j).cell;
+        }
+        p.n_coord_last() = p.n_coord();
+
+        while (true) {
+          // Ray trace from r_start to r_end
+          Position r0 = p.r();
+          double max_distance = bbox.xmax - r0.x;
+
+          // Find the distance to the nearest boundary
+          BoundaryInfo boundary = distance_to_boundary(p);
+
+          // Advance particle forward
+          double distance = std::min(boundary.distance, max_distance);
+          p.move_distance(distance);
+
+          // Determine what mesh elements were crossed by particle
+          bins.clear();
+          length_fractions.clear();
+          this->bins_crossed(r0, p.r(), p.u(), bins, length_fractions);
+
+          // Add volumes to any mesh elements that were crossed
+          int i_material = p.material();
+          if (i_material != C_NONE) {
+            i_material = model::materials[i_material]->id();
+          }
+          for (int i_bin = 0; i_bin < bins.size(); i_bin++) {
+            int mesh_index = bins[i_bin];
+            double length = distance * length_fractions[i_bin];
+
+            // Add volume to result
+            result.add_volume(mesh_index, i_material, length * dy * dz);
+          }
+
+          if (distance == max_distance)
+            break;
+
+          for (int j = 0; j < p.n_coord(); ++j) {
+            p.cell_last(j) = p.coord(j).cell;
+          }
+          p.n_coord_last() = p.n_coord();
+
+          // Set surface that particle is on and adjust coordinate levels
+          p.surface() = boundary.surface_index;
+          p.n_coord() = boundary.coord_level;
+
+          if (boundary.lattice_translation[0] != 0 ||
+              boundary.lattice_translation[1] != 0 ||
+              boundary.lattice_translation[2] != 0) {
+            // Particle crosses lattice boundary
+
+            cross_lattice(p, boundary);
+          } else {
+            // Particle crosses surface
+            // TODO: off-by-one
+            const auto& surf {model::surfaces[std::abs(p.surface()) - 1].get()};
+            p.cross_surface(*surf);
+          }
+        }
+      }
+    }
+  }
+
+  // for (int i = 0; i < this->n_bins(); ++i) {
+  //   for (int j = 0; j < max_materials; ++j) {
+  //     int i_material = result.materials(i, j);
+  //     if (i_material == -2)
+  //       break;
+
+  //     std::string mat_id =
+  //       (i_material == -1)
+  //         ? "void"
+  //         : fmt::format("{}", model::materials[i_material]->id());
+  //     double volume = result.volumes(i, j);
+  //     fmt::print("Element {}, Material ID={}, volume={}\n", i, mat_id,
+  //     volume);
+  //   }
+  // }
 }
 
 //==============================================================================
@@ -1960,6 +2086,17 @@ extern "C" int openmc_mesh_material_volumes(int32_t index, int n_sample,
     n_sample, bin, {result_, result_ + result_size}, seed);
   *hits = n;
   return (n == -1) ? OPENMC_E_ALLOCATE : 0;
+}
+
+extern "C" int openmc_mesh_material_volumes_raytrace(int32_t index, int ny,
+  int nz, int max_mats, int32_t* materials, double* volumes)
+{
+  if (int err = check_mesh(index))
+    return err;
+
+  model::meshes[index]->material_volumes_raytrace(
+    ny, nz, max_mats, materials, volumes);
+  return 0;
 }
 
 extern "C" int openmc_mesh_get_plot_bins(int32_t index, Position origin,

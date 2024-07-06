@@ -29,6 +29,9 @@ class _MaterialVolume(Structure):
     ]
 
 
+arr_2d_int32 = np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='CONTIGUOUS')
+arr_2d_double = np.ctypeslib.ndpointer(dtype=np.double, ndim=2, flags='CONTIGUOUS')
+
 # Mesh functions
 _dll.openmc_extend_meshes.argtypes = [c_int32, c_char_p, POINTER(c_int32),
                                       POINTER(c_int32)]
@@ -55,6 +58,10 @@ _dll.openmc_mesh_material_volumes.argtypes = [
     POINTER(c_int), POINTER(c_uint64)]
 _dll.openmc_mesh_material_volumes.restype = c_int
 _dll.openmc_mesh_material_volumes.errcheck = _error_handler
+_dll.openmc_mesh_material_volumes_raytrace.argtypes = [
+    c_int32, c_int, c_int, c_int, arr_2d_int32, arr_2d_double]
+_dll.openmc_mesh_material_volumes_raytrace.restype = c_int
+_dll.openmc_mesh_material_volumes_raytrace.errcheck = _error_handler
 _dll.openmc_mesh_get_plot_bins.argtypes = [
     c_int32, _Position, _Position, c_int, POINTER(c_int), POINTER(c_int32)
 ]
@@ -242,6 +249,19 @@ class Mesh(_FortranObjectWithID):
                 for r in result[:hits.value]
             ])
         return volumes
+
+    def material_volumes_raytrace(
+            self, ny: int = 1000, nz: int = 1000, max_materials: int = 4):
+
+        n = self.n_elements
+        materials = np.full((n, max_materials), -2, dtype=np.int32)
+        volumes = np.zeros((n, max_materials), dtype=np.float64)
+
+        print('Raytracing...')
+        _dll.openmc_mesh_raytrace_material_volumes(
+            self._index, ny, nz, max_materials, materials, volumes)
+
+        return (np.ma.MaskedArray(materials, materials == -2), volumes)
 
     def get_plot_bins(
             self,

@@ -214,6 +214,17 @@ void LinearSourceDomain::accumulate_iteration_flux()
   }
 }
 
+void LinearSourceDomain::all_reduce_replicated_source_regions()
+{
+#ifdef OPENMC_MPI
+  FlatSourceDomain::all_reduce_replicated_source_regions();
+  simulation::time_bank_sendrecv.start();
+  MPI_Allreduce(MPI_IN_PLACE, flux_moments_new_.data(), n_source_elements_,
+    MPI_FLOAT, MPI_SUM, mpi::intracomm);
+  simulation::time_bank_sendrecv.stop();
+#endif
+}
+
 double LinearSourceDomain::evaluate_flux_at_point(
   const Position r, const int64_t sr, const int g) const
 {

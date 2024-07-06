@@ -106,7 +106,7 @@ public:
   void random_ray_tally();
   virtual void accumulate_iteration_flux();
   void output_to_vtk() const;
-  void all_reduce_replicated_source_regions();
+  virtual void all_reduce_replicated_source_regions();
   void convert_external_sources();
   void count_external_source_regions();
   virtual void flux_swap();

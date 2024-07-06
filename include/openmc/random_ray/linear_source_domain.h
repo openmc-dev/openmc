@@ -25,7 +25,7 @@ public:
   //----------------------------------------------------------------------------
   // Methods
   void update_neutron_source(double k_eff) override;
-  double compute_k_eff(double k_eff_old) const; // override
+  double compute_k_eff(double k_eff_old) const;
   void normalize_scalar_flux_and_volumes(
     double total_active_distance_per_iteration) override;
   int64_t add_source_to_scalar_flux() override;
@@ -35,7 +35,7 @@ public:
   void random_ray_tally();
   void accumulate_iteration_flux() override;
   void output_to_vtk() const;
-  void all_reduce_replicated_source_regions(); // override
+  void all_reduce_replicated_source_regions() override;
   void convert_external_sources();
   void count_external_source_regions();
   void flux_swap() override;

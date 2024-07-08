@@ -67,6 +67,7 @@ exclude = ['tests*']
 [tool.setuptools.package-data]
 "openmc.data.effective_dose" = ["*.csv"]
 "openmc.data" = ["*.txt", "*.DAT", "*.json", "*.h5"]
+"openmc.lib": ["libopenmc.dylib", "libopenmc.so"]
 
 [project.scripts]
 openmc-ace-to-hdf5 = "scripts.openmc_ace_to_hdf5:main"

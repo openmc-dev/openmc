@@ -44,12 +44,12 @@ dependencies = [
 [project.optional-dependencies]
 depletion-mpi = ["mpi4py"]
 docs = [
-    "sphinx",
+    "sphinx==5.0.2",
     "sphinxcontrib-katex",
     "sphinx-numfig",
     "jupyter",
     "sphinxcontrib-svg2pdfconverter",
-    "sphinx-rtd-theme"
+    "sphinx-rtd-theme==1.0.0"
 ]
 test = ["pytest", "pytest-cov", "colorama", "openpyxl"]
 vtk = ["vtk"]

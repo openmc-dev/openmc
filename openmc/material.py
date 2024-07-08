@@ -728,6 +728,7 @@ class Material(IDManagerMixin):
 
         cv.check_type('nuclide', element, str)
         cv.check_type('percent', percent, Real)
+        cv.check_greater_than('percent', percent, 0, equality=True)
         cv.check_value('percent type', percent_type, {'ao', 'wo'})
 
         # Make sure element name is just that

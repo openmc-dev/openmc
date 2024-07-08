@@ -207,6 +207,8 @@ the change-in-angle), we must use an analog estimator.
 
 .. TODO: Add description of surface current tallies
 
+.. _tallies_statistics:
+
 ----------
 Statistics
 ----------

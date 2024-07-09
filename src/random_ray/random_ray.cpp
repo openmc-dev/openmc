@@ -413,8 +413,8 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
     }
 
     // Compute linear source terms, spatial and directional (dir),
-    // calculated from the source gradients dot product with local centroid 
-    // and direction, respectively. 
+    // calculated from the source gradients dot product with local centroid
+    // and direction, respectively.
     float spatial_source =
       domain_->source_[source_element + g] +
       rm_local.dot(domain->source_gradients_[source_element + g]);

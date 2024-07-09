@@ -41,7 +41,7 @@ void LinearSourceDomain::batch_reset()
   FlatSourceDomain::batch_reset();
 #pragma omp parallel for
   for (int64_t se = 0; se < n_source_elements_; se++) {
-    flux_moments_t_[se] = {0.0, 0.0, 0.0};
+    flux_moments_new_[se] = {0.0, 0.0, 0.0};
   }
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions_; sr++) {

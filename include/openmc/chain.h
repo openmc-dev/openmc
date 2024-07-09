@@ -26,15 +26,19 @@ public:
   ~ChainNuclide();
 
   const Distribution* photon_energy() const { return photon_energy_.get(); }
+  const std::unordered_map<int, std::string>& reaction_products() const
+  {
+    return reaction_products_;
+  }
 
 private:
   // Data members
-  std::string name_;
-  double half_life_ {0.0};
-  double decay_energy_ {0.0};
-  // TODO: Decay modes
-  // TODO: Reactions?
-  UPtrDist photon_energy_;
+  std::string name_;          //!< Name of nuclide
+  double half_life_ {0.0};    //!< Half-life in [s]
+  double decay_energy_ {0.0}; //!< Decay energy in [eV]
+  std::unordered_map<int, std::string>
+    reaction_products_;    //!< Map of MT to reaction product name
+  UPtrDist photon_energy_; //!< Decay photon energy distribution
 };
 
 //==============================================================================

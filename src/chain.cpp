@@ -12,6 +12,7 @@
 
 #include "openmc/distribution.h" // for distribution_from_xml
 #include "openmc/error.h"
+#include "openmc/reaction.h"
 #include "openmc/xml_interface.h" // for get_node_value
 
 namespace openmc {
@@ -28,6 +29,14 @@ ChainNuclide::ChainNuclide(pugi::xml_node node)
   }
   if (check_for_node(node, "decay_energy")) {
     decay_energy_ = std::stod(get_node_value(node, "decay_energy"));
+  }
+
+  // Read reactions to store MT -> product map
+  for (pugi::xml_node reaction_node : node.children("reaction")) {
+    std::string rx_name = get_node_value(reaction_node, "type");
+    std::string rx_target = get_node_value(reaction_node, "target");
+    int mt = reaction_type(rx_name);
+    reaction_products_[mt] = rx_target;
   }
 
   for (pugi::xml_node source_node : node.children("source")) {

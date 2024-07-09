@@ -5,7 +5,6 @@
 #define OPENMC_REACTION_H
 
 #include <string>
-#include <utility> // for pair
 
 #include "hdf5.h"
 #include <gsl/gsl-lite.hpp>
@@ -27,9 +26,9 @@ public:
   //! Construct reaction from HDF5 data
   //! \param[in] group HDF5 group containing reaction data
   //! \param[in] temperatures Desired temperatures for cross sections
-  //! \param[in] Z Atomic number of the corresponding nuclide
-  //! \param[in] A Mass number of the corresponding nuclide
-  explicit Reaction(hid_t group, const vector<int>& temperatures, int Z, int A);
+  //! \param[in] name Name of the nuclide
+  explicit Reaction(
+    hid_t group, const vector<int>& temperatures, std::string name);
 
   //! Calculate cross section given temperautre/grid index, interpolation factor
   //
@@ -86,12 +85,6 @@ std::string reaction_name(int mt);
 //! \param[in] name  Reaction name
 //! \return Corresponding reaction type (MT value)
 int reaction_type(std::string name);
-
-//! Determine change in Z and A for a given reaction
-//
-//! \param[in] mt  ENDF MT value
-//! \return Pair of ΔA, ΔZ
-std::pair<int, int> reaction_dadz(int mt);
 
 } // namespace openmc
 

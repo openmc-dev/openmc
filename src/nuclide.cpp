@@ -249,7 +249,7 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
     if (starts_with(name, "reaction_")) {
       hid_t rx_group = open_group(rxs_group, name.c_str());
       reactions_.push_back(
-        make_unique<Reaction>(rx_group, temps_to_read, Z_, A_));
+        make_unique<Reaction>(rx_group, temps_to_read, name_));
 
       // Check for 0K elastic scattering
       const auto& rx = reactions_.back();

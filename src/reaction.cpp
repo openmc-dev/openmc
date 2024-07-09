@@ -20,7 +20,8 @@ namespace openmc {
 // Reaction implementation
 //==============================================================================
 
-Reaction::Reaction(hid_t group, const vector<int>& temperatures, int Z, int A)
+Reaction::Reaction(
+  hid_t group, const vector<int>& temperatures, std::string name)
 {
   read_attribute(group, "Q_value", q_value_);
   read_attribute(group, "mt", mt_);
@@ -65,18 +66,18 @@ Reaction::Reaction(hid_t group, const vector<int>& temperatures, int Z, int A)
     }
   }
 
-  // Determine product using ΔA, ΔZ for D1S method
-  int dZ;
-  int dA;
-  std::tie(dA, dZ) = reaction_dadz(mt_);
-  if (dZ != 0 || dA != 0) {
-    int new_Z = Z + dZ;
-    int new_A = A + dA;
-    auto decay_product = fmt::format("{}{}", ATOMIC_SYMBOL[new_Z], new_A);
-    if (data::chain_nuclide_map.find(decay_product) !=
-        data::chain_nuclide_map.end()) {
-      // TODO: Implement replace_missing
-      decay_product_ = decay_product;
+  // Determine product for D1S method
+  auto nuclide_it = data::chain_nuclide_map.find(name);
+  if (nuclide_it != data::chain_nuclide_map.end()) {
+    const auto& chain_nuc = data::chain_nuclides[nuclide_it->second];
+    const auto& rx_products = chain_nuc->reaction_products();
+    auto product_it = rx_products.find(mt_);
+    if (product_it != rx_products.end()) {
+      auto decay_product = product_it->second;
+      if (data::chain_nuclide_map.find(decay_product) !=
+          data::chain_nuclide_map.end()) {
+        decay_product_ = decay_product;
+      }
     }
   }
 }
@@ -410,181 +411,6 @@ int reaction_type(std::string name)
       "for details: "
       "https://docs.openmc.org/en/stable/usersguide/tallies.html#scores");
   return MT;
-}
-
-std::pair<int, int> reaction_dadz(int mt)
-{
-  if (mt == 11) {
-    return {-3, -1};
-  } else if (mt == 16 || (mt >= 875 && mt < 892)) {
-    return {-1, 0};
-  } else if (mt == 17) {
-    return {-2, 0};
-  } else if (mt == 22) {
-    return {-4, -2};
-  } else if (mt == 23) {
-    return {-12, -6};
-  } else if (mt == 24) {
-    return {-5, -2};
-  } else if (mt == 25) {
-    return {-6, -2};
-  } else if (mt == 28) {
-    return {-1, -1};
-  } else if (mt == 29) {
-    return {-8, -4};
-  } else if (mt == 30) {
-    return {-9, -4};
-  } else if (mt == 32) {
-    return {-2, -1};
-  } else if (mt == 33) {
-    return {-3, -1};
-  } else if (mt == 34) {
-    return {-3, -2};
-  } else if (mt == 35) {
-    return {-10, -5};
-  } else if (mt == 36) {
-    return {-11, -5};
-  } else if (mt == 37) {
-    return {-3, 0};
-  } else if (mt == 41) {
-    return {-2, -1};
-  } else if (mt == 42) {
-    return {-3, -1};
-  } else if (mt == 44) {
-    return {-2, -2};
-  } else if (mt == 45) {
-    return {-5, -3};
-  } else if (mt == 102) {
-    return {1, 0};
-  } else if ((mt == 103) || (mt >= 600 && mt < 650)) {
-    return {0, -1};
-  } else if ((mt == 104) || (mt >= 650 && mt < 700)) {
-    return {-1, -1};
-  } else if ((mt == 105) || (mt >= 700 && mt < 750)) {
-    return {-2, -1};
-  } else if ((mt == 106) || (mt >= 750 && mt < 800)) {
-    return {-2, -2};
-  } else if ((mt == 107) || (mt >= 800 && mt < 850)) {
-    return {-3, -2};
-  } else if (mt == 108) {
-    return {-7, -4};
-  } else if (mt == 109) {
-    return {-11, -6};
-  } else if (mt == 111) {
-    return {-1, -2};
-  } else if (mt == 112) {
-    return {-4, -3};
-  } else if (mt == 113) {
-    return {-10, -5};
-  } else if (mt == 114) {
-    return {-9, -5};
-  } else if (mt == 115) {
-    return {-2, -2};
-  } else if (mt == 116) {
-    return {-3, -2};
-  } else if (mt == 117) {
-    return {-5, -3};
-  } else if (mt == 152) {
-    return {-4, 0};
-  } else if (mt == 153) {
-    return {-5, 0};
-  } else if (mt == 154) {
-    return {-4, -1};
-  } else if (mt == 155) {
-    return {-6, -3};
-  } else if (mt == 156) {
-    return {-4, -1};
-  } else if (mt == 157) {
-    return {-4, -1};
-  } else if (mt == 158) {
-    return {-6, -3};
-  } else if (mt == 159) {
-    return {-6, -3};
-  } else if (mt == 160) {
-    return {-6, 0};
-  } else if (mt == 161) {
-    return {-7, 0};
-  } else if (mt == 162) {
-    return {-5, -1};
-  } else if (mt == 163) {
-    return {-6, -1};
-  } else if (mt == 164) {
-    return {-7, -1};
-  } else if (mt == 165) {
-    return {-7, -2};
-  } else if (mt == 166) {
-    return {-8, -2};
-  } else if (mt == 167) {
-    return {-9, -2};
-  } else if (mt == 168) {
-    return {-10, -2};
-  } else if (mt == 169) {
-    return {-5, -1};
-  } else if (mt == 170) {
-    return {-6, -1};
-  } else if (mt == 171) {
-    return {-7, -1};
-  } else if (mt == 172) {
-    return {-5, -1};
-  } else if (mt == 173) {
-    return {-6, -1};
-  } else if (mt == 174) {
-    return {-7, -1};
-  } else if (mt == 175) {
-    return {-8, -1};
-  } else if (mt == 176) {
-    return {-4, -2};
-  } else if (mt == 177) {
-    return {-5, -2};
-  } else if (mt == 178) {
-    return {-6, -2};
-  } else if (mt == 179) {
-    return {-4, -2};
-  } else if (mt == 180) {
-    return {-10, -4};
-  } else if (mt == 181) {
-    return {-7, -3};
-  } else if (mt == 182) {
-    return {-4, -2};
-  } else if (mt == 183) {
-    return {-3, -2};
-  } else if (mt == 184) {
-    return {-4, -2};
-  } else if (mt == 185) {
-    return {-5, -2};
-  } else if (mt == 186) {
-    return {-4, -3};
-  } else if (mt == 187) {
-    return {-5, -3};
-  } else if (mt == 188) {
-    return {-6, -3};
-  } else if (mt == 189) {
-    return {-7, -3};
-  } else if (mt == 190) {
-    return {-3, -2};
-  } else if (mt == 191) {
-    return {-4, -3};
-  } else if (mt == 192) {
-    return {-5, -3};
-  } else if (mt == 193) {
-    return {-6, -4};
-  } else if (mt == 194) {
-    return {-5, -2};
-  } else if (mt == 195) {
-    return {-11, -4};
-  } else if (mt == 196) {
-    return {-8, -3};
-  } else if (mt == 197) {
-    return {-2, -3};
-  } else if (mt == 198) {
-    return {-3, -3};
-  } else if (mt == 199) {
-    return {-8, -4};
-  } else if (mt == 200) {
-    return {-6, -2};
-  } else {
-    return {};
-  }
 }
 
 } // namespace openmc

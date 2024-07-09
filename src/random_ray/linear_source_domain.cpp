@@ -142,7 +142,12 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
     centroid_t_[sr] += centroid_iteration_[sr];
     mom_matrix_t_[sr] += mom_matrix_[sr];
     volume_t_[sr] += volume_[sr];
+    double invvol = 1.0 / volume_t_[sr];
     volume_[sr] = volume_t_[sr] * volume_normalization_factor;
+    centroid_[sr] = centroid_t_[sr];
+    centroid_[sr] *= invvol;
+    mom_matrix_[sr] = mom_matrix_t_[sr];
+    mom_matrix_[sr] *= invvol;
   }
 }
 
@@ -161,18 +166,12 @@ int64_t LinearSourceDomain::add_source_to_scalar_flux()
   for (int sr = 0; sr < n_source_regions_; sr++) {
 
     double volume = volume_[sr];
-    double volume_tracks = volume_t_[sr];
-    double invvol = 1.0 / volume_tracks;
     int material = material_[sr];
 
     // Check if this cell was hit this iteration
     int was_cell_hit = was_hit_[sr];
     if (was_cell_hit) {
       n_hits++;
-      centroid_[sr] = centroid_t_[sr];
-      centroid_[sr] *= invvol;
-      mom_matrix_[sr] = mom_matrix_t_[sr];
-      mom_matrix_[sr] *= invvol;
     }
 
     for (int g = 0; g < negroups_; g++) {

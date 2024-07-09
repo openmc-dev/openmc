@@ -395,6 +395,7 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
     rm_local = {0.0, 0.0, 0.0};
     r0_local = -u() * 0.5 * distance;
   }
+  double distance_2 = distance * distance;
 
   // Linear Source MOC incoming flux attenuation + source
   // contribution/attenuation equation
@@ -421,17 +422,17 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
 
     float gn = exponentialG(tau);
     float f1 = 1.0f - tau * gn;
-    float f2 = (2.0f * gn - f1) * distance * distance;
+    float f2 = (2.0f * gn - f1) * distance_2;
     float new_delta_psi = (angular_flux_[g] - spatial_source) * f1 * distance -
                           0.5 * dir_source * f2;
 
     float h1 = f1 - gn;
     float g1 = 0.5f - h1;
     float g2 = exponentialG2(tau);
-    g1 = g1 * spatial_source * distance;
-    g2 = g2 * dir_source * distance * distance * 0.5f;
-    h1 = h1 * angular_flux_[g] * distance;
-    h1 = (g1 + g2 + h1) * distance;
+    g1 = g1 * spatial_source;
+    g2 = g2 * dir_source * distance * 0.5f;
+    h1 = h1 * angular_flux_[g];
+    h1 = (g1 + g2 + h1) * distance_2;
     spatial_source = spatial_source * distance + new_delta_psi;
 
     // Store contributions for this group into arrays, so that they can

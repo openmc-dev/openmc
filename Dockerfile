@@ -111,7 +111,8 @@ RUN if [ "$build_dagmc" = "on" ]; then \
         mkdir -p $HOME/MOAB && cd $HOME/MOAB \
         && git clone  --single-branch -b ${MOAB_TAG} --depth 1 ${MOAB_REPO} \
         && mkdir build && cd build \
-        && cmake ../moab -DENABLE_HDF5=ON \
+        && cmake ../moab -DCMAKE_BUILD_TYPE=Release \
+                      -DENABLE_HDF5=ON \
                       -DENABLE_NETCDF=ON \
                       -DBUILD_SHARED_LIBS=OFF \
                       -DENABLE_FORTRAN=OFF \

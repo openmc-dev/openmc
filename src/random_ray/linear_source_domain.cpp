@@ -142,12 +142,14 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
     centroid_t_[sr] += centroid_iteration_[sr];
     mom_matrix_t_[sr] += mom_matrix_[sr];
     volume_t_[sr] += volume_[sr];
-    double invvol = 1.0 / volume_t_[sr];
     volume_[sr] = volume_t_[sr] * volume_normalization_factor;
-    centroid_[sr] = centroid_t_[sr];
-    centroid_[sr] *= invvol;
-    mom_matrix_[sr] = mom_matrix_t_[sr];
-    mom_matrix_[sr] *= invvol;
+    if (volume_t_[sr] > 0.0) {
+      double inv_volume = 1.0 / volume_t_[sr];
+      centroid_[sr] = centroid_t_[sr];
+      centroid_[sr] *= inv_volume;
+      mom_matrix_[sr] = mom_matrix_t_[sr];
+      mom_matrix_[sr] *= inv_volume;
+    }
   }
 }
 

@@ -45,7 +45,7 @@ public:
   //----------------------------------------------------------------------------
   // Public Data members
 
-  vector<MomentArray> source_moments_;
+  vector<MomentArray> source_gradients_;
   vector<MomentArray> flux_moments_old_;
   vector<MomentArray> flux_moments_new_;
   vector<MomentArray> flux_moments_t_;

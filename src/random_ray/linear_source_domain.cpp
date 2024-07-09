@@ -24,10 +24,12 @@ namespace openmc {
 
 LinearSourceDomain::LinearSourceDomain() : FlatSourceDomain()
 {
+  // First order spatial moment of the scalar flux
   flux_moments_old_.assign(n_source_elements_, {0.0, 0.0, 0.0});
   flux_moments_new_.assign(n_source_elements_, {0.0, 0.0, 0.0});
   flux_moments_t_.assign(n_source_elements_, {0.0, 0.0, 0.0});
-  source_moments_.assign(n_source_elements_, {0.0, 0.0, 0.0});
+  // Source gradients given by M inverse multiplied by source moments
+  source_gradients_.assign(n_source_elements_, {0.0, 0.0, 0.0});
 
   centroid_.assign(n_source_regions_, {0.0, 0.0, 0.0});
   centroid_iteration_.assign(n_source_regions_, {0.0, 0.0, 0.0});
@@ -104,7 +106,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
 
       // Compute the linear source terms
       if (simulation::current_batch > 2) {
-        source_moments_[sr * negroups_ + e_out] =
+        source_gradients_[sr * negroups_ + e_out] =
           invM * ((scatter_linear + fission_linear * inverse_k_eff) / sigma_t);
       }
     }

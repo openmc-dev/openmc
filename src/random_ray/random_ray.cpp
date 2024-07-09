@@ -411,33 +411,34 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
       tau = 0.0f;
     }
 
-    // Compute the linear source angular flux attenuation and source
-    // contribution quantities
-    float flat_source =
+    // Compute linear source terms, spatial and directional (dir),
+    // calculated from the source gradients dot product with local centroid 
+    // and direction, respectively. 
+    float spatial_source =
       domain_->source_[source_element + g] +
-      rm_local.dot(domain->source_moments_[source_element + g]);
-    float linear_source = u().dot(domain->source_moments_[source_element + g]);
+      rm_local.dot(domain->source_gradients_[source_element + g]);
+    float dir_source = u().dot(domain->source_gradients_[source_element + g]);
 
     float gn = exponentialG(tau);
     float f1 = 1.0f - tau * gn;
     float f2 = (2.0f * gn - f1) * distance * distance;
-    float new_delta_psi = (angular_flux_[g] - flat_source) * f1 * distance -
-                          0.5 * linear_source * f2;
+    float new_delta_psi = (angular_flux_[g] - spatial_source) * f1 * distance -
+                          0.5 * dir_source * f2;
 
     float h1 = f1 - gn;
     float g1 = 0.5f - h1;
     float g2 = exponentialG2(tau);
-    g1 = g1 * flat_source * distance;
-    g2 = g2 * linear_source * distance * distance * 0.5f;
+    g1 = g1 * spatial_source * distance;
+    g2 = g2 * dir_source * distance * distance * 0.5f;
     h1 = h1 * angular_flux_[g] * distance;
     h1 = (g1 + g2 + h1) * distance;
-    flat_source = flat_source * distance + new_delta_psi;
+    spatial_source = spatial_source * distance + new_delta_psi;
 
     // Store contributions for this group into arrays, so that they can
     // be accumulated into the source region's estimates inside of the locked
     // region.
     delta_psi_[g] = new_delta_psi;
-    delta_moments_[g] = r0_local * flat_source + u() * h1;
+    delta_moments_[g] = r0_local * spatial_source + u() * h1;
 
     // Update the angular flux for this group
     angular_flux_[g] -= new_delta_psi * sigma_t;

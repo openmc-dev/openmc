@@ -387,24 +387,35 @@ class Chain:
                 nuclide.half_life = data.half_life.nominal_value
                 nuclide.decay_energy = data.decay_energy.nominal_value
                 sum_br = 0.0
-                for i, mode in enumerate(data.modes):
+
+                b_ratios = []
+                b_ids = []
+
+                for mode in data.modes: 
                     type_ = ','.join(mode.modes)
                     if mode.daughter in decay_data:
                         target = mode.daughter
                     else:
                         print('missing {} {} {}'.format(
-                            parent, ','.join(mode.modes), mode.daughter))
+                            parent, type_, mode.daughter))
                         target = replace_missing(mode.daughter, decay_data)
 
-                    # Write branching ratio, taking care to ensure sum is unity
                     br = mode.branching_ratio.nominal_value
                     sum_br += br
-                    if i == len(data.modes) - 1 and sum_br != 1.0:
-                        br = 1.0 - sum(m.branching_ratio.nominal_value
-                                       for m in data.modes[:-1])
 
-                    # Append decay mode
-                    nuclide.add_decay_mode(type_, target, br)
+                    b_ratios.append(br)
+                    b_ids.append((type_, target))
+                
+                if sum_br != 1.0:
+                    max_br = max(b_ratios)
+                    max_index = b_ratios.index(max_br)
+
+                    # Adjust max_br so branching ratios sum to unity
+                    b_ratios[max_index] = max_br - sum(b_ratios) + 1.0
+                    
+                # Append decay modes
+                for br, id in zip(b_ratios, b_ids):
+                    nuclide.add_decay_mode(id[0], id[1], br)
 
                 nuclide.sources = data.sources
 

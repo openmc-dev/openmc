@@ -231,9 +231,10 @@ void LinearSourceDomain::all_reduce_replicated_source_regions()
 
   // We are going to assume we can safely cast Position, MomentArray,
   // and MomentMatrix to contiguous arrays of doubles for the MPI
-  // allreduce operation. If a new FP32 MomentArray type is introduced,
-  // then there will likely be padding, in which case this function
-  // will need to become more complex.
+  // allreduce operation. This is a safe assumption as typically
+  // compilers will at most pad to 8 byte boundaries. If a new FP32 MomentArray
+  // type is introduced, then there will likely be padding, in which case this
+  // function will need to become more complex.
   if (sizeof(MomentArray) != 3 * sizeof(double) ||
       sizeof(MomentMatrix) != 6 * sizeof(double)) {
     fatal_error("Unexpected buffer padding in linear source domain reduction.");

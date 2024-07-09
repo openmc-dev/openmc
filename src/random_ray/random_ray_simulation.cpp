@@ -377,20 +377,23 @@ void RandomRaySimulation::instability_check(
                           100.0;
   avg_miss_rate += percent_missed;
 
-  if (percent_missed > 10.0) {
-    warning(fmt::format(
-      "Very high FSR miss rate detected ({:.3f}%). Instability may occur. "
-      "Increase ray density by adding more rays and/or active distance.",
-      percent_missed));
-  } else if (percent_missed > 0.01) {
-    warning(fmt::format("Elevated FSR miss rate detected ({:.3f}%). Increasing "
-                        "ray density by adding more rays and/or active "
-                        "distance may improve simulation efficiency.",
-      percent_missed));
-  }
+  if (mpi::master) {
+    if (percent_missed > 10.0) {
+      warning(fmt::format(
+        "Very high FSR miss rate detected ({:.3f}%). Instability may occur. "
+        "Increase ray density by adding more rays and/or active distance.",
+        percent_missed));
+    } else if (percent_missed > 0.01) {
+      warning(
+        fmt::format("Elevated FSR miss rate detected ({:.3f}%). Increasing "
+                    "ray density by adding more rays and/or active "
+                    "distance may improve simulation efficiency.",
+          percent_missed));
+    }
 
-  if (k_eff > 10.0 || k_eff < 0.01 || !(std::isfinite(k_eff))) {
-    fatal_error("Instability detected");
+    if (k_eff > 10.0 || k_eff < 0.01 || !(std::isfinite(k_eff))) {
+      fatal_error("Instability detected");
+    }
   }
 }
 

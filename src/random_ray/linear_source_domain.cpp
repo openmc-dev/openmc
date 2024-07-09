@@ -30,6 +30,7 @@ LinearSourceDomain::LinearSourceDomain() : FlatSourceDomain()
   source_moments_.assign(n_source_elements_, {0.0, 0.0, 0.0});
 
   centroid_.assign(n_source_regions_, {0.0, 0.0, 0.0});
+  centroid_iteration_.assign(n_source_regions_, {0.0, 0.0, 0.0});
   centroid_t_.assign(n_source_regions_, {0.0, 0.0, 0.0});
   mom_matrix_.assign(n_source_regions_, {0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   mom_matrix_t_.assign(n_source_regions_, {0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
@@ -39,8 +40,13 @@ void LinearSourceDomain::batch_reset()
 {
   FlatSourceDomain::batch_reset();
 #pragma omp parallel for
-  for (auto& m : flux_moments_new_) {
-    m = {0.0, 0.0, 0.0};
+  for (int64_t se = 0; se < n_source_elements_; se++) {
+    flux_moments_t_[se] = {0.0, 0.0, 0.0};
+  }
+#pragma omp parallel for
+  for (int64_t sr = 0; sr < n_source_regions_; sr++) {
+    centroid_iteration_[sr] = {0.0, 0.0, 0.0};
+    mom_matrix_[sr] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
   }
 }
 
@@ -133,6 +139,8 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
 // update the simulation-averaged cell-wise volume estimates
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions_; sr++) {
+    centroid_t_[sr] += centroid_iteration_[sr];
+    mom_matrix_t_[sr] += mom_matrix_[sr];
     volume_t_[sr] += volume_[sr];
     volume_[sr] = volume_t_[sr] * volume_normalization_factor;
   }
@@ -219,8 +227,24 @@ void LinearSourceDomain::all_reduce_replicated_source_regions()
 #ifdef OPENMC_MPI
   FlatSourceDomain::all_reduce_replicated_source_regions();
   simulation::time_bank_sendrecv.start();
-  MPI_Allreduce(MPI_IN_PLACE, flux_moments_new_.data(), n_source_elements_,
-    MPI_FLOAT, MPI_SUM, mpi::intracomm);
+
+  // We are going to assume we can safely cast Position, MomentArray,
+  // and MomentMatrix to contiguous arrays of doubles for the MPI
+  // allreduce operation. If a new FP32 MomentArray type is introduced,
+  // then there will likely be padding, in which case this function
+  // will need to become more complex.
+  if (sizeof(MomentArray) != 3 * sizeof(double) ||
+      sizeof(MomentMatrix) != 6 * sizeof(double)) {
+    fatal_error("Unexpected buffer padding in linear source domain reduction.");
+  }
+
+  MPI_Allreduce(MPI_IN_PLACE, static_cast<void*>(flux_moments_new_.data()),
+    n_source_elements_ * 3, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+  MPI_Allreduce(MPI_IN_PLACE, static_cast<void*>(mom_matrix_.data()),
+    n_source_regions_ * 6, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+  MPI_Allreduce(MPI_IN_PLACE, static_cast<void*>(centroid_iteration_.data()),
+    n_source_regions_ * 3, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+
   simulation::time_bank_sendrecv.stop();
 #endif
 }

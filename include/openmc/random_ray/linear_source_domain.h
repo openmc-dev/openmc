@@ -50,6 +50,7 @@ public:
   vector<MomentArray> flux_moments_new_;
   vector<MomentArray> flux_moments_t_;
   vector<Position> centroid_;
+  vector<Position> centroid_iteration_;
   vector<Position> centroid_t_;
   vector<MomentMatrix> mom_matrix_;
   vector<MomentMatrix> mom_matrix_t_;

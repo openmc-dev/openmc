@@ -387,10 +387,8 @@ class Chain:
                 nuclide.half_life = data.half_life.nominal_value
                 nuclide.decay_energy = data.decay_energy.nominal_value
                 sum_br = 0.0
-
-                b_ratios = []
-                b_ids = []
-
+                branch_ratios = []
+                branch_ids = []
                 for mode in data.modes: 
                     type_ = ','.join(mode.modes)
                     if mode.daughter in decay_data:
@@ -399,24 +397,28 @@ class Chain:
                         print('missing {} {} {}'.format(
                             parent, type_, mode.daughter))
                         target = replace_missing(mode.daughter, decay_data)
-
                     br = mode.branching_ratio.nominal_value
                     sum_br += br
+                    branch_ratios.append(br)
+                    branch_ids.append((type_, target))
 
-                    b_ratios.append(br)
-                    b_ids.append((type_, target))
-                
                 if sum_br != 1.0:
-                    max_br = max(b_ratios)
-                    max_index = b_ratios.index(max_br)
+                    max_br = max(branch_ratios)
+                    max_index = branch_ratios.index(max_br)
 
                     # Adjust max_br so branching ratios sum to unity
-                    b_ratios[max_index] = max_br - sum(b_ratios) + 1.0
-                    
-                # Append decay modes
-                for br, id in zip(b_ratios, b_ids):
-                    nuclide.add_decay_mode(id[0], id[1], br)
+                    new_br = max_br - sum(branch_ratios) + 1.0
+                    branch_ratios[max_index] = new_br
+                    if not math.isclose(sum_br, 1.0, rel_tol=1e-3):
+                        print(
+                            f'{parent} branch ratios sum: {sum_br}, changed '
+                            f'branch {branch_ids[max_index]} from '
+                            f'{max_br} to {new_br}.'
+                        )
 
+                # Append decay modes
+                for br, id in zip(branch_ratios, branch_ids):
+                    nuclide.add_decay_mode(id[0], id[1], br)
                 nuclide.sources = data.sources
 
             fissionable = False

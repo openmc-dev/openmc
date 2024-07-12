@@ -34,6 +34,8 @@ ChainNuclide::ChainNuclide(pugi::xml_node node)
   // Read reactions to store MT -> product map
   for (pugi::xml_node reaction_node : node.children("reaction")) {
     std::string rx_name = get_node_value(reaction_node, "type");
+    if (!reaction_node.attribute("target"))
+      continue;
     std::string rx_target = get_node_value(reaction_node, "target");
     int mt = reaction_type(rx_name);
     reaction_products_[mt] = rx_target;

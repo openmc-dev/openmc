@@ -1165,6 +1165,8 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
   // Sample the number of photons produced
   double y_t =
     p.neutron_xs(i_nuclide).photon_prod / p.neutron_xs(i_nuclide).total;
+  if (y_t <= 0.0)
+    return;
 
   // Sample the reaction and product
   int i_rx;

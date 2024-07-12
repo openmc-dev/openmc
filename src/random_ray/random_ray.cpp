@@ -61,10 +61,37 @@ float cjosey_exponential(float tau)
 
   return num / den;
 }
-//  Computes y = 1/x-(1-exp(-x))/x**2 using a 5/6th order rational
-//  approximation. OpenMoC
-//  https://github.com/mit-crpg/OpenMOC/blob/7c8c9460c1c95f68dae102a402a39afa233a0b8c/src/exponentials.h#L9
 
+// The below two functions (exponentialG and exponentialG2) were developed
+// by Colin Josey. The implementation of these functions is closely based
+// on the OpenMOC versions of these functions. The OpenMOC license is given
+// below:
+
+// Copyright (C) 2012-2023 Massachusetts Institute of Technology and OpenMOC
+// contributors
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+// Computes y = 1/x-(1-exp(-x))/x**2 using a 5/6th order rational
+// approximation. It is accurate to 2e-7 over [0, 1e5]. Developed by Colin
+// Josey using Remez's algorithm, with original implementation in OpenMOC at:
+// https://github.com/mit-crpg/OpenMOC/blob/develop/src/exponentials.h
 float exponentialG(float tau)
 {
   // Numerator coefficients in rational approximation for 1/x - (1 - exp(-x)) /
@@ -106,10 +133,11 @@ float exponentialG(float tau)
   return num / den;
 }
 
-//  Computes G2 : y = 2/3 - (1 + 2/x) * (1/x + 0.5 - (1 + 1/x) * (1-exp(-x)) /
-//  x) using a 5/5th order rational approximation, FROM: OpenMoC
-//  https://github.com/mit-crpg/OpenMOC/blob/7c8c9460c1c95f68dae102a402a39afa233a0b8c/src/exponentials.h#L9
-
+// Computes G2 : y = 2/3 - (1 + 2/x) * (1/x + 0.5 - (1 + 1/x) * (1-exp(-x)) /
+// x) using a 5/5th order rational approximation. It is accurate to 1e-6 over
+// [0, 1e6]. Developed by Colin Josey using Remez's algorithm, with original
+// implementation in OpenMOC at:
+// https://github.com/mit-crpg/OpenMOC/blob/develop/src/exponentials.h
 float exponentialG2(float tau)
 {
 

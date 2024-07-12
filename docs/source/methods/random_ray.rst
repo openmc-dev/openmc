@@ -860,7 +860,7 @@ relationship between the LS source vector and the source moments,
 .. math::
     :label: m_equation
 
-     \mathbf{M}_{i} \boldsymbol{\vec{Q}}_{i,g}\;\mathrm{.} = \boldsymbol{\vec{q}}_{i,g} .
+     \mathbf{M}_{i} \boldsymbol{\vec{Q}}_{i,g} = \boldsymbol{\vec{q}}_{i,g} \;\mathrm{.}
 
 The spatial moments matrix :math:`M_i` in region :math:`i` represents the
 spatial distribution of the 3D object composing the source region. This matrix

@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 
-import glob
-import sys
 import numpy as np
-
-from setuptools import setup, find_packages
+from setuptools import setup
 from Cython.Build import cythonize
 
 

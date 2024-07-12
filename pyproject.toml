@@ -1,7 +1,6 @@
 [build-system]
 requires = ["setuptools", "wheel", "numpy", "cython"]
 
-
 [project]
 name = "openmc"
 authors = [
@@ -21,16 +20,12 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "Programming Language :: C++",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "numpy>=1.9",
+    "numpy",
     "h5py",
     "scipy",
     "ipython",
@@ -65,7 +60,7 @@ include = ['openmc*', 'scripts*']
 exclude = ['tests*']
 
 [tool.setuptools.package-data]
-"openmc.data.effective_dose" = ["*.csv"]
+"openmc.data.effective_dose" = ["*.txt"]
 "openmc.data" = ["*.txt", "*.DAT", "*.json", "*.h5"]
 "openmc.lib" = ["libopenmc.dylib", "libopenmc.so"]
 

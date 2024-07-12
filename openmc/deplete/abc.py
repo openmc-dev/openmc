@@ -41,6 +41,63 @@ _SECONDS_PER_HOUR = 60*60
 _SECONDS_PER_DAY = 24*60*60
 _SECONDS_PER_JULIAN_YEAR = 365.25*24*60*60
 
+
+def _normalize_timesteps(
+        timesteps: Sequence[float] | Sequence[tuple[str, float]],
+        source_rates: float | Sequence[float],
+        timestep_units: str = 's',
+        operator: TransportOperator | None = None,
+):
+    if not isinstance(source_rates, Sequence):
+        # Ensure that rate is single value if that is the case
+        source_rates = [source_rates] * len(timesteps)
+
+    if len(source_rates) != len(timesteps):
+        raise ValueError(
+            "Number of time steps ({}) != number of powers ({})".format(
+                len(timesteps), len(source_rates)))
+
+    # Get list of times / units
+    if isinstance(timesteps[0], Sequence):
+        times, units = zip(*timesteps)
+    else:
+        times = timesteps
+        units = [timestep_units] * len(timesteps)
+
+    # Determine number of seconds for each timestep
+    seconds = []
+    for timestep, unit, rate in zip(times, units, source_rates):
+        # Make sure values passed make sense
+        check_type('timestep', timestep, Real)
+        check_greater_than('timestep', timestep, 0.0, False)
+        check_type('timestep units', unit, str)
+        check_type('source rate', rate, Real)
+        check_greater_than('source rate', rate, 0.0, True)
+
+        if unit in ('s', 'sec'):
+            seconds.append(timestep)
+        elif unit in ('min', 'minute'):
+            seconds.append(timestep*_SECONDS_PER_MINUTE)
+        elif unit in ('h', 'hr', 'hour'):
+            seconds.append(timestep*_SECONDS_PER_HOUR)
+        elif unit in ('d', 'day'):
+            seconds.append(timestep*_SECONDS_PER_DAY)
+        elif unit in ('a', 'year'):
+            seconds.append(timestep*_SECONDS_PER_JULIAN_YEAR)
+        elif unit.lower() == 'mwd/kg':
+            watt_days_per_kg = 1e6*timestep
+            kilograms = 1e-3*operator.heavy_metal
+            if rate == 0.0:
+                raise ValueError("Cannot specify a timestep in [MWd/kg] when"
+                                 " the power is zero.")
+            days = watt_days_per_kg * kilograms / rate
+            seconds.append(days*_SECONDS_PER_DAY)
+        else:
+            raise ValueError(f"Invalid timestep unit '{unit}'")
+
+    return (np.asarray(seconds), np.asarray(source_rates))
+
+
 OperatorResult = namedtuple('OperatorResult', ['k', 'rates'])
 OperatorResult.__doc__ = """\
 Result of applying transport operator
@@ -551,10 +608,10 @@ class Integrator(ABC):
     def __init__(
             self,
             operator: TransportOperator,
-            timesteps: Sequence[float],
+            timesteps: Sequence[float] | Sequence[tuple[float, str]],
             power: Optional[Union[float, Sequence[float]]] = None,
             power_density: Optional[Union[float, Sequence[float]]] = None,
-            source_rates: Optional[Sequence[float]] = None,
+            source_rates: Optional[Union[float, Sequence[float]]] = None,
             timestep_units: str = 's',
             solver: str = "cram48"
         ):
@@ -582,53 +639,9 @@ class Integrator(ABC):
         elif source_rates is None:
             raise ValueError("Either power, power_density, or source_rates must be set")
 
-        if not isinstance(source_rates, Iterable):
-            # Ensure that rate is single value if that is the case
-            source_rates = [source_rates] * len(timesteps)
-
-        if len(source_rates) != len(timesteps):
-            raise ValueError(
-                "Number of time steps ({}) != number of powers ({})".format(
-                    len(timesteps), len(source_rates)))
-
-        # Get list of times / units
-        if isinstance(timesteps[0], Iterable):
-            times, units = zip(*timesteps)
-        else:
-            times = timesteps
-            units = [timestep_units] * len(timesteps)
-
-        # Determine number of seconds for each timestep
-        seconds = []
-        for timestep, unit, rate in zip(times, units, source_rates):
-            # Make sure values passed make sense
-            check_type('timestep', timestep, Real)
-            check_greater_than('timestep', timestep, 0.0, False)
-            check_type('timestep units', unit, str)
-            check_type('source rate', rate, Real)
-            check_greater_than('source rate', rate, 0.0, True)
-
-            if unit in ('s', 'sec'):
-                seconds.append(timestep)
-            elif unit in ('min', 'minute'):
-                seconds.append(timestep*_SECONDS_PER_MINUTE)
-            elif unit in ('h', 'hr', 'hour'):
-                seconds.append(timestep*_SECONDS_PER_HOUR)
-            elif unit in ('d', 'day'):
-                seconds.append(timestep*_SECONDS_PER_DAY)
-            elif unit in ('a', 'year'):
-                seconds.append(timestep*_SECONDS_PER_JULIAN_YEAR)
-            elif unit.lower() == 'mwd/kg':
-                watt_days_per_kg = 1e6*timestep
-                kilograms = 1e-3*operator.heavy_metal
-                if rate == 0.0:
-                    raise ValueError("Cannot specify a timestep in [MWd/kg] when"
-                                     " the power is zero.")
-                days = watt_days_per_kg * kilograms / rate
-                seconds.append(days*_SECONDS_PER_DAY)
-            else:
-                raise ValueError(f"Invalid timestep unit '{unit}'")
-
+        # Normalize timesteps and source rates
+        seconds, source_rates = _normalize_timesteps(
+            timesteps, source_rates, timestep_units, operator)
         self.timesteps = np.asarray(seconds)
         self.source_rates = np.asarray(source_rates)
 

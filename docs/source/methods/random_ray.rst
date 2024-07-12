@@ -218,8 +218,9 @@ Following the multigroup discretization, another assumption made is that a large
 and complex problem can be broken up into small constant cross section regions,
 and that these regions have group dependent, flat, isotropic sources (fission
 and scattering), :math:`Q_g`. Anisotropic as well as higher order sources are
-also possible with MOC-based methods. With these key assumptions, the multigroup MOC form of the neutron
-transport equation can be written as in Equation :eq:`moc_final`.
+also possible with MOC-based methods. With these key assumptions, the multigroup
+MOC form of the neutron transport equation can be written as in Equation
+:eq:`moc_final`.
 
 .. math::
     :label: moc_final

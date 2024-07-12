@@ -227,8 +227,6 @@ void RandomRay::event_advance_ray()
     return;
   }
 
-  double distance_to_boundary = distance;
-
   if (is_active_) {
     // If the ray is in the active length, need to check if it has
     // reached its maximum termination distance. If so, reduce

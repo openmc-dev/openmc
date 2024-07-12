@@ -64,7 +64,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
   // angle data.
   const int t = 0;
   const int a = 0;
-// double det;
+
 #pragma omp parallel for
   for (int sr = 0; sr < n_source_regions_; sr++) {
 

@@ -12,7 +12,7 @@ namespace openmc {
 
 /*
  * The LinearSourceDomain class encompasses data and methods for storing
- * scalar flux and source region for all flat source regions in a
+ * scalar flux and source region for all linear source regions in a
  * random ray simulation domain.
  */
 
@@ -54,17 +54,6 @@ public:
   vector<Position> centroid_t_;
   vector<MomentMatrix> mom_matrix_;
   vector<MomentMatrix> mom_matrix_t_;
-
-private:
-  //----------------------------------------------------------------------------
-  // Methods
-
-  // ...
-
-  //----------------------------------------------------------------------------
-  // Private data members
-
-  // ...
 
 }; // class LinearSourceDomain
 

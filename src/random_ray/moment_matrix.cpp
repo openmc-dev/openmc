@@ -9,18 +9,16 @@ namespace openmc {
 // UpperTriangular implementation
 //==============================================================================
 
-// Inters the following 3x3 smmetric matrix labeled as:
+// Inverts a 3x3 smmetric matrix labeled as:
 //
 // | a b c |
 // | b d e |
 // | c e f |
 //
-// We first check the determinant to ensure it is non-zero
-// before proceeding with the inversion. If the determinant
-// is zero, we return a matrix of zeros.
-// Inversion is calculated by computing the adjoint matrix
-// first, and then the inverse can be computed as:
-// A^-1  = 1/det(A) * adj(A)
+// We first check the determinant to ensure it is non-zero before proceeding
+// with the inversion. If the determinant is zero, we return a matrix of zeros.
+// Inversion is calculated by computing the adjoint matrix first, and then the
+// inverse can be computed as: A^-1  = 1/det(A) * adj(A)
 MomentMatrix MomentMatrix::inverse() const
 {
   MomentMatrix inv;

@@ -7,12 +7,14 @@ import pytest
 
 from tests.testing_harness import TolerantPyAPITestHarness
 
+
 class MGXSTestHarness(TolerantPyAPITestHarness):
     def _cleanup(self):
         super()._cleanup()
         f = 'mgxs.h5'
         if os.path.exists(f):
             os.remove(f)
+
 
 @pytest.mark.parametrize("domain_type", ["cell", "material", "universe"])
 def test_random_ray_fixed_source(domain_type):
@@ -24,6 +26,7 @@ def test_random_ray_fixed_source(domain_type):
         # the particle source constraints
         source = model.settings.source[0]
         constraints = source.constraints
+
         if domain_type == 'cell':
             cells = model.geometry.get_all_cells()
             for key, cell in cells.items():

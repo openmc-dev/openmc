@@ -8,12 +8,14 @@ import pytest
 
 from tests.testing_harness import TolerantPyAPITestHarness
 
+
 class MGXSTestHarness(TolerantPyAPITestHarness):
     def _cleanup(self):
         super()._cleanup()
         f = 'mgxs.h5'
         if os.path.exists(f):
             os.remove(f)
+
 
 @pytest.mark.parametrize("shape", ["linear", "linear_xy"])
 def test_random_ray_fixed_source_linear(shape):

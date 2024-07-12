@@ -7,6 +7,7 @@ import pytest
 
 from tests.testing_harness import TolerantPyAPITestHarness
 
+
 class MGXSTestHarness(TolerantPyAPITestHarness):
     def _cleanup(self):
         super()._cleanup()

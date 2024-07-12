@@ -4,6 +4,7 @@ from openmc.examples import random_ray_lattice
 
 from tests.testing_harness import TolerantPyAPITestHarness
 
+
 class MGXSTestHarness(TolerantPyAPITestHarness):
     def _cleanup(self):
         super()._cleanup()

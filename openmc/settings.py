@@ -1,4 +1,4 @@
-from collections.abc import Iterable, Mapping, MutableSequence
+from collections.abc import Iterable, Mapping, MutableSequence, Sequence
 from enum import Enum
 import itertools
 from math import ceil
@@ -822,7 +822,7 @@ class Settings:
 
     @track.setter
     def track(self, track: typing.Iterable[typing.Iterable[int]]):
-        cv.check_type('track', track, Iterable)
+        cv.check_type('track', track, Sequence)
         for t in track:
             if len(t) != 3:
                 msg = f'Unable to set the track to "{t}" since its length is not 3'

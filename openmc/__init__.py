@@ -1,3 +1,4 @@
+import importlib.metadata
 from openmc.arithmetic import *
 from openmc.bounding_box import *
 from openmc.cell import *
@@ -40,4 +41,4 @@ from openmc.model import Model
 from . import examples
 
 
-__version__ = '0.15.1-dev'
+__version__ = importlib.metadata.version("openmc")

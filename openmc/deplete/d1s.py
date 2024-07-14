@@ -67,6 +67,6 @@ def time_correction_factors(
         g = np.exp(-decay_rate*dt)
 
         # Eq. (4) in doi:10.1016/j.fusengdes.2019.111399
-        h[i + 1] = rate/decay_rate*(1. - g) + h[i]*g
+        h[i + 1] = rate*(1. - g) + h[i]*g
 
     return {nuclides[i]: h[:, i] for i in range(n_nuclides)}

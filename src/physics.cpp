@@ -596,11 +596,14 @@ void sample_photon_product(
         continue;
 
       int idx = data::chain_nuclide_map[target];
-      const auto& energy_dist = data::chain_nuclides[idx]->photon_energy();
+      const auto& chain_nuc = data::chain_nuclides[idx];
+      const auto& energy_dist = chain_nuc->photon_energy();
       if (!energy_dist)
         continue;
 
-      prob += xs * energy_dist->integral();
+      double photon_per_decay =
+        energy_dist->integral() / chain_nuc->decay_constant();
+      prob += xs * photon_per_decay;
 
       *i_rx = i;
       if (prob > cutoff)

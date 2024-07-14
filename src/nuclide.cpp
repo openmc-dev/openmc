@@ -382,11 +382,13 @@ void Nuclide::create_derived(
         const auto& target = rx->decay_product_;
         if (!target.empty()) {
           int idx = data::chain_nuclide_map.at(target);
-          const auto& energy_dist = data::chain_nuclides[idx]->photon_energy();
+          const auto& chain_nuc = data::chain_nuclides[idx];
+          const auto& energy_dist = chain_nuc->photon_energy();
           if (energy_dist) {
-            double photon_strength = energy_dist->integral();
+            double photon_per_decay =
+              energy_dist->integral() / chain_nuc->decay_constant();
             for (int k = 0; k < n; ++k) {
-              pprod[k] += xs[k] * photon_strength;
+              pprod[k] += xs[k] * photon_per_decay;
             }
           }
         }

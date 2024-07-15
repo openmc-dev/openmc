@@ -40,15 +40,19 @@ class TransferRates:
         Pair of strings needed to build final matrix (destination_material, mat)
     """
 
-    def __init__(self, operator, model):
+    def __init__(self, operator, model, number_of_timesteps):
 
         self.materials = model.materials
         self.burnable_mats = operator.burnable_mats
         self.local_mats = operator.local_mats
+        self.number_of_timesteps = number_of_timesteps
 
         #initialize transfer rates container dict
         self.transfer_rates = {mat: {} for mat in self.burnable_mats}
         self.index_transfer = set()
+        self.transfer_rates_timesteps = None
+        self.feed_rates = {mat: {} for mat in self.burnable_mats}
+        self.feed_rates_timesteps = None
 
     def _get_material_id(self, val):
         """Helper method for getting material id from Material obj or name.
@@ -143,7 +147,8 @@ class TransferRates:
             return self.transfer_rates[material_id].keys()
 
     def set_transfer_rate(self, material, components, transfer_rate,
-                          transfer_rate_units='1/s', destination_material=None):
+                          transfer_rate_units='1/s', timesteps=None,
+                          destination_material=None):
         """Set element and/or nuclide transfer rates in a depletable material.
 
         Parameters
@@ -194,6 +199,13 @@ class TransferRates:
             raise ValueError('Invalid transfer rate unit '
                              f'"{transfer_rate_units}"')
 
+        if timesteps is not None:
+            for timestep in timesteps:
+                check_value('timestep', timestep, range(self.number_of_timesteps))
+            self.transfer_rates_timesteps = timesteps
+
+        if feed_rate_units is not None:
+
         for component in components:
             current_components = self.transfer_rates[material_id].keys()
             split_component = re.split(r'\d+', component)
@@ -227,3 +239,100 @@ class TransferRates:
                     (transfer_rate / unit_conv, destination_material_id)]
             if destination_material_id is not None:
                 self.index_transfer.add((destination_material_id, material_id))
+
+    def set_feed_rate(self, material, components, feed_rate,
+                          feed_rate_units='g/s', timesteps=None):
+        """Set element and/or nuclide transfer rates in a depletable material.
+
+        Parameters
+        ----------
+        material : openmc.Material or str or int
+            Depletable material
+        components : list of str
+            List of strings of elements and/or nuclides that share transfer rate.
+            Cannot add transfer rates for nuclides to a material where a
+            transfer rate for its element is specified and vice versa.
+        transfer_rate : float
+            Rate at which elements and/or nuclides are transferred. A positive or
+            negative value corresponds to a removal or feed rate, respectively.
+        destination_material : openmc.Material or str or int, Optional
+            Destination material to where nuclides get fed.
+        transfer_rate_units : {'1/s', '1/min', '1/h', '1/d', '1/a'}
+            Units for values specified in the transfer_rate argument. 's' for
+            seconds, 'min' for minutes, 'h' for hours, 'a' for Julian years.
+
+            """
+        """Set element and/or nuclide transfer rates in a depletable material.
+
+        Parameters
+        ----------
+        material : openmc.Material or str or int
+            Depletable material
+        components : list of str
+            List of strings of elements and/or nuclides that share transfer rate.
+            Cannot add transfer rates for nuclides to a material where a
+            transfer rate for its element is specified and vice versa.
+        transfer_rate : float
+            Rate at which elements and/or nuclides are transferred. A positive or
+            negative value corresponds to a removal or feed rate, respectively.
+        destination_material : openmc.Material or str or int, Optional
+            Destination material to where nuclides get fed.
+        transfer_rate_units : {'1/s', '1/min', '1/h', '1/d', '1/a'}
+            Units for values specified in the transfer_rate argument. 's' for
+            seconds, 'min' for minutes, 'h' for hours, 'a' for Julian years.
+
+        """
+        material_id = self._get_material_id(material)
+        check_type('feed_rate', feed_rate, Real)
+        check_type('components', components, list, expected_iter_type=str)
+
+        if feed_rate_units in ('g/s', 'g/sec'):
+            unit_conv = 1
+        elif feed_rate_units in ('g/min', 'g/minute'):
+            unit_conv = 60
+        elif feed_rate_units in ('g/h', 'g/hr', 'g/hour'):
+            unit_conv = 60*60
+        elif feed_rate_units in ('g/d', 'g/day'):
+            unit_conv = 24*60*60
+        elif feed_rate_units in ('g/a', 'g/year'):
+            unit_conv = 365.25*24*60*60
+        else:
+            raise ValueError('Invalid feed rate unit '
+                             f'"{feed_rate_units}"')
+
+        if timesteps is not None:
+            for timestep in timesteps:
+                check_value('timestep', timestep, range(self.number_of_timesteps))
+            self.feed_rates_timesteps = timesteps
+
+        for component in components:
+            current_components = self.feed_rates[material_id].keys()
+            split_component = re.split(r'\d+', component)
+            element = split_component[0]
+            if element not in ELEMENT_SYMBOL.values():
+                raise ValueError(f'{component} is not a valid nuclide or '
+                                 'element.')
+            else:
+                if len(split_component) == 1:
+                    element_nucs = [c for c in current_components
+                                    if re.match(component + r'\d', c)]
+                    if len(element_nucs) > 0:
+                        nuc_str = ", ".join(element_nucs)
+                        raise ValueError('Cannot add feed rate for element '
+                                         f'{component} to material {material_id} '
+                                         f'with feed rate(s) for nuclide(s) '
+                                         f'{nuc_str}.')
+
+                else:
+                    if element in current_components:
+                        raise ValueError('Cannot add feed rate for nuclide '
+                                         f'{component} to material {material_id} '
+                                         f'where element {element} already has '
+                                         'a feed rate.')
+
+            if component in self.feed_rates[material_id]:
+                self.feed_rates[material_id][component].append(
+                    (feed_rate / unit_conv))
+            else:
+                self.feed_rates[material_id][component] = [
+                    (feed_rate / unit_conv)]

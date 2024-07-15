@@ -859,7 +859,8 @@ class Integrator(ABC):
 
         """
         if self.transfer_rates is None:
-            self.transfer_rates = TransferRates(self.operator, self.operator.model)
+            self.transfer_rates = TransferRates(self.operator, self.operator.model,
+                                      len(time_steps)
 
         self.transfer_rates.set_transfer_rate(material, components, transfer_rate,
                                       transfer_rate_units, destination_material)

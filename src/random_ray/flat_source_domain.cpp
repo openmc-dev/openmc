@@ -752,7 +752,7 @@ void FlatSourceDomain::all_reduce_replicated_source_regions()
 }
 
 double FlatSourceDomain::evaluate_flux_at_point(
-  const Position r, const int64_t sr, const int g) const
+  Position r, int64_t sr, int g) const
 {
   return scalar_flux_final_[sr * negroups_ + g] /
          (settings::n_batches - settings::n_inactive);

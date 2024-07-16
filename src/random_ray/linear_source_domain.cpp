@@ -14,8 +14,6 @@
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/timer.h"
 
-#include <cstdio>
-
 namespace openmc {
 
 //==============================================================================
@@ -254,7 +252,7 @@ void LinearSourceDomain::all_reduce_replicated_source_regions()
 }
 
 double LinearSourceDomain::evaluate_flux_at_point(
-  const Position r, const int64_t sr, const int g) const
+  Position r, int64_t sr, int g) const
 {
   float phi_flat = FlatSourceDomain::evaluate_flux_at_point(r, sr, g);
 

@@ -777,8 +777,8 @@ Linear Sources
 
 Instead of making a flat source approximation, as in the previous section, a
 Linear Source (LS) approximation can be used. Different LS approximations have
-been developed, the OpenMC implementation follows the MOC LS scheme described by
-`Ferrer <Ferrer-2016_>`_. The LS source along a characterstic is given by:
+been developed; the OpenMC implementation follows the MOC LS scheme described by
+`Ferrer <Ferrer-2016_>`_. The LS source along a characteristic is given by:
 
 .. math::
     :label: linear_source
@@ -788,16 +788,16 @@ been developed, the OpenMC implementation follows the MOC LS scheme described by
 where the source, :math:`Q_{i,g}(s)`, varies linearly along the track and
 :math:`\bar{Q}_{r,i,g}` and :math:`\hat{Q}_{r,i,g}` are track specific source
 terms to define shortly. Integrating the source, as done in Equation
-:eq:`moc_final`, leads to 
+:eq:`moc_final`, leads to
 
 .. math::
     :label: lsr_attenuation
 
-    \psi^{out}_{r,g}=\psi^{in}_{r,g} + \left(\frac{\bar{Q}_{r, i, g}}{\Sigma_{\mathrm{t}, i, g}}-\psi^{in}_{r,g}\right) 
+    \psi^{out}_{r,g}=\psi^{in}_{r,g} + \left(\frac{\bar{Q}_{r, i, g}}{\Sigma_{\mathrm{t}, i, g}}-\psi^{in}_{r,g}\right)
     F_{1}\left(\tau_{i,g}\right)+\frac{\hat{Q}_{r, i, g}^{g}}{2\left(\Sigma_{\mathrm{t}, i,g}\right)^{2}} F_{2}\left(\tau_{i,g}\right),
 
-where for simplicity the term :math:`\tau_{i,g}` and the expoentials :math:`F1`
-and :math:`F2` are introduced, given by:
+where for simplicity the term :math:`\tau_{i,g}` and the expoentials :math:`F_1`
+and :math:`F_2` are introduced, given by:
 
 .. math::
     :label: tau
@@ -837,20 +837,20 @@ Using the local position, the source in a source region is given by:
 .. math::
     :label: region_source
 
-    \tilde{Q}(\boldsymbol{x}) ={Q}_{i,g}+ \boldsymbol{\vec{Q}}_{i,g} \cdot \mathbf{u}_{r}\;\mathrm{,} 
+    \tilde{Q}(\boldsymbol{x}) ={Q}_{i,g}+ \boldsymbol{\vec{Q}}_{i,g} \cdot \mathbf{u}_{r}\;\mathrm{,}
 
-This definition allows us to solve for our characteric source terms resulting in: 
+This definition allows us to solve for our characteric source terms resulting in:
 
 .. math::
     :label: source_term_1
 
-    \bar{Q}_{r, i, g} = Q_{i,g} + \left[\mathbf{u}_{r,\mathrm{c}} \cdot \boldsymbol{\vec{Q}}_{i,g}\right], 
+    \bar{Q}_{r, i, g} = Q_{i,g} + \left[\mathbf{u}_{r,\mathrm{c}} \cdot \boldsymbol{\vec{Q}}_{i,g}\right],
 
 .. math::
     :label: source_term_2
 
     \hat{Q}_{r, i, g} = \left[\boldsymbol{\Omega} \cdot \boldsymbol{\vec{Q}}_{i,g}\right]\;\mathrm{,}
-    
+
 :math:`\boldsymbol{\Omega}` being the direction vector of the ray. The next step
 is to solve for the LS source vector :math:`\boldsymbol{\vec{Q}}_{i,g}`. A
 relationship between the LS source vector and the source moments,
@@ -863,42 +863,40 @@ relationship between the LS source vector and the source moments,
      \mathbf{M}_{i} \boldsymbol{\vec{Q}}_{i,g} = \boldsymbol{\vec{q}}_{i,g} \;\mathrm{.}
 
 The spatial moments matrix :math:`M_i` in region :math:`i` represents the
-spatial distribution of the 3D object composing the source region. This matrix
-is independent of the material of the source region, fluxes, and any transport
-effects -- it is a purely geometric quantity. It is a symmetric :math:`3\times3`
-matrix. While :math:`M_i` is not known apriori to the simulation, similar to the
-source region volume, it can be computed "on-the-fly" as a byproduct of the
-random ray integration process. Each time a ray randomly crosses the region
-within its active length, an estimate of the spatial moments matrix can be
-computed by using the midpoint of the ray as an estimate of the centroid, and
-the distance and direction of the ray can be used to inform the other spatial
-moments within the matrix. As this information is purely geometric, the
-stochastic estimate of the centroid and spatial moments matrix can be
-accumulated and improved over the entire duration of the simulation, converging
-towards their true quantities. 
+spatial distribution of the 3D object composing the `source region
+<Gunow-2018_>`_. This matrix is independent of the material of the source
+region, fluxes, and any transport effects -- it is a purely geometric quantity.
+It is a symmetric :math:`3\times3` matrix. While :math:`M_i` is not known
+apriori to the simulation, similar to the source region volume, it can be
+computed "on-the-fly" as a byproduct of the random ray integration process. Each
+time a ray randomly crosses the region within its active length, an estimate of
+the spatial moments matrix can be computed by using the midpoint of the ray as
+an estimate of the centroid, and the distance and direction of the ray can be
+used to inform the other spatial moments within the matrix. As this information
+is purely geometric, the stochastic estimate of the centroid and spatial moments
+matrix can be accumulated and improved over the entire duration of the
+simulation, converging towards their true quantities.
 
 With an estimate of the spatial moments matrix :math:`M_i` resulting from the
 ray tracing process naturally, the LS source vector
 :math:`\boldsymbol{\vec{Q}}_{i,g}` can be obtained via a linear solve of
-:eq:`m_equation`, or by the direct inversion of the spatial momemnts matrix
-:math:`M_i`, a :math:`3\times3` symmetric matrix that is defined by purely
-geometrical aspects specific to the particular `source region <Gunow-2018_>`_
-:math:`i`. However, to accomplish this, we must first know the source moments
+:eq:`m_equation`, or by the direct inversion of :math:`M_i`. However, to
+accomplish this, we must first know the source moments
 :math:`\boldsymbol{\vec{q}}_{i,g}`. Fortunately, the source moments are also
-defined by the definiton of the source: 
+defined by the definition of the source:
 
 .. math::
     :label: source_moments
 
-    q_{v, i, g}= \frac{\chi_{i,g}}{k_{eff}} \sum_{g^{\prime}=1}^{G} \nu 
-    \Sigma_{\mathrm{f},i, g^{\prime}} \hat{\phi}_{v, i, g^{\prime}} + \sum_{g^{\prime}=1}^{G} 
-    \Sigma_{\mathrm{s}, i, g^{\prime}\rightarrow g} \hat{\phi}_{v, i, g^{\prime}}\quad \forall v \in(x, y, z)\;\mathrm{,} 
+    q_{v, i, g}= \frac{\chi_{i,g}}{k_{eff}} \sum_{g^{\prime}=1}^{G} \nu
+    \Sigma_{\mathrm{f},i, g^{\prime}} \hat{\phi}_{v, i, g^{\prime}} + \sum_{g^{\prime}=1}^{G}
+    \Sigma_{\mathrm{s}, i, g^{\prime}\rightarrow g} \hat{\phi}_{v, i, g^{\prime}}\quad \forall v \in(x, y, z)\;\mathrm{,}
 
 where :math:`v` indicates the direction vector component, and we have introduced
 the scalar flux moments :math:`\hat{\phi}`. The scalar flux moments can be
 solved for by taking the `integral definition <Gunow-2018_>`_ of a spatial
 moment, allowing us to derive a "simulation averaged" estimator for the scalar
-moment, as in Equation :eq:`phi_sim`, 
+moment, as in Equation :eq:`phi_sim`,
 
 .. math::
     :label: scalar_moments_sim
@@ -906,7 +904,7 @@ moment, as in Equation :eq:`phi_sim`,
     \hat{\phi}_{v,i,g}^{simulation} = \frac{\sum\limits_{r=1}^{N_i}
     \ell_{r} \left[\Omega_{v} \hat{\psi}_{r,i,g} + u_{r,v,0} \bar{\psi}_{r,i,g}\right]}
     {\Sigma_{t,i,g} \frac{\sum\limits^{B}_{b}\sum\limits^{N_i}_{r} \ell_{b,r} }{B}}
-    \quad \forall v \in(x, y, z)\;\mathrm{,} 
+    \quad \forall v \in(x, y, z)\;\mathrm{,}
 
 
 where the average angular flux is given by Equation :eq:`average_psi_final`, and
@@ -915,8 +913,8 @@ the angular flux spatial moments :math:`\hat{\psi}_{r,i,g}` by:
 .. math::
     :label: angular_moments
 
-    \hat{\psi}_{r, i, g} = \frac{\ell_{r}\psi^{in}_{r,g}}{2} + 
-    \left(\frac{\bar{Q}_{r,i, g}}{\Sigma_{\mathrm{t}, i, g}}-\psi^{in}_{r,g}\right) 
+    \hat{\psi}_{r, i, g} = \frac{\ell_{r}\psi^{in}_{r,g}}{2} +
+    \left(\frac{\bar{Q}_{r,i, g}}{\Sigma_{\mathrm{t}, i, g}}-\psi^{in}_{r,g}\right)
     \frac{G_{1}\left(\tau_{i,g}\right)}{\Sigma_{\mathrm{t}, i, g}} + \frac{\ell_{r}\hat{Q}_{r,i,g}}
     {2\left(\Sigma_{\mathrm{t}, i, g}\right)^{2}}G_{2}\left(\tau_{i,g}\right)\;\mathrm{.}
 
@@ -935,7 +933,7 @@ The new exponentials introduced, again for simplicity, are simply:
 
 The contents of this section, alongside the equations for the flat source and
 scalar flux, Equations :eq:`source_update` and :eq:`phi_sim` respectively,
-completes the set of equations for LS. 
+completes the set of equations for LS.
 
 .. _methods-shannon-entropy-random-ray:
 
@@ -955,7 +953,7 @@ sources is adjusted such that:
     :label: fraction-source-random-ray
 
     S_i = \frac{\text{Fission source in FSR $i \times$ Volume of FSR
-    $i$}}{\text{Total fission source}} = \frac{Q_{i} V_{i}}{\sum_{i=1}^{i=N} 
+    $i$}}{\text{Total fission source}} = \frac{Q_{i} V_{i}}{\sum_{i=1}^{i=N}
     Q_{i} V_{i}}
 
 The Shannon entropy is then computed normally as
@@ -1023,7 +1021,7 @@ in random ray particle transport are:
       cell are assumed to be spatially uniform. As the source in reality is a
       continuous function, this leads to bias, although the bias can be reduced
       to acceptable levels if the flat source regions are sufficiently small.
-      The bias can also be mitigated by assuming a higher-order source such as the 
+      The bias can also be mitigated by assuming a higher-order source such as the
       linear source approximation currently implemented into OpenMC.
       In practical terms, this source of bias can become very large if cells are
       large (with dimensions beyond that of a typical particle mean free path),
@@ -1058,5 +1056,3 @@ in random ray particle transport are:
 .. [Askew-1972] Askew, “A Characteristics Formulation of the Neutron Transport
     Equation in Complicated Geometries.” Technical Report AAEW-M 1108, UK Atomic
     Energy Establishment (1972).
-
-

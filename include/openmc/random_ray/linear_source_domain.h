@@ -39,8 +39,7 @@ public:
   void convert_external_sources();
   void count_external_source_regions();
   void flux_swap() override;
-  double evaluate_flux_at_point(
-    const Position r, const int64_t sr, const int g) const override;
+  double evaluate_flux_at_point(Position r, int64_t sr, int g) const override;
 
   //----------------------------------------------------------------------------
   // Public Data members

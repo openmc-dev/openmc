@@ -110,8 +110,7 @@ public:
   void convert_external_sources();
   void count_external_source_regions();
   virtual void flux_swap();
-  virtual double evaluate_flux_at_point(
-    const Position r, const int64_t sr, const int g) const;
+  virtual double evaluate_flux_at_point(Position r, int64_t sr, int g) const;
   double compute_fixed_source_normalization_factor() const;
 
   //----------------------------------------------------------------------------

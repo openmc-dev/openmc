@@ -455,9 +455,9 @@ Linear Sources (LS), are supported with the eigenvalue and fixed source random
 ray solvers. General 3D LS can be toggled by setting the ``source_shape`` field
 in the :attr:`openmc.Settings.random_ray` dictionary to ``'linear'`` as::
 
-    settings.random_ray['source_shape'] = 'linear' 
+    settings.random_ray['source_shape'] = 'linear'
 
-LS enables the use of coarser mesh discretisations and lower ray populations,
+LS enables the use of coarser mesh discretizations and lower ray populations,
 offsetting the increased computation per ray.
 
 While OpenMC has no specific mode for 2D simulations, such simulations can be

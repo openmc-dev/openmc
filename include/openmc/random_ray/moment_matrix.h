@@ -9,18 +9,18 @@ namespace openmc {
 
 // The MomentArray class is a 3-element array representing the x, y, and z
 // moments. It is defined as an alias for the Position class to allow for
-// dot products and other operations with Position and Direction objects.
+// dot products and other operations with Position objects.
 // TODO: This class could in theory have 32-bit instead of 64-bit FP values.
 using MomentArray = Position;
 
-// The MomentMatrix class is a sparese representation a 3x3 symmetric
+// The MomentMatrix class is a sparse representation a 3x3 symmetric
 // matrix, with elements labeled as follows:
 //
 // | a b c |
 // | b d e |
 // | c e f |
 //
-// This class uses FP64 values as objects will be accumulated to over many
+// This class uses FP64 values as objects that are accumulated to over many
 // iterations.
 class MomentMatrix {
 public:

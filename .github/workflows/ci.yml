@@ -104,7 +104,6 @@ jobs:
             vectfit=${{ matrix.vectfit }})
           # How to handle when each individual dependency changes?
           # Should each dependency have its own individual cache?
-          # Or should they all be bundled together?
 
       - name: Environment Variables
         run: |
@@ -137,6 +136,12 @@ jobs:
         if: ${{ matrix.vectfit == 'y' }}
         run: sudo apt install -y libblas-dev liblapack-dev
 
+      #- name: Install NJOY2016
+      #  uses: actions/cache@v4
+      #  with:
+      #    path: "$HOME/NJOY2016"
+      #    key: NJOY2016-
+
       - name: install
         shell: bash
         run: |
@@ -155,7 +160,7 @@ jobs:
         shell: bash
         run: $GITHUB_WORKSPACE/tools/ci/gha-before-script.sh
 
-      - name: test ## possibly refactor to make more 
+      - name: test
         shell: bash
         run: |
           CTEST_OUTPUT_ON_FAILURE=1 make test -C $GITHUB_WORKSPACE/build/

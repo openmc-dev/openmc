@@ -6,7 +6,7 @@ from numbers import Real
 import warnings
 import typing  # imported separately as py3.8 requires typing.Iterable
 # also required to prevent typing.Union namespace overwriting Union
-from typing import Optional, Sequence, Dict, Any
+from typing import Sequence, Dict, Any
 
 import lxml.etree as ET
 import numpy as np
@@ -57,8 +57,8 @@ class SourceBase(ABC):
 
     def __init__(
         self,
-        strength: Optional[float] = 1.0,
-        constraints: Optional[Dict[str, Any]] = None
+        strength: float | None = 1.0,
+        constraints: Dict[str, Any] | None = None
     ):
         self.strength = strength
         self.constraints = constraints
@@ -79,7 +79,7 @@ class SourceBase(ABC):
         return self._constraints
 
     @constraints.setter
-    def constraints(self, constraints: Optional[Dict[str, Any]]):
+    def constraints(self, constraints: Dict[str, Any] | None):
         self._constraints = {}
         if constraints is None:
             return
@@ -308,14 +308,14 @@ class IndependentSource(SourceBase):
 
     def __init__(
         self,
-        space: Optional[openmc.stats.Spatial] = None,
-        angle: Optional[openmc.stats.UnitSphere] = None,
-        energy: Optional[openmc.stats.Univariate] = None,
-        time: Optional[openmc.stats.Univariate] = None,
+        space: openmc.stats.Spatial | None = None,
+        angle: openmc.stats.UnitSphere | None = None,
+        energy: openmc.stats.Univariate | None = None,
+        time: openmc.stats.Univariate | None = None,
         strength: float = 1.0,
         particle: str = 'neutron',
-        domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None,
-        constraints: Optional[Dict[str, Any]] = None
+        domains: Sequence[openmc.Cell | openmc.Material | openmc.Universe] | None = None,
+        constraints: Dict[str, Any] | None = None
     ):
         if domains is not None:
             warnings.warn("The 'domains' arguments has been replaced by the "
@@ -528,7 +528,7 @@ class MeshSource(SourceBase):
             self,
             mesh: MeshBase,
             sources: Sequence[SourceBase],
-            constraints: Optional[Dict[str, Any]] = None,
+            constraints: Dict[str, Any] | None  = None,
     ):
         super().__init__(strength=None, constraints=constraints)
         self.mesh = mesh
@@ -702,10 +702,10 @@ class CompiledSource(SourceBase):
     """
     def __init__(
         self,
-        library: Optional[str] = None,
-        parameters: Optional[str] = None,
+        library: str | None  = None,
+        parameters: str | None = None,
         strength: float = 1.0,
-        constraints: Optional[Dict[str, Any]] = None
+        constraints: Dict[str, Any] | None = None
     ) -> None:
         super().__init__(strength=strength, constraints=constraints)
 
@@ -829,9 +829,9 @@ class FileSource(SourceBase):
 
     def __init__(
         self,
-        path: Optional[PathLike] = None,
+        path: PathLike | None = None,
         strength: float = 1.0,
-        constraints: Optional[Dict[str, Any]] = None
+        constraints: Dict[str, Any] | None = None
     ):
         super().__init__(strength=strength, constraints=constraints)
         self._path = None

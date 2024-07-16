@@ -6,7 +6,7 @@ IndependentOperator class for depletion.
 
 from __future__ import annotations
 from tempfile import TemporaryDirectory
-from typing import List, Tuple, Iterable, Optional, Union, Sequence
+from typing import List, Tuple, Iterable, Sequence
 
 import pandas as pd
 import numpy as np
@@ -41,10 +41,10 @@ def _resolve_chain_file_path(chain_file: str):
 def get_microxs_and_flux(
         model: openmc.Model,
         domains,
-        nuclides: Optional[Iterable[str]] = None,
-        reactions: Optional[Iterable[str]] = None,
-        energies: Optional[Union[Iterable[float], str]] = None,
-        chain_file: Optional[PathLike] = None,
+        nuclides: Iterable[str] | None = None,
+        reactions: Iterable[str] | None = None,
+        energies: Iterable[float] | str | None = None,
+        chain_file: PathLike | None = None,
         run_kwargs=None
     ) -> Tuple[List[np.ndarray], List[MicroXS]]:
     """Generate a microscopic cross sections and flux from a Model
@@ -205,12 +205,12 @@ class MicroXS:
     @classmethod
     def from_multigroup_flux(
         cls,
-        energies: Union[Sequence[float], str],
+        energies: Sequence[float] | str,
         multigroup_flux: Sequence[float],
-        chain_file: Optional[PathLike] = None,
+        chain_file: PathLike | None = None,
         temperature: float = 293.6,
-        nuclides: Optional[Sequence[str]] = None,
-        reactions: Optional[Sequence[str]] = None,
+        nuclides: Sequence[str] | None = None,
+        reactions: Sequence[str] | None = None,
         **init_kwargs: dict,
     ) -> MicroXS:
         """Generated microscopic cross sections from a known flux.

@@ -49,7 +49,7 @@ class MeshBase(IDManagerMixin, ABC):
     next_id = 1
     used_ids = set()
 
-    def __init__(self, mesh_id: Optional[int] = None, name: str = ''):
+    def __init__(self, mesh_id: int | None = None, name: str = ''):
         # Initialize Mesh class attributes
         self.id = mesh_id
         self.name = name
@@ -151,7 +151,7 @@ class MeshBase(IDManagerMixin, ABC):
             self,
             model: openmc.Model,
             n_samples: int = 10_000,
-            prn_seed: Optional[int] = None,
+            prn_seed: int | None = None,
             include_void: bool = True,
             **kwargs
     ) -> List[openmc.Material]:
@@ -393,7 +393,7 @@ class StructuredMesh(MeshBase):
 
     def write_data_to_vtk(self,
                           filename: PathLike,
-                          datasets: Optional[dict] = None,
+                          datasets: dict | None = None,
                           volume_normalization: bool = True,
                           curvilinear: bool = False):
         """Creates a VTK object of the mesh
@@ -642,7 +642,7 @@ class RegularMesh(StructuredMesh):
 
     """
 
-    def __init__(self, mesh_id: Optional[int] = None, name: str = ''):
+    def __init__(self, mesh_id: int | None = None, name: str = ''):
         super().__init__(mesh_id, name)
 
         self._dimension = None
@@ -815,7 +815,7 @@ class RegularMesh(StructuredMesh):
         cls,
         lattice: 'openmc.RectLattice',
         division: int = 1,
-        mesh_id: Optional[int] = None,
+        mesh_id: int | None = None,
         name: str = ''
     ):
         """Create mesh from an existing rectangular lattice
@@ -853,9 +853,9 @@ class RegularMesh(StructuredMesh):
     @classmethod
     def from_domain(
         cls,
-        domain: typing.Union['openmc.Cell', 'openmc.Region', 'openmc.Universe', 'openmc.Geometry'],
+        domain: 'openmc.Cell' | 'openmc.Region' | 'openmc.Universe' | 'openmc.Geometry',
         dimension: Sequence[int] = (10, 10, 10),
-        mesh_id: Optional[int] = None,
+        mesh_id: int | None = None,
         name: str = ''
     ):
         """Create mesh from an existing openmc cell, region, universe or
@@ -962,7 +962,7 @@ class RegularMesh(StructuredMesh):
 
         return mesh
 
-    def build_cells(self, bc: Optional[str] = None):
+    def build_cells(self, bc: str | None = None):
         """Generates a lattice of universes with the same dimensionality
         as the mesh object.  The individual cells/universes produced
         will not have material definitions applied and so downstream code
@@ -1363,7 +1363,7 @@ class CylindricalMesh(StructuredMesh):
         z_grid: Sequence[float],
         phi_grid: Sequence[float] = (0, 2*pi),
         origin: Sequence[float] = (0., 0., 0.),
-        mesh_id: Optional[int] = None,
+        mesh_id: int | None = None,
         name: str = '',
     ):
         super().__init__(mesh_id, name)
@@ -1564,7 +1564,7 @@ class CylindricalMesh(StructuredMesh):
         cls,
         domain: typing.Union['openmc.Cell', 'openmc.Region', 'openmc.Universe', 'openmc.Geometry'],
         dimension: Sequence[int] = (10, 10, 10),
-        mesh_id: Optional[int] = None,
+        mesh_id: int | None = None,
         phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
         name: str = ''
     ):
@@ -1813,7 +1813,7 @@ class SphericalMesh(StructuredMesh):
         phi_grid: Sequence[float] = (0, 2*pi),
         theta_grid: Sequence[float] = (0, pi),
         origin: Sequence[float] = (0., 0., 0.),
-        mesh_id: Optional[int] = None,
+        mesh_id: int | None = None,
         name: str = '',
     ):
         super().__init__(mesh_id, name)
@@ -2139,9 +2139,9 @@ class UnstructuredMesh(MeshBase):
     _LINEAR_TET = 0
     _LINEAR_HEX = 1
 
-    def __init__(self, filename: PathLike, library: str, mesh_id: Optional[int] = None,
+    def __init__(self, filename: PathLike, library: str, mesh_id: int | None = None,
                  name: str = '', length_multiplier: float = 1.0,
-                 options: Optional[str] = None):
+                 options: str | None = None):
         super().__init__(mesh_id, name)
         self.filename = filename
         self._volumes = None
@@ -2173,11 +2173,11 @@ class UnstructuredMesh(MeshBase):
         self._library = lib
 
     @property
-    def options(self) -> Optional[str]:
+    def options(self) -> str | None:
         return self._options
 
     @options.setter
-    def options(self, options: Optional[str]):
+    def options(self, options: str | None):
         cv.check_type('options', options, (str, type(None)))
         self._options = options
 
@@ -2353,8 +2353,8 @@ class UnstructuredMesh(MeshBase):
 
     def write_data_to_vtk(
             self,
-            filename: Optional[PathLike] = None,
-            datasets: Optional[dict] = None,
+            filename: PathLike | None  = None,
+            datasets: dict | None = None,
             volume_normalization: bool = True
     ):
         """Map data to unstructured VTK mesh elements.

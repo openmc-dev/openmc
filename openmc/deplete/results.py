@@ -2,7 +2,7 @@ import numbers
 import bisect
 import math
 import typing  # required to prevent typing.Union namespace overwriting Union
-from typing import Iterable, Optional, Tuple, List
+from typing import Iterable, Tuple, List
 from warnings import warn
 
 import h5py
@@ -100,7 +100,7 @@ class Results(list):
         mat: typing.Union[Material, str],
         units: str = "Bq/cm3",
         by_nuclide: bool = False,
-        volume: Optional[float] = None
+        volume: float | None = None
     ) -> Tuple[np.ndarray, typing.Union[np.ndarray, List[dict]]]:
         """Get activity of material over time.
 
@@ -218,7 +218,7 @@ class Results(list):
             mat: typing.Union[Material, str],
             units: str = "W",
             by_nuclide: bool = False,
-            volume: Optional[float] = None
+            volume: float | None = None
     ) -> Tuple[np.ndarray, typing.Union[np.ndarray, List[dict]]]:
         """Get decay heat of material over time.
 
@@ -526,7 +526,7 @@ class Results(list):
     def export_to_materials(
         self,
         burnup_index: int,
-        nuc_with_data: Optional[Iterable[str]] = None,
+        nuc_with_data: Iterable[str] | None = None,
         path: PathLike = 'materials.xml'
     ) -> Materials:
         """Return openmc.Materials object based on results at a given step

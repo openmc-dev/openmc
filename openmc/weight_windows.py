@@ -1,6 +1,6 @@
 from __future__ import annotations
 from numbers import Real, Integral
-from typing import Iterable, List, Optional, Dict, Sequence
+from typing import Iterable, List, Dict, Sequence
 import warnings
 
 import lxml.etree as ET
@@ -110,15 +110,15 @@ class WeightWindows(IDManagerMixin):
         self,
         mesh: MeshBase,
         lower_ww_bounds: Iterable[float],
-        upper_ww_bounds: Optional[Iterable[float]] = None,
-        upper_bound_ratio: Optional[float] = None,
-        energy_bounds: Optional[Iterable[Real]] = None,
+        upper_ww_bounds: Iterable[float] | None = None,
+        upper_bound_ratio: Iterable[float] | None = None,
+        energy_bounds: Iterable[Real] | None = None,
         particle_type: str = 'neutron',
         survival_ratio: float = 3,
-        max_lower_bound_ratio: Optional[float] = None,
+        max_lower_bound_ratio: float | None = None,
         max_split: int = 10,
         weight_cutoff: float = 1.e-38,
-        id: Optional[int] = None
+        id: int | None = None
     ):
         self.mesh = mesh
         self.id = id
@@ -698,7 +698,7 @@ class WeightWindowGenerator:
     def __init__(
         self,
         mesh: openmc.MeshBase,
-        energy_bounds: Optional[Sequence[float]] = None,
+        energy_bounds: Sequence[float] | None = None,
         particle_type: str = 'neutron',
         method: str = 'magic',
         max_realizations: int = 1,

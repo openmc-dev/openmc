@@ -5,7 +5,6 @@ from math import ceil
 from numbers import Integral, Real
 from pathlib import Path
 import typing  # required to prevent typing.Union namespace overwriting Union
-from typing import Optional
 
 import lxml.etree as ET
 
@@ -511,7 +510,7 @@ class Settings:
         return self._max_order
 
     @max_order.setter
-    def max_order(self, max_order: Optional[int]):
+    def max_order(self, max_order: int | None):
         if max_order is not None:
             cv.check_type('maximum scattering order', max_order, Integral)
             cv.check_greater_than('maximum scattering order', max_order, 0,
@@ -1053,7 +1052,7 @@ class Settings:
         self._max_tracks = value
 
     @property
-    def weight_windows_file(self) -> Optional[PathLike]:
+    def weight_windows_file(self) -> PathLike | None:
         return self._weight_windows_file
 
     @weight_windows_file.setter

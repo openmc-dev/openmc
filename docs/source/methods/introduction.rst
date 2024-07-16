@@ -31,12 +31,6 @@ simulate:
 where :math:`\sigma^2` is the variance of the sample mean and :math:`N` is the
 number of realizations.
 
-OpenMC uses batch statistics. That is, OpenMC counts batches, which are the 
-aggregated tallies of generations of simulated particles, as individual 
-realizations. See :ref:`Statistics <tallies_statistics>` for further theoretical
-background regarding uncertainty or :ref:`Run Strategy <usersguide_particles>` 
-for configuring statistically sound simulations.
-
 ------------------------
 Overview of Program Flow
 ------------------------

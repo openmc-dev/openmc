@@ -1,7 +1,6 @@
 from collections.abc import Iterable, Mapping
 from numbers import Integral, Real
 from pathlib import Path
-from typing import Optional
 
 import h5py
 import lxml.etree as ET

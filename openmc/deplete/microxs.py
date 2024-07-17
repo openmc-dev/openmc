@@ -6,7 +6,7 @@ IndependentOperator class for depletion.
 
 from __future__ import annotations
 from tempfile import TemporaryDirectory
-from typing import List, Tuple, Iterable, Sequence
+from typing import Iterable, Sequence
 
 import pandas as pd
 import numpy as np
@@ -46,7 +46,7 @@ def get_microxs_and_flux(
         energies: Iterable[float] | str | None = None,
         chain_file: PathLike | None = None,
         run_kwargs=None
-    ) -> Tuple[List[np.ndarray], List[MicroXS]]:
+    ) -> tuple[list[np.ndarray], list[MicroXS]]:
     """Generate a microscopic cross sections and flux from a Model
 
     .. versionadded:: 0.14.0
@@ -183,7 +183,7 @@ class MicroXS:
         :data:`openmc.deplete.chain.REACTIONS`
 
     """
-    def __init__(self, data: np.ndarray, nuclides: List[str], reactions: List[str]):
+    def __init__(self, data: np.ndarray, nuclides: list[str], reactions: list[str]):
         # Validate inputs
         if data.shape[:2] != (len(nuclides), len(reactions)):
             raise ValueError(

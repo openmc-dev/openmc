@@ -1,12 +1,10 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from enum import IntEnum
 from numbers import Real
 import warnings
-import typing  # imported separately as py3.8 requires typing.Iterable
-# also required to prevent typing.Union namespace overwriting Union
-from typing import Sequence, Dict, Any
+from typing import Any
 
 import lxml.etree as ET
 import numpy as np
@@ -58,7 +56,7 @@ class SourceBase(ABC):
     def __init__(
         self,
         strength: float | None = 1.0,
-        constraints: Dict[str, Any] | None = None
+        constraints: dict[str, Any] | None = None
     ):
         self.strength = strength
         self.constraints = constraints
@@ -75,11 +73,11 @@ class SourceBase(ABC):
         self._strength = strength
 
     @property
-    def constraints(self) -> Dict[str, Any]:
+    def constraints(self) -> dict[str, Any]:
         return self._constraints
 
     @constraints.setter
-    def constraints(self, constraints: Dict[str, Any] | None):
+    def constraints(self, constraints: dict[str, Any] | None):
         self._constraints = {}
         if constraints is None:
             return
@@ -200,7 +198,7 @@ class SourceBase(ABC):
                 raise ValueError(f'Source type {source_type} is not recognized')
 
     @staticmethod
-    def _get_constraints(elem: ET.Element) -> Dict[str, Any]:
+    def _get_constraints(elem: ET.Element) -> dict[str, Any]:
         # Find element containing constraints
         constraints_elem = elem.find("constraints")
         elem = constraints_elem if constraints_elem is not None else elem
@@ -315,7 +313,7 @@ class IndependentSource(SourceBase):
         strength: float = 1.0,
         particle: str = 'neutron',
         domains: Sequence[openmc.Cell | openmc.Material | openmc.Universe] | None = None,
-        constraints: Dict[str, Any] | None = None
+        constraints: dict[str, Any] | None = None
     ):
         if domains is not None:
             warnings.warn("The 'domains' arguments has been replaced by the "
@@ -528,7 +526,7 @@ class MeshSource(SourceBase):
             self,
             mesh: MeshBase,
             sources: Sequence[SourceBase],
-            constraints: Dict[str, Any] | None  = None,
+            constraints: dict[str, Any] | None  = None,
     ):
         super().__init__(strength=None, constraints=constraints)
         self.mesh = mesh
@@ -705,7 +703,7 @@ class CompiledSource(SourceBase):
         library: str | None  = None,
         parameters: str | None = None,
         strength: float = 1.0,
-        constraints: Dict[str, Any] | None = None
+        constraints: dict[str, Any] | None = None
     ) -> None:
         super().__init__(strength=strength, constraints=constraints)
 
@@ -831,7 +829,7 @@ class FileSource(SourceBase):
         self,
         path: PathLike | None = None,
         strength: float = 1.0,
-        constraints: Dict[str, Any] | None = None
+        constraints: dict[str, Any] | None = None
     ):
         super().__init__(strength=strength, constraints=constraints)
         self._path = None
@@ -966,8 +964,8 @@ class SourceParticle:
     """
     def __init__(
         self,
-        r: typing.Iterable[float] = (0., 0., 0.),
-        u: typing.Iterable[float] = (0., 0., 1.),
+        r: Iterable[float] = (0., 0., 0.),
+        u: Iterable[float] = (0., 0., 1.),
         E: float = 1.0e6,
         time: float = 0.0,
         wgt: float = 1.0,
@@ -1003,7 +1001,7 @@ class SourceParticle:
 
 
 def write_source_file(
-    source_particles: typing.Iterable[SourceParticle],
+    source_particles: Iterable[SourceParticle],
     filename: PathLike, **kwargs
 ):
     """Write a source file using a collection of source particles
@@ -1046,7 +1044,7 @@ def write_source_file(
         fh.create_dataset('source_bank', data=arr, dtype=source_dtype)
 
 
-def read_source_file(filename: PathLike) -> typing.List[SourceParticle]:
+def read_source_file(filename: PathLike) -> list[SourceParticle]:
     """Read a source file and return a list of source particles.
 
     .. versionadded:: 0.15.0

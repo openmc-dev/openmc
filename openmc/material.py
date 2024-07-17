@@ -5,9 +5,7 @@ from copy import deepcopy
 from numbers import Real
 from pathlib import Path
 import re
-import typing  # imported separately as py3.8 requires typing.Iterable
 import warnings
-from typing import List, Dict
 
 import lxml.etree as ET
 import numpy as np
@@ -202,7 +200,7 @@ class Material(IDManagerMixin):
         self._depletable = depletable
 
     @property
-    def paths(self) -> List[str]:
+    def paths(self) -> list[str]:
         if self._paths is None:
             raise ValueError('Material instance paths have not been determined. '
                              'Call the Geometry.determine_paths() method.')
@@ -217,15 +215,15 @@ class Material(IDManagerMixin):
         return self._num_instances
 
     @property
-    def nuclides(self) -> List[namedtuple]:
+    def nuclides(self) -> list[namedtuple]:
         return self._nuclides
 
     @property
-    def isotropic(self) -> List[str]:
+    def isotropic(self) -> list[str]:
         return self._isotropic
 
     @isotropic.setter
-    def isotropic(self, isotropic: typing.Iterable[str]):
+    def isotropic(self, isotropic: Iterable[str]):
         cv.check_iterable_type('Isotropic scattering nuclides', isotropic,
                                str)
         self._isotropic = list(isotropic)
@@ -930,7 +928,7 @@ class Material(IDManagerMixin):
     def make_isotropic_in_lab(self):
         self.isotropic = [x.name for x in self._nuclides]
 
-    def get_elements(self) -> List[str]:
+    def get_elements(self) -> list[str]:
         """Returns all elements in the material
 
         .. versionadded:: 0.12
@@ -944,7 +942,7 @@ class Material(IDManagerMixin):
 
         return sorted({re.split(r'(\d+)', i)[0] for i in self.get_nuclides()})
 
-    def get_nuclides(self, element: str | None = None) -> List[str]:
+    def get_nuclides(self, element: str | None = None) -> list[str]:
         """Returns a list of all nuclides in the material, if the element
         argument is specified then just nuclides of that element are returned.
 
@@ -974,7 +972,7 @@ class Material(IDManagerMixin):
 
         return matching_nuclides
 
-    def get_nuclide_densities(self) -> Dict[str, tuple]:
+    def get_nuclide_densities(self) -> dict[str, tuple]:
         """Returns all nuclides in the material and their densities
 
         Returns
@@ -992,7 +990,7 @@ class Material(IDManagerMixin):
 
         return nuclides
 
-    def get_nuclide_atom_densities(self, nuclide: str | None = None) -> Dict[str, float]:
+    def get_nuclide_atom_densities(self, nuclide: str | None = None) -> dict[str, float]:
         """Returns one or all nuclides in the material and their atomic
         densities in units of atom/b-cm
 
@@ -1078,7 +1076,7 @@ class Material(IDManagerMixin):
         return nuclides
 
     def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False,
-                     volume: float | None = None) -> Dict[str, float] | float:
+                     volume: float | None = None) -> dict[str, float] | float:
         """Returns the activity of the material or for each nuclide in the
         material in units of [Bq], [Bq/g] or [Bq/cm3].
 
@@ -1101,7 +1099,7 @@ class Material(IDManagerMixin):
 
         Returns
         -------
-        typing.Union[dict, float]
+        Union[dict, float]
             If by_nuclide is True then a dictionary whose keys are nuclide
             names and values are activity is returned. Otherwise the activity
             of the material is returned as a float.
@@ -1125,7 +1123,7 @@ class Material(IDManagerMixin):
         return activity if by_nuclide else sum(activity.values())
 
     def get_decay_heat(self, units: str = 'W', by_nuclide: bool = False,
-                       volume: float | None = None) -> Dict[str, float] | float:
+                       volume: float | None = None) -> dict[str, float] | float:
         """Returns the decay heat of the material or for each nuclide in the
         material in units of [W], [W/g] or [W/cm3].
 
@@ -1173,7 +1171,7 @@ class Material(IDManagerMixin):
 
         return decayheat if by_nuclide else sum(decayheat.values())
 
-    def get_nuclide_atoms(self, volume: float | None = None) -> Dict[str, float]:
+    def get_nuclide_atoms(self, volume: float | None = None) -> dict[str, float]:
         """Return number of atoms of each nuclide in the material
 
         .. versionadded:: 0.13.1
@@ -1311,8 +1309,8 @@ class Material(IDManagerMixin):
         return xml_element
 
     def _get_nuclides_xml(
-            self, nuclides: typing.Iterable[NuclideTuple],
-            nuclides_to_ignore: Iterable[str] | None = None)-> List[ET.Element]:
+            self, nuclides: Iterable[NuclideTuple],
+            nuclides_to_ignore: Iterable[str] | None = None)-> list[ET.Element]:
         xml_elements = []
 
         # Remove any nuclides to ignore from the XML export
@@ -1398,7 +1396,7 @@ class Material(IDManagerMixin):
         return element
 
     @classmethod
-    def mix_materials(cls, materials, fracs: typing.Iterable[float],
+    def mix_materials(cls, materials, fracs: Iterable[float],
                       percent_type: str = 'ao', name: str | None = None) -> Material:
         """Mix materials together based on atom, weight, or volume fractions
 

@@ -4,7 +4,6 @@ import itertools
 from math import ceil
 from numbers import Integral, Real
 from pathlib import Path
-import typing  # required to prevent typing.Union namespace overwriting Union
 
 import lxml.etree as ET
 
@@ -518,11 +517,11 @@ class Settings:
         self._max_order = max_order
 
     @property
-    def source(self) -> typing.List[SourceBase]:
+    def source(self) -> list[SourceBase]:
         return self._source
 
     @source.setter
-    def source(self, source: typing.Union[SourceBase, typing.Iterable[SourceBase]]):
+    def source(self, source: SourceBase | Iterable[SourceBase]):
         if not isinstance(source, MutableSequence):
             source = [source]
         self._source = cv.CheckedList(SourceBase, 'source distributions', source)
@@ -800,7 +799,7 @@ class Settings:
         self._temperature = temperature
 
     @property
-    def trace(self) -> typing.Iterable:
+    def trace(self) -> Iterable:
         return self._trace
 
     @trace.setter
@@ -813,11 +812,11 @@ class Settings:
         self._trace = trace
 
     @property
-    def track(self) -> typing.Iterable[typing.Iterable[int]]:
+    def track(self) -> Iterable[Iterable[int]]:
         return self._track
 
     @track.setter
-    def track(self, track: typing.Iterable[typing.Iterable[int]]):
+    def track(self, track: Iterable[Iterable[int]]):
         cv.check_type('track', track, Sequence)
         for t in track:
             if len(t) != 3:
@@ -900,12 +899,12 @@ class Settings:
         self._resonance_scattering = res
 
     @property
-    def volume_calculations(self) -> typing.List[VolumeCalculation]:
+    def volume_calculations(self) -> list[VolumeCalculation]:
         return self._volume_calculations
 
     @volume_calculations.setter
     def volume_calculations(
-        self, vol_calcs: typing.Union[VolumeCalculation, typing.Iterable[VolumeCalculation]]
+        self, vol_calcs: VolumeCalculation | Iterable[VolumeCalculation]
     ):
         if not isinstance(vol_calcs, MutableSequence):
             vol_calcs = [vol_calcs]
@@ -999,11 +998,11 @@ class Settings:
         self._write_initial_source = value
 
     @property
-    def weight_windows(self) -> typing.List[WeightWindows]:
+    def weight_windows(self) -> list[WeightWindows]:
         return self._weight_windows
 
     @weight_windows.setter
-    def weight_windows(self, value: typing.Union[WeightWindows, typing.Iterable[WeightWindows]]):
+    def weight_windows(self, value: WeightWindows | Iterable[WeightWindows]):
         if not isinstance(value, MutableSequence):
             value = [value]
         self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows', value)
@@ -1061,7 +1060,7 @@ class Settings:
         self._weight_windows_file = value
 
     @property
-    def weight_window_generators(self) -> typing.List[WeightWindowGenerator]:
+    def weight_window_generators(self) -> list[WeightWindowGenerator]:
         return self._weight_window_generators
 
     @weight_window_generators.setter

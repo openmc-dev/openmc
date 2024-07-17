@@ -1,14 +1,12 @@
 from __future__ import annotations
-import typing
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from functools import wraps
 from math import pi, sqrt, atan2
 from numbers import Integral, Real
 from pathlib import Path
 import tempfile
-from typing import Optional, Sequence, Tuple, List
 
 import h5py
 import lxml.etree as ET
@@ -154,7 +152,7 @@ class MeshBase(IDManagerMixin, ABC):
             prn_seed: int | None = None,
             include_void: bool = True,
             **kwargs
-    ) -> List[openmc.Material]:
+    ) -> list[openmc.Material]:
         """Generate homogenized materials over each element in a mesh.
 
         .. versionadded:: 0.15.0
@@ -655,7 +653,7 @@ class RegularMesh(StructuredMesh):
         return tuple(self._dimension)
 
     @dimension.setter
-    def dimension(self, dimension: typing.Iterable[int]):
+    def dimension(self, dimension: Iterable[int]):
         cv.check_type('mesh dimension', dimension, Iterable, Integral)
         cv.check_length('mesh dimension', dimension, 1, 3)
         self._dimension = dimension
@@ -672,7 +670,7 @@ class RegularMesh(StructuredMesh):
         return self._lower_left
 
     @lower_left.setter
-    def lower_left(self, lower_left: typing.Iterable[Real]):
+    def lower_left(self, lower_left: Iterable[Real]):
         cv.check_type('mesh lower_left', lower_left, Iterable, Real)
         cv.check_length('mesh lower_left', lower_left, 1, 3)
         self._lower_left = lower_left
@@ -692,7 +690,7 @@ class RegularMesh(StructuredMesh):
                 return [l + w * d for l, w, d in zip(ls, ws, dims)]
 
     @upper_right.setter
-    def upper_right(self, upper_right: typing.Iterable[Real]):
+    def upper_right(self, upper_right: Iterable[Real]):
         cv.check_type('mesh upper_right', upper_right, Iterable, Real)
         cv.check_length('mesh upper_right', upper_right, 1, 3)
         self._upper_right = upper_right
@@ -716,7 +714,7 @@ class RegularMesh(StructuredMesh):
                 return [(u - l) / d for u, l, d in zip(us, ls, dims)]
 
     @width.setter
-    def width(self, width: typing.Iterable[Real]):
+    def width(self, width: Iterable[Real]):
         cv.check_type('mesh width', width, Iterable, Real)
         cv.check_length('mesh width', width, 1, 3)
         self._width = width
@@ -1484,7 +1482,7 @@ class CylindricalMesh(StructuredMesh):
     def get_indices_at_coords(
             self,
             coords: Sequence[float]
-        ) -> Tuple[int, int, int]:
+        ) -> tuple[int, int, int]:
         """Finds the index of the mesh voxel at the specified x,y,z coordinates.
 
         .. versionadded:: 0.15.0
@@ -1496,7 +1494,7 @@ class CylindricalMesh(StructuredMesh):
 
         Returns
         -------
-        Tuple[int, int, int]
+        tuple[int, int, int]
             The r, phi, z indices
 
         """
@@ -1562,7 +1560,7 @@ class CylindricalMesh(StructuredMesh):
     @classmethod
     def from_domain(
         cls,
-        domain: typing.Union['openmc.Cell', 'openmc.Region', 'openmc.Universe', 'openmc.Geometry'],
+        domain: 'openmc.Cell' | 'openmc.Region' | 'openmc.Universe' | 'openmc.Geometry',
         dimension: Sequence[int] = (10, 10, 10),
         mesh_id: int | None = None,
         phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
@@ -2215,7 +2213,7 @@ class UnstructuredMesh(MeshBase):
         return self._volumes
 
     @volumes.setter
-    def volumes(self, volumes: typing.Iterable[Real]):
+    def volumes(self, volumes: Iterable[Real]):
         cv.check_type("Unstructured mesh volumes", volumes, Iterable, Real)
         self._volumes = volumes
 

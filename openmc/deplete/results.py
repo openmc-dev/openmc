@@ -1,8 +1,7 @@
 import numbers
 import bisect
 import math
-import typing  # required to prevent typing.Union namespace overwriting Union
-from typing import Iterable, Tuple, List
+from collections.abc import Iterable
 from warnings import warn
 
 import h5py
@@ -97,11 +96,11 @@ class Results(list):
 
     def get_activity(
         self,
-        mat: typing.Union[Material, str],
+        mat: Material | str,
         units: str = "Bq/cm3",
         by_nuclide: bool = False,
         volume: float | None = None
-    ) -> Tuple[np.ndarray, typing.Union[np.ndarray, List[dict]]]:
+    ) -> tuple[np.ndarray, np.ndarray | list[dict]]:
         """Get activity of material over time.
 
         .. versionadded:: 0.14.0
@@ -152,11 +151,11 @@ class Results(list):
 
     def get_atoms(
         self,
-        mat: typing.Union[Material, str],
+        mat: Material | str,
         nuc: str,
         nuc_units: str = "atoms",
         time_units: str = "s"
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Get number of nuclides over time from a single material
 
         Parameters
@@ -215,11 +214,11 @@ class Results(list):
 
     def get_decay_heat(
             self,
-            mat: typing.Union[Material, str],
+            mat: Material | str,
             units: str = "W",
             by_nuclide: bool = False,
             volume: float | None = None
-    ) -> Tuple[np.ndarray, typing.Union[np.ndarray, List[dict]]]:
+    ) -> tuple[np.ndarray, np.ndarray | list[dict]]:
         """Get decay heat of material over time.
 
         .. versionadded:: 0.14.0
@@ -242,7 +241,7 @@ class Results(list):
         -------
         times : numpy.ndarray
             Array of times in [s]
-        decay_heat : numpy.ndarray or List[dict]
+        decay_heat : numpy.ndarray or list[dict]
             Array of total decay heat values if by_nuclide = False (default)
             or list of dictionaries of decay heat values by nuclide if
             by_nuclide = True.
@@ -270,11 +269,11 @@ class Results(list):
         return times, decay_heat
 
     def get_mass(self,
-        mat: typing.Union[Material, str],
+        mat: Material | str,
         nuc: str,
         mass_units: str = "g",
         time_units: str = "s"
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Get mass of nuclides over time from a single material
 
         .. versionadded:: 0.14.0
@@ -324,10 +323,10 @@ class Results(list):
 
     def get_reaction_rate(
         self,
-        mat: typing.Union[Material, str],
+        mat: Material | str,
         nuc: str,
         rx: str
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Get reaction rate in a single material/nuclide over time
 
         Parameters
@@ -364,7 +363,7 @@ class Results(list):
 
         return times, rates
 
-    def get_keff(self, time_units: str = 's') -> Tuple[np.ndarray, np.ndarray]:
+    def get_keff(self, time_units: str = 's') -> tuple[np.ndarray, np.ndarray]:
         """Evaluates the eigenvalue from a results list.
 
         .. versionadded:: 0.13.1
@@ -400,7 +399,7 @@ class Results(list):
         times = _get_time_as(times, time_units)
         return times, eigenvalues
 
-    def get_eigenvalue(self, time_units: str = 's') -> Tuple[np.ndarray, np.ndarray]:
+    def get_eigenvalue(self, time_units: str = 's') -> tuple[np.ndarray, np.ndarray]:
         warn("The get_eigenvalue(...) function has been renamed get_keff and "
              "will be removed in a future version of OpenMC.", FutureWarning)
         return self.get_keff(time_units)

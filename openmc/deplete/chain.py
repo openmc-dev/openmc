@@ -680,7 +680,7 @@ class Chain:
         # Return CSC representation instead of DOK
         return matrix.tocsc()
 
-    def form_rr_term(self, tr_rates, mats):
+    def form_rr_term(self, tr_rates, current_timestep, mats):
         """Function to form the transfer rate term matrices.
 
         .. versionadded:: 0.14.0
@@ -720,11 +720,13 @@ class Chain:
             # Build transfer terms matrices
             if isinstance(mats, str):
                 mat = mats
+                if current_timestep not in tr_rates.get_material_timesteps(mat):
+                    break
                 components = tr_rates.get_components(mat)
                 if elm in components:
-                    matrix[i, i] = sum(tr_rates.get_transfer_rate(mat, elm))
+                    matrix[i, i] = sum(tr_rates.get_external_rate(mat, elm))
                 elif nuc.name in components:
-                    matrix[i, i] = sum(tr_rates.get_transfer_rate(mat, nuc.name))
+                    matrix[i, i] = sum(tr_rates.get_external_rate(mat, nuc.name))
                 else:
                     matrix[i, i] = 0.0
             #Build transfer terms matrices
@@ -732,16 +734,63 @@ class Chain:
                 dest_mat, mat = mats
                 if dest_mat in tr_rates.get_destination_material(mat, elm):
                     dest_mat_idx = tr_rates.get_destination_material(mat, elm).index(dest_mat)
-                    matrix[i, i] = tr_rates.get_transfer_rate(mat, elm)[dest_mat_idx]
+                    matrix[i, i] = tr_rates.get_external_rate(mat, elm)[dest_mat_idx]
                 elif dest_mat in tr_rates.get_destination_material(mat, nuc.name):
                     dest_mat_idx = tr_rates.get_destination_material(mat, nuc.name).index(dest_mat)
-                    matrix[i, i] = tr_rates.get_transfer_rate(mat, nuc.name)[dest_mat_idx]
+                    matrix[i, i] = tr_rates.get_external_rate(mat, nuc.name)[dest_mat_idx]
                 else:
                     matrix[i, i] = 0.0
             #Nothing else is allowed
 
         # Return CSC instead of DOK
         return matrix.tocsc()
+
+    def form_ext_source_term(self, ext_source_rates, current_timestep, mat):
+        """Function to form the transfer rate term matrices.
+
+        .. versionadded:: 0.15.1
+
+        Parameters
+        ----------
+        tr_rates : openmc.deplete.TransferRates
+            Instance of openmc.deplete.TransferRates
+        mats : string or two-tuple of strings
+            Two cases are possible:
+
+            1) Material ID as string:
+            Nuclide transfer only. In this case the transfer rate terms will be
+            subtracted from the respective depletion matrix
+
+            2) Two-tuple of material IDs as strings:
+            Nuclide transfer from one material into another.
+            The pair is assumed to be
+            ``(destination_material, source_material)``, where
+            ``destination_material`` and ``source_material`` are the nuclide
+            receiving and losing materials, respectively.
+            The transfer rate terms get placed in the final matrix with indexing
+            position corresponding to the ID of the materials set.
+
+        Returns
+        -------
+        scipy.sparse.csc_matrix
+            Sparse matrix representing transfer term.
+
+        """
+        if current_timestep not in ext_source_rates.get_material_timesteps(mat):
+            return
+        # Use DOK as intermediate representation
+        n = len(self)
+        vector = sp.dok_matrix((n, 1))
+
+        for i, nuc in enumerate(self.nuclides):
+            # Build source term vector
+            if nuc.name in ext_source_rates.get_components(mat):
+                vector[i] = sum(ext_source_rates.get_external_rate(mat, nuc.name))
+            else:
+                vector[i] = 0.0
+
+        # Return CSC instead of DOK
+        return vector.tocsc()
 
     def get_branch_ratios(self, reaction="(n,gamma)"):
         """Return a dictionary with reaction branching ratios

@@ -26,7 +26,7 @@ class PredictorIntegrator(Integrator):
     """
     _num_stages = 1
 
-    def __call__(self, n, rates, dt, source_rate, _i=None):
+    def __call__(self, n, rates, dt, source_rate, i):
         """Perform the integration across one time step
 
         Parameters
@@ -40,8 +40,8 @@ class PredictorIntegrator(Integrator):
             Time in [s] for the entire depletion interval
         source_rate : float
             Power in [W] or source rate in [neutron/sec]
-        _i : int or None
-            Iteration index. Not used
+        i : int
+            Iteration index.
 
         Returns
         -------
@@ -54,7 +54,7 @@ class PredictorIntegrator(Integrator):
             with predictor
 
         """
-        proc_time, n_end = self._timed_deplete(n, rates, dt)
+        proc_time, n_end = self._timed_deplete(n, rates, dt, i)
         return proc_time, [n_end], []
 
 

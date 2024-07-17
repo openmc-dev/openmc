@@ -269,6 +269,19 @@ void get_run_parameters(pugi::xml_node node_base)
     } else {
       fatal_error("Specify random ray source in settings XML");
     }
+    if (check_for_node(random_ray_node, "source_shape")) {
+      std::string temp_str =
+        get_node_value(random_ray_node, "source_shape", true, true);
+      if (temp_str == "flat") {
+        RandomRay::source_shape_ = RandomRaySourceShape::FLAT;
+      } else if (temp_str == "linear") {
+        RandomRay::source_shape_ = RandomRaySourceShape::LINEAR;
+      } else if (temp_str == "linear_xy") {
+        RandomRay::source_shape_ = RandomRaySourceShape::LINEAR_XY;
+      } else {
+        fatal_error("Unrecognized source shape: " + temp_str);
+      }
+    }
     if (check_for_node(random_ray_node, "volume_normalized_flux_tallies")) {
       FlatSourceDomain::volume_normalized_flux_tallies_ =
         get_node_value_bool(random_ray_node, "volume_normalized_flux_tallies");

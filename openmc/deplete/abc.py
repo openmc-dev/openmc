@@ -27,7 +27,7 @@ from .chain import Chain
 from .results import Results
 from .pool import deplete
 from .reaction_rates import ReactionRates
-from .transfer_rates import TransferRates
+from .transfer_rates import TransferRates, ExternalSourceRates
 
 
 __all__ = [
@@ -545,6 +545,10 @@ class Integrator(ABC):
         Instance of TransferRates class to perform continuous transfer during depletion
 
         .. versionadded:: 0.14.0
+    external_source_rates : openmc.deplete.ExternalSourceRates
+        Instance of ExternalSourceRates class to add an external source term.
+
+        .. versionadded:: 0.15.1
 
     """
 
@@ -633,6 +637,7 @@ class Integrator(ABC):
         self.source_rates = np.asarray(source_rates)
 
         self.transfer_rates = None
+        self.external_source_rates = None
 
         if isinstance(solver, str):
             # Delay importing of cram module, which requires this file
@@ -678,11 +683,11 @@ class Integrator(ABC):
 
         self._solver = func
 
-    def _timed_deplete(self, n, rates, dt, matrix_func=None):
+    def _timed_deplete(self, n, rates, dt, i, matrix_func=None):
         start = time.time()
         results = deplete(
-            self._solver, self.chain, n, rates, dt, matrix_func,
-            self.transfer_rates)
+            self._solver, self.chain, n, rates, dt, i, matrix_func,
+            self.transfer_rates, self.external_source_rates)
         return time.time() - start, results
 
     @abstractmethod
@@ -836,6 +841,7 @@ class Integrator(ABC):
             components: Sequence[str],
             transfer_rate: float,
             transfer_rate_units: str = '1/s',
+            timesteps: Iterable = None,
             destination_material: Optional[Union[str, int, Material]] = None
         ):
         """Add transfer rates to depletable material.
@@ -860,10 +866,55 @@ class Integrator(ABC):
         """
         if self.transfer_rates is None:
             self.transfer_rates = TransferRates(self.operator, self.operator.model,
-                                      len(time_steps)
+                                      len(self.timesteps))
+
+        if self.external_source_rates is not None and destination_material:
+            raise ValueError('Currently is not possible to set a transfer rate '
+                             'with destination matrial in combination with '
+                             'external source rates.')
 
         self.transfer_rates.set_transfer_rate(material, components, transfer_rate,
-                                      transfer_rate_units, destination_material)
+                                      transfer_rate_units, timesteps, destination_material)
+
+    def add_external_source_rate(
+            self,
+            material: Union[str, int, Material],
+            components: dict,
+            external_source_rate: float,
+            external_source_rate_units: str = 'g/s',
+            timesteps: Iterable = None
+        ):
+        """Add transfer rates to depletable material.
+
+        Parameters
+        ----------
+        material : openmc.Material or str or int
+            Depletable material
+        components : list of str
+            List of strings of elements and/or nuclides that share transfer rate.
+            A transfer rate for a nuclide cannot be added to a material
+            alongside a transfer rate for its element and vice versa.
+        transfer_rate : float
+            Rate at which elements are transferred. A positive or negative values
+            set removal of feed rates, respectively.
+        destination_material : openmc.Material or str or int, Optional
+            Destination material to where nuclides get fed.
+        transfer_rate_units : {'1/s', '1/min', '1/h', '1/d', '1/a'}
+            Units for values specified in the transfer_rate argument. 's' means
+            seconds, 'min' means minutes, 'h' means hours, 'a' means Julian years.
+
+        """
+        if self.external_source_rates is None:
+            self.external_source_rates = ExternalSourceRates(self.operator,
+                                    self.operator.model, len(self.timesteps))
+
+        if self.transfer_rates is not None and self.transfer_rates.index_transfer:
+            raise ValueError('Currently is not possible to set an external '
+                             'source rate in combination with transfer rates '
+                             'with destination matrial.')
+
+        self.external_source_rates.set_external_source_rate(material, components,
+                    external_source_rate, external_source_rate_units, timesteps)
 
 @add_params
 class SIIntegrator(Integrator):

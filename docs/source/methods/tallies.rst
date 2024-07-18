@@ -4,9 +4,9 @@
 Tallies
 =======
 
-Note that the methods discussed in this section are written specifically for
-continuous-energy mode but equivalent apply to the multi-group mode if the
-particle's energy is replaced with the particle's group
+The methods discussed in this section are written specifically for continuous-
+energy mode. However, they can also apply to the multi-group mode if the
+particle's energy is instead interpreted as the particle's group.
 
 ------------------
 Filters and Scores
@@ -243,6 +243,8 @@ collision where a particle contributes to a tally with Gaussian Energy
 Broadening, a new effective energy is sampled for the purposes of tallying. The
 particle is never assigned this sampled energy.
 
+.. _tallies_statistics:
+
 ----------
 Statistics
 ----------
@@ -303,6 +305,14 @@ normal, log-normal, Weibull, etc. The central limit theorem states that as
 
 Estimating Statistics of a Random Variable
 ------------------------------------------
+
+After running OpenMC, each tallied quantity has a reported mean and standard
+deviation. The below sections explain how these quantities are computed. Note
+that OpenMC uses **batch statistics**, meaning that each observation for a tally
+random variable corresponds to the aggregation of tally contributions from
+multiple source particles that are grouped together into a single batch. See
+:ref:`usersguide_particles` for more information on how the number of source
+particles and statistical batches are specified.
 
 Mean
 ++++

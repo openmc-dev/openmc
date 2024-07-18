@@ -271,8 +271,10 @@ void DAGUniverse::init_geometry()
                                   : dagmc_instance_->id_by_index(2, i + 1);
 
     // set surface source attribute if needed
-    if (contains(settings::source_write_surf_id, s->id_))
+    if (contains(settings::source_write_surf_id, s->id_) ||
+        settings::source_write_surf_id.empty()) {
       s->surf_source_ = true;
+    }
 
     // set BCs
     std::string bc_value =

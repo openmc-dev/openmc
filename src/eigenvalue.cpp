@@ -556,7 +556,7 @@ void shannon_entropy()
     double H = 0.0;
     for (auto p_i : p) {
       if (p_i > 0.0) {
-        H -= p_i * std::log(p_i) / std::log(2.0);
+        H -= p_i * std::log2(p_i);
       }
     }
 

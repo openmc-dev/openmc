@@ -137,7 +137,11 @@ int openmc_simulation_init()
   // Display header
   if (mpi::master) {
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
-      header("FIXED SOURCE TRANSPORT SIMULATION", 3);
+      if (settings::solver_type == SolverType::MONTE_CARLO) {
+        header("FIXED SOURCE TRANSPORT SIMULATION", 3);
+      } else if (settings::solver_type == SolverType::RANDOM_RAY) {
+        header("FIXED SOURCE TRANSPORT SIMULATION (RANDOM RAY SOLVER)", 3);
+      }
     } else if (settings::run_mode == RunMode::EIGENVALUE) {
       if (settings::solver_type == SolverType::MONTE_CARLO) {
         header("K EIGENVALUE SIMULATION", 3);
@@ -343,7 +347,13 @@ void initialize_batch()
   ++simulation::current_batch;
 
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    write_message(6, "Simulating batch {}", simulation::current_batch);
+    if (settings::solver_type == SolverType::RANDOM_RAY &&
+        simulation::current_batch < settings::n_inactive + 1) {
+      write_message(
+        6, "Simulating batch {:<4} (inactive)", simulation::current_batch);
+    } else {
+      write_message(6, "Simulating batch {}", simulation::current_batch);
+    }
   }
 
   // Reset total starting particle weight used for normalizing tallies
@@ -521,7 +531,8 @@ void finalize_generation()
   if (settings::run_mode == RunMode::EIGENVALUE) {
 
     // Calculate shannon entropy
-    if (settings::entropy_on)
+    if (settings::entropy_on &&
+        settings::solver_type == SolverType::MONTE_CARLO)
       shannon_entropy();
 
     // Collect results and statistics
@@ -752,13 +763,15 @@ void transport_history_based_single_particle(Particle& p)
 {
   while (p.alive()) {
     p.event_calculate_xs();
-    if (!p.alive())
-      break;
-    p.event_advance();
-    if (p.collision_distance() > p.boundary().distance) {
-      p.event_cross_surface();
-    } else {
-      p.event_collide();
+    if (p.alive()) {
+      p.event_advance();
+    }
+    if (p.alive()) {
+      if (p.collision_distance() > p.boundary().distance) {
+        p.event_cross_surface();
+      } else if (p.alive()) {
+        p.event_collide();
+      }
     }
     p.event_revive_from_secondary();
   }

@@ -422,28 +422,6 @@ class Batchwise(ABC):
         x : list of numpy.ndarray
             Total atom concentrations
         """
-        number_i = self.operator.number
-        for mat_idx, mat in enumerate(self.local_mats):
-            # Total number of atoms-gram per mol
-            agpm = 0
-            for nuc in number_i.nuclides:
-                agpm +=  number_i[mat, nuc] * atomic_mass(nuc)
-            # Get mass dens from beginning, intended to be held constant
-            density = openmc.lib.materials[int(mat)].get_density('g/cm3')
-            number_i.volume[mat_idx] = agpm / AVOGADRO / density
-
-    def _update_materials(self, x):
-        """
-        Update number density and material compositions in OpenMC on all processes.
-        If density_treatment is set to 'constant-density', "_update_volumes" will
-        update material volumes, keeping the material total density constant, in
-        AtomNumber to renormalize the atom densities before assign them to the
-        model in memory.
-        Parameters
-        ----------
-        x : list of numpy.ndarray
-            Total atom concentrations
-        """
         self.operator.number.set_density(x)
 
         if self.materials_to_add:
@@ -454,11 +432,6 @@ class Batchwise(ABC):
         if self.density_functions:
             self._update_densities()
             self._update_volumes()
-
-        elif self.density_treatment == 'constant-density':
-            self._update_volumes()
-        #else
-            # constant-volume
 
         elif self.density_treatment == 'constant-density':
             self._update_volumes()
@@ -815,133 +788,6 @@ class BatchwiseCell(Batchwise):
 
     def get_root(self):
         return self._get_cell_attrib()
-
-    def _get_cell(self, val):
-        """Helper method for getting cell from cell instance or cell name or id.
-        Parameters
-        ----------
-        val : Openmc.Cell or str or int representing Cell
-        Returns
-        -------
-        val : openmc.Cell
-            Openmc Cell
-        """
-        if isinstance(val, Cell):
-            check_value('Cell exists', val, [cell for cell in \
-                                self.geometry.get_all_cells().values()])
-
-        elif isinstance(val, str):
-            if val.isnumeric():
-                check_value('Cell id exists', int(val), [cell.id for cell in \
-                                self.geometry.get_all_cells().values()])
-                val = [cell for cell in \
-                       self.geometry.get_all_cells().values() \
-                       if cell.id == int(val)][0]
-            else:
-                check_value('Cell name exists', val, [cell.name for cell in \
-                                self.geometry.get_all_cells().values()])
-
-                val = [cell for cell in \
-                       self.geometry.get_all_cells().values() \
-                       if cell.name == val][0]
-
-        elif isinstance(val, int):
-            check_value('Cell id exists', val, [cell.id for cell in \
-                                self.geometry.get_all_cells().values()])
-            val = [cell for cell in \
-                       self.geometry.get_all_cells().values() \
-                       if cell.id == val][0]
-        else:
-            ValueError(f'Cell: {val} is not supported')
-
-        return val
-
-class BatchwiseCell(Batchwise):
-    """Abstract class holding batchwise cell-based functions.
-
-    Specific classes for running batchwise depletion calculations are
-    implemented as derived class of BatchwiseCell.
-
-    .. versionadded:: 0.13.4
-
-    Parameters
-    ----------
-    cell : openmc.Cell or int or str
-        OpenMC Cell identifier to where apply batchwise scheme
-    operator : openmc.deplete.Operator
-        OpenMC operator object
-    model : openmc.model.Model
-        OpenMC model object
-    bracket : list of float
-        Bracketing interval to search for the solution, always relative to the
-        solution at previous step.
-    bracket_limit : list of float
-        Absolute bracketing interval lower and upper; if during the adaptive
-        algorithm the search_for_keff solution lies off these limits the closest
-        limit will be set as new result.
-    density_treatment : str
-        Wether ot not to keep contant volume or density after a depletion step
-        before the next one.
-        Default to 'constant-volume'
-    bracketed_method : {'brentq', 'brenth', 'ridder', 'bisect'}, optional
-        Solution method to use.
-        This is equivalent to the `bracket_method` parameter of the
-        `search_for_keff`.
-        Defaults to 'brentq'.
-    tol : float
-        Tolerance for search_for_keff method.
-        This is equivalent to the `tol` parameter of the `search_for_keff`.
-        Default to 0.01
-    target : Real, optional
-        This is equivalent to the `target` parameter of the `search_for_keff`.
-        Default to 1.0.
-    print_iterations : Bool, Optional
-        Wheter or not to print `search_for_keff` iterations.
-        Default to True
-    search_for_keff_output : Bool, Optional
-        Wheter or not to print transport iterations during  `search_for_keff`.
-        Default to False
-    Attributes
-    ----------
-    cell : openmc.Cell or int or str
-        OpenMC Cell identifier to where apply batchwise scheme
-    cell_materials : list of openmc.Material
-        Depletable materials that fill the Cell Universe. Only valid for
-        translation or rotation atttributes
-    """
-    def __init__(self, cell, operator, model, bracket, bracket_limit,
-                 density_treatment='constant-volume', bracketed_method='brentq',
-                 tol=0.01, target=1.0, print_iterations=True,
-                 search_for_keff_output=True):
-
-        super().__init__(operator, model, bracket, bracket_limit, density_treatment,
-                         bracketed_method, tol, target, print_iterations,
-                         search_for_keff_output)
-
-        self.cell = self._get_cell(cell)
-
-        # list of material fill the attribute cell, if depletables
-        self.cell_materials = None
-
-    @abstractmethod
-    def _get_cell_attrib(self):
-        """
-        Get cell attribute coefficient.
-        Returns
-        -------
-        coeff : float
-            cell coefficient
-        """
-
-    @abstractmethod
-    def _set_cell_attrib(self, val):
-        """
-        Set cell attribute to the cell instance.
-        Parameters
-        ----------
-        val : float
-            cell coefficient to set
-        """
 
     def _get_cell(self, val):
         """Helper method for getting cell from cell instance or cell name or id.
@@ -2274,7 +2120,6 @@ class BatchwiseSchemeRefuel():
             raise ValueError(f'{bw_list} is not a list')
 
         self.bw_list = bw_list
-        self.n_timesteps = n_timesteps
 
         if not isinstance(restart_level, (float, int)):
             raise ValueError(f'{restart_level} is of type {type(restart_level)},'

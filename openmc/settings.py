@@ -1,4 +1,4 @@
-from collections.abc import Iterable, Mapping, MutableSequence
+from collections.abc import Iterable, Mapping, MutableSequence, Sequence
 from enum import Enum
 import itertools
 from math import ceil
@@ -157,6 +157,9 @@ class Settings:
         :ray_source:
             Starting ray distribution (must be uniform in space and angle) as
             specified by a :class:`openmc.SourceBase` object.
+        :source_shape:
+            Assumed shape of the source distribution within each source
+            region. Options are 'flat' (default), 'linear', or 'linear_xy'.
         :volume_normalized_flux_tallies:
             Whether to normalize flux tallies by volume (bool). The default
             is 'False'. When enabled, flux tallies will be reported in units of
@@ -819,7 +822,7 @@ class Settings:
 
     @track.setter
     def track(self, track: typing.Iterable[typing.Iterable[int]]):
-        cv.check_type('track', track, Iterable)
+        cv.check_type('track', track, Sequence)
         for t in track:
             if len(t) != 3:
                 msg = f'Unable to set the track to "{t}" since its length is not 3'
@@ -1090,6 +1093,9 @@ class Settings:
                                       random_ray[key], 0.0, True)
             elif key == 'ray_source':
                 cv.check_type('random ray source', random_ray[key], SourceBase)
+            elif key == 'source_shape':
+                cv.check_value('source shape', random_ray[key],
+                               ('flat', 'linear', 'linear_xy'))
             elif key == 'volume_normalized_flux_tallies':
                 cv.check_type('volume normalized flux tallies', random_ray[key], bool)
             else:
@@ -1885,6 +1891,8 @@ class Settings:
                 elif child.tag == 'source':
                     source = SourceBase.from_xml_element(child)
                     self.random_ray['ray_source'] = source
+                elif child.tag == 'source_shape':
+                    self.random_ray['source_shape'] = child.text
                 elif child.tag == 'volume_normalized_flux_tallies':
                     self.random_ray['volume_normalized_flux_tallies'] = (
                         child.text in ('true', '1')

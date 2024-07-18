@@ -4,8 +4,6 @@ import itertools
 from math import ceil
 from numbers import Integral, Real
 from pathlib import Path
-import typing  # required to prevent typing.Union namespace overwriting Union
-from typing import Optional
 
 import lxml.etree as ET
 
@@ -166,6 +164,19 @@ class Settings:
             cm/cm^3. When disabled, flux tallies will be reported in units
             of cm (i.e., total distance traveled by neutrons in the spatial
             tally region).
+        :first_collision_source:
+            Boolean that indicates if first collided source method (FSC) is 
+            used to initialize the external source input. Default is 'False'.
+        :first_collision_rays:
+            Number of rays (int) used to generate the first collided source.
+            If not provided, the method will automatically run enough rays to
+            adequately converge the first collided source, via an iterative 
+            doubling process. If provided, the method will run the exact
+            prescribed amount.
+        :first_collision_volume_rays:
+            Number of rays (int) used to estimate the initial volume for the
+            first collied source calculation. If not provided, it will use the
+            same number of rays as the main random ray solver stage.
 
         .. versionadded:: 0.15.0
     resonance_scattering : dict
@@ -514,7 +525,7 @@ class Settings:
         return self._max_order
 
     @max_order.setter
-    def max_order(self, max_order: Optional[int]):
+    def max_order(self, max_order: int | None):
         if max_order is not None:
             cv.check_type('maximum scattering order', max_order, Integral)
             cv.check_greater_than('maximum scattering order', max_order, 0,
@@ -522,11 +533,11 @@ class Settings:
         self._max_order = max_order
 
     @property
-    def source(self) -> typing.List[SourceBase]:
+    def source(self) -> list[SourceBase]:
         return self._source
 
     @source.setter
-    def source(self, source: typing.Union[SourceBase, typing.Iterable[SourceBase]]):
+    def source(self, source: SourceBase | Iterable[SourceBase]):
         if not isinstance(source, MutableSequence):
             source = [source]
         self._source = cv.CheckedList(SourceBase, 'source distributions', source)
@@ -804,7 +815,7 @@ class Settings:
         self._temperature = temperature
 
     @property
-    def trace(self) -> typing.Iterable:
+    def trace(self) -> Iterable:
         return self._trace
 
     @trace.setter
@@ -817,11 +828,11 @@ class Settings:
         self._trace = trace
 
     @property
-    def track(self) -> typing.Iterable[typing.Iterable[int]]:
+    def track(self) -> Iterable[Iterable[int]]:
         return self._track
 
     @track.setter
-    def track(self, track: typing.Iterable[typing.Iterable[int]]):
+    def track(self, track: Iterable[Iterable[int]]):
         cv.check_type('track', track, Sequence)
         for t in track:
             if len(t) != 3:
@@ -904,12 +915,12 @@ class Settings:
         self._resonance_scattering = res
 
     @property
-    def volume_calculations(self) -> typing.List[VolumeCalculation]:
+    def volume_calculations(self) -> list[VolumeCalculation]:
         return self._volume_calculations
 
     @volume_calculations.setter
     def volume_calculations(
-        self, vol_calcs: typing.Union[VolumeCalculation, typing.Iterable[VolumeCalculation]]
+        self, vol_calcs: VolumeCalculation | Iterable[VolumeCalculation]
     ):
         if not isinstance(vol_calcs, MutableSequence):
             vol_calcs = [vol_calcs]
@@ -1003,11 +1014,11 @@ class Settings:
         self._write_initial_source = value
 
     @property
-    def weight_windows(self) -> typing.List[WeightWindows]:
+    def weight_windows(self) -> list[WeightWindows]:
         return self._weight_windows
 
     @weight_windows.setter
-    def weight_windows(self, value: typing.Union[WeightWindows, typing.Iterable[WeightWindows]]):
+    def weight_windows(self, value: WeightWindows | Iterable[WeightWindows]):
         if not isinstance(value, MutableSequence):
             value = [value]
         self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows', value)
@@ -1056,7 +1067,7 @@ class Settings:
         self._max_tracks = value
 
     @property
-    def weight_windows_file(self) -> Optional[PathLike]:
+    def weight_windows_file(self) -> PathLike | None:
         return self._weight_windows_file
 
     @weight_windows_file.setter
@@ -1065,7 +1076,7 @@ class Settings:
         self._weight_windows_file = value
 
     @property
-    def weight_window_generators(self) -> typing.List[WeightWindowGenerator]:
+    def weight_window_generators(self) -> list[WeightWindowGenerator]:
         return self._weight_window_generators
 
     @weight_window_generators.setter
@@ -1098,6 +1109,14 @@ class Settings:
                                ('flat', 'linear', 'linear_xy'))
             elif key == 'volume_normalized_flux_tallies':
                 cv.check_type('volume normalized flux tallies', random_ray[key], bool)
+            elif key == 'first_collision_source':
+                cv.check_type('first_collision_source', random_ray[key], bool)
+            elif key == 'first_collision_rays':
+                cv.check_type('first_collision_rays', random_ray[key], int)
+                cv.check_greater_than('first_collision_rays',random_ray[key], 0)
+            elif key == 'first_collision_volume_rays':
+                cv.check_type('first_collision_volume_rays', random_ray[key], int)
+                cv.check_greater_than('first_collision_volume_rays',random_ray[key], 0)                                
             else:
                 raise ValueError(f'Unable to set random ray to "{key}" which is '
                                  'unsupported by OpenMC')
@@ -1897,6 +1916,12 @@ class Settings:
                     self.random_ray['volume_normalized_flux_tallies'] = (
                         child.text in ('true', '1')
                     )
+                elif child.tag == 'first_collision_source':
+                    self.random_ray['first_collision_source'] = (
+                        child.text in ('true', '1')
+                    )
+                elif child.tag in ('first_collision_rays', 'first_collision_volume_rays'):
+                    self.random_ray[child.tag] = int(child.text) 
 
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.

@@ -5,7 +5,6 @@ import re
 from pathlib import Path
 from math import sqrt, log
 from warnings import warn
-from typing import Dict
 
 # Isotopic abundances from Meija J, Coplen T B, et al, "Isotopic compositions
 # of the elements 2013 (IUPAC Technical Report)", Pure. Appl. Chem. 88 (3),
@@ -283,13 +282,13 @@ AVOGADRO = 6.02214076e23
 NEUTRON_MASS = 1.00866491595
 
 # Used in atomic_mass function as a cache
-_ATOMIC_MASS: Dict[str, float] = {}
+_ATOMIC_MASS: dict[str, float] = {}
 
 # Regex for GNDS nuclide names (used in zam function)
 _GNDS_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
 
 # Used in half_life function as a cache
-_HALF_LIFE: Dict[str, float] = {}
+_HALF_LIFE: dict[str, float] = {}
 _LOG_TWO = log(2.0)
 
 def atomic_mass(isotope):

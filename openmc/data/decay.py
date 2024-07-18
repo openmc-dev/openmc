@@ -2,7 +2,6 @@ from collections.abc import Iterable
 from io import StringIO
 from math import log
 import re
-from typing import Optional
 from warnings import warn
 
 import numpy as np
@@ -579,7 +578,7 @@ class Decay(EqualityMixin):
 _DECAY_PHOTON_ENERGY = {}
 
 
-def decay_photon_energy(nuclide: str) -> Optional[Univariate]:
+def decay_photon_energy(nuclide: str) -> Univariate | None:
     """Get photon energy distribution resulting from the decay of a nuclide
 
     This function relies on data stored in a depletion chain. Before calling it

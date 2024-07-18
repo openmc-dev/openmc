@@ -46,6 +46,9 @@ void DiscreteIndex::init_alias()
 {
   normalize();
 
+  // record user input normalized distribution prob_actual for Random Ray
+  prob_actual_ = prob_; 
+
   // The initialization and sampling method is based on Vose
   // (DOI: 10.1109/32.92917)
   // Vectors for large and small probabilities based on 1/n

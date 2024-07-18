@@ -41,6 +41,18 @@ public:
   void flux_swap() override;
   double evaluate_flux_at_point(Position r, int64_t sr, int g) const override;
 
+  void compute_first_collided_external_source() override;
+  void compute_uncollided_scalar_flux() override;
+  void compute_first_collided_flux() override;
+  void normalize_uncollided_scalar_flux(double number_of_particles) override;
+  void update_volume_uncollided_flux() override;
+  void uncollided_moments() override;
+  void batch_reset_fc() override;
+  double evaluate_uncollided_flux_at_point(
+    Position r, int64_t sr, int g) const override;
+  double evaluate_external_source_at_point(
+    Position r, int64_t sr, int g) const override;
+
   //----------------------------------------------------------------------------
   // Public Data members
 
@@ -48,6 +60,11 @@ public:
   vector<MomentArray> flux_moments_old_;
   vector<MomentArray> flux_moments_new_;
   vector<MomentArray> flux_moments_t_;
+  // First Collided Method
+  vector<MomentArray> flux_moments_uncollided_;
+  vector<MomentArray> flux_moments_first_collided_;
+  vector<MomentArray> external_source_gradients_;
+
   vector<Position> centroid_;
   vector<Position> centroid_iteration_;
   vector<Position> centroid_t_;

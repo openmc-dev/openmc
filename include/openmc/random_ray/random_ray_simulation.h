@@ -27,9 +27,13 @@ public:
   void print_results_random_ray(uint64_t total_geometric_intersections,
     double avg_miss_rate, int negroups, int64_t n_source_regions,
     int64_t n_external_source_regions) const;
+  void first_collision_source_simulation();
 
   //----------------------------------------------------------------------------
   // Data members
+  // Initial volume estimation timer - First Collided Source Method  
+  double time_volume_fc;
+
 private:
   // Contains all flat source region data
   unique_ptr<FlatSourceDomain> domain_;

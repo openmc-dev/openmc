@@ -26,7 +26,8 @@ class _SourceSite(Structure):
                 ('surf_id', c_int),
                 ('particle', c_int),
                 ('parent_id', c_int64),
-                ('progeny_id', c_int64)]
+                ('progeny_id', c_int64),
+                ('source_id', c_int)]
 
 
 # Define input type for numpy arrays that will be passed into C++ functions

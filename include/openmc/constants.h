@@ -342,6 +342,8 @@ enum class RunMode {
 
 enum class SolverType { MONTE_CARLO, RANDOM_RAY };
 
+enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
+
 //==============================================================================
 // Geometry Constants
 

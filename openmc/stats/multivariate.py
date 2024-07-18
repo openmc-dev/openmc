@@ -769,7 +769,7 @@ class Box(Spatial):
         Whether spatial sites should only be accepted if they occur in
         fissionable materials
 
-        .. deprecated:: 0.14.1
+        .. deprecated:: 0.15.0
             Use the `constraints` argument when defining a source object instead.
 
     Attributes
@@ -782,7 +782,7 @@ class Box(Spatial):
         Whether spatial sites should only be accepted if they occur in
         fissionable materials
 
-        .. deprecated:: 0.14.1
+        .. deprecated:: 0.15.0
             Use the `constraints` argument when defining a source object instead.
 
     """

@@ -10,10 +10,10 @@ from .filter import _FILTER_TYPES
 
 
 # Acceptable tally arithmetic binary operations
-_TALLY_ARITHMETIC_OPS = ['+', '-', '*', '/', '^']
+_TALLY_ARITHMETIC_OPS = {'+', '-', '*', '/', '^'}
 
 # Acceptable tally aggregation operations
-_TALLY_AGGREGATE_OPS = ['sum', 'avg']
+_TALLY_AGGREGATE_OPS = {'sum', 'avg'}
 
 
 class CrossScore:

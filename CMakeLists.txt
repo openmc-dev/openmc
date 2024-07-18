@@ -1,9 +1,9 @@
-cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 project(openmc C CXX)
 
 # Set version numbers
 set(OPENMC_VERSION_MAJOR 0)
-set(OPENMC_VERSION_MINOR 14)
+set(OPENMC_VERSION_MINOR 15)
 set(OPENMC_VERSION_RELEASE 1)
 set(OPENMC_VERSION ${OPENMC_VERSION_MAJOR}.${OPENMC_VERSION_MINOR}.${OPENMC_VERSION_RELEASE})
 configure_file(include/openmc/version.h.in "${CMAKE_BINARY_DIR}/include/openmc/version.h" @ONLY)
@@ -15,11 +15,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # Set module path
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
-
-# Allow user to specify <project>_ROOT variables
-if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.12)
-  cmake_policy(SET CMP0074 NEW)
-endif()
 
 # Enable correct usage of CXX_EXTENSIONS
 if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.22)
@@ -275,11 +270,6 @@ endif()
 # xtensor header-only library
 #===============================================================================
 
-# CMake 3.13+ will complain about policy CMP0079 unless it is set explicitly
-if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.13)
-  cmake_policy(SET CMP0079 NEW)
-endif()
-
 find_package_write_status(xtensor)
 if (NOT xtensor_FOUND)
   add_subdirectory(vendor/xtl)
@@ -393,6 +383,8 @@ list(APPEND libopenmc_SOURCES
   src/random_ray/random_ray_simulation.cpp
   src/random_ray/random_ray.cpp
   src/random_ray/flat_source_domain.cpp
+  src/random_ray/linear_source_domain.cpp
+  src/random_ray/moment_matrix.cpp
   src/reaction.cpp
   src/reaction_product.cpp
   src/scattdata.cpp
@@ -594,9 +586,9 @@ target_compile_options(openmc PRIVATE ${cxxflags})
 target_include_directories(openmc PRIVATE ${CMAKE_BINARY_DIR}/include)
 target_link_libraries(openmc libopenmc)
 
-# Ensure C++14 standard is used and turn off GNU extensions
-target_compile_features(openmc PUBLIC cxx_std_14)
-target_compile_features(libopenmc PUBLIC cxx_std_14)
+# Ensure C++17 standard is used and turn off GNU extensions
+target_compile_features(openmc PUBLIC cxx_std_17)
+target_compile_features(libopenmc PUBLIC cxx_std_17)
 set_target_properties(openmc libopenmc PROPERTIES CXX_EXTENSIONS OFF)
 
 #===============================================================================

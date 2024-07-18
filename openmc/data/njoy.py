@@ -453,7 +453,7 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
     error : float, optional
         Fractional error tolerance for NJOY processing
     iwt : int
-        `iwt` parameter used in NJOR/ACER card 9
+        `iwt` parameter used in NJOY/ACER card 9
     evaluation : openmc.data.endf.Evaluation, optional
         If the ENDF neutron sublibrary file contains multiple material
         evaluations, this argument indicates which evaluation to use.

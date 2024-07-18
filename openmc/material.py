@@ -1252,7 +1252,7 @@ class Material(IDManagerMixin):
             raise ValueError("Volume must be set in order to determine mass.")
         return volume*self.get_mass_density(nuclide)
 
-    def clone(self, memo: dict | float = None) -> Material:
+    def clone(self, memo: dict | None = None) -> Material:
         """Create a copy of this material with a new unique ID.
 
         Parameters

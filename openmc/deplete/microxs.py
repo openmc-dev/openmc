@@ -5,8 +5,8 @@ IndependentOperator class for depletion.
 """
 
 from __future__ import annotations
+from collections.abc import Iterable, Sequence
 from tempfile import TemporaryDirectory
-from typing import Iterable, Sequence
 
 import pandas as pd
 import numpy as np
@@ -27,7 +27,7 @@ _valid_rxns.append('fission')
 _valid_rxns.append('damage-energy')
 
 
-def _resolve_chain_file_path(chain_file: str):
+def _resolve_chain_file_path(chain_file: str | None):
     if chain_file is None:
         chain_file = openmc.config.get('chain_file')
         if 'chain_file' not in openmc.config:

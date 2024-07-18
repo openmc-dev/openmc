@@ -111,7 +111,7 @@ class WeightWindows(IDManagerMixin):
         mesh: MeshBase,
         lower_ww_bounds: Iterable[float],
         upper_ww_bounds: Iterable[float] | None = None,
-        upper_bound_ratio: Iterable[float] | None = None,
+        upper_bound_ratio: float | None = None,
         energy_bounds: Iterable[Real] | None = None,
         particle_type: str = 'neutron',
         survival_ratio: float = 3,

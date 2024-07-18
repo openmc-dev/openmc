@@ -1,7 +1,6 @@
 from __future__ import annotations
-import typing
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from math import cos, pi
 from numbers import Real
 from warnings import warn
@@ -9,6 +8,7 @@ from warnings import warn
 import lxml.etree as ET
 import numpy as np
 
+import openmc
 import openmc.checkvalue as cv
 from .._xml import get_text
 from ..mesh import MeshBase
@@ -212,7 +212,7 @@ class Monodirectional(UnitSphere):
 
     """
 
-    def __init__(self, reference_uvw: typing.Sequence[float] = [1., 0., 0.]):
+    def __init__(self, reference_uvw: Sequence[float] = [1., 0., 0.]):
         super().__init__(reference_uvw)
 
     def to_xml_element(self):
@@ -789,8 +789,8 @@ class Box(Spatial):
 
     def __init__(
         self,
-        lower_left: typing.Sequence[float],
-        upper_right: typing.Sequence[float],
+        lower_left: Sequence[float],
+        upper_right: Sequence[float],
         only_fissionable: bool = False
     ):
         self.lower_left = lower_left
@@ -889,7 +889,7 @@ class Point(Spatial):
 
     """
 
-    def __init__(self, xyz: typing.Sequence[float] = (0., 0., 0.)):
+    def __init__(self, xyz: Sequence[float] = (0., 0., 0.)):
         self.xyz = xyz
 
     @property
@@ -939,9 +939,9 @@ class Point(Spatial):
 def spherical_uniform(
         r_outer: float,
         r_inner: float = 0.0,
-        thetas: typing.Sequence[float] = (0., pi),
-        phis: typing.Sequence[float] = (0., 2*pi),
-        origin: typing.Sequence[float] = (0., 0., 0.)
+        thetas: Sequence[float] = (0., pi),
+        phis: Sequence[float] = (0., 2*pi),
+        origin: Sequence[float] = (0., 0., 0.)
     ):
     """Return a uniform spatial distribution over a spherical shell.
 

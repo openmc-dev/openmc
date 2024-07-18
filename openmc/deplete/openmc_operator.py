@@ -7,7 +7,6 @@ transport-independent transport operators.
 
 from abc import abstractmethod
 from warnings import warn
-from typing import List, Tuple, Dict
 
 import numpy as np
 
@@ -185,7 +184,7 @@ class OpenMCOperator(TransportOperator):
         """Assign distribmats for each burnable material"""
         pass
 
-    def _get_burnable_mats(self) -> Tuple[List[str], Dict[str, float], List[str]]:
+    def _get_burnable_mats(self) -> tuple[list[str], dict[str, float], list[str]]:
         """Determine depletable materials, volumes, and nuclides
 
         Returns

@@ -54,25 +54,30 @@ def model():
 
     return openmc.Model(geometry, materials, settings)
 
-@pytest.mark.parametrize("case_name, transfer_rates", [
-    ('elements', {'U': 0.01, 'Xe': 0.1}),
-    ('nuclides', {'I135': 0.01, 'Gd156': 0.1, 'Gd157': 0.01}),
+@pytest.mark.parametrize("case_name, transfer_rates, timesteps", [
+    ('elements', {'U': 0.01, 'Xe': 0.1}, None),
+    ('nuclides', {'I135': 0.01, 'Gd156': 0.1, 'Gd157': 0.01}, None),
     ('nuclides_elements', {'I135': 0.01, 'Gd156': 0.1, 'Gd157': 0.01, 'U': 0.01,
-                           'Xe': 0.1}),
+                           'Xe': 0.1}, None),
     ('elements_nuclides', {'U': 0.01, 'Xe': 0.1, 'I135': 0.01, 'Gd156': 0.1,
-                           'Gd157': 0.01}),
+                           'Gd157': 0.01}, None),
     ('multiple_transfer', {'U': 0.01, 'Xe': 0.1, 'I135': 0.01, 'Gd156': 0.1,
-                           'Gd157': 0.01}),
-    ('rates_invalid_1', {'Gd': 0.01, 'Gd157': 0.01, 'Gd156': 0.01}),
-    ('rates_invalid_2', {'Gd156': 0.01, 'Gd157': 0.01, 'Gd': 0.01}),
-    ('rates_invalid_3', {'Gb156': 0.01}),
-    ('rates_invalid_4', {'Gb': 0.01})
+                           'Gd157': 0.01}, None),
+    ('timesteps', {'U': 0.01, 'Xe': 0.1}, [1]),
+    ('rates_invalid_1', {'Gd': 0.01, 'Gd157': 0.01, 'Gd156': 0.01}, None),
+    ('rates_invalid_2', {'Gd156': 0.01, 'Gd157': 0.01, 'Gd': 0.01}, None),
+    ('rates_invalid_3', {'Gb156': 0.01}, None),
+    ('rates_invalid_4', {'Gb': 0.01}, None)
     ])
-def test_get_set(model, case_name, transfer_rates):
+def test_get_set(model, case_name, transfer_rates, timesteps):
     """Tests the get/set methods"""
 
     op = CoupledOperator(model, CHAIN_PATH)
-    transfer = TransferRates(op, model)
+    number_of_timesteps = 2
+    transfer = TransferRates(op, model, number_of_timesteps)
+
+    if timesteps is None:
+        timesteps = np.arange(number_of_timesteps)
 
     # Test by Openmc material, material name and material id
     material, dest_material, dest_material2 = [m for m in model.materials
@@ -116,10 +121,13 @@ def test_get_set(model, case_name, transfer_rates):
                 for component, transfer_rate in transfer_rates.items():
                     transfer.set_transfer_rate(material_input, [component],
                                                transfer_rate,
+                                               timesteps=timesteps,
                                                destination_material=\
                                                dest_material_input)
-                    assert transfer.get_transfer_rate(
+                    assert transfer.get_external_rate(
                         material_input, component)[0] == transfer_rate
+                    assert np.all(transfer.get_material_timesteps(
+                        material_input) == timesteps)
                     assert transfer.get_destination_material(
                         material_input, component)[0] == str(dest_material.id)
                 assert transfer.get_components(material_input) == \
@@ -134,7 +142,7 @@ def test_get_set(model, case_name, transfer_rates):
                                                destination_material=\
                                                dest2_material_input)
                         for id, dest_mat in zip([0,1],[dest_material,dest_material2]):
-                            assert transfer.get_transfer_rate(
+                            assert transfer.get_external_rate(
                                 material_input, component)[id] == transfer_rate
                             assert transfer.get_destination_material(
                                 material_input, component)[id] == str(dest_mat.id)
@@ -157,13 +165,14 @@ def test_units(transfer_rate_units, unit_conv, model):
     # create transfer rate Xe
     components = ['Xe', 'U235']
     transfer_rate = 1e-5
+    number_of_timesteps = 2
     op = CoupledOperator(model, CHAIN_PATH)
-    transfer = TransferRates(op, model)
+    transfer = TransferRates(op, model, number_of_timesteps)
 
     for component in components:
         transfer.set_transfer_rate('f', [component], transfer_rate * unit_conv,
                                    transfer_rate_units=transfer_rate_units)
-        assert transfer.get_transfer_rate('f', component)[0] == transfer_rate
+        assert transfer.get_external_rate('f', component)[0] == transfer_rate
 
 
 def test_transfer(run_in_tmpdir, model):

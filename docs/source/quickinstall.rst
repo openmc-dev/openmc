@@ -160,28 +160,19 @@ download and install OpenMC by entering the following commands in a terminal:
 
     git clone --recurse-submodules https://github.com/openmc-dev/openmc.git
     cd openmc
-    mkdir build && cd build
-    cmake ..
-    make
-    sudo make install
-
-This will build an executable named ``openmc`` and install it (by default in
-/usr/local/bin). If you do not have administrator privileges, the cmake command
-should specify an installation directory where you have write access, e.g.
-
-.. code-block:: sh
-
-    cmake -DCMAKE_INSTALL_PREFIX=$HOME/.local ..
-
-The :mod:`openmc` Python package must be installed separately. The easiest way
-to install it is using `pip <https://pip.pypa.io/en/stable/>`_.
-From the root directory of the OpenMC repository, run:
-
-.. code-block:: sh
-
     python -m pip install .
 
+The easiest way to install it is using `pip <https://pip.pypa.io/en/stable/>`_.
+This `pip` command will install the `openmc` Python package and compile an executable named ``openmc``
+and install it (by default in the bin folder of the Python package directory).
+
+.. code-block:: sh
+
+    python -m pip install . --global-option="build_ext" --global-option="--" --global-option="-DOPENMC_USE_MPI=ON"
+
+
+The compilion of the ``openmc`` can be customised by specifying CMake arguments.
 By default, OpenMC will be built with multithreading support. To build
-distributed-memory parallel versions of OpenMC using MPI or to configure other
-options, directions can be found in the :ref:`detailed installation instructions
+distributed-memory parallel versions of OpenMC using MPI the above command can be run.
+There are other options that can be set, more details can be found in the :ref:`detailed installation instructions
 <usersguide_build>`.

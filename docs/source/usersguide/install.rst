@@ -175,9 +175,9 @@ feature can be used to access the installed packages.
 
 .. _install_source:
 
-----------------------
-Installing from Source
-----------------------
+--------------------------------
+Compiling from Source with CMake
+--------------------------------
 
 .. _prerequisites:
 
@@ -367,6 +367,8 @@ Note that first a build directory is created as a subdirectory of the source
 directory. The Makefile in the top-level directory will automatically perform an
 out-of-source build with default options.
 
+.. _cmake_arguemnts:
+
 CMakeLists.txt Options
 ++++++++++++++++++++++
 
@@ -505,15 +507,15 @@ To run the test suite, you will first need to download a pre-generated cross
 section library along with windowed multipole data. Please refer to our
 :ref:`devguide_tests` documentation for further details.
 
----------------------
-Installing Python API
----------------------
+-----------------------------------------------
+Installing Python API and compiling from source
+-----------------------------------------------
 
 If you installed OpenMC using :ref:`Conda <install_conda>`, no further steps are
 necessary in order to use OpenMC's :ref:`Python API <pythonapi>`. However, if
-you are :ref:`installing from source <install_source>`, the Python API is not
-installed by default when ``make install`` is run because in many situations it
-doesn't make sense to install a Python package in the same location as the
+you are :ref:`Compiling from Source with CMake <install_source>`, the Python API
+is not installed by default when ``make install`` is run because in many situations
+it doesn't make sense to install a Python package in the same location as the
 ``openmc`` executable (for example, if you are installing the package into a
 `virtual environment <https://docs.python.org/3/tutorial/venv.html>`_). The
 easiest way to install the :mod:`openmc` Python package is to use pip_, which is
@@ -527,7 +529,27 @@ distribution/repository, run:
 pip will first check that all :ref:`required third-party packages
 <usersguide_python_prereqs>` have been installed, and if they are not present,
 they will be installed by downloading the appropriate packages from the Python
-Package Index (`PyPI <https://pypi.org/>`_).
+Package Index (`PyPI <https://pypi.org/>`_). The pip command will also compile
+an executable named ``openmc`` and install it (by default in the bin folder of
+the Python package directory).
+
+Passing CMake Options to via pip
+--------------------------------
+
+If you need to pass CMake options to the build process, you can do so by
+running pip install with some additional options. All the CMake arguments
+covered in the :ref:`CMakeLists.txt Options<cmake_arguemnts>` are supported.
+For example, to build OpenMC with MPI support, you can run:
+
+.. code-block:: sh
+
+    python -m pip install . --global-option="build_ext" --global-option="--" --global-option="-DOPENMC_USE_MPI=ON"
+
+To build OpenMC with DAGMC support two CMake arguments are needed, you can run:
+
+.. code-block:: sh
+
+    python -m pip install . --global-option="build_ext" --global-option="--" --global-option="-DOPENMC_USE_DAGMC=ON" --global-option="-DDAGMC_ROOT=/path/to/dagmc/installation"
 
 Installing in "Development" Mode
 --------------------------------

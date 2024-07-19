@@ -689,6 +689,8 @@ class Chain:
         ----------
         tr_rates : openmc.deplete.TransferRates
             Instance of openmc.deplete.TransferRates
+        current_timestep : int
+            Current timestep index
         mats : string or two-tuple of strings
             Two cases are possible:
 
@@ -746,34 +748,23 @@ class Chain:
         return matrix.tocsc()
 
     def form_ext_source_term(self, ext_source_rates, current_timestep, mat):
-        """Function to form the transfer rate term matrices.
+        """Function to form the external source rate term vectors.
 
         .. versionadded:: 0.15.1
 
         Parameters
         ----------
-        tr_rates : openmc.deplete.TransferRates
-            Instance of openmc.deplete.TransferRates
-        mats : string or two-tuple of strings
-            Two cases are possible:
-
-            1) Material ID as string:
-            Nuclide transfer only. In this case the transfer rate terms will be
-            subtracted from the respective depletion matrix
-
-            2) Two-tuple of material IDs as strings:
-            Nuclide transfer from one material into another.
-            The pair is assumed to be
-            ``(destination_material, source_material)``, where
-            ``destination_material`` and ``source_material`` are the nuclide
-            receiving and losing materials, respectively.
-            The transfer rate terms get placed in the final matrix with indexing
-            position corresponding to the ID of the materials set.
+        ext_source_rates : openmc.deplete.ExternalSourceRates
+            Instance of openmc.deplete.ExternalSourceRates
+        current_timestep : int
+            Current timestep index
+        mat : string
+            Material id
 
         Returns
         -------
         scipy.sparse.csc_matrix
-            Sparse matrix representing transfer term.
+            Sparse vector representing external source term.
 
         """
         if current_timestep not in ext_source_rates.get_material_timesteps(mat):

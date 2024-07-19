@@ -73,7 +73,7 @@ openmc-track-to-vtk = "scripts.openmc_track_to_vtk:main"
 openmc-update-inputs = "scripts.openmc_update_inputs:main"
 openmc-update-mgxs = "scripts.openmc_update_mgxs:main"
 openmc-voxel-to-vtk = "scripts.openmc_voxel_to_vtk:main"
-openmc-exec = "openmc.openmc_exec:main"
+openmc = "openmc.openmc_exec:main"
 
 [tool.scikit-build]
 cmake.verbose = true

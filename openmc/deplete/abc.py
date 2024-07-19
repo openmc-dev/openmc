@@ -879,29 +879,27 @@ class Integrator(ABC):
     def add_external_source_rate(
             self,
             material: Union[str, int, Material],
-            components: dict,
+            external_source_vector: dict,
             external_source_rate: float,
             external_source_rate_units: str = 'g/s',
             timesteps: Iterable = None
         ):
-        """Add transfer rates to depletable material.
+        """Add external source rates to depletable material.
 
         Parameters
         ----------
         material : openmc.Material or str or int
             Depletable material
-        components : list of str
-            List of strings of elements and/or nuclides that share transfer rate.
-            A transfer rate for a nuclide cannot be added to a material
-            alongside a transfer rate for its element and vice versa.
-        transfer_rate : float
-            Rate at which elements are transferred. A positive or negative values
-            set removal of feed rates, respectively.
-        destination_material : openmc.Material or str or int, Optional
-            Destination material to where nuclides get fed.
-        transfer_rate_units : {'1/s', '1/min', '1/h', '1/d', '1/a'}
-            Units for values specified in the transfer_rate argument. 's' means
-            seconds, 'min' means minutes, 'h' means hours, 'a' means Julian years.
+        external_source_vector : dict of str to float
+            External source rate composition vector, where key can be an element
+            or a nuclide and value the corresponding weigth percent.
+        external_source_rate : float
+            External source rate in unit of grams per time. A positive or
+            negative value corresponds to a feed or removal rate, respectively.
+        external_source_rate_units : {'g/s', 'g/min', 'g/h', 'g/d', 'g/a'}
+            Units for values specified in the external_source_rate argument.
+            's' for seconds, 'min' for minutes, 'h' for hours, 'a' for
+            Julian years.
 
         """
         if self.external_source_rates is None:
@@ -913,8 +911,9 @@ class Integrator(ABC):
                              'source rate in combination with transfer rates '
                              'with destination matrial.')
 
-        self.external_source_rates.set_external_source_rate(material, components,
-                    external_source_rate, external_source_rate_units, timesteps)
+        self.external_source_rates.set_external_source_rate(material,
+                        external_source_vector, external_source_rate,
+                        external_source_rate_units, timesteps)
 
 @add_params
 class SIIntegrator(Integrator):

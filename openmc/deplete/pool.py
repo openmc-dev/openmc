@@ -58,6 +58,8 @@ def deplete(func, chain, n, rates, dt, current_timestep, matrix_func=None,
         Reaction rates (from transport operator)
     dt : float
         Time in [s] to deplete for
+    current_timestep : int
+        Current timestep index
     maxtrix_func : callable, optional
         Function to form the depletion matrix after calling ``matrix_func(chain,
         rates, fission_yields)``, where ``fission_yields = {parent: {product:
@@ -67,7 +69,7 @@ def deplete(func, chain, n, rates, dt, current_timestep, matrix_func=None,
         Object to perform continuous reprocessing.
 
         .. versionadded:: 0.14.0
-    external_source_rates : openmc.deplete.ExternalSourceRates
+    external_source_rates : openmc.deplete.ExternalSourceRates, Optional
         Instance of ExternalSourceRates class to add an external source term.
 
         .. versionadded:: 0.15.1
@@ -118,7 +120,8 @@ def deplete(func, chain, n, rates, dt, current_timestep, matrix_func=None,
 
                 # Calculate transfer rate terms as diagonal matrices
                 transfer_pair = {
-                    mat_pair: chain.form_rr_term(transfer_rates, mat_pair)
+                    mat_pair: chain.form_rr_term(transfer_rates,
+                                    current_timestep, mat_pair)
                     for mat_pair in transfer_rates.index_transfer
                 }
 
@@ -162,10 +165,10 @@ def deplete(func, chain, n, rates, dt, current_timestep, matrix_func=None,
 
     if (external_source_rates is not None and
         current_timestep in external_source_rates.external_timesteps):
-        # Calculate source term vectors
+        # Calculate external source term vectors
         sources = map(chain.form_ext_source_term, repeat(external_source_rates),
                       repeat(current_timestep), external_source_rates.local_mats)
-
+        #stack vector column at the end of the matrix
         matrices = [hstack([matrix, source]) for (matrix, source) in zip(matrices,
                                                                     sources)]
 

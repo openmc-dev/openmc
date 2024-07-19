@@ -332,6 +332,11 @@ if("${isSystemDir}" STREQUAL "-1")
   set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_FULL_LIBDIR}")
 endif()
 
+if(SKBUILD)
+  set(CMAKE_INSTALL_RPATH "$ORIGIN")
+  set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+endif()
+
 #===============================================================================
 # libopenmc
 #===============================================================================
@@ -622,5 +627,5 @@ install(FILES "${CMAKE_BINARY_DIR}/include/openmc/version.h" DESTINATION ${CMAKE
 
 if(SKBUILD)
   install(TARGETS openmc RUNTIME DESTINATION openmc/bin)
-  install(TARGETS libopenmc LIBRARY DESTINATION openmc/lib)
+  install(TARGETS libopenmc LIBRARY DESTINATION openmc/bin)
 endif()

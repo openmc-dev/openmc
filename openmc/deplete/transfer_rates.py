@@ -9,8 +9,36 @@ from math import isclose
 import numpy as np
 
 class ExternalRates:
+    """External rates class for defining addition terms of depletion equation.
+
+    .. versionadded:: 0.15.1
+
+    Parameters
+    ----------
+    operator : openmc.TransportOperator
+        Depletion operator
+    model : openmc.Model
+        OpenMC model containing materials and geometry. If using
+        :class:`openmc.deplete.CoupledOperator`, the model must also contain
+        a :class:`opnemc.Settings` object.
+    number_of_timesteps : int
+        Total number of depletion timesteps
+
+    Attributes
+    ----------
+    burnable_mats : list of str
+        All burnable material IDs.
+    local_mats : list of str
+        All burnable material IDs being managed by a single process
+    number_of_timesteps : int
+        Total number of depletion timesteps
+    external_rates : dict of str to dict
+        Container of timesteps, external rates, components (elements and/or
+        nuclides) and optionally destination material
+    external_timesteps : list of int
+        Container of all timesteps indeces with an external rate defined.
     """
-    """
+
     def __init__(self, operator, model, number_of_timesteps):
 
         self.materials = model.materials
@@ -63,8 +91,8 @@ class ExternalRates:
 
         Returns
         -------
-        transfer_rate : list of floats
-            Transfer rate values
+        external_rate : list of floats
+            External rate values
 
         """
         material_id = self._get_material_id(material)
@@ -90,7 +118,19 @@ class ExternalRates:
             return self.external_rates[material_id].keys()
 
     def get_material_timesteps(self, material):
-        """
+        """Extract timesteps indeces to where external_rates are defined
+        for a given material.
+
+        Parameters
+        ----------
+        material : openmc.Material or str or int
+            Depletable material
+
+        Returns
+        -------
+        timesteps_per_mat : np.array
+            Array of timesteps indeces to where external_rates are defined
+
         """
         material_id = self._get_material_id(material)
 
@@ -125,6 +165,8 @@ class TransferRates(ExternalRates):
         OpenMC model containing materials and geometry. If using
         :class:`openmc.deplete.CoupledOperator`, the model must also contain
         a :class:`opnemc.Settings` object.
+    number_of_timesteps : int
+        Total number of depletion timesteps
 
     Attributes
     ----------
@@ -132,9 +174,11 @@ class TransferRates(ExternalRates):
         All burnable material IDs.
     local_mats : list of str
         All burnable material IDs being managed by a single process
-    transfer_rates : dict of str to dict
-        Container of transfer rates, components (elements and/or nuclides) and
-        destination material
+    external_rates : dict of str to dict
+        Container of timesteps, transfer rates, components (elements and/or
+        nuclides) and destination material
+    external_timesteps : list of int
+        Container of all timesteps indeces with an external rate defined.
     index_transfer : Set of pair of str
         Pair of strings needed to build final matrix (destination_material, mat)
     """
@@ -278,8 +322,37 @@ class TransferRates(ExternalRates):
 
 
 class ExternalSourceRates(ExternalRates):
+    """Class for defining external source rates.
+
+    An instance of this class can be passed directly to an instance of one of
+    the :class:`openmc.deplete.Integrator` classes.
+
+    .. versionadded:: 0.15.1
+
+    Parameters
+    ----------
+    operator : openmc.TransportOperator
+        Depletion operator
+    model : openmc.Model
+        OpenMC model containing materials and geometry. If using
+        :class:`openmc.deplete.CoupledOperator`, the model must also contain
+        a :class:`opnemc.Settings` object.
+    number_of_timesteps : int
+        Total number of depletion timesteps
+
+    Attributes
+    ----------
+    burnable_mats : list of str
+        All burnable material IDs.
+    local_mats : list of str
+        All burnable material IDs being managed by a single process
+    external_timesteps : list of int
+        Container of all timesteps indeces with an external rate defined.
+    external_rates : dict of str to dict
+        Container of timesteps external source rates, and components
+        (elements and/or nuclides)
     """
-    """
+
     def __init__(self, operator, model, number_of_timesteps):
 
         super().__init__(
@@ -289,8 +362,20 @@ class ExternalSourceRates(ExternalRates):
         )
 
     def reformat_nuclide_vectors(self, vectors):
-        ""
-        ""
+        """Remove last element of nuclide vector that was added for homogenize
+        the vector by the depletion solver.
+
+        Parameters
+        ----------
+        vectors : list of array
+            List of nuclides vector to reformat
+
+        Returns
+        -------
+        vectors : list of array
+            Updated list of nuclides vector
+
+        """
         mat_indeces = [idx for idx,i in enumerate(self.local_mats) \
                         if self.external_rates[i]]
 
@@ -299,51 +384,32 @@ class ExternalSourceRates(ExternalRates):
 
         return vectors
 
-    def set_external_source_rate(self, material, source_vector, external_source_rate,
-                          external_source_rate_units='g/s', timesteps=None):
-        """Set element and/or nuclide transfer rates in a depletable material.
+    def set_external_source_rate(self, material, external_source_vector,
+            external_source_rate, external_source_rate_units='g/s', timesteps=None):
+        """Set element and/or nuclide composition vector external source rates
+        to a depletable material.
 
         Parameters
         ----------
         material : openmc.Material or str or int
             Depletable material
-        components : list of str
-            List of strings of elements and/or nuclides that share transfer rate.
-            Cannot add transfer rates for nuclides to a material where a
-            transfer rate for its element is specified and vice versa.
-        transfer_rate : float
-            Rate at which elements and/or nuclides are transferred. A positive or
-            negative value corresponds to a removal or feed rate, respectively.
-        destination_material : openmc.Material or str or int, Optional
-            Destination material to where nuclides get fed.
-        transfer_rate_units : {'1/s', '1/min', '1/h', '1/d', '1/a'}
-            Units for values specified in the transfer_rate argument. 's' for
-            seconds, 'min' for minutes, 'h' for hours, 'a' for Julian years.
-
-            """
-        """Set element and/or nuclide transfer rates in a depletable material.
-
-        Parameters
-        ----------
-        material : openmc.Material or str or int
-            Depletable material
-        components : list of str
-            List of strings of elements and/or nuclides that share transfer rate.
-            Cannot add transfer rates for nuclides to a material where a
-            transfer rate for its element is specified and vice versa.
-        transfer_rate : float
-            Rate at which elements and/or nuclides are transferred. A positive or
-            negative value corresponds to a removal or feed rate, respectively.
-        destination_material : openmc.Material or str or int, Optional
-            Destination material to where nuclides get fed.
-        transfer_rate_units : {'1/s', '1/min', '1/h', '1/d', '1/a'}
-            Units for values specified in the transfer_rate argument. 's' for
-            seconds, 'min' for minutes, 'h' for hours, 'a' for Julian years.
+        external_source_vector : dict of str to float
+            External source rate composition vector, where key can be an element
+            or a nuclide and value the corresponding weigth percent.
+        external_source_rate : float
+            External source rate in unit of grams per time. A positive or
+            negative value corresponds to a feed or removal rate, respectively.
+        external_source_rate_units : {'g/s', 'g/min', 'g/h', 'g/d', 'g/a'}
+            Units for values specified in the external_source_rate argument.
+            's' for seconds, 'min' for minutes, 'h' for hours, 'a' for
+            Julian years.
 
         """
+
         material_id = self._get_material_id(material)
         check_type('external_source_rate', external_source_rate, Real)
-        check_type('source_vector', source_vector, dict, expected_iter_type=str)
+        check_type('external_source_vector', external_source_vector, dict,
+                        expected_iter_type=str)
 
         if external_source_rate_units in ('g/s', 'g/sec'):
             unit_conv = 1
@@ -366,11 +432,13 @@ class ExternalSourceRates(ExternalRates):
         else:
             timesteps = np.arange(self.number_of_timesteps)
 
-        if not isclose(sum(source_vector.values()), 1.0, abs_tol=0.01):
-            raise ValueError(f'Fractions for source vector {source_vector} '
-                             'do not sum to one.')
+
+        percents = external_source_vector.values()
+        norm_percents = [float(i) / sum(percents) for i in percents]
+        components = external_source_vector.keys()
+
         atoms_per_nuc = {}
-        for component in source_vector:
+        for component, percent in zip(components, norm_percents):
             split_component = re.split(r'\d+', component)
             element = split_component[0]
             if element not in ELEMENT_SYMBOL.values():
@@ -378,22 +446,21 @@ class ExternalSourceRates(ExternalRates):
                                  'element.')
             else:
                 if len(split_component) == 1:
-                    #Check if natural element
                     if not isotopes(component):
                         raise ValueError(f'Cannot add element {component} '
-                                         'as it is not naturally abundat. '
+                                         'as it is not naturally abundant. '
                                          'Specify a nuclide vector instead. ')
                     else:
                         for nuc, frac in isotopes(component):
                             atoms_per_nuc[nuc] = \
                                 external_source_rate / atomic_mass(nuc) \
-                                * AVOGADRO * frac * source_vector[component] \
+                                * AVOGADRO * frac * percent \
                                 / unit_conv
 
                 else:
                     atoms_per_nuc[component] = \
                             external_source_rate / atomic_mass(component) \
-                            * AVOGADRO * source_vector[component] / unit_conv
+                            * AVOGADRO * percent / unit_conv
 
         for nuc, val in atoms_per_nuc.items():
             if nuc in self.external_rates[material_id]:

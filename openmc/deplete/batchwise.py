@@ -177,6 +177,11 @@ class Batchwise(ABC):
             OpenMC parametric model
         """
 
+    @abstractmethod
+    def update_from_restart(self, x, root):
+        """
+        """
+
     def _search_for_keff(self, val):
         """
         Perform the criticality search for a given parametric model.
@@ -738,6 +743,9 @@ class BatchwiseCell(Batchwise):
 
         return x, root
 
+    def update_from_restart(self, x, root):
+        self._set_cell_attrib(root)
+        super()._update_materials(x)
 
 class BatchwiseCellGeometrical(BatchwiseCell):
     """
@@ -1146,6 +1154,9 @@ class BatchwiseMaterial(Batchwise):
                     volumes[mat_id] = number_i.get_mat_volume(mat_id)
         return volumes
 
+    def update_from_restart(self, x, root):
+        super()._update_materials(x)
+
 class BatchwiseMaterialRefuel(BatchwiseMaterial):
     """
     Batch wise material-based class for refuelling (addition or removal) scheme.
@@ -1515,7 +1526,7 @@ class BatchwiseSchemeStd():
         for bw in self.bw_list:
             bw.set_density_function(mats, density_func, oxidation_states)
 
-    def _update_volumes_after_depletion(self, x):
+    def update_from_restart(self, x, root):
         """
         This is for a restart. TODO update abc class
         Parameters
@@ -1523,7 +1534,7 @@ class BatchwiseSchemeStd():
         x : list of numpy.ndarray
             Total atom concentrations
         """
-        self.bw_geom._update_volumes(x)
+        self.bw_geom.update_from_restart(x, root)
 
     def search_for_keff(self, x, step_index):
         """
@@ -1620,7 +1631,7 @@ class BatchwiseSchemeRefuel():
         for bw in self.bw_list:
             bw.set_density_function(mats, density_func, oxidation_states)
 
-    def _update_volumes_after_depletion(self, x):
+    def update_from_restart(self, x, root):
         """
         This is for a restart. TODO update abc class
         Parameters
@@ -1628,7 +1639,7 @@ class BatchwiseSchemeRefuel():
         x : list of numpy.ndarray
             Total atom concentrations
         """
-        self.bw_geom._update_volumes(x)
+        self.bw_geom.update_from_restart(x, root)
 
     def search_for_keff(self, x, step_index):
         """

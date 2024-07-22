@@ -1031,7 +1031,7 @@ class Model:
     def differentiate_mats(self,
                            diff_volume_method: str,
                            depletable_only: bool = True):
-        """Assign distribmats for each depletable material
+        """Assign distribmats for each material
 
         .. versionadded:: 0.14.0
 
@@ -1042,6 +1042,8 @@ class Model:
             Default is to 'divide equally' which divides the original material
             volume equally between the new materials, 'match cell' sets the
             volume of the material to volume of the cell they fill.
+        depletable_ony : bool
+            Differentiate depletable materials only.
         """
 
         # Check if there is some DAGMC universe

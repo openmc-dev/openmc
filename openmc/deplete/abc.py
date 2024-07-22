@@ -913,6 +913,9 @@ class Integrator(ABC):
         self.batchwise = batchwise.from_params(obj, attr, self.operator,
                                            self.operator.model, **kwargs)
 
+    def add_density_function(self, mat, density_func):
+        self.batchwise.set_density_function(mat, density_func)
+
 @add_params
 class SIIntegrator(Integrator):
     r"""Abstract class for the Stochastic Implicit Euler integrators

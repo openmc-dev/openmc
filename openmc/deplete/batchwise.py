@@ -3,6 +3,7 @@ from copy import deepcopy
 from numbers import Real
 from warnings import warn
 import numpy as np
+import re
 
 import openmc.lib
 from openmc.mpi import comm
@@ -11,8 +12,7 @@ from openmc import Material, Cell
 from openmc.data import atomic_mass, AVOGADRO
 from openmc.checkvalue import (check_type, check_value, check_less_than,
     check_iterable_type, check_length)
-from ._density_funcs import (
-        test_data, oxidation_state, flithu, flithtru)
+from ._density_funcs import oxidation_state, flithu, flithtru
 
 class Batchwise(ABC):
     """Abstract class defining a generalized batch wise scheme.
@@ -75,7 +75,7 @@ class Batchwise(ABC):
     """
     def __init__(self, operator, model, bracket, bracket_limit,
                  density_treatment = 'constant-volume', bracketed_method='brentq',
-                 tol=0.01, target=1.0, print_iterations=True,
+                 redox_vec=None, tol=0.01, target=1.0, print_iterations=True,
                  search_for_keff_output=True):
 
         self.operator = operator
@@ -87,6 +87,9 @@ class Batchwise(ABC):
         check_value('density_treatment', density_treatment,
                                         ('constant-density','constant-volume'))
         self.density_treatment = density_treatment
+        # initialize material density functions container. density_treatment
+        # is ignored if density functions are set
+        self.density_functions = {}
 
         check_iterable_type('bracket', bracket, Real)
         check_length('bracket', bracket, 2)
@@ -102,6 +105,18 @@ class Batchwise(ABC):
         check_value('bracketed_method', bracketed_method,
                    _SCALAR_BRACKETED_METHODS)
         self.bracketed_method = bracketed_method
+
+        if redox_vec is not None:
+            check_type("redox vector", redox_vec, dict, str)
+            for nuc in redox_vec:
+                check_value("check nuclide exists", nuc, self.operator.nuclides_with_data)
+
+            if round(sum(redox_vec.values()), 2) != 1.0:
+                # Normalize material elements vector
+                sum_values = sum(redox_vec.values())
+                for nuc in redox_vec:
+                    redox_vec[nuc] /= sum_values
+        self.redox_vec = redox_vec
 
         check_type('tol', tol, Real)
         self.tol = tol
@@ -274,6 +289,42 @@ class Batchwise(ABC):
 
         return root
 
+    def _get_material(self, val):
+        """Helper method for getting openmc material from Material instance or
+        material name or id.
+        Parameters
+        ----------
+        val : Openmc.Material or str or int representing material name or id
+        Returns
+        -------
+        val : openmc.Material
+            Openmc Material
+        """
+        if isinstance(val, Material):
+            check_value('Material', str(val.id), self.burn_mats)
+
+        elif isinstance(val, str):
+            if val.isnumeric():
+                check_value('Material id', val, self.burn_mats)
+                val = [mat for mat in self.model.materials \
+                        if mat.id == int(val)][0]
+
+            else:
+                check_value('Material name', val,
+                    [mat.name for mat in self.model.materials if mat.depletable])
+                val = [mat for mat in self.model.materials \
+                        if mat.name == val][0]
+
+        elif isinstance(val, int):
+            check_value('Material id', str(val), self.burn_mats)
+            val = [mat for mat in self.model.materials \
+                    if mat.id == val][0]
+
+        else:
+            ValueError(f'Material: {val} is not supported')
+
+        return val
+
     def _update_volumes(self):
         """
         Update volumes stored in AtomNumber.
@@ -287,14 +338,34 @@ class Batchwise(ABC):
         change and update the material volumes instead.
         """
         number_i = self.operator.number
-        for mat_idx, mat in enumerate(self.local_mats):
+        for mat_idx, mat_id in enumerate(self.local_mats):
             # Total number of atoms-gram per mol
             agpm = 0
             for nuc in number_i.nuclides:
-                agpm +=  number_i[mat, nuc] * atomic_mass(nuc)
+                agpm +=  number_i[mat_id, nuc] * atomic_mass(nuc)
             # Get mass dens from beginning, intended to be held constant
-            density = openmc.lib.materials[int(mat)].get_density('g/cm3')
+            density = openmc.lib.materials[int(mat_id)].get_density('g/cm3')
             number_i.volume[mat_idx] = agpm / AVOGADRO / density
+
+    def set_density_function(self, mat, density_func):
+        #check mat exists and is depletable
+        mat = self._get_material(mat)
+        # check density_func exists
+        check_value('density_func', density_func, ('flithu', 'flithtru'))
+        self.density_functions[str(mat.id)] = density_func
+
+    def _update_densities(self):
+        for mat in self.local_mats:
+            if mat in self.density_functions:
+                mol_comp = self._get_molar_composition(mat)
+                if self.density_functions[mat] == 'flithu':
+                    density = flithu(**mol_comp)
+                elif self.density_functions[mat] == 'flithtru':
+                    density = flithtru(**mol_comp)
+                if not np.isnan(density):
+                    openmc.lib.materials[int(mat)].set_density(density,'g/cm3')
+                else:
+                    print(f'Mat: {mat}, with comp: {mol_comp}, returned nan density')
 
     def _update_materials(self, x):
         """
@@ -311,8 +382,15 @@ class Batchwise(ABC):
         """
         self.operator.number.set_density(x)
 
-        if self.density_treatment == 'constant-density':
+        if self.redox_vec is not None:
+            self._balance_redox()
+        if self.density_functions:
+            self._update_densities()
             self._update_volumes()
+        elif self.density_treatment == 'constant-density':
+            self._update_volumes()
+        #else
+            # constant-volume
 
         for rank in range(comm.size):
             number_i = comm.bcast(self.operator.number, root=rank)
@@ -328,7 +406,6 @@ class Batchwise(ABC):
                         if val > 0.0:
                             nuclides.append(nuc)
                             densities.append(val)
-
                 # Update densities on C API side
                 openmc.lib.materials[int(mat)].set_densities(nuclides, densities)
 
@@ -378,7 +455,7 @@ class Batchwise(ABC):
                 number_i.volume[mat_idx] = res_vol
         return x
 
-    def _get_molar_composition(self, mats):
+    def _get_molar_composition(self, mat_id):
         """
         Parameters
         ----------
@@ -390,23 +467,31 @@ class Batchwise(ABC):
             dictionary where keys are material id and values dict of molar
             compositions, where keys are element and values molar fractions
         """
-        mat_molar_comp = {mat:{} for mat in mats}
         number_i = self.operator.number
+        mol_comp = {}
         for mat in self.local_mats:
-            if mat in mats:
-                elm_molar_comp = {elm:0 for elm in ['Li', 'Th', 'U', 'Pu']}
+            if mat == mat_id:
+                #list of TRU
+                tru = ['Np','Pu','Am','Cm','Bk','Cf','Es','Fm','Md','No','Lr']
+                # atoms per fluoride element
+                atoms_per_elm = {elm:0 for elm in ['Li', 'Th', 'U', 'TRU']}
                 for nuc in number_i.nuclides:
-                    elm = regex.split(nuc)[0]
-                    if elm in molar_compositions:
+                    elm = re.split(r'\d+', nuc)[0]
+                    if elm in ['Li', 'Th', 'U']:
                         # alwyas consider 1 anion of Fluorine
-                        ions = oxidation_sate[elm] + 1
-                        elm_molar_comp[elm] += number_i[mat, nuc] * ions
-                mat_molar_comp[mat] = elm_molar_comp
+                        ions = oxidation_state[elm] + 1
+                        atoms_per_elm[elm] += number_i[mat, nuc] * ions
+                    elif elm in tru:
+                        ions = oxidation_state[elm] + 1
+                        atoms_per_elm['TRU'] += number_i[mat, nuc] * ions
 
-        return mat_molar_comp
+                mol_comp = {k:100*v/sum(atoms_per_elm.values()) for k,v in \
+                                                atoms_per_elm.items()}
+
+        return mol_comp
 
 
-    def _get_excess_fluorine(self, mats):
+    def _get_redox(self, mat_id):
         """
         Parameters
         ----------
@@ -419,17 +504,31 @@ class Batchwise(ABC):
             of fluorine atoms
         """
         # initialize excess fluorine for each material in list
-        excess_f_dict = {mat:0 for mat in mats}
+        redox = 0
         number_i = self.operator.number
 
         for mat in self.local_mats:
-            if mat in excess_f_dict:
+            if mat == mat_id:
                 for nuc in number_i.nuclides:
-                    elm = regex.split(nuc)[0]
-                    #esxcess (definciency) or fluorine is fiven by the number of atoms
-                    # of each element that bind to fluorine, with a given oxidation state
-                    excess_f_dict[mat] += number_i[mat, nuc] * oxidation_sate[elm]
-        return excess_f_dict
+                    elm = re.split(r'\d+', nuc)[0]
+                    if elm in oxidation_state:
+                    #excess (definciency) or fluorine is given by the number of atoms
+                    # of each element multiplied by its oxidation state, assuming
+                    # every element whats to bind with fluorine.
+                        redox += number_i[mat, nuc] * oxidation_state[elm]
+        return redox
+
+    def _balance_redox(self):
+        number_i = self.operator.number
+        for mat in self.local_mats:
+            # number of fluorine atoms to balance
+            redox = self._get_redox(mat)
+            # excess/deficiency of F, add or remove mat_vec nuclides to balance it
+            # if redox is negative there is an excess of fluorine and we need to
+            # add mat_vector, if positive we need to remove it.
+            for nuc,fraction in self.redox_vec.items():
+                elm = re.split(r'\d+', nuc)[0]
+                number_i[mat, nuc] -= redox * fraction / oxidation_state[elm]
 
 class BatchwiseCell(Batchwise):
     """Abstract class holding batch wise cell-based functions.
@@ -489,11 +588,11 @@ class BatchwiseCell(Batchwise):
     """
     def __init__(self, cell, operator, model, bracket, bracket_limit, axis=None,
                  density_treatment='constant-volume', bracketed_method='brentq',
-                 tol=0.01, target=1.0, print_iterations=True,
+                 redox_vec=None, tol=0.01, target=1.0, print_iterations=True,
                  search_for_keff_output=True):
 
         super().__init__(operator, model, bracket, bracket_limit, density_treatment,
-                         bracketed_method, tol, target, print_iterations,
+                         bracketed_method, redox_vec, tol, target, print_iterations,
                          search_for_keff_output)
 
         self.cell = self._get_cell(cell)
@@ -697,11 +796,11 @@ class BatchwiseCellGeometrical(BatchwiseCell):
     """
     def __init__(self, cell, attrib_name, operator, model, bracket,
                  bracket_limit, axis, density_treatment='constant-volume',
-                 bracketed_method='brentq', tol=0.01, target=1.0, samples=1000000,
+                 bracketed_method='brentq', redox_vec=None, tol=0.01, target=1.0, samples=1000000,
                  print_iterations=True, search_for_keff_output=True):
 
         super().__init__(cell, operator, model, bracket, bracket_limit, axis,
-                         density_treatment, bracketed_method, tol, target,
+                         density_treatment, bracketed_method, redox_vec, tol, target,
                          print_iterations, search_for_keff_output)
 
         check_value('attrib_name', attrib_name,
@@ -839,11 +938,11 @@ class BatchwiseCellTemperature(BatchwiseCell):
     """
     def __init__(self, cell, attrib_name, operator, model, bracket, bracket_limit,
                  axis=None, density_treatment='constant-volume',
-                 bracketed_method='brentq', tol=0.01, target=1.0,
+                 bracketed_method='brentq', redox_vec=None, tol=0.01, target=1.0,
                  print_iterations=True, search_for_keff_output=True):
 
         super().__init__(cell, operator, model, bracket, bracket_limit, axis,
-                         density_treatment, bracketed_method, tol, target,
+                         density_treatment, bracketed_method, redox_vec, tol, target,
                          print_iterations, search_for_keff_output)
 
         # Not needed but used for consistency with other classes
@@ -941,14 +1040,14 @@ class BatchwiseMaterial(Batchwise):
 
     def __init__(self, material, operator, model, mat_vector, bracket,
                  bracket_limit, density_treatment='constant-volume',
-                 bracketed_method='brentq', tol=0.01, target=1.0,
+                 bracketed_method='brentq', redox_vec=None, tol=0.01, target=1.0,
                  print_iterations=True, search_for_keff_output=True):
 
         super().__init__(operator, model, bracket, bracket_limit,
-                         density_treatment, bracketed_method, tol, target,
+                         density_treatment, bracketed_method, redox_vec, tol, target,
                          print_iterations, search_for_keff_output)
 
-        self.material = self._get_material(material)
+        self.material = super()._get_material(material)
 
         check_type("material vector", mat_vector, dict, str)
         for nuc in mat_vector.keys():
@@ -960,42 +1059,6 @@ class BatchwiseMaterial(Batchwise):
             for elm in mat_vector:
                 mat_vector[elm] /= sum_values
         self.mat_vector = mat_vector
-
-    def _get_material(self, val):
-        """Helper method for getting openmc material from Material instance or
-        material name or id.
-        Parameters
-        ----------
-        val : Openmc.Material or str or int representing material name or id
-        Returns
-        -------
-        val : openmc.Material
-            Openmc Material
-        """
-        if isinstance(val, Material):
-            check_value('Material', str(val.id), self.burn_mats)
-
-        elif isinstance(val, str):
-            if val.isnumeric():
-                check_value('Material id', val, self.burn_mats)
-                val = [mat for mat in self.model.materials \
-                        if mat.id == int(val)][0]
-
-            else:
-                check_value('Material name', val,
-                    [mat.name for mat in self.model.materials if mat.depletable])
-                val = [mat for mat in self.model.materials \
-                        if mat.name == val][0]
-
-        elif isinstance(val, int):
-            check_value('Material id', str(val), self.burn_mats)
-            val = [mat for mat in self.model.materials \
-                    if mat.id == val][0]
-
-        else:
-            ValueError(f'Material: {val} is not supported')
-
-        return val
 
     @abstractmethod
     def _model_builder(self, param):
@@ -1105,11 +1168,11 @@ class BatchwiseMaterialRefuel(BatchwiseMaterial):
 
     def __init__(self, material, attrib_name, operator, model, mat_vector, bracket,
                  bracket_limit, density_treatment='constant-volume',
-                 bracketed_method='brentq', tol=0.01, target=1.0,
+                 bracketed_method='brentq', redox_vec=None, tol=0.01, target=1.0,
                  print_iterations=True, search_for_keff_output=True):
 
         super().__init__(material, operator, model, mat_vector, bracket,
-                         bracket_limit, density_treatment, bracketed_method, tol,
+                         bracket_limit, density_treatment, bracketed_method, redox_vec, tol,
                          target, print_iterations, search_for_keff_output)
 
         # Not needed but used for consistency with other classes

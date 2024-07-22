@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.interpolate import LinearNDInterpolator
 
+T = 650
 # data sources (Klimenkov, 1984) & (Hill, 1967)
 test_data = np.array([[100,0,0,2.3854-0.5141e-3*T],
                       [0,100,0,7.119-8.08e-4*T],
@@ -24,7 +25,7 @@ test_data = np.array([[100,0,0,2.3854-0.5141e-3*T],
                       [81.36,18.64,0,4.638-9.2e-4*T]])
 
 oxidation_state = {
-    'H': +1, 'He': 0, 'Li': +1, 'Be': +2, 'B': +3, 'C': 0, 'N': +3, 'O': -2,
+    'H': +1, 'He': 0, 'Li': +1, 'Be': +2, 'B': +3,  'C': 0,   'N': +3, 'O': -2,
     'F': -1, 'Ne': 0, 'Na': +1, 'Mg': +2, 'Al': +3, 'Si': +4, 'P': -3, 'S': -2,
     'Cl':-1, 'Ar': 0, 'K':  +1, 'Ca': +2, 'Sc': +3, 'Ti': +4, 'V': +5, 'Cr':+3,
     'Mn':+2, 'Fe':+3, 'Co': +2, 'Ni': +2, 'Cu': +2, 'Zn': +2, 'Ga':+3, 'Ge':+2,
@@ -39,10 +40,15 @@ oxidation_state = {
     'Bk':+3, 'Cf':+3, 'Es': +3, 'Fm': +3, 'Md': +3, 'No': +2, 'Lr':+3
     }
 
-def flithu(cLi, cTh, cU, T):
+def flithu(**c):
     linInter= LinearNDInterpolator(test_data[:,0:3], test_data[:,3])
-    return linInter(np.array([[cLi,cTh,cU]]))
+    return linInter(np.array([[c['Li'],c['Th'],c['U']]]))
 
-def flithtru(cLi, cTh, cU, cPu, T):
+def flithtru(**c):
     linInter= LinearNDInterpolator(test_data[:,0:3], test_data[:,3])
-    return linInter(np.array([[cLi-cTRU,cTh,cU+cTRU]]))
+    #normalize Li,Th,U
+    cSum = c['Li'] + c['Th'] + c['U']
+    c['Li'] *= 100/cSum
+    c['Th'] *= 100/cSum
+    c['U'] *= 100/cSum
+    return linInter(np.array([[c['Li']-c['TRU'], c['Th'], c['U']+c['TRU']]]))

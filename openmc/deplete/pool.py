@@ -101,6 +101,9 @@ def deplete(func, chain, n, rates, dt, matrix_func=None, transfer_rates=None,
         matrices = [matrix - transfer for (matrix, transfer) in zip(matrices,
                                                                     transfers)]
 
+        #redox = map(chain.form_redox_term, rates, repeat('Th232'), fission_yields)
+        #matrices = [matrix + redox for (matrix, redox) in zip(matrices, redox)]
+
         if len(transfer_rates.index_transfer) > 0:
             # Gather all on comm.rank 0
             matrices = comm.gather(matrices)

@@ -855,7 +855,7 @@ class Integrator(ABC):
                 # Remove actual EOS concentration for next step
                 n = n_list.pop()
                 StepResult.save(self.operator, n_list, res_list, [t, t + dt],
-                            source_rate, self._i_res + i, proc_time, root, path)
+                                source_rate, self._i_res + i, proc_time, root, path)
 
                 t += dt
 

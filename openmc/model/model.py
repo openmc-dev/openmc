@@ -1026,6 +1026,22 @@ class Model:
             volume equally between the new materials, 'match cell' sets the
             volume of the material to volume of the cell they fill.
         """
+        self.differentiate_mats(diff_volume_method, depletable_only=True)
+
+
+    def differentiate_mats(self, diff_volume_method: str, depletable_only: bool=True):
+        """Assign distribmats for each depletable material
+
+        .. versionadded:: 0.14.0
+
+        Parameters
+        ----------
+        diff_volume_method : str
+            Specifies how the volumes of the new materials should be found.
+            Default is to 'divide equally' which divides the original material
+            volume equally between the new materials, 'match cell' sets the
+            volume of the material to volume of the cell they fill.
+        """
 
         # Check if there is some DAGMC universe
         if len(self.geometry.get_all_dag_universes()) > 0:
@@ -1047,7 +1063,9 @@ class Model:
         # Extract all depletable materials which have multiple instances
         distribmats = set(
             [mat for mat in self.materials
-                if mat.depletable and mat.num_instances > 1])
+                if (mat.depletable or not depletable_only) and mat.num_instances > 1])
+            
+
 
         # Account for the multiplicity of the dag-verses materials
         for mat in self.materials:
@@ -1088,7 +1106,7 @@ class Model:
                     for mat in self.materials:
                         if mat.name == mat_name:
                             mat_found = True
-                            if mat.depletable:
+                            if mat.depletable or not depletable_only:
                                 mats_clones = [mat.clone() for _ in range(
                                     dag_verse.num_instances)]
                                 for i, mat_clone in enumerate(mats_clones):

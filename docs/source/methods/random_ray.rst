@@ -218,9 +218,9 @@ Following the multigroup discretization, another assumption made is that a large
 and complex problem can be broken up into small constant cross section regions,
 and that these regions have group dependent, flat, isotropic sources (fission
 and scattering), :math:`Q_g`. Anisotropic as well as higher order sources are
-also possible with MOC-based methods but are not used yet in OpenMC for
-simplicity. With these key assumptions, the multigroup MOC form of the neutron
-transport equation can be written as in Equation :eq:`moc_final`.
+also possible with MOC-based methods. With these key assumptions, the multigroup
+MOC form of the neutron transport equation can be written as in Equation
+:eq:`moc_final`.
 
 .. math::
     :label: moc_final
@@ -287,7 +287,7 @@ final expression for the average angular flux for a ray crossing a region as:
 .. math::
     :label: average_psi_final
 
-    \overline{\psi}_{r,i,g} = \frac{Q_{i,g}}{\Sigma_{t,i,g}} + \frac{\Delta \psi_{r,g}}{\ell_r \Sigma_{t,i,g}}
+    \overline{\psi}_{r,i,g} = \frac{Q_{i,g}}{\Sigma_{t,i,g}} + \frac{\Delta \psi_{r,g}}{\ell_r \Sigma_{t,i,g}}.
 
 ~~~~~~~~~~~
 Random Rays
@@ -771,6 +771,170 @@ By default, the unnormalized flux values (units of cm) will be reported. If the
 user wishes to received volume normalized flux tallies, then an option for this
 is available, as described in the :ref:`User Guide<usersguide_flux_norm>`.
 
+--------------
+Linear Sources
+--------------
+
+Instead of making a flat source approximation, as in the previous section, a
+Linear Source (LS) approximation can be used. Different LS approximations have
+been developed; the OpenMC implementation follows the MOC LS scheme described by
+`Ferrer <Ferrer-2016_>`_. The LS source along a characteristic is given by:
+
+.. math::
+    :label: linear_source
+
+    Q_{i,g}(s) = \bar{Q}_{r,i,g} + \hat{Q}_{r,i,g}(s-\ell_{r}/2),
+
+where the source, :math:`Q_{i,g}(s)`, varies linearly along the track and
+:math:`\bar{Q}_{r,i,g}` and :math:`\hat{Q}_{r,i,g}` are track specific source
+terms to define shortly. Integrating the source, as done in Equation
+:eq:`moc_final`, leads to
+
+.. math::
+    :label: lsr_attenuation
+
+    \psi^{out}_{r,g}=\psi^{in}_{r,g} + \left(\frac{\bar{Q}_{r, i, g}}{\Sigma_{\mathrm{t}, i, g}}-\psi^{in}_{r,g}\right)
+    F_{1}\left(\tau_{i,g}\right)+\frac{\hat{Q}_{r, i, g}^{g}}{2\left(\Sigma_{\mathrm{t}, i,g}\right)^{2}} F_{2}\left(\tau_{i,g}\right),
+
+where for simplicity the term :math:`\tau_{i,g}` and the expoentials :math:`F_1`
+and :math:`F_2` are introduced, given by:
+
+.. math::
+    :label: tau
+
+    \tau_{i,g} = \Sigma_{\mathrm{t,i,g}} \ell_{r}
+
+.. math::
+    :label: f1
+
+    F_1(\tau) = 1 - e^{-\tau},
+
+and
+
+.. math::
+    :label: f2
+
+    F_{2}\left(\tau\right) = 2\left[\tau-F_{1}\left(\tau\right)\right]-\tau F_{1}\left(\tau\right).
+
+
+To solve for the track specific source terms in Equation :eq:`linear_source` we
+first define a local reference frame. If we now refer to :math:`\mathbf{r}` as
+the global coordinate and introduce the source region specific coordinate
+:math:`\mathbf{u}` such that,
+
+.. math::
+    :label: local_coord
+
+    \mathbf{u}_{r} = \mathbf{r}-\mathbf{r}_{\mathrm{c}},
+
+where :math:`\mathbf{r}_{\mathrm{c}}` is the centroid of the source region of
+interest. In turn :math:`\mathbf{u}_{r,\mathrm{c}}` and :math:`\mathbf{u}_{r,0}`
+are the local centroid and entry positions of a ray. The computation of the
+local and global centroids are described further by `Gunow <Gunow-2018_>`_.
+
+Using the local position, the source in a source region is given by:
+
+.. math::
+    :label: region_source
+
+    \tilde{Q}(\boldsymbol{x}) ={Q}_{i,g}+ \boldsymbol{\vec{Q}}_{i,g} \cdot \mathbf{u}_{r}\;\mathrm{,}
+
+This definition allows us to solve for our characteric source terms resulting in:
+
+.. math::
+    :label: source_term_1
+
+    \bar{Q}_{r, i, g} = Q_{i,g} + \left[\mathbf{u}_{r,\mathrm{c}} \cdot \boldsymbol{\vec{Q}}_{i,g}\right],
+
+.. math::
+    :label: source_term_2
+
+    \hat{Q}_{r, i, g} = \left[\boldsymbol{\Omega} \cdot \boldsymbol{\vec{Q}}_{i,g}\right]\;\mathrm{,}
+
+:math:`\boldsymbol{\Omega}` being the direction vector of the ray. The next step
+is to solve for the LS source vector :math:`\boldsymbol{\vec{Q}}_{i,g}`. A
+relationship between the LS source vector and the source moments,
+:math:`\boldsymbol{\vec{q}}_{i,g}` can be derived, as in `Ferrer
+<Ferrer-2016_>`_ and `Gunow <Gunow-2018_>`_:
+
+.. math::
+    :label: m_equation
+
+     \mathbf{M}_{i} \boldsymbol{\vec{Q}}_{i,g} = \boldsymbol{\vec{q}}_{i,g} \;\mathrm{.}
+
+The spatial moments matrix :math:`M_i` in region :math:`i` represents the
+spatial distribution of the 3D object composing the `source region
+<Gunow-2018_>`_. This matrix is independent of the material of the source
+region, fluxes, and any transport effects -- it is a purely geometric quantity.
+It is a symmetric :math:`3\times3` matrix. While :math:`M_i` is not known
+apriori to the simulation, similar to the source region volume, it can be
+computed "on-the-fly" as a byproduct of the random ray integration process. Each
+time a ray randomly crosses the region within its active length, an estimate of
+the spatial moments matrix can be computed by using the midpoint of the ray as
+an estimate of the centroid, and the distance and direction of the ray can be
+used to inform the other spatial moments within the matrix. As this information
+is purely geometric, the stochastic estimate of the centroid and spatial moments
+matrix can be accumulated and improved over the entire duration of the
+simulation, converging towards their true quantities.
+
+With an estimate of the spatial moments matrix :math:`M_i` resulting from the
+ray tracing process naturally, the LS source vector
+:math:`\boldsymbol{\vec{Q}}_{i,g}` can be obtained via a linear solve of
+:eq:`m_equation`, or by the direct inversion of :math:`M_i`. However, to
+accomplish this, we must first know the source moments
+:math:`\boldsymbol{\vec{q}}_{i,g}`. Fortunately, the source moments are also
+defined by the definition of the source:
+
+.. math::
+    :label: source_moments
+
+    q_{v, i, g}= \frac{\chi_{i,g}}{k_{eff}} \sum_{g^{\prime}=1}^{G} \nu
+    \Sigma_{\mathrm{f},i, g^{\prime}} \hat{\phi}_{v, i, g^{\prime}} + \sum_{g^{\prime}=1}^{G}
+    \Sigma_{\mathrm{s}, i, g^{\prime}\rightarrow g} \hat{\phi}_{v, i, g^{\prime}}\quad \forall v \in(x, y, z)\;\mathrm{,}
+
+where :math:`v` indicates the direction vector component, and we have introduced
+the scalar flux moments :math:`\hat{\phi}`. The scalar flux moments can be
+solved for by taking the `integral definition <Gunow-2018_>`_ of a spatial
+moment, allowing us to derive a "simulation averaged" estimator for the scalar
+moment, as in Equation :eq:`phi_sim`,
+
+.. math::
+    :label: scalar_moments_sim
+
+    \hat{\phi}_{v,i,g}^{simulation} = \frac{\sum\limits_{r=1}^{N_i}
+    \ell_{r} \left[\Omega_{v} \hat{\psi}_{r,i,g} + u_{r,v,0} \bar{\psi}_{r,i,g}\right]}
+    {\Sigma_{t,i,g} \frac{\sum\limits^{B}_{b}\sum\limits^{N_i}_{r} \ell_{b,r} }{B}}
+    \quad \forall v \in(x, y, z)\;\mathrm{,}
+
+
+where the average angular flux is given by Equation :eq:`average_psi_final`, and
+the angular flux spatial moments :math:`\hat{\psi}_{r,i,g}` by:
+
+.. math::
+    :label: angular_moments
+
+    \hat{\psi}_{r, i, g} = \frac{\ell_{r}\psi^{in}_{r,g}}{2} +
+    \left(\frac{\bar{Q}_{r,i, g}}{\Sigma_{\mathrm{t}, i, g}}-\psi^{in}_{r,g}\right)
+    \frac{G_{1}\left(\tau_{i,g}\right)}{\Sigma_{\mathrm{t}, i, g}} + \frac{\ell_{r}\hat{Q}_{r,i,g}}
+    {2\left(\Sigma_{\mathrm{t}, i, g}\right)^{2}}G_{2}\left(\tau_{i,g}\right)\;\mathrm{.}
+
+
+The new exponentials introduced, again for simplicity, are simply:
+
+.. math::
+    :label: G1
+
+    G_{1}(\tau) = 1+\frac{\tau}{2}-\left(1+\frac{1}{\tau}\right) F_{1}(\tau),
+
+.. math::
+    :label: G2
+
+    G_{2}(\tau) = \frac{2}{3} \tau-\left(1+\frac{2}{\tau}\right) G_{1}(\tau)
+
+The contents of this section, alongside the equations for the flat source and
+scalar flux, Equations :eq:`source_update` and :eq:`phi_sim` respectively,
+completes the set of equations for LS.
+
 .. _methods-shannon-entropy-random-ray:
 
 -----------------------------
@@ -789,7 +953,7 @@ sources is adjusted such that:
     :label: fraction-source-random-ray
 
     S_i = \frac{\text{Fission source in FSR $i \times$ Volume of FSR
-    $i$}}{\text{Total fission source}} = \frac{Q_{i} V_{i}}{\sum_{i=1}^{i=N} 
+    $i$}}{\text{Total fission source}} = \frac{Q_{i} V_{i}}{\sum_{i=1}^{i=N}
     Q_{i} V_{i}}
 
 The Shannon entropy is then computed normally as
@@ -852,13 +1016,13 @@ in random ray particle transport are:
       areas typically have solutions that are highly effective at mitigating
       bias, error stemming from multigroup energy discretization is much harder
       to remedy.
-    - **Flat Source Approximation:**. In OpenMC, a "flat" (0th order) source
-      approximation is made, wherein the scattering and fission sources within a
+    - **Source Approximation:**. In OpenMC, a "flat" (0th order) source
+      approximation is often made, wherein the scattering and fission sources within a
       cell are assumed to be spatially uniform. As the source in reality is a
       continuous function, this leads to bias, although the bias can be reduced
       to acceptable levels if the flat source regions are sufficiently small.
-      The bias can also be mitigated by assuming a higher-order source (e.g.,
-      linear or quadratic), although OpenMC does not yet have this capability.
+      The bias can also be mitigated by assuming a higher-order source such as the
+      linear source approximation currently implemented into OpenMC.
       In practical terms, this source of bias can become very large if cells are
       large (with dimensions beyond that of a typical particle mean free path),
       but the subdivision of cells can often reduce this bias to trivial levels.
@@ -882,6 +1046,8 @@ in random ray particle transport are:
 .. _Tramm-2018: https://dspace.mit.edu/handle/1721.1/119038
 .. _Tramm-2020: https://doi.org/10.1051/EPJCONF/202124703021
 .. _Cosgrove-2023: https://doi.org/10.1080/00295639.2023.2270618
+.. _Ferrer-2016: https://doi.org/10.13182/NSE15-6
+.. _Gunow-2018: https://dspace.mit.edu/handle/1721.1/119030
 
 .. only:: html
 

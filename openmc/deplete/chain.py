@@ -7,6 +7,7 @@ loaded from an .xml file and all the nuclides are linked together.
 from io import StringIO
 from itertools import chain
 import math
+import numpy as np
 import re
 from collections import defaultdict, namedtuple
 from collections.abc import Mapping, Iterable
@@ -681,128 +682,23 @@ class Chain:
         # Return CSC representation instead of DOK
         return matrix.tocsc()
 
-    def form_redox_term(self, buffer, rates=None, fission_yields=None,
-                        tr_rates=None, mats=None):
+    def add_redox_term(self, matrix, buffer):
 
-        matrix = defaultdict(float)
-        if fission_yields is None:
-            fission_yields = self.get_default_fission_yields()
+        elm = [re.split(r'\d+', nuc.name)[0] for nuc in self.nuclides]
+        ox = np.array([oxidation_state[el] if el in oxidation_state else 0 for el in elm])
+        buffer_inds = {nuc:self.nuclide_dict[nuc] for nuc in buffer}
 
-        buffer_dict = {n.name:i for i,n in enumerate(self.nuclides) if n.name in buffer}
-        buffer_elm = re.split(r'\d+', next(iter(buffer)))[0]
-        buffer_os = oxidation_state[buffer_elm]
+        array = matrix.toarray()
+        redox = np.array([])
+        for i in range(len(self)):
+            #all products terms should be multiplied by their
+            #respective oxidation states and detracted from the diagonal term.
+            prods = np.concatenate((array[:i,i],array[i+1:,i])) * np.delete(ox,i)
+            redox = np.append(redox, array[i,i] * ox[i] + sum(prods))
+        for nuc,k in buffer_inds.items():
+            array[k] -= redox * buffer[nuc] / ox[k]
 
-        for i, nuc in enumerate(self.nuclides):
-            elm = re.split(r'\d+', nuc.name)[0]
-
-            if elm not in oxidation_state:
-                continue
-
-            k = self.nuclide_dict[nuc.name]
-            os_elm = oxidation_state[elm]
-            if rates is not None:
-                #redox from decay
-                if nuc.n_decay_modes != 0:
-                    decay_constant = math.log(2) / nuc.half_life
-                    decay_val = decay_constant * os_elm
-                    for decay_type, target, branching_ratio in nuc.decay_modes:
-                        if target is not None:
-                            target_elm = re.split(r'\d+', target)[0]
-                            decay_val -= branching_ratio * decay_constant * \
-                                         oxidation_state[target_elm]
-
-                        if 'p' in decay_type:
-                            if self.nuclide_dict.get('H1') is not None:
-                                count = decay_type.count('p')
-                                decay_val -= count * branching_ratio * decay_constant * \
-                                             oxidation_state['H']
-
-                        if decay_val != 0.0:
-                            for buf_nuc, buf_ind in buffer_dict.items():
-                                matrix[buf_ind, k] = decay_val / buffer_os * \
-                                                        buffer[buf_nuc]
-
-                # redox from reaction
-                if nuc.name in rates.index_nuc:
-                    nuc_ind = rates.index_nuc[nuc.name]
-                    nuc_rates = rates[nuc_ind, :]
-                    for r_type, target, _, br in nuc.reactions:
-                        r_id = rates.index_rx[r_type]
-                        path_rate = nuc_rates[r_id]
-                        yield_val = path_rate * os_elm
-
-                        if r_type != 'fission':
-                            target_elm = re.split(r'\d+', target)[0]
-                            yield_val -= path_rate * br * oxidation_state[target_elm]
-
-                            light_nucs = REACTIONS[r_type].secondaries
-                            for light_nuc in light_nucs:
-                                if self.nuclide_dict.get(light_nuc) is not None:
-                                    ln_elm = re.split(r'\d+', light_nuc)[0]
-                                    yield_val -= path_rate * br * oxidation_state[ln_elm]
-
-                        else:
-                            for product, y in fission_yields[nuc.name].items():
-                                p_elm = re.split(r'\d+', product)[0]
-                                yield_val -= y * path_rate * oxidation_state[p_elm]
-
-                        if yield_val != 0.0:
-                            for buf_nuc, buf_ind in buffer_dict.items():
-                                matrix[buf_ind, k] = yield_val / buffer_os * buffer[buf_nuc]
-
-                f_id = rates.index_rx['fission']
-                if nuc.name in fission_yields:
-                    nuc_ind = rates.index_nuc[nuc.name]
-                    nuc_rates = rates[nuc_ind, :]
-                    path_rate = nuc_rates[f_id]
-                    # oxidation state
-                    yield_val = path_rate * os_elm
-
-                    for product, y in fission_yields[nuc.name].items():
-                        p_elm = re.split(r'\d+', product)[0]
-                        yield_val -= y * path_rate * oxidation_state[p_elm]
-
-                    if yield_val != 0.0:
-                        for buf_nuc, buf_ind in buffer_dict.items():
-                            matrix[buf_ind, k] = yield_val / buffer_os * buffer[buf_nuc]
-
-            if tr_rates is not None:
-                # redox from transfer
-                if isinstance(mats, str):
-                    mat = mats
-                    components = tr_rates.get_components(mat)
-                    if elm in components:
-                        for buf_nuc, buf_ind in buffer_dict.items():
-                            matrix[buf_ind, k] += \
-                                    sum(tr_rates.get_transfer_rate(mat, elm)) * \
-                                    os_elm / buffer_os * buffer[buf_nuc]
-
-                    elif nuc.name in components:
-                        for buf_nuc, buf_ind in buffer_dict.items():
-                            matrix[buf_ind, k] += \
-                                    sum(tr_rates.get_transfer_rate(mat, nuc.name)) * \
-                                    os_elm / buffer_os * buffer[buf_nuc]
-
-                elif isinstance(mats, tuple):
-                    dest_mat, mat = mats
-                    if dest_mat in tr_rates.get_destination_material(mat, elm):
-                        dest_mat_idx = tr_rates.get_destination_material(mat, elm).index(dest_mat)
-                        for buf_nuc, buf_ind in buffer_dict.items():
-                            matrix[buf_ind, k] = \
-                                -tr_rates.get_transfer_rate(mat, elm)[dest_mat_idx] *\
-                                 os_elm / buffer_os * buffer[buf_nuc]
-
-                    elif dest_mat in tr_rates.get_destination_material(mat, nuc.name):
-                        dest_mat_idx = tr_rates.get_destination_material(mat, nuc.name).index(dest_mat)
-                        for buf_nuc, buf_ind in buffer_dict.items():
-                            matrix[buf_ind, k] = \
-                                -tr_rates.get_transfer_rate(mat, nuc.name)[dest_mat_idx] *\
-                                 os_elm / buffer_os *  buffer[buf_nuc]
-
-        n = len(self)
-        matrix_dok = sp.dok_matrix((n, n))
-        dict.update(matrix_dok, matrix)
-        return matrix_dok.tocsr()
+        return sp.dok_matrix(array)
 
     def form_rr_term(self, tr_rates, mats):
         """Function to form the transfer rate term matrices.

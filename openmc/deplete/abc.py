@@ -916,6 +916,9 @@ class Integrator(ABC):
     def add_density_function(self, mat, density_func):
         self.batchwise.set_density_function(mat, density_func)
 
+    def add_redox(self, mat, buffer):
+        self.transfer_rates.set_redox(mat, buffer)
+
 @add_params
 class SIIntegrator(Integrator):
     r"""Abstract class for the Stochastic Implicit Euler integrators

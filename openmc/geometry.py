@@ -415,11 +415,9 @@ class Geometry:
             instances
 
         """
-        universes = {}
-        universes[self.root_universe.id] = self.root_universe
-        universes.update(self.root_universe.get_all_universes())
+        universes = self.get_all_universes()
         dag_universes = {}
-        for id, uni in dag_universes.items():
+        for id, uni in universes.items():
             if isinstance(uni, openmc.DAGMCUniverse):
                 dag_universes[id] = uni
         return dag_universes

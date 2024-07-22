@@ -381,10 +381,10 @@ class Batchwise(ABC):
             Total atom concentrations
         """
         self.operator.number.set_density(x)
-        print(self._get_redox('1')/openmc.data.AVOGADRO)
-        print(self._get_redox('2')/openmc.data.AVOGADRO)
-        #if self.redox_vec is not None:
-        #    x = self._balance_redox(x)
+
+        if self.redox_vec is not None:
+            x = self._balance_redox(x)
+
         if self.density_functions:
             self._update_densities()
             self._update_volumes()
@@ -408,6 +408,7 @@ class Batchwise(ABC):
                             nuclides.append(nuc)
                             densities.append(val)
                 # Update densities on C API side
+                print(mat,nuclides,densities)
                 openmc.lib.materials[int(mat)].set_densities(nuclides, densities)
 
     def _update_x_and_set_volumes(self, x, volumes):
@@ -522,17 +523,18 @@ class Batchwise(ABC):
     def _balance_redox(self, x):
         number_i = self.operator.number
         for mat_idx,mat in enumerate(self.local_mats):
-            # number of fluorine atoms to balance
-            redox = self._get_redox(mat)
-            # excess/deficiency of F, add or remove mat_vec nuclides to balance it
-            # if redox is negative there is an excess of fluorine and we need to
-            # add mat_vector, if positive we need to remove it.
-            for nuc,fraction in self.redox_vec.items():
-                elm = re.split(r'\d+', nuc)[0]
-                number_i[mat, nuc] -= redox * fraction / oxidation_state[elm]
-            #Also update x vector
-            nuc_idx = number_i.index_nuc[nuc]
-            x[mat_idx][nuc_idx] = number_i[mat, nuc]
+            if mat != '9':
+                # number of fluorine atoms to balance
+                redox = self._get_redox(mat)
+                # excess/deficiency of F, add or remove mat_vec nuclides to balance it
+                # if redox is negative there is an excess of fluorine and we need to
+                # add mat_vector, if positive we need to remove it.
+                for nuc,fraction in self.redox_vec.items():
+                    elm = re.split(r'\d+', nuc)[0]
+                    number_i[mat, nuc] -= redox * fraction / oxidation_state[elm]
+                #Now updates x vector
+                nuc_idx = number_i.index_nuc[nuc]
+                x[mat_idx][nuc_idx] = number_i[mat, nuc]
         return x
 
 class BatchwiseCell(Batchwise):

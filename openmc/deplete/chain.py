@@ -679,11 +679,8 @@ class Chain:
                 # Clear set of reactions
                 reactions.clear()
 
-        # Use DOK matrix as intermediate representation, then convert to CSC and return
-        n = len(self)
-        matrix_dok = sp.dok_matrix((n, n))
-        dict.update(matrix_dok, matrix)
-        return matrix_dok.tocsc()
+        # Return CSC representation instead of DOK
+        return matrix.tocsc()
 
     def add_redox_term(self, matrix, buffer, oxidation_states):
 

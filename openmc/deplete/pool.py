@@ -5,7 +5,7 @@ Provided to avoid some circular imports
 from itertools import repeat, starmap
 from multiprocessing import Pool
 
-from scipy.sparse import bmat
+from scipy.sparse import bmat, hstack, vstack, csc_matrix
 import numpy as np
 
 from openmc.mpi import comm
@@ -40,8 +40,8 @@ def _distribute(items):
             return items[j:j + chunk_size]
         j += chunk_size
 
-def deplete(func, chain, n, rates, dt, matrix_func=None, transfer_rates=None,
-            *matrix_args):
+def deplete(func, chain, n, rates, dt, current_timestep, matrix_func=None,
+            transfer_rates=None, external_source_rates=None, *matrix_args):
     """Deplete materials using given reaction rates for a specified time
 
     Parameters
@@ -58,6 +58,8 @@ def deplete(func, chain, n, rates, dt, matrix_func=None, transfer_rates=None,
         Reaction rates (from transport operator)
     dt : float
         Time in [s] to deplete for
+    current_timestep : int
+        Current timestep index
     maxtrix_func : callable, optional
         Function to form the depletion matrix after calling ``matrix_func(chain,
         rates, fission_yields)``, where ``fission_yields = {parent: {product:
@@ -67,6 +69,10 @@ def deplete(func, chain, n, rates, dt, matrix_func=None, transfer_rates=None,
         Object to perform continuous reprocessing.
 
         .. versionadded:: 0.14.0
+    external_source_rates : openmc.deplete.ExternalSourceRates, Optional
+        Instance of ExternalSourceRates class to add an external source term.
+
+        .. versionadded:: 0.15.1
     matrix_args: Any, optional
         Additional arguments passed to matrix_func
 
@@ -93,10 +99,11 @@ def deplete(func, chain, n, rates, dt, matrix_func=None, transfer_rates=None,
         matrices = map(matrix_func, repeat(chain), rates, fission_yields,
                        *matrix_args)
 
-    if transfer_rates is not None:
+    if (transfer_rates is not None and
+        current_timestep in transfer_rates.external_timesteps):
         # Calculate transfer rate terms as diagonal matrices
         transfers = map(chain.form_rr_term, repeat(transfer_rates),
-                        transfer_rates.local_mats)
+                        repeat(current_timestep), transfer_rates.local_mats)
         # Subtract transfer rate terms from Bateman matrices
         matrices = [matrix - transfer for (matrix, transfer) in zip(matrices,
                                                                     transfers)]
@@ -121,7 +128,9 @@ def deplete(func, chain, n, rates, dt, matrix_func=None, transfer_rates=None,
                 # Calculate transfer rate terms as diagonal matrices
                 transfer_pair = dict()
                 for mat_pair in transfer_rates.index_transfer:
-                    transfer_matrix = chain.form_rr_term(transfer_rates, mat_pair)
+                    transfer_matrix = chain.form_rr_term(transfer_rates, 
+                                                         current_timestep, 
+                                                         mat_pair)
                     # check if destination material has a redox control
                     if mat_pair[0] in transfer_rates.redox:
                         transfer_matrix = chain.add_redox_term(transfer_matrix,
@@ -167,6 +176,23 @@ def deplete(func, chain, n, rates, dt, matrix_func=None, transfer_rates=None,
 
             return n_result
 
+    if (external_source_rates is not None and
+        current_timestep in external_source_rates.external_timesteps):
+        # Calculate external source term vectors
+        sources = map(chain.form_ext_source_term, repeat(external_source_rates),
+                      repeat(current_timestep), external_source_rates.local_mats)
+        #stack vector column at the end of the matrix
+        matrices = [hstack([matrix, source]) for (matrix, source) in zip(matrices,
+                                                                    sources)]
+
+        for i in range(len(matrices)):
+            if not np.equal(*matrices[i].shape):
+                # add a last row of zeroes to the matrices
+                matrices[i] = vstack(
+                        [matrices[i], csc_matrix([0]*matrices[i].shape[1])])
+                # add 1 to the last row of n vector
+                n[i] = np.append(n[i], 1.0)
+
     inputs = zip(matrices, n, repeat(dt))
 
     if USE_MULTIPROCESSING:
@@ -174,5 +200,10 @@ def deplete(func, chain, n, rates, dt, matrix_func=None, transfer_rates=None,
             n_result = list(pool.starmap(func, inputs))
     else:
         n_result = list(starmap(func, inputs))
+
+    if (external_source_rates is not None and
+        current_timestep in external_source_rates.external_timesteps):
+        n = external_source_rates.reformat_nuclide_vectors(n)
+        n_result = external_source_rates.reformat_nuclide_vectors(n_result)
 
     return n_result

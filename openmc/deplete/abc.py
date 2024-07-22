@@ -16,11 +16,13 @@ from typing import Optional, Union, Sequence
 from warnings import warn
 
 import numpy as np
+
 from uncertainties import ufloat
 
 from openmc.checkvalue import check_type, check_greater_than, PathLike, check_value
 from openmc.mpi import comm
 from openmc.utility_funcs import change_directory
+
 from openmc import Material
 from .stepresult import StepResult
 from .chain import Chain
@@ -981,8 +983,8 @@ class Integrator(ABC):
     def _adapt_timestep(self, n_pred, n_corr, mat_idx, nuc_ids, tol, err, rho1,
                         rho2, f ):
 
-        filt_pred = take(n_pred[mat_idx], nuc_ids)
-        filt_corr = take(n_corr[mat_idx], nuc_ids)
+        filt_pred = np.take(n_pred[mat_idx], nuc_ids)
+        filt_corr = np.take(n_corr[mat_idx], nuc_ids)
 
         err_vec = abs(filt_corr - filt_pred)
         x = min((tol + err * filt_corr) / err_vec)

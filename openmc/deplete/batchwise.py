@@ -454,6 +454,10 @@ class Batchwise(ABC):
         if self.density_functions:
             self._update_densities()
             self._update_volumes()
+        elif self.density_treatment == 'constant-density':
+            self._update_volumes()
+        #else
+            # constant-volume
 
         elif self.density_treatment == 'constant-density':
             self._update_volumes()

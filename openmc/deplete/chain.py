@@ -679,8 +679,11 @@ class Chain:
                 # Clear set of reactions
                 reactions.clear()
 
-        # Return CSC representation instead of DOK
-        return matrix.tocsc()
+        # Use DOK matrix as intermediate representation, then convert to CSC and return
+        n = len(self)
+        matrix_dok = sp.dok_matrix((n, n))
+        dict.update(matrix_dok, matrix)
+        return matrix_dok.tocsc()
 
     def add_redox_term(self, matrix, buffer, oxidation_states):
 
@@ -761,8 +764,10 @@ class Chain:
                     matrix[i, i] = 0.0
             #Nothing else is allowed
 
-        # Return CSC instead of DOK
-        return matrix.tocsc()
+        n = len(self)
+        matrix_dok = sp.dok_matrix((n, n))
+        dict.update(matrix_dok, matrix)
+        return matrix_dok.tocsc()
 
     def get_branch_ratios(self, reaction="(n,gamma)"):
         """Return a dictionary with reaction branching ratios

@@ -74,7 +74,7 @@ class StepResult:
         self.mat_to_hdf5_ind = None
 
         self.data = None
-
+        self.batchwise = None
     def __repr__(self):
         t = self.time[0]
         dt = self.time[1] - self.time[0]
@@ -349,6 +349,10 @@ class StepResult:
             "depletion time", (1,), maxshape=(None,),
             dtype="float64")
 
+        handle.create_dataset(
+            "batchwise_root", (1,), maxshape=(None,),
+            dtype="float64")
+
     def _to_hdf5(self, handle, index, parallel=False):
         """Converts results object into an hdf5 object.
 
@@ -379,6 +383,7 @@ class StepResult:
         time_dset = handle["/time"]
         source_rate_dset = handle["/source_rate"]
         proc_time_dset = handle["/depletion time"]
+        root_dset = handle["/batchwise_root"]
 
         # Get number of results stored
         number_shape = list(number_dset.shape)
@@ -412,6 +417,10 @@ class StepResult:
             proc_shape[0] = new_shape
             proc_time_dset.resize(proc_shape)
 
+            root_shape = list(root_dset.shape)
+            root_shape[0] = new_shape
+            root_dset.resize(root_shape)
+
         # If nothing to write, just return
         if len(self.index_mat) == 0:
             return
@@ -435,6 +444,7 @@ class StepResult:
                 proc_time_dset[index] = (
                     self.proc_time / (comm.size * self.n_hdf5_mats)
                 )
+            root_dset[index] = self.batchwise
 
     @classmethod
     def from_hdf5(cls, handle, step):
@@ -458,11 +468,13 @@ class StepResult:
         else:
             # Older versions used "power" instead of "source_rate"
             source_rate_dset = handle["/power"]
+        root_dset = handle["/batchwise_root"]
 
         results.data = number_dset[step, :, :, :]
         results.k = eigenvalues_dset[step, :]
         results.time = time_dset[step, :]
         results.source_rate = source_rate_dset[step, 0]
+        results.batchwise = root_dset[step]
 
         if "depletion time" in handle:
             proc_time_dset = handle["/depletion time"]
@@ -509,7 +521,7 @@ class StepResult:
 
     @staticmethod
     def save(op, x, op_results, t, source_rate, step_ind, proc_time=None,
-             path: PathLike = "depletion_results.h5"):
+             root=None, path: PathLike = "depletion_results.h5"):
         """Creates and writes depletion results to disk
 
         Parameters
@@ -564,6 +576,7 @@ class StepResult:
         results.proc_time = proc_time
         if results.proc_time is not None:
             results.proc_time = comm.reduce(proc_time, op=MPI.SUM)
+        results.batchwise = root
 
         if not Path(path).is_file():
             Path(path).parent.mkdir(parents=True, exist_ok=True)

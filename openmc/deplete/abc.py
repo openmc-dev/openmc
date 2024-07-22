@@ -18,7 +18,7 @@ from warnings import warn
 import numpy as np
 from uncertainties import ufloat
 
-from openmc.checkvalue import check_type, check_greater_than, PathLike
+from openmc.checkvalue import check_type, check_greater_than, PathLike, check_value
 from openmc.mpi import comm
 from openmc.utility_funcs import change_directory
 from openmc import Material
@@ -28,7 +28,9 @@ from .results import Results
 from .pool import deplete
 from .reaction_rates import ReactionRates
 from .transfer_rates import TransferRates
-
+from openmc import Material, Cell, Universe
+from .batchwise import (BatchwiseCellGeometrical, BatchwiseCellTemperature,
+    BatchwiseMaterialRefuel)
 
 __all__ = [
     "OperatorResult", "TransportOperator",
@@ -633,6 +635,7 @@ class Integrator(ABC):
         self.source_rates = np.asarray(source_rates)
 
         self.transfer_rates = None
+        self.batchwise = None
 
         if isinstance(solver, str):
             # Delay importing of cram module, which requires this file
@@ -764,6 +767,14 @@ class Integrator(ABC):
         return (self.operator.prev_res[-1].time[-1],
                 len(self.operator.prev_res) - 1)
 
+    def _get_bos_from_batchwise(self, step_index, bos_conc):
+        """Get BOS from criticality batch-wise control
+        """
+        x = deepcopy(bos_conc)
+        # Get new vector after keff criticality control
+        x, root = self.batchwise.search_for_keff(x, step_index)
+        return x, root
+
     def integrate(
             self,
             final_step: bool = True,
@@ -798,6 +809,11 @@ class Integrator(ABC):
 
                 # Solve transport equation (or obtain result from restart)
                 if i > 0 or self.operator.prev_res is None:
+                    # Update geometry/material according to batchwise definition
+                    if self.batchwise and source_rate != 0.0:
+                        n, root = self._get_bos_from_batchwise(i, n)
+                    else:
+                        root = None
                     n, res = self._get_bos_data_from_operator(i, source_rate, n)
                 else:
                     n, res = self._get_bos_data_from_restart(source_rate, n)
@@ -811,9 +827,8 @@ class Integrator(ABC):
 
                 # Remove actual EOS concentration for next step
                 n = n_list.pop()
-
                 StepResult.save(self.operator, n_list, res_list, [t, t + dt],
-                                source_rate, self._i_res + i, proc_time, path)
+                            source_rate, self._i_res + i, proc_time, root, path)
 
                 t += dt
 
@@ -823,9 +838,13 @@ class Integrator(ABC):
             # solve)
             if output and final_step and comm.rank == 0:
                 print(f"[openmc.deplete] t={t} (final operator evaluation)")
+            if self.batchwise and source_rate != 0.0:
+                n, root = self._get_bos_from_batchwise(i+1, n)
+            else:
+                root = None
             res_list = [self.operator(n, source_rate if final_step else 0.0)]
             StepResult.save(self.operator, [n], res_list, [t, t],
-                         source_rate, self._i_res + len(self), proc_time, path)
+                    source_rate, self._i_res + len(self), proc_time, root, path)
             self.operator.write_bos_data(len(self) + self._i_res)
 
         self.operator.finalize()
@@ -863,6 +882,30 @@ class Integrator(ABC):
 
         self.transfer_rates.set_transfer_rate(material, components, transfer_rate,
                                       transfer_rate_units, destination_material)
+
+    def add_batchwise(self, obj, attr, **kwargs):
+        """Add batchwise operation to integrator scheme.
+
+        Parameters
+        ----------
+        attr : str
+            Type of batchwise operation to add. `Trans` stands for geometrical
+            translation, `refuel` for material refueling and `dilute` for material
+            dilute.
+        **kwargs
+            keyword arguments that are passed to the batchwise class.
+
+        """
+        check_value('attribute', attr, ('translation', 'rotation', 'temperature', 'refuel'))
+        if attr in ('translation', 'rotation'):
+            batchwise = BatchwiseCellGeometrical
+        elif attr == 'temperature':
+            batchwise = BatchwiseCellTemperature
+        elif attr == 'refuel':
+            batchwise = BatchwiseMaterialRefuel
+
+        self.batchwise = batchwise.from_params(obj, attr, self.operator,
+                                           self.operator.model, **kwargs)
 
 @add_params
 class SIIntegrator(Integrator):

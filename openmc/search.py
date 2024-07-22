@@ -12,7 +12,7 @@ _SCALAR_BRACKETED_METHODS = {'brentq', 'brenth', 'ridder', 'bisect'}
 
 
 def _search_keff(guess, target, model_builder, model_args, print_iterations,
-                 run_args, guesses, results):
+                 run_args, guesses, results, run_in_memory):
     """Function which will actually create our model, run the calculation, and
     obtain the result. This function will be passed to the root finding
     algorithm
@@ -51,7 +51,11 @@ def _search_keff(guess, target, model_builder, model_args, print_iterations,
     model = model_builder(guess, **model_args)
 
     # Run the model and obtain keff
-    sp_filepath = model.run(**run_args)
+    if run_in_memory:
+        openmc.lib.run(**run_args)
+        sp_filepath = f'statepoint.{model.settings.batches}.h5'
+    else:
+        sp_filepath = model.run(**run_args)
     with openmc.StatePoint(sp_filepath) as sp:
         keff = sp.keff
 
@@ -70,7 +74,7 @@ def _search_keff(guess, target, model_builder, model_args, print_iterations,
 def search_for_keff(model_builder, initial_guess=None, target=1.0,
                     bracket=None, model_args=None, tol=None,
                     bracketed_method='bisect', print_iterations=False,
-                    run_args=None, **kwargs):
+                    run_args=None, run_in_memory=False, **kwargs):
     """Function to perform a keff search by modifying a model parametrized by a
     single independent variable.
 
@@ -193,12 +197,26 @@ def search_for_keff(model_builder, initial_guess=None, target=1.0,
 
     # Add information to be passed to the searching function
     args['args'] = (target, model_builder, model_args, print_iterations,
-                    run_args, guesses, results)
+                    run_args, guesses, results, run_in_memory)
 
     # Create a new dictionary with the arguments from args and kwargs
     args.update(kwargs)
 
     # Perform the search
-    zero_value = root_finder(**args)
+    if not run_in_memory:
+        zero_value = root_finder(**args)
+        return zero_value
 
-    return zero_value, guesses, results
+    else:
+        try:
+            zero_value, root_res = root_finder(**args, full_output=True, disp=False)
+            if root_res.converged:
+                return zero_value, guesses, results
+
+            else:
+                print(f'WARNING: {root_res.flag}')
+                return guesses, results
+        # In case the root finder is not successful
+        except Exception as e:
+            print(f'WARNING: {e}')
+            return guesses, results

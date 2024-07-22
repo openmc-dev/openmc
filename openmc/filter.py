@@ -764,8 +764,9 @@ class ParticleFilter(Filter):
 
     @Filter.bins.setter
     def bins(self, bins):
-        bins = np.atleast_1d(bins)
-        cv.check_iterable_type('filter bins', bins, str)
+        cv.check_type('bins', bins, Iterable, str)
+        if type(bins) != set:
+            bins = np.atleast_1d(bins)
         for edge in bins:
             cv.check_value('filter bin', edge, _PARTICLES)
         self._bins = bins

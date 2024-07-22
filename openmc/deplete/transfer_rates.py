@@ -229,8 +229,12 @@ class TransferRates:
             if destination_material_id is not None:
                 self.index_transfer.add((destination_material_id, material_id))
 
-    def set_redox(self, material, buffer):
+    def set_redox(self, material, buffer, oxidation_states):
         material_id = self._get_material_id(material)
         for nuc in buffer:
             check_value('redox buffer', nuc, self.chain_nuclides)
         self.redox[material_id] =  buffer
+        for elm in oxidation_states:
+            if elm not in ELEMENT_SYMBOL.values():
+                raise ValueError(f'{elm} is not a valid element.')
+        self.oxidation_states = oxidation_states

@@ -682,10 +682,11 @@ class Chain:
         # Return CSC representation instead of DOK
         return matrix.tocsc()
 
-    def add_redox_term(self, matrix, buffer):
+    def add_redox_term(self, matrix, buffer, oxidation_states):
 
         elm = [re.split(r'\d+', nuc.name)[0] for nuc in self.nuclides]
-        ox = np.array([oxidation_state[el] if el in oxidation_state else 0 for el in elm])
+        ox = np.array([oxidation_states[el] if el in oxidation_states \
+                        else 0 for el in elm])
         buffer_inds = {nuc:self.nuclide_dict[nuc] for nuc in buffer}
 
         array = matrix.toarray()

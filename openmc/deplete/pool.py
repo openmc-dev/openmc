@@ -105,7 +105,8 @@ def deplete(func, chain, n, rates, dt, matrix_func=None, transfer_rates=None,
             for mat_ind, mat_id in enumerate(transfer_rates.local_mats):
                 if mat_id in transfer_rates.redox:
                     matrices[mat_ind] = chain.add_redox_term(matrices[mat_ind],
-                                        transfer_rates.redox[mat_id])
+                                                transfer_rates.redox[mat_id],
+                                                transfer_rates.oxidation_states)
 
         if len(transfer_rates.index_transfer) > 0:
             # Gather all on comm.rank 0
@@ -124,7 +125,8 @@ def deplete(func, chain, n, rates, dt, matrix_func=None, transfer_rates=None,
                     # check if destination material has a redox control
                     if mat_pair[0] in transfer_rates.redox:
                         transfer_matrix = chain.add_redox_term(transfer_matrix,
-                                          transfer_rates.redox[mat_pair[0]])
+                                          transfer_rates.redox[mat_pair[0]],
+                                          transfer_rates.oxidation_states)
                     transfer_pair[mat_pair] = transfer_matrix
 
                 # Combine all matrices together in a single matrix of matrices

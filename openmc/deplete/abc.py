@@ -936,11 +936,11 @@ class Integrator(ABC):
         #elif scheme_name == 'flex':
         #    self.batchwise = BatchwiseSchemeFlex(self.batchwise, **kwargs)
 
-    def add_density_function(self, mats, density_func):
-        self.batchwise.set_density_function(mats, density_func)
+    def add_density_function(self, mats, density_func, oxidation_states):
+        self.batchwise.set_density_function(mats, density_func, oxidation_states)
 
-    def add_redox(self, mat, buffer):
-        self.transfer_rates.set_redox(mat, buffer)
+    def add_redox(self, mat, buffer, oxidation_states):
+        self.transfer_rates.set_redox(mat, buffer, oxidation_states)
 
 @add_params
 class SIIntegrator(Integrator):

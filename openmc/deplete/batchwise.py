@@ -9,10 +9,10 @@ import openmc.lib
 from openmc.mpi import comm
 from openmc.search import _SCALAR_BRACKETED_METHODS, search_for_keff
 from openmc import Material, Cell
-from openmc.data import atomic_mass, AVOGADRO
+from openmc.data import atomic_mass, AVOGADRO, ELEMENT_SYMBOL
 from openmc.checkvalue import (check_type, check_value, check_less_than,
     check_iterable_type, check_length)
-from ._density_funcs import oxidation_state, flithu, flithtru
+from ._density_funcs import flithu, flithtru
 
 class Batchwise(ABC):
     """Abstract class defining a generalized batch wise scheme.
@@ -349,13 +349,17 @@ class Batchwise(ABC):
             density = openmc.lib.materials[int(mat_id)].get_density('g/cm3')
             number_i.volume[mat_idx] = agpm / AVOGADRO / density
 
-    def set_density_function(self, mats, density_func):
+    def set_density_function(self, mats, density_func, oxidation_states):
         #check mat exists and is depletable
         mats = self._get_materials(mats)
         # check density_func exists
         check_value('density_func', density_func, ('flithu', 'flithtru'))
         for mat_id in mats:
             self.density_functions[mat_id] = density_func
+        for elm in oxidation_states:
+            if elm not in ELEMENT_SYMBOL.values():
+                raise ValueError(f'{elm} is not a valid element.')
+        self.oxidation_states = oxidation_states
 
     def _update_densities(self):
         for mat_id in self.local_mats:
@@ -384,9 +388,6 @@ class Batchwise(ABC):
             Total atom concentrations
         """
         self.operator.number.set_density(x)
-
-        if self.redox_vec is not None:
-            x = self._balance_redox(x)
 
         if self.density_functions:
             self._update_densities()
@@ -484,10 +485,10 @@ class Batchwise(ABC):
                     elm = re.split(r'\d+', nuc)[0]
                     if elm in ['Li', 'Th', 'U']:
                         # alwyas consider 1 anion of Fluorine
-                        ions = oxidation_state[elm] + 1
+                        ions = self.oxidation_states[elm] + 1
                         atoms_per_elm[elm] += number_i[mat_id, nuc] * ions
                     elif elm in tru:
-                        ions = oxidation_state[elm] + 1
+                        ions = self.oxidation_states[elm] + 1
                         atoms_per_elm['TRU'] += number_i[mat_id, nuc] * ions
 
                 mol_comp = {k:100*v/sum(atoms_per_elm.values()) for k,v in \
@@ -516,11 +517,11 @@ class Batchwise(ABC):
             if mat_id == mat_rx_id:
                 for nuc in number_i.nuclides:
                     elm = re.split(r'\d+', nuc)[0]
-                    if elm in oxidation_state:
+                    if elm in self.oxidation_states:
                     #excess (definciency) or fluorine is given by the number of atoms
                     # of each element multiplied by its oxidation state, assuming
                     # every element whats to bind with fluorine.
-                        redox += number_i[mat_id, nuc] * oxidation_state[elm]
+                        redox += number_i[mat_id, nuc] * self.oxidation_states[elm]
         return redox
 
     def _balance_redox(self, x):
@@ -534,7 +535,7 @@ class Batchwise(ABC):
                 # add mat_vector, if positive we need to remove it.
                 for nuc,fraction in self.redox_vec.items():
                     elm = re.split(r'\d+', nuc)[0]
-                    number_i[mat_id, nuc] -= redox * fraction / oxidation_state[elm]
+                    number_i[mat_id, nuc] -= redox * fraction / self.oxidation_states[elm]
                 #Now updates x vector
                 nuc_idx = number_i.index_nuc[nuc]
                 x[mat_idx][nuc_idx] = number_i[mat_id, nuc]
@@ -1506,9 +1507,9 @@ class BatchwiseSchemeStd():
         self.interrupt = interrupt
 
 
-    def set_density_function(self, mats, density_func):
+    def set_density_function(self, mats, density_func, oxidation_states):
         for bw in self.bw_list:
-            bw.set_density_function(mats, density_func)
+            bw.set_density_function(mats, density_func, oxidation_states)
 
     def _update_volumes_after_depletion(self, x):
         """

@@ -6,6 +6,8 @@ pip install --upgrade pip
 pip install --upgrade pytest
 pip install --upgrade numpy
 
+cd $HOME
+
 # Install DAGMC if needed
 if [[ $DAGMC = 'y' ]]; then
     ./tools/ci/gha-install-dagmc.sh

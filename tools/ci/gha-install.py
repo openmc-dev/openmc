@@ -1,5 +1,4 @@
 import os
-import shutil
 import subprocess
 
 def which(program):
@@ -20,10 +19,6 @@ def which(program):
 
 
 def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrystal=False):
-    # Create build directory and change to it
-    shutil.rmtree('build', ignore_errors=True)
-    os.mkdir('build')
-    os.chdir('build')
 
     # Build in debug mode by default with support for MCPL
     pip_command = ['pip', 'install', '.[test,vtk]']

@@ -6,9 +6,6 @@ pip install --upgrade pip
 pip install --upgrade pytest
 pip install --upgrade numpy
 
-# Install NJOY 2016
-./tools/ci/gha-install-njoy.sh
-
 # Install DAGMC if needed
 if [[ $DAGMC = 'y' ]]; then
     ./tools/ci/gha-install-dagmc.sh

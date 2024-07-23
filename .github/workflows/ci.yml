@@ -129,6 +129,11 @@ jobs:
         shell: bash
         run: |
           echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
+          cd $HOME
+          git clone https://github.com/njoy/NJOY2016
+          cd NJOY2016
+          mkdir build && cd build
+          cmake -Dstatic=on .. && make 2>/dev/null && sudo make install
           $GITHUB_WORKSPACE/tools/ci/gha-install.sh
 
       - name: cache-xs

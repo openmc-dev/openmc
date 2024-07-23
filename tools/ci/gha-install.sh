@@ -49,9 +49,3 @@ python tools/ci/gha-install.py
 
 # Install Python API in editable mode
 pip install -e .[test,vtk]
-
-# For coverage testing of the C++ source files
-pip install cpp-coveralls
-
-# For coverage testing of the Python source files
-pip install coveralls

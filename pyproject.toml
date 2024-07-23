@@ -46,7 +46,15 @@ docs = [
     "sphinxcontrib-svg2pdfconverter",
     "sphinx-rtd-theme==1.0.0"
 ]
-test = ["packaging", "pytest", "pytest-cov", "colorama", "openpyxl"]
+test = [
+    "packaging",
+    "pytest",
+    "pytest-cov",
+    "colorama",
+    "openpyxl",
+    "cpp-coveralls",
+    "coveralls",
+]
 vtk = ["vtk"]
 
 [project.urls]

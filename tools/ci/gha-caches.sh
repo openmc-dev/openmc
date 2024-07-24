@@ -3,10 +3,11 @@ set -ex
 
 echo "NJOY_HASH=$(git ls-remote https://github.com/njoy/NJOY2016.git | cut -f 1 | head -c 15)" >> $GITHUB_ENV
 
-if [[ $DAGMC = 'y' ]]; then
-    echo "MOAB_HASH=$(git ls-remote https://bitbucket.org/fathomteam/moab.git | cut -f 1 | head -c 15)" >> $GITHUB_ENV
-    echo "DAGMC_HASH=$(git ls-remote https://github.com/svalinn/dagmc.git | cut -f 1 | head -c 15)" >> $GITHUB_ENV
-fi
+
+#if [[ $DAGMC = 'y' ]]; then
+#    echo "MOAB_HASH=$(git ls-remote https://bitbucket.org/fathomteam/moab.git | cut -f 1 | head -c 15)" >> $GITHUB_ENV
+#    echo "DAGMC_HASH=$(git ls-remote https://github.com/svalinn/dagmc.git | cut -f 1 | head -c 15)" >> $GITHUB_ENV
+#fi
 
 # Check for NCrystal cache if needed
 #if [[ $NCRYSTAL = 'y' ]]; then

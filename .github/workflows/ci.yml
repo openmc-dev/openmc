@@ -134,29 +134,32 @@ jobs:
         if: ${{ matrix.vectfit == 'y' }}
         run: sudo apt install -y libblas-dev liblapack-dev
 
-      - name: Grab hashes of required dependencies (just NJOY, DAGMC, and MCPL for now)
+      - name: Grab hashes of required dependencies (just NJOY, and MCPL for now)
         run: |
           $GITHUB_WORKSPACE/tools/ci/gha-caches.sh
           
       - name: Restore NJOY2016
         uses: actions/cache@v4
         with:
-          path: ~/NJOY2016/
-          key: NJOY2016-${{ env.NJOY_HASH}}
+          path: ~/NJOY2016
+          key: NJOY2016-${{ env.NJOY_HASH }} 
+          restore-keys: NJOY2016-
 
       - name: Restore DAGMC
         if: ${{ matrix.dagmc == 'y' }}
         uses: actions/cache@v4
         with:
           path: |
-            ~/NJOY2016/
-          key: DAGMC-${{ env.DAGMC_HASH}}/MOAB-${{ env.MOAB_HASH }}
+            ~/DAGMC
+            ~/MOAB
+          key: DAGMC-${{ env.DAGMC_HASH }}/MOAB-${{ env.MOAB_HASH }}
       
-      - name: Restore MCPL
+      - name: Restore mcpl
         uses: actions/cache@v4
         with:
-          path: ~/MCPL/
-          key: MCPL-${{ env.MCPL_HASH }}  
+          path: ~/mcpl
+          key: mcpl-${{ env.MCPL_HASH }} 
+          restore-keys: mcpl-
 
       - name: install
         shell: bash
@@ -176,11 +179,11 @@ jobs:
         shell: bash
         run: $GITHUB_WORKSPACE/tools/ci/gha-before-script.sh
 
-      #- name: test
-      #  shell: bash
-      #  run: |
-      #    CTEST_OUTPUT_ON_FAILURE=1 make test -C $GITHUB_WORKSPACE/build/
-      #    $GITHUB_WORKSPACE/tools/ci/gha-script.sh
+      - name: test
+        shell: bash
+        run: |
+          CTEST_OUTPUT_ON_FAILURE=1 make test -C $GITHUB_WORKSPACE/build/
+          $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
       - name: after_success
         shell: bash

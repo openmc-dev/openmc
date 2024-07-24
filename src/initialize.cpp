@@ -166,14 +166,15 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Get_address(&b.particle, &disp[7]);
   MPI_Get_address(&b.parent_id, &disp[8]);
   MPI_Get_address(&b.progeny_id, &disp[9]);
+  MPI_Get_address(&b.source_id, &disp[10]);
   for (int i = 9; i >= 0; --i) {
     disp[i] -= disp[0];
   }
 
-  int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1, 1};
+  int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1};
   MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE,
-    MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG};
-  MPI_Type_create_struct(10, blocks, disp, types, &mpi::source_site);
+    MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG, MPI_INT};
+  MPI_Type_create_struct(11, blocks, disp, types, &mpi::source_site);
   MPI_Type_commit(&mpi::source_site);
 }
 #endif // OPENMC_MPI

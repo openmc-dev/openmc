@@ -672,15 +672,10 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
     site.E = lower_bound_index(
     data::mg.rev_energy_bins_.begin(), data::mg.rev_energy_bins_.end(), site.E);
     site.E = negroups_ - site.E - 1.;
-    //this->from_source(&site);
-    this->from_source(&site);
+    from_source(&site);
 
     std::unique_ptr<openmc::Source>& source_handle = model::external_sources[site.source_id];
-    //Source* s = model::external_sources[site.source_id].get();
-    // Check for independent source
     IndependentSource* is = dynamic_cast<IndependentSource*>(source_handle.get());
-    //Distribution* energy_dist = is->energy();
-    //Discrete* disc = dynamic_cast<Discrete*>(energy_dist);
     Discrete* energy_external_source = dynamic_cast<Discrete*>(is->energy());
 
     const auto& discrete_energies = energy_external_source->x();

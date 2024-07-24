@@ -30,6 +30,15 @@ public:
 
   //----------------------------------------------------------------------------
   // Data members
+  // First collided method variables for automatic n_uncollided_rays
+  int64_t n_u_hits {0};
+  int new_n_rays  {settings::n_uncollided_rays};
+  int old_n_rays {0};
+  double fsr_ratio {0.0};
+  int batch_first_collided {1};
+  int n_rays_max {1000000};
+  bool user_input_rays {false};
+  
 private:
   // Contains all flat source region data
   unique_ptr<FlatSourceDomain> domain_;

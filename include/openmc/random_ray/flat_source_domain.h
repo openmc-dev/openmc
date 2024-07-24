@@ -110,8 +110,12 @@ public:
   void convert_external_sources();
   void count_external_source_regions();
   virtual void flux_swap();
-  virtual double evaluate_flux_at_point(Position r, int64_t sr, int g) const;
+  virtual double evaluate_flux_at_point(Position r, int64_t sr, int g, int ft) const;
   double compute_fixed_source_normalization_factor() const;
+  void compute_first_collided_flux();
+  void normalize_uncollided_scalar_flux(double number_of_particles);
+  void update_volume_uncollided_flux();
+  void reset_hit();
 
   //----------------------------------------------------------------------------
   // Static Data members
@@ -125,6 +129,9 @@ public:
   int64_t n_source_regions_ {0}; // Total number of source regions in the model
   int64_t n_external_source_regions_ {0}; // Total number of source regions with
                                           // non-zero external source terms
+  bool new_fsr_fc {true};                 // Criteria to First Collided Loop
+                                          // Check if new cell was hit
+  int flux_type {0}; // for plotting purposes.
 
   // 1D array representing source region starting offset for each OpenMC Cell
   // in model::cells
@@ -144,6 +151,8 @@ public:
   vector<float> scalar_flux_new_;
   vector<float> source_;
   vector<float> external_source_;
+  vector<float> scalar_uncollided_flux_;
+  vector<float> scalar_first_collided_flux_;
 
 protected:
   //----------------------------------------------------------------------------

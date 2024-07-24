@@ -28,10 +28,13 @@ public:
   void attenuate_flux(double distance, bool is_active);
   void attenuate_flux_flat_source(double distance, bool is_active);
   void attenuate_flux_linear_source(double distance, bool is_active);
+  void event_advance_ray_first_collided();
+  
 
   void initialize_ray(uint64_t ray_id, FlatSourceDomain* domain);
   uint64_t transport_history_based_single_ray();
-
+  uint64_t transport_history_based_single_ray_first_collided();
+  
   //----------------------------------------------------------------------------
   // Static data members
   static double distance_inactive_;          // Inactive (dead zone) ray length
@@ -42,6 +45,7 @@ public:
   //----------------------------------------------------------------------------
   // Public data members
   vector<float> angular_flux_;
+  vector<float> angular_flux_initial_;
 
 private:
   //----------------------------------------------------------------------------
@@ -50,6 +54,9 @@ private:
   vector<MomentArray> delta_moments_;
 
   int negroups_;
+  float ray_threshold {1e-20f};
+
+
   FlatSourceDomain* domain_ {nullptr}; // pointer to domain that has flat source
                                        // data needed for ray transport
   double distance_travelled_ {0};

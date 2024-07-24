@@ -364,6 +364,7 @@ class Cell(IDManagerMixin):
             Results from a stochastic volume calculation
 
         """
+        print("FILL_TYPE", self.fill_type)
         if volume_calc.domain_type == 'cell':
             if self.id in volume_calc.volumes:
                 self._volume = volume_calc.volumes[self.id].n

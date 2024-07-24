@@ -877,6 +877,12 @@ class DAGMCUniverse(UniverseBase):
         self._auto_mat_ids = val
 
     @property
+    def material_assignment(self):
+        dagmc_file_contents = h5py.File(self.filename)
+        material_tags_hex = dagmc_file_contents['/tstt/tags/NAME'].get(
+            'values')
+
+    @property
     def material_names(self):
         dagmc_file_contents = h5py.File(self.filename)
         material_tags_hex = dagmc_file_contents['/tstt/tags/NAME'].get(

@@ -1062,18 +1062,19 @@ class Model:
             # Get material in the DAG-verses
             for dag_verse in self.geometry.get_all_dag_universes().values():
                 for mat_name in dag_verse.material_names:
-                    dag_mats_n_inst[mat] = dag_mats_n_inst.get(mat, 0) + dag_verse.num_instances
-        # Extract all depletable materials which have multiple instances
-        distribmats = set(
-            [mat for mat in self.materials
-                if (mat.depletable or not depletable_only) and mat.num_instances > 1])
-            
-
-
+                    dag_mats_n_inst[mat_name] = dag_mats_n_inst.get(mat_name, 0) + dag_verse.num_instances
         # Account for the multiplicity of the dag-verses materials
         for mat in self.materials:
             if mat.name in dag_mats_n_inst:
                 mat._num_instances += dag_mats_n_inst[mat.name]
+
+
+        # Extract all depletable materials which have multiple instances
+        distribmats = set(
+            [mat for mat in self.materials
+                if (mat.depletable or not depletable_only) and mat.num_instances > 1])
+
+
 
         if diff_volume_method == 'divide equally':
             for mat in distribmats:
@@ -1112,6 +1113,8 @@ class Model:
                             if mat.depletable or not depletable_only:
                                 mats_clones = [mat.clone() for _ in range(
                                     dag_verse.num_instances)]
+                                # if diff_volume_method == 'divide equally':
+                                
                                 for i, mat_clone in enumerate(mats_clones):
                                     mat_clone.name += "_" + str(dag_verse.id) + "_" + str(i)
                                     dag_verse_mats.append(mat_clone)

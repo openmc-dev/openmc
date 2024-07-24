@@ -627,7 +627,7 @@ SourceSite sample_external_source(uint64_t* seed)
 
   // Sample source site from i-th source distribution
   SourceSite site {model::external_sources[i]->sample_with_constraints(seed)};
-
+  site.source_id = i;
   // If running in MG, convert site.E to group
   if (!settings::run_CE) {
     site.E = lower_bound_index(data::mg.rev_energy_bins_.begin(),

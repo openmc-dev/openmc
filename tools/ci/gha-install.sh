@@ -48,4 +48,4 @@ fi
 python tools/ci/gha-install.py
 
 # Install Python API in editable mode
-pip install -e .[test,vtk]
+pip install -e .[test,vtk,ci]

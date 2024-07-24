@@ -418,6 +418,7 @@ double LinearSourceDomain::evaluate_flux_at_point(
   return phi_flat + phi_solved.dot(local_r);
   } else {
      // ??? add error message.
+     return 0;
   }
 }
 

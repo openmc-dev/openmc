@@ -25,7 +25,7 @@
 
 namespace openmc {
 
-constexpr int PhotonInteraction::MAX_STACK_SIZE;
+constexpr int PhotonInteraction::MAX_RELAXATION_STACK_SIZE;
 
 //==============================================================================
 // Global variables
@@ -209,11 +209,11 @@ PhotonInteraction::PhotonInteraction(hid_t group)
 
   // Check the maximum size of the atomic relaxation stack
   auto max_size = this->calc_max_stack_size();
-  if (max_size > MAX_STACK_SIZE && mpi::master) {
+  if (max_size > MAX_RELAXATION_STACK_SIZE && mpi::master) {
     warning(fmt::format(
       "The subshell vacancy stack in atomic relaxation can grow up to {}, but "
       "the stack size limit is set to {}.",
-      max_size, MAX_STACK_SIZE));
+      max_size, MAX_RELAXATION_STACK_SIZE));
   }
 
   // Determine number of electron shells
@@ -772,7 +772,7 @@ void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
 
   // Stack for unprocessed holes left by transitioning electrons
   int n_holes = 0;
-  array<int, MAX_STACK_SIZE> holes;
+  array<int, MAX_RELAXATION_STACK_SIZE> holes;
 
   // Push the initial hole onto the stack
   holes[n_holes++] = i_shell;

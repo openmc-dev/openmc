@@ -104,7 +104,7 @@ public:
   bool has_atomic_relaxation_ {false};
 
   // Constant data
-  static constexpr int MAX_STACK_SIZE =
+  static constexpr int MAX_RELAXATION_STACK_SIZE =
     7; //!< maximum possible size of atomic relaxation stack
 private:
   void compton_doppler(

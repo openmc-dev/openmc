@@ -7,7 +7,9 @@ pip install --upgrade pytest
 pip install --upgrade numpy
 
 # Install NJOY 2016
-./tools/ci/gha-install-njoy.sh
+if [[ ! -d "$HOME/NJOY2016" ]]; then
+    ./tools/ci/gha-install-njoy.sh
+fi
 
 # Install DAGMC if needed
 if [[ $DAGMC = 'y' ]]; then
@@ -30,7 +32,9 @@ if [[ $LIBMESH = 'y' ]]; then
 fi
 
 # Install MCPL
-./tools/ci/gha-install-mcpl.sh
+if [[ ! -d "$HOME/MCPL" ]]; then
+    ./tools/ci/gha-install-mcpl.sh
+fi
 
 # For MPI configurations, make sure mpi4py and h5py are built against the
 # correct version of MPI

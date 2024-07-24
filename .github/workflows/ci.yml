@@ -102,8 +102,6 @@ jobs:
             mpi=${{ matrix.mpi }} dagmc=${{ matrix.dagmc }} ncrystal=${{ matrix.ncrystal }}
             libmesh=${{ matrix.libmesh }} event=${{ matrix.event }}
             vectfit=${{ matrix.vectfit }})
-          # How to handle when each individual dependency changes?
-          # Should each dependency have its own individual cache?
 
       - name: Environment Variables
         run: |
@@ -136,11 +134,29 @@ jobs:
         if: ${{ matrix.vectfit == 'y' }}
         run: sudo apt install -y libblas-dev liblapack-dev
 
-      #- name: Install NJOY2016
-      #  uses: actions/cache@v4
-      #  with:
-      #    path: "$HOME/NJOY2016"
-      #    key: NJOY2016-
+      - name: Grab hashes of required dependencies (just NJOY, DAGMC, and MCPL for now)
+        run: |
+          $GITHUB_WORKSPACE/tools/ci/gha-caches.sh
+          
+      - name: Restore NJOY2016 from cache
+        uses: actions/cache@v4
+        with:
+          path: ~/NJOY2016/
+          key: NJOY2016-${{ env.NJOY_HASH}}
+
+      - name: Restore DAGMC from cache
+        if: ${{ matrix.dagmc == 'y' }}
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/NJOY2016/
+          key: DAGMC-${{ env.DAGMC_HASH}}/MOAB-${{ env.MOAB_HASH }}
+      
+      - name: Restore MCPL
+        uses: actions/cache@v4
+        with:
+          path: ~/MCPL/
+          key: MCPL-${{ env.MCPL_HASH }}  
 
       - name: install
         shell: bash
@@ -148,13 +164,13 @@ jobs:
           echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
           $GITHUB_WORKSPACE/tools/ci/gha-install.sh
 
-      - name: cache-xs
+      - name: Restore endf-b-vii.1 cache
         uses: actions/cache@v4
         with:
           path: |
             ~/nndc_hdf5
             ~/endf-b-vii.1
-          key: ${{ runner.os }}-build-xs-cache
+          key: endf-b-vii.1-cache
 
       - name: before
         shell: bash

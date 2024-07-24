@@ -138,13 +138,13 @@ jobs:
         run: |
           $GITHUB_WORKSPACE/tools/ci/gha-caches.sh
           
-      - name: Restore NJOY2016 from cache
+      - name: Restore NJOY2016
         uses: actions/cache@v4
         with:
           path: ~/NJOY2016/
           key: NJOY2016-${{ env.NJOY_HASH}}
 
-      - name: Restore DAGMC from cache
+      - name: Restore DAGMC
         if: ${{ matrix.dagmc == 'y' }}
         uses: actions/cache@v4
         with:

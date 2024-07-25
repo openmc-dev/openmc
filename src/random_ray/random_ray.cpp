@@ -183,6 +183,7 @@ double RandomRay::distance_inactive_;
 double RandomRay::distance_active_;
 unique_ptr<Source> RandomRay::ray_source_;
 RandomRaySourceShape RandomRay::source_shape_ {RandomRaySourceShape::FLAT};
+bool RandomRay::uncollided_flux_volume = {false};
 
 RandomRay::RandomRay()
   : angular_flux_(data::mg.num_energy_groups_),
@@ -363,7 +364,7 @@ void RandomRay::attenuate_flux_flat_source(double distance, bool is_active)
   const int a = 0;
 
   // MOC incoming flux attenuation + source contribution/attenuation equation
-  if (!settings::uncollided_flux_volume){
+  if (!uncollided_flux_volume){
   for (int g = 0; g < negroups_; g++) {
     float sigma_t = data::mg.macro_xs_[material].get_xs(
       MgxsType::TOTAL, g, NULL, NULL, NULL, t, a);
@@ -385,7 +386,7 @@ void RandomRay::attenuate_flux_flat_source(double distance, bool is_active)
 
     // Accumulate delta psi into new estimate of source region flux for
     // this iteration
-    if (!settings::uncollided_flux_volume){
+    if (!uncollided_flux_volume){
       for (int g = 0; g < negroups_; g++) {
         domain_->scalar_flux_new_[source_element + g] += delta_psi_[g];
       }
@@ -401,7 +402,7 @@ void RandomRay::attenuate_flux_flat_source(double distance, bool is_active)
 
     // Accomulate volume (ray distance) into this iteration's estimate
     // of the source region's volume
-    if (!settings::FIRST_COLLIDED_FLUX || settings::uncollided_flux_volume){
+    if (!settings::FIRST_COLLIDED_FLUX || uncollided_flux_volume){
       domain_->volume_[source_region] += distance;
     }
 
@@ -417,7 +418,7 @@ void RandomRay::attenuate_flux_flat_source(double distance, bool is_active)
     domain_->lock_[source_region].unlock();
 
     // check attenuation in FIRST_ COLLIDED_FLUX 
-    if (settings::FIRST_COLLIDED_FLUX && !settings::uncollided_flux_volume){
+    if (settings::FIRST_COLLIDED_FLUX && !uncollided_flux_volume){
       // bool = true to kill ray
       // ray is killed by default unless:
       bool angular_flux_below_threshold = true;
@@ -503,7 +504,7 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
 
   // Linear Source MOC incoming flux attenuation + source
   // contribution/attenuation equation
-  if (!settings::uncollided_flux_volume){
+  if (!uncollided_flux_volume){
   for (int g = 0; g < negroups_; g++) {
 
     // Compute tau, the optical thickness of the ray segment
@@ -571,7 +572,7 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
 
     // Accumulate deltas into the new estimate of source region flux for this
     // iteration
-    if (!settings::uncollided_flux_volume){
+    if (!uncollided_flux_volume){
       for (int g = 0; g < negroups_; g++) {
         domain_->scalar_flux_new_[source_element + g] += delta_psi_[g];
         domain->flux_moments_new_[source_element + g] += delta_moments_[g];
@@ -582,7 +583,7 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
     // momement estimates into the running totals for the iteration for this
     // source region. The centroid and spatial momements estimates are scaled by
     // the ray segment length as part of length averaging of the estimates.
-    if (!settings::FIRST_COLLIDED_FLUX || settings::uncollided_flux_volume){
+    if (!settings::FIRST_COLLIDED_FLUX || uncollided_flux_volume){
       domain_->volume_[source_region] += distance;
       domain->centroid_iteration_[source_region] += midpoint * distance;
       // how to compute these ones
@@ -611,7 +612,7 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
     domain_->lock_[source_region].unlock();
 
         // check attenuation in FIRST_ COLLIDED_FLUX 
-    if (settings::FIRST_COLLIDED_FLUX && !settings::uncollided_flux_volume){
+    if (settings::FIRST_COLLIDED_FLUX && !uncollided_flux_volume){
       // bool = true to kill ray
       // ray is killed by default unless:
       bool angular_flux_below_threshold = true;
@@ -667,7 +668,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   stream() = STREAM_TRACKING;
 
   // Sample from input Source
-  if (settings::FIRST_COLLIDED_FLUX && !settings::uncollided_flux_volume){
+  if (settings::FIRST_COLLIDED_FLUX && !uncollided_flux_volume){
     auto site = sample_external_source(current_seed());
     site.E = lower_bound_index(
     data::mg.rev_energy_bins_.begin(), data::mg.rev_energy_bins_.end(), site.E);

@@ -39,9 +39,8 @@ public:
   void convert_external_sources();
   void count_external_source_regions();
   void flux_swap() override;
-  double evaluate_flux_at_point(Position r, int64_t sr, int g, int ft) const override;
+  double evaluate_flux_at_point(Position r, int64_t sr, int g) const override;
 
-  void reset_hit();
   void compute_first_collided_flux();
   void normalize_uncollided_scalar_flux(double number_of_particles);
 

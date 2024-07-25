@@ -42,6 +42,8 @@ public:
   static unique_ptr<Source> ray_source_;     // Starting source for ray sampling
   static RandomRaySourceShape source_shape_; // Flag for linear source
 
+  static bool uncollided_flux_volume; // Flag for Initial Volume estimation 
+
   //----------------------------------------------------------------------------
   // Public data members
   vector<float> angular_flux_;

@@ -54,11 +54,6 @@ void LinearSourceDomain::batch_reset()
   }
 }
 
-void LinearSourceDomain::reset_hit()
-{
-  parallel_fill<int>(was_hit_,0);
-}
-
 void LinearSourceDomain::update_neutron_source(double k_eff)
 {
   simulation::time_update_src.start();
@@ -382,46 +377,23 @@ void LinearSourceDomain::all_reduce_replicated_source_regions()
 }
 
 double LinearSourceDomain::evaluate_flux_at_point(
-  Position r, int64_t sr, int g, int ft) const
+  Position r, int64_t sr, int g) const
 {
-  if (flux_type == 0){ // RR neutron flux
-  float phi_flat = FlatSourceDomain::evaluate_flux_at_point(r, sr, g, ft);
+  // RR neutron flux
+  float phi_flat = FlatSourceDomain::evaluate_flux_at_point(r, sr, g);
 
   Position local_r = r - centroid_[sr];
   MomentArray phi_linear = flux_moments_t_[sr * negroups_ + g];
   phi_linear *= 1.0 / (settings::n_batches - settings::n_inactive);
-  phi_linear += flux_moments_uncollided_[sr * negroups_ + g]; // ??? addition
-
-  MomentMatrix invM = mom_matrix_[sr].inverse();
-  MomentArray phi_solved = invM * phi_linear;
-
-  return phi_flat + phi_solved.dot(local_r);
-  } else if (ft == 1){// Uncollided neutron flux
-  float phi_flat = FlatSourceDomain::evaluate_flux_at_point(r, sr, g, ft);
-
-  Position local_r = r - centroid_[sr];
-  MomentArray phi_linear = flux_moments_uncollided_[sr * negroups_ + g];
-
-  MomentMatrix invM = mom_matrix_[sr].inverse();
-  MomentArray phi_solved = invM * phi_linear;
-
-  return phi_flat + phi_solved.dot(local_r);
-  } else if (ft == 2){ // External Source
-  float phi_flat = FlatSourceDomain::evaluate_flux_at_point(r, sr, g, ft);
-
-  Position local_r = r - centroid_[sr];
-  MomentArray phi_linear = external_source_gradients_[sr * negroups_ + g];
-
-  MomentMatrix invM = mom_matrix_[sr].inverse();
-  MomentArray phi_solved = invM * phi_linear;
-
-  return phi_flat + phi_solved.dot(local_r);
-  } else {
-     // ??? add error message.
-     return 0;
+  if (settings::first_collided_mode){
+    phi_linear += flux_moments_uncollided_[sr * negroups_ + g]; // ??? addition
   }
+
+  MomentMatrix invM = mom_matrix_[sr].inverse();
+  MomentArray phi_solved = invM * phi_linear;
+
+  return phi_flat + phi_solved.dot(local_r);
 }
 
-// CHANGE EVALUATE_FLUX_AT_POINT FOR EXTERNAL SOURCE AND UNCOLLIDED FLUX
 
 } // namespace openmc

@@ -110,12 +110,14 @@ public:
   void convert_external_sources();
   void count_external_source_regions();
   virtual void flux_swap();
-  virtual double evaluate_flux_at_point(Position r, int64_t sr, int g, int ft) const;
+  virtual double evaluate_flux_at_point(Position r, int64_t sr, int g) const;
   double compute_fixed_source_normalization_factor() const;
   void compute_first_collided_flux();
   void normalize_uncollided_scalar_flux(double number_of_particles);
   void update_volume_uncollided_flux();
-  void reset_hit();
+  virtual void update_external_source(); // check if virtual
+  virtual void compute_uncollided_scalar_flux(); // check if virtual
+  virtual int64_t check_fsr_hits();
 
   //----------------------------------------------------------------------------
   // Static Data members

@@ -22,8 +22,6 @@ from openmc.data import gnds_name, zam
 from .nuclide import FissionYieldDistribution, Nuclide
 import openmc.data
 
-from ._density_funcs import oxidation_state
-
 # tuple of (possible MT values, secondaries)
 ReactionInfo = namedtuple('ReactionInfo', ('mts', 'secondaries'))
 
@@ -743,9 +741,9 @@ class Chain:
             # Build transfer terms matrices
             if isinstance(mats, str):
                 mat = mats
-                if current_timestep not in tr_rates.get_material_timesteps(mat):
+                if not tr_rates.get_components(mat, current_timestep):
                     break
-                components = tr_rates.get_components(mat)
+                components = tr_rates.get_components(mat, current_timestep)
                 if elm in components:
                     matrix[i, i] = sum(tr_rates.get_external_rate(mat, elm))
                 elif nuc.name in components:
@@ -790,7 +788,7 @@ class Chain:
             Sparse vector representing external source term.
 
         """
-        if current_timestep not in ext_source_rates.get_material_timesteps(mat):
+        if not ext_source_rates.get_components(mat, current_timestep):
             return
         # Use DOK as intermediate representation
         n = len(self)
@@ -798,7 +796,7 @@ class Chain:
 
         for i, nuc in enumerate(self.nuclides):
             # Build source term vector
-            if nuc.name in ext_source_rates.get_components(mat):
+            if nuc.name in ext_source_rates.get_components(mat, current_timestep):
                 vector[i] = sum(ext_source_rates.get_external_rate(mat, nuc.name))
             else:
                 vector[i] = 0.0

@@ -29,7 +29,7 @@ from .chain import Chain
 from .results import Results
 from .pool import deplete
 from .reaction_rates import ReactionRates
-from .transfer_rates import TransferRates
+from .transfer_rates import TransferRates, ExternalSourceRates
 from openmc import Material, Cell
 from .batchwise import (BatchwisePure, BatchwiseCellGeometrical, BatchwiseCellTemperature,
     BatchwiseMaterialRefuel, BatchwiseMaterialDilute, BatchwiseMaterialAdd,

@@ -99,51 +99,31 @@ class ExternalRates:
         check_type('component', component, str)
         return [i[1] for i in self.external_rates[material_id][component]]
 
-    def get_components(self, material):
-        """Extract removing elements and/or nuclides for a given material
+    def get_components(self, material, timestep):
+        """Extract removing elements and/or nuclides for a given material at a
+        given timestep
 
         Parameters
         ----------
         material : openmc.Material or str or int
             Depletable material
+        timestep : int
+            Current timestep index
 
         Returns
         -------
-        elements : list
-            List of elements and nuclides where transfer rates exist
+        components : list
+            List of elements or nuclides with external rates set at a given
+            timestep
 
         """
         material_id = self._get_material_id(material)
         if material_id in self.external_rates:
-            return self.external_rates[material_id].keys()
-
-    def get_material_timesteps(self, material):
-        """Extract timesteps indeces to where external_rates are defined
-        for a given material.
-
-        Parameters
-        ----------
-        material : openmc.Material or str or int
-            Depletable material
-
-        Returns
-        -------
-        timesteps_per_mat : np.array
-            Array of timesteps indeces to where external_rates are defined
-
-        """
-        material_id = self._get_material_id(material)
-
-        timesteps_per_mat = []
-        for component in self.get_components(material_id):
-            timesteps_per_comp = \
-                np.concatenate(
-                    [i[0] for i in self.external_rates[material_id][component]]
-                )
-            timesteps_per_mat = np.unique(np.concatenate([timesteps_per_mat,
-                                                          timesteps_per_comp]))
-
-        return timesteps_per_mat
+            components = [
+                comp for comp,vals in self.external_rates[material_id].items() \
+                    if timestep in vals[0][0]
+            ]
+            return components
 
 class TransferRates(ExternalRates):
     """Class for defining continuous removals and feeds.

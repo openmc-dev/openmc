@@ -16,9 +16,14 @@ fi
 
 # Install DAGMC if needed
 if [[ $DAGMC = 'y' ]]; then
-    #if [[ ! -d "$HOME/DAGMC" | ! -d "$HOME/MOAB"]]; then
-    ./tools/ci/gha-install-dagmc.sh
-    #else
+    if [ ! -d "$HOME/DAGMC" ] || [ ! -d "$HOME/MOAB" ]
+    then
+        ./tools/ci/gha-install-dagmc.sh
+    else
+        cd $HOME/DAGMC/build && make -j install
+        cd $HOME/MOAB/build && make -j install
+        cd $GITHUB_WORKSPACE
+    fi
 fi
 
 # Install NCrystal if needed

@@ -6,7 +6,7 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
 
     # Build in debug mode by default with support for MCPL
     pip_command = ['pip', 'install', '.[test,vtk]']
-    pip_suffix = ['--config-settings=cmake.args=-DCMAKE_BUILD_TYPE=ON;-DOPENMC_USE_MCPL=ON']
+    pip_suffix = ['--config-settings=cmake.args="-DCMAKE_BUILD_TYPE=ON;-DOPENMC_USE_MCPL=ON']
 
     # Turn off OpenMP if specified
     if not omp:
@@ -40,7 +40,7 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
         pip_suffix.append(f'-DCMAKE_PREFIX_PATH={ncrystal_cmake_path}')
 
     # Build in coverage mode for coverage testing
-    pip_suffix.append('-DOPENMC_ENABLE_COVERAGE=ON')
+    pip_suffix.append('-DOPENMC_ENABLE_COVERAGE=ON"')
 
     pip_command.append(';'.join(pip_suffix))
     # Build and install

@@ -10,8 +10,8 @@ pip install --upgrade numpy
 if [[ ! -d "$HOME/NJOY2016" ]]; then
     ./tools/ci/gha-install-njoy.sh
 else
-    cd $HOME/NJOY2016/build && cmake -Dstatic=on .. &&
-    make 2>/dev/null && sudo make install
+    cd $HOME/NJOY2016/build && sudo make install
+    cd $GITHUB_WORKSPACE
 fi
 
 # Install DAGMC if needed
@@ -40,8 +40,8 @@ fi
 if [[ ! -d "$HOME/mcpl" ]]; then
     ./tools/ci/gha-install-mcpl.sh
 else
-    cd $HOME/mcpl/build && cmake  .. && 
-    make 2>/dev/null && sudo make install
+    cd $HOME/mcpl/build && sudo make install
+    cd $GITHUB_WORKSPACE
 fi
 
 

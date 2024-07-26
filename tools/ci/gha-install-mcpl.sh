@@ -2,13 +2,12 @@
 set -ex
 
 # MCPL variables
-MCPL_BRANCH='master'
 MCPL_REPO='https://github.com/mctools/mcpl'
-#MCPL_INSTALL_DIR=$HOME/mcpl/
+MCPL_INSTALL_DIR=$HOME/mcpl/build
 
 cd $HOME
 git clone $MCPL_REPO
 cd mcpl
 mkdir build && cd build
-cmake .. # -DCMAKE_INSTALL_PREFIX=$MCPL_INSTALL_DIR
+cmake .. #-DCMAKE_INSTALL_PREFIX=$MCPL_INSTALL_DIR &&
 make 2>/dev/null && sudo make install

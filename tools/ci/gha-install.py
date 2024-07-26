@@ -14,7 +14,7 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
 
     # Use MPI wrappers when building in parallel
     if mpi:
-        pip_suffix.append('-DOPENMC_USE_MPI=on')
+        pip_suffix.append('-DOPENMC_USE_MPI=ON')
 
     # Tell CMake to prefer parallel HDF5 if specified
     if phdf5:
@@ -40,7 +40,7 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
         pip_suffix.append(f'-DCMAKE_PREFIX_PATH={ncrystal_cmake_path}')
 
     # Build in coverage mode for coverage testing
-    pip_suffix.append('-DOPENMC_ENABLE_COVERAGE=on')
+    pip_suffix.append('-DOPENMC_ENABLE_COVERAGE=ON')
 
     pip_command.append(';'.join(pip_suffix))
     # Build and install

@@ -145,9 +145,7 @@ jobs:
 
       - name: test
         shell: bash
-        run: |
-          CTEST_OUTPUT_ON_FAILURE=1 make test -C $GITHUB_WORKSPACE/build/
-          $GITHUB_WORKSPACE/tools/ci/gha-script.sh
+        run: $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
       - name: after_success
         shell: bash

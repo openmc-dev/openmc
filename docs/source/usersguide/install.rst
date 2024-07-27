@@ -176,7 +176,7 @@ feature can be used to access the installed packages.
 .. _install_source:
 
 --------------------------------
-Compiling from Source with CMake
+Compiling from source with CMake
 --------------------------------
 
 .. _prerequisites:
@@ -533,7 +533,7 @@ Package Index (`PyPI <https://pypi.org/>`_). The pip command will also compile
 an executable named ``openmc`` and install it (by default in the bin folder of
 the Python package directory).
 
-Passing CMake Options to via pip
+Passing CMake arguments via pip
 --------------------------------
 
 If you need to pass CMake options to the build process, you can do so by
@@ -543,13 +543,13 @@ For example, to build OpenMC with MPI support, you can run:
 
 .. code-block:: sh
 
-    python -m pip install . --global-option="build_ext" --global-option="--" --global-option="-DOPENMC_USE_MPI=ON"
+    python -m pip install . --config-settings=cmake.args=-DOPENMC_USE_MPI=ON
 
 To build OpenMC with DAGMC support two CMake arguments are needed, you can run:
 
 .. code-block:: sh
 
-    python -m pip install . --global-option="build_ext" --global-option="--" --global-option="-DOPENMC_USE_DAGMC=ON" --global-option="-DDAGMC_ROOT=/path/to/dagmc/installation"
+    python -m pip install . --config-settings=cmake.args="-DOPENMC_USE_DAGMC=ON;DDAGMC_ROOT=/path/to/dagmc/installation"
 
 Installing in "Development" Mode
 --------------------------------

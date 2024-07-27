@@ -43,6 +43,7 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
     pip_suffix.append('-DOPENMC_ENABLE_COVERAGE=ON"')
 
     pip_command.append(';'.join(pip_suffix))
+    pip_command.append('--verbose')
     # Build and install
     print(' '.join(pip_command))
     subprocess.check_call(pip_command)

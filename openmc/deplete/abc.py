@@ -16,7 +16,6 @@ from typing import Optional, Union, Sequence
 from warnings import warn
 
 import numpy as np
-
 from uncertainties import ufloat
 
 from openmc.checkvalue import check_type, check_greater_than, PathLike
@@ -29,6 +28,7 @@ from .results import Results
 from .pool import deplete
 from .reaction_rates import ReactionRates
 from .transfer_rates import TransferRates, ExternalSourceRates
+
 
 __all__ = [
     "OperatorResult", "TransportOperator",
@@ -769,22 +769,6 @@ class Integrator(ABC):
         return (self.operator.prev_res[-1].time[-1],
                 len(self.operator.prev_res) - 1)
 
-    def _get_bos_from_batchwise(self, step_index, bos_conc):
-        """Get BOS from criticality batch-wise control
-        """
-        x = deepcopy(bos_conc)
-        # Get new vector after keff criticality control
-        x, root = self.batchwise.search_for_keff(x, step_index)
-        return x, root
-
-    def _get_bos_from_batchwise(self, step_index, bos_conc):
-        """Get BOS from criticality batch-wise control
-        """
-        x = deepcopy(bos_conc)
-        # Get new vector after keff criticality control
-        x, root = self.batchwise.search_for_keff(x, step_index)
-        return x, root
-
     def integrate(
             self,
             final_step: bool = True,
@@ -844,7 +828,7 @@ class Integrator(ABC):
                 print(f"[openmc.deplete] t={t} (final operator evaluation)")
             res_list = [self.operator(n, source_rate if final_step else 0.0)]
             StepResult.save(self.operator, [n], res_list, [t, t],
-                    source_rate, self._i_res + len(self), proc_time, path)
+                         source_rate, self._i_res + len(self), proc_time, path)
             self.operator.write_bos_data(len(self) + self._i_res)
 
         self.operator.finalize()

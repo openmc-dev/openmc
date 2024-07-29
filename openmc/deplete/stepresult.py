@@ -538,6 +538,7 @@ class StepResult:
         """
         # Get indexing terms
         vol_dict, nuc_list, burn_list, full_burn_list = op.get_results_info()
+
         stages = len(x)
 
         # Create results

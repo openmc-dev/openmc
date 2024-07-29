@@ -34,7 +34,6 @@ make install
 #      yet. If it appears in the future, we should add it here.
 
 # Output the configuration to the log
-
 "${INST_DIR}/bin/ncrystal-config" --setup
 
 # Change environmental variables

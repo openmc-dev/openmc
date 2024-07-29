@@ -134,7 +134,7 @@ jobs:
         if: ${{ matrix.vectfit == 'y' }}
         run: sudo apt install -y libblas-dev liblapack-dev
 
-      - name: Hash remote required dependencies
+      - name: Hash dependencies to check caches
         run: |
           $GITHUB_WORKSPACE/tools/ci/gha-caches.sh
           
@@ -158,7 +158,7 @@ jobs:
         if: ${{ matrix.ncrystal == 'y' }}
         uses: actions/cache@v4
         with:
-          path: 
+          path: |
             ~/ncrystal_bld
             ~/ncrystal_inst
           key: NCrystal-${{ env.NC_HASH }} 
@@ -189,11 +189,11 @@ jobs:
         shell: bash
         run: $GITHUB_WORKSPACE/tools/ci/gha-before-script.sh
 
-      #- name: test
-      #  shell: bash
-      #  run: |
-      #    CTEST_OUTPUT_ON_FAILURE=1 make test -C $GITHUB_WORKSPACE/build/
-      #    $GITHUB_WORKSPACE/tools/ci/gha-script.sh
+      - name: test
+        shell: bash
+        run: |
+          CTEST_OUTPUT_ON_FAILURE=1 make test -C $GITHUB_WORKSPACE/build/
+          $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
       - name: after_success
         shell: bash

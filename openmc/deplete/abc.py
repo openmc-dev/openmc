@@ -805,6 +805,7 @@ class Integrator(ABC):
                 if i > 0 or self.operator.prev_res is None:
                     n, res = self._get_bos_data_from_operator(i, source_rate, n)
                 else:
+                    n, res = self._get_bos_data_from_restart(source_rate, n)
 
                 # Solve Bateman equations over time interval
                 proc_time, n_list, res_list = self(n, res.rates, dt, source_rate, i)
@@ -815,6 +816,7 @@ class Integrator(ABC):
 
                 # Remove actual EOS concentration for next step
                 n = n_list.pop()
+                
                 StepResult.save(self.operator, n_list, res_list, [t, t + dt],
                                 source_rate, self._i_res + i, proc_time, path)
 

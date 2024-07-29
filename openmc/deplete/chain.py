@@ -21,6 +21,7 @@ from openmc.data import gnds_name, zam
 from .nuclide import FissionYieldDistribution, Nuclide
 import openmc.data
 
+
 # tuple of (possible MT values, secondaries)
 ReactionInfo = namedtuple('ReactionInfo', ('mts', 'secondaries'))
 

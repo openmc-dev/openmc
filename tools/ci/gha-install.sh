@@ -28,7 +28,14 @@ fi
 
 # Install NCrystal if needed
 if [[ $NCRYSTAL = 'y' ]]; then
-    ./tools/ci/gha-install-ncrystal.sh
+    if [ ! -d "$HOME/ncrystal_bld" ]
+    then
+        ./tools/ci/gha-install-ncrystal.sh
+    else
+        cd $HOME/ncrystal_bld && make -j install
+        eval $( "$HOME/ncrystal_inst/bin/ncrystal-config" --setup )
+        cd $GITHUB_WORKSPACE
+    fi
 fi
 
 # Install vectfit for WMP generation if needed

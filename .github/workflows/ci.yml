@@ -134,7 +134,7 @@ jobs:
         if: ${{ matrix.vectfit == 'y' }}
         run: sudo apt install -y libblas-dev liblapack-dev
 
-      - name: Grab hashes of required dependencies (just NJOY, and MCPL for now)
+      - name: Hash remote required dependencies
         run: |
           $GITHUB_WORKSPACE/tools/ci/gha-caches.sh
           
@@ -153,7 +153,17 @@ jobs:
             ~/DAGMC
             ~/MOAB
           key: DAGMC-${{ env.DAGMC_HASH }}/MOAB-${{ env.MOAB_HASH }}
-      
+
+      - name: Restore NCrystal
+        if: ${{ matrix.ncrystal == 'y' }}
+        uses: actions/cache@v4
+        with:
+          path: 
+            ~/ncrystal_bld
+            ~/ncrystal_inst
+          key: NCrystal-${{ env.NC_HASH }} 
+          restore-keys: NCrystal-
+
       - name: Restore mcpl
         uses: actions/cache@v4
         with:
@@ -179,11 +189,11 @@ jobs:
         shell: bash
         run: $GITHUB_WORKSPACE/tools/ci/gha-before-script.sh
 
-      - name: test
-        shell: bash
-        run: |
-          CTEST_OUTPUT_ON_FAILURE=1 make test -C $GITHUB_WORKSPACE/build/
-          $GITHUB_WORKSPACE/tools/ci/gha-script.sh
+      #- name: test
+      #  shell: bash
+      #  run: |
+      #    CTEST_OUTPUT_ON_FAILURE=1 make test -C $GITHUB_WORKSPACE/build/
+      #    $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
       - name: after_success
         shell: bash

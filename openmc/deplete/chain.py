@@ -7,7 +7,6 @@ loaded from an .xml file and all the nuclides are linked together.
 from io import StringIO
 from itertools import chain
 import math
-import numpy as np
 import re
 from collections import defaultdict, namedtuple
 from collections.abc import Mapping, Iterable
@@ -679,25 +678,6 @@ class Chain:
 
         # Return CSC representation instead of DOK
         return matrix.tocsc()
-
-    def add_redox_term(self, matrix, buffer, oxidation_states):
-
-        elm = [re.split(r'\d+', nuc.name)[0] for nuc in self.nuclides]
-        ox = np.array([oxidation_states[el] if el in oxidation_states \
-                        else 0 for el in elm])
-        buffer_inds = {nuc:self.nuclide_dict[nuc] for nuc in buffer}
-
-        array = matrix.toarray()
-        redox = np.array([])
-        for i in range(len(self)):
-            #all products terms should be multiplied by their
-            #respective oxidation states and detracted from the diagonal term.
-            prods = np.concatenate((array[:i,i],array[i+1:,i])) * np.delete(ox,i)
-            redox = np.append(redox, array[i,i] * ox[i] + sum(prods))
-        for nuc,k in buffer_inds.items():
-            array[k] -= redox * buffer[nuc] / ox[k]
-
-        return sp.dok_matrix(array)
 
     def form_rr_term(self, tr_rates, current_timestep, mats):
         """Function to form the transfer rate term matrices.

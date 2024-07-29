@@ -19,10 +19,9 @@ import numpy as np
 
 from uncertainties import ufloat
 
-from openmc.checkvalue import check_type, check_greater_than, PathLike, check_value
+from openmc.checkvalue import check_type, check_greater_than, PathLike
 from openmc.mpi import comm
 from openmc.utility_funcs import change_directory
-
 from openmc import Material
 from .stepresult import StepResult
 from .chain import Chain
@@ -30,10 +29,6 @@ from .results import Results
 from .pool import deplete
 from .reaction_rates import ReactionRates
 from .transfer_rates import TransferRates, ExternalSourceRates
-from openmc import Material, Cell
-from .batchwise import (BatchwisePure, BatchwiseCellGeometrical, BatchwiseCellTemperature,
-    BatchwiseMaterialRefuel, BatchwiseMaterialDilute, BatchwiseMaterialAdd,
-    BatchwiseSchemeStd, BatchwiseSchemeRefuel, BatchwiseSchemeFlex)
 
 __all__ = [
     "OperatorResult", "TransportOperator",
@@ -548,9 +543,6 @@ class Integrator(ABC):
 
     transfer_rates : openmc.deplete.TransferRates
         Instance of TransferRates class to perform continuous transfer during depletion
-    batchwise : openmc.deplete.Batchwise
-        Instance of Batchwise class to perform batch-wise scheme during
-        transport-depletion simulation.
 
         .. versionadded:: 0.14.0
     external_source_rates : openmc.deplete.ExternalSourceRates
@@ -646,7 +638,6 @@ class Integrator(ABC):
 
         self.transfer_rates = None
         self.external_source_rates = None
-        self.batchwise = None
 
         if isinstance(solver, str):
             # Delay importing of cram module, which requires this file
@@ -769,20 +760,14 @@ class Integrator(ABC):
         k = ufloat(res.k[0, 0], res.k[0, 1])
 
         # Scale reaction rates by ratio of source rates
-        if res.source_rate != 0.0:
-            rates *= source_rate / res.source_rate
+        rates *= source_rate / res.source_rate
         return bos_conc, OperatorResult(k, rates)
 
     def _get_start_data(self):
         if self.operator.prev_res is None:
             return 0.0, 0
-        else:
-            if comm.size != 1:
-                return (self.operator.prev_res[-1].time[-1],
-                        int(len(self.operator.prev_res)/2) - 1)
-            else:
-                return (self.operator.prev_res[-1].time[-1],
-                        len(self.operator.prev_res) - 1)
+        return (self.operator.prev_res[-1].time[-1],
+                len(self.operator.prev_res) - 1)
 
     def _get_bos_from_batchwise(self, step_index, bos_conc):
         """Get BOS from criticality batch-wise control
@@ -834,31 +819,8 @@ class Integrator(ABC):
 
                 # Solve transport equation (or obtain result from restart)
                 if i > 0 or self.operator.prev_res is None:
-                    # Update geometry/material according to batchwise definition
-                    if self.batchwise:
-                        if source_rate != 0.0:
-                            n, root = self._get_bos_from_batchwise(i, n)
-                        else:
-                            # Store root at previous timestep
-                            root = self.batchwise.get_root()
-                    else:
-                        root = None
                     n, res = self._get_bos_data_from_operator(i, source_rate, n)
                 else:
-                    n, res = self._get_bos_data_from_restart(i, source_rate, n)
-                    if self.batchwise:
-                        root = self.operator.prev_res[-1].batchwise
-                        #TODO: this is just temporary (import math)
-                        import math
-                        if math.isnan(root):
-                            prev_res_ts = -2
-                            while (math.isnan(root)):
-                                root = self.operator.prev_res[prev_res_ts].batchwise
-                                prev_res_ts -= 1
-
-                        self.batchwise.update_from_restart(i, n, root)
-                    else:
-                        root = None
 
                 # Solve Bateman equations over time interval
                 proc_time, n_list, res_list = self(n, res.rates, dt, source_rate, i)
@@ -870,7 +832,7 @@ class Integrator(ABC):
                 # Remove actual EOS concentration for next step
                 n = n_list.pop()
                 StepResult.save(self.operator, n_list, res_list, [t, t + dt],
-                                source_rate, self._i_res + i, proc_time, root, path)
+                                source_rate, self._i_res + i, proc_time, path)
 
                 t += dt
 
@@ -880,131 +842,12 @@ class Integrator(ABC):
             # solve)
             if output and final_step and comm.rank == 0:
                 print(f"[openmc.deplete] t={t} (final operator evaluation)")
-            if self.batchwise and source_rate != 0.0:
-                n, root = self._get_bos_from_batchwise(i+1, n)
-            else:
-                root = None
             res_list = [self.operator(n, source_rate if final_step else 0.0)]
             StepResult.save(self.operator, [n], res_list, [t, t],
-                    source_rate, self._i_res + len(self), proc_time, root, path)
+                    source_rate, self._i_res + len(self), proc_time, path)
             self.operator.write_bos_data(len(self) + self._i_res)
 
         self.operator.finalize()
-
-    def integrate_adaptive(self, material_id, nuclides, final_step=True,
-                    output=True, tol=2e-7, err=2e-4, rho1=0.5, rho2=5, f=0.8):
-        """Perform the entire depletion process across all steps
-
-        Parameters
-        ----------
-        final_step : bool, optional
-            Indicate whether or not a transport solve should be run at the end
-            of the last timestep.
-
-            .. versionadded:: 0.12.1
-        output : bool, optional
-            Indicate whether to display information about progress
-
-            .. versionadded:: 0.13.1
-        """
-        with change_directory(self.operator.output_dir):
-            n = self.operator.initial_condition()
-            t, self._i_res = self._get_start_data()
-
-            nuc_ids = [id for nuc,id in self.chain.nuclide_dict.items() if nuc in nuclides]
-
-            dt = self.timesteps[0]
-            i = 0
-            source_rate = self.source_rates[0]
-
-            while t <= self.timesteps.sum():
-
-                if output and comm.rank == 0:
-                    print(f"[openmc.deplete] t={t} s, dt={dt} s, source={source_rate}")
-
-                # Solve transport equation (or obtain result from restart)
-                if i > 0 or self.operator.prev_res is None:
-                    # Update geometry/material according to batchwise definition
-                    if self.batchwise:
-                        if source_rate != 0.0:
-                            n, root = self._get_bos_from_batchwise(i, n)
-                        else:
-                            # Store root at previous timestep
-                            root = self.batchwise._get_cell_attrib()
-                    else:
-                        root = None
-                    n, res = self._get_bos_data_from_operator(i, source_rate, n)
-                else:
-                    n, res = self._get_bos_data_from_restart(i, source_rate, n)
-                    if self.batchwise:
-                        root = self.operator.prev_res[-1].batchwise
-                        #TODO: this is just temporary (import math)
-                        import math
-                        if math.isnan(root):
-                            prev_res_ts = -2
-                            while (math.isnan(root)):
-                                root = self.operator.prev_res[prev_res_ts].batchwise
-                                prev_res_ts -= 1
-
-                        self.batchwise.update_from_restart(i, n, root)
-                    else:
-                        root = None
-
-                # Solve Bateman equations over time interval
-                proc_time, n_list, res_list = self(n, res.rates, dt, source_rate, i)
-
-                # Insert BOS concentration, transport results
-                n_list.insert(0, n)
-                res_list.insert(0, res)
-
-                # Remove actual EOS concentration for next step
-                n = n_list.pop()
-                StepResult.save(self.operator, n_list, res_list, [t, t + dt],
-                                source_rate, self._i_res + i, proc_time, root)
-
-                for rank in range(comm.size):
-                    number_i = comm.bcast(self.operator.number, root=rank)
-                    if material_id in number_i.materials:
-                        rank_mat = rank
-
-                if material_id in self.operator.local_mats:
-                    mat_idx = self.operator.local_mats.index(material_id)
-                    dt *= self._adapt_timestep(n_list[1:][0], n, mat_idx, nuc_ids,
-                                           tol, err, rho1, rho2, f)
-                comm.barrier()
-                dt = comm.bcast(dt, root=rank_mat)
-
-                t += dt
-                i += 1
-            # Final simulation -- in the case that final_step is False, a zero
-            # source rate is passed to the transport operator (which knows to
-            # just return zero reaction rates without actually doing a transport
-            # solve)
-            if output and final_step and comm.rank == 0:
-                print(f"[openmc.deplete] t={t} (final operator evaluation)")
-            if self.batchwise and source_rate != 0.0:
-                n, root = self._get_bos_from_batchwise(i+1, n)
-            else:
-                root = None
-            res_list = [self.operator(n, source_rate if final_step else 0.0)]
-            StepResult.save(self.operator, [n], res_list, [t, t],
-                         source_rate, self._i_res + i, proc_time, root)
-            self.operator.write_bos_data(i + self._i_res)
-
-        self.operator.finalize()
-
-    def _adapt_timestep(self, n_pred, n_corr, mat_idx, nuc_ids, tol, err, rho1,
-                        rho2, f ):
-
-        filt_pred = np.take(n_pred[mat_idx], nuc_ids)
-        filt_corr = np.take(n_corr[mat_idx], nuc_ids)
-
-        err_vec = abs(filt_corr - filt_pred)
-        x = min((tol + err * filt_corr) / err_vec)
-        adapt = max(min(f * x ** (1 / (self._num_stages + 1)) , rho2), rho1)
-
-        print(f'Timestep adapting factor: {adapt}')
-        return adapt
 
     def add_transfer_rate(
             self,
@@ -1086,74 +929,6 @@ class Integrator(ABC):
                         external_source_vector, external_source_rate,
                         external_source_rate_units, timesteps)
 
-    def add_batchwise(self, obj, attr, **kwargs):
-        """Add batchwise operation to integrator scheme.
-
-        Parameters
-        ----------
-        obj : openmc.Cell or openmc.Material object or id or str name
-            Cell or Materials identifier to where add batchwise scheme
-        attr : str
-            Attribute to specify the type of batchwise scheme. Accepted values
-            are: 'translation', 'rotation', 'temperature' for an openmc.Cell
-            object; 'refuel' for an openmc.Material object.
-        **kwargs
-            keyword arguments that are passed to the batchwise class.
-
-        """
-        check_value('attribute', attr, ('translation', 'rotation',
-                                        'temperature', 'refuel','dilute',
-                                        'addition'))
-        if attr in ('translation', 'rotation'):
-            batchwise = BatchwiseCellGeometrical
-        elif attr == 'temperature':
-            batchwise = BatchwiseCellTemperature
-        elif attr == 'refuel':
-            batchwise = BatchwiseMaterialRefuel
-        elif attr == 'dilute':
-            batchwise = BatchwiseMaterialDilute
-        elif attr == 'addition':
-            batchwise = BatchwiseMaterialAdd
-
-        batchwise_inst = batchwise.from_params(obj, attr, self.operator,
-                                           self.operator.model, **kwargs)
-        if self.batchwise is None:
-            self.batchwise = batchwise_inst
-        else:
-            if not isinstance(self.batchwise, list):
-                self.batchwise = [self.batchwise]
-            self.batchwise.append(batchwise_inst)
-
-    def add_batchwise_scheme(self, scheme_name, **kwargs):
-        """Add batchwise wrapper to integrator scheme, after calls to
-        meth:`add_batchwise`.
-
-        Parameters
-        ----------
-        wrap_name : str
-            wrap_name of wrapper function. So far only '1' or '2'.
-        **kwargs
-            keyword arguments that are passed to the batchwise wrapper class.
-
-        """
-        if scheme_name == 'std':
-            self.batchwise = BatchwiseSchemeStd(self.batchwise, len(self), **kwargs)
-        elif scheme_name == 'refuel':
-            self.batchwise = BatchwiseSchemeRefuel(self.batchwise, **kwargs)
-        elif scheme_name == 'flex':
-            self.batchwise = BatchwiseSchemeFlex(self.batchwise, len(self), **kwargs)
-
-    def add_density_function(self, mats, density_func, oxidation_states):
-        self.batchwise.set_density_function(mats, density_func, oxidation_states)
-
-    def add_redox(self, mat, buffer, oxidation_states):
-        self.transfer_rates.set_redox(mat, buffer, oxidation_states)
-
-    def add_material(self, mat, value, mat_vector, timestep, quantity='grams'):
-        if self.batchwise is None:
-            self.batchwise = BatchwisePure(self.operator, self.operator.model)
-        self.batchwise.add_material(mat, value, mat_vector, timestep,
-                                    quantity)
 @add_params
 class SIIntegrator(Integrator):
     r"""Abstract class for the Stochastic Implicit Euler integrators

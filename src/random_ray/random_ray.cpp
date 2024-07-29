@@ -397,7 +397,7 @@ void RandomRay::attenuate_flux_flat_source(double distance, bool is_active)
     if (domain_->was_hit_[source_region] == 0) {
       domain_->was_hit_[source_region] = 1;
       // Check if new cell was hit and change for true
-      domain_->new_fsr_fc = {true};
+      //domain_->new_fsr_fc = {true};
     }
 
     // Accomulate volume (ray distance) into this iteration's estimate
@@ -493,12 +493,22 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
   // be no estimate of its centroid. We detect this by checking if it has
   // any accumulated volume. If its volume is zero, just use the midpoint
   // of the ray as the region's centroid.
-  if (domain->volume_t_[source_region]) {
-    rm_local = midpoint - centroid;
-    r0_local = r() - centroid;
+  if(settings::FIRST_COLLIDED_FLUX){ /// TRIPLE CHECK THIS
+    if (domain->volume_[source_region] == 0.0) {
+      rm_local = midpoint - centroid;
+      r0_local = r() - centroid;
+    } else {
+      rm_local = {0.0, 0.0, 0.0};
+      r0_local = -u() * 0.5 * distance;
+    }
   } else {
-    rm_local = {0.0, 0.0, 0.0};
-    r0_local = -u() * 0.5 * distance;
+    if (domain->volume_t_[source_region]) {
+      rm_local = midpoint - centroid;
+      r0_local = r() - centroid;
+    } else {
+      rm_local = {0.0, 0.0, 0.0};
+      r0_local = -u() * 0.5 * distance;
+    } 
   }
   double distance_2 = distance * distance;
 
@@ -586,7 +596,6 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
     if (!settings::FIRST_COLLIDED_FLUX || uncollided_flux_volume){
       domain_->volume_[source_region] += distance;
       domain->centroid_iteration_[source_region] += midpoint * distance;
-      // how to compute these ones
       moment_matrix_estimate *= distance;
       domain->mom_matrix_[source_region] += moment_matrix_estimate;
     }
@@ -597,8 +606,6 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
     // indicate that it now has
     if (domain_->was_hit_[source_region] == 0) {
       domain_->was_hit_[source_region] = 1;
-      // Check if new cell was hit and change for true
-      domain_->new_fsr_fc = {true};
     }
 
     // Tally valid position inside the source region (e.g., midpoint of

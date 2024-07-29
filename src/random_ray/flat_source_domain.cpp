@@ -272,7 +272,7 @@ void FlatSourceDomain::compute_uncollided_scalar_flux()
 #pragma omp parallel for
   for (int sr = 0; sr < n_source_regions_; sr++) {
     int was_cell_hit = was_hit_[sr];
-    double volume = volume_[sr];
+    double volume = volume_[sr]; // necessary???
     int material = material_[sr];
 
     for (int g = 0; g < negroups_; g++) {
@@ -383,7 +383,7 @@ void FlatSourceDomain::compute_first_collided_flux()
         float scalar_flux = scalar_uncollided_flux_[sr * negroups_ + e_in];
 
         float sigma_s = data::mg.macro_xs_[material].get_xs(
-          MgxsType::SCATTER, e_in, &e_out, nullptr, nullptr, t, a);
+          MgxsType::NU_SCATTER, e_in, &e_out, nullptr, nullptr, t, a);
         scatter_fixed_source += sigma_s * scalar_flux;
       }
 
@@ -705,7 +705,11 @@ void FlatSourceDomain::random_ray_tally()
     for (int g = 0; g < negroups_; g++) {
       int idx = sr * negroups_ + g;
       if (settings::first_collided_mode){
-        flux = (scalar_flux_new_[idx] + (scalar_uncollided_flux_[idx] / volume));
+        if(RandomRay::source_shape_ == RandomRaySourceShape::FLAT){
+          flux = (scalar_flux_new_[idx] + (scalar_uncollided_flux_[idx] / volume));
+        } else {
+          flux = (scalar_flux_new_[idx] + (scalar_uncollided_flux_[idx]));
+        }
       } else {
         flux = (scalar_flux_new_[idx] * source_normalization_factor) ;
       }

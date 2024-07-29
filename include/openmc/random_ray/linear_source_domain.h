@@ -41,12 +41,15 @@ public:
   void flux_swap() override;
   double evaluate_flux_at_point(Position r, int64_t sr, int g) const override;
 
-  void compute_first_collided_flux();
-  void normalize_uncollided_scalar_flux(double number_of_particles);
-
+  virtual void update_external_source();
+  virtual int64_t check_fsr_hits();
+  virtual void compute_uncollided_scalar_flux();
+  virtual void compute_first_collided_flux();
+  virtual void normalize_uncollided_scalar_flux(double number_of_particles);
+  virtual void update_volume_uncollided_flux();
   //----------------------------------------------------------------------------
   // Public Data members
-
+  bool new_fsr_fc {true};
 
   vector<MomentArray> source_gradients_;
   vector<MomentArray> flux_moments_old_;

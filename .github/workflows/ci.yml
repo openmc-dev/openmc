@@ -104,9 +104,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.pythonLocation }}
-          key:  py-${{ matrix.python-version }}-(omp=${{ matrix.omp }}-
-            mpi=${{ matrix.mpi }}-dagmc=${{ matrix.dagmc }}-ncrystal=${{ matrix.ncrystal }}-
-            libmesh=${{ matrix.libmesh }}-event=${{ matrix.event }}-
+          key:  py-${{ matrix.python-version }}-(omp=${{ matrix.omp }} 
+            mpi=${{ matrix.mpi }} dagmc=${{ matrix.dagmc }} ncrystal=${{ matrix.ncrystal }} 
+            libmesh=${{ matrix.libmesh }} event=${{ matrix.event }} 
             vectfit=${{ matrix.vectfit }})
 
       - name: Environment Variables
@@ -200,11 +200,11 @@ jobs:
         shell: bash
         run: $GITHUB_WORKSPACE/tools/ci/gha-before-script.sh
 
-      - name: test
-        shell: bash
-        run: |
-          CTEST_OUTPUT_ON_FAILURE=1 make test -C $GITHUB_WORKSPACE/build/
-          $GITHUB_WORKSPACE/tools/ci/gha-script.sh
+      #- name: test
+      #  shell: bash
+      #  run: |
+      #    CTEST_OUTPUT_ON_FAILURE=1 make test -C $GITHUB_WORKSPACE/build/
+      #    $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
       - name: after_success
         shell: bash

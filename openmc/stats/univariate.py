@@ -856,15 +856,12 @@ class Tabular(Univariate):
         points. Defaults to 'linear-linear'.
 
     Notes
-    -----
+    ----------
     The probabilities `p` are interpreted per unit of the corresponding independent 
     variable `x`. This follows the definition of a probability density function (PDF)
     in probability theory, where the PDF represents the relative likelihood of the 
-    random variable taking on a particular value per unit of the variable.
-
-    Example
-    -------
-    If `x` represents energy in eV, then `p` should represent probabilities per eV.
+    random variable taking on a particular value per unit of the variable. For example, 
+    if `x` represents energy in eV, then `p` should represent probabilities per eV.
 
     """
 

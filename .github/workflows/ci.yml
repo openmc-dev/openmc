@@ -104,9 +104,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.pythonLocation }}
-          key:  py-(python=${{ matrix.python-version }} (omp=${{ matrix.omp }}
-            mpi=${{ matrix.mpi }} dagmc=${{ matrix.dagmc }} ncrystal=${{ matrix.ncrystal }}
-            libmesh=${{ matrix.libmesh }} event=${{ matrix.event }}
+          key:  py-${{ matrix.python-version }}-(omp=${{ matrix.omp }}-
+            mpi=${{ matrix.mpi }}-dagmc=${{ matrix.dagmc }}-ncrystal=${{ matrix.ncrystal }}-
+            libmesh=${{ matrix.libmesh }}-event=${{ matrix.event }}-
             vectfit=${{ matrix.vectfit }})
 
       - name: Environment Variables

@@ -10,7 +10,7 @@ pip install --upgrade numpy
 if [[ ! -d "$HOME/NJOY2016" ]]; then
     ./tools/ci/gha-install-njoy.sh
 else
-    cd $HOME/NJOY2016/build && sudo make install
+    #cd $HOME/NJOY2016/build && sudo make install
     cd $GITHUB_WORKSPACE
 fi
 echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
@@ -21,8 +21,8 @@ if [[ $DAGMC = 'y' ]]; then
     then
         ./tools/ci/gha-install-dagmc.sh
     else
-        cd $HOME/DAGMC/build && make -j install
-        cd $HOME/MOAB/build && make -j install
+        #cd $HOME/DAGMC/build && make -j install
+        #cd $HOME/MOAB/build && make -j install
         cd $GITHUB_WORKSPACE
     fi
 fi
@@ -50,7 +50,7 @@ if [[ $LIBMESH = 'y' ]]; then
     then
         ./tools/ci/gha-install-libmesh.sh
     else
-        cd $HOME/LIBMESH/build && make -j4 install
+        #cd $HOME/LIBMESH/build && make -j4 install
         export LIBMESH_PC=$HOME/LIBMESH/lib/pkgconfig/
         cd $GITHUB_WORKSPACE
     fi
@@ -60,7 +60,7 @@ fi
 if [[ ! -d "$HOME/mcpl" ]]; then
     ./tools/ci/gha-install-mcpl.sh
 else
-    cd $HOME/mcpl/build && sudo make install
+    #cd $HOME/mcpl/build && sudo make install
     cd $GITHUB_WORKSPACE
 fi
 

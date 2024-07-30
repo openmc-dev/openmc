@@ -11,6 +11,8 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
 
     # Build in debug mode by default with support for MCPL
     cmake_cmd = ['cmake', '-DCMAKE_BUILD_TYPE=Debug', '-DOPENMC_USE_MCPL=on']
+    mcpl_cmake_path = os.environ.get('HOME') + '/mcpl/lib/cmake/MCPL'
+    cmake_cmd.append(f'-DMCPL_DIR={mcpl_cmake_path}')
 
     # Turn off OpenMP if specified
     if not omp:

@@ -200,11 +200,11 @@ jobs:
         shell: bash
         run: $GITHUB_WORKSPACE/tools/ci/gha-before-script.sh
 
-      #- name: test
-      #  shell: bash
-      #  run: |
-      #    CTEST_OUTPUT_ON_FAILURE=1 make test -C $GITHUB_WORKSPACE/build/
-      #    $GITHUB_WORKSPACE/tools/ci/gha-script.sh
+      - name: test
+        shell: bash
+        run: |
+          CTEST_OUTPUT_ON_FAILURE=1 make test -C $GITHUB_WORKSPACE/build/
+          $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
       - name: after_success
         shell: bash

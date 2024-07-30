@@ -113,16 +113,19 @@ public:
   virtual double evaluate_flux_at_point(Position r, int64_t sr, int g) const;
   double compute_fixed_source_normalization_factor() const;
   
+  virtual void update_external_linear_source();
   virtual void compute_first_collided_flux();
   virtual void normalize_uncollided_scalar_flux(double number_of_particles);
   virtual void update_volume_uncollided_flux();
-  virtual void update_external_source(); // check if virtual
+  virtual void update_external_flat_source(); // check if virtual
   virtual void compute_uncollided_scalar_flux(); // check if virtual
   virtual int64_t check_fsr_hits();
+  //virtual void uncollided_sum_source();
 
   //----------------------------------------------------------------------------
   // Static Data members
   static bool volume_normalized_flux_tallies_;
+  static bool first_collided_mode;
 
   //----------------------------------------------------------------------------
   // Public Data members
@@ -134,7 +137,9 @@ public:
                                           // non-zero external source terms
   bool new_fsr_fc {true};                 // Criteria to First Collided Loop
                                           // Check if new cell was hit
-  int flux_type {0}; // for plotting purposes.
+  bool negative_flux_check {false};       // Variable to print warning of negative fluxes
+
+  int flux_type {settings::volume_online_option}; // for plotting purposes.
 
   // 1D array representing source region starting offset for each OpenMC Cell
   // in model::cells

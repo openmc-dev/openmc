@@ -449,8 +449,7 @@ class Evaluation:
 
     def __repr__(self):
         name = self.target['zsymam'].replace(' ', '')
-        return '<{} for {} {}>'.format(self.info['sublibrary'], name,
-                                       self.info['library'])
+        return f"<{self.info['sublibrary']} for {name} {self.info['library']}>"
 
     def _read_header(self):
         file_obj = io.StringIO(self.section[1, 451])

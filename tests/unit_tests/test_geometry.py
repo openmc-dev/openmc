@@ -390,3 +390,16 @@ def test_get_all_nuclides():
     c2 = openmc.Cell(fill=m2, region=+s)
     geom = openmc.Geometry([c1, c2])
     assert geom.get_all_nuclides() == ['Be9', 'Fe56']
+
+
+def test_redundant_surfaces():
+    # Make sure boundary condition is accounted for
+    s1 = openmc.Sphere(r=5.0)
+    s2 = openmc.Sphere(r=5.0, boundary_type="vacuum")
+    c1 = openmc.Cell(region=-s1)
+    c2 = openmc.Cell(region=+s1)
+    u_lower = openmc.Universe(cells=[c1, c2])
+    c3 = openmc.Cell(fill=u_lower, region=-s2)
+    geom = openmc.Geometry([c3])
+    redundant_surfs = geom.remove_redundant_surfaces()
+    assert len(redundant_surfs) == 0

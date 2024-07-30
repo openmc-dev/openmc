@@ -1,6 +1,5 @@
 from __future__ import annotations
 import os
-import typing
 from collections import defaultdict
 from copy import deepcopy
 from collections.abc import Iterable
@@ -41,7 +40,7 @@ class Geometry:
 
     def __init__(
         self,
-        root: typing.Optional[openmc.UniverseBase] = None,
+        root: openmc.UniverseBase | Iterable[openmc.Cell] | None = None,
         merge_surfaces: bool = False,
         surface_precision: int = 10
     ):
@@ -134,7 +133,7 @@ class Geometry:
 
         # Create XML representation
         element = ET.Element("geometry")
-        self.root_universe.create_xml_subelement(element, memo=set())
+        self.root_universe.create_xml_subelement(element)
 
         # Sort the elements in the file
         element[:] = sorted(element, key=lambda x: (
@@ -267,7 +266,7 @@ class Geometry:
     def from_xml(
         cls,
         path: PathLike = 'geometry.xml',
-        materials: typing.Optional[typing.Union[PathLike, 'openmc.Materials']] = 'materials.xml'
+        materials: PathLike | 'openmc.Materials' | None = 'materials.xml'
     ) -> Geometry:
         """Generate geometry from XML file
 
@@ -293,7 +292,8 @@ class Geometry:
         if isinstance(materials, (str, os.PathLike)):
             materials = openmc.Materials.from_xml(materials)
 
-        tree = ET.parse(path)
+        parser = ET.XMLParser(huge_tree=True)
+        tree = ET.parse(path, parser=parser)
         root = tree.getroot()
 
         return cls.from_xml_element(root, materials)
@@ -315,7 +315,7 @@ class Geometry:
         """
         return self.root_universe.find(point)
 
-    def get_instances(self, paths) -> typing.Union[int, typing.List[int]]:
+    def get_instances(self, paths) -> int | list[int]:
         """Return the instance number(s) for a cell/material in a geometry path.
 
         The instance numbers are used as indices into distributed
@@ -362,7 +362,7 @@ class Geometry:
 
         return indices if return_list else indices[0]
 
-    def get_all_cells(self) -> typing.Dict[int, openmc.Cell]:
+    def get_all_cells(self) -> dict[int, openmc.Cell]:
         """Return all cells in the geometry.
 
         Returns
@@ -372,11 +372,11 @@ class Geometry:
 
         """
         if self.root_universe is not None:
-            return self.root_universe.get_all_cells(memo=set())
+            return self.root_universe.get_all_cells()
         else:
             return {}
 
-    def get_all_universes(self) -> typing.Dict[int, openmc.Universe]:
+    def get_all_universes(self) -> dict[int, openmc.Universe]:
         """Return all universes in the geometry.
 
         Returns
@@ -391,7 +391,7 @@ class Geometry:
         universes.update(self.root_universe.get_all_universes())
         return universes
 
-    def get_all_nuclides(self) -> typing.List[str]:
+    def get_all_nuclides(self) -> list[str]:
         """Return all nuclides within the geometry.
 
         Returns
@@ -405,7 +405,7 @@ class Geometry:
             all_nuclides |= set(material.get_nuclides())
         return sorted(all_nuclides)
 
-    def get_all_materials(self) -> typing.Dict[int, openmc.Material]:
+    def get_all_materials(self) -> dict[int, openmc.Material]:
         """Return all materials within the geometry.
 
         Returns
@@ -416,11 +416,11 @@ class Geometry:
 
         """
         if self.root_universe is not None:
-            return self.root_universe.get_all_materials(memo=set())
+            return self.root_universe.get_all_materials()
         else:
             return {}
 
-    def get_all_material_cells(self) -> typing.Dict[int, openmc.Cell]:
+    def get_all_material_cells(self) -> dict[int, openmc.Cell]:
         """Return all cells filled by a material
 
         Returns
@@ -439,7 +439,7 @@ class Geometry:
 
         return material_cells
 
-    def get_all_material_universes(self) -> typing.Dict[int, openmc.Universe]:
+    def get_all_material_universes(self) -> dict[int, openmc.Universe]:
         """Return all universes having at least one material-filled cell.
 
         This method can be used to find universes that have at least one cell
@@ -462,7 +462,7 @@ class Geometry:
 
         return material_universes
 
-    def get_all_lattices(self) -> typing.Dict[int, openmc.Lattice]:
+    def get_all_lattices(self) -> dict[int, openmc.Lattice]:
         """Return all lattices defined
 
         Returns
@@ -480,7 +480,7 @@ class Geometry:
 
         return lattices
 
-    def get_all_surfaces(self) -> typing.Dict[int, openmc.Surface]:
+    def get_all_surfaces(self) -> dict[int, openmc.Surface]:
         """
         Return all surfaces used in the geometry
 
@@ -516,7 +516,7 @@ class Geometry:
 
     def get_materials_by_name(
         self, name, case_sensitive=False, matching=False
-    ) -> typing.List[openmc.Material]:
+    ) -> list[openmc.Material]:
         """Return a list of materials with matching names.
 
         Parameters
@@ -539,7 +539,7 @@ class Geometry:
 
     def get_cells_by_name(
         self, name, case_sensitive=False, matching=False
-    ) -> typing.List[openmc.Cell]:
+    ) -> list[openmc.Cell]:
         """Return a list of cells with matching names.
 
         Parameters
@@ -562,7 +562,7 @@ class Geometry:
 
     def get_surfaces_by_name(
         self, name, case_sensitive=False, matching=False
-    ) -> typing.List[openmc.Surface]:
+    ) -> list[openmc.Surface]:
         """Return a list of surfaces with matching names.
 
         .. versionadded:: 0.13.3
@@ -587,7 +587,7 @@ class Geometry:
 
     def get_cells_by_fill_name(
         self, name, case_sensitive=False, matching=False
-    ) -> typing.List[openmc.Cell]:
+    ) -> list[openmc.Cell]:
         """Return a list of cells with fills with matching names.
 
         Parameters
@@ -634,7 +634,7 @@ class Geometry:
 
     def get_universes_by_name(
         self, name, case_sensitive=False, matching=False
-    ) -> typing.List[openmc.Universe]:
+    ) -> list[openmc.Universe]:
         """Return a list of universes with matching names.
 
         Parameters
@@ -657,7 +657,7 @@ class Geometry:
 
     def get_lattices_by_name(
         self, name, case_sensitive=False, matching=False
-    ) -> typing.List[openmc.Lattice]:
+    ) -> list[openmc.Lattice]:
         """Return a list of lattices with matching names.
 
         Parameters
@@ -678,7 +678,7 @@ class Geometry:
         """
         return self._get_domains_by_name(name, case_sensitive, matching, 'lattice')
 
-    def remove_redundant_surfaces(self) -> typing.Dict[int, openmc.Surface]:
+    def remove_redundant_surfaces(self) -> dict[int, openmc.Surface]:
         """Remove and return all of the redundant surfaces.
 
         Uses surface_precision attribute of Geometry instance for rounding and
@@ -700,7 +700,7 @@ class Geometry:
             coeffs = tuple(round(surf._coefficients[k],
                                  self.surface_precision)
                            for k in surf._coeff_keys)
-            key = (surf._type,) + coeffs
+            key = (surf._type, surf._boundary_type) + coeffs
             redundancies[key].append(surf)
 
         redundant_surfaces = {replace.id: keep

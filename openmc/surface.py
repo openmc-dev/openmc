@@ -14,8 +14,8 @@ from .region import Region, Intersection, Union
 from .bounding_box import BoundingBox
 
 
-_BOUNDARY_TYPES = ['transmission', 'vacuum', 'reflective', 'periodic', 'white']
-_ALBEDO_BOUNDARIES = ['reflective', 'periodic', 'white']
+_BOUNDARY_TYPES = {'transmission', 'vacuum', 'reflective', 'periodic', 'white'}
+_ALBEDO_BOUNDARIES = {'reflective', 'periodic', 'white'}
 
 _WARNING_UPPER = """\
 "{}(...) accepts an argument named '{}', not '{}'. Future versions of OpenMC \
@@ -187,8 +187,7 @@ class Surface(IDManagerMixin, ABC):
         coefficients = '{0: <20}'.format('\tCoefficients') + '\n'
 
         for coeff in self._coefficients:
-            coefficients += '{0: <20}{1}{2}\n'.format(
-                coeff, '=\t', self._coefficients[coeff])
+            coefficients += f'{coeff: <20}=\t{self._coefficients[coeff]}\n'
 
         string += coefficients
 
@@ -1748,6 +1747,11 @@ class Sphere(QuadricMixin, Surface):
 class Cone(QuadricMixin, Surface):
     """A conical surface parallel to the x-, y-, or z-axis.
 
+    .. Note::
+        This creates a double cone, which is two one-sided cones that meet at their apex.
+        For a one-sided cone see :class:`~openmc.model.XConeOneSided`,
+        :class:`~openmc.model.YConeOneSided`, and :class:`~openmc.model.ZConeOneSided`.
+
     Parameters
     ----------
     x0 : float, optional
@@ -1757,7 +1761,9 @@ class Cone(QuadricMixin, Surface):
     z0 : float, optional
         z-coordinate of the apex in [cm]. Defaults to 0.
     r2 : float, optional
-        Parameter related to the aperature. Defaults to 1.
+        Parameter related to the aperture [:math:`\\rm cm^2`].
+        It can be interpreted as the increase in the radius squared per cm along 
+        the cone's axis of revolution.
     dx : float, optional
         x-component of the vector representing the axis of the cone.
         Defaults to 0.
@@ -1791,7 +1797,7 @@ class Cone(QuadricMixin, Surface):
     z0 : float
         z-coordinate of the apex in [cm]
     r2 : float
-        Parameter related to the aperature
+        Parameter related to the aperature [cm^2]
     dx : float
         x-component of the vector representing the axis of the cone.
     dy : float
@@ -1900,6 +1906,10 @@ class XCone(QuadricMixin, Surface):
     """A cone parallel to the x-axis of the form :math:`(y - y_0)^2 + (z - z_0)^2 =
     r^2 (x - x_0)^2`.
 
+    .. Note::
+        This creates a double cone, which is two one-sided cones that meet at their apex.
+        For a one-sided cone see :class:`~openmc.model.XConeOneSided`.
+
     Parameters
     ----------
     x0 : float, optional
@@ -1909,7 +1919,9 @@ class XCone(QuadricMixin, Surface):
     z0 : float, optional
         z-coordinate of the apex in [cm]. Defaults to 0.
     r2 : float, optional
-        Parameter related to the aperature. Defaults to 1.
+        Parameter related to the aperture [:math:`\\rm cm^2`].
+        It can be interpreted as the increase in the radius squared per cm along 
+        the cone's axis of revolution.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -1995,6 +2007,10 @@ class YCone(QuadricMixin, Surface):
     """A cone parallel to the y-axis of the form :math:`(x - x_0)^2 + (z - z_0)^2 =
     r^2 (y - y_0)^2`.
 
+    .. Note::
+        This creates a double cone, which is two one-sided cones that meet at their apex.
+        For a one-sided cone see :class:`~openmc.model.YConeOneSided`.
+
     Parameters
     ----------
     x0 : float, optional
@@ -2004,7 +2020,9 @@ class YCone(QuadricMixin, Surface):
     z0 : float, optional
         z-coordinate of the apex in [cm]. Defaults to 0.
     r2 : float, optional
-        Parameter related to the aperature. Defaults to 1.
+        Parameter related to the aperture [:math:`\\rm cm^2`].
+        It can be interpreted as the increase in the radius squared per cm along 
+        the cone's axis of revolution.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -2090,6 +2108,10 @@ class ZCone(QuadricMixin, Surface):
     """A cone parallel to the z-axis of the form :math:`(x - x_0)^2 + (y - y_0)^2 =
     r^2 (z - z_0)^2`.
 
+    .. Note::
+        This creates a double cone, which is two one-sided cones that meet at their apex.
+        For a one-sided cone see :class:`~openmc.model.ZConeOneSided`.
+
     Parameters
     ----------
     x0 : float, optional
@@ -2099,7 +2121,9 @@ class ZCone(QuadricMixin, Surface):
     z0 : float, optional
         z-coordinate of the apex in [cm]. Defaults to 0.
     r2 : float, optional
-        Parameter related to the aperature. Defaults to 1.
+        Parameter related to the aperature [cm^2].
+        This is the square of the radius of the cone 1 cm from.
+        This can also be treated as the square of the slope of the cone relative to its axis.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles

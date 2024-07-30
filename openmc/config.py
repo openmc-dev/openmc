@@ -4,7 +4,7 @@ from pathlib import Path
 import warnings
 
 from openmc.data import DataLibrary
-from openmc.data.decay import _DECAY_PHOTON_ENERGY
+from openmc.data.decay import _DECAY_ENERGY, _DECAY_PHOTON_ENERGY
 
 __all__ = ["config"]
 
@@ -41,6 +41,7 @@ class _Config(MutableMapping):
             os.environ['OPENMC_CHAIN_FILE'] = str(value)
             # Reset photon source data since it relies on chain file
             _DECAY_PHOTON_ENERGY.clear()
+            _DECAY_ENERGY.clear()
         else:
             raise KeyError(f'Unrecognized config key: {key}. Acceptable keys '
                            'are "cross_sections", "mg_cross_sections" and '
@@ -76,7 +77,7 @@ def _default_config():
     if (chain_file is None and
         config.get('cross_sections') is not None and
         config['cross_sections'].exists()
-    ):
+        ):
         # Check for depletion chain in cross_sections.xml
         data = DataLibrary.from_xml(config['cross_sections'])
         for lib in reversed(data.libraries):

@@ -1,13 +1,11 @@
 from __future__ import annotations
 from collections.abc import Iterable
-from contextlib import contextmanager
 from functools import lru_cache
 import os
 from pathlib import Path
 from numbers import Integral
 from tempfile import NamedTemporaryFile
 import warnings
-from typing import Optional, Dict
 
 import h5py
 import lxml.etree as ET
@@ -18,18 +16,7 @@ from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import check_type, check_value, PathLike
 from openmc.exceptions import InvalidIDError
-
-
-@contextmanager
-def _change_directory(working_dir):
-    """A context manager for executing in a provided working directory"""
-    start_dir = Path.cwd()
-    Path.mkdir(working_dir, parents=True, exist_ok=True)
-    os.chdir(working_dir)
-    try:
-        yield
-    finally:
-        os.chdir(start_dir)
+from openmc.utility_funcs import change_directory
 
 
 class Model:
@@ -95,7 +82,7 @@ class Model:
             self.plots = plots
 
     @property
-    def geometry(self) -> Optional[openmc.Geometry]:
+    def geometry(self) -> openmc.Geometry | None:
         return self._geometry
 
     @geometry.setter
@@ -104,7 +91,7 @@ class Model:
         self._geometry = geometry
 
     @property
-    def materials(self) -> Optional[openmc.Materials]:
+    def materials(self) -> openmc.Materials | None:
         return self._materials
 
     @materials.setter
@@ -118,7 +105,7 @@ class Model:
                 self._materials.append(mat)
 
     @property
-    def settings(self) -> Optional[openmc.Settings]:
+    def settings(self) -> openmc.Settings | None:
         return self._settings
 
     @settings.setter
@@ -127,7 +114,7 @@ class Model:
         self._settings = settings
 
     @property
-    def tallies(self) -> Optional[openmc.Tallies]:
+    def tallies(self) -> openmc.Tallies | None:
         return self._tallies
 
     @tallies.setter
@@ -141,7 +128,7 @@ class Model:
                 self._tallies.append(tally)
 
     @property
-    def plots(self) -> Optional[openmc.Plots]:
+    def plots(self) -> openmc.Plots | None:
         return self._plots
 
     @plots.setter
@@ -181,7 +168,7 @@ class Model:
 
     @property
     @lru_cache(maxsize=None)
-    def _cells_by_name(self) -> Dict[int, openmc.Cell]:
+    def _cells_by_name(self) -> dict[int, openmc.Cell]:
         # Get the names maps, but since names are not unique, store a set for
         # each name key. In this way when the user requests a change by a name,
         # the change will be applied to all of the same name.
@@ -194,7 +181,7 @@ class Model:
 
     @property
     @lru_cache(maxsize=None)
-    def _materials_by_name(self) -> Dict[int, openmc.Material]:
+    def _materials_by_name(self) -> dict[int, openmc.Material]:
         if self.materials is None:
             mats = self.geometry.get_all_materials().values()
         else:
@@ -253,7 +240,8 @@ class Model:
         path : str or PathLike
             Path to model.xml file
         """
-        tree = ET.parse(path)
+        parser = ET.XMLParser(huge_tree=True)
+        tree = ET.parse(path, parser=parser)
         root = tree.getroot()
 
         model = cls()
@@ -394,7 +382,7 @@ class Model:
         # Store whether or not the library was initialized when we started
         started_initialized = self.is_initialized
 
-        with _change_directory(Path(directory)):
+        with change_directory(directory):
             with openmc.lib.quiet_dll(output):
                 # TODO: Support use of IndependentOperator too
                 depletion_operator = dep.CoupledOperator(self, **op_kwargs)
@@ -448,7 +436,7 @@ class Model:
         # Create directory if required
         d = Path(directory)
         if not d.is_dir():
-            d.mkdir(parents=True)
+            d.mkdir(parents=True, exist_ok=True)
 
         self.settings.export_to_xml(d)
         self.geometry.export_to_xml(d, remove_surfs=remove_surfs)
@@ -487,13 +475,16 @@ class Model:
         # if the provided path doesn't end with the XML extension, assume the
         # input path is meant to be a directory. If the directory does not
         # exist, create it and place a 'model.xml' file there.
-        if not str(xml_path).endswith('.xml') and not xml_path.exists():
-            os.mkdir(xml_path)
+        if not str(xml_path).endswith('.xml'):
+            if not xml_path.exists():
+                xml_path.mkdir(parents=True, exist_ok=True)
+            elif not xml_path.is_dir():
+                raise FileExistsError(f"File exists and is not a directory: '{xml_path}'")
             xml_path /= 'model.xml'
         # if this is an XML file location and the file's parent directory does
         # not exist, create it before continuing
         elif not xml_path.parent.exists():
-            os.mkdir(xml_path.parent)
+            xml_path.parent.mkdir(parents=True, exist_ok=True)
 
         if remove_surfs:
             warnings.warn("remove_surfs kwarg will be deprecated soon, please "
@@ -673,7 +664,7 @@ class Model:
         last_statepoint = None
 
         # Operate in the provided working directory
-        with _change_directory(Path(cwd)):
+        with change_directory(cwd):
             if self.is_initialized:
                 # Handle the run options as applicable
                 # First dont allow ones that must be set via init
@@ -708,9 +699,10 @@ class Model:
                     self.export_to_model_xml(**export_kwargs)
                 else:
                     self.export_to_xml(**export_kwargs)
+                path_input = export_kwargs.get("path", None)
                 openmc.run(particles, threads, geometry_debug, restart_file,
                            tracks, output, Path('.'), openmc_exec, mpi_args,
-                           event_based)
+                           event_based, path_input)
 
             # Get output directory and return the last statepoint written
             if self.settings.output and 'path' in self.settings.output:
@@ -762,7 +754,7 @@ class Model:
             raise ValueError("The Settings.volume_calculations attribute must"
                              " be specified before executing this method!")
 
-        with _change_directory(Path(cwd)):
+        with change_directory(cwd):
             if self.is_initialized:
                 if threads is not None:
                     msg = "Threads must be set via Model.is_initialized(...)"
@@ -824,7 +816,7 @@ class Model:
             raise ValueError("The Model.plots attribute must be specified "
                              "before executing this method!")
 
-        with _change_directory(Path(cwd)):
+        with change_directory(cwd):
             if self.is_initialized:
                 # Compute the volumes
                 openmc.lib.plot_geometry(output)

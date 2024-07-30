@@ -5,32 +5,32 @@ IndependentOperator class for depletion.
 """
 
 from __future__ import annotations
+from collections.abc import Iterable, Sequence
 from tempfile import TemporaryDirectory
-from typing import List, Tuple, Iterable, Optional, Union, Sequence
 
 import pandas as pd
 import numpy as np
 
 from openmc.checkvalue import check_type, check_value, check_iterable_type, PathLike
 from openmc.exceptions import DataError
+from openmc.utility_funcs import change_directory
 from openmc import StatePoint
 from openmc.mgxs import GROUP_STRUCTURES
 from openmc.data import REACTION_MT
 import openmc
-from .abc import change_directory
 from .chain import Chain, REACTIONS
 from .coupled_operator import _find_cross_sections, _get_nuclides_with_data
 import openmc.lib
 
 _valid_rxns = list(REACTIONS)
 _valid_rxns.append('fission')
+_valid_rxns.append('damage-energy')
 
 
-def _resolve_chain_file_path(chain_file: str):
-    # Determine what reactions and nuclides are available in chain
+def _resolve_chain_file_path(chain_file: str | None):
     if chain_file is None:
         chain_file = openmc.config.get('chain_file')
-        if 'chain_file' in openmc.config:
+        if 'chain_file' not in openmc.config:
             raise DataError(
                 "No depletion chain specified and could not find depletion "
                 "chain in openmc.config['chain_file']"
@@ -41,12 +41,12 @@ def _resolve_chain_file_path(chain_file: str):
 def get_microxs_and_flux(
         model: openmc.Model,
         domains,
-        nuclides: Optional[Iterable[str]] = None,
-        reactions: Optional[Iterable[str]] = None,
-        energies: Optional[Union[Iterable[float], str]] = None,
-        chain_file: Optional[PathLike] = None,
+        nuclides: Iterable[str] | None = None,
+        reactions: Iterable[str] | None = None,
+        energies: Iterable[float] | str | None = None,
+        chain_file: PathLike | None = None,
         run_kwargs=None
-    ) -> Tuple[List[np.ndarray], List[MicroXS]]:
+    ) -> tuple[list[np.ndarray], list[MicroXS]]:
     """Generate a microscopic cross sections and flux from a Model
 
     .. versionadded:: 0.14.0
@@ -183,7 +183,7 @@ class MicroXS:
         :data:`openmc.deplete.chain.REACTIONS`
 
     """
-    def __init__(self, data: np.ndarray, nuclides: List[str], reactions: List[str]):
+    def __init__(self, data: np.ndarray, nuclides: list[str], reactions: list[str]):
         # Validate inputs
         if data.shape[:2] != (len(nuclides), len(reactions)):
             raise ValueError(
@@ -205,12 +205,12 @@ class MicroXS:
     @classmethod
     def from_multigroup_flux(
         cls,
-        energies: Union[Sequence[float], str],
+        energies: Sequence[float] | str,
         multigroup_flux: Sequence[float],
-        chain_file: Optional[PathLike] = None,
+        chain_file: PathLike | None = None,
         temperature: float = 293.6,
-        nuclides: Optional[Sequence[str]] = None,
-        reactions: Optional[Sequence[str]] = None,
+        nuclides: Sequence[str] | None = None,
+        reactions: Sequence[str] | None = None,
         **init_kwargs: dict,
     ) -> MicroXS:
         """Generated microscopic cross sections from a known flux.
@@ -219,7 +219,7 @@ class MicroXS:
         sections available. MicroXS entry will be 0 if the nuclide cross section
         is not found.
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.0
 
         Parameters
         ----------
@@ -284,38 +284,37 @@ class MicroXS:
         # Create 2D array for microscopic cross sections
         microxs_arr = np.zeros((len(nuclides), len(mts)))
 
-        with TemporaryDirectory() as tmpdir:
-            # Create a material with all nuclides
-            mat_all_nucs = openmc.Material()
-            for nuc in nuclides:
-                if nuc in nuclides_with_data:
-                    mat_all_nucs.add_nuclide(nuc, 1.0)
-            mat_all_nucs.set_density("atom/b-cm", 1.0)
+        # Create a material with all nuclides
+        mat_all_nucs = openmc.Material()
+        for nuc in nuclides:
+            if nuc in nuclides_with_data:
+                mat_all_nucs.add_nuclide(nuc, 1.0)
+        mat_all_nucs.set_density("atom/b-cm", 1.0)
 
-            # Create simple model containing the above material
-            surf1 = openmc.Sphere(boundary_type="vacuum")
-            surf1_cell = openmc.Cell(fill=mat_all_nucs, region=-surf1)
-            model = openmc.Model()
-            model.geometry = openmc.Geometry([surf1_cell])
-            model.settings = openmc.Settings(
-                particles=1, batches=1, output={'summary': False})
+        # Create simple model containing the above material
+        surf1 = openmc.Sphere(boundary_type="vacuum")
+        surf1_cell = openmc.Cell(fill=mat_all_nucs, region=-surf1)
+        model = openmc.Model()
+        model.geometry = openmc.Geometry([surf1_cell])
+        model.settings = openmc.Settings(
+            particles=1, batches=1, output={'summary': False})
 
-            with change_directory(tmpdir):
-                # Export model within temporary directory
-                model.export_to_model_xml()
+        with change_directory(tmpdir=True):
+            # Export model within temporary directory
+            model.export_to_model_xml()
 
-                with openmc.lib.run_in_memory(**init_kwargs):
-                    # For each nuclide and reaction, compute the flux-averaged
-                    # cross section
-                    for nuc_index, nuc in enumerate(nuclides):
-                        if nuc not in nuclides_with_data:
-                            continue
-                        lib_nuc = openmc.lib.nuclides[nuc]
-                        for mt_index, mt in enumerate(mts):
-                            xs = lib_nuc.collapse_rate(
-                                mt, temperature, energies, multigroup_flux
-                            )
-                            microxs_arr[nuc_index, mt_index] = xs
+            with openmc.lib.run_in_memory(**init_kwargs):
+                # For each nuclide and reaction, compute the flux-averaged
+                # cross section
+                for nuc_index, nuc in enumerate(nuclides):
+                    if nuc not in nuclides_with_data:
+                        continue
+                    lib_nuc = openmc.lib.nuclides[nuc]
+                    for mt_index, mt in enumerate(mts):
+                        xs = lib_nuc.collapse_rate(
+                            mt, temperature, energies, multigroup_flux
+                        )
+                        microxs_arr[nuc_index, mt_index] = xs
 
         return cls(microxs_arr, nuclides, reactions)
 

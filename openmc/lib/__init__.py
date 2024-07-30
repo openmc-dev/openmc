@@ -13,10 +13,9 @@ functions or objects in :mod:`openmc.lib`, for example:
 """
 
 from ctypes import CDLL, c_bool, c_int
+import importlib.resources
 import os
 import sys
-
-import pkg_resources
 
 
 # Determine shared-library suffix
@@ -27,9 +26,8 @@ else:
 
 if os.environ.get('READTHEDOCS', None) != 'True':
     # Open shared library
-    _filename = pkg_resources.resource_filename(
-        __name__, 'libopenmc.{}'.format(_suffix))
-    _dll = CDLL(_filename)
+    _filename = importlib.resources.files(__name__) / f'libopenmc.{_suffix}'
+    _dll = CDLL(str(_filename))  # TODO: Remove str() when Python 3.12+
 else:
     # For documentation builds, we don't actually have the shared library
     # available. Instead, we create a mock object so that when the modules
@@ -53,6 +51,9 @@ def _libmesh_enabled():
 
 def _mcpl_enabled():
     return c_bool.in_dll(_dll, "MCPL_ENABLED").value
+
+def _uwuw_enabled():
+    return c_bool.in_dll(_dll, "UWUW_ENABLED").value
 
 
 from .error import *

@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="1">
+      <density units="g/cm3" value="1.0"/>
+      <nuclide ao="1.0" name="H1"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" region="-1" universe="1"/>
+    <surface boundary="reflective" coeffs="0.0 0.0 0.0 10.0" id="1" type="sphere"/>
+  </geometry>
+  <settings>
+    <run_mode>fixed source</run_mode>
+    <particles>2000</particles>
+    <batches>8</batches>
+    <source particle="neutron" strength="1.0" type="independent">
+      <space type="box">
+        <parameters>0.0 -10.0 -10.0 10.0 10.0 10.0</parameters>
+      </space>
+    </source>
+  </settings>
+  <tallies>
+    <mesh id="1">
+      <dimension>2 2 1</dimension>
+      <lower_left>-10.0 -10.0 -10.0</lower_left>
+      <upper_right>10.0 10.0 10.0</upper_right>
+    </mesh>
+    <filter id="1" type="mesh">
+      <bins>1</bins>
+    </filter>
+    <filter id="2" type="meshborn">
+      <bins>1</bins>
+    </filter>
+    <tally id="1" name="scatter">
+      <filters>1 2</filters>
+      <scores>scatter</scores>
+    </tally>
+    <tally id="2" name="scatter-mesh">
+      <filters>1</filters>
+      <scores>scatter</scores>
+    </tally>
+    <tally id="3" name="scatter-meshborn">
+      <filters>2</filters>
+      <scores>scatter</scores>
+    </tally>
+    <tally id="4" name="scatter-total">
+      <scores>scatter</scores>
+    </tally>
+  </tallies>
+</model>

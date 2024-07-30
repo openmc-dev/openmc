@@ -100,6 +100,7 @@ public:
   virtual void print_info() const = 0;
 
   const std::string& path_plot() const { return path_plot_; }
+  std::string& path_plot() { return path_plot_; }
   int id() const { return id_; }
   int level() const { return level_; }
 
@@ -121,7 +122,7 @@ struct IdData {
   IdData(size_t h_res, size_t v_res);
 
   // Methods
-  void set_value(size_t y, size_t x, const Particle& p, int level);
+  void set_value(size_t y, size_t x, const GeometryState& p, int level);
   void set_overlap(size_t y, size_t x);
 
   // Members
@@ -133,7 +134,7 @@ struct PropertyData {
   PropertyData(size_t h_res, size_t v_res);
 
   // Methods
-  void set_value(size_t y, size_t x, const Particle& p, int level);
+  void set_value(size_t y, size_t x, const GeometryState& p, int level);
   void set_overlap(size_t y, size_t x);
 
   // Members
@@ -205,7 +206,7 @@ T SlicePlotBase::get_map() const
 
 #pragma omp parallel
   {
-    Particle p;
+    GeometryState p;
     p.r() = xyz;
     p.u() = dir;
     p.coord(0).universe = model::root_universe;
@@ -291,7 +292,7 @@ private:
    * find a distance to the boundary in a non-standard surface intersection
    * check. It's an exhaustive search over surfaces in the top-level universe.
    */
-  static int advance_to_boundary_from_void(Particle& p);
+  static int advance_to_boundary_from_void(GeometryState& p);
 
   /* Checks if a vector of two TrackSegments is equivalent. We define this
    * to mean not having matching intersection lengths, but rather having

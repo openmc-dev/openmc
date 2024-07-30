@@ -122,10 +122,10 @@ class IncidentNeutron(EqualityMixin):
             if len(mts) > 0:
                 return self._get_redundant_reaction(mt, mts)
             else:
-                raise KeyError('No reaction with MT={}.'.format(mt))
+                raise KeyError(f'No reaction with MT={mt}.')
 
     def __repr__(self):
-        return "<IncidentNeutron: {}>".format(self.name)
+        return f"<IncidentNeutron: {self.name}>"
 
     def __iter__(self):
         return iter(self.reactions.values())
@@ -231,7 +231,7 @@ class IncidentNeutron(EqualityMixin):
 
     @property
     def temperatures(self):
-        return ["{}K".format(int(round(kT / K_BOLTZMANN))) for kT in self.kTs]
+        return [f"{int(round(kT / K_BOLTZMANN))}K" for kT in self.kTs]
 
     @property
     def atomic_symbol(self):
@@ -261,7 +261,7 @@ class IncidentNeutron(EqualityMixin):
         # Check if temprature already exists
         strT = data.temperatures[0]
         if strT in self.temperatures:
-            warn('Cross sections at T={} already exist.'.format(strT))
+            warn(f'Cross sections at T={strT} already exist.')
             return
 
         # Check that name matches
@@ -425,7 +425,7 @@ class IncidentNeutron(EqualityMixin):
 
         # Open file and write version
         with h5py.File(str(path), mode, libver=libver) as f:
-            f.attrs['filetype'] = np.string_('data_neutron')
+            f.attrs['filetype'] = np.bytes_('data_neutron')
             f.attrs['version'] = np.array(HDF5_VERSION)
 
             # Write basic data
@@ -461,7 +461,7 @@ class IncidentNeutron(EqualityMixin):
                     if not (photon_rx or rx.mt in keep_mts):
                         continue
 
-                rx_group = rxs_group.create_group('reaction_{:03}'.format(rx.mt))
+                rx_group = rxs_group.create_group(f'reaction_{rx.mt:03}')
                 rx.to_hdf5(rx_group)
 
                 # Write total nu data if available
@@ -593,7 +593,7 @@ class IncidentNeutron(EqualityMixin):
         zaid, xs = ace.name.split('.')
         if not xs.endswith('c'):
             raise TypeError(
-                "{} is not a continuous-energy neutron ACE table.".format(ace))
+                f"{ace} is not a continuous-energy neutron ACE table.")
         name, element, Z, mass_number, metastable = \
             get_metadata(int(zaid), metastable_scheme)
 
@@ -732,9 +732,9 @@ class IncidentNeutron(EqualityMixin):
         # Determine name
         element = ATOMIC_SYMBOL[atomic_number]
         if metastable > 0:
-            name = '{}{}_m{}'.format(element, mass_number, metastable)
+            name = f'{element}{mass_number}_m{metastable}'
         else:
-            name = '{}{}'.format(element, mass_number)
+            name = f'{element}{mass_number}'
 
         # Instantiate incident neutron data
         data = cls(name, atomic_number, mass_number, metastable,

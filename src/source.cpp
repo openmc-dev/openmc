@@ -47,8 +47,22 @@ vector<unique_ptr<Source>> external_sources;
 }
 
 //==============================================================================
-// Source create implementation
+// Source implementation
 //==============================================================================
+
+Source::Source(pugi::xml_node node)
+{
+  // Check for source strength
+  if (check_for_node(node, "strength")) {
+    strength_ = std::stod(get_node_value(node, "strength"));
+    if (strength_ < 0.0) {
+      fatal_error("Source strength is negative.");
+    }
+  }
+
+  // Check for additional defined constraints
+  read_constraints(node);
+}
 
 unique_ptr<Source> Source::create(pugi::xml_node node)
 {
@@ -79,6 +93,164 @@ unique_ptr<Source> Source::create(pugi::xml_node node)
   }
 }
 
+void Source::read_constraints(pugi::xml_node node)
+{
+  // Check for constraints node. For backwards compatibility, if no constraints
+  // node is given, still try searching for domain constraints from top-level
+  // node.
+  pugi::xml_node constraints_node = node.child("constraints");
+  if (constraints_node) {
+    node = constraints_node;
+  }
+
+  // Check for domains to reject from
+  if (check_for_node(node, "domain_type")) {
+    std::string domain_type = get_node_value(node, "domain_type");
+    if (domain_type == "cell") {
+      domain_type_ = DomainType::CELL;
+    } else if (domain_type == "material") {
+      domain_type_ = DomainType::MATERIAL;
+    } else if (domain_type == "universe") {
+      domain_type_ = DomainType::UNIVERSE;
+    } else {
+      fatal_error(
+        std::string("Unrecognized domain type for constraint: " + domain_type));
+    }
+
+    auto ids = get_node_array<int>(node, "domain_ids");
+    domain_ids_.insert(ids.begin(), ids.end());
+  }
+
+  if (check_for_node(node, "time_bounds")) {
+    auto ids = get_node_array<double>(node, "time_bounds");
+    if (ids.size() != 2) {
+      fatal_error("Time bounds must be represented by two numbers.");
+    }
+    time_bounds_ = std::make_pair(ids[0], ids[1]);
+  }
+  if (check_for_node(node, "energy_bounds")) {
+    auto ids = get_node_array<double>(node, "energy_bounds");
+    if (ids.size() != 2) {
+      fatal_error("Energy bounds must be represented by two numbers.");
+    }
+    energy_bounds_ = std::make_pair(ids[0], ids[1]);
+  }
+
+  if (check_for_node(node, "fissionable")) {
+    only_fissionable_ = get_node_value_bool(node, "fissionable");
+  }
+
+  // Check for how to handle rejected particles
+  if (check_for_node(node, "rejection_strategy")) {
+    std::string rejection_strategy = get_node_value(node, "rejection_strategy");
+    if (rejection_strategy == "kill") {
+      rejection_strategy_ = RejectionStrategy::KILL;
+    } else if (rejection_strategy == "resample") {
+      rejection_strategy_ = RejectionStrategy::RESAMPLE;
+    } else {
+      fatal_error(std::string(
+        "Unrecognized strategy source rejection: " + rejection_strategy));
+    }
+  }
+}
+
+SourceSite Source::sample_with_constraints(uint64_t* seed) const
+{
+  bool accepted = false;
+  static int n_reject = 0;
+  static int n_accept = 0;
+  SourceSite site;
+
+  while (!accepted) {
+    // Sample a source site without considering constraints yet
+    site = this->sample(seed);
+
+    if (constraints_applied()) {
+      accepted = true;
+    } else {
+      // Check whether sampled site satisfies constraints
+      accepted = satisfies_spatial_constraints(site.r) &&
+                 satisfies_energy_constraints(site.E) &&
+                 satisfies_time_constraints(site.time);
+      if (!accepted) {
+        ++n_reject;
+        if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
+            static_cast<double>(n_accept) / n_reject <=
+              EXTSRC_REJECT_FRACTION) {
+          fatal_error("More than 95% of external source sites sampled were "
+                      "rejected. Please check your source definition.");
+        }
+
+        // For the "kill" strategy, accept particle but set weight to 0 so that
+        // it is terminated immediately
+        if (rejection_strategy_ == RejectionStrategy::KILL) {
+          accepted = true;
+          site.wgt = 0.0;
+        }
+      }
+    }
+  }
+
+  // Increment number of accepted samples
+  ++n_accept;
+
+  return site;
+}
+
+bool Source::satisfies_energy_constraints(double E) const
+{
+  return E > energy_bounds_.first && E < energy_bounds_.second;
+}
+
+bool Source::satisfies_time_constraints(double time) const
+{
+  return time > time_bounds_.first && time < time_bounds_.second;
+}
+
+bool Source::satisfies_spatial_constraints(Position r) const
+{
+  GeometryState geom_state;
+  geom_state.r() = r;
+  geom_state.u() = {0.0, 0.0, 1.0};
+
+  // Reject particle if it's not in the geometry at all
+  bool found = exhaustive_find_cell(geom_state);
+  if (!found)
+    return false;
+
+  // Check the geometry state against specified domains
+  bool accepted = true;
+  if (!domain_ids_.empty()) {
+    if (domain_type_ == DomainType::MATERIAL) {
+      auto mat_index = geom_state.material();
+      if (mat_index != MATERIAL_VOID) {
+        accepted = contains(domain_ids_, model::materials[mat_index]->id());
+      }
+    } else {
+      for (int i = 0; i < geom_state.n_coord(); i++) {
+        auto id = (domain_type_ == DomainType::CELL)
+                    ? model::cells[geom_state.coord(i).cell]->id_
+                    : model::universes[geom_state.coord(i).universe]->id_;
+        if ((accepted = contains(domain_ids_, id)))
+          break;
+      }
+    }
+  }
+
+  // Check if spatial site is in fissionable material
+  if (accepted && only_fissionable_) {
+    // Determine material
+    auto mat_index = geom_state.material();
+    if (mat_index == MATERIAL_VOID) {
+      accepted = false;
+    } else {
+      accepted = model::materials[mat_index]->fissionable();
+    }
+  }
+
+  return accepted;
+}
+
 //==============================================================================
 // IndependentSource implementation
 //==============================================================================
@@ -89,7 +261,7 @@ IndependentSource::IndependentSource(
     energy_ {std::move(energy)}, time_ {std::move(time)}
 {}
 
-IndependentSource::IndependentSource(pugi::xml_node node)
+IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
 {
   // Check for particle type
   if (check_for_node(node, "particle")) {
@@ -104,11 +276,6 @@ IndependentSource::IndependentSource(pugi::xml_node node)
     }
   }
 
-  // Check for source strength
-  if (check_for_node(node, "strength")) {
-    strength_ = std::stod(get_node_value(node, "strength"));
-  }
-
   // Check for external source file
   if (check_for_node(node, "file")) {
 
@@ -120,6 +287,15 @@ IndependentSource::IndependentSource(pugi::xml_node node)
     } else {
       // If no spatial distribution specified, make it a point source
       space_ = UPtrSpace {new SpatialPoint()};
+    }
+
+    // For backwards compatibility, check for only fissionable setting on box
+    // source
+    auto space_box = dynamic_cast<SpatialBox*>(space_.get());
+    if (space_box) {
+      if (!only_fissionable_) {
+        only_fissionable_ = space_box->only_fissionable();
+      }
     }
 
     // Determine external source angular distribution
@@ -148,24 +324,6 @@ IndependentSource::IndependentSource(pugi::xml_node node)
       double p[] {1.0};
       time_ = UPtrDist {new Discrete {T, p, 1}};
     }
-
-    // Check for domains to reject from
-    if (check_for_node(node, "domain_type")) {
-      std::string domain_type = get_node_value(node, "domain_type");
-      if (domain_type == "cell") {
-        domain_type_ = DomainType::CELL;
-      } else if (domain_type == "material") {
-        domain_type_ = DomainType::MATERIAL;
-      } else if (domain_type == "universe") {
-        domain_type_ = DomainType::UNIVERSE;
-      } else {
-        fatal_error(std::string(
-          "Unrecognized domain type for source rejection: " + domain_type));
-      }
-
-      auto ids = get_node_array<int>(node, "domain_ids");
-      domain_ids_.insert(ids.begin(), ids.end());
-    }
   }
 }
 
@@ -174,60 +332,21 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
   SourceSite site;
   site.particle = particle_;
 
-  // Repeat sampling source location until a good site has been found
-  bool found = false;
-  int n_reject = 0;
+  // Repeat sampling source location until a good site has been accepted
+  bool accepted = false;
+  static int n_reject = 0;
   static int n_accept = 0;
 
-  while (!found) {
-    // Set particle type
-    Particle p;
-    p.type() = particle_;
-    p.u() = {0.0, 0.0, 1.0};
+  while (!accepted) {
 
     // Sample spatial distribution
-    p.r() = space_->sample(seed);
+    site.r = space_->sample(seed);
 
-    // Now search to see if location exists in geometry
-    found = exhaustive_find_cell(p);
-
-    // Check if spatial site is in fissionable material
-    if (found) {
-      auto space_box = dynamic_cast<SpatialBox*>(space_.get());
-      if (space_box) {
-        if (space_box->only_fissionable()) {
-          // Determine material
-          auto mat_index = p.material();
-          if (mat_index == MATERIAL_VOID) {
-            found = false;
-          } else {
-            found = model::materials[mat_index]->fissionable_;
-          }
-        }
-      }
-
-      // Rejection based on cells/materials/universes
-      if (!domain_ids_.empty()) {
-        found = false;
-        if (domain_type_ == DomainType::MATERIAL) {
-          auto mat_index = p.material();
-          if (mat_index != MATERIAL_VOID) {
-            found = contains(domain_ids_, model::materials[mat_index]->id());
-          }
-        } else {
-          for (int i = 0; i < p.n_coord(); i++) {
-            auto id = (domain_type_ == DomainType::CELL)
-                        ? model::cells[p.coord(i).cell]->id_
-                        : model::universes[p.coord(i).universe]->id_;
-            if ((found = contains(domain_ids_, id)))
-              break;
-          }
-        }
-      }
-    }
+    // Check if sampled position satisfies spatial constraints
+    accepted = satisfies_spatial_constraints(site.r);
 
     // Check for rejection
-    if (!found) {
+    if (!accepted) {
       ++n_reject;
       if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
           static_cast<double>(n_accept) / n_reject <= EXTSRC_REJECT_FRACTION) {
@@ -236,43 +355,46 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
                     "definition.");
       }
     }
-
-    site.r = p.r();
   }
 
   // Sample angle
   site.u = angle_->sample(seed);
 
-  // Check for monoenergetic source above maximum particle energy
-  auto p = static_cast<int>(particle_);
-  auto energy_ptr = dynamic_cast<Discrete*>(energy_.get());
-  if (energy_ptr) {
-    auto energies = xt::adapt(energy_ptr->x());
-    if (xt::any(energies > data::energy_max[p])) {
-      fatal_error("Source energy above range of energies of at least "
-                  "one cross section table");
+  // Sample energy and time for neutron and photon sources
+  if (settings::solver_type != SolverType::RANDOM_RAY) {
+    // Check for monoenergetic source above maximum particle energy
+    auto p = static_cast<int>(particle_);
+    auto energy_ptr = dynamic_cast<Discrete*>(energy_.get());
+    if (energy_ptr) {
+      auto energies = xt::adapt(energy_ptr->x());
+      if (xt::any(energies > data::energy_max[p])) {
+        fatal_error("Source energy above range of energies of at least "
+                    "one cross section table");
+      }
     }
-  }
 
-  while (true) {
-    // Sample energy spectrum
-    site.E = energy_->sample(seed);
+    while (true) {
+      // Sample energy spectrum
+      site.E = energy_->sample(seed);
 
-    // Resample if energy falls above maximum particle energy
-    if (site.E < data::energy_max[p])
-      break;
+      // Resample if energy falls above maximum particle energy
+      if (site.E < data::energy_max[p] and
+          (satisfies_energy_constraints(site.E)))
+        break;
 
-    n_reject++;
-    if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
-        static_cast<double>(n_accept) / n_reject <= EXTSRC_REJECT_FRACTION) {
-      fatal_error("More than 95% of external source sites sampled were "
-                  "rejected. Please check your external source energy spectrum "
-                  "definition.");
+      n_reject++;
+      if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
+          static_cast<double>(n_accept) / n_reject <= EXTSRC_REJECT_FRACTION) {
+        fatal_error(
+          "More than 95% of external source sites sampled were "
+          "rejected. Please check your external source energy spectrum "
+          "definition.");
+      }
     }
-  }
 
-  // Sample particle creation time
-  site.time = time_->sample(seed);
+    // Sample particle creation time
+    site.time = time_->sample(seed);
+  }
 
   // Increment number of accepted samples
   ++n_accept;
@@ -283,7 +405,8 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 //==============================================================================
 // FileSource implementation
 //==============================================================================
-FileSource::FileSource(pugi::xml_node node)
+
+FileSource::FileSource(pugi::xml_node node) : Source(node)
 {
   auto path = get_node_value(node, "file", false, true);
   if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
@@ -328,6 +451,7 @@ void FileSource::load_sites_from_file(const std::string& path)
 
 SourceSite FileSource::sample(uint64_t* seed) const
 {
+  // Sample a particle randomly from list
   size_t i_site = sites_.size() * prn(seed);
   return sites_[i_site];
 }
@@ -335,7 +459,8 @@ SourceSite FileSource::sample(uint64_t* seed) const
 //==============================================================================
 // CompiledSourceWrapper implementation
 //==============================================================================
-CompiledSourceWrapper::CompiledSourceWrapper(pugi::xml_node node)
+
+CompiledSourceWrapper::CompiledSourceWrapper(pugi::xml_node node) : Source(node)
 {
   // Get shared library path and parameters
   auto path = get_node_value(node, "library", false, true);
@@ -399,7 +524,7 @@ CompiledSourceWrapper::~CompiledSourceWrapper()
 // MeshSource implementation
 //==============================================================================
 
-MeshSource::MeshSource(pugi::xml_node node)
+MeshSource::MeshSource(pugi::xml_node node) : Source(node)
 {
   int32_t mesh_id = stoi(get_node_value(node, "mesh"));
   int32_t mesh_idx = model::mesh_map.at(mesh_id);
@@ -426,15 +551,27 @@ MeshSource::MeshSource(pugi::xml_node node)
 
 SourceSite MeshSource::sample(uint64_t* seed) const
 {
-  // sample location and element from mesh
-  auto mesh_location = space_->sample_mesh(seed);
+  // Sample the CDF defined in initialization above
+  int32_t element = space_->sample_element_index(seed);
 
-  // Sample source for the chosen element
-  int32_t element = mesh_location.first;
-  SourceSite site = source(element)->sample(seed);
+  // Sample position and apply rejection on spatial domains
+  Position r;
+  do {
+    r = space_->mesh()->sample_element(element, seed);
+  } while (!this->satisfies_spatial_constraints(r));
 
-  // Replace spatial position with the one already sampled
-  site.r = mesh_location.second;
+  SourceSite site;
+  while (true) {
+    // Sample source for the chosen element and replace the position
+    site = source(element)->sample_with_constraints(seed);
+    site.r = r;
+
+    // Apply other rejections
+    if (satisfies_energy_constraints(site.E) &&
+        satisfies_time_constraints(site.time)) {
+      break;
+    }
+  }
 
   return site;
 }
@@ -489,7 +626,7 @@ SourceSite sample_external_source(uint64_t* seed)
   }
 
   // Sample source site from i-th source distribution
-  SourceSite site {model::external_sources[i]->sample(seed)};
+  SourceSite site {model::external_sources[i]->sample_with_constraints(seed)};
 
   // If running in MG, convert site.E to group
   if (!settings::run_CE) {

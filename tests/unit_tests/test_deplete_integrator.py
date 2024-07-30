@@ -40,7 +40,7 @@ def test_results_save(run_in_tmpdir):
 
     stages = 3
 
-    np.random.seed(comm.rank)
+    rng = np.random.RandomState(comm.rank)
 
     # Mock geometry
     op = MagicMock()
@@ -68,26 +68,26 @@ def test_results_save(run_in_tmpdir):
     x2 = []
 
     for i in range(stages):
-        x1.append([np.random.rand(2), np.random.rand(2)])
-        x2.append([np.random.rand(2), np.random.rand(2)])
+        x1.append([rng.random(2), rng.random(2)])
+        x2.append([rng.random(2), rng.random(2)])
 
     # Construct r
     r1 = ReactionRates(burn_list, ["na", "nb"], ["ra", "rb"])
-    r1[:] = np.random.rand(2, 2, 2)
+    r1[:] = rng.random((2, 2, 2))
 
     rate1 = []
     rate2 = []
 
     for i in range(stages):
         rate1.append(copy.deepcopy(r1))
-        r1[:] = np.random.rand(2, 2, 2)
+        r1[:] = rng.random((2, 2, 2))
         rate2.append(copy.deepcopy(r1))
-        r1[:] = np.random.rand(2, 2, 2)
+        r1[:] = rng.random((2, 2, 2))
 
     # Create global terms
     # Col 0: eig, Col 1: uncertainty
-    eigvl1 = np.random.rand(stages, 2)
-    eigvl2 = np.random.rand(stages, 2)
+    eigvl1 = rng.random((stages, 2))
+    eigvl2 = rng.random((stages, 2))
 
     eigvl1 = comm.bcast(eigvl1, root=0)
     eigvl2 = comm.bcast(eigvl2, root=0)

@@ -95,6 +95,11 @@ _dll.openmc_simulation_finalize.errcheck = _error_handler
 _dll.openmc_statepoint_write.argtypes = [c_char_p, POINTER(c_bool)]
 _dll.openmc_statepoint_write.restype = c_int
 _dll.openmc_statepoint_write.errcheck = _error_handler
+_dll.openmc_statepoint_load.argtypes = [c_char_p]
+_dll.openmc_statepoint_load.restype = c_int
+_dll.openmc_statepoint_load.errcheck = _error_handler
+_dll.openmc_statepoint_write.restype = c_int
+_dll.openmc_statepoint_write.errcheck = _error_handler
 _dll.openmc_global_bounding_box.argtypes = [POINTER(c_double),
                                             POINTER(c_double)]
 _dll.openmc_global_bounding_box.restype = c_int
@@ -568,6 +573,19 @@ def statepoint_write(filename=None, write_source=True):
     _dll.openmc_statepoint_write(filename, c_bool(write_source))
 
 
+def statepoint_load(filename: PathLike):
+    """Load a statepoint file.
+
+    Parameters
+    ----------
+    filename : path-like
+        Path to the statepoint to load.
+
+    """
+    filename = c_char_p(str(filename).encode())
+    _dll.openmc_statepoint_load(filename)
+
+
 @contextmanager
 def run_in_memory(**kwargs):
     """Provides context manager for calling OpenMC shared library functions.
@@ -611,7 +629,7 @@ class _DLLGlobal:
 
 class _FortranObject:
     def __repr__(self):
-        return "{}[{}]".format(type(self).__name__, self._index)
+        return f"<{type(self).__name__}(index={self._index})>"
 
 
 class _FortranObjectWithID(_FortranObject):
@@ -621,6 +639,9 @@ class _FortranObjectWithID(_FortranObject):
         # assigned. If the array index of the object is out of bounds, an
         # OutOfBoundsError will be raised here by virtue of referencing self.id
         self.id
+
+    def __repr__(self):
+        return f"<{type(self).__name__}(id={self.id})>"
 
 
 @contextmanager

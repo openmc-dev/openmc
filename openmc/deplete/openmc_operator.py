@@ -7,7 +7,6 @@ transport-independent transport operators.
 
 from abc import abstractmethod
 from warnings import warn
-from typing import List, Tuple, Dict
 
 import numpy as np
 
@@ -142,6 +141,7 @@ class OpenMCOperator(TransportOperator):
 
         if diff_burnable_mats:
             self._differentiate_burnable_mats()
+            self.materials = self.model.materials
 
         # Determine which nuclides have cross section data
         # This nuclides variables contains every nuclides
@@ -184,7 +184,7 @@ class OpenMCOperator(TransportOperator):
         """Assign distribmats for each burnable material"""
         pass
 
-    def _get_burnable_mats(self) -> Tuple[List[str], Dict[str, float], List[str]]:
+    def _get_burnable_mats(self) -> tuple[list[str], dict[str, float], list[str]]:
         """Determine depletable materials, volumes, and nuclides
 
         Returns
@@ -213,7 +213,7 @@ class OpenMCOperator(TransportOperator):
                     msg = (f"Nuclilde {nuclide} in material {mat.id} is not "
                            "present in the depletion chain and has no cross "
                            "section data.")
-                    raise warn(msg)
+                    warn(msg)
             if mat.depletable:
                 burnable_mats.add(str(mat.id))
                 if mat.volume is None:

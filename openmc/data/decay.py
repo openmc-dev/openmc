@@ -2,7 +2,6 @@ from collections.abc import Iterable
 from io import StringIO
 from math import log
 import re
-from typing import Optional
 from warnings import warn
 
 import numpy as np
@@ -128,7 +127,7 @@ class FissionProductYields(EqualityMixin):
                     isomeric_state = int(values[4*j + 1])
                     name = ATOMIC_SYMBOL[Z] + str(A)
                     if isomeric_state > 0:
-                        name += '_m{}'.format(isomeric_state)
+                        name += f'_m{isomeric_state}'
                     yield_j = ufloat(values[4*j + 2], values[4*j + 3])
                     yields[name] = yield_j
 
@@ -257,9 +256,9 @@ class DecayMode(EqualityMixin):
                         Z += delta_Z
 
         if self._daughter_state > 0:
-            return '{}{}_m{}'.format(ATOMIC_SYMBOL[Z], A, self._daughter_state)
+            return f'{ATOMIC_SYMBOL[Z]}{A}_m{self._daughter_state}'
         else:
-            return '{}{}'.format(ATOMIC_SYMBOL[Z], A)
+            return f'{ATOMIC_SYMBOL[Z]}{A}'
 
     @property
     def parent(self):
@@ -350,10 +349,9 @@ class Decay(EqualityMixin):
         self.nuclide['mass_number'] = A
         self.nuclide['isomeric_state'] = metastable
         if metastable > 0:
-            self.nuclide['name'] = '{}{}_m{}'.format(ATOMIC_SYMBOL[Z], A,
-                                                     metastable)
+            self.nuclide['name'] = f'{ATOMIC_SYMBOL[Z]}{A}_m{metastable}'
         else:
-            self.nuclide['name'] = '{}{}'.format(ATOMIC_SYMBOL[Z], A)
+            self.nuclide['name'] = f'{ATOMIC_SYMBOL[Z]}{A}'
         self.nuclide['mass'] = items[1]  # AWR
         self.nuclide['excited_state'] = items[2]  # State of the original nuclide
         self.nuclide['stable'] = (items[4] == 1)  # Nucleus stability flag
@@ -580,7 +578,7 @@ class Decay(EqualityMixin):
 _DECAY_PHOTON_ENERGY = {}
 
 
-def decay_photon_energy(nuclide: str) -> Optional[Univariate]:
+def decay_photon_energy(nuclide: str) -> Univariate | None:
     """Get photon energy distribution resulting from the decay of a nuclide
 
     This function relies on data stored in a depletion chain. Before calling it

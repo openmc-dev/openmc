@@ -1,5 +1,5 @@
-import numpy as np
 import pytest
+import numpy as np
 
 import openmc
 import openmc.lib
@@ -8,7 +8,8 @@ from tests import cdtemp
 
 
 @pytest.fixture(scope='module', autouse=True)
-def double_lattice_model():
+def double_rect_lattice_model():
+    openmc.reset_auto_ids()
     model = openmc.Model()
 
     # Create a single material
@@ -39,6 +40,20 @@ def double_lattice_model():
     cell_with_lattice2.translation = (2., 0., 0.)
     model.geometry = openmc.Geometry([cell_with_lattice1, cell_with_lattice2])
 
+    tally = openmc.Tally(tally_id=1)
+    dcell_filter = openmc.DistribcellFilter(c)
+    tally.filters = [dcell_filter]
+    tally.scores = ['flux']
+    model.tallies = [tally]
+
+    # Add box source that covers the model space well
+    bbox = model.geometry.bounding_box
+    bbox[0][2] = -0.5
+    bbox[1][2] = 0.5
+    space = openmc.stats.Box(*bbox)
+    source = openmc.IndependentSource(space=space)
+    model.settings.source = source
+
     # Add necessary settings and export
     model.settings.batches = 10
     model.settings.inactive = 0
@@ -50,14 +65,13 @@ def double_lattice_model():
         yield
         openmc.lib.finalize()
 
-
 # This shows the expected cell instance numbers for each lattice position:
 #      ┌─┬─┬─┬─┐
 #      │2│3│6│7│
 #      ├─┼─┼─┼─┤
 #      │0│1│4│5│
 #      └─┴─┴─┴─┘
-expected_results = [
+rect_expected_results = [
     ((0.5, 0.5, 0.0), 0),
     ((1.5, 0.5, 0.0), 1),
     ((0.5, 1.5, 0.0), 2),
@@ -67,7 +81,16 @@ expected_results = [
     ((2.5, 1.5, 0.0), 6),
     ((3.5, 1.5, 0.0), 7),
 ]
-@pytest.mark.parametrize("r,expected_cell_instance", expected_results)
-def test_cell_instance_multilattice(r, expected_cell_instance):
+
+
+@pytest.mark.parametrize("r,expected_cell_instance", rect_expected_results, ids=lambda p : f'{p}')
+def test_cell_instance_rect_multilattice(r, expected_cell_instance):
     _, cell_instance = openmc.lib.find_cell(r)
     assert cell_instance == expected_cell_instance
+
+
+def test_cell_instance_multilattice_results():
+    openmc.run()
+    openmc.lib.run()
+    tally_results = openmc.lib.tallies[1].mean
+    assert (tally_results != 0.0).all()

@@ -5,9 +5,7 @@ from copy import deepcopy
 from numbers import Real
 from pathlib import Path
 import re
-import typing  # imported separately as py3.8 requires typing.Iterable
 import warnings
-from typing import Optional, List, Union, Dict
 
 import lxml.etree as ET
 import numpy as np
@@ -152,7 +150,7 @@ class Material(IDManagerMixin):
 
         for nuclide, percent, percent_type in self._nuclides:
             string += '{: <16}'.format('\t{}'.format(nuclide))
-            string += '=\t{: <12} [{}]\n'.format(percent, percent_type)
+            string += f'=\t{percent: <12} [{percent_type}]\n'
 
         if self._macroscopic is not None:
             string += '{: <16}\n'.format('\tMacroscopic Data')
@@ -161,11 +159,11 @@ class Material(IDManagerMixin):
         return string
 
     @property
-    def name(self) -> Optional[str]:
+    def name(self) -> str | None:
         return self._name
 
     @name.setter
-    def name(self, name: Optional[str]):
+    def name(self, name: str | None):
         if name is not None:
             cv.check_type(f'name for Material ID="{self._id}"',
                           name, str)
@@ -174,17 +172,17 @@ class Material(IDManagerMixin):
             self._name = ''
 
     @property
-    def temperature(self) -> Optional[float]:
+    def temperature(self) -> float | None:
         return self._temperature
 
     @temperature.setter
-    def temperature(self, temperature: Optional[Real]):
+    def temperature(self, temperature: Real | None):
         cv.check_type(f'Temperature for Material ID="{self._id}"',
                       temperature, (Real, type(None)))
         self._temperature = temperature
 
     @property
-    def density(self) -> Optional[float]:
+    def density(self) -> float | None:
         return self._density
 
     @property
@@ -202,7 +200,7 @@ class Material(IDManagerMixin):
         self._depletable = depletable
 
     @property
-    def paths(self) -> List[str]:
+    def paths(self) -> list[str]:
         if self._paths is None:
             raise ValueError('Material instance paths have not been determined. '
                              'Call the Geometry.determine_paths() method.')
@@ -217,15 +215,15 @@ class Material(IDManagerMixin):
         return self._num_instances
 
     @property
-    def nuclides(self) -> List[namedtuple]:
+    def nuclides(self) -> list[namedtuple]:
         return self._nuclides
 
     @property
-    def isotropic(self) -> List[str]:
+    def isotropic(self) -> list[str]:
         return self._isotropic
 
     @isotropic.setter
-    def isotropic(self, isotropic: typing.Iterable[str]):
+    def isotropic(self, isotropic: Iterable[str]):
         cv.check_iterable_type('Isotropic scattering nuclides', isotropic,
                                str)
         self._isotropic = list(isotropic)
@@ -248,7 +246,7 @@ class Material(IDManagerMixin):
         return mass / moles
 
     @property
-    def volume(self) -> Optional[float]:
+    def volume(self) -> float | None:
         return self._volume
 
     @volume.setter
@@ -258,7 +256,7 @@ class Material(IDManagerMixin):
         self._volume = volume
 
     @property
-    def ncrystal_cfg(self) -> Optional[str]:
+    def ncrystal_cfg(self) -> str | None:
         return self._ncrystal_cfg
 
     @property
@@ -274,7 +272,7 @@ class Material(IDManagerMixin):
         return density*self.volume
 
     @property
-    def decay_photon_energy(self) -> Optional[Univariate]:
+    def decay_photon_energy(self) -> Univariate | None:
         warnings.warn(
             "The 'decay_photon_energy' property has been replaced by the "
             "get_decay_photon_energy() method and will be removed in a future "
@@ -285,8 +283,8 @@ class Material(IDManagerMixin):
             self,
             clip_tolerance: float = 1e-6,
             units: str = 'Bq',
-            volume: Optional[float] = None
-        ) -> Optional[Univariate]:
+            volume: float | None = None
+        ) -> Univariate | None:
         r"""Return energy distribution of decay photons from unstable nuclides.
 
         .. versionadded:: 0.14.0
@@ -469,10 +467,9 @@ class Material(IDManagerMixin):
                 raise ValueError('No volume information found for material ID={}.'
                                  .format(self.id))
         else:
-            raise ValueError('No volume information found for material ID={}.'
-                             .format(self.id))
+            raise ValueError(f'No volume information found for material ID={self.id}.')
 
-    def set_density(self, units: str, density: Optional[float] = None):
+    def set_density(self, units: str, density: float | None = None):
         """Set the density of the material
 
         Parameters
@@ -500,7 +497,7 @@ class Material(IDManagerMixin):
                       '"sum" unit'.format(self.id)
                 raise ValueError(msg)
 
-            cv.check_type('the density for Material ID="{}"'.format(self.id),
+            cv.check_type(f'the density for Material ID="{self.id}"',
                           density, Real)
             self._density = density
 
@@ -520,6 +517,7 @@ class Material(IDManagerMixin):
         cv.check_type('nuclide', nuclide, str)
         cv.check_type('percent', percent, Real)
         cv.check_value('percent type', percent_type, {'ao', 'wo'})
+        cv.check_greater_than('percent', percent, 0, equality=True)
 
         if self._macroscopic is not None:
             msg = 'Unable to add a Nuclide to Material ID="{}" as a ' \
@@ -571,7 +569,7 @@ class Material(IDManagerMixin):
 
         for component, params in components.items():
             cv.check_type('component', component, str)
-            if isinstance(params, float):
+            if isinstance(params, Real):
                 params = {'percent': params}
 
             else:
@@ -685,10 +683,10 @@ class Material(IDManagerMixin):
             self._macroscopic = None
 
     def add_element(self, element: str, percent: float, percent_type: str = 'ao',
-                    enrichment: Optional[float] = None,
-                    enrichment_target: Optional[str] = None,
-                    enrichment_type: Optional[str] = None,
-                    cross_sections: Optional[str] = None):
+                    enrichment: float | None = None,
+                    enrichment_target: str | None = None,
+                    enrichment_type: str | None = None,
+                    cross_sections: str | None = None):
         """Add a natural element to the material
 
         Parameters
@@ -728,6 +726,7 @@ class Material(IDManagerMixin):
 
         cv.check_type('nuclide', element, str)
         cv.check_type('percent', percent, Real)
+        cv.check_greater_than('percent', percent, 0, equality=True)
         cv.check_value('percent type', percent_type, {'ao', 'wo'})
 
         # Make sure element name is just that
@@ -743,20 +742,18 @@ class Material(IDManagerMixin):
             el = element.lower()
             element = openmc.data.ELEMENT_SYMBOL.get(el)
             if element is None:
-                msg = 'Element name "{}" not recognised'.format(el)
+                msg = f'Element name "{el}" not recognised'
                 raise ValueError(msg)
         else:
             if element[0].islower():
-                msg = 'Element name "{}" should start with an uppercase ' \
-                      'letter'.format(element)
+                msg = f'Element name "{element}" should start with an uppercase letter'
                 raise ValueError(msg)
             if len(element) == 2 and element[1].isupper():
-                msg = 'Element name "{}" should end with a lowercase ' \
-                      'letter'.format(element)
+                msg = f'Element name "{element}" should end with a lowercase letter'
                 raise ValueError(msg)
             # skips the first entry of ATOMIC_SYMBOL which is n for neutron
             if element not in list(openmc.data.ATOMIC_SYMBOL.values())[1:]:
-                msg = 'Element name "{}" not recognised'.format(element)
+                msg = f'Element name "{element}" not recognised'
                 raise ValueError(msg)
 
         if self._macroscopic is not None:
@@ -800,9 +797,9 @@ class Material(IDManagerMixin):
             self.add_nuclide(*nuclide)
 
     def add_elements_from_formula(self, formula: str, percent_type: str = 'ao',
-                                  enrichment: Optional[float] = None,
-                                  enrichment_target: Optional[str] = None,
-                                  enrichment_type: Optional[str] = None):
+                                  enrichment: float | None = None,
+                                  enrichment_target: str | None = None,
+                                  enrichment_type: str | None = None):
         """Add a elements from a chemical formula to the material.
 
         .. versionadded:: 0.12
@@ -847,8 +844,7 @@ class Material(IDManagerMixin):
             for token in row:
                 if token.isalpha():
                     if token == "n" or token not in openmc.data.ATOMIC_NUMBER:
-                        msg = 'Formula entry {} not an element symbol.' \
-                              .format(token)
+                        msg = f'Formula entry {token} not an element symbol.'
                         raise ValueError(msg)
                 elif token not in ['(', ')', ''] and not token.isdigit():
                         msg = 'Formula must be made from a sequence of ' \
@@ -932,7 +928,7 @@ class Material(IDManagerMixin):
     def make_isotropic_in_lab(self):
         self.isotropic = [x.name for x in self._nuclides]
 
-    def get_elements(self) -> List[str]:
+    def get_elements(self) -> list[str]:
         """Returns all elements in the material
 
         .. versionadded:: 0.12
@@ -946,7 +942,7 @@ class Material(IDManagerMixin):
 
         return sorted({re.split(r'(\d+)', i)[0] for i in self.get_nuclides()})
 
-    def get_nuclides(self, element: Optional[str] = None) -> List[str]:
+    def get_nuclides(self, element: str | None = None) -> list[str]:
         """Returns a list of all nuclides in the material, if the element
         argument is specified then just nuclides of that element are returned.
 
@@ -976,7 +972,7 @@ class Material(IDManagerMixin):
 
         return matching_nuclides
 
-    def get_nuclide_densities(self) -> Dict[str, tuple]:
+    def get_nuclide_densities(self) -> dict[str, tuple]:
         """Returns all nuclides in the material and their densities
 
         Returns
@@ -994,7 +990,7 @@ class Material(IDManagerMixin):
 
         return nuclides
 
-    def get_nuclide_atom_densities(self, nuclide: Optional[str] = None) -> Dict[str, float]:
+    def get_nuclide_atom_densities(self, nuclide: str | None = None) -> dict[str, float]:
         """Returns one or all nuclides in the material and their atomic
         densities in units of atom/b-cm
 
@@ -1080,7 +1076,7 @@ class Material(IDManagerMixin):
         return nuclides
 
     def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False,
-                     volume: Optional[float] = None) -> Union[Dict[str, float], float]:
+                     volume: float | None = None) -> dict[str, float] | float:
         """Returns the activity of the material or for each nuclide in the
         material in units of [Bq], [Bq/g] or [Bq/cm3].
 
@@ -1103,7 +1099,7 @@ class Material(IDManagerMixin):
 
         Returns
         -------
-        typing.Union[dict, float]
+        Union[dict, float]
             If by_nuclide is True then a dictionary whose keys are nuclide
             names and values are activity is returned. Otherwise the activity
             of the material is returned as a float.
@@ -1127,7 +1123,7 @@ class Material(IDManagerMixin):
         return activity if by_nuclide else sum(activity.values())
 
     def get_decay_heat(self, units: str = 'W', by_nuclide: bool = False,
-                       volume: Optional[float] = None) -> Union[Dict[str, float], float]:
+                       volume: float | None = None) -> dict[str, float] | float:
         """Returns the decay heat of the material or for each nuclide in the
         material in units of [W], [W/g] or [W/cm3].
 
@@ -1175,7 +1171,7 @@ class Material(IDManagerMixin):
 
         return decayheat if by_nuclide else sum(decayheat.values())
 
-    def get_nuclide_atoms(self, volume: Optional[float] = None) -> Dict[str, float]:
+    def get_nuclide_atoms(self, volume: float | None = None) -> dict[str, float]:
         """Return number of atoms of each nuclide in the material
 
         .. versionadded:: 0.13.1
@@ -1204,7 +1200,7 @@ class Material(IDManagerMixin):
             atoms[nuclide] = 1.0e24 * atom_per_bcm * volume
         return atoms
 
-    def get_mass_density(self, nuclide: Optional[str] = None) -> float:
+    def get_mass_density(self, nuclide: str | None = None) -> float:
         """Return mass density of one or all nuclides
 
         Parameters
@@ -1226,7 +1222,7 @@ class Material(IDManagerMixin):
             mass_density += density_i
         return mass_density
 
-    def get_mass(self, nuclide: Optional[str] = None, volume: Optional[float] = None) -> float:
+    def get_mass(self, nuclide: str | None = None, volume: float | None = None) -> float:
         """Return mass of one or all nuclides.
 
         Note that this method requires that the :attr:`Material.volume` has
@@ -1256,7 +1252,7 @@ class Material(IDManagerMixin):
             raise ValueError("Volume must be set in order to determine mass.")
         return volume*self.get_mass_density(nuclide)
 
-    def clone(self, memo: Optional[dict] = None) -> Material:
+    def clone(self, memo: dict | None = None) -> Material:
         """Create a copy of this material with a new unique ID.
 
         Parameters
@@ -1313,8 +1309,8 @@ class Material(IDManagerMixin):
         return xml_element
 
     def _get_nuclides_xml(
-            self, nuclides: typing.Iterable[NuclideTuple],
-            nuclides_to_ignore: Optional[typing.Iterable[str]] = None)-> List[ET.Element]:
+            self, nuclides: Iterable[NuclideTuple],
+            nuclides_to_ignore: Iterable[str] | None = None)-> list[ET.Element]:
         xml_elements = []
 
         # Remove any nuclides to ignore from the XML export
@@ -1326,7 +1322,7 @@ class Material(IDManagerMixin):
         return xml_elements
 
     def to_xml_element(
-            self, nuclides_to_ignore: Optional[typing.Iterable[str]] = None) -> ET.Element:
+            self, nuclides_to_ignore: Iterable[str] | None = None) -> ET.Element:
         """Return XML representation of the material
 
         Parameters
@@ -1373,8 +1369,7 @@ class Material(IDManagerMixin):
                 subelement.set("value", str(self._density))
             subelement.set("units", self._density_units)
         else:
-            raise ValueError('Density has not been set for material {}!'
-                             .format(self.id))
+            raise ValueError(f'Density has not been set for material {self.id}!')
 
         if self._macroscopic is None:
             # Create nuclide XML subelements
@@ -1401,8 +1396,8 @@ class Material(IDManagerMixin):
         return element
 
     @classmethod
-    def mix_materials(cls, materials, fracs: typing.Iterable[float],
-                      percent_type: str = 'ao', name: Optional[str] = None) -> Material:
+    def mix_materials(cls, materials, fracs: Iterable[float],
+                      percent_type: str = 'ao', name: str | None = None) -> Material:
         """Mix materials together based on atom, weight, or volume fractions
 
         .. versionadded:: 0.12
@@ -1480,7 +1475,7 @@ class Material(IDManagerMixin):
 
         # Create the new material with the desired name
         if name is None:
-            name = '-'.join(['{}({})'.format(m.name, f) for m, f in
+            name = '-'.join([f'{m.name}({f})' for m, f in
                              zip(materials, fracs)])
         new_mat = openmc.Material(name=name)
 
@@ -1599,7 +1594,7 @@ class Materials(cv.CheckedList):
             self += materials
 
     @property
-    def cross_sections(self) -> Optional[Path]:
+    def cross_sections(self) -> Path | None:
         return self._cross_sections
 
     @cross_sections.setter
@@ -1689,7 +1684,7 @@ class Materials(cv.CheckedList):
             file.write(indentation)
 
     def export_to_xml(self, path: PathLike = 'materials.xml',
-                      nuclides_to_ignore: Optional[typing.Iterable[str]] = None):
+                      nuclides_to_ignore: Iterable[str] | None = None):
         """Export material collection to an XML file.
 
         Parameters
@@ -1754,7 +1749,8 @@ class Materials(cv.CheckedList):
             Materials collection
 
         """
-        tree = ET.parse(path)
+        parser = ET.XMLParser(huge_tree=True)
+        tree = ET.parse(path, parser=parser)
         root = tree.getroot()
 
         return cls.from_xml_element(root)

@@ -35,6 +35,7 @@ Simulation Settings
    :nosignatures:
    :template: myfunction.rst
 
+   openmc.read_source_file
    openmc.write_source_file
    openmc.wwinp_to_wws
 
@@ -127,6 +128,7 @@ Constructing Tallies
    openmc.CollisionFilter
    openmc.SurfaceFilter
    openmc.MeshFilter
+   openmc.MeshBornFilter
    openmc.MeshSurfaceFilter
    openmc.EnergyFilter
    openmc.EnergyoutFilter

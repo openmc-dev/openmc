@@ -13,6 +13,7 @@ else
     cd $HOME/NJOY2016/build && sudo make install
     cd $GITHUB_WORKSPACE
 fi
+echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
 
 # Install DAGMC if needed
 if [[ $DAGMC = 'y' ]]; then
@@ -32,7 +33,7 @@ if [[ $NCRYSTAL = 'y' ]]; then
     then
         ./tools/ci/gha-install-ncrystal.sh
     else
-        cd $HOME/ncrystal_bld && make install
+        cd $HOME/ncrystal_bld
         eval $( "$HOME/ncrystal_inst/bin/ncrystal-config" --setup )
         cd $GITHUB_WORKSPACE
     fi
@@ -45,7 +46,14 @@ fi
 
 # Install libMesh if needed
 if [[ $LIBMESH = 'y' ]]; then
-    ./tools/ci/gha-install-libmesh.sh
+    if [ ! -d "$HOME/LIBMESH" ]
+    then
+        ./tools/ci/gha-install-libmesh.sh
+    else
+        cd $HOME/LIBMESH/build && make -j4 install
+        export LIBMESH_PC=$HOME/LIBMESH/lib/pkgconfig/
+        cd $GITHUB_WORKSPACE
+    fi
 fi
 
 # Install MCPL

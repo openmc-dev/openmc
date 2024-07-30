@@ -9,5 +9,5 @@ cd $HOME
 git clone $NJOY_REPO
 cd NJOY2016
 mkdir build && cd build
-cmake -Dstatic=on .. #-DCMAKE_INSTALL_PREFIX=$NJOY_INSTALL_DIR &&
+cmake -Dstatic=on .. -DCMAKE_INSTALL_PREFIX=$NJOY_INSTALL_DIR &&
 make 2>/dev/null && sudo make install

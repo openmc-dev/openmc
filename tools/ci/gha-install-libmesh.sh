@@ -13,10 +13,11 @@ if [[ $MPI == 'y' ]]; then
     ../libmesh/configure --prefix=$HOME/LIBMESH CXX=mpicxx CC=mpicc FC=mpifort F77=mpif77 \
         --enable-exodus --disable-netcdf-4 --disable-eigen --disable-lapack
 else
-    ../libmesh/configure --prefix=$HOME/LIBMESH --enable-exodus --disable-netcdf-4 --disable-eigen --disable-lapack --disable-mpi
+    ../libmesh/configure --prefix=$HOME/LIBMESH --enable-exodus --disable-netcdf-4 \
+    --disable-eigen --disable-lapack --disable-mpi
 fi
 make -j4 install
 export LIBMESH_PC=$HOME/LIBMESH/lib/pkgconfig/
-rm -rf $HOME/LIBMESH/build
+#rm -rf $HOME/LIBMESH/build
 
 popd

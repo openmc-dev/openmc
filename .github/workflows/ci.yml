@@ -65,10 +65,7 @@ jobs:
             python-version: "3.10"
             omp: n
             mpi: y
-    name: "Python ${{ matrix.python-version }} (omp=${{ matrix.omp }}, 
-      mpi=${{ matrix.mpi }}, dagmc=${{ matrix.dagmc }}, 
-      ncrystal=${{ matrix.ncrystal }},libmesh=${{ matrix.libmesh }}, 
-      event=${{ matrix.event }}, vectfit=${{ matrix.vectfit }})"
+    
 
     env:
       MPI: ${{ matrix.mpi }}
@@ -86,6 +83,15 @@ jobs:
       # FI_EFA_FORK_SAFE=1 in more recent versions.
       RDMAV_FORK_SAFE: 1
 
+    name: "Py ${{ matrix.python-version }} 
+      (omp=${{ matrix.omp }}, 
+      mpi=${{ matrix.mpi }}, 
+      dagmc=${{ matrix.dagmc }}, 
+      ncrystal=${{ matrix.ncrystal }},
+      libmesh=${{ matrix.libmesh }}, 
+      event=${{ matrix.event }}, 
+      vectfit=${{ matrix.vectfit }})"
+
     steps:
       - uses: actions/checkout@v4
 
@@ -98,7 +104,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.pythonLocation }}
-          key:  python-cache-(python=${{ matrix.python-version }} (omp=${{ matrix.omp }}
+          key:  py-(python=${{ matrix.python-version }} (omp=${{ matrix.omp }}
             mpi=${{ matrix.mpi }} dagmc=${{ matrix.dagmc }} ncrystal=${{ matrix.ncrystal }}
             libmesh=${{ matrix.libmesh }} event=${{ matrix.event }}
             vectfit=${{ matrix.vectfit }})
@@ -143,7 +149,6 @@ jobs:
         with:
           path: ~/NJOY2016
           key: NJOY2016-${{ env.NJOY_HASH }} 
-          restore-keys: NJOY2016-
 
       - name: Restore DAGMC
         if: ${{ matrix.dagmc == 'y' }}
@@ -159,22 +164,28 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
+            ~/ncrystal_src
             ~/ncrystal_bld
             ~/ncrystal_inst
           key: NCrystal-${{ env.NC_HASH }} 
-          restore-keys: NCrystal-
 
+      - name: Restore libmesh
+        if: ${{ matrix.libmesh == 'y' }} 
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/LIBMESH
+          key: libmesh-mpi-${{matrix.mpi}}-${{ env.NC_HASH }} 
+  
       - name: Restore mcpl
         uses: actions/cache@v4
         with:
           path: ~/mcpl
           key: mcpl-${{ env.MCPL_HASH }} 
-          restore-keys: mcpl-
 
       - name: install
         shell: bash
         run: |
-          echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
           $GITHUB_WORKSPACE/tools/ci/gha-install.sh
 
       - name: Restore endf-b-vii.1 cache

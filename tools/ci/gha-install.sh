@@ -41,7 +41,10 @@ fi
 
 # Install vectfit for WMP generation if needed
 if [[ $VECTFIT = 'y' ]]; then 
-    ./tools/ci/gha-install-vectfit.sh
+    if [ ! -d "$HOME/vectfit" ]
+    then
+        ./tools/ci/gha-install-vectfit.sh
+    fi
 fi
 
 # Install libMesh if needed

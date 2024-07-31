@@ -847,7 +847,8 @@ int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ)
   return univp->cell_index(new_vol);
 }
 
-void openmc_get_dagmc_cell_ids(int32_t univ_id, int32_t** ids, size_t* n) {
+void openmc_get_dagmc_cell_ids(int32_t univ_id, int32_t** ids, size_t* n)
+{
 
   // make sure the universe id is a DAGMC Universe
   const auto& univ = universe_map[univ_id];
@@ -861,7 +862,6 @@ void openmc_get_dagmc_cell_ids(int32_t univ_id, int32_t** ids, size_t* n) {
   *ids = dag_cell_ids.data();
   *n = dag_cell_ids.size();
 }
-
 
 } // namespace openmc
 

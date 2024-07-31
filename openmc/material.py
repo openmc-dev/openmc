@@ -1074,6 +1074,54 @@ class Material(IDManagerMixin):
                 nuclides[nuc] = nuc_densities[n]
 
         return nuclides
+    
+    def get_element_atom_densities(self, element: str | None = None) -> dict[str, float]:
+        """Returns one or all elements in the material and their atomic
+        densities in units of atom/b-cm
+
+        .. versionadded:: 0.15.1
+
+        Parameters
+        ----------
+        element : str, optional
+            Element for which atom density is desired. If not specified, the
+            atom density for each element in the material is given.
+
+        Returns
+        -------
+        elements : dict
+            Dictionary whose keys are element names and values are densities in
+            [atom/b-cm]
+
+        """
+
+        from openmc.data import ATOMIC_SYMBOL
+        if element is not None:
+            acceptable_elements = [key for key in ATOMIC_SYMBOL.values() if key != 'n']
+            if element not in acceptable_elements:
+                raise ValueError(f"Element should be one of {acceptable_elements}, not '{element}'")
+
+        nuc_densities=self.get_nuclide_atom_densities()
+
+        # Initialize an empty dictionary for summed values
+        summed_elements = {}
+
+        # Iterate through each item in the original dictionary
+        for nuclide, density in nuc_densities.items():
+            # Extract element name (ignoring isotope number)
+            nuc_element = ATOMIC_SYMBOL[openmc.data.zam(nuclide)[0]]
+            # Sum the values for each element
+            if nuc_element in summed_elements:
+                summed_elements[nuc_element] += float(density)
+            else:
+                summed_elements[nuc_element] = float(density)
+        if element:
+            if element not in summed_elements.keys():
+                msg = f'Element {element} not found in material. Available elements are {summed_elements.keys()}'
+                raise ValueError(msg)
+            return {element: summed_elements[element]}
+        return summed_elements
+
 
     def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False,
                      volume: float | None = None) -> dict[str, float] | float:

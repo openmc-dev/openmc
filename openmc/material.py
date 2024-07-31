@@ -1090,7 +1090,7 @@ class Material(IDManagerMixin):
         Returns
         -------
         elements : dict
-            Dictionary whose keys are element name and value is densities in
+            Dictionary whose keys are element names and values are densities in
             [atom/b-cm]
 
         """

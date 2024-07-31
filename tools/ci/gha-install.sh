@@ -46,22 +46,19 @@ fi
 
 # Install libMesh if needed
 if [[ $LIBMESH = 'y' ]]; then
-    if [ ! -d "$HOME/LIBMESH" ]
+    if [ ! -d "$HOME/vectfit" ]
     then
-        ./tools/ci/gha-install-libmesh.sh
+        ./tools/ci/gha-install-vectfit.sh
     else
-        #cd $HOME/LIBMESH/build && make -j4 install
-        export LIBMESH_PC=$HOME/LIBMESH/lib/pkgconfig/
-        cd $GITHUB_WORKSPACE
+        pip install $HOME/pybind11
+        pip install wheel
+        pip install --no-build-isolation ./vectfit
     fi
 fi
 
 # Install MCPL
 if [[ ! -d "$HOME/mcpl" ]]; then
     ./tools/ci/gha-install-mcpl.sh
-else
-    #cd $HOME/mcpl/build && sudo make install
-    cd $GITHUB_WORKSPACE
 fi
 
 

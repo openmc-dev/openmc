@@ -9,21 +9,22 @@ if [[ $DAGMC = 'y' ]]; then
     --branch Version5.1.0 | cut -f 1 | head -c 15)" >> $GITHUB_ENV
 
     echo "DAGMC_HASH=$(git ls-remote https://github.com/svalinn/dagmc.git |\
-     cut -f 1 | head -c 15)" >> $GITHUB_ENV
+    cut -f 1 | head -c 15)" >> $GITHUB_ENV
 fi
 
-# Check for NCrystal cache if needed
 if [[ $NCRYSTAL = 'y' ]]; then
     echo "NC_HASH=$(git ls-remote https://github.com/mctools/ncrystal \
     --branch develop | cut -f 1 | head -c 15)" >> $GITHUB_ENV
 fi
 
-# Install vectfit for WMP generation if needed
-#if [[ $VECTFIT = 'y' ]]; then
-#    ./tools/ci/gha-install-vectfit.sh
-#fi
+if [[ $VECTFIT = 'y' ]]; then
+    echo "PYBIND_HASH=$(git ls-remote https://github.com/pybind/pybind11 \
+    --branch master | cut -f 1 | head -c 15)" >> $GITHUB_ENV
 
-# Check for libmesh cache if needed
+    echo "VF_HASH=$(git ls-remote https://github.com/liangjg/vectfit.git |\
+    cut -f 1 | head -c 15)" >> $GITHUB_ENV
+fi
+
 if [[ $LIBMESH = 'y' ]]; then
     echo "NC_HASH=$(git ls-remote https://github.com/libmesh/libmesh \
     --branch v1.7.1 | cut -f 1 | head -c 15)" >> $GITHUB_ENV

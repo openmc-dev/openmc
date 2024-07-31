@@ -169,6 +169,18 @@ jobs:
             ~/ncrystal_inst
           key: NCrystal-${{ env.NC_HASH }} 
 
+      - name: Restore vectfit
+        if: ${{ matrix.vectfit == 'y' }} 
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/pybind11
+            ~/xtl
+            ~/xtensor-python
+            ~/xtensor-blas
+            ~/vectfit
+          key: vectfit-${{ env.VF_HASH }}/pybind-${{ env.PYBIND_HASH }}
+
       - name: Restore libmesh
         if: ${{ matrix.libmesh == 'y' }} 
         uses: actions/cache@v4
@@ -176,12 +188,21 @@ jobs:
           path: |
             ~/LIBMESH
           key: libmesh-mpi-${{matrix.mpi}}-${{ env.NC_HASH }} 
+<<<<<<< HEAD
   
       - name: Restore mcpl
         uses: actions/cache@v4
         with:
           path: ~/mcpl
           key: mcpl-${{ env.MCPL_HASH }} 
+=======
+
+      #- name: Restore mcpl
+      #  uses: actions/cache@v4
+      #  with:
+      #    path: ~/mcpl
+      #    key: mcpl-${{ env.MCPL_HASH }} 
+>>>>>>> 322d1d221 (Cache vectfit and temporarily remove testing)
 
       - name: install
         shell: bash

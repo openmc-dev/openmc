@@ -4,6 +4,7 @@
 namespace openmc {
 extern "C" const bool DAGMC_ENABLED;
 extern "C" const bool UWUW_ENABLED;
+extern "C" void openmc_... // full signature here
 } // namespace openmc
 
 // always include the XML interface header

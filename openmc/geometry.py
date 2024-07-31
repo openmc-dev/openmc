@@ -112,6 +112,8 @@ class Geometry:
             for universe in self.get_all_universes().values():
                 if universe.id in volume_calc.volumes:
                     universe.add_volume_information(volume_calc)
+        print("Volume list", volume_calc.volumes)
+
 
     def to_xml_element(self, remove_surfs=False) -> ET.Element:
         """Creates a 'geometry' element to be written to an XML file.

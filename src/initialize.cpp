@@ -316,6 +316,7 @@ int parse_command_line(int argc, char* argv[])
 
 bool read_model_xml()
 {
+  std::cout << "READ_MODEL" << __FILE__ << std::endl;
   std::string model_filename = settings::path_input;
 
   // if the current filename is a directory, append the default model filename

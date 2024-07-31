@@ -390,10 +390,10 @@ def test_get_element_atom_densities_specific(uo2):
     assert list(one_nuc.keys()) == ['O']
     assert list(one_nuc.values())[0] > 0
 
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         uo2.get_element_atom_densities(element='Li')
 
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         uo2.get_element_atom_densities(element='no an element name')
 
 def test_get_nuclide_atoms():

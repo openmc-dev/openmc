@@ -1090,14 +1090,13 @@ class Material(IDManagerMixin):
         Returns
         -------
         elements : dict
-            Dictionary whose keys are element names and values are densities in
+            Dictionary whose keys are element name and value is densities in
             [atom/b-cm]
 
         """
 
-        from openmc.data import ATOMIC_SYMBOL
         if element is not None:
-            acceptable_elements = [key for key in ATOMIC_SYMBOL.values() if key != 'n']
+            acceptable_elements = [key for key in openmc.data.ATOMIC_SYMBOL.values() if key != 'n']
             if element not in acceptable_elements:
                 raise ValueError(f"Element should be one of {acceptable_elements}, not '{element}'")
 
@@ -1106,11 +1105,10 @@ class Material(IDManagerMixin):
         # Initialize an empty dictionary for summed values
         summed_elements = {}
 
-        # Iterate through each item in the original dictionary
         for nuclide, density in nuc_densities.items():
-            # Extract element name (ignoring isotope number)
-            nuc_element = ATOMIC_SYMBOL[openmc.data.zam(nuclide)[0]]
-            # Sum the values for each element
+
+            nuc_element = openmc.data.ATOMIC_SYMBOL[openmc.data.zam(nuclide)[0]]
+
             if nuc_element in summed_elements:
                 summed_elements[nuc_element] += float(density)
             else:

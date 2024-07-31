@@ -63,6 +63,19 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
   read_attribute(group, "atomic_weight_ratio", awr_);
 
   if (settings::run_mode == RunMode::VOLUME) {
+    // Determine whether nuclide is fissionable and then exit
+    int mt;
+    hid_t rxs_group = open_group(group, "reactions");
+    for (auto name : group_names(rxs_group)) {
+      if (starts_with(name, "reaction_")) {
+        hid_t rx_group = open_group(rxs_group, name.c_str());
+        read_attribute(rx_group, "mt", mt);
+        if (is_fission(mt)) {
+          fissionable_ = true;
+          break;
+        }
+      }
+    }
     return;
   }
 

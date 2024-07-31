@@ -10,7 +10,6 @@ filesystem.
 
 import copy
 from warnings import warn
-from typing import Optional
 
 import numpy as np
 from uncertainties import ufloat
@@ -34,7 +33,7 @@ from .helpers import (
 __all__ = ["CoupledOperator", "Operator", "OperatorResult"]
 
 
-def _find_cross_sections(model: Optional[str] = None):
+def _find_cross_sections(model: str | None = None):
     """Determine cross sections to use for depletion
 
     Parameters

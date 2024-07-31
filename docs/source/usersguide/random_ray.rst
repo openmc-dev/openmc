@@ -40,13 +40,15 @@ Carlo, **inactive batches are required for both eigenvalue and fixed source
 solves in random ray mode** due to this additional need to converge the
 scattering source.
 
+.. warning::
+    Unlike Monte Carlo, the random ray solver still requires usage of inactive
+    batches when in fixed source mode so as to develop the scattering source.
+
 The additional burden of converging the scattering source generally results in a
 higher requirement for the number of inactive batches---often by an order of
 magnitude or more. For instance, it may be reasonable to only use 50 inactive
 batches for a light water reactor simulation with Monte Carlo, but random ray
-might require 500 or more inactive batches. Similar to Monte Carlo,
-:ref:`Shannon entropy <usersguide_entropy>` can be used to gauge whether the
-combined scattering and fission source has fully developed.
+might require 500 or more inactive batches.
 
 Similar to Monte Carlo, active batches are used in the random ray solver mode to
 accumulate and converge statistics on unknown quantities (i.e., the random ray
@@ -59,6 +61,17 @@ solver::
     settings.energy_mode = "multi-group"
     settings.batches = 1200
     settings.inactive = 600
+
+---------------
+Shannon Entropy
+---------------
+
+Similar to Monte Carlo, :ref:`Shannon entropy
+<methods-shannon-entropy-random-ray>` can be used to gauge whether the fission
+source has fully developed. The Shannon entropy is calculated automatically
+after each batch and is printed to the statepoint file. Unlike Monte Carlo, an
+entropy mesh does not need to be defined, as the Shannon entropy is calculated
+over FSRs using a volume-weighted approach.
 
 -------------------------------
 Inactive Ray Length (Dead Zone)
@@ -248,6 +261,8 @@ a larger value until the "low ray density" messages go away.
     ray lengths are sufficiently long to allow for transport to occur between
     source and target regions of interest.
 
+.. _usersguide_ray_source:
+
 ----------
 Ray Source
 ----------
@@ -261,7 +276,7 @@ that the source must not be limited to only fissionable regions. Additionally,
 the source box must cover the entire simulation domain. In the case of a
 simulation domain that is not box shaped, a box source should still be used to
 bound the domain but with the source limited to rejection sampling the actual
-simulation universe (which can be specified via the ``domains`` field of the
+simulation universe (which can be specified via the ``domains`` constraint of the
 :class:`openmc.IndependentSource` Python class). Similar to Monte Carlo sources,
 for two-dimensional problems (e.g., a 2D pincell) it is desirable to make the
 source bounded near the origin of the infinite dimension. An example of an
@@ -315,6 +330,8 @@ of a two-dimensional 2x2 reflective pincell lattice:
 
 In the future, automated subdivision of FSRs via mesh overlay may be supported.
 
+.. _usersguide_flux_norm:
+
 -------
 Tallies
 -------
@@ -351,6 +368,25 @@ Supported Filters:
 Note that there is no difference between the analog, tracklength, and collision
 estimators in random ray mode as individual particles are not being simulated.
 Tracklength-style tally estimation is inherent to the random ray method.
+
+As discussed in the random ray theory section on :ref:`Random Ray
+Tallies<methods_random_tallies>`, by default flux tallies in the random ray mode
+are not normalized by the spatial tally volumes such that flux tallies are in
+units of cm. While the volume information is readily available as a byproduct of
+random ray integration, the flux value is reported in unnormalized units of cm
+so that the user will be able to compare "apples to apples" with the default
+flux tallies from the Monte Carlo solver (also reported by default in units of
+cm). If volume normalized flux tallies (in units of cm\ :sup:`-2`) are desired,
+then the user can set the ``volume_normalized_flux_tallies`` field in the
+:attr:`openmc.Settings.random_ray` dictionary to ``True``. An example is given
+below:
+
+::
+
+    settings.random_ray['volume_normalized_flux_tallies'] = True
+
+Note that MC mode flux tallies can also be normalized by volume, as discussed in
+the :ref:`Volume Calculation Section<usersguide_volume>` of the user guide.
 
 --------
 Plotting
@@ -411,11 +447,106 @@ in the `OpenMC Jupyter notebook collection
     separate materials can be defined each with a separate multigroup dataset
     corresponding to a given temperature.
 
+--------------
+Linear Sources
+--------------
+
+Linear Sources (LS), are supported with the eigenvalue and fixed source random
+ray solvers. General 3D LS can be toggled by setting the ``source_shape`` field
+in the :attr:`openmc.Settings.random_ray` dictionary to ``'linear'`` as::
+
+    settings.random_ray['source_shape'] = 'linear'
+
+LS enables the use of coarser mesh discretizations and lower ray populations,
+offsetting the increased computation per ray.
+
+While OpenMC has no specific mode for 2D simulations, such simulations can be
+performed implicitly by leaving one of the dimensions of the geometry unbounded
+or by imposing reflective boundary conditions with no variation in between them
+in that dimension. When 3D linear sources are used in a 2D random ray
+simulation, the extremely long (or potentially infinite) spatial dimension along
+one of the axes can cause the linear source to become noisy, leading to
+potentially large increases in variance. To mitigate this, the user can force
+the z-terms of the linear source to zero by setting the ``source_shape`` field
+as::
+
+    settings.random_ray['source_shape'] = 'linear_xy'
+
+which will greatly improve the quality of the linear source term in 2D
+simulations.
+
+---------------------------------
+Fixed Source and Eigenvalue Modes
+---------------------------------
+
+Both fixed source and eigenvalue modes are supported with the random ray solver
+in OpenMC. Modes can be selected as described in the :ref:`run modes section
+<usersguide_run_modes>`. In both modes, a ray source must be provided to let
+OpenMC know where to sample ray starting locations from, as discussed in the
+:ref:`ray source section <usersguide_ray_source>`. In fixed source mode, at
+least one regular source must be provided as well that represents the physical
+particle fixed source. As discussed in the :ref:`fixed source methodology
+section <usersguide_fixed_source_methods>`, the types of fixed sources supported
+in the random ray solver mode are limited compared to what is possible with the
+Monte Carlo solver.
+
+Currently, all of the following conditions must be met for the particle source
+to be valid in random ray mode:
+
+- One or more domain ids must be specified that indicate which cells, universes,
+  or materials the source applies to. This implicitly limits the source type to
+  being volumetric. This is specified via the ``domains`` constraint placed on the
+  :class:`openmc.IndependentSource` Python class.
+- The source must be isotropic (default for a source)
+- The source must use a discrete (i.e., multigroup) energy distribution. The
+  discrete energy distribution is input by defining a
+  :class:`openmc.stats.Discrete` Python class, and passed as the ``energy``
+  field of the :class:`openmc.IndependentSource` Python class.
+
+Any other spatial distribution information contained in a particle source will
+be ignored. Only the specified cell, material, or universe domains will be used
+to define the spatial location of the source, as the source will be applied
+during a pre-processing stage of OpenMC to all source regions that are contained
+within the specified domains for the source.
+
+When defining a :class:`openmc.stats.Discrete` object, note that the ``x`` field
+will correspond to the discrete energy points, and the ``p`` field will
+correspond to the discrete probabilities. It is recommended to select energy
+points that fall within energy groups rather than on boundaries between the
+groups. That is, if the problem contains two energy groups (with bin edges of
+1.0e-5, 1.0e-1, 1.0e7), then a good selection for the ``x`` field might be
+points of 1.0e-2 and 1.0e1.
+
+::
+
+    # Define geometry, etc.
+    ...
+    source_cell = openmc.Cell(fill=source_mat, name='cell where fixed source will be')
+    ...
+    # Define physical neutron fixed source
+    energy_points = [1.0e-2, 1.0e1]
+    strengths = [0.25, 0.75]
+    energy_distribution = openmc.stats.Discrete(x=energy_points, p=strengths)
+    neutron_source = openmc.IndependentSource(
+        energy=energy_distribution,
+        constraints={'domains': [source_cell]}
+    )
+
+    # Add fixed source and ray sampling source to settings file
+    settings.source = [neutron_source]
+
 ---------------------------------------
 Putting it All Together: Example Inputs
 ---------------------------------------
 
-An example of a settings definition for random ray is given below::
+~~~~~~~~~~~~~~~~~~
+Eigenvalue Example
+~~~~~~~~~~~~~~~~~~
+
+An example of a settings definition for an eigenvalue random ray simulation is
+given below:
+
+::
 
     # Geometry and MGXS material definition of 2x2 lattice (not shown)
     pitch = 1.26
@@ -478,3 +609,84 @@ Monte Carlo run (see the :ref:`geometry <usersguide_geometry>` and
 
 There is also a complete example of a pincell available in the
 ``openmc/examples/pincell_random_ray`` folder.
+
+~~~~~~~~~~~~~~~~~~~~
+Fixed Source Example
+~~~~~~~~~~~~~~~~~~~~
+
+An example of a settings definition for a fixed source random ray simulation is
+given below:
+
+::
+
+    # Geometry and MGXS material definition of 2x2 lattice (not shown)
+    pitch = 1.26
+    source_cell = openmc.Cell(fill=source_mat, name='cell where fixed source will be')
+    ebins = [1e-5, 1e-1, 20.0e6]
+    ...
+
+    # Instantiate a settings object for a random ray solve
+    settings = openmc.Settings()
+    settings.energy_mode = "multi-group"
+    settings.batches = 1200
+    settings.inactive = 600
+    settings.particles = 2000
+    settings.run_mode = 'fixed source'
+    settings.random_ray['distance_inactive'] = 40.0
+    settings.random_ray['distance_active'] = 400.0
+
+    # Create an initial uniform spatial source distribution for sampling rays
+    lower_left  = (-pitch, -pitch, -pitch)
+    upper_right = ( pitch,  pitch,  pitch)
+    uniform_dist = openmc.stats.Box(lower_left, upper_right)
+    settings.random_ray['ray_source'] = openmc.IndependentSource(space=uniform_dist)
+
+    # Define physical neutron fixed source
+    energy_points = [1.0e-2, 1.0e1]
+    strengths = [0.25, 0.75]
+    energy_distribution = openmc.stats.Discrete(x=energy_points, p=strengths)
+    neutron_source = openmc.IndependentSource(
+        energy=energy_distribution,
+        constraints={'domains': [source_cell]}
+    )
+
+    # Add fixed source and ray sampling source to settings file
+    settings.source = [neutron_source]
+
+    settings.export_to_xml()
+
+    # Define tallies
+
+    # Create a mesh filter
+    mesh = openmc.RegularMesh()
+    mesh.dimension = (2, 2)
+    mesh.lower_left = (-pitch/2, -pitch/2)
+    mesh.upper_right = (pitch/2, pitch/2)
+    mesh_filter = openmc.MeshFilter(mesh)
+
+    # Create a multigroup energy filter
+    energy_filter = openmc.EnergyFilter(ebins)
+
+    # Create tally using our two filters and add scores
+    tally = openmc.Tally()
+    tally.filters = [mesh_filter, energy_filter]
+    tally.scores = ['flux']
+
+    # Instantiate a Tallies collection and export to XML
+    tallies = openmc.Tallies([tally])
+    tallies.export_to_xml()
+
+    # Create voxel plot
+    plot = openmc.Plot()
+    plot.origin = [0, 0, 0]
+    plot.width = [2*pitch, 2*pitch, 1]
+    plot.pixels = [1000, 1000, 1]
+    plot.type = 'voxel'
+
+    # Instantiate a Plots collection and export to XML
+    plots = openmc.Plots([plot])
+    plots.export_to_xml()
+
+All other inputs (e.g., geometry, material) will be unchanged from a typical
+Monte Carlo run (see the :ref:`geometry <usersguide_geometry>` and
+:ref:`multigroup materials <create_mgxs>` user guides for more information).

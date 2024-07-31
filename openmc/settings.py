@@ -1,11 +1,9 @@
-from collections.abc import Iterable, Mapping, MutableSequence
+from collections.abc import Iterable, Mapping, MutableSequence, Sequence
 from enum import Enum
 import itertools
 from math import ceil
 from numbers import Integral, Real
 from pathlib import Path
-import typing  # required to prevent typing.Union namespace overwriting Union
-from typing import Optional
 
 import lxml.etree as ET
 
@@ -26,7 +24,7 @@ class RunMode(Enum):
     PARTICLE_RESTART = 'particle restart'
 
 
-_RES_SCAT_METHODS = ['dbrc', 'rvs']
+_RES_SCAT_METHODS = {'dbrc', 'rvs'}
 
 
 class Settings:
@@ -113,10 +111,10 @@ class Settings:
     max_particle_events : int
         Maximum number of allowed particle events per source particle.
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.0
     max_order : None or int
         Maximum scattering order to apply globally when in multi-group mode.
-    max_splits : int
+    max_history_splits : int
         Maximum number of times a particle can split during a history
 
         .. versionadded:: 0.13
@@ -161,8 +159,17 @@ class Settings:
         :ray_source:
             Starting ray distribution (must be uniform in space and angle) as
             specified by a :class:`openmc.SourceBase` object.
+        :source_shape:
+            Assumed shape of the source distribution within each source
+            region. Options are 'flat' (default), 'linear', or 'linear_xy'.
+        :volume_normalized_flux_tallies:
+            Whether to normalize flux tallies by volume (bool). The default
+            is 'False'. When enabled, flux tallies will be reported in units of
+            cm/cm^3. When disabled, flux tallies will be reported in units
+            of cm (i.e., total distance traveled by neutrons in the spatial
+            tally region).
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.0
     resonance_scattering : dict
         Settings for resonance elastic scattering. Accepted keys are 'enable'
         (bool), 'method' (str), 'energy_min' (float), 'energy_max' (float), and
@@ -205,6 +212,15 @@ class Settings:
         :max_particles: Maximum number of particles to be banked on surfaces per
                    process (int)
         :mcpl: Output in the form of an MCPL-file (bool)
+        :cell: Cell ID used to determine if particles crossing identified
+               surfaces are to be banked. Particles coming from or going to this
+               declared cell will be banked (int)
+        :cellfrom: Cell ID used to determine if particles crossing identified
+                   surfaces are to be banked. Particles coming from this
+                   declared cell will be banked (int)
+        :cellto: Cell ID used to determine if particles crossing identified
+                 surfaces are to be banked. Particles going to this declared
+                 cell will be banked (int)
     survival_biasing : bool
         Indicate whether survival biasing is to be used
     tabular_legendre : dict
@@ -362,8 +378,7 @@ class Settings:
         self._weight_windows_on = None
         self._weight_windows_file = None
         self._weight_window_checkpoints = {}
-        self._max_splits = None
-        self._max_secondaries = None
+        self._max_history_splits = None
         self._max_tracks = None
 
         self._random_ray = {}
@@ -501,7 +516,7 @@ class Settings:
         return self._max_order
 
     @max_order.setter
-    def max_order(self, max_order: Optional[int]):
+    def max_order(self, max_order: int | None):
         if max_order is not None:
             cv.check_type('maximum scattering order', max_order, Integral)
             cv.check_greater_than('maximum scattering order', max_order, 0,
@@ -509,11 +524,11 @@ class Settings:
         self._max_order = max_order
 
     @property
-    def source(self) -> typing.List[SourceBase]:
+    def source(self) -> list[SourceBase]:
         return self._source
 
     @source.setter
-    def source(self, source: typing.Union[SourceBase, typing.Iterable[SourceBase]]):
+    def source(self, source: SourceBase | Iterable[SourceBase]):
         if not isinstance(source, MutableSequence):
             source = [source]
         self._source = cv.CheckedList(SourceBase, 'source distributions', source)
@@ -698,23 +713,30 @@ class Settings:
 
     @surf_source_write.setter
     def surf_source_write(self, surf_source_write: dict):
-        cv.check_type('surface source writing options', surf_source_write, Mapping)
+        cv.check_type("surface source writing options", surf_source_write, Mapping)
         for key, value in surf_source_write.items():
-            cv.check_value('surface source writing key', key,
-                           ('surface_ids', 'max_particles', 'mcpl'))
-            if key == 'surface_ids':
-                cv.check_type('surface ids for source banking', value,
-                              Iterable, Integral)
+            cv.check_value(
+                "surface source writing key",
+                key,
+                ("surface_ids", "max_particles", "mcpl", "cell", "cellfrom", "cellto"),
+            )
+            if key == "surface_ids":
+                cv.check_type(
+                    "surface ids for source banking", value, Iterable, Integral
+                )
                 for surf_id in value:
-                    cv.check_greater_than('surface id for source banking',
-                                          surf_id, 0)
-            elif key == 'max_particles':
-                cv.check_type('maximum particle banks on surfaces per process',
-                              value, Integral)
-                cv.check_greater_than('maximum particle banks on surfaces per process',
-                                      value, 0)
-            elif key == 'mcpl':
-                cv.check_type('write to an MCPL-format file', value, bool)
+                    cv.check_greater_than("surface id for source banking", surf_id, 0)
+            elif key == "mcpl":
+                cv.check_type("write to an MCPL-format file", value, bool)
+            elif key in ("max_particles", "cell", "cellfrom", "cellto"):
+                name = {
+                    "max_particles": "maximum particle banks on surfaces per process",
+                    "cell": "Cell ID for source banking (from or to)",
+                    "cellfrom": "Cell ID for source banking (from only)",
+                    "cellto": "Cell ID for source banking (to only)",
+                }[key]
+                cv.check_type(name, value, Integral)
+                cv.check_greater_than(name, value, 0)
 
         self._surf_source_write = surf_source_write
 
@@ -784,7 +806,7 @@ class Settings:
         self._temperature = temperature
 
     @property
-    def trace(self) -> typing.Iterable:
+    def trace(self) -> Iterable:
         return self._trace
 
     @trace.setter
@@ -797,12 +819,12 @@ class Settings:
         self._trace = trace
 
     @property
-    def track(self) -> typing.Iterable[typing.Iterable[int]]:
+    def track(self) -> Iterable[Iterable[int]]:
         return self._track
 
     @track.setter
-    def track(self, track: typing.Iterable[typing.Iterable[int]]):
-        cv.check_type('track', track, Iterable)
+    def track(self, track: Iterable[Iterable[int]]):
+        cv.check_type('track', track, Sequence)
         for t in track:
             if len(t) != 3:
                 msg = f'Unable to set the track to "{t}" since its length is not 3'
@@ -884,12 +906,12 @@ class Settings:
         self._resonance_scattering = res
 
     @property
-    def volume_calculations(self) -> typing.List[VolumeCalculation]:
+    def volume_calculations(self) -> list[VolumeCalculation]:
         return self._volume_calculations
 
     @volume_calculations.setter
     def volume_calculations(
-        self, vol_calcs: typing.Union[VolumeCalculation, typing.Iterable[VolumeCalculation]]
+        self, vol_calcs: VolumeCalculation | Iterable[VolumeCalculation]
     ):
         if not isinstance(vol_calcs, MutableSequence):
             vol_calcs = [vol_calcs]
@@ -983,11 +1005,11 @@ class Settings:
         self._write_initial_source = value
 
     @property
-    def weight_windows(self) -> typing.List[WeightWindows]:
+    def weight_windows(self) -> list[WeightWindows]:
         return self._weight_windows
 
     @weight_windows.setter
-    def weight_windows(self, value: typing.Union[WeightWindows, typing.Iterable[WeightWindows]]):
+    def weight_windows(self, value: WeightWindows | Iterable[WeightWindows]):
         if not isinstance(value, MutableSequence):
             value = [value]
         self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows', value)
@@ -1012,14 +1034,18 @@ class Settings:
         self._weight_window_checkpoints = weight_window_checkpoints
 
     @property
-    def max_splits(self) -> int:
-        return self._max_splits
+    def max_splits(self):
+        raise AttributeError('max_splits has been deprecated. Please use max_history_splits instead')
 
-    @max_splits.setter
-    def max_splits(self, value: int):
+    @property
+    def max_history_splits(self) -> int:
+        return self._max_history_splits
+
+    @max_history_splits.setter
+    def max_history_splits(self, value: int):
         cv.check_type('maximum particle splits', value, Integral)
         cv.check_greater_than('max particle splits', value, 0)
-        self._max_splits = value
+        self._max_history_splits = value
 
     @property
     def max_secondaries(self) -> int:
@@ -1042,7 +1068,7 @@ class Settings:
         self._max_tracks = value
 
     @property
-    def weight_windows_file(self) -> Optional[PathLike]:
+    def weight_windows_file(self) -> PathLike | None:
         return self._weight_windows_file
 
     @weight_windows_file.setter
@@ -1051,7 +1077,7 @@ class Settings:
         self._weight_windows_file = value
 
     @property
-    def weight_window_generators(self) -> typing.List[WeightWindowGenerator]:
+    def weight_window_generators(self) -> list[WeightWindowGenerator]:
         return self._weight_window_generators
 
     @weight_window_generators.setter
@@ -1079,6 +1105,11 @@ class Settings:
                                       random_ray[key], 0.0, True)
             elif key == 'ray_source':
                 cv.check_type('random ray source', random_ray[key], SourceBase)
+            elif key == 'source_shape':
+                cv.check_value('source shape', random_ray[key],
+                               ('flat', 'linear', 'linear_xy'))
+            elif key == 'volume_normalized_flux_tallies':
+                cv.check_type('volume normalized flux tallies', random_ray[key], bool)
             else:
                 raise ValueError(f'Unable to set random ray to "{key}" which is '
                                  'unsupported by OpenMC')
@@ -1218,16 +1249,18 @@ class Settings:
     def _create_surf_source_write_subelement(self, root):
         if self._surf_source_write:
             element = ET.SubElement(root, "surf_source_write")
-            if 'surface_ids' in self._surf_source_write:
+            if "surface_ids" in self._surf_source_write:
                 subelement = ET.SubElement(element, "surface_ids")
-                subelement.text = ' '.join(
-                    str(x) for x in self._surf_source_write['surface_ids'])
-            if 'max_particles' in self._surf_source_write:
-                subelement = ET.SubElement(element, "max_particles")
-                subelement.text = str(self._surf_source_write['max_particles'])
-            if 'mcpl' in self._surf_source_write:
+                subelement.text = " ".join(
+                    str(x) for x in self._surf_source_write["surface_ids"]
+                )
+            if "mcpl" in self._surf_source_write:
                 subelement = ET.SubElement(element, "mcpl")
-                subelement.text = str(self._surf_source_write['mcpl']).lower()
+                subelement.text = str(self._surf_source_write["mcpl"]).lower()
+            for key in ("max_particles", "cell", "cellfrom", "cellto"):
+                if key in self._surf_source_write:
+                    subelement = ET.SubElement(element, key)
+                    subelement.text = str(self._surf_source_write[key])
 
     def _create_confidence_intervals(self, root):
         if self._confidence_intervals is not None:
@@ -1392,9 +1425,9 @@ class Settings:
             elem.text = str(self._create_fission_neutrons).lower()
 
     def _create_create_delayed_neutrons_subelement(self, root):
-       if self._create_delayed_neutrons is not None:
-           elem = ET.SubElement(root, "create_delayed_neutrons")
-           elem.text = str(self._create_delayed_neutrons).lower()
+        if self._create_delayed_neutrons is not None:
+            elem = ET.SubElement(root, "create_delayed_neutrons")
+            elem.text = str(self._create_delayed_neutrons).lower()
 
     def _create_delayed_photon_scaling_subelement(self, root):
         if self._delayed_photon_scaling is not None:
@@ -1487,10 +1520,10 @@ class Settings:
             subelement = ET.SubElement(element, "surface")
             subelement.text = str(self._weight_window_checkpoints['surface']).lower()
 
-    def _create_max_splits_subelement(self, root):
-        if self._max_splits is not None:
-            elem = ET.SubElement(root, "max_splits")
-            elem.text = str(self._max_splits)
+    def _create_max_history_splits_subelement(self, root):
+        if self._max_history_splits is not None:
+            elem = ET.SubElement(root, "max_history_splits")
+            elem.text = str(self._max_history_splits)
 
     def _create_max_secondaries_subelement(self, root):
         if self._max_secondaries is not None:
@@ -1626,17 +1659,18 @@ class Settings:
 
     def _surf_source_write_from_xml_element(self, root):
         elem = root.find('surf_source_write')
-        if elem is not None:
-            for key in ('surface_ids', 'max_particles','mcpl'):
-                value = get_text(elem, key)
-                if value is not None:
-                    if key == 'surface_ids':
-                        value = [int(x) for x in value.split()]
-                    elif key in ('max_particles'):
-                        value = int(value)
-                    elif key == 'mcpl':
-                        value = value in ('true', '1')
-                    self.surf_source_write[key] = value
+        if elem is None:
+            return
+        for key in ('surface_ids', 'max_particles', 'mcpl', 'cell', 'cellto', 'cellfrom'):
+            value = get_text(elem, key)
+            if value is not None:
+                if key == 'surface_ids':
+                    value = [int(x) for x in value.split()]
+                elif key == 'mcpl':
+                    value = value in ('true', '1')
+                elif key in ('max_particles', 'cell', 'cellfrom', 'cellto'):
+                    value = int(value)
+                self.surf_source_write[key] = value
 
     def _confidence_intervals_from_xml_element(self, root):
         text = get_text(root, 'confidence_intervals')
@@ -1854,10 +1888,10 @@ class Settings:
                 value = value in ('true', '1')
                 self.weight_window_checkpoints[key] = value
 
-    def _max_splits_from_xml_element(self, root):
-        text = get_text(root, 'max_splits')
+    def _max_history_splits_from_xml_element(self, root):
+        text = get_text(root, 'max_history_splits')
         if text is not None:
-            self.max_splits = int(text)
+            self.max_history_splits = int(text)
 
     def _max_secondaries_from_xml_element(self, root):
         text = get_text(root, 'max_secondaries')
@@ -1879,6 +1913,12 @@ class Settings:
                 elif child.tag == 'source':
                     source = SourceBase.from_xml_element(child)
                     self.random_ray['ray_source'] = source
+                elif child.tag == 'source_shape':
+                    self.random_ray['source_shape'] = child.text
+                elif child.tag == 'volume_normalized_flux_tallies':
+                    self.random_ray['volume_normalized_flux_tallies'] = (
+                        child.text in ('true', '1')
+                    )
 
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.
@@ -1940,8 +1980,7 @@ class Settings:
         self._create_weight_window_generators_subelement(element, mesh_memo)
         self._create_weight_windows_file_element(element)
         self._create_weight_window_checkpoints_subelement(element)
-        self._create_max_splits_subelement(element)
-        self._create_max_secondaries_subelement(element)
+        self._create_max_history_splits_subelement(element)
         self._create_max_tracks_subelement(element)
         self._create_random_ray_subelement(element)
 
@@ -2045,8 +2084,7 @@ class Settings:
         settings._weight_windows_from_xml_element(elem, meshes)
         settings._weight_window_generators_from_xml_element(elem, meshes)
         settings._weight_window_checkpoints_from_xml_element(elem)
-        settings._max_splits_from_xml_element(elem)
-        settings._max_secondaries_from_xml_element(elem)
+        settings._max_history_splits_from_xml_element(elem)
         settings._max_tracks_from_xml_element(elem)
         settings._random_ray_from_xml_element(elem)
 

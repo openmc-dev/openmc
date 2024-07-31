@@ -92,7 +92,7 @@ def test_clip_discrete():
 
     with pytest.raises(ValueError):
         d.clip(-1.)
-    
+
     with pytest.raises(ValueError):
         d.clip(5)
 
@@ -188,8 +188,8 @@ def test_watt():
 
 
 def test_tabular():
-    x = np.array([0.0, 5.0, 7.0])
-    p = np.array([10.0, 20.0, 5.0])
+    x = np.array([0.0, 5.0, 7.0, 10.0])
+    p = np.array([10.0, 20.0, 5.0, 6.0])
     d = openmc.stats.Tabular(x, p, 'linear-linear')
     elem = d.to_xml_element('distribution')
 
@@ -216,6 +216,23 @@ def test_tabular():
 
     d.normalize()
     assert d.integral() == pytest.approx(1.0)
+
+    # ensure that passing a set of probabilities shorter than x works
+    # for histogram interpolation
+    d = openmc.stats.Tabular(x, p[:-1], interpolation='histogram')
+    d.cdf()
+    d.mean()
+    assert_sample_mean(d.sample(n_samples), d.mean())
+
+    # passing a shorter probability set should raise an error for linear-linear
+    with pytest.raises(ValueError):
+        d = openmc.stats.Tabular(x, p[:-1], interpolation='linear-linear')
+        d.cdf()
+
+    # Use probabilities of correct length for linear-linear interpolation and
+    # call the CDF method
+    d = openmc.stats.Tabular(x, p, interpolation='linear-linear')
+    d.cdf()
 
 
 def test_legendre():
@@ -359,15 +376,6 @@ def test_box():
     d = openmc.stats.Box.from_xml_element(elem)
     assert d.lower_left == pytest.approx(lower_left)
     assert d.upper_right == pytest.approx(upper_right)
-    assert not d.only_fissionable
-
-    # only fissionable parameter
-    d2 = openmc.stats.Box(lower_left, upper_right, True)
-    assert d2.only_fissionable
-    elem = d2.to_xml_element()
-    assert elem.attrib['type'] == 'fission'
-    d = openmc.stats.Spatial.from_xml_element(elem)
-    assert isinstance(d, openmc.stats.Box)
 
 
 def test_point():

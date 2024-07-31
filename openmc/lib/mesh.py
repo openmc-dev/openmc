@@ -1,8 +1,7 @@
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from ctypes import (c_int, c_int32, c_char_p, c_double, POINTER, Structure,
                     create_string_buffer, c_uint64, c_size_t)
 from random import getrandbits
-from typing import Optional, List, Tuple, Sequence
 from weakref import WeakValueDictionary
 
 import numpy as np
@@ -170,11 +169,11 @@ class Mesh(_FortranObjectWithID):
     def material_volumes(
             self,
             n_samples: int = 10_000,
-            prn_seed: Optional[int] = None
-    ) -> List[List[Tuple[Material, float]]]:
+            prn_seed: int | None = None
+    ) -> list[list[tuple[Material, float]]]:
         """Determine volume of materials in each mesh element
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.0
 
         Parameters
         ----------
@@ -231,7 +230,7 @@ class Mesh(_FortranObjectWithID):
     ) -> np.ndarray:
         """Get mesh bin indices for a rasterized plot.
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.0
 
         Parameters
         ----------

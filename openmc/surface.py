@@ -14,8 +14,8 @@ from .region import Region, Intersection, Union
 from .bounding_box import BoundingBox
 
 
-_BOUNDARY_TYPES = ['transmission', 'vacuum', 'reflective', 'periodic', 'white']
-_ALBEDO_BOUNDARIES = ['reflective', 'periodic', 'white']
+_BOUNDARY_TYPES = {'transmission', 'vacuum', 'reflective', 'periodic', 'white'}
+_ALBEDO_BOUNDARIES = {'reflective', 'periodic', 'white'}
 
 _WARNING_UPPER = """\
 "{}(...) accepts an argument named '{}', not '{}'. Future versions of OpenMC \

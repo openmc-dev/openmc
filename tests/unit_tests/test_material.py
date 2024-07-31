@@ -385,6 +385,7 @@ def test_get_element_atom_densities(uo2):
         assert element in ('U', 'O')
         assert density > 0
 
+
 def test_get_element_atom_densities_specific(uo2):
     one_nuc = uo2.get_element_atom_densities(element='O')
     assert list(one_nuc.keys()) == ['O']

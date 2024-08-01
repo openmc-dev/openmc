@@ -33,7 +33,6 @@ def test_random_ray_source(shape):
         settings.random_ray['source_shape'] = shape
         settings.run_mode = 'fixed source'
         settings.particles = 30
-        settings.run_mode = 'fixed source'
         settings.random_ray['distance_active'] = 40.0
         settings.random_ray['distance_inactive'] = 40.0
         settings.random_ray['volume_normalized_flux_tallies'] = False

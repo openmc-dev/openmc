@@ -116,9 +116,16 @@ void FlatSourceDomain::batch_reset()
   // zero
   parallel_fill<float>(scalar_flux_new_, 0.0f);
   parallel_fill<int>(was_hit_, 0);
-  if (!settings::FIRST_COLLIDED_FLUX) {
-    parallel_fill<double>(volume_, 0.0);
-  }
+  parallel_fill<double>(volume_, 0.0);
+}
+
+void FlatSourceDomain::batch_reset_fc()
+{
+  parallel_fill<float>(scalar_flux_new_, 0.0f);
+  parallel_fill<int>(was_hit_, 0);
+  //if (!RandomRay::uncollided_flux_volume) {
+  //  parallel_fill<double>(volume_, 0.0);
+  //}
 }
 
 void FlatSourceDomain::accumulate_iteration_flux()
@@ -136,14 +143,14 @@ void FlatSourceDomain::update_external_flat_source()
   for (int sr = 0; sr < n_source_regions_; sr++) {
     double volume = simulation_volume_ * volume_[sr];
     //int material = material_[sr];
-    if (volume == 0.0) {
-      for (int g = 0; g < negroups_; g++) {
-        external_source_[sr * negroups_ + g] = 0.0f;
-      }
-    } else {
+    if (volume > 0.0) {
       for (int g = 0; g < negroups_; g++) {
         external_source_[sr * negroups_ + g] =
           (scalar_first_collided_flux_[sr * negroups_ + g] / (volume));
+      }
+    } else {
+      for (int g = 0; g < negroups_; g++) {
+        external_source_[sr * negroups_ + g] = 0.0f;
       }
     }
   }
@@ -281,7 +288,6 @@ void FlatSourceDomain::compute_uncollided_scalar_flux()
 #pragma omp parallel for
   for (int sr = 0; sr < n_source_regions_; sr++) {
     int was_cell_hit = was_hit_[sr];
-    double volume = volume_[sr]; // necessary???
     int material = material_[sr];
 
     for (int g = 0; g < negroups_; g++) {
@@ -297,14 +303,6 @@ void FlatSourceDomain::compute_uncollided_scalar_flux()
     }
   }
 }
-
-// void FlatSourceDomain::uncollided_sum_source()
-// {
-//   #pragma omp parallel for
-//   for (int64_t e = 0; e < scalar_flux_new_.size(); e++){
-//     scalar_flux_new_[e] += scalar_flux_new_per_source_[e];
-//   }
-// }
 
 // Combine transport flux contributions and flat source contributions from the
 // previous iteration to generate this iteration's estimate of scalar flux.
@@ -518,6 +516,12 @@ double FlatSourceDomain::compute_k_eff(double k_eff_old) const
 // have been hit and have had a tally map generated, then this status will
 // be passed back to the caller to alert them that this function doesn't
 // need to be called for the remainder of the simulation.
+
+void FlatSourceDomain::uncollided_moments()
+{
+  // empty
+}
+
 
 void FlatSourceDomain::update_volume_uncollided_flux()
 {

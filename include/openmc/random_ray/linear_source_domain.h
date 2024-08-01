@@ -48,7 +48,9 @@ public:
   virtual void compute_first_collided_flux();
   virtual void normalize_uncollided_scalar_flux(double number_of_particles);
   virtual void update_volume_uncollided_flux();
-  //virtual void uncollided_sum_source();
+  virtual void uncollided_moments();
+  virtual void batch_reset_fc();
+
   //----------------------------------------------------------------------------
   // Public Data members
 

@@ -303,8 +303,9 @@ void RandomRaySimulation::simulate()
         end_volume_estimation - start_volume_estimation);
 
       // Reset parameters for First Collided Method
+      domain_->batch_reset_fc();
       RandomRay::uncollided_flux_volume = false;
-      domain_->batch_reset();
+      
 
       //==============================================================================
       // First Collided Transport Loop
@@ -332,7 +333,6 @@ void RandomRaySimulation::simulate()
           n_hits_new);
 
         // BREAK STATEMENT if Max rays reached or 100% FSR HIT
-
         if (n_hits_new == n_hits_old) {
           domain_->new_fsr_fc = {false};
         } else if (new_n_rays >= n_rays_max) {
@@ -341,9 +341,6 @@ void RandomRaySimulation::simulate()
                    domain_->n_source_regions_) {
           domain_->new_fsr_fc = {false};
         }
-        // Section to add in n_source_calculations
-        // domain_->normalize_uncollided_scalar_flux(new_n_rays);
-        // domain_->uncollided_sum_source();
 
         // update values for next batch
         old_n_rays = new_n_rays;
@@ -352,15 +349,13 @@ void RandomRaySimulation::simulate()
         n_hits_old = n_hits_new;
       }
 
-      // fmt::print("old_n_rays = {:}    and new_n_rays = {:}\n", old_n_rays,
-      // new_n_rays);
       //  Compute scalar_uncollided_flux
       domain_->compute_uncollided_scalar_flux();
 
       // Normalize scalar_uncollided_flux
       domain_->normalize_uncollided_scalar_flux(old_n_rays);
 
-      // compute first_collided_fixed_source -
+      // compute first_collided_fixed_source
       domain_->compute_first_collided_flux();
 
       // Compute external source a priori.
@@ -368,25 +363,24 @@ void RandomRaySimulation::simulate()
         domain_->update_external_linear_source();
         domain_->update_external_flat_source();   // comment if option 2
         domain_->update_volume_uncollided_flux(); // comment if option 2
-        fmt::print("Flux and moments are calculated a priori to RR \n");
+        fmt::print("Flux and moments are calculated a priori to RR \n\n");
       } else if (settings::volume_online_option == 2) {
         domain_->update_external_linear_source();
-        fmt::print("Moments are calculated a priori to RR \n");
+        fmt::print("Moments are calculated a priori to RR \n\n");
       } else {
-        fmt::print("Flux and moments are updated online in RR \n");
+        fmt::print("Flux and moments are updated online in RR \n\n");
       }
 
-      // Reset Terms to RR method
-      domain_->batch_reset(); // clean-up of key variables (preserves volume)
-      simulation::current_batch = 0; // garantee the first batch will be 1 in RR
+      // apply invM*uncollided flux?
+      domain_->uncollided_moments();
 
       // reset values for RandomRay iteration
+      domain_->batch_reset_fc(); // clean-up of key variables (preserves volume)
       domain_->first_collided_mode = {true};   // add FC contribution to RR
       settings::FIRST_COLLIDED_FLUX = {false}; // regular RR calculations
-
-      // fmt::print("first_collided_mode = {:}\n",
-      // domain_->first_collided_mode);
-      //  compute First Collided Method simulation time
+      simulation::current_batch = 0; // garantee the first batch will be 1 in RR
+      
+      // compute First Collided Method simulation time
       double first_collided_estimated_time = omp_get_wtime();
       fmt::print(
         "  ======   ==========   ================================\n\n");
@@ -416,6 +410,7 @@ void RandomRaySimulation::simulate()
       }
     }
     // Update source term (scattering + fission)
+
     domain_->update_neutron_source(k_eff_);
 
     // Reset scalar fluxes, iteration volume tallies, and region hit flags to
@@ -503,6 +498,7 @@ void RandomRaySimulation::reduce_simulation_statistics()
 
 void RandomRaySimulation::output_simulation_results() const
 {
+  fmt::print("first_colllided_mode ={:}\n", domain_->first_collided_mode);
   // Print random ray results
   if (mpi::master) {
     print_results_random_ray(total_geometric_intersections_,

@@ -499,7 +499,7 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
   // any accumulated volume. If its volume is zero, just use the midpoint
   // of the ray as the region's centroid.
   if (settings::FIRST_COLLIDED_FLUX) { /// TRIPLE CHECK THIS
-    if (domain->volume_[source_region] != 0.0f) {
+    if (domain->volume_[source_region] > 0.0) {
       rm_local = midpoint - centroid;
       r0_local = r() - centroid;
     } else {

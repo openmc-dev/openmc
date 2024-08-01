@@ -120,7 +120,8 @@ public:
   virtual void update_external_flat_source(); // check if virtual
   virtual void compute_uncollided_scalar_flux(); // check if virtual
   virtual int64_t check_fsr_hits();
-  //virtual void uncollided_sum_source();
+  virtual void uncollided_moments();
+  virtual void batch_reset_fc();
 
   //----------------------------------------------------------------------------
   // Static Data members

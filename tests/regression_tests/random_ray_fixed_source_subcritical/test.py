@@ -25,7 +25,7 @@ def test_random_ray_source(shape):
         # but redfine some of the geometry to make it a good
         # subcritical multiplication problem. We then also add in
         # a fixed source term.
-        
+
         model = random_ray_lattice()
 
         # Begin by updating the random ray settings for fixed source
@@ -43,7 +43,7 @@ def test_random_ray_source(shape):
         # to ensure things are working as expected. With
         # only 100 inactive batches, tallies will still be off
         # by 3x or more. For validation against MGMC, be sure
-        # to increase the batch counts. 
+        # to increase the batch counts.
         settings.batches = 125
         settings.inactive = 100
 
@@ -56,7 +56,7 @@ def test_random_ray_source(shape):
         for material in model.materials:
             if material.name == 'Water':
                 water = material
-    
+
         # The new geometry replaces two of the fuel pins with
         # moderator, reducing k-eff to around 0.84. We also
         # add a special universe in the corner of one of the moderator
@@ -64,32 +64,33 @@ def test_random_ray_source(shape):
         moderator_infinite = openmc.Cell(fill=water, name='moderator infinite')
         mu = openmc.Universe()
         mu.add_cells([moderator_infinite])
-    
-        moderator_infinite2 = openmc.Cell(fill=water, name='moderator infinite 2')
+
+        moderator_infinite2 = openmc.Cell(
+            fill=water, name='moderator infinite 2')
         mu2 = openmc.Universe()
         mu2.add_cells([moderator_infinite2])
-    
+
         n_sub = 10
-    
+
         lattice = openmc.RectLattice()
         lattice.lower_left = [-pitch/2.0, -pitch/2.0]
         lattice.pitch = [pitch/n_sub, pitch/n_sub]
         lattice.universes = [[mu] * n_sub for _ in range(n_sub)]
-    
+
         lattice2 = openmc.RectLattice()
         lattice2.lower_left = [-pitch/2.0, -pitch/2.0]
         lattice2.pitch = [pitch/n_sub, pitch/n_sub]
         lattice2.universes = [[mu] * n_sub for _ in range(n_sub)]
         lattice2.universes[n_sub-1][n_sub-1] = mu2
-    
+
         mod_lattice_cell = openmc.Cell(fill=lattice)
         mod_lattice_uni = openmc.Universe()
         mod_lattice_uni.add_cells([mod_lattice_cell])
-    
+
         mod_lattice_cell2 = openmc.Cell(fill=lattice2)
         mod_lattice_uni2 = openmc.Universe()
         mod_lattice_uni2.add_cells([mod_lattice_cell2])
-    
+
         lattice2x2 = openmc.RectLattice()
         lattice2x2.lower_left = [-pitch, -pitch]
         lattice2x2.pitch = [pitch, pitch]
@@ -98,42 +99,44 @@ def test_random_ray_source(shape):
         for key, universe in universes.items():
             if universe.name == 'pincell':
                 pincell = universe
-    
+
         lattice2x2.universes = [
-                [pincell, mod_lattice_uni],
-                [mod_lattice_uni, mod_lattice_uni2]
-                ]
-    
-        box = openmc.model.RectangularPrism(pitch*2, pitch*2, boundary_type='reflective')
-    
+            [pincell, mod_lattice_uni],
+            [mod_lattice_uni, mod_lattice_uni2]
+        ]
+
+        box = openmc.model.RectangularPrism(
+            pitch*2, pitch*2, boundary_type='reflective')
+
         assembly = openmc.Cell(fill=lattice2x2, region=-box, name='assembly')
-    
+
         root = openmc.Universe(name='root universe')
         root.add_cell(assembly)
-    
+
         geometry = openmc.Geometry(root)
 
         model.geometry = geometry
-        
+
         ########################################
         # Define the fixed source term
 
         s = 1.0 / 7.0
         strengths = [s, s, s, s, s, s, s]
-        midpoints = [2.0e-5, 0.0735, 20.0, 2.0e2, 2.0e3, 0.75e6, 2.0e6 ]
-        energy_distribution = openmc.stats.Discrete(x=midpoints,p=strengths)
-    
+        midpoints = [2.0e-5, 0.0735, 20.0, 2.0e2, 2.0e3, 0.75e6, 2.0e6]
+        energy_distribution = openmc.stats.Discrete(x=midpoints, p=strengths)
+
         lower_left_src = [pitch - pitch/10.0, -pitch,             -1.0]
         upper_right_src = [pitch,             -pitch + pitch/10.0, 1.0]
-        spatial_distribution = openmc.stats.Box(lower_left_src, upper_right_src, only_fissionable=False)
-    
-        source = openmc.IndependentSource(space=spatial_distribution,constraints={'domains': [mu2]}, energy=energy_distribution,  strength=1.0)
-    
+        spatial_distribution = openmc.stats.Box(
+            lower_left_src, upper_right_src, only_fissionable=False)
+
+        source = openmc.IndependentSource(space=spatial_distribution, constraints={
+                                          'domains': [mu2]}, energy=energy_distribution,  strength=1.0)
+
         settings.source = [source]
-        
+
         ########################################
         # Run test
 
         harness = MGXSTestHarness('statepoint.125.h5', model)
         harness.main()
-

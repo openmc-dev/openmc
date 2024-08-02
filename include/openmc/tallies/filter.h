@@ -42,6 +42,7 @@ enum class FilterType {
   SPATIAL_LEGENDRE,
   SURFACE,
   TIME,
+  TIMED_MESH,
   UNIVERSE,
   ZERNIKE,
   ZERNIKE_RADIAL

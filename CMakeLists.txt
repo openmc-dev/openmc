@@ -422,6 +422,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_sptl_legendre.cpp
   src/tallies/filter_surface.cpp
   src/tallies/filter_time.cpp
+  src/tallies/filter_timed_mesh.cpp
   src/tallies/filter_universe.cpp
   src/tallies/filter_zernike.cpp
   src/tallies/tally.cpp

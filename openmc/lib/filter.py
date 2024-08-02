@@ -647,6 +647,8 @@ _FILTER_TYPE_MAP = {
     'sphericalharmonics': SphericalHarmonicsFilter,
     'spatiallegendre': SpatialLegendreFilter,
     'surface': SurfaceFilter,
+    'time': TimeFilter,
+    'timedmesh': TimedMeshFilter,
     'universe': UniverseFilter,
     'zernike': ZernikeFilter,
     'zernikeradial': ZernikeRadialFilter

@@ -25,7 +25,7 @@ _FILTER_TYPES = (
     'energyout', 'mu', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
     'energyfunction', 'cellfrom', 'materialfrom', 'legendre', 'spatiallegendre',
     'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance',
-    'collision', 'time'
+    'collision', 'time', 'timedmesh'
 )
 
 _CURRENT_NAMES = (
@@ -765,7 +765,7 @@ class ParticleFilter(Filter):
     @Filter.bins.setter
     def bins(self, bins):
         cv.check_type('bins', bins, Sequence, str)
-        bins = np.atleast_1d(bins)    
+        bins = np.atleast_1d(bins)
         for edge in bins:
             cv.check_value('filter bin', edge, _PARTICLES)
         self._bins = bins
@@ -1117,6 +1117,157 @@ class MeshSurfaceFilter(MeshFilter):
 
         # Initialize a Pandas DataFrame from the mesh dictionary
         return pd.concat([df, pd.DataFrame(filter_dict)])
+
+
+class TimedMeshFilter(Filter):
+    """Bins tally event locations by mesh elements and time grids.
+
+    Parameters
+    ----------
+    mesh : openmc.MeshBase
+        The mesh object that events will be tallied onto
+    time_grid : iterable of float
+        A list of values for which each successive pair constitutes a range of
+        time in [s] for a single time bin
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    mesh : openmc.MeshBase
+        The mesh object that events will be tallied onto
+    time_grid : numpy.ndarray
+        An array of values for which each successive pair constitutes a range of
+        time in [s] for a single time bin
+    id : int
+        Unique identifier for the filter
+    translation : Iterable of float
+        This array specifies a vector that is used to translate (shift) the mesh
+        for this filter
+    bins : list of tuple
+        A list of mesh indices for each filter bin, e.g. [(1, 1, 1), (2, 1, 1),
+        ...]
+    num_bins : Integral
+        The number of filter bins
+
+    """
+
+    def __init__(self, mesh, time_grid, filter_id=None):
+        self._time_grid = np.array([0.0, np.inf]) # Temporary
+        self.mesh = mesh
+        self.time_grid = time_grid
+        self.id = filter_id
+        self._translation = None
+
+    def __hash__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
+        string += '{: <16}=\t{}\n'.format('\tTime grid', self.time_grid)
+        return hash(string)
+
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
+        string += '{: <16}=\t{}\n'.format('\tTime grid', self.time_grid)
+        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        string += '{: <16}=\t{}\n'.format('\tTranslation', self.translation)
+        return string
+
+    @classmethod
+    def from_hdf5(cls, group, **kwargs):
+        if group['type'][()].decode() != cls.short_name.lower():
+            raise ValueError("Expected HDF5 data for filter type '"
+                             + cls.short_name.lower() + "' but got '"
+                             + group['type'][()].decode() + " instead")
+
+        if 'meshes' not in kwargs:
+            raise ValueError(cls.__name__ + " requires a 'meshes' keyword "
+                             "argument.")
+
+        mesh_id = group['mesh_bins'][()]
+        mesh_obj = kwargs['meshes'][mesh_id]
+        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+
+        time_grid = group['time_bins'][()]
+
+        out = cls(mesh_obj, time_grid, filter_id=filter_id)
+
+        translation = group.get('translation')
+        if translation:
+            out.translation = translation[()]
+
+        return out
+
+    @property
+    def mesh(self):
+        return self._mesh
+
+    @property
+    def time_grid(self):
+        return self._time_grid
+
+    @mesh.setter
+    def mesh(self, mesh):
+        cv.check_type('filter mesh', mesh, openmc.MeshBase)
+        self._mesh = mesh
+        self._reset_bins()
+
+    @time_grid.setter
+    def time_grid(self, time_grid):
+        self._time_grid = time_grid
+        self._reset_bins()
+
+    def _reset_bins(self):
+        mesh = self._mesh
+        time_grid = self._time_grid
+
+        # Mesh bins
+        if isinstance(mesh, openmc.UnstructuredMesh):
+            if mesh.has_statepoint_data:
+                mesh_bins = list(range(len(mesh.volumes)))
+            else:
+                mesh_bins = []
+        else:
+            mesh_bins = list(mesh.indices)
+
+        # Reset bins
+        self.bins = []
+        for i in range(len(self._time_grid) - 1):
+            for j in range(len(mesh_bins)):
+                new_bin = ()
+                new_bin += ([float(time_grid[i]), float(time_grid[i+1])],)
+                new_bin += (mesh_bins[j],)
+                self.bins.append(new_bin)
+
+    @property
+    def shape(self):
+        return (self.time_grid - 1,) + self.mesh.dimension
+
+    @property
+    def translation(self):
+        return self._translation
+
+    @translation.setter
+    def translation(self, t):
+        cv.check_type('mesh filter translation', t, Iterable, Real)
+        cv.check_length('mesh filter translation', t, 3)
+        self._translation = np.asarray(t)
+
+    def can_merge(self, other):
+        return False
+
+    def to_xml_element(self):
+        element = super().to_xml_element()
+        element[0].text = None
+
+        time_bins = ET.SubElement(element[0], 'time_bins')
+        mesh_bins = ET.SubElement(element[0], 'mesh_bins')
+
+        time_bins.text = ' '.join(str(x) for x in self.time_grid)
+        mesh_bins.text = str(self.mesh.id)
+        if self.translation is not None:
+            element.set('translation', ' '.join(map(str, self.translation)))
+        return element
 
 
 class CollisionFilter(Filter):

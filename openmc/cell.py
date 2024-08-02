@@ -783,3 +783,55 @@ class Cell(IDManagerMixin):
         univ_id = int(get_text(elem, 'universe', 0))
         get_universe(univ_id).add_cell(c)
         return c
+
+
+class DAGSpeudoCell(Cell):
+    def __init__(self, cell_id=None, name='', fill=None, region=None):
+        super().__init__(cell_id, name, fill, region)
+
+    @property
+    def DAG_parent_universe(self):
+        """Get the parent universe of the cell."""
+        return self._parent_universe
+
+    @DAG_parent_universe.setter
+    def DAG_parent_universe(self, universe):
+        """Set the parent universe of the cell."""
+        self._parent_universe = universe.id
+
+    def boundingbox(self):
+        print("Warning: Bounding box is not available for cells in a DAGMC universe.")
+        return {}
+
+    def get_all_cells(self, memo=None):
+        print("Warning: get_all_cells is not available for cells in a DAGMC universe.")
+        return {}
+
+    def get_all_materials(self, memo=None):
+        print("Warning: get_all_materials is not available for cells in a DAGMC universe.")
+        return {}
+
+    def get_all_universes(self, memo=None):
+        print("Warning: get_all_universes is not available for cells in a DAGMC universe.")
+        return {}
+
+    def clone(self, clone_materials=True, clone_regions=True, memo=None):
+        print("Warning: clone is not available for cells in a DAGMC universe.")
+        return None
+
+    def plot(self, *args, **kwargs):
+        print("Warning: plot is not available for cells in a DAGMC universe.")
+        return None
+
+    def create_xml_subelement(self, xml_element, memo=None):
+        print("Warning: create_xml_subelement is not available for cells in a DAGMC universe.")
+        return None
+
+    @classmethod
+    def from_xml_element(cls, elem, surfaces, materials, get_universe):
+        print("Warning: from_xml_element is not available for cells in a DAGMC universe.")
+        return None
+
+    
+
+    

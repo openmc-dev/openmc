@@ -5,7 +5,6 @@ from ctypes import c_int, c_int32, c_double, c_char_p, POINTER, c_bool, c_size_t
 from weakref import WeakValueDictionary
 
 import numpy as np
-from numpy.ctypeslib import as_array
 
 from ..exceptions import AllocationError, InvalidIDError
 from . import _dll
@@ -171,22 +170,12 @@ class Cell(_FortranObjectWithID):
         indices = POINTER(c_int32)()
         n = c_int32()
         _dll.openmc_cell_get_fill(self._index, fill_type, indices, n)
-        print("value",fill_type.value)
-        print("all indicices", [i for i in indices[:n.value]])
-        print("value", n.value, n)
-        print("cell", self.id)
         if fill_type.value == 0:
             if n.value > 1:
                 return [Material(index=i) for i in indices[:n.value]]
             else:
                 index = indices[0]
                 return Material(index=index)
-        if fill_type.value == 1:
-            if n.value > 1:
-                return [Cell(index=i) for i in indices[:n.value]]
-            else:
-                index = indices[0]
-                return Cell(index=index)
         else:
             raise NotImplementedError
 
@@ -325,7 +314,4 @@ class _CellMapping(Mapping):
     def __repr__(self):
         return repr(dict(self))
 
-
 cells = _CellMapping()
-
-

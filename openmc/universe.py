@@ -834,6 +834,7 @@ class DAGMCUniverse(UniverseBase):
         self.auto_mat_ids = auto_mat_ids
         self.mat_assignment = mat_assignment
         self._num_instances = 0
+        self._dagmc_cells = []
 
     def __repr__(self):
         string = super().__repr__()

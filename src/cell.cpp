@@ -1068,24 +1068,8 @@ extern "C" int openmc_cell_get_fill(
     Cell& c {*model::cells[index]};
     *type = static_cast<int>(c.type_);
     if (c.type_ == Fill::MATERIAL) {
-      std::cout << "mat size " << c.material_.size() << std::endl;
-      for (int i = 0; i < c.material_.size(); i++) {
-        std::cout << "mat " << c.material_[i] << std::endl;
-      }
       *indices = c.material_.data();
       *n = c.material_.size();
-    } else if (c.type_ == Fill::UNIVERSE) {
-      std::unordered_map<int32_t, vector<int32_t>> contained_cells =
-        c.get_contained_cells();
-      std::vector<int32_t> cells_id;
-      for (const auto& [key, _] : contained_cells) {
-        cells_id.push_back(key);
-      }
-      *indices = cells_id.data();
-      std::cout << "cell out " << (*indices)[0] << std::endl;
-      std::cout << "cell out " << (*indices)[1] << std::endl;
-      std::cout << "cell out " << (*indices)[2] << std::endl;
-      *n = contained_cells.size();
     } else {
       *indices = &c.fill_;
       *n = 1;

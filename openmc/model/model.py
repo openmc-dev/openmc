@@ -322,10 +322,28 @@ class Model:
         # the user-provided intracomm which will either be None or an mpi4py
         # communicator
         openmc.lib.init(args=args, intracomm=intracomm, output=output)
-        # sync_dagmc_cells()
+        self.sync_dagmc_cells()
 
-    # def sync_dagmc_cells():
-        
+    def sync_dagmc_cells(self):
+        """Synchronize DAGMC cell information between Python and C API
+
+        .. versionadded:: 0.13.0
+
+        """
+        if not self.is_initialized:
+            raise RuntimeError("Model must be initialized via Model.init_lib "
+                               "before calling this method.")
+
+        import openmc.lib
+
+        for cell in self.geometry.get_all_cells():
+            if isinstance(cell.fill, openmc.DAGMCUniverse):
+                for dag_cell_id in openmc.lib.get_dagmc_cells(cell.id):
+                    dag_cell = openmc.lib.cells[dag_cell_id]
+                    dag_pseudo_cell = openmc.DAGPseudoCell(
+                        dag_cell_id, self._materials_by_id[dag_cell.fill.id]
+                    )
+                    cell.fill._dagmc_cells.append(dag_pseudo_cell.id)
 
     def finalize_lib(self):
         """Finalize simulation and free memory allocated for the C API

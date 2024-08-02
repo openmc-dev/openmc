@@ -1153,7 +1153,7 @@ class TimedMeshFilter(Filter):
     """
 
     def __init__(self, mesh, time_grid, filter_id=None):
-        self._time_grid = np.array([0.0, np.inf]) # Temporary
+        self._time_grid = np.array([0.0, np.inf])  # Temporary
         self.mesh = mesh
         self.time_grid = time_grid
         self.id = filter_id

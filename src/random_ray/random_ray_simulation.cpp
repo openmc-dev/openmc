@@ -498,7 +498,6 @@ void RandomRaySimulation::reduce_simulation_statistics()
 
 void RandomRaySimulation::output_simulation_results() const
 {
-  fmt::print("first_colllided_mode ={:}\n", domain_->first_collided_mode);
   // Print random ray results
   if (mpi::master) {
     print_results_random_ray(total_geometric_intersections_,

@@ -136,7 +136,7 @@ double weight_survive {1.0};
 // HARDCODED INPUTS - First Collided Flux
 bool FIRST_COLLIDED_FLUX {true};
 int n_uncollided_rays {100000};
-int n_volume_estimator_rays {1000000};
+int n_volume_estimator_rays {100000};
 int volume_online_option {3};
 
 

@@ -107,7 +107,7 @@ void LinearSourceDomain::update_external_linear_source()
     if (volume > 0.0) {
       for (int g = 0; g < negroups_; g++) {
         external_source_gradients_[sr * negroups_ + g] =
-          (flux_moments_first_collided_[sr * negroups_ + g] / (volume));
+          (flux_moments_first_collided_[sr * negroups_ + g] * (1.0 / volume));
       }
     } else {
       for (int g = 0; g < negroups_; g++) {
@@ -386,13 +386,13 @@ void LinearSourceDomain::uncollided_moments()
 #pragma omp parallel for
   for (int sr = 0; sr < n_source_regions_; sr++) {
     int was_cell_hit = was_hit_[sr];
-    double volume = volume_[sr];
+    double volume = volume_[sr] * simulation_volume_;
     MomentMatrix invM = mom_matrix_[sr].inverse();
 
     for (int g = 0; g < negroups_; g++) {
       int64_t idx = (sr * negroups_) + g;
       if (volume > 0.0) {
-        flux_moments_uncollided_[idx] = invM * flux_moments_uncollided_[idx];
+        flux_moments_uncollided_[idx] = invM * flux_moments_uncollided_[idx] * (1.0/ volume);
       } else {
         flux_moments_uncollided_[idx] *= 0.0;
       }
@@ -460,7 +460,7 @@ double LinearSourceDomain::evaluate_flux_at_point(
   MomentArray phi_solved = invM * phi_linear;
 
   if (first_collided_mode) {
-    phi_solved += flux_moments_uncollided_[sr * negroups_ + g];
+   phi_solved += flux_moments_uncollided_[sr * negroups_ + g];
   }
 
   return phi_flat + phi_solved.dot(local_r);
@@ -474,12 +474,12 @@ void LinearSourceDomain::update_volume_uncollided_flux()
     if (volume > 0.0) {
       for (int g = 0; g < negroups_; g++) {
         scalar_uncollided_flux_[sr * negroups_ + g] *= (1.0 / volume);
-        flux_moments_uncollided_[sr * negroups_ + g] *= (1.0 / volume);
+        //flux_moments_uncollided_[sr * negroups_ + g] *= (1.0 / volume);
       }
     } else {
       for (int g = 0; g < negroups_; g++) {
         scalar_uncollided_flux_[sr * negroups_ + g] = 0.0f;
-        flux_moments_uncollided_[sr * negroups_ + g] *= 0.0;
+        //flux_moments_uncollided_[sr * negroups_ + g] *= 0.0;
       }
     }
   }

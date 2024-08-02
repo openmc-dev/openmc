@@ -37,7 +37,7 @@ void TimedMeshFilter::from_xml(pugi::xml_node node)
   if (check_for_node(node, "translation")) {
     set_translation(get_node_array<double>(node, "translation"));
   }
-  
+
   //----------------------------------------------------------------------------
   // Time bins
 
@@ -61,13 +61,14 @@ void TimedMeshFilter::set_time_grid(gsl::span<const double> time_grid)
   time_grid_.reserve(time_grid.size());
 
   // Ensure time grid is sorted and don't have duplicates
-  if (std::adjacent_find(time_grid.cbegin(), time_grid.cend(), std::greater_equal<>()) !=
-      time_grid.end()) {
+  if (std::adjacent_find(time_grid.cbegin(), time_grid.cend(),
+        std::greater_equal<>()) != time_grid.end()) {
     throw std::runtime_error {"Time grid must be monotonically increasing."};
   }
 
   // Copy grid
-  std::copy(time_grid.cbegin(), time_grid.cend(), std::back_inserter(time_grid_));
+  std::copy(
+    time_grid.cbegin(), time_grid.cend(), std::back_inserter(time_grid_));
 
   reset_bins();
 }
@@ -94,7 +95,7 @@ void TimedMeshFilter::get_all_bins(
   Position r = p.r();
   Position u = p.u();
   const auto speed = p.speed();
-  
+
   // apply translation if present
   if (translated_) {
     last_r -= translation();
@@ -110,7 +111,8 @@ void TimedMeshFilter::get_all_bins(
     if (t_end < time_grid_.back())
       return;
 
-    auto time_bin = lower_bound_index(time_grid_.begin(), time_grid_.end(), t_end);
+    auto time_bin =
+      lower_bound_index(time_grid_.begin(), time_grid_.end(), t_end);
     auto mesh_bin = model::meshes[mesh_]->get_bin(r);
 
     // Inside the mesh?
@@ -123,18 +125,21 @@ void TimedMeshFilter::get_all_bins(
 
   } else {
     // -------------------------------------------------------------------------
-    // For tracklength estimator, we have to check the start/end time-position 
+    // For tracklength estimator, we have to check the start/end time-position
     // of the current track and find where it overlaps with time-mesh bins and
     // score accordingly.
 
     // Determine first time bin containing a portion of time interval
-    auto i_time_bin = lower_bound_index(time_grid_.begin(), time_grid_.end(), t_start);
+    auto i_time_bin =
+      lower_bound_index(time_grid_.begin(), time_grid_.end(), t_start);
 
-    //std::cout<<last_r.x<<"  "<<r.x<<"  "<<u.x<<"  "<<t_start<<"  "<<t_end<<"  "<<speed<<"\n";
+    // std::cout<<last_r.x<<"  "<<r.x<<"  "<<u.x<<"  "<<t_start<<"  "<<t_end<<"
+    // "<<speed<<"\n";
 
     // If time interval is zero, add a match corresponding to the starting time
     if (t_end == t_start) {
-      model::meshes[mesh_]->bins_crossed(last_r, r, u, match.bins_, match.weights_);
+      model::meshes[mesh_]->bins_crossed(
+        last_r, r, u, match.bins_, match.weights_);
       // Offset the bin location accordingly
       match.bins_.back() += i_time_bin * mesh_n_bins_;
 
@@ -181,7 +186,7 @@ void TimedMeshFilter::get_all_bins(
       if (t_end < time_grid_[i_time_bin + 1])
         break;
     }
-    
+
     /*
     double sum {0.0};
     for (int i = 0; i < match.bins_.size(); i++) {
@@ -210,7 +215,8 @@ std::string TimedMeshFilter::text_label(int bin) const
 
   auto& mesh = *model::meshes.at(mesh_);
 
-  std::string label_time = fmt::format("Time [{}, {}) : ", time_grid_[bin], time_grid_[bin + 1]);
+  std::string label_time =
+    fmt::format("Time [{}, {}) : ", time_grid_[bin], time_grid_[bin + 1]);
   std::string label_mesh = mesh.bin_label(bin_mesh);
 
   return label_time + label_mesh;

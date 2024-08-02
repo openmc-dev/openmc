@@ -10,7 +10,7 @@
 namespace openmc {
 
 //==============================================================================
-//! Indexes the time-location of particle events to a time gridn and a regular 
+//! Indexes the time-location of particle events to a time gridn and a regular
 //  mesh. For tracklength tallies, it will produce multiple valid bins and the
 //  bin weight will correspond to the fraction of the track length that lies in
 //! that bin.
@@ -52,18 +52,18 @@ public:
   const Position& translation() const { return translation_; }
 
   bool translated() const { return translated_; }
-  
+
   const vector<double>& time_grid() const { return time_grid_; }
-  
+
   void set_time_grid(gsl::span<const double> time_grid);
-  
+
   void reset_bins();
 
 protected:
   //----------------------------------------------------------------------------
   // Data members
 
-  int32_t mesh_;            //!< Index of the mesh
+  int32_t mesh_; //!< Index of the mesh
   int mesh_n_bins_;
   bool translated_ {false}; //!< Whether or not the filter is translated
   Position translation_ {0.0, 0.0, 0.0}; //!< Filter translation

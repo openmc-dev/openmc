@@ -847,12 +847,14 @@ int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ)
   return univp->cell_index(new_vol);
 }
 
-extern "C" void openmc_get_dagmc_cell_ids(int32_t univ_id, int32_t* ids, size_t* n) 
+extern "C" void openmc_get_dagmc_cell_ids(
+  int32_t univ_id, int32_t* ids, size_t* n)
 {
   // make sure the universe id is a DAGMC Universe
   const auto& univ = universe_map[univ_id];
-  if (univ.geom_type_ != GeometryType::DAG){
-    fatal_error("Universe " + std::to_string(univ_id) + " is not a DAGMC Universe!");
+  if (univ.geom_type_ != GeometryType::DAG) {
+    fatal_error(
+      "Universe " + std::to_string(univ_id) + " is not a DAGMC Universe!");
   }
 
   std::vector<int32_t> dag_cell_ids;
@@ -860,8 +862,8 @@ extern "C" void openmc_get_dagmc_cell_ids(int32_t univ_id, int32_t* ids, size_t*
     if (cell->geom_type_ == GeometryType::DAG)
       dag_cell_ids.push_back(cell->id_);
   }
-  std::copy(dag_cell_ids.begin(), dag_cell_ids.end(), ids)
-  *n = dag_cell_ids.size();
+  std::copy(dag_cell_ids.begin(), dag_cell_ids.end(), ids)* n =
+    dag_cell_ids.size();
 }
 
 } // namespace openmc

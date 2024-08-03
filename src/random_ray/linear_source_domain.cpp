@@ -68,7 +68,7 @@ void LinearSourceDomain::batch_reset_fc()
     for (int64_t sr = 0; sr < n_source_regions_; sr++) {
       centroid_iteration_[sr] = {0.0, 0.0, 0.0};
       centroid_[sr] = {0.0, 0.0, 0.0};
-      //mom_matrix_[sr] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+      // mom_matrix_[sr] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
     }
   }
 }
@@ -130,7 +130,6 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
   const int t = 0;
   const int a = 0;
 
-  // if (simulation::current_batch != 1 || !first_collided_mode) {
 #pragma omp parallel for
   for (int sr = 0; sr < n_source_regions_; sr++) {
 
@@ -177,14 +176,16 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
       }
     }
   }
-  //}
+  
 
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
 // Add external source to flat source term if in fixed source mode
 #pragma omp parallel for
     for (int se = 0; se < n_source_elements_; se++) {
       source_[se] += external_source_[se];
-      source_gradients_[se] += external_source_gradients_[se]; // ???
+      if (first_collided_mode) {
+        source_gradients_[se] += external_source_gradients_[se]; // ???
+      }
     }
   }
 
@@ -376,7 +377,7 @@ void LinearSourceDomain::compute_first_collided_flux()
 
       // Compute the linear source terms
       flux_moments_first_collided_[sr * negroups_ + e_out] =
-         invM * ((scatter_linear) / sigma_t); 
+        invM * ((scatter_linear) / sigma_t);
     }
   }
 }
@@ -392,7 +393,8 @@ void LinearSourceDomain::uncollided_moments()
     for (int g = 0; g < negroups_; g++) {
       int64_t idx = (sr * negroups_) + g;
       if (volume > 0.0) {
-        flux_moments_uncollided_[idx] = invM * flux_moments_uncollided_[idx] * (1.0/ volume);
+        flux_moments_uncollided_[idx] =
+          invM * flux_moments_uncollided_[idx] * (1.0 / volume);
       } else {
         flux_moments_uncollided_[idx] *= 0.0;
       }
@@ -460,7 +462,7 @@ double LinearSourceDomain::evaluate_flux_at_point(
   MomentArray phi_solved = invM * phi_linear;
 
   if (first_collided_mode) {
-   phi_solved += flux_moments_uncollided_[sr * negroups_ + g];
+    phi_solved += flux_moments_uncollided_[sr * negroups_ + g];
   }
 
   return phi_flat + phi_solved.dot(local_r);
@@ -474,12 +476,12 @@ void LinearSourceDomain::update_volume_uncollided_flux()
     if (volume > 0.0) {
       for (int g = 0; g < negroups_; g++) {
         scalar_uncollided_flux_[sr * negroups_ + g] *= (1.0 / volume);
-        //flux_moments_uncollided_[sr * negroups_ + g] *= (1.0 / volume);
+        // flux_moments_uncollided_[sr * negroups_ + g] *= (1.0 / volume);
       }
     } else {
       for (int g = 0; g < negroups_; g++) {
         scalar_uncollided_flux_[sr * negroups_ + g] = 0.0f;
-        //flux_moments_uncollided_[sr * negroups_ + g] *= 0.0;
+        // flux_moments_uncollided_[sr * negroups_ + g] *= 0.0;
       }
     }
   }

@@ -683,7 +683,7 @@ class Integrator(ABC):
 
         self._solver = func
 
-    def _timed_deplete(self, n, rates, dt, i, matrix_func=None):
+    def _timed_deplete(self, n, rates, dt, i=None, matrix_func=None):
         start = time.time()
         results = deplete(
             self._solver, self.chain, n, rates, dt, i, matrix_func,
@@ -816,7 +816,7 @@ class Integrator(ABC):
 
                 # Remove actual EOS concentration for next step
                 n = n_list.pop()
-                
+
                 StepResult.save(self.operator, n_list, res_list, [t, t + dt],
                                 source_rate, self._i_res + i, proc_time, path)
 

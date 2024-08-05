@@ -27,6 +27,7 @@ public:
   void print_results_random_ray(uint64_t total_geometric_intersections,
     double avg_miss_rate, int negroups, int64_t n_source_regions,
     int64_t n_external_source_regions) const;
+  void first_collided_source_simulation();
 
   //----------------------------------------------------------------------------
   // Data members
@@ -38,6 +39,10 @@ public:
   int batch_first_collided {1};
   int n_rays_max {1000000};
   bool user_input_rays {false};
+  
+  // volume estimation timer
+  double time_volume_fc {0};
+
   
 private:
   // Contains all flat source region data
@@ -52,6 +57,8 @@ private:
   // Tracks the total number of geometric intersections by all rays for
   // reporting
   uint64_t total_geometric_intersections_ {0};
+  uint64_t total_geometric_intersections_volume_ {0};
+  uint64_t total_geometric_intersections_fcs_ {0};
 
   // Number of energy groups
   int negroups_;

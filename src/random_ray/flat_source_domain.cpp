@@ -123,9 +123,6 @@ void FlatSourceDomain::batch_reset_fc()
 {
   parallel_fill<float>(scalar_flux_new_, 0.0f);
   parallel_fill<int>(was_hit_, 0);
-  //if (!RandomRay::uncollided_flux_volume) {
-  //  parallel_fill<double>(volume_, 0.0);
-  //}
 }
 
 void FlatSourceDomain::accumulate_iteration_flux()
@@ -142,7 +139,7 @@ void FlatSourceDomain::update_external_flat_source()
 #pragma omp parallel for
   for (int sr = 0; sr < n_source_regions_; sr++) {
     double volume = simulation_volume_ * volume_[sr];
-    //int material = material_[sr];
+
     if (volume > 0.0) {
       for (int g = 0; g < negroups_; g++) {
         external_source_[sr * negroups_ + g] =
@@ -522,7 +519,6 @@ void FlatSourceDomain::uncollided_moments()
   // empty
 }
 
-
 void FlatSourceDomain::update_volume_uncollided_flux()
 {
 #pragma omp parallel for
@@ -729,16 +725,8 @@ void FlatSourceDomain::random_ray_tally()
     for (int g = 0; g < negroups_; g++) {
       int idx = sr * negroups_ + g;
       if (first_collided_mode) {
-        if (RandomRay::source_shape_ == RandomRaySourceShape::FLAT) {
-          flux =
-            (scalar_flux_new_[idx] + (scalar_uncollided_flux_[idx] / volume));
-        } else if (settings::volume_online_option == 1) {
-          flux =
-            (scalar_flux_new_[idx] + (scalar_uncollided_flux_[idx] ));
-        } else {
-          flux =
-            (scalar_flux_new_[idx] + (scalar_uncollided_flux_[idx] / volume));
-        }
+        flux =
+          (scalar_flux_new_[idx] + (scalar_uncollided_flux_[idx] / volume));
       } else {
         flux = (scalar_flux_new_[idx] * source_normalization_factor);
       }

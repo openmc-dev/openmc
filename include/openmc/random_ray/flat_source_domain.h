@@ -140,8 +140,6 @@ public:
                                           // Check if new cell was hit
   bool negative_flux_check {false};       // Variable to print warning of negative fluxes
 
-  int flux_type {settings::volume_online_option}; // for plotting purposes.
-
   // 1D array representing source region starting offset for each OpenMC Cell
   // in model::cells
   vector<int64_t> source_region_offsets_;

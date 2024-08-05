@@ -421,7 +421,8 @@ void RandomRay::attenuate_flux_flat_source(double distance, bool is_active)
 
     // check attenuation in FIRST_ COLLIDED_FLUX
     // There is likely that an extra length of the rebounded ray after vacuum
-    // BC is being considered here, however, it does not impact volume calculations
+    // BC is being considered here, however, it does not impact volume
+    // calculations
     if (settings::FIRST_COLLIDED_FLUX && !uncollided_flux_volume) {
       // bool = true to kill ray
       // ray is killed by default unless:
@@ -498,7 +499,9 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
   // be no estimate of its centroid. We detect this by checking if it has
   // any accumulated volume. If its volume is zero, just use the midpoint
   // of the ray as the region's centroid.
-  if (settings::FIRST_COLLIDED_FLUX) { /// TRIPLE CHECK THIS
+
+  // First collided source works on volume_ instead of volume_t_
+  if (settings::FIRST_COLLIDED_FLUX) {
     if (domain->volume_[source_region] > 0.0) {
       rm_local = midpoint - centroid;
       r0_local = r() - centroid;
@@ -536,26 +539,43 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
       // Compute linear source terms, spatial and directional (dir),
       // calculated from the source gradients dot product with local centroid
       // and direction, respectively.
-      float spatial_source =
-        domain_->source_[source_element + g] +
-        rm_local.dot(domain->source_gradients_[source_element + g]);
-      float dir_source = u().dot(domain->source_gradients_[source_element + g]);
+      float h1 = 0.0f;
+      float spatial_source = 0.0f;
+      float dir_source = 0.0f;
+      float new_delta_psi = 0.0f;
 
-      float gn = exponentialG(tau);
-      float f1 = 1.0f - tau * gn;
-      float f2 = (2.0f * gn - f1) * distance_2;
-      float new_delta_psi =
-        (angular_flux_[g] - spatial_source) * f1 * distance -
-        0.5 * dir_source * f2;
+      if (!settings::FIRST_COLLIDED_FLUX) {
+        spatial_source =
+          domain_->source_[source_element + g] +
+          rm_local.dot(domain->source_gradients_[source_element + g]);
+        dir_source = u().dot(domain->source_gradients_[source_element + g]);
 
-      float h1 = f1 - gn;
-      float g1 = 0.5f - h1;
-      float g2 = exponentialG2(tau);
-      g1 = g1 * spatial_source;
-      g2 = g2 * dir_source * distance * 0.5f;
-      h1 = h1 * angular_flux_[g];
-      h1 = (g1 + g2 + h1) * distance_2;
-      spatial_source = spatial_source * distance + new_delta_psi;
+        float gn = exponentialG(tau);
+        float f1 = 1.0f - tau * gn;
+        float f2 = (2.0f * gn - f1) * distance_2;
+        new_delta_psi =
+          (angular_flux_[g] - spatial_source) * f1 * distance -
+          0.5 * dir_source * f2;
+
+        h1 = f1 - gn;
+        float g1 = 0.5f - h1;
+        float g2 = exponentialG2(tau);
+        g1 = g1 * spatial_source;
+        g2 = g2 * dir_source * distance * 0.5f;
+        h1 = h1 * angular_flux_[g];
+        h1 = (g1 + g2 + h1) * distance_2;
+        spatial_source = spatial_source * distance + new_delta_psi;
+
+      } else {
+        float gn = exponentialG(tau);
+        float f1 = 1.0f - tau * gn;
+        new_delta_psi = (angular_flux_[g]) * f1 * distance;
+
+        h1 = f1 - gn;
+        h1 = h1 * angular_flux_[g];
+        h1 = (h1)*distance_2;
+        spatial_source = new_delta_psi;
+      }
 
       // Store contributions for this group into arrays, so that they can
       // be accumulated into the source region's estimates inside of the locked

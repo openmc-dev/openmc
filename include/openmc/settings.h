@@ -158,8 +158,7 @@ extern double weight_survive;      //!< Survival weight after Russian roulette
 extern bool FIRST_COLLIDED_FLUX; //!< First Collided Mode loop
 extern int n_uncollided_rays; //!< Number of uncollided rays used
 extern int n_volume_estimator_rays; //!< Number of rays to estimate volume
-//extern bool first_collided_mode; //!< Add first collided source in RR
-extern int volume_online_option;//! Volume online calculation for FC source
+//extern int volume_online_option;//! Volume online calculation for FC source
 
 } // namespace settings
 

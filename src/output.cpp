@@ -376,13 +376,16 @@ void print_build_info()
 
 void print_columns()
 {
-  if (settings::entropy_on) {
+  if (settings::FIRST_COLLIDED_FLUX){
+    fmt::print("  Batch       Rays       Total Source Regions Discovered\n"
+               "  ======      =======    =================================\n");
+  } else if (settings::entropy_on) {
     fmt::print("  Bat./Gen.      k       Entropy         Average k \n"
                "  =========   ========   ========   ====================\n");
   } else {
     fmt::print("  Bat./Gen.      k            Average k\n"
                "  =========   ========   ====================\n");
-  }
+  } 
 }
 
 //==============================================================================

@@ -21,10 +21,26 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
+  setup: 
+    runs-on: ubuntu-22.04
+    outputs:
+      matrix: ${{ steps.read-json.outputs.matrix }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read JSON
+        id: read-json
+        shell: bash
+        run: |
+            echo "matrix<<EOF" >> $GITHUB_OUTPUT
+            cat $GITHUB_WORKSPACE/tools/ci/matrix.json >> $GITHUB_OUTPUT
+
   main:
     runs-on: ubuntu-22.04
+    needs: setup
     strategy:
-      matrix: ${{ fromJson("$GITHUB_WORKSPACE/tools/ci/matrix.json") }}
+      matrix: "${{ fromJSON( needs.setup.outputs.matrix ) }}"
 
     name: "${{ matrix.job-name }}"
 

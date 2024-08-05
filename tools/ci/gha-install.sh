@@ -9,9 +9,6 @@ pip install --upgrade numpy
 # Install NJOY 2016
 if [[ ! -d "$HOME/NJOY2016" ]]; then
     ./tools/ci/gha-install-njoy.sh
-else
-    #cd $HOME/NJOY2016/build && sudo make install
-    cd $GITHUB_WORKSPACE
 fi
 echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
 
@@ -20,10 +17,6 @@ if [[ $DAGMC = 'y' ]]; then
     if [ ! -d "$HOME/DAGMC" ] || [ ! -d "$HOME/MOAB" ]
     then
         ./tools/ci/gha-install-dagmc.sh
-    else
-        #cd $HOME/DAGMC/build && make -j install
-        #cd $HOME/MOAB/build && make -j install
-        cd $GITHUB_WORKSPACE
     fi
 fi
 

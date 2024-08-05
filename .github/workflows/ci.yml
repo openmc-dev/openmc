@@ -156,25 +156,7 @@ jobs:
           path: |
             ~/LIBMESH
           key: libmesh-mpi-${{matrix.mpi}}-${{ env.NC_HASH }} 
-<<<<<<< HEAD
-  
-      - name: Restore mcpl
-        uses: actions/cache@v4
-        with:
-          path: ~/mcpl
-          key: mcpl-${{ env.MCPL_HASH }} 
-=======
 
-<<<<<<< HEAD
-      #- name: Restore mcpl
-      #  uses: actions/cache@v4
-      #  with:
-      #    path: ~/mcpl
-      #    key: mcpl-${{ env.MCPL_HASH }} 
->>>>>>> 322d1d221 (Cache vectfit and temporarily remove testing)
-
-=======
->>>>>>> f991cf9bb (Try renaming scheme for job matrix)
       - name: install
         shell: bash
         run: |

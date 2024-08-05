@@ -18,6 +18,6 @@ else
 fi
 make -j4 install
 export LIBMESH_PC=$HOME/LIBMESH/lib/pkgconfig/
-#rm -rf $HOME/LIBMESH/build
+rm -rf $HOME/LIBMESH/build
 
 popd

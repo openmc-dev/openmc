@@ -3,7 +3,6 @@ set -ex
 
 # MCPL variables
 MCPL_REPO='https://github.com/mctools/mcpl'
-MCPL_INSTALL_DIR=$HOME/mcpl
 
 cd $HOME
 git clone $MCPL_REPO

@@ -29,6 +29,3 @@ if [[ $LIBMESH = 'y' ]]; then
     echo "NC_HASH=$(git ls-remote https://github.com/libmesh/libmesh \
     --branch v1.7.1 | cut -f 1 | head -c 15)" >> $GITHUB_ENV
 fi
-
-echo "MCPL_HASH=$(git ls-remote https://github.com/mctools/mcpl.git |\
-    cut -f 1 | head -c 15)" >> $GITHUB_ENV

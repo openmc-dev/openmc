@@ -32,8 +32,6 @@ LinearSourceDomain::LinearSourceDomain() : FlatSourceDomain()
   // First Collided method
   flux_moments_uncollided_.assign(n_source_elements_, {0.0, 0.0, 0.0});
   flux_moments_first_collided_.assign(n_source_elements_, {0.0, 0.0, 0.0});
-  //
-  // flux_moments_new_per_source_.assign(n_source_elements_, {0.0, 0.0, 0.0});
 
   centroid_.assign(n_source_regions_, {0.0, 0.0, 0.0});
   centroid_iteration_.assign(n_source_regions_, {0.0, 0.0, 0.0});
@@ -100,10 +98,8 @@ void LinearSourceDomain::update_external_linear_source()
   for (int sr = 0; sr < n_source_regions_; sr++) {
 
     double volume = simulation_volume_ * volume_[sr];
-    MomentMatrix invM = mom_matrix_[sr].inverse();
 
-    // multiply First Collided Flux by volume and attribute it as
-    // external_source
+    // DIvide by volume and attribute it as external_source
     if (volume > 0.0) {
       for (int g = 0; g < negroups_; g++) {
         external_source_gradients_[sr * negroups_ + g] =

@@ -553,9 +553,8 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
         float gn = exponentialG(tau);
         float f1 = 1.0f - tau * gn;
         float f2 = (2.0f * gn - f1) * distance_2;
-        new_delta_psi =
-          (angular_flux_[g] - spatial_source) * f1 * distance -
-          0.5 * dir_source * f2;
+        new_delta_psi = (angular_flux_[g] - spatial_source) * f1 * distance -
+                        0.5 * dir_source * f2;
 
         h1 = f1 - gn;
         float g1 = 0.5f - h1;
@@ -748,15 +747,21 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   }
 
   // initialize ray's starting angular flux spectrum
-  if (!settings::FIRST_COLLIDED_FLUX) {
+  if (!settings::FIRST_COLLIDED_FLUX || uncollided_flux_volume) {
     // Initialize ray's starting angular flux to starting location's isotropic
     // source
     int i_cell = lowest_coord().cell;
     int64_t source_region_idx =
       domain_->source_region_offsets_[i_cell] + cell_instance();
 
-    for (int g = 0; g < negroups_; g++) {
-      angular_flux_[g] = domain_->source_[source_region_idx * negroups_ + g];
+    if (!settings::FIRST_COLLIDED_FLUX) {
+      for (int g = 0; g < negroups_; g++) {
+        angular_flux_[g] = domain_->source_[source_region_idx * negroups_ + g];
+      }
+    } else {
+      for (int g = 0; g < negroups_; g++) {
+        angular_flux_[g] = 1.0;
+      }
     }
   }
 }

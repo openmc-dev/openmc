@@ -285,13 +285,12 @@ void RandomRaySimulation::simulate()
     simulation::total_weight = 1.0;
 
     // Update external source if FIRST_COLLIDED_METHOD is used
-
     if (domain_->first_collided_mode) {
       domain_->update_external_flat_source();
       // domain_->update_external_linear_source();
     }
-    // Update source term (scattering + fission)
 
+    // Update source term (scattering + fission)
     domain_->update_neutron_source(k_eff_);
 
     // Reset scalar fluxes, iteration volume tallies, and region hit flags to
@@ -491,7 +490,7 @@ void RandomRaySimulation::first_collided_source_simulation()
 
   // Turn on volume estimation
   // Volume estimation is necessary to scale the first collided source
-  // accordingly Estimation of linear moments in linear source has direct impact
+  // accordingly. Estimation of linear moments in linear source has direct impact
   // into final solution accuracy.
   fmt::print("Initial volume estimation...");
   RandomRay::uncollided_flux_volume = true;
@@ -580,4 +579,5 @@ void RandomRaySimulation::first_collided_source_simulation()
   simulation::time_first_collided.stop();
   fmt::print("\n");
 }
+
 } // namespace openmc

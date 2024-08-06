@@ -277,9 +277,6 @@ void get_run_parameters(pugi::xml_node node_base)
           RandomRayVolumeEstimator::SIMULATION_AVERAGED;
       } else if (temp_str == "naive") {
         FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::NAIVE;
-      } else if (temp_str == "segment_corrected") {
-        FlatSourceDomain::volume_estimator_ =
-          RandomRayVolumeEstimator::SEGMENT_CORRECTED;
       } else if (temp_str == "hybrid") {
         FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::HYBRID;
       } else {

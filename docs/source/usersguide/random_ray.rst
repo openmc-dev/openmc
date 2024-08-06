@@ -584,16 +584,6 @@ following methods are currently available in OpenMC:
        * Stability of the naive estimator in cells with fixed sources
      - * Can lead to slightly negative fluxes in cells where the simulation
          averaged estimator is used
-   * - ``segment_corrected``
-     - Similar to the simulation averaged estimator, but also adjusts segment
-       lengths such that the total tracklength through an FSR each iteration is
-       equal to the expected value derived from the simulation-averaged
-       quantity.
-     - * Similar numerical performance to the simulation averaged estimator
-       * Unlikely to result in negative fluxes
-       * Recommended in cases where the simulation averaged estimator is
-         unstable
-     - * More expensive due to need to ray trace through the geometry twice
 
 These estimators can be selected by setting the ``volume_estimator`` field in the
 :attr:`openmc.Settings.random_ray` dictionary. For example, to use the naive

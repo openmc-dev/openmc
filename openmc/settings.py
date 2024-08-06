@@ -155,16 +155,13 @@ class Settings:
         :ray_source:
             Starting ray distribution (must be uniform in space and angle) as
             specified by a :class:`openmc.SourceBase` object.
-<<<<<<< HEAD
         :volume_estimator:
             Choice of volume estimator for the random ray solver. Options are
-            'naive', 'simulation_averaged', 'segment_corrected', 'hybrid'.
+            'naive', 'simulation_averaged', or 'hybrid'.
             The default is 'hybrid'.
-=======
         :source_shape:
             Assumed shape of the source distribution within each source
             region. Options are 'flat' (default), 'linear', or 'linear_xy'.
->>>>>>> develop
         :volume_normalized_flux_tallies:
             Whether to normalize flux tallies by volume (bool). The default
             is 'False'. When enabled, flux tallies will be reported in units of
@@ -1101,7 +1098,7 @@ class Settings:
             elif key == 'volume_estimator':
                 cv.check_value('volume estimator', random_ray[key],
                                ('naive', 'simulation_averaged',
-                                'segment_corrected', 'hybrid'))
+                                'hybrid'))
             elif key == 'source_shape':
                 cv.check_value('source shape', random_ray[key],
                                ('flat', 'linear', 'linear_xy'))
@@ -1900,13 +1897,10 @@ class Settings:
                 elif child.tag == 'source':
                     source = SourceBase.from_xml_element(child)
                     self.random_ray['ray_source'] = source
-<<<<<<< HEAD
                 elif child.tag == 'volume_estimator':
                     self.random_ray['volume_estimator'] = child.text
-=======
                 elif child.tag == 'source_shape':
                     self.random_ray['source_shape'] = child.text
->>>>>>> develop
                 elif child.tag == 'volume_normalized_flux_tallies':
                     self.random_ray['volume_normalized_flux_tallies'] = (
                         child.text in ('true', '1')

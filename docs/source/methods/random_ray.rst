@@ -516,40 +516,6 @@ a much coarser quadrature can be used resulting in faster runtimes overall.
 Thus, OpenMC uses the simulation averaged estimator as default in its random ray
 mode for eigenvalue solves.
 
-There is a third estimator that may be used which is a variant of the simulation
-averaged estimator. This variant is known as the "segment corrected" estimator,
-which adjusts individual segment lengths within each source region such that the
-total sum of ray lengths inside each source region in any given iteration is
-equal to :math:`L_{avg}`. As the ray lengths each iteration are stochastic, ray
-tracing must therefore be separated from the flux attenuation process, as the
-correction factors must be computed before :math:`\Delta \psi_{r,g}` is
-calculated for each segment as:
-
-.. math::
-    :label: phi_segment_cor
-
-    C_i = \frac{L_{avg, i}}{\sum\limits_{r=1}^{N_i} \ell_r} .
-
-Which is then applied to computation of :math:`\Delta \psi_{r,g}` terms as:
-
-.. math::
-    :label: delta_psi_cor
-
-    \Delta \psi_{r,g}^{\text{segment corrected}} = \left(\psi_{r,g}^{in} - \frac{Q_{i,g}}{\Sigma_{t,i,g}} \right) \left( 1 - e^{-\Sigma_{t,i,g} \ell_r C_i} \right) .
-
-In practical terms, the segment corrected method generaly behaves similary to
-the simulation averaged estimator, with the additional advantage of ensuring
-that negative fluxes cannot occur. The downside of this method is the increased
-implementation complexity, as all ray tracing must be performed up front each
-iteration so that correction factors can be computed and applied during the
-transport sweep of that iteration. In OpenMC, this is accomplished simply by
-performing two identical full ray tracing sweeps each iteration. The first sweep
-is used to calculate correction factors, and the second sweep is used to
-actually perform transport. While different rays are still used between
-different iterations, within the same iteration the random number generation
-stream is controlled such that identical rays are generated and ray traced for
-both stages.
-
 OpenMC also features a "hybrid" volume estimator that uses the naive estimator
 for all regions containing an external (fixed) source term. For all other
 source regions, the "simulation averaged" estimator is used. This typically achieves
@@ -605,11 +571,12 @@ in that cell, as:
 
     \phi_{i,g,n}^{missed} = \phi_{i,g,n-1} .
 
-While this introduces some small degree of correlation to the simulation, for
-miss rates on the order of a few percent the correlations are trivial and the
-bias is eliminated. Thus, in OpenMC the previous iteration's scalar flux estimate
-is applied to cells that are missed where there is an external source term present
-within the cell.
+When linear sources are present, the flux moments from the previous iteration
+are used in the same manner. While this introduces some small degree of
+correlation to the simulation, for miss rates on the order of a few percent the
+correlations are trivial and the bias is eliminated. Thus, in OpenMC the
+previous iteration's scalar flux estimate is applied to cells that are missed
+where there is an external source term present within the cell.
 
 ~~~~~~~~~~~~~~~
 Power Iteration

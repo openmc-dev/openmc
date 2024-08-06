@@ -284,13 +284,6 @@ void RandomRaySimulation::simulate()
     // Start timer for transport
     simulation::time_transport.start();
 
-    // If segment corrected flux estimator is in use, compute segment correction
-    // factors
-    if (domain_->volume_estimator_ ==
-        RandomRayVolumeEstimator::SEGMENT_CORRECTED) {
-      compute_segment_correction_factors();
-    }
-
 // Transport sweep over all random rays for the iteration
 #pragma omp parallel for schedule(dynamic)                                     \
   reduction(+ : total_geometric_intersections_)
@@ -444,9 +437,6 @@ void RandomRaySimulation::print_results_random_ray(
     case RandomRayVolumeEstimator::SIMULATION_AVERAGED:
       estimator = "Simulation Averaged";
       break;
-    case RandomRayVolumeEstimator::SEGMENT_CORRECTED:
-      estimator = "Segment Corrected";
-      break;
     case RandomRayVolumeEstimator::NAIVE:
       estimator = "Naive";
       break;
@@ -480,37 +470,6 @@ void RandomRaySimulation::print_results_random_ray(
     header("Results", 4);
     fmt::print(" k-effective                       = {:.5f} +/- {:.5f}\n",
       simulation::keff, simulation::keff_std);
-  }
-}
-
-void RandomRaySimulation::compute_segment_correction_factors()
-{
-  // Perform ray tracing sweep to determine total segment lengths
-  // in each source region for this iteration
-#pragma omp parallel for schedule(dynamic)
-  for (int i = 0; i < simulation::work_per_rank; i++) {
-    RandomRay ray(i, domain_.get());
-    ray.ray_trace_only_ = true;
-    ray.transport_history_based_single_ray();
-  }
-
-  // Compute segment correction factors so that total segment lengths
-  // within each source region equal the simulation-averaged value
-#pragma omp parallel for
-  for (int64_t sr = 0; sr < domain_->n_source_regions_; sr++) {
-    double naive_volume = domain_->volume_[sr];
-    domain_->volume_[sr] = 0.0;
-    double sim_avg_volume =
-      (domain_->volume_t_[sr] + naive_volume) / simulation::current_batch;
-
-    double correction = sim_avg_volume / naive_volume;
-
-    // Sanity check for NaNs or negative values
-    if (correction <= 0.0 || !std::isfinite(correction)) {
-      correction = 1.0;
-    }
-
-    domain_->segment_correction_[sr] = correction;
   }
 }
 

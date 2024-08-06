@@ -139,7 +139,6 @@ public:
   vector<OpenMPMutex> lock_;
   vector<double> volume_;
   vector<double> volume_t_;
-  vector<double> segment_correction_;
   vector<int> position_recorded_;
   vector<Position> position_;
 

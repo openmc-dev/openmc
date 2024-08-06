@@ -52,7 +52,6 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
   volume_.assign(n_source_regions_, 0.0);
   volume_t_.assign(n_source_regions_, 0.0);
   volume_naive_.assign(n_source_regions_, 0.0);
-  segment_correction_.assign(n_source_regions_, 1.0);
 
   // Initialize element-wise arrays
   scalar_flux_new_.assign(n_source_elements_, 0.0);
@@ -256,7 +255,6 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
       volume = volume_iteration;
       break;
     case RandomRayVolumeEstimator::SIMULATION_AVERAGED:
-    case RandomRayVolumeEstimator::SEGMENT_CORRECTED:
       volume = volume_simulation_avg;
       break;
     case RandomRayVolumeEstimator::HYBRID:

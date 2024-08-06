@@ -239,6 +239,7 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
     double volume_simulation_avg = volume_[sr];
     double volume_iteration = volume_naive_[sr];
 
+    // Increment the number of hits if cell was hit this iteration
     if (volume_iteration) {
       n_hits++;
     }

@@ -348,6 +348,7 @@ enum class RandomRayVolumeEstimator {
   SEGMENT_CORRECTED,
   HYBRID
 };
+enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
 
 //==============================================================================
 // Geometry Constants

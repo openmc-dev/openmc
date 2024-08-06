@@ -798,6 +798,13 @@ void FlatSourceDomain::all_reduce_replicated_source_regions()
 #endif
 }
 
+double FlatSourceDomain::evaluate_flux_at_point(
+  Position r, int64_t sr, int g) const
+{
+  return scalar_flux_final_[sr * negroups_ + g] /
+         (settings::n_batches - settings::n_inactive);
+}
+
 // Outputs all basic material, FSR ID, multigroup flux, and
 // fission source data to .vtk file that can be directly
 // loaded and displayed by Paraview. Note that .vtk binary
@@ -858,6 +865,7 @@ void FlatSourceDomain::output_to_vtk() const
 
     // Relate voxel spatial locations to random ray source regions
     vector<int> voxel_indices(Nx * Ny * Nz);
+    vector<Position> voxel_positions(Nx * Ny * Nz);
 
 #pragma omp parallel for collapse(3)
     for (int z = 0; z < Nz; z++) {
@@ -874,6 +882,7 @@ void FlatSourceDomain::output_to_vtk() const
           int64_t source_region_idx =
             source_region_offsets_[i_cell] + p.cell_instance();
           voxel_indices[z * Ny * Nx + y * Nx + x] = source_region_idx;
+          voxel_positions[z * Ny * Nx + y * Nx + x] = sample;
         }
       }
     }
@@ -898,11 +907,10 @@ void FlatSourceDomain::output_to_vtk() const
     for (int g = 0; g < negroups_; g++) {
       std::fprintf(plot, "SCALARS flux_group_%d float\n", g);
       std::fprintf(plot, "LOOKUP_TABLE default\n");
-      for (int fsr : voxel_indices) {
+      for (int i = 0; i < Nx * Ny * Nz; i++) {
+        int64_t fsr = voxel_indices[i];
         int64_t source_element = fsr * negroups_ + g;
-        float flux =
-          scalar_flux_final_[source_element] * source_normalization_factor;
-        flux /= (settings::n_batches - settings::n_inactive);
+        float flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
         flux = convert_to_big_endian<float>(flux);
         std::fwrite(&flux, sizeof(float), 1, plot);
       }
@@ -929,14 +937,14 @@ void FlatSourceDomain::output_to_vtk() const
     // Plot fission source
     std::fprintf(plot, "SCALARS total_fission_source float\n");
     std::fprintf(plot, "LOOKUP_TABLE default\n");
-    for (int fsr : voxel_indices) {
+    for (int i = 0; i < Nx * Ny * Nz; i++) {
+      int64_t fsr = voxel_indices[i];
+
       float total_fission = 0.0;
       int mat = material_[fsr];
       for (int g = 0; g < negroups_; g++) {
         int64_t source_element = fsr * negroups_ + g;
-        float flux =
-          scalar_flux_final_[source_element] * source_normalization_factor;
-        flux /= (settings::n_batches - settings::n_inactive);
+        float flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
         float Sigma_f = data::mg.macro_xs_[mat].get_xs(
           MgxsType::FISSION, g, nullptr, nullptr, nullptr, 0, 0);
         total_fission += Sigma_f * flux;
@@ -1071,6 +1079,10 @@ void FlatSourceDomain::convert_external_sources()
       external_source_[sr * negroups_ + e] /= sigma_t;
     }
   }
+}
+void FlatSourceDomain::flux_swap()
+{
+  scalar_flux_old_.swap(scalar_flux_new_);
 }
 
 } // namespace openmc

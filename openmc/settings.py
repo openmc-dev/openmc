@@ -1,11 +1,9 @@
-from collections.abc import Iterable, Mapping, MutableSequence
+from collections.abc import Iterable, Mapping, MutableSequence, Sequence
 from enum import Enum
 import itertools
 from math import ceil
 from numbers import Integral, Real
 from pathlib import Path
-import typing  # required to prevent typing.Union namespace overwriting Union
-from typing import Optional
 
 import lxml.etree as ET
 
@@ -157,10 +155,16 @@ class Settings:
         :ray_source:
             Starting ray distribution (must be uniform in space and angle) as
             specified by a :class:`openmc.SourceBase` object.
+<<<<<<< HEAD
         :volume_estimator:
             Choice of volume estimator for the random ray solver. Options are
             'naive', 'simulation_averaged', 'segment_corrected', 'hybrid'.
             The default is 'hybrid'.
+=======
+        :source_shape:
+            Assumed shape of the source distribution within each source
+            region. Options are 'flat' (default), 'linear', or 'linear_xy'.
+>>>>>>> develop
         :volume_normalized_flux_tallies:
             Whether to normalize flux tallies by volume (bool). The default
             is 'False'. When enabled, flux tallies will be reported in units of
@@ -515,7 +519,7 @@ class Settings:
         return self._max_order
 
     @max_order.setter
-    def max_order(self, max_order: Optional[int]):
+    def max_order(self, max_order: int | None):
         if max_order is not None:
             cv.check_type('maximum scattering order', max_order, Integral)
             cv.check_greater_than('maximum scattering order', max_order, 0,
@@ -523,11 +527,11 @@ class Settings:
         self._max_order = max_order
 
     @property
-    def source(self) -> typing.List[SourceBase]:
+    def source(self) -> list[SourceBase]:
         return self._source
 
     @source.setter
-    def source(self, source: typing.Union[SourceBase, typing.Iterable[SourceBase]]):
+    def source(self, source: SourceBase | Iterable[SourceBase]):
         if not isinstance(source, MutableSequence):
             source = [source]
         self._source = cv.CheckedList(SourceBase, 'source distributions', source)
@@ -805,7 +809,7 @@ class Settings:
         self._temperature = temperature
 
     @property
-    def trace(self) -> typing.Iterable:
+    def trace(self) -> Iterable:
         return self._trace
 
     @trace.setter
@@ -818,12 +822,12 @@ class Settings:
         self._trace = trace
 
     @property
-    def track(self) -> typing.Iterable[typing.Iterable[int]]:
+    def track(self) -> Iterable[Iterable[int]]:
         return self._track
 
     @track.setter
-    def track(self, track: typing.Iterable[typing.Iterable[int]]):
-        cv.check_type('track', track, Iterable)
+    def track(self, track: Iterable[Iterable[int]]):
+        cv.check_type('track', track, Sequence)
         for t in track:
             if len(t) != 3:
                 msg = f'Unable to set the track to "{t}" since its length is not 3'
@@ -905,12 +909,12 @@ class Settings:
         self._resonance_scattering = res
 
     @property
-    def volume_calculations(self) -> typing.List[VolumeCalculation]:
+    def volume_calculations(self) -> list[VolumeCalculation]:
         return self._volume_calculations
 
     @volume_calculations.setter
     def volume_calculations(
-        self, vol_calcs: typing.Union[VolumeCalculation, typing.Iterable[VolumeCalculation]]
+        self, vol_calcs: VolumeCalculation | Iterable[VolumeCalculation]
     ):
         if not isinstance(vol_calcs, MutableSequence):
             vol_calcs = [vol_calcs]
@@ -1004,11 +1008,11 @@ class Settings:
         self._write_initial_source = value
 
     @property
-    def weight_windows(self) -> typing.List[WeightWindows]:
+    def weight_windows(self) -> list[WeightWindows]:
         return self._weight_windows
 
     @weight_windows.setter
-    def weight_windows(self, value: typing.Union[WeightWindows, typing.Iterable[WeightWindows]]):
+    def weight_windows(self, value: WeightWindows | Iterable[WeightWindows]):
         if not isinstance(value, MutableSequence):
             value = [value]
         self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows', value)
@@ -1057,7 +1061,7 @@ class Settings:
         self._max_tracks = value
 
     @property
-    def weight_windows_file(self) -> Optional[PathLike]:
+    def weight_windows_file(self) -> PathLike | None:
         return self._weight_windows_file
 
     @weight_windows_file.setter
@@ -1066,7 +1070,7 @@ class Settings:
         self._weight_windows_file = value
 
     @property
-    def weight_window_generators(self) -> typing.List[WeightWindowGenerator]:
+    def weight_window_generators(self) -> list[WeightWindowGenerator]:
         return self._weight_window_generators
 
     @weight_window_generators.setter
@@ -1098,6 +1102,9 @@ class Settings:
                 cv.check_value('volume estimator', random_ray[key],
                                ('naive', 'simulation_averaged',
                                 'segment_corrected', 'hybrid'))
+            elif key == 'source_shape':
+                cv.check_value('source shape', random_ray[key],
+                               ('flat', 'linear', 'linear_xy'))
             elif key == 'volume_normalized_flux_tallies':
                 cv.check_type('volume normalized flux tallies', random_ray[key], bool)
             else:
@@ -1893,8 +1900,13 @@ class Settings:
                 elif child.tag == 'source':
                     source = SourceBase.from_xml_element(child)
                     self.random_ray['ray_source'] = source
+<<<<<<< HEAD
                 elif child.tag == 'volume_estimator':
                     self.random_ray['volume_estimator'] = child.text
+=======
+                elif child.tag == 'source_shape':
+                    self.random_ray['source_shape'] = child.text
+>>>>>>> develop
                 elif child.tag == 'volume_normalized_flux_tallies':
                     self.random_ray['volume_normalized_flux_tallies'] = (
                         child.text in ('true', '1')

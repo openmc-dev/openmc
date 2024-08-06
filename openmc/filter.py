@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABCMeta
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 import hashlib
 from itertools import product
 from numbers import Real, Integral
@@ -736,7 +736,7 @@ class ParticleFilter(Filter):
 
     Parameters
     ----------
-    bins : str, or iterable of str
+    bins : str, or sequence of str
         The particles to tally represented as strings ('neutron', 'photon',
         'electron', 'positron').
     filter_id : int
@@ -744,7 +744,7 @@ class ParticleFilter(Filter):
 
     Attributes
     ----------
-    bins : iterable of str
+    bins : sequence of str
         The particles to tally
     id : int
         Unique identifier for the filter
@@ -764,8 +764,8 @@ class ParticleFilter(Filter):
 
     @Filter.bins.setter
     def bins(self, bins):
-        bins = np.atleast_1d(bins)
-        cv.check_iterable_type('filter bins', bins, str)
+        cv.check_type('bins', bins, Sequence, str)
+        bins = np.atleast_1d(bins)    
         for edge in bins:
             cv.check_value('filter bin', edge, _PARTICLES)
         self._bins = bins

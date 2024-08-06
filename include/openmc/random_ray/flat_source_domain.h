@@ -90,25 +90,28 @@ struct TallyTask {
 class FlatSourceDomain {
 public:
   //----------------------------------------------------------------------------
-  // Constructors
+  // Constructors and Destructors
   FlatSourceDomain();
+  virtual ~FlatSourceDomain() = default;
 
   //----------------------------------------------------------------------------
   // Methods
-  void update_neutron_source(double k_eff);
+  virtual void update_neutron_source(double k_eff);
   double compute_k_eff(double k_eff_old) const;
-  void normalize_scalar_flux_and_volumes(
+  virtual void normalize_scalar_flux_and_volumes(
     double total_active_distance_per_iteration);
-  int64_t add_source_to_scalar_flux();
-  void batch_reset();
+  virtual int64_t add_source_to_scalar_flux();
+  virtual void batch_reset();
   void convert_source_regions_to_tallies();
   void reset_tally_volumes();
   void random_ray_tally();
-  void accumulate_iteration_flux();
+  virtual void accumulate_iteration_flux();
   void output_to_vtk() const;
-  void all_reduce_replicated_source_regions();
+  virtual void all_reduce_replicated_source_regions();
   void convert_external_sources();
   void count_external_source_regions();
+  virtual void flux_swap();
+  virtual double evaluate_flux_at_point(Position r, int64_t sr, int g) const;
   double compute_fixed_source_normalization_factor() const;
 
   //----------------------------------------------------------------------------
@@ -148,7 +151,7 @@ public:
   vector<float> external_source_;
   vector<bool> external_source_present_;
 
-private:
+protected:
   //----------------------------------------------------------------------------
   // Methods
   void apply_external_source_to_source_region(

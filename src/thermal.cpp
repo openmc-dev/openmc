@@ -19,6 +19,7 @@
 #include "openmc/secondary_correlated.h"
 #include "openmc/secondary_thermal.h"
 #include "openmc/settings.h"
+#include "openmc/string_utils.h"
 
 namespace openmc {
 
@@ -89,9 +90,13 @@ ThermalScattering::ThermalScattering(
           temps_to_read.push_back(std::round(temp_actual));
         }
       } else {
-        fatal_error(fmt::format("Nuclear data library does not contain cross "
-                                "sections for {} at or near {} K.",
-          name_, std::round(T)));
+        fatal_error(fmt::format(
+          "Nuclear data library does not contain cross sections "
+          "for {}  at or near {} K. Available temperatures "
+          "are {} K consider making use of openmc.Settings.temperature "
+          "to specify how intermediate temperatures are treated.",
+          name_, std::to_string(std::round(T)),
+          concatenate_vec(temps_available)));
       }
     }
     break;

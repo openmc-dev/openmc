@@ -4,6 +4,8 @@
 #include <cctype>    // for tolower, isspace
 #include <sstream>
 
+#include "xtensor/xarray.hpp"
+
 namespace openmc {
 
 std::string& strtrim(std::string& s)
@@ -36,7 +38,7 @@ void to_lower(std::string& str)
     str[i] = std::tolower(str[i]);
 }
 
-int word_count(std::string const& str)
+int word_count(const std::string& str)
 {
   std::stringstream stream(str);
   std::string dum;
@@ -84,6 +86,24 @@ bool starts_with(const std::string& value, const std::string& beginning)
   if (beginning.size() > value.size())
     return false;
   return std::equal(beginning.begin(), beginning.end(), value.begin());
+}
+
+std::string concatenate_vec(const std::vector<double>& temps)
+{
+  std::ostringstream oss;
+  for (const auto& temp : temps) {
+    oss << temp << " ";
+  }
+  return oss.str();
+}
+
+std::string concatenate_xt(const xt::xarray<double>& temps)
+{
+  std::ostringstream oss;
+  for (const auto& temp : temps) {
+    oss << temp << " ";
+  }
+  return oss.str();
 }
 
 } // namespace openmc

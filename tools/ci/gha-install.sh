@@ -42,9 +42,9 @@ fi
 
 # Install libMesh if needed
 if [[ $LIBMESH = 'y' ]]; then
-    if [ ! -d "$HOME/vectfit" ]
+    if [ ! -d "$HOME/libmesh" ]
     then
-        ./tools/ci/gha-install-vectfit.sh
+        ./tools/ci/gha-install-libmesh.sh
     else
         pip install $HOME/pybind11
         pip install wheel
@@ -74,14 +74,4 @@ fi
 python tools/ci/gha-install.py
 
 # Install Python API in editable mode
-<<<<<<< HEAD
 pip install -e .[test,vtk,ci]
-=======
-pip install -e .[test,vtk]
-
-# For coverage testing of the C++ source files
-pip install cpp-coveralls
-
-# For coverage testing of the Python source files
-pip install coveralls
->>>>>>> 9198dde0e (Fix gha-install issue)

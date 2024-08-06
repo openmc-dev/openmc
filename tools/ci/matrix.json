@@ -1,7 +1,7 @@
 {
     "include": [
         {
-        "job-name": "Py3.10",
+        "job-name": "Python 3.10",
         "python-version": "3.10",
         "omp": "n",
         "mpi": "n",
@@ -12,7 +12,7 @@
         "vectfit": "n"
         },
         {
-        "job-name": "Py3.10 omp",
+        "job-name": "Python 3.10 [omp]",
         "python-version": "3.10",
         "omp": "y",
         "mpi": "n",
@@ -23,7 +23,7 @@
         "vectfit": "n"
         },
         {
-        "job-name": "Py3.10 mpi",
+        "job-name": "Python 3.10 [mpi]",
         "python-version": "3.10",
         "omp": "n",
         "mpi": "y",
@@ -34,7 +34,7 @@
         "vectfit": "n"
         },
         {
-        "job-name": "Py3.10 omp mpi",
+        "job-name": "Python 3.10 [omp,mpi]",
         "python-version": "3.10",
         "omp": "y",
         "mpi": "y",
@@ -45,7 +45,7 @@
         "vectfit": "n"
         },
         {
-        "job-name": "Py3.11",
+        "job-name": "Python 3.11",
         "python-version": "3.11",
         "omp": "n",
         "mpi": "n",
@@ -56,7 +56,7 @@
         "vectfit": "n"
         },
         {
-        "job-name": "Py3.12",
+        "job-name": "Python 3.12",
         "python-version": "3.12",
         "omp": "n",
         "mpi": "n",
@@ -67,7 +67,7 @@
         "vectfit": "n"
         },
         {
-        "job-name": "Py3.10 omp mpi dagmc",
+        "job-name": "Python 3.10 [omp,mpi,dagmc]",
         "python-version": "3.10",
         "omp": "y",
         "mpi": "y",
@@ -78,7 +78,7 @@
         "vectfit": "n"
         },
         {
-        "job-name": "Py3.10 ncrystal",
+        "job-name": "Python 3.10 [ncrystal]",
         "python-version": "3.10",
         "omp": "n",
         "mpi": "n",
@@ -89,7 +89,7 @@
         "vectfit": "n"
         },
         {
-        "job-name": "Py3.10 omp mpi libmesh",
+        "job-name": "Python 3.10 [omp,mpi,libmesh]",
         "python-version": "3.10",
         "omp": "y",
         "mpi": "y",
@@ -100,7 +100,7 @@
         "vectfit": "n"
         },
         {
-        "job-name": "Py3.10 omp libmesh",
+        "job-name": "Python 3.10 [omp,libmesh]",
         "python-version": "3.10",
         "omp": "y",
         "mpi": "n",
@@ -111,7 +111,7 @@
         "vectfit": "n"
         },
         {
-        "job-name": "Py3.10 omp event",
+        "job-name": "Python 3.10 [omp,event]",
         "python-version": "3.10",
         "omp": "y",
         "mpi": "n",
@@ -122,7 +122,7 @@
         "vectfit": "n"
         },
         {
-        "job-name": "Py3.10 mpi vectfit",
+        "job-name": "Python 3.10 [mpi,vectfit]",
         "python-version": "3.10",
         "omp": "n",
         "mpi": "y",

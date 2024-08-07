@@ -164,6 +164,19 @@ class Settings:
             cm/cm^3. When disabled, flux tallies will be reported in units
             of cm (i.e., total distance traveled by neutrons in the spatial
             tally region).
+        :first_collided_source:
+            Boolean that indicates if first collided source method (FSC) is 
+            used to initialize the external source input. Default is 'False'.
+        :first_collided_rays:
+            Number of rays (int) used to generate the first collided source.
+            If not provided, the method will automatically run enough rays to
+            adequately converge the first collided source, via an iterative 
+            doubling process. If provided, the method will run the exact
+            prescribed amount.
+        :first_collided_volume_rays:
+            Number of rays (int) used to estimate the initial volume for the
+            first collied source calculation. If not provided, it will use the
+            same number of rays as the main random ray solver stage.
 
         .. versionadded:: 0.15.0
     resonance_scattering : dict
@@ -1096,6 +1109,14 @@ class Settings:
                                ('flat', 'linear', 'linear_xy'))
             elif key == 'volume_normalized_flux_tallies':
                 cv.check_type('volume normalized flux tallies', random_ray[key], bool)
+            elif key == 'first_collided_source':
+                cv.check_type('first_collided_source', random_ray[key], bool)
+            elif key == 'first_collided_rays':
+                cv.check_type('first_collided_rays', random_ray[key], int)
+                cv.check_greater_than('first_collided_rays',random_ray[key], 0)
+            elif key == 'first_collided_volume_rays':
+                cv.check_type('first_collided_volume_rays', random_ray[key], int)
+                cv.check_greater_than('first_collided_volume_rays',random_ray[key], 0)                                
             else:
                 raise ValueError(f'Unable to set random ray to "{key}" which is '
                                  'unsupported by OpenMC')
@@ -1895,6 +1916,12 @@ class Settings:
                     self.random_ray['volume_normalized_flux_tallies'] = (
                         child.text in ('true', '1')
                     )
+                elif child.tag == 'first_collided_source':
+                    self.random_ray['first_collided_source'] = (
+                        child.text in ('true', '1')
+                    )
+                elif child.tag in ('first_collided_rays', 'first_collided_volume_rays'):
+                    self.random_ray[child.tag] = int(child.text) 
 
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.

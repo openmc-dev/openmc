@@ -144,8 +144,8 @@ public:
 
   // 2D arrays stored in 1D representing values for all source regions x energy
   // groups
-  vector<double> scalar_flux_old_;
-  vector<double> scalar_flux_new_;
+  vector<float> scalar_flux_old_;
+  vector<float> scalar_flux_new_;
   vector<float> source_;
   vector<float> external_source_;
   vector<bool> external_source_present_;

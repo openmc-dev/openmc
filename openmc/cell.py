@@ -364,7 +364,6 @@ class Cell(IDManagerMixin):
             Results from a stochastic volume calculation
 
         """
-        print("FILL_TYPE", self.fill_type)
         if volume_calc.domain_type == 'cell':
             if self.id in volume_calc.volumes:
                 self._volume = volume_calc.volumes[self.id].n
@@ -799,20 +798,19 @@ class DAGSpeudoCell(Cell):
         """Set the parent universe of the cell."""
         self._parent_universe = universe.id
 
-    def boundingbox(self):
-        print("Warning: Bounding box is not available for cells in a DAGMC universe.")
-        return {}
+    # def boundingbox(self):
+    #     print("Warning: Bounding box is not available for cells in a DAGMC universe.")
+    #     return {}
 
-    def get_all_cells(self, memo=None):
-        print("Warning: get_all_cells is not available for cells in a DAGMC universe.")
-        return {}
+    # def get_all_cells(self, memo=None):
+    #     print("Warning: get_all_cells is not available for cells in a DAGMC universe.")
+    #     return {}
 
-    def get_all_materials(self, memo=None):
-        print("Warning: get_all_materials is not available for cells in a DAGMC universe.")
-        return {}
+    # def get_all_materials(self, memo=None):
+    #     print("Warning: get_all_materials is not available for cells in a DAGMC universe.")
+    #     return {}
 
     def get_all_universes(self, memo=None):
-        print("Warning: get_all_universes is not available for cells in a DAGMC universe.")
         return {}
 
     def clone(self, clone_materials=True, clone_regions=True, memo=None):
@@ -831,7 +829,3 @@ class DAGSpeudoCell(Cell):
     def from_xml_element(cls, elem, surfaces, materials, get_universe):
         print("Warning: from_xml_element is not available for cells in a DAGMC universe.")
         return None
-
-    
-
-    

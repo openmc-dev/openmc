@@ -16,6 +16,7 @@ from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import check_type, check_value, PathLike
 from openmc.exceptions import InvalidIDError
+import openmc.lib
 from openmc.utility_funcs import change_directory
 
 
@@ -336,14 +337,14 @@ class Model:
 
         import openmc.lib
 
-        for cell in self.geometry.get_all_cells():
+        for cell in self.geometry.get_all_cells().values():
             if isinstance(cell.fill, openmc.DAGMCUniverse):
-                for dag_cell_id in openmc.lib.get_dagmc_cells(cell.id):
+                for dag_cell_id in openmc.lib.dagmc.get_dagmc_cell_ids(cell.fill.id, cell.fill._n_geom_elements('volume')):
                     dag_cell = openmc.lib.cells[dag_cell_id]
-                    dag_pseudo_cell = openmc.DAGPseudoCell(
-                        dag_cell_id, self._materials_by_id[dag_cell.fill.id]
+                    dag_pseudo_cell = openmc.DAGSpeudoCell(
+                        cell_id=dag_cell_id, fill=self._materials_by_id[dag_cell.fill.id]
                     )
-                    cell.fill._dagmc_cells.append(dag_pseudo_cell.id)
+                    cell.fill.add_cell(dag_pseudo_cell)
 
     def finalize_lib(self):
         """Finalize simulation and free memory allocated for the C API
@@ -1146,13 +1147,9 @@ class Model:
 
                                     if diff_volume_method == 'match cell':
                                         if self.is_initialized:
-                                            print(self.geometry.get_all_cells()[17])
-                                            print(self.geometry.get_all_cells()[17].fill)
-                                            for cell in openmc.lib.cells.values():
-                                                print(cell.fill)
-                                                # if cell.fill.name == mat.name:
-                                                #     mat_clone.volume = cell.volume
-                                            print("IN")
+                                            for cell in dag_verse._cells.values():
+                                                if cell.fill.name == mat.name:
+                                                    mat_clone.volume = cell.volume
                                         else:
                                             raise NotImplementedError(
                                                 "differentiate mats with DAGMC"
@@ -1179,15 +1176,5 @@ class Model:
             )
         if dag_verse_mats:
             self.materials.extend(dag_verse_mats)
-
+        self.materials = list(set(self.materials))
     
-    # def get_all_material_cells(self) -> dict[int, Cell]:
-    #     if self.is_initialized:
-    #         material_cells = {}
-    #         for id in openmc.lib.cells:
-    #             try:
-    #                 if isinstance(openmc.lib.cells[id].fill, openmc.lib.Material):
-    #                     material_cells[id] = openmc.lib.cells[id]
-    #             except NotImplementedError:
-    #                 print("NOT FILLED WITH MAT")
-    #         return material_cells

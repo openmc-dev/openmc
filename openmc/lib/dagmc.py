@@ -10,7 +10,7 @@ from .error import _error_handler
 
 
 # DAGMC functions
-_dll.openmc_get_dagmc_cell_ids.argtypes = [c_int32, POINTER(c_int), POINTER(c_int32), POINTER(c_size_t)]
+_dll.openmc_get_dagmc_cell_ids.argtypes = [c_int32, POINTER(c_int32), POINTER(c_size_t)]
 _dll.openmc_get_dagmc_cell_ids.restype = c_int
 _dll.openmc_get_dagmc_cell_ids.errcheck = _error_handler
 
@@ -34,12 +34,11 @@ def get_dagmc_cell_ids(volume_id, n_cells):
     cell_ids = np.empty(n_cells, dtype=np.int32)
     n = c_size_t()
     _dll.openmc_get_dagmc_cell_ids(
-        volume_id, 
-        cell_ids.ctypes.data_as(POINTER(c_int32)), 
+        volume_id,
+        cell_ids.ctypes.data_as(POINTER(c_int32)),
         n
     )
     if n.value != n_cells:
-        raise ValueError("Number of cells obtained from DAGMC does not match "
-                         "the expected number of cells."
-        )
+        raise ValueError(f"Number of cells obtained {n.value} from DAGMC does "
+                         f"not match the expected number of cells {n_cells}.")
     return cell_ids

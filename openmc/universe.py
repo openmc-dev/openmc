@@ -903,10 +903,43 @@ class DAGMCUniverse(UniverseBase):
         return sorted(set(material_tags_ascii))
 
     def get_all_cells(self, memo=None):
-        return {}
+        """Return all cells that are contained within the universe
+
+        Returns
+        -------
+        cells : dict
+            Dictionary whose keys are cell IDs and values are :class:`Cell`
+            instances
+
+        """
+
+        if memo is None:
+            memo = set()
+        elif self in memo:
+            return {}
+        memo.add(self)
+
+        # Add this Universe's cells to the dictionary
+        cells = {}
+        cells.update(self._cells)
+
+        # Append all Cells in each Cell in the Universe to the dictionary
+        for cell in self._cells.values():
+            cells.update(cell.get_all_cells(memo))
+
+        return cells
 
     def get_all_materials(self, memo=None):
-        return {}
+        if memo is None:
+            memo = set()
+
+        materials = {}
+
+        # Append all Cells in each Cell in the Universe to the dictionary
+        cells = self.get_all_cells(memo)
+        for cell in cells.values():
+            materials.update(cell.get_all_materials(memo))
+        return materials
 
     def _n_geom_elements(self, geom_type):
         """
@@ -1146,3 +1179,64 @@ class DAGMCUniverse(UniverseBase):
         clone.auto_geom_ids = self.auto_geom_ids
         clone.auto_mat_ids = self.auto_mat_ids
         return clone
+
+    def add_cell(self, cell):
+        """Add a cell to the universe.
+
+        Parameters
+        ----------
+        cell : openmc.Cell
+            Cell to add
+
+        """
+
+        if not isinstance(cell, openmc.Cell):
+            msg = f'Unable to add a Cell to Universe ID="{self._id}" since ' \
+                  f'"{cell}" is not a Cell'
+            raise TypeError(msg)
+
+        cell_id = cell.id
+
+        if cell_id not in self._cells:
+            self._cells[cell_id] = cell
+
+    def add_cells(self, cells):
+        """Add multiple cells to the universe.
+
+        Parameters
+        ----------
+        cells : Iterable of openmc.Cell
+            Cells to add
+
+        """
+
+        if not isinstance(cells, Iterable):
+            msg = f'Unable to add Cells to Universe ID="{self._id}" since ' \
+                  f'"{cells}" is not iterable'
+            raise TypeError(msg)
+
+        for cell in cells:
+            self.add_cell(cell)
+
+    def remove_cell(self, cell):
+        """Remove a cell from the universe.
+
+        Parameters
+        ----------
+        cell : openmc.Cell
+            Cell to remove
+
+        """
+
+        if not isinstance(cell, openmc.Cell):
+            msg = f'Unable to remove a Cell from Universe ID="{self._id}" ' \
+                  f'since "{cell}" is not a Cell'
+            raise TypeError(msg)
+
+        # If the Cell is in the Universe's list of Cells, delete it
+        self._cells.pop(cell.id, None)
+
+    def clear_cells(self):
+        """Remove all cells from the universe."""
+
+        self._cells.clear()

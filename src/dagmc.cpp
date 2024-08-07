@@ -645,7 +645,7 @@ void DAGUniverse::uwuw_assign_material(
 DAGCell::DAGCell(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx)
   : Cell {}, dagmc_ptr_(dag_ptr), dag_index_(dag_idx)
 {
-  geom_type_ = GeometryType::DAG;
+  geom_type() = GeometryType::DAG;
 };
 
 std::pair<double, int32_t> DAGCell::distance(
@@ -847,23 +847,24 @@ int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ)
   return univp->cell_index(new_vol);
 }
 
-extern "C" void openmc_get_dagmc_cell_ids(
+extern "C" int openmc_get_dagmc_cell_ids(
   int32_t univ_id, int32_t* ids, size_t* n)
 {
   // make sure the universe id is a DAGMC Universe
-  const auto& univ = universe_map[univ_id];
-  if (univ.geom_type_ != GeometryType::DAG) {
+  const auto& univ = model::universes[model::universe_map[univ_id]];
+  if (univ->geom_type() != GeometryType::DAG) {
     fatal_error(
       "Universe " + std::to_string(univ_id) + " is not a DAGMC Universe!");
   }
 
   std::vector<int32_t> dag_cell_ids;
-  for (const auto& cell : univ.cells_) {
-    if (cell->geom_type_ == GeometryType::DAG)
+  for (const auto& cell_index : univ->cells_) {
+    const auto& cell = model::cells[cell_index];
+    if (cell->geom_type() == GeometryType::DAG)
       dag_cell_ids.push_back(cell->id_);
   }
-  std::copy(dag_cell_ids.begin(), dag_cell_ids.end(), ids)* n =
-    dag_cell_ids.size();
+  std::copy(dag_cell_ids.begin(), dag_cell_ids.end(), ids);
+  *n = dag_cell_ids.size();
 }
 
 } // namespace openmc

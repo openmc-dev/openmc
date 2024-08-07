@@ -102,7 +102,6 @@ class Geometry:
         if volume_calc.domain_type == 'cell':
             for cell in self.get_all_cells().values():
                 if cell.id in volume_calc.volumes:
-                    print("found CELL ID", cell.id)
                     cell.add_volume_information(volume_calc)
         elif volume_calc.domain_type == 'material':
             for material in self.get_all_materials().values():
@@ -112,8 +111,6 @@ class Geometry:
             for universe in self.get_all_universes().values():
                 if universe.id in volume_calc.volumes:
                     universe.add_volume_information(volume_calc)
-        print("Volume list", volume_calc.volumes)
-
 
     def to_xml_element(self, remove_surfs=False) -> ET.Element:
         """Creates a 'geometry' element to be written to an XML file.

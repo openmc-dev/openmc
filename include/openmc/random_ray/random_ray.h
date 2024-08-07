@@ -20,7 +20,7 @@ public:
   //----------------------------------------------------------------------------
   // Constructors
   RandomRay();
-  RandomRay(uint64_t ray_id, FlatSourceDomain* domain);
+  RandomRay(uint64_t ray_id, FlatSourceDomain* domain, bool uncollided_ray);
 
   //----------------------------------------------------------------------------
   // Methods
@@ -31,9 +31,8 @@ public:
   void event_advance_ray_first_collided();
   
 
-  void initialize_ray(uint64_t ray_id, FlatSourceDomain* domain);
+  void initialize_ray(uint64_t ray_id, FlatSourceDomain* domain,bool uncollided_ray);
   uint64_t transport_history_based_single_ray();
-  uint64_t transport_history_based_single_ray_first_collided();
   
   //----------------------------------------------------------------------------
   // Static data members
@@ -42,7 +41,7 @@ public:
   static unique_ptr<Source> ray_source_;     // Starting source for ray sampling
   static RandomRaySourceShape source_shape_; // Flag for linear source
 
-  static bool uncollided_flux_volume; // Flag for Initial Volume estimation 
+  static bool no_volume_calc; // Flag for FCS flux calculation 
 
   //----------------------------------------------------------------------------
   // Public data members

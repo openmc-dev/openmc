@@ -285,9 +285,8 @@ void RandomRaySimulation::simulate()
     simulation::total_weight = 1.0;
 
     // Update external source if FIRST_COLLIDED_METHOD is used
-    if (domain_->first_collided_mode) {
-      domain_->update_external_flat_source();
-      // domain_->update_external_linear_source();
+    if (settings::FIRST_COLLIDED_FLUX) {
+      domain_->compute_first_collided_external_source();
     }
 
     // Update source term (scattering + fission)
@@ -304,7 +303,7 @@ void RandomRaySimulation::simulate()
 #pragma omp parallel for schedule(dynamic)                                     \
   reduction(+ : total_geometric_intersections_)
     for (int i = 0; i < simulation::work_per_rank; i++) {
-      RandomRay ray(i, domain_.get());
+      RandomRay ray(i, domain_.get(), false);
       total_geometric_intersections_ +=
         ray.transport_history_based_single_ray();
     }
@@ -355,7 +354,7 @@ void RandomRaySimulation::simulate()
     finalize_batch();
   } // End random ray power iteration loop
 
-  if (domain_->first_collided_mode) {
+  if (settings::FIRST_COLLIDED_FLUX) {
     domain_->update_volume_uncollided_flux();
   }
 }
@@ -457,11 +456,12 @@ void RandomRaySimulation::print_results_random_ray(
     header("Timing Statistics", 4);
     show_time("Total time for initialization", time_initialize.elapsed());
     show_time("Reading cross sections", time_read_xs.elapsed(), 1);
-    show_time("Total simulation time", time_total.elapsed());
-    if (domain_->first_collided_mode) {
-      show_time("Volume estimation time", RandomRaySimulation::time_volume_fc, 1);
-      show_time("First Collided Source time", time_first_collided.elapsed(), 1);
+        if (domain_->first_collided_mode) {
+      show_time(
+        "Volume estimation time", RandomRaySimulation::time_volume_fc);
+      show_time("First Collided Source time", time_first_collided.elapsed());
     }
+    show_time("Total simulation time", time_total.elapsed());
     show_time("Transport sweep only", time_transport.elapsed(), 1);
     show_time("Source update only", time_update_src.elapsed(), 1);
     show_time("Tally conversion only", time_tallies.elapsed(), 1);
@@ -487,22 +487,17 @@ void RandomRaySimulation::first_collided_source_simulation()
 {
   header("FIRST COLLIDED SOURCE METHOD", 3);
   simulation::time_first_collided.start();
-
-  // Turn on volume estimation
-  // Volume estimation is necessary to scale the first collided source
-  // accordingly. Estimation of linear moments in linear source has direct impact
-  // into final solution accuracy.
-  fmt::print("Initial volume estimation...");
-  RandomRay::uncollided_flux_volume = true;
   simulation::current_batch = 1;
+  fmt::print("Initial volume estimation...");
+  // Volume estimation is necessary to scale the first collided source
+  // accordingly. Estimation of linear moments in linear source has direct
+  // impact into final solution accuracy.
 
-  // Calculate volume
-#pragma omp parallel for schedule(dynamic)                                     \
-  reduction(+ : total_geometric_intersections_volume_)
+  // Ray tracing - volume calculation
+#pragma omp parallel for schedule(dynamic)
   for (int i = 0; i < settings::n_volume_estimator_rays; i++) {
-    RandomRay ray(i, domain_.get());
-    total_geometric_intersections_volume_ +=
-      ray.transport_history_based_single_ray();
+    RandomRay ray(i, domain_.get(), false);
+    ray.transport_history_based_single_ray();
   }
 
   // Normalizing volumes
@@ -511,31 +506,33 @@ void RandomRaySimulation::first_collided_source_simulation()
 
   // Reset parameters for First Collided Source Method
   domain_->batch_reset_fc();
-  RandomRay::uncollided_flux_volume = false;
+  RandomRay::no_volume_calc = true;
 
   // print volume estimation time
   time_volume_fc = simulation::time_first_collided.elapsed();
   fmt::print("completed.\n\n");
 
   //==============================================================================
-
   // First Collided Source - Transport Loop
   // It will operate until meet any criteria (1-3):
-  // (1) There is no new FSR hits from batch_first_collided (n-1) to the next
+  // (1) There isn't new FSR hits from batch_first_collided (n-1) to the next
   // (n) (2) Reached pre-set maximum n_uncollided_rays (3) Hit 100% of the FSRs
   print_columns();
+
   while (domain_->new_fsr_fc) {
 
     // Ray tracing and attenuation
-#pragma omp parallel for                                     \
-  reduction(+ : total_geometric_intersections_fcs_)
+#pragma omp parallel for
     for (int i = old_n_rays; i < new_n_rays; i++) {
-      RandomRay ray(i, domain_.get());
-      total_geometric_intersections_fcs_ +=
-        ray.transport_history_based_single_ray_first_collided();
+      RandomRay ray(i, domain_.get(), true);
+      ray.transport_history_based_single_ray();
     }
 
     int64_t n_hits_new = domain_->check_fsr_hits();
+
+    // print results
+    fmt::print(
+      "  {:6}   {:10}    {:}\n", batch_first_collided, new_n_rays, n_hits_new);
 
     // BREAK STATEMENT
     if (n_hits_new == n_hits_old) {
@@ -545,10 +542,6 @@ void RandomRaySimulation::first_collided_source_simulation()
     } else if (static_cast<double>(n_hits_new) >= domain_->n_source_regions_) {
       domain_->new_fsr_fc = {false}; // Condition (3)
     }
-
-    // print results
-    fmt::print(
-      "  {:6}   {:10}    {:}\n", batch_first_collided, new_n_rays, n_hits_new);
 
     // update values for next batch
     n_hits_old = n_hits_new;
@@ -566,14 +559,16 @@ void RandomRaySimulation::first_collided_source_simulation()
   // compute first_collided_fixed_source
   domain_->compute_first_collided_flux();
 
-  // apply invM*uncollided flux?
-  // domain_->uncollided_moments();
+  // apply invM*uncollided flux
+  domain_->uncollided_moments();
 
   // reset values for RandomRay iteration
-  domain_->batch_reset_fc(); // clean-up of key variables (preserves volume)
-  domain_->first_collided_mode = {true};   // add FC contribution to RR
-  settings::FIRST_COLLIDED_FLUX = {false}; // regular RR calculations
+  domain_->batch_reset_fc(); // clean-up of key variables (preserves just volume_)
+  RandomRay::no_volume_calc = {false};
+
+  //settings::FIRST_COLLIDED_FLUX = {false}; // regular RR calculations
   simulation::current_batch = 0; // garantee the first batch will be 1 in RR
+  domain_->first_collided_mode = {true}; // add FC contribution to RR
 
   // compute First Collided Method simulation time
   simulation::time_first_collided.stop();

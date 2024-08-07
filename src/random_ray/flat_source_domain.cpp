@@ -57,7 +57,7 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
   scalar_flux_final_.assign(n_source_elements_, 0.0);
   scalar_uncollided_flux_.assign(n_source_elements_, 0.0);
   scalar_first_collided_flux_.assign(n_source_elements_, 0.0);
-  source_.resize(n_source_elements_);
+  source_.assign(n_source_elements_, 0.0);
   external_source_.assign(n_source_elements_, 0.0);
   tally_task_.resize(n_source_elements_);
   volume_task_.resize(n_source_regions_);
@@ -123,6 +123,9 @@ void FlatSourceDomain::batch_reset_fc()
 {
   parallel_fill<float>(scalar_flux_new_, 0.0f);
   parallel_fill<int>(was_hit_, 0);
+  if(RandomRay::no_volume_calc){
+    parallel_fill<double>(volume_t_, 0.0);
+  }
 }
 
 void FlatSourceDomain::accumulate_iteration_flux()
@@ -133,30 +136,22 @@ void FlatSourceDomain::accumulate_iteration_flux()
   }
 }
 
-// multiply First Collided Flux by volume and attribute it as fixed source
-void FlatSourceDomain::update_external_flat_source()
+int64_t FlatSourceDomain::check_fsr_hits()
 {
-#pragma omp parallel for
+  int64_t n_hits = 0;
+#pragma omp parallel for reduction(+ : n_hits)
   for (int sr = 0; sr < n_source_regions_; sr++) {
-    double volume = simulation_volume_ * volume_[sr];
 
-    if (volume > 0.0) {
-      for (int g = 0; g < negroups_; g++) {
-        external_source_[sr * negroups_ + g] =
-          (scalar_first_collided_flux_[sr * negroups_ + g] / (volume));
-      }
-    } else {
-      for (int g = 0; g < negroups_; g++) {
-        external_source_[sr * negroups_ + g] = 0.0f;
-      }
+    // Check if this cell was hit this iteration
+    int was_cell_hit = was_hit_[sr];
+    if (was_cell_hit) {
+      n_hits++;
     }
   }
+
+  return n_hits;
 }
 
-void FlatSourceDomain::update_external_linear_source()
-{
-  // default empty
-}
 // Compute new estimate of scattering + fission sources in each source region
 // based on the flux estimate from the previous iteration.
 void FlatSourceDomain::update_neutron_source(double k_eff)
@@ -237,43 +232,18 @@ void FlatSourceDomain::normalize_scalar_flux_and_volumes(
 
   // Normalize scalar flux to total distance travelled by all rays this
   // iteration
-  if (!settings::FIRST_COLLIDED_FLUX) {
 #pragma omp parallel for
-    for (int64_t e = 0; e < scalar_flux_new_.size(); e++) {
-      scalar_flux_new_[e] *= normalization_factor;
-    }
+  for (int64_t e = 0; e < scalar_flux_new_.size(); e++) {
+    scalar_flux_new_[e] *= normalization_factor;
+  }
 
 // Accumulate cell-wise ray length tallies collected this iteration, then
 // update the simulation-averaged cell-wise volume estimates
 #pragma omp parallel for
-    for (int64_t sr = 0; sr < n_source_regions_; sr++) {
-      volume_t_[sr] += volume_[sr];
-      volume_[sr] = volume_t_[sr] * volume_normalization_factor;
-    }
+  for (int64_t sr = 0; sr < n_source_regions_; sr++) {
+    volume_t_[sr] += volume_[sr];
+    volume_[sr] = volume_t_[sr] * volume_normalization_factor;
   }
-
-  if (settings::FIRST_COLLIDED_FLUX) {
-#pragma omp parallel for
-    for (int64_t sr = 0; sr < n_source_regions_; sr++) {
-      volume_[sr] *= (volume_normalization_factor);
-    }
-  }
-}
-
-int64_t FlatSourceDomain::check_fsr_hits()
-{
-  int64_t n_hits = 0;
-#pragma omp parallel for reduction(+ : n_hits)
-  for (int sr = 0; sr < n_source_regions_; sr++) {
-
-    // Check if this cell was hit this iteration
-    int was_cell_hit = was_hit_[sr];
-    if (was_cell_hit) {
-      n_hits++;
-    }
-  }
-
-  return n_hits;
 }
 
 void FlatSourceDomain::compute_uncollided_scalar_flux()
@@ -294,9 +264,92 @@ void FlatSourceDomain::compute_uncollided_scalar_flux()
         float sigma_t = data::mg.macro_xs_[material].get_xs(
           MgxsType::TOTAL, g, nullptr, nullptr, nullptr, t, a);
         scalar_uncollided_flux_[idx] = scalar_flux_new_[idx] / (sigma_t);
-      } else {
-        scalar_uncollided_flux_[idx] = 0.0f;
       }
+    }
+  }
+}
+
+// Normalize Uncollided Flux
+void FlatSourceDomain::normalize_uncollided_scalar_flux(
+  double number_of_particles)
+{
+  // multiply by simulation volume
+  float normalization_factor = (1.0) / number_of_particles;
+
+  // Determine Source_total Scailing factor if first collided
+  double user_external_source_strength = 0.0;
+  for (auto& ext_source : model::external_sources) {
+    user_external_source_strength += ext_source->strength();
+  }
+
+  float source_scailing_factor =
+    (user_external_source_strength * normalization_factor);
+
+#pragma omp parallel for
+  for (int64_t e = 0; e < scalar_uncollided_flux_.size(); e++) {
+    scalar_uncollided_flux_[e] *= source_scailing_factor;
+  }
+}
+
+// Compute First Collided flux
+void FlatSourceDomain::compute_first_collided_flux()
+{
+  const int t = 0;
+  const int a = 0;
+
+#pragma omp parallel for
+  for (int sr = 0; sr < n_source_regions_; sr++) {
+    int material = material_[sr];
+
+    for (int e_out = 0; e_out < negroups_; e_out++) {
+      float sigma_t = data::mg.macro_xs_[material].get_xs(
+        MgxsType::TOTAL, e_out, nullptr, nullptr, nullptr, t, a);
+      float scatter_fixed_source = 0.0f;
+
+      for (int e_in = 0; e_in < negroups_; e_in++) {
+        float scalar_flux = scalar_uncollided_flux_[sr * negroups_ + e_in];
+
+        float sigma_s = data::mg.macro_xs_[material].get_xs(
+          MgxsType::NU_SCATTER, e_in, &e_out, nullptr, nullptr, t, a);
+        scatter_fixed_source += sigma_s * scalar_flux;
+      }
+
+      scalar_first_collided_flux_[sr * negroups_ + e_out] =
+        scatter_fixed_source / sigma_t;
+    }
+  }
+}
+
+void FlatSourceDomain::uncollided_moments()
+{
+  // empty
+}
+
+// Normalize First Collided Flux by volume and assign as fixed source
+//compute_first_collided_external_source
+void FlatSourceDomain::compute_first_collided_external_source()
+{
+#pragma omp parallel for
+  for (int sr = 0; sr < n_source_regions_; sr++) {
+    //check here
+    double volume = simulation_volume_ * volume_[sr];
+
+    if (volume > 0.0) {
+      for (int g = 0; g < negroups_; g++) {
+        external_source_[sr * negroups_ + g] =
+          (scalar_first_collided_flux_[sr * negroups_ + g] / (volume));
+      }
+    }
+  }
+}
+
+void FlatSourceDomain::update_volume_uncollided_flux()
+{
+#pragma omp parallel for
+  for (int sr = 0; sr < n_source_regions_; sr++) {
+    double volume = volume_[sr] * simulation_volume_;
+    for (int g = 0; g < negroups_; g++) {
+      scalar_uncollided_flux_[sr * negroups_ + g] /= volume;
     }
   }
 }
@@ -354,57 +407,6 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
 
   // Return the number of source regions that were hit this iteration
   return n_hits;
-}
-
-// Normalize Uncollided Flux
-void FlatSourceDomain::normalize_uncollided_scalar_flux(
-  double number_of_particles)
-{
-  // multiply by simulation volume
-  float normalization_factor = (1.0) / number_of_particles;
-
-  // Determine Source_total Scailing factor if first collided
-  double user_external_source_strength = 0.0;
-  for (auto& ext_source : model::external_sources) {
-    user_external_source_strength += ext_source->strength();
-  }
-
-  float source_scailing_factor =
-    (user_external_source_strength * normalization_factor);
-
-#pragma omp parallel for
-  for (int64_t e = 0; e < scalar_uncollided_flux_.size(); e++) {
-    scalar_uncollided_flux_[e] *= source_scailing_factor;
-  }
-}
-
-// Compute First Collided flux
-void FlatSourceDomain::compute_first_collided_flux()
-{
-  const int t = 0;
-  const int a = 0;
-
-#pragma omp parallel for
-  for (int sr = 0; sr < n_source_regions_; sr++) {
-    int material = material_[sr];
-
-    for (int e_out = 0; e_out < negroups_; e_out++) {
-      float sigma_t = data::mg.macro_xs_[material].get_xs(
-        MgxsType::TOTAL, e_out, nullptr, nullptr, nullptr, t, a);
-      float scatter_fixed_source = 0.0f;
-
-      for (int e_in = 0; e_in < negroups_; e_in++) {
-        float scalar_flux = scalar_uncollided_flux_[sr * negroups_ + e_in];
-
-        float sigma_s = data::mg.macro_xs_[material].get_xs(
-          MgxsType::NU_SCATTER, e_in, &e_out, nullptr, nullptr, t, a);
-        scatter_fixed_source += sigma_s * scalar_flux;
-      }
-
-      scalar_first_collided_flux_[sr * negroups_ + e_out] =
-        scatter_fixed_source / sigma_t;
-    }
-  }
 }
 
 // Generates new estimate of k_eff based on the differences between this
@@ -513,22 +515,6 @@ double FlatSourceDomain::compute_k_eff(double k_eff_old) const
 // have been hit and have had a tally map generated, then this status will
 // be passed back to the caller to alert them that this function doesn't
 // need to be called for the remainder of the simulation.
-
-void FlatSourceDomain::uncollided_moments()
-{
-  // empty
-}
-
-void FlatSourceDomain::update_volume_uncollided_flux()
-{
-#pragma omp parallel for
-  for (int sr = 0; sr < n_source_regions_; sr++) {
-    double volume = volume_[sr] * simulation_volume_;
-    for (int g = 0; g < negroups_; g++) {
-      scalar_uncollided_flux_[sr * negroups_ + g] /= volume;
-    }
-  }
-}
 
 void FlatSourceDomain::convert_source_regions_to_tallies()
 {

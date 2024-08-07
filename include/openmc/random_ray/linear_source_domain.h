@@ -41,15 +41,13 @@ public:
   void flux_swap() override;
   double evaluate_flux_at_point(Position r, int64_t sr, int g) const override;
 
-  void update_external_flat_source();
-  virtual void update_external_linear_source();
-  virtual int64_t check_fsr_hits();
-  virtual void compute_uncollided_scalar_flux();
-  virtual void compute_first_collided_flux();
-  virtual void normalize_uncollided_scalar_flux(double number_of_particles);
-  virtual void update_volume_uncollided_flux();
-  virtual void uncollided_moments();
-  virtual void batch_reset_fc();
+  void compute_first_collided_external_source() override;
+  void compute_uncollided_scalar_flux() override;
+  void compute_first_collided_flux() override;
+  void normalize_uncollided_scalar_flux(double number_of_particles) override;
+  void update_volume_uncollided_flux() override;
+  void uncollided_moments() override;
+  void batch_reset_fc() override;
 
   //----------------------------------------------------------------------------
   // Public Data members

@@ -114,7 +114,7 @@ void FlatSourceDomain::batch_reset()
 {
   // Reset scalar fluxes, iteration volume tallies, and region hit flags to
   // zero
-  parallel_fill<float>(scalar_flux_new_, 0.0f);
+  parallel_fill<double>(scalar_flux_new_, 0.0);
   parallel_fill<double>(volume_, 0.0);
 }
 

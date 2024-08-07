@@ -5,10 +5,10 @@ from openmc.examples import random_ray_lattice
 from openmc.utility_funcs import change_directory
 import pytest
 
-from tests.testing_harness import TolerantPyAPITestHarness
+from tests.testing_harness import PyAPITestHarness
 
 
-class MGXSTestHarness(TolerantPyAPITestHarness):
+class MGXSTestHarness(PyAPITestHarness):
     def _cleanup(self):
         super()._cleanup()
         f = 'mgxs.h5'

@@ -31,17 +31,16 @@ public:
 
   //----------------------------------------------------------------------------
   // Data members
-  // First collided method variables for automatic n_uncollided_rays
+  // First collided method variables for automatic first_collided_rays_
   int64_t n_hits_new {0};
   int64_t n_hits_old {0};
-  int new_n_rays  {settings::n_uncollided_rays};
+  int new_n_rays {1000};
   int old_n_rays {0};
   int batch_first_collided {1};
-  int n_rays_max {1000000};
-  bool user_input_rays {false};
+  int n_rays_max {10000000};
   
-  // volume estimation timer
-  double time_volume_fc {0};
+  // Initial volume estimation timer - First Collided Source Method
+  double time_volume_fc;
 
   
 private:
@@ -57,8 +56,6 @@ private:
   // Tracks the total number of geometric intersections by all rays for
   // reporting
   uint64_t total_geometric_intersections_ {0};
-  uint64_t total_geometric_intersections_volume_ {0};
-  uint64_t total_geometric_intersections_fcs_ {0};
 
   // Number of energy groups
   int negroups_;

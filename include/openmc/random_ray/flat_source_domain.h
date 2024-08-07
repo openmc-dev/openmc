@@ -126,7 +126,6 @@ public:
   //----------------------------------------------------------------------------
   // Static Data members
   static bool volume_normalized_flux_tallies_;
-  static bool first_collided_mode;
 
   //----------------------------------------------------------------------------
   // Public Data members

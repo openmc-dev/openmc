@@ -25,7 +25,6 @@ namespace openmc {
 
 // Static Variable Declarations
 bool FlatSourceDomain::volume_normalized_flux_tallies_ {false};
-bool FlatSourceDomain::first_collided_mode {false};
 
 FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
 {
@@ -710,7 +709,7 @@ void FlatSourceDomain::random_ray_tally()
 
     for (int g = 0; g < negroups_; g++) {
       int idx = sr * negroups_ + g;
-      if (first_collided_mode) {
+      if (RandomRay::first_collided_source_) {
         flux =
           (scalar_flux_new_[idx] + (scalar_uncollided_flux_[idx] / volume));
       } else {
@@ -899,14 +898,14 @@ void FlatSourceDomain::all_reduce_replicated_source_regions()
 double FlatSourceDomain::evaluate_flux_at_point(
   Position r, int64_t sr, int g) const
 {
-  if (!first_collided_mode) {
+  if (RandomRay::first_collided_source_) {
     return (scalar_flux_final_[sr * negroups_ + g] /
-            (settings::n_batches - settings::n_inactive));
+            (settings::n_batches - settings::n_inactive) +
+            scalar_uncollided_flux_[sr * negroups_ + g]);
   } else {
     // add uncollided flux if First Collided method is used
     return (scalar_flux_final_[sr * negroups_ + g] /
-              (settings::n_batches - settings::n_inactive) +
-            scalar_uncollided_flux_[sr * negroups_ + g]);
+              (settings::n_batches - settings::n_inactive));
   }
 }
 

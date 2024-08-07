@@ -25,6 +25,7 @@
 #include "openmc/plot.h"
 #include "openmc/random_lcg.h"
 #include "openmc/random_ray/random_ray.h"
+#include "openmc/random_ray/random_ray_simulation.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"
 #include "openmc/string_utils.h"
@@ -133,10 +134,6 @@ int trigger_batch_interval {1};
 int verbosity {7};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
-// HARDCODED INPUTS - First Collided Flux
-bool FIRST_COLLIDED_FLUX {true};
-int n_uncollided_rays {160000};
-int n_volume_estimator_rays {100000};
 
 } // namespace settings
 
@@ -291,20 +288,20 @@ void get_run_parameters(pugi::xml_node node_base)
         get_node_value_bool(random_ray_node, "volume_normalized_flux_tallies");
     }
     if (check_for_node(random_ray_node, "first_collided_source")) {
-      RandomRaySimulation::first_collided_source_ =
+      RandomRay::first_collided_source_ =
         get_node_value_bool(random_ray_node, "first_collided_source");
 
       if (check_for_node(random_ray_node, "first_collided_rays")) {
-        RandomRaySimulation::first_collided_rays_ =
+        RandomRay::first_collided_rays_ =
           std::stoi(get_node_value(random_ray_node, "first_collided_rays"));
-        if (RandomRaySimulation::first_collided_rays_ <= 0) {
+        if (RandomRay::first_collided_rays_ <= 0) {
           fatal_error("Number of first collided rays must be greater than 0");
         }
       }
       if (check_for_node(random_ray_node, "first_collided_volume_rays")) {
-        RandomRaySimulation::first_collided_volume_rays_ = std::stoi(
+        RandomRay::first_collided_volume_rays_ = std::stoi(
           get_node_value(random_ray_node, "first_collided_volume_rays"));
-        if (RandomRaySimulation::first_collided_volume_rays_ <= 0) {
+        if (RandomRay::first_collided_volume_rays_ <= 0) {
           fatal_error("Number of rays for first collided initial volume "
                       "estimation must be greater than 0");
         }

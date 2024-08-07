@@ -32,6 +32,7 @@
 #include "openmc/nuclide.h"
 #include "openmc/plot.h"
 #include "openmc/random_ray/flat_source_domain.h"
+#include "openmc/random_ray/random_ray.h"
 #include "openmc/reaction.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
@@ -376,7 +377,7 @@ void print_build_info()
 
 void print_columns()
 {
-  if (settings::FIRST_COLLIDED_FLUX){
+  if (RandomRay::first_collided_source_){
     fmt::print("  Batch       Rays       Total Source Regions Discovered\n"
                "  ======      =======    =================================\n");
   } else if (settings::entropy_on) {

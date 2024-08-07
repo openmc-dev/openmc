@@ -166,26 +166,22 @@ void validate_random_ray_inputs()
           "random ray mode");
       }
 
-      // Check for isotropic source
-      UnitSphereDistribution* angle_dist = is->angle();
-      Isotropic* id = dynamic_cast<Isotropic*>(angle_dist);
-      if (!id) {
-        fatal_error(
-          "Invalid source definition -- only isotropic external sources are "
-          "allowed in random ray mode.");
-      }
+      if (!first_collided_source_) {
+        // Check for isotropic source
+        UnitSphereDistribution* angle_dist = is->angle();
+        Isotropic* id = dynamic_cast<Isotropic*>(angle_dist);
+        if (!id) {
+          fatal_error(
+            "Invalid source definition -- only isotropic external sources are "
+            "allowed in random ray mode.");
+        }
 
-      // Validate that a domain ID was specified
-      if (is->domain_ids().size() == 0) {
-        if (!settings::FIRST_COLLIDED_FLUX) {
+        // Validate that a domain ID was specified
+        if (is->domain_ids().size() == 0) {
           fatal_error("Fixed sources must be specified by domain "
                       "id (cell, material, or universe) in random ray mode.");
-        } else if (settings::FIRST_COLLIDED_FLUX) {
-          //
-          fmt::print("??? add First collided condition and fatal error here\n");
         }
       }
-
       // Check that a discrete energy distribution was used
       Distribution* d = is->energy();
       Discrete* dd = dynamic_cast<Discrete*>(d);
@@ -456,9 +452,8 @@ void RandomRaySimulation::print_results_random_ray(
     header("Timing Statistics", 4);
     show_time("Total time for initialization", time_initialize.elapsed());
     show_time("Reading cross sections", time_read_xs.elapsed(), 1);
-        if (domain_->first_collided_mode) {
-      show_time(
-        "Volume estimation time", RandomRaySimulation::time_volume_fc);
+    if (domain_->first_collided_mode) {
+      show_time("Volume estimation time", RandomRaySimulation::time_volume_fc);
       show_time("First Collided Source time", time_first_collided.elapsed());
     }
     show_time("Total simulation time", time_total.elapsed());
@@ -563,10 +558,11 @@ void RandomRaySimulation::first_collided_source_simulation()
   domain_->uncollided_moments();
 
   // reset values for RandomRay iteration
-  domain_->batch_reset_fc(); // clean-up of key variables (preserves just volume_)
+  domain_
+    ->batch_reset_fc(); // clean-up of key variables (preserves just volume_)
   RandomRay::no_volume_calc = {false};
 
-  //settings::FIRST_COLLIDED_FLUX = {false}; // regular RR calculations
+  // settings::FIRST_COLLIDED_FLUX = {false}; // regular RR calculations
   simulation::current_batch = 0; // garantee the first batch will be 1 in RR
   domain_->first_collided_mode = {true}; // add FC contribution to RR
 

@@ -72,18 +72,18 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
   }
   get_datasets(kT_group, dset_names);
   vector<size_t> shape = {num_temps};
-  xt::xarray<double> available_temps(shape);
+  xt::xarray<double> temps_available(shape);
   for (int i = 0; i < num_temps; i++) {
-    read_double(kT_group, dset_names[i], &available_temps[i], true);
+    read_double(kT_group, dset_names[i], &temps_available[i], true);
 
     // convert eV to Kelvin
-    available_temps[i] /= K_BOLTZMANN;
+    temps_available[i] /= K_BOLTZMANN;
 
     // Done with dset_names, so delete it
     delete[] dset_names[i];
   }
   delete[] dset_names;
-  std::sort(available_temps.begin(), available_temps.end());
+  std::sort(temps_available.begin(), temps_available.end());
 
   // If only one temperature is available, lets just use nearest temperature
   // interpolation
@@ -99,17 +99,20 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
   case TemperatureMethod::NEAREST:
     // Determine actual temperatures to read
     for (const auto& T : temperature) {
-      auto i_closest = xt::argmin(xt::abs(available_temps - T))[0];
-      double temp_actual = available_temps[i_closest];
+      auto i_closest = xt::argmin(xt::abs(temps_available - T))[0];
+      double temp_actual = temps_available[i_closest];
       if (std::fabs(temp_actual - T) < settings::temperature_tolerance) {
         if (std::find(temps_to_read.begin(), temps_to_read.end(),
               std::round(temp_actual)) == temps_to_read.end()) {
           temps_to_read.push_back(std::round(temp_actual));
         }
       } else {
-        fatal_error(fmt::format("MGXS library does not contain cross sections "
-                                "for {} at or near {} K.",
-          in_name, std::round(T)));
+        fatal_error(fmt::format(
+          "MGXS library does not contain cross sections "
+          "for {} at or near {} K. Available temperatures "
+          "are {} K consider making use of openmc.Settings.temperature "
+          "to specify how intermediate temperatures are treated.",
+          in_name, std::round(T), concatenate_xt(temps_available)));
       }
     }
     break;
@@ -122,16 +125,16 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
                       in_name + " at temperatures that bound " +
                       std::to_string(std::round(temperature[i])));
         }
-        if ((available_temps[j] <= temperature[i]) &&
-            (temperature[i] < available_temps[j + 1])) {
+        if ((temps_available[j] <= temperature[i]) &&
+            (temperature[i] < temps_available[j + 1])) {
           if (std::find(temps_to_read.begin(), temps_to_read.end(),
-                std::round(available_temps[j])) == temps_to_read.end()) {
-            temps_to_read.push_back(std::round((int)available_temps[j]));
+                std::round(temps_available[j])) == temps_to_read.end()) {
+            temps_to_read.push_back(std::round((int)temps_available[j]));
           }
 
           if (std::find(temps_to_read.begin(), temps_to_read.end(),
-                std::round(available_temps[j + 1])) == temps_to_read.end()) {
-            temps_to_read.push_back(std::round((int)available_temps[j + 1]));
+                std::round(temps_available[j + 1])) == temps_to_read.end()) {
+            temps_to_read.push_back(std::round((int)temps_available[j + 1]));
           }
           break;
         }

@@ -88,22 +88,4 @@ bool starts_with(const std::string& value, const std::string& beginning)
   return std::equal(beginning.begin(), beginning.end(), value.begin());
 }
 
-std::string concatenate_vec(const std::vector<double>& temps)
-{
-  std::ostringstream oss;
-  for (const auto& temp : temps) {
-    oss << temp << " ";
-  }
-  return oss.str();
-}
-
-std::string concatenate_xt(const xt::xarray<double>& temps)
-{
-  std::ostringstream oss;
-  for (const auto& temp : temps) {
-    oss << temp << " ";
-  }
-  return oss.str();
-}
-
 } // namespace openmc

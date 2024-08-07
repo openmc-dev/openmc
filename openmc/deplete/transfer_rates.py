@@ -79,7 +79,8 @@ class ExternalRates:
 
         return str(val)
 
-    def get_external_rate(self, material, component):
+    def get_external_rate(self, material, component, timestep,
+                          destination_material=None):
         """Return transfer rate for given material and element.
 
         Parameters
@@ -88,6 +89,10 @@ class ExternalRates:
             Depletable material
         component : str
             Element or nuclide to get transfer rate value
+        timestep : int
+            Current timestep index
+        destination_material : openmc.Material or str or int, Optional
+            Destination material to where nuclides get fed
 
         Returns
         -------
@@ -96,10 +101,18 @@ class ExternalRates:
 
         """
         material_id = self._get_material_id(material)
-        check_type('component', component, str)
-        return [i[1] for i in self.external_rates[material_id][component]]
 
-    def get_components(self, material, timestep):
+        if destination_material is not None:
+            dest_mat_id = self._get_material_id(destination_material)
+        else:
+            dest_mat_id = None
+
+        check_type('component', component, str)
+
+        return [i[1] for i in self.external_rates[material_id][component]
+                if timestep in i[0] and dest_mat_id==i[2]]
+
+    def get_components(self, material, timestep, destination_material=None):
         """Extract removing elements and/or nuclides for a given material at a
         given timestep
 
@@ -109,6 +122,8 @@ class ExternalRates:
             Depletable material
         timestep : int
             Current timestep index
+        destination_material : openmc.Material or str or int, Optional
+            Destination material to where nuclides get fed
 
         Returns
         -------
@@ -118,12 +133,23 @@ class ExternalRates:
 
         """
         material_id = self._get_material_id(material)
+
+        if destination_material is not None:
+            dest_mat_id = self._get_material_id(destination_material)
+        else:
+            dest_mat_id = None
+
+        all_components = []
         if material_id in self.external_rates:
-            components = [
-                comp for comp,vals in self.external_rates[material_id].items() \
-                    if timestep in vals[0][0]
-            ]
-            return components
+            mat_components = self.external_rates[material_id]
+            for component in mat_components:
+                if np.isin(timestep, [val[0] for val in mat_components[component]]):
+                if np.isin(timestep,
+                           [val[0] for val in mat_components[component]]) and \
+                   np.isin(dest_mat_id,
+                           [val[2] for val in mat_components[component]]):
+                    all_components.append(component)
+        return components
 
 class TransferRates(ExternalRates):
     """Class for defining continuous removals and feeds.
@@ -171,32 +197,7 @@ class TransferRates(ExternalRates):
             number_of_timesteps
         )
 
-        self.index_transfer = set()
-
-    def get_destination_material(self, material, component):
-        """Return destination material for given material and
-        component, if defined.
-
-        Parameters
-        ----------
-        material : openmc.Material or str or int
-            Depletable material
-        component : str
-            Element or nuclide that gets transferred to another material.
-
-        Returns
-        -------
-        destination_material_id : list of str
-            Depletable material ID to where the element or nuclide gets
-            transferred
-
-        """
-        material_id = self._get_material_id(material)
-        check_type('component', component, str)
-        if component in self.external_rates[material_id]:
-            return [i[2] for i in self.external_rates[material_id][component]]
-        else:
-            return []
+        self.index_transfer = dict()
 
     def set_transfer_rate(self, material, components, transfer_rate,
                           transfer_rate_units='1/s', timesteps=None,
@@ -214,11 +215,14 @@ class TransferRates(ExternalRates):
         transfer_rate : float
             Rate at which elements and/or nuclides are transferred. A positive or
             negative value corresponds to a removal or feed rate, respectively.
-        destination_material : openmc.Material or str or int, Optional
-            Destination material to where nuclides get fed.
         transfer_rate_units : {'1/s', '1/min', '1/h', '1/d', '1/a'}
             Units for values specified in the transfer_rate argument. 's' for
             seconds, 'min' for minutes, 'h' for hours, 'a' for Julian years.
+        timesteps : list of int, Optional
+            List of timestep indeces where to set transfer rates.
+            Default to None means the transfer rate is set for all timesteps.
+        destination_material : openmc.Material or str or int, Optional
+            Destination material to where nuclides get fed.
 
         """
         material_id = self._get_material_id(material)
@@ -295,7 +299,13 @@ class TransferRates(ExternalRates):
                      destination_material_id)]
 
             if destination_material_id is not None:
-                self.index_transfer.add((destination_material_id, material_id))
+                for timestep in timesteps:
+                    if timestep not in self.index_transfer:
+                        self.index_transfer[timestep] = [(destination_material_id,
+                                                        material_id)]
+                    else:
+                        self.index_transfer[timestep].append((destination_material_id,
+                                                        material_id))
 
             self.external_timesteps = np.unique(np.concatenate(
                     [self.external_timesteps, timesteps]))
@@ -383,6 +393,10 @@ class ExternalSourceRates(ExternalRates):
             Units for values specified in the external_source_rate argument.
             's' for seconds, 'min' for minutes, 'h' for hours, 'a' for
             Julian years.
+        timesteps : list of int, Optional
+            List of timestep indeces where to set external source rates.
+            Default to None means the external source rate is set for all
+            timesteps.
 
         """
 
@@ -444,9 +458,9 @@ class ExternalSourceRates(ExternalRates):
 
         for nuc, val in atoms_per_nuc.items():
             if nuc in self.external_rates[material_id]:
-                self.external_rates[material_id][nuc].append((timesteps, val))
+                self.external_rates[material_id][nuc].append((timesteps, val, None))
             else:
-                self.external_rates[material_id][nuc] = [(timesteps, val)]
+                self.external_rates[material_id][nuc] = [(timesteps, val, None)]
 
         self.external_timesteps = np.unique(np.concatenate(
                     [self.external_timesteps, timesteps]))

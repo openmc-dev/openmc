@@ -726,20 +726,23 @@ class Chain:
                     break
                 components = tr_rates.get_components(mat, current_timestep)
                 if elm in components:
-                    matrix[i, i] = sum(tr_rates.get_external_rate(mat, elm))
+                    matrix[i, i] = sum(tr_rates.get_external_rate(mat, elm,
+                                                            current_timestep))
                 elif nuc.name in components:
-                    matrix[i, i] = sum(tr_rates.get_external_rate(mat, nuc.name))
+                    matrix[i, i] = sum(tr_rates.get_external_rate(mat, nuc.name,
+                                                            current_timestep))
                 else:
                     matrix[i, i] = 0.0
             #Build transfer terms matrices
             elif isinstance(mats, tuple):
                 dest_mat, mat = mats
-                if dest_mat in tr_rates.get_destination_material(mat, elm):
-                    dest_mat_idx = tr_rates.get_destination_material(mat, elm).index(dest_mat)
-                    matrix[i, i] = tr_rates.get_external_rate(mat, elm)[dest_mat_idx]
-                elif dest_mat in tr_rates.get_destination_material(mat, nuc.name):
-                    dest_mat_idx = tr_rates.get_destination_material(mat, nuc.name).index(dest_mat)
-                    matrix[i, i] = tr_rates.get_external_rate(mat, nuc.name)[dest_mat_idx]
+                components = tr_rates.get_components(mat, current_timestep, dest_mat)
+                if elm in components:
+                    matrix[i, i] = tr_rates.get_external_rate(mat, elm,
+                                                current_timestep, dest_mat)[0]
+                elif nuc.name in components:
+                    matrix[i, i] = tr_rates.get_external_rate(mat, nuc.name,
+                                                current_timestep, dest_mat)[0]
                 else:
                     matrix[i, i] = 0.0
             #Nothing else is allowed
@@ -778,7 +781,8 @@ class Chain:
         for i, nuc in enumerate(self.nuclides):
             # Build source term vector
             if nuc.name in ext_source_rates.get_components(mat, current_timestep):
-                vector[i] = sum(ext_source_rates.get_external_rate(mat, nuc.name))
+                vector[i] = sum(ext_source_rates.get_external_rate(mat, nuc.name,
+                                                              current_timestep))
             else:
                 vector[i] = 0.0
 

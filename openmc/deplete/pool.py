@@ -108,7 +108,7 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
         matrices = [matrix - transfer for (matrix, transfer) in zip(matrices,
                                                                     transfers)]
 
-        if len(transfer_rates.index_transfer) > 0:
+        if current_timestep in transfer_rates.index_transfer:
             # Gather all on comm.rank 0
             matrices = comm.gather(matrices)
             n = comm.gather(n)
@@ -122,7 +122,7 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
                 transfer_pair = {
                     mat_pair: chain.form_rr_term(transfer_rates, current_timestep,
                                                 mat_pair)
-                    for mat_pair in transfer_rates.index_transfer
+                    for mat_pair in transfer_rates.index_transfer[current_timestep]:
                 }
 
 
@@ -138,7 +138,7 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
                         if row == col:
                             # Fill the diagonals with the Bateman matrices
                             cols.append(matrices[row])
-                        elif mat_pair in transfer_rates.index_transfer:
+                        elif mat_pair in transfer_rates.index_transfer[current_timestep]:
                             # Fill the off-diagonals with the transfer pair matrices
                             cols.append(transfer_pair[mat_pair])
                         else:

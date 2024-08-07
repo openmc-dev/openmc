@@ -25,9 +25,15 @@ bool ends_with(const std::string& value, const std::string& ending);
 
 bool starts_with(const std::string& value, const std::string& beginning);
 
-std::string concatenate_vec(const std::vector<double>& temps);
-
-std::string concatenate_xt(const xt::xarray<double>& temps);
+template<typename T>
+inline std::string concatenate(const T& temps)
+{
+  std::ostringstream oss;
+  for (const auto& temp : temps) {
+    oss << temp << " ";
+  }
+  return oss.str();
+}
 
 } // namespace openmc
 #endif // OPENMC_STRING_UTILS_H

@@ -95,7 +95,7 @@ ThermalScattering::ThermalScattering(
           "for {}  at or near {} K. Available temperatures "
           "are {} K. Consider making use of openmc.Settings.temperature "
           "to specify how intermediate temperatures are treated.",
-          name_, std::round(T), concatenate(temps_available, ", ")));
+          name_, std::round(T), concatenate(temps_available)));
       }
     }
     break;

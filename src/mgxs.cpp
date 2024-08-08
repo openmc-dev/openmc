@@ -112,7 +112,7 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
           "for {} at or near {} K. Available temperatures "
           "are {} K. Consider making use of openmc.Settings.temperature "
           "to specify how intermediate temperatures are treated.",
-          in_name, std::round(T), concatenate(temps_available, ", ")));
+          in_name, std::round(T), concatenate(temps_available)));
       }
     }
     break;

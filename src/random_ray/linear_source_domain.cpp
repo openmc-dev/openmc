@@ -56,13 +56,6 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
 
   double inverse_k_eff = 1.0 / k_eff;
 
-  // Temperature and angle indices, if using multiple temperature
-  // data sets and/or anisotropic data sets.
-  // TODO: Currently assumes we are only using single temp/single
-  // angle data.
-  const int t = 0;
-  const int a = 0;
-
 #pragma omp parallel for
   for (int sr = 0; sr < n_source_regions_; sr++) {
 
@@ -70,8 +63,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
     MomentMatrix invM = mom_matrix_[sr].inverse();
 
     for (int e_out = 0; e_out < negroups_; e_out++) {
-      float sigma_t = data::mg.macro_xs_[material].get_xs(
-        MgxsType::TOTAL, e_out, nullptr, nullptr, nullptr, t, a);
+      float sigma_t = sigma_t_[material * negroups_ + e_out];
 
       float scatter_flat = 0.0f;
       float fission_flat = 0.0f;
@@ -84,12 +76,9 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
         MomentArray flux_linear = flux_moments_old_[sr * negroups_ + e_in];
 
         // Handles for cross sections
-        float sigma_s = data::mg.macro_xs_[material].get_xs(
-          MgxsType::NU_SCATTER, e_in, &e_out, nullptr, nullptr, t, a);
-        float nu_sigma_f = data::mg.macro_xs_[material].get_xs(
-          MgxsType::NU_FISSION, e_in, nullptr, nullptr, nullptr, t, a);
-        float chi = data::mg.macro_xs_[material].get_xs(
-          MgxsType::CHI_PROMPT, e_in, &e_out, nullptr, nullptr, t, a);
+        float sigma_s = sigma_s_[material * negroups_ * negroups_ + e_out * negroups_ + e_in];
+        float nu_sigma_f = nu_sigma_f_[material * negroups_ + e_in];
+        float chi = chi_[material * negroups_ + e_out];
 
         // Compute source terms for flat and linear components of the flux
         scatter_flat += sigma_s * flux_flat;
@@ -156,13 +145,6 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
 int64_t LinearSourceDomain::add_source_to_scalar_flux()
 {
   int64_t n_hits = 0;
-
-  // Temperature and angle indices, if using multiple temperature
-  // data sets and/or anisotropic data sets.
-  // TODO: Currently assumes we are only using single temp/single
-  // angle data.
-  const int t = 0;
-  const int a = 0;
 
 #pragma omp parallel for reduction(+ : n_hits)
   for (int sr = 0; sr < n_source_regions_; sr++) {

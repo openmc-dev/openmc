@@ -161,9 +161,10 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
         fatal_error(fmt::format(
           "Nuclear data library does not contain cross sections "
           "for {}  at or near {} K. Available temperatures "
-          "are {} K consider making use of openmc.Settings.temperature "
+          "are {} K. Consider making use of openmc.Settings.temperature "
           "to specify how intermediate temperatures are treated.",
-          name_, std::to_string(T_desired), concatenate(temps_available)));
+          name_, std::to_string(T_desired),
+          concatenate(temps_available, ", ")));
       }
     }
     break;

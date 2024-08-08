@@ -26,11 +26,16 @@ bool ends_with(const std::string& value, const std::string& ending);
 bool starts_with(const std::string& value, const std::string& beginning);
 
 template<typename T>
-inline std::string concatenate(const T& temps)
+inline std::string concatenate(const T& values, const std::string& del = " ")
 {
   std::ostringstream oss;
-  for (const auto& temp : temps) {
-    oss << temp << " ";
+  auto it = values.begin();
+  if (it != values.end()) {
+    oss << *it; // Insert the first element without a delimiter
+    ++it;
+  }
+  for (; it != values.end(); ++it) {
+    oss << del << *it;
   }
   return oss.str();
 }

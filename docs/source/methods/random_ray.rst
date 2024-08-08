@@ -1005,7 +1005,7 @@ In cases that the fixed source is not a well defined volumetric source (e.g. poi
 there is the need to preprocess the source into volumetric sources in order to be computed by the
 random ray solver. One possible way is through the First Collision Source Method (FCS), which works as a 
 preconditioner of the source, distributing the source contribution throghout the domain. This is
-not a new method `Alcouffe <Alcouffe-1989_>`_, and has been recently implemented in other 
+not a new method (`Alcouffe <Alcouffe-1989_>`_), and has been recently implemented in other 
 neutron transport codes (`Ragusa <Ragusa-2016_>`_, `Falabino <Falabino-2022_>`_).
 
 The FCS works generating uncollided neutron angular fluxes :math:`\psi^{\text{un}}_{g}` at the source that travel through
@@ -1075,8 +1075,15 @@ birth location.
 
 To avoid bias in the volume estimation, it is added an initial volume estimation stage
 to compute the volume of each cell prior running FCS, using the same method presented in 
-the Random Ray method. This volume estimation can be improvde with the random ray solver, 
-requiring a fast and rough initial estimate. Substituting Equation :eq:`fcs_average_solved_difference` 
+the Random Ray method. 
+
+In the case o flat source, the volume estimation can be improvde with the random ray solver, 
+allowing a fast and rough initial estimate. However, linear source requires a more carefull procedure.
+Linear source requires calculating angular flux moments, that depend on the estimated
+cell's spatial moments and centroids. If a poor estimation is made, innaccurate gradients will be
+carried throughout the calculation and impact the accuracy of the method. 
+
+Substituting Equation :eq:`fcs_average_solved_difference` 
 into Equation :eq:`fcs_discretized`, we obtain the equation for the uncollided angular flux:
 
 .. math::

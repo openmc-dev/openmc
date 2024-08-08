@@ -110,9 +110,9 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
         fatal_error(fmt::format(
           "MGXS library does not contain cross sections "
           "for {} at or near {} K. Available temperatures "
-          "are {} K consider making use of openmc.Settings.temperature "
+          "are {} K. Consider making use of openmc.Settings.temperature "
           "to specify how intermediate temperatures are treated.",
-          in_name, std::round(T), concatenate(temps_available)));
+          in_name, std::round(T), concatenate(temps_available, ", ")));
       }
     }
     break;

@@ -93,9 +93,9 @@ ThermalScattering::ThermalScattering(
         fatal_error(fmt::format(
           "Nuclear data library does not contain cross sections "
           "for {}  at or near {} K. Available temperatures "
-          "are {} K consider making use of openmc.Settings.temperature "
+          "are {} K. Consider making use of openmc.Settings.temperature "
           "to specify how intermediate temperatures are treated.",
-          name_, std::to_string(std::round(T)), concatenate(temps_available)));
+          name_, std::round(T), concatenate(temps_available, ", ")));
       }
     }
     break;

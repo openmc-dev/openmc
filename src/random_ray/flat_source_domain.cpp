@@ -1040,4 +1040,47 @@ void FlatSourceDomain::flux_swap()
   scalar_flux_old_.swap(scalar_flux_new_);
 }
 
+void FlatSourceDomain::flatten_xs()
+{
+  // Temperature and angle indices, if using multiple temperature
+  // data sets and/or anisotropic data sets.
+  // TODO: Currently assumes we are only using single temp/single angle data.
+  const int t = 0;
+  const int a = 0;
+
+  n_materials_ = data::mg.macro_xs_.size();
+  for (auto& m : data::mg.macro_xs_) {
+    for (int e = 0; e < negroups_; e++) {
+      if (m.exists_in_model) {
+        float sigma_t = m.get_xs(MgxsType::TOTAL, e, NULL, NULL, NULL, t, a);
+        sigma_t_.push_back(sigma_t);
+
+        float nu_Sigma_f =
+          m.get_xs(MgxsType::NU_FISSION, e, NULL, NULL, NULL, t, a);
+        nu_sigma_f_.push_back(nu_Sigma_f);
+
+        float sigma_f = m.get_xs(MgxsType::FISSION, e, NULL, NULL, NULL, t, a);
+        sigma_f_.push_back(sigma_f);
+
+        float chi = m.get_xs(MgxsType::CHI_PROMPT, e, &e, NULL, NULL, t, a);
+        chi_.push_back(chi);
+
+        for (int ee = 0; ee < negroups_; ee++) {
+          float sigma_s =
+            m.get_xs(MgxsType::NU_SCATTER, ee, &e, NULL, NULL, t, a);
+          sigma_s_.push_back(sigma_s);
+        }
+      } else {
+        sigma_t_.push_back(0);
+        nu_sigma_f_.push_back(0);
+        sigma_f_.push_back(0);
+        chi_.push_back(0);
+        for (int ee = 0; ee < negroups_; ee++) {
+          sigma_s_.push_back(0);
+        }
+      }
+    }
+  }
+}
+
 } // namespace openmc

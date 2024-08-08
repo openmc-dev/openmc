@@ -254,6 +254,10 @@ RandomRaySimulation::RandomRaySimulation()
   default:
     fatal_error("Unknown random ray source shape");
   }
+
+  // Convert OpenMC native MGXS into a more efficient format
+  // internal to the random ray solver
+  domain_->flatten_xs();
 }
 
 void RandomRaySimulation::simulate()

@@ -26,7 +26,7 @@ bool ends_with(const std::string& value, const std::string& ending);
 bool starts_with(const std::string& value, const std::string& beginning);
 
 template<typename T>
-inline std::string concatenate(const T& values, const std::string& del = " ")
+inline std::string concatenate(const T& values, const std::string& del = ", ")
 {
   if (values.size() == 0)
     return "";

@@ -164,7 +164,7 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
           "are {} K. Consider making use of openmc.Settings.temperature "
           "to specify how intermediate temperatures are treated.",
           name_, std::to_string(T_desired),
-          concatenate(temps_available, ", ")));
+          concatenate(temps_available)));
       }
     }
     break;

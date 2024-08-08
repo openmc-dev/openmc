@@ -480,7 +480,11 @@ void RandomRaySimulation::print_results_random_ray(
 
 void RandomRaySimulation::first_collided_source_simulation()
 {
-  header("FIRST COLLIDED SOURCE METHOD", 3);
+  if (RandomRay::source_shape_ == RandomRaySourceShape::FLAT) {
+    header("FIRST COLLIDED SOURCE METHOD - Flat source", 3);
+  } else {
+    header("FIRST COLLIDED SOURCE METHOD - Linear source", 3);
+  }
   simulation::time_first_collided.start();
   simulation::current_batch = 1;
   fmt::print("Initial volume estimation...");
@@ -492,7 +496,7 @@ void RandomRaySimulation::first_collided_source_simulation()
   }
 
   // Ray tracing - volume calculation
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for
   for (int i = 0; i < RandomRay::first_collided_volume_rays_; i++) {
     RandomRay ray(i, domain_.get(), false);
     ray.transport_history_based_single_ray();
@@ -516,9 +520,9 @@ void RandomRaySimulation::first_collided_source_simulation()
   // (1) There isn't new FSR hits from batch_first_collided (n-1) to the next
   // (n) (2) Reached pre-set maximum n_uncollided_rays (3) Hit 100% of the FSRs
   print_columns();
-  if (!RandomRay::first_collided_rays_ == -1) {
+  if (RandomRay::first_collided_rays_ != -1) {
     new_n_rays = RandomRay::first_collided_rays_;
-    n_rays_max = new_n_rays;
+    n_rays_max = RandomRay::first_collided_rays_;
   }
 
   while (old_n_rays < n_rays_max) { // Condition (2)
@@ -535,7 +539,7 @@ void RandomRaySimulation::first_collided_source_simulation()
     // print results
     fmt::print(
       "  {:6}   {:10}    {:}\n", batch_first_collided, new_n_rays, n_hits_new);
-      
+
     // update values for next batch
     batch_first_collided++;
     old_n_rays = new_n_rays;

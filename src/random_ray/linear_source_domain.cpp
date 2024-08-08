@@ -327,6 +327,7 @@ void LinearSourceDomain::compute_first_collided_flux()
 
 void LinearSourceDomain::uncollided_moments()
 {
+
 #pragma omp parallel for
   for (int sr = 0; sr < n_source_regions_; sr++) {
     MomentMatrix invM = mom_matrix_[sr].inverse();

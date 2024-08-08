@@ -465,13 +465,13 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
   // be no estimate of its centroid. We detect this by checking if it has
   // any accumulated volume. If its volume is zero, just use the midpoint
   // of the ray as the region's centroid.
-    if (domain->volume_t_[source_region]) {
-      rm_local = midpoint - centroid;
-      r0_local = r() - centroid;
-    } else {
-      rm_local = {0.0, 0.0, 0.0};
-      r0_local = -u() * 0.5 * distance;
-    }
+  if (domain->volume_t_[source_region]) {
+    rm_local = midpoint - centroid;
+    r0_local = r() - centroid;
+  } else {
+    rm_local = {0.0, 0.0, 0.0};
+    r0_local = -u() * 0.5 * distance;
+  }
   double distance_2 = distance * distance;
 
   // Linear Source MOC incoming flux attenuation + source
@@ -544,10 +544,10 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
     // Accumulate deltas into the new estimate of source region flux for this
     // iteration
 
-      for (int g = 0; g < negroups_; g++) {
-        domain_->scalar_flux_new_[source_element + g] += delta_psi_[g];
-        domain->flux_moments_new_[source_element + g] += delta_moments_[g];
-      }
+    for (int g = 0; g < negroups_; g++) {
+      domain_->scalar_flux_new_[source_element + g] += delta_psi_[g];
+      domain->flux_moments_new_[source_element + g] += delta_moments_[g];
+    }
 
     // Accumulate the volume (ray segment distance), centroid, and spatial
     // momement estimates into the running totals for the iteration for this
@@ -575,7 +575,6 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
 
     // Release lock
     domain_->lock_[source_region].unlock();
-
   }
 }
 
@@ -651,6 +650,7 @@ void RandomRay::initialize_ray(
 
     for (int g = 0; g < negroups_; g++) {
       angular_flux_[g] = domain_->source_[source_region_idx * negroups_ + g];
+      // check for zero angular_flux_[g] causing ray to die?
     }
   }
 }

@@ -405,6 +405,30 @@ double LinearSourceDomain::evaluate_flux_at_point(
   return phi_flat + phi_solved.dot(local_r);
 }
 
+double LinearSourceDomain::evaluate_uncollided_flux_at_point(
+  Position r, int64_t sr, int g) const
+{
+  // Uncollided flux 
+  float phi_flat = FlatSourceDomain::evaluate_uncollided_flux_at_point(r, sr, g);
+
+  Position local_r = r - centroid_[sr];
+  MomentArray phi_linear = flux_moments_uncollided_[sr * negroups_ + g];
+
+  return phi_flat + phi_linear.dot(local_r);
+}
+
+double LinearSourceDomain::evaluate_external_source_at_point(
+  Position r, int64_t sr, int g) const
+{
+  // External source 
+  float phi_flat = FlatSourceDomain::evaluate_external_source_at_point(r, sr, g);
+
+  Position local_r = r - centroid_[sr];
+  MomentArray phi_linear = external_source_gradients_[sr * negroups_ + g];
+
+  return phi_flat + phi_linear.dot(local_r);
+}
+
 void LinearSourceDomain::update_volume_uncollided_flux()
 {
 #pragma omp parallel for

@@ -122,7 +122,7 @@ void FlatSourceDomain::batch_reset_fc()
 {
   parallel_fill<float>(scalar_flux_new_, 0.0f);
   parallel_fill<int>(was_hit_, 0);
-  if(RandomRay::no_volume_calc){
+  if (RandomRay::no_volume_calc) {
     parallel_fill<double>(volume_t_, 0.0);
   }
 }
@@ -325,12 +325,12 @@ void FlatSourceDomain::uncollided_moments()
 }
 
 // Normalize First Collided Flux by volume and assign as fixed source
-//compute_first_collided_external_source
+// compute_first_collided_external_source
 void FlatSourceDomain::compute_first_collided_external_source()
 {
 #pragma omp parallel for
   for (int sr = 0; sr < n_source_regions_; sr++) {
-    //check here
+    // check here
     double volume = simulation_volume_ * volume_[sr];
 
     if (volume > 0.0) {
@@ -900,12 +900,32 @@ double FlatSourceDomain::evaluate_flux_at_point(
 {
   if (RandomRay::first_collision_source_) {
     return (scalar_flux_final_[sr * negroups_ + g] /
-            (settings::n_batches - settings::n_inactive) +
+              (settings::n_batches - settings::n_inactive) +
             scalar_uncollided_flux_[sr * negroups_ + g]);
   } else {
     // add uncollided flux if First Collided method is used
     return (scalar_flux_final_[sr * negroups_ + g] /
-              (settings::n_batches - settings::n_inactive));
+            (settings::n_batches - settings::n_inactive));
+  }
+}
+
+double FlatSourceDomain::evaluate_uncollided_flux_at_point(
+  Position r, int64_t sr, int g) const
+{
+  if (RandomRay::first_collision_source_) {
+    return scalar_uncollided_flux_[sr * negroups_ + g];
+  } else {
+    return 0;
+  }
+}
+
+double FlatSourceDomain::evaluate_external_source_at_point(
+  Position r, int64_t sr, int g) const
+{
+  if (RandomRay::first_collision_source_) {
+    return external_source_[sr * negroups_ + g];
+  } else {
+    return 0;
   }
 }
 
@@ -1066,7 +1086,8 @@ void FlatSourceDomain::output_to_vtk() const
         int mat = material_[fsr];
         float sigma_t = data::mg.macro_xs_[mat].get_xs(
           MgxsType::TOTAL, g, nullptr, nullptr, nullptr, 0, 0);
-        float f_source = external_source_[fsr * negroups_ + g];
+        float f_source =
+          evaluate_external_source_at_point(voxel_positions[i], fsr, g);
         f_source *= sigma_t;
         f_source = convert_to_big_endian<float>(f_source);
         std::fwrite(&f_source, sizeof(float), 1, plot);
@@ -1080,7 +1101,8 @@ void FlatSourceDomain::output_to_vtk() const
       for (int i = 0; i < Nx * Ny * Nz; i++) {
         int64_t fsr = voxel_indices[i];
         int64_t source_element = fsr * negroups_ + g;
-        float uncollided_flux = scalar_uncollided_flux_[source_element];
+        float uncollided_flux =
+          evaluate_uncollided_flux_at_point(voxel_positions[i], fsr, g);
         uncollided_flux = convert_to_big_endian<float>(uncollided_flux);
         std::fwrite(&uncollided_flux, sizeof(float), 1, plot);
       }

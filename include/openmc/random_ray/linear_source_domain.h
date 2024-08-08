@@ -48,6 +48,10 @@ public:
   void update_volume_uncollided_flux() override;
   void uncollided_moments() override;
   void batch_reset_fc() override;
+  double evaluate_uncollided_flux_at_point(
+    Position r, int64_t sr, int g) const override;
+  double evaluate_external_source_at_point(
+    Position r, int64_t sr, int g) const override;
 
   //----------------------------------------------------------------------------
   // Public Data members
@@ -60,7 +64,6 @@ public:
   vector<MomentArray> flux_moments_uncollided_;
   vector<MomentArray> flux_moments_first_collided_;
   vector<MomentArray> external_source_gradients_;
-
 
   vector<Position> centroid_;
   vector<Position> centroid_iteration_;

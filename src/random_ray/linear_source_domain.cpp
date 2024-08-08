@@ -398,7 +398,7 @@ double LinearSourceDomain::evaluate_flux_at_point(
   MomentMatrix invM = mom_matrix_[sr].inverse();
   MomentArray phi_solved = invM * phi_linear;
 
-  if (RandomRay::first_collided_source_) {
+  if (RandomRay::first_collision_source_) {
     phi_solved += flux_moments_uncollided_[sr * negroups_ + g];
   }
 

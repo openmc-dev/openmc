@@ -41,9 +41,9 @@ public:
   static unique_ptr<Source> ray_source_;     // Starting source for ray sampling
   static RandomRaySourceShape source_shape_; // Flag for linear source
 
-  static bool first_collided_source_;
-  static int first_collided_rays_;
-  static int first_collided_volume_rays_;
+  static bool first_collision_source_;
+  static int first_collision_rays_;
+  static int first_collision_volume_rays_;
 
   static bool no_volume_calc; // Flag for FCS flux calculation 
 

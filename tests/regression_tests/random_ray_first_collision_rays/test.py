@@ -17,12 +17,12 @@ class MGXSTestHarness(TolerantPyAPITestHarness):
             os.remove(f)
 
 
-def test_random_ray_first_collided_rays():
+def test_random_ray_first_collision_rays():
     openmc.reset_auto_ids()
     model = random_ray_three_region_cube()
-    model.settings.random_ray['first_collided_source'] = True
-    model.settings.random_ray['first_collided_rays'] = 1246
-    model.settings.random_ray['first_collided_volume_rays'] = 2000
+    model.settings.random_ray['first_collision_source'] = True
+    model.settings.random_ray['first_collision_rays'] = 1246
+    model.settings.random_ray['first_collision_volume_rays'] = 2000
     strengths = [1.0] 
     midpoints = [100.0]
     energy_dist = openmc.stats.Discrete(x=midpoints,p=strengths)

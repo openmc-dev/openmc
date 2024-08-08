@@ -994,6 +994,107 @@ random ray and Monte Carlo, however.
   develop the scattering source by way of inactive batches before beginning
   active batches.
 
+
+.. _usersguide_fixed_source_first_collision_source_methods:
+
+----------------------------------
+First Collision Source Method
+----------------------------------
+
+In cases that the fixed source is not a well defined volumetric source (e.g. point source),
+there is the need to preprocess the source into volumetric sources in order to be computed by the
+random ray solver. One possible way is through the First Collision Source Method (FCS), which works as a 
+preconditioner of the source, distributing the source contribution throghout the domain. This is
+not a new method `Alcouffe <Alcouffe-1989_>`_, and has been recently implemented in other 
+neutron transport codes (`Ragusa <Ragusa-2016_>`_, `Falabino <Falabino-2022_>`_).
+
+The FCS works generating uncollided neutron angular fluxes :math:`\psi^{\text{un}}_{g}` at the source that travel through
+the domain interacting with the media, being naturally attenuated in the process. Neutrons that experience
+any collision are treated as first collided neutrons and will be used to estimate the volumetric neutron 
+fixed source at that cell. Once the FCS preprocess stage is complete, the fixed volumetric source will be
+added to each iteration of the random ray solver. The remaining uncollided flux that have not interacted 
+at any point of the preprocessing stage is added to the final solution at the end of the neutron transport code.
+
+The FCS has a very similar mathematical formulation to the regular Random Ray method. The formulation for
+the method with flat source will be provided. The neutron transport equation for the uncollided rays can be
+described as in Equation :eq:`moc_final`, however without any pre-existing source terms:
+
+.. math::
+    :label: fcs_moc_final
+
+    \psi_g^{\text{un}}(s, \mathbf{\Omega}) = \psi_g^{\text{un}}(\mathbf{r_0}, \mathbf{\Omega}) e^{-\int_0^s ds^\prime \Sigma_{t_g}(s^\prime)}.
+
+The analytical solution for this ODE is a simple attenuation problem:
+
+.. math::
+    :label: fcs_moc_sol
+
+    \psi_g^{\text{un}}(s) = \psi_g(0) e^{-\Sigma_{t,i,g} s} .
+
+For convenience, we can also write this equation in terms of the incoming and
+outgoing angular flux (:math:`\psi_g^{in}` and :math:`\psi_g^{out}`) 
+
+.. math::
+    :label: fcs_fsr_attenuation_in_out
+
+    \psi_g^{out} = \psi_g^{in} e^{-\Sigma_{t,i,g} \ell_r}.
+
+
+Equation :eq:`fcs_fsr_attenuation_in_out` can be rearranged in terms of :math:`\Delta \psi_{r,g}`:
+
+.. math::
+    :label: fcs_difference
+    
+    \Delta\psi_{r,g}^{\text{un}} =\psi_{r,g}^{in} - \psi_{r,g}^{out} = \psi_{r,g}^{in}\big(1-e^{-\Sigma_{t,i,g}l_r}\big) .
+    
+The average angular flux can be computed substitute :eq:`average` into :eq:`fcs_moc_final`
+and obtain:
+
+.. math::
+    :label: fcs_average_solved
+
+    \overline{\psi}_{r,i,g}^{\text{un}} = - \frac{\psi_{r,g}^{out} - \psi_{r,g}^{in}}{\ell_r \Sigma_{t,i,g}}.
+
+Which can also be described in terms of :math:`\Delta \psi_{r,g}`:
+
+.. math::
+    :label: fcs_average_solved_difference
+
+    \overline{\psi}_{r,i,g}^{\text{un}} = \frac{\Delta \psi_{r,g}^{\text{un}}}{\ell_r \Sigma_{t,i,g}}.
+
+Similarly to Equation :eq:`discretized`, the scalar flux in cell :math:`i` can be defined as the summation
+of the contributions of the angular fluxes traveling through it. However, in this method, there is the need
+to differentiate how the volume is estimated. In the Random Ray method, the rays are being generated uniforminly
+across the domain and the volume estimation is unbiased. Nonetheless, angular fluxes have a specific and non well-distributed
+birth location.
+
+.. math::
+    :label: fcs_discretized
+
+    \phi^{\text{un}}(i,g) = \frac{\int_{V_i} \int_{4\pi} \psi(r, \Omega) d\Omega d\mathbf{r}}{\int_{V_i} d\mathbf{r}} = \overline{\overline{\psi}}_{i,g} \approx \frac{\sum\limits_{r=1}^{N_i} \ell_r \overline{\psi}_{r,i,g}^{un}}{V_i} .
+
+To avoid bias in the volume estimation, it is added an initial volume estimation stage
+to compute the volume of each cell prior running FCS, using the same method presented in 
+the Random Ray method. This volume estimation can be improvde with the random ray solver, 
+requiring a fast and rough initial estimate. Substituting Equation :eq:`fcs_average_solved_difference` 
+into Equation :eq:`fcs_discretized`, we obtain the equation for the uncollided angular flux:
+
+.. math::
+    :label: fcs_uncollided_flux
+
+    \phi^{\text{un}}(i,g) =  \frac{\sum\limits_{r=1}^{N_i} \Delta \psi_{r,i,g}^{\text{un}}}{\Sigma_{t,i,g} V_i} .
+
+The fixed-source term can be calculated as the first collided flux that undergo scattering events:
+
+.. math::
+    :label: fcs_first_collided_flux
+
+        Q_\text{fixed}(i,g) = \phi^{\text{FCS}}(i,g) = \sum_{g'}^{G}\Sigma_s(i,g,g') \phi^{\text{un}} (i,g') .
+
+The fixed-source :math:`Q_\text{fixed}` will be treated as a fixed volumetric source for all remaining Random Ray
+iterations, as presented in Eq :eq:`fixed_source_update`.
+
+
 ---------------------------
 Fundamental Sources of Bias
 ---------------------------
@@ -1048,6 +1149,9 @@ in random ray particle transport are:
 .. _Cosgrove-2023: https://doi.org/10.1080/00295639.2023.2270618
 .. _Ferrer-2016: https://doi.org/10.13182/NSE15-6
 .. _Gunow-2018: https://dspace.mit.edu/handle/1721.1/119030
+.. _Alcouffe-1989: https://doi.org/10.13182/NSE90-A23749
+.. _Ragusa-2016: https://www.osti.gov/biblio/1364492
+.. _Falabino-2022: https://doi.org/10.1016/j.jcp.2022.111156
 
 .. only:: html
 

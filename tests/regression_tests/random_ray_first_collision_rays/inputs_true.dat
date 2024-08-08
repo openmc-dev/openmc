@@ -212,9 +212,9 @@
         </space>
       </source>
       <volume_normalized_flux_tallies>True</volume_normalized_flux_tallies>
-      <first_collided_source>True</first_collided_source>
-      <first_collided_rays>1246</first_collided_rays>
-      <first_collided_volume_rays>2000</first_collided_volume_rays>
+      <first_collision_source>True</first_collision_source>
+      <first_collision_rays>1246</first_collision_rays>
+      <first_collision_volume_rays>2000</first_collision_volume_rays>
     </random_ray>
   </settings>
   <tallies>

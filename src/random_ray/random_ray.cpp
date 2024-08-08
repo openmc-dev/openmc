@@ -184,9 +184,9 @@ double RandomRay::distance_active_;
 unique_ptr<Source> RandomRay::ray_source_;
 RandomRaySourceShape RandomRay::source_shape_ {RandomRaySourceShape::FLAT};
 bool RandomRay::no_volume_calc = {false};
-bool RandomRay::first_collided_source_ {false};
-int RandomRay::first_collided_rays_ {-1};
-int RandomRay::first_collided_volume_rays_ {-1};
+bool RandomRay::first_collision_source_ {false};
+int RandomRay::first_collision_rays_ {-1};
+int RandomRay::first_collision_volume_rays_ {-1};
 
 RandomRay::RandomRay()
   : angular_flux_(data::mg.num_energy_groups_),

@@ -377,7 +377,7 @@ void print_build_info()
 
 void print_columns()
 {
-  if (RandomRay::first_collided_source_){
+  if (RandomRay::first_collision_source_){
     fmt::print("  Batch       Rays       Total Source Regions Discovered\n"
                "  ======      =======    =================================\n");
   } else if (settings::entropy_on) {

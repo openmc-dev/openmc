@@ -27,11 +27,11 @@ public:
   void print_results_random_ray(uint64_t total_geometric_intersections,
     double avg_miss_rate, int negroups, int64_t n_source_regions,
     int64_t n_external_source_regions) const;
-  void first_collided_source_simulation();
+  void first_collision_source_simulation();
 
   //----------------------------------------------------------------------------
   // Data members
-  // First collided method variables for automatic first_collided_rays_
+  // First collided method variables for automatic first_collision_rays_
   int64_t n_hits_new {0};
   int64_t n_hits_old {0};
   int new_n_rays {1000};

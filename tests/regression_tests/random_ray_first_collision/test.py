@@ -18,12 +18,12 @@ class MGXSTestHarness(TolerantPyAPITestHarness):
 
 
 @pytest.mark.parametrize("shape", ["flat", "linear"])
-def test_random_ray_first_collided(shape):
+def test_random_ray_first_collision(shape):
     with change_directory(shape):
         openmc.reset_auto_ids()
         model = random_ray_three_region_cube()
         model.settings.random_ray['source_shape'] = shape
-        model.settings.random_ray['first_collided_source'] = True
+        model.settings.random_ray['first_collision_source'] = True
         strengths = [1.0] # Good - fast group appears largest (besides most thermal)
         midpoints = [100.0]
         energy_dist = openmc.stats.Discrete(x=midpoints,p=strengths)

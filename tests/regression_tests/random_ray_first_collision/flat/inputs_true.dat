@@ -213,7 +213,7 @@
       </source>
       <volume_normalized_flux_tallies>True</volume_normalized_flux_tallies>
       <source_shape>flat</source_shape>
-      <first_collided_source>True</first_collided_source>
+      <first_collision_source>True</first_collision_source>
     </random_ray>
   </settings>
   <tallies>

@@ -475,6 +475,33 @@ as::
 which will greatly improve the quality of the linear source term in 2D
 simulations.
 
+-----------------------------
+First Collision Source Method
+-----------------------------
+
+First Collision Source method (FCS) is supported within the fixed source random ray
+solver. The preprocessing stage can be toggle by setting the ``first_collision_source``
+field in the :attr:`openmc.Settings.random_ray` dictionary to ``True`` as::
+
+    settings.random_ray['first_collision_source'] = True
+
+The method has two input variables: number of rays for initial volume estimation
+and number of uncollided rays used in FCS.
+
+The user can define the amount of uncollided rays used in the FCS mode by setting the
+``first_collision_rays`` field in the :attr:`openmc.Settings.random_ray` dictionary 
+to ``value`` as::
+
+        settings.random_ray['first_collision_rays'] = 1000
+
+If not provided, the solver will run the default procedure to iteratively generate more
+rays until:
+
+- **(1)** All cells are hit.
+- **(1)** No extra cells were hit with extra rays.
+- **(1)** Maximum value reached (default :math:`= 1e7` rays).
+
+
 ---------------------------------
 Fixed Source and Eigenvalue Modes
 ---------------------------------

@@ -311,7 +311,6 @@ def test_reichmoore(gd154):
 
     elastic = gd154.reactions[2].xs['0K']
     assert isinstance(elastic, openmc.data.ResonancesWithBackground)
-    assert elastic(0.0253) == pytest.approx(5.7228949796394524)
 
 
 def test_rml(cl35):

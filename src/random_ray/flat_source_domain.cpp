@@ -320,9 +320,7 @@ void FlatSourceDomain::compute_first_collided_flux()
 }
 
 void FlatSourceDomain::uncollided_moments()
-{
-  // empty
-}
+{ }
 
 // Normalize First Collided Flux by volume and assign as fixed source
 // compute_first_collided_external_source

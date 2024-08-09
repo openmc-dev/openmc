@@ -305,8 +305,13 @@ void RandomRay::event_advance_ray_first_collided()
   for (int j = 0; j < n_coord(); ++j) {
     coord(j).r += distance * coord(j).u;
   }
-  // bool = true to kill ray
-  // ray is killed by default unless:
+
+  // Terminate ray threshold
+  float ray_threshold = 1e-20f;
+
+  // Check if angular flux is not zero or above threshold
+  // Do not terminate the ray if any of these conditions are met
+  // terminate otherwise
   bool angular_flux_below_threshold = true;
   for (int g = 0; g < negroups_; g++) {
     if (angular_flux_initial_[g] > 0) {

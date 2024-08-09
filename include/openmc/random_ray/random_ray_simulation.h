@@ -31,18 +31,9 @@ public:
 
   //----------------------------------------------------------------------------
   // Data members
-  // First collided method variables for automatic first_collision_rays_
-  int64_t n_hits_new {0};
-  int64_t n_hits_old {0};
-  int new_n_rays {1000};
-  int old_n_rays {0};
-  int batch_first_collided {1};
-  int n_rays_max {10000000};
-  
-  // Initial volume estimation timer - First Collided Source Method
+  // Initial volume estimation timer - First Collided Source Method  
   double time_volume_fc;
 
-  
 private:
   // Contains all flat source region data
   unique_ptr<FlatSourceDomain> domain_;

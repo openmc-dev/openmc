@@ -485,12 +485,15 @@ void RandomRaySimulation::first_collision_source_simulation()
   } else {
     header("FIRST COLLISION SOURCE METHOD - Linear source", 3);
   }
+
   simulation::time_first_collided.start();
   simulation::current_batch = 1;
   fmt::print("Initial volume estimation...");
   // Volume estimation is necessary to scale the first collided source
   // accordingly. Estimation of linear moments in linear source has direct
   // impact into final solution accuracy.
+
+  // Check if number of volume rays were provided or set default
   if (RandomRay::first_collision_volume_rays_ == -1) {
     RandomRay::first_collision_volume_rays_ = settings::n_particles;
   }
@@ -519,7 +522,21 @@ void RandomRaySimulation::first_collision_source_simulation()
   // It will operate until meet any criteria (1-3):
   // (1) There isn't new FSR hits from batch_first_collided (n-1) to the next
   // (n) (2) Reached pre-set maximum n_uncollided_rays (3) Hit 100% of the FSRs
+
+  // Prepare column header
   print_columns();
+
+  // Default values
+  int new_n_rays = 1000;
+  int n_rays_max = 10000000;
+
+  // initialize loop variables
+  int64_t n_hits_old = 0;
+  int64_t n_hits_new = 0;
+  int batch_first_collided = 1;
+  int old_n_rays = 0;
+
+  // Check if number of rays were provided and update limit for loop
   if (RandomRay::first_collision_rays_ != -1) {
     new_n_rays = RandomRay::first_collision_rays_;
     n_rays_max = RandomRay::first_collision_rays_;
@@ -536,11 +553,11 @@ void RandomRaySimulation::first_collision_source_simulation()
 
     int64_t n_hits_new = domain_->check_fsr_hits();
 
-    // print results
+    // Print results
     fmt::print(
       "  {:6}   {:10}    {:}\n", batch_first_collided, new_n_rays, n_hits_new);
 
-    // update values for next batch
+    // Update values for next batch
     batch_first_collided++;
     old_n_rays = new_n_rays;
     new_n_rays *= 2;

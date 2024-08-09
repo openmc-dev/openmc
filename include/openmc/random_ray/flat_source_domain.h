@@ -138,10 +138,6 @@ public:
   int64_t n_source_regions_ {0}; // Total number of source regions in the model
   int64_t n_external_source_regions_ {0}; // Total number of source regions with
                                           // non-zero external source terms
-  bool new_fsr_fc {true};                 // Criteria to First Collided Loop
-                                          // Check if new cell was hit
-  bool negative_flux_check {
-    false}; // Variable to print warning of negative fluxes
 
   // 1D array representing source region starting offset for each OpenMC Cell
   // in model::cells

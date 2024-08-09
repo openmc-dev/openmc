@@ -40,7 +40,7 @@ from openmc.model import Model
 
 from . import examples
 
-__version__ = '0.14.1-dev'
+#__version__ = '0.14.1-dev'
 
 
-#__version__ = importlib.metadata.version("openmc")
+__version__ = importlib.metadata.version("openmc")

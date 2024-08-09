@@ -1001,22 +1001,22 @@ random ray and Monte Carlo, however.
 First Collision Source Method
 ----------------------------------
 
-In cases that the fixed source is not a well defined volumetric source (e.g. point source),
-there is the need to preprocess the source into volumetric sources in order to be computed by the
+In cases where the fixed source is not a well-defined volumetric source (e.g. point source),
+there is the need to preprocess the source into volumetric sources to be computed by the
 random ray solver. One possible way is through the First Collision Source Method (FCS), which works as a 
-preconditioner of the source, distributing the source contribution throghout the domain. This is
+preconditioner of the source, distributing the source contribution throughout the domain. This is
 not a new method (`Alcouffe <Alcouffe-1989_>`_), and has been recently implemented in other 
 neutron transport codes (`Ragusa <Ragusa-2016_>`_, `Falabino <Falabino-2022_>`_).
 
-The FCS works generating uncollided neutron angular fluxes :math:`\psi^{\text{un}}_{g}` at the source that travel through
+The FCS works by generating uncollided neutron angular fluxes :math:`\psi^{\text{un}}_{g}` at the source that travels through
 the domain interacting with the media, being naturally attenuated in the process. Neutrons that experience
 any collision are treated as first collided neutrons and will be used to estimate the volumetric neutron 
 fixed source at that cell. Once the FCS preprocess stage is complete, the fixed volumetric source will be
-added to each iteration of the random ray solver. The remaining uncollided flux that have not interacted 
+added to each iteration of the random ray solver. The remaining uncollided flux that has not interacted 
 at any point of the preprocessing stage is added to the final solution at the end of the neutron transport code.
 
 The FCS has a very similar mathematical formulation to the regular Random Ray method. The formulation for
-the method with flat source will be provided. The neutron transport equation for the uncollided rays can be
+the method with flat sources will be provided. The neutron transport equation for the uncollided rays can be
 described as in Equation :eq:`moc_final`, however without any pre-existing source terms:
 
 .. math::
@@ -1064,8 +1064,8 @@ Which can also be described in terms of :math:`\Delta \psi_{r,g}`:
 
 Similarly to Equation :eq:`discretized`, the scalar flux in cell :math:`i` can be defined as the summation
 of the contributions of the angular fluxes traveling through it. However, in this method, there is the need
-to differentiate how the volume is estimated. In the Random Ray method, the rays are being generated uniforminly
-across the domain and the volume estimation is unbiased. Nonetheless, angular fluxes have a specific and non well-distributed
+to differentiate how the volume is estimated. In the Random Ray method, the rays are generated uniformly
+across the domain and the volume estimation is unbiased. Nonetheless, angular fluxes have a specific and non-well-distributed
 birth location.
 
 .. math::
@@ -1074,13 +1074,13 @@ birth location.
     \phi^{\text{un}}(i,g) = \frac{\int_{V_i} \int_{4\pi} \psi(r, \Omega) d\Omega d\mathbf{r}}{\int_{V_i} d\mathbf{r}} = \overline{\overline{\psi}}_{i,g} \approx \frac{\sum\limits_{r=1}^{N_i} \ell_r \overline{\psi}_{r,i,g}^{un}}{V_i} .
 
 To avoid bias in the volume estimation, it is added an initial volume estimation stage
-to compute the volume of each cell prior running FCS, using the same method presented in 
+to compute the volume of each cell before running FCS, using the same method presented in 
 the Random Ray method. 
 
-In the case o flat source, the volume estimation can be improvde with the random ray solver, 
-allowing a fast and rough initial estimate. However, linear source requires a more carefull procedure.
+In the case of flat sources, the volume estimation can be improved with the random ray solver, 
+allowing a fast and rough initial estimate. However, linear sources require a more careful procedure.
 Linear source requires calculating angular flux moments, that depend on the estimated
-cell's spatial moments and centroids. If a poor estimation is made, innaccurate gradients will be
+cell's spatial moments and centroids. If a poor estimation is made, inaccurate gradients will be
 carried throughout the calculation and impact the accuracy of the method. 
 
 Substituting Equation :eq:`fcs_average_solved_difference` 
@@ -1091,14 +1091,14 @@ into Equation :eq:`fcs_discretized`, we obtain the equation for the uncollided a
 
     \phi^{\text{un}}(i,g) =  \frac{\sum\limits_{r=1}^{N_i} \Delta \psi_{r,i,g}^{\text{un}}}{\Sigma_{t,i,g} V_i} .
 
-The fixed-source term can be calculated as the first collided flux that undergo scattering events:
+The fixed-source term can be calculated as the first collided flux that undergoes scattering events:
 
 .. math::
     :label: fcs_first_collided_flux
 
         Q_\text{fixed}(i,g) = \phi^{\text{FCS}}(i,g) = \sum_{g'}^{G}\Sigma_s(i,g,g') \phi^{\text{un}} (i,g') .
 
-The fixed-source :math:`Q_\text{fixed}` will be treated as a fixed volumetric source for all remaining Random Ray
+The fixed source :math:`Q_\text{fixed}` will be treated as a fixed volumetric source for all remaining Random Ray
 iterations, as presented in Eq :eq:`fixed_source_update`.
 
 

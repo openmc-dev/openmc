@@ -798,17 +798,50 @@ class DAGSpeudoCell(Cell):
         """Set the parent universe of the cell."""
         self._parent_universe = universe.id
 
-    # def boundingbox(self):
-    #     print("Warning: Bounding box is not available for cells in a DAGMC universe.")
-    #     return {}
+    def boundingbox(self):
+        print("Warning: Bounding box is not available for cells in a DAGMC universe.")
+        return {}
 
-    # def get_all_cells(self, memo=None):
-    #     print("Warning: get_all_cells is not available for cells in a DAGMC universe.")
-    #     return {}
+    def get_all_cells(self, memo=None):
+        return {}
 
-    # def get_all_materials(self, memo=None):
-    #     print("Warning: get_all_materials is not available for cells in a DAGMC universe.")
-    #     return {}
+    def get_all_materials(self, memo=None):
+        """Return all materials that are contained within the cell
+
+        Returns
+        -------
+        materials : dict
+            Dictionary whose keys are material IDs and values are
+            :class:`Material` instances
+
+        """
+        materials = {}
+        if self.fill_type == 'material':
+            materials[self.fill.id] = self.fill
+        elif self.fill_type == 'distribmat':
+            for m in self.fill:
+                if m is not None:
+                    materials[m.id] = m
+        else:
+            # Append all Cells in each Cell in the Universe to the dictionary
+            cells = self.get_all_cells(memo)
+            for cell in cells.values():
+                materials.update(cell.get_all_materials(memo))
+
+        return materials
+
+    @property
+    def fill_type(self):
+        if isinstance(self.fill, openmc.Material):
+            return 'material'
+        elif isinstance(self.fill, openmc.UniverseBase):
+            return 'universe'
+        elif isinstance(self.fill, openmc.Lattice):
+            return 'lattice'
+        elif isinstance(self.fill, Iterable):
+            return 'distribmat'
+        else:
+            return 'void'
 
     def get_all_universes(self, memo=None):
         return {}

@@ -926,7 +926,6 @@ class DAGMCUniverse(UniverseBase):
         # Append all Cells in each Cell in the Universe to the dictionary
         for cell in self._cells.values():
             cells.update(cell.get_all_cells(memo))
-
         return cells
 
     def get_all_materials(self, memo=None):

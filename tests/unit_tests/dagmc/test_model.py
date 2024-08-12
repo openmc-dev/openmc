@@ -1,8 +1,11 @@
-import openmc
-from openmc import ZPlane, YPlane, XPlane, Cell
 import pkg_resources
 from pathlib import Path
+
 import numpy as np
+import pytest
+
+import openmc
+from openmc import ZPlane, YPlane, XPlane, Cell
 
 pytestmark = pytest.mark.skipif(
     not openmc.lib._dagmc_enabled(),

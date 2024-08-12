@@ -60,7 +60,7 @@ ThermalScattering::ThermalScattering(
     // Read temperature value
     double T;
     read_dataset(kT_group, dset_names[i].data(), T);
-    temps_available[i] = T / K_BOLTZMANN;
+    temps_available[i] = std::round(T / K_BOLTZMANN);
   }
   std::sort(temps_available.begin(), temps_available.end());
 
@@ -107,8 +107,8 @@ ThermalScattering::ThermalScattering(
       bool found = false;
       for (int j = 0; j < temps_available.size() - 1; ++j) {
         if (temps_available[j] <= T && T < temps_available[j + 1]) {
-          int T_j = std::round(temps_available[j]);
-          int T_j1 = std::round(temps_available[j + 1]);
+          int T_j = temps_available[j];
+          int T_j1 = temps_available[j + 1];
           if (std::find(temps_to_read.begin(), temps_to_read.end(), T_j) ==
               temps_to_read.end()) {
             temps_to_read.push_back(T_j);
@@ -126,14 +126,14 @@ ThermalScattering::ThermalScattering(
         if (std::abs(T - temps_available[0]) <=
             settings::temperature_tolerance) {
           if (std::find(temps_to_read.begin(), temps_to_read.end(),
-                std::round(temps_available[0])) == temps_to_read.end()) {
-            temps_to_read.push_back(std::round(temps_available[0]));
+                temps_available[0]) == temps_to_read.end()) {
+            temps_to_read.push_back(temps_available[0]);
           }
         } else if (std::abs(T - temps_available[n - 1]) <=
                    settings::temperature_tolerance) {
           if (std::find(temps_to_read.begin(), temps_to_read.end(),
-                std::round(temps_available[n - 1])) == temps_to_read.end()) {
-            temps_to_read.push_back(std::round(temps_available[n - 1]));
+                temps_available[n - 1]) == temps_to_read.end()) {
+            temps_to_read.push_back(temps_available[n - 1]);
           }
         } else {
           fatal_error(

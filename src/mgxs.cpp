@@ -77,7 +77,7 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
     read_double(kT_group, dset_names[i], &temps_available[i], true);
 
     // convert eV to Kelvin
-    temps_available[i] /= K_BOLTZMANN;
+    temps_available[i] = std::round(temps_available[i] / K_BOLTZMANN);
 
     // Done with dset_names, so delete it
     delete[] dset_names[i];
@@ -128,12 +128,12 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
         if ((temps_available[j] <= temperature[i]) &&
             (temperature[i] < temps_available[j + 1])) {
           if (std::find(temps_to_read.begin(), temps_to_read.end(),
-                std::round(temps_available[j])) == temps_to_read.end()) {
+                temps_available[j]) == temps_to_read.end()) {
             temps_to_read.push_back(std::round((int)temps_available[j]));
           }
 
           if (std::find(temps_to_read.begin(), temps_to_read.end(),
-                std::round(temps_available[j + 1])) == temps_to_read.end()) {
+                temps_available[j + 1]) == temps_to_read.end()) {
             temps_to_read.push_back(std::round((int)temps_available[j + 1]));
           }
           break;

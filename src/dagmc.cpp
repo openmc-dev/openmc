@@ -132,7 +132,6 @@ void DAGUniverse::set_id()
 
 void DAGUniverse::initialize()
 {
-  std::cout << "INITIALIZE DAGMC" << std::endl;
   geom_type() = GeometryType::DAG;
 
   init_dagmc();

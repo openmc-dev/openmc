@@ -4,6 +4,10 @@ import pkg_resources
 from pathlib import Path
 import numpy as np
 
+pytestmark = pytest.mark.skipif(
+    not openmc.lib._dagmc_enabled(),
+    reason="DAGMC CAD geometry is not enabled.")
+
 def test_model_differentiate_with_DAGMC():
     PITCH = 1.26
 

@@ -872,6 +872,9 @@ extern "C" int openmc_get_dagmc_cell_ids(
 
 namespace openmc {
 
+extern "C" int openmc_get_dagmc_cell_ids(
+  int32_t univ_id, int32_t* ids, size_t* n) {};
+
 void read_dagmc_universes(pugi::xml_node node)
 {
   if (check_for_node(node, "dagmc_universe")) {

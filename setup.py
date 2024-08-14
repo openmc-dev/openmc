@@ -3,7 +3,6 @@
 import os
 import numpy as np
 from setuptools import setup, Extension
-from Cython.Build import cythonize
 
 
 class OpenMCExtension(Extension):
@@ -13,8 +12,7 @@ class OpenMCExtension(Extension):
 
 
 kwargs = {
-    # Cython is used to add resonance reconstruction and fast float_endf
-    'ext_modules': cythonize('openmc/data/*.pyx') + [OpenMCExtension('libopenmc')],
+    'ext_modules': [OpenMCExtension('libopenmc')],
     'include_dirs': [np.get_include()]
 }
 

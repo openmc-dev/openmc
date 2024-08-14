@@ -837,7 +837,8 @@ class Tabular(Univariate):
         Tabulated values of the random variable
     p : Iterable of float
         Tabulated probabilities. For histogram interpolation, if the length of
-        `p` is the same as `x`, the last value is ignored.
+        `p` is the same as `x`, the last value is ignored. Probabilities `p` are
+        given per unit of `x`.
     interpolation : {'histogram', 'linear-linear', 'linear-log', 'log-linear', 'log-log'}, optional
         Indicates how the density function is interpolated between tabulated
         points. Defaults to 'linear-linear'.
@@ -853,6 +854,15 @@ class Tabular(Univariate):
     interpolation : {'histogram', 'linear-linear', 'linear-log', 'log-linear', 'log-log'}
         Indicates how the density function is interpolated between tabulated
         points. Defaults to 'linear-linear'.
+
+    Notes
+    -----
+    The probabilities `p` are interpreted per unit of the corresponding
+    independent variable `x`. This follows the definition of a probability
+    density function (PDF) in probability theory, where the PDF represents the
+    relative likelihood of the random variable taking on a particular value per
+    unit of the variable. For example, if `x` represents energy in eV, then `p`
+    should represent probabilities per eV.
 
     """
 

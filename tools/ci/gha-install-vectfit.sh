@@ -20,22 +20,27 @@ cd $HOME
 git clone -b $PYBIND_BRANCH $PYBIND_REPO
 cd pybind11 && mkdir build && cd build && cmake .. && sudo make install
 pip install $HOME/pybind11
+rm -rf build
 
 cd $HOME
 git clone -b $XTL_BRANCH $XTL_REPO
 cd xtl && mkdir build && cd build && cmake .. && sudo make install
+rm -rf build
 
 cd $HOME
 git clone -b $XTENSOR_BRANCH $XTENSOR_REPO
 cd xtensor && mkdir build && cd build && cmake .. && sudo make install
+rm -rf build
 
 cd $HOME
 git clone -b $XTENSOR_PYTHON_BRANCH $XTENSOR_PYTHON_REPO
 cd xtensor-python && mkdir build && cd build && cmake .. && sudo make install
+rm -rf build
 
 cd $HOME
 git clone -b $XTENSOR_BLAS_BRANCH $XTENSOR_BLAS_REPO
 cd xtensor-blas && mkdir build && cd build && cmake .. && sudo make install
+rm -rf build
 
 # Install wheel (remove when vectfit supports installation with build isolation)
 pip install wheel

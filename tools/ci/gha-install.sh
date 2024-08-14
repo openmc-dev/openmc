@@ -37,6 +37,10 @@ if [[ $VECTFIT = 'y' ]]; then
     if [ ! -d "$HOME/vectfit" ]
     then
         ./tools/ci/gha-install-vectfit.sh
+    else
+        pip install $HOME/pybind11
+        pip install wheel
+        pip install --no-build-isolation ./vectfit
     fi
 fi
 
@@ -45,10 +49,6 @@ if [[ $LIBMESH = 'y' ]]; then
     if [ ! -d "$HOME/libmesh" ]
     then
         ./tools/ci/gha-install-libmesh.sh
-    else
-        pip install $HOME/pybind11
-        pip install wheel
-        pip install --no-build-isolation ./vectfit
     fi
 fi
 

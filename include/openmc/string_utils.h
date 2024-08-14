@@ -1,9 +1,8 @@
 #ifndef OPENMC_STRING_UTILS_H
 #define OPENMC_STRING_UTILS_H
 
+#include <sstream>
 #include <string>
-
-#include "xtensor/xarray.hpp"
 
 #include "openmc/vector.h"
 

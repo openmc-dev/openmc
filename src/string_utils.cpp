@@ -2,9 +2,6 @@
 
 #include <algorithm> // for equal
 #include <cctype>    // for tolower, isspace
-#include <sstream>
-
-#include "xtensor/xarray.hpp"
 
 namespace openmc {
 

@@ -129,12 +129,12 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
             (temperature[i] < temps_available[j + 1])) {
           if (std::find(temps_to_read.begin(), temps_to_read.end(),
                 temps_available[j]) == temps_to_read.end()) {
-            temps_to_read.push_back(std::round((int)temps_available[j]));
+            temps_to_read.push_back(temps_available[j]);
           }
 
           if (std::find(temps_to_read.begin(), temps_to_read.end(),
                 temps_available[j + 1]) == temps_to_read.end()) {
-            temps_to_read.push_back(std::round((int)temps_available[j + 1]));
+            temps_to_read.push_back(temps_available[j + 1]);
           }
           break;
         }

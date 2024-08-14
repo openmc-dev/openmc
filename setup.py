@@ -6,7 +6,7 @@ from Cython.Build import cythonize
 
 
 kwargs = {
-    # Cython is used to add resonance reconstruction and fast float_endf
+    # Cython is used to add resonance reconstruction
     'ext_modules': cythonize('openmc/data/*.pyx'),
     'include_dirs': [np.get_include()]
 }

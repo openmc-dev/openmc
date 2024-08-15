@@ -37,12 +37,6 @@ if [[ $VECTFIT = 'y' ]]; then
     if [ ! -d "$HOME/vectfit" ]
     then
         ./tools/ci/gha-install-vectfit.sh
-    else
-        cd $HOME
-        pip install $HOME/pybind11
-        pip install wheel
-        pip install --no-build-isolation ./vectfit
-        cd $GITHUB_WORKSPACE
     fi
 fi
 

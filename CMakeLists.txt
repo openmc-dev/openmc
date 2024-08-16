@@ -82,8 +82,8 @@ endif()
 
 if(OPENMC_USE_OPENMP)
   find_package(OpenMP REQUIRED)
-  
-  if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC") 
+
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     # Special flag to get OpenMP to work on Windows with MSVC
     list(APPEND cxxflags /openmp:llvm)
   endif()
@@ -462,7 +462,7 @@ if(MSVC)
   # are used for exporting symbols in the dll. While the
   # WINDOWS_EXPORT_ALL_SYMBOLS exports all function/class symbols, it
   # unfortunately does not work on global variables, which still need the macro.
-  target_compile_definitions(libopenmc PRIVATE -DOPENMC_WIN_COMPILE)
+  target_compile_definitions(libopenmc PRIVATE -DOPENMC_DLL_EXPORTS)
 
   # To use the shared HDF5 libraries on Windows, the H5_BUILT_AS_DYNAMIC_LIB
   # compile definition must be specified.

@@ -351,10 +351,10 @@ enum class GeometryType { CSG, DAG };
 
 //==============================================================================
 // Shared Libraries on Windows need the functions/classes/variables to be
-// exposed to be declared with this special keyword "__declspec( dllexport )".
+// exposed to be declared with this special keyword "__declspec(dllexport)".
 // We use a macro for this, so that it is only exported on Windows.
 
-#if _MSC_VER && OPENMC_WIN_COMPILE
+#if _MSC_VER && OPENMC_DLL_EXPORTS
 #define DllExport __declspec(dllexport)
 #elif _MSC_VER
 #define DllExport __declspec(dllimport)

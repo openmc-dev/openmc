@@ -51,7 +51,6 @@ def test_random_ray_source(shape):
 
         pitch = 1.26
 
-        materials = model.materials
         for material in model.materials:
             if material.name == 'Water':
                 water = material
@@ -61,13 +60,10 @@ def test_random_ray_source(shape):
         # add a special universe in the corner of one of the moderator
         # regions to use as a domain constraint for the source
         moderator_infinite = openmc.Cell(fill=water, name='moderator infinite')
-        mu = openmc.Universe()
-        mu.add_cells([moderator_infinite])
+        mu = openmc.Universe(cells=[moderator_infinite])
 
-        moderator_infinite2 = openmc.Cell(
-            fill=water, name='moderator infinite 2')
-        mu2 = openmc.Universe()
-        mu2.add_cells([moderator_infinite2])
+        moderator_infinite2 = openmc.Cell(fill=water, name='moderator infinite 2')
+        mu2 = openmc.Universe(cells=[moderator_infinite2])
 
         n_sub = 10
 
@@ -83,19 +79,17 @@ def test_random_ray_source(shape):
         lattice2.universes[n_sub-1][n_sub-1] = mu2
 
         mod_lattice_cell = openmc.Cell(fill=lattice)
-        mod_lattice_uni = openmc.Universe()
-        mod_lattice_uni.add_cells([mod_lattice_cell])
+        mod_lattice_uni = openmc.Universe(cells=[mod_lattice_cell])
 
         mod_lattice_cell2 = openmc.Cell(fill=lattice2)
-        mod_lattice_uni2 = openmc.Universe()
-        mod_lattice_uni2.add_cells([mod_lattice_cell2])
+        mod_lattice_uni2 = openmc.Universe(cells=[mod_lattice_cell2])
 
         lattice2x2 = openmc.RectLattice()
         lattice2x2.lower_left = [-pitch, -pitch]
         lattice2x2.pitch = [pitch, pitch]
 
         universes = model.geometry.get_all_universes()
-        for key, universe in universes.items():
+        for universe in universes.values():
             if universe.name == 'pincell':
                 pincell = universe
 
@@ -109,12 +103,8 @@ def test_random_ray_source(shape):
 
         assembly = openmc.Cell(fill=lattice2x2, region=-box, name='assembly')
 
-        root = openmc.Universe(name='root universe')
-        root.add_cell(assembly)
-
-        geometry = openmc.Geometry(root)
-
-        model.geometry = geometry
+        root = openmc.Universe(name='root universe', cells=[assembly])
+        model.geometry = openmc.Geometry(root)
 
         ########################################
         # Define the fixed source term
@@ -124,15 +114,17 @@ def test_random_ray_source(shape):
         midpoints = [2.0e-5, 0.0735, 20.0, 2.0e2, 2.0e3, 0.75e6, 2.0e6]
         energy_distribution = openmc.stats.Discrete(x=midpoints, p=strengths)
 
-        lower_left_src = [pitch - pitch/10.0, -pitch,             -1.0]
-        upper_right_src = [pitch,             -pitch + pitch/10.0, 1.0]
+        lower_left_src = [pitch - pitch/10.0, -pitch, -1.0]
+        upper_right_src = [pitch, -pitch + pitch/10.0, 1.0]
         spatial_distribution = openmc.stats.Box(
             lower_left_src, upper_right_src, only_fissionable=False)
 
-        source = openmc.IndependentSource(space=spatial_distribution, constraints={
-                                          'domains': [mu2]}, energy=energy_distribution,  strength=1.0)
-
-        settings.source = [source]
+        settings.source = openmc.IndependentSource(
+            space=spatial_distribution,
+            energy=energy_distribution,
+            constraints={'domains': [mu2]},
+            strength=1.0
+        )
 
         ########################################
         # Run test

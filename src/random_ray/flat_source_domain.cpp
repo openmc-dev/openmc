@@ -220,18 +220,38 @@ void FlatSourceDomain::normalize_scalar_flux_and_volumes(
   }
 }
 
-// Combine transport flux contributions and flat source contributions from the
-// previous iteration to generate this iteration's estimate of scalar flux.
-int64_t FlatSourceDomain::add_source_to_scalar_flux()
+void FlatSourceDomain::set_flux_to_flux_plus_source(
+  int64_t idx, double volume, int material, int g)
 {
-  int64_t n_hits = 0;
-
   // Temperature and angle indices, if using multiple temperature
   // data sets and/or anisotropic data sets.
   // TODO: Currently assumes we are only using single temp/single
   // angle data.
   const int t = 0;
   const int a = 0;
+
+  float sigma_t = data::mg.macro_xs_[material].get_xs(
+    MgxsType::TOTAL, g, nullptr, nullptr, nullptr, t, a);
+
+  scalar_flux_new_[idx] /= (sigma_t * volume);
+  scalar_flux_new_[idx] += source_[idx];
+}
+
+void FlatSourceDomain::set_flux_to_old_flux(int64_t idx)
+{
+  scalar_flux_new_[idx] = scalar_flux_old_[idx];
+}
+
+void FlatSourceDomain::set_flux_to_source(int64_t idx)
+{
+  scalar_flux_new_[idx] = source_[idx];
+}
+
+// Combine transport flux contributions and flat source contributions from the
+// previous iteration to generate this iteration's estimate of scalar flux.
+int64_t FlatSourceDomain::add_source_to_scalar_flux()
+{
+  int64_t n_hits = 0;
 
 #pragma omp parallel for reduction(+ : n_hits)
   for (int sr = 0; sr < n_source_regions_; sr++) {
@@ -272,7 +292,6 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
     int material = material_[sr];
     for (int g = 0; g < negroups_; g++) {
       int64_t idx = (sr * negroups_) + g;
-      float flux;
 
       // There are three scenarios we need to consider:
       if (volume_iteration > 0.0) {
@@ -280,11 +299,7 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
         // the flat source from the previous iteration plus the contributions
         // from rays passing through the source region (computed during the
         // transport sweep)
-        float sigma_t = data::mg.macro_xs_[material].get_xs(
-          MgxsType::TOTAL, g, nullptr, nullptr, nullptr, t, a);
-        flux = scalar_flux_new_[idx];
-        flux /= (sigma_t * volume);
-        flux += source_[idx];
+        set_flux_to_flux_plus_source(idx, volume, material, g);
       } else if (volume_simulation_avg > 0.0) {
         // 2. If the FSR was not hit this iteration, but has been hit some
         // previous iteration, then we need to make a choice about what
@@ -299,19 +314,15 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
         // injects a small degree of correlation into the simulation, but this
         // is going to be trivial when the miss rate is a few percent or less.
         if (external_source_present) {
-          flux = scalar_flux_old_[idx];
+          set_flux_to_old_flux(idx);
         } else {
-          flux = source_[idx];
+          set_flux_to_source(idx);
         }
-      } else {
-        // If the FSR was not hit this iteration, and it has never been hit in
-        // any iteration (i.e., volume is zero), then we want to set this to 0
-        // to avoid dividing anything by a zero volume.
-        flux = 0.0f;
       }
-
-      // Write the new scalar flux to the array
-      scalar_flux_new_[idx] = flux;
+      // If the FSR was not hit this iteration, and it has never been hit in
+      // any iteration (i.e., volume is zero), then we want to set this to 0
+      // to avoid dividing anything by a zero volume. This happens implicitly
+      // given that the new scalar flux arrays are set to zero each iteration.
     }
   }
 
@@ -531,7 +542,8 @@ void FlatSourceDomain::reset_tally_volumes()
 // reported scalar fluxes are in units per source neutron. This allows for
 // direct comparison of reported tallies to Monte Carlo flux results.
 // This factor needs to be computed at each iteration, as it is based on the
-// volume estimate of each FSR, which improves over the course of the simulation
+// volume estimate of each FSR, which improves over the course of the
+// simulation
 double FlatSourceDomain::compute_fixed_source_normalization_factor() const
 {
   // If we are not in fixed source mode, then there are no external sources
@@ -608,12 +620,13 @@ void FlatSourceDomain::random_ray_tally()
   for (int sr = 0; sr < n_source_regions_; sr++) {
     // The fsr.volume_ is the unitless fractional simulation averaged volume
     // (i.e., it is the FSR's fraction of the overall simulation volume). The
-    // simulation_volume_ is the total 3D physical volume in cm^3 of the entire
-    // global simulation domain (as defined by the ray source box). Thus, the
-    // FSR's true 3D spatial volume in cm^3 is found by multiplying its fraction
-    // of the total volume by the total volume. Not important in eigenvalue
-    // solves, but useful in fixed source solves for returning the flux shape
-    // with a magnitude that makes sense relative to the fixed source strength.
+    // simulation_volume_ is the total 3D physical volume in cm^3 of the
+    // entire global simulation domain (as defined by the ray source box).
+    // Thus, the FSR's true 3D spatial volume in cm^3 is found by multiplying
+    // its fraction of the total volume by the total volume. Not important in
+    // eigenvalue solves, but useful in fixed source solves for returning the
+    // flux shape with a magnitude that makes sense relative to the fixed
+    // source strength.
     double volume = volume_[sr] * simulation_volume_;
 
     double material = material_[sr];

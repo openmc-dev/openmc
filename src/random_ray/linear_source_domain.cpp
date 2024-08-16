@@ -157,89 +157,18 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
   }
 }
 
-int64_t LinearSourceDomain::add_source_to_scalar_flux()
+void LinearSourceDomain::set_flux_to_flux_plus_source(
+  int64_t idx, double volume, int material, int g)
 {
-  int64_t n_hits = 0;
+  scalar_flux_new_[idx] /= volume;
+  scalar_flux_new_[idx] += source_[idx];
+  flux_moments_new_[idx] *= (1.0 / volume);
+}
 
-#pragma omp parallel for reduction(+ : n_hits)
-  for (int sr = 0; sr < n_source_regions_; sr++) {
-
-    double volume_simulation_avg = volume_[sr];
-    double volume_iteration = volume_naive_[sr];
-
-    int material = material_[sr];
-
-    // Check if this cell was hit this iteration
-    if (volume_iteration > 0.0) {
-      n_hits++;
-    }
-
-    // Check if an external source is present in this source region
-    bool external_source_present =
-      external_source_present_.size() && external_source_present_[sr];
-
-    // The volume treatment depends on the volume estimator type
-    // and whether or not an external source is present in the cell.
-    double volume;
-    switch (volume_estimator_) {
-    case RandomRayVolumeEstimator::NAIVE:
-      volume = volume_iteration;
-      break;
-    case RandomRayVolumeEstimator::SIMULATION_AVERAGED:
-      volume = volume_simulation_avg;
-      break;
-    case RandomRayVolumeEstimator::HYBRID:
-      if (external_source_present) {
-        volume = volume_iteration;
-      } else {
-        volume = volume_simulation_avg;
-      }
-      break;
-    default:
-      fatal_error("Invalid volume estimator type");
-    }
-
-    for (int g = 0; g < negroups_; g++) {
-      int64_t idx = (sr * negroups_) + g;
-      // There are three scenarios we need to consider:
-      if (volume_iteration > 0.0) {
-        // 1. If the FSR was hit this iteration, then the new flux is equal to
-        // the flat source from the previous iteration plus the contributions
-        // from rays passing through the source region (computed during the
-        // transport sweep)
-        scalar_flux_new_[idx] /= volume;
-        scalar_flux_new_[idx] += source_[idx];
-        flux_moments_new_[idx] *= (1.0 / volume);
-      } else if (volume_simulation_avg > 0.0) {
-        // 2. If the FSR was not hit this iteration, but has been hit some
-        // previous iteration, then we need to make a choice about what
-        // to do. Naively we will usually want to set the flux to be equal
-        // to the reduced source. However, in fixed source problems where
-        // there is a strong external source present in the cell, and where
-        // the cell has a very low cross section, this approximation will
-        // cause a huge upward bias in the flux estimate of the cell (in these
-        // conditions, the flux estimate can be orders of magnitude too large).
-        // Thus, to avoid this bias, if any external source is present
-        // in the cell we will use the previous iteration's flux estimate. This
-        // injects a small degree of correlation into the simulation, but this
-        // is going to be trivial when the miss rate is a few percent or less.
-        if (external_source_present) {
-          scalar_flux_new_[idx] = scalar_flux_old_[idx];
-          flux_moments_new_[idx] = flux_moments_old_[idx];
-        } else {
-          scalar_flux_new_[idx] = source_[idx];
-        }
-      } else {
-        // If the FSR was not hit this iteration, and it has never been hit in
-        // any iteration (i.e., volume is zero), then we want to set this to 0
-        // to avoid dividing anything by a zero volume.
-        scalar_flux_new_[idx] = 0.0f;
-        flux_moments_new_[idx] *= 0.0;
-      }
-    }
-  }
-
-  return n_hits;
+void LinearSourceDomain::set_flux_to_old_flux(int64_t idx)
+{
+  scalar_flux_new_[idx] = scalar_flux_old_[idx];
+  flux_moments_new_[idx] = flux_moments_old_[idx];
 }
 
 void LinearSourceDomain::flux_swap()

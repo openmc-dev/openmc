@@ -100,7 +100,11 @@ public:
   double compute_k_eff(double k_eff_old) const;
   virtual void normalize_scalar_flux_and_volumes(
     double total_active_distance_per_iteration);
-  virtual int64_t add_source_to_scalar_flux();
+  virtual void set_flux_to_flux_plus_source(
+    int64_t idx, double volume, int material, int g);
+  void set_flux_to_source(int64_t idx);
+  virtual void set_flux_to_old_flux(int64_t idx);
+  int64_t add_source_to_scalar_flux();
   virtual void batch_reset();
   void convert_source_regions_to_tallies();
   void reset_tally_volumes();

@@ -100,10 +100,7 @@ public:
   double compute_k_eff(double k_eff_old) const;
   virtual void normalize_scalar_flux_and_volumes(
     double total_active_distance_per_iteration);
-  virtual void set_flux_to_flux_plus_source(
-    int64_t idx, double volume, int material, int g);
-  void set_flux_to_source(int64_t idx);
-  virtual void set_flux_to_old_flux(int64_t idx);
+
   int64_t add_source_to_scalar_flux();
   virtual void batch_reset();
   void convert_source_regions_to_tallies();
@@ -164,6 +161,10 @@ protected:
     const vector<int32_t>& instances);
   void apply_external_source_to_cell_and_children(int32_t i_cell,
     Discrete* discrete, double strength_factor, int32_t target_material_id);
+  virtual void set_flux_to_flux_plus_source(
+    int64_t idx, double volume, int material, int g);
+  void set_flux_to_source(int64_t idx);
+  virtual void set_flux_to_old_flux(int64_t idx);
 
   //----------------------------------------------------------------------------
   // Private data members

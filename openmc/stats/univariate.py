@@ -1,9 +1,8 @@
 from __future__ import annotations
 import math
-import typing
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from copy import deepcopy
 from numbers import Real
 from warnings import warn
@@ -68,7 +67,7 @@ class Univariate(EqualityMixin, ABC):
             return Mixture.from_xml_element(elem)
 
     @abstractmethod
-    def sample(n_samples: int = 1, seed: typing.Optional[int] = None):
+    def sample(n_samples: int = 1, seed: int | None = None):
         """Sample the univariate distribution
 
         Parameters
@@ -210,8 +209,8 @@ class Discrete(Univariate):
     @classmethod
     def merge(
         cls,
-        dists: typing.Sequence[Discrete],
-        probs: typing.Sequence[int]
+        dists: Sequence[Discrete],
+        probs: Sequence[int]
     ):
         """Merge multiple discrete distributions into a single distribution
 
@@ -838,7 +837,8 @@ class Tabular(Univariate):
         Tabulated values of the random variable
     p : Iterable of float
         Tabulated probabilities. For histogram interpolation, if the length of
-        `p` is the same as `x`, the last value is ignored.
+        `p` is the same as `x`, the last value is ignored. Probabilities `p` are
+        given per unit of `x`.
     interpolation : {'histogram', 'linear-linear', 'linear-log', 'log-linear', 'log-log'}, optional
         Indicates how the density function is interpolated between tabulated
         points. Defaults to 'linear-linear'.
@@ -855,12 +855,21 @@ class Tabular(Univariate):
         Indicates how the density function is interpolated between tabulated
         points. Defaults to 'linear-linear'.
 
+    Notes
+    -----
+    The probabilities `p` are interpreted per unit of the corresponding
+    independent variable `x`. This follows the definition of a probability
+    density function (PDF) in probability theory, where the PDF represents the
+    relative likelihood of the random variable taking on a particular value per
+    unit of the variable. For example, if `x` represents energy in eV, then `p`
+    should represent probabilities per eV.
+
     """
 
     def __init__(
             self,
-            x: typing.Sequence[float],
-            p: typing.Sequence[float],
+            x: Sequence[float],
+            p: Sequence[float],
             interpolation: str = 'linear-linear',
             ignore_negative: bool = False
         ):
@@ -958,7 +967,7 @@ class Tabular(Univariate):
         """Normalize the probabilities stored on the distribution"""
         self._p /= self.cdf().max()
 
-    def sample(self, n_samples: int = 1, seed: typing.Optional[int] = None):
+    def sample(self, n_samples: int = 1, seed: int | None = None):
         rng = np.random.RandomState(seed)
         xi = rng.random(n_samples)
 
@@ -1100,7 +1109,7 @@ class Legendre(Univariate):
 
     """
 
-    def __init__(self, coefficients: typing.Sequence[float]):
+    def __init__(self, coefficients: Sequence[float]):
         self.coefficients = coefficients
         self._legendre_poly = None
 
@@ -1156,8 +1165,8 @@ class Mixture(Univariate):
 
     def __init__(
         self,
-        probability: typing.Sequence[float],
-        distribution: typing.Sequence[Univariate]
+        probability: Sequence[float],
+        distribution: Sequence[Univariate]
     ):
         self.probability = probability
         self.distribution = distribution
@@ -1319,8 +1328,8 @@ class Mixture(Univariate):
 
 
 def combine_distributions(
-    dists: typing.Sequence[Univariate],
-    probs: typing.Sequence[float]
+    dists: Sequence[Univariate],
+    probs: Sequence[float]
 ):
     """Combine distributions with specified probabilities
 

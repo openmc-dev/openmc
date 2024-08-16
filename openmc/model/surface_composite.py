@@ -1,12 +1,11 @@
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from copy import copy
 from functools import partial
 from math import sqrt, pi, sin, cos, isclose
 from numbers import Real
 import warnings
 import operator
-from typing import Sequence
 
 import numpy as np
 from scipy.spatial import ConvexHull, Delaunay

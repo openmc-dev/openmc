@@ -2,7 +2,6 @@
 
 An ndarray to store reaction rates with string, integer, or slice indexing.
 """
-from typing import Dict
 
 import numpy as np
 
@@ -53,9 +52,9 @@ class ReactionRates(np.ndarray):
     # the __array_finalize__ method (discussed here:
     # https://docs.scipy.org/doc/numpy/user/basics.subclassing.html)
 
-    index_mat: Dict[str, int]
-    index_nuc: Dict[str, int]
-    index_rx: Dict[str, int]
+    index_mat: dict[str, int]
+    index_nuc: dict[str, int]
+    index_rx: dict[str, int]
 
     def __new__(cls, local_mats, nuclides, reactions, from_results=False):
         # Create appropriately-sized zeroed-out ndarray

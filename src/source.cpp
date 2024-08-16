@@ -378,7 +378,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
       site.E = energy_->sample(seed);
 
       // Resample if energy falls above maximum particle energy
-      if (site.E < data::energy_max[p] and
+      if (site.E < data::energy_max[p] &&
           (satisfies_energy_constraints(site.E)))
         break;
 

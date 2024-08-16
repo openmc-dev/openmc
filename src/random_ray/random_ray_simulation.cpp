@@ -285,13 +285,15 @@ void RandomRaySimulation::simulate()
     simulation::time_transport.start();
 
 // Transport sweep over all random rays for the iteration
+    uint64_t temp_total_geometric_intersections {0};
 #pragma omp parallel for schedule(dynamic)                                     \
-  reduction(+ : total_geometric_intersections_)
+  reduction(+ : temp_total_geometric_intersections)
     for (int i = 0; i < simulation::work_per_rank; i++) {
       RandomRay ray(i, domain_.get());
-      total_geometric_intersections_ +=
+      temp_total_geometric_intersections +=
         ray.transport_history_based_single_ray();
     }
+    total_geometric_intersections_ = temp_total_geometric_intersections;
 
     simulation::time_transport.stop();
 

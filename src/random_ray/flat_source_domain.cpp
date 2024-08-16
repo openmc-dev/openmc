@@ -968,7 +968,8 @@ void FlatSourceDomain::apply_external_source_to_cell_and_children(
 
 void FlatSourceDomain::count_external_source_regions()
 {
-#pragma omp parallel for reduction(+ : n_external_source_regions_)
+  int64_t temp_n_external_source_regions {0};
+#pragma omp parallel for reduction(+ : temp_n_external_source_regions)
   for (int sr = 0; sr < n_source_regions_; sr++) {
     float total = 0.f;
     for (int e = 0; e < negroups_; e++) {
@@ -976,9 +977,10 @@ void FlatSourceDomain::count_external_source_regions()
       total += external_source_[se];
     }
     if (total != 0.f) {
-      n_external_source_regions_++;
+      temp_n_external_source_regions++;
     }
   }
+  n_external_source_regions_ = temp_n_external_source_regions;
 }
 
 void FlatSourceDomain::convert_external_sources()

@@ -28,9 +28,8 @@ else:
 
 if os.environ.get('READTHEDOCS', None) != 'True':
     # To load the DLL on Windows without error, we need to add the path of
-    # the DLL. We get the directory from the path of this file. This should
-    # only be necessary with Python >= 3.8.0.
-    if sys.platform == 'win32' and sys.version_info.minor > 7:
+    # the DLL. We get the directory from the path of this file.
+    if sys.platform == 'win32':
         dll_path = os.path.dirname(os.path.abspath(__file__))
         os.add_dll_directory(dll_path)
 

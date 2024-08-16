@@ -284,7 +284,7 @@ void RandomRaySimulation::simulate()
     // Start timer for transport
     simulation::time_transport.start();
 
-// Transport sweep over all random rays for the iteration
+    // Transport sweep over all random rays for the iteration
     uint64_t temp_total_geometric_intersections {0};
 #pragma omp parallel for schedule(dynamic)                                     \
   reduction(+ : temp_total_geometric_intersections)

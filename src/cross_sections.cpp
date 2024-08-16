@@ -23,6 +23,7 @@
 #include "pugixml.hpp"
 
 #include <cstdlib> // for getenv
+#include <filesystem>
 #include <unordered_set>
 
 namespace openmc {
@@ -36,18 +37,6 @@ namespace data {
 std::map<LibraryKey, std::size_t> library_map;
 vector<Library> libraries;
 } // namespace data
-
-//==============================================================================
-// Separator strings for Windows and Unix-like systems
-//==============================================================================
-
-namespace details {
-#if defined(_WIN32) || defined(_WIN64)
-const char sep_char[] = "\\"; // Windows separator string
-#else
-const char sep_char[] = "/"; // Unix-like separator string
-#endif
-} // namespace details
 
 //==============================================================================
 // Library methods
@@ -82,16 +71,14 @@ Library::Library(pugi::xml_node node, const std::string& directory)
   if (!check_for_node(node, "path")) {
     fatal_error("Missing library path");
   }
-  std::string path = get_node_value(node, "path");
-
-  if (starts_with(path, details::sep_char)) {
-    path_ = path;
-  } else if (ends_with(directory, details::sep_char)) {
-    path_ = directory + path;
-  } else if (!directory.empty()) {
-    path_ = directory + details::sep_char + path;
+  std::filesystem::path path(get_node_value(node, "path"));
+  std::filesystem::path dir(directory);
+  if (path.is_absolute()) {
+    path_ = path.string();
+  } else if (std::filesystem::is_directory(dir)) {
+    path_ = (dir / path).string();
   } else {
-    path_ = path;
+    path_ = path.string();
   }
 
   if (!file_exists(path_)) {
@@ -155,11 +142,11 @@ void read_cross_sections_xml(pugi::xml_node root)
   } else {
     settings::path_cross_sections = get_node_value(root, "cross_sections");
 
-    // If no '/' found, the file is probably in the input directory
-    auto pos = settings::path_cross_sections.rfind(details::sep_char);
-    if (pos == std::string::npos && !settings::path_input.empty()) {
-      settings::path_cross_sections = settings::path_input + details::sep_char +
-                                      settings::path_cross_sections;
+    // If the path is relative, it is probably in the input directory
+    std::filesystem::path p(settings::path_cross_sections);
+    if (p.is_relative() && !settings::path_input.empty()) {
+      std::filesystem::path dir(settings::path_input);
+      settings::path_cross_sections = (dir / p).string();
     }
   }
 
@@ -321,16 +308,7 @@ void read_ce_cross_sections_xml()
   } else {
     // If no directory is listed in cross_sections.xml, by default select the
     // directory in which the cross_sections.xml file resides
-
-    // TODO: Use std::filesystem functionality when C++17 is adopted
-    auto pos = filename.rfind(details::sep_char);
-    if (pos == std::string::npos) {
-      // No '\\' found, so the file must be in the same directory as
-      // materials.xml
-      directory = settings::path_input;
-    } else {
-      directory = filename.substr(0, pos);
-    }
+    directory = std::filesystem::path(filename).parent_path().string();
   }
 
   for (const auto& node_library : root.children("library")) {

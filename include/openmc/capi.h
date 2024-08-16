@@ -281,15 +281,15 @@ extern int OPENMC_E_WARNING;
 
 // Macro to ensure global variables are exported in Windows DLLs
 #if defined(_WIN32) && defined(OPENMC_DLL_EXPORTS)
-#define DllExport __declspec(dllexport)
+#define OPENMC_API __declspec(dllexport)
 #elif defined(_WIN32)
-#define DllExport __declspec(dllimport)
+#define OPENMC_API __declspec(dllimport)
 #else
-#define DllExport
+#define OPENMC_API
 #endif
 
 // Global variables
-extern char DllExport openmc_err_msg[256];
+extern char OPENMC_API openmc_err_msg[256];
 
 #ifdef __cplusplus
 }

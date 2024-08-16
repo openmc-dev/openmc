@@ -11,9 +11,9 @@ namespace openmc {
 //==============================================================================
 
 #ifdef NCRYSTAL
-const bool DllExport NCRYSTAL_ENABLED = true;
+const bool OPENMC_API NCRYSTAL_ENABLED = true;
 #else
-const bool DllExport NCRYSTAL_ENABLED = false;
+const bool OPENMC_API NCRYSTAL_ENABLED = false;
 #endif
 
 //==============================================================================

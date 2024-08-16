@@ -15,7 +15,7 @@ namespace openmc {
 // Constants
 //==============================================================================
 
-extern "C" const bool DllExport MCPL_ENABLED;
+extern "C" const bool OPENMC_API MCPL_ENABLED;
 
 //==============================================================================
 // Functions

@@ -22,9 +22,9 @@ namespace openmc {
 //==============================================================================
 
 #ifdef OPENMC_MCPL
-const bool DllExport MCPL_ENABLED = true;
+const bool OPENMC_API MCPL_ENABLED = true;
 #else
-const bool DllExport MCPL_ENABLED = false;
+const bool OPENMC_API MCPL_ENABLED = false;
 #endif
 
 //==============================================================================

@@ -5,7 +5,7 @@ namespace mpi {
 
 int rank {0};
 int n_procs {1};
-bool DllExport master {true};
+bool OPENMC_API master {true};
 
 #ifdef OPENMC_MPI
 MPI_Comm intracomm {MPI_COMM_NULL};

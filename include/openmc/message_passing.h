@@ -15,7 +15,7 @@ namespace mpi {
 
 extern int rank;
 extern int n_procs;
-extern bool DllExport master;
+extern bool OPENMC_API master;
 
 #ifdef OPENMC_MPI
 extern MPI_Datatype source_site;

@@ -355,11 +355,11 @@ enum class GeometryType { CSG, DAG };
 // We use a macro for this, so that it is only exported on Windows.
 
 #if defined(_WIN32) && defined(OPENMC_DLL_EXPORTS)
-#define DllExport __declspec(dllexport)
+#define OPENMC_API __declspec(dllexport)
 #elif defined(_WIN32)
-#define DllExport __declspec(dllimport)
+#define OPENMC_API __declspec(dllimport)
 #else
-#define DllExport
+#define OPENMC_API
 #endif
 
 } // namespace openmc

@@ -148,7 +148,7 @@ private:
 
 namespace model {
 extern "C" int32_t n_filters;
-extern std::unordered_map<int, int> DllExport filter_map;
+extern std::unordered_map<int, int> OPENMC_API filter_map;
 extern vector<unique_ptr<Filter>> tally_filters;
 } // namespace model
 

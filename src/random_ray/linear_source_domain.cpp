@@ -70,25 +70,25 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
     MomentMatrix invM = mom_matrix_[sr].inverse();
 
     for (int e_out = 0; e_out < negroups_; e_out++) {
-      float sigma_t = data::mg.macro_xs_[material].get_xs(
+      double sigma_t = data::mg.macro_xs_[material].get_xs(
         MgxsType::TOTAL, e_out, nullptr, nullptr, nullptr, t, a);
 
-      float scatter_flat = 0.0f;
-      float fission_flat = 0.0f;
+      double scatter_flat = 0.0f;
+      double fission_flat = 0.0f;
       MomentArray scatter_linear = {0.0, 0.0, 0.0};
       MomentArray fission_linear = {0.0, 0.0, 0.0};
 
       for (int e_in = 0; e_in < negroups_; e_in++) {
         // Handles for the flat and linear components of the flux
-        float flux_flat = scalar_flux_old_[sr * negroups_ + e_in];
+        double flux_flat = scalar_flux_old_[sr * negroups_ + e_in];
         MomentArray flux_linear = flux_moments_old_[sr * negroups_ + e_in];
 
         // Handles for cross sections
-        float sigma_s = data::mg.macro_xs_[material].get_xs(
+        double sigma_s = data::mg.macro_xs_[material].get_xs(
           MgxsType::NU_SCATTER, e_in, &e_out, nullptr, nullptr, t, a);
-        float nu_sigma_f = data::mg.macro_xs_[material].get_xs(
+        double nu_sigma_f = data::mg.macro_xs_[material].get_xs(
           MgxsType::NU_FISSION, e_in, nullptr, nullptr, nullptr, t, a);
-        float chi = data::mg.macro_xs_[material].get_xs(
+        double chi = data::mg.macro_xs_[material].get_xs(
           MgxsType::CHI_PROMPT, e_in, &e_out, nullptr, nullptr, t, a);
 
         // Compute source terms for flat and linear components of the flux
@@ -127,7 +127,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
 void LinearSourceDomain::normalize_scalar_flux_and_volumes(
   double total_active_distance_per_iteration)
 {
-  float normalization_factor = 1.0 / total_active_distance_per_iteration;
+  double normalization_factor = 1.0 / total_active_distance_per_iteration;
   double volume_normalization_factor =
     1.0 / (total_active_distance_per_iteration * simulation::current_batch);
 
@@ -220,7 +220,7 @@ void LinearSourceDomain::all_reduce_replicated_source_regions()
 double LinearSourceDomain::evaluate_flux_at_point(
   Position r, int64_t sr, int g) const
 {
-  float phi_flat = FlatSourceDomain::evaluate_flux_at_point(r, sr, g);
+  double phi_flat = FlatSourceDomain::evaluate_flux_at_point(r, sr, g);
 
   Position local_r = r - centroid_[sr];
   MomentArray phi_linear = flux_moments_t_[sr * negroups_ + g];

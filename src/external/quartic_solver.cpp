@@ -4,10 +4,10 @@
 #include <cstdlib>
 #include <limits>
 
+namespace oqs {
+
 // TODO: replace with <numbers> when we go for C++20
 constexpr double PI {3.141592653589793238462643383279502884L};
-
-namespace oqs {
 
 // pow(DBL_MAX,1.0/3.0)/1.618034;
 constexpr double CUBIC_RESCAL_FACT = 3.488062113727083e+102;

@@ -280,9 +280,9 @@ extern int OPENMC_E_PHYSICS;
 extern int OPENMC_E_WARNING;
 
 // Macro to ensure global variables are exported in Windows DLLs
-#if _MSC_VER && OPENMC_DLL_EXPORTS
+#if defined(_WIN32) && defined(OPENMC_DLL_EXPORTS)
 #define DllExport __declspec(dllexport)
-#elif _MSC_VER
+#elif defined(_WIN32)
 #define DllExport __declspec(dllimport)
 #else
 #define DllExport

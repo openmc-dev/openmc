@@ -386,24 +386,31 @@ class Chain:
             if not data.nuclide['stable'] and data.half_life.nominal_value != 0.0:
                 nuclide.half_life = data.half_life.nominal_value
                 nuclide.decay_energy = data.decay_energy.nominal_value
-                sum_br = 0.0
-                for i, mode in enumerate(data.modes):
+                branch_ratios = []
+                branch_ids = []
+                for mode in data.modes:
                     type_ = ','.join(mode.modes)
                     if mode.daughter in decay_data:
                         target = mode.daughter
                     else:
                         print('missing {} {} {}'.format(
-                            parent, ','.join(mode.modes), mode.daughter))
+                            parent, type_, mode.daughter))
                         target = replace_missing(mode.daughter, decay_data)
-
-                    # Write branching ratio, taking care to ensure sum is unity
                     br = mode.branching_ratio.nominal_value
-                    sum_br += br
-                    if i == len(data.modes) - 1 and sum_br != 1.0:
-                        br = 1.0 - sum(m.branching_ratio.nominal_value
-                                       for m in data.modes[:-1])
+                    branch_ratios.append(br)
+                    branch_ids.append((type_, target))
 
-                    # Append decay mode
+                if not math.isclose(sum(branch_ratios), 1.0):
+                    max_br = max(branch_ratios)
+                    max_index = branch_ratios.index(max_br)
+
+                    # Adjust maximum branching ratio so they sum to unity
+                    new_br = max_br - sum(branch_ratios) + 1.0
+                    branch_ratios[max_index] = new_br
+                    assert math.isclose(sum(branch_ratios), 1.0)
+
+                # Append decay modes
+                for br, (type_, target) in zip(branch_ratios, branch_ids):
                     nuclide.add_decay_mode(type_, target, br)
 
                 nuclide.sources = data.sources

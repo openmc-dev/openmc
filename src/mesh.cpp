@@ -2316,6 +2316,9 @@ void MOABMesh::initialize()
       }
     }
   }
+
+  // Determine bounds of mesh
+  this->determine_bounds();
 }
 
 void MOABMesh::prepare_for_tallies()
@@ -3003,6 +3006,10 @@ void LibMesh::initialize()
 
   // bounding box for the mesh for quick rejection checks
   bbox_ = libMesh::MeshTools::create_bounding_box(*m_);
+  libMesh::Point ll = bbox_.min();
+  libMesh::Point ur = bbox_.max();
+  lower_left_ = {ll(0), ll(1), ll(2)};
+  upper_right_ = {ur(0), ur(1), ur(2)};
 }
 
 // Sample position within a tet for LibMesh type tets

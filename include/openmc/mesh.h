@@ -15,6 +15,7 @@
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
 #include "openmc/position.h"
+#include "openmc/surface.h" // for BoundingBox
 #include "openmc/vector.h"
 #include "openmc/xml_interface.h"
 
@@ -185,9 +186,24 @@ public:
   vector<MaterialVolume> material_volumes(
     int n_sample, int bin, uint64_t* seed) const;
 
+  //! Determine bounding box of mesh
+  //
+  //! \return Bounding box of mesh
+  BoundingBox bounding_box() const
+  {
+    auto ll = this->lower_left();
+    auto ur = this->upper_right();
+    return {ll.x, ur.x, ll.y, ur.y, ll.z, ur.z};
+  }
+
+  virtual Position lower_left() const = 0;
+  virtual Position upper_right() const = 0;
+
   // Data members
-  int id_ {-1};          //!< User-specified ID
-  int n_dimension_ {-1}; //!< Number of dimensions
+  xt::xtensor<double, 1> lower_left_;  //!< Lower-left coordinates of mesh
+  xt::xtensor<double, 1> upper_right_; //!< Upper-right coordinates of mesh
+  int id_ {-1};                        //!< User-specified ID
+  int n_dimension_ {-1};               //!< Number of dimensions
 };
 
 class StructuredMesh : public Mesh {
@@ -325,14 +341,30 @@ public:
     return this->volume(get_indices_from_bin(bin));
   }
 
+  Position lower_left() const override
+  {
+    int n = lower_left_.size();
+    Position ll {lower_left_[0], 0.0, 0.0};
+    ll.y = (n >= 2) ? lower_left_[1] : -INFTY;
+    ll.z = (n == 3) ? lower_left_[2] : -INFTY;
+    return ll;
+  };
+
+  Position upper_right() const override
+  {
+    int n = upper_right_.size();
+    Position ur {upper_right_[0], 0.0, 0.0};
+    ur.y = (n >= 2) ? upper_right_[1] : INFTY;
+    ur.z = (n == 3) ? upper_right_[2] : INFTY;
+    return ur;
+  };
+
   //! Get the volume of a specified element
   //! \param[in] ijk Mesh index to return the volume for
   //! \return Volume of the bin
   virtual double volume(const MeshIndex& ijk) const = 0;
 
   // Data members
-  xt::xtensor<double, 1> lower_left_;  //!< Lower-left coordinates of mesh
-  xt::xtensor<double, 1> upper_right_; //!< Upper-right coordinates of mesh
   std::array<int, 3> shape_; //!< Number of mesh elements in each dimension
 
 protected:
@@ -655,6 +687,15 @@ public:
 
   ElementType element_type(int bin) const;
 
+  Position lower_left() const override
+  {
+    return {lower_left_[0], lower_left_[1], lower_left_[2]};
+  }
+  Position upper_right() const override
+  {
+    return {upper_right_[0], upper_right_[1], upper_right_[2]};
+  }
+
 protected:
   //! Set the length multiplier to apply to each point in the mesh
   void set_length_multiplier(const double length_multiplier);
@@ -676,6 +717,8 @@ private:
   //! Setup method for the mesh. Builds data structures,
   //! sets up element mapping, creates bounding boxes, etc.
   virtual void initialize() = 0;
+
+  void determine_bounds();
 };
 
 #ifdef DAGMC

@@ -319,6 +319,34 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
   }
 }
 
+void UnstructuredMesh::determine_bounds()
+{
+  double xmin = INFTY;
+  double ymin = INFTY;
+  double zmin = INFTY;
+  double xmax = -INFTY;
+  double ymax = -INFTY;
+  double zmax = -INFTY;
+  int n = this->n_vertices();
+  for (int i = 0; i < n; ++i) {
+    auto v = this->vertex(i);
+    if (v.x < xmin)
+      xmin = v.x;
+    if (v.y < ymin)
+      ymin = v.y;
+    if (v.z < zmin)
+      zmin = v.z;
+    if (v.x > xmax)
+      xmax = v.x;
+    if (v.y > ymax)
+      ymax = v.y;
+    if (v.z > zmax)
+      zmax = v.z;
+  }
+  lower_left_ = {xmin, ymin, zmin};
+  upper_right_ = {xmax, ymax, zmax};
+}
+
 Position UnstructuredMesh::sample_tet(
   std::array<Position, 4> coords, uint64_t* seed) const
 {
@@ -1372,8 +1400,10 @@ int CylindricalMesh::set_grid()
 
   full_phi_ = (grid_[1].front() == 0.0) && (grid_[1].back() == 2.0 * PI);
 
-  lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
-  upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
+  lower_left_ = {origin_[0] - grid_[0].back(), origin_[1] - grid_[0].back(),
+    origin_[2] + grid_[2].front()};
+  upper_right_ = {origin_[0] + grid_[0].back(), origin_[1] + grid_[0].back(),
+    origin_[2] + grid_[2].back()};
 
   return 0;
 }
@@ -1687,8 +1717,9 @@ int SphericalMesh::set_grid()
   full_theta_ = (grid_[1].front() == 0.0) && (grid_[1].back() == PI);
   full_phi_ = (grid_[2].front() == 0.0) && (grid_[2].back() == 2 * PI);
 
-  lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
-  upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
+  double r = grid_[0].back();
+  lower_left_ = {origin_[0] - r, origin_[1] - r, origin_[2] - r};
+  upper_right_ = {origin_[0] + r, origin_[1] + r, origin_[2] + r};
 
   return 0;
 }
@@ -1896,6 +1927,26 @@ extern "C" int openmc_mesh_get_volumes(int32_t index, double* volumes)
   for (int i = 0; i < model::meshes[index]->n_bins(); ++i) {
     volumes[i] = model::meshes[index]->volume(i);
   }
+  return 0;
+}
+
+//! Get the bounding box of a mesh
+extern "C" int openmc_mesh_bounding_box(int32_t index, double* ll, double* ur)
+{
+  if (int err = check_mesh(index))
+    return err;
+
+  BoundingBox bbox = model::meshes[index]->bounding_box();
+
+  // set lower left corner values
+  ll[0] = bbox.xmin;
+  ll[1] = bbox.ymin;
+  ll[2] = bbox.zmin;
+
+  // set upper right corner values
+  ur[0] = bbox.xmax;
+  ur[1] = bbox.ymax;
+  ur[2] = bbox.zmax;
   return 0;
 }
 

@@ -713,12 +713,13 @@ protected:
     -1.0};              //!< Multiplicative factor applied to mesh coordinates
   std::string options_; //!< Options for search data structures
 
+  //! Determine lower-left and upper-right bounds of mesh
+  void determine_bounds();
+
 private:
   //! Setup method for the mesh. Builds data structures,
   //! sets up element mapping, creates bounding boxes, etc.
   virtual void initialize() = 0;
-
-  void determine_bounds();
 };
 
 #ifdef DAGMC

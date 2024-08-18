@@ -330,18 +330,12 @@ void UnstructuredMesh::determine_bounds()
   int n = this->n_vertices();
   for (int i = 0; i < n; ++i) {
     auto v = this->vertex(i);
-    if (v.x < xmin)
-      xmin = v.x;
-    if (v.y < ymin)
-      ymin = v.y;
-    if (v.z < zmin)
-      zmin = v.z;
-    if (v.x > xmax)
-      xmax = v.x;
-    if (v.y > ymax)
-      ymax = v.y;
-    if (v.z > zmax)
-      zmax = v.z;
+    xmin = std::min(v.x, xmin);
+    ymin = std::min(v.y, ymin);
+    zmin = std::min(v.z, zmin);
+    xmax = std::max(v.x, xmax);
+    ymax = std::max(v.y, ymax);
+    zmax = std::max(v.z, zmax);
   }
   lower_left_ = {xmin, ymin, zmin};
   upper_right_ = {xmax, ymax, zmax};

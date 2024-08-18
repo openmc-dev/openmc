@@ -11,11 +11,11 @@
 #include "xtensor/xtensor.hpp"
 #include <gsl/gsl-lite.hpp>
 
+#include "openmc/bounding_box.h"
 #include "openmc/error.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
 #include "openmc/position.h"
-#include "openmc/surface.h" // for BoundingBox
 #include "openmc/vector.h"
 #include "openmc/xml_interface.h"
 

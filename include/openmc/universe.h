@@ -1,6 +1,7 @@
 #ifndef OPENMC_UNIVERSE_H
 #define OPENMC_UNIVERSE_H
 
+#include "openmc/bounding_box.h"
 #include "openmc/cell.h"
 
 namespace openmc {

@@ -1,4 +1,5 @@
 import os
+import sys
 import shutil
 import subprocess
 
@@ -10,7 +11,11 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
     os.chdir('build')
 
     # Build in debug mode by default with support for MCPL
-    cmake_cmd = ['cmake', '-DCMAKE_BUILD_TYPE=Debug', '-DOPENMC_USE_MCPL=on']
+    if sys.platform == 'win32':
+        vcpkg_dir = os.environ.get('VCPKG_ROOT')
+        cmake_cmd = ['cmake', '-DCMAKE_BUILD_TYPE=Debug', '-DCMAKE_TOOLCHAIN_FILE='+vcpkg_dir+'\\scripts\\buildsystems\\vcpkg.cmake', '-DVCPKG_TARGET_TRIPLET=x64-windows-static']
+    else:
+        cmake_cmd = ['cmake', '-DCMAKE_BUILD_TYPE=Debug', '-DOPENMC_USE_MCPL=on']
 
     # Turn off OpenMP if specified
     if not omp:
@@ -50,8 +55,12 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
     cmake_cmd.append('..')
     print(' '.join(cmake_cmd))
     subprocess.check_call(cmake_cmd)
-    subprocess.check_call(['make', '-j4'])
-    subprocess.check_call(['sudo', 'make', 'install'])
+
+    if sys.platform == 'win32':
+        subprocess.check_call(['cmake', '--install', '.', '--config=Debug'])
+    else:
+        subprocess.check_call(['make', '-j4'])
+        subprocess.check_call(['sudo', 'make', 'install'])
 
 def main():
     # Convert Travis matrix environment variables into arguments for install()

@@ -168,6 +168,12 @@ if(NOT DEFINED HDF5_PREFER_PARALLEL)
   endif()
 endif()
 
+if (MSVC)
+  # To avoid problems with loading DLLs on Windows in the Python API,
+  # we should try to link libhdf5 statically.
+  set(HDF5_USE_STATIC_LIBRARIES TRUE)
+endif()
+
 find_package(HDF5 REQUIRED COMPONENTS C HL)
 
 # Remove HDF5 transitive dependencies that are system libraries

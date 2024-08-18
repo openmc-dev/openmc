@@ -167,7 +167,7 @@ jobs:
             omp: n
           - python-version: "3.10"
             omp: y
-    name: "Windows Python ${{ matrix.python-version }} (omp=${{ matrix.omp }}"
+    name: "Windows Python ${{ matrix.python-version }} (omp=${{ matrix.omp }})"
 
     env:
       OMP: ${{ matrix.omp }}
@@ -190,8 +190,8 @@ jobs:
       - name: Environment Variables
         shell: pwsh
         run: |
-          $Env:OPENMC_CROSS_SECTIONS = "$Env:USERPROFILE\nndc_hdf5\cross_sections.xml"
-          $Env:OPENMC_ENDF_DATA = "$Env:USERPROFILE\endf-b-vii.1"
+          [Environment]::SetEnvironmentVariable("OPENMC_CROSS_SECTIONS", "$Env:USERPROFILE\nndc_hdf5\cross_sections.xml", [System.EnvironmentVariableTarget]::User)
+          [Environment]::SetEnvironmentVariable("OPENMC_ENDF_DATA", "$Env:USERPROFILE\endf-b-vii.1", [System.EnvironmentVariableTarget]::User)
 
       - name: HDF5 Dependency
         shell: pwsh

@@ -1,6 +1,7 @@
 from collections.abc import Mapping, Sequence
 from ctypes import (c_int, c_int32, c_char_p, c_double, POINTER, Structure,
                     create_string_buffer, c_uint64, c_size_t)
+from math import sqrt
 from random import getrandbits
 import sys
 from weakref import WeakValueDictionary
@@ -251,14 +252,28 @@ class Mesh(_FortranObjectWithID):
         return volumes
 
     def material_volumes_raytrace(
-            self, ny: int = 1000, nz: int = 1000, max_materials: int = 4):
+            self,
+            n_rays: int | tuple[int, int] = 10_000,
+            max_materials: int = 4
+    ):
+        # Determine number of rays in y/z directions
+        if isinstance(n_rays, int):
+            ll, ur = self.bounding_box
+            width_y = ur[1] - ll[1]
+            width_z = ur[2] - ll[2]
+            aspect_ratio = width_y / width_z
+            ny = int(sqrt(n_rays * aspect_ratio))
+            nz = int(sqrt(n_rays / aspect_ratio))
+        else:
+            ny, nz = n_rays
 
+        # Preallocate arrays for material indices and volumes
         n = self.n_elements
         materials = np.full((n, max_materials), -2, dtype=np.int32)
         volumes = np.zeros((n, max_materials), dtype=np.float64)
 
-        print('Raytracing...')
-        _dll.openmc_mesh_raytrace_material_volumes(
+        # Run material volume calculation
+        _dll.openmc_mesh_material_volumes_raytrace(
             self._index, ny, nz, max_materials, materials, volumes)
 
         return (np.ma.MaskedArray(materials, materials == -2), volumes)

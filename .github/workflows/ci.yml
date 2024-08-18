@@ -190,8 +190,8 @@ jobs:
       - name: Environment Variables
         shell: pwsh
         run: |
-          [Environment]::SetEnvironmentVariable("OPENMC_CROSS_SECTIONS", "$Env:USERPROFILE\nndc_hdf5\cross_sections.xml", [System.EnvironmentVariableTarget]::User)
-          [Environment]::SetEnvironmentVariable("OPENMC_ENDF_DATA", "$Env:USERPROFILE\endf-b-vii.1", [System.EnvironmentVariableTarget]::User)
+          [Environment]::SetEnvironmentVariable("OPENMC_CROSS_SECTIONS", "$Env:GITHUB_WORKSPACE\nndc_hdf5\cross_sections.xml", 'Machine')
+          [Environment]::SetEnvironmentVariable("OPENMC_ENDF_DATA", "$Env:GITHUB_WORKSPACE\endf-b-vii.1", 'Machine')
 
       - name: HDF5 Dependency
         shell: pwsh

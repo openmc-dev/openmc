@@ -198,6 +198,14 @@ jobs:
         run: |
           ${{github.workspace}}\tools\ci\hdf5_install.ps1
 
+      - name: Cache XS
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{github.workspace}}\nndc_hdf5
+            ${{github.workspace}}\endf-b-vii.1
+          key: ${{ runner.os }}-build-xs-cache
+
       - name: Install
         shell: pwsh
         run: |

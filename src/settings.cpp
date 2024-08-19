@@ -119,6 +119,7 @@ std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
 std::unordered_set<int> source_write_surf_id;
 int64_t max_surface_particles;
+int64_t max_files;
 int64_t ssw_cell_id {C_NONE};
 SSWCellType ssw_cell_type {SSWCellType::None};
 TemperatureMethod temperature_method {TemperatureMethod::NEAREST};
@@ -791,6 +792,16 @@ void read_settings_xml(pugi::xml_node root)
       fatal_error("A maximum number of particles needs to be specified "
                   "using the 'max_particles' parameter to store surface "
                   "source points.");
+    }
+
+    // Get maximum number of files per batch to be created
+    if (check_for_node(node_ssw, "max_files")) {
+      max_files = std::stoll(get_node_value(node_ssw, "max_files"));
+      // Make sure you have enough batchs
+      if (max_files > n_batches) {
+      fatal_error("The maximum number of particle files must to be higher "
+                  "than the number of simulated batchs.");
+      }
     }
 
     if (check_for_node(node_ssw, "mcpl")) {

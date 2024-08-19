@@ -465,8 +465,10 @@ void finalize_batch()
 
   // Write out surface source if requested.
   if (settings::surf_source_write &&
-      simulation::current_batch == settings::n_batches) {
-    auto filename = settings::path_output + "surface_source";
+      (simulation::current_batch > settings::n_inactive) && 
+      (simulation::current_batch <= settings::n_batches)) {
+    auto filename = settings::path_output + "surface_source_batch_" +
+                    std::to_string(simulation::current_batch);
     auto surf_work_index =
       mpi::calculate_parallel_index_vector(simulation::surf_source_bank.size());
     gsl::span<SourceSite> surfbankspan(simulation::surf_source_bank.begin(),
@@ -476,6 +478,8 @@ void finalize_batch()
     } else {
       write_source_point(filename.c_str(), surfbankspan, surf_work_index);
     }
+    simulation::surf_source_bank.clear();
+
   }
 }
 

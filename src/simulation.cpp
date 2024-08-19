@@ -468,7 +468,8 @@ void finalize_batch()
 
   // Write out surface source if requested.
   if (settings::surf_source_write &&
-      simulation::current_batch > settings::n_inactive) {
+      simulation::current_batch > (settings::n_batches - settings::max_files) &&
+      simulation::current_batch > (settings::n_inactive)) {
     auto filename = settings::path_output + "surface_source_batch_" +
                     std::to_string(simulation::current_batch);
     auto surf_work_index =
@@ -480,7 +481,6 @@ void finalize_batch()
     } else {
       write_source_point(filename.c_str(), surfbankspan, surf_work_index);
     }
-
   }
 }
 

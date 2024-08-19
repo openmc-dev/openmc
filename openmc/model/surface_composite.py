@@ -682,12 +682,10 @@ class OrthogonalBox(CompositeSurface):
         v = np.array(v)
         a1 = np.array(a1)
         a2 = np.array(a2)
-        if a3 is None:
-            has_a3 = False
-            a3 = np.cross(a1, a2)  # normal to plane specified by a1 and a2
-        else:
-            has_a3 = True
+        if has_a3 := a3 is not None:
             a3 = np.array(a3)
+        else:
+            a3 = np.cross(a1, a2)  # normal to plane specified by a1 and a2
 
         # Generate corners of box
         p1 = v
@@ -707,13 +705,6 @@ class OrthogonalBox(CompositeSurface):
             self.ax3_min = openmc.Plane.from_points(p1, p2, p3, **kwargs)
             self.ax3_max = openmc.Plane.from_points(p4, p7, p6, **kwargs)
 
-        # Helper function to flip coefficients on Plane surfaces
-        def flip_sense(surf):
-            surf.a = -surf.a
-            surf.b = -surf.b
-            surf.c = -surf.c
-            surf.d = -surf.d
-
         # Make sure a point inside the box produces the correct senses. If not,
         # flip the plane coefficients so it does.
         mid_point = v + (a1 + a2 + a3)/2
@@ -722,9 +713,9 @@ class OrthogonalBox(CompositeSurface):
             min_surf = getattr(self, f'ax{num}_min')
             max_surf = getattr(self, f'ax{num}_max')
             if mid_point in -min_surf:
-                flip_sense(min_surf)
+                min_surf.flip_normal()
             if mid_point in +max_surf:
-                flip_sense(max_surf)
+                max_surf.flip_normal()
 
     def __neg__(self):
         region = (+self.ax1_min & -self.ax1_max &

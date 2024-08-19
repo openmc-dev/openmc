@@ -296,7 +296,7 @@ void Particle::event_cross_surface()
     if (surf->surf_source_ && surf->bc_) {
       add_surf_source_to_bank(*this, *surf);
     }
-    cross_surface(*surf);
+    this->cross_surface(*surf);
     // If no BC, add particle to surface source after crossing surface
     if (surf->surf_source_ && !surf->bc_) {
       add_surf_source_to_bank(*this, *surf);

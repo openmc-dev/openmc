@@ -346,6 +346,9 @@ void initialize_batch()
   // Increment current batch
   ++simulation::current_batch;
 
+  simulation::surf_source_bank.clear();
+  simulation::surf_source_bank.reserve(settings::max_surface_particles);
+
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     if (settings::solver_type == SolverType::RANDOM_RAY &&
         simulation::current_batch < settings::n_inactive + 1) {
@@ -465,8 +468,7 @@ void finalize_batch()
 
   // Write out surface source if requested.
   if (settings::surf_source_write &&
-      (simulation::current_batch > settings::n_inactive) && 
-      (simulation::current_batch <= settings::n_batches)) {
+      simulation::current_batch > settings::n_inactive) {
     auto filename = settings::path_output + "surface_source_batch_" +
                     std::to_string(simulation::current_batch);
     auto surf_work_index =
@@ -478,7 +480,6 @@ void finalize_batch()
     } else {
       write_source_point(filename.c_str(), surfbankspan, surf_work_index);
     }
-    simulation::surf_source_bank.clear();
 
   }
 }

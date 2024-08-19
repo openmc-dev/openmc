@@ -16,10 +16,11 @@ from .error import _error_handler
 from .material import Material
 from .plot import _Position
 from ..bounding_box import BoundingBox
+from ..checkvalue import PathLike
 
 __all__ = [
     'Mesh', 'RegularMesh', 'RectilinearMesh', 'CylindricalMesh',
-    'SphericalMesh', 'UnstructuredMesh', 'meshes'
+    'SphericalMesh', 'UnstructuredMesh', 'meshes', 'MeshMaterialVolumes'
 ]
 
 
@@ -119,6 +120,45 @@ _dll.openmc_spherical_mesh_set_grid.argtypes = [c_int32, POINTER(c_double),
     c_int, POINTER(c_double), c_int, POINTER(c_double), c_int]
 _dll.openmc_spherical_mesh_set_grid.restype = c_int
 _dll.openmc_spherical_mesh_set_grid.errcheck = _error_handler
+
+
+class MeshMaterialVolumes(Mapping):
+    def __init__(self, materials, volumes):
+        self._materials = materials
+        self._volumes = volumes
+
+    @property
+    def num_elements(self) -> int:
+        return self._volumes.shape[0]
+
+    def __iter__(self):
+        for mat in np.unique(self._materials):
+            if mat > 0:
+                yield mat
+
+    def __len__(self):
+        return (np.unique(self._materials) > 0).sum()
+
+    def __repr__(self) -> str:
+        ids, counts = np.unique(self._materials, return_counts=True)
+        return '{' + '\n '.join(
+            f'{id}: <{count} nonzero volumes>' for id, count in zip(ids, counts) if id > 0) + '}'
+
+    def __getitem__(self, material_id: int):
+        volumes = np.zeros(self.num_elements)
+        for i in range(self._volumes.shape[1]):
+            indices = (self._materials[:, i] == material_id)
+            volumes[indices] = self._volumes[indices, i]
+        return volumes
+
+    def save(self, filename: PathLike):
+        np.savez_compressed(
+            filename, materials=self._materials, volumes=self._volumes)
+
+    @classmethod
+    def from_npz(cls, filename: PathLike):
+        filedata = np.load(filename)
+        return cls(filedata['materials'], filedata['volumes'])
 
 
 class Mesh(_FortranObjectWithID):
@@ -255,7 +295,29 @@ class Mesh(_FortranObjectWithID):
             self,
             n_rays: int | tuple[int, int] = 10_000,
             max_materials: int = 4
-    ):
+    ) -> MeshMaterialVolumes:
+        """Determine volume of materials in each mesh element.
+
+        This method works by raytracing repeatedly through the mesh from one
+        side to count of the estimated volume of each material in all mesh
+        elements.
+
+        Parameters
+        ----------
+        n_rays : int or 2-tuple of int
+            Total number of rays to follow. The rays start on an x plane and are
+            evenly distributed over the y and z dimensions. When specified as a
+            2-tuple, it is interpreted as the number of rays in the y and z
+            dimensions.
+        max_materials : int, optional
+            Maximum number of materials in any given mesh element.
+
+        Returns
+        -------
+        Dictionary-like object that maps material IDs to an array of volumes
+        equal in size to the number of mesh elements.
+
+        """
         # Determine number of rays in y/z directions
         if isinstance(n_rays, int):
             ll, ur = self.bounding_box
@@ -276,7 +338,7 @@ class Mesh(_FortranObjectWithID):
         _dll.openmc_mesh_material_volumes_raytrace(
             self._index, ny, nz, max_materials, materials, volumes)
 
-        return (np.ma.MaskedArray(materials, materials == -2), volumes)
+        return MeshMaterialVolumes(materials, volumes)
 
     def get_plot_bins(
             self,
@@ -753,7 +815,6 @@ class _MeshMapping(Mapping):
             # __contains__ expects a KeyError to work correctly
             raise KeyError(str(e))
         return _get_mesh(index.value)
-
 
     def __iter__(self):
         for i in range(len(self)):

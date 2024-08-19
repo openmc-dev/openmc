@@ -32,6 +32,7 @@
 #include "openmc/nuclide.h"
 #include "openmc/plot.h"
 #include "openmc/random_ray/flat_source_domain.h"
+#include "openmc/random_ray/random_ray.h"
 #include "openmc/reaction.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
@@ -376,13 +377,16 @@ void print_build_info()
 
 void print_columns()
 {
-  if (settings::entropy_on) {
+  if (RandomRay::first_collision_source_){
+    fmt::print("  Batch       Rays       Total Source Regions Discovered\n"
+               "  ======      =======    =================================\n");
+  } else if (settings::entropy_on) {
     fmt::print("  Bat./Gen.      k       Entropy         Average k \n"
                "  =========   ========   ========   ====================\n");
   } else {
     fmt::print("  Bat./Gen.      k            Average k\n"
                "  =========   ========   ====================\n");
-  }
+  } 
 }
 
 //==============================================================================

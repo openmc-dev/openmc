@@ -25,6 +25,7 @@
 #include "openmc/plot.h"
 #include "openmc/random_lcg.h"
 #include "openmc/random_ray/random_ray.h"
+#include "openmc/random_ray/random_ray_simulation.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"
 #include "openmc/string_utils.h"
@@ -285,6 +286,26 @@ void get_run_parameters(pugi::xml_node node_base)
     if (check_for_node(random_ray_node, "volume_normalized_flux_tallies")) {
       FlatSourceDomain::volume_normalized_flux_tallies_ =
         get_node_value_bool(random_ray_node, "volume_normalized_flux_tallies");
+    }
+    if (check_for_node(random_ray_node, "first_collision_source")) {
+      RandomRay::first_collision_source_ =
+        get_node_value_bool(random_ray_node, "first_collision_source");
+
+      if (check_for_node(random_ray_node, "first_collision_rays")) {
+        RandomRay::first_collision_rays_ =
+          std::stoi(get_node_value(random_ray_node, "first_collision_rays"));
+        if (RandomRay::first_collision_rays_ <= 0) {
+          fatal_error("Number of first collided rays must be greater than 0");
+        }
+      }
+      if (check_for_node(random_ray_node, "first_collision_volume_rays")) {
+        RandomRay::first_collision_volume_rays_ = std::stoi(
+          get_node_value(random_ray_node, "first_collision_volume_rays"));
+        if (RandomRay::first_collision_volume_rays_ <= 0) {
+          fatal_error("Number of rays for first collided initial volume "
+                      "estimation must be greater than 0");
+        }
+      }
     }
   }
 }

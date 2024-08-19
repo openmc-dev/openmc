@@ -113,6 +113,19 @@ public:
   virtual double evaluate_flux_at_point(Position r, int64_t sr, int g) const;
   double compute_fixed_source_normalization_factor() const;
 
+  virtual void compute_first_collided_flux();
+  virtual void normalize_uncollided_scalar_flux(double number_of_particles);
+  virtual void update_volume_uncollided_flux();
+  virtual void compute_first_collided_external_source();
+  virtual void compute_uncollided_scalar_flux();
+  int64_t check_fsr_hits();
+  virtual void uncollided_moments();
+  virtual void batch_reset_fc();
+  virtual double evaluate_uncollided_flux_at_point(
+    Position r, int64_t sr, int g) const;
+  virtual double evaluate_external_source_at_point(
+    Position r, int64_t sr, int g) const;
+
   //----------------------------------------------------------------------------
   // Static Data members
   static bool volume_normalized_flux_tallies_;
@@ -144,6 +157,8 @@ public:
   vector<float> scalar_flux_new_;
   vector<float> source_;
   vector<float> external_source_;
+  vector<float> scalar_uncollided_flux_;
+  vector<float> scalar_first_collided_flux_;
 
 protected:
   //----------------------------------------------------------------------------

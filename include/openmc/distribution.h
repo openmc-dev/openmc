@@ -56,6 +56,7 @@ public:
   // Properties
   const vector<double>& prob() const { return prob_; }
   const vector<size_t>& alias() const { return alias_; }
+  const vector<double>& prob_actual() const { return prob_actual_; }
   double integral() const { return integral_; }
 
 private:
@@ -63,6 +64,7 @@ private:
                         //!< mapped to alias method table
   vector<size_t> alias_; //!< Alias table
   double integral_;      //!< Integral of distribution
+  vector<double> prob_actual_; //!< actual probability before the Vose algorithm
 
   //! Normalize distribution so that probabilities sum to unity
   void normalize();
@@ -91,6 +93,7 @@ public:
   const vector<double>& x() const { return x_; }
   const vector<double>& prob() const { return di_.prob(); }
   const vector<size_t>& alias() const { return di_.alias(); }
+  const vector<double>& prob_actual() const { return di_.prob_actual(); }
 
 private:
   vector<double> x_; //!< Possible outcomes

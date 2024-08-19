@@ -20,7 +20,7 @@ public:
   //----------------------------------------------------------------------------
   // Constructors
   RandomRay();
-  RandomRay(uint64_t ray_id, FlatSourceDomain* domain);
+  RandomRay(uint64_t ray_id, FlatSourceDomain* domain, bool uncollided_ray);
 
   //----------------------------------------------------------------------------
   // Methods
@@ -28,10 +28,10 @@ public:
   void attenuate_flux(double distance, bool is_active);
   void attenuate_flux_flat_source(double distance, bool is_active);
   void attenuate_flux_linear_source(double distance, bool is_active);
-
-  void initialize_ray(uint64_t ray_id, FlatSourceDomain* domain);
+  void event_advance_ray_first_collided();
+  void initialize_ray(uint64_t ray_id, FlatSourceDomain* domain,bool uncollided_ray);
   uint64_t transport_history_based_single_ray();
-
+  
   //----------------------------------------------------------------------------
   // Static data members
   static double distance_inactive_;          // Inactive (dead zone) ray length
@@ -39,9 +39,16 @@ public:
   static unique_ptr<Source> ray_source_;     // Starting source for ray sampling
   static RandomRaySourceShape source_shape_; // Flag for linear source
 
+  static bool first_collision_source_;
+  static int first_collision_rays_;
+  static int first_collision_volume_rays_;
+
+  static bool no_volume_calc; // Flag for FCS flux calculation 
+
   //----------------------------------------------------------------------------
   // Public data members
   vector<float> angular_flux_;
+  vector<float> angular_flux_initial_;
 
 private:
   //----------------------------------------------------------------------------
@@ -50,6 +57,7 @@ private:
   vector<MomentArray> delta_moments_;
 
   int negroups_;
+
   FlatSourceDomain* domain_ {nullptr}; // pointer to domain that has flat source
                                        // data needed for ray transport
   double distance_travelled_ {0};

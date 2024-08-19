@@ -28,6 +28,10 @@ LinearSourceDomain::LinearSourceDomain() : FlatSourceDomain()
   flux_moments_t_.assign(n_source_elements_, {0.0, 0.0, 0.0});
   // Source gradients given by M inverse multiplied by source moments
   source_gradients_.assign(n_source_elements_, {0.0, 0.0, 0.0});
+  external_source_gradients_.assign(n_source_elements_, {0.0, 0.0, 0.0});
+  // First Collided method
+  flux_moments_uncollided_.assign(n_source_elements_, {0.0, 0.0, 0.0});
+  flux_moments_first_collided_.assign(n_source_elements_, {0.0, 0.0, 0.0});
 
   centroid_.assign(n_source_regions_, {0.0, 0.0, 0.0});
   centroid_iteration_.assign(n_source_regions_, {0.0, 0.0, 0.0});
@@ -47,6 +51,43 @@ void LinearSourceDomain::batch_reset()
   for (int64_t sr = 0; sr < n_source_regions_; sr++) {
     centroid_iteration_[sr] = {0.0, 0.0, 0.0};
     mom_matrix_[sr] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+  }
+}
+
+void LinearSourceDomain::batch_reset_fc()
+{
+  FlatSourceDomain::batch_reset_fc();
+#pragma omp parallel for
+  for (int64_t se = 0; se < n_source_elements_; se++) {
+    flux_moments_new_[se] = {0.0, 0.0, 0.0};
+  }
+  if (RandomRay::no_volume_calc) {
+#pragma omp parallel for
+    for (int64_t sr = 0; sr < n_source_regions_; sr++) {
+      centroid_iteration_[sr] = {0.0, 0.0, 0.0};
+      centroid_[sr] = {0.0, 0.0, 0.0};
+      centroid_t_[sr] = {0.0, 0.0, 0.0};
+      mom_matrix_[sr] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+      mom_matrix_t_[sr] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    }
+  }
+}
+
+void LinearSourceDomain::compute_first_collided_external_source()
+{
+  FlatSourceDomain::compute_first_collided_external_source();
+#pragma omp parallel for
+  for (int sr = 0; sr < n_source_regions_; sr++) {
+
+    double volume = simulation_volume_ * volume_[sr];
+
+    // Normalize by volume and attribute it as external_source
+    if (volume > 0.0) {
+      for (int g = 0; g < negroups_; g++) {
+        external_source_gradients_[sr * negroups_ + g] =
+          (flux_moments_first_collided_[sr * negroups_ + g] * (1.0 / volume));
+      }
+    }
   }
 }
 
@@ -103,7 +144,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
         (scatter_flat + fission_flat * inverse_k_eff) / sigma_t;
 
       // Compute the linear source terms
-      if (simulation::current_batch > 2) {
+      if (simulation::current_batch > 10) {
         source_gradients_[sr * negroups_ + e_out] =
           invM * ((scatter_linear + fission_linear * inverse_k_eff) / sigma_t);
       }
@@ -115,6 +156,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
 #pragma omp parallel for
     for (int se = 0; se < n_source_elements_; se++) {
       source_[se] += external_source_[se];
+      source_gradients_[se] += external_source_gradients_[se];
     }
   }
 
@@ -128,7 +170,7 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
   double volume_normalization_factor =
     1.0 / (total_active_distance_per_iteration * simulation::current_batch);
 
-// Normalize flux to total distance travelled by all rays this iteration
+  // Normalize flux to total distance travelled by all rays this iteration
 #pragma omp parallel for
   for (int64_t e = 0; e < scalar_flux_new_.size(); e++) {
     scalar_flux_new_[e] *= normalization_factor;
@@ -150,6 +192,15 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
       mom_matrix_[sr] = mom_matrix_t_[sr];
       mom_matrix_[sr] *= inv_volume;
     }
+  }
+}
+
+void LinearSourceDomain::compute_uncollided_scalar_flux()
+{
+#pragma omp parallel for
+  for (int64_t e = 0; e < scalar_flux_new_.size(); e++) {
+    scalar_uncollided_flux_[e] = scalar_flux_new_[e];
+    flux_moments_uncollided_[e] = flux_moments_new_[e];
   }
 }
 
@@ -192,6 +243,7 @@ int64_t LinearSourceDomain::add_source_to_scalar_flux()
         // previous iteration, then we simply set the new scalar flux to be
         // equal to the contribution from the flat source alone.
         scalar_flux_new_[idx] = source_[idx];
+        // ??? flux_moments_new_[idx] = ????
       } else {
         // If the FSR was not hit this iteration, and it has never been hit in
         // any iteration (i.e., volume is zero), then we want to set this to 0
@@ -203,6 +255,88 @@ int64_t LinearSourceDomain::add_source_to_scalar_flux()
   }
 
   return n_hits;
+}
+
+// Normalize Uncollided Flux
+void LinearSourceDomain::normalize_uncollided_scalar_flux(
+  double number_of_particles)
+{
+  // multiply by simulation volume
+  float normalization_factor = (1.0f) / number_of_particles;
+
+  // Determine Source_total Scailing factor if first collided
+  double user_external_source_strength = 0.0;
+  for (auto& ext_source : model::external_sources) {
+    user_external_source_strength += ext_source->strength();
+  }
+
+  double source_scailing_factor =
+    user_external_source_strength * normalization_factor;
+
+#pragma omp parallel for
+  for (int64_t e = 0; e < scalar_uncollided_flux_.size(); e++) {
+    scalar_uncollided_flux_[e] *= source_scailing_factor;
+    flux_moments_uncollided_[e] *= source_scailing_factor;
+  }
+}
+
+// Compute First Collided flux
+void LinearSourceDomain::compute_first_collided_flux()
+{
+  const int t = 0;
+  const int a = 0;
+
+#pragma omp parallel for
+  for (int sr = 0; sr < n_source_regions_; sr++) {
+
+    int material = material_[sr];
+    MomentMatrix invM = mom_matrix_[sr].inverse();
+
+    for (int e_out = 0; e_out < negroups_; e_out++) {
+      float sigma_t = data::mg.macro_xs_[material].get_xs(
+        MgxsType::TOTAL, e_out, nullptr, nullptr, nullptr, t, a);
+
+      float scatter_flat = 0.0f;
+      MomentArray scatter_linear = {0.0, 0.0, 0.0};
+
+      for (int e_in = 0; e_in < negroups_; e_in++) {
+        // Handles for the flat and linear components of the flux
+        float flux_flat = scalar_uncollided_flux_[sr * negroups_ + e_in];
+        MomentArray flux_linear =
+          flux_moments_uncollided_[sr * negroups_ + e_in];
+
+        // Handles for cross sections
+        float sigma_s = data::mg.macro_xs_[material].get_xs(
+          MgxsType::NU_SCATTER, e_in, &e_out, nullptr, nullptr, t, a);
+
+        // Compute source terms for flat and linear components of the flux
+        scatter_flat += sigma_s * flux_flat;
+        scatter_linear += sigma_s * flux_linear;
+      }
+
+      // Compute the flat source term
+      scalar_first_collided_flux_[sr * negroups_ + e_out] =
+        (scatter_flat) / sigma_t;
+
+      // Compute the linear source terms
+      flux_moments_first_collided_[sr * negroups_ + e_out] =
+        invM * ((scatter_linear) / sigma_t);
+    }
+  }
+}
+
+void LinearSourceDomain::uncollided_moments()
+{
+
+#pragma omp parallel for
+  for (int sr = 0; sr < n_source_regions_; sr++) {
+    MomentMatrix invM = mom_matrix_[sr].inverse();
+
+    for (int g = 0; g < negroups_; g++) {
+      int64_t idx = (sr * negroups_) + g;
+      flux_moments_uncollided_[idx] = invM * flux_moments_uncollided_[idx];
+    }
+  }
 }
 
 void LinearSourceDomain::flux_swap()
@@ -232,9 +366,9 @@ void LinearSourceDomain::all_reduce_replicated_source_regions()
   // We are going to assume we can safely cast Position, MomentArray,
   // and MomentMatrix to contiguous arrays of doubles for the MPI
   // allreduce operation. This is a safe assumption as typically
-  // compilers will at most pad to 8 byte boundaries. If a new FP32 MomentArray
-  // type is introduced, then there will likely be padding, in which case this
-  // function will need to become more complex.
+  // compilers will at most pad to 8 byte boundaries. If a new FP32
+  // MomentArray type is introduced, then there will likely be padding, in
+  // which case this function will need to become more complex.
   if (sizeof(MomentArray) != 3 * sizeof(double) ||
       sizeof(MomentMatrix) != 6 * sizeof(double)) {
     fatal_error("Unexpected buffer padding in linear source domain reduction.");
@@ -254,6 +388,7 @@ void LinearSourceDomain::all_reduce_replicated_source_regions()
 double LinearSourceDomain::evaluate_flux_at_point(
   Position r, int64_t sr, int g) const
 {
+  // RR neutron flux
   float phi_flat = FlatSourceDomain::evaluate_flux_at_point(r, sr, g);
 
   Position local_r = r - centroid_[sr];
@@ -263,7 +398,49 @@ double LinearSourceDomain::evaluate_flux_at_point(
   MomentMatrix invM = mom_matrix_[sr].inverse();
   MomentArray phi_solved = invM * phi_linear;
 
+  if (RandomRay::first_collision_source_) {
+    phi_solved += flux_moments_uncollided_[sr * negroups_ + g];
+  }
+
   return phi_flat + phi_solved.dot(local_r);
+}
+
+double LinearSourceDomain::evaluate_uncollided_flux_at_point(
+  Position r, int64_t sr, int g) const
+{
+  // Uncollided flux 
+  float phi_flat = FlatSourceDomain::evaluate_uncollided_flux_at_point(r, sr, g);
+
+  Position local_r = r - centroid_[sr];
+  MomentArray phi_linear = flux_moments_uncollided_[sr * negroups_ + g];
+
+  return phi_flat + phi_linear.dot(local_r);
+}
+
+double LinearSourceDomain::evaluate_external_source_at_point(
+  Position r, int64_t sr, int g) const
+{
+  // External source 
+  float phi_flat = FlatSourceDomain::evaluate_external_source_at_point(r, sr, g);
+
+  Position local_r = r - centroid_[sr];
+  MomentArray phi_linear = external_source_gradients_[sr * negroups_ + g];
+
+  return phi_flat + phi_linear.dot(local_r);
+}
+
+void LinearSourceDomain::update_volume_uncollided_flux()
+{
+#pragma omp parallel for
+  for (int sr = 0; sr < n_source_regions_; sr++) {
+    double volume = volume_[sr] * simulation_volume_;
+    if (volume > 0.0) {
+      for (int g = 0; g < negroups_; g++) {
+        scalar_uncollided_flux_[sr * negroups_ + g] *= (1.0 / volume);
+        flux_moments_uncollided_[sr * negroups_ + g] *= (1.0 / volume);
+      }
+    }
+  }
 }
 
 } // namespace openmc

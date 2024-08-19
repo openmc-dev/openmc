@@ -349,6 +349,7 @@ public:
 
   vector<int32_t> offset_; //!< Distribcell offset table
 
+  // Accessors
   const GeometryType& geom_type() const { return geom_type_; }
   GeometryType& geom_type() { return geom_type_; }
 

@@ -1174,7 +1174,7 @@ class Model:
                                          f"{dag_verse.filename} not found in "
                                          f"the Model. Please add it to the "
                                          f"Model. Please note that uwuw "
-                                         f"formalism is not compatible with "
+                                         f"materials are not compatible with "
                                          f"differentiate_depletable_mats yet.")
                 dag_verse.mat_assignment = deplete_mat_dict
                             

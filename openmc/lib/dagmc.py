@@ -1,12 +1,10 @@
 import sys
-
 from ctypes import c_int, c_int32, POINTER, c_size_t
 
 import numpy as np
 
 from . import _dll
 from .error import _error_handler
-
 
 
 # DAGMC functions

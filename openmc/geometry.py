@@ -405,7 +405,7 @@ class Geometry:
             all_nuclides |= set(material.get_nuclides())
         return sorted(all_nuclides)
     
-    def get_all_dag_universes(self) -> typing.Dict[int, openmc.DAGMCUniverse]:
+    def get_all_dagmc_universes(self) -> typing.Dict[int, openmc.DAGMCUniverse]:
         """Return all universes in the geometry.
 
         Returns

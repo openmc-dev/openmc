@@ -345,21 +345,20 @@ void Mesh::material_volumes_raytrace(
     }
   }
 
-  // for (int i = 0; i < this->n_bins(); ++i) {
-  //   for (int j = 0; j < max_materials; ++j) {
-  //     int i_material = result.materials(i, j);
-  //     if (i_material == -2)
-  //       break;
+  // Normalize based on known volumes of elements
+  for (int i = 0; i < this->n_bins(); ++i) {
+    // Estimated total volume in element i
+    double volume = 0.0;
+    for (int j = 0; j < max_materials; ++j) {
+      volume += result.volumes(i, j);
+    }
 
-  //     std::string mat_id =
-  //       (i_material == -1)
-  //         ? "void"
-  //         : fmt::format("{}", model::materials[i_material]->id());
-  //     double volume = result.volumes(i, j);
-  //     fmt::print("Element {}, Material ID={}, volume={}\n", i, mat_id,
-  //     volume);
-  //   }
-  // }
+    // Renormalize volumes based on known volume of elemnet i
+    double norm = this->volume(i) / volume;
+    for (int j = 0; j < max_materials; ++j) {
+      result.volumes(i, j) *= norm;
+    }
+  }
 }
 
 //==============================================================================

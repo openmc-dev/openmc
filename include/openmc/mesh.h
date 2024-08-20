@@ -216,7 +216,7 @@ public:
 
   virtual std::string get_mesh_type() const = 0;
 
-  //! Determine volume of materials within a single mesh elemenet
+  //! Determine volume of materials within a single mesh element
   //
   //! \param[in] n_sample Number of samples within each element
   //! \param[in] bin Index of mesh element
@@ -226,7 +226,7 @@ public:
   int material_volumes(int n_sample, int bin, gsl::span<MaterialVolume> volumes,
     uint64_t* seed) const;
 
-  //! Determine volume of materials within a single mesh elemenet
+  //! Determine volume of materials within a single mesh element
   //
   //! \param[in] n_sample Number of samples within each element
   //! \param[in] bin Index of mesh element
@@ -235,7 +235,7 @@ public:
   vector<MaterialVolume> material_volumes(
     int n_sample, int bin, uint64_t* seed) const;
 
-  //! Determine volume of materials within each mesh elemenet by raytracing
+  //! Determine volume of materials within each mesh element by raytracing
   //
   //! \param[in] ny Number of samples in y direction
   //! \param[in] nz Number of samples in z direction

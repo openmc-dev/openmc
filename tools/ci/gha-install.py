@@ -13,7 +13,7 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
     # Build in debug mode by default with support for MCPL
     if sys.platform == 'win32':
         work_dir = os.environ.get('GITHUB_WORKSPACE')
-        cmake_cmd = ['cmake', '-DCMAKE_BUILD_TYPE=Debug', '-DCMAKE_TOOLCHAIN_FILE='+work_dir+'\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake', '-DVCPKG_TARGET_TRIPLET=x64-windows-static']
+        cmake_cmd = ['cmake', '-DCMAKE_BUILD_TYPE=Debug', '-DCMAKE_TOOLCHAIN_FILE='+work_dir+'\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake', '-DVCPKG_TARGET_TRIPLET=x64-windows-static', '-DVCPKG_DEFAULT_TRIPLET=x64-windows-static']
     else:
         cmake_cmd = ['cmake', '-DCMAKE_BUILD_TYPE=Debug', '-DOPENMC_USE_MCPL=on']
 
@@ -49,7 +49,8 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
         cmake_cmd.append(f'-DCMAKE_PREFIX_PATH={ncrystal_cmake_path}')
 
     # Build in coverage mode for coverage testing
-    cmake_cmd.append('-DOPENMC_ENABLE_COVERAGE=on')
+    if sys.platform != 'win32':
+        cmake_cmd.append('-DOPENMC_ENABLE_COVERAGE=on')
 
     # Build and install
     cmake_cmd.append('..')

@@ -211,6 +211,12 @@ jobs:
         run: |
           ${{github.workspace}}\tools\ci\gha-install.ps1
 
+      - name: Breakpoint For Debugging
+        uses: namespacelabs/breakpoint-action@v0
+        with:
+          duration: 30m
+          authorized-users: HunterBelanger
+
       - name: Before
         shell: pwsh
         run: ${{github.workspace}}\tools\ci\download-xs.ps1

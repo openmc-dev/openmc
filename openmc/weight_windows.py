@@ -1,6 +1,6 @@
 from __future__ import annotations
 from numbers import Real, Integral
-from typing import Iterable, List, Optional, Dict, Sequence
+from collections.abc import Iterable, Sequence
 import warnings
 
 import lxml.etree as ET
@@ -110,15 +110,15 @@ class WeightWindows(IDManagerMixin):
         self,
         mesh: MeshBase,
         lower_ww_bounds: Iterable[float],
-        upper_ww_bounds: Optional[Iterable[float]] = None,
-        upper_bound_ratio: Optional[float] = None,
-        energy_bounds: Optional[Iterable[Real]] = None,
+        upper_ww_bounds: Iterable[float] | None = None,
+        upper_bound_ratio: float | None = None,
+        energy_bounds: Iterable[Real] | None = None,
         particle_type: str = 'neutron',
         survival_ratio: float = 3,
-        max_lower_bound_ratio: Optional[float] = None,
+        max_lower_bound_ratio: float | None = None,
         max_split: int = 10,
         weight_cutoff: float = 1.e-38,
-        id: Optional[int] = None
+        id: int | None = None
     ):
         self.mesh = mesh
         self.id = id
@@ -353,7 +353,7 @@ class WeightWindows(IDManagerMixin):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element, meshes: Dict[int, MeshBase]) -> WeightWindows:
+    def from_xml_element(cls, elem: ET.Element, meshes: dict[int, MeshBase]) -> WeightWindows:
         """Generate weight window settings from an XML element
 
         Parameters
@@ -407,7 +407,7 @@ class WeightWindows(IDManagerMixin):
         )
 
     @classmethod
-    def from_hdf5(cls, group: h5py.Group, meshes: Dict[int, MeshBase]) -> WeightWindows:
+    def from_hdf5(cls, group: h5py.Group, meshes: dict[int, MeshBase]) -> WeightWindows:
         """Create weight windows from HDF5 group
 
         Parameters
@@ -457,7 +457,7 @@ class WeightWindows(IDManagerMixin):
         )
 
 
-def wwinp_to_wws(path: PathLike) -> List[WeightWindows]:
+def wwinp_to_wws(path: PathLike) -> list[WeightWindows]:
     """Create WeightWindows instances from a wwinp file
 
     .. versionadded:: 0.13.1
@@ -698,7 +698,7 @@ class WeightWindowGenerator:
     def __init__(
         self,
         mesh: openmc.MeshBase,
-        energy_bounds: Optional[Sequence[float]] = None,
+        energy_bounds: Sequence[float] | None = None,
         particle_type: str = 'neutron',
         method: str = 'magic',
         max_realizations: int = 1,

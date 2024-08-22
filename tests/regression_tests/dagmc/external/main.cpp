@@ -5,6 +5,7 @@
 #include "openmc/geometry.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/material.h"
+#include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include <iostream>
 
@@ -14,7 +15,12 @@ int main(int argc, char* argv[])
   int openmc_err;
 
   // Initialise OpenMC
+#ifdef OPENMC_MPI
+  MPI_Comm world = MPI_COMM_WORLD;
+  openmc_err = openmc_init(argc, argv, &world);
+#else
   openmc_err = openmc_init(argc, argv, nullptr);
+#endif
   if (openmc_err == -1) {
     // This happens for the -h and -v flags
     return EXIT_SUCCESS;
@@ -103,6 +109,10 @@ int main(int argc, char* argv[])
   openmc_err = openmc_finalize();
   if (openmc_err)
     fatal_error(openmc_err_msg);
+
+#ifdef OPENMC_MPI
+  MPI_Finalize();
+#endif
 
   return EXIT_SUCCESS;
 }

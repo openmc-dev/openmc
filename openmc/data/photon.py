@@ -28,10 +28,10 @@ CM_PER_ANGSTROM = 1.0e-8
 R0 = CM_PER_ANGSTROM * PLANCK_C / (2.0 * pi * FINE_STRUCTURE * MASS_ELECTRON_EV)
 
 # Electron subshell labels
-_SUBSHELLS = [None, 'K', 'L1', 'L2', 'L3', 'M1', 'M2', 'M3', 'M4', 'M5',
+_SUBSHELLS = (None, 'K', 'L1', 'L2', 'L3', 'M1', 'M2', 'M3', 'M4', 'M5',
               'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 'O1', 'O2', 'O3',
               'O4', 'O5', 'O6', 'O7', 'O8', 'O9', 'P1', 'P2', 'P3', 'P4',
-              'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11', 'Q1', 'Q2', 'Q3']
+              'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11', 'Q1', 'Q2', 'Q3')
 
 _REACTION_NAME = {
     501: ('Total photon interaction', 'total'),
@@ -124,7 +124,7 @@ class AtomicRelaxation(EqualityMixin):
         Dictionary indicating the number of electrons in a subshell when neutral
         (values) for given subshells (keys). The subshells should be given as
         strings, e.g., 'K', 'L1', 'L2', etc.
-    transitions : pandas.DataFrame
+    transitions : dict of str to pandas.DataFrame
         Dictionary indicating allowed transitions and their probabilities
         (values) for given subshells (keys). The subshells should be given as
         strings, e.g., 'K', 'L1', 'L2', etc. The transitions are represented as
@@ -363,8 +363,9 @@ class AtomicRelaxation(EqualityMixin):
                 df = pd.DataFrame(sub_group['transitions'][()],
                                   columns=columns)
                 # Replace float indexes back to subshell strings
-                df[columns[:2]] = df[columns[:2]].replace(
-                              np.arange(float(len(_SUBSHELLS))), _SUBSHELLS)
+                with pd.option_context('future.no_silent_downcasting', True):
+                    df[columns[:2]] = df[columns[:2]].replace(
+                                np.arange(float(len(_SUBSHELLS))), _SUBSHELLS)
                 transitions[shell] = df
 
         return cls(binding_energy, num_electrons, transitions)
@@ -387,8 +388,9 @@ class AtomicRelaxation(EqualityMixin):
 
         # Write transition data with replacements
         if shell in self.transitions:
-            df = self.transitions[shell].replace(
-                 _SUBSHELLS, range(len(_SUBSHELLS)))
+            with pd.option_context('future.no_silent_downcasting', True):
+                df = self.transitions[shell].replace(
+                    _SUBSHELLS, range(len(_SUBSHELLS)))
             group.create_dataset('transitions', data=df.values.astype(float))
 
 
@@ -451,10 +453,10 @@ class IncidentPhoton(EqualityMixin):
         if mt in self.reactions:
             return self.reactions[mt]
         else:
-            raise KeyError('No reaction with MT={}.'.format(mt))
+            raise KeyError(f'No reaction with MT={mt}.')
 
     def __repr__(self):
-        return "<IncidentPhoton: {}>".format(self.name)
+        return f"<IncidentPhoton: {self.name}>"
 
     def __iter__(self):
         return iter(self.reactions.values())
@@ -508,7 +510,7 @@ class IncidentPhoton(EqualityMixin):
         # Get atomic number based on name of ACE table
         zaid, xs = ace.name.split('.')
         if not xs.endswith('p'):
-            raise TypeError("{} is not a photoatomic transport ACE table.".format(ace))
+            raise TypeError(f"{ace} is not a photoatomic transport ACE table.")
         Z = get_metadata(int(zaid))[2]
 
         # Read each reaction
@@ -638,7 +640,7 @@ class IncidentPhoton(EqualityMixin):
             with h5py.File(filename, 'r') as f:
                 _COMPTON_PROFILES['pz'] = f['pz'][()]
                 for i in range(1, 101):
-                    group = f['{:03}'.format(i)]
+                    group = f[f'{i:03}']
                     num_electrons = group['num_electrons'][()]
                     binding_energy = group['binding_energy'][()]*EV_PER_MEV
                     J = group['J'][()]
@@ -713,7 +715,7 @@ class IncidentPhoton(EqualityMixin):
 
         # Check for necessary reactions
         for mt in (502, 504, 522):
-            assert mt in data, "Reaction {} not found".format(mt)
+            assert mt in data, f"Reaction {mt} not found"
 
         # Read atomic relaxation
         data.atomic_relaxation = AtomicRelaxation.from_hdf5(group['subshells'])
@@ -836,7 +838,7 @@ class IncidentPhoton(EqualityMixin):
             filename = os.path.join(os.path.dirname(__file__), 'density_effect.h5')
             with h5py.File(filename, 'r') as f:
                 for i in range(1, 101):
-                    group = f['{:03}'.format(i)]
+                    group = f[f'{i:03}']
                     _BREMSSTRAHLUNG[i] = {
                         'I': group.attrs['I'],
                         'num_electrons': group['num_electrons'][()],
@@ -924,10 +926,9 @@ class PhotonReaction(EqualityMixin):
 
     def __repr__(self):
         if self.mt in _REACTION_NAME:
-            return "<Photon Reaction: MT={} {}>".format(
-                self.mt, _REACTION_NAME[self.mt][0])
+            return f"<Photon Reaction: MT={self.mt} {_REACTION_NAME[self.mt][0]}>"
         else:
-            return "<Photon Reaction: MT={}>".format(self.mt)
+            return f"<Photon Reaction: MT={self.mt}>"
 
     @property
     def anomalous_real(self):

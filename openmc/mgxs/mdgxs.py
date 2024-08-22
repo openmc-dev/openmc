@@ -20,7 +20,7 @@ MDGXS_TYPES = (
     'delayed-nu-fission matrix'
 )
 
-# Maximum number of delayed groups, from src/constants.F90
+# Maximum number of delayed groups, from include/openmc/constants.h
 MAX_DELAYED_GROUPS = 8
 
 
@@ -612,7 +612,7 @@ class MDGXS(MGXS):
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
         # Generate the header for an individual XS
-        xs_header = '\tCross Sections [{0}]:'.format(self.get_units(xs_type))
+        xs_header = f'\tCross Sections [{self.get_units(xs_type)}]:'
 
         # If cross section data has not been computed, only print string header
         if self.tallies is None:
@@ -641,7 +641,7 @@ class MDGXS(MGXS):
                     string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
 
                 # Add the cross section header
-                string += '{0: <16}\n'.format(xs_header)
+                string += f'{xs_header: <16}\n'
 
                 for delayed_group in self.delayed_groups:
 
@@ -875,7 +875,7 @@ class MDGXS(MGXS):
         # Sort the dataframe by domain type id (e.g., distribcell id) and
         # energy groups such that data is from fast to thermal
         if self.domain_type == 'mesh':
-            mesh_str = 'mesh {0}'.format(self.domain.id)
+            mesh_str = f'mesh {self.domain.id}'
             df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'y'),
                                (mesh_str, 'z')] + columns, inplace=True)
         else:
@@ -2496,7 +2496,7 @@ class MatrixMDGXS(MDGXS):
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
         # Generate the header for an individual XS
-        xs_header = '\tCross Sections [{0}]:'.format(self.get_units(xs_type))
+        xs_header = f'\tCross Sections [{self.get_units(xs_type)}]:'
 
         # If cross section data has not been computed, only print string header
         if self.tallies is None:
@@ -2532,7 +2532,7 @@ class MatrixMDGXS(MDGXS):
                     string += '{: <16}=\t{}\n'.format('\tNuclide', nuclide)
 
                 # Build header for cross section type
-                string += '{: <16}\n'.format(xs_header)
+                string += f'{xs_header: <16}\n'
 
                 if self.delayed_groups is not None:
 

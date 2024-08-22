@@ -10,7 +10,6 @@ filesystem.
 
 import copy
 from warnings import warn
-from typing import Optional
 
 import numpy as np
 from uncertainties import ufloat
@@ -34,7 +33,7 @@ from .helpers import (
 __all__ = ["CoupledOperator", "Operator", "OperatorResult"]
 
 
-def _find_cross_sections(model: Optional[str] = None):
+def _find_cross_sections(model: str | None = None):
     """Determine cross sections to use for depletion
 
     Parameters
@@ -291,7 +290,7 @@ class CoupledOperator(OpenMCOperator):
         # on this process
         if comm.size != 1:
             prev_results = self.prev_res
-            self.prev_res = Results()
+            self.prev_res = Results(filename=None)
             mat_indexes = _distribute(range(len(self.burnable_mats)))
             for res_obj in prev_results:
                 new_res = res_obj.distribute(self.local_mats, mat_indexes)
@@ -518,7 +517,7 @@ class CoupledOperator(OpenMCOperator):
 
         """
         openmc.lib.statepoint_write(
-            "openmc_simulation_n{}.h5".format(step),
+            f"openmc_simulation_n{step}.h5",
             write_source=False)
 
     def finalize(self):

@@ -44,6 +44,10 @@
 #include "libmesh/numeric_vector.h"
 #endif
 
+#ifdef DAGMC
+#include "moab/FileOptions.hpp"
+#endif
+
 namespace openmc {
 
 //==============================================================================
@@ -291,7 +295,6 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
   // check if a length unit multiplier was specified
   if (check_for_node(node, "length_multiplier")) {
     length_multiplier_ = std::stod(get_node_value(node, "length_multiplier"));
-    specified_length_multiplier_ = true;
   }
 
   // get the filename of the unstructured mesh to load
@@ -305,11 +308,37 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
       "No filename supplied for unstructured mesh with ID: {}", id_));
   }
 
+  if (check_for_node(node, "options")) {
+    options_ = get_node_value(node, "options");
+  }
+
   // check if mesh tally data should be written with
   // statepoint files
   if (check_for_node(node, "output")) {
     output_ = get_node_value_bool(node, "output");
   }
+}
+
+void UnstructuredMesh::determine_bounds()
+{
+  double xmin = INFTY;
+  double ymin = INFTY;
+  double zmin = INFTY;
+  double xmax = -INFTY;
+  double ymax = -INFTY;
+  double zmax = -INFTY;
+  int n = this->n_vertices();
+  for (int i = 0; i < n; ++i) {
+    auto v = this->vertex(i);
+    xmin = std::min(v.x, xmin);
+    ymin = std::min(v.y, ymin);
+    zmin = std::min(v.z, zmin);
+    xmax = std::max(v.x, xmax);
+    ymax = std::max(v.y, ymax);
+    zmax = std::max(v.z, zmax);
+  }
+  lower_left_ = {xmin, ymin, zmin};
+  upper_right_ = {xmax, ymax, zmax};
 }
 
 Position UnstructuredMesh::sample_tet(
@@ -367,8 +396,11 @@ void UnstructuredMesh::to_hdf5(hid_t group) const
   write_dataset(mesh_group, "type", mesh_type);
   write_dataset(mesh_group, "filename", filename_);
   write_dataset(mesh_group, "library", this->library());
+  if (!options_.empty()) {
+    write_attribute(mesh_group, "options", options_);
+  }
 
-  if (specified_length_multiplier_)
+  if (length_multiplier_ > 0.0)
     write_dataset(mesh_group, "length_multiplier", length_multiplier_);
 
   // write vertex coordinates
@@ -428,9 +460,6 @@ void UnstructuredMesh::to_hdf5(hid_t group) const
 void UnstructuredMesh::set_length_multiplier(double length_multiplier)
 {
   length_multiplier_ = length_multiplier;
-
-  if (length_multiplier_ != 1.0)
-    specified_length_multiplier_ = true;
 }
 
 ElementType UnstructuredMesh::element_type(int bin) const
@@ -582,7 +611,7 @@ void StructuredMesh::raytrace_mesh(
 
   // Compute the length of the entire track.
   double total_distance = (r1 - r0).norm();
-  if (total_distance == 0.0)
+  if (total_distance == 0.0 && settings::solver_type != SolverType::RANDOM_RAY)
     return;
 
   const int n = n_dimension_;
@@ -1365,8 +1394,10 @@ int CylindricalMesh::set_grid()
 
   full_phi_ = (grid_[1].front() == 0.0) && (grid_[1].back() == 2.0 * PI);
 
-  lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
-  upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
+  lower_left_ = {origin_[0] - grid_[0].back(), origin_[1] - grid_[0].back(),
+    origin_[2] + grid_[2].front()};
+  upper_right_ = {origin_[0] + grid_[0].back(), origin_[1] + grid_[0].back(),
+    origin_[2] + grid_[2].back()};
 
   return 0;
 }
@@ -1680,8 +1711,9 @@ int SphericalMesh::set_grid()
   full_theta_ = (grid_[1].front() == 0.0) && (grid_[1].back() == PI);
   full_phi_ = (grid_[2].front() == 0.0) && (grid_[2].back() == 2 * PI);
 
-  lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
-  upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
+  double r = grid_[0].back();
+  lower_left_ = {origin_[0] - r, origin_[1] - r, origin_[2] - r};
+  upper_right_ = {origin_[0] + r, origin_[1] + r, origin_[2] + r};
 
   return 0;
 }
@@ -1889,6 +1921,26 @@ extern "C" int openmc_mesh_get_volumes(int32_t index, double* volumes)
   for (int i = 0; i < model::meshes[index]->n_bins(); ++i) {
     volumes[i] = model::meshes[index]->volume(i);
   }
+  return 0;
+}
+
+//! Get the bounding box of a mesh
+extern "C" int openmc_mesh_bounding_box(int32_t index, double* ll, double* ur)
+{
+  if (int err = check_mesh(index))
+    return err;
+
+  BoundingBox bbox = model::meshes[index]->bounding_box();
+
+  // set lower left corner values
+  ll[0] = bbox.xmin;
+  ll[1] = bbox.ymin;
+  ll[2] = bbox.zmin;
+
+  // set upper right corner values
+  ur[0] = bbox.xmax;
+  ur[1] = bbox.ymax;
+  ur[2] = bbox.zmax;
   return 0;
 }
 
@@ -2231,7 +2283,7 @@ void MOABMesh::initialize()
     fatal_error("Failed to add tetrahedra to an entity set.");
   }
 
-  if (specified_length_multiplier_) {
+  if (length_multiplier_ > 0.0) {
     // get the connectivity of all tets
     moab::Range adj;
     rval = mbi_->get_adjacencies(ehs_, 0, true, adj, moab::Interface::UNION);
@@ -2258,6 +2310,9 @@ void MOABMesh::initialize()
       }
     }
   }
+
+  // Determine bounds of mesh
+  this->determine_bounds();
 }
 
 void MOABMesh::prepare_for_tallies()
@@ -2291,6 +2346,7 @@ void MOABMesh::build_kdtree(const moab::Range& all_tets)
 {
   moab::Range all_tris;
   int adj_dim = 2;
+  write_message("Getting tet adjacencies...", 7);
   moab::ErrorCode rval = mbi_->get_adjacencies(
     all_tets, adj_dim, true, all_tris, moab::Interface::UNION);
   if (rval != moab::MB_SUCCESS) {
@@ -2309,10 +2365,20 @@ void MOABMesh::build_kdtree(const moab::Range& all_tets)
   all_tets_and_tris.merge(all_tris);
 
   // create a kd-tree instance
+  write_message("Building adaptive k-d tree for tet mesh...", 7);
   kdtree_ = make_unique<moab::AdaptiveKDTree>(mbi_.get());
 
-  // build the tree
-  rval = kdtree_->build_tree(all_tets_and_tris, &kdtree_root_);
+  // Determine what options to use
+  std::ostringstream options_stream;
+  if (options_.empty()) {
+    options_stream << "MAX_DEPTH=20;PLANE_SET=2;";
+  } else {
+    options_stream << options_;
+  }
+  moab::FileOptions file_opts(options_stream.str().c_str());
+
+  // Build the k-d tree
+  rval = kdtree_->build_tree(all_tets_and_tris, &kdtree_root_, &file_opts);
   if (rval != moab::MB_SUCCESS) {
     fatal_error("Failed to construct KDTree for the "
                 "unstructured mesh file: " +
@@ -2899,7 +2965,7 @@ void LibMesh::initialize()
   // assuming that unstructured meshes used in OpenMC are 3D
   n_dimension_ = 3;
 
-  if (specified_length_multiplier_) {
+  if (length_multiplier_ > 0.0) {
     libMesh::MeshTools::Modification::scale(*m_, length_multiplier_);
   }
   // if OpenMC is managing the libMesh::MeshBase instance, prepare the mesh.
@@ -2934,6 +3000,10 @@ void LibMesh::initialize()
 
   // bounding box for the mesh for quick rejection checks
   bbox_ = libMesh::MeshTools::create_bounding_box(*m_);
+  libMesh::Point ll = bbox_.min();
+  libMesh::Point ur = bbox_.max();
+  lower_left_ = {ll(0), ll(1), ll(2)};
+  upper_right_ = {ur(0), ur(1), ur(2)};
 }
 
 // Sample position within a tet for LibMesh type tets

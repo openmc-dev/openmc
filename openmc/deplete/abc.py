@@ -10,8 +10,6 @@ from collections.abc import Iterable, Callable
 from copy import deepcopy
 from inspect import signature
 from numbers import Real, Integral
-from contextlib import contextmanager
-import os
 from pathlib import Path
 import time
 from typing import Optional, Union, Sequence
@@ -22,6 +20,7 @@ from uncertainties import ufloat
 
 from openmc.checkvalue import check_type, check_greater_than, PathLike
 from openmc.mpi import comm
+from openmc.utility_funcs import change_directory
 from openmc import Material
 from .stepresult import StepResult
 from .chain import Chain
@@ -60,25 +59,6 @@ try:
 except AttributeError:
     # Can't set __doc__ on properties on Python 3.4
     pass
-
-@contextmanager
-def change_directory(output_dir):
-    """
-    Helper function for managing the current directory.
-
-    Parameters
-    ----------
-    output_dir : pathlib.Path
-        Directory to switch to.
-    """
-    orig_dir  = os.getcwd()
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    try:
-        os.chdir(output_dir)
-        yield
-    finally:
-        os.chdir(orig_dir)
 
 
 class TransportOperator(ABC):
@@ -647,7 +627,7 @@ class Integrator(ABC):
                 days = watt_days_per_kg * kilograms / rate
                 seconds.append(days*_SECONDS_PER_DAY)
             else:
-                raise ValueError("Invalid timestep unit '{}'".format(unit))
+                raise ValueError(f"Invalid timestep unit '{unit}'")
 
         self.timesteps = np.asarray(seconds)
         self.source_rates = np.asarray(source_rates)
@@ -664,8 +644,7 @@ class Integrator(ABC):
                 self._solver = CRAM16
             else:
                 raise ValueError(
-                    "Solver {} not understood. Expected 'cram48' or "
-                    "'cram16'".format(solver))
+                    f"Solver {solver} not understood. Expected 'cram48' or 'cram16'")
         else:
             self.solver = solver
 
@@ -677,14 +656,13 @@ class Integrator(ABC):
     def solver(self, func):
         if not isinstance(func, Callable):
             raise TypeError(
-                "Solver must be callable, not {}".format(type(func)))
+                f"Solver must be callable, not {type(func)}")
         try:
             sig = signature(func)
         except ValueError:
             # Guard against callables that aren't introspectable, e.g.
             # fortran functions wrapped by F2PY
-            warn("Could not determine arguments to {}. Proceeding "
-                 "anyways".format(func))
+            warn(f"Could not determine arguments to {func}. Proceeding anyways")
             self._solver = func
             return
 
@@ -696,8 +674,7 @@ class Integrator(ABC):
         for ix, param in enumerate(sig.parameters.values()):
             if param.kind in {param.KEYWORD_ONLY, param.VAR_KEYWORD}:
                 raise ValueError(
-                    "Keyword arguments like {} at position {} are not "
-                    "allowed".format(ix, param))
+                    f"Keyword arguments like {ix} at position {param} are not allowed")
 
         self._solver = func
 
@@ -809,7 +786,7 @@ class Integrator(ABC):
         path : PathLike
             Path to file to write. Defaults to 'depletion_results.h5'.
 
-            .. versionadded:: 0.14.1
+            .. versionadded:: 0.15.0
         """
         with change_directory(self.operator.output_dir):
             n = self.operator.initial_condition()
@@ -848,7 +825,7 @@ class Integrator(ABC):
                 print(f"[openmc.deplete] t={t} (final operator evaluation)")
             res_list = [self.operator(n, source_rate if final_step else 0.0)]
             StepResult.save(self.operator, [n], res_list, [t, t],
-                         source_rate, self._i_res + len(self), proc_time)
+                         source_rate, self._i_res + len(self), proc_time, path)
             self.operator.write_bos_data(len(self) + self._i_res)
 
         self.operator.finalize()
@@ -1016,7 +993,7 @@ class SIIntegrator(Integrator):
         path : PathLike
             Path to file to write. Defaults to 'depletion_results.h5'.
 
-            .. versionadded:: 0.14.1
+            .. versionadded:: 0.15.0
         """
         with change_directory(self.operator.output_dir):
             n = self.operator.initial_condition()

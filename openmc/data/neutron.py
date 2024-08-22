@@ -16,8 +16,7 @@ from .endf import (
     Evaluation, SUM_RULES, get_head_record, get_tab1_record, get_evaluations)
 from .fission_energy import FissionEnergyRelease
 from .function import Tabulated1D, Sum, ResonancesWithBackground
-from .grid import linearize, thin
-from .njoy import make_ace
+from .njoy import make_ace, make_pendf
 from .product import Product
 from .reaction import Reaction, _get_photon_products_ace, FISSION_MTS
 from . import resonance as res
@@ -122,10 +121,10 @@ class IncidentNeutron(EqualityMixin):
             if len(mts) > 0:
                 return self._get_redundant_reaction(mt, mts)
             else:
-                raise KeyError('No reaction with MT={}.'.format(mt))
+                raise KeyError(f'No reaction with MT={mt}.')
 
     def __repr__(self):
-        return "<IncidentNeutron: {}>".format(self.name)
+        return f"<IncidentNeutron: {self.name}>"
 
     def __iter__(self):
         return iter(self.reactions.values())
@@ -231,7 +230,7 @@ class IncidentNeutron(EqualityMixin):
 
     @property
     def temperatures(self):
-        return ["{}K".format(int(round(kT / K_BOLTZMANN))) for kT in self.kTs]
+        return [f"{int(round(kT / K_BOLTZMANN))}K" for kT in self.kTs]
 
     @property
     def atomic_symbol(self):
@@ -261,7 +260,7 @@ class IncidentNeutron(EqualityMixin):
         # Check if temprature already exists
         strT = data.temperatures[0]
         if strT in self.temperatures:
-            warn('Cross sections at T={} already exist.'.format(strT))
+            warn(f'Cross sections at T={strT} already exist.')
             return
 
         # Check that name matches
@@ -286,7 +285,7 @@ class IncidentNeutron(EqualityMixin):
         if strT in data.urr:
             self.urr[strT] = data.urr[strT]
 
-    def add_elastic_0K_from_endf(self, filename, overwrite=False):
+    def add_elastic_0K_from_endf(self, filename, overwrite=False, **kwargs):
         """Append 0K elastic scattering cross section from an ENDF file.
 
         Parameters
@@ -297,6 +296,8 @@ class IncidentNeutron(EqualityMixin):
             If existing 0 K data is present, this flag can be used to indicate
             that it should be overwritten. Otherwise, an exception will be
             thrown.
+        **kwargs
+            Keyword arguments passed to :func:`openmc.data.njoy.make_pendf`
 
         Raises
         ------
@@ -309,75 +310,22 @@ class IncidentNeutron(EqualityMixin):
         if '0K' in self.energy and not overwrite:
             raise ValueError('0 K data already exists for this nuclide.')
 
-        data = type(self).from_endf(filename)
-        if data.resonances is not None:
-            x = []
-            y = []
-            for rr in data.resonances:
-                if isinstance(rr, res.RMatrixLimited):
-                    raise TypeError('R-Matrix Limited not supported.')
-                elif isinstance(rr, res.Unresolved):
-                    continue
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Set arguments for make_pendf
+            pendf_path = os.path.join(tmpdir, 'pendf')
+            kwargs.setdefault('output_dir', tmpdir)
+            kwargs.setdefault('pendf', pendf_path)
 
-                # Get energies/widths for resonances
-                e_peak = rr.parameters['energy'].values
-                if isinstance(rr, res.MultiLevelBreitWigner):
-                    gamma = rr.parameters['totalWidth'].values
-                elif isinstance(rr, res.ReichMoore):
-                    df = rr.parameters
-                    gamma = (df['neutronWidth'] +
-                             df['captureWidth'] +
-                             abs(df['fissionWidthA']) +
-                             abs(df['fissionWidthB'])).values
+            # Run NJOY to create a pointwise ENDF file
+            make_pendf(filename, **kwargs)
 
-                # Determine peak energies and widths
-                e_min, e_max = rr.energy_min, rr.energy_max
-                in_range = (e_peak > e_min) & (e_peak < e_max)
-                e_peak = e_peak[in_range]
-                gamma = gamma[in_range]
-
-                # Get midpoints between resonances (use min/max energy of
-                # resolved region as absolute lower/upper bound)
-                e_mid = np.concatenate(
-                    ([e_min], (e_peak[1:] + e_peak[:-1])/2, [e_max]))
-
-                # Add grid around each resonance that includes the peak +/- the
-                # width times each value in _RESONANCE_ENERGY_GRID. Values are
-                # constrained so that points around one resonance don't overlap
-                # with points around another. This algorithm is from Fudge
-                # (https://doi.org/10.1063/1.1945057).
-                energies = []
-                for e, g, e_lower, e_upper in zip(e_peak, gamma, e_mid[:-1],
-                                                  e_mid[1:]):
-                    e_left = e - g*_RESONANCE_ENERGY_GRID
-                    energies.append(e_left[e_left > e_lower][::-1])
-                    e_right = e + g*_RESONANCE_ENERGY_GRID[1:]
-                    energies.append(e_right[e_right < e_upper])
-
-                # Concatenate all points
-                energies = np.concatenate(energies)
-
-                # Create 1000 equal log-spaced energies over RRR, combine with
-                # resonance peaks and half-height energies
-                e_log = np.logspace(log10(e_min), log10(e_max), 1000)
-                energies = np.union1d(e_log, energies)
-
-                # Linearize and thin cross section
-                xi, yi = linearize(energies, data[2].xs['0K'])
-                xi, yi = thin(xi, yi)
-
-                # If there are multiple resolved resonance ranges (e.g. Pu239 in
-                # ENDF/B-VII.1), combine them
-                x = np.concatenate((x, xi))
-                y = np.concatenate((y, yi))
-        else:
-            energies = data[2].xs['0K'].x
-            x, y = linearize(energies, data[2].xs['0K'])
-            x, y = thin(x, y)
-
-        # Set 0K energy grid and elastic scattering cross section
-        self.energy['0K'] = x
-        self[2].xs['0K'] = Tabulated1D(x, y)
+            # Add 0K elastic scattering cross section
+            pendf = Evaluation(pendf_path)
+            file_obj = StringIO(pendf.section[3, 2])
+            get_head_record(file_obj)
+            params, xs = get_tab1_record(file_obj)
+            self.energy['0K'] = xs.x
+            self[2].xs['0K'] = xs
 
     def get_reaction_components(self, mt):
         """Determine what reactions make up redundant reaction.
@@ -461,7 +409,7 @@ class IncidentNeutron(EqualityMixin):
                     if not (photon_rx or rx.mt in keep_mts):
                         continue
 
-                rx_group = rxs_group.create_group('reaction_{:03}'.format(rx.mt))
+                rx_group = rxs_group.create_group(f'reaction_{rx.mt:03}')
                 rx.to_hdf5(rx_group)
 
                 # Write total nu data if available
@@ -593,7 +541,7 @@ class IncidentNeutron(EqualityMixin):
         zaid, xs = ace.name.split('.')
         if not xs.endswith('c'):
             raise TypeError(
-                "{} is not a continuous-energy neutron ACE table.".format(ace))
+                f"{ace} is not a continuous-energy neutron ACE table.")
         name, element, Z, mass_number, metastable = \
             get_metadata(int(zaid), metastable_scheme)
 
@@ -732,9 +680,9 @@ class IncidentNeutron(EqualityMixin):
         # Determine name
         element = ATOMIC_SYMBOL[atomic_number]
         if metastable > 0:
-            name = '{}{}_m{}'.format(element, mass_number, metastable)
+            name = f'{element}{mass_number}_m{metastable}'
         else:
-            name = '{}{}'.format(element, mass_number)
+            name = f'{element}{mass_number}'
 
         # Instantiate incident neutron data
         data = cls(name, atomic_number, mass_number, metastable,

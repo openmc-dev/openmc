@@ -830,7 +830,7 @@ class RMatrixLimited(ResonanceRange):
                 elif mt == 102:
                     columns.append('captureWidth')
                 else:
-                    columns.append('width (MT={})'.format(mt))
+                    columns.append(f'width (MT={mt})')
 
             # Create Pandas dataframe with resonance parameters
             parameters = pd.DataFrame.from_records(records, columns=columns)
@@ -896,7 +896,7 @@ class SpinGroup:
         self.parameters = parameters
 
     def __repr__(self):
-        return '<SpinGroup: Jpi={}{}>'.format(self.spin, self.parity)
+        return f'<SpinGroup: Jpi={self.spin}{self.parity}>'
 
 
 class Unresolved(ResonanceRange):

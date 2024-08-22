@@ -275,7 +275,7 @@ class Nuclide:
             if parent is not None:
                 assert root is not None
                 fpy_elem = root.find(
-                    './/nuclide[@name="{}"]/neutron_fission_yields'.format(parent)
+                    f'.//nuclide[@name="{parent}"]/neutron_fission_yields'
                 )
                 if fpy_elem is None:
                     raise ValueError(
@@ -413,7 +413,7 @@ class Nuclide:
                     continue
                 msg = msg_func(
                     name=self.name, actual=sum_br, expected=1.0, tol=tolerance,
-                    prop="{} reaction branch ratios".format(rxn_type))
+                    prop=f"{rxn_type} reaction branch ratios")
                 if strict:
                     raise ValueError(msg)
                 elif quiet:
@@ -430,7 +430,7 @@ class Nuclide:
                 msg = msg_func(
                     name=self.name, actual=sum_yield,
                     expected=2.0, tol=tolerance,
-                    prop="fission yields (E = {:7.4e} eV)".format(energy))
+                    prop=f"fission yields (E = {energy:7.4e} eV)")
                 if strict:
                     raise ValueError(msg)
                 elif quiet:
@@ -695,8 +695,7 @@ class FissionYield(Mapping):
         return self * scalar
 
     def __repr__(self):
-        return "<{} containing {} products and yields>".format(
-            self.__class__.__name__, len(self))
+        return f"<{self.__class__.__name__} containing {len(self)} products and yields>"
 
     def __deepcopy__(self, memo):
         result = FissionYield(self.products, self.yields.copy())

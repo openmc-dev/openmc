@@ -67,8 +67,10 @@ def uo2_trigger_model():
     model.settings.batches = 10
     model.settings.inactive = 5
     model.settings.particles = 100
-    model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
-        [-0.5, -0.5, -1], [0.5, 0.5, 1], only_fissionable=True))
+    model.settings.source = openmc.IndependentSource(
+        space=openmc.stats.Box([-0.5, -0.5, -1], [0.5, 0.5, 1]),
+        constraints={'fissionable': True},
+    )
     model.settings.verbosity = 1
     model.settings.keff_trigger = {'type': 'std_dev', 'threshold': 0.001}
     model.settings.trigger_active = True
@@ -568,6 +570,12 @@ def test_regular_mesh(lib_init):
 
     np.testing.assert_allclose(mesh.volumes, 1.0)
 
+    # bounding box
+    mesh.set_parameters(lower_left=ll, upper_right=ur)
+    bbox = mesh.bounding_box
+    np.testing.assert_allclose(bbox.lower_left, ll)
+    np.testing.assert_allclose(bbox.upper_right, ur)
+
     meshes = openmc.lib.meshes
     assert isinstance(meshes, Mapping)
     assert len(meshes) == 1
@@ -648,6 +656,11 @@ def test_rectilinear_mesh(lib_init):
 
     np.testing.assert_allclose(mesh.volumes, 1000.0)
 
+    # bounding box
+    bbox = mesh.bounding_box
+    np.testing.assert_allclose(bbox.lower_left, (-10., 0., 10.))
+    np.testing.assert_allclose(bbox.upper_right, (10., 20., 30.))
+
     with pytest.raises(exc.AllocationError):
         mesh2 = openmc.lib.RectilinearMesh(mesh.id)
 
@@ -694,6 +707,11 @@ def test_cylindrical_mesh(lib_init):
 
     np.testing.assert_allclose(mesh.volumes[::2], 10/360 * pi * 5**2 * 10)
     np.testing.assert_allclose(mesh.volumes[1::2], 10/360 * pi * (10**2 - 5**2) * 10)
+
+    # bounding box
+    bbox = mesh.bounding_box
+    np.testing.assert_allclose(bbox.lower_left, (-10., -10., 10.))
+    np.testing.assert_allclose(bbox.upper_right, (10., 10., 30.))
 
     with pytest.raises(exc.AllocationError):
         mesh2 = openmc.lib.CylindricalMesh(mesh.id)
@@ -747,6 +765,11 @@ def test_spherical_mesh(lib_init):
     np.testing.assert_allclose(mesh.volumes[1::4], f * (10**3 - 5**3) * dtheta(0., 10.))
     np.testing.assert_allclose(mesh.volumes[2::4], f * 5**3 * dtheta(10., 20.))
     np.testing.assert_allclose(mesh.volumes[3::4], f * (10**3 - 5**3) * dtheta(10., 20.))
+
+    # bounding box
+    bbox = mesh.bounding_box
+    np.testing.assert_allclose(bbox.lower_left, (-10., -10., -10.))
+    np.testing.assert_allclose(bbox.upper_right, (10., 10., 10.))
 
     with pytest.raises(exc.AllocationError):
         mesh2 = openmc.lib.SphericalMesh(mesh.id)
@@ -961,7 +984,8 @@ def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
     model.settings.source = openmc.IndependentSource(
         space=openmc.stats.Box([-5., -5., -5.], [5., 5., 5.]),
         angle=openmc.stats.Monodirectional((0., 0., 1.)),
-        energy=openmc.stats.Discrete([1.0e5], [1.0])
+        energy=openmc.stats.Discrete([1.0e5], [1.0]),
+        constraints={'fissionable': True}
     )
     model.settings.particles = 1000
     model.settings.batches = 10
@@ -990,4 +1014,9 @@ def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
         assert p1.time == p2.time
         assert p1.wgt == p2.wgt
 
+    openmc.lib.finalize()
+
+    # Make sure sampling works in volume calculation mode
+    openmc.lib.init(["-c"])
+    openmc.lib.sample_external_source(100)
     openmc.lib.finalize()

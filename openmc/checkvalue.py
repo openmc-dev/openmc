@@ -1,12 +1,11 @@
 import copy
 import os
-import typing  # required to prevent typing.Union namespace overwriting Union
 from collections.abc import Iterable
 
 import numpy as np
 
 # Type for arguments that accept file paths
-PathLike = typing.Union[str, os.PathLike]
+PathLike = str | os.PathLike
 
 
 def check_type(name, value, expected_type, expected_iter_type=None, *, none_ok=False):
@@ -169,6 +168,29 @@ def check_length(name, value, length_min, length_max=None):
             msg = (f'Unable to set "{name}" to "{value}" since it must have '
                    f'length between "{length_min}" and "{length_max}"')
         raise ValueError(msg)
+
+
+def check_increasing(name: str, value, equality: bool = False):
+    """Ensure that a list's elements are strictly or loosely increasing.
+
+    Parameters
+    ----------
+    name : str
+        Description of value being checked
+    value : iterable
+        Object to check if increasing
+    equality : bool, optional
+        Whether equality is allowed. Defaults to False.
+
+    """
+    if equality:
+        if not np.all(np.diff(value) >= 0.0):
+            raise ValueError(f'Unable to set "{name}" to "{value}" since its '
+                             'elements must be increasing.')
+    elif not equality:
+        if not np.all(np.diff(value) > 0.0):
+            raise ValueError(f'Unable to set "{name}" to "{value}" since its '
+                             'elements must be strictly increasing.')
 
 
 def check_value(name, value, accepted_values):

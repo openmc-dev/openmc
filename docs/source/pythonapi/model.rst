@@ -26,6 +26,7 @@ Composite Surfaces
    openmc.model.CylinderSector
    openmc.model.HexagonalPrism
    openmc.model.IsogonalOctagon
+   openmc.model.OrthogonalBox
    openmc.model.Polygon
    openmc.model.RectangularParallelepiped
    openmc.model.RectangularPrism

@@ -128,6 +128,7 @@ Constructing Tallies
    openmc.CollisionFilter
    openmc.SurfaceFilter
    openmc.MeshFilter
+   openmc.MeshBornFilter
    openmc.MeshSurfaceFilter
    openmc.EnergyFilter
    openmc.EnergyoutFilter

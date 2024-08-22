@@ -35,16 +35,10 @@ jobs:
         vectfit: [n]
 
         include:
-          - python-version: "3.7"
-            omp: n
-            mpi: n
-          - python-version: "3.8"
-            omp: n
-            mpi: n
-          - python-version: "3.9"
-            omp: n
-            mpi: n
           - python-version: "3.11"
+            omp: n
+            mpi: n
+          - python-version: "3.12"
             omp: n
             mpi: n
           - dagmc: y
@@ -111,15 +105,25 @@ jobs:
         run: |
           sudo apt -y update
           sudo apt install -y libpng-dev \
-                              libmpich-dev \
                               libnetcdf-dev \
                               libpnetcdf-dev \
                               libhdf5-serial-dev \
-                              libhdf5-mpich-dev \
                               libeigen3-dev
+
+      - name: Optional apt dependencies for MPI
+        shell: bash
+        if: ${{ matrix.mpi == 'y' }}
+        run: |
+          sudo apt install -y libhdf5-mpich-dev \
+                              libmpich-dev
           sudo update-alternatives --set mpi /usr/bin/mpicc.mpich
           sudo update-alternatives --set mpirun /usr/bin/mpirun.mpich
           sudo update-alternatives --set mpi-x86_64-linux-gnu /usr/include/x86_64-linux-gnu/mpich
+
+      - name: Optional apt dependencies for vectfit
+        shell: bash
+        if: ${{ matrix.vectfit == 'y' }}
+        run: sudo apt install -y libblas-dev liblapack-dev
 
       - name: install
         shell: bash

@@ -1,7 +1,6 @@
 from collections.abc import Iterable, Mapping
 from numbers import Integral, Real
 from pathlib import Path
-from typing import Optional
 
 import h5py
 import lxml.etree as ET
@@ -14,7 +13,7 @@ from openmc.checkvalue import PathLike
 from ._xml import clean_indentation, get_elem_tuple, reorder_attributes, get_text
 from .mixin import IDManagerMixin
 
-_BASES = ['xy', 'xz', 'yz']
+_BASES = {'xy', 'xz', 'yz'}
 
 _SVG_COLORS = {
     'aliceblue': (240, 248, 255),
@@ -171,8 +170,14 @@ def _get_plot_image(plot, cwd):
     from IPython.display import Image
 
     # Make sure .png file was created
-    stem = plot.filename if plot.filename is not None else f'plot_{plot.id}'
-    png_file = Path(cwd) / f'{stem}.png'
+    png_filename = plot.filename if plot.filename is not None else f'plot_{plot.id}'
+
+    # Add file extension if not already present. The C++ code added it
+    # automatically if it wasn't present.
+    if Path(png_filename).suffix != ".png":
+        png_filename += ".png"
+
+    png_file = Path(cwd) / png_filename
     if not png_file.exists():
         raise FileNotFoundError(
             f"Could not find .png image for plot {plot.id}. Your version of "
@@ -630,12 +635,11 @@ class Plot(PlotBase):
         cv.check_type('plot meshlines', meshlines, dict)
         if 'type' not in meshlines:
             msg = f'Unable to set the meshlines to "{meshlines}" which ' \
-                  'does not have a "type" key'
+                'does not have a "type" key'
             raise ValueError(msg)
 
         elif meshlines['type'] not in ['tally', 'entropy', 'ufs', 'cmfd']:
-            msg = 'Unable to set the meshlines with ' \
-                  'type "{}"'.format(meshlines['type'])
+            msg = f"Unable to set the meshlines with type \"{meshlines['type']}\""
             raise ValueError(msg)
 
         if 'id' in meshlines:
@@ -937,7 +941,7 @@ class Plot(PlotBase):
         # Return produced image
         return _get_plot_image(self, cwd)
 
-    def to_vtk(self, output: Optional[PathLike] = None,
+    def to_vtk(self, output: PathLike | None = None,
                openmc_exec: str = 'openmc', cwd: str = '.'):
         """Render plot as an voxel image
 
@@ -969,8 +973,13 @@ class Plot(PlotBase):
         # Run OpenMC in geometry plotting mode and produces a h5 file
         openmc.plot_geometry(False, openmc_exec, cwd)
 
-        stem = self.filename if self.filename is not None else f'plot_{self.id}'
-        h5_voxel_file = Path(cwd) / f'{stem}.h5'
+        h5_voxel_filename = self.filename if self.filename is not None else f'plot_{self.id}'
+
+        # Add file extension if not already present
+        if Path(h5_voxel_filename).suffix != ".h5":
+            h5_voxel_filename += ".h5"
+
+        h5_voxel_file = Path(cwd) / h5_voxel_filename
         if output is None:
             output = h5_voxel_file.with_suffix('.vti')
 

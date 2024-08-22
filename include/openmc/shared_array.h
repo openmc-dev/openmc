@@ -72,13 +72,23 @@ public:
   {
     // Atomically capture the index we want to write to
     int64_t idx;
+#if _WIN32 && !__INTEL_COMPILER
+#pragma omp atomic capture
+    idx = size_++;
+#else
 #pragma omp atomic capture seq_cst
     idx = size_++;
+#endif
 
     // Check that we haven't written off the end of the array
     if (idx >= capacity_) {
+#if _WIN32 && !__INTEL_COMPILER
+#pragma omp atomic write
+      size_ = capacity_;
+#else
 #pragma omp atomic write seq_cst
       size_ = capacity_;
+#endif
       return -1;
     }
 

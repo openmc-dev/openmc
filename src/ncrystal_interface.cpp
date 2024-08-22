@@ -11,9 +11,9 @@ namespace openmc {
 //==============================================================================
 
 #ifdef NCRYSTAL
-const bool NCRYSTAL_ENABLED = true;
+const bool OPENMC_API NCRYSTAL_ENABLED = true;
 #else
-const bool NCRYSTAL_ENABLED = false;
+const bool OPENMC_API NCRYSTAL_ENABLED = false;
 #endif
 
 //==============================================================================

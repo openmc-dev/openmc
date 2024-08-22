@@ -55,9 +55,9 @@ namespace openmc {
 //==============================================================================
 
 #ifdef LIBMESH
-const bool LIBMESH_ENABLED = true;
+const bool OPENMC_API LIBMESH_ENABLED = true;
 #else
-const bool LIBMESH_ENABLED = false;
+const bool OPENMC_API LIBMESH_ENABLED = false;
 #endif
 
 namespace model {
@@ -1199,7 +1199,7 @@ StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   } else {
     mapped_r[1] = std::atan2(r.y, r.x);
     if (mapped_r[1] < 0)
-      mapped_r[1] += 2 * M_PI;
+      mapped_r[1] += 2 * PI;
   }
 
   MeshIndex idx = StructuredMesh::get_indices(mapped_r, in_mesh);
@@ -1485,7 +1485,7 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(
     mapped_r[1] = std::acos(r.z / mapped_r.x);
     mapped_r[2] = std::atan2(r.y, r.x);
     if (mapped_r[2] < 0)
-      mapped_r[2] += 2 * M_PI;
+      mapped_r[2] += 2 * PI;
   }
 
   MeshIndex idx = StructuredMesh::get_indices(mapped_r, in_mesh);

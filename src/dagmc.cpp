@@ -87,7 +87,7 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
       std::string value;
       while (iss >> value)
         instance_mats.push_back(value);
-        std::cout<<"DAGMC " << mat_ref_assignment << " " << value << std::endl;
+      std::cout << "DAGMC " << mat_ref_assignment << " " << value << std::endl;
 
       // Store mat name for each instances
       instance_material_overrides.insert(
@@ -240,7 +240,8 @@ void DAGUniverse::init_geometry()
             instance_material_overrides.find(mat_str) !=
               instance_material_overrides.end()) {
 
-          for (auto mat_str_instance : instance_material_overrides.at(mat_str)) {
+          for (auto mat_str_instance :
+            instance_material_overrides.at(mat_str)) {
             legacy_assign_material(mat_str_instance, c);
           }
         } else {

@@ -524,7 +524,7 @@ estimator in most regions, while preventing instability and/or large biases in r
 with external source terms via use of the naive estimator. In general, it is
 recommended to use the "hybrid" estimator, which is the default method used
 in OpenMC. If instability is encountered despite high ray densities, then
-the segment corrected volume estimator or naive estimators may be preferable.
+the naive estimator may be preferable.
 
 A table that summarizes the pros and cons, as well as recommendations for
 different use cases, is given in the :ref:`volume
@@ -551,7 +551,7 @@ missed this estimator does not tend to introduce any significant bias.
 However, in cases where the total cross section in the region is very small
 (e.g., a void-like material) and where a strong external fixed source has been
 placed, then this treatment causes major issues. In this pathological case, the
-lack of transport forces the entiretty of the fixed source to effectively be
+lack of transport forces the entirety of the fixed source to effectively be
 contained and collided within the cell, which for a low cross section region is
 highly unphysical. The net effect is that a very high estimate of the flux
 (often orders of magnitude higher than is expected) is generated that iteration,

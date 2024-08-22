@@ -97,8 +97,10 @@ def test_diff_volume_method_match_cell(model_with_volumes):
     )
 
     all_cells = list(operator.model.geometry.get_all_cells().values())
-    assert all_cells[0].fill.volume == 4.19
-    assert all_cells[1].fill.volume == 33.51
+    for mat in all_cells[0].fill:
+        assert mat.volume == 4.19
+    for mat in all_cells[1].fill:
+        assert mat.volume == 33.51
     # mat2 is not depletable
     assert all_cells[2].fill.volume is None
 

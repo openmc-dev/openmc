@@ -73,8 +73,8 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
   }
 
   // get material assignment overloading
-  if (check_for_node(node, "mat_assignment")) {
-    auto mat_node = node.child("mat_assignment");
+  if (check_for_node(node, "material_overrides")) {
+    auto mat_node = node.child("material_overrides");
     // loop over all attributes (each attribute corresponds to a material)
     for (pugi::xml_attribute attr = mat_node.first_attribute(); attr;
          attr = attr.next_attribute()) {
@@ -87,9 +87,10 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
       std::string value;
       while (iss >> value)
         instance_mats.push_back(value);
+        std::cout<<"DAGMC " << mat_ref_assignment << " " << value << std::endl;
 
       // Store mat name for each instances
-      instance_mat_assignment.insert(
+      instance_material_overrides.insert(
         std::make_pair(mat_ref_assignment, instance_mats));
     }
   }
@@ -235,11 +236,11 @@ void DAGUniverse::init_geometry()
       if (uses_uwuw()) {
         uwuw_assign_material(vol_handle, c);
       } else {
-        if (instance_mat_assignment.size() > 0 and
-            instance_mat_assignment.find(mat_str) !=
-              instance_mat_assignment.end()) {
+        if (instance_material_overrides.size() > 0 and
+            instance_material_overrides.find(mat_str) !=
+              instance_material_overrides.end()) {
 
-          for (auto mat_str_instance : instance_mat_assignment.at(mat_str)) {
+          for (auto mat_str_instance : instance_material_overrides.at(mat_str)) {
             legacy_assign_material(mat_str_instance, c);
           }
         } else {

@@ -754,8 +754,6 @@ class Geometry:
         for material in self.get_all_materials().values():
             material._paths = []
             material._num_instances = 0
-        for dag_uni in self.get_all_dag_universes().values():
-            dag_uni._num_instances = 0
 
         # Recursively traverse the CSG tree to count all cell instances
         self.root_universe._determine_paths(instances_only=instances_only)

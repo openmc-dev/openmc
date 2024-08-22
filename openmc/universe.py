@@ -717,10 +717,7 @@ class Universe(UniverseBase):
 
             # If universe-filled, recursively count cells in filling universe
             if fill_type == 'universe':
-                if isinstance(fill, openmc.DAGMCUniverse):
-                    fill._num_instances += 1
-                else:
-                    fill._determine_paths(cell_path + '->', instances_only)
+                fill._determine_paths(cell_path + '->', instances_only)
             # If lattice-filled, recursively call for all universes in lattice
             elif fill_type == 'lattice':
                 latt = fill
@@ -816,8 +813,14 @@ class DAGMCUniverse(UniverseBase):
     n_surfaces : int
         The number of surfaces in the model.
 
-        .. versionadded:: 0.13.2
+        .. versionadded:: 0.15
+    mat_overrides : dict
+        A dictionary of material overrides. The keys are material names as
+        strings and the values are openmc.Material objects. If a material name
+        is found in the DAGMC file, the material will be replaced with the
+        openmc.Material object in the value.
 
+    
     """
 
     def __init__(self,
@@ -826,14 +829,13 @@ class DAGMCUniverse(UniverseBase):
                  name='',
                  auto_geom_ids=False,
                  auto_mat_ids=False, 
-                 mat_assignment={}):
+                 mat_overrides={}):
         super().__init__(universe_id, name)
         # Initialize class attributes
         self.filename = filename
         self.auto_geom_ids = auto_geom_ids
         self.auto_mat_ids = auto_mat_ids
-        self.mat_assignment = mat_assignment
-        self._num_instances = 0
+        self.material_overrides = mat_overrides
         self._dagmc_cells = []
 
     def __repr__(self):
@@ -841,6 +843,10 @@ class DAGMCUniverse(UniverseBase):
         string += '{: <16}=\t{}\n'.format('\tGeom', 'DAGMC')
         string += '{: <16}=\t{}\n'.format('\tFile', self.filename)
         return string
+
+    @property
+    def cells(self):
+        return self._cells
 
     @property
     def bounding_box(self):
@@ -876,12 +882,6 @@ class DAGMCUniverse(UniverseBase):
     def auto_mat_ids(self, val):
         cv.check_type('DAGMC automatic material ids', val, bool)
         self._auto_mat_ids = val
-
-    @property
-    def material_assignment(self):
-        dagmc_file_contents = h5py.File(self.filename)
-        material_tags_hex = dagmc_file_contents['/tstt/tags/NAME'].get(
-            'values')
 
     @property
     def material_names(self):
@@ -977,14 +977,6 @@ class DAGMCUniverse(UniverseBase):
         return n
 
     @property
-    def num_instances(self):
-        if self._num_instances is None:
-            raise ValueError(
-                'Number of dagmc instances have not been determined. Call the '
-                'Geometry.determine_paths() method.')
-        return self._num_instances
-
-    @property
     def n_cells(self):
         return self._n_geom_elements('volume')
 
@@ -1010,13 +1002,65 @@ class DAGMCUniverse(UniverseBase):
         if self.auto_mat_ids:
             dagmc_element.set('auto_mat_ids', 'true')
         dagmc_element.set('filename', str(self.filename))
-        if self.mat_assignment :
-            mat_element = ET.Element('mat_assignment')
-            for key in self.mat_assignment:
+        if len(self.material_overrides) == 0:
+            mats = self.get_all_materials()
+            for mat in mats.values():
+                if mat.name[:-4] in self.material_names:
+                    self.material_overrides.setdefault(
+                        mat.name[:-4].lower(), []).append(mat.name)
+                    print(f"Material {mat.name} found in DAGMC file, ")
+            print(self.material_overrides)
+
+        if self.material_overrides:
+            mat_element = ET.Element('material_overrides')
+            for key in self.material_overrides:
                 mat_element.set(key, ' '.join(
-                        t for t in self.mat_assignment[key]))
+                        t for t in self.material_overrides[key]))
             dagmc_element.append(mat_element)
         xml_element.append(dagmc_element)
+
+    def _determine_paths(self, path='', instances_only=False):
+        """Count the number of instances for each cell in the universe, and
+        record the count in the :attr:`Cell.num_instances` properties."""
+
+        univ_path = path + f'u{self.id}'
+
+        for cell in self.cells.values():
+            cell_path = f'{univ_path}->c{cell.id}'
+            fill = cell._fill
+            fill_type = cell.fill_type
+
+            # If universe-filled, recursively count cells in filling universe
+            if fill_type == 'universe':
+                fill._determine_paths(cell_path + '->', instances_only)
+            # If lattice-filled, recursively call for all universes in lattice
+            elif fill_type == 'lattice':
+                latt = fill
+
+                # Count instances in each universe in the lattice
+                for index in latt._natural_indices:
+                    latt_path = '{}->l{}({})->'.format(
+                        cell_path, latt.id, ",".join(str(x) for x in index))
+                    univ = latt.get_universe(index)
+                    univ._determine_paths(latt_path, instances_only)
+
+            else:
+                if fill_type == 'material':
+                    mat = fill
+                elif fill_type == 'distribmat':
+                    mat = fill[cell._num_instances]
+                else:
+                    mat = None
+
+                if mat is not None:
+                    mat._num_instances += 1
+                    if not instances_only:
+                        mat._paths.append(f'{cell_path}->m{mat.id}')
+
+            # Append current path
+            cell._num_instances += 1
+            if not instances_only:
+                cell._paths.append(cell_path)
 
     def bounding_region(
             self,
@@ -1189,9 +1233,9 @@ class DAGMCUniverse(UniverseBase):
 
         """
 
-        if not isinstance(cell, openmc.Cell):
-            msg = f'Unable to add a Cell to Universe ID="{self._id}" since ' \
-                  f'"{cell}" is not a Cell'
+        if not isinstance(cell, openmc.DAGMCCell):
+            msg = f'Unable to add a DAGMCCell to DAGMCUniverse ID="{self._id}" since ' \
+                  f'"{cell}" is not a DAGMCCell'
             raise TypeError(msg)
 
         cell_id = cell.id
@@ -1210,7 +1254,7 @@ class DAGMCUniverse(UniverseBase):
         """
 
         if not isinstance(cells, Iterable):
-            msg = f'Unable to add Cells to Universe ID="{self._id}" since ' \
+            msg = f'Unable to add DAGMCCells to DAGMCUniverse ID="{self._id}" since ' \
                   f'"{cells}" is not iterable'
             raise TypeError(msg)
 
@@ -1239,3 +1283,27 @@ class DAGMCUniverse(UniverseBase):
         """Remove all cells from the universe."""
 
         self._cells.clear()
+
+    def sync_dagmc_cells(self, mats={}):
+        """Synchronize DAGMC cell information between Python and C API
+
+        .. versionadded:: 0.13.0
+
+        """
+        import openmc.lib
+        if not openmc.lib.is_initialized:
+            raise RuntimeError("Model must be initialized via Model.init_lib "
+                               "before calling this method.")
+
+        mats_per_id = {mat.id: mat for mat in mats}
+        for dag_cell_id in openmc.lib.dagmc.get_dagmc_cell_ids(self.id, self._n_geom_elements('volume')):
+            dag_cell = openmc.lib.cells[dag_cell_id]
+            if isinstance(dag_cell.fill, Iterable):
+                fill = [mats_per_id[mat_id.id]
+                        for mat_id in dag_cell.fill]
+            else:
+                fill = mats_per_id[dag_cell.fill.id]
+            dag_pseudo_cell = openmc.DAGMCCell(
+                cell_id=dag_cell_id, fill=fill
+            )
+            self.add_cell(dag_pseudo_cell)

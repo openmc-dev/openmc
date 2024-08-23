@@ -24,6 +24,8 @@ namespace openmc {
 //==============================================================================
 
 // Static Variable Declarations
+RandomRayVolumeEstimator FlatSourceDomain::volume_estimator_ {
+  RandomRayVolumeEstimator::HYBRID};
 bool FlatSourceDomain::volume_normalized_flux_tallies_ {false};
 
 FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
@@ -49,13 +51,13 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
   position_.resize(n_source_regions_);
   volume_.assign(n_source_regions_, 0.0);
   volume_t_.assign(n_source_regions_, 0.0);
-  was_hit_.assign(n_source_regions_, 0);
+  volume_naive_.assign(n_source_regions_, 0.0);
 
   // Initialize element-wise arrays
   scalar_flux_new_.assign(n_source_elements_, 0.0);
   scalar_flux_final_.assign(n_source_elements_, 0.0);
   source_.resize(n_source_elements_);
-  external_source_.assign(n_source_elements_, 0.0);
+
   tally_task_.resize(n_source_elements_);
   volume_task_.resize(n_source_regions_);
 
@@ -64,7 +66,10 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
     scalar_flux_old_.assign(n_source_elements_, 1.0);
   } else {
     // If in fixed source mode, set starting flux to guess of zero
+    // and initialize external source arrays
     scalar_flux_old_.assign(n_source_elements_, 0.0);
+    external_source_.assign(n_source_elements_, 0.0);
+    external_source_present_.assign(n_source_regions_, false);
   }
 
   // Initialize material array
@@ -109,9 +114,8 @@ void FlatSourceDomain::batch_reset()
 {
   // Reset scalar fluxes, iteration volume tallies, and region hit flags to
   // zero
-  parallel_fill<float>(scalar_flux_new_, 0.0f);
+  parallel_fill<double>(scalar_flux_new_, 0.0);
   parallel_fill<double>(volume_, 0.0);
-  parallel_fill<int>(was_hit_, 0);
 }
 
 void FlatSourceDomain::accumulate_iteration_flux()
@@ -142,14 +146,14 @@ void FlatSourceDomain::update_neutron_source(double k_eff)
     int material = material_[sr];
 
     for (int e_out = 0; e_out < negroups_; e_out++) {
-      float sigma_t = data::mg.macro_xs_[material].get_xs(
+      double sigma_t = data::mg.macro_xs_[material].get_xs(
         MgxsType::TOTAL, e_out, nullptr, nullptr, nullptr, t, a);
-      float scatter_source = 0.0f;
+      double scatter_source = 0.0f;
 
       for (int e_in = 0; e_in < negroups_; e_in++) {
-        float scalar_flux = scalar_flux_old_[sr * negroups_ + e_in];
+        double scalar_flux = scalar_flux_old_[sr * negroups_ + e_in];
 
-        float sigma_s = data::mg.macro_xs_[material].get_xs(
+        double sigma_s = data::mg.macro_xs_[material].get_xs(
           MgxsType::NU_SCATTER, e_in, &e_out, nullptr, nullptr, t, a);
         scatter_source += sigma_s * scalar_flux;
       }
@@ -164,15 +168,15 @@ void FlatSourceDomain::update_neutron_source(double k_eff)
     int material = material_[sr];
 
     for (int e_out = 0; e_out < negroups_; e_out++) {
-      float sigma_t = data::mg.macro_xs_[material].get_xs(
+      double sigma_t = data::mg.macro_xs_[material].get_xs(
         MgxsType::TOTAL, e_out, nullptr, nullptr, nullptr, t, a);
-      float fission_source = 0.0f;
+      double fission_source = 0.0f;
 
       for (int e_in = 0; e_in < negroups_; e_in++) {
-        float scalar_flux = scalar_flux_old_[sr * negroups_ + e_in];
-        float nu_sigma_f = data::mg.macro_xs_[material].get_xs(
+        double scalar_flux = scalar_flux_old_[sr * negroups_ + e_in];
+        double nu_sigma_f = data::mg.macro_xs_[material].get_xs(
           MgxsType::NU_FISSION, e_in, nullptr, nullptr, nullptr, t, a);
-        float chi = data::mg.macro_xs_[material].get_xs(
+        double chi = data::mg.macro_xs_[material].get_xs(
           MgxsType::CHI_PROMPT, e_in, &e_out, nullptr, nullptr, t, a);
         fission_source += nu_sigma_f * scalar_flux * chi;
       }
@@ -196,7 +200,7 @@ void FlatSourceDomain::update_neutron_source(double k_eff)
 void FlatSourceDomain::normalize_scalar_flux_and_volumes(
   double total_active_distance_per_iteration)
 {
-  float normalization_factor = 1.0 / total_active_distance_per_iteration;
+  double normalization_factor = 1.0 / total_active_distance_per_iteration;
   double volume_normalization_factor =
     1.0 / (total_active_distance_per_iteration * simulation::current_batch);
 
@@ -211,8 +215,36 @@ void FlatSourceDomain::normalize_scalar_flux_and_volumes(
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions_; sr++) {
     volume_t_[sr] += volume_[sr];
+    volume_naive_[sr] = volume_[sr] * normalization_factor;
     volume_[sr] = volume_t_[sr] * volume_normalization_factor;
   }
+}
+
+void FlatSourceDomain::set_flux_to_flux_plus_source(
+  int64_t idx, double volume, int material, int g)
+{
+  // Temperature and angle indices, if using multiple temperature
+  // data sets and/or anisotropic data sets.
+  // TODO: Currently assumes we are only using single temp/single
+  // angle data.
+  const int t = 0;
+  const int a = 0;
+
+  double sigma_t = data::mg.macro_xs_[material].get_xs(
+    MgxsType::TOTAL, g, nullptr, nullptr, nullptr, t, a);
+
+  scalar_flux_new_[idx] /= (sigma_t * volume);
+  scalar_flux_new_[idx] += source_[idx];
+}
+
+void FlatSourceDomain::set_flux_to_old_flux(int64_t idx)
+{
+  scalar_flux_new_[idx] = scalar_flux_old_[idx];
+}
+
+void FlatSourceDomain::set_flux_to_source(int64_t idx)
+{
+  scalar_flux_new_[idx] = source_[idx];
 }
 
 // Combine transport flux contributions and flat source contributions from the
@@ -221,48 +253,76 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
 {
   int64_t n_hits = 0;
 
-  // Temperature and angle indices, if using multiple temperature
-  // data sets and/or anisotropic data sets.
-  // TODO: Currently assumes we are only using single temp/single
-  // angle data.
-  const int t = 0;
-  const int a = 0;
-
 #pragma omp parallel for reduction(+ : n_hits)
   for (int sr = 0; sr < n_source_regions_; sr++) {
 
-    // Check if this cell was hit this iteration
-    int was_cell_hit = was_hit_[sr];
-    if (was_cell_hit) {
+    double volume_simulation_avg = volume_[sr];
+    double volume_iteration = volume_naive_[sr];
+
+    // Increment the number of hits if cell was hit this iteration
+    if (volume_iteration) {
       n_hits++;
     }
 
-    double volume = volume_[sr];
+    // Check if an external source is present in this source region
+    bool external_source_present =
+      external_source_present_.size() && external_source_present_[sr];
+
+    // The volume treatment depends on the volume estimator type
+    // and whether or not an external source is present in the cell.
+    double volume;
+    switch (volume_estimator_) {
+    case RandomRayVolumeEstimator::NAIVE:
+      volume = volume_iteration;
+      break;
+    case RandomRayVolumeEstimator::SIMULATION_AVERAGED:
+      volume = volume_simulation_avg;
+      break;
+    case RandomRayVolumeEstimator::HYBRID:
+      if (external_source_present) {
+        volume = volume_iteration;
+      } else {
+        volume = volume_simulation_avg;
+      }
+      break;
+    default:
+      fatal_error("Invalid volume estimator type");
+    }
+
     int material = material_[sr];
     for (int g = 0; g < negroups_; g++) {
       int64_t idx = (sr * negroups_) + g;
 
       // There are three scenarios we need to consider:
-      if (was_cell_hit) {
+      if (volume_iteration > 0.0) {
         // 1. If the FSR was hit this iteration, then the new flux is equal to
         // the flat source from the previous iteration plus the contributions
         // from rays passing through the source region (computed during the
         // transport sweep)
-        float sigma_t = data::mg.macro_xs_[material].get_xs(
-          MgxsType::TOTAL, g, nullptr, nullptr, nullptr, t, a);
-        scalar_flux_new_[idx] /= (sigma_t * volume);
-        scalar_flux_new_[idx] += source_[idx];
-      } else if (volume > 0.0) {
+        set_flux_to_flux_plus_source(idx, volume, material, g);
+      } else if (volume_simulation_avg > 0.0) {
         // 2. If the FSR was not hit this iteration, but has been hit some
-        // previous iteration, then we simply set the new scalar flux to be
-        // equal to the contribution from the flat source alone.
-        scalar_flux_new_[idx] = source_[idx];
-      } else {
-        // If the FSR was not hit this iteration, and it has never been hit in
-        // any iteration (i.e., volume is zero), then we want to set this to 0
-        // to avoid dividing anything by a zero volume.
-        scalar_flux_new_[idx] = 0.0f;
+        // previous iteration, then we need to make a choice about what
+        // to do. Naively we will usually want to set the flux to be equal
+        // to the reduced source. However, in fixed source problems where
+        // there is a strong external source present in the cell, and where
+        // the cell has a very low cross section, this approximation will
+        // cause a huge upward bias in the flux estimate of the cell (in these
+        // conditions, the flux estimate can be orders of magnitude too large).
+        // Thus, to avoid this bias, if any external source is present
+        // in the cell we will use the previous iteration's flux estimate. This
+        // injects a small degree of correlation into the simulation, but this
+        // is going to be trivial when the miss rate is a few percent or less.
+        if (external_source_present) {
+          set_flux_to_old_flux(idx);
+        } else {
+          set_flux_to_source(idx);
+        }
       }
+      // If the FSR was not hit this iteration, and it has never been hit in
+      // any iteration (i.e., volume is zero), then we want to set this to 0
+      // to avoid dividing anything by a zero volume. This happens implicitly
+      // given that the new scalar flux arrays are set to zero each iteration.
     }
   }
 
@@ -482,7 +542,8 @@ void FlatSourceDomain::reset_tally_volumes()
 // reported scalar fluxes are in units per source neutron. This allows for
 // direct comparison of reported tallies to Monte Carlo flux results.
 // This factor needs to be computed at each iteration, as it is based on the
-// volume estimate of each FSR, which improves over the course of the simulation
+// volume estimate of each FSR, which improves over the course of the
+// simulation
 double FlatSourceDomain::compute_fixed_source_normalization_factor() const
 {
   // If we are not in fixed source mode, then there are no external sources
@@ -505,7 +566,7 @@ double FlatSourceDomain::compute_fixed_source_normalization_factor() const
       // angle data.
       const int t = 0;
       const int a = 0;
-      float sigma_t = data::mg.macro_xs_[material].get_xs(
+      double sigma_t = data::mg.macro_xs_[material].get_xs(
         MgxsType::TOTAL, e, nullptr, nullptr, nullptr, t, a);
       simulation_external_source_strength +=
         external_source_[sr * negroups_ + e] * sigma_t * volume;
@@ -559,12 +620,13 @@ void FlatSourceDomain::random_ray_tally()
   for (int sr = 0; sr < n_source_regions_; sr++) {
     // The fsr.volume_ is the unitless fractional simulation averaged volume
     // (i.e., it is the FSR's fraction of the overall simulation volume). The
-    // simulation_volume_ is the total 3D physical volume in cm^3 of the entire
-    // global simulation domain (as defined by the ray source box). Thus, the
-    // FSR's true 3D spatial volume in cm^3 is found by multiplying its fraction
-    // of the total volume by the total volume. Not important in eigenvalue
-    // solves, but useful in fixed source solves for returning the flux shape
-    // with a magnitude that makes sense relative to the fixed source strength.
+    // simulation_volume_ is the total 3D physical volume in cm^3 of the
+    // entire global simulation domain (as defined by the ray source box).
+    // Thus, the FSR's true 3D spatial volume in cm^3 is found by multiplying
+    // its fraction of the total volume by the total volume. Not important in
+    // eigenvalue solves, but useful in fixed source solves for returning the
+    // flux shape with a magnitude that makes sense relative to the fixed
+    // source strength.
     double volume = volume_[sr] * simulation_volume_;
 
     double material = material_[sr];
@@ -741,11 +803,8 @@ void FlatSourceDomain::all_reduce_replicated_source_regions()
   MPI_Allreduce(MPI_IN_PLACE, volume_.data(), n_source_regions_, MPI_DOUBLE,
     MPI_SUM, mpi::intracomm);
 
-  MPI_Allreduce(MPI_IN_PLACE, was_hit_.data(), n_source_regions_, MPI_INT,
-    MPI_SUM, mpi::intracomm);
-
   MPI_Allreduce(MPI_IN_PLACE, scalar_flux_new_.data(), n_source_elements_,
-    MPI_FLOAT, MPI_SUM, mpi::intracomm);
+    MPI_DOUBLE, MPI_SUM, mpi::intracomm);
 
   simulation::time_bank_sendrecv.stop();
 #endif
@@ -913,6 +972,8 @@ void FlatSourceDomain::output_to_vtk() const
 void FlatSourceDomain::apply_external_source_to_source_region(
   Discrete* discrete, double strength_factor, int64_t source_region)
 {
+  external_source_present_[source_region] = true;
+
   const auto& discrete_energies = discrete->x();
   const auto& discrete_probs = discrete->prob();
 
@@ -968,14 +1029,10 @@ void FlatSourceDomain::apply_external_source_to_cell_and_children(
 
 void FlatSourceDomain::count_external_source_regions()
 {
+  n_external_source_regions_ = 0;
 #pragma omp parallel for reduction(+ : n_external_source_regions_)
   for (int sr = 0; sr < n_source_regions_; sr++) {
-    float total = 0.f;
-    for (int e = 0; e < negroups_; e++) {
-      int64_t se = sr * negroups_ + e;
-      total += external_source_[se];
-    }
-    if (total != 0.f) {
+    if (external_source_present_[sr]) {
       n_external_source_regions_++;
     }
   }
@@ -1029,7 +1086,7 @@ void FlatSourceDomain::convert_external_sources()
   for (int sr = 0; sr < n_source_regions_; sr++) {
     int material = material_[sr];
     for (int e = 0; e < negroups_; e++) {
-      float sigma_t = data::mg.macro_xs_[material].get_xs(
+      double sigma_t = data::mg.macro_xs_[material].get_xs(
         MgxsType::TOTAL, e, nullptr, nullptr, nullptr, t, a);
       external_source_[sr * negroups_ + e] /= sigma_t;
     }

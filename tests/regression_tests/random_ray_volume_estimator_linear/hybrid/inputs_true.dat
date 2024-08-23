@@ -214,6 +214,7 @@
       </source>
       <volume_normalized_flux_tallies>True</volume_normalized_flux_tallies>
       <source_shape>linear</source_shape>
+      <volume_estimator>hybrid</volume_estimator>
     </random_ray>
   </settings>
   <tallies>

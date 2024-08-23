@@ -61,9 +61,9 @@ def test_source_file():
 
 
 def test_source_dlopen():
-    library = './libsource.so'
-    src = openmc.CompiledSource(library=library)
-    assert src.library == library
+    library = 'libsource.so'
+    src = openmc.CompiledSource(library)
+    assert str(src.library) == library
 
     elem = src.to_xml_element()
     assert 'library' in elem.attrib

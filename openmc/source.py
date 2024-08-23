@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence
 from enum import IntEnum
 from numbers import Real
+from pathlib import Path
 import warnings
 from typing import Any
 
@@ -662,7 +663,7 @@ class CompiledSource(SourceBase):
 
     Parameters
     ----------
-    library : str or None
+    library : path-like
         Path to a compiled shared library
     parameters : str
         Parameters to be provided to the compiled shared library function
@@ -684,7 +685,7 @@ class CompiledSource(SourceBase):
 
     Attributes
     ----------
-    library : str or None
+    library : pathlib.Path
         Path to a compiled shared library
     parameters : str
         Parameters to be provided to the compiled shared library function
@@ -700,17 +701,13 @@ class CompiledSource(SourceBase):
     """
     def __init__(
         self,
-        library: str | None  = None,
+        library: PathLike,
         parameters: str | None = None,
         strength: float = 1.0,
         constraints: dict[str, Any] | None = None
     ) -> None:
         super().__init__(strength=strength, constraints=constraints)
-
-        self._library = None
-        if library is not None:
-            self.library = library
-
+        self.library = library
         self._parameters = None
         if parameters is not None:
             self.parameters = parameters
@@ -720,13 +717,13 @@ class CompiledSource(SourceBase):
         return "compiled"
 
     @property
-    def library(self) -> str:
+    def library(self) -> Path:
         return self._library
 
     @library.setter
-    def library(self, library_name):
-        cv.check_type('library', library_name, str)
-        self._library = library_name
+    def library(self, library_name: PathLike):
+        cv.check_type('library', library_name, PathLike)
+        self._library = Path(library_name)
 
     @property
     def parameters(self) -> str:
@@ -746,7 +743,7 @@ class CompiledSource(SourceBase):
             XML element containing source data
 
         """
-        element.set("library", self.library)
+        element.set("library", str(self.library))
 
         if self.parameters is not None:
             element.set("parameters", self.parameters)

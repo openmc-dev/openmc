@@ -60,6 +60,7 @@ extern bool source_mcpl_write;     //!< write source in mcpl files?
 extern bool surf_source_write;     //!< write surface source file?
 extern bool surf_mcpl_write;       //!< write surface mcpl file?
 extern bool surf_source_read;      //!< read surface source file?
+extern bool info_surface_source;   //!< write surface source message?
 extern bool survival_biasing;      //!< use survival biasing?
 extern bool temperature_multipole; //!< use multipole data?
 extern "C" bool trigger_on;        //!< tally triggers enabled?

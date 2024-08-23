@@ -79,6 +79,7 @@ bool weight_window_checkpoint_surface {false};
 bool weight_window_checkpoint_collision {true};
 bool write_all_tracks {false};
 bool write_initial_source {false};
+bool info_surface_source {false};
 
 std::string path_cross_sections;
 std::string path_input;
@@ -802,6 +803,11 @@ void read_settings_xml(pugi::xml_node root)
         fatal_error("The maximum number of particle files must to be higher "
                     "than the number of active simulated batchs.");
       }
+    }
+
+    // Check if we want to write info about surface source
+    if (check_for_node(node_ssw, "info_surface_source")) {
+      info_surface_source = get_node_value_bool(node_ssw, "info_surface_source");
     }
 
     if (check_for_node(node_ssw, "mcpl")) {

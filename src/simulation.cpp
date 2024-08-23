@@ -481,6 +481,9 @@ void finalize_batch()
     } else {
       write_source_point(filename.c_str(), surfbankspan, surf_work_index);
     }
+    if (settings::info_surface_source){
+      write_message("Info batch {}", simulation::surf_source_bank.size());
+    }
   }
 }
 

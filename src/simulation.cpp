@@ -482,7 +482,7 @@ void finalize_batch()
       write_source_point(filename.c_str(), surfbankspan, surf_work_index);
     }
     if (settings::info_surface_source){
-      write_message("Info batch {}", simulation::surf_source_bank.size());
+      write_message("Info surface source crossing {}/{}", simulation::surf_source_bank.size(), settings::n_particles);
     }
   }
 }

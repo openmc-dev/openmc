@@ -17,6 +17,7 @@ from .material import Material
 from .plot import _Position
 from ..bounding_box import BoundingBox
 from ..checkvalue import PathLike
+from ..mesh import MeshMaterialVolumes
 
 __all__ = [
     'Mesh', 'RegularMesh', 'RectilinearMesh', 'CylindricalMesh',
@@ -122,43 +123,6 @@ _dll.openmc_spherical_mesh_set_grid.restype = c_int
 _dll.openmc_spherical_mesh_set_grid.errcheck = _error_handler
 
 
-class MeshMaterialVolumes(Mapping):
-    def __init__(self, materials, volumes):
-        self._materials = materials
-        self._volumes = volumes
-
-    @property
-    def num_elements(self) -> int:
-        return self._volumes.shape[0]
-
-    def __iter__(self):
-        for mat in np.unique(self._materials):
-            if mat > 0:
-                yield mat
-
-    def __len__(self):
-        return (np.unique(self._materials) > 0).sum()
-
-    def __repr__(self) -> str:
-        ids, counts = np.unique(self._materials, return_counts=True)
-        return '{' + '\n '.join(
-            f'{id}: <{count} nonzero volumes>' for id, count in zip(ids, counts) if id > 0) + '}'
-
-    def __getitem__(self, material_id: int):
-        volumes = np.zeros(self.num_elements)
-        for i in range(self._volumes.shape[1]):
-            indices = (self._materials[:, i] == material_id)
-            volumes[indices] = self._volumes[indices, i]
-        return volumes
-
-    def save(self, filename: PathLike):
-        np.savez_compressed(
-            filename, materials=self._materials, volumes=self._volumes)
-
-    @classmethod
-    def from_npz(cls, filename: PathLike):
-        filedata = np.load(filename)
-        return cls(filedata['materials'], filedata['volumes'])
 
 
 class Mesh(_FortranObjectWithID):

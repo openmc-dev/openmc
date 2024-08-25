@@ -1,12 +1,11 @@
 from __future__ import annotations
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Sequence, Mapping
 from functools import wraps
 from math import pi, sqrt, atan2
 from numbers import Integral, Real
 from pathlib import Path
-import tempfile
 
 import h5py
 import lxml.etree as ET
@@ -19,6 +18,70 @@ from openmc.utility_funcs import change_directory
 from ._xml import get_text
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
+
+
+class MeshMaterialVolumes(Mapping):
+    """Results from a material volume in mesh calculation.
+
+    Parameters
+    ----------
+    materials : np.ndarray
+        Array of shape (elements, max_materials) storing material IDs
+    volumes : np.ndarray
+        Array of shape (elements, max_materials) storing material volumes
+
+    """
+    def __init__(self, materials: np.ndarray, volumes):
+        self._materials = materials
+        self._volumes = volumes
+
+    @property
+    def num_elements(self) -> int:
+        return self._volumes.shape[0]
+
+    def __iter__(self):
+        for mat in np.unique(self._materials):
+            if mat > 0:
+                yield mat
+
+    def __len__(self) -> int:
+        return (np.unique(self._materials) > 0).sum()
+
+    def __repr__(self) -> str:
+        ids, counts = np.unique(self._materials, return_counts=True)
+        return '{' + '\n '.join(
+            f'{id}: <{count} nonzero volumes>' for id, count in zip(ids, counts) if id > 0) + '}'
+
+    def __getitem__(self, material_id: int) -> np.ndarray:
+        volumes = np.zeros(self.num_elements)
+        for i in range(self._volumes.shape[1]):
+            indices = (self._materials[:, i] == material_id)
+            volumes[indices] = self._volumes[indices, i]
+        return volumes
+
+    def save(self, filename: PathLike):
+        """Save material volumes to a .npz file.
+
+        Parameters
+        ----------
+        filename : path-like
+            Filename where data will be saved
+        """
+        np.savez_compressed(
+            filename, materials=self._materials, volumes=self._volumes)
+
+    @classmethod
+    def from_npz(cls, filename: PathLike) -> MeshMaterialVolumes:
+        """Generate material volumes from a .npz file
+
+        Parameters
+        ----------
+        filename : path-like
+            File where data will be read from
+
+        """
+        filedata = np.load(filename)
+        return cls(filedata['materials'], filedata['volumes'])
 
 
 class MeshBase(IDManagerMixin, ABC):
@@ -251,6 +314,65 @@ class MeshBase(IDManagerMixin, ABC):
             homogenized_materials.append(homogenized_mat)
 
         return homogenized_materials
+
+    def material_volumes(
+            self,
+            model: openmc.Model,
+            n_rays: int | tuple[int, int] = 10_000,
+            max_materials: int = 4,
+            **kwargs
+    ) -> list[openmc.Material]:
+        """Determine volume of materials in each mesh element.
+
+        This method works by raytracing repeatedly through the mesh from one
+        side to count of the estimated volume of each material in all mesh
+        elements.
+
+        Parameters
+        ----------
+        model : openmc.Model
+            Model containing materials.
+        n_rays : int or 2-tuple of int
+            Total number of rays to follow. The rays start on an x plane and are
+            evenly distributed over the y and z dimensions. When specified as a
+            2-tuple, it is interpreted as the number of rays in the y and z
+            dimensions.
+        max_materials : int, optional
+            Maximum number of materials in any given mesh element.
+        **kwargs : dict
+            Keyword arguments passed to :func:`openmc.lib.init`
+
+        Returns
+        -------
+        Dictionary-like object that maps material IDs to an array of volumes
+        equal in size to the number of mesh elements.
+
+        """
+        import openmc.lib
+
+        with change_directory(tmpdir=True):
+            # In order to get mesh into model, we temporarily replace the
+            # tallies with a single mesh tally using the current mesh
+            original_tallies = model.tallies
+            new_tally = openmc.Tally()
+            new_tally.filters = [openmc.MeshFilter(self)]
+            new_tally.scores = ['flux']
+            model.tallies = [new_tally]
+
+            # Export model to XML
+            model.export_to_model_xml()
+
+            # Get material volume fractions
+            kwargs.setdefault('output', False)
+            openmc.lib.init(['-c'], **kwargs)
+            mesh = openmc.lib.tallies[new_tally.id].filters[0].mesh
+            volumes = mesh.material_volumes_raytrace(n_rays, max_materials)
+            openmc.lib.finalize()
+
+            # Restore original tallies
+            model.tallies = original_tallies
+
+        return volumes
 
 
 class StructuredMesh(MeshBase):

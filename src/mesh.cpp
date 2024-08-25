@@ -345,6 +345,12 @@ void Mesh::material_volumes_raytrace(
     }
   }
 
+  // Check whether max number of materials was exceeded
+  if (result.too_many_mats()) {
+    throw std::runtime_error("Maximum number of materials for mesh material "
+                             "volume calculation insufficient.");
+  }
+
   // Normalize based on known volumes of elements
   for (int i = 0; i < this->n_bins(); ++i) {
     // Estimated total volume in element i
@@ -2093,8 +2099,14 @@ extern "C" int openmc_mesh_material_volumes_raytrace(int32_t index, int ny,
   if (int err = check_mesh(index))
     return err;
 
-  model::meshes[index]->material_volumes_raytrace(
-    ny, nz, max_mats, materials, volumes);
+  try {
+    model::meshes[index]->material_volumes_raytrace(
+      ny, nz, max_mats, materials, volumes);
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_ALLOCATE;
+  }
+
   return 0;
 }
 

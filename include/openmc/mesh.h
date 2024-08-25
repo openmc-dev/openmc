@@ -89,18 +89,22 @@ public:
     {
       int i;
       for (i = 0; i < n_mats_; ++i) {
+        // Check whether material already is present
         if (materials(index_mesh, i) == index_material)
           break;
 
+        // If not already present, check for unused position (-2)
         if (materials(index_mesh, i) == -2) {
           materials(index_mesh, i) = index_material;
           break;
         }
       }
 
+      // If maximum number of materials exceeded, set a flag that can be checked
+      // later
       if (i >= n_mats_) {
-        fatal_error(
-          "Number of materials for mesh matvol raytrace insufficient.");
+        too_many_mats_ = true;
+        return;
       }
 
       // Accumulate volume
@@ -120,10 +124,13 @@ public:
       return volumes_[i * n_mats_ + j];
     }
 
+    bool too_many_mats() const { return too_many_mats_; }
+
   private:
     int32_t* materials_; //!< material index (bins, max_mats)
     double* volumes_;    //!< volume in [cm^3] (bins, max_mats)
     int n_mats_;
+    bool too_many_mats_ = false;
   };
 
   // Constructors and destructor

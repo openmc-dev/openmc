@@ -299,8 +299,18 @@ class Mesh(_FortranObjectWithID):
         volumes = np.zeros((n, max_materials), dtype=np.float64)
 
         # Run material volume calculation
-        _dll.openmc_mesh_material_volumes_raytrace(
-            self._index, ny, nz, max_materials, materials, volumes)
+        while True:
+            try:
+                _dll.openmc_mesh_material_volumes_raytrace(
+                    self._index, ny, nz, max_materials, materials, volumes)
+            except AllocationError:
+                # Increase size of result array and try again
+                max_materials *= 2
+                materials = np.full((n, max_materials), -2, dtype=np.int32)
+                volumes = np.zeros((n, max_materials), dtype=np.float64)
+            else:
+                # If no error, break out of loop
+                break
 
         return MeshMaterialVolumes(materials, volumes)
 

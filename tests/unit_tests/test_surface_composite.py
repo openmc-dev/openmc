@@ -347,10 +347,13 @@ def test_polygon():
         assert any([points_in[i] in reg for reg in star_poly.regions])
         assert points_in[i] not in +star_poly
         assert (0, 0, 0) not in -star_poly
-        if basis != 'rz':
-            offset_star = star_poly.offset(.6)
-            assert (0, 0, 0) in -offset_star
-            assert any([(0, 0, 0) in reg for reg in offset_star.regions])
+        if basis != "rz":
+            for offsets in [0.6, np.array([0.6] * 10), [0.6] * 10]:
+                offset_star = star_poly.offset(offsets)
+                assert (0, 0, 0) in -offset_star
+                assert any([(0, 0, 0) in reg for reg in offset_star.regions])
+            with pytest.raises(ValueError):
+                star_poly.offset([0.6, 0.6])
 
     # check invalid Polygon input points
     # duplicate points not just at start and end

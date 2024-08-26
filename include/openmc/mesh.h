@@ -85,17 +85,18 @@ public:
       : materials_(mats), volumes_(vols), n_mats_(max_materials)
     {}
 
-    void add_volume(int index_mesh, int index_material, double volume)
+    void add_volume(int index_elem, int index_material, double volume)
     {
       int i;
+#pragma omp critical(MeshMatVol)
       for (i = 0; i < n_mats_; ++i) {
         // Check whether material already is present
-        if (materials(index_mesh, i) == index_material)
+        if (materials(index_elem, i) == index_material)
           break;
 
         // If not already present, check for unused position (-2)
-        if (materials(index_mesh, i) == -2) {
-          materials(index_mesh, i) = index_material;
+        if (materials(index_elem, i) == -2) {
+          materials(index_elem, i) = index_material;
           break;
         }
       }
@@ -109,7 +110,7 @@ public:
 
       // Accumulate volume
 #pragma omp atomic
-      volumes(index_mesh, i) += volume;
+      volumes(index_elem, i) += volume;
     }
 
     int32_t& materials(int i, int j) { return materials_[i * n_mats_ + j]; }

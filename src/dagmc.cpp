@@ -83,11 +83,7 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
 
       // Get mat name for each assignement instances
       std::stringstream iss {attr.value()};
-      vector<std::string> instance_mats;
-      std::string value;
-      while (iss >> value)
-        instance_mats.push_back(value);
-      std::cout << "DAGMC " << mat_ref_assignment << " " << value << std::endl;
+      vector<std::string> instance_mats = split(iss.str());
 
       // Store mat name for each instances
       instance_material_overrides.insert(

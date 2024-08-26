@@ -12,3 +12,4 @@ mkdir build && cd build
 cmake -Dstatic=on .. -DCMAKE_INSTALL_PREFIX=$NJOY_INSTALL_DIR &&
 make 2>/dev/null && sudo make install
 rm -rf $HOME/NJOY2016/tests
+rm -rf $HOME/NJOY2016/build

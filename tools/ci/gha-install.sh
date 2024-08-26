@@ -10,7 +10,7 @@ pip install --upgrade numpy
 if [[ ! -d "$HOME/NJOY2016" ]]; then
     ./tools/ci/gha-install-njoy.sh
 fi
-echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
+echo "$HOME/NJOY2016" >> $GITHUB_PATH
 
 # Install DAGMC if needed
 if [[ $DAGMC = 'y' ]]; then

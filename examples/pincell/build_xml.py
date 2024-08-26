@@ -67,8 +67,9 @@ settings.particles = 1000
 # Create an initial uniform spatial source distribution over fissionable zones
 lower_left = (-pitch/2, -pitch/2, -1)
 upper_right = (pitch/2, pitch/2, 1)
-uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=True)
-settings.source = openmc.IndependentSource(space=uniform_dist)
+uniform_dist = openmc.stats.Box(lower_left, upper_right)
+settings.source = openmc.IndependentSource(
+    space=uniform_dist, constraints={'fissionable': True})
 
 # For source convergence checks, add a mesh that can be used to calculate the
 # Shannon entropy

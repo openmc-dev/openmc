@@ -1,9 +1,8 @@
 from __future__ import annotations
 import math
-import typing
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from copy import deepcopy
 from numbers import Real
 from warnings import warn
@@ -16,13 +15,13 @@ import openmc.checkvalue as cv
 from .._xml import get_text
 from ..mixin import EqualityMixin
 
-_INTERPOLATION_SCHEMES = [
+_INTERPOLATION_SCHEMES = {
     'histogram',
     'linear-linear',
     'linear-log',
     'log-linear',
     'log-log'
-]
+}
 
 
 class Univariate(EqualityMixin, ABC):
@@ -68,7 +67,7 @@ class Univariate(EqualityMixin, ABC):
             return Mixture.from_xml_element(elem)
 
     @abstractmethod
-    def sample(n_samples: int = 1, seed: typing.Optional[int] = None):
+    def sample(n_samples: int = 1, seed: int | None = None):
         """Sample the univariate distribution
 
         Parameters
@@ -210,8 +209,8 @@ class Discrete(Univariate):
     @classmethod
     def merge(
         cls,
-        dists: typing.Sequence[Discrete],
-        probs: typing.Sequence[int]
+        dists: Sequence[Discrete],
+        probs: Sequence[int]
     ):
         """Merge multiple discrete distributions into a single distribution
 
@@ -311,6 +310,27 @@ class Discrete(Univariate):
             new_x = self.x[new_indices]
             new_p = self.p[new_indices]
             return type(self)(new_x, new_p)
+
+
+def delta_function(value: float, intensity: float = 1.0) -> Discrete:
+    """Return a discrete distribution with a single point.
+
+    .. versionadded:: 0.15.1
+
+    Parameters
+    ----------
+    value : float
+        Value of the random variable.
+    intensity : float, optional
+        When used for an energy distribution, this can be used to assign an
+        intensity.
+
+    Returns
+    -------
+    Discrete distribution with a single point
+
+    """
+    return Discrete([value], [intensity])
 
 
 class Uniform(Univariate):
@@ -837,10 +857,12 @@ class Tabular(Univariate):
     x : Iterable of float
         Tabulated values of the random variable
     p : Iterable of float
-        Tabulated probabilities
+        Tabulated probabilities. For histogram interpolation, if the length of
+        `p` is the same as `x`, the last value is ignored. Probabilities `p` are
+        given per unit of `x`.
     interpolation : {'histogram', 'linear-linear', 'linear-log', 'log-linear', 'log-log'}, optional
-        Indicate whether the density function is constant between tabulated
-        points or linearly-interpolated. Defaults to 'linear-linear'.
+        Indicates how the density function is interpolated between tabulated
+        points. Defaults to 'linear-linear'.
     ignore_negative : bool
         Ignore negative probabilities
 
@@ -850,47 +872,59 @@ class Tabular(Univariate):
         Tabulated values of the random variable
     p : numpy.ndarray
         Tabulated probabilities
-    interpolation : {'histogram', 'linear-linear', 'linear-log', 'log-linear', 'log-log'}, optional
-        Indicate whether the density function is constant between tabulated
-        points or linearly-interpolated.
+    interpolation : {'histogram', 'linear-linear', 'linear-log', 'log-linear', 'log-log'}
+        Indicates how the density function is interpolated between tabulated
+        points. Defaults to 'linear-linear'.
+
+    Notes
+    -----
+    The probabilities `p` are interpreted per unit of the corresponding
+    independent variable `x`. This follows the definition of a probability
+    density function (PDF) in probability theory, where the PDF represents the
+    relative likelihood of the random variable taking on a particular value per
+    unit of the variable. For example, if `x` represents energy in eV, then `p`
+    should represent probabilities per eV.
 
     """
 
     def __init__(
             self,
-            x: typing.Sequence[float],
-            p: typing.Sequence[float],
+            x: Sequence[float],
+            p: Sequence[float],
             interpolation: str = 'linear-linear',
             ignore_negative: bool = False
         ):
-        self._ignore_negative = ignore_negative
-        self.x = x
-        self.p = p
         self.interpolation = interpolation
 
+        cv.check_type('tabulated values', x, Iterable, Real)
+        cv.check_type('tabulated probabilities', p, Iterable, Real)
+
+        x = np.array(x, dtype=float)
+        p = np.array(p, dtype=float)
+
+        if p.size > x.size:
+            raise ValueError('Number of probabilities exceeds number of table values.')
+        if self.interpolation != 'histogram' and x.size != p.size:
+            raise ValueError(f'Tabulated values ({x.size}) and probabilities '
+                             f'({p.size}) should have the same length')
+
+        if not ignore_negative:
+            for pk in p:
+                cv.check_greater_than('tabulated probability', pk, 0.0, True)
+
+        self._x = x
+        self._p = p
+
     def __len__(self):
-        return len(self.x)
+        return self.p.size
 
     @property
     def x(self):
         return self._x
 
-    @x.setter
-    def x(self, x):
-        cv.check_type('tabulated values', x, Iterable, Real)
-        self._x = np.array(x, dtype=float)
-
     @property
     def p(self):
         return self._p
-
-    @p.setter
-    def p(self, p):
-        cv.check_type('tabulated probabilities', p, Iterable, Real)
-        if not self._ignore_negative:
-            for pk in p:
-                cv.check_greater_than('tabulated probability', pk, 0.0, True)
-        self._p = np.array(p, dtype=float)
 
     @property
     def interpolation(self):
@@ -907,7 +941,7 @@ class Tabular(Univariate):
         p = self.p
 
         if self.interpolation == 'histogram':
-            c[1:] = p[:-1] * np.diff(x)
+            c[1:] = p[:x.size-1] * np.diff(x)
         elif self.interpolation == 'linear-linear':
             c[1:] = 0.5 * (p[:-1] + p[1:]) * np.diff(x)
         else:
@@ -938,7 +972,7 @@ class Tabular(Univariate):
         elif self.interpolation == 'histogram':
             x_l = self.x[:-1]
             x_r = self.x[1:]
-            p_l = self.p[:-1]
+            p_l = self.p[:self.x.size-1]
             mean = (0.5 * (x_l + x_r) * (x_r - x_l) * p_l).sum()
         else:
             raise NotImplementedError('Can only compute mean for tabular '
@@ -952,9 +986,9 @@ class Tabular(Univariate):
 
     def normalize(self):
         """Normalize the probabilities stored on the distribution"""
-        self.p /= self.cdf().max()
+        self._p /= self.cdf().max()
 
-    def sample(self, n_samples: int = 1, seed: typing.Optional[int] = None):
+    def sample(self, n_samples: int = 1, seed: int | None = None):
         rng = np.random.RandomState(seed)
         xi = rng.random(n_samples)
 
@@ -1070,7 +1104,7 @@ class Tabular(Univariate):
             Integral of tabular distrbution
         """
         if self.interpolation == 'histogram':
-            return np.sum(np.diff(self.x) * self.p[:-1])
+            return np.sum(np.diff(self.x) * self.p[:self.x.size-1])
         elif self.interpolation == 'linear-linear':
             return trapezoid(self.p, self.x)
         else:
@@ -1096,7 +1130,7 @@ class Legendre(Univariate):
 
     """
 
-    def __init__(self, coefficients: typing.Sequence[float]):
+    def __init__(self, coefficients: Sequence[float]):
         self.coefficients = coefficients
         self._legendre_poly = None
 
@@ -1152,8 +1186,8 @@ class Mixture(Univariate):
 
     def __init__(
         self,
-        probability: typing.Sequence[float],
-        distribution: typing.Sequence[Univariate]
+        probability: Sequence[float],
+        distribution: Sequence[Univariate]
     ):
         self.probability = probability
         self.distribution = distribution
@@ -1315,8 +1349,8 @@ class Mixture(Univariate):
 
 
 def combine_distributions(
-    dists: typing.Sequence[Univariate],
-    probs: typing.Sequence[float]
+    dists: Sequence[Univariate],
+    probs: Sequence[float]
 ):
     """Combine distributions with specified probabilities
 
@@ -1346,7 +1380,7 @@ def combine_distributions(
     # Apply probabilites to continuous distributions
     for i in cont_index:
         dist = dist_list[i]
-        dist.p *= probs[i]
+        dist._p *= probs[i]
 
     if discrete_index:
         # Create combined discrete distribution

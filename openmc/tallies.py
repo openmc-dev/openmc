@@ -3209,6 +3209,7 @@ class Tallies(cv.CheckedList):
     def to_xml_element(self, memo=None):
         """Creates a 'tallies' element to be written to an XML file.
         """
+        memo = memo if memo is not None else set()
         element = ET.Element("tallies")
         self._create_mesh_subelements(element, memo)
         self._create_filter_subelements(element)

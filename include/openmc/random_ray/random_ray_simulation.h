@@ -2,6 +2,7 @@
 #define OPENMC_RANDOM_RAY_SIMULATION_H
 
 #include "openmc/random_ray/flat_source_domain.h"
+#include "openmc/random_ray/linear_source_domain.h"
 
 namespace openmc {
 
@@ -18,19 +19,21 @@ public:
 
   //----------------------------------------------------------------------------
   // Methods
+  void compute_segment_correction_factors();
   void simulate();
   void reduce_simulation_statistics();
   void output_simulation_results() const;
   void instability_check(
     int64_t n_hits, double k_eff, double& avg_miss_rate) const;
   void print_results_random_ray(uint64_t total_geometric_intersections,
-    double avg_miss_rate, int negroups, int64_t n_source_regions) const;
+    double avg_miss_rate, int negroups, int64_t n_source_regions,
+    int64_t n_external_source_regions) const;
 
   //----------------------------------------------------------------------------
   // Data members
 private:
   // Contains all flat source region data
-  FlatSourceDomain domain_;
+  unique_ptr<FlatSourceDomain> domain_;
 
   // Random ray eigenvalue
   double k_eff_ {1.0};

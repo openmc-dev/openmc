@@ -1,12 +1,11 @@
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from copy import copy
 from functools import partial
 from math import sqrt, pi, sin, cos, isclose
 from numbers import Real
 import warnings
 import operator
-from typing import Sequence
 
 import numpy as np
 from scipy.spatial import ConvexHull, Delaunay
@@ -90,7 +89,7 @@ class CylinderSector(CompositeSurface):
         counterclockwise direction with respect to the first basis axis
         (+y, +z, or +x). Must be greater than :attr:`theta1`.
     center : iterable of float
-       Coordinate for central axes of cylinders in the (y, z), (z, x), or (x, y)
+       Coordinate for central axes of cylinders in the (y, z), (x, z), or (x, y)
        basis. Defaults to (0,0).
     axis : {'x', 'y', 'z'}
         Central axis of the cylinders defining the inner and outer surfaces of
@@ -133,13 +132,13 @@ class CylinderSector(CompositeSurface):
         phi2 = pi / 180 * theta2
 
         # Coords for axis-perpendicular planes
-        p1 = np.array([0., 0., 1.])
+        p1 = np.array([center[0], center[1], 1.])
 
-        p2_plane1 = np.array([r1 * cos(phi1), r1 * sin(phi1), 0.])
-        p3_plane1 = np.array([r2 * cos(phi1), r2 * sin(phi1), 0.])
+        p2_plane1 = np.array([r1 * cos(phi1) + center[0], r1 * sin(phi1) + center[1], 0.])
+        p3_plane1 = np.array([r2 * cos(phi1) + center[0], r2 * sin(phi1) + center[1], 0.])
 
-        p2_plane2 = np.array([r1 * cos(phi2), r1 * sin(phi2), 0.])
-        p3_plane2 = np.array([r2 * cos(phi2), r2 * sin(phi2), 0.])
+        p2_plane2 = np.array([r1 * cos(phi2) + center[0], r1 * sin(phi2)+ center[1], 0.])
+        p3_plane2 = np.array([r2 * cos(phi2) + center[0], r2 * sin(phi2)+ center[1], 0.])
 
         points = [p1, p2_plane1, p3_plane1, p2_plane2, p3_plane2]
         if axis == 'z':
@@ -147,7 +146,7 @@ class CylinderSector(CompositeSurface):
             self.inner_cyl = openmc.ZCylinder(*center, r1, **kwargs)
             self.outer_cyl = openmc.ZCylinder(*center, r2, **kwargs)
         elif axis == 'y':
-            coord_map = [1, 2, 0]
+            coord_map = [0, 2, 1]
             self.inner_cyl = openmc.YCylinder(*center, r1, **kwargs)
             self.outer_cyl = openmc.YCylinder(*center, r2, **kwargs)
         elif axis == 'x':
@@ -155,6 +154,7 @@ class CylinderSector(CompositeSurface):
             self.inner_cyl = openmc.XCylinder(*center, r1, **kwargs)
             self.outer_cyl = openmc.XCylinder(*center, r2, **kwargs)
 
+        # Reorder the points to correspond to the correct central axis
         for p in points:
             p[:] = p[coord_map]
 
@@ -192,8 +192,8 @@ class CylinderSector(CompositeSurface):
             with respect to the first basis axis (+y, +z, or +x). Note that
             negative values translate to an offset in the clockwise direction.
         center : iterable of float
-            Coordinate for central axes of cylinders in the (y, z), (z, x), or (x, y)
-            basis. Defaults to (0,0).
+            Coordinate for central axes of cylinders in the (y, z), (x, z), or
+            (x, y) basis. Defaults to (0,0).
         axis : {'x', 'y', 'z'}
             Central axis of the cylinders defining the inner and outer surfaces
             of the sector. Defaults to 'z'.
@@ -216,17 +216,23 @@ class CylinderSector(CompositeSurface):
         return cls(r1, r2, theta1, theta2, center=center, axis=axis, **kwargs)
 
     def __neg__(self):
-        return -self.outer_cyl & +self.inner_cyl & -self.plane1 & +self.plane2
+        if isinstance(self.inner_cyl, openmc.YCylinder):
+            return -self.outer_cyl & +self.inner_cyl & +self.plane1 & -self.plane2
+        else:
+            return -self.outer_cyl & +self.inner_cyl & -self.plane1 & +self.plane2
 
     def __pos__(self):
-        return +self.outer_cyl | -self.inner_cyl | +self.plane1 | -self.plane2
+        if isinstance(self.inner_cyl, openmc.YCylinder):
+            return +self.outer_cyl | -self.inner_cyl | -self.plane1 | +self.plane2
+        else:
+            return +self.outer_cyl | -self.inner_cyl | +self.plane1 | -self.plane2
 
 
 class IsogonalOctagon(CompositeSurface):
     r"""Infinite isogonal octagon composite surface
 
     An isogonal octagon is composed of eight planar surfaces. The prism is
-    parallel to the x, y, or z axis. The remaining two axes (y and z, z and x,
+    parallel to the x, y, or z axis. The remaining two axes (y and z, x and z,
     or x and y) serve as a basis for constructing the surfaces. Two surfaces
     are parallel to the first basis axis, two surfaces are parallel
     to the second basis axis, and the remaining four surfaces intersect both
@@ -234,7 +240,7 @@ class IsogonalOctagon(CompositeSurface):
 
     This class acts as a proper surface, meaning that unary `+` and `-`
     operators applied to it will produce a half-space. The negative side is
-    defined to be the region inside of the octogonal prism.
+    defined to be the region inside of the octagonal prism.
 
     .. versionadded:: 0.13.1
 
@@ -242,7 +248,7 @@ class IsogonalOctagon(CompositeSurface):
     ----------
     center : iterable of float
         Coordinate for the central axis of the octagon in the
-        (y, z), (z, x), or (x, y) basis.
+        (y, z), (x, z), or (x, y) basis depending on the axis parameter.
     r1 : float
         Half-width of octagon across its basis axis-parallel sides in units
         of cm. Must be less than :math:`r_2\sqrt{2}`.
@@ -283,12 +289,12 @@ class IsogonalOctagon(CompositeSurface):
     def __init__(self, center, r1, r2, axis='z', **kwargs):
         c1, c2 = center
 
-        # Coords for axis-perpendicular planes
-        ctop = c1 + r1
-        cbottom = c1 - r1
+        # Coordinates for axis-perpendicular planes
+        cright = c1 + r1
+        cleft = c1 - r1
 
-        cright = c2 + r1
-        cleft = c2 - r1
+        ctop = c2 + r1
+        cbottom = c2 - r1
 
         # Side lengths
         if r2 > r1 * sqrt(2):
@@ -300,7 +306,7 @@ class IsogonalOctagon(CompositeSurface):
 
         L_basis_ax = (r2 * sqrt(2) - r1)
 
-        # Coords for quadrant planes
+        # Coordinates for quadrant planes
         p1_ur = np.array([L_basis_ax, r1, 0.])
         p2_ur = np.array([r1, L_basis_ax, 0.])
         p3_ur = np.array([r1, L_basis_ax, 1.])
@@ -309,7 +315,16 @@ class IsogonalOctagon(CompositeSurface):
         p2_lr = np.array([L_basis_ax, -r1, 0.])
         p3_lr = np.array([L_basis_ax, -r1, 1.])
 
-        points = [p1_ur, p2_ur, p3_ur, p1_lr, p2_lr, p3_lr]
+        p1_ll = -p1_ur
+        p2_ll = -p2_ur
+        p3_ll = -p3_ur
+
+        p1_ul = -p1_lr
+        p2_ul = -p2_lr
+        p3_ul = -p3_lr
+
+        points = [p1_ur, p2_ur, p3_ur, p1_lr, p2_lr, p3_lr,
+                  p1_ll, p2_ll, p3_ll, p1_ul, p2_ul, p3_ul]
 
         # Orientation specific variables
         if axis == 'z':
@@ -319,40 +334,56 @@ class IsogonalOctagon(CompositeSurface):
             self.right = openmc.XPlane(cright, **kwargs)
             self.left = openmc.XPlane(cleft, **kwargs)
         elif axis == 'y':
-            coord_map = [1, 2, 0]
-            self.top = openmc.XPlane(ctop, **kwargs)
-            self.bottom = openmc.XPlane(cbottom, **kwargs)
-            self.right = openmc.ZPlane(cright, **kwargs)
-            self.left = openmc.ZPlane(cleft, **kwargs)
+            coord_map = [0, 2, 1]
+            self.top = openmc.ZPlane(ctop, **kwargs)
+            self.bottom = openmc.ZPlane(cbottom, **kwargs)
+            self.right = openmc.XPlane(cright, **kwargs)
+            self.left = openmc.XPlane(cleft, **kwargs)
         elif axis == 'x':
             coord_map = [2, 0, 1]
             self.top = openmc.ZPlane(ctop, **kwargs)
             self.bottom = openmc.ZPlane(cbottom, **kwargs)
             self.right = openmc.YPlane(cright, **kwargs)
             self.left = openmc.YPlane(cleft, **kwargs)
+        self.axis = axis
 
-        # Put our coordinates in (x,y,z) order
+        # Put our coordinates in (x,y,z) order and add the offset
         for p in points:
+            p[0] += c1
+            p[1] += c2
             p[:] = p[coord_map]
 
         self.upper_right = openmc.Plane.from_points(p1_ur, p2_ur, p3_ur,
                                                     **kwargs)
         self.lower_right = openmc.Plane.from_points(p1_lr, p2_lr, p3_lr,
                                                     **kwargs)
-        self.lower_left = openmc.Plane.from_points(-p1_ur, -p2_ur, -p3_ur,
+        self.lower_left = openmc.Plane.from_points(p1_ll, p2_ll, p3_ll,
                                                    **kwargs)
-        self.upper_left = openmc.Plane.from_points(-p1_lr, -p2_lr, -p3_lr,
+        self.upper_left = openmc.Plane.from_points(p1_ul, p2_ul, p3_ul,
                                                    **kwargs)
 
     def __neg__(self):
-        return -self.top & +self.bottom & -self.right & +self.left & \
-            +self.upper_right & +self.lower_right & -self.lower_left & \
-            -self.upper_left
+        if self.axis == 'y':
+            region = -self.top & +self.bottom & -self.right & +self.left & \
+                -self.upper_right & -self.lower_right & +self.lower_left & \
+                +self.upper_left
+        else:
+            region = -self.top & +self.bottom & -self.right & +self.left & \
+                +self.upper_right & +self.lower_right & -self.lower_left & \
+                -self.upper_left
+
+        return region
 
     def __pos__(self):
-        return +self.top | -self.bottom | +self.right | -self.left | \
-            -self.upper_right | -self.lower_right | +self.lower_left | \
-            +self.upper_left
+        if self.axis == 'y':
+            region = +self.top | -self.bottom | +self.right | -self.left | \
+                +self.upper_right | +self.lower_right | -self.lower_left | \
+                -self.upper_left
+        else:
+            region = +self.top | -self.bottom | +self.right | -self.left | \
+                -self.upper_right | -self.lower_right | +self.lower_left | \
+                +self.upper_left
+        return region
 
 
 class RightCircularCylinder(CompositeSurface):
@@ -612,6 +643,86 @@ class RectangularParallelepiped(CompositeSurface):
 
     def __pos__(self):
         return +self.xmax | -self.xmin | +self.ymax | -self.ymin | +self.zmax | -self.zmin
+
+
+class OrthogonalBox(CompositeSurface):
+    """Arbitrarily oriented orthogonal box
+
+    This composite surface is composed of four or six planar surfaces that form
+    an arbitrarily oriented orthogonal box when combined.
+
+    Parameters
+    ----------
+    v : iterable of float
+        (x,y,z) coordinates of a corner of the box
+    a1 : iterable of float
+        Vector of first side starting from ``v``
+    a2 : iterable of float
+        Vector of second side starting from ``v``
+    a3 : iterable of float, optional
+        Vector of third side starting from ``v``. When not specified, it is
+        assumed that the box will be infinite along the vector normal to the
+        plane specified by ``a1`` and ``a2``.
+    **kwargs
+        Keyword arguments passed to underlying plane classes
+
+    Attributes
+    ----------
+    ax1_min, ax1_max : openmc.Plane
+        Planes representing minimum and maximum along first axis
+    ax2_min, ax2_max : openmc.Plane
+        Planes representing minimum and maximum along second axis
+    ax3_min, ax3_max : openmc.Plane
+        Planes representing minimum and maximum along third axis
+
+    """
+    _surface_names = ('ax1_min', 'ax1_max', 'ax2_min', 'ax2_max', 'ax3_min', 'ax3_max')
+
+    def __init__(self, v, a1, a2, a3=None, **kwargs):
+        v = np.array(v)
+        a1 = np.array(a1)
+        a2 = np.array(a2)
+        if has_a3 := a3 is not None:
+            a3 = np.array(a3)
+        else:
+            a3 = np.cross(a1, a2)  # normal to plane specified by a1 and a2
+
+        # Generate corners of box
+        p1 = v
+        p2 = v + a1
+        p3 = v + a2
+        p4 = v + a3
+        p5 = v + a1 + a2
+        p6 = v + a2 + a3
+        p7 = v + a1 + a3
+
+        # Generate 6 planes of box
+        self.ax1_min = openmc.Plane.from_points(p1, p3, p4, **kwargs)
+        self.ax1_max = openmc.Plane.from_points(p2, p5, p7, **kwargs)
+        self.ax2_min = openmc.Plane.from_points(p1, p4, p2, **kwargs)
+        self.ax2_max = openmc.Plane.from_points(p3, p6, p5, **kwargs)
+        if has_a3:
+            self.ax3_min = openmc.Plane.from_points(p1, p2, p3, **kwargs)
+            self.ax3_max = openmc.Plane.from_points(p4, p7, p6, **kwargs)
+
+        # Make sure a point inside the box produces the correct senses. If not,
+        # flip the plane coefficients so it does.
+        mid_point = v + (a1 + a2 + a3)/2
+        nums = (1, 2, 3) if has_a3 else (1, 2)
+        for num in nums:
+            min_surf = getattr(self, f'ax{num}_min')
+            max_surf = getattr(self, f'ax{num}_max')
+            if mid_point in -min_surf:
+                min_surf.flip_normal()
+            if mid_point in +max_surf:
+                max_surf.flip_normal()
+
+    def __neg__(self):
+        region = (+self.ax1_min & -self.ax1_max &
+                  +self.ax2_min & -self.ax2_max)
+        if hasattr(self, 'ax3_min'):
+            region &= (+self.ax3_min & -self.ax3_max)
+        return region
 
 
 class XConeOneSided(CompositeSurface):
@@ -940,19 +1051,19 @@ class Polygon(CompositeSurface):
         # Check if polygon is self-intersecting by comparing edges pairwise
         n = len(points)
         for i in range(n):
-            p0 = points[i, :]
-            p1 = points[(i + 1) % n, :]
+            p0 = np.append(points[i, :], 0)
+            p1 = np.append(points[(i + 1) % n, :], 0)
             for j in range(i + 1, n):
-                p2 = points[j, :]
-                p3 = points[(j + 1) % n, :]
+                p2 = np.append(points[j, :], 0)
+                p3 = np.append(points[(j + 1) % n, :], 0)
                 # Compute orientation of p0 wrt p2->p3 line segment
-                cp0 = np.cross(p3-p0, p2-p0)
+                cp0 = np.cross(p3-p0, p2-p0)[-1]
                 # Compute orientation of p1 wrt p2->p3 line segment
-                cp1 = np.cross(p3-p1, p2-p1)
+                cp1 = np.cross(p3-p1, p2-p1)[-1]
                 # Compute orientation of p2 wrt p0->p1 line segment
-                cp2 = np.cross(p1-p2, p0-p2)
+                cp2 = np.cross(p1-p2, p0-p2)[-1]
                 # Compute orientation of p3 wrt p0->p1 line segment
-                cp3 = np.cross(p1-p3, p0-p3)
+                cp3 = np.cross(p1-p3, p0-p3)[-1]
 
                 # Group cross products in an array and find out how many are 0
                 cross_products = np.array([[cp0, cp1], [cp2, cp3]])

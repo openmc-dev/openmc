@@ -170,11 +170,11 @@ class Lattice(IDManagerMixin, ABC):
         """
         cells = {}
 
-        if memo and self in memo:
+        if memo is None:
+            memo = set()
+        elif self in memo:
             return cells
-
-        if memo is not None:
-            memo.add(self)
+        memo.add(self)
 
         unique_universes = self.get_unique_universes()
 
@@ -194,6 +194,9 @@ class Lattice(IDManagerMixin, ABC):
 
         """
 
+        if memo is None:
+            memo = set()
+
         materials = {}
 
         # Append all Cells in each Cell in the Universe to the dictionary
@@ -203,7 +206,7 @@ class Lattice(IDManagerMixin, ABC):
 
         return materials
 
-    def get_all_universes(self):
+    def get_all_universes(self, memo=None):
         """Return all universes that are contained within the lattice
 
         Returns
@@ -213,10 +216,15 @@ class Lattice(IDManagerMixin, ABC):
             :class:`Universe` instances
 
         """
-
         # Initialize a dictionary of all Universes contained by the Lattice
         # in each nested Universe level
         all_universes = {}
+
+        if memo is None:
+            memo = set()
+        elif self in memo:
+            return all_universes
+        memo.add(self)
 
         # Get all unique Universes contained in each of the lattice cells
         unique_universes = self.get_unique_universes()
@@ -226,7 +234,7 @@ class Lattice(IDManagerMixin, ABC):
 
         # Append all Universes containing each cell to the dictionary
         for universe in unique_universes.values():
-            all_universes.update(universe.get_all_universes())
+            all_universes.update(universe.get_all_universes(memo))
 
         return all_universes
 
@@ -846,10 +854,11 @@ class RectLattice(Lattice):
 
         """
         # If the element already contains the Lattice subelement, then return
-        if memo and self in memo:
+        if memo is None:
+            memo = set()
+        elif self in memo:
             return
-        if memo is not None:
-            memo.add(self)
+        memo.add(self)
 
         # Make sure universes have been assigned
         if self.universes is None:
@@ -874,6 +883,10 @@ class RectLattice(Lattice):
         # Export Lattice cell dimensions
         dimension = ET.SubElement(lattice_subelement, "dimension")
         dimension.text = ' '.join(map(str, self.shape))
+
+        # Make sure lower_left has been specified
+        if self.lower_left is None:
+            raise ValueError(f"Lattice {self.id} does not have lower_left specified.")
 
         # Export Lattice lower left
         lower_left = ET.SubElement(lattice_subelement, "lower_left")
@@ -1417,10 +1430,11 @@ class HexLattice(Lattice):
 
     def create_xml_subelement(self, xml_element, memo=None):
         # If this subelement has already been written, return
-        if memo and self in memo:
+        if memo is None:
+            memo = set()
+        elif self in memo:
             return
-        if memo is not None:
-            memo.add(self)
+        memo.add(self)
 
         lattice_subelement = ET.Element("hex_lattice")
         lattice_subelement.set("id", str(self._id))
@@ -1564,6 +1578,7 @@ class HexLattice(Lattice):
                             alpha -= 1
                             if not lat.is_valid_index((x, alpha, z)):
                                 # Reached the bottom
+                                j += 1
                                 break
                     j += 1
             else:
@@ -1583,6 +1598,7 @@ class HexLattice(Lattice):
 
                         # Check if we've reached the bottom
                         if y == -n_rings:
+                            j += 1
                             break
 
                         while not lat.is_valid_index((alpha, y, z)):

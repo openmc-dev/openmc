@@ -6,7 +6,6 @@ from pathlib import Path
 from numbers import Integral
 from tempfile import NamedTemporaryFile
 import warnings
-from typing import Optional, Dict
 
 import h5py
 import lxml.etree as ET
@@ -83,7 +82,7 @@ class Model:
             self.plots = plots
 
     @property
-    def geometry(self) -> Optional[openmc.Geometry]:
+    def geometry(self) -> openmc.Geometry | None:
         return self._geometry
 
     @geometry.setter
@@ -92,7 +91,7 @@ class Model:
         self._geometry = geometry
 
     @property
-    def materials(self) -> Optional[openmc.Materials]:
+    def materials(self) -> openmc.Materials | None:
         return self._materials
 
     @materials.setter
@@ -106,7 +105,7 @@ class Model:
                 self._materials.append(mat)
 
     @property
-    def settings(self) -> Optional[openmc.Settings]:
+    def settings(self) -> openmc.Settings | None:
         return self._settings
 
     @settings.setter
@@ -115,7 +114,7 @@ class Model:
         self._settings = settings
 
     @property
-    def tallies(self) -> Optional[openmc.Tallies]:
+    def tallies(self) -> openmc.Tallies | None:
         return self._tallies
 
     @tallies.setter
@@ -129,7 +128,7 @@ class Model:
                 self._tallies.append(tally)
 
     @property
-    def plots(self) -> Optional[openmc.Plots]:
+    def plots(self) -> openmc.Plots | None:
         return self._plots
 
     @plots.setter
@@ -169,7 +168,7 @@ class Model:
 
     @property
     @lru_cache(maxsize=None)
-    def _cells_by_name(self) -> Dict[int, openmc.Cell]:
+    def _cells_by_name(self) -> dict[int, openmc.Cell]:
         # Get the names maps, but since names are not unique, store a set for
         # each name key. In this way when the user requests a change by a name,
         # the change will be applied to all of the same name.
@@ -182,7 +181,7 @@ class Model:
 
     @property
     @lru_cache(maxsize=None)
-    def _materials_by_name(self) -> Dict[int, openmc.Material]:
+    def _materials_by_name(self) -> dict[int, openmc.Material]:
         if self.materials is None:
             mats = self.geometry.get_all_materials().values()
         else:

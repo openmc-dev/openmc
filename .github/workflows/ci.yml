@@ -68,15 +68,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Restore Python cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.pythonLocation }}
-          key:  py-${{ matrix.python-version }}-(omp=${{ matrix.omp }} 
-            mpi=${{ matrix.mpi }} dagmc=${{ matrix.dagmc }} ncrystal=${{ matrix.ncrystal }} 
-            libmesh=${{ matrix.libmesh }} event=${{ matrix.event }} 
-            vectfit=${{ matrix.vectfit }})
-
       - name: Environment Variables
         run: |
           echo "DAGMC_ROOT=$HOME/DAGMC"

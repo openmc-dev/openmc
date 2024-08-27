@@ -34,6 +34,7 @@
 #include "openmc/random_dist.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
+#include "openmc/string_utils.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/volume_calc.h"
@@ -250,6 +251,9 @@ void Mesh::material_volumes_raytrace(
   double dy = (bbox.ymax - bbox.ymin) / ny;
   double dz = (bbox.zmax - bbox.zmin) / nz;
 
+  // Set flag for mesh being contained within model
+  bool out_of_model = false;
+
 #pragma omp parallel
   {
     // Preallocate vector for mesh indices and lenght fractions and p
@@ -273,7 +277,8 @@ void Mesh::material_volumes_raytrace(
 
         // Determine particle's location
         if (!exhaustive_find_cell(p)) {
-          fatal_error("Mesh is not fully contained in geometry.");
+          out_of_model = true;
+          continue;
         }
 
         // Set birth cell attribute
@@ -345,8 +350,10 @@ void Mesh::material_volumes_raytrace(
     }
   }
 
-  // Check whether max number of materials was exceeded
-  if (result.too_many_mats()) {
+  // Check for errors
+  if (out_of_model) {
+    throw std::runtime_error("Mesh not fully contained in geometry.");
+  } else if (result.too_many_mats()) {
     throw std::runtime_error("Maximum number of materials for mesh material "
                              "volume calculation insufficient.");
   }
@@ -2104,7 +2111,11 @@ extern "C" int openmc_mesh_material_volumes_raytrace(int32_t index, int ny,
       ny, nz, max_mats, materials, volumes);
   } catch (const std::exception& e) {
     set_errmsg(e.what());
-    return OPENMC_E_ALLOCATE;
+    if (starts_with(e.what(), "Mesh")) {
+      return OPENMC_E_GEOMETRY;
+    } else {
+      return OPENMC_E_ALLOCATE;
+    }
   }
 
   return 0;

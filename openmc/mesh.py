@@ -231,8 +231,7 @@ class MeshBase(IDManagerMixin, ABC):
     def get_homogenized_materials(
             self,
             model: openmc.Model,
-            n_samples: int = 10_000,
-            prn_seed: int | None = None,
+            n_samples: int | tuple[int, int] = 10_000,
             include_void: bool = True,
             **kwargs
     ) -> list[openmc.Material]:
@@ -245,15 +244,15 @@ class MeshBase(IDManagerMixin, ABC):
         model : openmc.Model
             Model containing materials to be homogenized and the associated
             geometry.
-        n_samples : int
-            Number of samples in each mesh element.
-        prn_seed : int, optional
-            Pseudorandom number generator (PRNG) seed; if None, one will be
-            generated randomly.
+        n_samples : int or 2-tuple of int
+            Total number of rays to sample. The rays start on an x plane and are
+            evenly distributed over the y and z dimensions. When specified as a
+            2-tuple, it is interpreted as the number of rays in the y and z
+            dimensions.
         include_void : bool, optional
             Whether homogenization should include voids.
         **kwargs
-            Keyword-arguments passed to :func:`openmc.lib.init`.
+            Keyword-arguments passed to :meth:`MeshBase.material_volumes`.
 
         Returns
         -------
@@ -261,34 +260,8 @@ class MeshBase(IDManagerMixin, ABC):
             Homogenized material in each mesh element
 
         """
-        import openmc.lib
-
-        with change_directory(tmpdir=True):
-            # In order to get mesh into model, we temporarily replace the
-            # tallies with a single mesh tally using the current mesh
-            original_tallies = model.tallies
-            new_tally = openmc.Tally()
-            new_tally.filters = [openmc.MeshFilter(self)]
-            new_tally.scores = ['flux']
-            model.tallies = [new_tally]
-
-            # Export model to XML
-            model.export_to_model_xml()
-
-            # Get material volume fractions
-            openmc.lib.init(**kwargs)
-            mesh = openmc.lib.tallies[new_tally.id].filters[0].mesh
-            mat_volume_by_element = [
-                [
-                    (mat.id if mat is not None else None, volume)
-                    for mat, volume in mat_volume_list
-                ]
-                for mat_volume_list in mesh.material_volumes(n_samples, prn_seed)
-            ]
-            openmc.lib.finalize()
-
-            # Restore original tallies
-            model.tallies = original_tallies
+        vols = self.material_volumes(model, n_samples, **kwargs)
+        mat_volume_by_element = [vols.by_element(i) for i in range(vols.num_elements)]
 
         # Create homogenized material for each element
         materials = model.geometry.get_all_materials()
@@ -341,7 +314,7 @@ class MeshBase(IDManagerMixin, ABC):
             n_rays: int | tuple[int, int] = 10_000,
             max_materials: int = 4,
             **kwargs
-    ) -> list[openmc.Material]:
+    ) -> MeshMaterialVolumes:
         """Determine volume of materials in each mesh element.
 
         This method works by raytracing repeatedly through the mesh from one

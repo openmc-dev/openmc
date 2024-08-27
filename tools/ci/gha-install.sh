@@ -10,7 +10,7 @@ pip install --upgrade numpy
 if [[ ! -d "$HOME/NJOY2016" ]]; then
     ./tools/ci/gha-install-njoy.sh
 fi
-echo "$HOME/NJOY2016" >> $GITHUB_PATH
+echo "$HOME/NJOY2016/bin" >> $GITHUB_PATH
 
 # Install DAGMC if needed
 if [[ $DAGMC = 'y' ]]; then
@@ -33,7 +33,7 @@ if [[ $NCRYSTAL = 'y' ]]; then
 fi
 
 # Install vectfit for WMP generation if needed
-if [[ $VECTFIT = 'y' ]]; then 
+if [[ $VECTFIT = 'y' ]]; then
     if [ ! -d "$HOME/vectfit" ]
     then
         ./tools/ci/gha-install-vectfit.sh

@@ -1053,7 +1053,7 @@ class Model:
         if diff_volume_method not in ['divide equally', 'match cell']:
             raise ValueError(
                 f"diff_volume_method must be 'divide equally' or 'match cell', "
-                f"not '{diff_volume_method}'"
+                f"not '{diff_volume_method}'")
         # Count the number of instances for each cell and material
         self.geometry.determine_paths(instances_only=True)
 

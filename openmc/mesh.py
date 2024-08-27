@@ -59,6 +59,26 @@ class MeshMaterialVolumes(Mapping):
             volumes[indices] = self._volumes[indices, i]
         return volumes
 
+    def by_element(self, index_elem: int) -> list[tuple[int | None, float]]:
+        """Get a list of volumes for each material within a specific element.
+
+        Parameters
+        ----------
+        index_elem : int
+            Mesh element index
+
+        Returns
+        -------
+        list of tuple of (material ID, volume)
+
+        """
+        max_mats = self._volumes.shape[1]
+        return [
+            (m if m > -1 else None, self._volumes[index_elem, i])
+            for i in range(max_mats)
+            if (m := self._materials[index_elem, i]) != -2
+        ]
+
     def save(self, filename: PathLike):
         """Save material volumes to a .npz file.
 

@@ -1086,8 +1086,8 @@ class Model:
                                     "diff_volume_method='match cell'."
                                 )
                             cell.fill[i].volume = cell.volume
-                    for i in range(cell.num_instances):
-                        if isinstance(cell, openmc.DAGMCCell):
+                    if isinstance(cell, openmc.DAGMCCell):
+                        for i in range(cell.num_instances):
                             cell.fill[i].name = f"{cell.fill[i].name}_{cell.id}_{i}"
 
         if self.materials is not None:

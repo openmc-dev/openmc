@@ -69,70 +69,57 @@ extern const libMesh::Parallel::Communicator* libmesh_comm;
 } // namespace settings
 #endif
 
+//==============================================================================
+//! Helper class for keeping track of volume for each material in a mesh element
+//==============================================================================
+
+namespace detail {
+
+class MaterialVolumes {
+public:
+  MaterialVolumes(int32_t* mats, double* vols, int max_materials)
+    : materials_(mats), volumes_(vols), n_mats_(max_materials)
+  {}
+
+  //! Add volume for a given material in a mesh element
+  //
+  //! \param[in] index_elem Index of the mesh element
+  //! \param[in] index_material Index of the material
+  //! \param[in] volume Volume to add
+  void add_volume(int index_elem, int index_material, double volume);
+
+  // Accessors
+  int32_t& materials(int i, int j) { return materials_[i * n_mats_ + j]; }
+  const int32_t& materials(int i, int j) const
+  {
+    return materials_[i * n_mats_ + j];
+  }
+
+  double& volumes(int i, int j) { return volumes_[i * n_mats_ + j]; }
+  const double& volumes(int i, int j) const
+  {
+    return volumes_[i * n_mats_ + j];
+  }
+
+  bool too_many_mats() const { return too_many_mats_; }
+
+private:
+  int32_t* materials_; //!< material index (bins, max_mats)
+  double* volumes_;    //!< volume in [cm^3] (bins, max_mats)
+  int n_mats_;         //!< Maximum number of materials in a single mesh element
+  bool too_many_mats_ = false; //!< Whether the maximum number of materials has
+                               //!< been exceeded
+};
+
+} // namespace detail
+
+//==============================================================================
+//! Base mesh class
+//==============================================================================
+
 class Mesh {
 public:
   // Types, aliases
-  struct MaterialVolume {
-    int32_t material; //!< material index
-    double volume;    //!< volume in [cm^3]
-  };
-
-  using shape_type = std::vector<size_t>;
-
-  class MaterialVolumeRT {
-  public:
-    MaterialVolumeRT(int32_t* mats, double* vols, int max_materials)
-      : materials_(mats), volumes_(vols), n_mats_(max_materials)
-    {}
-
-    void add_volume(int index_elem, int index_material, double volume)
-    {
-      int i;
-#pragma omp critical(MeshMatVol)
-      for (i = 0; i < n_mats_; ++i) {
-        // Check whether material already is present
-        if (materials(index_elem, i) == index_material)
-          break;
-
-        // If not already present, check for unused position (-2)
-        if (materials(index_elem, i) == -2) {
-          materials(index_elem, i) = index_material;
-          break;
-        }
-      }
-
-      // If maximum number of materials exceeded, set a flag that can be checked
-      // later
-      if (i >= n_mats_) {
-        too_many_mats_ = true;
-        return;
-      }
-
-      // Accumulate volume
-#pragma omp atomic
-      volumes(index_elem, i) += volume;
-    }
-
-    int32_t& materials(int i, int j) { return materials_[i * n_mats_ + j]; }
-    const int32_t& materials(int i, int j) const
-    {
-      return materials_[i * n_mats_ + j];
-    }
-
-    double& volumes(int i, int j) { return volumes_[i * n_mats_ + j]; }
-    const double& volumes(int i, int j) const
-    {
-      return volumes_[i * n_mats_ + j];
-    }
-
-    bool too_many_mats() const { return too_many_mats_; }
-
-  private:
-    int32_t* materials_; //!< material index (bins, max_mats)
-    double* volumes_;    //!< volume in [cm^3] (bins, max_mats)
-    int n_mats_;
-    bool too_many_mats_ = false;
-  };
 
   // Constructors and destructor
   Mesh() = default;

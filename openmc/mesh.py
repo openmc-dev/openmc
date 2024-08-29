@@ -23,12 +23,40 @@ from .surface import _BOUNDARY_TYPES
 class MeshMaterialVolumes(Mapping):
     """Results from a material volume in mesh calculation.
 
+    This class provides multiple ways of accessing information about material
+    volumes in individual mesh elements. First, the class behaves like a
+    dictionary that maps material IDs to an array of volumes equal in size to
+    the number of mesh elements. Second, the class provides a :meth:`by_element`
+    method that gives all the material volumes for a specific mesh element.
+
     Parameters
     ----------
-    materials : np.ndarray
+    materials : numpy.ndarray
         Array of shape (elements, max_materials) storing material IDs
-    volumes : np.ndarray
+    volumes : numpy.ndarray
         Array of shape (elements, max_materials) storing material volumes
+
+    See Also
+    --------
+    openmc.MeshBase.material_volumes
+
+    Examples
+    --------
+    If you want to get the volume of a specific material in every mesh element,
+    index the object with the material ID:
+
+    >>> volumes = mesh.material_volumes(...)
+    >>> volumes
+    {1: <32121 nonzero volumes>
+     2: <338186 nonzero volumes>
+     3: <49120 nonzero volumes>}
+
+    If you want the volume of all materials in a specific mesh element, use the
+    :meth:`by_element` method:
+
+    >>> volumes = mesh.material_volumes(...)
+    >>> volumes.by_element(42)
+    [(2, 31.87963824195591), (1, 6.129949130817542)]
 
     """
     def __init__(self, materials: np.ndarray, volumes):

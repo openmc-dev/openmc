@@ -107,6 +107,43 @@ inline bool check_intersection_point(double x1, double x0, double y1, double y0,
 // Mesh implementation
 //==============================================================================
 
+namespace detail {
+
+void MaterialVolumes::add_volume(
+  int index_elem, int index_material, double volume)
+{
+  int i;
+#pragma omp critical(MeshMatVol)
+  for (i = 0; i < n_mats_; ++i) {
+    // Check whether material already is present
+    if (this->materials(index_elem, i) == index_material)
+      break;
+
+    // If not already present, check for unused position (-2)
+    if (this->materials(index_elem, i) == -2) {
+      this->materials(index_elem, i) = index_material;
+      break;
+    }
+  }
+
+  // If maximum number of materials exceeded, set a flag that can be checked
+  // later
+  if (i >= n_mats_) {
+    too_many_mats_ = true;
+    return;
+  }
+
+  // Accumulate volume
+#pragma omp atomic
+  this->volumes(index_elem, i) += volume;
+}
+
+} // namespace detail
+
+//==============================================================================
+// Mesh implementation
+//==============================================================================
+
 Mesh::Mesh(pugi::xml_node node)
 {
   // Read mesh id
@@ -156,7 +193,7 @@ void Mesh::material_volumes(
   int ny, int nz, int max_materials, int32_t* materials, double* volumes) const
 {
   // Create object for keeping track of materials/volumes
-  MaterialVolumeRT result(materials, volumes, max_materials);
+  detail::MaterialVolumes result(materials, volumes, max_materials);
 
   // Determine bounding box
   auto bbox = this->bounding_box();

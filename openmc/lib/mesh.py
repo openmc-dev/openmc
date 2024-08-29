@@ -118,8 +118,6 @@ _dll.openmc_spherical_mesh_set_grid.restype = c_int
 _dll.openmc_spherical_mesh_set_grid.errcheck = _error_handler
 
 
-
-
 class Mesh(_FortranObjectWithID):
     """Base class to represent mesh objects
 

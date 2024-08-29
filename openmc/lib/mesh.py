@@ -257,7 +257,7 @@ class Mesh(_FortranObjectWithID):
 
     def material_volumes_raytrace(
             self,
-            n_rays: int | tuple[int, int] = 10_000,
+            n_samples: int | tuple[int, int] = 10_000,
             max_materials: int = 4
     ) -> MeshMaterialVolumes:
         """Determine volume of materials in each mesh element.
@@ -268,8 +268,8 @@ class Mesh(_FortranObjectWithID):
 
         Parameters
         ----------
-        n_rays : int or 2-tuple of int
-            Total number of rays to follow. The rays start on an x plane and are
+        n_samples : int or 2-tuple of int
+            Total number of rays to sample. The rays start on an x plane and are
             evenly distributed over the y and z dimensions. When specified as a
             2-tuple, it is interpreted as the number of rays in the y and z
             dimensions.
@@ -283,15 +283,15 @@ class Mesh(_FortranObjectWithID):
 
         """
         # Determine number of rays in y/z directions
-        if isinstance(n_rays, int):
+        if isinstance(n_samples, int):
             ll, ur = self.bounding_box
             width_y = ur[1] - ll[1]
             width_z = ur[2] - ll[2]
             aspect_ratio = width_y / width_z
-            ny = int(sqrt(n_rays * aspect_ratio))
-            nz = int(sqrt(n_rays / aspect_ratio))
+            ny = int(sqrt(n_samples * aspect_ratio))
+            nz = int(sqrt(n_samples / aspect_ratio))
         else:
-            ny, nz = n_rays
+            ny, nz = n_samples
 
         # Preallocate arrays for material indices and volumes
         n = self.n_elements

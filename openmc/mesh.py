@@ -311,7 +311,7 @@ class MeshBase(IDManagerMixin, ABC):
     def material_volumes(
             self,
             model: openmc.Model,
-            n_rays: int | tuple[int, int] = 10_000,
+            n_samples: int | tuple[int, int] = 10_000,
             max_materials: int = 4,
             **kwargs
     ) -> MeshMaterialVolumes:
@@ -325,8 +325,8 @@ class MeshBase(IDManagerMixin, ABC):
         ----------
         model : openmc.Model
             Model containing materials.
-        n_rays : int or 2-tuple of int
-            Total number of rays to follow. The rays start on an x plane and are
+        n_samples : int or 2-tuple of int
+            Total number of rays to sample. The rays start on an x plane and are
             evenly distributed over the y and z dimensions. When specified as a
             2-tuple, it is interpreted as the number of rays in the y and z
             dimensions.
@@ -359,7 +359,7 @@ class MeshBase(IDManagerMixin, ABC):
             kwargs.setdefault('output', False)
             openmc.lib.init(['-c'], **kwargs)
             mesh = openmc.lib.tallies[new_tally.id].filters[0].mesh
-            volumes = mesh.material_volumes_raytrace(n_rays, max_materials)
+            volumes = mesh.material_volumes_raytrace(n_samples, max_materials)
             openmc.lib.finalize()
 
             # Restore original tallies

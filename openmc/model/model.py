@@ -1050,10 +1050,10 @@ class Model:
             volume equally between the new materials, 'match cell' sets the
             volume of the material to volume of the cell they fill.
         """
-        if diff_volume_method not in ['divide equally', 'match cell']:
-            raise ValueError(
-                f"diff_volume_method must be 'divide equally' or 'match cell', "
-                f"not '{diff_volume_method}'")
+        # if diff_volume_method not in ['divide equally', 'match cell']:
+        #     raise ValueError(
+        #         f"diff_volume_method must be 'divide equally' or 'match cell', "
+        #         f"not '{diff_volume_method}'")
         # Count the number of instances for each cell and material
         self.geometry.determine_paths(instances_only=True)
 

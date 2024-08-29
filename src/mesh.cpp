@@ -152,93 +152,7 @@ vector<double> Mesh::volumes() const
   return volumes;
 }
 
-int Mesh::material_volumes(
-  int n_sample, int bin, gsl::span<MaterialVolume> result, uint64_t* seed) const
-{
-  vector<int32_t> materials;
-  vector<int64_t> hits;
-
-#pragma omp parallel
-  {
-    vector<int32_t> local_materials;
-    vector<int64_t> local_hits;
-    GeometryState geom;
-
-#pragma omp for
-    for (int i = 0; i < n_sample; ++i) {
-      // Get seed for i-th sample
-      uint64_t seed_i = future_seed(3 * i, *seed);
-
-      // Sample position and set geometry state
-      geom.r() = this->sample_element(bin, &seed_i);
-      geom.u() = {1., 0., 0.};
-      geom.n_coord() = 1;
-
-      // If this location is not in the geometry at all, move on to next block
-      if (!exhaustive_find_cell(geom))
-        continue;
-
-      int i_material = geom.material();
-
-      // Check if this material was previously hit and if so, increment count
-      auto it =
-        std::find(local_materials.begin(), local_materials.end(), i_material);
-      if (it == local_materials.end()) {
-        local_materials.push_back(i_material);
-        local_hits.push_back(1);
-      } else {
-        local_hits[it - local_materials.begin()]++;
-      }
-    } // omp for
-
-    // Reduce index/hits lists from each thread into a single copy
-    reduce_indices_hits(local_materials, local_hits, materials, hits);
-  } // omp parallel
-
-  // Advance RNG seed
-  advance_prn_seed(3 * n_sample, seed);
-
-  // Make sure span passed in is large enough
-  if (hits.size() > result.size()) {
-    return -1;
-  }
-
-  // Convert hits to fractions
-  for (int i_mat = 0; i_mat < hits.size(); ++i_mat) {
-    double fraction = double(hits[i_mat]) / n_sample;
-    result[i_mat].material = materials[i_mat];
-    result[i_mat].volume = fraction * this->volume(bin);
-  }
-  return hits.size();
-}
-
-vector<Mesh::MaterialVolume> Mesh::material_volumes(
-  int n_sample, int bin, uint64_t* seed) const
-{
-  // Create result vector with space for 8 pairs
-  vector<Mesh::MaterialVolume> result;
-  result.reserve(8);
-
-  int size = -1;
-  while (true) {
-    // Get material volumes
-    size = this->material_volumes(
-      n_sample, bin, {result.data(), result.data() + result.capacity()}, seed);
-
-    // If capacity was sufficient, resize the vector and return
-    if (size >= 0) {
-      result.resize(size);
-      break;
-    }
-
-    // Otherwise, increase capacity of the vector
-    result.reserve(2 * result.capacity());
-  }
-
-  return result;
-}
-
-void Mesh::material_volumes_raytrace(
+void Mesh::material_volumes(
   int ny, int nz, int max_materials, int32_t* materials, double* volumes) const
 {
   // Create object for keeping track of materials/volumes
@@ -2082,32 +1996,14 @@ extern "C" int openmc_mesh_bounding_box(int32_t index, double* ll, double* ur)
   return 0;
 }
 
-extern "C" int openmc_mesh_material_volumes(int32_t index, int n_sample,
-  int bin, int result_size, void* result, int* hits, uint64_t* seed)
-{
-  auto result_ = reinterpret_cast<Mesh::MaterialVolume*>(result);
-  if (!result_) {
-    set_errmsg("Invalid result pointer passed to openmc_mesh_material_volumes");
-    return OPENMC_E_INVALID_ARGUMENT;
-  }
-
-  if (int err = check_mesh(index))
-    return err;
-
-  int n = model::meshes[index]->material_volumes(
-    n_sample, bin, {result_, result_ + result_size}, seed);
-  *hits = n;
-  return (n == -1) ? OPENMC_E_ALLOCATE : 0;
-}
-
-extern "C" int openmc_mesh_material_volumes_raytrace(int32_t index, int ny,
-  int nz, int max_mats, int32_t* materials, double* volumes)
+extern "C" int openmc_mesh_material_volumes(int32_t index, int ny, int nz,
+  int max_mats, int32_t* materials, double* volumes)
 {
   if (int err = check_mesh(index))
     return err;
 
   try {
-    model::meshes[index]->material_volumes_raytrace(
+    model::meshes[index]->material_volumes(
       ny, nz, max_mats, materials, volumes);
   } catch (const std::exception& e) {
     set_errmsg(e.what());

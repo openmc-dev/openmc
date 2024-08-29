@@ -57,14 +57,9 @@ _dll.openmc_mesh_bounding_box.argtypes = [
 _dll.openmc_mesh_bounding_box.restype = c_int
 _dll.openmc_mesh_bounding_box.errcheck = _error_handler
 _dll.openmc_mesh_material_volumes.argtypes = [
-    c_int32, c_int, c_int, c_int, POINTER(_MaterialVolume),
-    POINTER(c_int), POINTER(c_uint64)]
+    c_int32, c_int, c_int, c_int, arr_2d_int32, arr_2d_double]
 _dll.openmc_mesh_material_volumes.restype = c_int
 _dll.openmc_mesh_material_volumes.errcheck = _error_handler
-_dll.openmc_mesh_material_volumes_raytrace.argtypes = [
-    c_int32, c_int, c_int, c_int, arr_2d_int32, arr_2d_double]
-_dll.openmc_mesh_material_volumes_raytrace.restype = c_int
-_dll.openmc_mesh_material_volumes_raytrace.errcheck = _error_handler
 _dll.openmc_mesh_get_plot_bins.argtypes = [
     c_int32, _Position, _Position, c_int, POINTER(c_int), POINTER(c_int32)
 ]
@@ -202,61 +197,6 @@ class Mesh(_FortranObjectWithID):
 
     def material_volumes(
             self,
-            n_samples: int = 10_000,
-            prn_seed: int | None = None
-    ) -> list[list[tuple[Material, float]]]:
-        """Determine volume of materials in each mesh element
-
-        .. versionadded:: 0.15.0
-
-        Parameters
-        ----------
-        n_samples : int
-            Number of samples in each mesh element
-        prn_seed : int
-            Pseudorandom number generator (PRNG) seed; if None, one will be
-            generated randomly.
-
-        Returns
-        -------
-        List of tuple of (material, volume) for each mesh element. Void volume
-        is represented by having a value of None in the first element of a
-        tuple.
-
-        """
-        if n_samples <= 0:
-            raise ValueError("Number of samples must be positive")
-        if prn_seed is None:
-            prn_seed = getrandbits(63)
-        prn_seed = c_uint64(prn_seed)
-
-        # Preallocate space for MaterialVolume results
-        size = 16
-        result = (_MaterialVolume * size)()
-
-        hits = c_int()  # Number of materials hit in a given element
-        volumes = []
-        for i_element in range(self.n_elements):
-            while True:
-                try:
-                    _dll.openmc_mesh_material_volumes(
-                        self._index, n_samples, i_element, size, result, hits, prn_seed)
-                except AllocationError:
-                    # Increase size of result array and try again
-                    size *= 2
-                    result = (_MaterialVolume * size)()
-                else:
-                    # If no error, break out of loop
-                    break
-
-            volumes.append([
-                (Material(index=r.material), r.volume)
-                for r in result[:hits.value]
-            ])
-        return volumes
-
-    def material_volumes_raytrace(
-            self,
             n_samples: int | tuple[int, int] = 10_000,
             max_materials: int = 4
     ) -> MeshMaterialVolumes:
@@ -301,7 +241,7 @@ class Mesh(_FortranObjectWithID):
         # Run material volume calculation
         while True:
             try:
-                _dll.openmc_mesh_material_volumes_raytrace(
+                _dll.openmc_mesh_material_volumes(
                     self._index, ny, nz, max_materials, materials, volumes)
             except AllocationError:
                 # Increase size of result array and try again

@@ -359,7 +359,7 @@ class MeshBase(IDManagerMixin, ABC):
             kwargs.setdefault('output', False)
             openmc.lib.init(['-c'], **kwargs)
             mesh = openmc.lib.tallies[new_tally.id].filters[0].mesh
-            volumes = mesh.material_volumes_raytrace(n_samples, max_materials)
+            volumes = mesh.material_volumes(n_samples, max_materials)
             openmc.lib.finalize()
 
             # Restore original tallies

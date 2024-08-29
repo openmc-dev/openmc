@@ -224,26 +224,7 @@ public:
 
   virtual std::string get_mesh_type() const = 0;
 
-  //! Determine volume of materials within a single mesh element
-  //
-  //! \param[in] n_sample Number of samples within each element
-  //! \param[in] bin Index of mesh element
-  //! \param[out] Array of (material index, volume) for desired element
-  //! \param[inout] seed Pseudorandom number seed
-  //! \return Number of materials within element
-  int material_volumes(int n_sample, int bin, gsl::span<MaterialVolume> volumes,
-    uint64_t* seed) const;
-
-  //! Determine volume of materials within a single mesh element
-  //
-  //! \param[in] n_sample Number of samples within each element
-  //! \param[in] bin Index of mesh element
-  //! \param[inout] seed Pseudorandom number seed
-  //! \return Vector of (material index, volume) for desired element
-  vector<MaterialVolume> material_volumes(
-    int n_sample, int bin, uint64_t* seed) const;
-
-  //! Determine volume of materials within each mesh element by raytracing
+  //! Determine volume of materials within each mesh element
   //
   //! \param[in] ny Number of samples in y direction
   //! \param[in] nz Number of samples in z direction
@@ -251,8 +232,8 @@ public:
   //!                          element
   //! \param[inout] materials Array storing material indices
   //! \param[inout] volumes Array storing volumes
-  void material_volumes_raytrace(int ny, int nz, int max_materials,
-    int32_t* materials, double* volumes) const;
+  void material_volumes(int ny, int nz, int max_materials, int32_t* materials,
+    double* volumes) const;
 
   //! Determine bounding box of mesh
   //

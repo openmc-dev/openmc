@@ -71,8 +71,7 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
     dset_names[i] = new char[151];
   }
   get_datasets(kT_group, dset_names);
-  vector<size_t> shape = {num_temps};
-  xt::xarray<double> temps_available(shape);
+  vector<double> temps_available(num_temps);
   for (int i = 0; i < num_temps; i++) {
     read_double(kT_group, dset_names[i], &temps_available[i], true);
 
@@ -85,89 +84,9 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
   delete[] dset_names;
   std::sort(temps_available.begin(), temps_available.end());
 
-  // If only one temperature is available, lets just use nearest temperature
-  // interpolation
-  if ((num_temps == 1) &&
-      (settings::temperature_method == TemperatureMethod::INTERPOLATION)) {
-    warning("Cross sections for " + strtrim(name) + " are only available " +
-            "at one temperature.  Reverting to the nearest temperature " +
-            "method.");
-    settings::temperature_method = TemperatureMethod::NEAREST;
-  }
-
-  // Determine actual temperatures to read -- start by checking whether a
-  // temperature range was given (indicated by T_max > 0), in which case all
-  // temperatures in the range are loaded irrespective of what temperatures
-  // actually appear in the model
-  int n = temperature.size();
-  double T_min = n > 0 ? settings::temperature_range[0] : 0.0;
-  double T_max = n > 0 ? settings::temperature_range[1] : INFTY;
-  if (T_max > 0.0) {
-    // Determine first available temperature below or equal to T_min
-    auto T_min_it =
-      std::upper_bound(available_temps.begin(), available_temps.end(), T_min);
-    if (T_min_it != available_temps.begin())
-      --T_min_it;
-
-    // Determine first available temperature above or equal to T_max
-    auto T_max_it =
-      std::lower_bound(available_temps.begin(), available_temps.end(), T_max);
-    if (T_max_it != available_temps.end())
-      ++T_max_it;
-
-    // Add corresponding temperatures to vector
-    for (auto it = T_min_it; it != T_max_it; ++it) {
-      temps_to_read.push_back(std::round(*it));
-    }
-  }
-
-  switch (settings::temperature_method) {
-  case TemperatureMethod::NEAREST:
-    // Determine actual temperatures to read
-    for (const auto& T : temperature) {
-      auto i_closest = xt::argmin(xt::abs(temps_available - T))[0];
-      double temp_actual = temps_available[i_closest];
-      if (std::fabs(temp_actual - T) < settings::temperature_tolerance) {
-        if (std::find(temps_to_read.begin(), temps_to_read.end(),
-              std::round(temp_actual)) == temps_to_read.end()) {
-          temps_to_read.push_back(std::round(temp_actual));
-        }
-      } else {
-        fatal_error(fmt::format(
-          "MGXS library does not contain cross sections "
-          "for {} at or near {} K. Available temperatures "
-          "are {} K. Consider making use of openmc.Settings.temperature "
-          "to specify how intermediate temperatures are treated.",
-          in_name, std::round(T), concatenate(temps_available)));
-      }
-    }
-    break;
-
-  case TemperatureMethod::INTERPOLATION:
-    for (int i = 0; i < temperature.size(); i++) {
-      for (int j = 0; j < num_temps; j++) {
-        if (j == (num_temps - 1)) {
-          fatal_error("MGXS Library does not contain cross sections for " +
-                      in_name + " at temperatures that bound " +
-                      std::to_string(std::round(temperature[i])));
-        }
-        if ((temps_available[j] <= temperature[i]) &&
-            (temperature[i] < temps_available[j + 1])) {
-          if (std::find(temps_to_read.begin(), temps_to_read.end(),
-                temps_available[j]) == temps_to_read.end()) {
-            temps_to_read.push_back(temps_available[j]);
-          }
-
-          if (std::find(temps_to_read.begin(), temps_to_read.end(),
-                temps_available[j + 1]) == temps_to_read.end()) {
-            temps_to_read.push_back(temps_available[j + 1]);
-          }
-          break;
-        }
-      }
-    }
-  }
-  std::sort(temps_to_read.begin(), temps_to_read.end());
+  // Code shared with nuclide, placed in settings.cpp
+  openmc::select_temperatures(
+    in_name, temps_available, temperature, temps_to_read);
 
   // Get the library's temperatures
   int n_temperature = temps_to_read.size();

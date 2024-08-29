@@ -1090,6 +1090,138 @@ void read_settings_xml(pugi::xml_node root)
   }
 }
 
+void select_temperatures(std::string& object_name,
+  const vector<double>& available_temperatures,
+  const vector<double>& requested_temperatures, vector<int>& temps_to_read)
+{
+  // If only one temperature is available, revert to nearest temperature
+  if (available_temperatures.size() == 1 &&
+      settings::temperature_method == TemperatureMethod::INTERPOLATION) {
+    if (mpi::master) {
+      warning("Cross sections for " + object_name +
+              " are only available at one "
+              "temperature. Reverting to nearest temperature method.");
+    }
+    settings::temperature_method = TemperatureMethod::NEAREST;
+  }
+
+  // Determine actual temperatures to read -- start by checking whether a
+  // temperature range was given (indicated by T_max > 0), in which case all
+  // temperatures in the range are loaded irrespective of what temperatures
+  // actually appear in the model
+  int n = requested_temperatures.size();
+  double T_min = n > 0 ? settings::temperature_range[0] : 0.0;
+  double T_max = n > 0 ? settings::temperature_range[1] : INFTY;
+  if (T_max > 0.0) {
+    // Determine first available temperature below or equal to T_min
+    auto T_min_it = std::upper_bound(
+      available_temperatures.begin(), available_temperatures.end(), T_min);
+    if (T_min_it != available_temperatures.begin())
+      --T_min_it;
+
+    // Determine first available temperature above or equal to T_max
+    auto T_max_it = std::lower_bound(
+      available_temperatures.begin(), available_temperatures.end(), T_max);
+    if (T_max_it != available_temperatures.end())
+      ++T_max_it;
+
+    // Add corresponding temperatures to vector
+    for (auto it = T_min_it; it != T_max_it; ++it) {
+      temps_to_read.push_back(std::round(*it));
+    }
+  }
+
+  switch (settings::temperature_method) {
+  case TemperatureMethod::NEAREST:
+    // Find nearest temperatures
+    for (double T_desired : requested_temperatures) {
+
+      // Determine closest temperature
+      double min_delta_T = INFTY;
+      double T_actual = 0.0;
+      for (auto T : available_temperatures) {
+        double delta_T = std::abs(T - T_desired);
+        if (delta_T < min_delta_T) {
+          T_actual = T;
+          min_delta_T = delta_T;
+        }
+      }
+
+      if (std::abs(T_actual - T_desired) < settings::temperature_tolerance) {
+        if (!contains(temps_to_read, std::round(T_actual))) {
+          temps_to_read.push_back(std::round(T_actual));
+
+          // Write warning for resonance scattering data if 0K is not available
+          if (std::abs(T_actual - T_desired) > 0 && T_desired == 0 &&
+              mpi::master) {
+            warning(object_name +
+                    " does not contain 0K data needed for resonance "
+                    "scattering options selected. Using data at " +
+                    std::to_string(T_actual) + " K instead.");
+          }
+        }
+      } else {
+        fatal_error(fmt::format(
+          "Nuclear data library does not contain cross sections "
+          "for {}  at or near {} K. Available temperatures "
+          "are {} K. Consider making use of openmc.Settings.temperature "
+          "to specify how intermediate temperatures are treated.",
+          object_name, std::to_string(T_desired),
+          concatenate(available_temperatures)));
+      }
+    }
+    break;
+
+  case TemperatureMethod::INTERPOLATION:
+    // If temperature interpolation or multipole is selected, get a list of
+    // bounding temperatures for each actual temperature present in the model
+    for (double T_desired : requested_temperatures) {
+      bool found_pair = false;
+      for (int j = 0; j < available_temperatures.size() - 1; ++j) {
+        if (available_temperatures[j] <= T_desired &&
+            T_desired < available_temperatures[j + 1]) {
+          int T_j = available_temperatures[j];
+          int T_j1 = available_temperatures[j + 1];
+          if (!contains(temps_to_read, T_j)) {
+            temps_to_read.push_back(T_j);
+          }
+          if (!contains(temps_to_read, T_j1)) {
+            temps_to_read.push_back(T_j1);
+          }
+          found_pair = true;
+        }
+      }
+
+      if (!found_pair) {
+        // If no pairs found, check if the desired temperature falls just
+        // outside of data
+        if (std::abs(T_desired - available_temperatures.front()) <=
+            settings::temperature_tolerance) {
+          if (!contains(temps_to_read, available_temperatures.front())) {
+            temps_to_read.push_back(available_temperatures.front());
+          }
+          continue;
+        }
+        if (std::abs(T_desired - available_temperatures.back()) <=
+            settings::temperature_tolerance) {
+          if (!contains(temps_to_read, available_temperatures.back())) {
+            temps_to_read.push_back(available_temperatures.back());
+          }
+          continue;
+        }
+        fatal_error(
+          "Nuclear data library does not contain cross sections for " +
+          object_name + " at temperatures that bound " +
+          std::to_string(T_desired) + " K.");
+      }
+    }
+    break;
+  }
+
+  // Sort temperatures to read
+  std::sort(temps_to_read.begin(), temps_to_read.end());
+}
+
 void free_memory_settings()
 {
   settings::statepoint_batch.clear();

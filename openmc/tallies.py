@@ -917,7 +917,7 @@ class Tally(IDManagerMixin):
     def add_results(self, statepoint):
         """Add results from the provided statepoint file to this tally instance
 
-            .. versionadded: 0.14.1
+            .. versionadded: 0.15.1
 
         Parameters
         ----------
@@ -3218,7 +3218,7 @@ class Tallies(cv.CheckedList):
     def add_results(self, statepoint):
         """Add results from the provided statepoint file the tally objects in this collection
 0
-            .. versionadded: 0.14.1
+            .. versionadded: 0.15.1
 
         Parameters
         ----------

@@ -1310,20 +1310,34 @@ void ProjectionPlot::create_output() const
           Position current_color(
             not_found_.red, not_found_.green, not_found_.blue);
           const auto& segments = this_line_segments[tid][horiz];
-          for (unsigned i = segments.size(); i-- > 0;) {
+
+          // There must be at least two cell intersections to color,
+          // front and back of the cell. Maybe an infinitely thick
+          // cell could be present with no back, but why would you
+          // want to color that? It's easier to just skip that edge
+          // case and not even color it.
+          if (segments.size() <= 1)
+            continue;
+
+          for (int i = segments.size() - 2; i >= 0; --i) {
             int colormap_idx = segments[i].id;
             RGBColor seg_color = colors_[colormap_idx];
             Position seg_color_vec(
               seg_color.red, seg_color.green, seg_color.blue);
-            double mixing = std::exp(-xs_[colormap_idx] * segments[i].length);
+            double mixing =
+              std::exp(-xs_[colormap_idx] *
+                       (segments[i + 1].length - segments[i].length));
             current_color =
               current_color * mixing + (1.0 - mixing) * seg_color_vec;
-            RGBColor result;
-            result.red = static_cast<uint8_t>(current_color.x);
-            result.green = static_cast<uint8_t>(current_color.y);
-            result.blue = static_cast<uint8_t>(current_color.z);
-            data(horiz, vert) = result;
           }
+
+          // save result converting from double-precision color coordinates to
+          // byte-sized
+          RGBColor result;
+          result.red = static_cast<uint8_t>(current_color.x);
+          result.green = static_cast<uint8_t>(current_color.y);
+          result.blue = static_cast<uint8_t>(current_color.z);
+          data(horiz, vert) = result;
 
           // Check to draw wireframe in horizontal direction. No inter-thread
           // comm.
@@ -1612,63 +1626,126 @@ void Ray::compute_distance()
 
 void Ray::trace()
 {
-  int first_surface_ = -1;    // surface first passed when entering the model
-  first_inside_model_ = true; // false after entering the model
-  while (intersection_found_) {
-    bool inside_cell = false;
+  // To trace the ray from its origin all the way through the model, we have
+  // to proceed in two phases. In the first, the ray may or may not be found
+  // inside the model. If the ray is already in the model, phase one can be
+  // skipped. Otherwise, the ray has to be advanced to the boundary of the
+  // model where all the cells are defined. Importantly, this is assuming that
+  // the model is convex, which is a very reasonable assumption for any
+  // radiation transport model.
+  //
+  // After phase one is done, we can starting tracing from cell to cell within
+  // the model. This step can use neighbor lists to accelerate the ray tracing.
 
-    i_surface_ = std::abs(surface()) - 1;
+  int first_surface_ = -1; // surface first passed when entering the model
 
-    // This means no surface was intersected. See cell.cpp
-    // and search for numeric_limits to see where we return it.
+  // Attempt to initialize the particle. We may have to enter a loop to move
+  // it up to the edge of the model.
+  bool inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
+
+  // Advance to the boundary of the model
+  while (!inside_cell) {
+    first_surface_ = RayTracePlot::advance_to_boundary_from_void(*this);
+    intersection_found_ = first_surface_ != -1; // -1 if no surface found
+                                                //
+    inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
+
+    // If true this means no surface was intersected. See cell.cpp and search
+    // for numeric_limits to see where we return it.
     if (surface() == std::numeric_limits<int>::max()) {
       warning(fmt::format("Lost a ray, r = {}, u = {}", r(), u()));
       return;
     }
 
-    inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
+    // Exit this loop and enter into cell-to-cell ray tracing (which uses
+    // neighbor lists)
+    if (inside_cell)
+      break;
 
-    if (inside_cell) {
+    if (!intersection_found_)
+      return;
 
-      hit_something_ = true;
-      intersection_found_ = true;
+    event_counter_++;
+    if (event_counter_ > MAX_INTERSECTIONS) {
+      warning("Likely infinite loop in ray traced plot");
+      return;
+    }
+  }
 
-      compute_distance();
+  // At this point the ray is inside the model
+  i_surface_ = first_surface_ - 1;
 
-      if (first_inside_model_) {
-        i_surface_ = first_surface_ - 1;
-        first_inside_model_ = false;
-      }
+  // Call the specialized logic for this type of ray. This is for the
+  // intersection for the first intersection if we had one.
+  if (first_surface_ != -1) {
+    on_intersection();
+    if (stop_)
+      return;
+  }
 
-      // Call the specialized logic for this type of ray
+  // This is the ray tracing loop within the model. It exits after exiting
+  // the model, which is equivalent to assuming that the model is convex.
+  // It would be nice to factor out the on_intersection at the end of this
+  // loop and then do "while (inside_cell)", but we can't guarantee it's
+  // on a surface in that case. There might be some other way to set it
+  // up that is perhaps a little more elegant, but this is what works just
+  // fine.
+  while (true) {
+
+    compute_distance();
+
+    // There are no more intersections to process
+    // if we hit the edge of the model, so stop
+    // the particle in that case. Also, just exit
+    // if a negative distance was somehow computed.
+    if (dist_.distance == INFTY || dist_.distance == INFINITY ||
+        dist_.distance < 0) {
+      return;
+    }
+
+    // See below comment where call_on_intersection is checked in an
+    // if statement for an explanation of this.
+    bool call_on_intersection {true};
+    if (dist_.distance < 10 * TINY_BIT) {
+      call_on_intersection = false;
+    }
+
+    // Advance particle, prepare for next intersection
+    for (int lev = 0; lev < n_coord(); ++lev) {
+      coord(lev).r += dist_.distance * coord(lev).u;
+    }
+    surface() = dist_.surface_index;
+    n_coord_last() = n_coord();
+    n_coord() = dist_.coord_level;
+    if (dist_.lattice_translation[0] != 0 ||
+        dist_.lattice_translation[1] != 0 ||
+        dist_.lattice_translation[2] != 0) {
+      cross_lattice(*this, dist_, settings::verbosity >= 10);
+    }
+
+    // Record how far the ray has traveled
+    traversal_distance_ += dist_.distance;
+
+    inside_cell = neighbor_list_find_cell(*this, settings::verbosity >= 10);
+    i_surface_ = std::abs(surface()) - 1;
+
+    // Call the specialized logic for this type of ray. Note that we do not
+    // call this if the advance distance is very small. Unfortunately, it seems
+    // darn near impossible to get the particle advanced to the model boundary
+    // and through it without sometimes accidentally calling on_intersection
+    // twice. This incorrectly shades the region as occluded when it might not
+    // actually be. By screening out intersection distances smaller than a
+    // threshold 10x larger than the scoot distance used to advance up to the
+    // model boundary, we can avoid that situation.
+    if (call_on_intersection) {
       on_intersection();
       if (stop_)
         return;
-
-      // There are no more intersections to process
-      // if we hit the edge of the model, so stop
-      // the particle in that case:
-      if (dist_.distance == INFTY || dist_.distance == INFINITY) {
-        return;
-      }
-
-      // Advance particle, prepare for next intersection
-      for (int lev = 0; lev < n_coord(); ++lev) {
-        coord(lev).r += dist_.distance * coord(lev).u;
-      }
-      surface() = dist_.surface_index;
-      n_coord_last() = n_coord();
-      n_coord() = dist_.coord_level;
-      if (dist_.lattice_translation[0] != 0 ||
-          dist_.lattice_translation[1] != 0 ||
-          dist_.lattice_translation[2] != 0) {
-        cross_lattice(*this, dist_, settings::verbosity >= 10);
-      }
-
-    } else {
-      first_surface_ = RayTracePlot::advance_to_boundary_from_void(*this);
-      intersection_found_ = first_surface_ != -1; // -1 if no surface found
     }
+
+    if (!inside_cell)
+      return;
+
     event_counter_++;
     if (event_counter_ > MAX_INTERSECTIONS) {
       warning("Likely infinite loop in ray traced plot");
@@ -1679,26 +1756,17 @@ void Ray::trace()
 
 void ProjectionRay::on_intersection()
 {
-  // This allows drawing wireframes with surface intersection
-  // edges on the model boundary for the same cell.
-  if (first_inside_model()) {
-    line_segments_.emplace_back(
-      plot_.color_by_ == PlottableInterface::PlotColorBy::mats
-        ? material()
-        : lowest_coord().cell,
-      0.0, first_surface());
-  }
-
   // This records a tuple with the following info
   //
   // 1) ID (material or cell depending on color_by_)
   // 2) Distance traveled by the ray through that ID
   // 3) Index of the intersected surface (starting from 1)
+
   line_segments_.emplace_back(
     plot_.color_by_ == PlottableInterface::PlotColorBy::mats
       ? material()
       : lowest_coord().cell,
-    dist().distance, std::abs(dist().surface_index));
+    traversal_distance_, std::abs(dist().surface_index));
 }
 
 void PhongRay::on_intersection()
@@ -1782,6 +1850,10 @@ void PhongRay::on_intersection()
     // Must fully restart coordinate search. Why? Not sure.
     clear();
 
+    // Note this could likely be faster if we cached the previous
+    // cell we were in before the reflection. This is the easiest
+    // way to fully initialize all the sub-universe coordinates and
+    // directions though.
     bool found = exhaustive_find_cell(*this);
     if (!found) {
       fatal_error("Lost particle after reflection.");

@@ -462,8 +462,6 @@ public:
 
   const int& first_surface() { return first_surface_; }
 
-  const bool& first_inside_model() { return first_inside_model_; }
-
   const int& i_surface() { return i_surface_; }
 
   // Stops the ray and exits tracing when called from on_intersection
@@ -472,6 +470,10 @@ public:
   // Sets the dist_ variable
   void compute_distance();
 
+protected:
+  // Records how far the ray has traveled
+  double traversal_distance_ {0.0};
+
 private:
   // Max intersections before we assume ray tracing is caught in an infinite
   // loop:
@@ -479,7 +481,6 @@ private:
 
   bool hit_something_ {false};
   bool intersection_found_ {true};
-  bool first_inside_model_ {false};
   bool stop_ {false};
 
   unsigned event_counter_ {0};

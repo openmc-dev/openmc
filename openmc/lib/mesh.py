@@ -204,6 +204,12 @@ class Mesh(_FortranObjectWithID):
         side to count of the estimated volume of each material in all mesh
         elements.
 
+        .. versionadded:: 0.15.0
+
+        .. versionchanged:: 0.15.1
+            Material volumes are now determined by raytracing rather than by
+            point sampling.
+
         Parameters
         ----------
         n_samples : int or 2-tuple of int
@@ -212,7 +218,7 @@ class Mesh(_FortranObjectWithID):
             2-tuple, it is interpreted as the number of rays in the y and z
             dimensions.
         max_materials : int, optional
-            Maximum number of materials in any given mesh element.
+            Estimated maximum number of materials in any given mesh element.
 
         Returns
         -------

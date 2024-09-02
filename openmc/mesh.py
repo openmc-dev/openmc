@@ -29,6 +29,8 @@ class MeshMaterialVolumes(Mapping):
     the number of mesh elements. Second, the class provides a :meth:`by_element`
     method that gives all the material volumes for a specific mesh element.
 
+    .. versionadded:: 0.15.1
+
     Parameters
     ----------
     materials : numpy.ndarray
@@ -59,7 +61,7 @@ class MeshMaterialVolumes(Mapping):
     [(2, 31.87963824195591), (1, 6.129949130817542)]
 
     """
-    def __init__(self, materials: np.ndarray, volumes):
+    def __init__(self, materials: np.ndarray, volumes: np.ndarray):
         self._materials = materials
         self._volumes = volumes
 
@@ -349,6 +351,8 @@ class MeshBase(IDManagerMixin, ABC):
         side to count of the estimated volume of each material in all mesh
         elements.
 
+        .. versionadded:: 0.15.1
+
         Parameters
         ----------
         model : openmc.Model
@@ -359,7 +363,7 @@ class MeshBase(IDManagerMixin, ABC):
             2-tuple, it is interpreted as the number of rays in the y and z
             dimensions.
         max_materials : int, optional
-            Maximum number of materials in any given mesh element.
+            Estimated maximum number of materials in any given mesh element.
         **kwargs : dict
             Keyword arguments passed to :func:`openmc.lib.init`
 

@@ -1,4 +1,5 @@
 from math import pi
+from tempfile import TemporaryDirectory
 
 import numpy as np
 import pytest
@@ -462,7 +463,8 @@ def test_mesh_material_volumes():
     assert volumes.by_element(0) == [(mats[2].id, 1.)]
 
     # Test material volumes on a cylindrical mesh
-    cyl_mesh = openmc.CylindricalMesh([0., 1.], [-1., 0., 1.,], [0.0, pi/4, 3*pi/4, 5*pi/4, 7*pi/4, 2*pi])
+    cyl_mesh = openmc.CylindricalMesh(
+        [0., 1.], [-1., 0., 1.,], [0.0, pi/4, 3*pi/4, 5*pi/4, 7*pi/4, 2*pi])
     volumes = cyl_mesh.material_volumes(model)
     np.testing.assert_almost_equal(volumes[mats[0].id], [
         0., 0., 0., 0., 0.,
@@ -476,3 +478,28 @@ def test_mesh_material_volumes():
         pi/8, pi/4, pi/4, pi/4, pi/8,
         0., 0., 0., 0., 0.
     ])
+
+
+def test_mesh_material_volumes_serialize():
+    materials = np.array([
+        [1, -1, -2],
+        [-1, -2, -2],
+        [2, 1, -2],
+        [2, -2, -2]
+    ])
+    volumes = np.array([
+        [0.5, 0.5, 0.0],
+        [1.0, 0.0, 0.0],
+        [0.5, 0.5, 0.0],
+        [1.0, 0.0, 0.0]
+    ])
+    volumes = openmc.MeshMaterialVolumes(materials, volumes)
+    with TemporaryDirectory() as tmpdir:
+        path = f'{tmpdir}/volumes.npz'
+        volumes.save(path)
+        new_volumes = openmc.MeshMaterialVolumes.from_npz(path)
+
+    assert new_volumes.by_element(0) == [(1, 0.5), (None, 0.5)]
+    assert new_volumes.by_element(1) == [(None, 1.0)]
+    assert new_volumes.by_element(2) == [(2, 0.5), (1, 0.5)]
+    assert new_volumes.by_element(3) == [(2, 1.0)]

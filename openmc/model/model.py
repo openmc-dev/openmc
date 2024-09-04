@@ -1021,7 +1021,7 @@ class Model:
 
         self._change_py_lib_attribs(names_or_ids, volume, 'material', 'volume')
 
-    def differentiate_depletable_mats(self, diff_volume_method: str):
+    def differentiate_depletable_mats(self, diff_volume_method=None):
         """Assign distribmats for each depletable material
 
         .. versionadded:: 0.14.0
@@ -1036,8 +1036,7 @@ class Model:
         """
         self.differentiate_mats(diff_volume_method, depletable_only=True)
 
-    def differentiate_mats(self, diff_volume_method: str,
-                                      depletable_only: bool = True):
+    def differentiate_mats(self, diff_volume_method=None, depletable_only: bool = True):
         """Assign distribmats for each depletable material
 
         .. versionadded:: 0.14.0
@@ -1050,23 +1049,30 @@ class Model:
             volume equally between the new materials, 'match cell' sets the
             volume of the material to volume of the cell they fill.
         """
-        if diff_volume_method not in ['divide equally', 'match cell']:
+        if diff_volume_method not in ["divide equally", "match cell", None]:
             raise ValueError(
                 f"diff_volume_method must be 'divide equally' or 'match cell', "
-                f"not '{diff_volume_method}'")
+                f"not '{diff_volume_method}'"
+            )
         # Count the number of instances for each cell and material
         self.geometry.determine_paths(instances_only=True)
 
         # Extract all depletable materials which have multiple instances
         distribmats = set(
-            [mat for mat in self.materials
-                if (mat.depletable or not depletable_only) and mat.num_instances > 1])
+            [
+                mat
+                for mat in self.materials
+                if (mat.depletable or not depletable_only) and mat.num_instances > 1
+            ]
+        )
 
-        if diff_volume_method == 'divide equally':
+        if diff_volume_method == "divide equally":
             for mat in distribmats:
                 if mat.volume is None:
-                    raise RuntimeError("Volume not specified for depletable "
-                                        f"material with ID={mat.id}.")
+                    raise RuntimeError(
+                        "Volume not specified for depletable "
+                        f"material with ID={mat.id}."
+                    )
                 mat.volume /= mat.num_instances
 
         if distribmats:
@@ -1074,9 +1080,8 @@ class Model:
             for cell in self.geometry.get_all_material_cells().values():
                 if cell.fill in distribmats:
                     mat = cell.fill
-                    if diff_volume_method == 'divide equally':
-                        cell.fill = [mat.clone() for _ in range(cell.num_instances)]
-                    elif diff_volume_method == 'match cell':
+                    cell.fill = [mat.clone() for _ in range(cell.num_instances)]
+                    if diff_volume_method == 'match cell':
                         cell.fill = [mat.clone() for _ in range(cell.num_instances)]
                         for i in range(cell.num_instances):
                             if not cell.volume:

@@ -12,6 +12,7 @@
 #include "pugixml.hpp"
 #include <gsl/gsl-lite.hpp>
 
+#include "openmc/bounding_box.h"
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/neighbor_list.h"

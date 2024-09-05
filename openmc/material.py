@@ -1510,7 +1510,6 @@ class Material(IDManagerMixin):
 
         """
         mat_id = int(elem.get('id'))
-        
         # Add NCrystal material from cfg string
         if "cfg" in elem.attrib:
             cfg = elem.get("cfg")

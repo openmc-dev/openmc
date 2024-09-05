@@ -72,7 +72,8 @@ class IDManagerMixin:
                 cls.used_ids.add(uid)
             self._id = uid
 
-    def reset_ids(self):
+    @classmethod
+    def reset_ids(cls):
         """Reset counters"""
         cls.used_ids.clear()
         cls.next_id = 1

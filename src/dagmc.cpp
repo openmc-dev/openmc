@@ -756,15 +756,13 @@ Direction DAGSurface::normal(Position r) const
   return dir;
 }
 
-Direction DAGSurface::reflect(Position r, Direction u, GeometryState* p) const
+Direction DAGSurface::reflect(Position r, Direction u) const
 {
-  Expects(p);
-  p->history().reset_to_last_intersection();
   moab::ErrorCode rval;
   moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3];
-  rval = dagmc_ptr_->get_angle(surf, pnt, dir, &p->history());
+  rval = dagmc_ptr_->get_angle(surf, pnt, dir);
   MB_CHK_ERR_CONT(rval);
   return u.reflect(dir);
 }

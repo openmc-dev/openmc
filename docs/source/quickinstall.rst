@@ -142,7 +142,10 @@ proceeding:
 
 .. code-block:: sh
 
-   export CXX=/opt/homebrew/opt/llvm/bin/clang++
+    export CC=/usr/local/opt/llvm/bin/clang
+    export CXX=/usr/local/opt/llvm/bin/clang++
+    export LDFLAGS="-L/usr/local/opt/llvm/lib"
+    export CPPFLAGS="-I/usr/local/opt/llvm/include"
 
 After the packages have been installed, follow the instructions to build from
 source below.

@@ -1710,6 +1710,10 @@ void Ray::trace()
       call_on_intersection = false;
     }
 
+    // DAGMC surfaces expect us to go a little bit further than the advance
+    // distance to properly check cell inclusion.
+    dist_.distance += TINY_BIT;
+
     // Advance particle, prepare for next intersection
     for (int lev = 0; lev < n_coord(); ++lev) {
       coord(lev).r += dist_.distance * coord(lev).u;
@@ -1845,7 +1849,14 @@ void PhongRay::on_intersection()
 
     orig_hit_id_ = hit_id;
 
-    surface() = -surface(); // go to other side
+    // OpenMC native CSG and DAGMC surfaces have some slight differences
+    // in how they interpret particles that are sitting on a surface.
+    // I don't know exactly why, but this makes everything work beautifully.
+    if (surf->geom_type_ == GeometryType::DAG) {
+      surface() = 0;
+    } else {
+      surface() = -surface(); // go to other side
+    }
 
     // Must fully restart coordinate search. Why? Not sure.
     clear();

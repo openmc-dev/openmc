@@ -33,7 +33,7 @@ def get_dagmc_cell_ids(volume_id, n_cells):
     n = c_size_t()
     _dll.openmc_get_dagmc_cell_ids(
         volume_id,
-        cell_ids.ctypes.data_as(pointer(c_int32)),
+        cell_ids.ctypes.data_as(POINTER(c_int32)),
         n
     )
     if n.value != n_cells:

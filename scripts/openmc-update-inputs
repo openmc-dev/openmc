@@ -203,13 +203,13 @@ def update_geometry(geometry_root):
         was_updated = True
 
     for surface in root.findall("surface"):
-        for tag in ["type", "coeffs", "boundary"]:
-            if surface.find(tag) is not None:
-                value = surface.find(tag).text
-                surface.attrib[tag] = value
+        for attribute in ["type", "coeffs", "boundary"]:
+            if surface.find(attribute) is not None:
+                value = surface.find(attribute).text
+                surface.attrib[attribute] = value
 
-                element = surface.find(tag)
-                surface.remove(element)
+                child_element = surface.find(attribute)
+                surface.remove(child_element)
                 was_updated = True
 
     # Remove 'type' from lattice definitions.

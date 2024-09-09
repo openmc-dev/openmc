@@ -1051,7 +1051,7 @@ class Model:
         """
         if diff_volume_method not in ["divide equally", "match cell", None]:
             raise ValueError(
-                f"diff_volume_method must be 'divide equally' or 'match cell', "
+                "diff_volume_method must be 'divide equally' or 'match cell', "
                 f"not '{diff_volume_method}'"
             )
         # Count the number of instances for each cell and material

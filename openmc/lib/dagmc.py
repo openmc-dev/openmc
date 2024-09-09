@@ -37,6 +37,6 @@ def get_dagmc_cell_ids(volume_id, n_cells):
         n
     )
     if n.value != n_cells:
-        raise valueerror(f"number of cells obtained {n.value} from dagmc does "
+        raise ValueError(f"Number of cells obtained {n.value} from dagmc does "
                          f"not match the expected number of cells {n_cells}.")
     return cell_ids

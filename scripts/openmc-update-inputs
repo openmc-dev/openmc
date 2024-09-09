@@ -1,4 +1,4 @@
-#!/wrk/openmc_venv/bin/python3.11
+#!/usr/bin/env python3
 """Update OpenMC's input XML files to the latest format."""
 
 import argparse

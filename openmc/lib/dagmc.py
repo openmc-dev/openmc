@@ -14,19 +14,19 @@ _dll.openmc_get_dagmc_cell_ids.errcheck = _error_handler
 
 
 def get_dagmc_cell_ids(volume_id, n_cells):
-    """get the dagmc cell ids for a volume.
+    """Get the DAGMC cell IDs for a volume.
 
-    parameters
+    Parameters
     ----------
     volume_id : int
-        id of the volume to get dagmc cell ids for.
+        ID of the volume to get DAGMC cell IDs for.
     n_cells : int
-        number of cells in the volume.
+        Number of cells in the volume.
 
-    returns
+    Returns
     -------
     numpy.ndarray
-        dagmc cell ids for the volume.
+        DAGMC cell IDs for the volume.
 
     """
     cell_ids = np.empty(n_cells, dtype=np.int32)
@@ -37,6 +37,6 @@ def get_dagmc_cell_ids(volume_id, n_cells):
         n
     )
     if n.value != n_cells:
-        raise ValueError(f"Number of cells obtained {n.value} from dagmc does "
+        raise ValueError(f"Number of cells obtained {n.value} from DAGMC does "
                          f"not match the expected number of cells {n_cells}.")
     return cell_ids

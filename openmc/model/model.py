@@ -1021,7 +1021,7 @@ class Model:
 
         self._change_py_lib_attribs(names_or_ids, volume, 'material', 'volume')
 
-    def differentiate_depletable_mats(self, diff_volume_method=None):
+    def differentiate_depletable_mats(self, diff_volume_method : str = None):
         """Assign distribmats for each depletable material
 
         .. versionadded:: 0.14.0

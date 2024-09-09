@@ -470,7 +470,7 @@ class DAGMCCell(openmc.Cell):
         self._parent_universe = universe.id
 
     def boundingbox(self):
-        print("Warning: Bounding box is not available for cells in a DAGMC universe.")
+        raise NotImplementedError("Bounding box is not available for cells in a DAGMC universe")
         return {}
 
     def get_all_cells(self, memo=None):

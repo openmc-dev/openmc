@@ -346,7 +346,7 @@ void initialize_batch()
   // Increment current batch
   ++simulation::current_batch;
 
-  if(settings::split_file_per_batch){
+  if (settings::split_file_per_batch) {
     simulation::surf_source_bank.clear();
     simulation::surf_source_bank.reserve(settings::max_surface_particles);
   }
@@ -483,11 +483,9 @@ void finalize_batch()
       } else {
         write_source_point(filename.c_str(), surfbankspan, surf_work_index);
       }
-    }
-    else if (settings::split_file_per_batch &&
-          simulation::current_batch >
-            (settings::n_batches - settings::n_surf_source_files))
-    {
+    } else if (settings::split_file_per_batch &&
+               simulation::current_batch >
+                 (settings::n_batches - settings::n_surf_source_files)) {
       auto filename = settings::path_output + "surface_source_batch_" +
                       std::to_string(simulation::current_batch);
       auto surf_work_index = mpi::calculate_parallel_index_vector(

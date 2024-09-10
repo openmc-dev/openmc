@@ -79,6 +79,7 @@ bool weight_window_checkpoint_surface {false};
 bool weight_window_checkpoint_collision {true};
 bool write_all_tracks {false};
 bool write_initial_source {false};
+bool split_file_per_batch {false};
 bool info_surface_source {false};
 
 std::string path_cross_sections;
@@ -120,7 +121,7 @@ std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
 std::unordered_set<int> source_write_surf_id;
 int64_t max_surface_particles;
-int64_t max_files {1};
+int64_t n_surf_source_files {1};
 int64_t ssw_cell_id {C_NONE};
 SSWCellType ssw_cell_type {SSWCellType::None};
 TemperatureMethod temperature_method {TemperatureMethod::NEAREST};
@@ -796,18 +797,26 @@ void read_settings_xml(pugi::xml_node root)
     }
 
     // Get maximum number of files per batch to be created
-    if (check_for_node(node_ssw, "max_files")) {
-      max_files = std::stoll(get_node_value(node_ssw, "max_files"));
+    if (check_for_node(node_ssw, "n_surf_source_files")) {
+      n_surf_source_files =
+        std::stoll(get_node_value(node_ssw, "n_surf_source_files"));
       // Make sure you have enough batchs
-      if (max_files > (n_batches - n_inactive)) {
-        fatal_error("The maximum number of particle files must to be higher "
-                    "than the number of active simulated batchs.");
+      if (n_surf_source_files > (n_batches - n_inactive)) {
+        fatal_error("The number of surface source files must to be lower "
+                    "than the number of active simulated batches.");
       }
+    }
+
+    // Check if we want create surface source file per batch
+    if (check_for_node(node_ssw, "split_file_per_batch")) {
+      split_file_per_batch =
+        get_node_value_bool(node_ssw, "split_file_per_batch");
     }
 
     // Check if we want to write info about surface source
     if (check_for_node(node_ssw, "info_surface_source")) {
-      info_surface_source = get_node_value_bool(node_ssw, "info_surface_source");
+      info_surface_source =
+        get_node_value_bool(node_ssw, "info_surface_source");
     }
 
     if (check_for_node(node_ssw, "mcpl")) {

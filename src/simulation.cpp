@@ -346,8 +346,10 @@ void initialize_batch()
   // Increment current batch
   ++simulation::current_batch;
 
-  simulation::surf_source_bank.clear();
-  simulation::surf_source_bank.reserve(settings::max_surface_particles);
+  if(settings::split_file_per_batch){
+    simulation::surf_source_bank.clear();
+    simulation::surf_source_bank.reserve(settings::max_surface_particles);
+  }
 
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     if (settings::solver_type == SolverType::RANDOM_RAY &&
@@ -467,22 +469,42 @@ void finalize_batch()
   }
 
   // Write out surface source if requested.
-  if (settings::surf_source_write &&
-      simulation::current_batch > (settings::n_batches - settings::max_files) &&
-      simulation::current_batch > (settings::n_inactive)) {
-    auto filename = settings::path_output + "surface_source_batch_" +
-                    std::to_string(simulation::current_batch);
-    auto surf_work_index =
-      mpi::calculate_parallel_index_vector(simulation::surf_source_bank.size());
-    gsl::span<SourceSite> surfbankspan(simulation::surf_source_bank.begin(),
-      simulation::surf_source_bank.size());
-    if (settings::surf_mcpl_write) {
-      write_mcpl_source_point(filename.c_str(), surfbankspan, surf_work_index);
-    } else {
-      write_source_point(filename.c_str(), surfbankspan, surf_work_index);
+  if (settings::surf_source_write) {
+    if (simulation::current_batch == settings::n_batches &&
+        settings::split_file_per_batch == false) {
+      auto filename = settings::path_output + "surface_source";
+      auto surf_work_index = mpi::calculate_parallel_index_vector(
+        simulation::surf_source_bank.size());
+      gsl::span<SourceSite> surfbankspan(simulation::surf_source_bank.begin(),
+        simulation::surf_source_bank.size());
+      if (settings::surf_mcpl_write) {
+        write_mcpl_source_point(
+          filename.c_str(), surfbankspan, surf_work_index);
+      } else {
+        write_source_point(filename.c_str(), surfbankspan, surf_work_index);
+      }
     }
-    if (settings::info_surface_source){
-      write_message("Info surface source crossing {}/{}", simulation::surf_source_bank.size(), settings::n_particles);
+    else if (settings::split_file_per_batch &&
+          simulation::current_batch >
+            (settings::n_batches - settings::n_surf_source_files))
+    {
+      auto filename = settings::path_output + "surface_source_batch_" +
+                      std::to_string(simulation::current_batch);
+      auto surf_work_index = mpi::calculate_parallel_index_vector(
+        simulation::surf_source_bank.size());
+      gsl::span<SourceSite> surfbankspan(simulation::surf_source_bank.begin(),
+        simulation::surf_source_bank.size());
+      if (settings::surf_mcpl_write) {
+        write_mcpl_source_point(
+          filename.c_str(), surfbankspan, surf_work_index);
+      } else {
+        write_source_point(filename.c_str(), surfbankspan, surf_work_index);
+      }
+      if (settings::info_surface_source) {
+        write_message(
+          "Number of particles saved in the surface source file {}/{}",
+          simulation::surf_source_bank.size(), settings::n_particles);
+      }
     }
   }
 }

@@ -34,7 +34,7 @@ def test_model_differentiate_with_DAGMC():
     mats["Water"].add_s_alpha_beta("c_H_in_H2O")
     mats["Water"].name = "Water"
 
-    p = pkg_resources.resource_filename(__name__, "UseCaseBam.h5m")
+    p = pkg_resources.resource_filename(__name__, "dagmc_differentiate_mat.h5m")
 
     daguniv = openmc.DAGMCUniverse(p,auto_geom_ids=True,)
 

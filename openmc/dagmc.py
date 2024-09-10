@@ -75,8 +75,6 @@ class DAGMCUniverse(openmc.UniverseBase):
         strings and the values are openmc.Material objects. If a material name
         is found in the DAGMC file, the material will be replaced with the
         openmc.Material object in the value.
-
-    
     """
 
     def __init__(self,

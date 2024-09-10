@@ -2,12 +2,13 @@
 """Update OpenMC's input XML files to the latest format."""
 
 import argparse
-import xml.etree.ElementTree as ET
 from itertools import chain
 from random import randint
 from shutil import move
+import xml.etree.ElementTree as ET
 
 import openmc.data
+
 
 description = "Update OpenMC's input XML files to the latest format."
 epilog = """\
@@ -33,9 +34,11 @@ def parse_args():
     """Read the input files from the commandline."""
     # Create argument parser.
     parser = argparse.ArgumentParser(
-        description=description, epilog=epilog, formatter_class=argparse.RawTextHelpFormatter
-    )
-    parser.add_argument("input", metavar="IN", type=str, nargs="+", help="Input XML file(s).")
+         description=description,
+         epilog=epilog,
+         formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument('input', metavar='IN', type=str, nargs='+',
+                        help='Input XML file(s).')
 
     # Parse and return commandline arguments.
     return parser.parse_args()
@@ -47,13 +50,13 @@ def get_universe_ids(geometry_root):
     out = set()
 
     # Get the ids of universes defined by cells.
-    for cell in root.iter("cell"):
+    for cell in root.iter('cell'):
         # Get universe attributes/elements
-        if "universe" in cell.attrib:
-            uid = cell.attrib["universe"]
+        if 'universe' in cell.attrib:
+            uid = cell.attrib['universe']
             out.add(int(uid))
-        elif cell.find("universe") is not None:
-            elem = cell.find("universe")
+        elif cell.find('universe') is not None:
+            elem = cell.find('universe')
             uid = elem.text
             out.add(int(uid))
         else:
@@ -61,15 +64,15 @@ def get_universe_ids(geometry_root):
             out.add(0)
 
     # Get the ids of universes defined by lattices.
-    for lat in root.iter("lattice"):
+    for lat in root.iter('lattice'):
         # Get id attributes.
-        if "id" in lat.attrib:
-            uid = lat.attrib["id"]
+        if 'id' in lat.attrib:
+            uid = lat.attrib['id']
             out.add(int(uid))
 
         # Get id elements.
-        elif lat.find("id") is not None:
-            elem = lat.find("id")
+        elif lat.find('id') is not None:
+            elem = lat.find('id')
             uid = elem.text
             out.add(int(uid))
 
@@ -82,15 +85,15 @@ def get_cell_ids(geometry_root):
     out = set()
 
     # Get the ids of universes defined by cells.
-    for cell in root.iter("cell"):
+    for cell in root.iter('cell'):
         # Get id attributes.
-        if "id" in cell.attrib:
-            cid = cell.attrib["id"]
+        if 'id' in cell.attrib:
+            cid = cell.attrib['id']
             out.add(int(cid))
 
         # Get id elements.
-        elif cell.find("id") is not None:
-            elem = cell.find("id")
+        elif cell.find('id') is not None:
+            elem = cell.find('id')
             cid = elem.text
             out.add(int(cid))
 
@@ -118,49 +121,45 @@ def find_new_id(current_ids, preferred=None):
             return num
 
     # Raise an error if an id was not found.
-    raise RuntimeError("Could not find a unique id number for a new universe.")
+    raise RuntimeError('Could not find a unique id number for a new universe.')
 
 
 def get_lat_id(lattice_element):
     """Return the id integer of the lattice_element."""
     assert isinstance(lattice_element, ET.Element)
-    if "id" in lattice_element.attrib:
-        return int(lattice_element.attrib["id"].strip())
-    elif any([child.tag == "id" for child in lattice_element]):
-        elem = lattice_element.find("id")
+    if 'id' in lattice_element.attrib:
+        return int(lattice_element.attrib['id'].strip())
+    elif any([child.tag == 'id' for child in lattice_element]):
+        elem = lattice_element.find('id')
         return int(elem.text.strip())
     else:
-        raise RuntimeError("Could not find the id for a lattice.")
+        raise RuntimeError('Could not find the id for a lattice.')
 
 
 def pop_lat_outside(lattice_element):
-    """Return lattice's outside material and remove from
-    attributes/elements."""
+    """Return lattice's outside material and remove from attributes/elements."""
     assert isinstance(lattice_element, ET.Element)
 
     # Check attributes.
-    if "outside" in lattice_element.attrib:
-        material = lattice_element.attrib["outside"].strip()
-        del lattice_element.attrib["outside"]
+    if 'outside' in lattice_element.attrib:
+        material = lattice_element.attrib['outside'].strip()
+        del lattice_element.attrib['outside']
 
     # Check subelements.
-    elif any([child.tag == "outside" for child in lattice_element]):
-        elem = lattice_element.find("outside")
+    elif any([child.tag == 'outside' for child in lattice_element]):
+        elem = lattice_element.find('outside')
         material = elem.text.strip()
         lattice_element.remove(elem)
 
     # No 'outside' specified.  This means the outside is a void.
     else:
-        material = "void"
+        material = 'void'
 
     return material
 
 
 def update_geometry(geometry_root):
-    """Update the given XML geometry tree.
-
-    Return True if changes were made.
-    """
+    """Update the given XML geometry tree. Return True if changes were made."""
     root = geometry_root
     was_updated = False
 
@@ -170,15 +169,13 @@ def update_geometry(geometry_root):
     taken_ids = uids.union(cids)
 
     # Replace 'outside' with 'outer' in lattices.
-    for lat in chain(root.iter("lattice"), root.iter("hex_lattice")):
+    for lat in chain(root.iter('lattice'), root.iter('hex_lattice')):
         # Get the lattice's id.
         lat_id = get_lat_id(lat)
 
         # Ignore lattices that have 'outer' specified.
-        if any([child.tag == "outer" for child in lat]):
-            continue
-        if "outer" in lat.attrib:
-            continue
+        if any([child.tag == 'outer' for child in lat]): continue
+        if 'outer' in lat.attrib: continue
 
         # Pop the 'outside' material.
         material = pop_lat_outside(lat)
@@ -190,20 +187,20 @@ def update_geometry(geometry_root):
 
         # Add the new universe filled with the old 'outside' material to the
         # geometry.
-        new_cell = ET.Element("cell")
-        new_cell.attrib["id"] = str(new_uid)
-        new_cell.attrib["universe"] = str(new_uid)
-        new_cell.attrib["material"] = material
+        new_cell = ET.Element('cell')
+        new_cell.attrib['id'] = str(new_uid)
+        new_cell.attrib['universe'] = str(new_uid)
+        new_cell.attrib['material'] = material
         root.append(new_cell)
         taken_ids.add(new_uid)
 
         # Add the new universe to the lattice's 'outer' attribute.
-        lat.attrib["outer"] = str(new_uid)
+        lat.attrib['outer'] = str(new_uid)
 
         was_updated = True
 
-    for surface in root.findall("surface"):
-        for attribute in ["type", "coeffs", "boundary"]:
+    for surface in root.findall('surface'):
+        for attribute in ['type', 'coeffs', 'boundary']:
             if surface.find(attribute) is not None:
                 value = surface.find(attribute).text
                 surface.attrib[attribute] = value
@@ -213,79 +210,75 @@ def update_geometry(geometry_root):
                 was_updated = True
 
     # Remove 'type' from lattice definitions.
-    for lat in root.iter("lattice"):
-        elem = lat.find("type")
+    for lat in root.iter('lattice'):
+        elem = lat.find('type')
         if elem is not None:
             lat.remove(elem)
             was_updated = True
-        if "type" in lat.attrib:
-            del lat.attrib["type"]
+        if 'type' in lat.attrib:
+            del lat.attrib['type']
             was_updated = True
 
     # Change 'width' to 'pitch' in lattice definitions.
-    for lat in root.iter("lattice"):
-        elem = lat.find("width")
+    for lat in root.iter('lattice'):
+        elem = lat.find('width')
         if elem is not None:
-            elem.tag = "pitch"
+            elem.tag = 'pitch'
             was_updated = True
-        if "width" in lat.attrib:
-            lat.attrib["pitch"] = lat.attrib["width"]
-            del lat.attrib["width"]
+        if 'width' in lat.attrib:
+            lat.attrib['pitch'] = lat.attrib['width']
+            del lat.attrib['width']
             was_updated = True
 
     # Change 'surfaces' to 'region' in cell definitions
-    for cell in root.iter("cell"):
-        elem = cell.find("surfaces")
+    for cell in root.iter('cell'):
+        elem = cell.find('surfaces')
         if elem is not None:
-            elem.tag = "region"
+            elem.tag = 'region'
             was_updated = True
-        if "surfaces" in cell.attrib:
-            cell.attrib["region"] = cell.attrib["surfaces"]
-            del cell.attrib["surfaces"]
+        if 'surfaces' in cell.attrib:
+            cell.attrib['region'] = cell.attrib['surfaces']
+            del cell.attrib['surfaces']
             was_updated = True
 
     return was_updated
 
-
 def update_materials(root):
-    """Update the given XML materials tree.
-
-    Return True if changes were made.
-    """
+    """Update the given XML materials tree. Return True if changes were made."""
     was_updated = False
 
-    for material in root.findall("material"):
-        for nuclide in material.findall("nuclide"):
-            if "name" in nuclide.attrib:
-                nucname = nuclide.attrib["name"].replace("-", "")
+    for material in root.findall('material'):
+        for nuclide in material.findall('nuclide'):
+            if 'name' in nuclide.attrib:
+                nucname = nuclide.attrib['name'].replace('-', '')
                 # If a nuclide name is in the ZAID notation (e.g., a number),
                 # convert it to the proper nuclide name.
                 if nucname.strip().isnumeric():
                     nucname = openmc.data.ace.get_metadata(int(nucname))[0]
-                nucname = nucname.replace("Nat", "0")
-                if nucname.endswith("m"):
-                    nucname = nucname[:-1] + "_m1"
-                nuclide.set("name", nucname)
+                nucname = nucname.replace('Nat', '0')
+                if nucname.endswith('m'):
+                    nucname = nucname[:-1] + '_m1'
+                nuclide.set('name', nucname)
                 was_updated = True
 
-            elif nuclide.find("name") is not None:
-                name_elem = nuclide.find("name")
+            elif nuclide.find('name') is not None:
+                name_elem = nuclide.find('name')
                 nucname = name_elem.text
-                nucname = nucname.replace("-", "")
-                nucname = nucname.replace("Nat", "0")
-                if nucname.endswith("m"):
-                    nucname = nucname[:-1] + "_m1"
+                nucname = nucname.replace('-', '')
+                nucname = nucname.replace('Nat', '0')
+                if nucname.endswith('m'):
+                    nucname = nucname[:-1] + '_m1'
                 name_elem.text = nucname
                 was_updated = True
 
-        for sab in material.findall("sab"):
-            if "name" in sab.attrib:
-                sabname = sab.attrib["name"]
-                sab.set("name", openmc.data.get_thermal_name(sabname))
+        for sab in material.findall('sab'):
+            if 'name' in sab.attrib:
+                sabname = sab.attrib['name']
+                sab.set('name', openmc.data.get_thermal_name(sabname))
                 was_updated = True
 
-            elif sab.find("name") is not None:
-                name_elem = sab.find("name")
+            elif sab.find('name') is not None:
+                name_elem = sab.find('name')
                 sabname = name_elem.text
                 name_elem.text = openmc.data.get_thermal_name(sabname)
                 was_updated = True
@@ -293,7 +286,7 @@ def update_materials(root):
     return was_updated
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     args = parse_args()
     for fname in args.input:
         # Parse the XML data.
@@ -301,14 +294,14 @@ if __name__ == "__main__":
         root = tree.getroot()
         was_updated = False
 
-        if root.tag == "geometry":
+        if root.tag == 'geometry':
             was_updated = update_geometry(root)
-        elif root.tag == "materials":
+        elif root.tag == 'materials':
             was_updated = update_materials(root)
 
         if was_updated:
             # Move the original geometry file to preserve it.
-            move(fname, fname + ".original")
+            move(fname, fname + '.original')
 
             # Write a new geometry file.
             tree.write(fname, xml_declaration=True)

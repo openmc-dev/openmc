@@ -60,8 +60,6 @@ extern bool source_mcpl_write;     //!< write source in mcpl files?
 extern bool surf_source_write;     //!< write surface source file?
 extern bool surf_mcpl_write;       //!< write surface mcpl file?
 extern bool surf_source_read;      //!< read surface source file?
-extern bool info_surface_source;   //!< print surface source info?
-extern bool split_file_per_batch;  //!< create surface source file per batch?
 extern bool survival_biasing;      //!< use survival biasing?
 extern bool temperature_multipole; //!< use multipole data?
 extern "C" bool trigger_on;        //!< tally triggers enabled?
@@ -130,13 +128,14 @@ extern std::unordered_set<int>
 extern std::unordered_set<int>
   statepoint_batch; //!< Batches when state should be written
 extern std::unordered_set<int>
+  surface_source_batch; //!< Batches when surface source should be written
+extern std::unordered_set<int>
   source_write_surf_id; //!< Surface ids where sources will be written
+
 extern int
   max_history_splits; //!< maximum number of particle splits for weight windows
 extern int64_t max_surface_particles; //!< maximum number of particles to be
                                       //!< banked on surfaces per process
-extern int64_t n_surf_source_files;   //!< number of surfaces source files to be
-                                      //!< created for the n last batches
 extern int64_t ssw_cell_id;           //!< Cell id for the surface source
                                       //!< write setting
 extern SSWCellType ssw_cell_type;     //!< Type of option for the cell

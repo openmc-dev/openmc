@@ -89,7 +89,7 @@ def test_surf_source(model):
         kwargs['mpi_args'] = [config['mpiexec'], '-n', config['mpi_np']]
     model.run(**kwargs)
 
-    with h5py.File('surface_source.h5') as fh:
+    with h5py.File('surface_source.5.h5') as fh:
         assert fh.attrs['filetype'] == b'source'
         arr = fh['source_bank'][...]
     expected_size = n * int(config['mpi_np']) if config['mpi'] else n
@@ -105,4 +105,3 @@ def test_surf_source(model):
 def test_dagmc(model):
     harness = PyAPITestHarness('statepoint.5.h5', model)
     harness.main()
-

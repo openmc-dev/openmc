@@ -79,8 +79,6 @@ bool weight_window_checkpoint_surface {false};
 bool weight_window_checkpoint_collision {true};
 bool write_all_tracks {false};
 bool write_initial_source {false};
-bool split_file_per_batch {false};
-bool info_surface_source {false};
 
 std::string path_cross_sections;
 std::string path_input;
@@ -120,8 +118,8 @@ SolverType solver_type {SolverType::MONTE_CARLO};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
 std::unordered_set<int> source_write_surf_id;
+std::unordered_set<int> surface_source_batch;
 int64_t max_surface_particles;
-int64_t n_surf_source_files {1};
 int64_t ssw_cell_id {C_NONE};
 SSWCellType ssw_cell_type {SSWCellType::None};
 TemperatureMethod temperature_method {TemperatureMethod::NEAREST};
@@ -786,6 +784,17 @@ void read_settings_xml(pugi::xml_node root)
       }
     }
 
+    // User gave specific batches to write surface source files
+    if (check_for_node(node_ssw, "batches")) {
+      auto temp = get_node_array<int>(node_ssw, "batches");
+      for (const auto& b : temp) {
+        surface_source_batch.insert(b);
+      }
+    } else {
+      // If no <batches> tag was present, by default write surface source at
+      // last batch only
+      surface_source_batch.insert(n_batches);
+    }
     // Get maximum number of particles to be banked per surface
     if (check_for_node(node_ssw, "max_particles")) {
       max_surface_particles =
@@ -794,29 +803,6 @@ void read_settings_xml(pugi::xml_node root)
       fatal_error("A maximum number of particles needs to be specified "
                   "using the 'max_particles' parameter to store surface "
                   "source points.");
-    }
-
-    // Get maximum number of files per batch to be created
-    if (check_for_node(node_ssw, "n_surf_source_files")) {
-      n_surf_source_files =
-        std::stoll(get_node_value(node_ssw, "n_surf_source_files"));
-      // Make sure you have enough batchs
-      if (n_surf_source_files > (n_batches - n_inactive)) {
-        fatal_error("The number of surface source files must to be lower "
-                    "than the number of active simulated batches.");
-      }
-    }
-
-    // Check if we want create surface source file per batch
-    if (check_for_node(node_ssw, "split_file_per_batch")) {
-      split_file_per_batch =
-        get_node_value_bool(node_ssw, "split_file_per_batch");
-    }
-
-    // Check if we want to write info about surface source
-    if (check_for_node(node_ssw, "info_surface_source")) {
-      info_surface_source =
-        get_node_value_bool(node_ssw, "info_surface_source");
     }
 
     if (check_for_node(node_ssw, "mcpl")) {
@@ -1107,6 +1093,7 @@ void free_memory_settings()
   settings::statepoint_batch.clear();
   settings::sourcepoint_batch.clear();
   settings::source_write_surf_id.clear();
+  settings::surface_source_batch.clear();
   settings::res_scat_nuclides.clear();
 }
 
@@ -1149,6 +1136,11 @@ extern "C" int openmc_set_n_batches(
   if (add_statepoint_batch &&
       !(contains(settings::statepoint_batch, n_batches)))
     settings::statepoint_batch.insert(n_batches);
+
+  // Add value of n_batches to surface_source_batch
+  if (add_statepoint_batch &&
+      !(contains(settings::surface_source_batch, n_batches)))
+    settings::surface_source_batch.insert(n_batches);
 
   return 0;
 }

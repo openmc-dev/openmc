@@ -65,21 +65,21 @@ def model(request):
 
 class SurfaceSourceTestHarness(PyAPITestHarness):
     def _test_output_created(self):
-        """Make sure surface_source.h5 has also been created."""
+        """Make sure surface_source.10.h5 has also been created."""
         super()._test_output_created()
-        # Check if 'surface_source.h5' has been created.
+        # Check if 'surface_source.10.h5' has been created.
         if self._model.settings.surf_source_write:
-            assert os.path.exists('surface_source.h5'), \
+            assert os.path.exists('surface_source.10.h5'), \
                 'Surface source file does not exist.'
 
     def _compare_output(self):
-        """Make sure the current surface_source.h5 agree with the reference."""
+        """Make sure the current surface_source.10.h5 agree with the reference."""
         if self._model.settings.surf_source_write:
             with h5py.File("surface_source_true.h5", 'r') as f:
                 source_true = f['source_bank'][()]
                 # Convert dtye from mixed to a float for comparison assertion
                 source_true.dtype = 'float64'
-            with h5py.File("surface_source.h5", 'r') as f:
+            with h5py.File("surface_source.10.h5", 'r') as f:
                 source_test = f['source_bank'][()]
                 # Convert dtye from mixed to a float for comparison assertion
                 source_test.dtype = 'float64'
@@ -106,13 +106,13 @@ class SurfaceSourceTestHarness(PyAPITestHarness):
     def _overwrite_results(self):
         """Overwrite the results_true with the results_test."""
         shutil.copyfile('results_test.dat', 'results_true.dat')
-        if os.path.exists('surface_source.h5'):
-            shutil.copyfile('surface_source.h5', 'surface_source_true.h5')
+        if os.path.exists('surface_source.10.h5'):
+            shutil.copyfile('surface_source.10.h5', 'surface_source_true.h5')
 
     def _cleanup(self):
         """Delete statepoints, tally, and test files."""
         super()._cleanup()
-        fs = 'surface_source.h5'
+        fs = 'surface_source.10.h5'
         if os.path.exists(fs):
             os.remove(fs)
 

@@ -207,10 +207,6 @@ class Settings:
                    banked (int)
         :max_particles: Maximum number of particles to be banked on surfaces per
                    process (int)
-        :split_file_per_batch: create surface source file per batch (bool)
-        :n_surf_source_files: Number of surfaces source files to be created 
-                   for the n last batches (int)
-        :info_surface_source: print number of particle saved in surface source file (bool)
         :mcpl: Output in the form of an MCPL-file (bool)
         :cell: Cell ID used to determine if particles crossing identified
                surfaces are to be banked. Particles coming from or going to this
@@ -221,6 +217,7 @@ class Settings:
         :cellto: Cell ID used to determine if particles crossing identified
                  surfaces are to be banked. Particles going to this declared
                  cell will be banked (int)
+        :batches: List of batches at which to write surface source files
     survival_biasing : bool
         Indicate whether survival biasing is to be used
     tabular_legendre : dict
@@ -718,25 +715,23 @@ class Settings:
             cv.check_value(
                 "surface source writing key",
                 key,
-                ("surface_ids", "max_particles", "split_file_per_batch", "n_surf_source_files", "info_surface_source", 
-                "mcpl", "cell", "cellfrom", "cellto"),
+                ("surface_ids", "max_particles", "batches", "mcpl", "cell", "cellfrom", "cellto"),
             )
-            if key == "surface_ids":
-                cv.check_type(
-                    "surface ids for source banking", value, Iterable, Integral
+            if key in ("surface_ids", "batches"):
+                name = {
+                    "surface_ids": "surface ids for source banking",
+                    "batches": "surface source batches",
+                }[key]
+                cv.check_type(name, value, Iterable, Integral
                 )
-                for surf_id in value:
-                    cv.check_greater_than("surface id for source banking", surf_id, 0)
+                for i in value:
+                    cv.check_greater_than(name, i, 0)
+                
             elif key == "mcpl":
                 cv.check_type("write to an MCPL-format file", value, bool)
-            elif key == "split_file_per_batch":
-                cv.check_type("create surface source file per batch", value, bool)    
-            elif key == "info_surface_source":
-                cv.check_type("write message with surface source info", value, bool)    
-            elif key in ("max_particles", "n_surf_source_files", "cell", "cellfrom", "cellto"):
+            elif key in ("max_particles", "cell", "cellfrom", "cellto"):
                 name = {
                     "max_particles": "maximum particle banks on surfaces per process",
-                    "n_surf_source_files": "number of surfaces source files.",
                     "cell": "Cell ID for source banking (from or to)",
                     "cellfrom": "Cell ID for source banking (from only)",
                     "cellto": "Cell ID for source banking (to only)",
@@ -1245,21 +1240,16 @@ class Settings:
     def _create_surf_source_write_subelement(self, root):
         if self._surf_source_write:
             element = ET.SubElement(root, "surf_source_write")
-            if "surface_ids" in self._surf_source_write:
-                subelement = ET.SubElement(element, "surface_ids")
-                subelement.text = " ".join(
-                    str(x) for x in self._surf_source_write["surface_ids"]
-                )
+            for key in ("surface_ids", "batches"):
+                if key in self._surf_source_write:
+                    subelement = ET.SubElement(element, key)
+                    subelement.text = " ".join(
+                        str(x) for x in self._surf_source_write[key]
+                    )
             if "mcpl" in self._surf_source_write:
                 subelement = ET.SubElement(element, "mcpl")
                 subelement.text = str(self._surf_source_write["mcpl"]).lower()
-            if "split_file_per_batch" in self._surf_source_write:
-                subelement = ET.SubElement(element, "split_file_per_batch")
-                subelement.text = str(self._surf_source_write["split_file_per_batch"]).lower()
-            if "info_surface_source" in self._surf_source_write:
-                subelement = ET.SubElement(element, "info_surface_source")
-                subelement.text = str(self._surf_source_write["info_surface_source"]).lower()
-            for key in ("max_particles", "n_surf_source_files", "cell", "cellfrom", "cellto"):
+            for key in ("max_particles", "cell", "cellfrom", "cellto"):
                 if key in self._surf_source_write:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(self._surf_source_write[key])
@@ -1658,19 +1648,14 @@ class Settings:
         elem = root.find('surf_source_write')
         if elem is None:
             return
-        for key in ('surface_ids', 'max_particles', 'split_file_per_batch', 'n_surf_source_files', 'info_surface_source', 
-                    'mcpl', 'cell', 'cellto', 'cellfrom'):
+        for key in ('surface_ids', 'max_particles', 'batches', 'mcpl', 'cell', 'cellto', 'cellfrom'):
             value = get_text(elem, key)
             if value is not None:
-                if key == 'surface_ids':
+                if key in ('surface_ids', 'batches'):
                     value = [int(x) for x in value.split()]
                 elif key == 'mcpl':
                     value = value in ('true', '1')
-                elif key == 'split_file_per_batch':
-                    value = value in ('true', '1')
-                elif key == 'info_surface_source':
-                    value = value in ('true', '1')
-                elif key in ('max_particles', 'n_surf_source_files', 'cell', 'cellfrom', 'cellto'):
+                elif key in ('max_particles', 'cell', 'cellfrom', 'cellto'):
                     value = int(value)
                 self.surf_source_write[key] = value
 

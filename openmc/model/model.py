@@ -1080,9 +1080,10 @@ class Model:
             for cell in self.geometry.get_all_material_cells().values():
                 if cell.fill in distribmats:
                     mat = cell.fill
-                    cell.fill = [mat.clone() for _ in range(cell.num_instances)]
-                    if diff_volume_method == 'match cell':
+                    if diff_volume_method != 'match cell':
                         cell.fill = [mat.clone() for _ in range(cell.num_instances)]
+                    elif diff_volume_method == 'match cell':
+                        cell.fill = mat.clone()
                         for i in range(cell.num_instances):
                             if not cell.volume:
                                 raise ValueError(
@@ -1090,7 +1091,7 @@ class Model:
                                     "Set volumes of cells prior to using "
                                     "diff_volume_method='match cell'."
                                 )
-                            cell.fill[i].volume = cell.volume
+                            cell.fill.volume = cell.volume
                     if isinstance(cell, openmc.DAGMCCell):
                         for i in range(cell.num_instances):
                             cell.fill[i].name = f"{cell.fill[i].name}_{cell.id}_{i}"

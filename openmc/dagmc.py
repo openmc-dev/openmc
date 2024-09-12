@@ -5,12 +5,14 @@ from pathlib import Path
 import h5py
 import lxml.etree as ET
 import numpy as np
+import warnings
 
 import openmc
 import openmc.checkvalue as cv
 from ._xml import get_text
 from .checkvalue import check_type, check_value
 from .surface import _BOUNDARY_TYPES
+from .bounding_box import BoundingBox
 
 
 class DAGMCUniverse(openmc.UniverseBase):
@@ -220,7 +222,6 @@ class DAGMCUniverse(openmc.UniverseBase):
                 if mat.name[:-4] in self.material_names:
                     self.material_overrides.setdefault(
                         mat.name[:-4].lower(), []).append(mat.name)
-                    print(f"Material {mat.name} found in DAGMC file, ")
 
         if self.material_overrides:
             mat_element = ET.Element('material_overrides')
@@ -488,23 +489,30 @@ class DAGMCCell(openmc.Cell):
         self._parent_universe = universe.id
 
     def boundingbox(self):
-        raise NotImplementedError("Bounding box is not available for cells in a DAGMC universe")
-
+        warnings.warn("Bounding box is not available for cells in a DAGMC universe", Warning)
+        return BoundingBox.infinite()
+        
     def get_all_cells(self, memo=None):
-        raise NotImplementedError("get_all_cells is not available for cells in a DAGMC universe")
+        warnings.warn("get_all_cells is not available for cells in a DAGMC universe", Warning)
+        return {}
 
     def get_all_universes(self, memo=None):
-        raise NotImplementedError("get_all_universes is not available for cells in a DAGMC universe")
+        warnings.warn("get_all_universes is not available for cells in a DAGMC universe", Warning)
+        return {}
 
     def clone(self, clone_materials=True, clone_regions=True, memo=None):
-        raise NotImplementedError("clone is not available for cells in a DAGMC universe")
+        warnings.warn("clone is not available for cells in a DAGMC universe", Warning)
+        return None
 
     def plot(self, *args, **kwargs):
-        raise NotImplementedError("plot is not available for cells in a DAGMC universe")
+        warnings.warn("plot is not available for cells in a DAGMC universe", Warning)
+        return None
 
     def create_xml_subelement(self, xml_element, memo=None):
-        raise NotImplementedError("create_xml_subelement is not available for cells in a DAGMC universe")
+        warnings.warn("create_xml_subelement is not available for cells in a DAGMC universe", Warning)
+        return None
 
     @classmethod
     def from_xml_element(cls, elem, surfaces, materials, get_universe):
-        raise NotImplementedError("from_xml_element is not available for cells in a DAGMC universe")
+        warnings.warn("from_xml_element is not available for cells in a DAGMC universe", Warning)
+        return None

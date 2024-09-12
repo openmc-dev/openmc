@@ -1049,7 +1049,7 @@ class Model:
             volume equally between the new materials, 'match cell' sets the
             volume of the material to volume of the cell they fill.
         """
-        if diff_volume_method not in ["divide equally", "match cell", None]:
+        if diff_volume_method not in ("divide equally", "match cell", None):
             raise ValueError(
                 "diff_volume_method must be 'divide equally' or 'match cell', "
                 f"not '{diff_volume_method}'"

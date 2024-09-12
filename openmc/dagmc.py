@@ -72,9 +72,9 @@ class DAGMCUniverse(openmc.UniverseBase):
         The number of surfaces in the model.
 
         .. versionadded:: 0.15
-    mat_overrides : dict
-        A dictionary of material overrides. The keys are material names as
-        strings and the values are openmc.Material objects. If a material name
+    material_overrides : dict
+        A dictionary of material overrides. The keys are material name
+        strings and the values are Iterables of openmc.Material objects. If a material name
         is found in the DAGMC file, the material will be replaced with the
         openmc.Material object in the value.
     """
@@ -437,11 +437,11 @@ class DAGMCUniverse(openmc.UniverseBase):
         """
         import openmc.lib
         if not openmc.lib.is_initialized:
-            raise RuntimeError("Model must be initialized via Model.init_lib "
+            raise RuntimeError("This universe must be part of an openmc.Model initialized via Model.init_lib "
                                "before calling this method.")
 
         mats_per_id = {mat.id: mat for mat in mats}
-        for dag_cell_id in openmc.lib.dagmc.get_dagmc_cell_ids(self.id, self._n_geom_elements('volume')):
+        for dag_cell_id in openmc.lib.dagmc.get_dagmc_cell_ids(self.id, self.n_cells):
             dag_cell = openmc.lib.cells[dag_cell_id]
             if isinstance(dag_cell.fill, Iterable):
                 fill = [mats_per_id[mat_id.id]

@@ -6,7 +6,7 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
 
     # Build in debug mode by default with support for MCPL
     pip_command = ['pip', 'install', '.[test,vtk,ci]']
-    pip_suffix = ['--config-settings=cmake.args="-DCMAKE_BUILD_TYPE=ON;-DOPENMC_USE_MCPL=ON']
+    pip_suffix = ['--config-settings=cmake.args="-DCMAKE_BUILD_TYPE=DEBUG;-DOPENMC_USE_MCPL=ON']
 
     # Turn off OpenMP if specified
     if not omp:

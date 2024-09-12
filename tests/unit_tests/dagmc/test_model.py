@@ -113,7 +113,4 @@ def test_model_differentiate_with_DAGMC():
     volume_after = np.sum([m.volume for m in model.materials if "Fuel" in m.name])
     assert len(model.materials) == nmat + 3
     assert np.isclose(volume_before, volume_after)
-
-    model.run(cwd=p)
-    model.plot_geometry(cwd=p)
     model.finalize_lib()

@@ -2403,7 +2403,8 @@ class Tally(IDManagerMixin):
             new_tally.name = self.name
             new_tally._mean = self.mean / other
             new_tally._std_dev = self.std_dev * np.abs(1. / other)
-            new_tally.estimator = self.estimator
+            if self.estimator is not None:
+                new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
             new_tally.num_realizations = self.num_realizations
 

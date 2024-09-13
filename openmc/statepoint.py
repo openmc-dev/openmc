@@ -443,7 +443,12 @@ class StatePoint:
         # Read the number of realizations
         n_realizations = group['n_realizations'][()]
 
-        tally.estimator = group['estimator'][()].decode()
+        # accept the estimator set during execution of OpenMC
+        estimator = group['estimator'][()].decode()
+        if tally.estimator is not None and tally.estimator != estimator:
+            warnings.warn(f"Estimator for Tally {tally.id} changed from "
+                          f"{tally.estimator} to {estimator} in OpenMC execution")
+
         tally.num_realizations = n_realizations
 
         # Read derivative information.
@@ -642,7 +647,7 @@ class StatePoint:
                 continue
 
             # Determine if Tally has queried estimator
-            if estimator and estimator != test_tally.estimator:
+            if estimator is not None and estimator != test_tally.estimator:
                 continue
 
             # The number of filters, nuclides and scores must exactly match

@@ -469,6 +469,11 @@ void finalize_batch()
           simulation::current_batch) != settings::surface_source_batch.end()) {
       auto filename = settings::path_output + "surface_source." +
                       std::to_string(simulation::current_batch);
+      auto it = settings::surface_source_batch.begin();
+      if (*it == settings::n_batches &&
+          settings::surface_source_batch.size() == 1) {
+        filename = settings::path_output + "surface_source";
+      }
       auto surf_work_index = mpi::calculate_parallel_index_vector(
         simulation::surf_source_bank.size());
       gsl::span<SourceSite> surfbankspan(simulation::surf_source_bank.begin(),

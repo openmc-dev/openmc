@@ -664,18 +664,18 @@ class SurfaceSourceWriteTestHarness(PyAPITestHarness):
         self.workdir = workdir
 
     def _test_output_created(self):
-        """Make sure surface_source.5.h5 has also been created."""
+        """Make sure surface_source.h5 has also been created."""
         super()._test_output_created()
         if self._model.settings.surf_source_write:
             assert os.path.exists(
-                "surface_source.5.h5"
+                "surface_source.h5"
             ), "Surface source file has not been created."
 
     def _compare_output(self):
-        """Compare surface_source.5.h5 files."""
+        """Compare surface_source.h5 files."""
         if self._model.settings.surf_source_write:
             source_true = return_surface_source_data("surface_source_true.h5")
-            source_test = return_surface_source_data("surface_source.5.h5")
+            source_test = return_surface_source_data("surface_source.h5")
             np.testing.assert_allclose(source_true, source_test, rtol=1e-07)
 
     def main(self):
@@ -734,15 +734,15 @@ class SurfaceSourceWriteTestHarness(PyAPITestHarness):
             os.chdir(base_dir)
 
     def _overwrite_results(self):
-        """Also add the 'surface_source.5.h5' file during overwriting."""
+        """Also add the 'surface_source.h5' file during overwriting."""
         super()._overwrite_results()
-        if os.path.exists("surface_source.5.h5"):
-            shutil.copyfile("surface_source.5.h5", "surface_source_true.h5")
+        if os.path.exists("surface_source.h5"):
+            shutil.copyfile("surface_source.h5", "surface_source_true.h5")
 
     def _cleanup(self):
-        """Also remove the 'surface_source.5.h5' file while cleaning."""
+        """Also remove the 'surface_source.h5' file while cleaning."""
         super()._cleanup()
-        fs = "surface_source.5.h5"
+        fs = "surface_source.h5"
         if os.path.exists(fs):
             os.remove(fs)
 

@@ -1101,8 +1101,8 @@ void free_memory_settings()
 // C API functions
 //==============================================================================
 
-extern "C" int openmc_set_n_batches(
-  int32_t n_batches, bool set_max_batches, bool add_statepoint_batch)
+extern "C" int openmc_set_n_batches(int32_t n_batches, bool set_max_batches,
+  bool add_statepoint_batch, bool add_surface_source_batch)
 {
   if (settings::n_inactive >= n_batches) {
     set_errmsg("Number of active batches must be greater than zero.");
@@ -1138,7 +1138,8 @@ extern "C" int openmc_set_n_batches(
     settings::statepoint_batch.insert(n_batches);
 
   // Add value of n_batches to surface_source_batch
-  if (add_statepoint_batch &&
+  // when no specific batches are defined
+  if (add_surface_source_batch &&
       !(contains(settings::surface_source_batch, n_batches)))
     settings::surface_source_batch.insert(n_batches);
 

@@ -15,7 +15,7 @@ _dll.openmc_get_seed.restype = c_int64
 _dll.openmc_get_n_batches.argtypes = [POINTER(c_int), c_bool]
 _dll.openmc_get_n_batches.restype = c_int
 _dll.openmc_get_n_batches.errcheck = _error_handler
-_dll.openmc_set_n_batches.argtypes = [c_int32, c_bool, c_bool]
+_dll.openmc_set_n_batches.argtypes = [c_int32, c_bool, c_bool, c_bool]
 _dll.openmc_set_n_batches.restype = c_int
 _dll.openmc_set_n_batches.errcheck = _error_handler
 
@@ -68,7 +68,7 @@ class _Settings:
     def seed(self, seed):
         _dll.openmc_set_seed(seed)
 
-    def set_batches(self, n_batches, set_max_batches=True, add_sp_batch=True):
+    def set_batches(self, n_batches, set_max_batches=True, add_sp_batch=True, add_surf_source_batch=True):
         """Set number of batches or maximum number of batches
 
         Parameters
@@ -83,7 +83,7 @@ class _Settings:
             Whether to add `n_batches` as a statepoint batch
 
         """
-        _dll.openmc_set_n_batches(n_batches, set_max_batches, add_sp_batch)
+        _dll.openmc_set_n_batches(n_batches, set_max_batches, add_sp_batch, add_surf_source_batch)
 
     def get_batches(self, get_max_batches=True):
         """Get number of batches or maximum number of batches

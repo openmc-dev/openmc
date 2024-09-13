@@ -122,7 +122,7 @@ def test_particle_direction(parameter, run_in_tmpdir, model):
     """
     model.settings.surf_source_write = parameter
     model.run()
-    with h5py.File("surface_source.3.h5", "r") as f:
+    with h5py.File("surface_source.h5", "r") as f:
         source = f["source_bank"]
 
         assert len(source) == 200

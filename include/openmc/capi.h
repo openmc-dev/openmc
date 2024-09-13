@@ -134,8 +134,8 @@ int openmc_reset_timers();
 int openmc_run();
 int openmc_sample_external_source(size_t n, uint64_t* seed, void* sites);
 void openmc_set_seed(int64_t new_seed);
-int openmc_set_n_batches(
-  int32_t n_batches, bool set_max_batches, bool add_statepoint_batch);
+int openmc_set_n_batches(int32_t n_batches, bool set_max_batches,
+  bool add_statepoint_batch, bool add_surface_source_batch);
 int openmc_simulation_finalize();
 int openmc_simulation_init();
 int openmc_source_bank(void** ptr, int64_t* n);

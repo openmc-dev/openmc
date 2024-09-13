@@ -481,10 +481,14 @@ void finalize_batch()
       if (settings::surf_mcpl_write) {
         write_mcpl_source_point(
           filename.c_str(), surfbankspan, surf_work_index);
-        write_message("Creating surface source " + filename + ".mcpl ...", 5);
+        write_message(
+          "Creating surface source " + filename + ".mcpl with {} particles ...",
+          simulation::surf_source_bank.size(), 5);
       } else {
         write_source_point(filename.c_str(), surfbankspan, surf_work_index);
-        write_message("Creating surface source " + filename + ".h5 ...", 5);
+        write_message(
+          "Creating surface source " + filename + ".h5 with {} particles ...",
+          simulation::surf_source_bank.size(), 5);
       }
       simulation::surf_source_bank.clear();
       simulation::surf_source_bank.reserve(settings::max_surface_particles);

@@ -15,7 +15,7 @@ _dll.openmc_get_seed.restype = c_int64
 _dll.openmc_get_n_batches.argtypes = [POINTER(c_int), c_bool]
 _dll.openmc_get_n_batches.restype = c_int
 _dll.openmc_get_n_batches.errcheck = _error_handler
-_dll.openmc_set_n_batches.argtypes = [c_int32, c_bool, c_bool, c_bool]
+_dll.openmc_set_n_batches.argtypes = [c_int32, c_bool, c_bool]
 _dll.openmc_set_n_batches.restype = c_int
 _dll.openmc_set_n_batches.errcheck = _error_handler
 

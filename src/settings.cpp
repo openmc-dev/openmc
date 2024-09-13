@@ -790,10 +790,6 @@ void read_settings_xml(pugi::xml_node root)
       for (const auto& b : temp) {
         surface_source_batch.insert(b);
       }
-    } else {
-      // If no <batches> tag was present, by default write surface source at
-      // last batch only
-      surface_source_batch.insert(n_batches);
     }
     // Get maximum number of particles to be banked per surface
     if (check_for_node(node_ssw, "max_particles")) {
@@ -1101,8 +1097,8 @@ void free_memory_settings()
 // C API functions
 //==============================================================================
 
-extern "C" int openmc_set_n_batches(int32_t n_batches, bool set_max_batches,
-  bool add_statepoint_batch, bool add_surface_source_batch)
+extern "C" int openmc_set_n_batches(
+  int32_t n_batches, bool set_max_batches, bool add_statepoint_batch)
 {
   if (settings::n_inactive >= n_batches) {
     set_errmsg("Number of active batches must be greater than zero.");
@@ -1136,12 +1132,6 @@ extern "C" int openmc_set_n_batches(int32_t n_batches, bool set_max_batches,
   if (add_statepoint_batch &&
       !(contains(settings::statepoint_batch, n_batches)))
     settings::statepoint_batch.insert(n_batches);
-
-  // Add value of n_batches to surface_source_batch
-  // when no specific batches are defined
-  if (add_surface_source_batch &&
-      !(contains(settings::surface_source_batch, n_batches)))
-    settings::surface_source_batch.insert(n_batches);
 
   return 0;
 }

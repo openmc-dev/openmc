@@ -209,7 +209,7 @@ def test_particle_direction_dagmc(parameter, run_in_tmpdir, model_dagmc):
     r = 7.0
     h = 20.0
 
-    with h5py.File("surface_source.5.h5", "r") as f:
+    with h5py.File("surface_source.h5", "r") as f:
         source = f["source_bank"]
 
         assert len(source) == 200

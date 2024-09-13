@@ -136,7 +136,11 @@ class Tally(IDManagerMixin):
             return False
         if other.name != self.name:
             return False
-        if self.estimator is not None and other.estimator != self.estimator:
+        # estimators are automatically set during OpenMC initialization if this value is None, so it
+        # it not considered a requirement for equivalence if it is unset on either tally as it implies that
+        # the user is allowing OpenMC to apply the appropriate estimator. If the value is explicitly set
+        # on both tallies, then it must match to be considered equivalent.
+        if self.estimator is not None and other.estimator is not None and other.estimator != self.estimator:
             return False
         if other.filters != self.filters:
             return False

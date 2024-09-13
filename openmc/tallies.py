@@ -112,7 +112,7 @@ class Tally(IDManagerMixin):
         self._filters = cv.CheckedList(_FILTER_CLASSES, 'tally filters')
         self._nuclides = cv.CheckedList(_NUCLIDE_CLASSES, 'tally nuclides')
         self._scores = cv.CheckedList(_SCORE_CLASSES, 'tally scores')
-        self._estimator = 'tracklength'
+        self._estimator = None
         self._triggers = cv.CheckedList(openmc.Trigger, 'tally triggers')
         self._derivative = None
         self._multiply_density = True
@@ -136,7 +136,7 @@ class Tally(IDManagerMixin):
             return False
         if other.name != self.name:
             return False
-        if other.estimator != self.estimator:
+        if self.estimator is not None and other.estimator != self.estimator:
             return False
         if other.filters != self.filters:
             return False
@@ -899,7 +899,7 @@ class Tally(IDManagerMixin):
         subelement.text = ' '.join(str(x) for x in self.scores)
 
         # Tally estimator type
-        if self.estimator is not None and self.estimator != 'tracklength':
+        if self.estimator is not None:
             subelement = ET.SubElement(element, "estimator")
             subelement.text = self.estimator
 

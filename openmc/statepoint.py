@@ -559,22 +559,18 @@ class StatePoint:
                                       tally.estimator,
                                       exact_filters=True,
                                       exact_nuclides=True,
-                                      exact_scores=True)
+                                      exact_scores=True,
+                                      multiply_density=True,
+                                      derivative=tally.derivative)
         except LookupError:
-            sp_tally = None
-
-        # some additional checks
-        if tally.derivative != sp_tally.derivative:
-            sp_tally = None
-
-        if tally.multiply_density != sp_tally.multiply_density:
             sp_tally = None
 
         return sp_tally
 
     def get_tally(self, scores=[], filters=[], nuclides=[],
                   name=None, id=None, estimator=None, exact_filters=False,
-                  exact_nuclides=False, exact_scores=False):
+                  exact_nuclides=False, exact_scores=False,
+                  multiply_density=None, derivative=None):
         """Finds and returns a Tally object with certain properties.
 
         This routine searches the list of Tallies and returns the first Tally
@@ -612,6 +608,12 @@ class StatePoint:
             If True, the number of scores in the parameters must be identical
             to those in the matching Tally. If False (default), the scores
             in the parameters may be a subset of those in the matching Tally.
+            Default is None (no check).
+        multiply_density : bool, optional
+            If True, the Tally must have the multiply by density flag set to
+            the same value as the input parameter. Default is True.
+        derivative : openmc.TallyDerivative, optional
+            TallyDerivative object to match. Default is None.
 
         Returns
         -------
@@ -651,6 +653,10 @@ class StatePoint:
             if exact_nuclides and not nuclides and test_tally.nuclides != ['total']:
                 continue
             if exact_filters and len(filters) != test_tally.num_filters:
+                continue
+            if derivative is not None and derivative != sp_tally.derivative:
+                continue
+            if multiply_density is not None and multiply_density != sp_tally.multiply_density:
                 continue
 
             # Determine if Tally has the queried score(s)

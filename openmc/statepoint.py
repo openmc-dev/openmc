@@ -647,7 +647,7 @@ class StatePoint:
                 continue
 
             # Determine if Tally has queried estimator
-            if estimator is not None and estimator != test_tally.estimator:
+            if estimator is not None and tally.estimator is not None and estimator != test_tally.estimator:
                 continue
 
             # The number of filters, nuclides and scores must exactly match

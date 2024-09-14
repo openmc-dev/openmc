@@ -419,7 +419,7 @@ def test_mesh_get_homogenized_materials():
     mesh_void.lower_left = (0.5, 0.5, -1.)
     mesh_void.upper_right = (1.5, 1.5, 1.)
     mesh_void.dimension = (1, 1, 1)
-    m4, = mesh_void.get_homogenized_materials(model, n_samples=10_000)
+    m4, = mesh_void.get_homogenized_materials(model, n_samples=(100, 100, 0))
 
     # Mesh element that overlaps void should have half density
     assert m4.get_mass_density('H1') == pytest.approx(0.5, rel=1e-2)
@@ -431,8 +431,8 @@ def test_mesh_get_homogenized_materials():
     assert m5.get_mass_density('H1') == pytest.approx(1.0)
 
 
-def test_mesh_material_volumes():
-    """Test the material_volumes method"""
+@pytest.fixture
+def sphere_model():
     # Model with three materials separated by planes x=0 and z=0
     mats = []
     for i in range(3):
@@ -449,23 +449,32 @@ def test_mesh_material_volumes():
     cell3 = openmc.Cell(fill=mats[2], region=-sph & -z0)
     model = openmc.Model()
     model.geometry = openmc.Geometry([cell1, cell2, cell3])
+    model.materials = openmc.Materials(mats)
+    return model
 
-    # Test material volumes on a regular mesh
+
+@pytest.mark.parametrize("n_rays", [1000, (10, 10, 0), (10, 0, 10), (0, 10, 10)])
+def test_material_volumes_regular_mesh(sphere_model, n_rays):
+    """Test the material_volumes method on a regular mesh"""
     mesh = openmc.RegularMesh()
     mesh.lower_left = (-1., -1., -1.)
     mesh.upper_right = (1., 1., 1.)
     mesh.dimension = (2, 2, 2)
-    volumes = mesh.material_volumes(model)
+    volumes = mesh.material_volumes(sphere_model, n_rays)
+    mats = sphere_model.materials
     np.testing.assert_almost_equal(volumes[mats[0].id], [0., 0., 0., 0., 0., 1., 0., 1.])
     np.testing.assert_almost_equal(volumes[mats[1].id], [0., 0., 0., 0., 1., 0., 1., 0.])
     np.testing.assert_almost_equal(volumes[mats[2].id], [1., 1., 1., 1., 0., 0., 0., 0.])
     assert volumes.by_element(4) == [(mats[1].id, 1.)]
     assert volumes.by_element(0) == [(mats[2].id, 1.)]
 
-    # Test material volumes on a cylindrical mesh
+
+def test_material_volumes_cylindrical_mesh(sphere_model):
+    """Test the material_volumes method on a cylindrical mesh"""
     cyl_mesh = openmc.CylindricalMesh(
         [0., 1.], [-1., 0., 1.,], [0.0, pi/4, 3*pi/4, 5*pi/4, 7*pi/4, 2*pi])
-    volumes = cyl_mesh.material_volumes(model)
+    volumes = cyl_mesh.material_volumes(sphere_model, (0, 100, 100))
+    mats = sphere_model.materials
     np.testing.assert_almost_equal(volumes[mats[0].id], [
         0., 0., 0., 0., 0.,
         pi/8, pi/8, 0., pi/8, pi/8

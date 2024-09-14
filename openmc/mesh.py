@@ -261,7 +261,7 @@ class MeshBase(IDManagerMixin, ABC):
     def get_homogenized_materials(
             self,
             model: openmc.Model,
-            n_samples: int | tuple[int, int] = 10_000,
+            n_samples: int | tuple[int, int, int] = 10_000,
             include_void: bool = True,
             **kwargs
     ) -> list[openmc.Material]:
@@ -275,10 +275,10 @@ class MeshBase(IDManagerMixin, ABC):
             Model containing materials to be homogenized and the associated
             geometry.
         n_samples : int or 2-tuple of int
-            Total number of rays to sample. The rays start on an x plane and are
-            evenly distributed over the y and z dimensions. When specified as a
-            2-tuple, it is interpreted as the number of rays in the y and z
-            dimensions.
+            Total number of rays to sample. The number of rays in each direction
+            is determined by the aspect ratio of the mesh bounding box. When
+            specified as a 3-tuple, it is interpreted as the number of rays in
+            the x, y, and z dimensions.
         include_void : bool, optional
             Whether homogenization should include voids.
         **kwargs
@@ -341,15 +341,16 @@ class MeshBase(IDManagerMixin, ABC):
     def material_volumes(
             self,
             model: openmc.Model,
-            n_samples: int | tuple[int, int] = 10_000,
+            n_samples: int | tuple[int, int, int] = 10_000,
             max_materials: int = 4,
             **kwargs
     ) -> MeshMaterialVolumes:
         """Determine volume of materials in each mesh element.
 
-        This method works by raytracing repeatedly through the mesh from one
-        side to count of the estimated volume of each material in all mesh
-        elements.
+        This method works by raytracing repeatedly through the mesh to count the
+        estimated volume of each material in all mesh elements. Three sets of
+        rays are used: one set parallel to the x-axis, one parallel to the
+        y-axis, and one parallel to the z-axis.
 
         .. versionadded:: 0.15.1
 
@@ -357,11 +358,11 @@ class MeshBase(IDManagerMixin, ABC):
         ----------
         model : openmc.Model
             Model containing materials.
-        n_samples : int or 2-tuple of int
-            Total number of rays to sample. The rays start on an x plane and are
-            evenly distributed over the y and z dimensions. When specified as a
-            2-tuple, it is interpreted as the number of rays in the y and z
-            dimensions.
+        n_samples : int or 3-tuple of int
+            Total number of rays to sample. The number of rays in each direction
+            is determined by the aspect ratio of the mesh bounding box. When
+            specified as a 3-tuple, it is interpreted as the number of rays in
+            the x, y, and z dimensions.
         max_materials : int, optional
             Estimated maximum number of materials in any given mesh element.
         **kwargs : dict

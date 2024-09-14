@@ -213,14 +213,15 @@ public:
 
   //! Determine volume of materials within each mesh element
   //
+  //! \param[in] nx Number of samples in x direction
   //! \param[in] ny Number of samples in y direction
   //! \param[in] nz Number of samples in z direction
   //! \param[in] max_materials Maximum number of materials in a single mesh
   //!                          element
   //! \param[inout] materials Array storing material indices
   //! \param[inout] volumes Array storing volumes
-  void material_volumes(int ny, int nz, int max_materials, int32_t* materials,
-    double* volumes) const;
+  void material_volumes(int nx, int ny, int nz, int max_materials,
+    int32_t* materials, double* volumes) const;
 
   //! Determine bounding box of mesh
   //

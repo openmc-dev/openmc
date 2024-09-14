@@ -1,8 +1,7 @@
 from collections.abc import Mapping, Sequence
-from ctypes import (c_int, c_int32, c_char_p, c_double, POINTER, Structure,
-                    create_string_buffer, c_uint64, c_size_t)
+from ctypes import (c_int, c_int32, c_char_p, c_double, POINTER,
+                    create_string_buffer, c_size_t)
 from math import sqrt
-from random import getrandbits
 import sys
 from weakref import WeakValueDictionary
 
@@ -13,23 +12,14 @@ from ..exceptions import AllocationError, InvalidIDError
 from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler
-from .material import Material
 from .plot import _Position
 from ..bounding_box import BoundingBox
-from ..checkvalue import PathLike
 from ..mesh import MeshMaterialVolumes
 
 __all__ = [
     'Mesh', 'RegularMesh', 'RectilinearMesh', 'CylindricalMesh',
     'SphericalMesh', 'UnstructuredMesh', 'meshes', 'MeshMaterialVolumes'
 ]
-
-
-class _MaterialVolume(Structure):
-    _fields_ = [
-        ("material", c_int32),
-        ("volume", c_double)
-    ]
 
 
 arr_2d_int32 = np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='CONTIGUOUS')
@@ -57,7 +47,7 @@ _dll.openmc_mesh_bounding_box.argtypes = [
 _dll.openmc_mesh_bounding_box.restype = c_int
 _dll.openmc_mesh_bounding_box.errcheck = _error_handler
 _dll.openmc_mesh_material_volumes.argtypes = [
-    c_int32, c_int, c_int, c_int, arr_2d_int32, arr_2d_double]
+    c_int32, c_int, c_int, c_int, c_int, arr_2d_int32, arr_2d_double]
 _dll.openmc_mesh_material_volumes.restype = c_int
 _dll.openmc_mesh_material_volumes.errcheck = _error_handler
 _dll.openmc_mesh_get_plot_bins.argtypes = [
@@ -195,14 +185,15 @@ class Mesh(_FortranObjectWithID):
 
     def material_volumes(
             self,
-            n_samples: int | tuple[int, int] = 10_000,
+            n_samples: int | tuple[int, int, int] = 10_000,
             max_materials: int = 4
     ) -> MeshMaterialVolumes:
         """Determine volume of materials in each mesh element.
 
-        This method works by raytracing repeatedly through the mesh from one
-        side to count of the estimated volume of each material in all mesh
-        elements.
+        This method works by raytracing repeatedly through the mesh to count the
+        estimated volume of each material in all mesh elements. Three sets of
+        rays are used: one set parallel to the x-axis, one parallel to the
+        y-axis, and one parallel to the z-axis.
 
         .. versionadded:: 0.15.0
 
@@ -212,11 +203,11 @@ class Mesh(_FortranObjectWithID):
 
         Parameters
         ----------
-        n_samples : int or 2-tuple of int
-            Total number of rays to sample. The rays start on an x plane and are
-            evenly distributed over the y and z dimensions. When specified as a
-            2-tuple, it is interpreted as the number of rays in the y and z
-            dimensions.
+        n_samples : int or 3-tuple of int
+            Total number of rays to sample. The number of rays in each direction
+            is determined by the aspect ratio of the mesh bounding box. When
+            specified as a 3-tuple, it is interpreted as the number of rays in
+            the x, y, and z dimensions.
         max_materials : int, optional
             Estimated maximum number of materials in any given mesh element.
 
@@ -226,16 +217,18 @@ class Mesh(_FortranObjectWithID):
         equal in size to the number of mesh elements.
 
         """
-        # Determine number of rays in y/z directions
         if isinstance(n_samples, int):
-            ll, ur = self.bounding_box
-            width_y = ur[1] - ll[1]
-            width_z = ur[2] - ll[2]
-            aspect_ratio = width_y / width_z
-            ny = int(sqrt(n_samples * aspect_ratio))
-            nz = int(sqrt(n_samples / aspect_ratio))
+            # Determine number of rays in each direction based on aspect ratios
+            # and using the relation (nx*ny + ny*nz + nx*nz) = n_samples
+            width_x, width_y, width_z = self.bounding_box.width
+            ax = width_x / width_z
+            ay = width_y / width_z
+            f = sqrt(n_samples/(ax*ay + ax + ay))
+            nx = round(f * ax)
+            ny = round(f * ay)
+            nz = round(f)
         else:
-            ny, nz = n_samples
+            nx, ny, nz = n_samples
 
         # Preallocate arrays for material indices and volumes
         n = self.n_elements
@@ -246,7 +239,7 @@ class Mesh(_FortranObjectWithID):
         while True:
             try:
                 _dll.openmc_mesh_material_volumes(
-                    self._index, ny, nz, max_materials, materials, volumes)
+                    self._index, nx, ny, nz, max_materials, materials, volumes)
             except AllocationError:
                 # Increase size of result array and try again
                 max_materials *= 2

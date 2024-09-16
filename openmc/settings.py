@@ -79,6 +79,13 @@ class Settings:
         .. versionadded:: 0.12
     generations_per_batch : int
         Number of generations per batch
+    iterated_fission_probability: dict
+        Dictionary indicating the Iterated Fission Probability parameters.
+        Acceptable keys are:
+
+        :parameter: Kinetics parameter to calculate between 'beta_effective' and
+                    'generation_time', or 'both' (str)
+        :n_generation: Number of generation (int)
     max_lost_particles : int
         Maximum number of lost particles
 
@@ -334,6 +341,9 @@ class Settings:
         self._trigger_batch_interval = None
 
         self._output = None
+
+        # Iterated Fission Probability
+        self._iterated_fission_probability = {}
 
         # Output options
         self._statepoint = {}
@@ -759,6 +769,27 @@ class Settings:
         cv.check_greater_than('verbosity', verbosity, 1, True)
         cv.check_less_than('verbosity', verbosity, 10, True)
         self._verbosity = verbosity
+
+    @property
+    def iterated_fission_probability(self) -> dict:
+        return self._iterated_fission_probability
+
+    @iterated_fission_probability.setter
+    def iterated_fission_probability(self, iterated_fission_probability: dict):
+        cv.check_type(
+            "Iterated Fission Probability options",
+            iterated_fission_probability,
+            Mapping,
+        )
+        for key, value in iterated_fission_probability.items():
+            cv.check_value("Iterated Fission Probability key", key, ["parameter", "n_generation"])
+            if key == "parameter":
+                cv.check_value("parameter", value, ["beta_effective", "generation_time", "both"])
+            elif key == "n_generation":
+                cv.check_type("number of generation", value, Integral)
+                cv.check_greater_than("number of generation", value, 0)
+
+        self._iterated_fission_probability = iterated_fission_probability
 
     @property
     def tabular_legendre(self) -> dict:
@@ -1347,6 +1378,16 @@ class Settings:
             element = ET.SubElement(root, "no_reduce")
             element.text = str(self._no_reduce).lower()
 
+    def _create_iterated_fission_probability_subelements(self, root):
+        if self.iterated_fission_probability:
+            element = ET.SubElement(root, "iterated_fission_probability")
+            if 'parameter' in self._iterated_fission_probability:
+                subelement = ET.SubElement(element, "parameter")
+                subelement.text = str(self._iterated_fission_probability['parameter'])
+            if 'n_generation' in self._iterated_fission_probability:
+                subelement = ET.SubElement(element, "n_generation")
+                subelement.text = str(self._iterated_fission_probability['n_generation'])
+
     def _create_tabular_legendre_subelements(self, root):
         if self.tabular_legendre:
             element = ET.SubElement(root, "tabular_legendre")
@@ -1747,6 +1788,16 @@ class Settings:
         if text is not None:
             self.verbosity = int(text)
 
+    def _iterated_fission_probability_from_xml_element(self, root):
+        elem = root.find('iterated_fission_probability')
+        if elem is not None:
+            text = get_text(elem, 'parameter')
+            if text is not None:
+                self.iterated_fission_probability['parameter'] = text
+            text = get_text(elem, 'n_generation')
+            if text is not None:
+                self.iterated_fission_probability['n_generation'] = int(text)
+
     def _tabular_legendre_from_xml_element(self, root):
         elem = root.find('tabular_legendre')
         if elem is not None:
@@ -1946,6 +1997,7 @@ class Settings:
         self._create_trigger_subelement(element)
         self._create_no_reduce_subelement(element)
         self._create_verbosity_subelement(element)
+        self._create_iterated_fission_probability_subelements(element)
         self._create_tabular_legendre_subelements(element)
         self._create_temperature_subelements(element)
         self._create_trace_subelement(element)
@@ -2052,6 +2104,7 @@ class Settings:
         settings._trigger_from_xml_element(elem)
         settings._no_reduce_from_xml_element(elem)
         settings._verbosity_from_xml_element(elem)
+        settings._iterated_fission_probability_from_xml_element(elem)
         settings._tabular_legendre_from_xml_element(elem)
         settings._temperature_from_xml_element(elem)
         settings._trace_from_xml_element(elem)

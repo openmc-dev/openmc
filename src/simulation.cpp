@@ -333,6 +333,23 @@ void allocate_banks()
 
     // Allocate fission bank
     init_fission_bank(3 * simulation::work_per_rank);
+
+    // Allocate IFP bank
+    if (settings::ifp) {
+      if (settings::ifp_parameter == IFPParameter::BetaEffective ||
+          settings::ifp_parameter == IFPParameter::Both) {
+        simulation::ifp_source_delayed_group_bank.resize(
+          simulation::work_per_rank);
+        simulation::ifp_fission_delayed_group_bank.resize(
+          3 * simulation::work_per_rank);
+      }
+      if (settings::ifp_parameter == IFPParameter::GenerationTime ||
+          settings::ifp_parameter == IFPParameter::Both) {
+        simulation::ifp_source_lifetime_bank.resize(simulation::work_per_rank);
+        simulation::ifp_fission_lifetime_bank.resize(
+          3 * simulation::work_per_rank);
+      }
+    }
   }
 
   if (settings::surf_source_write) {

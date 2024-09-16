@@ -890,6 +890,61 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
         score_fission_q(p, score_bin, tally, flux, i_nuclide, atom_density);
       break;
 
+    case SCORE_IFP_TIME_NUM:
+      if (settings::ifp) {
+        if ((p.type() == Type::neutron) && (p.fission())) {
+          if (settings::ifp_parameter == IFPParameter::GenerationTime ||
+              settings::ifp_parameter == IFPParameter::Both) {
+            const auto& lifetimes =
+              simulation::ifp_source_lifetime_bank[p.current_work() - 1];
+            int n_generation = static_cast<int>(lifetimes.size());
+            if (n_generation == settings::ifp_n_generation) {
+              score = lifetimes[0] * p.wgt_last();
+            }
+          }
+        }
+      }
+      break;
+
+    case SCORE_IFP_BETA_NUM:
+      if (settings::ifp) {
+        if ((p.type() == Type::neutron) && (p.fission())) {
+          if (settings::ifp_parameter == IFPParameter::BetaEffective ||
+              settings::ifp_parameter == IFPParameter::Both) {
+            const auto& delayed_groups =
+              simulation::ifp_source_delayed_group_bank[p.current_work() - 1];
+            int n_generation = static_cast<int>(delayed_groups.size());
+            if (n_generation == settings::ifp_n_generation) {
+              if (delayed_groups[0] > 0) {
+                score = p.wgt_last();
+              }
+            }
+          }
+        }
+      }
+      break;
+
+    case SCORE_IFP_DENOM:
+      if (settings::ifp) {
+        if ((p.type() == Type::neutron) && (p.fission())) {
+          int n_generation;
+          if (settings::ifp_parameter == IFPParameter::BetaEffective ||
+              settings::ifp_parameter == IFPParameter::Both) {
+            n_generation = static_cast<int>(
+              simulation::ifp_source_delayed_group_bank[p.current_work() - 1]
+                .size());
+          } else {
+            n_generation = static_cast<int>(
+              simulation::ifp_source_lifetime_bank[p.current_work() - 1]
+                .size());
+          }
+          if (n_generation == settings::ifp_n_generation) {
+            score = p.wgt_last();
+          }
+        }
+      }
+      break;
+
     case N_2N:
     case N_3N:
     case N_4N:

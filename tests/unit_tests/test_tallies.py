@@ -74,8 +74,10 @@ def test_tally_equivalence():
     tally_a.nuclides = ['total']
     assert tally_a == tally_b
 
+    # a tally with an estimator set to None is equal to
+    # a tally with an estimator specified
     tally_a.estimator = 'collision'
-    assert tally_a != tally_b
+    assert tally_a == tally_b
     tally_b.estimator = 'collision'
     assert tally_a == tally_b
 

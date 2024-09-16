@@ -465,7 +465,8 @@ void finalize_batch()
   // Write out surface source if requested.
   if (settings::surf_source_write) {
     if (contains(settings::surface_source_batch, simulation::current_batch) ||
-        simulation::current_batch == settings::n_batches) {
+        (simulation::current_batch == settings::n_batches &&
+          settings::surface_source_batch.size() == 0)) {
       auto filename = settings::path_output + "surface_source." +
                       std::to_string(simulation::current_batch);
       // no batches specified for writing, write surface source bank
@@ -488,7 +489,8 @@ void finalize_batch()
         write_source_point(filename.c_str(), surfbankspan, surf_work_index);
       }
       simulation::surf_source_bank.clear();
-      simulation::surf_source_bank.reserve(settings::max_surface_particles);
+      if (simulation::current_batch < settings::n_batches)
+        simulation::surf_source_bank.reserve(settings::max_surface_particles);
     }
   }
 }

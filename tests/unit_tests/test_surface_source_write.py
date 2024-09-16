@@ -8,6 +8,7 @@ import openmc.lib
 import pytest
 import h5py
 import numpy as np
+import os
 
 
 @pytest.fixture(scope="module")
@@ -32,6 +33,7 @@ def geometry():
         {"max_particles": 200, "surface_ids": [2], "cell": 1},
         {"max_particles": 200, "surface_ids": [2], "cellto": 1},
         {"max_particles": 200, "surface_ids": [2], "cellfrom": 1},
+        {"max_particles": 200, "batches": [1,2,3]},
     ],
 )
 def test_xml_serialization(parameter, run_in_tmpdir):
@@ -43,6 +45,59 @@ def test_xml_serialization(parameter, run_in_tmpdir):
     read_settings = openmc.Settings.from_xml()
     assert read_settings.surf_source_write == parameter
 
+
+@pytest.fixture(scope="module")
+def model():
+    """Simple hydrogen sphere geometry"""
+    openmc.reset_auto_ids()
+    model = openmc.Model()
+
+    # Material
+    material = openmc.Material(name="H1")
+    material.add_element("H", 1.0)
+
+    # Geometry
+    radius = 1.0
+    sphere = openmc.Sphere(r=radius, boundary_type="reflective")
+    cell = openmc.Cell(region=-sphere, fill=material)
+    root = openmc.Universe(cells=[cell])
+    model.geometry = openmc.Geometry(root)
+
+    # Settings
+    model.settings = openmc.Settings()
+    model.settings.run_mode = "fixed source"
+    model.settings.particles = 100
+    model.settings.batches = 3
+    model.settings.seed = 1
+
+    bounds = [-radius, -radius, -radius, radius, radius, radius]
+    distribution = openmc.stats.Box(bounds[:3], bounds[3:])
+    model.settings.source = openmc.IndependentSource(space=distribution)
+
+    return model
+
+@pytest.mark.parametrize(
+    "parameter",
+    [
+        {"max_particles": 200, "batches": [1]},
+        {"max_particles": 200, "batches": [2]},
+        {"max_particles": 200, "batches": [1,2]},
+        {"max_particles": 200, "batches": [2,3]},
+        {"max_particles": 200, "batches": [1,3]},
+        {"max_particles": 200, "batches": [1,2,3]},
+    ],
+)
+
+def test_number_surface_source_file_created(parameter, run_in_tmpdir, model):
+    """Check the number of surface source files written."""
+    model.settings.surf_source_write = parameter
+    model.run()
+    for batch in parameter["batches"]:
+        filename = "surface_source."+str(batch)+".h5"
+        if not os.path.exists(filename):
+            assert False
+    if os.path.exists("surface_source.h5"):
+        assert False
 
 ERROR_MSG_1 = (
     "A maximum number of particles needs to be specified "

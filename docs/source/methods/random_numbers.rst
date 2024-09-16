@@ -62,6 +62,18 @@ Note that equation :eq:`lcg-skipahead` has the same general form as equation :eq
 the idea is to determine the new multiplicative and additive constants in
 :math:`O(\log_2 N)` operations.
 
+
+--------------------------------
+Permuted Congruential Generators
+--------------------------------
+
+A permuted congruential generator (PCG) aims to improve statistical quality 
+of a LCG by using permutation functions. 
+
+
+
+For elaborated description, see `O'Neill`_.
+
 .. only:: html
 
    .. rubric:: References
@@ -70,3 +82,4 @@ the idea is to determine the new multiplicative and additive constants in
 .. _L'Ecuyer: https://doi.org/10.1090/S0025-5718-99-00996-5
 .. _Brown: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/anl-rn-arb-stride.pdf
 .. _linear congruential generator: https://en.wikipedia.org/wiki/Linear_congruential_generator
+.. _O'Neill: https://www.pcg-random.org/pdf/hmc-cs-2014-0905.pdf

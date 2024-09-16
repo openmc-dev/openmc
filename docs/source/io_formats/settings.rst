@@ -923,6 +923,12 @@ attributes/sub-elements:
 
     *Default*: None
 
+  :batches:
+    A list of integers indicating at what batches a surface source file 
+    should be written.
+
+    *Default*: Last batch only
+    
   :mcpl:
     An optional boolean which indicates if the banked particles should be
     written to a file in the MCPL_-format instead of the native HDF5-based

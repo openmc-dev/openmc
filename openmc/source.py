@@ -723,7 +723,7 @@ class CompiledSource(SourceBase):
     @library.setter
     def library(self, library_name: PathLike):
         cv.check_type('library', library_name, PathLike)
-        self._library = Path(library_name)
+        self._library = Path(library_name).resolve()
 
     @property
     def parameters(self) -> str:
@@ -789,7 +789,7 @@ class FileSource(SourceBase):
 
     Parameters
     ----------
-    path : str or pathlib.Path
+    path : path-like
         Path to the source file from which sites should be sampled
     strength : float
         Strength of the source (default is 1.0)
@@ -824,14 +824,12 @@ class FileSource(SourceBase):
 
     def __init__(
         self,
-        path: PathLike | None = None,
+        path: PathLike,
         strength: float = 1.0,
         constraints: dict[str, Any] | None = None
     ):
         super().__init__(strength=strength, constraints=constraints)
-        self._path = None
-        if path is not None:
-            self.path = path
+        self.path = path
 
     @property
     def type(self) -> str:
@@ -843,8 +841,8 @@ class FileSource(SourceBase):
 
     @path.setter
     def path(self, p: PathLike):
-        cv.check_type('source file', p, str)
-        self._path = p
+        cv.check_type('source file', p, PathLike)
+        self._path = Path(p).resolve()
 
     def populate_xml_element(self, element):
         """Add necessary file source information to an XML element
@@ -856,7 +854,7 @@ class FileSource(SourceBase):
 
         """
         if self.path is not None:
-            element.set("file", self.path)
+            element.set("file", str(self.path))
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element) -> openmc.FileSource:

@@ -53,7 +53,7 @@ def test_spherical_uniform():
 def test_source_file():
     filename = 'source.h5'
     src = openmc.FileSource(path=filename)
-    assert src.path == filename
+    assert src.path.name == filename
 
     elem = src.to_xml_element()
     assert 'strength' in elem.attrib
@@ -63,7 +63,7 @@ def test_source_file():
 def test_source_dlopen():
     library = 'libsource.so'
     src = openmc.CompiledSource(library)
-    assert str(src.library) == library
+    assert src.library.name == library
 
     elem = src.to_xml_element()
     assert 'library' in elem.attrib

@@ -1600,7 +1600,7 @@ class Materials(cv.CheckedList):
     @cross_sections.setter
     def cross_sections(self, cross_sections):
         if cross_sections is not None:
-            self._cross_sections = Path(cross_sections)
+            self._cross_sections = Path(cross_sections).resolve()
 
     def append(self, material):
         """Append material to collection

@@ -2072,7 +2072,7 @@ class UnstructuredMesh(MeshBase):
 
     Parameters
     ----------
-    filename : str or pathlib.Path
+    filename : path-like
         Location of the unstructured mesh file
     library : {'moab', 'libmesh'}
         Mesh library used for the unstructured mesh tally
@@ -2158,8 +2158,8 @@ class UnstructuredMesh(MeshBase):
 
     @filename.setter
     def filename(self, filename):
-        cv.check_type('Unstructured Mesh filename', filename, (str, Path))
-        self._filename = filename
+        cv.check_type('Unstructured Mesh filename', filename, PathLike)
+        self._filename = Path(filename)
 
     @property
     def library(self):

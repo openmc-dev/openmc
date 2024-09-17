@@ -1,15 +1,15 @@
 [build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["scikit-build-core"]
+build-backend = "scikit_build_core.build"
 
 [project]
 name = "openmc"
+version = "0.15.1-dev"
 authors = [
     {name = "The OpenMC Development Team", email = "openmc@anl.gov"},
 ]
-description = "OpenMC"
-version = "0.15.1-dev"
-requires-python = ">=3.10"
+description = "OpenMC is a community-developed Monte Carlo neutron and photon transport code."
+readme = "README.md"
 license = {file = "LICENSE"}
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -25,6 +25,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
+requires-python = ">=3.10"
 dependencies = [
     "numpy",
     "h5py",
@@ -58,14 +59,14 @@ Documentation = "https://docs.openmc.org"
 Repository = "https://github.com/openmc-dev/openmc"
 Issues = "https://github.com/openmc-dev/openmc/issues"
 
-[tool.setuptools.packages.find]
-include = ['openmc*', 'scripts*']
-exclude = ['tests*']
+# Scikit-Build Configuration
+[tool.scikit-build]
+cmake.verbose = true
+logging.level = "INFO"
+wheel.install-dir = "pyne/core"
+wheel.packages = ["pyne"]
+wheel.exclude = ["CMakeLists.txt"]
 
-[tool.setuptools.package-data]
-"openmc.data.effective_dose" = ["*.txt"]
-"openmc.data" = ["*.txt", "*.DAT", "*.json", "*.h5"]
-"openmc.lib" = ["libopenmc.dylib", "libopenmc.so"]
 
 [project.scripts]
 openmc-ace-to-hdf5 = "scripts.openmc_ace_to_hdf5:main"

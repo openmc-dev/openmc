@@ -73,28 +73,32 @@ Permuted Congruential Generators
 A permuted congruential generator (PCG) aims to improve statistical quality 
 of a LCG by using permutation functions. The general algorithm consists of 
 two steps:
+
 1. advance the LCG generator according to :eq:`lcg`,
 2. output the LCG state "scrambled" by permutation function.
 
 
 **Advantages of PCG over LCG include**
-- increased statistical quality - measured by statistical tests from BigCrush library,
-- small performance burden compared to LCG.
 
+* increased statistical quality - measured by statistical tests from BigCrush library,
+* small performance burden compared to LCG.
 
 OpenMC uses the PCG-RXS-M-XS variant with 64-bit state and 
 64-bit output. The code for permutation functiom is taken 
 from `PCG_GitHub`_. The exact algorithm is
+
 1. generate LCG output from 
+
 .. math::
     :label: pcg_lcg
 
     \xi_{i+1} = g \xi_i + c
 
 where :math:`g=6364136223846793005ULL` and :math:`c=1442695040888963407ULL`.
+
 2. apply random xorshift,
-3. multiply by :math:`6364136223846793005ULL`,
-4. apply xorshift.
+#. multiply by :math:`6364136223846793005ULL`,
+#. apply xorshift.
 
 
 For elaborated description, see `O'Neill`_.

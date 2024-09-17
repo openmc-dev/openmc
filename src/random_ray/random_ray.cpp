@@ -7,6 +7,9 @@
 #include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+
+#include "openmc/distribution_spatial.h"
+#include "openmc/random_dist.h"
 #include "openmc/source.h"
 
 namespace openmc {
@@ -58,6 +61,71 @@ float cjosey_exponential(float tau)
   num = num * x;
 
   return num / den;
+}
+
+// Implementation of the Fisher-Yates shuffle algorithm.
+// Algorithm adapted from:
+//    https://en.cppreference.com/w/cpp/algorithm/random_shuffle#Version_3
+void fisher_yates_shuffle(vector<int>& arr, uint64_t* seed)
+{
+  // Loop over the array from the last element down to the second
+  for (size_t i = arr.size() - 1; i > 0; --i) {
+    // Generate a random index in the range [0, i]
+    size_t j = uniform_int_distribution(0, i, seed);
+    // Swap arr[i] with arr[j]
+    std::swap(arr[i], arr[j]);
+  }
+}
+
+// Function to generate randomized Halton sequence samples
+//
+// Algorithm adapted from:
+//      A. B. Owen. A randomized halton algorithm in r. Arxiv, 6 2017.
+//      URL http:arxiv.org/abs/1706.02808
+//
+// Results are not idential to Python implementation - the permutation process
+// produces different results due to differences in shuffle/rng implementation.
+vector<vector<float>> rhalton(int N, int dim, uint64_t seed, int64_t skip = 0)
+{
+  vector<int> primes = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29};
+  vector<vector<float>> halton(N, vector<float>(dim, 0.0));
+
+  for (int D = 0; D < dim; ++D) {
+    int b = primes[D];
+    vector<int> ind(N);
+    std::iota(ind.begin(), ind.end(), skip);
+    double b2r = 1.0 / b;
+    vector<double> ans(N, 0.0);
+    vector<int> res(ind);
+
+    while ((1.0 - b2r) < 1.0) {
+      vector<int> dig(N);
+      // randomaly permute a sequence from skip to skip+N
+      vector<int> perm(b);
+      std::iota(perm.begin(), perm.end(), 0);
+      fisher_yates_shuffle(perm, &seed);
+
+      // compute element wise remainder of division (mod)
+      for (int i = 0; i < N; ++i) {
+        dig[i] = res[i] % b;
+      }
+
+      for (int i = 0; i < N; ++i) {
+        ans[i] += perm[dig[i]] * b2r;
+      }
+
+      b2r /= b;
+      for (int i = 0; i < N; ++i) {
+        res[i] = (res[i] - dig[i]) / b;
+      }
+    }
+
+    for (int i = 0; i < N; ++i) {
+      halton[i][D] = ans[i];
+    }
+  }
+
+  return halton;
 }
 
 //==============================================================================
@@ -251,13 +319,17 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   id() = simulation::work_index[mpi::rank] + ray_id;
 
   // set random number seed
-  int64_t particle_seed =
-    (simulation::current_batch - 1) * settings::n_particles + id();
-  init_particle_seeds(particle_seed, seeds());
-  stream() = STREAM_TRACKING;
+  int64_t batch_seed = (simulation::current_batch - 1) * settings::n_particles;
+  int64_t skip = id();
+  // TODO: I'm not sure what init_particle_seeds and stream() lines do.
+  //       are they needed?
+  // int64_t particle_seed =
+  //   (simulation::current_batch - 1) * settings::n_particles + id();
+  // init_particle_seeds(batch_seed, seeds());
+  // stream() = STREAM_TRACKING;
 
   // Sample from ray source distribution
-  SourceSite site {ray_source_->sample(current_seed())};
+  SourceSite site = sample_lds(batch_seed, skip);
   site.E = lower_bound_index(
     data::mg.rev_energy_bins_.begin(), data::mg.rev_energy_bins_.end(), site.E);
   site.E = negroups_ - site.E - 1.;
@@ -284,6 +356,35 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   for (int g = 0; g < negroups_; g++) {
     angular_flux_[g] = domain_->source_[source_region_idx * negroups_ + g];
   }
+}
+
+SourceSite RandomRay::sample_lds(int64_t seed, int64_t skip)
+{
+  SourceSite site;
+
+  // Calculate next samples in LDS
+  vector<vector<float>> samples = rhalton(1, 5, seed, skip = skip);
+
+  // get spatial box of ray_source_
+  SpatialBox* sb = dynamic_cast<SpatialBox*>(
+    dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get())->space());
+
+  // Sample spatial distribution
+  Position xi {samples[0][0], samples[0][1], samples[0][2]};
+  Position shift {1e-9, 1e-9, 1e-9};
+  site.r = (sb->lower_left() + shift) +
+           xi * ((sb->upper_right() - shift) - (sb->lower_left() + shift));
+
+  // Sample Polar cosine and azimuthal angles
+  float mu = 2.0 * samples[0][3] - 1.0;
+  float azi = 2.0 * PI * samples[0][4];
+  // Convert to Cartesian coordinates
+  float c = std::pow((1.0 - std::pow(mu, 2)), 0.5);
+  site.u.x = mu;
+  site.u.y = std::cos(azi) * c;
+  site.u.z = std::sin(azi) * c;
+
+  return site;
 }
 
 } // namespace openmc

@@ -301,9 +301,7 @@ class Tally(IDManagerMixin):
 
     @estimator.setter
     def estimator(self, estimator):
-        if estimator is None:
-            self._estimator = None
-        cv.check_value('estimator', estimator, ESTIMATOR_TYPES)
+        cv.check_value('estimator', estimator, ESTIMATOR_TYPES + (None,))
         self._estimator = estimator
 
     @property

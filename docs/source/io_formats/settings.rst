@@ -926,8 +926,9 @@ attributes/sub-elements:
   :batches:
     An Iterable of integers indicating at what batches a surface source file 
     should be written. The surface source bank will be cleared in simulation 
-    memory each time a surface source file is written. By default a 
-    ``surface_source.h5`` file will be created in the last batch.
+    memory each time a surface source file is written. By default, in the 
+    absence of this attribute, a ``surface_source.h5`` file will be created 
+    after the last batch.
 
     *Default*: None
     

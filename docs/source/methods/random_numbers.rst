@@ -42,7 +42,7 @@ Typically, :math:`M` is chosen to be a power of two as this enables :math:`x
 \mod M` to be performed using the bitwise AND operator with a bit mask. The
 constants for the linear congruential generator used by default in OpenMC are
 :math:`g = 2806196910506780709`, :math:`c = 1`, and :math:`M = 2^{63}` (see
-`L'Ecuyer`_).
+[LEcuyer]_).
 
 Skip-ahead Capability
 ---------------------
@@ -54,7 +54,7 @@ want to skip ahead :math:`N` random numbers and :math:`N` is large, the cost of
 sampling :math:`N` random numbers to get to that position may be prohibitively
 expensive. Fortunately, algorithms have been developed that allow us to skip
 ahead in :math:`O(\log_2 N)` operations instead of :math:`O(N)`. One algorithm
-to do so is described in a paper by Brown_. This algorithm relies on the following
+to do so is described in a paper by [Brown]_. This algorithm relies on the following
 relationship:
 
 .. math::
@@ -113,7 +113,7 @@ from `PCG GitHub`_. The exact algorithm follows.
 * increased statistical quality - measured by statistical tests from BigCrush library,
 * small performance burden compared to LCG.
 
-For elaborated description, see `O'Neill`_.
+For elaborated description, see [ONeill]_.
 
 
 Example of PCG algorithm
@@ -176,11 +176,16 @@ As this might be difficult to imagine, let's add an example.
 
    .. rubric:: References
 
+.. [Brown] Forrest B. Brown and Yasunobu Nagaya, *The MCNP5 Random Number Generator*, LA-UR-02-3782, Los Alamos National Laboratory, available online at: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/anl-rn-arb-stride.pdf
 
-.. _L'Ecuyer: https://doi.org/10.1090/S0025-5718-99-00996-5
-.. _Brown: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/anl-rn-arb-stride.pdf
+.. [LEcuyer] Pierre L'Ecuyer, *Tables of linear congruential generators of different sizes and good lattice structure*, Math. Comp. 68 (1999), 249-260, available online at: https://doi.org/10.1090/S0025-5718-99-00996-5
+
+.. [ONeill] Melissa E. O'Neill, *PCG: A Family of Simple Fast Space-Efficient Statistically Good Algorithms for Random Number Generation*, HMC-CS-2014-0905, Harvey Mudd College, available online at: https://www.pcg-random.org/pdf/hmc-cs-2014-0905.pdf
+
 .. _linear congruential generator: https://en.wikipedia.org/wiki/Linear_congruential_generator
-.. _O'Neill: https://www.pcg-random.org/pdf/hmc-cs-2014-0905.pdf
+
 .. _PCG GitHub: https://github.com/imneme/pcg-c/blob/83252d9c23df9c82ecb42210afed61a7b42402d7/include/pcg_variants.h#L188-L192
+
 .. _arithmetic right shift operator: https://stackoverflow.com/a/141873/13224210
+
 .. _bitwise XOR: https://www.learncpp.com/cpp-tutorial/bitwise-operators/

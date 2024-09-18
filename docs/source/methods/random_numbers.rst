@@ -15,7 +15,8 @@ number generators (PRNGs). Numbers sampled on the unit interval can then be
 transformed for the purpose of sampling other continuous or discrete probability
 distributions.
 
-OpenMC currently uses PCG. A short description of LCG is included, since 
+OpenMC currently uses permuted congruential generator (PCG). A short description 
+of linear congruential generator (LCG) is included, since 
 it is essential to understand PCG.
 
 ------------------------------

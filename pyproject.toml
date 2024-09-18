@@ -9,7 +9,7 @@ authors = [
 ]
 description = "OpenMC"
 version = "0.15.1-dev"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = {file = "LICENSE"}
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -21,9 +21,9 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "Programming Language :: C++",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
     "numpy",

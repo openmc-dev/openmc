@@ -95,51 +95,80 @@ from `PCG GitHub`_. The exact algorithm follows.
 2. Apply random xorshift. 
     * First, take the upper 5 bits of :math:`\xi_{i+1}` 
       using the `arithmetic right shift operator`_ by 59 positions.
-    * Second, add :math:`5` and shift seed by that number of bits
+    * Second, add :math:`5` and shift seed by that number of bits. The 
+      name "random" refers to this step, where the length of the shift 
+      is evaluated from the seed, not given as constant.
     * Third, perform `bitwise XOR`_ with the upper bits and original :math:`\xi_{i+1}`.
 
-#. multiply by :math:`6364136223846793005`,
-#. apply xorshift - similarly to step 2, use `arithmetic right shift operator`_ 
-   to take upper 21 bits and perform `bitwise XOR`_.
+#. Multiply by :math:`6364136223846793005`.
+#. Apply xorshift - similarly to step 2, use `arithmetic right shift operator`_ 
+   to take upper 21 bits and perform `bitwise XOR`_. The length of 
+   the shift is constant here.
+#. Convert to double from interval :math:`[0, 1)`.
 
-As this might be difficult to imagine, let's add an example. 
-
-* Let's assume :math:`\xi_{i} = 1`.
-* :math:`\xi_{i+1} = 7806831264735756412` according to :eq:`pcg_lcg`, which 
-  is ``0110 1100 0101 0111 0110 1111 1010 1100 0100 0011 1111 1101 0000 0000 0111 1100`` in bit representation.
-* After performing the bit shift by 59 positions the number in bits is 
-  ``0 1101`` or :math:`13`, when represented as integer.
-* Adding 5, we have to shift :math:`\xi_{i+1}` by :math:`18` bits, which yields
-  ``01 1011 0001 0101 1101 1011 1110 1011 0001 0000 1111 1111`` or :math:`29780697878783` when represented as integer. 
-* Perform `bitwise XOR`_ with shifted bits and original :math:`\xi_{i+1}`::
-
-    0110 1100 0101 0111 0110 1111 1010 1100 0100 0011 1111 1101 0000 0000 0111 1100
-    0000 0000 0000 0000 0001 1011 0001 0101 1101 1011 1110 1011 0001 0000 1111 1111
-    -------------------------------------------------------------------------------
-    0110 1100 0101 0111 0111 0100 1011 1001 1001 1000 0001 0110 0001 0000 1000 0011 
-
-  The resulting number is :math:`7806836819539398787` as integer.
-* After multiplication we get :math:`7806836819539398787 \cdot 6364136223846793005 = 13112265920887772427` 
-  which is ``1011 0101 1111 1000 0010 0000 0110 0010 0001 1110 1111 1001 1101 0101 0000 1011`` as bits
-* Shifted right by 43 positions is ``1 0110 1011 1111 0000 0100`` or :math:`1490692` as int.
-* Finally, there is another XOR::
-
-    1011 0101 1111 1000 0010 0000 0110 0010 0001 1110 1111 1001 1101 0101 0000 1011
-    0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0001 0110 1011 1111 0000 0100
-    -------------------------------------------------------------------------------
-    1011 0101 1111 1000 0010 0000 0110 0010 0001 1110 1110 1111 0110 1010 0000 1111 
-
-  And the output value as integer is :math:`13112265920887089679`.
-* Convert the value to double from interval :math:`[0, 1)` as 
-  :math:`13112265920887089679\cdot 2^{-64} = 0.710817`, which is the output of the generator.
-
-
-For elaborated description, see `O'Neill`_.
 
 **Advantages of PCG over LCG include**
 
 * increased statistical quality - measured by statistical tests from BigCrush library,
 * small performance burden compared to LCG.
+
+For elaborated description, see `O'Neill`_.
+
+
+Example of PCG algorithm
+------------------------
+
+As this might be difficult to imagine, let's add an example. 
+
+* Let's assume seed value :math:`\xi_{i} = 1`.
+* From point (1), :math:`\xi_{i+1} = 7806831264735756412` according to :eq:`pcg_lcg`, which 
+  is::
+    
+    0110 1100 0101 0111 0110 1111 1010 1100 0100 0011 1111 1101 0000 0000 0111 1100
+
+  in binary representation.
+* The random xorshift from point (2) is performed in 3 steps
+   * First, bit shift by 59 positions means we keep first 5 bits of :math:`\xi_{i+1}`, which is
+     ``0 1101`` or :math:`13`, when represented as integer.
+   * Second, adding 5, we have to shift :math:`\xi_{i+1}` by :math:`13+5=18` bits - or, equivalently, 
+     throw away the last 18 bits, which yields::
+
+        01 1011 0001 0101 1101 1011 1110 1011 0001 0000 1111 1111
+        
+     which is :math:`29780697878783` as integer. 
+   * Finally, perform `bitwise XOR`_ with shifted bits and original :math:`\xi_{i+1}`::
+        
+        0110 1100 0101 0111 0110 1111 1010 1100 0100 0011 1111 1101 0000 0000 0111 1100
+        0000 0000 0000 0000 0001 1011 0001 0101 1101 1011 1110 1011 0001 0000 1111 1111
+        -------------------------------------------------------------------------------
+        0110 1100 0101 0111 0111 0100 1011 1001 1001 1000 0001 0110 0001 0000 1000 0011 
+
+  The resulting number is :math:`7806836819539398787` as integer.
+* After multiplication from point (3) we get 
+  :math:`7806836819539398787 \cdot 6364136223846793005 = 13112265920887772427` 
+  which is::
+    
+    1011 0101 1111 1000 0010 0000 0110 0010 0001 1110 1111 1001 1101 0101 0000 1011
+    
+  as bits.
+* Another xorshift is done as follows
+    * Shifted right by 43 positions is means keep the first :math:`64-43=21` bits::
+        
+        1 0110 1011 1111 0000 0100
+
+      or :math:`1490692` as int.
+    * Finally, there is another XOR::
+
+        1011 0101 1111 1000 0010 0000 0110 0010 0001 1110 1111 1001 1101 0101 0000 1011
+        0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0001 0110 1011 1111 0000 0100
+        -------------------------------------------------------------------------------
+        1011 0101 1111 1000 0010 0000 0110 0010 0001 1110 1110 1111 0110 1010 0000 1111 
+
+      And the output value as integer is :math:`13112265920887089679`.
+* Point (5), convert the value to double from interval :math:`[0, 1)` as 
+  :math:`13112265920887089679\cdot 2^{-64} = 0.710817`, which is the output of the generator.
+
+
 
 
 .. only:: html

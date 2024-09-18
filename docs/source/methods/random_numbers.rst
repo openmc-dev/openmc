@@ -74,34 +74,69 @@ A permuted congruential generator (PCG) aims to improve statistical quality
 of a LCG by using permutation functions. The general algorithm consists of 
 two steps:
 
-1. advance the LCG generator according to :eq:`lcg`,
+1. advance the LCG generator according to :eq:`pcg_lcg`,
 2. output the LCG state "scrambled" by permutation function.
 
 
-**Advantages of PCG over LCG include**
-
-* increased statistical quality - measured by statistical tests from BigCrush library,
-* small performance burden compared to LCG.
 
 OpenMC uses the PCG-RXS-M-XS variant with 64-bit state and 
 64-bit output. The code for permutation functiom is taken 
-from `PCG_GitHub`_. The exact algorithm is
+from `PCG GitHub`_. The exact algorithm follows.
 
-1. generate LCG output from 
+1. Generate LCG output :math:`\xi_{i+1}`.
 
 .. math::
     :label: pcg_lcg
 
     \xi_{i+1} = g \xi_i + c
 
-where :math:`g=6364136223846793005ULL` and :math:`c=1442695040888963407ULL`.
+where :math:`g=6364136223846793005` and :math:`c=1442695040888963407`.
 
-2. apply random xorshift,
-#. multiply by :math:`6364136223846793005ULL`,
-#. apply xorshift.
+2. Apply random xorshift. 
+    First, take the upper 5 bits of :math:`\xi_{i+1}` 
+    using the `arithmetic right shift operator`_ by 59 positions.
+    Second, add :math:`5` and shift seed by that number of bits
+    Third, perform `bitwise XOR`_ with the upper bits and original :math:`\xi_{i+1}`.
+
+#. multiply by :math:`6364136223846793005`,
+#. apply xorshift - similarly to step 2, use `arithmetic right shift operator`_ 
+    to take upper 21 bits and perform `bitwise XOR`_.
+
+As this might be difficult to imagine, let's add an example. 
+
+* Let's assume :math:`\xi_{i} = 1`.
+* :math:`\xi_{i+1} = 7806831264735756412` according to :eq:`pcg_lcg`, which 
+    is :math:`0110110001010111011011111010110001000011111111010000000001111100` in bit representation.
+* After performing the bit shift by 59 positions the number in bits is 
+    :math:`0000000000000000000000000000000000000000000000000000000000001101` 
+    which is :math:`13`, when represented as integer.
+* Adding 5, we have to shift :math:`\xi_{i+1}` by :math:`18` bits, which yields
+    :math:`0000000000000000000110110001010111011011111010110001000011111111` or :math:`29780697878783` when represented as integer. 
+* Perform `bitwise XOR`_ with shifted bits and original :math:`\xi_{i+1}`::
+
+    0110 1100 0101 0111 0110 1111 1010 1100 0100 0011 1111 1101 0000 0000 0111 1100
+    0000 0000 0000 0000 0001 1011 0001 0101 1101 1011 1110 1011 0001 0000 1111 1111
+    -------------------------------------------------------------------------------
+    0110 1100 0101 0111 0111 0100 1011 1001 1001 1000 0001 0110 0001 0000 1000 0011 
+
+  The resulting number is :math:`7806836819539398787` as integer.
+* After multiplication we get :math:`7806836819539398787 \cdot 6364136223846793005 = 13112265920887772427` 
+  which is :math:`1011010111111000001000000110001000011110111110011101010100001011` as bits
+* Shifted right by 43 positions is :math:`0000000000000000000000000000000000000000000101101011111100000100` or 
+  :math:`1490692` as int.
+* Finally, there is another XOR::
+    1011010111111000001000000110001000011110111110011101010100001011
+    0000000000000000000000000000000000000000000101101011111100000100
+
 
 
 For elaborated description, see `O'Neill`_.
+
+**Advantages of PCG over LCG include**
+
+* increased statistical quality - measured by statistical tests from BigCrush library,
+* small performance burden compared to LCG.
+
 
 .. only:: html
 
@@ -112,4 +147,6 @@ For elaborated description, see `O'Neill`_.
 .. _Brown: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/anl-rn-arb-stride.pdf
 .. _linear congruential generator: https://en.wikipedia.org/wiki/Linear_congruential_generator
 .. _O'Neill: https://www.pcg-random.org/pdf/hmc-cs-2014-0905.pdf
-.. _PCG_GitHub: https://github.com/imneme/pcg-c/blob/83252d9c23df9c82ecb42210afed61a7b42402d7/include/pcg_variants.h#L188-L192
+.. _PCG GitHub: https://github.com/imneme/pcg-c/blob/83252d9c23df9c82ecb42210afed61a7b42402d7/include/pcg_variants.h#L188-L192
+.. _arithmetic right shift operator: https://stackoverflow.com/a/141873/13224210
+.. _bitwise XOR: https://www.learncpp.com/cpp-tutorial/bitwise-operators/

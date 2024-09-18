@@ -706,7 +706,7 @@ xt::xtensor<double, 1> StructuredMesh::count_sites(
 
 // raytrace through the mesh. The template class T will do the tallying.
 // A modern optimizing compiler can recognize the noop method of T and
-// eleminate that call entirely.
+// eliminate that call entirely.
 template<class T>
 void StructuredMesh::raytrace_mesh(
   Position r0, Position r1, const Direction& u, T tally) const

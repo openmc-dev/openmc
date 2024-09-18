@@ -448,6 +448,7 @@ class StatePoint:
         if tally.estimator is not None and tally.estimator != estimator:
             warnings.warn(f"Estimator for Tally {tally.id} changed from "
                           f"{tally.estimator} to {estimator} in OpenMC execution")
+        tally.estimator = estimator
 
         tally.num_realizations = n_realizations
 

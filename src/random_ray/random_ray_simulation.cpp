@@ -383,7 +383,7 @@ void RandomRaySimulation::instability_check(
         "Very high FSR miss rate detected ({:.3f}%). Instability may occur. "
         "Increase ray density by adding more rays and/or active distance.",
         percent_missed));
-    } else if (percent_missed > 0.01) {
+    } else if (percent_missed > 1.0) {
       warning(
         fmt::format("Elevated FSR miss rate detected ({:.3f}%). Increasing "
                     "ray density by adding more rays and/or active "
@@ -431,6 +431,22 @@ void RandomRaySimulation::print_results_random_ray(
       " Total Integrations                = {:.4e}\n", total_integrations);
     fmt::print("   Avg per Iteration               = {:.4e}\n",
       total_integrations / settings::n_batches);
+
+    std::string estimator;
+    switch (domain_->volume_estimator_) {
+    case RandomRayVolumeEstimator::SIMULATION_AVERAGED:
+      estimator = "Simulation Averaged";
+      break;
+    case RandomRayVolumeEstimator::NAIVE:
+      estimator = "Naive";
+      break;
+    case RandomRayVolumeEstimator::HYBRID:
+      estimator = "Hybrid";
+      break;
+    default:
+      fatal_error("Invalid volume estimator type");
+    }
+    fmt::print(" Volume Estimator Type             = {}\n", estimator);
 
     header("Timing Statistics", 4);
     show_time("Total time for initialization", time_initialize.elapsed());

@@ -95,7 +95,7 @@ RUN cd $HOME \
 RUN if [ "$build_dagmc" = "on" ]; then \
         # Install addition packages required for DAGMC
         apt-get -y install libeigen3-dev libnetcdf-dev libtbb-dev libglfw3-dev \
-        && pip install --upgrade numpy "cython<3.0" \
+        && pip install --upgrade numpy \
         # Clone and install EMBREE
         && mkdir -p $HOME/EMBREE && cd $HOME/EMBREE \
         && git clone --single-branch -b ${EMBREE_TAG} --depth 1 ${EMBREE_REPO} \

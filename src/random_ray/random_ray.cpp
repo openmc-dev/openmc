@@ -85,7 +85,7 @@ void fisher_yates_shuffle(vector<int>& arr, uint64_t* seed)
 //
 // Results are not idential to Python implementation - the permutation process
 // produces different results due to differences in shuffle/rng implementation.
-vector<vector<float>> rhalton(int N, int dim, uint64_t seed, int64_t skip = 0)
+vector<vector<float>> rhalton(int N, int dim, uint64_t* seed, int64_t skip = 0)
 {
   vector<int> primes = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29};
   vector<vector<float>> halton(N, vector<float>(dim, 0.0));
@@ -103,7 +103,7 @@ vector<vector<float>> rhalton(int N, int dim, uint64_t seed, int64_t skip = 0)
       // randomaly permute a sequence from skip to skip+N
       vector<int> perm(b);
       std::iota(perm.begin(), perm.end(), 0);
-      fisher_yates_shuffle(perm, &seed);
+      fisher_yates_shuffle(perm, seed);
 
       // compute element wise remainder of division (mod)
       for (int i = 0; i < N; ++i) {
@@ -321,15 +321,11 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   // set random number seed
   int64_t batch_seed = (simulation::current_batch - 1) * settings::n_particles;
   int64_t skip = id();
-  // TODO: I'm not sure what init_particle_seeds and stream() lines do.
-  //       are they needed?
-  // int64_t particle_seed =
-  //   (simulation::current_batch - 1) * settings::n_particles + id();
-  // init_particle_seeds(batch_seed, seeds());
-  // stream() = STREAM_TRACKING;
+  init_particle_seeds(batch_seed, seeds());
+  stream() = STREAM_TRACKING;
 
   // Sample from ray source distribution
-  SourceSite site = sample_lds(batch_seed, skip);
+  SourceSite site = sample_lds(current_seed(), skip);
   site.E = lower_bound_index(
     data::mg.rev_energy_bins_.begin(), data::mg.rev_energy_bins_.end(), site.E);
   site.E = negroups_ - site.E - 1.;
@@ -358,7 +354,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   }
 }
 
-SourceSite RandomRay::sample_lds(int64_t seed, int64_t skip)
+SourceSite RandomRay::sample_lds(uint64_t* seed, int64_t skip)
 {
   SourceSite site;
 

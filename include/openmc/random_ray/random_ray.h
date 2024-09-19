@@ -27,7 +27,7 @@ public:
   void attenuate_flux(double distance, bool is_active);
   void initialize_ray(uint64_t ray_id, FlatSourceDomain* domain);
   uint64_t transport_history_based_single_ray();
-  SourceSite sample_lds(int64_t seed, int64_t skip);
+  SourceSite sample_lds(uint64_t* seed, int64_t skip);
 
   //----------------------------------------------------------------------------
   // Static data members

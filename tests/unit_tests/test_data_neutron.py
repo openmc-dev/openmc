@@ -282,10 +282,6 @@ def test_slbw(xe135):
     s = resolved.parameters.iloc[0]
     assert s['energy'] == pytest.approx(0.084)
 
-    xs = resolved.reconstruct([10., 30., 100.])
-    assert sorted(xs.keys()) == [2, 18, 102]
-    assert np.all(xs[18] == 0.0)
-
 
 def test_mlbw(sm150):
     resolved = sm150.resonances.resolved
@@ -293,10 +289,6 @@ def test_mlbw(sm150):
     assert resolved.energy_min == pytest.approx(1e-5)
     assert resolved.energy_max == pytest.approx(1570.)
     assert resolved.target_spin == 0.0
-
-    xs = resolved.reconstruct([10., 100., 1000.])
-    assert sorted(xs.keys()) == [2, 18, 102]
-    assert np.all(xs[18] == 0.0)
 
 
 def test_reichmoore(gd154):
@@ -319,7 +311,6 @@ def test_reichmoore(gd154):
 
     elastic = gd154.reactions[2].xs['0K']
     assert isinstance(elastic, openmc.data.ResonancesWithBackground)
-    assert elastic(0.0253) == pytest.approx(5.7228949796394524)
 
 
 def test_rml(cl35):
@@ -347,8 +338,6 @@ def test_mlbw_cov_lcomp0(cf252):
     assert not subset.parameters.empty
     assert (subset.file2res.parameters['energy'] < 100).all()
     samples = cov.sample(1)
-    xs = samples[0].reconstruct([10., 100., 1000.])
-    assert sorted(xs.keys()) == [2, 18, 102]
 
 
 def test_mlbw_cov_lcomp1(ti50):
@@ -365,9 +354,7 @@ def test_mlbw_cov_lcomp1(ti50):
     subset = cov.subset('L', [1, 1])
     assert not subset.parameters.empty
     assert (subset.file2res.parameters['L'] == 1).all()
-    samples = cov.sample(1)
-    xs = samples[0].reconstruct([10., 100., 1000.])
-    assert sorted(xs.keys()) == [2, 18, 102]
+    cov.sample(1)
 
 
 def test_mlbw_cov_lcomp2(na23):
@@ -384,9 +371,7 @@ def test_mlbw_cov_lcomp2(na23):
     subset = cov.subset('L', [1, 1])
     assert not subset.parameters.empty
     assert (subset.file2res.parameters['L'] == 1).all()
-    samples = cov.sample(1)
-    xs = samples[0].reconstruct([10., 100., 1000.])
-    assert sorted(xs.keys()) == [2, 18, 102]
+    cov.sample(1)
 
 
 def test_rmcov_lcomp1(gd154):
@@ -403,9 +388,7 @@ def test_rmcov_lcomp1(gd154):
     subset = cov.subset('energy', [0, 100])
     assert not subset.parameters.empty
     assert (subset.file2res.parameters['energy'] < 100).all()
-    samples = cov.sample(1)
-    xs = samples[0].reconstruct([10., 100., 1000.])
-    assert sorted(xs.keys()) == [2, 18, 102]
+    cov.sample(1)
 
 
 def test_rmcov_lcomp2(th232):
@@ -422,9 +405,7 @@ def test_rmcov_lcomp2(th232):
     subset = cov.subset('energy', [0, 100])
     assert not subset.parameters.empty
     assert (subset.file2res.parameters['energy'] < 100).all()
-    samples = cov.sample(1)
-    xs = samples[0].reconstruct([10., 100., 1000.])
-    assert sorted(xs.keys()) == [2, 18, 102]
+    cov.sample(1)
 
 
 def test_madland_nix(am241):

@@ -19,6 +19,7 @@ public:
 
   //----------------------------------------------------------------------------
   // Methods
+  void compute_segment_correction_factors();
   void simulate();
   void reduce_simulation_statistics();
   void output_simulation_results() const;

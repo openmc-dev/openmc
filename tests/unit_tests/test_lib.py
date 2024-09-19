@@ -570,6 +570,12 @@ def test_regular_mesh(lib_init):
 
     np.testing.assert_allclose(mesh.volumes, 1.0)
 
+    # bounding box
+    mesh.set_parameters(lower_left=ll, upper_right=ur)
+    bbox = mesh.bounding_box
+    np.testing.assert_allclose(bbox.lower_left, ll)
+    np.testing.assert_allclose(bbox.upper_right, ur)
+
     meshes = openmc.lib.meshes
     assert isinstance(meshes, Mapping)
     assert len(meshes) == 1
@@ -650,6 +656,11 @@ def test_rectilinear_mesh(lib_init):
 
     np.testing.assert_allclose(mesh.volumes, 1000.0)
 
+    # bounding box
+    bbox = mesh.bounding_box
+    np.testing.assert_allclose(bbox.lower_left, (-10., 0., 10.))
+    np.testing.assert_allclose(bbox.upper_right, (10., 20., 30.))
+
     with pytest.raises(exc.AllocationError):
         mesh2 = openmc.lib.RectilinearMesh(mesh.id)
 
@@ -696,6 +707,11 @@ def test_cylindrical_mesh(lib_init):
 
     np.testing.assert_allclose(mesh.volumes[::2], 10/360 * pi * 5**2 * 10)
     np.testing.assert_allclose(mesh.volumes[1::2], 10/360 * pi * (10**2 - 5**2) * 10)
+
+    # bounding box
+    bbox = mesh.bounding_box
+    np.testing.assert_allclose(bbox.lower_left, (-10., -10., 10.))
+    np.testing.assert_allclose(bbox.upper_right, (10., 10., 30.))
 
     with pytest.raises(exc.AllocationError):
         mesh2 = openmc.lib.CylindricalMesh(mesh.id)
@@ -749,6 +765,11 @@ def test_spherical_mesh(lib_init):
     np.testing.assert_allclose(mesh.volumes[1::4], f * (10**3 - 5**3) * dtheta(0., 10.))
     np.testing.assert_allclose(mesh.volumes[2::4], f * 5**3 * dtheta(10., 20.))
     np.testing.assert_allclose(mesh.volumes[3::4], f * (10**3 - 5**3) * dtheta(10., 20.))
+
+    # bounding box
+    bbox = mesh.bounding_box
+    np.testing.assert_allclose(bbox.lower_left, (-10., -10., -10.))
+    np.testing.assert_allclose(bbox.upper_right, (10., 10., 10.))
 
     with pytest.raises(exc.AllocationError):
         mesh2 = openmc.lib.SphericalMesh(mesh.id)

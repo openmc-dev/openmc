@@ -74,8 +74,8 @@
   <settings>
     <run_mode>eigenvalue</run_mode>
     <particles>100</particles>
-    <batches>10</batches>
-    <inactive>5</inactive>
+    <batches>40</batches>
+    <inactive>20</inactive>
     <energy_mode>multi-group</energy_mode>
     <random_ray>
       <distance_active>100.0</distance_active>

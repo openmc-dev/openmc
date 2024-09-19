@@ -50,6 +50,13 @@ def test_discrete():
     assert_sample_mean(samples, exp_mean)
 
 
+def test_delta_function():
+    d = openmc.stats.delta_function(14.1e6)
+    assert isinstance(d, openmc.stats.Discrete)
+    np.testing.assert_array_equal(d.x, [14.1e6])
+    np.testing.assert_array_equal(d.p, [1.0])
+
+
 def test_merge_discrete():
     x1 = [0.0, 1.0, 10.0]
     p1 = [0.3, 0.2, 0.5]

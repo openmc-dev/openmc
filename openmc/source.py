@@ -1052,6 +1052,42 @@ class PDGCode_MCPL(IntEnum):
     POSITRON = -11
     PROTON = 2212
 
+class SourceParticles(list):
+    """A collection of SourceParticle objects.
+
+    Methods
+    -------
+    get_pandas_dataframe():
+        Converts the list of source particles to a pandas DataFrame.
+    """
+
+    def get_pandas_dataframe(self):
+        """Convert the list of SourceParticle objects to a pandas DataFrame.
+
+        Returns
+        -------
+        pandas.DataFrame
+            DataFrame containing the source particles attributes.
+        """
+        # Check if the list is empty
+        if not self:
+            return pd.DataFrame()
+
+        # Extract the attributes of the source particles into a list of tuples
+        data = [(sp.r[0], sp.r[1], sp.r[2],
+                 sp.u[0], sp.u[1], sp.u[2],
+                 sp.E, sp.time, sp.wgt,
+                 sp.delayed_group, sp.surf_id,
+                 sp.particle.name) for sp in self]
+
+        # Define the column names for the DataFrame
+        columns = ['x', 'y', 'z', 'u_x', 'u_y', 'u_z', 'E', 'time', 'wgt', 'delayed_group', 'surf_id', 'particle']
+
+        # Create the pandas DataFrame from the data
+        df = pd.DataFrame(data, columns=columns)
+        return df
+
+
 def read_source_file(filename: typ.Union[str, Path], return_as: str = 'list') -> typ.Union[list, pd.DataFrame]:
     """Read a source file (.h5 or .mcpl) and return a list or pandas DataFrame 
     of source particles.
@@ -1086,17 +1122,10 @@ def read_source_file(filename: typ.Union[str, Path], return_as: str = 'list') ->
         for *params, particle in arr:
             source_particles.append(SourceParticle(*params, ParticleType(particle)))
 
-        if return_as == 'dataframe':
-            # Create a DataFrame from the list of source particles
-            columns = ['x', 'y', 'z', 'u_x', 'u_y', 'u_z', 'E', 'time', 'wgt', 'delayed_group', 'surf_id', 'particle']
-            data = [(sp.r[0], sp.r[1], sp.r[2], 
-                     sp.u[0], sp.u[1], sp.u[2], 
-                     sp.E, sp.time, sp.wgt, 
-                     sp.delayed_group, sp.surf_id, 
-                     sp.particle.name) for sp in source_particles]
-            return pd.DataFrame(data, columns=columns)
+        #if return_as == 'dataframe':
+        #    return SourceParticles(source_particles)
 
-        return source_particles
+        return SourceParticles(source_particles)
 
     elif filename.suffix == '.mcpl':
         import openmc.lib
@@ -1107,10 +1136,10 @@ def read_source_file(filename: typ.Union[str, Path], return_as: str = 'list') ->
             with mcpl.MCPLFile(filename) as f:
                 for particle in f.particles:
                     try:
-                        # Mapear el código PDG al nombre de la partícula
+                        # Map the PDG code to the particle name
                         particle_type = PDGCode_MCPL(particle.pdgcode).name
                     except ValueError:
-                        # Si el código PDG no está en la enumeración, usar un valor predeterminado
+                        # If the PDG code is not in the enumeration, use a default value
                         particle_type = "UNKNOWN"
                     particles.append({
                         'x': particle.position[0],
@@ -1119,11 +1148,11 @@ def read_source_file(filename: typ.Union[str, Path], return_as: str = 'list') ->
                         'u_x': particle.direction[0],
                         'u_y': particle.direction[1],
                         'u_z': particle.direction[2],
-                        'E': particle.ekin,  # kinetic energy
+                        'E': particle.ekin, 
                         'time': particle.time,
                         'wgt': particle.weight,
-                        'delayed_group': 0,  # MCPL no almacena esto
-                        'surf_id': 0,  # No presente en MCPL
+                        'delayed_group': 0,  # MCPL does not store this
+                        'surf_id': 0,  # No present in MCPL
                         'particle': particle_type
                     })
 

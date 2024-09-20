@@ -155,6 +155,11 @@ jobs:
           cpp-coveralls -i src -i include -e src/external --exclude-pattern "/usr/*" --dump cpp_cov.json
           coveralls --merge=cpp_cov.json --service=github
 
+      - name: Setup tmate debug session
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 15
+
   finish:
     needs: main
     runs-on: ubuntu-latest

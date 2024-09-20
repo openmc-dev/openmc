@@ -4,11 +4,13 @@ from collections.abc import Iterable, Sequence
 from enum import IntEnum
 from numbers import Real
 import warnings
-from typing import Any
+from typing import Any, Union
+from pathlib import Path
 
 import lxml.etree as ET
 import numpy as np
 import h5py
+import pandas as pd
 
 import openmc
 import openmc.checkvalue as cv
@@ -1043,9 +1045,15 @@ def write_source_file(
         fh.attrs['filetype'] = np.bytes_("source")
         fh.create_dataset('source_bank', data=arr, dtype=source_dtype)
 
+class PDGCode_MCPL(IntEnum):
+    NEUTRON = 2112
+    PHOTON = 22
+    ELECTRON = 11
+    POSITRON = -11
+    PROTON = 2212
 
-def read_source_file(filename: PathLike) -> list[SourceParticle]:
-    """Read a source file and return a list of source particles.
+def read_source_file(filename: Union[str, Path], return_as: str = 'list') -> Union[list, pd.DataFrame]:
+    """Read a source file (.h5 or .mcpl) and return a list or pandas DataFrame of source particles.
 
     .. versionadded:: 0.15.0
 
@@ -1053,26 +1061,77 @@ def read_source_file(filename: PathLike) -> list[SourceParticle]:
     ----------
     filename : str or path-like
         Path to source file to read
+    return_as : str, optional
+        Return type: 'list' (default) or 'dataframe'
 
     Returns
     -------
-    list of SourceParticle
+    list of SourceParticle or pandas.DataFrame
         Source particles read from file
 
-    See Also
-    --------
-    openmc.SourceParticle
-
     """
-    with h5py.File(filename, 'r') as fh:
-        filetype = fh.attrs['filetype']
-        arr = fh['source_bank'][...]
+    filename = Path(filename)
 
-    if filetype != b'source':
-        raise ValueError(f'File {filename} is not a source file')
+    if filename.suffix == '.h5':
+        # Process .h5 file
+        with h5py.File(filename, 'r') as fh:
+            filetype = fh.attrs['filetype']
+            arr = fh['source_bank'][...]
 
-    source_particles = []
-    for *params, particle in arr:
-        source_particles.append(SourceParticle(*params, ParticleType(particle)))
+        if filetype != b'source':
+            raise ValueError(f'File {filename} is not a source file')
 
-    return source_particles
+        source_particles = []
+        for *params, particle in arr:
+            source_particles.append(SourceParticle(*params, ParticleType(particle)))
+
+        if return_as == 'dataframe':
+            # Create a DataFrame from the list of source particles
+            columns = ['x', 'y', 'z', 'u_x', 'u_y', 'u_z', 'E', 'time', 'wgt', 'delayed_group', 'surf_id', 'particle']
+            data = [(sp.r[0], sp.r[1], sp.r[2], 
+                     sp.u[0], sp.u[1], sp.u[2], 
+                     sp.E, sp.time, sp.wgt, 
+                     sp.delayed_group, sp.surf_id, 
+                     sp.particle.name) for sp in source_particles]
+            return pd.DataFrame(data, columns=columns)
+
+        return source_particles
+
+    elif filename.suffix == '.mcpl':
+        import openmc.lib
+        if(openmc.lib._mcpl_enabled()):
+            import mcpl
+            # Process .mcpl file
+            particles = []
+            with mcpl.MCPLFile(filename) as f:
+                for particle in f.particles:
+                    try:
+                        # Mapear el código PDG al nombre de la partícula
+                        particle_type = PDGCode_MCPL(particle.pdgcode).name
+                    except ValueError:
+                        # Si el código PDG no está en la enumeración, usar un valor predeterminado
+                        particle_type = "UNKNOWN"
+                    particles.append({
+                        'x': particle.position[0],
+                        'y': particle.position[1],
+                        'z': particle.position[2],
+                        'u_x': particle.direction[0],
+                        'u_y': particle.direction[1],
+                        'u_z': particle.direction[2],
+                        'E': particle.ekin,  # kinetic energy
+                        'time': particle.time,
+                        'wgt': particle.weight,
+                        'delayed_group': 0,  # MCPL no almacena esto
+                        'surf_id': 0,  # No presente en MCPL
+                        'particle': particle_type
+                    })
+
+            if return_as == 'dataframe':
+                return pd.DataFrame(particles)
+
+            return list(particles)
+        else:
+            raise ValueError("MCPL is not enabled.")
+    
+    else:
+        raise ValueError(f"Unsupported file format: {filename.suffix}")

@@ -61,18 +61,8 @@ Issues = "https://github.com/openmc-dev/openmc/issues"
 
 # Scikit-Build Configuration
 [tool.scikit-build]
-cmake.verbose = true
+build.verbose = true
 logging.level = "INFO"
-wheel.install-dir = "pyne/core"
-wheel.packages = ["pyne"]
+wheel.install-dir = "openmc"
+wheel.packages = ["openmc"]
 wheel.exclude = ["CMakeLists.txt"]
-
-
-[project.scripts]
-openmc-ace-to-hdf5 = "scripts.openmc_ace_to_hdf5:main"
-openmc-plot-mesh-tally = "scripts.openmc_plot_mesh_tally:main"
-openmc-track-combine = "scripts.openmc_track_combine:main"
-openmc-track-to-vtk = "scripts.openmc_track_to_vtk:main"
-openmc-update-inputs = "scripts.openmc_update_inputs:main"
-openmc-update-mgxs = "scripts.openmc_update_mgxs:main"
-openmc-voxel-to-vtk = "scripts.openmc_voxel_to_vtk:main"

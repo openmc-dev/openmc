@@ -594,7 +594,8 @@ class Model:
     def run(self, particles=None, threads=None, geometry_debug=False,
             restart_file=None, tracks=False, output=True, cwd='.',
             openmc_exec='openmc', mpi_args=None, event_based=None,
-            export_model_xml=True, apply_tally_results=False, **export_kwargs):
+            export_model_xml=True, apply_tally_results=False,
+            **export_kwargs):
         """Run OpenMC
 
         If the C API has been initialized, then the C API is used, otherwise,
@@ -648,7 +649,7 @@ class Model:
             Whether or not to apply results of the final statepoint file to the
             model's tally objects.
 
-            .. versionadded:: 0.14.1
+            .. versionadded:: 0.15.1
         **export_kwargs
             Keyword arguments passed to either :meth:`Model.export_to_model_xml`
             or :meth:`Model.export_to_xml`.

@@ -65,7 +65,9 @@ class Tally(IDManagerMixin):
     scores : list of str
         List of defined scores, e.g. 'flux', 'fission', etc.
     estimator : {'analog', 'tracklength', 'collision'}
-        Type of estimator for the tally
+        Type of estimator for the tally. If unset (None), OpenMC will automatically
+        select an appropriate estimator based on the tally filters and scores
+        with a preference for 'tracklength'.
     triggers : list of openmc.Trigger
         List of tally triggers
     num_scores : int
@@ -136,10 +138,12 @@ class Tally(IDManagerMixin):
             return False
         if other.name != self.name:
             return False
-        # estimators are automatically set during OpenMC initialization if this value is None, so it
-        # it not considered a requirement for equivalence if it is unset on either tally as it implies that
-        # the user is allowing OpenMC to apply the appropriate estimator. If the value is explicitly set
-        # on both tallies, then it must match to be considered equivalent.
+        # estimators are automatically set based on the tally filters and scores
+        # during OpenMC initialization if this value is None, so it is not
+        # considered a requirement for equivalence if it is unset on either
+        # tally as it implies that the user is allowing OpenMC to select an
+        # appropriate estimator. If the value is explicitly set on both tallies,
+        # then the values must match for the tallies to be considered equivalent.
         if self.estimator is not None and other.estimator is not None and other.estimator != self.estimator:
             return False
         if other.filters != self.filters:
@@ -301,6 +305,7 @@ class Tally(IDManagerMixin):
 
     @estimator.setter
     def estimator(self, estimator):
+        # allow the estimator to be set to None (let OpenMC choose the estimator at runtime)
         cv.check_value('estimator', estimator, ESTIMATOR_TYPES + (None,))
         self._estimator = estimator
 

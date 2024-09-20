@@ -545,7 +545,7 @@ class StatePoint:
         """
         Find a tally with an exact specification match.
 
-            .. versionadded:: 0.14.1
+            .. versionadded:: 0.15.1
 
         Parameters
         ----------
@@ -556,20 +556,17 @@ class StatePoint:
         -------
         None or openmc.Tally
         """
-        try:
-            sp_tally = self.get_tally(tally.scores,
-                                      tally.filters,
-                                      tally.nuclides,
-                                      tally.name,
-                                      tally.id,
-                                      tally.estimator,
-                                      exact_filters=True,
-                                      exact_nuclides=True,
-                                      exact_scores=True,
-                                      multiply_density=True,
-                                      derivative=tally.derivative)
-        except LookupError:
-            sp_tally = None
+        sp_tally = self.get_tally(tally.scores,
+                                    tally.filters,
+                                    tally.nuclides,
+                                    tally.name,
+                                    tally.id,
+                                    tally.estimator,
+                                    exact_filters=True,
+                                    exact_nuclides=True,
+                                    exact_scores=True,
+                                    multiply_density=True,
+                                    derivative=tally.derivative)
 
         return sp_tally
 
@@ -647,8 +644,10 @@ class StatePoint:
             if id and id != test_tally.id:
                 continue
 
-            # Determine if Tally has queried estimator
-            if estimator is not None and test_tally.estimator is not None and estimator != test_tally.estimator:
+            # Determine if Tally has queried estimator, only move on to next tally
+            # if the estimator is both specified and the tally estimtor does not
+            # match
+            if estimator is not None and estimator != test_tally.estimator:
                 continue
 
             # The number of filters, nuclides and scores must exactly match

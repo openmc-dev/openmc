@@ -4,7 +4,7 @@ from collections.abc import Iterable, Sequence
 from enum import IntEnum
 from numbers import Real
 import warnings
-from typing import Any, Union
+import typing as typ
 from pathlib import Path
 
 import lxml.etree as ET
@@ -58,7 +58,7 @@ class SourceBase(ABC):
     def __init__(
         self,
         strength: float | None = 1.0,
-        constraints: dict[str, Any] | None = None
+        constraints: dict[str, typ.Any] | None = None
     ):
         self.strength = strength
         self.constraints = constraints
@@ -75,11 +75,11 @@ class SourceBase(ABC):
         self._strength = strength
 
     @property
-    def constraints(self) -> dict[str, Any]:
+    def constraints(self) -> dict[str, typ.Any]:
         return self._constraints
 
     @constraints.setter
-    def constraints(self, constraints: dict[str, Any] | None):
+    def constraints(self, constraints: dict[str, typ.Any] | None):
         self._constraints = {}
         if constraints is None:
             return
@@ -200,7 +200,7 @@ class SourceBase(ABC):
                 raise ValueError(f'Source type {source_type} is not recognized')
 
     @staticmethod
-    def _get_constraints(elem: ET.Element) -> dict[str, Any]:
+    def _get_constraints(elem: ET.Element) -> dict[str, typ.Any]:
         # Find element containing constraints
         constraints_elem = elem.find("constraints")
         elem = constraints_elem if constraints_elem is not None else elem
@@ -315,7 +315,7 @@ class IndependentSource(SourceBase):
         strength: float = 1.0,
         particle: str = 'neutron',
         domains: Sequence[openmc.Cell | openmc.Material | openmc.Universe] | None = None,
-        constraints: dict[str, Any] | None = None
+        constraints: dict[str, typ.Any] | None = None
     ):
         if domains is not None:
             warnings.warn("The 'domains' arguments has been replaced by the "
@@ -528,7 +528,7 @@ class MeshSource(SourceBase):
             self,
             mesh: MeshBase,
             sources: Sequence[SourceBase],
-            constraints: dict[str, Any] | None  = None,
+            constraints: dict[str, typ.Any] | None  = None,
     ):
         super().__init__(strength=None, constraints=constraints)
         self.mesh = mesh
@@ -705,7 +705,7 @@ class CompiledSource(SourceBase):
         library: str | None  = None,
         parameters: str | None = None,
         strength: float = 1.0,
-        constraints: dict[str, Any] | None = None
+        constraints: dict[str, typ.Any] | None = None
     ) -> None:
         super().__init__(strength=strength, constraints=constraints)
 
@@ -831,7 +831,7 @@ class FileSource(SourceBase):
         self,
         path: PathLike | None = None,
         strength: float = 1.0,
-        constraints: dict[str, Any] | None = None
+        constraints: dict[str, typ.Any] | None = None
     ):
         super().__init__(strength=strength, constraints=constraints)
         self._path = None
@@ -1052,8 +1052,9 @@ class PDGCode_MCPL(IntEnum):
     POSITRON = -11
     PROTON = 2212
 
-def read_source_file(filename: Union[str, Path], return_as: str = 'list') -> Union[list, pd.DataFrame]:
-    """Read a source file (.h5 or .mcpl) and return a list or pandas DataFrame of source particles.
+def read_source_file(filename: typ.Union[str, Path], return_as: str = 'list') -> typ.Union[list, pd.DataFrame]:
+    """Read a source file (.h5 or .mcpl) and return a list or pandas DataFrame 
+    of source particles.
 
     .. versionadded:: 0.15.0
 

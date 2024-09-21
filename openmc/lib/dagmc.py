@@ -42,7 +42,7 @@ def get_dagmc_cell_ids(dagmc_id):
         n
     )
     return cell_ids
-if
+
 def get_dagmc_universe_num_cells(dagmc_id):
     """Get the number of cells in a DAGMC universe.
 

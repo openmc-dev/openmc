@@ -862,6 +862,19 @@ extern "C" int openmc_get_dagmc_cell_ids(
   *n = dag_cell_ids.size();
 }
 
+extern "C" int openmc_dagmc_universe_get_num_cells(int32_t univ_id, size_t* n)
+{
+  // make sure the universe id is a DAGMC Universe
+  const auto& univ = model::universes[model::universe_map[univ_id]];
+  if (univ->geom_type() != GeometryType::DAG) {
+    fatal_error(
+      "Universe " + std::to_string(univ_id) + " is not a DAGMC Universe!");
+  }
+
+  std::vector<int32_t> dag_cell_ids;
+  *n = univ->cells_.size();
+}
+
 } // namespace openmc
 
 #else
@@ -870,6 +883,9 @@ namespace openmc {
 
 extern "C" int openmc_get_dagmc_cell_ids(
   int32_t univ_id, int32_t* ids, size_t* n) {};
+
+extern "C" int openmc_dagmc_universe_get_num_cells(
+  int32_t univ_id, size_t* n) {};
 
 void read_dagmc_universes(pugi::xml_node node)
 {

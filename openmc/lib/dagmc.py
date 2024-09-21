@@ -11,17 +11,20 @@ from .error import _error_handler
 _dll.openmc_get_dagmc_cell_ids.argtypes = [c_int32, POINTER(c_int32), POINTER(c_size_t)]
 _dll.openmc_get_dagmc_cell_ids.restype = c_int
 _dll.openmc_get_dagmc_cell_ids.errcheck = _error_handler
+_dll.openmc_dagmc_universe_get_num_cells.argtypes = [c_int32, POINTER(c_size_t)]
+_dll.openmc_dagmc_universe_get_num_cells.restype = c_int
+_dll.openmc_dagmc_universe_get_num_cells.errcheck = _error_handler
 
 
-def get_dagmc_cell_ids(volume_id, n_cells):
+def get_dagmc_cell_ids(dagmc_id):
     """Get the DAGMC cell IDs for a volume.
 
     Parameters
     ----------
-    volume_id : int
-        ID of the volume to get DAGMC cell IDs for.
+    dagmc_id : int
+        ID of the DAGMC Universe to get cell IDs from.
     n_cells : int
-        Number of cells in the volume.
+        Number of cells in the DAGMC Universe.
 
     Returns
     -------
@@ -29,14 +32,31 @@ def get_dagmc_cell_ids(volume_id, n_cells):
         DAGMC cell IDs for the volume.
 
     """
-    cell_ids = np.empty(n_cells, dtype=np.int32)
     n = c_size_t()
+    _dll.openmc_dagmc_universe_get_num_cells(dagmc_id, n)
+    cell_ids = np.empty(n.value, dtype=np.int32)
+
     _dll.openmc_get_dagmc_cell_ids(
-        volume_id,
+        dagmc_id,
         cell_ids.ctypes.data_as(POINTER(c_int32)),
         n
     )
-    if n.value != n_cells:
-        raise ValueError(f"Number of cells obtained {n.value} from DAGMC does "
-                         f"not match the expected number of cells {n_cells}.")
     return cell_ids
+if
+def get_dagmc_universe_num_cells(dagmc_id):
+    """Get the number of cells in a DAGMC universe.
+
+    Parameters
+    ----------
+    dagmc_id : int
+        ID of the DAGMC Universe to get the number of cell from.
+
+    Returns
+    -------
+    int
+        Number of cells in the DAGMC Universe.
+
+    """
+    n = c_size_t()
+    _dll.openmc_dagmc_universe_get_num_cells(dagmc_id, n)
+    return n.value

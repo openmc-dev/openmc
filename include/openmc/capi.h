@@ -30,8 +30,9 @@ int openmc_cell_set_temperature(
 int openmc_cell_set_translation(int32_t index, const double xyz[]);
 int openmc_cell_set_rotation(int32_t index, const double rot[], size_t rot_len);
 int openmc_get_dagmc_cell_ids(int32_t univ_id, int32_t* ids, size_t* n);
-int openmc_energy_filter_get_bins(
-  int32_t index, const double** energies, size_t* n);
+int openmc_dagmc_universe_get_num_cells(
+  int32_t univ_id, size_t* n) int openmc_energy_filter_get_bins(int32_t index,
+  const double** energies, size_t* n);
 int openmc_energy_filter_set_bins(
   int32_t index, size_t n, const double* energies);
 int openmc_energyfunc_filter_get_energy(

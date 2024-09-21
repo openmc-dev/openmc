@@ -106,6 +106,7 @@ def test_model_differentiate_with_DAGMC():
     p = Path("differentiate_depletable_mats/divide_equally")
     p.mkdir(parents=True, exist_ok=True)
     model.init_lib()
+    model.sync_dagmc_universe()
     model.calculate_volumes(cwd=p)
     volume_before = np.sum([m.volume for m in model.materials if m.name == "Fuel"])
     nmat = len(model.materials)

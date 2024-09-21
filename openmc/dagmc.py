@@ -74,8 +74,8 @@ class DAGMCUniverse(openmc.UniverseBase):
         .. versionadded:: 0.15
     material_overrides : dict
         A dictionary of material overrides. The keys are material name
-        strings and the values are Iterables of openmc.Material objects. If a material name
-        is found in the DAGMC file, the material will be replaced with the
+        strings and the values are Iterables of openmc.Material objects. If a 
+        material name is found in the DAGMC file, the material will be replaced with the
         openmc.Material object in the value.
     """
 
@@ -85,7 +85,7 @@ class DAGMCUniverse(openmc.UniverseBase):
                  name='',
                  auto_geom_ids=False,
                  auto_mat_ids=False,
-                 mat_overrides={}):
+                 mat_overrides=None):
         super().__init__(universe_id, name)
         # Initialize class attributes
         self.filename = filename
@@ -111,6 +111,17 @@ class DAGMCUniverse(openmc.UniverseBase):
     @property
     def filename(self):
         return self._filename
+
+    @property
+    def material_overrides(self):
+        return self._material_overrides
+
+    @material_overrides.setter
+    def material_overrides(self, val):
+        if val is not None:
+            cv.check_type('material overrides', val, dict)
+
+        self._material_overrides = val
 
     @filename.setter
     def filename(self, val):
@@ -216,7 +227,7 @@ class DAGMCUniverse(openmc.UniverseBase):
         if self.auto_mat_ids:
             dagmc_element.set('auto_mat_ids', 'true')
         dagmc_element.set('filename', str(self.filename))
-        if len(self.material_overrides) == 0:
+        if not self.material_overrides:
             mats = self.get_all_materials()
             for mat in mats.values():
                 if mat.name[:-4] in self.material_names:
@@ -379,6 +390,12 @@ class DAGMCUniverse(openmc.UniverseBase):
         out.auto_geom_ids = bool(elem.get('auto_geom_ids'))
         out.auto_mat_ids = bool(elem.get('auto_mat_ids'))
 
+        for item in elem.find('material_overrides').attrib:
+            origin_mat, overwrite = item
+            for mat_name in overwrite.split():
+                out.material_overrides.setdefault(
+                            origin_mat.lower(), []).append(mat_name)
+
         return out
 
     def _partial_deepcopy(self):
@@ -402,8 +419,8 @@ class DAGMCUniverse(openmc.UniverseBase):
 
         """
         if not isinstance(cell, openmc.DAGMCCell):
-            msg = f'Unable to add a DAGMCCell to DAGMCUniverse ID="{self._id}" since ' \
-                f'"{cell}" is not a DAGMCCell'
+            msg = f'Unable to add a DAGMCCell to DAGMCUniverse '  \
+                  f'ID="{self._id}" since "{cell}" is not a DAGMCCell'
             raise TypeError(msg)
 
         cell_id = cell.id
@@ -437,11 +454,19 @@ class DAGMCUniverse(openmc.UniverseBase):
         """
         import openmc.lib
         if not openmc.lib.is_initialized:
-            raise RuntimeError("This universe must be part of an openmc.Model initialized via Model.init_lib "
-                               "before calling this method.")
+            raise RuntimeError("This universe must be part of an openmc.Model "
+                               "initialized via Model.init_lib before calling "
+                               "this method.")
+
+        dagmc_cell_ids = openmc.lib.dagmc.get_dagmc_cell_ids(self.id)
+        if len(dagmc_cell_ids) != self.n_cells:
+            raise ValueError(
+                f"Number of cells in DAGMC universe {self.id} does not match "
+                f"the number of cells in the Python universe."
+            )
 
         mats_per_id = {mat.id: mat for mat in mats}
-        for dag_cell_id in openmc.lib.dagmc.get_dagmc_cell_ids(self.id, self.n_cells):
+        for dag_cell_id in dagmc_cell_ids:
             dag_cell = openmc.lib.cells[dag_cell_id]
             if isinstance(dag_cell.fill, Iterable):
                 fill = [mats_per_id[mat_id.id]
@@ -461,13 +486,12 @@ class DAGMCCell(openmc.Cell):
     Parameters
     ----------
     cell_id : int or None, optional
-        Unique identifier for the cell. If None, an identifier will be automatically assigned.
+        Unique identifier for the cell. If None, an identifier will be
+        automatically assigned.
     name : str, optional
         Name of the cell.
     fill : openmc.Material or None, optional
         Material filling the cell. If None, the cell is filled with vacuum.
-    region : openmc.Region or None, optional
-        Region of space that the cell occupies. If None, the cell is filled with vacuum.
 
     Attributes
     ----------
@@ -475,8 +499,8 @@ class DAGMCCell(openmc.Cell):
         The parent universe of the cell.
 
     """
-    def __init__(self, cell_id=None, name='', fill=None, region=None):
-        super().__init__(cell_id, name, fill, region)
+    def __init__(self, cell_id=None, name='', fill=None):
+        super().__init__(cell_id, name, fill, None)
 
     @property
     def DAG_parent_universe(self):
@@ -489,30 +513,37 @@ class DAGMCCell(openmc.Cell):
         self._parent_universe = universe.id
 
     def boundingbox(self):
-        warnings.warn("Bounding box is not available for cells in a DAGMC universe", Warning)
+        warnings.warn("Bounding box is not available for cells in a DAGMC "
+                      "universe", Warning)
         return BoundingBox.infinite()
         
     def get_all_cells(self, memo=None):
-        warnings.warn("get_all_cells is not available for cells in a DAGMC universe", Warning)
+        warnings.warn("get_all_cells is not available for cells in a DAGMC "
+                      "universe", Warning)
         return {}
 
     def get_all_universes(self, memo=None):
-        warnings.warn("get_all_universes is not available for cells in a DAGMC universe", Warning)
+        warnings.warn("get_all_universes is not available for cells in a "
+                      "DAGMC universe", Warning)
         return {}
 
     def clone(self, clone_materials=True, clone_regions=True, memo=None):
-        warnings.warn("clone is not available for cells in a DAGMC universe", Warning)
+        warnings.warn("clone is not available for cells in a DAGMC universe",
+                      Warning)
         return None
 
     def plot(self, *args, **kwargs):
-        warnings.warn("plot is not available for cells in a DAGMC universe", Warning)
+        warnings.warn("plot is not available for cells in a DAGMC universe",
+                      Warning)
         return None
 
     def create_xml_subelement(self, xml_element, memo=None):
-        warnings.warn("create_xml_subelement is not available for cells in a DAGMC universe", Warning)
+        warnings.warn("create_xml_subelement is not available for cells in a "
+                      "DAGMC universe", Warning)
         return None
 
     @classmethod
     def from_xml_element(cls, elem, surfaces, materials, get_universe):
-        warnings.warn("from_xml_element is not available for cells in a DAGMC universe", Warning)
+        warnings.warn("from_xml_element is not available for cells in a DAGMC "
+                      "universe", Warning)
         return None

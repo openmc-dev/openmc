@@ -324,12 +324,24 @@ class Model:
         # communicator
         openmc.lib.init(args=args, intracomm=intracomm, output=output)
 
-        if self.materials:
-            mats = self.materials
+    def sync_dagmc_universe(self):
+        """
+        Synchronize all DAGMC universes with the current geometry.
+        This method iterates over all DAGMC universes in the geometry and
+        synchronizes their cells with the current material assignments.
+        Returns:
+            None
+        """
+        if self.is_initialized:
+            if self.materials:
+                mats = self.materials
+            else:
+                mats = self.geometry.get_all_materials().values()
+            for dagmc_universe in self.geometry.get_all_dagmc_universes().values():
+                dagmc_universe.sync_dagmc_cells(mats)
         else:
-            mats = self.geometry.get_all_materials().values()
-        for dagmc_universe in self.geometry.get_all_dagmc_universes().values():
-            dagmc_universe.sync_dagmc_cells(mats)
+            raise ValueError("The model must be initialized before calling "
+                             "this method")
 
     def finalize_lib(self):
         """Finalize simulation and free memory allocated for the C API
@@ -1059,12 +1071,8 @@ class Model:
 
         # Extract all depletable materials which have multiple instances
         distribmats = set(
-            [
-                mat
-                for mat in self.materials
-                if (mat.depletable or not depletable_only) and mat.num_instances > 1
-            ]
-        )
+            [mat for mat in self.materials
+                if mat.depletable and mat.num_instances > 1])
 
         if diff_volume_method == "divide equally":
             for mat in distribmats:

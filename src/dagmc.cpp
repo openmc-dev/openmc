@@ -871,7 +871,6 @@ extern "C" int openmc_dagmc_universe_get_num_cells(int32_t univ_id, size_t* n)
       "Universe " + std::to_string(univ_id) + " is not a DAGMC Universe!");
   }
 
-  std::vector<int32_t> dag_cell_ids;
   *n = univ->cells_.size();
 }
 

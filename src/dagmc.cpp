@@ -232,7 +232,7 @@ void DAGUniverse::init_geometry()
       if (uses_uwuw()) {
         uwuw_assign_material(vol_handle, c);
       } else {
-        if (contains(instance_material_overrides, mat_str)) {
+        if (instance_material_overrides.count(mat_str)) {
 
           for (auto mat_str_instance :
             instance_material_overrides.at(mat_str)) {

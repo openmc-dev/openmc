@@ -233,6 +233,14 @@ void DAGUniverse::init_geometry()
         uwuw_assign_material(vol_handle, c);
       } else {
         if (instance_material_overrides.count(mat_str)) {
+          if (instance_material_overrides.at(mat_str).size() !=
+              c->n_instances_) {
+            fatal_error(fmt::format("DAGMC Cell assign with material {} has {} "
+                                    "instances but material_overrides has {} "
+                                    "material assignments for this material",
+              mat_str, c->n_instances_,
+              instance_material_overrides.at(mat_str).size()));
+          }
 
           for (auto mat_str_instance :
             instance_material_overrides.at(mat_str)) {

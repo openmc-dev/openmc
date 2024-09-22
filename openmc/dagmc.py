@@ -120,6 +120,14 @@ class DAGMCUniverse(openmc.UniverseBase):
     def material_overrides(self, val):
         if val is not None:
             cv.check_type('material overrides', val, dict)
+            for key, value in val.items():
+                # ensuring key is a string and exists in the DAGMC file
+                cv.check_type('material name', key, str)
+                if key not in self.material_names:
+                    raise ValueError(
+                        f"Material name '{key}' not found in DAGMC file")
+                # ensuring overrides is an iterable of material name (strings)
+                cv.check_iterable_type('material objects', value, str)
 
         self._material_overrides = val
 

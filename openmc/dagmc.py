@@ -131,6 +131,25 @@ class DAGMCUniverse(openmc.UniverseBase):
 
         self._material_overrides = val
 
+    def add_material_override(self, mat_name, overrides):
+        """Add a material override to the universe.
+
+        Parameters
+        ----------
+        key : str
+            Material name to override
+        value : Iterable of str
+            Material names to replace the key with
+
+        """
+        cv.check_type('material name', mat_name, str)
+        if mat_name not in self.material_names:
+            raise ValueError(
+                f"Material name '{mat_name}' not found in DAGMC file")
+        cv.check_iterable_type('material objects', overrides, str)
+
+        self.material_overrides[mat_name] = overrides
+
     @filename.setter
     def filename(self, val):
         cv.check_type('DAGMC filename', val, (Path, str))

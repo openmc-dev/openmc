@@ -1101,6 +1101,33 @@ class SourceParticles(list):
         Converts the list of source particles to a pandas DataFrame.
     """
 
+    def __getitem__(self, index):
+        """
+        Return a new SourceParticles object containing the particle(s)
+        at the specified index or slice.
+
+        Parameters
+        ----------
+        index : int or slice
+            The index or slice to select from the list of SourceParticle objects.
+
+        Returns
+        -------
+        SourceParticles
+            A new SourceParticles object with the selected particle(s).
+        """
+        if isinstance(index, int):
+            # If it's a single integer, return the corresponding particle
+            return super().__getitem__(index)
+        elif isinstance(index, slice):
+            # If it's a slice, return a new SourceParticles object with the sliced particles
+            return SourceParticles(super().__getitem__(index))
+        elif isinstance(index, list):
+            # If it's a list of integers, return a new SourceParticles object with the selected particles
+            return SourceParticles([super().__getitem__(i) for i in index])
+        else:
+            raise TypeError(f"Invalid index type: {type(index)}. Must be int, slice, or list of int.")
+        
     def get_pandas_dataframe(self):
         """Convert the list of SourceParticle objects to a pandas DataFrame.
 
@@ -1127,6 +1154,8 @@ class SourceParticles(list):
         df = pd.DataFrame(data, columns=columns)
         return df
 
+    #def write_source_file(self):
+    #    return 
 
 def read_source_file(filename: typ.Union[str, Path], return_as: str = 'list') -> typ.Union[list, pd.DataFrame]:
     """Read a source file (.h5 or .mcpl) and return a list or pandas DataFrame 
@@ -1149,6 +1178,9 @@ def read_source_file(filename: typ.Union[str, Path], return_as: str = 'list') ->
     """
     filename = Path(filename)
 
+    if filename.suffix not in ('.h5', '.mcpl'):
+        raise ValueError()
+
     if filename.suffix == '.h5':
         # Process .h5 file
         with h5py.File(filename, 'r') as fh:
@@ -1165,35 +1197,33 @@ def read_source_file(filename: typ.Union[str, Path], return_as: str = 'list') ->
         return SourceParticles(source_particles)
 
     elif filename.suffix == '.mcpl':
-        import openmc.lib
-        if(openmc.lib._mcpl_enabled()):
+        try:
             import mcpl
-            # Process .mcpl file
-            particles = []
-            with mcpl.MCPLFile(filename) as f:
-                for particle in f.particles:
-                    try:
-                        # Map the PDG code to the particle name
-                        particle_type = PDGCode_MCPL(particle.pdgcode)
-                    except ValueError:
-                        particle_type = "UNKNOWN"
+        except ImportError as e:
+            raise e('MCPL not available')
+        #import openmc.lib
+        # Process .mcpl file
+        particles = []
+        with mcpl.MCPLFile(filename) as f:
+            for particle in f.particles:
+                try:
+                    # Map the PDG code to the particle name
+                    particle_type = PDGCode_MCPL(particle.pdgcode)
+                except ValueError:
+                    particle_type = "UNKNOWN"
 
-                    # Crear una instancia de SourceParticle
-                    source_particle = SourceParticle(
-                        r=(particle.position[0], particle.position[1], particle.position[2]),
-                        u=(particle.direction[0], particle.direction[1], particle.direction[2]),
-                        E=particle.ekin,
-                        time=particle.time,
-                        wgt=particle.weight,
-                        delayed_group=0,  # MCPL does not store this
-                        surf_id=0,  # No present in MCPL
-                        particle=particle_type
-                    )
-                    particles.append(source_particle)
+                # Crear una instancia de SourceParticle
+                source_particle = SourceParticle(
+                    r=tuple(particle.position),
+                    u=tuple(particle.direction), 
+                    E=particle.ekin,
+                    time=particle.time,
+                    wgt=particle.weight,
+                    delayed_group=0,  # MCPL does not store this
+                    surf_id=0,  # No present in MCPL
+                    particle=particle_type
+                )
+                particles.append(source_particle)
 
-            return SourceParticles(particles)
-        else:
-            raise ValueError("MCPL is not enabled.")
+        return SourceParticles(particles)
     
-    else:
-        raise ValueError(f"Unsupported file format: {filename.suffix}")

@@ -1046,11 +1046,51 @@ def write_source_file(
         fh.create_dataset('source_bank', data=arr, dtype=source_dtype)
 
 class PDGCode_MCPL(IntEnum):
+    """
+    IntEnum class representing a particle type using PDG codes.
+    """
     NEUTRON = 2112
     PHOTON = 22
     ELECTRON = 11
     POSITRON = -11
     PROTON = 2212
+
+    @classmethod
+    def from_string(cls, value: str):
+        """
+        Constructs a PDGCode_MCPL instance from a string.
+
+        Parameters
+        ----------
+        value : str
+            The string representation of the particle type.
+
+        Returns
+        -------
+        The corresponding PDGCode_MCPL instance.
+        """
+        try:
+            return cls[value.upper()]
+        except KeyError:
+            raise ValueError(f"Invalid string for creation of {cls.__name__}: {value}")
+
+    def __repr__(self) -> str:
+        """
+        Returns a string representation of the PDGCode_MCPL instance.
+
+        Returns:
+            str: The lowercase name of the PDGCode_MCPL instance.
+        """
+        return self.name.lower()
+
+    # For Python < 3.11 compatibility
+    def __str__(self) -> str:
+        return self.__repr__()
+
+    # For compatibility with Python <= 3.7, to format the object using __str__
+    def __format__(self, spec):
+        return object.__format__(self, spec)
+
 
 class SourceParticles(list):
     """A collection of SourceParticle objects.
@@ -1122,9 +1162,6 @@ def read_source_file(filename: typ.Union[str, Path], return_as: str = 'list') ->
         for *params, particle in arr:
             source_particles.append(SourceParticle(*params, ParticleType(particle)))
 
-        #if return_as == 'dataframe':
-        #    return SourceParticles(source_particles)
-
         return SourceParticles(source_particles)
 
     elif filename.suffix == '.mcpl':
@@ -1137,29 +1174,24 @@ def read_source_file(filename: typ.Union[str, Path], return_as: str = 'list') ->
                 for particle in f.particles:
                     try:
                         # Map the PDG code to the particle name
-                        particle_type = PDGCode_MCPL(particle.pdgcode).name
+                        particle_type = PDGCode_MCPL(particle.pdgcode)
                     except ValueError:
-                        # If the PDG code is not in the enumeration, use a default value
                         particle_type = "UNKNOWN"
-                    particles.append({
-                        'x': particle.position[0],
-                        'y': particle.position[1],
-                        'z': particle.position[2],
-                        'u_x': particle.direction[0],
-                        'u_y': particle.direction[1],
-                        'u_z': particle.direction[2],
-                        'E': particle.ekin, 
-                        'time': particle.time,
-                        'wgt': particle.weight,
-                        'delayed_group': 0,  # MCPL does not store this
-                        'surf_id': 0,  # No present in MCPL
-                        'particle': particle_type
-                    })
 
-            if return_as == 'dataframe':
-                return pd.DataFrame(particles)
+                    # Crear una instancia de SourceParticle
+                    source_particle = SourceParticle(
+                        r=(particle.position[0], particle.position[1], particle.position[2]),
+                        u=(particle.direction[0], particle.direction[1], particle.direction[2]),
+                        E=particle.ekin,
+                        time=particle.time,
+                        wgt=particle.weight,
+                        delayed_group=0,  # MCPL does not store this
+                        surf_id=0,  # No present in MCPL
+                        particle=particle_type
+                    )
+                    particles.append(source_particle)
 
-            return list(particles)
+            return SourceParticles(particles)
         else:
             raise ValueError("MCPL is not enabled.")
     

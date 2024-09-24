@@ -312,27 +312,33 @@ include(GNUInstallDirs)
 
 
 if(SKBUILD)
+  # Find necessary packages
+  find_package(
+      Python
+      COMPONENTS Interpreter
+      REQUIRED
+  )
   # Scikit-build installs OpenMC to ${SKBUILD_PLATLIB_DIR}/openmc
   # So, set bin directory to root environment (install prefix/bin)
   set(CMAKE_INSTALL_BINDIR ${SKBUILD_SCRIPTS_DIR})
   # Unfortunately, OpenMC has lib directory in the openmc/lib subdirectory
   set(CMAKE_INSTALL_LIBDIR lib)
-  set(SKBUILD_LIB_DIR openmc/${CMAKE_INSTALL_LIBDIR})
+  set(SKBUILD_LIB_DIR ${CMAKE_INSTALL_LIBDIR}/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/openmc/${CMAKE_INSTALL_LIBDIR})
 
   # Auditwheel and Delocate need this when repairing the wheel
   # Since OpenMC libs are installed in the openmc/core subdirectory
   # Auditwheel and Delocate need this to find the OpenMC libs for openmc.data
   # It's a bit of a hack, but it works
-  set(SKBUILD_REPAIR_WHEEL_PATCH ../../openmc/${CMAKE_INSTALL_LIBDIR})
+  set(SKBUILD_REPAIR_WHEEL_PATCH openmc/${CMAKE_INSTALL_LIBDIR})
   if(APPLE)
     set(CMAKE_MACOSX_RPATH ON)
     set(OPENMC_LIBRARY_RPATH "@loader_path")
     set(OPENMC_PYTHON_MODULE_RPATH "@loader_path/${CMAKE_INSTALL_LIBDIR}")
-    set(OPENMC_BINARY_RPATH "@loader_path/../${SKBUILD_LIB_DIR};@loader_path/../../${SKBUILD_LIB_DIR}")
+    set(OPENMC_BINARY_RPATH "@loader_path/../${SKBUILD_LIB_DIR};@loader_path/../${SKBUILD_REPAIR_WHEEL_PATCH};@loader_path/../../${SKBUILD_REPAIR_WHEEL_PATCH}")
   elseif(UNIX)
     set(OPENMC_LIBRARY_RPATH "$ORIGIN")
     set(OPENMC_PYTHON_MODULE_RPATH "$ORIGIN/${CMAKE_INSTALL_LIBDIR}")
-    set(OPENMC_BINARY_RPATH "$ORIGIN/../${SKBUILD_LIB_DIR};$ORIGIN/../../${SKBUILD_LIB_DIR}")
+    set(OPENMC_BINARY_RPATH "$ORIGIN/../${SKBUILD_LIB_DIR};$ORIGIN/../${SKBUILD_REPAIR_WHEEL_PATCH};$ORIGIN/../../${SKBUILD_REPAIR_WHEEL_PATCH}")
   else()
     set(OPENMC_LIBRARY_RPATH OFF)
     set(OPENMC_PYTHON_MODULE_RPATH OFF)
@@ -623,9 +629,10 @@ if(SKBUILD)
 endif()
 
 #===============================================================================
-# Python package
+# Copy libopenmc to Python module directory for development
 #===============================================================================
-if(NOT SKBUILD)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
   add_custom_command(TARGET libopenmc POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
     $<TARGET_FILE:libopenmc>

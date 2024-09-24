@@ -1154,8 +1154,59 @@ class SourceParticles(list):
         df = pd.DataFrame(data, columns=columns)
         return df
 
-    #def write_source_file(self):
-    #    return 
+    def write_source_file(self, filename: PathLike, **kwargs):
+        # Create compound datatype for source particles
+        pos_dtype = np.dtype([('x', '<f8'), ('y', '<f8'), ('z', '<f8')])
+        source_dtype = np.dtype([
+            ('r', pos_dtype),
+            ('u', pos_dtype),
+            ('E', '<f8'),
+            ('time', '<f8'),
+            ('wgt', '<f8'),
+            ('delayed_group', '<i4'),
+            ('surf_id', '<i4'),
+            ('particle', '<i4'),
+        ])
+
+        # Create array of source particles
+        cv.check_iterable_type("source particles", self, SourceParticle)
+        arr = np.array([s.to_tuple() for s in self], dtype=source_dtype)
+
+        # Write array to file
+        kwargs.setdefault('mode', 'w')
+        with h5py.File(filename, **kwargs) as fh:
+            fh.attrs['filetype'] = np.bytes_("source")
+            fh.create_dataset('source_bank', data=arr, dtype=source_dtype)
+        return 
+    
+    def write_mcpl_file(self, filename: PathLike, **kwargs):
+        try:
+            import mcpl
+        except ImportError as e:
+            raise e('MCPL not available')
+        # Create compound datatype for source particles
+        pos_dtype = np.dtype([('x', '<f8'), ('y', '<f8'), ('z', '<f8')])
+        source_dtype = np.dtype([
+            ('r', pos_dtype),
+            ('u', pos_dtype),
+            ('E', '<f8'),
+            ('time', '<f8'),
+            ('wgt', '<f8'),
+            ('delayed_group', '<i4'),
+            ('surf_id', '<i4'),
+            ('particle', '<i4'),
+        ])
+
+        # Create array of source particles
+        cv.check_iterable_type("source particles", self, SourceParticle)
+        arr = np.array([s.to_tuple() for s in self], dtype=source_dtype)
+
+        # Write array to file
+        kwargs.setdefault('mode', 'w')
+        with h5py.File(filename, **kwargs) as fh:
+            fh.attrs['filetype'] = np.bytes_("source")
+            fh.create_dataset('source_bank', data=arr, dtype=source_dtype)
+        return 
 
 def read_source_file(filename: typ.Union[str, Path], return_as: str = 'list') -> typ.Union[list, pd.DataFrame]:
     """Read a source file (.h5 or .mcpl) and return a list or pandas DataFrame 
@@ -1201,7 +1252,6 @@ def read_source_file(filename: typ.Union[str, Path], return_as: str = 'list') ->
             import mcpl
         except ImportError as e:
             raise e('MCPL not available')
-        #import openmc.lib
         # Process .mcpl file
         particles = []
         with mcpl.MCPLFile(filename) as f:

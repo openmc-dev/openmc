@@ -1,56 +1,64 @@
 import os
-import shutil
 import subprocess
+import shutil
 
 
 def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrystal=False):
+    # List to store the CMake arguments
+    cmake_args = ['-DCMAKE_BUILD_TYPE=Debug', '-DOPENMC_USE_MCPL=on']
+
+    # Turn off OpenMP if specified
+    if not omp:
+        cmake_args.append('-DOPENMC_USE_OPENMP=off')
+
+    # Use MPI wrappers when building in parallel
+    if mpi:
+        cmake_args.append('-DOPENMC_USE_MPI=on')
+
+    # Tell CMake to prefer parallel HDF5 if specified
+    if phdf5:
+        if not mpi:
+            raise ValueError('Parallel HDF5 must be used in conjunction with MPI.')
+        cmake_args.append('-DHDF5_PREFER_PARALLEL=ON')
+    else:
+        cmake_args.append('-DHDF5_PREFER_PARALLEL=OFF')
+
+    if dagmc:
+        cmake_args.append('-DOPENMC_USE_DAGMC=ON')
+        cmake_args.append('-DCMAKE_PREFIX_PATH=~/DAGMC')
+
+    if libmesh:
+        cmake_args.append('-DOPENMC_USE_LIBMESH=ON')
+        libmesh_path = os.environ.get('HOME') + '/LIBMESH'
+        cmake_args.append('-DCMAKE_PREFIX_PATH=' + libmesh_path)
+
+    if ncrystal:
+        cmake_args.append('-DOPENMC_USE_NCRYSTAL=ON')
+        ncrystal_cmake_path = os.environ.get('HOME') + '/ncrystal_inst/lib/cmake'
+        cmake_args.append(f'-DCMAKE_PREFIX_PATH={ncrystal_cmake_path}')
+
+    # Build in coverage mode for coverage testing
+    cmake_args.append('-DOPENMC_ENABLE_COVERAGE=on')
+
+    # Set environment variable for SKBUILD
+    os.environ['SKBUILD_CMAKE_ARGS'] = ';'.join(cmake_args)
+
+    # Run pip to build and install
+    subprocess.check_call(['pip', '-v', 'install', '.[test,vtk,ci]'])
+
+    # Using standard CMake method
     # Create build directory and change to it
     shutil.rmtree('build', ignore_errors=True)
     os.mkdir('build')
     os.chdir('build')
 
-    # Build in debug mode by default with support for MCPL
-    cmake_cmd = ['cmake', '-DCMAKE_BUILD_TYPE=Debug', '-DOPENMC_USE_MCPL=on']
-
-    # Turn off OpenMP if specified
-    if not omp:
-        cmake_cmd.append('-DOPENMC_USE_OPENMP=off')
-
-    # Use MPI wrappers when building in parallel
-    if mpi:
-        cmake_cmd.append('-DOPENMC_USE_MPI=on')
-
-    # Tell CMake to prefer parallel HDF5 if specified
-    if phdf5:
-        if not mpi:
-            raise ValueError('Parallel HDF5 must be used in '
-                             'conjunction with MPI.')
-        cmake_cmd.append('-DHDF5_PREFER_PARALLEL=ON')
-    else:
-        cmake_cmd.append('-DHDF5_PREFER_PARALLEL=OFF')
-
-    if dagmc:
-        cmake_cmd.append('-DOPENMC_USE_DAGMC=ON')
-        cmake_cmd.append('-DCMAKE_PREFIX_PATH=~/DAGMC')
-
-    if libmesh:
-        cmake_cmd.append('-DOPENMC_USE_LIBMESH=ON')
-        libmesh_path = os.environ.get('HOME') + '/LIBMESH'
-        cmake_cmd.append('-DCMAKE_PREFIX_PATH=' + libmesh_path)
-
-    if ncrystal:
-        cmake_cmd.append('-DOPENMC_USE_NCRYSTAL=ON')
-        ncrystal_cmake_path = os.environ.get('HOME') + '/ncrystal_inst/lib/cmake'
-        cmake_cmd.append(f'-DCMAKE_PREFIX_PATH={ncrystal_cmake_path}')
-
-    # Build in coverage mode for coverage testing
-    cmake_cmd.append('-DOPENMC_ENABLE_COVERAGE=on')
-
-    # Build and install
-    cmake_cmd.append('..')
+    # Add CMake arguments for standard method
+    cmake_cmd = ['cmake', '..'] + cmake_args
     print(' '.join(cmake_cmd))
+
+    # Run CMake and build
     subprocess.check_call(cmake_cmd)
-    subprocess.check_call(['make', '-j4'])
+    subprocess.check_call(['make', '-j$(nproc)'])
     subprocess.check_call(['sudo', 'make', 'install'])
 
 def main():

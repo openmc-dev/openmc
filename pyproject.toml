@@ -8,7 +8,7 @@ authors = [
     {name = "The OpenMC Development Team", email = "openmc@anl.gov"},
 ]
 description = "OpenMC"
-version = "0.15.1-dev"
+dynamic = ["version"]
 requires-python = ">=3.10"
 license = {file = "LICENSE"}
 classifiers = [
@@ -57,6 +57,9 @@ Homepage = "https://openmc.org"
 Documentation = "https://docs.openmc.org"
 Repository = "https://github.com/openmc-dev/openmc"
 Issues = "https://github.com/openmc-dev/openmc/issues"
+
+[tool.setuptools.dynamic]
+version = {file = "tools/version.txt"}
 
 [tool.setuptools.packages.find]
 include = ['openmc*', 'scripts*']

@@ -1,11 +1,28 @@
 cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 project(openmc C CXX)
 
-# Set version numbers
-set(OPENMC_VERSION_MAJOR 0)
-set(OPENMC_VERSION_MINOR 15)
-set(OPENMC_VERSION_RELEASE 1)
+# Read the version information from version.txt
+file(READ "tools/version.txt" VERSION_STRING)
+
+# Strip any whitespace
+string(STRIP "${VERSION_STRING}" VERSION_STRING)
+
+# Match version format and capture the main version part
+if(VERSION_STRING MATCHES "^([0-9]+\\.[0-9]+\\.[0-9]+)(-[^ ]+)?$")
+    set(VERSION_NO_SUFFIX "${CMAKE_MATCH_1}")
+else()
+    message(FATAL_ERROR "Invalid version format in version.txt: ${VERSION_STRING}")
+endif()
+
+# Set OpenMC version
+string(REPLACE "." ";" VERSION_LIST "${VERSION_NO_SUFFIX}")
+list(GET VERSION_LIST 0 OPENMC_VERSION_MAJOR)
+list(GET VERSION_LIST 1 OPENMC_VERSION_MINOR)
+list(GET VERSION_LIST 2 OPENMC_VERSION_RELEASE)
 set(OPENMC_VERSION ${OPENMC_VERSION_MAJOR}.${OPENMC_VERSION_MINOR}.${OPENMC_VERSION_RELEASE})
+message(STATUS "OpenMC version: ${OPENMC_VERSION}")
+
+# Generate version.h
 configure_file(include/openmc/version.h.in "${CMAKE_BINARY_DIR}/include/openmc/version.h" @ONLY)
 
 # Setup output directories

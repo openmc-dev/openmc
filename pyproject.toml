@@ -1,15 +1,15 @@
 [build-system]
-requires = ["setuptools", "wheel", "numpy", "cython", "scikit-build-core"]
+requires = ["scikit-build-core"]
 build-backend = "scikit_build_core.build"
 
 [project]
 name = "openmc"
+version = "0.15.1-dev"
 authors = [
     {name = "The OpenMC Development Team", email = "openmc@anl.gov"},
 ]
-description = "OpenMC"
-version = "0.15.1-dev"
-requires-python = ">=3.10"
+description = "OpenMC is a community-developed Monte Carlo neutron and photon transport code."
+readme = "README.md"
 license = {file = "LICENSE"}
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -25,6 +25,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
+requires-python = ">=3.10"
 dependencies = [
     "numpy",
     "h5py",
@@ -58,26 +59,10 @@ Documentation = "https://docs.openmc.org"
 Repository = "https://github.com/openmc-dev/openmc"
 Issues = "https://github.com/openmc-dev/openmc/issues"
 
-[tool.setuptools.packages.find]
-include = ['openmc*', 'scripts*']
-exclude = ['tests*']
-
-[tool.setuptools.package-data]
-"openmc.data.effective_dose" = ["*.txt"]
-"openmc.data" = ["*.txt", "*.DAT", "*.json", "*.h5"]
-"openmc.lib" = ["libopenmc.dylib", "libopenmc.so"]
-
-[project.scripts]
-openmc-ace-to-hdf5 = "scripts.openmc_ace_to_hdf5:main"
-openmc-plot-mesh-tally = "scripts.openmc_plot_mesh_tally:main"
-openmc-track-combine = "scripts.openmc_track_combine:main"
-openmc-track-to-vtk = "scripts.openmc_track_to_vtk:main"
-openmc-update-inputs = "scripts.openmc_update_inputs:main"
-openmc-update-mgxs = "scripts.openmc_update_mgxs:main"
-openmc-voxel-to-vtk = "scripts.openmc_voxel_to_vtk:main"
-openmc = "openmc.openmc_exec:main"
-
+# Scikit-Build Configuration
 [tool.scikit-build]
-cmake.verbose = true
-# cmake args can be passed in here or in the command line via exports or inline with the pip install
-cmake.args = ["-DCMAKE_BUILD_TYPE=RELEASE"]
+build.verbose = true
+logging.level = "INFO"
+wheel.install-dir = "openmc"
+wheel.packages = ["openmc"]
+wheel.exclude = ["CMakeLists.txt"]

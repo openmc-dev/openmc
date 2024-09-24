@@ -195,40 +195,21 @@ ENV LIBMESH_INSTALL_DIR=$HOME/LIBMESH
 # clone and install openmc
 RUN mkdir -p ${HOME}/OpenMC && cd ${HOME}/OpenMC \
     && git clone --shallow-submodules --recurse-submodules --single-branch -b ${openmc_branch} --depth=1 ${OPENMC_REPO} \
-    && mkdir build && cd build ; \
-    if [ ${build_dagmc} = "on" ] && [ ${build_libmesh} = "on" ]; then \
-        cmake ../openmc \
-            -DCMAKE_CXX_COMPILER=mpicxx \
-            -DOPENMC_USE_MPI=on \
-            -DHDF5_PREFER_PARALLEL=on \
-            -DOPENMC_USE_DAGMC=on \
-            -DOPENMC_USE_LIBMESH=on \
-            -DCMAKE_PREFIX_PATH="${DAGMC_INSTALL_DIR};${LIBMESH_INSTALL_DIR}" ; \
+    && cd openmc ; \
+    export SKBUILD_CMAKE_ARGS="-DCMAKE_CXX_COMPILER=mpicxx; \
+                                -DOPENMC_USE_MPI=on; \
+                                -DHDF5_PREFER_PARALLEL=on" \
+    if [ ${build_dagmc} = "on" ]; then \
+        SKBUILD_CMAKE_ARGS="${SKBUILD_CMAKE_ARGS}; \
+                            -DOPENMC_USE_DAGMC=on; \
+                            -DCMAKE_PREFIX_PATH=${DAGMC_INSTALL_DIR}" ; \
     fi ; \
-    if [ ${build_dagmc} = "on" ] && [ ${build_libmesh} = "off" ]; then \
-        cmake ../openmc \
-            -DCMAKE_CXX_COMPILER=mpicxx \
-            -DOPENMC_USE_MPI=on \
-            -DHDF5_PREFER_PARALLEL=on \
-            -DOPENMC_USE_DAGMC=ON \
-            -DCMAKE_PREFIX_PATH=${DAGMC_INSTALL_DIR} ; \
+    if [ ${build_libmesh} = "on" ]; then \
+        SKBUILD_CMAKE_ARGS="${SKBUILD_CMAKE_ARGS}; \
+                            -DOPENMC_USE_LIBMESH=on; \
+                            -DCMAKE_PREFIX_PATH=${LIBMESH_INSTALL_DIR}" ; \
     fi ; \
-    if [ ${build_dagmc} = "off" ] && [ ${build_libmesh} = "on" ]; then \
-        cmake ../openmc \
-            -DCMAKE_CXX_COMPILER=mpicxx \
-            -DOPENMC_USE_MPI=on \
-            -DHDF5_PREFER_PARALLEL=on \
-            -DOPENMC_USE_LIBMESH=on \
-            -DCMAKE_PREFIX_PATH=${LIBMESH_INSTALL_DIR} ; \
-    fi ; \
-    if [ ${build_dagmc} = "off" ] && [ ${build_libmesh} = "off" ]; then \
-        cmake ../openmc \
-            -DCMAKE_CXX_COMPILER=mpicxx \
-            -DOPENMC_USE_MPI=on \
-            -DHDF5_PREFER_PARALLEL=on ; \
-    fi ; \
-    make 2>/dev/null -j${compile_cores} install \
-    && cd ../openmc && pip install .[test,depletion-mpi] \
+    pip -v install .[test,depletion-mpi] \
     && python -c "import openmc"
 
 FROM build AS release

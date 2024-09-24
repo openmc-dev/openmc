@@ -804,7 +804,7 @@ def random_ray_lattice() -> openmc.Model:
         azimuthal_cells.append(azimuthal_cell)
 
     # Create a geometry with the azimuthal universes
-    pincell = openmc.Universe(cells=azimuthal_cells)
+    pincell = openmc.Universe(cells=azimuthal_cells, name='pincell')
 
     ########################################
     # Define a moderator lattice universe

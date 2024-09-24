@@ -645,6 +645,86 @@ class RectangularParallelepiped(CompositeSurface):
         return +self.xmax | -self.xmin | +self.ymax | -self.ymin | +self.zmax | -self.zmin
 
 
+class OrthogonalBox(CompositeSurface):
+    """Arbitrarily oriented orthogonal box
+
+    This composite surface is composed of four or six planar surfaces that form
+    an arbitrarily oriented orthogonal box when combined.
+
+    Parameters
+    ----------
+    v : iterable of float
+        (x,y,z) coordinates of a corner of the box
+    a1 : iterable of float
+        Vector of first side starting from ``v``
+    a2 : iterable of float
+        Vector of second side starting from ``v``
+    a3 : iterable of float, optional
+        Vector of third side starting from ``v``. When not specified, it is
+        assumed that the box will be infinite along the vector normal to the
+        plane specified by ``a1`` and ``a2``.
+    **kwargs
+        Keyword arguments passed to underlying plane classes
+
+    Attributes
+    ----------
+    ax1_min, ax1_max : openmc.Plane
+        Planes representing minimum and maximum along first axis
+    ax2_min, ax2_max : openmc.Plane
+        Planes representing minimum and maximum along second axis
+    ax3_min, ax3_max : openmc.Plane
+        Planes representing minimum and maximum along third axis
+
+    """
+    _surface_names = ('ax1_min', 'ax1_max', 'ax2_min', 'ax2_max', 'ax3_min', 'ax3_max')
+
+    def __init__(self, v, a1, a2, a3=None, **kwargs):
+        v = np.array(v)
+        a1 = np.array(a1)
+        a2 = np.array(a2)
+        if has_a3 := a3 is not None:
+            a3 = np.array(a3)
+        else:
+            a3 = np.cross(a1, a2)  # normal to plane specified by a1 and a2
+
+        # Generate corners of box
+        p1 = v
+        p2 = v + a1
+        p3 = v + a2
+        p4 = v + a3
+        p5 = v + a1 + a2
+        p6 = v + a2 + a3
+        p7 = v + a1 + a3
+
+        # Generate 6 planes of box
+        self.ax1_min = openmc.Plane.from_points(p1, p3, p4, **kwargs)
+        self.ax1_max = openmc.Plane.from_points(p2, p5, p7, **kwargs)
+        self.ax2_min = openmc.Plane.from_points(p1, p4, p2, **kwargs)
+        self.ax2_max = openmc.Plane.from_points(p3, p6, p5, **kwargs)
+        if has_a3:
+            self.ax3_min = openmc.Plane.from_points(p1, p2, p3, **kwargs)
+            self.ax3_max = openmc.Plane.from_points(p4, p7, p6, **kwargs)
+
+        # Make sure a point inside the box produces the correct senses. If not,
+        # flip the plane coefficients so it does.
+        mid_point = v + (a1 + a2 + a3)/2
+        nums = (1, 2, 3) if has_a3 else (1, 2)
+        for num in nums:
+            min_surf = getattr(self, f'ax{num}_min')
+            max_surf = getattr(self, f'ax{num}_max')
+            if mid_point in -min_surf:
+                min_surf.flip_normal()
+            if mid_point in +max_surf:
+                max_surf.flip_normal()
+
+    def __neg__(self):
+        region = (+self.ax1_min & -self.ax1_max &
+                  +self.ax2_min & -self.ax2_max)
+        if hasattr(self, 'ax3_min'):
+            region &= (+self.ax3_min & -self.ax3_max)
+        return region
+
+
 class XConeOneSided(CompositeSurface):
     """One-sided cone parallel the x-axis
 

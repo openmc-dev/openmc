@@ -63,9 +63,9 @@ features and bug fixes. The general steps for contributing are as follows:
 
    .. code-block:: sh
 
-       git clone --recurse-submodules git@github.com:yourusername/openmc.git
-       cd openmc
-       git checkout -b newbranch develop
+      git clone --recurse-submodules git@github.com:yourusername/openmc.git
+      cd openmc
+      git checkout -b newbranch develop
 
 3. Run ``tools/dev/install-commit-hooks.sh`` to install a post-commit hook that
    runs clang-format on C++ files to apply :ref:`automatic code formatting
@@ -116,11 +116,11 @@ pip_. From the root directory of the OpenMC repository, run:
 
 .. code-block:: sh
 
-python -m pip install --no-build-isolation \
-                     -Ceditable.rebuild=true \
-                     -Ccmake.build-type=Debug \
-                     -Cbuild-dir=build \
-                     -ve ".[test]"
+   python -m pip install --no-build-isolation \
+                        -Ceditable.rebuild=true \
+                        -Ccmake.build-type=Debug \
+                        -Cbuild-dir=build \
+                        -ve ".[test]"
 
 This feature allows for rebuilding on initial import, providing 
 flexibility for iterative development or testing changes to the codebase.

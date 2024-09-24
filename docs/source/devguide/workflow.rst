@@ -116,15 +116,14 @@ pip_. From the root directory of the OpenMC repository, run:
 
 .. code-block:: sh
 
-    python -m pip install -e .[test]
+python -m pip install --no-build-isolation \
+                     -Ceditable.rebuild=true \
+                     -Ccmake.build-type=Debug \
+                     -Cbuild-dir=build \
+                     -ve ".[test]"
 
-This installs the OpenMC Python package in `"editable" mode
-<https://pip.pypa.io/en/stable/cli/pip_install/#editable-installs>`_ so that 1)
-it can be imported from a Python interpreter and 2) any changes made are
-immediately reflected in the installed version (that is, you don't need to keep
-reinstalling it). While the same effect can be achieved using the
-:envvar:`PYTHONPATH` environment variable, this is generally discouraged as it
-can interfere with virtual environments.
+This feature allows for rebuilding on initial import, providing 
+flexibility for iterative development or testing changes to the codebase.
 
 .. _git: http://git-scm.com/
 .. _GitHub: https://github.com/

@@ -150,13 +150,20 @@ source below.
 Building Source on Linux or macOS
 ---------------------------------
 
-All OpenMC source code is hosted on `GitHub
-<https://github.com/openmc-dev/openmc>`_. If you have `git
-<https://git-scm.com>`_, a modern C++ compiler, `CMake <https://cmake.org>`_,
-and `HDF5 <https://www.hdfgroup.org/solutions/hdf5/>`_ installed, you can
-download and install OpenMC by entering the following commands in a terminal:
+All OpenMC source code is hosted on GitHub (`OpenMC GitHub <https://github.com/openmc-dev/openmc>`_).
+Depending on your needs, you can either:
 
-.. code-block:: sh
+- Build only the OpenMC executable (using CMake).
+- Build both the OpenMC executable and Python package (using pip).
+
+1. Building the OpenMC Executable Only (CMake)
+==============================================
+
+If you only need the OpenMC executable without Python bindings, you can build it using 
+the following steps. You will need `git <https://git-scm.com>`_, a modern C++ compiler, 
+`CMake <https://cmake.org>`_, and `HDF5 <https://www.hdfgroup.org/solutions/hdf5/>`_ installed:
+
+.. code-block:: bash
 
     git clone --recurse-submodules https://github.com/openmc-dev/openmc.git
     cd openmc
@@ -172,14 +179,38 @@ should specify an installation directory where you have write access, e.g.
 .. code-block:: sh
 
     cmake -DCMAKE_INSTALL_PREFIX=$HOME/.local ..
+    make
+    make install
 
-The :mod:`openmc` Python package must be installed separately. The easiest way
-to install it is using `pip <https://pip.pypa.io/en/stable/>`_.
-From the root directory of the OpenMC repository, run:
+2. Building the OpenMC Executable with Python Support (pip)
+===========================================================
+
+If you also want to install the OpenMC Python package,you can use 
+`pip <https://pip.pypa.io/en/stable/>`_ to build both the executable and 
+the Python package at the same time. This requires a Python environment 
+and pip installed. From the root directory of the OpenMC repository, run:
 
 .. code-block:: sh
 
     python -m pip install .
+
+This will build the ``openmc`` executable and install it along with the Python bindings.
+There is no need to manually run ``cmake`` or ``make``, as the pip command handles
+both the C++ and Python build processes.
+
+Custom Build Options
+~~~~~~~~~~~~~~~~~~~~
+
+If you need to customize the build options (e.g., enabling MPI, DAGMC, or LibMesh),
+you can pass CMake arguments using the ``SKBUILD_CMAKE_ARGS`` environment variable
+before running pip. For example:
+
+.. code-block:: bash
+
+    export SKBUILD_CMAKE_ARGS="-DOPENMC_USE_MPI=on;-DOPENMC_USE_DAGMC=on"
+    python -m pip install ".[test,depletion-mpi]"
+
+This allows you to configure your build just like you would with CMake.
 
 By default, OpenMC will be built with multithreading support. To build
 distributed-memory parallel versions of OpenMC using MPI or to configure other

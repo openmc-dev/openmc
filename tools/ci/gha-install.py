@@ -58,7 +58,7 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
 
     # Run CMake and build
     subprocess.check_call(cmake_cmd)
-    subprocess.check_call(['make', '-j$(nproc)'])
+    subprocess.check_call(['make', '-j4'])
     subprocess.check_call(['sudo', 'make', 'install'])
 
 def main():

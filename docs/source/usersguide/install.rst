@@ -547,9 +547,7 @@ Alternatively, pip provides additional ways to configure the build using
 
 .. code-block:: bash
 
-    python -m pip install . -v --config-settings=build.verbose=true \
-                                --config-settings=cmake.define.SOME_DEFINE=ON \
-                                --config-settings=cmake.args="-DSOME_DEFINE=ON;-DOTHER=OFF"
+    python -m pip install . --config-settings=cmake.args="-OPENMC_USE_MPI=ON;-OPENMC_USE_MCPL=ON"
 
 pip will first check that all :ref:`required third-party packages
 <usersguide_python_prereqs>` have been installed, and if they are not present,

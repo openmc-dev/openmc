@@ -44,7 +44,8 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
     os.environ['SKBUILD_CMAKE_ARGS'] = ';'.join(cmake_args)
 
     # Run pip to build and install
-    subprocess.check_call(['pip', '-v', 'install', '.[test,vtk,ci]'])
+    pip_suffix = '--config-settings=cmake.args="' + ';'.join(cmake_args) + '"'
+    subprocess.check_call(['pip', '-v', 'install', '.[test,vtk,ci]', pip_suffix])
 
     # Using standard CMake method
     # Create build directory and change to it

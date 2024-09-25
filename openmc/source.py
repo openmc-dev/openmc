@@ -1179,12 +1179,6 @@ class SourceParticles(list):
             fh.create_dataset('source_bank', data=arr, dtype=source_dtype)
         return 
     
-    def write_mcpl_file(self, filename: PathLike, **kwargs):
-        try:
-            import mcpl
-        except ImportError as e:
-            raise e('MCPL not available')
-        return print("Not implemented yet.")
 
 def read_source_file(filename: typ.Union[str, Path], return_as: str = 'list') -> typ.Union[list, pd.DataFrame]:
     """Read a source file (.h5 or .mcpl) and return a list or pandas DataFrame 

@@ -135,11 +135,11 @@ extern int
 extern int64_t max_surface_particles; //!< maximum number of particles to be
                                       //!< banked on surfaces per process
 extern int64_t max_surface_files; //!< maximum number of surface source files
-                                      //!<  to be created
-extern int64_t ssw_cell_id;           //!< Cell id for the surface source
-                                      //!< write setting
-extern SSWCellType ssw_cell_type;     //!< Type of option for the cell
-                                      //!< argument of surface source write
+                                  //!<  to be created
+extern int64_t ssw_cell_id;       //!< Cell id for the surface source
+                                  //!< write setting
+extern SSWCellType ssw_cell_type; //!< Type of option for the cell
+                                  //!< argument of surface source write
 extern TemperatureMethod
   temperature_method; //!< method for choosing temperatures
 extern double

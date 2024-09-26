@@ -465,14 +465,16 @@ void finalize_batch()
   }
 
   // Write out surface source if requested.
-  if (settings::surf_source_write && simulation::current_surface_file<=settings::max_surface_files) {
+  if (settings::surf_source_write &&
+      simulation::current_surface_file <= settings::max_surface_files) {
     if (simulation::surf_source_bank.full() ||
         simulation::current_batch == settings::n_batches) {
       auto filename = settings::path_output + "surface_source." +
                       std::to_string(simulation::current_batch);
       // no batches specified for writing, write surface source bank
-      if (settings::max_surface_files == 1 || (simulation::current_surface_file == 1 &&
-          simulation::current_batch == settings::n_batches))
+      if (settings::max_surface_files == 1 ||
+          (simulation::current_surface_file == 1 &&
+            simulation::current_batch == settings::n_batches))
         filename = settings::path_output + "surface_source";
       auto surf_work_index = mpi::calculate_parallel_index_vector(
         simulation::surf_source_bank.size());
@@ -491,9 +493,10 @@ void finalize_batch()
         write_source_point(filename.c_str(), surfbankspan, surf_work_index);
       }
       simulation::surf_source_bank.clear();
-      if (simulation::current_batch < settings::n_batches && settings::max_surface_files >= 1)
+      if (simulation::current_batch < settings::n_batches &&
+          settings::max_surface_files >= 1)
         simulation::surf_source_bank.reserve(settings::max_surface_particles);
-        ++simulation::current_surface_file;
+      ++simulation::current_surface_file;
     }
   }
 }

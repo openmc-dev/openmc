@@ -988,7 +988,7 @@ void Plot::create_voxel() const
 
     // update progress bar
     pb.set_value(
-      100. * static_cast<double>(z+1) / static_cast<double>((pixels_[2])));
+      100. * static_cast<double>(z + 1) / static_cast<double>((pixels_[2])));
   }
 
   voxel_finalize(dspace, dset, memspace);

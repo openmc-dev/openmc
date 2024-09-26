@@ -503,7 +503,13 @@ def sample_external_source(n_samples=1, prn_seed=None):
     _dll.openmc_sample_external_source(c_size_t(n_samples), c_uint64(prn_seed), sites_array)
 
     # Convert to list of SourceParticle and return
-    return openmc.SourceParticles(sites_array)
+    return openmc.SourceParticles([openmc.SourceParticle(
+            r=site.r, u=site.u, E=site.E, time=site.time, wgt=site.wgt,
+            delayed_group=site.delayed_group, surf_id=site.surf_id,
+            particle=openmc.ParticleType(site.particle)
+        )
+        for site in sites_array
+    ])
 
 
 def simulation_init():

@@ -794,67 +794,19 @@ class Model:
                             openmc.lib.materials[domain_id].volume = \
                                 vol_calc.volumes[domain_id].n
 
-    # default kwargs that are passed to plt.scatter in the plot method below.
-    _default_source_kwargs = {'marker': 'x'}
-
     def plot(
         self,
-        origin: Optional[Iterable[float]] = None,
-        basis: str = "xy",
-        n_samples: Optional[int] = None,
+        n_samples: int | None = None,
         plane_tolerance: float = 1.,
-        source_kwargs: dict = _default_source_kwargs,
-        *args,
+        source_kwargs: dict | None = None,
         **kwargs,
     ):
         """Display a slice plot of the geometry.
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.1
 
         Parameters
         ----------
-        origin : iterable of float
-            Coordinates at the origin of the plot. If left as None then the
-            bounding box center will be used to attempt to ascertain the origin.
-            Defaults to (0, 0, 0) if the bounding box is not finite
-        width : iterable of float
-            Width of the plot in each basis direction. If left as none then the
-            bounding box width will be used to attempt to ascertain the plot
-            width. Defaults to (10, 10) if the bounding box is not finite
-        pixels : Iterable of int or int
-            If iterable of ints provided, then this directly sets the number of
-            pixels to use in each basis direction. If int provided, then this
-            sets the total number of pixels in the plot and the number of pixels
-            in each basis direction is calculated from this total and the image
-            aspect ratio.
-        basis : {'xy', 'xz', 'yz'}
-            The basis directions for the plot
-        color_by : {'cell', 'material'}
-            Indicate whether the plot should be colored by cell or by material
-        colors : dict
-            Assigns colors to specific materials or cells. Keys are instances of
-            :class:`Cell` or :class:`Material` and values are RGB 3-tuples, RGBA
-            4-tuples, or strings indicating SVG color names. Red, green, blue,
-            and alpha should all be floats in the range [0.0, 1.0], for
-            example::
-
-               # Make water blue
-               water = openmc.Cell(fill=h2o)
-               universe.plot(..., colors={water: (0., 0., 1.))
-        seed : int
-            Seed for the random number generator
-        openmc_exec : str
-            Path to OpenMC executable.
-        axes : matplotlib.Axes
-            Axes to draw to
-        legend : bool
-            Whether a legend showing material or cell names should be drawn
-        legend_kwargs : dict
-            Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
-        outline : bool
-            Whether outlines between color boundaries should be drawn
-        axis_units : {'km', 'm', 'cm', 'mm'}
-            Units used on the plot axis
         n_samples : dict
             The number of source particles to sample and add to plot. Defaults
             to None which doesn't plot any particles on the plot.
@@ -865,7 +817,7 @@ class Model:
         source_kwargs : dict
             Keyword arguments passed to :func:`matplotlib.pyplot.scatter`.
         **kwargs
-            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
+            Keyword arguments passed to :func:`openmc.Universe.plot`
 
         Returns
         -------
@@ -873,47 +825,57 @@ class Model:
             Axes containing resulting image
         """
 
-        check_type('n_samples', n_samples, (int, type(None)))
+        check_type('n_samples', n_samples, int | None)
         check_type('plane_tolerance', plane_tolerance, float)
+        if source_kwargs is None:
+            source_kwargs = {}
+        source_kwargs.setdefault('marker', 'x')
 
-        plot = self.geometry.plot(basis=basis, origin=origin, *args, **kwargs)
+        ax = self.geometry.plot(**kwargs)
         if n_samples:
+            # Sample external source particles
             particles = self.sample_external_source(n_samples)
 
-            particle_indices = {'xy': (0, 1), 'xz': (0, 2), 'yz': (1, 2)}[basis]
+            # Determine plotting parameters and bounding box of geometry
+            bbox = self.geometry.bounding_box
+            origin = kwargs.get('origin', None)
+            basis = kwargs.get('basis', 'xy')
+            indices = {'xy': (0, 1, 2), 'xz': (0, 2, 1), 'yz': (1, 2, 0)}[basis]
 
-            if np.isinf(self.geometry.bounding_box.extent[basis]).any():
+            # Infer origin if not provided
+            if np.isinf(bbox.extent[basis]).any():
                 if origin is None:
                     origin = (0, 0, 0)
             else:
                 if origin is None:
-                    # if nan values in the bb.center they get replaced with 0.0
+                    # if nan values in the bbox.center they get replaced with 0.0
                     # this happens when the bounding_box contains inf values
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore", RuntimeWarning)
-                        origin = np.nan_to_num(self.geometry.bounding_box.center)
+                        origin = np.nan_to_num(bbox.center)
 
-            slice_axis_index = {'xy': 2, 'xz': 1, 'yz': 0}[basis]
-            slice_axis_value = origin[slice_axis_index]
+            slice_index = indices[2]
+            slice_value = origin[slice_index]
 
-            x_positions = []
-            y_positions = []
+            xs = []
+            ys = []
+            tol = plane_tolerance
             for particle in particles:
-                if (
-                    particle.r[slice_axis_index]
-                    < slice_axis_value + plane_tolerance
-                    and particle.r[slice_axis_index]
-                    > slice_axis_value - plane_tolerance
-                ):
-                    x_positions.append(particle.r[particle_indices[0]])
-                    y_positions.append(particle.r[particle_indices[1]])
-            plot.scatter(x_positions, y_positions, **source_kwargs)
-        return plot
+                if (slice_value - tol < particle.r[slice_index] < slice_value + tol):
+                    xs.append(particle.r[indices[0]])
+                    ys.append(particle.r[indices[1]])
+            ax.scatter(xs, ys, **source_kwargs)
+        return ax
 
-    def sample_external_source(self, n_samples: int=1, prn_seed: Optional[int]=None):
-        """Sample external source
+    def sample_external_source(
+            self,
+            n_samples: int = 1000,
+            prn_seed: int | None = None,
+            **init_kwargs
+    ) -> list[openmc.SourceParticle]:
+        """Sample external source and return source particles.
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.1
 
         Parameters
         ----------
@@ -922,21 +884,30 @@ class Model:
         prn_seed : int
             Pseudorandom number generator (PRNG) seed; if None, one will be
             generated randomly.
+        **init_kwargs
+            Keyword arguments passed to :func:`openmc.lib.init`
 
         Returns
         -------
         list of openmc.SourceParticle
             List of samples source particles
         """
-        
-        self.export_to_xml()
         import openmc.lib
-        with openmc.lib.run_in_memory(output=False):
-            particles = openmc.lib.sample_external_source(
-                n_samples=n_samples, prn_seed=prn_seed
-            )
 
-        return particles
+        # Silence output by default. Also set arguments to start in volume
+        # calculation mode to avoid loading cross sections
+        init_kwargs.setdefault('output', False)
+        init_kwargs.setdefault('args', ['-c'])
+
+        with change_directory(tmpdir=True):
+            # Export model within temporary directory
+            self.export_to_model_xml()
+
+            # Sample external source sites
+            with openmc.lib.run_in_memory(**init_kwargs):
+                return openmc.lib.sample_external_source(
+                    n_samples=n_samples, prn_seed=prn_seed
+                )
 
     def plot_geometry(self, output=True, cwd='.', openmc_exec='openmc'):
         """Creates plot images as specified by the Model.plots attribute

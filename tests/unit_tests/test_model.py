@@ -594,19 +594,16 @@ def test_single_xml_exec(run_in_tmpdir):
 
 
 def test_model_plot():
-    # plots the geometry with source location and checks the resulting matplotlib
-    # includes the correct coordinates for the scatter plot for all basis.
+    # plots the geometry with source location and checks the resulting
+    # matplotlib includes the correct coordinates for the scatter plot for all
+    # basis.
 
     surface = openmc.Sphere(r=600, boundary_type="vacuum")
     cell = openmc.Cell(region=-surface)
     geometry = openmc.Geometry([cell])
-    settings = openmc.Settings()
-    settings.particles = 1
-    settings.batches = 1
-    source = openmc.IndependentSource()
-    source.space = openmc.stats.Point((1, 2, 3))
-    settings.source = source
-    model = openmc.Model(geometry, None, settings)
+    source = openmc.IndependentSource(space=openmc.stats.Point((1, 2, 3)))
+    settings = openmc.Settings(particles=1, batches=1, source=source)
+    model = openmc.Model(geometry, settings=settings)
 
     plot = model.plot(n_samples=1, plane_tolerance=4.0, basis="xy")
     coords = plot.axes.collections[0].get_offsets().data.flatten()

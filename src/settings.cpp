@@ -118,8 +118,8 @@ SolverType solver_type {SolverType::MONTE_CARLO};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
 std::unordered_set<int> source_write_surf_id;
-std::unordered_set<int> surface_source_batch;
 int64_t max_surface_particles;
+int64_t max_surface_files;
 int64_t ssw_cell_id {C_NONE};
 SSWCellType ssw_cell_type {SSWCellType::None};
 TemperatureMethod temperature_method {TemperatureMethod::NEAREST};
@@ -784,13 +784,6 @@ void read_settings_xml(pugi::xml_node root)
       }
     }
 
-    // User gave specific batches to write surface source files
-    if (check_for_node(node_ssw, "batches")) {
-      auto temp = get_node_array<int>(node_ssw, "batches");
-      for (const auto& b : temp) {
-        surface_source_batch.insert(b);
-      }
-    }
     // Get maximum number of particles to be banked per surface
     if (check_for_node(node_ssw, "max_particles")) {
       max_surface_particles =
@@ -799,6 +792,14 @@ void read_settings_xml(pugi::xml_node root)
       fatal_error("A maximum number of particles needs to be specified "
                   "using the 'max_particles' parameter to store surface "
                   "source points.");
+    }
+
+    // Get maximum number of surface source files to be created
+    if (check_for_node(node_ssw, "max_surf_files")) {
+      max_surface_files =
+        std::stoll(get_node_value(node_ssw, "max_surf_files"));
+    } else {
+      max_surface_files = 1;
     }
 
     if (check_for_node(node_ssw, "mcpl")) {
@@ -1089,7 +1090,6 @@ void free_memory_settings()
   settings::statepoint_batch.clear();
   settings::sourcepoint_batch.clear();
   settings::source_write_surf_id.clear();
-  settings::surface_source_batch.clear();
   settings::res_scat_nuclides.clear();
 }
 

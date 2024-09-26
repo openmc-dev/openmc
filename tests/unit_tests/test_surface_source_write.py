@@ -33,7 +33,7 @@ def geometry():
         {"max_particles": 200, "surface_ids": [2], "cell": 1},
         {"max_particles": 200, "surface_ids": [2], "cellto": 1},
         {"max_particles": 200, "surface_ids": [2], "cellfrom": 1},
-        {"max_particles": 200, "batches": [1,2,3]},
+        {"max_particles": 200, "surface_ids": [2], "max_surf_files": 1},
     ],
 )
 def test_xml_serialization(parameter, run_in_tmpdir):
@@ -52,14 +52,14 @@ def model():
     openmc.reset_auto_ids()
     model = openmc.Model()
 
-    # Material
-    material = openmc.Material(name="H1")
-    material.add_element("H", 1.0)
+    ## Material
+    #material = openmc.Material(name="H1")
+    #material.add_element("H", 1.0)
 
     # Geometry
     radius = 1.0
-    sphere = openmc.Sphere(r=radius, boundary_type="reflective")
-    cell = openmc.Cell(region=-sphere, fill=material)
+    sphere = openmc.Sphere(r=radius, boundary_type="vacuum")
+    cell = openmc.Cell(region=-sphere, fill=None)
     root = openmc.Universe(cells=[cell])
     model.geometry = openmc.Geometry(root)
 
@@ -70,8 +70,7 @@ def model():
     model.settings.batches = 3
     model.settings.seed = 1
 
-    bounds = [-radius, -radius, -radius, radius, radius, radius]
-    distribution = openmc.stats.Box(bounds[:3], bounds[3:])
+    distribution = openmc.stats.Point()
     model.settings.source = openmc.IndependentSource(space=distribution)
 
     return model
@@ -79,12 +78,8 @@ def model():
 @pytest.mark.parametrize(
     "parameter",
     [
-        {"max_particles": 200, "batches": [1]},
-        {"max_particles": 200, "batches": [2]},
-        {"max_particles": 200, "batches": [1,2]},
-        {"max_particles": 200, "batches": [2,3]},
-        {"max_particles": 200, "batches": [1,3]},
-        {"max_particles": 200, "batches": [1,2,3]},
+        {"max_particles": 100, "max_surf_files": 2},
+        {"max_particles": 100, "max_surf_files": 3},
     ],
 )
 
@@ -92,8 +87,8 @@ def test_number_surface_source_file_created(parameter, run_in_tmpdir, model):
     """Check the number of surface source files written."""
     model.settings.surf_source_write = parameter
     model.run()
-    for batch in parameter["batches"]:
-        filename = "surface_source."+str(batch)+".h5"
+    for i in range(1,parameter["max_surf_files"]):
+        filename = "surface_source."+str(i)+".h5"
         if not os.path.exists(filename):
             assert False
     if os.path.exists("surface_source.h5"):

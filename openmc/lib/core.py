@@ -151,6 +151,17 @@ def current_batch():
     """
     return c_int.in_dll(_dll, 'current_batch').value
 
+def current_surface_file():
+    """Return the current surface file of the simulation.
+
+    Returns
+    -------
+    int
+        Current surface file of the simulation
+
+    """
+    return c_int.in_dll(_dll, 'current_surface_file').value
+
 
 def export_properties(filename=None, output=True):
     """Export physical properties.

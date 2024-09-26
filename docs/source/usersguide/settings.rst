@@ -336,15 +336,15 @@ or particles going to a cell::
 .. note:: The ``cell``, ``cellfrom`` and ``cellto`` attributes cannot be
           used simultaneously.
 
-To generate surface source files in different batches, ``batches`` is available. The 
-surface source bank will be cleared in simulation memory each time a surface source 
-file is written. As an example, to write a surface source file every five batches::
+To generate more than one surface source files when the maximum number of stored particles 
+is reached, ``max_surf_files`` is available. The surface source bank will be cleared in 
+simulation memory each time a surface source file is written. As an example, to write a 
+maximum of three surface source files:::
 
-  settings.batches = n
   settings.surf_source_write = {
       'surfaces_ids': [1, 2, 3],
       'max_particles': 10000,
-      'batches': range(5, n + 5, 5)
+      'max_surf_files': 3
   }
 
 .. _compiled_source:

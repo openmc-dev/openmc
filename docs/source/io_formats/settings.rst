@@ -923,14 +923,14 @@ attributes/sub-elements:
 
     *Default*: None
 
-  :batches:
-    An Iterable of integers indicating at what batches a surface source file 
-    should be written. The surface source bank will be cleared in simulation 
-    memory each time a surface source file is written. By default, in the 
-    absence of this attribute, a ``surface_source.h5`` file will be created 
-    after the last batch.
+  :max_surf_files:
+    An integer value indicating the number of surface source files to be written 
+    containing the maximum number of particles each. The surface source bank will 
+    be cleared in simulation memory each time a surface source file is written. 
+    By default a ``surface_source.h5`` file will be created when the maximum number 
+    of saved particles is reached.
 
-    *Default*: None
+    *Default*: 1
     
   :mcpl:
     An optional boolean which indicates if the banked particles should be

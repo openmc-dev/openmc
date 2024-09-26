@@ -1045,51 +1045,17 @@ def write_source_file(
         fh.attrs['filetype'] = np.bytes_("source")
         fh.create_dataset('source_bank', data=arr, dtype=source_dtype)
 
-class PDGCode_MCPL(IntEnum):
-    """
-    IntEnum class representing a particle type using PDG codes.
-    """
-    NEUTRON = 2112
-    PHOTON = 22
-    ELECTRON = 11
-    POSITRON = -11
-    PROTON = 2212
-
-    @classmethod
-    def from_string(cls, value: str):
-        """
-        Constructs a PDGCode_MCPL instance from a string.
-
-        Parameters
-        ----------
-        value : str
-            The string representation of the particle type.
-
-        Returns
-        -------
-        The corresponding PDGCode_MCPL instance.
-        """
-        try:
-            return cls[value.upper()]
-        except KeyError:
-            raise ValueError(f"Invalid string for creation of {cls.__name__}: {value}")
-
-    def __repr__(self) -> str:
-        """
-        Returns a string representation of the PDGCode_MCPL instance.
-
-        Returns:
-            str: The lowercase name of the PDGCode_MCPL instance.
-        """
-        return self.name.lower()
-
-    # For Python < 3.11 compatibility
-    def __str__(self) -> str:
-        return self.__repr__()
-
-    # For compatibility with Python <= 3.7, to format the object using __str__
-    def __format__(self, spec):
-        return object.__format__(self, spec)
+def PDGCode_MCPL(code):
+    if code == 2112:
+        return ParticleType(0)
+    if code == 22:
+        return ParticleType(1)
+    if code == 11:
+        return ParticleType(2)
+    if code == 2212:
+        return ParticleType(3)
+    else:
+        raise ValueError()
 
 
 class SourceParticles(list):

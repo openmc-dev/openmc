@@ -4,7 +4,7 @@ from collections.abc import Iterable, Sequence
 from enum import IntEnum
 from numbers import Real
 import warnings
-import typing as typ
+from typing import Any
 from pathlib import Path
 
 import lxml.etree as ET
@@ -58,7 +58,7 @@ class SourceBase(ABC):
     def __init__(
         self,
         strength: float | None = 1.0,
-        constraints: dict[str, typ.Any] | None = None
+        constraints: dict[str, Any] | None = None
     ):
         self.strength = strength
         self.constraints = constraints
@@ -75,11 +75,11 @@ class SourceBase(ABC):
         self._strength = strength
 
     @property
-    def constraints(self) -> dict[str, typ.Any]:
+    def constraints(self) -> dict[str, Any]:
         return self._constraints
 
     @constraints.setter
-    def constraints(self, constraints: dict[str, typ.Any] | None):
+    def constraints(self, constraints: dict[str, Any] | None):
         self._constraints = {}
         if constraints is None:
             return
@@ -200,7 +200,7 @@ class SourceBase(ABC):
                 raise ValueError(f'Source type {source_type} is not recognized')
 
     @staticmethod
-    def _get_constraints(elem: ET.Element) -> dict[str, typ.Any]:
+    def _get_constraints(elem: ET.Element) -> dict[str, Any]:
         # Find element containing constraints
         constraints_elem = elem.find("constraints")
         elem = constraints_elem if constraints_elem is not None else elem
@@ -315,7 +315,7 @@ class IndependentSource(SourceBase):
         strength: float = 1.0,
         particle: str = 'neutron',
         domains: Sequence[openmc.Cell | openmc.Material | openmc.Universe] | None = None,
-        constraints: dict[str, typ.Any] | None = None
+        constraints: dict[str, Any] | None = None
     ):
         if domains is not None:
             warnings.warn("The 'domains' arguments has been replaced by the "
@@ -528,7 +528,7 @@ class MeshSource(SourceBase):
             self,
             mesh: MeshBase,
             sources: Sequence[SourceBase],
-            constraints: dict[str, typ.Any] | None  = None,
+            constraints: dict[str, Any] | None  = None,
     ):
         super().__init__(strength=None, constraints=constraints)
         self.mesh = mesh
@@ -705,7 +705,7 @@ class CompiledSource(SourceBase):
         library: str | None  = None,
         parameters: str | None = None,
         strength: float = 1.0,
-        constraints: dict[str, typ.Any] | None = None
+        constraints: dict[str, Any] | None = None
     ) -> None:
         super().__init__(strength=strength, constraints=constraints)
 
@@ -831,7 +831,7 @@ class FileSource(SourceBase):
         self,
         path: PathLike | None = None,
         strength: float = 1.0,
-        constraints: dict[str, typ.Any] | None = None
+        constraints: dict[str, Any] | None = None
     ):
         super().__init__(strength=strength, constraints=constraints)
         self._path = None
@@ -1065,6 +1065,10 @@ class SourceParticles(list):
     -------
     get_pandas_dataframe():
         Converts the list of source particles to a pandas DataFrame.
+    
+    write_source_file():
+        Creates a surface source file from the particles in the list.
+    
     """
 
     def __getitem__(self, index):
@@ -1146,9 +1150,8 @@ class SourceParticles(list):
         return 
     
 
-def read_source_file(filename: typ.Union[str, Path], return_as: str = 'list') -> typ.Union[list, pd.DataFrame]:
-    """Read a source file (.h5 or .mcpl) and return a list or pandas DataFrame 
-    of source particles.
+def read_source_file(filename: PathLike) -> SourceParticles:
+    """Read a source file and return a list of source particles.
 
     .. versionadded:: 0.15.0
 
@@ -1156,13 +1159,15 @@ def read_source_file(filename: typ.Union[str, Path], return_as: str = 'list') ->
     ----------
     filename : str or path-like
         Path to source file to read
-    return_as : str, optional
-        Return type: 'list' (default) or 'dataframe'
 
     Returns
     -------
-    list of SourceParticle or pandas.DataFrame
-        Source particles read from file
+    SourceParticles
+
+    See Also
+    --------
+    openmc.SourceParticle
+    openmc.SourceParticles
 
     """
     filename = Path(filename)

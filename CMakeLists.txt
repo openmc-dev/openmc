@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 project(openmc C CXX)
 
 # Read the version information from version.txt
-file(READ "tools/version.txt" VERSION_STRING)
+file(READ "version.txt" VERSION_STRING)
 
 # Strip any whitespace
 string(STRIP "${VERSION_STRING}" VERSION_STRING)

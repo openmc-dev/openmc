@@ -59,7 +59,7 @@ Repository = "https://github.com/openmc-dev/openmc"
 Issues = "https://github.com/openmc-dev/openmc/issues"
 
 [tool.setuptools.dynamic]
-version = {file = "tools/version.txt"}
+version = {file = "version.txt"}
 
 [tool.setuptools.packages.find]
 include = ['openmc*', 'scripts*']

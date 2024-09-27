@@ -317,7 +317,6 @@ enum class GlobalTally { K_COLLISION, K_ABSORPTION, K_TRACKLENGTH, LEAKAGE };
 
 // Miscellaneous
 constexpr int C_NONE {-1};
-constexpr int F90_NONE {0}; // TODO: replace usage of this with C_NONE
 
 // Interpolation rules
 enum class Interpolation {
@@ -340,6 +339,11 @@ enum class RunMode {
   PARTICLE,
   VOLUME
 };
+
+enum class SolverType { MONTE_CARLO, RANDOM_RAY };
+
+enum class RandomRayVolumeEstimator { NAIVE, SIMULATION_AVERAGED, HYBRID };
+enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
 
 //==============================================================================
 // Geometry Constants

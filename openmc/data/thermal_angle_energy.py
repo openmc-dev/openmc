@@ -43,7 +43,7 @@ class CoherentElasticAE(AngleEnergy):
             HDF5 group to write to
 
         """
-        group.attrs['type'] = np.string_('coherent_elastic')
+        group.attrs['type'] = np.bytes_('coherent_elastic')
         self.coherent_xs.to_hdf5(group, 'coherent_xs')
 
     @classmethod
@@ -104,7 +104,7 @@ class IncoherentElasticAE(AngleEnergy):
             HDF5 group to write to
 
         """
-        group.attrs['type'] = np.string_('incoherent_elastic')
+        group.attrs['type'] = np.bytes_('incoherent_elastic')
         group.create_dataset('debye_waller', data=self.debye_waller)
 
     @classmethod
@@ -146,7 +146,7 @@ class IncoherentElasticAEDiscrete(AngleEnergy):
             HDF5 group to write to
 
         """
-        group.attrs['type'] = np.string_('incoherent_elastic_discrete')
+        group.attrs['type'] = np.bytes_('incoherent_elastic_discrete')
         group.create_dataset('mu_out', data=self.mu_out)
 
     @classmethod
@@ -203,7 +203,7 @@ class IncoherentInelasticAEDiscrete(AngleEnergy):
             HDF5 group to write to
 
         """
-        group.attrs['type'] = np.string_('incoherent_inelastic_discrete')
+        group.attrs['type'] = np.bytes_('incoherent_inelastic_discrete')
         group.create_dataset('energy_out', data=self.energy_out)
         group.create_dataset('mu_out', data=self.mu_out)
         group.create_dataset('skewed', data=self.skewed)
@@ -225,7 +225,7 @@ class IncoherentInelasticAEDiscrete(AngleEnergy):
         """
         energy_out = group['energy_out'][()]
         mu_out = group['mu_out'][()]
-        skewed = bool(group['skewed'])
+        skewed = bool(group['skewed'][()])
         return cls(energy_out, mu_out, skewed)
 
 
@@ -266,7 +266,7 @@ class MixedElasticAE(AngleEnergy):
             HDF5 group to write to
 
         """
-        group.attrs['type'] = np.string_('mixed_elastic')
+        group.attrs['type'] = np.bytes_('mixed_elastic')
         coherent_group = group.create_group('coherent')
         self.coherent.to_hdf5(coherent_group)
         incoherent_group = group.create_group('incoherent')

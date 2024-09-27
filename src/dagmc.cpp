@@ -11,7 +11,7 @@
 #include "openmc/settings.h"
 #include "openmc/string_utils.h"
 
-#ifdef DAGMC
+#ifdef UWUW
 #include "uwuw.hpp"
 #endif
 #include <fmt/core.h>
@@ -27,6 +27,12 @@ namespace openmc {
 const bool DAGMC_ENABLED = true;
 #else
 const bool DAGMC_ENABLED = false;
+#endif
+
+#ifdef UWUW
+const bool UWUW_ENABLED = true;
+#else
+const bool UWUW_ENABLED = false;
 #endif
 
 } // namespace openmc
@@ -49,8 +55,8 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
 
   if (check_for_node(node, "filename")) {
     filename_ = get_node_value(node, "filename");
-    if (!file_exists(filename_)) {
-      fatal_error(fmt::format("DAGMC file '{}' could not be found", filename_));
+    if (!starts_with(filename_, "/")) {
+      filename_ = dir_name(settings::path_input) + filename_;
     }
   } else {
     fatal_error("Must specify a file for the DAGMC universe");
@@ -85,7 +91,6 @@ DAGUniverse::DAGUniverse(std::shared_ptr<moab::DagMC> dagmc_ptr,
 {
   set_id();
   init_metadata();
-  read_uwuw_materials();
   init_geometry();
 }
 
@@ -111,8 +116,6 @@ void DAGUniverse::initialize()
 
   init_metadata();
 
-  read_uwuw_materials();
-
   init_geometry();
 }
 
@@ -123,7 +126,6 @@ void DAGUniverse::init_dagmc()
   dagmc_instance_ = std::make_shared<moab::DagMC>();
 
   // load the DAGMC geometry
-  filename_ = settings::path_input + filename_;
   if (!file_exists(filename_)) {
     fatal_error("Geometry DAGMC file '" + filename_ + "' does not exist!");
   }
@@ -210,20 +212,7 @@ void DAGUniverse::init_geometry()
       c->material_.push_back(MATERIAL_VOID);
     } else {
       if (uses_uwuw()) {
-        // lookup material in uwuw if present
-        std::string uwuw_mat =
-          dmd_ptr->volume_material_property_data_eh[vol_handle];
-        if (uwuw_->material_library.count(uwuw_mat) != 0) {
-          // Note: material numbers are set by UWUW
-          int mat_number = uwuw_->material_library.get_material(uwuw_mat)
-                             .metadata["mat_number"]
-                             .asInt();
-          c->material_.push_back(mat_number);
-        } else {
-          fatal_error(fmt::format("Material with value '{}' not found in the "
-                                  "UWUW material library",
-            mat_str));
-        }
+        uwuw_assign_material(vol_handle, c);
       } else {
         legacy_assign_material(mat_str, c);
       }
@@ -280,6 +269,12 @@ void DAGUniverse::init_geometry()
     auto s = std::make_unique<DAGSurface>(dagmc_instance_, i + 1);
     s->id_ = adjust_geometry_ids_ ? next_surf_id++
                                   : dagmc_instance_->id_by_index(2, i + 1);
+
+    // set surface source attribute if needed
+    if (contains(settings::source_write_surf_id, s->id_) ||
+        settings::source_write_surf_id.empty()) {
+      s->surf_source_ = true;
+    }
 
     // set BCs
     std::string bc_value =
@@ -404,7 +399,7 @@ int32_t DAGUniverse::implicit_complement_idx() const
   return cell_idx_offset_ + dagmc_instance_->index_by_handle(ic) - 1;
 }
 
-bool DAGUniverse::find_cell(Particle& p) const
+bool DAGUniverse::find_cell(GeometryState& p) const
 {
   // if the particle isn't in any of the other DagMC
   // cells, place it in the implicit complement
@@ -436,11 +431,16 @@ void DAGUniverse::to_hdf5(hid_t universes_group) const
 
 bool DAGUniverse::uses_uwuw() const
 {
+#ifdef UWUW
   return uwuw_ && !uwuw_->material_library.empty();
+#else
+  return false;
+#endif // UWUW
 }
 
 std::string DAGUniverse::get_uwuw_materials_xml() const
 {
+#ifdef UWUW
   if (!uses_uwuw()) {
     throw std::runtime_error("This DAGMC Universe does not use UWUW materials");
   }
@@ -458,10 +458,14 @@ std::string DAGUniverse::get_uwuw_materials_xml() const
   ss << "</materials>";
 
   return ss.str();
+#else
+  fatal_error("DAGMC was not configured with UWUW.");
+#endif // UWUW
 }
 
 void DAGUniverse::write_uwuw_materials_xml(const std::string& outfile) const
 {
+#ifdef UWUW
   if (!uses_uwuw()) {
     throw std::runtime_error(
       "This DAGMC universe does not use UWUW materials.");
@@ -472,6 +476,9 @@ void DAGUniverse::write_uwuw_materials_xml(const std::string& outfile) const
   std::ofstream mats_xml(outfile);
   mats_xml << xml_str;
   mats_xml.close();
+#else
+  fatal_error("DAGMC was not configured with UWUW.");
+#endif
 }
 
 void DAGUniverse::legacy_assign_material(
@@ -533,6 +540,7 @@ void DAGUniverse::legacy_assign_material(
 
 void DAGUniverse::read_uwuw_materials()
 {
+#ifdef UWUW
   // If no filename was provided, don't read UWUW materials
   if (filename_ == "")
     return;
@@ -570,8 +578,35 @@ void DAGUniverse::read_uwuw_materials()
   for (pugi::xml_node material_node : root.children("material")) {
     model::materials.push_back(std::make_unique<Material>(material_node));
   }
+#else
+  fatal_error("DAGMC was not configured with UWUW.");
+#endif
 }
 
+void DAGUniverse::uwuw_assign_material(
+  moab::EntityHandle vol_handle, std::unique_ptr<DAGCell>& c) const
+{
+#ifdef UWUW
+  // read materials from uwuw material file
+  read_uwuw_materials();
+
+  // lookup material in uwuw if present
+  std::string uwuw_mat = dmd_ptr->volume_material_property_data_eh[vol_handle];
+  if (uwuw_->material_library.count(uwuw_mat) != 0) {
+    // Note: material numbers are set by UWUW
+    int mat_number = uwuw_->material_library.get_material(uwuw_mat)
+                       .metadata["mat_number"]
+                       .asInt();
+    c->material_.push_back(mat_number);
+  } else {
+    fatal_error(fmt::format("Material with value '{}' not found in the "
+                            "UWUW material library",
+      mat_str));
+  }
+#else
+  fatal_error("DAGMC was not configured with UWUW.");
+#endif
+}
 //==============================================================================
 // DAGMC Cell implementation
 //==============================================================================
@@ -583,9 +618,8 @@ DAGCell::DAGCell(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx)
 };
 
 std::pair<double, int32_t> DAGCell::distance(
-  Position r, Direction u, int32_t on_surface, Particle* p) const
+  Position r, Direction u, int32_t on_surface, GeometryState* p) const
 {
-  Expects(p);
   // if we've changed direction or we're not on a surface,
   // reset the history and update last direction
   if (u != p->last_dir()) {
@@ -635,10 +669,9 @@ std::pair<double, int32_t> DAGCell::distance(
       p->material() == MATERIAL_VOID
         ? "-1 (VOID)"
         : std::to_string(model::materials[p->material()]->id());
-    auto lost_particle_msg = fmt::format(
+    p->mark_as_lost(fmt::format(
       "No intersection found with DAGMC cell {}, filled with material {}", id_,
-      material_id);
-    p->mark_as_lost(lost_particle_msg);
+      material_id));
   }
 
   return {dist, surf_idx};
@@ -723,7 +756,7 @@ Direction DAGSurface::normal(Position r) const
   return dir;
 }
 
-Direction DAGSurface::reflect(Position r, Direction u, Particle* p) const
+Direction DAGSurface::reflect(Position r, Direction u, GeometryState* p) const
 {
   Expects(p);
   p->history().reset_to_last_intersection();

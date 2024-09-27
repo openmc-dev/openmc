@@ -5,7 +5,6 @@
 //! \brief Particle type
 
 #include <cstdint>
-#include <sstream>
 #include <string>
 
 #include "openmc/constants.h"
@@ -75,7 +74,7 @@ public:
   void pht_secondary_particles();
 
   //! Cross a surface and handle boundary conditions
-  void cross_surface();
+  void cross_surface(const Surface& surf);
 
   //! Cross a vacuum boundary condition.
   //
@@ -103,17 +102,8 @@ public:
 
   //! mark a particle as lost and create a particle restart file
   //! \param message A warning message to display
-  void mark_as_lost(const char* message);
-
-  void mark_as_lost(const std::string& message)
-  {
-    mark_as_lost(message.c_str());
-  }
-
-  void mark_as_lost(const std::stringstream& message)
-  {
-    mark_as_lost(message.str());
-  }
+  virtual void mark_as_lost(const char* message) override;
+  using GeometryState::mark_as_lost;
 
   //! create a particle restart HDF5 file
   void write_restart() const;
@@ -136,6 +126,8 @@ public:
 std::string particle_type_to_str(ParticleType type);
 
 ParticleType str_to_particle_type(std::string str);
+
+void add_surf_source_to_bank(Particle& p, const Surface& surf);
 
 } // namespace openmc
 

@@ -77,8 +77,10 @@ std::string MeshFilter::text_label(int bin) const
 
 void MeshFilter::set_mesh(int32_t mesh)
 {
+  // perform any additional perparation for mesh tallies here
   mesh_ = mesh;
   n_bins_ = model::meshes[mesh_]->n_bins();
+  model::meshes[mesh_]->prepare_for_tallies();
 }
 
 void MeshFilter::set_translation(const Position& translation)
@@ -159,6 +161,7 @@ extern "C" int openmc_mesh_filter_get_translation(
   // Check the filter type
   const auto& filter = model::tally_filters[index];
   if (filter->type() != FilterType::MESH &&
+      filter->type() != FilterType::MESHBORN &&
       filter->type() != FilterType::MESH_SURFACE) {
     set_errmsg("Tried to get a translation from a non-mesh-based filter.");
     return OPENMC_E_INVALID_TYPE;
@@ -184,6 +187,7 @@ extern "C" int openmc_mesh_filter_set_translation(
   const auto& filter = model::tally_filters[index];
   // Check the filter type
   if (filter->type() != FilterType::MESH &&
+      filter->type() != FilterType::MESHBORN &&
       filter->type() != FilterType::MESH_SURFACE) {
     set_errmsg("Tried to set mesh on a non-mesh-based filter.");
     return OPENMC_E_INVALID_TYPE;

@@ -15,6 +15,7 @@
 #include "openmc/material.h"
 #include "openmc/math_functions.h"
 #include "openmc/nuclide.h"
+#include "openmc/search.h"
 #include "openmc/settings.h"
 
 namespace openmc {
@@ -183,6 +184,15 @@ vector<vector<double>> MgxsInterface::get_mat_kTs()
 
 //==============================================================================
 
+int MgxsInterface::get_group_index(double E)
+{
+  int g =
+    lower_bound_index(rev_energy_bins_.begin(), rev_energy_bins_.end(), E);
+  return num_energy_groups_ - g - 1.;
+}
+
+//==============================================================================
+
 void MgxsInterface::read_header(const std::string& path_cross_sections)
 {
   // Save name of HDF5 file to be read to struct data
@@ -284,7 +294,7 @@ void mark_fissionable_mgxs_materials()
   for (const auto& mat : model::materials) {
     for (int i_nuc : mat->nuclide_) {
       if (data::mg.nuclides_[i_nuc].fissionable) {
-        mat->fissionable_ = true;
+        mat->fissionable() = true;
       }
     }
   }

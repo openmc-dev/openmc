@@ -23,6 +23,7 @@
 #include "openmc/material.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
+#include "openmc/openmp_interface.h"
 #include "openmc/output.h"
 #include "openmc/particle.h"
 #include "openmc/progress_bar.h"
@@ -44,7 +45,7 @@ constexpr int32_t OVERLAP {-3};
 IdData::IdData(size_t h_res, size_t v_res) : data_({v_res, h_res, 3}, NOT_FOUND)
 {}
 
-void IdData::set_value(size_t y, size_t x, const Particle& p, int level)
+void IdData::set_value(size_t y, size_t x, const GeometryState& p, int level)
 {
   // set cell data
   if (p.n_coord() <= level) {
@@ -77,7 +78,8 @@ PropertyData::PropertyData(size_t h_res, size_t v_res)
   : data_({v_res, h_res, 2}, NOT_FOUND)
 {}
 
-void PropertyData::set_value(size_t y, size_t x, const Particle& p, int level)
+void PropertyData::set_value(
+  size_t y, size_t x, const GeometryState& p, int level)
 {
   Cell* c = model::cells.at(p.lowest_coord().cell).get();
   data_(y, x, 0) = (p.sqrtkT() * p.sqrtkT()) / K_BOLTZMANN;
@@ -312,6 +314,11 @@ void Plot::set_output_path(pugi::xml_node plot_node)
     filename = get_node_value(plot_node, "filename");
   } else {
     filename = fmt::format("plot_{}", id());
+  }
+  const std::string dir_if_present =
+    filename.substr(0, filename.find_last_of("/") + 1);
+  if (dir_if_present.size() > 0 && !dir_exists(dir_if_present)) {
+    fatal_error(fmt::format("Directory '{}' does not exist!", dir_if_present));
   }
   // add appropriate file extension to name
   switch (type_) {
@@ -964,10 +971,6 @@ void Plot::create_voxel() const
 
   ProgressBar pb;
   for (int z = 0; z < pixels_[2]; z++) {
-    // update progress bar
-    pb.set_value(
-      100. * static_cast<double>(z) / static_cast<double>((pixels_[2] - 1)));
-
     // update z coordinate
     pltbase.origin_.z = ll.z + z * vox[2];
 
@@ -982,6 +985,10 @@ void Plot::create_voxel() const
 
     // Write to HDF5 dataset
     voxel_write_slice(z, dspace, dset, memspace, data_flipped.data());
+
+    // update progress bar
+    pb.set_value(
+      100. * static_cast<double>(z + 1) / static_cast<double>((pixels_[2])));
   }
 
   voxel_finalize(dspace, dset, memspace);
@@ -1083,7 +1090,7 @@ void ProjectionPlot::set_output_path(pugi::xml_node node)
 // Advances to the next boundary from outside the geometry
 // Returns -1 if no intersection found, and the surface index
 // if an intersection was found.
-int ProjectionPlot::advance_to_boundary_from_void(Particle& p)
+int ProjectionPlot::advance_to_boundary_from_void(GeometryState& p)
 {
   constexpr double scoot = 1e-5;
   double min_dist = {INFINITY};
@@ -1218,11 +1225,7 @@ void ProjectionPlot::create_output() const
    * Note that a vector of vectors is required rather than a 2-tensor,
    * since the stack size varies within each column.
    */
-#ifdef _OPENMP
-  const int n_threads = omp_get_max_threads();
-#else
-  const int n_threads = 1;
-#endif
+  const int n_threads = num_threads();
   std::vector<std::vector<std::vector<TrackSegment>>> this_line_segments(
     n_threads);
   for (int t = 0; t < n_threads; ++t) {
@@ -1234,29 +1237,11 @@ void ProjectionPlot::create_output() const
 
 #pragma omp parallel
   {
+    const int n_threads = num_threads();
+    const int tid = thread_num();
 
-#ifdef _OPENMP
-    const int n_threads = omp_get_max_threads();
-    const int tid = omp_get_thread_num();
-#else
-    int n_threads = 1;
-    int tid = 0;
-#endif
-
-    SourceSite s; // Where particle starts from (camera)
-    s.E = 1;
-    s.wgt = 1;
-    s.delayed_group = 0;
-    s.particle = ParticleType::photon; // just has to be something reasonable
-    s.parent_id = 1;
-    s.progeny_id = 2;
-    s.r = camera_position_;
-
-    Particle p;
-    s.u.x = 1.0;
-    s.u.y = 0.0;
-    s.u.z = 0.0;
-    p.from_source(&s);
+    GeometryState p;
+    p.u() = {1.0, 0.0, 0.0};
 
     int vert = tid;
     for (int iter = 0; iter <= pixels_[1] / n_threads; iter++) {
@@ -1272,6 +1257,10 @@ void ProjectionPlot::create_output() const
 
         for (int horiz = 0; horiz < pixels_[0]; ++horiz) {
 
+          // Projection mode below decides ray starting conditions
+          Position init_r;
+          Direction init_u;
+
           // Generate the starting position/direction of the ray
           if (orthographic_width_ == 0.0) { // perspective projection
             double this_phi =
@@ -1282,18 +1271,22 @@ void ProjectionPlot::create_output() const
             camera_local_vec.x = std::cos(this_phi) * std::sin(this_mu);
             camera_local_vec.y = std::sin(this_phi) * std::sin(this_mu);
             camera_local_vec.z = std::cos(this_mu);
-            s.u = camera_local_vec.rotate(camera_to_model);
+            init_u = camera_local_vec.rotate(camera_to_model);
+            init_r = camera_position_;
           } else { // orthographic projection
-            s.u = looking_direction;
+            init_u = looking_direction;
 
             double x_pix_coord = (static_cast<double>(horiz) - p0 / 2.0) / p0;
             double y_pix_coord = (static_cast<double>(vert) - p1 / 2.0) / p0;
-            s.r = camera_position_ +
-                  cam_yaxis * x_pix_coord * orthographic_width_ +
-                  cam_zaxis * y_pix_coord * orthographic_width_;
+
+            init_r = camera_position_;
+            init_r += cam_yaxis * x_pix_coord * orthographic_width_;
+            init_r += cam_zaxis * y_pix_coord * orthographic_width_;
           }
 
-          p.from_source(&s); // put particle at camera
+          // Resets internal geometry state of particle
+          p.init_from_r_u(init_r, init_u);
+
           bool hitsomething = false;
           bool intersection_found = true;
           int loop_counter = 0;

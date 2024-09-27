@@ -23,6 +23,7 @@
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
+#include "openmc/openmp_interface.h"
 #include "openmc/output.h"
 #include "openmc/plot.h"
 #include "openmc/random_lcg.h"
@@ -63,13 +64,7 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
     return err;
 
 #ifdef LIBMESH
-
-#ifdef _OPENMP
-  int n_threads = omp_get_max_threads();
-#else
-  int n_threads = 1;
-#endif
-
+  const int n_threads = num_threads();
   // initialize libMesh if it hasn't been initialized already
   // (if initialized externally, the libmesh_init object needs to be provided
   // also)
@@ -309,8 +304,9 @@ int parse_command_line(int argc, char* argv[])
         settings::path_input));
     }
 
-    // Add slash at end of directory if it isn't the
-    if (!ends_with(settings::path_input, "/")) {
+    // Add slash at end of directory if it isn't there
+    if (!ends_with(settings::path_input, "/") &&
+        dir_exists(settings::path_input)) {
       settings::path_input += "/";
     }
   }
@@ -320,18 +316,11 @@ int parse_command_line(int argc, char* argv[])
 
 bool read_model_xml()
 {
-  std::string model_filename =
-    settings::path_input.empty() ? "." : settings::path_input;
-
-  // some string cleanup
-  // a trailing "/" is applied to path_input if it's specified,
-  // remove it for the first attempt at reading the input file
-  if (ends_with(model_filename, "/"))
-    model_filename.pop_back();
+  std::string model_filename = settings::path_input;
 
   // if the current filename is a directory, append the default model filename
-  if (dir_exists(model_filename))
-    model_filename += "/model.xml";
+  if (model_filename.empty() || dir_exists(model_filename))
+    model_filename += "model.xml";
 
   // if this file doesn't exist, stop here
   if (!file_exists(model_filename))

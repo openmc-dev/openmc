@@ -1,11 +1,12 @@
+from __future__ import annotations
 from abc import ABCMeta
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 import hashlib
 from itertools import product
 from numbers import Real, Integral
-import lxml.etree as ET
 import warnings
 
+import lxml.etree as ET
 import numpy as np
 import pandas as pd
 
@@ -735,7 +736,7 @@ class ParticleFilter(Filter):
 
     Parameters
     ----------
-    bins : str, or iterable of str
+    bins : str, or sequence of str
         The particles to tally represented as strings ('neutron', 'photon',
         'electron', 'positron').
     filter_id : int
@@ -743,7 +744,7 @@ class ParticleFilter(Filter):
 
     Attributes
     ----------
-    bins : iterable of str
+    bins : sequence of str
         The particles to tally
     id : int
         Unique identifier for the filter
@@ -763,8 +764,8 @@ class ParticleFilter(Filter):
 
     @Filter.bins.setter
     def bins(self, bins):
-        bins = np.atleast_1d(bins)
-        cv.check_iterable_type('filter bins', bins, str)
+        cv.check_type('bins', bins, Sequence, str)
+        bins = np.atleast_1d(bins)    
         for edge in bins:
             cv.check_value('filter bin', edge, _PARTICLES)
         self._bins = bins
@@ -804,8 +805,8 @@ class MeshFilter(Filter):
     id : int
         Unique identifier for the filter
     translation : Iterable of float
-        This array specifies a vector that is used to translate (shift)
-        the mesh for this filter
+        This array specifies a vector that is used to translate (shift) the mesh
+        for this filter
     bins : list of tuple
         A list of mesh indices for each filter bin, e.g. [(1, 1, 1), (2, 1, 1),
         ...]
@@ -846,7 +847,6 @@ class MeshFilter(Filter):
         mesh_obj = kwargs['meshes'][mesh_id]
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 
-
         out = cls(mesh_obj, filter_id=filter_id)
 
         translation = group.get('translation')
@@ -864,10 +864,10 @@ class MeshFilter(Filter):
         cv.check_type('filter mesh', mesh, openmc.MeshBase)
         self._mesh = mesh
         if isinstance(mesh, openmc.UnstructuredMesh):
-            if mesh.volumes is None:
-                self.bins = []
-            else:
+            if mesh.has_statepoint_data:
                 self.bins = list(range(len(mesh.volumes)))
+            else:
+                self.bins = []
         else:
             self.bins = list(mesh.indices)
 
@@ -972,7 +972,7 @@ class MeshFilter(Filter):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem, **kwargs):
+    def from_xml_element(cls, elem: ET.Element, **kwargs) -> MeshFilter:
         mesh_id = int(get_text(elem, 'bins'))
         mesh_obj = kwargs['meshes'][mesh_id]
         filter_id = int(elem.get('id'))
@@ -982,6 +982,34 @@ class MeshFilter(Filter):
         if translation:
             out.translation = [float(x) for x in translation.split()]
         return out
+
+
+class MeshBornFilter(MeshFilter):
+    """Filter events by the mesh cell a particle originated from.
+
+    Parameters
+    ----------
+    mesh : openmc.MeshBase
+        The mesh object that events will be tallied onto
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    mesh : openmc.MeshBase
+        The mesh object that events will be tallied onto
+    id : int
+        Unique identifier for the filter
+    translation : Iterable of float
+        This array specifies a vector that is used to translate (shift)
+        the mesh for this filter
+    bins : list of tuple
+        A list of mesh indices for each filter bin, e.g. [(1, 1, 1), (2, 1, 1),
+        ...]
+    num_bins : Integral
+        The number of filter bins
+
+    """
 
 
 class MeshSurfaceFilter(MeshFilter):
@@ -1348,6 +1376,10 @@ class EnergyFilter(RealFilter):
 
     """
     units = 'eV'
+
+    def __init__(self, values, filter_id=None):
+        cv.check_length('values', values, 2)
+        super().__init__(values, filter_id)
 
     def get_bin_index(self, filter_bin):
         # Use lower energy bound to find index for RealFilters

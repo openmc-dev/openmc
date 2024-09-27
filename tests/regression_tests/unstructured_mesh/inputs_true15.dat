@@ -67,7 +67,7 @@
       <lower_left>-10.0 -10.0 -10.0</lower_left>
       <upper_right>10.0 10.0 10.0</upper_right>
     </mesh>
-    <mesh id="2" library="moab" type="unstructured">
+    <mesh id="2" library="moab" options="MAX_DEPTH=15;PLANE_SET=2" type="unstructured">
       <filename>test_mesh_tets.e</filename>
     </mesh>
     <filter id="1" type="mesh">

@@ -37,5 +37,5 @@ def _error_handler(err, func, args):
         warn(msg)
     elif err < 0:
         if not msg:
-            msg = "Unknown error encountered (code {}).".format(err)
+            msg = f"Unknown error encountered (code {err})."
         raise exc.OpenMCError(msg)

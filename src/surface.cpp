@@ -63,7 +63,8 @@ Surface::Surface(pugi::xml_node surf_node)
 {
   if (check_for_node(surf_node, "id")) {
     id_ = std::stoi(get_node_value(surf_node, "id"));
-    if (contains(settings::source_write_surf_id, id_)) {
+    if (contains(settings::source_write_surf_id, id_) ||
+        settings::source_write_surf_id.empty()) {
       surf_source_ = true;
     }
   } else {
@@ -129,7 +130,7 @@ bool Surface::sense(Position r, Direction u) const
   return f > 0.0;
 }
 
-Direction Surface::reflect(Position r, Direction u, Particle* p) const
+Direction Surface::reflect(Position r, Direction u, GeometryState* p) const
 {
   // Determine projection of direction onto normal and squared magnitude of
   // normal.
@@ -140,7 +141,7 @@ Direction Surface::reflect(Position r, Direction u, Particle* p) const
 }
 
 Direction Surface::diffuse_reflect(
-  Position r, Direction u, uint64_t* seed) const
+  Position r, Direction u, uint64_t* seed, GeometryState* p) const
 {
   // Diffuse reflect direction according to the normal.
   // cosine distribution

@@ -24,7 +24,7 @@ ARG compile_cores=1
 ARG build_dagmc=off
 ARG build_libmesh=off
 
-FROM debian:bullseye-slim AS dependencies
+FROM debian:bookworm-slim AS dependencies
 
 ARG compile_cores
 ARG build_dagmc
@@ -34,21 +34,21 @@ ARG build_libmesh
 ENV HOME=/root
 
 # Embree variables
-ENV EMBREE_TAG='v3.12.2'
+ENV EMBREE_TAG='v4.3.1'
 ENV EMBREE_REPO='https://github.com/embree/embree'
 ENV EMBREE_INSTALL_DIR=$HOME/EMBREE/
 
 # MOAB variables
-ENV MOAB_TAG='5.3.0'
+ENV MOAB_TAG='5.5.1'
 ENV MOAB_REPO='https://bitbucket.org/fathomteam/moab/'
 
 # Double-Down variables
-ENV DD_TAG='v1.0.0'
+ENV DD_TAG='v1.1.0'
 ENV DD_REPO='https://github.com/pshriwise/double-down'
 ENV DD_INSTALL_DIR=$HOME/Double_down
 
 # DAGMC variables
-ENV DAGMC_BRANCH='v3.2.1'
+ENV DAGMC_BRANCH='v3.2.3'
 ENV DAGMC_REPO='https://github.com/svalinn/DAGMC'
 ENV DAGMC_INSTALL_DIR=$HOME/DAGMC/
 
@@ -71,8 +71,12 @@ RUN apt-get update -y && \
     apt-get install -y \
         python3-pip python-is-python3 wget git build-essential cmake \
         mpich libmpich-dev libhdf5-serial-dev libhdf5-mpich-dev \
-        libpng-dev && \
+        libpng-dev python3-venv && \
     apt-get autoremove
+
+# create virtual enviroment to avoid externally managed environment error
+RUN python3 -m venv openmc_venv
+ENV PATH=/openmc_venv/bin:$PATH
 
 # Update system-provided pip
 RUN pip install --upgrade pip
@@ -91,7 +95,7 @@ RUN cd $HOME \
 RUN if [ "$build_dagmc" = "on" ]; then \
         # Install addition packages required for DAGMC
         apt-get -y install libeigen3-dev libnetcdf-dev libtbb-dev libglfw3-dev \
-        && pip install --upgrade numpy "cython<3.0" \
+        && pip install --upgrade numpy \
         # Clone and install EMBREE
         && mkdir -p $HOME/EMBREE && cd $HOME/EMBREE \
         && git clone --single-branch -b ${EMBREE_TAG} --depth 1 ${EMBREE_REPO} \
@@ -107,7 +111,8 @@ RUN if [ "$build_dagmc" = "on" ]; then \
         mkdir -p $HOME/MOAB && cd $HOME/MOAB \
         && git clone  --single-branch -b ${MOAB_TAG} --depth 1 ${MOAB_REPO} \
         && mkdir build && cd build \
-        && cmake ../moab -DENABLE_HDF5=ON \
+        && cmake ../moab -DCMAKE_BUILD_TYPE=Release \
+                      -DENABLE_HDF5=ON \
                       -DENABLE_NETCDF=ON \
                       -DBUILD_SHARED_LIBS=OFF \
                       -DENABLE_FORTRAN=OFF \

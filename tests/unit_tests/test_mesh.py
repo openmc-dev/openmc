@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 import openmc
 
-from openmc import RegularMesh, RectilinearMesh, CylindricalMesh, SphericalMesh
 
 @pytest.mark.parametrize("val_left,val_right", [(0, 0), (-1., -1.), (2.0, 2)])
 def test_raises_error_when_flat(val_left, val_right):
@@ -49,6 +48,17 @@ def test_regular_mesh_bounding_box():
     np.testing.assert_array_equal(bb.upper_right, (2, 3, 5))
 
 
+def test_rectilinear_mesh_bounding_box():
+    mesh = openmc.RectilinearMesh()
+    mesh.x_grid = [0., 1., 5., 10.]
+    mesh.y_grid = [-10., -5., 0.]
+    mesh.z_grid = [-100., 0., 100.]
+    bb = mesh.bounding_box
+    assert isinstance(bb, openmc.BoundingBox)
+    np.testing.assert_array_equal(bb.lower_left, (0., -10. ,-100.))
+    np.testing.assert_array_equal(bb.upper_right, (10., 0., 100.))
+
+
 def test_cylindrical_mesh_bounding_box():
     # test with mesh at origin (0, 0, 0)
     mesh = openmc.CylindricalMesh(
@@ -76,6 +86,7 @@ def test_cylindrical_mesh_bounding_box():
     mesh.z_grid = [-10, 0, 10]
     np.testing.assert_array_equal(mesh.lower_left, (2, 4, -3))
     np.testing.assert_array_equal(mesh.upper_right, (4, 6, 17))
+
 
 def test_spherical_mesh_bounding_box():
     # test with mesh at origin (0, 0, 0)
@@ -121,6 +132,27 @@ def test_SphericalMesh_initiation():
     mesh.r_grid = (0, 11)
     assert (mesh.r_grid == np.array([0., 11.])).all()
 
+    # test invalid r_grid values
+    with pytest.raises(ValueError):
+        openmc.SphericalMesh(r_grid=[1, 1])
+
+    with pytest.raises(ValueError):
+        openmc.SphericalMesh(r_grid=[0])
+
+    # test invalid theta_grid values
+    with pytest.raises(ValueError):
+        openmc.SphericalMesh(r_grid=[1, 2], theta_grid=[1, 1])
+
+    with pytest.raises(ValueError):
+        openmc.SphericalMesh(r_grid=[1, 2], theta_grid=[0])
+
+    # test invalid phi_grid values
+    with pytest.raises(ValueError):
+        openmc.SphericalMesh(r_grid=[1, 2], phi_grid=[1, 1])
+
+    with pytest.raises(ValueError):
+        openmc.SphericalMesh(r_grid=[1, 2], phi_grid=[0])
+
     # waffles and pancakes are unfortunately not valid radii
     with pytest.raises(TypeError):
         openmc.SphericalMesh(('🧇', '🥞'))
@@ -155,6 +187,42 @@ def test_CylindricalMesh_initiation():
     # waffles and pancakes are unfortunately not valid radii
     with pytest.raises(TypeError):
         openmc.SphericalMesh(('🧇', '🥞'))
+
+
+def test_invalid_cylindrical_mesh_errors():
+    # Test invalid r_grid values
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[5, 1], phi_grid=[0, pi], z_grid=[0, 10])
+
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[1, 2, 4, 3], phi_grid=[0, pi], z_grid=[0, 10])
+
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[1], phi_grid=[0, pi], z_grid=[0, 10])
+
+    # Test invalid phi_grid values
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[0, 1, 2], phi_grid=[-1, 3], z_grid=[0, 10])
+
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(
+            r_grid=[0, 1, 2],
+            phi_grid=[0, 2*pi + 0.1],
+            z_grid=[0, 10]
+        )
+
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[0, 1, 2], phi_grid=[pi], z_grid=[0, 10])
+
+    # Test invalid z_grid values
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[0, 1, 2], phi_grid=[0, pi], z_grid=[5])
+
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[0, 1, 2], phi_grid=[0, pi], z_grid=[5, 1])
+
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[1, 2, 4, 3], phi_grid=[0, pi], z_grid=[0, 10, 5])
 
 
 def test_centroids():
@@ -239,4 +307,124 @@ def test_mesh_vertices(mesh_type):
         np.testing.assert_equal(mesh.vertices_spherical[ijk], exp_vert)
 
 
+def test_CylindricalMesh_get_indices_at_coords():
+    # default origin (0, 0, 0) and default phi grid (0, 2*pi)
+    mesh = openmc.CylindricalMesh(r_grid=(0, 5, 10), z_grid=(0, 5, 10))
+    assert mesh.get_indices_at_coords([1, 0, 1]) == (0, 0, 0)
+    assert mesh.get_indices_at_coords([6, 0, 1]) == (1, 0, 0)
+    assert mesh.get_indices_at_coords([9, 0, 1]) == (1, 0, 0)
+    assert mesh.get_indices_at_coords([0, 6, 0]) == (1, 0, 0)
+    assert mesh.get_indices_at_coords([0, 9, 6]) == (1, 0, 1)
+    assert mesh.get_indices_at_coords([-2, -2, 9]) == (0, 0, 1)
 
+    with pytest.raises(ValueError):
+        assert mesh.get_indices_at_coords([8, 8, 1])  # resulting r value to large
+    with pytest.raises(ValueError):
+        assert mesh.get_indices_at_coords([-8, -8, 1])  # resulting r value to large
+    with pytest.raises(ValueError):
+        assert mesh.get_indices_at_coords([1, 0, -1])  # z value below range
+    with pytest.raises(ValueError):
+        assert mesh.get_indices_at_coords([1, 0, 11])  # z value above range
+
+    assert mesh.get_indices_at_coords([1, 1, 1]) == (0, 0, 0)
+
+    # negative range on z grid
+    mesh = openmc.CylindricalMesh(
+        r_grid=(0, 5, 10),
+        phi_grid=(0, 0.5 * pi, pi, 1.5 * pi, 1.9 * pi),
+        z_grid=(-5, 0, 5, 10),
+    )
+    assert mesh.get_indices_at_coords([1, 1, 1]) == (0, 0, 1)  # first angle quadrant
+    assert mesh.get_indices_at_coords([2, 2, 6]) == (0, 0, 2)  # first angle quadrant
+    assert mesh.get_indices_at_coords([-2, 0.1, -1]) == (0, 1, 0)  # second angle quadrant
+    assert mesh.get_indices_at_coords([-2, -0.1, -1]) == (0, 2, 0)  # third angle quadrant
+    assert mesh.get_indices_at_coords([2, -0.9, -1]) == (0, 3, 0)  # forth angle quadrant
+
+    with pytest.raises(ValueError):
+        assert mesh.get_indices_at_coords([2, -0.1, 1])  # outside of phi range
+
+    # origin of mesh not default
+    mesh = openmc.CylindricalMesh(
+        r_grid=(0, 5, 10),
+        phi_grid=(0, 0.5 * pi, pi, 1.5 * pi, 1.9 * pi),
+        z_grid=(-5, 0, 5, 10),
+        origin=(100, 200, 300),
+    )
+    assert mesh.get_indices_at_coords([101, 201, 301]) == (0, 0, 1)  # first angle quadrant
+    assert mesh.get_indices_at_coords([102, 202, 306]) == (0, 0, 2)  # first angle quadrant
+    assert mesh.get_indices_at_coords([98, 200.1, 299]) == (0, 1, 0)  # second angle quadrant
+    assert mesh.get_indices_at_coords([98, 199.9, 299]) == (0, 2, 0)  # third angle quadrant
+    assert mesh.get_indices_at_coords([102, 199.1, 299]) == (0, 3, 0)  # forth angle quadrant
+
+
+def test_umesh_roundtrip(run_in_tmpdir, request):
+    umesh = openmc.UnstructuredMesh(request.path.parent / 'test_mesh_tets.e', 'moab')
+    umesh.output = True
+
+    # create a tally using this mesh
+    mf = openmc.MeshFilter(umesh)
+    tally = openmc.Tally()
+    tally.filters = [mf]
+    tally.scores = ['flux']
+
+    tallies = openmc.Tallies([tally])
+    tallies.export_to_xml()
+
+    xml_tallies = openmc.Tallies.from_xml()
+    xml_tally = xml_tallies[0]
+    xml_mesh = xml_tally.filters[0].mesh
+
+    assert umesh.id == xml_mesh.id
+
+
+def test_mesh_get_homogenized_materials():
+    """Test the get_homogenized_materials method"""
+    # Simple model with 1 cm of Fe56 next to 1 cm of H1
+    fe = openmc.Material()
+    fe.add_nuclide('Fe56', 1.0)
+    fe.set_density('g/cm3', 5.0)
+    h = openmc.Material()
+    h.add_nuclide('H1', 1.0)
+    h.set_density('g/cm3', 1.0)
+
+    x0 = openmc.XPlane(-1.0, boundary_type='vacuum')
+    x1 = openmc.XPlane(0.0)
+    x2 = openmc.XPlane(1.0)
+    x3 = openmc.XPlane(2.0, boundary_type='vacuum')
+    cell1 = openmc.Cell(fill=fe, region=+x0 & -x1)
+    cell2 = openmc.Cell(fill=h, region=+x1 & -x2)
+    cell_empty = openmc.Cell(region=+x2 & -x3)
+    model = openmc.Model(geometry=openmc.Geometry([cell1, cell2, cell_empty]))
+    model.settings.particles = 1000
+    model.settings.batches = 10
+
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = (-1., -1., -1.)
+    mesh.upper_right = (1., 1., 1.)
+    mesh.dimension = (3, 1, 1)
+    m1, m2, m3 = mesh.get_homogenized_materials(model, n_samples=1_000_000)
+
+    # Left mesh element should be only Fe56
+    assert m1.get_mass_density('Fe56') == pytest.approx(5.0)
+
+    # Middle mesh element should be 50% Fe56 and 50% H1
+    assert m2.get_mass_density('Fe56') == pytest.approx(2.5, rel=1e-2)
+    assert m2.get_mass_density('H1') == pytest.approx(0.5, rel=1e-2)
+
+    # Right mesh element should be only H1
+    assert m3.get_mass_density('H1') == pytest.approx(1.0)
+
+    mesh_void = openmc.RegularMesh()
+    mesh_void.lower_left = (0.5, 0.5, -1.)
+    mesh_void.upper_right = (1.5, 1.5, 1.)
+    mesh_void.dimension = (1, 1, 1)
+    m4, = mesh_void.get_homogenized_materials(model, n_samples=1_000_000)
+
+    # Mesh element that overlaps void should have half density
+    assert m4.get_mass_density('H1') == pytest.approx(0.5, rel=1e-2)
+
+    # If not including void, density of homogenized material should be same as
+    # original material
+    m5, = mesh_void.get_homogenized_materials(
+        model, n_samples=1000, include_void=False)
+    assert m5.get_mass_density('H1') == pytest.approx(1.0)

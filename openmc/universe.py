@@ -1,24 +1,21 @@
+from __future__ import annotations
 import math
-import typing
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from copy import deepcopy
 from numbers import Integral, Real
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import lxml.etree as ET
 import warnings
 
 import h5py
+import lxml.etree as ET
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-
 from ._xml import get_text
 from .checkvalue import check_type, check_value
 from .mixin import IDManagerMixin
-from .plots import _SVG_COLORS
 from .surface import _BOUNDARY_TYPES
 
 
@@ -94,7 +91,7 @@ class UniverseBase(ABC, IDManagerMixin):
         else:
             raise ValueError('No volume information found for this universe.')
 
-    def get_all_universes(self):
+    def get_all_universes(self, memo=None):
         """Return all universes that are contained within this one.
 
         Returns
@@ -104,10 +101,16 @@ class UniverseBase(ABC, IDManagerMixin):
             :class:`Universe` instances
 
         """
+        if memo is None:
+            memo = set()
+        elif self in memo:
+            return {}
+        memo.add(self)
+
         # Append all Universes within each Cell to the dictionary
         universes = {}
         for cell in self.get_all_cells().values():
-            universes.update(cell.get_all_universes())
+            universes.update(cell.get_all_universes(memo))
 
         return universes
 
@@ -228,7 +231,7 @@ class Universe(UniverseBase):
         return self._cells
 
     @property
-    def bounding_box(self):
+    def bounding_box(self) -> openmc.BoundingBox:
         regions = [c.region for c in self.cells.values()
                    if c.region is not None]
         if regions:
@@ -643,15 +646,14 @@ class Universe(UniverseBase):
 
         """
 
-        cells = {}
-
-        if memo and self in memo:
-            return cells
-
-        if memo is not None:
-            memo.add(self)
+        if memo is None:
+            memo = set()
+        elif self in memo:
+            return {}
+        memo.add(self)
 
         # Add this Universe's cells to the dictionary
+        cells = {}
         cells.update(self._cells)
 
         # Append all Cells in each Cell in the Universe to the dictionary
@@ -671,6 +673,9 @@ class Universe(UniverseBase):
 
         """
 
+        if memo is None:
+            memo = set()
+
         materials = {}
 
         # Append all Cells in each Cell in the Universe to the dictionary
@@ -681,15 +686,17 @@ class Universe(UniverseBase):
         return materials
 
     def create_xml_subelement(self, xml_element, memo=None):
+        if memo is None:
+            memo = set()
+
         # Iterate over all Cells
         for cell in self._cells.values():
 
             # If the cell was already written, move on
-            if memo and cell in memo:
+            if cell in memo:
                 continue
 
-            if memo is not None:
-                memo.add(cell)
+            memo.add(cell)
 
             # Create XML subelement for this Cell
             cell_element = cell.create_xml_subelement(xml_element, memo)
@@ -932,11 +939,13 @@ class DAGMCUniverse(UniverseBase):
         return self._n_geom_elements('surface')
 
     def create_xml_subelement(self, xml_element, memo=None):
-        if memo and self in memo:
+        if memo is None:
+            memo = set()
+
+        if self in memo:
             return
 
-        if memo is not None:
-            memo.add(self)
+        memo.add(self)
 
         # Set xml element values
         dagmc_element = ET.Element('dagmc_universe')

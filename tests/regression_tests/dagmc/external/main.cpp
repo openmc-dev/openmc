@@ -5,6 +5,7 @@
 #include "openmc/geometry.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/material.h"
+#include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include <iostream>
 
@@ -14,7 +15,12 @@ int main(int argc, char* argv[])
   int openmc_err;
 
   // Initialise OpenMC
+#ifdef OPENMC_MPI
+  MPI_Comm world = MPI_COMM_WORLD;
+  openmc_err = openmc_init(argc, argv, &world);
+#else
   openmc_err = openmc_init(argc, argv, nullptr);
+#endif
   if (openmc_err == -1) {
     // This happens for the -h and -v flags
     return EXIT_SUCCESS;
@@ -33,7 +39,7 @@ int main(int argc, char* argv[])
   // Initialize acceleration data structures
   rval = dag_ptr->init_OBBTree();
   if (rval != moab::MB_SUCCESS) {
-    fatal_error("Failed to initialise OBB tree");
+    fatal_error("Failed to initialize OBB tree");
   }
 
   // Get rid of existing geometry
@@ -62,6 +68,20 @@ int main(int argc, char* argv[])
   // Add cells to universes
   openmc::populate_universes();
 
+  // Make sure implicit complement appears last
+  auto dag_univ = dynamic_cast<DAGUniverse*>(model::universes.back().get());
+  int n = dag_univ->cells_.size();
+  for (int i = 0; i < n - 1; ++i) {
+    if (dag_univ->cells_[i] == dag_univ->implicit_complement_idx()) {
+      fatal_error("Implicit complement cell should appear last in vector of "
+                  "cells for DAGMC universe.");
+    }
+  }
+  if (dag_univ->cells_.back() != dag_univ->implicit_complement_idx()) {
+    fatal_error(
+      "Last cell in DAGMC universe is not an implicit complement cell.");
+  }
+
   // Set root universe
   openmc::model::root_universe = openmc::find_root_universe();
   openmc::check_dagmc_root_univ();
@@ -89,6 +109,10 @@ int main(int argc, char* argv[])
   openmc_err = openmc_finalize();
   if (openmc_err)
     fatal_error(openmc_err_msg);
+
+#ifdef OPENMC_MPI
+  MPI_Finalize();
+#endif
 
   return EXIT_SUCCESS;
 }

@@ -107,31 +107,54 @@ can be used to access the installed packages.
 .. _Spack: https://spack.readthedocs.io/en/latest/
 .. _setup guide: https://spack.readthedocs.io/en/latest/getting_started.html
 
---------------------------------
-Installing from Source on Ubuntu
---------------------------------
+-------------------------------
+Manually Installing from Source
+-------------------------------
 
-To build OpenMC from source, several :ref:`prerequisites <prerequisites>` are
-needed. If you are using Ubuntu or higher, all prerequisites can be installed
-directly from the package manager:
+Obtaining prerequisites on Ubuntu
+---------------------------------
+
+When building OpenMC from source, all :ref:`prerequisites <prerequisites>` can
+be installed using the package manager:
 
 .. code-block:: sh
 
     sudo apt install g++ cmake libhdf5-dev libpng-dev
 
-After the packages have been installed, follow the instructions below for
-building and installing OpenMC from source.
+After the packages have been installed, follow the instructions to build from
+source below.
 
--------------------------------------------
-Installing from Source on Linux or Mac OS X
--------------------------------------------
+Obtaining prerequisites on macOS
+--------------------------------
+
+For an OpenMC build with multithreading enabled, a package manager like
+`Homebrew <https://brew.sh>`_ should first be installed. Then, the following
+packages should be installed, for example in Homebrew via:
+
+.. code-block:: sh
+
+   brew install llvm cmake xtensor hdf5 python libomp libpng
+
+The compiler provided by the above LLVM package should be used in place of the
+one provisioned by XCode, which does not support the multithreading library used
+by OpenMC. Consequently, the C++ compiler should explicitly be set before
+proceeding:
+
+.. code-block:: sh
+
+   export CXX=/opt/homebrew/opt/llvm/bin/clang++
+
+After the packages have been installed, follow the instructions to build from
+source below.
+
+Building Source on Linux or macOS
+---------------------------------
 
 All OpenMC source code is hosted on `GitHub
 <https://github.com/openmc-dev/openmc>`_. If you have `git
-<https://git-scm.com>`_, the `gcc <https://gcc.gnu.org/>`_ compiler suite,
-`CMake <https://cmake.org>`_, and `HDF5
-<https://www.hdfgroup.org/solutions/hdf5/>`_ installed, you can download and
-install OpenMC be entering the following commands in a terminal:
+<https://git-scm.com>`_, a modern C++ compiler, `CMake <https://cmake.org>`_,
+and `HDF5 <https://www.hdfgroup.org/solutions/hdf5/>`_ installed, you can
+download and install OpenMC by entering the following commands in a terminal:
 
 .. code-block:: sh
 
@@ -151,14 +174,14 @@ should specify an installation directory where you have write access, e.g.
     cmake -DCMAKE_INSTALL_PREFIX=$HOME/.local ..
 
 The :mod:`openmc` Python package must be installed separately. The easiest way
-to install it is using `pip <https://pip.pypa.io/en/stable/>`_, which is
-included by default in Python 3.4+. From the root directory of the OpenMC
-distribution/repository, run:
+to install it is using `pip <https://pip.pypa.io/en/stable/>`_.
+From the root directory of the OpenMC repository, run:
 
 .. code-block:: sh
 
     python -m pip install .
 
-If you want to build a parallel version of OpenMC (using OpenMP or MPI),
-directions can be found in the :ref:`detailed installation instructions
+By default, OpenMC will be built with multithreading support. To build
+distributed-memory parallel versions of OpenMC using MPI or to configure other
+options, directions can be found in the :ref:`detailed installation instructions
 <usersguide_build>`.

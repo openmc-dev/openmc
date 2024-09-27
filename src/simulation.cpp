@@ -54,8 +54,14 @@ int openmc_run()
   openmc::simulation::time_total.start();
   openmc_simulation_init();
 
-  int err = 0;
+  // Ensure that a batch isn't executed in the case that the maximum number of
+  // batches has already been run in a restart statepoint file
   int status = 0;
+  if (openmc::simulation::current_batch >= openmc::settings::n_max_batches) {
+    status = openmc::STATUS_EXIT_MAX_BATCH;
+  }
+
+  int err = 0;
   while (status == 0 && err == 0) {
     err = openmc_next_batch(&status);
   }
@@ -122,7 +128,8 @@ int openmc_simulation_init()
     write_message("Resuming simulation...", 6);
   } else {
     // Only initialize primary source bank for eigenvalue simulations
-    if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (settings::run_mode == RunMode::EIGENVALUE &&
+        settings::solver_type == SolverType::MONTE_CARLO) {
       initialize_source();
     }
   }
@@ -130,9 +137,17 @@ int openmc_simulation_init()
   // Display header
   if (mpi::master) {
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
-      header("FIXED SOURCE TRANSPORT SIMULATION", 3);
+      if (settings::solver_type == SolverType::MONTE_CARLO) {
+        header("FIXED SOURCE TRANSPORT SIMULATION", 3);
+      } else if (settings::solver_type == SolverType::RANDOM_RAY) {
+        header("FIXED SOURCE TRANSPORT SIMULATION (RANDOM RAY SOLVER)", 3);
+      }
     } else if (settings::run_mode == RunMode::EIGENVALUE) {
-      header("K EIGENVALUE SIMULATION", 3);
+      if (settings::solver_type == SolverType::MONTE_CARLO) {
+        header("K EIGENVALUE SIMULATION", 3);
+      } else if (settings::solver_type == SolverType::RANDOM_RAY) {
+        header("K EIGENVALUE SIMULATION (RANDOM RAY SOLVER)", 3);
+      }
       if (settings::verbosity >= 7)
         print_columns();
     }
@@ -196,10 +211,12 @@ int openmc_simulation_finalize()
   simulation::time_finalize.stop();
   simulation::time_total.stop();
   if (mpi::master) {
-    if (settings::verbosity >= 6)
-      print_runtime();
-    if (settings::verbosity >= 4)
-      print_results();
+    if (settings::solver_type != SolverType::RANDOM_RAY) {
+      if (settings::verbosity >= 6)
+        print_runtime();
+      if (settings::verbosity >= 4)
+        print_results();
+    }
   }
   if (settings::check_overlaps)
     print_overlap_check();
@@ -309,7 +326,8 @@ vector<int64_t> work_index;
 
 void allocate_banks()
 {
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE &&
+      settings::solver_type == SolverType::MONTE_CARLO) {
     // Allocate source bank
     simulation::source_bank.resize(simulation::work_per_rank);
 
@@ -329,7 +347,13 @@ void initialize_batch()
   ++simulation::current_batch;
 
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    write_message(6, "Simulating batch {}", simulation::current_batch);
+    if (settings::solver_type == SolverType::RANDOM_RAY &&
+        simulation::current_batch < settings::n_inactive + 1) {
+      write_message(
+        6, "Simulating batch {:<4} (inactive)", simulation::current_batch);
+    } else {
+      write_message(6, "Simulating batch {}", simulation::current_batch);
+    }
   }
 
   // Reset total starting particle weight used for normalizing tallies
@@ -493,7 +517,8 @@ void finalize_generation()
   }
   global_tally_leakage = 0.0;
 
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (settings::run_mode == RunMode::EIGENVALUE &&
+      settings::solver_type == SolverType::MONTE_CARLO) {
     // If using shared memory, stable sort the fission bank (by parent IDs)
     // so as to allow for reproducibility regardless of which order particles
     // are run in.
@@ -501,9 +526,13 @@ void finalize_generation()
 
     // Distribute fission bank across processors evenly
     synchronize_bank();
+  }
+
+  if (settings::run_mode == RunMode::EIGENVALUE) {
 
     // Calculate shannon entropy
-    if (settings::entropy_on)
+    if (settings::entropy_on &&
+        settings::solver_type == SolverType::MONTE_CARLO)
       shannon_entropy();
 
     // Collect results and statistics
@@ -732,19 +761,19 @@ void free_memory_simulation()
 
 void transport_history_based_single_particle(Particle& p)
 {
-  while (true) {
+  while (p.alive()) {
     p.event_calculate_xs();
-    if (!p.alive())
-      break;
-    p.event_advance();
-    if (p.collision_distance() > p.boundary().distance) {
-      p.event_cross_surface();
-    } else {
-      p.event_collide();
+    if (p.alive()) {
+      p.event_advance();
+    }
+    if (p.alive()) {
+      if (p.collision_distance() > p.boundary().distance) {
+        p.event_cross_surface();
+      } else if (p.alive()) {
+        p.event_collide();
+      }
     }
     p.event_revive_from_secondary();
-    if (!p.alive())
-      break;
   }
   p.event_death();
 }

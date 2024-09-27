@@ -10,10 +10,10 @@ from .filter import _FILTER_TYPES
 
 
 # Acceptable tally arithmetic binary operations
-_TALLY_ARITHMETIC_OPS = ['+', '-', '*', '/', '^']
+_TALLY_ARITHMETIC_OPS = {'+', '-', '*', '/', '^'}
 
 # Acceptable tally aggregation operations
-_TALLY_AGGREGATE_OPS = ['sum', 'avg']
+_TALLY_AGGREGATE_OPS = {'sum', 'avg'}
 
 
 class CrossScore:
@@ -54,8 +54,7 @@ class CrossScore:
         return str(other) == str(self)
 
     def __repr__(self):
-        return '({} {} {})'.format(self.left_score, self.binary_op,
-                                   self.right_score)
+        return f'({self.left_score} {self.binary_op} {self.right_score})'
 
     @property
     def left_score(self):
@@ -188,9 +187,9 @@ class CrossFilter:
 
     Parameters
     ----------
-    left_filter : Filter or CrossFilter
+    left_filter : openmc.Filter or CrossFilter
         The left filter in the outer product
-    right_filter : Filter or CrossFilter
+    right_filter : openmc.Filter or CrossFilter
         The right filter in the outer product
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
@@ -200,9 +199,9 @@ class CrossFilter:
     ----------
     type : str
         The type of the crossfilter (e.g., 'energy / energy')
-    left_filter : Filter or CrossFilter
+    left_filter : openmc.Filter or CrossFilter
         The left filter in the outer product
-    right_filter : Filter or CrossFilter
+    right_filter : openmc.Filter or CrossFilter
         The right filter in the outer product
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
@@ -271,7 +270,7 @@ class CrossFilter:
     def type(self):
         left_type = self.left_filter.type
         right_type = self.right_filter.type
-        return '({} {} {})'.format(left_type, self.binary_op, right_type)
+        return f'({left_type} {self.binary_op} {right_type})'
 
     @property
     def bins(self):
@@ -517,7 +516,7 @@ class AggregateFilter:
 
     Parameters
     ----------
-    aggregate_filter : Filter or CrossFilter
+    aggregate_filter : openmc.Filter or CrossFilter
         The filter included in the aggregation
     bins : Iterable of tuple
         The filter bins included in the aggregation
@@ -529,7 +528,7 @@ class AggregateFilter:
     ----------
     type : str
         The type of the aggregatefilter (e.g., 'sum(energy)', 'sum(cell)')
-    aggregate_filter : filter
+    aggregate_filter : openmc.Filter
         The filter included in the aggregation
     aggregate_op : str
         The tally aggregation operator (e.g., 'sum', 'avg', etc.) used

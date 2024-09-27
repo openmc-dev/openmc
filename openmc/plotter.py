@@ -7,15 +7,15 @@ import openmc.checkvalue as cv
 import openmc.data
 
 # Supported keywords for continuous-energy cross section plotting
-PLOT_TYPES = ['total', 'scatter', 'elastic', 'inelastic', 'fission',
+PLOT_TYPES = {'total', 'scatter', 'elastic', 'inelastic', 'fission',
               'absorption', 'capture', 'nu-fission', 'nu-scatter', 'unity',
-              'slowing-down power', 'damage']
+              'slowing-down power', 'damage'}
 
 # Supported keywords for multi-group cross section plotting
-PLOT_TYPES_MGXS = ['total', 'absorption', 'scatter', 'fission',
+PLOT_TYPES_MGXS = {'total', 'absorption', 'scatter', 'fission',
                    'kappa-fission', 'nu-fission', 'prompt-nu-fission',
                    'deleyed-nu-fission', 'chi', 'chi-prompt', 'chi-delayed',
-                   'inverse-velocity', 'beta', 'decay-rate', 'unity']
+                   'inverse-velocity', 'beta', 'decay-rate', 'unity'}
 # Create a dictionary which can be used to convert PLOT_TYPES_MGXS to the
 # openmc.XSdata attribute name needed to access the data
 _PLOT_MGXS_ATTR = {line: line.replace(' ', '_').replace('-', '_')
@@ -58,6 +58,16 @@ ELEMENT_NAMES = list(openmc.data.ELEMENT_SYMBOL.values())[1:]
 def _get_legend_label(this, type):
     """Gets a label for the element or nuclide or material and reaction plotted"""
     if isinstance(this, str):
+        if type in openmc.data.DADZ:
+            if this in ELEMENT_NAMES:
+                return f'{this} {type}'
+            else:  # this is a nuclide so the legend can contain more information
+                z, a, m = openmc.data.zam(this)
+                da, dz = openmc.data.DADZ[type]
+                gnds_name = openmc.data.gnds_name(z + dz, a + da, m)
+                # makes a string with nuclide reaction and new nuclide
+                # For example "Be9 (n,2n) Be8"
+                return f'{this} {type} {gnds_name}'
         return f'{this} {type}'
     elif this.name == '':
         return f'Material {this.id} {type}'
@@ -68,24 +78,37 @@ def _get_legend_label(this, type):
 def _get_yaxis_label(reactions, divisor_types):
     """Gets a y axis label for the type of data plotted"""
 
-    if all(isinstance(item, str) for item in reactions.keys()):
-        stem = 'Microscopic'
-        if divisor_types:
-            mid, units = 'Data', ''
-        else:
-            mid, units = 'Cross Section', '[b]'
+    heat_values = {"heating", "heating-local", "damage-energy"}
+
+    # if all the types are heating a different stem and unit is needed
+    if all(set(value).issubset(heat_values) for value in reactions.values()):
+        stem = "Heating"
+    elif all(isinstance(item, str) for item in reactions.keys()):
+        for nuc_reactions in reactions.values():
+            for reaction in nuc_reactions:
+                if reaction in heat_values:
+                    raise TypeError(
+                        "Mixture of heating and Microscopic reactions. "
+                        "Invalid type for plotting"
+                    )
+        stem = "Microscopic"
     elif all(isinstance(item, openmc.Material) for item in reactions.keys()):
         stem = 'Macroscopic'
-        if divisor_types:
-            mid, units = 'Data', ''
-        else:
-            mid, units = 'Cross Section', '[1/cm]'
     else:
         msg = "Mixture of openmc.Material and elements/nuclides. Invalid type for plotting"
         raise TypeError(msg)
 
-    return f'{stem} {mid} {units}'
+    if divisor_types:
+        mid, units = "Data", ""
+    else:
+        mid = "Cross Section"
+        units = {
+            "Macroscopic": "[1/cm]",
+            "Microscopic": "[b]",
+            "Heating": "[eV-barn]",
+        }[stem]
 
+    return f'{stem} {mid} {units}'
 
 def _get_title(reactions):
     """Gets a title for the type of data plotted"""
@@ -100,7 +123,7 @@ def _get_title(reactions):
 def plot_xs(reactions, divisor_types=None, temperature=294., axis=None,
             sab_name=None, ce_cross_sections=None, mg_cross_sections=None,
             enrichment=None, plot_CE=True, orders=None, divisor_orders=None,
-            **kwargs):
+            energy_axis_units="eV", **kwargs):
     """Creates a figure of continuous-energy cross sections for this item.
 
     Parameters
@@ -143,6 +166,10 @@ def plot_xs(reactions, divisor_types=None, temperature=294., axis=None,
     **kwargs :
         All keyword arguments are passed to
         :func:`matplotlib.pyplot.figure`.
+    energy_axis_units : {'eV', 'keV', 'MeV'}
+        Units used on the plot energy axis
+
+        .. versionadded:: 0.15.0
 
     Returns
     -------
@@ -156,6 +183,9 @@ def plot_xs(reactions, divisor_types=None, temperature=294., axis=None,
     import matplotlib.pyplot as plt
 
     cv.check_type("plot_CE", plot_CE, bool)
+    cv.check_value("energy_axis_units", energy_axis_units, {"eV", "keV", "MeV"})
+
+    axis_scaling_factor = {"eV": 1.0, "keV": 1e-3, "MeV": 1e-6}
 
     # Generate the plot
     if axis is None:
@@ -212,6 +242,8 @@ def plot_xs(reactions, divisor_types=None, temperature=294., axis=None,
                     if divisor_types[line] != 'unity':
                         types[line] += ' / ' + divisor_types[line]
 
+        E *= axis_scaling_factor[energy_axis_units]
+
         # Plot the data
         for i in range(len(data)):
             data[i, :] = np.nan_to_num(data[i, :])
@@ -227,9 +259,12 @@ def plot_xs(reactions, divisor_types=None, temperature=294., axis=None,
         ax.set_xscale('log')
         ax.set_yscale('log')
 
-    ax.set_xlabel('Energy [eV]')
+    ax.set_xlabel(f"Energy [{energy_axis_units}]")
     if plot_CE:
-        ax.set_xlim(_MIN_E, _MAX_E)
+        ax.set_xlim(
+            _MIN_E * axis_scaling_factor[energy_axis_units],
+            _MAX_E * axis_scaling_factor[energy_axis_units],
+        )
     else:
         ax.set_xlim(E[-1], E[0])
 

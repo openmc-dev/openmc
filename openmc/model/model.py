@@ -1,16 +1,15 @@
 from __future__ import annotations
 from collections.abc import Iterable
-from contextlib import contextmanager
 from functools import lru_cache
 import os
 from pathlib import Path
 from numbers import Integral
 from tempfile import NamedTemporaryFile
 import warnings
-import lxml.etree as ET
-from typing import Optional, Dict
 
 import h5py
+import lxml.etree as ET
+import numpy as np
 
 import openmc
 import openmc._xml as xml
@@ -18,18 +17,7 @@ from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import check_type, check_value, PathLike
 from openmc.exceptions import InvalidIDError
-
-
-@contextmanager
-def _change_directory(working_dir):
-    """A context manager for executing in a provided working directory"""
-    start_dir = Path.cwd()
-    Path.mkdir(working_dir, parents=True, exist_ok=True)
-    os.chdir(working_dir)
-    try:
-        yield
-    finally:
-        os.chdir(start_dir)
+from openmc.utility_funcs import change_directory
 
 
 class Model:
@@ -95,7 +83,7 @@ class Model:
             self.plots = plots
 
     @property
-    def geometry(self) -> Optional[openmc.Geometry]:
+    def geometry(self) -> openmc.Geometry | None:
         return self._geometry
 
     @geometry.setter
@@ -104,7 +92,7 @@ class Model:
         self._geometry = geometry
 
     @property
-    def materials(self) -> Optional[openmc.Materials]:
+    def materials(self) -> openmc.Materials | None:
         return self._materials
 
     @materials.setter
@@ -118,7 +106,7 @@ class Model:
                 self._materials.append(mat)
 
     @property
-    def settings(self) -> Optional[openmc.Settings]:
+    def settings(self) -> openmc.Settings | None:
         return self._settings
 
     @settings.setter
@@ -127,7 +115,7 @@ class Model:
         self._settings = settings
 
     @property
-    def tallies(self) -> Optional[openmc.Tallies]:
+    def tallies(self) -> openmc.Tallies | None:
         return self._tallies
 
     @tallies.setter
@@ -141,7 +129,7 @@ class Model:
                 self._tallies.append(tally)
 
     @property
-    def plots(self) -> Optional[openmc.Plots]:
+    def plots(self) -> openmc.Plots | None:
         return self._plots
 
     @plots.setter
@@ -181,7 +169,7 @@ class Model:
 
     @property
     @lru_cache(maxsize=None)
-    def _cells_by_name(self) -> Dict[int, openmc.Cell]:
+    def _cells_by_name(self) -> dict[int, openmc.Cell]:
         # Get the names maps, but since names are not unique, store a set for
         # each name key. In this way when the user requests a change by a name,
         # the change will be applied to all of the same name.
@@ -194,7 +182,7 @@ class Model:
 
     @property
     @lru_cache(maxsize=None)
-    def _materials_by_name(self) -> Dict[int, openmc.Material]:
+    def _materials_by_name(self) -> dict[int, openmc.Material]:
         if self.materials is None:
             mats = self.geometry.get_all_materials().values()
         else:
@@ -253,7 +241,8 @@ class Model:
         path : str or PathLike
             Path to model.xml file
         """
-        tree = ET.parse(path)
+        parser = ET.XMLParser(huge_tree=True)
+        tree = ET.parse(path, parser=parser)
         root = tree.getroot()
 
         model = cls()
@@ -394,7 +383,7 @@ class Model:
         # Store whether or not the library was initialized when we started
         started_initialized = self.is_initialized
 
-        with _change_directory(Path(directory)):
+        with change_directory(directory):
             with openmc.lib.quiet_dll(output):
                 # TODO: Support use of IndependentOperator too
                 depletion_operator = dep.CoupledOperator(self, **op_kwargs)
@@ -448,7 +437,7 @@ class Model:
         # Create directory if required
         d = Path(directory)
         if not d.is_dir():
-            d.mkdir(parents=True)
+            d.mkdir(parents=True, exist_ok=True)
 
         self.settings.export_to_xml(d)
         self.geometry.export_to_xml(d, remove_surfs=remove_surfs)
@@ -487,13 +476,16 @@ class Model:
         # if the provided path doesn't end with the XML extension, assume the
         # input path is meant to be a directory. If the directory does not
         # exist, create it and place a 'model.xml' file there.
-        if not str(xml_path).endswith('.xml') and not xml_path.exists():
-            os.mkdir(xml_path)
+        if not str(xml_path).endswith('.xml'):
+            if not xml_path.exists():
+                xml_path.mkdir(parents=True, exist_ok=True)
+            elif not xml_path.is_dir():
+                raise FileExistsError(f"File exists and is not a directory: '{xml_path}'")
             xml_path /= 'model.xml'
         # if this is an XML file location and the file's parent directory does
         # not exist, create it before continuing
         elif not xml_path.parent.exists():
-            os.mkdir(xml_path.parent)
+            xml_path.parent.mkdir(parents=True, exist_ok=True)
 
         if remove_surfs:
             warnings.warn("remove_surfs kwarg will be deprecated soon, please "
@@ -673,7 +665,7 @@ class Model:
         last_statepoint = None
 
         # Operate in the provided working directory
-        with _change_directory(Path(cwd)):
+        with change_directory(cwd):
             if self.is_initialized:
                 # Handle the run options as applicable
                 # First dont allow ones that must be set via init
@@ -708,9 +700,10 @@ class Model:
                     self.export_to_model_xml(**export_kwargs)
                 else:
                     self.export_to_xml(**export_kwargs)
+                path_input = export_kwargs.get("path", None)
                 openmc.run(particles, threads, geometry_debug, restart_file,
                            tracks, output, Path('.'), openmc_exec, mpi_args,
-                           event_based)
+                           event_based, path_input)
 
             # Get output directory and return the last statepoint written
             if self.settings.output and 'path' in self.settings.output:
@@ -762,7 +755,7 @@ class Model:
             raise ValueError("The Settings.volume_calculations attribute must"
                              " be specified before executing this method!")
 
-        with _change_directory(Path(cwd)):
+        with change_directory(cwd):
             if self.is_initialized:
                 if threads is not None:
                     msg = "Threads must be set via Model.is_initialized(...)"
@@ -787,7 +780,12 @@ class Model:
                 for i, vol_calc in enumerate(self.settings.volume_calculations):
                     vol_calc.load_results(f"volume_{i + 1}.h5")
                     # First add them to the Python side
-                    self.geometry.add_volume_information(vol_calc)
+                    if vol_calc.domain_type == "material" and self.materials:
+                        for material in self.materials:
+                            if material.id in vol_calc.volumes:
+                                material.add_volume_information(vol_calc)
+                    else:
+                        self.geometry.add_volume_information(vol_calc)
 
                     # And now repeat for the C API
                     if self.is_initialized and vol_calc.domain_type == 'material':
@@ -795,6 +793,121 @@ class Model:
                         for domain_id in vol_calc.ids:
                             openmc.lib.materials[domain_id].volume = \
                                 vol_calc.volumes[domain_id].n
+
+    def plot(
+        self,
+        n_samples: int | None = None,
+        plane_tolerance: float = 1.,
+        source_kwargs: dict | None = None,
+        **kwargs,
+    ):
+        """Display a slice plot of the geometry.
+
+        .. versionadded:: 0.15.1
+
+        Parameters
+        ----------
+        n_samples : dict
+            The number of source particles to sample and add to plot. Defaults
+            to None which doesn't plot any particles on the plot.
+        plane_tolerance: float
+            When plotting a plane the source locations within the plane +/-
+            the plane_tolerance will be included and those outside of the
+            plane_tolerance will not be shown
+        source_kwargs : dict
+            Keyword arguments passed to :func:`matplotlib.pyplot.scatter`.
+        **kwargs
+            Keyword arguments passed to :func:`openmc.Universe.plot`
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            Axes containing resulting image
+        """
+
+        check_type('n_samples', n_samples, int | None)
+        check_type('plane_tolerance', plane_tolerance, float)
+        if source_kwargs is None:
+            source_kwargs = {}
+        source_kwargs.setdefault('marker', 'x')
+
+        ax = self.geometry.plot(**kwargs)
+        if n_samples:
+            # Sample external source particles
+            particles = self.sample_external_source(n_samples)
+
+            # Determine plotting parameters and bounding box of geometry
+            bbox = self.geometry.bounding_box
+            origin = kwargs.get('origin', None)
+            basis = kwargs.get('basis', 'xy')
+            indices = {'xy': (0, 1, 2), 'xz': (0, 2, 1), 'yz': (1, 2, 0)}[basis]
+
+            # Infer origin if not provided
+            if np.isinf(bbox.extent[basis]).any():
+                if origin is None:
+                    origin = (0, 0, 0)
+            else:
+                if origin is None:
+                    # if nan values in the bbox.center they get replaced with 0.0
+                    # this happens when the bounding_box contains inf values
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore", RuntimeWarning)
+                        origin = np.nan_to_num(bbox.center)
+
+            slice_index = indices[2]
+            slice_value = origin[slice_index]
+
+            xs = []
+            ys = []
+            tol = plane_tolerance
+            for particle in particles:
+                if (slice_value - tol < particle.r[slice_index] < slice_value + tol):
+                    xs.append(particle.r[indices[0]])
+                    ys.append(particle.r[indices[1]])
+            ax.scatter(xs, ys, **source_kwargs)
+        return ax
+
+    def sample_external_source(
+            self,
+            n_samples: int = 1000,
+            prn_seed: int | None = None,
+            **init_kwargs
+    ) -> list[openmc.SourceParticle]:
+        """Sample external source and return source particles.
+
+        .. versionadded:: 0.15.1
+
+        Parameters
+        ----------
+        n_samples : int
+            Number of samples
+        prn_seed : int
+            Pseudorandom number generator (PRNG) seed; if None, one will be
+            generated randomly.
+        **init_kwargs
+            Keyword arguments passed to :func:`openmc.lib.init`
+
+        Returns
+        -------
+        list of openmc.SourceParticle
+            List of samples source particles
+        """
+        import openmc.lib
+
+        # Silence output by default. Also set arguments to start in volume
+        # calculation mode to avoid loading cross sections
+        init_kwargs.setdefault('output', False)
+        init_kwargs.setdefault('args', ['-c'])
+
+        with change_directory(tmpdir=True):
+            # Export model within temporary directory
+            self.export_to_model_xml()
+
+            # Sample external source sites
+            with openmc.lib.run_in_memory(**init_kwargs):
+                return openmc.lib.sample_external_source(
+                    n_samples=n_samples, prn_seed=prn_seed
+                )
 
     def plot_geometry(self, output=True, cwd='.', openmc_exec='openmc'):
         """Creates plot images as specified by the Model.plots attribute
@@ -819,7 +932,7 @@ class Model:
             raise ValueError("The Model.plots attribute must be specified "
                              "before executing this method!")
 
-        with _change_directory(Path(cwd)):
+        with change_directory(cwd):
             if self.is_initialized:
                 # Compute the volumes
                 openmc.lib.plot_geometry(output)

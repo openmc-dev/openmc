@@ -33,18 +33,19 @@ from .helpers import (
 __all__ = ["CoupledOperator", "Operator", "OperatorResult"]
 
 
-def _find_cross_sections(model):
+def _find_cross_sections(model: str | None = None):
     """Determine cross sections to use for depletion
 
     Parameters
     ----------
-    model : openmc.model.Model
+    model : openmc.model.Model, optional
         Reactor model
 
     """
-    if model.materials and model.materials.cross_sections is not None:
-        # Prefer info from Model class if available
-        return model.materials.cross_sections
+    if model:
+        if model.materials and model.materials.cross_sections is not None:
+            # Prefer info from Model class if available
+            return model.materials.cross_sections
 
     # otherwise fallback to environment variable
     cross_sections = openmc.config.get("cross_sections")
@@ -67,7 +68,7 @@ def _get_nuclides_with_data(cross_sections):
     Returns
     -------
     nuclides : set of str
-        Set of nuclide names that have cross secton data
+        Set of nuclide names that have cross section data
 
     """
     nuclides = set()
@@ -176,10 +177,6 @@ class CoupledOperator(OpenMCOperator):
     ----------
     model : openmc.model.Model
         OpenMC model object
-    geometry : openmc.Geometry
-        OpenMC geometry object
-    settings : openmc.Settings
-        OpenMC settings object
     output_dir : pathlib.Path
         Path to output directory to save results.
     round_number : bool
@@ -240,8 +237,6 @@ class CoupledOperator(OpenMCOperator):
                 warn("Fission Q dictionary will not be used")
                 fission_q = None
         self.model = model
-        self.settings = model.settings
-        self.geometry = model.geometry
 
         # determine set of materials in the model
         if not model.materials:
@@ -262,6 +257,9 @@ class CoupledOperator(OpenMCOperator):
             'reaction_rate_opts': reaction_rate_opts,
             'fission_yield_opts': fission_yield_opts
         }
+
+        # Records how many times the operator has been called
+        self._n_calls = 0
 
         super().__init__(
             materials=model.materials,
@@ -292,7 +290,7 @@ class CoupledOperator(OpenMCOperator):
         # on this process
         if comm.size != 1:
             prev_results = self.prev_res
-            self.prev_res = Results()
+            self.prev_res = Results(filename=None)
             mat_indexes = _distribute(range(len(self.burnable_mats)))
             for res_obj in prev_results:
                 new_res = res_obj.distribute(self.local_mats, mat_indexes)
@@ -353,7 +351,7 @@ class CoupledOperator(OpenMCOperator):
         if normalization_mode == "fission-q":
             self._normalization_helper = ChainFissionHelper()
         elif normalization_mode == "energy-deposition":
-            score = "heating" if self.settings.photon_transport else "heating-local"
+            score = "heating" if self.model.settings.photon_transport else "heating-local"
             self._normalization_helper = EnergyScoreHelper(score)
         else:
             self._normalization_helper = SourceRateHelper()
@@ -375,8 +373,12 @@ class CoupledOperator(OpenMCOperator):
 
         # Create XML files
         if comm.rank == 0:
-            self.geometry.export_to_xml()
-            self.settings.export_to_xml()
+            self.model.geometry.export_to_xml()
+            self.model.settings.export_to_xml()
+            if self.model.plots:
+                self.model.plots.export_to_xml()
+            if self.model.tallies:
+                self.model.tallies.export_to_xml()
             self._generate_materials_xml()
 
         # Initialize OpenMC library
@@ -427,6 +429,16 @@ class CoupledOperator(OpenMCOperator):
         # Reset results in OpenMC
         openmc.lib.reset()
 
+        # The timers are reset only if the operator has been called before.
+        # This is because we call this method after loading cross sections, and
+        # no transport has taken place yet. As a result, we only reset the
+        # timers after the first step so as to correctly report the time spent
+        # reading cross sections in the first depletion step, and from there
+        # correctly report all particle tracking rates in multistep depletion
+        # solvers.
+        if self._n_calls > 0:
+            openmc.lib.reset_timers()
+
         self._update_materials_and_nuclides(vec)
 
         # If the source rate is zero, return zero reaction rates without running
@@ -446,6 +458,8 @@ class CoupledOperator(OpenMCOperator):
         keff = ufloat(*openmc.lib.keff())
 
         op_result = OperatorResult(keff, rates)
+
+        self._n_calls += 1
 
         return copy.deepcopy(op_result)
 
@@ -503,15 +517,43 @@ class CoupledOperator(OpenMCOperator):
 
         """
         openmc.lib.statepoint_write(
-            "openmc_simulation_n{}.h5".format(step),
+            f"openmc_simulation_n{step}.h5",
             write_source=False)
-
-        openmc.lib.reset_timers()
 
     def finalize(self):
         """Finalize a depletion simulation and release resources."""
         if self.cleanup_when_done:
             openmc.lib.finalize()
+
+    # The next few class variables and methods should be removed after one
+    # release cycle or so. For now, we will provide compatibility to
+    # accessing CoupledOperator.settings and CoupledOperator.geometry. In
+    # the future these should stay on the Model class.
+
+    var_warning_msg = "The CoupledOperator.{0} variable should be \
+accessed through CoupledOperator.model.{0}."
+    geometry_warning_msg = var_warning_msg.format("geometry")
+    settings_warning_msg = var_warning_msg.format("settings")
+
+    @property
+    def settings(self):
+        warn(self.settings_warning_msg, FutureWarning)
+        return self.model.settings
+
+    @settings.setter
+    def settings(self, new_settings):
+        warn(self.settings_warning_msg, FutureWarning)
+        self.model.settings = new_settings
+
+    @property
+    def geometry(self):
+        warn(self.geometry_warning_msg, FutureWarning)
+        return self.model.geometry
+
+    @geometry.setter
+    def geometry(self, new_geometry):
+        warn(self.geometry_warning_msg, FutureWarning)
+        self.model.geometry = new_geometry
 
 
 # Retain deprecated name for the time being

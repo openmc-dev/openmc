@@ -12,6 +12,7 @@
 #include "pugixml.hpp"
 #include <gsl/gsl-lite.hpp>
 
+#include "openmc/bounding_box.h"
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/neighbor_list.h"
@@ -40,6 +41,7 @@ constexpr int32_t OP_UNION {std::numeric_limits<int32_t>::max() - 4};
 //==============================================================================
 
 class Cell;
+class GeometryState;
 class ParentCell;
 class CellInstance;
 class Universe;
@@ -82,7 +84,7 @@ public:
 
   //! Find the oncoming boundary of this cell.
   std::pair<double, int32_t> distance(
-    Position r, Direction u, int32_t on_surface, Particle* p) const;
+    Position r, Direction u, int32_t on_surface) const;
 
   //! Get the BoundingBox for this cell.
   BoundingBox bounding_box(int32_t cell_id) const;
@@ -127,8 +129,7 @@ private:
   void add_precedence();
 
   //! Add parenthesis to enforce precedence
-  std::vector<int32_t>::iterator add_parentheses(
-    std::vector<int32_t>::iterator start);
+  gsl::index add_parentheses(gsl::index start);
 
   //! Remove complement operators from the expression
   void remove_complement_ops();
@@ -183,7 +184,7 @@ public:
 
   //! Find the oncoming boundary of this cell.
   virtual std::pair<double, int32_t> distance(
-    Position r, Direction u, int32_t on_surface, Particle* p) const = 0;
+    Position r, Direction u, int32_t on_surface, GeometryState* p) const = 0;
 
   //! Write all information needed to reconstruct the cell to an HDF5 group.
   //! \param group_id An HDF5 group id.
@@ -248,6 +249,42 @@ public:
   std::unordered_map<int32_t, vector<int32_t>> get_contained_cells(
     int32_t instance = 0, Position* hint = nullptr) const;
 
+  //! Determine the material index corresponding to a specific cell instance,
+  //! taking into account presence of distribcell material
+  //! \param[in] instance of the cell
+  //! \return material index
+  int32_t material(int32_t instance) const
+  {
+    // If distributed materials are used, then each instance has its own
+    // material definition. If distributed materials are not used, then
+    // all instances used the same material stored at material_[0]. The
+    // presence of distributed materials is inferred from the size of
+    // the material_ vector being greater than one.
+    if (material_.size() > 1) {
+      return material_[instance];
+    } else {
+      return material_[0];
+    }
+  }
+
+  //! Determine the temperature index corresponding to a specific cell instance,
+  //! taking into account presence of distribcell temperature
+  //! \param[in] instance of the cell
+  //! \return temperature index
+  double sqrtkT(int32_t instance) const
+  {
+    // If distributed materials are used, then each instance has its own
+    // temperature definition. If distributed materials are not used, then
+    // all instances used the same temperature stored at sqrtkT_[0]. The
+    // presence of distributed materials is inferred from the size of
+    // the sqrtkT_ vector being greater than one.
+    if (sqrtkT_.size() > 1) {
+      return sqrtkT_[instance];
+    } else {
+      return sqrtkT_[0];
+    }
+  }
+
 protected:
   //! Determine the path to this cell instance in the geometry hierarchy
   //! \param[in] instance of the cell to find parent cells for
@@ -260,7 +297,8 @@ protected:
   //! \param[in] instance of the cell to find parent cells for
   //! \param[in] p particle used to do a fast search for parent cells
   //! \return parent cells
-  vector<ParentCell> find_parent_cells(int32_t instance, Particle& p) const;
+  vector<ParentCell> find_parent_cells(
+    int32_t instance, GeometryState& p) const;
 
   //! Determine the path to this cell instance in the geometry hierarchy
   //! \param[in] instance of the cell to find parent cells for
@@ -332,10 +370,10 @@ public:
   // Methods
   vector<int32_t> surfaces() const override { return region_.surfaces(); }
 
-  std::pair<double, int32_t> distance(
-    Position r, Direction u, int32_t on_surface, Particle* p) const override
+  std::pair<double, int32_t> distance(Position r, Direction u,
+    int32_t on_surface, GeometryState* p) const override
   {
-    return region_.distance(r, u, on_surface, p);
+    return region_.distance(r, u, on_surface);
   }
 
   bool contains(Position r, Direction u, int32_t on_surface) const override

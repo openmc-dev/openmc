@@ -62,6 +62,23 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
   read_attribute(group, "metastable", metastable_);
   read_attribute(group, "atomic_weight_ratio", awr_);
 
+  if (settings::run_mode == RunMode::VOLUME) {
+    // Determine whether nuclide is fissionable and then exit
+    int mt;
+    hid_t rxs_group = open_group(group, "reactions");
+    for (auto name : group_names(rxs_group)) {
+      if (starts_with(name, "reaction_")) {
+        hid_t rx_group = open_group(rxs_group, name.c_str());
+        read_attribute(rx_group, "mt", mt);
+        if (is_fission(mt)) {
+          fissionable_ = true;
+          break;
+        }
+      }
+    }
+    return;
+  }
+
   // Determine temperatures available
   hid_t kT_group = open_group(group, "kTs");
   auto dset_names = dataset_names(kT_group);
@@ -69,7 +86,7 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
   for (const auto& name : dset_names) {
     double T;
     read_dataset(kT_group, name.c_str(), T);
-    temps_available.push_back(T / K_BOLTZMANN);
+    temps_available.push_back(std::round(T / K_BOLTZMANN));
   }
   std::sort(temps_available.begin(), temps_available.end());
 
@@ -141,9 +158,12 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
           }
         }
       } else {
-        fatal_error(
-          "Nuclear data library does not contain cross sections for " + name_ +
-          " at or near " + std::to_string(T_desired) + " K.");
+        fatal_error(fmt::format(
+          "Nuclear data library does not contain cross sections "
+          "for {}  at or near {} K. Available temperatures "
+          "are {} K. Consider making use of openmc.Settings.temperature "
+          "to specify how intermediate temperatures are treated.",
+          name_, std::to_string(T_desired), concatenate(temps_available)));
       }
     }
     break;
@@ -156,8 +176,8 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
       for (int j = 0; j < temps_available.size() - 1; ++j) {
         if (temps_available[j] <= T_desired &&
             T_desired < temps_available[j + 1]) {
-          int T_j = std::round(temps_available[j]);
-          int T_j1 = std::round(temps_available[j + 1]);
+          int T_j = temps_available[j];
+          int T_j1 = temps_available[j + 1];
           if (!contains(temps_to_read, T_j)) {
             temps_to_read.push_back(T_j);
           }
@@ -174,14 +194,14 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
         if (std::abs(T_desired - temps_available.front()) <=
             settings::temperature_tolerance) {
           if (!contains(temps_to_read, temps_available.front())) {
-            temps_to_read.push_back(std::round(temps_available.front()));
+            temps_to_read.push_back(temps_available.front());
           }
           continue;
         }
         if (std::abs(T_desired - temps_available.back()) <=
             settings::temperature_tolerance) {
           if (!contains(temps_to_read, temps_available.back())) {
-            temps_to_read.push_back(std::round(temps_available.back()));
+            temps_to_read.push_back(temps_available.back());
           }
           continue;
         }
@@ -630,16 +650,23 @@ void Nuclide::calculate_xs(
       }
     }
 
-    // Ensure these values are set
-    // Note, the only time either is used is in one of 4 places:
-    // 1. physics.cpp - scatter - For inelastic scatter.
-    // 2. physics.cpp - sample_fission - For partial fissions.
-    // 3. tally.F90 - score_general - For tallying on MTxxx reactions.
-    // 4. nuclide.cpp - calculate_urr_xs - For unresolved purposes.
-    // It is worth noting that none of these occur in the resolved
-    // resonance range, so the value here does not matter.  index_temp is
-    // set to -1 to force a segfault in case a developer messes up and tries
-    // to use it with multipole.
+    /*
+     * index_temp, index_grid, and interp_factor are used only in the
+     * following places:
+     *   1. physics.cpp - scatter - For inelastic scatter.
+     *   2. physics.cpp - sample_fission - For partial fissions.
+     *   3. tallies/tally_scoring.cpp - score_general -
+     *        For tallying on MTxxx reactions.
+     *   4. nuclide.cpp - calculate_urr_xs - For unresolved purposes.
+     * It is worth noting that none of these occur in the resolved resonance
+     * range, so the value here does not matter.  index_temp is set to -1 to
+     * force a segfault in case a developer messes up and tries to use it with
+     * multipole.
+     *
+     * However, a segfault is not necessarily guaranteed with an out-of-bounds
+     * access, so this technique should be replaced by something more robust
+     * in the future.
+     */
     micro.index_temp = -1;
     micro.index_grid = -1;
     micro.interp_factor = 0.0;

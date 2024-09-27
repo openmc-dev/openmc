@@ -9,6 +9,36 @@
 namespace openmc {
 
 //==============================================================================
+// SpatialDistribution implementation
+//==============================================================================
+
+unique_ptr<SpatialDistribution> SpatialDistribution::create(pugi::xml_node node)
+{
+  // Check for type of spatial distribution and read
+  std::string type;
+  if (check_for_node(node, "type"))
+    type = get_node_value(node, "type", true, true);
+  if (type == "cartesian") {
+    return UPtrSpace {new CartesianIndependent(node)};
+  } else if (type == "cylindrical") {
+    return UPtrSpace {new CylindricalIndependent(node)};
+  } else if (type == "spherical") {
+    return UPtrSpace {new SphericalIndependent(node)};
+  } else if (type == "mesh") {
+    return UPtrSpace {new MeshSpatial(node)};
+  } else if (type == "box") {
+    return UPtrSpace {new SpatialBox(node)};
+  } else if (type == "fission") {
+    return UPtrSpace {new SpatialBox(node, true)};
+  } else if (type == "point") {
+    return UPtrSpace {new SpatialPoint(node)};
+  } else {
+    fatal_error(fmt::format(
+      "Invalid spatial distribution for external source: {}", type));
+  }
+}
+
+//==============================================================================
 // CartesianIndependent implementation
 //==============================================================================
 
@@ -189,27 +219,23 @@ Position SphericalIndependent::sample(uint64_t* seed) const
 
 MeshSpatial::MeshSpatial(pugi::xml_node node)
 {
+
+  if (get_node_value(node, "type", true, true) != "mesh") {
+    fatal_error(fmt::format(
+      "Incorrect spatial type '{}' for a MeshSpatial distribution"));
+  }
+
   // No in-tet distributions implemented, could include distributions for the
   // barycentric coords Read in unstructured mesh from mesh_id value
   int32_t mesh_id = std::stoi(get_node_value(node, "mesh_id"));
   // Get pointer to spatial distribution
   mesh_idx_ = model::mesh_map.at(mesh_id);
 
-  auto mesh_ptr =
-    dynamic_cast<UnstructuredMesh*>(model::meshes.at(mesh_idx_).get());
-  if (!mesh_ptr) {
-    fatal_error("Only unstructured mesh is supported for source sampling.");
-  }
+  const auto mesh_ptr = model::meshes.at(mesh_idx_).get();
 
-  // ensure that the unstructured mesh contains only linear tets
-  for (int bin = 0; bin < mesh_ptr->n_bins(); bin++) {
-    if (mesh_ptr->element_type(bin) != ElementType::LINEAR_TET) {
-      fatal_error(
-        "Mesh specified for source must contain only linear tetrahedra.");
-    }
-  }
+  check_element_types();
 
-  int32_t n_bins = this->n_sources();
+  size_t n_bins = this->n_sources();
   std::vector<double> strengths(n_bins, 1.0);
 
   // Create cdfs for sampling for an element over a mesh
@@ -227,18 +253,49 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
 
   if (get_node_value_bool(node, "volume_normalized")) {
     for (int i = 0; i < n_bins; i++) {
-      strengths[i] *= mesh()->volume(i);
+      strengths[i] *= this->mesh()->volume(i);
     }
   }
 
-  elem_idx_dist_.assign(strengths.data(), n_bins);
+  elem_idx_dist_.assign(strengths);
+}
+
+MeshSpatial::MeshSpatial(int32_t mesh_idx, gsl::span<const double> strengths)
+  : mesh_idx_(mesh_idx)
+{
+  check_element_types();
+  elem_idx_dist_.assign(strengths);
+}
+
+void MeshSpatial::check_element_types() const
+{
+  const auto umesh_ptr = dynamic_cast<const UnstructuredMesh*>(this->mesh());
+  if (umesh_ptr) {
+    // ensure that the unstructured mesh contains only linear tets
+    for (int bin = 0; bin < umesh_ptr->n_bins(); bin++) {
+      if (umesh_ptr->element_type(bin) != ElementType::LINEAR_TET) {
+        fatal_error(
+          "Mesh specified for source must contain only linear tetrahedra.");
+      }
+    }
+  }
+}
+
+int32_t MeshSpatial::sample_element_index(uint64_t* seed) const
+{
+  return elem_idx_dist_.sample(seed);
+}
+
+std::pair<int32_t, Position> MeshSpatial::sample_mesh(uint64_t* seed) const
+{
+  // Sample the CDF defined in initialization above
+  int32_t elem_idx = this->sample_element_index(seed);
+  return {elem_idx, mesh()->sample_element(elem_idx, seed)};
 }
 
 Position MeshSpatial::sample(uint64_t* seed) const
 {
-  // Sample over the CDF defined in initialization above
-  int32_t elem_idx = elem_idx_dist_.sample(seed);
-  return mesh()->sample(seed, elem_idx);
+  return this->sample_mesh(seed).second;
 }
 
 //==============================================================================

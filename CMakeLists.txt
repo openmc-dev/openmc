@@ -8,7 +8,7 @@ file(READ "tools/version.txt" VERSION_STRING)
 string(STRIP "${VERSION_STRING}" VERSION_STRING)
 
 # Match version format and capture the main version part
-if(VERSION_STRING MATCHES "^([0-9]+\\.[0-9]+\\.[0-9]+)(-[^ ]+)?$")
+if(VERSION_STRING MATCHES "^([0-9]+\\.[0-9]+\\.[0-9]+)([-\\.]dev[0-9]*)?$")
     set(VERSION_NO_SUFFIX "${CMAKE_MATCH_1}")
 else()
     message(FATAL_ERROR "Invalid version format in version.txt: ${VERSION_STRING}")

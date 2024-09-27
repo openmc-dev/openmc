@@ -1057,7 +1057,6 @@ def PDGCode_MCPL(code):
     else:
         raise ValueError()
 
-
 class SourceParticles(list):
     """A collection of SourceParticle objects.
 
@@ -1078,12 +1077,12 @@ class SourceParticles(list):
 
         Parameters
         ----------
-        index : int or slice
-            The index or slice to select from the list of SourceParticle objects.
+        index : int, slice or list
+            The index, slice or list to select from the list of SourceParticle objects.
 
         Returns
         -------
-        SourceParticles
+        openmc.SourceParticles
             A new SourceParticles object with the selected particle(s).
         """
         if isinstance(index, int):
@@ -1162,7 +1161,7 @@ def read_source_file(filename: PathLike) -> SourceParticles:
 
     Returns
     -------
-    SourceParticles
+    openmc.SourceParticles
 
     See Also
     --------

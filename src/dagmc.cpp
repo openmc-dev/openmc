@@ -601,7 +601,7 @@ void DAGUniverse::uwuw_assign_material(
   } else {
     fatal_error(fmt::format("Material with value '{}' not found in the "
                             "UWUW material library",
-      mat_str));
+      uwuw_mat));
   }
 #else
   fatal_error("DAGMC was not configured with UWUW.");

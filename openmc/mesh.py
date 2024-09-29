@@ -5,8 +5,6 @@ from collections.abc import Iterable, Sequence
 from functools import wraps
 from math import pi, sqrt, atan2
 from numbers import Integral, Real
-from pathlib import Path
-import tempfile
 
 import h5py
 import lxml.etree as ET
@@ -19,6 +17,7 @@ from openmc.utility_funcs import change_directory
 from ._xml import get_text
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
+from .utility_funcs import input_path
 
 
 class MeshBase(IDManagerMixin, ABC):
@@ -2159,7 +2158,7 @@ class UnstructuredMesh(MeshBase):
     @filename.setter
     def filename(self, filename):
         cv.check_type('Unstructured Mesh filename', filename, PathLike)
-        self._filename = Path(filename)
+        self._filename = input_path(filename)
 
     @property
     def library(self):

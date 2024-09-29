@@ -16,6 +16,7 @@ import openmc.data
 import openmc.checkvalue as cv
 from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
+from .utility_funcs import input_path
 from openmc.checkvalue import PathLike
 from openmc.stats import Univariate, Discrete, Mixture
 
@@ -1600,7 +1601,7 @@ class Materials(cv.CheckedList):
     @cross_sections.setter
     def cross_sections(self, cross_sections):
         if cross_sections is not None:
-            self._cross_sections = Path(cross_sections).resolve()
+            self._cross_sections = input_path(cross_sections)
 
     def append(self, material):
         """Append material to collection

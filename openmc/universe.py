@@ -17,6 +17,7 @@ from ._xml import get_text
 from .checkvalue import check_type, check_value
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
+from .utility_funcs import input_path
 
 
 class UniverseBase(ABC, IDManagerMixin):
@@ -852,7 +853,7 @@ class DAGMCUniverse(UniverseBase):
     @filename.setter
     def filename(self, val: cv.PathLike):
         cv.check_type('DAGMC filename', val, cv.PathLike)
-        self._filename = Path(val).resolve()
+        self._filename = input_path(val)
 
     @property
     def auto_geom_ids(self):

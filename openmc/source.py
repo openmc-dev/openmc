@@ -18,6 +18,7 @@ from openmc.stats.multivariate import UnitSphere, Spatial
 from openmc.stats.univariate import Univariate
 from ._xml import get_text
 from .mesh import MeshBase, StructuredMesh, UnstructuredMesh
+from .utility_funcs import input_path
 
 
 class SourceBase(ABC):
@@ -723,7 +724,7 @@ class CompiledSource(SourceBase):
     @library.setter
     def library(self, library_name: PathLike):
         cv.check_type('library', library_name, PathLike)
-        self._library = Path(library_name).resolve()
+        self._library = input_path(library_name)
 
     @property
     def parameters(self) -> str:
@@ -842,7 +843,7 @@ class FileSource(SourceBase):
     @path.setter
     def path(self, p: PathLike):
         cv.check_type('source file', p, PathLike)
-        self._path = Path(p).resolve()
+        self._path = input_path(p)
 
     def populate_xml_element(self, element):
         """Add necessary file source information to an XML element

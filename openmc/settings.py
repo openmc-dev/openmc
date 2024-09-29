@@ -14,6 +14,7 @@ from . import (RegularMesh, SourceBase, MeshSource, IndependentSource,
 from ._xml import clean_indentation, get_text, reorder_attributes
 from openmc.checkvalue import PathLike
 from .mesh import _read_meshes
+from .utility_funcs import input_path
 
 
 class RunMode(Enum):
@@ -709,7 +710,7 @@ class Settings:
 
         # Resolve path to surface source file
         if 'path' in ssr:
-            self._surf_source_read['path'] = Path(ssr['path']).resolve()
+            self._surf_source_read['path'] = input_path(ssr['path'])
 
     @property
     def surf_source_write(self) -> dict:
@@ -1068,7 +1069,7 @@ class Settings:
     @weight_windows_file.setter
     def weight_windows_file(self, value: PathLike):
         cv.check_type('weight windows file', value, PathLike)
-        self._weight_windows_file = Path(value).resolve()
+        self._weight_windows_file = input_path(value)
 
     @property
     def weight_window_generators(self) -> list[WeightWindowGenerator]:

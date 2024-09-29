@@ -51,9 +51,7 @@ def model(request):
         openmc_model.settings.surf_source_write = {'surface_ids': [1],
                                                    'max_particles': 1000}
     elif surf_source_op == 'read':
-        # Avoid resolving the path to the surface source file for testing
-        openmc_model.settings.surf_source_read = {}
-        openmc_model.settings._surf_source_read['path'] = 'surface_source_true.h5'
+        openmc_model.settings.surf_source_read = {'path': 'surface_source_true.h5'}
 
     # Tallies
     tal = openmc.Tally()

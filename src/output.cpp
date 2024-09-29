@@ -347,7 +347,7 @@ void print_build_info()
 #ifdef COVERAGEBUILD
   coverage = y;
 #endif
-#ifdef UWUW_HPP
+#ifdef DAGMC_UWUW
   uwuw = y;
 #endif
 

@@ -1,0 +1,120 @@
+name: Build & Publish Manylinux Images
+
+on:
+  # allows us to run workflows manually
+  workflow_dispatch:
+  push:
+    paths:
+      - "tools/ci/manylinux.dockerfile"
+      - ".github/workflows/docker-publish-manylinux.yml"
+
+jobs:
+  build-dependency-and-test-img:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        manylinux_image: [
+            manylinux_2_28_x86_64
+            ]
+        compiler: [
+            gcc,
+            openmpi
+            ]
+        python: [
+            cp312-cp312
+            ]
+
+    name: Installing Dependencies, Building OpenMC and running tests
+    steps:
+      - name: default environment
+        run: |
+          echo "tag-latest-on-default=false" >> "$GITHUB_ENV"
+
+      - name: condition on trigger parameters
+        if: ${{ github.repository_owner == 'openmc-dev' && github.ref == 'refs/heads/develop' }}
+        run: |
+          echo "tag-latest-on-default=true" >> "$GITHUB_ENV"
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Configure docker image tag
+        run: |
+          image_base_tag=ghcr.io/${{ github.repository_owner }}/
+          image_base_tag+=openmc-ci-${{ matrix.manylinux_image }}
+          image_base_tag+=-${{ matrix.compiler}}
+          image_base_tag+=-${{ matrix.python }}
+          echo "image_base_tag=${image_base_tag}" >> "$GITHUB_ENV"
+
+      - name: Installing Dependencies in Docker image
+        uses: firehed/multistage-docker-build-action@v1
+        with:
+          repository: ${{ env.image_base_tag }}
+          stages: base, dependencies, openmc
+          server-stage: openmc-test
+          quiet: false
+          parallel: true
+          tag-latest-on-default: ${{ env.tag-latest-on-default }}
+          dockerfile: CI/Dockerfile
+          build-args: >
+            MANYLINUX_IMAGE=${{ matrix.manylinux_image }},
+            COMPILER=${{ matrix.compiler }},
+            Python_ABI=${{ matrix.python }}
+
+  push_stable_ci_img:
+    needs: [build-dependency-and-test-img]
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        manylinux_image: [
+            manylinux_2_28_x86_64
+            ]
+        compiler: [
+            gcc,
+            openmpi
+            ]
+        python: [
+            cp312-cp312
+            ]
+
+    name: Pushing final images
+    steps:
+      - name: Log in to the Container registry
+        if: ${{ github.repository_owner == 'svalinn' }}
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure docker image tag
+        if: ${{ github.repository_owner == 'openmc-dev' }}
+        run: |
+          image_base_tag=ghcr.io/${{ github.repository_owner }}/
+          image_base_tag+=openmc-ci-${{ matrix.manylinux_image }}
+          image_base_tag+=-${{ matrix.compiler}}
+          image_base_tag+=-${{ matrix.python }}
+          echo "image_base_tag=${image_base_tag}" >> "$GITHUB_ENV"
+
+      - name: Push Image as latest img
+        if: ${{ github.repository_owner == 'openmc-dev' && github.ref == 'refs/heads/develop' }}
+        uses: akhilerm/tag-push-action@v2.1.0
+        with:
+          src: ${{ env.image_base_tag }}/openmc:latest
+          dst: ${{ env.image_base_tag }}:latest
+
+      - name: Push Image as latest img
+        if: ${{ github.repository_owner == 'openmc-dev' && github.ref == 'refs/heads/develop' }}
+        uses: akhilerm/tag-push-action@v2.1.0
+        with:
+          src: ${{ env.image_base_tag }}:latest
+          dst: ${{ env.image_base_tag }}:stable

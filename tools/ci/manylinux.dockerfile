@@ -28,7 +28,7 @@ ARG MANYLINUX_IMAGE=manylinux_2_28_x86_64
 ARG Python_ABI="cp312-cp312"
 
 # Configure Compiler to use (gcc or openmpi)
-ARG COMPILER="openmpi"
+ARG COMPILER="gcc"
 
 # OpenMC options
 ARG OPENMC_USE_OPENMP="ON"
@@ -88,8 +88,7 @@ RUN yum install -y epel-release && \
         curl-devel \
         eigen3-devel \
         lapack-devel \
-        libpng-devel \
-        openmpi-devel && \
+        libpng-devel && \
     yum clean all
 
 # Use Python from manylinux as the default Python
@@ -115,7 +114,6 @@ RUN python -m pip install --upgrade \
         uncertainties \
         endf \
         vtk \
-        mpi4py \
         packaging \
         pytest \
         pytest-cov \
@@ -134,6 +132,13 @@ ENV F77=gfortran
 
 # Compiler configuration stage: openmpi
 FROM base AS compiler-openmpi
+
+# Install OpenMPI
+RUN yum install -y \
+        openmpi-devel && \
+    yum clean all && \
+    python -m pip install --upgrade \
+        mpi4py
 
 ENV CC=mpicc
 ENV CXX=mpicxx

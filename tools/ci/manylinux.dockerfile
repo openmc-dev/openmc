@@ -2,6 +2,9 @@
 ARG MANYLINUX_IMAGE=manylinux_2_28_x86_64
 ARG Python_ABI="cp312-cp312"
 
+# Configure Compiler to use (gcc or openmpi)
+ARG COMPILER="gcc"
+
 # Configure dependencies tags
 ARG NJOY2016_TAG="2016.76"
 ARG HDF5_TAG="hdf5_1.14.4.3"
@@ -62,10 +65,6 @@ RUN ln -sf /opt/python/${Python_ABI}/bin/python3 /usr/bin/python
 # Set up general library environment variables
 ENV LD_LIBRARY_PATH=/usr/lib64:$LD_LIBRARY_PATH
 
-# Set up OpenMPI environment variables
-ENV PATH=/usr/lib64/openmpi/bin:$PATH
-ENV LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:$LD_LIBRARY_PATH
-
 # Install necessary Python packages
 RUN python -m pip install --upgrade \
         scikit-build-core \
@@ -89,6 +88,28 @@ RUN python -m pip install --upgrade \
         colorama \
         openpyxl
 
+FROM base AS compiler-gcc
+
+ENV CC=gcc
+ENV CXX=g++
+ENV FC=gfortran
+ENV F77=gfortran
+
+FROM base AS compiler-openmpi
+
+ENV CC=mpicc
+ENV CXX=mpicxx
+ENV FC=mpif90
+ENV F77=mpif77
+
+# Set up OpenMPI environment variables
+ENV PATH=/usr/lib64/openmpi/bin:$PATH
+ENV LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:$LD_LIBRARY_PATH
+
+
+FROM compiler-${COMPILER} AS dependencies
+
+ARG COMPILER
 
 # Set up NJOY2016
 ARG NJOY2016_TAG
@@ -113,10 +134,7 @@ RUN git clone --depth 1 -b ${HDF5_TAG} https://github.com/HDFGroup/hdf5.git hdf5
     mkdir build && cd build && \
     cmake .. \
         -DCMAKE_INSTALL_PREFIX=/usr/local \
-        -DMPI_C_COMPILER=mpicc \
-        -DMPI_CXX_COMPILER=mpicxx \
-        -DMPI_Fortran_COMPILER=mpif90 \
-        -DHDF5_ENABLE_PARALLEL=ON \
+        -DHDF5_ENABLE_PARALLEL=$([ ${COMPILER} == "openmpi" ] && echo "ON" || echo "OFF") \
         -DHDF5_BUILD_HL_LIB=ON \
         -DBUILD_SHARED_LIBS=ON \
         -DBUILD_EXAMPLES=OFF && \
@@ -133,9 +151,6 @@ RUN git clone --depth 1 -b ${NETCDF_TAG} https://github.com/Unidata/netcdf-c.git
     cd netcdf && \
     mkdir build && cd build && \
     cmake .. \
-        -DCMAKE_C_COMPILER=mpicc \
-        -DCMAKE_CXX_COMPILER=mpicxx \
-        -DCMAKE_Fortran_COMPILER=mpif90 \
         -DBUILD_SHARED_LIBS=ON \
         -DENABLE_DAP=ON \
         -DENABLE_TESTS=OFF && \
@@ -152,10 +167,7 @@ RUN git clone --depth 1 -b ${MOAB_TAG} https://bitbucket.org/fathomteam/moab.git
     cd moab && \
     mkdir build && cd build && \
     cmake .. \
-        -DCMAKE_C_COMPILER=mpicc \
-        -DCMAKE_CXX_COMPILER=mpicxx \
-        -DCMAKE_Fortran_COMPILER=mpif90 \
-        -DENABLE_MPI=ON \
+        -DENABLE_MPI=$([ ${COMPILER} == "openmpi" ] && echo "ON" || echo "OFF") \
         -DENABLE_HDF5=ON \
         -DHDF5_ROOT=/usr/local \
         -DENABLE_NETCDF=ON \
@@ -201,8 +213,6 @@ RUN git clone --depth 1 -b ${DAGMC_TAG} https://github.com/svalinn/DAGMC.git dag
     cd dagmc && \
     mkdir build && cd build && \
     cmake .. \
-        -DCMAKE_C_COMPILER=mpicc \
-        -DCMAKE_CXX_COMPILER=mpicxx \
         -DMOAB_DIR=/usr/local \
         -Ddd_ROOT=/usr/local \
         -DBUILD_TALLY=ON \
@@ -318,7 +328,6 @@ RUN git clone --depth 1 -b ${LIBMESH_TAG} https://github.com/libMesh/libmesh.git
     mkdir build && cd build && \
     export METHODS="opt" && \
     ../configure \
-        CXX=mpicxx CC=mpicc FC=mpifort F77=mpif77 \
         --enable-exodus \
         --disable-netcdf-4 \
         --disable-eigen \
@@ -347,7 +356,9 @@ RUN wget -q -O - https://anl.box.com/shared/static/teaup95cqv8s9nn56hfn7ku8mmelr
 RUN wget -q -O - https://anl.box.com/shared/static/4kd2gxnf4gtk4w1c8eua5fsua22kvgjb.xz | tar -C $HOME -xJ
 
 
-FROM base AS build
+FROM dependencies AS openmc
+
+ARG COMPILER
 
 # Copy OpenMC source
 COPY . $HOME/openmc
@@ -356,7 +367,7 @@ COPY . $HOME/openmc
 ENV SKBUILD_CMAKE_ARGS "-DOPENMC_USE_OPENMP=ON; \
                         -DOPENMC_USE_DAGMC=ON; \
                         -DOPENMC_USE_LIBMESH=ON; \
-                        -DOPENMC_USE_MPI=ON; \
+                        -DOPENMC_USE_MPI=$([ ${COMPILER} = 'openmpi' ] && echo 'ON' || echo 'OFF'); \
                         -DOPENMC_USE_MCPL=ON; \
                         -DOPENMC_USE_NCRYSTAL=ON;"
 
@@ -370,9 +381,11 @@ RUN auditwheel repair $HOME/openmc/dist/openmc-*.whl -w $HOME/openmc/dist
 RUN python -m pip install $HOME/openmc/dist/*manylinux**.whl
 
 
-FROM build AS test
+FROM openmc AS openmc-test
+
+ARG COMPILER
 
 # Test OpenMC
 RUN cd $HOME/openmc && \
     nctool --test && \
-    pytest --cov=openmc -v --mpi --event tests
+    pytest --cov=openmc -v $([ ${COMPILER} = 'openmpi' ] && echo '--mpi') --event tests

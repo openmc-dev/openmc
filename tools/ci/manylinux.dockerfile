@@ -96,7 +96,7 @@ ENV PATH="/opt/python/${Python_ABI}/bin:${PATH}"
 RUN ln -sf /opt/python/${Python_ABI}/bin/python3 /usr/bin/python
 
 # Set up environment variables for shared libraries
-ENV LD_LIBRARY_PATH=/usr/lib64:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=/usr/lib64:/usr/local/lib64:$LD_LIBRARY_PATH
 
 # Install necessary Python packages
 RUN python -m pip install --upgrade \
@@ -133,6 +133,10 @@ ENV F77=gfortran
 # Compiler configuration stage: openmpi
 FROM base AS compiler-openmpi
 
+# Set up OpenMPI environment variables
+ENV PATH=/usr/lib64/openmpi/bin:$PATH
+ENV LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:$LD_LIBRARY_PATH
+
 # Install OpenMPI
 RUN yum install -y \
         openmpi-devel && \
@@ -144,10 +148,6 @@ ENV CC=mpicc
 ENV CXX=mpicxx
 ENV FC=mpif90
 ENV F77=mpif77
-
-# Set up OpenMPI environment variables
-ENV PATH=/usr/lib64/openmpi/bin:$PATH
-ENV LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:$LD_LIBRARY_PATH
 
 
 # Dependencies stage
@@ -399,7 +399,7 @@ ARG OPENMC_USE_UWUW
 COPY . $HOME/openmc
 
 # Configure SKBUILD CMake arguments
-ENV SKBUILD_CMAKE_ARGS "-DOPENMC_USE_MPI=$([ ${COMPILER} = 'openmpi' ] && echo 'ON' || echo 'OFF'); \
+RUN export SKBUILD_CMAKE_ARGS="-DOPENMC_USE_MPI=$([ ${COMPILER} == 'openmpi' ] && echo 'ON' || echo 'OFF'); \
                         -DOPENMC_USE_OPENMP=${OPENMC_USE_OPENMP}; \
                         -DOPENMC_BUILD_TESTS=${OPENMC_BUILD_TESTS}; \
                         -DOPENMC_ENABLE_PROFILE=${OPENMC_ENABLE_PROFILE}; \
@@ -408,10 +408,9 @@ ENV SKBUILD_CMAKE_ARGS "-DOPENMC_USE_MPI=$([ ${COMPILER} = 'openmpi' ] && echo '
                         -DOPENMC_USE_LIBMESH=${OPENMC_USE_LIBMESH}; \
                         -DOPENMC_USE_MCPL=${OPENMC_USE_MCPL}; \
                         -DOPENMC_USE_NCRYSTAL=${OPENMC_USE_NCRYSTAL}; \
-                        -DOPENMC_USE_UWUW=${OPENMC_USE_UWUW}"
-
-# Build OpenMC wheel
-RUN cd $HOME/openmc && python -m build . -w
+                        -DOPENMC_USE_UWUW=${OPENMC_USE_UWUW}" && \
+    cd $HOME/openmc && \
+    python -m build . -w
 
 # Repair wheel
 RUN auditwheel repair $HOME/openmc/dist/openmc-*.whl -w $HOME/openmc/dist
@@ -427,4 +426,4 @@ ARG COMPILER
 # Test OpenMC
 RUN cd $HOME/openmc && \
     nctool --test && \
-    pytest --cov=openmc -v $([ ${COMPILER} = 'openmpi' ] && echo '--mpi') --event tests
+    pytest --cov=openmc -v $([ ${COMPILER} == 'openmpi' ] && echo '--mpi') --event tests

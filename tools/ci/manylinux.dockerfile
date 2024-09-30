@@ -1,9 +1,45 @@
+# ----------------------------------------------------------------------------
+# Dockerfile for building the OpenMC project with support for various dependencies
+# and configurations. This Dockerfile allows you to build OpenMC with support
+# for GCC or OpenMPI compilers, along with several libraries like NJOY2016, HDF5,
+# NetCDF, MOAB, EMBREE, Double Down, DAGMC, NCrystal, PyBind11, Xtensor, Vectfit,
+# libMesh, and MCPL. Each of these dependencies is installed from their respective
+# repositories and tags.
+
+# The build process is split into stages:
+# 1. Base Stage: Sets up a Manylinux base image and installs necessary dependencies.
+# 2. Compiler Configuration: Defines the compilers (GCC or OpenMPI) to be used.
+# 3. Dependencies Stage: Downloads and builds all external dependencies.
+# 4. OpenMC Stage: Copies OpenMC source code, builds it using CMake with specific
+#    flags and installs it in the container.
+# 5. Test Stage: Runs OpenMC's unit tests.
+
+# Arguments and environment variables can be customized for different compiler and
+# dependency versions.
+#
+# To build the Docker image, use the following command from the repository's root:
+# docker build -t openmc -f tools/ci/manylinux.dockerfile .
+#
+# For more information about each step, refer to the inline comments.
+# ----------------------------------------------------------------------------
+
 # Configure base image
 ARG MANYLINUX_IMAGE=manylinux_2_28_x86_64
 ARG Python_ABI="cp312-cp312"
 
 # Configure Compiler to use (gcc or openmpi)
-ARG COMPILER="gcc"
+ARG COMPILER="openmpi"
+
+# OpenMC options
+ARG OPENMC_USE_OPENMP="ON"
+ARG OPENMC_BUILD_TESTS="ON"
+ARG OPENMC_ENABLE_PROFILE="OFF"
+ARG OPENMC_ENABLE_COVERAGE="OFF"
+ARG OPENMC_USE_DAGMC="ON"
+ARG OPENMC_USE_LIBMESH="ON"
+ARG OPENMC_USE_MCPL="ON"
+ARG OPENMC_USE_NCRYSTAL="ON"
+ARG OPENMC_USE_UWUW="OFF"
 
 # Configure dependencies tags
 ARG NJOY2016_TAG="2016.76"
@@ -24,7 +60,7 @@ ARG LIBMESH_TAG="v1.7.2"
 ARG MCPL_TAG="v1.6.2"
 
 
-# Build base stage
+# Base stage
 FROM quay.io/pypa/${MANYLINUX_IMAGE} AS base
 
 ARG Python_ABI
@@ -37,12 +73,10 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 ENV HOME /root
 WORKDIR $HOME
 
-# Setup Epel
+# Setup Epel repository and install build dependencies
 RUN yum install -y epel-release && \
-    yum config-manager --enable epel
-
-# Install basic dependencies
-RUN yum install -y \ 
+    yum config-manager --enable epel && \
+    yum install -y \ 
         wget \
         git \
         gcc \
@@ -62,7 +96,7 @@ RUN yum install -y \
 ENV PATH="/opt/python/${Python_ABI}/bin:${PATH}"
 RUN ln -sf /opt/python/${Python_ABI}/bin/python3 /usr/bin/python
 
-# Set up general library environment variables
+# Set up environment variables for shared libraries
 ENV LD_LIBRARY_PATH=/usr/lib64:$LD_LIBRARY_PATH
 
 # Install necessary Python packages
@@ -88,6 +122,8 @@ RUN python -m pip install --upgrade \
         colorama \
         openpyxl
 
+
+# Compiler configuration stage: gcc
 FROM base AS compiler-gcc
 
 ENV CC=gcc
@@ -95,6 +131,8 @@ ENV CXX=g++
 ENV FC=gfortran
 ENV F77=gfortran
 
+
+# Compiler configuration stage: openmpi
 FROM base AS compiler-openmpi
 
 ENV CC=mpicc
@@ -107,14 +145,13 @@ ENV PATH=/usr/lib64/openmpi/bin:$PATH
 ENV LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:$LD_LIBRARY_PATH
 
 
+# Dependencies stage
 FROM compiler-${COMPILER} AS dependencies
 
 ARG COMPILER
 
-# Set up NJOY2016
-ARG NJOY2016_TAG
-
 # Build and install NJOY2016
+ARG NJOY2016_TAG
 RUN git clone --depth 1 -b ${NJOY2016_TAG} https://github.com/njoy/njoy2016.git njoy && \
     cd njoy && \
     mkdir build && cd build && \
@@ -125,10 +162,8 @@ RUN git clone --depth 1 -b ${NJOY2016_TAG} https://github.com/njoy/njoy2016.git 
     rm -rf njoy
 
 
-# Set up HDF5
-ARG HDF5_TAG
-
 # Build and install HDF5
+ARG HDF5_TAG
 RUN git clone --depth 1 -b ${HDF5_TAG} https://github.com/HDFGroup/hdf5.git hdf5 && \
     cd hdf5 && \
     mkdir build && cd build && \
@@ -143,10 +178,8 @@ RUN git clone --depth 1 -b ${HDF5_TAG} https://github.com/HDFGroup/hdf5.git hdf5
     rm -rf hdf5
 
 
-# Set up NetCDF
-ARG NETCDF_TAG
-
 # Build and install NetCDF
+ARG NETCDF_TAG
 RUN git clone --depth 1 -b ${NETCDF_TAG} https://github.com/Unidata/netcdf-c.git netcdf && \
     cd netcdf && \
     mkdir build && cd build && \
@@ -159,10 +192,8 @@ RUN git clone --depth 1 -b ${NETCDF_TAG} https://github.com/Unidata/netcdf-c.git
     rm -rf netcdf
 
 
-# Set up MOAB
-ARG MOAB_TAG
-
 # Build and install MOAB
+ARG MOAB_TAG
 RUN git clone --depth 1 -b ${MOAB_TAG} https://bitbucket.org/fathomteam/moab.git moab && \
     cd moab && \
     mkdir build && cd build && \
@@ -178,10 +209,9 @@ RUN git clone --depth 1 -b ${MOAB_TAG} https://bitbucket.org/fathomteam/moab.git
     cd ../.. && \
     rm -rf moab
 
-# Set up EMBREE
-ARG EMBREE_TAG
 
-# Build and install EMBREE
+# Build and install Embree
+ARG EMBREE_TAG
 RUN git clone --depth 1 -b ${EMBREE_TAG} https://github.com/embree/embree.git embree && \
     cd embree && \
     mkdir build && cd build && \
@@ -193,10 +223,9 @@ RUN git clone --depth 1 -b ${EMBREE_TAG} https://github.com/embree/embree.git em
     cd ../.. && \
     rm -rf embree
 
-# Set up Double Down
-ARG DD_TAG
 
 # Build and install Double Down
+ARG DD_TAG
 RUN git clone --depth 1 -b ${DD_TAG} https://github.com/pshriwise/double-down.git dd && \
     cd dd && \
     mkdir build && cd build && \
@@ -205,10 +234,9 @@ RUN git clone --depth 1 -b ${DD_TAG} https://github.com/pshriwise/double-down.gi
     cd ../.. && \
     rm -rf dd
 
-# Set up DAGMC
-ARG DAGMC_TAG
 
 # Build and install DAGMC
+ARG DAGMC_TAG
 RUN git clone --depth 1 -b ${DAGMC_TAG} https://github.com/svalinn/DAGMC.git dagmc && \
     cd dagmc && \
     mkdir build && cd build && \
@@ -224,10 +252,9 @@ RUN git clone --depth 1 -b ${DAGMC_TAG} https://github.com/svalinn/DAGMC.git dag
     cd ../.. && \
     rm -rf dagmc
 
-# Set up NCrystal
-ARG NCrystal_TAG
 
 # Build and install NCrystal
+ARG NCrystal_TAG
 RUN git clone --depth 1 -b ${NCrystal_TAG} https://github.com/mctools/ncrystal.git ncrystal && \
     cd ncrystal && \
     mkdir build && cd build && \
@@ -245,10 +272,9 @@ RUN git clone --depth 1 -b ${NCrystal_TAG} https://github.com/mctools/ncrystal.g
     ncrystal-config --setup && \
     rm -rf ncrystal
 
-# Set up pybind
-ARG PYBIND_TAG
 
 # Build and install pybind
+ARG PYBIND_TAG
 RUN git clone --depth 1 -b ${PYBIND_TAG} https://github.com/pybind/pybind11.git pybind11 && \
     cd pybind11 && \
     mkdir build && cd build && \
@@ -259,10 +285,9 @@ RUN git clone --depth 1 -b ${PYBIND_TAG} https://github.com/pybind/pybind11.git 
     cd .. && \
     rm -rf pybind11 
 
-# Set up xtl
-ARG XTL_TAG
 
 # Build and install xtl
+ARG XTL_TAG
 RUN git clone --depth 1 -b ${XTL_TAG} https://github.com/xtensor-stack/xtl.git xtl && \
     cd xtl && \
     mkdir build && cd build && \
@@ -271,10 +296,9 @@ RUN git clone --depth 1 -b ${XTL_TAG} https://github.com/xtensor-stack/xtl.git x
     cd ../.. && \
     rm -rf xtl
 
-# Set up xtensor
-ARG XTENSOR_TAG
 
 # Build and install xtensor
+ARG XTENSOR_TAG
 RUN git clone --depth 1 -b ${XTENSOR_TAG} https://github.com/xtensor-stack/xtensor.git xtensor && \
     cd xtensor && \
     mkdir build && cd build && \
@@ -283,10 +307,9 @@ RUN git clone --depth 1 -b ${XTENSOR_TAG} https://github.com/xtensor-stack/xtens
     cd ../.. && \
     rm -rf xtensor
 
-# Set up xtensor-python
-ARG XTENSOR_PYTHON_TAG
 
 # Build and install xtensor-python
+ARG XTENSOR_PYTHON_TAG
 RUN git clone --depth 1 -b ${XTENSOR_PYTHON_TAG} https://github.com/xtensor-stack/xtensor-python.git xtensor-python && \
     cd xtensor-python && \
     mkdir build && cd build && \
@@ -296,10 +319,9 @@ RUN git clone --depth 1 -b ${XTENSOR_PYTHON_TAG} https://github.com/xtensor-stac
     cd ../.. && \
     rm -rf xtensor-python
 
-# Set up xtensor-blas
-ARG XTENSOR_BLAS_TAG
 
 # Build and install xtensor-blas
+ARG XTENSOR_BLAS_TAG
 RUN git clone --depth 1 -b ${XTENSOR_BLAS_TAG} https://github.com/xtensor-stack/xtensor-blas.git xtensor-blas && \
     cd xtensor-blas && \
     mkdir build && cd build && \
@@ -308,26 +330,25 @@ RUN git clone --depth 1 -b ${XTENSOR_BLAS_TAG} https://github.com/xtensor-stack/
     cd ../.. && \
     rm -rf xtensor-blas
 
-# Set up vectfit
-ARG VECTFIT_TAG
 
 # Build and install vectfit
+ARG VECTFIT_TAG
 RUN git clone --depth 1 -b ${VECTFIT_TAG} https://github.com/liangjg/vectfit.git vectfit && \
     cd vectfit && \
     python -m pip install . && \
     cd .. && \
     rm -rf vectfit
 
-# Set up libMesh
-ARG LIBMESH_TAG
 
 # Build and install libMesh
+ARG LIBMESH_TAG
 RUN git clone --depth 1 -b ${LIBMESH_TAG} https://github.com/libMesh/libmesh.git libmesh && \
     cd libmesh && \
     git submodule update --init --recursive && \
     mkdir build && cd build && \
     export METHODS="opt" && \
     ../configure \
+        $([ ${COMPILER} = 'openmpi' ] && echo '--enable-mpi' || echo '--disable-mpi') \
         --enable-exodus \
         --disable-netcdf-4 \
         --disable-eigen \
@@ -336,11 +357,10 @@ RUN git clone --depth 1 -b ${LIBMESH_TAG} https://github.com/libMesh/libmesh.git
     cd .. && \
     rm -rf libmesh
 
-# Set up MCPL
-ARG MCPL_TAG
 
 # Build and install MCPL
-RUN git clone --depth 1 --single-branch -b ${MCPL_TAG} https://github.com/mctools/mcpl.git mcpl && \
+ARG MCPL_TAG
+RUN git clone --depth 1 -b ${MCPL_TAG} https://github.com/mctools/mcpl.git mcpl && \
     cd mcpl && \
     mkdir build && cd build && \
     cmake .. && \
@@ -356,20 +376,34 @@ RUN wget -q -O - https://anl.box.com/shared/static/teaup95cqv8s9nn56hfn7ku8mmelr
 RUN wget -q -O - https://anl.box.com/shared/static/4kd2gxnf4gtk4w1c8eua5fsua22kvgjb.xz | tar -C $HOME -xJ
 
 
+# Build and install OpenMC stage
 FROM dependencies AS openmc
 
 ARG COMPILER
+ARG OPENMC_USE_OPENMP
+ARG OPENMC_BUILD_TESTS
+ARG OPENMC_ENABLE_PROFILE
+ARG OPENMC_ENABLE_COVERAGE
+ARG OPENMC_USE_DAGMC
+ARG OPENMC_USE_LIBMESH
+ARG OPENMC_USE_MCPL
+ARG OPENMC_USE_NCRYSTAL
+ARG OPENMC_USE_UWUW
 
-# Copy OpenMC source
+# Copy OpenMC source to docker image
 COPY . $HOME/openmc
 
 # Configure SKBUILD CMake arguments
-ENV SKBUILD_CMAKE_ARGS "-DOPENMC_USE_OPENMP=ON; \
-                        -DOPENMC_USE_DAGMC=ON; \
-                        -DOPENMC_USE_LIBMESH=ON; \
-                        -DOPENMC_USE_MPI=$([ ${COMPILER} = 'openmpi' ] && echo 'ON' || echo 'OFF'); \
-                        -DOPENMC_USE_MCPL=ON; \
-                        -DOPENMC_USE_NCRYSTAL=ON;"
+ENV SKBUILD_CMAKE_ARGS "-DOPENMC_USE_MPI=$([ ${COMPILER} = 'openmpi' ] && echo 'ON' || echo 'OFF'); \
+                        -DOPENMC_USE_OPENMP=${OPENMC_USE_OPENMP}; \
+                        -DOPENMC_BUILD_TESTS=${OPENMC_BUILD_TESTS}; \
+                        -DOPENMC_ENABLE_PROFILE=${OPENMC_ENABLE_PROFILE}; \
+                        -DOPENMC_ENABLE_COVERAGE=${OPENMC_ENABLE_COVERAGE}; \
+                        -DOPENMC_USE_DAGMC=${OPENMC_USE_DAGMC}; \
+                        -DOPENMC_USE_LIBMESH=${OPENMC_USE_LIBMESH}; \
+                        -DOPENMC_USE_MCPL=${OPENMC_USE_MCPL}; \
+                        -DOPENMC_USE_NCRYSTAL=${OPENMC_USE_NCRYSTAL}; \
+                        -DOPENMC_USE_UWUW=${OPENMC_USE_UWUW}"
 
 # Build OpenMC wheel
 RUN cd $HOME/openmc && python -m build . -w
@@ -380,7 +414,7 @@ RUN auditwheel repair $HOME/openmc/dist/openmc-*.whl -w $HOME/openmc/dist
 # Install OpenMC wheel
 RUN python -m pip install $HOME/openmc/dist/*manylinux**.whl
 
-
+# Test OpenMC stage
 FROM openmc AS openmc-test
 
 ARG COMPILER

@@ -49,7 +49,7 @@ jobs:
       - name: Configure docker image tag
         run: |
           image_base_tag=ghcr.io/${{ github.repository_owner }}/
-          image_base_tag+=openmc-ci-${{ matrix.manylinux_image }}
+          image_base_tag+=openmc-${{ matrix.manylinux_image }}
           image_base_tag+=-${{ matrix.compiler}}
           image_base_tag+=-${{ matrix.python }}
           echo "image_base_tag=${image_base_tag}" >> "$GITHUB_ENV"
@@ -100,7 +100,7 @@ jobs:
         if: ${{ github.repository_owner == 'openmc-dev' }}
         run: |
           image_base_tag=ghcr.io/${{ github.repository_owner }}/
-          image_base_tag+=openmc-ci-${{ matrix.manylinux_image }}
+          image_base_tag+=openmc-${{ matrix.manylinux_image }}
           image_base_tag+=-${{ matrix.compiler}}
           image_base_tag+=-${{ matrix.python }}
           echo "image_base_tag=${image_base_tag}" >> "$GITHUB_ENV"

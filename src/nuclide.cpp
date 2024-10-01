@@ -379,16 +379,18 @@ void Nuclide::create_derived(
       auto pprod = xt::view(xs_[t], xt::range(j, j + n), XS_PHOTON_PROD);
 
       if (settings::use_decay_photons) {
-        const auto& target = rx->decay_product_;
-        if (!target.empty()) {
-          int idx = data::chain_nuclide_map.at(target);
-          const auto& chain_nuc = data::chain_nuclides[idx];
-          const auto& energy_dist = chain_nuc->photon_energy();
-          if (energy_dist) {
-            double photon_per_decay =
-              energy_dist->integral() / chain_nuc->decay_constant();
-            for (int k = 0; k < n; ++k) {
-              pprod[k] += xs[k] * photon_per_decay;
+        const auto& targets = rx->decay_products_;
+        if (!targets.empty()) {
+          for (const auto& target : targets) {
+            int idx = data::chain_nuclide_map.at(target.name);
+            const auto& chain_nuc = data::chain_nuclides[idx];
+            const auto& energy_dist = chain_nuc->photon_energy();
+            if (energy_dist) {
+              double photon_per_decay =
+                energy_dist->integral() / chain_nuc->decay_constant();
+              for (int k = 0; k < n; ++k) {
+                pprod[k] += xs[k] * target.branching_ratio * photon_per_decay;
+              }
             }
           }
         }

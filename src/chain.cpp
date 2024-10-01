@@ -37,8 +37,13 @@ ChainNuclide::ChainNuclide(pugi::xml_node node)
     if (!reaction_node.attribute("target"))
       continue;
     std::string rx_target = get_node_value(reaction_node, "target");
+    double branching_ratio = 1.0;
+    if (reaction_node.attribute("branching_ratio")) {
+      branching_ratio =
+        std::stod(get_node_value(reaction_node, "branching_ratio"));
+    }
     int mt = reaction_type(rx_name);
-    reaction_products_[mt] = rx_target;
+    reaction_products_[mt].push_back({rx_target, branching_ratio});
   }
 
   for (pugi::xml_node source_node : node.children("source")) {

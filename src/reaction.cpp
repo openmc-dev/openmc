@@ -73,10 +73,12 @@ Reaction::Reaction(
     const auto& rx_products = chain_nuc->reaction_products();
     auto product_it = rx_products.find(mt_);
     if (product_it != rx_products.end()) {
-      auto decay_product = product_it->second;
-      if (data::chain_nuclide_map.find(decay_product) !=
-          data::chain_nuclide_map.end()) {
-        decay_product_ = decay_product;
+      auto decay_products = product_it->second;
+      for (const auto& decay_product : decay_products) {
+        if (data::chain_nuclide_map.find(decay_product.name) !=
+            data::chain_nuclide_map.end()) {
+          decay_products_.push_back(decay_product);
+        }
       }
     }
   }

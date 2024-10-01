@@ -591,23 +591,27 @@ void sample_photon_product(
       continue;
 
     if (settings::use_decay_photons) {
-      const auto& target = rx->decay_product_;
-      if (target.empty())
+      const auto& targets = rx->decay_products_;
+      if (targets.empty())
         continue;
 
-      int idx = data::chain_nuclide_map[target];
-      const auto& chain_nuc = data::chain_nuclides[idx];
-      const auto& energy_dist = chain_nuc->photon_energy();
-      if (!energy_dist)
-        continue;
+      for (int j; j < targets.size(); ++j) {
+        const auto& target = targets[j];
+        int idx = data::chain_nuclide_map[target.name];
+        const auto& chain_nuc = data::chain_nuclides[idx];
+        const auto& energy_dist = chain_nuc->photon_energy();
+        if (!energy_dist)
+          continue;
 
-      double photon_per_decay =
-        energy_dist->integral() / chain_nuc->decay_constant();
-      prob += xs * photon_per_decay;
+        double photon_per_decay =
+          energy_dist->integral() / chain_nuc->decay_constant();
+        prob += xs * target.branching_ratio * photon_per_decay;
 
-      *i_rx = i;
-      if (prob > cutoff)
-        return;
+        *i_rx = i;
+        *i_product = j;
+        if (prob > cutoff)
+          return;
+      }
 
     } else {
       for (int j = 0; j < rx->products_.size(); ++j) {
@@ -1182,11 +1186,12 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
   double mu;
   int i_chain_nuc;
   if (settings::use_decay_photons) {
-    // For D1S method, sample photon from decay of
-    const auto& target = rx->decay_product_;
-    if (target.empty())
+    // For D1S method, sample photon from decay of reaction product
+    const auto& targets = rx->decay_products_;
+    if (targets.empty())
       return;
-    i_chain_nuc = data::chain_nuclide_map[target];
+    const auto& target = targets[i_product];
+    i_chain_nuc = data::chain_nuclide_map[target.name];
     E = data::chain_nuclides[i_chain_nuc]->photon_energy()->sample(
       p.current_seed());
     mu = Uniform(-1., 1.).sample(p.current_seed());

@@ -1377,7 +1377,7 @@ class Mixture(Univariate):
                 if isinstance(dist, Discrete):
                     dist.clip(tolerance, inplace=True)
 
-            new_dist = self
+            return self
         else:
             # Clip mixture of distributions
             probability = self.probability[indices]
@@ -1389,11 +1389,7 @@ class Mixture(Univariate):
                 for dist in distribution
             ]
 
-            new_dist = type(self)(probability, distribution)
-
-        # Normalize and return
-        new_dist.normalize()
-        return new_dist
+            return type(self)(probability, distribution)
 
 
 def combine_distributions(

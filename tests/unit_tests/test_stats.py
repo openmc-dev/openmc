@@ -262,7 +262,7 @@ def test_mixture():
     d2 = openmc.stats.Uniform(3, 7)
     p = [0.5, 0.5]
     mix = openmc.stats.Mixture(p, [d1, d2])
-    assert mix.probability == p
+    np.testing.assert_allclose(mix.probability, p)
     assert mix.distribution == [d1, d2]
     assert len(mix) == 4
 
@@ -274,7 +274,7 @@ def test_mixture():
     elem = mix.to_xml_element('distribution')
 
     d = openmc.stats.Mixture.from_xml_element(elem)
-    assert d.probability == p
+    np.testing.assert_allclose(d.probability, p)
     assert d.distribution == [d1, d2]
     assert len(d) == 4
 
@@ -296,6 +296,12 @@ def test_mixture_clip():
     mix_same = mix.clip(1e-6, inplace=True)
     assert mix_same is mix
 
+    # Make sure clip removes low probability distributions
+    d_small = openmc.stats.Uniform(0., 1.)
+    d_large = openmc.stats.Uniform(2., 5.)
+    mix = openmc.stats.Mixture([1e-10, 1.0], [d_small, d_large])
+    mix_clip = mix.clip(1e-3)
+    assert mix_clip.distribution == [d_large]
 
 def test_polar_azimuthal():
     # default polar-azimuthal should be uniform in mu and phi

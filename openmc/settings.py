@@ -8,13 +8,14 @@ from pathlib import Path
 import lxml.etree as ET
 
 import openmc.checkvalue as cv
-from openmc.stats.multivariate import MeshSpatial
-from . import (RegularMesh, SourceBase, MeshSource, IndependentSource,
-               VolumeCalculation, WeightWindows, WeightWindowGenerator)
-from ._xml import clean_indentation, get_text, reorder_attributes
 from openmc.checkvalue import PathLike
-from .mesh import _read_meshes
+from openmc.stats.multivariate import MeshSpatial
+from ._xml import clean_indentation, get_text, reorder_attributes
+from .mesh import _read_meshes, RegularMesh
+from .source import SourceBase, MeshSource, IndependentSource
 from .utility_funcs import input_path
+from .volume import VolumeCalculation
+from .weight_windows import WeightWindows, WeightWindowGenerator
 
 
 class RunMode(Enum):

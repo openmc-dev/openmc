@@ -327,7 +327,7 @@ class Discrete(Univariate):
         intensity = self.p * self.x
 
         # Get indices for intensities above threshold
-        indices = _intensity_clip(intensity)
+        indices = _intensity_clip(intensity, tolerance=tolerance)
 
         # Create new discrete distribution
         if inplace:

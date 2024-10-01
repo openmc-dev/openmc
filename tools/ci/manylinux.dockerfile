@@ -11,7 +11,8 @@
 # 2. Compiler Configuration: Defines the compilers (GCC or OpenMPI) to be used.
 # 3. Dependencies Stage: Downloads and builds all external dependencies.
 # 4. OpenMC Stage: Copies OpenMC source code, builds it using CMake with specific
-#    flags and installs it in the container. After the build, OpenMC is tested.
+#    flags and installs it in the container.
+# 5. Test Stage: Runs OpenMC unit tests.
 
 # Arguments and environment variables can be customized for different compiler and
 # dependency versions.
@@ -24,10 +25,12 @@
 
 # Configure base image
 ARG MANYLINUX_IMAGE=manylinux_2_28_x86_64
-ARG Python_ABI="cp312-cp312"
 
 # Configure Compiler to use (gcc or openmpi)
 ARG COMPILER="gcc"
+
+# Configure Python ABI to use
+ARG Python_ABI="cp312-cp312"
 
 # OpenMC options
 ARG OPENMC_USE_OPENMP="ON"
@@ -44,7 +47,7 @@ ARG OPENMC_USE_UWUW="OFF"
 ARG NJOY2016_TAG="2016.76"
 ARG HDF5_TAG="hdf5_1.14.4.3"
 ARG NETCDF_TAG="v4.9.2"
-ARG MOAB_TAG="master"
+ARG MOAB_TAG="5.5.1"
 ARG EMBREE_TAG="v4.3.3"
 ARG DD_TAG="v1.1.0"
 ARG DAGMC_TAG="v3.2.3"
@@ -61,8 +64,6 @@ ARG MCPL_TAG="v1.6.2"
 
 # Base stage
 FROM quay.io/pypa/${MANYLINUX_IMAGE} AS base
-
-ARG Python_ABI
 
 # Set timezone
 ENV TZ=America/Chicago
@@ -90,34 +91,8 @@ RUN yum install -y epel-release && \
         libpng-devel && \
     yum clean all
 
-# Use Python from manylinux as the default Python
-ENV PATH="/opt/python/${Python_ABI}/bin:${PATH}"
-RUN ln -sf /opt/python/${Python_ABI}/bin/python3 /usr/bin/python
-
 # Set up environment variables for shared libraries
 ENV LD_LIBRARY_PATH=/usr/lib64:/usr/local/lib64:$LD_LIBRARY_PATH
-
-# Install necessary Python packages
-RUN python -m pip install --upgrade \
-        scikit-build-core \
-        setuptools \  
-        numpy \
-        cmake \
-        ninja \
-        h5py \
-        scipy \
-        ipython \
-        matplotlib \
-        pandas \
-        lxml \
-        uncertainties \
-        endf \
-        vtk \
-        packaging \
-        pytest \
-        pytest-cov \
-        colorama \
-        openpyxl
 
 
 # Compiler configuration stage: gcc
@@ -132,21 +107,19 @@ ENV F77=gfortran
 # Compiler configuration stage: openmpi
 FROM base AS compiler-openmpi
 
-# Set up OpenMPI environment variables
-ENV PATH=/usr/lib64/openmpi/bin:$PATH
-ENV LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:$LD_LIBRARY_PATH
-
 # Install OpenMPI
 RUN yum install -y \
         openmpi-devel && \
-    yum clean all && \
-    python -m pip install --upgrade \
-        mpi4py
+    yum clean all
 
 ENV CC=mpicc
 ENV CXX=mpicxx
 ENV FC=mpif90
 ENV F77=mpif77
+
+# Set up OpenMPI environment variables
+ENV PATH=/usr/lib64/openmpi/bin:$PATH
+ENV LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:$LD_LIBRARY_PATH
 
 
 # Dependencies stage
@@ -165,7 +138,6 @@ RUN git clone --depth 1 -b ${NJOY2016_TAG} https://github.com/njoy/njoy2016.git 
     cd ../.. && \
     rm -rf njoy
 
-
 # Build and install HDF5
 ARG HDF5_TAG
 RUN git clone --depth 1 -b ${HDF5_TAG} https://github.com/HDFGroup/hdf5.git hdf5 && \
@@ -181,7 +153,6 @@ RUN git clone --depth 1 -b ${HDF5_TAG} https://github.com/HDFGroup/hdf5.git hdf5
     cd ../.. && \
     rm -rf hdf5
 
-
 # Build and install NetCDF
 ARG NETCDF_TAG
 RUN git clone --depth 1 -b ${NETCDF_TAG} https://github.com/Unidata/netcdf-c.git netcdf && \
@@ -195,7 +166,6 @@ RUN git clone --depth 1 -b ${NETCDF_TAG} https://github.com/Unidata/netcdf-c.git
     cd ../.. && \
     rm -rf netcdf
 
-
 # Build and install MOAB
 ARG MOAB_TAG
 RUN git clone --depth 1 -b ${MOAB_TAG} https://bitbucket.org/fathomteam/moab.git moab && \
@@ -208,11 +178,11 @@ RUN git clone --depth 1 -b ${MOAB_TAG} https://bitbucket.org/fathomteam/moab.git
         -DENABLE_NETCDF=ON \
         -DNETCDF_ROOT=/usr/local \
         -DBUILD_SHARED_LIBS=ON \
-        -DENABLE_BLASLAPACK=OFF && \
+        -DENABLE_BLASLAPACK=OFF \
+        -DENABLE_PYMOAB=OFF && \
     make -j$(nproc) && make install && \
     cd ../.. && \
     rm -rf moab
-
 
 # Build and install Embree
 ARG EMBREE_TAG
@@ -227,17 +197,16 @@ RUN git clone --depth 1 -b ${EMBREE_TAG} https://github.com/embree/embree.git em
     cd ../.. && \
     rm -rf embree
 
-
 # Build and install Double Down
 ARG DD_TAG
 RUN git clone --depth 1 -b ${DD_TAG} https://github.com/pshriwise/double-down.git dd && \
     cd dd && \
     mkdir build && cd build && \
-    cmake .. && \
+    cmake .. \
+        -DCMAKE_INSTALL_PREFIX=/usr/local && \
     make -j$(nproc) && make install && \
     cd ../.. && \
     rm -rf dd
-
 
 # Build and install DAGMC
 ARG DAGMC_TAG
@@ -255,7 +224,6 @@ RUN git clone --depth 1 -b ${DAGMC_TAG} https://github.com/svalinn/DAGMC.git dag
     make -j$(nproc) && make install && \
     cd ../.. && \
     rm -rf dagmc
-
 
 # Build and install NCrystal
 ARG NCrystal_TAG
@@ -276,74 +244,6 @@ RUN git clone --depth 1 -b ${NCrystal_TAG} https://github.com/mctools/ncrystal.g
     ncrystal-config --setup && \
     rm -rf ncrystal
 
-
-# Build and install pybind
-ARG PYBIND_TAG
-RUN git clone --depth 1 -b ${PYBIND_TAG} https://github.com/pybind/pybind11.git pybind11 && \
-    cd pybind11 && \
-    mkdir build && cd build && \
-    cmake .. && \
-    make -j$(nproc) && make install && \
-    cd .. && \
-    python -m pip install . && \
-    cd .. && \
-    rm -rf pybind11 
-
-
-# Build and install xtl
-ARG XTL_TAG
-RUN git clone --depth 1 -b ${XTL_TAG} https://github.com/xtensor-stack/xtl.git xtl && \
-    cd xtl && \
-    mkdir build && cd build && \
-    cmake .. && \
-    make -j$(nproc) && make install && \
-    cd ../.. && \
-    rm -rf xtl
-
-
-# Build and install xtensor
-ARG XTENSOR_TAG
-RUN git clone --depth 1 -b ${XTENSOR_TAG} https://github.com/xtensor-stack/xtensor.git xtensor && \
-    cd xtensor && \
-    mkdir build && cd build && \
-    cmake .. && \
-    make -j$(nproc) && make install && \
-    cd ../.. && \
-    rm -rf xtensor
-
-
-# Build and install xtensor-python
-ARG XTENSOR_PYTHON_TAG
-RUN git clone --depth 1 -b ${XTENSOR_PYTHON_TAG} https://github.com/xtensor-stack/xtensor-python.git xtensor-python && \
-    cd xtensor-python && \
-    mkdir build && cd build && \
-    cmake .. \
-    -DNUMPY_INCLUDE_DIRS=$(python -c "import numpy; print(numpy.get_include())") && \
-    make -j$(nproc) && make install && \
-    cd ../.. && \
-    rm -rf xtensor-python
-
-
-# Build and install xtensor-blas
-ARG XTENSOR_BLAS_TAG
-RUN git clone --depth 1 -b ${XTENSOR_BLAS_TAG} https://github.com/xtensor-stack/xtensor-blas.git xtensor-blas && \
-    cd xtensor-blas && \
-    mkdir build && cd build && \
-    cmake .. && \
-    make -j$(nproc) && make install && \
-    cd ../.. && \
-    rm -rf xtensor-blas
-
-
-# Build and install vectfit
-ARG VECTFIT_TAG
-RUN git clone --depth 1 -b ${VECTFIT_TAG} https://github.com/liangjg/vectfit.git vectfit && \
-    cd vectfit && \
-    python -m pip install . && \
-    cd .. && \
-    rm -rf vectfit
-
-
 # Build and install libMesh
 ARG LIBMESH_TAG
 RUN git clone --depth 1 -b ${LIBMESH_TAG} https://github.com/libMesh/libmesh.git libmesh && \
@@ -361,7 +261,6 @@ RUN git clone --depth 1 -b ${LIBMESH_TAG} https://github.com/libMesh/libmesh.git
     cd ../.. && \
     rm -rf libmesh
 
-
 # Build and install MCPL
 ARG MCPL_TAG
 RUN git clone --depth 1 -b ${MCPL_TAG} https://github.com/mctools/mcpl.git mcpl && \
@@ -371,7 +270,6 @@ RUN git clone --depth 1 -b ${MCPL_TAG} https://github.com/mctools/mcpl.git mcpl 
     make -j$(nproc) && make install && \
     cd ../.. && \
     rm -rf mcpl
-
 
 # Download and extract HDF5 data
 RUN wget -q -O - https://anl.box.com/shared/static/teaup95cqv8s9nn56hfn7ku8mmelr95p.xz | tar -C $HOME -xJ
@@ -384,6 +282,7 @@ RUN wget -q -O - https://anl.box.com/shared/static/4kd2gxnf4gtk4w1c8eua5fsua22kv
 FROM dependencies AS openmc
 
 ARG COMPILER
+ARG Python_ABI
 ARG OPENMC_USE_OPENMP
 ARG OPENMC_BUILD_TESTS
 ARG OPENMC_ENABLE_PROFILE
@@ -393,6 +292,10 @@ ARG OPENMC_USE_LIBMESH
 ARG OPENMC_USE_MCPL
 ARG OPENMC_USE_NCRYSTAL
 ARG OPENMC_USE_UWUW
+
+# Use Python from manylinux as the default Python
+ENV PATH="/opt/python/${Python_ABI}/bin:${PATH}"
+RUN ln -sf /opt/python/${Python_ABI}/bin/python3 /usr/bin/python
 
 # Copy OpenMC source to docker image
 COPY . $HOME/openmc
@@ -412,10 +315,81 @@ RUN export SKBUILD_CMAKE_ARGS="-DOPENMC_USE_MPI=$([ ${COMPILER} == 'openmpi' ] &
     python -m build . -w
 
 # Repair wheel
-RUN auditwheel repair $HOME/openmc/dist/openmc-*.whl -w $HOME/openmc/dist
+RUN auditwheel repair $HOME/openmc/dist/openmc-*.whl -w $HOME/openmc/dist/
 
 # Install OpenMC wheel
-RUN python -m pip install $HOME/openmc/dist/*manylinux**.whl
+RUN python -m pip install \
+        "$(echo $HOME/openmc/dist/*manylinux**.whl)[$([ ${COMPILER} == 'openmpi' ] && echo 'depletion-mpi,')test,ci,vtk]"
+
+
+# Test OpenMC stage
+FROM openmc AS test
+
+ARG COMPILER
+
+# Build and install pybind
+ARG PYBIND_TAG
+RUN git clone --depth 1 -b ${PYBIND_TAG} https://github.com/pybind/pybind11.git pybind11 && \
+    cd pybind11 && \
+    mkdir build && cd build && \
+    cmake .. && \
+    make -j$(nproc) && make install && \
+    cd .. && \
+    python -m pip install . && \
+    cd .. && \
+    rm -rf pybind11 
+
+# Build and install xtl
+ARG XTL_TAG
+RUN git clone --depth 1 -b ${XTL_TAG} https://github.com/xtensor-stack/xtl.git xtl && \
+    cd xtl && \
+    mkdir build && cd build && \
+    cmake .. && \
+    make -j$(nproc) && make install && \
+    cd ../.. && \
+    rm -rf xtl
+
+# Build and install xtensor
+ARG XTENSOR_TAG
+RUN git clone --depth 1 -b ${XTENSOR_TAG} https://github.com/xtensor-stack/xtensor.git xtensor && \
+    cd xtensor && \
+    mkdir build && cd build && \
+    cmake .. && \
+    make -j$(nproc) && make install && \
+    cd ../.. && \
+    rm -rf xtensor
+
+# Build and install xtensor-python
+ARG XTENSOR_PYTHON_TAG
+RUN git clone --depth 1 -b ${XTENSOR_PYTHON_TAG} https://github.com/xtensor-stack/xtensor-python.git xtensor-python && \
+    cd xtensor-python && \
+    mkdir build && cd build && \
+    cmake .. \
+    -DNUMPY_INCLUDE_DIRS=$(python -c "import numpy; print(numpy.get_include())") && \
+    make -j$(nproc) && make install && \
+    cd ../.. && \
+    rm -rf xtensor-python
+
+# Build and install xtensor-blas
+ARG XTENSOR_BLAS_TAG
+RUN git clone --depth 1 -b ${XTENSOR_BLAS_TAG} https://github.com/xtensor-stack/xtensor-blas.git xtensor-blas && \
+    cd xtensor-blas && \
+    mkdir build && cd build && \
+    cmake .. && \
+    make -j$(nproc) && make install && \
+    cd ../.. && \
+    rm -rf xtensor-blas
+
+# Build and install vectfit
+ARG VECTFIT_TAG
+RUN git clone --depth 1 -b ${VECTFIT_TAG} https://github.com/liangjg/vectfit.git vectfit && \
+    cd vectfit && \
+    python -m pip install . && \
+    cd .. && \
+    rm -rf vectfit
+
+RUN yum install -y \
+        sqlite-devel
 
 # Test OpenMC
 RUN cd $HOME/openmc && \

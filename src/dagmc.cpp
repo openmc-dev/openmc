@@ -876,7 +876,7 @@ extern "C" int openmc_dagmc_universe_get_num_cells(int32_t univ_id, size_t* n)
   const auto& univ = model::universes[model::universe_map[univ_id]];
   if (univ->geom_type() != GeometryType::DAG) {
     fatal_error(
-      "Universe " + std::to_string(univ_id) + " is not a DAGMC Universe!");
+      "Universe " + std::to_string(univ_id) + " is not a DAGMC Universe");
   }
 
   *n = univ->cells_.size();

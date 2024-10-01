@@ -11,8 +11,7 @@
 # 2. Compiler Configuration: Defines the compilers (GCC or OpenMPI) to be used.
 # 3. Dependencies Stage: Downloads and builds all external dependencies.
 # 4. OpenMC Stage: Copies OpenMC source code, builds it using CMake with specific
-#    flags and installs it in the container.
-# 5. Test Stage: Runs OpenMC's unit tests.
+#    flags and installs it in the container. After the build, OpenMC is tested.
 
 # Arguments and environment variables can be customized for different compiler and
 # dependency versions.
@@ -359,7 +358,7 @@ RUN git clone --depth 1 -b ${LIBMESH_TAG} https://github.com/libMesh/libmesh.git
         --disable-eigen \
         --disable-lapack && \
     make -j$(nproc) && make install && \
-    cd .. && \
+    cd ../.. && \
     rm -rf libmesh
 
 
@@ -370,7 +369,7 @@ RUN git clone --depth 1 -b ${MCPL_TAG} https://github.com/mctools/mcpl.git mcpl 
     mkdir build && cd build && \
     cmake .. && \
     make -j$(nproc) && make install && \
-    cd .. && \
+    cd ../.. && \
     rm -rf mcpl
 
 
@@ -417,11 +416,6 @@ RUN auditwheel repair $HOME/openmc/dist/openmc-*.whl -w $HOME/openmc/dist
 
 # Install OpenMC wheel
 RUN python -m pip install $HOME/openmc/dist/*manylinux**.whl
-
-# Test OpenMC stage
-FROM openmc AS openmc-test
-
-ARG COMPILER
 
 # Test OpenMC
 RUN cd $HOME/openmc && \

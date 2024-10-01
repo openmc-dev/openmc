@@ -58,8 +58,8 @@ jobs:
         uses: firehed/multistage-docker-build-action@v1
         with:
           repository: ${{ env.image_base_tag }}
-          stages: base, dependencies, openmc
-          server-stage: openmc-test
+          stages: base, dependencies
+          server-stage: openmc
           quiet: false
           parallel: true
           tag-latest-on-default: ${{ env.tag-latest-on-default }}
@@ -89,7 +89,7 @@ jobs:
     name: Pushing final images
     steps:
       - name: Log in to the Container registry
-        if: ${{ github.repository_owner == 'svalinn' }}
+        if: ${{ github.repository_owner == 'openmc-dev' }}
         uses: docker/login-action@v2
         with:
           registry: ghcr.io

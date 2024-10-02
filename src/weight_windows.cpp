@@ -147,8 +147,7 @@ WeightWindows::WeightWindows(int32_t id)
 WeightWindows::WeightWindows(pugi::xml_node node)
 {
   // Make sure required elements are present
-  const vector<std::string> required_elems {"id", "particle_type",
-    "energy_bounds", "lower_ww_bounds", "upper_ww_bounds"};
+  const vector<std::string> required_elems {"id", "particle_type", "lower_ww_bounds", "upper_ww_bounds"};
   for (const auto& elem : required_elems) {
     if (!check_for_node(node, elem.c_str())) {
       fatal_error(fmt::format("Must specify <{}> for weight windows.", elem));

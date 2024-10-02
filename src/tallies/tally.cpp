@@ -714,7 +714,7 @@ void Tally::init_triggers(pugi::xml_node node)
       } else {
         int i_score = 0;
         for (; i_score < this->scores_.size(); ++i_score) {
-          if (reaction_name(this->scores_[i_score]) == score_str)
+          if (this->scores_[i_score] == reaction_type(score_str))
             break;
         }
         if (i_score == this->scores_.size()) {

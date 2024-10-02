@@ -92,7 +92,7 @@ RUN yum install -y epel-release && \
     yum clean all
 
 # Set up environment variables for shared libraries
-ENV LD_LIBRARY_PATH=/usr/lib64:/usr/local/lib64:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=/usr/local/lib64:$LD_LIBRARY_PATH
 
 
 # Compiler configuration stage: gcc
@@ -133,6 +133,7 @@ RUN git clone --depth 1 -b ${NJOY2016_TAG} https://github.com/njoy/njoy2016.git 
     cd njoy && \
     mkdir build && cd build && \
     cmake .. \
+        -DCMAKE_INSTALL_PREFIX=/usr/local \
         -Dstatic=ON && \
     make -j$(nproc) && make install && \
     cd ../.. && \
@@ -159,6 +160,7 @@ RUN git clone --depth 1 -b ${NETCDF_TAG} https://github.com/Unidata/netcdf-c.git
     cd netcdf && \
     mkdir build && cd build && \
     cmake .. \
+        -DCMAKE_INSTALL_PREFIX=/usr/local \
         -DBUILD_SHARED_LIBS=ON \
         -DENABLE_DAP=ON \
         -DENABLE_TESTS=OFF && \
@@ -172,6 +174,7 @@ RUN git clone --depth 1 -b ${MOAB_TAG} https://bitbucket.org/fathomteam/moab.git
     cd moab && \
     mkdir build && cd build && \
     cmake .. \
+        -DCMAKE_INSTALL_PREFIX=/usr/local \
         -DENABLE_MPI=$([ ${COMPILER} == "openmpi" ] && echo "ON" || echo "OFF") \
         -DENABLE_HDF5=ON \
         -DHDF5_ROOT=/usr/local \
@@ -190,6 +193,7 @@ RUN git clone --depth 1 -b ${EMBREE_TAG} https://github.com/embree/embree.git em
     cd embree && \
     mkdir build && cd build && \
     cmake .. \
+        -DCMAKE_INSTALL_PREFIX=/usr/local \
         -DEMBREE_TASKING_SYSTEM=INTERNAL \
         -DEMBREE_ISPC_SUPPORT=OFF \
         -DEMBREE_TUTORIALS=OFF && \
@@ -231,6 +235,7 @@ RUN git clone --depth 1 -b ${NCrystal_TAG} https://github.com/mctools/ncrystal.g
     cd ncrystal && \
     mkdir build && cd build && \
     cmake .. \
+        -DCMAKE_INSTALL_PREFIX=/usr/local \
         -DBUILD_SHARED_LIBS=ON \
         -DNCRYSTAL_NOTOUCH_CMAKE_BUILD_TYPE=ON \
         -DNCRYSTAL_MODIFY_RPATH=OFF \
@@ -253,6 +258,7 @@ RUN git clone --depth 1 -b ${LIBMESH_TAG} https://github.com/libMesh/libmesh.git
     export METHODS="opt" && \
     ../configure \
         $([ ${COMPILER} = 'openmpi' ] && echo '--enable-mpi' || echo '--disable-mpi') \
+        --prefix=/usr/local \
         --enable-exodus \
         --disable-netcdf-4 \
         --disable-eigen \
@@ -266,7 +272,8 @@ ARG MCPL_TAG
 RUN git clone --depth 1 -b ${MCPL_TAG} https://github.com/mctools/mcpl.git mcpl && \
     cd mcpl && \
     mkdir build && cd build && \
-    cmake .. && \
+    cmake .. \
+        -DCMAKE_INSTALL_PREFIX=/usr/local && \
     make -j$(nproc) && make install && \
     cd ../.. && \
     rm -rf mcpl
@@ -387,9 +394,6 @@ RUN git clone --depth 1 -b ${VECTFIT_TAG} https://github.com/liangjg/vectfit.git
     python -m pip install . && \
     cd .. && \
     rm -rf vectfit
-
-RUN yum install -y \
-        sqlite-devel
 
 # Test OpenMC
 RUN cd $HOME/openmc && \

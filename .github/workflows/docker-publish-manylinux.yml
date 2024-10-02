@@ -21,9 +21,6 @@ jobs:
             gcc,
             openmpi
             ]
-        python: [
-            cp312-cp312
-            ]
 
     name: Installing Dependencies, Building OpenMC and running tests
     steps:
@@ -51,24 +48,21 @@ jobs:
           image_base_tag=ghcr.io/${{ github.repository_owner }}/
           image_base_tag+=openmc-${{ matrix.manylinux_image }}
           image_base_tag+=-${{ matrix.compiler}}
-          image_base_tag+=-${{ matrix.python }}
           echo "image_base_tag=${image_base_tag}" >> "$GITHUB_ENV"
 
       - name: Installing Dependencies in Docker image
         uses: firehed/multistage-docker-build-action@v1
         with:
           repository: ${{ env.image_base_tag }}
-          stages: base, dependencies
-          server-stage: openmc
+          stages: base, dependencies, openmc
+          server-stage: test
           quiet: false
           parallel: true
           tag-latest-on-default: ${{ env.tag-latest-on-default }}
           dockerfile: CI/Dockerfile
           build-args: >
             MANYLINUX_IMAGE=${{ matrix.manylinux_image }},
-            COMPILER=${{ matrix.compiler }},
-            Python_ABI=${{ matrix.python }}
-
+            COMPILER=${{ matrix.compiler }}
   push_stable_ci_img:
     needs: [build-dependency-and-test-img]
     runs-on: ubuntu-latest
@@ -81,9 +75,6 @@ jobs:
         compiler: [
             gcc,
             openmpi
-            ]
-        python: [
-            cp312-cp312
             ]
 
     name: Pushing final images
@@ -102,7 +93,6 @@ jobs:
           image_base_tag=ghcr.io/${{ github.repository_owner }}/
           image_base_tag+=openmc-${{ matrix.manylinux_image }}
           image_base_tag+=-${{ matrix.compiler}}
-          image_base_tag+=-${{ matrix.python }}
           echo "image_base_tag=${image_base_tag}" >> "$GITHUB_ENV"
 
       - name: Push Image as latest img

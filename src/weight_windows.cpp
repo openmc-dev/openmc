@@ -339,7 +339,7 @@ void WeightWindows::set_mesh(int32_t mesh_idx)
     fatal_error(fmt::format("Could not find a mesh for index {}", mesh_idx));
 
   mesh_idx_ = mesh_idx;
-  model::meshes[mesh_idx_]->prepare_for_tallies();
+  model::meshes[mesh_idx_]->prepare_for_point_location();
   allocate_ww_bounds();
 }
 

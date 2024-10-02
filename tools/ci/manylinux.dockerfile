@@ -218,6 +218,7 @@ RUN git clone --depth 1 -b ${DAGMC_TAG} https://github.com/svalinn/DAGMC.git dag
     cd dagmc && \
     mkdir build && cd build && \
     cmake .. \
+        -DCMAKE_INSTALL_PREFIX=/usr/local \
         -DMOAB_DIR=/usr/local \
         -Ddd_ROOT=/usr/local \
         -DBUILD_TALLY=ON \

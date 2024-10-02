@@ -595,7 +595,7 @@ void sample_photon_product(
       if (targets.empty())
         continue;
 
-      for (int j; j < targets.size(); ++j) {
+      for (int j = 0; j < targets.size(); ++j) {
         const auto& target = targets[j];
         int idx = data::chain_nuclide_map[target.name];
         const auto& chain_nuc = data::chain_nuclides[idx];

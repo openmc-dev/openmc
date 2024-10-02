@@ -474,8 +474,11 @@ def run(output=True):
         _dll.openmc_run()
 
 
-def sample_external_source(n_samples=1, prn_seed=None):
-    """Sample external source
+def sample_external_source(
+        n_samples: int = 1000,
+        prn_seed: int | None = None
+) -> list[openmc.SourceParticle]:
+    """Sample external source and return source particles.
 
     .. versionadded:: 0.13.1
 
@@ -490,7 +493,7 @@ def sample_external_source(n_samples=1, prn_seed=None):
     Returns
     -------
     list of openmc.SourceParticle
-        List of samples source particles
+        List of sampled source particles
 
     """
     if n_samples <= 0:

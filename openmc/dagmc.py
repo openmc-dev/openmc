@@ -35,6 +35,11 @@ class DAGMCUniverse(openmc.UniverseBase):
     auto_mat_ids : bool
         Set IDs automatically on initialization (True)  or report overlaps in ID
         space between OpenMC and UWUW materials (False)
+    material_overrides : dict
+        A dictionary of material overrides. The keys are material name
+        strings and the values are Iterables of openmc.Material objects. If a 
+        material name is found in the DAGMC file, the material will be replaced
+        with the openmc.Material object in the value.
 
     Attributes
     ----------
@@ -75,8 +80,8 @@ class DAGMCUniverse(openmc.UniverseBase):
     material_overrides : dict
         A dictionary of material overrides. The keys are material name
         strings and the values are Iterables of openmc.Material objects. If a 
-        material name is found in the DAGMC file, the material will be replaced with the
-        openmc.Material object in the value.
+        material name is found in the DAGMC file, the material will be replaced
+        with the openmc.Material object in the value.
     """
 
     def __init__(self,
@@ -118,7 +123,10 @@ class DAGMCUniverse(openmc.UniverseBase):
 
     @material_overrides.setter
     def material_overrides(self, val):
-        if val is not None:
+        if val is None:
+            self._material_overrides = val
+            return
+        else:
             cv.check_type('material overrides', val, dict)
             for key, value in val.items():
                 # ensuring key is a string and exists in the DAGMC file
@@ -508,6 +516,7 @@ class DAGMCUniverse(openmc.UniverseBase):
 
 class DAGMCCell(openmc.Cell):
     """
+    .. versionadded:: 0.13.2
     A cell class for DAGMC-based geometries.
 
     Parameters

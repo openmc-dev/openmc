@@ -1072,7 +1072,7 @@ class Model:
         # Extract all depletable materials which have multiple instances
         distribmats = set(
             [mat for mat in self.materials
-                if mat.depletable and mat.num_instances > 1])
+                if (mat.depletable or not depletable_only) and mat.num_instances > 1])
 
         if diff_volume_method == "divide equally":
             for mat in distribmats:

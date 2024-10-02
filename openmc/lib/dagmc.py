@@ -8,9 +8,9 @@ from .error import _error_handler
 
 
 # DAGMC functions
-_dll.openmc_get_dagmc_cell_ids.argtypes = [c_int32, POINTER(c_int32), POINTER(c_size_t)]
-_dll.openmc_get_dagmc_cell_ids.restype = c_int
-_dll.openmc_get_dagmc_cell_ids.errcheck = _error_handler
+_dll.openmc_dagmc_universe_get_cell_ids.argtypes = [c_int32, POINTER(c_int32), POINTER(c_size_t)]
+_dll.openmc_dagmc_universe_get_cell_ids.restype = c_int
+_dll.openmc_dagmc_universe_get_cell_ids.errcheck = _error_handler
 _dll.openmc_dagmc_universe_get_num_cells.argtypes = [c_int32, POINTER(c_size_t)]
 _dll.openmc_dagmc_universe_get_num_cells.restype = c_int
 _dll.openmc_dagmc_universe_get_num_cells.errcheck = _error_handler
@@ -36,7 +36,7 @@ def get_dagmc_cell_ids(dagmc_id):
     _dll.openmc_dagmc_universe_get_num_cells(dagmc_id, n)
     cell_ids = np.empty(n.value, dtype=np.int32)
 
-    _dll.openmc_get_dagmc_cell_ids(
+    _dll.openmc_dagmc_universe_get_cell_ids(
         dagmc_id,
         cell_ids.ctypes.data_as(POINTER(c_int32)),
         n

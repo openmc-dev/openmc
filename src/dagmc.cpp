@@ -850,7 +850,7 @@ int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ)
   return univp->cell_index(new_vol);
 }
 
-extern "C" int openmc_get_dagmc_cell_ids(
+extern "C" int openmc_dagmc_universe_get_cell_ids(
   int32_t univ_id, int32_t* ids, size_t* n)
 {
   // make sure the universe id is a DAGMC Universe
@@ -888,7 +888,7 @@ extern "C" int openmc_dagmc_universe_get_num_cells(int32_t univ_id, size_t* n)
 
 namespace openmc {
 
-extern "C" int openmc_get_dagmc_cell_ids(
+extern "C" int openmc_dagmc_universe_get_cell_ids(
   int32_t univ_id, int32_t* ids, size_t* n) {};
 
 extern "C" int openmc_dagmc_universe_get_num_cells(

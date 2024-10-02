@@ -165,7 +165,7 @@ WeightWindows::WeightWindows(pugi::xml_node node)
 
   // Determine associated mesh
   int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
-  mesh_idx_ = model::mesh_map.at(mesh_id);
+  set_mesh(model::mesh_map.at(mesh_id));
 
   // energy bounds
   if (check_for_node(node, "energy_bounds"))
@@ -340,6 +340,7 @@ void WeightWindows::set_mesh(int32_t mesh_idx)
     fatal_error(fmt::format("Could not find a mesh for index {}", mesh_idx));
 
   mesh_idx_ = mesh_idx;
+  model::meshes[mesh_idx_]->prepare_for_tallies();
   allocate_ww_bounds();
 }
 

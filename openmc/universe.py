@@ -307,91 +307,7 @@ class UniverseBase(ABC, IDManagerMixin):
             memo[self] = clone
 
         return memo[self]
-
-
-class Universe(UniverseBase):
-    """A collection of cells that can be repeated.
-
-    Parameters
-    ----------
-    universe_id : int, optional
-        Unique identifier of the universe. If not specified, an identifier will
-        automatically be assigned
-    name : str, optional
-        Name of the universe. If not specified, the name is the empty string.
-    cells : Iterable of openmc.Cell, optional
-        Cells to add to the universe. By default no cells are added.
-
-    Attributes
-    ----------
-    id : int
-        Unique identifier of the universe
-    name : str
-        Name of the universe
-    cells : dict
-        Dictionary whose keys are cell IDs and values are :class:`Cell`
-        instances
-    volume : float
-        Volume of the universe in cm^3. This can either be set manually or
-        calculated in a stochastic volume calculation and added via the
-        :meth:`Universe.add_volume_information` method.
-    bounding_box : openmc.BoundingBox
-        Lower-left and upper-right coordinates of an axis-aligned bounding box
-        of the universe.
-
-    """
-
-    def __init__(self, universe_id=None, name='', cells=None):
-        super().__init__(universe_id, name)
-
-        if cells is not None:
-            self.add_cells(cells)
-
-    def __repr__(self):
-        string = super().__repr__()
-        string += '{: <16}=\t{}\n'.format('\tGeom', 'CSG')
-        string += '{: <16}=\t{}\n'.format('\tCells', list(self._cells.keys()))
-        return string
-
-
-    @property
-    def bounding_box(self):
-        regions = [c.region for c in self.cells.values()
-                   if c.region is not None]
-        if regions:
-            return openmc.Union(regions).bounding_box
-        else:
-            return openmc.BoundingBox.infinite()
-
-    @classmethod
-    def from_hdf5(cls, group, cells):
-        """Create universe from HDF5 group
-
-        Parameters
-        ----------
-        group : h5py.Group
-            Group in HDF5 file
-        cells : dict
-            Dictionary mapping cell IDs to instances of :class:`openmc.Cell`.
-
-        Returns
-        -------
-        openmc.Universe
-            Universe instance
-
-        """
-        universe_id = int(group.name.split('/')[-1].lstrip('universe '))
-        cell_ids = group['cells'][()]
-
-        # Create this Universe
-        universe = cls(universe_id)
-
-        # Add each Cell to the Universe
-        for cell_id in cell_ids:
-            universe.add_cell(cells[cell_id])
-
-        return universe
-
+    
     def find(self, point):
         """Find cells/universes/lattices which contain a given point
 
@@ -697,6 +613,90 @@ class Universe(UniverseBase):
                 'openmc.VolumeCalculation object')
 
         return nuclides
+
+
+class Universe(UniverseBase):
+    """A collection of cells that can be repeated.
+
+    Parameters
+    ----------
+    universe_id : int, optional
+        Unique identifier of the universe. If not specified, an identifier will
+        automatically be assigned
+    name : str, optional
+        Name of the universe. If not specified, the name is the empty string.
+    cells : Iterable of openmc.Cell, optional
+        Cells to add to the universe. By default no cells are added.
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier of the universe
+    name : str
+        Name of the universe
+    cells : dict
+        Dictionary whose keys are cell IDs and values are :class:`Cell`
+        instances
+    volume : float
+        Volume of the universe in cm^3. This can either be set manually or
+        calculated in a stochastic volume calculation and added via the
+        :meth:`Universe.add_volume_information` method.
+    bounding_box : openmc.BoundingBox
+        Lower-left and upper-right coordinates of an axis-aligned bounding box
+        of the universe.
+
+    """
+
+    def __init__(self, universe_id=None, name='', cells=None):
+        super().__init__(universe_id, name)
+
+        if cells is not None:
+            self.add_cells(cells)
+
+    def __repr__(self):
+        string = super().__repr__()
+        string += '{: <16}=\t{}\n'.format('\tGeom', 'CSG')
+        string += '{: <16}=\t{}\n'.format('\tCells', list(self._cells.keys()))
+        return string
+
+
+    @property
+    def bounding_box(self):
+        regions = [c.region for c in self.cells.values()
+                   if c.region is not None]
+        if regions:
+            return openmc.Union(regions).bounding_box
+        else:
+            return openmc.BoundingBox.infinite()
+
+    @classmethod
+    def from_hdf5(cls, group, cells):
+        """Create universe from HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            Group in HDF5 file
+        cells : dict
+            Dictionary mapping cell IDs to instances of :class:`openmc.Cell`.
+
+        Returns
+        -------
+        openmc.Universe
+            Universe instance
+
+        """
+        universe_id = int(group.name.split('/')[-1].lstrip('universe '))
+        cell_ids = group['cells'][()]
+
+        # Create this Universe
+        universe = cls(universe_id)
+
+        # Add each Cell to the Universe
+        for cell_id in cell_ids:
+            universe.add_cell(cells[cell_id])
+
+        return universe
 
     def add_cell(self, cell):
         """Add a cell to the universe.

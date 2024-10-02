@@ -59,7 +59,7 @@ jobs:
           quiet: false
           parallel: true
           tag-latest-on-default: ${{ env.tag-latest-on-default }}
-          dockerfile: CI/Dockerfile
+          dockerfile: tools/ci/manylinux.dockerfile
           build-args: >
             MANYLINUX_IMAGE=${{ matrix.manylinux_image }},
             COMPILER=${{ matrix.compiler }}

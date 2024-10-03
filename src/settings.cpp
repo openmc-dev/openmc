@@ -795,9 +795,9 @@ void read_settings_xml(pugi::xml_node root)
     }
 
     // Get maximum number of surface source files to be created
-    if (check_for_node(node_ssw, "max_surf_files")) {
+    if (check_for_node(node_ssw, "max_source_files")) {
       max_surface_files =
-        std::stoll(get_node_value(node_ssw, "max_surf_files"));
+        std::stoll(get_node_value(node_ssw, "max_source_files"));
     } else {
       max_surface_files = 1;
     }

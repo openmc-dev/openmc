@@ -923,15 +923,15 @@ attributes/sub-elements:
 
     *Default*: None
 
-  :max_surf_files:
-    An integer value indicating the number of surface source files to be written 
-    containing the maximum number of particles each. The surface source bank will 
-    be cleared in simulation memory each time a surface source file is written. 
-    By default a ``surface_source.h5`` file will be created when the maximum number 
-    of saved particles is reached.
+  :max_source_files:
+    An integer value indicating the number of surface source files to be written
+    containing the maximum number of particles each. The surface source bank
+    will be cleared in simulation memory each time a surface source file is
+    written. By default a ``surface_source.h5`` file will be created when the
+    maximum number of saved particles is reached.
 
     *Default*: 1
-    
+
   :mcpl:
     An optional boolean which indicates if the banked particles should be
     written to a file in the MCPL_-format instead of the native HDF5-based

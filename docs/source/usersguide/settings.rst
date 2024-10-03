@@ -336,15 +336,15 @@ or particles going to a cell::
 .. note:: The ``cell``, ``cellfrom`` and ``cellto`` attributes cannot be
           used simultaneously.
 
-To generate more than one surface source files when the maximum number of stored particles 
-is reached, ``max_surf_files`` is available. The surface source bank will be cleared in 
-simulation memory each time a surface source file is written. As an example, to write a 
-maximum of three surface source files:::
+To generate more than one surface source files when the maximum number of stored
+particles is reached, ``max_source_files`` is available. The surface source bank
+will be cleared in simulation memory each time a surface source file is written.
+As an example, to write a maximum of three surface source files:::
 
   settings.surf_source_write = {
       'surfaces_ids': [1, 2, 3],
       'max_particles': 10000,
-      'max_surf_files': 3
+      'max_source_files': 3
   }
 
 .. _compiled_source:

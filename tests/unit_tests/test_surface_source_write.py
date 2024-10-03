@@ -33,7 +33,7 @@ def geometry():
         {"max_particles": 200, "surface_ids": [2], "cell": 1},
         {"max_particles": 200, "surface_ids": [2], "cellto": 1},
         {"max_particles": 200, "surface_ids": [2], "cellfrom": 1},
-        {"max_particles": 200, "surface_ids": [2], "max_surf_files": 1},
+        {"max_particles": 200, "surface_ids": [2], "max_source_files": 1},
     ],
 )
 def test_xml_serialization(parameter, run_in_tmpdir):
@@ -78,8 +78,8 @@ def model():
 @pytest.mark.parametrize(
     "parameter",
     [
-        {"max_particles": 100, "max_surf_files": 2},
-        {"max_particles": 100, "max_surf_files": 3},
+        {"max_particles": 100, "max_source_files": 2},
+        {"max_particles": 100, "max_source_files": 3},
     ],
 )
 
@@ -87,7 +87,7 @@ def test_number_surface_source_file_created(parameter, run_in_tmpdir, model):
     """Check the number of surface source files written."""
     model.settings.surf_source_write = parameter
     model.run()
-    for i in range(1,parameter["max_surf_files"]):
+    for i in range(1,parameter["max_source_files"]):
         filename = "surface_source."+str(i)+".h5"
         if not os.path.exists(filename):
             assert False

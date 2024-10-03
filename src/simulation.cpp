@@ -339,7 +339,7 @@ void allocate_banks()
 
   if (settings::surf_source_write) {
     // Allocate surface source bank
-    simulation::surf_source_bank.reserve(settings::max_surface_particles);
+    simulation::surf_source_bank.reserve(settings::ssw_max_particles);
   }
 }
 
@@ -440,39 +440,29 @@ void finalize_batch()
       std::string source_point_filename = fmt::format("{0}source.{1:0{2}}",
         settings::path_output, simulation::current_batch, w);
       gsl::span<SourceSite> bankspan(simulation::source_bank);
-      if (settings::source_mcpl_write) {
-        write_mcpl_source_point(
-          source_point_filename.c_str(), bankspan, simulation::work_index);
-      } else {
-        write_source_point(
-          source_point_filename.c_str(), bankspan, simulation::work_index);
-      }
+      write_source_point(source_point_filename, bankspan,
+        simulation::work_index, settings::source_mcpl_write);
     }
 
     // Write a continously-overwritten source point if requested.
     if (settings::source_latest) {
-
       // note: correct file extension appended automatically
       auto filename = settings::path_output + "source";
       gsl::span<SourceSite> bankspan(simulation::source_bank);
-      if (settings::source_mcpl_write) {
-        write_mcpl_source_point(
-          filename.c_str(), bankspan, simulation::work_index);
-      } else {
-        write_source_point(filename.c_str(), bankspan, simulation::work_index);
-      }
+      write_source_point(filename.c_str(), bankspan, simulation::work_index,
+        settings::source_mcpl_write);
     }
   }
 
   // Write out surface source if requested.
   if (settings::surf_source_write &&
-      simulation::current_surface_file <= settings::max_surface_files) {
+      simulation::current_surface_file <= settings::ssw_max_files) {
     if (simulation::surf_source_bank.full() ||
         simulation::current_batch == settings::n_batches) {
       auto filename = settings::path_output + "surface_source." +
                       std::to_string(simulation::current_batch);
       // no batches specified for writing, write surface source bank
-      if (settings::max_surface_files == 1 ||
+      if (settings::ssw_max_files == 1 ||
           (simulation::current_surface_file == 1 &&
             simulation::current_batch == settings::n_batches))
         filename = settings::path_output + "surface_source";
@@ -480,22 +470,12 @@ void finalize_batch()
         simulation::surf_source_bank.size());
       gsl::span<SourceSite> surfbankspan(simulation::surf_source_bank.begin(),
         simulation::surf_source_bank.size());
-      if (settings::surf_mcpl_write) {
-        write_message(
-          "Creating surface source " + filename + ".mcpl with {} particles ...",
-          simulation::surf_source_bank.size(), 5);
-        write_mcpl_source_point(
-          filename.c_str(), surfbankspan, surf_work_index);
-      } else {
-        write_message(
-          "Creating surface source " + filename + ".h5 with {} particles ...",
-          simulation::surf_source_bank.size(), 5);
-        write_source_point(filename.c_str(), surfbankspan, surf_work_index);
-      }
+      write_source_point(
+        filename, surfbankspan, surf_work_index, settings::surf_mcpl_write);
       simulation::surf_source_bank.clear();
       if (simulation::current_batch < settings::n_batches &&
-          settings::max_surface_files >= 1)
-        simulation::surf_source_bank.reserve(settings::max_surface_particles);
+          settings::ssw_max_files >= 1)
+        simulation::surf_source_bank.reserve(settings::ssw_max_particles);
       ++simulation::current_surface_file;
     }
   }

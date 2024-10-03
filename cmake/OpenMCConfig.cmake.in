@@ -40,5 +40,5 @@ if(@OPENMC_USE_MCPL@)
 endif()
 
 if(@OPENMC_USE_UWUW@)
-  find_package(UWUW REQUIRED)
+  find_package(OPEMC_UWUW REQUIRED)
 endif()

@@ -38,3 +38,7 @@ endif()
 if(@OPENMC_USE_MCPL@)
   find_package(MCPL REQUIRED)
 endif()
+
+if(@OPENMC_USE_UWUW@ AND NOT @DAGMC_BUILD_UWUW@)
+  message(FATAL_ERROR "UWUW is enabled but DAGMC was not configured with UWUW.")
+endif()

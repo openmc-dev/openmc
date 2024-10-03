@@ -387,15 +387,20 @@ def test_get_element_atom_densities(uo2):
 
 
 def test_get_element_atom_densities_specific(uo2):
-    one_nuc = uo2.get_element_atom_densities(element='O')
+    one_nuc = uo2.get_element_atom_densities('O')
     assert list(one_nuc.keys()) == ['O']
     assert list(one_nuc.values())[0] > 0
 
-    with pytest.raises(ValueError):
-        uo2.get_element_atom_densities(element='Li')
+    one_nuc = uo2.get_element_atom_densities('uranium')
+    assert list(one_nuc.keys()) == ['U']
+    assert list(one_nuc.values())[0] > 0
 
-    with pytest.raises(ValueError):
-        uo2.get_element_atom_densities(element='no an element name')
+    with pytest.raises(ValueError, match='not found'):
+        uo2.get_element_atom_densities('Li')
+
+    with pytest.raises(ValueError, match='not recognized'):
+        uo2.get_element_atom_densities('proximium')
+
 
 def test_get_nuclide_atoms():
     mat = openmc.Material()

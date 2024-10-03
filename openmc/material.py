@@ -18,6 +18,7 @@ from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
 from openmc.checkvalue import PathLike
 from openmc.stats import Univariate, Discrete, Mixture
+from openmc.data.data import _get_element_symbol
 
 
 # Units for density supported by OpenMC
@@ -1074,7 +1075,7 @@ class Material(IDManagerMixin):
                 nuclides[nuc] = nuc_densities[n]
 
         return nuclides
-    
+
     def get_element_atom_densities(self, element: str | None = None) -> dict[str, float]:
         """Returns one or all elements in the material and their atomic
         densities in units of atom/b-cm
@@ -1094,31 +1095,27 @@ class Material(IDManagerMixin):
             [atom/b-cm]
 
         """
-
         if element is not None:
-            acceptable_elements = [key for key in openmc.data.ATOMIC_SYMBOL.values() if key != 'n']
-            if element not in acceptable_elements:
-                raise ValueError(f"Element should be one of {acceptable_elements}, not '{element}'")
+            element = _get_element_symbol(element)
 
-        nuc_densities=self.get_nuclide_atom_densities()
+        nuc_densities = self.get_nuclide_atom_densities()
 
         # Initialize an empty dictionary for summed values
-        summed_elements = {}
+        densities = {}
 
+        # Accumulate densities for each nuclide
         for nuclide, density in nuc_densities.items():
-
             nuc_element = openmc.data.ATOMIC_SYMBOL[openmc.data.zam(nuclide)[0]]
+            if element is None or element == nuc_element:
+                if nuc_element not in densities:
+                    densities[nuc_element] = 0.0
+                densities[nuc_element] += float(density)
 
-            if nuc_element in summed_elements:
-                summed_elements[nuc_element] += float(density)
-            else:
-                summed_elements[nuc_element] = float(density)
-        if element:
-            if element not in summed_elements.keys():
-                msg = f'Element {element} not found in material. Available elements are {summed_elements.keys()}'
-                raise ValueError(msg)
-            return {element: summed_elements[element]}
-        return summed_elements
+        # If specific element was requested, make sure it is present
+        if element is not None and element not in densities:
+                raise ValueError(f'Element {element} not found in material.')
+
+        return densities
 
 
     def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False,

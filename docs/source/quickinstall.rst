@@ -137,15 +137,11 @@ packages should be installed, for example in Homebrew via:
 
 The compiler provided by the above LLVM package should be used in place of the
 one provisioned by XCode, which does not support the multithreading library used
-by OpenMC. Consequently, the C++ compiler should explicitly be set before
-proceeding:
-
-.. code-block:: sh
-
-   export CC=/usr/local/opt/llvm/bin/clang
-   export CXX=/usr/local/opt/llvm/bin/clang++
-   export LDFLAGS="-L/usr/local/opt/llvm/lib"
-   export CPPFLAGS="-I/usr/local/opt/llvm/include"
+by OpenMC. To ensure CMake picks up the correct compiler, make sure that either
+the :envvar:`CXX` environment variable is set to the brew-installed ``clang++``
+or that the directory containing it is on your :envvar:`PATH` environment
+variable. Common locations for the brew-installed compiler are
+``/opt/homebrew/opt/llvm/bin`` and ``/usr/local/opt/llvm/bin``.
 
 After the packages have been installed, follow the instructions to build from
 source below.

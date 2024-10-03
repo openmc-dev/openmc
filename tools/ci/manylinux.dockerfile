@@ -148,8 +148,7 @@ RUN git clone --depth 1 -b ${HDF5_TAG} https://github.com/HDFGroup/hdf5.git hdf5
         -DCMAKE_INSTALL_PREFIX=/usr/local \
         -DHDF5_ENABLE_PARALLEL=$([ ${COMPILER} == "openmpi" ] && echo "ON" || echo "OFF") \
         -DHDF5_BUILD_HL_LIB=ON \
-        -DBUILD_SHARED_LIBS=ON \
-        -DBUILD_EXAMPLES=OFF && \
+        -DBUILD_SHARED_LIBS=ON && \
     make -j$(nproc) && make install && \
     cd ../.. && \
     rm -rf hdf5

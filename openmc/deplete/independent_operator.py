@@ -244,7 +244,6 @@ class IndependentOperator(OpenMCOperator):
         """Puts nuclide list into an openmc.Materials object.
 
         """
-        openmc.reset_auto_ids()
         mat = openmc.Material()
         if nuc_units == 'atom/b-cm':
             for nuc, conc in nuclides.items():

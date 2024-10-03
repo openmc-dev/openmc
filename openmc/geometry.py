@@ -7,8 +7,6 @@ from pathlib import Path
 import warnings
 import lxml.etree as ET
 
-import numpy as np
-
 import openmc
 import openmc._xml as xml
 from .checkvalue import check_type, check_less_than, check_greater_than, PathLike
@@ -67,7 +65,7 @@ class Geometry:
         self._root_universe = root_universe
 
     @property
-    def bounding_box(self) -> np.ndarray:
+    def bounding_box(self) -> openmc.BoundingBox:
         return self.root_universe.bounding_box
 
     @property
@@ -800,6 +798,7 @@ class Geometry:
             Units used on the plot axis
         **kwargs
             Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
+
         Returns
         -------
         matplotlib.axes.Axes

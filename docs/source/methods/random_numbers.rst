@@ -7,7 +7,7 @@ Random Number Generation
 In order to sample probability distributions, one must be able to produce random
 numbers. The standard technique to do this is to generate numbers on the
 interval :math:`[0,1)` from a deterministic sequence that has properties that
-make it appear to be random, e.g. being uniformly distributed and not exhibiting
+make it appear to be random, e.g., being uniformly distributed and not exhibiting
 correlation between successive terms. Since the numbers produced this way are
 not truly "random" in a strict sense, they are typically referred to as
 pseudorandom numbers, and the techniques used to generate them are pseudorandom
@@ -15,9 +15,10 @@ number generators (PRNGs). Numbers sampled on the unit interval can then be
 transformed for the purpose of sampling other continuous or discrete probability
 distributions.
 
-OpenMC currently uses permuted congruential generator (PCG). A short description 
-of linear congruential generator (LCG) is included, since 
-it is essential to understand PCG.
+There are many different algorithms for pseudorandom number generation. OpenMC
+currently uses `permuted congruential generator`_ (PCG), which builds on top of
+the simpler linear congruential generator (LCG). Both algorithms are described
+below.
 
 ------------------------------
 Linear Congruential Generators
@@ -41,8 +42,8 @@ be generated with a method chosen at random. Some theory should be used."
 Typically, :math:`M` is chosen to be a power of two as this enables :math:`x
 \mod M` to be performed using the bitwise AND operator with a bit mask. The
 constants for the linear congruential generator used by default in OpenMC are
-:math:`g = 2806196910506780709`, :math:`c = 1`, and :math:`M = 2^{63}` (see
-[LEcuyer]_).
+:math:`g = 2806196910506780709`, :math:`c = 1`, and :math:`M = 2^{63}` (from
+`L'Ecuyer <https://doi.org/10.1090/S0025-5718-99-00996-5>`_).
 
 Skip-ahead Capability
 ---------------------
@@ -54,7 +55,8 @@ want to skip ahead :math:`N` random numbers and :math:`N` is large, the cost of
 sampling :math:`N` random numbers to get to that position may be prohibitively
 expensive. Fortunately, algorithms have been developed that allow us to skip
 ahead in :math:`O(\log_2 N)` operations instead of :math:`O(N)`. One algorithm
-to do so is described in a paper by [Brown]_. This algorithm relies on the following
+to do so is described in a `paper by Brown
+<https://www.osti.gov/biblio/976209>`_. This algorithm relies on the following
 relationship:
 
 .. math::
@@ -62,135 +64,26 @@ relationship:
 
     \xi_{i+k} = g^k \xi_i + c \frac{g^k - 1}{g - 1} \mod M
 
-Note that equation :eq:`lcg-skipahead` has the same general form as equation :eq:`lcg`, so
-the idea is to determine the new multiplicative and additive constants in
-:math:`O(\log_2 N)` operations.
+Note that equation :eq:`lcg-skipahead` has the same general form as equation
+:eq:`lcg`, so the idea is to determine the new multiplicative and additive
+constants in :math:`O(\log_2 N)` operations.
 
 
 --------------------------------
 Permuted Congruential Generators
 --------------------------------
 
-A permuted congruential generator (PCG) aims to improve statistical quality 
-of a LCG by using permutation functions. The general algorithm consists of 
-two steps:
-
-1. advance the LCG generator according to :eq:`pcg_lcg`,
-2. output the LCG state "scrambled" by permutation function.
-
-
-
-OpenMC uses the PCG-RXS-M-XS variant with 64-bit state and 
-64-bit output. The code for permutation functiom is taken 
-from `PCG GitHub`_. The exact algorithm follows.
-
-1. Generate LCG output :math:`\xi_{i+1}`
-
-  .. math::
-      :label: pcg_lcg
-  
-      \xi_{i+1} = g \xi_i + c
-
-  where :math:`g=6364136223846793005` and :math:`c=1442695040888963407`.
-
-2. Apply random xorshift. 
-    * First, take the upper 5 bits of :math:`\xi_{i+1}` 
-      using the `arithmetic right shift operator`_ by 59 positions.
-    * Second, add :math:`5` and shift seed by that number of bits. The 
-      name "random" refers to this step, where the length of the shift 
-      is evaluated from the seed, not given as constant.
-    * Third, perform `bitwise XOR`_ with the upper bits and original :math:`\xi_{i+1}`.
-
-#. Multiply by :math:`6364136223846793005`.
-#. Apply xorshift - similarly to step 2, use `arithmetic right shift operator`_ 
-   to take upper 21 bits and perform `bitwise XOR`_. The length of 
-   the shift is constant here.
-#. Convert to double from interval :math:`[0, 1)`.
-
-
-**Advantages of PCG over LCG include**
-
-* increased statistical quality - measured by statistical tests from BigCrush library,
-* small performance burden compared to LCG.
-
-For elaborated description, see [ONeill]_.
-
-
-Example of PCG algorithm
-------------------------
-
-As this might be difficult to imagine, let's add an example. 
-
-* Let's assume seed value :math:`\xi_{i} = 1`.
-* From point (1), :math:`\xi_{i+1} = 7806831264735756412` according to :eq:`pcg_lcg`, which 
-  is::
-    
-    0110 1100 0101 0111 0110 1111 1010 1100 0100 0011 1111 1101 0000 0000 0111 1100
-
-  in binary representation.
-* The random xorshift from point (2) is performed in 3 steps
-   * First, bit shift by 59 positions means we keep first 5 bits of :math:`\xi_{i+1}`, which is
-     ``0 1101`` or :math:`13`, when represented as integer.
-   * Second, adding 5, we have to shift :math:`\xi_{i+1}` by :math:`13+5=18` bits - or, equivalently, 
-     throw away the last 18 bits, which yields::
-
-        01 1011 0001 0101 1101 1011 1110 1011 0001 0000 1111 1111
-        
-     which is :math:`29780697878783` as integer. 
-   * Finally, perform `bitwise XOR`_  (illustrated below) with shifted 
-     bits and original :math:`\xi_{i+1}`, which result as integer is :math:`7806836819539398787`.
-        
-.. code-block:: text
-
-    0110 1100 0101 0111 0110 1111 1010 1100 0100 0011 1111 1101 0000 0000 0111 1100
-    0000 0000 0000 0000 0001 1011 0001 0101 1101 1011 1110 1011 0001 0000 1111 1111
-    -------------------------------------------------------------------------------
-    0110 1100 0101 0111 0111 0100 1011 1001 1001 1000 0001 0110 0001 0000 1000 0011 
-
-* After multiplication from point (3) we get 
-  :math:`7806836819539398787 \cdot 6364136223846793005 = 13112265920887772427` 
-  which is::
-    
-    1011 0101 1111 1000 0010 0000 0110 0010 0001 1110 1111 1001 1101 0101 0000 1011
-    
-  as bits.
-* Another xorshift is done as follows
-    * Shifted right by 43 positions is means keep the first :math:`64-43=21` bits::
-        
-        1 0110 1011 1111 0000 0100
-
-      or :math:`1490692` as int.
-    * Finally, there is another XOR (illustrated below), which output value 
-      as integer is :math:`13112265920887089679`.
-
-.. code-block:: text
-
-  1011 0101 1111 1000 0010 0000 0110 0010 0001 1110 1111 1001 1101 0101 0000 1011
-  0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0001 0110 1011 1111 0000 0100
-  -------------------------------------------------------------------------------
-  1011 0101 1111 1000 0010 0000 0110 0010 0001 1110 1110 1111 0110 1010 0000 1111 
-
-
-* Point (5), convert the value to double from interval :math:`[0, 1)` as 
-  :math:`13112265920887089679\cdot 2^{-64} = 0.710817`, which is the output of the generator.
-
-
-
-
-.. only:: html
-
-   .. rubric:: References
-
-.. [Brown] Forrest B. Brown and Yasunobu Nagaya, *The MCNP5 Random Number Generator*, LA-UR-02-3782, Los Alamos National Laboratory, available online at: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/anl-rn-arb-stride.pdf
-
-.. [LEcuyer] Pierre L'Ecuyer, *Tables of linear congruential generators of different sizes and good lattice structure*, Math. Comp. 68 (1999), 249-260, available online at: https://doi.org/10.1090/S0025-5718-99-00996-5
-
-.. [ONeill] Melissa E. O'Neill, *PCG: A Family of Simple Fast Space-Efficient Statistically Good Algorithms for Random Number Generation*, HMC-CS-2014-0905, Harvey Mudd College, available online at: https://www.pcg-random.org/pdf/hmc-cs-2014-0905.pdf
+The `permuted congruential generator`_ (PCG) algorithm aims to improve upon the
+LCG algorithm by permuting the output. The algorithm works on the basic
+principle of first advancing the generator state using the LCG algorithm and
+then applying a permutation function on the LCG state to obtain the output. This
+results in increased statistical quality as measured by common statistical tests
+while exhibiting a very small performance overhead relative to the LCG algorithm
+and an equivalent memory footprint. For further details, see the original
+technical report by `O'Neill
+<https://www.pcg-random.org/pdf/hmc-cs-2014-0905.pdf>`_.  OpenMC uses the
+PCG-RXS-M-XS variant with a 64-bit state and 64-bit output.
 
 .. _linear congruential generator: https://en.wikipedia.org/wiki/Linear_congruential_generator
 
-.. _PCG GitHub: https://github.com/imneme/pcg-c/blob/83252d9c23df9c82ecb42210afed61a7b42402d7/include/pcg_variants.h#L188-L192
-
-.. _arithmetic right shift operator: https://stackoverflow.com/a/141873/13224210
-
-.. _bitwise XOR: https://www.learncpp.com/cpp-tutorial/bitwise-operators/
+.. _permuted congruential generator: https://en.wikipedia.org/wiki/Permuted_congruential_generator

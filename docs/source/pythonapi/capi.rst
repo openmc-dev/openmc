@@ -14,7 +14,6 @@ Functions
 
    calculate_volumes
    current_batch
-   current_surface_file
    export_properties
    export_weight_windows
    finalize

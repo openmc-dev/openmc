@@ -65,4 +65,4 @@ build.verbose = true
 logging.level = "INFO"
 wheel.install-dir = "openmc"
 wheel.packages = ["src/openmc"]
-wheel.exclude = ["CMakeLists.txt"]
+sdist.include = ["src/openmc/**"]

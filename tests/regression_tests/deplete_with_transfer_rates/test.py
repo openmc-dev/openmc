@@ -11,11 +11,12 @@ import openmc.deplete
 from openmc.deplete import CoupledOperator
 
 from tests.regression_tests import config, assert_reaction_rates_equal, \
-    assert_atoms_equal
+    assert_atoms_equal, assert_same_mats
 
 
 @pytest.fixture
 def model():
+    openmc.reset_auto_ids()
     f = openmc.Material(name="f")
     f.add_element("U", 1, percent_type="ao", enrichment=4.25)
     f.add_element("O", 2)
@@ -66,7 +67,7 @@ def test_transfer_rates(run_in_tmpdir, model, rate, dest_mat, power, ref_result)
     integrator = openmc.deplete.PredictorIntegrator(
         op, [1], power, timestep_units = 'd')
     integrator.add_transfer_rate('f', transfer_elements, rate,
-                                destination_material=dest_mat)
+                                 destination_material=dest_mat)
     integrator.integrate()
 
     # Get path to test and reference results
@@ -82,5 +83,6 @@ def test_transfer_rates(run_in_tmpdir, model, rate, dest_mat, power, ref_result)
     res_ref = openmc.deplete.Results(path_reference)
     res_test = openmc.deplete.Results(path_test)
 
+    assert_same_mats(res_ref, res_test)
     assert_atoms_equal(res_ref, res_test, 1e-6)
     assert_reaction_rates_equal(res_ref, res_test)

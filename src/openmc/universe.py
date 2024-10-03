@@ -1,3 +1,4 @@
+from __future__ import annotations
 import math
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
@@ -230,7 +231,7 @@ class Universe(UniverseBase):
         return self._cells
 
     @property
-    def bounding_box(self):
+    def bounding_box(self) -> openmc.BoundingBox:
         regions = [c.region for c in self.cells.values()
                    if c.region is not None]
         if regions:

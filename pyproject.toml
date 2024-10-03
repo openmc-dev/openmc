@@ -64,5 +64,5 @@ Issues = "https://github.com/openmc-dev/openmc/issues"
 build.verbose = true
 logging.level = "INFO"
 wheel.install-dir = "openmc"
-wheel.packages = ["openmc"]
+wheel.packages = ["src/openmc"]
 wheel.exclude = ["CMakeLists.txt"]

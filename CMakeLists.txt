@@ -645,17 +645,6 @@ if(SKBUILD)
 endif()
 
 #===============================================================================
-# Copy libopenmc to Python module directory for development
-#===============================================================================
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-  add_custom_command(TARGET libopenmc POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-    $<TARGET_FILE:libopenmc>
-    ${CMAKE_CURRENT_SOURCE_DIR}/openmc/lib/$<TARGET_FILE_NAME:libopenmc>
-    COMMENT "Copying libopenmc to Python module directory")
-endif()
-#===============================================================================
 # Install executable, scripts, manpage, license
 #===============================================================================
 

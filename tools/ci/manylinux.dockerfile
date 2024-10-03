@@ -10,9 +10,9 @@
 # 1. Base Stage: Sets up a Manylinux base image and installs necessary dependencies.
 # 2. Compiler Configuration: Defines the compilers (GCC or OpenMPI) to be used.
 # 3. Dependencies Stage: Downloads and builds all external dependencies.
-# 4. OpenMC Stage: Copies OpenMC source code, builds it using CMake with specific
-#    flags and installs it in the container.
-# 5. Test Stage: Runs OpenMC unit tests.
+# 4. Python Dependencies Stage: Downloads and installs Python dependencies.
+# 5. OpenMC Stage: Copies OpenMC source code, build wheel with specific
+#    flags and installs it in the container. Then, runs tests.
 
 # Arguments and environment variables can be customized for different compiler and
 # dependency versions.
@@ -229,26 +229,6 @@ RUN git clone --depth 1 -b ${DAGMC_TAG} https://github.com/svalinn/DAGMC.git dag
     cd ../.. && \
     rm -rf dagmc
 
-# Build and install NCrystal
-ARG NCrystal_TAG
-RUN git clone --depth 1 -b ${NCrystal_TAG} https://github.com/mctools/ncrystal.git ncrystal && \
-    cd ncrystal && \
-    mkdir build && cd build && \
-    cmake .. \
-        -DCMAKE_INSTALL_PREFIX=/usr/local \
-        -DBUILD_SHARED_LIBS=ON \
-        -DNCRYSTAL_NOTOUCH_CMAKE_BUILD_TYPE=ON \
-        -DNCRYSTAL_MODIFY_RPATH=OFF \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DNCRYSTAL_ENABLE_EXAMPLES=OFF \
-        -DNCRYSTAL_ENABLE_SETUPSH=OFF \
-        -DNCRYSTAL_ENABLE_DATA=EMBED \
-        -DPython3_EXECUTABLE=$(which python) && \
-    make -j$(nproc) && make install && \
-    cd ../.. && \
-    ncrystal-config --setup && \
-    rm -rf ncrystal
-
 # Build and install libMesh
 ARG LIBMESH_TAG
 RUN git clone --depth 1 -b ${LIBMESH_TAG} https://github.com/libMesh/libmesh.git libmesh && \
@@ -280,59 +260,41 @@ RUN git clone --depth 1 -b ${MCPL_TAG} https://github.com/mctools/mcpl.git mcpl 
 
 # Download and extract HDF5 data
 RUN wget -q -O - https://anl.box.com/shared/static/teaup95cqv8s9nn56hfn7ku8mmelr95p.xz | tar -C $HOME -xJ
+ENV OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml
 
 # Download and extract ENDF/B-VII.1 distribution
 RUN wget -q -O - https://anl.box.com/shared/static/4kd2gxnf4gtk4w1c8eua5fsua22kvgjb.xz | tar -C $HOME -xJ
+ENV OPENMC_ENDF_DATA=$HOME/endf-b-vii.1
 
 
-# Build and install OpenMC stage
-FROM dependencies AS openmc
+# Python dependencies stage
+FROM dependencies AS python-dependencies
 
-ARG COMPILER
 ARG Python_ABI
-ARG OPENMC_USE_OPENMP
-ARG OPENMC_BUILD_TESTS
-ARG OPENMC_ENABLE_PROFILE
-ARG OPENMC_ENABLE_COVERAGE
-ARG OPENMC_USE_DAGMC
-ARG OPENMC_USE_LIBMESH
-ARG OPENMC_USE_MCPL
-ARG OPENMC_USE_NCRYSTAL
-ARG OPENMC_USE_UWUW
 
 # Use Python from manylinux as the default Python
 ENV PATH="/opt/python/${Python_ABI}/bin:${PATH}"
 RUN ln -sf /opt/python/${Python_ABI}/bin/python3 /usr/bin/python
 
-# Copy OpenMC source to docker image
-COPY . $HOME/openmc
-
-# Configure SKBUILD CMake arguments
-RUN export SKBUILD_CMAKE_ARGS="-DOPENMC_USE_MPI=$([ ${COMPILER} == 'openmpi' ] && echo 'ON' || echo 'OFF'); \
-                        -DOPENMC_USE_OPENMP=${OPENMC_USE_OPENMP}; \
-                        -DOPENMC_BUILD_TESTS=${OPENMC_BUILD_TESTS}; \
-                        -DOPENMC_ENABLE_PROFILE=${OPENMC_ENABLE_PROFILE}; \
-                        -DOPENMC_ENABLE_COVERAGE=${OPENMC_ENABLE_COVERAGE}; \
-                        -DOPENMC_USE_DAGMC=${OPENMC_USE_DAGMC}; \
-                        -DOPENMC_USE_LIBMESH=${OPENMC_USE_LIBMESH}; \
-                        -DOPENMC_USE_MCPL=${OPENMC_USE_MCPL}; \
-                        -DOPENMC_USE_NCRYSTAL=${OPENMC_USE_NCRYSTAL}; \
-                        -DOPENMC_USE_UWUW=${OPENMC_USE_UWUW}" && \
-    cd $HOME/openmc && \
-    python -m build . -w
-
-# Repair wheel
-RUN auditwheel repair $HOME/openmc/dist/openmc-*.whl -w $HOME/openmc/dist/
-
-# Install OpenMC wheel
-RUN python -m pip install \
-        "$(echo $HOME/openmc/dist/*manylinux**.whl)[$([ ${COMPILER} == 'openmpi' ] && echo 'depletion-mpi,')test,ci,vtk]"
-
-
-# Test OpenMC stage
-FROM openmc AS test
-
-ARG COMPILER
+# Build and install NCrystal
+ARG NCrystal_TAG
+RUN git clone --depth 1 -b ${NCrystal_TAG} https://github.com/mctools/ncrystal.git ncrystal && \
+    cd ncrystal && \
+    mkdir build && cd build && \
+    cmake .. \
+        -DCMAKE_INSTALL_PREFIX=/usr/local \
+        -DBUILD_SHARED_LIBS=ON \
+        -DNCRYSTAL_NOTOUCH_CMAKE_BUILD_TYPE=ON \
+        -DNCRYSTAL_MODIFY_RPATH=OFF \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DNCRYSTAL_ENABLE_EXAMPLES=OFF \
+        -DNCRYSTAL_ENABLE_SETUPSH=OFF \
+        -DNCRYSTAL_ENABLE_DATA=EMBED \
+        -DPython3_EXECUTABLE=$(which python) && \
+    make -j$(nproc) && make install && \
+    cd ../.. && \
+    ncrystal-config --setup && \
+    rm -rf ncrystal
 
 # Build and install pybind
 ARG PYBIND_TAG
@@ -394,6 +356,46 @@ RUN git clone --depth 1 -b ${VECTFIT_TAG} https://github.com/liangjg/vectfit.git
     python -m pip install . && \
     cd .. && \
     rm -rf vectfit
+
+
+# OpenMC stage
+FROM python-dependencies AS openmc
+
+ARG COMPILER
+ARG Python_ABI
+ARG OPENMC_USE_OPENMP
+ARG OPENMC_BUILD_TESTS
+ARG OPENMC_ENABLE_PROFILE
+ARG OPENMC_ENABLE_COVERAGE
+ARG OPENMC_USE_DAGMC
+ARG OPENMC_USE_LIBMESH
+ARG OPENMC_USE_MCPL
+ARG OPENMC_USE_NCRYSTAL
+ARG OPENMC_USE_UWUW
+
+# Copy OpenMC source to docker image
+COPY . $HOME/openmc
+
+# Configure SKBUILD CMake arguments
+RUN export SKBUILD_CMAKE_ARGS="-DOPENMC_USE_MPI=$([ ${COMPILER} == 'openmpi' ] && echo 'ON' || echo 'OFF'); \
+                        -DOPENMC_USE_OPENMP=${OPENMC_USE_OPENMP}; \
+                        -DOPENMC_BUILD_TESTS=${OPENMC_BUILD_TESTS}; \
+                        -DOPENMC_ENABLE_PROFILE=${OPENMC_ENABLE_PROFILE}; \
+                        -DOPENMC_ENABLE_COVERAGE=${OPENMC_ENABLE_COVERAGE}; \
+                        -DOPENMC_USE_DAGMC=${OPENMC_USE_DAGMC}; \
+                        -DOPENMC_USE_LIBMESH=${OPENMC_USE_LIBMESH}; \
+                        -DOPENMC_USE_MCPL=${OPENMC_USE_MCPL}; \
+                        -DOPENMC_USE_NCRYSTAL=${OPENMC_USE_NCRYSTAL}; \
+                        -DOPENMC_USE_UWUW=${OPENMC_USE_UWUW}" && \
+    cd $HOME/openmc && \
+    python -m build . -w
+
+# Repair wheel
+RUN auditwheel repair $HOME/openmc/dist/openmc-*.whl -w $HOME/openmc/dist/
+
+# Install OpenMC wheel
+RUN python -m pip install \
+        "$(echo $HOME/openmc/dist/*manylinux**.whl)[$([ ${COMPILER} == 'openmpi' ] && echo 'depletion-mpi,')test,ci,vtk]"
 
 # Test OpenMC
 RUN cd $HOME/openmc && \

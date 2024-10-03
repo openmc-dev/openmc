@@ -54,8 +54,8 @@ jobs:
         uses: firehed/multistage-docker-build-action@v1
         with:
           repository: ${{ env.image_base_tag }}
-          stages: base, dependencies, openmc
-          server-stage: test
+          stages: base, dependencies, python-dependencies
+          server-stage: openmc
           quiet: false
           parallel: true
           tag-latest-on-default: ${{ env.tag-latest-on-default }}

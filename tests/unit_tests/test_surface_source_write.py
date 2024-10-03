@@ -8,7 +8,6 @@ import openmc.lib
 import pytest
 import h5py
 import numpy as np
-import os
 
 
 @pytest.fixture(scope="module")
@@ -52,16 +51,16 @@ def model():
     openmc.reset_auto_ids()
     model = openmc.Model()
 
-    ## Material
-    #material = openmc.Material(name="H1")
-    #material.add_element("H", 1.0)
+    # Material
+    h1 = openmc.Material(name="H1")
+    h1.add_nuclide("H1", 1.0)
+    h1.set_density('g/cm3', 1e-7)
 
     # Geometry
     radius = 1.0
     sphere = openmc.Sphere(r=radius, boundary_type="vacuum")
-    cell = openmc.Cell(region=-sphere, fill=None)
-    root = openmc.Universe(cells=[cell])
-    model.geometry = openmc.Geometry(root)
+    cell = openmc.Cell(region=-sphere, fill=h1)
+    model.geometry = openmc.Geometry([cell])
 
     # Settings
     model.settings = openmc.Settings()
@@ -72,27 +71,31 @@ def model():
 
     distribution = openmc.stats.Point()
     model.settings.source = openmc.IndependentSource(space=distribution)
-
     return model
 
+
 @pytest.mark.parametrize(
-    "parameter",
+    "max_particles, max_source_files",
     [
-        {"max_particles": 100, "max_source_files": 2},
-        {"max_particles": 100, "max_source_files": 3},
+        (100, 2),
+        (100, 3),
+        (100, 1),
     ],
 )
-
-def test_number_surface_source_file_created(parameter, run_in_tmpdir, model):
+def test_number_surface_source_file_created(max_particles, max_source_files,
+                                            run_in_tmpdir, model):
     """Check the number of surface source files written."""
-    model.settings.surf_source_write = parameter
+    model.settings.surf_source_write = {
+        "max_particles": max_particles,
+        "max_source_files": max_source_files
+    }
     model.run()
-    for i in range(1,parameter["max_source_files"]):
-        filename = "surface_source."+str(i)+".h5"
-        if not os.path.exists(filename):
-            assert False
-    if os.path.exists("surface_source.h5"):
-        assert False
+    should_be_numbered = max_source_files > 1
+    for i in range(1, max_source_files + 1):
+        if should_be_numbered:
+            assert Path(f"surface_source.{i}.h5").exists()
+    if not should_be_numbered:
+        assert Path("surface_source.h5").exists()
 
 ERROR_MSG_1 = (
     "A maximum number of particles needs to be specified "

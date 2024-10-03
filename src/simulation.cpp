@@ -117,7 +117,7 @@ int openmc_simulation_init()
   // Reset global variables -- this is done before loading state point (as that
   // will potentially populate k_generation and entropy)
   simulation::current_batch = 0;
-  simulation::current_surface_file = 1;
+  simulation::ssw_current_file = 1;
   simulation::k_generation.clear();
   simulation::entropy.clear();
   openmc_reset();
@@ -297,7 +297,6 @@ namespace openmc {
 namespace simulation {
 
 int current_batch;
-int current_surface_file;
 int current_gen;
 bool initialized {false};
 double keff {1.0};
@@ -310,6 +309,7 @@ int n_lost_particles {0};
 bool need_depletion_rx {false};
 int restart_batch;
 bool satisfy_triggers {false};
+int ssw_current_file;
 int total_gen {0};
 double total_weight;
 int64_t work_per_rank;
@@ -456,27 +456,33 @@ void finalize_batch()
 
   // Write out surface source if requested.
   if (settings::surf_source_write &&
-      simulation::current_surface_file <= settings::ssw_max_files) {
-    if (simulation::surf_source_bank.full() ||
-        simulation::current_batch == settings::n_batches) {
-      auto filename = settings::path_output + "surface_source." +
-                      std::to_string(simulation::current_batch);
-      // no batches specified for writing, write surface source bank
+      simulation::ssw_current_file <= settings::ssw_max_files) {
+    bool last_batch = (simulation::current_batch == settings::n_batches);
+    if (simulation::surf_source_bank.full() || last_batch) {
+      // Determine appropriate filename
+      auto filename = fmt::format("{}surface_source.{}", settings::path_output,
+        simulation::current_batch);
       if (settings::ssw_max_files == 1 ||
-          (simulation::current_surface_file == 1 &&
-            simulation::current_batch == settings::n_batches))
+          (simulation::ssw_current_file == 1 && last_batch)) {
         filename = settings::path_output + "surface_source";
+      }
+
+      // Get span of source bank and calculate parallel index vector
       auto surf_work_index = mpi::calculate_parallel_index_vector(
         simulation::surf_source_bank.size());
       gsl::span<SourceSite> surfbankspan(simulation::surf_source_bank.begin(),
         simulation::surf_source_bank.size());
+
+      // Write surface source file
       write_source_point(
         filename, surfbankspan, surf_work_index, settings::surf_mcpl_write);
+
+      // Reset surface source bank and increment counter
       simulation::surf_source_bank.clear();
-      if (simulation::current_batch < settings::n_batches &&
-          settings::ssw_max_files >= 1)
+      if (!last_batch && settings::ssw_max_files >= 1) {
         simulation::surf_source_bank.reserve(settings::ssw_max_particles);
-      ++simulation::current_surface_file;
+      }
+      ++simulation::ssw_current_file;
     }
   }
 }

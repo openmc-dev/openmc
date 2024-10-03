@@ -333,6 +333,7 @@ ARG XTENSOR_PYTHON_TAG
 RUN git clone --depth 1 -b ${XTENSOR_PYTHON_TAG} https://github.com/xtensor-stack/xtensor-python.git xtensor-python && \
     cd xtensor-python && \
     mkdir build && cd build && \
+    python -m pip install numpy && \
     cmake .. \
     -DNUMPY_INCLUDE_DIRS=$(python -c "import numpy; print(numpy.get_include())") && \
     make -j$(nproc) && make install && \

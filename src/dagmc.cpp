@@ -112,6 +112,11 @@ void DAGUniverse::initialize()
 {
   geom_type() = GeometryType::DAG;
 
+#ifdef OPENMC_UWUW
+  // read uwuw materials from the .h5m file if present
+  read_uwuw_materials();
+#endif
+
   init_dagmc();
 
   init_metadata();
@@ -587,9 +592,6 @@ void DAGUniverse::uwuw_assign_material(
   moab::EntityHandle vol_handle, std::unique_ptr<DAGCell>& c)
 {
 #ifdef OPENMC_UWUW
-  // read materials from uwuw material file
-  read_uwuw_materials();
-
   // lookup material in uwuw if present
   std::string uwuw_mat = dmd_ptr->volume_material_property_data_eh[vol_handle];
   if (uwuw_->material_library.count(uwuw_mat) != 0) {

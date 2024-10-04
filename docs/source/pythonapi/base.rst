@@ -133,6 +133,7 @@ Constructing Tallies
    openmc.EnergyFilter
    openmc.EnergyoutFilter
    openmc.MuFilter
+   openmc.MuSurfaceFilter
    openmc.PolarFilter
    openmc.AzimuthalFilter
    openmc.DistribcellFilter

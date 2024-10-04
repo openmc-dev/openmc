@@ -341,10 +341,17 @@ if(SKBUILD)
   set(CMAKE_INSTALL_LIBDIR lib)
   set(CMAKE_INSTALL_INCLUDEDIR ${SKBUILD_HEADERS_DIR})
   set(CMAKE_INSTALL_DATAROOTDIR ${SKBUILD_DATA_DIR})
+  set(CMAKE_INSTALL_DATADIR ${SKBUILD_DATA_DIR})
+  set(CMAKE_INSTALL_DOCDIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_DOCDIR})
+  set(CMAKE_INSTALL_INFODIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_INFODIR})
+  set(CMAKE_INSTALL_MANDIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_MANDIR})
+  set(CMAKE_INSTALL_LOCALEDIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_LOCALEDIR})
+  set(CMAKE_INSTALL_LOCALSTATEDIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_LOCALSTATEDIR})
+  set(CMAKE_INSTALL_RUNSTATEDIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_RUNSTATEDIR})
   set(SKBUILD_LIB_DIR ${CMAKE_INSTALL_LIBDIR}/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/openmc/${CMAKE_INSTALL_LIBDIR})
 
   # Auditwheel and Delocate need this when repairing the wheel
-  # Since OpenMC libs are installed in the openmc/core subdirectory
+  # Since OpenMC libs are installed in the openmc subdirectory
   # Auditwheel and Delocate need this to find the OpenMC libs for openmc.data
   # It's a bit of a hack, but it works
   set(SKBUILD_REPAIR_WHEEL_PATCH openmc/${CMAKE_INSTALL_LIBDIR})
@@ -352,7 +359,7 @@ if(SKBUILD)
     set(CMAKE_MACOSX_RPATH ON)
     set(OPENMC_LIBRARY_RPATH "@loader_path")
     set(OPENMC_PYTHON_MODULE_RPATH "@loader_path/${CMAKE_INSTALL_LIBDIR}")
-    set(OPENMC_BINARY_RPATH "@loader_path/../${SKBUILD_LIB_DIR};@loader_path/../${SKBUILD_REPAIR_WHEEL_PATCH};@loader_path/../../${SKBUILD_REPAIR_WHEEL_PATCH}")
+    set(OPENMC_BINARY_RPATH "@loader_path/../${SKBUILD_LIB_DIR};@loader_path/../../${SKBUILD_REPAIR_WHEEL_PATCH}")
   elseif(UNIX)
     set(OPENMC_LIBRARY_RPATH "$ORIGIN")
     set(OPENMC_PYTHON_MODULE_RPATH "$ORIGIN/${CMAKE_INSTALL_LIBDIR}")

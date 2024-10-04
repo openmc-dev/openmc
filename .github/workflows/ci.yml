@@ -131,6 +131,11 @@ jobs:
           echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
           $GITHUB_WORKSPACE/tools/ci/gha-install.sh
 
+      - name: display-config
+        shell: bash
+        run: |
+          openmc -v
+
       - name: cache-xs
         uses: actions/cache@v4
         with:

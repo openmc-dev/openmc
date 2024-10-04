@@ -923,6 +923,11 @@ class ParticleType(IntEnum):
     def from_pdg_number(cls, pdg_number: int) -> ParticleType:
         """Constructs a ParticleType instance from a PDG number.
 
+        The Particle Data Group at LBNL publishes a Monte Carlo particle
+        numbering scheme as part of the `Review of Particle Physics
+        <10.1103/PhysRevD.110.030001>`_. This method maps PDG numbers to the
+        corresponding :class:`ParticleType`.
+
         Parameters
         ----------
         pdg_number : int
@@ -933,7 +938,12 @@ class ParticleType(IntEnum):
         The corresponding ParticleType instance.
         """
         try:
-            return _PDG_TO_PARTICLE_TYPE[pdg_number]
+            return {
+                2112: ParticleType.NEUTRON,
+                22: ParticleType.PHOTON,
+                11: ParticleType.ELECTRON,
+                -11: ParticleType.POSITRON,
+            }[pdg_number]
         except KeyError:
             raise ValueError(f"Unrecognized PDG number: {pdg_number}")
 
@@ -1036,19 +1046,11 @@ def write_source_file(
 
     """
     cv.check_iterable_type("source particles", source_particles, SourceParticle)
-    pl = SourceParticles(source_particles)
+    pl = ParticleList(source_particles)
     pl.write_source_file(filename, **kwargs)
 
 
-_PDG_TO_PARTICLE_TYPE = {
-    2112: ParticleType.NEUTRON,
-    22: ParticleType.PHOTON,
-    11: ParticleType.ELECTRON,
-    -11: ParticleType.POSITRON,
-}
-
-
-class SourceParticles(list):
+class ParticleList(list):
     """A collection of SourceParticle objects.
 
     Parameters
@@ -1057,33 +1059,101 @@ class SourceParticles(list):
         Particles to collect into the list
 
     """
+    @classmethod
+    def from_hdf5(cls, filename: PathLike) -> ParticleList:
+        """Create particle list from an HDF5 file.
+
+        Parameters
+        ----------
+        filename : path-like
+            Path to source file to read.
+
+        Returns
+        -------
+        ParticleList instance
+
+        """
+        with h5py.File(filename, 'r') as fh:
+            filetype = fh.attrs['filetype']
+            arr = fh['source_bank'][...]
+
+        if filetype != b'source':
+            raise ValueError(f'File {filename} is not a source file')
+
+        source_particles = [
+            SourceParticle(*params, ParticleType(particle))
+            for *params, particle in arr
+        ]
+        return cls(source_particles)
+
+    @classmethod
+    def from_mcpl(cls, filename: PathLike) -> ParticleList:
+        """Create particle list from an MCPL file.
+
+        Parameters
+        ----------
+        filename : path-like
+            Path to MCPL file to read.
+
+        Returns
+        -------
+        ParticleList instance
+
+        """
+        import mcpl
+        # Process .mcpl file
+        particles = []
+        with mcpl.MCPLFile(filename) as f:
+            for particle in f.particles:
+                # Determine particle type based on the PDG number
+                try:
+                    particle_type = ParticleType.from_pdg_number(particle.pdgcode)
+                except ValueError:
+                    particle_type = "UNKNOWN"
+
+                # Create a source particle instance. Note that MCPL stores
+                # energy in MeV and time in ms.
+                source_particle = SourceParticle(
+                    r=tuple(particle.position),
+                    u=tuple(particle.direction),
+                    E=1.0e-6*particle.ekin,
+                    time=1.0e-3*particle.time,
+                    wgt=particle.weight,
+                    particle=particle_type
+                )
+                particles.append(source_particle)
+
+        return cls(particles)
 
     def __getitem__(self, index):
         """
-        Return a new SourceParticles object containing the particle(s)
+        Return a new ParticleList object containing the particle(s)
         at the specified index or slice.
 
         Parameters
         ----------
         index : int, slice or list
-            The index, slice or list to select from the list of SourceParticle objects.
+            The index, slice or list to select from the list of particles
 
         Returns
         -------
-        openmc.SourceParticles
-            A new SourceParticles object with the selected particle(s).
+        openmc.ParticleList or openmc.SourceParticle
+            A new object with the selected particle(s)
         """
         if isinstance(index, int):
             # If it's a single integer, return the corresponding particle
             return super().__getitem__(index)
         elif isinstance(index, slice):
-            # If it's a slice, return a new SourceParticles object with the sliced particles
-            return SourceParticles(super().__getitem__(index))
+            # If it's a slice, return a new ParticleList object with the
+            # sliced particles
+            return ParticleList(super().__getitem__(index))
         elif isinstance(index, list):
-            # If it's a list of integers, return a new SourceParticles object with the selected particles
-            return SourceParticles([super().__getitem__(i) for i in index])
+            # If it's a list of integers, return a new ParticleList object
+            # with the selected particles
+            return ParticleList([super().__getitem__(i) for i in index])
         else:
-            raise TypeError(f"Invalid index type: {type(index)}. Must be int, slice, or list of int.")
+            raise TypeError(f"Invalid index type: {type(index)}. Must be int, "
+                            "slice, or list of int.")
 
     def to_dataframe(self) -> pd.DataFrame:
         """A dataframe representing the source particles
@@ -1105,8 +1175,11 @@ class SourceParticles(list):
         # Create the pandas DataFrame from the data
         return pd.DataFrame(data, columns=columns)
 
-    def write_source_file(self, filename: PathLike, **kwargs):
-        """Write a source file for a collection of particles
+    def export_to_hdf5(self, filename: PathLike, **kwargs):
+        """Export particle list to an HDF5 file.
+
+        This method write out an .h5 file that can be used as a source file in
+        conjunction with the :class:`openmc.FileSource` class.
 
         Parameters
         ----------
@@ -1114,6 +1187,10 @@ class SourceParticles(list):
             Path to source file to write
         **kwargs
             Keyword arguments to pass to :class:`h5py.File`
+
+        See Also
+        --------
+        openmc.FileSource
 
         """
         # Create compound datatype for source particles
@@ -1139,7 +1216,7 @@ class SourceParticles(list):
             fh.create_dataset('source_bank', data=arr, dtype=source_dtype)
 
 
-def read_source_file(filename: PathLike) -> SourceParticles:
+def read_source_file(filename: PathLike) -> ParticleList:
     """Read a source file and return a list of source particles.
 
     .. versionadded:: 0.15.0
@@ -1151,56 +1228,18 @@ def read_source_file(filename: PathLike) -> SourceParticles:
 
     Returns
     -------
-    openmc.SourceParticles
+    openmc.ParticleList
 
     See Also
     --------
     openmc.SourceParticle
-    openmc.SourceParticles
 
     """
     filename = Path(filename)
-
     if filename.suffix not in ('.h5', '.mcpl'):
-        raise ValueError()
+        raise ValueError('Source file must have a .h5 or .mcpl extension.')
 
     if filename.suffix == '.h5':
-        # Process .h5 file
-        with h5py.File(filename, 'r') as fh:
-            filetype = fh.attrs['filetype']
-            arr = fh['source_bank'][...]
-
-        if filetype != b'source':
-            raise ValueError(f'File {filename} is not a source file')
-
-        source_particles = []
-        for *params, particle in arr:
-            source_particles.append(SourceParticle(*params, ParticleType(particle)))
-
-        return SourceParticles(source_particles)
-
-    elif filename.suffix == '.mcpl':
-        import mcpl
-        # Process .mcpl file
-        particles = []
-        with mcpl.MCPLFile(filename) as f:
-            for particle in f.particles:
-                # Determine particle type based on the PDG number
-                try:
-                    particle_type = ParticleType.from_pdg_number(particle.pdgcode)
-                except ValueError:
-                    particle_type = "UNKNOWN"
-
-                # Create a source particle instance. Note that MCPL stores
-                # energy in MeV and time in ms.
-                source_particle = SourceParticle(
-                    r=tuple(particle.position),
-                    u=tuple(particle.direction),
-                    E=1.0e-6*particle.ekin,
-                    time=1.0e-3*particle.time,
-                    wgt=particle.weight,
-                    particle=particle_type
-                )
-                particles.append(source_particle)
-
-        return SourceParticles(particles)
+        return ParticleList.from_hdf5(filename)
+    else:
+        return ParticleList.from_mcpl(filename)

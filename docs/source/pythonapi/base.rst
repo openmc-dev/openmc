@@ -190,6 +190,7 @@ Post-processing
    :template: myclass.rst
 
    openmc.Particle
+   openmc.ParticleList
    openmc.ParticleTrack
    openmc.StatePoint
    openmc.Summary

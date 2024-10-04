@@ -316,8 +316,7 @@ def test_unstructured_mesh_applied_wws(request, run_in_tmpdir, library):
     water.add_nuclide('O16', 1.0)
     water.set_density('g/cc', 1.0)
     box = openmc.model.RectangularParallelepiped(*(3*[-10, 10]), boundary_type='vacuum')
-    cell = openmc.Cell(region=-box,
-                       fill=water)
+    cell = openmc.Cell(region=-box, fill=water)
 
     geometry = openmc.Geometry([cell])
     mesh_file = str(request.fspath.dirpath() / 'test_mesh_tets.exo')
@@ -327,7 +326,7 @@ def test_unstructured_mesh_applied_wws(request, run_in_tmpdir, library):
 
     wws = openmc.WeightWindows(mesh, dummy_wws, upper_bound_ratio=5.0)
 
-    model = openmc.Model(geometry, settings=openmc.Settings())
+    model = openmc.Model(geometry)
     model.settings.weight_windows = wws
     model.settings.weight_windows_on = True
     model.settings.run_mode = 'fixed source'

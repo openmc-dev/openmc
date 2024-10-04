@@ -2366,8 +2366,7 @@ void MOABMesh::build_kdtree(const moab::Range& all_tets)
 
   // create a kd-tree instance
   write_message(
-    fmt::format("Building adaptive k-d tree for tet mesh with ID {}...", id_),
-    7);
+    7, "Building adaptive k-d tree for tet mesh with ID {}...", id_);
   kdtree_ = make_unique<moab::AdaptiveKDTree>(mbi_.get());
 
   // Determine what options to use

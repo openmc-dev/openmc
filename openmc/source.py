@@ -1047,7 +1047,7 @@ def write_source_file(
     """
     cv.check_iterable_type("source particles", source_particles, SourceParticle)
     pl = ParticleList(source_particles)
-    pl.write_source_file(filename, **kwargs)
+    pl.export_to_hdf5(filename, **kwargs)
 
 
 class ParticleList(list):

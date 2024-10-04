@@ -919,6 +919,24 @@ class ParticleType(IntEnum):
         except KeyError:
             raise ValueError(f"Invalid string for creation of {cls.__name__}: {value}")
 
+    @classmethod
+    def from_pdg_number(cls, pdg_number: int) -> ParticleType:
+        """Constructs a ParticleType instance from a PDG number.
+
+        Parameters
+        ----------
+        pdg_number : int
+            The PDG number of the particle type.
+
+        Returns
+        -------
+        The corresponding ParticleType instance.
+        """
+        try:
+            return _PDG_TO_PARTICLE_TYPE[pdg_number]
+        except KeyError:
+            raise ValueError(f"Unrecognized PDG number: {pdg_number}")
+
     def __repr__(self) -> str:
         """
         Returns a string representation of the ParticleType instance.
@@ -931,11 +949,6 @@ class ParticleType(IntEnum):
     # needed for < Python 3.11
     def __str__(self) -> str:
         return self.__repr__()
-
-    # needed for <= 3.7, IntEnum will use the mixed-in type's `__format__` method otherwise
-    # this forces it to default to the standard object format, relying on __str__ under the hood
-    def __format__(self, spec):
-        return object.__format__(self, spec)
 
 
 class SourceParticle:
@@ -1022,52 +1035,27 @@ def write_source_file(
     openmc.SourceParticle
 
     """
-    # Create compound datatype for source particles
-    pos_dtype = np.dtype([('x', '<f8'), ('y', '<f8'), ('z', '<f8')])
-    source_dtype = np.dtype([
-        ('r', pos_dtype),
-        ('u', pos_dtype),
-        ('E', '<f8'),
-        ('time', '<f8'),
-        ('wgt', '<f8'),
-        ('delayed_group', '<i4'),
-        ('surf_id', '<i4'),
-        ('particle', '<i4'),
-    ])
-
-    # Create array of source particles
     cv.check_iterable_type("source particles", source_particles, SourceParticle)
-    arr = np.array([s.to_tuple() for s in source_particles], dtype=source_dtype)
+    pl = SourceParticles(source_particles)
+    pl.write_source_file(filename, **kwargs)
 
-    # Write array to file
-    kwargs.setdefault('mode', 'w')
-    with h5py.File(filename, **kwargs) as fh:
-        fh.attrs['filetype'] = np.bytes_("source")
-        fh.create_dataset('source_bank', data=arr, dtype=source_dtype)
 
-def PDGCode_MCPL(code):
-    if code == 2112:
-        return ParticleType(0)
-    if code == 22:
-        return ParticleType(1)
-    if code == 11:
-        return ParticleType(2)
-    if code == 2212:
-        return ParticleType(3)
-    else:
-        raise ValueError()
+_PDG_TO_PARTICLE_TYPE = {
+    2112: ParticleType.NEUTRON,
+    22: ParticleType.PHOTON,
+    11: ParticleType.ELECTRON,
+    -11: ParticleType.POSITRON,
+}
+
 
 class SourceParticles(list):
     """A collection of SourceParticle objects.
 
-    Methods
-    -------
-    get_pandas_dataframe():
-        Converts the list of source particles to a pandas DataFrame.
-    
-    write_source_file():
-        Creates a surface source file from the particles in the list.
-    
+    Parameters
+    ----------
+    particles : list of SourceParticle
+        Particles to collect into the list
+
     """
 
     def __getitem__(self, index):
@@ -1096,34 +1084,38 @@ class SourceParticles(list):
             return SourceParticles([super().__getitem__(i) for i in index])
         else:
             raise TypeError(f"Invalid index type: {type(index)}. Must be int, slice, or list of int.")
-        
-    def get_pandas_dataframe(self):
-        """Convert the list of SourceParticle objects to a pandas DataFrame.
+
+    def to_dataframe(self) -> pd.DataFrame:
+        """A dataframe representing the source particles
 
         Returns
         -------
         pandas.DataFrame
             DataFrame containing the source particles attributes.
         """
-        # Check if the list is empty
-        if not self:
-            return pd.DataFrame()
-
         # Extract the attributes of the source particles into a list of tuples
-        data = [(sp.r[0], sp.r[1], sp.r[2],
-                 sp.u[0], sp.u[1], sp.u[2],
-                 sp.E, sp.time, sp.wgt,
-                 sp.delayed_group, sp.surf_id,
-                 sp.particle.name) for sp in self]
+        data = [(sp.r[0], sp.r[1], sp.r[2], sp.u[0], sp.u[1], sp.u[2],
+                 sp.E, sp.time, sp.wgt, sp.delayed_group, sp.surf_id,
+                 sp.particle.name.lower()) for sp in self]
 
         # Define the column names for the DataFrame
-        columns = ['x', 'y', 'z', 'u_x', 'u_y', 'u_z', 'E', 'time', 'wgt', 'delayed_group', 'surf_id', 'particle']
+        columns = ['x', 'y', 'z', 'u_x', 'u_y', 'u_z', 'E', 'time', 'wgt',
+                   'delayed_group', 'surf_id', 'particle']
 
         # Create the pandas DataFrame from the data
-        df = pd.DataFrame(data, columns=columns)
-        return df
+        return pd.DataFrame(data, columns=columns)
 
     def write_source_file(self, filename: PathLike, **kwargs):
+        """Write a source file for a collection of particles
+
+        Parameters
+        ----------
+        filename : path-like
+            Path to source file to write
+        **kwargs
+            Keyword arguments to pass to :class:`h5py.File`
+
+        """
         # Create compound datatype for source particles
         pos_dtype = np.dtype([('x', '<f8'), ('y', '<f8'), ('z', '<f8')])
         source_dtype = np.dtype([
@@ -1138,7 +1130,6 @@ class SourceParticles(list):
         ])
 
         # Create array of source particles
-        cv.check_iterable_type("source particles", self, SourceParticle)
         arr = np.array([s.to_tuple() for s in self], dtype=source_dtype)
 
         # Write array to file
@@ -1146,8 +1137,7 @@ class SourceParticles(list):
         with h5py.File(filename, **kwargs) as fh:
             fh.attrs['filetype'] = np.bytes_("source")
             fh.create_dataset('source_bank', data=arr, dtype=source_dtype)
-        return 
-    
+
 
 def read_source_file(filename: PathLike) -> SourceParticles:
     """Read a source file and return a list of source particles.
@@ -1190,32 +1180,27 @@ def read_source_file(filename: PathLike) -> SourceParticles:
         return SourceParticles(source_particles)
 
     elif filename.suffix == '.mcpl':
-        try:
-            import mcpl
-        except ImportError as e:
-            raise e('MCPL not available')
+        import mcpl
         # Process .mcpl file
         particles = []
         with mcpl.MCPLFile(filename) as f:
             for particle in f.particles:
+                # Determine particle type based on the PDG number
                 try:
-                    # Map the PDG code to the particle name
-                    particle_type = PDGCode_MCPL(particle.pdgcode)
+                    particle_type = ParticleType.from_pdg_number(particle.pdgcode)
                 except ValueError:
                     particle_type = "UNKNOWN"
 
-                # Crear una instancia de SourceParticle
+                # Create a source particle instance. Note that MCPL stores
+                # energy in MeV and time in ms.
                 source_particle = SourceParticle(
                     r=tuple(particle.position),
-                    u=tuple(particle.direction), 
-                    E=particle.ekin,
-                    time=particle.time,
+                    u=tuple(particle.direction),
+                    E=1.0e-6*particle.ekin,
+                    time=1.0e-3*particle.time,
                     wgt=particle.weight,
-                    delayed_group=0,  # MCPL does not store this
-                    surf_id=0,  # No present in MCPL
                     particle=particle_type
                 )
                 particles.append(source_particle)
 
         return SourceParticles(particles)
-    

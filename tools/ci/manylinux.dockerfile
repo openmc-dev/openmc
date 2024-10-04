@@ -44,6 +44,11 @@ ARG OPENMC_USE_NCRYSTAL="ON"
 ARG OPENMC_USE_UWUW="OFF"
 
 # Configure dependencies tags
+ARG GSL_LITE_TAG="v0.41.0"
+ARG XTL_TAG="0.7.7"
+ARG XTENSOR_TAG="0.25.0"
+ARG XTENSOR_BLAS_TAG="0.21.0"
+ARG CATCH2_TAG="v3.7.1"
 ARG NJOY2016_TAG="2016.76"
 ARG HDF5_TAG="hdf5_1.14.4.3"
 ARG NETCDF_TAG="v4.9.2"
@@ -53,10 +58,7 @@ ARG DD_TAG="v1.1.0"
 ARG DAGMC_TAG="v3.2.3"
 ARG NCrystal_TAG="v3.9.7"
 ARG PYBIND_TAG="v2.13.6"
-ARG XTL_TAG="0.7.7"
-ARG XTENSOR_TAG="0.25.0"
 ARG XTENSOR_PYTHON_TAG="0.27.0"
-ARG XTENSOR_BLAS_TAG="0.21.0"
 ARG VECTFIT_TAG="master"
 ARG LIBMESH_TAG="v1.7.2"
 ARG MCPL_TAG="v1.6.2"
@@ -88,7 +90,9 @@ RUN yum install -y epel-release && \
         curl-devel \
         eigen3-devel \
         lapack-devel \
-        libpng-devel && \
+        libpng-devel \
+        pugixml-devel \
+        fmt-devel && \
     yum clean all
 
 # Set up environment variables for shared libraries
@@ -126,6 +130,60 @@ ENV LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:$LD_LIBRARY_PATH
 FROM compiler-${COMPILER} AS dependencies
 
 ARG COMPILER
+
+# Build and install gsl-lite
+ARG GSL_LITE_TAG
+RUN git clone --depth 1 -b ${GSL_LITE_TAG} https://github.com/gsl-lite/gsl-lite.git gsl-lite && \
+    cd gsl-lite && \
+    mkdir build && cd build && \
+    cmake .. \
+        -DCMAKE_INSTALL_PREFIX=/usr/local && \
+    make -j$(nproc) && make install && \
+    cd ../.. && \
+    rm -rf gsl-lite
+
+# Build and install xtl
+ARG XTL_TAG
+RUN git clone --depth 1 -b ${XTL_TAG} https://github.com/xtensor-stack/xtl.git xtl && \
+    cd xtl && \
+    mkdir build && cd build && \
+    cmake .. \
+        -DCMAKE_INSTALL_PREFIX=/usr/local && \
+    make -j$(nproc) && make install && \
+    cd ../.. && \
+    rm -rf xtl
+
+# Build and install xtensor
+ARG XTENSOR_TAG
+RUN git clone --depth 1 -b ${XTENSOR_TAG} https://github.com/xtensor-stack/xtensor.git xtensor && \
+    cd xtensor && \
+    mkdir build && cd build && \
+    cmake .. \
+        -DCMAKE_INSTALL_PREFIX=/usr/local && \
+    make -j$(nproc) && make install && \
+    cd ../.. && \
+    rm -rf xtensor
+
+# Build and install xtensor-blas
+ARG XTENSOR_BLAS_TAG
+RUN git clone --depth 1 -b ${XTENSOR_BLAS_TAG} https://github.com/xtensor-stack/xtensor-blas.git xtensor-blas && \
+    cd xtensor-blas && \
+    mkdir build && cd build && \
+    cmake .. && \
+    make -j$(nproc) && make install && \
+    cd ../.. && \
+    rm -rf xtensor-blas
+
+# Build and install Catch2
+ARG CATCH2_TAG
+RUN git clone --depth 1 -b ${CATCH2_TAG} https://github.com/catchorg/Catch2.git catch2 && \
+    cd catch2 && \
+    mkdir build && cd build && \
+    cmake .. \
+        -DCMAKE_INSTALL_PREFIX=/usr/local && \
+    make -j$(nproc) && make install && \
+    cd ../.. && \
+    rm -rf catch2
 
 # Build and install NJOY2016
 ARG NJOY2016_TAG
@@ -301,32 +359,13 @@ ARG PYBIND_TAG
 RUN git clone --depth 1 -b ${PYBIND_TAG} https://github.com/pybind/pybind11.git pybind11 && \
     cd pybind11 && \
     mkdir build && cd build && \
-    cmake .. && \
+    cmake .. \
+        -DCMAKE_INSTALL_PREFIX=/usr/local && \
     make -j$(nproc) && make install && \
     cd .. && \
     python -m pip install . && \
     cd .. && \
     rm -rf pybind11 
-
-# Build and install xtl
-ARG XTL_TAG
-RUN git clone --depth 1 -b ${XTL_TAG} https://github.com/xtensor-stack/xtl.git xtl && \
-    cd xtl && \
-    mkdir build && cd build && \
-    cmake .. && \
-    make -j$(nproc) && make install && \
-    cd ../.. && \
-    rm -rf xtl
-
-# Build and install xtensor
-ARG XTENSOR_TAG
-RUN git clone --depth 1 -b ${XTENSOR_TAG} https://github.com/xtensor-stack/xtensor.git xtensor && \
-    cd xtensor && \
-    mkdir build && cd build && \
-    cmake .. && \
-    make -j$(nproc) && make install && \
-    cd ../.. && \
-    rm -rf xtensor
 
 # Build and install xtensor-python
 ARG XTENSOR_PYTHON_TAG
@@ -335,20 +374,11 @@ RUN git clone --depth 1 -b ${XTENSOR_PYTHON_TAG} https://github.com/xtensor-stac
     mkdir build && cd build && \
     python -m pip install numpy && \
     cmake .. \
-    -DNUMPY_INCLUDE_DIRS=$(python -c "import numpy; print(numpy.get_include())") && \
+        -DCMAKE_INSTALL_PREFIX=/usr/local \
+        -DNUMPY_INCLUDE_DIRS=$(python -c "import numpy; print(numpy.get_include())") && \
     make -j$(nproc) && make install && \
     cd ../.. && \
     rm -rf xtensor-python
-
-# Build and install xtensor-blas
-ARG XTENSOR_BLAS_TAG
-RUN git clone --depth 1 -b ${XTENSOR_BLAS_TAG} https://github.com/xtensor-stack/xtensor-blas.git xtensor-blas && \
-    cd xtensor-blas && \
-    mkdir build && cd build && \
-    cmake .. && \
-    make -j$(nproc) && make install && \
-    cd ../.. && \
-    rm -rf xtensor-blas
 
 # Build and install vectfit
 ARG VECTFIT_TAG

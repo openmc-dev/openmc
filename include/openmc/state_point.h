@@ -2,6 +2,7 @@
 #define OPENMC_STATE_POINT_H
 
 #include <cstdint>
+#include <string>
 
 #include <gsl/gsl-lite.hpp>
 
@@ -33,8 +34,11 @@ void load_state_point();
 // values on each rank, used to create global indexing. This vector
 // can be created by calling calculate_parallel_index_vector on
 // source_bank.size() if such a vector is not already available.
-void write_source_point(const char* filename, gsl::span<SourceSite> source_bank,
-  const vector<int64_t>& bank_index);
+void write_h5_source_point(const char* filename,
+  gsl::span<SourceSite> source_bank, const vector<int64_t>& bank_index);
+
+void write_source_point(std::string, gsl::span<SourceSite> source_bank,
+  const vector<int64_t>& bank_index, bool use_mcpl);
 
 // This appends a source bank specification to an HDF5 file
 // that's already open. It is used internally by write_source_point.

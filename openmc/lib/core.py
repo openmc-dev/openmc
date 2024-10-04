@@ -475,9 +475,10 @@ def run(output=True):
 
 
 def sample_external_source(
-        n_samples: int = 1, prn_seed: int | None = None
+        n_samples: int = 1000,
+        prn_seed: int | None = None
 ) -> openmc.ParticleList:
-    """Sample external source distribution.
+    """Sample external source and return source particles.
 
     .. versionadded:: 0.13.1
 
@@ -492,7 +493,7 @@ def sample_external_source(
     Returns
     -------
     openmc.ParticleList
-        List of samples source particles
+        List of sampled source particles
 
     """
     if n_samples <= 0:

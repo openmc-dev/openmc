@@ -339,6 +339,8 @@ if(SKBUILD)
   set(CMAKE_INSTALL_BINDIR ${SKBUILD_SCRIPTS_DIR})
   # Unfortunately, OpenMC has lib directory in the openmc/lib subdirectory
   set(CMAKE_INSTALL_LIBDIR lib)
+  set(CMAKE_INSTALL_INCLUDEDIR ${SKBUILD_HEADERS_DIR})
+  set(CMAKE_INSTALL_DATAROOTDIR ${SKBUILD_DATA_DIR})
   set(SKBUILD_LIB_DIR ${CMAKE_INSTALL_LIBDIR}/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/openmc/${CMAKE_INSTALL_LIBDIR})
 
   # Auditwheel and Delocate need this when repairing the wheel
@@ -651,7 +653,12 @@ endif()
 configure_file(cmake/OpenMCConfig.cmake.in "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake" @ONLY)
 configure_file(cmake/OpenMCConfigVersion.cmake.in "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake" @ONLY)
 
-set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
+if(SKBUILD)
+  set(INSTALL_CONFIGDIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
+else()
+  set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
+endif()
+
 install(TARGETS openmc libopenmc
   EXPORT openmc-targets
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

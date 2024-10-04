@@ -1857,6 +1857,8 @@ class MuSurfaceFilter(MuFilter):
     direction of the particle and the normal to the surface at the point it
     crosses. Only used in conjunction with a SurfaceFilter and current score.
 
+    .. versionadded:: 0.15.1
+
     Parameters
     ----------
     values : int or Iterable of Real

@@ -22,8 +22,16 @@ def test_dose_coefficients():
     assert energy[-1] == approx(10e9)
     assert dose[-1] == approx(699.0)
 
+    energy, dose = dose_coefficients('photon', data_source='icrp74')
+    assert energy[0] == approx(0.01e6)
+    assert dose[0] == approx(0.061)
+    assert energy[-1] == approx(10.0e6)
+    assert dose[-1] == approx(25.6)
+
     # Invalid particle/geometry should raise an exception
     with raises(ValueError):
         dose_coefficients('slime', 'LAT')
     with raises(ValueError):
         dose_coefficients('neutron', 'ZZ')
+    with raises(ValueError):
+        dose_coefficients('neutron', data_source='icrp7000')

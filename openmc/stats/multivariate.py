@@ -836,7 +836,7 @@ class PointCloud(Spatial):
 
         for idx, axis in enumerate(('x','y','z')):
             subelement = ET.SubElement(element, axis)
-            subelement.text = ' '.joing(str(e) for e in self.positions[idx,:])
+            subelement.text = ' '.join(str(e) for e in self.positions[idx,:])
 
         if self.strengths is not None:
             subelement = ET.SubElement(element, 'strengths')

@@ -232,14 +232,28 @@ void DAGUniverse::init_geometry()
       if (uses_uwuw()) {
         uwuw_assign_material(vol_handle, c);
       } else {
-        if (instance_material_overrides.count(mat_str)) {
-          if (instance_material_overrides.at(mat_str).size() !=
-              c->n_instances_) {
-            fatal_error(fmt::format("DAGMC Cell assign with material {} has {} "
-                                    "instances but material_overrides has {} "
-                                    "material assignments for this material",
-              mat_str, c->n_instances_,
-              instance_material_overrides.at(mat_str).size()));
+        if (instance_material_overrides.count(std::to_string(c->id_))) {
+          int n_override =
+            instance_material_overrides.at(std::to_string(c->id_)).size();
+          if (n_override != c->n_instances_) {
+            fatal_error(fmt::format("material_overrides has for Cell {} has {}"
+                                    "material assignments for this material, "
+                                    "where the cell has {} instances.",
+              c->id_, n_override, c->n_instances_));
+          }
+
+          for (auto mat_str_instance :
+            instance_material_overrides.at(mat_str)) {
+            legacy_assign_material(mat_str_instance, c);
+          }
+        } else if (instance_material_overrides.count(mat_str)) {
+          int n_override = instance_material_overrides.at(mat_str).size();
+          if (n_override != c->n_instances_) {
+            fatal_error(
+              fmt::format("DAGMC Cell assigned with material {} has {} "
+                          "instances but material_overrides has {} "
+                          "material assignments for this material",
+                mat_str, c->n_instances_, n_override));
           }
 
           for (auto mat_str_instance :

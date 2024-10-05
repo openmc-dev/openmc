@@ -253,6 +253,9 @@ class DAGMCUniverse(openmc.UniverseBase):
 
         memo.add(self)
 
+        # Ensure that the material overrides are up-t-date
+        self.build_overide_mat_from_cells()
+
         # Set xml element values
         dagmc_element = ET.Element('dagmc_universe')
         dagmc_element.set('id', str(self.id))
@@ -262,13 +265,6 @@ class DAGMCUniverse(openmc.UniverseBase):
         if self.auto_mat_ids:
             dagmc_element.set('auto_mat_ids', 'true')
         dagmc_element.set('filename', str(self.filename))
-        if not self.material_overrides:
-            mats = self.get_all_materials()
-            for mat in mats.values():
-                if mat.name[:-4] in self.material_names:
-                    self.material_overrides.setdefault(
-                        mat.name[:-4].lower(), []).append(mat.name)
-
         if self.material_overrides:
             mat_element = ET.Element('material_overrides')
             for key in self.material_overrides:
@@ -276,6 +272,18 @@ class DAGMCUniverse(openmc.UniverseBase):
                     t for t in self.material_overrides[key]))
             dagmc_element.append(mat_element)
         xml_element.append(dagmc_element)
+
+    def build_overide_mat_from_cells(self):
+        """
+        Builds the material override dictionary for cells with multiple instances.
+
+        Returns:
+            None
+        """
+        for cell in self.cells.values():
+            if cell.n_instances > 1 and isinstance(cell.fill, Iterable):
+                for mat in cell.fill:
+                    self.material_overrides[str(cell.id)] = [mat.name for mat in cell.fill]
 
     def bounding_region(
         self,
@@ -504,8 +512,8 @@ class DAGMCUniverse(openmc.UniverseBase):
         for dag_cell_id in dagmc_cell_ids:
             dag_cell = openmc.lib.cells[dag_cell_id]
             if isinstance(dag_cell.fill, Iterable):
-                fill = [mats_per_id[mat_id.id]
-                        for mat_id in dag_cell.fill]
+                fill = [mats_per_id[mat.id]
+                        for mat in dag_cell.fill]
             else:
                 fill = mats_per_id[dag_cell.fill.id]
             dag_pseudo_cell = openmc.DAGMCCell(

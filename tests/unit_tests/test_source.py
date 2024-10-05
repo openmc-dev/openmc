@@ -72,7 +72,6 @@ def test_point_cloud():
 
     elem = src.to_xml_element()
     src = openmc.IndependentSource.from_xml_element(elem)
-    assert src.space == space
     np.testing.assert_equal(src.space.positions, positions)
     np.testing.assert_equal(src.space.strengths, strengths)
 

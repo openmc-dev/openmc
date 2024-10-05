@@ -1,2 +1,77 @@
 [build-system]
-requires = ["setuptools", "wheel", "numpy", "cython"]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openmc"
+authors = [
+    {name = "The OpenMC Development Team", email = "openmc@anl.gov"},
+]
+description = "OpenMC"
+version = "0.15.1-dev"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Topic :: Scientific/Engineering",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "numpy",
+    "h5py",
+    "scipy",
+    "ipython",
+    "matplotlib",
+    "pandas",
+    "lxml",
+    "uncertainties",
+    "setuptools",
+    "endf",
+]
+
+[project.optional-dependencies]
+depletion-mpi = ["mpi4py"]
+docs = [
+    "sphinx==5.0.2",
+    "sphinxcontrib-katex",
+    "sphinx-numfig",
+    "jupyter",
+    "sphinxcontrib-svg2pdfconverter",
+    "sphinx-rtd-theme==1.0.0"
+]
+test = ["packaging", "pytest", "pytest-cov", "colorama", "openpyxl"]
+ci = ["cpp-coveralls", "coveralls"]
+vtk = ["vtk"]
+
+[project.urls]
+Homepage = "https://openmc.org"
+Documentation = "https://docs.openmc.org"
+Repository = "https://github.com/openmc-dev/openmc"
+Issues = "https://github.com/openmc-dev/openmc/issues"
+
+[tool.setuptools.packages.find]
+include = ['openmc*', 'scripts*']
+exclude = ['tests*']
+
+[tool.setuptools.package-data]
+"openmc.data.effective_dose" = ["*.txt"]
+"openmc.data" = ["*.txt", "*.DAT", "*.json", "*.h5"]
+"openmc.lib" = ["libopenmc.dylib", "libopenmc.so"]
+
+[project.scripts]
+openmc-ace-to-hdf5 = "scripts.openmc_ace_to_hdf5:main"
+openmc-plot-mesh-tally = "scripts.openmc_plot_mesh_tally:main"
+openmc-track-combine = "scripts.openmc_track_combine:main"
+openmc-track-to-vtk = "scripts.openmc_track_to_vtk:main"
+openmc-update-inputs = "scripts.openmc_update_inputs:main"
+openmc-update-mgxs = "scripts.openmc_update_mgxs:main"
+openmc-voxel-to-vtk = "scripts.openmc_voxel_to_vtk:main"

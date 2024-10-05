@@ -11,7 +11,7 @@ def myplot():
     plot.width = (100., 100.)
     plot.origin = (2., 3., -10.)
     plot.pixels = (500, 500)
-    plot.filename = 'myplot'
+    plot.filename = './not-a-dir/myplot'
     plot.type = 'slice'
     plot.basis = 'yz'
     plot.background = 'black'
@@ -221,3 +221,26 @@ def test_voxel_plot_roundtrip():
     assert new_plot.origin == plot.origin
     assert new_plot.width == plot.width
     assert new_plot.color_by == plot.color_by
+
+
+def test_plot_directory(run_in_tmpdir):
+    pwr_pin = openmc.examples.pwr_pin_cell()
+
+    # create a standard plot, expected to work
+    plot = openmc.Plot()
+    plot.filename = 'plot_1'
+    plot.type = 'slice'
+    plot.pixels = (10, 10)
+    plot.color_by = 'material'
+    plot.width = (100., 100.)
+    pwr_pin.plots = [plot]
+    pwr_pin.plot_geometry()
+
+    # use current directory, also expected to work
+    plot.filename = './plot_1'
+    pwr_pin.plot_geometry()
+
+    # use a non-existent directory, should raise an error
+    plot.filename = './not-a-dir/plot_1'
+    with pytest.raises(RuntimeError, match='does not exist'):
+        pwr_pin.plot_geometry()

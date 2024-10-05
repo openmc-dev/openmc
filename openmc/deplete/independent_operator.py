@@ -8,7 +8,6 @@ transport solver by using user-provided one-group cross sections.
 from __future__ import annotations
 from collections.abc import Iterable
 import copy
-from typing import List, Set
 
 import numpy as np
 from uncertainties import ufloat
@@ -245,7 +244,6 @@ class IndependentOperator(OpenMCOperator):
         """Puts nuclide list into an openmc.Materials object.
 
         """
-        openmc.reset_auto_ids()
         mat = openmc.Material()
         if nuc_units == 'atom/b-cm':
             for nuc, conc in nuclides.items():
@@ -279,7 +277,7 @@ class IndependentOperator(OpenMCOperator):
                 new_res = res_obj.distribute(self.local_mats, mat_indexes)
                 self.prev_res.append(new_res)
 
-    def _get_nuclides_with_data(self, cross_sections: List[MicroXS]) -> Set[str]:
+    def _get_nuclides_with_data(self, cross_sections: list[MicroXS]) -> set[str]:
         """Finds nuclides with cross section data"""
         return set(cross_sections[0].nuclides)
 

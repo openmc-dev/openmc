@@ -1,16 +1,16 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from enum import IntEnum
 from numbers import Real
 import warnings
-import typing  # imported separately as py3.8 requires typing.Iterable
-# also required to prevent typing.Union namespace overwriting Union
-from typing import Optional, Sequence, Dict, Any
+from typing import Any
+from pathlib import Path
 
 import lxml.etree as ET
 import numpy as np
 import h5py
+import pandas as pd
 
 import openmc
 import openmc.checkvalue as cv
@@ -57,8 +57,8 @@ class SourceBase(ABC):
 
     def __init__(
         self,
-        strength: Optional[float] = 1.0,
-        constraints: Optional[Dict[str, Any]] = None
+        strength: float | None = 1.0,
+        constraints: dict[str, Any] | None = None
     ):
         self.strength = strength
         self.constraints = constraints
@@ -75,11 +75,11 @@ class SourceBase(ABC):
         self._strength = strength
 
     @property
-    def constraints(self) -> Dict[str, Any]:
+    def constraints(self) -> dict[str, Any]:
         return self._constraints
 
     @constraints.setter
-    def constraints(self, constraints: Optional[Dict[str, Any]]):
+    def constraints(self, constraints: dict[str, Any] | None):
         self._constraints = {}
         if constraints is None:
             return
@@ -200,7 +200,7 @@ class SourceBase(ABC):
                 raise ValueError(f'Source type {source_type} is not recognized')
 
     @staticmethod
-    def _get_constraints(elem: ET.Element) -> Dict[str, Any]:
+    def _get_constraints(elem: ET.Element) -> dict[str, Any]:
         # Find element containing constraints
         constraints_elem = elem.find("constraints")
         elem = constraints_elem if constraints_elem is not None else elem
@@ -264,7 +264,7 @@ class IndependentSource(SourceBase):
         Domains to reject based on, i.e., if a sampled spatial location is not
         within one of these domains, it will be rejected.
 
-        .. deprecated:: 0.14.1
+        .. deprecated:: 0.15.0
             Use the `constraints` argument instead.
     constraints : dict
         Constraints on sampled source particles. Valid keys include 'domains',
@@ -308,14 +308,14 @@ class IndependentSource(SourceBase):
 
     def __init__(
         self,
-        space: Optional[openmc.stats.Spatial] = None,
-        angle: Optional[openmc.stats.UnitSphere] = None,
-        energy: Optional[openmc.stats.Univariate] = None,
-        time: Optional[openmc.stats.Univariate] = None,
+        space: openmc.stats.Spatial | None = None,
+        angle: openmc.stats.UnitSphere | None = None,
+        energy: openmc.stats.Univariate | None = None,
+        time: openmc.stats.Univariate | None = None,
         strength: float = 1.0,
         particle: str = 'neutron',
-        domains: Optional[Sequence[typing.Union[openmc.Cell, openmc.Material, openmc.Universe]]] = None,
-        constraints: Optional[Dict[str, Any]] = None
+        domains: Sequence[openmc.Cell | openmc.Material | openmc.Universe] | None = None,
+        constraints: dict[str, Any] | None = None
     ):
         if domains is not None:
             warnings.warn("The 'domains' arguments has been replaced by the "
@@ -482,7 +482,7 @@ class MeshSource(SourceBase):
     strength of the mesh source as a whole is the sum of all source strengths
     applied to the elements.
 
-    .. versionadded:: 0.14.1
+    .. versionadded:: 0.15.0
 
     Parameters
     ----------
@@ -528,7 +528,7 @@ class MeshSource(SourceBase):
             self,
             mesh: MeshBase,
             sources: Sequence[SourceBase],
-            constraints: Optional[Dict[str, Any]] = None,
+            constraints: dict[str, Any] | None  = None,
     ):
         super().__init__(strength=None, constraints=constraints)
         self.mesh = mesh
@@ -702,10 +702,10 @@ class CompiledSource(SourceBase):
     """
     def __init__(
         self,
-        library: Optional[str] = None,
-        parameters: Optional[str] = None,
+        library: str | None  = None,
+        parameters: str | None = None,
         strength: float = 1.0,
-        constraints: Optional[Dict[str, Any]] = None
+        constraints: dict[str, Any] | None = None
     ) -> None:
         super().__init__(strength=strength, constraints=constraints)
 
@@ -829,9 +829,9 @@ class FileSource(SourceBase):
 
     def __init__(
         self,
-        path: Optional[PathLike] = None,
+        path: PathLike | None = None,
         strength: float = 1.0,
-        constraints: Optional[Dict[str, Any]] = None
+        constraints: dict[str, Any] | None = None
     ):
         super().__init__(strength=strength, constraints=constraints)
         self._path = None
@@ -919,6 +919,34 @@ class ParticleType(IntEnum):
         except KeyError:
             raise ValueError(f"Invalid string for creation of {cls.__name__}: {value}")
 
+    @classmethod
+    def from_pdg_number(cls, pdg_number: int) -> ParticleType:
+        """Constructs a ParticleType instance from a PDG number.
+
+        The Particle Data Group at LBNL publishes a Monte Carlo particle
+        numbering scheme as part of the `Review of Particle Physics
+        <10.1103/PhysRevD.110.030001>`_. This method maps PDG numbers to the
+        corresponding :class:`ParticleType`.
+
+        Parameters
+        ----------
+        pdg_number : int
+            The PDG number of the particle type.
+
+        Returns
+        -------
+        The corresponding ParticleType instance.
+        """
+        try:
+            return {
+                2112: ParticleType.NEUTRON,
+                22: ParticleType.PHOTON,
+                11: ParticleType.ELECTRON,
+                -11: ParticleType.POSITRON,
+            }[pdg_number]
+        except KeyError:
+            raise ValueError(f"Unrecognized PDG number: {pdg_number}")
+
     def __repr__(self) -> str:
         """
         Returns a string representation of the ParticleType instance.
@@ -931,11 +959,6 @@ class ParticleType(IntEnum):
     # needed for < Python 3.11
     def __str__(self) -> str:
         return self.__repr__()
-
-    # needed for <= 3.7, IntEnum will use the mixed-in type's `__format__` method otherwise
-    # this forces it to default to the standard object format, relying on __str__ under the hood
-    def __format__(self, spec):
-        return object.__format__(self, spec)
 
 
 class SourceParticle:
@@ -966,8 +989,8 @@ class SourceParticle:
     """
     def __init__(
         self,
-        r: typing.Iterable[float] = (0., 0., 0.),
-        u: typing.Iterable[float] = (0., 0., 1.),
+        r: Iterable[float] = (0., 0., 0.),
+        u: Iterable[float] = (0., 0., 1.),
         E: float = 1.0e6,
         time: float = 0.0,
         wgt: float = 1.0,
@@ -1003,7 +1026,7 @@ class SourceParticle:
 
 
 def write_source_file(
-    source_particles: typing.Iterable[SourceParticle],
+    source_particles: Iterable[SourceParticle],
     filename: PathLike, **kwargs
 ):
     """Write a source file using a collection of source particles
@@ -1022,34 +1045,182 @@ def write_source_file(
     openmc.SourceParticle
 
     """
-    # Create compound datatype for source particles
-    pos_dtype = np.dtype([('x', '<f8'), ('y', '<f8'), ('z', '<f8')])
-    source_dtype = np.dtype([
-        ('r', pos_dtype),
-        ('u', pos_dtype),
-        ('E', '<f8'),
-        ('time', '<f8'),
-        ('wgt', '<f8'),
-        ('delayed_group', '<i4'),
-        ('surf_id', '<i4'),
-        ('particle', '<i4'),
-    ])
-
-    # Create array of source particles
     cv.check_iterable_type("source particles", source_particles, SourceParticle)
-    arr = np.array([s.to_tuple() for s in source_particles], dtype=source_dtype)
-
-    # Write array to file
-    kwargs.setdefault('mode', 'w')
-    with h5py.File(filename, **kwargs) as fh:
-        fh.attrs['filetype'] = np.bytes_("source")
-        fh.create_dataset('source_bank', data=arr, dtype=source_dtype)
+    pl = ParticleList(source_particles)
+    pl.export_to_hdf5(filename, **kwargs)
 
 
-def read_source_file(filename: PathLike) -> typing.List[SourceParticle]:
+class ParticleList(list):
+    """A collection of SourceParticle objects.
+
+    Parameters
+    ----------
+    particles : list of SourceParticle
+        Particles to collect into the list
+
+    """
+    @classmethod
+    def from_hdf5(cls, filename: PathLike) -> ParticleList:
+        """Create particle list from an HDF5 file.
+
+        Parameters
+        ----------
+        filename : path-like
+            Path to source file to read.
+
+        Returns
+        -------
+        ParticleList instance
+
+        """
+        with h5py.File(filename, 'r') as fh:
+            filetype = fh.attrs['filetype']
+            arr = fh['source_bank'][...]
+
+        if filetype != b'source':
+            raise ValueError(f'File {filename} is not a source file')
+
+        source_particles = [
+            SourceParticle(*params, ParticleType(particle))
+            for *params, particle in arr
+        ]
+        return cls(source_particles)
+
+    @classmethod
+    def from_mcpl(cls, filename: PathLike) -> ParticleList:
+        """Create particle list from an MCPL file.
+
+        Parameters
+        ----------
+        filename : path-like
+            Path to MCPL file to read.
+
+        Returns
+        -------
+        ParticleList instance
+
+        """
+        import mcpl
+        # Process .mcpl file
+        particles = []
+        with mcpl.MCPLFile(filename) as f:
+            for particle in f.particles:
+                # Determine particle type based on the PDG number
+                try:
+                    particle_type = ParticleType.from_pdg_number(particle.pdgcode)
+                except ValueError:
+                    particle_type = "UNKNOWN"
+
+                # Create a source particle instance. Note that MCPL stores
+                # energy in MeV and time in ms.
+                source_particle = SourceParticle(
+                    r=tuple(particle.position),
+                    u=tuple(particle.direction),
+                    E=1.0e6*particle.ekin,
+                    time=1.0e-3*particle.time,
+                    wgt=particle.weight,
+                    particle=particle_type
+                )
+                particles.append(source_particle)
+
+        return cls(particles)
+
+    def __getitem__(self, index):
+        """
+        Return a new ParticleList object containing the particle(s)
+        at the specified index or slice.
+
+        Parameters
+        ----------
+        index : int, slice or list
+            The index, slice or list to select from the list of particles
+
+        Returns
+        -------
+        openmc.ParticleList or openmc.SourceParticle
+            A new object with the selected particle(s)
+        """
+        if isinstance(index, int):
+            # If it's a single integer, return the corresponding particle
+            return super().__getitem__(index)
+        elif isinstance(index, slice):
+            # If it's a slice, return a new ParticleList object with the
+            # sliced particles
+            return ParticleList(super().__getitem__(index))
+        elif isinstance(index, list):
+            # If it's a list of integers, return a new ParticleList object with
+            # the selected particles. Note that Python 3.10 gets confused if you
+            # use super() here, so we call list.__getitem__ directly.
+            return ParticleList([list.__getitem__(self, i) for i in index])
+        else:
+            raise TypeError(f"Invalid index type: {type(index)}. Must be int, "
+                            "slice, or list of int.")
+
+    def to_dataframe(self) -> pd.DataFrame:
+        """A dataframe representing the source particles
+
+        Returns
+        -------
+        pandas.DataFrame
+            DataFrame containing the source particles attributes.
+        """
+        # Extract the attributes of the source particles into a list of tuples
+        data = [(sp.r[0], sp.r[1], sp.r[2], sp.u[0], sp.u[1], sp.u[2],
+                 sp.E, sp.time, sp.wgt, sp.delayed_group, sp.surf_id,
+                 sp.particle.name.lower()) for sp in self]
+
+        # Define the column names for the DataFrame
+        columns = ['x', 'y', 'z', 'u_x', 'u_y', 'u_z', 'E', 'time', 'wgt',
+                   'delayed_group', 'surf_id', 'particle']
+
+        # Create the pandas DataFrame from the data
+        return pd.DataFrame(data, columns=columns)
+
+    def export_to_hdf5(self, filename: PathLike, **kwargs):
+        """Export particle list to an HDF5 file.
+
+        This method write out an .h5 file that can be used as a source file in
+        conjunction with the :class:`openmc.FileSource` class.
+
+        Parameters
+        ----------
+        filename : path-like
+            Path to source file to write
+        **kwargs
+            Keyword arguments to pass to :class:`h5py.File`
+
+        See Also
+        --------
+        openmc.FileSource
+
+        """
+        # Create compound datatype for source particles
+        pos_dtype = np.dtype([('x', '<f8'), ('y', '<f8'), ('z', '<f8')])
+        source_dtype = np.dtype([
+            ('r', pos_dtype),
+            ('u', pos_dtype),
+            ('E', '<f8'),
+            ('time', '<f8'),
+            ('wgt', '<f8'),
+            ('delayed_group', '<i4'),
+            ('surf_id', '<i4'),
+            ('particle', '<i4'),
+        ])
+
+        # Create array of source particles
+        arr = np.array([s.to_tuple() for s in self], dtype=source_dtype)
+
+        # Write array to file
+        kwargs.setdefault('mode', 'w')
+        with h5py.File(filename, **kwargs) as fh:
+            fh.attrs['filetype'] = np.bytes_("source")
+            fh.create_dataset('source_bank', data=arr, dtype=source_dtype)
+
+
+def read_source_file(filename: PathLike) -> ParticleList:
     """Read a source file and return a list of source particles.
 
-    .. versionadded:: 0.14.1
+    .. versionadded:: 0.15.0
 
     Parameters
     ----------
@@ -1058,23 +1229,18 @@ def read_source_file(filename: PathLike) -> typing.List[SourceParticle]:
 
     Returns
     -------
-    list of SourceParticle
-        Source particles read from file
+    openmc.ParticleList
 
     See Also
     --------
     openmc.SourceParticle
 
     """
-    with h5py.File(filename, 'r') as fh:
-        filetype = fh.attrs['filetype']
-        arr = fh['source_bank'][...]
+    filename = Path(filename)
+    if filename.suffix not in ('.h5', '.mcpl'):
+        raise ValueError('Source file must have a .h5 or .mcpl extension.')
 
-    if filetype != b'source':
-        raise ValueError(f'File {filename} is not a source file')
-
-    source_particles = []
-    for *params, particle in arr:
-        source_particles.append(SourceParticle(*params, ParticleType(particle)))
-
-    return source_particles
+    if filename.suffix == '.h5':
+        return ParticleList.from_hdf5(filename)
+    else:
+        return ParticleList.from_mcpl(filename)

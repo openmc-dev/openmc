@@ -151,6 +151,18 @@ attributes or sub-elements.  These are not used in "voxel" plots:
 
     *Default*: 255 255 255 (white)
 
+  :show_overlaps:
+    Indicates whether overlapping regions of different cells are shown. 
+
+    *Default*: None
+
+  :overlap_color:
+    Specifies the RGB color of overlapping regions of different cells. Does not 
+    do anything if ``show_overlaps`` is "false" or not specified. Should be 3 
+    integers separated by spaces.
+
+    *Default*: 255 0 0 (red)
+  
   :meshlines:
     The ``meshlines`` sub-element allows for plotting the boundaries of a
     regular mesh on top of a plot. Only one ``meshlines`` element is allowed per

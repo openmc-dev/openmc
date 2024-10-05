@@ -315,6 +315,11 @@ void Plot::set_output_path(pugi::xml_node plot_node)
   } else {
     filename = fmt::format("plot_{}", id());
   }
+  const std::string dir_if_present =
+    filename.substr(0, filename.find_last_of("/") + 1);
+  if (dir_if_present.size() > 0 && !dir_exists(dir_if_present)) {
+    fatal_error(fmt::format("Directory '{}' does not exist!", dir_if_present));
+  }
   // add appropriate file extension to name
   switch (type_) {
   case PlotType::slice:
@@ -966,10 +971,6 @@ void Plot::create_voxel() const
 
   ProgressBar pb;
   for (int z = 0; z < pixels_[2]; z++) {
-    // update progress bar
-    pb.set_value(
-      100. * static_cast<double>(z) / static_cast<double>((pixels_[2] - 1)));
-
     // update z coordinate
     pltbase.origin_.z = ll.z + z * vox[2];
 
@@ -984,6 +985,10 @@ void Plot::create_voxel() const
 
     // Write to HDF5 dataset
     voxel_write_slice(z, dspace, dset, memspace, data_flipped.data());
+
+    // update progress bar
+    pb.set_value(
+      100. * static_cast<double>(z + 1) / static_cast<double>((pixels_[2])));
   }
 
   voxel_finalize(dspace, dset, memspace);

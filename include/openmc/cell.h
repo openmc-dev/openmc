@@ -12,6 +12,7 @@
 #include "pugixml.hpp"
 #include <gsl/gsl-lite.hpp>
 
+#include "openmc/bounding_box.h"
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/neighbor_list.h"
@@ -128,8 +129,7 @@ private:
   void add_precedence();
 
   //! Add parenthesis to enforce precedence
-  std::vector<int32_t>::iterator add_parentheses(
-    std::vector<int32_t>::iterator start);
+  gsl::index add_parentheses(gsl::index start);
 
   //! Remove complement operators from the expression
   void remove_complement_ops();

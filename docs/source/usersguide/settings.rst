@@ -277,6 +277,9 @@ source file can be manually generated with the :func:`openmc.write_source_file`
 function. This is particularly useful for coupling OpenMC with another program
 that generates a source to be used in OpenMC.
 
+Surface Sources
++++++++++++++++
+
 A source file based on particles that cross one or more surfaces can be
 generated during a simulation using the :attr:`Settings.surf_source_write`
 attribute::
@@ -287,7 +290,62 @@ attribute::
   }
 
 In this example, at most 10,000 source particles are stored when particles cross
-surfaces with IDs of 1, 2, or 3.
+surfaces with IDs of 1, 2, or 3. If no surface IDs are declared, particles
+crossing any surface of the model will be banked::
+
+  settings.surf_source_write = {'max_particles': 10000}
+
+A cell ID can also be used to bank particles that are crossing any surface of
+a cell that particles are either coming from or going to::
+
+  settings.surf_source_write = {'cell': 1, 'max_particles': 10000}
+
+In this example, particles that are crossing any surface that bounds cell 1 will
+be banked excluding any surface that does not use a 'transmission' or 'vacuum'
+boundary condition.
+
+.. note:: Surfaces with boundary conditions that are not "transmission" or "vacuum"
+          are not eligible to store any particles when using ``cell``, ``cellfrom``
+          or ``cellto`` attributes. It is recommended to use surface IDs instead.
+
+Surface IDs can be used in combination with a cell ID::
+
+  settings.surf_source_write = {
+      'cell': 1,
+      'surfaces_ids': [1, 2, 3],
+      'max_particles': 10000
+  }
+
+In that case, only particles that are crossing the declared surfaces coming from
+cell 1 or going to cell 1 will be banked. To account specifically for particles
+leaving or entering a given cell, ``cellfrom`` and ``cellto`` are also available
+to respectively account for particles coming from a cell::
+
+  settings.surf_source_write = {
+      'cellfrom': 1,
+      'max_particles': 10000
+  }
+
+or particles going to a cell::
+
+  settings.surf_source_write = {
+      'cellto': 1,
+      'max_particles': 10000
+  }
+
+.. note:: The ``cell``, ``cellfrom`` and ``cellto`` attributes cannot be
+          used simultaneously.
+
+To generate more than one surface source files when the maximum number of stored
+particles is reached, ``max_source_files`` is available. The surface source bank
+will be cleared in simulation memory each time a surface source file is written.
+As an example, to write a maximum of three surface source files:::
+
+  settings.surf_source_write = {
+      'surfaces_ids': [1, 2, 3],
+      'max_particles': 10000,
+      'max_source_files': 3
+  }
 
 .. _compiled_source:
 

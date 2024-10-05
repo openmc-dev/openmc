@@ -344,7 +344,7 @@ class Region(ABC):
     def plot(self, *args, **kwargs):
         """Display a slice plot of the region.
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.0
 
         Parameters
         ----------

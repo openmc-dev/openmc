@@ -2,7 +2,6 @@
 
 #include <algorithm> // for equal
 #include <cctype>    // for tolower, isspace
-#include <sstream>
 
 namespace openmc {
 
@@ -36,7 +35,7 @@ void to_lower(std::string& str)
     str[i] = std::tolower(str[i]);
 }
 
-int word_count(std::string const& str)
+int word_count(const std::string& str)
 {
   std::stringstream stream(str);
   std::string dum;

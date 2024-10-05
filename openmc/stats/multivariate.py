@@ -865,7 +865,7 @@ class PointCloud(Spatial):
         for axis in ('x','y','z'):
             coord_data = get_text(elem, axis)
             if coord_data is not None:
-                coord[axis] = [float(b) for b in coord_data.split]
+                coord[axis] = [float(b) for b in coord_data.split()]
         
         positions = np.column_stack([coord[axis] for axis in ('x','y','z')])
 

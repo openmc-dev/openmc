@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 import openmc
 
-from tests.unit_tests import assert_unbounded
+from tests.first_unit_tests import assert_unbounded
 
 
 @pytest.fixture

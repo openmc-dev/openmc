@@ -516,7 +516,7 @@ if(OPENMC_USE_DAGMC)
   endif()
 elseif(OPENMC_USE_UWUW)
   set(OPENMC_USE_UWUW OFF)
-  message(FATAL_ERROR "DAGMC is required for use of UWUW materials.")
+  message(FATAL_ERROR "DAGMC must be enabled when UWUW is enabled.")
 endif()
 
 if(OPENMC_USE_LIBMESH)

@@ -143,8 +143,8 @@ private:
 class PointCloud : public SpatialDistribution {
 public:
   explicit PointCloud(pugi::xml_node node);
-  explicit PointCloud(gsl::span<const double> x, gsl::span<const double> y, 
-        gsl::span<const double> z, gsl::span<const double> strengths);
+  explicit PointCloud(gsl::span<const double> x, gsl::span<const double> y,
+    gsl::span<const double> z, gsl::span<const double> strengths);
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
@@ -159,10 +159,8 @@ public:
 private:
   gsl::span<const double> x_, y_, z_;
   DiscreteIndex point_idx_dist_; //!< Distribution of
-                                //!< mesh element indices
+                                 //!< mesh element indices
 };
-
-
 
 //==============================================================================
 //! Uniform distribution of points over a box

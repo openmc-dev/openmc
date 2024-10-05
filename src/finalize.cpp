@@ -121,6 +121,10 @@ int openmc_finalize()
   settings::source_latest = false;
   settings::source_separate = false;
   settings::source_write = true;
+  settings::ssw_cell_id = C_NONE;
+  settings::ssw_cell_type = SSWCellType::None;
+  settings::ssw_max_particles = 0;
+  settings::ssw_max_files = 1;
   settings::survival_biasing = false;
   settings::temperature_default = 293.6;
   settings::temperature_method = TemperatureMethod::NEAREST;
@@ -142,6 +146,7 @@ int openmc_finalize()
 
   simulation::keff = 1.0;
   simulation::need_depletion_rx = false;
+  simulation::ssw_current_file = 1;
   simulation::total_gen = 0;
 
   simulation::entropy_mesh = nullptr;

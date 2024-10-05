@@ -43,6 +43,8 @@ public:
   // Public data members
   vector<float> angular_flux_;
 
+  bool ray_trace_only_ {false}; // If true, only perform geometry operations
+
 private:
   //----------------------------------------------------------------------------
   // Private data members

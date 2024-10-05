@@ -1116,7 +1116,7 @@ class ParticleList(list):
                 source_particle = SourceParticle(
                     r=tuple(particle.position),
                     u=tuple(particle.direction),
-                    E=1.0e-6*particle.ekin,
+                    E=1.0e6*particle.ekin,
                     time=1.0e-3*particle.time,
                     wgt=particle.weight,
                     particle=particle_type

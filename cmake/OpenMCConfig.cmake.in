@@ -40,5 +40,5 @@ if(@OPENMC_USE_MCPL@)
 endif()
 
 if(@OPENMC_USE_UWUW@ AND NOT ${DAGMC_BUILD_UWUW})
-  message(FATAL_ERROR "UWUW is enabled but DAGMC was not configured with UWUW.")
+  message(FATAL_ERROR "UWUW is enabled in OpenMC but the DAGMC installation discovered was not configured with UWUW.")
 endif()

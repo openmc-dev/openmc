@@ -862,7 +862,7 @@ class PointCloud(Spatial):
         """
         coord = {}
 
-        for axis in enumerate(('x','y','z')):
+        for axis in ('x','y','z'):
             coord_data = get_text(elem, axis)
             if coord_data is not None:
                 coord[axis] = [float(b) for b in coord_data.split]

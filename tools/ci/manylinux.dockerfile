@@ -351,7 +351,6 @@ RUN git clone --depth 1 -b ${NCrystal_TAG} https://github.com/mctools/ncrystal.g
         -DPython3_EXECUTABLE=$(which python) && \
     make -j$(nproc) && make install && \
     cd ../.. && \
-    ncrystal-config --setup && \
     rm -rf ncrystal
 
 # Build and install pybind
@@ -430,5 +429,6 @@ RUN python -m pip install \
 
 # Test OpenMC
 RUN cd $HOME/openmc && \
+    eval $(ncrystal-config  --setup) && \
     nctool --test && \
     pytest --cov=openmc -v $([ ${COMPILER} == 'openmpi' ] && echo '--mpi') --event tests

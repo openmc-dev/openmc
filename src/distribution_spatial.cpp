@@ -313,19 +313,19 @@ PointCloud::PointCloud(pugi::xml_node node)
   if (check_for_node(node, "y")) {
     y_ = get_node_array<double>(node, "y");
     if (y_.size() != x_.size()) {
-      fatal_error(fmt::format(
-        "Number of entries for the y-coordinate array {} does "
-        "not match the number of entries for the x-coordinate {}." y_.size(),
-        x_.size()));
+      fatal_error(
+        fmt::format("Number of entries for the y-coordinate array {} does "
+                    "not match the number of entries for the x-coordinate {}.",
+          y_.size(), x_.size()));
     }
   }
   if (check_for_node(node, "z")) {
     z_ = get_node_array<double>(node, "z");
     if (z_.size() != x_.size()) {
-      fatal_error(fmt::format(
-        "Number of entries for the z coordinate array {} does "
-        "not match the number of entries for the x-coordinate {}." z_.size(),
-        x_.size()));
+      fatal_error(
+        fmt::format("Number of entries for the z coordinate array {} does "
+                    "not match the number of entries for the x-coordinate {}.",
+          z_.size(), x_.size()));
     }
   }
 
@@ -334,10 +334,10 @@ PointCloud::PointCloud(pugi::xml_node node)
   if (check_for_node(node, "strengths")) {
     strengths = get_node_array<double>(node, "strengths");
     if (strengths.size() != x_.size()) {
-      fatal_error(fmt::format(
-        "Number of entries for the strengths array {} does "
-        "not match the number of spatial points provided {}." strengths.size(),
-        x_.size()));
+      fatal_error(
+        fmt::format("Number of entries for the strengths array {} does "
+                    "not match the number of spatial points provided {}.",
+          strengths.size(), x_.size()));
     }
   }
 

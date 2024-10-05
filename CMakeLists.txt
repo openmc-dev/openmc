@@ -531,7 +531,7 @@ target_include_directories(libopenmc
 # Set compile flags
 target_compile_options(libopenmc PRIVATE ${cxxflags})
 
-if(SKBUILD)
+if(OPENMC_LIBRARY_RPATH)
   set_target_properties(
     libopenmc
     PROPERTIES
@@ -644,7 +644,7 @@ target_compile_features(openmc PUBLIC cxx_std_17)
 target_compile_features(libopenmc PUBLIC cxx_std_17)
 set_target_properties(openmc libopenmc PROPERTIES CXX_EXTENSIONS OFF)
 
-if(SKBUILD)
+if(OPENMC_BINARY_RPATH)
   set_target_properties(
     openmc
     PROPERTIES

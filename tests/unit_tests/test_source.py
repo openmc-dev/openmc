@@ -49,6 +49,33 @@ def test_spherical_uniform():
 
     assert isinstance(sph_indep_function, openmc.stats.SphericalIndependent)
 
+def test_point_cloud():
+    point_list = [[1,0,0], [0,1,0], [0,0,1]]
+    positions = np.asarray(point_list)
+    strengths = [1,2,3]
+
+    space = openmc.stats.PointCloud(positions, strengths)
+    np.testing.assert_equal(space.positions, positions)
+    np.testing.assert_equal(space.strengths, strengths)
+
+    space = openmc.stats.PointCloud(point_list, strengths)
+    np.testing.assert_equal(space.positions, positions)
+    np.testing.assert_equal(space.strengths, strengths)
+
+    energy = openmc.stats.Discrete([1.0e6], [1.0])
+    angle = openmc.stats.Isotropic()
+
+    src = openmc.IndependentSource(space=space, angle=angle, energy=energy)
+    assert src.space == space
+    np.testing.assert_equal(src.space.positions, positions)
+    np.testing.assert_equal(src.space.strengths, strengths)
+
+    elem = src.to_xml_element()
+    src = openmc.IndependentSource.from_xml_element(elem)
+    assert src.space == space
+    np.testing.assert_equal(src.space.positions, positions)
+    np.testing.assert_equal(src.space.strengths, strengths)
+
 
 def test_source_file():
     filename = 'source.h5'

@@ -137,6 +137,34 @@ private:
 };
 
 //==============================================================================
+//! Distribution of points
+//==============================================================================
+
+class PointCloud : public SpatialDistribution {
+public:
+  explicit PointCloud(pugi::xml_node node);
+  explicit PointCloud(gsl::span<const double> x, gsl::span<const double> y, 
+        gsl::span<const double> z, gsl::span<const double> strengths);
+
+  //! Sample a position from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled position
+  Position sample(uint64_t* seed) const override;
+
+  // Accessors
+  int32_t n_sources() const { return this->mesh()->n_bins(); }
+
+  double total_strength() { return this->elem_idx_dist_.integral(); }
+
+private:
+  gsl::span<const double> x_, y_, z_;
+  DiscreteIndex point_idx_dist_; //!< Distribution of
+                                //!< mesh element indices
+};
+
+
+
+//==============================================================================
 //! Uniform distribution of points over a box
 //==============================================================================
 

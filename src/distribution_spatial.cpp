@@ -26,6 +26,8 @@ unique_ptr<SpatialDistribution> SpatialDistribution::create(pugi::xml_node node)
     return UPtrSpace {new SphericalIndependent(node)};
   } else if (type == "mesh") {
     return UPtrSpace {new MeshSpatial(node)};
+  } else if (type == "cloud") {
+    return UPtrSpace {new PointCloud(node)};
   } else if (type == "box") {
     return UPtrSpace {new SpatialBox(node)};
   } else if (type == "fission") {
@@ -297,6 +299,73 @@ Position MeshSpatial::sample(uint64_t* seed) const
 {
   return this->sample_mesh(seed).second;
 }
+
+
+//==============================================================================
+// PointCloud implementation
+//==============================================================================
+
+PointCloud::PointCloud(pugi::xml_node node)
+{
+
+  if (check_for_node(node, "x")) {
+    x_ = get_node_array<double>(node, "x")
+  }
+  if (check_for_node(node, "y")) {
+    y_ = get_node_array<double>(node, "y")
+    if (y_.size() != x_.size()) {
+      fatal_error(
+        fmt::format("Number of entries for the y-coordinate array {} does "
+                    "not match the number of entries for the x-coordinate {}."
+                    y_.size(), x_.size())
+      )
+    }
+  }
+  if (check_for_node(node, "z")) {
+    z_ = get_node_array<double>(node, "z")
+    if (z_.size() != x_.size()) {
+      fatal_error(
+        fmt::format("Number of entries for the z coordinate array {} does "
+                    "not match the number of entries for the x-coordinate {}."
+                    z_.size(), x_.size())
+      )
+    }
+  }
+
+  std::vector<double> strengths(x_.size(), 1.0);
+
+  if (check_for_node(node, "strengths")) {
+    strengths = get_node_array<double>(node, "strengths")
+      if (strengths.size() != x_.size()) {
+      fatal_error(
+        fmt::format("Number of entries for the strengths array {} does "
+                    "not match the number of spatial points provided {}."
+                    strengths.size(), x_.size())
+      )
+    }
+  } 
+
+  point_idx_dist_.assign(strengths);
+}
+
+PointCloud::PointCloud(gsl::span<const double> x, gsl::span<const double> y, 
+        gsl::span<const double> z, gsl::span<const double> strengths) 
+        : x_(x), y_(y), z_(z)
+{
+  point_idx_dist_.assign(strengths);
+}
+
+int32_t PointCloud::sample_point_index(uint64_t* seed) const
+{
+  return point_idx_dist_.sample(seed);
+}
+
+Position PointCloud::sample(uint64_t* seed) const
+{
+  int32_t point_idx = this->sample_point_index(seed);
+  return {x_[point_idx], y_[point_idx], z_[point_idx]};
+}
+
 
 //==============================================================================
 // SpatialBox implementation

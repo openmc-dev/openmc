@@ -279,6 +279,8 @@ class Spatial(ABC):
             return Point.from_xml_element(elem)
         elif distribution == 'mesh':
             return MeshSpatial.from_xml_element(elem, meshes)
+        elif distribution == 'cloud':
+            return PointCloud.from_xml_element(elem)
 
 
 class CartesianIndependent(Spatial):
@@ -754,6 +756,125 @@ class MeshSpatial(Spatial):
             strengths = [float(b) for b in get_text(elem, 'strengths').split()]
 
         return cls(meshes[mesh_id], strengths, volume_normalized)
+
+
+class PointCloud(Spatial):
+    """Spatial distribution from a point cloud.
+
+    This distribution specifies a discrete list of points, 
+    each with different relative probability.
+
+    .. versionadded:: 0.15.x
+
+    Parameters
+    ----------
+    positions : iterable of 3-tuples
+        The points in space to be sampled
+    strengths : iterable of float, optional
+        An iterable of values that represents the relative probabilty of each point.
+
+    Attributes
+    ----------
+    psoitions: numpy.ndarray (3xN)
+        The points in space to be sampled
+    strengths : numpy.ndarray or None
+        An array of relative probabilities for each mesh point
+    """
+
+    def __init__(self, positions, strengths=None):
+        self.positions = positions
+        self.strengths = strengths
+
+    @property
+    def positions(self):
+        return self._positions
+
+    @positions.setter
+    def positions(self, given_positions):
+        if given_positions is None:
+            raise ValueError('No positions were provided')
+        cv.check_iterable_type('position list passed in', given_positions, Real, 2, 2)
+
+        if isinstance(given_positions, list):
+            cv.check_length('first position entry', given_positions[0], 3, 3)
+            self._positions = np.asarray(given_positions)
+        elif isinstance(given_positions, np.ndarray):
+            self._positions = given_positions
+        else:
+            raise ValueError('Unable to interpret list of positions')
+
+    @property
+    def strengths(self):
+        return self._strengths
+
+    @strengths.setter
+    def strengths(self, given_strengths):
+        if given_strengths is not None:
+            cv.check_type('strengths array passed in', given_strengths, Iterable, Real)
+            self._strengths = np.asarray(given_strengths, dtype=float).flatten()
+        else:
+            self._strengths = None
+
+    @property
+    def num_strength_bins(self):
+        if self.strengths is None:
+            raise ValueError('Strengths are not set')
+        return self.strengths.size
+
+    def to_xml_element(self):
+        """Return XML representation of the spatial distribution
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing spatial distribution data
+
+        """
+        element = ET.Element('space')
+
+        element.set('type', 'cloud')
+
+        for idx, axis in enumerate(('x','y','z')):
+            subelement = ET.SubElement(element, axis)
+            subelement.text = ' '.joing(str(e) for e in self.positions[idx,:])
+
+        if self.strengths is not None:
+            subelement = ET.SubElement(element, 'strengths')
+            subelement.text = ' '.join(str(e) for e in self.strengths)
+
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate spatial distribution from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+
+        Returns
+        -------
+        openmc.stats.PointCloud
+            Spatial distribution generated from XML element
+
+
+        """
+        coord = {}
+
+        for axis in enumerate(('x','y','z')):
+            coord_data = get_text(elem, axis)
+            if coord_data is not None:
+                coord[axis] = [float(b) for b in coord_data.split]
+        
+        positions = np.column_stack([coord[axis] for axis in ('x','y','z')])
+
+        strengths = get_text(elem, 'strengths')
+        if strengths is not None:
+            strengths = [float(b) for b in strengths.split()]
+
+        return cls(positions, strengths)
+
 
 
 class Box(Spatial):

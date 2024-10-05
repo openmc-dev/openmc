@@ -3,7 +3,7 @@ import numpy as np
 import openmc
 import pytest
 
-from tests.unit_tests import assert_unbounded
+from tests.first_unit_tests import assert_unbounded
 
 
 def test_basic():

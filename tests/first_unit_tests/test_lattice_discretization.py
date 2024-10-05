@@ -1,5 +1,5 @@
 
-from tests.unit_tests.test_lattice import zr, pincell1, pincell2, rlat2
+from tests.first_unit_tests.test_lattice import zr, pincell1, pincell2, rlat2
 
 
 def test_discretization_degenerate(rlat2):

@@ -221,7 +221,7 @@ def run(commands, tapein, tapeout, input_filename=None, stdout=False,
                 shutil.move(tmpfilename, str(filename))
 
 
-def make_pendf(filename, pendf='pendf', error=0.001, stdout=False):
+def make_pendf(filename, pendf='pendf', **kwargs):
     """Generate pointwise ENDF file from an ENDF file
 
     Parameters
@@ -230,10 +230,9 @@ def make_pendf(filename, pendf='pendf', error=0.001, stdout=False):
         Path to ENDF file
     pendf : str, optional
         Path of pointwise ENDF file to write
-    error : float, optional
-        Fractional error tolerance for NJOY processing
-    stdout : bool
-        Whether to display NJOY standard output
+    **kwargs
+        Keyword arguments passed to :func:`openmc.data.njoy.make_ace`. All NJOY
+        module arguments other than pendf default to False.
 
     Raises
     ------
@@ -241,9 +240,9 @@ def make_pendf(filename, pendf='pendf', error=0.001, stdout=False):
         If the NJOY process returns with a non-zero status
 
     """
-
-    make_ace(filename, pendf=pendf, error=error, broadr=False,
-             heatr=False, purr=False, acer=False, stdout=stdout)
+    for key in ('broadr', 'heatr', 'gaspr', 'purr', 'acer'):
+        kwargs.setdefault(key, False)
+    make_ace(filename, pendf=pendf, **kwargs)
 
 
 def make_ace(filename, temperatures=None, acer=True, xsdir=None,

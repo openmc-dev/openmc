@@ -319,6 +319,28 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
   }
 }
 
+void UnstructuredMesh::determine_bounds()
+{
+  double xmin = INFTY;
+  double ymin = INFTY;
+  double zmin = INFTY;
+  double xmax = -INFTY;
+  double ymax = -INFTY;
+  double zmax = -INFTY;
+  int n = this->n_vertices();
+  for (int i = 0; i < n; ++i) {
+    auto v = this->vertex(i);
+    xmin = std::min(v.x, xmin);
+    ymin = std::min(v.y, ymin);
+    zmin = std::min(v.z, zmin);
+    xmax = std::max(v.x, xmax);
+    ymax = std::max(v.y, ymax);
+    zmax = std::max(v.z, zmax);
+  }
+  lower_left_ = {xmin, ymin, zmin};
+  upper_right_ = {xmax, ymax, zmax};
+}
+
 Position UnstructuredMesh::sample_tet(
   std::array<Position, 4> coords, uint64_t* seed) const
 {
@@ -1372,8 +1394,10 @@ int CylindricalMesh::set_grid()
 
   full_phi_ = (grid_[1].front() == 0.0) && (grid_[1].back() == 2.0 * PI);
 
-  lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
-  upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
+  lower_left_ = {origin_[0] - grid_[0].back(), origin_[1] - grid_[0].back(),
+    origin_[2] + grid_[2].front()};
+  upper_right_ = {origin_[0] + grid_[0].back(), origin_[1] + grid_[0].back(),
+    origin_[2] + grid_[2].back()};
 
   return 0;
 }
@@ -1687,8 +1711,9 @@ int SphericalMesh::set_grid()
   full_theta_ = (grid_[1].front() == 0.0) && (grid_[1].back() == PI);
   full_phi_ = (grid_[2].front() == 0.0) && (grid_[2].back() == 2 * PI);
 
-  lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
-  upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
+  double r = grid_[0].back();
+  lower_left_ = {origin_[0] - r, origin_[1] - r, origin_[2] - r};
+  upper_right_ = {origin_[0] + r, origin_[1] + r, origin_[2] + r};
 
   return 0;
 }
@@ -1896,6 +1921,26 @@ extern "C" int openmc_mesh_get_volumes(int32_t index, double* volumes)
   for (int i = 0; i < model::meshes[index]->n_bins(); ++i) {
     volumes[i] = model::meshes[index]->volume(i);
   }
+  return 0;
+}
+
+//! Get the bounding box of a mesh
+extern "C" int openmc_mesh_bounding_box(int32_t index, double* ll, double* ur)
+{
+  if (int err = check_mesh(index))
+    return err;
+
+  BoundingBox bbox = model::meshes[index]->bounding_box();
+
+  // set lower left corner values
+  ll[0] = bbox.xmin;
+  ll[1] = bbox.ymin;
+  ll[2] = bbox.zmin;
+
+  // set upper right corner values
+  ur[0] = bbox.xmax;
+  ur[1] = bbox.ymax;
+  ur[2] = bbox.zmax;
   return 0;
 }
 
@@ -2265,9 +2310,12 @@ void MOABMesh::initialize()
       }
     }
   }
+
+  // Determine bounds of mesh
+  this->determine_bounds();
 }
 
-void MOABMesh::prepare_for_tallies()
+void MOABMesh::prepare_for_point_location()
 {
   // if the KDTree has already been constructed, do nothing
   if (kdtree_)
@@ -2317,7 +2365,8 @@ void MOABMesh::build_kdtree(const moab::Range& all_tets)
   all_tets_and_tris.merge(all_tris);
 
   // create a kd-tree instance
-  write_message("Building adaptive k-d tree for tet mesh...", 7);
+  write_message(
+    7, "Building adaptive k-d tree for tet mesh with ID {}...", id_);
   kdtree_ = make_unique<moab::AdaptiveKDTree>(mbi_.get());
 
   // Determine what options to use
@@ -2952,6 +3001,10 @@ void LibMesh::initialize()
 
   // bounding box for the mesh for quick rejection checks
   bbox_ = libMesh::MeshTools::create_bounding_box(*m_);
+  libMesh::Point ll = bbox_.min();
+  libMesh::Point ur = bbox_.max();
+  lower_left_ = {ll(0), ll(1), ll(2)};
+  upper_right_ = {ur(0), ur(1), ur(2)};
 }
 
 // Sample position within a tet for LibMesh type tets

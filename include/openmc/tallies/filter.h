@@ -36,6 +36,7 @@ enum class FilterType {
   MESHBORN,
   MESH_SURFACE,
   MU,
+  MUSURFACE,
   PARTICLE,
   POLAR,
   SPHERICAL_HARMONICS,

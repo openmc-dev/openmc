@@ -787,8 +787,8 @@ class RegularMesh(StructuredMesh):
         string += '{0: <16}{1}{2}\n'.format('\tDimensions', '=\t', self.n_dimension)
         string += '{0: <16}{1}{2}\n'.format('\tVoxels', '=\t', self._dimension)
         string += '{0: <16}{1}{2}\n'.format('\tLower left', '=\t', self._lower_left)
-        string += '{0: <16}{1}{2}\n'.format('\tUpper Right', '=\t', self._upper_right)
-        string += '{0: <16}{1}{2}\n'.format('\tWidth', '=\t', self._width)
+        string += '{0: <16}{1}{2}\n'.format('\tUpper Right', '=\t', self.upper_right)
+        string += '{0: <16}{1}{2}\n'.format('\tWidth', '=\t', self.width)
         return string
 
     @classmethod

@@ -151,10 +151,7 @@ public:
   //! \return Sampled position
   Position sample(uint64_t* seed) const override;
 
-  // Accessors
-  int32_t n_sources() const { return this->mesh()->n_bins(); }
-
-  double total_strength() { return this->elem_idx_dist_.integral(); }
+  double total_strength() { return this->point_idx_dist_.integral(); }
 
 private:
   gsl::span<const double> x_, y_, z_;

@@ -671,10 +671,14 @@ install(TARGETS openmc libopenmc
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
-install(EXPORT openmc-targets
-  FILE OpenMCTargets.cmake
-  NAMESPACE OpenMC::
-  DESTINATION ${INSTALL_CONFIGDIR})
+
+if(NOT SKBUILD)
+  install(EXPORT openmc-targets
+    FILE OpenMCTargets.cmake
+    NAMESPACE OpenMC::
+    DESTINATION ${INSTALL_CONFIGDIR}
+  )
+endif()
 
 # Collect scripts
 file(GLOB SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/scripts/*")

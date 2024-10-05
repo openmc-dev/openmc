@@ -1172,7 +1172,6 @@ class Settings:
     def _create_source_subelement(self, root, mesh_memo=None):
         for source in self.source:
             root.append(source.to_xml_element())
-            # PPHW todo: handle pointcloud here
             if isinstance(source, IndependentSource) and isinstance(source.space, MeshSpatial):
                 path = f"./mesh[@id='{source.space.mesh.id}']"
                 if root.find(path) is None:

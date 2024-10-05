@@ -44,11 +44,9 @@ def test_source_file(run_in_tmpdir):
     assert np.all(arr['delayed_group'] == 0)
     assert np.all(arr['particle'] == 0)
 
-
     # Ensure sites read in are consistent
-    sites = openmc.read_source_file('test_source.h5')
+    sites = openmc.ParticleList.from_hdf5('test_source.h5')
 
-    assert filetype == b'source'
     xs = np.array([site.r[0] for site in sites])
     ys = np.array([site.r[1] for site in sites])
     zs = np.array([site.r[2] for site in sites])
@@ -70,29 +68,29 @@ def test_source_file(run_in_tmpdir):
 
     # Ensure a ParticleList item is a SourceParticle
     site = sites[0]
-    assert type(site) == openmc.SourceParticle
-    assert site.E == n
+    assert isinstance(site, openmc.SourceParticle)
+    assert site.E == pytest.approx(n)
 
     # Ensure site slice read in and exported are consistent
-    sites_slice = sites[0:10]
+    sites_slice = sites[:10]
     sites_slice.export_to_hdf5("test_source_slice.h5")
-    sites_slice = openmc.read_source_file('test_source_slice.h5')
-    
-    assert type(sites_slice) == openmc.ParticleList
+    sites_slice = openmc.ParticleList.from_hdf5('test_source_slice.h5')
+
+    assert isinstance(sites_slice, openmc.ParticleList)
     assert len(sites_slice) == 10
     E = np.array([s.E for s in sites_slice])
-    assert np.all(E == n - np.arange(10))
-    
+    np.testing.assert_allclose(E, n - np.arange(10))
+
     # Ensure site list read in and exported are consistent
     df = sites.to_dataframe()
-    sites_filtered = sites[df[df['E'] <= 10.0].index.tolist()]
+    sites_filtered = sites[df[df.E <= 10.0].index.tolist()]
     sites_filtered.export_to_hdf5("test_source_filtered.h5")
     sites_filtered = openmc.read_source_file('test_source_filtered.h5')
-    
-    assert type(sites_filtered) == openmc.ParticleList
+
+    assert isinstance(sites_filtered, openmc.ParticleList)
     assert len(sites_filtered) == 10
     E = np.array([s.E for s in sites_filtered])
-    assert np.all(E == np.arange(10,0,-1))
+    np.testing.assert_allclose(E, np.arange(10, 0, -1))
 
 
 def test_wrong_source_attributes(run_in_tmpdir):

@@ -1148,9 +1148,10 @@ class ParticleList(list):
             # sliced particles
             return ParticleList(super().__getitem__(index))
         elif isinstance(index, list):
-            # If it's a list of integers, return a new ParticleList object
-            # with the selected particles
-            return ParticleList([super().__getitem__(i) for i in index])
+            # If it's a list of integers, return a new ParticleList object with
+            # the selected particles. Note that Python 3.10 gets confused if you
+            # use super() here, so we call list.__getitem__ directly.
+            return ParticleList([list.__getitem__(self, i) for i in index])
         else:
             raise TypeError(f"Invalid index type: {type(index)}. Must be int, "
                             "slice, or list of int.")

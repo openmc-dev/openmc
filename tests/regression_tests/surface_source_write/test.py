@@ -625,7 +625,7 @@ def return_surface_source_data(filepath):
 
     # Read source file
     source = openmc.read_source_file(filepath)
-    
+
     for point in source:
         r = point.r
         u = point.u

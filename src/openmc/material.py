@@ -18,6 +18,7 @@ from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
 from openmc.checkvalue import PathLike
 from openmc.stats import Univariate, Discrete, Mixture
+from openmc.data.data import _get_element_symbol
 
 
 # Units for density supported by OpenMC
@@ -1074,6 +1075,48 @@ class Material(IDManagerMixin):
                 nuclides[nuc] = nuc_densities[n]
 
         return nuclides
+
+    def get_element_atom_densities(self, element: str | None = None) -> dict[str, float]:
+        """Returns one or all elements in the material and their atomic
+        densities in units of atom/b-cm
+
+        .. versionadded:: 0.15.1
+
+        Parameters
+        ----------
+        element : str, optional
+            Element for which atom density is desired. If not specified, the
+            atom density for each element in the material is given.
+
+        Returns
+        -------
+        elements : dict
+            Dictionary whose keys are element names and values are densities in
+            [atom/b-cm]
+
+        """
+        if element is not None:
+            element = _get_element_symbol(element)
+
+        nuc_densities = self.get_nuclide_atom_densities()
+
+        # Initialize an empty dictionary for summed values
+        densities = {}
+
+        # Accumulate densities for each nuclide
+        for nuclide, density in nuc_densities.items():
+            nuc_element = openmc.data.ATOMIC_SYMBOL[openmc.data.zam(nuclide)[0]]
+            if element is None or element == nuc_element:
+                if nuc_element not in densities:
+                    densities[nuc_element] = 0.0
+                densities[nuc_element] += float(density)
+
+        # If specific element was requested, make sure it is present
+        if element is not None and element not in densities:
+                raise ValueError(f'Element {element} not found in material.')
+
+        return densities
+
 
     def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False,
                      volume: float | None = None) -> dict[str, float] | float:

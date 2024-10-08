@@ -118,7 +118,8 @@ SolverType solver_type {SolverType::MONTE_CARLO};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
 std::unordered_set<int> source_write_surf_id;
-int64_t max_surface_particles;
+int64_t ssw_max_particles;
+int64_t ssw_max_files;
 int64_t ssw_cell_id {C_NONE};
 SSWCellType ssw_cell_type {SSWCellType::None};
 TemperatureMethod temperature_method {TemperatureMethod::NEAREST};
@@ -268,6 +269,20 @@ void get_run_parameters(pugi::xml_node node_base)
       RandomRay::ray_source_ = Source::create(source_node);
     } else {
       fatal_error("Specify random ray source in settings XML");
+    }
+    if (check_for_node(random_ray_node, "volume_estimator")) {
+      std::string temp_str =
+        get_node_value(random_ray_node, "volume_estimator", true, true);
+      if (temp_str == "simulation_averaged") {
+        FlatSourceDomain::volume_estimator_ =
+          RandomRayVolumeEstimator::SIMULATION_AVERAGED;
+      } else if (temp_str == "naive") {
+        FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::NAIVE;
+      } else if (temp_str == "hybrid") {
+        FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::HYBRID;
+      } else {
+        fatal_error("Unrecognized volume estimator: " + temp_str);
+      }
     }
     if (check_for_node(random_ray_node, "source_shape")) {
       std::string temp_str =
@@ -785,12 +800,18 @@ void read_settings_xml(pugi::xml_node root)
 
     // Get maximum number of particles to be banked per surface
     if (check_for_node(node_ssw, "max_particles")) {
-      max_surface_particles =
-        std::stoll(get_node_value(node_ssw, "max_particles"));
+      ssw_max_particles = std::stoll(get_node_value(node_ssw, "max_particles"));
     } else {
       fatal_error("A maximum number of particles needs to be specified "
                   "using the 'max_particles' parameter to store surface "
                   "source points.");
+    }
+
+    // Get maximum number of surface source files to be created
+    if (check_for_node(node_ssw, "max_source_files")) {
+      ssw_max_files = std::stoll(get_node_value(node_ssw, "max_source_files"));
+    } else {
+      ssw_max_files = 1;
     }
 
     if (check_for_node(node_ssw, "mcpl")) {

@@ -312,6 +312,27 @@ class Discrete(Univariate):
             return type(self)(new_x, new_p)
 
 
+def delta_function(value: float, intensity: float = 1.0) -> Discrete:
+    """Return a discrete distribution with a single point.
+
+    .. versionadded:: 0.15.1
+
+    Parameters
+    ----------
+    value : float
+        Value of the random variable.
+    intensity : float, optional
+        When used for an energy distribution, this can be used to assign an
+        intensity.
+
+    Returns
+    -------
+    Discrete distribution with a single point
+
+    """
+    return Discrete([value], [intensity])
+
+
 class Uniform(Univariate):
     """Distribution with constant probability over a finite interval [a,b]
 

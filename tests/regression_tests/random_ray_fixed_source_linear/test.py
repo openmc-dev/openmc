@@ -23,5 +23,7 @@ def test_random_ray_fixed_source_linear(shape):
         openmc.reset_auto_ids()
         model = random_ray_three_region_cube()
         model.settings.random_ray['source_shape'] = shape
-        harness = MGXSTestHarness('statepoint.10.h5', model)
+        model.settings.inactive = 20
+        model.settings.batches = 40
+        harness = MGXSTestHarness('statepoint.40.h5', model)
         harness.main()

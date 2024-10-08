@@ -1,6 +1,7 @@
 #ifndef OPENMC_RANDOM_RAY_FLAT_SOURCE_DOMAIN_H
 #define OPENMC_RANDOM_RAY_FLAT_SOURCE_DOMAIN_H
 
+#include "openmc/constants.h"
 #include "openmc/openmp_interface.h"
 #include "openmc/position.h"
 #include "openmc/source.h"
@@ -99,7 +100,8 @@ public:
   double compute_k_eff(double k_eff_old) const;
   virtual void normalize_scalar_flux_and_volumes(
     double total_active_distance_per_iteration);
-  virtual int64_t add_source_to_scalar_flux();
+
+  int64_t add_source_to_scalar_flux();
   virtual void batch_reset();
   void convert_source_regions_to_tallies();
   void reset_tally_volumes();
@@ -119,6 +121,10 @@ public:
   static bool volume_normalized_flux_tallies_;
 
   //----------------------------------------------------------------------------
+  // Static data members
+  static RandomRayVolumeEstimator volume_estimator_;
+
+  //----------------------------------------------------------------------------
   // Public Data members
 
   bool mapped_all_tallies_ {false}; // If all source regions have been visited
@@ -133,7 +139,6 @@ public:
 
   // 1D arrays representing values for all source regions
   vector<OpenMPMutex> lock_;
-  vector<int> was_hit_;
   vector<double> volume_;
   vector<double> volume_t_;
   vector<int> position_recorded_;
@@ -141,10 +146,11 @@ public:
 
   // 2D arrays stored in 1D representing values for all source regions x energy
   // groups
-  vector<float> scalar_flux_old_;
-  vector<float> scalar_flux_new_;
+  vector<double> scalar_flux_old_;
+  vector<double> scalar_flux_new_;
   vector<float> source_;
   vector<float> external_source_;
+  vector<bool> external_source_present_;
 
   // 2D arrays stored in 1D representing values for all materials x energy
   // groups
@@ -168,6 +174,10 @@ protected:
     const vector<int32_t>& instances);
   void apply_external_source_to_cell_and_children(int32_t i_cell,
     Discrete* discrete, double strength_factor, int32_t target_material_id);
+  virtual void set_flux_to_flux_plus_source(
+    int64_t idx, double volume, int material, int g);
+  void set_flux_to_source(int64_t idx);
+  virtual void set_flux_to_old_flux(int64_t idx);
 
   //----------------------------------------------------------------------------
   // Private data members
@@ -191,6 +201,7 @@ protected:
 
   // 1D arrays representing values for all source regions
   vector<int> material_;
+  vector<double> volume_naive_;
 
   // 2D arrays stored in 1D representing values for all source regions x energy
   // groups

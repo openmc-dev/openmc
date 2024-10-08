@@ -340,12 +340,6 @@ void RandomRay::attenuate_flux_flat_source(double distance, bool is_active)
       domain_->scalar_flux_new_[source_element + g] += delta_psi_[g];
     }
 
-    // If the source region hasn't been hit yet this iteration,
-    // indicate that it now has
-    if (domain_->was_hit_[source_region] == 0) {
-      domain_->was_hit_[source_region] = 1;
-    }
-
     // Accomulate volume (ray distance) into this iteration's estimate
     // of the source region's volume
     domain_->volume_[source_region] += distance;
@@ -488,12 +482,6 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
     domain->centroid_iteration_[source_region] += midpoint * distance;
     moment_matrix_estimate *= distance;
     domain->mom_matrix_[source_region] += moment_matrix_estimate;
-
-    // If the source region hasn't been hit yet this iteration,
-    // indicate that it now has
-    if (domain_->was_hit_[source_region] == 0) {
-      domain_->was_hit_[source_region] = 1;
-    }
 
     // Tally valid position inside the source region (e.g., midpoint of
     // the ray) if not done already

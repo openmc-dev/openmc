@@ -589,7 +589,7 @@ void DAGUniverse::read_uwuw_materials()
 }
 
 void DAGUniverse::uwuw_assign_material(
-  moab::EntityHandle vol_handle, std::unique_ptr<DAGCell>& c)
+  moab::EntityHandle vol_handle, std::unique_ptr<DAGCell>& c) const
 {
 #ifdef OPENMC_UWUW
   // lookup material in uwuw if present

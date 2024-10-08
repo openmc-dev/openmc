@@ -63,7 +63,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
     MomentMatrix invM = mom_matrix_[sr].inverse();
 
     for (int e_out = 0; e_out < negroups_; e_out++) {
-      float sigma_t = sigma_t_[material * negroups_ + e_out];
+      double sigma_t = sigma_t_[material * negroups_ + e_out];
 
       double scatter_flat = 0.0f;
       double fission_flat = 0.0f;
@@ -76,10 +76,10 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
         MomentArray flux_linear = flux_moments_old_[sr * negroups_ + e_in];
 
         // Handles for cross sections
-        float sigma_s =
+        double sigma_s =
           sigma_s_[material * negroups_ * negroups_ + e_out * negroups_ + e_in];
-        float nu_sigma_f = nu_sigma_f_[material * negroups_ + e_in];
-        float chi = chi_[material * negroups_ + e_out];
+        double nu_sigma_f = nu_sigma_f_[material * negroups_ + e_in];
+        double chi = chi_[material * negroups_ + e_out];
 
         // Compute source terms for flat and linear components of the flux
         scatter_flat += sigma_s * flux_flat;

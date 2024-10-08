@@ -155,14 +155,14 @@ public:
   // 2D arrays stored in 1D representing values for all materials x energy
   // groups
   int n_materials_;
-  vector<float> sigma_t_;
-  vector<float> nu_sigma_f_;
-  vector<float> sigma_f_;
-  vector<float> chi_;
+  vector<double> sigma_t_;
+  vector<double> nu_sigma_f_;
+  vector<double> sigma_f_;
+  vector<double> chi_;
 
   // 3D arrays stored in 1D representing values for all materials x energy
   // groups x energy groups
-  vector<float> sigma_s_;
+  vector<double> sigma_s_;
 
 protected:
   //----------------------------------------------------------------------------

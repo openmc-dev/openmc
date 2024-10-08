@@ -140,12 +140,12 @@ void FlatSourceDomain::update_neutron_source(double k_eff)
     int material = material_[sr];
 
     for (int e_out = 0; e_out < negroups_; e_out++) {
-      float sigma_t = sigma_t_[material * negroups_ + e_out];
-      float scatter_source = 0.0f;
+      double sigma_t = sigma_t_[material * negroups_ + e_out];
+      double scatter_source = 0.0;
 
       for (int e_in = 0; e_in < negroups_; e_in++) {
-        float scalar_flux = scalar_flux_old_[sr * negroups_ + e_in];
-        float sigma_s =
+        double scalar_flux = scalar_flux_old_[sr * negroups_ + e_in];
+        double sigma_s =
           sigma_s_[material * negroups_ * negroups_ + e_out * negroups_ + e_in];
         scatter_source += sigma_s * scalar_flux;
       }
@@ -160,13 +160,13 @@ void FlatSourceDomain::update_neutron_source(double k_eff)
     int material = material_[sr];
 
     for (int e_out = 0; e_out < negroups_; e_out++) {
-      float sigma_t = sigma_t_[material * negroups_ + e_out];
-      float fission_source = 0.0f;
+      double sigma_t = sigma_t_[material * negroups_ + e_out];
+      double fission_source = 0.0;
 
       for (int e_in = 0; e_in < negroups_; e_in++) {
-        float scalar_flux = scalar_flux_old_[sr * negroups_ + e_in];
-        float nu_sigma_f = nu_sigma_f_[material * negroups_ + e_in];
-        float chi = chi_[material * negroups_ + e_out];
+        double scalar_flux = scalar_flux_old_[sr * negroups_ + e_in];
+        double nu_sigma_f = nu_sigma_f_[material * negroups_ + e_in];
+        double chi = chi_[material * negroups_ + e_out];
         fission_source += nu_sigma_f * scalar_flux * chi;
       }
       source_[sr * negroups_ + e_out] +=
@@ -212,7 +212,7 @@ void FlatSourceDomain::normalize_scalar_flux_and_volumes(
 void FlatSourceDomain::set_flux_to_flux_plus_source(
   int64_t idx, double volume, int material, int g)
 {
-  float sigma_t = sigma_t_[material * negroups_ + g];
+  double sigma_t = sigma_t_[material * negroups_ + g];
   scalar_flux_new_[idx] /= (sigma_t * volume);
   scalar_flux_new_[idx] += source_[idx];
 }
@@ -336,7 +336,7 @@ double FlatSourceDomain::compute_k_eff(double k_eff_old) const
 
     for (int g = 0; g < negroups_; g++) {
       int64_t idx = (sr * negroups_) + g;
-      float nu_sigma_f = nu_sigma_f_[material * negroups_ + g];
+      double nu_sigma_f = nu_sigma_f_[material * negroups_ + g];
       sr_fission_source_old += nu_sigma_f * scalar_flux_old_[idx];
       sr_fission_source_new += nu_sigma_f * scalar_flux_new_[idx];
     }
@@ -532,7 +532,7 @@ double FlatSourceDomain::compute_fixed_source_normalization_factor() const
     int material = material_[sr];
     double volume = volume_[sr] * simulation_volume_;
     for (int e = 0; e < negroups_; e++) {
-      float sigma_t = sigma_t_[material * negroups_ + e];
+      double sigma_t = sigma_t_[material * negroups_ + e];
       simulation_external_source_strength +=
         external_source_[sr * negroups_ + e] * sigma_t * volume;
     }
@@ -909,7 +909,7 @@ void FlatSourceDomain::output_to_vtk() const
       for (int g = 0; g < negroups_; g++) {
         int64_t source_element = fsr * negroups_ + g;
         float flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
-        float sigma_f = sigma_f_[mat * negroups_ + g];
+        double sigma_f = sigma_f_[mat * negroups_ + g];
         total_fission += sigma_f * flux;
       }
       total_fission = convert_to_big_endian<float>(total_fission);
@@ -1031,7 +1031,7 @@ void FlatSourceDomain::convert_external_sources()
   for (int sr = 0; sr < n_source_regions_; sr++) {
     int material = material_[sr];
     for (int e = 0; e < negroups_; e++) {
-      float sigma_t = sigma_t_[material * negroups_ + e];
+      double sigma_t = sigma_t_[material * negroups_ + e];
       external_source_[sr * negroups_ + e] /= sigma_t;
     }
   }
@@ -1053,21 +1053,21 @@ void FlatSourceDomain::flatten_xs()
   for (auto& m : data::mg.macro_xs_) {
     for (int e = 0; e < negroups_; e++) {
       if (m.exists_in_model) {
-        float sigma_t = m.get_xs(MgxsType::TOTAL, e, NULL, NULL, NULL, t, a);
+        double sigma_t = m.get_xs(MgxsType::TOTAL, e, NULL, NULL, NULL, t, a);
         sigma_t_.push_back(sigma_t);
 
-        float nu_Sigma_f =
+        double nu_Sigma_f =
           m.get_xs(MgxsType::NU_FISSION, e, NULL, NULL, NULL, t, a);
         nu_sigma_f_.push_back(nu_Sigma_f);
 
-        float sigma_f = m.get_xs(MgxsType::FISSION, e, NULL, NULL, NULL, t, a);
+        double sigma_f = m.get_xs(MgxsType::FISSION, e, NULL, NULL, NULL, t, a);
         sigma_f_.push_back(sigma_f);
 
-        float chi = m.get_xs(MgxsType::CHI_PROMPT, e, &e, NULL, NULL, t, a);
+        double chi = m.get_xs(MgxsType::CHI_PROMPT, e, &e, NULL, NULL, t, a);
         chi_.push_back(chi);
 
         for (int ee = 0; ee < negroups_; ee++) {
-          float sigma_s =
+          double sigma_s =
             m.get_xs(MgxsType::NU_SCATTER, ee, &e, NULL, NULL, t, a);
           sigma_s_.push_back(sigma_s);
         }

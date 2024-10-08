@@ -51,6 +51,12 @@ def dose_coefficients(particle, geometry='AP', data_source='icrp116'):
     <https://doi.org/10.1016/S0146-6453(96)90010-X>` and `ICRP Publication 116
     <https://doi.org/10.1016/j.icrp.2011.10.001>`.
 
+    For ICRP 74 data, the photon effective dose per fluence is determined by
+    multiplying the air kerma per fluence values (Table A.1) by the effective
+    dose per air kerma (Table A.17). The neutron effective dose per fluence is
+    found in Table A.41. For ICRP 116 data, the photon effective dose per
+    fluence is found in Table A.1 and the neutron effective dose per fluence is
+    found in Table A.5.
 
     Parameters
     ----------
@@ -85,10 +91,7 @@ def dose_coefficients(particle, geometry='AP', data_source='icrp116'):
 
     # Determine index for selected geometry
     if particle in ('neutron', 'photon', 'proton', 'photon kerma'):
-        if data_source == 'icrp74':
-            columns = ('AP', 'PA', 'RLAT', 'LLAT', 'ROT', 'ISO')
-        elif data_source == 'icrp116':
-            columns = ('AP', 'PA', 'LLAT', 'RLAT', 'ROT', 'ISO')
+        columns = ('AP', 'PA', 'LLAT', 'RLAT', 'ROT', 'ISO')
     else:
         columns = ('AP', 'PA', 'ISO')
     index = columns.index(geometry)

@@ -65,4 +65,4 @@ build.verbose = true
 logging.level = "INFO"
 wheel.install-dir = "openmc"
 wheel.packages = ["src/openmc"]
-sdist.include = ["src/openmc/**"]
+sdist.include = ["*.h5"]

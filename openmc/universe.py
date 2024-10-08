@@ -1,3 +1,4 @@
+from __future__ import annotations
 import math
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
@@ -307,7 +308,7 @@ class UniverseBase(ABC, IDManagerMixin):
             memo[self] = clone
 
         return memo[self]
-    
+
     def find(self, point):
         """Find cells/universes/lattices which contain a given point
 
@@ -615,6 +616,7 @@ class UniverseBase(ABC, IDManagerMixin):
         return nuclides
 
 
+
 class Universe(UniverseBase):
     """A collection of cells that can be repeated.
 
@@ -661,7 +663,7 @@ class Universe(UniverseBase):
 
 
     @property
-    def bounding_box(self):
+    def bounding_box(self) -> openmc.BoundingBox:
         regions = [c.region for c in self.cells.values()
                    if c.region is not None]
         if regions:
@@ -697,6 +699,7 @@ class Universe(UniverseBase):
             universe.add_cell(cells[cell_id])
 
         return universe
+
 
     def add_cell(self, cell):
         """Add a cell to the universe.

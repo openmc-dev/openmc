@@ -129,14 +129,17 @@ extern std::unordered_set<int>
   statepoint_batch; //!< Batches when state should be written
 extern std::unordered_set<int>
   source_write_surf_id; //!< Surface ids where sources will be written
+
 extern int
   max_history_splits; //!< maximum number of particle splits for weight windows
-extern int64_t max_surface_particles; //!< maximum number of particles to be
-                                      //!< banked on surfaces per process
-extern int64_t ssw_cell_id;           //!< Cell id for the surface source
-                                      //!< write setting
-extern SSWCellType ssw_cell_type;     //!< Type of option for the cell
-                                      //!< argument of surface source write
+extern int64_t ssw_max_particles; //!< maximum number of particles to be
+                                  //!< banked on surfaces per process
+extern int64_t ssw_max_files;     //!< maximum number of surface source files
+                                  //!<  to be created
+extern int64_t ssw_cell_id;       //!< Cell id for the surface source
+                                  //!< write setting
+extern SSWCellType ssw_cell_type; //!< Type of option for the cell
+                                  //!< argument of surface source write
 extern TemperatureMethod
   temperature_method; //!< method for choosing temperatures
 extern double

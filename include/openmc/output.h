@@ -76,7 +76,7 @@ struct formatter<std::array<T, 2>> {
   }
 
   template<typename FormatContext>
-  auto format(const std::array<T, 2>& arr, FormatContext& ctx)
+  auto format(const std::array<T, 2>& arr, FormatContext& ctx) const
   {
     return format_to(ctx.out(), "({}, {})", arr[0], arr[1]);
   }

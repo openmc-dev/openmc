@@ -1217,8 +1217,8 @@ class Model:
                                 )
                             cell.fill.volume = cell.volume
                     if isinstance(cell, openmc.DAGMCCell):
-                        for i in range(cell.num_instances):
-                            cell.fill[i].name = f"{cell.fill[i].name}_{cell.id}_{i}"
+                        for i, f in enumerate(cell.fill):
+                            f.name += f"_{cell.id}_{i}"
 
         if self.materials is not None:
             self.materials = openmc.Materials(

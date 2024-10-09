@@ -952,6 +952,54 @@ void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
 }
 
 //==============================================================================
+// SurfaceTPMS implementation
+//==============================================================================
+
+SurfaceTPMS::SurfaceTPMS(pugi::xml_node surf_node)  : CSGSurface(surf_node)
+{
+  read_coeffs(surf_node, id_, {&cst, &pitch, &x0, &y0, &z0, &a, &b, &c, &d, &e, &f, &g, &h, &i});
+}
+
+double SurfaceTPMS::evaluate(Position r) const
+{
+  const double x = r.x;
+  const double y = r.y;
+  const double z = r.z;
+  const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
+  const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
+  const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
+  const double L = pitch;
+  return cos(2*M_PI*xx/L) + cos(2*M_PI*yy/L) + cos(2*M_PI*zz/L) - cst;
+}
+
+double SurfaceTPMS::distance(Position r, Direction ang, bool coincident) const
+{
+  SchwarzP* myTpms = new SchwarzP(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+  return myTpms->ray_tracing(r, ang);
+}
+
+Direction SurfaceTPMS::normal(Position r) const
+{
+  const double x = r.x;
+  const double y = r.y;
+  const double z = r.z;
+  const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
+  const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
+  const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
+  const double L = pitch;
+  return {-2*M_PI*a*sin(xx)/L -2*M_PI*d*sin(yy)/L -2*M_PI*g*sin(zz)/L,
+          -2*M_PI*b*sin(xx)/L -2*M_PI*e*sin(yy)/L -2*M_PI*h*sin(zz)/L,
+          -2*M_PI*c*sin(xx)/L -2*M_PI*f*sin(yy)/L -2*M_PI*i*sin(zz)/L};
+}
+
+void SurfaceTPMS::to_hdf5_inner(hid_t group_id) const
+{
+  write_string(group_id, "type", "tpms", false);
+  array<double, 14> coeffs {{cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i}};
+  write_dataset(group_id, "coefficients", coeffs);
+}
+
+//==============================================================================
 // Torus helper functions
 //==============================================================================
 
@@ -1223,6 +1271,9 @@ void read_surfaces(pugi::xml_node node)
 
       } else if (surf_type == "quadric") {
         model::surfaces.push_back(make_unique<SurfaceQuadric>(surf_node));
+
+      } else if (surf_type == "tpms") {
+        model::surfaces.push_back(make_unique<SurfaceTPMS>(surf_node));
 
       } else if (surf_type == "x-torus") {
         model::surfaces.push_back(std::make_unique<SurfaceXTorus>(surf_node));

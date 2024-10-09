@@ -7,6 +7,7 @@ from warnings import warn, catch_warnings, simplefilter
 
 import lxml.etree as ET
 import numpy as np
+cos, sin, pi = np.cos, np.sin, np.pi
 
 from .checkvalue import check_type, check_value, check_length, check_greater_than
 from .mixin import IDManagerMixin, IDWarning
@@ -2280,6 +2281,101 @@ class Quadric(QuadricMixin, Surface):
         return tuple(getattr(self, c) for c in self._coeff_keys)
 
 
+class TPMS(Surface):
+
+    surface_list = ['Gyroid','Double_Gyroid1','Double_Gyroid2','G_prime1','G_prime2','Lidinoid',
+         'Diamond','Double_Diamond1','Double_Diamond2','D_prime','Schwarz_P','Double_Schwarz_P','IWP1',
+         'Neovius','Octo1','Octo2','PN','KP','FRD1','FRD2','Split_P','IWP2','L-Type','Skeletal_1',
+         'Skeletal_2','Tubular_G','Tubular_P','I2-Y','G','Double_Diamond3','Fischer-Koch_S','IWP3']
+    
+    _type = 'tpms'
+    _coeff_keys = ('cst', 'pitch', 'x0', 'y0', 'z0', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i')
+
+    def __init__(self, surface_type: str, cst: float = 0., pitch: float = 2., x0: float = 0., y0: float = 0., z0: float = 0., a=1., b=0., c=0., d=0., e=1., f=0., g=0., h=0., i=1., *args, **kwargs):
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
+        super().__init__(**kwargs)
+        assert surface_type in TPMS.surface_list
+        self.surface_type = surface_type
+        self.cst = cst
+        self.pitch = pitch
+        self.a, self.b, self.c = a, b, c
+        self.d, self.e, self.f = d, e, f
+        self.g, self.h, self.i = g, h, i
+        self.x0, self.y0, self.z0 = x0, y0, z0
+
+    cst = SurfaceCoefficient('cst')
+    pitch = SurfaceCoefficient('pitch')
+    x0 = SurfaceCoefficient('x0')
+    y0 = SurfaceCoefficient('y0')
+    z0 = SurfaceCoefficient('z0')
+    a = SurfaceCoefficient('a')
+    b = SurfaceCoefficient('b')
+    c = SurfaceCoefficient('c')
+    d = SurfaceCoefficient('d')
+    e = SurfaceCoefficient('e')
+    f = SurfaceCoefficient('f')
+    g = SurfaceCoefficient('g')
+    h = SurfaceCoefficient('h')
+    i = SurfaceCoefficient('i')
+
+    def normalize(self, coeffs=None):
+        raise AttributeError( "'TPMS' object has no attribute 'normalize'" )
+    
+    def _get_base_coeffs(self):
+        return (self.cst, self.pitch, self.x0, self.y0, self.z0, self.a, self.b, self.c, self.d, self.e, self.f, self.g, self.h, self.i)
+    
+    def evaluate(self, point):
+        x, y, z = point
+        L = self.pitch
+        xx = self.a*(x-self.x0) + self.b*(y-self.y0) + self.c*(z-self.z0) 
+        yy = self.d*(x-self.x0) + self.e*(y-self.y0) + self.f*(z-self.z0)
+        zz = self.g*(x-self.x0) + self.h*(y-self.y0) + self.i*(z-self.z0)
+        if self.surface_type == "Schwarz_P":
+            return cos(2*pi*xx/L) + cos(2*pi*yy/L) + cos(2*pi*zz/L) - self.cst
+        else:
+            raise NotImplementedError(f"'{self.surface_type}' surface_type is not yet implemented.")
+    
+    def translate(self, vector, inplace=False):
+        x1, y1, z1 = vector
+        x0, y0, z0 = self.x0, self.y0, self.z0
+        surf = self if inplace else self.clone()
+        surf.x0 = x0 + x1
+        surf.y0 = y0 + y1
+        surf.z0 = z0 + z1
+        return surf
+
+    def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
+        # Get pivot and rotation matrix
+        pivot = np.asarray(pivot)
+        rotation = np.asarray(rotation, dtype=float)
+
+        # Allow rotation matrix to be passed in directly, otherwise build it
+        if rotation.ndim == 2:
+            check_length('surface rotation', rotation.ravel(), 9)
+            Rmat = rotation
+        else:
+            Rmat = get_rotation_matrix(rotation, order=order)
+
+        # Translate surface to the pivot point
+        surf = self if inplace else self.clone()
+        surf = surf.translate(-pivot, inplace=inplace)
+
+        # Perform rotation
+        Cmat = np.array([[surf.a, surf.b, surf.c],[surf.d, surf.e, surf.f],[surf.g, surf.h, surf.i]])
+        Nmat = np.dot(Rmat,Cmat)
+        surf.a, surf.b, surf.c = Nmat[0,:]
+        surf.d, surf.e, surf.f = Nmat[1,:]
+        surf.g, surf.h, surf.i = Nmat[2,:]
+
+        # translate back to the original frame and return the surface
+        return surf.translate(pivot, inplace=inplace)
+
+    def to_xml_element(self):
+        element = super().to_xml_element()
+        element.set("surface_type", self.surface_type)
+        return element
+
+
 class TorusMixin:
     """A Mixin class implementing common functionality for torus surfaces"""
     _coeff_keys = ('x0', 'y0', 'z0', 'a', 'b', 'c')
@@ -2835,3 +2931,4 @@ YCone._virtual_base = Cone
 ZCone._virtual_base = Cone
 Sphere._virtual_base = Sphere
 Quadric._virtual_base = Quadric
+TPMS._virtual_base = TPMS

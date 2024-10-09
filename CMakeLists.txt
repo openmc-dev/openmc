@@ -244,6 +244,12 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vendor/pugixml/CMakeLists.txt")
 endif()
 
 #===============================================================================
+# boost library
+#===============================================================================
+
+find_package(Boost 1.85.0 REQUIRED)
+
+#===============================================================================
 # pugixml library
 #===============================================================================
 
@@ -430,6 +436,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/trigger.cpp
   src/thermal.cpp
   src/timer.cpp
+  src/tpms.cpp
   src/track_output.cpp
   src/universe.cpp
   src/urr.cpp

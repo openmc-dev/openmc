@@ -16,6 +16,8 @@
 #include "openmc/position.h"
 #include "openmc/vector.h"
 
+#include "tpms.h"
+
 namespace openmc {
 
 //==============================================================================
@@ -319,6 +321,23 @@ public:
 
   // Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0
   double A_, B_, C_, D_, E_, F_, G_, H_, J_, K_;
+};
+
+//==============================================================================
+// TPMS surfaces
+//==============================================================================
+
+class SurfaceTPMS : public CSGSurface {
+public:
+  explicit SurfaceTPMS(pugi::xml_node surf_node);
+  double evaluate(Position r) const;
+  double distance(Position r, Direction u, bool coincident) const;
+  Direction normal(Position r) const;
+  void to_hdf5_inner(hid_t group_id) const;
+
+  double cst, pitch;
+  double x0, y0, z0;
+  double a, b, c, d, e, f, g, h, i;
 };
 
 //==============================================================================

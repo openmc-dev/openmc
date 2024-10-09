@@ -11,7 +11,12 @@ conda deactivate
 conda activate openmc-TPMS
 conda install boost=1.85.0
 ```
-
+##### clone the project to your local repo:
+```
+git clone git@github.inl.gov:paul-ferney/openmc.git
+cd openmc
+git checkout TPMS
+```
 ##### install openmc python API in dev mode:
 ```
 python -m pip install -e .[test]
@@ -31,6 +36,7 @@ cd ..
 ##### test openmc:
 ```
 cd tests/TPMS/base_no_tpms
+python base_no_tpms.py
 ../../../build/bin/openmc
 ```
 
@@ -55,12 +61,6 @@ There is a conflict between your cond env shared libraries and shared libraries 
 ```
 cmake .. -DCMAKE_PREFIX_PATH=/opt/anaconda3/envs/openmc-TPMS/ -DOPENMC_USE_MPI=ON -DCMAKE_FIND_USE_CMAKE_SYSTEM_PATH=FALSE -DCMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=FALSE 
 ```
-
-## Trouble shooting
-### Shared libraries conflict
-When running cmake: `Warning Cannot generate a safe runtime search path for target libopenmc because files in some directories may conflict with libraries in implicit directories:`
-  -> There is a conflict between your cond env shared libraries and shared libraries installed somewhere else. You want cmake to strictly use your conda libs. Run instead:
-  cmake .. -DCMAKE_PREFIX_PATH=/your/path/to/anaconda3/envs/openmc-TPMS/ -DOPENMC_USE_MPI=ON -DCMAKE_FIND_USE_CMAKE_SYSTEM_PATH=FALSE -DCMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=FALSE 
 
 # OpenMC Monte Carlo Particle Transport Code
 

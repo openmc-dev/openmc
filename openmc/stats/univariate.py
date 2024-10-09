@@ -5,7 +5,6 @@ from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from copy import deepcopy
 from numbers import Real
-from typing import Sequence
 from warnings import warn
 
 import lxml.etree as ET
@@ -101,7 +100,7 @@ class Univariate(EqualityMixin, ABC):
 def _intensity_clip(intensity: Sequence[float], tolerance: float = 1e-6) -> np.ndarray:
     """Clip low-importance points from an array of intensities.
 
-    Given an array of importances, this function returns an array of indices for
+    Given an array of intensities, this function returns an array of indices for
     points that contribute non-negligibly to the total sum of intensities.
 
     Parameters

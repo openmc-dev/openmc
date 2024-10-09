@@ -111,4 +111,3 @@ CMakeSettings.json
 tests/TPMS/*/*xml
 tests/TPMS/*/*h5
 tests/TPMS/*/*png
-tests/TPMS/*/*ppm

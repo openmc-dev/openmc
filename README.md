@@ -57,7 +57,7 @@ CMake Warning at CMakeLists.txt:463 (add_library):
 
   Some of these libraries may not be found correctly.
 ```
-There is a conflict between your cond env shared libraries and shared libraries installed somewhere else. You want cmake to strictly use your conda libs. Run instead:
+There is a conflict between your conda env shared libraries and shared libraries installed somewhere else. You want cmake to strictly use your conda libs. Run instead:
 ```
 cmake .. -DCMAKE_PREFIX_PATH=/opt/anaconda3/envs/openmc-TPMS/ -DOPENMC_USE_MPI=ON -DCMAKE_FIND_USE_CMAKE_SYSTEM_PATH=FALSE -DCMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=FALSE 
 ```

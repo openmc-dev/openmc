@@ -106,8 +106,3 @@ CMakeSettings.json
 
 # Python pickle files
 *.pkl
-
-# TPMS specific tests
-tests/TPMS/*/*xml
-tests/TPMS/*/*h5
-tests/TPMS/*/*png

@@ -1,5 +1,3 @@
-#!/opt/anaconda3/envs/openmc-TPMS/bin/python
-
 import openmc
 
 def Box(c:float, boundary_type="transmission"):

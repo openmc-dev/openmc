@@ -5,6 +5,7 @@ from copy import deepcopy
 from numbers import Real
 from pathlib import Path
 import re
+import sys
 import warnings
 
 import lxml.etree as ET
@@ -25,6 +26,9 @@ from openmc.data.data import _get_element_symbol
 # Units for density supported by OpenMC
 DENSITY_UNITS = ('g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3', 'sum',
                  'macro')
+
+# Smallest normalized floating point number
+_SMALLEST_NORMAL = sys.float_info.min
 
 
 NuclideTuple = namedtuple('NuclideTuple', ['name', 'percent', 'percent_type'])
@@ -1339,10 +1343,16 @@ class Material(IDManagerMixin):
         xml_element = ET.Element("nuclide")
         xml_element.set("name", nuclide.name)
 
+        # Prevent subnormal numbers from being written to XML, which causes an
+        # exception on the C++ side when calling std::stod
+        val = nuclide.percent
+        if abs(val) < _SMALLEST_NORMAL:
+            val = 0.0
+
         if nuclide.percent_type == 'ao':
-            xml_element.set("ao", str(nuclide.percent))
+            xml_element.set("ao", str(val))
         else:
-            xml_element.set("wo", str(nuclide.percent))
+            xml_element.set("wo", str(val))
 
         return xml_element
 

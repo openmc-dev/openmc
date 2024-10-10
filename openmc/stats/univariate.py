@@ -1366,6 +1366,9 @@ class Mixture(Univariate):
                        zip(self.probability, self.distribution)]
         indices = _intensity_clip(intensities, tolerance=tolerance)
 
+        # Determine integral of original distribution to compare later
+        original_integral = self.integral()
+
         if inplace:
             # Clip mixture of distributions
             self.probability = self.probability[indices]
@@ -1388,7 +1391,17 @@ class Mixture(Univariate):
                 for dist in distribution
             ]
 
-            return type(self)(probability, distribution)
+            # Create new distribution
+            new_dist = type(self)(probability, distribution)
+
+            # Show warning if integral of new distribution is not within
+            # tolerance of original
+            diff = (original_integral - new_dist.integral())/original_integral
+            if diff > tolerance:
+                warn("Clipping mixture distribution resulted in an integral that is "
+                     f"lower by a fraction of {diff} when tolerance={tolerance}.")
+
+            return new_dist
 
 
 def combine_distributions(

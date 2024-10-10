@@ -303,6 +303,14 @@ def test_mixture_clip():
     mix_clip = mix.clip(1e-3)
     assert mix_clip.distribution == [d_large]
 
+    # Make sure warning is raised if tolerance is exceeded
+    d1 = openmc.stats.Discrete([1.0, 1.001], [1.0, 0.7e-6])
+    d2 = openmc.stats.Tabular([0.0, 1.0], [0.7e-6], interpolation='histogram')
+    mix = openmc.stats.Mixture([1.0, 1.0], [d1, d2])
+    with pytest.warns(UserWarning):
+        mix_clip = mix.clip(1e-6)
+
+
 def test_polar_azimuthal():
     # default polar-azimuthal should be uniform in mu and phi
     d = openmc.stats.PolarAzimuthal()

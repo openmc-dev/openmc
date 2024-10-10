@@ -88,7 +88,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
+         
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -96,9 +96,19 @@ jobs:
 
       - name: Environment Variables
         run: |
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          echo "COMMIT_MESSAGE=${COMMIT_MESSAGE}" >> $GITHUB_ENV      
           echo "DAGMC_ROOT=$HOME/DAGMC"
           echo "OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml" >> $GITHUB_ENV
           echo "OPENMC_ENDF_DATA=$HOME/endf-b-vii.1" >> $GITHUB_ENV
+
+      - name: Setup tmate debug session
+        # only setup tmate if the following key is in the commit message
+        if: ${{ contains(env.COMMIT_MESSAGE_HEADER, '[gha-debug]') }}
+        uses: mxschmitt/action-tmate@v3
+        with:
+          # starts a tmate session and allows workflow to continue
+          detached: true
 
       - name: Apt dependencies
         shell: bash
@@ -154,11 +164,6 @@ jobs:
         run: |
           cpp-coveralls -i src -i include -e src/external --exclude-pattern "/usr/*" --dump cpp_cov.json
           coveralls --merge=cpp_cov.json --service=github
-
-      - name: Setup tmate debug session
-        if: contains(github.event.head_commit.message, '[ci-debug]')
-        uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 15
 
   finish:
     needs: main

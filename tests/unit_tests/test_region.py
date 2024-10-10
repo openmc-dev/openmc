@@ -106,7 +106,7 @@ def test_complement(reset):
     assert_unbounded(outside_equiv)
 
     # string represention
-    assert str(inside) == '~(1 | -2 | 3)'
+    assert str(inside) == '(-1 2 -3)'
 
     # evaluate method
     assert (0, 0, 0) in inside

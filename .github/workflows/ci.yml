@@ -103,7 +103,7 @@ jobs:
 
       - name: Setup tmate debug session
         # only setup tmate if the following key is in the commit message
-        if: ${{ contains(env.COMMIT_MESSAGE_HEADER, '[gha-debug]') }}
+        if: ${{ contains(env.COMMIT_MESSAGE, '[gha-debug]') }}
         uses: mxschmitt/action-tmate@v3
         with:
           # starts a tmate session and allows workflow to continue

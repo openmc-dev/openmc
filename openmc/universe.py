@@ -17,6 +17,7 @@ from ._xml import get_text
 from .checkvalue import check_type, check_value
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
+from .utility_funcs import input_path
 
 
 class UniverseBase(ABC, IDManagerMixin):
@@ -766,7 +767,7 @@ class DAGMCUniverse(UniverseBase):
 
     Parameters
     ----------
-    filename : str
+    filename : path-like
         Path to the DAGMC file used to represent this universe.
     universe_id : int, optional
         Unique identifier of the universe. If not specified, an identifier will
@@ -820,7 +821,7 @@ class DAGMCUniverse(UniverseBase):
     """
 
     def __init__(self,
-                 filename,
+                 filename: cv.PathLike,
                  universe_id=None,
                  name='',
                  auto_geom_ids=False,
@@ -850,9 +851,9 @@ class DAGMCUniverse(UniverseBase):
         return self._filename
 
     @filename.setter
-    def filename(self, val):
-        cv.check_type('DAGMC filename', val, (Path, str))
-        self._filename = val
+    def filename(self, val: cv.PathLike):
+        cv.check_type('DAGMC filename', val, cv.PathLike)
+        self._filename = input_path(val)
 
     @property
     def auto_geom_ids(self):
@@ -915,8 +916,7 @@ class DAGMCUniverse(UniverseBase):
         def decode_str_tag(tag_val):
             return tag_val.tobytes().decode().replace('\x00', '')
 
-        dagmc_filepath = Path(self.filename).resolve()
-        with h5py.File(dagmc_filepath) as dagmc_file:
+        with h5py.File(self.filename) as dagmc_file:
             category_data = dagmc_file['tstt/tags/CATEGORY/values']
             category_strs = map(decode_str_tag, category_data)
             n = sum([v == geom_type.capitalize() for v in category_strs])

@@ -1360,48 +1360,42 @@ class Mixture(Univariate):
         Distribution with low-importance points / distributions removed
 
         """
+        # Determine integral of original distribution to compare later
+        original_integral = self.integral()
+
         # Determine indices for any distributions that contribute non-negligibly
         # to overall intensity
         intensities = [prob*dist.integral() for prob, dist in
                        zip(self.probability, self.distribution)]
         indices = _intensity_clip(intensities, tolerance=tolerance)
 
-        # Determine integral of original distribution to compare later
-        original_integral = self.integral()
+        # Clip mixture of distributions
+        probability = self.probability[indices]
+        distribution = [self.distribution[i] for i in indices]
+
+        # Clip points from Discrete distributions
+        distribution = [
+            dist.clip(tolerance, inplace) if isinstance(dist, Discrete) else dist
+            for dist in distribution
+        ]
 
         if inplace:
-            # Clip mixture of distributions
-            self.probability = self.probability[indices]
-            self.distribution = [self.distribution[i] for i in indices]
-
-            # Clip points from Discrete distributions
-            for dist in self.distribution:
-                if isinstance(dist, Discrete):
-                    dist.clip(tolerance, inplace=True)
-
-            return self
+            # Set attributes of current object and return
+            self.probability = probability
+            self.distribution = distribution
+            new_dist = self
         else:
-            # Clip mixture of distributions
-            probability = self.probability[indices]
-            distribution = [self.distribution[i] for i in indices]
-
-            # Clip points from Discrete distributions
-            distribution = [
-                dist.clip(tolerance) if isinstance(dist, Discrete) else dist
-                for dist in distribution
-            ]
-
             # Create new distribution
             new_dist = type(self)(probability, distribution)
 
-            # Show warning if integral of new distribution is not within
-            # tolerance of original
-            diff = (original_integral - new_dist.integral())/original_integral
-            if diff > tolerance:
-                warn("Clipping mixture distribution resulted in an integral that is "
-                     f"lower by a fraction of {diff} when tolerance={tolerance}.")
+        # Show warning if integral of new distribution is not within
+        # tolerance of original
+        diff = (original_integral - new_dist.integral())/original_integral
+        if diff > tolerance:
+            warn("Clipping mixture distribution resulted in an integral that is "
+                    f"lower by a fraction of {diff} when tolerance={tolerance}.")
 
-            return new_dist
+        return new_dist
 
 
 def combine_distributions(

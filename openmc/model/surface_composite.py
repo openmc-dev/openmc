@@ -1742,20 +1742,18 @@ def _rotation_matrix(v1, v2):
     3x3 rotation matrix
 
     """
-    # Normalize vectors
+    # Normalize vectors and compute cosine
     u1 = v1 / np.linalg.norm(v1)
     u2 = v2 / np.linalg.norm(v2)
+    cos_angle = np.dot(u1, u2)
 
     I = np.identity(3)
 
     # Handle special case where vectors are parallel or anti-parallel
-    if abs(np.dot(u1, u2) - 1.0) < 1e-8:
-        return I
-    elif abs(np.dot(u1, u2) + 1.0) < 1e-8:
-        return -I
+    if isclose(abs(cos_angle), 1.0, rel_tol=1e-8):
+        return np.sign(cos_angle)*I
     else:
         # Calculate rotation angle
-        cos_angle = np.dot(u1, u2)
         sin_angle = np.sqrt(1 - cos_angle*cos_angle)
 
         # Calculate axis of rotation
@@ -1820,7 +1818,7 @@ class ConicalFrustum(CompositeSurface):
         h = np.linalg.norm(axis)
 
         # To create the frustum oriented with the correct axis, first we will
-        # create a cone alone the z axis and then rotate it according to the
+        # create a cone along the z axis and then rotate it according to the
         # given axis. Thus, we first need to determine the apex using the z axis
         # as a reference.
         x0, y0, z0 = center_base

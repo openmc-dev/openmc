@@ -778,12 +778,6 @@ class XConeOneSided(CompositeSurface):
     def __neg__(self):
         return -self.cone & (+self.plane if self.up else -self.plane)
 
-    def __pos__(self):
-        if self.up:
-            return (+self.cone & +self.plane) | -self.plane
-        else:
-            return (+self.cone & -self.plane) | +self.plane
-
 
 class YConeOneSided(CompositeSurface):
     """One-sided cone parallel the y-axis
@@ -836,7 +830,6 @@ class YConeOneSided(CompositeSurface):
         self.up = up
 
     __neg__ = XConeOneSided.__neg__
-    __pos__ = XConeOneSided.__pos__
 
 
 class ZConeOneSided(CompositeSurface):
@@ -890,7 +883,6 @@ class ZConeOneSided(CompositeSurface):
         self.up = up
 
     __neg__ = XConeOneSided.__neg__
-    __pos__ = XConeOneSided.__pos__
 
 
 class Polygon(CompositeSurface):

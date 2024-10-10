@@ -147,8 +147,8 @@ WeightWindows::WeightWindows(int32_t id)
 WeightWindows::WeightWindows(pugi::xml_node node)
 {
   // Make sure required elements are present
-  const vector<std::string> required_elems {"id", "particle_type",
-    "energy_bounds", "lower_ww_bounds", "upper_ww_bounds"};
+  const vector<std::string> required_elems {
+    "id", "particle_type", "lower_ww_bounds", "upper_ww_bounds"};
   for (const auto& elem : required_elems) {
     if (!check_for_node(node, elem.c_str())) {
       fatal_error(fmt::format("Must specify <{}> for weight windows.", elem));
@@ -165,7 +165,7 @@ WeightWindows::WeightWindows(pugi::xml_node node)
 
   // Determine associated mesh
   int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
-  mesh_idx_ = model::mesh_map.at(mesh_id);
+  set_mesh(model::mesh_map.at(mesh_id));
 
   // energy bounds
   if (check_for_node(node, "energy_bounds"))
@@ -340,6 +340,7 @@ void WeightWindows::set_mesh(int32_t mesh_idx)
     fatal_error(fmt::format("Could not find a mesh for index {}", mesh_idx));
 
   mesh_idx_ = mesh_idx;
+  model::meshes[mesh_idx_]->prepare_for_point_location();
   allocate_ww_bounds();
 }
 

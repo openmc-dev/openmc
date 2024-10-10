@@ -22,7 +22,7 @@ from ._xml import get_text
 
 _FILTER_TYPES = (
     'universe', 'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
-    'energyout', 'mu', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
+    'energyout', 'mu', 'musurface', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
     'energyfunction', 'cellfrom', 'materialfrom', 'legendre', 'spatiallegendre',
     'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance',
     'collision', 'time'
@@ -765,7 +765,7 @@ class ParticleFilter(Filter):
     @Filter.bins.setter
     def bins(self, bins):
         cv.check_type('bins', bins, Sequence, str)
-        bins = np.atleast_1d(bins)    
+        bins = np.atleast_1d(bins)
         for edge in bins:
             cv.check_value('filter bin', edge, _PARTICLES)
         self._bins = bins
@@ -1848,6 +1848,44 @@ class MuFilter(RealFilter):
                 cv.check_greater_than('filter value', x, -1., equality=True)
             if not np.isclose(x, 1.):
                 cv.check_less_than('filter value', x, 1., equality=True)
+
+
+class MuSurfaceFilter(MuFilter):
+    """Bins tally events based on the angle of surface crossing.
+
+    This filter bins events based on the cosine of the angle between the
+    direction of the particle and the normal to the surface at the point it
+    crosses. Only used in conjunction with a SurfaceFilter and current score.
+
+    .. versionadded:: 0.15.1
+
+    Parameters
+    ----------
+    values : int or Iterable of Real
+        A grid of surface crossing angles which the events will be divided into.
+        Values represent the cosine of the angle between the direction of the
+        particle and the normal to the surface at the point it crosses. If an
+        iterable is given, the values will be used explicitly as grid points. If
+        a single int is given, the range [-1, 1] will be divided equally into
+        that number of bins.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    values : numpy.ndarray
+        An array of values for which each successive pair constitutes a range of
+        surface crossing angle cosines for a single bin.
+    id : int
+        Unique identifier for the filter
+    bins : numpy.ndarray
+        An array of shape (N, 2) where each row is a pair of cosines of surface
+        crossing angle for a single filter
+    num_bins : Integral
+        The number of filter bins
+
+    """
+    # Note: inherits implementation from MuFilter
 
 
 class PolarFilter(RealFilter):

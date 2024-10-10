@@ -328,8 +328,9 @@ class WeightWindows(IDManagerMixin):
         subelement = ET.SubElement(element, 'particle_type')
         subelement.text = self.particle_type
 
-        subelement = ET.SubElement(element, 'energy_bounds')
-        subelement.text = ' '.join(str(e) for e in self.energy_bounds)
+        if self.energy_bounds is not None:
+            subelement = ET.SubElement(element, 'energy_bounds')
+            subelement.text = ' '.join(str(e) for e in self.energy_bounds)
 
         subelement = ET.SubElement(element, 'lower_ww_bounds')
         subelement.text = ' '.join(str(b) for b in self.lower_ww_bounds.ravel('F'))

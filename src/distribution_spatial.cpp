@@ -314,7 +314,6 @@ PointCloud::PointCloud(pugi::xml_node node)
   } else {
     fatal_error("No coordinates were provided for the PointCloud "
                 "spatial distribution");
-    )
   }
 
   int32_t num_coords = point_cloud_.size();
@@ -335,9 +334,9 @@ PointCloud::PointCloud(pugi::xml_node node)
 }
 
 PointCloud::PointCloud(
-  gsl::span<const Position> point_cloud, gsl::span<const double> strengths)
-  : point_cloud_(point_cloud)
+  std::vector<Position> point_cloud, gsl::span<const double> strengths)
 {
+  point_cloud_.assign(point_cloud.begin(), point_cloud.end());
   point_idx_dist_.assign(strengths);
 }
 

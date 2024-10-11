@@ -807,6 +807,9 @@ class MeshFilter(Filter):
     translation : Iterable of float
         This array specifies a vector that is used to translate (shift) the mesh
         for this filter
+    rotation : Iterable of float
+        This array specifies a vector that is used to rotate the mesh for this 
+        filter
     bins : list of tuple
         A list of mesh indices for each filter bin, e.g. [(1, 1, 1), (2, 1, 1),
         ...]
@@ -819,6 +822,7 @@ class MeshFilter(Filter):
         self.mesh = mesh
         self.id = filter_id
         self._translation = None
+        self._rotation = None
 
     def __hash__(self):
         string = type(self).__name__ + '\n'
@@ -830,6 +834,7 @@ class MeshFilter(Filter):
         string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
         string += '{: <16}=\t{}\n'.format('\tID', self.id)
         string += '{: <16}=\t{}\n'.format('\tTranslation', self.translation)
+        string += '{: <16}=\t{}\n'.format('\tRotation', self.rotation)
         return string
 
     @classmethod
@@ -852,6 +857,10 @@ class MeshFilter(Filter):
         translation = group.get('translation')
         if translation:
             out.translation = translation[()]
+
+        rotation = group.get('rotation')
+        if rotation:
+            out.rotation = rotation[()]
 
         return out
 
@@ -886,6 +895,16 @@ class MeshFilter(Filter):
         cv.check_type('mesh filter translation', t, Iterable, Real)
         cv.check_length('mesh filter translation', t, 3)
         self._translation = np.asarray(t)
+
+    @property
+    def rotation(self):
+        return self._rotation
+
+    @rotation.setter
+    def rotation(self, r):
+        cv.check_type('mesh filter rotation', r, Iterable, Real)
+        cv.check_length('mesh filter rotation', r, 3)
+        self._rotation = np.asarray(r)
 
     def can_merge(self, other):
         # Mesh filters cannot have more than one bin
@@ -969,6 +988,8 @@ class MeshFilter(Filter):
         element[0].text = str(self.mesh.id)
         if self.translation is not None:
             element.set('translation', ' '.join(map(str, self.translation)))
+        if self.rotation is not None:
+            element.set('rotation', ' '.join(map(str, self.rotation)))
         return element
 
     @classmethod
@@ -981,6 +1002,9 @@ class MeshFilter(Filter):
         translation = elem.get('translation')
         if translation:
             out.translation = [float(x) for x in translation.split()]
+        rotation = elem.get('rotation')
+        if rotation:
+            out.rotation = [float(x) for x in rotation.split()]
         return out
 
 

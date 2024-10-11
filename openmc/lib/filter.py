@@ -96,6 +96,12 @@ _dll.openmc_mesh_filter_get_translation.errcheck = _error_handler
 _dll.openmc_mesh_filter_set_translation.argtypes = [c_int32, POINTER(c_double*3)]
 _dll.openmc_mesh_filter_set_translation.restype = c_int
 _dll.openmc_mesh_filter_set_translation.errcheck = _error_handler
+_dll.openmc_mesh_filter_get_rotation.argtypes = [c_int32, POINTER(c_double*3)]
+_dll.openmc_mesh_filter_get_rotation.restype = c_int
+_dll.openmc_mesh_filter_get_rotation.errcheck = _error_handler
+_dll.openmc_mesh_filter_set_rotation.argtypes = [c_int32, POINTER(c_double*3)]
+_dll.openmc_mesh_filter_set_rotation.restype = c_int
+_dll.openmc_mesh_filter_set_rotation.errcheck = _error_handler
 _dll.openmc_meshborn_filter_get_mesh.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_meshborn_filter_get_mesh.restype = c_int
 _dll.openmc_meshborn_filter_get_mesh.errcheck = _error_handler
@@ -392,6 +398,8 @@ class MeshFilter(Filter):
         Mesh used for the filter
     translation : Iterable of float
         3-D coordinates of the translation vector
+    rotation : Iterable of float
+        3-D coordinates of the rotation vector
 
     """
     filter_type = 'mesh'
@@ -420,6 +428,16 @@ class MeshFilter(Filter):
     @translation.setter
     def translation(self, translation):
         _dll.openmc_mesh_filter_set_translation(self._index, (c_double*3)(*translation))
+
+    @property
+    def rotation(self):
+        rotation = (c_double*3)()
+        _dll.openmc_mesh_filter_get_rotation(self._index, rotation)
+        return tuple(rotation)
+
+    @rotation.setter
+    def rotation(self, rotation):
+        _dll.openmc_mesh_filter_set_rotation(self._index, (c_double*3)(*rotation))
 
 
 class MeshBornFilter(Filter):

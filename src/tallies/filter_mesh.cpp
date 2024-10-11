@@ -31,6 +31,9 @@ void MeshFilter::from_xml(pugi::xml_node node)
   if (check_for_node(node, "translation")) {
     set_translation(get_node_array<double>(node, "translation"));
   }
+  if (check_for_node(node, "rotation")) {
+    set_rotation(get_node_array<double>(node, "rotation"));
+  }
 }
 
 void MeshFilter::get_all_bins(
@@ -45,6 +48,11 @@ void MeshFilter::get_all_bins(
   if (translated_) {
     last_r -= translation();
     r -= translation();
+  }
+  // apply rotation if present
+  if (rotated_) {
+    last_r -= rotation();
+    r -= rotation();
   }
 
   if (estimator != TallyEstimator::TRACKLENGTH) {
@@ -65,6 +73,9 @@ void MeshFilter::to_statepoint(hid_t filter_group) const
   write_dataset(filter_group, "bins", model::meshes[mesh_]->id_);
   if (translated_) {
     write_dataset(filter_group, "translation", translation_);
+  }
+  if (rotated_) {
+    write_dataset(filter_group, "rotation", rotation_);
   }
 }
 
@@ -94,6 +105,16 @@ void MeshFilter::set_translation(const double translation[3])
   this->set_translation({translation[0], translation[1], translation[2]});
 }
 
+void MeshFilter::set_rotation(const Position& rotation)
+{
+  rotated_ = true;
+  rotation_ = rotation;
+}
+
+void MeshFilter::set_rotation(const double rotation[3])
+{
+  this->set_rotation({rotation[0], rotation[1], rotation[2]});
+}
 //==============================================================================
 // C-API functions
 //==============================================================================
@@ -198,6 +219,57 @@ extern "C" int openmc_mesh_filter_set_translation(
 
   // Set the translation
   mesh_filter->set_translation(translation);
+
+  return 0;
+}
+
+extern "C" int openmc_mesh_filter_get_rotation(
+  int32_t index, double rotation[3])
+{
+  // Make sure this is a valid index to an allocated filter
+  if (int err = verify_filter(index))
+    return err;
+
+  // Check the filter type
+  const auto& filter = model::tally_filters[index];
+  if (filter->type() != FilterType::MESH &&
+      filter->type() != FilterType::MESHBORN &&
+      filter->type() != FilterType::MESH_SURFACE) {
+    set_errmsg("Tried to get a rotation from a non-mesh-based filter.");
+    return OPENMC_E_INVALID_TYPE;
+  }
+
+  // Get rotation from the mesh filter and set value
+  auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
+  const auto& r = mesh_filter->rotation();
+  for (int i = 0; i < 3; i++) {
+    rotation[i] = r[i];
+  }
+
+  return 0;
+}
+
+extern "C" int openmc_mesh_filter_set_rotation(
+  int32_t index, double rotation[3])
+{
+  // Make sure this is a valid index to an allocated filter
+  if (int err = verify_filter(index))
+    return err;
+
+  const auto& filter = model::tally_filters[index];
+  // Check the filter type
+  if (filter->type() != FilterType::MESH &&
+      filter->type() != FilterType::MESHBORN &&
+      filter->type() != FilterType::MESH_SURFACE) {
+    set_errmsg("Tried to set mesh on a non-mesh-based filter.");
+    return OPENMC_E_INVALID_TYPE;
+  }
+
+  // Get a pointer to the filter and downcast
+  auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
+
+  // Set the rotation
+  mesh_filter->set_rotation(rotation);
 
   return 0;
 }

@@ -818,7 +818,7 @@ void WeightWindowsGenerator::create_tally()
   for (const auto& f : model::tally_filters) {
     if (f->type() == FilterType::MESH) {
       const auto* mesh_filter = dynamic_cast<MeshFilter*>(f.get());
-      if (mesh_filter->mesh() == mesh_idx && !mesh_filter->translated()) {
+      if (mesh_filter->mesh() == mesh_idx && !mesh_filter->translated() && !mesh_filter->rotated()) {
         ww_tally->add_filter(f.get());
         found_mesh_filter = true;
         break;

@@ -51,6 +51,14 @@ public:
 
   virtual bool translated() const { return translated_; }
 
+  virtual void set_rotation(const Position& rotation);
+
+  virtual void set_rotation(const double rotation[3]);
+
+  virtual const Position& rotation() const { return rotation_; }
+
+  virtual bool rotated() const { return rotated_; }
+
 protected:
   //----------------------------------------------------------------------------
   // Data members
@@ -58,6 +66,8 @@ protected:
   int32_t mesh_;            //!< Index of the mesh
   bool translated_ {false}; //!< Whether or not the filter is translated
   Position translation_ {0.0, 0.0, 0.0}; //!< Filter translation
+  bool rotated_ {false}; //!< Whether or not the filter is rotated
+  Position rotation_ {0.0, 0.0, 0.0}; //!< Filter rotation
 };
 
 } // namespace openmc

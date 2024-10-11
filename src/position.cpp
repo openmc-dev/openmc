@@ -88,4 +88,10 @@ std::ostream& operator<<(std::ostream& os, Position r)
   return os;
 }
 
+std::istream& operator>>(std::istream& is, Position r)
+{
+  is >> r.x >> r.y >> r.z;
+  return is;
+}
+
 } // namespace openmc

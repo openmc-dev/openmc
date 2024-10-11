@@ -207,6 +207,8 @@ inline bool operator!=(Position a, Position b)
 }
 
 std::ostream& operator<<(std::ostream& os, Position a);
+// input operator assumes space-delimited list of 3 doubles
+std::istream& operator>>(std::istream& is, Position a);
 
 //==============================================================================
 //! Type representing a vector direction in Cartesian coordinates

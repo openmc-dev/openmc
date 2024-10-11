@@ -326,7 +326,7 @@ class Material(IDManagerMixin):
         probs = []
         for nuc, atoms_per_bcm in self.get_nuclide_atom_densities().items():
             source_per_atom = openmc.data.decay_photon_energy(nuc)
-            if source_per_atom is not None:
+            if source_per_atom is not None and atoms_per_bcm > 0.0:
                 dists.append(source_per_atom)
                 probs.append(1e24 * atoms_per_bcm * multiplier)
 
@@ -338,6 +338,11 @@ class Material(IDManagerMixin):
         combined = openmc.data.combine_distributions(dists, probs)
         if isinstance(combined, (Discrete, Mixture)):
             combined.clip(clip_tolerance, inplace=True)
+
+        # If clipping resulted in a single distribution within a mixture, pick
+        # out that single distribution
+        if isinstance(combined, Mixture) and len(combined.distribution) == 1:
+            combined = combined.distribution[0]
 
         return combined
 

@@ -51,8 +51,8 @@ void MeshFilter::get_all_bins(
   }
   // apply rotation if present
   if (rotated_) {
-    last_r -= rotation();
-    r -= rotation();
+    last_r.rotate(rotation());
+    r.rotate(rotation());
   }
 
   if (estimator != TallyEstimator::TRACKLENGTH) {
@@ -105,7 +105,7 @@ void MeshFilter::set_translation(const double translation[3])
   this->set_translation({translation[0], translation[1], translation[2]});
 }
 
-void MeshFilter::set_rotation(const Position& rotation)
+void MeshFilter::set_rotation(const vector<double>& rotation)
 {
   rotated_ = true;
   rotation_ = rotation;

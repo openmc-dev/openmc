@@ -13,6 +13,7 @@ from ._xml import get_text
 from .checkvalue import check_type, check_value
 from .surface import _BOUNDARY_TYPES
 from .bounding_box import BoundingBox
+from .utility_funcs import input_path
 
 
 class DAGMCUniverse(openmc.UniverseBase):
@@ -120,6 +121,11 @@ class DAGMCUniverse(openmc.UniverseBase):
     def filename(self):
         return self._filename
 
+    @filename.setter
+    def filename(self, val: cv.PathLike):
+        cv.check_type('DAGMC filename', val, cv.PathLike)
+        self._filename = input_path(val)
+
     @property
     def material_overrides(self):
         return self._material_overrides
@@ -177,11 +183,6 @@ class DAGMCUniverse(openmc.UniverseBase):
         
         cv.check_iterable_type('material objects', overrides, str)
         self.material_overrides[mat_name] = overrides
-
-    @filename.setter
-    def filename(self, val: cv.PathLike):
-        cv.check_type('DAGMC filename', val, cv.PathLike)
-        self._filename = input_path(val)
 
     @property
     def auto_geom_ids(self):

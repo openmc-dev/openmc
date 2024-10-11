@@ -20,6 +20,9 @@ class DAGMCUniverse(openmc.UniverseBase):
 
     .. versionadded:: 0.13.0
 
+    .. versionadded:: 0.15.1-dev
+        Moved this classe from openmc.universe to openmc.dagmc
+
     Parameters
     ----------
     filename : str
@@ -139,8 +142,10 @@ class DAGMCUniverse(openmc.UniverseBase):
 
         self._material_overrides = val
 
-    def add_material_override(self, mat_name, overrides):
+    def add_material_override(self, mat_name=None, cell_id=None, overrides=None):
         """Add a material override to the universe.
+
+        .. versionadded:: 0.15
 
         Parameters
         ----------
@@ -150,12 +155,27 @@ class DAGMCUniverse(openmc.UniverseBase):
             Material names to replace the key with
 
         """
-        cv.check_type('material name', mat_name, str)
-        if mat_name not in self.material_names:
-            raise ValueError(
-                f"Material name '{mat_name}' not found in DAGMC file")
+        key = ""
+        if mat_name and cell_id:
+            raise ValueError("Only one of 'mat_name' or 'cell_id' can be set")
+        elif cell_id:
+            cv.check_type('cell id', cell_id, int)
+            if cell_id not in self.cells:
+                raise ValueError(
+                    f"Cell ID '{cell_id}' not found in DAGMC universe")
+            else:
+                key = str(cell_id)
+        elif mat_name:
+            cv.check_type('material name', mat_name, str)
+            if mat_name not in self.material_names:
+                raise ValueError(
+                    f"Material name '{mat_name}' not found in DAGMC file")
+            else:
+                key = mat_name
+        else:
+            raise ValueError("Either 'mat_name' or 'cell_id' must be set")
+        
         cv.check_iterable_type('material objects', overrides, str)
-
         self.material_overrides[mat_name] = overrides
 
     @filename.setter
@@ -281,7 +301,7 @@ class DAGMCUniverse(openmc.UniverseBase):
             None
         """
         for cell in self.cells.values():
-            if cell.n_instances > 1 and isinstance(cell.fill, Iterable):
+            if isinstance(cell.fill, Iterable):
                 for mat in cell.fill:
                     self.material_overrides[str(cell.id)] = [mat.name for mat in cell.fill]
 
@@ -489,10 +509,10 @@ class DAGMCUniverse(openmc.UniverseBase):
         # If the Cell is in the Universe's list of Cells, delete it
         self._cells.pop(cell.id, None)
 
-    def sync_dagmc_cells(self, mats={}):
+    def sync_dagmc_cells(self, mats):
         """Synchronize DAGMC cell information between Python and C API
 
-        .. versionadded:: 0.13.0
+        .. versionadded:: 0.15.1-dev
 
         """
         import openmc.lib
@@ -524,7 +544,7 @@ class DAGMCUniverse(openmc.UniverseBase):
 
 class DAGMCCell(openmc.Cell):
     """
-    .. versionadded:: 0.13.2
+    .. versionadded:: 0.15.1-dev
     A cell class for DAGMC-based geometries.
 
     Parameters

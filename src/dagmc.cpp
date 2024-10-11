@@ -765,7 +765,7 @@ BoundingBox DAGCell::bounding_box() const
 DAGSurface::DAGSurface(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx)
   : Surface {}, dagmc_ptr_(dag_ptr), dag_index_(dag_idx)
 {
-  geom_type_ = GeometryType::DAG;
+  geom_type() = GeometryType::DAG;
 } // empty constructor
 
 moab::EntityHandle DAGSurface::mesh_handle() const

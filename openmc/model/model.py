@@ -330,16 +330,19 @@ class Model:
         Synchronize all DAGMC universes with the current geometry.
         This method iterates over all DAGMC universes in the geometry and
         synchronizes their cells with the current material assignments.
+
+        .. versionadded:: 0.15.1-dev
+
         Returns:
             None
         """
         if self.is_initialized:
             if self.materials:
-                mats = self.materials
+                materials = self.materials
             else:
-                mats = self.geometry.get_all_materials().values()
+                materials = self.geometry.get_all_materials().values()
             for dagmc_universe in self.geometry.get_all_dagmc_universes().values():
-                dagmc_universe.sync_dagmc_cells(mats)
+                dagmc_universe.sync_dagmc_cells(materials)
         else:
             raise ValueError("The model must be initialized before calling "
                              "this method")
@@ -1154,38 +1157,47 @@ class Model:
 
         .. versionadded:: 0.14.0
 
+        .. version added:: 0.15.1-dev
+            diff_volume_method default is None, do not apply volume to the new
+            materials. Is now a convenience method for
+            differentiate_mats(diff_volume_method, depletable_only=True)
+
         Parameters
         ----------
         diff_volume_method : str
             Specifies how the volumes of the new materials should be found.
-            Default is to 'divide equally' which divides the original material
-            volume equally between the new materials, 'match cell' sets the
-            volume of the material to volume of the cell they fill.
+            Default is to 'None', do not apply volume to the new materials,
+            'divide equally' which divides the original material
+            volume equally between the new materials,
+            'match cell' sets the volume of the material to volume of the cell
+            they fill.
         """
         self.differentiate_mats(diff_volume_method, depletable_only=True)
 
     def differentiate_mats(self, diff_volume_method: str = None, depletable_only: bool = True):
-        """Assign distribmats for each depletable material
+        """Assign distribmats for each material
 
-        .. versionadded:: 0.14.0
+        .. versionadded:: 0.15.1-dev
 
         Parameters
         ----------
         diff_volume_method : str
             Specifies how the volumes of the new materials should be found.
-            Default is to 'divide equally' which divides the original material
-            volume equally between the new materials, 'match cell' sets the
-            volume of the material to volume of the cell they fill.
+            Default is to 'None', do not apply volume to the new materials, 
+            'divide equally' which divides the original material
+            volume equally between the new materials, 
+            'match cell' sets the volume of the material to volume of the cell 
+            they fill.
+        depletable_only : bool
+            Default is True, only depletable materials will be differentiated all materials will be 
+            differentiated otherwise.
         """
-        if diff_volume_method not in ("divide equally", "match cell", None):
-            raise ValueError(
-                "diff_volume_method must be 'divide equally' or 'match cell', "
-                f"not '{diff_volume_method}'"
-            )
+        check_value('volume differentiation method', diff_volume_method, ["divide equally", "match cell", None])
+
         # Count the number of instances for each cell and material
         self.geometry.determine_paths(instances_only=True)
 
-        # Extract all depletable materials which have multiple instances
+        # Extract all or depletable_only materials which have multiple instance
         distribmats = set(
             [mat for mat in self.materials
                 if (mat.depletable or not depletable_only) and mat.num_instances > 1])
@@ -1217,8 +1229,8 @@ class Model:
                                 )
                             cell.fill.volume = cell.volume
                     if isinstance(cell, openmc.DAGMCCell):
-                        for i, f in enumerate(cell.fill):
-                            f.name += f"_{cell.id}_{i}"
+                        for i in range(cell.num_instances):
+                            cell.fill[i].name = f"{cell.fill[i].name}_{cell.id}_{i}"
 
         if self.materials is not None:
             self.materials = openmc.Materials(

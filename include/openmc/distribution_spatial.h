@@ -159,9 +159,8 @@ public:
   double total_strength() { return this->point_idx_dist_.integral(); }
 
 private:
-  gsl::span<const double> x_, y_, z_;
-  DiscreteIndex point_idx_dist_; //!< Distribution of
-                                 //!< mesh element indices
+  std::vector<Position> point_cloud_;
+  DiscreteIndex point_idx_dist_; //!< Distribution of Position indices
 };
 
 //==============================================================================

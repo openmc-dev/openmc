@@ -307,46 +307,36 @@ Position MeshSpatial::sample(uint64_t* seed) const
 PointCloud::PointCloud(pugi::xml_node node)
 {
 
-  if (check_for_node(node, "x")) {
-    x_ = get_node_array<double>(node, "x");
-  }
-  if (check_for_node(node, "y")) {
-    y_ = get_node_array<double>(node, "y");
-    if (y_.size() != x_.size()) {
-      fatal_error(
-        fmt::format("Number of entries for the y-coordinate array {} does "
-                    "not match the number of entries for the x-coordinate {}.",
-          y_.size(), x_.size()));
-    }
-  }
-  if (check_for_node(node, "z")) {
-    z_ = get_node_array<double>(node, "z");
-    if (z_.size() != x_.size()) {
-      fatal_error(
-        fmt::format("Number of entries for the z coordinate array {} does "
-                    "not match the number of entries for the x-coordinate {}.",
-          z_.size(), x_.size()));
-    }
+  std::vector<double> coords;
+
+  if (check_for_node(node, "coords")) {
+    point_cloud_ = get_node_array<Position>(node, "coords");
+  } else {
+    fatal_error("No coordinates were provided for the PointCloud "
+                "spatial distribution");
+    )
   }
 
-  std::vector<double> strengths(x_.size(), 1.0);
+  int32_t num_coords = point_cloud_.size();
+
+  std::vector<double> strengths(num_coords, 1.0);
 
   if (check_for_node(node, "strengths")) {
     strengths = get_node_array<double>(node, "strengths");
-    if (strengths.size() != x_.size()) {
+    if (strengths.size() != num_coords) {
       fatal_error(
         fmt::format("Number of entries for the strengths array {} does "
                     "not match the number of spatial points provided {}.",
-          strengths.size(), x_.size()));
+          strengths.size(), num_coords));
     }
   }
 
   point_idx_dist_.assign(strengths);
 }
 
-PointCloud::PointCloud(gsl::span<const double> x, gsl::span<const double> y,
-  gsl::span<const double> z, gsl::span<const double> strengths)
-  : x_(x), y_(y), z_(z)
+PointCloud::PointCloud(
+  gsl::span<const Position> point_cloud, gsl::span<const double> strengths)
+  : point_cloud_(point_cloud)
 {
   point_idx_dist_.assign(strengths);
 }
@@ -358,8 +348,7 @@ int32_t PointCloud::sample_point_index(uint64_t* seed) const
 
 Position PointCloud::sample(uint64_t* seed) const
 {
-  int32_t point_idx = this->sample_point_index(seed);
-  return {x_[point_idx], y_[point_idx], z_[point_idx]};
+  return point_cloud_[this->sample_point_index(seed)];
 }
 
 //==============================================================================

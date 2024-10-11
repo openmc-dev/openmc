@@ -775,8 +775,8 @@ class PointCloud(Spatial):
 
     Attributes
     ----------
-    psoitions: numpy.ndarray (3xN)
-        The points in space to be sampled
+    positions: numpy.ndarray (3xN)
+        The points in space to be sampled with shape (3,N)
     strengths : numpy.ndarray or None
         An array of relative probabilities for each mesh point
     """
@@ -834,9 +834,8 @@ class PointCloud(Spatial):
 
         element.set('type', 'cloud')
 
-        for idx, axis in enumerate(('x','y','z')):
-            subelement = ET.SubElement(element, axis)
-            subelement.text = ' '.join(str(e) for e in self.positions[idx,:])
+        subelement = ET.SubElement(element, 'coords')
+        subelement.text = ' '.join(str(e) for e in self.positions.flatten())
 
         if self.strengths is not None:
             subelement = ET.SubElement(element, 'strengths')
@@ -860,14 +859,8 @@ class PointCloud(Spatial):
 
 
         """
-        coord = {}
-
-        for axis in ('x','y','z'):
-            coord_data = get_text(elem, axis)
-            if coord_data is not None:
-                coord[axis] = [float(b) for b in coord_data.split()]
-        
-        positions = np.column_stack([coord[axis] for axis in ('x','y','z')])
+        coord_data = get_text(elem, 'coords')
+        positions = np.asarray([float(b) for b in coord_data.split()]).reshape((3,-1))
 
         strengths = get_text(elem, 'strengths')
         if strengths is not None:

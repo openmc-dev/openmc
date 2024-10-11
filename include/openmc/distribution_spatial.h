@@ -143,7 +143,8 @@ private:
 class PointCloud : public SpatialDistribution {
 public:
   explicit PointCloud(pugi::xml_node node);
-  explicit PointCloud(std::vector<Position> point_cloud, gsl::span<const double> strengths);
+  explicit PointCloud(
+    std::vector<Position> point_cloud, gsl::span<const double> strengths);
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer

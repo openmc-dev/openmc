@@ -17,6 +17,7 @@ from ._xml import get_text
 from .checkvalue import check_type, check_value
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
+from .utility_funcs import input_path
 
 
 class UniverseBase(ABC, IDManagerMixin):
@@ -661,7 +662,6 @@ class Universe(UniverseBase):
         string += '{: <16}=\t{}\n'.format('\tCells', list(self._cells.keys()))
         return string
 
-
     @property
     def bounding_box(self) -> openmc.BoundingBox:
         regions = [c.region for c in self.cells.values()
@@ -759,7 +759,6 @@ class Universe(UniverseBase):
             cell_element.set("universe", str(self._id))
             xml_element.append(cell_element)
 
-
     def _partial_deepcopy(self):
         """Clone all of the openmc.Universe object's attributes except for its cells,
         as they are copied within the clone function. This should only to be
@@ -768,5 +767,3 @@ class Universe(UniverseBase):
         clone = openmc.Universe(name=self.name)
         clone.volume = self.volume
         return clone
-
-

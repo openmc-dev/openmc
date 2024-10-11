@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence
 from enum import IntEnum
 from numbers import Real
+from pathlib import Path
 import warnings
 from typing import Any
 from pathlib import Path
@@ -19,6 +20,7 @@ from openmc.stats.multivariate import UnitSphere, Spatial
 from openmc.stats.univariate import Univariate
 from ._xml import get_text
 from .mesh import MeshBase, StructuredMesh, UnstructuredMesh
+from .utility_funcs import input_path
 
 
 class SourceBase(ABC):
@@ -664,7 +666,7 @@ class CompiledSource(SourceBase):
 
     Parameters
     ----------
-    library : str or None
+    library : path-like
         Path to a compiled shared library
     parameters : str
         Parameters to be provided to the compiled shared library function
@@ -686,7 +688,7 @@ class CompiledSource(SourceBase):
 
     Attributes
     ----------
-    library : str or None
+    library : pathlib.Path
         Path to a compiled shared library
     parameters : str
         Parameters to be provided to the compiled shared library function
@@ -702,17 +704,13 @@ class CompiledSource(SourceBase):
     """
     def __init__(
         self,
-        library: str | None  = None,
+        library: PathLike,
         parameters: str | None = None,
         strength: float = 1.0,
         constraints: dict[str, Any] | None = None
     ) -> None:
         super().__init__(strength=strength, constraints=constraints)
-
-        self._library = None
-        if library is not None:
-            self.library = library
-
+        self.library = library
         self._parameters = None
         if parameters is not None:
             self.parameters = parameters
@@ -722,13 +720,13 @@ class CompiledSource(SourceBase):
         return "compiled"
 
     @property
-    def library(self) -> str:
+    def library(self) -> Path:
         return self._library
 
     @library.setter
-    def library(self, library_name):
-        cv.check_type('library', library_name, str)
-        self._library = library_name
+    def library(self, library_name: PathLike):
+        cv.check_type('library', library_name, PathLike)
+        self._library = input_path(library_name)
 
     @property
     def parameters(self) -> str:
@@ -748,7 +746,7 @@ class CompiledSource(SourceBase):
             XML element containing source data
 
         """
-        element.set("library", self.library)
+        element.set("library", str(self.library))
 
         if self.parameters is not None:
             element.set("parameters", self.parameters)
@@ -794,7 +792,7 @@ class FileSource(SourceBase):
 
     Parameters
     ----------
-    path : str or pathlib.Path
+    path : path-like
         Path to the source file from which sites should be sampled
     strength : float
         Strength of the source (default is 1.0)
@@ -829,14 +827,12 @@ class FileSource(SourceBase):
 
     def __init__(
         self,
-        path: PathLike | None = None,
+        path: PathLike,
         strength: float = 1.0,
         constraints: dict[str, Any] | None = None
     ):
         super().__init__(strength=strength, constraints=constraints)
-        self._path = None
-        if path is not None:
-            self.path = path
+        self.path = path
 
     @property
     def type(self) -> str:
@@ -848,8 +844,8 @@ class FileSource(SourceBase):
 
     @path.setter
     def path(self, p: PathLike):
-        cv.check_type('source file', p, str)
-        self._path = p
+        cv.check_type('source file', p, PathLike)
+        self._path = input_path(p)
 
     def populate_xml_element(self, element):
         """Add necessary file source information to an XML element
@@ -861,7 +857,7 @@ class FileSource(SourceBase):
 
         """
         if self.path is not None:
-            element.set("file", self.path)
+            element.set("file", str(self.path))
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element) -> openmc.FileSource:

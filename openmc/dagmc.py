@@ -86,9 +86,9 @@ class DAGMCUniverse(openmc.UniverseBase):
         material name is found in the DAGMC file, the material will be replaced
         with the openmc.Material object in the value.
     """
-
+    
     def __init__(self,
-                 filename,
+                 filename: cv.PathLike,
                  universe_id=None,
                  name='',
                  auto_geom_ids=False,
@@ -179,9 +179,9 @@ class DAGMCUniverse(openmc.UniverseBase):
         self.material_overrides[mat_name] = overrides
 
     @filename.setter
-    def filename(self, val):
-        cv.check_type('DAGMC filename', val, (Path, str))
-        self._filename = val
+    def filename(self, val: cv.PathLike):
+        cv.check_type('DAGMC filename', val, cv.PathLike)
+        self._filename = input_path(val)
 
     @property
     def auto_geom_ids(self):
@@ -241,8 +241,7 @@ class DAGMCUniverse(openmc.UniverseBase):
         def decode_str_tag(tag_val):
             return tag_val.tobytes().decode().replace('\x00', '')
 
-        dagmc_filepath = Path(self.filename).resolve()
-        with h5py.File(dagmc_filepath) as dagmc_file:
+        with h5py.File(self.filename) as dagmc_file:
             category_data = dagmc_file['tstt/tags/CATEGORY/values']
             category_strs = map(decode_str_tag, category_data)
             n = sum([v == geom_type.capitalize() for v in category_strs])
@@ -580,7 +579,7 @@ class DAGMCCell(openmc.Cell):
         warnings.warn("Bounding box is not available for cells in a DAGMC "
                       "universe", Warning)
         return BoundingBox.infinite()
-        
+
     def get_all_cells(self, memo=None):
         warnings.warn("get_all_cells is not available for cells in a DAGMC "
                       "universe", Warning)

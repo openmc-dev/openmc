@@ -294,3 +294,43 @@ def test_tabular_from_energyfilter():
 
     tab = efilter.get_tabular(values=np.array([10, 10, 5]), interpolation='linear-linear')
     assert tab.interpolation == 'linear-linear'
+
+
+def test_SurfaceFilter_CompositeSurface(run_in_tmpdir, box_model):
+    m = openmc.Material()
+    m.add_nuclide('U235', 1.0)
+    m.set_density('g/cm3', 1.0)
+
+    box = openmc.model.RectangularPrism(10., 10., boundary_type='vacuum')
+    c = openmc.Cell(fill=m, region=-box)
+    box_model.geometry.root_universe = openmc.Universe(cells=[c])
+    
+    tally = openmc.Tally()
+    tally.filters = [openmc.SurfaceFilter(box.get_surfaces())]
+    tally.scores = ['current']
+
+    box_model.tallies = [tally]
+
+    sp_name = box_model.run()
+
+    with openmc.StatePoint(sp_name) as sp:
+        current = sp.tallies[tally.id]
+        assert len(current.get_pandas_dataframe()['surface']) == 4
+        assert np.all(current.get_pandas_dataframe()['surface'] == box.get_id_surfaces())
+
+    box = openmc.model.RectangularParallelepiped(*[-10, 10]*3, boundary_type='vacuum')
+    c = openmc.Cell(fill=m, region=-box)
+    box_model.geometry.root_universe = openmc.Universe(cells=[c])
+    
+    tally = openmc.Tally()
+    tally.filters = [openmc.SurfaceFilter(box.get_surfaces())]
+    tally.scores = ['current']
+
+    box_model.tallies = [tally]
+
+    sp_name = box_model.run()
+
+    with openmc.StatePoint(sp_name) as sp:
+        current = sp.tallies[tally.id]
+        assert len(current.get_pandas_dataframe()['surface']) == 6
+        assert np.all(current.get_pandas_dataframe()['surface'] == box.get_id_surfaces())

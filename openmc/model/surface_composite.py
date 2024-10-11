@@ -1717,3 +1717,123 @@ class HexagonalPrism(CompositeSurface):
             prism &= ~corners
 
         return prism
+
+
+def _rotation_matrix(v1, v2):
+    """Compute rotation matrix that would rotate v1 into v2.
+
+    Parameters
+    ----------
+    v1 : numpy.ndarray
+        Unrotated vector
+    v2 : numpy.ndarray
+        Rotated vector
+
+    Returns
+    -------
+    3x3 rotation matrix
+
+    """
+    # Normalize vectors and compute cosine
+    u1 = v1 / np.linalg.norm(v1)
+    u2 = v2 / np.linalg.norm(v2)
+    cos_angle = np.dot(u1, u2)
+
+    I = np.identity(3)
+
+    # Handle special case where vectors are parallel or anti-parallel
+    if isclose(abs(cos_angle), 1.0, rel_tol=1e-8):
+        return np.sign(cos_angle)*I
+    else:
+        # Calculate rotation angle
+        sin_angle = np.sqrt(1 - cos_angle*cos_angle)
+
+        # Calculate axis of rotation
+        axis = np.cross(u1, u2)
+        axis /= np.linalg.norm(axis)
+
+        # Create cross-product matrix K
+        kx, ky, kz = axis
+        K = np.array([
+            [0.0, -kz, ky],
+            [kz, 0.0, -kx],
+            [-ky, kx, 0.0]
+        ])
+
+        # Create rotation matrix using Rodrigues' rotation formula
+        return I + K * sin_angle + (K @ K) * (1 - cos_angle)
+
+
+class ConicalFrustum(CompositeSurface):
+    """Conical frustum.
+
+    A conical frustum, also known as a right truncated cone, is a cone that is
+    truncated by two parallel planes that are perpendicular to the axis of the
+    cone. The lower and upper base of the conical frustum are circular faces.
+    This surface is equivalent to the TRC macrobody in MCNP.
+
+    .. versionadded:: 0.15.1
+
+    Parameters
+    ----------
+    center_base : iterable of float
+        Cartesian coordinates of the center of the bottom planar face.
+    axis : iterable of float
+        Vector from the center of the bottom planar face to the center of the
+        top planar face that defines the axis of the cone. The length of this
+        vector is the height of the conical frustum.
+    r1 : float
+        Radius of the lower cone base
+    r2 : float
+        Radius of the upper cone base
+    **kwargs
+        Keyword arguments passed to underlying plane classes
+
+    Attributes
+    ----------
+    cone : openmc.Cone
+        Cone surface
+    plane_bottom : openmc.Plane
+        Plane surface defining the bottom of the frustum
+    plane_top : openmc.Plane
+        Plane surface defining the top of the frustum
+
+    """
+    _surface_names = ('cone', 'plane_bottom', 'plane_top')
+
+    def __init__(self, center_base: Sequence[float], axis: Sequence[float],
+                 r1: float, r2: float, **kwargs):
+        center_base = np.array(center_base)
+        axis = np.array(axis)
+
+        # Determine length of axis height vector
+        h = np.linalg.norm(axis)
+
+        # To create the frustum oriented with the correct axis, first we will
+        # create a cone along the z axis and then rotate it according to the
+        # given axis. Thus, we first need to determine the apex using the z axis
+        # as a reference.
+        x0, y0, z0 = center_base
+        if r1 != r2:
+            apex = z0 + r1*h/(r1 - r2)
+            r_sq = ((r1 - r2)/h)**2
+            cone = openmc.ZCone(x0, y0, apex, r2=r_sq, **kwargs)
+        else:
+            # In the degenerate case r1 == r2, the cone becomes a cylinder
+            cone = openmc.ZCylinder(x0, y0, r1, **kwargs)
+
+        # Create the parallel planes
+        plane_bottom = openmc.ZPlane(z0, **kwargs)
+        plane_top = openmc.ZPlane(z0 + h, **kwargs)
+
+        # Determine rotation matrix corresponding to specified axis
+        u = np.array([0., 0., 1.])
+        rotation = _rotation_matrix(u, axis)
+
+        # Rotate the surfaces
+        self.cone = cone.rotate(rotation, pivot=center_base)
+        self.plane_bottom = plane_bottom.rotate(rotation, pivot=center_base)
+        self.plane_top = plane_top.rotate(rotation, pivot=center_base)
+
+    def __neg__(self) -> openmc.Region:
+        return +self.plane_bottom & -self.plane_top & -self.cone

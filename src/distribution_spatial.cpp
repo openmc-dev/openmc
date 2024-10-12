@@ -310,23 +310,34 @@ PointCloud::PointCloud(pugi::xml_node node)
   std::vector<double> coords;
 
   if (check_for_node(node, "coords")) {
-    point_cloud_ = get_node_array<Position>(node, "coords");
+    coords = get_node_array<double>(node, "coords");
   } else {
     fatal_error("No coordinates were provided for the PointCloud "
                 "spatial distribution");
   }
 
-  int32_t num_coords = point_cloud_.size();
+  int32_t extra_coords = coords.size() % 3;
 
-  std::vector<double> strengths(num_coords, 1.0);
+  if (extra_coords != 0) {
+    fatal_error(
+      fmt::format("Number of entries for coordinates must be multiple "
+                  "of three; found {} extra entires.",
+        extra_coords));
+  }
+
+  int32_t num_positions = coords.size() / 3;
+
+  point_cloud_.resize(num_positions);
+
+  std::vector<double> strengths(num_positions, 1.0);
 
   if (check_for_node(node, "strengths")) {
     strengths = get_node_array<double>(node, "strengths");
-    if (strengths.size() != num_coords) {
+    if (strengths.size() != num_positions) {
       fatal_error(
         fmt::format("Number of entries for the strengths array {} does "
                     "not match the number of spatial points provided {}.",
-          strengths.size(), num_coords));
+          strengths.size(), num_positions));
     }
   }
 

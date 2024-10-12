@@ -1,0 +1,8 @@
+# docker run -v $PWD:/root/OpenMC/openmc -it openmc_dagmc_libmesh
+
+# in docker
+# cd ~/OpenMC/build
+# cmake ../openmc
+# make -j 16 install
+# cd ../openmc
+# pip install .

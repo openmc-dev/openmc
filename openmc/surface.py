@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from copy import deepcopy
@@ -2631,7 +2632,7 @@ class Halfspace(Region):
         else:
             return Union((self, other))
 
-    def __invert__(self):
+    def __invert__(self) -> Halfspace:
         return -self.surface if self.side == '+' else +self.surface
 
     def __contains__(self, point):

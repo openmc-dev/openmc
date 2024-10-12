@@ -608,11 +608,6 @@ def return_surface_source_data(filepath):
     """Read a surface source file and return a sorted array composed
     of flatten arrays of source data for each surface source point.
 
-    TODO:
-
-    - use read_source_file from source.py instead. Or a dedicated function
-      to produce sorted list of source points for a given file.
-
     Parameters
     ----------
     filepath : str
@@ -629,27 +624,25 @@ def return_surface_source_data(filepath):
     keys = []
 
     # Read source file
-    with h5py.File(filepath, "r") as f:
-        for point in f["source_bank"]:
-            r = point["r"]
-            u = point["u"]
-            e = point["E"]
-            time = point["time"]
-            wgt = point["wgt"]
-            delayed_group = point["delayed_group"]
-            surf_id = point["surf_id"]
-            particle = point["particle"]
+    source = openmc.read_source_file(filepath)
 
-            key = (
-                f"{r[0]:.10e} {r[1]:.10e} {r[2]:.10e} {u[0]:.10e} {u[1]:.10e} {u[2]:.10e}"
-                f"{e:.10e} {time:.10e} {wgt:.10e} {delayed_group} {surf_id} {particle}"
-            )
-
-            keys.append(key)
-
-            values = [*r, *u, e, time, wgt, delayed_group, surf_id, particle]
-            assert len(values) == 12
-            data.append(values)
+    for point in source:
+        r = point.r
+        u = point.u
+        e = point.E
+        time = point.time
+        wgt = point.wgt
+        delayed_group = point.delayed_group
+        surf_id = point.surf_id
+        particle = point.particle
+        key = (
+            f"{r[0]:.10e} {r[1]:.10e} {r[2]:.10e} {u[0]:.10e} {u[1]:.10e} {u[2]:.10e}"
+            f"{e:.10e} {time:.10e} {wgt:.10e} {delayed_group} {surf_id} {particle}"
+        )
+        keys.append(key)
+        values = [*r, *u, e, time, wgt, delayed_group, surf_id, particle]
+        assert len(values) == 12
+        data.append(values)
 
     data = np.array(data)
     keys = np.array(keys)

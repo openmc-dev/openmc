@@ -221,7 +221,7 @@ namespace fmt {
 template<>
 struct formatter<openmc::Position> : formatter<std::string> {
   template<typename FormatContext>
-  auto format(const openmc::Position& pos, FormatContext& ctx)
+  auto format(const openmc::Position& pos, FormatContext& ctx) const
   {
     return formatter<std::string>::format(
       fmt::format("({}, {}, {})", pos.x, pos.y, pos.z), ctx);

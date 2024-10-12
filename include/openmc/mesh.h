@@ -127,8 +127,8 @@ public:
   virtual ~Mesh() = default;
 
   // Methods
-  //! Perform any preparation needed to support use in mesh filters
-  virtual void prepare_for_tallies() {};
+  //! Perform any preparation needed to support point location within the mesh
+  virtual void prepare_for_point_location() {};
 
   //! Update a position to the local coordinates of the mesh
   virtual void local_coords(Position& r) const {};
@@ -774,7 +774,7 @@ public:
   // Overridden Methods
 
   //! Perform any preparation needed to support use in mesh filters
-  void prepare_for_tallies() override;
+  void prepare_for_point_location() override;
 
   Position sample_element(int32_t bin, uint64_t* seed) const override;
 

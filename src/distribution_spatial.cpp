@@ -328,6 +328,10 @@ PointCloud::PointCloud(pugi::xml_node node)
   int32_t num_positions = coords.size() / 3;
 
   point_cloud_.resize(num_positions);
+  for (int32_t pos_idx = 0; pos_idx < num_positions; pos_idx++) {
+    point_cloud_[pos_idx] = {
+      coords[3 * pos_idx], coords[3 * pos_idx + 1], coords[3 * pos_idx + 2]};
+  }
 
   std::vector<double> strengths(num_positions, 1.0);
 

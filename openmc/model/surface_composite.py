@@ -1837,3 +1837,49 @@ class ConicalFrustum(CompositeSurface):
 
     def __neg__(self) -> openmc.Region:
         return +self.plane_bottom & -self.plane_top & -self.cone
+
+class Z_Vessel(CompositeSurface):
+    """Vessel as a composite surface parallel to z-axis
+        includes composite surfaces with a ZCylinder and 
+        semi-ellipsoids on top and the bottom of this cylinder.
+        """
+
+    _surface_names = ('cycl', 'zmin', 'zmax', 'bottom', 'top')
+
+    def __init__(self, x0, y0, r, zmin, zmax, hbottom, htop, **kwargs):
+        if zmin >= zmax:
+            raise ValueError('zmin must be less than zmax')
+
+        self.cycl = openmc.ZCylinder(x0=x0, y0=y0, r=r, **kwargs)
+        self.zmin = openmc.ZPlane(z0=zmin, **kwargs)
+        self.zmax = openmc.ZPlane(z0=zmax, **kwargs)
+
+        """
+        Coefficients for quadric surface to create an ellipsoid
+
+            General equation for an ellipsoid: 
+                (x-xo)^2/r^2 + (y-yo)^2/r^2 + (z-zo)^2/h^2 = 1
+                
+            General form of a quadric surface equation:
+                Ax^2 + By^2 + Cz^2 + Gx + Hy + Jz + K = 0
+                """
+
+        A = 1/r**2
+        B = 1/r**2
+        C1 = 1/hbottom**2
+        C2 = 1/htop**2
+        G = -(2*x0)/r**2
+        H = -(2*y0)/r**2
+        J1 = -(2*zmin)/hbottom**2
+        J2 = -(2*zmax)/htop**2
+        K1 = x0**2/r**2 + y0**2/r**2 + zmin**2/hbottom**2 - 1
+        K2 = x0**2/r**2 + y0**2/r**2 + zmax**2/htop**2 - 1
+
+        self.bottom = openmc.Quadric(a=A, b=B, c=C1, g=G, h=H, j=J1, k=K1, **kwargs)
+        self.top = openmc.Quadric(a=A, b=B, c=C2, g=G, h=H, j=J2, k=K2, **kwargs)
+    
+    def __neg__(self):
+        return (-self.cycl & +self.zmin & -self.zmax) | (-self.bottom & -self.zmin) | (-self.top & +self.zmax)
+    
+    def __pos__(self):
+        return (+self.cycl | -self.zmin | +self.zmax) & (+self.bottom | +self.zmin) & (+self.top | -self.zmax)

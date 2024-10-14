@@ -122,6 +122,60 @@ will depend on the 3D viewer, but should be straightforward.
           million or so).  Thus if you want an accurate picture that renders
           smoothly, consider using only one voxel in a certain direction.
 
+-----------
+Phong Plots
+-----------
+
+.. image:: ../_images/phong_triso.png
+   :width: 300px
+
+The :class:`openmc.PhongPlot` class allows three dimensional
+visualization of detailed geometric features without voxelization.
+The plot above visualizes a geometry created by :class:`openmc.TRISO`,
+with the materials in the fuel kernel distinguished by color. It was
+enclosed in a bounding box such that some kernels are cut off,
+revealing the inner structure of the kernel.
+
+The `Phong reflection model <https://en.wikipedia.org/wiki/Phong_reflection_model>`_
+approximates how light reflects off of a surface. On a diffusely
+light-scattering material, the Phong model prescribes the amount of light 
+reflected from a surface as proportional to the dot product between
+the normal vector of the surface and the vector between that point on
+the surface and the light. With this assumption, visually appealing
+plots of simulation geometries can be created.
+
+Phong plots use the same ray tracing functions that neutrons
+and photons do in OpenMC, so any input that does not leak
+particles can be visualized in 3D using a Phong plot.
+That being said, these plots are not useful for detecting
+overlap or undefined regions, so we recommend the slice
+plot approach for geometry debugging.
+
+Only a few inputs are required for a Phong plot. The camera
+location, where it's looking, and a set of opaque material or
+cell  IDs are required. The colors of materials or cells are
+prescribed in the same way as slice plots. The set of IDs
+which are opaque in the Phong plot must correspond to materials
+if coloring by material, or cells if coloring by cell.
+
+A minimal Phong plot input could be: ::
+
+  plot = openmc.PhongPlot()
+  plot.pixels = (600, 600)
+  plot.camera_position = (10.0, 20.0, -30.0)
+  plot.look_at = (4.0, 5.0, 1.0)
+  plot.color_by = 'cell'
+
+  # optional. defaults to camera_position
+  plot.light_position = (10, 20, 30) 
+
+  # controls ambient lighting. Defaults to 10%
+  plot.diffuse_fraction = 0.1
+  plot.opaque_domains = [cell2, cell3]
+
+These plots are then stored into a :class:`openmc.Plots` instance,
+just like the slice plots.
+
 ----------------
 Projection Plots
 ----------------
@@ -130,6 +184,21 @@ Projection Plots
 
    .. image:: ../_images/hexlat_anim.gif
      :width: 200px
+
+The :class:`openmc.ProjectionPlot` class also
+produces 3D visualizations of OpenMC geometries without voxelization,
+but is intended to show the inside of a model using wireframing
+of cell or material boundaries in addition to cell coloring based
+on path length of camera rays through the model. The coloring
+in these plots is a bit like turning the model into partially
+transparent colored glass that can be seen through, without any
+refractive effects. This is called volume rendering. The colors
+are specified in exactly the same interface employed by slice
+plots.
+
+Similar to Phong plots, these use the native ray tracing capabilities within
+OpenMC, so any geometry in which particles successfully run without overlaps
+or leaks will work with projection plots.
 
 The :class:`openmc.ProjectionPlot` class presents an alternative method of
 producing 3D visualizations of OpenMC geometries. It was developed to overcome

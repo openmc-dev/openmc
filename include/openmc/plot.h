@@ -2,6 +2,7 @@
 #define OPENMC_PLOT_H
 
 #include <cmath>
+#include <set>
 #include <sstream>
 #include <unordered_map>
 
@@ -61,6 +62,14 @@ struct RGBColor {
     return red == other.red && green == other.green && blue == other.blue;
   }
 
+  RGBColor& operator*=(const double x)
+  {
+    red *= x;
+    green *= x;
+    blue *= x;
+    return *this;
+  }
+
   // Members
   uint8_t red, green, blue;
 };
@@ -70,9 +79,14 @@ const RGBColor WHITE {255, 255, 255};
 const RGBColor RED {255, 0, 0};
 const RGBColor BLACK {0, 0, 0};
 
-/*
- * PlottableInterface classes just have to have a unique ID in the plots.xml
- * file, and guarantee being able to create output in some way.
+/**
+ * @class PlottableInterface
+ * @brief Interface for plottable objects.
+ *
+ * PlottableInterface classes must have a unique ID in the plots.xml file.
+ * They guarantee the ability to create output in some form. This interface
+ * is designed to be implemented by classes that produce plot-relevant data
+ * which can be visualized.
  */
 class PlottableInterface {
 private:
@@ -232,8 +246,8 @@ T SlicePlotBase::get_map() const
           data.set_overlap(y, x);
         }
       } // inner for
-    }   // outer for
-  }     // omp parallel
+    }
+  }
 
   return data;
 }
@@ -268,7 +282,83 @@ public:
   RGBColor meshlines_color_;      //!< Color of meshlines on the plot
 };
 
-class ProjectionPlot : public PlottableInterface {
+/**
+ * @class RaytracePlot
+ * @brief Base class for plots that generate images through ray tracing.
+ *
+ * This class serves as a base for plots that create their visuals by tracing
+ * rays from a camera through the problem geometry. It inherits from
+ * PlottableInterface, ensuring that it provides an implementation for
+ * generating output specific to ray-traced visualization. ProjectionPlot
+ * and PhongPlot provide concrete implementations of this class.
+ */
+class RayTracePlot : public PlottableInterface {
+public:
+  RayTracePlot(pugi::xml_node plot);
+
+  // Standard getters. No setting since it's done from XML.
+  const Position& camera_position() const { return camera_position_; }
+  const Position& look_at() const { return look_at_; }
+  const double& horizontal_field_of_view() const
+  {
+    return horizontal_field_of_view_;
+  }
+
+  virtual void print_info() const;
+
+  /* If starting the particle from outside the geometry, we have to
+   * find a distance to the boundary in a non-standard surface intersection
+   * check. It's an exhaustive search over surfaces in the top-level universe.
+   */
+  static int advance_to_boundary_from_void(GeometryState& p);
+
+protected:
+  void set_output_path(pugi::xml_node plot_node);
+
+  /*
+   * Gets the starting position and direction for the pixel corresponding
+   * to this horizontal and vertical position.
+   */
+  std::pair<Position, Direction> get_pixel_ray(int horiz, int vert) const;
+
+  std::array<int, 2> pixels_; // pixel dimension of resulting image
+
+private:
+  void set_look_at(pugi::xml_node node);
+  void set_camera_position(pugi::xml_node node);
+  void set_field_of_view(pugi::xml_node node);
+  void set_pixels(pugi::xml_node node);
+  void set_orthographic_width(pugi::xml_node node);
+
+  double horizontal_field_of_view_ {70.0}; // horiz. f.o.v. in degrees
+  Position camera_position_;               // where camera is
+  Position look_at_; // point camera is centered looking at
+
+  Direction up_ {0.0, 0.0, 1.0}; // which way is up
+
+  /* The horizontal thickness, if using an orthographic projection.
+   * If set to zero, we assume using a perspective projection.
+   */
+  double orthographic_width_ {0.0};
+
+  // Cached camera-to-model matrix
+  std::vector<double> camera_to_model_;
+};
+
+class ProjectionRay;
+
+/**
+ * @class ProjectionPlot
+ * @brief Creates plots that are like colorful x-ray imaging
+ *
+ * ProjectionPlot is a specialized form of RayTracePlot designed for creating
+ * projection plots. This involves tracing rays from a camera through the
+ * problem geometry and rendering the results based on depth of penetration
+ * through materials or cells and their colors.
+ */
+class ProjectionPlot : public RayTracePlot {
+
+  friend class ProjectionRay;
 
 public:
   ProjectionPlot(pugi::xml_node plot);
@@ -277,22 +367,10 @@ public:
   virtual void print_info() const;
 
 private:
-  void set_output_path(pugi::xml_node plot_node);
-  void set_look_at(pugi::xml_node node);
-  void set_camera_position(pugi::xml_node node);
-  void set_field_of_view(pugi::xml_node node);
-  void set_pixels(pugi::xml_node node);
   void set_opacities(pugi::xml_node node);
-  void set_orthographic_width(pugi::xml_node node);
   void set_wireframe_thickness(pugi::xml_node node);
   void set_wireframe_ids(pugi::xml_node node);
   void set_wireframe_color(pugi::xml_node node);
-
-  /* If starting the particle from outside the geometry, we have to
-   * find a distance to the boundary in a non-standard surface intersection
-   * check. It's an exhaustive search over surfaces in the top-level universe.
-   */
-  static int advance_to_boundary_from_void(GeometryState& p);
 
   /* Checks if a vector of two TrackSegments is equivalent. We define this
    * to mean not having matching intersection lengths, but rather having
@@ -320,29 +398,149 @@ private:
     {}
   };
 
-  // Max intersections before we assume ray tracing is caught in an infinite
-  // loop:
-  static const int MAX_INTERSECTIONS = 1000000;
-
-  std::array<int, 2> pixels_;              // pixel dimension of resulting image
-  double horizontal_field_of_view_ {70.0}; // horiz. f.o.v. in degrees
-  Position camera_position_;               // where camera is
-  Position look_at_;             // point camera is centered looking at
-  Direction up_ {0.0, 0.0, 1.0}; // which way is up
-
   // which color IDs should be wireframed. If empty, all cells are wireframed.
   vector<int> wireframe_ids_;
-
-  /* The horizontal thickness, if using an orthographic projection.
-   * If set to zero, we assume using a perspective projection.
-   */
-  double orthographic_width_ {0.0};
 
   // Thickness of the wireframe lines. Can set to zero for no wireframe.
   int wireframe_thickness_ {1};
 
   RGBColor wireframe_color_ {BLACK}; // wireframe color
   vector<double> xs_; // macro cross section values for cell volume rendering
+};
+
+/**
+ * @class PhongPlot
+ * @brief Plots 3D objects as the eye might see them.
+ *
+ * Plots a geometry with single-scattered Phong lighting
+ * plus a diffuse lighting contribution. The result is a
+ * physically reasonable, aesthetic 3D view of a geometry.
+ */
+class PhongPlot : public RayTracePlot {
+  friend class PhongRay;
+
+public:
+  PhongPlot(pugi::xml_node plot);
+
+  virtual void create_output() const;
+  virtual void print_info() const;
+
+private:
+  void set_opaque_ids(pugi::xml_node node);
+  void set_light_position(pugi::xml_node node);
+  void set_diffuse_fraction(pugi::xml_node node);
+
+  std::set<int> opaque_ids_;
+
+  double diffuse_fraction_ {0.1};
+
+  // By default, the light is at the camera unless otherwise specified.
+  Position light_location_;
+};
+
+// Base class that implements ray tracing logic, not necessarily through
+// defined regions of the geometry but also outside of it.
+class Ray : public GeometryState {
+
+public:
+  Ray(Position r, Direction u) { init_from_r_u(r, u); }
+
+  // Called at every surface intersection within the model
+  virtual void on_intersection() = 0;
+
+  /*
+   * Traces the ray through the geometry, calling on_intersection
+   * at every surface boundary.
+   */
+  void trace();
+
+  /*
+   * Implementation code has read-only access to the distance
+   * between the ray and the next cell it's intersecting
+   */
+  const BoundaryInfo& dist() { return dist_; }
+
+  const int& first_surface() { return first_surface_; }
+
+  const int& i_surface() { return i_surface_; }
+
+  // Stops the ray and exits tracing when called from on_intersection
+  void stop() { stop_ = true; }
+
+  // Sets the dist_ variable
+  void compute_distance();
+
+protected:
+  // Records how far the ray has traveled
+  double traversal_distance_ {0.0};
+
+private:
+  // Max intersections before we assume ray tracing is caught in an infinite
+  // loop:
+  static const int MAX_INTERSECTIONS = 1000000;
+
+  bool hit_something_ {false};
+  bool intersection_found_ {true};
+  bool stop_ {false};
+
+  unsigned event_counter_ {0};
+
+  // Records the first intersected surface on the model
+  int first_surface_ {-1};
+  int i_surface_ {-1};
+
+  BoundaryInfo dist_;
+};
+
+class ProjectionRay : public Ray {
+public:
+  ProjectionRay(Position r, Direction u, const ProjectionPlot& plot,
+    vector<ProjectionPlot::TrackSegment>& line_segments)
+    : Ray(r, u), plot_(plot), line_segments_(line_segments)
+  {}
+
+  virtual void on_intersection() override;
+
+private:
+  /* Store a reference to the plot object which is running this ray, in order
+   * to access some of the plot settings which influence the behavior where
+   * intersections are.
+   */
+  const ProjectionPlot& plot_;
+
+  /* The ray runs through the geometry, and records the lengths of ray segments
+   * and cells they lie in along the way.
+   */
+  vector<ProjectionPlot::TrackSegment>& line_segments_;
+};
+
+class PhongRay : public Ray {
+public:
+  PhongRay(Position r, Direction u, const PhongPlot& plot)
+    : Ray(r, u), plot_(plot)
+  {
+    result_color_ = plot_.not_found_;
+  }
+
+  virtual void on_intersection() override;
+
+  const RGBColor& result_color() { return result_color_; }
+
+private:
+  const PhongPlot& plot_;
+
+  /* After the ray is reflected, it is moving towards the
+   * camera. It does that in order to see if the exposed surface
+   * is shadowed by something else.
+   */
+  bool reflected_ {false};
+
+  // Have to record the first hit ID, so that if the region
+  // does get shadowed, we recall what its color should be
+  // when tracing from the surface to the light.
+  int orig_hit_id_ {-1};
+
+  RGBColor result_color_;
 };
 
 //===============================================================================

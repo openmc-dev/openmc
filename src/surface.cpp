@@ -130,7 +130,7 @@ bool Surface::sense(Position r, Direction u) const
   return f > 0.0;
 }
 
-Direction Surface::reflect(Position r, Direction u, GeometryState* p) const
+Direction Surface::reflect(Position r, Direction u) const
 {
   // Determine projection of direction onto normal and squared magnitude of
   // normal.
@@ -141,7 +141,7 @@ Direction Surface::reflect(Position r, Direction u, GeometryState* p) const
 }
 
 Direction Surface::diffuse_reflect(
-  Position r, Direction u, uint64_t* seed, GeometryState* p) const
+  Position r, Direction u, uint64_t* seed) const
 {
   // Diffuse reflect direction according to the normal.
   // cosine distribution

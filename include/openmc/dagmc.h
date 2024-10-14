@@ -43,7 +43,7 @@ public:
   double evaluate(Position r) const override;
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
-  Direction reflect(Position r, Direction u, GeometryState* p) const override;
+  Direction reflect(Position r, Direction u) const override;
 
   inline void to_hdf5_inner(hid_t group_id) const override {};
 

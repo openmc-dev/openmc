@@ -82,6 +82,13 @@ Position Position::rotate(const vector<double>& rotation) const
     x * rotation[6] + y * rotation[7] + z * rotation[8]};
 }
 
+Position Position::inverse_rotate(const vector<double>& rotation) const
+{
+  return {x * rotation[0] + y * rotation[3] + z * rotation[6],
+    x * rotation[1] + y * rotation[4] + z * rotation[7],
+    x * rotation[2] + y * rotation[5] + z * rotation[8]};
+}
+
 std::ostream& operator<<(std::ostream& os, Position r)
 {
   os << "(" << r.x << ", " << r.y << ", " << r.z << ")";

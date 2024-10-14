@@ -111,14 +111,6 @@ jobs:
           echo ${COMMIT_MESSAGE}
           echo "COMMIT_MESSAGE=${COMMIT_MESSAGE}" >> $GITHUB_ENV
           
-      - name: Setup tmate debug session
-        # only setup tmate if the following key is in the commit message
-        if: ${{ contains(env.COMMIT_MESSAGE, '[gha-debug]') }}
-        uses: mxschmitt/action-tmate@v3
-        with:
-          # starts a tmate session and allows workflow to continue
-          detached: true
-
       - name: Apt dependencies
         shell: bash
         run: |
@@ -173,6 +165,12 @@ jobs:
           CTEST_OUTPUT_ON_FAILURE=1 make test -C $GITHUB_WORKSPACE/build/
           $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
+      - name: Setup tmate debug session
+        continue-on-error: true
+        if: ${{ contains(env.COMMIT_MESSAGE, '[gha-debug]') }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 10
+      
       - name: after_success
         shell: bash
         run: |

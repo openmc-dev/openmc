@@ -352,11 +352,10 @@ class MicroXS:
             kwargs['float_precision'] = 'round_trip'
 
         df = pd.read_csv(csv_file, **kwargs)
-        df.set_index(['nuclides', 'reactions', 'groups'], inplace=True)
+        df.set_index(['nuclides', 'reactions'], inplace=True)
         nuclides = list(df.index.unique(level='nuclides'))
         reactions = list(df.index.unique(level='reactions'))
-        groups = list(df.index.unique(level='groups'))
-        shape = (len(nuclides), len(reactions), len(groups))
+        shape = (len(nuclides), len(reactions))
         data = df.values.reshape(shape)
         return cls(data, nuclides, reactions)
 
@@ -377,10 +376,9 @@ class MicroXS:
             Keyword arguments passed to :meth:`pandas.DataFrame.to_csv`
 
         """
-        groups = self.data.shape[2]
         multi_index = pd.MultiIndex.from_product(
-            [self.nuclides, self.reactions, range(1, groups + 1)],
-            names=['nuclides', 'reactions', 'groups']
+            [self.nuclides, self.reactions],
+            names=['nuclides', 'reactions']
         )
         df = pd.DataFrame({'xs': self.data.flatten()}, index=multi_index)
         df.to_csv(*args, **kwargs)

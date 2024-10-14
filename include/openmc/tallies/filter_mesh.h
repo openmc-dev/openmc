@@ -53,11 +53,11 @@ public:
 
   virtual void set_rotation(const vector<double>&  rotation);
 
-  virtual void set_rotation(const double rotation[3]);
+  //virtual void set_rotation(const double rotation[3]);
 
-  virtual const vector<double>& rotation() const { return rotation_; }
+  //virtual const vector<double>& rotation() const { return rotation_; }
 
-  virtual bool rotated() const { return rotated_; }
+  //virtual bool rotated() const { return rotated_; }
 
 protected:
   //----------------------------------------------------------------------------
@@ -67,7 +67,7 @@ protected:
   bool translated_ {false}; //!< Whether or not the filter is translated
   Position translation_ {0.0, 0.0, 0.0}; //!< Filter translation
   bool rotated_ {false}; //!< Whether or not the filter is rotated
-  vector<double> rotation_ {0.0, 0.0, 0.0}; //!< Filter rotation
+  vector<double> rotation_; //!< Filter rotation
 };
 
 } // namespace openmc

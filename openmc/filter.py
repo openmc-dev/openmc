@@ -901,10 +901,9 @@ class MeshFilter(Filter):
         return self._rotation
 
     @rotation.setter
-    def rotation(self, r):
-        cv.check_type('mesh filter rotation', r, Iterable, Real)
-        cv.check_length('mesh filter rotation', r, 3)
-        self._rotation = np.asarray(r)
+    def rotation(self, rotation):
+        cv.check_length('mesh filter rotation', rotation, 3)
+        self._rotation = np.asarray(rotation)
 
     def can_merge(self, other):
         # Mesh filters cannot have more than one bin
@@ -989,7 +988,7 @@ class MeshFilter(Filter):
         if self.translation is not None:
             element.set('translation', ' '.join(map(str, self.translation)))
         if self.rotation is not None:
-            element.set('rotation', ' '.join(map(str, self.rotation)))
+            element.set('rotation', ' '.join(map(str, self.rotation.ravel())))
         return element
 
     @classmethod
@@ -1004,7 +1003,9 @@ class MeshFilter(Filter):
             out.translation = [float(x) for x in translation.split()]
         rotation = elem.get('rotation')
         if rotation:
-            out.rotation = [float(x) for x in rotation.split()]
+            values = [float(x) for x in rotation.split()]
+            if len(values) == 9:
+                out.rotation = np.array(values).reshape(3, 3)
         return out
 
 

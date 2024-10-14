@@ -31,6 +31,7 @@ void MeshFilter::from_xml(pugi::xml_node node)
   if (check_for_node(node, "translation")) {
     set_translation(get_node_array<double>(node, "translation"));
   }
+  // Read the rotation transform.
   if (check_for_node(node, "rotation")) {
     set_rotation(get_node_array<double>(node, "rotation"));
   }
@@ -105,16 +106,45 @@ void MeshFilter::set_translation(const double translation[3])
   this->set_translation({translation[0], translation[1], translation[2]});
 }
 
-void MeshFilter::set_rotation(const vector<double>& rotation)
+void MeshFilter::set_rotation(const vector<double>& rot)
 {
-  rotated_ = true;
-  rotation_ = rotation;
+  //rotated_ = true;
+  rotation_.clear();
+
+  if (rot.size() != 3 && rot.size() != 9) {
+    fatal_error(fmt::format("Non-3D rotation vector applied to mesh filter {}", id_));
+  }
+
+  // Compute and store the rotation matrix.
+  rotation_.clear();
+  rotation_.reserve(rot.size() == 9 ? 9 : 12);
+  if (rot.size() == 3) {
+    double phi = -rot[0] * PI / 180.0;
+    double theta = -rot[1] * PI / 180.0;
+    double psi = -rot[2] * PI / 180.0;
+    rotation_.push_back(std::cos(theta) * std::cos(psi));
+    rotation_.push_back(-std::cos(phi) * std::sin(psi) +
+                        std::sin(phi) * std::sin(theta) * std::cos(psi));
+    rotation_.push_back(std::sin(phi) * std::sin(psi) +
+                        std::cos(phi) * std::sin(theta) * std::cos(psi));
+    rotation_.push_back(std::cos(theta) * std::sin(psi));
+    rotation_.push_back(std::cos(phi) * std::cos(psi) +
+                        std::sin(phi) * std::sin(theta) * std::sin(psi));
+    rotation_.push_back(-std::sin(phi) * std::cos(psi) +
+                        std::cos(phi) * std::sin(theta) * std::sin(psi));
+    rotation_.push_back(-std::sin(theta));
+    rotation_.push_back(std::sin(phi) * std::cos(theta));
+    rotation_.push_back(std::cos(phi) * std::cos(theta));
+
+    // When user specifies angles, write them at end of vector
+    rotation_.push_back(rot[0]);
+    rotation_.push_back(rot[1]);
+    rotation_.push_back(rot[2]);
+  } else {
+    std::copy(rot.begin(), rot.end(), std::back_inserter(rotation_));
+  }
 }
 
-void MeshFilter::set_rotation(const double rotation[3])
-{
-  this->set_rotation({rotation[0], rotation[1], rotation[2]});
-}
 //==============================================================================
 // C-API functions
 //==============================================================================
@@ -223,8 +253,9 @@ extern "C" int openmc_mesh_filter_set_translation(
   return 0;
 }
 
+//! Return the rotation matrix of a mesh filter
 extern "C" int openmc_mesh_filter_get_rotation(
-  int32_t index, double rotation[3])
+  int32_t index, double rot[], size_t* n)
 {
   // Make sure this is a valid index to an allocated filter
   if (int err = verify_filter(index))
@@ -232,25 +263,28 @@ extern "C" int openmc_mesh_filter_get_rotation(
 
   // Check the filter type
   const auto& filter = model::tally_filters[index];
-  if (filter->type() != FilterType::MESH &&
-      filter->type() != FilterType::MESHBORN &&
-      filter->type() != FilterType::MESH_SURFACE) {
-    set_errmsg("Tried to get a rotation from a non-mesh-based filter.");
+  if (filter->type() != FilterType::MESH) {
+    set_errmsg("Tried to get a rotation from a non-mesh filter.");
     return OPENMC_E_INVALID_TYPE;
   }
 
-  // Get rotation from the mesh filter and set value
-  auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
-  const auto& r = mesh_filter->rotation();
-  for (int i = 0; i < 3; i++) {
-    rotation[i] = r[i];
-  }
-
+  *n = cell->rotation_.size();
+  std::memcpy(rot, cell->rotation_.data(), *n * sizeof(cell->rotation_[0]));
   return 0;
+
+  //// Get rotation from the mesh filter and set value
+  //auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
+  //const auto& r = mesh_filter->rotation();
+  //for (int i = 0; i < 3; i++) {
+  //  rotation[i] = r[i];
+  //}
+
+  //return 0;
 }
 
+//! Set the flattened rotation matrix of a mesh filter
 extern "C" int openmc_mesh_filter_set_rotation(
-  int32_t index, double rotation[3])
+  int32_t index, const double rot[], size_t rot_len)
 {
   // Make sure this is a valid index to an allocated filter
   if (int err = verify_filter(index))
@@ -258,20 +292,21 @@ extern "C" int openmc_mesh_filter_set_rotation(
 
   const auto& filter = model::tally_filters[index];
   // Check the filter type
-  if (filter->type() != FilterType::MESH &&
-      filter->type() != FilterType::MESHBORN &&
-      filter->type() != FilterType::MESH_SURFACE) {
-    set_errmsg("Tried to set mesh on a non-mesh-based filter.");
+  if (filter->type() != FilterType::MESH) {
+    set_errmsg("Tried to set a rotation from a non-mesh filter.");
     return OPENMC_E_INVALID_TYPE;
   }
 
-  // Get a pointer to the filter and downcast
-  auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
-
-  // Set the rotation
-  mesh_filter->set_rotation(rotation);
-
+  std::vector<double> vec_rot(rot, rot + rot_len);
+  model::cells[index]->set_rotation(vec_rot);
   return 0;
+  //// Get a pointer to the filter and downcast
+  //auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
+
+  //// Set the rotation
+  //mesh_filter->set_rotation(rotation);
+
+  //return 0;
 }
 
 } // namespace openmc

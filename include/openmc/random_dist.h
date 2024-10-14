@@ -50,8 +50,9 @@ extern "C" double watt_spectrum(double a, double b, uint64_t* seed);
 //==============================================================================
 //! Samples an energy from the Gaussian distribution.
 //!
-//! Samples from a normal distribution with a given mean and standard deviation
-//! The PDF is defined as s(x) = (1/2*sigma*sqrt(2) * e-((mu-x)/2*sigma)^2
+//! Samples from a Normal distribution with a given mean and standard deviation
+//! The PDF is defined as
+//! s(x) = (1 / (sigma * sqrt(2 * pi))) * exp(-(1/2) * ((mu-x) / sigma)^2)
 //! Its sampled according to
 //! http://www-pdg.lbl.gov/2009/reviews/rpp2009-rev-monte-carlo-techniques.pdf
 //! section 33.4.4

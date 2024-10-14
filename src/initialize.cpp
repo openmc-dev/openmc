@@ -16,6 +16,7 @@
 #include "openmc/cross_sections.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/finalize.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
@@ -102,36 +103,36 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   // will be re-initialized later
   openmc::openmc_set_seed(DEFAULT_SEED);
 
-  // Copy previous locale and set locale to C. This is a workaround for an issue
-  // whereby when openmc_init is called from the plotter, the Qt application
-  // framework first calls std::setlocale, which affects how pugixml reads
-  // floating point numbers due to a bug:
-  // https://github.com/zeux/pugixml/issues/469
-  std::string prev_locale = std::setlocale(LC_ALL, nullptr);
-  if (std::setlocale(LC_ALL, "C") == NULL) {
-    fatal_error("Cannot set locale to C.");
-  }
-
-  // Read XML input files
-  if (!read_model_xml())
-    read_separate_xml_files();
-
-  // Reset locale to previous state
-  if (std::setlocale(LC_ALL, prev_locale.c_str()) == NULL) {
-    fatal_error("Cannot reset locale.");
-  }
+  // Read input files and initialize model in memory
+  init_model_in_memory();
 
   // Write some initial output under the header if needed
   initial_output();
-
-  // Check for particle restart run
-  if (settings::particle_restart_run)
-    settings::run_mode = RunMode::PARTICLE;
 
   // Stop initialization timer
   simulation::time_initialize.stop();
   simulation::time_total.stop();
 
+  return 0;
+}
+
+int openmc_reload_model_geometry()
+{
+  using namespace openmc;
+
+  // Let everyone know that there is already a
+  // model in memory and this is a reload
+  simulation::reloading = true;
+
+  // Clear all simulation results and model data
+  // except materials and cross sections
+  openmc_finalize();
+
+  // Reload model data without modifying
+  // previously loaded materials and cross sections
+  init_model_in_memory();
+
+  simulation::reloading = false;
   return 0;
 }
 
@@ -314,6 +315,34 @@ int parse_command_line(int argc, char* argv[])
   return 0;
 }
 
+void init_model_in_memory()
+{
+  using namespace openmc;
+
+  // Copy previous locale and set locale to C. This is a workaround for an issue
+  // whereby when openmc_init is called from the plotter, the Qt application
+  // framework first calls std::setlocale, which affects how pugixml reads
+  // floating point numbers due to a bug:
+  // https://github.com/zeux/pugixml/issues/469
+  std::string prev_locale = std::setlocale(LC_ALL, nullptr);
+  if (std::setlocale(LC_ALL, "C") == NULL) {
+    fatal_error("Cannot set locale to C.");
+  }
+
+  // Read XML input files
+  if (!read_model_xml())
+    read_separate_xml_files();
+
+  // Reset locale to previous state
+  if (std::setlocale(LC_ALL, prev_locale.c_str()) == NULL) {
+    fatal_error("Cannot reset locale.");
+  }
+
+  // Check for particle restart run
+  if (settings::particle_restart_run)
+    settings::run_mode = RunMode::PARTICLE;
+}
+
 bool read_model_xml()
 {
   std::string model_filename = settings::path_input;
@@ -371,16 +400,18 @@ bool read_model_xml()
     }
   }
 
-  // Read materials and cross sections
-  if (!check_for_node(root, "materials")) {
-    fatal_error(fmt::format(
-      "No <materials> node present in the {} file.", model_filename));
-  }
+  // Read materials and cross sections if not already in memory
+  if (!simulation::reloading) {
+    if (!check_for_node(root, "materials")) {
+      fatal_error(fmt::format(
+        "No <materials> node present in the {} file.", model_filename));
+    }
 
-  if (settings::run_mode != RunMode::PLOTTING) {
-    read_cross_sections_xml(root.child("materials"));
+    if (settings::run_mode != RunMode::PLOTTING) {
+      read_cross_sections_xml(root.child("materials"));
+    }
+    read_materials_xml(root.child("materials"));
   }
-  read_materials_xml(root.child("materials"));
 
   // Read geometry
   if (!check_for_node(root, "geometry")) {
@@ -420,10 +451,12 @@ bool read_model_xml()
 void read_separate_xml_files()
 {
   read_settings_xml();
-  if (settings::run_mode != RunMode::PLOTTING) {
-    read_cross_sections_xml();
+  if (!simulation::reloading) {
+    if (settings::run_mode != RunMode::PLOTTING) {
+      read_cross_sections_xml();
+    }
+    read_materials_xml();
   }
-  read_materials_xml();
   read_geometry_xml();
 
   // Final geometry setup and assign temperatures

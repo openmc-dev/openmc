@@ -46,6 +46,10 @@ _RADIATION_TYPES = {
     11: 'neutrino'
 }
 
+# used to cache values, populated when decay data is loaded
+_DECAY_PARTICLE_ENERGY = {"photon": {}, "neutron": {}}
+_DECAY_ENERGY = {}
+
 
 def get_decay_modes(value):
     """Return sequence of decay modes given an ENDF RTYP value.
@@ -574,8 +578,50 @@ class Decay(EqualityMixin):
         self._sources = merged_sources
         return self._sources
 
+def decay_particle_energy(nuclide: str, particle: str) -> Optional[Univariate]:
+    """Get photon energy distribution resulting from the decay of a nuclide
 
-_DECAY_PHOTON_ENERGY = {}
+    This function relies on data stored in a depletion chain. Before calling it
+    for the first time, you need to ensure that a depletion chain has been
+    specified in openmc.config['chain_file'].
+
+    .. versionadded:: 0.15.1
+
+    Parameters
+    ----------
+    nuclide : str
+        Name of nuclide, e.g., 'Co58'
+    particle : str
+        Type of particle, e.g., 'photon' or 'neutron'
+
+    Returns
+    -------
+    openmc.stats.Univariate or None
+        Distribution of energies in [eV] of particle emitted from decay, or None
+        if no particle source exists. Note that the probabilities represent
+        intensities, given as [Bq].
+    """
+
+    if not _DECAY_PARTICLE_ENERGY[particle]:
+        chain_file = openmc.config.get('chain_file')
+        if chain_file is None:
+            raise DataError(
+                "A depletion chain file must be specified with "
+                "openmc.config['chain_file'] in order to load decay data."
+            )
+
+        from openmc.deplete import Chain
+        chain = Chain.from_xml(chain_file)
+        for nuc in chain.nuclides:
+            if particle in nuc.sources:
+                _DECAY_PARTICLE_ENERGY[particle][nuc.name] = nuc.sources[particle]
+
+        # If the chain file contained no sources at all, warn the user
+        if not _DECAY_PARTICLE_ENERGY[particle]:
+            warn(f"Chain file '{chain_file}' does not have any decay {particle} "
+                 "sources listed.")
+
+    return _DECAY_PARTICLE_ENERGY[particle].get(nuclide)
 
 
 def decay_photon_energy(nuclide: str) -> Univariate | None:
@@ -599,29 +645,31 @@ def decay_photon_energy(nuclide: str) -> Univariate | None:
         if no photon source exists. Note that the probabilities represent
         intensities, given as [Bq].
     """
-    if not _DECAY_PHOTON_ENERGY:
-        chain_file = openmc.config.get('chain_file')
-        if chain_file is None:
-            raise DataError(
-                "A depletion chain file must be specified with "
-                "openmc.config['chain_file'] in order to load decay data."
-            )
-
-        from openmc.deplete import Chain
-        chain = Chain.from_xml(chain_file)
-        for nuc in chain.nuclides:
-            if 'photon' in nuc.sources:
-                _DECAY_PHOTON_ENERGY[nuc.name] = nuc.sources['photon']
-
-        # If the chain file contained no sources at all, warn the user
-        if not _DECAY_PHOTON_ENERGY:
-            warn(f"Chain file '{chain_file}' does not have any decay photon "
-                 "sources listed.")
-
-    return _DECAY_PHOTON_ENERGY.get(nuclide)
+    return decay_particle_energy(nuclide=nuclide, particle="photon")
 
 
-_DECAY_ENERGY = {}
+def decay_neutron_energy(nuclide: str) -> Optional[Univariate]:
+    """Get neutron energy distribution resulting from the decay of a nuclide
+
+    This function relies on data stored in a depletion chain. Before calling it
+    for the first time, you need to ensure that a depletion chain has been
+    specified in openmc.config['chain_file'].
+
+    .. versionadded:: 0.15.1
+
+    Parameters
+    ----------
+    nuclide : str
+        Name of nuclide, e.g., 'N17'
+
+    Returns
+    -------
+    openmc.stats.Univariate or None
+        Distribution of energies in [eV] of neutrons emitted from decay, or None
+        if no neutron source exists. Note that the probabilities represent
+        intensities, given as [Bq].
+    """
+    return decay_particle_energy(nuclide=nuclide, particle="neutron")
 
 
 def decay_energy(nuclide: str):

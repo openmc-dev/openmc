@@ -31,6 +31,7 @@
 #include "openmc/tallies/filter_particle.h"
 #include "openmc/tallies/filter_sph_harm.h"
 #include "openmc/tallies/filter_surface.h"
+#include "openmc/tallies/filter_timed_mesh.h"
 #include "openmc/xml_interface.h"
 
 #include "xtensor/xadapt.hpp"
@@ -323,6 +324,14 @@ Tally::Tally(pugi::xml_node node)
     auto df = dynamic_cast<MeshFilter*>(model::tally_filters[i].get());
     if (df) {
       auto lm = dynamic_cast<LibMesh*>(model::meshes[df->mesh()].get());
+      if (lm && estimator_ == TallyEstimator::TRACKLENGTH) {
+        fatal_error("A tracklength estimator cannot be used with "
+                    "an unstructured LibMesh tally.");
+      }
+    }
+    auto df2 = dynamic_cast<TimedMeshFilter*>(model::tally_filters[i].get());
+    if (df2) {
+      auto lm = dynamic_cast<LibMesh*>(model::meshes[df2->mesh()].get());
       if (lm && estimator_ == TallyEstimator::TRACKLENGTH) {
         fatal_error("A tracklength estimator cannot be used with "
                     "an unstructured LibMesh tally.");

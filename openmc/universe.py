@@ -51,6 +51,22 @@ class UniverseBase(ABC, IDManagerMixin):
         string += '{: <16}=\t{}\n'.format('\tName', self._name)
         return string
 
+    def __contains__(self, cell):
+        
+        check_type('cell', cell, openmc.Cell)
+
+        #return in constant time if the cell is a leaf
+        if cell.id in self.cells:
+            return True
+
+        #otherwise do a depth-first search
+        for child_cell in self.cells.values():
+            if isinstance(child_cell.fill, openmc.Universe):
+                if cell in child_cell.fill:
+                    return True
+        return False
+
+
     @property
     def name(self):
         return self._name

@@ -31,6 +31,43 @@ def test_basic():
     u.clear_cells()
     assert not set(u.cells)
 
+def test_contains_cell():
+
+    c1 = openmc.Cell()
+    c2 = openmc.Cell()
+    c3 = openmc.Cell()
+    c3 = openmc.Cell()
+    c4 = openmc.Cell()
+
+    u0 = openmc.Universe(name='coldplay', cells=(c1, c2, c3))
+
+
+    assert(c1 in u0)
+    assert(c2 in u0)
+    assert(c2 in u0)
+    assert not (c4 in u0)
+    with pytest.raises(TypeError):
+        'hi' in u0
+
+    c5 = openmc.Cell()
+    u5 = openmc.Universe(cells=[c5])
+    c6 = openmc.Cell()
+    u6 = openmc.Universe(cells=[c6])
+    c7 = openmc.Cell(fill=u5)
+    c8= openmc.Cell(fill=u6)
+    u7 = openmc.DAGMCUniverse(filename="")
+    c9 = openmc.Cell(fill=u7)
+    u_composed = openmc.Universe(cells=[c7, c8, c9])
+
+    assert not c1 in u_composed
+    assert c5 in u_composed
+    assert c6 in u_composed 
+    assert c8 in u_composed
+    assert c9 in u_composed
+    assert not c4 in u_composed 
+
+    with pytest.raises(TypeError):
+         'hi' in u_composed
 
 def test_bounding_box():
     cyl1 = openmc.ZCylinder(r=1.0)

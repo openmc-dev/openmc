@@ -7,6 +7,7 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/mesh.h"
+#include "openmc/position.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -51,9 +52,9 @@ void MeshFilter::get_all_bins(
     r -= translation();
   }
   // apply rotation if present
-  if (rotated_) {
-    last_r.rotate(rotation());
-    r.rotate(rotation());
+  if (!rotation_.empty()) {
+    last_r.rotate(rotation_);
+    r.rotate(rotation_);
   }
 
   if (estimator != TallyEstimator::TRACKLENGTH) {
@@ -111,9 +112,9 @@ void MeshFilter::set_rotation(const vector<double>& rot)
   //rotated_ = true;
   rotation_.clear();
 
-  if (rot.size() != 3 && rot.size() != 9) {
-    fatal_error(fmt::format("Non-3D rotation vector applied to mesh filter {}", id_));
-  }
+  //if (rot.size() != 3 && rot.size() != 9) {
+  //  fatal_error(fmt::format("Non-3D rotation vector applied to mesh filter {}", id_));
+  //}
 
   // Compute and store the rotation matrix.
   rotation_.clear();
@@ -267,9 +268,10 @@ extern "C" int openmc_mesh_filter_get_rotation(
     set_errmsg("Tried to get a rotation from a non-mesh filter.");
     return OPENMC_E_INVALID_TYPE;
   }
-
-  *n = cell->rotation_.size();
-  std::memcpy(rot, cell->rotation_.data(), *n * sizeof(cell->rotation_[0]));
+  // Get rotation from the mesh filter and set value
+  auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
+  *n = mesh_filter->rotation().size();
+  std::memcpy(rot, mesh_filter->rotation().data(), *n * sizeof(mesh_filter->rotation()[0]));
   return 0;
 
   //// Get rotation from the mesh filter and set value
@@ -278,7 +280,7 @@ extern "C" int openmc_mesh_filter_get_rotation(
   //for (int i = 0; i < 3; i++) {
   //  rotation[i] = r[i];
   //}
-
+  //mesh_filter->set_rotation();
   //return 0;
 }
 
@@ -297,8 +299,10 @@ extern "C" int openmc_mesh_filter_set_rotation(
     return OPENMC_E_INVALID_TYPE;
   }
 
+  // Get a pointer to the filter and downcast
+  auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
   std::vector<double> vec_rot(rot, rot + rot_len);
-  model::cells[index]->set_rotation(vec_rot);
+  mesh_filter->set_rotation(vec_rot);
   return 0;
   //// Get a pointer to the filter and downcast
   //auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());

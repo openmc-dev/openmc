@@ -306,7 +306,7 @@ def test_SurfaceFilter_CompositeSurface(run_in_tmpdir, box_model):
     box_model.geometry.root_universe = openmc.Universe(cells=[c])
     
     tally = openmc.Tally()
-    tally.filters = [openmc.SurfaceFilter(box.get_surfaces())]
+    tally.filters = [openmc.SurfaceFilter(box)]
     tally.scores = ['current']
 
     box_model.tallies = [tally]
@@ -316,14 +316,14 @@ def test_SurfaceFilter_CompositeSurface(run_in_tmpdir, box_model):
     with openmc.StatePoint(sp_name) as sp:
         current = sp.tallies[tally.id]
         assert len(current.get_pandas_dataframe()['surface']) == 4
-        assert np.all(current.get_pandas_dataframe()['surface'] == box.get_id_surfaces())
+        assert np.all(current.get_pandas_dataframe()['surface'] == box.component_surface_ids)
 
     box = openmc.model.RectangularParallelepiped(*[-10, 10]*3, boundary_type='vacuum')
     c = openmc.Cell(fill=m, region=-box)
     box_model.geometry.root_universe = openmc.Universe(cells=[c])
     
     tally = openmc.Tally()
-    tally.filters = [openmc.SurfaceFilter(box.get_surfaces())]
+    tally.filters = [openmc.SurfaceFilter(box)]
     tally.scores = ['current']
 
     box_model.tallies = [tally]
@@ -333,4 +333,4 @@ def test_SurfaceFilter_CompositeSurface(run_in_tmpdir, box_model):
     with openmc.StatePoint(sp_name) as sp:
         current = sp.tallies[tally.id]
         assert len(current.get_pandas_dataframe()['surface']) == 6
-        assert np.all(current.get_pandas_dataframe()['surface'] == box.get_id_surfaces())
+        assert np.all(current.get_pandas_dataframe()['surface'] == box.component_surface_ids)

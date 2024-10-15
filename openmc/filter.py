@@ -706,7 +706,7 @@ class CellInstanceFilter(Filter):
         return cls(cell_instances, filter_id=filter_id)
 
 
-class SurfaceFilter(WithIDFilter):
+class SurfaceFilter(Filter):
     """Filters particles by surface crossing
 
     Parameters
@@ -728,7 +728,27 @@ class SurfaceFilter(WithIDFilter):
         The number of filter bins
 
     """
-    expected_type = Surface
+
+
+    def __init__(self, bins, filter_id=None):
+        if(type(bins)==list or isinstance(bins, np.ndarray)):
+            bins = np.atleast_1d(bins)
+        else:
+            bins = np.atleast_1d(bins.component_surfaces)
+        
+        # Make sure bins are either integers or appropriate objects
+        cv.check_iterable_type('filter bins', bins,
+                               (Integral, Surface))
+
+        # Extract ID values
+        bins = np.array([b if isinstance(b, Integral) else b.id
+                         for b in bins])
+        super().__init__(bins, filter_id)
+
+    def check_bins(self, bins):
+        # Check the bin values.
+        for edge in bins:
+            cv.check_greater_than('filter bin', edge, 0, equality=True)
 
 
 class ParticleFilter(Filter):

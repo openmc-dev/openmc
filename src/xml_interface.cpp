@@ -49,13 +49,14 @@ bool get_node_value_bool(pugi::xml_node node, const char* name)
   return false;
 }
 
-vector<Position>
-get_node_position_array(pugi::xml_node node, const char* name, bool lowercase)
+vector<Position> get_node_position_array(
+  pugi::xml_node node, const char* name, bool lowercase)
 {
   vector<double> coords = get_node_array<double>(node, name, lowercase);
   if (coords.size() % 3 != 0) {
     fatal_error(fmt::format(
-      "Incorect number of coordinates in Position array ({}) for \"{}\"", coords.size(), name));
+      "Incorect number of coordinates in Position array ({}) for \"{}\"",
+      coords.size(), name));
   }
   vector<Position> positions;
   positions.resize(coords.size() / 3);

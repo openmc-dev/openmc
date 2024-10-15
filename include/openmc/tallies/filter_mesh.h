@@ -51,9 +51,9 @@ public:
 
   virtual bool translated() const { return translated_; }
 
-  virtual void set_rotation(const vector<double>&  rotation);
+  virtual void set_rotation(const vector<double>& rotation);
 
-  //virtual void set_rotation(const vector<double>& rot);
+  // virtual void set_rotation(const vector<double>& rot);
 
   virtual const vector<double>& rotation() const { return rotation_; }
 
@@ -66,7 +66,7 @@ protected:
   int32_t mesh_;            //!< Index of the mesh
   bool translated_ {false}; //!< Whether or not the filter is translated
   Position translation_ {0.0, 0.0, 0.0}; //!< Filter translation
-  bool rotated_ {false}; //!< Whether or not the filter is rotated
+  bool rotated_ {false};    //!< Whether or not the filter is rotated
   vector<double> rotation_; //!< Filter rotation
 };
 

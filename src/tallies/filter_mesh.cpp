@@ -266,9 +266,9 @@ extern "C" int openmc_mesh_filter_get_rotation(
   // Get rotation from the mesh filter and set value
   auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
   *n = mesh_filter->rotation().size();
-  std::memcpy(rot, mesh_filter->rotation().data(), *n * sizeof(mesh_filter->rotation()[0]));
+  std::memcpy(rot, mesh_filter->rotation().data(),
+    *n * sizeof(mesh_filter->rotation()[0]));
   return 0;
-
 }
 
 //! Set the flattened rotation matrix of a mesh filter
@@ -291,7 +291,6 @@ extern "C" int openmc_mesh_filter_set_rotation(
   std::vector<double> vec_rot(rot, rot + rot_len);
   mesh_filter->set_rotation(vec_rot);
   return 0;
-
 }
 
 } // namespace openmc

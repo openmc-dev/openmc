@@ -731,7 +731,8 @@ class SurfaceFilter(Filter):
 
 
     def __init__(self, bins, filter_id=None):
-        if(type(bins)==list or isinstance(bins, np.ndarray)):
+        if(type(bins)==list or isinstance(bins, np.ndarray) or 
+           isinstance(bins, openmc.Surface)):
             bins = np.atleast_1d(bins)
         else:
             bins = np.atleast_1d(bins.component_surfaces)

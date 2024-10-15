@@ -53,8 +53,6 @@ public:
 
   virtual void set_rotation(const vector<double>& rotation);
 
-  // virtual void set_rotation(const vector<double>& rot);
-
   virtual const vector<double>& rotation() const { return rotation_; }
 
   virtual bool rotated() const { return rotated_; }

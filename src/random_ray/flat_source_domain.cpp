@@ -27,6 +27,7 @@ namespace openmc {
 RandomRayVolumeEstimator FlatSourceDomain::volume_estimator_ {
   RandomRayVolumeEstimator::HYBRID};
 bool FlatSourceDomain::volume_normalized_flux_tallies_ {false};
+bool FlatSourceDomain::adjoint_ {false};
 
 FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
 {
@@ -520,7 +521,7 @@ double FlatSourceDomain::compute_fixed_source_normalization_factor() const
 {
   // If we are not in fixed source mode, then there are no external sources
   // so no normalization is needed.
-  if (settings::run_mode != RunMode::FIXED_SOURCE) {
+  if (settings::run_mode != RunMode::FIXED_SOURCE || adjoint_) {
     return 1.0;
   }
 
@@ -1079,6 +1080,46 @@ void FlatSourceDomain::flatten_xs()
         for (int ee = 0; ee < negroups_; ee++) {
           sigma_s_.push_back(0);
         }
+      }
+    }
+  }
+}
+
+void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
+{
+// Set the external source to 1/forward_flux
+// The forward flux is given in terms of total for the forward simulation
+// so we must convert it to a "per batch" quantity
+#pragma omp parallel for
+  for (int64_t se = 0; se < n_source_elements_; se++) {
+    external_source_[se] = 1.0 / forward_flux[se];
+  }
+
+// Divide the fixed source term by sigma t (to save time when applying each
+// iteration)
+#pragma omp parallel for
+  for (int sr = 0; sr < n_source_regions_; sr++) {
+    int material = material_[sr];
+    for (int e = 0; e < negroups_; e++) {
+      double sigma_t = sigma_t_[material * negroups_ + e];
+      external_source_[sr * negroups_ + e] /= sigma_t;
+    }
+  }
+}
+
+void FlatSourceDomain::transpose_scattering_matrix()
+{
+  // Transpose the inner two dimensions for each material
+  for (int m = 0; m < n_materials_; ++m) {
+    int material_offset = m * negroups_ * negroups_;
+    for (int i = 0; i < negroups_; ++i) {
+      for (int j = i + 1; j < negroups_; ++j) {
+        // Calculate indices of the elements to swap
+        int idx1 = material_offset + i * negroups_ + j;
+        int idx2 = material_offset + j * negroups_ + i;
+
+        // Swap the elements to transpose the matrix
+        std::swap(sigma_s_[idx1], sigma_s_[idx2]);
       }
     }
   }

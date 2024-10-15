@@ -1060,6 +1060,40 @@ random ray and Monte Carlo, however.
   develop the scattering source by way of inactive batches before beginning
   active batches.
 
+------------------------
+Adjoint Flux Solver Mode
+------------------------
+
+The random ray solver in OpenMC can also be used to solve for the adjoint flux,
+:math:`\psi^{\dagger}`. In combination with the regular (forward) flux solution,
+the adjoint flux is useful for perturbation methods as well as for computing
+weight windows for subsequent Monte Carlo simulations. The adjoint flux can be
+thought of as the "backwards" flux, representing the flux where a particle is
+born at an absoprtion point (and typical absorption energy), and then undergoes
+transport with a transposed scattering matrix. I.e., instead of sampling a
+particle and seeing where it might go as in a standard forward solve, we will
+sample an absorption location and see where the particle that was absorbed there
+might have come from. Notably, for typical neutron absorption at low energy
+levels, this means that adjoint flux particles are typically sampled at a low
+energy and then upscatter (via a transposed scattering matrix) over their
+lifetimes.
+
+Computation of the adjoint flux can be done in a variety of manners. In OpenMC,
+the random ray adjoint solver is implemented simply by transposing the
+scattering matrix and swapping :math:`\nu\Sigma_f` and :math:`\chi`, and then
+running a normal transport solve. Additionally, if using a fixed source, the
+source for the adjoint mode is simply computed as being :math:`1.0 / \phi` where
+:math:`\phi` is the forward scalar flux that results from a normal forward
+solve. As the forward flux is thus required for fixed source adjoint solves, and
+even for eigenvalue solves the adjoint flux is typically used in conjunction
+with the forward flux, OpenMC will always perform a full forward solve and then
+run a full adjoint solve immediately afterwards. When in adjoint mode, all
+reported results (e.g., tallies, eigenvalues, etc.) will be derived from the
+adjoint flux, even when the physical meaning is not necessarily obvious. E.g., a
+fission reaction rate tally score will be derived from the adjoint flux instead
+of the forward flux. Thus, we typically recommend that the adjoint mode be used
+only with "flux" tally scores.
+
 ---------------------------
 Fundamental Sources of Bias
 ---------------------------

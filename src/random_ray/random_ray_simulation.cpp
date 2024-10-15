@@ -23,33 +23,104 @@ namespace openmc {
 
 void openmc_run_random_ray()
 {
-  // Initialize OpenMC general data structures
-  openmc_simulation_init();
+  bool adjoint_needed = false;
+  //////////////////////////////////////////////////////////
+  // Run forward simulation
+  //////////////////////////////////////////////////////////
+  vector<double> forward_flux;
+  {
+    // Initialize OpenMC general data structures
+    openmc_simulation_init();
 
-  // Validate that inputs meet requirements for random ray mode
-  if (mpi::master)
-    validate_random_ray_inputs();
+    // Validate that inputs meet requirements for random ray mode
+    if (mpi::master)
+      validate_random_ray_inputs();
 
-  // Initialize Random Ray Simulation Object
-  RandomRaySimulation sim;
+    // Initialize Random Ray Simulation Object
+    RandomRaySimulation sim;
 
-  // Begin main simulation timer
-  simulation::time_total.start();
+    adjoint_needed = FlatSourceDomain::adjoint_;
+    FlatSourceDomain::adjoint_ = false;
 
-  // Execute random ray simulation
-  sim.simulate();
+    // Initialize fixed sources, if present
+    sim.prepare_fixed_sources();
 
-  // End main simulation timer
-  openmc::simulation::time_total.stop();
+    // Begin main simulation timer
+    simulation::time_total.start();
 
-  // Finalize OpenMC
-  openmc_simulation_finalize();
+    // Execute random ray simulation
+    sim.simulate();
 
-  // Reduce variables across MPI ranks
-  sim.reduce_simulation_statistics();
+    // End main simulation timer
+    simulation::time_total.stop();
 
-  // Output all simulation results
-  sim.output_simulation_results();
+    // Save the final forward flux
+    forward_flux = sim.domain_->scalar_flux_final_;
+
+    double source_normalization_factor =
+      sim.domain_->compute_fixed_source_normalization_factor() /
+      (settings::n_batches - settings::n_inactive);
+
+#pragma omp parallel for
+    for (uint64_t i = 0; i < forward_flux.size(); i++) {
+      forward_flux[i] *= source_normalization_factor;
+    }
+
+    // Finalize OpenMC
+    openmc_simulation_finalize();
+
+    // Reduce variables across MPI ranks
+    sim.reduce_simulation_statistics();
+
+    // Output all simulation results
+    sim.output_simulation_results();
+  }
+
+  //////////////////////////////////////////////////////////
+  // Run adjoint simulation
+  //////////////////////////////////////////////////////////
+
+  if (adjoint_needed) {
+
+    FlatSourceDomain::adjoint_ = true;
+
+    // Initialize OpenMC general data structures
+    openmc_simulation_init();
+
+    // Validate that inputs meet requirements for random ray mode
+    if (mpi::master)
+      validate_random_ray_inputs();
+
+    // Initialize Random Ray Simulation Object
+    RandomRaySimulation sim;
+
+    // Initialize adjoint fixed sources, if present
+    sim.prepare_fixed_sources_adjoint(forward_flux);
+
+    // Transpose scattering matrix
+    sim.domain_->transpose_scattering_matrix();
+
+    // Swap nu_sigma_f and chi
+    sim.domain_->nu_sigma_f_.swap(sim.domain_->chi_);
+
+    // Begin main simulation timer
+    simulation::time_total.start();
+
+    // Execute random ray simulation
+    sim.simulate();
+
+    // End main simulation timer
+    simulation::time_total.stop();
+
+    // Finalize OpenMC
+    openmc_simulation_finalize();
+
+    // Reduce variables across MPI ranks
+    sim.reduce_simulation_statistics();
+
+    // Output all simulation results
+    sim.output_simulation_results();
+  }
 }
 
 // Enforces restrictions on inputs in random ray mode.  While there are
@@ -260,14 +331,25 @@ RandomRaySimulation::RandomRaySimulation()
   domain_->flatten_xs();
 }
 
-void RandomRaySimulation::simulate()
+void RandomRaySimulation::prepare_fixed_sources()
 {
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     // Transfer external source user inputs onto random ray source regions
     domain_->convert_external_sources();
     domain_->count_external_source_regions();
   }
+}
 
+void RandomRaySimulation::prepare_fixed_sources_adjoint(
+  vector<double>& forward_flux)
+{
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    domain_->set_adjoint_sources(forward_flux);
+  }
+}
+
+void RandomRaySimulation::simulate()
+{
   // Random ray power iteration loop
   while (simulation::current_batch < settings::n_batches) {
 
@@ -452,6 +534,9 @@ void RandomRaySimulation::print_results_random_ray(
     }
     fmt::print(" Volume Estimator Type             = {}\n", estimator);
 
+    std::string adjoint_true = (FlatSourceDomain::adjoint_) ? "ON" : "OFF";
+    fmt::print(" Adjoint Flux Mode                 = {}\n", adjoint_true);
+
     header("Timing Statistics", 4);
     show_time("Total time for initialization", time_initialize.elapsed());
     show_time("Reading cross sections", time_read_xs.elapsed(), 1);
@@ -475,6 +560,16 @@ void RandomRaySimulation::print_results_random_ray(
     fmt::print(" k-effective                       = {:.5f} +/- {:.5f}\n",
       simulation::keff, simulation::keff_std);
   }
+}
+
+void RandomRaySimulation::reset()
+{
+  // What are all the things I'm changing in a simulation?
+  // k-eff
+  // shannon
+  // historical k-eff? But if we set current_batch, maybe this gets overwritten?
+  // tallies
+  // current batch
 }
 
 } // namespace openmc

@@ -20,6 +20,8 @@ public:
   //----------------------------------------------------------------------------
   // Methods
   void compute_segment_correction_factors();
+  void prepare_fixed_sources();
+  void prepare_fixed_sources_adjoint(vector<double>& forward_flux);
   void simulate();
   void reduce_simulation_statistics();
   void output_simulation_results() const;
@@ -28,13 +30,13 @@ public:
   void print_results_random_ray(uint64_t total_geometric_intersections,
     double avg_miss_rate, int negroups, int64_t n_source_regions,
     int64_t n_external_source_regions) const;
+  void reset();
+  // Contains all flat source region data
+  unique_ptr<FlatSourceDomain> domain_;
 
   //----------------------------------------------------------------------------
   // Data members
 private:
-  // Contains all flat source region data
-  unique_ptr<FlatSourceDomain> domain_;
-
   // Random ray eigenvalue
   double k_eff_ {1.0};
 

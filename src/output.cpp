@@ -601,6 +601,9 @@ const std::unordered_map<int, const char*> score_names = {
   {SCORE_FISS_Q_RECOV, "Recoverable fission power"},
   {SCORE_CURRENT, "Current"},
   {SCORE_PULSE_HEIGHT, "pulse-height"},
+  {SCORE_IFP_TIME_NUM, "IFP lifetime numerator"},
+  {SCORE_IFP_BETA_NUM, "IFP delayed fraction numerator"},
+  {SCORE_IFP_DENOM, "IFP common denominator"},
 };
 
 //! Create an ASCII output file showing all tally results.

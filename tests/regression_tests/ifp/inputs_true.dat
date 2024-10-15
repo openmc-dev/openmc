@@ -1,0 +1,34 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material depletable="true" id="1" name="core">
+      <density units="g/cm3" value="16.0"/>
+      <nuclide ao="1.0" name="U235"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" region="-1" universe="1"/>
+    <surface boundary="vacuum" coeffs="0.0 0.0 0.0 10.0" id="1" type="sphere"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>1000</particles>
+    <batches>20</batches>
+    <inactive>5</inactive>
+    <source particle="neutron" strength="1.0" type="independent">
+      <space type="fission">
+        <parameters>-10.0 -10.0 -10.0 10.0 10.0 10.0</parameters>
+      </space>
+    </source>
+    <photon_transport>false</photon_transport>
+    <iterated_fission_probability>
+      <parameter>both</parameter>
+      <n_generation>5</n_generation>
+    </iterated_fission_probability>
+  </settings>
+  <tallies>
+    <tally id="1" name="ifp-scores">
+      <scores>ifp-time-numerator ifp-beta-numerator ifp-denominator</scores>
+    </tally>
+  </tallies>
+</model>

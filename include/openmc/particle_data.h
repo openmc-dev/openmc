@@ -424,6 +424,9 @@ private:
 
   int cell_born_ {-1};
 
+  // Iterated Fission Probability
+  double lifetime_ {0.0}; //!< neutron lifetime [s]
+
   int n_collision_ {0};
 
   bool write_track_ {false};
@@ -521,6 +524,10 @@ public:
   const double& time() const { return time_; }
   double& time_last() { return time_last_; }
   const double& time_last() const { return time_last_; }
+
+  // Particle lifetime
+  double& lifetime() { return lifetime_; }
+  const double& lifetime() const { return lifetime_; }
 
   // What event took place, described in greater detail below
   TallyEvent& event() { return event_; }

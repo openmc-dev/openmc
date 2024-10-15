@@ -172,6 +172,9 @@ std::unordered_map<int, std::string> REACTION_NAME_MAP {
   {SCORE_FISS_Q_PROMPT, "fission-q-prompt"},
   {SCORE_FISS_Q_RECOV, "fission-q-recoverable"},
   {SCORE_PULSE_HEIGHT, "pulse-height"},
+  {SCORE_IFP_TIME_NUM, "ifp-time-numerator"},
+  {SCORE_IFP_BETA_NUM, "ifp-beta-numerator"},
+  {SCORE_IFP_DENOM, "ifp-denominator"},
   // Normal ENDF-based reactions
   {TOTAL_XS, "(n,total)"},
   {ELASTIC, "(n,elastic)"},

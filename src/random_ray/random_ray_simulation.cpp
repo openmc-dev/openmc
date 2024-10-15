@@ -562,14 +562,4 @@ void RandomRaySimulation::print_results_random_ray(
   }
 }
 
-void RandomRaySimulation::reset()
-{
-  // What are all the things I'm changing in a simulation?
-  // k-eff
-  // shannon
-  // historical k-eff? But if we set current_batch, maybe this gets overwritten?
-  // tallies
-  // current batch
-}
-
 } // namespace openmc

@@ -71,6 +71,7 @@ def test_point_cloud():
     np.testing.assert_equal(src.space.positions, positions)
     np.testing.assert_equal(src.space.strengths, strengths)
 
+
 def test_point_cloud_strengths(run_in_tmpdir):
     point_list = [[1,0,0], [0,1,0], [0,0,1]]
     positions = np.asarray(point_list)

@@ -32,7 +32,8 @@ class CompositeSurface(ABC):
             setattr(surf, name, s.rotate(rotation, pivot, order, inplace))
         return surf
     
-    def get_surfaces(self):
+    @property
+    def component_surfaces(self):
         return [getattr(self, name) for name in self._surface_names]
     
     def get_id_surfaces(self):

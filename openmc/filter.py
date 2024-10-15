@@ -808,8 +808,24 @@ class MeshFilter(Filter):
         This array specifies a vector that is used to translate (shift) the mesh
         for this filter
     rotation : Iterable of float
-        This array specifies a vector that is used to rotate the mesh for this 
-        filter
+        This array specifies the angles in degrees about the x, y, and z axes 
+        that the filled universe should be rotated. The rotation applied 
+        is an intrinsic rotation with specified Tait-Bryan angles. That is to 
+        say, if the angles are :math:`(\phi, \theta, \psi)`, then the rotation 
+        matrix applied is :math:`R_z(\psi) R_y(\theta) R_x(\phi)` or
+
+        .. math::
+
+           \left [ \begin{array}{ccc} \cos\theta \cos\psi & -\cos\phi \sin\psi
+           + \sin\phi \sin\theta \cos\psi & \sin\phi \sin\psi + \cos\phi
+           \sin\theta \cos\psi \\ \cos\theta \sin\psi & \cos\phi \cos\psi +
+           \sin\phi \sin\theta \sin\psi & -\sin\phi \cos\psi + \cos\phi
+           \sin\theta \sin\psi \\ -\sin\theta & \sin\phi \cos\theta & \cos\phi
+           \cos\theta \end{array} \right ]
+
+        A rotation matrix can also be specified directly by setting this
+        attribute to a nested list (or 2D numpy array) that specifies each
+        element of the matrix.
     bins : list of tuple
         A list of mesh indices for each filter bin, e.g. [(1, 1, 1), (2, 1, 1),
         ...]

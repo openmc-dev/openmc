@@ -109,12 +109,7 @@ void MeshFilter::set_translation(const double translation[3])
 
 void MeshFilter::set_rotation(const vector<double>& rot)
 {
-  //rotated_ = true;
-  rotation_.clear();
-
-  //if (rot.size() != 3 && rot.size() != 9) {
-  //  fatal_error(fmt::format("Non-3D rotation vector applied to mesh filter {}", id_));
-  //}
+  rotated_ = true;
 
   // Compute and store the rotation matrix.
   rotation_.clear();
@@ -274,14 +269,6 @@ extern "C" int openmc_mesh_filter_get_rotation(
   std::memcpy(rot, mesh_filter->rotation().data(), *n * sizeof(mesh_filter->rotation()[0]));
   return 0;
 
-  //// Get rotation from the mesh filter and set value
-  //auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
-  //const auto& r = mesh_filter->rotation();
-  //for (int i = 0; i < 3; i++) {
-  //  rotation[i] = r[i];
-  //}
-  //mesh_filter->set_rotation();
-  //return 0;
 }
 
 //! Set the flattened rotation matrix of a mesh filter
@@ -304,13 +291,7 @@ extern "C" int openmc_mesh_filter_set_rotation(
   std::vector<double> vec_rot(rot, rot + rot_len);
   mesh_filter->set_rotation(vec_rot);
   return 0;
-  //// Get a pointer to the filter and downcast
-  //auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
 
-  //// Set the rotation
-  //mesh_filter->set_rotation(rotation);
-
-  //return 0;
 }
 
 } // namespace openmc

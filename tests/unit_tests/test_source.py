@@ -58,10 +58,6 @@ def test_point_cloud():
     np.testing.assert_equal(space.positions, positions)
     np.testing.assert_equal(space.strengths, strengths)
 
-    space = openmc.stats.PointCloud(point_list, strengths)
-    np.testing.assert_equal(space.positions, positions)
-    np.testing.assert_equal(space.strengths, strengths)
-
     energy = openmc.stats.Discrete([1.0e6], [1.0])
     angle = openmc.stats.Isotropic()
 
@@ -74,6 +70,34 @@ def test_point_cloud():
     src = openmc.IndependentSource.from_xml_element(elem)
     np.testing.assert_equal(src.space.positions, positions)
     np.testing.assert_equal(src.space.strengths, strengths)
+
+def test_point_cloud_strengths(run_in_tmpdir):
+    point_list = [[1,0,0], [0,1,0], [0,0,1]]
+    positions = np.asarray(point_list)
+    strengths = [3,2,1]
+
+    space = openmc.stats.PointCloud(positions, strengths)
+
+    energy = openmc.stats.Discrete([1.0e6], [1.0])
+    angle = openmc.stats.Isotropic()
+
+    src = openmc.IndependentSource(space=space, angle=angle, energy=energy)
+    assembly = openmc.examples.pwr_assembly()
+    assembly.settings.run_mode = 'fixed source'
+    assembly.settings.source = src
+
+    try:
+        assembly.init_lib()
+        n_samples = 10_000
+        sites = openmc.lib.sample_external_source(n_samples)
+    finally:
+        assembly.finalize_lib()
+
+    sites_df = sites.to_dataframe()
+    for i, (strength, coord) in enumerate(zip(strengths, ('x', 'y', 'z'))):
+        sampled_strength = len(sites_df[sites_df[coord] == 1.0]) / n_samples
+        expected_strength = pytest.approx(strength/sum(strengths), abs=0.01)
+        assert sampled_strength == expected_strength, f'Strength incorrect for {point_list[i]}'
 
 
 def test_source_file():

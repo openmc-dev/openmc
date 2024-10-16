@@ -731,25 +731,27 @@ class SurfaceFilter(Filter):
 
 
     def __init__(self, bins, filter_id=None):
-        if(type(bins)==list or isinstance(bins, np.ndarray) or 
-           isinstance(bins, openmc.Surface)):
-            bins = np.atleast_1d(bins)
+        b = []
+        if isinstance(bins,(list, np.ndarray)):
+            for i in bins:
+                if(isinstance(i,openmc.model.CompositeSurface)):
+                    for j in i.component_surfaces:
+                        b.append(j)
+                    msg = 'In SurfaceFilter {} bins will be added for the ' \
+                        'CompositeSurface {}.'.format(len(i.component_surfaces), i)
+                    warnings.warn(msg, UserWarning)
+                else:
+                    b.append(i)
         else:
-            bins = np.atleast_1d(bins.component_surfaces)
-        
+            b.append(bins)
+        bins = np.atleast_1d(b)
         # Make sure bins are either integers or appropriate objects
-        cv.check_iterable_type('filter bins', bins,
-                               (Integral, Surface))
+        cv.check_iterable_type('filter bins', bins, (Integral, Surface))
 
         # Extract ID values
         bins = np.array([b if isinstance(b, Integral) else b.id
                          for b in bins])
         super().__init__(bins, filter_id)
-
-    def check_bins(self, bins):
-        # Check the bin values.
-        for edge in bins:
-            cv.check_greater_than('filter bin', edge, 0, equality=True)
 
 
 class ParticleFilter(Filter):

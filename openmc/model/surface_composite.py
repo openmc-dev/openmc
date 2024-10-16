@@ -1838,7 +1838,7 @@ class ConicalFrustum(CompositeSurface):
     def __neg__(self) -> openmc.Region:
         return +self.plane_bottom & -self.plane_top & -self.cone
 
-class Z_Vessel(CompositeSurface):
+class ZVessel(CompositeSurface):
     """Vessel as a composite surface parallel to z-axis
         includes composite surfaces with a ZCylinder and 
         semi-ellipsoids on top and the bottom of this cylinder.

@@ -4,7 +4,7 @@ project(openmc C CXX)
 # Try to get the version from git describe
 if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
     execute_process(
-        COMMAND git describe --tags --match "*[0-9]*"
+        COMMAND git describe --tags --match "*[0-9]*" --dirty
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         OUTPUT_VARIABLE VERSION_STRING
         OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -29,7 +29,7 @@ else()
 endif()
 
 # Ensure the version string matches a standard format
-if(VERSION_STRING MATCHES "^([0-9]+\\.[0-9]+\\.[0-9]+)([-\\.]dev[0-9]*)?$")
+if(VERSION_STRING MATCHES "^v?([0-9]+\\.[0-9]+\\.[0-9]+)([-].*)?")
   set(VERSION_NO_SUFFIX "${CMAKE_MATCH_1}")
 else()
   message(FATAL_ERROR "Invalid version format: ${VERSION_STRING}")

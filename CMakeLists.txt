@@ -1,11 +1,49 @@
 cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 project(openmc C CXX)
 
-# Set version numbers
-set(OPENMC_VERSION_MAJOR 0)
-set(OPENMC_VERSION_MINOR 15)
-set(OPENMC_VERSION_RELEASE 1)
+# Try to get the version from git describe
+if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
+    execute_process(
+        COMMAND git describe --tags --match "*[0-9]*" --dirty
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE VERSION_STRING
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+else()
+  set(GIT_ARCHIVAL_FILE "${CMAKE_SOURCE_DIR}/.git_archival.txt")
+  if(EXISTS "${GIT_ARCHIVAL_FILE}")
+      file(READ "${GIT_ARCHIVAL_FILE}" GIT_ARCHIVAL_CONTENT)
+
+      # Extract the describe-name line
+      string(REGEX MATCH "describe-name: ([^\\n]+)" VERSION_STRING "${GIT_ARCHIVAL_CONTENT}")
+
+      # If a match is found, extract the actual version
+      if(VERSION_STRING MATCHES "describe-name: (.*)")
+          set(VERSION_STRING "${CMAKE_MATCH_1}")
+      else()
+          message(FATAL_ERROR "Could not extract version from .git_archival.txt")
+      endif()
+  else()
+      message(FATAL_ERROR "Neither git describe nor .git_archival.txt is available for versioning.")
+  endif()
+endif()
+
+# Ensure the version string matches a standard format
+if(VERSION_STRING MATCHES "^v?([0-9]+\\.[0-9]+\\.[0-9]+)([-].*)?")
+  set(VERSION_NO_SUFFIX "${CMAKE_MATCH_1}")
+else()
+  message(FATAL_ERROR "Invalid version format: ${VERSION_STRING}")
+endif()
+
+# Set OpenMC version
+string(REPLACE "." ";" VERSION_LIST "${VERSION_NO_SUFFIX}")
+list(GET VERSION_LIST 0 OPENMC_VERSION_MAJOR)
+list(GET VERSION_LIST 1 OPENMC_VERSION_MINOR)
+list(GET VERSION_LIST 2 OPENMC_VERSION_RELEASE)
 set(OPENMC_VERSION ${OPENMC_VERSION_MAJOR}.${OPENMC_VERSION_MINOR}.${OPENMC_VERSION_RELEASE})
+message(STATUS "OpenMC version: ${OPENMC_VERSION}")
+
+# Generate version.h
 configure_file(include/openmc/version.h.in "${CMAKE_BINARY_DIR}/include/openmc/version.h" @ONLY)
 
 # Setup output directories

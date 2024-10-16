@@ -406,6 +406,7 @@ private:
   int g_last_;
 
   double wgt_ {1.0};
+  double wgt0_ {1.0};
   double mu_;
   double time_ {0.0};
   double time_last_ {0.0};
@@ -507,6 +508,8 @@ public:
   // indicates that the particle is dead.
   double& wgt() { return wgt_; }
   double wgt() const { return wgt_; }
+  double& wgt0() { return wgt0_; }
+  double wgt0() const { return wgt0_; }
   double& wgt_last() { return wgt_last_; }
   const double& wgt_last() const { return wgt_last_; }
   bool alive() const { return wgt_ != 0.0; }

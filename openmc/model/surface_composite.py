@@ -1855,14 +1855,9 @@ class Z_Vessel(CompositeSurface):
         self.zmax = openmc.ZPlane(z0=zmax, **kwargs)
 
         """
-        Coefficients for quadric surface to create an ellipsoid
-
-            General equation for an ellipsoid: 
-                (x-xo)^2/r^2 + (y-yo)^2/r^2 + (z-zo)^2/h^2 = 1
-                
-            General form of a quadric surface equation:
-                Ax^2 + By^2 + Cz^2 + Gx + Hy + Jz + K = 0
-                """
+        General equation for an ellipsoid: 
+        (x-xo)^2/r^2 + (y-yo)^2/r^2 + (z-zo)^2/h^2 = 1               
+        """
 
         A = 1/r**2
         B = 1/r**2

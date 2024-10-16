@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools", "setuptools-scm", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -58,9 +58,6 @@ Documentation = "https://docs.openmc.org"
 Repository = "https://github.com/openmc-dev/openmc"
 Issues = "https://github.com/openmc-dev/openmc/issues"
 
-[tool.setuptools.dynamic]
-version = {file = "version.txt"}
-
 [tool.setuptools.packages.find]
 include = ['openmc*', 'scripts*']
 exclude = ['tests*']
@@ -69,6 +66,8 @@ exclude = ['tests*']
 "openmc.data.effective_dose" = ["*.txt"]
 "openmc.data" = ["*.txt", "*.DAT", "*.json", "*.h5"]
 "openmc.lib" = ["libopenmc.dylib", "libopenmc.so"]
+
+[tool.setuptools_scm]
 
 [project.scripts]
 openmc-ace-to-hdf5 = "scripts.openmc_ace_to_hdf5:main"

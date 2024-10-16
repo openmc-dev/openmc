@@ -742,6 +742,12 @@ class SurfaceFilter(Filter):
                     warnings.warn(msg, UserWarning)
                 else:
                     b.append(i)
+        elif isinstance(bins,openmc.model.CompositeSurface):
+            for j in bins.component_surfaces:
+                b.append(j)
+            msg = 'In SurfaceFilter {} bins will be added for the ' \
+                  'CompositeSurface {}.'.format(len(bins.component_surfaces), bins)
+            warnings.warn(msg, UserWarning)
         else:
             b.append(bins)
         bins = np.atleast_1d(b)

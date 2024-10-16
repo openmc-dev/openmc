@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <cross_sections>/Users/fernpa/openmc/libs/endfb80_hdf5/cross_sections.xml</cross_sections>
+  <material depletable="true" id="0" name="mFuel" temperature="300.0">
+    <density units="g/cm3" value="10.045"/>
+    <nuclide ao="6.15169e+18" name="U234"/>
+    <nuclide ao="6.8922e+20" name="U235"/>
+    <nuclide ao="3.16265e+18" name="U236"/>
+    <nuclide ao="2.17103e+22" name="U238"/>
+    <nuclide ao="9.13357e+18" name="C12"/>
+    <nuclide ao="1.04072e+19" name="N14"/>
+    <nuclide ao="4.48178e+22" name="O16"/>
+  </material>
+  <material id="1" name="mClad" temperature="300.0">
+    <density units="g/cm3" value="6.56"/>
+    <nuclide name="O16" wo="0.00119276"/>
+    <nuclide name="O17" wo="4.82878e-07"/>
+    <nuclide name="O18" wo="2.75825e-06"/>
+    <nuclide name="Cr50" wo="4.16117e-05"/>
+    <nuclide name="Cr52" wo="0.000834483"/>
+    <nuclide name="Cr53" wo="9.64457e-05"/>
+    <nuclide name="Cr54" wo="2.446e-05"/>
+    <nuclide name="Fe54" wo="0.000112572"/>
+    <nuclide name="Fe56" wo="0.00183252"/>
+    <nuclide name="Fe57" wo="4.30778e-05"/>
+    <nuclide name="Fe58" wo="5.83334e-06"/>
+    <nuclide name="Zr90" wo="0.497862"/>
+    <nuclide name="Zr91" wo="0.10978"/>
+    <nuclide name="Zr92" wo="0.169646"/>
+    <nuclide name="Zr94" wo="0.175665"/>
+    <nuclide name="Zr96" wo="0.0289038"/>
+    <nuclide name="Sn112" wo="0.000127604"/>
+    <nuclide name="Sn114" wo="8.83732e-05"/>
+    <nuclide name="Sn115" wo="4.59255e-05"/>
+    <nuclide name="Sn116" wo="0.00198105"/>
+    <nuclide name="Sn117" wo="0.00105543"/>
+    <nuclide name="Sn118" wo="0.00335688"/>
+    <nuclide name="Sn119" wo="0.00120069"/>
+    <nuclide name="Sn120" wo="0.0045922"/>
+    <nuclide name="Sn122" wo="0.000663497"/>
+    <nuclide name="Sn124" wo="0.000843355"/>
+  </material>
+  <material id="2" name="mCool" temperature="300.0">
+    <density units="g/cm3" value="0.76973"/>
+    <nuclide ao="0.6666666666666666" name="H1"/>
+    <nuclide ao="0.3333333333333333" name="O16"/>
+    <sab name="c_H_in_H2O"/>
+  </material>
+</materials>

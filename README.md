@@ -35,7 +35,7 @@ cd ..
 ```
 ##### test openmc:
 ```
-cd tests/TPMS/base_no_tpms
+cd tests/regression_tests/TPMS/base_no_tpms
 python base_no_tpms.py
 ../../../build/bin/openmc
 ```

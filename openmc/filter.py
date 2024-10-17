@@ -428,17 +428,6 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
 
 class WithIDFilter(Filter):
     """Abstract parent for filters of types with IDs (Cell, Material, etc.)."""
-    def __init__(self, bins, filter_id=None):
-        bins = self.clean_bins(bins)
-
-        # Make sure bins are either integers or appropriate objects
-        cv.check_iterable_type('filter bins', bins,
-                               (Integral, self.expected_type))
-
-        # Extract ID values
-        bins = np.array([b if isinstance(b, Integral) else b.id
-                         for b in bins])
-        super().__init__(bins, filter_id)
 
     def clean_bins(self, bins):
         """Clean up bins if needed (e.g. expand CompositeSurface's into their component surfaces)
@@ -446,9 +435,26 @@ class WithIDFilter(Filter):
         return np.atleast_1d(bins)
 
     def check_bins(self, bins):
-        # Check the bin values.
+        # Ensure bins are unique, warn if not
+        if len(bins) != len(set(bins)):
+            msg = f'Duplicate bins found in {self.short_name} filter: {bins}'
+        # Check the bin values
         for edge in bins:
             cv.check_greater_than('filter bin', edge, 0, equality=True)
+
+    @Filter.bins.setter
+    def bins(self, bins):
+        # Expand objects and clean up bins if needed
+        bins = self.clean_bins(bins)
+        # Make sure bins are either integers or appropriate objects
+        cv.check_iterable_type('filter bins', bins,
+                               (Integral, self.expected_type))
+        # Extract ID values
+        bins = np.array([b if isinstance(b, Integral) else b.id
+                         for b in bins])
+        # Validate bins
+        self.check_bins(bins)
+        self._bins = bins
 
 
 class UniverseFilter(WithIDFilter):

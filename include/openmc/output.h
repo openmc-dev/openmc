@@ -76,8 +76,11 @@ struct formatter<std::array<T, 2>> {
   }
 
   template<typename FormatContext>
-  auto format(const std::array<T, 2>& arr, FormatContext& ctx) const
-  {
+#if FMT_VERSION >= 110000  // Version 11.0.0 and above
+  auto format(const std::array<T, 2>& arr, FormatContext& ctx) const {
+#else  // For versions below 11.0.0
+  auto format(const std::array<T, 2>& arr, FormatContext& ctx) {
+#endif
     return format_to(ctx.out(), "({}, {})", arr[0], arr[1]);
   }
 };

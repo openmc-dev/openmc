@@ -218,11 +218,14 @@ using Direction = Position;
 
 namespace fmt {
 
-template<>
+template <>
 struct formatter<openmc::Position> : formatter<std::string> {
-  template<typename FormatContext>
-  auto format(const openmc::Position& pos, FormatContext& ctx) const
-  {
+  template <typename FormatContext>
+#if FMT_VERSION >= 110000  // Version 11.0.0 and above
+  auto format(const openmc::Position& pos, FormatContext& ctx) const {
+#else  // For versions below 11.0.0
+  auto format(const openmc::Position& pos, FormatContext& ctx) {
+#endif
     return formatter<std::string>::format(
       fmt::format("({}, {}, {})", pos.x, pos.y, pos.z), ctx);
   }

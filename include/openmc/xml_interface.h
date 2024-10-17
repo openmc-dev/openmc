@@ -50,6 +50,9 @@ xt::xarray<T> get_node_xarray(
   return xt::adapt(v, shape);
 }
 
+std::vector<Position> get_node_position_array(
+  pugi::xml_node node, const char* name, bool lowercase = false);
+
 Position get_node_position(
   pugi::xml_node node, const char* name, bool lowercase = false);
 

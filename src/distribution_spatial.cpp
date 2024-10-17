@@ -26,6 +26,8 @@ unique_ptr<SpatialDistribution> SpatialDistribution::create(pugi::xml_node node)
     return UPtrSpace {new SphericalIndependent(node)};
   } else if (type == "mesh") {
     return UPtrSpace {new MeshSpatial(node)};
+  } else if (type == "cloud") {
+    return UPtrSpace {new PointCloud(node)};
   } else if (type == "box") {
     return UPtrSpace {new SpatialBox(node)};
   } else if (type == "fission") {
@@ -296,6 +298,54 @@ std::pair<int32_t, Position> MeshSpatial::sample_mesh(uint64_t* seed) const
 Position MeshSpatial::sample(uint64_t* seed) const
 {
   return this->sample_mesh(seed).second;
+}
+
+//==============================================================================
+// PointCloud implementation
+//==============================================================================
+
+PointCloud::PointCloud(pugi::xml_node node)
+{
+  std::vector<double> coords;
+
+  if (check_for_node(node, "coords")) {
+    coords = get_node_array<double>(node, "coords");
+  } else {
+    fatal_error("No coordinates were provided for the PointCloud "
+                "spatial distribution");
+  }
+  point_cloud_ = get_node_position_array(node, "coords");
+
+  std::vector<double> strengths(point_cloud_.size(), 1.0);
+
+  if (check_for_node(node, "strengths")) {
+    strengths = get_node_array<double>(node, "strengths");
+    if (strengths.size() != point_cloud_.size()) {
+      fatal_error(
+        fmt::format("Number of entries for the strengths array {} does "
+                    "not match the number of spatial points provided {}.",
+          strengths.size(), point_cloud_.size()));
+    }
+  }
+
+  point_idx_dist_.assign(strengths);
+}
+
+PointCloud::PointCloud(
+  std::vector<Position> point_cloud, gsl::span<const double> strengths)
+{
+  point_cloud_.assign(point_cloud.begin(), point_cloud.end());
+  point_idx_dist_.assign(strengths);
+}
+
+int32_t PointCloud::sample_point_index(uint64_t* seed) const
+{
+  return point_idx_dist_.sample(seed);
+}
+
+Position PointCloud::sample(uint64_t* seed) const
+{
+  return point_cloud_[this->sample_point_index(seed)];
 }
 
 //==============================================================================

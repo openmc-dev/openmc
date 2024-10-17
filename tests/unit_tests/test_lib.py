@@ -595,6 +595,13 @@ def test_regular_mesh(lib_init):
     msf.translation = translation
     assert msf.translation == translation
 
+    rotation = (180.0, 0.0, 0.0)
+
+    mf = openmc.lib.MeshFilter(mesh)
+    assert mf.mesh == mesh
+    mf.rotation = rotation
+    assert mf.rotation == rotation
+
     # Test material volumes
     mesh = openmc.lib.RegularMesh()
     mesh.dimension = (2, 2, 1)

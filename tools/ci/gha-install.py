@@ -25,7 +25,8 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
 
     if dagmc:
         cmake_args.append('-DOPENMC_USE_DAGMC=ON')
-        cmake_args.append('-DCMAKE_PREFIX_PATH=~/DAGMC')
+        dagmc_path = os.environ.get('HOME') + '/DAGMC'
+        cmake_args.append('-DCMAKE_PREFIX_PATH=' + dagmc_path)
 
     if libmesh:
         cmake_args.append('-DOPENMC_USE_LIBMESH=ON')
@@ -34,8 +35,8 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
 
     if ncrystal:
         cmake_args.append('-DOPENMC_USE_NCRYSTAL=ON')
-        ncrystal_cmake_path = os.environ.get('HOME') + '/ncrystal_inst/lib/cmake'
-        cmake_args.append(f'-DCMAKE_PREFIX_PATH={ncrystal_cmake_path}')
+        ncrystal_path = os.environ.get('HOME') + '/ncrystal_inst'
+        cmake_args.append(f'-DCMAKE_PREFIX_PATH={ncrystal_path}')
 
     # Build in coverage mode for coverage testing
     cmake_args.append('-DOPENMC_ENABLE_COVERAGE=on')

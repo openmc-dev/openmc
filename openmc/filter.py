@@ -429,7 +429,7 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
 class WithIDFilter(Filter):
     """Abstract parent for filters of types with IDs (Cell, Material, etc.)."""
     def __init__(self, bins, filter_id=None):
-        bins = np.atleast_1d(bins)
+        bins = self.clean_bins(bins)
 
         # Make sure bins are either integers or appropriate objects
         cv.check_iterable_type('filter bins', bins,
@@ -439,6 +439,11 @@ class WithIDFilter(Filter):
         bins = np.array([b if isinstance(b, Integral) else b.id
                          for b in bins])
         super().__init__(bins, filter_id)
+
+    def clean_bins(self, bins):
+        """Clean up bins if needed (e.g. expand CompositeSurface's into their component surfaces)
+        """
+        return np.atleast_1d(bins)
 
     def check_bins(self, bins):
         # Check the bin values.
@@ -706,7 +711,7 @@ class CellInstanceFilter(Filter):
         return cls(cell_instances, filter_id=filter_id)
 
 
-class SurfaceFilter(Filter):
+class SurfaceFilter(WithIDFilter):
     """Filters particles by surface crossing
 
     Parameters
@@ -728,36 +733,21 @@ class SurfaceFilter(Filter):
         The number of filter bins
 
     """
+    expected_type = Surface
 
-
-    def __init__(self, bins, filter_id=None):
-        b = []
-        if isinstance(bins,(list, np.ndarray)):
-            for i in bins:
-                if(isinstance(i,openmc.model.CompositeSurface)):
-                    for j in i.component_surfaces:
-                        b.append(j)
-                    msg = 'In SurfaceFilter {} bins will be added for the ' \
-                        'CompositeSurface {}.'.format(len(i.component_surfaces), i)
-                    warnings.warn(msg, UserWarning)
-                else:
-                    b.append(i)
-        elif isinstance(bins,openmc.model.CompositeSurface):
-            for j in bins.component_surfaces:
-                b.append(j)
-            msg = 'In SurfaceFilter {} bins will be added for the ' \
-                  'CompositeSurface {}.'.format(len(bins.component_surfaces), bins)
+    def clean_bins(self, bins):
+        """"If composite surfaces are present, expand add the component surfaces to the bins.
+        """
+        composite_surfaces = list(filter(lambda x: isinstance(x, openmc.model.CompositeSurface), bins))
+        if composite_surfaces:
+            msg = f'In SurfaceFilter {len(composite_surfaces)} bins will be added for the ' \
+                  f'CompositeSurface {composite_surfaces}.'
             warnings.warn(msg, UserWarning)
-        else:
-            b.append(bins)
-        bins = np.atleast_1d(b)
-        # Make sure bins are either integers or appropriate objects
-        cv.check_iterable_type('filter bins', bins, (Integral, Surface))
+            bins = list(filter(lambda x: isinstance(x, openmc.Surface), bins))
+            composite_surface_bins = [s for cs in composite_surfaces for s in cs.component_surfaces if s not in bins]
+            bins = np.concatenate((np.atleast_1d(bins), composite_surface_bins))
 
-        # Extract ID values
-        bins = np.array([b if isinstance(b, Integral) else b.id
-                         for b in bins])
-        super().__init__(bins, filter_id)
+        return np.atleast_1d(bins)
 
 
 class ParticleFilter(Filter):

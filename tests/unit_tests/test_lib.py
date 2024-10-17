@@ -583,6 +583,13 @@ def test_regular_mesh(lib_init):
         assert isinstance(mesh, openmc.lib.RegularMesh)
         assert mesh_id == mesh.id
 
+    rotation = (180.0, 0.0, 0.0)
+
+    mf = openmc.lib.MeshFilter(mesh)
+    assert mf.mesh == mesh
+    mf.rotation = rotation
+    assert np.allclose(mf.rotation, rotation)
+
     translation = (1.0, 2.0, 3.0)
 
     mf = openmc.lib.MeshFilter(mesh)
@@ -594,13 +601,6 @@ def test_regular_mesh(lib_init):
     assert msf.mesh == mesh
     msf.translation = translation
     assert msf.translation == translation
-
-    rotation = (180.0, 0.0, 0.0)
-
-    mf = openmc.lib.MeshFilter(mesh)
-    assert mf.mesh == mesh
-    mf.rotation = rotation
-    assert np.allclose(mf.rotation == rotation)
 
     # Test material volumes
     mesh = openmc.lib.RegularMesh()

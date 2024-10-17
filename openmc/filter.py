@@ -744,6 +744,7 @@ class SurfaceFilter(WithIDFilter):
     def clean_bins(self, bins):
         """"If composite surfaces are present, expand add the component surfaces to the bins.
         """
+        bins = np.atleast_1d(bins)
         composite_surfaces = list(filter(lambda x: isinstance(x, openmc.model.CompositeSurface), bins))
         if composite_surfaces:
             msg = f'In SurfaceFilter {len(composite_surfaces)} bins will be added for the ' \
@@ -753,7 +754,7 @@ class SurfaceFilter(WithIDFilter):
             composite_surface_bins = [s for cs in composite_surfaces for s in cs.component_surfaces if s not in bins]
             bins = np.concatenate((np.atleast_1d(bins), composite_surface_bins))
 
-        return np.atleast_1d(bins)
+        return bins
 
 
 class ParticleFilter(Filter):

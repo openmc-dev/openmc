@@ -306,7 +306,6 @@ Position MeshSpatial::sample(uint64_t* seed) const
 
 PointCloud::PointCloud(pugi::xml_node node)
 {
-
   std::vector<double> coords;
 
   if (check_for_node(node, "coords")) {

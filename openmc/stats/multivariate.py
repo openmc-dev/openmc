@@ -801,7 +801,7 @@ class PointCloud(Spatial):
         elif isinstance(given_positions, np.ndarray):
             self._positions = given_positions
         else:
-            raise ValueError('Unable to interpret list of positions')
+            raise ValueError('Unable to interpret source positions')
 
     @property
     def strengths(self):

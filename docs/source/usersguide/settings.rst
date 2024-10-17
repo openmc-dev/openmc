@@ -193,7 +193,7 @@ distributions using spherical or cylindrical coordinates, you can use
 :class:`openmc.stats.CylindricalIndependent`, respectively. Meshes can also be
 used to represent spatial distributions with :class:`openmc.stats.MeshSpatial`
 by specifying a mesh and source strengths for each mesh element. It is also
-possible to define a "cloud" of source points each with a different relatively
+possible to define a "cloud" of source points each with a different relative
 probability using :class:`openmc.stats.PointCloud`.
 
 The angular distribution can be set equal to a sub-class of

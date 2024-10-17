@@ -23,7 +23,70 @@ endif()
 
 find_package(PNG)
 
-if(NOT TARGET OpenMC::libopenmc)
+if(@SKBUILD@)
+  # Find the Python interpreter and ensure it's available.
+  find_package(Python COMPONENTS Interpreter REQUIRED)
+
+  # Function to run Python commands and validate their execution.
+  function(run_python_command output_var command)
+    execute_process(
+      COMMAND ${Python_EXECUTABLE} -c "${command}"
+      OUTPUT_VARIABLE ${output_var}
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      RESULT_VARIABLE result
+    )
+    # Check if the command was successful
+    if(NOT result EQUAL 0)
+      message(FATAL_ERROR "Failed to run Python command: ${command}")
+    else()
+      # Add the output variable to the parent scope
+      set(${output_var} "${${output_var}}" PARENT_SCOPE)
+    endif()
+  endfunction()
+
+  # Extract MOAB include paths, library paths, and extra libraries
+  run_python_command(OpenMC_INCLUDE_DIRS "import openmc; print(openmc.include_path)")
+  run_python_command(OpenMC_LIBRARY_DIRS "import openmc; print(openmc.lib_path)")
+  run_python_command(OpenMC_EXTRA_LIBRARIES "import openmc; print(' '.join(openmc.extra_lib))")
+
+  # Check if the wheel was repaired using auditwheel or delocate
+  if(OpenMC_EXTRA_LIBRARIES)
+    message(FATAL_ERROR
+        "This build of OpenMC is not supported. "
+        "It appears that the wheel was repaired using tools like auditwheel or delocate, "
+        "that modifies the shared libraries, which may cause problems.\n"
+        "OpenMC_EXTRA_LIBRARIES is not empty: ${OpenMC_EXTRA_LIBRARIES}.\n"
+        "To resolve this, please build OpenMC from scratch. "
+        "For more information, visit: https://docs.openmc.org/"
+    )
+  endif()
+
+  # Find the core library
+  find_library(OpenMC_LIBRARY
+    NAMES openmc
+    HINTS ${OpenMC_LIBRARY_DIRS}
+    NO_DEFAULT_PATH
+  )
+
+  # Add the core library as an imported target
+  add_library(OpenMC::libopenmc UNKNOWN IMPORTED)
+  set_target_properties(OpenMC::libopenmc PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES "${OpenMC_INCLUDE_DIRS}"
+      IMPORTED_LOCATION "${OpenMC_LIBRARY}"
+  )
+
+  # Add the core library to the list of libraries
+  set(OpenMC_LIBRARIES ${OpenMC_LIBRARY})
+
+  # Include standard argument handling for finding packages
+  include(FindPackageHandleStandardArgs)
+
+  # Validates that the necessary variables are set
+  find_package_handle_standard_args(MOAB
+    REQUIRED_VARS OpenMC_LIBRARIES OpenMC_INCLUDE_DIRS
+    VERSION_VAR @OPENMC_VERSION@
+    )
+elseif(NOT TARGET OpenMC::libopenmc)
   include("${OpenMC_CMAKE_DIR}/OpenMCTargets.cmake")
 endif()
 

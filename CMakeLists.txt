@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 project(openmc C CXX)
 
 # Set version numbers
@@ -15,6 +15,11 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # Set module path
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
+
+# Conditionally find Python if building with scikit-build-core
+if(SKBUILD)
+  find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
+endif()
 
 # Enable correct usage of CXX_EXTENSIONS
 if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.22)
@@ -35,6 +40,17 @@ option(OPENMC_USE_MPI         "Enable MPI"                                      
 option(OPENMC_USE_MCPL        "Enable MCPL"                                          OFF)
 option(OPENMC_USE_NCRYSTAL    "Enable support for NCrystal scattering"               OFF)
 option(OPENMC_USE_UWUW        "Enable UWUW"                                          OFF)
+
+message(STATUS "OPENMC_USE_OPENMP ${OPENMC_USE_OPENMP}")
+message(STATUS "OPENMC_BUILD_TESTS ${OPENMC_BUILD_TESTS}")
+message(STATUS "OPENMC_ENABLE_PROFILE ${OPENMC_ENABLE_PROFILE}")
+message(STATUS "OPENMC_ENABLE_COVERAGE ${OPENMC_ENABLE_COVERAGE}")
+message(STATUS "OPENMC_USE_DAGMC ${OPENMC_USE_DAGMC}")
+message(STATUS "OPENMC_USE_LIBMESH ${OPENMC_USE_LIBMESH}")
+message(STATUS "OPENMC_USE_MPI ${OPENMC_USE_MPI}")
+message(STATUS "OPENMC_USE_MCPL ${OPENMC_USE_MCPL}")
+message(STATUS "OPENMC_USE_NCRYSTAL ${OPENMC_USE_NCRYSTAL}")
+message(STATUS "OPENMC_USE_UWUW ${OPENMC_USE_UWUW}")
 
 # Warnings for deprecated options
 foreach(OLD_OPT IN ITEMS "openmp" "profile" "coverage" "dagmc" "libmesh")
@@ -310,23 +326,59 @@ include(GNUInstallDirs)
 # installed one in CMAKE_INSTALL_PREFIX. Ref:
 # https://gitlab.kitware.com/cmake/community/wikis/doc/cmake/RPATH-handling
 
-# use, i.e. don't skip the full RPATH for the build tree
-set(CMAKE_SKIP_BUILD_RPATH  FALSE)
 
-# when building, don't use the install RPATH already
-# (but later on when installing)
-set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+if(SKBUILD)
+  # Find necessary packages
+  find_package(
+      Python
+      COMPONENTS Interpreter
+      REQUIRED
+  )
+  # Scikit-build installs OpenMC to ${SKBUILD_PLATLIB_DIR}/openmc
+  # So, set bin directory to root environment (install prefix/bin)
+  set(CMAKE_INSTALL_BINDIR ${SKBUILD_SCRIPTS_DIR})
+  set(CMAKE_INSTALL_INCLUDEDIR ${SKBUILD_SUBDIR}/${CMAKE_INSTALL_INCLUDEDIR})
+  set(CMAKE_INSTALL_DATADIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_DATADIR})
+  set(CMAKE_INSTALL_DOCDIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_DOCDIR})
+  set(CMAKE_INSTALL_INFODIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_INFODIR})
+  set(CMAKE_INSTALL_MANDIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_MANDIR})
+  set(CMAKE_INSTALL_LOCALEDIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_LOCALEDIR})
+  set(CMAKE_INSTALL_LOCALSTATEDIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_LOCALSTATEDIR})
+  set(CMAKE_INSTALL_RUNSTATEDIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_RUNSTATEDIR})
+  set(SKBUILD_SUBDIR core/)
+  set(SKBUILD_LIB_DIR ${CMAKE_INSTALL_LIBDIR}/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/openmc/${SKBUILD_SUBDIR}${CMAKE_INSTALL_LIBDIR})
 
-# add the automatically determined parts of the RPATH
-# which point to directories outside the build tree to the install RPATH
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+  # Auditwheel and Delocate need this when repairing the wheel
+  # Since OpenMC libs are installed in the openmc subdirectory
+  # Auditwheel and Delocate need this to find the OpenMC libs for openmc.data
+  # It's a bit of a hack, but it works
+  set(SKBUILD_REPAIR_WHEEL_PATCH openmc/${SKBUILD_SUBDIR}${CMAKE_INSTALL_LIBDIR})
+  if(APPLE)
+    set(CMAKE_MACOSX_RPATH ON)
+    set(OPENMC_LIBRARY_RPATH "@loader_path")
+    set(OPENMC_BINARY_RPATH "@loader_path/../${SKBUILD_LIB_DIR};@loader_path/../../${SKBUILD_REPAIR_WHEEL_PATCH}")
+  elseif(UNIX)
+    set(OPENMC_LIBRARY_RPATH "$ORIGIN")
+    set(OPENMC_BINARY_RPATH "$ORIGIN/../${SKBUILD_LIB_DIR};$ORIGIN/../${SKBUILD_REPAIR_WHEEL_PATCH};$ORIGIN/../../${SKBUILD_REPAIR_WHEEL_PATCH}")
+  endif()
+else()
+  # use, i.e. don't skip the full RPATH for the build tree
+  set(CMAKE_SKIP_BUILD_RPATH  FALSE)
 
-# the RPATH to be used when installing, but only if it's not a system directory
-list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_FULL_LIBDIR}" isSystemDir)
-if("${isSystemDir}" STREQUAL "-1")
-  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_FULL_LIBDIR}")
+  # when building, don't use the install RPATH already
+  # (but later on when installing)
+  set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+
+  # add the automatically determined parts of the RPATH
+  # which point to directories outside the build tree to the install RPATH
+  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+  # the RPATH to be used when installing, but only if it's not a system directory
+  list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_FULL_LIBDIR}" isSystemDir)
+  if("${isSystemDir}" STREQUAL "-1")
+    set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_FULL_LIBDIR}")
+  endif()
 endif()
-
 #===============================================================================
 # libopenmc
 #===============================================================================
@@ -473,6 +525,14 @@ target_include_directories(libopenmc
 # Set compile flags
 target_compile_options(libopenmc PRIVATE ${cxxflags})
 
+if(OPENMC_LIBRARY_RPATH)
+  set_target_properties(
+    libopenmc
+    PROPERTIES
+    INSTALL_RPATH "${OPENMC_LIBRARY_RPATH}"
+    )
+endif()
+
 # Add include directory for configured version file
 target_include_directories(libopenmc
   PUBLIC $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
@@ -581,15 +641,13 @@ target_compile_features(openmc PUBLIC cxx_std_17)
 target_compile_features(libopenmc PUBLIC cxx_std_17)
 set_target_properties(openmc libopenmc PROPERTIES CXX_EXTENSIONS OFF)
 
-#===============================================================================
-# Python package
-#===============================================================================
-
-add_custom_command(TARGET libopenmc POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy
-  $<TARGET_FILE:libopenmc>
-  ${CMAKE_CURRENT_SOURCE_DIR}/openmc/lib/$<TARGET_FILE_NAME:libopenmc>
-  COMMENT "Copying libopenmc to Python module directory")
+if(OPENMC_BINARY_RPATH)
+  set_target_properties(
+    openmc
+    PROPERTIES
+    INSTALL_RPATH "${OPENMC_BINARY_RPATH}"
+    )
+endif()
 
 #===============================================================================
 # Install executable, scripts, manpage, license
@@ -598,17 +656,32 @@ add_custom_command(TARGET libopenmc POST_BUILD
 configure_file(cmake/OpenMCConfig.cmake.in "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake" @ONLY)
 configure_file(cmake/OpenMCConfigVersion.cmake.in "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfigVersion.cmake" @ONLY)
 
-set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
+if(SKBUILD)
+  set(INSTALL_CONFIGDIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
+else()
+  set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
+endif()
+
 install(TARGETS openmc libopenmc
   EXPORT openmc-targets
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  LIBRARY DESTINATION ${SKBUILD_SUBDIR}${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
-install(EXPORT openmc-targets
-  FILE OpenMCTargets.cmake
-  NAMESPACE OpenMC::
-  DESTINATION ${INSTALL_CONFIGDIR})
+
+if(NOT SKBUILD)
+  install(EXPORT openmc-targets
+    FILE OpenMCTargets.cmake
+    NAMESPACE OpenMC::
+    DESTINATION ${INSTALL_CONFIGDIR}
+  )
+endif()
+
+# Collect scripts
+file(GLOB SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/scripts/*")
+
+# Install scripts to bin directory
+install(PROGRAMS ${SCRIPTS} DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 install(FILES
   "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake"
@@ -616,5 +689,5 @@ install(FILES
   DESTINATION ${INSTALL_CONFIGDIR})
 install(FILES man/man1/openmc.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 install(FILES LICENSE DESTINATION "${CMAKE_INSTALL_DOCDIR}" RENAME copyright)
-install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-install(FILES "${CMAKE_BINARY_DIR}/include/openmc/version.h" DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openmc)
+install(DIRECTORY include/ DESTINATION ${SKBUILD_SUBDIR}${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES "${CMAKE_BINARY_DIR}/include/openmc/version.h" DESTINATION ${SKBUILD_SUBDIR}${CMAKE_INSTALL_INCLUDEDIR}/openmc)

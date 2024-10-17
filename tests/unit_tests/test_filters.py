@@ -296,7 +296,7 @@ def test_tabular_from_energyfilter():
     assert tab.interpolation == 'linear-linear'
 
 
-def test_SurfaceFilter_CompositeSurface(run_in_tmpdir, box_model):
+def test_surfacefilter_w_compositesurface(run_in_tmpdir, box_model):
     m = openmc.Material()
     m.add_nuclide('U235', 1.0)
     m.set_density('g/cm3', 1.0)
@@ -304,10 +304,11 @@ def test_SurfaceFilter_CompositeSurface(run_in_tmpdir, box_model):
     box = openmc.model.RectangularPrism(10., 10., boundary_type='vacuum')
     c = openmc.Cell(fill=m, region=-box)
     box_model.geometry.root_universe = openmc.Universe(cells=[c])
-    
+
     tally = openmc.Tally()
-    tally.filters = [openmc.SurfaceFilter(box)]
+    tally.filters = [openmc.SurfaceFilter([box])]
     tally.scores = ['current']
+    assert tally.filters[0].num_bins == 4
 
     box_model.tallies = [tally]
 
@@ -321,10 +322,17 @@ def test_SurfaceFilter_CompositeSurface(run_in_tmpdir, box_model):
     box = openmc.model.RectangularParallelepiped(*[-10, 10]*3, boundary_type='vacuum')
     c = openmc.Cell(fill=m, region=-box)
     box_model.geometry.root_universe = openmc.Universe(cells=[c])
-    
+
+
     tally = openmc.Tally()
-    tally.filters = [openmc.SurfaceFilter(box)]
+    surface_filter = openmc.SurfaceFilter([box])
+    tally.filters = [surface_filter]
     tally.scores = ['current']
+    assert tally.filters[0].num_bins == 6
+
+    # the redundant surface added here should not change the number of bins
+    surface_filter.bins = [box, box.xmin]
+    assert surface_filter.num_bins == 6
 
     box_model.tallies = [tally]
 

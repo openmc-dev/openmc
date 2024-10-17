@@ -762,7 +762,7 @@ class PointCloud(Spatial):
     """Spatial distribution from a point cloud.
 
     This distribution specifies a discrete list of points, 
-    each with different relative probability.
+    with corresponding relative probabilities.
 
     .. versionadded:: 0.15.x
 

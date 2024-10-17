@@ -600,7 +600,7 @@ def test_regular_mesh(lib_init):
     mf = openmc.lib.MeshFilter(mesh)
     assert mf.mesh == mesh
     mf.rotation = rotation
-    assert mf.rotation == rotation
+    assert np.allclose(mf.rotation == rotation)
 
     # Test material volumes
     mesh = openmc.lib.RegularMesh()

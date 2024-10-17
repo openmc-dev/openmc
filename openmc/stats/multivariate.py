@@ -768,7 +768,7 @@ class PointCloud(Spatial):
 
     Parameters
     ----------
-    positions : iterable of 3-tuples
+    positions : Iterable of 3-tuples
         The points in space to be sampled
     strengths : iterable of float, optional
         An iterable of values that represents the relative probabilty of each point.

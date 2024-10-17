@@ -839,13 +839,22 @@ class ThermalScattering(EqualityMixin):
         with tempfile.TemporaryDirectory() as tmpdir:
             # Run NJOY to create an ACE library
             kwargs.setdefault('output_dir', tmpdir)
-            kwargs.setdefault('ace', os.path.join(kwargs['output_dir'], 'ace'))
+
+            # Get the ace filename from kwargs or default to 'ace'
+            ace_filename = kwargs.get('ace', 'ace')
+            kwargs['ace'] = ace_filename
+
             kwargs['evaluation'] = evaluation
             kwargs['evaluation_thermal'] = evaluation_thermal
             make_ace_thermal(filename, filename_thermal, temperatures, **kwargs)
 
+            # Read the ACE file from the correct path
+            ace_path = kwargs['ace']
+            if not os.path.isabs(ace_path):
+                ace_path = os.path.abspath(ace_path)
+
+            lib = Library(ace_path)
             # Create instance from ACE tables within library
-            lib = Library(kwargs['ace'])
             name = kwargs.get('table_name')
             data = cls.from_ace(lib.tables[0], name=name)
             for table in lib.tables[1:]:
@@ -867,7 +876,6 @@ class ThermalScattering(EqualityMixin):
                         if isinstance(rx_endf.xs[t], (IncoherentElastic, Sum)):
                             rx.xs[t] = rx_endf.xs[t]
                             rx.distribution[t] = rx_endf.distribution[t]
-
         return data
 
     @classmethod

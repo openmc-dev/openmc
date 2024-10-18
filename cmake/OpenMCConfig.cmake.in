@@ -45,7 +45,7 @@ if(@SKBUILD@)
   endfunction()
 
   # Extract MOAB include paths, library paths, and extra libraries
-  run_python_command(OpenMC_INCLUDE_DIRS "import openmc; print(openmc.include_path)")
+  run_python_command(OpenMC_INCLUDE_DIRS "import openmc; print(' '.join(openmc.include_path))")
   run_python_command(OpenMC_LIBRARY_DIRS "import openmc; print(' '.join(openmc.lib_path))")
   run_python_command(OpenMC_EXTRA_LIBRARIES "import openmc; print(' '.join(openmc.extra_lib))")
 

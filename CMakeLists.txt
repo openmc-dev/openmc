@@ -334,10 +334,11 @@ if(SKBUILD)
       COMPONENTS Interpreter
       REQUIRED
   )
-  # Scikit-build installs OpenMC to ${SKBUILD_PLATLIB_DIR}/openmc
-  # So, set bin directory to root environment (install prefix/bin)
-  set(CMAKE_INSTALL_BINDIR ${SKBUILD_SCRIPTS_DIR})
-  set(CMAKE_INSTALL_INCLUDEDIR ${SKBUILD_SUBDIR}/${CMAKE_INSTALL_INCLUDEDIR})
+  # By default, scikit-build will install everything to ${SKBUILD_PLATLIB_DIR}/openmc
+  # Install include and bin directories to ${SKBUILD_PLATLIB_DIR}/openmc/SKBUILD_SUBDIR
+  set(SKBUILD_SUBDIR core/)
+  set(CMAKE_INSTALL_BINDIR ${SKBUILD_SUBDIR}${CMAKE_INSTALL_BINDIR})
+  set(CMAKE_INSTALL_INCLUDEDIR ${SKBUILD_SUBDIR}${CMAKE_INSTALL_INCLUDEDIR})
   set(CMAKE_INSTALL_DATADIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_DATADIR})
   set(CMAKE_INSTALL_DOCDIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_DOCDIR})
   set(CMAKE_INSTALL_INFODIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_INFODIR})
@@ -345,21 +346,13 @@ if(SKBUILD)
   set(CMAKE_INSTALL_LOCALEDIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_LOCALEDIR})
   set(CMAKE_INSTALL_LOCALSTATEDIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_LOCALSTATEDIR})
   set(CMAKE_INSTALL_RUNSTATEDIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_RUNSTATEDIR})
-  set(SKBUILD_SUBDIR core/)
-  set(SKBUILD_LIB_DIR ${CMAKE_INSTALL_LIBDIR}/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/openmc/${SKBUILD_SUBDIR}${CMAKE_INSTALL_LIBDIR})
-
-  # Auditwheel and Delocate need this when repairing the wheel
-  # Since OpenMC libs are installed in the openmc subdirectory
-  # Auditwheel and Delocate need this to find the OpenMC libs for openmc.data
-  # It's a bit of a hack, but it works
-  set(SKBUILD_REPAIR_WHEEL_PATCH openmc/${SKBUILD_SUBDIR}${CMAKE_INSTALL_LIBDIR})
   if(APPLE)
     set(CMAKE_MACOSX_RPATH ON)
     set(OPENMC_LIBRARY_RPATH "@loader_path")
-    set(OPENMC_BINARY_RPATH "@loader_path/../${SKBUILD_LIB_DIR};@loader_path/../../${SKBUILD_REPAIR_WHEEL_PATCH}")
+    set(OPENMC_BINARY_RPATH "@loader_path/../${CMAKE_INSTALL_LIBDIR}")
   elseif(UNIX)
     set(OPENMC_LIBRARY_RPATH "$ORIGIN")
-    set(OPENMC_BINARY_RPATH "$ORIGIN/../${SKBUILD_LIB_DIR};$ORIGIN/../${SKBUILD_REPAIR_WHEEL_PATCH};$ORIGIN/../../${SKBUILD_REPAIR_WHEEL_PATCH}")
+    set(OPENMC_BINARY_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}")
   endif()
 else()
   # use, i.e. don't skip the full RPATH for the build tree
@@ -517,7 +510,7 @@ endif()
 
 target_include_directories(libopenmc
   PUBLIC
-    $<INSTALL_INTERFACE:include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     ${HDF5_INCLUDE_DIRS}
 )
@@ -666,22 +659,31 @@ install(TARGETS openmc libopenmc
   EXPORT openmc-targets
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${SKBUILD_SUBDIR}${CMAKE_INSTALL_LIBDIR}
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${SKBUILD_SUBDIR}${CMAKE_INSTALL_LIBDIR}
 )
 
-if(NOT SKBUILD)
-  install(EXPORT openmc-targets
-    FILE OpenMCTargets.cmake
-    NAMESPACE OpenMC::
-    DESTINATION ${INSTALL_CONFIGDIR}
-  )
-endif()
+set(INSTALL_TARGETDIR ${SKBUILD_SUBDIR}${CMAKE_INSTALL_LIBDIR}/cmake/OpenMC)
+install(EXPORT openmc-targets
+  FILE OpenMCTargets.cmake
+  NAMESPACE OpenMC::
+  DESTINATION ${INSTALL_TARGETDIR}
+)
 
 # Collect scripts
 file(GLOB SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/scripts/*")
 
 # Install scripts to bin directory
-install(PROGRAMS ${SCRIPTS} DESTINATION ${CMAKE_INSTALL_BINDIR})
+if(SKBUILD)
+  install(PROGRAMS ${SCRIPTS} DESTINATION ${SKBUILD_SCRIPTS_DIR})
+else()
+  install(PROGRAMS ${SCRIPTS} DESTINATION ${CMAKE_INSTALL_BINDIR})
+endif()
+
+# Install openmc script
+if(SKBUILD)
+  configure_file(cmake/openmc.in "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/openmc" @ONLY)
+  install(PROGRAMS "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/openmc" DESTINATION ${SKBUILD_SCRIPTS_DIR})
+endif()
 
 install(FILES
   "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/OpenMCConfig.cmake"
@@ -689,5 +691,5 @@ install(FILES
   DESTINATION ${INSTALL_CONFIGDIR})
 install(FILES man/man1/openmc.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 install(FILES LICENSE DESTINATION "${CMAKE_INSTALL_DOCDIR}" RENAME copyright)
-install(DIRECTORY include/ DESTINATION ${SKBUILD_SUBDIR}${CMAKE_INSTALL_INCLUDEDIR})
-install(FILES "${CMAKE_BINARY_DIR}/include/openmc/version.h" DESTINATION ${SKBUILD_SUBDIR}${CMAKE_INSTALL_INCLUDEDIR}/openmc)
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES "${CMAKE_BINARY_DIR}/include/openmc/version.h" DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openmc)

@@ -5,6 +5,9 @@ find_package(gsl-lite REQUIRED HINTS ${OpenMC_CMAKE_DIR}/../gsl-lite)
 find_package(pugixml REQUIRED HINTS ${OpenMC_CMAKE_DIR}/../pugixml)
 find_package(xtl REQUIRED HINTS ${OpenMC_CMAKE_DIR}/../xtl)
 find_package(xtensor REQUIRED HINTS ${OpenMC_CMAKE_DIR}/../xtensor)
+
+find_package(HDF5 REQUIRED COMPONENTS C HL)
+
 if(@OPENMC_USE_DAGMC@)
   find_package(DAGMC REQUIRED HINTS @DAGMC_DIR@)
 endif()
@@ -60,32 +63,10 @@ if(@SKBUILD@)
         "For more information, visit: https://docs.openmc.org/"
     )
   endif()
-
-  # Find the core library
-  find_library(OpenMC_LIBRARY
-    NAMES openmc
-    HINTS ${OpenMC_LIBRARY_DIRS}
-    NO_DEFAULT_PATH
-  )
-
-  # Add the core library as an imported target
-  add_library(OpenMC::libopenmc UNKNOWN IMPORTED)
-  set_target_properties(OpenMC::libopenmc PROPERTIES
-      INTERFACE_INCLUDE_DIRECTORIES "${OpenMC_INCLUDE_DIRS}"
-      IMPORTED_LOCATION "${OpenMC_LIBRARY}"
-  )
-
-  # Add the core library to the list of libraries
-  set(OpenMC_LIBRARIES ${OpenMC_LIBRARY})
-
-  # Include standard argument handling for finding packages
-  include(FindPackageHandleStandardArgs)
-
-  # Validates that the necessary variables are set
-  find_package_handle_standard_args(MOAB
-    REQUIRED_VARS OpenMC_LIBRARIES OpenMC_INCLUDE_DIRS
-    VERSION_VAR @OPENMC_VERSION@
-    )
+  
+  # Add OpenMC targets
+  file(TO_CMAKE_PATH "${OpenMC_LIBRARY_DIRS}/cmake/OpenMC/OpenMCTargets.cmake" OpenMC_TARGETS_FILE)
+  include(${OpenMC_TARGETS_FILE})
 elseif(NOT TARGET OpenMC::libopenmc)
   include("${OpenMC_CMAKE_DIR}/OpenMCTargets.cmake")
 endif()

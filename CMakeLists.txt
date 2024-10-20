@@ -78,6 +78,9 @@ foreach(OLD_BLD in ITEMS "debug" "optimize")
   endif()
 endforeach()
 
+# Include the GenerateScript.cmake file
+include(cmake/GenerateScript.cmake)
+
 #===============================================================================
 # Set a default build configuration if not explicitly specified
 #===============================================================================
@@ -628,8 +631,7 @@ target_compile_features(openmc PUBLIC cxx_std_17)
 target_compile_features(libopenmc PUBLIC cxx_std_17)
 set_target_properties(openmc libopenmc PROPERTIES CXX_EXTENSIONS OFF)
 
-# Add openmc executable to SKBUILD_SCRIPT_LIST
-list(APPEND SKBUILD_SCRIPT_LIST openmc)
+generate_and_install_python_script(openmc)
 
 # Set rpath for openmc executable
 if(OPENMC_BINARY_RPATH)
@@ -675,11 +677,6 @@ if(SKBUILD)
   install(PROGRAMS ${SCRIPTS} DESTINATION ${SKBUILD_SCRIPTS_DIR})
 else()
   install(PROGRAMS ${SCRIPTS} DESTINATION ${CMAKE_INSTALL_BINDIR})
-endif()
-
-# Generate and install the SKBUILD scripts
-if(SKBUILD)
-  generate_and_install_scripts(${SKBUILD_SCRIPT_LIST})
 endif()
 
 install(FILES

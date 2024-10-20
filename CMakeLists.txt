@@ -16,11 +16,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 # Set module path
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
 
-# Conditionally find Python if building with scikit-build-core
-if(SKBUILD)
-  find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
-endif()
-
 # Enable correct usage of CXX_EXTENSIONS
 if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.22)
   cmake_policy(SET CMP0128 NEW)
@@ -328,12 +323,6 @@ include(GNUInstallDirs)
 
 
 if(SKBUILD)
-  # Find necessary packages
-  find_package(
-      Python
-      COMPONENTS Interpreter
-      REQUIRED
-  )
   # By default, scikit-build will install everything to ${SKBUILD_PLATLIB_DIR}/openmc
   # Install include and bin directories to ${SKBUILD_PLATLIB_DIR}/openmc/SKBUILD_SUBDIR
   set(SKBUILD_SUBDIR core/)
@@ -346,6 +335,11 @@ if(SKBUILD)
   set(CMAKE_INSTALL_LOCALEDIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_LOCALEDIR})
   set(CMAKE_INSTALL_LOCALSTATEDIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_LOCALSTATEDIR})
   set(CMAKE_INSTALL_RUNSTATEDIR ${SKBUILD_DATA_DIR}/${CMAKE_INSTALL_RUNSTATEDIR})
+  
+  # Include the SKBUILDScripts.cmake file
+  include(cmake/SKBUILDScripts.cmake)
+
+  # Set RPATH
   if(APPLE)
     set(CMAKE_MACOSX_RPATH ON)
     set(OPENMC_LIBRARY_RPATH "@loader_path")
@@ -634,6 +628,10 @@ target_compile_features(openmc PUBLIC cxx_std_17)
 target_compile_features(libopenmc PUBLIC cxx_std_17)
 set_target_properties(openmc libopenmc PROPERTIES CXX_EXTENSIONS OFF)
 
+# Add openmc executable to SKBUILD_SCRIPT_LIST
+list(APPEND SKBUILD_SCRIPT_LIST openmc)
+
+# Set rpath for openmc executable
 if(OPENMC_BINARY_RPATH)
   set_target_properties(
     openmc
@@ -679,10 +677,9 @@ else()
   install(PROGRAMS ${SCRIPTS} DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
 
-# Install openmc script
+# Generate and install the SKBUILD scripts
 if(SKBUILD)
-  configure_file(cmake/openmc.in "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/openmc" @ONLY)
-  install(PROGRAMS "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/openmc" DESTINATION ${SKBUILD_SCRIPTS_DIR})
+  generate_and_install_scripts(${SKBUILD_SCRIPT_LIST})
 endif()
 
 install(FILES

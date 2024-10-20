@@ -36,7 +36,6 @@ from openmc.search import *
 from openmc.polynomial import *
 from openmc.tracks import *
 from .config import *
-from .openmc_exec import main
 
 # Import a few names from the model module
 from openmc.model import Model

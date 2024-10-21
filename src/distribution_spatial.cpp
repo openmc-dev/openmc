@@ -309,12 +309,11 @@ PointCloud::PointCloud(pugi::xml_node node)
   std::vector<double> coords;
 
   if (check_for_node(node, "coords")) {
-    coords = get_node_array<double>(node, "coords");
+    point_cloud_ = get_node_position_array(node, "coords");
   } else {
     fatal_error("No coordinates were provided for the PointCloud "
                 "spatial distribution");
   }
-  point_cloud_ = get_node_position_array(node, "coords");
 
   std::vector<double> strengths(point_cloud_.size(), 1.0);
 

@@ -607,7 +607,7 @@ attributes/sub-elements:
       the space within the mesh is uniformly sampled.
 
       A "cloud" spatial distribution samples source sites from a list of spatial
-      positions provided in the nodw, based on the relative strengths provided
+      positions provided in the node, based on the relative strengths provided
       in the node.  If no strengths are provided, the positions are uniformly
       sampled.
 

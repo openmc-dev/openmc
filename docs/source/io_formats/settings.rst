@@ -689,9 +689,10 @@ attributes/sub-elements:
       relative source strength of each mesh element or each point in the cloud.
 
     :volume_normalized:
-      For "mesh" spatial distrubtions, this element specifies whether the vector
-      of relative strengths should be multiplied by the mesh element volume. This
-      is most common if the strengths represent a source per unit volume. 
+      For "mesh" spatial distrubtions, this optional boolean element specifies
+      whether the vector of relative strengths should be multiplied by the mesh
+      element volume. This is most common if the strengths represent a source
+      per unit volume. Default: false
 
   :angle:
     An element specifying the angular distribution of source sites. This element

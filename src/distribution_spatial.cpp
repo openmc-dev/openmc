@@ -306,8 +306,6 @@ Position MeshSpatial::sample(uint64_t* seed) const
 
 PointCloud::PointCloud(pugi::xml_node node)
 {
-  std::vector<double> coords;
-
   if (check_for_node(node, "coords")) {
     point_cloud_ = get_node_position_array(node, "coords");
   } else {
@@ -315,16 +313,18 @@ PointCloud::PointCloud(pugi::xml_node node)
                 "spatial distribution");
   }
 
-  std::vector<double> strengths(point_cloud_.size(), 1.0);
+  std::vector<double> strengths;
 
-  if (check_for_node(node, "strengths")) {
+  if (check_for_node(node, "strengths"))
     strengths = get_node_array<double>(node, "strengths");
-    if (strengths.size() != point_cloud_.size()) {
-      fatal_error(
-        fmt::format("Number of entries for the strengths array {} does "
-                    "not match the number of spatial points provided {}.",
-          strengths.size(), point_cloud_.size()));
-    }
+  else
+    strengths.resize(point_cloud_.size(), 1.0);
+
+  if (strengths.size() != point_cloud_.size()) {
+    fatal_error(
+      fmt::format("Number of entries for the strengths array {} does "
+                  "not match the number of spatial points provided {}.",
+        strengths.size(), point_cloud_.size()));
   }
 
   point_idx_dist_.assign(strengths);

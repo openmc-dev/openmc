@@ -579,23 +579,37 @@ attributes/sub-elements:
 
     :type:
       The type of spatial distribution. Valid options are "box", "fission",
-      "point", "cartesian", "cylindrical", and "spherical". A "box" spatial
-      distribution has coordinates sampled uniformly in a parallelepiped. A
-      "fission" spatial distribution samples locations from a "box"
+      "point", "cartesian", "cylindrical", "spherical", "mesh", and "cloud". 
+      
+      A "box" spatial distribution has coordinates sampled uniformly in a
+      parallelepiped. 
+      
+      A "fission" spatial distribution samples locations from a "box"
       distribution but only locations in fissionable materials are accepted.
+      
       A "point" spatial distribution has coordinates specified by a triplet.
+      
       A "cartesian" spatial distribution specifies independent distributions of
-      x-, y-, and z-coordinates. A "cylindrical" spatial distribution specifies
-      independent distributions of r-, phi-, and z-coordinates where phi is the
-      azimuthal angle and the origin for the cylindrical coordinate system is
-      specified by origin. A "spherical" spatial distribution specifies
-      independent distributions of r-, cos_theta-, and phi-coordinates where
-      cos_theta is the cosine of the angle with respect to the z-axis, phi is
-      the azimuthal angle, and the sphere is centered on the coordinate
-      (x0,y0,z0). A "mesh" spatial distribution samples source sites from a mesh element
+      x-, y-, and z-coordinates. 
+      
+      A "cylindrical" spatial distribution specifies independent distributions
+      of r-, phi-, and z-coordinates where phi is the azimuthal angle and the
+      origin for the cylindrical coordinate system is specified by origin. 
+      
+      A "spherical" spatial distribution specifies independent distributions of
+      r-, cos_theta-, and phi-coordinates where cos_theta is the cosine of the
+      angle with respect to the z-axis, phi is the azimuthal angle, and the
+      sphere is centered on the coordinate (x0,y0,z0). 
+      
+      A "mesh" spatial distribution samples source sites from a mesh element
       based on the relative strengths provided in the node. Source locations
       within an element are sampled isotropically. If no strengths are provided,
       the space within the mesh is uniformly sampled.
+
+      A "cloud" spatial distribution samples source sites from a list of spatial
+      positions provided in the nodw, based on the relative strengths provided
+      in the node.  If no strengths are provided, the positions are uniformly
+      sampled.
 
       *Default*: None
 
@@ -661,6 +675,23 @@ attributes/sub-elements:
     :origin:
       For "cylindrical and "spherical" distributions, this element specifies
       the coordinates for the origin of the coordinate system.
+
+    :mesh_id:
+      For "mesh" spatial distributions, this element specifies which mesh ID to
+      use for the geometric description of the mesh.
+
+    :coords:
+      For "cloud" distributions, this element specifies a list of coordinates for
+      each of the points in the cloud.
+
+    :strengths:
+      For "mesh" and "cloud" spatial distributions, this element specifies the 
+      relative source strength of each mesh element or each point in the cloud.
+
+    :volume_normalized:
+      For "mesh" spatial distrubtions, this element specifies whether the vector
+      of relative strengths should be multiplied by the mesh element volume. This
+      is most common if the strengths represent a source per unit volume. 
 
   :angle:
     An element specifying the angular distribution of source sites. This element

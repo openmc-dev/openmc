@@ -869,7 +869,6 @@ class PointCloud(Spatial):
         return cls(positions, strengths)
 
 
-
 class Box(Spatial):
     """Uniform distribution of coordinates in a rectangular cuboid.
 

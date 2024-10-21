@@ -791,8 +791,6 @@ class PointCloud(Spatial):
 
     @positions.setter
     def positions(self, given_positions):
-        if given_positions is None:
-            raise ValueError('No positions were provided')
         cv.check_iterable_type('position list passed in', given_positions, Real, 2, 2)
 
         if isinstance(given_positions, list):

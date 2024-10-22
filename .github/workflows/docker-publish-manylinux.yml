@@ -52,7 +52,7 @@ jobs:
           echo "image_base_tag=${image_base_tag}" >> "$GITHUB_ENV"
 
       - name: Installing Dependencies in Docker image
-        uses: firehed/multistage-docker-build-action@v1
+        uses: firehed/multistage-docker-build-action@v1.8
         with:
           repository: ${{ env.image_base_tag }}
           stages: base, dependencies, python-dependencies

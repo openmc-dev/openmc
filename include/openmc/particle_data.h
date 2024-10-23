@@ -44,10 +44,12 @@ struct SourceSite {
   Position r;
   Direction u;
   double E;
+  double E_parent;
   double time {0.0};
   double wgt {1.0};
   int delayed_group {0};
   int surf_id {0};
+  int fission_nuclide;
   ParticleType particle;
   int64_t parent_id;
   int64_t progeny_id;
@@ -402,8 +404,13 @@ private:
 
   double E_;
   double E_last_;
+  double E_parent_; //!< energy of parent neutron in eV
   int g_ {0};
   int g_last_;
+  
+  // Other birth data
+  int fission_nuclide_;  //!< this particle was born as a result of this nuclide fissioning
+  // a double for fission cross section at birth? if so, I need to also add it to the bank...
 
   double wgt_ {1.0};
   double mu_;
@@ -436,6 +443,8 @@ private:
   int64_t current_work_;
 
   vector<double> flux_derivs_;
+  
+  std::vector<std::vector<double>> cumulative_sensitivities_;  // for sensitivities for this particle
 
   vector<FilterMatch> filter_matches_;
 
@@ -498,6 +507,8 @@ public:
   const double& E() const { return E_; }
   double& E_last() { return E_last_; }
   const double& E_last() const { return E_last_; }
+  double& E_parent() { return E_parent_; }              // for sensitivity analysis
+  const double& E_parent() const { return E_parent_; }  // for SA
   int& g() { return g_; }
   const int& g() const { return g_; }
   int& g_last() { return g_last_; }
@@ -575,6 +586,12 @@ public:
   // Used in tally derivatives
   double& flux_derivs(int i) { return flux_derivs_[i]; }
   const double& flux_derivs(int i) const { return flux_derivs_[i]; }
+  
+  // Used in sensitivity analysis
+  std::vector<double>& cumulative_sensitivities(int i) { return cumulative_sensitivities_[i]; }
+  const std::vector<double>& cumulative_sensitivities(int i) const { return cumulative_sensitivities_[i]; }
+  int& fission_nuclide() { return fission_nuclide_; }
+  const int& fission_nuclide() const { return fission_nuclide_; }
 
   // Matches of tallies
   decltype(filter_matches_)& filter_matches() { return filter_matches_; }
@@ -641,6 +658,40 @@ public:
   {
     for (double& d : flux_derivs_) {
       d = 0;
+    }
+  }
+  
+  void resize_flux_derivs(int newSize)
+  {
+    flux_derivs_.resize(newSize, 0.0);
+  }
+  
+  // Resize and initialize sensitivity vectors
+  void resize_init_cumulative_sensitivities(int newSize)
+  {
+    cumulative_sensitivities_.resize(newSize, {0.0});
+  }
+  
+  void resize_init_cumulative_sensitivities_vec(int indx, int newSize)
+  {
+    cumulative_sensitivities_[indx].resize(newSize, 0.0);
+  }
+      
+  void resize_alloc_filter_matches(int newSize)
+  {
+    filter_matches_.resize(newSize);
+    for (auto &match: filter_matches_){
+      match.bins_.resize(1, 0.0);
+      match.weights_.resize(1, 0.0);
+      match.i_bin_ = 0;
+      // bins_present_ default is false from header
+    }
+  }
+  
+  void initialize_cumulative_sensitivities()
+  {
+    for (auto& it : cumulative_sensitivities_){
+      std::fill(it.begin(), it.end(), 0.0);
     }
   }
 };

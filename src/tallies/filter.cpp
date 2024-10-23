@@ -19,6 +19,7 @@
 #include "openmc/tallies/filter_distribcell.h"
 #include "openmc/tallies/filter_energy.h"
 #include "openmc/tallies/filter_energyfunc.h"
+#include "openmc/tallies/filter_importance.h"
 #include "openmc/tallies/filter_legendre.h"
 #include "openmc/tallies/filter_material.h"
 #include "openmc/tallies/filter_materialfrom.h"
@@ -154,6 +155,8 @@ Filter* Filter::create(const std::string& type, int32_t id)
     return Filter::create<ZernikeFilter>(id);
   } else if (type == "zernikeradial") {
     return Filter::create<ZernikeRadialFilter>(id);
+  } else if (type == "importance") {
+    return Filter::create<ImportanceFilter>(id);
   } else {
     throw std::runtime_error {fmt::format("Unknown filter type: {}", type)};
   }

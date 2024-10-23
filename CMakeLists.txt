@@ -409,11 +409,12 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_distribcell.cpp
   src/tallies/filter_energy.cpp
   src/tallies/filter_energyfunc.cpp
+  src/tallies/filter_importance.cpp
   src/tallies/filter_legendre.cpp
   src/tallies/filter_material.cpp
   src/tallies/filter_materialfrom.cpp
   src/tallies/filter_mesh.cpp
-  src/tallies/filter_meshborn.cpp
+  src/tallies/filter_meshborn.cpp  
   src/tallies/filter_meshsurface.cpp
   src/tallies/filter_mu.cpp
   src/tallies/filter_musurface.cpp
@@ -427,6 +428,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_zernike.cpp
   src/tallies/tally.cpp
   src/tallies/tally_scoring.cpp
+  src/tallies/sensitivity.cpp
   src/tallies/trigger.cpp
   src/thermal.cpp
   src/timer.cpp

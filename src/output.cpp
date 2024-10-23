@@ -37,6 +37,7 @@
 #include "openmc/simulation.h"
 #include "openmc/surface.h"
 #include "openmc/tallies/derivative.h"
+#include "openmc/tallies/sensitivity.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/tallies/tally_scoring.h"
@@ -663,6 +664,28 @@ void write_tallies()
       }
     }
 
+    // Write sensitivity information.
+    if (tally.sens_ != C_NONE) {
+      const auto& sens {model::tally_sens[tally.sens_]};
+      switch (sens.variable) {
+      case SensitivityVariable::CROSS_SECTION:
+        fmt::print(tallies_out, " Cross section sensitivity Nuclide {} Reaction {}\n",
+          data::nuclides[sens.sens_nuclide]->name_, reaction_name(sens.sens_reaction));
+        break;
+      case SensitivityVariable::MULTIPOLE:
+        fmt::print(tallies_out, " Multipole sensitivity Nuclide {}\n",
+          data::nuclides[sens.sens_nuclide]->name_);
+        break;
+      case SensitivityVariable::CURVE_FIT:
+        fmt::print(tallies_out, " Curvefit sensitivity Nuclide {}\n",
+          data::nuclides[sens.sens_nuclide]->name_);
+        break;
+      default:
+        fatal_error(fmt::format("Sensitivity tally dependent variable for "
+          "tally {} not defined in output.cpp", tally.id_));
+      }
+    }
+    
     // Initialize Filter Matches Object
     vector<FilterMatch> filter_matches;
     // Allocate space for tally filter matches
@@ -710,6 +733,17 @@ void write_tallies()
           std::string score_name =
             score > 0 ? reaction_name(score) : score_names.at(score);
           double mean, stdev;
+          if (tally.sens_ != C_NONE){
+            int n_bins = model::tally_sens[tally.sens_].n_bins_;
+            for (auto filter_idx = 0; filter_idx < n_bins; ++filter_idx){
+              std::tie(mean, stdev) = mean_stdev(
+                &tally.results_(filter_idx, score_index, 0), tally.n_realizations_);
+              fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6}\n",
+                "", indent + 1, score_name, mean, t_value * stdev);
+            }
+            score_index += 1;
+            continue;
+          }
           std::tie(mean, stdev) =
             mean_stdev(&tally.results_(filter_index, score_index, 0),
               tally.n_realizations_);

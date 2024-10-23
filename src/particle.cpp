@@ -26,6 +26,7 @@
 #include "openmc/simulation.h"
 #include "openmc/source.h"
 #include "openmc/surface.h"
+#include "openmc/tallies/sensitivity.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/tallies/tally_scoring.h"
@@ -99,6 +100,9 @@ void Particle::create_secondary(
   bank.r = r();
   bank.u = u;
   bank.E = settings::run_CE ? E : g();
+  if (settings::run_CE) {
+    bank.E_parent = this->E(); 
+  }
   bank.time = time();
 
   n_bank_second() += 1;
@@ -114,6 +118,8 @@ void Particle::from_source(const SourceSite* src)
   n_collision() = 0;
   fission() = false;
   zero_flux_derivs();
+  
+  initialize_cumulative_sensitivities();
 
   // Copy attributes from source bank site
   type() = src->particle;
@@ -125,8 +131,10 @@ void Particle::from_source(const SourceSite* src)
   r_last_current() = src->r;
   r_last() = src->r;
   u_last() = src->u;
+  fission_nuclide() = src->fission_nuclide;
   if (settings::run_CE) {
     E() = src->E;
+    E_parent() = src->E_parent;
     g() = 0;
   } else {
     g() = static_cast<int>(src->E);
@@ -260,6 +268,7 @@ void Particle::event_advance()
   // Score flux derivative accumulators for differential tallies.
   if (!model::active_tallies.empty()) {
     score_track_derivative(*this, distance);
+    score_track_sensitivity(*this, distance); // Score cumulative sensitivity for sensitivity tallies.
   }
 
   // Set particle weight to zero if it hit the time boundary
@@ -385,9 +394,11 @@ void Particle::event_collide()
   }
 
   // Score flux derivative accumulators for differential tallies.
-  if (!model::active_tallies.empty())
+  if (!model::active_tallies.empty()) {
     score_collision_derivative(*this);
-
+    score_collision_sensitivity(*this);  // Score cumulative sensitivity for sensitivity tallies.
+  }
+  
 #ifdef DAGMC
   history().reset();
 #endif

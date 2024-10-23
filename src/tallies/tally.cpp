@@ -17,6 +17,7 @@
 #include "openmc/simulation.h"
 #include "openmc/source.h"
 #include "openmc/tallies/derivative.h"
+#include "openmc/tallies/sensitivity.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_cell.h"
 #include "openmc/tallies/filter_cellborn.h"
@@ -75,6 +76,10 @@ double global_tally_leakage;
 //==============================================================================
 // Tally object implementation
 //==============================================================================
+Tally::Tally()
+{
+  // Empty constructor that does nothing
+}
 
 Tally::Tally(int32_t id)
 {
@@ -401,6 +406,21 @@ bool Tally::has_filter(FilterType filter_type) const
   return false;
 }
 
+// void Tally::set_filters(gsl::span<Filter*> filters)
+// {
+//   // Clear old data.
+//   filters_.clear();
+//   strides_.clear();
+// 
+//   // Copy in the given filter indices.
+//   auto n = filters.size();
+//   filters_.reserve(n);
+// 
+//   for (auto* filter : filters) {
+//     add_filter(filter);
+//   }
+// }
+
 void Tally::set_filters(gsl::span<Filter*> filters)
 {
   // Clear old data.
@@ -411,30 +431,45 @@ void Tally::set_filters(gsl::span<Filter*> filters)
   auto n = filters.size();
   filters_.reserve(n);
 
-  for (auto* filter : filters) {
-    add_filter(filter);
+  for (auto* filter : filters) {    
+    int32_t filter_idx = model::filter_map.at(filter->id());
+    // if this filter is already present, do nothing and return
+    if (std::find(filters_.begin(), filters_.end(), filter_idx) != filters_.end())
+      return;
+    
+    // Keep track of indices for special filters
+    if (filter->type() == FilterType::ENERGY_OUT) {
+      energyout_filter_ = filters_.size();
+    } else if (filter->type() == FilterType::DELAYED_GROUP) {
+      delayedgroup_filter_ = filters_.size();
+    } else if (filter->type() == FilterType::CELL) {
+      cell_filter_ = filters_.size();
+    } else if (filter->type() == FilterType::ENERGY) {
+      energy_filter_ = filters_.size();
+    }
+    filters_.push_back(filter_idx);
   }
 }
 
-void Tally::add_filter(Filter* filter)
-{
-  int32_t filter_idx = model::filter_map.at(filter->id());
-  // if this filter is already present, do nothing and return
-  if (std::find(filters_.begin(), filters_.end(), filter_idx) != filters_.end())
-    return;
-
-  // Keep track of indices for special filters
-  if (filter->type() == FilterType::ENERGY_OUT) {
-    energyout_filter_ = filters_.size();
-  } else if (filter->type() == FilterType::DELAYED_GROUP) {
-    delayedgroup_filter_ = filters_.size();
-  } else if (filter->type() == FilterType::CELL) {
-    cell_filter_ = filters_.size();
-  } else if (filter->type() == FilterType::ENERGY) {
-    energy_filter_ = filters_.size();
-  }
-  filters_.push_back(filter_idx);
-}
+// void Tally::add_filter(Filter* filter)
+// {
+//   int32_t filter_idx = model::filter_map.at(filter->id());
+//   // if this filter is already present, do nothing and return
+//   if (std::find(filters_.begin(), filters_.end(), filter_idx) != filters_.end())
+//     return;
+// 
+//   // Keep track of indices for special filters
+//   if (filter->type() == FilterType::ENERGY_OUT) {
+//     energyout_filter_ = filters_.size();
+//   } else if (filter->type() == FilterType::DELAYED_GROUP) {
+//     delayedgroup_filter_ = filters_.size();
+//   } else if (filter->type() == FilterType::CELL) {
+//     cell_filter_ = filters_.size();
+//   } else if (filter->type() == FilterType::ENERGY) {
+//     energy_filter_ = filters_.size();
+//   }
+//   filters_.push_back(filter_idx);
+// }
 
 void Tally::set_strides()
 {
@@ -871,6 +906,9 @@ void read_tallies_xml(pugi::xml_node root)
 
   // Read data for tally derivatives
   read_tally_derivatives(root);
+  
+  // Read data for tally sensitivities
+  read_tally_sensitivities(root);
 
   // ==========================================================================
   // READ FILTER DATA
@@ -893,6 +931,10 @@ void read_tallies_xml(pugi::xml_node root)
 
   for (auto node_tal : root.children("tally")) {
     model::tallies.push_back(make_unique<Tally>(node_tal));
+  }
+  
+  for (auto node_tal : root.children("sensitivity_tally")) {
+    model::tallies.push_back(make_unique<SensitivityTally>(node_tal)); 
   }
 }
 
@@ -1056,6 +1098,9 @@ void free_memory_tally()
 {
   model::tally_derivs.clear();
   model::tally_deriv_map.clear();
+  
+  model::tally_sens.clear();
+  model::tally_sens_map.clear();
 
   model::tally_filters.clear();
   model::filter_map.clear();

@@ -25,7 +25,7 @@ _FILTER_TYPES = (
     'energyout', 'mu', 'musurface', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
     'energyfunction', 'cellfrom', 'materialfrom', 'legendre', 'spatiallegendre',
     'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance',
-    'collision', 'time'
+    'collision', 'time', 'importance'
 )
 
 _CURRENT_NAMES = (
@@ -1458,6 +1458,187 @@ class EnergyFilter(RealFilter):
 
         cv.check_value('group_structure', group_structure, openmc.mgxs.GROUP_STRUCTURES.keys())
         return cls(openmc.mgxs.GROUP_STRUCTURES[group_structure.upper()])
+
+
+class ImportanceFilter(Filter):
+    """Importance weighted tally, where importance is based on locations onto a 
+    regular, rectangular mesh.
+
+    Parameters
+    ----------
+    mesh : openmc.MeshBase
+        The mesh object that the importance is given on
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    mesh : openmc.MeshBase
+        The mesh object that events will be tallied onto
+    id : int
+        Unique identifier for the filter
+    importance : numpy.ndarray
+        An array of values of the importance for each bin in the mesh
+    num_bins : Integral
+        The number of filter bins
+
+    """
+
+    def __init__(self, importance, mesh, filter_id=None):
+        self.importance = np.asarray(importance)
+        self.mesh = mesh
+        self.id = filter_id
+
+    def __hash__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
+        return hash(string)
+
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
+        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        return string
+
+    @property
+    def bins(self):
+        raise AttributeError('EnergyFunctionFilters have no bins.')
+
+    @property
+    def num_bins(self):
+        return 1
+    
+    @bins.setter
+    def bins(self, bins):
+        raise RuntimeError('EnergyFunctionFilters have no bins.')
+
+    @classmethod
+    def from_hdf5(cls, group, **kwargs):
+        if group['type'][()].decode() != cls.short_name.lower():
+            raise ValueError("Expected HDF5 data for filter type '"
+                             + cls.short_name.lower() + "' but got '"
+                             + group['type'][()].decode() + " instead")
+
+        if 'meshes' not in kwargs:
+            raise ValueError(cls.__name__ + " requires a 'meshes' keyword "
+                             "argument.")
+
+        mesh_id = group['mesh'][()]
+        mesh_obj = kwargs['meshes'][mesh_id]
+        importance = group['importance'][()]
+        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+
+        out = cls(importance,mesh_obj, filter_id=filter_id)
+
+        return out
+
+    @property
+    def mesh(self):
+        return self._mesh
+
+    @property
+    def importance(self):
+        return self._importance
+
+    @mesh.setter
+    def mesh(self, mesh):
+        cv.check_type('filter mesh', mesh, openmc.MeshBase)
+        self._mesh = mesh
+
+    @importance.setter
+    def importance(self, importance):
+        self._importance = np.asarray(importance)
+
+    def can_merge(self, other):
+        # Mesh filters cannot have more than one bin
+        return False
+
+    def get_pandas_dataframe(self, data_size, stride, **kwargs):
+        """Builds a Pandas DataFrame for the Filter's bins.
+
+        This method constructs a Pandas DataFrame object for the filter with
+        columns annotated by filter bin information. This is a helper method for
+        :meth:`Tally.get_pandas_dataframe`.
+
+        Parameters
+        ----------
+        data_size : int
+            The total number of bins in the tally corresponding to this filter
+        stride : int
+            Stride in memory for the filter
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame with three columns describing the x,y,z mesh
+            cell indices corresponding to each filter bin.  The number of rows
+            in the DataFrame is the same as the total number of bins in the
+            corresponding tally, with the filter bin appropriately tiled to map
+            to the corresponding tally bins.
+
+        See also
+        --------
+        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+
+        """
+        # Initialize Pandas DataFrame
+        df = pd.DataFrame()
+
+        # Initialize dictionary to build Pandas Multi-index column
+        filter_dict = {}
+
+        # Append mesh ID as outermost index of multi-index
+        mesh_key = 'mesh {}'.format(self.mesh.id)
+
+        # Find mesh dimensions - use 3D indices for simplicity
+        n_dim = len(self.mesh.dimension)
+        if n_dim == 3:
+            nx, ny, nz = self.mesh.dimension
+        elif n_dim == 2:
+            nx, ny = self.mesh.dimension
+            nz = 1
+        else:
+            nx = self.mesh.dimension
+            ny = nz = 1
+
+        # Generate multi-index sub-column for x-axis
+        filter_dict[mesh_key, 'x'] = _repeat_and_tile(
+            np.arange(1, nx + 1), stride, data_size)
+
+        # Generate multi-index sub-column for y-axis
+        filter_dict[mesh_key, 'y'] = _repeat_and_tile(
+            np.arange(1, ny + 1), nx * stride, data_size)
+
+        # Generate multi-index sub-column for z-axis
+        filter_dict[mesh_key, 'z'] = _repeat_and_tile(
+            np.arange(1, nz + 1), nx * ny * stride, data_size)
+
+        # Initialize a Pandas DataFrame from the mesh dictionary
+        df = pd.concat([df, pd.DataFrame(filter_dict)])
+
+        return df
+
+    def to_xml_element(self):
+        """Return XML Element representing the Filter.
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing filter data
+
+        """
+
+        element = ET.Element('filter')
+        element.set('id', str(self.id))
+        element.set('type', self.short_name.lower())
+
+        subelement = ET.SubElement(element, 'importance')
+        subelement.text = ' '.join(str(e) for e in self.importance)
+
+        subelement = ET.SubElement(element, 'mesh')
+        subelement.text = str(self.mesh.id)
+        
+        return element
 
 
 class EnergyoutFilter(EnergyFilter):

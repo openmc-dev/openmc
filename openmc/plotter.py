@@ -130,8 +130,8 @@ def plot_xs(reactions, divisor_types=None, temperature=294., axis=None,
     ----------
     reactions : dict
         keys can be either a nuclide or element in string form or an
-        openmc.Material object. Values are the type of cross sections to
-        include in the plot.
+        openmc.Material object. Values are a list of the types of
+        cross sections to include in the plot.
     divisor_types : Iterable of values of PLOT_TYPES, optional
         Cross section types which will divide those produced by types
         before plotting. A type of 'unity' can be used to effectively not

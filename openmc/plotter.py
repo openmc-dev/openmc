@@ -1,3 +1,7 @@
+# annotations package is required to enable postponed evaluation of type
+# hints in conjugation with the | operator. This avoids TypeError: 
+# unsupported operand type(s) for |: 'str' and 'NoneType' error
+from __future__ import annotations
 from itertools import chain
 from numbers import Integral, Real
 from typing import Dict, Iterable, List

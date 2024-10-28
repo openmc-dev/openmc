@@ -1536,7 +1536,7 @@ class Material(IDManagerMixin):
         if name is None:
             name = '-'.join([f'{m.name}({f})' for m, f in
                              zip(materials, fracs)])
-        new_mat = openmc.Material(name=name)
+        new_mat = cls(name=name)
 
         # Compute atom fractions of nuclides and add them to the new material
         tot_nuclides_per_cc = np.sum([dens for dens in nuclides_per_cc.values()])

@@ -1,5 +1,10 @@
+# annotations package is required to enable postponed evaluation of type
+# hints in conjugation with the | operator. This avoids TypeError: 
+# unsupported operand type(s) for |: 'str' and 'NoneType' error
+from __future__ import annotations
 from itertools import chain
 from numbers import Integral, Real
+from typing import Dict, Iterable, List
 
 import numpy as np
 
@@ -120,18 +125,29 @@ def _get_title(reactions):
         return 'Cross Section Plot'
 
 
-def plot_xs(reactions, divisor_types=None, temperature=294., axis=None,
-            sab_name=None, ce_cross_sections=None, mg_cross_sections=None,
-            enrichment=None, plot_CE=True, orders=None, divisor_orders=None,
-            energy_axis_units="eV", **kwargs):
+def plot_xs(
+    reactions: Dict[str, openmc.Material | List[str]],
+    divisor_types: Iterable[str] | None = None,
+    temperature: float = 294.0,
+    axis: "plt.Axes" | None = None,
+    sab_name: str | None = None,
+    ce_cross_sections: str | None = None,
+    mg_cross_sections: str | None = None,
+    enrichment: float | None = None,
+    plot_CE: bool = True,
+    orders: Iterable[int] | None = None,
+    divisor_orders: Iterable[int] | None = None,
+    energy_axis_units: str = "eV",
+    **kwargs,
+) -> "plt.Figure":
     """Creates a figure of continuous-energy cross sections for this item.
 
     Parameters
     ----------
     reactions : dict
         keys can be either a nuclide or element in string form or an
-        openmc.Material object. Values are the type of cross sections to
-        include in the plot.
+        openmc.Material object. Values are a list of the types of
+        cross sections to include in the plot.
     divisor_types : Iterable of values of PLOT_TYPES, optional
         Cross section types which will divide those produced by types
         before plotting. A type of 'unity' can be used to effectively not

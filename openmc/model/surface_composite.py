@@ -26,7 +26,7 @@ class CompositeSurface(ABC):
         return surf
 
     def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
-        surf = copy(self)
+        surf = self if inplace else copy(self)
         for name in self._surface_names:
             s = getattr(surf, name)
             setattr(surf, name, s.rotate(rotation, pivot, order, inplace))

@@ -1,4 +1,5 @@
 import openmc
+# Example of a pincell, fraction of fuel, clad and coolant are respectively 0.471449, 0.057102 and 0.471449
 
 def Box(c:float, boundary_type="transmission"):
     xP0 = openmc.XPlane(-c/2, boundary_type=boundary_type)
@@ -87,10 +88,9 @@ geometry = openmc.Geometry([root])
 geometry.export_to_xml()
 
 settings = openmc.Settings()
-settings.batches = 1000
+settings.batches = 10000
 settings.particles = 1000
 settings.inactive = 10
-settings.seed = 10001
 settings.export_to_xml()
 
 plots = openmc.Plots()

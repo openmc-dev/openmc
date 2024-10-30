@@ -1,8 +1,0 @@
-<?xml version='1.0' encoding='UTF-8'?>
-<settings>
-  <run_mode>eigenvalue</run_mode>
-  <particles>1000</particles>
-  <batches>1000</batches>
-  <inactive>10</inactive>
-  <seed>10001</seed>
-</settings>

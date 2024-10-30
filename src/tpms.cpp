@@ -27,30 +27,63 @@ TPMS::root_in_interval(double L0, double L1, Position r, Direction u)
         double fpb  = this->fpk(xb, r, u);
         double fppb = this->fppk(xb, r, u);
         //std::cout << "[" << L0 << "-" << L1 <<"] XA: " << xa <<" XB: " << xb << " - FA " << fa << " FPA " << fpa << " FPPA " << fppa << " FB " << fb << " FPB " << fpb << " FPPB " << fppb << " " << solFound << std::endl;
-        if (fa*fb < 0.) {solFound=true; solution.isRoot = true;} // if the two sampled point are of different sign, there is a root in the interval
-        else if (fpa*fpb > 0.) {solFound=true; solution.isRoot = false;} // if the two root are of same sign and the two derivative are of same sign, there is no root in the interval
+        if (fa*fb < 0.) {solFound=true; solution.isRoot = true;solution.status=1;} // if the two sampled point are of different sign, there is a root in the interval
+        else if (fpa*fpb > 0.) // if the two root are of same sign and the two derivative are of same sign, there is no root in the interval
+        {
+            solFound=true; 
+            solution.isRoot = false;
+        }
         else if (fppa*fppb < 0.) // If inflexion change, split the interval in half to study root existance. (rare case)
         {
             TPMS::rootFinding firstInterval = this->root_in_interval(L0, 0.5*(L0+L1), r, u);
-            if (firstInterval.isRoot== true) {solFound=true; solution.isRoot = true; solution.xb = 0.5*(L0+L1);}
-            else {solFound=true; solution = this->root_in_interval(0.5*(L0+L1), L1, r, u);}
+            if (firstInterval.isRoot== true) 
+            {
+                solFound=true; 
+                solution.isRoot = true; 
+                solution.xa = firstInterval.xa; 
+                solution.xb = firstInterval.xb;
+                solution.status = firstInterval.status;
+            }
+            else 
+            {
+                solFound=true; 
+                solution = this->root_in_interval(0.5*(L0+L1), L1, r, u);
+            }
         }
-        else if (fppa*fa < 0.) {solFound=true; solution.isRoot = false;} // If no inflexion change and the sign of the second derivative is not the one of the sampled points, there is no root
+        else if (fppa*fa < 0.) // If no inflexion change and the sign of the second derivative is not the one of the sampled points, there is no root
+        {
+            solFound=true; 
+            solution.isRoot = false;
+        }
         else
         {
             double xn = -(fa - fpa*xa - fb + fpb*xb)/(fpa - fpb); // x de l'intersection des droites
             double fn = fpa * xn + fa - fpa*xa; // y de l'intersection des droites
             double fxn = this->fk(xn, r, u); // evaluation de la tpms en x
-            if (fa*fn > 0.) {solFound=true; solution.isRoot = false;} // if the intersection ordinate is of same sign as the sampled points, there is no root
-            else if (fa*fxn < 0.) {solFound=true; solution.isRoot = false; solution.xb = xn;} // if the evaluate function in x is of different sign of the sampled points, there is a root
-            else {double fpn = this->fpk(xn, r, u); if (fpn*fpa <0.) {xb = xn;} else {xa = xn;}} // Otherwise, we don't know and need to refine.
+            if (fa*fn > 0.) // if the intersection ordinate is of same sign as the sampled points, there is no root
+            {
+                solFound=true; 
+                solution.isRoot = false;
+            } 
+            else if (fa*fxn < 0.) // if the evaluate function in x is of different sign of the sampled points, there is a root
+            {
+                solFound=true; 
+                solution.isRoot = true; 
+                solution.xb = xn;
+                solution.status = 2;
+            }
+            else // Otherwise, we don't know and need to refine.
+            {
+                double fpn = this->fpk(xn, r, u); 
+                if (fpn*fpa <0.) {xb = xn;} 
+                else {xa = xn;}
+            }
         }
     }
     return solution;
 }
 
-double
-TPMS::ray_tracing(Position r, Direction u)
+double TPMS::ray_tracing(Position r, Direction u)
 {
     const double w0 = this->sampling_frequency(u);
     double L0 = 0.;
@@ -62,9 +95,20 @@ TPMS::ray_tracing(Position r, Direction u)
         TPMS::rootFinding solution = this->root_in_interval(L0, L1, r, u);
         if (solution.isRoot) 
         {
-            std::pair<double, double> sol = boost::math::tools::bisect([this,r,u](double k){return this->fk(k, r, u);}, solution.xa, solution.xb, [](double l, double r){return abs(l-r) < 1e-8;});
-            root = sol.second;
-            rootFound = true;
+            if (this->fk(solution.xa, r, u)*this->fk(solution.xb, r, u) < 0.)
+            {
+                std::pair<double, double> sol = boost::math::tools::bisect([this,r,u](double k){return this->fk(k, r, u);}, solution.xa, solution.xb, [](double l, double r){return abs(l-r) < 1e-8;});
+                root = sol.second;
+                rootFound = true;
+            }
+            else
+            {
+                std::cout << "WARNING: F(XA: "<< solution.xa <<")-> " << this->fk(solution.xa, r, u) << " and F(XB: "<< solution.xb <<"-> " << this->fk(solution.xb, r, u) << " are of same sign." << std::endl;
+                std::pair<double, double> sol = boost::math::tools::bisect([this,r,u](double k){return this->fk(k, r, u);}, solution.xa, solution.xb, [](double l, double r){return abs(l-r) < 1e-8;});
+                root = sol.second;
+                rootFound = true;
+                std::cout << "RAY_TRACING: " << sol.first << " " << sol.second << std::endl;
+            }
             //std::cout << "RAY_TRACING: " << sol.first << " " << sol.second << std::endl;
         }
         else {

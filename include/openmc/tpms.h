@@ -11,7 +11,7 @@ namespace openmc {
 class TPMS
 {
 public:
-    struct rootFinding {bool isRoot; double xa; double xb;};
+    struct rootFinding {bool isRoot; double xa; double xb; int status;};
 public:
     TPMS(double _cst, double _pitch, double _x0, double _y0, double _z0, double _a, double _b, double _c, double _d, double _e, double _f, double _g, double _h, double _i);
     virtual double fk(double k, Position r, Direction u) const {return 0.;};

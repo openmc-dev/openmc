@@ -327,14 +327,12 @@ class Model:
 
     def sync_dagmc_universe(self):
         """
-        Synchronize all DAGMC universes with the current geometry.
+        Synchronize all DAGMC universes in the current geometry.
         This method iterates over all DAGMC universes in the geometry and
         synchronizes their cells with the current material assignments.
 
         .. versionadded:: 0.15.1-dev
 
-        Returns:
-            None
         """
         if self.is_initialized:
             if self.materials:

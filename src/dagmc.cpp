@@ -234,40 +234,14 @@ void DAGUniverse::init_geometry()
     if (mat_str == "void" || mat_str == "vacuum" || mat_str == "graveyard") {
       c->material_.push_back(MATERIAL_VOID);
     } else {
-      if (uses_uwuw()) {
+      if (instance_material_overrides.count(std::to_string(c->id_)) ||
+          instance_material_overrides.count(
+            mat_str)) { // Check for material override
+        override_assign_material(mat_str, vol_handle, c);
+      } else if (uses_uwuw()) { // UWUW assignement
         uwuw_assign_material(vol_handle, c);
-      } else {
-        if (instance_material_overrides.count(std::to_string(c->id_))) {
-          int n_override =
-            instance_material_overrides.at(std::to_string(c->id_)).size();
-          if (n_override != c->n_instances_) {
-            fatal_error(fmt::format("material_overrides has for Cell {} has {}"
-                                    "material assignments for this material, "
-                                    "where the cell has {} instances.",
-              c->id_, n_override, c->n_instances_));
-          }
-
-          for (auto mat_str_instance :
-            instance_material_overrides.at(mat_str)) {
-            legacy_assign_material(mat_str_instance, c);
-          }
-        } else if (instance_material_overrides.count(mat_str)) {
-          int n_override = instance_material_overrides.at(mat_str).size();
-          if (n_override != c->n_instances_) {
-            fatal_error(
-              fmt::format("DAGMC Cell assigned with material {} has {} "
-                          "instances but material_overrides has {} "
-                          "material assignments for this material",
-                mat_str, c->n_instances_, n_override));
-          }
-
-          for (auto mat_str_instance :
-            instance_material_overrides.at(mat_str)) {
-            legacy_assign_material(mat_str_instance, c);
-          }
-        } else {
-          legacy_assign_material(mat_str, c);
-        }
+      } else { // legacy assignement
+        legacy_assign_material(mat_str, c);
       }
     }
 
@@ -657,6 +631,35 @@ void DAGUniverse::uwuw_assign_material(
   fatal_error("DAGMC was not configured with UWUW.");
 #endif // OPENMC_UWUW
 }
+
+void DAGUniverse::override_assign_material(std::string key,
+  moab::EntityHandle vol_handle, std::unique_ptr<DAGCell>& c) const
+{
+
+  // if Cell ID matches an override key, use it to override the material
+  // assignment else if UWUW is used, get the material assignment from the DAGMC
+  // metadata
+  if (instance_material_overrides.count(std::to_string(c->id_))) {
+    key = std::to_string(c->id_);
+  } else if (uses_uwuw()) {
+    key = dmd_ptr->volume_material_property_data_eh[vol_handle];
+  }
+
+  int n_override = instance_material_overrides.at(key).size();
+  if (n_override != c->n_instances_) {
+    fatal_error(
+      fmt::format("material_overrides has for Cell or material {} has {}"
+                  "material assignments for this material, "
+                  "where the corresponding cell has {} instances.",
+        key, c->n_instances_, n_override));
+  }
+  // Override the material assignment for each cell instance using the legacy
+  // assignement
+  for (auto mat_str_instance : instance_material_overrides.at(key)) {
+    legacy_assign_material(mat_str_instance, c);
+  }
+}
+
 //==============================================================================
 // DAGMC Cell implementation
 //==============================================================================
@@ -884,6 +887,7 @@ extern "C" int openmc_dagmc_universe_get_cell_ids(
   }
   std::copy(dag_cell_ids.begin(), dag_cell_ids.end(), ids);
   *n = dag_cell_ids.size();
+  return 0;
 }
 
 extern "C" int openmc_dagmc_universe_get_num_cells(int32_t univ_id, size_t* n)
@@ -894,8 +898,8 @@ extern "C" int openmc_dagmc_universe_get_num_cells(int32_t univ_id, size_t* n)
     fatal_error(
       "Universe " + std::to_string(univ_id) + " is not a DAGMC Universe");
   }
-
   *n = univ->cells_.size();
+  return 0;
 }
 
 } // namespace openmc
@@ -905,10 +909,15 @@ extern "C" int openmc_dagmc_universe_get_num_cells(int32_t univ_id, size_t* n)
 namespace openmc {
 
 extern "C" int openmc_dagmc_universe_get_cell_ids(
-  int32_t univ_id, int32_t* ids, size_t* n) {};
+  int32_t univ_id, int32_t* ids, size_t* n)
+{
+  fatal_error("OpenMC was not configured with DAGMC");
+};
 
-extern "C" int openmc_dagmc_universe_get_num_cells(
-  int32_t univ_id, size_t* n) {};
+extern "C" int openmc_dagmc_universe_get_num_cells(int32_t univ_id, size_t* n)
+{
+  fatal_error("OpenMC was not configured with DAGMC");
+};
 
 void read_dagmc_universes(pugi::xml_node node)
 {

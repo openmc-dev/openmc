@@ -133,6 +133,12 @@ public:
   void legacy_assign_material(
     std::string mat_string, std::unique_ptr<DAGCell>& c) const;
 
+  //! Assign a material overriding normal assignement to a cell
+  //! \param[in] key The material key to override
+  //! \param[in] c The OpenMC cell to which the material is assigned
+  void override_assign_material(std::string key, moab::EntityHandle vol_handle,
+    std::unique_ptr<DAGCell>& c) const;
+
   //! Return the index into the model cells vector for a given DAGMC volume
   //! handle in the universe
   //! \param[in] vol MOAB handle to the DAGMC volume set

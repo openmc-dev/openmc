@@ -15,26 +15,21 @@ def test_model_differentiate_with_DAGMC():
     PITCH = 1.26
 
     mats = {}
-    mats["Fuel"] = openmc.Material(1, "Fuel")
-    mats["Fuel"].add_nuclide("U235", 0.03)
-    mats["Fuel"].add_nuclide("U238", 0.97)
-    mats["Fuel"].add_nuclide("O16", 2.0)
-    mats["Fuel"].set_density("g/cm3", 10.0)
-    mats["Fuel"].name = "Fuel"
+    mats["no-void fuel"] = openmc.Material(1, "no-void fuel")
+    mats["no-void fuel"].add_nuclide("U235", 0.03)
+    mats["no-void fuel"].add_nuclide("U238", 0.97)
+    mats["no-void fuel"].add_nuclide("O16", 2.0)
+    mats["no-void fuel"].set_density("g/cm3", 10.0)
+    mats["no-void fuel"].name = "Fuel"
 
-    mats["Clad"] = openmc.Material(name="zirconium")
-    mats["Clad"].add_element("Zr", 1.0)
-    mats["Clad"].set_density("g/cm3", 6.6)
-    mats["Clad"].name = "Clad"
+    mats["41"] = openmc.Material(name="h2o")
+    mats["41"].add_nuclide("H1", 2.0)
+    mats["41"].add_element("O", 1.0)
+    mats["41"].set_density("g/cm3", 1.0)
+    mats["41"].add_s_alpha_beta("c_H_in_H2O")
+    mats["41"].name = "41"
 
-    mats["Water"] = openmc.Material(name="h2o")
-    mats["Water"].add_nuclide("H1", 2.0)
-    mats["Water"].add_element("O", 1.0)
-    mats["Water"].set_density("g/cm3", 1.0)
-    mats["Water"].add_s_alpha_beta("c_H_in_H2O")
-    mats["Water"].name = "Water"
-
-    p = pkg_resources.resource_filename(__name__, "dagmc_differentiate_mat.h5m")
+    p = pkg_resources.resource_filename(__name__, "dagmc.h5m")
 
     daguniv = openmc.DAGMCUniverse(p,auto_geom_ids=True,)
 
@@ -81,24 +76,12 @@ def test_model_differentiate_with_DAGMC():
     settings.particles = 1000
 
     ll, ur = root.bounding_box
-    mat_vol = openmc.VolumeCalculation([mats["Fuel"]], 1000000, ll, ur)
+    mat_vol = openmc.VolumeCalculation([mats["no-void fuel"]], 1000000, ll, ur)
     cell_vol = openmc.VolumeCalculation(
         list(root.cells.values()), 1000000, ll, ur)
     settings.volume_calculations = [mat_vol, cell_vol]
 
-    colors = {
-        mats["Water"]: (204, 236, 249),
-        mats["Clad"]: (124, 173, 154),
-    }
-    plot = openmc.Plot()
-    plot.filename = "pinplot"
-    plot.width = (2 * PITCH, 2 * PITCH)
-    plot.pixels = (200, 200)
-    plot.color_by = "material"
-    plot.colors = colors
-
     model = openmc.Model()
-    model.plots = openmc.Plots(plots=[plot])
     model.materials = openmc.Materials(mats.values())
     model.geometry = openmc.Geometry(root=root)
     model.settings = settings
@@ -108,10 +91,10 @@ def test_model_differentiate_with_DAGMC():
     model.init_lib()
     model.sync_dagmc_universe()
     model.calculate_volumes(cwd=p)
-    volume_before = np.sum([m.volume for m in model.materials if m.name == "Fuel"])
+    volume_before = np.sum([m.volume for m in model.materials if m.name == "no-void fuel"])
     nmat = len(model.materials)
     model.differentiate_depletable_mats(diff_volume_method="divide equally")
-    volume_after = np.sum([m.volume for m in model.materials if "Fuel" in m.name])
+    volume_after = np.sum([m.volume for m in model.materials if "fuel" in m.name])
     assert len(model.materials) == nmat + 3
     assert np.isclose(volume_before, volume_after)
     model.finalize_lib()

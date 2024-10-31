@@ -2375,6 +2375,33 @@ class TPMS(Surface):
         element.set("surface_type", self.surface_type)
         return element
 
+    @classmethod
+    def from_thickness(cls, surface_type: str, thickness: float = 0., pitch: float = 2., *args, **kwargs):
+        cst = thickness * 2*pi/pitch
+        return cls(surface_type, cst, pitch, *args, **kwargs)
+    
+    @classmethod
+    def from_relative_density(cls, surface_type: str, relative_density: float = 0.5, pitch: float = 2., _resolution: int = 100, *args, **kwargs):
+        # building a spacephase matrix
+        x = np.linspace(-pitch/2, +pitch/2,_resolution+1,endpoint=True)
+        y = np.linspace(-pitch/2, +pitch/2,_resolution+1,endpoint=True)
+        z = np.linspace(-pitch/2, +pitch/2,_resolution+1,endpoint=True)
+        x,y,z = 0.5*(x[:-1]+x[1:]),0.5*(y[:-1]+y[1:]),0.5*(z[:-1]+z[1:])
+        x,y,z = np.meshgrid(x,y,z)
+        x = x.flatten()
+        y = y.flatten()
+        z = z.flatten()
+        f = np.zeros_like(x)
+        length = np.shape(f)[0]
+        temporary = cls(surface_type, 0., pitch, *args, **kwargs)
+        for i in range(0, length):
+            point = (x[i],y[i],z[i])
+            f[i] = temporary.evaluate(point)
+        # function to find the zero value
+        isovalues = np.sort(f)
+        relative_densities = np.arange(1, length+1) / length
+        cst = np.interp(relative_density, relative_densities, isovalues)
+        return cls(surface_type, cst, pitch, *args, **kwargs)
 
 class TorusMixin:
     """A Mixin class implementing common functionality for torus surfaces"""

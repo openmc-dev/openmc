@@ -974,9 +974,8 @@ double SurfaceTPMS::evaluate(Position r) const
 
 double SurfaceTPMS::distance(Position r, Direction ang, bool coincident) const
 {
-  SchwarzP* myTpms = new SchwarzP(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
-  double raylength = myTpms->ray_tracing(r, ang);
-  delete myTpms;
+  SchwarzP myTpms = SchwarzP(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+  double raylength = myTpms.ray_tracing(r, ang);
   return raylength;
 }
 

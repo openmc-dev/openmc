@@ -76,7 +76,7 @@ std::pair<double, double> bisect(F f, double min, double max, Tol tol, std::uint
          min = max = mid;
          break;
       }
-      else if (fmid * fmin < 0)
+      else if (std::signbit(fmid) != std::signbit(fmin))
       {
          max = mid;
       }

@@ -2,6 +2,7 @@
 #define OPENMC_TPMS_H
 
 #include "boost/math/tools/roots.hpp"
+#include "openmc/bisect.h"
 
 #include "openmc/vector.h"
 #include "openmc/position.h"

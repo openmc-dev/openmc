@@ -85,6 +85,7 @@ TPMS::root_in_interval(double L0, double L1, Position r, Direction u)
 
 double TPMS::ray_tracing(Position r, Direction u)
 {
+    std::uintmax_t max_iter = 1000000;
     const double w0 = this->sampling_frequency(u);
     double L0 = 0.;
     double L1 = L0 + w0;
@@ -97,7 +98,8 @@ double TPMS::ray_tracing(Position r, Direction u)
         {
             if (this->fk(solution.xa, r, u)*this->fk(solution.xb, r, u) < 0.)
             {
-                std::pair<double, double> sol = boost::math::tools::bisect([this,r,u](double k){return this->fk(k, r, u);}, solution.xa, solution.xb, [](double l, double r){return abs(l-r) < 1e-8;});
+                // std::pair<double, double> sol = boost::math::tools::bisect([this,r,u](double k){return this->fk(k, r, u);}, solution.xa, solution.xb, [](double l, double r){return abs(l-r) < 1e-8;});
+                std::pair<double, double> sol = bisect([this,r,u](double k){return this->fk(k, r, u);}, solution.xa, solution.xb, [](double l, double r){return abs(l-r) < 1e-8;}, max_iter);
                 root = sol.second;
                 rootFound = true;
             }

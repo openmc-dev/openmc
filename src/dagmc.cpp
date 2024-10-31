@@ -83,7 +83,7 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
 
       // Get mat name for each assignement instances
       std::stringstream iss {attr.value()};
-      vector<std::string> instance_mats = split(iss.str());
+      vector<std::string> instance_mats = split(iss.str(), ';');
 
       // Store mat name for each instances
       instance_material_overrides.insert(
@@ -230,11 +230,13 @@ void DAGUniverse::init_geometry()
     if (mat_str == "graveyard") {
       graveyard = vol_handle;
     }
+    std::cout << "id_" << std::to_string(c->id_) << " " << c->n_instances_
+              << std::endl;
     // material void checks
     if (mat_str == "void" || mat_str == "vacuum" || mat_str == "graveyard") {
       c->material_.push_back(MATERIAL_VOID);
     } else {
-      if (instance_material_overrides.count(std::to_string(c->id_)) ||
+      if (instance_material_overrides.count("id_" + std::to_string(c->id_)) ||
           instance_material_overrides.count(
             mat_str)) { // Check for material override
         override_assign_material(mat_str, vol_handle, c);
@@ -639,20 +641,15 @@ void DAGUniverse::override_assign_material(std::string key,
   // if Cell ID matches an override key, use it to override the material
   // assignment else if UWUW is used, get the material assignment from the DAGMC
   // metadata
-  if (instance_material_overrides.count(std::to_string(c->id_))) {
-    key = std::to_string(c->id_);
+  std::cout << "XML instance"
+            << instance_material_overrides.count("id_" + std::to_string(c->id_))
+            << std::endl;
+  if (instance_material_overrides.count("id_" + std::to_string(c->id_))) {
+    key = "id_" + std::to_string(c->id_);
   } else if (uses_uwuw()) {
     key = dmd_ptr->volume_material_property_data_eh[vol_handle];
   }
 
-  int n_override = instance_material_overrides.at(key).size();
-  if (n_override != c->n_instances_) {
-    fatal_error(
-      fmt::format("material_overrides has for Cell or material {} has {}"
-                  "material assignments for this material, "
-                  "where the corresponding cell has {} instances.",
-        key, c->n_instances_, n_override));
-  }
   // Override the material assignment for each cell instance using the legacy
   // assignement
   for (auto mat_str_instance : instance_material_overrides.at(key)) {

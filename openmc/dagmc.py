@@ -288,7 +288,8 @@ class DAGMCUniverse(openmc.UniverseBase):
         if self.material_overrides:
             mat_element = ET.Element('material_overrides')
             for key in self.material_overrides:
-                mat_element.set(key, ' '.join(
+                print(key, self.material_overrides[key])
+                mat_element.set('id_{}'.format(key), ';'.join(
                     t for t in self.material_overrides[key]))
             dagmc_element.append(mat_element)
         xml_element.append(dagmc_element)
@@ -300,10 +301,10 @@ class DAGMCUniverse(openmc.UniverseBase):
         Returns:
             None
         """
+        self.material_overrides = {}
         for cell in self.cells.values():
             if isinstance(cell.fill, Iterable):
-                for mat in cell.fill:
-                    self.material_overrides[str(cell.id)] = [mat.name for mat in cell.fill]
+                self.material_overrides[str(cell.id)] = [mat.name for mat in cell.fill if mat]
 
     def bounding_region(
         self,
@@ -533,9 +534,12 @@ class DAGMCUniverse(openmc.UniverseBase):
             dag_cell = openmc.lib.cells[dag_cell_id]
             if isinstance(dag_cell.fill, Iterable):
                 fill = [mats_per_id[mat.id]
-                        for mat in dag_cell.fill]
+                        for mat in dag_cell.fill if mat]
             else:
-                fill = mats_per_id[dag_cell.fill.id]
+                if dag_cell.fill:
+                    fill = mats_per_id[dag_cell.fill.id]
+                else:
+                    fill = None
             dag_pseudo_cell = openmc.DAGMCCell(
                 cell_id=dag_cell_id, fill=fill
             )

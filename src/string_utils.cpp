@@ -71,6 +71,31 @@ vector<std::string> split(const std::string& in)
   return out;
 }
 
+vector<std::string> split(const std::string& in, char delim)
+{
+  vector<std::string> out;
+
+  for (int i = 0; i < in.size();) {
+    // Increment i until we find a non-delimiter character.
+    if (in[i] == delim) {
+      i++;
+
+    } else {
+      // Find the next delimiter character at j.
+      int j = i + 1;
+      while (j < in.size() && in[j] != delim) {
+        j++;
+      }
+
+      // Push-back everything between i and j.
+      out.push_back(in.substr(i, j - i));
+      i = j + 1; // j is delimiter so leapfrog to j+1
+    }
+  }
+
+  return out;
+}
+
 bool ends_with(const std::string& value, const std::string& ending)
 {
   if (ending.size() > value.size())

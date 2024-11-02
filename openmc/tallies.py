@@ -1394,12 +1394,12 @@ class Tally(IDManagerMixin):
                 df['d_nuclide'] = self.derivative.nuclide
 
         # Include columns for sensitivity if user requested it
-        # if sensitivity and (self.sensitivity is not None):
-        #     df['d_variable'] = self.sensitivity.variable
-        #     if self.sensitivity.nuclide is not None:
-        #         df['d_nuclide'] = self.sensitivity.nuclide
-        #     if self.sensitivity.reaction is not None:
-        #         df['d_reaction'] = self.sensitivity.reaction
+        if sensitivity and (self.sensitivity is not None):
+            df['d_variable'] = self.sensitivity.variable
+            if self.sensitivity.nuclide is not None:
+                df['d_nuclide'] = self.sensitivity.nuclide
+            if self.sensitivity.reaction is not None:
+                df['d_reaction'] = self.sensitivity.reaction
         
         # Append columns with mean, std. dev. for each tally bin
         df['mean'] = self.mean.ravel()

@@ -3007,8 +3007,9 @@ void LibMesh::initialize()
   if (m_->n_active_elem() != m_->n_elem()) {
     is_adaptive_ = true;
     bin_to_elem_map_.reserve(m_->n_active_local_elem());
+    elem_to_bin_map_.resize(m_->n_local_elem(), 0);
     for (auto it = m_->local_elements_begin(); it != m_->local_elements_end();
-       it++) {
+         it++) {
       auto elem = *it;
 
       if (!elem->active()) {
@@ -3016,7 +3017,7 @@ void LibMesh::initialize()
       }
 
       bin_to_elem_map_.push_back(elem->id());
-      elem_to_bin_map_.emplace(elem->id(), bin_to_elem_map_.size() - 1);
+      elem_to_bin_map_[elem->id()] = bin_to_elem_map_.size() - 1;
     }
   }
 
@@ -3211,7 +3212,9 @@ int LibMesh::get_bin(Position r) const
 
 int LibMesh::get_bin_from_element(const libMesh::Elem* elem) const
 {
-  int bin = is_adaptive_ ? elem_to_bin_map_.at(elem->id()) : elem->id() - first_element_id_;
+  // TODO: figure out how to get rid of the vector lookup to improve performance
+  // when tallying on adaptive LibMeshes.
+  int bin = is_adaptive_ ? elem_to_bin_map_[elem->id()] : elem->id() - first_element_id_;
   if (bin >= n_bins() || bin < 0) {
     fatal_error(fmt::format("Invalid bin: {}", bin));
   }

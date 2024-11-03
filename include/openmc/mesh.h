@@ -982,7 +982,7 @@ private:
   bool is_adaptive_ = false; //!< whether this mesh has adaptivity enabled or not
   std::vector<libMesh::dof_id_type>
     bin_to_elem_map_; //!< mapping bin indices to dof indices for active elements
-  std::unordered_map<libMesh::dof_id_type, int>
+  std::vector<int>
     elem_to_bin_map_; //!< mapping dof indices to bin indices for active elements
 };
 

@@ -2922,7 +2922,7 @@ void MOABMesh::write(const std::string& base_filename) const
 
 const std::string LibMesh::mesh_lib_type = "libmesh";
 
-LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node)
+LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node), adaptive_(false)
 {
   // filename_ and length_multiplier_ will already be set by the
   // UnstructuredMesh constructor
@@ -2933,6 +2933,7 @@ LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node)
 
 // create the mesh from a pointer to a libMesh Mesh
 LibMesh::LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier, bool build_eqn_sys)
+  : adaptive_(input_mesh.n_active_elem() != input_mesh.n_elem())
 {
   m_ = &input_mesh;
   build_eqn_sys_ = build_eqn_sys;
@@ -2941,7 +2942,7 @@ LibMesh::LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier, bool b
 }
 
 // create the mesh from an input file
-LibMesh::LibMesh(const std::string& filename, double length_multiplier)
+LibMesh::LibMesh(const std::string& filename, double length_multiplier) : adaptive_(false)
 {
   set_mesh_pointer_from_filename(filename);
   set_length_multiplier(length_multiplier);
@@ -3001,11 +3002,10 @@ void LibMesh::initialize()
   auto first_elem = *m_->elements_begin();
   first_element_id_ = first_elem->id();
 
-  // if the number of active elements isn't equal to the number of elements,
-  // then the mesh is adaptive and we need to map from bin indices (defined
-  // for active elements) to global element dofs.
-  if (m_->n_active_elem() != m_->n_elem()) {
-    is_adaptive_ = true;
+  // if the mesh is adaptive elements aren't guaranteed by libMesh to be
+  // contiguous in memory, so we need to map from bin indices (defined over
+  // active elements) to global dof ids
+  if (adaptive_) {
     bin_to_elem_map_.reserve(m_->n_active_local_elem());
     elem_to_bin_map_.resize(m_->n_local_elem(), 0);
     for (auto it = m_->local_elements_begin(); it != m_->local_elements_end();
@@ -3212,9 +3212,7 @@ int LibMesh::get_bin(Position r) const
 
 int LibMesh::get_bin_from_element(const libMesh::Elem* elem) const
 {
-  // TODO: figure out how to get rid of the vector lookup to improve performance
-  // when tallying on adaptive LibMeshes.
-  int bin = is_adaptive_ ? elem_to_bin_map_[elem->id()] : elem->id() - first_element_id_;
+  int bin = adaptive_ ? elem_to_bin_map_[elem->id()] : elem->id() - first_element_id_;
   if (bin >= n_bins() || bin < 0) {
     fatal_error(fmt::format("Invalid bin: {}", bin));
   }
@@ -3229,7 +3227,7 @@ std::pair<vector<double>, vector<double>> LibMesh::plot(
 
 const libMesh::Elem& LibMesh::get_element_from_bin(int bin) const
 {
-  return is_adaptive_ ? m_->elem_ref(bin_to_elem_map_.at(bin)) : m_->elem_ref(bin);
+  return adaptive_ ? m_->elem_ref(bin_to_elem_map_.at(bin)) : m_->elem_ref(bin);
 }
 
 double LibMesh::volume(int bin) const

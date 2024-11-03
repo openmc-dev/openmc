@@ -979,7 +979,7 @@ private:
   libMesh::dof_id_type
     first_element_id_; //!< id of the first element in the mesh
 
-  bool is_adaptive_ = false; //!< whether this mesh has adaptivity enabled or not
+  const bool adaptive_; //!< whether this mesh has adaptivity enabled or not
   std::vector<libMesh::dof_id_type>
     bin_to_elem_map_; //!< mapping bin indices to dof indices for active elements
   std::vector<int>

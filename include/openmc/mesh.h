@@ -899,7 +899,7 @@ public:
   // Constructors
   LibMesh(pugi::xml_node node);
   LibMesh(const std::string& filename, double length_multiplier = 1.0);
-  LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier = 1.0);
+  LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier = 1.0, bool build_eqn_sys = true);
 
   static const std::string mesh_lib_type;
 
@@ -965,8 +965,11 @@ private:
                          //!< during intialization
   vector<unique_ptr<libMesh::PointLocatorBase>>
     pl_; //!< per-thread point locators
+  bool build_eqn_sys_ = true; //!< whether a libMesh equation system should be built
+                              //!< for output or not
   unique_ptr<libMesh::EquationSystems>
-    equation_systems_; //!< pointer to the equation systems of the mesh
+    equation_systems_ = nullptr; //!< pointer to the libMesh EquationSystems
+                                 //!< instance
   std::string
     eq_system_name_; //!< name of the equation system holding OpenMC results
   std::unordered_map<std::string, unsigned int>
@@ -975,6 +978,12 @@ private:
   libMesh::BoundingBox bbox_; //!< bounding box of the mesh
   libMesh::dof_id_type
     first_element_id_; //!< id of the first element in the mesh
+
+  bool is_adaptive_ = false; //!< whether this mesh has adaptivity enabled or not
+  std::vector<libMesh::dof_id_type>
+    bin_to_elem_map_; //!< mapping bin indices to dof indices for active elements
+  std::unordered_map<libMesh::dof_id_type, int>
+    elem_to_bin_map_; //!< mapping dof indices to bin indices for active elements
 };
 
 #endif

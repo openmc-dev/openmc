@@ -2932,9 +2932,10 @@ LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node)
 }
 
 // create the mesh from a pointer to a libMesh Mesh
-LibMesh::LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier)
+LibMesh::LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier, bool build_eqn_sys)
 {
   m_ = &input_mesh;
+  build_eqn_sys_ = build_eqn_sys;
   set_length_multiplier(length_multiplier);
   initialize();
 }
@@ -2984,10 +2985,11 @@ void LibMesh::initialize()
 
   // create an equation system for storing values
   eq_system_name_ = fmt::format("mesh_{}_system", id_);
-
-  equation_systems_ = make_unique<libMesh::EquationSystems>(*m_);
-  libMesh::ExplicitSystem& eq_sys =
+  if (build_eqn_sys_) {
+    equation_systems_ = make_unique<libMesh::EquationSystems>(*m_);
+    libMesh::ExplicitSystem& eq_sys =
     equation_systems_->add_system<libMesh::ExplicitSystem>(eq_system_name_);
+  }
 
   for (int i = 0; i < num_threads(); i++) {
     pl_.emplace_back(m_->sub_point_locator());
@@ -2998,6 +3000,25 @@ void LibMesh::initialize()
   // store first element in the mesh to use as an offset for bin indices
   auto first_elem = *m_->elements_begin();
   first_element_id_ = first_elem->id();
+
+  // if the number of active elements isn't equal to the number of elements,
+  // then the mesh is adaptive and we need to map from bin indices (defined
+  // for active elements) to global element dofs.
+  if (m_->n_active_elem() != m_->n_elem()) {
+    is_adaptive_ = true;
+    bin_to_elem_map_.reserve(m_->n_active_local_elem());
+    for (auto it = m_->local_elements_begin(); it != m_->local_elements_end();
+       it++) {
+      auto elem = *it;
+
+      if (!elem->active()) {
+        continue;
+      }
+
+      bin_to_elem_map_.push_back(elem->id());
+      elem_to_bin_map_.emplace(elem->id(), bin_to_elem_map_.size() - 1);
+    }
+  }
 
   // bounding box for the mesh for quick rejection checks
   bbox_ = libMesh::MeshTools::create_bounding_box(*m_);
@@ -3030,6 +3051,7 @@ Position LibMesh::centroid(int bin) const
 
 int LibMesh::n_vertices() const
 {
+  // TODO: activate nodes only, if that's possible?
   return m_->n_nodes();
 }
 
@@ -3056,7 +3078,7 @@ std::string LibMesh::library() const
 
 int LibMesh::n_bins() const
 {
-  return m_->n_elem();
+  return m_->n_active_elem();
 }
 
 int LibMesh::n_surface_bins() const
@@ -3079,6 +3101,9 @@ int LibMesh::n_surface_bins() const
 
 void LibMesh::add_score(const std::string& var_name)
 {
+  if (!build_eqn_sys_)
+    fatal_error("Exodus cannot be provided as an equation system was not built for this mesh.");
+
   // check if this is a new variable
   std::string value_name = var_name + "_mean";
   if (!variable_map_.count(value_name)) {
@@ -3100,6 +3125,9 @@ void LibMesh::add_score(const std::string& var_name)
 
 void LibMesh::remove_scores()
 {
+  if (!build_eqn_sys_)
+    fatal_error("Exodus cannot be provided as an equation system was not built for this mesh.");
+
   auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
   eqn_sys.clear();
   variable_map_.clear();
@@ -3108,6 +3136,9 @@ void LibMesh::remove_scores()
 void LibMesh::set_score_data(const std::string& var_name,
   const vector<double>& values, const vector<double>& std_dev)
 {
+  if (!build_eqn_sys_)
+    fatal_error("Exodus cannot be provided as an equation system was not built for this mesh.");
+
   auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
 
   if (!eqn_sys.is_initialized()) {
@@ -3125,6 +3156,10 @@ void LibMesh::set_score_data(const std::string& var_name,
 
   for (auto it = m_->local_elements_begin(); it != m_->local_elements_end();
        it++) {
+    if (!(*it)->active()) {
+      continue;
+    }
+
     auto bin = get_bin_from_element(*it);
 
     // set value
@@ -3176,7 +3211,7 @@ int LibMesh::get_bin(Position r) const
 
 int LibMesh::get_bin_from_element(const libMesh::Elem* elem) const
 {
-  int bin = elem->id() - first_element_id_;
+  int bin = is_adaptive_ ? elem_to_bin_map_.at(elem->id()) : elem->id() - first_element_id_;
   if (bin >= n_bins() || bin < 0) {
     fatal_error(fmt::format("Invalid bin: {}", bin));
   }
@@ -3191,7 +3226,7 @@ std::pair<vector<double>, vector<double>> LibMesh::plot(
 
 const libMesh::Elem& LibMesh::get_element_from_bin(int bin) const
 {
-  return m_->elem_ref(bin);
+  return is_adaptive_ ? m_->elem_ref(bin_to_elem_map_.at(bin)) : m_->elem_ref(bin);
 }
 
 double LibMesh::volume(int bin) const

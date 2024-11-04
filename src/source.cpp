@@ -255,11 +255,11 @@ bool Source::satisfies_spatial_constraints(Position r) const
 // IndependentSource implementation
 //==============================================================================
 
-IndependentSource::IndependentSource(
-  UPtrSpace space, UPtrAngle angle, UPtrDist energy, UPtrDist time, UPtrDist weigth)
+IndependentSource::IndependentSource(UPtrSpace space, UPtrAngle angle,
+  UPtrDist energy, UPtrDist time, UPtrDist weigth)
   : space_ {std::move(space)}, angle_ {std::move(angle)},
-    energy_ {std::move(energy)}, time_ {std::move(time)},
-    weigth_ {std::move(weigth)}
+    energy_ {std::move(energy)}, time_ {std::move(time)}, weigth_ {
+                                                            std::move(weigth)}
 {}
 
 IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)

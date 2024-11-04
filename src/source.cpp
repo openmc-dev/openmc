@@ -172,7 +172,7 @@ SourceSite Source::sample_with_constraints(uint64_t* seed) const
       accepted = satisfies_spatial_constraints(site.r) &&
                  satisfies_energy_constraints(site.E) &&
                  satisfies_time_constraints(site.time) &&
-                 satisfies_weigth_constraints(site.weigth);
+                 satisfies_weight_constraints(site.weight);
       if (!accepted) {
         ++n_reject;
         if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
@@ -208,9 +208,9 @@ bool Source::satisfies_time_constraints(double time) const
   return time > time_bounds_.first && time < time_bounds_.second;
 }
 
-bool Source::satisfies_weigth_constraints(double weigth) const
+bool Source::satisfies_weight_constraints(double weight) const
 {
-  return weigth > weigth_bounds_.first && weigth < weigth_bounds_.second;
+  return weight > weight_bounds_.first && weight < weight_bounds_.second;
 }
 
 bool Source::satisfies_spatial_constraints(Position r) const
@@ -262,10 +262,10 @@ bool Source::satisfies_spatial_constraints(Position r) const
 //==============================================================================
 
 IndependentSource::IndependentSource(UPtrSpace space, UPtrAngle angle,
-  UPtrDist energy, UPtrDist time, UPtrDist weigth)
+  UPtrDist energy, UPtrDist time, UPtrDist weight)
   : space_ {std::move(space)}, angle_ {std::move(angle)},
-    energy_ {std::move(energy)}, time_ {std::move(time)}, weigth_ {
-                                                            std::move(weigth)}
+    energy_ {std::move(energy)}, time_ {std::move(time)}, weight_ {
+                                                            std::move(weight)}
 {}
 
 IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
@@ -332,14 +332,14 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
       time_ = UPtrDist {new Discrete {T, p, 1}};
     }
 
-    // Determine external source weigth distribution
-    if (check_for_node(node, "weigth")) {
-      pugi::xml_node node_dist = node.child("weigth");
-      weigth_ = distribution_from_xml(node_dist);
+    // Determine external source weight distribution
+    if (check_for_node(node, "weight")) {
+      pugi::xml_node node_dist = node.child("weight");
+      weight_ = distribution_from_xml(node_dist);
     } else {
-      // Default to a Constant weigth wgt=0
+      // Default to a Constant weight wgt=0
       double p[] {1.0};
-      weigth_ = UPtrDist {new Discrete {p, p, 1}};
+      weight_ = UPtrDist {new Discrete {p, p, 1}};
     }
   }
 }
@@ -412,7 +412,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     // Sample particle creation time
     site.time = time_->sample(seed);
     // Sample particle creation time
-    site.wgt = weigth_->sample(seed);
+    site.wgt = weight_->sample(seed);
   }
 
   // Increment number of accepted samples
@@ -587,8 +587,8 @@ SourceSite MeshSource::sample(uint64_t* seed) const
 
     // Apply other rejections
     if (satisfies_energy_constraints(site.E) &&
-        satisfies_time_constraints(site.time &&
-        satisfies_weigth_constraints(site.weigth)) {
+        satisfies_time_constraints(site.time) &&
+        satisfies_weight_constraints(site.weight)) {
       break;
     }
   }

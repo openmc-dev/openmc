@@ -258,8 +258,8 @@ class IndependentSource(SourceBase):
         Energy distribution of source sites
     time : openmc.stats.Univariate
         time distribution of source sites
-    weigth : openmc.stats.Univariate
-        weigth distribution of source sites
+    weight : openmc.stats.Univariate
+        weight distribution of source sites
     strength : float
         Strength of the source
     particle : {'neutron', 'photon'}
@@ -294,8 +294,8 @@ class IndependentSource(SourceBase):
         Energy distribution of source sites
     time : openmc.stats.Univariate or None
         time distribution of source sites
-    weigth : openmc.stats.Univariate or None
-        weigth distribution of source sites
+    weight : openmc.stats.Univariate or None
+        weight distribution of source sites
     strength : float
         Strength of the source
     type : str
@@ -318,7 +318,7 @@ class IndependentSource(SourceBase):
         angle: openmc.stats.UnitSphere | None = None,
         energy: openmc.stats.Univariate | None = None,
         time: openmc.stats.Univariate | None = None,
-        weigth: openmc.stats.Univariate | None = None,
+        weight: openmc.stats.Univariate | None = None,
         strength: float = 1.0,
         particle: str = 'neutron',
         domains: Sequence[openmc.Cell | openmc.Material | openmc.Universe] | None = None,
@@ -335,7 +335,7 @@ class IndependentSource(SourceBase):
         self._angle = None
         self._energy = None
         self._time = None
-        self._weigth = None
+        self._weight = None
 
         if space is not None:
             self.space = space
@@ -345,8 +345,8 @@ class IndependentSource(SourceBase):
             self.energy = energy
         if time is not None:
             self.time = time
-        if weigth is not None:
-            self.weigth = weigth
+        if weight is not None:
+            self.weight = weight
         self.particle = particle
 
     @property
@@ -407,13 +407,13 @@ class IndependentSource(SourceBase):
         self._time = time
 
     @property
-    def weigth(self):
-        return self._weigth
+    def weight(self):
+        return self._weight
 
-    @weigth.setter
-    def weigth(self, weigth):
-        cv.check_type('weigth distribution', weigth, Univariate)
-        self._weigth = weigth
+    @weight.setter
+    def weight(self, weight):
+        cv.check_type('weight distribution', weight, Univariate)
+        self._weight = weight
 
     @property
     def particle(self):
@@ -442,8 +442,8 @@ class IndependentSource(SourceBase):
             element.append(self.energy.to_xml_element('energy'))
         if self.time is not None:
             element.append(self.time.to_xml_element('time'))
-        if self.weigth is not None:
-            element.append(self.weigth.to_xml_element('weigth'))
+        if self.weight is not None:
+            element.append(self.weight.to_xml_element('weight'))
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element, meshes=None) -> SourceBase:
@@ -490,9 +490,9 @@ class IndependentSource(SourceBase):
         if time is not None:
             source.time = Univariate.from_xml_element(time)
 
-        weigth = elem.find('weigth')
-        if weigth is not None:
-            source.weigth = Univariate.from_xml_element(weigth)
+        weight = elem.find('weight')
+        if weight is not None:
+            source.weight = Univariate.from_xml_element(weight)
 
         return source
 

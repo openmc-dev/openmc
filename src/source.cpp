@@ -256,9 +256,10 @@ bool Source::satisfies_spatial_constraints(Position r) const
 //==============================================================================
 
 IndependentSource::IndependentSource(
-  UPtrSpace space, UPtrAngle angle, UPtrDist energy, UPtrDist time)
+  UPtrSpace space, UPtrAngle angle, UPtrDist energy, UPtrDist time, UPtrDist weigth)
   : space_ {std::move(space)}, angle_ {std::move(angle)},
-    energy_ {std::move(energy)}, time_ {std::move(time)}
+    energy_ {std::move(energy)}, time_ {std::move(time)},
+    weigth_ {std::move(weigth)}
 {}
 
 IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
@@ -323,6 +324,16 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
       double T[] {0.0};
       double p[] {1.0};
       time_ = UPtrDist {new Discrete {T, p, 1}};
+    }
+
+    // Determine external source weigth distribution
+    if (check_for_node(node, "weigth")) {
+      pugi::xml_node node_dist = node.child("weigth");
+      weigth_ = distribution_from_xml(node_dist);
+    } else {
+      // Default to a Constant weigth wgt=0
+      double p[] {1.0};
+      weigth_ = UPtrDist {new Discrete {p, p, 1}};
     }
   }
 }
@@ -394,6 +405,8 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 
     // Sample particle creation time
     site.time = time_->sample(seed);
+    // Sample particle creation time
+    site.wgt = weigth_->sample(seed);
   }
 
   // Increment number of accepted samples

@@ -92,6 +92,7 @@ protected:
   bool satisfies_spatial_constraints(Position r) const;
   bool satisfies_energy_constraints(double E) const;
   bool satisfies_time_constraints(double time) const;
+  bool satisfies_weigth_constraints(double weigth) const;
 
   // Data members
   double strength_ {1.0};                  //!< Source strength
@@ -99,6 +100,8 @@ protected:
   DomainType domain_type_;                 //!< Domain type for rejection
   std::pair<double, double> time_bounds_ {-std::numeric_limits<double>::max(),
     std::numeric_limits<double>::max()}; //!< time limits
+  std::pair<double, double> weigth_bounds_ {0,
+    std::numeric_limits<double>::max()}; //!< weigth limits
   std::pair<double, double> energy_bounds_ {
     0, std::numeric_limits<double>::max()}; //!< energy limits
   bool only_fissionable_ {
@@ -116,7 +119,7 @@ class IndependentSource : public Source {
 public:
   // Constructors
   IndependentSource(
-    UPtrSpace space, UPtrAngle angle, UPtrDist energy, UPtrDist time);
+    UPtrSpace space, UPtrAngle angle, UPtrDist energy, UPtrDist time, UPtrDist weigth);
   explicit IndependentSource(pugi::xml_node node);
 
   //! Sample from the external source distribution
@@ -132,6 +135,8 @@ public:
   UnitSphereDistribution* angle() const { return angle_.get(); }
   Distribution* energy() const { return energy_.get(); }
   Distribution* time() const { return time_.get(); }
+  Distribution* weigth() const { return weigth_.get(); }
+
 
   // Make domain type and ids available
   DomainType domain_type() const { return domain_type_; }
@@ -148,6 +153,7 @@ private:
   UPtrAngle angle_;                               //!< Angular distribution
   UPtrDist energy_;                               //!< Energy distribution
   UPtrDist time_;                                 //!< Time distribution
+  UPtrDist weigth_;                               //!< Weigth value
 };
 
 //==============================================================================

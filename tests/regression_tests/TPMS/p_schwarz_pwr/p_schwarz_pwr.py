@@ -1,4 +1,5 @@
 import openmc
+import openmc.volume
 # Example of a pincell, fraction of fuel, clad and coolant are respectively 0.471449, 0.057102 and 0.471449
 
 def Box(c:float, boundary_type="transmission"):
@@ -11,7 +12,7 @@ def Box(c:float, boundary_type="transmission"):
     return +xP0 & (-xP1 & (+yP0 & (-yP1 & (+zP0 & -zP1))))
 
 def make_fuel(materials:openmc.Materials, mColors:dict) -> tuple[openmc.Material,openmc.Materials,dict]:
-    mFuel = openmc.Material(0, "mFuel", 300.)
+    mFuel = openmc.Material(0, "mFuel", 900.)
     mFuel.set_density('g/cm3', 10.045)
     mFuel.add_nuclide("U234", 6.15169E+18)
     mFuel.add_nuclide("U235", 6.89220E+20)
@@ -25,7 +26,7 @@ def make_fuel(materials:openmc.Materials, mColors:dict) -> tuple[openmc.Material
     return mFuel, materials, mColors
 
 def make_clad(materials:openmc.Materials, mColors:dict) -> tuple[openmc.Material,openmc.Materials,dict]:
-    mClad = openmc.Material(1, "mClad", 300.)
+    mClad = openmc.Material(1, "mClad", 600.)
     mClad.set_density('g/cm3', 6.56)
     mClad.add_nuclide("O16", 1.19276E-03, percent_type="wo")
     mClad.add_nuclide("O17", 4.82878E-07, percent_type="wo")
@@ -58,7 +59,7 @@ def make_clad(materials:openmc.Materials, mColors:dict) -> tuple[openmc.Material
     return mClad, materials, mColors
 
 def make_cool(materials:openmc.Materials, mColors:dict) -> tuple[openmc.Material,openmc.Materials,dict]:
-    mCool = openmc.Material(2, "mCool", 300.)
+    mCool = openmc.Material(2, "mCool", 600.)
     mCool.set_density('g/cm3', 0.76973)
     mCool.add_nuclide("H1", 2/3)
     mCool.add_nuclide("O16", 1/3)
@@ -67,7 +68,6 @@ def make_cool(materials:openmc.Materials, mColors:dict) -> tuple[openmc.Material
     mColors[mCool] = (12, 12, 252)
     return mCool, materials, mColors
 
-openmc.Materials.cross_sections = "/Users/fernpa/openmc/libs/endfb80_hdf5/cross_sections.xml"
 materials = openmc.Materials()
 mColors = {}
 mFuel, materials, mColors = make_fuel(materials, mColors)
@@ -93,10 +93,13 @@ root = openmc.Cell(4, "root", universe, region1)
 geometry = openmc.Geometry([root])
 geometry.export_to_xml()
 
+
+volCalc = openmc.volume.VolumeCalculation([cell1, cell2, cell3, cell4], 1000000000)
 settings = openmc.Settings()
-settings.batches = 10000
+settings.batches = 1000
 settings.particles = 1000
 settings.inactive = 10
+settings.volume_calculations = [volCalc]
 settings.export_to_xml()
 
 plots = openmc.Plots()

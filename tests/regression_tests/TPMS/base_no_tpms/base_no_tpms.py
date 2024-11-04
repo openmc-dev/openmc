@@ -10,7 +10,7 @@ def Box(c:float, boundary_type="transmission"):
     return +xP0 & (-xP1 & (+yP0 & (-yP1 & (+zP0 & -zP1))))
 
 def make_fuel(materials:openmc.Materials, mColors:dict) -> tuple[openmc.Material,openmc.Materials,dict]:
-    mFuel = openmc.Material(0, "mFuel", 300.)
+    mFuel = openmc.Material(0, "mFuel", 900.)
     mFuel.set_density('g/cm3', 10.5)
     mFuel.add_nuclide("U235", 0.935/3)
     mFuel.add_nuclide("U238", 0.065/3)
@@ -20,7 +20,7 @@ def make_fuel(materials:openmc.Materials, mColors:dict) -> tuple[openmc.Material
     return mFuel, materials, mColors
 
 def make_clad(materials:openmc.Materials, mColors:dict) -> tuple[openmc.Material,openmc.Materials,dict]:
-    mClad = openmc.Material(1, "mClad", 300.)
+    mClad = openmc.Material(1, "mClad", 600.)
     mClad.set_density('g/cm3', 7.6)
     mClad.add_element("Fe", 0.95)
     mClad.add_element("C", 0.05)
@@ -29,7 +29,7 @@ def make_clad(materials:openmc.Materials, mColors:dict) -> tuple[openmc.Material
     return mClad, materials, mColors
 
 def make_cool(materials:openmc.Materials, mColors:dict) -> tuple[openmc.Material,openmc.Materials,dict]:
-    mCool = openmc.Material(2, "mCool", 300.)
+    mCool = openmc.Material(2, "mCool", 600.)
     mCool.set_density('g/cm3', 0.995)
     mCool.add_nuclide("H1", 2/3)
     mCool.add_nuclide("O16", 1/3)

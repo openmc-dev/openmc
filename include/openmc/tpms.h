@@ -1,7 +1,7 @@
 #ifndef OPENMC_TPMS_H
 #define OPENMC_TPMS_H
 
-#include "boost/math/tools/roots.hpp"
+// #include "boost/math/tools/roots.hpp"
 #include "openmc/bisect.h"
 
 #include "openmc/vector.h"
@@ -18,6 +18,12 @@ public:
     virtual double fk(double k, Position r, Direction u) const {return 0.;};
     virtual double fpk(double k, Position r, Direction u) const {return 0.;};
     virtual double fppk(double k, Position r, Direction u) const {return 0.;};
+    virtual double fxyz(Position xyz) const {return 0.;};
+    virtual std::vector<double> grad(Position xyz) const {return {0.,0.,0.};};
+    virtual std::vector<std::vector<double>> hess(Position xyz) const {return {{0.,0.,0.},{0.,0.,0.},{0.,0.,0.}};};
+    double fk2(double k, Position r, Direction u) const;
+    double fpk2(double k, Position r, Direction u) const;
+    double fppk2(double k, Position r, Direction u) const;
     virtual double sampling_frequency(Direction u) const {return 1.;};
     rootFinding root_in_interval(double L0, double L1, Position r, Direction u);
     double ray_tracing(Position r, Direction u);
@@ -35,6 +41,9 @@ class SchwarzP : public TPMS
 {
 using TPMS::TPMS;
 public:
+    double fxyz(Position xyz) const;
+    std::vector<double> grad(Position xyz) const;
+    std::vector<std::vector<double>> hess(Position xyz) const;
     double fk(double k, Position r, Direction u) const;
     double fpk(double k, Position r, Direction u) const;
     double fppk(double k, Position r, Direction u) const;

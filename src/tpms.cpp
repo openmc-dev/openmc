@@ -9,8 +9,39 @@ TPMS::TPMS(double _cst, double _pitch, double _x0, double _y0, double _z0, doubl
     a = _a; b = _b; c = _c; d = _d; e = _e; f = _f; g = _g; h = _h; i = _i;
 }
 
-TPMS::rootFinding
-TPMS::root_in_interval(double L0, double L1, Position r, Direction u)
+double TPMS::fk2(double k, Position r, Direction u) const
+{
+    const double x = r.x + k*u.x;
+    const double y = r.y + k*u.y;
+    const double z = r.z + k*u.z;
+    Position xyz = Position(x, y, z);
+    return this->fxyz(xyz);
+}
+
+double TPMS::fpk2(double k, Position r, Direction u) const
+{
+    const double x = r.x + k*u.x;
+    const double y = r.y + k*u.y;
+    const double z = r.z + k*u.z;
+    Position xyz = Position(x, y, z);
+    std::vector<double> grad = this->grad(xyz);
+    return u.x*grad[0] + u.y*grad[1] +u.x*grad[2];
+}
+
+double TPMS::fppk2(double k, Position r, Direction u) const
+{
+    const double x = r.x + k*u.x;
+    const double y = r.y + k*u.y;
+    const double z = r.z + k*u.z;
+    Position xyz = Position(x, y, z);
+    std::vector<std::vector<double>> hess = this->hess(xyz);
+    double fpx = u.x*( u.x*hess[0][0] + u.y*hess[0][1] + u.z*hess[0][2] );
+    double fpy = u.y*( u.x*hess[1][0] + u.y*hess[1][1] + u.z*hess[1][2] );
+    double fpz = u.z*( u.x*hess[2][0] + u.y*hess[2][1] + u.z*hess[2][2] );
+    return fpx + fpy + fpz;
+}
+
+TPMS::rootFinding TPMS::root_in_interval(double L0, double L1, Position r, Direction u)
 {
     bool solFound = false;
     double xa = L0;
@@ -107,6 +138,55 @@ double TPMS::ray_tracing(Position r, Direction u)
         }
     }
     return root;
+}
+
+double SchwarzP::fxyz(Position xyz) const
+{
+    const double x = xyz.x;
+    const double y = xyz.y;
+    const double z = xyz.z;
+    const double l = 2*M_PI/pitch;
+    const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
+    const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
+    const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
+    return cos(l*xx) + cos(l*yy) + cos(l*zz) - cst;
+}
+
+std::vector<double> SchwarzP::grad(Position xyz) const
+{
+    const double x = xyz.x;
+    const double y = xyz.y;
+    const double z = xyz.z;
+    const double l = 2*M_PI/pitch;
+    const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
+    const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
+    const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
+    const double dfdx = -a*l*sin(l*xx) -d*l*sin(l*yy) -g*l*sin(l*zz);
+    const double dfdy = -b*l*sin(l*xx) -e*l*sin(l*yy) -h*l*sin(l*zz);
+    const double dfdz = -c*l*sin(l*xx) -f*l*sin(l*yy) -i*l*sin(l*zz);
+    return {dfdx, dfdy, dfdz};
+}
+
+std::vector<std::vector<double>> SchwarzP::hess(Position xyz) const
+{
+    const double x = xyz.x;
+    const double y = xyz.y;
+    const double z = xyz.z;
+    const double l = 2*M_PI/pitch;
+    const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
+    const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
+    const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
+    const double dfdxx = -a*a*l*l*cos(l*xx) -d*d*l*l*cos(l*yy) -g*g*l*l*cos(l*zz);
+    const double dfdxy = -a*b*l*l*cos(l*xx) -d*e*l*l*cos(l*yy) -g*h*l*l*cos(l*zz);
+    const double dfdxz = -a*c*l*l*cos(l*xx) -d*f*l*l*cos(l*yy) -g*i*l*l*cos(l*zz);
+    const double dfdyy = -b*b*l*l*cos(l*xx) -e*e*l*l*cos(l*yy) -h*h*l*l*cos(l*zz);
+    const double dfdyz = -b*c*l*l*cos(l*xx) -e*f*l*l*cos(l*yy) -h*i*l*l*cos(l*zz);
+    const double dfdzz = -c*c*l*l*cos(l*xx) -f*f*l*l*cos(l*yy) -i*i*l*l*cos(l*zz);
+    return {
+        {dfdxx, dfdxy, dfdxz},
+        {dfdxy, dfdyy, dfdyz},
+        {dfdxz, dfdyz, dfdzz},
+    };
 }
 
 double SchwarzP::fk(double k, Position r, Direction u) const

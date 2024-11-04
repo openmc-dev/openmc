@@ -1,7 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
-  <cross_sections>/Users/fernpa/openmc/libs/endfb80_hdf5/cross_sections.xml</cross_sections>
-  <material depletable="true" id="0" name="mFuel" temperature="300.0">
+  <material depletable="true" id="0" name="mFuel" temperature="900.0">
     <density units="g/cm3" value="10.045"/>
     <nuclide ao="6.15169e+18" name="U234"/>
     <nuclide ao="6.8922e+20" name="U235"/>
@@ -11,7 +10,7 @@
     <nuclide ao="1.04072e+19" name="N14"/>
     <nuclide ao="4.48178e+22" name="O16"/>
   </material>
-  <material id="1" name="mClad" temperature="300.0">
+  <material id="1" name="mClad" temperature="600.0">
     <density units="g/cm3" value="6.56"/>
     <nuclide name="O16" wo="0.00119276"/>
     <nuclide name="O17" wo="4.82878e-07"/>
@@ -40,7 +39,7 @@
     <nuclide name="Sn122" wo="0.000663497"/>
     <nuclide name="Sn124" wo="0.000843355"/>
   </material>
-  <material id="2" name="mCool" temperature="300.0">
+  <material id="2" name="mCool" temperature="600.0">
     <density units="g/cm3" value="0.76973"/>
     <nuclide ao="0.6666666666666666" name="H1"/>
     <nuclide ao="0.3333333333333333" name="O16"/>

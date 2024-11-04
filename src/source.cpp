@@ -172,7 +172,7 @@ SourceSite Source::sample_with_constraints(uint64_t* seed) const
       accepted = satisfies_spatial_constraints(site.r) &&
                  satisfies_energy_constraints(site.E) &&
                  satisfies_time_constraints(site.time) &&
-                 satisfies_weight_constraints(site.weight);
+                 satisfies_weight_constraints(site.wgt);
       if (!accepted) {
         ++n_reject;
         if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
@@ -588,7 +588,7 @@ SourceSite MeshSource::sample(uint64_t* seed) const
     // Apply other rejections
     if (satisfies_energy_constraints(site.E) &&
         satisfies_time_constraints(site.time) &&
-        satisfies_weight_constraints(site.weight)) {
+        satisfies_weight_constraints(site.wgt)) {
       break;
     }
   }

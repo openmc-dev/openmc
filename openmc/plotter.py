@@ -1,12 +1,10 @@
-# annotations package is required to enable postponed evaluation of type
-# hints in conjugation with the | operator. This avoids TypeError: 
-# unsupported operand type(s) for |: 'str' and 'NoneType' error
 from __future__ import annotations
 from itertools import chain
 from numbers import Integral, Real
 from typing import Dict, Iterable, List
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 import openmc.checkvalue as cv
 import openmc.data
@@ -126,10 +124,10 @@ def _get_title(reactions):
 
 
 def plot_xs(
-    reactions: Dict[str, openmc.Material | List[str]],
+    reactions: Dict[str | openmc.Material, List[str]],
     divisor_types: Iterable[str] | None = None,
     temperature: float = 294.0,
-    axis: "plt.Axes" | None = None,
+    axis: plt.Axes | None = None,
     sab_name: str | None = None,
     ce_cross_sections: str | None = None,
     mg_cross_sections: str | None = None,
@@ -139,7 +137,7 @@ def plot_xs(
     divisor_orders: Iterable[int] | None = None,
     energy_axis_units: str = "eV",
     **kwargs,
-) -> "plt.Figure":
+) -> plt.Figure | None:
     """Creates a figure of continuous-energy cross sections for this item.
 
     Parameters
@@ -289,7 +287,6 @@ def plot_xs(
     ax.set_title(_get_title(reactions))
 
     return fig
-
 
 
 def calculate_cexs(this, types, temperature=294., sab_name=None,

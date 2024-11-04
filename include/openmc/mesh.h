@@ -899,7 +899,8 @@ public:
   // Constructors
   LibMesh(pugi::xml_node node);
   LibMesh(const std::string& filename, double length_multiplier = 1.0);
-  LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier = 1.0, bool build_eqn_sys = true);
+  LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier = 1.0,
+    bool build_eqn_sys = true);
 
   static const std::string mesh_lib_type;
 
@@ -964,12 +965,12 @@ private:
   libMesh::MeshBase* m_; //!< pointer to libMesh MeshBase instance, always set
                          //!< during intialization
   vector<unique_ptr<libMesh::PointLocatorBase>>
-    pl_; //!< per-thread point locators
-  bool build_eqn_sys_ = true; //!< whether a libMesh equation system should be built
-                              //!< for output or not
-  unique_ptr<libMesh::EquationSystems>
-    equation_systems_ = nullptr; //!< pointer to the libMesh EquationSystems
-                                 //!< instance
+    pl_;                      //!< per-thread point locators
+  bool build_eqn_sys_ = true; //!< whether a libMesh equation system should be
+                              //!< built for output or not
+  unique_ptr<libMesh::EquationSystems> equation_systems_ =
+    nullptr; //!< pointer to the libMesh EquationSystems
+             //!< instance
   std::string
     eq_system_name_; //!< name of the equation system holding OpenMC results
   std::unordered_map<std::string, unsigned int>
@@ -981,9 +982,10 @@ private:
 
   const bool adaptive_; //!< whether this mesh has adaptivity enabled or not
   std::vector<libMesh::dof_id_type>
-    bin_to_elem_map_; //!< mapping bin indices to dof indices for active elements
-  std::vector<int>
-    elem_to_bin_map_; //!< mapping dof indices to bin indices for active elements
+    bin_to_elem_map_; //!< mapping bin indices to dof indices for active
+                      //!< elements
+  std::vector<int> elem_to_bin_map_; //!< mapping dof indices to bin indices for
+                                     //!< active elements
 };
 
 #endif

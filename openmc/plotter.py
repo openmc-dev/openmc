@@ -4,7 +4,6 @@ from numbers import Integral, Real
 from typing import Dict, Iterable, List
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 import openmc.checkvalue as cv
 import openmc.data
@@ -127,7 +126,7 @@ def plot_xs(
     reactions: Dict[str | openmc.Material, List[str]],
     divisor_types: Iterable[str] | None = None,
     temperature: float = 294.0,
-    axis: plt.Axes | None = None,
+    axis: "plt.Axes" | None = None,
     sab_name: str | None = None,
     ce_cross_sections: str | None = None,
     mg_cross_sections: str | None = None,
@@ -137,7 +136,7 @@ def plot_xs(
     divisor_orders: Iterable[int] | None = None,
     energy_axis_units: str = "eV",
     **kwargs,
-) -> plt.Figure | None:
+) -> "plt.Figure" | None:
     """Creates a figure of continuous-energy cross sections for this item.
 
     Parameters

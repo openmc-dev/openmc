@@ -171,7 +171,8 @@ SourceSite Source::sample_with_constraints(uint64_t* seed) const
       // Check whether sampled site satisfies constraints
       accepted = satisfies_spatial_constraints(site.r) &&
                  satisfies_energy_constraints(site.E) &&
-                 satisfies_time_constraints(site.time);
+                 satisfies_time_constraints(site.time) &&
+                 satisfies_weigth_constraints(site.weigth);
       if (!accepted) {
         ++n_reject;
         if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
@@ -205,6 +206,11 @@ bool Source::satisfies_energy_constraints(double E) const
 bool Source::satisfies_time_constraints(double time) const
 {
   return time > time_bounds_.first && time < time_bounds_.second;
+}
+
+bool Source::satisfies_weigth_constraints(double weigth) const
+{
+  return weigth > weigth_bounds_.first && weigth < weigth_bounds_.second;
 }
 
 bool Source::satisfies_spatial_constraints(Position r) const
@@ -581,7 +587,8 @@ SourceSite MeshSource::sample(uint64_t* seed) const
 
     // Apply other rejections
     if (satisfies_energy_constraints(site.E) &&
-        satisfies_time_constraints(site.time)) {
+        satisfies_time_constraints(site.time &&
+        satisfies_weigth_constraints(site.weigth)) {
       break;
     }
   }

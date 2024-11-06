@@ -596,3 +596,38 @@ def test_conical_frustum():
     # Denegenerate case with r1 = r2
     s = openmc.model.ConicalFrustum(center_base, axis, r1, r1)
     assert (1., 1., -0.01) in -s
+
+def test_ZVessel():
+    x0 = 3.0 
+    y0 = 3.0
+    r = 10.0
+    zmin = 5.0
+    zmax = 30.0
+    hbottom = 4.0
+    htop = 4.0
+    s = openmc.model.ZVessel(x0, y0, r, zmin, zmax, bottom, htop)
+    assert isinstance(s.cycl, openmc.ZCylinder)
+    assert isinstance(s.zmin, openmc.ZPlane)
+    assert isinstance(s.zmax, openmc.ZPlane)
+    assert isinstance(s.bottom, openmc.Quadric)
+    assert isinstance(s.top, openmc.Quadric)
+
+    # Make sure boundary condition propagates
+    s.boundary_type = 'reflective'
+    assert s.boundary_type == 'reflective'
+    assert s.cycl.boundary_type == 'reflective'
+    assert s.bottom.boundary_type == 'reflective'
+    assert s.top.boundary_type == 'reflective'
+
+    # __contains__ on associated half-spaces
+    assert (-6.0, 4.0, 32.0) in +s
+    assert (-6.0, 4.0, 32.0) not in -s
+    assert (-2.0, 4.0, 32.0) in -s
+    assert (-2.0, 4.0, 32.0) not in +s
+
+    # translate method
+    s_t = s.translate((1., 1., 0.))
+    assert (-3.3, -2.5, 32.) in +s_t
+    
+    # Make sure repr works
+    repr(s)

@@ -91,7 +91,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.sourcepoint == {'batches': [50, 150, 500, 1000], 'separate': True,
                              'write': True, 'overwrite': True, 'mcpl': True}
     assert s.statepoint == {'batches': [50, 150, 500, 1000]}
-    assert s.surf_source_read == {'path': 'surface_source_1.h5'}
+    assert s.surf_source_read['path'].name == 'surface_source_1.h5'
     assert s.surf_source_write == {'surface_ids': [2], 'max_particles': 200}
     assert s.confidence_intervals
     assert s.ptables

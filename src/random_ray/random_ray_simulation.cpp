@@ -98,7 +98,7 @@ void openmc_run_random_ray()
     // Validate that inputs meet requirements for random ray mode
     if (mpi::master)
       validate_random_ray_inputs();
-    
+
     header("ADJOINT FLUX SOLVE", 3);
 
     // Initialize Random Ray Simulation Object

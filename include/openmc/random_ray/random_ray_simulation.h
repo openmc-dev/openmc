@@ -33,7 +33,7 @@ public:
 
   //----------------------------------------------------------------------------
   // Data members
-  
+
   // Contains all flat source region data
   unique_ptr<FlatSourceDomain> domain_;
 

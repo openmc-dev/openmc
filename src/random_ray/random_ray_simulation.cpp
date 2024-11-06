@@ -23,11 +23,15 @@ namespace openmc {
 
 void openmc_run_random_ray()
 {
-  bool adjoint_needed = false;
   //////////////////////////////////////////////////////////
   // Run forward simulation
   //////////////////////////////////////////////////////////
+  bool adjoint_needed = false;
+
+  // Final forward flux vector (for potential use in
+  // adjoint simulation)
   vector<double> forward_flux;
+
   {
     // Initialize OpenMC general data structures
     openmc_simulation_init();
@@ -41,6 +45,8 @@ void openmc_run_random_ray()
 
     adjoint_needed = FlatSourceDomain::adjoint_;
     FlatSourceDomain::adjoint_ = false;
+    if (adjoint_needed)
+      header("FORWARD FLUX SOLVE", 3);
 
     // Initialize fixed sources, if present
     sim.prepare_fixed_sources();
@@ -74,13 +80,15 @@ void openmc_run_random_ray()
 
     // Output all simulation results
     sim.output_simulation_results();
-  }
+
+  } // Exit scope to destroy RandomRaySimulation object
 
   //////////////////////////////////////////////////////////
   // Run adjoint simulation
   //////////////////////////////////////////////////////////
 
   if (adjoint_needed) {
+    reset_timers();
 
     FlatSourceDomain::adjoint_ = true;
 
@@ -90,6 +98,8 @@ void openmc_run_random_ray()
     // Validate that inputs meet requirements for random ray mode
     if (mpi::master)
       validate_random_ray_inputs();
+    
+    header("ADJOINT FLUX SOLVE", 3);
 
     // Initialize Random Ray Simulation Object
     RandomRaySimulation sim;

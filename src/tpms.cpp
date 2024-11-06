@@ -2,6 +2,10 @@
 
 namespace openmc {
 
+// *****************************************************************************
+// *   TPMS GENERAL DEFINITION
+// *****************************************************************************
+
 TPMS::TPMS(double _cst, double _pitch, double _x0, double _y0, double _z0, double _a, double _b, double _c, double _d, double _e, double _f, double _g, double _h, double _i)
 {
     cst = _cst; pitch = _pitch;
@@ -108,16 +112,46 @@ double TPMS::ray_tracing(Position r, Direction u)
     return root;
 }
 
-double SchwarzP::fk(double k, Position r, Direction u) const
+// *****************************************************************************
+// *   SCHWARZ P DEFINITION
+// *****************************************************************************
+
+double SchwarzP::evaluate(Position r) const
 {
-    const double x = r.x + k*u.x;
-    const double y = r.y + k*u.y;
-    const double z = r.z + k*u.z;
+    const double x = r.x;
+    const double y = r.y;
+    const double z = r.z;
     const double l = 2*M_PI/pitch;
     const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
     const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
     const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
     return cos(l*xx) + cos(l*yy) + cos(l*zz) - cst;
+}
+
+Direction SchwarzP::normal(Position r) const
+{
+    const double x = r.x;
+    const double y = r.y;
+    const double z = r.z;
+    const double l = 2*M_PI/pitch;
+    const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
+    const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
+    const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
+    const double dx = -a*sin(l*xx) -d*sin(l*yy) -g*sin(l*zz);
+    const double dy = -b*sin(l*xx) -e*sin(l*yy) -h*sin(l*zz);
+    const double dz = -c*sin(l*xx) -f*sin(l*yy) -i*sin(l*zz);
+    const double norm = pow(pow(dx,2)+pow(dy,2)+pow(dx,2),0.5);
+    Direction grad = Direction(dx/norm, dy/norm, dz/norm);
+    return grad;
+}
+
+double SchwarzP::fk(double k, Position r, Direction u) const
+{
+    const double x = r.x + k*u.x;
+    const double y = r.y + k*u.y;
+    const double z = r.z + k*u.z;
+    Position rk = Position(x,y,z);
+    return this->evaluate(rk);
 }
 
 double SchwarzP::fpk(double k, Position r, Direction u) const

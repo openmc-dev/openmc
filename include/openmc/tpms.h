@@ -35,6 +35,8 @@ class SchwarzP : public TPMS
 {
 using TPMS::TPMS;
 public:
+    double evaluate(Position r) const;
+    Direction normal(Position r) const;
     double fk(double k, Position r, Direction u) const;
     double fpk(double k, Position r, Direction u) const;
     double fppk(double k, Position r, Direction u) const;

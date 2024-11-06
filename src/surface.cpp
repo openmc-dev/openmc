@@ -955,47 +955,58 @@ void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
 // SurfaceTPMS implementation
 //==============================================================================
 
-SurfaceTPMS::SurfaceTPMS(pugi::xml_node surf_node)  : CSGSurface(surf_node)
+SurfaceTPMS::SurfaceTPMS(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
   read_coeffs(surf_node, id_, {&cst, &pitch, &x0, &y0, &z0, &a, &b, &c, &d, &e, &f, &g, &h, &i});
+  surface_type = get_node_value(surf_node, "surface_type");
+  if (std::find(tpms_types.begin(), tpms_types.end(), surface_type)==tpms_types.end())
+  {
+    fatal_error(
+      fmt::format("Surface {} is surface_type {} but it is not implemented.", id_,
+        surface_type));
+  }
 }
 
 double SurfaceTPMS::evaluate(Position r) const
 {
-  const double x = r.x;
-  const double y = r.y;
-  const double z = r.z;
-  const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
-  const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
-  const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
-  const double L = pitch;
-  return cos(2*M_PI*xx/L) + cos(2*M_PI*yy/L) + cos(2*M_PI*zz/L) - cst;
+  double value;
+  if(surface_type == "Schwarz_P")
+  {
+    SchwarzP laTpms = SchwarzP(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    value = laTpms.evaluate(r);
+  }
+  else {fatal_error(fmt::format("Surface type {} is not implemented in SurfaceTPMS::evaluate.", surface_type));}
+  return value;
 }
 
 double SurfaceTPMS::distance(Position r, Direction ang, bool coincident) const
 {
-  SchwarzP myTpms = SchwarzP(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
-  double raylength = myTpms.ray_tracing(r, ang);
-  return raylength;
+  double raylength = 0.;
+  if(surface_type == "Schwarz_P")
+  {
+    SchwarzP laTpms = SchwarzP(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    raylength = laTpms.ray_tracing(r, ang);
+  }
+  else {fatal_error(fmt::format("Surface type {} is not implemented in SurfaceTPMS::distance.", surface_type));}
+  return raylength; // le ray tracing avec la bonne TPMS, frero !
 }
 
 Direction SurfaceTPMS::normal(Position r) const
 {
-  const double x = r.x;
-  const double y = r.y;
-  const double z = r.z;
-  const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
-  const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
-  const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
-  const double L = pitch;
-  return {-2*M_PI*a*sin(xx)/L -2*M_PI*d*sin(yy)/L -2*M_PI*g*sin(zz)/L,
-          -2*M_PI*b*sin(xx)/L -2*M_PI*e*sin(yy)/L -2*M_PI*h*sin(zz)/L,
-          -2*M_PI*c*sin(xx)/L -2*M_PI*f*sin(yy)/L -2*M_PI*i*sin(zz)/L};
+  Direction grad;
+  if(surface_type == "Schwarz_P")
+  {
+    SchwarzP laTpms = SchwarzP(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    grad = laTpms.normal(r);
+  }
+  else {fatal_error(fmt::format("Surface type {} is not implemented in SurfaceTPMS::normal.", surface_type));}
+  return grad;
 }
 
 void SurfaceTPMS::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "tpms", false);
+  write_string(group_id, "surface_type", surface_type, false);
   array<double, 14> coeffs {{cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i}};
   write_dataset(group_id, "coefficients", coeffs);
 }

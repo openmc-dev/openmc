@@ -12,8 +12,8 @@ def Box(c:float, boundary_type="transmission"):
 def make_fuel(materials:openmc.Materials, mColors:dict) -> tuple[openmc.Material,openmc.Materials,dict]:
     mFuel = openmc.Material(0, "mFuel", 900.)
     mFuel.set_density('g/cm3', 10.5)
-    mFuel.add_nuclide("U235", 0.935/3)
-    mFuel.add_nuclide("U238", 0.065/3)
+    mFuel.add_nuclide("U235", 0.045/3)
+    mFuel.add_nuclide("U238", 0.955/3)
     mFuel.add_nuclide("O16",  2.000/3)
     mColors[mFuel] = (208, 52, 52)
     materials.append(mFuel)

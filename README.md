@@ -9,7 +9,7 @@
 conda create -n openmc-TPMS moose-dev=2024.10.01=mpich
 conda deactivate
 conda activate openmc-TPMS
-conda install boost=1.85.0
+# conda install boost=1.85.0 # not needed anymore
 ```
 ##### clone the project to your local repo:
 ```

@@ -3,6 +3,7 @@
 
 #include <limits> // For numeric_limits
 #include <string>
+#include <list>
 #include <unordered_map>
 
 #include "hdf5.h"
@@ -338,6 +339,10 @@ public:
   double cst, pitch;
   double x0, y0, z0;
   double a, b, c, d, e, f, g, h, i;
+  std::string surface_type;
+
+private:
+  std::list<std::string> tpms_types = {"Schwarz_P"};
 };
 
 //==============================================================================

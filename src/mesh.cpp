@@ -2932,12 +2932,10 @@ LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node), adaptive_(false)
 }
 
 // create the mesh from a pointer to a libMesh Mesh
-LibMesh::LibMesh(
-  libMesh::MeshBase& input_mesh, double length_multiplier, bool build_eqn_sys)
+LibMesh::LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier)
   : adaptive_(input_mesh.n_active_elem() != input_mesh.n_elem())
 {
   m_ = &input_mesh;
-  build_eqn_sys_ = build_eqn_sys;
   set_length_multiplier(length_multiplier);
   initialize();
 }
@@ -2957,6 +2955,15 @@ void LibMesh::set_mesh_pointer_from_filename(const std::string& filename)
   unique_m_ = make_unique<libMesh::Mesh>(*settings::libmesh_comm, n_dimension_);
   m_ = unique_m_.get();
   m_->read(filename_);
+}
+
+// build a libMesh equation system for storing values
+void LibMesh::build_eqn_sys()
+{
+  eq_system_name_ = fmt::format("mesh_{}_system", id_);
+  equation_systems_ = make_unique<libMesh::EquationSystems>(*m_);
+  libMesh::ExplicitSystem& eq_sys =
+    equation_systems_->add_system<libMesh::ExplicitSystem>(eq_system_name_);
 }
 
 // intialize from mesh file
@@ -2984,14 +2991,6 @@ void LibMesh::initialize()
     fatal_error(fmt::format("Mesh file {} specified for use in an unstructured "
                             "mesh is not a 3D mesh.",
       filename_));
-  }
-
-  // create an equation system for storing values
-  eq_system_name_ = fmt::format("mesh_{}_system", id_);
-  if (build_eqn_sys_) {
-    equation_systems_ = make_unique<libMesh::EquationSystems>(*m_);
-    libMesh::ExplicitSystem& eq_sys =
-      equation_systems_->add_system<libMesh::ExplicitSystem>(eq_system_name_);
   }
 
   for (int i = 0; i < num_threads(); i++) {
@@ -3099,10 +3098,14 @@ int LibMesh::n_surface_bins() const
 
 void LibMesh::add_score(const std::string& var_name)
 {
-  if (!build_eqn_sys_ || adaptive_) {
+  if (adaptive_) {
     fatal_error(fmt::format(
       "Exodus output cannot be provided as unstructured mesh {} is adaptive.",
       this->id_));
+  }
+
+  if (!equation_systems_) {
+    build_eqn_sys();
   }
 
   // check if this is a new variable
@@ -3126,21 +3129,17 @@ void LibMesh::add_score(const std::string& var_name)
 
 void LibMesh::remove_scores()
 {
-  if (!build_eqn_sys_ || adaptive_) {
-    fatal_error(fmt::format(
-      "Exodus output cannot be provided as unstructured mesh {} is adaptive.",
-      this->id_));
+  if (equation_systems_) {
+    auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
+    eqn_sys.clear();
+    variable_map_.clear();
   }
-
-  auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
-  eqn_sys.clear();
-  variable_map_.clear();
 }
 
 void LibMesh::set_score_data(const std::string& var_name,
   const vector<double>& values, const vector<double>& std_dev)
 {
-  if (!build_eqn_sys_ || adaptive_) {
+  if (adaptive_) {
     fatal_error(fmt::format(
       "Exodus output cannot be provided as unstructured mesh {} is adaptive.",
       this->id_));
@@ -3185,7 +3184,7 @@ void LibMesh::set_score_data(const std::string& var_name,
 
 void LibMesh::write(const std::string& filename) const
 {
-  if (!build_eqn_sys_ || adaptive_) {
+  if (adaptive_) {
     fatal_error(fmt::format(
       "Exodus output cannot be provided as unstructured mesh {} is adaptive.",
       this->id_));

@@ -899,8 +899,7 @@ public:
   // Constructors
   LibMesh(pugi::xml_node node);
   LibMesh(const std::string& filename, double length_multiplier = 1.0);
-  LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier = 1.0,
-    bool build_eqn_sys = true);
+  LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier = 1.0);
 
   static const std::string mesh_lib_type;
 
@@ -949,6 +948,7 @@ public:
 private:
   void initialize() override;
   void set_mesh_pointer_from_filename(const std::string& filename);
+  void build_eqn_sys();
 
   // Methods
 
@@ -965,9 +965,7 @@ private:
   libMesh::MeshBase* m_; //!< pointer to libMesh MeshBase instance, always set
                          //!< during intialization
   vector<unique_ptr<libMesh::PointLocatorBase>>
-    pl_;                      //!< per-thread point locators
-  bool build_eqn_sys_ = true; //!< whether a libMesh equation system should be
-                              //!< built for output or not
+    pl_; //!< per-thread point locators
   unique_ptr<libMesh::EquationSystems> equation_systems_ =
     nullptr; //!< pointer to the libMesh EquationSystems
              //!< instance

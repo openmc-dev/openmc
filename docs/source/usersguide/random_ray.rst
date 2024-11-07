@@ -604,14 +604,22 @@ The adjoint flux random ray solver mode can be enabled as:
     settings.random_ray['adjoint'] = True
 
 When enabled, OpenMC will run an entire forward transport simulation and then an
-entire adjoint transport simulation. Simulation settings (e.g., number of rays,
-batches, etc.) will be identical for both simulations. At the conclusion of the
-program, all results (e.g., tallies, plots, etc.) will be derived from the
-adjoint flux rather than the forward flux, though will not be labeled any
-differently. The initial forward flux solution will not be stored or available
-in the final statepoint file. Those wishing to do analysis requiring both the
-forward and adjoint solutions will need to run two separate simulations and then
-load both statepoint files.
+entire adjoint transport simulation. The purpose of the forward solve is to
+compute the adjoint external source when an external source is present in the
+simulation. Simulation settings (e.g., number of rays, batches, etc.) will be
+identical for both simulations. At the conclusion of the program, all results
+(e.g., tallies, plots, etc.) will be derived from the adjoint flux rather than
+the forward flux, though will not be labeled any differently. The initial
+forward flux solution will not be stored or available in the final statepoint
+file. Those wishing to do analysis requiring both the forward and adjoint
+solutions will need to run two separate simulations and then load both
+statepoint files.
+
+.. note::
+    When adjoint mode is selected, OpenMC will always perform a full forward
+    solve and then run a full adjoint solve immediately afterwards. statepoint
+    and tally results will be derived from the adjoint flux, but will not be
+    labeled any differently.
 
 ---------------------------------------
 Putting it All Together: Example Inputs

@@ -3145,6 +3145,10 @@ void LibMesh::set_score_data(const std::string& var_name,
       this->id_));
   }
 
+  if (!equation_systems_) {
+    build_eqn_sys();
+  }
+
   auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
 
   if (!eqn_sys.is_initialized()) {

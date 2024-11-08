@@ -71,7 +71,8 @@ public:
   //! Allocate offset table for distribcell.
   void allocate_offset_table(int n_maps)
   {
-    offsets_.resize(n_maps * universes_.size(), C_NONE);
+    offsets_.resize(n_maps * universes_.size());
+    std::fill(offsets_.begin(), offsets_.end(), C_NONE);
   }
 
   //! Populate the distribcell offset tables.

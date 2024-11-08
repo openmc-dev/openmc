@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence
 from copy import copy
@@ -1324,12 +1325,12 @@ class Polygon(CompositeSurface):
             surfsets.append(surf_ops)
         return surfsets
 
-    def offset(self, distance: float | Iterable[float] | np.ndarray) -> "Polygon":
+    def offset(self, distance: float | Sequence[float] | np.ndarray) -> Polygon:
         """Offset this polygon by a set distance
 
         Parameters
         ----------
-        distance : float or iterable or np.ndarray
+        distance : float or sequence of float or np.ndarray
             The distance to offset the polygon by. Positive is outward
             (expanding) and negative is inward (shrinking). If a float is
             provided, the same offset is applied to all vertices. If a list or
@@ -1344,10 +1345,10 @@ class Polygon(CompositeSurface):
 
         if isinstance(distance, float):
             distance = np.full(len(self.points), distance)
-        elif isinstance(distance, (list, tuple)):
+        elif isinstance(distance, Sequence):
             distance = np.array(distance)
         elif not isinstance(distance, np.ndarray):
-            raise TypeError("Distance must be a float, list, tuple, or numpy array")
+            raise TypeError("Distance must be a float or sequence of float.")
 
         if len(distance) != len(self.points):
             raise ValueError(

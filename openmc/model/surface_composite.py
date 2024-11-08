@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence
 from copy import copy
@@ -1316,25 +1317,43 @@ class Polygon(CompositeSurface):
             surfsets.append(surf_ops)
         return surfsets
 
-    def offset(self, distance):
+    def offset(self, distance: float | Sequence[float] | np.ndarray) -> Polygon:
         """Offset this polygon by a set distance
 
         Parameters
         ----------
-        distance : float
+        distance : float or sequence of float or np.ndarray
             The distance to offset the polygon by. Positive is outward
-            (expanding) and negative is inward (shrinking).
+            (expanding) and negative is inward (shrinking). If a float is
+            provided, the same offset is applied to all vertices. If a list or
+            tuple is provided, each vertex gets a different offset. If an
+            iterable or numpy array is provided, each vertex gets a different
+            offset.
 
         Returns
         -------
         offset_polygon : openmc.model.Polygon
         """
+
+        if isinstance(distance, float):
+            distance = np.full(len(self.points), distance)
+        elif isinstance(distance, Sequence):
+            distance = np.array(distance)
+        elif not isinstance(distance, np.ndarray):
+            raise TypeError("Distance must be a float or sequence of float.")
+
+        if len(distance) != len(self.points):
+            raise ValueError(
+                f"Length of distance {len(distance)} array must "
+                f"match number of polygon points {len(self.points)}"
+            )
+
         normals = np.insert(self._normals, 0, self._normals[-1, :], axis=0)
         cos2theta = np.sum(normals[1:, :]*normals[:-1, :], axis=-1, keepdims=True)
         costheta = np.cos(np.arccos(cos2theta) / 2)
         nvec = (normals[1:, :] + normals[:-1, :])
         unit_nvec = nvec / np.linalg.norm(nvec, axis=-1, keepdims=True)
-        disp_vec = distance / costheta * unit_nvec
+        disp_vec = distance[:, np.newaxis] / costheta * unit_nvec
 
         return type(self)(self.points + disp_vec, basis=self.basis)
 

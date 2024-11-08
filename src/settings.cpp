@@ -32,11 +32,14 @@
 #include "openmc/volume_calc.h"
 #include "openmc/weight_windows.h"
 #include "openmc/xml_interface.h"
+#include "openmc/distribution.h"
+#include "openmc/source.h"
 
 namespace openmc {
 
 //==============================================================================
 // Global variables
+external_sources_alias_sampler = DiscreteIndex();
 //==============================================================================
 
 namespace settings {
@@ -557,6 +560,9 @@ void read_settings_xml(pugi::xml_node root)
     }
     model::external_sources.push_back(make_unique<FileSource>(path));
   }
+
+  external_sources_alias_sampler = DiscreteIndex(model::externa_sources);
+  external_sources_alias_sampler.init_alias();
 
   // If no source specified, default to isotropic point source at origin with
   // Watt spectrum. No default source is needed in random ray mode.

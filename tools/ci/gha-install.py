@@ -1,6 +1,6 @@
 import os
-import subprocess
 import shutil
+import subprocess
 
 
 def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrystal=False):

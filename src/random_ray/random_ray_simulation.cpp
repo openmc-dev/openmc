@@ -85,7 +85,7 @@ void openmc_run_random_ray()
 
   // Deallocate memory used by forward simulation object.
   // This is done manually to avoid wasting memory
-  // if an adjoist simulation is run.
+  // if an adjoint simulation is run.
   sim.~RandomRaySimulation();
 
   //////////////////////////////////////////////////////////
@@ -413,19 +413,21 @@ void RandomRaySimulation::simulate()
     }
 
     // Execute all tallying tasks, if this is an active batch
-    if (simulation::current_batch > settings::n_inactive && mpi::master) {
+    if (simulation::current_batch > settings::n_inactive) {
 
-      // Generate mapping between source regions and tallies
-      if (!domain_->mapped_all_tallies_) {
-        domain_->convert_source_regions_to_tallies();
+      // Add this iteration's scalar flux estimate to final accumulated estimate
+      domain_->accumulate_iteration_flux();
+
+      if (mpi::master) {
+        // Generate mapping between source regions and tallies
+        if (!domain_->mapped_all_tallies_) {
+          domain_->convert_source_regions_to_tallies();
+        }
+
+        // Use above mapping to contribute FSR flux data to appropriate tallies
+        domain_->random_ray_tally();
       }
-
-      // Use above mapping to contribute FSR flux data to appropriate tallies
-      domain_->random_ray_tally();
     }
-
-    // Add this iteration's scalar flux estimate to final accumulated estimate
-    domain_->accumulate_iteration_flux();
 
     // Set phi_old = phi_new
     domain_->flux_swap();

@@ -4,12 +4,12 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "openmc"
-version = "0.15.1-dev"
 authors = [
     {name = "The OpenMC Development Team", email = "openmc@anl.gov"},
 ]
-description = "OpenMC is a community-developed Monte Carlo neutron and photon transport code."
-readme = "README.md"
+description = "OpenMC"
+version = "0.15.1-dev"
+requires-python = ">=3.10"
 license = {file = "LICENSE"}
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -25,7 +25,6 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
-requires-python = ">=3.10"
 dependencies = [
     "numpy",
     "h5py",

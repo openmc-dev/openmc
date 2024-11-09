@@ -39,7 +39,7 @@ namespace openmc {
 
 //==============================================================================
 // Global variables
-external_sources_alias_sampler = DiscreteIndex();
+DiscreteIndex external_sources_alias_sampler;
 //==============================================================================
 
 namespace settings {
@@ -560,8 +560,19 @@ void read_settings_xml(pugi::xml_node root)
     }
     model::external_sources.push_back(make_unique<FileSource>(path));
   }
-
-  external_sources_alias_sampler = DiscreteIndex();
+  std::vector <double> source_strength ;
+  for (auto& s : model::external_sources)
+  {
+    source_strength.push_back(s->strength()); //is that strength normalized? if yes then it can be used as a pdf 
+  }
+  */
+  //external_sources_alias_sampler = DiscreteIndex(model::external_sources);
+  //external_sources_alias_sampler.init_alias();
+  vector<double> strengths;
+  for (auto& s : model::external_sources) {
+    strengths.push_back(s->strength());
+  }
+  external_source_alias_sampler.assign(strengths);
 
   // If no source specified, default to isotropic point source at origin with
   // Watt spectrum. No default source is needed in random ray mode.

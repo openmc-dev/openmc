@@ -101,7 +101,7 @@ size_t DiscreteIndex::sample(uint64_t* seed) const
     return 0;
   }
 }
-
+assign
 void DiscreteIndex::normalize()
 {
   // Renormalize density function so that it sums to unity. Note that we save

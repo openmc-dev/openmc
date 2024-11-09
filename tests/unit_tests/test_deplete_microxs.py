@@ -46,9 +46,7 @@ def test_from_array():
     data.shape = (12, 2, 1)
 
     MicroXS(data, nuclides, reactions)
-    with pytest.raises(ValueError, match=r'Nuclides list of length \d* and '
-                       r'reactions array of length \d* do not '
-                       r'match dimensions of data array of shape \(\d*\, \d*\)'):
+    with pytest.raises(ValueError, match='Data array must be 3D'):
         MicroXS(data[:, 0], nuclides, reactions)
 
 

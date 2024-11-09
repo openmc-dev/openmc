@@ -719,7 +719,8 @@ class Model:
 
     def calculate_volumes(self, threads=None, output=True, cwd='.',
                           openmc_exec='openmc', mpi_args=None,
-                          apply_volumes=True):
+                          apply_volumes=True, export_model_xml=True,
+                          **export_kwargs):
         """Runs an OpenMC stochastic volume calculation and, if requested,
         applies volumes to the model
 
@@ -748,6 +749,13 @@ class Model:
         apply_volumes : bool, optional
             Whether apply the volume calculation results from this calculation
             to the model. Defaults to applying the volumes.
+        export_model_xml : bool, optional
+            Exports a single model.xml file rather than separate files. Defaults
+            to True.
+        **export_kwargs
+            Keyword arguments passed to either :meth:`Model.export_to_model_xml`
+            or :meth:`Model.export_to_xml`.
+
         """
 
         if len(self.settings.volume_calculations) == 0:
@@ -769,10 +777,15 @@ class Model:
                 openmc.lib.calculate_volumes(output)
 
             else:
-                self.export_to_xml()
-                openmc.calculate_volumes(threads=threads, output=output,
-                                         openmc_exec=openmc_exec,
-                                         mpi_args=mpi_args)
+                if export_model_xml:
+                    self.export_to_model_xml(**export_kwargs)
+                else:
+                    self.export_to_xml(**export_kwargs)
+                path_input = export_kwargs.get("path", None)
+                openmc.calculate_volumes(
+                    threads=threads, output=output, openmc_exec=openmc_exec,
+                    mpi_args=mpi_args, path_input=path_input
+                )
 
             # Now we apply the volumes
             if apply_volumes:
@@ -909,7 +922,8 @@ class Model:
                     n_samples=n_samples, prn_seed=prn_seed
                 )
 
-    def plot_geometry(self, output=True, cwd='.', openmc_exec='openmc'):
+    def plot_geometry(self, output=True, cwd='.', openmc_exec='openmc',
+                      export_model_xml=True, **export_kwargs):
         """Creates plot images as specified by the Model.plots attribute
 
         .. versionadded:: 0.13.0
@@ -924,6 +938,12 @@ class Model:
         openmc_exec : str, optional
             Path to OpenMC executable. Defaults to 'openmc'.
             This only applies to the case when not using the C API.
+        export_model_xml : bool, optional
+            Exports a single model.xml file rather than separate files. Defaults
+            to True.
+        **export_kwargs
+            Keyword arguments passed to either :meth:`Model.export_to_model_xml`
+            or :meth:`Model.export_to_xml`.
 
         """
 
@@ -937,8 +957,13 @@ class Model:
                 # Compute the volumes
                 openmc.lib.plot_geometry(output)
             else:
-                self.export_to_xml()
-                openmc.plot_geometry(output=output, openmc_exec=openmc_exec)
+                if export_model_xml:
+                    self.export_to_model_xml(**export_kwargs)
+                else:
+                    self.export_to_xml(**export_kwargs)
+                path_input = export_kwargs.get("path", None)
+                openmc.plot_geometry(output=output, openmc_exec=openmc_exec,
+                                     path_input=path_input)
 
     def _change_py_lib_attribs(self, names_or_ids, value, obj_type,
                                attrib_name, density_units='atom/b-cm'):

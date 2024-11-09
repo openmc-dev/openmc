@@ -8,7 +8,6 @@
 
 #include "pugixml.hpp"
 #include <gsl/gsl-lite.hpp>
-
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/vector.h" // for vector

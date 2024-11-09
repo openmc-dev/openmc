@@ -609,15 +609,16 @@ void initialize_source()
 SourceSite sample_external_source(uint64_t* seed)
 {
   // Determine total source strength
-  /*
-  double total_strength = 0.0;
+  
+  std::vector <double> source_strength ;
   for (auto& s : model::external_sources)
   {
-    total_strength += s->strength(); //is that strength normalized? if yes then it can be used as a pdf 
+    source_strength.push_back(s->strength()); //is that strength normalized? if yes then it can be used as a pdf 
   }
   */
   //external_sources_alias_sampler = DiscreteIndex(model::external_sources);
   //external_sources_alias_sampler.init_alias();
+  external_sources_alias_sampler=DiscreteIndex(source_strength);
   int i=external_sources_alias_sampler.sample();
 
   // Sample from among multiple source distributions

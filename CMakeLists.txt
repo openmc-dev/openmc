@@ -510,6 +510,14 @@ endif()
 if(OPENMC_USE_DAGMC)
   target_compile_definitions(libopenmc PRIVATE DAGMC)
   target_link_libraries(libopenmc dagmc-shared)
+
+  if(OPENMC_USE_UWUW)
+    target_compile_definitions(libopenmc PRIVATE OPENMC_UWUW)
+    target_link_libraries(libopenmc uwuw-shared)
+  endif()
+elseif(OPENMC_USE_UWUW)
+  set(OPENMC_USE_UWUW OFF)
+  message(FATAL_ERROR "DAGMC must be enabled when UWUW is enabled.")
 endif()
 
 if(OPENMC_USE_LIBMESH)
@@ -544,11 +552,6 @@ endif()
 if(OPENMC_USE_NCRYSTAL)
   target_compile_definitions(libopenmc PRIVATE NCRYSTAL)
   target_link_libraries(libopenmc NCrystal::NCrystal)
-endif()
-
-if (OPENMC_USE_UWUW)
-  target_compile_definitions(libopenmc PRIVATE UWUW)
-  target_link_libraries(libopenmc uwuw-shared)
 endif()
 
 #===============================================================================

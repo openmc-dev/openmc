@@ -1,4 +1,5 @@
 import pytest
+import openmc
 
 from tests.regression_tests import config as regression_config
 
@@ -27,3 +28,9 @@ def run_in_tmpdir(tmpdir):
         yield
     finally:
         orig.chdir()
+
+
+@pytest.fixture(scope='session', autouse=True)
+def resolve_paths():
+    with openmc.config.patch('resolve_paths', False):
+        yield

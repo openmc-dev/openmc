@@ -597,37 +597,51 @@ def test_conical_frustum():
     s = openmc.model.ConicalFrustum(center_base, axis, r1, r1)
     assert (1., 1., -0.01) in -s
 
-def test_ZVessel():
-    x0 = 3.0 
-    y0 = 3.0
-    r = 10.0
-    zmin = 5.0
-    zmax = 30.0
-    hbottom = 4.0
-    htop = 4.0
-    s = openmc.model.ZVessel(x0, y0, r, zmin, zmax, bottom, htop)
-    assert isinstance(s.cycl, openmc.ZCylinder)
-    assert isinstance(s.zmin, openmc.ZPlane)
-    assert isinstance(s.zmax, openmc.ZPlane)
+
+def test_vessel():
+    center = (3.0, 2.0)
+    r = 1.0
+    p1, p2 = -5.0, 5.0
+    h1 = h2 = 1.0
+    s = openmc.model.Vessel(r, p1, p2, h1, h2, center)
+    assert isinstance(s.cyl, openmc.Cylinder)
+    assert isinstance(s.plane_bottom, openmc.Plane)
+    assert isinstance(s.plane_top, openmc.Plane)
     assert isinstance(s.bottom, openmc.Quadric)
     assert isinstance(s.top, openmc.Quadric)
 
-    # Make sure boundary condition propagates
+    # Make sure boundary condition propagates (but not for planes)
     s.boundary_type = 'reflective'
     assert s.boundary_type == 'reflective'
-    assert s.cycl.boundary_type == 'reflective'
+    assert s.cyl.boundary_type == 'reflective'
     assert s.bottom.boundary_type == 'reflective'
     assert s.top.boundary_type == 'reflective'
+    assert s.plane_bottom.boundary_type == 'transmission'
+    assert s.plane_top.boundary_type == 'transmission'
+
+    # Check bounding box
+    ll, ur = (+s).bounding_box
+    assert np.all(np.isinf(ll))
+    assert np.all(np.isinf(ur))
+    ll, ur = (-s).bounding_box
+    assert np.all(np.isinf(ll))
+    assert np.all(np.isinf(ur))
 
     # __contains__ on associated half-spaces
-    assert (-6.0, 4.0, 32.0) in +s
-    assert (-6.0, 4.0, 32.0) not in -s
-    assert (-2.0, 4.0, 32.0) in -s
-    assert (-2.0, 4.0, 32.0) not in +s
+    assert (3., 2., 0.) in -s
+    assert (3., 2., -5.0) in -s
+    assert (3., 2., 5.0) in -s
+    assert (3., 2., -5.9) in -s
+    assert (3., 2., 5.9) in -s
+    assert (3., 2., -6.1) not in -s
+    assert (3., 2., 6.1) not in -s
+    assert (4.5, 2., 0.) in +s
+    assert (3., 3.2, 0.) in +s
+    assert (3., 2., 7.) in +s
 
     # translate method
-    s_t = s.translate((1., 1., 0.))
-    assert (-3.3, -2.5, 32.) in +s_t
-    
+    s_t = s.translate((0., 0., 1.))
+    assert (3., 2., 6.1) in -s_t
+
     # Make sure repr works
     repr(s)

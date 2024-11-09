@@ -40,9 +40,11 @@ class CompositeSurface(ABC):
     def boundary_type(self, boundary_type):
         # Set boundary type on underlying surfaces, but not for ambiguity plane
         # on one-sided cones
+        classes = (XConeOneSided, YConeOneSided, ZConeOneSided, Vessel)
         for name in self._surface_names:
-            if name != 'plane':
-                getattr(self, name).boundary_type = boundary_type
+            if isinstance(self, classes) and name.startswith('plane'):
+                continue
+            getattr(self, name).boundary_type = boundary_type
 
     def __repr__(self):
         return f"<{type(self).__name__} at 0x{id(self):x}>"
@@ -1852,14 +1854,14 @@ class Vessel(CompositeSurface):
     ----------
     r : float
         Radius of vessel.
-    pmin : float
+    p1 : float
         Minimum coordinate for cylindrical part of vessel.
-    pmax : float
+    p2 : float
         Maximum coordinate for cylindrical part of vessel.
-    hbottom : float
+    h1 : float
         Height of bottom ellipsoidal part of vessel.
-    htop : float
-        Hiehgt of top ellipsoidal part of vessel.
+    h2 : float
+        Height of top ellipsoidal part of vessel.
     center : 2-tuple of float
         Coordinate for central axis of the cylinder in the (y, z), (x, z), or
         (x, y) basis. Defaults to (0,0).
@@ -1868,20 +1870,20 @@ class Vessel(CompositeSurface):
 
     """
 
-    _surface_names = ('cyl', 'zmin', 'zmax', 'bottom', 'top')
+    _surface_names = ('cyl', 'plane_bottom', 'plane_top', 'bottom', 'top')
 
-    def __init__(self, r: float, pmin: float, pmax: float, hbottom: float,
-                 htop: float, center: Sequence[float] = (0., 0.), axis='z',
-                 **kwargs):
-        if pmin >= pmax:
-            raise ValueError('pmin must be less than pmax')
+    def __init__(self, r: float, p1: float, p2: float, h1: float, h2: float,
+                 center: Sequence[float] = (0., 0.), axis='z', **kwargs):
+        if p1 >= p2:
+            raise ValueError('p1 must be less than p2')
+        check_value('axis', axis, {'x', 'y', 'z'})
 
-        p1, p2 = center
+        c1, c2 = center
         cyl_class = getattr(openmc, f'{axis.upper()}Cylinder')
         plane_class = getattr(openmc, f'{axis.upper()}Plane')
-        self.cyl = cyl_class(p1, p2, r, **kwargs)
-        self.zmin = plane_class(pmin)
-        self.zmax = plane_class(pmax)
+        self.cyl = cyl_class(c1, c2, r, **kwargs)
+        self.plane_bottom = plane_class(p1)
+        self.plane_top = plane_class(p2)
 
         # General equation for an ellipsoid:
         #   (x-x₀)²/r² + (y-y₀)²/r² + (z-z₀)²/h² = 1
@@ -1890,43 +1892,43 @@ class Vessel(CompositeSurface):
         #   (x² - 2x₀x + x₀²) + (y² - 2y₀y + y₀²) + (z² - 2z₀z + z₀²)s² = r²
         #   x² + y² + s²z² - 2x₀x - 2y₀y - 2s²z₀z + (x₀² + y₀² + z₀²s² - r²) = 0
 
-        sb = (r/hbottom)
-        st = (r/htop)
+        sb = (r/h1)
+        st = (r/h2)
         kwargs['a'] = kwargs['b'] = kwargs['c'] = 1.0
         kwargs_bottom = kwargs
         kwargs_top = kwargs.copy()
 
         sb2 = sb*sb
         st2 = st*st
-        kwargs_bottom['k'] = p1*p1 + p2*p2 + pmin*pmin*sb2 - r*r
-        kwargs_top['k'] = p1*p1 + p2*p2 + pmax*pmax*st2 - r*r
+        kwargs_bottom['k'] = c1*c1 + c2*c2 + p1*p1*sb2 - r*r
+        kwargs_top['k'] = c1*c1 + c2*c2 + p2*p2*st2 - r*r
 
         if axis == 'x':
             kwargs_bottom['a'] *= sb2
             kwargs_top['a'] *= st2
-            kwargs_bottom['g'] = -2*pmin*sb2
-            kwargs_top['g'] = -2*pmax*st2
-            kwargs_top['h'] = kwargs_bottom['h'] = -2*p1
-            kwargs_top['j'] = kwargs_bottom['j'] = -2*p2
+            kwargs_bottom['g'] = -2*p1*sb2
+            kwargs_top['g'] = -2*p2*st2
+            kwargs_top['h'] = kwargs_bottom['h'] = -2*c1
+            kwargs_top['j'] = kwargs_bottom['j'] = -2*c2
         elif axis == 'y':
             kwargs_bottom['b'] *= sb2
             kwargs_top['b'] *= st2
-            kwargs_top['g'] = kwargs_bottom['g'] = -2*p1
-            kwargs_bottom['h'] = -2*pmin*sb2
-            kwargs_top['h'] = -2*pmax*st2
-            kwargs_top['j'] = kwargs_bottom['j'] = -2*p2
+            kwargs_top['g'] = kwargs_bottom['g'] = -2*c1
+            kwargs_bottom['h'] = -2*p1*sb2
+            kwargs_top['h'] = -2*p2*st2
+            kwargs_top['j'] = kwargs_bottom['j'] = -2*c2
         elif axis == 'z':
             kwargs_bottom['c'] *= sb2
             kwargs_top['c'] *= st2
-            kwargs_top['g'] = kwargs_bottom['g'] = -2*p1
-            kwargs_top['h'] = kwargs_bottom['h'] = -2*p2
-            kwargs_bottom['j'] = -2*pmin*sb2
-            kwargs_top['j'] = -2*pmax*st2
+            kwargs_top['g'] = kwargs_bottom['g'] = -2*c1
+            kwargs_top['h'] = kwargs_bottom['h'] = -2*c2
+            kwargs_bottom['j'] = -2*p1*sb2
+            kwargs_top['j'] = -2*p2*st2
 
         self.bottom = openmc.Quadric(**kwargs_bottom)
         self.top = openmc.Quadric(**kwargs_top)
 
     def __neg__(self):
-        return ((-self.cyl & +self.zmin & -self.zmax) |
-                (-self.bottom & -self.zmin) |
-                (-self.top & +self.zmax))
+        return ((-self.cyl & +self.plane_bottom & -self.plane_top) |
+                (-self.bottom & -self.plane_bottom) |
+                (-self.top & +self.plane_top))

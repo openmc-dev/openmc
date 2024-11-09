@@ -1873,7 +1873,7 @@ class Vessel(CompositeSurface):
     _surface_names = ('cyl', 'plane_bottom', 'plane_top', 'bottom', 'top')
 
     def __init__(self, r: float, p1: float, p2: float, h1: float, h2: float,
-                 center: Sequence[float] = (0., 0.), axis='z', **kwargs):
+                 center: Sequence[float] = (0., 0.), axis: str = 'z', **kwargs):
         if p1 >= p2:
             raise ValueError('p1 must be less than p2')
         check_value('axis', axis, {'x', 'y', 'z'})

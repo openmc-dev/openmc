@@ -198,6 +198,8 @@ class MicroXS:
     """
     def __init__(self, data: np.ndarray, nuclides: list[str], reactions: list[str]):
         # Validate inputs
+        if len(data.shape) != 3:
+            raise ValueError('Data array must be 3D.')
         if data.shape[:2] != (len(nuclides), len(reactions)):
             raise ValueError(
                 f'Nuclides list of length {len(nuclides)} and '
@@ -291,11 +293,11 @@ class MicroXS:
         mts = [REACTION_MT[name] for name in reactions]
 
         # Normalize multigroup flux
-        multigroup_flux = np.asarray(multigroup_flux)
+        multigroup_flux = np.array(multigroup_flux)
         multigroup_flux /= multigroup_flux.sum()
 
-        # Create 2D array for microscopic cross sections
-        microxs_arr = np.zeros((len(nuclides), len(mts)))
+        # Create 3D array for microscopic cross sections
+        microxs_arr = np.zeros((len(nuclides), len(mts), 1))
 
         # Create a material with all nuclides
         mat_all_nucs = openmc.Material()
@@ -327,7 +329,7 @@ class MicroXS:
                         xs = lib_nuc.collapse_rate(
                             mt, temperature, energies, multigroup_flux
                         )
-                        microxs_arr[nuc_index, mt_index] = xs
+                        microxs_arr[nuc_index, mt_index, 0] = xs
 
         return cls(microxs_arr, nuclides, reactions)
 

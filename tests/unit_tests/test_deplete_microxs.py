@@ -96,8 +96,12 @@ def test_multigroup_flux_same():
     energies = [0., 6.25e-1, 5.53e3, 8.21e5, 2.e7]
     flux_per_ev = [0.3, 0.3, 1.0, 1.0]
     flux = flux_per_ev * np.diff(energies)
+    flux_sum = flux.sum()
     microxs_4g = MicroXS.from_multigroup_flux(
         energies=energies, multigroup_flux=flux, chain_file=chain_file)
+
+    # from_multigroup_flux should not modify the flux
+    assert flux.sum() == flux_sum
 
     # Generate micro XS based on 2-group flux, where the boundaries line up with
     # the 4 group flux and have the same flux per eV across the full energy

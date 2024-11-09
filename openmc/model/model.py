@@ -719,7 +719,7 @@ class Model:
 
     def calculate_volumes(self, threads=None, output=True, cwd='.',
                           openmc_exec='openmc', mpi_args=None,
-                          apply_volumes=True, export_model_xml=True, 
+                          apply_volumes=True, export_model_xml=True,
                           **export_kwargs):
         """Runs an OpenMC stochastic volume calculation and, if requested,
         applies volumes to the model
@@ -781,9 +781,11 @@ class Model:
                     self.export_to_model_xml(**export_kwargs)
                 else:
                     self.export_to_xml(**export_kwargs)
-                openmc.calculate_volumes(threads=threads, output=output,
-                                         openmc_exec=openmc_exec,
-                                         mpi_args=mpi_args)
+                path_input = export_kwargs.get("path", None)
+                openmc.calculate_volumes(
+                    threads=threads, output=output, openmc_exec=openmc_exec,
+                    mpi_args=mpi_args, path_input=path_input
+                )
 
             # Now we apply the volumes
             if apply_volumes:
@@ -920,7 +922,7 @@ class Model:
                     n_samples=n_samples, prn_seed=prn_seed
                 )
 
-    def plot_geometry(self, output=True, cwd='.', openmc_exec='openmc', 
+    def plot_geometry(self, output=True, cwd='.', openmc_exec='openmc',
                       export_model_xml=True, **export_kwargs):
         """Creates plot images as specified by the Model.plots attribute
 
@@ -959,7 +961,9 @@ class Model:
                     self.export_to_model_xml(**export_kwargs)
                 else:
                     self.export_to_xml(**export_kwargs)
-                openmc.plot_geometry(output=output, openmc_exec=openmc_exec)
+                path_input = export_kwargs.get("path", None)
+                openmc.plot_geometry(output=output, openmc_exec=openmc_exec,
+                                     path_input=path_input)
 
     def _change_py_lib_attribs(self, names_or_ids, value, obj_type,
                                attrib_name, density_units='atom/b-cm'):

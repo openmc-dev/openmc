@@ -41,9 +41,6 @@ namespace openmc {
 
 namespace settings {
 
-// DiscreteIndex class for the alias sampling
-
-DiscreteIndex external_sources_alias_sampler;
 // Default values for boolean flags
 bool assume_separate {false};
 bool check_overlaps {false};
@@ -563,7 +560,7 @@ void read_settings_xml(pugi::xml_node root)
 
   vector<double> source_strengths;
   for (auto& s : model::external_sources) {
-    strengths.push_back(s->strength());
+    source_strengths.push_back(s->strength());
   }
   external_source_alias_sampler.assign(source_strengths);
 

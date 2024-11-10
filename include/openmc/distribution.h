@@ -6,11 +6,11 @@
 
 #include <cstddef> // for size_t
 
-#include "pugixml.hpp"
-#include <gsl/gsl-lite.hpp>
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/vector.h" // for vector
+#include "pugixml.hpp"
+#include <gsl/gsl-lite.hpp>
 
 namespace openmc {
 

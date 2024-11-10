@@ -608,37 +608,10 @@ void initialize_source()
 
 SourceSite sample_external_source(uint64_t* seed)
 {
-  /*
-  // Determine total source strength
-  double total_strength = 0.0;
-  for (auto& s : model::external_sources)
-    total_strength += s->strength();
-
-  "I will be only needing the strength and normalize it in the DiscreteIndex class"
-  */
-
   // Sample from among multiple source distributions
   int i = 0;
   if (model::external_sources.size() > 1) {
-    //double xi = prn(seed) * total_strength; //random strength from the total source strength 
-    //double c = 0.0;
-
-    /* First, it checks if there are multiple sources in model::external_sources. 
-    If so, it proceeds to sample one. xi is a random value scaled by total_strength.
-    This random value (xi) is used to decide which source distribution to sample from.
-    c accumulates the strengths of each source sequentially. The loop increments c with 
-    the strength of each source until xi < c, indicating that the randomly chosen point
-    falls within the range associated with a specific source. The index i at this point
-    identifies the selected source.
-    
-    for (; i < model::external_sources.size(); ++i) {
-      c += model::external_sources[i]->strength();
-      if (xi < c)
-        break;
-    }
-  */
-  int i = source_alias_sampler.sample(seed);
-
+    int i = externaal_source_alias_sampler.sample(seed);
   }
 
   // Sample source site from i-th source distribution

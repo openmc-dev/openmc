@@ -32,18 +32,18 @@
 #include "openmc/volume_calc.h"
 #include "openmc/weight_windows.h"
 #include "openmc/xml_interface.h"
-#include "openmc/distribution.h"
-#include "openmc/source.h"
 
 namespace openmc {
 
 //==============================================================================
 // Global variables
-DiscreteIndex external_sources_alias_sampler;
 //==============================================================================
 
 namespace settings {
 
+// DiscreteIndex class for the alias sampling
+
+DiscreteIndex external_sources_alias_sampler;
 // Default values for boolean flags
 bool assume_separate {false};
 bool check_overlaps {false};
@@ -560,19 +560,12 @@ void read_settings_xml(pugi::xml_node root)
     }
     model::external_sources.push_back(make_unique<FileSource>(path));
   }
-  std::vector <double> source_strength ;
-  for (auto& s : model::external_sources)
-  {
-    source_strength.push_back(s->strength()); //is that strength normalized? if yes then it can be used as a pdf 
-  }
-  */
-  //external_sources_alias_sampler = DiscreteIndex(model::external_sources);
-  //external_sources_alias_sampler.init_alias();
-  vector<double> strengths;
+
+  vector<double> source_strengths;
   for (auto& s : model::external_sources) {
     strengths.push_back(s->strength());
   }
-  external_source_alias_sampler.assign(strengths);
+  external_source_alias_sampler.assign(source_strengths);
 
   // If no source specified, default to isotropic point source at origin with
   // Watt spectrum. No default source is needed in random ray mode.

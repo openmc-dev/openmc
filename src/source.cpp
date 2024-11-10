@@ -611,7 +611,7 @@ SourceSite sample_external_source(uint64_t* seed)
   // Sample from among multiple source distributions
   int i = 0;
   if (model::external_sources.size() > 1) {
-    int i = externaal_source_alias_sampler.sample(seed);
+    i = externaal_source_alias_sampler.sample(seed);
   }
 
   // Sample source site from i-th source distribution

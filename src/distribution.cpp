@@ -16,6 +16,7 @@
 #include "openmc/random_lcg.h"
 #include "openmc/xml_interface.h"
 
+
 namespace openmc {
 
 //==============================================================================

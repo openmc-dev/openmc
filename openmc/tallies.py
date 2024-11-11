@@ -3174,7 +3174,8 @@ class Tallies(cv.CheckedList):
         already_written = memo if memo else set()
         for tally in self:
             for f in tally.filters:
-                if isinstance(f, openmc.MeshFilter):
+                if isinstance(f, openmc.MeshFilter) or\
+                isinstance(f, openmc.TimedMeshFilter):
                     if f.mesh.id in already_written:
                         continue
                     if len(f.mesh.name) > 0:

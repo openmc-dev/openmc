@@ -49,7 +49,7 @@ void TimedMeshFilter::set_mesh(int32_t mesh)
 {
   // perform any additional perparation for mesh tallies here
   mesh_ = mesh;
-  model::meshes[mesh_]->prepare_for_tallies();
+  model::meshes[mesh_]->prepare_for_point_location();
 
   reset_bins();
 }

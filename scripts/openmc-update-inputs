@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""Update OpenMC's input XML files to the latest format.
-
-"""
+"""Update OpenMC's input XML files to the latest format."""
 
 import argparse
 from itertools import chain
@@ -200,6 +198,16 @@ def update_geometry(geometry_root):
         lat.attrib['outer'] = str(new_uid)
 
         was_updated = True
+
+    for surface in root.findall('surface'):
+        for attribute in ['type', 'coeffs', 'boundary']:
+            if surface.find(attribute) is not None:
+                value = surface.find(attribute).text
+                surface.attrib[attribute] = value
+
+                child_element = surface.find(attribute)
+                surface.remove(child_element)
+                was_updated = True
 
     # Remove 'type' from lattice definitions.
     for lat in root.iter('lattice'):

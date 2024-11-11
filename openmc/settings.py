@@ -8,12 +8,14 @@ from pathlib import Path
 import lxml.etree as ET
 
 import openmc.checkvalue as cv
-from openmc.stats.multivariate import MeshSpatial
-from . import (RegularMesh, SourceBase, MeshSource, IndependentSource,
-               VolumeCalculation, WeightWindows, WeightWindowGenerator)
-from ._xml import clean_indentation, get_text, reorder_attributes
 from openmc.checkvalue import PathLike
-from .mesh import _read_meshes
+from openmc.stats.multivariate import MeshSpatial
+from ._xml import clean_indentation, get_text, reorder_attributes
+from .mesh import _read_meshes, RegularMesh
+from .source import SourceBase, MeshSource, IndependentSource
+from .utility_funcs import input_path
+from .volume import VolumeCalculation
+from .weight_windows import WeightWindows, WeightWindowGenerator
 
 
 class RunMode(Enum):
@@ -215,6 +217,7 @@ class Settings:
                    banked (int)
         :max_particles: Maximum number of particles to be banked on surfaces per
                    process (int)
+        :max_source_files: Maximum number of surface source files to be created (int)
         :mcpl: Output in the form of an MCPL-file (bool)
         :cell: Cell ID used to determine if particles crossing identified
                surfaces are to be banked. Particles coming from or going to this
@@ -702,14 +705,18 @@ class Settings:
         return self._surf_source_read
 
     @surf_source_read.setter
-    def surf_source_read(self, surf_source_read: dict):
-        cv.check_type('surface source reading options', surf_source_read, Mapping)
-        for key, value in surf_source_read.items():
+    def surf_source_read(self, ssr: dict):
+        cv.check_type('surface source reading options', ssr, Mapping)
+        for key, value in ssr.items():
             cv.check_value('surface source reading key', key,
                            ('path'))
             if key == 'path':
-                cv.check_type('path to surface source file', value, str)
-        self._surf_source_read = surf_source_read
+                cv.check_type('path to surface source file', value, PathLike)
+        self._surf_source_read = dict(ssr)
+
+        # Resolve path to surface source file
+        if 'path' in ssr:
+            self._surf_source_read['path'] = input_path(ssr['path'])
 
     @property
     def surf_source_write(self) -> dict:
@@ -722,7 +729,7 @@ class Settings:
             cv.check_value(
                 "surface source writing key",
                 key,
-                ("surface_ids", "max_particles", "mcpl", "cell", "cellfrom", "cellto"),
+                ("surface_ids", "max_particles", "max_source_files", "mcpl", "cell", "cellfrom", "cellto"),
             )
             if key == "surface_ids":
                 cv.check_type(
@@ -730,11 +737,13 @@ class Settings:
                 )
                 for surf_id in value:
                     cv.check_greater_than("surface id for source banking", surf_id, 0)
+
             elif key == "mcpl":
                 cv.check_type("write to an MCPL-format file", value, bool)
-            elif key in ("max_particles", "cell", "cellfrom", "cellto"):
+            elif key in ("max_particles", "max_source_files", "cell", "cellfrom", "cellto"):
                 name = {
                     "max_particles": "maximum particle banks on surfaces per process",
+                    "max_source_files": "maximun surface source files to be written",
                     "cell": "Cell ID for source banking (from or to)",
                     "cellfrom": "Cell ID for source banking (from only)",
                     "cellto": "Cell ID for source banking (to only)",
@@ -1077,8 +1086,8 @@ class Settings:
 
     @weight_windows_file.setter
     def weight_windows_file(self, value: PathLike):
-        cv.check_type('weight windows file', value, (str, Path))
-        self._weight_windows_file = value
+        cv.check_type('weight windows file', value, PathLike)
+        self._weight_windows_file = input_path(value)
 
     @property
     def weight_window_generators(self) -> list[WeightWindowGenerator]:
@@ -1252,7 +1261,7 @@ class Settings:
             element = ET.SubElement(root, "surf_source_read")
             if 'path' in self._surf_source_read:
                 subelement = ET.SubElement(element, "path")
-                subelement.text = self._surf_source_read['path']
+                subelement.text = str(self._surf_source_read['path'])
 
     def _create_surf_source_write_subelement(self, root):
         if self._surf_source_write:
@@ -1265,7 +1274,7 @@ class Settings:
             if "mcpl" in self._surf_source_write:
                 subelement = ET.SubElement(element, "mcpl")
                 subelement.text = str(self._surf_source_write["mcpl"]).lower()
-            for key in ("max_particles", "cell", "cellfrom", "cellto"):
+            for key in ("max_particles", "max_source_files", "cell", "cellfrom", "cellto"):
                 if key in self._surf_source_write:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(self._surf_source_write[key])
@@ -1512,7 +1521,7 @@ class Settings:
     def _create_weight_windows_file_element(self, root):
         if self.weight_windows_file is not None:
             element = ET.Element("weight_windows_file")
-            element.text = self.weight_windows_file
+            element.text = str(self.weight_windows_file)
             root.append(element)
 
     def _create_weight_window_checkpoints_subelement(self, root):
@@ -1661,22 +1670,24 @@ class Settings:
     def _surf_source_read_from_xml_element(self, root):
         elem = root.find('surf_source_read')
         if elem is not None:
+            ssr = {}
             value = get_text(elem, 'path')
             if value is not None:
-                self.surf_source_read['path'] = value
+                ssr['path'] = value
+            self.surf_source_read = ssr
 
     def _surf_source_write_from_xml_element(self, root):
         elem = root.find('surf_source_write')
         if elem is None:
             return
-        for key in ('surface_ids', 'max_particles', 'mcpl', 'cell', 'cellto', 'cellfrom'):
+        for key in ('surface_ids', 'max_particles', 'max_source_files', 'mcpl', 'cell', 'cellto', 'cellfrom'):
             value = get_text(elem, key)
             if value is not None:
                 if key == 'surface_ids':
                     value = [int(x) for x in value.split()]
                 elif key == 'mcpl':
                     value = value in ('true', '1')
-                elif key in ('max_particles', 'cell', 'cellfrom', 'cellto'):
+                elif key in ('max_particles', 'max_source_files', 'cell', 'cellfrom', 'cellto'):
                     value = int(value)
                 self.surf_source_write[key] = value
 

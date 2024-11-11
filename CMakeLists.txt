@@ -29,7 +29,7 @@ option(OPENMC_USE_OPENMP      "Enable shared-memory parallelism with OpenMP"    
 option(OPENMC_BUILD_TESTS     "Build tests"                                          ON)
 option(OPENMC_ENABLE_PROFILE  "Compile with profiling flags"                         OFF)
 option(OPENMC_ENABLE_COVERAGE "Compile with coverage analysis flags"                 OFF)
-option(OPENMC_USE_DAGMC       "Enable support for DAGMC (CAD) geometry"              OFF)
+option(OPENMC_USE_DAGMC       "Enable support for DAGMC (CAD) geometry"              ON)
 option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tallies" OFF)
 option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
 option(OPENMC_USE_MCPL        "Enable MCPL"                                          OFF)
@@ -119,7 +119,18 @@ endif()
 #===============================================================================
 
 if(OPENMC_USE_DAGMC)
-  find_package(DAGMC REQUIRED PATH_SUFFIXES lib/cmake)
+  find_package(DAGMC QUIET PATH_SUFFIXES lib/cmake)
+  if(NOT DAGMC_FOUND)
+    message(STATUS "DAGMC not found, fetching from repository")
+    include(FetchContent)
+    FetchContent_Declare(
+      dagmc
+      GIT_REPOSITORY https://github.com/svalinn/DAGMC.git
+      GIT_TAG v3.2.3
+    )
+    FetchContent_MakeAvailable(dagmc)
+    find_package(DAGMC REQUIRED PATH_SUFFIXES lib/cmake)
+  endif()
   if (${DAGMC_VERSION} VERSION_LESS 3.2.0)
     message(FATAL_ERROR "Discovered DAGMC Version: ${DAGMC_VERSION}."
       "Please update DAGMC to version 3.2.0 or greater.")

@@ -10,7 +10,7 @@ import openmc.deplete
 from openmc.deplete import IndependentOperator, MicroXS
 
 from tests.regression_tests import config, assert_atoms_equal, \
-    assert_reaction_rates_equal
+    assert_reaction_rates_equal, assert_same_mats
 
 
 @pytest.fixture(scope="module")
@@ -101,7 +101,7 @@ def test_against_self(run_in_tmpdir,
     res_ref = openmc.deplete.Results(path_reference)
 
     # Assert same mats
-    _assert_same_mats(res_test, res_ref)
+    assert_same_mats(res_ref, res_test)
 
     tol = 1.0e-14
     assert_atoms_equal(res_ref, res_test, tol)
@@ -155,7 +155,7 @@ def test_against_coupled(run_in_tmpdir,
     res_ref = openmc.deplete.Results(path_reference)
 
     # Assert same mats
-    _assert_same_mats(res_test, res_ref)
+    assert_same_mats(res_test, res_ref)
 
     assert_atoms_equal(res_ref, res_test, atom_tol)
     assert_reaction_rates_equal(res_ref, res_test, rx_tol)
@@ -172,6 +172,7 @@ def _create_operator(from_nuclides,
         for nuc, dens in fuel.get_nuclide_atom_densities().items():
             nuclides[nuc] = dens
 
+        openmc.reset_auto_ids()
         op = IndependentOperator.from_nuclides(fuel.volume,
                                                nuclides,
                                                flux,
@@ -187,20 +188,3 @@ def _create_operator(from_nuclides,
                                  normalization_mode=normalization_mode)
 
     return op
-
-
-def _assert_same_mats(res_ref, res_test):
-    for mat in res_ref[0].index_mat:
-        assert mat in res_test[0].index_mat, \
-            f"Material {mat} not in new results."
-    for nuc in res_ref[0].index_nuc:
-        assert nuc in res_test[0].index_nuc, \
-            f"Nuclide {nuc} not in new results."
-
-    for mat in res_test[0].index_mat:
-        assert mat in res_ref[0].index_mat, \
-            f"Material {mat} not in old results."
-    for nuc in res_test[0].index_nuc:
-        assert nuc in res_ref[0].index_nuc, \
-            f"Nuclide {nuc} not in old results."
-

@@ -40,7 +40,7 @@ public:
 
   void set_bins(gsl::span<double> bins);
 
-private:
+protected:
   //----------------------------------------------------------------------------
   // Data members
 

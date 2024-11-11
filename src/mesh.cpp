@@ -2315,7 +2315,7 @@ void MOABMesh::initialize()
   this->determine_bounds();
 }
 
-void MOABMesh::prepare_for_tallies()
+void MOABMesh::prepare_for_point_location()
 {
   // if the KDTree has already been constructed, do nothing
   if (kdtree_)
@@ -2365,7 +2365,8 @@ void MOABMesh::build_kdtree(const moab::Range& all_tets)
   all_tets_and_tris.merge(all_tris);
 
   // create a kd-tree instance
-  write_message("Building adaptive k-d tree for tet mesh...", 7);
+  write_message(
+    7, "Building adaptive k-d tree for tet mesh with ID {}...", id_);
   kdtree_ = make_unique<moab::AdaptiveKDTree>(mbi_.get());
 
   // Determine what options to use

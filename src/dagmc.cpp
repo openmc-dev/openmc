@@ -230,8 +230,6 @@ void DAGUniverse::init_geometry()
     if (mat_str == "graveyard") {
       graveyard = vol_handle;
     }
-    std::cout << "id_" << std::to_string(c->id_) << " " << c->n_instances_
-              << std::endl;
     // material void checks
     if (mat_str == "void" || mat_str == "vacuum" || mat_str == "graveyard") {
       c->material_.push_back(MATERIAL_VOID);

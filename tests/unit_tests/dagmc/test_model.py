@@ -129,7 +129,7 @@ def test_model_differentiate_with_DAGMC():
     mat_vol = openmc.VolumeCalculation(mat_list, 1000000, ll, ur)
     cell_vol = openmc.VolumeCalculation(list(root.cells.values()), 1000000, ll, ur)
     model.settings.volume_calculations = [mat_vol, cell_vol]
-    model.init_lib()i # need to reinitialize the lib after differentiating the materials
+    model.init_lib() # need to reinitialize the lib after differentiating the materials
     model.calculate_volumes(cwd=p)
     volume_after = np.sum([m.volume for m in model.materials if "fuel" in m.name])
     assert np.isclose(volume_before, volume_after)

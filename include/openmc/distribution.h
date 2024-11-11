@@ -13,7 +13,6 @@
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/vector.h" // for vector
 
-
 namespace openmc {
 
 //==============================================================================

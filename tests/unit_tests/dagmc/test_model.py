@@ -86,6 +86,7 @@ def set_dagmc_model():
     model.materials = openmc.Materials(mats.values())
     model.geometry = openmc.Geometry(root=root)
     model.settings = settings
+    return model
 
 
 def test_model_differentiate_depletable_with_DAGMC():

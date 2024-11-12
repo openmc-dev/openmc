@@ -41,9 +41,11 @@ class CompositeSurface(ABC):
     def boundary_type(self, boundary_type):
         # Set boundary type on underlying surfaces, but not for ambiguity plane
         # on one-sided cones
+        classes = (XConeOneSided, YConeOneSided, ZConeOneSided, Vessel)
         for name in self._surface_names:
-            if name != 'plane':
-                getattr(self, name).boundary_type = boundary_type
+            if isinstance(self, classes) and name.startswith('plane'):
+                continue
+            getattr(self, name).boundary_type = boundary_type
 
     def __repr__(self):
         return f"<{type(self).__name__} at 0x{id(self):x}>"
@@ -90,8 +92,8 @@ class CylinderSector(CompositeSurface):
         counterclockwise direction with respect to the first basis axis
         (+y, +z, or +x). Must be greater than :attr:`theta1`.
     center : iterable of float
-       Coordinate for central axes of cylinders in the (y, z), (x, z), or (x, y)
-       basis. Defaults to (0,0).
+        Coordinate for central axes of cylinders in the (y, z), (x, z), or (x, y)
+        basis. Defaults to (0,0).
     axis : {'x', 'y', 'z'}
         Central axis of the cylinders defining the inner and outer surfaces of
         the sector. Defaults to 'z'.
@@ -119,7 +121,7 @@ class CylinderSector(CompositeSurface):
                  r2,
                  theta1,
                  theta2,
-                 center=(0.,0.),
+                 center=(0., 0.),
                  axis='z',
                  **kwargs):
 
@@ -1856,3 +1858,96 @@ class ConicalFrustum(CompositeSurface):
 
     def __neg__(self) -> openmc.Region:
         return +self.plane_bottom & -self.plane_top & -self.cone
+
+
+class Vessel(CompositeSurface):
+    """Vessel composed of cylinder with semi-ellipsoid top and bottom.
+
+    This composite surface is represented by a finite cylinder with ellipsoidal
+    top and bottom surfaces. This surface is equivalent to the 'vesesl' surface
+    in Serpent.
+
+    .. versionadded:: 0.15.1
+
+    Parameters
+    ----------
+    r : float
+        Radius of vessel.
+    p1 : float
+        Minimum coordinate for cylindrical part of vessel.
+    p2 : float
+        Maximum coordinate for cylindrical part of vessel.
+    h1 : float
+        Height of bottom ellipsoidal part of vessel.
+    h2 : float
+        Height of top ellipsoidal part of vessel.
+    center : 2-tuple of float
+        Coordinate for central axis of the cylinder in the (y, z), (x, z), or
+        (x, y) basis. Defaults to (0,0).
+    axis : {'x', 'y', 'z'}
+        Central axis of the cylinder.
+
+    """
+
+    _surface_names = ('cyl', 'plane_bottom', 'plane_top', 'bottom', 'top')
+
+    def __init__(self, r: float, p1: float, p2: float, h1: float, h2: float,
+                 center: Sequence[float] = (0., 0.), axis: str = 'z', **kwargs):
+        if p1 >= p2:
+            raise ValueError('p1 must be less than p2')
+        check_value('axis', axis, {'x', 'y', 'z'})
+
+        c1, c2 = center
+        cyl_class = getattr(openmc, f'{axis.upper()}Cylinder')
+        plane_class = getattr(openmc, f'{axis.upper()}Plane')
+        self.cyl = cyl_class(c1, c2, r, **kwargs)
+        self.plane_bottom = plane_class(p1)
+        self.plane_top = plane_class(p2)
+
+        # General equation for an ellipsoid:
+        #   (x-x₀)²/r² + (y-y₀)²/r² + (z-z₀)²/h² = 1
+        #   (x-x₀)² + (y-y₀)² + (z-z₀)²s² = r²
+        # Let s = r/h:
+        #   (x² - 2x₀x + x₀²) + (y² - 2y₀y + y₀²) + (z² - 2z₀z + z₀²)s² = r²
+        #   x² + y² + s²z² - 2x₀x - 2y₀y - 2s²z₀z + (x₀² + y₀² + z₀²s² - r²) = 0
+
+        sb = (r/h1)
+        st = (r/h2)
+        kwargs['a'] = kwargs['b'] = kwargs['c'] = 1.0
+        kwargs_bottom = kwargs
+        kwargs_top = kwargs.copy()
+
+        sb2 = sb*sb
+        st2 = st*st
+        kwargs_bottom['k'] = c1*c1 + c2*c2 + p1*p1*sb2 - r*r
+        kwargs_top['k'] = c1*c1 + c2*c2 + p2*p2*st2 - r*r
+
+        if axis == 'x':
+            kwargs_bottom['a'] *= sb2
+            kwargs_top['a'] *= st2
+            kwargs_bottom['g'] = -2*p1*sb2
+            kwargs_top['g'] = -2*p2*st2
+            kwargs_top['h'] = kwargs_bottom['h'] = -2*c1
+            kwargs_top['j'] = kwargs_bottom['j'] = -2*c2
+        elif axis == 'y':
+            kwargs_bottom['b'] *= sb2
+            kwargs_top['b'] *= st2
+            kwargs_top['g'] = kwargs_bottom['g'] = -2*c1
+            kwargs_bottom['h'] = -2*p1*sb2
+            kwargs_top['h'] = -2*p2*st2
+            kwargs_top['j'] = kwargs_bottom['j'] = -2*c2
+        elif axis == 'z':
+            kwargs_bottom['c'] *= sb2
+            kwargs_top['c'] *= st2
+            kwargs_top['g'] = kwargs_bottom['g'] = -2*c1
+            kwargs_top['h'] = kwargs_bottom['h'] = -2*c2
+            kwargs_bottom['j'] = -2*p1*sb2
+            kwargs_top['j'] = -2*p2*st2
+
+        self.bottom = openmc.Quadric(**kwargs_bottom)
+        self.top = openmc.Quadric(**kwargs_top)
+
+    def __neg__(self):
+        return ((-self.cyl & +self.plane_bottom & -self.plane_top) |
+                (-self.bottom & -self.plane_bottom) |
+                (-self.top & +self.plane_top))

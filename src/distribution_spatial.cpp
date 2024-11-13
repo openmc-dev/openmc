@@ -337,14 +337,10 @@ PointCloud::PointCloud(
   point_idx_dist_.assign(strengths);
 }
 
-int32_t PointCloud::sample_point_index(uint64_t* seed) const
-{
-  return point_idx_dist_.sample(seed);
-}
-
 Position PointCloud::sample(uint64_t* seed) const
 {
-  return point_cloud_[this->sample_point_index(seed)];
+  int32_t index = point_idx_dist_.sample(seed);
+  return point_cloud_[index];
 }
 
 //==============================================================================

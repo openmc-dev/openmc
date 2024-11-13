@@ -58,10 +58,11 @@ vector<Position> get_node_position_array(
       "Incorect number of coordinates in Position array ({}) for \"{}\"",
       coords.size(), name));
   }
-  vector<Position> positions(coords.size() / 3);
+  vector<Position> positions;
+  positions.reserve(coords.size() / 3);
   auto it = coords.begin();
-  for (int i = 0; i < positions.size(); i++) {
-    positions[i] = {*it++, *it++, *it++};
+  for (size_t i = 0; i < coords.size(); i += 3) {
+    positions.push_back({coords[i], coords[i + 1], coords[i + 2]});
   }
   return positions;
 }

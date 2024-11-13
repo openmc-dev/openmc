@@ -50,9 +50,8 @@ def test_spherical_uniform():
     assert isinstance(sph_indep_function, openmc.stats.SphericalIndependent)
 
 def test_point_cloud():
-    point_list = [[1,0,0], [0,1,0], [0,0,1]]
-    positions = np.asarray(point_list)
-    strengths = [1,2,3]
+    positions = [(1, 0, 2), (0, 1, 0), (0, 0, 3), (4, 9, 2)]
+    strengths = [1, 2, 3, 4]
 
     space = openmc.stats.PointCloud(positions, strengths)
     np.testing.assert_equal(space.positions, positions)

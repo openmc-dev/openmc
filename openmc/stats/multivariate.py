@@ -761,60 +761,62 @@ class MeshSpatial(Spatial):
 class PointCloud(Spatial):
     """Spatial distribution from a point cloud.
 
-    This distribution specifies a discrete list of points, 
-    with corresponding relative probabilities.
+    This distribution specifies a discrete list of points, with corresponding
+    relative probabilities.
 
-    .. versionadded:: 0.15.x
+    .. versionadded:: 0.15.1
 
     Parameters
     ----------
-    positions : Iterable of 3-tuples
+    positions : iterable of 3-tuples
         The points in space to be sampled
     strengths : iterable of float, optional
-        An iterable of values that represents the relative probabilty of each point.
+        An iterable of values that represents the relative probabilty of each
+        point.
 
     Attributes
     ----------
-    positions: numpy.ndarray (3xN)
-        The points in space to be sampled with shape (3,N)
+    positions : numpy.ndarray
+        The points in space to be sampled with shape (N, 3)
     strengths : numpy.ndarray or None
         An array of relative probabilities for each mesh point
     """
 
-    def __init__(self, positions, strengths=None):
+    def __init__(
+        self,
+        positions: Sequence[Sequence[float]],
+        strengths: Sequence[float] | None = None
+    ):
         self.positions = positions
         self.strengths = strengths
 
     @property
-    def positions(self):
+    def positions(self) -> np.ndarray:
         return self._positions
 
     @positions.setter
-    def positions(self, given_positions):
-        cv.check_iterable_type('position list passed in', given_positions, Real, 2, 2)
-
-        if isinstance(given_positions, list):
-            cv.check_length('first position entry', given_positions[0], 3, 3)
-            self._positions = np.asarray(given_positions)
-        elif isinstance(given_positions, np.ndarray):
-            self._positions = given_positions
-        else:
-            raise ValueError('Unable to interpret source positions')
+    def positions(self, positions):
+        positions = np.array(positions, dtype=float)
+        if positions.ndim != 2:
+            raise ValueError('positions must be a 2D array')
+        elif positions.shape[1] != 3:
+            raise ValueError('positions must have 3 columns')
+        self._positions = positions
 
     @property
-    def strengths(self):
+    def strengths(self) -> np.ndarray:
         return self._strengths
 
     @strengths.setter
-    def strengths(self, given_strengths):
-        if given_strengths is not None:
-            cv.check_type('strengths array passed in', given_strengths, Iterable, Real)
-            self._strengths = np.asarray(given_strengths, dtype=float).flatten()
-        else:
-            self._strengths = None
+    def strengths(self, strengths):
+        if strengths is not None:
+            strengths = np.array(strengths, dtype=float)
+            if strengths.ndim != 1:
+                raise ValueError('strengths must be a 1D array')
+        self._strengths = strengths
 
     @property
-    def num_strength_bins(self):
+    def num_strength_bins(self) -> int:
         if self.strengths is None:
             raise ValueError('Strengths are not set')
         return self.strengths.size
@@ -829,7 +831,6 @@ class PointCloud(Spatial):
 
         """
         element = ET.Element('space')
-
         element.set('type', 'cloud')
 
         subelement = ET.SubElement(element, 'coords')
@@ -842,7 +843,7 @@ class PointCloud(Spatial):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element) -> PointCloud:
         """Generate spatial distribution from an XML element
 
         Parameters
@@ -858,7 +859,7 @@ class PointCloud(Spatial):
 
         """
         coord_data = get_text(elem, 'coords')
-        positions = np.asarray([float(b) for b in coord_data.split()]).reshape((3,-1))
+        positions = np.array([float(b) for b in coord_data.split()]).reshape((-1, 3))
 
         strengths = get_text(elem, 'strengths')
         if strengths is not None:

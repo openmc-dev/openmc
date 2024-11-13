@@ -62,24 +62,24 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
     int material = material_[sr];
     MomentMatrix invM = mom_matrix_[sr].inverse();
 
-    for (int e_out = 0; e_out < negroups_; e_out++) {
-      double sigma_t = sigma_t_[material * negroups_ + e_out];
+    for (int g_out = 0; g_out < negroups_; g_out++) {
+      double sigma_t = sigma_t_[material * negroups_ + g_out];
 
       double scatter_flat = 0.0f;
       double fission_flat = 0.0f;
       MomentArray scatter_linear = {0.0, 0.0, 0.0};
       MomentArray fission_linear = {0.0, 0.0, 0.0};
 
-      for (int e_in = 0; e_in < negroups_; e_in++) {
+      for (int g_in = 0; g_in < negroups_; g_in++) {
         // Handles for the flat and linear components of the flux
-        double flux_flat = scalar_flux_old_[sr * negroups_ + e_in];
-        MomentArray flux_linear = flux_moments_old_[sr * negroups_ + e_in];
+        double flux_flat = scalar_flux_old_[sr * negroups_ + g_in];
+        MomentArray flux_linear = flux_moments_old_[sr * negroups_ + g_in];
 
         // Handles for cross sections
         double sigma_s =
-          sigma_s_[material * negroups_ * negroups_ + e_out * negroups_ + e_in];
-        double nu_sigma_f = nu_sigma_f_[material * negroups_ + e_in];
-        double chi = chi_[material * negroups_ + e_out];
+          sigma_s_[material * negroups_ * negroups_ + g_out * negroups_ + g_in];
+        double nu_sigma_f = nu_sigma_f_[material * negroups_ + g_in];
+        double chi = chi_[material * negroups_ + g_out];
 
         // Compute source terms for flat and linear components of the flux
         scatter_flat += sigma_s * flux_flat;
@@ -89,7 +89,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
       }
 
       // Compute the flat source term
-      source_[sr * negroups_ + e_out] =
+      source_[sr * negroups_ + g_out] =
         (scatter_flat + fission_flat * inverse_k_eff) / sigma_t;
 
       // Compute the linear source terms
@@ -97,7 +97,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
       // are not well known, we will leave the source gradients as zero
       // so as to avoid causing any numerical instability.
       if (simulation::current_batch > 10) {
-        source_gradients_[sr * negroups_ + e_out] =
+        source_gradients_[sr * negroups_ + g_out] =
           invM * ((scatter_linear + fission_linear * inverse_k_eff) / sigma_t);
       }
     }
@@ -123,9 +123,9 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
 
 // Normalize flux to total distance travelled by all rays this iteration
 #pragma omp parallel for
-  for (int64_t e = 0; e < scalar_flux_new_.size(); e++) {
-    scalar_flux_new_[e] *= normalization_factor;
-    flux_moments_new_[e] *= normalization_factor;
+  for (int64_t se = 0; se < scalar_flux_new_.size(); se++) {
+    scalar_flux_new_[se] *= normalization_factor;
+    flux_moments_new_[se] *= normalization_factor;
   }
 
 // Accumulate cell-wise ray length tallies collected this iteration, then

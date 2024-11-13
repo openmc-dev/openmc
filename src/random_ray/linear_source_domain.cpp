@@ -106,7 +106,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
 // Add external source to flat source term if in fixed source mode
 #pragma omp parallel for
-    for (int se = 0; se < n_source_elements_; se++) {
+    for (int64_t se = 0; se < n_source_elements_; se++) {
       source_[se] += external_source_[se];
     }
   }

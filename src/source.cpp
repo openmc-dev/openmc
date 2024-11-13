@@ -411,7 +411,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 
     // Sample particle creation time
     site.time = time_->sample(seed);
-    // Sample particle creation time
+    // Sample particle creation weight
     site.wgt = weight_->sample(seed);
   }
 

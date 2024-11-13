@@ -800,7 +800,7 @@ class PointCloud(Spatial):
         if positions.ndim != 2:
             raise ValueError('positions must be a 2D array')
         elif positions.shape[1] != 3:
-            raise ValueError('positions must have 3 columns')
+            raise ValueError('Each position must have 3 values')
         self._positions = positions
 
     @property
@@ -813,6 +813,8 @@ class PointCloud(Spatial):
             strengths = np.array(strengths, dtype=float)
             if strengths.ndim != 1:
                 raise ValueError('strengths must be a 1D array')
+            elif strengths.size != self.positions.shape[0]:
+                raise ValueError('strengths must have the same length as positions')
         self._strengths = strengths
 
     @property
@@ -821,7 +823,7 @@ class PointCloud(Spatial):
             raise ValueError('Strengths are not set')
         return self.strengths.size
 
-    def to_xml_element(self):
+    def to_xml_element(self) -> ET.Element:
         """Return XML representation of the spatial distribution
 
         Returns

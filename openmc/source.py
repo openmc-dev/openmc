@@ -258,8 +258,8 @@ class IndependentSource(SourceBase):
         Energy distribution of source sites
     time : openmc.stats.Univariate
         time distribution of source sites
-    weight : openmc.stats.Univariate
-        weight distribution of source sites
+    weight : float
+        weight value of source sites
     strength : float
         Strength of the source
     particle : {'neutron', 'photon'}
@@ -294,8 +294,8 @@ class IndependentSource(SourceBase):
         Energy distribution of source sites
     time : openmc.stats.Univariate or None
         time distribution of source sites
-    weight : openmc.stats.Univariate or None
-        weight distribution of source sites
+    weight : float or None
+        weight value of source sites
     strength : float
         Strength of the source
     type : str
@@ -318,7 +318,7 @@ class IndependentSource(SourceBase):
         angle: openmc.stats.UnitSphere | None = None,
         energy: openmc.stats.Univariate | None = None,
         time: openmc.stats.Univariate | None = None,
-        weight: openmc.stats.Univariate | None = None,
+        weight: float | None = None,
         strength: float = 1.0,
         particle: str = 'neutron',
         domains: Sequence[openmc.Cell | openmc.Material | openmc.Universe] | None = None,
@@ -412,7 +412,7 @@ class IndependentSource(SourceBase):
 
     @weight.setter
     def weight(self, weight):
-        cv.check_type('weight distribution', weight, Univariate)
+        cv.check_type('weight value', weight, Real)
         self._weight = weight
 
     @property
@@ -443,7 +443,7 @@ class IndependentSource(SourceBase):
         if self.time is not None:
             element.append(self.time.to_xml_element('time'))
         if self.weight is not None:
-            element.append(self.weight.to_xml_element('weight'))
+            element.set("weight", str(self.weight))
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element, meshes=None) -> SourceBase:
@@ -492,7 +492,7 @@ class IndependentSource(SourceBase):
 
         weight = elem.find('weight')
         if weight is not None:
-            source.weight = Univariate.from_xml_element(weight)
+            source.weight = float(weight)
 
         return source
 

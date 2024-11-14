@@ -567,7 +567,7 @@ void read_settings_xml(pugi::xml_node root)
     model::external_sources.push_back(make_unique<IndependentSource>(
       UPtrSpace {new SpatialPoint({0.0, 0.0, 0.0})},
       UPtrAngle {new Isotropic()}, UPtrDist {new Watt(0.988e6, 2.249e-6)},
-      UPtrDist {new Discrete(T, p, 1)}, UPtrDist {new Discrete(p, p, 1)}));
+      UPtrDist {new Discrete(T, p, 1)}, double{1.0}));
   }
 
   // Check if we want to write out source

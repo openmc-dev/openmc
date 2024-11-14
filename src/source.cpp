@@ -262,7 +262,7 @@ bool Source::satisfies_spatial_constraints(Position r) const
 //==============================================================================
 
 IndependentSource::IndependentSource(UPtrSpace space, UPtrAngle angle,
-  UPtrDist energy, UPtrDist time, UPtrDist weight)
+  UPtrDist energy, UPtrDist time, double weight)
   : space_ {std::move(space)}, angle_ {std::move(angle)},
     energy_ {std::move(energy)}, time_ {std::move(time)}, weight_ {
                                                             std::move(weight)}
@@ -332,14 +332,15 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
       time_ = UPtrDist {new Discrete {T, p, 1}};
     }
 
-    // Determine external source weight distribution
+    // Determine external source weight
     if (check_for_node(node, "weight")) {
-      pugi::xml_node node_dist = node.child("weight");
-      weight_ = distribution_from_xml(node_dist);
+      weight_ = std::stod(get_node_value(node, "weight"));
+      if (weight_ < 0.0) {
+        fatal_error("Source weight is negative.");
+      }
     } else {
-      // Default to a Constant weight wgt=0
-      double p[] {1.0};
-      weight_ = UPtrDist {new Discrete {p, p, 1}};
+      // Default to a Constant weight wgt=1.0
+      weight_ = double {1.0};
     }
   }
 }
@@ -411,8 +412,8 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 
     // Sample particle creation time
     site.time = time_->sample(seed);
-    // Sample particle creation weight
-    site.wgt = weight_->sample(seed);
+    // Set particle creation weight
+    site.wgt = weight_;
   }
 
   // Increment number of accepted samples

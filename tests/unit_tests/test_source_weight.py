@@ -15,7 +15,7 @@ def test_musurface(run_in_tmpdir):
         space=openmc.stats.Point(),
         angle=openmc.stats.Isotropic(),
         energy=openmc.stats.delta_function(E),
-        weight=openmc.stats.delta_function(100)
+        weight=100
     )
     model.settings.run_mode = "fixed source"
     model.settings.surf_source_write = {

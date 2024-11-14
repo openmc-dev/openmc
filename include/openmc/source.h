@@ -119,7 +119,7 @@ class IndependentSource : public Source {
 public:
   // Constructors
   IndependentSource(UPtrSpace space, UPtrAngle angle, UPtrDist energy,
-    UPtrDist time, UPtrDist weight);
+    UPtrDist time, double weight);
   explicit IndependentSource(pugi::xml_node node);
 
   //! Sample from the external source distribution
@@ -135,7 +135,7 @@ public:
   UnitSphereDistribution* angle() const { return angle_.get(); }
   Distribution* energy() const { return energy_.get(); }
   Distribution* time() const { return time_.get(); }
-  Distribution* weight() const { return weight_.get(); }
+  const double weight() const { return weight_; }
 
   // Make domain type and ids available
   DomainType domain_type() const { return domain_type_; }
@@ -152,7 +152,7 @@ private:
   UPtrAngle angle_;                               //!< Angular distribution
   UPtrDist energy_;                               //!< Energy distribution
   UPtrDist time_;                                 //!< Time distribution
-  UPtrDist weight_;                               //!< weight value
+  double weight_;                                 //!< weight value
 };
 
 //==============================================================================

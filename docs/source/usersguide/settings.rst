@@ -177,11 +177,14 @@ attribute. If you have multiple external sources with varying source strengths,
 objects.
 
 The :class:`openmc.IndependentSource` class is the primary class for defining
-source distributions and has four main attributes that one can set:
+source distributions and has five main attributes that one can set:
 :attr:`IndependentSource.space`, which defines the spatial distribution,
 :attr:`IndependentSource.angle`, which defines the angular distribution,
-:attr:`IndependentSource.energy`, which defines the energy distribution, and
-:attr:`IndependentSource.time`, which defines the time distribution.
+:attr:`IndependentSource.energy`, which defines the energy distribution,
+:attr:`IndependentSource.time`, which defines the time distribution, and 
+:attr:`IndependentSource.weight`, which defines the value of the statistical 
+weight at birth. 
+
 
 The spatial distribution can be set equal to a sub-class of
 :class:`openmc.stats.Spatial`; common choices are :class:`openmc.stats.Point` or
@@ -223,6 +226,10 @@ distribution. This could be a probability mass function
 (:class:`openmc.stats.Tabular`). By default, if no time distribution is
 specified, particles are started at :math:`t=0`.
 
+The value of the initial statistical weight can be set to any positive value. 
+By default, if the statistical weight is not specified, the particles are born 
+with :math:`wgt=1.0`. 
+
 As an example, to create an isotropic, 10 MeV monoenergetic source uniformly
 distributed over a cube centered at the origin with an edge length of 10 cm, and
 emitting a pulse of particles from 0 to 10 µs, one
@@ -246,6 +253,25 @@ sampled 70% of the time and another that should be sampled 30% of the time::
 
   src2 = openmc.IndependentSource()
   src2.strength = 0.3
+  ...
+
+  settings.source = [src1, src2]
+
+When the relative strengths are several orders of magnitude different, it may 
+happen that not enough statistics are obtained from the lower strength source. 
+This is why in such cases, instead of using :attr:`IndependentSource.strength`, 
+it could be set the :attr:`IndependentSource.weight`. It should not be used 
+:attr:`IndependentSource.strength` and :attr:`IndependentSource.weight` 
+simultaneously:: 
+
+  src1 = openmc.IndependentSource()
+  src1.strength = 1.0
+  src1.weight = 100
+  ...
+
+  src2 = openmc.IndependentSource()
+  src2.strength = 1.0
+  src2.weight = 1
   ...
 
   settings.source = [src1, src2]

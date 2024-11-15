@@ -171,8 +171,7 @@ SourceSite Source::sample_with_constraints(uint64_t* seed) const
       // Check whether sampled site satisfies constraints
       accepted = satisfies_spatial_constraints(site.r) &&
                  satisfies_energy_constraints(site.E) &&
-                 satisfies_time_constraints(site.time) &&
-                 satisfies_weight_constraints(site.wgt);
+                 satisfies_time_constraints(site.time);
       if (!accepted) {
         ++n_reject;
         if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
@@ -206,11 +205,6 @@ bool Source::satisfies_energy_constraints(double E) const
 bool Source::satisfies_time_constraints(double time) const
 {
   return time > time_bounds_.first && time < time_bounds_.second;
-}
-
-bool Source::satisfies_weight_constraints(double weight) const
-{
-  return weight > weight_bounds_.first && weight < weight_bounds_.second;
 }
 
 bool Source::satisfies_spatial_constraints(Position r) const
@@ -261,11 +255,10 @@ bool Source::satisfies_spatial_constraints(Position r) const
 // IndependentSource implementation
 //==============================================================================
 
-IndependentSource::IndependentSource(UPtrSpace space, UPtrAngle angle,
-  UPtrDist energy, UPtrDist time, double weight)
+IndependentSource::IndependentSource(
+  UPtrSpace space, UPtrAngle angle, UPtrDist energy, UPtrDist time)
   : space_ {std::move(space)}, angle_ {std::move(angle)},
-    energy_ {std::move(energy)}, time_ {std::move(time)}, weight_ {
-                                                            std::move(weight)}
+    energy_ {std::move(energy)}, time_ {std::move(time)}
 {}
 
 IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
@@ -330,17 +323,6 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
       double T[] {0.0};
       double p[] {1.0};
       time_ = UPtrDist {new Discrete {T, p, 1}};
-    }
-
-    // Determine external source weight
-    if (check_for_node(node, "weight")) {
-      weight_ = std::stod(get_node_value(node, "weight"));
-      if (weight_ < 0.0) {
-        fatal_error("Source weight is negative.");
-      }
-    } else {
-      // Default to a Constant weight wgt=1.0
-      weight_ = double {1.0};
     }
   }
 }
@@ -413,7 +395,9 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     // Sample particle creation time
     site.time = time_->sample(seed);
     // Set particle creation weight
-    site.wgt = weight_;
+    if (openmc::settings::strength_to_weights) {
+      site.wgt = strength();
+    }
   }
 
   // Increment number of accepted samples
@@ -588,8 +572,7 @@ SourceSite MeshSource::sample(uint64_t* seed) const
 
     // Apply other rejections
     if (satisfies_energy_constraints(site.E) &&
-        satisfies_time_constraints(site.time) &&
-        satisfies_weight_constraints(site.wgt)) {
+        satisfies_time_constraints(site.time)) {
       break;
     }
   }
@@ -632,7 +615,11 @@ SourceSite sample_external_source(uint64_t* seed)
   // Determine total source strength
   double total_strength = 0.0;
   for (auto& s : model::external_sources)
-    total_strength += s->strength();
+    if (openmc::settings::strength_to_weights) {
+      total_strength += 1.0;
+    } else {
+      total_strength += s->strength();
+    }
 
   // Sample from among multiple source distributions
   int i = 0;
@@ -640,9 +627,15 @@ SourceSite sample_external_source(uint64_t* seed)
     double xi = prn(seed) * total_strength;
     double c = 0.0;
     for (; i < model::external_sources.size(); ++i) {
-      c += model::external_sources[i]->strength();
-      if (xi < c)
-        break;
+      if (openmc::settings::strength_to_weights) {
+        c += 1.0;
+        if (xi < c)
+          break;
+      } else {
+        c += model::external_sources[i]->strength();
+        if (xi < c)
+          break;
+      }
     }
   }
 

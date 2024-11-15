@@ -65,6 +65,7 @@ bool source_latest {false};
 bool source_separate {false};
 bool source_write {true};
 bool source_mcpl_write {false};
+bool strength_to_weights {false};
 bool surf_source_write {false};
 bool surf_mcpl_write {false};
 bool surf_source_read {false};
@@ -567,7 +568,7 @@ void read_settings_xml(pugi::xml_node root)
     model::external_sources.push_back(make_unique<IndependentSource>(
       UPtrSpace {new SpatialPoint({0.0, 0.0, 0.0})},
       UPtrAngle {new Isotropic()}, UPtrDist {new Watt(0.988e6, 2.249e-6)},
-      UPtrDist {new Discrete(T, p, 1)}, double {1.0}));
+      UPtrDist {new Discrete(T, p, 1)}));
   }
 
   // Check if we want to write out source
@@ -780,6 +781,11 @@ void read_settings_xml(pugi::xml_node root)
     // statepoint file and write it out at statepoints intervals
     source_separate = false;
     sourcepoint_batch = statepoint_batch;
+  }
+
+  // Check is the user specified to convert strength to statistical weight
+  if (check_for_node(root, "strength_to_weights")) {
+    strength_to_weights = get_node_value_bool(root, "strength_to_weights");
   }
 
   // Check if the user has specified to write surface source

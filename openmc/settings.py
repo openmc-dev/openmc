@@ -202,6 +202,8 @@ class Settings:
         Options for writing state points. Acceptable keys are:
 
         :batches: list of batches at which to write statepoint files
+    strength_to_weights : bool
+        Whether to convert strength to statistical weight.
     surf_source_read : dict
         Options for reading surface source points. Acceptable keys are:
 
@@ -325,6 +327,7 @@ class Settings:
         self._photon_transport = None
         self._plot_seed = None
         self._ptables = None
+        self._strength_to_weights = None
         self._seed = None
         self._survival_biasing = None
 
@@ -571,6 +574,15 @@ class Settings:
     def photon_transport(self, photon_transport: bool):
         cv.check_type('photon transport', photon_transport, bool)
         self._photon_transport = photon_transport
+
+    @property
+    def strength_to_weights(self) -> bool:
+        return self._strength_to_weights
+
+    @strength_to_weights.setter
+    def strength_to_weights(self, strength_to_weights: bool):
+        cv.check_type('strength to weights', strength_to_weights, bool)
+        self._strength_to_weights = strength_to_weights
 
     @property
     def plot_seed(self):
@@ -1216,6 +1228,11 @@ class Settings:
                 subelement.text = ' '.join(
                     str(x) for x in self._statepoint['batches'])
 
+    def _create_strength_to_weights_subelement(self, root):
+        if self._strength_to_weights is not None:
+            element = ET.SubElement(root, "strength_to_weights")
+            element.text = str(self._strength_to_weights).lower()
+
     def _create_sourcepoint_subelement(self, root):
         if self._sourcepoint:
             element = ET.SubElement(root, "source_point")
@@ -1697,6 +1714,11 @@ class Settings:
         if text is not None:
             self.photon_transport = text in ('true', '1')
 
+    def _strength_to_weights_from_xml_element(self, root):
+        text = get_text(root, 'strength_to_weights')
+        if text is not None:
+            self.strength_to_weights = text in ('true', '1')
+
     def _plot_seed_from_xml_element(self, root):
         text = get_text(root, 'plot_seed')
         if text is not None:
@@ -1948,6 +1970,7 @@ class Settings:
         self._create_energy_mode_subelement(element)
         self._create_max_order_subelement(element)
         self._create_photon_transport_subelement(element)
+        self._create_strength_to_weights_subelement(element)
         self._create_plot_seed_subelement(element)
         self._create_ptables_subelement(element)
         self._create_seed_subelement(element)
@@ -2054,6 +2077,7 @@ class Settings:
         settings._energy_mode_from_xml_element(elem)
         settings._max_order_from_xml_element(elem)
         settings._photon_transport_from_xml_element(elem)
+        settings._strength_to_weights_from_xml_element(elem)
         settings._plot_seed_from_xml_element(elem)
         settings._ptables_from_xml_element(elem)
         settings._seed_from_xml_element(elem)

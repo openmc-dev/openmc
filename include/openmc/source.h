@@ -35,6 +35,8 @@ class Source;
 namespace model {
 
 extern vector<unique_ptr<Source>> external_sources;
+// DiscreteIndex class for the alias sampling
+DiscreteIndex external_sources_alias_sampler;
 
 } // namespace model
 

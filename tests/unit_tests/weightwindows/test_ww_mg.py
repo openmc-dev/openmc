@@ -4,17 +4,20 @@ import numpy as np
 import openmc
 
 
-def test_weight_windows_mg(run_in_tmpdir):
+def test_weight_windows_mg(request, run_in_tmpdir):
+    # import basic random ray model
     model = openmc.examples.random_ray_three_region_cube()
 
+    # create a mesh tally
     mesh = openmc.RegularMesh.from_domain(model.geometry, (3, 3, 3))
     mesh_tally = openmc.Tally()
     mesh_tally.filters = [openmc.MeshFilter(mesh)]
     mesh_tally.scores = ['flux']
     model.tallies = [mesh_tally]
 
+    # replace random ray settings with fixed source settings
     settings = openmc.Settings()
-    settings.particles = 1000
+    settings.particles = 5000
     settings.batches = 10
     settings.energy_mode = 'multi-group'
     settings.run_mode = 'fixed source'
@@ -26,38 +29,25 @@ def test_weight_windows_mg(run_in_tmpdir):
     model.settings = settings
     statepoint = model.run()
 
+    # extract flux from analog simulation
     with openmc.StatePoint(statepoint) as sp:
         tally_out = sp.get_tally(id=mesh_tally.id)
         flux_analog = tally_out.mean
 
-    # wwg = openmc.WeightWindowGenerator(mesh)
-    # model.settings.weight_window_generators = wwg
-    # model.settings.weight_window_checkpoints = {'surface': True, 'collision': True}
-    # model.settings.survival_biasing = False
-
-    # statepoint = model.run()
-
-    ww_lower_bnds = np.loadtxt('ww_mg.txt')
+    # load the weight windows for this problem, apply them, and re-run
+    ww_lower_bnds = np.loadtxt(request.path.parent / 'ww_mg.txt')
     weight_windows = openmc.WeightWindows(mesh, lower_ww_bounds=ww_lower_bnds, upper_bound_ratio=5.0)
     model.settings.weight_windows = weight_windows
     model.settings.weight_windows_on = True
-
-    # weight_windows = openmc.hdf5_to_wws('weight_windows.h5')
-    # for ww in weight_windows:
-    #     ww.lower_ww_bounds *= 0.1
-    #     ww.upper_ww_bounds *= 0.1
-
-    # np.savetxt('ww_mg.txt', weight_windows[0].lower_ww_bounds.flatten())
-
     settings.weight_windows = weight_windows
 
     statepoint = model.run()
-
     with openmc.StatePoint(statepoint) as sp:
         tally_out = sp.get_tally(id=mesh_tally.id)
         flux_ww = tally_out.mean
 
-    print(flux_analog.sum())
-    print(flux_ww.sum())
-    assert np.allclose(flux_analog.sum(), flux_ww.sum(), rtol=1e-2)
+    # the sum of the fluxes should approach the same value
+    analog_sum = flux_analog.sum()
+    ww_sum = flux_ww.sum()
+    assert np.allclose(analog_sum, ww_sum, rtol=1e-2)
 

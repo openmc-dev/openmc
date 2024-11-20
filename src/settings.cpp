@@ -65,7 +65,7 @@ bool source_latest {false};
 bool source_separate {false};
 bool source_write {true};
 bool source_mcpl_write {false};
-bool strength_to_weights {false};
+bool strengths_as_weights {false};
 bool surf_source_write {false};
 bool surf_mcpl_write {false};
 bool surf_source_read {false};
@@ -784,8 +784,8 @@ void read_settings_xml(pugi::xml_node root)
   }
 
   // Check is the user specified to convert strength to statistical weight
-  if (check_for_node(root, "strength_to_weights")) {
-    strength_to_weights = get_node_value_bool(root, "strength_to_weights");
+  if (check_for_node(root, "strengths_as_weights")) {
+    strengths_as_weights = get_node_value_bool(root, "strengths_as_weights");
   }
 
   // Check if the user has specified to write surface source

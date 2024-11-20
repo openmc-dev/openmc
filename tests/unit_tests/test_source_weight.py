@@ -17,7 +17,7 @@ def test_musurface(run_in_tmpdir):
         energy=openmc.stats.delta_function(E),
         strength=100.0
     )
-    model.settings.strength_to_weights = True
+    model.settings.strengths_as_weights = True
     model.settings.run_mode = "fixed source"
     model.settings.surf_source_write = {
         "max_particles": 100,

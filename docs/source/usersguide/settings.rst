@@ -256,10 +256,10 @@ When the relative strengths are several orders of magnitude different, it may
 happen that not enough statistics are obtained from the lower strength source. 
 This can be improved by sampling particles with different weights with 
 probability 1, instead of sampling particles with weight 1 with different 
-probability. The :attr:`Settings.strength_to_weights` attribute can be used 
+probability. The :attr:`Settings.strengths_as_weights` attribute can be used 
 to enable this option::
 
-  settings.strength_to_weights = True
+  settings.strengths_as_weights = True
 
 Then, the strength values will be used as statistical weights:: 
 
@@ -272,7 +272,7 @@ Then, the strength values will be used as statistical weights::
   src2.strength = 1.0
   ...
 
-  settings.strength_to_weights = True
+  settings.strengths_as_weights = True
   settings.source = [src1, src2]
 
 Finally, the :attr:`IndependentSource.particle` attribute can be used to

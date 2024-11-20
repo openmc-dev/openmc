@@ -57,7 +57,7 @@ extern bool source_latest;         //!< write latest source at each batch?
 extern bool source_separate;       //!< write source to separate file?
 extern bool source_write;          //!< write source in HDF5 files?
 extern bool source_mcpl_write;     //!< write source in mcpl files?
-extern bool strength_to_weights;   //!< convert strength to statistical weight?
+extern bool strengths_as_weights;  //!< convert strength to statistical weight?
 extern bool surf_source_write;     //!< write surface source file?
 extern bool surf_mcpl_write;       //!< write surface mcpl file?
 extern bool surf_source_read;      //!< read surface source file?

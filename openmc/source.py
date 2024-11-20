@@ -258,8 +258,6 @@ class IndependentSource(SourceBase):
         Energy distribution of source sites
     time : openmc.stats.Univariate
         time distribution of source sites
-    weight : float
-        weight value of source sites
     strength : float
         Strength of the source
     particle : {'neutron', 'photon'}
@@ -294,8 +292,6 @@ class IndependentSource(SourceBase):
         Energy distribution of source sites
     time : openmc.stats.Univariate or None
         time distribution of source sites
-    weight : float or None
-        weight value of source sites
     strength : float
         Strength of the source
     type : str

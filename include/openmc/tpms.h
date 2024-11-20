@@ -43,5 +43,29 @@ public:
     double sampling_frequency(Direction u) const;
 };
 
+class Gyroid : public TPMS
+{
+using TPMS::TPMS;
+public:
+    double evaluate(Position r) const;
+    Direction normal(Position r) const;
+    double fk(double k, Position r, Direction u) const;
+    double fpk(double k, Position r, Direction u) const;
+    double fppk(double k, Position r, Direction u) const;
+    double sampling_frequency(Direction u) const;
+};
+
+class Diamond : public TPMS
+{
+using TPMS::TPMS;
+public:
+    double evaluate(Position r) const;
+    Direction normal(Position r) const;
+    double fk(double k, Position r, Direction u) const;
+    double fpk(double k, Position r, Direction u) const;
+    double fppk(double k, Position r, Direction u) const;
+    double sampling_frequency(Direction u) const;
+};
+
 }
 #endif

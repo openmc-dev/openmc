@@ -3,7 +3,7 @@
 namespace openmc {
 
 // *****************************************************************************
-// *   TPMS GENERAL DEFINITION
+// *   TPMS GENERAL DEFINITION AND RAY TRACING SOLVER
 // *****************************************************************************
 
 TPMS::TPMS(double _cst, double _pitch, double _x0, double _y0, double _z0, double _a, double _b, double _c, double _d, double _e, double _f, double _g, double _h, double _i)
@@ -90,7 +90,7 @@ double TPMS::ray_tracing(Position r, Direction u)
 {
     std::uintmax_t max_iter = 1000000;
     const double w0 = this->sampling_frequency(u);
-    double L0 = 0.;
+    double L0 = 1.e-7; // A tolerance is set to discard eventual zero solutions
     double L1 = L0 + w0;
     double root;
     bool rootFound = false;
@@ -186,11 +186,193 @@ double SchwarzP::fppk(double k, Position r, Direction u) const
 
 double SchwarzP::sampling_frequency(Direction u) const
 {
-    const double xxp = abs(a*u.x + b*u.y + c*u.z);
-    const double yyp = abs(d*u.x + e*u.y + f*u.z);
-    const double zzp = abs(g*u.x + h*u.y + i*u.z);
-    const double pmax = std::max(std::max(xxp, yyp), zzp);
-    return 0.125*pitch/pmax;
+    const double xxp = a*u.x + b*u.y + c*u.z;
+    const double yyp = d*u.x + e*u.y + f*u.z;
+    const double zzp = g*u.x + h*u.y + i*u.z;
+    std::vector<double> pulses = {abs(xxp), abs(yyp), abs(zzp)};
+    std::vector<double>::iterator pmax;
+    pmax = std::max_element(pulses.begin(), pulses.end());
+    return 0.125*pitch / *pmax;
+}
+
+// *****************************************************************************
+// *   GYROID DEFINITION
+// *****************************************************************************
+
+// Linearized expression : -0.5*sin(x - y) + 0.5*sin(x + y) + 0.5*sin(x - z) + 0.5*sin(x + z) - 0.5*sin(y - z) + 0.5*sin(y + z)
+
+double Gyroid::evaluate(Position r) const
+{
+    const double x = r.x;
+    const double y = r.y;
+    const double z = r.z;
+    const double l = 2*M_PI/pitch;
+    const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
+    const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
+    const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
+    return sin(l*xx)*cos(l*zz) + sin(l*yy)*cos(l*xx) + sin(l*zz)*cos(l*yy) - cst;
+}
+
+Direction Gyroid::normal(Position r) const
+{
+    const double x = r.x;
+    const double y = r.y;
+    const double z = r.z;
+    const double l = 2*M_PI/pitch;
+    const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
+    const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
+    const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
+    const double cosxmy = cos(l*(xx - yy));
+    const double cosxpy = cos(l*(xx + yy));
+    const double cosxmz = cos(l*(xx - zz));
+    const double cosxpz = cos(l*(xx + zz));
+    const double cosymz = cos(l*(yy - zz));
+    const double cosypz = cos(l*(yy + zz));
+    const double dx = 0.5*l*((-a + d)*cosxmy + (a + d)*cosxpy + (a - g)*cosxmz + (a + g)*cosxpz + (-d + g)*cosymz + (d + g)*cosypz);
+    const double dy = 0.5*l*((-b + e)*cosxmy + (b + e)*cosxpy + (b - h)*cosxmz + (b + h)*cosxpz + (-e + h)*cosymz + (e + h)*cosypz);
+    const double dz = 0.5*l*((-c + f)*cosxmy + (c + f)*cosxpy + (c - i)*cosxmz + (c + i)*cosxpz + (-f + i)*cosymz + (f + i)*cosypz);
+    const double norm = pow(pow(dx,2)+pow(dy,2)+pow(dx,2),0.5);
+    Direction grad = Direction(dx/norm, dy/norm, dz/norm);
+    return grad;
+}
+
+double Gyroid::fk(double k, Position r, Direction u) const
+{
+    const double x = r.x + k*u.x;
+    const double y = r.y + k*u.y;
+    const double z = r.z + k*u.z;
+    Position rk = Position(x,y,z);
+    return this->evaluate(rk);
+}
+
+double Gyroid::fpk(double k, Position r, Direction u) const
+{
+    const double x = r.x + k*u.x;
+    const double y = r.y + k*u.y;
+    const double z = r.z + k*u.z;
+    const double l = 2*M_PI/pitch;
+    const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
+    const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
+    const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
+    const double xxp = a*u.x + b*u.y + c*u.z;
+    const double yyp = d*u.x + e*u.y + f*u.z;
+    const double zzp = g*u.x + h*u.y + i*u.z;
+    return 0.5*l*((-xxp+yyp)*cos(l*(xx-yy)) + (xxp+yyp)*cos(l*(xx+yy)) + (xxp-zzp)*cos(l*(xx-zz)) + (xxp+zzp)*cos(l*(xx+zz)) + (-yyp+zzp)*cos(l*(yy-zz)) + (yyp+zzp)*cos(l*(yy+zz)));
+}
+
+double Gyroid::fppk(double k, Position r, Direction u) const
+{
+    const double x = r.x + k*u.x;
+    const double y = r.y + k*u.y;
+    const double z = r.z + k*u.z;
+    const double l = 2*M_PI/pitch;
+    const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
+    const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
+    const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
+    const double xxp = a*u.x + b*u.y + c*u.z;
+    const double yyp = d*u.x + e*u.y + f*u.z;
+    const double zzp = g*u.x + h*u.y + i*u.z;
+    return -0.5*l*l*(-(xxp - yyp)*(xxp - yyp)*sin(l*(xx - yy)) + (xxp + yyp)*(xxp + yyp)*sin(l*(xx + yy)) + (xxp - zzp)*(xxp - zzp)*sin(l*(xx - zz)) + (xxp + zzp)*(xxp + zzp)*sin(l*(xx + zz)) - (yyp - zzp)*(yyp - zzp)*sin(l*(yy - zz)) + (yyp + zzp)*(yyp + zzp)*sin(l*(yy + zz)));
+}
+
+double Gyroid::sampling_frequency(Direction u) const
+{
+    const double xxp = a*u.x + b*u.y + c*u.z;
+    const double yyp = d*u.x + e*u.y + f*u.z;
+    const double zzp = g*u.x + h*u.y + i*u.z;
+    std::vector<double> pulses = {abs(xxp+yyp), abs(xxp-yyp), abs(xxp+zzp), abs(xxp-zzp), abs(yyp+zzp), abs(yyp-zzp)};
+    std::vector<double>::iterator pmax;
+    pmax = std::max_element(pulses.begin(), pulses.end());
+    return 0.125*pitch / *pmax;
+}
+
+// *****************************************************************************
+// *   DIAMOND DEFINITION
+// *****************************************************************************
+
+// Linearized expression : 0.5*sin(-x + y + z) + 0.5*sin(x - y + z) + 0.5*sin(x + y - z) + 0.5*sin(x + y + z)
+
+double Diamond::evaluate(Position r) const
+{
+    const double x = r.x;
+    const double y = r.y;
+    const double z = r.z;
+    const double l = 2*M_PI/pitch;
+    const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
+    const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
+    const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
+    return 0.5*sin(l*(-xx+yy+zz)) + 0.5*sin(l*(+xx-yy+zz)) + 0.5*sin(l*(+xx+yy-zz)) + 0.5*sin(l*(+xx+yy+zz)) - cst;
+}
+
+Direction Diamond::normal(Position r) const
+{
+    const double x = r.x;
+    const double y = r.y;
+    const double z = r.z;
+    const double l = 2*M_PI/pitch;
+    const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
+    const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
+    const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
+    const double cosypzmx = cos(l*(-xx+yy+zz));
+    const double coszpxmy = cos(l*(+xx-yy+zz));
+    const double cosxpymz = cos(l*(+xx+yy-zz));
+    const double cosxpypz = cos(l*(+xx+yy+zz));
+    const double dx = 0.5*l*((-a + d + g)*cosypzmx + (a - d + g)*coszpxmy + (a + d - g)*cosxpymz + (a + d + g)*cosxpypz);
+    const double dy = 0.5*l*((-b + e + h)*cosypzmx + (b - e + h)*coszpxmy + (b + e - h)*cosxpymz + (b + e + h)*cosxpypz);
+    const double dz = 0.5*l*((-c + f + i)*cosypzmx + (c - f + i)*coszpxmy + (c + f - i)*cosxpymz + (c + f + i)*cosxpypz);
+    const double norm = pow(pow(dx,2)+pow(dy,2)+pow(dx,2),0.5);
+    Direction grad = Direction(dx/norm, dy/norm, dz/norm);
+    return grad;
+}
+
+double Diamond::fk(double k, Position r, Direction u) const
+{
+    const double x = r.x + k*u.x;
+    const double y = r.y + k*u.y;
+    const double z = r.z + k*u.z;
+    Position rk = Position(x,y,z);
+    return this->evaluate(rk);
+}
+
+double Diamond::fpk(double k, Position r, Direction u) const
+{
+    const double x = r.x + k*u.x;
+    const double y = r.y + k*u.y;
+    const double z = r.z + k*u.z;
+    const double l = 2*M_PI/pitch;
+    const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
+    const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
+    const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
+    const double xxp = a*u.x + b*u.y + c*u.z;
+    const double yyp = d*u.x + e*u.y + f*u.z;
+    const double zzp = g*u.x + h*u.y + i*u.z;
+    return 0.5*l*((-xxp + yyp + zzp)*cos(l*(-xx + yy + zz)) + (xxp - yyp + zzp)*cos(l*(xx - yy + zz)) + (xxp + yyp - zzp)*cos(l*(xx + yy - zz)) + (xxp + yyp + zzp)*cos(l*(xx + yy + zz)));
+}
+
+double Diamond::fppk(double k, Position r, Direction u) const
+{
+    const double x = r.x + k*u.x;
+    const double y = r.y + k*u.y;
+    const double z = r.z + k*u.z;
+    const double l = 2*M_PI/pitch;
+    const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
+    const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
+    const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
+    const double xxp = a*u.x + b*u.y + c*u.z;
+    const double yyp = d*u.x + e*u.y + f*u.z;
+    const double zzp = g*u.x + h*u.y + i*u.z;
+    return -0.5*l*l*(-(xxp - yyp)*(xxp - yyp)*sin(l*(xx - yy)) + (xxp + yyp)*(xxp + yyp)*sin(l*(xx + yy)) + (xxp - zzp)*(xxp - zzp)*sin(l*(xx - zz)) + (xxp + zzp)*(xxp + zzp)*sin(l*(xx + zz)) - (yyp - zzp)*(yyp - zzp)*sin(l*(yy - zz)) + (yyp + zzp)*(yyp + zzp)*sin(l*(yy + zz)));
+}
+
+double Diamond::sampling_frequency(Direction u) const
+{
+    const double xxp = a*u.x + b*u.y + c*u.z;
+    const double yyp = d*u.x + e*u.y + f*u.z;
+    const double zzp = g*u.x + h*u.y + i*u.z;
+    std::vector<double> pulses = {abs(+xxp+yyp+zzp), abs(+xxp+yyp-zzp), abs(+xxp-yyp+zzp), abs(-xxp+yyp+zzp)};
+    std::vector<double>::iterator pmax;
+    pmax = std::max_element(pulses.begin(), pulses.end());
+    return 0.125*pitch / *pmax;
 }
 
 }

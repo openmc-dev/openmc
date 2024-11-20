@@ -2283,10 +2283,7 @@ class Quadric(QuadricMixin, Surface):
 
 class TPMS(Surface):
 
-    surface_list = ['Gyroid','Double_Gyroid1','Double_Gyroid2','G_prime1','G_prime2','Lidinoid',
-         'Diamond','Double_Diamond1','Double_Diamond2','D_prime','Schwarz_P','Double_Schwarz_P','IWP1',
-         'Neovius','Octo1','Octo2','PN','KP','FRD1','FRD2','Split_P','IWP2','L-Type','Skeletal_1',
-         'Skeletal_2','Tubular_G','Tubular_P','I2-Y','G','Double_Diamond3','Fischer-Koch_S','IWP3']
+    surface_list = ['Gyroid','Diamond','Schwarz_P',]
     
     _type = 'tpms'
     _coeff_keys = ('cst', 'pitch', 'x0', 'y0', 'z0', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i')
@@ -2326,12 +2323,16 @@ class TPMS(Surface):
     
     def evaluate(self, point):
         x, y, z = point
-        L = self.pitch
+        l = 2*pi/self.pitch
         xx = self.a*(x-self.x0) + self.b*(y-self.y0) + self.c*(z-self.z0) 
         yy = self.d*(x-self.x0) + self.e*(y-self.y0) + self.f*(z-self.z0)
         zz = self.g*(x-self.x0) + self.h*(y-self.y0) + self.i*(z-self.z0)
         if self.surface_type == "Schwarz_P":
-            return cos(2*pi*xx/L) + cos(2*pi*yy/L) + cos(2*pi*zz/L) - self.cst
+            return cos(l*xx) + cos(l*yy) + cos(l*zz) - self.cst
+        elif self.surface_type == "Gyroid":
+            return sin(l*xx)*cos(l*zz) + sin(l*yy)*cos(l*xx) + sin(l*zz)*cos(l*yy) - self.cst
+        elif self.surface_type == "Diamond":
+            return sin(l*xx)*sin(l*yy)*sin(l*zz) + sin(l*xx)*cos(l*yy)*cos(l*zz) + cos(l*xx)*sin(l*yy)*cos(l*zz) + cos(l*xx)*cos(l*yy)*sin(l*zz) - self.cst
         else:
             raise NotImplementedError(f"'{self.surface_type}' surface_type is not yet implemented.")
     
@@ -2399,9 +2400,33 @@ class TPMS(Surface):
             f[i] = temporary.evaluate(point)
         # function to find the zero value
         isovalues = np.sort(f)
-        relative_densities = np.arange(1, length+1) / length
-        cst = np.interp(relative_density, relative_densities, isovalues)
+        isocounts = np.arange(1, length+1) / (length+1)
+        cst = np.interp(relative_density, isocounts, isovalues)
         return cls(surface_type, cst, pitch, *args, **kwargs)
+
+    @staticmethod
+    def from_relative_densities(surface_type: str, relative_densities: list, pitch: float = 2., _resolution: int = 100, *args, **kwargs):
+        # building a spacephase matrix
+        x = np.linspace(-pitch/2, +pitch/2,_resolution+1,endpoint=True)
+        y = np.linspace(-pitch/2, +pitch/2,_resolution+1,endpoint=True)
+        z = np.linspace(-pitch/2, +pitch/2,_resolution+1,endpoint=True)
+        x,y,z = 0.5*(x[:-1]+x[1:]),0.5*(y[:-1]+y[1:]),0.5*(z[:-1]+z[1:])
+        x,y,z = np.meshgrid(x,y,z)
+        x = x.flatten()
+        y = y.flatten()
+        z = z.flatten()
+        f = np.zeros_like(x)
+        length = np.shape(f)[0]
+        temporary = TPMS(surface_type, 0., pitch, *args, **kwargs)
+        for i in range(0, length):
+            point = (x[i],y[i],z[i])
+            f[i] = temporary.evaluate(point)
+        # function to find the zero value
+        isovalues = np.sort(f)
+        isocounts = np.arange(1, length+1) / (length+1)
+        csts = np.interp(relative_densities, isocounts, isovalues).tolist()
+        listOfTPMS = [TPMS(surface_type, cst, pitch, *args, **kwargs) for cst in csts]
+        return listOfTPMS
 
 class TorusMixin:
     """A Mixin class implementing common functionality for torus surfaces"""

@@ -342,7 +342,7 @@ public:
   std::string surface_type;
 
 private:
-  std::list<std::string> tpms_types = {"Schwarz_P"};
+  std::list<std::string> tpms_types = {"Schwarz_P", "Gyroid", "Diamond"};
 };
 
 //==============================================================================

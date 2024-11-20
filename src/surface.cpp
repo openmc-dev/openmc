@@ -975,6 +975,16 @@ double SurfaceTPMS::evaluate(Position r) const
     SchwarzP laTpms = SchwarzP(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     value = laTpms.evaluate(r);
   }
+  else if(surface_type == "Gyroid")
+  {
+    Gyroid laTpms = Gyroid(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    value = laTpms.evaluate(r);
+  }
+  else if(surface_type == "Diamond")
+  {
+    Diamond laTpms = Diamond(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    value = laTpms.evaluate(r);
+  }
   else {fatal_error(fmt::format("Surface type {} is not implemented in SurfaceTPMS::evaluate.", surface_type));}
   return value;
 }
@@ -987,6 +997,16 @@ double SurfaceTPMS::distance(Position r, Direction ang, bool coincident) const
     SchwarzP laTpms = SchwarzP(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     raylength = laTpms.ray_tracing(r, ang);
   }
+  else if(surface_type == "Gyroid")
+  {
+    Gyroid laTpms = Gyroid(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    raylength = laTpms.ray_tracing(r, ang);
+  }
+  else if(surface_type == "Diamond")
+  {
+    Diamond laTpms = Diamond(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    raylength = laTpms.ray_tracing(r, ang);
+  }
   else {fatal_error(fmt::format("Surface type {} is not implemented in SurfaceTPMS::distance.", surface_type));}
   return raylength; // le ray tracing avec la bonne TPMS, frero !
 }
@@ -997,6 +1017,16 @@ Direction SurfaceTPMS::normal(Position r) const
   if(surface_type == "Schwarz_P")
   {
     SchwarzP laTpms = SchwarzP(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    grad = laTpms.normal(r);
+  }
+  else if(surface_type == "Gyroid")
+  {
+    Gyroid laTpms = Gyroid(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    grad = laTpms.normal(r);
+  }
+  else if(surface_type == "Diamond")
+  {
+    Diamond laTpms = Diamond(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     grad = laTpms.normal(r);
   }
   else {fatal_error(fmt::format("Surface type {} is not implemented in SurfaceTPMS::normal.", surface_type));}

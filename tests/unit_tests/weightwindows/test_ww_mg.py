@@ -26,6 +26,7 @@ def test_weight_windows_mg(request, run_in_tmpdir):
     source = openmc.IndependentSource(space=space)
     settings.source = source
 
+    # perform analog simulation
     model.settings = settings
     statepoint = model.run()
 
@@ -34,19 +35,20 @@ def test_weight_windows_mg(request, run_in_tmpdir):
         tally_out = sp.get_tally(id=mesh_tally.id)
         flux_analog = tally_out.mean
 
-    # load the weight windows for this problem, apply them, and re-run
+    # load the weight windows for this problem and apply them
     ww_lower_bnds = np.loadtxt(request.path.parent / 'ww_mg.txt')
     weight_windows = openmc.WeightWindows(mesh, lower_ww_bounds=ww_lower_bnds, upper_bound_ratio=5.0)
     model.settings.weight_windows = weight_windows
     model.settings.weight_windows_on = True
     settings.weight_windows = weight_windows
 
+    # re-run with weight windows
     statepoint = model.run()
     with openmc.StatePoint(statepoint) as sp:
         tally_out = sp.get_tally(id=mesh_tally.id)
         flux_ww = tally_out.mean
 
-    # the sum of the fluxes should approach the same value
+    # the sum of the fluxes should approach the same value (no bias introduced)
     analog_sum = flux_analog.sum()
     ww_sum = flux_ww.sum()
     assert np.allclose(analog_sum, ww_sum, rtol=1e-2)

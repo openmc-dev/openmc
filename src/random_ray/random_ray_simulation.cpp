@@ -27,16 +27,15 @@ void openmc_run_random_ray()
   // Run forward simulation
   //////////////////////////////////////////////////////////
 
-  // Check if adjoint calculation is needed.
-  // If it is, we will run the forward calculation first
-  // and then the adjoint calculation later.
+  // Check if adjoint calculation is needed. If it is, we will run the forward
+  // calculation first and then the adjoint calculation later.
   bool adjoint_needed = FlatSourceDomain::adjoint_;
 
   // Configure the domain for forward simulation
   FlatSourceDomain::adjoint_ = false;
 
-  // If we're going to do an adjoint simulation afterwards,
-  // report that this is the initial forward flux solve.
+  // If we're going to do an adjoint simulation afterwards, report that this is
+  // the initial forward flux solve.
   if (adjoint_needed && mpi::master)
     header("FORWARD FLUX SOLVE", 3);
 
@@ -47,46 +46,46 @@ void openmc_run_random_ray()
   if (mpi::master)
     validate_random_ray_inputs();
 
-  // Initialize Random Ray Simulation Object
-  RandomRaySimulation sim;
+  // Declare forward flux so that it can be saved for later adjoint simulation
+  vector<double> forward_flux;
 
-  // Initialize fixed sources, if present
-  sim.prepare_fixed_sources();
+  {
+    // Initialize Random Ray Simulation Object
+    RandomRaySimulation sim;
 
-  // Begin main simulation timer
-  simulation::time_total.start();
+    // Initialize fixed sources, if present
+    sim.prepare_fixed_sources();
 
-  // Execute random ray simulation
-  sim.simulate();
+    // Begin main simulation timer
+    simulation::time_total.start();
 
-  // End main simulation timer
-  simulation::time_total.stop();
+    // Execute random ray simulation
+    sim.simulate();
 
-  // Normalize and save the final forward flux
-  vector<double> forward_flux = sim.domain_->scalar_flux_final_;
+    // End main simulation timer
+    simulation::time_total.stop();
 
-  double source_normalization_factor =
-    sim.domain_->compute_fixed_source_normalization_factor() /
-    (settings::n_batches - settings::n_inactive);
+    // Normalize and save the final forward flux
+    forward_flux = sim.domain()->scalar_flux_final_;
+
+    double source_normalization_factor =
+      sim.domain()->compute_fixed_source_normalization_factor() /
+      (settings::n_batches - settings::n_inactive);
 
 #pragma omp parallel for
-  for (uint64_t i = 0; i < forward_flux.size(); i++) {
-    forward_flux[i] *= source_normalization_factor;
+    for (uint64_t i = 0; i < forward_flux.size(); i++) {
+      forward_flux[i] *= source_normalization_factor;
+    }
+
+    // Finalize OpenMC
+    openmc_simulation_finalize();
+
+    // Reduce variables across MPI ranks
+    sim.reduce_simulation_statistics();
+
+    // Output all simulation results
+    sim.output_simulation_results();
   }
-
-  // Finalize OpenMC
-  openmc_simulation_finalize();
-
-  // Reduce variables across MPI ranks
-  sim.reduce_simulation_statistics();
-
-  // Output all simulation results
-  sim.output_simulation_results();
-
-  // Deallocate memory used by forward simulation object.
-  // This is done manually to avoid wasting memory
-  // if an adjoint simulation is run.
-  sim.~RandomRaySimulation();
 
   //////////////////////////////////////////////////////////
   // Run adjoint simulation (if enabled)
@@ -111,10 +110,10 @@ void openmc_run_random_ray()
     adjoint_sim.prepare_fixed_sources_adjoint(forward_flux);
 
     // Transpose scattering matrix
-    adjoint_sim.domain_->transpose_scattering_matrix();
+    adjoint_sim.domain()->transpose_scattering_matrix();
 
     // Swap nu_sigma_f and chi
-    adjoint_sim.domain_->nu_sigma_f_.swap(adjoint_sim.domain_->chi_);
+    adjoint_sim.domain()->nu_sigma_f_.swap(adjoint_sim.domain()->chi_);
 
     // Begin main simulation timer
     simulation::time_total.start();

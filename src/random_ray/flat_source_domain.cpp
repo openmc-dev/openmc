@@ -1037,6 +1037,7 @@ void FlatSourceDomain::convert_external_sources()
     }
   }
 }
+
 void FlatSourceDomain::flux_swap()
 {
   scalar_flux_old_.swap(scalar_flux_new_);
@@ -1090,16 +1091,16 @@ void FlatSourceDomain::flatten_xs()
 
 void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
 {
-// Set the external source to 1/forward_flux
-// The forward flux is given in terms of total for the forward simulation
-// so we must convert it to a "per batch" quantity
+  // Set the external source to 1/forward_flux
+  // The forward flux is given in terms of total for the forward simulation
+  // so we must convert it to a "per batch" quantity
 #pragma omp parallel for
   for (int64_t se = 0; se < n_source_elements_; se++) {
     external_source_[se] = 1.0 / forward_flux[se];
   }
 
-// Divide the fixed source term by sigma t (to save time when applying each
-// iteration)
+  // Divide the fixed source term by sigma t (to save time when applying each
+  // iteration)
 #pragma omp parallel for
   for (int sr = 0; sr < n_source_regions_; sr++) {
     int material = material_[sr];

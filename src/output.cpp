@@ -505,6 +505,26 @@ void print_runtime()
 
 //==============================================================================
 
+double variance_of_variance(const double* x, int n)
+{
+  double sum = (x[static_cast<int>(TallyResult::SUM)]) ; 
+  double sum_sq = (x[static_cast<int>(TallyResult::SUM_SQ)]) ;
+  double sum_rd = (x[static_cast<int>(TallyResult::SUM_THIRD)]) ;
+  double sum_th = (x[static_cast<int>(TallyResult::SUM_FOURTH)]) ;
+
+  // Calculate variance of variance
+  // Fourth moment of the sample
+  double numerator = ( sum_th - (4.0/n) * sum * sum_rd + (6.0/(n*n)) * sum_sq * (sum * sum) - (4.0/(n*n*n) + 1/(n*n*n*n))*(sum*sum*sum*sum)  );
+
+  // variance squared
+  double denominator = (sum_sq - ( (2.0/n) + 1/(n*n) )*(sum*sum))*(sum_sq - ( (2.0/n) + 1/(n*n))*(sum*sum));
+
+  // Equation 2.214 from MCNP manual
+  double vov = numerator/denominator - 1/n;
+
+  return vov;
+}
+
 std::pair<double, double> mean_stdev(const double* x, int n)
 {
   double mean = x[static_cast<int>(TallyResult::SUM)] / n;
@@ -705,19 +725,20 @@ void write_tallies()
         }
 
         // Write the score, mean, and uncertainty.
-        indent += 2;
+       indent += 3;
         for (auto score : tally.scores_) {
           std::string score_name =
             score > 0 ? reaction_name(score) : score_names.at(score);
-          double mean, stdev;
+          double mean, stdev, vov;
           std::tie(mean, stdev) =
             mean_stdev(&tally.results_(filter_index, score_index, 0),
               tally.n_realizations_);
-          fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6}\n", "",
-            indent + 1, score_name, mean, t_value * stdev);
+          vov = variance_of_variance(&tally.results_(filter_index, score_index, 0),tally.n_realizations_);
+          fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6} -- VOV: {5:.6}\n", "",
+            indent + 1, score_name, mean, t_value * stdev, vov);
           score_index += 1;
         }
-        indent -= 2;
+        indent -= 3;
       }
     }
   }

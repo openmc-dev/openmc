@@ -732,7 +732,7 @@ void Tally::init_triggers(pugi::xml_node node)
 void Tally::init_results()
 {
   int n_scores = scores_.size() * nuclides_.size();
-  results_ = xt::empty<double>({n_filter_bins_, n_scores, 3});
+  results_ = xt::empty<double>({n_filter_bins_, n_scores, 5});
 }
 
 void Tally::reset()
@@ -775,6 +775,8 @@ void Tally::accumulate()
         results_(i, j, TallyResult::VALUE) = 0.0;
         results_(i, j, TallyResult::SUM) += val;
         results_(i, j, TallyResult::SUM_SQ) += val * val;
+        results_(i, j, TallyResult::SUM_THIRD) += val * val * val;
+        results_(i, j, TallyResult::SUM_FOURTH) += val * val * val * val;
       }
     }
   }
@@ -910,8 +912,8 @@ void reduce_tally_results()
         static_cast<int>(TallyResult::VALUE));
 
       // Make copy of tally values in contiguous array
-      xt::xtensor<double, 2> values = values_view;
-      xt::xtensor<double, 2> values_reduced = xt::empty_like(values);
+      xt::xtensor<double, 4> values = values_view;
+      xt::xtensor<double, 4> values_reduced = xt::empty_like(values);
 
       // Reduce contiguous set of tally results
       MPI_Reduce(values.data(), values_reduced.data(), values.size(),

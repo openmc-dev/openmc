@@ -80,7 +80,8 @@ public:
   //! \param u The direction of the ray.
   //! \param coincident A hint to the code that the given point should lie
   //!   exactly on the surface.
-  virtual double distance(Position r, Direction u, bool coincident) const = 0;
+  virtual double distance(Position r, Direction u, bool coincident) const {return 0.;};
+  virtual double distance(Position r, Direction u, bool coincident, double max_range) const {return 0.;};
 
   //! Compute the local outward normal direction of the surface.
   //! \param r A 3D Cartesian coordinate.
@@ -332,7 +333,7 @@ class SurfaceTPMS : public CSGSurface {
 public:
   explicit SurfaceTPMS(pugi::xml_node surf_node);
   double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident) const;
+  double distance(Position r, Direction u, bool coincident, double max_range) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
 

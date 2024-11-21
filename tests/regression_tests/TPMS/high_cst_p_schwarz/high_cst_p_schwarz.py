@@ -36,9 +36,9 @@ mCool, materials, mColors = make_cool(materials, mColors)
 materials.export_to_xml()
 
 region1 = Box(1.00, "reflective")
-tpms1 = openmc.TPMS("Schwarz_P", 0., 1.)
+tpms1 = openmc.TPMS("Schwarz_P", 2.95, 1.)
 
-cell1 = openmc.Cell(0, "cFuel", mFuel, region1 & +tpms1) # good practice : always put the tpms in the box
+cell1 = openmc.Cell(0, "cFuel", mFuel, region1 & +tpms1)
 cell2 = openmc.Cell(2, "cCool", mCool, region1 & -tpms1)
 universe = openmc.Universe(0, "universe", [cell1,cell2])
 root = openmc.Cell(3, "root", universe, region1)

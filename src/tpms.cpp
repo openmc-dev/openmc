@@ -1,5 +1,7 @@
 #include "openmc/tpms.h"
 
+#include "openmc/constants.h"
+
 namespace openmc {
 
 // *****************************************************************************
@@ -86,7 +88,7 @@ TPMS::rootFinding TPMS::root_in_interval(double L0, double L1, Position r, Direc
     return solution;
 }
 
-double TPMS::ray_tracing(Position r, Direction u)
+double TPMS::ray_tracing(Position r, Direction u, double max_range)
 {
     std::uintmax_t max_iter = 1000000;
     const double w0 = this->sampling_frequency(u);
@@ -94,7 +96,7 @@ double TPMS::ray_tracing(Position r, Direction u)
     double L1 = L0 + w0;
     double root;
     bool rootFound = false;
-    while (L0 < TPMS::XLIM && rootFound==false)
+    while (L0 < max_range && rootFound==false)
     {
         TPMS::rootFinding solution = this->root_in_interval(L0, L1, r, u);
         if (solution.isRoot) 
@@ -109,6 +111,7 @@ double TPMS::ray_tracing(Position r, Direction u)
             L1 += w0;
         }
     }
+    if (L0 >= max_range) {root = INFTY;}
     return root;
 }
 

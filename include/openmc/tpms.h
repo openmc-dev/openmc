@@ -20,7 +20,7 @@ public:
     virtual double fppk(double k, Position r, Direction u) const {return 0.;};
     virtual double sampling_frequency(Direction u) const {return 1.;};
     rootFinding root_in_interval(double L0, double L1, Position r, Direction u);
-    double ray_tracing(Position r, Direction u);
+    double ray_tracing(Position r, Direction u, double max_range);
 
 public:
     double cst, pitch;

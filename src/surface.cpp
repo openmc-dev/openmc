@@ -989,23 +989,23 @@ double SurfaceTPMS::evaluate(Position r) const
   return value;
 }
 
-double SurfaceTPMS::distance(Position r, Direction ang, bool coincident) const
+double SurfaceTPMS::distance(Position r, Direction ang, bool coincident, double max_range) const
 {
   double raylength = 0.;
   if(surface_type == "Schwarz_P")
   {
     SchwarzP laTpms = SchwarzP(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
-    raylength = laTpms.ray_tracing(r, ang);
+    raylength = laTpms.ray_tracing(r, ang, max_range);
   }
   else if(surface_type == "Gyroid")
   {
     Gyroid laTpms = Gyroid(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
-    raylength = laTpms.ray_tracing(r, ang);
+    raylength = laTpms.ray_tracing(r, ang, max_range);
   }
   else if(surface_type == "Diamond")
   {
     Diamond laTpms = Diamond(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
-    raylength = laTpms.ray_tracing(r, ang);
+    raylength = laTpms.ray_tracing(r, ang, max_range);
   }
   else {fatal_error(fmt::format("Surface type {} is not implemented in SurfaceTPMS::distance.", surface_type));}
   return raylength; // le ray tracing avec la bonne TPMS, frero !

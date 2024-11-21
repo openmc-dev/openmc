@@ -252,17 +252,12 @@ sampled 70% of the time and another that should be sampled 30% of the time::
 
   settings.source = [src1, src2]
 
-When the relative strengths are several orders of magnitude different, it may 
-happen that not enough statistics are obtained from the lower strength source. 
-This can be improved by sampling particles with different weights with 
-probability 1, instead of sampling particles with weight 1 with different 
-probability. The :attr:`Settings.strengths_as_weights` attribute can be used 
-to enable this option::
-
-  settings.strengths_as_weights = True
-
-Then, the strength values will be used as statistical weights:: 
-
+When the relative strengths are several orders of magnitude different, it may
+happen that not enough statistics are obtained from the lower strength source.
+This can be improved by sampling among the sources with equal probability,
+applying the source strength as a weight on the sampled source particles. The
+:attr:`Settings.uniform_source_sampling` attribute can be used to enable this
+option::
 
   src1 = openmc.IndependentSource()
   src1.strength = 100.0
@@ -272,8 +267,8 @@ Then, the strength values will be used as statistical weights::
   src2.strength = 1.0
   ...
 
-  settings.strengths_as_weights = True
   settings.source = [src1, src2]
+  settings.uniform_source_sampling = True
 
 Finally, the :attr:`IndependentSource.particle` attribute can be used to
 indicate the source should be composed of particles other than neutrons. For

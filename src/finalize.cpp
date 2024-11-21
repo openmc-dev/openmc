@@ -117,7 +117,6 @@ int openmc_finalize()
   settings::restart_run = false;
   settings::run_CE = true;
   settings::run_mode = RunMode::UNSET;
-  settings::strengths_as_weights = false;
   settings::source_latest = false;
   settings::source_separate = false;
   settings::source_write = true;
@@ -134,6 +133,7 @@ int openmc_finalize()
   settings::trigger_on = false;
   settings::trigger_predict = false;
   settings::trigger_batch_interval = 1;
+  settings::uniform_source_sampling = false;
   settings::ufs_on = false;
   settings::urr_ptables_on = true;
   settings::verbosity = 7;

@@ -616,7 +616,7 @@ SourceSite sample_external_source(uint64_t* seed)
   // Sample from among multiple source distributions
   int i = 0;
   if (model::external_sources.size() > 1) {
-    if (openmc::settings::strengths_as_weights) {
+    if (settings::uniform_source_sampling) {
       i = prn(seed) * model::external_sources.size();
     } else {
       double xi = prn(seed) * total_strength;
@@ -633,7 +633,7 @@ SourceSite sample_external_source(uint64_t* seed)
   SourceSite site {model::external_sources[i]->sample_with_constraints(seed)};
 
   // Set particle creation weight
-  if (openmc::settings::strengths_as_weights) {
+  if (settings::uniform_source_sampling) {
     site.wgt *= model::external_sources[i]->strength();
   }
 

@@ -202,8 +202,6 @@ class Settings:
         Options for writing state points. Acceptable keys are:
 
         :batches: list of batches at which to write statepoint files
-    strengths_as_weights : bool
-        Whether to convert strength to statistical weight.
     surf_source_read : dict
         Options for reading surface source points. Acceptable keys are:
 
@@ -265,6 +263,9 @@ class Settings:
         Maximum number of batches simulated. If this is set, the number of
         batches specified via ``batches`` is interpreted as the minimum number
         of batches
+    uniform_source_sampling : bool
+        Whether to sampling among multiple sources uniformly, applying their
+        strengths as weights to sampled particles.
     ufs_mesh : openmc.RegularMesh
         Mesh to be used for redistributing source sites via the uniform fission
         site (UFS) method.
@@ -327,7 +328,7 @@ class Settings:
         self._photon_transport = None
         self._plot_seed = None
         self._ptables = None
-        self._strengths_as_weights = None
+        self._uniform_source_sampling = None
         self._seed = None
         self._survival_biasing = None
 
@@ -576,13 +577,13 @@ class Settings:
         self._photon_transport = photon_transport
 
     @property
-    def strengths_as_weights(self) -> bool:
-        return self._strengths_as_weights
+    def uniform_source_sampling(self) -> bool:
+        return self._uniform_source_sampling
 
-    @strengths_as_weights.setter
-    def strengths_as_weights(self, strengths_as_weights: bool):
-        cv.check_type('strength as weights', strengths_as_weights, bool)
-        self._strengths_as_weights = strengths_as_weights
+    @uniform_source_sampling.setter
+    def uniform_source_sampling(self, uniform_source_sampling: bool):
+        cv.check_type('strength as weights', uniform_source_sampling, bool)
+        self._uniform_source_sampling = uniform_source_sampling
 
     @property
     def plot_seed(self):
@@ -1228,10 +1229,10 @@ class Settings:
                 subelement.text = ' '.join(
                     str(x) for x in self._statepoint['batches'])
 
-    def _create_strengths_as_weights_subelement(self, root):
-        if self._strengths_as_weights is not None:
-            element = ET.SubElement(root, "strengths_as_weights")
-            element.text = str(self._strengths_as_weights).lower()
+    def _create_uniform_source_sampling_subelement(self, root):
+        if self._uniform_source_sampling is not None:
+            element = ET.SubElement(root, "uniform_source_sampling")
+            element.text = str(self._uniform_source_sampling).lower()
 
     def _create_sourcepoint_subelement(self, root):
         if self._sourcepoint:
@@ -1714,10 +1715,10 @@ class Settings:
         if text is not None:
             self.photon_transport = text in ('true', '1')
 
-    def _strengths_as_weights_from_xml_element(self, root):
-        text = get_text(root, 'strengths_as_weights')
+    def _uniform_source_sampling_from_xml_element(self, root):
+        text = get_text(root, 'uniform_source_sampling')
         if text is not None:
-            self.strengths_as_weights = text in ('true', '1')
+            self.uniform_source_sampling = text in ('true', '1')
 
     def _plot_seed_from_xml_element(self, root):
         text = get_text(root, 'plot_seed')
@@ -1970,7 +1971,7 @@ class Settings:
         self._create_energy_mode_subelement(element)
         self._create_max_order_subelement(element)
         self._create_photon_transport_subelement(element)
-        self._create_strengths_as_weights_subelement(element)
+        self._create_uniform_source_sampling_subelement(element)
         self._create_plot_seed_subelement(element)
         self._create_ptables_subelement(element)
         self._create_seed_subelement(element)
@@ -2077,7 +2078,7 @@ class Settings:
         settings._energy_mode_from_xml_element(elem)
         settings._max_order_from_xml_element(elem)
         settings._photon_transport_from_xml_element(elem)
-        settings._strengths_as_weights_from_xml_element(elem)
+        settings._uniform_source_sampling_from_xml_element(elem)
         settings._plot_seed_from_xml_element(elem)
         settings._ptables_from_xml_element(elem)
         settings._seed_from_xml_element(elem)

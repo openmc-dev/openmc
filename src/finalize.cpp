@@ -117,6 +117,7 @@ int openmc_finalize()
   settings::restart_run = false;
   settings::run_CE = true;
   settings::run_mode = RunMode::UNSET;
+  settings::strengths_as_weights = false;
   settings::source_latest = false;
   settings::source_separate = false;
   settings::source_write = true;

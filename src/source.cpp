@@ -394,10 +394,6 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 
     // Sample particle creation time
     site.time = time_->sample(seed);
-    // Set particle creation weight
-    if (openmc::settings::strengths_as_weights) {
-      site.wgt = strength();
-    }
   }
 
   // Increment number of accepted samples
@@ -615,30 +611,31 @@ SourceSite sample_external_source(uint64_t* seed)
   // Determine total source strength
   double total_strength = 0.0;
   for (auto& s : model::external_sources)
-    if (openmc::settings::strengths_as_weights) {
-      total_strength += 1.0;
-    } else {
-      total_strength += s->strength();
-    }
+    total_strength += s->strength();
 
   // Sample from among multiple source distributions
   int i = 0;
   if (model::external_sources.size() > 1) {
-    double xi = prn(seed) * total_strength;
-    double c = 0.0;
-    for (; i < model::external_sources.size(); ++i) {
-      if (openmc::settings::strengths_as_weights) {
-        c += 1.0;
-      } else {
+    if (openmc::settings::strengths_as_weights) {
+      i = prn(seed) * model::external_sources.size();
+    } else {
+      double xi = prn(seed) * total_strength;
+      double c = 0.0;
+      for (; i < model::external_sources.size(); ++i) {
         c += model::external_sources[i]->strength();
+        if (xi < c)
+          break;
       }
-      if (xi < c)
-        break;
     }
   }
 
   // Sample source site from i-th source distribution
   SourceSite site {model::external_sources[i]->sample_with_constraints(seed)};
+
+  // Set particle creation weight
+  if (openmc::settings::strengths_as_weights) {
+    site.wgt *= model::external_sources[i]->strength();
+  }
 
   // If running in MG, convert site.E to group
   if (!settings::run_CE) {

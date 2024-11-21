@@ -1,6 +1,4 @@
 import openmc
-import openmc.stats
-import h5py
 import pytest
 
 
@@ -32,25 +30,20 @@ def sphere_model():
 
 
 def test_source_weight(run_in_tmpdir, sphere_model):
-    # Run OpenMC without uniform source sampling
+    # Run OpenMC without uniform source sampling and check that banked particles
+    # have weight 1
     sphere_model.settings.uniform_source_sampling = False
     sphere_model.run()
+    particles = openmc.ParticleList.from_hdf5('surface_source.h5')
+    assert set(p.wgt for p in particles) == {1.0}
 
-    # Check that banked particles have weight 1
-    with h5py.File("surface_source.h5", "r") as f:
-        source = f["source_bank"]
-        for point in source:
-            assert point["wgt"] == 1.0
-
-    # Run with uniform source sampling
+    # Run with uniform source sampling and check that banked particles have
+    # weight == strength
     sphere_model.settings.uniform_source_sampling = True
     sphere_model.run()
-
-    # Check that banked particles have weight == strength
-    with h5py.File("surface_source.h5", "r") as f:
-        source = f["source_bank"]
-        for point in source:
-            assert point["wgt"] == sphere_model.settings.source[0].strength
+    particles = openmc.ParticleList.from_hdf5('surface_source.h5')
+    strength = sphere_model.settings.source[0].strength
+    assert set(p.wgt for p in particles) == {strength}
 
 
 def test_tally_mean(run_in_tmpdir, sphere_model):

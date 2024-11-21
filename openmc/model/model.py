@@ -65,22 +65,26 @@ class Model:
 
     def __init__(self, geometry=None, materials=None, settings=None,
                  tallies=None, plots=None):
-        self.geometry = openmc.Geometry()
-        self.materials = openmc.Materials()
-        self.settings = openmc.Settings()
-        self.tallies = openmc.Tallies()
-        self.plots = openmc.Plots()
-
         if geometry is not None:
             self.geometry = geometry
+        else:
+            self.geometry = openmc.Geometry()
         if materials is not None:
             self.materials = materials
+        else:
+            self.materials = openmc.Materials()
         if settings is not None:
             self.settings = settings
+        else:
+            self.settings = openmc.Settings()
         if tallies is not None:
             self.tallies = tallies
+        else:
+            self.tallies = openmc.Tallies()
         if plots is not None:
             self.plots = plots
+        else:
+            self.plots = openmc.Plots()
 
     @property
     def geometry(self) -> openmc.Geometry | None:

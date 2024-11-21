@@ -514,10 +514,10 @@ double variance_of_variance(const double* x, int n)
 
   // Calculate variance of variance
   // Fourth moment of the sample
-  double numerator = ( sum_th - (4.0/n) * sum * sum_rd + (6.0/(n*n)) * sum_sq * (sum * sum) - (4.0/(n*n*n) + 1/(n*n*n*n))*(sum*sum*sum*sum)  );
+  double numerator = ( sum_th - (4.0/n) * sum * sum_rd + (6.0/(n*n)) * sum_sq * (sum * sum) - (3/(n*n*n))*(sum*sum*sum*sum)  );
 
   // variance squared
-  double denominator = (sum_sq - ( (2.0/n) + 1/(n*n) )*(sum*sum))*(sum_sq - ( (2.0/n) + 1/(n*n))*(sum*sum));
+  double denominator = (sum_sq - (1.0/n)*(sum*sum))*(sum_sq - (1.0/n)*(sum*sum));
 
   // Equation 2.214 from MCNP manual
   double vov = numerator/denominator - 1/n;

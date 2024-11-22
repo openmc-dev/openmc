@@ -621,6 +621,11 @@ SourceSite sample_external_source(uint64_t* seed)
   // Sample source site from i-th source distribution
   SourceSite site {model::external_sources[i]->sample_with_constraints(seed)};
 
+  // Set particle creation weight
+  if (settings::uniform_source_sampling) {
+    site.wgt *= model::external_sources[i]->strength();
+  }
+
   // If running in MG, convert site.E to group
   if (!settings::run_CE) {
     site.E = lower_bound_index(data::mg.rev_energy_bins_.begin(),

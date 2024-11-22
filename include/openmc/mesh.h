@@ -966,9 +966,9 @@ private:
                          //!< during intialization
   vector<unique_ptr<libMesh::PointLocatorBase>>
     pl_; //!< per-thread point locators
-  unique_ptr<libMesh::EquationSystems> equation_systems_ =
-    nullptr; //!< pointer to the libMesh EquationSystems
-             //!< instance
+  unique_ptr<libMesh::EquationSystems>
+    equation_systems_; //!< pointer to the libMesh EquationSystems
+                       //!< instance
   std::string
     eq_system_name_; //!< name of the equation system holding OpenMC results
   std::unordered_map<std::string, unsigned int>

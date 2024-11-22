@@ -3099,9 +3099,11 @@ int LibMesh::n_surface_bins() const
 void LibMesh::add_score(const std::string& var_name)
 {
   if (adaptive_) {
-    fatal_error(fmt::format(
+    warning(fmt::format(
       "Exodus output cannot be provided as unstructured mesh {} is adaptive.",
       this->id_));
+
+    return;
   }
 
   if (!equation_systems_) {
@@ -3140,9 +3142,11 @@ void LibMesh::set_score_data(const std::string& var_name,
   const vector<double>& values, const vector<double>& std_dev)
 {
   if (adaptive_) {
-    fatal_error(fmt::format(
+    warning(fmt::format(
       "Exodus output cannot be provided as unstructured mesh {} is adaptive.",
       this->id_));
+
+    return;
   }
 
   if (!equation_systems_) {
@@ -3189,9 +3193,11 @@ void LibMesh::set_score_data(const std::string& var_name,
 void LibMesh::write(const std::string& filename) const
 {
   if (adaptive_) {
-    fatal_error(fmt::format(
+    warning(fmt::format(
       "Exodus output cannot be provided as unstructured mesh {} is adaptive.",
       this->id_));
+
+    return;
   }
 
   write_message(fmt::format(

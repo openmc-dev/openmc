@@ -3004,7 +3004,7 @@ void LibMesh::initialize()
   first_element_id_ = first_elem->id();
 
   // if the mesh is adaptive elements aren't guaranteed by libMesh to be
-  // contiguous in memory, so we need to map from bin indices (defined over
+  // contiguous in ID space, so we need to map from bin indices (defined over
   // active elements) to global dof ids
   if (adaptive_) {
     bin_to_elem_map_.reserve(m_->n_active_local_elem());

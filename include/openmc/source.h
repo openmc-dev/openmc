@@ -35,8 +35,9 @@ class Source;
 namespace model {
 
 extern vector<unique_ptr<Source>> external_sources;
-// DiscreteIndex class for the alias sampling
-extern DiscreteIndex external_sources_alias_sampler;
+
+// Probability distribution for selecting external sources
+extern DiscreteIndex external_sources_probability;
 
 } // namespace model
 

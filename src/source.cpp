@@ -46,7 +46,7 @@ namespace model {
 vector<unique_ptr<Source>> external_sources;
 
 // DiscreteIndex class for the alias sampling
-DiscreteIndex external_sources_alias_sampler;
+DiscreteIndex external_sources_probability;
 
 } // namespace model
 
@@ -618,7 +618,7 @@ SourceSite sample_external_source(uint64_t* seed)
     if (settings::uniform_source_sampling) {
       i = prn(seed) * model::external_sources.size();
     } else {
-      i = model::external_sources_alias_sampler.sample(seed);
+      i = model::external_sources_probability.sample(seed);
     }
   }
 

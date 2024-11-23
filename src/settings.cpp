@@ -567,7 +567,7 @@ void read_settings_xml(pugi::xml_node root)
   for (auto& s : model::external_sources) {
     source_strengths.push_back(s->strength());
   }
-  openmc::model::external_sources_alias_sampler.assign(source_strengths);
+  model::external_sources_alias_sampler.assign(source_strengths);
 
   // If no source specified, default to isotropic point source at origin with
   // Watt spectrum. No default source is needed in random ray mode.

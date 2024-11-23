@@ -48,7 +48,7 @@ vector<unique_ptr<Source>> external_sources;
 // DiscreteIndex class for the alias sampling
 DiscreteIndex external_sources_alias_sampler;
 
-}
+} // namespace model
 
 //==============================================================================
 // Source implementation
@@ -615,7 +615,11 @@ SourceSite sample_external_source(uint64_t* seed)
   // Sample from among multiple source distributions
   int i = 0;
   if (model::external_sources.size() > 1) {
-    i = model::external_sources_alias_sampler.sample(seed);
+    if (settings::uniform_source_sampling) {
+      i = prn(seed) * model::external_sources.size();
+    } else {
+      i = model::external_sources_alias_sampler.sample(seed);
+    }
   }
 
   // Sample source site from i-th source distribution

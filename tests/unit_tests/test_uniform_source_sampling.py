@@ -61,3 +61,15 @@ def test_tally_mean(run_in_tmpdir, sphere_model):
 
     # Check that tally means match
     assert mean == pytest.approx(reference_mean)
+
+
+def test_multiple_sources(sphere_model):
+    low_strength_src = openmc.IndependentSource(
+        energy=openmc.stats.delta_function(1.0e6), strength=1e-7)
+    sphere_model.settings.source.append(low_strength_src)
+    sphere_model.settings.uniform_source_sampling = True
+
+    # Sample particles from source and make sure 1 MeV shows up despite
+    # negligible strength
+    particles = sphere_model.sample_external_source(100)
+    assert {p.E for p in particles} == {1.0e3, 1.0e6}

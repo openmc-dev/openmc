@@ -889,7 +889,7 @@ class Model:
             n_samples: int = 1000,
             prn_seed: int | None = None,
             **init_kwargs
-    ) -> list[openmc.SourceParticle]:
+    ) -> openmc.ParticleList:
         """Sample external source and return source particles.
 
         .. versionadded:: 0.15.1
@@ -906,7 +906,7 @@ class Model:
 
         Returns
         -------
-        list of openmc.SourceParticle
+        openmc.ParticleList
             List of samples source particles
         """
         import openmc.lib

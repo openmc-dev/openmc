@@ -72,6 +72,7 @@ bool survival_biasing {false};
 bool temperature_multipole {false};
 bool trigger_on {false};
 bool trigger_predict {false};
+bool uniform_source_sampling {false};
 bool ufs_on {false};
 bool urr_ptables_on {true};
 bool weight_windows_on {false};
@@ -562,6 +563,13 @@ void read_settings_xml(pugi::xml_node root)
     model::external_sources.push_back(make_unique<FileSource>(path));
   }
 
+  // Build probability mass function for sampling external sources
+  vector<double> source_strengths;
+  for (auto& s : model::external_sources) {
+    source_strengths.push_back(s->strength());
+  }
+  model::external_sources_probability.assign(source_strengths);
+
   // If no source specified, default to isotropic point source at origin with
   // Watt spectrum. No default source is needed in random ray mode.
   if (model::external_sources.empty() &&
@@ -784,6 +792,12 @@ void read_settings_xml(pugi::xml_node root)
     // statepoint file and write it out at statepoints intervals
     source_separate = false;
     sourcepoint_batch = statepoint_batch;
+  }
+
+  // Check is the user specified to convert strength to statistical weight
+  if (check_for_node(root, "uniform_source_sampling")) {
+    uniform_source_sampling =
+      get_node_value_bool(root, "uniform_source_sampling");
   }
 
   // Check if the user has specified to write surface source

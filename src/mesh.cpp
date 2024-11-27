@@ -3007,10 +3007,10 @@ void LibMesh::initialize()
   // contiguous in ID space, so we need to map from bin indices (defined over
   // active elements) to global dof ids
   if (adaptive_) {
-    bin_to_elem_map_.reserve(m_->n_active_local_elem());
-    elem_to_bin_map_.resize(m_->n_local_elem(), -1);
-    for (auto it = m_->active_local_elements_begin();
-         it != m_->active_local_elements_end(); it++) {
+    bin_to_elem_map_.reserve(m_->n_active_elem());
+    elem_to_bin_map_.resize(m_->n_elem(), -1);
+    for (auto it = m_->active_elements_begin(); it != m_->active_elements_end();
+         it++) {
       auto elem = *it;
 
       bin_to_elem_map_.push_back(elem->id());

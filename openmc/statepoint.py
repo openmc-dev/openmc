@@ -644,6 +644,55 @@ class StatePoint:
 
         return tally
 
+    def get_mesh(
+        self,
+        id: int | None = None,
+        name: str | None = None,
+        mesh_type: openmc.MeshBase | None = None,
+    ):
+        """Return a Mesh object wihich matches all of the input parameters.
+        Parameters
+        ----------
+        name : str, optional
+            The name specified for the Tally (default is None).
+        id : Integral, optional
+            The id specified for the Tally (default is None).
+        mesh_type : openmc.Mesh, optional
+            The type of MeshBase, for example openmc.RegularMesh (default is None).
+
+        Returns
+        -------
+        mesh : openmc.Mesh
+            A mesh matching the specified criteria
+
+        Raises
+        ------
+        LookupError
+            If a mesh meeting all of the input parameters cannot be found in
+            the statepoint.
+
+        """
+
+        mesh = None
+
+        for test_mesh in self.meshes.values():
+            if (
+                (id and id != test_mesh.id)
+                or (name and name != test_mesh.name)
+                or (mesh_type and not isinstance(test_mesh, mesh_type))
+            ):
+                continue
+
+            # If the current mesh met user's request, break loop and return it
+            mesh = test_mesh
+            break
+
+        # If we did not find the mesh, return an error message
+        if mesh is None:
+            raise LookupError("Unable to get Mesh")
+
+        return mesh
+
     def link_with_summary(self, summary):
         """Links Tallies and Filters with Summary model information.
 

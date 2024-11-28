@@ -655,9 +655,9 @@ class StatePoint:
         Parameters
         ----------
         name : str, optional
-            The name specified for the Tally (default is None).
-        id : Integral, optional
-            The id specified for the Tally (default is None).
+            The name specified for the mesh (default is None).
+        id : int, optional
+            The id specified for the mesh (default is None).
         mesh_type : openmc.Mesh, optional
             The type of MeshBase, for example openmc.RegularMesh (default is None).
 
@@ -669,8 +669,8 @@ class StatePoint:
         Raises
         ------
         LookupError
-            If a mesh meeting all of the input parameters cannot be found in
-            the statepoint.
+            If a mesh meeting all of the input parameters cannot be found in the
+            statepoint.
 
         """
 

@@ -651,6 +651,7 @@ class StatePoint:
         mesh_type: openmc.MeshBase | None = None,
     ):
         """Return a Mesh object that matches all of the input parameters.
+
         Parameters
         ----------
         name : str, optional

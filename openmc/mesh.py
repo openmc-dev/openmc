@@ -101,16 +101,20 @@ class MeshBase(IDManagerMixin, ABC):
         """
 
         mesh_type = group['type'][()].decode()
+
+        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
+        mesh_name = '' if not 'name' in group else group['name'][()].decode()
+
         if mesh_type == 'regular':
-            return RegularMesh.from_hdf5(group)
+            return RegularMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type == 'rectilinear':
-            return RectilinearMesh.from_hdf5(group)
+            return RectilinearMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type == 'cylindrical':
-            return CylindricalMesh.from_hdf5(group)
+            return CylindricalMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type == 'spherical':
-            return SphericalMesh.from_hdf5(group)
+            return SphericalMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type == 'unstructured':
-            return UnstructuredMesh.from_hdf5(group)
+            return UnstructuredMesh.from_hdf5(group, mesh_id, mesh_name)
         else:
             raise ValueError('Unrecognized mesh type: "' + mesh_type + '"')
 
@@ -808,11 +812,9 @@ class RegularMesh(StructuredMesh):
         return string
 
     @classmethod
-    def from_hdf5(cls, group: h5py.Group):
-        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
-
+    def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
         # Read and assign mesh properties
-        mesh = cls(mesh_id)
+        mesh = cls(mesh_id=mesh_id, name=name)
         mesh.dimension = group['dimension'][()]
         mesh.lower_left = group['lower_left'][()]
         if 'width' in group:
@@ -1250,11 +1252,9 @@ class RectilinearMesh(StructuredMesh):
         return string
 
     @classmethod
-    def from_hdf5(cls, group: h5py.Group):
-        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
-
+    def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
         # Read and assign mesh properties
-        mesh = cls(mesh_id=mesh_id)
+        mesh = cls(mesh_id=mesh_id, name=name)
         mesh.x_grid = group['x_grid'][()]
         mesh.y_grid = group['y_grid'][()]
         mesh.z_grid = group['z_grid'][()]
@@ -1555,12 +1555,11 @@ class CylindricalMesh(StructuredMesh):
         return (r_index, phi_index, z_index)
 
     @classmethod
-    def from_hdf5(cls, group: h5py.Group):
-        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
-
+    def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
         # Read and assign mesh properties
         mesh = cls(
             mesh_id=mesh_id,
+            name=name,
             r_grid = group['r_grid'][()],
             phi_grid = group['phi_grid'][()],
             z_grid = group['z_grid'][()],
@@ -1939,15 +1938,14 @@ class SphericalMesh(StructuredMesh):
         return string
 
     @classmethod
-    def from_hdf5(cls, group: h5py.Group):
-        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
-
+    def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
         # Read and assign mesh properties
         mesh = cls(
             r_grid = group['r_grid'][()],
             theta_grid = group['theta_grid'][()],
             phi_grid = group['phi_grid'][()],
             mesh_id=mesh_id,
+            name=name
         )
         if 'origin' in group:
             mesh.origin = group['origin'][()]
@@ -2454,8 +2452,7 @@ class UnstructuredMesh(MeshBase):
         writer.Write()
 
     @classmethod
-    def from_hdf5(cls, group: h5py.Group):
-        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
+    def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
         filename = group['filename'][()].decode()
         library = group['library'][()].decode()
         if 'options' in group.attrs:
@@ -2463,7 +2460,7 @@ class UnstructuredMesh(MeshBase):
         else:
             options = None
 
-        mesh = cls(filename=filename, library=library, mesh_id=mesh_id, options=options)
+        mesh = cls(filename=filename, library=library, mesh_id=mesh_id, name=name, options=options)
         mesh._has_statepoint_data = True
         vol_data = group['volumes'][()]
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))

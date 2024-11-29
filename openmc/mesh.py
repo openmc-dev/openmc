@@ -114,6 +114,23 @@ class MeshBase(IDManagerMixin, ABC):
         else:
             raise ValueError('Unrecognized mesh type: "' + mesh_type + '"')
 
+    def to_xml_element(self):
+        """Return XML representation of the mesh
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing mesh data
+
+        """
+        elem = ET.Element("mesh")
+
+        elem.set("id", str(self._id))
+        if self.name:
+            elem.set("name", self.name)
+
+        return elem
+
     @classmethod
     def from_xml_element(cls, elem: ET.Element):
         """Generates a mesh from an XML element
@@ -899,9 +916,7 @@ class RegularMesh(StructuredMesh):
             XML element containing mesh data
 
         """
-
-        element = ET.Element("mesh")
-        element.set("id", str(self._id))
+        element = super().to_xml_element()
 
         if self._dimension is not None:
             subelement = ET.SubElement(element, "dimension")
@@ -1279,8 +1294,7 @@ class RectilinearMesh(StructuredMesh):
 
         """
 
-        element = ET.Element("mesh")
-        element.set("id", str(self._id))
+        element = super().to_xml_element()
         element.set("type", "rectilinear")
 
         subelement = ET.SubElement(element, "x_grid")
@@ -1647,8 +1661,7 @@ class CylindricalMesh(StructuredMesh):
 
         """
 
-        element = ET.Element("mesh")
-        element.set("id", str(self._id))
+        element = super().to_xml_element()
         element.set("type", "cylindrical")
 
         subelement = ET.SubElement(element, "r_grid")
@@ -1951,8 +1964,7 @@ class SphericalMesh(StructuredMesh):
 
         """
 
-        element = ET.Element("mesh")
-        element.set("id", str(self._id))
+        element = super().to_xml_element()
         element.set("type", "spherical")
 
         subelement = ET.SubElement(element, "r_grid")
@@ -2478,9 +2490,9 @@ class UnstructuredMesh(MeshBase):
 
         """
 
-        element = ET.Element("mesh")
-        element.set("id", str(self._id))
+        element = super().to_xml_element()
         element.set("type", "unstructured")
+
         element.set("library", self._library)
         if self.options is not None:
             element.set('options', self.options)

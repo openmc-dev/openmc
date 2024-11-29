@@ -109,7 +109,8 @@ Mesh::Mesh(pugi::xml_node node)
 {
   // Read mesh id
   id_ = std::stoi(get_node_value(node, "id"));
-  name_ = get_node_value(node, "name");
+  if (check_for_node(node, "name"))
+    name_ = get_node_value(node, "name");
 }
 
 void Mesh::set_id(int32_t id)

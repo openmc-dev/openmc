@@ -316,17 +316,9 @@ void RandomRay::attenuate_flux_flat_source(double distance, bool is_active)
   int64_t source_element = source_region * negroups_;
   int material = this->material();
 
-  // Temperature and angle indices, if using multiple temperature
-  // data sets and/or anisotropic data sets.
-  // TODO: Currently assumes we are only using single temp/single
-  // angle data.
-  const int t = 0;
-  const int a = 0;
-
   // MOC incoming flux attenuation + source contribution/attenuation equation
   for (int g = 0; g < negroups_; g++) {
-    float sigma_t = data::mg.macro_xs_[material].get_xs(
-      MgxsType::TOTAL, g, NULL, NULL, NULL, t, a);
+    float sigma_t = domain_->sigma_t_[material * negroups_ + g];
     float tau = sigma_t * distance;
     float exponential = cjosey_exponential(tau); // exponential = 1 - exp(-tau)
     float new_delta_psi =
@@ -388,13 +380,6 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
   int64_t source_element = source_region * negroups_;
   int material = this->material();
 
-  // Temperature and angle indices, if using multiple temperature
-  // data sets and/or anisotropic data sets.
-  // TODO: Currently assumes we are only using single temp/single
-  // angle data.
-  const int t = 0;
-  const int a = 0;
-
   Position& centroid = domain->centroid_[source_region];
   Position midpoint = r() + u() * (distance / 2.0);
 
@@ -422,8 +407,7 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
   for (int g = 0; g < negroups_; g++) {
 
     // Compute tau, the optical thickness of the ray segment
-    float sigma_t = data::mg.macro_xs_[material].get_xs(
-      MgxsType::TOTAL, g, NULL, NULL, NULL, t, a);
+    float sigma_t = domain_->sigma_t_[material * negroups_ + g];
     float tau = sigma_t * distance;
 
     // If tau is very small, set it to zero to avoid numerical issues.

@@ -599,3 +599,52 @@ def test_conical_frustum():
     # Denegenerate case with r1 = r2
     s = openmc.model.ConicalFrustum(center_base, axis, r1, r1)
     assert (1., 1., -0.01) in -s
+
+
+def test_vessel():
+    center = (3.0, 2.0)
+    r = 1.0
+    p1, p2 = -5.0, 5.0
+    h1 = h2 = 1.0
+    s = openmc.model.Vessel(r, p1, p2, h1, h2, center)
+    assert isinstance(s.cyl, openmc.Cylinder)
+    assert isinstance(s.plane_bottom, openmc.Plane)
+    assert isinstance(s.plane_top, openmc.Plane)
+    assert isinstance(s.bottom, openmc.Quadric)
+    assert isinstance(s.top, openmc.Quadric)
+
+    # Make sure boundary condition propagates (but not for planes)
+    s.boundary_type = 'reflective'
+    assert s.boundary_type == 'reflective'
+    assert s.cyl.boundary_type == 'reflective'
+    assert s.bottom.boundary_type == 'reflective'
+    assert s.top.boundary_type == 'reflective'
+    assert s.plane_bottom.boundary_type == 'transmission'
+    assert s.plane_top.boundary_type == 'transmission'
+
+    # Check bounding box
+    ll, ur = (+s).bounding_box
+    assert np.all(np.isinf(ll))
+    assert np.all(np.isinf(ur))
+    ll, ur = (-s).bounding_box
+    assert np.all(np.isinf(ll))
+    assert np.all(np.isinf(ur))
+
+    # __contains__ on associated half-spaces
+    assert (3., 2., 0.) in -s
+    assert (3., 2., -5.0) in -s
+    assert (3., 2., 5.0) in -s
+    assert (3., 2., -5.9) in -s
+    assert (3., 2., 5.9) in -s
+    assert (3., 2., -6.1) not in -s
+    assert (3., 2., 6.1) not in -s
+    assert (4.5, 2., 0.) in +s
+    assert (3., 3.2, 0.) in +s
+    assert (3., 2., 7.) in +s
+
+    # translate method
+    s_t = s.translate((0., 0., 1.))
+    assert (3., 2., 6.1) in -s_t
+
+    # Make sure repr works
+    repr(s)

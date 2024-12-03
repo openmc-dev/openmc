@@ -157,7 +157,7 @@ jobs:
       - name: after_success
         shell: bash
         run: |
-          cpp-coveralls -i src -i include -e src/external -e src/openmc --exclude-pattern "/usr/*" --dump cpp_cov.json
+          cpp-coveralls -i src -i include -e src/external --exclude-pattern "/usr/*" --dump cpp_cov.json
           coveralls --merge=cpp_cov.json --service=github
 
   finish:

@@ -1,4 +1,5 @@
 import openmc
+import openmc.volume
 
 def Box(c:float, boundary_type="transmission"):
     xP0 = openmc.XPlane(-c/2, boundary_type=boundary_type)
@@ -56,6 +57,8 @@ settings = openmc.Settings()
 settings.batches = 100
 settings.particles = 100
 settings.inactive = 10
+volCalc = openmc.volume.VolumeCalculation([cell1, cell2], 1000000000)
+settings.volume_calculations = [volCalc]
 settings.export_to_xml()
 
 plots = openmc.Plots()

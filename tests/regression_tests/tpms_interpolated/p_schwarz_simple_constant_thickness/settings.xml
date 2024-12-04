@@ -4,4 +4,11 @@
   <particles>100</particles>
   <batches>100</batches>
   <inactive>10</inactive>
+  <volume_calc>
+    <domain_type>cell</domain_type>
+    <domain_ids>0 2</domain_ids>
+    <samples>1000000000</samples>
+    <lower_left>-2.5 -2.5 -2.5</lower_left>
+    <upper_right>2.5 2.5 2.5</upper_right>
+  </volume_calc>
 </settings>

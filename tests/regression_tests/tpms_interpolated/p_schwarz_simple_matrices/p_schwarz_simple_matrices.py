@@ -52,6 +52,8 @@ settings = openmc.Settings()
 settings.batches = 100
 settings.particles = 100
 settings.inactive = 10
+volCalc = openmc.volume.VolumeCalculation([cell1, cell2], 1000000000)
+settings.volume_calculations = [volCalc]
 settings.export_to_xml()
 
 plots = openmc.Plots()

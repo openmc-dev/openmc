@@ -4,6 +4,7 @@ from copy import deepcopy
 import math
 from numbers import Real
 from warnings import warn, catch_warnings, simplefilter
+from typing import Callable
 
 import lxml.etree as ET
 import numpy as np
@@ -13,7 +14,7 @@ from .checkvalue import check_type, check_value, check_length, check_greater_tha
 from .mixin import IDManagerMixin, IDWarning
 from .region import Region, Intersection, Union
 from .bounding_box import BoundingBox
-
+from .tpms_function import *
 
 _BOUNDARY_TYPES = {'transmission', 'vacuum', 'reflective', 'periodic', 'white'}
 _ALBEDO_BOUNDARIES = {'reflective', 'periodic', 'white'}
@@ -322,10 +323,13 @@ class Surface(IDManagerMixin, ABC):
             surface
 
         """
-        coeffs1 = self.normalize(self._get_base_coeffs())
-        coeffs2 = self.normalize(other._get_base_coeffs())
+        if isinstance(other, (TPMS, FunctionTPMS)) and isinstance(other, (TPMS, FunctionTPMS)): # by default, no TPMS is considered equal to one another
+            return False
+        else:
+            coeffs1 = self.normalize(self._get_base_coeffs())
+            coeffs2 = self.normalize(other._get_base_coeffs())
 
-        return np.allclose(coeffs1, coeffs2, rtol=0., atol=self._atol)
+            return np.allclose(coeffs1, coeffs2, rtol=0., atol=self._atol)
 
     @abstractmethod
     def _get_base_coeffs(self):
@@ -2349,25 +2353,21 @@ class TPMS(Surface):
         # Get pivot and rotation matrix
         pivot = np.asarray(pivot)
         rotation = np.asarray(rotation, dtype=float)
-
         # Allow rotation matrix to be passed in directly, otherwise build it
         if rotation.ndim == 2:
             check_length('surface rotation', rotation.ravel(), 9)
             Rmat = rotation
         else:
             Rmat = get_rotation_matrix(rotation, order=order)
-
         # Translate surface to the pivot point
         surf = self if inplace else self.clone()
         surf = surf.translate(-pivot, inplace=inplace)
-
         # Perform rotation
         Cmat = np.array([[surf.a, surf.b, surf.c],[surf.d, surf.e, surf.f],[surf.g, surf.h, surf.i]])
         Nmat = np.dot(Rmat,Cmat)
         surf.a, surf.b, surf.c = Nmat[0,:]
         surf.d, surf.e, surf.f = Nmat[1,:]
         surf.g, surf.h, surf.i = Nmat[2,:]
-
         # translate back to the original frame and return the surface
         return surf.translate(pivot, inplace=inplace)
 
@@ -2427,6 +2427,160 @@ class TPMS(Surface):
         csts = np.interp(relative_densities, isocounts, isovalues).tolist()
         listOfTPMS = [TPMS(surface_type, cst, pitch, *args, **kwargs) for cst in csts]
         return listOfTPMS
+
+class FunctionTPMS(Surface):
+
+    surface_list = ['Gyroid','Diamond','Schwarz_P',]
+    
+    _type = 'function-tpms'
+    _coeff_keys = ('x0', 'y0', 'z0', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i')
+
+    def __init__(self, surface_type: str, function_type: str, fThickness: FunctionForTPMS, fPitch: FunctionForTPMS, 
+                 x0: float = 0., y0: float = 0., z0: float = 0., a=1., b=0., c=0., d=0., e=1., f=0., g=0., h=0., i=1., *args, **kwargs):
+        kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
+        super().__init__(**kwargs)
+        assert surface_type in FunctionTPMS.surface_list
+        self.surface_type = surface_type
+        self.function_type = function_type
+        self.fThickness = fThickness
+        self.fPitch = fPitch
+        self.a, self.b, self.c = a, b, c
+        self.d, self.e, self.f = d, e, f
+        self.g, self.h, self.i = g, h, i
+        self.x0, self.y0, self.z0 = x0, y0, z0
+
+    x0 = SurfaceCoefficient('x0')
+    y0 = SurfaceCoefficient('y0')
+    z0 = SurfaceCoefficient('z0')
+    a = SurfaceCoefficient('a')
+    b = SurfaceCoefficient('b')
+    c = SurfaceCoefficient('c')
+    d = SurfaceCoefficient('d')
+    e = SurfaceCoefficient('e')
+    f = SurfaceCoefficient('f')
+    g = SurfaceCoefficient('g')
+    h = SurfaceCoefficient('h')
+    i = SurfaceCoefficient('i')
+
+    def normalize(self, coeffs=None):
+        raise AttributeError( "'FunctionTPMS' object has no attribute 'normalize'" )
+    
+    def _get_base_coeffs(self):
+        return (self.x0, self.y0, self.z0, self.a, self.b, self.c, self.d, self.e, self.f, self.g, self.h, self.i)
+
+    def get_pitch(self, x, y, z):
+        return self.fPitch.evaluate(x, y, z)
+
+    def get_thickness(self, x, y, z):
+        return self.fThickness.evaluate(x, y, z)
+
+    def evaluate(self, point):
+        x, y, z = point
+        xx = self.a*(x-self.x0) + self.b*(y-self.y0) + self.c*(z-self.z0) 
+        yy = self.d*(x-self.x0) + self.e*(y-self.y0) + self.f*(z-self.z0)
+        zz = self.g*(x-self.x0) + self.h*(y-self.y0) + self.i*(z-self.z0)
+        pitch = self.get_pitch(xx, yy, zz) # Pitch and thickness are computed based on the coordinates of the TPMS 
+        thickness = self.get_thickness(xx, yy, zz)
+        l = 2*pi/pitch
+        cst = l*thickness
+        if self.surface_type == "Schwarz_P":
+            return cos(l*xx) + cos(l*yy) + cos(l*zz) - cst
+        elif self.surface_type == "Gyroid":
+            return sin(l*xx)*cos(l*zz) + sin(l*yy)*cos(l*xx) + sin(l*zz)*cos(l*yy) - cst
+        elif self.surface_type == "Diamond":
+            return sin(l*xx)*sin(l*yy)*sin(l*zz) + sin(l*xx)*cos(l*yy)*cos(l*zz) + cos(l*xx)*sin(l*yy)*cos(l*zz) + cos(l*xx)*cos(l*yy)*sin(l*zz) - cst
+        else:
+            raise NotImplementedError(f"'{self.surface_type}' surface_type is not yet implemented.")
+    
+    def translate(self, vector, inplace=False):
+        x1, y1, z1 = vector
+        x0, y0, z0 = self.x0, self.y0, self.z0
+        surf = self if inplace else self.clone()
+        surf.x0 = x0 + x1
+        surf.y0 = y0 + y1
+        surf.z0 = z0 + z1
+        return surf
+
+    def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
+        # Get pivot and rotation matrix
+        pivot = np.asarray(pivot)
+        rotation = np.asarray(rotation, dtype=float)
+        # Allow rotation matrix to be passed in directly, otherwise build it
+        if rotation.ndim == 2:
+            check_length('surface rotation', rotation.ravel(), 9)
+            Rmat = rotation
+        else:
+            Rmat = get_rotation_matrix(rotation, order=order)
+        # Translate surface to the pivot point
+        surf = self if inplace else self.clone()
+        surf = surf.translate(-pivot, inplace=inplace)
+        # Perform rotation
+        Cmat = np.array([[surf.a, surf.b, surf.c],[surf.d, surf.e, surf.f],[surf.g, surf.h, surf.i]])
+        Nmat = np.dot(Rmat,Cmat)
+        surf.a, surf.b, surf.c = Nmat[0,:]
+        surf.d, surf.e, surf.f = Nmat[1,:]
+        surf.g, surf.h, surf.i = Nmat[2,:]
+        # translate back to the original frame and return the surface
+        return surf.translate(pivot, inplace=inplace)
+
+    def to_xml_element(self):
+        def _array_to_string(myArray: np.ndarray, separators=[",",";","|"]):
+            dim = myArray.ndim
+            sep = separators[dim-1]
+            if dim == 1:
+                myString = f"["
+                for i in range(np.shape(myArray)[-1]):
+                    myString += f"{myArray[i]}{sep}"
+                return myString[:-1]+"]"
+            else:
+                myString = f"["
+                for i in range(np.shape(myArray)[-1]):
+                    myString += f"{_array_to_string(myArray[...,i])}{sep}"
+                return myString[:-1]+"]"
+        # Element construction
+        element = super().to_xml_element()
+        element.set("surface_type", self.surface_type)
+        element.set("function_type", self.function_type)
+        if self.function_type=="interpolation":
+            assert np.allclose(self.fPitch.x_grid, self.fThickness.x_grid, 1.e-8)
+            assert np.allclose(self.fPitch.y_grid, self.fThickness.y_grid, 1.e-8)
+            assert np.allclose(self.fPitch.z_grid, self.fThickness.z_grid, 1.e-8)
+            element.set("x_grid", _array_to_string(self.fPitch.x_grid))
+            element.set("y_grid", _array_to_string(self.fPitch.y_grid))
+            element.set("z_grid", _array_to_string(self.fPitch.z_grid))
+            element.set("m_pitch", _array_to_string(self.fPitch.matrix))
+            element.set("m_thickness", _array_to_string(self.fThickness.matrix))
+        else:
+            raise ValueError(f"Function type '{self.function_type}' is not recognized.")
+        return element
+
+    @classmethod
+    def from_interpolated_functions_and_grids(cls, surface_type: str, thickness_function: Callable, pitch_function: Callable, x_grid, y_grid, z_grid,
+                                 x0: float = 0., y0: float = 0., z0: float = 0., a=1., b=0., c=0., d=0., e=1., f=0., g=0., h=0., i=1., *args, **kwargs):
+        mX, mY, mZ = np.meshgrid(x_grid, y_grid, z_grid, indexing="ij")
+        m_pitch = pitch_function(mX, mY, mZ)
+        m_thickness = thickness_function(mX, mY, mZ)
+        assert np.any(m_pitch <= 0.) == False
+        fPitch = InterpolationForTPMS(np.array(x_grid), np.array(y_grid), np.array(z_grid), m_pitch)
+        fThickness = InterpolationForTPMS(np.array(x_grid), np.array(y_grid), np.array(z_grid), m_thickness)
+        return cls(surface_type, "interpolation", fThickness, fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i, *args, **kwargs)
+
+    @classmethod
+    def from_interpolated_functions(cls, surface_type: str, pitch_function: Callable, thickness_function: Callable, xlim=(-1.,+1.), ylim=(-1.,+1), zlim=(-1.,+1.), shape=(5,5,5),
+                                 x0: float = 0., y0: float = 0., z0: float = 0., a=1., b=0., c=0., d=0., e=1., f=0., g=0., h=0., i=1., *args, **kwargs):
+        if shape[0] > 1:
+            x_grid = np.linspace(xlim[0], xlim[1], shape[0], endpoint=True)
+        else:
+            x_grid = np.array([0.5*(xlim[0]+xlim[1])])
+        if shape[1] > 1:
+            y_grid = np.linspace(ylim[0], ylim[1], shape[1], endpoint=True)
+        else:
+            y_grid = np.array([0.5*(ylim[0]+ylim[1])])
+        if shape[2] > 1:
+            z_grid = np.linspace(zlim[0], zlim[1], shape[2], endpoint=True) 
+        else: 
+            z_grid = np.array([0.5*(zlim[0]+zlim[1])])
+        return cls.from_interpolated_functions_and_grids(surface_type, pitch_function, thickness_function, x_grid, y_grid, z_grid, x0, y0, z0, a, b, c, d, e, f, g, h, i, *args, **kwargs)
 
 class TorusMixin:
     """A Mixin class implementing common functionality for torus surfaces"""
@@ -2984,3 +3138,4 @@ ZCone._virtual_base = Cone
 Sphere._virtual_base = Sphere
 Quadric._virtual_base = Quadric
 TPMS._virtual_base = TPMS
+FunctionTPMS._virtual_base = FunctionTPMS

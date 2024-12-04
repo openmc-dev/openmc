@@ -799,7 +799,7 @@ std::pair<double, int32_t> Region::distance(
     bool coincident {std::abs(token) == std::abs(on_surface)};
     // TPMS : compute the distance in the end to lower computation time
     const auto& surface = model::surfaces[abs(token) - 1];
-    if (dynamic_cast<SurfaceTPMS*>(surface.get())) // Add token to tpms_token vector if SurfaceTPMS
+    if (surface->is_tpms()) // Add token to tpms_token vector if SurfaceTPMS
     {
       tpms_token.push_back(token);
       continue;  // Skip distance calculation for tpms surfaces

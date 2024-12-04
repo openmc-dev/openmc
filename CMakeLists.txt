@@ -437,6 +437,7 @@ list(APPEND libopenmc_SOURCES
   src/thermal.cpp
   src/timer.cpp
   src/tpms.cpp
+  src/tpms_functions.cpp
   src/track_output.cpp
   src/universe.cpp
   src/urr.cpp

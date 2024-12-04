@@ -18,6 +18,7 @@
 #include "openmc/vector.h"
 
 #include "tpms.h"
+#include "tpms_functions.h"
 
 namespace openmc {
 
@@ -56,6 +57,7 @@ public:
   //! \return true if the point is on the "positive" side of the surface and
   //!   false otherwise.
   bool sense(Position r, Direction u) const;
+  virtual bool is_tpms() const {return false;};
 
   //! Determine the direction of a ray reflected from the surface.
   //! \param[in] r The point at which the ray is incident.
@@ -332,6 +334,7 @@ public:
 class SurfaceTPMS : public CSGSurface {
 public:
   explicit SurfaceTPMS(pugi::xml_node surf_node);
+  bool is_tpms() const {return true;};
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident, double max_range) const;
   Direction normal(Position r) const;
@@ -341,6 +344,31 @@ public:
   double x0, y0, z0;
   double a, b, c, d, e, f, g, h, i;
   std::string surface_type;
+
+private:
+  std::list<std::string> tpms_types = {"Schwarz_P", "Gyroid", "Diamond"};
+};
+
+//==============================================================================
+// Interpolated TPMS surfaces
+//==============================================================================
+
+class SurfaceFunctionTPMS : public CSGSurface {
+public:
+  explicit SurfaceFunctionTPMS(pugi::xml_node surf_node);
+  ~SurfaceFunctionTPMS();
+  bool is_tpms() const {return true;};
+  double evaluate(Position r) const;
+  double distance(Position r, Direction u, bool coincident, double max_range) const;
+  Direction normal(Position r) const;
+  void to_hdf5_inner(hid_t group_id) const;
+
+  FunctionForTPMS* fPitch;
+  FunctionForTPMS* fThickness;
+  double x0, y0, z0;
+  double a, b, c, d, e, f, g, h, i;
+  std::string surface_type;
+  std::string function_type;
 
 private:
   std::list<std::string> tpms_types = {"Schwarz_P", "Gyroid", "Diamond"};

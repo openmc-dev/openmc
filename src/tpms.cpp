@@ -1,5 +1,7 @@
 #include "openmc/tpms.h"
 
+#include "openmc/error.h"
+
 #include "openmc/constants.h"
 
 namespace openmc {
@@ -8,9 +10,8 @@ namespace openmc {
 // *   TPMS GENERAL DEFINITION AND RAY TRACING SOLVER
 // *****************************************************************************
 
-TPMS::TPMS(double _cst, double _pitch, double _x0, double _y0, double _z0, double _a, double _b, double _c, double _d, double _e, double _f, double _g, double _h, double _i)
+TPMS::TPMS(double _x0, double _y0, double _z0, double _a, double _b, double _c, double _d, double _e, double _f, double _g, double _h, double _i)
 {
-    cst = _cst; pitch = _pitch;
     x0 = _x0; y0 = _y0; z0 = _z0;
     a = _a; b = _b; c = _c; d = _d; e = _e; f = _f; g = _g; h = _h; i = _i;
 }
@@ -116,6 +117,58 @@ double TPMS::ray_tracing(Position r, Direction u, double max_range)
 }
 
 // *****************************************************************************
+// *   TPMS CLASSIC DEFINITION WITH CONSTANT PITCH AND THICKNESS
+// *****************************************************************************
+
+TPMSClassic::TPMSClassic(double _cst, double _pitch, double _x0, double _y0, double _z0, double _a, double _b, double _c, double _d, double _e, double _f, double _g, double _h, double _i)
+: TPMS( _x0, _y0, _z0, _a, _b, _c, _d, _e, _f, _g, _h, _i), cst(_cst), pitch(_pitch)
+{}
+
+// *****************************************************************************
+// *   TPMS FUNCTION DEFINITION WITH NON-CONSTANT PITCH AND THICKNESS
+// *****************************************************************************
+
+TPMSFunction::TPMSFunction(const FunctionForTPMS& _fThickness, const FunctionForTPMS& _fPitch, double _x0, double _y0, double _z0, double _a, double _b, double _c, double _d, double _e, double _f, double _g, double _h, double _i)
+: fThickness(_fThickness), fPitch(_fPitch), TPMS(_x0, _y0, _z0, _a, _b, _c, _d, _e, _f, _g, _h, _i)
+{}
+
+double TPMSFunction::get_pitch(Position r) const
+{
+    double pitch = fPitch.fxyz(r.x, r.y, r.z);
+    return pitch;
+}
+
+double TPMSFunction::get_thickness(Position r) const
+{
+    double thickness = fThickness.fxyz(r.x, r.y, r.z);
+    return thickness;
+}
+
+std::vector<double> TPMSFunction::get_pitch_first_partial_derivatives(Position r) const
+{
+    std::vector<double> derivatives = fPitch.first_partial_derivatives(r.x, r.y, r.z);
+    return derivatives;
+}
+
+std::vector<double> TPMSFunction::get_thickness_first_partial_derivatives(Position r) const
+{
+    std::vector<double> derivatives = fThickness.first_partial_derivatives(r.x, r.y, r.z);
+    return derivatives;
+}
+
+std::vector<std::vector<double>> TPMSFunction::get_pitch_second_partial_derivatives(Position r) const
+{
+    std::vector<std::vector<double>> derivatives = fPitch.second_partial_derivatives(r.x, r.y, r.z);
+    return derivatives;
+}
+
+std::vector<std::vector<double>> TPMSFunction::get_thickness_second_partial_derivatives(Position r) const
+{
+    std::vector<std::vector<double>> derivatives = fThickness.second_partial_derivatives(r.x, r.y, r.z);
+    return derivatives;
+}
+
+// *****************************************************************************
 // *   SCHWARZ P DEFINITION
 // *****************************************************************************
 
@@ -140,10 +193,10 @@ Direction SchwarzP::normal(Position r) const
     const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
     const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
     const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
-    const double dx = -a*sin(l*xx) -d*sin(l*yy) -g*sin(l*zz);
-    const double dy = -b*sin(l*xx) -e*sin(l*yy) -h*sin(l*zz);
-    const double dz = -c*sin(l*xx) -f*sin(l*yy) -i*sin(l*zz);
-    const double norm = pow(pow(dx,2)+pow(dy,2)+pow(dx,2),0.5);
+    const double dx = l*(-a*sin(l*xx) -d*sin(l*yy) -g*sin(l*zz));
+    const double dy = l*(-b*sin(l*xx) -e*sin(l*yy) -h*sin(l*zz));
+    const double dz = l*(-c*sin(l*xx) -f*sin(l*yy) -i*sin(l*zz));
+    const double norm = pow(pow(dx,2)+pow(dy,2)+pow(dz,2),0.5);
     Direction grad = Direction(dx/norm, dy/norm, dz/norm);
     return grad;
 }
@@ -234,7 +287,7 @@ Direction Gyroid::normal(Position r) const
     const double dx = 0.5*l*((-a + d)*cosxmy + (a + d)*cosxpy + (a - g)*cosxmz + (a + g)*cosxpz + (-d + g)*cosymz + (d + g)*cosypz);
     const double dy = 0.5*l*((-b + e)*cosxmy + (b + e)*cosxpy + (b - h)*cosxmz + (b + h)*cosxpz + (-e + h)*cosymz + (e + h)*cosypz);
     const double dz = 0.5*l*((-c + f)*cosxmy + (c + f)*cosxpy + (c - i)*cosxmz + (c + i)*cosxpz + (-f + i)*cosymz + (f + i)*cosypz);
-    const double norm = pow(pow(dx,2)+pow(dy,2)+pow(dx,2),0.5);
+    const double norm = pow(pow(dx,2)+pow(dy,2)+pow(dz,2),0.5);
     Direction grad = Direction(dx/norm, dy/norm, dz/norm);
     return grad;
 }
@@ -323,7 +376,7 @@ Direction Diamond::normal(Position r) const
     const double dx = 0.5*l*((-a + d + g)*cosypzmx + (a - d + g)*coszpxmy + (a + d - g)*cosxpymz + (a + d + g)*cosxpypz);
     const double dy = 0.5*l*((-b + e + h)*cosypzmx + (b - e + h)*coszpxmy + (b + e - h)*cosxpymz + (b + e + h)*cosxpypz);
     const double dz = 0.5*l*((-c + f + i)*cosypzmx + (c - f + i)*coszpxmy + (c + f - i)*cosxpymz + (c + f + i)*cosxpypz);
-    const double norm = pow(pow(dx,2)+pow(dy,2)+pow(dx,2),0.5);
+    const double norm = pow(pow(dx,2)+pow(dy,2)+pow(dz,2),0.5);
     Direction grad = Direction(dx/norm, dy/norm, dz/norm);
     return grad;
 }
@@ -377,5 +430,280 @@ double Diamond::sampling_frequency(Direction u) const
     pmax = std::max_element(pulses.begin(), pulses.end());
     return 0.125*pitch / *pmax;
 }
+
+// *****************************************************************************
+// *   FUNCTION PITCH & THICKNESS SCHWARZ P DEFINITION
+// *****************************************************************************
+
+double FunctionSchwarzP::evaluate(Position r) const
+{
+    const double x = r.x;
+    const double y = r.y;
+    const double z = r.z;
+    const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
+    const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
+    const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
+    Position rr = Position(xx,yy,zz);
+    const double local_pitch = this->get_pitch(rr);
+    const double local_thickness = this->get_thickness(rr);
+    const double l = 2*M_PI/local_pitch;
+    const double local_cst = l*local_thickness;
+    return cos(l*xx) + cos(l*yy) + cos(l*zz) - local_cst;
+}
+
+Direction FunctionSchwarzP::normal(Position r) const
+{
+    const double x = r.x;
+    const double y = r.y;
+    const double z = r.z;
+    const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
+    const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
+    const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
+    Position rr = Position(xx,yy,zz);
+    const double local_pitch = this->get_pitch(rr);
+    const double local_thickness = this->get_thickness(rr);
+    const std::vector<double> der_pitch = this->get_pitch_first_partial_derivatives(rr);
+    const std::vector<double> der_thick = this->get_thickness_first_partial_derivatives(rr);
+    const double l = 2*M_PI/local_pitch;
+    const double dxx_l = -l*der_pitch[0]/local_pitch;
+    const double dyy_l = -l*der_pitch[1]/local_pitch;
+    const double dzz_l = -l*der_pitch[2]/local_pitch;
+    const double dx_l = a*dxx_l + d*dyy_l + g*dzz_l;
+    const double dy_l = b*dxx_l + e*dyy_l + h*dzz_l;
+    const double dz_l = c*dxx_l + f*dyy_l + i*dzz_l;
+    const double dxx_cst = dxx_l*local_thickness + l * der_thick[0];
+    const double dyy_cst = dyy_l*local_thickness + l * der_thick[1];
+    const double dzz_cst = dzz_l*local_thickness + l * der_thick[2];
+    const double dx_cst = a*dxx_cst + d*dyy_cst + g*dzz_cst;
+    const double dy_cst = b*dxx_cst + e*dyy_cst + h*dzz_cst;
+    const double dz_cst = c*dxx_cst + f*dyy_cst + i*dzz_cst;    
+    const double dx = -(xx*dx_l + a*l)*sin(l*xx) -(yy*dx_l + d*l)*sin(l*yy) -(zz*dx_l + g*l)*sin(l*zz) - dx_cst;
+    const double dy = -(xx*dy_l + b*l)*sin(l*xx) -(yy*dy_l + e*l)*sin(l*yy) -(zz*dy_l + h*l)*sin(l*zz) - dy_cst;
+    const double dz = -(xx*dz_l + c*l)*sin(l*xx) -(yy*dz_l + f*l)*sin(l*yy) -(zz*dz_l + i*l)*sin(l*zz) - dz_cst;
+    const double norm = pow(pow(dx,2)+pow(dy,2)+pow(dz,2),0.5);
+    Direction grad = Direction(dx/norm, dy/norm, dz/norm);
+    return grad;
+}
+
+double FunctionSchwarzP::fk(double k, Position r, Direction u) const
+{
+    const double x = r.x + k*u.x;
+    const double y = r.y + k*u.y;
+    const double z = r.z + k*u.z;
+    Position rk = Position(x,y,z);
+    return this->evaluate(rk);
+}
+
+double FunctionSchwarzP::fpk(double k, Position r, Direction u) const
+{
+    if (fPitch.useFirstDerivatives == false)
+    {
+        double dk = 1.e-9;
+        double f1 = this->fk(k+dk, r, u);
+        double f0 = this->fk(k-dk, r, u);
+        double brut_value = (f1-f0)/(2*dk);
+        return (f1-f0)/(2*dk);
+    }
+    else
+    {
+        // to code explicit derivatives the day functions not using approximate derivatives are implemented
+        fatal_error("Analitical first derivate is not implemented for FunctionSchwarzP.");
+    }
+}
+
+double FunctionSchwarzP::fppk(double k, Position r, Direction u) const
+{
+    if (fPitch.useSecondDerivatives == false)
+    {
+        double dk = 1.e-9;
+        double f2 = this->fk(k+dk, r, u);
+        double f1 = this->fk(k, r, u);
+        double f0 = this->fk(k-dk, r, u);
+        return (f2-2*f1+f0)/(pow(dk,2));
+    }
+    else
+    {
+        // to code explicit derivatives the day functions not using approximate derivatives are implemented
+        fatal_error("Analitical second derivate is not implemented for FunctionSchwarzP.");
+    }
+}
+
+double FunctionSchwarzP::sampling_frequency(Direction u) const
+{
+    const double xxp = a*u.x + b*u.y + c*u.z;
+    const double yyp = d*u.x + e*u.y + f*u.z;
+    const double zzp = g*u.x + h*u.y + i*u.z;
+    std::vector<double> pulses = {abs(xxp), abs(yyp), abs(zzp)};
+    std::vector<double>::iterator pmax;
+    pmax = std::max_element(pulses.begin(), pulses.end());
+    const double min_pitch = fPitch.minimalValue;
+    if (min_pitch <= 0.) {fatal_error("Pitch matrix for interpolation contains zero or negative values.");}
+    return 0.125*min_pitch / *pmax;
+}
+
+// *****************************************************************************
+// *   FUNCTION PITCH & THICKNESS GYROID DEFINITION
+// *****************************************************************************
+
+double FunctionGyroid::evaluate(Position r) const
+{
+    const double x = r.x;
+    const double y = r.y;
+    const double z = r.z;
+    const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
+    const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
+    const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
+    Position rr = Position(xx,yy,zz);
+    const double local_pitch = this->get_pitch(rr);
+    const double local_thickness = this->get_thickness(rr);
+    const double l = 2*M_PI/local_pitch;
+    const double local_cst = l*local_thickness;
+    return sin(l*xx)*cos(l*zz) + sin(l*yy)*cos(l*xx) + sin(l*zz)*cos(l*yy) - local_cst;
+}
+
+Direction FunctionGyroid::normal(Position r) const
+{
+    // TODO: a coder quand j'aurais un peu moins la flemme.
+    return Direction();
+}
+
+double FunctionGyroid::fk(double k, Position r, Direction u) const
+{
+    const double x = r.x + k*u.x;
+    const double y = r.y + k*u.y;
+    const double z = r.z + k*u.z;
+    Position rk = Position(x,y,z);
+    return this->evaluate(rk);
+}
+
+double FunctionGyroid::fpk(double k, Position r, Direction u) const
+{
+    if (fPitch.useFirstDerivatives == false)
+    {
+        double dk = 1.e-9;
+        double f1 = this->fk(k+dk, r, u);
+        double f0 = this->fk(k-dk, r, u);
+        double brut_value = (f1-f0)/(2*dk);
+        return (f1-f0)/(2*dk);
+    }
+    else
+    {
+        // to code explicit derivatives the day functions not using approximate derivatives are implemented
+        fatal_error("Analitical first derivate is not implemented for FunctionSchwarzP.");
+    }
+}
+
+double FunctionGyroid::fppk(double k, Position r, Direction u) const
+{
+    if (fPitch.useSecondDerivatives == false)
+    {
+        double dk = 1.e-9;
+        double f2 = this->fk(k+dk, r, u);
+        double f1 = this->fk(k, r, u);
+        double f0 = this->fk(k-dk, r, u);
+        return (f2-2*f1+f0)/(pow(dk,2));
+    }
+    else
+    {
+        // to code explicit derivatives the day functions not using approximate derivatives are implemented
+        fatal_error("Analitical second derivate is not implemented for FunctionSchwarzP.");
+    }
+}
+
+double FunctionGyroid::sampling_frequency(Direction u) const
+{
+    const double xxp = a*u.x + b*u.y + c*u.z;
+    const double yyp = d*u.x + e*u.y + f*u.z;
+    const double zzp = g*u.x + h*u.y + i*u.z;
+    std::vector<double> pulses = {abs(xxp+yyp), abs(xxp-yyp), abs(xxp+zzp), abs(xxp-zzp), abs(yyp+zzp), abs(yyp-zzp)};
+    std::vector<double>::iterator pmax;
+    pmax = std::max_element(pulses.begin(), pulses.end());
+    const double min_pitch = fPitch.minimalValue;
+    if (min_pitch <= 0.) {fatal_error("Pitch matrix for interpolation contains zero or negative values.");}
+    return 0.125*min_pitch / *pmax;
+}
+
+// *****************************************************************************
+// *   FUNCTION PITCH & THICKNESS DIAMOND DEFINITION
+// *****************************************************************************
+
+double FunctionDiamond::evaluate(Position r) const
+{
+    const double x = r.x;
+    const double y = r.y;
+    const double z = r.z;
+    const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
+    const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
+    const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
+    Position rr = Position(xx,yy,zz);
+    const double local_pitch = this->get_pitch(rr);
+    const double local_thickness = this->get_thickness(rr);
+    const double l = 2*M_PI/local_pitch;
+    const double local_cst = l*local_thickness;
+    return 0.5*sin(l*(-xx+yy+zz)) + 0.5*sin(l*(+xx-yy+zz)) + 0.5*sin(l*(+xx+yy-zz)) + 0.5*sin(l*(+xx+yy+zz)) - local_cst;
+}
+
+Direction FunctionDiamond::normal(Position r) const
+{
+    // TODO: a coder quand j'aurais un peu moins la flemme.
+    return Direction();
+}
+
+double FunctionDiamond::fk(double k, Position r, Direction u) const
+{
+    const double x = r.x + k*u.x;
+    const double y = r.y + k*u.y;
+    const double z = r.z + k*u.z;
+    Position rk = Position(x,y,z);
+    return this->evaluate(rk);
+}
+
+double FunctionDiamond::fpk(double k, Position r, Direction u) const
+{
+    if (fPitch.useFirstDerivatives == false)
+    {
+        double dk = 1.e-9;
+        double f1 = this->fk(k+dk, r, u);
+        double f0 = this->fk(k-dk, r, u);
+        double brut_value = (f1-f0)/(2*dk);
+        return (f1-f0)/(2*dk);
+    }
+    else
+    {
+        // to code explicit derivatives the day functions not using approximate derivatives are implemented
+        fatal_error("Analitical first derivate is not implemented for FunctionSchwarzP.");
+    }
+}
+
+double FunctionDiamond::fppk(double k, Position r, Direction u) const
+{
+    if (fPitch.useSecondDerivatives == false)
+    {
+        double dk = 1.e-9;
+        double f2 = this->fk(k+dk, r, u);
+        double f1 = this->fk(k, r, u);
+        double f0 = this->fk(k-dk, r, u);
+        return (f2-2*f1+f0)/(pow(dk,2));
+    }
+    else
+    {
+        // to code explicit derivatives the day functions not using approximate derivatives are implemented
+        fatal_error("Analitical second derivate is not implemented for FunctionSchwarzP.");
+    }
+}
+
+double FunctionDiamond::sampling_frequency(Direction u) const
+{
+    const double xxp = a*u.x + b*u.y + c*u.z;
+    const double yyp = d*u.x + e*u.y + f*u.z;
+    const double zzp = g*u.x + h*u.y + i*u.z;
+    std::vector<double> pulses = {abs(+xxp+yyp+zzp), abs(+xxp+yyp-zzp), abs(+xxp-yyp+zzp), abs(-xxp+yyp+zzp)};
+    std::vector<double>::iterator pmax;
+    pmax = std::max_element(pulses.begin(), pulses.end());
+    const double min_pitch = fPitch.minimalValue;
+    if (min_pitch <= 0.) {fatal_error("Pitch matrix for interpolation contains zero or negative values.");}
+    return 0.125*min_pitch / *pmax;
+}
+
 
 }

@@ -1243,8 +1243,6 @@ class Model:
                                     f"Volume of cell ID={cell.id} not specified. "
                                     "Set volumes of cells prior to using "
                                     "diff_volume_method='match cell'.")
-                            mat.volume = cell.volume
-                            break
                 distribmats.add(mat)
 
         if distribmats:
@@ -1256,6 +1254,7 @@ class Model:
                         cell.fill = [mat.clone() for _ in range(cell.num_instances)]
                     elif diff_volume_method == 'match cell':
                         cell.fill = mat.clone()
+                        cell.fill.volume = cell.volume
                     if isinstance(cell, openmc.DAGMCCell):
                         for i in range(cell.num_instances):
                             cell.fill[i].name = f"{cell.fill[i].name}_{cell.id}_{i}"

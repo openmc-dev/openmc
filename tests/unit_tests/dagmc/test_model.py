@@ -111,8 +111,7 @@ def test_model_differentiate_depletable_with_DAGMC():
     model.finalize_lib()
 
 
-def test_model_differentiate_with_DAGMC():
-    
+def test_model_differentiate_with_DAGMC(): 
     model = set_dagmc_model()
     root = model.geometry.root_universe
     ll, ur = root.bounding_box

@@ -2072,7 +2072,9 @@ class UnstructuredMesh(MeshBase):
     Parameters
     ----------
     filename : path-like
-        Location of the unstructured mesh file
+        Location of the unstructured mesh file. Supported files for 'moab'
+        library are .h5 and .vtk. Supported files for 'libmesh' library are
+        exodus mesh files .exo.
     library : {'moab', 'libmesh'}
         Mesh library used for the unstructured mesh tally
     mesh_id : int

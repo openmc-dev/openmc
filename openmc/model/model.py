@@ -325,7 +325,7 @@ class Model:
         # communicator
         openmc.lib.init(args=args, intracomm=intracomm, output=output)
 
-    def sync_dagmc_universe(self):
+    def sync_dagmc_universes(self):
         """
         Synchronize all DAGMC universes in the current geometry.
         This method iterates over all DAGMC universes in the geometry and
@@ -1189,7 +1189,7 @@ class Model:
         ----------
         diff_volume_method : str
             Specifies how the volumes of the new materials should be found.
-            Default is to 'None', do not apply volume to the new materials,
+            Default is 'None', do not apply volume to the new materials,
             'divide equally' which divides the original material
             volume equally between the new materials,
             'match cell' sets the volume of the material to volume of the cell
@@ -1206,11 +1206,9 @@ class Model:
         ----------
         diff_volume_method : str
             Specifies how the volumes of the new materials should be found.
-            Default is to 'None', do not apply volume to the new materials, 
-            'divide equally' which divides the original material
-            volume equally between the new materials, 
-            'match cell' sets the volume of the material to volume of the cell 
-            they fill.
+            - 'None': Do not assign volumes to the new materials (Default)
+            - 'divide_equally': Divide the original material volume equally between the new materials
+            - 'match cell': Set the volume of the material to the volume of the cell they fill
         depletable_only : bool
             Default is True, only depletable materials will be differentiated all materials will be 
             differentiated otherwise.
@@ -1229,7 +1227,7 @@ class Model:
             for mat in distribmats:
                 if mat.volume is None:
                     raise RuntimeError(
-                        "Volume not specified for depletable "
+                        "Volume not specified for "
                         f"material with ID={mat.id}."
                     )
                 mat.volume /= mat.num_instances

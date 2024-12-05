@@ -200,7 +200,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int max_materials,
 
   std::array<int, 3> n_rays = {nx, ny, nz};
 
-  // Loop over rays on left face of bounding box
+  // Determine effective width of rays
   Position width((bbox.xmax - bbox.xmin) / nx, (bbox.ymax - bbox.ymin) / ny,
     (bbox.zmax - bbox.zmin) / nz);
 
@@ -235,6 +235,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int max_materials,
       int n1 = n_rays[ax1];
       int n2 = n_rays[ax2];
 
+      // Loop over rays on face of bounding box
 #pragma omp for
       for (int i1 = 0; i1 < n1; ++i1) {
         site.r[ax1] = min1 + (i1 + 0.5) * d1;

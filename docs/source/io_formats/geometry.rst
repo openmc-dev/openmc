@@ -407,6 +407,13 @@ Each ``<dagmc_universe>`` element can have the following attributes or sub-eleme
 
     *Default*: None
 
+  :material_overrides:
+    Dictionnary of material overrides to be applied to the DAGMC universe. The keys are 
+    the material name or the Cell ID in the DAGMC Geometry and the values are the 
+    corresponding material IDs or name in the OpenMC model.
+
+    *Default*: None
+
 
   .. note:: A geometry.xml file containing only a DAGMC model for a file named `dagmc.h5m` (no CSG)
             looks as follows

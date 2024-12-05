@@ -86,7 +86,7 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
       vector<std::string> instance_mats = split(iss.str(), ';');
 
       // Store mat name for each instances
-      instance_material_overrides.insert(
+      material_overrides.insert(
         std::make_pair(mat_ref_assignment, instance_mats));
     }
   }
@@ -234,9 +234,8 @@ void DAGUniverse::init_geometry()
     if (mat_str == "void" || mat_str == "vacuum" || mat_str == "graveyard") {
       c->material_.push_back(MATERIAL_VOID);
     } else {
-      if (instance_material_overrides.count("id_" + std::to_string(c->id_)) ||
-          instance_material_overrides.count(
-            mat_str)) { // Check for material override
+      if (material_overrides.count("id_" + std::to_string(c->id_)) ||
+          material_overrides.count(mat_str)) { // Check for material override
         override_assign_material(mat_str, vol_handle, c);
       } else if (uses_uwuw()) { // UWUW assignement
         uwuw_assign_material(vol_handle, c);
@@ -639,10 +638,11 @@ void DAGUniverse::override_assign_material(std::string key,
   // if Cell ID matches an override key, use it to override the material
   // assignment else if UWUW is used, get the material assignment from the DAGMC
   // metadata
-  std::cout << "XML instance"
-            << instance_material_overrides.count("id_" + std::to_string(c->id_))
-            << std::endl;
-  if (instance_material_overrides.count("id_" + std::to_string(c->id_))) {
+  std::stringstream msg;
+  msg << "XML instance"
+      << material_overrides.count("id_" + std::to_string(c->id_));
+  write_message(msg.str(), 5);
+  if (material_overrides.count("id_" + std::to_string(c->id_))) {
     key = "id_" + std::to_string(c->id_);
   } else if (uses_uwuw()) {
     key = dmd_ptr->volume_material_property_data_eh[vol_handle];
@@ -650,7 +650,7 @@ void DAGUniverse::override_assign_material(std::string key,
 
   // Override the material assignment for each cell instance using the legacy
   // assignement
-  for (auto mat_str_instance : instance_material_overrides.at(key)) {
+  for (auto mat_str_instance : material_overrides.at(key)) {
     legacy_assign_material(mat_str_instance, c);
   }
 }
@@ -870,15 +870,19 @@ extern "C" int openmc_dagmc_universe_get_cell_ids(
   // make sure the universe id is a DAGMC Universe
   const auto& univ = model::universes[model::universe_map[univ_id]];
   if (univ->geom_type() != GeometryType::DAG) {
-    fatal_error(
+    set_errmsg(
       "Universe " + std::to_string(univ_id) + " is not a DAGMC Universe!");
+    return OPENMC_E_INVALID_TYPE;
   }
 
   std::vector<int32_t> dag_cell_ids;
   for (const auto& cell_index : univ->cells_) {
     const auto& cell = model::cells[cell_index];
-    if (cell->geom_type() == GeometryType::DAG)
-      dag_cell_ids.push_back(cell->id_);
+    if (cell->geom_type() == GeometryType::CSG) {
+      set_errmsg("Cell " + std::to_string(cell->id_) + " is not a DAGMC Cell!");
+      return OPENMC_E_INVALID_TYPE;
+    }
+    dag_cell_ids.push_back(cell->id_);
   }
   std::copy(dag_cell_ids.begin(), dag_cell_ids.end(), ids);
   *n = dag_cell_ids.size();
@@ -890,8 +894,9 @@ extern "C" int openmc_dagmc_universe_get_num_cells(int32_t univ_id, size_t* n)
   // make sure the universe id is a DAGMC Universe
   const auto& univ = model::universes[model::universe_map[univ_id]];
   if (univ->geom_type() != GeometryType::DAG) {
-    fatal_error(
+    set_errmsg(
       "Universe " + std::to_string(univ_id) + " is not a DAGMC Universe");
+    return OPENMC_E_INVALID_TYPE;
   }
   *n = univ->cells_.size();
   return 0;
@@ -906,12 +911,14 @@ namespace openmc {
 extern "C" int openmc_dagmc_universe_get_cell_ids(
   int32_t univ_id, int32_t* ids, size_t* n)
 {
-  fatal_error("OpenMC was not configured with DAGMC");
+  set_errmsg("OpenMC was not configured with DAGMC");
+  return OPENMC_E_UNASSIGNED;
 };
 
 extern "C" int openmc_dagmc_universe_get_num_cells(int32_t univ_id, size_t* n)
 {
-  fatal_error("OpenMC was not configured with DAGMC");
+  set_errmsg("OpenMC was not configured with DAGMC");
+  return OPENMC_E_UNASSIGNED;
 };
 
 void read_dagmc_universes(pugi::xml_node node)

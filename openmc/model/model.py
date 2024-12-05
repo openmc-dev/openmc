@@ -1218,19 +1218,34 @@ class Model:
         # Count the number of instances for each cell and material
         self.geometry.determine_paths(instances_only=True)
 
-        # Extract all or depletable_only materials which have multiple instance
-        distribmats = set(
-            [mat for mat in self.materials
-                if (mat.depletable or not depletable_only) and mat.num_instances > 1])
-
-        if diff_volume_method == "divide equally":
-            for mat in distribmats:
-                if mat.volume is None:
-                    raise RuntimeError(
-                        "Volume not specified for "
-                        f"material with ID={mat.id}."
-                    )
-                mat.volume /= mat.num_instances
+        # Find all or depletable_only materials which have multiple instance
+        distribmats = set()
+        for mat in self.materials:
+            # Differentiate all materials with multiple instances
+            diff_mat = mat.num_instances > 1
+            # If depletable_only is True, differentiate only depletable materials
+            if depletable_only:
+                diff_mat = diff_mat and mat.depletable
+            if diff_mat:
+                # Assign volumes to the materials according to requirements
+                if diff_volume_method == "divide equally":
+                    if mat.volume is None:
+                        raise RuntimeError(
+                            "Volume not specified for "
+                            f"material with ID={mat.id}.")
+                    else:
+                        mat.volume /= mat.num_instances
+                elif diff_volume_method == "match cell":
+                    for cell in self.geometry.get_all_material_cells().values():
+                        if cell.fill == mat:
+                            if not cell.volume:
+                                raise ValueError(
+                                    f"Volume of cell ID={cell.id} not specified. "
+                                    "Set volumes of cells prior to using "
+                                    "diff_volume_method='match cell'.")
+                            mat.volume = cell.volume
+                            break
+                distribmats.add(mat)
 
         if distribmats:
             # Assign distribmats to cells
@@ -1241,14 +1256,6 @@ class Model:
                         cell.fill = [mat.clone() for _ in range(cell.num_instances)]
                     elif diff_volume_method == 'match cell':
                         cell.fill = mat.clone()
-                        for i in range(cell.num_instances):
-                            if not cell.volume:
-                                raise ValueError(
-                                    f"Volume of cell ID={cell.id} not specified. "
-                                    "Set volumes of cells prior to using "
-                                    "diff_volume_method='match cell'."
-                                )
-                            cell.fill.volume = cell.volume
                     if isinstance(cell, openmc.DAGMCCell):
                         for i in range(cell.num_instances):
                             cell.fill[i].name = f"{cell.fill[i].name}_{cell.id}_{i}"

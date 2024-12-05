@@ -95,7 +95,7 @@ def test_model_differentiate_depletable_with_DAGMC():
     p = Path("differentiate_depletable_mats/divide_equally")
     p.mkdir(parents=True, exist_ok=True)
     model.init_lib()
-    model.sync_dagmc_universe()
+    model.sync_dagmc_universes()
     model.calculate_volumes(cwd=p)
 
     # Get the volume of the no-void fuel material before differentiation
@@ -114,10 +114,13 @@ def test_model_differentiate_depletable_with_DAGMC():
 def test_model_differentiate_with_DAGMC():
     
     model = set_dagmc_model()
+    root = model.geometry.root_universe
+    ll, ur = root.bounding_box
+
     p = Path("differentiate_depletable_mats/divide_equally")
     p.mkdir(parents=True, exist_ok=True)
     model.init_lib()
-    model.sync_dagmc_universe()
+    model.sync_dagmc_universes()
     model.calculate_volumes(cwd=p)
     # Get the volume of the no-void fuel material before differentiation
     volume_before = np.sum([m.volume for m in model.materials if m.name == "no-void fuel"])

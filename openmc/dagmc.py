@@ -143,8 +143,8 @@ class DAGMCUniverse(openmc.UniverseBase):
                 if key not in self.material_names:
                     raise ValueError(
                         f"Material name '{key}' not found in DAGMC file")
-                # ensuring overrides is an iterable of material name (strings)
-                cv.check_iterable_type('material objects', value, str)
+                # ensuring overrides is an iterable of openmc.Material
+                cv.check_iterable_type('material objects', value, openmc.Material)
 
         self._material_overrides = val
 
@@ -157,8 +157,8 @@ class DAGMCUniverse(openmc.UniverseBase):
         ----------
         key : str
             Material name to override
-        value : Iterable of str
-            Material names to replace the key with
+        value : Iterable of Materials
+            Materials to replace the key with
 
         """
         key = ""
@@ -170,7 +170,7 @@ class DAGMCUniverse(openmc.UniverseBase):
                 raise ValueError(
                     f"Cell ID '{cell_id}' not found in DAGMC universe")
             else:
-                key = str(cell_id)
+                key = self.cells[cell_id]
         elif mat_name:
             cv.check_type('material name', mat_name, str)
             if mat_name not in self.material_names:
@@ -181,7 +181,7 @@ class DAGMCUniverse(openmc.UniverseBase):
         else:
             raise ValueError("Either 'mat_name' or 'cell_id' must be set")
         
-        cv.check_iterable_type('material objects', overrides, str)
+        cv.check_iterable_type('material objects', overrides, openmc.Materials)
         self.material_overrides[mat_name] = overrides
 
     @property
@@ -288,9 +288,8 @@ class DAGMCUniverse(openmc.UniverseBase):
         if self.material_overrides:
             mat_element = ET.Element('material_overrides')
             for key in self.material_overrides:
-                print(key, self.material_overrides[key])
-                mat_element.set('id_{}'.format(key), ';'.join(
-                    t for t in self.material_overrides[key]))
+                mat_element.set('id_{}'.format(key.id), ';'.join(
+                    t.name for t in self.material_overrides[key]))
             dagmc_element.append(mat_element)
         xml_element.append(dagmc_element)
 
@@ -304,7 +303,7 @@ class DAGMCUniverse(openmc.UniverseBase):
         self.material_overrides = {}
         for cell in self.cells.values():
             if isinstance(cell.fill, Iterable):
-                self.material_overrides[str(cell.id)] = [mat.name for mat in cell.fill if mat]
+                self.material_overrides[cell] = [mat for mat in cell.fill if mat]
 
     def bounding_region(
         self,
@@ -428,7 +427,7 @@ class DAGMCUniverse(openmc.UniverseBase):
         return out
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem, mats):
         """Generate DAGMC universe from XML element
 
         Parameters
@@ -457,8 +456,10 @@ class DAGMCUniverse(openmc.UniverseBase):
         for item in elem.find('material_overrides').attrib:
             origin_mat, overwrite = item
             for mat_name in overwrite.split():
-                out.material_overrides.setdefault(
-                            origin_mat.lower(), []).append(mat_name)
+                for mat in mats:
+                    if mat_name == mat.name:
+                        out.material_overrides.setdefault(
+                                    origin_mat.lower(), []).append(mat)
 
         return out
 

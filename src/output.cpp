@@ -507,6 +507,7 @@ void print_runtime()
 
 double variance_of_variance(const double* x, int n)
 {
+  // Need to choose a bin for each tally
   double sum = (x[static_cast<int>(TallyResult::SUM)]) ; 
   double sum_sq = (x[static_cast<int>(TallyResult::SUM_SQ)]) ;
   double sum_rd = (x[static_cast<int>(TallyResult::SUM_THIRD)]) ;
@@ -525,6 +526,25 @@ double variance_of_variance(const double* x, int n)
   return vov;
 }
 
+double figure_of_merit(const double* x, int n)
+{
+  using namespace simulation;
+  // choose a bin for each tally
+  double mean = x[static_cast<int>(TallyResult::SUM)] / n;
+  double stdev =
+    n > 1 ? std::sqrt(std::max(0.0,
+              (x[static_cast<int>(TallyResult::SUM_SQ)] / n - mean * mean) /
+                (n - 1)))
+          : 0.0;
+  double relative_error = stdev / mean;
+  double computer_time = time_total.elapsed(); // not sure that this is the computer time defined in the manual
+  
+  double fom = 1/(relative_error*relative_error*computer_time);
+
+  return fom;
+
+}
+
 std::pair<double, double> mean_stdev(const double* x, int n)
 {
   double mean = x[static_cast<int>(TallyResult::SUM)] / n;
@@ -535,6 +555,8 @@ std::pair<double, double> mean_stdev(const double* x, int n)
           : 0.0;
   return {mean, stdev};
 }
+
+
 
 //==============================================================================
 
@@ -733,9 +755,14 @@ void write_tallies()
           std::tie(mean, stdev) =
             mean_stdev(&tally.results_(filter_index, score_index, 0),
               tally.n_realizations_);
-          vov = variance_of_variance(&tally.results_(filter_index, score_index, 0),tally.n_realizations_);
-          fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6} -- VOV: {5:.6}\n", "",
-            indent + 1, score_name, mean, t_value * stdev, vov);
+          if (settings::vov_complete || settings::vov) {
+            vov = variance_of_variance(&tally.results_(filter_index, score_index, 0),tally.n_realizations_);
+            fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6} -- VOV: {5:.6}\n", "",
+              indent + 1, score_name, mean, t_value * stdev, vov);
+          } else {
+            fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6}\n", "",
+            indent + 1, score_name, mean, t_value * stdev);
+          }
           score_index += 1;
         }
         indent -= 3;

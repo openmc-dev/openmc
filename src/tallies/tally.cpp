@@ -731,8 +731,13 @@ void Tally::init_triggers(pugi::xml_node node)
 
 void Tally::init_results()
 {
+  // Modifications to the results array size to accumulate sum_third and sum_fourth
   int n_scores = scores_.size() * nuclides_.size();
-  results_ = xt::empty<double>({n_filter_bins_, n_scores, 5});
+  if (settings::vov_complete || settings::vov) {
+    results_ = xt::empty<double>({n_filter_bins_, n_scores, 5});
+  } else {
+  results_ = xt::empty<double>({n_filter_bins_, n_scores, 3});
+  }
 }
 
 void Tally::reset()
@@ -770,13 +775,22 @@ void Tally::accumulate()
 // Accumulate each result
 #pragma omp parallel for
     for (int i = 0; i < results_.shape()[0]; ++i) {
+      
       for (int j = 0; j < results_.shape()[1]; ++j) {
         double val = results_(i, j, TallyResult::VALUE) * norm;
         results_(i, j, TallyResult::VALUE) = 0.0;
         results_(i, j, TallyResult::SUM) += val;
         results_(i, j, TallyResult::SUM_SQ) += val * val;
-        results_(i, j, TallyResult::SUM_THIRD) += val * val * val;
-        results_(i, j, TallyResult::SUM_FOURTH) += val * val * val * val;
+        
+        if (settings::vov == true) {
+          results_(0, j, TallyResult::SUM_THIRD) += val * val * val;
+          results_(0, j, TallyResult::SUM_FOURTH) += val * val * val * val;
+        }
+
+        if (settings::vov_complete == true) {
+          results_(i, j, TallyResult::SUM_THIRD) += val * val * val;
+          results_(i, j, TallyResult::SUM_FOURTH) += val * val * val * val;
+        }
       }
     }
   }

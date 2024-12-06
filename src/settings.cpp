@@ -79,6 +79,8 @@ bool weight_window_checkpoint_surface {false};
 bool weight_window_checkpoint_collision {true};
 bool write_all_tracks {false};
 bool write_initial_source {false};
+bool vov {false};
+bool vov_complete {false};
 
 std::string path_cross_sections;
 std::string path_input;

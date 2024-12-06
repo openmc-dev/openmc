@@ -156,6 +156,8 @@ extern int trigger_batch_interval; //!< Batch interval for triggers
 extern "C" int verbosity;          //!< How verbose to make output
 extern double weight_cutoff;       //!< Weight cutoff for Russian roulette
 extern double weight_survive;      //!< Survival weight after Russian roulette
+extern bool vov;                    //!< Variance of Variance for one tally bin
+extern bool vov_complete;           //!< Variance of Variance for each tally bin  
 
 } // namespace settings
 

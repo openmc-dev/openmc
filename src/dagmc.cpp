@@ -638,10 +638,7 @@ void DAGUniverse::override_assign_material(std::string key,
   // if Cell ID matches an override key, use it to override the material
   // assignment else if UWUW is used, get the material assignment from the DAGMC
   // metadata
-  std::stringstream msg;
-  msg << "XML instance"
-      << material_overrides.count("id_" + std::to_string(c->id_));
-  write_message(msg.str(), 5);
+  write_message(fmt::format("XML instance {}", c->id_), 8);
   if (material_overrides.count("id_" + std::to_string(c->id_))) {
     key = "id_" + std::to_string(c->id_);
   } else if (uses_uwuw()) {

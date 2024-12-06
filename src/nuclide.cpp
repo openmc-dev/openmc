@@ -378,43 +378,25 @@ void Nuclide::create_derived(
       auto xs = xt::adapt(rx->xs_[t].value);
       auto pprod = xt::view(xs_[t], xt::range(j, j + n), XS_PHOTON_PROD);
 
-      if (settings::use_decay_photons) {
-        const auto& targets = rx->decay_products_;
-        if (!targets.empty()) {
-          for (const auto& target : targets) {
-            int idx = data::chain_nuclide_map.at(target.name);
-            const auto& chain_nuc = data::chain_nuclides[idx];
-            const auto& energy_dist = chain_nuc->photon_energy();
-            if (energy_dist) {
-              double photon_per_decay =
-                energy_dist->integral() / chain_nuc->decay_constant();
-              for (int k = 0; k < n; ++k) {
-                pprod[k] += xs[k] * target.branching_ratio * photon_per_decay;
-              }
-            }
-          }
-        }
-      } else {
-        for (const auto& p : rx->products_) {
-          if (p.particle_ == ParticleType::photon) {
-            for (int k = 0; k < n; ++k) {
-              double E = grid_[t].energy[k + j];
+      for (const auto& p : rx->products_) {
+        if (p.particle_ == ParticleType::photon) {
+          for (int k = 0; k < n; ++k) {
+            double E = grid_[t].energy[k + j];
 
-              // For fission, artificially increase the photon yield to
-              // account for delayed photons
-              double f = 1.0;
-              if (settings::delayed_photon_scaling) {
-                if (is_fission(rx->mt_)) {
-                  if (prompt_photons && delayed_photons) {
-                    double energy_prompt = (*prompt_photons)(E);
-                    double energy_delayed = (*delayed_photons)(E);
-                    f = (energy_prompt + energy_delayed) / (energy_prompt);
-                  }
+            // For fission, artificially increase the photon yield to
+            // account for delayed photons
+            double f = 1.0;
+            if (settings::delayed_photon_scaling) {
+              if (is_fission(rx->mt_)) {
+                if (prompt_photons && delayed_photons) {
+                  double energy_prompt = (*prompt_photons)(E);
+                  double energy_delayed = (*delayed_photons)(E);
+                  f = (energy_prompt + energy_delayed) / (energy_prompt);
                 }
               }
-
-              pprod[k] += f * xs[k] * (*p.yield_)(E);
             }
+
+            pprod[k] += f * xs[k] * (*p.yield_)(E);
           }
         }
       }

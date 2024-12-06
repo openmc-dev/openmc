@@ -590,53 +590,28 @@ void sample_photon_product(
     if (xs == 0.0)
       continue;
 
-    if (settings::use_decay_photons) {
-      const auto& targets = rx->decay_products_;
-      if (targets.empty())
-        continue;
+    for (int j = 0; j < rx->products_.size(); ++j) {
+      if (rx->products_[j].particle_ == ParticleType::photon) {
+        // For fission, artificially increase the photon yield to account
+        // for delayed photons
+        double f = 1.0;
+        if (settings::delayed_photon_scaling) {
+          if (is_fission(rx->mt_)) {
+            if (nuc->prompt_photons_ && nuc->delayed_photons_) {
+              double energy_prompt = (*nuc->prompt_photons_)(p.E());
+              double energy_delayed = (*nuc->delayed_photons_)(p.E());
+              f = (energy_prompt + energy_delayed) / (energy_prompt);
+            }
+          }
+        }
 
-      for (int j = 0; j < targets.size(); ++j) {
-        const auto& target = targets[j];
-        int idx = data::chain_nuclide_map[target.name];
-        const auto& chain_nuc = data::chain_nuclides[idx];
-        const auto& energy_dist = chain_nuc->photon_energy();
-        if (!energy_dist)
-          continue;
-
-        double photon_per_decay =
-          energy_dist->integral() / chain_nuc->decay_constant();
-        prob += xs * target.branching_ratio * photon_per_decay;
+        // add to cumulative probability
+        prob += f * (*rx->products_[j].yield_)(p.E()) * xs;
 
         *i_rx = i;
         *i_product = j;
         if (prob > cutoff)
           return;
-      }
-
-    } else {
-      for (int j = 0; j < rx->products_.size(); ++j) {
-        if (rx->products_[j].particle_ == ParticleType::photon) {
-          // For fission, artificially increase the photon yield to account
-          // for delayed photons
-          double f = 1.0;
-          if (settings::delayed_photon_scaling) {
-            if (is_fission(rx->mt_)) {
-              if (nuc->prompt_photons_ && nuc->delayed_photons_) {
-                double energy_prompt = (*nuc->prompt_photons_)(p.E());
-                double energy_delayed = (*nuc->delayed_photons_)(p.E());
-                f = (energy_prompt + energy_delayed) / (energy_prompt);
-              }
-            }
-          }
-
-          // add to cumulative probability
-          prob += f * (*rx->products_[j].yield_)(p.E()) * xs;
-
-          *i_rx = i;
-          *i_product = j;
-          if (prob > cutoff)
-            return;
-        }
       }
     }
   }
@@ -1184,20 +1159,7 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
   auto& rx = data::nuclides[i_nuclide]->reactions_[i_rx];
   double E;
   double mu;
-  int i_chain_nuc;
-  if (settings::use_decay_photons) {
-    // For D1S method, sample photon from decay of reaction product
-    const auto& targets = rx->decay_products_;
-    if (targets.empty())
-      return;
-    const auto& target = targets[i_product];
-    i_chain_nuc = data::chain_nuclide_map[target.name];
-    E = data::chain_nuclides[i_chain_nuc]->photon_energy()->sample(
-      p.current_seed());
-    mu = Uniform(-1., 1.).sample(p.current_seed());
-  } else {
-    rx->products_[i_product].sample(p.E(), E, mu, p.current_seed());
-  }
+  rx->products_[i_product].sample(p.E(), E, mu, p.current_seed());
 
   // Sample the new direction
   Direction u = rotate_angle(p.u(), mu, nullptr, p.current_seed());
@@ -1217,7 +1179,8 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
 
   // Tag secondary particle with parent nuclide
   if (created_photon && settings::use_decay_photons) {
-    p.secondary_bank().back().parent_nuclide = i_chain_nuc;
+    p.secondary_bank().back().parent_nuclide =
+      rx->products_[i_product].parent_nuclide_;
   }
 }
 

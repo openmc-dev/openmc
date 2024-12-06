@@ -1,5 +1,6 @@
 #include "openmc/reaction.h"
 
+#include <algorithm> // for remove_if
 #include <string>
 #include <unordered_map>
 #include <utility> // for move
@@ -13,6 +14,7 @@
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 #include "openmc/secondary_uncorrelated.h"
+#include "openmc/settings.h"
 
 namespace openmc {
 
@@ -66,18 +68,26 @@ Reaction::Reaction(
     }
   }
 
-  // Determine product for D1S method
-  auto nuclide_it = data::chain_nuclide_map.find(name);
-  if (nuclide_it != data::chain_nuclide_map.end()) {
-    const auto& chain_nuc = data::chain_nuclides[nuclide_it->second];
-    const auto& rx_products = chain_nuc->reaction_products();
-    auto product_it = rx_products.find(mt_);
-    if (product_it != rx_products.end()) {
-      auto decay_products = product_it->second;
-      for (const auto& decay_product : decay_products) {
-        if (data::chain_nuclide_map.find(decay_product.name) !=
-            data::chain_nuclide_map.end()) {
-          decay_products_.push_back(decay_product);
+  if (settings::use_decay_photons) {
+    // Remove photon products for D1S method
+    products_.erase(
+      std::remove_if(products_.begin(), products_.end(),
+        [](const auto& p) { return p.particle_ == ParticleType::photon; }),
+      products_.end());
+
+    // Determine product for D1S method
+    auto nuclide_it = data::chain_nuclide_map.find(name);
+    if (nuclide_it != data::chain_nuclide_map.end()) {
+      const auto& chain_nuc = data::chain_nuclides[nuclide_it->second];
+      const auto& rx_products = chain_nuc->reaction_products();
+      auto product_it = rx_products.find(mt_);
+      if (product_it != rx_products.end()) {
+        auto decay_products = product_it->second;
+        for (const auto& decay_product : decay_products) {
+          if (data::chain_nuclide_map.find(decay_product.name) !=
+              data::chain_nuclide_map.end()) {
+            products_.emplace_back(decay_product);
+          }
         }
       }
     }

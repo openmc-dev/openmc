@@ -10,6 +10,7 @@
 
 #include "pugixml.hpp"
 
+#include "openmc/angle_energy.h" // for AngleEnergy
 #include "openmc/distribution.h" // for UPtrDist
 #include "openmc/memory.h"       // for unique_ptr
 #include "openmc/vector.h"
@@ -50,6 +51,24 @@ private:
   std::unordered_map<int, vector<Product>>
     reaction_products_;    //!< Map of MT to reaction products
   UPtrDist photon_energy_; //!< Decay photon energy distribution
+};
+
+class DecayPhotonAngleEnergy : public AngleEnergy {
+public:
+  explicit DecayPhotonAngleEnergy(const Distribution* dist)
+    : photon_energy_(dist)
+  {}
+
+  //! Sample distribution for an angle and energy
+  //! \param[in] E_in Incoming energy in [eV]
+  //! \param[out] E_out Outgoing energy in [eV]
+  //! \param[out] mu Outgoing cosine with respect to current direction
+  //! \param[inout] seed Pseudorandom seed pointer
+  void sample(
+    double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+
+private:
+  const Distribution* photon_energy_;
 };
 
 //==============================================================================

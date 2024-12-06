@@ -71,7 +71,6 @@ def set_dagmc_model():
     source = openmc.IndependentSource(space=point)
 
     settings = openmc.Settings()
-    settings.source = source
     settings.batches = 100
     settings.inactive = 10
     settings.particles = 1000

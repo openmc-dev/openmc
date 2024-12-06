@@ -973,10 +973,6 @@ void Plot::create_voxel() const
 
   ProgressBar pb;
   for (int z = 0; z < pixels_[2]; z++) {
-    // update progress bar
-    pb.set_value(
-      100. * static_cast<double>(z) / static_cast<double>((pixels_[2] - 1)));
-
     // update z coordinate
     pltbase.origin_.z = ll.z + z * vox[2];
 
@@ -991,6 +987,10 @@ void Plot::create_voxel() const
 
     // Write to HDF5 dataset
     voxel_write_slice(z, dspace, dset, memspace, data_flipped.data());
+
+    // update progress bar
+    pb.set_value(
+      100. * static_cast<double>(z + 1) / static_cast<double>((pixels_[2])));
   }
 
   voxel_finalize(dspace, dset, memspace);

@@ -44,7 +44,7 @@ class IndependentOperator(OpenMCOperator):
 
     Parameters
     ----------
-    materials : openmc.Materials
+    materials : iterable of openmc.Material
         Materials to deplete.
     fluxes : list of numpy.ndarray
         Flux in each group in [n-cm/src] for each domain
@@ -127,8 +127,9 @@ class IndependentOperator(OpenMCOperator):
                  reduce_chain_level=None,
                  fission_yield_opts=None):
         # Validate micro-xs parameters
-        check_type('materials', materials, openmc.Materials)
+        check_type('materials', materials, Iterable, openmc.Material)
         check_type('micros', micros, Iterable, MicroXS)
+        materials = openmc.Materials(materials)
 
         if not (len(fluxes) == len(micros) == len(materials)):
             msg = (f'The length of fluxes ({len(fluxes)}) should be equal to '
@@ -244,7 +245,6 @@ class IndependentOperator(OpenMCOperator):
         """Puts nuclide list into an openmc.Materials object.
 
         """
-        openmc.reset_auto_ids()
         mat = openmc.Material()
         if nuc_units == 'atom/b-cm':
             for nuc, conc in nuclides.items():

@@ -146,8 +146,6 @@ class OpenMCOperator(TransportOperator):
         # Determine which nuclides have cross section data
         # This nuclides variables contains every nuclides
         # for which there is an entry in the micro_xs parameter
-        openmc.reset_auto_ids()
-
         self.nuclides_with_data = self._get_nuclides_with_data(
             self.cross_sections)
 
@@ -210,7 +208,7 @@ class OpenMCOperator(TransportOperator):
                 if nuclide in self.nuclides_with_data or self._decay_nucs:
                     model_nuclides.add(nuclide)
                 else:
-                    msg = (f"Nuclilde {nuclide} in material {mat.id} is not "
+                    msg = (f"Nuclide {nuclide} in material {mat.id} is not "
                            "present in the depletion chain and has no cross "
                            "section data.")
                     warn(msg)
@@ -395,9 +393,6 @@ class OpenMCOperator(TransportOperator):
         # Update the number densities regardless of the source rate
         self.number.set_density(vec)
         self._update_materials()
-
-        # Prevent OpenMC from complaining about re-creating tallies
-        openmc.reset_auto_ids()
 
         # Update tally nuclides data in preparation for transport solve
         nuclides = self._get_reaction_nuclides()

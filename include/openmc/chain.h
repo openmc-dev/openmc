@@ -53,6 +53,10 @@ private:
   UPtrDist photon_energy_; //!< Decay photon energy distribution
 };
 
+//==============================================================================
+// Angle-energy distribution for decay photon
+//==============================================================================
+
 class DecayPhotonAngleEnergy : public AngleEnergy {
 public:
   explicit DecayPhotonAngleEnergy(const Distribution* dist)

@@ -297,3 +297,39 @@ def test_ww_attrs_capi(run_in_tmpdir, model):
     assert wws.particle == openmc.ParticleType.PHOTON
 
     openmc.lib.finalize()
+
+
+@pytest.mark.parametrize('library', ('libmesh', 'moab'))
+def test_unstructured_mesh_applied_wws(request, run_in_tmpdir, library):
+    """
+    Ensure that weight windows on unstructured mesh work when
+    they aren't part of a tally or weight window generator
+    """
+
+    if library == 'libmesh' and not openmc.lib._libmesh_enabled():
+        pytest.skip('LibMesh not enabled in this build.')
+    if library == 'moab' and not openmc.lib._dagmc_enabled():
+        pytest.skip('DAGMC (and MOAB) mesh not enabled in this build.')
+
+    water = openmc.Material(name='water')
+    water.add_nuclide('H1', 2.0)
+    water.add_nuclide('O16', 1.0)
+    water.set_density('g/cc', 1.0)
+    box = openmc.model.RectangularParallelepiped(*(3*[-10, 10]), boundary_type='vacuum')
+    cell = openmc.Cell(region=-box, fill=water)
+
+    geometry = openmc.Geometry([cell])
+    mesh_file = str(request.fspath.dirpath() / 'test_mesh_tets.exo')
+    mesh = openmc.UnstructuredMesh(mesh_file, library)
+
+    dummy_wws = np.ones((12_000,))
+
+    wws = openmc.WeightWindows(mesh, dummy_wws, upper_bound_ratio=5.0)
+
+    model = openmc.Model(geometry)
+    model.settings.weight_windows = wws
+    model.settings.weight_windows_on = True
+    model.settings.run_mode = 'fixed source'
+    model.settings.particles = 100
+    model.settings.batches = 2
+    model.run()

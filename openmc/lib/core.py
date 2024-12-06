@@ -478,7 +478,7 @@ def run(output=True):
 def sample_external_source(
         n_samples: int = 1000,
         prn_seed: int | None = None
-) -> list[openmc.SourceParticle]:
+) -> openmc.ParticleList:
     """Sample external source and return source particles.
 
     .. versionadded:: 0.13.1
@@ -493,7 +493,7 @@ def sample_external_source(
 
     Returns
     -------
-    list of openmc.SourceParticle
+    openmc.ParticleList
         List of sampled source particles
 
     """
@@ -507,14 +507,13 @@ def sample_external_source(
     _dll.openmc_sample_external_source(c_size_t(n_samples), c_uint64(prn_seed), sites_array)
 
     # Convert to list of SourceParticle and return
-    return [
-        openmc.SourceParticle(
+    return openmc.ParticleList([openmc.SourceParticle(
             r=site.r, u=site.u, E=site.E, time=site.time, wgt=site.wgt,
             delayed_group=site.delayed_group, surf_id=site.surf_id,
             particle=openmc.ParticleType(site.particle)
         )
         for site in sites_array
-    ]
+    ])
 
 
 def simulation_init():

@@ -83,8 +83,8 @@ public:
   virtual ~Mesh() = default;
 
   // Methods
-  //! Perform any preparation needed to support use in mesh filters
-  virtual void prepare_for_tallies() {};
+  //! Perform any preparation needed to support point location within the mesh
+  virtual void prepare_for_point_location() {};
 
   //! Update a position to the local coordinates of the mesh
   virtual void local_coords(Position& r) const {};
@@ -737,7 +737,7 @@ public:
   // Overridden Methods
 
   //! Perform any preparation needed to support use in mesh filters
-  void prepare_for_tallies() override;
+  void prepare_for_point_location() override;
 
   Position sample_element(int32_t bin, uint64_t* seed) const override;
 
@@ -948,6 +948,7 @@ public:
 private:
   void initialize() override;
   void set_mesh_pointer_from_filename(const std::string& filename);
+  void build_eqn_sys();
 
   // Methods
 
@@ -966,7 +967,8 @@ private:
   vector<unique_ptr<libMesh::PointLocatorBase>>
     pl_; //!< per-thread point locators
   unique_ptr<libMesh::EquationSystems>
-    equation_systems_; //!< pointer to the equation systems of the mesh
+    equation_systems_; //!< pointer to the libMesh EquationSystems
+                       //!< instance
   std::string
     eq_system_name_; //!< name of the equation system holding OpenMC results
   std::unordered_map<std::string, unsigned int>
@@ -975,6 +977,13 @@ private:
   libMesh::BoundingBox bbox_; //!< bounding box of the mesh
   libMesh::dof_id_type
     first_element_id_; //!< id of the first element in the mesh
+
+  const bool adaptive_; //!< whether this mesh has adaptivity enabled or not
+  std::vector<libMesh::dof_id_type>
+    bin_to_elem_map_; //!< mapping bin indices to dof indices for active
+                      //!< elements
+  std::vector<int> elem_to_bin_map_; //!< mapping dof indices to bin indices for
+                                     //!< active elements
 };
 
 #endif

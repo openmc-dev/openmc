@@ -5,8 +5,6 @@ from collections.abc import Iterable, Sequence
 from functools import wraps
 from math import pi, sqrt, atan2
 from numbers import Integral, Real
-from pathlib import Path
-import tempfile
 
 import h5py
 import lxml.etree as ET
@@ -19,6 +17,7 @@ from openmc.utility_funcs import change_directory
 from ._xml import get_text
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
+from .utility_funcs import input_path
 
 
 class MeshBase(IDManagerMixin, ABC):
@@ -2072,8 +2071,10 @@ class UnstructuredMesh(MeshBase):
 
     Parameters
     ----------
-    filename : str or pathlib.Path
-        Location of the unstructured mesh file
+    filename : path-like
+        Location of the unstructured mesh file. Supported files for 'moab'
+        library are .h5 and .vtk. Supported files for 'libmesh' library are
+        exodus mesh files .exo.
     library : {'moab', 'libmesh'}
         Mesh library used for the unstructured mesh tally
     mesh_id : int
@@ -2158,8 +2159,8 @@ class UnstructuredMesh(MeshBase):
 
     @filename.setter
     def filename(self, filename):
-        cv.check_type('Unstructured Mesh filename', filename, (str, Path))
-        self._filename = filename
+        cv.check_type('Unstructured Mesh filename', filename, PathLike)
+        self._filename = input_path(filename)
 
     @property
     def library(self):

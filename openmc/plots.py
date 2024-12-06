@@ -438,8 +438,8 @@ class PlotBase(IDManagerMixin):
                 cv.check_greater_than('RGB component', rgb, 0, True)
                 cv.check_less_than('RGB component', rgb, 256)
 
-#Helper function that returns the domain ID given either a
-#Cell / Material object or the domain ID itself
+    #Helper function that returns the domain ID given either a
+    #Cell / Material object or the domain ID itself
     @staticmethod
     def _get_id(domain):
         return domain if isinstance(domain, Integral) else domain.id
@@ -463,16 +463,15 @@ class PlotBase(IDManagerMixin):
         cv.check_type('seed', seed, Integral)
         cv.check_greater_than('seed', seed, 1, equality=True)
 
-#Get collections of the domains which will be plotted
+        #Get collections of the domains which will be plotted
         if self.color_by == 'material':
             domains = geometry.get_all_materials().values()
         else:
             domains = geometry.get_all_cells().values()
 
-#Set the seed for the random number generator
-        np.random.seed(seed)
+        rng = np.random.RandomState(seed)
 
-#Generate random colors for each feature
+        #Generate random colors for each feature
         for domain in domains:
             self.colors[domain] = rng.randint(0, 256, (3,))
 
@@ -1467,7 +1466,7 @@ class PhongPlot(RayTracePlot):
 #Extract all IDs, or use the integer value passed in
 #explicitly if that was given
         subelement.text = ' '.join(
-            [str(domain) if isinstance(domain, int) else 
+            [str(domain) if isinstance(domain, int) else
              str(domain.id) for domain in self._opaque_domains])
 
         if self._colors:

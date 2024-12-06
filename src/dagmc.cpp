@@ -638,7 +638,8 @@ void DAGUniverse::override_assign_material(std::string key,
   // if Cell ID matches an override key, use it to override the material
   // assignment else if UWUW is used, get the material assignment from the DAGMC
   // metadata
-  write_message(fmt::format("XML instance {}", c->id_), 8);
+  // Notify User that an override is being applied on a DAGMCCell
+  write_message(fmt::format("Applying override for DAGMCCell {}", c->id_), 8);
   if (material_overrides.count("id_" + std::to_string(c->id_))) {
     key = "id_" + std::to_string(c->id_);
   } else if (uses_uwuw()) {

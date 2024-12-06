@@ -34,41 +34,17 @@ def set_dagmc_model():
 
     daguniv = openmc.DAGMCUniverse(p,auto_geom_ids=True,)
 
-    def pattern(center, bc):
-        bc_ = {
-            "top": "transmission",
-            "bottom": "transmission",
-            "left": "transmission",
-            "right": "transmission",
-        }
-        bc_ |= bc
-        box = (
-            -XPlane(center[0] + PITCH / 2, boundary_type=bc_["right"])
-            & +XPlane(center[0] - PITCH / 2, boundary_type=bc_["left"])
-            & -YPlane(center[1] + PITCH / 2, boundary_type=bc_["top"])
-            & +YPlane(center[1] - PITCH / 2, boundary_type=bc_["bottom"])
-            & -ZPlane(5, boundary_type="reflective")
-            & +ZPlane(-5, boundary_type="reflective")
-        )
-        cell = Cell(region=box, fill=daguniv)
-        cell.translation = [*center, 0]
-        return [cell]
+    lattice = openmc.RectLattice()
+    lattice.dimension = [2, 2]
+    lattice.lower_left = [-PITCH, -PITCH]
+    lattice.pitch = [PITCH, PITCH]
+    lattice.universes = [
+        [daguniv, daguniv],
+        [daguniv, daguniv]]
 
-    root = openmc.Universe(
-        cells=[
-            *pattern((-PITCH / 2, -PITCH / 2),
-                     bc={"left": "reflective", "bottom": "reflective"}),
-            *pattern((-PITCH / 2, PITCH / 2),
-                     bc={"left": "reflective", "top": "reflective"}),
-            *pattern((PITCH / 2, PITCH / 2),
-                     bc={"right": "reflective", "top": "reflective"}),
-            *pattern((PITCH / 2, -PITCH / 2),
-                     bc={"right": "reflective", "bottom": "reflective"}),
-        ]
-    )
-
-    point = openmc.stats.Point((0, 0, 0))
-    source = openmc.IndependentSource(space=point)
+    box = openmc.model.RectangularParallelepiped(-PITCH, PITCH, -PITCH, PITCH, -5, 5)
+            
+    root = openmc.Universe(cells=[Cell(region= -box, fill=lattice)])
 
     settings = openmc.Settings()
     settings.batches = 100

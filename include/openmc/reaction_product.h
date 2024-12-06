@@ -38,6 +38,8 @@ public:
   //! \param[in] group HDF5 group containing data
   explicit ReactionProduct(hid_t group);
 
+  //! Construct reaction product for decay photon from chain nuclide product
+  //! \param[in] product Chain nuclide product
   explicit ReactionProduct(const ChainNuclide::Product& product);
 
   //! Sample an outgoing angle and energy

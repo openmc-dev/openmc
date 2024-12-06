@@ -9,7 +9,6 @@
 #include "hdf5.h"
 #include <gsl/gsl-lite.hpp>
 
-#include "openmc/chain.h"
 #include "openmc/particle_data.h"
 #include "openmc/reaction_product.h"
 #include "openmc/vector.h"
@@ -65,10 +64,6 @@ public:
   bool redundant_;                   //!< redundant reaction?
   vector<TemperatureXS> xs_;         //!< Cross section at each temperature
   vector<ReactionProduct> products_; //!< Reaction products
-
-  //! Nuclides produced from reaction. This is specifically used for the D1S
-  //! methodology
-  vector<ChainNuclide::Product> decay_products_;
 };
 
 //==============================================================================

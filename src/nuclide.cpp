@@ -1,7 +1,6 @@
 #include "openmc/nuclide.h"
 
 #include "openmc/capi.h"
-#include "openmc/chain.h"
 #include "openmc/container_util.h"
 #include "openmc/cross_sections.h"
 #include "openmc/endf.h"

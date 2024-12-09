@@ -107,7 +107,8 @@ def time_correction_factors(
     h = np.zeros((n_timesteps, n_nuclides))
 
     for i, (dt, rate) in enumerate(zip(timesteps, source_rates)):
-        # Precompute the exponential term
+        # Precompute the exponential terms. Since (1 - exp(-x)) is susceptible to
+        # roundoff error, use expm1 instead (which computes exp(x) - 1)
         g = np.exp(-decay_rate*dt)
         one_minus_g = -np.expm1(-decay_rate*dt)
 

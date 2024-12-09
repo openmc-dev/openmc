@@ -1,6 +1,7 @@
 from pathlib import Path
-from math import exp, log
+from math import exp
 
+import numpy as np
 import pytest
 import openmc
 import openmc.deplete
@@ -30,37 +31,35 @@ def test_get_radionuclides(model):
         assert openmc.data.half_life(nuc) is not None
 
 
-def test_time_correction_factors():
-    nuclides = ['Co60', 'Ni63', 'H3', 'Na24', 'K40']
-
+@pytest.mark.parametrize("nuclide", ['Co60', 'Ni63', 'H3', 'Na24', 'K40'])
+def test_time_correction_factors(nuclide):
     # Irradiation schedule turning unit neutron source on and off
     timesteps = [1.0, 1.0, 1.0]
     source_rates = [1.0, 0.0, 1.0]
 
-    # Compute expected solutin
-    decay_rate = {x: log(2.0) / openmc.data.half_life(x) for x in nuclides}
-    g = {nuc: exp(-r) for nuc, r in decay_rate.items()}
-    expected = {}
-    for nuc in nuclides:
-        gi = g[nuc]
-        expected[nuc] = [0.0, (1 - gi), (1 - gi)*gi, (1 - gi)*(1 + gi**2)]
+    # Compute expected solution
+    decay_rate = openmc.data.decay_constant(nuclide)
+    g = exp(-decay_rate)
+    expected = [0.0, (1 - g), (1 - g)*g, (1 - g)*(1 + g*g)]
 
-    tcf = d1s.time_correction_factors(nuclides, timesteps, source_rates)
-    for nuc, actual in tcf.items():
-        assert actual == pytest.approx(expected[nuc])
+    # Test against expected solution
+    tcf = d1s.time_correction_factors([nuclide], timesteps, source_rates)
+    assert tcf[nuclide] == pytest.approx(expected)
+
+    # Make sure all values at first timestep and onward are positive (K40 case
+    # has very small decay constant that stresses this)
+    assert np.all(tcf[nuclide][1:] > 0.0)
 
     # Timesteps as a tuple
     timesteps = [(1.0, 's'), (1.0, 's'), (1.0, 's')]
-    tcf = d1s.time_correction_factors(nuclides, timesteps, source_rates)
-    for nuc, actual in tcf.items():
-        assert actual == pytest.approx(expected[nuc])
+    tcf = d1s.time_correction_factors([nuclide], timesteps, source_rates)
+    assert tcf[nuclide] == pytest.approx(expected)
 
     # Test changing units
     timesteps = [1.0/60.0, 1.0/60.0, 1.0/60.0]
-    tcf = d1s.time_correction_factors(nuclides, timesteps, source_rates,
+    tcf = d1s.time_correction_factors([nuclide], timesteps, source_rates,
                                       timestep_units='min')
-    for nuc, actual in tcf.items():
-        assert actual == pytest.approx(expected[nuc]), nuc
+    assert tcf[nuclide] == pytest.approx(expected)
 
 
 def test_prepare_tallies(model):

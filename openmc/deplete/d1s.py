@@ -79,13 +79,12 @@ def time_correction_factors(
         specified by the `timestep_units` argument when `timesteps` is an
         iterable of float. Alternatively, units can be specified for each step
         by passing a sequence of (value, unit) tuples.
-    source_rates : float or iterable of float, optional
+    source_rates : float or iterable of float
         Source rate in [neutron/sec] for each interval in `timesteps`
-    timestep_units : {'s', 'min', 'h', 'd', 'a'}
+    timestep_units : {'s', 'min', 'h', 'd', 'a'}, optional
         Units for values specified in the `timesteps` argument. 's' means
         seconds, 'min' means minutes, 'h' means hours, and 'a' means Julian
         years.
-
 
     Returns
     -------
@@ -110,9 +109,10 @@ def time_correction_factors(
     for i, (dt, rate) in enumerate(zip(timesteps, source_rates)):
         # Precompute the exponential term
         g = np.exp(-decay_rate*dt)
+        one_minus_g = -np.expm1(-decay_rate*dt)
 
         # Eq. (4) in doi:10.1016/j.fusengdes.2019.111399
-        h[i + 1] = rate*(1. - g) + h[i]*g
+        h[i + 1] = rate*one_minus_g + h[i]*g
 
     return {nuclides[i]: h[:, i] for i in range(n_nuclides)}
 
@@ -198,9 +198,30 @@ def apply_time_correction(
     return new_tally
 
 
-def prepare_tallies(model: list[openmc.Tally], nuclides: list[str] | None = None) -> list[str]:
+def prepare_tallies(
+        model: list[openmc.Tally],
+        nuclides: list[str] | None = None,
+        chain_file: str | None = None
+) -> list[str]:
+    """Prepare tallies for the D1S method.
+
+    This function adds a :class:`~openmc.ParentNuclideFilter` to any tally that
+    has a particle filter with a single 'photon' bin.
+
+    Parameters
+    ----------
+    model : openmc.Model
+        Model to prepare tallies for
+    nuclides : list of str, optional
+        Nuclides to use for the parent nuclide filter. If None, radionuclides
+        are determined from :func:`get_radionuclides`.
+    chain_file : str, optional
+        Chain file to use for inspecting decay data. If None, defaults to
+        ``openmc.config['chain_file']``
+
+    """
     if nuclides is None:
-        nuclides = get_radionuclides(model)
+        nuclides = get_radionuclides(model, chain_file)
     filter = openmc.ParentNuclideFilter(nuclides)
 
     # Apply parent nuclide filter to any tally that has a particle filter with a

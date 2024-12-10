@@ -209,7 +209,83 @@ void Particle::event_calculate_xs()
   }
 }
 
+
+double Particle::get_destination_distance()
+{
+  // Find the distance to the nearest boundary
+  this->boundary() = distance_to_boundary(*this);
+
+  // Sample a distance to collision
+  if (this->type() == ParticleType::electron || this->type() == ParticleType::positron) {
+    this->collision_distance() = 0.0;
+  } else if (this->macro_xs().total == 0.0) {
+    this->collision_distance() = INFINITY;
+  } else {
+    this->collision_distance() = -log(prn(this->current_seed())) / this->macro_xs().total;
+  }
+
+  // Select smaller of the two distances
+  double distance = std::min(this->boundary().distance, this->collision_distance());
+  return distance;
+}
+
+void Particle::is_hit_time_boundary(double distance)
+{
+  for (int j = 0; j < this->n_coord(); ++j) {
+    this->coord(j).r += distance * this->coord(j).u;
+  }
+  this->time() += distance / this->speed();
+
+  // Kill particle if its time exceeds the cutoff
+  bool hit_time_boundary = false;
+  double time_cutoff = settings::time_cutoff[static_cast<int>(this->type())];
+  if (this->time() > time_cutoff) {
+    double dt = this->time() - time_cutoff;
+    this->time() = time_cutoff;
+
+    double push_back_distance = this->speed() * dt;
+    this->move_distance(-push_back_distance);
+    hit_time_boundary = true;
+  }
+  // Set particle weight to zero if it hit the time boundary
+  if (hit_time_boundary) {
+    wgt() = 0.0;
+  }
+}
+
+void Particle::score_the_tallies(double distance)
+{
+  if (!model::active_tracklength_tallies.empty()) {
+    score_tracklength_tally(*this, distance);
+  }
+  // Score track-length estimate of k-eff
+  score_non_mesh_track_length_tallies(distance);
+}
+
+void Particle::score_non_mesh_track_length_tallies(double distance)
+{
+  if (settings::run_mode == RunMode::EIGENVALUE &&
+      this->type() == ParticleType::neutron) {
+    this->keff_tally_tracklength() += this->wgt() * distance * this->macro_xs().nu_fission;
+  }
+
+  // Score flux derivative accumulators for differential tallies.
+  if (!model::active_tallies.empty()) {
+    score_track_derivative(*this, distance);
+  }
+}
+
+
 void Particle::event_advance()
+{
+  double distance = get_destination_distance();
+  is_hit_time_boundary(distance);
+
+  // Score track-length tallies
+  score_the_tallies(distance);
+}
+
+void Particle::event_advance_deprecated()
 {
   // Find the distance to the nearest boundary
   boundary() = distance_to_boundary(*this);

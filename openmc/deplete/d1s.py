@@ -176,6 +176,8 @@ def apply_time_correction(
     tcf.shape = (1, -1, 1, 1, 1)
     new_tally._sum = tally_sum * tcf
     new_tally._sum_sq = tally_sum_sq * (tcf*tcf)
+    new_tally._mean = None
+    new_tally._std_dev = None
 
     shape = (-1, n_nuclides, n_scores)
 
@@ -193,8 +195,8 @@ def apply_time_correction(
         # Remove ParentNuclideFilter
         new_tally.filters.pop(i_filter)
     else:
-        new_tally._sum.reshape(shape)
-        new_tally._sum_sq.reshape(shape)
+        new_tally._sum.shape = shape
+        new_tally._sum_sq.shape = shape
 
     return new_tally
 

@@ -84,5 +84,49 @@ def test_prepare_tallies(model):
     assert sorted(tally.filters[-1].bins) == sorted(radionuclides)
 
 
-def test_apply_time_correction():
-    pass
+def test_apply_time_correction(run_in_tmpdir):
+    # Make simple sphere model with elemental Ni
+    mat = openmc.Material()
+    mat.add_element('Ni', 1.0)
+    sphere = openmc.Sphere(r=10.0, boundary_type='vacuum')
+    cell = openmc.Cell(fill=mat, region=-sphere)
+    model = openmc.Model()
+    model.geometry = openmc.Geometry([cell])
+    model.settings.run_mode = 'fixed source'
+    model.settings.batches = 3
+    model.settings.particles = 10
+    model.settings.photon_transport = True
+    model.settings.use_decay_photons = True
+    particle_filter = openmc.ParticleFilter('photon')
+    tally = openmc.Tally()
+    tally.filters = [particle_filter]
+    tally.scores = ['flux']
+    model.tallies = [tally]
+
+    # Prepare tallies for D1S and compute time correction factors
+    nuclides = d1s.prepare_tallies(model, chain_file=CHAIN_PATH)
+    factors = d1s.time_correction_factors(nuclides, [1.0e10], [1.0])
+
+    # Run OpenMC and get tally result
+    with openmc.config.patch('chain_file', CHAIN_PATH):
+        output_path = model.run()
+    with openmc.StatePoint(output_path) as sp:
+        tally = sp.tallies[tally.id]
+        flux = tally.mean.flatten()
+
+    # Apply TCF and make sure results are consistent
+    result = d1s.apply_time_correction(tally, factors, sum_nuclides=False)
+    tcf = np.array([factors[nuc][-1] for nuc in nuclides])
+    assert result.mean.flatten() == pytest.approx(tcf * flux)
+
+    # Make sure summed results match a manual sum
+    result_summed = d1s.apply_time_correction(tally, factors)
+    assert result_summed.mean.flatten()[0] == pytest.approx(result.mean.sum())
+
+    # Make sure various tally methods work
+    result.get_values()
+    result_summed.get_values()
+    result.get_reshaped_data()
+    result_summed.get_reshaped_data()
+    result.get_pandas_dataframe()
+    result_summed.get_pandas_dataframe()

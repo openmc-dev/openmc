@@ -111,13 +111,17 @@ public:
   virtual void all_reduce_replicated_source_regions();
   void convert_external_sources();
   void count_external_source_regions();
+  void set_adjoint_sources(const vector<double>& forward_flux);
   virtual void flux_swap();
   virtual double evaluate_flux_at_point(Position r, int64_t sr, int g) const;
   double compute_fixed_source_normalization_factor() const;
+  void flatten_xs();
+  void transpose_scattering_matrix();
 
   //----------------------------------------------------------------------------
   // Static Data members
   static bool volume_normalized_flux_tallies_;
+  static bool adjoint_; // If the user wants outputs based on the adjoint flux
 
   //----------------------------------------------------------------------------
   // Static data members
@@ -150,6 +154,19 @@ public:
   vector<float> source_;
   vector<float> external_source_;
   vector<bool> external_source_present_;
+  vector<double> scalar_flux_final_;
+
+  // 2D arrays stored in 1D representing values for all materials x energy
+  // groups
+  int n_materials_;
+  vector<double> sigma_t_;
+  vector<double> nu_sigma_f_;
+  vector<double> sigma_f_;
+  vector<double> chi_;
+
+  // 3D arrays stored in 1D representing values for all materials x energy
+  // groups x energy groups
+  vector<double> sigma_s_;
 
 protected:
   //----------------------------------------------------------------------------
@@ -189,10 +206,6 @@ protected:
   // 1D arrays representing values for all source regions
   vector<int> material_;
   vector<double> volume_naive_;
-
-  // 2D arrays stored in 1D representing values for all source regions x energy
-  // groups
-  vector<float> scalar_flux_final_;
 
   // Volumes for each tally and bin/score combination. This intermediate data
   // structure is used when tallying quantities that must be normalized by

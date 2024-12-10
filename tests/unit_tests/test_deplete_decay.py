@@ -20,7 +20,7 @@ def test_deplete_decay_products(run_in_tmpdir):
         """)
 
     # Create MicroXS object with no cross sections
-    micro_xs = openmc.deplete.MicroXS(np.empty((0, 0)), [], [])
+    micro_xs = openmc.deplete.MicroXS(np.empty((0, 0, 0)), [], [])
 
     # Create depletion operator with no reactions
     op = openmc.deplete.IndependentOperator.from_nuclides(
@@ -59,7 +59,7 @@ def test_deplete_decay_step_fissionable(run_in_tmpdir):
     """
 
     # Set up a pure decay operator
-    micro_xs = openmc.deplete.MicroXS(np.empty((0, 0)), [], [])
+    micro_xs = openmc.deplete.MicroXS(np.empty((0, 0, 0)), [], [])
     mat = openmc.Material()
     mat.name = 'I do not decay.'
     mat.add_nuclide('U238', 1.0, 'ao')

@@ -820,14 +820,14 @@ class Model:
 
         Parameters
         ----------
-        n_samples : dict
+        n_samples : int, optional
             The number of source particles to sample and add to plot. Defaults
             to None which doesn't plot any particles on the plot.
         plane_tolerance: float
             When plotting a plane the source locations within the plane +/-
             the plane_tolerance will be included and those outside of the
             plane_tolerance will not be shown
-        source_kwargs : dict
+        source_kwargs : dict, optional
             Keyword arguments passed to :func:`matplotlib.pyplot.scatter`.
         **kwargs
             Keyword arguments passed to :func:`openmc.Universe.plot`
@@ -885,7 +885,7 @@ class Model:
             n_samples: int = 1000,
             prn_seed: int | None = None,
             **init_kwargs
-    ) -> list[openmc.SourceParticle]:
+    ) -> openmc.ParticleList:
         """Sample external source and return source particles.
 
         .. versionadded:: 0.15.1
@@ -902,7 +902,7 @@ class Model:
 
         Returns
         -------
-        list of openmc.SourceParticle
+        openmc.ParticleList
             List of samples source particles
         """
         import openmc.lib

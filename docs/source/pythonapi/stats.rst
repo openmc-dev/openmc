@@ -59,6 +59,7 @@ Spatial Distributions
    openmc.stats.Box
    openmc.stats.Point
    openmc.stats.MeshSpatial
+   openmc.stats.PointCloud
 
 .. autosummary::
    :toctree: generated

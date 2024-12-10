@@ -134,6 +134,7 @@ int openmc_finalize()
   settings::trigger_on = false;
   settings::trigger_predict = false;
   settings::trigger_batch_interval = 1;
+  settings::uniform_source_sampling = false;
   settings::ufs_on = false;
   settings::urr_ptables_on = true;
   settings::verbosity = 7;

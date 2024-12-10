@@ -84,9 +84,12 @@ Reaction::Reaction(
       if (product_it != rx_products.end()) {
         auto decay_products = product_it->second;
         for (const auto& decay_product : decay_products) {
-          if (data::chain_nuclide_map.find(decay_product.name) !=
-              data::chain_nuclide_map.end()) {
-            products_.emplace_back(decay_product);
+          auto product_it = data::chain_nuclide_map.find(decay_product.name);
+          if (product_it != data::chain_nuclide_map.end()) {
+            const auto& product_nuc = data::chain_nuclides[product_it->second];
+            if (product_nuc->photon_energy()) {
+              products_.emplace_back(decay_product);
+            }
           }
         }
       }

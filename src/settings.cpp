@@ -1097,6 +1097,18 @@ void read_settings_xml(pugi::xml_node root)
         get_node_value_bool(ww_checkpoints, "surface");
     }
   }
+  // Read vov and vov_complete settings
+  if (check_for_node(root, "vov")) {
+    vov = get_node_value_bool(root, "vov");
+  }
+  if (check_for_node(root, "vov_complete")) {
+    vov_complete = get_node_value_bool(root, "vov_complete");
+  }
+
+  // Ensure that both vov and vov_complete are not set to true simultaneously
+  if (vov && vov_complete) {
+    fatal_error("Both vov and vov_complete cannot be set to true simultaneously.");
+  }
 }
 
 void free_memory_settings()

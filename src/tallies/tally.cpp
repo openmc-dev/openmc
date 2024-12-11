@@ -774,20 +774,23 @@ void Tally::accumulate()
 
 // Accumulate each result
 #pragma omp parallel for
+// filter bins (specific cell, energy bins)
     for (int i = 0; i < results_.shape()[0]; ++i) {
-      
+      // score bins (flux, total reaction rate, fission reaction rate, etc.)
+      int number_of_bins = model::tally_filters[filters_[i]]->n_bins();
+
       for (int j = 0; j < results_.shape()[1]; ++j) {
         double val = results_(i, j, TallyResult::VALUE) * norm;
         results_(i, j, TallyResult::VALUE) = 0.0;
         results_(i, j, TallyResult::SUM) += val;
         results_(i, j, TallyResult::SUM_SQ) += val * val;
         
-        if (settings::vov == true) {
-          results_(0, j, TallyResult::SUM_THIRD) += val * val * val;
-          results_(0, j, TallyResult::SUM_FOURTH) += val * val * val * val;
+        if (settings::vov) {
+          results_(i, j, TallyResult::SUM_THIRD) += (val * val * val)/number_of_bins;
+          results_(i, j, TallyResult::SUM_FOURTH) += (val * val * val * val)/number_of_bins;
         }
 
-        if (settings::vov_complete == true) {
+        if (settings::vov_complete) {
           results_(i, j, TallyResult::SUM_THIRD) += val * val * val;
           results_(i, j, TallyResult::SUM_FOURTH) += val * val * val * val;
         }

@@ -383,6 +383,8 @@ class Settings:
         self._weight_window_checkpoints = {}
         self._max_history_splits = None
         self._max_tracks = None
+        self._vov = None
+        self._vov_complete = None
 
         self._random_ray = {}
 
@@ -1065,6 +1067,22 @@ class Settings:
         cv.check_type('maximum particle tracks', value, Integral)
         cv.check_greater_than('maximum particle tracks', value, 0, True)
         self._max_tracks = value
+    
+    @property
+    def vov(self) -> bool:
+        return self._vov
+
+    @vov.setter
+    def vov(self, value):
+        self._vov = bool(value)
+
+    @property
+    def vov_complete(self) -> bool:
+        return self._vov_complete
+
+    @vov_complete.setter
+    def vov_complete(self, value):
+        self._vov_complete = bool(value)
 
     @property
     def weight_windows_file(self) -> PathLike | None:
@@ -1543,6 +1561,16 @@ class Settings:
                 else:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(value)
+    
+    def _create_vov_subelement(self, root):
+        if self._vov is not None:
+            elem = ET.SubElement(root, "vov")
+            elem.text = str(self._vov)
+
+    def _create_vov_complete_subelement(self, root):
+        if self._vov_complete is not None:
+            elem = ET.SubElement(root, "vov_complete")
+            elem.text = str(self._vov_complete)
 
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
@@ -1916,6 +1944,15 @@ class Settings:
                     self.random_ray['volume_normalized_flux_tallies'] = (
                         child.text in ('true', '1')
                     )
+    def _vov_from_xml_element(self,root):
+        text = get_text(root, 'vov')
+        if text is not None:
+            self.vov = text in ('true', '1')
+    
+    def _vov_complete_from_xml_element(self,root):
+        text = get_text(root, 'vov_complete')
+        if text is not None:
+            self.vov_complete = text in ('true', '1')
 
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.
@@ -1980,6 +2017,8 @@ class Settings:
         self._create_max_history_splits_subelement(element)
         self._create_max_tracks_subelement(element)
         self._create_random_ray_subelement(element)
+        self._create_vov_subelement(element)
+        self._create_vov_complete_subelement(element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)

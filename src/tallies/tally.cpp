@@ -733,11 +733,8 @@ void Tally::init_results()
 {
   // Modifications to the results array size to accumulate sum_third and sum_fourth
   int n_scores = scores_.size() * nuclides_.size();
-  if (settings::vov_complete || settings::vov) {
-    results_ = xt::empty<double>({n_filter_bins_, n_scores, 5});
-  } else {
-  results_ = xt::empty<double>({n_filter_bins_, n_scores, 3});
-  }
+  // TO DO: allocate the correct size for the results array during initialization
+  results_ = xt::empty<double>({n_filter_bins_, n_scores, 5});
 }
 
 void Tally::reset()
@@ -777,27 +774,31 @@ void Tally::accumulate()
 // filter bins (specific cell, energy bins)
     for (int i = 0; i < results_.shape()[0]; ++i) {
       // score bins (flux, total reaction rate, fission reaction rate, etc.)
-      int number_of_bins = model::tally_filters[filters_[i]]->n_bins();
-
       for (int j = 0; j < results_.shape()[1]; ++j) {
         double val = results_(i, j, TallyResult::VALUE) * norm;
         results_(i, j, TallyResult::VALUE) = 0.0;
         results_(i, j, TallyResult::SUM) += val;
         results_(i, j, TallyResult::SUM_SQ) += val * val;
         
-        if (settings::vov) {
-          results_(i, j, TallyResult::SUM_THIRD) += (val * val * val)/number_of_bins;
-          results_(i, j, TallyResult::SUM_FOURTH) += (val * val * val * val)/number_of_bins;
+        if (settings::vov_complete) {
+          results_(i, j, TallyResult::SUM_THIRD) += (val * val * val);
+          results_(i, j, TallyResult::SUM_FOURTH) += (val * val * val * val);
         }
 
-        if (settings::vov_complete) {
-          results_(i, j, TallyResult::SUM_THIRD) += val * val * val;
-          results_(i, j, TallyResult::SUM_FOURTH) += val * val * val * val;
-        }
+        /*if (settings::vov) {
+          std::vector<int> filter_bins;
+          for (auto f : filters()) {
+            filter_bins.push_back(model::tally_filters[f]->n_bins());
+          } 
+          int num_bins = filter_bins[i % filter_bins.size()];
+          results_(i, j, TallyResult::SUM_THIRD) += (val * val * val)/num_bins;
+          results_(i, j, TallyResult::SUM_FOURTH) += (val * val * val * val)/num_bins;
+        }*/
       }
     }
   }
 }
+
 
 int Tally::score_index(const std::string& score) const
 {
@@ -929,6 +930,7 @@ void reduce_tally_results()
         static_cast<int>(TallyResult::VALUE));
 
       // Make copy of tally values in contiguous array
+      // TO DO: allocate the correct size for the values array during initialization
       xt::xtensor<double, 4> values = values_view;
       xt::xtensor<double, 4> values_reduced = xt::empty_like(values);
 

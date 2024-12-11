@@ -536,8 +536,12 @@ double figure_of_merit(const double* x, int n)
               (x[static_cast<int>(TallyResult::SUM_SQ)] / n - mean * mean) /
                 (n - 1)))
           : 0.0;
+          
+  // relative error = standard deviation / mean
   double relative_error = stdev / mean;
-  double computer_time = time_total.elapsed(); // not sure that this is the computer time defined in the manual
+
+  // total time of the simulation multiplied by the number of threads used  
+  double computer_time = time_total.elapsed() * omp_get_max_threads(); 
   
   double fom = 1/(relative_error*relative_error*computer_time);
 
@@ -746,7 +750,7 @@ void write_tallies()
           }
         }
 
-        // Write the score, mean, and uncertainty.
+        // Write the score, mean, uncertainty and vov.
        indent += 3;
         for (auto score : tally.scores_) {
           std::string score_name =
